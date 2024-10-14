@@ -6,7 +6,7 @@
 Buffer
 buffer_create(const size_t count)
 {
-    Buffer buffer = (Buffer){
+    Buffer buffer = {
         .count = count,
         .data  = ac_calloc(count, sizeof(buffer.data[0])),
     };

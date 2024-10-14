@@ -27,12 +27,12 @@
     }
 
 #define DEFINE_GENERIC_FUNCTION_PRINT_NDARRAY_RECURSIVE(type, format)                              \
-    static void print_ndarray_recursive_##type(const size_t ndims, const size_t* dims,             \
+    static void print_ndarray_recursive_##type(const size_t ndims, const uint64_t* dims,           \
                                                const type* array)                                  \
     {                                                                                              \
         if (ndims == 1) {                                                                          \
             for (size_t i = 0; i < dims[0]; ++i) {                                                 \
-                const size_t len          = 128;                                                   \
+                const uint64_t len        = 128;                                                   \
                 const int print_alignment = 3;                                                     \
                 char* str                 = ac_calloc(len, sizeof(str[0]));                        \
                 snprintf(str, len, format, array[i]);                                              \
@@ -42,7 +42,7 @@
             printf("\n");                                                                          \
         }                                                                                          \
         else {                                                                                     \
-            const size_t offset = prod(ndims - 1, dims);                                           \
+            const uint64_t offset = prod(ndims - 1, dims);                                         \
             for (size_t i = 0; i < dims[ndims - 1]; ++i) {                                         \
                 if (ndims > 4)                                                                     \
                     printf("%zu. %zu-dimensional hypercube:\n", i, ndims - 1);                     \
@@ -59,7 +59,7 @@
     }
 
 #define DEFINE_GENERIC_FUNCTION_PRINT_NDARRAY(type)                                                \
-    void print_ndarray_##type(const char* label, const size_t ndims, const size_t* dims,           \
+    void print_ndarray_##type(const char* label, const size_t ndims, const uint64_t* dims,         \
                               const type* array)                                                   \
     {                                                                                              \
         ERRCHK(array != NULL);                                                                     \
@@ -75,6 +75,7 @@
 
 // Definitions
 DEFINE_GENERIC_FUNCTIONS(size_t, "%zu")
+DEFINE_GENERIC_FUNCTIONS(uint64_t, "%" PRIu64)
 DEFINE_GENERIC_FUNCTIONS(int64_t, "%" PRId64)
 DEFINE_GENERIC_FUNCTIONS(int, "%d")
 DEFINE_GENERIC_FUNCTIONS(double, "%g")

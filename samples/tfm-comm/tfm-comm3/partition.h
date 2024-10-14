@@ -44,7 +44,7 @@ typedef dynarr_s(Segment) SegmentArray;
  * // Deallocate
  * dynarr_destroy(&segments);
  */
-void partition(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* nn_offset,
-               SegmentArray* segments);
+void partition(const size_t ndims, const uint64_t* mm, const uint64_t* nn,
+               const uint64_t* nn_offset, SegmentArray* segments);
 
 void test_partition(void);

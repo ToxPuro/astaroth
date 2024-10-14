@@ -10,7 +10,7 @@
     void print_array_##type(const char* label, const size_t count, const type* array);
 
 #define DECLARE_GENERIC_FUNCTION_PRINT_NDARRAY(type)                                               \
-    void print_ndarray_##type(const char* label, const size_t ndims, const size_t* dims,           \
+    void print_ndarray_##type(const char* label, const size_t ndims, const uint64_t* dims,         \
                               const type* array);
 
 #define DECLARE_GENERIC_FUNCTIONS(type)                                                            \
@@ -20,6 +20,7 @@
 
 // Declarations
 DECLARE_GENERIC_FUNCTIONS(size_t)
+DECLARE_GENERIC_FUNCTIONS(uint64_t)
 DECLARE_GENERIC_FUNCTIONS(int64_t)
 DECLARE_GENERIC_FUNCTIONS(int)
 DECLARE_GENERIC_FUNCTIONS(double)
@@ -28,6 +29,7 @@ DECLARE_GENERIC_FUNCTIONS(double)
 #define print(label, value)                                                                        \
     _Generic((value),                                                                              \
         size_t: print_size_t,                                                                      \
+        uint64_t: print_uint64_t,                                                                  \
         int64_t: print_int64_t,                                                                    \
         int: print_int,                                                                            \
         double: print_double)(label, value)
@@ -35,6 +37,7 @@ DECLARE_GENERIC_FUNCTIONS(double)
 #define print_array(label, count, array)                                                           \
     _Generic((array[0]),                                                                           \
         size_t: print_array_size_t,                                                                \
+        uint64_t: print_array_uint64_t,                                                            \
         int64_t: print_array_int64_t,                                                              \
         int: print_array_int,                                                                      \
         double: print_array_double)(label, count, array)
@@ -42,6 +45,7 @@ DECLARE_GENERIC_FUNCTIONS(double)
 #define print_ndarray(label, ndims, dims, array)                                                   \
     _Generic((array[0]),                                                                           \
         size_t: print_ndarray_size_t,                                                              \
+        uint64_t: print_ndarray_uint64_t,                                                          \
         int64_t: print_ndarray_int64_t,                                                            \
         int: print_ndarray_int,                                                                    \
         double: print_ndarray_double)(label, ndims, dims, array)

@@ -4,112 +4,50 @@
 
 #include "errchk.h"
 
-// size_t
-// double_as_size_t(const double x)
-// {
-//     ERRCHK(x >= 0);
-//     ERRCHK((size_t)x <= SIZE_MAX);
-//     ERRCHK(x <= (double)SIZE_MAX);
-//     const size_t tmp = (size_t)x;
-//     ERRCHK((double)tmp == x);
-//     return (size_t)x;
-// }
+#define SIGNED_TO_UNSIGNED(T_FROM, T_TO, MIN_TO, MAX_TO)                                           \
+    T_TO T_FROM##_as_##T_TO(const T_FROM x)                                                        \
+    {                                                                                              \
+        ERRCHK(x >= 0);                                                                            \
+        ERRCHK((T_TO)x <= MAX_TO);                                                                 \
+        return (T_TO)x;                                                                            \
+    }
 
-double
-size_t_as_double(const size_t x)
-{
-    const double y = (double)x;
-    const size_t z = (size_t)y;
-    ERRCHK(z == x);
-    return y;
-}
+#define UNSIGNED_TO_SIGNED(T_FROM, T_TO, MIN_TO, MAX_TO)                                           \
+    T_TO T_FROM##_as_##T_TO(const T_FROM x)                                                        \
+    {                                                                                              \
+        ERRCHK(x <= MAX_TO);                                                                       \
+        return (T_TO)x;                                                                            \
+    }
 
-size_t
-size_t_as_size_t(const size_t i)
-{
-    return i;
-}
+#define UNSIGNED_TO_UNSIGNED(T_FROM, T_TO, MIN_TO, MAX_TO)                                         \
+    T_TO T_FROM##_as_##T_TO(const T_FROM x)                                                        \
+    {                                                                                              \
+        ERRCHK(x <= MAX_TO);                                                                       \
+        return (T_TO)x;                                                                            \
+    }
 
-int
-int_as_int(const int i)
-{
-    return i;
-}
+#define SIGNED_TO_SIGNED(T_FROM, T_TO, MIN_TO, MAX_TO)                                             \
+    T_TO T_FROM##_as_##T_TO(const T_FROM x)                                                        \
+    {                                                                                              \
+        ERRCHK(x >= MIN_TO);                                                                       \
+        ERRCHK(x <= MAX_TO);                                                                       \
+        return (T_TO)x;                                                                            \
+    }
 
-size_t
-int64_t_as_size_t(const int64_t i)
-{
-    ERRCHK(i >= 0);
-    return (size_t)i;
-}
+#define AS_SELF(T_)                                                                                \
+    T_ T_##_as_##T_(const T_ x) { return x; }
 
-size_t
-int_as_size_t(const int i)
-{
-    ERRCHK(i >= 0);
-    return (size_t)i;
-}
+AS_SELF(uint64_t)
+UNSIGNED_TO_UNSIGNED(size_t, uint64_t, 0, UINT64_MAX)
+SIGNED_TO_UNSIGNED(int, uint64_t, 0, UINT64_MAX)
+SIGNED_TO_UNSIGNED(int64_t, uint64_t, 0, UINT64_MAX)
 
-int64_t
-size_t_as_int64_t(const size_t i)
-{
-    ERRCHK(i <= INT64_MAX);
-    return (int64_t)i;
-}
+AS_SELF(size_t)
+UNSIGNED_TO_UNSIGNED(uint64_t, size_t, 0, SIZE_MAX)
+SIGNED_TO_UNSIGNED(int, size_t, 0, SIZE_MAX)
+SIGNED_TO_UNSIGNED(int64_t, size_t, 0, SIZE_MAX)
 
-int64_t
-int_as_int64_t(const int i)
-{
-    return (int64_t)i;
-}
-
-int
-size_t_as_int(const size_t i)
-{
-    ERRCHK(i <= INT_MAX);
-    return (int)i;
-}
-
-int
-int64_t_as_int(const int64_t i)
-{
-    ERRCHK(i <= INT_MAX);
-    return (int)i;
-}
-
-void
-int64_t_as_size_t_array(const size_t count, const int64_t* a, size_t* b)
-{
-    for (size_t i = 0; i < count; ++i)
-        b[i] = as_size_t(a[i]);
-}
-void
-int_as_size_t_array(const size_t count, const int* a, size_t* b)
-{
-    for (size_t i = 0; i < count; ++i)
-        b[i] = as_size_t(a[i]);
-}
-void
-size_t_as_int64_t_array(const size_t count, const size_t* a, int64_t* b)
-{
-    for (size_t i = 0; i < count; ++i)
-        b[i] = as_int64_t(a[i]);
-}
-void
-int_as_int64_t_array(const size_t count, const int* a, int64_t* b)
-{
-    for (size_t i = 0; i < count; ++i)
-        b[i] = as_int64_t(a[i]);
-}
-void
-size_t_as_int_array(const size_t count, const size_t* a, int* b)
-{
-    for (size_t i = 0; i < count; ++i)
-        b[i] = as_int(a[i]);
-}
-void
-int64_t_as_int_array(const size_t count, const int64_t* a, int* b)
-{
-    for (size_t i = 0; i < count; ++i)
-        b[i] = as_int(a[i]);
-}
+AS_SELF(int)
+UNSIGNED_TO_UNSIGNED(size_t, int, 0, INT_MAX)
+UNSIGNED_TO_SIGNED(uint64_t, int, 0, INT_MAX)
+SIGNED_TO_SIGNED(int64_t, int, INT_MIN, INT_MAX)

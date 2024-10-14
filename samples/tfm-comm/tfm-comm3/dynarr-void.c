@@ -47,7 +47,7 @@ dynarr_append_multiple(const size_t count, const size_t elem_size, const void* e
 }
 
 void
-dynarr_remove(const size_t index, DynamicArray* arr)
+dynarr_remove(const uint64_t index, DynamicArray* arr)
 {
     ERRCHK(index < arr->len);
     if (index >= arr->len)
@@ -63,14 +63,14 @@ dynarr_remove(const size_t index, DynamicArray* arr)
 }
 
 void
-dynarr_remove_multiple(const size_t index, const size_t count, DynamicArray* arr)
+dynarr_remove_multiple(const uint64_t index, const size_t count, DynamicArray* arr)
 {
     for (size_t i = 0; i < count; ++i)
         dynarr_remove(index, arr);
 }
 
 void*
-dynarr_get(const size_t index, const DynamicArray arr)
+dynarr_get(const uint64_t index, const DynamicArray arr)
 {
     ERRCHK(index < arr.len);
     if (index >= arr.len)
@@ -96,16 +96,16 @@ unsigned
 test_dynarr(void)
 {
     // Drawbacks: cumbersome and error-prone to use, no type safety
-    DynamicArray arr = dynarr_create(10, sizeof(size_t));
+    DynamicArray arr = dynarr_create(10, sizeof(uint64_t));
     ERRCHK(arr.len == 0);
-    dynarr_append(sizeof(size_t), (size_t[]){1}, &arr);
+    dynarr_append(sizeof(uint64_t), (uint64_t[]){1}, &arr);
     ERRCHK(arr.len == 1);
-    dynarr_append_multiple(4, sizeof(size_t), (size_t[]){2, 3, 4, 5}, &arr);
+    dynarr_append_multiple(4, sizeof(uint64_t), (uint64_t[]){2, 3, 4, 5}, &arr);
     ERRCHK(arr.len == 5);
     dynarr_remove_multiple(1, 3, &arr);
     ERRCHK(arr.len == 2);
-    ERRCHK(*((size_t*)dynarr_get(0, arr)) == 1);
-    ERRCHK(*((size_t*)dynarr_get(1, arr)) == 5);
+    ERRCHK(*((uint64_t*)dynarr_get(0, arr)) == 1);
+    ERRCHK(*((uint64_t*)dynarr_get(1, arr)) == 5);
     print_dynarr("test", arr);
     dynarr_destroy(&arr);
 

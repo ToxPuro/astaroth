@@ -1,6 +1,6 @@
 #include "segment_batch.h"
 
-static void halo_segment_batch_verify(const size_t ndims, const size_t* mm, const size_t* nn,
+static void halo_segment_batch_verify(const size_t ndims, const uint64_t* mm, const uint64_t* nn,
                                       const struct HaloSegmentBatch_s batch);
 
 /** Returns the MPI rank of the neighbor that is responsible for the data at offset.
@@ -39,8 +39,8 @@ get_mpi_send_recv_peers(const size_t ndims, const int* nn, const int* rr, const 
 }
 
 struct HaloSegmentBatch_s*
-halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size_t* local_nn,
-                          const size_t* local_nn_offset, const size_t n_aggregate_buffers)
+halo_segment_batch_create(const size_t ndims, const uint64_t* local_mm, const uint64_t* local_nn,
+                          const uint64_t* local_nn_offset, const uint64_t n_aggregate_buffers)
 {
     // Partition the domain
     SegmentArray segments;
@@ -103,14 +103,14 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
         // its inverse direction is the sending direction
         // send direction cannot be determined from the send offset, because
         // send offsets are not unique.
-        const size_t* subdims = segments.data[i].dims;
+        const uint64_t* subdims = segments.data[i].dims;
 
         // Recv packet
-        const size_t* recv_offset = segments.data[i].offset;
-        batch->remote_packets[i]  = packet_create(ndims, subdims, recv_offset, n_aggregate_buffers);
+        const uint64_t* recv_offset = segments.data[i].offset;
+        batch->remote_packets[i] = packet_create(ndims, subdims, recv_offset, n_aggregate_buffers);
 
         // Send packet
-        size_t* send_offset;
+        uint64_t* send_offset;
         nalloc(ndims, send_offset);
         for (size_t j = 0; j < ndims; ++j)
             send_offset[j] = ((local_nn[j] + recv_offset[j] - local_nn_offset[j]) % local_nn[j]) +
@@ -146,22 +146,22 @@ halo_segment_batch_destroy(struct HaloSegmentBatch_s** batch)
 }
 
 // static void
-// halo_segment_batch_pack(const size_t ninputs, double** inputs, HaloSegmentBatch* batch)
+// halo_segment_batch_pack(const uint64_t ninputs, double** inputs, HaloSegmentBatch* batch)
 // {
 //     const size_t ndims     = batch->ndims;
-//     const size_t* local_mm = batch->local_mm;
+//     const uint64_t* local_mm = batch->local_mm;
 
-//     size_t* zeros;
+//     uint64_t* zeros;
 //     ncalloc(ndims, zeros);
 
 //     for (size_t i = 0; i < batch->npackets; ++i) {
 //         for (size_t j = 0; j < ninputs; ++j) {
 //             Packet* packet              = &batch->local_packets[i];
-//             const size_t* input_dims    = local_mm;
-//             const size_t* input_offset  = packet->segment.offset;
+//             const uint64_t* input_dims    = local_mm;
+//             const uint64_t* input_offset  = packet->segment.offset;
 //             const double* input         = inputs[j];
-//             const size_t* output_dims   = packet->segment.dims;
-//             const size_t* output_offset = zeros;
+//             const uint64_t* output_dims   = packet->segment.dims;
+//             const uint64_t* output_offset = zeros;
 //             double* output              = &packet->buffer
 //                                   .data[j * prod(packet->segment.ndims, packet->segment.dims)];
 //             pack(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
@@ -171,22 +171,23 @@ halo_segment_batch_destroy(struct HaloSegmentBatch_s** batch)
 // }
 
 // static void
-// halo_segment_batch_unpack(const HaloSegmentBatch* batch, const size_t noutputs, double** outputs)
+// halo_segment_batch_unpack(const HaloSegmentBatch* batch, const uint64_t noutputs, double**
+// outputs)
 // {
 //     const size_t ndims     = batch->ndims;
-//     const size_t* local_mm = batch->local_mm;
+//     const uint64_t* local_mm = batch->local_mm;
 
-//     size_t* zeros;
+//     uint64_t* zeros;
 //     ncalloc(ndims, zeros);
 
 //     for (size_t i = 0; i < batch->npackets; ++i) {
 //         for (size_t j = 0; j < noutputs; ++j) {
 //             Packet* packet              = &batch->remote_packets[i];
-//             const size_t* output_dims   = local_mm;
-//             const size_t* output_offset = packet->segment.offset;
+//             const uint64_t* output_dims   = local_mm;
+//             const uint64_t* output_offset = packet->segment.offset;
 //             double* output              = outputs[j];
-//             const size_t* input_dims    = packet->segment.dims;
-//             const size_t* input_offset  = zeros;
+//             const uint64_t* input_dims    = packet->segment.dims;
+//             const uint64_t* input_offset  = zeros;
 //             const double* input         = &packet->buffer
 //                                        .data[j * prod(packet->segment.ndims,
 //                                        packet->segment.dims)];
@@ -197,12 +198,13 @@ halo_segment_batch_destroy(struct HaloSegmentBatch_s** batch)
 // }
 
 void
-halo_segment_batch_launch(const size_t ninputs, double* inputs[], struct HaloSegmentBatch_s* batch)
+halo_segment_batch_launch(const uint64_t ninputs, double* inputs[],
+                          struct HaloSegmentBatch_s* batch)
 {
-    const size_t ndims            = batch->ndims;
-    const size_t* local_mm        = batch->local_mm;
-    const size_t* local_nn        = batch->local_nn;
-    const size_t* local_nn_offset = batch->local_nn_offset;
+    const size_t ndims              = batch->ndims;
+    const uint64_t* local_mm        = batch->local_mm;
+    const uint64_t* local_nn        = batch->local_nn;
+    const uint64_t* local_nn_offset = batch->local_nn_offset;
     for (size_t i = 0; i < batch->npackets; ++i) {
 
         // Packets
@@ -252,7 +254,8 @@ halo_segment_batch_launch(const size_t ninputs, double* inputs[], struct HaloSeg
 }
 
 void
-halo_segment_batch_wait(struct HaloSegmentBatch_s* batch, const size_t noutputs, double* outputs[])
+halo_segment_batch_wait(struct HaloSegmentBatch_s* batch, const uint64_t noutputs,
+                        double* outputs[])
 {
     for (size_t i = 0; i < batch->npackets; ++i) {
         packet_wait(&batch->local_packets[i]);
@@ -265,7 +268,7 @@ halo_segment_batch_wait(struct HaloSegmentBatch_s* batch, const size_t noutputs,
 }
 
 static void
-halo_segment_batch_verify(const size_t ndims, const size_t* mm, const size_t* nn,
+halo_segment_batch_verify(const size_t ndims, const uint64_t* mm, const uint64_t* nn,
                           const struct HaloSegmentBatch_s batch)
 {
     // Ensure that
@@ -277,7 +280,7 @@ halo_segment_batch_verify(const size_t ndims, const size_t* mm, const size_t* nn
 
     ERRCHK_MPI(batch.ndims == ndims);
     { // Local packets
-        const size_t model_count = prod(ndims, mm) - prod(ndims, nn);
+        const uint64_t model_count = prod(ndims, mm) - prod(ndims, nn);
 
         size_t count = 0;
         for (size_t i = 0; i < batch.npackets; ++i) {
@@ -291,7 +294,7 @@ halo_segment_batch_verify(const size_t ndims, const size_t* mm, const size_t* nn
         ERRCHK_MPI(count == model_count);
     }
     { // Remote packets
-        const size_t model_count = prod(ndims, mm) - prod(ndims, nn);
+        const uint64_t model_count = prod(ndims, mm) - prod(ndims, nn);
 
         size_t count = 0;
         for (size_t i = 0; i < batch.npackets; ++i) {
@@ -315,11 +318,11 @@ halo_segment_batch_verify(const size_t ndims, const size_t* mm, const size_t* nn
 static void
 test_halo_segment_batch(void)
 {
-    const size_t mm[]        = {8, 8};
-    const size_t nn[]        = {6, 6, 6};
-    const size_t nn_offset[] = {1, 1, 1};
-    const size_t ndims       = ARRAY_SIZE(mm);
-    const size_t ninputs     = 3;
+    const uint64_t mm[]        = {8, 8};
+    const uint64_t nn[]        = {6, 6, 6};
+    const uint64_t nn_offset[] = {1, 1, 1};
+    const size_t ndims         = ARRAY_SIZE(mm);
+    const uint64_t ninputs     = 3;
 
     HaloSegmentBatch batch = halo_segment_batch_create(ndims, mm, nn, nn_offset, ninputs);
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <stddef.h>
+#include <stdint.h>
 
 #include "error.h"
 
@@ -21,8 +22,8 @@ void acCommInit(void);
  *                  = local nn index + local_nn * decomposition
  * rr: extent of the halo surrounding the computational domain
  */
-void acCommSetup(const size_t ndims, const size_t* global_nn, size_t* local_nn,
-                 size_t* global_nn_offset);
+void acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
+                 uint64_t* global_nn_offset);
 
 void acCommQuit(void);
 

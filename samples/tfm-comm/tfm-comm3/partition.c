@@ -5,7 +5,7 @@
 #include "print.h"
 
 static void
-partition_recursive(const Segment mm_seg, const Segment nn_seg, const size_t axis,
+partition_recursive(const Segment mm_seg, const Segment nn_seg, const uint64_t axis,
                     SegmentArray* segments)
 {
     if (prod(mm_seg.ndims, mm_seg.dims) == 0) { // Empty segment
@@ -17,10 +17,10 @@ partition_recursive(const Segment mm_seg, const Segment nn_seg, const size_t axi
     else { // Partition
 
         // Split points
-        const size_t x0 = mm_seg.offset[axis];
-        const size_t x1 = nn_seg.offset[axis];
-        const size_t x2 = nn_seg.offset[axis] + nn_seg.dims[axis];
-        const size_t x3 = mm_seg.dims[axis];
+        const uint64_t x0 = mm_seg.offset[axis];
+        const uint64_t x1 = nn_seg.offset[axis];
+        const uint64_t x2 = nn_seg.offset[axis] + nn_seg.dims[axis];
+        const uint64_t x3 = mm_seg.dims[axis];
 
         // Left
         {
@@ -52,10 +52,10 @@ partition_recursive(const Segment mm_seg, const Segment nn_seg, const size_t axi
 }
 
 void
-partition(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* nn_offset,
+partition(const size_t ndims, const uint64_t* mm, const uint64_t* nn, const uint64_t* nn_offset,
           SegmentArray* segments)
 {
-    size_t* zeros = ac_calloc(ndims, sizeof(zeros));
+    uint64_t* zeros = ac_calloc(ndims, sizeof(zeros));
 
     Segment mm_seg = segment_create(ndims, mm, zeros);
     Segment nn_seg = segment_create(ndims, nn, nn_offset);
@@ -72,10 +72,10 @@ void
 test_partition(void)
 {
     {
-        const size_t mm[]        = {8};
-        const size_t nn[]        = {6, 6};
-        const size_t nn_offset[] = {1, 1};
-        const size_t ndims       = ARRAY_SIZE(mm);
+        const uint64_t mm[]        = {8};
+        const uint64_t nn[]        = {6, 6};
+        const uint64_t nn_offset[] = {1, 1};
+        const size_t ndims         = ARRAY_SIZE(mm);
 
         SegmentArray segments;
         dynarr_create_with_destructor(segment_destroy, &segments);
@@ -84,10 +84,10 @@ test_partition(void)
         dynarr_destroy(&segments);
     }
     {
-        const size_t mm[]        = {8, 8};
-        const size_t nn[]        = {6, 6};
-        const size_t nn_offset[] = {1, 1};
-        const size_t ndims       = ARRAY_SIZE(mm);
+        const uint64_t mm[]        = {8, 8};
+        const uint64_t nn[]        = {6, 6};
+        const uint64_t nn_offset[] = {1, 1};
+        const size_t ndims         = ARRAY_SIZE(mm);
 
         SegmentArray segments;
         dynarr_create_with_destructor(segment_destroy, &segments);
@@ -96,10 +96,10 @@ test_partition(void)
         dynarr_destroy(&segments);
     }
     {
-        const size_t mm[]        = {8, 8, 8};
-        const size_t nn[]        = {6, 6, 6};
-        const size_t nn_offset[] = {1, 1, 1};
-        const size_t ndims       = ARRAY_SIZE(mm);
+        const uint64_t mm[]        = {8, 8, 8};
+        const uint64_t nn[]        = {6, 6, 6};
+        const uint64_t nn_offset[] = {1, 1, 1};
+        const size_t ndims         = ARRAY_SIZE(mm);
 
         SegmentArray segments;
         dynarr_create_with_destructor(segment_destroy, &segments);
@@ -108,10 +108,10 @@ test_partition(void)
         dynarr_destroy(&segments);
     }
     {
-        const size_t mm[]        = {5, 6, 7, 8};
-        const size_t nn[]        = {3, 4, 5, 6};
-        const size_t nn_offset[] = {1, 1, 1, 1};
-        const size_t ndims       = ARRAY_SIZE(mm);
+        const uint64_t mm[]        = {5, 6, 7, 8};
+        const uint64_t nn[]        = {3, 4, 5, 6};
+        const uint64_t nn_offset[] = {1, 1, 1, 1};
+        const size_t ndims         = ARRAY_SIZE(mm);
 
         SegmentArray segments;
         dynarr_create_with_destructor(segment_destroy, &segments);
@@ -120,10 +120,10 @@ test_partition(void)
         dynarr_destroy(&segments);
     }
     {
-        const size_t mm[]        = {4, 4, 4};
-        const size_t nn[]        = {4, 4, 4};
-        const size_t nn_offset[] = {0, 0, 0};
-        const size_t ndims       = ARRAY_SIZE(mm);
+        const uint64_t mm[]        = {4, 4, 4};
+        const uint64_t nn[]        = {4, 4, 4};
+        const uint64_t nn_offset[] = {0, 0, 0};
+        const size_t ndims         = ARRAY_SIZE(mm);
 
         SegmentArray segments;
         dynarr_create_with_destructor(segment_destroy, &segments);
@@ -132,10 +132,10 @@ test_partition(void)
         dynarr_destroy(&segments);
     }
     {
-        const size_t mm[]        = {4, 4};
-        const size_t nn[]        = {3, 3};
-        const size_t nn_offset[] = {1, 1};
-        const size_t ndims       = ARRAY_SIZE(mm);
+        const uint64_t mm[]        = {4, 4};
+        const uint64_t nn[]        = {3, 3};
+        const uint64_t nn_offset[] = {1, 1};
+        const size_t ndims         = ARRAY_SIZE(mm);
 
         SegmentArray segments;
         dynarr_create_with_destructor(segment_destroy, &segments);

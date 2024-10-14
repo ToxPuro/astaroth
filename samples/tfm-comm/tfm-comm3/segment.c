@@ -7,7 +7,7 @@
 #include "print.h"
 
 Segment
-segment_create(const size_t ndims, const size_t* dims, const size_t* offset)
+segment_create(const size_t ndims, const uint64_t* dims, const uint64_t* offset)
 {
     Segment segment = (Segment){
         .ndims  = ndims,
@@ -47,10 +47,10 @@ void
 test_segment(void)
 {
     {
-        const size_t dims[]   = {1, 1, 1};
-        const size_t offset[] = {0, 0, 0};
-        const size_t ndims    = ARRAY_SIZE(dims);
-        Segment segment       = segment_create(ndims, dims, offset);
+        const uint64_t dims[]   = {1, 1, 1};
+        const uint64_t offset[] = {0, 0, 0};
+        const size_t ndims      = ARRAY_SIZE(dims);
+        Segment segment         = segment_create(ndims, dims, offset);
         ERRCHK(segment.dims != NULL);
         ERRCHK(segment.offset != NULL);
         segment_destroy(&segment);
@@ -58,11 +58,11 @@ test_segment(void)
         ERRCHK(segment.offset == NULL);
     }
     {
-        const size_t dims[]   = {5, 6, 7, 8};
-        const size_t offset[] = {1, 2, 3, 4};
-        const size_t ndims    = ARRAY_SIZE(dims);
-        Segment a             = segment_create(ndims, dims, offset);
-        Segment b             = segment_copy(a);
+        const uint64_t dims[]   = {5, 6, 7, 8};
+        const uint64_t offset[] = {1, 2, 3, 4};
+        const size_t ndims      = ARRAY_SIZE(dims);
+        Segment a               = segment_create(ndims, dims, offset);
+        Segment b               = segment_copy(a);
 
         ERRCHK(equals(a.ndims, a.dims, b.dims));
         ERRCHK(equals(a.ndims, a.offset, b.offset));

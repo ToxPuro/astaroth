@@ -1,17 +1,17 @@
 #include "dynarr.h"
 
 typedef dynarr_s(int) dynarr_int;
-typedef dynarr_s(size_t) dynarr_size_t;
+typedef dynarr_s(uint64_t) dynarr_uint64_t;
 
 typedef struct {
     size_t count;
-    size_t* elems;
+    uint64_t* elems;
 } TestStruct;
 
 static TestStruct
 test_struct_create(const size_t count)
 {
-    TestStruct s = (TestStruct){
+    TestStruct s = {
         .count = count,
         .elems = ac_calloc(count, sizeof(s.elems[0])),
     };
@@ -58,7 +58,7 @@ test_dynarr(void)
         dynarr_destroy(&arr);
     }
     {
-        dynarr_size_t arr;
+        dynarr_uint64_t arr;
         dynarr_create(&arr);
         dynarr_append(1, &arr);
         dynarr_append(2, &arr);
@@ -71,9 +71,9 @@ test_dynarr(void)
         ERRCHK(arr.data[1] == 3);
 
         const size_t count = 2;
-        size_t* elems      = ac_calloc(count, sizeof(elems[0]));
+        uint64_t* elems    = ac_calloc(count, sizeof(elems[0]));
         for (size_t i = 0; i < count; ++i)
-            elems[i] = as_size_t(10 + i);
+            elems[i] = as_uint64_t(10 + i);
         dynarr_append_multiple(count, elems, &arr);
 
         ERRCHK(arr.data[0] == 1);

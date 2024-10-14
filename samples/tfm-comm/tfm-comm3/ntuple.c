@@ -4,6 +4,8 @@
 #include "errchk.h"
 #include "misc.h"
 
+#include <inttypes.h>
+
 Ntuple
 make_ntuple(const size_t nelems)
 {
@@ -17,7 +19,7 @@ make_ntuple(const size_t nelems)
 }
 
 Ntuple
-make_ntuple_with_elems(const size_t nelems, const size_t* elems)
+make_ntuple_with_elems(const size_t nelems, const uint64_t* elems)
 {
     Ntuple ntuple = make_ntuple(nelems);
     ac_copy(ntuple.nelems, sizeof(ntuple.elems[0]), elems, ntuple.elems);
@@ -25,7 +27,7 @@ make_ntuple_with_elems(const size_t nelems, const size_t* elems)
 }
 
 void
-ntuple_fill(const size_t value, Ntuple* ntuple)
+ntuple_fill(const uint64_t value, Ntuple* ntuple)
 {
     for (size_t i = 0; i < ntuple->nelems; ++i)
         ntuple->elems[i] = value;
@@ -56,7 +58,7 @@ ntuple_sub(const Ntuple a, const Ntuple b)
 }
 
 Ntuple
-ntuple_mul(const size_t a, const Ntuple b)
+ntuple_mul(const uint64_t a, const Ntuple b)
 {
     Ntuple c = make_ntuple(b.nelems);
     for (size_t i = 0; i < b.nelems; ++i)
@@ -73,7 +75,7 @@ print_ntuple(const char* label, const Ntuple ntuple)
     printf("\tnelems: %zu\n", ntuple.nelems);
     printf("\telems[]: {");
     for (size_t i = 0; i < ntuple.nelems; ++i)
-        printf("%zu%s", ntuple.elems[i], i + 1 < ntuple.nelems ? ", " : "");
+        printf("%" PRIu64 "%s", ntuple.elems[i], i + 1 < ntuple.nelems ? ", " : "");
     printf("}\n");
 }
 
@@ -85,7 +87,7 @@ test_ntuple(void)
     Ntuple nt0 = make_ntuple(5);
     PRINTD_NTUPLE(nt0);
 
-    Ntuple nt1 = make_ntuple_with_elems(3, (size_t[]){1, 2, 3});
+    Ntuple nt1 = make_ntuple_with_elems(3, (uint64_t[]){1, 2, 3});
     PRINTD_NTUPLE(nt1);
     nt1 = ntuple_add(nt1, nt1);
     PRINTD_NTUPLE(nt1);
@@ -93,6 +95,8 @@ test_ntuple(void)
     PRINTD_NTUPLE(nt1);
     nt1 = ntuple_sub(nt1, nt1);
     PRINTD_NTUPLE(nt1);
+
+    printf("Hello from ntuple\n");
 
     // ntuple_destroy(&nt0);
     return 0;

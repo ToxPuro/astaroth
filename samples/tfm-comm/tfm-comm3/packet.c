@@ -4,7 +4,8 @@
 #include "math_utils.h"
 
 Packet
-packet_create(const size_t ndims, const size_t* dims, const size_t* offset, const size_t nbuffers)
+packet_create(const size_t ndims, const uint64_t* dims, const uint64_t* offset,
+              const size_t nbuffers)
 {
     Packet packet;
 
@@ -13,6 +14,17 @@ packet_create(const size_t ndims, const size_t* dims, const size_t* offset, cons
     packet.req     = MPI_REQUEST_NULL;
 
     return packet;
+}
+
+void
+packet_destroy(Packet* packet)
+{
+    if (packet->req != MPI_REQUEST_NULL)
+        packet_wait(packet);
+    ERRCHK(packet->req == MPI_REQUEST_NULL); // Confirm that the request is deallocated
+
+    buffer_destroy(&packet->buffer);
+    segment_destroy(&packet->segment);
 }
 
 void
@@ -33,15 +45,4 @@ packet_wait(Packet* packet)
     else {
         WARNING("packet_wait called but no there is packet to wait for");
     }
-}
-
-void
-packet_destroy(Packet* packet)
-{
-    if (packet->req != MPI_REQUEST_NULL)
-        packet_wait(packet);
-    ERRCHK(packet->req == MPI_REQUEST_NULL); // Confirm that the request is deallocated
-
-    buffer_destroy(&packet->buffer);
-    segment_destroy(&packet->segment);
 }

@@ -71,10 +71,10 @@ test_all(void)
 }
 
 /** Product */
-size_t
-prod(const size_t count, const size_t* arr)
+uint64_t
+prod(const size_t count, const uint64_t* arr)
 {
-    size_t res = 1;
+    uint64_t res = 1;
     for (size_t i = 0; i < count; ++i)
         res *= arr[i];
     return res;
@@ -84,19 +84,19 @@ static void
 test_prod(void)
 {
     {
-        const size_t arr[] = {1, 2, 3, 4, 5};
-        const size_t count = ARRAY_SIZE(arr);
+        const uint64_t arr[] = {1, 2, 3, 4, 5};
+        const size_t count   = ARRAY_SIZE(arr);
         ERRCHK(prod(count, arr) == 120);
     }
     {
-        const size_t arr[] = {0};
-        const size_t count = ARRAY_SIZE(arr);
+        const uint64_t arr[] = {0};
+        const size_t count   = ARRAY_SIZE(arr);
         ERRCHK(prod(count, arr) == 0);
     }
 }
 
-size_t
-powzu(const size_t base, const size_t exponent)
+uint64_t
+powzu(const uint64_t base, const uint64_t exponent)
 {
     if (exponent == 0) {
         return 1;
@@ -105,7 +105,7 @@ powzu(const size_t base, const size_t exponent)
         return base;
     }
     else {
-        size_t res = 1;
+        uint64_t res = 1;
         for (size_t i = 0; i < exponent; ++i) {
             ERRCHK(base <= SIZE_MAX / res); // Overflow
             res *= base;
@@ -131,7 +131,7 @@ test_powzu(void)
 
 /** Cumulative product */
 void
-cumprod(const size_t count, const size_t* restrict in, size_t* restrict out)
+cumprod(const size_t count, const uint64_t* restrict in, uint64_t* restrict out)
 {
     ERRCHK(count > 0);
 
@@ -148,43 +148,43 @@ static void
 test_cumprod(void)
 {
     {
-        const size_t a[]   = {0};
+        const uint64_t a[] = {0};
         const size_t count = ARRAY_SIZE(a);
-        size_t* b          = ac_calloc(count, sizeof(b[0]));
+        uint64_t* b        = ac_calloc(count, sizeof(b[0]));
         cumprod(count, a, b);
-        const size_t c[] = {0};
+        const uint64_t c[] = {0};
         ERRCHK(equals(count, b, c));
         ac_free(b);
     }
     {
-        const size_t a[]   = {2, 2, 2, 2};
+        const uint64_t a[] = {2, 2, 2, 2};
         const size_t count = ARRAY_SIZE(a);
-        size_t* b          = ac_calloc(count, sizeof(b[0]));
+        uint64_t* b        = ac_calloc(count, sizeof(b[0]));
         cumprod(count, a, b);
-        const size_t c[] = {2, 4, 8, 16};
+        const uint64_t c[] = {2, 4, 8, 16};
         ERRCHK(equals(count, b, c));
         ac_free(b);
     }
     {
-        const size_t a[]   = {2, 4, 8, 16};
+        const uint64_t a[] = {2, 4, 8, 16};
         const size_t count = ARRAY_SIZE(a);
-        size_t* b          = ac_calloc(count, sizeof(b[0]));
+        uint64_t* b        = ac_calloc(count, sizeof(b[0]));
         cumprod(count, a, b);
-        const size_t c[] = {2, 2 * 4, 2 * 4 * 8, 2 * 4 * 8 * 16};
+        const uint64_t c[] = {2, 2 * 4, 2 * 4 * 8, 2 * 4 * 8 * 16};
         ERRCHK(equals(count, b, c));
         ac_free(b);
     }
 }
 
-size_t
-binomial_coefficient(const size_t n, const size_t k)
+uint64_t
+binomial_coefficient(const uint64_t n, const uint64_t k)
 {
     ERRCHK(n >= k);
-    size_t numerator = 1;
-    for (size_t i = n; i > n - k; --i)
+    uint64_t numerator = 1;
+    for (uint64_t i = n; i > n - k; --i)
         numerator *= i;
-    size_t denominator = 1;
-    for (size_t i = k; i > 0; --i)
+    uint64_t denominator = 1;
+    for (uint64_t i = k; i > 0; --i)
         denominator *= i;
     return numerator / denominator;
 }
@@ -215,7 +215,7 @@ test_binomial_coefficient(void)
  * e.g., {1,2,3} -> {fill_value, 1, 2}
  */
 void
-rshift(const size_t shift, const size_t fill_value, const size_t count, size_t* arr)
+rshift(const uint64_t shift, const uint64_t fill_value, const size_t count, uint64_t* arr)
 {
     ERRCHK(shift < count);
     ac_copy(count - shift, sizeof(arr[0]), &arr[0], &arr[shift]);
@@ -227,52 +227,52 @@ static void
 test_rshift(void)
 {
     {
-        size_t a[]         = {1};
+        uint64_t a[]       = {1};
         const size_t count = ARRAY_SIZE(a);
         rshift(0, 0, count, a);
-        const size_t b[] = {1};
+        const uint64_t b[] = {1};
         ERRCHK(equals(count, a, b));
     }
     {
-        size_t a[]         = {1, 2, 3, 4};
+        uint64_t a[]       = {1, 2, 3, 4};
         const size_t count = ARRAY_SIZE(a);
         rshift(1, 0, count, a);
-        const size_t b[] = {0, 1, 2, 3};
+        const uint64_t b[] = {0, 1, 2, 3};
         ERRCHK(equals(count, a, b));
     }
     {
-        size_t a[]         = {1, 2, 3, 4};
+        uint64_t a[]       = {1, 2, 3, 4};
         const size_t count = ARRAY_SIZE(a);
         rshift(3, 5, count, a);
-        const size_t b[] = {5, 5, 5, 1};
+        const uint64_t b[] = {5, 5, 5, 1};
         ERRCHK(equals(count, a, b));
     }
 }
 
-size_t
-dot(const size_t count, const size_t* a, const size_t* b)
+uint64_t
+dot(const size_t count, const uint64_t* a, const uint64_t* b)
 {
-    size_t res = 0;
+    uint64_t res = 0;
     for (size_t i = 0; i < count; ++i)
         res += a[i] * b[i];
     return res;
 }
 
 void
-factorize(const size_t n_initial, size_t* nfactors, size_t* factors)
+factorize(const uint64_t n_initial, uint64_t* nfactors, uint64_t* factors)
 {
     ERRCHK(nfactors);
-    size_t n     = n_initial;
-    size_t count = 0;
+    uint64_t n     = n_initial;
+    uint64_t count = 0;
     if (factors == NULL) {
-        for (size_t i = 2; i <= n; ++i)
+        for (uint64_t i = 2; i <= n; ++i)
             while ((n % i) == 0) {
                 ++count;
                 n /= i;
             }
     }
     else {
-        for (size_t i = 2; i <= n; ++i)
+        for (uint64_t i = 2; i <= n; ++i)
             while ((n % i) == 0) {
                 factors[count++] = i;
                 n /= i;
@@ -282,10 +282,10 @@ factorize(const size_t n_initial, size_t* nfactors, size_t* factors)
 }
 
 /** Computes the Hamming weight or population count of an array */
-size_t
-popcount(const size_t count, const size_t* arr)
+uint64_t
+popcount(const size_t count, const uint64_t* arr)
 {
-    size_t popcount = 0;
+    uint64_t popcount = 0;
     for (size_t i = 0; i < count; ++i)
         if (arr[i] > 0)
             ++popcount;
@@ -296,41 +296,41 @@ static void
 test_popcount(void)
 {
     {
-        const size_t arr[] = {0, 0, 0};
-        const size_t count = ARRAY_SIZE(arr);
+        const uint64_t arr[] = {0, 0, 0};
+        const size_t count   = ARRAY_SIZE(arr);
         ERRCHK(popcount(count, arr) == 0);
     }
 
     {
-        const size_t arr[] = {0, 1, 0};
-        const size_t count = ARRAY_SIZE(arr);
+        const uint64_t arr[] = {0, 1, 0};
+        const size_t count   = ARRAY_SIZE(arr);
         ERRCHK(popcount(count, arr) == 1);
     }
     {
-        const size_t arr[] = {0, 500, 123};
-        const size_t count = ARRAY_SIZE(arr);
+        const uint64_t arr[] = {0, 500, 123};
+        const size_t count   = ARRAY_SIZE(arr);
         ERRCHK(popcount(count, arr) == 2);
     }
 }
 
 void
-arange(const size_t start_value, const size_t count, size_t* arr)
+arange(const uint64_t start_value, const size_t count, uint64_t* arr)
 {
     for (size_t i = 0; i < count; ++i)
         arr[i] = start_value + i;
 }
 
 /** Requires that array is ordered
- * Modifies `size_t *arr` inplace to hold only unique values
+ * Modifies `uint64_t *arr` inplace to hold only unique values
  * and returns the number of unique values (or the new count) of arr.
  */
-size_t
-unique(const size_t count, size_t* arr)
+uint64_t
+unique(const size_t count, uint64_t* arr)
 {
     sort(count, arr);
 
     ERRCHK(count > 0);
-    size_t num_unique = 0;
+    uint64_t num_unique = 0;
     for (size_t i = 0; i < count; ++i) {
         arr[num_unique] = arr[i];
         ++num_unique;
@@ -345,26 +345,26 @@ static void
 test_unique(void)
 {
     srand(12345);
-    const size_t nsamples  = 128;
-    const size_t max_count = 32;
+    const uint64_t nsamples  = 128;
+    const uint64_t max_count = 32;
     for (size_t i = 0; i < nsamples; ++i) {
-        const size_t count = ((size_t)rand()) % max_count + 1;
+        const size_t count = ((uint64_t)rand()) % max_count + 1;
 
-        size_t* arr = ac_calloc(count, sizeof(arr[0]));
+        uint64_t* arr = ac_calloc(count, sizeof(arr[0]));
         for (size_t j = 0; j < count; ++j)
-            arr[j] = (size_t)rand();
+            arr[j] = (uint64_t)rand();
 
         unique(count, arr);
         for (size_t j = 0; j < count; ++j)
-            for (size_t k = j + 1; k < count; ++k)
+            for (uint64_t k = j + 1; k < count; ++k)
                 ERRCHK(arr[j] != arr[k]);
         ac_free(arr);
     }
 }
 
 static bool
-contains_subset(const size_t subset_length, const size_t* subset, const size_t count,
-                const size_t* b)
+contains_subset(const uint64_t subset_length, const uint64_t* subset, const size_t count,
+                const uint64_t* b)
 {
     for (size_t i = 0; i < count; i += subset_length) {
         if (equals(subset_length, subset, &b[i]))
@@ -373,11 +373,11 @@ contains_subset(const size_t subset_length, const size_t* subset, const size_t c
     return false;
 }
 
-size_t
-unique_subsets(const size_t count, const size_t* a, size_t subset_length, size_t* b)
+uint64_t
+unique_subsets(const size_t count, const uint64_t* a, uint64_t subset_length, uint64_t* b)
 {
     ERRCHK(b != NULL);
-    size_t nsubsets = 0;
+    uint64_t nsubsets = 0;
     for (size_t i = 0; i < count; i += subset_length) {
         if (!contains_subset(subset_length, &a[i], subset_length * nsubsets, b)) {
             ac_copy(subset_length, sizeof(a[0]), &a[i], &b[subset_length * nsubsets]);
@@ -391,79 +391,79 @@ static void
 test_unique_subsets(void)
 {
     {
-        const size_t a[]           = {1, 2, 3, 4};
-        const size_t subset_length = 1;
-        const size_t model[]       = {1, 2, 3, 4};
+        const uint64_t a[]           = {1, 2, 3, 4};
+        const uint64_t subset_length = 1;
+        const uint64_t model[]       = {1, 2, 3, 4};
 
-        const size_t count              = ARRAY_SIZE(a);
-        const size_t output_count_model = ARRAY_SIZE(model);
-        size_t* b                       = ac_calloc(count, sizeof(b[0]));
-        const size_t output_count       = unique_subsets(count, a, subset_length, b);
+        const size_t count                = ARRAY_SIZE(a);
+        const uint64_t output_count_model = ARRAY_SIZE(model);
+        uint64_t* b                       = ac_calloc(count, sizeof(b[0]));
+        const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
         ac_free(b);
     }
     {
-        const size_t a[]           = {1, 1, 3, 4};
-        const size_t subset_length = 1;
-        const size_t model[]       = {1, 3, 4};
+        const uint64_t a[]           = {1, 1, 3, 4};
+        const uint64_t subset_length = 1;
+        const uint64_t model[]       = {1, 3, 4};
 
-        const size_t count              = ARRAY_SIZE(a);
-        const size_t output_count_model = ARRAY_SIZE(model);
-        size_t* b                       = ac_calloc(count, sizeof(b[0]));
-        const size_t output_count       = unique_subsets(count, a, subset_length, b);
+        const size_t count                = ARRAY_SIZE(a);
+        const uint64_t output_count_model = ARRAY_SIZE(model);
+        uint64_t* b                       = ac_calloc(count, sizeof(b[0]));
+        const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
         ac_free(b);
     }
     {
-        const size_t a[]           = {1, 1, 2, 2, 1, 1};
-        const size_t subset_length = 2;
-        const size_t model[]       = {1, 1, 2, 2};
+        const uint64_t a[]           = {1, 1, 2, 2, 1, 1};
+        const uint64_t subset_length = 2;
+        const uint64_t model[]       = {1, 1, 2, 2};
 
-        const size_t count              = ARRAY_SIZE(a);
-        const size_t output_count_model = ARRAY_SIZE(model);
-        size_t* b                       = ac_calloc(count, sizeof(b[0]));
-        const size_t output_count       = unique_subsets(count, a, subset_length, b);
+        const size_t count                = ARRAY_SIZE(a);
+        const uint64_t output_count_model = ARRAY_SIZE(model);
+        uint64_t* b                       = ac_calloc(count, sizeof(b[0]));
+        const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
         ac_free(b);
     }
     {
-        const size_t a[]           = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3};
-        const size_t subset_length = 3;
-        const size_t model[]       = {1, 1, 1, 1, 2, 3};
+        const uint64_t a[]           = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3};
+        const uint64_t subset_length = 3;
+        const uint64_t model[]       = {1, 1, 1, 1, 2, 3};
 
-        const size_t count              = ARRAY_SIZE(a);
-        const size_t output_count_model = ARRAY_SIZE(model);
-        size_t* b                       = ac_calloc(count, sizeof(b[0]));
-        const size_t output_count       = unique_subsets(count, a, subset_length, b);
+        const size_t count                = ARRAY_SIZE(a);
+        const uint64_t output_count_model = ARRAY_SIZE(model);
+        uint64_t* b                       = ac_calloc(count, sizeof(b[0]));
+        const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
         ac_free(b);
     }
     {
-        const size_t a[]           = {1, 2, 3, 3, 2, 1, 1, 2, 3};
-        const size_t subset_length = 3;
-        const size_t model[]       = {1, 2, 3, 3, 2, 1};
+        const uint64_t a[]           = {1, 2, 3, 3, 2, 1, 1, 2, 3};
+        const uint64_t subset_length = 3;
+        const uint64_t model[]       = {1, 2, 3, 3, 2, 1};
 
-        const size_t count              = ARRAY_SIZE(a);
-        const size_t output_count_model = ARRAY_SIZE(model);
-        size_t* b                       = ac_calloc(count, sizeof(b[0]));
-        const size_t output_count       = unique_subsets(count, a, subset_length, b);
+        const size_t count                = ARRAY_SIZE(a);
+        const uint64_t output_count_model = ARRAY_SIZE(model);
+        uint64_t* b                       = ac_calloc(count, sizeof(b[0]));
+        const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
         ac_free(b);
     }
     {
-        const size_t a[]           = {1, 2, 3, 3, 2, 1, 1, 3, 2, 3, 2, 1};
-        const size_t subset_length = 3;
-        const size_t model[]       = {1, 2, 3, 3, 2, 1, 1, 3, 2};
+        const uint64_t a[]           = {1, 2, 3, 3, 2, 1, 1, 3, 2, 3, 2, 1};
+        const uint64_t subset_length = 3;
+        const uint64_t model[]       = {1, 2, 3, 3, 2, 1, 1, 3, 2};
 
-        const size_t count              = ARRAY_SIZE(a);
-        const size_t output_count_model = ARRAY_SIZE(model);
-        size_t* b                       = ac_calloc(count, sizeof(b[0]));
-        const size_t output_count       = unique_subsets(count, a, subset_length, b);
+        const size_t count                = ARRAY_SIZE(a);
+        const uint64_t output_count_model = ARRAY_SIZE(model);
+        uint64_t* b                       = ac_calloc(count, sizeof(b[0]));
+        const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
         ac_free(b);
@@ -471,7 +471,7 @@ test_unique_subsets(void)
 }
 
 void
-transpose(const size_t* in, const size_t nrows, const size_t ncols, size_t* out)
+transpose(const uint64_t* in, const uint64_t nrows, const uint64_t ncols, uint64_t* out)
 {
     for (size_t i = 0; i < ncols; ++i) {
         for (size_t j = 0; j < nrows; ++j) {
@@ -481,10 +481,10 @@ transpose(const size_t* in, const size_t nrows, const size_t ncols, size_t* out)
 }
 
 void
-contract(const size_t* in, const size_t length, const size_t factor, size_t* out)
+contract(const uint64_t* in, const size_t length, const uint64_t factor, uint64_t* out)
 {
     ERRCHK((length % factor) == 0);
-    const size_t out_length = length / factor;
+    const uint64_t out_length = length / factor;
     for (size_t j = 0; j < out_length; ++j) {
         out[j] = 1;
         for (size_t i = 0; i < factor; ++i)
@@ -507,17 +507,17 @@ mod_pointwise(const size_t count, const int64_t* a, const int64_t* b, int64_t* c
 }
 
 void
-to_spatial(const size_t index, const size_t ndims, const size_t* shape, size_t* output)
+to_spatial(const uint64_t index, const size_t ndims, const uint64_t* shape, uint64_t* output)
 {
     for (size_t j = 0; j < ndims; ++j) {
-        size_t divisor = 1;
+        uint64_t divisor = 1;
         for (size_t i = 0; i < j; ++i)
             divisor *= shape[i];
         output[j] = (index / divisor) % shape[j];
     }
 
     // Alternative
-    // size_t* basis;
+    // uint64_t* basis;
     // nalloc(ndims, basis);
     // cumprod(ndims, shape, basis);
     // rshift(1, 1, ndims, basis);
@@ -528,12 +528,12 @@ to_spatial(const size_t index, const size_t ndims, const size_t* shape, size_t* 
     // ac_free(basis);
 }
 
-size_t
-to_linear(const size_t ndims, const size_t* index, const size_t* shape)
+uint64_t
+to_linear(const size_t ndims, const uint64_t* index, const uint64_t* shape)
 {
-    size_t result = 0;
+    uint64_t result = 0;
     for (size_t j = 0; j < ndims; ++j) {
-        size_t factor = 1;
+        uint64_t factor = 1;
         for (size_t i = 0; i < j; ++i)
             factor *= shape[i];
         result += index[j] * factor;
@@ -541,11 +541,11 @@ to_linear(const size_t ndims, const size_t* index, const size_t* shape)
     return result;
 
     // Alternative
-    // size_t* basis;
+    // uint64_t* basis;
     // nalloc(ndims, basis);
     // cumprod(ndims, shape, basis);
     // rshift(1, 1, ndims, basis);
-    // const size_t result = dot(ndims, index, basis);
+    // const uint64_t result = dot(ndims, index, basis);
     // ac_free(basis);
     // return result;
 }
@@ -555,12 +555,12 @@ test_to_spatial_to_linear(void)
 {
     {
 
-        const size_t index          = 0;
-        const size_t shape[]        = {8, 8, 8};
-        const size_t ndims          = ARRAY_SIZE(shape);
-        const size_t model_coords[] = {0, 0, 0};
+        const uint64_t index          = 0;
+        const uint64_t shape[]        = {8, 8, 8};
+        const size_t ndims            = ARRAY_SIZE(shape);
+        const uint64_t model_coords[] = {0, 0, 0};
 
-        size_t* coords = ac_calloc(ndims, sizeof(coords[0]));
+        uint64_t* coords = ac_calloc(ndims, sizeof(coords[0]));
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
@@ -568,12 +568,12 @@ test_to_spatial_to_linear(void)
     }
     {
 
-        const size_t index          = 1;
-        const size_t shape[]        = {8, 8, 8};
-        const size_t ndims          = ARRAY_SIZE(shape);
-        const size_t model_coords[] = {1, 0, 0};
+        const uint64_t index          = 1;
+        const uint64_t shape[]        = {8, 8, 8};
+        const size_t ndims            = ARRAY_SIZE(shape);
+        const uint64_t model_coords[] = {1, 0, 0};
 
-        size_t* coords = ac_calloc(ndims, sizeof(coords[0]));
+        uint64_t* coords = ac_calloc(ndims, sizeof(coords[0]));
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
@@ -581,12 +581,12 @@ test_to_spatial_to_linear(void)
     }
     {
 
-        const size_t index          = 8;
-        const size_t shape[]        = {8, 8, 8};
-        const size_t ndims          = ARRAY_SIZE(shape);
-        const size_t model_coords[] = {0, 1, 0};
+        const uint64_t index          = 8;
+        const uint64_t shape[]        = {8, 8, 8};
+        const size_t ndims            = ARRAY_SIZE(shape);
+        const uint64_t model_coords[] = {0, 1, 0};
 
-        size_t* coords = ac_calloc(ndims, sizeof(coords[0]));
+        uint64_t* coords = ac_calloc(ndims, sizeof(coords[0]));
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
@@ -594,12 +594,12 @@ test_to_spatial_to_linear(void)
     }
     {
 
-        const size_t index          = 8 * 8;
-        const size_t shape[]        = {8, 8, 8};
-        const size_t ndims          = ARRAY_SIZE(shape);
-        const size_t model_coords[] = {0, 0, 1};
+        const uint64_t index          = 8 * 8;
+        const uint64_t shape[]        = {8, 8, 8};
+        const size_t ndims            = ARRAY_SIZE(shape);
+        const uint64_t model_coords[] = {0, 0, 1};
 
-        size_t* coords = ac_calloc(ndims, sizeof(coords[0]));
+        uint64_t* coords = ac_calloc(ndims, sizeof(coords[0]));
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
@@ -607,13 +607,13 @@ test_to_spatial_to_linear(void)
     }
     {
 
-        const size_t shape[]        = {5, 7, 9};
-        const size_t model_coords[] = {1, 2, 3};
-        const size_t index          = model_coords[0] + model_coords[1] * shape[0] +
-                             model_coords[2] * shape[0] * shape[1];
+        const uint64_t shape[]        = {5, 7, 9};
+        const uint64_t model_coords[] = {1, 2, 3};
+        const uint64_t index          = model_coords[0] + model_coords[1] * shape[0] +
+                               model_coords[2] * shape[0] * shape[1];
         const size_t ndims = ARRAY_SIZE(shape);
 
-        size_t* coords = ac_calloc(ndims, sizeof(coords[0]));
+        uint64_t* coords = ac_calloc(ndims, sizeof(coords[0]));
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
@@ -621,13 +621,13 @@ test_to_spatial_to_linear(void)
     }
     {
 
-        const size_t shape[]        = {4701, 12, 525};
-        const size_t model_coords[] = {591, 5, 255};
-        const size_t index          = model_coords[0] + model_coords[1] * shape[0] +
-                             model_coords[2] * shape[0] * shape[1];
+        const uint64_t shape[]        = {4701, 12, 525};
+        const uint64_t model_coords[] = {591, 5, 255};
+        const uint64_t index          = model_coords[0] + model_coords[1] * shape[0] +
+                               model_coords[2] * shape[0] * shape[1];
         const size_t ndims = ARRAY_SIZE(shape);
 
-        size_t* coords = ac_calloc(ndims, sizeof(coords[0]));
+        uint64_t* coords = ac_calloc(ndims, sizeof(coords[0]));
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
@@ -635,12 +635,12 @@ test_to_spatial_to_linear(void)
     }
     {
 
-        const size_t shape[]        = {500, 250};
-        const size_t model_coords[] = {499, 249};
-        const size_t index          = model_coords[0] + model_coords[1] * shape[0];
-        const size_t ndims          = ARRAY_SIZE(shape);
+        const uint64_t shape[]        = {500, 250};
+        const uint64_t model_coords[] = {499, 249};
+        const uint64_t index          = model_coords[0] + model_coords[1] * shape[0];
+        const size_t ndims            = ARRAY_SIZE(shape);
 
-        size_t* coords = ac_calloc(ndims, sizeof(coords[0]));
+        uint64_t* coords = ac_calloc(ndims, sizeof(coords[0]));
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
@@ -648,12 +648,12 @@ test_to_spatial_to_linear(void)
     }
     {
 
-        const size_t shape[]        = {2, 2};
-        const size_t model_coords[] = {1, 0};
-        const size_t index          = 1;
-        const size_t ndims          = ARRAY_SIZE(shape);
+        const uint64_t shape[]        = {2, 2};
+        const uint64_t model_coords[] = {1, 0};
+        const uint64_t index          = 1;
+        const size_t ndims            = ARRAY_SIZE(shape);
 
-        size_t* coords = ac_calloc(ndims, sizeof(coords[0]));
+        uint64_t* coords = ac_calloc(ndims, sizeof(coords[0]));
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
@@ -661,18 +661,18 @@ test_to_spatial_to_linear(void)
     }
     {
         const size_t ndims = 2;
-        size_t* coords     = ac_calloc(ndims, sizeof(coords[0]));
-        to_spatial(1, ndims, (size_t[]){2, 2}, coords);
-        ERRCHK(equals(ndims, coords, (size_t[]){1, 0}));
+        uint64_t* coords   = ac_calloc(ndims, sizeof(coords[0]));
+        to_spatial(1, ndims, (uint64_t[]){2, 2}, coords);
+        ERRCHK(equals(ndims, coords, (uint64_t[]){1, 0}));
         ac_free(coords);
     }
 }
 
 void
-reverse(const size_t count, size_t* arr)
+reverse(const size_t count, uint64_t* arr)
 {
     for (size_t i = 0; i < count / 2; ++i) {
-        const size_t tmp   = arr[i];
+        const uint64_t tmp = arr[i];
         arr[i]             = arr[count - i - 1];
         arr[count - i - 1] = tmp;
     }
@@ -689,7 +689,7 @@ reversei(const size_t count, int* arr)
 }
 
 void
-set(const size_t value, const size_t count, size_t* arr)
+set(const uint64_t value, const size_t count, uint64_t* arr)
 {
     for (size_t i = 0; i < count; ++i)
         arr[i] = value;
@@ -703,14 +703,14 @@ iset(const int value, const size_t count, int* arr)
 }
 
 void
-add_to_array(const size_t value, const size_t count, size_t* arr)
+add_to_array(const uint64_t value, const size_t count, uint64_t* arr)
 {
     for (size_t i = 0; i < count; ++i)
         arr[i] += value;
 }
 
 void
-add(const size_t count, const size_t* a, size_t* b)
+add(const size_t count, const uint64_t* a, uint64_t* b)
 {
     // Disallow aliasing
     ERRCHK(!(a >= b && a < b + count));
@@ -721,14 +721,14 @@ add(const size_t count, const size_t* a, size_t* b)
 }
 
 void
-add_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
+add_arrays(const size_t count, const uint64_t* a, const uint64_t* b, uint64_t* c)
 {
     for (size_t i = 0; i < count; ++i)
         c[i] = a[i] + b[i];
 }
 
 void
-subtract_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
+subtract_arrays(const size_t count, const uint64_t* a, const uint64_t* b, uint64_t* c)
 {
     for (size_t i = 0; i < count; ++i) {
         ERRCHK(a[i] >= b[i]);
@@ -737,7 +737,7 @@ subtract_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
 }
 
 void
-subtract_value(const size_t value, const size_t count, size_t* arr)
+subtract_value(const uint64_t value, const size_t count, uint64_t* arr)
 {
     for (size_t i = 0; i < count; ++i) {
         ERRCHK(arr[i] >= value);
@@ -746,14 +746,14 @@ subtract_value(const size_t value, const size_t count, size_t* arr)
 }
 
 void
-mul(const size_t count, const size_t* a, const size_t* b, size_t* c)
+mul(const size_t count, const uint64_t* a, const uint64_t* b, uint64_t* c)
 {
     for (size_t i = 0; i < count; ++i)
         c[i] = a[i] * b[i];
 }
 
 void
-repeat(const size_t count, const size_t* a, const size_t nrepeats, size_t* b)
+repeat(const size_t count, const uint64_t* a, const uint64_t nrepeats, uint64_t* b)
 {
     for (size_t i = 0; i < nrepeats; ++i)
         ac_copy(count, sizeof(a[0]), a, &b[i * count]);
@@ -763,34 +763,34 @@ static void
 test_repeat(void)
 {
     {
-        const size_t a[]      = {1, 2};
-        const size_t nrepeats = 3;
-        const size_t model[]  = {1, 2, 1, 2, 1, 2};
+        const uint64_t a[]      = {1, 2};
+        const uint64_t nrepeats = 3;
+        const uint64_t model[]  = {1, 2, 1, 2, 1, 2};
 
         const size_t count = ARRAY_SIZE(a);
-        size_t* b          = ac_calloc(count * nrepeats, sizeof(b[0]));
+        uint64_t* b        = ac_calloc(count * nrepeats, sizeof(b[0]));
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
         ac_free(b);
     }
     {
-        const size_t a[]      = {1};
-        const size_t nrepeats = 3;
-        const size_t model[]  = {1, 1, 1};
+        const uint64_t a[]      = {1};
+        const uint64_t nrepeats = 3;
+        const uint64_t model[]  = {1, 1, 1};
 
         const size_t count = ARRAY_SIZE(a);
-        size_t* b          = ac_calloc(count * nrepeats, sizeof(b[0]));
+        uint64_t* b        = ac_calloc(count * nrepeats, sizeof(b[0]));
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
         ac_free(b);
     }
     {
-        const size_t a[]      = {1, 2, 3, 4};
-        const size_t nrepeats = 2;
-        const size_t model[]  = {1, 2, 3, 4, 1, 2, 3, 4};
+        const uint64_t a[]      = {1, 2, 3, 4};
+        const uint64_t nrepeats = 2;
+        const uint64_t model[]  = {1, 2, 3, 4, 1, 2, 3, 4};
 
         const size_t count = ARRAY_SIZE(a);
-        size_t* b          = ac_calloc(count * nrepeats, sizeof(b[0]));
+        uint64_t* b        = ac_calloc(count * nrepeats, sizeof(b[0]));
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
         ac_free(b);
@@ -798,17 +798,17 @@ test_repeat(void)
 }
 
 void
-swap(const size_t i, const size_t j, const size_t count, size_t* arr)
+swap(const uint64_t i, const uint64_t j, const size_t count, uint64_t* arr)
 {
     ERRCHK(i < count);
     ERRCHK(j < count);
-    const size_t tmp = arr[i];
-    arr[i]           = arr[j];
-    arr[j]           = tmp;
+    const uint64_t tmp = arr[i];
+    arr[i]             = arr[j];
+    arr[j]             = tmp;
 }
 
 void
-sort(const size_t count, size_t* arr)
+sort(const size_t count, uint64_t* arr)
 {
     ERRCHK(count > 0);
     for (size_t i = 0; i < count; ++i) {
@@ -823,14 +823,14 @@ static void
 test_sort(void)
 {
     srand(12345);
-    const size_t nsamples  = 128;
-    const size_t max_count = 32;
+    const uint64_t nsamples  = 128;
+    const uint64_t max_count = 32;
     for (size_t i = 0; i < nsamples; ++i) {
-        const size_t count = ((size_t)rand()) % max_count + 1;
+        const size_t count = ((uint64_t)rand()) % max_count + 1;
 
-        size_t* arr = ac_calloc(count, sizeof(arr[0]));
+        uint64_t* arr = ac_calloc(count, sizeof(arr[0]));
         for (size_t j = 0; j < count; ++j)
-            arr[j] = (size_t)rand();
+            arr[j] = (uint64_t)rand();
         sort(count, arr);
         for (size_t j = 1; j < count; ++j)
             ERRCHK(arr[j] >= arr[j - 1]);
@@ -840,7 +840,7 @@ test_sort(void)
 
 /** Returns true if the lines on intervals [a1, a2) and [b1, b2) intersect */
 bool
-intersect_lines(const size_t a1, const size_t a2, const size_t b1, const size_t b2)
+intersect_lines(const uint64_t a1, const uint64_t a2, const uint64_t b1, const uint64_t b2)
 {
     return (a1 >= b1 && a1 < b2) || (b1 >= a1 && b1 < a2);
 }
@@ -858,8 +858,8 @@ test_intersect_lines(void)
 }
 
 bool
-intersect_box_note_changed(const size_t ndims, const size_t* a_dims, const size_t* a_offset,
-                           const size_t* b_dims, const size_t* b_offset)
+intersect_box_note_changed(const size_t ndims, const uint64_t* a_dims, const uint64_t* a_offset,
+                           const uint64_t* b_dims, const uint64_t* b_offset)
 {
     bool all_intersect = true;
     for (size_t i = 0; i < ndims; ++i)
@@ -871,8 +871,8 @@ intersect_box_note_changed(const size_t ndims, const size_t* a_dims, const size_
 
 /** Check if coords are within the box spanned by box_min (inclusive) and box_max (exclusive) */
 bool
-within_box_note_changed(const size_t ndims, const size_t* coords, const size_t* box_dims,
-                        const size_t* box_offset)
+within_box_note_changed(const size_t ndims, const uint64_t* coords, const uint64_t* box_dims,
+                        const uint64_t* box_offset)
 {
     for (size_t i = 0; i < ndims; ++i)
         if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
@@ -880,7 +880,7 @@ within_box_note_changed(const size_t ndims, const size_t* coords, const size_t* 
     return true;
 }
 // bool
-// within_box(const size_t ndims, const size_t* coords, const size_t* box_min, const size_t*
+// within_box(const size_t ndims, const uint64_t* coords, const uint64_t* box_min, const uint64_t*
 // box_max)
 // {
 //     bool res = true;
@@ -893,31 +893,31 @@ static void
 test_within_box(void)
 {
     {
-        const size_t box_offset[] = {0, 0, 0};
-        const size_t box_dims[]   = {10, 10, 10};
-        const size_t coords[]     = {0, 0, 0};
-        const size_t ndims        = ARRAY_SIZE(coords);
+        const uint64_t box_offset[] = {0, 0, 0};
+        const uint64_t box_dims[]   = {10, 10, 10};
+        const uint64_t coords[]     = {0, 0, 0};
+        const size_t ndims          = ARRAY_SIZE(coords);
         ERRCHK(within_box_note_changed(ndims, coords, box_dims, box_offset) == true);
     }
     {
-        const size_t box_offset[] = {0, 0, 0};
-        const size_t box_dims[]   = {10, 10, 10};
-        const size_t coords[]     = {0, 10, 0};
-        const size_t ndims        = ARRAY_SIZE(coords);
+        const uint64_t box_offset[] = {0, 0, 0};
+        const uint64_t box_dims[]   = {10, 10, 10};
+        const uint64_t coords[]     = {0, 10, 0};
+        const size_t ndims          = ARRAY_SIZE(coords);
         ERRCHK(within_box_note_changed(ndims, coords, box_dims, box_offset) == false);
     }
     {
-        const size_t box_offset[] = {0, 0, 0};
-        const size_t box_dims[]   = {10, 10, 10};
-        const size_t coords[]     = {11, 11, 11};
-        const size_t ndims        = ARRAY_SIZE(coords);
+        const uint64_t box_offset[] = {0, 0, 0};
+        const uint64_t box_dims[]   = {10, 10, 10};
+        const uint64_t coords[]     = {11, 11, 11};
+        const size_t ndims          = ARRAY_SIZE(coords);
         ERRCHK(within_box_note_changed(ndims, coords, box_dims, box_offset) == false);
     }
     {
-        const size_t box_offset[] = {0, 0, 0, 0, 0, 0, 0};
-        const size_t box_dims[]   = {1, 2, 3, 4, 5, 6, 7};
-        const size_t coords[]     = {0, 1, 2, 3, 4, 5, 6};
-        const size_t ndims        = ARRAY_SIZE(coords);
+        const uint64_t box_offset[] = {0, 0, 0, 0, 0, 0, 0};
+        const uint64_t box_dims[]   = {1, 2, 3, 4, 5, 6, 7};
+        const uint64_t coords[]     = {0, 1, 2, 3, 4, 5, 6};
+        const size_t ndims          = ARRAY_SIZE(coords);
         ERRCHK(within_box_note_changed(ndims, coords, box_dims, box_offset) == true);
     }
 }
@@ -926,73 +926,73 @@ static void
 test_intersect_box(void)
 {
     {
-        const size_t a[]      = {0, 0, 0};
-        const size_t a_dims[] = {1, 1, 1};
-        const size_t b[]      = {0, 0, 0};
-        const size_t b_dims[] = {1, 1, 1};
-        const size_t ndims    = ARRAY_SIZE(a);
+        const uint64_t a[]      = {0, 0, 0};
+        const uint64_t a_dims[] = {1, 1, 1};
+        const uint64_t b[]      = {0, 0, 0};
+        const uint64_t b_dims[] = {1, 1, 1};
+        const size_t ndims      = ARRAY_SIZE(a);
         ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == true);
     }
     {
-        const size_t a[]      = {0, 0};
-        const size_t a_dims[] = {1, 1};
-        const size_t b[]      = {1, 0};
-        const size_t b_dims[] = {1, 1};
-        const size_t ndims    = ARRAY_SIZE(a);
+        const uint64_t a[]      = {0, 0};
+        const uint64_t a_dims[] = {1, 1};
+        const uint64_t b[]      = {1, 0};
+        const uint64_t b_dims[] = {1, 1};
+        const size_t ndims      = ARRAY_SIZE(a);
         ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == false);
         ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == false);
     }
     {
-        const size_t a[]      = {0, 0};
-        const size_t a_dims[] = {2, 2};
-        const size_t b[]      = {1, 2};
-        const size_t b_dims[] = {1, 1};
-        const size_t ndims    = ARRAY_SIZE(a);
+        const uint64_t a[]      = {0, 0};
+        const uint64_t a_dims[] = {2, 2};
+        const uint64_t b[]      = {1, 2};
+        const uint64_t b_dims[] = {1, 1};
+        const size_t ndims      = ARRAY_SIZE(a);
         ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == false);
         ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == false);
     }
     {
-        const size_t a[]      = {0, 0};
-        const size_t a_dims[] = {2, 2};
-        const size_t b[]      = {1, 1};
-        const size_t b_dims[] = {1, 1};
-        const size_t ndims    = ARRAY_SIZE(a);
+        const uint64_t a[]      = {0, 0};
+        const uint64_t a_dims[] = {2, 2};
+        const uint64_t b[]      = {1, 1};
+        const uint64_t b_dims[] = {1, 1};
+        const size_t ndims      = ARRAY_SIZE(a);
         ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == true);
         ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == true);
     }
     {
-        const size_t a[]      = {0, 0, 0, 0, 0};
-        const size_t a_dims[] = {2, 2, 2, 2, 2};
-        const size_t b[]      = {1, 1, 1, 1, 1};
-        const size_t b_dims[] = {1, 1, 1, 1, 1};
-        const size_t ndims    = ARRAY_SIZE(a);
+        const uint64_t a[]      = {0, 0, 0, 0, 0};
+        const uint64_t a_dims[] = {2, 2, 2, 2, 2};
+        const uint64_t b[]      = {1, 1, 1, 1, 1};
+        const uint64_t b_dims[] = {1, 1, 1, 1, 1};
+        const size_t ndims      = ARRAY_SIZE(a);
         ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == true);
         ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == true);
     }
     {
-        const size_t a[]      = {0, 0, 0, 0, 0};
-        const size_t a_dims[] = {2, 2, 2, 2, 2};
-        const size_t b[]      = {1, 1, 2, 1, 1};
-        const size_t b_dims[] = {1, 1, 1, 1, 1};
-        const size_t ndims    = ARRAY_SIZE(a);
+        const uint64_t a[]      = {0, 0, 0, 0, 0};
+        const uint64_t a_dims[] = {2, 2, 2, 2, 2};
+        const uint64_t b[]      = {1, 1, 2, 1, 1};
+        const uint64_t b_dims[] = {1, 1, 1, 1, 1};
+        const size_t ndims      = ARRAY_SIZE(a);
         ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == false);
         ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == false);
     }
     {
-        const size_t a[]      = {1, 0};
-        const size_t a_dims[] = {1, 3};
-        const size_t b[]      = {0, 1};
-        const size_t b_dims[] = {3, 1};
-        const size_t ndims    = ARRAY_SIZE(a);
+        const uint64_t a[]      = {1, 0};
+        const uint64_t a_dims[] = {1, 3};
+        const uint64_t b[]      = {0, 1};
+        const uint64_t b_dims[] = {3, 1};
+        const size_t ndims      = ARRAY_SIZE(a);
         ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == true);
         ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == true);
     }
     {
-        const size_t a[]      = {5, 0};
-        const size_t a_dims[] = {5, 10};
-        const size_t b[]      = {0, 5};
-        const size_t b_dims[] = {10, 5};
-        const size_t ndims    = ARRAY_SIZE(a);
+        const uint64_t a[]      = {5, 0};
+        const uint64_t a_dims[] = {5, 10};
+        const uint64_t b[]      = {0, 5};
+        const uint64_t b_dims[] = {10, 5};
+        const size_t ndims      = ARRAY_SIZE(a);
         ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == true);
         ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == true);
     }
@@ -1041,8 +1041,8 @@ test_next_positive_integer(void)
  * Ndarray
  */
 // void
-// set_ndarray_size_t(const size_t value, const size_t ndims, const size_t* dims,
-//                    const size_t* subdims, const size_t* start, size_t* arr)
+// set_ndarray_uint64_t(const uint64_t value, const size_t ndims, const uint64_t* dims,
+//                    const uint64_t* subdims, const uint64_t* start, uint64_t* arr)
 // {
 //     if (ndims == 0) {
 //         *arr = value;
@@ -1052,15 +1052,15 @@ test_next_positive_integer(void)
 //         ERRCHK(dims[ndims - 1] > 0);                                      // Invalid dims
 //         ERRCHK(subdims[ndims - 1] > 0);                                   // Invalid subdims
 
-//         const size_t offset = prod(ndims - 1, dims);
-//         for (size_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
-//             set_ndarray_size_t(value, ndims - 1, dims, subdims, start, &arr[i * offset]);
+//         const uint64_t offset = prod(ndims - 1, dims);
+//         for (uint64_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
+//             set_ndarray_uint64_t(value, ndims - 1, dims, subdims, start, &arr[i * offset]);
 //     }
 // }
 
 void
-set_ndarray_void(const size_t element_size, const void* value, const size_t ndims,
-                 const size_t* dims, const size_t* subdims, const size_t* start, char* arr)
+set_ndarray_void(const uint64_t element_size, const void* value, const size_t ndims,
+                 const uint64_t* dims, const uint64_t* subdims, const uint64_t* start, char* arr)
 {
     if (ndims == 0) {
         ac_copy(1, element_size, value, arr);
@@ -1070,36 +1070,36 @@ set_ndarray_void(const size_t element_size, const void* value, const size_t ndim
         ERRCHK(dims[ndims - 1] > 0);                                      // Invalid dims
         ERRCHK(subdims[ndims - 1] > 0);                                   // Invalid subdims
 
-        const size_t offset = prod(ndims - 1, dims);
-        for (size_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
+        const uint64_t offset = prod(ndims - 1, dims);
+        for (uint64_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
             set_ndarray_void(element_size, value, ndims - 1, dims, subdims, start,
                              &arr[i * offset * element_size]);
     }
 }
 
 void
-set_ndarray_double(const double value, const size_t ndims, const size_t* dims,
-                   const size_t* subdims, const size_t* start, double* arr)
+set_ndarray_double(const double value, const size_t ndims, const uint64_t* dims,
+                   const uint64_t* subdims, const uint64_t* start, double* arr)
 {
     set_ndarray_void(sizeof(value), (double[]){value}, ndims, dims, subdims, start, (char*)arr);
 }
 
 void
-set_ndarray_size_t(const size_t value, const size_t ndims, const size_t* dims,
-                   const size_t* subdims, const size_t* start, size_t* arr)
+set_ndarray_uint64_t(const uint64_t value, const size_t ndims, const uint64_t* dims,
+                     const uint64_t* subdims, const uint64_t* start, uint64_t* arr)
 {
-    set_ndarray_void(sizeof(value), (size_t[]){value}, ndims, dims, subdims, start, (char*)arr);
+    set_ndarray_void(sizeof(value), (uint64_t[]){value}, ndims, dims, subdims, start, (char*)arr);
 }
 
 /** Note: duplicate with to_linear and to_spatial */
-static size_t
-nd_to_1d(const size_t ndims, const size_t* coords, const size_t* dims)
+static uint64_t
+nd_to_1d(const size_t ndims, const uint64_t* coords, const uint64_t* dims)
 {
     ERRCHK(all_less_than(ndims, coords, dims));
-    size_t* offset = ac_calloc(ndims, sizeof(offset[0]));
+    uint64_t* offset = ac_calloc(ndims, sizeof(offset[0]));
     cumprod(ndims, dims, offset);
     rshift(1, 1, ndims, offset);
-    const size_t res = dot(ndims, coords, offset);
+    const uint64_t res = dot(ndims, coords, offset);
     ac_free(offset);
     return res;
 }
@@ -1108,78 +1108,78 @@ static void
 test_nd_to_1d(void)
 {
     {
-        const size_t coords[] = {0, 0, 0};
-        const size_t dims[]   = {1, 1, 1};
-        const size_t ndims    = ARRAY_SIZE(dims);
+        const uint64_t coords[] = {0, 0, 0};
+        const uint64_t dims[]   = {1, 1, 1};
+        const size_t ndims      = ARRAY_SIZE(dims);
         ERRCHK(nd_to_1d(ndims, coords, dims) == 0);
     }
     {
-        const size_t coords[] = {1, 0};
-        const size_t dims[]   = {32, 32};
-        const size_t ndims    = ARRAY_SIZE(dims);
+        const uint64_t coords[] = {1, 0};
+        const uint64_t dims[]   = {32, 32};
+        const size_t ndims      = ARRAY_SIZE(dims);
         ERRCHK(nd_to_1d(ndims, coords, dims) == 1);
     }
     {
-        const size_t coords[] = {31, 0};
-        const size_t dims[]   = {32, 32};
-        const size_t ndims    = ARRAY_SIZE(dims);
+        const uint64_t coords[] = {31, 0};
+        const uint64_t dims[]   = {32, 32};
+        const size_t ndims      = ARRAY_SIZE(dims);
         ERRCHK(nd_to_1d(ndims, coords, dims) == 31);
     }
     {
-        const size_t coords[] = {0, 31};
-        const size_t dims[]   = {32, 32};
-        const size_t ndims    = ARRAY_SIZE(dims);
+        const uint64_t coords[] = {0, 31};
+        const uint64_t dims[]   = {32, 32};
+        const size_t ndims      = ARRAY_SIZE(dims);
         ERRCHK(nd_to_1d(ndims, coords, dims) == 31 * 32);
     }
     {
-        const size_t coords[] = {1, 2, 3, 4};
-        const size_t dims[]   = {10, 9, 8, 7};
-        const size_t ndims    = ARRAY_SIZE(dims);
+        const uint64_t coords[] = {1, 2, 3, 4};
+        const uint64_t dims[]   = {10, 9, 8, 7};
+        const size_t ndims      = ARRAY_SIZE(dims);
         ERRCHK(nd_to_1d(ndims, coords, dims) == 1 + 2 * 10 + 3 * 10 * 9 + 4 * 10 * 9 * 8);
     }
 }
 
 bool
-ndarray_equals(const size_t count, const size_t ndims, const size_t* a_offset,
-               const size_t* b_offset, const size_t* dims, const size_t* arr)
+ndarray_equals(const size_t count, const size_t ndims, const uint64_t* a_offset,
+               const uint64_t* b_offset, const uint64_t* dims, const uint64_t* arr)
 {
-    const size_t a = nd_to_1d(ndims, a_offset, dims);
-    const size_t b = nd_to_1d(ndims, b_offset, dims);
+    const uint64_t a = nd_to_1d(ndims, a_offset, dims);
+    const uint64_t b = nd_to_1d(ndims, b_offset, dims);
     return equals(count, &arr[a], &arr[b]);
 }
 
 static void
 test_ndarray_equals(void)
 {
-    const size_t arr[] = {
+    const uint64_t arr[] = {
         1, 1, 1, //
         1, 2, 3, //
         1, 1, 1, //
         3, 2, 1, //
     };
-    const size_t ncols  = 3;
-    const size_t len    = ARRAY_SIZE(arr);
-    const size_t nrows  = len / ncols;
-    const size_t dims[] = {ncols, nrows};
-    const size_t ndims  = ARRAY_SIZE(dims);
+    const uint64_t ncols  = 3;
+    const uint64_t len    = ARRAY_SIZE(arr);
+    const uint64_t nrows  = len / ncols;
+    const uint64_t dims[] = {ncols, nrows};
+    const size_t ndims    = ARRAY_SIZE(dims);
     {
-        const size_t a_offset[] = {0, 0};
-        const size_t b_offset[] = {0, 1};
+        const uint64_t a_offset[] = {0, 0};
+        const uint64_t b_offset[] = {0, 1};
         ERRCHK(ndarray_equals(ncols, ndims, a_offset, b_offset, dims, arr) == false);
     }
     {
-        const size_t a_offset[] = {0, 0};
-        const size_t b_offset[] = {0, 2};
+        const uint64_t a_offset[] = {0, 0};
+        const uint64_t b_offset[] = {0, 2};
         ERRCHK(ndarray_equals(ncols, ndims, a_offset, b_offset, dims, arr) == true);
     }
     {
-        const size_t a_offset[] = {0, 1};
-        const size_t b_offset[] = {0, 3};
+        const uint64_t a_offset[] = {0, 1};
+        const uint64_t b_offset[] = {0, 3};
         ERRCHK(ndarray_equals(ncols, ndims, a_offset, b_offset, dims, arr) == false);
     }
     {
-        const size_t a_offset[] = {2, 2};
-        const size_t b_offset[] = {2, 3};
+        const uint64_t a_offset[] = {2, 2};
+        const uint64_t b_offset[] = {2, 3};
         ERRCHK(ndarray_equals(1, ndims, a_offset, b_offset, dims, arr) == true);
     }
 }
@@ -1188,8 +1188,8 @@ test_ndarray_equals(void)
  * Matrix
  */
 void
-matrix_get_row(const size_t row, const size_t nrows, const size_t ncols, const size_t* mat,
-               size_t* cols)
+matrix_get_row(const uint64_t row, const uint64_t nrows, const uint64_t ncols, const uint64_t* mat,
+               uint64_t* cols)
 {
     ERRCHK(row < nrows);
     ac_copy(ncols, sizeof(mat[0]), &mat[row * ncols], cols);
@@ -1201,12 +1201,12 @@ test_get_row(void)
     {
 #define nrows (5)
 #define ncols (2)
-        const size_t in[nrows][ncols] = {
+        const uint64_t in[nrows][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
-        const size_t row[ncols] = {7, 8};
-        size_t out[ncols];
-        matrix_get_row(3, nrows, ncols, (const size_t*)in, out);
+        const uint64_t row[ncols] = {7, 8};
+        uint64_t out[ncols];
+        matrix_get_row(3, nrows, ncols, (const uint64_t*)in, out);
         ERRCHK(equals(ncols, row, out));
 #undef nrows
 #undef ncols
@@ -1214,12 +1214,12 @@ test_get_row(void)
     {
 #define nrows (5)
 #define ncols (2)
-        const size_t in[nrows][ncols] = {
+        const uint64_t in[nrows][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
-        const size_t row[ncols] = {1, 2};
-        size_t out[ncols];
-        matrix_get_row(0, nrows, ncols, (const size_t*)in, out);
+        const uint64_t row[ncols] = {1, 2};
+        uint64_t out[ncols];
+        matrix_get_row(0, nrows, ncols, (const uint64_t*)in, out);
         ERRCHK(equals(ncols, row, out));
 #undef nrows
 #undef ncols
@@ -1227,12 +1227,12 @@ test_get_row(void)
     {
 #define nrows (5)
 #define ncols (2)
-        const size_t in[nrows][ncols] = {
+        const uint64_t in[nrows][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
-        const size_t row[ncols] = {9, 10};
-        size_t out[ncols];
-        matrix_get_row(nrows - 1, nrows, ncols, (const size_t*)in, out);
+        const uint64_t row[ncols] = {9, 10};
+        uint64_t out[ncols];
+        matrix_get_row(nrows - 1, nrows, ncols, (const uint64_t*)in, out);
         ERRCHK(equals(ncols, row, out));
 #undef nrows
 #undef ncols
@@ -1240,8 +1240,8 @@ test_get_row(void)
 }
 
 void
-matrix_remove_row(const size_t row, const size_t nrows, const size_t ncols, const size_t* in,
-                  size_t* out)
+matrix_remove_row(const uint64_t row, const uint64_t nrows, const uint64_t ncols,
+                  const uint64_t* in, uint64_t* out)
 {
     ERRCHK(row < nrows);
     ac_copy(row * ncols, sizeof(in[0]), in, out);
@@ -1255,16 +1255,16 @@ static void
 test_remove_row(void)
 {
     {
-        const size_t row       = 2;
-        const size_t nrows     = 5;
-        const size_t ncols     = 2;
-        const size_t count     = nrows * ncols;
-        const size_t out_nrows = nrows - 1;
-        const size_t out_count = out_nrows * ncols;
+        const uint64_t row       = 2;
+        const uint64_t nrows     = 5;
+        const uint64_t ncols     = 2;
+        const size_t count       = nrows * ncols;
+        const uint64_t out_nrows = nrows - 1;
+        const uint64_t out_count = out_nrows * ncols;
 
-        size_t* in    = ac_calloc(count, sizeof(in[0]));
-        size_t* model = ac_calloc(out_count, sizeof(model[0]));
-        size_t* out   = ac_calloc(out_count, sizeof(out[0]));
+        uint64_t* in    = ac_calloc(count, sizeof(in[0]));
+        uint64_t* model = ac_calloc(out_count, sizeof(model[0]));
+        uint64_t* out   = ac_calloc(out_count, sizeof(out[0]));
 
         arange(1, count, in);
         arange(1, 4, model);
@@ -1280,35 +1280,35 @@ test_remove_row(void)
     }
 
     {
-#define ncols ((size_t)2)
-        const size_t in[][ncols] = {
+#define ncols ((uint64_t)2)
+        const uint64_t in[][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
-        const size_t nrows          = ARRAY_SIZE(in);
-        const size_t model[][ncols] = {
+        const uint64_t nrows          = ARRAY_SIZE(in);
+        const uint64_t model[][ncols] = {
             {3, 4},
             {5, 6},
             {7, 8},
             {9, 10},
         };
 
-        const size_t out_count = (nrows - 1) * ncols;
-        size_t* out            = ac_calloc(out_count, sizeof(out[0]));
+        const uint64_t out_count = (nrows - 1) * ncols;
+        uint64_t* out            = ac_calloc(out_count, sizeof(out[0]));
         matrix_remove_row(0, nrows, ncols, &in[0][0], out);
         ERRCHK(equals(out_count, &model[0][0], out));
         ac_free(out);
 #undef ncols
     }
     {
-#define ncols ((size_t)2)
-        const size_t in[][ncols] = {
+#define ncols ((uint64_t)2)
+        const uint64_t in[][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
-        const size_t model[][ncols] = {{1, 2}, {3, 4}, {5, 6}, {7, 8}};
-        const size_t nrows          = ARRAY_SIZE(in);
+        const uint64_t model[][ncols] = {{1, 2}, {3, 4}, {5, 6}, {7, 8}};
+        const uint64_t nrows          = ARRAY_SIZE(in);
 
-        const size_t out_count = (nrows - 1) * ncols;
-        size_t* out            = ac_calloc(out_count, sizeof(out[0]));
+        const uint64_t out_count = (nrows - 1) * ncols;
+        uint64_t* out            = ac_calloc(out_count, sizeof(out[0]));
         matrix_remove_row(nrows - 1, nrows, ncols, &in[0][0], out);
         ERRCHK(equals(out_count, &model[0][0], out));
         ac_free(out);
@@ -1317,8 +1317,8 @@ test_remove_row(void)
 }
 
 bool
-matrix_row_equals(const size_t row, const size_t nrows, const size_t ncols, const size_t* mat,
-                  const size_t* cols)
+matrix_row_equals(const uint64_t row, const uint64_t nrows, const uint64_t ncols,
+                  const uint64_t* mat, const uint64_t* cols)
 {
     ERRCHK(row < nrows);
     return equals(ncols, &mat[row * ncols], cols);
@@ -1328,17 +1328,17 @@ static void
 test_matrix_row_equals(void)
 {
     {
-#define ncols ((size_t)3)
-        const size_t mat[][ncols] = {
+#define ncols ((uint64_t)3)
+        const uint64_t mat[][ncols] = {
             {1, 2, 3},
             {4, 5, 6},
             {7, 8, 9},
         };
-        const size_t nrows = ARRAY_SIZE(mat);
+        const uint64_t nrows = ARRAY_SIZE(mat);
 
-        ERRCHK(matrix_row_equals(0, nrows, ncols, &mat[0][0], (size_t[]){1, 2, 3}));
-        ERRCHK(matrix_row_equals(1, nrows, ncols, &mat[0][0], (size_t[]){4, 5, 6}));
-        ERRCHK(matrix_row_equals(2, nrows, ncols, &mat[0][0], (size_t[]){7, 8, 9}));
+        ERRCHK(matrix_row_equals(0, nrows, ncols, &mat[0][0], (uint64_t[]){1, 2, 3}));
+        ERRCHK(matrix_row_equals(1, nrows, ncols, &mat[0][0], (uint64_t[]){4, 5, 6}));
+        ERRCHK(matrix_row_equals(2, nrows, ncols, &mat[0][0], (uint64_t[]){7, 8, 9}));
 #undef ncols
     }
 }
@@ -1355,7 +1355,7 @@ test_matrix(void)
  * Unit testing
  */
 bool
-equals(const size_t count, const size_t* a, const size_t* b)
+equals(const size_t count, const uint64_t* a, const uint64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
         if (a[i] != b[i])
@@ -1364,7 +1364,7 @@ equals(const size_t count, const size_t* a, const size_t* b)
 }
 
 bool
-all_less_than(const size_t count, const size_t* a, const size_t* b)
+all_less_than(const size_t count, const uint64_t* a, const uint64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
         if (a[i] >= b[i])
@@ -1373,7 +1373,7 @@ all_less_than(const size_t count, const size_t* a, const size_t* b)
 }
 
 bool
-all_less_or_equal_than(const size_t count, const size_t* a, const size_t* b)
+all_less_or_equal_than(const size_t count, const uint64_t* a, const uint64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
         if (a[i] > b[i])
