@@ -2110,11 +2110,13 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 #ifdef __cplusplus
 
 
+#if AC_MPI_ENABLED
 static UNUSED AcResult
 acGridInit(const AcMesh mesh)
 {
 	return acGridInitBase(mesh);
 }
+#endif
 #if TWO_D == 0
 static UNUSED AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info, AcCompInfo* comp_info)
 {
