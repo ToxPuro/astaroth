@@ -4103,9 +4103,12 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 			//TP: actually can not make macros since if the user e.g. writes const nx = 3 then that define would conflict with variables in hip
                         if(is_primitive_datatype(datatype_scalar))
 			{
-                                fprintf(is_builtin_constant(name) ? fp_builtin : fp_non_scalar_constants, "#define %s ((%s)%s)\n",name, datatype_scalar, assignment_val);
+                                if(is_builtin_constant(name)) fprintf(fp_builtin, "#define %s ((%s)%s)\n",name, datatype_scalar, assignment_val);
 				if(!is_builtin_constant(name))
+				{
                                 	fprintf(fp, "[[maybe_unused]] constexpr %s %s = %s;\n", datatype_scalar, name, assignment_val);
+                                	fprintf(fp_non_scalar_constants, "[[maybe_unused]] constexpr %s %s = %s;\n", datatype_scalar, name, assignment_val);
+				}
 			}
                         else
 			{
