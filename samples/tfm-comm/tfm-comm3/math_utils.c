@@ -517,8 +517,7 @@ to_spatial(const uint64_t index, const size_t ndims, const uint64_t* shape, uint
     }
 
     // Alternative
-    // uint64_t* basis;
-    // nalloc(ndims, basis);
+    // uint64_t* basis= ac_calloc(ndims, sizeof(basis[0]));
     // cumprod(ndims, shape, basis);
     // rshift(1, 1, ndims, basis);
 
@@ -541,8 +540,7 @@ to_linear(const size_t ndims, const uint64_t* index, const uint64_t* shape)
     return result;
 
     // Alternative
-    // uint64_t* basis;
-    // nalloc(ndims, basis);
+    // uint64_t* basis= ac_calloc(ndims, sizeof(basis[0]));
     // cumprod(ndims, shape, basis);
     // rshift(1, 1, ndims, basis);
     // const uint64_t result = dot(ndims, index, basis);
@@ -696,7 +694,7 @@ set(const uint64_t value, const size_t count, uint64_t* arr)
 }
 
 void
-iset(const int value, const size_t count, int* arr)
+set_array_int(const int value, const size_t count, int* arr)
 {
     for (size_t i = 0; i < count; ++i)
         arr[i] = value;

@@ -17,8 +17,7 @@ get_mpi_send_recv_peers(const size_t ndims, const int* nn, const int* rr, const 
     int rank;
     ERRCHK_MPI_API(MPI_Comm_rank(mpi_comm_, &rank));
 
-    int* coords;
-    nalloc(ndims, coords);
+    int* coords = ac_calloc(ndims, sizeof(coords[0]));
     ERRCHK_MPI_API(MPI_Cart_coords(mpi_comm_, rank, as_int(ndims), coords));
 
     int *recv_coords, *send_coords;
@@ -110,8 +109,7 @@ halo_segment_batch_create(const size_t ndims, const uint64_t* local_mm, const ui
         batch->remote_packets[i] = packet_create(ndims, subdims, recv_offset, n_aggregate_buffers);
 
         // Send packet
-        uint64_t* send_offset;
-        nalloc(ndims, send_offset);
+        uint64_t* send_offset = ac_calloc(ndims, sizeof(send_offset[0]));
         for (size_t j = 0; j < ndims; ++j)
             send_offset[j] = ((local_nn[j] + recv_offset[j] - local_nn_offset[j]) % local_nn[j]) +
                              local_nn_offset[j];
@@ -151,8 +149,7 @@ halo_segment_batch_destroy(struct HaloSegmentBatch_s** batch)
 //     const size_t ndims     = batch->ndims;
 //     const uint64_t* local_mm = batch->local_mm;
 
-//     uint64_t* zeros;
-//     ncalloc(ndims, zeros);
+//     uint64_t* zeros= ac_calloc(ndims, sizeof(zeros[0]));
 
 //     for (size_t i = 0; i < batch->npackets; ++i) {
 //         for (size_t j = 0; j < ninputs; ++j) {
@@ -177,8 +174,7 @@ halo_segment_batch_destroy(struct HaloSegmentBatch_s** batch)
 //     const size_t ndims     = batch->ndims;
 //     const uint64_t* local_mm = batch->local_mm;
 
-//     uint64_t* zeros;
-//     ncalloc(ndims, zeros);
+//     uint64_t* zeros= ac_calloc(ndims, sizeof(zeros[0]));
 
 //     for (size_t i = 0; i < batch->npackets; ++i) {
 //         for (size_t j = 0; j < noutputs; ++j) {
@@ -326,8 +322,7 @@ test_halo_segment_batch(void)
 
     HaloSegmentBatch batch = halo_segment_batch_create(ndims, mm, nn, nn_offset, ninputs);
 
-    double** inputs;
-    nalloc(ninputs, inputs);
+    double** inputs = ac_calloc(ninputs, sizeof(inputs[0]));
     for (size_t i = 0; i < ninputs; ++i)
         nalloc(prod(ndims, mm), inputs[i]);
 

@@ -12,7 +12,7 @@ extern "C" {
  * Should be called as early in the program as possible to avoid interference
  * with the MPI implementation, such as opening files. Recommended by, e.g., MPICH.
  */
-void acCommInit(void);
+ErrorCode acCommInit(void);
 
 /** Setup the communicator module
  * global_nn: dimensions of the global computational domain partitioned to multiple processors
@@ -22,22 +22,22 @@ void acCommInit(void);
  *                  = local nn index + local_nn * decomposition
  * rr: extent of the halo surrounding the computational domain
  */
-void acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
-                 uint64_t* global_nn_offset);
+ErrorCode acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
+                      uint64_t* global_nn_offset);
 
-void acCommQuit(void);
+ErrorCode acCommQuit(void);
 
-void acCommGetProcInfo(int* rank, int* nprocs);
+ErrorCode acCommGetProcInfo(int* rank, int* nprocs);
 
-void acCommBarrier(void);
+ErrorCode acCommBarrier(void);
 
-void acCommPrint(void);
+ErrorCode acCommPrint(void);
 
 /**
  * Test the comm functions.
  * Returns 0 on success and the number of errors encountered otherwise.
  */
-int acCommTest(void);
+ErrorCode acCommTest(void);
 
 #ifdef __cplusplus
 }

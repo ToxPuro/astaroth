@@ -8,6 +8,9 @@ static const char* errorcode_descriptions[NUM_ERRORCODES] = {
     [ERRORCODE_SUCCESS]         = "Success",
     [ERRORCODE_GENERIC_FAILURE] = "Generic failure",
     [ERRORCODE_TEST_FAILURE]    = "Module test failed",
+    [ERRORCODE_NOT_IMPLEMENTED] = "Not implemented",
+    [ERRORCODE_MPI_FAILURE]     = "MPI failure",
+    [ERRORCODE_INVALID_NDIMS]   = "Invalid ndims or shape dimensionality",
 };
 
 const char*

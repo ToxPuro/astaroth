@@ -52,7 +52,7 @@ void reversei(const size_t count, int* arr);
 
 void set(const uint64_t value, const size_t count, uint64_t* arr);
 
-void iset(const int value, const size_t count, int* arr);
+void set_array_int(const int value, const size_t count, int* arr);
 
 void add_to_array(const uint64_t value, const size_t count, uint64_t* arr);
 

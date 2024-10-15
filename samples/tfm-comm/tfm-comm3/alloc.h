@@ -37,3 +37,13 @@ void* ac_dup(const size_t count, const size_t size, const void* ptr);
  * The arrays must have the same length and element size.
  */
 bool ac_cmp(const size_t count, const size_t size, const void* a, const void* b);
+
+/**
+ * Reverse the order of an array
+ */
+void ac_reverse(const size_t count, const size_t size, void* a);
+
+/**
+ * Test alloc.h functions
+ */
+int test_alloc(void);
