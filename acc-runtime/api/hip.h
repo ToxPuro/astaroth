@@ -22,6 +22,10 @@
 #define __HIP_PLATFORM_HCC__
 #endif
 
+#ifndef __HIP_PLATFORM_AMD__
+#define __HIP_PLATFORM_AMD__
+#endif
+
 #define CUresult hipError_t
 #define cudaError_t hipError_t
 #define cudaSuccess hipSuccess
@@ -44,8 +48,11 @@
 #define cudaStreamCreate hipStreamCreate
 #define cudaStreamCreateWithPriority hipStreamCreateWithPriority
 #define cudaStreamDestroy hipStreamDestroy
-#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
+#define cudaMemcpyKind hipMemcpyKind
 #define cudaMemcpyHostToDevice hipMemcpyHostToDevice
+#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
+#define cudaMemcpyDeviceToDevice hipMemcpyDeviceToDevice
+#define cudaMemcpyHostToHost hipMemcpyHostToHost
 #define cudaSetDevice hipSetDevice
 #define cudaMemcpy hipMemcpy
 #define cudaMemcpyAsync hipMemcpyAsync
