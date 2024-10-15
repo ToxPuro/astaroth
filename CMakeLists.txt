@@ -75,14 +75,14 @@ if (USE_HIP)
     #link_directories(/opt/rocm/lib)
 
     # Roctracer
-    include_directories(/opt/rocm/roctracer/include)
-    link_directories(/opt/rocm/roctracer/lib)
+    include_directories(/opt/rocm-5.2.3/roctracer/include)
+    link_directories(/opt/rocm-5.2.3/roctracer/lib)
 
     # Rocrand
-    include_directories(/opt/rocm/hiprand/include)
-    include_directories(/opt/rocm/rocrand/include)
-    link_directories(/opt/rocm/hiprand/lib)
-    link_directories(/opt/rocm/rocrand/lib)
+    include_directories(/opt/rocm-5.2.3/hiprand/include)
+    include_directories(/opt/rocm-5.2.3/rocrand/include)
+    link_directories(/opt/rocm-5.2.3/hiprand/lib)
+    link_directories(/opt/rocm-5.2.3/rocrand/lib)
 
     find_package(hip)
 else ()
@@ -111,6 +111,10 @@ else ()
     else ()
         set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
     endif()
+
+    # CUB and Thrust
+    include_directories(${CUB_PATH})
+    include_directories(${THRUST_PATH})
 endif()
 
 include(FetchContent)
