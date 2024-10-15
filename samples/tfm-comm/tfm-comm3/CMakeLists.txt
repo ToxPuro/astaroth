@@ -64,3 +64,6 @@ target_link_libraries(cpptest PRIVATE tfm-comm)
 
 add_executable(ctest test.c)
 target_link_libraries(ctest PRIVATE tfm-comm tfm-utils)
+
+add_executable(mpitest mpitest.c)
+target_link_libraries(mpitest PRIVATE MPI::MPI_C tfm-utils)

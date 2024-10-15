@@ -5,7 +5,7 @@
 #define ERRCHK_GPU_API(errorcode)                                                                  \
     do {                                                                                           \
         if ((errorcode) != cudaSuccess) {                                                          \
-            ERRCHKK((errorcode) == cudaSuccess, cudaGetErrorString(errorcode));                    \
+            ERRCHK_VA((errorcode) == cudaSuccess, cudaGetErrorString(errorcode));                  \
         }                                                                                          \
     } while (0)
 

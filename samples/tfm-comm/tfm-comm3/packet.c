@@ -43,6 +43,6 @@ packet_wait(Packet* packet)
             ERRCHK_MPI_API(MPI_Request_free(&packet->req));
     }
     else {
-        WARNING("packet_wait called but no there is packet to wait for");
+        WARNING_VA("packet_wait called but no there is packet to wait for");
     }
 }

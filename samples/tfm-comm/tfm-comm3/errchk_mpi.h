@@ -4,7 +4,7 @@
 #define ERRCHK_MPI(retval)                                                                         \
     do {                                                                                           \
         ERRCHK(retval);                                                                            \
-        if ((retval) == 0) {                                                                       \
+        if ((retval) == false) {                                                                   \
             MPI_Abort(MPI_COMM_WORLD, 0);                                                          \
             \                                                                                      \
         }                                                                                          \
@@ -17,7 +17,7 @@
             char description__[MPI_MAX_ERROR_STRING];                                              \
             int resultlen__;                                                                       \
             MPI_Error_string((errorcode), description__, &resultlen__);                            \
-            ERRCHKK((errorcode) == MPI_SUCCESS, description__);                                    \
+            ERRCHK_VA((errorcode) == MPI_SUCCESS, description__);                                  \
             MPI_Abort(MPI_COMM_WORLD, 0);                                                          \
         }                                                                                          \
     } while (0)

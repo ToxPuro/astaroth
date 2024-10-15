@@ -9,8 +9,8 @@
 Ntuple
 make_ntuple(const size_t nelems)
 {
-    WARNCHKK(nelems <= NTUPLE_MAX_NELEMS,
-             "Increase NTUPLE_MAX_NELEMS to enable larger ntuples than defined in ntuple.h");
+    WARNCHK_VA(nelems <= NTUPLE_MAX_NELEMS,
+               "Increase NTUPLE_MAX_NELEMS to enable larger ntuples than defined in ntuple.h");
     Ntuple ntuple = (Ntuple){
         .nelems = MIN(nelems, NTUPLE_MAX_NELEMS),
     };

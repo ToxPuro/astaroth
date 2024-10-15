@@ -7,6 +7,10 @@
 #include "partition.h"
 #include "segment.h"
 
+#include <stdio.h>
+
+#include <mpi.h>
+
 int
 acCommTest(void)
 {
@@ -21,6 +25,13 @@ acCommTest(void)
     test_partition();
     // test_mpi_utils();
     // test_pack();
+
+    void* ptr = NULL;
+    // CHECK_OK(ptr);
+    // if (CHECK_OK(ptr, "PTR alloc failed\n"))
+    //     printf("Ok!\n");
+    // else
+    //     printf("Failure!\n");
 
     return errcount;
 }

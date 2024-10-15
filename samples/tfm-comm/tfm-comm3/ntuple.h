@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define NTUPLE_MAX_NELEMS ((uint64_t)4)
+#define NTUPLE_MAX_NELEMS ((size_t)4)
 
 typedef struct {
     size_t nelems;

@@ -6,7 +6,7 @@ typedef struct {
     double* data;
 } Buffer;
 
-#define MAX_NDIMS ((uint64_t)4)
+#define MAX_NDIMS ((size_t)4)
 
 typedef struct {
     size_t ndims;
@@ -15,7 +15,7 @@ typedef struct {
     uint64_t offset[MAX_NDIMS]
 } Segment;
 
-#define BUFFER_ARRAY_MAX_NBUFFERS ((uint64_t)8)
+#define BUFFER_ARRAY_MAX_NBUFFERS ((size_t)8)
 typedef struct {
     size_t nbuffers;
     double* buffers[BUFFER_ARRAY_MAX_NBUFFERS];
