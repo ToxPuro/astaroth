@@ -56,6 +56,7 @@
 #include <mpi.h>
 #include <queue>
 #include <vector>
+#include <stack>
 
 
 #include "decomposition.h" //getPid3D, morton3D
@@ -569,6 +570,12 @@ acGridInitBase(const AcMesh user_mesh)
     gen_default_taskgraph();
 #endif
     acAnalysisLoadMeshInfo(grid.device->local_config);
+    //Refresh log files
+    if(!ac_pid())
+    {
+    	FILE* fp = fopen("taskgraph_log.txt","w");
+    	fclose(fp);
+    }
     return AC_SUCCESS;
 }
 
@@ -2088,11 +2095,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                         auto dept_task = graph->all_tasks[j];
                         // Task A depends on task B if the output region of A overlaps with the
                         // input region of B.
-			const bool current_is_bc_ss_flux = dept_task->name.find("bc_ss_flux") != std::string::npos;
-			const bool preq_is_sym = preq_task->name.find("bc_sym_z") != std::string::npos;
-			const auto output_region= preq_task->output_region;
-			const auto input_region = dept_task->input_region;
-			if(current_is_bc_ss_flux && preq_is_sym && input_region.overlaps(&output_region)) printf("HMM why no depend ?\n");
                         if (dept_task->active &&
                             (preq_task->output_region.overlaps(&dept_task->input_region)  ||
                              preq_task->output_region.overlaps(&dept_task->output_region))) {
@@ -2100,7 +2102,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                             // iteration offset of 1 -> dependency from preq_task in iteration k to
                             // dept_task in iteration k+1
 			    //
-			    if(current_is_bc_ss_flux && preq_op != dept_op) fprintf(stderr,"%s is dependent on %s\n",dept_task->name.c_str(), preq_task->name.c_str());
                             if (!forward_search(i, j, preq_op, op_offset)) {
                                 preq_task->registerDependent(dept_task, preq_op < dept_op ? 0 : 1);
                                 adjacent[i * n_tasks + j] = true;
@@ -4550,34 +4551,17 @@ is_bc_taskgraph(const AcDSLTaskGraph graph)
 	return false;
 }
 
-std::vector<AcTaskDefinition>
-acGetDSLBCTaskGraphOps(const AcDSLTaskGraph graph)
+typedef struct
 {
-	const KernelAnalysisInfo info = get_kernel_analysis_info();
-	std::vector<AcTaskDefinition> res{};
-	for(size_t i = 0; i < DSLTaskGraphKernelBoundaries[graph].size(); ++i)
-	{
-		auto kernel = DSLTaskGraphKernels[graph][i];
-		std::vector<Field> input_fields{};
-		std::vector<Field> output_fields{};
-		for(size_t field = 0; field < NUM_ALL_FIELDS; ++field)
-		{
-			if(info.read_fields[kernel][field])
-				input_fields.push_back((Field)field);
-			if(info.written_fields[kernel][field])
-				output_fields.push_back((Field)field);
-		}
-		res.push_back(acBoundaryCondition(
-					 DSLTaskGraphKernelBoundaries[graph][i],
-					 kernel,
-					 input_fields,
-					 output_fields
-					));
-	}
-	return res;
-}
+	AcKernel kernel;
+	AcBoundary boundary;
+	std::vector<Field> in;
+	std::vector<Field> out;
+	acAnalysisBCInfo info;
+	size_t topological_order;
+} BoundCond;
 
-typedef std::array<std::array<AcKernel,6>,NUM_VTXBUF_HANDLES> FieldBCs;
+typedef std::array<std::array<BoundCond,6>,NUM_VTXBUF_HANDLES> FieldBCs;
 
 typedef struct
 {
@@ -4586,8 +4570,9 @@ typedef struct
 } KernelFields;
 
 KernelFields
-get_kernel_fields(const AcKernel kernel, const KernelAnalysisInfo info)
+get_kernel_fields(const AcKernel kernel)
 {
+		const KernelAnalysisInfo info = get_kernel_analysis_info();
 		KernelFields res{};
 		for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
 		{
@@ -4597,80 +4582,217 @@ get_kernel_fields(const AcKernel kernel, const KernelAnalysisInfo info)
 		return res;
 }
 std::vector<KernelFields>
-get_kernel_fields(const std::vector<AcKernel> kernels, const KernelAnalysisInfo info)
+get_kernel_fields(const std::vector<AcKernel> kernels)
 {
 		std::vector<KernelFields> res{};
-		for(const auto& kernel : kernels) res.push_back(get_kernel_fields(kernel,info));
+		for(const auto& kernel : kernels) res.push_back(get_kernel_fields(kernel));
 		return res;
 }
-std::vector<int>
-generate_topological_order(const AcDSLTaskGraph bc_graph, const KernelAnalysisInfo info)
+const char*
+boundary_str(const AcBoundary bc)
 {
+       return
+               bc == BOUNDARY_X_BOT ? "BOUNDARY_X_BOT" :
+               bc == BOUNDARY_Y_BOT ? "BOUNDARY_Y_BOT" :
+               bc == BOUNDARY_X_TOP ? "BOUNDARY_X_TOP" :
+               bc == BOUNDARY_Y_TOP ? "BOUNDARY_Y_TOP" :
+               bc == BOUNDARY_Z_BOT ? "BOUNDARY_Z_BOT" :
+               bc == BOUNDARY_Z_TOP ? "BOUNDARY_Z_TOP" :
+               NULL;
+}
+template <typename T>
+bool
+overlaps(const std::vector<T>& a,const std::vector<T>& b)
+{
+	for(auto& elem : a)
+		if(std::find(b.begin(), b.end(), elem) != b.end()) return true;
+	return false;
+}
+std::vector<size_t>
+generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_name)
+{
+	std::vector<std::vector<bool>> dependency_matrix(bcs.size());
+	std::vector<bool> empty_row(bcs.size());
+	for(size_t i = 0; i < bcs.size(); ++i) dependency_matrix[i] = empty_row;
 
-FUNC_DEFINE(acAnalysisBCInfo, acAnalysisGetBCInfo,(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary));
-	const std::vector<AcKernel>   kernels    = DSLTaskGraphKernels[bc_graph];
-	const std::vector<AcBoundary> boundaries = DSLTaskGraphKernelBoundaries[bc_graph];
-	std::vector<acAnalysisBCInfo> bc_infos{};
-	for(size_t i = 0; i < kernels.size(); ++i)
-		bc_infos.push_back(acAnalysisGetBCInfo(grid.submesh.info,kernels[i],boundaries[i]));
-	std::vector<int> res{};
-	for(size_t i = 0; i < kernels.size(); ++i)
+	//TP: at the moment this is somewhat conservative since if j only writes to the boundary and i does not read from boundary there is no dependency
+	//TP: relax when cannot determine a topological order anymore
+	for(size_t i = 0; i < bcs.size(); ++i)
+		for(size_t j = 0; j < bcs.size(); ++j)
+			dependency_matrix[i][j] = i != j && overlaps(bcs[i].in,bcs[j].out) && (bcs[i].boundary & bcs[j].boundary);
+	//Kahn's algorithm
+	std::stack<size_t> vertices_under_work;
+
+	auto no_incoming_edges = [&](const size_t current_vertex)
 	{
-		auto bc_info = bc_infos[i];
-		auto kernel  = kernels[i];
-		(void)bc_info;
-		(void)kernel;
-		/**
-		if(!bc_info.larger_input && !bc_info.larger_output)
-			fprintf(stderr,"I AM NORMAL: %s\n",kernel_names[kernel]);
-		else
-			fprintf(stderr,"I AM EXTENDED: %s\n",kernel_names[kernel]);
-		**/
+		bool no_incoming_edges = true;
+		for(size_t j = 0; j < bcs.size(); ++j)
+			no_incoming_edges &= !dependency_matrix[current_vertex][j];
+		return no_incoming_edges;
+	};
+
+	auto get_dependent_vertices = [&](const size_t current_vertex)
+	{
+		std::vector<size_t> res{};
+		for(size_t i = 0; i < bcs.size(); ++i)
+			if(dependency_matrix[i][current_vertex]) res.push_back(i);
+		return res;
+	};
+
+	for(size_t i = 0; i < bcs.size(); ++i)
+	{
+		if(no_incoming_edges(i)) vertices_under_work.push(i);
 	}
-	auto fields = get_kernel_fields(kernels,info);
+	if(vertices_under_work.size() == 0)
+	{
+		acLogFromRootProc(ac_pid(),"Cannot continue: BC dependencies of %s do not form a DAG\n",bc_name);
+		exit(EXIT_FAILURE);
+	}
+
+	std::vector<size_t> res{};
+	while(vertices_under_work.size() != 0)
+	{
+		auto current_vertex = vertices_under_work.top();
+		vertices_under_work.pop();
+		res.push_back(current_vertex);
+		for(const auto& vertex : get_dependent_vertices(current_vertex))
+		{
+			dependency_matrix[vertex][current_vertex] = false;
+			if (no_incoming_edges(vertex)) vertices_under_work.push(vertex);
+		}
+	}
+	for(size_t i = 0; i < bcs.size(); ++i)
+		for(size_t j = 0; j < bcs.size(); ++j)
+			if (dependency_matrix[i][j])
+			{
+				acLogFromRootProc(ac_pid(),"Cannot continue: BC dependencies of %s do not form a DAG\n",bc_name);
+				exit(EXIT_FAILURE);
+			}
 	return res;
 }
-FieldBCs
-get_field_boundconds(const AcDSLTaskGraph bc_graph, const KernelAnalysisInfo info)
+bool
+bc_output_fields_overlap(const std::vector<BoundCond>& bcs)
 {
-	auto topological_order = generate_topological_order(bc_graph,info);
-	FieldBCs res{};
-	for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
-		for(int j = 0; j < 6; ++j)
-			res[i][j] = NUM_KERNELS;
-
-	const std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
-	for(size_t i = 0; i <  DSLTaskGraphKernels[bc_graph].size(); ++i)
+	std::array<std::vector<Field>,6> fields_written{};
+	auto add_to_written_fields = [&](const int i, const Field field)
 	{
-		auto kernel = DSLTaskGraphKernels[bc_graph][i];
-		auto boundary = DSLTaskGraphKernelBoundaries[bc_graph][i];
-
-		auto fields = get_kernel_fields(kernel,info);
-		for(size_t bc = 0;  bc < boundaries.size(); ++bc) 
+		const bool already_written = std::find(fields_written[i].begin(), fields_written[i].end(),field) != fields_written[i].end();
+		fields_written[i].push_back(field);
+		return already_written;
+	};
+	for(auto& bc : bcs)
+	{
+		auto fields = get_kernel_fields(bc.kernel);
+		for(auto& field: fields.out)
 		{
-			if(boundary & boundaries[bc])
-			{
-				for(auto& field : fields.out)
-					res[(int)field][bc] = kernel;
+			if(bc.boundary & BOUNDARY_X_TOP)
+				if (add_to_written_fields(0,field)) return true;
+			if(bc.boundary & BOUNDARY_X_BOT)
+				if (add_to_written_fields(1,field)) return true;
+			if(bc.boundary & BOUNDARY_Y_TOP)
+				if (add_to_written_fields(2,field)) return true;
+			if(bc.boundary & BOUNDARY_Y_BOT)
+				if (add_to_written_fields(3,field)) return true;
+			if(bc.boundary & BOUNDARY_Z_TOP)
+				if (add_to_written_fields(4,field)) return true;
+			if(bc.boundary & BOUNDARY_Z_BOT)
+				if (add_to_written_fields(5,field)) return true;
+		}
+	}
+	return false;
+}
 
-			}
+std::vector<BoundCond>
+get_boundconds(const AcDSLTaskGraph bc_graph)
+{
+
+	std::vector<BoundCond> res{};
+	const std::vector<AcKernel>   kernels    = DSLTaskGraphKernels[bc_graph];
+	const std::vector<AcBoundary> boundaries = DSLTaskGraphKernelBoundaries[bc_graph];
+	for(size_t i = 0; i < kernels.size(); ++i)
+	std::vector<acAnalysisBCInfo> bc_infos{};
+	for(size_t i = 0; i < kernels.size(); ++i)
+	{
+		auto bc_info = acAnalysisGetBCInfo(grid.submesh.info,kernels[i],boundaries[i]);
+		auto fields = get_kernel_fields(kernels[i]);
+		res.push_back((BoundCond){kernels[i],boundaries[i],fields.in,fields.out,bc_info,0});
+	}
+	const bool bcs_overlap = bc_output_fields_overlap(res);
+	if(bcs_overlap)
+	{
+		acLogFromRootProc(ac_pid(),"Cannot continue: overlap in output fields in BCs of %s\n",taskgraph_names[bc_graph]);
+		exit(EXIT_FAILURE);
+	}
+	auto topological_order = generate_topological_order(res,taskgraph_names[bc_graph]);
+	for(size_t i = 0; i < kernels.size(); ++i)
+	{
+		for(size_t j = 0; j < kernels.size(); ++j)
+		{
+			if (topological_order[j] == i)
+				res[i].topological_order = j;
 		}
 	}
 	return res;
 }
-
-const char*
-boundary_str(const int bc)
+void
+log_boundcond(FILE* stream, const BoundCond bc, const AcBoundary boundary)
 {
-       return
-               bc == 0 ? "BOUNDARY_X_BOT" :
-               bc == 1 ? "BOUNDARY_Y_BOT" :
-               bc == 2 ? "BOUNDARY_X_TOP" :
-               bc == 3 ? "BOUNDARY_Y_TOP" :
-               bc == 4 ? "BOUNDARY_Z_BOT" :
-               bc == 5 ? "BOUNDARY_Z_TOP" :
-               NULL;
+	auto log_fields = [&](const auto& fields)
+	{
+		if(!ac_pid()) fprintf(stream,"{");
+		for(const auto& field : fields)
+			if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
+		if(!ac_pid()) fprintf(stream,"}");
+	};
+	if(!ac_pid()) fprintf(stream,"BoundCond(%s,%s,",boundary_str(boundary), kernel_names[bc.kernel]);
+	log_fields(bc.in);
+	if(!ac_pid()) fprintf(stream,",");
+	log_fields(bc.out);
+	if(!ac_pid()) fprintf(stream,")\n");
 }
+std::vector<AcTaskDefinition>
+acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph)
+{
+	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
+	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[bc_graph]);
+	std::vector<AcTaskDefinition> res{};
+	auto bcs = get_boundconds(bc_graph);
+	//TP: insert boundconds in topological order
+	for(size_t i = 0; i < bcs.size(); ++i)
+		for(auto& bc : bcs)
+			if(bc.topological_order == i)
+			{
+				log_boundcond(stream,bc,bc.boundary);
+				res.push_back(acBoundaryCondition(bc.boundary,bc.kernel,bc.in,bc.out));
+			}
+
+	if(!ac_pid()) fclose(stream);
+	return res;
+}
+
+
+FieldBCs
+get_field_boundconds(const AcDSLTaskGraph bc_graph)
+{
+	const auto bcs = get_boundconds(bc_graph);
+	const std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
+
+	FieldBCs res{};
+	BoundCond empty_bc = {NUM_KERNELS,BOUNDARY_NONE,{}, {}, {},0};
+	for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+		for(int j = 0; j < 6; ++j)
+			res[i][j] = empty_bc;
+
+	for(auto& bc : bcs)
+	{
+		for(size_t i = 0; i < boundaries.size(); ++i) 
+			if(bc.boundary & boundaries[i])
+				for(auto& field : bc.out) res[(int)field][i] = bc;
+
+	}
+	return res;
+}
+
 
 void
 check_field_boundconds(const FieldBCs field_boundconds)
@@ -4680,30 +4802,31 @@ check_field_boundconds(const FieldBCs field_boundconds)
 	{
 		if(!vtxbuf_is_communicated[field]) continue;
 		for(size_t bc = 0; bc < boundaries.size(); ++bc)
-			if(field_boundconds[field][bc] == NUM_KERNELS)
+			if(field_boundconds[field][bc].kernel  == NUM_KERNELS)
 			{
-				fprintf(stderr,"FATAL AC ERROR: Missing boundcond for field %s at boundary %s\n",field_names[field], boundary_str(bc));
+				acLogFromRootProc(ac_pid(),"FATAL AC ERROR: Missing boundcond for field %s at boundary %s\n",field_names[field], boundary_str(boundaries[bc]));
 				exit(EXIT_FAILURE);
 			}
 	}
 }
 
 AcTaskDefinition
-gen_taskgraph_kernel_entry(const int call, const KernelAnalysisInfo info, const AcDSLTaskGraph graph, const bool log)
+gen_taskgraph_kernel_entry(const int call, const AcDSLTaskGraph graph, FILE* stream)
 {
-	auto kernel = DSLTaskGraphKernels[graph][call];
-	const int log_int = (log ? 0 : 1) + ac_pid();
+	const auto kernel = DSLTaskGraphKernels[graph][call];
 	auto log_fields = [&](const auto& fields)
 	{
+		if(!ac_pid()) fprintf(stream,"{");
 		for(const auto& field : fields)
-			if(!log_int) fprintf(stderr, "%s,",field_names[field]);
+			if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
+		if(!ac_pid()) fprintf(stream,"}");
 	};
-	auto fields = get_kernel_fields(kernel,info);
-	if(!log_int) fprintf(stderr,"%s({",kernel_names[kernel]);
+	auto fields = get_kernel_fields(kernel);
+	if(!ac_pid()) fprintf(stream,"%s(",kernel_names[kernel]);
 	log_fields(fields.in);
-	if(!log_int) fprintf(stderr,"},{");
+	if(!ac_pid()) fprintf(stream,",");
 	log_fields(fields.out);
-	if(!log_int) fprintf(stderr,"})\n");
+	if(!ac_pid()) fprintf(stream,")\n");
 	
 	return acCompute(kernel,fields.in,fields.out,DSLTaskGraphKernelLoaders[graph][call]);
 }
@@ -4712,15 +4835,16 @@ gen_halo_exchange_and_boundconds(
 		const std::vector<Field>& fields,
 		const std::vector<Field>& communicated_fields,
 		const FieldBCs field_boundconds,
-		const KernelAnalysisInfo info,
-		const bool log
+		FILE* stream
 		)
 {
-		const int log_int = (log ? 0 : 1) + ac_pid();
+ 
 		auto log_fields = [&](const auto& fields)
 		{
+			if(!ac_pid()) fprintf(stream,"{");
 			for(const auto& field : fields)
-				if(!log_int) fprintf(stderr, "%s,",field_names[field]);
+				if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
+			if(!ac_pid()) fprintf(stream,"}");
 		};
 		std::vector<AcTaskDefinition> res{};
 		std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
@@ -4736,70 +4860,78 @@ gen_halo_exchange_and_boundconds(
 		if(output_fields.size() > 0)
 		{
 
-			if(!log_int) fprintf(stderr, "Halo(");
+			if(!ac_pid()) fprintf(stream, "Halo(");
 			log_fields(output_fields);
-			if(!log_int) fprintf(stderr, ")\n");
+			if(!ac_pid()) fprintf(stream, ")\n");
 			res.push_back(acHaloExchange(output_fields));
 			const Field one_communicated_field = output_fields[0];
 			const auto x_boundcond = field_boundconds[one_communicated_field][0];
 			const auto y_boundcond = field_boundconds[one_communicated_field][1];
 			const auto z_boundcond = field_boundconds[one_communicated_field][4];
 			
-			const bool x_periodic = x_boundcond == KERNEL_AC_PERIODIC;
-			const bool y_periodic = y_boundcond == KERNEL_AC_PERIODIC;
-			const bool z_periodic = z_boundcond == KERNEL_AC_PERIODIC;
+			const bool x_periodic = x_boundcond.kernel == KERNEL_AC_PERIODIC;
+			const bool y_periodic = y_boundcond.kernel == KERNEL_AC_PERIODIC;
+			const bool z_periodic = z_boundcond.kernel == KERNEL_AC_PERIODIC;
 
 			if(x_periodic)
 			{
 				res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields));
-				if(!log_int) fprintf(stderr,"Periodic(BOUNDARY_X,");
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
 				log_fields(output_fields);
-				if(!log_int) fprintf(stderr,")\n");
+				if(!ac_pid()) fprintf(stream,")\n");
 			}
 			if(y_periodic)
 			{
 				res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields));
-				if(!log_int) fprintf(stderr,"Periodic(BOUNDARY_Y,");
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
 				log_fields(output_fields);
-				if(!log_int) fprintf(stderr,")\n");
+				if(!ac_pid()) fprintf(stream,")\n");
 			}
 			if(z_periodic)
 			{
 				res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields));
-				if(!log_int) fprintf(stderr,"Periodic(BOUNDARY_Z,");
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
 				log_fields(output_fields);
-				if(!log_int) fprintf(stderr,")\n");
+				if(!ac_pid()) fprintf(stream,")\n");
 			}
 
 			for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
                                 for(const auto& field : fields)
 				{
 					bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end();
-                                        field_boundconds_processed[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond] == KERNEL_AC_PERIODIC;
+                                        field_boundconds_processed[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == KERNEL_AC_PERIODIC;
 				}
                         bool all_are_processed = false;
                         while(!all_are_processed)
                         {
                                 for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
                                 {
-					AcKernel processed_boundcond = NUM_KERNELS;
+					BoundCond processed_boundcond{NUM_KERNELS,BOUNDARY_NONE,{}, {}, {},0};
                                 	for(const auto& field : fields)
                                         {
-						if(processed_boundcond != NUM_KERNELS) continue;
 						if(!vtxbuf_is_communicated[field]) continue;
-                                                processed_boundcond = !field_boundconds_processed[field][boundcond] ?  field_boundconds[field][boundcond] : NUM_KERNELS;
+						//TP: always insert boundary conditions with the smaller topological order first
+						if(processed_boundcond.kernel != NUM_KERNELS && processed_boundcond.topological_order < field_boundconds[field][boundcond].topological_order) continue;
+                                                processed_boundcond = !field_boundconds_processed[field][boundcond] ?  field_boundconds[field][boundcond] : processed_boundcond;
                                         }
-                                        if(processed_boundcond == NUM_KERNELS) continue;
-					auto kernel_fields = get_kernel_fields(processed_boundcond,info);
+                                        if(processed_boundcond.kernel == NUM_KERNELS) continue;
 
-					if(!log_int) fprintf(stderr,"BoundCond(%s,%s,{",boundary_str(boundaries[boundcond]), kernel_names[processed_boundcond]);
-					log_fields(kernel_fields.in);
-					if(!log_int) fprintf(stderr,"},{");
-					log_fields(kernel_fields.out);
-					if(!log_int) fprintf(stderr,"})\n");
-					res.push_back(acBoundaryCondition(boundaries[boundcond],processed_boundcond,kernel_fields.in,kernel_fields.out));
-					for(const auto& field : kernel_fields.out)
+					log_boundcond(stream,processed_boundcond,boundaries[boundcond]);
+					res.push_back(acBoundaryCondition(boundaries[boundcond],processed_boundcond.kernel,processed_boundcond.in,processed_boundcond.out));
+					for(const auto& field : processed_boundcond.out)
 						field_boundconds_processed[field][boundcond] = true;
+					bool has_dependency = false;
+					for(const auto& field : processed_boundcond.in)
+					{
+						if(std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end()) continue;
+						has_dependency |= processed_boundcond.info.larger_input || field_boundconds[field][boundcond].info.larger_output;
+					}
+					if(has_dependency)
+					{
+						acLogFromRootProc(ac_pid(), "BC needs to be called since some other bc depends on it\nTODO implement this --- now easier with an actual example use case ---");
+						exit(EXIT_FAILURE);
+					}
+
                                 }
                                 all_are_processed = true;
                                 for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
@@ -4838,10 +4970,8 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 			}
 		}
 	};
-	const bool log = true;
-	const int log_int = (log ? 0 : 1) + ac_pid();
 	const KernelAnalysisInfo info = get_kernel_analysis_info();
-	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph],info);
+	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph]);
 	check_field_boundconds(field_boundconds);
 	std::vector<AcTaskDefinition> res{};
 	std::vector<AcKernel> kernel_calls_in_level_order{};
@@ -4858,8 +4988,9 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 	std::array<std::array<bool, MAX_TASKS>,NUM_VTXBUF_HANDLES> field_needs_to_be_communicated_before_level_set{};
 
 	std::fill(call_level_set.begin(),call_level_set.end(),-1);
+	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
+	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[graph]);
 	bool all_processed = false;
-	if (!log_int) fprintf(stderr,"%s Ops:\n",taskgraph_names[graph]);
 	while(!all_processed)
 	{
 		std::fill(field_stencil_ops_at_next_level_set.begin(),field_stencil_ops_at_next_level_set.end(), false);
@@ -4871,7 +5002,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 			none_advanced &= !next_level_set[i];
 		if(none_advanced)
 		{
-			fprintf(stderr,"Bug in acGetDSLTaskGraphOps. Aborting: None advanced in level set %d\n",n_level_sets);
+			acLogFromRootProc(ac_pid(),"Bug in acGetDSLTaskGraphOps. Aborting: None advanced in level set %d\n",n_level_sets);
 			exit(EXIT_FAILURE);
 		}
 		for(size_t i = 0; i  < kernel_calls.size(); ++i)
@@ -4903,7 +5034,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 			all_processed &= (call_level_set[k] != -1);
 		if((size_t) n_level_sets > kernel_calls.size())
 		{
-			fprintf(stderr,"Bug in acGetDSLTaskGraphOps. Aborting: %d\n",n_level_sets);
+			acLogFromRootProc(ac_pid(),"Bug in acGetDSLTaskGraphOps. Aborting: %d\n",n_level_sets);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -4928,31 +5059,63 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 		  fields_written_to,
 		  communicated_fields,
 		  field_boundconds,
-		  info,
-		  log
+		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
 		ops = gen_halo_exchange_and_boundconds(
 		  fields_not_written_to,
 		  communicated_fields,
 		  field_boundconds,
-		  info,
-		  log
+		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
+		std::vector<int> level_set_call_indexes{};
 		for(size_t call = 0; call < kernel_calls.size(); ++call) 
 		{
 			if(call_level_set[call] == level_set)
+				level_set_call_indexes.push_back(call);
+		}
+		std::vector<AcKernel> level_set_kernels{};
+		for(auto& call : level_set_call_indexes)
+			level_set_kernels.push_back(kernel_calls[call]);
+		std::vector<Field> input_fields_not_communicated{};
+		for(auto& kernel : level_set_kernels)
+		{
+			auto fields = get_kernel_fields(kernel);
+			for(auto& field : fields.in)
 			{
-				const auto kernel = kernel_calls[call];
-				res.push_back(gen_taskgraph_kernel_entry(call,info,graph,log));
-				for(size_t field = 0; field < NUM_ALL_FIELDS; ++field)
-					field_written_out_before[field] |= info.written_fields[kernel][field];
-
+				if(std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end())
+					input_fields_not_communicated.push_back(field);
 			}
+
+		}
+		for(auto& field : input_fields_not_communicated)
+		{
+			bool need_to_call_bc = false;
+			need_to_call_bc |= field_boundconds[field][0].info.larger_output;
+			need_to_call_bc |= field_boundconds[field][1].info.larger_output;
+			need_to_call_bc |= field_boundconds[field][2].info.larger_output;
+			need_to_call_bc |= field_boundconds[field][3].info.larger_output;
+			need_to_call_bc |= field_boundconds[field][4].info.larger_output;
+			need_to_call_bc |= field_boundconds[field][5].info.larger_output;
+			if(need_to_call_bc)
+			{
+				acLogFromRootProc(ac_pid(), "BC that sets the actual boundary needs to be inserted even though the ghost zones are not needed\nTODO implement this --- now easier with an actual example use case ---");
+				exit(EXIT_FAILURE);
+			}
+
+		}
+		for(auto& call : level_set_call_indexes)
+		{
+			const auto kernel = kernel_calls[call];
+			res.push_back(gen_taskgraph_kernel_entry(call,graph,stream));
+			for(size_t field = 0; field < NUM_ALL_FIELDS; ++field)
+				field_written_out_before[field] |= info.written_fields[kernel][field];
+
 		}
 	}
-	if (!log_int) fprintf(stderr,"\n");
+	if (!ac_pid()) fprintf(stream,"\n");
+	if (!ac_pid()) fclose(stream);
 	return res;
 }
 
