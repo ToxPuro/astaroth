@@ -103,7 +103,7 @@ static int_vec executed_conditionals = VEC_INITIALIZER;
 #define STENCILGEN_HEADER "stencilgen.h"
 #define STENCILGEN_SRC ACC_DIR "/stencilgen.c"
 #define STENCILGEN_EXEC "stencilgen.out"
-#define STENCILACC_SRC ACC_DIR "/stencil_accesses.cpp"
+#define STENCILACC_SRC AC_BASE_PATH "/src/core/stencil_accesses.cpp"
 #define STENCILACC_EXEC "acc_stencil_accesses.o"
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
 //

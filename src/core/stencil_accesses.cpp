@@ -474,7 +474,7 @@ acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src)
 	return AC_SUCCESS;
 }
 
-#ifndef NO_MAIN
+#ifndef AC_NO_MAIN
 int
 main(int argc, char* argv[])
 {

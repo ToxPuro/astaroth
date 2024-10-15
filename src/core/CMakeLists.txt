@@ -26,6 +26,10 @@ if(RUNTIME_COMPILATION)
   endif()
 else()
   add_library(astaroth_core device.cc decomposition.cc grid.cc task.cc node.cc astaroth.cc debug.cc update_params.cc logging.c stencil_accesses.cpp)
+  set_source_files_properties(
+    stencil_accesses.cpp
+    PROPERTIES COMPILE_DEFINITIONS AC_NO_MAIN=1
+  )
   if (USE_HIP)
       find_package(hip)
       target_link_libraries(astaroth_core

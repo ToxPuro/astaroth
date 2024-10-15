@@ -50,7 +50,7 @@ endif()
 ## Generate acc-runtime-headers
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
                 "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
-                "${PROJECT_SOURCE_DIR}/acc/stencil_accesses.cpp"
+                "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
 		"${PROJECT_SOURCE_DIR}/${EXT_SOURCES}")
 
 set(DSL_HEADERS "user_kernels.h"
