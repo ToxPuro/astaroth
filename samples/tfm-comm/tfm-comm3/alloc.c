@@ -9,7 +9,7 @@ void*
 ac_malloc(const size_t bytes)
 {
     void* ptr = malloc(bytes);
-    ERRCHK(ptr != NULL);
+    ERRCHK(ptr);
     return ptr;
 }
 
@@ -39,15 +39,15 @@ ac_realloc(const size_t count, const size_t size, void* ptr)
 void
 ac_copy(const size_t count, const size_t size, const void* in, void* out)
 {
-    ERRCHK(in != NULL);
-    ERRCHK(out != NULL);
+    ERRCHK(in);
+    ERRCHK(out);
     memmove(out, in, count * size);
 }
 
 void*
 ac_dup(const size_t count, const size_t size, const void* in)
 {
-    ERRCHK(in != NULL);
+    ERRCHK(in);
     void* out = ac_calloc(count, size);
     ac_copy(count, size, in, out);
     return out;

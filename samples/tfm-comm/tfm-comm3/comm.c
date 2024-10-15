@@ -85,27 +85,27 @@ exit0:
     return errcode;
 }
 
-ErrorCode
-acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
-            uint64_t* global_nn_offset)
-{
-    int nprocs;
-    int* mpi_decomp  = ac_calloc(ndims, sizeof(mpi_decomp[0]));
-    int* mpi_periods = ac_calloc(ndims, sizeof(mpi_periods[0]));
-    set_array_int(1, ndims, mpi_periods); // Fully periodic
+// ErrorCode
+// acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
+//             uint64_t* global_nn_offset)
+// {
+//     int nprocs;
+//     int* mpi_decomp  = ac_calloc(ndims, sizeof(mpi_decomp[0]));
+//     int* mpi_periods = ac_calloc(ndims, sizeof(mpi_periods[0]));
+//     set_array_int(1, ndims, mpi_periods); // Fully periodic
 
-    ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
-    ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
-    ERRCHK_MPI_API(MPI_Dims_create(nprocs, as_int(ndims), mpi_decomp));
+//     ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
+//     ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
+//     ERRCHK_MPI_API(MPI_Dims_create(nprocs, as_int(ndims), mpi_decomp));
 
-    MPI_Comm mpi_comm;
-    ERRCHK_MPI_API(
-        MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_decomp, mpi_periods, 0, &mpi_comm));
+//     MPI_Comm mpi_comm;
+//     ERRCHK_MPI_API(
+//         MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_decomp, mpi_periods, 0, &mpi_comm));
 
-    ac_free(mpi_periods);
-    ac_free(mpi_decomp);
-    return errcode;
-}
+//     ac_free(mpi_periods);
+//     ac_free(mpi_decomp);
+//     return errcode;
+// }
 
 ErrorCode
 acCommQuit(void)
