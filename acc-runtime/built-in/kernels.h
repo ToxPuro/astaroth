@@ -4,3 +4,6 @@ utility Kernel AC_BUILTIN_RESET()
 		write(Field(field), 0.0)
 	}
 }
+utility Kernel AC_PERIODIC()
+{
+}

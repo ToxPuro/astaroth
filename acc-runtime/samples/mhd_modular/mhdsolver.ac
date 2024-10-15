@@ -554,7 +554,6 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums) 
 	{
 		print("BYE\n")
 	}
-	
     write(VTXBUF_LNRHO, rk3(VTXBUF_LNRHO, continuity(), step_num, time_params.dt))
 
 #if LENTROPY 
@@ -913,9 +912,6 @@ real AC_gamma_m1
 real AC_cv1
 real AC_dz2_bound[7]
 
-const VtxBuffer AC_iss    = VTXBUF_ENTROPY
-const VtxBuffer AC_ilnrho = VTXBUF_LNRHO
-const VtxBuffer AC_irho = VTXBUF_LNRHO
 
 
 /**

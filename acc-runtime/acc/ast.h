@@ -530,6 +530,16 @@ fprintf_filename(const char* filename, const char* format, ...)
 	va_end(args);
 	fclose(fp);
 }
+static inline void
+fprintf_filename_w(const char* filename, const char* format, ...)
+{
+	FILE* fp = fopen(filename,"w");
+	va_list args;
+	va_start(args,format);
+	int ret = vfprintf(fp, format, args);
+	va_end(args);
+	fclose(fp);
+}
 
 static inline char*
 sprintf_new(const char* format, ...)

@@ -120,16 +120,6 @@ typedef enum {AC_XZ=0, AC_YZ=1, AC_BOT=0, AC_TOP=2, NUM_PLATE_BUFFERS=4} PlateTy
     FUNC(BOUNDCOND_CONST)                                                         \
     FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
 
-#ifdef AC_INTEGRATION_ENABLED
-
-#define AC_FOR_SPECIAL_MHD_BCTYPES(FUNC)                                          \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE)                      \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION)                       \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX)                      \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX)
-
-#endif
-
 #define AC_FOR_INIT_TYPES(FUNC)                                                   \
     FUNC(INIT_TYPE_RANDOM)                                                        \
     FUNC(INIT_TYPE_AA_RANDOM)                                                     \
@@ -151,12 +141,6 @@ typedef enum {
     NUM_BCTYPES,
 } AcBoundcond;
 
-#ifdef AC_INTEGRATION_ENABLED
-typedef enum {
-    AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_ID) //
-    NUM_SPECIAL_MHD_BCTYPES,
-} AcSpecialMHDBoundcond;
-#endif
 
 typedef enum {
     AC_FOR_RTYPES(AC_GEN_ID) //
@@ -201,10 +185,6 @@ static const char* bctype_names[] _UNUSED       = {AC_FOR_BCTYPES(AC_GEN_STR) "-
 static const char* rtype_names[] _UNUSED        = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
 static const char* initcondtype_names[] _UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
 
-#ifdef AC_INTEGRATION_ENABLED
-static const char* special_bctype_names[] _UNUSED = {
-    AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_STR) "-end-"};
-#endif
 
 #undef AC_GEN_STR
 #undef _UNUSED
@@ -499,6 +479,12 @@ acGetGridMeshDims(const AcMeshInfo info)
 }
 
 FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
+
+
+FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfo info, KernelAnalysisInfo* dst));
+	
+
+
 
 FUNC_DEFINE(size_t, acGetKernelIdByName,(const char* name));
 
@@ -974,7 +960,6 @@ typedef enum AcTaskType {
     TASKTYPE_COMPUTE,
     TASKTYPE_HALOEXCHANGE,
     TASKTYPE_BOUNDCOND,
-    TASKTYPE_SPECIAL_MHD_BOUNDCOND,
     TASKTYPE_SYNC,
     TASKTYPE_DSL_BOUNDCOND,
 } AcTaskType;
@@ -996,6 +981,8 @@ typedef enum AcBoundary {
     BOUNDARY_XYZ   = BOUNDARY_X | BOUNDARY_Y | BOUNDARY_Z
 } AcBoundary;
 
+FUNC_DEFINE(acAnalysisBCInfo, acAnalysisGetBCInfo,(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary));
+
 typedef struct ParamLoadingInfo {
         acKernelInputParams* params;
         Device device;
@@ -1014,9 +1001,6 @@ typedef struct AcTaskDefinition {
     union {
         AcKernel kernel_enum;
         AcBoundcond bound_cond;
-#ifdef AC_INTEGRATION_ENABLED
-        AcSpecialMHDBoundcond special_mhd_bound_cond;
-#endif
     };
     AcBoundary boundary;
 
@@ -1050,7 +1034,7 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acCompute,(const AcKernel kernel, Field
 
 #if __cplusplus
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acDSLBoundaryCondition,
-		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,std::function<void(ParamLoadingInfo step_info)>));
+		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const std::function<void(ParamLoadingInfo step_info)>));
 #else
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acDSLBoundaryCondition,
 		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,void (*load_func)(ParamLoadingInfo step_info)));
@@ -1064,19 +1048,6 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,(const AcBoundary b
                                      AcRealParam parameters[], const size_t num_parameters));
 
 FUNC_DEFINE(AcTaskDefinition, acSync,());
-#ifdef AC_INTEGRATION_ENABLED
-/** SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the
-   MHD implementation). They launch specially written CUDA kernels that implement the specific
-   boundary condition procedure They are a stop-gap temporary solution. The sensible solution is to
-   replace them with a task type that runs a boundary condition procedure written in the Astaroth
-   DSL.
-*/
-OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acSpecialMHDBoundaryCondition,(const AcBoundary boundary,
-                                               const AcSpecialMHDBoundcond bound_cond,
-                                               AcRealParam parameters[],
-                                               const size_t num_parameters));
-#endif
-
 /** */
 FUNC_DEFINE(AcTaskGraph*, acGridGetDefaultTaskGraph,());
 
@@ -2110,11 +2081,15 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 #ifdef __cplusplus
 
 
+#if AC_MPI_ENABLED
 static UNUSED AcResult
 acGridInit(const AcMesh mesh)
 {
 	return acGridInitBase(mesh);
+
 }
+#endif
+
 #if TWO_D == 0
 static UNUSED AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info, AcCompInfo* comp_info)
 {
@@ -2265,6 +2240,13 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
 
 static inline
 AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
+    return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), loader);
+}
+static inline
+AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields)
 {
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
@@ -2283,18 +2265,7 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
                                num_parameters);
 }
 
-#ifdef AC_INTEGRATION_ENABLED
 
-/** */
-template <size_t num_parameters>
-static AcTaskDefinition
-acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
-                              AcRealParam (&parameters)[num_parameters])
-{
-    return BASE_FUNC_NAME(acSpecialMHDBoundaryCondition)(boundary, bound_cond, parameters, num_parameters);
-}
-
-#endif
 
 /** */
 template <size_t n_ops>
@@ -2302,6 +2273,11 @@ static AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops])
 {
     return BASE_FUNC_NAME(acGridBuildTaskGraph)(ops, n_ops);
+}
+static UNUSED AcTaskGraph*
+acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraph)(ops.data(), ops.size());
 }
 #endif
 #endif

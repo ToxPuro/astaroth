@@ -37,8 +37,16 @@
   #include "errchk.h"
 
   //copied from the sample setup
-  #include "user_built-in_constants.h"
+#ifdef __cplusplus
+#define CONSTEXPR constexpr
+#define MAYBE_UNUSED [[maybe_unused]]
+#else
+#define CONSTEXPR
+#define MAYBE_UNUSED
+#endif
   #include "user_defines.h"
+  #include "user_built-in_constants.h"
+  #include "user_builtin_non_scalar_constants.h"
   #include "func_attributes.h"
 
 #ifdef __cplusplus
@@ -50,6 +58,7 @@ typedef struct Field3
 	HOST_DEVICE_INLINE Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
 	HOST_DEVICE_INLINE Field3() : x{}, y{}, z{} {}
 } Field3;
+
 
 HOST_DEVICE_INLINE Field3 
 MakeField3(const Field& x, const Field& y, const Field& z)
@@ -139,6 +148,19 @@ typedef struct {
     size_t scratchpad_size;
     ProfileBufferArray profiles;
   } VertexBufferArray;
+
+  typedef struct
+  {
+  	int read_fields[NUM_KERNELS][NUM_ALL_FIELDS];
+  	int field_has_stencil_op[NUM_KERNELS][NUM_ALL_FIELDS];
+  	int written_fields[NUM_KERNELS][NUM_ALL_FIELDS];
+  } KernelAnalysisInfo;
+
+  typedef struct
+  {
+  	bool larger_input;
+  	bool larger_output;
+  } acAnalysisBCInfo;
 
 
 

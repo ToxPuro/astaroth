@@ -75,6 +75,7 @@ void strip_whitespace(char *str) {
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
 "const"          { return CONST_QL; }
+"override"          { return OVERRIDE; }
 "dynamic"          { return DYNAMIC_QL; }
 "input"          { return INPUT; }
 "constexpr"      { return CONSTEXPR; }

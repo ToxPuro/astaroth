@@ -25,7 +25,7 @@ if(RUNTIME_COMPILATION)
       endif()
   endif()
 else()
-  add_library(astaroth_core device.cc decomposition.cc grid.cc task.cc node.cc astaroth.cc debug.cc update_params.cc logging.c)
+  add_library(astaroth_core device.cc decomposition.cc grid.cc task.cc node.cc astaroth.cc debug.cc update_params.cc logging.c stencil_accesses.cpp)
   if (USE_HIP)
       find_package(hip)
       target_link_libraries(astaroth_core

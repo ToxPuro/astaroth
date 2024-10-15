@@ -98,9 +98,9 @@ struct Region {
     Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_, RegionFamily family_);
 
     Region translate(int3 translation);
-    bool overlaps(const Region* other);
-    bool geometry_overlaps(const Region* other);
-    bool fields_overlap(const Region* other);
+    bool overlaps(const Region* other) const;
+    bool geometry_overlaps(const Region* other) const;
+    bool fields_overlap(const Region* other) const;
     AcBoundary boundary(uint3_64 decomp, int pid, AcProcMappingStrategy proc_mapping_strategy);
     bool is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy);
 };
@@ -304,28 +304,6 @@ typedef class SyncTask : public Task {
     bool test();
 } SyncTask;
 
-#ifdef AC_INTEGRATION_ENABLED
-// SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD
-// implementation). They launch specially written CUDA kernels that implement the specific boundary
-// condition procedure They are a stop-gap temporary solution. The sensible solution is to replace
-// them with a task type that runs a boundary condition procedure written in the Astaroth DSL.
-enum class SpecialMHDBoundaryConditionState { Waiting = Task::wait_state, Running };
-
-typedef class SpecialMHDBoundaryConditionTask : public Task {
-  private:
-    AcSpecialMHDBoundcond boundcond;
-    int3 boundary_normal;
-    int3 boundary_dims;
-
-  public:
-    SpecialMHDBoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
-                                    int region_tag, int3 nn, Device device_,
-                                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
-    void populate_boundary_region();
-    void advance(const TraceFile* trace_file);
-    bool test();
-} SpecialMHDBoundaryConditionTask;
-#endif
 
 enum class DSLBoundaryConditionState { Waiting = Task::wait_state, Running };
 typedef class DSLBoundaryConditionTask : public Task {

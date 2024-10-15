@@ -91,7 +91,7 @@ to_upper_case(const char* src)
 }
 
 static int* written_fields = NULL;
-static int* read_fields   = NULL;
+static int* read_fields    = NULL;
 static int* field_has_stencil_op = NULL;
 static size_t num_fields = 0;
 static size_t num_kernels = 0;
@@ -104,7 +104,7 @@ static int_vec executed_conditionals = VEC_INITIALIZER;
 #define STENCILGEN_SRC ACC_DIR "/stencilgen.c"
 #define STENCILGEN_EXEC "stencilgen.out"
 #define STENCILACC_SRC ACC_DIR "/stencil_accesses.cpp"
-#define STENCILACC_EXEC "stencil_accesses.out"
+#define STENCILACC_EXEC "acc_stencil_accesses.o"
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
 //
 
@@ -1052,7 +1052,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("dconst_decl.h","%s __device__ __forceinline__ DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
 
-	fprintf_filename("rconst_decl.h","%s __device__ __forceinline__ RCONST(const %sCompParam& param){return d_mesh_info.%s_params[0];}\n"
+	fprintf_filename("rconst_decl.h","%s __device__ __forceinline__ RCONST(const %sCompParam&){return d_mesh_info.%s_params[0];}\n"
 			,datatype_scalar, enum_name, define_name);
 
 	fprintf_filename("get_address.h","size_t  get_address(const %sParam& param){ return (size_t)&d_mesh_info.%s_params[(int)param];}\n"
@@ -1894,7 +1894,7 @@ get_function_params_info(const ASTNode* node, const char* func_name)
 
 func_params_info
 get_func_call_params_info(const ASTNode* func_call);
-void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefix)
+void gen_loader(const ASTNode* func_call, const ASTNode* root)
 {
 		const char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
 		const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,func_name,0,0);
@@ -1910,8 +1910,8 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefi
 
 		func_params_info params_info =  get_function_params_info(root,func_name);
 
-		char loader_str[10000];
-		sprintf(loader_str,"auto %s_%s_loader = [](ParamLoadingInfo p){\n",prefix, func_name);
+		FILE* stream = fopen("user_loaders.h","a");
+		fprintf(stream,"[](ParamLoadingInfo p){\n");
 		const int params_offset = is_boundcond ? 2 : 0;
 		if(!is_boundcond)
 		{
@@ -1928,9 +1928,9 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefi
 			char* input_param = strdup(call_info.expr.data[i]);
 			replace_substring(&input_param,"AC_ITERATION_NUMBER","p.step_number");
 			if (is_number(call_info.expr.data[i]) || is_real(call_info.expr.data[i]) || !strcmp(input_param,"p.step_number"))
-				strcatprintf(loader_str, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], input_param);
+				fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], input_param);
 			else
-				strcatprintf(loader_str, "p.params -> %s.%s = acDeviceGetInput(acGridGetDevice(),%s); \n", func_name,params_info.expr.data[i], input_param);
+				fprintf(stream, "p.params -> %s.%s = acDeviceGetInput(acGridGetDevice(),%s); \n", func_name,params_info.expr.data[i], input_param);
 			free(input_param);
 			//TP: not used anymore TODO: remove
 			//if(!str_vec_contains(*input_symbols,call_info.expr.data[i]))
@@ -1951,8 +1951,8 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefi
 		//	sprintf(tmp, "p.params -> %s.vtxbuf = p.vtxbuf;\n",func_name);
 		//	strcat(loader_str,tmp);
 		//}
-		strcat(loader_str,"};\n");
-		file_append("user_loaders.h",loader_str);
+		fprintf(stream,"},");
+		fclose(stream);
 
 		free_func_params_info(&params_info);
 		free_func_params_info(&call_info);
@@ -1967,61 +1967,6 @@ get_field_name(const int field)
 	return get_symbol_by_index(NODE_VARIABLE_ID,field,FIELD)->identifier;
 }
 	 
-void
-gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, FILE* stream, const char* taskgraph_name)
-{
-	assert(kernel_call);
-	const char* func_name = get_node_by_token(IDENTIFIER,kernel_call)->buffer;
-	const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL);
-	if(kernel_index == -1)
-		fatal("Undeclared kernel %s used in ComputeSteps %s\n",func_name,taskgraph_name);
-	fprintf(stream,"\tacCompute(KERNEL_%s,",func_name);
-	{
-
-		fprintf(stream,"%s","{");
-		for(size_t field = 0; field < num_fields; ++field)
-		{
-			const bool field_in  = (read_fields[field + num_fields*kernel_index] || field_has_stencil_op[field + num_fields*kernel_index]);
-			const char* field_str = get_field_name(field);
-			if(field_in) fprintf(stream,"%s,",field_str);
-		}
-		fprintf(stream, "%s","}");
-
-		fprintf(stream,"%s",",");
-
-		fprintf(stream,"%s","{");
-		for(size_t field = 0; field < num_fields; ++field)
-		{
-			const bool field_out = (written_fields[field + num_fields*kernel_index]);
-			const char* field_str = get_field_name(field);
-			if(field_out) fprintf(stream,"%s,",field_str);
-		}
-		fprintf(stream, "%s","}");
-	}
-	if(kernel_call->rhs)
-		fprintf(stream,",%s_%s_loader",taskgraph_name,func_name);
-	fprintf(stream,"),\n");
-	gen_loader(kernel_call,root,taskgraph_name);
-}
-int_vec
-get_taskgraph_kernel_calls(const ASTNode* function_call_list_head, int n)
-{
-
-	int_vec calls = VEC_INITIALIZER;
-	ASTNode* function_call = function_call_list_head->lhs;
-	const char* func_name = get_node_by_token(IDENTIFIER,function_call)->buffer;
-	if(check_symbol(NODE_FUNCTION_ID,func_name,0,0))
-		push_int(&calls,get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL));
-	while(--n)
-	{
-		function_call_list_head = function_call_list_head->parent;
-		function_call = function_call_list_head->rhs;
-		func_name = get_node_by_token(IDENTIFIER,function_call)->buffer;
-		if(check_symbol(NODE_FUNCTION_ID,func_name,KERNEL,0))
-			push_int(&calls,get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL));
-	}
-	return calls;
-}
 void
 compute_next_level_set(bool* src, const int_vec kernel_calls, bool* field_written_to, int* call_level_set)
 {
@@ -2178,7 +2123,7 @@ process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, con
 			for(size_t field = 0; field < num_fields; ++field)
 	     	     		res[field + num_fields*bc] = (fields.out[field]) ? strdup(full_name) : res[field + num_fields*bc];
 			if(!strcmp(func_name,PERIODIC))
-				gen_loader(func_call,root,prefix);
+				gen_loader(func_call,root);
 		}
 	}
 	free(fields.in);
@@ -2251,149 +2196,9 @@ gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const ASTNode* root, con
 
 	free_func_params_info(&call_info);
 }
-void
-get_field_boundconds_recursive(const ASTNode* node, const ASTNode* root, char** res, const char* boundconds_name)
-{
-	TRAVERSE_PREAMBLE_PARAMS(get_field_boundconds_recursive,root,res,boundconds_name)
-	if(node->type != NODE_BOUNDCONDS_DEF)
-		return;
-	if(node->lhs->buffer != boundconds_name)
-		return;
-	const char* name = node->lhs->buffer;
-	const ASTNode* function_call_list_head = node->rhs;
-	int n_entries = 1;
-	while(function_call_list_head->rhs)
-	{
-		++n_entries;
-		function_call_list_head = function_call_list_head->lhs;
-	}
-	process_boundcond(function_call_list_head->lhs,res,root,boundconds_name);
-	while(--n_entries)
-	{
-		function_call_list_head = function_call_list_head->parent;
-		process_boundcond(function_call_list_head->rhs,res,root,boundconds_name);
-	}
-}
-char**
-get_field_boundconds(const ASTNode* root, const char* boundconds_name)
-{
-	char** res = NULL;
-  	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
-	if(!has_optimization_info)
-		return res;
-	const int num_boundaries = TWO_D ? 4 : 6;
-	res = malloc(sizeof(char*)*num_fields*num_boundaries);
-	memset(res,0,sizeof(char*)*num_fields*num_boundaries);
-	get_field_boundconds_recursive(root,root,res,boundconds_name);
-	return res;
-}
 
 
 
-void
-gen_halo_exchange_and_boundconds(
-		char** field_boundconds,
-		FILE* stream,
-		const char* boundconds_name,
-		const int_vec fields,
-		const int_vec communicated_fields,
-		const bool gen_comm
-		)
-{
-		const int num_boundaries = TWO_D ? 4 : 6;
-		bool* field_boundconds_processed = (bool*)malloc(num_fields*num_boundaries);
-		memset(field_boundconds_processed,0,num_fields*num_boundaries*sizeof(bool));
-		bool need_to_communicate = false;
-		char communicated_fields_str[40000];
-		sprintf(communicated_fields_str,"{");
-		//TP: To check the boundary of periodicity we need some field that is communicated to check are the periodic boundaries
-		int one_communicated_field = -1;
-		for(size_t i = 0; i < fields.size; ++i)
-		{
-			const int field = fields.data[i];
-			bool communicated = int_vec_contains(communicated_fields,field);
-			need_to_communicate |= communicated;
-			if(communicated)
-			{
-				one_communicated_field = field;
-				const char* field_str = get_symbol_by_index(NODE_VARIABLE_ID,field,FIELD)->identifier;
-				strcatprintf(communicated_fields_str,"%s,",field_str);
-			}
-		}
-		strcat(communicated_fields_str,"}");
-		if(need_to_communicate)
-		{
-			if(gen_comm) fprintf(stream,"\tacHaloExchange(%s),\n",communicated_fields_str);
-
-			const char* x_boundcond = field_boundconds[one_communicated_field + num_fields*0];
-			const char* y_boundcond = field_boundconds[one_communicated_field + num_fields*1];
-			const char* z_boundcond = TWO_D ? NULL : field_boundconds[one_communicated_field + num_fields*4];
-			
-			const bool x_periodic = !strcmp(x_boundcond,PERIODIC);
-			const bool y_periodic = !strcmp(y_boundcond,PERIODIC);
-			const bool z_periodic = TWO_D ? false : !strcmp(z_boundcond,PERIODIC);
-
-			char* boundary;
-			asprintf(&boundary,"%s%s%s",
-						x_periodic ? "X" : "",
-						y_periodic ? "Y" : "",
-						z_periodic ? "Z" : ""
-				);
-			if(gen_comm && (x_periodic|| y_periodic || z_periodic))
-				fprintf(stream,"\tacBoundaryCondition(BOUNDARY_%s,BOUNDCOND_PERIODIC,%s),\n",boundary,communicated_fields_str);
-
-			for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
-				for(size_t i = 0; i < fields.size; ++i)
-					field_boundconds_processed[fields.data[i] + num_fields*boundcond]  = !int_vec_contains(communicated_fields,fields.data[i]) || 
-													     !strcmp(field_boundconds[fields.data[i] + num_fields*boundcond],PERIODIC);
-
-			bool all_are_processed = false;
-			while(!all_are_processed)
-			{
-				for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
-				{
-					const char* processed_boundcond = NULL;
-
-					for(size_t i = 0; i < fields.size; ++i)
-					{
-						if(!check_symbol_index(NODE_VARIABLE_ID, i, FIELD, COMMUNICATED)) continue;
-						processed_boundcond = !field_boundconds_processed[fields.data[i] + num_fields*boundcond] ? field_boundconds[fields.data[i] + num_fields*boundcond] : processed_boundcond;
-					}
-					if(!processed_boundcond) continue;
-					fprintf(stream,"\tacBoundaryCondition(%s,KERNEL_%s__%s,{",boundary_str(boundcond),boundconds_name,processed_boundcond);
-
-					for(size_t i = 0; i < fields.size; ++i)
-					{
-						if(!check_symbol_index(NODE_VARIABLE_ID, i, FIELD, COMMUNICATED)) continue;
-						const char* field_str = get_field_name(fields.data[i]);
-						const char* boundcond_str = field_boundconds[fields.data[i] + num_fields*boundcond];
-						if(strcmp(boundcond_str,processed_boundcond)) continue;
-						if(field_boundconds_processed[fields.data[i] + num_fields*boundcond]) continue;
-						field_boundconds_processed[fields.data[i] + num_fields*boundcond] |= true;
-						fprintf(stream,"%s,",field_str);
-					}
-					//TP: no loaders at the moment
-					fprintf(stream,"}),\n");
-					//strcatprintf(res,"},%s_%s_%s_loader),\n",boundconds_name,boundary_str,processed_boundcond);
-				}
-				all_are_processed = true;
-				for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
-					for(size_t i = 0; i < fields.size; ++i)
-						all_are_processed &= field_boundconds_processed[fields.data[i] + num_fields*boundcond];
-			}
-		}
-		free(field_boundconds_processed);
-}
-ASTNode*
-get_list_elem_from_leaf(const ASTNode* leaf, int index)
-{
-
-	if(index == 0)
-		return leaf->lhs;
-	while(index--)
-		leaf = leaf->parent;
-	return leaf->rhs;
-}
 bool
 do_not_rename(const ASTNode* node, const char* str_to_check)
 {
@@ -2444,18 +2249,6 @@ make_unique_bc_calls(ASTNode* node)
 	free_node_vec(&func_calls);
 }
 void
-check_field_boundconds(char*const * field_boundconds)
-{
-	const int num_boundaries = TWO_D ? 4 : 6;
-	for(size_t field = 0; field < num_fields; ++field)
-	{
-		if(!check_symbol_index(NODE_VARIABLE_ID, field, FIELD, COMMUNICATED)) continue;
-		for(int bc = 0; bc < num_boundaries; ++bc)
-			if(!field_boundconds[field + num_fields*bc])
-				fatal("Missing boundcond for field: %s at boundary: %s\n",get_field_name(field),boundary_str(bc));
-	}
-}
-void
 gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* names)
 {
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
@@ -2465,43 +2258,38 @@ gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* n
 	if(node->type != NODE_BOUNDCONDS_DEF) return;
 	const char* name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	push(names,name);
-	char** field_boundconds = get_field_boundconds(root,name);
-	check_field_boundconds(field_boundconds);
-	const int num_boundaries = TWO_D ? 4 : 6;
-	FILE* fp = fopen("user_taskgraphs.h","a");
-	FILE* stream = fopen("user_taskgraphs.h","a");
-	fprintf(stream, "if (graph == %s)\n\treturn acGridBuildTaskGraph({\n",name);
-	fclose(fp);
-	int_vec fields              = VEC_INITIALIZER;
-	int_vec communicated_fields = VEC_INITIALIZER;
-	for(size_t i = 0; i < num_fields; ++i)
+	fprintf_filename("taskgraph_bc_handles.h","%s,",name);
 	{
-		push_int(&fields, i);
-		if(check_symbol_index(NODE_VARIABLE_ID,i,FIELD,COMMUNICATED)) push_int(&communicated_fields,i);
-	}
+		FILE* stream = fopen("taskgraph_kernels.h","a");
+		fprintf(stream,"{");
+		node_vec calls = get_nodes_in_list(node->rhs);
+		for(size_t i = 0; i < calls.size; ++i)
+		{
+			const char* call_name = get_node_by_token(IDENTIFIER,calls.data[i]->lhs)->buffer;
+			if(call_name != PERIODIC)
+				fprintf(stream,"%s,",sprintf_intern("KERNEL_%s__%s",name,call_name));
+			else
+				fprintf(stream,"KERNEL_AC_PERIODIC,");
+		}
+		fprintf(stream,"},");
+		fclose(stream);
 
-	gen_halo_exchange_and_boundconds(
-		  field_boundconds,
-		  stream,
-		  name,
-		  fields,
-		  communicated_fields,
-		  false
-		);
-	bool all_periodic = false;
-	if(communicated_fields.size > 0)
-	{
-		const int some_field = communicated_fields.data[0];
-		const char* x = field_boundconds[some_field + num_fields*0];
-		const char* y = field_boundconds[some_field + num_fields*1];
-		const char* z = TWO_D ? "periodic" : field_boundconds[some_field + num_fields*4];
-		all_periodic = !strcmp(x,"periodic") && !strcmp(y,"periodic") && !strcmp(z,"periodic");
-	}
+		stream = fopen("taskgraph_kernel_bcs.h","a");
+		fprintf(stream,"{");
 
-	free_int_vec(&fields);
-	free_int_vec(&communicated_fields);
-	fprintf(stream,"\t}%s);\n",all_periodic ? ",0" : "");
-	fclose(stream);
+		for(size_t i = 0; i < calls.size; ++i)
+		{
+			func_params_info info = get_func_call_params_info(calls.data[i]);
+			const char* call_name = get_node_by_token(IDENTIFIER,calls.data[i]->lhs)->buffer;
+			fprintf(stream,"%s,",info.expr.data[0]);
+			free_func_params_info(&info);
+		}
+		fprintf(stream,"},");
+		fclose(stream);
+		fprintf_filename("user_loaders.h","{}");
+
+		free_node_vec(&calls);
+	}
 }
 void
 gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* names)
@@ -2513,152 +2301,42 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	if(node->type != NODE_TASKGRAPH_DEF)
 		return;
 	const char* boundconds_name = node->lhs->rhs->buffer;
-	char** field_boundconds = get_field_boundconds(root,boundconds_name);
-
-	check_field_boundconds(field_boundconds);
+	fprintf_filename("taskgraph_bc_handles.h","%s,",boundconds_name);
 
 	const char* name = node->lhs->lhs->buffer;
 	push(names,name);
-	FILE* stream = fopen("user_taskgraphs.h","a");
-	fprintf(stream, "if (graph == %s)\n\treturn acGridBuildTaskGraph({\n",name);
-	const ASTNode* function_call_list_head = node->rhs;
-	//have to traverse in reverse order to generate the right order in taskgraph
-	int n_entries = 1;
-	while(function_call_list_head->rhs)
+	node_vec kernel_call_nodes = get_nodes_in_list(node->rhs);
+	int_vec kernel_calls = VEC_INITIALIZER;
+	for(size_t i = 0; i < kernel_call_nodes.size; ++i)
 	{
-		function_call_list_head = function_call_list_head -> lhs;
-		++n_entries;
+		const char* func_name = get_node_by_token(IDENTIFIER,kernel_call_nodes.data[i])->buffer;
+		push_int(&kernel_calls,get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL));
 	}
 
-	int_vec kernel_calls = get_taskgraph_kernel_calls(function_call_list_head,n_entries);
-
-	int_vec kernel_calls_in_level_order = VEC_INITIALIZER;
-	bool* field_halo_in_sync = malloc(sizeof(bool)*num_fields);
-	bool* field_communicated_once = malloc(sizeof(bool)*num_fields);
-	bool* field_out_from_last_level_set = malloc(sizeof(bool)*num_fields);
-	bool* field_out_from_level_set = malloc(sizeof(bool)*num_fields);
-	bool* field_stencil_ops_at_next_level_set = malloc(sizeof(bool)*num_fields);
-	bool* current_level_set = malloc(sizeof(bool)*num_kernels);
-	bool* next_level_set    = malloc(sizeof(bool)*num_kernels);
-	bool* field_need_to_communicate = malloc(sizeof(bool)*num_fields);
-	memset(field_halo_in_sync,0,sizeof(bool)*num_fields);
-	int n_level_sets = 0;
-	int* call_level_set  = malloc(sizeof(int)*kernel_calls.size);
-	const int MAX_TASKS = 100;
-	bool* field_needs_to_be_communicated_before_level_set = malloc(sizeof(int)*MAX_TASKS*num_fields);
-
-	memset(call_level_set,-1,sizeof(int)*kernel_calls.size);
-	memset(field_out_from_level_set,0,sizeof(bool)*num_fields);
-	memset(field_out_from_last_level_set,0,sizeof(bool)*num_fields);
-
-	
-	bool all_processed = false;
-	while(!all_processed)
 	{
-		memset(field_stencil_ops_at_next_level_set,0,sizeof(bool)*num_fields);
-		memset(field_need_to_communicate,0,sizeof(bool)*num_fields);
-		memset(next_level_set,0,sizeof(bool)*num_kernels);
-		compute_next_level_set(next_level_set, kernel_calls,field_out_from_level_set,call_level_set);
-		for(size_t i = 0; i < kernel_calls.size; ++i)
+		FILE* stream = fopen("taskgraph_kernels.h","a");
+		fprintf(stream,"{");
+		for(size_t i = 0; i < kernel_call_nodes.size; ++i)
 		{
-			if(next_level_set[i])
-			{
-				call_level_set[i] = n_level_sets;
-				const int k = kernel_calls.data[i];
-				for(size_t j = 0; j < num_fields; ++j)
-					field_stencil_ops_at_next_level_set[j] |= field_has_stencil_op[j + num_fields*k];
-			}
+			const char* func_name = get_node_by_token(IDENTIFIER,kernel_call_nodes.data[i])->buffer;
+			fprintf(stream,"KERNEL_%s,",func_name);
 		}
-		for(size_t j = 0; j < num_fields; ++j)
-		    field_halo_in_sync[j] &= !field_out_from_last_level_set[j];
-		for(size_t j = 0; j < num_fields; ++j)
-		    field_need_to_communicate[j] |= (!field_halo_in_sync[j] && field_stencil_ops_at_next_level_set[j]);
-		for(size_t j = 0; j < num_fields; ++j)
-		{
-			field_halo_in_sync[j] |= field_need_to_communicate[j];
-			field_needs_to_be_communicated_before_level_set[j + num_fields*n_level_sets] = field_need_to_communicate[j];
-
-		}
-		//for(size_t j = 0; j < num_fields; ++j)
-			//printf("field out from level set: %d,%ld,%d\n",n_level_sets,j,field_out_from_level_set[j]);
-		bool* swap_tmp;
-		swap_tmp = field_out_from_level_set;
-		field_out_from_level_set = field_out_from_last_level_set;
-		field_out_from_last_level_set = swap_tmp;
-		++n_level_sets;
-		all_processed = true;
-
-		for(size_t k = 0; k < kernel_calls.size; ++k)
-			all_processed &= (call_level_set[k] != -1);
-		if((size_t) n_level_sets > kernel_calls.size)
-			fatal("Bug in the compiler aborting\n");
-
+		fprintf(stream,"},");
+		fclose(stream);
 	}
-	
-	free(field_halo_in_sync);
-	free(field_out_from_level_set);
-	free(field_stencil_ops_at_next_level_set);
-	free(next_level_set);
-	free(field_need_to_communicate);
-	bool* field_written_out_before = (bool*)malloc(sizeof(bool)*num_fields);
-	memset(field_written_out_before,0,sizeof(bool)*num_fields);
-	for(int level_set = 0; level_set < n_level_sets; ++level_set)
 	{
-		int_vec fields_not_written_to = VEC_INITIALIZER;
-		int_vec fields_written_to     = VEC_INITIALIZER;
-		int_vec communicated_fields   = VEC_INITIALIZER;
-		for(size_t i = 0; i < num_fields; ++i)
-		{
-			if(field_needs_to_be_communicated_before_level_set[i + num_fields*level_set])
-				push_int(&communicated_fields,i);
-			if(field_written_out_before[i])
-				push_int(&fields_written_to,i);
-			else
-				push_int(&fields_not_written_to,i);
-		}
-		gen_halo_exchange_and_boundconds(
-		  field_boundconds,
-		  stream,
-		  boundconds_name,
-		  fields_written_to,
-		  communicated_fields,
-		  true
-		);
-		gen_halo_exchange_and_boundconds(
-		  field_boundconds,
-		  stream,
-		  boundconds_name,
-		  fields_not_written_to,
-		  communicated_fields,
-		  true
-		);
-		for(size_t call = 0; call < kernel_calls.size; ++call) 
-		{
-			if(call_level_set[call] == level_set)
-			{
-				const ASTNode* kernel_call = get_list_elem_from_leaf(function_call_list_head,call);
-				gen_taskgraph_kernel_entry(
-						kernel_call,
-						root,stream,name
-				);
-				const char* func_name = get_node_by_token(IDENTIFIER,kernel_call)->buffer;
-				const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL);
-				for(size_t field = 0; field < num_fields; ++field)
-					field_written_out_before[field] |= written_fields[field + num_fields*kernel_index];
 
-			}
-		}
-		free_int_vec(&fields_not_written_to);
-		free_int_vec(&fields_written_to);
-		free_int_vec(&communicated_fields);
+		FILE* stream = fopen("taskgraph_kernel_bcs.h","a");
+		fprintf(stream,"{");
+		for(size_t i = 0; i < kernel_call_nodes.size; ++i)
+			fprintf(stream,"BOUNDARY_NONE,");
+		fprintf(stream,"},");
+		fclose(stream);
 	}
-	free(field_written_out_before);
-	fprintf(stream,"\t});\n");
-	fclose(stream);
-
-
-	free_int_vec(&kernel_calls);
-	free_int_vec(&kernel_calls_in_level_order);
+	fprintf_filename("user_loaders.h","{");
+	for(size_t i = 0; i < kernel_call_nodes.size; ++i)
+		gen_loader(kernel_call_nodes.data[i],root);
+	fprintf_filename("user_loaders.h","},");
 }
 
 
@@ -2693,10 +2371,13 @@ gen_user_taskgraphs(const ASTNode* root)
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 	make_unique_bc_calls((ASTNode*) root);
 	string_vec graph_names = VEC_INITIALIZER;
+	fprintf_filename_w("taskgraph_bc_handles.h","const AcDSLTaskGraph DSLTaskGraphBCs[NUM_DSL_TASKGRAPHS] = { ");
+	fprintf_filename_w("taskgraph_kernels.h","const std::vector<AcKernel> DSLTaskGraphKernels[NUM_DSL_TASKGRAPHS] = { ");
+	fprintf_filename_w("taskgraph_kernel_bcs.h","const std::vector<AcBoundary> DSLTaskGraphKernelBoundaries[NUM_DSL_TASKGRAPHS] = { ");
+	fprintf_filename_w("user_loaders.h","const std::vector<std::function<void(ParamLoadingInfo step_info)>> DSLTaskGraphKernelLoaders[NUM_DSL_TASKGRAPHS] = { ");
+
 	if(has_optimization_info)
-	{
 		gen_user_taskgraphs_recursive(root,root,&graph_names);
-	}
 	string_vec bc_names = VEC_INITIALIZER;
 	if(has_optimization_info)
 		gen_user_boundcond_calls(root,root,&bc_names);
@@ -2708,9 +2389,22 @@ gen_user_taskgraphs(const ASTNode* root)
 	for(size_t i = 0; i < bc_names.size; ++i)
 		fprintf(fp,"%s,",bc_names.data[i]);
 	fprintf(fp,"NUM_DSL_TASKGRAPHS} AcDSLTaskGraph;\n");
+
+	fprintf(fp,"static const char* %s_names[] __attribute__((unused)) = {","taskgraph");
+	for(size_t i = 0; i < graph_names.size; ++i)
+		fprintf(fp,"\"%s\",",graph_names.data[i]);
+	for(size_t i = 0; i < bc_names.size; ++i)
+		fprintf(fp,"\"%s\",",bc_names.data[i]);
+	fprintf(fp,"};\n");
+
+
 	free_str_vec(&graph_names);
 	free_str_vec(&bc_names);
 	fclose(fp);
+	fprintf_filename("taskgraph_bc_handles.h","};\n");
+	fprintf_filename("taskgraph_kernels.h","};\n");
+	fprintf_filename("taskgraph_kernel_bcs.h","};\n");
+	fprintf_filename("user_loaders.h","};\n");
 }
 
 typedef struct
@@ -2929,7 +2623,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	ASTNode* compound_statement = node->rhs->rhs;
 	if(gen_mem_accesses)
 	{
-	  astnode_sprintf_postfix(compound_statement,"%s}",compound_statement->postfix);
+	  astnode_sprintf_postfix(compound_statement,"%s; (void)vba;}",compound_statement->postfix);
 	  return;
 	}
 	const reduce_info kernel_reduce_info = reduce_infos[str_vec_get_index(calling_info.names,get_node_by_token(IDENTIFIER,node->lhs)->buffer)];
@@ -4278,25 +3972,29 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 
 
 	ASTNode* idx_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
-	ASTNode* rhs = astnode_create(NODE_UNKNOWN, idx_node, NULL);
-	if(nodes.size == 3)
+	if(!gen_mem_accesses)
 	{
 		astnode_set_prefix("IDX(",idx_node);
 		astnode_set_postfix(")",idx_node);
 	}
+	ASTNode* rhs = astnode_create(NODE_UNKNOWN, idx_node, NULL);
 	ASTNode* indexes = build_list_node(nodes,",");
 	idx_node->lhs = indexes;
 	indexes->parent = idx_node;
 
-	free_node_vec(&nodes);
 	ASTNode* before_lhs = NULL;
 	if(gen_mem_accesses && is_left_child(NODE_ASSIGNMENT,node))
 	{
-		before_lhs = astnode_create(NODE_UNKNOWN,astnode_dup(node,NULL),NULL);
-		astnode_set_prefix("written_fields[",before_lhs);
-		astnode_set_postfix("] = 1;",before_lhs);
+		before_lhs = astnode_create(NODE_UNKNOWN,astnode_dup(node,NULL),astnode_dup(idx_node,NULL));
+		astnode_set_prefix("mark_as_written(",before_lhs);
+		astnode_set_infix(",",before_lhs);
+		astnode_set_postfix(");",before_lhs);
+
+		astnode_set_prefix("IDX(",idx_node);
+		astnode_set_postfix(")",idx_node);
 	}
 
+	free_node_vec(&nodes);
 	astnode_free(array_access);
         array_access->rhs = rhs;
 	ASTNode* lhs = astnode_create(NODE_UNKNOWN, before_lhs, astnode_dup(node,NULL));
@@ -4350,6 +4048,12 @@ count_nest(const ASTNode* node,const NodeType type)
 	int rhs_res =  (node->rhs) ? count_nest(node->rhs,type) : 0;
 	return max(lhs_res,rhs_res) + (node->type == type);
 }
+
+bool
+is_builtin_constant(const char* name)
+{
+	return strlen(name) > 2 && name[0] == 'A' && name[1] == 'C';
+}
 void
 gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_builtin, FILE* fp_non_scalar_constants, FILE* fp_non_scalar_builtin)
 {
@@ -4361,14 +4065,13 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 		const ASTNode* array_initializer  = get_node(NODE_ARRAY_INITIALIZER, assignment);
 		const ASTNode* array_access       = get_node(NODE_ARRAY_ACCESS, def->lhs);
 		const char* datatype = tspec->lhs->buffer;
-		char* datatype_scalar = remove_substring(strdup(datatype),MULT_STR);
+		const char* datatype_scalar = intern(remove_substring(strdup(datatype),MULT_STR));
 		//TP: the C++ compiler is not always able to use the structs if you don't have the conversion from the initializer list
 		//TP: e.g. multiplying a matrix with a scalar won't work without the conversion
 		if(struct_initializer && !array_initializer)
 			if(!struct_initializer->parent->postfix)
 				astnode_sprintf_prefix(struct_initializer->parent,"(%s)",datatype_scalar);
 		const char* assignment_val = intern(combine_all_new(assignment));
-		remove_substring(datatype_scalar,MULT_STR);
 		const int array_dim = array_initializer ? count_nest(array_initializer,NODE_ARRAY_INITIALIZER) : 0;
 		if(array_initializer)
 		{
@@ -4400,24 +4103,22 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 			//TP: actually can not make macros since if the user e.g. writes const nx = 3 then that define would conflict with variables in hip
                         if(is_primitive_datatype(datatype_scalar))
 			{
-				if(strlen(name) > 2 && name[0] == 'A' && name[1] == 'C')
-                                	fprintf(fp_builtin, "#define %s ((%s)%s)\n",name, datatype_scalar, assignment_val);
-				else
-				{
-                                	fprintf(fp_non_scalar_constants, "[[maybe_unused]] const constexpr %s %s = %s;\n", datatype_scalar, name, assignment_val);
+                                fprintf(is_builtin_constant(name) ? fp_builtin : fp_non_scalar_constants, "#define %s ((%s)%s)\n",name, datatype_scalar, assignment_val);
+				if(!is_builtin_constant(name))
                                 	fprintf(fp, "[[maybe_unused]] constexpr %s %s = %s;\n", datatype_scalar, name, assignment_val);
-				}
 			}
                         else
 			{
-                               fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
-                               fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
-			       if(strlen(name) > 2 && name[0] == 'A' && name[1] == 'C')
-                               		fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
+                               fprintf(
+						is_builtin_constant(name) ? fp_non_scalar_builtin : fp_non_scalar_constants,  
+						"\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val
+				);
+			        if(!is_builtin_constant(name))
+                               		fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
 			}
 		}
-		free(datatype_scalar);
 }
+
 void
 gen_const_variables(const ASTNode* node, FILE* fp, FILE* fp_bi,FILE* fp_non_scalars,FILE* fp_bi_non_scalars)
 {
@@ -4429,13 +4130,10 @@ gen_const_variables(const ASTNode* node, FILE* fp, FILE* fp_bi,FILE* fp_non_scal
 	if(!has_qualifier(node,"const")) return;
 	const ASTNode* tspec = get_node(NODE_TSPEC,node);
 	if(!tspec) return;
-	const ASTNode* def_list_head = node->rhs;
-	while(def_list_head -> rhs)
-	{
-		gen_const_def(def_list_head->rhs,tspec,fp,fp_bi,fp_non_scalars,fp_bi_non_scalars);
-		def_list_head = def_list_head -> lhs;
-	}
-	gen_const_def(def_list_head->lhs,tspec,fp,fp_bi,fp_non_scalars, fp_bi_non_scalars);
+	node_vec assignments = get_nodes_in_list(node->rhs);
+	for(size_t i = 0; i < assignments.size; ++i)
+		gen_const_def(assignments.data[i],tspec,fp,fp_bi,fp_non_scalars,fp_bi_non_scalars);
+	free_node_vec(&assignments);
 }
 
 static int curr_kernel = 0;
@@ -4887,9 +4585,18 @@ gen_user_defines(const ASTNode* root, const char* out)
   FILE* fp_built_in  = fopen("user_built-in_constants.h","w");
   FILE* fp_non_scalar_constants = fopen("user_non_scalar_constants.h","w");
   FILE* fp_bi_non_scalar_constants = fopen("user_builtin_non_scalar_constants.h","w");
+
+  fprintf(fp,"#pragma once\n");
+  fprintf(fp_built_in,"#pragma once\n");
+  //fprintf(fp_non_scalar_constants,"#pragma once\n");
+  fprintf(fp_bi_non_scalar_constants,"#pragma once\n");
+
   gen_const_variables(root,fp,fp_built_in,fp_non_scalar_constants,fp_bi_non_scalar_constants);
+
+  fclose(fp);
   fclose(fp_built_in);
   fclose(fp_non_scalar_constants);
+  fclose(fp_bi_non_scalar_constants);
 }
 
 
@@ -4915,7 +4622,7 @@ gen_user_kernels(const char* out)
   FILE* fp_dec = fopen("user_kernel_declarations.h","a");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier_token == KERNEL)
-      fprintf(fp_dec, "void __global__ %s %s);\n", symbol_table[i].identifier, default_param_list);
+      fprintf(fp_dec, "static void __global__ %s %s);\n", symbol_table[i].identifier, default_param_list);
 
   fprintf(fp_dec, "static const Kernel kernels[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -6584,11 +6291,46 @@ canonalize(ASTNode* node)
 	//canonalize_if_assignments(node);
 }
 void
+get_overrided_vars(ASTNode* node, string_vec* overrided_vars)
+{
+	TRAVERSE_PREAMBLE_PARAMS(get_overrided_vars,overrided_vars);
+	if(!(node->type & NODE_DECLARATION)) return;
+	if(!has_qualifier(node,"override") || !has_qualifier(node,"const")) return;
+	node_vec assignments = get_nodes_in_list(node->rhs);
+	for(size_t i = 0; i < assignments.size; ++i)
+	{
+		const char* name  = get_node_by_token(IDENTIFIER, assignments.data[i])->buffer;
+		if(!str_vec_contains(*overrided_vars,name))
+			push(overrided_vars,name);
+	}
+	free_node_vec(&assignments);
+
+}
+void
+process_overrides_recursive(ASTNode* node, const string_vec overrided_vars)
+{
+	TRAVERSE_PREAMBLE_PARAMS(process_overrides_recursive,overrided_vars);
+	if(!(node->type & NODE_DECLARATION)) return;
+	const ASTNode* id = get_node_by_token(IDENTIFIER,node);
+	if(!id) return;
+	if(str_vec_contains(overrided_vars,id->buffer) && !has_qualifier(node,"override"))
+		replace_node(node,astnode_create(NODE_UNKNOWN,NULL,NULL));
+}
+void
+process_overrides(ASTNode* root)
+{
+	string_vec overrided_vars = VEC_INITIALIZER;
+	get_overrided_vars(root,&overrided_vars);
+	process_overrides_recursive(root,overrided_vars);
+	free_str_vec(&overrided_vars);
+}
+void
 preprocess(ASTNode* root, const bool optimize_conditionals)
 {
   symboltable_reset();
   rename_scoped_variables(root,NULL,NULL);
   symboltable_reset();
+
 
   free_node_vec(&dfunc_nodes);
   free_str_vec(&dfunc_names);
@@ -6599,6 +6341,7 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
 
 
   traverse(root, 0, NULL);
+  process_overrides(root);
   transform_field_intrinsic_func_calls_and_ops(root);
   //We use duplicate dfuncs from gen_boundcond_kernels
   //duplicate_dfuncs = get_duplicate_dfuncs(root);
@@ -6713,6 +6456,7 @@ void
 gen_output_files(ASTNode* root)
 {
   traverse(root, 0, NULL);
+  process_overrides(root);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
 
@@ -6723,10 +6467,10 @@ gen_output_files(ASTNode* root)
   gen_kernel_structs(root);
   FILE* fp = fopen("user_kernel_declarations.h","w");
   fclose(fp);
-  gen_user_kernels("user_declarations.h");
   fp = fopen("user_kernel_declarations.h","a");
   fclose(fp);
   stencilgen(root);
+  gen_user_kernels("user_declarations.h");
 
 }
 bool
@@ -7100,6 +6844,20 @@ cache_func_calls(ASTNode* node)
 		free_node_vec(&cached_calls);
 	}
 }
+void
+rename_kernels(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(rename_kernels);
+	if(node->type & NODE_KFUNCTION || node->type & NODE_FUNCTION_CALL)
+	{
+		ASTNode* id_node = get_node_by_token(IDENTIFIER,node->lhs);
+		if(!id_node) return;
+		if(!check_symbol(NODE_FUNCTION_ID,id_node->buffer,KERNEL,0)) return;
+		astnode_sprintf(id_node,"AC_ANALYSIS_%s",id_node->buffer);
+		printf("RENAMED\n");
+	}
+
+}
 
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals)
@@ -7265,6 +7023,7 @@ compile_helper(void)
 {
   format_source("user_kernels.h.raw","user_kernels.h");
   system("cp user_kernels.h user_kernels_backup.h");
+  system("cp user_kernels.h user_cpu_kernels.h");
   FILE* analysis_stencils = fopen("analysis_stencils.h", "w");
   gen_analysis_stencils(analysis_stencils);
   fclose(analysis_stencils);
@@ -7285,9 +7044,10 @@ compile_helper(void)
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
   sprintf(cmd, "gcc -Wshadow -I. -I " ACC_RUNTIME_API_DIR " %s %s %s " 
-	       STENCILACC_SRC " -lm -lstdc++ -o " STENCILACC_EXEC " "
+	       STENCILACC_SRC " -lm -lstdc++ -o " STENCILACC_EXEC" "
   ,api_includes, use_hip, TWO_D ? "-DTWO_D=1 " : "-DTWO_D=0 "
   );
+
   /*
   const char* cmd = "gcc -Wshadow -I. "
 #if AC_USE_HIP
@@ -7299,13 +7059,14 @@ compile_helper(void)
                     "-o " STENCILACC_EXEC;
   */
   printf("Compile command: %s\n", cmd);
-  const int retval = system(cmd);
-  if (retval != 0) {
-    fprintf(stderr, "Catastrophic error: could not compile the stencil access "
-                    "generator.\n");
-    fprintf(stderr, "Compiler error code: %d\n",retval);
-    assert(retval != 0);
-    exit(EXIT_FAILURE);
+  {
+	const int retval = system(cmd);
+  	if (retval != 0) {
+  	  fprintf(stderr, "Catastrophic error: could not compile the stencil access "
+  	                  "generator.\n");
+  	  fprintf(stderr, "Compiler error code: %d\n",retval);
+  	  exit(EXIT_FAILURE);
+  	}
   }
   printf("%s compilation done\n", STENCILACC_SRC);
 }
@@ -7362,3 +7123,17 @@ generate_mem_accesses(void)
 }
 
 
+/**
+int_vec
+get_read_fields(const char* func_name)
+{
+	int_vec res = VEC_INITIALIZER;
+  	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
+	if(!has_optimization_info) return res;
+	const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL);
+	if(kernel_index == -1) return res;
+	for(size_t i = 0; i < num_fields; ++i)
+		if (read_fields[i + num_fields*kernel_index]) push_int(&res,i);
+	return res;
+}
+**/
