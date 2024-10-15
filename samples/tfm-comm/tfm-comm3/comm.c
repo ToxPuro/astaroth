@@ -26,12 +26,5 @@ acCommTest(void)
     // test_mpi_utils();
     // test_pack();
 
-    void* ptr = NULL;
-    // CHECK_OK(ptr);
-    // if (CHECK_OK(ptr, "PTR alloc failed\n"))
-    //     printf("Ok!\n");
-    // else
-    //     printf("Failure!\n");
-
     return errcount;
 }

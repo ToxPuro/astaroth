@@ -30,8 +30,8 @@ test_get_errorcode_description(void)
     int errcount = 0;
 
     for (int i = ERRORCODE_SUCCESS; i < NUM_ERRORCODES; ++i) {
-        ERRCHK(errorcode_descriptions[i] != NULL);
-        if (errorcode_descriptions[i] == NULL) {
+        if (!errorcode_descriptions[i]) {
+            ERROR("errorcode_descriptions[%d] was not defined", i);
             ++errcount;
         }
     }

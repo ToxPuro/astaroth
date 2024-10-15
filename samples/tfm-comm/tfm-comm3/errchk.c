@@ -12,8 +12,8 @@ fprintc_multiple(FILE* stream, const char c, const size_t count)
 }
 
 __attribute__((__format__(__printf__, 5, 6))) void
-errchk_print_err(const char* function, const char* file, const long line, const char* expression,
-                 const char* fmt, ...)
+errchk_print_error(const char* function, const char* file, const long line, const char* expression,
+                   const char* fmt, ...)
 {
     fflush(stdout);
     fflush(stderr);
@@ -46,8 +46,8 @@ errchk_print_err(const char* function, const char* file, const long line, const 
 }
 
 __attribute__((__format__(__printf__, 5, 6))) void
-errchk_print_warn(const char* function, const char* file, const long line, const char* expression,
-                  const char* fmt, ...)
+errchk_print_warning(const char* function, const char* file, const long line,
+                     const char* expression, const char* fmt, ...)
 {
     time_t terr;
     time(&terr);
