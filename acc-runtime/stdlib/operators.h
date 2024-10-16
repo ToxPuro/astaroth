@@ -67,9 +67,6 @@ curl(Matrix m) {
   return real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
 }
 
-
-
-
 elemental del4(Field s) {
   return der4x(s) + der4y(s) + der4z(s)
 }
@@ -77,6 +74,7 @@ elemental del4(Field s) {
 elemental del6(Field s) {
   return der6x(s) + der6y(s) + der6z(s)
 }
+
 del6_masked(Field s, int mask)
 {
 	x = mask == 1 ? 0.0 : der6x(s)
@@ -84,11 +82,21 @@ del6_masked(Field s, int mask)
 	z = mask == 3 ? 0.0 : der6z(s)
 	return x + y + z
 }
+
 elemental del6_strict(Field s) {
 	print("NOT IMPLEMENTED del6_strict\n")
-	return 0.0
+	return 0.
 }
 
+elemental ugrad_upw(Field field, Field3 velo){
+
+        return dot(velo,gradient(field)) - dot(abs(velo),gradient_upwd(field))
+        //if (msk>0) then
+        //ugradf = ugradf+del6f_upwind
+        //else
+        //ugradf = ugradf-del6f_upwind
+        //endif
+}
 
 elemental del6_upwd(Field s) {
   return der6x_upwd(s) + der6y_upwd(s) + der6z_upwd(s)
@@ -97,7 +105,6 @@ elemental del6_upwd(Field s) {
 elemental laplace(Field s) {
     return derxx(s) + deryy(s) + derzz(s)
 }
-
 
 traceless_strain(uij,divu)
 {

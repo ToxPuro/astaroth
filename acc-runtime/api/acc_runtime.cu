@@ -607,7 +607,7 @@ struct allocate_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(get_config_param(array,config) != nullptr && !is_dconst(array) && is_alive(array) && !has_const_dims(array))
+			if (get_config_param(array,config) != nullptr && !is_dconst(array) && is_alive(array) && !has_const_dims(array))
 			{
 
 #if AC_VERBOSE
@@ -711,14 +711,14 @@ struct update_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
+			if (is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
 			auto config_array = get_config_param(array,config);
 			auto gmem_array   = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
 			size_t bytes = sizeof(config_array[0])*get_array_length(array,config);
-			if(config_array == nullptr && gmem_array != nullptr) 
+			if (config_array == nullptr && gmem_array != nullptr) 
 				device_free(&gmem_array,bytes);
-			else if(config_array != nullptr && gmem_array  == nullptr) 
+			else if (config_array != nullptr && gmem_array  == nullptr) 
 				device_malloc(&gmem_array,bytes);
 			memcpy_to_gmem_array(array,gmem_array);
 		}
@@ -738,7 +738,7 @@ struct free_arrays
 		for(P array: get_params<P>())
 		{
 			auto config_array = get_config_param(array,config);
-			if(config_array == nullptr || is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
+			if (config_array == nullptr || is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
 			auto gmem_array = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
 			device_free(&gmem_array, get_array_length(array,config));
@@ -787,7 +787,7 @@ int
 get_kernel_index(const Kernel kernel)
 {
 	for(int i = 0; i < NUM_KERNELS; ++i)
-		if(kernel == kernels[i]) return i;
+		if (kernel == kernels[i]) return i;
 	return -1;
 }
 AcResult
@@ -804,7 +804,7 @@ acLaunchKernel(AcKernel kernel_enum, const cudaStream_t stream, const int3 start
 
   const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
   const int key = start.x + 10000*start.y + 10000*10000*start.z;
-  if(reduce_offsets[kernel].find(key) == reduce_offsets[kernel].end())
+  if (reduce_offsets[kernel].find(key) == reduce_offsets[kernel].end())
   {
   	reduce_offsets[kernel][key] = kernel_running_reduce_offsets[get_kernel_index(kernel)];
   	kernel_running_reduce_offsets[get_kernel_index(kernel)] += get_num_of_reduce_output(bpg,tpb);
@@ -1002,10 +1002,10 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 	cudaDeviceSynchronize();
 	ERRCHK_ALWAYS(values  != nullptr);
 	const size_t bytes = length*sizeof(values[0]);
-	if(!is_dconst(array))
+	if (!is_dconst(array))
 	{
-		if(!is_alive(array)) return AC_NOT_ALLOCATED;
-		if(has_const_dims(array))
+		if (!is_alive(array)) return AC_NOT_ALLOCATED;
+		if (has_const_dims(array))
 		{
 			memcpy_to_const_dims_gmem_array(array,values);
 			return AC_SUCCESS;
@@ -1013,7 +1013,7 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 		auto dst_ptr = get_empty_pointer(array);
 		memcpy_from_gmem_array(array,dst_ptr);
 		ERRCHK_ALWAYS(dst_ptr != nullptr);
-		if(dst_ptr == nullptr)
+		if (dst_ptr == nullptr)
 		{
 			fprintf(stderr,"FATAL AC ERROR from acLoadArrayUniform\n");
 			exit(EXIT_FAILURE);
@@ -1050,10 +1050,10 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 {
 	ERRCHK_ALWAYS(values  != nullptr);
 	const size_t bytes = length*sizeof(values[0]);
-	if(!is_dconst(array))
+	if (!is_dconst(array))
 	{
-		if(!is_alive(array)) return AC_NOT_ALLOCATED;
-		if(has_const_dims(array))
+		if (!is_alive(array)) return AC_NOT_ALLOCATED;
+		if (has_const_dims(array))
 		{
 			memcpy_from_gmem_array(array,values);
 			return AC_SUCCESS;
@@ -1094,11 +1094,11 @@ logAutotuningStatus(const size_t counter, const size_t num_samples, const Kernel
     const size_t percent_of_num_samples = num_samples/100;
     for (size_t progress = 0; progress <= 100; ++progress)
     {
-	      if(counter == percent_of_num_samples*progress  && grid_pid == 0 && (progress % 10 == 0))
+	      if (counter == percent_of_num_samples*progress  && grid_pid == 0 && (progress % 10 == 0))
 	      {
     			fprintf(stderr,"\nAutotuning %s ",kernel_names[get_kernel_index(kernel)]);
     			printProgressBar(stderr,progress);
-    			if(progress == 100) fprintf(stderr,"\n");
+			if (progress == 100) fprintf(stderr,"\n");
 			fflush(stderr);
 	      }
     }
@@ -1175,7 +1175,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   size_t counter  = 0;
   for (int z = 1; z <= max_threads_per_block; ++z) {
     for (int y = 1; y <= max_threads_per_block; ++y) {
-      if(log) logAutotuningStatus(counter,num_samples,kernel);
+      if (log) logAutotuningStatus(counter,num_samples,kernel);
       counter++;
       // 64 bytes on NVIDIA but the minimum L1 cache transaction is 32
       for (int x = minimum_transaction_size_in_elems;
@@ -1345,7 +1345,7 @@ read_optim_tpb(const Kernel kernel, const int3 dims)
     while(fgets(line,sizeof line,file)!= NULL) /* read a line from a file */ {
       char* entries[9];
       int num_entries = get_entries(entries,line);
-      if(num_entries > 1)
+      if (num_entries > 1)
       {
          int kernel_index  = atoi(entries[1]);
          int3 read_dims = {atoi(entries[2]), atoi(entries[3]), atoi(entries[4])};

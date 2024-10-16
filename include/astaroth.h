@@ -2091,7 +2091,6 @@ acGridInit(const AcMesh mesh)
 
 }
 #endif
-
 #if TWO_D == 0
 static UNUSED AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info, AcCompInfo* comp_info)
 {
