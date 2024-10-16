@@ -14,8 +14,8 @@
 // Structure for keeping track of any generic condition
 struct SimulationPeriod {
 
-    static constexpr AcIntParam NoStepParam  = static_cast<AcIntParam>(-1);
-    static constexpr AcRealParam NoTimeParam = static_cast<AcRealParam>(-1);
+    static constexpr AcIntParam NoStepParam  = static_cast<AcIntParam>(NUM_INT_PARAMS);
+    static constexpr AcRealParam NoTimeParam = static_cast<AcRealParam>(NUM_REAL_PARAMS);
 
     AcIntParam step_period_param  = NoStepParam;
     AcRealParam time_period_param = NoTimeParam;
