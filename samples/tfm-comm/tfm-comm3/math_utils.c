@@ -259,20 +259,20 @@ dot(const size_t count, const uint64_t* a, const uint64_t* b)
 }
 
 void
-factorize(const uint64_t n_initial, uint64_t* nfactors, uint64_t* factors)
+factorize(const size_t n_initial, size_t* nfactors, uint64_t* factors)
 {
     ERRCHK(nfactors);
-    uint64_t n     = n_initial;
-    uint64_t count = 0;
+    size_t n     = n_initial;
+    size_t count = 0;
     if (factors == NULL) {
-        for (uint64_t i = 2; i <= n; ++i)
+        for (size_t i = 2; i <= n; ++i)
             while ((n % i) == 0) {
                 ++count;
                 n /= i;
             }
     }
     else {
-        for (uint64_t i = 2; i <= n; ++i)
+        for (size_t i = 2; i <= n; ++i)
             while ((n % i) == 0) {
                 factors[count++] = i;
                 n /= i;
@@ -287,8 +287,7 @@ popcount(const size_t count, const uint64_t* arr)
 {
     uint64_t popcount = 0;
     for (size_t i = 0; i < count; ++i)
-        if (arr[i] > 0)
-            ++popcount;
+        if (arr[i] > 0) ++popcount;
     return popcount;
 }
 
@@ -367,8 +366,7 @@ contains_subset(const uint64_t subset_length, const uint64_t* subset, const size
                 const uint64_t* b)
 {
     for (size_t i = 0; i < count; i += subset_length) {
-        if (equals(subset_length, subset, &b[i]))
-            return true;
+        if (equals(subset_length, subset, &b[i])) return true;
     }
     return false;
 }
@@ -507,13 +505,13 @@ mod_pointwise(const size_t count, const int64_t* a, const int64_t* b, int64_t* c
 }
 
 void
-to_spatial(const uint64_t index, const size_t ndims, const uint64_t* shape, uint64_t* output)
+to_spatial(const uint64_t index, const size_t ndims, const uint64_t* shape, uint64_t* coords)
 {
     for (size_t j = 0; j < ndims; ++j) {
         uint64_t divisor = 1;
         for (size_t i = 0; i < j; ++i)
             divisor *= shape[i];
-        output[j] = (index / divisor) % shape[j];
+        coords[j] = (index / divisor) % shape[j];
     }
 
     // Alternative
@@ -528,14 +526,14 @@ to_spatial(const uint64_t index, const size_t ndims, const uint64_t* shape, uint
 }
 
 uint64_t
-to_linear(const size_t ndims, const uint64_t* index, const uint64_t* shape)
+to_linear(const size_t ndims, const uint64_t* coords, const uint64_t* shape)
 {
     uint64_t result = 0;
     for (size_t j = 0; j < ndims; ++j) {
         uint64_t factor = 1;
         for (size_t i = 0; i < j; ++i)
             factor *= shape[i];
-        result += index[j] * factor;
+        result += coords[j] * factor;
     }
     return result;
 
@@ -701,6 +699,13 @@ set_array_int(const int value, const size_t count, int* arr)
 }
 
 void
+array_set_uint64_t(const uint64_t value, const size_t count, uint64_t* arr)
+{
+    for (size_t i = 0; i < count; ++i)
+        arr[i] = value;
+}
+
+void
 add_to_array(const uint64_t value, const size_t count, uint64_t* arr)
 {
     for (size_t i = 0; i < count; ++i)
@@ -811,8 +816,7 @@ sort(const size_t count, uint64_t* arr)
     ERRCHK(count > 0);
     for (size_t i = 0; i < count; ++i) {
         for (size_t j = i + 1; j < count; ++j) {
-            if (arr[j] < arr[i])
-                swap(i, j, count, arr);
+            if (arr[j] < arr[i]) swap(i, j, count, arr);
         }
     }
 }
@@ -873,8 +877,7 @@ within_box_note_changed(const size_t ndims, const uint64_t* coords, const uint64
                         const uint64_t* box_offset)
 {
     for (size_t i = 0; i < ndims; ++i)
-        if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
-            return false;
+        if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i]) return false;
     return true;
 }
 // bool
@@ -1000,8 +1003,7 @@ int
 next_positive_integer(int counter)
 {
     ++counter;
-    if (counter < 0)
-        counter = 0;
+    if (counter < 0) counter = 0;
     return counter;
 }
 
@@ -1245,8 +1247,7 @@ matrix_remove_row(const uint64_t row, const uint64_t nrows, const uint64_t ncols
     ac_copy(row * ncols, sizeof(in[0]), in, out);
 
     const size_t count = (nrows - row - 1) * ncols;
-    if (count > 0)
-        ac_copy(count, sizeof(in[0]), &in[(row + 1) * ncols], &out[row * ncols]);
+    if (count > 0) ac_copy(count, sizeof(in[0]), &in[(row + 1) * ncols], &out[row * ncols]);
 }
 
 static void
@@ -1356,8 +1357,7 @@ bool
 equals(const size_t count, const uint64_t* a, const uint64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
-        if (a[i] != b[i])
-            return false;
+        if (a[i] != b[i]) return false;
     return true;
 }
 
@@ -1365,8 +1365,7 @@ bool
 all_less_than(const size_t count, const uint64_t* a, const uint64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
-        if (a[i] >= b[i])
-            return false;
+        if (a[i] >= b[i]) return false;
     return true;
 }
 
@@ -1374,8 +1373,7 @@ bool
 all_less_or_equal_than(const size_t count, const uint64_t* a, const uint64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
-        if (a[i] > b[i])
-            return false;
+        if (a[i] > b[i]) return false;
     return true;
 }
 

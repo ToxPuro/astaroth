@@ -4,11 +4,17 @@
 
 #include <stdio.h>
 
-// #include "errchk_mpi.h"
 #include "alloc.h"
 #include "errchk.h"
 #include "math_utils.h"
 #include "type_conversion.h"
+
+static void
+handle_error(const char* function, const char* file, const long line, const char* expression)
+{
+    errchk_print_error(function, file, line, expression, "");
+    MPI_Abort(MPI_COMM_WORLD, -1);
+}
 
 static void
 handle_mpi_error(const int errorcode, const char* function, const char* file, const long line,
@@ -23,9 +29,10 @@ handle_mpi_error(const int errorcode, const char* function, const char* file, co
 
 #define ERRCHK_MPI_API(errorcode)                                                                  \
     (((errorcode) == MPI_SUCCESS)                                                                  \
-         ? ERRORCODE_SUCCESS                                                                       \
-         : ((handle_mpi_error((errorcode), __func__, __FILE__, __LINE__, #errorcode)),             \
-            ERRORCODE_MPI_FAILURE))
+         ? 0                                                                                       \
+         : ((handle_mpi_error((errorcode), __func__, __FILE__, __LINE__, #errorcode)), -1))
+
+#define ERRCHK_MPI(expr) ((expr) ? 0 : ((handle_error(__func__, __FILE__, __LINE__, #expr)), -1))
 
 ErrorCode
 acCommInit(void)
@@ -33,13 +40,23 @@ acCommInit(void)
     return ERRCHK_MPI_API(MPI_Init(NULL, NULL));
 }
 
-#define COMM_MAX_NDIMS ((size_t)4)
+#include "partition.h"
 
-typedef struct {
-    int* mpi_decomp;
-    int* mpi_periods;
-    MPI_Comm comm;
-} CommCtx;
+ErrorCode
+acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
+            uint64_t* global_nn_offset)
+{
+    partition_hierarchical();
+    return ERRORCODE_NOT_IMPLEMENTED;
+}
+
+// #define COMM_MAX_NDIMS ((size_t)4)
+
+// typedef struct {
+//     int* mpi_decomp;
+//     int* mpi_periods;
+//     MPI_Comm comm;
+// } CommCtx;
 
 /** Setup the communicator module
  * global_nn: dimensions of the global computational domain partitioned to multiple processors
@@ -49,41 +66,70 @@ typedef struct {
  *                  = local nn index + local_nn * decomposition
  * rr: extent of the halo surrounding the computational domain
  */
-ErrorCode
-acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
-            uint64_t* global_nn_offset)
-{
-    ErrorCode errcode = ERRORCODE_SUCCESS;
+// ErrorCode
+// acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
+//             uint64_t* global_nn_offset)
+// {
+//     // Set MPI errors as non-fatal
+//     ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN))
 
-    // Set MPI errors as non-fatal
-    errcode = ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
-    if (errcode != ERRORCODE_SUCCESS) goto exit0;
+//     // Setup nprocs
+//     int nprocs;
+//     ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 
-    // Setup nprocs
-    int nprocs;
-    errcode = ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
-    if (errcode != ERRORCODE_SUCCESS) goto exit0;
+//     // Decompose
+//     int* mpi_decomp = ac_calloc(ndims, sizeof(mpi_decomp[0]));
+//     ERRCHK_MPI_API(MPI_Dims_create(nprocs, as_int(ndims), mpi_decomp));
 
-    // Decompose
-    int* mpi_decomp = ac_calloc(ndims, sizeof(mpi_decomp[0]));
-    errcode         = ERRCHK_MPI_API(MPI_Dims_create(nprocs, as_int(ndims), mpi_decomp));
-    if (errcode != ERRORCODE_SUCCESS) goto exit1;
+//     // Create the communicator
+//     MPI_Comm mpi_comm;
+//     int* mpi_periods = ac_calloc(ndims, sizeof(mpi_periods[0]));
+//     set_array_int(1, ndims, mpi_periods); // Fully periodic
+//     ERRCHK_MPI_API(
+//         MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_decomp, mpi_periods, 0, &mpi_comm);
 
-    // Create the communicator
-    MPI_Comm mpi_comm;
-    int* mpi_periods = ac_calloc(ndims, sizeof(mpi_periods[0]));
-    set_array_int(1, ndims, mpi_periods); // Fully periodic
-    errcode = ERRCHK_MPI_API(
-        MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_decomp, mpi_periods, 0, &mpi_comm));
-    if (errcode != ERRORCODE_SUCCESS) goto exit2;
+// cleanup_2:
+//     ac_free(mpi_periods);
+// cleanup_1:
+//     ac_free(mpi_decomp);
+// done:
+//     return errcode;
+// }
 
-exit2:
-    ac_free(mpi_periods);
-exit1:
-    ac_free(mpi_decomp);
-exit0:
-    return errcode;
-}
+#include <stdlib.h>
+
+// ErrorCode
+// acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
+//             uint64_t* global_nn_offset)
+// {
+//     MPI_Comm parent = MPI_COMM_WORLD;
+
+//     // Set MPI errors as non-fatal
+//     ERRCHK_MPI_API(MPI_Comm_set_errhandler(parent, MPI_ERRORS_RETURN));
+
+//     // Setup nprocs
+//     int nprocs;
+//     ERRCHK_MPI_API(MPI_Comm_size(parent, &nprocs));
+
+//     // Decompose
+//     int* mpi_decomp = ac_calloc(ndims, sizeof(mpi_decomp[0]));
+//     ERRCHK_MPI_API(MPI_Dims_create(nprocs, as_int(ndims), mpi_decomp));
+
+//     // Create the communicator
+//     // int* mpi_periods = ac_calloc(ndims, sizeof(mpi_periods[0]));
+//     int* mpi_periods = ERRCHK(calloc(ndims, sizeof(mpi_periods[0])));
+//     set_array_int(1, ndims, mpi_periods); // Fully periodic
+//     MPI_Comm mpi_comm;
+//     ERRCHK_MPI_API(MPI_Cart_create(parent, as_int(ndims), mpi_decomp, mpi_periods, 0,
+//     &mpi_comm));
+
+//     // int mpi_periods[MAX_NDIMS];
+//     // set_array_int(1, ndims, mpi_periods);
+
+//     ac_free(mpi_periods);
+//     ac_free(mpi_decomp);
+//     return ERRORCODE_SUCCESS;
+// }
 
 // ErrorCode
 // acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
@@ -110,7 +156,8 @@ exit0:
 ErrorCode
 acCommQuit(void)
 {
-    return ERRCHK_MPI_API(MPI_Finalize());
+    ERRCHK_MPI_API(MPI_Finalize());
+    return ERRORCODE_SUCCESS;
 }
 
 ErrorCode

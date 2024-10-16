@@ -5,7 +5,7 @@
 #include "print.h"
 
 static void
-partition_recursive(const Segment mm_seg, const Segment nn_seg, const uint64_t axis,
+partition_recursive(const Segment mm_seg, const Segment nn_seg, const size_t axis,
                     SegmentArray* segments)
 {
     if (prod(mm_seg.ndims, mm_seg.dims) == 0) { // Empty segment
@@ -143,4 +143,71 @@ test_partition(void)
         ERRCHK(segments.length == 4);
         dynarr_destroy(&segments);
     }
+}
+
+static void
+partition_hierarchical_recursive(const size_t npartitions, const size_t ndims,
+                                 const Segment segment, SegmentArray* segments)
+{
+    ERRCHK(npartitions > 0);
+    if (npartitions == 1) {
+        PRINTD_SEGMENT(segment);
+        // dynarr_append(segment_create(segment.ndims, segment.dims, segment.offset), segments);
+        return;
+    }
+
+    // Choose a partitioning axis
+    // Inspired by W.D. Gropp https://doi.org/10.1145/3236367.3236377)
+    size_t nfactors;
+    factorize(npartitions, &nfactors, NULL);
+    uint64_t* factors = ac_calloc(nfactors, sizeof(factors[0]));
+    factorize(npartitions, &nfactors, factors);
+
+    size_t best_axis     = SIZE_MAX;
+    uint64_t best_split  = 0;
+    uint64_t best_factor = 0;
+    for (size_t i = nfactors - 1; i < nfactors; --i) {
+        const uint64_t factor = factors[i];
+        for (size_t j = ndims - 1; j < ndims; --j) {
+            // If dimension j is divisible by factor
+            if ((segment.dims[j] % factor) == 0) {
+                // Select axis if the factoring results in the best split
+                const uint64_t split = segment.dims[j] / factor;
+                if (split > best_split) {
+                    best_axis   = j;
+                    best_split  = split;
+                    best_factor = factor;
+                }
+            }
+        }
+    }
+    ac_free(factors);
+    ERRCHK(best_axis < ndims);
+    ERRCHK((npartitions % best_factor) == 0);
+
+    // for (size_t i = 0; i < best_factor; ++i) {
+    for (size_t i = 0; i < 1; ++i) {
+        Segment new_segment         = segment_create(ndims, segment.dims, segment.offset);
+        new_segment.dims[best_axis] = best_split;
+        new_segment.offset[best_axis] += i * best_split;
+        partition_hierarchical_recursive(npartitions / best_factor, ndims, new_segment, segments);
+        segment_destroy(&new_segment);
+    }
+}
+
+void
+partition_hierarchical(void)
+{
+    SegmentArray segments;
+    dynarr_create_with_destructor(segment_destroy, &segments);
+
+    const uint64_t dims[]   = {512, 64};
+    const uint64_t offset[] = {0, 0, 0};
+    const size_t ndims      = ARRAY_SIZE(dims);
+    Segment segment         = segment_create(ndims, dims, offset);
+    partition_hierarchical_recursive(8, ndims, segment, &segments);
+    printf("segments len %zu\n", segments.length);
+    segment_destroy(&segment);
+
+    dynarr_destroy(&segments);
 }

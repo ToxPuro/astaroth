@@ -21,7 +21,7 @@ void rshift(const uint64_t shift, const uint64_t fill_value, const size_t count,
 
 uint64_t dot(const size_t count, const uint64_t* a, const uint64_t* b);
 
-void factorize(const uint64_t n_initial, uint64_t* nfactors, uint64_t* factors);
+void factorize(const size_t n_initial, size_t* nfactors, uint64_t* factors);
 
 uint64_t popcount(const size_t count, const uint64_t* arr);
 
@@ -41,10 +41,10 @@ int64_t mod(const int64_t a, const int64_t b);
 void mod_pointwise(const size_t count, const int64_t* a, const int64_t* b, int64_t* c);
 
 /** Calculates a projection from a linear index to spatial coordinates within the shape */
-void to_spatial(const uint64_t index, const size_t ndims, const uint64_t* shape, uint64_t* output);
+void to_spatial(const uint64_t index, const size_t ndims, const uint64_t* shape, uint64_t* coords);
 
 /** Calculates a projection from spatial coordinates within shape to a linear index */
-uint64_t to_linear(const size_t ndims, const uint64_t* index, const uint64_t* shape);
+uint64_t to_linear(const size_t ndims, const uint64_t* coords, const uint64_t* shape);
 
 void reverse(const size_t count, uint64_t* arr);
 
@@ -53,6 +53,8 @@ void reversei(const size_t count, int* arr);
 void set(const uint64_t value, const size_t count, uint64_t* arr);
 
 void set_array_int(const int value, const size_t count, int* arr);
+
+void array_set_uint64_t(const uint64_t value, const size_t count, uint64_t* arr);
 
 void add_to_array(const uint64_t value, const size_t count, uint64_t* arr);
 

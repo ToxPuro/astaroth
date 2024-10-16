@@ -14,16 +14,14 @@
 #define WARNING_EXPR(expr) (errchk_print_warning(__func__, __FILE__, __LINE__, #expr, ""))
 
 #define ERRCHK(expr)                                                                               \
-    ((expr) ? (expr) : (errchk_print_error(__func__, __FILE__, __LINE__, #expr, ""), (expr)))
+    ((expr) ? 0 : ((errchk_print_error(__func__, __FILE__, __LINE__, #expr, "")), -1))
 #define WARNCHK(expr)                                                                              \
-    ((expr) ? (expr) : (errchk_print_warning(__func__, __FILE__, __LINE__, #expr, ""), (expr)))
+    ((expr) ? 0 : ((errchk_print_warning(__func__, __FILE__, __LINE__, #expr, "")), -1))
 
 #define ERRCHKK(expr, ...)                                                                         \
-    ((expr) ? (expr)                                                                               \
-            : (errchk_print_error(__func__, __FILE__, __LINE__, #expr, __VA_ARGS__), (expr)))
+    ((expr) ? 0 : ((errchk_print_error(__func__, __FILE__, __LINE__, #expr, __VA_ARGS__)), -1))
 #define WARNCHKK(expr, ...)                                                                        \
-    ((expr) ? (expr)                                                                               \
-            : (errchk_print_warning(__func__, __FILE__, __LINE__, #expr, __VA_ARGS__), (expr)))
+    ((expr) ? 0 : ((errchk_print_warning(__func__, __FILE__, __LINE__, #expr, __VA_ARGS__)), -1))
 
 #ifdef __cplusplus
 extern "C" {

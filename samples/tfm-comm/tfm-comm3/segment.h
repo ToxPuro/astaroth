@@ -17,3 +17,5 @@ void print_segment(const char* label, const Segment segment);
 Segment segment_copy(const Segment in);
 
 void test_segment(void);
+
+#define PRINTD_SEGMENT(segment) (print_segment(#segment, (segment)))

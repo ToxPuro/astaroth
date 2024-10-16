@@ -47,4 +47,6 @@ typedef dynarr_s(Segment) SegmentArray;
 void partition(const size_t ndims, const uint64_t* mm, const uint64_t* nn,
                const uint64_t* nn_offset, SegmentArray* segments);
 
+void partition_hierarchical(void);
+
 void test_partition(void);

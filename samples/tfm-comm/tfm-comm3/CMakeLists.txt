@@ -51,9 +51,8 @@ add_compile_options(# C/CXX/CUDA/HIP
 add_library(tfm-utils STATIC alloc.c buffer.c errchk.c print.c math_utils.c segment.c partition.c dynarr.c type_conversion.c partition.c ntuple.c)
 
 find_package(MPI REQUIRED COMPONENTS C)
-add_library(tfm-comm SHARED comm.c error.c packet.c mpi_utils.c)
-target_link_libraries(tfm-comm PRIVATE tfm-utils)
-target_link_libraries(tfm-comm PRIVATE MPI::MPI_C)
+add_library(tfm-comm SHARED comm.c error.c packet.c mpi_utils.c decomp.c)
+target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-utils)
 
 add_executable(run main.c)
 target_link_libraries(run PRIVATE tfm-utils)

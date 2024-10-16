@@ -4,13 +4,13 @@
 // #define ERRCHK_MPI(expr)                                                                           \
 //     ((expr) ? (expr) : (ERROR_EXPR(expr), MPI_Abort(MPI_COMM_WORLD, 0), (expr)))
 
-#define ERRCHK_MPI(retval)                                                                         \
-    do {                                                                                           \
-        ERRCHK(retval);                                                                            \
-        if (!(retval)) {                                                                           \
-            MPI_Abort(MPI_COMM_WORLD, 0);                                                          \
-        }                                                                                          \
-    } while (0)
+// #define ERRCHK_MPI(retval)                                                                         \
+//     do {                                                                                           \
+//         ERRCHK(retval);                                                                            \
+//         if (!(retval)) {                                                                           \
+//             MPI_Abort(MPI_COMM_WORLD, 0);                                                          \
+//         }                                                                                          \
+//     } while (0)
 
 #define ERRCHK_MPI_API(errorcode)                                                                  \
     do {                                                                                           \
