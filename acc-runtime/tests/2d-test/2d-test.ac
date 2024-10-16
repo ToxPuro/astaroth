@@ -1,9 +1,16 @@
 Field UU
 
 #include "../../stdlib/derivs.h"
-
+input real AC_dt
 Kernel singlepass_solve(real dt) {
     write(UU, value(UU) + dt*( derxx(UU) + deryy(UU)))
 }
 
-
+BoundConds bcs
+{
+	periodic(BOUNDARY_XY)
+}
+ComputeSteps rhs(bcs)
+{
+	singlepass_solve(AC_dt)
+}

@@ -264,11 +264,16 @@ VAL(const int& val)
 bool
 index_at_boundary(const int x, const int y, const int z)
 {
-
+#if TWO_D
+	(void)z;
+#endif
 	return  
 	      ((x < NGHOST) || (x >= VAL(AC_nx_max)))
 	   || ((y < NGHOST) || (y >= VAL(AC_ny_max)))
-	   || ((z < NGHOST) || (z >= VAL(AC_nz_max)));
+#if TWO_D == 0
+	   || ((z < NGHOST) || (z >= VAL(AC_nz_max)))
+#endif
+	   ;
 }
 void
 mark_as_written(const Field& field, const int x, const int y, const int z)
@@ -380,6 +385,7 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA);
 	}
+#if TWO_D == 0
 	if(BOUNDARY_Z_BOT  & boundary)
 	{
 		int3 start = (int3){NGHOST, NGHOST, 0};
@@ -392,6 +398,7 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA);
 	}
+#endif
 }
 int
 get_executed_conditionals()

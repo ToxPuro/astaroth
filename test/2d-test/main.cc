@@ -97,22 +97,13 @@ main(void)
         all_fields.push_back((Field)i);
     }
     const AcReal dt = 0.000001;
+    acDeviceSetInput(acGridGetDevice(), AC_dt,dt);
     AcTaskDefinition periodic_ops[] = {
             acHaloExchange(all_fields),
             acBoundaryCondition(BOUNDARY_XY,BOUNDCOND_PERIODIC,all_fields)
     };
     AcTaskGraph* comm_graph = acGridBuildTaskGraph(periodic_ops);
-    AcTaskDefinition ops[] = {
-	    acHaloExchange(all_fields),
-	    acBoundaryCondition(BOUNDARY_XY,BOUNDCOND_PERIODIC,all_fields),
-	    acCompute(KERNEL_singlepass_solve,
-	              all_fields,
-	              [&](ParamLoadingInfo p){p.params -> singlepass_solve.dt = dt;}
-	    ),
-    };
-    AcTaskGraph* graph = acGridBuildTaskGraph(ops);
-    //printf("Build taskgraphs\n");
-
+    AcTaskGraph* graph = acGetDSLTaskGraph(rhs);
 
     if (pid == 0)
     	acHostMeshRandomize(&model);

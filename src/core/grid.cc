@@ -4809,13 +4809,17 @@ get_field_boundconds(const AcDSLTaskGraph bc_graph)
 void
 check_field_boundconds(const FieldBCs field_boundconds)
 {
-	const std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
+#if TWO_D
+	const std::vector<AcBoundary> boundaries_to_check  = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT};
+#else
+	const std::vector<AcBoundary> boundaries_to_check  = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
+#endif
 	for(size_t field = 0; field < NUM_VTXBUF_HANDLES; ++field)
 	{
 		if(!vtxbuf_is_communicated[field]) continue;
-		for(size_t bc = 0; bc < boundaries.size(); ++bc)
+		for(size_t bc = 0; bc < boundaries_to_check.size(); ++bc)
 			if(field_boundconds[field][bc].kernel  == NUM_KERNELS)
-				fatal("FATAL AC ERROR: Missing boundcond for field %s at boundary %s\n",field_names[field], boundary_str(boundaries[bc]))
+				fatal("FATAL AC ERROR: Missing boundcond for field %s at boundary %s\n",field_names[field], boundary_str(boundaries_to_check[bc]))
 	}
 }
 
@@ -4856,8 +4860,13 @@ gen_halo_exchange_and_boundconds(
 			if(!ac_pid()) fprintf(stream,"}");
 		};
 		std::vector<AcTaskDefinition> res{};
-		std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
+#if TWO_D 
+		constexpr int num_boundaries = 4;
+		std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT};
+#else
 		constexpr int num_boundaries = 6;
+		std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
+#endif
 		std::array<std::array<bool,num_boundaries>,NUM_ALL_FIELDS>  field_boundconds_processed{};
 
 		std::vector<Field> output_fields{};
@@ -4876,11 +4885,11 @@ gen_halo_exchange_and_boundconds(
 			const Field one_communicated_field = output_fields[0];
 			const auto x_boundcond = field_boundconds[one_communicated_field][0];
 			const auto y_boundcond = field_boundconds[one_communicated_field][1];
-			const auto z_boundcond = field_boundconds[one_communicated_field][4];
+			const auto z_boundcond = num_boundaries > 4 ? field_boundconds[one_communicated_field][4] : (BoundCond){};
 			
 			const bool x_periodic = x_boundcond.kernel == KERNEL_AC_PERIODIC;
 			const bool y_periodic = y_boundcond.kernel == KERNEL_AC_PERIODIC;
-			const bool z_periodic = z_boundcond.kernel == KERNEL_AC_PERIODIC;
+			const bool z_periodic = num_boundaries > 4 && z_boundcond.kernel == KERNEL_AC_PERIODIC;
 
 			if(x_periodic)
 			{
