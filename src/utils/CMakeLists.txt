@@ -18,5 +18,11 @@ else()
 		add_library(astaroth_utils memory.cc verification.cc modelreduce.cc profiles.c)
 	endif()
 	target_link_libraries(astaroth_utils astaroth_core)
+
+	add_library(astaroth_random astaroth_random.cc)
+	target_link_libraries(astaroth_random astaroth_core)
+
+	add_library(astaroth_forcing astaroth_forcing.cc)
+	target_link_libraries(astaroth_forcing astaroth_core astaroth_random)
 endif()
 

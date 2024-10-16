@@ -126,6 +126,53 @@ const Field3 BFIELD = Field3(BFIELDX,BFIELDY,BFIELDZ)
 Field VTXBUF_SHOCK
 #endif
 
+#if LTFM
+hostdefine AC_TFM_ENABLED (1)
+
+real AC_eta_tfm
+
+// Aliases for VTXBUF_UU to avoid confusion with the notation convention
+// for mean and fluctuating fields
+#define FIELD_u_x (VTXBUF_UUX)
+#define FIELD_u_y (VTXBUF_UUY)
+#define FIELD_u_z (VTXBUF_UUZ)
+
+// Test fields
+Field TF_a11_x, TF_a11_y, TF_a11_z
+Field TF_a12_x, TF_a12_y, TF_a12_z
+Field TF_a21_x, TF_a21_y, TF_a21_z
+Field TF_a22_x, TF_a22_y, TF_a22_z
+
+#define TF_a11 Field3(TF_a11_x, TF_a11_y, TF_a11_z)
+#define TF_a12 Field3(TF_a12_x, TF_a12_y, TF_a12_z)
+#define TF_a21 Field3(TF_a21_x, TF_a21_y, TF_a21_z)
+#define TF_a22 Field3(TF_a22_x, TF_a22_y, TF_a22_z)
+
+// Derived fields
+Field TF_b11_x, TF_b11_y, TF_b11_z
+Field TF_b12_x, TF_b12_y, TF_b12_z
+Field TF_b21_x, TF_b21_y, TF_b21_z
+Field TF_b22_x, TF_b22_y, TF_b22_z
+
+#define TF_b11 Field3(TF_b11_x, TF_b11_y, TF_b11_z)
+#define TF_b12 Field3(TF_b12_x, TF_b12_y, TF_b12_z)
+#define TF_b21 Field3(TF_b21_x, TF_b21_y, TF_b21_z)
+#define TF_b22 Field3(TF_b22_x, TF_b22_y, TF_b22_z)
+
+// Mean-field profiles
+Profile PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
+
+Profile PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z
+Profile PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z
+Profile PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z
+Profile PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z
+
+Profile PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z
+Profile PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z
+Profile PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z
+Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
+#endif
+
 // Additional params needed by standalone & standalone_mpi
 // diagnostics period
 int AC_save_steps

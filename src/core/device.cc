@@ -104,13 +104,18 @@ acDevicePrintInfo(const Device device)
     return AC_SUCCESS;
 }
 
-
 template <typename T, typename P>
 static AcResult
 acDeviceLoadUniform(const Device device, const Stream stream, const P param, const T value)
 {
 	cudaSetDevice(device->id);
 	return acLoadUniform(device->streams[stream], param, value);
+}
+
+AcMeshInfo
+acDeviceGetLocalConfig(const Device device)
+{
+    return device->local_config;
 }
 
 AcResult
@@ -1330,60 +1335,6 @@ acDeviceGetKernelOutput(const Device device)
 
 //--------------------------------------
 
-typedef struct {
-    AcReal* data;
-    size_t count;
-    bool on_device;
-} AcBuffer;
-
-AcBuffer
-acBufferCreate(const size_t count, const bool on_device)
-{
-    AcBuffer buffer    = {.data = NULL, .count = count, .on_device = on_device};
-    const size_t bytes = sizeof(buffer.data[0]) * count;
-    if (buffer.on_device) {
-        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&buffer.data, bytes));
-    }
-    else {
-        buffer.data = (AcReal*)malloc(bytes);
-    }
-    ERRCHK_ALWAYS(buffer.data);
-    return buffer;
-}
-
-void
-acBufferDestroy(AcBuffer* buffer)
-{
-    if (buffer->on_device)
-        cudaFree(buffer->data);
-    else
-        free(buffer->data);
-    buffer->data  = NULL;
-    buffer->count = 0;
-}
-
-AcResult
-acBufferMigrate(const AcBuffer in, AcBuffer* out)
-{
-    cudaMemcpyKind kind;
-    if (in.on_device) {
-        if (out->on_device)
-            kind = cudaMemcpyDeviceToDevice;
-        else
-            kind = cudaMemcpyDeviceToHost;
-    }
-    else {
-        if (out->on_device)
-            kind = cudaMemcpyHostToDevice;
-        else
-            kind = cudaMemcpyHostToHost;
-    }
-
-    ERRCHK_ALWAYS(in.count == out->count);
-    ERRCHK_CUDA_ALWAYS(cudaMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
-    return AC_SUCCESS;
-}
-
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 #if 0
@@ -1429,9 +1380,9 @@ acDeviceTest(const Device device)
         model.vertex_buffer[VTXBUF_UUX][i] = 0.5;
         model.vertex_buffer[VTXBUF_UUY][i] = 0.2;
         model.vertex_buffer[VTXBUF_UUZ][i] = 0.8;
-        model.vertex_buffer[TF_b11_x][i]   = 0.2;
-        model.vertex_buffer[TF_b11_y][i]   = 0.3;
-        model.vertex_buffer[TF_b11_z][i]   = -0.6;
+        model.vertex_buffer[TF_a11_x][i]   = 0.2;
+        model.vertex_buffer[TF_a11_y][i]   = 0.3;
+        model.vertex_buffer[TF_a11_z][i]   = -0.6;
     }
 #endif
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
@@ -1582,14 +1533,14 @@ acDeviceTest(const Device device)
 }
 #endif
 
-#ifdef AC_INTEGRATION_ENABLED
+#ifdef AC_TFM_ENABLED
 AcResult
-acDeviceReduceXYAverages(const Device device, const Stream )
+acDeviceReduceXYAverages(const Device device, const Stream stream)
 {
     AcMeshDims dims = acGetMeshDims(device->local_config);
 
     // Intermediate buffer
-    const size_t num_compute_profiles = 3 + 4 * 3;
+    const size_t num_compute_profiles = 5 * 3;
     const AcShape buffer_shape        = {
         .x = as_size_t(dims.nn.x),
         .y = as_size_t(dims.nn.y),
@@ -1620,7 +1571,13 @@ acDeviceReduceXYAverages(const Device device, const Stream )
     };
 
     // Reindex
-    VertexBufferHandle reindex_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
+    VertexBufferHandle reindex_fields[] = {
+        VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, //
+        TF_uxb11_x, TF_uxb11_y, TF_uxb11_z, //
+        TF_uxb12_x, TF_uxb12_y, TF_uxb12_z, //
+        TF_uxb21_x, TF_uxb21_y, TF_uxb21_z, //
+        TF_uxb22_x, TF_uxb22_y, TF_uxb22_z, //
+    };
     for (size_t w = 0; w < ARRAY_SIZE(reindex_fields); ++w) {
         const AcIndex buffer_offset = {
             .x = 0,
@@ -1632,16 +1589,16 @@ acDeviceReduceXYAverages(const Device device, const Stream )
                   device->vba.in[reindex_fields[w]], in_offset, in_shape, //
                   buffer.data, buffer_offset, buffer_shape, block_shape);
     }
-    // Note no offset here: is applied in acMapCross instead due to how it works with SOA vectors.
-    const AcIndex buffer_offset = {
-        .x = 0,
-        .y = 0,
-        .z = 0,
-        .w = 0,
-    };
-    acReindexCross(device->streams[STREAM_DEFAULT],  //
-                   device->vba, in_offset, in_shape, //
-                   buffer.data, buffer_offset, buffer_shape, block_shape);
+    // // Note no offset here: is applied in acMapCross instead due to how it works with SOA
+    // vectors. const AcIndex buffer_offset = {
+    //     .x = 0,
+    //     .y = 0,
+    //     .z = 0,
+    //     .w = 0,
+    // };
+    // acReindexCross(device->streams[STREAM_DEFAULT],  //
+    //                device->vba, in_offset, in_shape, //
+    //                buffer.data, buffer_offset, buffer_shape, block_shape);
 
     // Reduce
     // Note the ordering of the fields. The ordering of the fields
@@ -1651,8 +1608,16 @@ acDeviceReduceXYAverages(const Device device, const Stream )
     acSegmentedReduce(device->streams[STREAM_DEFAULT], //
                       buffer.data, buffer_size, num_segments, device->vba.profiles.in[0]);
 
+    // NOTE: Revisit this
+    const size_t gnx = as_size_t(device->local_config.int3_params[AC_global_grid_n].x);
+    const size_t gny = as_size_t(device->local_config.int3_params[AC_global_grid_n].y);
+    cudaSetDevice(device->id);
+    acMultiplyInplace(1. / (gnx * gny), num_compute_profiles * device->vba.profiles.count,
+                      device->vba.profiles.in[0]);
+
     acBufferDestroy(&buffer);
     return AC_FAILURE;
+}
 #else
 AcResult
 acDeviceReduceXYAverages(const Device , const Stream )

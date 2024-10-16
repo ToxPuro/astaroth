@@ -1,15 +1,19 @@
 // Defines
 hostdefine AC_INTEGRATION_ENABLED (1) // Enables acIntegrate() and other non-generic library functions
-hostdefine AC_TFM_ENABLED (1)
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (0)
 hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
-hostdefine LFORCING (0)
+hostdefine LFORCING (1)
 hostdefine LUPWD (1)
-hostdefine R_PI (AC_REAL_PI)
 hostdefine LTFM (1)
+
+hostdefine R_PI (AC_REAL_PI)
+
+// Simulation control
+int AC_simulation_nsteps
+int AC_simulation_output_interval
 
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
@@ -25,6 +29,12 @@ Field VTXBUF_ENTROPY
 #endif
 
 #if LTFM
+hostdefine AC_TFM_ENABLED (1)
+
+real AC_eta_tfm
+real AC_profile_amplitude, AC_profile_wavenumber
+
+
 // Aliases for VTXBUF_UU to avoid confusion with the notation convention
 // for mean and fluctuating fields
 #define FIELD_u_x (VTXBUF_UUX)
@@ -32,15 +42,26 @@ Field VTXBUF_ENTROPY
 #define FIELD_u_z (VTXBUF_UUZ)
 
 // Test fields
-Field TF_b11_x, TF_b11_y, TF_b11_z
-Field TF_b12_x, TF_b12_y, TF_b12_z
-Field TF_b21_x, TF_b21_y, TF_b21_z
-Field TF_b22_x, TF_b22_y, TF_b22_z
+Field TF_a11_x, TF_a11_y, TF_a11_z
+Field TF_a12_x, TF_a12_y, TF_a12_z
+Field TF_a21_x, TF_a21_y, TF_a21_z
+Field TF_a22_x, TF_a22_y, TF_a22_z
 
-#define TF_b11 Field3(TF_b11_x, TF_b11_y, TF_b11_z)
-#define TF_b12 Field3(TF_b12_x, TF_b12_y, TF_b12_z)
-#define TF_b21 Field3(TF_b21_x, TF_b21_y, TF_b21_z)
-#define TF_b22 Field3(TF_b22_x, TF_b22_y, TF_b22_z)
+#define TF_a11 Field3(TF_a11_x, TF_a11_y, TF_a11_z)
+#define TF_a12 Field3(TF_a12_x, TF_a12_y, TF_a12_z)
+#define TF_a21 Field3(TF_a21_x, TF_a21_y, TF_a21_z)
+#define TF_a22 Field3(TF_a22_x, TF_a22_y, TF_a22_z)
+
+// Derived fields
+Field TF_uxb11_x, TF_uxb11_y, TF_uxb11_z
+Field TF_uxb12_x, TF_uxb12_y, TF_uxb12_z
+Field TF_uxb21_x, TF_uxb21_y, TF_uxb21_z
+Field TF_uxb22_x, TF_uxb22_y, TF_uxb22_z
+
+#define TF_uxb11 Field3(TF_uxb11_x, TF_uxb11_y, TF_uxb11_z)
+#define TF_uxb12 Field3(TF_uxb12_x, TF_uxb12_y, TF_uxb12_z)
+#define TF_uxb21 Field3(TF_uxb21_x, TF_uxb21_y, TF_uxb21_z)
+#define TF_uxb22 Field3(TF_uxb22_x, TF_uxb22_y, TF_uxb22_z)
 
 // Mean-field profiles
 Profile PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
@@ -60,6 +81,7 @@ Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
 real AC_dsx, AC_dsy, AC_dsz
 real AC_dt
 int AC_step_number
+real AC_box_size_x, AC_box_size_y, AC_box_size_z
 
 // Run parameters
 real AC_cdt
@@ -71,12 +93,9 @@ real AC_eta
 real AC_mu0
 real AC_cp_sound
 real AC_gamma
-real AC_cv_sound
 real AC_lnT0
 real AC_lnrho0
 real AC_zeta
-real AC_trans
-real AC_nu_shock
 real AC_K_heatcond
 
 //  Forcing parameters. User configured.
@@ -85,6 +104,7 @@ real AC_relhel
 real AC_kmin
 real AC_kmax
 real AC_switch_forcing
+real AC_current_time
 
 //  Forcing parameters. Set by the generator.
 real AC_forcing_phase
@@ -101,17 +121,9 @@ real AC_ff_hel_imz
 
 // Backwards compatibility (boundconds.cuh depends on these, not used here)
 real AC_cs2_sound
-real AC_hcond0_kramers
-real AC_hflux
-real AC_n_kramers
-real AC_sigma_SBt
-real AC_chi
-real AC_chi_t
-real AC_chi_t_prof1
 real AC_center_x
 real AC_center_y
 real AC_center_z
-// real AC_sum_radius
 real AC_window_radius
 
 // Stencils
@@ -416,11 +428,6 @@ momentum() {
           + AC_nu_visc * (veclaplace(UU) + (1. / 3.) * gradient_of_divergence(UU)
                        + 2. * S * gradient(VTXBUF_LNRHO))
           + AC_zeta * gradient_of_divergence(UU)
-#if LSHOCK
-          + AC_nu_shock * (value(VTXBUF_SHOCK) * (divergence(UU) * gradient(VTXBUF_LNRHO) +
-                                           gradient_of_divergence(UU)) +
-                           divergence(UU) * gradient(VTXBUF_SHOCK))
-#endif
 
     return mom
 }
@@ -460,14 +467,8 @@ entropy() {
 #else
     j = real3(0,0,0)
 #endif
-#if LSHOCK
-    entshock = AC_nu_shock * value(VTXBUF_SHOCK) * (divergence(UU) * divergence(UU))  
-#else
-    entshock = 0.0
-#endif
     RHS = (0) - (0) + AC_eta * AC_mu0 * dot(j, j) +
                        2. * exp(value(VTXBUF_LNRHO)) * AC_nu_visc * contract(S) +
-                       entshock +
                        AC_zeta * exp(value(VTXBUF_LNRHO)) * divergence(UU) * divergence(UU)
 
     return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
@@ -523,103 +524,73 @@ rk3_final(f, w) {
 }
 
 #if LTFM
-roc_TF_b21_x() {
-    return AC_eta*(derxx(TF_b21_x) + deryy(TF_b21_x) + derzz(TF_b21_x)) + value(FIELD_u_x)*derz(PROFILE_B21mean_z) + value(FIELD_u_x)*dery(TF_b21_y) + value(FIELD_u_x)*derz(TF_b21_z) - value(FIELD_u_y)*dery(TF_b21_x) - value(FIELD_u_z)*derz(PROFILE_B21mean_x) - value(FIELD_u_z)*derz(TF_b21_x) - value(PROFILE_B21mean_x)*dery(FIELD_u_y) - value(PROFILE_B21mean_x)*derz(FIELD_u_z) + value(PROFILE_B21mean_y)*dery(FIELD_u_x) + value(PROFILE_B21mean_z)*derz(FIELD_u_x) + value(PROFILE_Umean_x)*dery(TF_b21_y) + value(PROFILE_Umean_x)*derz(TF_b21_z) - value(PROFILE_Umean_y)*dery(TF_b21_x) - value(PROFILE_Umean_z)*derz(TF_b21_x) - value(TF_b21_x)*dery(FIELD_u_y) - value(TF_b21_x)*derz(FIELD_u_z) - value(TF_b21_x)*derz(PROFILE_Umean_z) + value(TF_b21_y)*dery(FIELD_u_x) + value(TF_b21_z)*derz(FIELD_u_x) + value(TF_b21_z)*derz(PROFILE_Umean_x) + derz(PROFILE_ucrossb21mean_y)
+roc_TF_a22_x() {
+    return AC_eta_tfm*deryy(TF_a22_x) + AC_eta_tfm*derzz(TF_a22_x) - AC_eta_tfm*derxy(TF_a22_y) - AC_eta_tfm*derxz(TF_a22_z) + value(FIELD_u_y)*value(PROFILE_B22mean_z) - value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*value(PROFILE_B22mean_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z) - value(PROFILE_Umean_y)*dery(TF_a22_x) + value(PROFILE_Umean_y)*derx(TF_a22_y) - value(PROFILE_Umean_z)*derz(TF_a22_x) + value(PROFILE_Umean_z)*derx(TF_a22_z) - value(PROFILE_ucrossb22mean_x)
 }
-roc_TF_b21_y() {
-    return AC_eta*(derxx(TF_b21_y) + deryy(TF_b21_y) + derzz(TF_b21_y)) - value(FIELD_u_x)*derx(TF_b21_y) + value(FIELD_u_y)*derz(PROFILE_B21mean_z) + value(FIELD_u_y)*derx(TF_b21_x) + value(FIELD_u_y)*derz(TF_b21_z) - value(FIELD_u_z)*derz(PROFILE_B21mean_y) - value(FIELD_u_z)*derz(TF_b21_y) + value(PROFILE_B21mean_x)*derx(FIELD_u_y) - value(PROFILE_B21mean_y)*derx(FIELD_u_x) - value(PROFILE_B21mean_y)*derz(FIELD_u_z) + value(PROFILE_B21mean_z)*derz(FIELD_u_y) - value(PROFILE_Umean_x)*derx(TF_b21_y) + value(PROFILE_Umean_y)*derx(TF_b21_x) + value(PROFILE_Umean_y)*derz(TF_b21_z) - value(PROFILE_Umean_z)*derz(TF_b21_y) + value(TF_b21_x)*derx(FIELD_u_y) - value(TF_b21_y)*derx(FIELD_u_x) - value(TF_b21_y)*derz(FIELD_u_z) - value(TF_b21_y)*derz(PROFILE_Umean_z) + value(TF_b21_z)*derz(FIELD_u_y) + value(TF_b21_z)*derz(PROFILE_Umean_y) - derz(PROFILE_ucrossb21mean_x)
+roc_TF_a22_y() {
+    return AC_eta_tfm*derxx(TF_a22_y) + AC_eta_tfm*derzz(TF_a22_y) - AC_eta_tfm*derxy(TF_a22_x) - AC_eta_tfm*deryz(TF_a22_z) - value(FIELD_u_x)*value(PROFILE_B22mean_z) + value(FIELD_u_x)*dery(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_y) + value(FIELD_u_z)*value(PROFILE_B22mean_x) - value(FIELD_u_z)*derz(TF_a22_y) + value(FIELD_u_z)*dery(TF_a22_z) + value(PROFILE_Umean_x)*dery(TF_a22_x) - value(PROFILE_Umean_x)*derx(TF_a22_y) - value(PROFILE_Umean_z)*derz(TF_a22_y) + value(PROFILE_Umean_z)*dery(TF_a22_z) - value(PROFILE_ucrossb22mean_y)
 }
-roc_TF_b21_z() {
-    return AC_eta*(derxx(TF_b21_z) + deryy(TF_b21_z) + derzz(TF_b21_z)) - value(FIELD_u_x)*derx(TF_b21_z) - value(FIELD_u_y)*dery(TF_b21_z) + value(FIELD_u_z)*derx(TF_b21_x) + value(FIELD_u_z)*dery(TF_b21_y) + value(PROFILE_B21mean_x)*derx(FIELD_u_z) + value(PROFILE_B21mean_y)*dery(FIELD_u_z) - value(PROFILE_B21mean_z)*derx(FIELD_u_x) - value(PROFILE_B21mean_z)*dery(FIELD_u_y) - value(PROFILE_Umean_x)*derx(TF_b21_z) - value(PROFILE_Umean_y)*dery(TF_b21_z) + value(PROFILE_Umean_z)*derx(TF_b21_x) + value(PROFILE_Umean_z)*dery(TF_b21_y) + value(TF_b21_x)*derx(FIELD_u_z) + value(TF_b21_y)*dery(FIELD_u_z) - value(TF_b21_z)*derx(FIELD_u_x) - value(TF_b21_z)*dery(FIELD_u_y)
+roc_TF_a22_z() {
+    return AC_eta_tfm*derxx(TF_a22_z) + AC_eta_tfm*deryy(TF_a22_z) - AC_eta_tfm*derxz(TF_a22_x) - AC_eta_tfm*deryz(TF_a22_y) + value(FIELD_u_x)*value(PROFILE_B22mean_y) + value(FIELD_u_x)*derz(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_z) - value(FIELD_u_y)*value(PROFILE_B22mean_x) + value(FIELD_u_y)*derz(TF_a22_y) - value(FIELD_u_y)*dery(TF_a22_z) + value(PROFILE_Umean_x)*derz(TF_a22_x) - value(PROFILE_Umean_x)*derx(TF_a22_z) + value(PROFILE_Umean_y)*derz(TF_a22_y) - value(PROFILE_Umean_y)*dery(TF_a22_z) - value(PROFILE_ucrossb22mean_z)
 }
-roc_TF_b11_x() {
-    return AC_eta*(derxx(TF_b11_x) + deryy(TF_b11_x) + derzz(TF_b11_x)) + value(FIELD_u_x)*derz(PROFILE_B11mean_z) + value(FIELD_u_x)*dery(TF_b11_y) + value(FIELD_u_x)*derz(TF_b11_z) - value(FIELD_u_y)*dery(TF_b11_x) - value(FIELD_u_z)*derz(PROFILE_B11mean_x) - value(FIELD_u_z)*derz(TF_b11_x) - value(PROFILE_B11mean_x)*dery(FIELD_u_y) - value(PROFILE_B11mean_x)*derz(FIELD_u_z) + value(PROFILE_B11mean_y)*dery(FIELD_u_x) + value(PROFILE_B11mean_z)*derz(FIELD_u_x) + value(PROFILE_Umean_x)*dery(TF_b11_y) + value(PROFILE_Umean_x)*derz(TF_b11_z) - value(PROFILE_Umean_y)*dery(TF_b11_x) - value(PROFILE_Umean_z)*derz(TF_b11_x) - value(TF_b11_x)*dery(FIELD_u_y) - value(TF_b11_x)*derz(FIELD_u_z) - value(TF_b11_x)*derz(PROFILE_Umean_z) + value(TF_b11_y)*dery(FIELD_u_x) + value(TF_b11_z)*derz(FIELD_u_x) + value(TF_b11_z)*derz(PROFILE_Umean_x) + derz(PROFILE_ucrossb11mean_y)
+roc_TF_a12_x() {
+    return AC_eta_tfm*deryy(TF_a12_x) + AC_eta_tfm*derzz(TF_a12_x) - AC_eta_tfm*derxy(TF_a12_y) - AC_eta_tfm*derxz(TF_a12_z) + value(FIELD_u_y)*value(PROFILE_B12mean_z) - value(FIELD_u_y)*dery(TF_a12_x) + value(FIELD_u_y)*derx(TF_a12_y) - value(FIELD_u_z)*value(PROFILE_B12mean_y) - value(FIELD_u_z)*derz(TF_a12_x) + value(FIELD_u_z)*derx(TF_a12_z) - value(PROFILE_Umean_y)*dery(TF_a12_x) + value(PROFILE_Umean_y)*derx(TF_a12_y) - value(PROFILE_Umean_z)*derz(TF_a12_x) + value(PROFILE_Umean_z)*derx(TF_a12_z) - value(PROFILE_ucrossb12mean_x)
 }
-roc_TF_b11_y() {
-    return AC_eta*(derxx(TF_b11_y) + deryy(TF_b11_y) + derzz(TF_b11_y)) - value(FIELD_u_x)*derx(TF_b11_y) + value(FIELD_u_y)*derz(PROFILE_B11mean_z) + value(FIELD_u_y)*derx(TF_b11_x) + value(FIELD_u_y)*derz(TF_b11_z) - value(FIELD_u_z)*derz(PROFILE_B11mean_y) - value(FIELD_u_z)*derz(TF_b11_y) + value(PROFILE_B11mean_x)*derx(FIELD_u_y) - value(PROFILE_B11mean_y)*derx(FIELD_u_x) - value(PROFILE_B11mean_y)*derz(FIELD_u_z) + value(PROFILE_B11mean_z)*derz(FIELD_u_y) - value(PROFILE_Umean_x)*derx(TF_b11_y) + value(PROFILE_Umean_y)*derx(TF_b11_x) + value(PROFILE_Umean_y)*derz(TF_b11_z) - value(PROFILE_Umean_z)*derz(TF_b11_y) + value(TF_b11_x)*derx(FIELD_u_y) - value(TF_b11_y)*derx(FIELD_u_x) - value(TF_b11_y)*derz(FIELD_u_z) - value(TF_b11_y)*derz(PROFILE_Umean_z) + value(TF_b11_z)*derz(FIELD_u_y) + value(TF_b11_z)*derz(PROFILE_Umean_y) - derz(PROFILE_ucrossb11mean_x)
+roc_TF_a12_y() {
+    return AC_eta_tfm*derxx(TF_a12_y) + AC_eta_tfm*derzz(TF_a12_y) - AC_eta_tfm*derxy(TF_a12_x) - AC_eta_tfm*deryz(TF_a12_z) - value(FIELD_u_x)*value(PROFILE_B12mean_z) + value(FIELD_u_x)*dery(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_y) + value(FIELD_u_z)*value(PROFILE_B12mean_x) - value(FIELD_u_z)*derz(TF_a12_y) + value(FIELD_u_z)*dery(TF_a12_z) + value(PROFILE_Umean_x)*dery(TF_a12_x) - value(PROFILE_Umean_x)*derx(TF_a12_y) - value(PROFILE_Umean_z)*derz(TF_a12_y) + value(PROFILE_Umean_z)*dery(TF_a12_z) - value(PROFILE_ucrossb12mean_y)
 }
-roc_TF_b11_z() {
-    return AC_eta*(derxx(TF_b11_z) + deryy(TF_b11_z) + derzz(TF_b11_z)) - value(FIELD_u_x)*derx(TF_b11_z) - value(FIELD_u_y)*dery(TF_b11_z) + value(FIELD_u_z)*derx(TF_b11_x) + value(FIELD_u_z)*dery(TF_b11_y) + value(PROFILE_B11mean_x)*derx(FIELD_u_z) + value(PROFILE_B11mean_y)*dery(FIELD_u_z) - value(PROFILE_B11mean_z)*derx(FIELD_u_x) - value(PROFILE_B11mean_z)*dery(FIELD_u_y) - value(PROFILE_Umean_x)*derx(TF_b11_z) - value(PROFILE_Umean_y)*dery(TF_b11_z) + value(PROFILE_Umean_z)*derx(TF_b11_x) + value(PROFILE_Umean_z)*dery(TF_b11_y) + value(TF_b11_x)*derx(FIELD_u_z) + value(TF_b11_y)*dery(FIELD_u_z) - value(TF_b11_z)*derx(FIELD_u_x) - value(TF_b11_z)*dery(FIELD_u_y)
+roc_TF_a12_z() {
+    return AC_eta_tfm*derxx(TF_a12_z) + AC_eta_tfm*deryy(TF_a12_z) - AC_eta_tfm*derxz(TF_a12_x) - AC_eta_tfm*deryz(TF_a12_y) + value(FIELD_u_x)*value(PROFILE_B12mean_y) + value(FIELD_u_x)*derz(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_z) - value(FIELD_u_y)*value(PROFILE_B12mean_x) + value(FIELD_u_y)*derz(TF_a12_y) - value(FIELD_u_y)*dery(TF_a12_z) + value(PROFILE_Umean_x)*derz(TF_a12_x) - value(PROFILE_Umean_x)*derx(TF_a12_z) + value(PROFILE_Umean_y)*derz(TF_a12_y) - value(PROFILE_Umean_y)*dery(TF_a12_z) - value(PROFILE_ucrossb12mean_z)
 }
-roc_TF_b12_x() {
-    return AC_eta*(derxx(TF_b12_x) + deryy(TF_b12_x) + derzz(TF_b12_x)) + value(FIELD_u_x)*derz(PROFILE_B12mean_z) + value(FIELD_u_x)*dery(TF_b12_y) + value(FIELD_u_x)*derz(TF_b12_z) - value(FIELD_u_y)*dery(TF_b12_x) - value(FIELD_u_z)*derz(PROFILE_B12mean_x) - value(FIELD_u_z)*derz(TF_b12_x) - value(PROFILE_B12mean_x)*dery(FIELD_u_y) - value(PROFILE_B12mean_x)*derz(FIELD_u_z) + value(PROFILE_B12mean_y)*dery(FIELD_u_x) + value(PROFILE_B12mean_z)*derz(FIELD_u_x) + value(PROFILE_Umean_x)*dery(TF_b12_y) + value(PROFILE_Umean_x)*derz(TF_b12_z) - value(PROFILE_Umean_y)*dery(TF_b12_x) - value(PROFILE_Umean_z)*derz(TF_b12_x) - value(TF_b12_x)*dery(FIELD_u_y) - value(TF_b12_x)*derz(FIELD_u_z) - value(TF_b12_x)*derz(PROFILE_Umean_z) + value(TF_b12_y)*dery(FIELD_u_x) + value(TF_b12_z)*derz(FIELD_u_x) + value(TF_b12_z)*derz(PROFILE_Umean_x) + derz(PROFILE_ucrossb12mean_y)
+roc_TF_a21_x() {
+    return AC_eta_tfm*deryy(TF_a21_x) + AC_eta_tfm*derzz(TF_a21_x) - AC_eta_tfm*derxy(TF_a21_y) - AC_eta_tfm*derxz(TF_a21_z) + value(FIELD_u_y)*value(PROFILE_B21mean_z) - value(FIELD_u_y)*dery(TF_a21_x) + value(FIELD_u_y)*derx(TF_a21_y) - value(FIELD_u_z)*value(PROFILE_B21mean_y) - value(FIELD_u_z)*derz(TF_a21_x) + value(FIELD_u_z)*derx(TF_a21_z) - value(PROFILE_Umean_y)*dery(TF_a21_x) + value(PROFILE_Umean_y)*derx(TF_a21_y) - value(PROFILE_Umean_z)*derz(TF_a21_x) + value(PROFILE_Umean_z)*derx(TF_a21_z) - value(PROFILE_ucrossb21mean_x)
 }
-roc_TF_b12_y() {
-    return AC_eta*(derxx(TF_b12_y) + deryy(TF_b12_y) + derzz(TF_b12_y)) - value(FIELD_u_x)*derx(TF_b12_y) + value(FIELD_u_y)*derz(PROFILE_B12mean_z) + value(FIELD_u_y)*derx(TF_b12_x) + value(FIELD_u_y)*derz(TF_b12_z) - value(FIELD_u_z)*derz(PROFILE_B12mean_y) - value(FIELD_u_z)*derz(TF_b12_y) + value(PROFILE_B12mean_x)*derx(FIELD_u_y) - value(PROFILE_B12mean_y)*derx(FIELD_u_x) - value(PROFILE_B12mean_y)*derz(FIELD_u_z) + value(PROFILE_B12mean_z)*derz(FIELD_u_y) - value(PROFILE_Umean_x)*derx(TF_b12_y) + value(PROFILE_Umean_y)*derx(TF_b12_x) + value(PROFILE_Umean_y)*derz(TF_b12_z) - value(PROFILE_Umean_z)*derz(TF_b12_y) + value(TF_b12_x)*derx(FIELD_u_y) - value(TF_b12_y)*derx(FIELD_u_x) - value(TF_b12_y)*derz(FIELD_u_z) - value(TF_b12_y)*derz(PROFILE_Umean_z) + value(TF_b12_z)*derz(FIELD_u_y) + value(TF_b12_z)*derz(PROFILE_Umean_y) - derz(PROFILE_ucrossb12mean_x)
+roc_TF_a21_y() {
+    return AC_eta_tfm*derxx(TF_a21_y) + AC_eta_tfm*derzz(TF_a21_y) - AC_eta_tfm*derxy(TF_a21_x) - AC_eta_tfm*deryz(TF_a21_z) - value(FIELD_u_x)*value(PROFILE_B21mean_z) + value(FIELD_u_x)*dery(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_y) + value(FIELD_u_z)*value(PROFILE_B21mean_x) - value(FIELD_u_z)*derz(TF_a21_y) + value(FIELD_u_z)*dery(TF_a21_z) + value(PROFILE_Umean_x)*dery(TF_a21_x) - value(PROFILE_Umean_x)*derx(TF_a21_y) - value(PROFILE_Umean_z)*derz(TF_a21_y) + value(PROFILE_Umean_z)*dery(TF_a21_z) - value(PROFILE_ucrossb21mean_y)
 }
-roc_TF_b12_z() {
-    return AC_eta*(derxx(TF_b12_z) + deryy(TF_b12_z) + derzz(TF_b12_z)) - value(FIELD_u_x)*derx(TF_b12_z) - value(FIELD_u_y)*dery(TF_b12_z) + value(FIELD_u_z)*derx(TF_b12_x) + value(FIELD_u_z)*dery(TF_b12_y) + value(PROFILE_B12mean_x)*derx(FIELD_u_z) + value(PROFILE_B12mean_y)*dery(FIELD_u_z) - value(PROFILE_B12mean_z)*derx(FIELD_u_x) - value(PROFILE_B12mean_z)*dery(FIELD_u_y) - value(PROFILE_Umean_x)*derx(TF_b12_z) - value(PROFILE_Umean_y)*dery(TF_b12_z) + value(PROFILE_Umean_z)*derx(TF_b12_x) + value(PROFILE_Umean_z)*dery(TF_b12_y) + value(TF_b12_x)*derx(FIELD_u_z) + value(TF_b12_y)*dery(FIELD_u_z) - value(TF_b12_z)*derx(FIELD_u_x) - value(TF_b12_z)*dery(FIELD_u_y)
+roc_TF_a21_z() {
+    return AC_eta_tfm*derxx(TF_a21_z) + AC_eta_tfm*deryy(TF_a21_z) - AC_eta_tfm*derxz(TF_a21_x) - AC_eta_tfm*deryz(TF_a21_y) + value(FIELD_u_x)*value(PROFILE_B21mean_y) + value(FIELD_u_x)*derz(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_z) - value(FIELD_u_y)*value(PROFILE_B21mean_x) + value(FIELD_u_y)*derz(TF_a21_y) - value(FIELD_u_y)*dery(TF_a21_z) + value(PROFILE_Umean_x)*derz(TF_a21_x) - value(PROFILE_Umean_x)*derx(TF_a21_z) + value(PROFILE_Umean_y)*derz(TF_a21_y) - value(PROFILE_Umean_y)*dery(TF_a21_z) - value(PROFILE_ucrossb21mean_z)
 }
-roc_TF_b22_x() {
-    return AC_eta*(derxx(TF_b22_x) + deryy(TF_b22_x) + derzz(TF_b22_x)) + value(FIELD_u_x)*derz(PROFILE_B22mean_z) + value(FIELD_u_x)*dery(TF_b22_y) + value(FIELD_u_x)*derz(TF_b22_z) - value(FIELD_u_y)*dery(TF_b22_x) - value(FIELD_u_z)*derz(PROFILE_B22mean_x) - value(FIELD_u_z)*derz(TF_b22_x) - value(PROFILE_B22mean_x)*dery(FIELD_u_y) - value(PROFILE_B22mean_x)*derz(FIELD_u_z) + value(PROFILE_B22mean_y)*dery(FIELD_u_x) + value(PROFILE_B22mean_z)*derz(FIELD_u_x) + value(PROFILE_Umean_x)*dery(TF_b22_y) + value(PROFILE_Umean_x)*derz(TF_b22_z) - value(PROFILE_Umean_y)*dery(TF_b22_x) - value(PROFILE_Umean_z)*derz(TF_b22_x) - value(TF_b22_x)*dery(FIELD_u_y) - value(TF_b22_x)*derz(FIELD_u_z) - value(TF_b22_x)*derz(PROFILE_Umean_z) + value(TF_b22_y)*dery(FIELD_u_x) + value(TF_b22_z)*derz(FIELD_u_x) + value(TF_b22_z)*derz(PROFILE_Umean_x) + derz(PROFILE_ucrossb22mean_y)
+roc_TF_a11_x() {
+    return AC_eta_tfm*deryy(TF_a11_x) + AC_eta_tfm*derzz(TF_a11_x) - AC_eta_tfm*derxy(TF_a11_y) - AC_eta_tfm*derxz(TF_a11_z) + value(FIELD_u_y)*value(PROFILE_B11mean_z) - value(FIELD_u_y)*dery(TF_a11_x) + value(FIELD_u_y)*derx(TF_a11_y) - value(FIELD_u_z)*value(PROFILE_B11mean_y) - value(FIELD_u_z)*derz(TF_a11_x) + value(FIELD_u_z)*derx(TF_a11_z) - value(PROFILE_Umean_y)*dery(TF_a11_x) + value(PROFILE_Umean_y)*derx(TF_a11_y) - value(PROFILE_Umean_z)*derz(TF_a11_x) + value(PROFILE_Umean_z)*derx(TF_a11_z) - value(PROFILE_ucrossb11mean_x)
 }
-roc_TF_b22_y() {
-    return AC_eta*(derxx(TF_b22_y) + deryy(TF_b22_y) + derzz(TF_b22_y)) - value(FIELD_u_x)*derx(TF_b22_y) + value(FIELD_u_y)*derz(PROFILE_B22mean_z) + value(FIELD_u_y)*derx(TF_b22_x) + value(FIELD_u_y)*derz(TF_b22_z) - value(FIELD_u_z)*derz(PROFILE_B22mean_y) - value(FIELD_u_z)*derz(TF_b22_y) + value(PROFILE_B22mean_x)*derx(FIELD_u_y) - value(PROFILE_B22mean_y)*derx(FIELD_u_x) - value(PROFILE_B22mean_y)*derz(FIELD_u_z) + value(PROFILE_B22mean_z)*derz(FIELD_u_y) - value(PROFILE_Umean_x)*derx(TF_b22_y) + value(PROFILE_Umean_y)*derx(TF_b22_x) + value(PROFILE_Umean_y)*derz(TF_b22_z) - value(PROFILE_Umean_z)*derz(TF_b22_y) + value(TF_b22_x)*derx(FIELD_u_y) - value(TF_b22_y)*derx(FIELD_u_x) - value(TF_b22_y)*derz(FIELD_u_z) - value(TF_b22_y)*derz(PROFILE_Umean_z) + value(TF_b22_z)*derz(FIELD_u_y) + value(TF_b22_z)*derz(PROFILE_Umean_y) - derz(PROFILE_ucrossb22mean_x)
+roc_TF_a11_y() {
+    return AC_eta_tfm*derxx(TF_a11_y) + AC_eta_tfm*derzz(TF_a11_y) - AC_eta_tfm*derxy(TF_a11_x) - AC_eta_tfm*deryz(TF_a11_z) - value(FIELD_u_x)*value(PROFILE_B11mean_z) + value(FIELD_u_x)*dery(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_y) + value(FIELD_u_z)*value(PROFILE_B11mean_x) - value(FIELD_u_z)*derz(TF_a11_y) + value(FIELD_u_z)*dery(TF_a11_z) + value(PROFILE_Umean_x)*dery(TF_a11_x) - value(PROFILE_Umean_x)*derx(TF_a11_y) - value(PROFILE_Umean_z)*derz(TF_a11_y) + value(PROFILE_Umean_z)*dery(TF_a11_z) - value(PROFILE_ucrossb11mean_y)
 }
-roc_TF_b22_z() {
-    return AC_eta*(derxx(TF_b22_z) + deryy(TF_b22_z) + derzz(TF_b22_z)) - value(FIELD_u_x)*derx(TF_b22_z) - value(FIELD_u_y)*dery(TF_b22_z) + value(FIELD_u_z)*derx(TF_b22_x) + value(FIELD_u_z)*dery(TF_b22_y) + value(PROFILE_B22mean_x)*derx(FIELD_u_z) + value(PROFILE_B22mean_y)*dery(FIELD_u_z) - value(PROFILE_B22mean_z)*derx(FIELD_u_x) - value(PROFILE_B22mean_z)*dery(FIELD_u_y) - value(PROFILE_Umean_x)*derx(TF_b22_z) - value(PROFILE_Umean_y)*dery(TF_b22_z) + value(PROFILE_Umean_z)*derx(TF_b22_x) + value(PROFILE_Umean_z)*dery(TF_b22_y) + value(TF_b22_x)*derx(FIELD_u_z) + value(TF_b22_y)*dery(FIELD_u_z) - value(TF_b22_z)*derx(FIELD_u_x) - value(TF_b22_z)*dery(FIELD_u_y)
-}
-tfm_singlepass() {
-    write(TF_b21_x, rk3(previous(TF_b21_x), value(TF_b21_x), roc_TF_b21_x()))
-    write(TF_b21_y, rk3(previous(TF_b21_y), value(TF_b21_y), roc_TF_b21_y()))
-    write(TF_b21_z, rk3(previous(TF_b21_z), value(TF_b21_z), roc_TF_b21_z()))
-    write(TF_b11_x, rk3(previous(TF_b11_x), value(TF_b11_x), roc_TF_b11_x()))
-    write(TF_b11_y, rk3(previous(TF_b11_y), value(TF_b11_y), roc_TF_b11_y()))
-    write(TF_b11_z, rk3(previous(TF_b11_z), value(TF_b11_z), roc_TF_b11_z()))
-    write(TF_b12_x, rk3(previous(TF_b12_x), value(TF_b12_x), roc_TF_b12_x()))
-    write(TF_b12_y, rk3(previous(TF_b12_y), value(TF_b12_y), roc_TF_b12_y()))
-    write(TF_b12_z, rk3(previous(TF_b12_z), value(TF_b12_z), roc_TF_b12_z()))
-    write(TF_b22_x, rk3(previous(TF_b22_x), value(TF_b22_x), roc_TF_b22_x()))
-    write(TF_b22_y, rk3(previous(TF_b22_y), value(TF_b22_y), roc_TF_b22_y()))
-    write(TF_b22_z, rk3(previous(TF_b22_z), value(TF_b22_z), roc_TF_b22_z()))
-}
-Kernel singlepass_solve_tfm_b21(){
-    write(TF_b21_x, rk3(previous(TF_b21_x), value(TF_b21_x), roc_TF_b21_x()))
-    write(TF_b21_y, rk3(previous(TF_b21_y), value(TF_b21_y), roc_TF_b21_y()))
-    write(TF_b21_z, rk3(previous(TF_b21_z), value(TF_b21_z), roc_TF_b21_z()))
-}
-Kernel singlepass_solve_tfm_b11(){
-    write(TF_b11_x, rk3(previous(TF_b11_x), value(TF_b11_x), roc_TF_b11_x()))
-    write(TF_b11_y, rk3(previous(TF_b11_y), value(TF_b11_y), roc_TF_b11_y()))
-    write(TF_b11_z, rk3(previous(TF_b11_z), value(TF_b11_z), roc_TF_b11_z()))
-}
-Kernel singlepass_solve_tfm_b12(){
-    write(TF_b12_x, rk3(previous(TF_b12_x), value(TF_b12_x), roc_TF_b12_x()))
-    write(TF_b12_y, rk3(previous(TF_b12_y), value(TF_b12_y), roc_TF_b12_y()))
-    write(TF_b12_z, rk3(previous(TF_b12_z), value(TF_b12_z), roc_TF_b12_z()))
+roc_TF_a11_z() {
+    return AC_eta_tfm*derxx(TF_a11_z) + AC_eta_tfm*deryy(TF_a11_z) - AC_eta_tfm*derxz(TF_a11_x) - AC_eta_tfm*deryz(TF_a11_y) + value(FIELD_u_x)*value(PROFILE_B11mean_y) + value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) - value(FIELD_u_y)*value(PROFILE_B11mean_x) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z) + value(PROFILE_Umean_x)*derz(TF_a11_x) - value(PROFILE_Umean_x)*derx(TF_a11_z) + value(PROFILE_Umean_y)*derz(TF_a11_y) - value(PROFILE_Umean_y)*dery(TF_a11_z) - value(PROFILE_ucrossb11mean_z)
 }
 Kernel singlepass_solve_tfm_b22(){
-    write(TF_b22_x, rk3(previous(TF_b22_x), value(TF_b22_x), roc_TF_b22_x()))
-    write(TF_b22_y, rk3(previous(TF_b22_y), value(TF_b22_y), roc_TF_b22_y()))
-    write(TF_b22_z, rk3(previous(TF_b22_z), value(TF_b22_z), roc_TF_b22_z()))
+    write(TF_a22_x, rk3(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
+    write(TF_a22_y, rk3(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
+    write(TF_a22_z, rk3(previous(TF_a22_z), value(TF_a22_z), roc_TF_a22_z()))
+    write(TF_uxb22_x, -value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z))
+    write(TF_uxb22_y, value(FIELD_u_x)*dery(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_y) + value(FIELD_u_z)*dery(TF_a22_z))
+    write(TF_uxb22_z, value(FIELD_u_x)*derz(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_z) + value(FIELD_u_y)*derz(TF_a22_y) - value(FIELD_u_y)*dery(TF_a22_z))
 }
-tfm_twopass_intermediate() {
-    write(TF_b21_x, rk3_intermediate(previous(TF_b21_x), roc_TF_b21_x()))
-    write(TF_b21_y, rk3_intermediate(previous(TF_b21_y), roc_TF_b21_y()))
-    write(TF_b21_z, rk3_intermediate(previous(TF_b21_z), roc_TF_b21_z()))
-    write(TF_b11_x, rk3_intermediate(previous(TF_b11_x), roc_TF_b11_x()))
-    write(TF_b11_y, rk3_intermediate(previous(TF_b11_y), roc_TF_b11_y()))
-    write(TF_b11_z, rk3_intermediate(previous(TF_b11_z), roc_TF_b11_z()))
-    write(TF_b12_x, rk3_intermediate(previous(TF_b12_x), roc_TF_b12_x()))
-    write(TF_b12_y, rk3_intermediate(previous(TF_b12_y), roc_TF_b12_y()))
-    write(TF_b12_z, rk3_intermediate(previous(TF_b12_z), roc_TF_b12_z()))
-    write(TF_b22_x, rk3_intermediate(previous(TF_b22_x), roc_TF_b22_x()))
-    write(TF_b22_y, rk3_intermediate(previous(TF_b22_y), roc_TF_b22_y()))
-    write(TF_b22_z, rk3_intermediate(previous(TF_b22_z), roc_TF_b22_z()))
+Kernel singlepass_solve_tfm_b12(){
+    write(TF_a12_x, rk3(previous(TF_a12_x), value(TF_a12_x), roc_TF_a12_x()))
+    write(TF_a12_y, rk3(previous(TF_a12_y), value(TF_a12_y), roc_TF_a12_y()))
+    write(TF_a12_z, rk3(previous(TF_a12_z), value(TF_a12_z), roc_TF_a12_z()))
+    write(TF_uxb12_x, -value(FIELD_u_y)*dery(TF_a12_x) + value(FIELD_u_y)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_x) + value(FIELD_u_z)*derx(TF_a12_z))
+    write(TF_uxb12_y, value(FIELD_u_x)*dery(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_y) + value(FIELD_u_z)*dery(TF_a12_z))
+    write(TF_uxb12_z, value(FIELD_u_x)*derz(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_z) + value(FIELD_u_y)*derz(TF_a12_y) - value(FIELD_u_y)*dery(TF_a12_z))
 }
-tfm_twopass_final() {
-    write(TF_b21_x, rk3_final(previous(TF_b21_x), value(TF_b21_x)))
-    write(TF_b21_y, rk3_final(previous(TF_b21_y), value(TF_b21_y)))
-    write(TF_b21_z, rk3_final(previous(TF_b21_z), value(TF_b21_z)))
-    write(TF_b11_x, rk3_final(previous(TF_b11_x), value(TF_b11_x)))
-    write(TF_b11_y, rk3_final(previous(TF_b11_y), value(TF_b11_y)))
-    write(TF_b11_z, rk3_final(previous(TF_b11_z), value(TF_b11_z)))
-    write(TF_b12_x, rk3_final(previous(TF_b12_x), value(TF_b12_x)))
-    write(TF_b12_y, rk3_final(previous(TF_b12_y), value(TF_b12_y)))
-    write(TF_b12_z, rk3_final(previous(TF_b12_z), value(TF_b12_z)))
-    write(TF_b22_x, rk3_final(previous(TF_b22_x), value(TF_b22_x)))
-    write(TF_b22_y, rk3_final(previous(TF_b22_y), value(TF_b22_y)))
-    write(TF_b22_z, rk3_final(previous(TF_b22_z), value(TF_b22_z)))
+Kernel singlepass_solve_tfm_b11(){
+    write(TF_a11_x, rk3(previous(TF_a11_x), value(TF_a11_x), roc_TF_a11_x()))
+    write(TF_a11_y, rk3(previous(TF_a11_y), value(TF_a11_y), roc_TF_a11_y()))
+    write(TF_a11_z, rk3(previous(TF_a11_z), value(TF_a11_z), roc_TF_a11_z()))
+    write(TF_uxb11_x, -value(FIELD_u_y)*dery(TF_a11_x) + value(FIELD_u_y)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_x) + value(FIELD_u_z)*derx(TF_a11_z))
+    write(TF_uxb11_y, value(FIELD_u_x)*dery(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_y) + value(FIELD_u_z)*dery(TF_a11_z))
+    write(TF_uxb11_z, value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z))
+}
+Kernel singlepass_solve_tfm_b21(){
+    write(TF_a21_x, rk3(previous(TF_a21_x), value(TF_a21_x), roc_TF_a21_x()))
+    write(TF_a21_y, rk3(previous(TF_a21_y), value(TF_a21_y), roc_TF_a21_y()))
+    write(TF_a21_z, rk3(previous(TF_a21_z), value(TF_a21_z), roc_TF_a21_z()))
+    write(TF_uxb21_x, -value(FIELD_u_y)*dery(TF_a21_x) + value(FIELD_u_y)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_x) + value(FIELD_u_z)*derx(TF_a21_z))
+    write(TF_uxb21_y, value(FIELD_u_x)*dery(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_y) + value(FIELD_u_z)*dery(TF_a21_z))
+    write(TF_uxb21_z, value(FIELD_u_x)*derz(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_z) + value(FIELD_u_y)*derz(TF_a21_y) - value(FIELD_u_y)*dery(TF_a21_z))
 }
 #endif
 
@@ -676,27 +647,6 @@ Kernel twopass_solve_intermediate() {
     write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z))
     #endif
 
-    #if LBFIELD
-    if AC_step_number == 2 {
-        bfield = curl(AA) 
-        write(BFIELDX, bfield.x)
-        write(BFIELDY, bfield.y)
-        write(BFIELDZ, bfield.z)
-    }
-    #endif
-
-    // %JP: TODO NOTE IMPORTANT (MV please check)
-    // LSHOCK not yet adapted to two-pass integration.
-    // Unclear how should be written to memory to ensure proper swapping!
-    // 1) In the single-pass approach need to write the shock field to `out`
-    // because buffers are swapped afterwards
-    // 2) In the two-pass approach this may not be necessary: if the shock
-    // field is in `in` buffer and we swap twice, the correct shock values are
-    // still in the `in` buffer
-    //
-    // Is this correct?
-    //
-
     #if LTFM
         tfm_twopass_intermediate()
     #endif
@@ -725,14 +675,6 @@ Kernel twopass_solve_final() {
     write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX)))
     write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
     write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
-    #endif
-
-    #if LBFIELD
-    if AC_step_number == 2 {
-        write(BFIELDX, value(BFIELDX))
-        write(BFIELDY, value(BFIELDY))
-        write(BFIELDZ, value(BFIELDZ))
-    }
     #endif
 
     #if LTFM

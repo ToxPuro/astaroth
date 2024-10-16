@@ -491,8 +491,8 @@ acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
 {
   // Set pba.in data to all-nan and pba.out to 0
   for (size_t i = 0; i < NUM_PROFILES; ++i) {
-    acKernelFlush(stream, pba->in[i], pba->count, (AcReal)NAN);
-    acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0.0);
+    acKernelFlush(stream, pba->in[i], pba->count, (AcReal)0);
+    acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0);
   }
   return AC_SUCCESS;
 }
@@ -546,15 +546,9 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
   const size_t count = vba->bytes / sizeof(vba->in[0][0]);
 
-  // Set vba.in data to all-nan and vba.out to 0
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    if (vtxbuf_is_auxiliary[i])
-    {
-      acKernelFlush(stream, vba->in[i],count, (AcReal)0.0);
-    } else{
-      acKernelFlush(stream, vba->in[i],count, (AcReal)NAN);
-      acKernelFlush(stream, vba->out[i],count, (AcReal)0.0);
-    }
+    acKernelFlush(stream, vba->in[i], count, (AcReal)0);
+    acKernelFlush(stream, vba->out[i], count, (AcReal)0);
   }
   memset(&vba->kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray
@@ -1717,6 +1711,7 @@ acReindexCross(const cudaStream_t stream, //
   reindex_cross<<<bpg, tpb, 0, stream>>>(arrays, in_offset, in_shape,
                                          out_offset, out_shape, block_shape);
   return AC_SUCCESS;
+}
 #else
 AcResult
 acReindexCross(const cudaStream_t , //

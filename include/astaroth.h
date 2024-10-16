@@ -1570,6 +1570,9 @@ FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[
 AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
                                  const char* filepath);
 
+/** */
+AcMeshInfo acDeviceGetLocalConfig(const Device device);
+
 /*
  * =============================================================================
  * Helper functions
@@ -2074,6 +2077,23 @@ AcResult acHostInitProfileToValue(const long double value, const size_t profile_
 /** Writes the host profile to a file */
 AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
                                   const size_t profile_count);
+
+/*
+ * =============================================================================
+ * AcBuffer
+ * =============================================================================
+ */
+typedef struct {
+    AcReal* data;
+    size_t count;
+    bool on_device;
+} AcBuffer;
+
+AcBuffer acBufferCreate(const size_t count, const bool on_device);
+
+void acBufferDestroy(AcBuffer* buffer);
+
+AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
 
 #ifdef __cplusplus
 } // extern "C"
