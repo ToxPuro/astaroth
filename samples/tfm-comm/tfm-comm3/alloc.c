@@ -71,7 +71,7 @@ ac_reverse(const size_t count, const size_t size, void* a)
     for (size_t i = 0; i < count; ++i)
         ac_copy(1, size, (uint8_t*)tmp + (count - 1 - i) * size, (uint8_t*)a + i * size);
 
-    ac_free(tmp);
+    ac_free((void**)&tmp);
 }
 
 int

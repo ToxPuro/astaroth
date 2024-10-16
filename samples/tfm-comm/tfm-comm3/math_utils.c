@@ -287,7 +287,8 @@ popcount(const size_t count, const uint64_t* arr)
 {
     uint64_t popcount = 0;
     for (size_t i = 0; i < count; ++i)
-        if (arr[i] > 0) ++popcount;
+        if (arr[i] > 0)
+            ++popcount;
     return popcount;
 }
 
@@ -366,7 +367,8 @@ contains_subset(const uint64_t subset_length, const uint64_t* subset, const size
                 const uint64_t* b)
 {
     for (size_t i = 0; i < count; i += subset_length) {
-        if (equals(subset_length, subset, &b[i])) return true;
+        if (equals(subset_length, subset, &b[i]))
+            return true;
     }
     return false;
 }
@@ -749,10 +751,28 @@ subtract_value(const uint64_t value, const size_t count, uint64_t* arr)
 }
 
 void
-mul(const size_t count, const uint64_t* a, const uint64_t* b, uint64_t* c)
+array_mul(const size_t count, const uint64_t* a, const uint64_t* b, uint64_t* c)
 {
     for (size_t i = 0; i < count; ++i)
         c[i] = a[i] * b[i];
+}
+
+void
+array_div(const size_t count, const uint64_t* a, const uint64_t* b, uint64_t* c)
+{
+    for (size_t i = 0; i < count; ++i) {
+        ERRCHK(b[i] != 0);
+        c[i] = a[i] / b[i];
+    }
+}
+
+void
+array_div_int(const size_t count, const int* a, const int* b, int* c)
+{
+    for (size_t i = 0; i < count; ++i) {
+        ERRCHK(b[i] != 0);
+        c[i] = a[i] / b[i];
+    }
 }
 
 void
@@ -816,7 +836,8 @@ sort(const size_t count, uint64_t* arr)
     ERRCHK(count > 0);
     for (size_t i = 0; i < count; ++i) {
         for (size_t j = i + 1; j < count; ++j) {
-            if (arr[j] < arr[i]) swap(i, j, count, arr);
+            if (arr[j] < arr[i])
+                swap(i, j, count, arr);
         }
     }
 }
@@ -877,7 +898,8 @@ within_box_note_changed(const size_t ndims, const uint64_t* coords, const uint64
                         const uint64_t* box_offset)
 {
     for (size_t i = 0; i < ndims; ++i)
-        if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i]) return false;
+        if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
+            return false;
     return true;
 }
 // bool
@@ -1003,7 +1025,8 @@ int
 next_positive_integer(int counter)
 {
     ++counter;
-    if (counter < 0) counter = 0;
+    if (counter < 0)
+        counter = 0;
     return counter;
 }
 
@@ -1247,7 +1270,8 @@ matrix_remove_row(const uint64_t row, const uint64_t nrows, const uint64_t ncols
     ac_copy(row * ncols, sizeof(in[0]), in, out);
 
     const size_t count = (nrows - row - 1) * ncols;
-    if (count > 0) ac_copy(count, sizeof(in[0]), &in[(row + 1) * ncols], &out[row * ncols]);
+    if (count > 0)
+        ac_copy(count, sizeof(in[0]), &in[(row + 1) * ncols], &out[row * ncols]);
 }
 
 static void
@@ -1357,7 +1381,8 @@ bool
 equals(const size_t count, const uint64_t* a, const uint64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
-        if (a[i] != b[i]) return false;
+        if (a[i] != b[i])
+            return false;
     return true;
 }
 
@@ -1365,7 +1390,8 @@ bool
 all_less_than(const size_t count, const uint64_t* a, const uint64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
-        if (a[i] >= b[i]) return false;
+        if (a[i] >= b[i])
+            return false;
     return true;
 }
 
@@ -1373,7 +1399,8 @@ bool
 all_less_or_equal_than(const size_t count, const uint64_t* a, const uint64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
-        if (a[i] > b[i]) return false;
+        if (a[i] > b[i])
+            return false;
     return true;
 }
 

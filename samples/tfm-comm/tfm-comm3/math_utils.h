@@ -67,7 +67,11 @@ void subtract_arrays(const size_t count, const uint64_t* a, const uint64_t* b, u
 void subtract_value(const uint64_t value, const size_t count, uint64_t* arr);
 
 /** Calculates the element-wise product (Hadamard product) of two flattened matrices */
-void mul(const size_t count, const uint64_t* a, const uint64_t* b, uint64_t* c);
+void array_mul(const size_t count, const uint64_t* a, const uint64_t* b, uint64_t* c);
+
+void array_div(const size_t count, const uint64_t* a, const uint64_t* b, uint64_t* c);
+
+void array_div_int(const size_t count, const int* a, const int* b, int* c);
 
 /** Repeats `count` elements in `a` `nrepeats` times and writes the result to b.
  * `b`is required to be able to hold at least `count*nrepeats` elements.

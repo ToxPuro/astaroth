@@ -223,9 +223,9 @@ halo_segment_batch_launch(const uint64_t ninputs, double* inputs[],
 
         int send_peer, recv_peer;
 
-        int* mpi_nn     = to_mpi_format_alloc(ndims, local_nn);
-        int* mpi_rr     = to_mpi_format_alloc(ndims, local_nn_offset);
-        int* mpi_offset = to_mpi_format_alloc(ndims, remote_packet->segment.offset);
+        int* mpi_nn     = as_mpi_format_alloc(ndims, local_nn);
+        int* mpi_rr     = as_mpi_format_alloc(ndims, local_nn_offset);
+        int* mpi_offset = as_mpi_format_alloc(ndims, remote_packet->segment.offset);
         get_mpi_send_recv_peers(ndims, mpi_nn, mpi_rr, mpi_offset, &send_peer, &recv_peer);
         ndealloc(mpi_nn);
         ndealloc(mpi_rr);

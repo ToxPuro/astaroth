@@ -2,9 +2,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void to_mpi_format(const size_t ndims, const uint64_t* dims, int* mpi_dims);
+void as_mpi_format(const size_t ndims, const uint64_t* dims, int* mpi_dims);
 
-void to_astaroth_format(const size_t ndims, const int* mpi_dims, uint64_t* dims);
+void as_astaroth_format(const size_t ndims, const int* mpi_dims, uint64_t* dims);
 
 /**
  * At each call, returns the next integer in range [0, INT_MAX].
@@ -30,7 +30,7 @@ void test_mpi_utils(void);
             if (i__ == rank__) {                                                                   \
                 printf("---Rank %d---\n", rank__);
 
-#define MPI_SYNCHRONOUS_BLOCK_END                                                                  \
+#define MPI_SYNCHRONOUS_BLOCK_END(communicator)                                                    \
     }                                                                                              \
     fflush(stdout);                                                                                \
     MPI_Barrier(communicator);                                                                     \

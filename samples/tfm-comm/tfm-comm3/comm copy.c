@@ -126,7 +126,7 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
     mpi_ndims_ = as_int(ndims);
 
     // Compute local_nn
-    to_astaroth_format(ndims, mpi_dims, dims);
+    as_astaroth_format(ndims, mpi_dims, dims);
     for (size_t i = 0; i < ndims; ++i)
         local_nn[i] = global_nn[i] / dims[i];
 
@@ -136,7 +136,7 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
 
     ERRCHK_MPI_API(MPI_Cart_coords(ctx.mpi_comm, rank, mpi_ndims_, mpi_coords));
 
-    to_astaroth_format(ndims, mpi_coords, coords);
+    as_astaroth_format(ndims, mpi_coords, coords);
     for (size_t i = 0; i < ndims; ++i)
         global_nn_offset[i] = local_nn[i] * coords[i];
 

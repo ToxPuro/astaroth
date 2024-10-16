@@ -7,7 +7,7 @@
 #include "type_conversion.h"
 
 void
-to_mpi_format(const size_t ndims, const uint64_t* dims, int* mpi_dims)
+as_mpi_format(const size_t ndims, const uint64_t* dims, int* mpi_dims)
 {
     for (size_t i = 0; i < ndims; ++i)
         mpi_dims[i] = as_int(dims[i]);
@@ -15,7 +15,7 @@ to_mpi_format(const size_t ndims, const uint64_t* dims, int* mpi_dims)
 }
 
 void
-to_astaroth_format(const size_t ndims, const int* mpi_dims, uint64_t* dims)
+as_astaroth_format(const size_t ndims, const int* mpi_dims, uint64_t* dims)
 {
     for (size_t i = 0; i < ndims; ++i)
         dims[i] = as_uint64_t(mpi_dims[i]);
@@ -33,8 +33,7 @@ get_tag(void)
     static int counter = -1;
 
     ++counter;
-    if (counter < 0)
-        counter = 0;
+    if (counter < 0) counter = 0;
 
     return counter;
 }
