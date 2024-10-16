@@ -6,6 +6,7 @@
 
 #include "alloc.h"
 #include "errchk.h"
+#include "errchk_mpi.h"
 #include "math_utils.h"
 #include "type_conversion.h"
 
@@ -15,36 +16,10 @@
 /*
  * Global variables
  */
-static MPI_Comm mpi_comm_            = MPI_COMM_NULL;
-static const MPI_Datatype mpi_dtype_ = MPI_DOUBLE;
-
-/*
- * Error handling
- */
-static void
-handle_error(const char* function, const char* file, const long line, const char* expression)
-{
-    errchk_print_error(function, file, line, expression, "");
-    MPI_Abort(MPI_COMM_WORLD, -1);
-}
-
-static void
-handle_mpi_error(const int errorcode, const char* function, const char* file, const long line,
-                 const char* expression)
-{
-    char description[MPI_MAX_ERROR_STRING];
-    int resultlen;
-    MPI_Error_string(errorcode, description, &resultlen);
-    errchk_print_error(function, file, line, expression, description);
-    MPI_Abort(MPI_COMM_WORLD, -1);
-}
-
-#define ERRCHK_MPI_API(errorcode)                                                                  \
-    (((errorcode) == MPI_SUCCESS)                                                                  \
-         ? 0                                                                                       \
-         : ((handle_mpi_error((errorcode), __func__, __FILE__, __LINE__, #errorcode)), -1))
-
-#define ERRCHK_MPI(expr) ((expr) ? 0 : ((handle_error(__func__, __FILE__, __LINE__, #expr)), -1))
+static MPI_Comm mpi_comm_        = MPI_COMM_NULL;
+static int mpi_ndims_            = -1;
+static MPI_Datatype mpi_dtype_   = MPI_DATATYPE_NULL;
+static bool comm_setup_complete_ = false;
 
 /*
  * Communicator implementation
@@ -60,9 +35,15 @@ ErrorCode
 acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
             uint64_t* global_nn_offset)
 {
+    if (comm_setup_complete_) {
+        WARNING("acCommSetup was called more than once. This is not allowed.");
+        return ERRORCODE_GENERIC_FAILURE;
+    }
+
     const MPI_Comm parent = MPI_COMM_WORLD;
 
-    const int mpi_ndims = as_int(ndims);
+    mpi_dtype_ = MPI_DOUBLE;
+    mpi_ndims_ = as_int(ndims);
 
     // Setup nprocs
     int mpi_nprocs;
@@ -71,13 +52,13 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
     // Decompose
     int* mpi_decomp = ac_calloc(ndims, sizeof(mpi_decomp[0]));
     ERRCHK_MPI(mpi_decomp);
-    ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, mpi_ndims, mpi_decomp));
+    ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, mpi_ndims_, mpi_decomp));
 
     // Create the communicator
     int* mpi_periods = ac_calloc(ndims, sizeof(mpi_periods[0]));
     ERRCHK_MPI(mpi_periods);
     set_array_int(1, ndims, mpi_periods); // Fully periodic
-    ERRCHK_MPI_API(MPI_Cart_create(parent, mpi_ndims, mpi_decomp, mpi_periods, 0, &mpi_comm_));
+    ERRCHK_MPI_API(MPI_Cart_create(parent, mpi_ndims_, mpi_decomp, mpi_periods, 0, &mpi_comm_));
 
     // Set MPI errors as non-fatal
     ERRCHK_MPI_API(MPI_Comm_set_errhandler(mpi_comm_, MPI_ERRORS_RETURN));
@@ -94,7 +75,7 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
 
     int* mpi_coords = ac_calloc(ndims, sizeof(mpi_coords[0]));
     ERRCHK_MPI(mpi_coords);
-    ERRCHK_MPI_API(MPI_Cart_coords(mpi_comm_, mpi_rank, mpi_ndims, mpi_coords));
+    ERRCHK_MPI_API(MPI_Cart_coords(mpi_comm_, mpi_rank, mpi_ndims_, mpi_coords));
 
     uint64_t* coords = ac_calloc(ndims, sizeof(coords[0]));
     ERRCHK_MPI(mpi_coords);
@@ -107,6 +88,8 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
     ac_free((void**)&decomp);
     ac_free((void**)&mpi_periods);
     ac_free((void**)&mpi_decomp);
+
+    comm_setup_complete_ = true;
     return ERRORCODE_SUCCESS;
 }
 
@@ -115,6 +98,9 @@ acCommQuit(void)
 {
     if (mpi_comm_ != MPI_COMM_NULL)
         ERRCHK_MPI_API(MPI_Comm_free(&mpi_comm_));
+    mpi_comm_  = MPI_COMM_NULL;
+    mpi_ndims_ = -1;
+    mpi_dtype_ = MPI_DATATYPE_NULL;
 
     ERRCHK_MPI_API(MPI_Finalize());
     return ERRORCODE_SUCCESS;
@@ -134,6 +120,35 @@ ErrorCode
 acCommBarrier(void)
 {
     ERRCHK_MPI_API(MPI_Barrier(mpi_comm_));
+    return ERRORCODE_SUCCESS;
+}
+
+ErrorCode
+acCommPrint(void)
+{
+    // Get process information
+    int mpi_rank, mpi_nprocs;
+    ERRCHK_MPI(acCommGetProcInfo(&mpi_rank, &mpi_nprocs) == ERRORCODE_SUCCESS);
+
+    // Get decomposition information
+    const size_t ndims = as_size_t(mpi_ndims_);
+    int* mpi_decomp    = ac_calloc(ndims, sizeof(mpi_decomp[0]));
+    int* mpi_periods   = ac_calloc(ndims, sizeof(mpi_periods[0]));
+    int* mpi_coords    = ac_calloc(ndims, sizeof(mpi_coords[0]));
+    ERRCHK_MPI(mpi_decomp);
+    ERRCHK_MPI(mpi_periods);
+    ERRCHK_MPI(mpi_coords);
+    ERRCHK_MPI_API(MPI_Cart_get(mpi_comm_, mpi_ndims_, mpi_decomp, mpi_periods, mpi_coords));
+
+    MPI_SYNCHRONOUS_BLOCK_START(mpi_comm_)
+    printd_array(ndims, mpi_decomp);
+    printd_array(ndims, mpi_periods);
+    printd_array(ndims, mpi_coords);
+    MPI_SYNCHRONOUS_BLOCK_END(mpi_comm_)
+
+    ac_free((void**)&mpi_coords);
+    ac_free((void**)&mpi_periods);
+    ac_free((void**)&mpi_decomp);
     return ERRORCODE_SUCCESS;
 }
 

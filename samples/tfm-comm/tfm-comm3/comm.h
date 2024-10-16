@@ -31,6 +31,8 @@ ErrorCode acCommGetProcInfo(int* rank, int* nprocs);
 
 ErrorCode acCommBarrier(void);
 
+ErrorCode acCommPrint(void);
+
 /**
  * Test the comm functions.
  * Returns 0 on success and the number of errors encountered otherwise.

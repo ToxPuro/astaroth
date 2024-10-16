@@ -1,5 +1,13 @@
 #include "segment_batch.h"
 
+#include "alloc.h"
+#include "errchk_mpi.h"
+#include "math_utils.h"
+#include "mpi_utils.h"
+#include "pack.h"
+#include "partition.h"
+#include "type_conversion.h"
+
 static void halo_segment_batch_verify(const size_t ndims, const uint64_t* mm, const uint64_t* nn,
                                       const struct HaloSegmentBatch_s batch);
 
@@ -11,8 +19,8 @@ static void halo_segment_batch_verify(const size_t ndims, const uint64_t* mm, co
  *
  */
 static void
-get_mpi_send_recv_peers(const size_t ndims, const int* nn, const int* rr, const int* offset,
-                        int* send_peer, int* recv_peer)
+get_mpi_send_recv_peers(const MPI_Comm mpi_comm_, const size_t ndims, const int* nn, const int* rr,
+                        const int* offset, int* send_peer, int* recv_peer)
 {
     int rank;
     ERRCHK_MPI_API(MPI_Comm_rank(mpi_comm_, &rank));
@@ -20,9 +28,8 @@ get_mpi_send_recv_peers(const size_t ndims, const int* nn, const int* rr, const 
     int* coords = ac_calloc(ndims, sizeof(coords[0]));
     ERRCHK_MPI_API(MPI_Cart_coords(mpi_comm_, rank, as_int(ndims), coords));
 
-    int *recv_coords, *send_coords;
-    ndup(ndims, coords, recv_coords);
-    ndup(ndims, coords, send_coords);
+    int* recv_coords = ac_dup(ndims, sizeof(recv_coords[0]), recv_coords);
+    int* send_coords = ac_dup(ndims, sizeof(send_coords[0]), coords);
 
     for (size_t i = 0; i < ndims; ++i) {
         recv_coords[i] += offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
@@ -32,9 +39,9 @@ get_mpi_send_recv_peers(const size_t ndims, const int* nn, const int* rr, const 
     ERRCHK_MPI_API(MPI_Cart_rank(mpi_comm_, recv_coords, recv_peer));
     ERRCHK_MPI_API(MPI_Cart_rank(mpi_comm_, send_coords, send_peer));
 
-    ndealloc(send_coords);
-    ndealloc(recv_coords);
-    ndealloc(coords);
+    ac_free((void**)&send_coords);
+    ac_free((void**)&recv_coords);
+    ac_free((void**)&coords);
 }
 
 struct HaloSegmentBatch_s*
@@ -54,17 +61,17 @@ halo_segment_batch_create(const size_t ndims, const uint64_t* local_mm, const ui
         }
     }
 
-    struct HaloSegmentBatch_s* batch;
-    nalloc(1, batch);
+    struct HaloSegmentBatch_s* batch = ac_malloc(sizeof(*batch));
+    ERRCHK_MPI(batch);
 
-    batch->ndims = ndims;
-    ndup(ndims, local_mm, batch->local_mm);
-    ndup(ndims, local_nn, batch->local_nn);
-    ndup(ndims, local_nn_offset, batch->local_nn_offset);
+    batch->ndims           = ndims;
+    batch->local_mm        = ac_dup(ndims, sizeof(local_mm[0]), local_mm);
+    batch->local_nn        = ac_dup(ndims, sizeof(local_nn[0]), local_nn);
+    batch->local_nn_offset = ac_dup(ndims, sizeof(local_nn_offset[0]), local_nn_offset);
 
-    batch->npackets = segments.length;
-    nalloc(batch->npackets, batch->local_packets);
-    nalloc(batch->npackets, batch->remote_packets);
+    batch->npackets       = segments.length;
+    batch->local_packets  = ac_calloc(batch->npackets, sizeof(batch->local_packets[0]));
+    batch->remote_packets = ac_calloc(batch->npackets, sizeof(batch->remote_packets[0]));
 
     for (size_t i = 0; i < segments.length; ++i) {
         // Each recv_offset maps to a coordinates in the computational domain of a neighboring
@@ -115,7 +122,7 @@ halo_segment_batch_create(const size_t ndims, const uint64_t* local_mm, const ui
                              local_nn_offset[j];
         batch->local_packets[i] = packet_create(ndims, subdims, send_offset, n_aggregate_buffers);
 
-        ndealloc(send_offset);
+        ac_free((void**)&send_offset);
     }
 
     // Cleanup
@@ -129,18 +136,18 @@ halo_segment_batch_create(const size_t ndims, const uint64_t* local_mm, const ui
 void
 halo_segment_batch_destroy(struct HaloSegmentBatch_s** batch)
 {
-    ndealloc((*batch)->local_nn_offset);
-    ndealloc((*batch)->local_nn);
-    ndealloc((*batch)->local_mm);
+    ac_free((void**)&(*batch)->local_nn_offset);
+    ac_free((void**)&(*batch)->local_nn);
+    ac_free((void**)&(*batch)->local_mm);
     (*batch)->ndims = 0;
     for (size_t i = 0; i < (*batch)->npackets; ++i) {
         packet_destroy(&(*batch)->local_packets[i]);
         packet_destroy(&(*batch)->remote_packets[i]);
     }
-    ndealloc((*batch)->local_packets);
-    ndealloc((*batch)->remote_packets);
+    ac_free((void**)&(*batch)->local_packets);
+    ac_free((void**)&(*batch)->remote_packets);
     (*batch)->npackets = 0;
-    ndealloc((*batch));
+    ac_free((void**)&(*batch));
 }
 
 // static void
@@ -164,7 +171,7 @@ halo_segment_batch_destroy(struct HaloSegmentBatch_s** batch)
 //             pack(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
 //         }
 //     }
-//     ndealloc(zeros);
+//     ac_free((void**)&zeros);
 // }
 
 // static void
@@ -190,11 +197,11 @@ halo_segment_batch_destroy(struct HaloSegmentBatch_s** batch)
 //             pack(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
 //         }
 //     }
-//     ndealloc(zeros);
+//     ac_free((void**)&zeros);
 // }
 
 void
-halo_segment_batch_launch(const uint64_t ninputs, double* inputs[],
+halo_segment_batch_launch(const MPI_Comm mpi_comm_, const uint64_t ninputs, double* inputs[],
                           struct HaloSegmentBatch_s* batch)
 {
     const size_t ndims              = batch->ndims;
@@ -227,9 +234,9 @@ halo_segment_batch_launch(const uint64_t ninputs, double* inputs[],
         int* mpi_rr     = as_mpi_format_alloc(ndims, local_nn_offset);
         int* mpi_offset = as_mpi_format_alloc(ndims, remote_packet->segment.offset);
         get_mpi_send_recv_peers(ndims, mpi_nn, mpi_rr, mpi_offset, &send_peer, &recv_peer);
-        ndealloc(mpi_nn);
-        ndealloc(mpi_rr);
-        ndealloc(mpi_offset);
+        ac_free((void**)&mpi_nn);
+        ac_free((void**)&mpi_rr);
+        ac_free((void**)&mpi_offset);
 
         // Post recv
         ERRCHK_MPI_API(MPI_Irecv(remote_packet->buffer.data, as_int(remote_packet->buffer.count),
@@ -311,7 +318,7 @@ halo_segment_batch_verify(const size_t ndims, const uint64_t* mm, const uint64_t
     }
 }
 
-static void
+void
 test_halo_segment_batch(void)
 {
     const uint64_t mm[]        = {8, 8};
@@ -330,8 +337,8 @@ test_halo_segment_batch(void)
     // halo_segment_batch_unpack(&batch, ninputs, inputs);
 
     for (size_t i = 0; i < ninputs; ++i)
-        ndealloc(inputs[i]);
-    ndealloc(inputs);
+        ac_free((void**)&inputs[i]);
+    ac_free((void**)&inputs);
 
     // halo_segment_batch_wait(&batch);
     // printf("Created halo segments\n");
