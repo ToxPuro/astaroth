@@ -1,0 +1,15 @@
+Field FIELD
+
+output real AC_min_val
+output real AC_max_val
+output real AC_sum_val
+output int  AC_int_sum_val
+
+Kernel test_reduce()
+{
+    reduce_min(true, value(FIELD), AC_min_val)
+    reduce_max(true, value(FIELD), AC_max_val)
+    reduce_sum(true, value(FIELD), AC_sum_val)
+    int int_val = (int) value(FIELD)
+    reduce_sum(true,int_val,AC_int_sum_val)
+}

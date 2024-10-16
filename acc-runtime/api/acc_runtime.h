@@ -143,7 +143,8 @@ typedef struct {
     size_t bytes;
     size_t mx, my, mz;
     acKernelInputParams kernel_input_params;
-    AcReal* reduce_scratchpads[NUM_REAL_OUTPUTS+1][NUM_REDUCE_SCRATCHPADS];
+    AcReal* reduce_scratchpads_real[NUM_REAL_OUTPUTS+1][NUM_REDUCE_SCRATCHPADS];
+    int* reduce_scratchpads_int[NUM_INT_OUTPUTS+1][NUM_REDUCE_SCRATCHPADS];
     int reduce_offset;
     size_t scratchpad_size;
     ProfileBufferArray profiles;
@@ -204,6 +205,7 @@ typedef struct {
 
   FUNC_DEFINE(const AcKernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
+  FUNC_DEFINE(AcResult, acKernelFlushInt,(const cudaStream_t stream, int* arr, const size_t n, const int value));
 
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
 

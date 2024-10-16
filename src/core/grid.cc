@@ -73,6 +73,12 @@ AcResult acAnalysisLoadMeshInfo(const AcMeshInfo info);
 #include "perfstubs_api/timer.h"
 #endif
 
+#define fatal(MESSAGE, ...) \
+        { \
+	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
+	exit(EXIT_FAILURE); \
+	} 
+
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;
@@ -418,8 +424,7 @@ create_astaroth_comm(const AcMeshInfo info)
       		ERRCHK_ALWAYS(MPI_Comm_dup(info.comm,&astaroth_comm) == MPI_SUCCESS);
 		break;
 	default:
-		fprintf(stderr,"Unknown MPICommStrategy\n");
-		exit(EXIT_FAILURE);
+		fatal("%s","Unknown MPICommStrategy\n");
       }
       MPI_Barrier(astaroth_comm);
       grid.mpi_initialized = true;
@@ -2154,17 +2159,19 @@ acGridDestroyTaskGraph(AcTaskGraph* graph)
 AcResult
 acGridFinalizeReduceLocal(AcTaskGraph* graph)
 {
-
-    int reduce_outputs[NUM_REAL_OUTPUTS];
-    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
-	    reduce_outputs[i] = -1;
-    AcKernel reduce_kernels[NUM_REAL_OUTPUTS];
-    KernelReduceOp reduce_ops[NUM_REAL_OUTPUTS];
+    std::array<KernelReduceOutput,NUM_OUTPUTS> reduce_outputs;
+    for(int i = 0; i < NUM_OUTPUTS; ++i)
+    {
+	    reduce_outputs[i].variable = -1;
+	    reduce_outputs[i].type = AC_REAL_TYPE;
+    }
+    std::array<AcKernel,NUM_OUTPUTS> reduce_kernels;
+    std::array<KernelReduceOp,NUM_OUTPUTS> reduce_ops;
     acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
-    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+    for(int i = 0; i < NUM_OUTPUTS; ++i)
     {
     	for (auto& task : graph->all_tasks) {
-    	    if(reduce_outputs[i] < 0 && task->isComputeTask())
+    	    if(reduce_outputs[i].variable < 0 && task->isComputeTask())
     	    {
     	            auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
     	            reduce_kernels[i] = compute_task -> getKernel();
@@ -2173,19 +2180,32 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     	    }
     	}
     }
-
-
-    AcReal local_res[2];
-    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+    AcReal local_res_real[NUM_OUTPUTS]{};
+    int    local_res_int[NUM_OUTPUTS]{};
+    for(int i = 0; i < NUM_OUTPUTS; ++i)
     {
-	    if(reduce_outputs[i] >= 0)
-	    	acDeviceFinishReduce(grid.device,reduce_outputs[i],&local_res[i],reduce_kernels[i],reduce_ops[i],(AcRealOutputParam)reduce_outputs[i]);
+	    if(reduce_outputs[i].variable >= 0)
+	    {
+		if(reduce_outputs[i].type == AC_REAL_TYPE)
+	    		acDeviceFinishReduce(grid.device,reduce_outputs[i].variable,&local_res_real[i],reduce_kernels[i],reduce_ops[i],(AcRealOutputParam)reduce_outputs[i].variable);
+		else if(reduce_outputs[i].type == AC_INT_TYPE)
+	    		acDeviceFinishReduceInt(grid.device,reduce_outputs[i].variable,&local_res_int[i],reduce_kernels[i],reduce_ops[i],(AcIntOutputParam)reduce_outputs[i].variable);
+		else
+			fatal("Unknown reduce output type: %d,%d\n",i,reduce_outputs[i].type);
+	    }
     }
     acDeviceSynchronizeStream(grid.device,STREAM_ALL);
-    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+    for(int i = 0; i < NUM_OUTPUTS; ++i)
     {
-	    if(reduce_outputs[i] >= 0)
-    	    	grid.device -> output.real_outputs[reduce_outputs[i]] = local_res[i];
+	    if(reduce_outputs[i].variable >= 0)
+	    {
+		if(reduce_outputs[i].type == AC_REAL_TYPE)
+    	    		grid.device -> output.real_outputs[reduce_outputs[i].variable] = local_res_real[i];
+		else if(reduce_outputs[i].type == AC_INT_TYPE)
+    	    		grid.device -> output.int_outputs[reduce_outputs[i].variable] = local_res_int[i];
+		else
+			fatal("Unknown reduce output type: %d,%d\n",i,reduce_outputs[i].type);
+	    }
     }
     return AC_SUCCESS;
 }
@@ -2196,16 +2216,16 @@ acGridFinalizeReduce(AcTaskGraph* graph)
     acGridFinalizeReduceLocal(graph);
     //copypasted from acGridFinalizeReduceLocal.
     //TODO: remove copypaste
-    int reduce_outputs[NUM_REAL_OUTPUTS];
-    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
-	    reduce_outputs[i] = -1;
-    AcKernel reduce_kernels[NUM_REAL_OUTPUTS];
-    KernelReduceOp reduce_ops[NUM_REAL_OUTPUTS];
+    KernelReduceOutput reduce_outputs[NUM_OUTPUTS];
+    for(int i = 0; i < NUM_OUTPUTS; ++i)
+	    reduce_outputs[i].variable = -1;
+    AcKernel reduce_kernels[NUM_OUTPUTS];
+    KernelReduceOp reduce_ops[NUM_OUTPUTS];
     acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
-    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+    for(int i = 0; i < NUM_OUTPUTS; ++i)
     {
     	for (auto& task : graph->all_tasks) {
-    	    if(reduce_outputs[i] < 0 && task->isComputeTask())
+    	    if(reduce_outputs[i].variable < 0 && task->isComputeTask())
     	    {
     	            auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
     	            reduce_kernels[i] = compute_task -> getKernel();
@@ -2214,31 +2234,32 @@ acGridFinalizeReduce(AcTaskGraph* graph)
     	    }
     	}
     }
-    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+    for(int i = 0; i < NUM_OUTPUTS; ++i)
     {
-    	if(reduce_outputs[i]>=0)
+    	if(reduce_outputs[i].variable >=0)
     	{
-    		AcReal local_res = grid.device -> output.real_outputs[reduce_outputs[i]];
-    	        AcReal mpi_res;
+		AcReal local_res;
+		if(reduce_outputs[i].type == AC_REAL_TYPE)
+    			local_res = grid.device -> output.real_outputs[reduce_outputs[i].variable];
+		else
+			fatal("%s","Unknown reduce output type\n");
+    	        AcReal mpi_res{};
     	        switch(reduce_ops[i])
     	        {
     	    	case(REDUCE_SUM):
     		    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_SUM, astaroth_comm);
-    	        		grid.device->output.real_outputs[reduce_outputs[i]] = mpi_res;
     	    		break;
     	    	case(REDUCE_MIN):
     		    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_MIN, astaroth_comm);
-    	        		grid.device->output.real_outputs[reduce_outputs[i]] = mpi_res;
     	    		break;
     	    	case(REDUCE_MAX):
     		    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_MAX, astaroth_comm);
-    	        		grid.device->output.real_outputs[reduce_outputs[i]] = mpi_res;
     	    		break;
     	    	case(NO_REDUCE):
     	    		break;
     	        }
+    	        grid.device->output.real_outputs[reduce_outputs[i].variable] = mpi_res;
     	}
-
     }
     return AC_SUCCESS;
 }
@@ -4644,10 +4665,7 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 		if(no_incoming_edges(i)) vertices_under_work.push(i);
 	}
 	if(vertices_under_work.size() == 0)
-	{
-		acLogFromRootProc(ac_pid(),"Cannot continue: BC dependencies of %s do not form a DAG\n",bc_name);
-		exit(EXIT_FAILURE);
-	}
+		fatal("Cannot continue: BC dependencies of %s do not form a DAG\n",bc_name);
 
 	std::vector<size_t> res{};
 	while(vertices_under_work.size() != 0)
@@ -4664,10 +4682,7 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 	for(size_t i = 0; i < bcs.size(); ++i)
 		for(size_t j = 0; j < bcs.size(); ++j)
 			if (dependency_matrix[i][j])
-			{
-				acLogFromRootProc(ac_pid(),"Cannot continue: BC dependencies of %s do not form a DAG\n",bc_name);
-				exit(EXIT_FAILURE);
-			}
+				fatal("Cannot continue: BC dependencies of %s do not form a DAG\n",bc_name);
 	return res;
 }
 bool
@@ -4719,10 +4734,7 @@ get_boundconds(const AcDSLTaskGraph bc_graph)
 	}
 	const bool bcs_overlap = bc_output_fields_overlap(res);
 	if(bcs_overlap)
-	{
-		acLogFromRootProc(ac_pid(),"Cannot continue: overlap in output fields in BCs of %s\n",taskgraph_names[bc_graph]);
-		exit(EXIT_FAILURE);
-	}
+		fatal("Cannot continue: overlap in output fields in BCs of %s\n",taskgraph_names[bc_graph]);
 	auto topological_order = generate_topological_order(res,taskgraph_names[bc_graph]);
 	for(size_t i = 0; i < kernels.size(); ++i)
 	{
@@ -4803,10 +4815,7 @@ check_field_boundconds(const FieldBCs field_boundconds)
 		if(!vtxbuf_is_communicated[field]) continue;
 		for(size_t bc = 0; bc < boundaries.size(); ++bc)
 			if(field_boundconds[field][bc].kernel  == NUM_KERNELS)
-			{
-				acLogFromRootProc(ac_pid(),"FATAL AC ERROR: Missing boundcond for field %s at boundary %s\n",field_names[field], boundary_str(boundaries[bc]));
-				exit(EXIT_FAILURE);
-			}
+				fatal("FATAL AC ERROR: Missing boundcond for field %s at boundary %s\n",field_names[field], boundary_str(boundaries[bc]))
 	}
 }
 
@@ -4926,11 +4935,9 @@ gen_halo_exchange_and_boundconds(
 						if(std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end()) continue;
 						has_dependency |= processed_boundcond.info.larger_input || field_boundconds[field][boundcond].info.larger_output;
 					}
+
 					if(has_dependency)
-					{
-						acLogFromRootProc(ac_pid(), "BC needs to be called since some other bc depends on it\nTODO implement this --- now easier with an actual example use case ---");
-						exit(EXIT_FAILURE);
-					}
+						fatal("%s","BC needs to be called since some other bc depends on it\nTODO implement this --- now easier with an actual example use case ---")
 
                                 }
                                 all_are_processed = true;
@@ -5001,10 +5008,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 		for(size_t i = 0; i  < next_level_set.size(); ++i)
 			none_advanced &= !next_level_set[i];
 		if(none_advanced)
-		{
-			acLogFromRootProc(ac_pid(),"Bug in acGetDSLTaskGraphOps. Aborting: None advanced in level set %d\n",n_level_sets);
-			exit(EXIT_FAILURE);
-		}
+			fatal("Bug in acGetDSLTaskGraphOps. Aborting: None advanced in level set %d\n",n_level_sets)
 		for(size_t i = 0; i  < kernel_calls.size(); ++i)
 		{
 			if(next_level_set[i])
@@ -5033,10 +5037,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 		for(size_t k = 0; k < kernel_calls.size(); ++k)
 			all_processed &= (call_level_set[k] != -1);
 		if((size_t) n_level_sets > kernel_calls.size())
-		{
-			acLogFromRootProc(ac_pid(),"Bug in acGetDSLTaskGraphOps. Aborting: %d\n",n_level_sets);
-			exit(EXIT_FAILURE);
-		}
+			fatal("Bug in acGetDSLTaskGraphOps. Aborting: %d\n",n_level_sets)
 	}
 
 	std::array<bool,NUM_ALL_FIELDS> field_written_out_before{};
@@ -5099,10 +5100,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 			need_to_call_bc |= field_boundconds[field][4].info.larger_output;
 			need_to_call_bc |= field_boundconds[field][5].info.larger_output;
 			if(need_to_call_bc)
-			{
-				acLogFromRootProc(ac_pid(), "BC that sets the actual boundary needs to be inserted even though the ghost zones are not needed\nTODO implement this --- now easier with an actual example use case ---");
-				exit(EXIT_FAILURE);
-			}
+				fatal("%s","BC that sets the actual boundary needs to be inserted even though the ghost zones are not needed\nTODO implement this --- now easier with an actual example use case ---")
 
 		}
 		for(auto& call : level_set_call_indexes)

@@ -60,6 +60,9 @@ acHostProfileDerz(const AcReal* in, const size_t count, const AcReal grid_spacin
         (grid_spacing_inv) * (Scalar)(-3) / 20, //
         (grid_spacing_inv) * (Scalar)(1) / 60,
     };
+#else
+    const Scalar filter[] = {};
+    (void)grid_spacing;
 #endif
 
     return xcorr(in, count, filter, ARRAY_LENGTH(filter), out);
@@ -79,6 +82,9 @@ acHostProfileDerzz(const AcReal* in, const size_t count, const AcReal grid_spaci
         (grid_spacing_inv_2) * (Scalar)(-3) / 20,  //
         (grid_spacing_inv_2) * (Scalar)(1) / 90,
     };
+#else
+    const Scalar filter[] = {};
+    (void)grid_spacing;
 #endif
 
     return xcorr(in, count, filter, ARRAY_LENGTH(filter), out);

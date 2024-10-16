@@ -90,3 +90,28 @@ dot(real[] a, real[] b)
 {
 	return AC_dot(a, b)
 }
+reduce_min(bool condition, real val, param)
+{
+	reduce_min_real(condition,val,param)
+}
+reduce_sum(bool condition, real val, param)
+{
+	reduce_sum_real(condition,val,param)
+}
+reduce_max(bool condition, real val, param)
+{
+	reduce_max_real(condition,val,param)
+}
+
+reduce_min(bool condition, int val, param)
+{
+	reduce_min_int(condition,val,param)
+}
+reduce_sum(bool condition, int val, param)
+{
+	reduce_sum_int(condition,val,param)
+}
+reduce_max(bool condition, int val, param)
+{
+	reduce_max_int(condition,val,param)
+}

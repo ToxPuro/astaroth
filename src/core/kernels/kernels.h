@@ -207,5 +207,7 @@ template <int direction>  static __global__ void packUnpackPlate(AcReal* __restr
 
 AcReal
 AcKernelReduce(const cudaStream_t stream, AcReal* scratchpads[2], const int initial_count, const KernelReduceOp reduce_op);
+int
+AcKernelReduceInt(const cudaStream_t stream, int* scratchpads[2], const int initial_count, const KernelReduceOp reduce_op);
 
 

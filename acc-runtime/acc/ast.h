@@ -243,6 +243,17 @@ astnode_sprintf_postfix(ASTNode* node, const char* format, ...)
 }
 
 static inline void
+astnode_sprintf_infix(ASTNode* node, const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int ret = vsprintf(buffer, format, args);
+	va_end(args);
+	astnode_set_infix(buffer,node);
+}
+
+static inline void
 astnode_sprintf_prefix(ASTNode* node, const char* format, ...)
 {
 	static char buffer[10000];

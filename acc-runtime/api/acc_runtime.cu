@@ -378,6 +378,13 @@ flush_kernel(AcReal* arr, const size_t n, const AcReal value)
   if (idx < n)
     arr[idx] = value;
 }
+static __global__ void
+flush_kernel_int(int* arr, const size_t n, const int value)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < n)
+    arr[idx] = value;
+}
 
 AcResult
 acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
@@ -386,6 +393,17 @@ acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
   const size_t tpb = 256;
   const size_t bpg = (size_t)(ceil((double)n / tpb));
   flush_kernel<<<bpg, tpb, 0, stream>>>(arr, n, value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
+AcResult
+acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
+              const int value)
+{
+  const size_t tpb = 256;
+  const size_t bpg = (size_t)(ceil((double)n / tpb));
+  flush_kernel_int<<<bpg, tpb, 0, stream>>>(arr, n, value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }

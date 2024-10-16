@@ -398,9 +398,6 @@ static const char* MINUSEQ_STR= NULL;
 static const char* DEQ_STR= NULL;
 static const char* PERIODIC = NULL;
 
-static const char* REDUCE_SUM_STR = NULL;
-static const char* REDUCE_MIN_STR = NULL;
-static const char* REDUCE_MAX_STR = NULL;
 
 static const char* VALUE_STR      = NULL;
 
@@ -515,9 +512,14 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("globalGridN"));     // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("write_base"));  // TODO RECHECK
 							 //
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, REDUCE_SUM_STR);  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, REDUCE_MIN_STR);  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, REDUCE_MAX_STR);  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_min_real"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_max_real"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real"));  // TODO RECHECK
+									      //
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_min_int"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_max_int"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_int"));  // TODO RECHECK
+									      //
   add_symbol(NODE_FUNCTION_ID, NULL, 0,INT_STR, 0, intern("size"));  // TODO RECHECK
   //In develop
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
@@ -2554,15 +2556,15 @@ get_suffix_int(const char *str, const char* suffix_match) {
 typedef struct
 {
 	string_vec outputs;
-	string_vec conditions;
+	string_vec output_types;
 	op_vec ops;
 } reduce_info;
 void
 free_reduce_info(reduce_info* info)
 {
 	free_op_vec(&info->ops);
-	free_str_vec(&info->conditions);
 	free_str_vec(&info->outputs);
+	free_str_vec(&info->output_types);
 }
 
 typedef struct
@@ -2573,7 +2575,7 @@ typedef struct
 
 static funcs_calling_info calling_info = {VEC_INITIALIZER, .called_funcs = NULL };
 
-#define REDUCE_INFO_INITIALIZER {.outputs = VEC_INITIALIZER, .conditions = VEC_INITIALIZER, .ops = VEC_INITIALIZER }
+#define REDUCE_INFO_INITIALIZER {.outputs = VEC_INITIALIZER, .ops = VEC_INITIALIZER, .output_types = VEC_INITIALIZER}
 
 void
 get_reduce_info_in_func(const ASTNode* node, reduce_info* src)
@@ -2582,13 +2584,22 @@ get_reduce_info_in_func(const ASTNode* node, reduce_info* src)
 	if(!(node->type & NODE_FUNCTION_CALL))
 		return;
 	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-	if (!(func_name == REDUCE_SUM_STR || func_name == REDUCE_MIN_STR || func_name == REDUCE_MAX_STR)) return;
+	if(!func_name || !(
+				strstr(func_name,"reduce_sum_AC_MANGLED") 
+				|| strstr(func_name,"reduce_min_AC_MANGLED") 
+				|| strstr(func_name,"reduce_max_AC_MANGLED") 
+				)) return;
 	push_op(&src->ops,
-			func_name == REDUCE_SUM_STR ? REDUCE_SUM :
-			func_name == REDUCE_MIN_STR ? REDUCE_MIN :
-			REDUCE_MAX);
-	push(&src->conditions,intern(combine_all_new(node->rhs->lhs->lhs)));
+			strstr(func_name,"reduce_sum") ? REDUCE_SUM :
+			strstr(func_name,"reduce_max") ? REDUCE_MAX :
+			REDUCE_MIN);
 	push(&src->outputs,intern(combine_all_new(node->rhs->rhs)));
+	const char* type = 
+			strstr(func_name,"AcReal") ? REAL_STR :
+			strstr(func_name,"int")    ? INT_STR :
+			NULL;
+	if(!type) fatal("Was not able to get reduce type: %s\n",combine_all_new(node));
+	push(&src->output_types,type);
 }
 static reduce_info reduce_infos[MAX_FUNCS] = {[0 ... MAX_FUNCS -1] = REDUCE_INFO_INITIALIZER};
 void
@@ -2609,8 +2620,8 @@ gen_reduce_info(const ASTNode* root)
 			for(size_t k = 0; k < reduce_infos[j].ops.size; ++k)
 			{
 				push_op(&reduce_infos[i].ops,reduce_infos[j].ops.data[k]);
-				push(&reduce_infos[i].conditions,reduce_infos[j].conditions.data[k]);
 				push(&reduce_infos[i].outputs,reduce_infos[j].outputs.data[k]);
+				push(&reduce_infos[i].output_types,reduce_infos[j].output_types.data[k]);
 			}
 		}
 }
@@ -2634,7 +2645,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	}
 	const ASTNode* fn_identifier = get_node(NODE_FUNCTION_ID,node);
 	const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,fn_identifier->buffer,KERNEL);
-	assert(kernel_reduce_info.ops.size  == kernel_reduce_info.outputs.size && kernel_reduce_info.ops.size == kernel_reduce_info.conditions.size);
+	assert(kernel_reduce_info.ops.size  == kernel_reduce_info.outputs.size);
 
 #if AC_USE_HIP
 	const char* shuffle_instruction = "rocprim::warp_shuffle_down(";
@@ -2649,9 +2660,9 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	for(size_t i = 0; i < kernel_reduce_info.ops.size; ++i)
 	{
 		ReduceOp reduce_op = kernel_reduce_info.ops.data[i];
-		const char* condition = kernel_reduce_info.conditions.data[i];
 		const char* output = intern(kernel_reduce_info.outputs.data[i]);
-	 	astnode_sprintf_postfix(compound_statement,"%sif(should_reduce[(int)%s]){"
+		const char* define_name = convert_to_define_name(kernel_reduce_info.output_types.data[i]);
+	 	astnode_sprintf_postfix(compound_statement,"%sif(should_reduce_%s[(int)%s]){"
 						"%s"
 						"%s"
 						"const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) % warp_size;"
@@ -2660,19 +2671,18 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 						"const int out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;"
 						"for(int offset = warp_size/2; offset > 0; offset /= 2){ \n"
 						,compound_statement->postfix
-						,output,warp_size,warp_id);
+						,define_name
+						,output,warp_size,warp_id
+				      );
 
-		const char* array_name =
+		const char* array_name = sprintf_intern("%s_%s",
 			reduce_op == REDUCE_SUM ? "reduce_sum_res" :
 			reduce_op == REDUCE_MIN ? "reduce_min_res" :
 			reduce_op == REDUCE_MAX ? "reduce_max_res" :
-			NULL;
-		if(!array_name)
-		{
-			printf("WRONG!\n");
-			printf("%s\n",fn_identifier->buffer);
-      			exit(EXIT_FAILURE);
-		}
+			NULL,
+			define_name
+			);
+
 
 		const char* res_name = sprintf_intern("%s[(int)%s]",array_name,output);
 	 	switch(reduce_op)
@@ -2706,8 +2716,9 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	 	astnode_sprintf_postfix(compound_statement,
 				"%s"
 				"}\n"
-				"if(lane_id == 0) {vba.reduce_scratchpads[(int)%s][0][out_index] = %s;}}\n"
+				"if(lane_id == 0) {vba.reduce_scratchpads_%s[(int)%s][0][out_index] = %s;}}\n"
 		,compound_statement->postfix
+		,define_name
 		,output,res_name);
 	}
 	astnode_sprintf_postfix(compound_statement,"%s}",compound_statement->postfix);
@@ -2766,7 +2777,6 @@ gen_calling_info(const ASTNode* root)
 void
 gen_kernel_postfixes(ASTNode* root, const bool gen_mem_accesses)
 {
-	gen_reduce_info(root);
 	gen_kernel_postfixes_recursive(root,gen_mem_accesses);
 }
 void
@@ -2774,26 +2784,48 @@ gen_kernel_reduce_outputs()
 {
   FILE* fp = fopen("kernel_reduce_outputs.h","w");
 
-  int num_real_reduce_output = 0;
+  int num_reduce_outputs = 0;
   for (size_t i = 0; i < num_symbols[0]; ++i)
-    if (symbol_table[i].tspecifier_token == REAL && int_vec_contains(symbol_table[i].tqualifiers,OUTPUT))
-	    ++num_real_reduce_output;
+    if ((symbol_table[i].tspecifier_token == REAL || symbol_table[i].tspecifier_token == INT) && int_vec_contains(symbol_table[i].tqualifiers,OUTPUT))
+	    ++num_reduce_outputs;
+  fprintf(fp,"typedef enum{\n"
+	     "  AC_REAL_TYPE\n,"
+	     "  AC_INT_TYPE\n"
+	     "} AcType;\n\n"
+	 );
   //extra padding to help some compilers
-  fprintf(fp,"%s","static const int kernel_reduce_outputs[NUM_KERNELS][NUM_REAL_OUTPUTS+1] = { ");
+  fprintf(fp,"typedef struct {\n"
+	     "  int variable;\n"
+	     "  AcType type;\n"
+	     "} KernelReduceOutput;\n\n"
+	 );
+  fprintf(fp,"%s","static const KernelReduceOutput kernel_reduce_outputs[NUM_KERNELS][NUM_OUTPUTS+1] = { ");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
     if (symbol_table[i].tspecifier_token == KERNEL)
     {
       const size_t index = str_vec_get_index(calling_info.names,symbol_table[i].identifier);
       fprintf(fp,"%s","{");
-      for(int j = 0; j < num_real_reduce_output; ++j)
+      for(int j = 0; j < num_reduce_outputs; ++j)
       {
+        fprintf(fp,"%s","{");
       	if(reduce_infos[index].outputs.size < (size_t) j+1)
-	        fprintf(fp,"%d,",-1);
+	{
+	        fprintf(fp,"%d,AC_REAL_TYPE",-1);
+	}
       	else
+	{
 	      	fprintf(fp,"(int)%s,",reduce_infos[index].outputs.data[j]);
+		if(reduce_infos[index].output_types.data[j] == REAL_STR)
+        		fprintf(fp,"%s,","AC_REAL_TYPE");
+		else if(reduce_infos[index].output_types.data[j] == INT_STR)
+        		fprintf(fp,"%s,","AC_INT_TYPE");
+		else
+			fatal("Unknown reduce output type: %s\n",reduce_infos[index].output_types.data[j]);
+	}
+        fprintf(fp,"%s","},");
       }
-      fprintf(fp,"-1");
+      fprintf(fp,"{-1,AC_REAL_TYPE}");
       fprintf(fp,"%s","},");
     }
   }
@@ -2801,13 +2833,13 @@ gen_kernel_reduce_outputs()
 
   fprintf(fp,"%s","typedef enum KernelReduceOp\n{\n\tNO_REDUCE,\n\tREDUCE_MIN,\n\tREDUCE_MAX,\n\tREDUCE_SUM,\n} KernelReduceOp;\n");
   //extra padding to help some compilers
-  fprintf(fp,"%s","static const KernelReduceOp kernel_reduce_ops[NUM_KERNELS][NUM_REAL_OUTPUTS+1] = { ");
+  fprintf(fp,"%s","static const KernelReduceOp kernel_reduce_ops[NUM_KERNELS][NUM_OUTPUTS+1] = { ");
   for (size_t i = 0; i < num_symbols[0]; ++i)
     if (symbol_table[i].tspecifier_token == KERNEL)
     {
       const size_t index = str_vec_get_index(calling_info.names,symbol_table[i].identifier);
       fprintf(fp,"%s","{");
-      for(int j = 0; j < num_real_reduce_output; ++j)
+      for(int j = 0; j < num_reduce_outputs; ++j)
       {
       	if(reduce_infos[index].ops.size < (size_t) j+1)
         	fprintf(fp,"%s,","NO_REDUCE");
@@ -3268,7 +3300,7 @@ rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_
   // Do not translate tqualifiers or tspecifiers immediately
   if (node->parent &&
       (node->parent->type & NODE_TQUAL || node->parent->type & NODE_TSPEC))
-    return;
+    	return;
 
   // Prefix logic
   if (node->type & NODE_BEGIN_SCOPE) {
@@ -3869,12 +3901,16 @@ const char*
 get_expr_type(ASTNode* node)
 {
 
+	//TP: Cast is special since it overwrites other rules
+	if(node->token == CAST)
+	{
+		node->expr_type = get_cast_expr_type(node);
+		return node->expr_type;
+	}
 	if(node->expr_type) return node->expr_type;
 	const char* res = node->expr_type;
 	if(node->token == IN_RANGE)
 		res = get_in_range_expr_type(node);
-	else if(node->token == CAST)
-		res = get_cast_expr_type(node);
 	else if(node->type & NODE_ARRAY_INITIALIZER)
 		res = get_array_initializer_type(node);
 	else if(node->type == NODE_PRIMARY_EXPRESSION)
@@ -4506,6 +4542,7 @@ gen_user_defines(const ASTNode* root, const char* out)
 	  const char* datatype = datatypes.data[i];
 	  gen_param_names(fp,datatype);
 	  gen_datatype_enums(fp,datatype);
+	  fprintf(fp,"\n#define NUM_OUTPUTS (NUM_REAL_OUTPUTS+NUM_INT_OUTPUTS)\n");
 
 	  fprintf_filename("device_mesh_info_decl.h","%s %s_params[NUM_%s_PARAMS+1];\n",datatype,convert_to_define_name(datatype),strupr(convert_to_define_name(datatype)));
 	  gen_array_declarations(datatype,root);
@@ -5531,18 +5568,16 @@ get_mangled_name(const char* dfunc_name, const string_vec types)
 		char* tmp;
 		asprintf(&tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
 		for(size_t i = 0; i < types.size; ++i)
-			asprintf(&tmp,"%s_%s",tmp,types.data[i]);
+			asprintf(&tmp,"%s_%s",tmp,
+					types.data[i] ? types.data[i] : "Auto");
 		tmp = realloc(tmp,sizeof(char)*(strlen(tmp) + 5*types.size));
 		replace_substring(&tmp,MULT_STR,"ARRAY");
 		return tmp;
 }
 void
-mangle_dfunc_names(ASTNode* node, string_vec* dst, int* counters)
+mangle_dfunc_names(ASTNode* node, string_vec* dst_types, const char** dst_names,int* counters)
 {
-	if(node->lhs)
-		mangle_dfunc_names(node->lhs,dst,counters);
-	if(node->rhs)
-		mangle_dfunc_names(node->rhs,dst,counters);
+	TRAVERSE_PREAMBLE_PARAMS(mangle_dfunc_names,dst_types,dst_names,counters);
 	if(!(node->type & NODE_DFUNCTION))
 		return;
 	const int dfunc_index = str_vec_get_index(duplicate_dfuncs.names,get_node_by_token(IDENTIFIER,node->lhs)->buffer);
@@ -5553,9 +5588,8 @@ mangle_dfunc_names(ASTNode* node, string_vec* dst, int* counters)
 	func_params_info params_info = get_function_params_info(node,dfunc_name);
 	counters[dfunc_index]++;
 	for(size_t i = 0; i < params_info.types.size; ++i)
-	{
-		push(&dst[overload_index + MAX_DFUNCS*dfunc_index], params_info.types.data[i]);
-	}
+		push(&dst_types[overload_index + MAX_DFUNCS*dfunc_index], params_info.types.data[i]);
+	dst_names[overload_index + MAX_DFUNCS*dfunc_index]  = duplicate_dfuncs.names.data[dfunc_index];
 	ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
 	astnode_set_buffer(get_mangled_name(dfunc_name,params_info.types),identifier);
 	free_func_params_info(&params_info);
@@ -5576,20 +5610,25 @@ compatible_types(const char* a, const char* b)
 		  || (a == REAL3_PTR_STR && b == FIELD3_PTR_STR)
 		;
 }
+typedef struct 
+{
+	const string_vec* types;
+	const char*const * names;
+} dfunc_possibilities;
 static int_vec
-get_possible_dfuncs(const func_params_info call_info, const string_vec* dfunc_possible_types, const int dfunc_index, const bool strict)
+get_possible_dfuncs(const func_params_info call_info, const dfunc_possibilities possibilities, const int dfunc_index, const bool strict, const char* func_name)
 {
 	int overload_index = MAX_DFUNCS*dfunc_index-1;
 	int_vec possible_indexes = VEC_INITIALIZER;
     	//TP: ugly hack to resolve calls in BoundConds
-	const int param_offset = is_boundary_param(call_info.expr.data[0]) ? 1 : 0;
-	while(dfunc_possible_types[++overload_index].size > 0)
+	const int param_offset = (call_info.expr.size > 0 && is_boundary_param(call_info.expr.data[0])) ? 1 : 0;
+	while(possibilities.names[++overload_index] == func_name)
 	{
 		bool possible = true;
-		if(call_info.types.size - param_offset != dfunc_possible_types[overload_index].size) continue;
+		if(call_info.types.size - param_offset != possibilities.types[overload_index].size) continue;
 		for(size_t i = param_offset; i < call_info.types.size; ++i)
 		{
-			const char* func_type = dfunc_possible_types[overload_index].data[i-param_offset];
+			const char* func_type = possibilities.types[overload_index].data[i-param_offset];
 			const char* call_type = call_info.types.data[i];
 			if(strict)
 				possible &= !call_type || !func_type || !strcmp(func_type,call_type);
@@ -5603,14 +5642,13 @@ get_possible_dfuncs(const func_params_info call_info, const string_vec* dfunc_po
 	return possible_indexes;
 }
 bool
-//resolve_overloaded_calls(ASTNode* node, const char* dfunc_name, string_vec* dfunc_possible_types,const int dfunc_index)
-resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
+resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
 {
 	bool res = false;
 	if(node->lhs)
-		res |= resolve_overloaded_calls(node->lhs,dfunc_possible_types);
+		res |= resolve_overloaded_calls(node->lhs,possibilities);
 	if(node->rhs)
-		res |= resolve_overloaded_calls(node->rhs,dfunc_possible_types);
+		res |= resolve_overloaded_calls(node->rhs,possibilities);
 	if(!(node->type & NODE_FUNCTION_CALL))
 		return res;
 	if(!get_node_by_token(IDENTIFIER,node->lhs))
@@ -5626,8 +5664,8 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 		return true;
 	}
 	int correct_types = -1;
-	int_vec possible_indexes_conversion = get_possible_dfuncs(call_info,dfunc_possible_types,dfunc_index,false);
-	int_vec possible_indexes_strict = get_possible_dfuncs(call_info,dfunc_possible_types,dfunc_index,true);
+	int_vec possible_indexes_conversion = get_possible_dfuncs(call_info,possibilities,dfunc_index,false,dfunc_name);
+	int_vec possible_indexes_strict = get_possible_dfuncs(call_info,possibilities,dfunc_index,true,dfunc_name);
 	//TP: by default use the strict rules but if there no suitable ones use conversion rules
 	const int_vec possible_indexes = possible_indexes_strict.size == 0 ? possible_indexes_conversion : possible_indexes_strict;
 	bool able_to_resolve = possible_indexes.size == 1;
@@ -5645,7 +5683,7 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 		return res;
 	}
 	{
-		const string_vec types = dfunc_possible_types[possible_indexes.data[0]];
+		const string_vec types = possibilities.types[possible_indexes.data[0]];
 		astnode_set_buffer(get_mangled_name(dfunc_name,types), get_node_by_token(IDENTIFIER,node->lhs));
 
 	}
@@ -5662,10 +5700,12 @@ gen_overloads(ASTNode* root)
 {
   bool overloaded_something = true;
   string_vec dfunc_possible_types[MAX_DFUNCS * duplicate_dfuncs.names.size];
+  const char* dfunc_possible_names[MAX_DFUNCS * duplicate_dfuncs.names.size];
   memset(dfunc_possible_types,0,sizeof(string_vec)*MAX_DFUNCS*duplicate_dfuncs.names.size);
+  memset(dfunc_possible_types,0,sizeof(char*)*MAX_DFUNCS*duplicate_dfuncs.names.size);
   int counters[duplicate_dfuncs.names.size];
   memset(counters,0,sizeof(int)*duplicate_dfuncs.names.size);
-  mangle_dfunc_names(root,dfunc_possible_types,counters);
+  mangle_dfunc_names(root,dfunc_possible_types,dfunc_possible_names,counters);
 
   
   //TP: refresh the symbol table with the mangled names
@@ -5675,11 +5715,12 @@ gen_overloads(ASTNode* root)
   //TP we have to create the internal names here since it has to be done after name mangling but before transformation to AcArray
   gen_dfunc_internal_names(root);
 
+  dfunc_possibilities overload_possibilities = {dfunc_possible_types,dfunc_possible_names}; 
   while(overloaded_something)
   {
 	overloaded_something = false;
   	gen_type_info(root);
-	overloaded_something |= resolve_overloaded_calls(root,dfunc_possible_types);
+	overloaded_something |= resolve_overloaded_calls(root,overload_possibilities);
   	//for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
   	        //overloaded_something |= resolve_overloaded_calls(root,duplicate_dfuncs.data[i],dfunc_possible_types,i);
   }
@@ -5960,9 +6001,6 @@ gen_global_strings()
 	DEQ_STR= intern("/=");
 	PERIODIC = intern("periodic");
 
-	REDUCE_SUM_STR= intern("reduce_sum");
-	REDUCE_MIN_STR= intern("reduce_min");
-	REDUCE_MAX_STR= intern("reduce_max");
 
 	EMPTY_STR = intern("\0");
 	FIELD_STR = intern("Field");
@@ -6091,8 +6129,8 @@ create_broadcast_initializer(const ASTNode* expr, const char* datatype)
 	ASTNode* res = astnode_create(NODE_UNKNOWN,tspec,initializer);
 	astnode_set_prefix("(",res);
 	astnode_set_infix(")",res);
-	res->lhs->type ^= NODE_TSPEC;
 	res->token     = CAST;
+	res->lhs->type ^= NODE_TSPEC;
 	return res;
 }
 void
@@ -6355,6 +6393,8 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
   free_structs_info(&s_info);
   gen_calling_info(root);
+  traverse_base(root, 0, NULL, true,NULL);
+  gen_reduce_info(root);
 }
 
 static size_t

@@ -555,20 +555,12 @@ Task::syncVBA()
     }
     for(int i=0;i<NUM_WORK_BUFFERS; ++i)
         vba.w[i] = device->vba.w[i];
-    for(int i=0;i<NUM_REAL_OUTPUTS; ++i)
-    {
-    	vba.reduce_scratchpads[i][0]  = device->vba.reduce_scratchpads[i][0];
-    	vba.reduce_scratchpads[i][1]  = device->vba.reduce_scratchpads[i][1];
-    }
 }
 
 void
 Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-
-        // printf("vtxbuf_swaps %i VTXBUF number %i (VTXBUF_SHOCK %i) \n", vtxbuf_swaps[i], i,
-        // VTXBUF_SHOCK);
 
         if (vtxbuf_swaps[i]) {
             AcReal* tmp = vba.in[i];

@@ -262,40 +262,73 @@ gen_kernel_prefix(const int curr_kernel)
 
   if(kernel_calls_reduce[curr_kernel] )
   {
-    printf("AcReal reduce_sum_res[NUM_REAL_OUTPUTS] = {\n");
+    printf("AcReal reduce_sum_res_real[NUM_REAL_OUTPUTS] = {\n");
     for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
             printf("0.0,");
     printf("};\n");
-    printf("AcReal reduce_max_res[NUM_REAL_OUTPUTS] = {\n");
+    printf("AcReal reduce_max_res_real[NUM_REAL_OUTPUTS] = {\n");
     for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
             printf("-1000000.0,");
     printf("};\n");
-    printf("AcReal reduce_min_res[NUM_REAL_OUTPUTS] = {\n");
+    printf("AcReal reduce_min_res_real[NUM_REAL_OUTPUTS] = {\n");
     for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
             printf("1000000.0,");
     printf("};\n");
-    printf("bool should_reduce[NUM_REAL_OUTPUTS] = {\n");
+    printf("bool should_reduce_real[NUM_REAL_OUTPUTS] = {\n");
+    	printf("false,");
+    printf("};\n");
+
+    printf("int reduce_sum_res_int[NUM_INT_OUTPUTS] = {\n");
+    for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
+            printf("0,");
+    printf("};\n");
+    printf("int reduce_max_res_int[NUM_INT_OUTPUTS] = {\n");
+    for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
+            printf("-10000000,");
+    printf("};\n");
+    printf("int reduce_min_res_int[NUM_INT_OUTPUTS] = {\n");
+    for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
+            printf("10000000,");
+    printf("};\n");
+    printf("bool should_reduce_int[NUM_REAL_OUTPUTS] = {\n");
     	printf("false,");
     printf("};\n");
     
 
-    printf("(void)reduce_sum_res;");
-    printf("(void)reduce_min_res;");
-    printf("(void)reduce_max_res;");
-    printf("const auto reduce_sum __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-          	  "{ should_reduce[(int)output] = condition; reduce_sum_res[(int)output] = val; };");
-    printf("const auto reduce_min __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-          	  "{ should_reduce[(int)output] = condition; reduce_min_res[(int)output] = val; };");
-    printf("const auto reduce_max __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-		  "{ should_reduce[(int)output] = condition; reduce_max_res[(int)output] = val; };");
+    printf("(void)reduce_sum_res_real;");
+    printf("(void)reduce_min_res_real;");
+    printf("(void)reduce_max_res_real;");
+
+    printf("(void)reduce_sum_res_int;");
+    printf("(void)reduce_min_res_int;");
+    printf("(void)reduce_max_res_int;");
+
+    printf("const auto reduce_sum_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
+          	  "{ should_reduce_real[(int)output] = condition; reduce_sum_res_real[(int)output] = val; };");
+    printf("const auto reduce_min_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
+          	  "{ should_reduce_real[(int)output] = condition; reduce_min_res_real[(int)output] = val; };");
+    printf("const auto reduce_max_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
+		  "{ should_reduce_real[(int)output] = condition; reduce_max_res_real[(int)output] = val; };");
+
+    printf("const auto reduce_sum_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
+          	  "{ should_reduce_int[(int)output] = condition; reduce_sum_res_int[(int)output] = val; };");
+    printf("const auto reduce_min_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
+          	  "{ should_reduce_int[(int)output] = condition; reduce_min_res_int[(int)output] = val; };");
+    printf("const auto reduce_max_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
+		  "{ should_reduce_int[(int)output] = condition; reduce_max_res_int[(int)output] = val; };");
   }
 }
 
 static void
-gen_return_if_oob()
+gen_return_if_oob(const int curr_kernel)
 {
-  	printf("if (!(vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
-         "vertexIdx.z >= end.z)){\n#include \"user_non_scalar_constants.h\"\n");
+       printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
+       if(kernel_calls_reduce[curr_kernel] )
+       {
+	 printf("for(int i = 0; i < NUM_REAL_OUTPUTS; ++i) should_reduce_real[i] = out_of_bounds;\n");
+	 printf("for(int i = 0; i < NUM_INT_OUTPUTS; ++i)   should_reduce_int[i] = out_of_bounds;\n");
+       }
+       printf("if(!out_of_bounds){\n#include \"user_non_scalar_constants.h\"\n");
 }
 static int
 get_original_index(const int* mappings, const int field)
@@ -369,7 +402,7 @@ gen_analysis_stencils(FILE* stream)
 void
 gen_stencil_accesses()
 {
-  gen_return_if_oob();
+  gen_return_if_oob(0);
 }
 
 /** ct_const_weights: Compile-time constant weights
@@ -635,7 +668,7 @@ gen_kernel_body(const int curr_kernel)
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: {
     gen_kernel_prefix(curr_kernel);
-    gen_return_if_oob();
+    gen_return_if_oob(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
 
     int stencil_initialized[NUM_ALL_FIELDS + NUM_PROFILES][NUM_STENCILS] = {0};
@@ -911,7 +944,7 @@ gen_kernel_body(const int curr_kernel)
     gen_kernel_prefix(curr_kernel); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_and_compute_stencil_ops(curr_kernel);
-    gen_return_if_oob();
+    gen_return_if_oob(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -921,7 +954,7 @@ gen_kernel_body(const int curr_kernel)
     gen_kernel_prefix(curr_kernel); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_3d_and_compute_stencil_ops(curr_kernel);
-    gen_return_if_oob();
+    gen_return_if_oob(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -931,7 +964,7 @@ gen_kernel_body(const int curr_kernel)
     gen_kernel_prefix(curr_kernel); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_4d_and_compute_stencil_ops(curr_kernel);
-    gen_return_if_oob();
+    gen_return_if_oob(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -943,7 +976,7 @@ gen_kernel_body(const int curr_kernel)
 
     prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
         curr_kernel);
-    gen_return_if_oob();
+    gen_return_if_oob(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -956,7 +989,7 @@ gen_kernel_body(const int curr_kernel)
 
     prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
         curr_kernel);
-    gen_return_if_oob();
+    gen_return_if_oob(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -968,7 +1001,7 @@ gen_kernel_body(const int curr_kernel)
 
     // prefetch_stencil_elems_to_smem_pingpong_txyblocked_and_compute_stencil_ops(
     //     curr_kernel);
-    gen_return_if_oob();
+    gen_return_if_oob(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -980,7 +1013,7 @@ gen_kernel_body(const int curr_kernel)
 
     prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
         curr_kernel);
-    gen_return_if_oob();
+    gen_return_if_oob(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);

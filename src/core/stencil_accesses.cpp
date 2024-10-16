@@ -17,6 +17,9 @@ typedef enum AcBoundary {
     BOUNDARY_XYZ   = BOUNDARY_X | BOUNDARY_Y | BOUNDARY_Z
 } AcBoundary;
 
+bool should_reduce_real[1000] = {false};
+bool should_reduce_int[1000] = {false};
+
 
 #ifndef AC_IN_AC_LIBRARY
 #define AC_IN_AC_LIBRARY
@@ -92,11 +95,18 @@ print(const char* , ...)
 #define local_compdomain_idx ((LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx))
 
 void 
-reduce_sum(const bool&, const AcReal&, const AcRealOutputParam&){}
+reduce_sum_real(const bool&, const AcReal&, const AcRealOutputParam&){}
 void 
-reduce_min(const bool&, const AcReal&, const AcRealOutputParam&){}
+reduce_min_real(const bool&, const AcReal&, const AcRealOutputParam&){}
 void 
-reduce_max(const bool&, const AcReal&, const AcRealOutputParam&){}
+reduce_max_real(const bool&, const AcReal&, const AcRealOutputParam&){}
+
+void 
+reduce_sum_int(const bool&,  const int&, const AcIntOutputParam&){}
+void 
+reduce_min_int(const bool&,  const int&, const AcIntOutputParam&){}
+void 
+reduce_max_int(const bool&,  const int&, const AcIntOutputParam&){}
 
 template <typename T>
 T

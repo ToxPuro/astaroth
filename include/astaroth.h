@@ -1509,6 +1509,8 @@ FUNC_DEFINE(AcResult, acDeviceStoreProfile,(const Device device, const Profile p
 
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduce,(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutputParam output));
+/** */
+FUNC_DEFINE(AcResult,  acDeviceFinishReduceInt,(Device device, const Stream stream, int* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcIntOutputParam output));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceUpdate,(Device device, const AcMeshInfo info));

@@ -24,6 +24,7 @@ typedef AcReal (*MapFn)(const AcReal&);
 typedef AcReal (*MapVecFn)(const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*MapVecScalFn)(const AcReal&, const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*ReduceFn)(const AcReal&, const AcReal&);
+typedef int    (*ReduceFnInt)(const int&, const int&);
 typedef AcReal (*CoordFn)(const AcReal3&);
 typedef void (*GridLocFn)(AcReal*, AcReal*, AcReal*, const int3&);
 
@@ -185,6 +186,23 @@ reduce_min(const AcReal& a, const AcReal& b)
 
 static __device__ inline AcReal
 reduce_sum(const AcReal& a, const AcReal& b)
+{
+    return a + b;
+}
+static __device__ inline int
+reduce_max_int(const int& a, const int& b)
+{
+    return a > b ? a : b;
+}
+
+static __device__ inline int
+reduce_min_int(const int& a, const int& b)
+{
+    return a > b ? a : b;
+}
+
+static __device__ inline int
+reduce_sum_int(const int& a, const int& b)
 {
     return a + b;
 }
@@ -442,10 +460,51 @@ reduce(const AcReal* in, const size_t count, AcReal* out)
         out[blockIdx.x] = smem[threadIdx.x];
 }
 
-static void
-swap_ptrs(AcReal** a, AcReal** b)
+template <ReduceFnInt reduce_fn>
+__global__ void
+reduce_int(const int* in, const size_t count, int* out)
 {
-    AcReal* tmp = *a;
+    // Note: possible integer overflow when GPU memory becomes large enough
+    const size_t curr = threadIdx.x + blockIdx.x * blockDim.x;
+
+    extern __shared__ int smem_int[];
+    if (curr < count)
+        smem_int[threadIdx.x] = in[curr];
+    else
+        smem_int[threadIdx.x] = 0;
+
+    __syncthreads();
+
+    size_t offset = blockDim.x / 2;
+    while (offset > 0) {
+        if (threadIdx.x < offset) {
+            const int a = smem_int[threadIdx.x];
+            const int b = smem_int[threadIdx.x + offset];
+
+            // If the mesh dimensions are not divisible by mapping tbdims, and mapping tb dims are
+            // not divisible by reduction tb dims, then it is possible for `a` to be invalid but `b`
+            // to be valid
+            if (a != AC_REAL_INVALID_VALUE && b != AC_REAL_INVALID_VALUE)
+                smem_int[threadIdx.x] = reduce_fn(a, b);
+            else if (a != AC_REAL_INVALID_VALUE)
+                smem_int[threadIdx.x] = a;
+            else
+                smem_int[threadIdx.x] = b;
+        }
+
+        offset /= 2;
+        __syncthreads();
+    }
+
+    if (!threadIdx.x)
+        out[blockIdx.x] = smem_int[threadIdx.x];
+}
+
+template <typename T>
+static void
+swap_ptrs(T** a, T** b)
+{
+    T* tmp = *a;
     *a          = *b;
     *b          = tmp;
 }
@@ -513,6 +572,47 @@ AcKernelReduce(const cudaStream_t stream, AcReal* scratchpads[2], const int init
 
      // Copy the result back to host
     AcReal result;
+    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
+    // NOTE This function does NOT synchronize the device or even the stream after reduction to allow overlap of multiple streams
+    //cudaStreamSynchronize(stream);
+
+    //cudaDeviceSynchronize();
+    // fprintf(stderr, "%s device result %g\n", rtype_names[rtype], result);
+    return result;
+}
+int
+AcKernelReduceInt(const cudaStream_t stream, int* scratchpads[2], const int initial_count, const KernelReduceOp reduce_op)
+{
+    // Reduce
+    int* in  = scratchpads[0];
+    int* out = scratchpads[1];
+    size_t count = initial_count;
+    do {
+        const size_t tpb  = 128;
+        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
+        const size_t smem = tpb * sizeof(in[0]);
+	switch(reduce_op)
+	{
+		case(REDUCE_SUM):
+			reduce_int<reduce_sum_int><<<bpg,tpb,smem,stream>>>(in,count,out);
+			break;
+		case(REDUCE_MIN):
+			reduce_int<reduce_min_int><<<bpg,tpb,smem,stream>>>(in,count,out);
+			break;
+		case(REDUCE_MAX):
+			reduce_int<reduce_max_int><<<bpg,tpb,smem,stream>>>(in,count,out);
+			break;
+		case(NO_REDUCE):
+			break;
+	}
+        ERRCHK_CUDA_KERNEL();
+        swap_ptrs(&in, &out);
+
+        count = bpg;
+    } while (count > 1);
+
+     // Copy the result back to host
+    int result;
     cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
     // NOTE This function does NOT synchronize the device or even the stream after reduction to allow overlap of multiple streams
     //cudaStreamSynchronize(stream);
