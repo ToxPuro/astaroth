@@ -22,18 +22,22 @@ ac_calloc(const size_t count, const size_t size)
 }
 
 void
-ac_free(void* ptr)
+ac_free(void** ptr)
 {
-    ERRCHK(ptr);
-    free(ptr);
+    ERRCHK(*ptr);
+    free(*ptr);
+    *ptr = NULL;
 }
 
 void*
-ac_realloc(const size_t count, const size_t size, void* ptr)
+ac_realloc(const size_t count, const size_t size, void** in)
 {
-    ptr = realloc(ptr, count * size);
-    ERRCHK(ptr);
-    return ptr;
+    void* out = realloc(*in, count * size);
+    if (!out) {
+        ERROR("realloc failed");
+        ac_free(in);
+    }
+    return out;
 }
 
 void

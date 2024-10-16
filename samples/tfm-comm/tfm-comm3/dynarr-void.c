@@ -20,7 +20,7 @@ dynarr_create(const size_t capacity, const size_t elem_size)
 void
 dynarr_destroy(DynamicArray* arr)
 {
-    ac_free(arr->data);
+    ac_free((void**)&arr->data);
     arr->data      = NULL;
     arr->elem_size = 0;
     arr->capacity  = 0;
@@ -32,7 +32,7 @@ dynarr_append(const size_t elem_size, const void* elem, DynamicArray* arr)
 {
     ERRCHK(elem_size == arr->elem_size);
     if (arr->len == arr->capacity)
-        arr->data = ac_realloc(++arr->capacity, arr->elem_size, arr->data);
+        arr->data = ac_realloc(++arr->capacity, arr->elem_size, (void**)&arr->data);
 
     ac_copy(1, arr->elem_size, elem, (uint8_t*)arr->data + arr->len * arr->elem_size);
     ++arr->len;
@@ -50,8 +50,7 @@ void
 dynarr_remove(const uint64_t index, DynamicArray* arr)
 {
     ERRCHK(index < arr->len);
-    if (index >= arr->len)
-        return;
+    if (index >= arr->len) return;
 
     const size_t count = arr->len - index - 1;
     if (count > 0) {
@@ -73,8 +72,7 @@ void*
 dynarr_get(const uint64_t index, const DynamicArray arr)
 {
     ERRCHK(index < arr.len);
-    if (index >= arr.len)
-        return NULL;
+    if (index >= arr.len) return NULL;
 
     return (uint8_t*)arr.data + index * arr.elem_size;
 }

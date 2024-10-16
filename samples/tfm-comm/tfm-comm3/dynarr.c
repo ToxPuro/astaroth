@@ -21,7 +21,7 @@ test_struct_create(const size_t count)
 static void
 test_struct_destroy(TestStruct* s)
 {
-    ac_free(s->elems);
+    ac_free((void**)&s->elems);
     s->count = 0;
 }
 
@@ -53,7 +53,7 @@ test_dynarr(void)
         ERRCHK(arr.data[1] == 3);
         ERRCHK(arr.data[2] == 10);
         ERRCHK(arr.data[3] == 11);
-        ac_free(elems);
+        ac_free((void**)&elems);
 
         dynarr_destroy(&arr);
     }
@@ -85,7 +85,7 @@ test_dynarr(void)
         ERRCHK(arr.data[0] == 1);
         ERRCHK(arr.data[1] == 11);
 
-        ac_free(elems);
+        ac_free((void**)&elems);
 
         dynarr_destroy(&arr);
     }

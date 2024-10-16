@@ -154,7 +154,7 @@ test_cumprod(void)
         cumprod(count, a, b);
         const uint64_t c[] = {0};
         ERRCHK(equals(count, b, c));
-        ac_free(b);
+        ac_free((void**)&b);
     }
     {
         const uint64_t a[] = {2, 2, 2, 2};
@@ -163,7 +163,7 @@ test_cumprod(void)
         cumprod(count, a, b);
         const uint64_t c[] = {2, 4, 8, 16};
         ERRCHK(equals(count, b, c));
-        ac_free(b);
+        ac_free((void**)&b);
     }
     {
         const uint64_t a[] = {2, 4, 8, 16};
@@ -172,7 +172,7 @@ test_cumprod(void)
         cumprod(count, a, b);
         const uint64_t c[] = {2, 2 * 4, 2 * 4 * 8, 2 * 4 * 8 * 16};
         ERRCHK(equals(count, b, c));
-        ac_free(b);
+        ac_free((void**)&b);
     }
 }
 
@@ -357,7 +357,7 @@ test_unique(void)
         for (size_t j = 0; j < count; ++j)
             for (uint64_t k = j + 1; k < count; ++k)
                 ERRCHK(arr[j] != arr[k]);
-        ac_free(arr);
+        ac_free((void**)&arr);
     }
 }
 
@@ -399,7 +399,7 @@ test_unique_subsets(void)
         const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        ac_free(b);
+        ac_free((void**)&b);
     }
     {
         const uint64_t a[]           = {1, 1, 3, 4};
@@ -412,7 +412,7 @@ test_unique_subsets(void)
         const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        ac_free(b);
+        ac_free((void**)&b);
     }
     {
         const uint64_t a[]           = {1, 1, 2, 2, 1, 1};
@@ -425,7 +425,7 @@ test_unique_subsets(void)
         const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        ac_free(b);
+        ac_free((void**)&b);
     }
     {
         const uint64_t a[]           = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3};
@@ -438,7 +438,7 @@ test_unique_subsets(void)
         const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        ac_free(b);
+        ac_free((void**)&b);
     }
     {
         const uint64_t a[]           = {1, 2, 3, 3, 2, 1, 1, 2, 3};
@@ -451,7 +451,7 @@ test_unique_subsets(void)
         const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        ac_free(b);
+        ac_free((void**)&b);
     }
     {
         const uint64_t a[]           = {1, 2, 3, 3, 2, 1, 1, 3, 2, 3, 2, 1};
@@ -464,7 +464,7 @@ test_unique_subsets(void)
         const uint64_t output_count       = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        ac_free(b);
+        ac_free((void**)&b);
     }
 }
 
@@ -522,7 +522,7 @@ to_spatial(const uint64_t index, const size_t ndims, const uint64_t* shape, uint
     // for (size_t i = 0; i < ndims; ++i)
     //     output[i] = (index / basis[i]) % shape[i];
 
-    // ac_free(basis);
+    // ac_free((void**)&basis);
 }
 
 uint64_t
@@ -542,7 +542,7 @@ to_linear(const size_t ndims, const uint64_t* coords, const uint64_t* shape)
     // cumprod(ndims, shape, basis);
     // rshift(1, 1, ndims, basis);
     // const uint64_t result = dot(ndims, index, basis);
-    // ac_free(basis);
+    // ac_free((void**)&basis);
     // return result;
 }
 
@@ -560,7 +560,7 @@ test_to_spatial_to_linear(void)
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        ac_free(coords);
+        ac_free((void**)&coords);
     }
     {
 
@@ -573,7 +573,7 @@ test_to_spatial_to_linear(void)
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        ac_free(coords);
+        ac_free((void**)&coords);
     }
     {
 
@@ -586,7 +586,7 @@ test_to_spatial_to_linear(void)
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        ac_free(coords);
+        ac_free((void**)&coords);
     }
     {
 
@@ -599,7 +599,7 @@ test_to_spatial_to_linear(void)
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        ac_free(coords);
+        ac_free((void**)&coords);
     }
     {
 
@@ -613,7 +613,7 @@ test_to_spatial_to_linear(void)
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        ac_free(coords);
+        ac_free((void**)&coords);
     }
     {
 
@@ -627,7 +627,7 @@ test_to_spatial_to_linear(void)
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        ac_free(coords);
+        ac_free((void**)&coords);
     }
     {
 
@@ -640,7 +640,7 @@ test_to_spatial_to_linear(void)
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        ac_free(coords);
+        ac_free((void**)&coords);
     }
     {
 
@@ -653,14 +653,14 @@ test_to_spatial_to_linear(void)
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        ac_free(coords);
+        ac_free((void**)&coords);
     }
     {
         const size_t ndims = 2;
         uint64_t* coords   = ac_calloc(ndims, sizeof(coords[0]));
         to_spatial(1, ndims, (uint64_t[]){2, 2}, coords);
         ERRCHK(equals(ndims, coords, (uint64_t[]){1, 0}));
-        ac_free(coords);
+        ac_free((void**)&coords);
     }
 }
 
@@ -774,7 +774,7 @@ test_repeat(void)
         uint64_t* b        = ac_calloc(count * nrepeats, sizeof(b[0]));
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
-        ac_free(b);
+        ac_free((void**)&b);
     }
     {
         const uint64_t a[]      = {1};
@@ -785,7 +785,7 @@ test_repeat(void)
         uint64_t* b        = ac_calloc(count * nrepeats, sizeof(b[0]));
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
-        ac_free(b);
+        ac_free((void**)&b);
     }
     {
         const uint64_t a[]      = {1, 2, 3, 4};
@@ -796,7 +796,7 @@ test_repeat(void)
         uint64_t* b        = ac_calloc(count * nrepeats, sizeof(b[0]));
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
-        ac_free(b);
+        ac_free((void**)&b);
     }
 }
 
@@ -836,7 +836,7 @@ test_sort(void)
         sort(count, arr);
         for (size_t j = 1; j < count; ++j)
             ERRCHK(arr[j] >= arr[j - 1]);
-        ac_free(arr);
+        ac_free((void**)&arr);
     }
 }
 
@@ -1100,7 +1100,7 @@ nd_to_1d(const size_t ndims, const uint64_t* coords, const uint64_t* dims)
     cumprod(ndims, dims, offset);
     rshift(1, 1, ndims, offset);
     const uint64_t res = dot(ndims, coords, offset);
-    ac_free(offset);
+    ac_free((void**)&offset);
     return res;
 }
 
@@ -1273,9 +1273,9 @@ test_remove_row(void)
         // print_array("out", out_count, out);
         // print_array("model", out_count, model);
 
-        ac_free(in);
-        ac_free(model);
-        ac_free(out);
+        ac_free((void**)&in);
+        ac_free((void**)&model);
+        ac_free((void**)&out);
     }
 
     {
@@ -1295,7 +1295,7 @@ test_remove_row(void)
         uint64_t* out            = ac_calloc(out_count, sizeof(out[0]));
         matrix_remove_row(0, nrows, ncols, &in[0][0], out);
         ERRCHK(equals(out_count, &model[0][0], out));
-        ac_free(out);
+        ac_free((void**)&out);
 #undef ncols
     }
     {
@@ -1310,7 +1310,7 @@ test_remove_row(void)
         uint64_t* out            = ac_calloc(out_count, sizeof(out[0]));
         matrix_remove_row(nrows - 1, nrows, ncols, &in[0][0], out);
         ERRCHK(equals(out_count, &model[0][0], out));
-        ac_free(out);
+        ac_free((void**)&out);
 #undef ncols
     }
 }

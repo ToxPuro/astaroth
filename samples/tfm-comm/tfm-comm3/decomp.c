@@ -46,7 +46,7 @@ dims_create(const size_t nprocs, const size_t ndims, const uint64_t* global_nn, 
         decomposition[bestj] *= bestfac;
         local_nn[bestj] /= bestfac;
     }
-    ac_free(factors);
+    ac_free((void**)&factors);
 
     ERRCHK(prod(ndims, local_nn) * prod(ndims, decomposition) == prod(ndims, global_nn));
 }
@@ -65,7 +65,7 @@ hierarchical_domain_decomposition(const size_t ndims, const uint64_t* global_nn,
         ac_copy(ndims, sizeof(local_nn[0]), local_nn, curr_global_nn);
     }
 
-    ac_free(curr_global_nn);
+    ac_free((void**)&curr_global_nn);
 }
 
 AcDecompositionInfo
@@ -91,10 +91,10 @@ acDecompositionInfoCreate(const size_t ndims, const uint64_t* global_nn, const s
 void
 acDecompositionInfoDestroy(AcDecompositionInfo* info)
 {
-    ac_free(info->global_decomposition);
-    ac_free(info->decomposition);
-    ac_free(info->local_nn);
-    ac_free(info->global_nn);
+    ac_free((void**)&info->global_decomposition);
+    ac_free((void**)&info->decomposition);
+    ac_free((void**)&info->local_nn);
+    ac_free((void**)&info->global_nn);
     info->nlayers = 0;
     info->ndims   = 0;
 }
@@ -122,7 +122,7 @@ acDecompositionGetRank(const size_t ndims, const uint64_t* coords, const AcDecom
     // for (size_t i = 0; i < ndims; ++i) {
     //     to_spatial()
     // }
-    // ac_free(nd_coords);
+    // ac_free((void**)&nd_coords);
 
     //     const uint64_t nlayers = info.nlayers;
 
@@ -134,7 +134,7 @@ acDecompositionGetRank(const size_t ndims, const uint64_t* coords, const AcDecom
     //     to_spatial(gi, ndims * nlayers, info.decomposition, nd_coords);
     //     const uint64_t i = to_linear()
 
-    //     ac_free(nd_coords);
+    //     ac_free((void**)&nd_coords);
 
     //     return to_linear(ndims, coords, info.decomposition);
 }

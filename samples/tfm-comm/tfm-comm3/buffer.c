@@ -16,7 +16,7 @@ buffer_create(const size_t count)
 void
 buffer_destroy(Buffer* buffer)
 {
-    ac_free(buffer->data);
+    ac_free((void**)&buffer->data);
     buffer->data  = NULL;
     buffer->count = 0;
 }

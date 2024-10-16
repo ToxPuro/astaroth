@@ -65,7 +65,7 @@ partition(const size_t ndims, const uint64_t* mm, const uint64_t* nn, const uint
     segment_destroy(&mm_seg);
     segment_destroy(&nn_seg);
 
-    ac_free(zeros);
+    ac_free((void**)&zeros);
 }
 
 void
@@ -181,7 +181,7 @@ partition_hierarchical_recursive(const size_t npartitions, const size_t ndims,
             }
         }
     }
-    ac_free(factors);
+    ac_free((void**)&factors);
     ERRCHK(best_axis < ndims);
     ERRCHK((npartitions % best_factor) == 0);
 

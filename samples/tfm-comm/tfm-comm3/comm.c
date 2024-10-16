@@ -89,9 +89,9 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
 //         MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_decomp, mpi_periods, 0, &mpi_comm);
 
 // cleanup_2:
-//     ac_free(mpi_periods);
+//     ac_free((void**)&mpi_periods);
 // cleanup_1:
-//     ac_free(mpi_decomp);
+//     ac_free((void**)&mpi_decomp);
 // done:
 //     return errcode;
 // }
@@ -126,8 +126,8 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
 //     // int mpi_periods[MAX_NDIMS];
 //     // set_array_int(1, ndims, mpi_periods);
 
-//     ac_free(mpi_periods);
-//     ac_free(mpi_decomp);
+//     ac_free((void**)&mpi_periods);
+//     ac_free((void**)&mpi_decomp);
 //     return ERRORCODE_SUCCESS;
 // }
 
@@ -148,8 +148,8 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
 //     ERRCHK_MPI_API(
 //         MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_decomp, mpi_periods, 0, &mpi_comm));
 
-//     ac_free(mpi_periods);
-//     ac_free(mpi_decomp);
+//     ac_free((void**)&mpi_periods);
+//     ac_free((void**)&mpi_decomp);
 //     return errcode;
 // }
 

@@ -20,8 +20,8 @@ segment_create(const size_t ndims, const uint64_t* dims, const uint64_t* offset)
 void
 segment_destroy(Segment* segment)
 {
-    ac_free(segment->offset);
-    ac_free(segment->dims);
+    ac_free((void**)&segment->offset);
+    ac_free((void**)&segment->dims);
     segment->offset = NULL;
     segment->dims   = NULL;
     segment->ndims  = 0;

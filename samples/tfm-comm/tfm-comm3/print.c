@@ -37,21 +37,17 @@
                 char* str                 = ac_calloc(len, sizeof(str[0]));                        \
                 snprintf(str, len, format, array[i]);                                              \
                 printf("%*s ", print_alignment, str);                                              \
-                ac_free(str);                                                                      \
+                ac_free((void**)&str);                                                             \
             }                                                                                      \
             printf("\n");                                                                          \
         }                                                                                          \
         else {                                                                                     \
             const uint64_t offset = prod(ndims - 1, dims);                                         \
             for (size_t i = 0; i < dims[ndims - 1]; ++i) {                                         \
-                if (ndims > 4)                                                                     \
-                    printf("%zu. %zu-dimensional hypercube:\n", i, ndims - 1);                     \
-                if (ndims == 4)                                                                    \
-                    printf("Cube %zu:\n", i);                                                      \
-                if (ndims == 3)                                                                    \
-                    printf("Layer %zu:\n", i);                                                     \
-                if (ndims == 2)                                                                    \
-                    printf("Row %zu: ", i);                                                        \
+                if (ndims > 4) printf("%zu. %zu-dimensional hypercube:\n", i, ndims - 1);          \
+                if (ndims == 4) printf("Cube %zu:\n", i);                                          \
+                if (ndims == 3) printf("Layer %zu:\n", i);                                         \
+                if (ndims == 2) printf("Row %zu: ", i);                                            \
                 print_ndarray_recursive_##type(ndims - 1, dims, &array[i * offset]);               \
             }                                                                                      \
             printf("\n");                                                                          \

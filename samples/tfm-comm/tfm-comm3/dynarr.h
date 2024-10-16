@@ -49,8 +49,7 @@
         if ((arr_)->destructor != NULL)                                                            \
             while ((arr_)->length > 0)                                                             \
                 dynarr_remove(0, (arr_));                                                          \
-        if ((arr_)->data != NULL)                                                                  \
-            ac_free((arr_)->data);                                                                 \
+        if ((arr_)->data != NULL) ac_free((void**)&(arr_)->data);                                  \
         (arr_)->capacity = 0;                                                                      \
         (arr_)->length   = 0;                                                                      \
     } while (0)
@@ -61,7 +60,8 @@
 #define dynarr_append(elem_, arr_)                                                                 \
     do {                                                                                           \
         if ((arr_)->length == (arr_)->capacity)                                                    \
-            (arr_)->data = ac_realloc(++(arr_)->capacity, sizeof((arr_)->data[0]), (arr_)->data);  \
+            (arr_)->data = ac_realloc(++(arr_)->capacity, sizeof((arr_)->data[0]),                 \
+                                      (void**)&(arr_)->data);                                      \
         (arr_)->data[(arr_)->length++] = (elem_);                                                  \
     } while (0)
 
@@ -81,8 +81,7 @@
     do {                                                                                           \
         const size_t __dynarr_index__ = as_size_t((index_));                                       \
         ERRCHK((__dynarr_index__) < (arr_)->length);                                               \
-        if ((arr_)->destructor != NULL)                                                            \
-            (arr_)->destructor(&(arr_)->data[index_]);                                             \
+        if ((arr_)->destructor != NULL) (arr_)->destructor(&(arr_)->data[index_]);                 \
         const size_t __dynarr_count__ = (arr_)->length - (__dynarr_index__) - 1;                   \
         if (__dynarr_count__ > 0)                                                                  \
             ac_copy(__dynarr_count__, sizeof((arr_)->data[0]),                                     \

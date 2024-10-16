@@ -73,18 +73,18 @@ commctx_create(const size_t ndims)
 static void
 commctx_destroy(CommCtx* ctx)
 {
-    ac_free(ctx->local_nn_offset);
-    ac_free(ctx->local_nn);
-    ac_free(ctx->global_nn_offset);
-    ac_free(ctx->global_nn);
-    ac_free(ctx->decomposition);
+    ac_free((void**)&ctx->local_nn_offset);
+    ac_free((void**)&ctx->local_nn);
+    ac_free((void**)&ctx->global_nn_offset);
+    ac_free((void**)&ctx->global_nn);
+    ac_free((void**)&ctx->decomposition);
     ctx->ndims = 0;
 
-    ac_free(ctx->mpi_local_nn_offset);
-    ac_free(ctx->mpi_local_nn);
-    ac_free(ctx->mpi_global_nn_offset);
-    ac_free(ctx->mpi_global_nn);
-    ac_free(ctx->mpi_decomposition);
+    ac_free((void**)&ctx->mpi_local_nn_offset);
+    ac_free((void**)&ctx->mpi_local_nn);
+    ac_free((void**)&ctx->mpi_global_nn_offset);
+    ac_free((void**)&ctx->mpi_global_nn);
+    ac_free((void**)&ctx->mpi_decomposition);
     ctx->mpi_ndims = 0;
 
     ctx->mpi_nprocs = 0;
@@ -146,8 +146,7 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
 void
 acCommQuit(void)
 {
-    if (ctx.mpi_comm != MPI_COMM_NULL)
-        ERRCHK_MPI_API(MPI_Comm_free(&ctx.mpi_comm));
+    if (ctx.mpi_comm != MPI_COMM_NULL) ERRCHK_MPI_API(MPI_Comm_free(&ctx.mpi_comm));
     commctx_destroy(&ctx);
     ERRCHK_MPI_API(MPI_Finalize());
 }
@@ -183,9 +182,9 @@ print_comm(void)
         }
         acCommBarrier();
     }
-    ac_free(mpi_dims);
-    ac_free(mpi_periods);
-    ac_free(mpi_coords);
+    ac_free((void**)&mpi_dims);
+    ac_free((void**)&mpi_periods);
+    ac_free((void**)&mpi_coords);
 }
 
 void

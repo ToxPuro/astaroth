@@ -15,12 +15,12 @@ void* ac_calloc(const size_t count, const size_t size);
 /**
  * Free allocated memory
  */
-void ac_free(void* ptr);
+void ac_free(void** ptr);
 
 /**
  * Reallocate a memory segment to hold `count` elements of size `size`
  */
-void* ac_realloc(const size_t count, const size_t size, void* ptr);
+void* ac_realloc(const size_t count, const size_t size, void** ptr);
 
 /**
  * Copy n elements from memory buffer `in` to `out`
