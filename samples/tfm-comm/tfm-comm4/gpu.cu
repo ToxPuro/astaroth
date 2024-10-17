@@ -2,14 +2,20 @@
 
 #include <array>
 
-#include <algorithm>
+#if defined(__CUDACC__)
 #include <cuda_runtime.h>
+#elif defined(__HIP_PLATFORM_AMD__)
+#include "hip.h"
+#include <hip/hip_runtime.h>
+#else
+static_assert(false);
+#endif
 
 #include <stdio.h>
 
 #include "errchk_gpu.h"
 
-constexpr size_t COUNT = 3;
+constexpr size_t COUNT = 50;
 
 template <typename T, size_t N> struct StaticArray {
     T data[N];
@@ -51,7 +57,7 @@ template <typename T, size_t N>
 __global__ void
 kernel(const StaticArray<T, N> in, double* out, const StaticArray<SomeRandomStruct, 2> lala)
 {
-    const int i            = threadIdx.x + blockIdx.x * blockDim.x;
+    const size_t i         = threadIdx.x + blockIdx.x * blockDim.x;
     StaticArray<T, N> test = in + in;
     if (i < in.count())
         out[i] = in[i] + lala[1].maybe_a_static_array_member[1];
