@@ -83,6 +83,8 @@ operator*(const std::array<T, N>& arr, const T scal)
     return scal * arr;
 }
 
+#include "static_array.h"
+
 int
 main(void)
 {
@@ -100,8 +102,13 @@ main(void)
 
     const size_t ndims = 3;
 
-    std::array<size_t, ndims> a = {1, 2, 3};
-    std::array<size_t, ndims> b = {4, 5, 6};
+    StaticArray<size_t, ndims> nn = {128, 128, 128};
+    StaticArray<size_t, ndims> rr = {1, 1, 1};
+    StaticArray<size_t, ndims> a  = {1, 2};
+    StaticArray<size_t, ndims> b  = {3, 4};
+    PRINTD(as<size_t>(2) * rr + nn);
+    PRINTD(prod(nn));
+    PRINTD(a.dot(b));
 
     return EXIT_SUCCESS;
 }
