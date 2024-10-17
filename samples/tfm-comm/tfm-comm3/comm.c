@@ -82,6 +82,12 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
     as_astaroth_format(ndims, mpi_coords, coords);
     array_mul(ndims, coords, local_nn, global_nn_offset);
 
+    // int mpi_coords[]
+    // Ntuple mpi_coords = make_ntuple_from_mpi_format(ndims, mpi_coods);
+    // ntuple_to_mpi(coords);
+    // global_offset = (global_nn / decomp) * local_nn;
+    // global_offset = ntuple_mul(ntuple_div(global_nn, decomp), local_nn);
+
     // Cleanup
     ac_free((void**)&coords);
     ac_free((void**)&mpi_coords);

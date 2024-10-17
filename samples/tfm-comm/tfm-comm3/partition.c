@@ -24,7 +24,7 @@ partition_recursive(const Segment mm_seg, const Segment nn_seg, const size_t axi
 
         // Left
         {
-            Segment new_segment      = segment_copy(mm_seg);
+            Segment new_segment      = segment_dup(mm_seg);
             new_segment.offset[axis] = x0;
             new_segment.dims[axis]   = x1 - x0;
             partition_recursive(new_segment, nn_seg, axis + 1, segments);
@@ -33,7 +33,7 @@ partition_recursive(const Segment mm_seg, const Segment nn_seg, const size_t axi
 
         // Center
         {
-            Segment new_segment      = segment_copy(mm_seg);
+            Segment new_segment      = segment_dup(mm_seg);
             new_segment.offset[axis] = x1;
             new_segment.dims[axis]   = x2 - x1;
             partition_recursive(new_segment, nn_seg, axis + 1, segments);
@@ -42,7 +42,7 @@ partition_recursive(const Segment mm_seg, const Segment nn_seg, const size_t axi
 
         // Right
         {
-            Segment new_segment      = segment_copy(mm_seg);
+            Segment new_segment      = segment_dup(mm_seg);
             new_segment.offset[axis] = x2;
             new_segment.dims[axis]   = x3 - x2;
             partition_recursive(new_segment, nn_seg, axis + 1, segments);

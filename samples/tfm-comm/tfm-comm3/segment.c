@@ -37,10 +37,9 @@ print_segment(const char* label, const Segment segment)
 }
 
 Segment
-segment_copy(const Segment in)
+segment_dup(const Segment in)
 {
-    Segment out = segment_create(in.ndims, in.dims, in.offset);
-    return out;
+    return segment_create(in.ndims, in.dims, in.offset);
 }
 
 void
@@ -62,7 +61,7 @@ test_segment(void)
         const uint64_t offset[] = {1, 2, 3, 4};
         const size_t ndims      = ARRAY_SIZE(dims);
         Segment a               = segment_create(ndims, dims, offset);
-        Segment b               = segment_copy(a);
+        Segment b               = segment_dup(a);
 
         ERRCHK(equals(a.ndims, a.dims, b.dims));
         ERRCHK(equals(a.ndims, a.offset, b.offset));

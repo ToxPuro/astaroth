@@ -14,7 +14,7 @@ void segment_destroy(Segment* segment);
 
 void print_segment(const char* label, const Segment segment);
 
-Segment segment_copy(const Segment in);
+Segment segment_dup(const Segment in);
 
 void test_segment(void);
 
