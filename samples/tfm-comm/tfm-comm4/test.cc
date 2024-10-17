@@ -1,12 +1,6 @@
-#include "ntuple.h"
-#include "type_conversion.h"
-
 #include "print.h"
-
-#include <algorithm>
-#include <array>
-
 #include "static_array.h"
+#include "type_conversion.h"
 
 int
 main(void)
