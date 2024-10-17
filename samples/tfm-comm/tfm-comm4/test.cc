@@ -42,5 +42,9 @@ main(void)
     PRINTD(a);
     PRINTD(b);
 
+    std::vector<StaticArray<size_t, ndims>> vec;
+    vec.push_back(nn);
+    PRINTD(vec);
+
     return EXIT_SUCCESS;
 }
