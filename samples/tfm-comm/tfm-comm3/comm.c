@@ -87,6 +87,7 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
     // ntuple_to_mpi(coords);
     // global_offset = (global_nn / decomp) * local_nn;
     // global_offset = ntuple_mul(ntuple_div(global_nn, decomp), local_nn);
+    // Ntuple_int mpi_coords = make_ntuple_int(ndims);
 
     // Cleanup
     ac_free((void**)&coords);
@@ -158,8 +159,16 @@ acCommPrint(void)
     return ERRORCODE_SUCCESS;
 }
 
+#include "nalloc.h"
+
 ErrorCode
 acCommTest(void)
 {
+    printf("\n----------------\n");
+    size_t* ptr = nalloc_size_t(10);
+    ptr         = nrealloc_size_t(11, &ptr);
+    ndealloc_size_t(&ptr);
+
+    printf("\n----------------\n");
     return ERRORCODE_TEST_FAILURE;
 }

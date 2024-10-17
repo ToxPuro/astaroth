@@ -26,6 +26,7 @@ main(void)
     uint64_t local_nn[ndims], global_nn_offset[ndims];
     ERRCHK(acCommSetup(ndims, global_nn, local_nn, global_nn_offset) == ERRORCODE_SUCCESS);
     ERRCHK(acCommPrint() == ERRORCODE_SUCCESS);
+    ERRCHK(acCommTest() == ERRORCODE_SUCCESS);
 
     ERRCHK(acCommQuit() == ERRORCODE_SUCCESS);
     return EXIT_SUCCESS;
