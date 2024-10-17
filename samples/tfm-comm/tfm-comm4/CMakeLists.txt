@@ -48,7 +48,7 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 
 ## Packages
-add_library(tfm-utils STATIC type_conversion.cc errchk.cc ntuple.cc)
+add_library(tfm-utils SHARED type_conversion.cc errchk.cc ntuple.cc)
 
 find_package(MPI REQUIRED COMPONENTS C)
 add_library(tfm-comm SHARED comm.cc)
@@ -59,3 +59,21 @@ target_link_libraries(run PRIVATE tfm-comm tfm-utils)
 
 add_executable(test test.cc)
 target_link_libraries(test PRIVATE tfm-utils)
+
+find_package(CUDAToolkit QUIET)
+find_package(HIP QUIET)
+if (CUDAToolkit_FOUND)
+    message(STATUS "CUDA found")
+    enable_language(CUDA)
+    add_executable(gpu gpu.cu errchk.cc)
+    # set_target_properties(gpu PROPERTIES CUDA_ARCHITECTURES "60")
+elseif (HIP_FOUND)
+    message(STATUS "HIP found")
+    enable_language(HIP)
+    add_executable(gpu gpu.cu)
+    target_link_libraries(gpu PRIVATE hip::host hip::device)
+    set_source_files_properties(gpu.cu PROPERTIES LANGUAGE HIP)
+    set_target_properties(gpu PROPERTIES HIP_ARCHITECTURES "gfx90a")
+else ()
+    message(WARNING "Did not find CUDA or HIP")
+endif ()

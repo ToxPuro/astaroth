@@ -3,6 +3,7 @@
 
 #include "print.h"
 
+#include <algorithm>
 #include <array>
 
 template <typename T, size_t N>
