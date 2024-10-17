@@ -6,83 +6,6 @@
 #include <algorithm>
 #include <array>
 
-template <typename T, size_t N>
-std::array<T, N>
-operator+(const std::array<T, N>& a, const std::array<T, N>& b)
-{
-    std::array<T, N> result;
-    std::transform(a.begin(), a.end(), b.begin(), result.begin(), std::plus<T>());
-    return result;
-}
-
-template <typename T, size_t N>
-typename std::enable_if<std::is_arithmetic<T>::value, std::array<T, N>>::type
-operator+(const T& scal, const std::array<T, N>& arr)
-{
-    std::array<T, N> result;
-    std::transform(arr.begin(), arr.end(), result.begin(), [scal](T elem) { return scal + elem; });
-    return result;
-}
-
-template <typename T, size_t N>
-typename std::enable_if<std::is_arithmetic<T>::value, std::array<T, N>>::type
-operator+(const std::array<T, N>& arr, const T& scal)
-{
-    return scal + arr;
-}
-
-template <typename T, size_t N>
-typename std::enable_if<std::is_arithmetic<T>::value, std::array<T, N>>::type
-operator-(const std::array<T, N>& a, const std::array<T, N>& b)
-{
-    std::array<T, N> result;
-    std::transform(a.begin(), a.end(), b.begin(), result.begin(), std::minus<T>());
-    return result;
-}
-
-template <typename T, size_t N>
-typename std::enable_if<std::is_arithmetic<T>::value, std::array<T, N>>::type
-operator-(const std::array<T, N>& arr, const T& scal)
-{
-    std::array<T, N> result;
-    std::transform(arr.begin(), arr.end(), result.begin(), [scal](T elem) { return elem - scal; });
-    return result;
-}
-
-template <typename T, size_t N>
-typename std::enable_if<std::is_arithmetic<T>::value, std::array<T, N>>::type
-operator-(const T& scal, const std::array<T, N>& arr)
-{
-    std::array<T, N> result;
-    std::transform(arr.begin(), arr.end(), result.begin(), [scal](T elem) { return scal - elem; });
-    return result;
-}
-
-template <typename T, size_t N>
-typename std::enable_if<std::is_arithmetic<T>::value, std::array<T, N>>::type
-operator*(const std::array<T, N>& a, const std::array<T, N>& b)
-{
-    std::array<T, N> result;
-    std::transform(a.begin(), a.end(), b.begin(), result.begin(), std::multiplies<T>());
-    return result;
-}
-
-template <typename T, size_t N>
-typename std::enable_if<std::is_arithmetic<T>::value, std::array<T, N>>::type
-operator*(const T& scal, const std::array<T, N>& arr)
-{
-    std::array<T, N> result;
-    std::transform(arr.begin(), arr.end(), result.begin(), [scal](T elem) { return scal * elem; });
-    return result;
-}
-
-template <typename T, size_t N>
-typename std::enable_if<std::is_arithmetic<T>::value, std::array<T, N>>::type
-operator*(const std::array<T, N>& arr, const T scal)
-{
-    return scal * arr;
-}
-
 #include "static_array.h"
 
 int
@@ -104,11 +27,20 @@ main(void)
 
     StaticArray<size_t, ndims> nn = {128, 128, 128};
     StaticArray<size_t, ndims> rr = {1, 1, 1};
-    StaticArray<size_t, ndims> a  = {1, 2};
-    StaticArray<size_t, ndims> b  = {3, 4};
+    StaticArray<size_t, 2> a      = {1, 2};
+    StaticArray<size_t, 2> b      = {3, 4};
     PRINTD(as<size_t>(2) * rr + nn);
     PRINTD(prod(nn));
     PRINTD(a.dot(b));
+
+    PRINTD(a);
+    PRINTD(b);
+    a = b;
+    PRINTD(a);
+    PRINTD(b);
+    ++b[0];
+    PRINTD(a);
+    PRINTD(b);
 
     return EXIT_SUCCESS;
 }
