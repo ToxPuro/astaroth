@@ -264,4 +264,5 @@ test_static_array(void)
 }
 
 static constexpr size_t NTUPLE_MAX_NDIMS = 4;
-template <typename T> using Ntuple       = StaticArray<T, NTUPLE_MAX_NDIMS>;
+template <typename T>
+using Ntuple = StaticArray<T, NTUPLE_MAX_NDIMS>; // TODO move out or replace with shape/index
