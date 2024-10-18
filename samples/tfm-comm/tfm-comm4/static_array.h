@@ -13,14 +13,60 @@
 #define __device__
 #endif
 
+#include "errchk.h"
+#include "type_conversion.h"
+
 template <typename T, size_t N> struct StaticArray {
+    size_t count;
     T data[N];
 
     static_assert(sizeof(T) * N <= 1024,
                   "Warning: tried to stack-allocate an array larger than 1024 bytes.");
 
+    // Default constructor (disabled)
+    // __host__ __device__ StaticArray() : count(0), data{} {}
+
+    // Vector-like constructor
+    // StaticArray<int, N> a(10, 1)
+    __host__ __device__ StaticArray(const size_t count, const T& fill_value = 0) : count(count)
+    {
+        ERRCHK(count > 0);
+        ERRCHKK(count <= N, "Count %zu was larger than the maximum size %zu", count, N);
+        for (size_t i = 0; i < count; ++i)
+            data[i] = fill_value;
+    }
+
+    // Initializer list constructor
+    // StaticArray<int, 3> a = {1,2,3}
+    __host__ __device__ StaticArray(const std::initializer_list<T>& init_list)
+        : count(init_list.size())
+    {
+        ERRCHK(count > 0);
+        ERRCHKK(count <= N, "Count %zu was larger than the maximum size %zu", count, N);
+        std::copy(init_list.begin(), init_list.begin() + count, data);
+    }
+
+    // Copy constructor with proper casting
+    // StaticArray<T, N> a(StaticArray<U, N> b)
+    template <typename U>
+    __host__ __device__ StaticArray(const StaticArray<U, N>& other) : count(other.count)
+    {
+        for (size_t i = 0; i < count; ++i)
+            data[i] = as<T>(other.data[i]);
+    }
+
+    // Construct from a pointer
+    __host__ __device__ StaticArray(const size_t count, const T* arr) : count(count)
+    {
+        ERRCHK(count > 0);
+        ERRCHKK(count <= N, "Count %zu was larger than the maximum size %zu", count, N);
+        ERRCHK(arr);
+        for (size_t i = 0; i < count; ++i)
+            data[i] = arr[i];
+    }
+
     // Record the number of elements
-    __host__ __device__ constexpr size_t count(void) const { return N; }
+    __host__ __device__ constexpr size_t capacity(void) const { return N; }
 
     // Enable the array[] operator
     __host__ __device__ T& operator[](size_t i) { return data[i]; }
@@ -30,9 +76,17 @@ template <typename T, size_t N> struct StaticArray {
     __host__ __device__ T dot(const StaticArray<T, N> other)
     {
         T res = 0;
-        for (size_t i = 0; i < count(); ++i)
+        for (size_t i = 0; i < count; ++i)
             res += data[i] * other[i];
         return res;
+    }
+
+    __host__ StaticArray<T, N> reversed()
+    {
+        StaticArray<T, N> out(count);
+        for (size_t i = 0; i < count; ++i)
+            out.data[i] = data[count - 1 - i];
+        return out;
     }
 };
 
@@ -41,7 +95,7 @@ typename std::enable_if<std::is_arithmetic<T>::value, T>::type __host__ __device
 prod(const StaticArray<T, N> arr)
 {
     T result = 1;
-    for (size_t i = 0; i < arr.count(); ++i)
+    for (size_t i = 0; i < arr.count; ++i)
         result *= arr[i];
     return result;
 }
@@ -50,8 +104,9 @@ template <typename T, size_t N>
 typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
 operator+(const StaticArray<T, N>& a, const StaticArray<T, N>& b)
 {
-    StaticArray<T, N> c;
-    for (size_t i = 0; i < N; ++i)
+    ERRCHK(a.count == b.count);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i)
         c[i] = a[i] + b[i];
     return c;
 }
@@ -60,8 +115,9 @@ template <typename T, size_t N>
 typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
 operator+(const T& a, const StaticArray<T, N>& b)
 {
-    StaticArray<T, N> c;
-    for (size_t i = 0; i < N; ++i)
+    ERRCHK(a.count == b.count);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i)
         c[i] = a + b[i];
     return c;
 }
@@ -70,8 +126,9 @@ template <typename T, size_t N>
 typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
 operator+(const StaticArray<T, N>& a, const T& b)
 {
-    StaticArray<T, N> c;
-    for (size_t i = 0; i < N; ++i)
+    ERRCHK(a.count == b.count);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i)
         c[i] = a[i] + b;
     return c;
 }
@@ -80,8 +137,9 @@ template <typename T, size_t N>
 typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
 operator-(const StaticArray<T, N>& a, const StaticArray<T, N>& b)
 {
-    StaticArray<T, N> c;
-    for (size_t i = 0; i < N; ++i)
+    ERRCHK(a.count == b.count);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i)
         c[i] = a[i] - b[i];
     return c;
 }
@@ -90,8 +148,9 @@ template <typename T, size_t N>
 typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
 operator-(const T& a, const StaticArray<T, N>& b)
 {
-    StaticArray<T, N> c;
-    for (size_t i = 0; i < N; ++i)
+    ERRCHK(a.count == b.count);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i)
         c[i] = a - b[i];
     return c;
 }
@@ -100,8 +159,9 @@ template <typename T, size_t N>
 typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
 operator-(const StaticArray<T, N>& a, const T& b)
 {
-    StaticArray<T, N> c;
-    for (size_t i = 0; i < N; ++i)
+    ERRCHK(a.count == b.count);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i)
         c[i] = a[i] - b;
     return c;
 }
@@ -110,8 +170,9 @@ template <typename T, size_t N>
 typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
 operator*(const StaticArray<T, N>& a, const StaticArray<T, N>& b)
 {
-    StaticArray<T, N> c;
-    for (size_t i = 0; i < N; ++i)
+    ERRCHK(a.count == b.count);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i)
         c[i] = a[i] * b[i];
     return c;
 }
@@ -120,8 +181,9 @@ template <typename T, size_t N>
 typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
 operator*(const T& a, const StaticArray<T, N>& b)
 {
-    StaticArray<T, N> c;
-    for (size_t i = 0; i < N; ++i)
+    ERRCHK(a.count == b.count);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i)
         c[i] = a * b[i];
     return c;
 }
@@ -130,9 +192,49 @@ template <typename T, size_t N>
 typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
 operator*(const StaticArray<T, N>& a, const T& b)
 {
-    StaticArray<T, N> c;
-    for (size_t i = 0; i < N; ++i)
+    ERRCHK(a.count == b.count);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i)
         c[i] = a[i] * b;
+    return c;
+}
+
+template <typename T, size_t N>
+typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
+operator/(const StaticArray<T, N>& a, const StaticArray<T, N>& b)
+{
+    ERRCHK(a.count == b.count);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i) {
+        ERRCHK(b[i] != 0);
+        c[i] = a[i] / b[i];
+    }
+    return c;
+}
+
+template <typename T, size_t N>
+typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
+operator/(const T& a, const StaticArray<T, N>& b)
+{
+    ERRCHK(a.count == b.count);
+    ERRCHK(b != 0);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i) {
+        ERRCHK(b[i] != 0);
+        c[i] = a / b[i];
+    }
+    return c;
+}
+
+template <typename T, size_t N>
+typename std::enable_if<std::is_arithmetic<T>::value, StaticArray<T, N>>::type __host__ __device__
+operator/(const StaticArray<T, N>& a, const T& b)
+{
+    ERRCHK(a.count == b.count);
+    ERRCHK(b != 0);
+    StaticArray<T, N> c(a.count);
+    for (size_t i = 0; i < c.count; ++i)
+        c[i] = a[i] / b;
     return c;
 }
 
@@ -143,12 +245,10 @@ __host__ std::ostream&
 operator<<(std::ostream& os, const StaticArray<T, N>& obj)
 {
     os << "{";
-    for (size_t i = 0; i < obj.count(); ++i)
-        os << obj[i] << (i + 1 < obj.count() ? ", " : "}");
+    for (size_t i = 0; i < obj.count; ++i)
+        os << obj[i] << (i + 1 < obj.count ? ", " : "}");
     return os;
 }
-
-#include "errchk.h"
 
 int
 test_static_array(void)
@@ -162,3 +262,6 @@ test_static_array(void)
 
     return retval;
 }
+
+static constexpr size_t NTUPLE_MAX_NDIMS = 4;
+template <typename T> using Ntuple       = StaticArray<T, NTUPLE_MAX_NDIMS>;

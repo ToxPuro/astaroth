@@ -6,6 +6,8 @@
 #include <limits>
 #include <type_traits>
 
+#include "errchk.h"
+
 template <typename T_target, typename T_source>
 typename std::enable_if<std::is_integral<T_target>::value && std::is_integral<T_source>::value,
                         bool>::type
@@ -30,9 +32,7 @@ template <typename T_target, typename T_source>
 T_target
 as(T_source value)
 {
-    if (!can_convert<T_target, T_source>(value))
-        throw std::overflow_error("Attempted conversion resulted in overflow");
-
+    ERRCHK((can_convert<T_target, T_source>(value)));
     return static_cast<T_target>(value);
 }
 
