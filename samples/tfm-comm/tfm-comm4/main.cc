@@ -2,8 +2,6 @@
 
 #include "static_array.h"
 
-static constexpr size_t max_ndims = 4;
-
 int
 main(void)
 {

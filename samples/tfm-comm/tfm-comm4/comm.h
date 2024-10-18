@@ -27,8 +27,6 @@ ErrorCode acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* l
 
 ErrorCode acCommQuit(void);
 
-ErrorCode acCommGetProcInfo(int* rank, int* nprocs);
-
 ErrorCode acCommBarrier(void);
 
 ErrorCode acCommPrint(void);

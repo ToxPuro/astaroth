@@ -19,7 +19,6 @@
 namespace Comm {
 MPI_Comm comm       = MPI_COMM_NULL;
 MPI_Datatype dtype  = MPI_DATATYPE_NULL;
-int ndims           = 0;
 bool setup_complete = false;
 } // namespace Comm
 
@@ -61,13 +60,17 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
             uint64_t* global_nn_offset_ptr)
 {
     if (Comm::setup_complete) {
-        WARNING("acCommSetup was called more than once. This is not allowed.");
+        ERROR("acCommSetup was called more than once. This is not allowed.");
         return ERRORCODE_INPUT_FAILURE;
     }
-    ERRCHK(ndims <= NTUPLE_MAX_NDIMS);
-    ERRCHK(global_nn_ptr);
-    ERRCHK(local_nn_ptr);
-    ERRCHK(global_nn_offset_ptr);
+    if (ndims > NTUPLE_MAX_NDIMS) {
+        ERROR("Invalid ndims");
+        return ERRORCODE_INPUT_FAILURE;
+    }
+    if (!global_nn_ptr || !local_nn_ptr || !global_nn_offset_ptr) {
+        ERROR("Invalid input/output pointer(s) passed to function");
+        return ERRORCODE_INPUT_FAILURE;
+    }
 
     // Set MPI errors of parent temporarily as non-fatal
     const MPI_Comm parent = MPI_COMM_WORLD;
@@ -111,7 +114,6 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
 
     // Set other
     Comm::dtype = MPI_DOUBLE;
-    Comm::ndims = as<int>(ndims);
 
     Comm::setup_complete = true;
     return ERRORCODE_SUCCESS;
@@ -124,7 +126,6 @@ acCommQuit(void)
         ERRCHK_MPI_API(MPI_Comm_free(&Comm::comm));
     Comm::comm  = MPI_COMM_NULL;
     Comm::dtype = MPI_DATATYPE_NULL;
-    Comm::ndims = 0;
 
     ERRCHK_MPI_API(MPI_Finalize());
     signal(SIGABRT, SIG_DFL); // Reset signal handler to default
@@ -132,18 +133,13 @@ acCommQuit(void)
 }
 
 ErrorCode
-acCommGetProcInfo(int* rank, int* nprocs)
-{
-    *rank   = 0;
-    *nprocs = 1;
-    ERRCHK_MPI_API(MPI_Comm_rank(Comm::comm, rank));
-    ERRCHK_MPI_API(MPI_Comm_size(Comm::comm, nprocs));
-    return ERRORCODE_SUCCESS;
-}
-
-ErrorCode
 acCommBarrier(void)
 {
+    if (!Comm::setup_complete) {
+        ERROR("acCommSetup not complete");
+        return ERRORCODE_INPUT_FAILURE;
+    }
+
     ERRCHK_MPI_API(MPI_Barrier(Comm::comm));
     return ERRORCODE_SUCCESS;
 }
@@ -151,12 +147,21 @@ acCommBarrier(void)
 ErrorCode
 acCommPrint(void)
 {
-    int rank, nprocs;
-    ERRCHK_MPI(acCommGetProcInfo(&rank, &nprocs) == ERRORCODE_SUCCESS);
+    if (!Comm::setup_complete) {
+        ERROR("acCommSetup not complete");
+        return ERRORCODE_INPUT_FAILURE;
+    }
 
-    Ntuple<int> mpi_decomp(Comm::ndims), mpi_periods(Comm::ndims), mpi_coords(Comm::ndims);
+    int rank, nprocs, ndims;
+    ERRCHK_MPI_API(MPI_Comm_rank(Comm::comm, &rank));
+    ERRCHK_MPI_API(MPI_Comm_size(Comm::comm, &nprocs));
+    ERRCHK_MPI_API(MPI_Cartdim_get(Comm::comm, &ndims));
+
+    Ntuple<int> mpi_decomp(as<size_t>(ndims));
+    Ntuple<int> mpi_periods(as<size_t>(ndims));
+    Ntuple<int> mpi_coords(as<size_t>(ndims));
     ERRCHK_MPI_API(
-        MPI_Cart_get(Comm::comm, Comm::ndims, mpi_decomp.data, mpi_periods.data, mpi_coords.data));
+        MPI_Cart_get(Comm::comm, ndims, mpi_decomp.data, mpi_periods.data, mpi_coords.data));
 
     MPI_SYNCHRONOUS_BLOCK_START(Comm::comm)
     PRINTD(mpi_decomp);
