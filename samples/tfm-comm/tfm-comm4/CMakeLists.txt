@@ -48,10 +48,10 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 
 ## Packages
-add_library(tfm-utils SHARED type_conversion.cc errchk.cc)
+add_library(tfm-utils SHARED type_conversion.cc errchk.c)
 
 find_package(MPI REQUIRED COMPONENTS C)
-add_library(tfm-comm SHARED comm.cc)
+add_library(tfm-comm SHARED comm.cc error.c)
 target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-utils)
 
 add_executable(run main.cc)

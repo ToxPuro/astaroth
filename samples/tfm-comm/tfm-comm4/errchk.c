@@ -1,8 +1,8 @@
 #include "errchk.h"
 
-#include <stdexcept>
-
+#include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 static void
@@ -14,7 +14,7 @@ fprintc_multiple(FILE* stream, const char c, const size_t count)
 }
 
 __attribute__((__format__(__printf__, 5, 6))) void
-errchk_print_error(const char* function, const char* file, const long line, const char* expression,
+errchk_raise_error(const char* function, const char* file, const long line, const char* expression,
                    const char* fmt, ...)
 {
     fflush(stdout);
@@ -45,12 +45,8 @@ errchk_print_error(const char* function, const char* file, const long line, cons
     fprintc_multiple(stderr, '\n', 3);
     fflush(stdout);
     fflush(stderr);
-}
 
-void
-errchk_raise_error(void)
-{
-    throw std::runtime_error("Error check failure");
+    abort();
 }
 
 __attribute__((__format__(__printf__, 5, 6))) void
