@@ -1,18 +1,24 @@
 #pragma once
 #include "errchk.h"
 
-void handle_error(const char* function, const char* file, const long line, const char* expression);
+#include <mpi.h>
 
-void handle_mpi_error(const int errorcode, const char* function, const char* file, const long line,
-                      const char* expression);
+static inline void
+print_mpi_api_error(const int errorcode, const char* function, const char* file, const long line,
+                    const char* expression)
+{
+    char description[MPI_MAX_ERROR_STRING];
+    int resultlen;
+    MPI_Error_string(errorcode, description, &resultlen);
+    errchk_raise_error(function, file, line, expression, description);
+}
 
 #define ERRCHK_MPI_API(errorcode)                                                                  \
     (((errorcode) == MPI_SUCCESS)                                                                  \
          ? 0                                                                                       \
-         : ((handle_mpi_error((errorcode), __func__, __FILE__, __LINE__, #errorcode)), -1))
+         : ((print_mpi_api_error((errorcode), __func__, __FILE__, __LINE__, #errorcode)), -1))
 
-#define ERRCHK_MPI(expr) ((expr) ? 0 : ((handle_error(__func__, __FILE__, __LINE__, #expr)), -1))
-#define ERRCHK_MPI(expr) ((expr) ? 0 : ((handle_error(__func__, __FILE__, __LINE__, #expr)), -1))
+#define ERRCHK_MPI(expr) (ERRCHK(expr))
 
 // Debug: Disable all MPI API calls
 // #undef ERRCHK_MPI_API

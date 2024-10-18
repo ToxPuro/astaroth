@@ -1,16 +1,18 @@
 #include "comm.h"
 
-#include <mpi.h>
-
+#include <signal.h>
 #include <stdio.h>
+#include <unistd.h>
+
+#include <mpi.h>
 
 #include "alloc.h"
 #include "errchk.h"
 #include "errchk_mpi.h"
 #include "math_utils.h"
+#include "mpi_utils.h"
 #include "type_conversion.h"
 
-#include "mpi_utils.h"
 #include "print.h"
 
 /*
@@ -21,6 +23,14 @@ static int mpi_ndims_            = -1;
 static MPI_Datatype mpi_dtype_   = MPI_DATATYPE_NULL;
 static bool comm_setup_complete_ = false;
 
+static void
+signal_handler(int signum)
+{
+    const char msg[] = "SIGABRT received\n";
+    write(STDERR_FILENO, msg, sizeof(msg) - 1);
+    MPI_Abort(MPI_COMM_WORLD, signum);
+}
+
 /*
  * Communicator implementation
  */
@@ -28,6 +38,7 @@ ErrorCode
 acCommInit(void)
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
+    signal(SIGABRT, signal_handler);
     return ERRORCODE_SUCCESS;
 }
 
