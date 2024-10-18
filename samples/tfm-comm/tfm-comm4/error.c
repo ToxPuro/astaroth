@@ -34,7 +34,7 @@ test_get_errorcode_description(void)
 
     for (int i = ERRORCODE_SUCCESS; i < NUM_ERRORCODES; ++i) {
         if (!errorcode_descriptions[i]) {
-            ERROR("errorcode_descriptions[%d] was not defined", i);
+            WARNING("errorcode_descriptions[%d] was not defined", i);
             ++errcount;
         }
     }

@@ -3,15 +3,25 @@
 #include "errchk.h"
 
 #define ERRCHK_GPU_API(errorcode)                                                                  \
-    ((errorcode) == cudaSuccess ? 0                                                                \
-                                : (errchk_raise_error(__func__, __FILE__, __LINE__, #errorcode,    \
-                                                      cudaGetErrorString(errorcode)),              \
-                                   -1))
+    (((errorcode) == cudaSuccess)                                                                  \
+         ? 0                                                                                       \
+         : ((errchk_raise_error((errorcode), __func__, __FILE__, __LINE__, #errorcode,             \
+                                cudaGetErrorString(errorcode))),                                   \
+            -1))
 
 #define ERRCHK_GPU_KERNEL()                                                                        \
-    ((ERRCHK_GPU_API(cudaPeekAtLastError())) && (ERRCHK_GPU_API(cudaDeviceSynchronize())) == 0     \
-         ? 0                                                                                       \
-         : -1)
+    (ERRCHK_GPU_API(cudaPeekAtLastError()) | ERRCHK_GPU_API(cudaDeviceSynchronize()))
+
+// #define ERRCHK_GPU_API(errorcode)                                                                  \
+//     ((errorcode) == cudaSuccess ? 0                                                                \
+//                                 : (errchk_raise_error(__func__, __FILE__, __LINE__, #errorcode,    \
+//                                                       cudaGetErrorString(errorcode)),              \
+//                                    -1))
+
+// #define ERRCHK_GPU_KERNEL()                                                                        \
+//     ((ERRCHK_GPU_API(cudaPeekAtLastError())) && (ERRCHK_GPU_API(cudaDeviceSynchronize())) == 0     \
+//          ? 0                                                                                       \
+//          : -1)
 
 // #define ERRCHK_GPU_API(errorcode)                                                                  \
 //     (((errorcode) == MPI_SUCCESS)                                                                  \

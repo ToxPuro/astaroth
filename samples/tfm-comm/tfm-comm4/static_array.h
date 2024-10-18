@@ -147,3 +147,18 @@ operator<<(std::ostream& os, const StaticArray<T, N>& obj)
         os << obj[i] << (i + 1 < obj.count() ? ", " : "}");
     return os;
 }
+
+#include "errchk.h"
+
+int
+test_static_array(void)
+{
+    int retval = 0;
+
+    {
+        StaticArray<uint64_t, 5> arr = {1, 2, 3, 4, 5};
+        retval |= WARNCHK(prod(arr) == 120);
+    }
+
+    return retval;
+}
