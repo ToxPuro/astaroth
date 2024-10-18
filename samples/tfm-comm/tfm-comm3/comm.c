@@ -38,7 +38,7 @@ ErrorCode
 acCommInit(void)
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
-    signal(SIGABRT, signal_handler);
+    signal(SIGABRT, signal_handler); // Setup signal handler for errors
     return ERRORCODE_SUCCESS;
 }
 
@@ -48,7 +48,7 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
 {
     if (comm_setup_complete_) {
         WARNING("acCommSetup was called more than once. This is not allowed.");
-        return ERRORCODE_GENERIC_FAILURE;
+        return ERRORCODE_INPUT_FAILURE;
     }
 
     const MPI_Comm parent = MPI_COMM_WORLD;
@@ -93,13 +93,6 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn, uint64_t* local_nn,
     as_astaroth_format(ndims, mpi_coords, coords);
     array_mul(ndims, coords, local_nn, global_nn_offset);
 
-    // int mpi_coords[]
-    // Ntuple mpi_coords = make_ntuple_from_mpi_format(ndims, mpi_coods);
-    // ntuple_to_mpi(coords);
-    // global_offset = (global_nn / decomp) * local_nn;
-    // global_offset = ntuple_mul(ntuple_div(global_nn, decomp), local_nn);
-    // Ntuple_int mpi_coords = make_ntuple_int(ndims);
-
     // Cleanup
     ac_free((void**)&coords);
     ac_free((void**)&mpi_coords);
@@ -121,6 +114,7 @@ acCommQuit(void)
     mpi_dtype_ = MPI_DATATYPE_NULL;
 
     ERRCHK_MPI_API(MPI_Finalize());
+    signal(SIGABRT, SIG_DFL); // Reset signal handler to default
     return ERRORCODE_SUCCESS;
 }
 

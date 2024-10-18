@@ -4,7 +4,7 @@
 #include <mpi.h>
 
 static inline void
-print_mpi_api_error(const int errorcode, const char* function, const char* file, const long line,
+raise_mpi_api_error(const int errorcode, const char* function, const char* file, const long line,
                     const char* expression)
 {
     char description[MPI_MAX_ERROR_STRING];
@@ -16,7 +16,7 @@ print_mpi_api_error(const int errorcode, const char* function, const char* file,
 #define ERRCHK_MPI_API(errorcode)                                                                  \
     (((errorcode) == MPI_SUCCESS)                                                                  \
          ? 0                                                                                       \
-         : ((print_mpi_api_error((errorcode), __func__, __FILE__, __LINE__, #errorcode)), -1))
+         : ((raise_mpi_api_error((errorcode), __func__, __FILE__, __LINE__, #errorcode)), -1))
 
 #define ERRCHK_MPI(expr) (ERRCHK(expr))
 

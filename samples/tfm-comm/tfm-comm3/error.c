@@ -10,7 +10,7 @@ static const char* errorcode_descriptions[NUM_ERRORCODES] = {
     [ERRORCODE_TEST_FAILURE]    = "Module test failed",
     [ERRORCODE_NOT_IMPLEMENTED] = "Not implemented",
     [ERRORCODE_MPI_FAILURE]     = "MPI failure",
-    [ERRORCODE_INVALID_NDIMS]   = "Invalid ndims or shape dimensionality",
+    [ERRORCODE_INPUT_FAILURE]   = "Invalid input passed to the library",
 };
 
 const char*
