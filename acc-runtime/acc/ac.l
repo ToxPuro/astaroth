@@ -74,6 +74,15 @@ void strip_whitespace(char *str) {
 "Max"                   { return MAX; }
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
+"X"              { return X_QL; }
+"Y"              { return Y_QL; }
+"Z"              { return Z_QL; }
+"XY"             { return XY_QL; }
+"XZ"             { return XZ_QL; }
+"YX"             { return YX_QL; }
+"YZ"             { return YZ_QL; }
+"ZY"             { return ZY_QL; }
+"ZX"             { return ZX_QL; }
 "const"          { return CONST_QL; }
 "override"          { return OVERRIDE; }
 "dynamic"          { return DYNAMIC_QL; }
@@ -155,10 +164,10 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
 [+-/*|&%^]?=              { return ASSIGNOP; }     /* Assignment */
 (<<=)|(>>=)               { return ASSIGNOP; }     /* Assignment */
-[/*<>|%^]                 { return BINARY_OP; }      /* Operators */
+[/*|%^]                   { return BINARY_OP; }      /* Operators */
 (&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
 (==)|(>=)|(<=)|(!=)|(^=)  { return BINARY_OP; }    /* Operators */
-[-+*/:;=\[\]{}(),\.<>|&!] { return yytext[0]; }    /* Characters */
+[-+*/:;=\[\]{}(),\.|&!<>]   { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
 {D}+[.]?{D}*([eE][-+]?{D}+)   { return REALNUMBER; }
 {D}+[.]?{D}*([eE][-+]?{D}+)?[d]  { return DOUBLENUMBER; } /* Numbers */

@@ -398,7 +398,12 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
         mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
         ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
     }
-
+    const int3 counts = acGetLocalMM(info);
+    for(size_t p = 0; p < NUM_PROFILES; ++p)
+    {
+	    mesh->profile[p] = (AcReal*)calloc(prof_size(p,counts), sizeof(AcReal));
+            ERRCHK_ALWAYS(mesh->profile[p]);
+    }
     return AC_SUCCESS;
 }
 AcResult
@@ -623,10 +628,10 @@ acGetLengths(const AcMeshInfo info)
 
 #include "get_vtxbufs_funcs.h"
 AcBuffer
-acBufferCreate(const size_t count, const bool on_device)
+acBufferCreate(const AcShape shape, const bool on_device)
 {
-    AcBuffer buffer    = {.data = NULL, .count = count, .on_device = on_device};
-    const size_t bytes = sizeof(buffer.data[0]) * count;
+    AcBuffer buffer    = {.data = NULL, .count = acShapeSize(shape), .on_device = on_device, .shape = shape};
+    const size_t bytes = sizeof(buffer.data[0]) * buffer.count;
     if (buffer.on_device) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&buffer.data, bytes));
     }
@@ -668,4 +673,12 @@ acBufferMigrate(const AcBuffer in, AcBuffer* out)
     ERRCHK_ALWAYS(in.count == out->count);
     ERRCHK_CUDA_ALWAYS(cudaMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
     return AC_SUCCESS;
+}
+
+AcBuffer
+acBufferCopy(const AcBuffer in, const bool on_device)
+{
+    AcBuffer cpu_buffer = acBufferCreate(in.shape, on_device);
+    acBufferMigrate(in,&cpu_buffer);
+    return cpu_buffer;
 }

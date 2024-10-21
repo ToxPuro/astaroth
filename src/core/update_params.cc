@@ -17,7 +17,7 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config, AcCompInfo& comp_info)
     };
     auto is_loaded = [&](auto param)
     {
-	    return get_is_loaded(param,comp_info.is_loaded);
+	    return comp_info.is_loaded[param];
     };
     auto nx_param = !IsCompParam(AC_nx) ? AC_nx
 	    	    : is_loaded(AC_nx) ? AC_nx : AC_nxgrid;
@@ -91,6 +91,8 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config, AcCompInfo& comp_info)
     push_val(AC_xlen,get_val(AC_nxgrid)*get_val(AC_dsx)); 
     push_val(AC_ylen,get_val(AC_nygrid)*get_val(AC_dsy)); 
 #if TWO_D == 0
+    push_val(AC_mxz,get_val(AC_mx)*get_val(AC_mz)); 
+    push_val(AC_myz,get_val(AC_my)*get_val(AC_mz)); 
     push_val(AC_nxyz,get_val(AC_nxy)*get_val(nz_param)); 
     push_val(AC_nxyzgrid,get_val(AC_nxygrid)*get_val(AC_nzgrid)); 
     push_val(AC_zlen,get_val(AC_nzgrid)*get_val(AC_dsz)); 

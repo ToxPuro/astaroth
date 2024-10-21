@@ -952,6 +952,23 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	sprintf(tmp,"%s*",datatype_scalar);
 	const char* datatype = intern(tmp);
 
+	fprintf_filename("info_access_operators.h","const %s& operator[](const %sParam param) const {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("info_access_operators.h","%s* const& operator[](const %sArrayParam param) const {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("info_access_operators.h","%s& operator[](const %sParam param) {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("info_access_operators.h","%s* & operator[](const %sArrayParam param) {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+
+	fprintf_filename("comp_info_access_operators.h","const %s& operator[](const %sCompParam param) const {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("comp_info_access_operators.h","const %s* const& operator[](const %sCompArrayParam param) const {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("comp_info_access_operators.h","%s& operator[](const %sCompParam param) {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("comp_info_access_operators.h","const %s* & operator[](const %sCompArrayParam param) {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+
+	fprintf_filename("loaded_info_access_operators.h","const bool& operator[](const %sCompParam param) const {return %s_params[param];}\n",enum_name,define_name);
+	fprintf_filename("loaded_info_access_operators.h","const bool& operator[](const %sCompArrayParam param) const {return %s_arrays[param];}\n",enum_name,define_name);
+	fprintf_filename("loaded_info_access_operators.h","bool& operator[](const %sCompParam param) {return %s_params[param];}\n",enum_name,define_name);
+	fprintf_filename("loaded_info_access_operators.h","bool& operator[](const %sCompArrayParam param) {return %s_arrays[param];}\n",enum_name,define_name);
+	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %sParam ) const {return false;}\n",enum_name,define_name);
+	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %sArrayParam ) const {return false;}\n",enum_name,define_name);
+
 	fprintf_filename("array_decl.h","%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,define_name,uppr_name);
 
 	fprintf_filename("get_vba_array.h","if constexpr(std::is_same<P,%sArrayParam>::value) return vba.%s_arrays[(int)param];\n",enum_name,define_name);
@@ -960,16 +977,6 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 	fprintf_filename("get_default_value.h","if constexpr(std::is_same<P,%sCompArrayParam>::value) return (%s){};\n",enum_name,datatype_scalar);
 
-	fprintf_filename("get_from_comp_config.h","if constexpr(std::is_same<P,%sCompArrayParam>::value) return config.%s_arrays[(int)param];\n",enum_name,define_name);
-
-	fprintf_filename("get_from_comp_config.h","if constexpr(std::is_same<P,%sCompParam>::value) return config.%s_params[(int)param];\n",enum_name,define_name);
-
-	fprintf_filename("get_config_param.h",
-			"if constexpr(std::is_same<P,%sParam>::value) return config.%s_params[(int)param];\n"
-			"if constexpr(std::is_same<P,%sArrayParam>::value) return config.%s_arrays[(int)param];\n"
-			,enum_name,define_name
-			,enum_name,define_name
-			);
 
 	fprintf_filename("get_empty_pointer.h","if constexpr(std::is_same<P,%sArrayParam>::value) return (%s*){};\n",enum_name,datatype_scalar);
 
@@ -1159,12 +1166,6 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			,uppr_name,define_name,uppr_name
 			);
 
-	fprintf_filename("push_to_config.h",
-		"constexpr static void acPushToConfig(AcMeshInfo& config, %sParam param, %s val)      {config.%s_params[(int)param] = val;}" 
-		"constexpr static void acPushToConfig(AcMeshInfo& config, %sArrayParam param, %s* val) {config.%s_arrays[(int)param] = val;}"
-		,enum_name,datatype_scalar,define_name
-		,enum_name,datatype_scalar,define_name
-		);
 
 	fprintf_filename("load_comp_info.h",
 		"static AcResult __attribute((unused)) acLoad%sCompInfo(const %sCompParam param, const %s val, AcCompInfo* info)      {\n"
@@ -1903,8 +1904,13 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root)
 		if(func_name == PERIODIC)
 			return;
 		ASTNode* param_list_head = func_call->rhs;
+		FILE* stream = fopen("user_loaders.h","a");
 		if(!param_list_head)
+		{
+			fprintf(stream,"[](ParamLoadingInfo ){},");
+			fclose(stream);
 			return;
+		}
 		func_params_info call_info  = get_func_call_params_info(func_call);
 		bool is_boundcond = false;
 		for(size_t i = 0; i< call_info.expr.size; ++i)
@@ -1912,7 +1918,6 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root)
 
 		func_params_info params_info =  get_function_params_info(root,func_name);
 
-		FILE* stream = fopen("user_loaders.h","a");
 		fprintf(stream,"[](ParamLoadingInfo p){\n");
 		const int params_offset = is_boundcond ? 2 : 0;
 		if(!is_boundcond)
@@ -4485,6 +4490,27 @@ gen_user_defines(const ASTNode* root, const char* out)
   gen_enums(fp,WORK_BUFFER,"","NUM_WORK_BUFFERS","WorkBuffer");
   gen_enums(fp,PROFILE,"","NUM_PROFILES","Profile");
   gen_enums(fp,KERNEL,"KERNEL_","NUM_KERNELS","AcKernel");
+
+  {
+	FILE* stream = fopen("profiles_info.h","w");
+  	fprintf(stream,"static AcProfileType prof_types[NUM_PROFILES] = {");
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  	  if (symbol_table[i].tspecifier_token == PROFILE)
+  	  {
+  	          if(int_vec_contains(symbol_table[i].tqualifiers,X_QL))
+  	      		    fprintf(stream,"PROFILE_X");
+  	          else if(int_vec_contains(symbol_table[i].tqualifiers,Y_QL))
+  	      		    fprintf(stream,"PROFILE_Y");
+  	          else if(int_vec_contains(symbol_table[i].tqualifiers,Z_QL))
+  	      		    fprintf(stream,"PROFILE_Z");
+  	          else
+  	          	fatal("Unknown profile type for: %s\n",symbol_table[i].identifier);
+		  fprintf(stream,",");
+  	  }
+  	fprintf(stream,"};\n");
+	fclose(stream);
+  }
+
 
   fprintf(fp, "static const bool skip_kernel_in_analysis[NUM_KERNELS] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)

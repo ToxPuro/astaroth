@@ -45,6 +45,7 @@
 
 typedef struct {
     AcReal* vertex_buffer[NUM_ALL_FIELDS];
+    AcReal* profile[NUM_PROFILES];
     AcMeshInfo info;
 } AcMesh;
 
@@ -981,6 +982,9 @@ typedef enum AcBoundary {
     BOUNDARY_XYZ   = BOUNDARY_X | BOUNDARY_Y | BOUNDARY_Z
 } AcBoundary;
 
+
+
+
 FUNC_DEFINE(acAnalysisBCInfo, acAnalysisGetBCInfo,(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary));
 
 typedef struct ParamLoadingInfo {
@@ -1490,7 +1494,10 @@ FUNC_DEFINE(AcResult, acDeviceReduceXYAverage,(const Device device, const Stream
 /** */
 FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffer,(const Device device, const Profile handle));
 /** */
-FUNC_DEFINE(AcResult, acDeviceReduceXYAverages,(const Device device, const Stream stream));
+FUNC_DEFINE(AcResult, acDeviceReduceAverages,(const Device device, const Stream stream, const AcProfileType type));
+/** */
+FUNC_DEFINE(AcBuffer, acDeviceTranspose,(const Device device, const Stream stream, const AcMeshOrder order));
+/** */
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffers,(const Device device, const Profile* profiles,
@@ -1504,8 +1511,7 @@ FUNC_DEFINE(AcResult, acDeviceLoadProfile,(const Device device, const AcReal* ho
                              const size_t hostprofile_count, const Profile profile));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceStoreProfile,(const Device device, const Profile profile, AcReal* hostprofile,
-                              const size_t hostprofile_count));
+FUNC_DEFINE(AcResult, acDeviceStoreProfile,(const Device device, const Profile profile, AcMesh* host_mesh));
 
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduce,(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutputParam output));
@@ -2083,17 +2089,13 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
  * AcBuffer
  * =============================================================================
  */
-typedef struct {
-    AcReal* data;
-    size_t count;
-    bool on_device;
-} AcBuffer;
 
-AcBuffer acBufferCreate(const size_t count, const bool on_device);
+AcBuffer acBufferCreate(const AcShape shape, const bool on_device);
 
 void acBufferDestroy(AcBuffer* buffer);
 
 AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
+AcBuffer acBufferCopy(const AcBuffer in, const bool on_device);
 
 #ifdef __cplusplus
 } // extern "C"

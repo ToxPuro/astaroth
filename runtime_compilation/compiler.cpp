@@ -120,8 +120,8 @@ struct load_arrays
 		{
 			const int n_dims = get_array_n_dims(array);
 			const char* name = get_array_name(array);
-			const bool is_loaded = get_is_loaded(array,info.is_loaded);
-			auto* loaded_val = get_loaded_val(array,info.config);
+			const bool is_loaded = info.is_loaded[array];
+			auto* loaded_val = info.config[array];
 			if(n_dims == 1)
 			{
 				fprintf(fp,"const %s %s = [",type.c_str(),name);
@@ -164,7 +164,7 @@ struct load_scalars
 	{
 		for(P var : get_params<P>())
 		{
-			auto val =  get_is_loaded(var,info.is_loaded) ? get_loaded_val(var,info.config) : get_default_value<P>();
+			auto val =  info.is_loaded[var] ? info.config[var] : get_default_value<P>();
 			std::string res = to_str(val,get_param_name(var));
 			fprintf(fp,"%s",res.c_str());
 		}
@@ -220,15 +220,15 @@ decompose_info(AcCompInfo& info)
 void
 check_that_built_ins_loaded(const AcCompInfo info)
 {
-	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_nx] || info.is_loaded.int_params[AC_nxgrid]);
-	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_ny] || info.is_loaded.int_params[AC_nygrid]);
-	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_nz] || info.is_loaded.int_params[AC_nzgrid]);
+	ERRCHK_ALWAYS(info.is_loaded[AC_nx] || info.is_loaded[AC_nxgrid]);
+	ERRCHK_ALWAYS(info.is_loaded[AC_ny] || info.is_loaded[AC_nygrid]);
+	ERRCHK_ALWAYS(info.is_loaded[AC_nz] || info.is_loaded[AC_nzgrid]);
 
 #if AC_MPI_ENABLED
-	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_proc_mapping_strategy]);
-	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_decompose_strategy]);
-	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_MPI_comm_strategy]);
-	if(info.config.int_params[AC_decompose_strategy]  ==  (int)AcDecomposeStrategy::External)
+	ERRCHK_ALWAYS(info.is_loaded[AC_proc_mapping_strategy]);
+	ERRCHK_ALWAYS(info.is_loaded[AC_decompose_strategy]);
+	ERRCHK_ALWAYS(info.is_loaded[AC_MPI_comm_strategy]);
+	if(info.config[AC_decompose_strategy]  ==  (int)AcDecomposeStrategy::External)
 		ERRCHK_ALWAYS(info.is_loaded.int3_params[AC_domain_decomposition]);
 #endif
 }

@@ -193,7 +193,7 @@ AcResult
 acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info, const P array)
 {
 	cudaSetDevice(device->id);
-	return acLoadUniform(device->streams[stream],array,get_config_param(array,host_info), get_array_length(array,host_info));
+	return acLoadUniform(device->streams[stream],array,host_info[array], get_array_length(array,host_info));
 }
 
 
@@ -206,7 +206,7 @@ struct load_all_scalars_uniform
 	{
 		AcResult res = AC_SUCCESS;
 		for(P i : get_params<P>())
-			res = acDeviceLoadUniform(device, STREAM_DEFAULT, i, get_config_param(i, config)) ? res : AC_FAILURE;
+			res = acDeviceLoadUniform(device, STREAM_DEFAULT, i, config[i]) ? res : AC_FAILURE;
 		return res;
 	}
 };
@@ -219,7 +219,7 @@ struct load_all_arrays_uniform
 		AcResult res = AC_SUCCESS;
 		for(P array : get_params<P>())
 		{
-			auto config_array = get_config_param(array,device_config);
+			auto config_array = device_config[array];
       			if (config_array != nullptr)
 				res = acDeviceLoadArray(device,STREAM_DEFAULT,device_config,array) ? res : AC_FAILURE;
 			acDeviceSynchronizeStream(device,STREAM_ALL);
@@ -307,18 +307,14 @@ acDeviceLoadStencils(const Device device, const Stream stream,
 }
 #endif
 
-//coeffs are auto generated from DSL
-int
-GetParamFromInfo(AcIntParam param, AcMeshInfo info){return info.int_params[param];}
-AcReal
-GetParamFromInfo(AcRealParam param, AcMeshInfo info){return info.real_params[param];}
-
-#define DCONST(PARAM)                                        \
-  GetParamFromInfo(PARAM,device->local_config)
 #if TWO_D == 0
 AcResult
 acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 {
+	[[maybe_unused]] auto DCONST = [&](const auto& param)
+	{
+		return device->local_config[param];
+	};
 	#include "coeffs.h"
 	for(int stencil=0;stencil<NUM_STENCILS;stencil++)
 	{
@@ -362,7 +358,7 @@ acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 void
 acCopyFromInfo(const AcMeshInfo src, AcMeshInfo dst, AcIntParam param)
 {
-	dst.int_params[param] = src.int_params[param];
+	dst[param] = src[param];
 }
 void
 acCopyFromInfo(const AcMeshInfo, AcMeshInfo, const int){}
@@ -479,13 +475,13 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 #if PACKED_DATA_TRANSFERS
 // Buffer for packed transfer of halo plates.
     ERRCHK_CUDA_ALWAYS(
-        cudaMalloc((void**)&(device->plate_buffers[AC_XZ|AC_BOT]), device->local_config.int_params[AC_xz_plate_bufsize]*sizeof(AcReal)));
+        cudaMalloc((void**)&(device->plate_buffers[AC_XZ|AC_BOT]), device->local_config[AC_xz_plate_bufsize]*sizeof(AcReal)));
     ERRCHK_CUDA_ALWAYS(
-        cudaMalloc((void**)&(device->plate_buffers[AC_YZ|AC_BOT]), device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal)));
+        cudaMalloc((void**)&(device->plate_buffers[AC_YZ|AC_BOT]), device->local_config[AC_yz_plate_bufsize]*sizeof(AcReal)));
     ERRCHK_CUDA_ALWAYS(
-        cudaMalloc((void**)&(device->plate_buffers[AC_XZ|AC_TOP]), device->local_config.int_params[AC_xz_plate_bufsize]*sizeof(AcReal)));
+        cudaMalloc((void**)&(device->plate_buffers[AC_XZ|AC_TOP]), device->local_config[AC_xz_plate_bufsize]*sizeof(AcReal)));
     ERRCHK_CUDA_ALWAYS(
-        cudaMalloc((void**)&(device->plate_buffers[AC_YZ|AC_TOP]), device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal)));
+        cudaMalloc((void**)&(device->plate_buffers[AC_YZ|AC_TOP]), device->local_config[AC_yz_plate_bufsize]*sizeof(AcReal)));
 //printf("device plate buffer pointers= %p %p %p %p \n", device->plate_buffers[AC_XZ|AC_BOT], device->plate_buffers[AC_YZ|AC_BOT], 
 //                                                       device->plate_buffers[AC_XZ|AC_TOP], device->plate_buffers[AC_YZ|AC_TOP]);
 #endif
@@ -847,7 +843,7 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
                          const int3 start, const int3 end, const AcReal dt)
 {
 #ifdef AC_INTEGRATION_ENABLED
-    const AcReal current_time = device->local_config.real_params[AC_current_time];
+    const AcReal current_time = device->local_config[AC_current_time];
     cudaSetDevice(device->id);
 
 #ifdef AC_SINGLEPASS_INTEGRATION
@@ -1188,13 +1184,12 @@ acDeviceLoadProfile(const Device device, const AcReal* hostprofile, const size_t
 }
 
 AcResult
-acDeviceStoreProfile(const Device device, const Profile profile, AcReal* hostprofile,
-                     const size_t hostprofile_count)
+acDeviceStoreProfile(const Device device, const Profile profile, AcMesh* host_mesh)
 {
     cudaSetDevice(device->id);
-    ERRCHK_ALWAYS(hostprofile_count == device->vba.profiles.count);
-    ERRCHK_CUDA(cudaMemcpy(hostprofile, device->vba.profiles.in[profile],
-                           sizeof(device->vba.profiles.in[profile][0]) * device->vba.profiles.count,
+    const int3 counts = (int3){device->vba.mx,device->vba.my,device->vba.mz};
+    ERRCHK_CUDA(cudaMemcpy(host_mesh->profile[profile], device->vba.profiles.in[profile],
+                           prof_size(profile,counts),
                            cudaMemcpyDeviceToHost));
     return AC_SUCCESS;
 }
@@ -1285,7 +1280,7 @@ acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int src_offset,
 {
     cudaSetDevice(device->id);     // use first device
 
-    int px=host_mesh->info.int_params[AC_mx]*sizeof(AcReal), sx=acGetInfoValue(host_mesh,AC_nx)*sizeof(AcReal);
+    int px=host_mesh->info[AC_mx]*sizeof(AcReal), sx=acGetInfoValue(host_mesh,AC_nx)*sizeof(AcReal);
 
     size_t start_idx;
     void *dest, *src;
@@ -1296,7 +1291,7 @@ acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int src_offset,
         start_idx = acVertexBufferIdx(start.x,start.y,k,host_mesh->info);
         dest=&(host_mesh->vertex_buffer[iv][start_idx]);
         src=&device->vba.out[iv][start_idx+src_offset];
-        cudaMemcpy2DAsync(dest, px, src, px, sx, host_mesh->info.int_params[AC_ny],
+        cudaMemcpy2DAsync(dest, px, src, px, sx, host_mesh->info[AC_ny],
                           cudaMemcpyDeviceToHost, device->streams[stream]);
       }
     }
@@ -1620,12 +1615,201 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
 }
 #else
 AcResult
-acDeviceReduceXYAverages(const Device , const Stream )
+acDeviceReduceXYAverages(const Device device, const Stream)
 {
-    ERROR("acDeviceReduceXYAverages called but AC_TFM_ENABLED was false");
+    AcMeshDims dims = acGetMeshDims(device->local_config);
+
+    const size_t num_compute_profiles = 1;
+    const AcShape buffer_shape        = {
+        .x = as_size_t(dims.nn.x),
+        .y = as_size_t(dims.nn.y),
+        .z = as_size_t(dims.m1.z),
+        .w = num_compute_profiles,
+    };
+    const size_t buffer_size = acShapeSize(buffer_shape);
+    AcBuffer buffer          = acBufferCreate(buffer_shape, true);
+
+    // Indices and shapes
+    const AcIndex in_offset = {
+        .x = as_size_t(dims.n0.x),
+        .y = as_size_t(dims.n0.y),
+        .z = 0,
+        .w = 0,
+    };
+    const AcShape in_shape = {
+        .x = as_size_t(dims.m1.x),
+        .y = as_size_t(dims.m1.y),
+        .z = as_size_t(dims.m1.z),
+        .w = 1,
+    };
+    const AcShape block_shape = {
+        .x = buffer_shape.x,
+        .y = buffer_shape.y,
+        .z = buffer_shape.z,
+        .w = 1,
+    };
+
+    // Reindex
+    VertexBufferHandle reindex_fields[] = {
+	Field(0)
+    };
+    for (size_t w = 0; w < ARRAY_SIZE(reindex_fields); ++w) {
+        const AcIndex buffer_offset = {
+            .x = 0,
+            .y = 0,
+            .z = 0,
+            .w = w,
+        };
+        acReindex(device->streams[STREAM_DEFAULT],                        //
+                  device->vba.in[reindex_fields[w]], in_offset, in_shape, //
+                  buffer.data, buffer_offset, buffer_shape, block_shape);
+    }
+
+    const size_t num_segments = buffer_shape.z * buffer_shape.w;
+    acSegmentedReduce(device->streams[STREAM_DEFAULT], //
+                      buffer.data, buffer_size, num_segments, device->vba.profiles.in[0]);
+    acBufferDestroy(&buffer);
     return AC_FAILURE;
-#endif
 }
+AcMeshOrder
+get_mesh_order_for_prof(const AcProfileType type)
+{
+    	switch(type)
+    	{
+    	        case(PROFILE_X):
+    	    	    return ZYX;
+    	        case(PROFILE_Y):
+		    return XZY;
+    	        case(PROFILE_Z):
+			return XYZ;
+    	        case(PROFILE_XY):
+			return ZXY;
+    	        case(PROFILE_XZ):
+			return YXZ;
+    	        case(PROFILE_YX):
+			return ZYX;
+    	        case(PROFILE_YZ):
+			return XYZ;
+    	        case(PROFILE_ZX):
+			return YZX;
+    	        case(PROFILE_ZY):
+			return XZY;
+    	}
+	return XYZ;
+};
+size_t
+get_size_from_dim(const int dim, const AcMeshDims dims)
+{
+    	const auto size   = dim == X_ORDER_INT ? dims.m1.x :
+        		    dim == Y_ORDER_INT ? dims.m1.y :
+        		    dims.m1.z;
+        return as_size_t(size);
+}
+AcShape
+get_transpose_buffer_shape(const AcMeshOrder order, const AcMeshDims dims)
+{
+	const int first_dim  = order % N_DIMS;
+	const int second_dim = (order/N_DIMS) % N_DIMS;
+	const int third_dim  = ((order/N_DIMS)/N_DIMS)  % N_DIMS;
+	return (AcShape){
+		get_size_from_dim(first_dim,dims),
+		get_size_from_dim(second_dim,dims),
+		get_size_from_dim(third_dim,dims),
+		1
+	};
+}
+AcShape
+get_reduction_shape(const AcProfileType type, const AcMeshDims dims)
+{
+	const AcShape order_size = get_transpose_buffer_shape(
+			get_mesh_order_for_prof(type),
+			dims
+			);
+	if(type & ONE_DIMENSIONAL_PROFILE)
+	{
+		return
+		{
+			order_size.x - 2*NGHOST,
+			order_size.y - 2*NGHOST,
+			order_size.z,
+			order_size.w
+		};
+	}
+	else if(type & ONE_DIMENSIONAL_PROFILE)
+		return
+		{
+			order_size.x - 2*NGHOST,
+			order_size.y,
+			order_size.z,
+			order_size.w
+		};
+	return order_size;
+}
+AcBuffer
+get_transpose_buffer(const AcMeshOrder order, const AcMeshDims dims)
+{
+    const AcShape transpose_buffer_shape = get_transpose_buffer_shape(order,dims);
+    return  acBufferCreate(transpose_buffer_shape, true);
+}
+AcBuffer
+acDeviceTranspose(const Device device, const Stream, const AcMeshOrder order)
+{
+    const AcMeshDims dims = acGetMeshDims(device->local_config);
+    AcBuffer res = get_transpose_buffer(order,dims);
+    acTranspose(order,device->vba.in[0],res.data, dims.m1, STREAM_DEFAULT);
+    return res;
+}
+AcResult
+acDeviceReduceAverages(const Device device, const Stream stream, const AcProfileType type)
+{
+    const AcMeshDims dims = acGetMeshDims(device->local_config);
+    const AcShape buffer_shape = get_reduction_shape(type,dims);
+    AcBuffer gpu_transpose_buffer = acDeviceTranspose(device,stream,get_mesh_order_for_prof(type));
+
+
+    AcBuffer buffer          = acBufferCreate(buffer_shape, true);
+
+    // Indices and shapes
+    const AcIndex in_offset = 
+    {
+	    .x = NGHOST,
+	    .y = NGHOST,
+	    .z = 0,
+	    .w = 0,
+    };
+    const AcShape in_shape    = gpu_transpose_buffer.shape;
+    const AcShape block_shape = gpu_transpose_buffer.shape;
+    // Reindex
+    VertexBufferHandle reindex_fields[] = {
+	Field(0)	
+    };
+    for (size_t w = 0; w < ARRAY_SIZE(reindex_fields); ++w) {
+        const AcIndex buffer_offset = {
+            .x = 0,
+            .y = 0,
+            .z = 0,
+            .w = w,
+        };
+        acReindex(device->streams[STREAM_DEFAULT],                        //
+                  gpu_transpose_buffer.data, in_offset, in_shape, //
+                  buffer.data, buffer_offset, buffer_shape, block_shape);
+    }
+
+    /**
+    const size_t num_segments = buffer_shape.z * buffer_shape.w;
+    if(type == PROFILE_X)
+    	acSegmentedReduce(device->streams[STREAM_DEFAULT], buffer.data, buffer.count, num_segments, device->vba.profiles.in[PROF_X]);
+    else if(type == PROFILE_Y)
+    	acSegmentedReduce(device->streams[STREAM_DEFAULT], buffer.data, buffer.count, num_segments, device->vba.profiles.in[PROF_Y]);
+    else if(type == PROFILE_Z)
+    	acSegmentedReduce(device->streams[STREAM_DEFAULT], buffer.data, buffer.count, num_segments, device->vba.profiles.in[PROF_Z]);
+     **/
+
+    acBufferDestroy(&buffer);
+    acBufferDestroy(&gpu_transpose_buffer);
+    return AC_SUCCESS;
+}
+#endif
 
 /** Note: very inefficient. Should only be used for testing. */
 AcResult

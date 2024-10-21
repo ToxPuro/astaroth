@@ -1,6 +1,11 @@
+hostdefine STENCIL_ORDER (0)
 Field FIELD
-
 output real AC_min_val
+
+Profile<X> PROF_X
+Profile<Y> PROF_Y
+Profile<Z> PROF_Z
+
 output real AC_max_val
 output real AC_sum_val
 output int  AC_int_sum_val
@@ -13,3 +18,13 @@ Kernel test_reduce()
     int int_val = (int) value(FIELD)
     reduce_sum(true,int_val,AC_int_sum_val)
 }
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps rhs(bcs)
+{
+	test_reduce()
+}
+

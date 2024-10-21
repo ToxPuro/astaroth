@@ -36,6 +36,20 @@
   #include "datatypes.h"
   #include "errchk.h"
 
+const static int ONE_DIMENSIONAL_PROFILE = (1 << 20);
+const static int TWO_DIMENSIONAL_PROFILE = (1 << 21);
+typedef enum {
+	PROFILE_X  = (1 << 0) | ONE_DIMENSIONAL_PROFILE,
+	PROFILE_Y  = (1 << 1) | ONE_DIMENSIONAL_PROFILE,
+	PROFILE_Z  = (1 << 2) | ONE_DIMENSIONAL_PROFILE,
+	PROFILE_XY = (1 << 3) | TWO_DIMENSIONAL_PROFILE,
+	PROFILE_XZ = (1 << 4) | TWO_DIMENSIONAL_PROFILE,
+	PROFILE_YX = (1 << 5) | TWO_DIMENSIONAL_PROFILE,
+	PROFILE_YZ = (1 << 6) | TWO_DIMENSIONAL_PROFILE,
+	PROFILE_ZX = (1 << 7) | TWO_DIMENSIONAL_PROFILE,
+	PROFILE_ZY = (1 << 8) | TWO_DIMENSIONAL_PROFILE,
+} AcProfileType;
+
   //copied from the sample setup
 #ifdef __cplusplus
 #define CONSTEXPR constexpr
@@ -45,6 +59,7 @@
 #define MAYBE_UNUSED
 #endif
   #include "user_defines.h"
+  #include "profiles_info.h"
   #include "user_built-in_constants.h"
   #include "user_builtin_non_scalar_constants.h"
   #include "func_attributes.h"
@@ -76,6 +91,19 @@ MakeField3(const AcArray<Field,N>& x, const AcArray<Field,N>& y, const AcArray<F
 	return res;
 }
 #endif
+const int N_DIMS = 3;
+const int X_ORDER_INT = 0;
+const int Y_ORDER_INT = 1;
+const int Z_ORDER_INT = 2;
+
+typedef enum {
+	XYZ = X_ORDER_INT + N_DIMS*Y_ORDER_INT + N_DIMS*N_DIMS*Z_ORDER_INT,
+	XZY = X_ORDER_INT + N_DIMS*Z_ORDER_INT + N_DIMS*N_DIMS*Y_ORDER_INT,
+	YXZ = Y_ORDER_INT + N_DIMS*X_ORDER_INT + N_DIMS*N_DIMS*Z_ORDER_INT,
+	YZX = Y_ORDER_INT + N_DIMS*Z_ORDER_INT + N_DIMS*N_DIMS*X_ORDER_INT,
+	ZXY = Z_ORDER_INT + N_DIMS*X_ORDER_INT + N_DIMS*N_DIMS*Y_ORDER_INT,
+	ZYX = Z_ORDER_INT + N_DIMS*Y_ORDER_INT + N_DIMS*N_DIMS*X_ORDER_INT,
+} AcMeshOrder;
 
   #include "kernel_reduce_outputs.h"
   #include "user_input_typedefs.h"
@@ -102,20 +130,29 @@ MakeField3(const AcArray<Field,N>& x, const AcArray<Field,N>& y, const AcArray<F
 
   //could combine these into base struct
   //with struct inheritance, but not sure would that break C ABI
-  typedef struct {
+  typedef struct AcMeshInfo{
 #include "array_decl.h"
 #include "device_mesh_info_decl.h"
 #if AC_MPI_ENABLED
     MPI_Comm comm;
 #endif
+#ifdef __cplusplus
+#include "info_access_operators.h"
+#endif
   } AcMeshInfo;
 
-  typedef struct {
+  typedef struct AcCompInfoLoaded {
 #include "comp_loaded_decl.h"
+#ifdef __cplusplus
+#include "loaded_info_access_operators.h"
+#endif
   } AcCompInfoLoaded;
 
-  typedef struct {
+  typedef struct AcCompInfoConfig{
 #include "comp_decl.h"
+#ifdef __cplusplus
+#include "comp_info_access_operators.h"
+#endif
   } AcCompInfoConfig;
 
   typedef struct {
@@ -150,12 +187,28 @@ typedef struct {
     ProfileBufferArray profiles;
   } VertexBufferArray;
 
+
   typedef struct
   {
   	int read_fields[NUM_KERNELS][NUM_ALL_FIELDS];
   	int field_has_stencil_op[NUM_KERNELS][NUM_ALL_FIELDS];
   	int written_fields[NUM_KERNELS][NUM_ALL_FIELDS];
   } KernelAnalysisInfo;
+
+  typedef struct {
+    size_t x, y, z, w;
+  } AcShape;
+  typedef AcShape AcIndex;
+  
+  typedef struct AcBuffer{
+      AcReal* data;
+      size_t count;
+      bool on_device;
+      AcShape shape;
+#ifdef __cplusplus
+      const AcReal& operator[](const int index) {return data[index];}
+#endif
+  } AcBuffer;
 
   typedef struct
   {
@@ -203,6 +256,7 @@ typedef struct {
    FUNC_DEFINE(AcResult, acSetRuntimePid, (const int pid));
 #endif
 
+  FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream));
   FUNC_DEFINE(const AcKernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
   FUNC_DEFINE(AcResult, acKernelFlushInt,(const cudaStream_t stream, int* arr, const size_t n, const int value));
@@ -327,7 +381,6 @@ typedef struct {
 
   #ifdef __cplusplus
 #include "is_comptime_param.h"
-#include  "push_to_config.h"
 
   template <typename P, typename V>
   void
@@ -335,9 +388,12 @@ typedef struct {
   {
 	  static_assert(!std::is_same<P,int>::value);
           if constexpr(IsCompParam(param))
-                  acLoadCompInfo(param, val, &comp_info);
+	  {
+	  	  comp_info.config[param]    = val;
+	  	  comp_info.is_loaded[param] = true;
+	  }
           else
-                  acPushToConfig(config, param, val);
+		  config[param] = val;
   }
 
   #endif
@@ -359,11 +415,6 @@ void acPBASwapBuffers(VertexBufferArray* vba);
 
 void acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
 
-// Testing
-typedef struct {
-  size_t x, y, z, w;
-} AcShape;
-typedef AcShape AcIndex;
 
 // Returns the number of elements contained within shape
 size_t acShapeSize(const AcShape shape);
@@ -423,7 +474,7 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 	  return get_array_info(array).is_alive;
   }
 
-  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba));
+  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const int3 counts));
 
   FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size_t count));
 
@@ -467,20 +518,6 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   {
 	  return get_array_info(array).name;
   }
-  template <typename P>
-  constexpr bool
-  get_is_loaded(const P param, const AcCompInfoLoaded config)
-  {
-#include "get_from_comp_config.h"
-	  return false;
-  };
-
-  template <typename P>
-  auto
-  get_loaded_val(const P param, const AcCompInfoConfig config)
-  {
-#include "get_from_comp_config.h"
-  };
 
   template <typename P>
   constexpr static int
@@ -568,15 +605,6 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 	  return createEnumArray<Field>(createIntArray<NUM_VTXBUF_HANDLES>());
   }
 
-	
-
-
-  template <typename P>
-  constexpr auto
-  get_config_param(const P param, const AcMeshInfo& config)
-  {
-#include "get_config_param.h"
-  }	  
 
   template <typename P>
   constexpr auto
@@ -635,3 +663,17 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 
 #endif
   #endif
+
+static UNUSED size_t
+prof_count(const int prof, const int3 counts)
+{
+    return 
+	    	prof_types[prof] == PROFILE_X ? counts.x  :
+	    	prof_types[prof] == PROFILE_Y ? counts.y  :
+		counts.z;
+}
+static UNUSED size_t
+prof_size(const int prof, const int3 counts)
+{
+    return prof_count(prof,counts)*sizeof(AcReal);
+}
