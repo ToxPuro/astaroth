@@ -72,7 +72,7 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
     // Set MPI errors of parent temporarily as non-fatal
     const MPI_Comm parent = MPI_COMM_WORLD;
     MPI_Errhandler parent_errhandler;
-    HANDLE(ERRCHK_MPI_API(MPI_Comm_get_errhandler(parent, &parent_errhandler)));
+    ERRCHK_MPI_API(MPI_Comm_get_errhandler(parent, &parent_errhandler));
     ERRCHK_MPI_API(MPI_Comm_set_errhandler(parent, MPI_ERRORS_RETURN));
 
     // Get nprocs
