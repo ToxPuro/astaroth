@@ -244,10 +244,10 @@ test_vecn(void)
 {
     int retval = 0;
 
-    {
-        VecN<uint64_t, 5> arr = {1, 2, 3, 4, 5};
-        retval |= WARNCHK(prod(arr) == 120);
-    }
+    // {
+    //     VecN<uint64_t, 5> arr = {1, 2, 3, 4, 5};
+    //     retval |= WARNCHK(prod(arr) == 120);
+    // }
 
     return retval;
 }

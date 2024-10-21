@@ -22,7 +22,8 @@ errchk_print_cuda_api_error(const int errorcode, const char* function, const cha
     do {                                                                                           \
         const int errchk_cuda_api_code__ = (errcode);                                              \
         if (errchk_cuda_api_code__ != cudaSuccess) {                                               \
-            print_cuda_api_error(errchk_cuda_api_code__, __func__, __FILE__, __LINE__, #errcode);  \
+            errchk_print_cuda_api_error(errchk_cuda_api_code__, __func__, __FILE__, __LINE__,      \
+                                        #errcode);                                                 \
             throw std::runtime_error("CUDA API error");                                            \
         }                                                                                          \
     } while (0)

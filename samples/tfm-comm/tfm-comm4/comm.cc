@@ -57,22 +57,22 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
             uint64_t* global_nn_offset_ptr)
 {
     if (Comm::setup_complete) {
-        WARNING("acCommSetup was called more than once. This is not allowed.");
+        WARNING_DESC("acCommSetup was called more than once. This is not allowed.");
         return ERRORCODE_INPUT_FAILURE;
     }
     if (ndims > MAX_NDIMS) {
-        WARNING("Invalid ndims");
+        WARNING_DESC("Invalid ndims");
         return ERRORCODE_INPUT_FAILURE;
     }
     if (!global_nn_ptr || !local_nn_ptr || !global_nn_offset_ptr) {
-        WARNING("Invalid input/output pointer(s) passed to function");
+        WARNING_DESC("Invalid input/output pointer(s) passed to function");
         return ERRORCODE_INPUT_FAILURE;
     }
 
     // Set MPI errors of parent temporarily as non-fatal
     const MPI_Comm parent = MPI_COMM_WORLD;
     MPI_Errhandler parent_errhandler;
-    ERRCHK_MPI_API(MPI_Comm_get_errhandler(parent, &parent_errhandler));
+    HANDLE(ERRCHK_MPI_API(MPI_Comm_get_errhandler(parent, &parent_errhandler)));
     ERRCHK_MPI_API(MPI_Comm_set_errhandler(parent, MPI_ERRORS_RETURN));
 
     // Get nprocs
@@ -132,7 +132,7 @@ ErrorCode
 acCommBarrier(void)
 {
     if (!Comm::setup_complete) {
-        ERROR("acCommSetup not complete");
+        ERROR_DESC("acCommSetup not complete");
         return ERRORCODE_INPUT_FAILURE;
     }
 
@@ -144,7 +144,7 @@ ErrorCode
 acCommPrint(void)
 {
     if (!Comm::setup_complete) {
-        ERROR("acCommSetup not complete");
+        ERROR_DESC("acCommSetup not complete");
         return ERRORCODE_INPUT_FAILURE;
     }
 

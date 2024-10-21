@@ -16,8 +16,9 @@ errchk_print_mpi_api_error(const int errorcode, const char* function, const char
 #define ERRCHK_MPI_API(errcode)                                                                    \
     do {                                                                                           \
         const int errchk_mpi_api_code__ = (errcode);                                               \
-        if (errchk_mpi_api_code__ != mpiSuccess) {                                                 \
-            print_mpi_api_error(errchk_mpi_api_code__, __func__, __FILE__, __LINE__, #errcode);    \
+        if (errchk_mpi_api_code__ != MPI_SUCCESS) {                                                \
+            errchk_print_mpi_api_error(errchk_mpi_api_code__, __func__, __FILE__, __LINE__,        \
+                                       #errcode);                                                  \
             throw std::runtime_error("MPI API error");                                             \
         }                                                                                          \
     } while (0)

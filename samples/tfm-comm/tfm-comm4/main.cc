@@ -1,30 +1,26 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "errchk.h"
-#include "type_conversion.h"
+#include "comm.h"
 
-void
-h()
-{
-    ERRCHK(1 == 2);
-}
-void
-g()
-{
-    HANDLE(h());
-}
-void
-f()
-{
-    HANDLE(g());
-}
+#include "print.h"
+#include "shape.h"
 
 int
 main(void)
 {
-    // HANDLE(f());
-    HANDLE(as<size_t>(-1));
+    acCommInit();
+
+    Shape global_nn = {4, 4};
+    Shape local_nn(global_nn.count);
+    Index global_nn_offset(global_nn.count);
+    PRINTD(global_nn);
+    PRINTD(local_nn);
+    PRINTD(global_nn_offset);
+
+    acCommSetup(global_nn.count, global_nn.data, local_nn.data, global_nn_offset.data);
+    acCommPrint();
+    acCommQuit();
 
     return EXIT_SUCCESS;
 }
