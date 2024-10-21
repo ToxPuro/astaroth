@@ -1,5 +1,5 @@
 #pragma once
-#include "errchk_print.h"
+#include "errchk.h"
 
 #define ERRCHK(expr)                                                                               \
     do {                                                                                           \
@@ -14,6 +14,6 @@
         expr;                                                                                      \
     }                                                                                              \
     catch (const std::exception& e) {                                                              \
-        ERROR_DESC("Exception caught: %s", e.what());                                              \
+        ERROR_DESC("Exception %s caught", e.what());                                               \
         throw;                                                                                     \
     }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "errchk_print.h"
+#include "errchk.h"
 
 #if defined(__CUDACC__)
 #include <cuda_runtime.h>

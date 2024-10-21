@@ -1,5 +1,5 @@
 #pragma once
-#include "errchk_print.h"
+#include "errchk.h"
 
 #include <mpi.h>
 
