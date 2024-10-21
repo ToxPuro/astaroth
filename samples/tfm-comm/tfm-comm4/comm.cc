@@ -10,7 +10,7 @@
 #include "print.h"
 #include "type_conversion.h"
 
-#include "static_array.h"
+#include "shape.h"
 
 /*
  * Global variables
@@ -44,8 +44,8 @@ acCommInit(void)
     return ERRORCODE_NOT_IMPLEMENTED;
 }
 
-// typedef struct StaticArray<int, NTUPLE_MAX_NDIMS> Ntuple_mpi;
-// typedef struct StaticArray<uint64_t, NTUPLE_MAX_NDIMS> Ntuple;
+// typedef struct StaticArray<int, MAX_NDIMS> Ntuple_mpi;
+// typedef struct StaticArray<uint64_t, MAX_NDIMS> Ntuple;
 
 /** Setup the communicator module
  * global_nn: dimensions of the global computational domain partitioned to multiple processors
@@ -63,7 +63,7 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
         ERROR("acCommSetup was called more than once. This is not allowed.");
         return ERRORCODE_INPUT_FAILURE;
     }
-    if (ndims > NTUPLE_MAX_NDIMS) {
+    if (ndims > MAX_NDIMS) {
         ERROR("Invalid ndims");
         return ERRORCODE_INPUT_FAILURE;
     }
@@ -83,11 +83,11 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
     ERRCHK_MPI_API(MPI_Comm_size(parent, &mpi_nprocs));
 
     // Decompose
-    Ntuple<int> mpi_decomp(ndims);
+    MPIShape mpi_decomp(ndims);
     ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(mpi_decomp.count), mpi_decomp.data));
 
     // Create the communicator
-    Ntuple<int> mpi_periods(ndims, 1); // Set to fully periodic
+    MPIShape mpi_periods(ndims, 1); // Set to fully periodic
     ERRCHK_MPI_API(
         MPI_Cart_create(parent, as<int>(ndims), mpi_decomp.data, mpi_periods.data, 0, &Comm::comm));
 
@@ -100,13 +100,13 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
     int mpi_rank;
     ERRCHK_MPI_API(MPI_Comm_rank(Comm::comm, &mpi_rank));
 
-    Ntuple<int> mpi_coords(ndims);
+    MPIIndex mpi_coords(ndims);
     ERRCHK_MPI_API(MPI_Cart_coords(Comm::comm, mpi_rank, as<int>(ndims), mpi_coords.data));
-    const Ntuple<uint64_t> coords(mpi_coords.reversed());
+    Index coords(mpi_coords.reversed());
 
     // Compute the local problem size
-    Ntuple<uint64_t> global_nn(ndims, global_nn_ptr);
-    Ntuple<uint64_t> decomp(mpi_decomp.reversed());
+    Shape global_nn(ndims, global_nn_ptr);
+    Shape decomp(mpi_decomp.reversed());
     const auto local_nn         = global_nn / decomp;
     const auto global_nn_offset = coords * local_nn;
     std::copy(local_nn.data, local_nn.data + ndims, local_nn_ptr);
@@ -157,9 +157,9 @@ acCommPrint(void)
     ERRCHK_MPI_API(MPI_Comm_size(Comm::comm, &nprocs));
     ERRCHK_MPI_API(MPI_Cartdim_get(Comm::comm, &ndims));
 
-    Ntuple<int> mpi_decomp(as<size_t>(ndims));
-    Ntuple<int> mpi_periods(as<size_t>(ndims));
-    Ntuple<int> mpi_coords(as<size_t>(ndims));
+    MPIShape mpi_decomp(as<size_t>(ndims));
+    MPIShape mpi_periods(as<size_t>(ndims));
+    MPIIndex mpi_coords(as<size_t>(ndims));
     ERRCHK_MPI_API(
         MPI_Cart_get(Comm::comm, ndims, mpi_decomp.data, mpi_periods.data, mpi_coords.data));
 

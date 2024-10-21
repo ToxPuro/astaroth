@@ -1,9 +1,6 @@
 #pragma once
 
-#include "static_array.h"
-
-typedef StaticArray<uint64_t, 4> Shape;
-typedef StaticArray<uint64_t, 4> Index;
+#include "shape.h"
 
 struct Segment {
     Shape dims;    // Dimensions of the parent body
