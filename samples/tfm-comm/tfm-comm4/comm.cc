@@ -26,10 +26,8 @@ bool setup_complete = false;
  * Signal handling
  */
 static void
-signal_handler(int signum)
+handle_mpi_failure(int signum)
 {
-    const char msg[] = "SIGABRT received\n";
-    write(STDERR_FILENO, msg, sizeof(msg) - 1);
     MPI_Abort(MPI_COMM_WORLD, signum);
 }
 
@@ -40,7 +38,6 @@ ErrorCode
 acCommInit(void)
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
-    signal(SIGABRT, signal_handler); // Setup signal handler for errors
     return ERRORCODE_NOT_IMPLEMENTED;
 }
 
@@ -60,15 +57,15 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
             uint64_t* global_nn_offset_ptr)
 {
     if (Comm::setup_complete) {
-        ERROR("acCommSetup was called more than once. This is not allowed.");
+        WARNING("acCommSetup was called more than once. This is not allowed.");
         return ERRORCODE_INPUT_FAILURE;
     }
     if (ndims > MAX_NDIMS) {
-        ERROR("Invalid ndims");
+        WARNING("Invalid ndims");
         return ERRORCODE_INPUT_FAILURE;
     }
     if (!global_nn_ptr || !local_nn_ptr || !global_nn_offset_ptr) {
-        ERROR("Invalid input/output pointer(s) passed to function");
+        WARNING("Invalid input/output pointer(s) passed to function");
         return ERRORCODE_INPUT_FAILURE;
     }
 
@@ -128,7 +125,6 @@ acCommQuit(void)
     Comm::dtype = MPI_DATATYPE_NULL;
 
     ERRCHK_MPI_API(MPI_Finalize());
-    signal(SIGABRT, SIG_DFL); // Reset signal handler to default
     return ERRORCODE_SUCCESS;
 }
 

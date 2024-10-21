@@ -46,7 +46,7 @@ errchk_raise_error(const char* function, const char* file, const long line, cons
     fflush(stdout);
     fflush(stderr);
 
-    abort();
+    // abort();
 }
 
 __attribute__((__format__(__printf__, 5, 6))) void
