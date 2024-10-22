@@ -54,9 +54,8 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
         WARNING_DESC("acCommSetup was called more than once. This is not allowed.");
         return ERRORCODE_INPUT_FAILURE;
     }
-    if (ndims > MAX_NDIMS) {
-        WARNING_DESC("ndims %zu was larger than MAX_NDIMS %zu. Increase MAX_NDIMS to enable higher "
-                     "dimensions.",
+    if (ndims != MAX_NDIMS) {
+        WARNING_DESC("ndims %zu != MAX_NDIMS %zu. Change MAX_NDIMS to enable other dimensions.",
                      ndims, MAX_NDIMS);
         return ERRORCODE_INPUT_FAILURE;
     }
