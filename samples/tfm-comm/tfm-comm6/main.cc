@@ -8,16 +8,19 @@
 int
 main()
 {
-    ERRCHK(acCommInit() == ERRORCODE_SUCCESS);
+    acCommInit();
 
     Shape global_nn;
     Shape local_nn;
     Index local_nn_offset;
 
-    ERRCHK(acCommSetup(3, global_nn.data, local_nn.data, local_nn_offset.data) ==
-           ERRORCODE_SUCCESS);
-    ERRCHK(acCommBarrier() == ERRORCODE_SUCCESS);
-    ERRCHK(acCommPrint() == ERRORCODE_SUCCESS);
-    ERRCHK(acCommQuit() == ERRORCODE_SUCCESS);
+    acCommSetup(3, global_nn.data, local_nn.data, local_nn_offset.data);
+    acCommBarrier();
+    acCommPrint();
+
+    // Setup the halo exchange
+    acCommTest();
+
+    acCommQuit();
     return EXIT_SUCCESS;
 }
