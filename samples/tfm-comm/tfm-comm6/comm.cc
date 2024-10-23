@@ -14,6 +14,8 @@
 #include "packet.h"
 #include "shape.h"
 
+#include "partition.h"
+
 /*
  * Global variables
  */
@@ -203,12 +205,19 @@ acCommTest(void)
 {
     test_packet();
 
-    Shape dims                       = {4, 4, 4};
-    Shape subdims                    = {1, 1, 1};
-    Index offset                     = {0, 0, 0};
+    Shape nn                         = {3, 3};
+    Shape rr                         = {2, 2};
+    Shape mm                         = as<uint64_t>(2) * rr + nn;
     const size_t n_aggregate_buffers = 1;
 
-    NdArray<double> mesh(dims);
+    NdArray<double> mesh(mm);
+    mesh.display();
+
+    auto segments = partition(mm, nn, rr);
+    PRINT_DEBUG(segments);
+
+    for (size_t i = 0; i < segments.size(); ++i)
+        mesh.fill(as<uint64_t>(i), segments[i].dims, segments[i].offset);
     mesh.display();
 
     return ERRORCODE_NOT_IMPLEMENTED;

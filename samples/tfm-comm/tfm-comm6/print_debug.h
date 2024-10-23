@@ -23,9 +23,14 @@ template <typename T>
 std::ostream&
 operator<<(std::ostream& os, const std::vector<T>& vec)
 {
-    os << "{";
+    // os << "{";
+    // for (size_t i = 0; i < vec.size(); ++i)
+    //     os << vec[i] << (i + 1 < vec.size() ? ", " : "}");
+    // return os;
+    os << "{\n";
     for (size_t i = 0; i < vec.size(); ++i)
-        os << vec[i] << (i + 1 < vec.size() ? ", " : "}");
+        os << "\t" << i << ": " << vec[i] << (i + 1 < vec.size() ? "," : "") << std::endl;
+    os << "}";
     return os;
 }
 
