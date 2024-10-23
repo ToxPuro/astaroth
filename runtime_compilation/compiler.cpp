@@ -269,19 +269,19 @@ acCompile(const char* compilation_string, AcMeshInfo mesh_info)
 	const int pid = 0;
 #endif
 	mesh_info.run_consts = info;
-	fprintf(stderr,"AC_dsx: %14e\n",mesh_info[AC_dsx]);
 	if(pid == 0)
 	{
 		acLoadRunConstsBase("tmp_astaroth_run_consts.h",mesh_info);
 		char cmd[10000];
 		sprintf(cmd,"diff tmp_astaroth_run_consts.h %s",AC_OVERRIDES_PATH);
+		const bool overrides_exists = file_exists(AC_OVERRIDES_PATH);
 		const bool loaded_different = 
-					file_exists(AC_OVERRIDES_PATH)
+				        overrides_exists	
 					? system(cmd) : true;
 		acLoadRunConstsBase(AC_OVERRIDES_PATH,mesh_info);
 		if(loaded_different)
 		{
-			if(loaded_different && file_exists(AC_OVERRIDES_PATH))
+			if(loaded_different && overrides_exists)
 				fprintf(stderr,"Loaded different run_const values; recompiling\n");
 			sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path);
 			int retval = system(cmd);
