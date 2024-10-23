@@ -401,7 +401,7 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
     const int3 counts = acGetLocalMM(info);
     for(size_t p = 0; p < NUM_PROFILES; ++p)
     {
-	    mesh->profile[p] = (AcReal*)calloc(prof_size(p,counts), sizeof(AcReal));
+	    mesh->profile[p] = (AcReal*)calloc(prof_size(Profile(p),counts), sizeof(AcReal));
             ERRCHK_ALWAYS(mesh->profile[p]);
     }
     return AC_SUCCESS;

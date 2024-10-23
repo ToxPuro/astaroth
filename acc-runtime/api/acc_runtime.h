@@ -173,6 +173,8 @@ typedef struct {
   size_t count;
 } ProfileBufferArray;
 
+#define NUM_REAL_SCRATCHPADS (NUM_REAL_OUTPUTS+NUM_PROFILES+1)
+
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
@@ -180,7 +182,7 @@ typedef struct {
     size_t bytes;
     size_t mx, my, mz;
     acKernelInputParams kernel_input_params;
-    AcReal* reduce_scratchpads_real[NUM_REAL_OUTPUTS+1][NUM_REDUCE_SCRATCHPADS];
+    AcReal* reduce_scratchpads_real[NUM_REAL_SCRATCHPADS][NUM_REDUCE_SCRATCHPADS];
     int* reduce_scratchpads_int[NUM_INT_OUTPUTS+1][NUM_REDUCE_SCRATCHPADS];
     int reduce_offset;
     size_t scratchpad_size;
@@ -253,10 +255,10 @@ typedef struct {
   #include "user_declarations.h"
 
 #if AC_MPI_ENABLED
-   FUNC_DEFINE(AcResult, acSetRuntimePid, (const int pid));
+   FUNC_DEFINE(AcResult, acInitializeRuntimeMPI, (const MPI_Comm comm));
 #endif
 
-  FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream));
+  FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream));
   FUNC_DEFINE(const AcKernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
   FUNC_DEFINE(AcResult, acKernelFlushInt,(const cudaStream_t stream, int* arr, const size_t n, const int value));
@@ -665,15 +667,22 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   #endif
 
 static UNUSED size_t
-prof_count(const int prof, const int3 counts)
+prof_count(const Profile prof, const int3 counts)
 {
     return 
-	    	prof_types[prof] == PROFILE_X ? counts.x  :
-	    	prof_types[prof] == PROFILE_Y ? counts.y  :
-		counts.z;
+	    	prof_types[prof] == PROFILE_X  ? counts.x  :
+	    	prof_types[prof] == PROFILE_Y  ? counts.y  :
+	    	prof_types[prof] == PROFILE_Z  ? counts.z  :
+	    	prof_types[prof] == PROFILE_XY ? counts.x*counts.y  :
+	    	prof_types[prof] == PROFILE_XZ ? counts.x*counts.z  :
+	    	prof_types[prof] == PROFILE_YX ? counts.y*counts.x  :
+	    	prof_types[prof] == PROFILE_YZ ? counts.y*counts.z  :
+	    	prof_types[prof] == PROFILE_ZX ? counts.z*counts.x  :
+	    	prof_types[prof] == PROFILE_ZY ? counts.z*counts.y  :
+		0;
 }
 static UNUSED size_t
-prof_size(const int prof, const int3 counts)
+prof_size(const Profile prof, const int3 counts)
 {
     return prof_count(prof,counts)*sizeof(AcReal);
 }

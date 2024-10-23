@@ -490,7 +490,7 @@ main(int argc, char** argv)
 %token INT UINT REAL MATRIX TENSOR FIELD FIELD3 STENCIL WORK_BUFFER PROFILE
 %token BOOL INTRINSIC LONG_LONG LONG 
 %token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION UTILITY SUM MAX COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
-%token X_QL Y_QL Z_QL XY_QL XZ_QL YX_QL YZ_QL ZX_QL ZY_QL
+%token PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
 %token STATEMENT_LIST_HEAD STATEMENT
@@ -498,6 +498,7 @@ main(int argc, char** argv)
 %token RANGE IN_RANGE
 %token CONST_DIMS
 %token CAST BASIC_STATEMENT
+%token TEMPLATE
 
 %nonassoc QUESTION
 %nonassoc '<'
@@ -532,11 +533,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    const ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
             ASTNode* assignment = (ASTNode*)get_node(NODE_ASSIGNMENT, variable_definition);
 	
-            //if (assignment) {
-	    //    
-            //    fprintf(stderr, "FATAL ERROR: Device constant assignment is not supported. Load the value at runtime with ac[Grid|Device]Load[Int|Int3|Real|Real3]Uniform-type API functions or use #define.\n");
-            //    assert(!assignment);
-            //}
             if (get_node_by_token(FIELD, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
@@ -586,7 +582,15 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
-            else if(get_node_by_token(PROFILE, variable_definition)) {
+            else if(get_node_by_token(PROFILE_X, variable_definition)) {
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+            }
+            else if(get_node_by_token(PROFILE_Y, variable_definition)) {
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+            }
+            else if(get_node_by_token(PROFILE_Z, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
@@ -642,15 +646,15 @@ for: FOR               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 in: IN                 { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 dconst_ql: DCONST_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-x_ql: X_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-y_ql: Y_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-z_ql: Z_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-xy_ql: XY_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-xz_ql: XZ_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-yx_ql: YX_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-yz_ql: YZ_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-zx_ql: ZX_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-zy_ql: ZY_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_x:  PROFILE_X   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_y:  PROFILE_Y   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_z:  PROFILE_Z   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_xy: PROFILE_XY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_xz: PROFILE_XZ   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_yx: PROFILE_YX   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_yz: PROFILE_YZ   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_zx: PROFILE_ZX   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_zy: PROFILE_ZY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 override: OVERRIDE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 const_ql: CONST_QL     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 shared: SHARED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -780,6 +784,15 @@ type_specifier:
 	      | kernel       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | profile { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | struct_type  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | profile_x                   { $$ = astnode_create(NODE_TSPEC, $1, NULL);}
+              | profile_y                   { $$ = astnode_create(NODE_TSPEC, $1, NULL);}
+              | profile_z                   { $$ = astnode_create(NODE_TSPEC, $1, NULL);}
+              | profile_xy                  { $$ = astnode_create(NODE_TSPEC, $1, NULL);}
+              | profile_xz                  { $$ = astnode_create(NODE_TSPEC, $1, NULL);}
+              | profile_yx                  { $$ = astnode_create(NODE_TSPEC, $1, NULL);}
+              | profile_yz                  { $$ = astnode_create(NODE_TSPEC, $1, NULL);}
+              | profile_zx                  { $$ = astnode_create(NODE_TSPEC, $1, NULL);}
+              | profile_zy                  { $$ = astnode_create(NODE_TSPEC, $1, NULL);}
               ;
 
 type_specifiers: type_specifiers ',' type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,$3); }
@@ -804,15 +817,6 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | elemental    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | boundary_condition     { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
               | utility                { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
-              | x_ql                   { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
-              | y_ql                   { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
-              | z_ql                   { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
-              | xy_ql                  { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
-              | xz_ql                  { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
-              | yx_ql                  { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
-              | yz_ql                  { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
-              | zx_ql                  { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
-              | zy_ql                  { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
               ;
 
 type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOWN,$1,$2); }
@@ -970,7 +974,9 @@ variable_definitions: non_null_declaration {
 				  if(!$$->lhs->rhs)
 				  {
 					const char* tspec = get_node(NODE_TSPEC,$$->lhs)->lhs->buffer;
-					if(strcmps(tspec,"Field","Field3"))
+				        if(strcmps(tspec,"Field","Field3","Profile<X>","Profile<Y>","Profile<Z>",
+						     "Profile<XY>","Profile<XZ>","Profile<YX>","Profile<YZ>","Profile<ZX>","Profile<ZY>"
+					      ))
 					{
 						ASTNode* tqualifiers = create_type_qualifiers("dconst",DCONST_QL);
 						tqualifiers -> parent = $$->lhs;
@@ -1004,7 +1010,9 @@ non_null_declaration: type_declaration declaration_list {
 				if(!$$->lhs->rhs)
 				{
 				    const char* tspec = get_node(NODE_TSPEC,$$->lhs)->lhs->buffer;
-				    if(strcmps(tspec,"Field","Field3"))
+				    if(strcmps(tspec,"Field","Field3","Profile<X>","Profile<Y>","Profile<Z>",
+						     "Profile<XY>","Profile<XZ>","Profile<YX>","Profile<YZ>","Profile<ZX>","Profile<ZY>"
+					      ))
 				    {
 				    	ASTNode* tqualifiers = create_type_qualifiers("dconst",DCONST_QL);
 				    	tqualifiers -> parent = $$->lhs;
@@ -1035,7 +1043,6 @@ type_declaration: /* Empty */                            { $$ = astnode_create(N
                 | type_specifier                         { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                 | type_qualifiers                        { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                 | type_qualifiers type_specifier         { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-                | type_specifier '<' type_qualifiers '>' { $$ = astnode_create(NODE_UNKNOWN, $3, $1); }
                 ;
 
 

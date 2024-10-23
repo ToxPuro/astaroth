@@ -100,6 +100,25 @@ void
 reduce_min_real(const bool&, const AcReal&, const AcRealOutputParam&){}
 void 
 reduce_max_real(const bool&, const AcReal&, const AcRealOutputParam&){}
+void 
+reduce_sum_real_x(const bool&, const AcReal&, const Profile&){}
+void 
+reduce_sum_real_y(const bool&, const AcReal&, const Profile&){}
+void 
+reduce_sum_real_z(const bool&, const AcReal&, const Profile&){}
+void 
+reduce_sum_real_xy(const bool&, const AcReal&, const Profile&){}
+void 
+reduce_sum_real_xz(const bool&, const AcReal&, const Profile&){}
+void 
+reduce_sum_real_yx(const bool&, const AcReal&, const Profile&){}
+void 
+reduce_sum_real_yz(const bool&, const AcReal&, const Profile&){}
+void 
+reduce_sum_real_zx(const bool&, const AcReal&, const Profile&){}
+void 
+reduce_sum_real_zy(const bool&, const AcReal&, const Profile&){}
+
 
 void 
 reduce_sum_int(const bool&,  const int&, const AcIntOutputParam&){}

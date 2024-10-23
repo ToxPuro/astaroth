@@ -114,19 +114,13 @@ main(int argc, char* argv[])
     acGridExecuteTaskGraph(graph,1);
     acGridSynchronizeStream(STREAM_ALL);
     acGridFinalizeReduceLocal(graph);
-
-    acGridSynchronizeStream(STREAM_ALL);
-    acDeviceReduceAverages(acGridGetDevice(),STREAM_DEFAULT,PROFILE_X);
-    acDeviceReduceAverages(acGridGetDevice(),STREAM_DEFAULT,PROFILE_Y);
-    acDeviceReduceAverages(acGridGetDevice(),STREAM_DEFAULT,PROFILE_Z);
     acGridSynchronizeStream(STREAM_ALL);
 
-
-    AcBuffer gpu_field_zyx        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,ZYX);
-    AcBuffer gpu_field_xzy        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,XZY);
-    AcBuffer gpu_field_yxz        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,YXZ);
-    AcBuffer gpu_field_yzx        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,YZX);
-    AcBuffer gpu_field_zxy        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,ZXY);
+    AcBuffer gpu_field_zyx        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,ZYX,FIELD);
+    AcBuffer gpu_field_xzy        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,XZY,FIELD);
+    AcBuffer gpu_field_yxz        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,YXZ,FIELD);
+    AcBuffer gpu_field_yzx        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,YZX,FIELD);
+    AcBuffer gpu_field_zxy        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,ZXY,FIELD);
 
     acGridSynchronizeStream(STREAM_ALL);
     AcBuffer field_zyx        =acBufferCopy(gpu_field_zyx,false);
@@ -144,10 +138,22 @@ main(int argc, char* argv[])
     acDeviceStoreProfile(acGridGetDevice(), PROF_X,  &model);
     acDeviceStoreProfile(acGridGetDevice(), PROF_Y,  &model);
     acDeviceStoreProfile(acGridGetDevice(), PROF_Z,  &model);
+    acDeviceStoreProfile(acGridGetDevice(), PROF_XY,  &model);
+    acDeviceStoreProfile(acGridGetDevice(), PROF_XZ,  &model);
+    acDeviceStoreProfile(acGridGetDevice(), PROF_YX,  &model);
+    acDeviceStoreProfile(acGridGetDevice(), PROF_YZ,  &model);
+    acDeviceStoreProfile(acGridGetDevice(), PROF_ZX,  &model);
+    acDeviceStoreProfile(acGridGetDevice(), PROF_ZY,  &model);
     acGridSynchronizeStream(STREAM_ALL);
-    const AcReal* zy_sum_gpu = model.profile[PROF_X];
-    const AcReal* xz_sum_gpu = model.profile[PROF_Y];
-    const AcReal* xy_sum_gpu = model.profile[PROF_Z];
+    const AcReal* x_sum_gpu = model.profile[PROF_X];
+    const AcReal* y_sum_gpu = model.profile[PROF_Y];
+    const AcReal* z_sum_gpu = model.profile[PROF_Z];
+    const AcReal* xy_sum_gpu = model.profile[PROF_XY];
+    const AcReal* xz_sum_gpu = model.profile[PROF_XZ];
+    const AcReal* yx_sum_gpu = model.profile[PROF_YX];
+    const AcReal* yz_sum_gpu = model.profile[PROF_YZ];
+    const AcReal* zx_sum_gpu = model.profile[PROF_ZX];
+    const AcReal* zy_sum_gpu = model.profile[PROF_ZY];
 
     AcReal cpu_max_val = -1000000.000000000;
     AcReal cpu_min_val = +1000000.000000000;
@@ -283,26 +289,32 @@ main(int argc, char* argv[])
     	    }
     	}
     }
-    AcReal* xy_sum = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mz]);
-    AcReal* zy_sum = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mx]);
-    AcReal* xz_sum = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_my]);
+    AcReal* z_sum   = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mz]);
+    AcReal* x_sum   = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mx]);
+    AcReal* y_sum   = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_my]);
+    AcReal* xy_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mxy]);
+    AcReal* xz_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mxz]);
+    AcReal* yx_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mxy]);
+    AcReal* yz_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_myz]);
+    AcReal* zx_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mxz]);
+    AcReal* zy_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_myz]);
     for(int i = dims.n0.x; i < dims.n1.x; ++i)
     {
-	zy_sum[i] = 0.0;
+	x_sum[i] = 0.0;
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
     		for(int j = dims.n0.y; j < dims.n1.y; ++j)
-			zy_sum[i] += model.vertex_buffer[FIELD][IDX(i,j,k)];
+			x_sum[i] += model.vertex_buffer[FIELD][IDX(i,j,k)];
     }
     for(int j = dims.n0.y; j < dims.n1.y; ++j)
     {
-	xz_sum[j] = 0.0;
+	y_sum[j] = 0.0;
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
     		for(int i = dims.n0.x; i < dims.n1.x; ++i)
-			xz_sum[j] += model.vertex_buffer[FIELD][IDX(i,j,k)];
+			y_sum[j] += model.vertex_buffer[FIELD][IDX(i,j,k)];
     }
     for(int k = dims.n0.z; k < dims.n1.z;  ++k)
     {
-	xy_sum[k] = 0.0;
+	z_sum[k] = 0.0;
     	for(int j = dims.n0.y; j < dims.n1.y; ++j)
     	{
     		for(int i = dims.n0.x; i < dims.n1.x; ++i)
@@ -315,9 +327,81 @@ main(int argc, char* argv[])
 			}
 			long_cpu_sum_val += (long double)val;
 			cpu_int_sum += (int)val;
-			xy_sum[k] += val;
+			z_sum[k] += val;
 		}
 	}
+    }
+    for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+    	for(int j = dims.n0.y; j < dims.n1.y; ++j)
+    	{
+		const int index = i + model.info[AC_mx]*j;
+		xy_sum[index] = 0.0;
+    		for(int k = dims.n0.z; k < dims.n1.z;  ++k)
+    		{
+			xy_sum[index] += model.vertex_buffer[FIELD][IDX(i,j,k)];
+		}
+    	}
+    }
+    for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+    	for(int k = dims.n0.z; k < dims.n1.z; ++k)
+    	{
+		const int index = i + model.info[AC_mx]*k;
+		xz_sum[index] = 0.0;
+    		for(int j = dims.n0.y; j < dims.n1.y;  ++j)
+    		{
+			xz_sum[index] += model.vertex_buffer[FIELD][IDX(i,j,k)];
+		}
+    	}
+    }
+    for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+    	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
+    	{
+		const int index = j + model.info[AC_my]*i;
+		yx_sum[index] = 0.0;
+    		for(int k = dims.n0.z; k < dims.n1.z; ++k)
+    		{
+			yx_sum[index] += model.vertex_buffer[FIELD][IDX(i,j,k)];
+		}
+    	}
+    }
+    for(int k = dims.n0.z; k < dims.n1.z; ++k)
+    {
+    	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
+    	{
+		const int index = j + model.info[AC_my]*k;
+		yz_sum[index] = 0.0;
+    		for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    		{
+			yz_sum[index] += model.vertex_buffer[FIELD][IDX(i,j,k)];
+		}
+    	}
+    }
+    for(int k = dims.n0.z; k < dims.n1.z; ++k)
+    {
+    	for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    	{
+		const int index = k + model.info[AC_mz]*i;
+		zx_sum[index] = 0.0;
+    		for(int j = dims.n0.y; j < dims.n1.y;  ++j)
+    		{
+			zx_sum[index] += model.vertex_buffer[FIELD][IDX(i,j,k)];
+		}
+    	}
+    }
+    for(int k = dims.n0.z; k < dims.n1.z; ++k)
+    {
+    	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
+    	{
+		const int index = k + model.info[AC_mz]*j;
+		zy_sum[index] = 0.0;
+    		for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    		{
+			zy_sum[index] += model.vertex_buffer[FIELD][IDX(i,j,k)];
+		}
+    	}
     }
     AcReal cpu_sum_val = (AcReal)long_cpu_sum_val;
     AcReal epsilon  = pow(10.0,-12.0);
@@ -330,23 +414,89 @@ main(int argc, char* argv[])
     bool sums_correct = true;
     for(int i = dims.n0.z; i < dims.n1.z; ++i)
     {
-    	bool correct =  in_eps_threshold(xy_sum[i],xy_sum_gpu[i]);
+    	bool correct =  in_eps_threshold(z_sum[i],z_sum_gpu[i]);
 	sums_correct &= correct;
-	if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",xy_sum[i],xy_sum_gpu[i]);
+	if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",z_sum[i],z_sum_gpu[i]);
     }
     bool x_sum_correct = true;
     for(int i = dims.n0.x; i < dims.n1.x; ++i)
     {
-    	bool correct =  in_eps_threshold(zy_sum[i],zy_sum_gpu[i]);
+    	bool correct =  in_eps_threshold(x_sum[i],x_sum_gpu[i]);
 	x_sum_correct &= correct;
-	if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",zy_sum[i],zy_sum_gpu[i]);
+	if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",x_sum[i],x_sum_gpu[i]);
     }
     bool y_sum_correct = true;
     for(int i = dims.n0.y; i < dims.n1.y; ++i)
     {
-    	bool correct =  in_eps_threshold(xz_sum[i],xz_sum_gpu[i]);
+    	bool correct =  in_eps_threshold(y_sum[i],y_sum_gpu[i]);
 	y_sum_correct &= correct;
-	if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",xz_sum[i],xz_sum_gpu[i]);
+	if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",y_sum[i],y_sum_gpu[i]);
+    }
+    bool xy_sum_correct = true;
+    for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+    	for(int j = dims.n0.y; j < dims.n1.y; ++j)
+    	{
+		const int index = i + model.info[AC_mx]*j;
+		const bool correct = in_eps_threshold(xy_sum[index],xy_sum_gpu[index]);
+		xy_sum_correct &= correct;
+		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",xy_sum[index],xy_sum_gpu[index]);
+	}
+    }
+    bool xz_sum_correct = true;
+    for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+    	for(int k = dims.n0.z; k < dims.n1.z; ++k)
+    	{
+		const int index = i + model.info[AC_mx]*k;
+		const bool correct = in_eps_threshold(xz_sum[index],xz_sum_gpu[index]);
+		xz_sum_correct &= correct;
+		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",xz_sum[index],xz_sum_gpu[index]);
+	}
+    }
+    bool yx_sum_correct = true;
+    for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+    	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
+    	{
+		const int index = j + model.info[AC_my]*i;
+		const bool correct = in_eps_threshold(yx_sum[index],yx_sum_gpu[index]);
+		yx_sum_correct &= correct;
+		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",yx_sum[index],yx_sum_gpu[index]);
+    	}
+    }
+    bool yz_sum_correct = true;
+    for(int j = dims.n0.y; j < dims.n1.y;  ++j)
+    {
+    	for(int k = dims.n0.z; k < dims.n1.z; ++k)
+    	{
+		const int index = j + model.info[AC_my]*k;
+		const bool correct = in_eps_threshold(yz_sum[index],yz_sum_gpu[index]);
+		yz_sum_correct &= correct;
+		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",yz_sum[index],yz_sum_gpu[index]);
+    	}
+    }
+    bool zx_sum_correct = true;
+    for(int k = dims.n0.z; k < dims.n1.z; ++k)
+    {
+    	for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    	{
+		const int index = k + model.info[AC_mz]*i;
+		const bool correct = in_eps_threshold(zx_sum[index],zx_sum_gpu[index]);
+		zx_sum_correct &= correct;
+		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",zx_sum[index],zx_sum_gpu[index]);
+    	}
+    }
+    bool zy_sum_correct = true;
+    for(int k = dims.n0.z; k < dims.n1.z; ++k)
+    {
+    	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
+    	{
+		const int index = k + model.info[AC_mz]*j;
+		const bool correct = in_eps_threshold(zy_sum[index],zy_sum_gpu[index]);
+		zy_sum_correct &= correct;
+		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",zy_sum[index],zy_sum_gpu[index]);
+    	}
     }
 
     fprintf(stderr,"MAX REDUCTION... %s %14e %14e\n", cpu_max_val == gpu_max_val ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET,cpu_max_val,gpu_max_val);
@@ -356,6 +506,12 @@ main(int argc, char* argv[])
     fprintf(stderr,"X SUM REDUCTION... %s\n", x_sum_correct   ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     fprintf(stderr,"Y SUM REDUCTION... %s\n", y_sum_correct   ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     fprintf(stderr,"Z SUM REDUCTION... %s\n", sums_correct    ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    fprintf(stderr,"XY SUM REDUCTION... %s\n", xy_sum_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    fprintf(stderr,"XZ SUM REDUCTION... %s\n", xz_sum_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    fprintf(stderr,"YX SUM REDUCTION... %s\n", yx_sum_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    fprintf(stderr,"YZ SUM REDUCTION... %s\n", yz_sum_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    fprintf(stderr,"ZX SUM REDUCTION... %s\n", zx_sum_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    fprintf(stderr,"ZY SUM REDUCTION... %s\n", zy_sum_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     fprintf(stderr,"ZYX TRANSPOSE... %s\n", transpose_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     fprintf(stderr,"XZY TRANSPOSE... %s\n", xzy_correct       ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     fprintf(stderr,"YXZ TRANSPOSE... %s\n", yxz_correct       ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);

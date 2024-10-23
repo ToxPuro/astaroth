@@ -1494,9 +1494,11 @@ FUNC_DEFINE(AcResult, acDeviceReduceXYAverage,(const Device device, const Stream
 /** */
 FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffer,(const Device device, const Profile handle));
 /** */
-FUNC_DEFINE(AcResult, acDeviceReduceAverages,(const Device device, const Stream stream, const AcProfileType type));
+FUNC_DEFINE(AcResult, acDeviceReduceAverages,(const Device device, const Stream stream, const Profile prof));
 /** */
-FUNC_DEFINE(AcBuffer, acDeviceTranspose,(const Device device, const Stream stream, const AcMeshOrder order));
+FUNC_DEFINE(AcBuffer, acDeviceTranspose,(const Device device, const Stream stream, const AcMeshOrder order, const AcReal* src));
+/** */
+FUNC_DEFINE(AcBuffer, acDeviceTransposeVertexBuffer,(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf));
 /** */
 
 /** */
@@ -2111,6 +2113,11 @@ acGridInit(const AcMesh mesh)
 {
 	return acGridInitBase(mesh);
 
+}
+static UNUSED AcBuffer
+acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
+{
+	return acDeviceTransposeVertexBuffer(device,stream,order,vtxbuf);
 }
 #endif
 #if TWO_D == 0

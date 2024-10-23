@@ -115,3 +115,39 @@ reduce_max(bool condition, int val, param)
 {
 	reduce_max_int(condition,val,param)
 }
+reduce_sum(bool condition, real val, Profile<X> prof)
+{
+	reduce_sum_real_x(condition, val, prof);
+}
+reduce_sum(bool condition, real val, Profile<Y> prof)
+{
+	reduce_sum_real_y(condition, val, prof);
+}
+reduce_sum(bool condition, real val, Profile<Z> prof)
+{
+	reduce_sum_real_z(condition, val, prof);
+}
+reduce_sum(bool condition, real val, Profile<XY> prof)
+{
+	reduce_sum_real_xy(condition, val, prof);
+}
+reduce_sum(bool condition, real val, Profile<XZ> prof)
+{
+	reduce_sum_real_xz(condition, val, prof);
+}
+reduce_sum(bool condition, real val, Profile<YX> prof)
+{
+	reduce_sum_real_yx(condition, val, prof);
+}
+reduce_sum(bool condition, real val, Profile<YZ> prof)
+{
+	reduce_sum_real_yz(condition, val, prof);
+}
+reduce_sum(bool condition, real val, Profile<ZX> prof)
+{
+	reduce_sum_real_zx(condition, val, prof);
+}
+reduce_sum(bool condition, real val, Profile<ZY> prof)
+{
+	reduce_sum_real_zy(condition, val, prof);
+}

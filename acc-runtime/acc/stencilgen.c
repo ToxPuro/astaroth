@@ -252,6 +252,24 @@ for (int field = 0; field < NUM_ALL_FIELDS; ++field)
 printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
 */
 #endif
+    printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][0][idx] = val; };");
+    printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][0][idx] = val; };");
+    printf("const auto reduce_sum_real_z __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][0][idx] = val; };");
+    printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][0][idx] = val; };");
+    printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][0][idx] = val; };");
+    printf("const auto reduce_sum_real_yx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][0][idx] = val; };");
+    printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][0][idx] = val; };");
+    printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][0][idx] = val; };");
+    printf("const auto reduce_sum_real_zy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][0][idx] = val; };");
 
 }
 
@@ -290,7 +308,7 @@ gen_kernel_prefix(const int curr_kernel)
     for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
             printf("10000000,");
     printf("};\n");
-    printf("bool should_reduce_int[NUM_REAL_OUTPUTS] = {\n");
+    printf("bool should_reduce_int[NUM_INT_OUTPUTS] = {\n");
     	printf("false,");
     printf("};\n");
     

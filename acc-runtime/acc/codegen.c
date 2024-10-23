@@ -516,6 +516,16 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_max_real"));  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real"));  // TODO RECHECK
 									      //
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real_x"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real_y"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real_z"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real_xy"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real_xz"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real_yx"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real_yz"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real_zx"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_real_zy"));  // TODO RECHECK
+									      //
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_min_int"));  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_max_int"));  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("reduce_sum_int"));  // TODO RECHECK
@@ -2600,8 +2610,9 @@ get_reduce_info_in_func(const ASTNode* node, reduce_info* src)
 			REDUCE_MIN);
 	push(&src->outputs,intern(combine_all_new(node->rhs->rhs)));
 	const char* type = 
-			strstr(func_name,"AcReal") ? REAL_STR :
-			strstr(func_name,"int")    ? INT_STR :
+		        strstr(func_name,"Profile") ? PROFILE_STR :
+			strstr(func_name,"AcReal")  ? REAL_STR :
+			strstr(func_name,"int")     ? INT_STR :
 			NULL;
 	if(!type) fatal("Was not able to get reduce type: %s\n",combine_all_new(node));
 	push(&src->output_types,type);
@@ -2664,6 +2675,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 
 	for(size_t i = 0; i < kernel_reduce_info.ops.size; ++i)
 	{
+		if(strstr(kernel_reduce_info.output_types.data[i],"Profile")) continue;
 		ReduceOp reduce_op = kernel_reduce_info.ops.data[i];
 		const char* output = intern(kernel_reduce_info.outputs.data[i]);
 		const char* define_name = convert_to_define_name(kernel_reduce_info.output_types.data[i]);
@@ -2789,13 +2801,26 @@ gen_kernel_reduce_outputs()
 {
   FILE* fp = fopen("kernel_reduce_outputs.h","w");
 
+  int_vec prof_types = VEC_INITIALIZER;
+  push_int(&prof_types,PROFILE_X);
+  push_int(&prof_types,PROFILE_Y);
+  push_int(&prof_types,PROFILE_Z);
+  push_int(&prof_types,PROFILE_XY);
+  push_int(&prof_types,PROFILE_XZ);
+  push_int(&prof_types,PROFILE_YX);
+  push_int(&prof_types,PROFILE_YZ);
+  push_int(&prof_types,PROFILE_ZX);
+  push_int(&prof_types,PROFILE_ZY);
   int num_reduce_outputs = 0;
   for (size_t i = 0; i < num_symbols[0]; ++i)
-    if ((symbol_table[i].tspecifier_token == REAL || symbol_table[i].tspecifier_token == INT) && int_vec_contains(symbol_table[i].tqualifiers,OUTPUT))
+    if (((symbol_table[i].tspecifier_token == REAL || symbol_table[i].tspecifier_token == INT) && int_vec_contains(symbol_table[i].tqualifiers,OUTPUT))
+		    || int_vec_contains(prof_types,symbol_table[i].tspecifier_token)
+	)
 	    ++num_reduce_outputs;
   fprintf(fp,"typedef enum{\n"
 	     "  AC_REAL_TYPE\n,"
-	     "  AC_INT_TYPE\n"
+	     "  AC_INT_TYPE,\n"
+	     "  AC_PROF_TYPE\n"
 	     "} AcType;\n\n"
 	 );
   //extra padding to help some compilers
@@ -2825,6 +2850,8 @@ gen_kernel_reduce_outputs()
         		fprintf(fp,"%s,","AC_REAL_TYPE");
 		else if(reduce_infos[index].output_types.data[j] == INT_STR)
         		fprintf(fp,"%s,","AC_INT_TYPE");
+		else if(reduce_infos[index].output_types.data[j] == intern("Profile"))
+        		fprintf(fp,"%s,","AC_PROF_TYPE");
 		else
 			fatal("Unknown reduce output type: %s\n",reduce_infos[index].output_types.data[j]);
 	}
@@ -3180,6 +3207,13 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
           //TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
 	  if(tspec.id[strlen(tspec.id)-1] == '*')
             fprintf(stream, "%s ", "auto");
+	  //TP: Hacks
+	  else if(strstr(tspec.id,"WITH_INLINE"))
+          	fprintf(stream, "%s ", "auto");
+	  else if(strstr(tspec.id,"<"))
+          	fprintf(stream, "%s ", "auto");
+	  else if(strstr(tspec.id,">"))
+          	fprintf(stream, "%s ", "auto");
 	  else if(tspec.token != KERNEL)
             fprintf(stream, "%s ", tspec.id);
         }
@@ -3191,9 +3225,15 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
           	//TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
 	  	if(node->expr_type[strlen(node->expr_type)-1] == '*')
             		fprintf(stream, "%s ", "auto");
-		//TP: Hack
+		//TP: Hacks
 		else if(strstr(node->expr_type,"WITH_INLINE"))
             		fprintf(stream, "%s ", "auto");
+		else if(strstr(node->expr_type,"<"))
+            		fprintf(stream, "%s ", "auto");
+		else if(strstr(node->expr_type,">"))
+            		fprintf(stream, "%s ", "auto");
+
+
 		else
 		  fprintf(stream, "%s ",node->expr_type);
 	  }
@@ -4263,12 +4303,31 @@ get_names(const int token)
 			push(&res, symbol_table[i].identifier);
 	return res;
 }
+string_vec
+get_names_variadic(const int_vec tokens)
+{
+	string_vec res = VEC_INITIALIZER;
+	for(size_t i = 0; i < num_symbols[0]; ++i)
+		if(int_vec_contains(tokens,symbol_table[i].tspecifier_token))
+			push(&res, symbol_table[i].identifier);
+	return res;
+}
 
 
 void
 gen_names(const char* datatype, const int token, FILE* fp)
 {
 	string_vec names = get_names(token); 
+	fprintf(fp,"static const char* %s_names[] __attribute__((unused)) = {",datatype);
+	for(size_t i = 0; i < names.size; ++i)
+  		fprintf(fp, "\"%s\",", names.data[i]);
+	fprintf(fp,"};\n");
+	free_str_vec(&names);
+}
+void
+gen_names_variadic(const char* datatype, const int_vec tokens, FILE* fp)
+{
+	string_vec names = get_names_variadic(tokens); 
 	fprintf(fp,"static const char* %s_names[] __attribute__((unused)) = {",datatype);
 	for(size_t i = 0; i < names.size; ++i)
   		fprintf(fp, "\"%s\",", names.data[i]);
@@ -4454,6 +4513,15 @@ gen_enums(FILE* fp, const int token, const char* prefix, const char* num_name, c
       fprintf(fp, "%s%s,",prefix, symbol_table[i].identifier);
   fprintf(fp, "%s} %s;",num_name,name);
 }
+void
+gen_enums_variadic(FILE* fp, const int_vec tokens, const char* prefix, const char* num_name, const char* name)
+{
+  fprintf(fp, "typedef enum{");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if(int_vec_contains(tokens,symbol_table[i].tspecifier_token))
+      fprintf(fp, "%s%s,",prefix, symbol_table[i].identifier);
+  fprintf(fp, "%s} %s;",num_name,name);
+}
 // Generate User Defines
 const char*
 to_dsl_type(const char* type)
@@ -4488,21 +4556,44 @@ gen_user_defines(const ASTNode* root, const char* out)
 
   gen_enums(fp,STENCIL,"stencil_","NUM_STENCILS","Stencil");
   gen_enums(fp,WORK_BUFFER,"","NUM_WORK_BUFFERS","WorkBuffer");
-  gen_enums(fp,PROFILE,"","NUM_PROFILES","Profile");
   gen_enums(fp,KERNEL,"KERNEL_","NUM_KERNELS","AcKernel");
+  int_vec prof_types = VEC_INITIALIZER;
+  push_int(&prof_types,PROFILE_X);
+  push_int(&prof_types,PROFILE_Y);
+  push_int(&prof_types,PROFILE_Z);
+  push_int(&prof_types,PROFILE_XY);
+  push_int(&prof_types,PROFILE_XZ);
+  push_int(&prof_types,PROFILE_YX);
+  push_int(&prof_types,PROFILE_YZ);
+  push_int(&prof_types,PROFILE_ZX);
+  push_int(&prof_types,PROFILE_ZY);
+  gen_enums_variadic(fp,prof_types,"","NUM_PROFILES","Profile");
+
 
   {
 	FILE* stream = fopen("profiles_info.h","w");
   	fprintf(stream,"static AcProfileType prof_types[NUM_PROFILES] = {");
   	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	  if (symbol_table[i].tspecifier_token == PROFILE)
+	  if(int_vec_contains(prof_types,symbol_table[i].tspecifier_token))
   	  {
-  	          if(int_vec_contains(symbol_table[i].tqualifiers,X_QL))
+  	          if(symbol_table[i].tspecifier_token == PROFILE_X)
   	      		    fprintf(stream,"PROFILE_X");
-  	          else if(int_vec_contains(symbol_table[i].tqualifiers,Y_QL))
+  	          else if(symbol_table[i].tspecifier_token == PROFILE_Y)
   	      		    fprintf(stream,"PROFILE_Y");
-  	          else if(int_vec_contains(symbol_table[i].tqualifiers,Z_QL))
+  	          else if(symbol_table[i].tspecifier_token == PROFILE_Z)
   	      		    fprintf(stream,"PROFILE_Z");
+  	          else if(symbol_table[i].tspecifier_token == PROFILE_XY)
+  	      		    fprintf(stream,"PROFILE_XY");
+  	          else if(symbol_table[i].tspecifier_token == PROFILE_XZ)
+  	      		    fprintf(stream,"PROFILE_XZ");
+  	          else if(symbol_table[i].tspecifier_token == PROFILE_YX)
+  	      		    fprintf(stream,"PROFILE_YX");
+  	          else if(symbol_table[i].tspecifier_token == PROFILE_YZ)
+  	      		    fprintf(stream,"PROFILE_YZ");
+  	          else if(symbol_table[i].tspecifier_token == PROFILE_ZX)
+  	      		    fprintf(stream,"PROFILE_ZX");
+  	          else if(symbol_table[i].tspecifier_token == PROFILE_ZY)
+  	      		    fprintf(stream,"PROFILE_ZY");
   	          else
   	          	fatal("Unknown profile type for: %s\n",symbol_table[i].identifier);
 		  fprintf(stream,",");
@@ -4528,9 +4619,9 @@ gen_user_defines(const ASTNode* root, const char* out)
 
   // Enum strings (convenience)
   gen_names("stencil",STENCIL,fp);
-  gen_names("profile",PROFILE,fp);
   gen_names("work_buffer",WORK_BUFFER,fp);
   gen_names("kernel",KERNEL,fp);
+  gen_names_variadic("profile",prof_types,fp);
   //TP: field names have to be generated differently since they might get reorder because of dead fields
   fprintf(fp,"\n#include \"field_names.h\"\n");
 
@@ -4568,7 +4659,8 @@ gen_user_defines(const ASTNode* root, const char* out)
 	  const char* datatype = datatypes.data[i];
 	  gen_param_names(fp,datatype);
 	  gen_datatype_enums(fp,datatype);
-	  fprintf(fp,"\n#define NUM_OUTPUTS (NUM_REAL_OUTPUTS+NUM_INT_OUTPUTS)\n");
+	  fprintf(fp,"\n#define NUM_OUTPUTS (NUM_REAL_OUTPUTS+NUM_INT_OUTPUTS+NUM_PROFILES)\n");
+	  fprintf(fp,"\n#define PROF_SCRATCHPAD_INDEX(PROF) (NUM_REAL_OUTPUTS+PROF)\n");
 
 	  fprintf_filename("device_mesh_info_decl.h","%s %s_params[NUM_%s_PARAMS+1];\n",datatype,convert_to_define_name(datatype),strupr(convert_to_define_name(datatype)));
 	  gen_array_declarations(datatype,root);
@@ -5598,6 +5690,8 @@ get_mangled_name(const char* dfunc_name, const string_vec types)
 					types.data[i] ? types.data[i] : "Auto");
 		tmp = realloc(tmp,sizeof(char)*(strlen(tmp) + 5*types.size));
 		replace_substring(&tmp,MULT_STR,"ARRAY");
+		replace_substring(&tmp,"<","_");
+		replace_substring(&tmp,">","_");
 		return tmp;
 }
 void
@@ -5642,7 +5736,7 @@ typedef struct
 	const char*const * names;
 } dfunc_possibilities;
 static int_vec
-get_possible_dfuncs(const func_params_info call_info, const dfunc_possibilities possibilities, const int dfunc_index, const bool strict, const char* func_name)
+get_possible_dfuncs(const func_params_info call_info, const dfunc_possibilities possibilities, const int dfunc_index, const bool strict, const bool use_auto, const char* func_name)
 {
 	int overload_index = MAX_DFUNCS*dfunc_index-1;
 	int_vec possible_indexes = VEC_INITIALIZER;
@@ -5660,6 +5754,7 @@ get_possible_dfuncs(const func_params_info call_info, const dfunc_possibilities 
 				possible &= !call_type || !func_type || !strcmp(func_type,call_type);
 			else
 				possible &= !call_type || !func_type || compatible_types(func_type,call_type);
+			if(!use_auto) possible &= func_type != NULL;
 
 		}
 		if(possible)
@@ -5690,22 +5785,30 @@ resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
 		return true;
 	}
 	int correct_types = -1;
-	int_vec possible_indexes_conversion = get_possible_dfuncs(call_info,possibilities,dfunc_index,false,dfunc_name);
-	int_vec possible_indexes_strict = get_possible_dfuncs(call_info,possibilities,dfunc_index,true,dfunc_name);
+	int_vec possible_indexes_conversion              = get_possible_dfuncs(call_info,possibilities,dfunc_index,false,true,dfunc_name);
+	int_vec possible_indexes_conversion_no_auto      = get_possible_dfuncs(call_info,possibilities,dfunc_index,false,false,dfunc_name);
+	int_vec possible_indexes_strict          = get_possible_dfuncs(call_info,possibilities,dfunc_index,true,true,dfunc_name);
+	int_vec possible_indexes_strict_no_auto  = get_possible_dfuncs(call_info,possibilities,dfunc_index,true,false,dfunc_name);
 	//TP: by default use the strict rules but if there no suitable ones use conversion rules
-	const int_vec possible_indexes = possible_indexes_strict.size == 0 ? possible_indexes_conversion : possible_indexes_strict;
+	//TP: if there are multiple possibilities pick the one with all specified parameters
+	const int_vec possible_indexes = 
+					possible_indexes_strict.size == 0 ? 
+					(possible_indexes_conversion.size > 1 ? possible_indexes_conversion_no_auto : possible_indexes_conversion) : 
+					possible_indexes_strict.size >  1 ? possible_indexes_strict_no_auto :
+					possible_indexes_strict;
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		/**
-		if(!strcmp(dfunc_name,"write"))
+		if(!strcmp(dfunc_name,"reduce_sum"))
 		{
+			printf("HMM: %zu\n",possible_indexes_conversion.size);
+			/**
 			char my_tmp[10000];
 			my_tmp[0] = '\0';
 			combine_all(node->rhs,my_tmp); 
 			printf("Not able to resolve: %s\n",my_tmp); 
 			printf("Not able to resolve: %s,%zu\n",call_info.types.data[1],possible_indexes.size); 
+			**/
 		}
-		**/
 		return res;
 	}
 	{

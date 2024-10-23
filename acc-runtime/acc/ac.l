@@ -43,6 +43,8 @@ void strip_whitespace(char *str) {
     *dest = '\0';
 }
 %}
+/**
+**/
 
 %%
 
@@ -62,7 +64,15 @@ void strip_whitespace(char *str) {
 "BoundConds"          {return BOUNDCONDS; }
 "intrinsic"          {return INTRINSIC; }
 "__shared__"          {return SHARED; }
-"Profile"               { return PROFILE; }
+"Profile<X>"              { return PROFILE_X; }
+"Profile<Y>"              { return PROFILE_Y; }
+"Profile<Z>"              { return PROFILE_Z; }
+"Profile<XY>"             { return PROFILE_XY; }
+"Profile<XZ>"             { return PROFILE_XZ; }
+"Profile<YX>"             { return PROFILE_YX; }
+"Profile<YZ>"             { return PROFILE_YZ; }
+"Profile<ZY>"             { return PROFILE_ZY; }
+"Profile<ZX>"             { return PROFILE_ZX; }
 "Stencil"               { return STENCIL; }
 
 "Kernel"                { return KERNEL; } /* Type qualifiers */
@@ -74,15 +84,6 @@ void strip_whitespace(char *str) {
 "Max"                   { return MAX; }
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
-"X"              { return X_QL; }
-"Y"              { return Y_QL; }
-"Z"              { return Z_QL; }
-"XY"             { return XY_QL; }
-"XZ"             { return XZ_QL; }
-"YX"             { return YX_QL; }
-"YZ"             { return YZ_QL; }
-"ZY"             { return ZY_QL; }
-"ZX"             { return ZX_QL; }
 "const"          { return CONST_QL; }
 "override"          { return OVERRIDE; }
 "dynamic"          { return DYNAMIC_QL; }

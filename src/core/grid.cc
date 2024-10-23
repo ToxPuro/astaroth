@@ -489,7 +489,7 @@ acGridInitBase(const AcMesh user_mesh)
     if (!grid.mpi_initialized)
       create_astaroth_comm(info);
 
-    acSetRuntimePid(ac_pid());
+    acInitializeRuntimeMPI(astaroth_comm);
     // Check that MPI is initialized
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int name_len;
@@ -2190,6 +2190,8 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
 	    		acDeviceFinishReduce(grid.device,reduce_outputs[i].variable,&local_res_real[i],reduce_kernels[i],reduce_ops[i],(AcRealOutputParam)reduce_outputs[i].variable);
 		else if(reduce_outputs[i].type == AC_INT_TYPE)
 	    		acDeviceFinishReduceInt(grid.device,reduce_outputs[i].variable,&local_res_int[i],reduce_kernels[i],reduce_ops[i],(AcIntOutputParam)reduce_outputs[i].variable);
+		else if(reduce_outputs[i].type == AC_PROF_TYPE)
+			acDeviceReduceAverages(grid.device, reduce_outputs[i].variable, (Profile)reduce_outputs[i].variable);
 		else
 			fatal("Unknown reduce output type: %d,%d\n",i,reduce_outputs[i].type);
 	    }
@@ -2203,6 +2205,8 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     	    		grid.device -> output.real_outputs[reduce_outputs[i].variable] = local_res_real[i];
 		else if(reduce_outputs[i].type == AC_INT_TYPE)
     	    		grid.device -> output.int_outputs[reduce_outputs[i].variable] = local_res_int[i];
+		else if(reduce_outputs[i].type == AC_PROF_TYPE)
+			;
 		else
 			fatal("Unknown reduce output type: %d,%d\n",i,reduce_outputs[i].type);
 	    }
@@ -2516,7 +2520,7 @@ acGridReduceXYAverage(const Stream stream, const Field field, const Profile prof
 }
 
 AcResult
-acGridReduceXYAverages(const Stream stream)
+acGridReduceXYAverages(const Stream )
 {
     ERRCHK(grid.initialized);
     const Device device = grid.device;
@@ -2524,7 +2528,7 @@ acGridReduceXYAverages(const Stream stream)
 
     // Strategy:
     // 1) Reduce the local result to device->vba.profiles.in
-    acDeviceReduceAverages(device, stream, PROFILE_Z);
+    //acDeviceReduceAverages(device, stream, PROFILE_Z);
 
     // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
     int nprocs, pid;

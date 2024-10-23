@@ -5,6 +5,13 @@ output real AC_min_val
 Profile<X> PROF_X
 Profile<Y> PROF_Y
 Profile<Z> PROF_Z
+Profile<XY> PROF_XY
+Profile<XZ> PROF_XZ
+Profile<YX> PROF_YX
+Profile<YZ> PROF_YZ
+Profile<ZX> PROF_ZX
+Profile<ZY> PROF_ZY
+
 
 output real AC_max_val
 output real AC_sum_val
@@ -12,11 +19,20 @@ output int  AC_int_sum_val
 
 Kernel test_reduce()
 {
-    reduce_min(true, value(FIELD), AC_min_val)
-    reduce_max(true, value(FIELD), AC_max_val)
-    reduce_sum(true, value(FIELD), AC_sum_val)
+    reduce_min(true, FIELD, AC_min_val)
+    reduce_max(true, FIELD, AC_max_val)
+    reduce_sum(true, FIELD, AC_sum_val)
     int int_val = (int) value(FIELD)
     reduce_sum(true,int_val,AC_int_sum_val)
+    reduce_sum(true,FIELD,PROF_X)
+    reduce_sum(true,FIELD,PROF_Y)
+    reduce_sum(true,FIELD,PROF_Z)
+    reduce_sum(true,FIELD,PROF_XY)
+    reduce_sum(true,FIELD,PROF_XZ)
+    reduce_sum(true,FIELD,PROF_YX)
+    reduce_sum(true,FIELD,PROF_YZ)
+    reduce_sum(true,FIELD,PROF_ZX)
+    reduce_sum(true,FIELD,PROF_ZY)
 }
 BoundConds bcs
 {

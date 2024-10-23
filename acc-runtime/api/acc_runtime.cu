@@ -63,13 +63,20 @@ static int AC_INTERNAL_big_int_array[8*1024*1024]{0};
 //the int key in the nested map corresponds to the starting vertexIdx linearized
 std::unordered_map<Kernel,std::unordered_map<int,int>> reduce_offsets;
 int kernel_running_reduce_offsets[NUM_KERNELS];
+
+#if AC_MPI_ENABLED
+static MPI_Comm runtime_comm = MPI_COMM_NULL;
+#endif
 static int grid_pid = 0;
+static int nprocs   = 0;
 
 #if AC_MPI_ENABLED
 AcResult
-acSetRuntimePid(const int pid)
+acInitializeRuntimeMPI(const MPI_Comm comm)
 {
-	grid_pid = pid;
+	runtime_comm = comm;
+	MPI_Comm_rank(runtime_comm,&grid_pid);
+	MPI_Comm_size(runtime_comm,&nprocs);
 	return AC_SUCCESS;
 }
 #endif
@@ -492,8 +499,8 @@ acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const int3 counts
 {
   // Set pba.in data to all-nan and pba.out to 0
   for (size_t i = 0; i < NUM_PROFILES; ++i) {
-    acKernelFlush(stream, pba->in[i],  prof_count(i,counts), (AcReal)0);
-    acKernelFlush(stream, pba->out[i], prof_count(i,counts), (AcReal)0);
+    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),counts), (AcReal)0);
+    acKernelFlush(stream, pba->out[i], prof_count(Profile(i),counts), (AcReal)0);
   }
   return AC_SUCCESS;
 }
@@ -533,8 +540,8 @@ acPBACreate(const int3 counts)
   pba.count = counts.z;
   for (size_t i = 0; i < NUM_PROFILES; ++i) {
 
-    device_malloc(&pba.in[i],  prof_size(i,counts));
-    device_malloc(&pba.out[i], prof_size(i,counts));
+    device_malloc(&pba.in[i],  prof_size(Profile(i),counts));
+    device_malloc(&pba.out[i], prof_size(Profile(i),counts));
   }
 
   acPBAReset(0, &pba, counts);
@@ -546,8 +553,8 @@ void
 acPBADestroy(ProfileBufferArray* pba, const int3 counts)
 {
   for (size_t i = 0; i < NUM_PROFILES; ++i) {
-    device_free(&pba->in[i],  prof_size(i,counts));
-    device_free(&pba->out[i], prof_size(i,counts));
+    device_free(&pba->in[i],  prof_size(Profile(i),counts));
+    device_free(&pba->out[i], prof_size(Profile(i),counts));
     pba->in[i]  = NULL;
     pba->out[i] = NULL;
   }
@@ -1089,6 +1096,71 @@ logAutotuningStatus(const size_t counter, const size_t num_samples, const Kernel
     }
 }
 
+typedef struct
+{
+        float time;
+        dim3 tpb;
+} autotune_measurement;
+static autotune_measurement
+gather_best_measurement(const autotune_measurement local_best)
+{
+#if AC_MPI_ENABLED
+        ERRCHK_ALWAYS(runtime_comm != MPI_COMM_NULL);
+        float* time_buffer = (float*)malloc(sizeof(float)*nprocs);
+        int* x_dim = (int*)malloc(sizeof(int)*nprocs);
+        int* y_dim = (int*)malloc(sizeof(int)*nprocs);
+        int* z_dim = (int*)malloc(sizeof(int)*nprocs);
+
+        int tpb_x = local_best.tpb.x;
+        int tpb_y = local_best.tpb.y;
+        int tpb_z = local_best.tpb.z;
+        MPI_Gather(&tpb_x,1,MPI_INT,x_dim,1,MPI_INT,0,runtime_comm);
+        MPI_Gather(&tpb_y,1,MPI_INT,y_dim,1,MPI_INT,0,runtime_comm);
+        MPI_Gather(&tpb_z,1,MPI_INT,z_dim,1,MPI_INT,0,runtime_comm);
+        MPI_Gather(&local_best.time,1,MPI_FLOAT,time_buffer,1,MPI_FLOAT,0,runtime_comm);
+
+        dim3 first_tpb(x_dim[0],y_dim[0],z_dim[0]);
+        autotune_measurement res{time_buffer[0], first_tpb};
+        if(grid_pid == 0)
+        {
+                for(int i = 0; i < nprocs; ++i)
+                {
+                        if(time_buffer[i]  < res.time)
+                        {
+                                res.time = time_buffer[i];
+                                dim3 res_tpb(x_dim[i],y_dim[i],z_dim[i]);
+                                res.tpb = res_tpb;
+                        }
+                }
+                MPI_Bcast(&res.time, 1, MPI_FLOAT, 0, runtime_comm);
+                int x_res = res.tpb.x;
+                int y_res = res.tpb.y;
+                int z_res = res.tpb.z;
+                MPI_Bcast(&x_res, 1, MPI_INT, 0, runtime_comm);
+                MPI_Bcast(&y_res, 1, MPI_INT, 0, runtime_comm);
+                MPI_Bcast(&z_res, 1, MPI_INT, 0, runtime_comm);
+        }
+        else
+        {
+                int x_res;
+                int y_res;
+                int z_res;
+                MPI_Bcast(&res.time, 1, MPI_FLOAT, 0, runtime_comm);
+                MPI_Bcast(&x_res, 1, MPI_INT, 0, runtime_comm);
+                MPI_Bcast(&y_res, 1, MPI_INT, 0, runtime_comm);
+                MPI_Bcast(&z_res, 1, MPI_INT, 0, runtime_comm);
+                res.tpb = dim3(x_res,y_res,z_res);
+        }
+        free(time_buffer);
+        free(x_dim);
+        free(y_dim);
+        free(z_dim);
+        return res;
+#else
+        return local_best;
+#endif
+}
+
 
 static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
@@ -1154,90 +1226,59 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   // New: require that tpb.x is a multiple of the minimum transaction or L2
   // cache line size
   const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
+  const int x_increment = min(minimum_transaction_size_in_elems,dims.x);
 
-  const size_t num_samples = max_threads_per_block*max_threads_per_block;
+  std::vector<int3> samples{};
+  for (int z = 1; z <= min(max_threads_per_block,dims.z); ++z) {
+    for (int y = 1; y <= min(max_threads_per_block,dims.y); ++y) {
+      for (int x = x_increment;
+           x <= min(max_threads_per_block,dims.x); x += x_increment) {
 
-  size_t counter  = 0;
-  for (int z = 1; z <= max_threads_per_block; ++z) {
-    for (int y = 1; y <= max_threads_per_block; ++y) {
-      if (log) logAutotuningStatus(counter,num_samples,kernel);
-      counter++;
-      // 64 bytes on NVIDIA but the minimum L1 cache transaction is 32
-      for (int x = minimum_transaction_size_in_elems;
-           x <= max_threads_per_block; x += minimum_transaction_size_in_elems) {
 
-	
         if (x * y * z > max_threads_per_block)
           break;
-
-        // if (x * y * z * max_regs_per_thread > max_regs_per_block)
-        //  break;
-
-        // if (max_regs_per_block / (x * y * z) < min_regs_per_thread)
-        //   continue;
-
-        // if (x < y || x < z)
-        //   continue;
-
         const dim3 tpb(x, y, z);
-        const dim3 bpg    = to_dim3(
-				get_bpg(to_volume(dims), 
-				to_volume(tpb))
-				);
         const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER,
                                      sizeof(AcReal));
 
         if (smem > max_smem)
           continue;
 
-        if ((x * y * z) % props.warpSize)
+        if ((x * y * z) % props.warpSize && (x*y*z) >props.warpSize)
           continue;
 
         if (!is_valid_configuration(to_volume(dims), to_volume(tpb)))
           continue;
-
-        // #if VECTORIZED_LOADS
-        //         const size_t window = tpb.x + STENCIL_ORDER;
-
-        //         // Vectorization criterion
-        //         if (window % veclen) // Window not divisible into vectorized
-        //         blocks
-        //           continue;
-
-        //         if (dims.x % tpb.x)
-        //           continue;
-
-        //           // May be too strict
-        //           // if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
-        //           //   continue;
-        // #endif
-        // #if 0 // Disabled for now (waiting for cleanup)
-        // #if USE_SMEM
-        //         const size_t max_smem = 128 * 1024;
-        //         if (smem > max_smem)
-        //           continue;
-
-        // #if VECTORIZED_LOADS
-        //         const size_t window = tpb.x + STENCIL_ORDER;
-
-        //         // Vectorization criterion
-        //         if (window % veclen) // Window not divisible into vectorized
-        //         blocks
-        //           continue;
-
-        //         if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
-        //           continue;
-        // #endif
-
-        //           //  Padding criterion
-        //           //  TODO (cannot be checked here)
-        // #else
-        //         if ((x * y * z) % warp_size)
-        //           continue;
-        // #endif
-        // #endif
-
-        // printf("%d, %d, %d: %lu\n", tpb.x, tpb.y, tpb.z, smem);
+        samples.emplace_back(x,y,z);
+      }
+    }
+  }
+  size_t counter  = 0;
+#if AC_MPI_ENABLED
+  const size_t portion = (size_t)ceil((1.0*samples.size())/nprocs);
+  const size_t start_samples = portion*grid_pid;
+  const size_t end_samples   = min(samples.size(), portion*(grid_pid+1));
+  //const size_t start_samples = 0;
+  //const size_t end_samples   = samples.size();
+#else
+  const size_t start_samples = 0;
+  const size_t end_samples   = samples.size();
+#endif
+  const size_t n_samples = end_samples-start_samples;
+  for(size_t sample  = start_samples; sample < end_samples; ++sample)
+  {
+        if (log) logAutotuningStatus(counter,n_samples,kernel);
+        ++counter;
+        auto x = samples[sample].x;
+        auto y = samples[sample].y;
+        auto z = samples[sample].z;
+        const dim3 tpb(x, y, z);
+        const dim3 bpg    = to_dim3(
+                                get_bpg(to_volume(dims),
+                                to_volume(tpb))
+                                );
+        const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER,
+                                     sizeof(AcReal));
 
         cudaEvent_t tstart, tstop;
         cudaEventCreate(&tstart);
@@ -1273,35 +1314,38 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
         //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         // fflush(stdout);
-      }
-    }
   }
-  c.tpb = best_tpb;
-
+  const autotune_measurement best_measurement = gather_best_measurement({best_time,best_tpb});
+  //const autotune_measurement best_measurement({best_time,best_tpb});
+  c.tpb = best_measurement.tpb;
+  best_time = best_measurement.time;
   // printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x,
   // best_tpb.y,
   //        best_tpb.z, (double)best_time / num_iters);
-
-  FILE* fp = fopen(autotune_csv_path, "a");
-  ERRCHK_ALWAYS(fp);
+  if(grid_pid == 0)
+  {
+        FILE* fp = fopen(autotune_csv_path, "a");
+        ERRCHK_ALWAYS(fp);
 #if IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
-  fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g\n", IMPLEMENTATION, nx, ny,
-          nz, best_tpb.x, best_tpb.y, best_tpb.z,
-          (double)best_time / num_iters);
+        fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g\n", IMPLEMENTATION, nx, ny,
+                nz, best_tpb.x, best_tpb.y, best_tpb.z,
+                (double)best_time / num_iters);
 #else
-  fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g\n", IMPLEMENTATION, get_kernel_index(kernel), dims.x,
-          dims.y, dims.z, best_tpb.x, best_tpb.y, best_tpb.z,
-          (double)best_time / num_iters);
+        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g\n", IMPLEMENTATION, get_kernel_index(kernel), dims.x,
+                dims.y, dims.z, best_tpb.x, best_tpb.y, best_tpb.z,
+                (double)best_time / num_iters);
 #endif
-  fclose(fp);
-
+        fclose(fp);
+  }
   if (c.tpb.x * c.tpb.y * c.tpb.z <= 0) {
     fprintf(stderr,
-            "Fatal error: failed to find valid thread block dimensions.\n");
+            "Fatal error: failed to find valid thread block dimensions for (%d,%d,%d) launch.\n"
+            ,dims.x,dims.y,dims.z);
   }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
   return c;
 }
+
 int
 get_entries(char** dst, const char* line)
 {
@@ -1783,7 +1827,7 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 #define TILE_DIM (32)
 
 void __global__ 
-transpose_xyz_to_zyx(AcReal* src, AcReal* dst)
+transpose_xyz_to_zyx(const AcReal* src, AcReal* dst)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const int3 block_offset =
@@ -1816,7 +1860,7 @@ transpose_xyz_to_zyx(AcReal* src, AcReal* dst)
 		dst[out_vertexIdx.x +VAL(AC_mz)*out_vertexIdx.y + VAL(AC_myz)*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
 }
 void __global__ 
-transpose_xyz_to_zxy(AcReal* src, AcReal* dst)
+transpose_xyz_to_zxy(const AcReal* src, AcReal* dst)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const int3 block_offset =
@@ -1849,7 +1893,7 @@ transpose_xyz_to_zxy(AcReal* src, AcReal* dst)
 		dst[out_vertexIdx.x +VAL(AC_mz)*out_vertexIdx.z + VAL(AC_mxz)*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
 }
 void __global__ 
-transpose_xyz_to_xyz(AcReal* src, AcReal* dst)
+transpose_xyz_to_xyz(const AcReal* src, AcReal* dst)
 {
 	const int3 block_offset =
 	{
@@ -1869,7 +1913,7 @@ transpose_xyz_to_xyz(AcReal* src, AcReal* dst)
 	dst[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] = src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)];
 }
 void __global__ 
-transpose_xyz_to_yxz(AcReal* src, AcReal* dst)
+transpose_xyz_to_yxz(const AcReal* src, AcReal* dst)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const int3 block_offset =
@@ -1902,7 +1946,7 @@ transpose_xyz_to_yxz(AcReal* src, AcReal* dst)
 		dst[out_vertexIdx.x +VAL(AC_my)*out_vertexIdx.y + VAL(AC_mxy)*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
 }
 void __global__ 
-transpose_xyz_to_yzx(AcReal* src, AcReal* dst)
+transpose_xyz_to_yzx(const AcReal* src, AcReal* dst)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const int3 block_offset =
@@ -1935,7 +1979,7 @@ transpose_xyz_to_yzx(AcReal* src, AcReal* dst)
 		dst[out_vertexIdx.x +VAL(AC_my)*out_vertexIdx.z + VAL(AC_myz)*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];
 }
 void __global__ 
-transpose_xyz_to_xzy(AcReal* src, AcReal* dst)
+transpose_xyz_to_xzy(const AcReal* src, AcReal* dst)
 {
 	const int3 in_block_offset =
 	{
@@ -1957,7 +2001,7 @@ transpose_xyz_to_xzy(AcReal* src, AcReal* dst)
 		= src[DEVICE_VTXBUF_IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)];
 }
 static AcResult
-acTransposeXYZ_ZYX(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_ZYX(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,1,32};
 
@@ -1966,7 +2010,7 @@ acTransposeXYZ_ZYX(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_ZXY(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_ZXY(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,1,32};
 
@@ -1975,7 +2019,7 @@ acTransposeXYZ_ZXY(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_YXZ(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_YXZ(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,32,1};
 
@@ -1984,7 +2028,7 @@ acTransposeXYZ_YXZ(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_YZX(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_YZX(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,32,1};
 
@@ -1993,7 +2037,7 @@ acTransposeXYZ_YZX(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_XZY(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_XZY(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,32,1};
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
@@ -2001,7 +2045,7 @@ acTransposeXYZ_XZY(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_XYZ(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,32,1};
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
@@ -2009,7 +2053,7 @@ acTransposeXYZ_XYZ(AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t
 	return AC_SUCCESS;
 }
 AcResult
-acTranspose(const AcMeshOrder order, AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
 {
 	switch(order)
 	{
