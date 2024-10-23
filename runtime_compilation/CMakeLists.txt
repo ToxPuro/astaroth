@@ -1,2 +1,2 @@
 add_library(acc_runtime_compiler compiler.cpp)
-target_link_libraries(acc_runtime_compiler PRIVATE acc-runtime-headers)
+target_link_libraries(acc_runtime_compiler PRIVATE astaroth_core)

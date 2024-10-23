@@ -799,7 +799,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     syncVBA();
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done syncing VBA\n");
 
-    const auto proc_strategy = acGetInfoValue(device->local_config,AC_proc_mapping_strategy);
+    const auto proc_strategy = device->local_config[AC_proc_mapping_strategy];
     counterpart_rank = getPid(getPid3D(rank, decomp, proc_strategy) + output_region.id, decomp, proc_strategy);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
     send_tag = tag_0 + input_region.tag;

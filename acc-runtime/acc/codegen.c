@@ -826,7 +826,7 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   const char* datatype = intern(tmp);
   const char* define_name =  convert_to_define_name(datatype_scalar);
   int counter = 0;
-  fprintf(fp, "static const array_info %s_array_info[] __attribute__((unused)) = {", convert_to_define_name(datatype_scalar));
+  fprintf(fp, "static const array_info %s_array_info[] __attribute__((unused)) = {", define_name);
   for (size_t i = 0; i < num_symbols[0]; ++i)
   {
     if (symbol_table[i].type & NODE_VARIABLE_ID &&
@@ -961,8 +961,11 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	char tmp[4098];
 	sprintf(tmp,"%s*",datatype_scalar);
 	const char* datatype = intern(tmp);
-
-	fprintf_filename("info_access_operators.h","const %s& operator[](const %sParam param) const {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("info_access_operators.h","%s operator[](const %s param) const {return param;}\n",datatype_scalar,datatype_scalar);
+	fprintf_filename("info_access_operators.h","const %s& operator[](const %sParam param) const {return %s_params[param];}\n"
+		,datatype_scalar,enum_name,define_name);
+	fprintf_filename("info_access_operators.h","const %s& operator[](const %sCompParam param) const {return run_consts.config.%s_params[param];}\n"
+		,datatype_scalar,enum_name,define_name);
 	fprintf_filename("info_access_operators.h","%s* const& operator[](const %sArrayParam param) const {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
 	fprintf_filename("info_access_operators.h","%s& operator[](const %sParam param) {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
 	fprintf_filename("info_access_operators.h","%s* & operator[](const %sArrayParam param) {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
@@ -971,13 +974,15 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("comp_info_access_operators.h","const %s* const& operator[](const %sCompArrayParam param) const {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
 	fprintf_filename("comp_info_access_operators.h","%s& operator[](const %sCompParam param) {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
 	fprintf_filename("comp_info_access_operators.h","const %s* & operator[](const %sCompArrayParam param) {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("comp_info_access_operators.h","%s operator[](const %s param) const {return param;}\n",datatype_scalar,datatype_scalar);
 
 	fprintf_filename("loaded_info_access_operators.h","const bool& operator[](const %sCompParam param) const {return %s_params[param];}\n",enum_name,define_name);
 	fprintf_filename("loaded_info_access_operators.h","const bool& operator[](const %sCompArrayParam param) const {return %s_arrays[param];}\n",enum_name,define_name);
 	fprintf_filename("loaded_info_access_operators.h","bool& operator[](const %sCompParam param) {return %s_params[param];}\n",enum_name,define_name);
 	fprintf_filename("loaded_info_access_operators.h","bool& operator[](const %sCompArrayParam param) {return %s_arrays[param];}\n",enum_name,define_name);
-	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %sParam ) const {return false;}\n",enum_name,define_name);
-	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %sArrayParam ) const {return false;}\n",enum_name,define_name);
+	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %sParam ) const {return false;}\n",enum_name);
+	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %sArrayParam ) const {return false;}\n",enum_name);
+	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
 
 	fprintf_filename("array_decl.h","%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,define_name,uppr_name);
 
@@ -1200,11 +1205,11 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			);
 
 	fprintf_filename("is_comptime_param.h",
-		"constexpr static bool IsCompParam(const %s&)               {return false;}\n"       
-		"constexpr static bool IsCompParam(const %sParam&)          {return false;}\n"  
-		"constexpr static bool IsCompParam(const %sArrayParam&)     {return false;}\n"
-		"constexpr static bool IsCompParam(const %sCompArrayParam&) {return true;}\n"
-		"constexpr static bool IsCompParam(const %sCompParam&)      {return true;}\n"
+		"constexpr static bool UNUSED IsCompParam(const %s&)               {return false;}\n"       
+		"constexpr static bool UNUSED IsCompParam(const %sParam&)          {return false;}\n"  
+		"constexpr static bool UNUSED IsCompParam(const %sArrayParam&)     {return false;}\n"
+		"constexpr static bool UNUSED IsCompParam(const %sCompArrayParam&) {return true;}\n"
+		"constexpr static bool UNUSED IsCompParam(const %sCompParam&)      {return true;}\n"
 		,datatype_scalar
 		,enum_name
 		,enum_name
@@ -1225,22 +1230,24 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 void
 gen_comp_declarations(const char* datatype_scalar)
 {
+	const char* define_name = convert_to_define_name(datatype_scalar);
+	const char* upper = strupr(define_name);
 	FILE* fp = fopen("comp_decl.h","a");
-	fprintf(fp,"%s %s_params[NUM_%s_COMP_PARAMS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
-	fprintf(fp,"const %s* %s_arrays[NUM_%s_COMP_ARRAYS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp,"%s %s_params[MAX_NUM_%s_COMP_PARAMS];\n",datatype_scalar,define_name,upper);
+	fprintf(fp,"const %s* %s_arrays[MAX_NUM_%s_COMP_ARRAYS];\n",datatype_scalar,define_name,upper);
 	fclose(fp);
 
 	fp = fopen("comp_loaded_decl.h","a");
-	fprintf(fp,"bool %s_params[NUM_%s_COMP_PARAMS];\n",convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
-	fprintf(fp,"bool  %s_arrays[NUM_%s_COMP_ARRAYS];\n",convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp,"bool %s_params[MAX_NUM_%s_COMP_PARAMS];\n",define_name,upper);
+	fprintf(fp,"bool  %s_arrays[MAX_NUM_%s_COMP_ARRAYS];\n",define_name,upper);
 	fclose(fp);
 
 	fopen("input_decl.h","a");
-	fprintf(fp,"%s %s_params[NUM_%s_COMP_PARAMS+1];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp,"%s %s_params[NUM_%s_INPUT_PARAMS+1];\n",datatype_scalar,define_name,strupr(define_name));
 	fclose(fp);
 
 	fp = fopen("output_decl.h","a");
-	fprintf(fp,"%s %s_outputs[NUM_%s_OUTPUTS+1];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp,"%s %s_outputs[NUM_%s_OUTPUTS+1];\n",datatype_scalar,define_name,strupr(define_name));
 	fclose(fp);
 }
 
@@ -1296,6 +1303,31 @@ gen_datatype_enums(FILE* fp, const char* datatype_scalar)
     if (symbol_table[i].tspecifier == datatype_arr && int_vec_contains(symbol_table[i].tqualifiers,RUN_CONST))
       fprintf(fp, "%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_%s_COMP_ARRAYS} %sCompArrayParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+
+  fprintf(fp,"\n");
+  int counter = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+     counter  += (symbol_table[i].tspecifier == datatype_scalar && int_vec_contains(symbol_table[i].tqualifiers,CONST_QL));
+  fprintf(fp, "#define NUM_%s_CONSTS (%d)\n",strupr(convert_to_define_name(datatype_scalar)),counter);
+
+
+  counter = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+     counter  += (symbol_table[i].tspecifier == datatype_arr&& int_vec_contains(symbol_table[i].tqualifiers,CONST_QL));
+  fprintf(fp, "#define NUM_%s_ARR_CONSTS (%d)\n",strupr(convert_to_define_name(datatype_scalar)),counter);
+
+  const char* uppr = strupr(convert_to_define_name(datatype_scalar));
+  counter = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+     counter  += (symbol_table[i].tspecifier == datatype_scalar);
+  fprintf(fp,"#define MAX_NUM_%s_COMP_PARAMS (%d)\n",uppr,counter);
+  counter = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+     counter  += (symbol_table[i].tspecifier == datatype_arr);
+
+  fprintf(fp,"#define MAX_NUM_%s_COMP_ARRAYS (%d)\n",uppr,counter);
+
+  const char* upr_name = strupr(convert_to_define_name(datatype_scalar));
 
 }
 void
@@ -3381,13 +3413,15 @@ rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_
   }
 }
 void
-traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, bool do_checks, const ASTNode* decl)
+traverse_base(const ASTNode* node, const NodeType return_on, const NodeType exclude, FILE* stream, bool do_checks, const ASTNode* decl)
 {
   if(node->type == NODE_ENUM_DEF)   return;
   if(node->type == NODE_STRUCT_DEF) return;
   if(node->type & NODE_DECLARATION) decl = node;
   if (node->type & exclude)
 	  stream = NULL;
+  if(return_on != NODE_UNKNOWN && (node->type == return_on))
+	  return;
   // Do not translate tqualifiers or tspecifiers immediately
   if (node->parent &&
       (node->parent->type & NODE_TQUAL || node->parent->type & NODE_TSPEC))
@@ -3408,7 +3442,7 @@ traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, bool do
 
   // Traverse LHS
   if (node->lhs)
-    traverse_base(node->lhs, exclude, stream, do_checks,decl);
+    traverse_base(node->lhs, return_on, exclude, stream, do_checks,decl);
 
   add_to_symbol_table(node,exclude,stream,do_checks,decl,NULL);
 
@@ -3419,7 +3453,7 @@ traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, bool do
 
   // Traverse RHS
   if (node->rhs)
-    traverse_base(node->rhs, exclude, stream,do_checks,decl);
+    traverse_base(node->rhs, return_on, exclude, stream,do_checks,decl);
 
   // Postfix logic
   if (node->type & NODE_BEGIN_SCOPE) {
@@ -3434,7 +3468,7 @@ traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, bool do
 static inline void
 traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 {
-	traverse_base(node,exclude,stream,false,NULL);
+	traverse_base(node,NODE_UNKNOWN,exclude,stream,false,NULL);
 }
 
 func_params_info
@@ -4531,9 +4565,9 @@ static void
 gen_user_defines(const ASTNode* root, const char* out)
 {
   FILE* fp = fopen(out, "w");
+  fprintf(fp, "#pragma once\n");
   assert(fp);
 
-  fprintf(fp, "#pragma once\n");
 
   traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, fp);
 
@@ -6178,7 +6212,7 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	rename_scoped_variables(root,NULL,NULL);
 	symboltable_reset();
 
-  	traverse_base(root, 0, NULL, true,NULL);
+  	traverse_base(root, 0, 0, NULL, true,NULL);
         duplicate_dfuncs = get_duplicate_dfuncs(root);
 
 	mark_first_declarations(root);
@@ -6516,7 +6550,7 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
   free_structs_info(&s_info);
   gen_calling_info(root);
-  traverse_base(root, 0, NULL, true,NULL);
+  traverse_base(root, 0, 0, NULL, true,NULL);
   gen_reduce_info(root);
 }
 
@@ -6621,10 +6655,14 @@ stencilgen(ASTNode* root)
 void
 gen_output_files(ASTNode* root)
 {
-  traverse(root, 0, NULL);
-  process_overrides(root);
+
+  //TP: Get number of run_const variable by skipping overrides
+  traverse_base(root, NODE_ASSIGN_LIST, NODE_ASSIGN_LIST, NULL, false, NULL);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
+  symboltable_reset();
+  traverse(root, 0, NULL);
+  process_overrides(root);
 
   file_append("user_typedefs.h","#include \"func_attributes.h\"\n");
   gen_user_enums();
@@ -6637,6 +6675,7 @@ gen_output_files(ASTNode* root)
   fclose(fp);
   stencilgen(root);
   gen_user_kernels("user_declarations.h");
+
 
 }
 bool
@@ -7046,7 +7085,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 	//remove_dead_writes(root);
   }
 
-  traverse_base(root, NODE_NO_OUT, NULL,true,NULL);
+  traverse_base(root, 0, NODE_NO_OUT, NULL,true,NULL);
   check_global_array_dimensions(root);
 
   gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses);

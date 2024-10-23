@@ -1486,7 +1486,9 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 		//make it an array type i.e. pointer
-		astnode_sprintf(type_specifier->lhs,"%s*",type_specifier->lhs->buffer);
+
+		if(!strstr(type_specifier->lhs->buffer,"*"))
+			astnode_sprintf(type_specifier->lhs,"%s*",type_specifier->lhs->buffer);
 
 		//if dconst or runtime array evaluate the dimension to a single integer to make further transformations easier
 		const ASTNode* tqual = get_node(NODE_TQUAL,variable_definition);

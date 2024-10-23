@@ -194,7 +194,9 @@ __ballot(bool)
 
 #include "math_utils.h"
  
+#define constexpr
 #include "acc_runtime.h"
+#undef constexpr
 extern "C" 
 {
 	AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src);

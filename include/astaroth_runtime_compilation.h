@@ -2,7 +2,7 @@ extern "C"
 {
 
 void
-acCompile(const char* compilation_string, AcCompInfo info);
+acCompile(const char* compilation_string, AcMeshInfo info);
 void
-acLoadRunConsts(AcCompInfo info);
+acLoadRunConsts(AcMeshInfo info);
 }

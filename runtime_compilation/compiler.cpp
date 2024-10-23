@@ -4,6 +4,7 @@
 #if AC_MPI_ENABLED
 #include "../src/core/decomposition.h"
 #endif
+#include <sys/stat.h>
 
 
 
@@ -172,12 +173,12 @@ struct load_scalars
 };
 #if AC_MPI_ENABLED
 static uint3_64
-get_decomp(const AcCompInfo info)
+get_decomp(const MPI_Comm comm, const AcCompInfo info)
 {
 
     const auto global_config = info.config;
     int nprocs;
-    MPI_Comm_size(info.comm, &nprocs);
+    MPI_Comm_size(comm, &nprocs);
     switch((AcDecomposeStrategy)global_config.int_params[AC_decompose_strategy])
     {
 	    case AcDecomposeStrategy::External:
@@ -190,9 +191,9 @@ get_decomp(const AcCompInfo info)
 }
 
 void
-decompose_info(AcCompInfo& info)
+decompose_info(const MPI_Comm comm, AcCompInfo& info)
 {
-  auto decomp = get_decomp(info);
+  auto decomp = get_decomp(comm,info);
   auto& config = info.config;
   ERRCHK_ALWAYS(config.int_params[AC_nx] % decomp.x == 0);
   ERRCHK_ALWAYS(config.int_params[AC_ny] % decomp.y == 0);
@@ -232,57 +233,88 @@ check_that_built_ins_loaded(const AcCompInfo info)
 		ERRCHK_ALWAYS(info.is_loaded.int3_params[AC_domain_decomposition]);
 #endif
 }
+void
+acLoadRunConstsBase(const char* filename, AcMeshInfo info)
+{
+	FILE* fp = fopen(filename,"w");
+	AcScalarCompTypes::run<load_scalars>(info.run_consts, fp);
+	AcArrayCompTypes::run<load_arrays>(info.run_consts, fp);
+	fclose(fp);
+}
 
 void
-acLoadRunConsts(AcCompInfo info)
+acLoadRunConsts(AcMeshInfo info)
 {
+	acLoadRunConstsBase(AC_OVERRIDES_PATH,info);
+}
+
+static bool
+file_exists(const char* filename)
+{
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
+}
+void
+acCompile(const char* compilation_string, AcMeshInfo mesh_info)
+{
+	AcCompInfo info = mesh_info.run_consts;
 	check_that_built_ins_loaded(info);
 	acHostUpdateBuiltinCompParams(&info);
 #if AC_MPI_ENABLED
-	decompose_info(info);
+	ERRCHK_ALWAYS(mesh_info.comm != MPI_COMM_NULL);
+	int pid;
+	MPI_Comm_rank(mesh_info.comm,&pid);
+	decompose_info(mesh_info.comm,info);
+#else
+	const int pid = 0;
 #endif
-	FILE* fp = fopen(AC_OVERRIDES_PATH,"w");
-
-	AcScalarCompTypes::run<load_scalars>(info, fp);
-	AcArrayCompTypes::run<load_arrays>(info, fp);
-
-	fclose(fp);
-}
-void
-acCompile(const char* compilation_string, AcCompInfo info)
-{
-	char cmd[10000];
-
-	sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path);
-	int retval = system(cmd);
-	if(retval)
+	mesh_info.run_consts = info;
+	fprintf(stderr,"AC_dsx: %14e\n",mesh_info[AC_dsx]);
+	if(pid == 0)
 	{
-		fflush(stdout);
-		fflush(stderr);
-		fprintf(stderr,"Fatal error was not able to remove build directory: %s\n",runtime_astaroth_build_path);
-		exit(EXIT_FAILURE);
+		acLoadRunConstsBase("tmp_astaroth_run_consts.h",mesh_info);
+		char cmd[10000];
+		sprintf(cmd,"diff tmp_astaroth_run_consts.h %s",AC_OVERRIDES_PATH);
+		const bool loaded_different = 
+					file_exists(AC_OVERRIDES_PATH)
+					? system(cmd) : true;
+		acLoadRunConstsBase(AC_OVERRIDES_PATH,mesh_info);
+		if(loaded_different)
+		{
+			if(loaded_different && file_exists(AC_OVERRIDES_PATH))
+				fprintf(stderr,"Loaded different run_const values; recompiling\n");
+			sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path);
+			int retval = system(cmd);
+			if(retval)
+			{
+				fflush(stdout);
+				fflush(stderr);
+				fprintf(stderr,"Fatal error was not able to remove build directory: %s\n",runtime_astaroth_build_path);
+				exit(EXIT_FAILURE);
+			}
+
+			sprintf(cmd,"mkdir %s",runtime_astaroth_build_path);
+			retval = system(cmd);
+			if(retval)
+			{
+				fflush(stdout);
+				fflush(stderr);
+				fprintf(stderr,"%s","Fatal error was not able to make build directory\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+		sprintf(cmd,"cd %s && cmake %s -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s && make -j",
+		       runtime_astaroth_build_path, AC_BASE_PATH, acc_compiler_path, compilation_string);
+		const int retval = system(cmd);
+		if(retval)
+		{
+			fprintf(stderr,"%s","Fatal error was not able to go into build directory\n");
+			fflush(stdout);
+			fflush(stderr);
+			exit(EXIT_FAILURE);
+		}
 	}
-
-	sprintf(cmd,"mkdir %s",runtime_astaroth_build_path);
-	retval = system(cmd);
-	if(retval)
-	{
-		fflush(stdout);
-		fflush(stderr);
-		fprintf(stderr,"%s","Fatal error was not able to make build directory\n");
-		exit(EXIT_FAILURE);
-	}
-
-
-	sprintf(cmd,"cd %s && cmake %s -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s  && make -j",
-			runtime_astaroth_build_path, AC_BASE_PATH, acc_compiler_path, compilation_string);
-	retval = system(cmd);
-	if(retval)
-	{
-		fflush(stdout);
-		fflush(stderr);
-		fprintf(stderr,"%s","Fatal error was not able to go into build directory\n");
-		exit(EXIT_FAILURE);
-	}
-
+#if AC_MPI_ENABLED
+	MPI_Barrier(mesh_info.comm);
+#endif
 }

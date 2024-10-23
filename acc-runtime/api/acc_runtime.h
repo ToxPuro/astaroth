@@ -128,18 +128,6 @@ typedef enum {
 #include "output_decl.h"
   } AcDeviceKernelOutput;
 
-  //could combine these into base struct
-  //with struct inheritance, but not sure would that break C ABI
-  typedef struct AcMeshInfo{
-#include "array_decl.h"
-#include "device_mesh_info_decl.h"
-#if AC_MPI_ENABLED
-    MPI_Comm comm;
-#endif
-#ifdef __cplusplus
-#include "info_access_operators.h"
-#endif
-  } AcMeshInfo;
 
   typedef struct AcCompInfoLoaded {
 #include "comp_loaded_decl.h"
@@ -158,10 +146,23 @@ typedef enum {
   typedef struct {
 	  AcCompInfoConfig config;
 	  AcCompInfoLoaded is_loaded;
-#if AC_MPI_ENABLED
-    	  MPI_Comm comm;
-#endif
   } AcCompInfo;
+
+  #ifdef __cplusplus
+#include "is_comptime_param.h"
+#endif
+
+  typedef struct AcMeshInfo{
+#include "array_decl.h"
+#include "device_mesh_info_decl.h"
+#if AC_MPI_ENABLED
+    MPI_Comm comm;
+#endif
+#ifdef __cplusplus
+#include "info_access_operators.h"
+#endif
+    AcCompInfo run_consts;
+  } AcMeshInfo;
 
   typedef struct {
 #include "input_decl.h"
@@ -382,17 +383,16 @@ typedef struct {
 #include <string.h>
 
   #ifdef __cplusplus
-#include "is_comptime_param.h"
 
   template <typename P, typename V>
   void
-  acPushToConfig(AcMeshInfo& config, AcCompInfo& comp_info, P param, V val)
+  acPushToConfig(AcMeshInfo& config, P param, V val)
   {
 	  static_assert(!std::is_same<P,int>::value);
           if constexpr(IsCompParam(param))
 	  {
-	  	  comp_info.config[param]    = val;
-	  	  comp_info.is_loaded[param] = true;
+	  	  config.run_consts.config[param] = val;
+	  	  config.run_consts.is_loaded[param] = true;
 	  }
           else
 		  config[param] = val;
@@ -403,6 +403,26 @@ typedef struct {
   {
 	  AcCompInfo res;
 	  memset(&res.is_loaded,0,sizeof(res.is_loaded));
+	  return res;
+  }
+  static AcMeshInfo __attribute__((unused)) acInitInfo()
+  {
+	  AcMeshInfo res;
+    	  // memset reads the second parameter as a byte even though it says int in
+          // the function declaration
+    	  memset(&res, (uint8_t)0xFF, sizeof(res));
+    	  //these are set to nullpointers for the users convenience that the user doesn't have to set them to null elsewhere
+    	  //if they are present in the config then they are initialized correctly
+    	  memset(res.real_arrays, 0,NUM_REAL_ARRAYS *sizeof(AcReal*));
+    	  memset(res.int_arrays,  0,NUM_INT_ARRAYS  *sizeof(int*));
+    	  memset(res.bool_arrays, 0,NUM_BOOL_ARRAYS *sizeof(bool*));
+    	  memset(res.int3_arrays, 0,NUM_INT3_ARRAYS *sizeof(int*));
+    	  memset(res.real3_arrays,0,NUM_REAL3_ARRAYS*sizeof(int*));
+
+#if AC_MPI_ENABLED
+	  res.comm = MPI_COMM_NULL;
+#endif
+	  res.run_consts = acInitCompInfo();
 	  return res;
   }
 #include "load_comp_info.h"

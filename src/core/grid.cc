@@ -110,12 +110,12 @@ ac_pid()
 static AcProcMappingStrategy
 ac_proc_mapping_strategy()
 {
-	return (AcProcMappingStrategy)acGetInfoValue(grid.submesh.info,AC_proc_mapping_strategy);
+	return (AcProcMappingStrategy)grid.submesh.info[AC_proc_mapping_strategy];
 }
 static AcDecomposeStrategy
 ac_decomp_strategy()
 {
-	return (AcDecomposeStrategy)acGetInfoValue(grid.submesh.info,AC_decompose_strategy);
+	return (AcDecomposeStrategy)grid.submesh.info[AC_decompose_strategy];
 }
 static int 
 ac_nprocs()
@@ -130,12 +130,12 @@ ac_nprocs()
 static uint3_64
 get_decomp(const AcMeshInfo global_config)
 {
-    switch((AcDecomposeStrategy)acGetInfoValue(global_config,AC_decompose_strategy))
+    switch((AcDecomposeStrategy)global_config[AC_decompose_strategy])
     {
 	    case AcDecomposeStrategy::External:
-		return static_cast<uint3_64>(acGetInfoValue(global_config,AC_domain_decomposition));
+		return static_cast<uint3_64>(global_config[AC_domain_decomposition]);
 	    default:
-		return decompose(ac_nprocs(),(AcDecomposeStrategy)acGetInfoValue(global_config,AC_decompose_strategy));
+		return decompose(ac_nprocs(),(AcDecomposeStrategy)global_config[AC_decompose_strategy]);
     }
     return (uint3_64){0,0,0};
 }
@@ -143,7 +143,7 @@ int3
 getPid3D(const AcMeshInfo config)
 {
     return getPid3D(ac_pid(), get_decomp(config), 
-                   acGetInfoValue(config,AC_proc_mapping_strategy));
+                   config[AC_proc_mapping_strategy]);
 }
 
 int3
@@ -261,21 +261,21 @@ acGridGetDevice()
 
 
 
-void
+static inline void UNUSED
 set_info_val(AcMeshInfo& info, const AcIntParam param, const int value)
 {
 	info[param] = value;
 }
-void
+static inline void UNUSED
 set_info_val(AcMeshInfo& info, const AcInt3Param param, const int3 value)
 {
 	info[param] = value;
 }
 
-void
+static inline void UNUSED
 set_info_val(AcMeshInfo& , const int , const int ){}
 
-void
+static inline void UNUSED
 set_info_val(AcMeshInfo& , const int3 , const int3 ){}
 
 
@@ -286,10 +286,10 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 
     const uint3_64 decomp = get_decomp(global_config);
 
-    ERRCHK_ALWAYS(acGetInfoValue(submesh_config,AC_nx) % decomp.x == 0);
-    ERRCHK_ALWAYS(acGetInfoValue(submesh_config,AC_ny) % decomp.y == 0);
+    ERRCHK_ALWAYS(submesh_config[AC_nx] % decomp.x == 0);
+    ERRCHK_ALWAYS(submesh_config[AC_ny] % decomp.y == 0);
 #if TWO_D == 0
-    ERRCHK_ALWAYS(acGetInfoValue(submesh_config,AC_nz) % decomp.z == 0);
+    ERRCHK_ALWAYS(submesh_config[AC_nz] % decomp.z == 0);
 #else
     ERRCHK_ALWAYS(decomp.z == 1);
 #endif
@@ -415,7 +415,7 @@ log_grid_debug_info(const AcMeshInfo info)
 void
 create_astaroth_comm(const AcMeshInfo info)
 {
-      switch((AcMPICommStrategy)acGetInfoValue(info,AC_MPI_comm_strategy))
+      switch((AcMPICommStrategy)info[AC_MPI_comm_strategy])
       {
 	case AcMPICommStrategy::DuplicateMPICommWorld:
       		ERRCHK_ALWAYS(MPI_Comm_dup(MPI_COMM_WORLD,&astaroth_comm) == MPI_SUCCESS);
@@ -497,7 +497,7 @@ acGridInitBase(const AcMesh user_mesh)
 
     check_that_device_allocation_valid();
 
-    if(acGetInfoValue(info,AC_decompose_strategy) == (int)AcDecomposeStrategy::Hierarchical)
+    if(info[AC_decompose_strategy] == (int)AcDecomposeStrategy::Hierarchical)
 
     {
         int device_count = -1;

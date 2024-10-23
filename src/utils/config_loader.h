@@ -138,7 +138,7 @@ length_from_dims(const AcArrayDims dims)
 	return res;
 }
 static void
-parse_config(const char* path, AcMeshInfo* config, AcCompInfo* comp_info)
+parse_config(const char* path, AcMeshInfo* config)
 {
     FILE* fp;
     fp = fopen(path, "r");
@@ -157,10 +157,10 @@ parse_config(const char* path, AcMeshInfo* config, AcCompInfo* comp_info)
 
         int idx = -1;
         if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0) {
-	    acPushToConfig(*config,*comp_info,static_cast<AcIntParam>(idx),parse_intparam(idx,value,false));
+	    acPushToConfig(*config,static_cast<AcIntParam>(idx),parse_intparam(idx,value,false));
         }
         else if ((idx = find_str(keyword, int_comp_param_names, NUM_INT_COMP_PARAMS)) >= 0) {
-	    acPushToConfig(*config,*comp_info,static_cast<AcIntCompParam>(idx),parse_intparam(idx,value,true));
+	    acPushToConfig(*config,static_cast<AcIntCompParam>(idx),parse_intparam(idx,value,true));
         }
         else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0) {
             AcReal real_val = atof(value);
@@ -170,7 +170,7 @@ parse_config(const char* path, AcMeshInfo* config, AcCompInfo* comp_info)
                         keyword, value);
             }
             // OL: should we fail here? Could be dangerous to continue
-	    acPushToConfig(*config,*comp_info,static_cast<AcRealParam>(idx),real_val);
+	    acPushToConfig(*config,static_cast<AcRealParam>(idx),real_val);
         }
         else if ((idx = find_str(keyword, real_comp_param_names, NUM_REAL_COMP_PARAMS)) >= 0) {
             AcReal real_val = atof(value);
@@ -180,7 +180,7 @@ parse_config(const char* path, AcMeshInfo* config, AcCompInfo* comp_info)
                         keyword, value);
             }
             // OL: should we fail here? Could be dangerous to continue
-	    acPushToConfig(*config,*comp_info,static_cast<AcRealCompParam>(idx),real_val);
+	    acPushToConfig(*config,static_cast<AcRealCompParam>(idx),real_val);
         }
         else if ((idx = find_array(keyword, int_array_info, NUM_INT_ARRAYS)) >= 0) {
 		if(!int_array_info[idx].is_dconst)
@@ -230,26 +230,14 @@ parse_config(const char* path, AcMeshInfo* config, AcCompInfo* comp_info)
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused
 
 static AcResult UNUSED
-acLoadConfig(const char* config_path, AcMeshInfo* config, AcCompInfo* comp_info)
+acLoadConfig(const char* config_path, AcMeshInfo* config)
 {
     ERRCHK_ALWAYS(config_path);
 
 
-    // memset reads the second parameter as a byte even though it says int in
-    // the function declaration
-    memset(config, (uint8_t)0xFF, sizeof(*config));
-
-    //these are set to nullpointers for the users convenience that the user doesn't have to set them to null elsewhere
-    //if they are present in the config then they are initialized correctly
-    //sticks to the old API since we anyways overwrite the whole config
-    memset(config->real_arrays, 0,NUM_REAL_ARRAYS *sizeof(AcReal*));
-    memset(config->int_arrays,  0,NUM_INT_ARRAYS  *sizeof(int*));
-    memset(config->bool_arrays, 0,NUM_BOOL_ARRAYS *sizeof(bool*));
-    memset(config->int3_arrays, 0,NUM_INT3_ARRAYS *sizeof(int*));
-    memset(config->real3_arrays,0,NUM_REAL3_ARRAYS*sizeof(int*));
-
-    parse_config(config_path, config, comp_info);
-    acHostUpdateBuiltinParams(config,comp_info);
+    *config = acInitInfo();
+    parse_config(config_path, config);
+    acHostUpdateBuiltinParams(config);
 #if AC_VERBOSE
     printf("###############################################################\n");
     printf("Config dimensions loaded:\n");

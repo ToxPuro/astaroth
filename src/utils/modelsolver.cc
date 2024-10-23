@@ -1129,9 +1129,9 @@ checkConfiguration(const AcMeshInfo info)
     }
 #endif
 
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)acGetInfoValue(info,AC_dsx)));
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)acGetInfoValue(info,AC_dsy)));
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)acGetInfoValue(info,AC_dsz)));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info[AC_dsx]));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info[AC_dsy]));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info[AC_dsz]));
     // ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
 }
 

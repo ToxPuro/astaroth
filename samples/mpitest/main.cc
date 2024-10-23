@@ -51,41 +51,35 @@ main(void)
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     AcMeshInfo info;
-    AcCompInfo comp_info = acInitCompInfo();
-    acLoadConfig(AC_DEFAULT_CONFIG, &info, &comp_info);
-    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info, &comp_info);
-    acPushToConfig(info,comp_info,AC_proc_mapping_strategy, (int)AcProcMappingStrategy::Linear);
-    acPushToConfig(info,comp_info,AC_decompose_strategy,    (int)AcDecomposeStrategy::Morton);
-    acPushToConfig(info,comp_info,AC_MPI_comm_strategy,    (int)AcMPICommStrategy::DuplicateMPICommWorld);
-    comp_info.comm = MPI_COMM_WORLD;
+    acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    info.comm = MPI_COMM_WORLD;
+    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
+    acPushToConfig(info,AC_proc_mapping_strategy, (int)AcProcMappingStrategy::Linear);
+    acPushToConfig(info,AC_decompose_strategy,    (int)AcDecomposeStrategy::Morton);
+    acPushToConfig(info,AC_MPI_comm_strategy,    (int)AcMPICommStrategy::DuplicateMPICommWorld);
 
 #if AC_RUNTIME_COMPILATION
-    if(pid == 0)
-    {
-    	AcReal real_arr[4];
-    	int int_arr[2];
-    	bool bool_arr[2] = {false,true};
-    	for(int i = 0; i < 4; ++i)
-    		real_arr[i] = -i;
-    	for(int i = 0; i < 2; ++i)
-    		int_arr[i] = i;
-    	acLoadCompInfo(AC_lspherical_coords,true,&comp_info);
-    	acLoadCompInfo(AC_runtime_int,0,&comp_info);
-    	acLoadCompInfo(AC_runtime_real,0.12345,&comp_info);
-    	acLoadCompInfo(AC_runtime_real3,{0.12345,0.12345,0.12345},&comp_info);
-    	acLoadCompInfo(AC_runtime_int3,{0,1,2},&comp_info);
-    	acLoadCompInfo(AC_runtime_real_arr,real_arr,&comp_info);
-    	acLoadCompInfo(AC_runtime_int_arr,int_arr,&comp_info);
-    	acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&comp_info);
+    AcReal real_arr[4];
+    int int_arr[2];
+    bool bool_arr[2] = {false,true};
+    for(int i = 0; i < 4; ++i)
+    	real_arr[i] = -i;
+    for(int i = 0; i < 2; ++i)
+    	int_arr[i] = i;
+    acLoadCompInfo(AC_lspherical_coords,true,&info.run_consts);
+    acLoadCompInfo(AC_runtime_int,0,&info.run_consts);
+    acLoadCompInfo(AC_runtime_real,0.12345,&info.run_consts);
+    acLoadCompInfo(AC_runtime_real3,{0.12345,0.12345,0.12345},&info.run_consts);
+    acLoadCompInfo(AC_runtime_int3,{0,1,2},&info.run_consts);
+    acLoadCompInfo(AC_runtime_real_arr,real_arr,&info.run_consts);
+    acLoadCompInfo(AC_runtime_int_arr,int_arr,&info.run_consts);
+    acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&info.run_consts);
 #if AC_USE_HIP
-    	const char* build_str = "-DUSE_HIP=ON  -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+    const char* build_str = "-DUSE_HIP=ON  -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #else
-    	const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+    const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #endif
-	acCompile(build_str,comp_info);
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-
+    acCompile(build_str,info);
     acLoadLibrary();
     acLoadUtils();
 #endif

@@ -66,28 +66,28 @@ typedef struct {
 template <typename T, std::size_t N>
 class AcArray{
 public:
-    HOST_DEVICE constexpr T& operator[](const std::size_t index) {
+    HOST_DEVICE_INLINE T& operator[](const std::size_t index) {
         return arr_[index];
     }
 
-    HOST_DEVICE const constexpr T& operator[](const std::size_t index) const {
+    HOST_DEVICE_INLINE const T& operator[](const std::size_t index) const {
         return arr_[index];
     }
 
 
     // Additional functions to interact with the internal array
-    HOST_DEVICE constexpr std::size_t size() const noexcept {
+    HOST_DEVICE_INLINE std::size_t size() const noexcept {
         return N;
     }
 
-    HOST_DEVICE constexpr T* data() noexcept {
+    HOST_DEVICE_INLINE T* data() noexcept {
         return arr_;
     }
 
-    HOST_DEVICE constexpr const T* data() const noexcept {
+    HOST_DEVICE_INLINE const T* data() const noexcept {
         return arr_;
     }
-    HOST_DEVICE constexpr AcArray(std::initializer_list<T> init) : arr_{}{
+    HOST_DEVICE_INLINE AcArray(std::initializer_list<T> init) : arr_{}{
         std::size_t i = 0;
         for (auto it = init.begin(); it != init.end() && i < N; ++it, ++i) {
             arr_[i] = *it;
@@ -110,7 +110,7 @@ public:
 	    return arr_ + N;
     }
 
-    HOST_DEVICE constexpr AcArray(void) : arr_{}{}
+    HOST_DEVICE_INLINE AcArray(void) : arr_{}{}
 
 private:
     T arr_[N];

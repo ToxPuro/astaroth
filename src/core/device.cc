@@ -236,12 +236,12 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
     AcMeshInfo device_config = config;
     acHostUpdateBuiltinParams(&device_config);
 
-    ERRCHK_ALWAYS(acGetInfoValue(device_config,AC_nx) == acGetInfoValue(device->local_config,AC_nx));
-    ERRCHK_ALWAYS(acGetInfoValue(device_config,AC_ny) == acGetInfoValue(device->local_config,AC_ny));
+    ERRCHK_ALWAYS(device_config[AC_nx] == device->local_config[AC_nx]);
+    ERRCHK_ALWAYS(device_config[AC_ny] == device->local_config[AC_ny]);
 #if TWO_D == 0
-    ERRCHK_ALWAYS(acGetInfoValue(device_config,AC_nz) == acGetInfoValue(device->local_config,AC_nz));
+    ERRCHK_ALWAYS(device_config[AC_nz] == device->local_config[AC_nz]);
 #endif
-    ERRCHK_ALWAYS(acGetInfoValue(device_config,AC_multigpu_offset) == acGetInfoValue(device->local_config,AC_multigpu_offset));
+    ERRCHK_ALWAYS(device_config[AC_multigpu_offset] == device->local_config[AC_multigpu_offset]);
 
     AcScalarTypes::run<load_all_scalars_uniform>(device,device_config);
     AcArrayTypes::run<load_all_arrays_uniform>(device, device_config);
@@ -390,10 +390,10 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // Check that AC_global_grid_n and AC_multigpu_offset are valid
     // Replace if not and give a warning otherwise
     if (
-        acGetInfoValue(device->local_config,AC_nxgrid) <= 0 ||
-        acGetInfoValue(device->local_config,AC_nygrid) <= 0 ||
+        device->local_config[AC_nxgrid] <= 0 ||
+        device->local_config[AC_nygrid] <= 0 ||
 #if TWO_D == 0
-        acGetInfoValue(device->local_config,AC_nzgrid) <= 0 ||
+        device->local_config[AC_nzgrid] <= 0 ||
 #endif
         device->local_config.int3_params[AC_multigpu_offset].x < 0 ||
         device->local_config.int3_params[AC_multigpu_offset].y < 0 ||
@@ -1284,7 +1284,7 @@ acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int src_offset,
 {
     cudaSetDevice(device->id);     // use first device
 
-    int px=host_mesh->info[AC_mx]*sizeof(AcReal), sx=acGetInfoValue(host_mesh,AC_nx)*sizeof(AcReal);
+    int px=host_mesh->info[AC_mx]*sizeof(AcReal), sx=host_mesh[AC_nx]*sizeof(AcReal);
 
     size_t start_idx;
     void *dest, *src;
@@ -1758,10 +1758,10 @@ get_transpose_buffer(const AcMeshOrder order, const AcMeshDims dims)
 AcBuffer
 acDeviceTransposeVertexBuffer(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
 {
-	return acDeviceTranspose(device,stream,order,device->vba.in[vtxbuf]);
+	return acDeviceTransposeBase(device,stream,order,device->vba.in[vtxbuf]);
 }
 AcBuffer
-acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder order, const AcReal* src)
+acDeviceTransposeBase(const Device device, const Stream stream, const AcMeshOrder order, const AcReal* src)
 {
     const AcMeshDims dims = acGetMeshDims(device->local_config);
     AcBuffer res = get_transpose_buffer(order,dims);
