@@ -36,7 +36,8 @@ template <typename T, size_t N> struct StaticArray {
 
     // Vector-like constructor
     // StaticArray<int, N> a(10, 1)
-    __host__ __device__ StaticArray(const size_t count, const T& fill_value = 0) : count(count)
+    __host__ __device__ StaticArray(const size_t count, const T& fill_value = 0)
+        : count(count), data{}
     {
         ERRCHK(count > 0);
         ERRCHK(count <= N);
@@ -47,7 +48,7 @@ template <typename T, size_t N> struct StaticArray {
     // Initializer list constructor
     // StaticArray<int, 3> a = {1,2,3}
     __host__ __device__ StaticArray(const std::initializer_list<T>& init_list)
-        : count(init_list.size())
+        : count(init_list.size()), data{}
     {
         ERRCHK(count > 0);
         ERRCHK(count <= N);
@@ -57,14 +58,14 @@ template <typename T, size_t N> struct StaticArray {
     // Copy constructor with proper casting
     // StaticArray<T, N> a(StaticArray<U, N> b)
     template <typename U>
-    __host__ __device__ StaticArray(const StaticArray<U, N>& other) : count(other.count)
+    __host__ __device__ StaticArray(const StaticArray<U, N>& other) : count(other.count), data{}
     {
         for (size_t i = 0; i < count; ++i)
             data[i] = as<T>(other.data[i]);
     }
 
     // Construct from a pointer
-    __host__ __device__ StaticArray(const size_t count, const T* arr) : count(count)
+    __host__ __device__ StaticArray(const size_t count, const T* arr) : count(count), data{}
     {
         ERRCHK(count > 0);
         ERRCHK(count <= N);

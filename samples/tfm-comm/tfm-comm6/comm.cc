@@ -195,7 +195,7 @@ acCommPrint(void)
  * Test the comm functions.
  * Returns 0 on success and the number of errors encountered otherwise.
  */
-#include "halo_segment_batch.h"
+// #include "halo_segment_batch.h"
 ErrorCode
 acCommTest(void)
 {
@@ -203,20 +203,20 @@ acCommTest(void)
     Shape subdims                    = {8, 8, 8};
     Index offset                     = {0, 0, 0};
     const size_t n_aggregate_buffers = 1;
-    Segment seg(dims, subdims, offset);
-    Packet packet(seg, n_aggregate_buffers);
+    // Segment seg(dims, subdims, offset);
+    // Packet packet(seg, n_aggregate_buffers);
 
     // std::vector<size_t> elems = {1, 2, 3};
     // elems.erase(elems.begin() + 1);
     // for (auto elem : elems)
     //     std::cout << "Elem " << elem << std::endl;
 
-    HaloSegmentBatch batch(dims, subdims, offset, n_aggregate_buffers);
-    PRINT_DEBUG(batch);
-    PRINT_DEBUG(dims);
-    PRINT_DEBUG(seg);
-    PRINT_DEBUG(packet);
-    PRINT_DEBUG(batch);
+    // HaloSegmentBatch batch(dims, subdims, offset, n_aggregate_buffers);
+    // PRINT_DEBUG(batch);
+    // PRINT_DEBUG(dims);
+    // PRINT_DEBUG(seg);
+    // PRINT_DEBUG(packet);
+    // PRINT_DEBUG(batch);
 
     return ERRORCODE_NOT_IMPLEMENTED;
 }

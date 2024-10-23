@@ -48,10 +48,10 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 
 ## Packages
-add_library(tfm-utils STATIC static_array.cc ndarray.cc type_conversion.cc errchk_print.c)
+add_library(tfm-utils STATIC partition.cc segment.cc static_array.cc ndarray.cc type_conversion.cc errchk_print.c)
 
 find_package(MPI REQUIRED COMPONENTS C)
-add_library(tfm-comm SHARED comm.cc halo_segment_batch.cc error.c)
+add_library(tfm-comm SHARED comm.cc error.c)
 target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-utils)
 
 add_executable(run main.cc)

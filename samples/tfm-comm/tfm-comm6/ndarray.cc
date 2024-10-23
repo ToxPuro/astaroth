@@ -64,20 +64,12 @@ ndarray_fill(const T& value, const size_t ndims, const uint64_t* dims, const uin
 #include <iomanip>
 template <typename T>
 static void
-print_ndarray_recursive(const size_t ndims, const uint64_t* dims, const T* array)
+ndarray_print_recursive(const size_t ndims, const uint64_t* dims, const T* array)
 {
     if (ndims == 1) {
-        for (size_t i = 0; i < dims[0]; ++i) {
+        for (size_t i = 0; i < dims[0]; ++i)
             std::cout << std::setw(3) << array[i];
-            // const size_t len          = 128;
-            // const int print_alignment = 3;
-            // char* str;
-            // nalloc(len, str);
-            // snprintf(str, len, format, array[i]);
-            // printf("%*s ", print_alignment, str);
-            // ndealloc(str);
-        }
-        printf("\n");
+        std::cout << std::endl;
     }
     else {
         const uint64_t offset = prod(ndims - 1, dims);
@@ -90,7 +82,7 @@ print_ndarray_recursive(const size_t ndims, const uint64_t* dims, const T* array
                 printf("Layer %zu:\n", i);
             if (ndims == 2)
                 printf("Row %zu: ", i);
-            print_ndarray_recursive<T>(ndims - 1, dims, &array[i * offset]);
+            ndarray_print_recursive<T>(ndims - 1, dims, &array[i * offset]);
         }
         printf("\n");
     }
@@ -98,11 +90,11 @@ print_ndarray_recursive(const size_t ndims, const uint64_t* dims, const T* array
 
 template <typename T>
 void
-print_ndarray(const char* label, const size_t ndims, const size_t* dims, const T* array)
+ndarray_print(const char* label, const size_t ndims, const size_t* dims, const T* array)
 {
     ERRCHK(array != NULL);
     printf("%s:\n", label);
-    print_ndarray_recursive<T>(ndims, dims, array);
+    ndarray_print_recursive<T>(ndims, dims, array);
 }
 
 template <typename T> struct NdArray {
@@ -125,7 +117,7 @@ template <typename T> struct NdArray {
                         buffer.data);
     }
 
-    void print() { print_ndarray_recursive(shape.count, shape.data, buffer.data); }
+    void print() { ndarray_print_recursive(shape.count, shape.data, buffer.data); }
 };
 
 template <typename T>

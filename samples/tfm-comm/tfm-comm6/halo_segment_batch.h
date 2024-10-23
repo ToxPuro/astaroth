@@ -24,7 +24,7 @@ struct Segment {
 
     Segment(const Shape& dims, const Shape& subdims, const Index& offset);
 };
-__host__ std::ostream& operator<<(std::ostream& os, const Segment& obj);
+// __host__ std::ostream& operator<<(std::ostream& os, const Segment& obj);
 
 struct Packet {
     Segment segment; // Shape of the data block the packet represents
@@ -35,12 +35,12 @@ struct Packet {
 };
 __host__ std::ostream& operator<<(std::ostream& os, const Packet& obj);
 
-struct HaloSegmentBatch {
-    std::vector<Packet> local_packets;
-    std::vector<Packet> remote_packets;
+// struct HaloSegmentBatch {
+//     std::vector<Packet> local_packets;
+//     std::vector<Packet> remote_packets;
 
-    HaloSegmentBatch(const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
-                     const size_t n_aggregate_buffers);
-    ~HaloSegmentBatch();
-};
-__host__ std::ostream& operator<<(std::ostream& os, const HaloSegmentBatch& obj);
+//     HaloSegmentBatch(const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
+//                      const size_t n_aggregate_buffers);
+//     ~HaloSegmentBatch();
+// };
+// __host__ std::ostream& operator<<(std::ostream& os, const HaloSegmentBatch& obj);
