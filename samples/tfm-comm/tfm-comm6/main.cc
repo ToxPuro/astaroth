@@ -10,9 +10,10 @@ main()
 {
     acCommInit();
 
-    Shape global_nn;
-    Shape local_nn;
-    Index local_nn_offset;
+    const size_t ndims = 3;
+    Shape global_nn(ndims);
+    Shape local_nn(ndims);
+    Index local_nn_offset(ndims);
 
     acCommSetup(3, global_nn.data, local_nn.data, local_nn_offset.data);
     acCommBarrier();

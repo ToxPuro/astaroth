@@ -7,6 +7,7 @@
 
 #include "errchk_mpi.h"
 #include "mpi_utils.h"
+#include "print_debug.h"
 #include "type_conversion.h"
 
 #include "shape.h"
@@ -75,11 +76,11 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
         ERRCHK_MPI_API(MPI_Comm_size(parent, &mpi_nprocs));
 
         // Decompose
-        MPIShape mpi_decomp(0);
-        ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(mpi_decomp.count()), mpi_decomp.data));
+        MPIShape mpi_decomp(ndims, 0);
+        ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(mpi_decomp.count), mpi_decomp.data));
 
         // Create the communicator
-        MPIShape mpi_periods(1); // Set to fully periodic
+        MPIShape mpi_periods(ndims, 1); // Set to fully periodic
         ERRCHK_MPI_API(MPI_Cart_create(parent, as<int>(ndims), mpi_decomp.data, mpi_periods.data, 0,
                                        &Comm::comm));
 
@@ -92,7 +93,7 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
         int mpi_rank;
         ERRCHK_MPI_API(MPI_Comm_rank(Comm::comm, &mpi_rank));
 
-        MPIIndex mpi_coords(0);
+        MPIIndex mpi_coords(ndims, 0);
         ERRCHK_MPI_API(MPI_Cart_coords(Comm::comm, mpi_rank, as<int>(ndims), mpi_coords.data));
         Index coords(mpi_coords.reversed());
 
@@ -169,9 +170,9 @@ acCommPrint(void)
         ERRCHK_MPI_API(MPI_Comm_size(Comm::comm, &nprocs));
         ERRCHK_MPI_API(MPI_Cartdim_get(Comm::comm, &ndims));
 
-        MPIShape mpi_decomp;
-        MPIShape mpi_periods;
-        MPIIndex mpi_coords;
+        MPIShape mpi_decomp(as<size_t>(ndims));
+        MPIShape mpi_periods(as<size_t>(ndims));
+        MPIIndex mpi_coords(as<size_t>(ndims));
         ERRCHK_MPI_API(
             MPI_Cart_get(Comm::comm, ndims, mpi_decomp.data, mpi_periods.data, mpi_coords.data));
 

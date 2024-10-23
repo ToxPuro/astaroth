@@ -48,7 +48,7 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 
 ## Packages
-add_library(tfm-utils STATIC type_conversion.cc errchk_print.c)
+add_library(tfm-utils STATIC static_array.cc type_conversion.cc errchk_print.c)
 
 find_package(MPI REQUIRED COMPONENTS C)
 add_library(tfm-comm SHARED comm.cc halo_segment_batch.cc error.c)

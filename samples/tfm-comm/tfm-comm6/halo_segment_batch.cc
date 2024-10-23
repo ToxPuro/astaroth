@@ -1,5 +1,7 @@
 #include "halo_segment_batch.h"
 
+#include "print_debug.h"
+
 Buffer::Buffer(const size_t count) : count(count)
 {
     std::cout << "created" << std::endl;
