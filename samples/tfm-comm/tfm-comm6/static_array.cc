@@ -3,6 +3,13 @@
 #include "print_debug.h"
 #include "type_conversion.h"
 
+static void
+test_fn(StaticArray<uint64_t, 3> arr)
+{
+    (void)arr; // Unused
+    // PRINT_DEBUG(arr);
+}
+
 void
 test_static_array(void)
 {
@@ -39,8 +46,11 @@ test_static_array(void)
     {
         StaticArray<uint64_t, 3> a(3, 1);
         StaticArray<uint64_t, 3> b(3, 1);
-        PRINT_DEBUG(a);
-        PRINT_DEBUG(b);
-        PRINT_DEBUG(a.dot(b));
+        // PRINT_DEBUG(a);
+        // PRINT_DEBUG(b);
+        // PRINT_DEBUG(a.dot(b));
+    }
+    {
+        test_fn(StaticArray<uint64_t, 3>{1, 2, 3});
     }
 }

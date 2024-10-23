@@ -2,7 +2,7 @@
 
 #include "static_array.h"
 
-constexpr size_t MAX_NDIMS = 3;
+constexpr size_t MAX_NDIMS = 4;
 typedef StaticArray<uint64_t, MAX_NDIMS> Index;
 typedef StaticArray<uint64_t, MAX_NDIMS> Shape;
 typedef StaticArray<int, MAX_NDIMS> MPIIndex;
