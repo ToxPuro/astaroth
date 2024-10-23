@@ -3210,10 +3210,8 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 	  //TP: Hacks
 	  else if(strstr(tspec.id,"WITH_INLINE"))
           	fprintf(stream, "%s ", "auto");
-	  else if(strstr(tspec.id,"<"))
-          	fprintf(stream, "%s ", "auto");
-	  else if(strstr(tspec.id,">"))
-          	fprintf(stream, "%s ", "auto");
+	  else if(strstr(tspec.id,"<") && strstr(tspec.id,"Profile"))
+           	fprintf(stream, "%s ", "Profile");
 	  else if(tspec.token != KERNEL)
             fprintf(stream, "%s ", tspec.id);
         }
@@ -3228,12 +3226,8 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 		//TP: Hacks
 		else if(strstr(node->expr_type,"WITH_INLINE"))
             		fprintf(stream, "%s ", "auto");
-		else if(strstr(node->expr_type,"<"))
-            		fprintf(stream, "%s ", "auto");
-		else if(strstr(node->expr_type,">"))
-            		fprintf(stream, "%s ", "auto");
-
-
+		else if(strstr(node->expr_type,"<") && strstr(node->expr_type,"Profile"))
+            		fprintf(stream, "%s ", "Profile");
 		else
 		  fprintf(stream, "%s ",node->expr_type);
 	  }

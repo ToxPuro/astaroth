@@ -309,6 +309,7 @@ gen_kernel_prefix(const int curr_kernel)
             printf("10000000,");
     printf("};\n");
     printf("bool should_reduce_int[NUM_INT_OUTPUTS] = {\n");
+    for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
     	printf("false,");
     printf("};\n");
     
