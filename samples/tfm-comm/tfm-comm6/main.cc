@@ -3,6 +3,7 @@
 #include <cstdlib>
 
 #include "errchk.h"
+#include "ndarray.h"
 #include "shape.h"
 
 int
@@ -10,12 +11,11 @@ main()
 {
     acCommInit();
 
-    const size_t ndims = 3;
-    Shape global_nn(ndims);
-    Shape local_nn(ndims);
-    Index local_nn_offset(ndims);
+    Shape global_nn = {4, 4, 4};
+    Shape local_nn(global_nn.count);
+    Index local_nn_offset(global_nn.count);
 
-    acCommSetup(3, global_nn.data, local_nn.data, local_nn_offset.data);
+    acCommSetup(global_nn.count, global_nn.data, local_nn.data, local_nn_offset.data);
     acCommBarrier();
     acCommPrint();
 

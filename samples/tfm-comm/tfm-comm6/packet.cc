@@ -1,13 +1,13 @@
 #include "packet.h"
 
-template <typename T>
-__host__ std::ostream&
-operator<<(std::ostream& os, const Packet<T>& obj)
+#include "print_debug.h"
+
+void
+test_packet(void)
 {
-    os << "{\n";
-    os << "    segment: " << obj.segment << "," << std::endl;
-    os << "    buffer: " << obj.buffer << "," << std::endl;
-    os << "    req: " << obj.req << std::endl;
-    os << "}";
-    return os;
+    // Shape dims{2, 2, 2};
+    // Index offset{0, 0, 0};
+    // Segment segment(dims, offset);
+    // Packet<double> packet(segment, 2);
+    // PRINT_DEBUG(packet);
 }

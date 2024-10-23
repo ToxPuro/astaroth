@@ -1,3 +1,4 @@
+#include "comm.h"
 #include "ndarray.h"
 #include "partition.h"
 #include "static_array.h"
@@ -12,6 +13,7 @@ main(void)
     test_static_array();
     test_ndarray();
     test_partition();
+    acCommTest();
 
     return EXIT_SUCCESS;
 }

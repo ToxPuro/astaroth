@@ -56,11 +56,11 @@ partition(const Shape& mm, const Shape& nn, const Index& nn_offset)
 void
 test_partition(void)
 {
-    Shape rr = {2, 3};
-    Shape nn = {128, 128};
-    Shape mm = as<uint64_t>(2) * rr + nn;
+    // Shape rr = {2, 3};
+    // Shape nn = {128, 128};
+    // Shape mm = as<uint64_t>(2) * rr + nn;
 
-    auto segments = partition(mm, nn, rr);
-    PRINT_DEBUG(segments);
-    PRINT_DEBUG(segments.size());
+    // auto segments = partition(mm, nn, rr);
+    // PRINT_DEBUG(segments);
+    // PRINT_DEBUG(segments.size());
 }

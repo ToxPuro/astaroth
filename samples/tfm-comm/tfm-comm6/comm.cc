@@ -10,6 +10,8 @@
 #include "print_debug.h"
 #include "type_conversion.h"
 
+#include "ndarray.h"
+#include "packet.h"
 #include "shape.h"
 
 /*
@@ -54,8 +56,8 @@ acCommSetup(const size_t ndims, const uint64_t* global_nn_ptr, uint64_t* local_n
         WARNING_DESC("acCommSetup was called more than once. This is not allowed.");
         return ERRORCODE_INPUT_FAILURE;
     }
-    if (ndims != MAX_NDIMS) {
-        WARNING_DESC("ndims %zu != MAX_NDIMS %zu. Change MAX_NDIMS to enable other dimensions.",
+    if (ndims > MAX_NDIMS) {
+        WARNING_DESC("ndims %zu > MAX_NDIMS %zu. Change MAX_NDIMS to enable other dimensions.",
                      ndims, MAX_NDIMS);
         return ERRORCODE_INPUT_FAILURE;
     }
@@ -195,28 +197,19 @@ acCommPrint(void)
  * Test the comm functions.
  * Returns 0 on success and the number of errors encountered otherwise.
  */
-// #include "halo_segment_batch.h"
+
 ErrorCode
 acCommTest(void)
 {
-    Shape dims                       = {128, 128, 128};
-    Shape subdims                    = {8, 8, 8};
+    test_packet();
+
+    Shape dims                       = {4, 4, 4};
+    Shape subdims                    = {1, 1, 1};
     Index offset                     = {0, 0, 0};
     const size_t n_aggregate_buffers = 1;
-    // Segment seg(dims, subdims, offset);
-    // Packet packet(seg, n_aggregate_buffers);
 
-    // std::vector<size_t> elems = {1, 2, 3};
-    // elems.erase(elems.begin() + 1);
-    // for (auto elem : elems)
-    //     std::cout << "Elem " << elem << std::endl;
-
-    // HaloSegmentBatch batch(dims, subdims, offset, n_aggregate_buffers);
-    // PRINT_DEBUG(batch);
-    // PRINT_DEBUG(dims);
-    // PRINT_DEBUG(seg);
-    // PRINT_DEBUG(packet);
-    // PRINT_DEBUG(batch);
+    NdArray<double> mesh(dims);
+    mesh.display();
 
     return ERRORCODE_NOT_IMPLEMENTED;
 }

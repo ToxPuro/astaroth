@@ -16,4 +16,16 @@ template <typename T> struct Packet {
     }
 };
 
-template <typename T> __host__ std::ostream& operator<<(std::ostream& os, const Packet<T>& obj);
+template <typename T>
+__host__ std::ostream&
+operator<<(std::ostream& os, const Packet<T>& obj)
+{
+    os << "{";
+    os << "segment: " << obj.segment << ", ";
+    os << "buffer: " << obj.buffer << ", ";
+    os << "req: " << obj.req;
+    os << "}";
+    return os;
+}
+
+void test_packet(void);
