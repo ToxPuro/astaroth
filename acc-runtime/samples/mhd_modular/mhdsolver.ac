@@ -934,7 +934,6 @@ int AC_ldensity_nolog
 
 
 
-gmem real AC_z[AC_nz]
 const bool ldensity_nolog = false
 real fbotkbot
 real ftopktop
@@ -950,6 +949,7 @@ real AC_cs20
 real AC_gamma_m1
 real AC_cv1
 real AC_dz2_bound[7]
+
 
 
 

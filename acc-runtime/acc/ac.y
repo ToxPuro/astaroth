@@ -836,8 +836,8 @@ type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOW
 binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("+", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
          | '-'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("-", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
          | '&'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("&", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '<'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(">", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '>'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("<", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
+         | '<'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("<", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
+         | '>'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(">", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
          | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
          ;
 

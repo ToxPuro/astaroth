@@ -390,7 +390,7 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 
 	if(BOUNDARY_X_TOP & boundary)
 	{
-		int3 start = (int3){AC_nx+NGHOST, NGHOST, NGHOST};
+		int3 start = (int3){VAL(AC_nx)+NGHOST, NGHOST, NGHOST};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA);
 	}
@@ -402,7 +402,7 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 	}
 	if(BOUNDARY_Y_TOP & boundary)
 	{
-		int3 start = (int3){NGHOST, AC_ny+NGHOST, NGHOST};
+		int3 start = (int3){NGHOST, VAL(AC_ny)+NGHOST, NGHOST};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA);
 	}
@@ -415,7 +415,7 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 	}
 	if(BOUNDARY_Z_TOP & boundary)
 	{
-		int3 start = (int3){NGHOST, NGHOST, AC_nz+NGHOST};
+		int3 start = (int3){NGHOST, NGHOST, VAL(AC_nz)+NGHOST};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA);
 	}
