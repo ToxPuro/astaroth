@@ -3,6 +3,7 @@ run_const real AC_dsy
 #if TWO_D == 0
 run_const real AC_dsz
 #endif
+run_const real AC_dsmin
 
 run_const real AC_inv_dsx
 run_const real AC_inv_dsy
@@ -115,3 +116,10 @@ Field COORDS_Z
 run_const int3 AC_domain_decomposition
 int3 AC_multigpu_offset
 int3 AC_domain_coordinates
+
+//TP: these belong here but at the moment are deprecated
+/**
+run_const AC_xy_plate_bufsize
+run_const AC_xz_plate_bufsize
+run_const AC_yz_plate_bufsize
+**/

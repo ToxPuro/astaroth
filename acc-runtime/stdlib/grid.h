@@ -1,9 +1,11 @@
 // physical grid
-real AC_xorig
-real AC_yorig
-real AC_zorig
+run_const real AC_xorig
+run_const real AC_yorig
+run_const real AC_zorig
 
-real AC_dsmin
+run_const real AC_center_x
+run_const real AC_center_y
+run_const real AC_center_z
 
 gmem real AC_x[AC_mx]
 gmem real AC_y[AC_my]

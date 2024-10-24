@@ -58,6 +58,7 @@ find_array(const char keyword[], const array_info* info, const int n)
 	return -1;
 }
 
+#ifdef AC_INTEGRATION_ENABLED
 static bool
 is_bctype(const int idx)
 {
@@ -68,6 +69,13 @@ is_bctype(const int idx)
 #endif
 	  ;
 }
+#else
+static bool
+is_bctype(const int idx)
+{
+	return false;
+}
+#endif
 
 static bool
 is_initcondtype(const int idx)

@@ -569,31 +569,7 @@ symboltable_reset(void)
   int tqualifiers[1] = {DCONST_QL};
   int const_qualifier[1] = {CONST_QL};
 
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1,INT_STR, INT,intern("AC_xy_plate_bufsize"));
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1,INT_STR, INT,intern("AC_xz_plate_bufsize"));
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1,INT_STR, INT,intern("AC_yz_plate_bufsize"));
 
-
-  //For special reductions
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, REAL_STR, REAL,intern("AC_center_x"));
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, REAL_STR, REAL,intern("AC_center_y"));
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, REAL_STR, REAL,intern("AC_center_z"));
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, REAL_STR, REAL,intern("AC_sum_radius"));
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, REAL_STR, REAL,intern("AC_window_radius"));
-
-  // (BC types do not belong here, BCs not handled with the DSL)
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, INT_STR, INT,intern("AC_bc_type_bot_x"));
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, INT_STR, INT,intern("AC_bc_type_bot_y"));
-#if TWO_D == 0
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, INT_STR, INT,intern("AC_bc_type_bot_z"));
-#endif
-
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, INT_STR, INT,intern("AC_bc_type_top_x"));
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, INT_STR, INT,intern("AC_bc_type_top_y"));
-#if TWO_D == 0
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, INT_STR, INT,intern("AC_bc_type_top_z"));
-#endif
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, INT_STR, INT,intern("AC_init_type"));
   add_symbol(NODE_VARIABLE_ID, const_qualifier, 1, INT_STR, INT,intern("STENCIL_ORDER"));
   // Astaroth 2.0 backwards compatibility END
   int index = add_symbol(NODE_VARIABLE_ID, NULL, 0 , INT3_STR, INT3,intern("blockDim"));

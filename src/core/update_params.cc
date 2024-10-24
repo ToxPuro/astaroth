@@ -86,6 +86,8 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
 
     push_val(AC_xlen,config[AC_nxgrid]*config[AC_dsx]); 
     push_val(AC_ylen,config[AC_nygrid]*config[AC_dsy]); 
+
+    push_val(AC_dsmin,std::min(std::min(config[AC_dsx],config[AC_dsy]),config[AC_dsz]));
 #if TWO_D == 0
     push_val(AC_mxz,config[AC_mx]*config[AC_mz]); 
     push_val(AC_myz,config[AC_my]*config[AC_mz]); 
