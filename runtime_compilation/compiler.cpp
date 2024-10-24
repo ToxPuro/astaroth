@@ -303,12 +303,41 @@ acCompile(const char* compilation_string, AcMeshInfo mesh_info)
 				exit(EXIT_FAILURE);
 			}
 		}
-		sprintf(cmd,"cd %s && cmake %s -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s && make -j",
-		       runtime_astaroth_build_path, AC_BASE_PATH, acc_compiler_path, compilation_string);
-		const int retval = system(cmd);
+		sprintf(cmd,"cd %s",
+		       runtime_astaroth_build_path);
+		int retval = system(cmd);
 		if(retval)
 		{
 			fprintf(stderr,"%s","Fatal error was not able to go into build directory\n");
+			fflush(stdout);
+			fflush(stderr);
+			exit(EXIT_FAILURE);
+		}
+		sprintf(cmd,"cmake --help > /dev/null");
+		retval = system(cmd);
+		if(retval)
+		{
+			fprintf(stderr,"%s","Did not find cmake\n");
+			fflush(stdout);
+			fflush(stderr);
+			exit(EXIT_FAILURE);
+		}
+		sprintf(cmd,"cd %s && cmake -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s %s",
+		       runtime_astaroth_build_path, acc_compiler_path, compilation_string,astaroth_base_path);
+		retval = system(cmd);
+		if(retval)
+		{
+			fprintf(stderr,"%s %d\n","Fatal was not able to run cmake:",retval);
+			fprintf(stderr,"Cmake command: %s\n",cmd);
+			fflush(stdout);
+			fflush(stderr);
+			exit(EXIT_FAILURE);
+		}
+		sprintf(cmd,"cd %s && make -j",runtime_astaroth_build_path);
+		retval = system(cmd);
+		if(retval)
+		{
+			fprintf(stderr,"%s","Fatal was not able to compile\n");
 			fflush(stdout);
 			fflush(stderr);
 			exit(EXIT_FAILURE);

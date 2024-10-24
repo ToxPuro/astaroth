@@ -4752,13 +4752,15 @@ gen_user_defines(const ASTNode* root, const char* out)
   	"__attribute__((unused)) static const char* runtime_astaroth_runtime_path = \"%s\";\n"
   	"__attribute__((unused)) static const char* runtime_astaroth_utils_path = \"%s\";\n"
   	"__attribute__((unused)) static const char* runtime_astaroth_build_path = \"%s\";\n"
-  	"__attribute__((unused)) static const char* acc_compiler_path = \"%s\";\n"
+  	"__attribute__((unused)) static const char* acc_compiler_path  = \"%s\";\n"
+  	"__attribute__((unused)) static const char* astaroth_base_path = \"%s\";\n"
 	,autotune_path
 	,AC_BASE_PATH"/runtime_compilation/build/src/core/libastaroth_core.so"
 	,AC_BASE_PATH"/runtime_compilation/build/src/core/kernels/libkernels.so"
 	,AC_BASE_PATH"/runtime_compilation/build/src/utils/libastaroth_utils.so"
 	,AC_BASE_PATH"/runtime_compilation/build"
 	,ACC_COMPILER_PATH
+	,AC_BASE_PATH
 	);
 
   fclose(fp);
@@ -5330,7 +5332,7 @@ set_identifier_constexpr(ASTNode* node, const char* identifier_name, const bool 
 		return;
 	if(node->buffer != identifier_name)
 		return;
-	node->is_constexpr = is_constexpr;
+	node->is_constexpr |= is_constexpr;
 }
 
 static
@@ -5379,19 +5381,27 @@ inside_conditional_scope(const ASTNode* node)
 		}
 		return false;
 }
+typedef struct
+{
+	bool in_array_access;
+	ASTNode* func_base;
+} gen_constexpr_params;
+
 bool
-gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assign_counts)
+gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assign_counts, gen_constexpr_params params)
 {
 	bool res = false;
+	params.in_array_access |= (node->type & NODE_ARRAY_ACCESS);
+	if(node->type & NODE_FUNCTION) params.func_base = node;
 	if(node->lhs)
-		res |= gen_constexpr_in_func(node->lhs,names,assign_counts);
+		res |= gen_constexpr_in_func(node->lhs,names,assign_counts,params);
 	if(node->rhs)
-		res |= gen_constexpr_in_func(node->rhs,names,assign_counts);
+		res |= gen_constexpr_in_func(node->rhs,names,assign_counts,params);
 	if(node->token == IDENTIFIER && node->buffer && !node->is_constexpr)
 	{
 		node->is_constexpr |= check_symbol(NODE_ANY,node->buffer,0,CONST_QL);
 		//if array access that means we are accessing the vtxbuffer which obviously is not constexpr
- 		if(!get_parent_node(NODE_ARRAY_ACCESS,node))
+ 		if(!params.in_array_access)
 			node->is_constexpr |= check_symbol(NODE_VARIABLE_ID,node->buffer,FIELD,0);
 		node->is_constexpr |= check_symbol(NODE_DFUNCTION_ID,node->buffer,FIELD,CONSTEXPR);
 		res |= node->is_constexpr;
@@ -5402,6 +5412,7 @@ gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assig
 		if(!inside_conditional_scope(node))
 		{
 			node->is_constexpr = true;
+			res = true;
 			astnode_set_prefix(" constexpr (",node);
 			if(node->rhs->lhs->type & NODE_BEGIN_SCOPE)
 			{
@@ -5413,10 +5424,8 @@ gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assig
 	//TP: below sets the constexpr value of lhs the same as rhs for: lhs = rhs
 	//TP: we restrict to the case that lhs is assigned only once in the function since full generality becomes too hard 
 	//TP: However we get sufficiently far with this approach since we turn many easy cases to SSA form which this check covers
-	if(node->type &  NODE_ASSIGNMENT && node->rhs && get_parent_node(NODE_FUNCTION,node))
+	if(node->type &  NODE_ASSIGNMENT && node->rhs && !node->is_constexpr)
 	{
-
-	  ASTNode* func_base = (ASTNode*) get_parent_node(NODE_FUNCTION,node);
 	  bool is_constexpr = all_identifiers_are_constexpr(node->rhs);
 	  ASTNode* lhs_identifier = get_node_by_token(IDENTIFIER,node->lhs);
 	  const int index = str_vec_get_index(names,lhs_identifier->buffer);
@@ -5425,8 +5434,9 @@ gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assig
 	  if(lhs_identifier->is_constexpr == is_constexpr)
 		  return res;
 	  res |= is_constexpr;
-	  lhs_identifier->is_constexpr = is_constexpr;
-	  set_identifier_constexpr(func_base,lhs_identifier->buffer,is_constexpr);
+	  node->is_constexpr |= is_constexpr;
+	  lhs_identifier->is_constexpr |= is_constexpr;
+	  set_identifier_constexpr(params.func_base,lhs_identifier->buffer,is_constexpr);
 	  if(is_constexpr && get_node(NODE_TSPEC,node->lhs))
 	  {
 		  ASTNode* tspec = (ASTNode*) get_node(NODE_TSPEC,node->lhs);
@@ -5465,7 +5475,7 @@ gen_constexpr_info_base(ASTNode* node)
 		string_vec names = VEC_INITIALIZER;
 		int_vec    n_assignments = VEC_INITIALIZER;
 		count_num_of_assignments(node,&names,&n_assignments);
-		res |= gen_constexpr_in_func(node,names,n_assignments);
+		res |= gen_constexpr_in_func(node,names,n_assignments,(gen_constexpr_params){false,NULL});
 	}
 	return res;
 }
@@ -5474,7 +5484,8 @@ void
 gen_constexpr_info(ASTNode* root)
 {
 	bool has_changed = true;
-	while(has_changed) has_changed = gen_constexpr_info_base(root);
+	while(has_changed) 
+		has_changed = gen_constexpr_info_base(root);
 
 }
 
@@ -5701,7 +5712,7 @@ gen_type_info(ASTNode* root)
 const ASTNode*
 find_dfunc_start(const ASTNode* node, const char* dfunc_name)
 {
-	if(node->type & NODE_DFUNCTION && get_node(NODE_DFUNCTION_ID,node) && get_node(NODE_DFUNCTION_ID,node)->buffer && !strcmp(get_node(NODE_DFUNCTION_ID,node)->buffer, dfunc_name)) return node;
+	if(node->type & NODE_DFUNCTION && get_node(NODE_DFUNCTION_ID,node) && get_node(NODE_DFUNCTION_ID,node)->buffer && get_node(NODE_DFUNCTION_ID,node)->buffer == dfunc_name) return node;
 	const ASTNode* lhs_res = !node->lhs ? NULL :
 		find_dfunc_start(node->lhs,dfunc_name);
 	return lhs_res ? lhs_res :
