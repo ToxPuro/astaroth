@@ -28,50 +28,56 @@ template <typename T> struct Buffer {
     // Destructor
     ~Buffer() { delete[] data; }
 
-    // Copy constructor
-    Buffer(const Buffer& other)
-        : count(other.count), data(new T[other.count])
-    {
-        std::copy(other.data, other.data + count, data);
-    }
+    // Delete all other types of constructors
+    Buffer(const Buffer&)            = delete; // Copy constructor
+    Buffer& operator=(const Buffer&) = delete; // Copy assignment operator
+    Buffer(Buffer&&)                 = delete; // Move constructor
+    Buffer& operator=(Buffer&&)      = delete; // Move assignment operator
 
-    // Copy assignment operator
-    Buffer& operator=(const Buffer& other)
-    {
-        // Self-assignment
-        if (this == &other)
-            return *this;
+    // // Copy constructor
+    // Buffer(const Buffer& other)
+    //     : count(other.count), data(new T[other.count])
+    // {
+    //     std::copy(other.data, other.data + count, data);
+    // }
 
-        T* new_data = new T[other.count];
-        std::copy(other.data, other.data + other.count, new_data);
-        delete[] data;
-        data  = new_data;
-        count = other.count;
-        return *this;
-    }
+    // // Copy assignment operator
+    // Buffer& operator=(const Buffer& other)
+    // {
+    //     // Self-assignment
+    //     if (this == &other)
+    //         return *this;
 
-    // Move constructor
-    Buffer(Buffer&& other) noexcept
-        : count(other.count), data(other.data)
-    {
-        other.count = 0;
-        other.data  = nullptr;
-    }
+    //     T* new_data = new T[other.count];
+    //     std::copy(other.data, other.data + other.count, new_data);
+    //     delete[] data;
+    //     data  = new_data;
+    //     count = other.count;
+    //     return *this;
+    // }
 
-    // Move assignment operator
-    Buffer& operator=(Buffer&& other) noexcept
-    {
-        // Self-assignment
-        if (this == &other)
-            return *this;
+    // // Move constructor
+    // Buffer(Buffer&& other) noexcept
+    //     : count(other.count), data(other.data)
+    // {
+    //     other.count = 0;
+    //     other.data  = nullptr;
+    // }
 
-        delete[] data;
-        data        = other.data;
-        count       = other.count;
-        other.data  = nullptr;
-        other.count = 0;
-        return *this;
-    }
+    // // Move assignment operator
+    // Buffer& operator=(Buffer&& other) noexcept
+    // {
+    //     // Self-assignment
+    //     if (this == &other)
+    //         return *this;
+
+    //     delete[] data;
+    //     data        = other.data;
+    //     count       = other.count;
+    //     other.data  = nullptr;
+    //     other.count = 0;
+    //     return *this;
+    // }
 };
 
 template <typename T>
