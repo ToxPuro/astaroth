@@ -40,12 +40,9 @@ template <typename T> struct Packet {
 
     ~Packet()
     {
-        if (req != MPI_REQUEST_NULL) {
-            ERROR_DESC(
-                "Attempted to destroy Packet when there was a request in flight. This should "
-                "not happen.");
-            ERRCHK_MPI(req != MPI_REQUEST_NULL);
-        }
+        ERRCHK_MPI_EXPR_DESC(req != MPI_REQUEST_NULL,
+                             "Attempted to destroy Packet when there was still "
+                             "a request in flight. This should not happen.");
     }
 
     // Delete all other types of constructors
