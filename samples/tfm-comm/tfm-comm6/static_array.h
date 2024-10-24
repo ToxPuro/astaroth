@@ -58,14 +58,16 @@ template <typename T, size_t N> struct StaticArray {
     // Copy constructor with proper casting
     // StaticArray<T, N> a(StaticArray<U, N> b)
     template <typename U>
-    __host__ __device__ StaticArray(const StaticArray<U, N>& other) : count(other.count), data{}
+    __host__ __device__ StaticArray(const StaticArray<U, N>& other)
+        : count(other.count), data{}
     {
         for (size_t i = 0; i < count; ++i)
             data[i] = as<T>(other.data[i]);
     }
 
     // Construct from a pointer
-    __host__ __device__ StaticArray(const size_t count, const T* arr) : count(count), data{}
+    __host__ __device__ StaticArray(const size_t count, const T* arr)
+        : count(count), data{}
     {
         ERRCHK(count > 0);
         ERRCHK(count <= N);

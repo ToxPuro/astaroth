@@ -9,13 +9,17 @@ template <typename T> struct Buffer {
     T* data;
 
     // Constructor
-    Buffer(const size_t count) : count(count), data(new T[count]()) {}
+    Buffer(const size_t count)
+        : count(count), data(new T[count]())
+    {
+    }
 
     // Enable the subscript operator
     // __host__ __device__ T& operator[](size_t i) { return data[i]; }
     // __host__ __device__ const T& operator[](size_t i) const { return data[i]; }
 
-    Buffer(const size_t count, const T& fill_value) : count(count), data(new T[count])
+    Buffer(const size_t count, const T& fill_value)
+        : count(count), data(new T[count])
     {
         for (size_t i = 0; i < count; ++i)
             data[i] = fill_value;
@@ -25,7 +29,8 @@ template <typename T> struct Buffer {
     ~Buffer() { delete[] data; }
 
     // Copy constructor
-    Buffer(const Buffer& other) : count(other.count), data(new T[other.count])
+    Buffer(const Buffer& other)
+        : count(other.count), data(new T[other.count])
     {
         std::copy(other.data, other.data + count, data);
     }
@@ -46,7 +51,8 @@ template <typename T> struct Buffer {
     }
 
     // Move constructor
-    Buffer(Buffer&& other) noexcept : count(other.count), data(other.data)
+    Buffer(Buffer&& other) noexcept
+        : count(other.count), data(other.data)
     {
         other.count = 0;
         other.data  = nullptr;
