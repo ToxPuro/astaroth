@@ -71,17 +71,25 @@ is_bctype(const int idx)
 }
 #else
 static bool
-is_bctype(const int idx)
+is_bctype(const int)
 {
 	return false;
 }
 #endif
 
+#ifdef AC_INTEGRATION_ENABLED
 static bool
 is_initcondtype(const int idx)
 {
     return idx == AC_init_type;
 }
+#else
+static bool
+is_initcondtype(const int)
+{
+    return false;
+}
+#endif
 
 static int
 parse_intparam(const size_t idx, const char* value, const bool run_const)

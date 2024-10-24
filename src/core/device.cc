@@ -901,14 +901,14 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 }
 
 AcResult
-acDevicePeriodicBoundcondStep(const Device device, const Stream stream,
-                              const VertexBufferHandle vtxbuf_handle, const int3 start,
-                              const int3 end)
+acDevicePeriodicBoundcondStep(const Device device, const Stream ,
+                              const VertexBufferHandle vtxbuf_handle, const int3 ,
+                              const int3 )
 {
-    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
-    return acKernelPeriodicBoundconds(device->streams[stream], start, end,
-                                      device->vba.in[vtxbuf_handle]);
+    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
+    fprintf(stderr,"NOT ANYMORE SUPPORTED\n");
+    exit(EXIT_FAILURE);
 }
 
 AcResult
@@ -922,9 +922,9 @@ acDevicePeriodicBoundconds(const Device device, const Stream stream, const int3 
 }
 
 AcResult
-acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
-                             const VertexBufferHandle vtxbuf_handle, const int3 start,
-                             const int3 end, const AcMeshInfo config, const int3 bindex)
+acDeviceGeneralBoundcondStep(const Device device, const Stream ,
+                             const VertexBufferHandle vtxbuf_handle, const int3 ,
+                             const int3 , const AcMeshInfo , const int3 )
 {
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
 #if TWO_D == 1
@@ -939,8 +939,8 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
 	exit(EXIT_FAILURE);
 #else
     cudaSetDevice(device->id);
-    return acKernelGeneralBoundconds(device->streams[stream], start, end,
-                                     device->vba.in[vtxbuf_handle], vtxbuf_handle, config, bindex);
+    fprintf(stderr,"NOT ANYMORE SUPPORTED\n");
+    exit(EXIT_FAILURE);
 #endif
 }
 

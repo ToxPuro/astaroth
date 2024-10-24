@@ -43,7 +43,7 @@ acKernelDummy(void)
 
 // Built-in kernels
 #include "boundconds.cuh"
-#include "boundconds_miikka_GBC.cuh"
+//#include "boundconds_miikka_GBC.cuh"
 #include "packing.cuh"
 #include "reductions.cuh"
 #include "volume_copy.cuh"

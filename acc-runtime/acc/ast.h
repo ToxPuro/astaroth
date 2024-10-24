@@ -45,6 +45,16 @@ static unsigned long
 
 #define BUFFER_SIZE (4096)
 #define FATAL_ERROR_MESSAGE "\nFATAL AC ERROR: "
+static const char*
+fatal(const char* format, ...)
+{
+	va_list args;
+	va_start(args,format);
+	fprintf(stderr,FATAL_ERROR_MESSAGE);
+	vfprintf(stderr,format,args);
+	va_end(args);
+	exit(EXIT_FAILURE);
+}
 
 typedef enum {
   NODE_UNKNOWN             = 0,
@@ -784,7 +794,11 @@ get_nodes_in_list(const ASTNode* head)
 static const ASTNode*
 get_node(const NodeType type, const ASTNode* node)
 {
-  assert(node);
+  if(!node) 
+  {
+  	  assert(node);
+	  fatal("WRONG; passed NULL to get_node\n");
+  }
 
   if (node->type & type)
     return node;
@@ -821,16 +835,6 @@ node_vec_contains(const node_vec vec, const char* str)
 	for(size_t i = 0; i < vec.size; ++i)
 		if(!strcmp(combine_all_new(vec.data[i]), str)) return true;
 	return false;
-}
-static const char*
-fatal(const char* format, ...)
-{
-	va_list args;
-	va_start(args,format);
-	fprintf(stderr,FATAL_ERROR_MESSAGE);
-	vfprintf(stderr,format,args);
-	va_end(args);
-	exit(EXIT_FAILURE);
 }
 static void
 append_to_file(const char* filename, const char* format, ...)

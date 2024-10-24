@@ -217,19 +217,8 @@ run_const bool  AC_lspherical_coords
 
 // Real params
 // Spacing
-real AC_dsmin
 // physical grid
-real AC_xlen
-real AC_ylen
-real AC_zlen
-real AC_xorig
-real AC_yorig
-real AC_zorig
 // Physical units
-real AC_unit_density
-real AC_unit_velocity
-real AC_unit_length
-real AC_unit_magnetic
 // properties of gravitating star
 real AC_star_pos_x
 real AC_star_pos_y

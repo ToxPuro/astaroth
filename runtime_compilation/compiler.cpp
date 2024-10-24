@@ -96,7 +96,7 @@ to_str(const V value, const char* name)
 {
 	std::string val_str = to_str(value);
 	std::string name_str = name;
-	return "const " + get_datatype<V>() + " " + name + " = " + val_str + ";\n";
+	return "override const " + get_datatype<V>() + " " + name + " = " + val_str + ";\n";
 }
 
 #include "to_str_funcs.h"
@@ -125,7 +125,7 @@ struct load_arrays
 			auto* loaded_val = info.config[array];
 			if(n_dims == 1)
 			{
-				fprintf(fp,"const %s %s = [",type.c_str(),name);
+				fprintf(fp,"override const %s %s = [",type.c_str(),name);
 				const AcArrayDims dims = get_array_dims(array);
 				for(int j = 0; j < dims.len[0]; ++j)
 				{
@@ -138,7 +138,7 @@ struct load_arrays
 			}
 			else if(n_dims == 2)
 			{
-				fprintf(fp,"const %s %s = [", type.c_str(), name);
+				fprintf(fp,"override const %s %s = [", type.c_str(), name);
 				const AcArrayDims dims = get_array_dims(array);
 				for(int y = 0; y < dims.len[1]; ++y)
 				{

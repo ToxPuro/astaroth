@@ -1475,7 +1475,7 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
     if(get_parent_node(NODE_ARRAY_ACCESS,node)) return;
     //TP: replace dead arr accesses with default initializer values
     //TP: Might not be needed after we have a conditional removal but for now need to care of dead reads to keep compiling the code
-    if(int_vec_contains(sym->tqualifiers,DEAD))
+    if(int_vec_contains(sym->tqualifiers,DEAD,RUN_CONST))
     {
 	    node = node->parent;
 	    node->lhs = NULL;
@@ -1531,7 +1531,7 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
     }
     else
     {
-	    fprintf(stderr,"Fatal error: no case for array read\n");
+	    fprintf(stderr,"Fatal error: no case for array read: %s\n",combine_all_new(node));
 	    exit(EXIT_FAILURE);
     }
     free_str_vec(&var_dims);
@@ -3306,7 +3306,7 @@ refresh_current_hashmap()
     hashmap_create(initial_size, &symbol_table_hashmap[current_nest]);
 }
 void
-add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, bool do_checks, const ASTNode* decl, const char* postfix)
+add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, bool do_checks, const ASTNode* decl, const char* postfix, const bool skip_global_dup_check)
 {
   if (node->buffer && node->token == IDENTIFIER && !(node->type & exclude)) {
     if (do_checks) check_for_shadowing(node);
@@ -3326,6 +3326,8 @@ add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, b
         if(do_checks && !tspec.id) check_for_undeclared(node);
       }
     }
+    else if(do_checks && !skip_global_dup_check && current_nest == 0 && !(node->type & NODE_FUNCTION_ID))
+	    fatal("Multiple declarations of %s\n",node->buffer);
   }
 }
 static bool
@@ -3369,7 +3371,7 @@ rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_
   //TP: skip also enums since they are anyways unique
   char* postfix = (is_left_child_of(func_body,node) || is_left_child(NODE_FUNCTION_CALL,node) || get_parent_node(NODE_ENUM_DEF,node)) ? NULL : itoa(nest_ids[current_nest]);
 
-  add_to_symbol_table(node,exclude,stream,do_checks,decl,postfix);
+  add_to_symbol_table(node,exclude,stream,do_checks,decl,postfix,true);
   free(postfix);
   if(node->buffer) 
   {
@@ -3389,7 +3391,7 @@ rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_
   }
 }
 void
-traverse_base(const ASTNode* node, const NodeType return_on, const NodeType exclude, FILE* stream, bool do_checks, const ASTNode* decl)
+traverse_base(const ASTNode* node, const NodeType return_on, const NodeType exclude, FILE* stream, bool do_checks, const ASTNode* decl, bool skip_global_dup_check)
 {
   if(node->type == NODE_ENUM_DEF)   return;
   if(node->type == NODE_STRUCT_DEF) return;
@@ -3418,9 +3420,9 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
 
   // Traverse LHS
   if (node->lhs)
-    traverse_base(node->lhs, return_on, exclude, stream, do_checks,decl);
+    traverse_base(node->lhs, return_on, exclude, stream, do_checks,decl,skip_global_dup_check);
 
-  add_to_symbol_table(node,exclude,stream,do_checks,decl,NULL);
+  add_to_symbol_table(node,exclude,stream,do_checks,decl,NULL,skip_global_dup_check);
 
   // Infix translation
   if (stream && node->infix) 
@@ -3429,7 +3431,11 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
 
   // Traverse RHS
   if (node->rhs)
-    traverse_base(node->rhs, return_on, exclude, stream,do_checks,decl);
+  {
+    skip_global_dup_check |= (node->type & NODE_ASSIGNMENT);
+    skip_global_dup_check |= (node->type & NODE_ARRAY_ACCESS);
+    traverse_base(node->rhs, return_on, exclude, stream,do_checks,decl,skip_global_dup_check);
+  }
 
   // Postfix logic
   if (node->type & NODE_BEGIN_SCOPE) {
@@ -3444,7 +3450,7 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
 static inline void
 traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 {
-	traverse_base(node,NODE_UNKNOWN,exclude,stream,false,NULL);
+	traverse_base(node,NODE_UNKNOWN,exclude,stream,false,NULL,false);
 }
 
 func_params_info
@@ -3790,7 +3796,7 @@ get_nodes(const ASTNode* node, node_vec* nodes, string_vec* names, const NodeTyp
 		get_nodes(node->rhs,nodes,names,type);
 	if(!(node->type & type)) return;
 	push_node(nodes,node);
-	push(names,get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+	push(names,get_node_by_token(IDENTIFIER,node)->buffer);
 }
 bool
 all_primary_expressions_and_func_calls_have_type(const ASTNode* node)
@@ -4164,14 +4170,25 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 			const ASTNode* second_array_initializer = get_node(NODE_ARRAY_INITIALIZER, array_initializer->lhs);
 			if(array_dim == 1)
 			{
-				fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
-				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+				if(is_builtin_constant(name))
+					fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+				else
+				{
+					fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+					fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+				}
 			}
 			else if(array_dim == 2)
 			{
 				const int num_of_elems_in_list = count_num_of_nodes_in_list(second_array_initializer->lhs);
-				fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
-				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
+				if(is_builtin_constant(name))
+					fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
+				else
+				{
+					fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
+					fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
+				}
+
 			}
 			else
 				fatal("todo add 3d const arrays\n");
@@ -4489,24 +4506,6 @@ gen_field_info(FILE* fp)
   }
   fclose(fp);
 }
-size_t
-count_symbols(const int type_token)
-{
-	size_t res = 0;
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    		if(symbol_table[i].tspecifier_token == type_token)
-      			++res;
-	return res;
-}
-size_t
-count_symbols_type(const NodeType type)
-{
-	size_t res = 0;
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    		if(symbol_table[i].type & type)
-      			++res;
-	return res;
-}
 void
 gen_enums(FILE* fp, const int token, const char* prefix, const char* num_name, const char* name)
 {
@@ -4537,6 +4536,39 @@ to_dsl_type(const char* type)
 	if(!strcmp(type,"AcBool3")) return "bool3";
 	return NULL;
 }
+
+static size_t
+count_symbols(const int type_token)
+{
+	size_t res = 0;
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    		if(symbol_table[i].tspecifier_token == type_token)
+      			++res;
+	return res;
+}
+static size_t
+count_symbols_type(const NodeType type)
+{
+	size_t res = 0;
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    		if(symbol_table[i].type & type)
+      			++res;
+	return res;
+}
+static size_t
+count_variables(const int qual)
+{
+	const bool log = true;
+	size_t res = 0;
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    		if(int_vec_contains(symbol_table[i].tqualifiers,qual) && (symbol_table[i].type & NODE_VARIABLE_ID))
+		{
+			if(log) printf("DCONST VARIABLE: %s\n",symbol_table[i].identifier);
+      			++res;
+		}
+	return res;
+}
+
 static void
 gen_user_defines(const ASTNode* root, const char* out)
 {
@@ -4670,6 +4702,9 @@ gen_user_defines(const ASTNode* root, const char* out)
 	  gen_array_declarations(datatype,root);
 	  gen_comp_declarations(datatype);
   }
+ 
+  const size_t num_dconsts = count_variables(DCONST_QL);
+  fprintf(fp,"\n#define NUM_DCONSTS (%zu)\n",num_dconsts);
 
   fprintf(fp,"\n#include \"array_info.h\"\n");
   fprintf(fp,"\n#include \"taskgraph_enums.h\"\n");
@@ -5527,6 +5562,7 @@ flow_type_info_in_func(ASTNode* node,string_vec* names, string_vec* types)
 	if(node->type & NODE_DECLARATION)
 	{
 
+
 		const char* var_name = get_node_by_token(IDENTIFIER,node)->buffer;
 		const int index = str_vec_get_index(*names,var_name);
 		//const char* func_name = get_node_by_token(IDENTIFIER,get_parent_node(NODE_FUNCTION,node))->buffer;
@@ -6176,42 +6212,6 @@ gen_global_strings()
 	BOUNDARY_YZ_STR  = intern("BOUNDARY_YZ");
 	BOUNDARY_XYZ_STR = intern("BOUNDARY_XYZ");
 }
-void
-gen_extra_funcs(const ASTNode* root_in, FILE* stream)
-{
-  	for(int i = 0; i < MAX_NESTS; ++i)
-  	{
-  		const unsigned initial_size = 2000;
-  		hashmap_create(initial_size, &symbol_table_hashmap[i]);
-  	}
-
-	gen_global_strings();
-
-
-	push(&tspecifier_mappings,INT_STR);
-	push(&tspecifier_mappings,REAL_STR);
-	push(&tspecifier_mappings,BOOL_STR);
-  	ASTNode* root = astnode_dup(root_in,NULL);
-  	s_info = read_user_structs(root);
-	e_info = read_user_enums(root);
-
-	symboltable_reset();
-	rename_scoped_variables(root,NULL,NULL);
-	symboltable_reset();
-
-  	traverse_base(root, 0, 0, NULL, true,NULL);
-        duplicate_dfuncs = get_duplicate_dfuncs(root);
-
-	mark_first_declarations(root);
-
-  	assert(root);
-	gen_type_info(root);
-	gen_extra_func_definitions_recursive(root,root,stream);
-	free_str_vec(&duplicate_dfuncs.names);
-	free_int_vec(&duplicate_dfuncs.counts);
-  free_structs_info(&s_info);
-
-}
 void gen_boundcond_kernels(const ASTNode* root_in, FILE* stream)
 {
     ASTNode* root = astnode_dup(root_in,NULL);
@@ -6492,14 +6492,42 @@ get_overrided_vars(ASTNode* node, string_vec* overrided_vars)
 
 }
 void
+check_for_writes_to_const_variables_in_func(const ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(check_for_writes_to_const_variables_in_func);
+	if(!(node->type & NODE_ASSIGNMENT)) return;
+	const ASTNode* id = get_node_by_token(IDENTIFIER,node);
+	if(!id) return;
+	if(check_symbol(NODE_ANY,id->buffer,0,DCONST_QL))
+		fatal("Write to dconst variable: %s\n",combine_all_new(node));
+	if(check_symbol(NODE_ANY,id->buffer,0,CONST_QL))
+		fatal("Write to const variable: %s\n",combine_all_new(node));
+	if(check_symbol(NODE_ANY,id->buffer,0,RUN_CONST))
+		fatal("Write to run_const variable: %s\n",combine_all_new(node));
+}
+void
+check_for_writes_to_const_variables(const ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(check_for_writes_to_const_variables);
+	if(!(node->type & NODE_FUNCTION)) return;
+	check_for_writes_to_const_variables_in_func(node);
+}
+void
 process_overrides_recursive(ASTNode* node, const string_vec overrided_vars)
 {
 	TRAVERSE_PREAMBLE_PARAMS(process_overrides_recursive,overrided_vars);
-	if(!(node->type & NODE_DECLARATION)) return;
+	if(!((node->type & NODE_DECLARATION))) return;
 	const ASTNode* id = get_node_by_token(IDENTIFIER,node);
 	if(!id) return;
 	if(str_vec_contains(overrided_vars,id->buffer) && !has_qualifier(node,"override"))
-		replace_node(node,astnode_create(NODE_UNKNOWN,NULL,NULL));
+	{
+		if(!(node->type & NODE_GLOBAL))
+				fatal("WRONG: %s\n",combine_all_new(node));
+		if(node->parent->lhs->id == node->id)
+			node->parent->lhs = NULL;
+		else
+			node->parent->rhs = NULL;
+	}
 }
 void
 process_overrides(ASTNode* root)
@@ -6526,6 +6554,7 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
 
 
   traverse(root, 0, NULL);
+  check_for_writes_to_const_variables(root);
   process_overrides(root);
   transform_field_intrinsic_func_calls_and_ops(root);
   //We use duplicate dfuncs from gen_boundcond_kernels
@@ -6537,24 +6566,53 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
   free_structs_info(&s_info);
   gen_calling_info(root);
-  traverse_base(root, 0, 0, NULL, true,NULL);
+  symboltable_reset();
+  traverse_base(root, 0, 0, NULL, true,NULL,false);
   gen_reduce_info(root);
 }
-
-static size_t
-count_stencils()
+void
+gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 {
-  size_t num_stencils = 0;
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if(symbol_table[i].tspecifier_token == STENCIL)
-      ++num_stencils;
-  return num_stencils;
+  	for(int i = 0; i < MAX_NESTS; ++i)
+  	{
+  		const unsigned initial_size = 2000;
+  		hashmap_create(initial_size, &symbol_table_hashmap[i]);
+  	}
+
+	gen_global_strings();
+
+
+	push(&tspecifier_mappings,INT_STR);
+	push(&tspecifier_mappings,REAL_STR);
+	push(&tspecifier_mappings,BOOL_STR);
+  	ASTNode* root = astnode_dup(root_in,NULL);
+  	s_info = read_user_structs(root);
+	e_info = read_user_enums(root);
+
+	symboltable_reset();
+	rename_scoped_variables(root,NULL,NULL);
+	symboltable_reset();
+
+  	process_overrides(root);
+  	traverse_base(root, 0, 0, NULL, true,NULL,false);
+        duplicate_dfuncs = get_duplicate_dfuncs(root);
+
+	mark_first_declarations(root);
+
+  	assert(root);
+	gen_type_info(root);
+	gen_extra_func_definitions_recursive(root,root,stream);
+	free_str_vec(&duplicate_dfuncs.names);
+	free_int_vec(&duplicate_dfuncs.counts);
+  free_structs_info(&s_info);
+
 }
+
 
 void
 stencilgen(ASTNode* root)
 {
-  const size_t num_stencils = count_stencils();
+  const size_t num_stencils = count_symbols(STENCIL);
 
   size_t num_profiles = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -6644,7 +6702,7 @@ gen_output_files(ASTNode* root)
 {
 
   //TP: Get number of run_const variable by skipping overrides
-  traverse_base(root, NODE_ASSIGN_LIST, NODE_ASSIGN_LIST, NULL, false, NULL);
+  traverse_base(root, NODE_ASSIGN_LIST, NODE_ASSIGN_LIST, NULL, false, NULL,false);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
   symboltable_reset();
@@ -6847,7 +6905,7 @@ debug_prints(const ASTNode* node)
 void
 gen_stencils(const bool gen_mem_accesses, FILE* stream)
 {
-  const size_t num_stencils = count_stencils();
+  const size_t num_stencils = count_symbols(STENCIL);
   if (gen_mem_accesses || !OPTIMIZE_MEM_ACCESSES) {
     FILE* tmp = fopen("stencil_accesses.h", "w+");
     assert(tmp);
@@ -7072,7 +7130,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 	//remove_dead_writes(root);
   }
 
-  traverse_base(root, 0, NODE_NO_OUT, NULL,true,NULL);
+  traverse_base(root, 0, NODE_NO_OUT, NULL,true,NULL,false);
   check_global_array_dimensions(root);
 
   gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses);
