@@ -14,7 +14,10 @@
 
 #include "print_debug.h"
 
+#include "buffer.h"
 #include "packet.h"
+
+#include "pack.h"
 
 int
 main()
@@ -51,10 +54,13 @@ main()
     // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
 
     // Create packets
-    std::vector<Packet<double>> local_packets;
-    std::vector<Packet<double>> remote_packets;
-    for (const auto& segment : segments) {
-    }
+    // std::vector<Packet<double>> local_packets;
+    // std::vector<Packet<double>> remote_packets;
+    // for (const auto& segment : segments) {
+    // }
+    Buffer<double> buf(prod(local_nn));
+    // pack(local_mm, local_nn, rr, StaticArray<double*, PACK_MAX_INPUTS>);
+    PackInputs<double*> test = {nullptr, nullptr};
 
     ERRCHK_MPI_API(MPI_Finalize());
     return EXIT_SUCCESS;
