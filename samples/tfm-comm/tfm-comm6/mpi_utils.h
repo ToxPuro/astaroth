@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "errchk_mpi.h"
+
 // void as_mpi_format(const size_t ndims, const uint64_t* dims, int* mpi_dims);
 
 // void as_astaroth_format(const size_t ndims, const int* mpi_dims, uint64_t* dims);
@@ -14,6 +16,23 @@
 // int get_tag(void);
 
 // void test_mpi_utils(void);
+
+static inline Shape
+decompose_mpi(const int nprocs, const size_t ndims)
+{
+    MPIShape mpi_decomp(ndims, 0);
+    ERRCHK_MPI_API(MPI_Dims_create(nprocs, as<int>(mpi_decomp.count), mpi_decomp.data));
+    return Shape(mpi_decomp).reversed();
+}
+
+static inline bool
+within_box(const Index& coords, const Shape& box_dims, const Index& box_offset)
+{
+    for (size_t i = 0; i < coords.count; ++i)
+        if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
+            return false;
+    return true;
+}
 
 /**
  * Helper macros for printing

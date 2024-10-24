@@ -1,4 +1,3 @@
-#include "comm.h"
 #include "decomp.h"
 #include "ndarray.h"
 #include "partition.h"
@@ -15,7 +14,6 @@ main(void)
     test_ndarray();
     test_partition();
     test_decomp();
-    acCommTest();
 
     return EXIT_SUCCESS;
 }

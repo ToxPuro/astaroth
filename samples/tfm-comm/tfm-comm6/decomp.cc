@@ -2,7 +2,6 @@
 
 #include "errchk.h"
 #include "print_debug.h"
-#include "shape.h"
 
 #include <algorithm>
 #include <vector>
@@ -56,7 +55,7 @@ decompose(const Shape& nn, uint64_t nprocs)
         double best_sa_to_vol = std::numeric_limits<double>::max();
 
         auto factors = factorize(nprocs);
-        for (auto factor : factors) {
+        for (const auto& factor : factors) {
             for (size_t axis = 0; axis < nn.count; ++axis) {
                 if ((local_nn[axis] % factor) == 0) {
                     auto test_nn(local_nn);

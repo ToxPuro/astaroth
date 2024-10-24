@@ -21,6 +21,17 @@ errchk_print_mpi_api_error(const int errorcode, const char* function, const char
             errchk_print_mpi_api_error(_tmp_mpi_api_errcode_, __func__, __FILE__, __LINE__,        \
                                        #errcode);                                                  \
             errchk_print_stacktrace();                                                             \
-            throw std::runtime_error("MPI API error");                                             \
+            MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
         }                                                                                          \
     } while (0)
+
+#define ERRCHK_MPI(expr)                                                                           \
+    do {                                                                                           \
+        if (!(expr)) {                                                                             \
+            errchk_print_error(__func__, __FILE__, __LINE__, #expr, "");                           \
+            errchk_print_stacktrace();                                                             \
+            MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
+        }                                                                                          \
+    } while (0)
+
+// throw std::runtime_error("MPI API error");
