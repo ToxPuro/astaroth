@@ -78,6 +78,18 @@ template <typename T> struct Buffer {
     //     other.count = 0;
     //     return *this;
     // }
+    void fill(const T& value)
+    {
+        for (size_t i = 0; i < count; ++i)
+            data[i] = value;
+    }
+    void fill_arange(const T& min, const T& max)
+    {
+        ERRCHK(min < max);
+        ERRCHK(max <= count);
+        for (size_t i = 0; i < max - min; ++i)
+            data[i] = min + i;
+    }
 };
 
 template <typename T>
