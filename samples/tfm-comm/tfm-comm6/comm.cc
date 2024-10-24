@@ -205,20 +205,24 @@ acCommTest(void)
 {
     test_packet();
 
-    Shape nn                         = {3, 3};
-    Shape rr                         = {2, 2};
-    Shape mm                         = as<uint64_t>(2) * rr + nn;
-    const size_t n_aggregate_buffers = 1;
+    // MPI_SYNCHRONOUS_BLOCK_START(Comm::comm);
 
-    NdArray<double> mesh(mm);
-    mesh.display();
+    // Shape nn                         = {3, 3};
+    // Shape rr                         = {2, 2};
+    // Shape mm                         = as<uint64_t>(2) * rr + nn;
+    // const size_t n_aggregate_buffers = 1;
 
-    auto segments = partition(mm, nn, rr);
-    PRINT_DEBUG(segments);
+    // NdArray<double> mesh(mm);
+    // mesh.display();
 
-    for (size_t i = 0; i < segments.size(); ++i)
-        mesh.fill(as<uint64_t>(i), segments[i].dims, segments[i].offset);
-    mesh.display();
+    // auto segments = partition(mm, nn, rr);
+    // PRINT_DEBUG(segments);
+
+    // for (size_t i = 0; i < segments.size(); ++i)
+    //     mesh.fill(as<uint64_t>(i), segments[i].dims, segments[i].offset);
+    // mesh.display();
+
+    // MPI_SYNCHRONOUS_BLOCK_END(Comm::comm);
 
     return ERRORCODE_NOT_IMPLEMENTED;
 }
