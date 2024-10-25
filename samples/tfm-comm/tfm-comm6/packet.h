@@ -19,7 +19,7 @@ template <typename T> struct Packet {
     {
     }
 
-    void wait()
+    void wait_request()
     {
         if (req != MPI_REQUEST_NULL) {
             // Note: MPI_Status needs to be initialized.

@@ -202,7 +202,7 @@ get_neighbor(const MPI_Comm cart_comm, const Direction dir)
 }
 
 static inline void
-wait(MPI_Request& req)
+wait_request(MPI_Request& req)
 {
     MPI_Status status = {.MPI_ERROR = MPI_SUCCESS};
     ERRCHK_MPI_API(MPI_Wait(&req, &status));

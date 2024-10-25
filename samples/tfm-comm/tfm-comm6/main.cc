@@ -33,7 +33,7 @@ main()
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
     try {
-        const Shape global_nn        = {8, 8};
+        const Shape global_nn        = {4, 4};
         MPI_Comm cart_comm           = create_cart_comm(MPI_COMM_WORLD, global_nn);
         const Shape decomp           = get_decomposition(cart_comm);
         const Shape local_nn         = global_nn / decomp;
@@ -49,7 +49,7 @@ main()
         // PRINT_DEBUG(global_nn_offset);
         // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        const Shape rr(global_nn.count, 1); // Symmetric halo
+        const Shape rr(global_nn.count, 2); // Symmetric halo
         const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
 
         NdArray<double> mesh(local_mm);
@@ -109,14 +109,74 @@ main()
         // }
         // ERRCHK_MPI_API(MPI_Waitall(reqs.size(), reqs.data(),
         //                            MPI_STATUSES_IGNORE)); // TODO proper error checking
+        // ERRCHK_MPI_API(MPI_Waitall(recv_reqs.size(), recv_reqs.data(), MPI_STATUSES_IGNORE));
 
+        // Basic MPI halo exchange task
         auto recv_reqs = create_halo_exchange_task(cart_comm, local_mm, local_nn, rr,
                                                    mesh.buffer.data, mesh.buffer.data);
         while (!recv_reqs.empty()) {
-            wait(recv_reqs.back());
+            wait_request(recv_reqs.back());
             recv_reqs.pop_back();
         }
-        // ERRCHK_MPI_API(MPI_Waitall(recv_reqs.size(), recv_reqs.data(), MPI_STATUSES_IGNORE));
+
+        // Packet MPI/CUDA halo exchange task
+        // PackInputs<double*> inputs = {mesh.buffer.data};
+
+        // // Prune the segment containing the computational domain
+        // auto segments = partition(local_mm, local_nn, rr);
+        // for (size_t i = 0; i < segments.size(); ++i) {
+        //     if (within_box(segments[i].offset, local_nn, rr)) {
+        //         segments.erase(segments.begin() + as<long>(i));
+        //         --i;
+        //     }
+        // }
+
+        // std::vector<MPI_Request> send_reqs(segments.size());
+        // std::vector<MPI_Request> recv_reqs(segments.size());
+        // std::vector<Buffer<double>> send_buffers(segments.size());
+        // std::vector<Buffer<double>> recv_buffers(segments.size());
+        // for (size_t i = 0; i < segments.size(); ++i) {
+
+        //     const size_t buflen = inputs.count * prod(segments[i].dims);
+        //     send_buffers[i]     = std::move(Buffer<double>(buflen));
+        // }
+        /*
+        std::vector<MPI_Request> send_reqs;
+        std::vector<MPI_Request> recv_reqs;
+        for (const auto& segment : segments) {
+            Buffer<double> send_buffer(inputs.count * prod(segment.dims));
+            Buffer<double> recv_buffer(inputs.count * prod(segment.dims));
+
+            Index recv_offset = segment.offset;
+            Index send_offset = ((local_nn + recv_offset - rr) % local_nn) + rr;
+
+            const Direction recv_direction = get_direction(segment.offset, local_nn, rr);
+            const int recv_neighbor        = get_neighbor(cart_comm, recv_direction);
+            const int send_neighbor        = get_neighbor(cart_comm, -recv_direction);
+
+            const int tag = get_tag();
+
+            // Post recv
+            MPI_Request recv_req;
+            ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data, as_int(recv_buffer.count), MPI_DOUBLE,
+                                     recv_neighbor, tag, cart_comm, &recv_req));
+            recv_reqs.push_back(recv_req);
+
+            // Pack and post send
+            pack(local_mm, segment.dims, send_offset, inputs, send_buffer.data);
+
+            MPI_Request send_req;
+            ERRCHK_MPI_API(MPI_Isend(send_buffer.data, as_int(send_buffer.count), MPI_DOUBLE,
+                                     send_neighbor, tag, cart_comm, &send_req));
+            send_reqs.push_back(send_req);
+        }
+        while (!recv_reqs.empty()) {
+            wait_request(recv_reqs.back());
+            recv_reqs.pop_back();
+
+            unpack(recv_buffer.data, local_mm, segment.dims, send_offset, inputs);
+        }
+        */
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)

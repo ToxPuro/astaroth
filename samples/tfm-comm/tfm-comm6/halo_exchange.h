@@ -34,8 +34,8 @@ create_halo_exchange_task(const MPI_Comm parent_comm, const Shape& local_mm, con
     std::vector<MPI_Request> send_reqs;
     std::vector<MPI_Request> recv_reqs;
     for (const Segment& segment : segments) {
-        const auto recv_offset     = segment.offset;
-        const auto send_offset     = ((local_nn + recv_offset - rr) % local_nn) + rr;
+        const Index recv_offset    = segment.offset;
+        const Index send_offset    = ((local_nn + recv_offset - rr) % local_nn) + rr;
         MPI_Datatype recv_subarray = create_subarray(local_mm, segment.dims, recv_offset,
                                                      MPI_DOUBLE);
         MPI_Datatype send_subarray = create_subarray(local_mm, segment.dims, send_offset,
@@ -61,7 +61,7 @@ create_halo_exchange_task(const MPI_Comm parent_comm, const Shape& local_mm, con
         ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
     }
     while (!send_reqs.empty()) {
-        wait(send_reqs.back());
+        wait_request(send_reqs.back());
         send_reqs.pop_back();
     }
 
