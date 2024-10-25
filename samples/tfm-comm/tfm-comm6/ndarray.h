@@ -36,7 +36,7 @@ ndarray_print_recursive(const size_t ndims, const uint64_t* dims, const T* array
 {
     if (ndims == 1) {
         for (size_t i = 0; i < dims[0]; ++i)
-            std::cout << std::setw(3) << array[i];
+            std::cout << std::setw(4) << array[i];
         std::cout << std::endl;
     }
     else {

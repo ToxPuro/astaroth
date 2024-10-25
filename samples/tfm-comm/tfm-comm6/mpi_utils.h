@@ -17,13 +17,13 @@
 
 // void test_mpi_utils(void);
 
-static inline Shape
-decompose_mpi(const int nprocs, const size_t ndims)
-{
-    MPIShape mpi_decomp(ndims, 0);
-    ERRCHK_MPI_API(MPI_Dims_create(nprocs, as<int>(mpi_decomp.count), mpi_decomp.data));
-    return Shape(mpi_decomp).reversed();
-}
+// static inline Shape
+// decompose_mpi(const int nprocs, const size_t ndims)
+// {
+//     MPIShape mpi_decomp(ndims, 0);
+//     ERRCHK_MPI_API(MPI_Dims_create(nprocs, as<int>(mpi_decomp.count), mpi_decomp.data));
+//     return Shape(mpi_decomp).reversed();
+// }
 
 static inline bool
 within_box(const Index& coords, const Shape& box_dims, const Index& box_offset)
