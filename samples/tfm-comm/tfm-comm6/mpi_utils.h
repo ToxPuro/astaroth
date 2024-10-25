@@ -69,7 +69,7 @@ get_direction(const Index& offset, const Shape& nn, const Index& rr)
 }
 
 static inline void
-mpi_comm_print_info(const MPI_Comm comm)
+mpi_comm_print_info(const MPI_Comm& comm)
 {
     int rank, nprocs, ndims;
     ERRCHK_MPI_API(MPI_Comm_rank(comm, &rank));
@@ -93,7 +93,7 @@ mpi_comm_print_info(const MPI_Comm comm)
  * ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
  */
 static inline MPI_Comm
-create_cart_comm(const MPI_Comm parent_comm, const Shape& global_nn)
+create_cart_comm(const MPI_Comm& parent_comm, const Shape& global_nn)
 {
     // Get the number of processes
     int mpi_nprocs = -1;
@@ -122,7 +122,7 @@ create_cart_comm(const MPI_Comm parent_comm, const Shape& global_nn)
  * */
 static inline MPI_Datatype
 create_subarray(const Shape& dims, const Shape& subdims, const Index& offset,
-                const MPI_Datatype dtype)
+                const MPI_Datatype& dtype)
 {
     MPIShape mpi_dims(dims.reversed());
     MPIShape mpi_subdims(subdims.reversed());
@@ -136,7 +136,7 @@ create_subarray(const Shape& dims, const Shape& subdims, const Index& offset,
 }
 
 static inline Shape
-get_decomposition(const MPI_Comm cart_comm)
+get_decomposition(const MPI_Comm& cart_comm)
 {
     int mpi_ndims = -1;
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
@@ -150,7 +150,7 @@ get_decomposition(const MPI_Comm cart_comm)
 }
 
 static inline Index
-get_coords(const MPI_Comm cart_comm)
+get_coords(const MPI_Comm& cart_comm)
 {
     // Get the rank of the current process
     int rank = MPI_PROC_NULL;
@@ -167,7 +167,7 @@ get_coords(const MPI_Comm cart_comm)
 }
 
 static inline int
-get_rank(const MPI_Comm cart_comm)
+get_rank(const MPI_Comm& cart_comm)
 {
     int rank = MPI_PROC_NULL;
     ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
@@ -175,7 +175,7 @@ get_rank(const MPI_Comm cart_comm)
 }
 
 static inline int
-get_neighbor(const MPI_Comm cart_comm, const Direction dir)
+get_neighbor(const MPI_Comm& cart_comm, const Direction& dir)
 {
     // Get the rank of the current process
     int rank = MPI_PROC_NULL;
