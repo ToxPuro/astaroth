@@ -92,7 +92,7 @@ template <typename T> struct NdArray {
                         buffer.data);
     }
 
-    void fill_arange() { buffer.fill_arange(0, buffer.count); }
+    void fill_arange(const T& start = 0) { buffer.fill_arange(start, start + buffer.count); }
 
     void display() { ndarray_print_recursive(shape.count, shape.data, buffer.data); }
 };

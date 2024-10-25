@@ -86,7 +86,7 @@ template <typename T> struct Buffer {
     void fill_arange(const T& min, const T& max)
     {
         ERRCHK(min < max);
-        ERRCHK(max <= count);
+        ERRCHK(max - min <= count);
         for (size_t i = 0; i < max - min; ++i)
             data[i] = min + i;
     }
