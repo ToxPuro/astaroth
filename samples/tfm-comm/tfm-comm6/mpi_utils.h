@@ -40,12 +40,14 @@ within_box(const Index& coords, const Shape& box_dims, const Index& box_offset)
 
 #define MPI_SYNCHRONOUS_BLOCK_START(communicator)                                                  \
     {                                                                                              \
+        MPI_Barrier(communicator);                                                                 \
         fflush(stdout);                                                                            \
         MPI_Barrier(communicator);                                                                 \
         int rank__, nprocs_;                                                                       \
         ERRCHK_MPI_API(MPI_Comm_rank(communicator, &rank__));                                      \
         ERRCHK_MPI_API(MPI_Comm_size(communicator, &nprocs_));                                     \
         for (int i__ = 0; i__ < nprocs_; ++i__) {                                                  \
+            MPI_Barrier(communicator);                                                             \
             if (i__ == rank__) {                                                                   \
                 printf("---Rank %d---\n", rank__);
 
@@ -56,3 +58,10 @@ within_box(const Index& coords, const Shape& box_dims, const Index& box_offset)
     }                                                                                              \
     MPI_Barrier(communicator);                                                                     \
     }
+
+#define PRINT_DEBUG_MPI(expr, communicator)                                                        \
+    do {                                                                                           \
+        MPI_SYNCHRONOUS_BLOCK_START((communicator))                                                \
+        PRINT_DEBUG((expr));                                                                       \
+        MPI_SYNCHRONOUS_BLOCK_END((communicator))                                                  \
+    } while (0)
