@@ -77,7 +77,7 @@ template <typename T, size_t N> struct StaticArray {
     }
 
     // Common operations
-    template <typename U> T __host__ __device__ dot(const StaticArray<U, N> other)
+    template <typename U> T __host__ __device__ dot(const StaticArray<U, N> other) const
     {
         static_assert(std::is_integral<T>::value, "Operator enabled only for integral types");
         static_assert(std::is_same<T, U>::value,
@@ -89,7 +89,7 @@ template <typename T, size_t N> struct StaticArray {
         return res;
     }
 
-    __host__ StaticArray<T, N> reversed()
+    __host__ StaticArray<T, N> reversed() const
     {
         StaticArray<T, N> out(count);
         for (size_t i = 0; i < count; ++i)
