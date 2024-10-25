@@ -42,17 +42,8 @@ create_halo_exchange_task(const MPI_Comm parent_comm, const Shape& local_mm, con
                                                      MPI_DOUBLE);
 
         const Direction recv_direction = get_direction(segment.offset, local_nn, rr);
-        const int send_neighbor        = get_neighbor(cart_comm, -recv_direction);
         const int recv_neighbor        = get_neighbor(cart_comm, recv_direction);
-
-        // MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        // PRINT_DEBUG(recv_offset);
-        // PRINT_DEBUG(send_offset);
-        // PRINT_DEBUG(recv_direction);
-        // PRINT_DEBUG(-recv_direction);
-        // PRINT_DEBUG(send_neighbor);
-        // PRINT_DEBUG(recv_neighbor);
-        // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+        const int send_neighbor        = get_neighbor(cart_comm, -recv_direction);
 
         const int tag = get_tag();
 
@@ -66,11 +57,6 @@ create_halo_exchange_task(const MPI_Comm parent_comm, const Shape& local_mm, con
             MPI_Isend(send_data, 1, send_subarray, send_neighbor, tag, cart_comm, &send_req));
         send_reqs.push_back(send_req);
 
-        // ERRCHK_MPI_API(MPI_Isendrecv(send_data, 1, send_subarray, send_neighbor, tag, //
-        //                              recv_data, 1, recv_subarray, recv_neighbor, tag, cart_comm,
-        //                              &req));
-        // reqs.push_back(req);
-
         ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
         ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
     }
@@ -78,7 +64,6 @@ create_halo_exchange_task(const MPI_Comm parent_comm, const Shape& local_mm, con
         wait(send_reqs.back());
         send_reqs.pop_back();
     }
-    // ERRCHK_MPI_API(MPI_Waitall(send_reqs.size(), send_reqs.data()));
 
     ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     return recv_reqs;
