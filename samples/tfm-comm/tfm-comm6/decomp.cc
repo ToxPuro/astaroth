@@ -47,8 +47,8 @@ decompose(const Shape& nn, uint64_t nprocs)
     // More flexible dims (inspired by W.D. Gropp https://doi.org/10.1145/3236367.3236377)
     // Adapted to try out all factors to work with a wider range of dims
     // Or maybe this is what they meant all along, but the description was just unclear
-    // Actually this is now whole different concept: now searched for decomp that maximizes
-    // surf area to volume ratio at each slice.
+    // UPDATE: Actually this is now whole different concept: now searched for decomp that maximizes
+    // surface area to volume ratio at each slice.
     while (prod(nn) != prod(nprocs * local_nn * decomp)) {
         size_t best_axis      = SIZE_MAX;
         uint64_t best_factor  = 0;

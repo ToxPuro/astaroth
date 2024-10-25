@@ -19,164 +19,14 @@
 
 #include "pack.h"
 
-static Direction
-get_direction(const Index& offset, const Shape& nn, const Index& rr)
-{
-    Direction dir(offset.count);
-    for (size_t i = 0; i < offset.count; ++i)
-        dir[i] = offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
-    return dir;
-}
+#include "halo_exchange.h"
 
-static uint64_t
-mod(const int64_t a, const int64_t b)
-{
-    const int64_t c = a % b;
-    return c < 0 ? as<uint64_t>(c + b) : as<uint64_t>(c);
-}
-
-static void
-mpi_comm_print_info(const MPI_Comm comm)
-{
-    int rank, nprocs, ndims;
-    ERRCHK_MPI_API(MPI_Comm_rank(comm, &rank));
-    ERRCHK_MPI_API(MPI_Comm_size(comm, &nprocs));
-    ERRCHK_MPI_API(MPI_Cartdim_get(comm, &ndims));
-
-    MPIShape mpi_decomp(as<size_t>(ndims));
-    MPIShape mpi_periods(as<size_t>(ndims));
-    MPIIndex mpi_coords(as<size_t>(ndims));
-    ERRCHK_MPI_API(MPI_Cart_get(comm, ndims, mpi_decomp.data, mpi_periods.data, mpi_coords.data));
-
-    MPI_SYNCHRONOUS_BLOCK_START(comm);
-    PRINT_DEBUG(mpi_decomp);
-    PRINT_DEBUG(mpi_periods);
-    PRINT_DEBUG(mpi_coords);
-    MPI_SYNCHRONOUS_BLOCK_END(comm);
-}
-
-/** Creates a cartesian communicator with topology information attached
- * The resource must be freed after use
- * ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
- */
-static MPI_Comm
-create_cart_comm(const MPI_Comm parent_comm, const Shape& global_nn)
-{
-    // Get the number of processes
-    int mpi_nprocs = -1;
-    ERRCHK_MPI_API(MPI_Comm_size(parent_comm, &mpi_nprocs));
-
-    // Use MPI for finding the decomposition
-    MPIShape mpi_decomp(global_nn.count, 0); // Decompose all dimensions
-    ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(mpi_decomp.count), mpi_decomp.data));
-
-    // Create the Cartesian communicator
-    MPI_Comm cart_comm = MPI_COMM_NULL;
-    MPIShape mpi_periods(global_nn.count, 1); // Periodic in all dimensions
-    int reorder = 1; // Enable reordering (but likely inop with most MPI implementations)
-    ERRCHK_MPI_API(MPI_Cart_create(parent_comm, as<int>(mpi_decomp.count), mpi_decomp.data,
-                                   mpi_periods.data, reorder, &cart_comm));
-
-    // Can also add custom decomposition and rank reordering here instead:
-    // int reorder = 0;
-    // ...
-    return cart_comm;
-}
-
-/** Create a subarra
- * The resource must be freed after use
- * ERRCHK_MPI_API(MPI_Type_free(&subarray))
- * */
-static MPI_Datatype
-create_subarray(const Shape& dims, const Shape& subdims, const Index& offset,
-                const MPI_Datatype dtype)
-{
-    MPIShape mpi_dims(dims.reversed());
-    MPIShape mpi_subdims(subdims.reversed());
-    MPIIndex mpi_offset(offset.reversed());
-
-    MPI_Datatype subarray = MPI_DATATYPE_NULL;
-    ERRCHK_MPI_API(MPI_Type_create_subarray(as<int>(dims.count), mpi_dims.data, mpi_subdims.data,
-                                            mpi_offset.data, MPI_ORDER_C, dtype, &subarray));
-    ERRCHK_MPI_API(MPI_Type_commit(&subarray));
-    return subarray;
-}
-
-static Shape
-get_decomposition(const MPI_Comm cart_comm)
-{
-    int mpi_ndims = -1;
-    ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
-
-    MPIShape mpi_decomp(as<size_t>(mpi_ndims));
-    MPIShape mpi_periods(as<size_t>(mpi_ndims));
-    MPIIndex mpi_coords(as<size_t>(mpi_ndims));
-    ERRCHK_MPI_API(
-        MPI_Cart_get(cart_comm, mpi_ndims, mpi_decomp.data, mpi_periods.data, mpi_coords.data));
-    return Shape(mpi_decomp.reversed());
-}
-
-static Index
-get_coords(const MPI_Comm cart_comm)
-{
-    // Get the rank of the current process
-    int rank = MPI_PROC_NULL;
-    ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
-
-    // Get dimensions of the communicator
-    int mpi_ndims = -1;
-    ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
-
-    // Get the coordinates of the current process
-    MPIIndex mpi_coords(as<size_t>(mpi_ndims), -1);
-    ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data));
-    return Index(mpi_coords.reversed());
-}
-
-static int
-get_rank(const MPI_Comm cart_comm)
-{
-    int rank = MPI_PROC_NULL;
-    ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
-    return rank;
-}
-
-static int
-get_neighbor(const MPI_Comm cart_comm, const Direction dir)
-{
-    // Get the rank of the current process
-    int rank = MPI_PROC_NULL;
-    ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
-
-    // Get dimensions of the communicator
-    int mpi_ndims = -1;
-    ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
-
-    // Get the coordinates of the current process
-    MPIIndex mpi_coords(as<size_t>(mpi_ndims), -1);
-    ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data));
-
-    // Get the direction of the neighboring process
-    MPIIndex mpi_dir(dir.reversed());
-
-    // Get the coordinates of the neighbor
-    MPIIndex mpi_neighbor = mpi_coords + mpi_dir;
-
-    // Get the rank of the neighboring process
-    int neighbor_rank = MPI_PROC_NULL;
-    ERRCHK_MPI_API(MPI_Cart_rank(cart_comm, mpi_neighbor.data, &neighbor_rank));
-    return neighbor_rank;
-}
-
-static int
-get_tag(void)
-{
-    static int tag = -1;
-    ++tag;
-    if (tag < 0)
-        tag = 0;
-    return tag;
-}
+// static uint64_t
+// mod(const int64_t a, const int64_t b)
+// {
+//     const int64_t c = a % b;
+//     return c < 0 ? as<uint64_t>(c + b) : as<uint64_t>(c);
+// }
 
 int
 main()
@@ -199,7 +49,7 @@ main()
         // PRINT_DEBUG(global_nn_offset);
         // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        const Shape rr(global_nn.count, 2); // Symmetric halo
+        const Shape rr(global_nn.count, 1); // Symmetric halo
         const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
 
         NdArray<double> mesh(local_mm);
@@ -212,7 +62,7 @@ main()
         // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         // Halo communication using MPI_Datatypes
-        auto segments = partition(local_mm, local_nn, rr);
+        // auto segments = partition(local_mm, local_nn, rr);
 
         /// DEBUG
         // for (size_t i = 0; i < segments.size(); ++i)
@@ -225,39 +75,48 @@ main()
         /// DEBUG
 
         // Prune the segment containing the computational domain
-        for (size_t i = 0; i < segments.size(); ++i) {
-            if (within_box(segments[i].offset, local_nn, rr)) {
-                segments.erase(segments.begin() + as<long>(i));
-                --i;
-            }
+        // for (size_t i = 0; i < segments.size(); ++i) {
+        //     if (within_box(segments[i].offset, local_nn, rr)) {
+        //         segments.erase(segments.begin() + as<long>(i));
+        //         --i;
+        //     }
+        // }
+
+        // std::vector<MPI_Request> reqs;
+        // for (const Segment& segment : segments) {
+        //     const auto recv_offset     = segment.offset;
+        //     const auto send_offset     = ((local_nn + recv_offset - rr) % local_nn) + rr;
+        //     MPI_Datatype recv_subarray = create_subarray(local_mm, segment.dims, recv_offset,
+        //                                                  MPI_DOUBLE);
+        //     MPI_Datatype send_subarray = create_subarray(local_mm, segment.dims, send_offset,
+        //                                                  MPI_DOUBLE);
+
+        //     const Direction send_direction = get_direction(segment.offset, local_nn, rr);
+        //     const int send_neighbor        = get_neighbor(cart_comm, send_direction);
+        //     const int recv_neighbor        = get_neighbor(cart_comm, -send_direction);
+
+        //     const int tag = get_tag();
+
+        //     MPI_Request req;
+        //     ERRCHK_MPI_API(MPI_Isendrecv(mesh.buffer.data, 1, send_subarray, send_neighbor, tag,
+        //     //
+        //                                  mesh.buffer.data, 1, recv_subarray, recv_neighbor, tag,
+        //                                  cart_comm, &req));
+        //     reqs.push_back(req);
+
+        //     ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
+        //     ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
+        // }
+        // ERRCHK_MPI_API(MPI_Waitall(reqs.size(), reqs.data(),
+        //                            MPI_STATUSES_IGNORE)); // TODO proper error checking
+
+        auto recv_reqs = create_halo_exchange_task(cart_comm, local_mm, local_nn, rr,
+                                                   mesh.buffer.data, mesh.buffer.data);
+        while (!recv_reqs.empty()) {
+            wait(recv_reqs.back());
+            recv_reqs.pop_back();
         }
-
-        std::vector<MPI_Request> reqs;
-        for (const Segment& segment : segments) {
-            const auto recv_offset     = segment.offset;
-            const auto send_offset     = ((local_nn + recv_offset - rr) % local_nn) + rr;
-            MPI_Datatype recv_subarray = create_subarray(local_mm, segment.dims, recv_offset,
-                                                         MPI_DOUBLE);
-            MPI_Datatype send_subarray = create_subarray(local_mm, segment.dims, send_offset,
-                                                         MPI_DOUBLE);
-
-            const Direction send_direction = get_direction(segment.offset, local_nn, rr);
-            const int send_neighbor        = get_neighbor(cart_comm, send_direction);
-            const int recv_neighbor        = get_neighbor(cart_comm, -send_direction);
-
-            const int tag = get_tag();
-
-            MPI_Request req;
-            ERRCHK_MPI_API(MPI_Isendrecv(mesh.buffer.data, 1, send_subarray, send_neighbor, tag, //
-                                         mesh.buffer.data, 1, recv_subarray, recv_neighbor, tag,
-                                         cart_comm, &req));
-            reqs.push_back(req);
-
-            ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
-            ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
-        }
-        ERRCHK_MPI_API(MPI_Waitall(reqs.size(), reqs.data(),
-                                   MPI_STATUSES_IGNORE)); // TODO proper error checking
+        // ERRCHK_MPI_API(MPI_Waitall(recv_reqs.size(), recv_reqs.data(), MPI_STATUSES_IGNORE));
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
