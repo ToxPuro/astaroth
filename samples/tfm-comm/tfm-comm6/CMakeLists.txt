@@ -54,5 +54,9 @@ find_package(MPI REQUIRED COMPONENTS C)
 add_executable(run main.cc packet.cc)
 target_link_libraries(run PRIVATE MPI::MPI_C tfm-utils)
 
-add_executable(test test.cc)
-target_link_libraries(test PRIVATE tfm-utils)
+## Automated tests
+include(CTest)
+add_executable(unit_test unit_test.cc)
+target_link_libraries(unit_test PRIVATE tfm-utils)
+
+add_test(NAME UnitTest COMMAND unit_test)
