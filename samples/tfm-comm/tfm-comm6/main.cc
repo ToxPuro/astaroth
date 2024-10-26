@@ -15,11 +15,12 @@
 #include "print_debug.h"
 
 #include "buffer.h"
-#include "packet.h"
+// #include "packet.h"
 
 #include "pack.h"
 
 #include "halo_exchange.h"
+#include "halo_exchange_packed.h"
 
 // static uint64_t
 // mod(const int64_t a, const int64_t b)
@@ -120,7 +121,8 @@ main()
         }
 
         // Packet MPI/CUDA halo exchange task
-        // PackInputs<double*> inputs = {mesh.buffer.data};
+        PackInputs<double*> inputs = {mesh.buffer.data};
+        HaloExchangeTask<double> task(local_mm, local_nn, rr, inputs.count);
 
         // // Prune the segment containing the computational domain
         // auto segments = partition(local_mm, local_nn, rr);
