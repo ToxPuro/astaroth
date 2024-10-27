@@ -113,16 +113,18 @@ main()
         // ERRCHK_MPI_API(MPI_Waitall(recv_reqs.size(), recv_reqs.data(), MPI_STATUSES_IGNORE));
 
         // Basic MPI halo exchange task
-        auto recv_reqs = create_halo_exchange_task(cart_comm, local_mm, local_nn, rr,
-                                                   mesh.buffer.data, mesh.buffer.data);
-        while (!recv_reqs.empty()) {
-            wait_request(recv_reqs.back());
-            recv_reqs.pop_back();
-        }
+        // auto recv_reqs = create_halo_exchange_task(cart_comm, local_mm, local_nn, rr,
+        //                                            mesh.buffer.data, mesh.buffer.data);
+        // while (!recv_reqs.empty()) {
+        //     wait_request(recv_reqs.back());
+        //     recv_reqs.pop_back();
+        // }
 
         // Packet MPI/CUDA halo exchange task
         PackInputs<double*> inputs = {mesh.buffer.data};
         HaloExchangeTask<double> task(local_mm, local_nn, rr, inputs.count);
+        task.launch(cart_comm, local_nn, rr, inputs);
+        task.wait(cart_comm, local_nn, rr, inputs);
 
         // // Prune the segment containing the computational domain
         // auto segments = partition(local_mm, local_nn, rr);
