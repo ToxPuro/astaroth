@@ -174,7 +174,6 @@ typedef struct {
   size_t count;
 } ProfileBufferArray;
 
-#define NUM_REAL_SCRATCHPADS (NUM_REAL_OUTPUTS+NUM_PROFILES+1)
 
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];

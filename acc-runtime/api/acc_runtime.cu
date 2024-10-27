@@ -398,6 +398,7 @@ AcResult
 acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
               const AcReal value)
 {
+  ERRCHK_ALWAYS(arr);
   const size_t tpb = 256;
   const size_t bpg = (size_t)(ceil((double)n / tpb));
   flush_kernel<<<bpg, tpb, 0, stream>>>(arr, n, value);
@@ -567,6 +568,8 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
   const size_t count = vba->bytes / sizeof(vba->in[0][0]);
 
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    ERRCHK_ALWAYS(vba->in[i]);
+    ERRCHK_ALWAYS(vba->out[i]);
     acKernelFlush(stream, vba->in[i], count, (AcReal)0);
     acKernelFlush(stream, vba->out[i], count, (AcReal)0);
   }

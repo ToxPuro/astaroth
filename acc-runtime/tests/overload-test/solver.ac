@@ -1,15 +1,27 @@
+#include "../../stdlib/math"
+#include "../../stdlib/derivs.h"
+#include "../../stdlib/operators.h"
 Field FIELD
-get_val()
+inline get_val()
 {
 	return 0.0
 }
-get_val(x)
+inline get_val(x)
 {
 	return  0.0
 }
-get_val(x,y)
+func(x)
 {
-	return  0.0
+	return 2.0
+}
+inline get_val(x,y)
+{
+	return 0.0
+}
+inline func_2()
+{
+	res_var  = get_val(0,0)
+	return res_var;
 }
 
 Kernel main_kernel()
@@ -17,5 +29,5 @@ Kernel main_kernel()
 	//TP: test that number of parameters is sufficient to unique resolve call
 	x = get_val()
 	y = get_val(0)
-	z = get_val(0,0)
+	z = func_2()
 }

@@ -441,6 +441,16 @@ get_parent_node(const NodeType type, const ASTNode* node)
     return node->parent;
   return get_parent_node(type, node->parent);
 }
+static inline const ASTNode*
+get_parent_node_inclusive(const NodeType type, const ASTNode* node)
+{
+  if(node->type & type) return node;
+  if(!node->parent)
+    return NULL;
+  if (node->parent->type & type)
+    return node->parent;
+  return get_parent_node(type, node->parent);
+}
 
 static inline const ASTNode*
 get_parent_node_by_token(const int token, const ASTNode* node)

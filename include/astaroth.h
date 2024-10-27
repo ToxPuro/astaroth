@@ -1597,6 +1597,8 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	LOAD_DSYM(acGetMaxNN)
 	LOAD_DSYM(acGetGridMaxNN)
 	LOAD_DSYM(acGetLengths)
+	LOAD_DSYM(acHostMeshCopyVertexBuffers)
+	LOAD_DSYM(acHostMeshCopy)
 	*(void**)(&acGetKernelId) = dlsym(handle,"acGetKernelId");
 	if(!acGetKernelId) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelId");
 	*(void**)(&acGetKernelIdByName) = dlsym(handle,"acGetKernelIdByName");

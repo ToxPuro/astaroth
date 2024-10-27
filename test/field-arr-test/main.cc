@@ -63,8 +63,7 @@ main(void)
 
     // CPU alloc
     AcMeshInfo info;
-    AcCompInfo comp_info = acInitCompInfo();
-    acLoadConfig(AC_DEFAULT_CONFIG, &info, &comp_info);
+    acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
     const int max_devices = 1;
     if (nprocs > max_devices) {
@@ -75,14 +74,6 @@ main(void)
         return EXIT_FAILURE;
     }
     acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
-    constexpr int nx = 2*9;
-    constexpr int ny = 2*11;
-    constexpr int nz = 4*7;
-
-    constexpr int mx = 2*9  + 2*NGHOST;
-    constexpr int my = 2*11 + 2*NGHOST;
-    constexpr int mz = 4*7  + 2*NGHOST;
-    //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {

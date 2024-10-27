@@ -11,6 +11,7 @@ option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the ba
 option(OPTIMIZE_CONDITIONALS "Optimizes conditionals based on kernel input parameters by making copies of kernels for each combination of input params, works well with OPTIMIZE_MEM_ACCESSES since reduces the number of conditional accesses to kernels" OFF)
 option(OPTIMIZE_FIELDS       "Optimizes fields to be auxiliary,(non-)communicated and dead based on writes, reads and stencil accesses in kernels. Pitfalls are conditional accesses and writes, which runtime compilation can lessen" OFF)
 option(OPTIMIZE_ARRAYS       "Does not allocate arrays that are not used based on DSL. Runtime compilation and optimize conditionals help to prevent unnoticed accesses in conditionals" OFF)
+option(INLINING "Whether to inline all functions or not" OFF)
 
 set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
 #TP: if defined the user already has the executable and has exported a path to it
@@ -57,6 +58,11 @@ else()
 	else()
 		set(OPTIMIZE_MEM_ACCESSES_VAL 0)
 	endif()
+	if(INLINING)
+		set(INLINING_VAL 1)
+	else()
+		set(INLINING_VAL 0)
+	endif()
 	
 	if (OPTIMIZE_CONDITIONALS)
 		set(OPTIMIZE_CONDITIONALS_VAL 1)
@@ -77,5 +83,5 @@ else()
 	endif()
 	
 	
-	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_CONDITIONALS=${OPTIMIZE_CONDITIONALS_VAL} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL} -DOPTIMIZE_ARRAYS=${OPTIMIZE_ARRAYS_VAL})
+	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_CONDITIONALS=${OPTIMIZE_CONDITIONALS_VAL} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL} -DOPTIMIZE_ARRAYS=${OPTIMIZE_ARRAYS_VAL} -DINLINING=${INLINING_VAL})
 endif()

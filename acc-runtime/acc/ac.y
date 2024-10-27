@@ -484,7 +484,7 @@ main(int argc, char** argv)
 }
 %}
 
-%token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
+%token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER NON_RETURNING_FUNC_CALL
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
 %token INT UINT REAL MATRIX TENSOR FIELD FIELD3 STENCIL WORK_BUFFER PROFILE
@@ -498,7 +498,7 @@ main(int argc, char** argv)
 %token RANGE IN_RANGE
 %token CONST_DIMS
 %token CAST BASIC_STATEMENT
-%token TEMPLATE
+%token TEMPLATE BINARY UNARY
 
 %nonassoc QUESTION
 %nonassoc '<'
@@ -898,8 +898,8 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
                   | '(' expression ')' { $$ = astnode_create(NODE_UNKNOWN, $2, NULL); astnode_set_prefix("(", $$); astnode_set_postfix(")", $$); }
 
 
-unary_expression: postfix_expression          { $$ = astnode_create(NODE_EXPRESSION, $1, NULL); }
-                | unary_op postfix_expression { $$ = astnode_create(NODE_EXPRESSION, $1, $2);}
+unary_expression: postfix_expression          { $$ = astnode_create(NODE_EXPRESSION, $1, NULL); $$->token = UNARY;}
+                | unary_op postfix_expression { $$ = astnode_create(NODE_EXPRESSION, $1, $2);   $$->token = UNARY;}
                 ;
 
 binary_expression: binary_op unary_expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
@@ -910,7 +910,7 @@ choose: QUESTION expression ':' expression {$$ = astnode_create(NODE_UNKNOWN,$2,
       ;
 expression: unary_expression             { $$ = astnode_create(NODE_EXPRESSION, $1, NULL); }
 	  | expression choose            { $$ = astnode_create(NODE_TERNARY_EXPRESSION,$1,$2); } 
-          | expression binary_expression { $$ = astnode_create(NODE_BINARY_EXPRESSION, $1, $2); }
+          | expression binary_expression { $$ = astnode_create(NODE_BINARY_EXPRESSION, $1, $2); $$->token = BINARY;}
 
 
 expression_list: expression                     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
@@ -1099,7 +1099,7 @@ assignment_body: assignment_op expression_list
 basic_statement: 
 	   variable_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
          | return expression    { $$ = astnode_create(NODE_UNKNOWN, $1, $2); astnode_set_postfix(";", $$); }
-         | function_call        { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$);}
+         | function_call        { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); $$->token = NON_RETURNING_FUNC_CALL;}
          ;
 
 non_selection_statement: 
@@ -1112,13 +1112,15 @@ statement: selection_statement     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL)
          ;
 
 
-statement_list: statement                { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+statement_list: statement                { $$ = astnode_create(NODE_STATEMENT_LIST_HEAD, $1, NULL); }
               | statement_list statement { $$ = astnode_create(NODE_STATEMENT_LIST_HEAD, $1, $2);}
               ;
 
 
 compound_statement: '{' '}'                { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
-                  | '{' statement_list '}' { $$ = astnode_create(NODE_BEGIN_SCOPE, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
+                  | '{' statement_list '}' { 
+						$$ = astnode_create(NODE_BEGIN_SCOPE, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); 
+					   }
                   ;
 
 selection_statement: if if_statement        { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
@@ -1163,7 +1165,7 @@ for_statement: for for_expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); a
              ;
 
 for_expression: identifier in expression {
-			ASTNode* lhs = create_declaration($1->buffer);
+			ASTNode* lhs = create_declaration($1->buffer,NULL,NULL);
     			$$ = astnode_create(NODE_UNKNOWN, lhs, $3);
 			astnode_set_buffer(":",$$);
 			$$->token = IN_RANGE;
@@ -1200,7 +1202,7 @@ function_definition: declaration function_body {
                         $$ = astnode_create(NODE_UNKNOWN, $1, $2);
 			if(get_node(NODE_TSPEC,$$->lhs) && strcmp(get_node(NODE_TSPEC,$$->lhs)->lhs->buffer,"Kernel"))
 			{
-				fprintf(stderr,"%s","Fatal error: can't specify the type of functions, since they will be deduced\n");
+				fprintf(stderr,"%s","Fatal error: can't specify the type of functions, since they will be inferred\n");
 				fprintf(stderr,"%s","Consider instead leaving a code comment telling the return type\n");
 				fprintf(stderr,"Offending function: %s\n",get_node_by_token(IDENTIFIER,$$->lhs)->buffer);
 				assert(false);
@@ -1216,11 +1218,9 @@ function_definition: declaration function_body {
                         assert(fn_identifier);
                         set_identifier_type(NODE_FUNCTION_ID, fn_identifier);
 
-                        const ASTNode* is_kernel = get_node_by_token(KERNEL, $$);
-			if(is_kernel)
-				astnode_set_prefix("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n",$$);
                         ASTNode* compound_statement = $$->rhs->rhs;
-                        if (is_kernel) {
+                        if (get_node_by_token(KERNEL, $$)) {
+			    astnode_set_prefix("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n",$$);
                             $$->type |= NODE_KFUNCTION;
                             // Set kernel built-in variables
                             const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
@@ -1245,7 +1245,13 @@ function_definition: declaration function_body {
                                 set_identifier_prefix("const ", $$->rhs->lhs);
                                 set_identifier_infix("&", $$->rhs->lhs);
                             }
-
+			    ASTNode* tdecl = $$->lhs->lhs;
+			    if(!tdecl->lhs && INLINING)
+			    {
+				    ASTNode* tqualifiers = create_type_qualifiers("inline",INLINE);
+				    tqualifiers -> parent = tdecl;
+				    tdecl->lhs = tqualifiers;
+			    }
                         }
                     }
                    ;
@@ -1448,38 +1454,6 @@ static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_c
         int res = (int) round(te_eval(expr));
         te_free(expr);
         return res;
-}
-static ASTNode*
-create_type_qualifier(const char* tqual, const int token)
-{
-	if(!tqual) return NULL;
-	ASTNode* tqual_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
-	astnode_set_buffer(tqual,tqual_identifier);
-	tqual_identifier -> token = token;
-	ASTNode* type_qualifier  = astnode_create(NODE_TQUAL,tqual_identifier,NULL);
-	return type_qualifier;
-}
-static ASTNode*
-create_type_qualifiers(const char* tqual, const int token)
-{
-	ASTNode* type_qualifiers = astnode_create(NODE_UNKNOWN,create_type_qualifier(tqual,token),NULL);
-	return type_qualifiers;
-}
-static ASTNode*
-create_tspec(const char* tspec_str)
-{
-	ASTNode* tspec_identifier  = astnode_create(NODE_UNKNOWN,NULL,NULL);
-	astnode_set_buffer(tspec_str,tspec_identifier);
-	tspec_identifier -> token = IDENTIFIER;
-	ASTNode* tspec  = astnode_create(NODE_TSPEC,tspec_identifier,NULL);
-	return tspec;
-}
-static ASTNode*
-create_type_declaration(const char* tqual, const char* tspec, const int token)
-{
-
-	ASTNode* type_declaration = astnode_create(NODE_UNKNOWN,create_tspec(tspec),create_type_qualifiers(tqual,token));
-	return type_declaration;
 }
 static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier)
 {

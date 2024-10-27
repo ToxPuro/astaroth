@@ -442,6 +442,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     const int reduce_tpb_size = 128;
 
     {
+	//TP: this is dangerous since it is not always true for DSL reductions but for now keep it
     	const size_t scratchpad_size_bytes = acKernelReduceGetMinimumScratchpadSize(max_dims)*sizeof(AcReal);
     	for(int i = 0; i < NUM_REAL_SCRATCHPADS; ++i) {
     	    for(int j = 0; j < 2; ++j)

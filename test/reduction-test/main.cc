@@ -62,8 +62,7 @@ main(int argc, char* argv[])
 
     // CPU alloc
     AcMeshInfo info;
-    AcCompInfo comp_info = acInitCompInfo();
-    acLoadConfig(AC_DEFAULT_CONFIG, &info, &comp_info);
+    acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
     const int max_devices = 1;
     if (nprocs > max_devices) {

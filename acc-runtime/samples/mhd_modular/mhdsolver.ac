@@ -306,9 +306,6 @@ real AC_cs2_sound
 //
 real AC_current_time
 
-output real timestep_out;
-output real timestep_out1;
-output real timestep_out2;
 
 
 
@@ -568,10 +565,6 @@ bc_sym_z(sgn,topbot,VtxBuffer j,rel)
 
 
 
-reduce_test(step_num)
-{
-    reduce_sum(step_num == 0, 2.0, timestep_out)
-}
 
 bool bool_param
 
@@ -624,9 +617,6 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums) 
     // Required for buffers to match correctly. 
     write(VTXBUF_SHOCK, VTXBUF_SHOCK)
 #endif
-    reduce_min(step_num == 0, 2.0, timestep_out1)
-    reduce_test(step_num)
-    reduce_max(step_num == 0, 2.0, timestep_out2)
 }
 
 
@@ -694,7 +684,9 @@ Kernel twopass_solve_final(int step_num, real current_time) {
 real AC_scaling_factor
 utility Kernel scale() {
     for field in 0:NUM_FIELDS
+    {
         write(Field(field), Field(field))
+    }
 
 #if LMAGNETIC
     write(AA, AC_scaling_factor*AA)
