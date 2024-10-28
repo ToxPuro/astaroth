@@ -545,17 +545,17 @@ linear_getPid(const int3 pid_raw, const uint3_64 decomp)
     return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.y;
 }
 
-int3
+uint3_64
 morton_getPid3D(const uint64_t pid, const uint3_64 decomp)
 {
-    const uint3_64 pid3D = morton3D(pid);
-    ERRCHK_ALWAYS(morton_getPid(static_cast<int3>(pid3D), decomp) == (int)pid);
-    return (int3){(int)pid3D.x, (int)pid3D.y, (int)pid3D.z};
+    const uint3_64 res = morton3D(pid);
+    ERRCHK_ALWAYS(morton_getPid(static_cast<int3>(res), decomp) == (int)pid);
+    return res;
 }
-int3
+uint3_64
 linear_getPid3D(const uint64_t pid, const uint3_64 decomp)
 {
-	return (int3){pid % decomp.x, (pid/decomp.x) % decomp.y, (pid/(decomp.x*decomp.y)) % decomp.z};
+	return {pid % decomp.x, (pid/decomp.x) % decomp.y, (pid/(decomp.x*decomp.y)) % decomp.z};
 }
 
 int
@@ -624,14 +624,24 @@ getPid(int3 pid, const uint3_64 decomp, const int proc_mapping_strategy)
 	return -1;
 }
 int3
+to_int3(const uint3_64 val)
+{
+	return (int3)
+	{
+		(int)val.x,
+		(int)val.y,
+		(int)val.z
+	};
+}
+int3
 getPid3D(const uint64_t pid, const uint3_64 decomp, const int proc_mapping_strategy)
 {
 	switch((AcProcMappingStrategy)proc_mapping_strategy)
 	{
 		case AcProcMappingStrategy::Linear:
-			return linear_getPid3D(pid,decomp);
+			return to_int3(linear_getPid3D(pid,decomp));
 		case AcProcMappingStrategy::Morton:
-			return morton_getPid3D(pid,decomp);
+			return to_int3(morton_getPid3D(pid,decomp));
 		case AcProcMappingStrategy::Hierarchical:
 			return hierarchical_getPid3D(pid,decomp);
 	}
@@ -649,7 +659,7 @@ acVerifyDecomposition(const uint3_64 decomp, const int proc_mapping_strategy)
         for (size_t j = 0; j < decomp.y; ++j) {
             for (size_t i = 0; i < decomp.x; ++i) {
 
-                const int3 center = {i, j, k};
+                const size3_t center = {i, j, k};
 
                 for (int k0 = -1; k0 <= 1; ++k0) {
                     for (int j0 = -1; j0 <= 1; ++j0) {

@@ -2506,8 +2506,8 @@ acGridReduceXYAverage(const Stream stream, const Field field, const Profile prof
     MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
 
     // 3) Allreduce
-    MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in[profile], device->vba.profiles.count,
-                  AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
+    //MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in[profile], device->vba.profiles.count,
+                  //AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
 
     // 4) Optional: Test
     // AcReal arr[device->vba.profiles.count];
@@ -4640,10 +4640,10 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 
 	auto no_incoming_edges = [&](const size_t current_vertex)
 	{
-		bool no_incoming_edges = true;
+		bool res = true;
 		for(size_t j = 0; j < bcs.size(); ++j)
-			no_incoming_edges &= !dependency_matrix[current_vertex][j];
-		return no_incoming_edges;
+			res &= !dependency_matrix[current_vertex][j];
+		return res;
 	};
 
 	auto get_dependent_vertices = [&](const size_t current_vertex)
@@ -4845,10 +4845,10 @@ gen_halo_exchange_and_boundconds(
 		)
 {
  
-		auto log_fields = [&](const auto& fields)
+		auto log_fields = [&](const auto& input_fields)
 		{
 			if(!ac_pid()) fprintf(stream,"{");
-			for(const auto& field : fields)
+			for(const auto& field : input_fields)
 				if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
 			if(!ac_pid()) fprintf(stream,"}");
 		};

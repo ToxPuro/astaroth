@@ -146,7 +146,7 @@ AcResult
 acHostUpdateBuiltinCompParams(AcCompInfo* comp_config)
 {
 
-	AcMeshInfo config;
+	AcMeshInfo config = acInitInfo();
 	config.run_consts = *comp_config;
 	auto res = acHostUpdateBuiltInParamsBase(config);
 	*comp_config = config.run_consts;

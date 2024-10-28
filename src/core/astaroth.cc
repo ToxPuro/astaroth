@@ -398,7 +398,8 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
         mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
         ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
     }
-    const int3 counts = acGetLocalMM(info);
+    const auto mm = acGetLocalMM(info);
+    const size3_t counts = (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
     for(size_t p = 0; p < NUM_PROFILES; ++p)
     {
 	    mesh->profile[p] = (AcReal*)calloc(prof_size(Profile(p),counts), sizeof(AcReal));

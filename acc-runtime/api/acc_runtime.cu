@@ -496,10 +496,10 @@ freeCompressible(void* ptr, const size_t requested_bytes)
 #endif
 
 AcResult
-acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const int3 counts)
+acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t counts)
 {
   // Set pba.in data to all-nan and pba.out to 0
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  for (int i = 0; i < NUM_PROFILES; ++i) {
     acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),counts), (AcReal)0);
     acKernelFlush(stream, pba->out[i], prof_count(Profile(i),counts), (AcReal)0);
   }
@@ -535,11 +535,11 @@ device_free(T** dst, const int bytes)
 }
 
 ProfileBufferArray
-acPBACreate(const int3 counts)
+acPBACreate(const size3_t counts)
 {
   ProfileBufferArray pba{};
   pba.count = counts.z;
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  for (int i = 0; i < NUM_PROFILES; ++i) {
 
     device_malloc(&pba.in[i],  prof_size(Profile(i),counts));
     device_malloc(&pba.out[i], prof_size(Profile(i),counts));
@@ -551,9 +551,9 @@ acPBACreate(const int3 counts)
 }
 
 void
-acPBADestroy(ProfileBufferArray* pba, const int3 counts)
+acPBADestroy(ProfileBufferArray* pba, const size3_t counts)
 {
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  for (int i = 0; i < NUM_PROFILES; ++i) {
     device_free(&pba->in[i],  prof_size(Profile(i),counts));
     device_free(&pba->out[i], prof_size(Profile(i),counts));
     pba->in[i]  = NULL;
@@ -575,7 +575,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
   }
   memset(&vba->kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBAReset(stream, &vba->profiles, (int3){vba->mx,vba->my,vba->mz});
+  acPBAReset(stream, &vba->profiles, (size3_t){vba->mx,vba->my,vba->mz});
   return AC_SUCCESS;
 }
 
@@ -630,7 +630,7 @@ get_val(const AcMeshInfo config, const AcIntParam param)
 }
 
 
-int3
+size3_t
 buffer_dims(const AcMeshInfo config)
 {
 	const int x = get_val(config,AC_mx);
@@ -640,14 +640,14 @@ buffer_dims(const AcMeshInfo config)
 #else
 	const int z = 1;
 #endif
-	return (int3){x,y,z};
+	return (size3_t){as_size_t(x),as_size_t(y),as_size_t(z)};
 }
 
 VertexBufferArray
 acVBACreate(const AcMeshInfo config)
 {
   //TP: cannot call normal acVertexBufferDims since that would make us depend on astaroth core
-  const int3 counts = buffer_dims(config);
+  const size3_t counts = buffer_dims(config);
   VertexBufferArray vba;
   size_t count = counts.x*counts.y*counts.z;
   size_t bytes = sizeof(vba.in[0][0]) * count;
@@ -760,7 +760,7 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
   //Free arrays
   AcArrayTypes::run<free_arrays>(config);
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBADestroy(&vba->profiles,(int3){vba->mx,vba->my,vba->mz});
+  acPBADestroy(&vba->profiles,(size3_t){vba->mx,vba->my,vba->mz});
   vba->bytes = 0;
   vba->mx    = 0;
   vba->my    = 0;
@@ -1252,7 +1252,8 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
         if (!is_valid_configuration(to_volume(dims), to_volume(tpb)))
           continue;
-        samples.emplace_back(x,y,z);
+	//TP: should be emplace back but on my laptop the CUDA compiler gives a cryptic error message that I do not care to debug
+        samples.push_back((int3){x,y,z});
       }
     }
   }
@@ -1449,7 +1450,7 @@ acPBASwapBuffer(const Profile profile, VertexBufferArray* vba)
 void
 acPBASwapBuffers(VertexBufferArray* vba)
 {
-  for (size_t i = 0; i < NUM_PROFILES; ++i)
+  for (int i = 0; i < NUM_PROFILES; ++i)
     acPBASwapBuffer((Profile)i, vba);
 }
 
@@ -1833,20 +1834,20 @@ void __global__
 transpose_xyz_to_zyx(const AcReal* src, AcReal* dst)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
-	const int3 block_offset =
+	const dim3 block_offset =
 	{
 		blockIdx.x*TILE_DIM,
 		blockIdx.y,
 		blockIdx.z*TILE_DIM
 	};
 
-	const int3 vertexIdx = 
+	const dim3 vertexIdx = 
 	{
 		threadIdx.x + block_offset.x,
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.z
 	};
-	const int3 out_vertexIdx = 
+	const dim3 out_vertexIdx = 
 	{
 		threadIdx.x + block_offset.z,
 		threadIdx.y + block_offset.y,
@@ -1866,20 +1867,20 @@ void __global__
 transpose_xyz_to_zxy(const AcReal* src, AcReal* dst)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
-	const int3 block_offset =
+	const dim3 block_offset =
 	{
 		blockIdx.x*TILE_DIM,
 		blockIdx.y,
 		blockIdx.z*TILE_DIM
 	};
 
-	const int3 vertexIdx = 
+	const dim3 vertexIdx = 
 	{
 		threadIdx.x + block_offset.x,
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.z
 	};
-	const int3 out_vertexIdx = 
+	const dim3 out_vertexIdx = 
 	{
 		threadIdx.x + block_offset.z,
 		threadIdx.y + block_offset.y,
@@ -1898,14 +1899,14 @@ transpose_xyz_to_zxy(const AcReal* src, AcReal* dst)
 void __global__ 
 transpose_xyz_to_xyz(const AcReal* src, AcReal* dst)
 {
-	const int3 block_offset =
+	const dim3 block_offset =
 	{
 		blockIdx.x*TILE_DIM,
 		blockIdx.y*TILE_DIM,
 		blockIdx.z
 	};
 
-	const int3 vertexIdx = 
+	const dim3 vertexIdx = 
 	{
 		threadIdx.x + block_offset.x,
 		threadIdx.y + block_offset.y,
@@ -1919,20 +1920,20 @@ void __global__
 transpose_xyz_to_yxz(const AcReal* src, AcReal* dst)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
-	const int3 block_offset =
+	const dim3 block_offset =
 	{
 		blockIdx.x*TILE_DIM,
 		blockIdx.y*TILE_DIM,
 		blockIdx.z
 	};
 
-	const int3 vertexIdx = 
+	const dim3 vertexIdx = 
 	{
 		threadIdx.x + block_offset.x,
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.z
 	};
-	const int3 out_vertexIdx = 
+	const dim3 out_vertexIdx = 
 	{
 		threadIdx.x + block_offset.y,
 		threadIdx.y + block_offset.x,
@@ -1952,20 +1953,20 @@ void __global__
 transpose_xyz_to_yzx(const AcReal* src, AcReal* dst)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
-	const int3 block_offset =
+	const dim3 block_offset =
 	{
 		blockIdx.x*TILE_DIM,
 		blockIdx.y*TILE_DIM,
 		blockIdx.z
 	};
 
-	const int3 vertexIdx = 
+	const dim3 vertexIdx = 
 	{
 		threadIdx.x + block_offset.x,
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.z
 	};
-	const int3 out_vertexIdx = 
+	const dim3 out_vertexIdx = 
 	{
 		threadIdx.x + block_offset.y,
 		threadIdx.y + block_offset.x,
@@ -1984,14 +1985,14 @@ transpose_xyz_to_yzx(const AcReal* src, AcReal* dst)
 void __global__ 
 transpose_xyz_to_xzy(const AcReal* src, AcReal* dst)
 {
-	const int3 in_block_offset =
+	const dim3 in_block_offset =
 	{
 		blockIdx.x*blockDim.x,
 		blockIdx.y*blockDim.y,
 		blockIdx.z*blockDim.z
 	};
 
-	const int3 vertexIdx = 
+	const dim3 vertexIdx = 
 	{
 		threadIdx.x + in_block_offset.x,
 		threadIdx.y + in_block_offset.y,

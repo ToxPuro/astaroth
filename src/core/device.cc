@@ -1122,6 +1122,7 @@ AcResult
 acDeviceReduceXYAverage(const Device device, const Stream stream, const Field field,
                         const Profile profile)
 {
+    if constexpr(NUM_PROFILES == 0) return AC_FAILURE;
     cudaSetDevice(device->id);
     acDeviceSynchronizeStream(device, stream);
 
@@ -1180,6 +1181,7 @@ AcResult
 acDeviceLoadProfile(const Device device, const AcReal* hostprofile, const size_t hostprofile_count,
                     const Profile profile)
 {
+    if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     cudaSetDevice(device->id);
     ERRCHK_ALWAYS(hostprofile_count == device->vba.profiles.count);
     ERRCHK_CUDA(cudaMemcpy(device->vba.profiles.in[profile], hostprofile,
@@ -1191,8 +1193,9 @@ acDeviceLoadProfile(const Device device, const AcReal* hostprofile, const size_t
 AcResult
 acDeviceStoreProfile(const Device device, const Profile profile, AcMesh* host_mesh)
 {
+    if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     cudaSetDevice(device->id);
-    const int3 counts = (int3){device->vba.mx,device->vba.my,device->vba.mz};
+    const size3_t counts = (size3_t){device->vba.mx,device->vba.my,device->vba.mz};
     ERRCHK_CUDA(cudaMemcpy(host_mesh->profile[profile], device->vba.profiles.in[profile],
                            prof_size(profile,counts),
                            cudaMemcpyDeviceToHost));
@@ -1620,61 +1623,9 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
 }
 #else
 AcResult
-acDeviceReduceXYAverages(const Device device, const Stream)
+acDeviceReduceXYAverages(const Device , const Stream)
 {
-    AcMeshDims dims = acGetMeshDims(device->local_config);
-
-    const size_t num_compute_profiles = 1;
-    const AcShape buffer_shape        = {
-        .x = as_size_t(dims.nn.x),
-        .y = as_size_t(dims.nn.y),
-        .z = as_size_t(dims.m1.z),
-        .w = num_compute_profiles,
-    };
-    const size_t buffer_size = acShapeSize(buffer_shape);
-    AcBuffer buffer          = acBufferCreate(buffer_shape, true);
-
-    // Indices and shapes
-    const AcIndex in_offset = {
-        .x = as_size_t(dims.n0.x),
-        .y = as_size_t(dims.n0.y),
-        .z = 0,
-        .w = 0,
-    };
-    const AcShape in_shape = {
-        .x = as_size_t(dims.m1.x),
-        .y = as_size_t(dims.m1.y),
-        .z = as_size_t(dims.m1.z),
-        .w = 1,
-    };
-    const AcShape block_shape = {
-        .x = buffer_shape.x,
-        .y = buffer_shape.y,
-        .z = buffer_shape.z,
-        .w = 1,
-    };
-
-    // Reindex
-    VertexBufferHandle reindex_fields[] = {
-	Field(0)
-    };
-    for (size_t w = 0; w < ARRAY_SIZE(reindex_fields); ++w) {
-        const AcIndex buffer_offset = {
-            .x = 0,
-            .y = 0,
-            .z = 0,
-            .w = w,
-        };
-        acReindex(device->streams[STREAM_DEFAULT],                        //
-                  device->vba.in[reindex_fields[w]], in_offset, in_shape, //
-                  buffer.data, buffer_offset, buffer_shape, block_shape);
-    }
-
-    const size_t num_segments = buffer_shape.z * buffer_shape.w;
-    acSegmentedReduce(device->streams[STREAM_DEFAULT], //
-                      buffer.data, buffer_size, num_segments, device->vba.profiles.in[0]);
-    acBufferDestroy(&buffer);
-    return AC_FAILURE;
+	return AC_FAILURE;
 }
 AcMeshOrder
 get_mesh_order_for_prof(const AcProfileType type)
@@ -1772,6 +1723,7 @@ acDeviceTransposeBase(const Device device, const Stream stream, const AcMeshOrde
 AcResult
 acDeviceReduceAverages(const Device device, const Stream stream, const Profile prof)
 {
+    if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     const AcProfileType type = prof_types[prof];
     const AcMeshDims dims = acGetMeshDims(device->local_config);
     const AcShape buffer_shape = get_reduction_shape(type,dims);

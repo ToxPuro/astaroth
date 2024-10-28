@@ -523,6 +523,7 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("threadIdx"));       // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("blockIdx"));        // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("vertexIdx"));       // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("start"));       // TODO REMOVE
   int vertex_index = add_symbol(NODE_VARIABLE_ID, NULL, 0, INT3_STR, intern("globalVertexIdx")); // TODO REMOVE
   symbol_table[vertex_index].tqualifiers.size = 0;
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("globalGridN"));     // TODO REMOVE
@@ -3279,7 +3280,7 @@ get_qualifiers(const ASTNode* decl, const char** tqualifiers)
 
       return n_tqualifiers;
 }
-void static 
+static void
 check_for_shadowing(const ASTNode* node)
 {
     if(symboltable_lookup_surrounding_scope(node->buffer) && is_right_child(NODE_DECLARATION,node) && !get_parent_node(NODE_FUNCTION_CALL,node) && get_node(NODE_TSPEC,get_parent_node(NODE_DECLARATION,node)->lhs))
@@ -4486,7 +4487,7 @@ gen_field_info(FILE* fp)
   for(size_t i=0;i<num_of_fields;++i)
 	  fprintf(fp,"\"%s\",",field_names.data[i]);
   fprintf(fp,"};\n");
-  fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
+  fprintf(fp, "static const char** vtxbuf_names __attribute__((unused))  = field_names;\n");
   fclose(fp);
 
   fp = fopen("get_vtxbufs_funcs.h","w");

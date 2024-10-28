@@ -299,6 +299,17 @@ TO_VOLUME(const T a, const char* file, const int line)
   INDIRECT_ERRCHK_ALWAYS(a.z >= 0,file,line);
   return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
 }
+static Volume UNUSED
+TO_VOLUME(const dim3 a, const char* , const int)
+{
+  return (Volume){a.x, a.y, a.z};
+}
+
+static Volume UNUSED
+TO_VOLUME(const size3_t a, const char* , const int)
+{
+  return (Volume){a.x, a.y, a.z};
+}
 
 #define to_volume(a) TO_VOLUME(a, __FILE__, __LINE__)
 

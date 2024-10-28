@@ -58,6 +58,7 @@ typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
 typedef struct {
   size_t x, y, z;
 } Volume;
+typedef Volume size3_t;
 
 #include "user_typedefs.h"
 
@@ -115,4 +116,42 @@ public:
 private:
     T arr_[N];
 };
+static HOST_DEVICE_INLINE size3_t
+operator+(const size3_t& a, const size3_t& b)
+{
+	return (size3_t)
+	{
+		a.x + b.x,
+		a.y + b.y,
+		a.z + b.z
+	};
+}
+static HOST_DEVICE_INLINE int3
+operator+(const size3_t& a, const int3& b)
+{
+	return (int3)
+	{
+		(int)a.x + b.x,
+		(int)a.y + b.y,
+		(int)a.z + b.z
+	};
+}
+static HOST_DEVICE_INLINE bool
+operator==(const size3_t& a, const int3& b)
+{
+	return
+		(int)a.x == b.x &&
+		(int)a.y == b.y &&
+		(int)a.z == b.z;
+}
+
+static HOST_DEVICE_INLINE bool
+operator==(const int3& a, const size3_t& b)
+{
+	return
+		a.x == (int)b.x &&
+		a.y == (int)b.y &&
+		a.z == (int)b.z;
+}
+
 #endif

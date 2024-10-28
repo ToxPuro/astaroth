@@ -155,14 +155,14 @@ IDX(const int i, const int j, const int k)
   return 0;
 }
 
-int
+static int UNUSED
 IDX(const int3 idx)
 {
   (void)idx; // Unused
   return 0;
 }
 
-int
+static int UNUSED
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
 {
   (void)coord; // Unused
@@ -231,11 +231,11 @@ acAnalysisLoadMeshInfo(const AcMeshInfo info)
 #include "gmem_arrays_accessed_decl.h"
 #define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) static const DATATYPE ARR_NAME##return_var{}; \
 							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
-							    static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
+							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
 
 #define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, DIMS) static const DATATYPE ARR_NAME##return_var{}; \
 							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
-							    static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
+							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
 #include "gmem_arrays_decl.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at

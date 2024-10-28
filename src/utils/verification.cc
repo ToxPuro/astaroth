@@ -24,11 +24,6 @@
 
 #include "errchk.h"
 
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#define min(a, b) ((a) < (b) ? (a) : (b))
-
-#define fabs(x) ((_Generic((x), float: fabsf, double: fabs, long double: fabsl))(x))
-
 // Defines for colored output
 static inline bool
 is_valid(const AcReal a)
@@ -136,7 +131,7 @@ get_maximum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
     		for (int z = z_start; z < z_end; ++z) 
 		{
 			const size_t i = x+y*mm.x+z*mm.y*mm.z;
-        		maximum = max(maximum, fabs(field[i]));
+        		maximum = std::max(maximum, std::abs(field[i]));
 		}
 	}
     }
@@ -168,7 +163,7 @@ get_minimum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
     		for (int z = z_start; z < z_end; ++z) 
 		{
 			const size_t i = x+y*mm.x+z*mm.x*mm.y;
-        		minimum = min(minimum, fabs(field[i]));
+        		minimum = std::min(minimum, std::abs(field[i]));
 		}
 	}
     }

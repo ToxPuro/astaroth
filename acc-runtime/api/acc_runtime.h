@@ -36,8 +36,8 @@
   #include "datatypes.h"
   #include "errchk.h"
 
-const static int ONE_DIMENSIONAL_PROFILE = (1 << 20);
-const static int TWO_DIMENSIONAL_PROFILE = (1 << 21);
+#define ONE_DIMENSIONAL_PROFILE (1 << 20)
+#define TWO_DIMENSIONAL_PROFILE (1 << 21)
 typedef enum {
 	PROFILE_X  = (1 << 0) | ONE_DIMENSIONAL_PROFILE,
 	PROFILE_Y  = (1 << 1) | ONE_DIMENSIONAL_PROFILE,
@@ -91,10 +91,10 @@ MakeField3(const AcArray<Field,N>& x, const AcArray<Field,N>& y, const AcArray<F
 	return res;
 }
 #endif
-const int N_DIMS = 3;
-const int X_ORDER_INT = 0;
-const int Y_ORDER_INT = 1;
-const int Z_ORDER_INT = 2;
+#define N_DIMS (3)
+#define X_ORDER_INT (0)
+#define Y_ORDER_INT (1)
+#define Z_ORDER_INT (2)
 
 typedef enum {
 	XYZ = X_ORDER_INT + N_DIMS*Y_ORDER_INT + N_DIMS*N_DIMS*Z_ORDER_INT,
@@ -495,9 +495,9 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 	  return get_array_info(array).is_alive;
   }
 
-  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const int3 counts));
+  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t counts));
 
-  FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size_t count));
+  FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size3_t count));
 
   FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
 
@@ -686,8 +686,9 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   #endif
 
 static UNUSED size_t
-prof_count(const Profile prof, const int3 counts)
+prof_count(const Profile prof, const size3_t counts)
 {
+    if(NUM_PROFILES == 0) return 0;
     return 
 	    	prof_types[prof] == PROFILE_X  ? counts.x  :
 	    	prof_types[prof] == PROFILE_Y  ? counts.y  :
@@ -701,7 +702,7 @@ prof_count(const Profile prof, const int3 counts)
 		0;
 }
 static UNUSED size_t
-prof_size(const Profile prof, const int3 counts)
+prof_size(const Profile prof, const size3_t counts)
 {
     return prof_count(prof,counts)*sizeof(AcReal);
 }
