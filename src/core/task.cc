@@ -175,6 +175,12 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, Fie
     return task_def;
 }
 
+static const std::array<AcKernel,4> builtin_bcs  = {
+					KERNEL_BOUNDCOND_SYMMETRIC_DSL,
+					KERNEL_BOUNDCOND_ANTI_SYMMETRIC_DSL,
+					KERNEL_BOUNDCOND_A2_DSL,
+					KERNEL_BOUNDCOND_CONST_DSL,
+				};
 AcTaskDefinition
 acDSLBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const std::function<void(ParamLoadingInfo)> load_func)
 {
@@ -193,7 +199,17 @@ acDSLBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const F
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
-    task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
+    if(std::find(builtin_bcs.begin(), builtin_bcs.end(), kernel) != builtin_bcs.end())
+    {
+	auto default_loader = [](ParamLoadingInfo p)
+	{
+		p.params->BOUNDCOND_SYMMETRIC_DSL.f = p.vtxbuf;
+	};
+    	task_def.load_kernel_params_func = new LoadKernelParamsFunc({default_loader});
+	task_def.fieldwise = true;
+    }
+    else
+    	task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
     for(size_t i = 0; i < task_def.num_fields_in; ++i)
 	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
     for(size_t i = 0; i < task_def.num_fields_out; ++i)
@@ -1268,7 +1284,8 @@ DSLBoundaryConditionTask::DSLBoundaryConditionTask(
            Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
            Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
            op, device_, swap_offset_),
-       boundary_normal(boundary_normal_)
+       boundary_normal(boundary_normal_),
+       fieldwise(op.fieldwise)
 {
     // TODO: the input regions for some of these will be weird, because they will depend on the
     // ghost zone of other fields
@@ -1361,21 +1378,40 @@ void
 DSLBoundaryConditionTask::populate_boundary_region()
 {
      const int3 nn = acGetLocalNN(device->local_config);
-     for (auto variable : output_region.fields) {
-     	params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
-     	const int3 region_id = output_region.id;
-     	const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + nn.x
-     	                                           : region_id.x == -1 ? 0 : NGHOST_X),
-     	                         (region_id.y == 1 ? NGHOST_Y + nn.y
-     	                                           : region_id.y == -1 ? 0 : NGHOST_Y),
+     if(fieldwise)
+     {
+     	for (auto variable : output_region.fields) {
+     		params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
+     		const int3 region_id = output_region.id;
+     		const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + nn.x
+     		                                           : region_id.x == -1 ? 0 : NGHOST_X),
+     		                         (region_id.y == 1 ? NGHOST_Y + nn.y
+     		                                           : region_id.y == -1 ? 0 : NGHOST_Y),
 #if TWO_D == 0
-     	                         (region_id.z == 1 ? NGHOST_Z + nn.z
-     	                                           : region_id.z == -1 ? 0 : NGHOST_Z)};
-#else
-				 0};
+     		                         (region_id.z == 1 ? NGHOST_Z + nn.z
+     		                                           : region_id.z == -1 ? 0 : NGHOST_Z)};
+#else	
+     	   			 0};
 #endif
-     	const int3 end = start + boundary_dims;
-     	acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
+     		const int3 end = start + boundary_dims;
+     		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
+     	}
+     }
+     else
+     {
+     		const int3 region_id = output_region.id;
+     		const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + nn.x
+     		                                           : region_id.x == -1 ? 0 : NGHOST_X),
+     		                         (region_id.y == 1 ? NGHOST_Y + nn.y
+     		                                           : region_id.y == -1 ? 0 : NGHOST_Y),
+#if TWO_D == 0
+     		                         (region_id.z == 1 ? NGHOST_Z + nn.z
+     		                                           : region_id.z == -1 ? 0 : NGHOST_Z)};
+#else	
+     	   			 0};
+#endif
+     		const int3 end = start + boundary_dims;
+     		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
      }
 }
 

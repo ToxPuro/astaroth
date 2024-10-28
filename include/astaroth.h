@@ -939,6 +939,7 @@ typedef struct AcTaskDefinition {
     AcRealParam* parameters;
     size_t num_parameters;
     LoadKernelParamsFunc* load_kernel_params_func;
+    bool fieldwise;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of

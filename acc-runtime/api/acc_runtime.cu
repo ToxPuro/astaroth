@@ -1853,8 +1853,8 @@ transpose_xyz_to_zyx(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.x
 	};
-	const bool in_oob  =  vertexIdx.x  >= VAL(AC_mx)    ||  vertexIdx.y >= VAL(AC_my)     || vertexIdx.z >= VAL(AC_mz);
-	const bool out_oob =  out_vertexIdx.x >= VAL(AC_mz) ||  out_vertexIdx.y >= VAL(AC_my) || out_vertexIdx.z >= VAL(AC_mx);
+	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
+	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mz) ||  (int)out_vertexIdx.y >= VAL(AC_my) || (int)out_vertexIdx.z >= VAL(AC_mx);
 
 
 
@@ -1886,8 +1886,8 @@ transpose_xyz_to_zxy(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.x
 	};
-	const bool in_oob  =  vertexIdx.x  >= VAL(AC_mx)    ||  vertexIdx.y >= VAL(AC_my)     || vertexIdx.z >= VAL(AC_mz);
-	const bool out_oob =  out_vertexIdx.x >= VAL(AC_mz) ||  out_vertexIdx.y >= VAL(AC_my) || out_vertexIdx.z >= VAL(AC_mx);
+	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
+	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mz) ||  (int)out_vertexIdx.y >= VAL(AC_my) || (int)out_vertexIdx.z >= VAL(AC_mx);
 
 
 
@@ -1912,7 +1912,7 @@ transpose_xyz_to_xyz(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.z
 	};
-	const bool oob  =  vertexIdx.x  >= VAL(AC_mx)    ||  vertexIdx.y >= VAL(AC_my)     || vertexIdx.z >= VAL(AC_mz);
+	const bool oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
 	if(oob) return;
 	dst[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] = src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)];
 }
@@ -1939,8 +1939,8 @@ transpose_xyz_to_yxz(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.x,
 		threadIdx.z + block_offset.z
 	};
-	const bool in_oob  =  vertexIdx.x  >= VAL(AC_mx)    ||  vertexIdx.y >= VAL(AC_my)     || vertexIdx.z >= VAL(AC_mz);
-	const bool out_oob =  out_vertexIdx.x >= VAL(AC_my) ||  out_vertexIdx.y >= VAL(AC_mx) || out_vertexIdx.z >= VAL(AC_mz);
+	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
+	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_my) ||  (int)out_vertexIdx.y >= VAL(AC_mx) || (int)out_vertexIdx.z >= VAL(AC_mz);
 
 
 
@@ -1972,8 +1972,8 @@ transpose_xyz_to_yzx(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.x,
 		threadIdx.z + block_offset.z
 	};
-	const bool in_oob  =  vertexIdx.x  >= VAL(AC_mx)    ||  vertexIdx.y >= VAL(AC_my)     || vertexIdx.z >= VAL(AC_mz);
-	const bool out_oob =  out_vertexIdx.x >= VAL(AC_my) ||  out_vertexIdx.y >= VAL(AC_mx) || out_vertexIdx.z >= VAL(AC_mz);
+	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
+	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_my) ||  (int)out_vertexIdx.y >= VAL(AC_mx) || (int)out_vertexIdx.z >= VAL(AC_mz);
 
 
 
@@ -1999,7 +1999,7 @@ transpose_xyz_to_xzy(const AcReal* src, AcReal* dst)
 		threadIdx.z + in_block_offset.z
 	};
 
-	const bool oob  =  vertexIdx.x  >= VAL(AC_mx)    ||  vertexIdx.y >= VAL(AC_my)     || vertexIdx.z >= VAL(AC_mz);
+	const bool oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
 	if(oob) return;
 	dst[vertexIdx.x + VAL(AC_mx)*vertexIdx.z + VAL(AC_mxz)*vertexIdx.y] 
 		= src[DEVICE_VTXBUF_IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)];

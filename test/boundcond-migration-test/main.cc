@@ -85,31 +85,42 @@ main(void)
 
     acGridInit(info);
 
-    std::vector<Field> all_fields{};
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
-	all_fields.push_back(Field(i));
-    }
+    auto test_bc = [&](const auto& orig, const auto& dsl, const char* text)
+    {
+    	std::vector<Field> all_fields{};
+    	for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+    	    all_fields.push_back(Field(i));
+    	}
 
-    AcTaskGraph* graph = acGridBuildTaskGraph({acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_SYMMETRIC,all_fields)});
-    AcTaskGraph* graph_2 = acGridBuildTaskGraph({acBoundaryCondition(BOUNDARY_XYZ,KERNEL_BOUNDCOND_SYMMETRIC_DSL,all_fields)});
-    acGridExecuteTaskGraph(graph,1);
-
-    // arr test
-    if (pid == 0)
-        acHostMeshRandomize(&model);
-
-    acGridLoadMesh(STREAM_DEFAULT, model);
-    for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
+    	AcTaskGraph* graph = acGridBuildTaskGraph({acBoundaryCondition(BOUNDARY_XYZ,orig,all_fields)});
+    	AcTaskGraph* graph_2 = acGridBuildTaskGraph({acBoundaryCondition(BOUNDARY_XYZ,dsl,all_fields)});
     	acGridExecuteTaskGraph(graph,1);
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
-
-    acGridLoadMesh(STREAM_DEFAULT, model);
-    for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
     	acGridExecuteTaskGraph(graph_2,1);
-    acGridStoreMesh(STREAM_DEFAULT, &model);
+
+    	// arr test
+    	if (pid == 0)
+    	    acHostMeshRandomize(&model);
+
+    	acGridLoadMesh(STREAM_DEFAULT, model);
+    	for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
+    		acGridExecuteTaskGraph(graph,1);
+    	acGridStoreMesh(STREAM_DEFAULT, &candidate);
+
+    	acGridLoadMesh(STREAM_DEFAULT, model);
+    	for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
+    		acGridExecuteTaskGraph(graph_2,1);
+    	acGridStoreMesh(STREAM_DEFAULT, &model);
 
 
-    const AcResult res = acVerifyMesh("boundcond-migration", model, candidate);
+    	return acVerifyMesh(text, model, candidate);
+    };
+    AcResult res = AC_SUCCESS;
+    res = test_bc(BOUNDCOND_SYMMETRIC,KERNEL_BOUNDCOND_SYMMETRIC_DSL,"symmetric")
+	    ? res : AC_FAILURE;
+    res = test_bc(BOUNDCOND_ANTISYMMETRIC,KERNEL_BOUNDCOND_ANTI_SYMMETRIC_DSL,"antisymmetric")
+	    ? res : AC_FAILURE;
+    res = test_bc(BOUNDCOND_A2,KERNEL_BOUNDCOND_A2_DSL,"a2")
+	    ? res : AC_FAILURE;
     if (res != AC_SUCCESS) {
         retval = res;
         WARNCHK_ALWAYS(retval);

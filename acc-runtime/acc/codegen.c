@@ -520,13 +520,13 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL,  intern("stderr"));           // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("print"));           // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("fprintf"));           // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("threadIdx"));       // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("blockIdx"));        // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("vertexIdx"));       // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("start"));       // TODO REMOVE
+  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL,  intern("threadIdx"));       // TODO REMOVE
+  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL,  intern("blockIdx"));        // TODO REMOVE
+  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL,  intern("vertexIdx"));       // TODO REMOVE
+  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL,  intern("start"));       // TODO REMOVE
   int vertex_index = add_symbol(NODE_VARIABLE_ID, NULL, 0, INT3_STR, intern("globalVertexIdx")); // TODO REMOVE
   symbol_table[vertex_index].tqualifiers.size = 0;
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("globalGridN"));     // TODO REMOVE
+  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL,  intern("globalGridN"));     // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_base"));  // TODO RECHECK
 					      	 //
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_min_real"));  // TODO RECHECK
@@ -555,7 +555,7 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, 0, INT_STR,   intern("len"));    // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("uint64_t"));   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("UINT64_MAX")); // TODO RECHECK
+  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL, intern("UINT64_MAX")); // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, REAL_STR, intern("rand_uniform"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, REAL_STR, REAL_STR);
@@ -2249,6 +2249,7 @@ do_not_rename(const ASTNode* node, const char* str_to_check)
 	if(strstr(node->buffer,"AC_INTERNAL"))                       return true;
 	if(strstr(node->buffer,"AC_MANGLED"))                        return true;
 	if(node->type & NODE_MEMBER_ID)                              return true;
+	if(symboltable_lookup(node->buffer))                         return true;
 	return false;
 }
 
@@ -3139,8 +3140,8 @@ add_auto(const ASTNode* node)
                  !(node->type & NODE_INPUT) &&
 		 !(node->no_auto) &&
 		 !(is_user_enum_option(node->buffer)) &&
-		 !(strstr(node->buffer,"AC_INTERNAL_d")) &&
-		 !(strstr(node->buffer,"AC_INTERNAL_gmem"));
+		 !(strstr(node->buffer,"AC_INTERNAL_d_")) &&
+		 !(strstr(node->buffer,"AC_INTERNAL_gmem_"));
 }
 static void
 check_for_undeclared_conditional(const ASTNode* node)
@@ -3210,7 +3211,7 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
         if (tspec.id) 
 	{
           //TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
-	  if(tspec.id[strlen(tspec.id)-1] == '*')
+	  if(tspec.id[strlen(tspec.id)-1] == '*' || tspec.id[strlen(tspec.id)-2] == '*')
             fprintf(stream, "%s ", "auto");
 	  //TP: Hacks
 	  else if(strstr(tspec.id,"WITH_INLINE"))
@@ -3228,7 +3229,7 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 	  if(node->expr_type)
 	  {
           	//TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
-	  	if(node->expr_type[strlen(node->expr_type)-1] == '*')
+	  	if(node->expr_type[strlen(node->expr_type)-1] == '*' || node->expr_type[strlen(node->expr_type)-2] == '*')
             		fprintf(stream, "%s ", "auto");
 		//TP: Hacks
 		else if(strstr(node->expr_type,"WITH_INLINE"))
@@ -3236,11 +3237,15 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 		else if(strstr(node->expr_type,"<") && strstr(node->expr_type,"Profile"))
             		fprintf(stream, "%s ", "Profile");
 		else
+		{
 		  fprintf(stream, "%s ",node->expr_type);
+		}
 	  }
 	  else
           	fprintf(stream, "auto ");
 	}
+	//else if(node->expr_type && !(node->type & INPUT))
+	//  fprintf(stream,"%s ",node->expr_type);
 }
 
 tspecifier
@@ -3280,7 +3285,7 @@ get_qualifiers(const ASTNode* decl, const char** tqualifiers)
 
       return n_tqualifiers;
 }
-static void
+void static 
 check_for_shadowing(const ASTNode* node)
 {
     if(symboltable_lookup_surrounding_scope(node->buffer) && is_right_child(NODE_DECLARATION,node) && !get_parent_node(NODE_FUNCTION_CALL,node) && get_node(NODE_TSPEC,get_parent_node(NODE_DECLARATION,node)->lhs))
@@ -4487,7 +4492,7 @@ gen_field_info(FILE* fp)
   for(size_t i=0;i<num_of_fields;++i)
 	  fprintf(fp,"\"%s\",",field_names.data[i]);
   fprintf(fp,"};\n");
-  fprintf(fp, "static const char** vtxbuf_names __attribute__((unused))  = field_names;\n");
+  fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
   fclose(fp);
 
   fp = fopen("get_vtxbufs_funcs.h","w");
@@ -5045,6 +5050,33 @@ void replace_return_nodes(ASTNode* node, const ASTNode* decl_node)
 	if(!is_return_node(node)) return;
 	replace_node(node,create_assignment(decl_node,node->rhs,EQ_STR));
 }
+
+bool
+all_identifiers_are_constexpr(const ASTNode* node)
+{
+	if(node->type & NODE_MEMBER_ID)
+		return true;
+	bool res = true;
+	if(node->lhs)
+		res &= all_identifiers_are_constexpr(node->lhs);
+	if(node->rhs)
+		res &= all_identifiers_are_constexpr(node->rhs);
+	if(node->token != IDENTIFIER)
+		return res;
+	if(!node->buffer)
+		return res;
+	//size of an AcArray that needs to be known at compile time
+	if(!strcmp(node->buffer,"size")) return true;
+	//TP: this should not happend but for now simply set the constexpr value to the correct value
+	//TODO: fix
+	if(!node->is_constexpr &&  check_symbol(NODE_ANY,node->buffer,0,CONST_STR))
+	{
+		ASTNode* hack = (ASTNode*)node;
+		hack->is_constexpr = true;
+	}
+	res &= node->is_constexpr;
+	return res;
+}
 ASTNode*
 inline_returning_function(const ASTNode* node, int counter)
 {
@@ -5067,8 +5099,13 @@ inline_returning_function(const ASTNode* node, int counter)
 	func_params_info params_info = get_function_params_info(dfunc,func_name);
 	for(size_t i = 0; i < params.size; ++i)
 	{
-		ASTNode* copy_assignment = create_assignment(create_declaration(params_info.expr.data[i],params_info.types.data[i],CONST_STR),params.data[i],EQ_STR);
-		add_to_node_list(dfunc_statements,copy_assignment);
+
+		const bool is_constexpr = all_identifiers_are_constexpr(params.data[i]);
+		const char* type = params_info.types.data[i] ? sprintf_intern("%s%s",
+				params_info.types.data[i], is_constexpr ? "" : "&")
+			: NULL;
+		ASTNode* alias = create_assignment(create_declaration(params_info.expr.data[i],type,CONST_STR),params.data[i],EQ_STR);
+		add_to_node_list(dfunc_statements,alias);
 	}
 	char* replacement = itoa(counter);
 	replace_substrings(new_dfunc,"REPLACE_WITH_INLINE_COUNTER",replacement);
@@ -5104,19 +5141,26 @@ inline_non_returning_function(const ASTNode* node, int counter)
 	func_params_info params_info = get_function_params_info(dfunc,func_name);
 	for(size_t i = 0; i < params.size; ++i)
 	{
-		ASTNode* copy_assignment = create_assignment(create_declaration(params_info.expr.data[i],params_info.types.data[i],CONST_STR),params.data[i],EQ_STR);
-		const char* debug = combine_all_new(copy_assignment);
-		add_to_node_list(dfunc_statements,copy_assignment);
+		const bool is_constexpr = all_identifiers_are_constexpr(params.data[i]);
+		const char* type = params_info.types.data[i] ? sprintf_intern("%s%s",
+				params_info.types.data[i], is_constexpr ? "" : "&")
+			: NULL;
+		ASTNode* alias = create_assignment(create_declaration(params_info.expr.data[i],type,CONST_STR),params.data[i],EQ_STR);
+		add_to_node_list(dfunc_statements,alias);
 	}
 	char* replacement = itoa(counter);
 	replace_substrings(new_dfunc,"REPLACE_WITH_INLINE_COUNTER",replacement);
+	const char* debug = combine_all_new(new_dfunc);
+	if(strstr(debug,"REPLACE_WITH_INLINE_COUNTER")) printf("WRONG!\n");
 	free(replacement);
 	return new_dfunc->rhs->rhs->lhs;
 }
 bool
 inline_dfuncs_recursive(ASTNode* node, int* counter)
 {
+
 	bool res = false;
+	if(node->type == NODE_BOUNDCONDS_DEF) return res;
 	if(node->lhs)
 		res |= inline_dfuncs_recursive(node->lhs,counter);
 	if(node->rhs)
@@ -5394,25 +5438,6 @@ all_identifiers_are_const(const ASTNode* node)
 	printf("NOT CONST: %s\n",node->buffer);
 	return false;
 }
-bool
-all_identifiers_are_constexpr(const ASTNode* node)
-{
-	if(node->type & NODE_MEMBER_ID)
-		return true;
-	bool res = true;
-	if(node->lhs)
-		res &= all_identifiers_are_constexpr(node->lhs);
-	if(node->rhs)
-		res &= all_identifiers_are_constexpr(node->rhs);
-	if(node->token != IDENTIFIER)
-		return res;
-	if(!node->buffer)
-		return res;
-	//size of an AcArray that needs to be known at compile time
-	if(!strcmp(node->buffer,"size")) return true;
-	res &= node->is_constexpr;
-	return res;
-}
 void
 get_primary_expression_and_func_call_types_recursive(const ASTNode* node, string_vec* res)
 {
@@ -5494,15 +5519,15 @@ typedef struct
 } gen_constexpr_params;
 
 bool
-gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assign_counts, gen_constexpr_params params)
+gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const string_vec names, const int_vec assign_counts, gen_constexpr_params params)
 {
 	bool res = false;
 	params.in_array_access |= (node->type & NODE_ARRAY_ACCESS);
 	if(node->type & NODE_FUNCTION) params.func_base = node;
 	if(node->lhs)
-		res |= gen_constexpr_in_func(node->lhs,names,assign_counts,params);
+		res |= gen_constexpr_in_func(node->lhs,gen_mem_accesses,names,assign_counts,params);
 	if(node->rhs)
-		res |= gen_constexpr_in_func(node->rhs,names,assign_counts,params);
+		res |= gen_constexpr_in_func(node->rhs,gen_mem_accesses,names,assign_counts,params);
 	if(node->token == IDENTIFIER && node->buffer && !node->is_constexpr)
 	{
 		node->is_constexpr |= check_symbol(NODE_ANY,node->buffer,0,CONST_STR);
@@ -5520,9 +5545,8 @@ gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assig
 			node->is_constexpr = true;
 			res = true;
 			astnode_set_prefix(" constexpr (",node);
-			if(node->rhs->lhs->type & NODE_BEGIN_SCOPE)
+			if(node->rhs->lhs->type & NODE_BEGIN_SCOPE && gen_mem_accesses)
 			{
-				//printf("FOUND CONSTEXPR_STR if: %s,%d\n",combine_all_new(node->lhs),node->id);
 				astnode_sprintf_prefix(node->rhs->lhs,"{executed_conditionals.push_back(%d);",node->id);
 			}
 		}
@@ -5530,10 +5554,12 @@ gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assig
 	//TP: below sets the constexpr value of lhs the same as rhs for: lhs = rhs
 	//TP: we restrict to the case that lhs is assigned only once in the function since full generality becomes too hard 
 	//TP: However we get sufficiently far with this approach since we turn many easy cases to SSA form which this check covers
-	if(node->type &  NODE_ASSIGNMENT && node->rhs && !node->is_constexpr)
+	if((node->type & NODE_ASSIGNMENT) && node->rhs && !node->is_constexpr)
 	{
 	  bool is_constexpr = all_identifiers_are_constexpr(node->rhs);
 	  ASTNode* lhs_identifier = get_node_by_token(IDENTIFIER,node->lhs);
+	  if(strstr(lhs_identifier->buffer,"INTERNAL_COPY_313"))
+		  printf("HI\n");
 	  const int index = str_vec_get_index(names,lhs_identifier->buffer);
 	  if(assign_counts.data[index] != 1)
 		  return res;
@@ -5567,31 +5593,31 @@ gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assig
 	return res;
 }
 bool
-gen_constexpr_info_base(ASTNode* node)
+gen_constexpr_info_base(ASTNode* node, const bool gen_mem_accesses)
 {
 	bool res = false;
 	if(node->type & NODE_GLOBAL)
 		return res;
 	if(node->lhs)
-		res |= gen_constexpr_info_base(node->lhs);
+		res |= gen_constexpr_info_base(node->lhs,gen_mem_accesses);
 	if(node->rhs)
-		res |= gen_constexpr_info_base(node->rhs);
+		res |= gen_constexpr_info_base(node->rhs,gen_mem_accesses);
 	if(node->type & NODE_FUNCTION)
 	{
 		string_vec names = VEC_INITIALIZER;
 		int_vec    n_assignments = VEC_INITIALIZER;
 		count_num_of_assignments(node,&names,&n_assignments);
-		res |= gen_constexpr_in_func(node,names,n_assignments,(gen_constexpr_params){false,NULL});
+		res |= gen_constexpr_in_func(node,gen_mem_accesses,names,n_assignments,(gen_constexpr_params){false,NULL});
 	}
 	return res;
 }
 
 void
-gen_constexpr_info(ASTNode* root)
+gen_constexpr_info(ASTNode* root, const bool gen_mem_accesses)
 {
 	bool has_changed = true;
 	while(has_changed) 
-		has_changed = gen_constexpr_info_base(root);
+		has_changed = gen_constexpr_info_base(root,gen_mem_accesses);
 
 }
 
@@ -5982,6 +6008,7 @@ gen_overloads(ASTNode* root)
 
   //TP we have to create the internal names here since it has to be done after name mangling but before transformation to AcArray
   gen_dfunc_internal_names(root);
+
 
   const dfunc_possibilities overload_possibilities = {dfunc_possible_types,dfunc_possible_names}; 
   while(overloaded_something)
@@ -7154,7 +7181,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
   gen_type_info(root);
-  gen_constexpr_info(root);
+  gen_constexpr_info(root,gen_mem_accesses);
   if(gen_mem_accesses)
   {
   	//gen_ssa_in_basic_blocks(root);
@@ -7230,7 +7257,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   traverse(root,NODE_NO_OUT,NULL);
   cache_func_calls(root);
   inline_dfuncs(root);
-  gen_constexpr_info(root);
+  gen_type_info(root);
+  gen_constexpr_info(root,gen_mem_accesses);
 
   // Device functions
   symboltable_reset();
@@ -7260,7 +7288,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 	  bool eliminated_something = false;
 
 	  int round = 0;
-  	  gen_constexpr_info(root);
+  	  gen_constexpr_info(root,gen_mem_accesses);
 	  while(eliminated_something)
 	  {
 		printf("ELIMINATION ROUND: %d\n",round++);
@@ -7274,7 +7302,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 	  	fflush(stream);
 	  	get_executed_conditionals(round-1);
 	  	eliminated_something = eliminate_conditionals(root);
-		gen_constexpr_info(root);
+		gen_constexpr_info(root,gen_mem_accesses);
 	  }
 
 

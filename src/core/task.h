@@ -311,6 +311,7 @@ typedef class DSLBoundaryConditionTask : public Task {
     KernelParameters params;
     int3 boundary_normal;
     int3 boundary_dims;
+    bool fieldwise;
 
   public:
     DSLBoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
