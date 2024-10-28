@@ -9,7 +9,7 @@ template <typename T> struct Buffer {
     T* data;
 
     // Constructor
-    Buffer(const size_t count)
+    Buffer(const size_t count = 0)
         : count(count), data(new T[count]())
     {
     }
@@ -31,8 +31,8 @@ template <typename T> struct Buffer {
     // Delete all other types of constructors
     Buffer(const Buffer&)            = delete; // Copy constructor
     Buffer& operator=(const Buffer&) = delete; // Copy assignment operator
-    // Buffer(Buffer&&)                 = delete; // Move constructor
-    Buffer& operator=(Buffer&&) = delete; // Move assignment operator
+    // Buffer(Buffer&&)            = delete; // Move constructor
+    // Buffer& operator=(Buffer&&) = delete; // Move assignment operator
 
     // // Copy constructor
     // Buffer(const Buffer& other)
@@ -64,20 +64,20 @@ template <typename T> struct Buffer {
         other.data  = nullptr;
     }
 
-    // // Move assignment operator
-    // Buffer& operator=(Buffer&& other) noexcept
-    // {
-    //     // Self-assignment
-    //     if (this == &other)
-    //         return *this;
+    // Move assignment operator
+    Buffer& operator=(Buffer&& other) noexcept
+    {
+        // Self-assignment
+        if (this == &other)
+            return *this;
 
-    //     delete[] data;
-    //     data        = other.data;
-    //     count       = other.count;
-    //     other.data  = nullptr;
-    //     other.count = 0;
-    //     return *this;
-    // }
+        delete[] data;
+        data        = other.data;
+        count       = other.count;
+        other.data  = nullptr;
+        other.count = 0;
+        return *this;
+    }
     void fill(const T& value)
     {
         for (size_t i = 0; i < count; ++i)

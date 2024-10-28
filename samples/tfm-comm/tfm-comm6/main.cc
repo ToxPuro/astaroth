@@ -123,8 +123,8 @@ main()
         // Packet MPI/CUDA halo exchange task
         PackInputs<double*> inputs = {mesh.buffer.data};
         HaloExchangeTask<double> task(local_mm, local_nn, rr, inputs.count);
-        task.launch(cart_comm, local_nn, rr, inputs);
-        task.wait(cart_comm, local_nn, rr, inputs);
+        task.launch(cart_comm, inputs);
+        task.wait(inputs);
 
         // // Prune the segment containing the computational domain
         // auto segments = partition(local_mm, local_nn, rr);

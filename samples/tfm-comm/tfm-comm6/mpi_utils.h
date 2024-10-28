@@ -40,12 +40,17 @@
 /**
  * Wrappers for core functions
  */
+// MPI_TAG_UB is required to be at least this large by the MPI 4.1 standard
+// However, not all implementations seem to define it (note int*) and
+// MPI_Comm_get_attr fails, so must be hardcoded here
+constexpr int MPI_TAG_UB_MIN_VALUE = 32767;
+
 static inline int
 get_tag(void)
 {
     static int tag = -1;
     ++tag;
-    if (tag < 0 || tag >= MPI_TAG_UB)
+    if (tag < 0 || tag >= MPI_TAG_UB_MIN_VALUE)
         tag = 0;
     return tag;
 }

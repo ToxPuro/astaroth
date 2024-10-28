@@ -8,7 +8,7 @@ template <typename T> using PackInputs = StaticArray<T, PACK_MAX_INPUTS>;
 
 template <typename T>
 void
-pack(const Shape mm, const Shape block_shape, const Index block_offset, PackInputs<T> inputs,
+pack(const Shape mm, const Shape block_shape, const Index block_offset, const PackInputs<T> inputs,
      double* output)
 {
     const uint64_t block_nelems = prod(block_shape);
