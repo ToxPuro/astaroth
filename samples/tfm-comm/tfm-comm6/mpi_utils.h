@@ -111,8 +111,9 @@ create_cart_comm(const MPI_Comm& parent_comm, const Shape& global_nn)
     return cart_comm;
 }
 
-/** Create a subarray
- * The resource must be freed after use
+/** Create and commit a subarray
+ * The returned resource is ready to use.
+ * The returned resource must be freed after use.
  * ERRCHK_MPI_API(MPI_Type_free(&subarray))
  * */
 static inline MPI_Datatype

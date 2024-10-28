@@ -11,6 +11,7 @@
 
 #include "halo_exchange.h"
 #include "halo_exchange_packed.h"
+#include "io.h"
 
 int
 main()
@@ -60,6 +61,62 @@ main()
         task.wait(inputs);
 
         // Print mesh
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        mesh.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+
+        // IO
+        if (/* DISABLES CODE */ (false)) {
+            MPI_Datatype global_subarray = create_subarray(global_nn, local_nn, global_nn_offset,
+                                                           MPI_DOUBLE);
+            MPI_Datatype local_subarray  = create_subarray(local_mm, local_nn, rr, MPI_DOUBLE);
+
+            MPI_Info info;
+            ERRCHK_MPI_API(MPI_Info_create(&info));
+            ERRCHK_MPI_API(MPI_Info_set(info, "blocksize", "4096"));
+            ERRCHK_MPI_API(MPI_Info_set(info, "striping_factor", "4"));
+            // ERRCHK_MPI_API(MPI_Info_set(info, "striping_unit", "...")); // Size of stripe chunks
+            // ERRCHK_MPI_API(MPI_Info_set(info, "cb_buffer_size", "...")); // Collective buffer
+            // size ERRCHK_MPI_API(MPI_Info_set(info, "romio_ds_read", "...")); // Data sieving
+            // ERRCHK_MPI_API(MPI_Info_set(info, "romio_ds_write", "...")); // Data sieving
+            // ERRCHK_MPI_API(MPI_Info_set(info, "romio_cb_read", "...")); // Collective buffering
+            // ERRCHK_MPI_API(MPI_Info_set(info, "romio_cb_write", "...")); // Collective buffering
+            // ERRCHK_MPI_API(MPI_Info_set(info, "romio_no_indep_rw", "...")); // Enable/disable
+            // independent rw
+
+            // Write
+            MPI_File file = MPI_FILE_NULL;
+            ERRCHK_MPI_API(MPI_File_open(cart_comm, "mesh.dat", MPI_MODE_CREATE | MPI_MODE_WRONLY,
+                                         info,
+                                         &file)); // TODO check info null
+            ERRCHK_MPI_API(MPI_File_set_view(file, 0, MPI_DOUBLE, global_subarray, "native", info));
+            // ERRCHK_MPI_API(
+            //     MPI_File_write_all(file, mesh.buffer.data, 1, local_subarray,
+            //     MPI_STATUS_IGNORE));
+            MPI_Request req;
+            ERRCHK_MPI_API(MPI_File_iwrite_all(file, mesh.buffer.data, 1, local_subarray, &req));
+            wait_request(req);
+            ERRCHK_MPI_API(MPI_File_close(&file));
+
+            // Read
+            ERRCHK_MPI_API(MPI_File_open(cart_comm, "mesh.dat", MPI_MODE_RDONLY, info,
+                                         &file)); // TODO check info null
+            ERRCHK_MPI_API(MPI_File_set_view(file, 0, MPI_DOUBLE, global_subarray, "native", info));
+            MPI_Status status = {.MPI_ERROR = MPI_SUCCESS};
+            ERRCHK_MPI_API(MPI_File_read_all(file, mesh.buffer.data, 1, local_subarray, &status));
+            ERRCHK_MPI_API(status.MPI_ERROR);
+            ERRCHK_MPI_API(MPI_File_close(&file));
+
+            ERRCHK_MPI_API(MPI_Info_free(&info));
+            ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
+            ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
+        }
+        IOTask<double> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
+        // iotask.write(cart_comm, "test.dat", mesh.buffer.data);
+        iotask.launch_write(cart_comm, "test.dat", mesh.buffer.data);
+        iotask.wait_write();
+        iotask.read(cart_comm, "test.dat", mesh.buffer.data);
+
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         mesh.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
