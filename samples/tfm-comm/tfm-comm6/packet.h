@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "buffer.h"
 #include "pack.h"
 #include "segment.h"
@@ -15,10 +17,10 @@ template <typename T> struct Packet {
     Shape local_nn;
     Index local_rr;
     Segment segment; // Shape of the data block the packet represents (for packing or unpacking)
-    Buffer<T> send_buffer; // Buffer holding the data
-    Buffer<T> recv_buffer; // Buffer holding the data
-    MPI_Request send_req;  // MPI request for handling synchronization
-    MPI_Request recv_req;  // MPI request for handling synchronization
+    std::unique_ptr<Buffer<T>> send_buffer; // Buffer holding the data
+    std::unique_ptr<Buffer<T>> recv_buffer; // Buffer holding the data
+    MPI_Request send_req;                   // MPI request for handling synchronization
+    MPI_Request recv_req;                   // MPI request for handling synchronization
 
     Packet(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
            const Segment& segment, const size_t n_aggregate_buffers)
@@ -27,8 +29,8 @@ template <typename T> struct Packet {
           local_nn(local_nn),
           local_rr(local_rr),
           segment(segment),
-          send_buffer(Buffer<T>(n_aggregate_buffers * prod(segment.dims))),
-          recv_buffer(Buffer<T>(n_aggregate_buffers * prod(segment.dims))),
+          send_buffer(std::make_unique<Buffer<T>>(n_aggregate_buffers * prod(segment.dims))),
+          recv_buffer(std::make_unique<Buffer<T>>(n_aggregate_buffers * prod(segment.dims))),
           send_req(MPI_REQUEST_NULL),
           recv_req(MPI_REQUEST_NULL)
     {
@@ -37,8 +39,8 @@ template <typename T> struct Packet {
     void launch(const MPI_Comm& parent_comm, const PackInputs<T*> inputs)
     {
         const size_t count = inputs.count * prod(segment.dims);
-        ERRCHK(count <= send_buffer.count);
-        ERRCHK(count <= recv_buffer.count);
+        ERRCHK(count <= send_buffer->count);
+        ERRCHK(count <= recv_buffer->count);
 
         // Duplicate the communicator to ensure the operation does not interfere
         // with other operations on the parent communicator
@@ -56,7 +58,7 @@ template <typename T> struct Packet {
 
         // Post recv
         const int tag = 0;
-        ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data, as<int>(count), MPI_DOUBLE, recv_neighbor, tag,
+        ERRCHK_MPI_API(MPI_Irecv(recv_buffer->data, as<int>(count), MPI_DOUBLE, recv_neighbor, tag,
                                  cart_comm, &recv_req));
 
         // Block until the previous send has completed before reusing the buffer
@@ -65,8 +67,8 @@ template <typename T> struct Packet {
                              "wait after launch to synchronize.");
 
         // Pack, post send, and ensure the message has left the pack buffer
-        pack(local_mm, segment.dims, send_offset, inputs, send_buffer.data);
-        ERRCHK_MPI_API(MPI_Isend(send_buffer.data, as<int>(count), MPI_DOUBLE, send_neighbor, tag,
+        pack(local_mm, segment.dims, send_offset, inputs, send_buffer->data);
+        ERRCHK_MPI_API(MPI_Isend(send_buffer->data, as<int>(count), MPI_DOUBLE, send_neighbor, tag,
                                  cart_comm, &send_req));
 
         ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
@@ -77,7 +79,7 @@ template <typename T> struct Packet {
         ERRCHK_MPI_EXPR_DESC(recv_req != MPI_REQUEST_NULL, "wait called but no request in flight");
         wait_request(recv_req);
         ERRCHK(recv_req == MPI_REQUEST_NULL);
-        unpack(recv_buffer.data, local_mm, segment.dims, segment.offset, outputs);
+        unpack(recv_buffer->data, local_mm, segment.dims, segment.offset, outputs);
 
         ERRCHK_MPI_EXPR_DESC(send_req != MPI_REQUEST_NULL, "wait called but no request in flight");
         wait_request(send_req);
