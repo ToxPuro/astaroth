@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include "partition.h"
+
 #include "errchk_mpi.h"
 #include "mpi_utils.h"
 #include <mpi.h>

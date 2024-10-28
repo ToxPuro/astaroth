@@ -9,8 +9,4 @@
  */
 std::vector<Segment> partition(const Shape& mm, const Shape& nn, const Index& nn_offset);
 
-/**
- * Decompose the
- */
-
 void test_partition(void);
