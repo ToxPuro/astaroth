@@ -34,3 +34,12 @@ prod(const size_t count, const uint64_t* arr)
         res *= arr[i];
     return res;
 }
+
+bool
+within_box(const Index& coords, const Shape& box_dims, const Index& box_offset)
+{
+    for (size_t i = 0; i < coords.count; ++i)
+        if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
+            return false;
+    return true;
+}

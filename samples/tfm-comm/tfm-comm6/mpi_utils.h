@@ -8,7 +8,6 @@
 /**
  * Helper macros for printing
  */
-
 #define MPI_SYNCHRONOUS_BLOCK_START(communicator)                                                  \
     {                                                                                              \
         MPI_Barrier(communicator);                                                                 \
@@ -53,15 +52,6 @@ get_tag(void)
     if (tag < 0 || tag >= MPI_TAG_UB_MIN_VALUE)
         tag = 0;
     return tag;
-}
-
-static inline bool
-within_box(const Index& coords, const Shape& box_dims, const Index& box_offset)
-{
-    for (size_t i = 0; i < coords.count; ++i)
-        if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
-            return false;
-    return true;
 }
 
 static inline Direction
@@ -121,7 +111,7 @@ create_cart_comm(const MPI_Comm& parent_comm, const Shape& global_nn)
     return cart_comm;
 }
 
-/** Create a subarra
+/** Create a subarray
  * The resource must be freed after use
  * ERRCHK_MPI_API(MPI_Type_free(&subarray))
  * */

@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "math_utils.h"
 #include "partition.h"
 
 #include "errchk_mpi.h"
