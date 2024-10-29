@@ -212,7 +212,7 @@ DCONST(const AcReal3Param param)
 }
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
-  ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
+  ((i) + (j) * DCONST(AC_mx) + (k) * DCONST(AC_mxy))
 
 __device__ int
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
@@ -757,7 +757,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
                                         : props.maxThreadsPerBlock;
-  const size_t max_smem = props.sharedMemPerBlock;
+  const size_t max_smem           = props.sharedMemPerBlock;
 
   // Old heuristic
   // for (int z = 1; z <= max_threads_per_block; ++z) {

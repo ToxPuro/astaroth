@@ -1190,10 +1190,10 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     // Intermediate buffer
     const size_t num_compute_profiles = 5 * 3;
     const AcShape buffer_shape        = {
-        .x = as_size_t(dims.nn.x),
-        .y = as_size_t(dims.nn.y),
-        .z = as_size_t(dims.m1.z),
-        .w = num_compute_profiles,
+               .x = as_size_t(dims.nn.x),
+               .y = as_size_t(dims.nn.y),
+               .z = as_size_t(dims.m1.z),
+               .w = num_compute_profiles,
     };
     const size_t buffer_size = acShapeSize(buffer_shape);
     AcBuffer buffer          = acBufferCreate(buffer_size, true);

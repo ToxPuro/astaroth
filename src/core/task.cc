@@ -187,7 +187,7 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
     case RegionFamily::Exchange_input: {
         position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
                           id.z == 1 ? nn.z : NGHOST};
-        dims     = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+        dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
                       id.z == 0 ? nn.z : NGHOST};
         break;
     }
@@ -298,10 +298,18 @@ Region::is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary
 /* Task interface */
 Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
            Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : device(device_), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
-      order(order_), active(true), boundary(BOUNDARY_NONE), input_region(input_region_),
+    : device(device_),
+      swap_offset(swap_offset_),
+      state(wait_state),
+      dep_cntr(),
+      loop_cntr(),
+      order(order_),
+      active(true),
+      boundary(BOUNDARY_NONE),
+      input_region(input_region_),
       output_region(output_region_),
-      input_parameters(op.parameters, op.parameters + op.num_parameters), vba(device->vba)
+      input_parameters(op.parameters, op.parameters + op.num_parameters),
+      vba(device->vba)
 {
     MPI_Comm_rank(acGridMPIComm(), &rank);
 }
@@ -900,7 +908,8 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
            Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
            Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
            op, device_, swap_offset_),
-      boundcond(op.bound_cond), boundary_normal(boundary_normal_)
+      boundcond(op.bound_cond),
+      boundary_normal(boundary_normal_)
 {
     // Create stream for boundary condition task
     {
@@ -1061,7 +1070,8 @@ SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(
            Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
            Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
            op, device_, swap_offset_),
-      boundcond(op.special_mhd_bound_cond), boundary_normal(boundary_normal_)
+      boundcond(op.special_mhd_bound_cond),
+      boundary_normal(boundary_normal_)
 {
     // TODO: the input regions for some of these will be weird, because they will depend on the
     // ghost zone of other fields
@@ -1174,10 +1184,10 @@ SpecialMHDBoundaryConditionTask::advance(const TraceFile* trace_file)
 AcBoundary
 boundary_from_normal(int3 normal)
 {
-    return (AcBoundary)(
-        (normal.x == -1 ? BOUNDARY_X_BOT : 0) | (normal.x == 1 ? BOUNDARY_X_TOP : 0) |
-        (normal.y == -1 ? BOUNDARY_Y_BOT : 0) | (normal.y == 1 ? BOUNDARY_Y_TOP : 0) |
-        (normal.z == -1 ? BOUNDARY_Z_BOT : 0) | (normal.z == 1 ? BOUNDARY_Z_TOP : 0));
+    return (
+        AcBoundary)((normal.x == -1 ? BOUNDARY_X_BOT : 0) | (normal.x == 1 ? BOUNDARY_X_TOP : 0) |
+                    (normal.y == -1 ? BOUNDARY_Y_BOT : 0) | (normal.y == 1 ? BOUNDARY_Y_TOP : 0) |
+                    (normal.z == -1 ? BOUNDARY_Z_BOT : 0) | (normal.z == 1 ? BOUNDARY_Z_TOP : 0));
 }
 
 int3
