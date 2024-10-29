@@ -7,6 +7,10 @@ run_const real AC_center_x
 run_const real AC_center_y
 run_const real AC_center_z
 
+run_const real AC_x[mx]
+run_const real AC_y[my]
+run_const real AC_z[mz]
+
 grid_position() {
 //MR: generalize, using x,y,z?
     return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
