@@ -207,3 +207,32 @@ wait_request(MPI_Request& req)
         ERRCHK_MPI_API(MPI_Request_free(&req));
     ERRCHK(req == MPI_REQUEST_NULL);
 }
+
+/** Map type to MPI enum representing the type
+ * Usage: MPIType<double>::value // returns MPI_DOUBLE
+ */
+// template <typename T> struct MPIType;
+
+// template <> struct MPIType<double> {
+//     static constexpr MPI_Datatype value = MPI_DOUBLE;
+// };
+
+// template <> struct MPIType<float> {
+//     static constexpr MPI_Datatype value = MPI_FLOAT;
+// };
+
+template <typename T>
+constexpr MPI_Datatype
+get_mpi_dtype()
+{
+    if (std::is_same<T, double>::value) {
+        return MPI_DOUBLE;
+    }
+    else if (std::is_same<T, float>::value) {
+        return MPI_DOUBLE;
+    }
+    else {
+        ERROR_DESC("Unknown datatype");
+        return MPI_DATATYPE_NULL;
+    }
+}
