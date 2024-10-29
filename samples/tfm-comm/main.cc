@@ -39,10 +39,9 @@ main()
         const Shape rr(global_nn.count, 1); // Symmetric halo
         const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
 
-        const MPI_Datatype mpi_dtype = get_dtype<AcReal>();
         NdArray<AcReal> mesh(local_mm);
         // mesh.fill_arange(as<uint64_t>(get_rank(cart_comm)) * prod(local_mm));
-        mesh.fill(as<uint64_t>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        mesh.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
 
         // Print mesh
         // MPI_SYNCHRONOUS_BLOCK_START(cart_comm)

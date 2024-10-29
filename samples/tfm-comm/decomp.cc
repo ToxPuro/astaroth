@@ -35,7 +35,7 @@ double
 surface_area_to_volume(const Shape& nn)
 {
     const Shape rr(nn.count, 1);
-    return static_cast<double>((prod(as<uint64_t>(2) * rr + nn))) / prod(nn);
+    return static_cast<double>((prod(as<uint64_t>(2) * rr + nn))) / static_cast<double>(prod(nn));
 }
 
 Shape

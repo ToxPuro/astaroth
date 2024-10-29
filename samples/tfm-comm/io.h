@@ -66,7 +66,8 @@ template <typename T> struct IOTask {
                              "Tried to read a file that had unexpected file size. Ensure that the "
                              "file read/written using the same grid dimensions.");
 
-        MPI_Status status = {.MPI_ERROR = MPI_SUCCESS};
+        MPI_Status status;
+        status.MPI_ERROR = MPI_SUCCESS;
         ERRCHK_MPI_API(MPI_File_read_all(file, data, 1, local_subarray, &status));
         ERRCHK_MPI_API(status.MPI_ERROR);
         ERRCHK_MPI_API(MPI_File_close(&file));
@@ -101,7 +102,9 @@ template <typename T> struct IOTask {
         ERRCHK_MPI_API(
             MPI_File_open(cart_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
         ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_dtype<T>(), global_subarray, "native", info));
-        MPI_Status status = {.MPI_ERROR = MPI_SUCCESS};
+
+        MPI_Status status;
+        status.MPI_ERROR = MPI_SUCCESS;
         ERRCHK_MPI_API(MPI_File_write_all(file, data, 1, local_subarray, &status));
         ERRCHK_MPI_API(status.MPI_ERROR);
         ERRCHK_MPI_API(MPI_File_close(&file));
