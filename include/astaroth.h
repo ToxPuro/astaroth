@@ -2170,6 +2170,29 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
 {
     return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
+template <typename T>
+static inline
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields, const T param)
+{
+   
+    auto loader = 
+    [&](ParamLoadingInfo p)
+    {
+            auto config = acDeviceGetLocalConfig(p.device);
+	    if(kernel == KERNEL_BOUNDCOND_CONST_DSL)
+	    {
+            	p.params -> BOUNDCOND_CONST_DSL.const_val = config[param];
+            	p.params -> BOUNDCOND_CONST_DSL.f         = p.vtxbuf;
+	    }
+	    else if(kernel == KERNEL_BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL)
+	    {
+    	        p.params -> BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL.prescribed_value = config[param];
+    	        p.params -> BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL.f                = p.vtxbuf;
+	    }
+    };
+    return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
+}
 
 static inline
 AcTaskDefinition

@@ -256,7 +256,7 @@ kernel_const_boundconds(const int3 region_id, const int3 normal, const int3 dims
 
         const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
-        vtxbuf[ghost_idx] = const_value;
+        vtxbuf[ghost_idx] = DCONST(const_value);
     }
 }
 

@@ -175,12 +175,25 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, Fie
     return task_def;
 }
 
-static const std::array<AcKernel,4> builtin_bcs  = {
+static const std::array<AcKernel,7> builtin_bcs  = {
 					KERNEL_BOUNDCOND_SYMMETRIC_DSL,
 					KERNEL_BOUNDCOND_ANTI_SYMMETRIC_DSL,
 					KERNEL_BOUNDCOND_A2_DSL,
 					KERNEL_BOUNDCOND_CONST_DSL,
+					KERNEL_BOUNDCOND_INFLOW_DSL,
+					KERNEL_BOUNDCOND_OUTFLOW_DSL,
+					KERNEL_BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL,
 				};
+
+#define DEFAULT_LOADER(FUNC) \
+    else if(kernel == KERNEL_##FUNC) \
+    { \
+	    auto default_loader = [](ParamLoadingInfo p) \
+	    { \
+		    p.params->FUNC.f = p.vtxbuf; \
+	    }; \
+	    task_def.load_kernel_params_func = new LoadKernelParamsFunc({default_loader}); \
+    }
 AcTaskDefinition
 acDSLBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const std::function<void(ParamLoadingInfo)> load_func)
 {
@@ -199,17 +212,16 @@ acDSLBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const F
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
-    if(std::find(builtin_bcs.begin(), builtin_bcs.end(), kernel) != builtin_bcs.end())
-    {
-	auto default_loader = [](ParamLoadingInfo p)
-	{
-		p.params->BOUNDCOND_SYMMETRIC_DSL.f = p.vtxbuf;
-	};
-    	task_def.load_kernel_params_func = new LoadKernelParamsFunc({default_loader});
-	task_def.fieldwise = true;
-    }
-    else
+    const bool builtin = (std::find(builtin_bcs.begin(), builtin_bcs.end(), kernel) != builtin_bcs.end());
+    task_def.fieldwise = builtin;
+    if (!builtin || kernel == KERNEL_BOUNDCOND_CONST_DSL || kernel == KERNEL_BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL)
     	task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
+    DEFAULT_LOADER(BOUNDCOND_SYMMETRIC_DSL)
+    DEFAULT_LOADER(BOUNDCOND_ANTI_SYMMETRIC_DSL)
+    DEFAULT_LOADER(BOUNDCOND_A2_DSL)
+    DEFAULT_LOADER(BOUNDCOND_A2_DSL)
+    DEFAULT_LOADER(BOUNDCOND_INFLOW_DSL)
+    DEFAULT_LOADER(BOUNDCOND_OUTFLOW_DSL)
     for(size_t i = 0; i < task_def.num_fields_in; ++i)
 	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
     for(size_t i = 0; i < task_def.num_fields_out; ++i)

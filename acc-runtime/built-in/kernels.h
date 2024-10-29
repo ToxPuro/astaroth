@@ -36,8 +36,6 @@ ac_bc_sym(Field f, int bc_sign)
 {
 	const int3 normal = get_normal()
 	const int3 boundary = get_boundary(normal)
-	if(vertexIdx.x == 0 && vertexIdx.y == 0 && vertexIdx.z == 0)
-		print("HI DSL BOUNDARY: %d,%d,%d\n",boundary.x,boundary.y,boundary.z);
 	int3 domain = boundary
 	int3 ghost  = boundary
 	for i in 0:NGHOST
@@ -84,10 +82,7 @@ utility Kernel BOUNDCOND_CONST_DSL(Field f, real const_val)
 }
 inline get_boundcond_spacing(int3 normal)
 {
-	return
-		normal.x != 0 ? (-(normal.x == -1))*AC_dsx :
-		normal.y != 0 ? (-(normal.y == -1))*AC_dsy :
-		(-(normal.z == -1))AC_dsz;
+	return normal.x*AC_dsx + normal.y*AC_dsy + normal.z*AC_dsz;
 }
 utility Kernel BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL(Field f, real prescribed_value)
 {
@@ -104,12 +99,9 @@ utility Kernel BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL(Field f, real prescribed_valu
 		f[ghost.x][ghost.y][ghost.z] = f[domain.x][domain.y][domain.z] + distance*prescribed_value;
 	}
 }
-inline get_normal_length(normal)
+inline get_normal_direction(normal)
 {
-	return
-		normal.x == 0 ? normal.x :
-		normal.y == 0 ? normal.y :
-		normal.z;
+	return normal.x + normal.y + normal.z;
 }
 ac_flow_bc(Field f, int flow_direction)
 {
@@ -117,11 +109,13 @@ ac_flow_bc(Field f, int flow_direction)
 	const int3 boundary = get_boundary(normal)
 	int3 domain = boundary
 	int3 ghost  = boundary
-	const real direction = get_normal_length(normal)
+	const real normal_direction = get_normal_direction(normal)
 	const real boundary_value  = f[boundary.x][boundary.y][boundary.z]
-	const real bc_sign = flow_direction*(boundary_value*direction >= 0.0 ? 1.0 : -1.0)
+	const real bc_sign = flow_direction*(boundary_value*normal_direction >= 0.0 ? 1.0 : -1.0)
 	for i in 0:NGHOST
 	{
+		domain = domain - normal
+		ghost  = ghost  + normal
 		f[ghost.x][ghost.y][ghost.z] = bc_sign*f[domain.x][domain.y][domain.z]
 	}
 }
