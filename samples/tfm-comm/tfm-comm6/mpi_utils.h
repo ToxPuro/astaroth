@@ -205,7 +205,7 @@ wait_request(MPI_Request& req)
     ERRCHK_MPI_API(status.MPI_ERROR);
     if (req != MPI_REQUEST_NULL)
         ERRCHK_MPI_API(MPI_Request_free(&req));
-    ERRCHK(req == MPI_REQUEST_NULL);
+    ERRCHK_MPI(req == MPI_REQUEST_NULL);
 }
 
 /** Map type to MPI enum representing the type

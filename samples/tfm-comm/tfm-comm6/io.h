@@ -10,8 +10,6 @@
 // 3) ensure correctness with arbitrary call patterns
 //
 // MPI IO hints: pg. 648 in MPI 4.1 specification
-// MPI_File_get_size: check at reading that the file size is the same as expected (global problem
-// size)
 
 template <typename T> struct IOTask {
 
@@ -40,7 +38,7 @@ template <typename T> struct IOTask {
 
     void read(const MPI_Comm cart_comm, const std::string& path, T* data)
     {
-        MPI_Info info;
+        MPI_Info info = MPI_INFO_NULL;
         ERRCHK_MPI_API(MPI_Info_create(&info));
         ERRCHK_MPI_API(MPI_Info_set(info, "blocksize", "4096"));
         ERRCHK_MPI_API(MPI_Info_set(info, "striping_factor", "4"));
@@ -58,14 +56,19 @@ template <typename T> struct IOTask {
         MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
                                                        get_dtype<T>());
 
-        ERRCHK(file == MPI_FILE_NULL);
+        ERRCHK_MPI(file == MPI_FILE_NULL);
         ERRCHK_MPI_API(MPI_File_open(cart_comm, path.c_str(), MPI_MODE_RDONLY, info, &file));
         ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_dtype<T>(), global_subarray, "native", info));
+
+        MPI_Offset bytes;
+        ERRCHK_MPI_API(MPI_File_get_size(file, &bytes));
+        ERRCHK_MPI(as<uint64_t>(bytes) == prod(file_dims) * sizeof(T));
+
         MPI_Status status = {.MPI_ERROR = MPI_SUCCESS};
         ERRCHK_MPI_API(MPI_File_read_all(file, data, 1, local_subarray, &status));
         ERRCHK_MPI_API(status.MPI_ERROR);
         ERRCHK_MPI_API(MPI_File_close(&file));
-        ERRCHK(file == MPI_FILE_NULL);
+        ERRCHK_MPI(file == MPI_FILE_NULL);
 
         ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
         ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
@@ -74,7 +77,7 @@ template <typename T> struct IOTask {
 
     void write(const MPI_Comm cart_comm, const std::string& path, const T* data)
     {
-        MPI_Info info;
+        MPI_Info info = MPI_INFO_NULL;
         ERRCHK_MPI_API(MPI_Info_create(&info));
         ERRCHK_MPI_API(MPI_Info_set(info, "blocksize", "4096"));
         ERRCHK_MPI_API(MPI_Info_set(info, "striping_factor", "4"));
@@ -92,13 +95,15 @@ template <typename T> struct IOTask {
         MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
                                                        get_dtype<T>());
 
-        ERRCHK(file == MPI_FILE_NULL);
+        ERRCHK_MPI(file == MPI_FILE_NULL);
         ERRCHK_MPI_API(
             MPI_File_open(cart_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
         ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_dtype<T>(), global_subarray, "native", info));
-        ERRCHK_MPI_API(MPI_File_write_all(file, data, 1, local_subarray, MPI_STATUS_IGNORE));
+        MPI_Status status = {.MPI_ERROR = MPI_SUCCESS};
+        ERRCHK_MPI_API(MPI_File_write_all(file, data, 1, local_subarray, &status));
+        ERRCHK_MPI_API(status.MPI_ERROR);
         ERRCHK_MPI_API(MPI_File_close(&file));
-        ERRCHK(file == MPI_FILE_NULL);
+        ERRCHK_MPI(file == MPI_FILE_NULL);
 
         ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
         ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
@@ -107,7 +112,7 @@ template <typename T> struct IOTask {
 
     void launch_write(const MPI_Comm cart_comm, const std::string& path, const T* data)
     {
-        MPI_Info info;
+        MPI_Info info = MPI_INFO_NULL;
         ERRCHK_MPI_API(MPI_Info_create(&info));
         ERRCHK_MPI_API(MPI_Info_set(info, "blocksize", "4096"));
         ERRCHK_MPI_API(MPI_Info_set(info, "striping_factor", "4"));
@@ -125,7 +130,7 @@ template <typename T> struct IOTask {
         MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
                                                        get_dtype<T>());
 
-        ERRCHK(file == MPI_FILE_NULL);
+        ERRCHK_MPI(file == MPI_FILE_NULL);
         ERRCHK_MPI_API(
             MPI_File_open(cart_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
         ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_dtype<T>(), global_subarray, "native", info));
@@ -139,6 +144,6 @@ template <typename T> struct IOTask {
     {
         wait_request(req);
         ERRCHK_MPI_API(MPI_File_close(&file));
-        ERRCHK(file == MPI_FILE_NULL);
+        ERRCHK_MPI(file == MPI_FILE_NULL);
     };
 };
