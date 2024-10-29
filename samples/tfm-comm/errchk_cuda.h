@@ -13,7 +13,7 @@ static_assert(false);
 
 #define ERRCHK_CUDA_API(errcode)                                                                   \
     do {                                                                                           \
-        const int _tmp_cuda_api_errcode_ = (errcode);                                              \
+        const cudaError_t _tmp_cuda_api_errcode_ = (errcode);                                      \
         if (_tmp_cuda_api_errcode_ != CUDA_SUCCESS) {                                              \
             errchk_print_error(__func__, __FILE__, __LINE__, #errcode,                             \
                                cudaGetErrorString(_tmp_cuda_api_errcode_));                        \
@@ -22,7 +22,7 @@ static_assert(false);
         }                                                                                          \
     } while (0)
 
-#define ERRCHK_CUDA_KERNEL(errcode)                                                                \
+#define ERRCHK_CUDA_KERNEL()                                                                       \
     do {                                                                                           \
         ERRCHK_CUDA_API(cudaPeekAtLastError());                                                    \
         ERRCHK_CUDA_API(cudaDeviceSynchronize());                                                  \

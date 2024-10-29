@@ -60,3 +60,23 @@ add_executable(unit_test unit_test.cc)
 target_link_libraries(unit_test PRIVATE tfm-utils)
 
 add_test(NAME UnitTest COMMAND unit_test)
+
+
+## Other
+find_package(CUDAToolkit QUIET)
+find_package(HIP QUIET)
+if (CUDAToolkit_FOUND)
+    message(STATUS "CUDA found")
+    enable_language(CUDA)
+    add_executable(gpu gpu.cu errchk_print.c)
+    # set_target_properties(gpu PROPERTIES CUDA_ARCHITECTURES "60")
+elseif (HIP_FOUND)
+    message(STATUS "HIP found")
+    enable_language(HIP)
+    add_executable(gpu gpu.cu errchk_print.c)
+    target_link_libraries(gpu PRIVATE hip::host hip::device)
+    set_source_files_properties(gpu.cu PROPERTIES LANGUAGE HIP)
+    set_target_properties(gpu PROPERTIES HIP_ARCHITECTURES "gfx90a")
+else ()
+    message(WARNING "Did not find CUDA or HIP")
+endif ()
