@@ -37,6 +37,7 @@ main()
         const Shape rr(global_nn.count, 2); // Symmetric halo
         const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
 
+        const MPI_Datatype mpi_dtype = get_mpi_dtype<double>();
         NdArray<double> mesh(local_mm);
         // mesh.fill_arange(as<uint64_t>(get_rank(cart_comm)) * prod(local_mm));
         mesh.fill(as<uint64_t>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
@@ -47,7 +48,7 @@ main()
         // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         // Basic MPI halo exchange task
-        // auto recv_reqs = create_halo_exchange_task(cart_comm, local_mm, local_nn, rr,
+        // auto recv_reqs = create_halo_exchange_task<double>(cart_comm, local_mm, local_nn, rr,
         //                                            mesh.buffer.data, mesh.buffer.data);
         // while (!recv_reqs.empty()) {
         //     wait_request(recv_reqs.back());
@@ -68,8 +69,8 @@ main()
         // IO
         if (/* DISABLES CODE */ (false)) {
             MPI_Datatype global_subarray = create_subarray(global_nn, local_nn, global_nn_offset,
-                                                           MPI_DOUBLE);
-            MPI_Datatype local_subarray  = create_subarray(local_mm, local_nn, rr, MPI_DOUBLE);
+                                                           mpi_dtype);
+            MPI_Datatype local_subarray  = create_subarray(local_mm, local_nn, rr, mpi_dtype);
 
             MPI_Info info;
             ERRCHK_MPI_API(MPI_Info_create(&info));
@@ -89,7 +90,7 @@ main()
             ERRCHK_MPI_API(MPI_File_open(cart_comm, "mesh.dat", MPI_MODE_CREATE | MPI_MODE_WRONLY,
                                          info,
                                          &file)); // TODO check info null
-            ERRCHK_MPI_API(MPI_File_set_view(file, 0, MPI_DOUBLE, global_subarray, "native", info));
+            ERRCHK_MPI_API(MPI_File_set_view(file, 0, mpi_dtype, global_subarray, "native", info));
             // ERRCHK_MPI_API(
             //     MPI_File_write_all(file, mesh.buffer.data, 1, local_subarray,
             //     MPI_STATUS_IGNORE));
@@ -101,7 +102,7 @@ main()
             // Read
             ERRCHK_MPI_API(MPI_File_open(cart_comm, "mesh.dat", MPI_MODE_RDONLY, info,
                                          &file)); // TODO check info null
-            ERRCHK_MPI_API(MPI_File_set_view(file, 0, MPI_DOUBLE, global_subarray, "native", info));
+            ERRCHK_MPI_API(MPI_File_set_view(file, 0, mpi_dtype, global_subarray, "native", info));
             MPI_Status status = {.MPI_ERROR = MPI_SUCCESS};
             ERRCHK_MPI_API(MPI_File_read_all(file, mesh.buffer.data, 1, local_subarray, &status));
             ERRCHK_MPI_API(status.MPI_ERROR);
