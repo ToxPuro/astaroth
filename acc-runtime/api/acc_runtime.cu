@@ -1209,9 +1209,9 @@ acReindexCross(const cudaStream_t stream, //
 
   const size_t block_offset = out_shape.x * out_shape.y * out_shape.z;
   const SOAVector out_bb11  = {
-      .x = &out[3 * block_offset],
-      .y = &out[4 * block_offset],
-      .z = &out[5 * block_offset],
+       .x = &out[3 * block_offset],
+       .y = &out[4 * block_offset],
+       .z = &out[5 * block_offset],
   };
   const SOAVector out_bb12 = {
       .x = &out[6 * block_offset],
