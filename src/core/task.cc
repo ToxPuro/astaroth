@@ -298,8 +298,15 @@ Region::is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary
 /* Task interface */
 Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
            Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : device(device_), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
-      order(order_), active(true), boundary(BOUNDARY_NONE), input_region(input_region_),
+    : device(device_),
+      swap_offset(swap_offset_),
+      state(wait_state),
+      dep_cntr(),
+      loop_cntr(),
+      order(order_),
+      active(true),
+      boundary(BOUNDARY_NONE),
+      input_region(input_region_),
       output_region(output_region_),
       input_parameters(op.parameters, op.parameters + op.num_parameters)
 {
@@ -900,7 +907,8 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
            Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
            Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
            op, device_, swap_offset_),
-      boundcond(op.bound_cond), boundary_normal(boundary_normal_)
+      boundcond(op.bound_cond),
+      boundary_normal(boundary_normal_)
 {
     // Create stream for boundary condition task
     {
@@ -1061,7 +1069,8 @@ SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(
            Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
            Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
            op, device_, swap_offset_),
-      boundcond(op.special_mhd_bound_cond), boundary_normal(boundary_normal_)
+      boundcond(op.special_mhd_bound_cond),
+      boundary_normal(boundary_normal_)
 {
     // TODO: the input regions for some of these will be weird, because they will depend on the
     // ghost zone of other fields
