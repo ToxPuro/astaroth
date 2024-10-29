@@ -190,19 +190,19 @@ as_int(const T i)
 }
 #else
 // TODO: cleanup and integrate with the errors above someday
-#define INDIRECT_ERROR(str, file, line)                                                                          \
-  {                                                                                                              \
-    time_t terr;                                                                                                 \
-    time(&terr);                                                                                                 \
-    fprintf(stderr, "\n\n\n\n┌──────────────────────── ERROR " \
-                    "───────────────────────────┐\n\n");                                                         \
-    fprintf(stderr, "%s", ctime(&terr));                                                                         \
-    fprintf(stderr, "Error in file %s line %d: %s\n", file, line, str);                                          \
-    fprintf(stderr, "\n└──────────────────────── ERROR "       \
-                    "───────────────────────────┘\n\n\n\n");                                                     \
-    fflush(stderr);                                                                                              \
-    exit(EXIT_FAILURE);                                                                                          \
-    abort();                                                                                                     \
+#define INDIRECT_ERROR(str, file, line)                                        \
+  {                                                                            \
+    time_t terr;                                                               \
+    time(&terr);                                                               \
+    fprintf(stderr, "\n\n\n\n┌──────────────────────── ERROR "                 \
+                    "───────────────────────────┐\n\n");                       \
+    fprintf(stderr, "%s", ctime(&terr));                                       \
+    fprintf(stderr, "Error in file %s line %d: %s\n", file, line, str);        \
+    fprintf(stderr, "\n└──────────────────────── ERROR "                       \
+                    "───────────────────────────┘\n\n\n\n");                   \
+    fflush(stderr);                                                            \
+    exit(EXIT_FAILURE);                                                        \
+    abort();                                                                   \
   }
 #define INDIRECT_ERRCHK_ALWAYS(retval, file, line)                             \
   {                                                                            \

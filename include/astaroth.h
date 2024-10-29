@@ -1267,7 +1267,9 @@ acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out
 }
 
 /** */
-template <size_t num_fields> AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
+template <size_t num_fields>
+AcTaskDefinition
+acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }
