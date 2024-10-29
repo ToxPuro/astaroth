@@ -4,14 +4,18 @@
 #include <iostream>
 #include <type_traits>
 
-#if defined(__CUDACC__)
+#if defined(__CUDA_ARCH__)
 #include <cuda_runtime.h>
-#elif defined(__HIP_PLATFORM_AMD__)
+#elif defined(__HIP_DEVICE_COMPILE__)
 #include "hip.h"
 #include <hip/hip_runtime.h>
 #else
+#if !defined(__host__)
 #define __host__
+#endif
+#if !defined(__device__)
 #define __device__
+#endif
 #endif
 
 #include "errchk.h"

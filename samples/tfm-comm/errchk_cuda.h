@@ -2,15 +2,6 @@
 
 #include "errchk.h"
 
-#if defined(__CUDACC__)
-#include <cuda_runtime.h>
-#elif defined(__HIP_PLATFORM_AMD__)
-#include "hip.h"
-#include <hip/hip_runtime.h>
-#else
-static_assert(false);
-#endif
-
 #define ERRCHK_CUDA_API(errcode)                                                                   \
     do {                                                                                           \
         const cudaError_t _tmp_cuda_api_errcode_ = (errcode);                                      \

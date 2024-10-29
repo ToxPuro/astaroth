@@ -30,13 +30,13 @@ template <typename T> struct HaloExchangeTask {
         }
     }
 
-    void launch(const MPI_Comm parent_comm, const PackInputs<T*> inputs)
+    void launch(const MPI_Comm parent_comm, const PackPtrArray<T*> inputs)
     {
         for (auto& packet : packets)
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(const PackInputs<T*> outputs)
+    void wait(const PackPtrArray<T*> outputs)
     {
         // TODO: round-robin busy-wait to choose packet to unpack
         for (auto& packet : packets)
