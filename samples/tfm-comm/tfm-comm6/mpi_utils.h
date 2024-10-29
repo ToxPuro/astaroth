@@ -223,7 +223,7 @@ wait_request(MPI_Request& req)
 
 template <typename T>
 constexpr MPI_Datatype
-get_mpi_dtype()
+get_dtype()
 {
     if (std::is_same<T, double>::value) {
         return MPI_DOUBLE;

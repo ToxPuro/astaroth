@@ -41,9 +41,9 @@ create_halo_exchange_task(const MPI_Comm parent_comm, const Shape& local_mm, con
         const Index recv_offset    = segment.offset;
         const Index send_offset    = ((local_nn + recv_offset - rr) % local_nn) + rr;
         MPI_Datatype recv_subarray = create_subarray(local_mm, segment.dims, recv_offset,
-                                                     get_mpi_dtype<T>());
+                                                     get_dtype<T>());
         MPI_Datatype send_subarray = create_subarray(local_mm, segment.dims, send_offset,
-                                                     get_mpi_dtype<T>());
+                                                     get_dtype<T>());
 
         const Direction recv_direction = get_direction(segment.offset, local_nn, rr);
         const int recv_neighbor        = get_neighbor(cart_comm, recv_direction);

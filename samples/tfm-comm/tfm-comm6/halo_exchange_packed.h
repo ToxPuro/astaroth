@@ -38,6 +38,7 @@ template <typename T> struct HaloExchangeTask {
 
     void wait(const PackInputs<T*> outputs)
     {
+        // TODO: round-robin busy-wait to choose packet to unpack
         for (auto& packet : packets)
             packet->wait(outputs);
     }
