@@ -7,9 +7,9 @@ run_const real AC_center_x
 run_const real AC_center_y
 run_const real AC_center_z
 
-gmem real AC_x[AC_mx]
-gmem real AC_y[AC_my]
-gmem real AC_z[AC_mz]
+run_const real AC_x[mx]
+run_const real AC_y[my]
+run_const real AC_z[mz]
 
 grid_position() {
 //MR: generalize, using x,y,z?
