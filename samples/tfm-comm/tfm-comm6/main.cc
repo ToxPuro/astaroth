@@ -37,8 +37,8 @@ main()
         const Shape rr(global_nn.count, 2); // Symmetric halo
         const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
 
-        const MPI_Datatype mpi_dtype = get_mpi_dtype<double>();
-        NdArray<double> mesh(local_mm);
+        const MPI_Datatype mpi_dtype = get_mpi_dtype<AcReal>();
+        NdArray<AcReal> mesh(local_mm);
         // mesh.fill_arange(as<uint64_t>(get_rank(cart_comm)) * prod(local_mm));
         mesh.fill(as<uint64_t>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
 
@@ -48,7 +48,7 @@ main()
         // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         // Basic MPI halo exchange task
-        // auto recv_reqs = create_halo_exchange_task<double>(cart_comm, local_mm, local_nn, rr,
+        // auto recv_reqs = create_halo_exchange_task<AcReal>(cart_comm, local_mm, local_nn, rr,
         //                                            mesh.buffer.data, mesh.buffer.data);
         // while (!recv_reqs.empty()) {
         //     wait_request(recv_reqs.back());
@@ -56,8 +56,8 @@ main()
         // }
 
         // Packet MPI/CUDA halo exchange task
-        PackInputs<double*> inputs = {mesh.buffer.data};
-        HaloExchangeTask<double> task(local_mm, local_nn, rr, inputs.count);
+        PackInputs<AcReal*> inputs = {mesh.buffer.data};
+        HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, inputs.count);
         task.launch(cart_comm, inputs);
         task.wait(inputs);
 
@@ -112,7 +112,7 @@ main()
             ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
             ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
         }
-        IOTask<double> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
+        IOTask<AcReal> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
         // iotask.write(cart_comm, "test.dat", mesh.buffer.data);
         iotask.launch_write(cart_comm, "test.dat", mesh.buffer.data);
         iotask.wait_write();

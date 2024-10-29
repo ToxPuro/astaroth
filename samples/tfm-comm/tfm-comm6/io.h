@@ -34,7 +34,7 @@ template <typename T> struct IOTask {
           req(MPI_REQUEST_NULL),
           file(MPI_FILE_NULL) {};
 
-    void read(const MPI_Comm cart_comm, const std::string& path, double* data)
+    void read(const MPI_Comm cart_comm, const std::string& path, T* data)
     {
         MPI_Info info;
         ERRCHK_MPI_API(MPI_Info_create(&info));
@@ -69,7 +69,7 @@ template <typename T> struct IOTask {
         ERRCHK_MPI_API(MPI_Info_free(&info));
     };
 
-    void write(const MPI_Comm cart_comm, const std::string& path, const double* data)
+    void write(const MPI_Comm cart_comm, const std::string& path, const T* data)
     {
         MPI_Info info;
         ERRCHK_MPI_API(MPI_Info_create(&info));
@@ -103,7 +103,7 @@ template <typename T> struct IOTask {
         ERRCHK_MPI_API(MPI_Info_free(&info));
     }
 
-    void launch_write(const MPI_Comm cart_comm, const std::string& path, const double* data)
+    void launch_write(const MPI_Comm cart_comm, const std::string& path, const T* data)
     {
         MPI_Info info;
         ERRCHK_MPI_API(MPI_Info_create(&info));

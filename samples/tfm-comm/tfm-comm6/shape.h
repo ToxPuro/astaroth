@@ -9,3 +9,4 @@ using Shape     = StaticArray<uint64_t, MAX_NDIMS>;
 using Direction = StaticArray<int64_t, MAX_NDIMS>;
 using MPIIndex  = StaticArray<int, MAX_NDIMS>;
 using MPIShape  = StaticArray<int, MAX_NDIMS>;
+using AcReal    = double;
