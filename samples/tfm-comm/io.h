@@ -56,13 +56,15 @@ template <typename T> struct IOTask {
         MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
                                                        get_dtype<T>());
 
-        ERRCHK_MPI(file == MPI_FILE_NULL);
+        ERRCHK_MPI_EXPR_DESC(file == MPI_FILE_NULL, "Previous IO operation was still in progress.");
         ERRCHK_MPI_API(MPI_File_open(cart_comm, path.c_str(), MPI_MODE_RDONLY, info, &file));
         ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_dtype<T>(), global_subarray, "native", info));
 
         MPI_Offset bytes;
         ERRCHK_MPI_API(MPI_File_get_size(file, &bytes));
-        ERRCHK_MPI(as<uint64_t>(bytes) == prod(file_dims) * sizeof(T));
+        ERRCHK_MPI_EXPR_DESC(as<uint64_t>(bytes) == prod(file_dims) * sizeof(T),
+                             "Tried to read a file that had unexpected file size. Ensure that the "
+                             "file read/written using the same grid dimensions.");
 
         MPI_Status status = {.MPI_ERROR = MPI_SUCCESS};
         ERRCHK_MPI_API(MPI_File_read_all(file, data, 1, local_subarray, &status));
@@ -95,7 +97,7 @@ template <typename T> struct IOTask {
         MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
                                                        get_dtype<T>());
 
-        ERRCHK_MPI(file == MPI_FILE_NULL);
+        ERRCHK_MPI_EXPR_DESC(file == MPI_FILE_NULL, "Previous IO operation was still in progress.");
         ERRCHK_MPI_API(
             MPI_File_open(cart_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
         ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_dtype<T>(), global_subarray, "native", info));
@@ -142,6 +144,12 @@ template <typename T> struct IOTask {
 
     void wait_write()
     {
+        ERRCHK_MPI_EXPR_DESC(file != MPI_FILE_NULL,
+                             "Function called but there was no write operation in progress. "
+                             "Function launch_write must be called before wait_write.");
+        ERRCHK_MPI_EXPR_DESC(req != MPI_REQUEST_NULL,
+                             "Function called but there was no write operation in progress. "
+                             "Function launch_write must be called before wait_write.");
         wait_request(req);
         ERRCHK_MPI_API(MPI_File_close(&file));
         ERRCHK_MPI(file == MPI_FILE_NULL);
