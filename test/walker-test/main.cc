@@ -140,10 +140,10 @@ main(void)
 	    p.params -> solve.step_num = steps;
     };
     AcTaskGraph* solve_graph = acGridBuildTaskGraph({
-		    	acCompute(KERNEL_solve,all_fields,loader)
+		    	acCompute(solve,all_fields,loader)
 		 });
     AcTaskGraph* init = acGridBuildTaskGraph({
-		    	acCompute(KERNEL_init,all_fields)
+		    	acCompute(init,all_fields)
 		 });
     acGridExecuteTaskGraph(init,1);
     acLoadUniform(0,global_radius_start, global_radius_host, size_t(1));

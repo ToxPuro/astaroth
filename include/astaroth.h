@@ -111,16 +111,6 @@ typedef enum {AC_XZ=0, AC_YZ=1, AC_BOT=0, AC_TOP=2, NUM_PLATE_BUFFERS=4} PlateTy
 
 #define RTYPE_ISNAN (RTYPE_SUM)
 
-#define AC_FOR_BCTYPES(FUNC)                                                      \
-    FUNC(BOUNDCOND_PERIODIC)                                                      \
-    FUNC(BOUNDCOND_SYMMETRIC)                                                     \
-    FUNC(BOUNDCOND_ANTISYMMETRIC)                                                 \
-    FUNC(BOUNDCOND_A2)                                                            \
-    FUNC(BOUNDCOND_INFLOW)                                                        \
-    FUNC(BOUNDCOND_OUTFLOW)                                                       \
-    FUNC(BOUNDCOND_CONST)                                                         \
-    FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
-
 #define AC_FOR_INIT_TYPES(FUNC)                                                   \
     FUNC(INIT_TYPE_RANDOM)                                                        \
     FUNC(INIT_TYPE_AA_RANDOM)                                                     \
@@ -135,12 +125,6 @@ typedef enum {AC_XZ=0, AC_YZ=1, AC_BOT=0, AC_TOP=2, NUM_PLATE_BUFFERS=4} PlateTy
     FUNC(INIT_TYPE_RAYLEIGH_BENARD)
 
 #define AC_GEN_ID(X) X,
-
-// Naming the associated number of the boundary condition types
-typedef enum {
-    AC_FOR_BCTYPES(AC_GEN_ID) //
-    NUM_BCTYPES,
-} AcBoundcond;
 
 
 typedef enum {
@@ -182,7 +166,6 @@ enum class AcMPICommStrategy:int{
 #undef AC_GEN_ID
 
 #define AC_GEN_STR(X) #X,
-static const char* bctype_names[] _UNUSED       = {AC_FOR_BCTYPES(AC_GEN_STR) "-end-"};
 static const char* rtype_names[] _UNUSED        = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
 static const char* initcondtype_names[] _UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
 
@@ -488,13 +471,6 @@ acPrintMeshInfo(const AcMeshInfo config)
                (double)(config.real3_params[i].y), (double)(config.real3_params[i].z));
 }
 
-/** Prints a list of boundary condition types */
-static inline void
-acQueryBCtypes(void)
-{
-    for (int i = 0; i < NUM_BCTYPES; ++i)
-        printf("%s (%d)\n", bctype_names[i], i);
-}
 
 /** Prints a list of initial condition condition types */
 static inline void
@@ -884,7 +860,6 @@ typedef enum AcTaskType {
     TASKTYPE_HALOEXCHANGE,
     TASKTYPE_BOUNDCOND,
     TASKTYPE_SYNC,
-    TASKTYPE_DSL_BOUNDCOND,
 } AcTaskType;
 
 typedef enum AcBoundary {
@@ -924,10 +899,7 @@ typedef struct LoadKernelParamsFunc LoadKernelParamsFunc;
  * some operation.*/
 typedef struct AcTaskDefinition {
     AcTaskType task_type;
-    union {
-        AcKernel kernel_enum;
-        AcBoundcond bound_cond;
-    };
+    AcKernel kernel_enum;
     AcBoundary boundary;
 
     Field* fields_in;
@@ -968,11 +940,6 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acDSLBoundaryCondition,
 #endif
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const size_t num_fields));
-
-/** */
-OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,(const AcBoundary boundary, const AcBoundcond bound_cond,
-                                     Field fields[], const size_t num_fields,
-                                     AcRealParam parameters[], const size_t num_parameters));
 
 FUNC_DEFINE(AcTaskDefinition, acSync,());
 /** */
@@ -2149,21 +2116,6 @@ static inline acHaloExchange(std::vector<Field> fields)
     return BASE_FUNC_NAME(acHaloExchange)(fields.data(), fields.size());
 }
 
-/** */
-template <size_t num_fields>
-static AcTaskDefinition
-acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                    Field (&fields)[num_fields])
-{
-    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, bound_cond, fields, num_fields, nullptr, 0);
-}
-
-static inline AcTaskDefinition
-acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, std::vector<Field> fields)
-{
-    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, bound_cond, fields.data(), fields.size(), nullptr, 0);
-}
-
 static inline
 AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
@@ -2180,15 +2132,15 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
     [&](ParamLoadingInfo p)
     {
             auto config = acDeviceGetLocalConfig(p.device);
-	    if(kernel == KERNEL_BOUNDCOND_CONST_DSL)
+	    if(kernel == BOUNDCOND_CONST)
 	    {
-            	p.params -> BOUNDCOND_CONST_DSL.const_val = config[param];
-            	p.params -> BOUNDCOND_CONST_DSL.f         = p.vtxbuf;
+            	p.params -> BOUNDCOND_CONST.const_val = config[param];
+            	p.params -> BOUNDCOND_CONST.f         = p.vtxbuf;
 	    }
-	    else if(kernel == KERNEL_BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL)
+	    else if(kernel == BOUNDCOND_PRESCRIBED_DERIVATIVE)
 	    {
-    	        p.params -> BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL.prescribed_value = config[param];
-    	        p.params -> BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL.f                = p.vtxbuf;
+    	        p.params -> BOUNDCOND_PRESCRIBED_DERIVATIVE.prescribed_value = config[param];
+    	        p.params -> BOUNDCOND_PRESCRIBED_DERIVATIVE.f                = p.vtxbuf;
 	    }
     };
     return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
@@ -2208,20 +2160,6 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
     return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
-
-
-
-/** */
-template <size_t num_fields, size_t num_parameters>
-static AcTaskDefinition
-acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                    Field (&fields)[num_fields], AcRealParam (&parameters)[num_parameters])
-{
-    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, bound_cond, fields, num_fields, parameters,
-                               num_parameters);
-}
-
-
 
 /** */
 template <size_t n_ops>

@@ -4,7 +4,7 @@ utility Kernel AC_BUILTIN_RESET()
 		write(Field(field), 0.0)
 	}
 }
-utility Kernel AC_PERIODIC()
+utility Kernel BOUNDCOND_PERIODIC()
 {
 }
 
@@ -45,15 +45,15 @@ ac_bc_sym(Field f, int bc_sign)
 		f[ghost.x][ghost.y][ghost.z] = bc_sign*f[domain.x][domain.y][domain.z];
 	}
 }
-utility Kernel BOUNDCOND_SYMMETRIC_DSL(Field f)
+utility Kernel BOUNDCOND_SYMMETRIC(Field f)
 {
 	ac_bc_sym(f,1)
 }
-utility Kernel BOUNDCOND_ANTI_SYMMETRIC_DSL(Field f)
+utility Kernel BOUNDCOND_ANTISYMMETRIC(Field f)
 {
 	ac_bc_sym(f,-1)
 }
-utility Kernel BOUNDCOND_A2_DSL(Field f)
+utility Kernel BOUNDCOND_A2(Field f)
 {
 	const int3 normal = get_normal()
 	const int3 boundary = get_boundary(normal)
@@ -67,7 +67,7 @@ utility Kernel BOUNDCOND_A2_DSL(Field f)
 		f[ghost.x][ghost.y][ghost.z] = 2*boundary_val -f[domain.x][domain.y][domain.z];
 	}
 }
-utility Kernel BOUNDCOND_CONST_DSL(Field f, real const_val)
+utility Kernel BOUNDCOND_CONST(Field f, real const_val)
 {
 	const int3 normal = get_normal()
 	const int3 boundary = get_boundary(normal)
@@ -84,7 +84,7 @@ inline get_boundcond_spacing(int3 normal)
 {
 	return normal.x*AC_dsx + normal.y*AC_dsy + normal.z*AC_dsz;
 }
-utility Kernel BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL(Field f, real prescribed_value)
+utility Kernel BOUNDCOND_PRESCRIBED_DERIVATIVE(Field f, real prescribed_value)
 {
 	const int3 normal = get_normal()
 	const int3 boundary = get_boundary(normal)
@@ -119,11 +119,11 @@ ac_flow_bc(Field f, int flow_direction)
 		f[ghost.x][ghost.y][ghost.z] = bc_sign*f[domain.x][domain.y][domain.z]
 	}
 }
-utility Kernel BOUNDCOND_OUTFLOW_DSL(Field f)
+utility Kernel BOUNDCOND_OUTFLOW(Field f)
 {
 	ac_flow_bc(f,1)
 }
-utility Kernel BOUNDCOND_INFLOW_DSL(Field f)
+utility Kernel BOUNDCOND_INFLOW(Field f)
 {
 	ac_flow_bc(f,-1)
 }

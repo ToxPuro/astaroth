@@ -279,23 +279,6 @@ typedef class HaloExchangeTask : public Task {
     bool isHaloExchangeTask();
 } HaloExchangeTask;
 
-enum class BoundaryConditionState { Waiting = Task::wait_state, Running };
-
-typedef class BoundaryConditionTask : public Task {
-  private:
-    AcBoundcond boundcond;
-    int3 boundary_normal;
-    int3 boundary_dims;
-
-  public:
-    BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag,
-                          int3 nn, Device device_,
-                          std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
-    void populate_boundary_region();
-    void advance(const TraceFile* trace_file);
-    bool test();
-} BoundaryConditionTask;
-
 typedef class SyncTask : public Task {
   public:
     SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
@@ -305,8 +288,8 @@ typedef class SyncTask : public Task {
 } SyncTask;
 
 
-enum class DSLBoundaryConditionState { Waiting = Task::wait_state, Running };
-typedef class DSLBoundaryConditionTask : public Task {
+enum class BoundaryConditionState { Waiting = Task::wait_state, Running };
+typedef class BoundaryConditionTask : public Task {
   private:
     KernelParameters params;
     int3 boundary_normal;
@@ -314,13 +297,13 @@ typedef class DSLBoundaryConditionTask : public Task {
     bool fieldwise;
 
   public:
-    DSLBoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
+    BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
                                     int region_tag, int3 nn, Device device_,
                                     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void populate_boundary_region();
     void advance(const TraceFile* trace_file);
     bool test();
-} DSLBoundaryConditionTask;
+} BoundaryConditionTask;
 
 
 

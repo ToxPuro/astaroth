@@ -356,9 +356,11 @@ void
 gen_default_taskgraph()
 {
     acLogFromRootProc(ac_pid(), "acGridInit: Creating default task graph\n");
+    std::vector<Field> all_fields_vec{};
     Field all_fields[NUM_VTXBUF_HANDLES];
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
-        all_fields[i] = (Field)i;
+        all_fields_vec.push_back(Field(i));
+	all_fields[i] = Field(i);
     }
     auto intermediate_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_intermediate.step_num = l.step_number;
@@ -372,9 +374,9 @@ gen_default_taskgraph()
     };
     AcTaskDefinition default_ops[] = {
 	    acHaloExchange(all_fields),
-            acBoundaryCondition((!TWO_D ? BOUNDARY_XYZ : BOUNDARY_XY), BOUNDCOND_PERIODIC,all_fields),
-	    acComputeWithParams(KERNEL_twopass_solve_intermediate, all_fields,intermediate_loader),
-	    acComputeWithParams(KERNEL_twopass_solve_final, all_fields,final_loader)
+            acBoundaryCondition((!TWO_D ? BOUNDARY_XYZ : BOUNDARY_XY), BOUNDCOND_PERIODIC,all_fields_vec),
+	    acComputeWithParams(twopass_solve_intermediate, all_fields,intermediate_loader),
+	    acComputeWithParams(twopass_solve_final, all_fields,final_loader)
     };
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
     acLogFromRootProc(ac_pid(), "acGridInit: Done creating default task graph\n");
@@ -1552,7 +1554,6 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
             task_graph_repr += "HaloExchange,";
             break;
         case TASKTYPE_BOUNDCOND:
-        case TASKTYPE_DSL_BOUNDCOND:
             if (!found_halo_exchange) {
                 boundary_condition_before_halo_exchange = true;
                 error                                   = true;
@@ -1886,7 +1887,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         auto op = ops[i];
         op_indices.push_back(graph->all_tasks.size());
 
-        if (op.task_type == TASKTYPE_BOUNDCOND && op.bound_cond == BOUNDCOND_PERIODIC) {
+        if (op.task_type == TASKTYPE_BOUNDCOND && op.kernel_enum == BOUNDCOND_PERIODIC) {
             graph->periodic_boundaries = (AcBoundary)(graph->periodic_boundaries | op.boundary);
         }
 	if(op.task_type == TASKTYPE_HALOEXCHANGE)
@@ -1970,45 +1971,14 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             break;
         }
 
-        case TASKTYPE_BOUNDCOND: {
-            acVerboseLogFromRootProc(rank, "Creating Boundcond tasks\n");
-            AcBoundcond bc = op.bound_cond;
-            int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
-            for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-		if(TWO_D && Region::tag_to_id(tag).z != 0) continue;
-                if (Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy())) {
-                    if (bc == BOUNDCOND_PERIODIC) {
-                        acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
-                                                 tag);
-                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp, device, swap_offset);
-                        graph->halo_tasks.push_back(task);
-                        graph->all_tasks.push_back(task);
-                        acVerboseLogFromRootProc(rank,
-                                                 "Done creating periodic bc task with tag%d\n",
-                                                 tag);
-
-                    }
-                    else {
-                        acVerboseLogFromRootProc(rank, "Creating generic bc with tag%d\n", tag);
-                        auto task = std::make_shared<BoundaryConditionTask>(op,
-                                                                            boundary_normal(tag), i,
-                                                                            tag, grid_info.nn, device,
-                                                                            swap_offset);
-                        graph->all_tasks.push_back(task);
-                    }
-                }
-            }
-            grid.mpi_tag_space_count += (bc == BOUNDCOND_PERIODIC);
-            acVerboseLogFromRootProc(rank, "Boundcond tasks created\n");
-            break;
-        }
         case TASKTYPE_SYNC: {
             auto task = std::make_shared<SyncTask>(op, i, grid_info.nn, device, swap_offset);
             graph->all_tasks.push_back(task);
             break;
         }
 
-        case TASKTYPE_DSL_BOUNDCOND: {
+        case TASKTYPE_BOUNDCOND: {
+	    int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 acVerboseLogFromRootProc(rank,
                                          "tag %d, decomp %i %i %i, rank %i, op.boundary  %i \n ",
@@ -2019,14 +1989,30 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                                          Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy()));
                 if (Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy())) {
 
-                    auto task = std::make_shared<DSLBoundaryConditionTask>(op,
-                                                                           boundary_normal(tag),
-                                                                           i, tag, grid_info.nn,
-                                                                           device,
-                                                                           swap_offset);
-                    graph->all_tasks.push_back(task);
+                    if (op.kernel_enum == BOUNDCOND_PERIODIC) {
+                        acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
+                                                 tag);
+                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp, device, swap_offset);
+                        graph->halo_tasks.push_back(task);
+                        graph->all_tasks.push_back(task);
+                        acVerboseLogFromRootProc(rank,
+                                                 "Done creating periodic bc task with tag%d\n",
+                                                 tag);
+
+                    }
+		    else
+		    {
+                    	auto task = std::make_shared<BoundaryConditionTask>(op,
+                    	                                                       boundary_normal(tag),
+                    	                                                       i, tag, grid_info.nn,
+                    	                                                       device,
+                    	                                                       swap_offset);
+                    	graph->all_tasks.push_back(task);
+		    }
                 }
             }
+            grid.mpi_tag_space_count += (op.kernel_enum  == BOUNDCOND_PERIODIC);
+            acVerboseLogFromRootProc(rank, "Boundcond tasks created\n");
             break;
         }
         }
@@ -2140,7 +2126,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     //make sure after autotuning that out is 0
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-    acGridLaunchKernel(STREAM_DEFAULT, KERNEL_AC_BUILTIN_RESET, dims.n0,dims.n1);
+    acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
     return graph;
 }
@@ -4591,8 +4577,8 @@ get_kernel_fields(const AcKernel kernel)
 		KernelFields res{};
 		for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
 		{
-			if(info.read_fields[kernel][i]    || kernel == KERNEL_AC_PERIODIC)    res.in.push_back((Field)i);
-			if(info.written_fields[kernel][i] || kernel == KERNEL_AC_PERIODIC)    res.out.push_back((Field)i);
+			if(info.read_fields[kernel][i]    || kernel == BOUNDCOND_PERIODIC)    res.in.push_back((Field)i);
+			if(info.written_fields[kernel][i] || kernel == BOUNDCOND_PERIODIC)    res.out.push_back((Field)i);
 		}
 		return res;
 }
@@ -4880,9 +4866,9 @@ gen_halo_exchange_and_boundconds(
 			const auto y_boundcond = field_boundconds[one_communicated_field][1];
 			const auto z_boundcond = num_boundaries > 4 ? field_boundconds[one_communicated_field][4] : (BoundCond){};
 			
-			const bool x_periodic = x_boundcond.kernel == KERNEL_AC_PERIODIC;
-			const bool y_periodic = y_boundcond.kernel == KERNEL_AC_PERIODIC;
-			const bool z_periodic = num_boundaries > 4 && z_boundcond.kernel == KERNEL_AC_PERIODIC;
+			const bool x_periodic = x_boundcond.kernel == BOUNDCOND_PERIODIC;
+			const bool y_periodic = y_boundcond.kernel == BOUNDCOND_PERIODIC;
+			const bool z_periodic = num_boundaries > 4 && z_boundcond.kernel == BOUNDCOND_PERIODIC;
 
 			if(x_periodic)
 			{
@@ -4910,7 +4896,7 @@ gen_halo_exchange_and_boundconds(
                                 for(const auto& field : fields)
 				{
 					bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end();
-                                        field_boundconds_processed[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == KERNEL_AC_PERIODIC;
+                                        field_boundconds_processed[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
 				}
                         bool all_are_processed = false;
                         while(!all_are_processed)

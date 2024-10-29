@@ -60,65 +60,6 @@ typedef struct {
 extern "C" {
 #endif
 
-// Generic boundconds
-
-/** */
-AcResult acKernelPeriodicBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
-                                    AcReal* vtxbuf);
-
-/** */
-AcResult acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 region_id,
-                                     const int3 normal, const int3 dims, AcReal* vtxbuf);
-
-/** */
-AcResult acKernelAntiSymmetricBoundconds(const cudaStream_t stream, const int3 region_id,
-                                         const int3 normal, const int3 dims, AcReal* vtxbuf);
-
-/** */
-AcResult acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
-                              const int3 dims, AcReal* vtxbuf);
-
-/** */
-AcResult acKernelConstBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
-                                 const int3 dims, AcReal* vtxbuf, AcRealParam const_value);
-
-/** */
-AcResult acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 region_id,
-                                                const int3 normal, const int3 dims, AcReal* vtxbuf,
-                                                AcRealParam der_val_param);
-/** */
-AcResult acKernelOutflowBoundconds(const cudaStream_t stream, const int3 region_id,
-                                   const int3 normal, const int3 dims, AcReal* vtxbuf);
-/** */
-AcResult acKernelInflowBoundconds(const cudaStream_t stream, const int3 region_id,
-                                  const int3 normal, const int3 dims, AcReal* vtxbuf);
-
-// Entropy boundconds
-
-#ifdef AC_INTEGRATION_ENABLED
-/** */
-AcResult acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream,
-                                                      const int3 region_id, const int3 normal,
-                                                      const int3 dims, VertexBufferArray vba);
-
-/** */
-AcResult acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(const cudaStream_t stream,
-                                                                       const int3 region_id,
-                                                                       const int3 normal,
-                                                                       const int3 dims,
-                                                                       VertexBufferArray vba);
-
-/** */
-AcResult acKernelEntropyPrescribedHeatFluxBoundconds(const cudaStream_t stream,
-                                                     const int3 region_id, const int3 normal,
-                                                     const int3 dims, VertexBufferArray vba,
-                                                     AcRealParam F_param);
-
-AcResult acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(
-    const cudaStream_t stream, const int3 region_id, const int3 normal, const int3 dims,
-    VertexBufferArray vba, AcRealParam hcond_param, AcRealParam F_param);
-
-#endif
 
 #if TWO_D == 0
 /** */

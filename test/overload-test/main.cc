@@ -91,7 +91,7 @@ main(void)
         all_fields[i] = (Field)i;
     }
     AcTaskDefinition ops[] = {
-	    acCompute(KERNEL_test_reduce,all_fields)
+	    acCompute(test_reduce,all_fields)
     };
     AcTaskGraph* graph = acGridBuildTaskGraph(ops);
 

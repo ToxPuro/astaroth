@@ -2310,9 +2310,9 @@ gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* n
 		{
 			const char* call_name = get_node_by_token(IDENTIFIER,calls.data[i]->lhs)->buffer;
 			if(call_name != PERIODIC)
-				fprintf(stream,"%s,",sprintf_intern("KERNEL_%s__%s",name,call_name));
+				fprintf(stream,"%s,",sprintf_intern("%s__%s",name,call_name));
 			else
-				fprintf(stream,"KERNEL_AC_PERIODIC,");
+				fprintf(stream,"BOUNDCOND_PERIODIC");
 		}
 		fprintf(stream,"},");
 		fclose(stream);
@@ -2362,7 +2362,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		for(size_t i = 0; i < kernel_call_nodes.size; ++i)
 		{
 			const char* func_name = get_node_by_token(IDENTIFIER,kernel_call_nodes.data[i])->buffer;
-			fprintf(stream,"KERNEL_%s,",func_name);
+			fprintf(stream,"%s,",func_name);
 		}
 		fprintf(stream,"},");
 		fclose(stream);
@@ -2994,7 +2994,7 @@ gen_kernel_ifs(ASTNode* node, const param_combinations combinations, const strin
 	for(int i = 0; i < combinations.nums[kernel_index]; ++i)
 	{
 		string_vec combination_vals = combinations.vals[kernel_index + MAX_KERNELS*i];
-		fprintf(fp,"if(kernel_enum == KERNEL_%s ",get_node(NODE_FUNCTION_ID,node)->buffer);
+		fprintf(fp,"if(kernel_enum == %s ",get_node(NODE_FUNCTION_ID,node)->buffer);
 		for(size_t j = 0; j < combination_vals.size; ++j)
 			fprintf(fp, " && vba.kernel_input_params.%s.%s ==  %s ",get_node(NODE_FUNCTION_ID,node)->buffer,combination_params.data[j],combination_vals.data[j]);
 
@@ -3180,6 +3180,8 @@ translate_buffer_body(FILE* stream, const ASTNode* node)
       fprintf(stream, "RCONST(%s)", node->buffer);
     else if (symbol && symbol->type & NODE_VARIABLE_ID && symbol->tspecifier == PROFILE_STR)
       fprintf(stream, "(NUM_FIELDS+%s)", node->buffer);
+    else if(symbol && symbol->tspecifier == KERNEL_STR)
+	    fprintf(stream,"KERNEL_%s",node->buffer);
     else
       fprintf(stream, "%s", node->buffer);
   }
@@ -4611,7 +4613,7 @@ gen_user_defines(const ASTNode* root, const char* out)
 
   gen_enums(fp,STENCIL_STR,"stencil_","NUM_STENCILS","Stencil");
   gen_enums(fp,intern("WorkBuffer"),"","NUM_WORK_BUFFERS","WorkBuffer");
-  gen_enums(fp,KERNEL_STR,"KERNEL_","NUM_KERNELS","AcKernel");
+  gen_enums(fp,KERNEL_STR,"","NUM_KERNELS","AcKernel");
 
   string_vec prof_types = VEC_INITIALIZER;
   push(&prof_types,intern("Profile<X>"));
@@ -4847,12 +4849,12 @@ gen_user_kernels(const char* out)
   FILE* fp_dec = fopen("user_kernel_declarations.h","a");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
-      fprintf(fp_dec, "static void __global__ %s %s);\n", symbol_table[i].identifier, default_param_list);
+      fprintf(fp_dec, "static void __global__ KERNEL_%s %s);\n", symbol_table[i].identifier, default_param_list);
 
   fprintf(fp_dec, "static const Kernel kernels[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
-      fprintf(fp_dec, "%s,", symbol_table[i].identifier); // Host layer handle
+      fprintf(fp_dec, "KERNEL_%s,", symbol_table[i].identifier);
   fprintf(fp_dec, "};");
 
   fclose(fp_dec);

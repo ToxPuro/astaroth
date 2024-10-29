@@ -148,45 +148,19 @@ acHaloExchange(Field fields[], const size_t num_fields)
     return task_def;
 }
 
-AcTaskDefinition
-acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, Field fields[],
-                    const size_t num_fields, AcRealParam parameters[], const size_t num_parameters)
-{ 
-    if((boundary & BOUNDARY_Z) && TWO_D)
-    {
-	    fprintf(stderr,"Can't have Z boundary conditions in 2d simulation\n");
-	    MPI_Finalize();
-	    exit(EXIT_FAILURE);
-    }
-    AcTaskDefinition task_def{};
-    task_def.task_type      = TASKTYPE_BOUNDCOND;
-    task_def.boundary       = boundary;
-    task_def.bound_cond     = bound_cond;
-    task_def.fields_in      = ptr_copy(fields,num_fields);
-    task_def.num_fields_in  = num_fields;
-    task_def.fields_out     = ptr_copy(fields,num_fields);
-    task_def.num_fields_out = num_fields;
-    task_def.parameters     = parameters;
-    task_def.num_parameters = num_parameters;
-    for(size_t i = 0; i < task_def.num_fields_in; ++i)
-	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
-    for(size_t i = 0; i < task_def.num_fields_out; ++i)
-	    ERRCHK_ALWAYS(task_def.fields_out[i] <= NUM_VTXBUF_HANDLES);
-    return task_def;
-}
 
 static const std::array<AcKernel,7> builtin_bcs  = {
-					KERNEL_BOUNDCOND_SYMMETRIC_DSL,
-					KERNEL_BOUNDCOND_ANTI_SYMMETRIC_DSL,
-					KERNEL_BOUNDCOND_A2_DSL,
-					KERNEL_BOUNDCOND_CONST_DSL,
-					KERNEL_BOUNDCOND_INFLOW_DSL,
-					KERNEL_BOUNDCOND_OUTFLOW_DSL,
-					KERNEL_BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL,
+					BOUNDCOND_SYMMETRIC,
+					BOUNDCOND_ANTISYMMETRIC,
+					BOUNDCOND_A2,
+					BOUNDCOND_CONST,
+					BOUNDCOND_INFLOW,
+					BOUNDCOND_OUTFLOW,
+					BOUNDCOND_PRESCRIBED_DERIVATIVE,
 				};
 
 #define DEFAULT_LOADER(FUNC) \
-    else if(kernel == KERNEL_##FUNC) \
+    else if(kernel == FUNC) \
     { \
 	    auto default_loader = [](ParamLoadingInfo p) \
 	    { \
@@ -204,7 +178,7 @@ acDSLBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const F
 	    exit(EXIT_FAILURE);
     }
     AcTaskDefinition task_def{};
-    task_def.task_type              = TASKTYPE_DSL_BOUNDCOND;
+    task_def.task_type              = TASKTYPE_BOUNDCOND;
     task_def.boundary               = boundary;
     task_def.kernel_enum         = kernel;
 
@@ -214,14 +188,14 @@ acDSLBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const F
     task_def.num_fields_out = num_fields_out;
     const bool builtin = (std::find(builtin_bcs.begin(), builtin_bcs.end(), kernel) != builtin_bcs.end());
     task_def.fieldwise = builtin;
-    if (!builtin || kernel == KERNEL_BOUNDCOND_CONST_DSL || kernel == KERNEL_BOUNDCOND_PRESCRIBED_DERIVATIVE_DSL)
+    if (!builtin || kernel == BOUNDCOND_CONST|| kernel == BOUNDCOND_PRESCRIBED_DERIVATIVE)
     	task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
-    DEFAULT_LOADER(BOUNDCOND_SYMMETRIC_DSL)
-    DEFAULT_LOADER(BOUNDCOND_ANTI_SYMMETRIC_DSL)
-    DEFAULT_LOADER(BOUNDCOND_A2_DSL)
-    DEFAULT_LOADER(BOUNDCOND_A2_DSL)
-    DEFAULT_LOADER(BOUNDCOND_INFLOW_DSL)
-    DEFAULT_LOADER(BOUNDCOND_OUTFLOW_DSL)
+    DEFAULT_LOADER(BOUNDCOND_SYMMETRIC)
+    DEFAULT_LOADER(BOUNDCOND_ANTISYMMETRIC)
+    DEFAULT_LOADER(BOUNDCOND_A2)
+    DEFAULT_LOADER(BOUNDCOND_A2)
+    DEFAULT_LOADER(BOUNDCOND_INFLOW)
+    DEFAULT_LOADER(BOUNDCOND_OUTFLOW)
     for(size_t i = 0; i < task_def.num_fields_in; ++i)
 	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
     for(size_t i = 0; i < task_def.num_fields_out; ++i)
@@ -1129,130 +1103,9 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
     }
 }
 
-BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
-                                             int region_tag, int3 nn, Device device_,
-                                             std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : Task(order_,
-           Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
-           Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
-           op, device_, swap_offset_),
-      boundcond(op.bound_cond), boundary_normal(boundary_normal_)
-{
-    // Create stream for boundary condition task
-    {
-        cudaSetDevice(device->id);
-        int low_prio, high_prio;
-        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-    }
-    syncVBA();
 
-    int3 translation = int3{(output_region.dims.x + 1) * (-boundary_normal.x),
-                            (output_region.dims.y + 1) * (-boundary_normal.y),
-                            (output_region.dims.z + 1) * (-boundary_normal.z)};
 
-    // TODO: input_region is now set twice, overwritten here
-    auto input_fields = input_region.fields;
-    input_region = Region(output_region.translate(translation));
-    input_region.fields = input_fields;
 
-    boundary_dims = int3{
-        boundary_normal.x == 0 ? output_region.dims.x : 1,
-        boundary_normal.y == 0 ? output_region.dims.y : 1,
-        boundary_normal.z == 0 ? output_region.dims.z : 1,
-    };
-
-    name = "Boundary condition " + std::to_string(order_) + ".(" +
-           std::to_string(output_region.id.x) + "," + std::to_string(output_region.id.y) + "," +
-           std::to_string(output_region.id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
-           "," + std::to_string(boundary_normal.y) + "," + std::to_string(boundary_normal.z) + ")";
-    boundary  = op.boundary;
-    task_type = TASKTYPE_BOUNDCOND;
-}
-
-void
-BoundaryConditionTask::populate_boundary_region()
-{
-    // TODO: could assign a separate stream to each launch
-    //       currently they are on a single stream
-    for (auto variable : output_region.fields) {
-        switch (boundcond) {
-        case BOUNDCOND_SYMMETRIC: {
-            acKernelSymmetricBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                        vba.in[variable]);
-            break;
-        }
-        case BOUNDCOND_ANTISYMMETRIC: {
-            acKernelAntiSymmetricBoundconds(stream, output_region.id, boundary_normal,
-                                            boundary_dims, vba.in[variable]);
-            break;
-        }
-        case BOUNDCOND_A2: {
-            acKernelA2Boundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                 vba.in[variable]);
-            break;
-        }
-        case BOUNDCOND_CONST: {
-            assert(input_parameters.size() == 1);
-            acKernelConstBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                    vba.in[variable], input_parameters[0]);
-            break;
-        }
-        case BOUNDCOND_PRESCRIBED_DERIVATIVE: {
-            assert(input_parameters.size() == 1);
-            acKernelPrescribedDerivativeBoundconds(stream, output_region.id, boundary_normal,
-                                                   boundary_dims, vba.in[variable],
-                                                   input_parameters[0]);
-            break;
-        }
-        case BOUNDCOND_OUTFLOW: {
-            acKernelOutflowBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                      vba.in[variable]);
-            break;
-        }
-
-        case BOUNDCOND_INFLOW: {
-            acKernelInflowBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                     vba.in[variable]);
-            break;
-        }
-        default:
-            ERROR("BoundaryCondition not implemented yet.");
-        }
-    }
-}
-
-bool
-BoundaryConditionTask::test()
-{
-    switch (static_cast<BoundaryConditionState>(state)) {
-    case BoundaryConditionState::Running: {
-        return poll_stream();
-    }
-    default: {
-        ERROR("BoundaryConditionTask in an invalid state.");
-        return false;
-    }
-    }
-}
-
-void
-BoundaryConditionTask::advance(const TraceFile* trace_file)
-{
-    switch (static_cast<BoundaryConditionState>(state)) {
-    case BoundaryConditionState::Waiting:
-        trace_file->trace(this, "waiting", "running");
-        populate_boundary_region();
-        state = static_cast<int>(BoundaryConditionState::Running);
-        break;
-    case BoundaryConditionState::Running:
-        trace_file->trace(this, "running", "waiting");
-        state = static_cast<int>(BoundaryConditionState::Waiting);
-        break;
-    default:
-        ERROR("BoundaryConditionTask in an invalid state.");
-    }
-}
 SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
@@ -1289,7 +1142,7 @@ SyncTask::advance(const TraceFile* trace_file)
 
 
 
-DSLBoundaryConditionTask::DSLBoundaryConditionTask(
+BoundaryConditionTask::BoundaryConditionTask(
     AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, int3 nn, Device device_,
     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
@@ -1376,18 +1229,18 @@ DSLBoundaryConditionTask::DSLBoundaryConditionTask(
 
 
     std::string kernel_name = std::string(kernel_names[op.kernel_enum]);
-    name = "DSL Boundary condition " + kernel_name + " " + std::to_string(order_) + ".(" +
+    name = "Boundary condition " + kernel_name + " " + std::to_string(order_) + ".(" +
            std::to_string(output_region.id.x) + "," + std::to_string(output_region.id.y) + "," +
            std::to_string(output_region.id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
            "," + std::to_string(boundary_normal.y) + "," + std::to_string(boundary_normal.z) + ")";
-    task_type = TASKTYPE_DSL_BOUNDCOND;
+    task_type = TASKTYPE_BOUNDCOND;
     params = KernelParameters{op.kernel_enum, stream, 0, output_region.position,
                               output_region.position + output_region.dims, op.load_kernel_params_func};
 }
 
 
 void
-DSLBoundaryConditionTask::populate_boundary_region()
+BoundaryConditionTask::populate_boundary_region()
 {
      const int3 nn = acGetLocalNN(device->local_config);
      if(fieldwise)
@@ -1429,34 +1282,34 @@ DSLBoundaryConditionTask::populate_boundary_region()
 
 
 bool
-DSLBoundaryConditionTask::test()
+BoundaryConditionTask::test()
 {
-    switch (static_cast<DSLBoundaryConditionState>(state)) {
-    case DSLBoundaryConditionState::Running: {
+    switch (static_cast<BoundaryConditionState>(state)) {
+    case BoundaryConditionState::Running: {
         return poll_stream();
     }
     default: {
-        ERROR("DSLBoundaryConditionTask in an invalid state.");
+        ERROR("BoundaryConditionTask in an invalid state.");
         return false;
     }
     }
 }
 
 void
-DSLBoundaryConditionTask::advance(const TraceFile* trace_file)
+BoundaryConditionTask::advance(const TraceFile* trace_file)
 {
-    switch (static_cast<DSLBoundaryConditionState>(state)) {
-    case DSLBoundaryConditionState::Waiting:
+    switch (static_cast<BoundaryConditionState>(state)) {
+    case BoundaryConditionState::Waiting:
         trace_file->trace(this, "waiting", "running");
         populate_boundary_region();
-        state = static_cast<int>(DSLBoundaryConditionState::Running);
+        state = static_cast<int>(BoundaryConditionState::Running);
         break;
-    case DSLBoundaryConditionState::Running:
+    case BoundaryConditionState::Running:
         trace_file->trace(this, "running", "waiting");
-        state = static_cast<int>(DSLBoundaryConditionState::Waiting);
+        state = static_cast<int>(BoundaryConditionState::Waiting);
         break;
     default:
-        ERROR("DSLBoundaryConditionTask in an invalid state.");
+        ERROR("BoundaryConditionTask in an invalid state.");
     }
 }
 

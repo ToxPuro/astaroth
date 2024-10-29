@@ -91,7 +91,7 @@ main(void)
     }
     auto null_loader = [&](ParamLoadingInfo l){(void)l;};
     AcTaskDefinition ops[] = {
-	    acComputeWithParams(KERNEL_test_arr,all_fields,null_loader)
+	    acComputeWithParams(test_arr,all_fields,null_loader)
     };
     AcTaskGraph* graph = acGridBuildTaskGraph(ops);
 

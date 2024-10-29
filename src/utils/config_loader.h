@@ -95,16 +95,11 @@ static int
 parse_intparam(const size_t idx, const char* value, const bool run_const)
 {
     if (is_bctype(idx) && !run_const) {
-        int bctype = -1;
-        if ((bctype = find_str(value, bctype_names, NUM_BCTYPES)) >= 0)
-            return bctype;
-        else {
+        {
             fprintf(stderr,
-                    "ERROR PARSING CONFIG: Invalid BC type: %s, do not know what to do with it.\n",
+                    "ERROR PARSING CONFIG: Invalid BC type: %s DEPRECATED\n",
                     value);
-            fprintf(stdout, "Valid BC types:\n");
-            acQueryBCtypes();
-            ERROR("Invalid boundary condition type found in config");
+            ERROR("Invalid boundary condition type found in config| DEPRECATED");
             return 0;
         }
     }
