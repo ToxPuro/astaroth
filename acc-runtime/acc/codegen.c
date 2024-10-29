@@ -2312,7 +2312,7 @@ gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* n
 			if(call_name != PERIODIC)
 				fprintf(stream,"%s,",sprintf_intern("%s__%s",name,call_name));
 			else
-				fprintf(stream,"BOUNDCOND_PERIODIC");
+				fprintf(stream,"BOUNDCOND_PERIODIC,");
 		}
 		fprintf(stream,"},");
 		fclose(stream);

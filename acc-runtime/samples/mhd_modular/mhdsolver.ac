@@ -976,7 +976,9 @@ BoundConds boundconds{
 **/
 
 BoundConds boundconds{
-  periodic(BOUNDARY_XYZ)
+  periodic(BOUNDARY_X)
+  periodic(BOUNDARY_Y)
+  periodic(BOUNDARY_Z)
 }
 
 input int  AcInputStepNum
