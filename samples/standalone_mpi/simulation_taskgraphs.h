@@ -3,13 +3,7 @@
 #include <astaroth_debug.h>
 
 // TODO: allow selecting single our doublepass here?
-enum class Simulation {
-    Solve,
-    Shock_Singlepass_Solve,
-    Hydro_Heatduct_Solve,
-    Bound_Test_Solve,
-    Default = Solve
-};
+enum class Simulation { Solve, Shock_Singlepass_Solve, Hydro_Heatduct_Solve, Bound_Test_Solve, Default = Solve };
 
 void
 log_simulation_choice(int pid, Simulation sim)
@@ -75,7 +69,7 @@ get_simulation_graph(int pid, Simulation sim)
 #if LENTROPY
             // This is an exmaple of having multiple types of boundary conditions
             VertexBufferHandle all_fields[]    = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
-                                               VTXBUF_ENTROPY};
+                                                  VTXBUF_ENTROPY};
             VertexBufferHandle lnrho_field[]   = {VTXBUF_LNRHO};
             VertexBufferHandle entropy_field[] = {VTXBUF_ENTROPY};
             VertexBufferHandle scalar_fields[] = {VTXBUF_LNRHO, VTXBUF_ENTROPY};
@@ -119,9 +113,9 @@ get_simulation_graph(int pid, Simulation sim)
         case Simulation::Bound_Test_Solve: {
             VertexBufferHandle all_fields[] =
                 {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
-                 VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, // VTXBUF_ENTROPY,
-                 BFIELDX,      BFIELDY,    BFIELDZ};
-            VertexBufferHandle scalar_fields[] = {VTXBUF_LNRHO}; //, VTXBUF_ENTROPY};
+                 VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, //VTXBUF_ENTROPY,
+                 BFIELDX,    BFIELDY,    BFIELDZ};
+            VertexBufferHandle scalar_fields[] = {VTXBUF_LNRHO};//, VTXBUF_ENTROPY};
             VertexBufferHandle uux_field[]     = {VTXBUF_UUX};
             VertexBufferHandle uuy_field[]     = {VTXBUF_UUY};
             VertexBufferHandle uuz_field[]     = {VTXBUF_UUZ};
@@ -131,29 +125,29 @@ get_simulation_graph(int pid, Simulation sim)
 
             AcTaskDefinition boundtest_ops[] =
                 {acHaloExchange(all_fields),
-                 // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
-                 // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, all_fields),
-                 // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_ANTISYMMETRIC, all_fields),
-                 // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_A2, all_fields),
-                 // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_OUTFLOW, all_fields),
-                 // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_INFLOW, all_fields),
-
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_ANTISYMMETRIC, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_A2, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_OUTFLOW, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_INFLOW, all_fields),
+                 
                  acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, scalar_fields),
 
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_OUTFLOW, uux_field),
-                 // acBoundaryCondition(BOUNDARY_X, BOUNDCOND_INFLOW,   uux_field),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_OUTFLOW,   uux_field),
+                 //acBoundaryCondition(BOUNDARY_X, BOUNDCOND_INFLOW,   uux_field),
                  acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, uuy_field),
                  acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, uuz_field),
 
                  acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, uux_field),
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_OUTFLOW, uuy_field),
-                 // acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_INFLOW,   uuy_field),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_OUTFLOW,   uuy_field),
+                 //acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_INFLOW,   uuy_field),
                  acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, uuz_field),
 
                  acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uux_field),
                  acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uuy_field),
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_OUTFLOW, uuz_field),
-                 // acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_INFLOW,   uuz_field),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_OUTFLOW,   uuz_field),
+                 //acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_INFLOW,   uuz_field),
 
                  acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, aax_field),
                  acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, aay_field),
