@@ -1,8 +1,8 @@
 #include <cstdlib>
 
+#include "datatypes.h"
 #include "errchk.h"
 #include "ndarray.h"
-#include "shape.h"
 
 #include <mpi.h>
 

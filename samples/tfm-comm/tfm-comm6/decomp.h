@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shape.h"
+#include "datatypes.h"
 
 Shape decompose(const Shape& nn, uint64_t nprocs);
 

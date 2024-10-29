@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shape.h"
+#include "datatypes.h"
 
 uint64_t to_linear(const Index& coords, const Shape& shape);
 

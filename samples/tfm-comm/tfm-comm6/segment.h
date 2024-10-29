@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shape.h"
+#include "datatypes.h"
 
 struct Segment {
     Shape dims;   // Dimensions of the segment
