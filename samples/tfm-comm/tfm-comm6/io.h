@@ -8,6 +8,10 @@
 // 1) move the data from the input buffer and return in iwrite
 // 2) remove redundancy
 // 3) ensure correctness with arbitrary call patterns
+//
+// MPI IO hints: pg. 648 in MPI 4.1 specification
+// MPI_File_get_size: check at reading that the file size is the same as expected (global problem
+// size)
 
 template <typename T> struct IOTask {
 
