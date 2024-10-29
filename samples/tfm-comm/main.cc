@@ -57,7 +57,7 @@ main()
         // }
 
         // Packet MPI/CUDA halo exchange task
-        PackInputs<AcReal*> inputs = {mesh.buffer.data};
+        PackPtrArray<AcReal*> inputs = {mesh.buffer.data};
         HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, inputs.count);
         task.launch(cart_comm, inputs);
         task.wait(inputs);

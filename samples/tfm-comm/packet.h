@@ -36,7 +36,7 @@ template <typename T> struct Packet {
     {
     }
 
-    void launch(const MPI_Comm& parent_comm, const PackInputs<T*> inputs)
+    void launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
     {
         const size_t count = inputs.count * prod(segment.dims);
         ERRCHK(count <= send_buffer->count);
@@ -74,7 +74,7 @@ template <typename T> struct Packet {
         ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     }
 
-    void wait(PackInputs<T*> outputs)
+    void wait(PackPtrArray<T*> outputs)
     {
         ERRCHK_MPI_EXPR_DESC(recv_req != MPI_REQUEST_NULL, "wait called but no request in flight");
         wait_request(recv_req);

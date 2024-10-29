@@ -3,13 +3,13 @@
 
 #include "math_utils.h"
 
-constexpr size_t PACK_MAX_INPUTS       = 27;
-template <typename T> using PackInputs = StaticArray<T, PACK_MAX_INPUTS>;
+constexpr size_t PACK_MAX_INPUTS         = 27;
+template <typename T> using PackPtrArray = StaticArray<T, PACK_MAX_INPUTS>;
 
 template <typename T>
 void
-pack(const Shape mm, const Shape block_shape, const Index block_offset, const PackInputs<T> inputs,
-     AcReal* output)
+pack(const Shape mm, const Shape block_shape, const Index block_offset,
+     const PackPtrArray<T> inputs, AcReal* output)
 {
     const uint64_t block_nelems = prod(block_shape);
     for (uint64_t i = 0; i < block_nelems; ++i) {
@@ -32,7 +32,7 @@ pack(const Shape mm, const Shape block_shape, const Index block_offset, const Pa
 template <typename T>
 void
 unpack(const AcReal* input, const Shape mm, const Shape block_shape, const Index block_offset,
-       PackInputs<T> outputs)
+       PackPtrArray<T> outputs)
 {
     const uint64_t block_nelems = prod(block_shape);
     for (uint64_t i = 0; i < block_nelems; ++i) {
