@@ -1,18 +1,53 @@
 #pragma once
-#include <stddef.h>
+#include "datatypes.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "math_utils.h"
 
-void pack(const size_t ndims, const size_t* mm, const size_t* block_shape,
-          const size_t* block_offset, const size_t ninputs, double* inputs[], double* output);
+constexpr size_t PACK_MAX_INPUTS       = 27;
+template <typename T> using PackInputs = StaticArray<T, PACK_MAX_INPUTS>;
 
-void unpack(double* input, const size_t ndims, const size_t* mm, const size_t* block_shape,
-            const size_t* block_offset, const size_t noutputs, double* outputs[]);
+template <typename T>
+void
+pack(const Shape mm, const Shape block_shape, const Index block_offset, const PackInputs<T> inputs,
+     AcReal* output)
+{
+    const uint64_t block_nelems = prod(block_shape);
+    for (uint64_t i = 0; i < block_nelems; ++i) {
+        for (size_t j = 0; j < inputs.count; ++j) {
 
-void test_pack(void);
+            // Block coords
+            const Index block_coords = to_spatial(i, block_shape);
 
-#ifdef __cplusplus
+            // Input coords
+            const Index in_coords = block_offset + block_coords;
+
+            const uint64_t in_idx = to_linear(in_coords, mm);
+            ERRCHK(in_idx < prod(mm));
+
+            output[i + j * block_nelems] = inputs[j][in_idx];
+        }
+    }
 }
-#endif
+
+template <typename T>
+void
+unpack(const AcReal* input, const Shape mm, const Shape block_shape, const Index block_offset,
+       PackInputs<T> outputs)
+{
+    const uint64_t block_nelems = prod(block_shape);
+    for (uint64_t i = 0; i < block_nelems; ++i) {
+        for (size_t j = 0; j < outputs.count; ++j) {
+
+            // Block coords
+            const Index block_coords = to_spatial(i, block_shape);
+
+            // Input coords
+            const Index in_coords = block_offset + block_coords;
+
+            const uint64_t in_idx = to_linear(in_coords, mm);
+            ERRCHK(in_idx < prod(mm));
+
+            outputs[j][in_idx] = input[i + j * block_nelems];
+        }
+    }
+}

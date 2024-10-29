@@ -18,7 +18,7 @@ main()
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
     try {
-        const Shape global_nn        = {4, 4};
+        const Shape global_nn        = {8, 8, 8};
         MPI_Comm cart_comm           = create_cart_comm(MPI_COMM_WORLD, global_nn);
         const Shape decomp           = get_decomposition(cart_comm);
         const Shape local_nn         = global_nn / decomp;
@@ -34,7 +34,7 @@ main()
         // PRINT_DEBUG(global_nn_offset);
         // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        const Shape rr(global_nn.count, 2); // Symmetric halo
+        const Shape rr(global_nn.count, 1); // Symmetric halo
         const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
 
         const MPI_Datatype mpi_dtype = get_dtype<AcReal>();
@@ -112,8 +112,9 @@ main()
         }
         IOTask<AcReal> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
         // iotask.write(cart_comm, "test.dat", mesh.buffer.data);
-        iotask.launch_write(cart_comm, "test.dat", mesh.buffer.data);
-        iotask.wait_write();
+        // iotask.launch_write(cart_comm, "test.dat", mesh.buffer.data);
+        // iotask.wait_write();
+        iotask.write(cart_comm, "test.dat", mesh.buffer.data);
         iotask.read(cart_comm, "test.dat", mesh.buffer.data);
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)

@@ -1,34 +1,38 @@
 #pragma once
-#include <stddef.h>
-#include <stdint.h>
 
-double size_t_as_double(const size_t x);
-#define as_double(x) _Generic((x), size_t: size_t_as_double)(x)
+#include <cstdint>
+#include <iostream>
+#include <limits>
+#include <type_traits>
 
-size_t size_t_as_size_t(const size_t i);
-int int_as_int(const int i);
-size_t int64_t_as_size_t(const int64_t i);
-size_t int_as_size_t(const int i);
-int64_t size_t_as_int64_t(const size_t i);
-int64_t int_as_int64_t(const int i);
-int size_t_as_int(const size_t i);
-int int64_t_as_int(const int64_t i);
+#include "errchk.h"
 
-#define as_size_t(x)                                                                               \
-    _Generic((x), size_t: size_t_as_size_t, int64_t: int64_t_as_size_t, int: int_as_size_t)(x)
-#define as_int64_t(x) _Generic((x), size_t: size_t_as_int64_t, int: int_as_int64_t)(x)
-#define as_int(x) _Generic((x), size_t: size_t_as_int, int64_t: int64_t_as_int, int: int_as_int)(x)
+template <typename T_target, typename T_source>
+typename std::enable_if<std::is_integral<T_target>::value && std::is_integral<T_source>::value,
+                        bool>::type
+can_convert(T_source value)
+{
+    if (std::is_signed<T_source>::value && std::is_signed<T_target>::value) {
+        return value >= std::numeric_limits<T_target>::min() &&
+               value <= std::numeric_limits<T_target>::max();
+    }
+    else if (std::is_unsigned<T_source>::value && std::is_unsigned<T_target>::value) {
+        return value <= std::numeric_limits<T_target>::max();
+    }
+    else if (std::is_signed<T_source>::value && std::is_unsigned<T_target>::value) {
+        return value >= 0 && static_cast<uintmax_t>(value) <= std::numeric_limits<T_target>::max();
+    }
+    else if (std::is_unsigned<T_source>::value && std::is_signed<T_target>::value) {
+        return value <= static_cast<uintmax_t>(std::numeric_limits<T_target>::max());
+    }
+}
 
-void int64_t_as_size_t_array(const size_t count, const int64_t* a, size_t* b);
-void int_as_size_t_array(const size_t count, const int* a, size_t* b);
-void size_t_as_int64_t_array(const size_t count, const size_t* a, int64_t* b);
-void int_as_int64_t_array(const size_t count, const int* a, int64_t* b);
-void size_t_as_int_array(const size_t count, const size_t* a, int* b);
-void int64_t_as_int_array(const size_t count, const int64_t* a, int* b);
+template <typename T_target, typename T_source>
+T_target
+as(T_source value)
+{
+    ERRCHK((can_convert<T_target, T_source>(value)));
+    return static_cast<T_target>(value);
+}
 
-#define as_size_t_array(count, a, b)                                                               \
-    _Generic((a[0]), int64_t: int64_t_as_size_t_array, int: int_as_size_t_array)(count, a, b)
-#define as_int64_t_array(count, a, b)                                                              \
-    _Generic((a[0]), size_t: size_t_as_int64_t_array, int: int_as_int64_t_array)(count, a, b)
-#define as_int_array(count, a, b)                                                                  \
-    _Generic((a[0]), size_t: size_t_as_int_array, int64_t: int64_t_as_int_array)(count, a, b)
+void test_type_conversion(void);
