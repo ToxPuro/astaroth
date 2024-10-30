@@ -1,18 +1,20 @@
 #pragma once
-#include <stddef.h>
 
-typedef struct {
-    size_t ndims;
-    size_t* dims;
-    size_t* offset;
-} Segment;
+#include "datatypes.h"
 
-Segment segment_create(const size_t ndims, const size_t* dims, const size_t* offset);
+struct Segment {
+    Shape dims;   // Dimensions of the segment
+    Index offset; // Offset of the segment
 
-void segment_destroy(Segment* segment);
+    // Constructors
+    Segment(const Shape& dims)
+        : dims(dims), offset(Index(dims.count))
+    {
+    }
+    Segment(const Shape& dims, const Index& offset)
+        : dims(dims), offset(offset)
+    {
+    }
+};
 
-void print_segment(const char* label, const Segment segment);
-
-void segment_copy(const Segment in, Segment* out);
-
-void test_segment(void);
+__host__ std::ostream& operator<<(std::ostream& os, const Segment& obj);
