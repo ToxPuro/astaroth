@@ -42,7 +42,6 @@ template <typename T> struct DeviceBuffer {
             ERRCHK_CUDA_API(cudaFreeHost(data));
         }
         data      = nullptr;
-        stream    = nullptr;
         on_device = false;
         count     = 0;
     }
@@ -80,23 +79,26 @@ template <typename T> struct DeviceToHostBufferExchangeTask {
     std::unique_ptr<DeviceBuffer<T>> device_staging_buffer;
     cudaStream_t stream;
 
-    DeviceBufferExchangeTask(const size_t max_count)
+    DeviceToHostBufferExchangeTask(const size_t max_count)
         : host_staging_buffer(
-              std::make_unique<DeviceBuffer<T>>(max_count, false, cudaAllocHostDefault)),
+              std::make_unique<DeviceBuffer<T>>(max_count, false, cudaHostAllocDefault)),
           device_staging_buffer(std::make_unique<DeviceBuffer<T>>(max_count, true)),
           stream(nullptr)
     {
     }
 
-    ~DeviceBufferExchangeTask() { ERRCHK(stream == nullptr); }
+    ~DeviceToHostBufferExchangeTask() { ERRCHK(stream == nullptr); }
 
     // Delete all other types of constructors
-    DeviceBuffer(const DeviceBuffer&)            = delete; // Copy constructor
-    DeviceBuffer& operator=(const DeviceBuffer&) = delete; // Copy assignment operator
-    DeviceBuffer(DeviceBuffer&&)                 = delete; // Move constructor
-    DeviceBuffer& operator=(DeviceBuffer&&)      = delete; // Move assignment operator
+    DeviceToHostBufferExchangeTask(const DeviceToHostBufferExchangeTask&) =
+        delete; // Copy constructor
+    DeviceToHostBufferExchangeTask&
+    operator=(const DeviceToHostBufferExchangeTask&) = delete; // Copy assignment operator
+    DeviceToHostBufferExchangeTask(DeviceToHostBufferExchangeTask&&) = delete; // Move constructor
+    DeviceToHostBufferExchangeTask&
+    operator=(DeviceToHostBufferExchangeTask&&) = delete; // Move assignment operator
 
-    void launch_dtoh(const DeviceBuffer<T>& input)
+    void launch(const DeviceBuffer<T>& input)
     {
         ERRCHK(stream = nullptr);
         ERRCHK(device_staging_buffer.count == input.count);
@@ -107,7 +109,7 @@ template <typename T> struct DeviceToHostBufferExchangeTask {
                             device_staging_buffer.count * sizeof(device_staging_buffer.data[0]),
                             cudaMemcpyDeviceToHost, stream));
     }
-    void wait_dtoh(DeviceBuffer<T>& output)
+    void wait(DeviceBuffer<T>& output)
     {
         ERRCHK_EXPR_DESC(stream, "Function called but there was no memory operation in progress");
         ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
@@ -123,21 +125,24 @@ template <typename T> struct HostToDeviceBufferExchangeTask {
     std::unique_ptr<DeviceBuffer<T>> device_staging_buffer;
     cudaStream_t stream;
 
-    DeviceBufferExchangeTask(const size_t max_count)
+    HostToDeviceBufferExchangeTask(const size_t max_count)
         : host_staging_buffer(
-              std::make_unique<DeviceBuffer<T>>(max_count, false, cudaAllocHostWriteCombined)),
+              std::make_unique<DeviceBuffer<T>>(max_count, false, cudaHostAllocWriteCombined)),
           device_staging_buffer(std::make_unique<DeviceBuffer<T>>(max_count, true)),
           stream(nullptr)
     {
     }
 
-    ~DeviceBufferExchangeTask() { ERRCHK(stream == nullptr); }
+    ~HostToDeviceBufferExchangeTask() { ERRCHK(stream == nullptr); }
 
     // Delete all other types of constructors
-    DeviceBuffer(const DeviceBuffer&)            = delete; // Copy constructor
-    DeviceBuffer& operator=(const DeviceBuffer&) = delete; // Copy assignment operator
-    DeviceBuffer(DeviceBuffer&&)                 = delete; // Move constructor
-    DeviceBuffer& operator=(DeviceBuffer&&)      = delete; // Move assignment operator
+    HostToDeviceBufferExchangeTask(const HostToDeviceBufferExchangeTask&) =
+        delete; // Copy constructor
+    HostToDeviceBufferExchangeTask&
+    operator=(const HostToDeviceBufferExchangeTask&) = delete; // Copy assignment operator
+    HostToDeviceBufferExchangeTask(HostToDeviceBufferExchangeTask&&) = delete; // Move constructor
+    HostToDeviceBufferExchangeTask&
+    operator=(HostToDeviceBufferExchangeTask&&) = delete; // Move assignment operator
 
     void launch(const DeviceBuffer<T>& input)
     {
