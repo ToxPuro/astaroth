@@ -20,7 +20,7 @@ template <typename T> struct IOTask {
     Shape mesh_subdims;
     Index mesh_offset;
 
-    std::unique_ptr<Buffer<T>> buffer; // Buffer used for IO
+    std::unique_ptr<Buffer<T>> staging_buffer; // Buffer used for IO
 
     MPI_Request req;
     MPI_File file;
@@ -32,7 +32,7 @@ template <typename T> struct IOTask {
           mesh_dims(mesh_dims),
           mesh_subdims(mesh_subdims),
           mesh_offset(mesh_offset),
-          buffer(std::make_unique<Buffer<T>>(prod(mesh_dims))),
+          staging_buffer(std::make_unique<Buffer<T>>(prod(mesh_dims))),
           req(MPI_REQUEST_NULL),
           file(MPI_FILE_NULL) {};
 
@@ -136,6 +136,9 @@ template <typename T> struct IOTask {
                                                        get_dtype<T>());
 
         ERRCHK_MPI(file == MPI_FILE_NULL);
+
+        // TODO: copy input to the staging buffer
+
         ERRCHK_MPI_API(
             MPI_File_open(cart_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
         ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_dtype<T>(), global_subarray, "native", info));
