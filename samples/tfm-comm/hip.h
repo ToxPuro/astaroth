@@ -49,6 +49,7 @@
 #define cudaStreamSynchronize hipStreamSynchronize
 #define cudaStreamCreate hipStreamCreate
 #define cudaStreamCreateWithPriority hipStreamCreateWithPriority
+#define cudaStreamCreateWithFlags hipStreamCreateWithFlags
 #define cudaStreamDestroy hipStreamDestroy
 #define cudaMemcpyKind hipMemcpyKind
 #define cudaMemcpyHostToDevice hipMemcpyHostToDevice
@@ -67,6 +68,9 @@
 #define cudaMalloc hipMalloc
 #define cudaMallocHost hipMallocHost
 #define cudaMallocManaged hipMallocManaged
+#define cudaHostAlloc hipHostMalloc
+#define cudaHostAllocDefault hipHostMallocDefault
+#define cudaHostAllocWriteCombined hipHostMallocWriteCombined
 #define cudaFree hipFree
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaGetDeviceCount hipGetDeviceCount
