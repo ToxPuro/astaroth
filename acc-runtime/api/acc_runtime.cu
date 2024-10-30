@@ -1797,14 +1797,45 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
   ERRCHK_ALWAYS(d_temp_storage);
 
   cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-                                  d_out, num_segments, d_offsets, d_offsets + 1,
-                                  stream);
+                            d_out, num_segments, d_offsets, d_offsets + 1,
+                            stream);
 
   cudaStreamSynchronize(
       stream); // Note, would not be needed if allocated at initialization
   cudaFree(d_temp_storage);
   cudaFree(d_offsets);
   free(offsets);
+  return AC_SUCCESS;
+}
+AcResult
+acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out)
+{
+
+  void* d_temp_storage      = NULL;
+  size_t temp_storage_bytes = 0;
+  AcReal* res = NULL;
+  cudaMalloc(&d_temp_storage, temp_storage_bytes);
+  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+                                  res, count,stream);
+  // printf("Temp storage: %zu bytes\n", temp_storage_bytes);
+  cudaMalloc(&d_temp_storage, temp_storage_bytes);
+  cudaMalloc(&res, sizeof(AcReal));
+  ERRCHK_ALWAYS(d_temp_storage);
+
+  cudaStreamSynchronize(
+      stream); // Note, would not be needed if allocated at initialization
+  for(int i = 0; i < 10; ++i)
+  {
+  	auto start = MPI_Wtime();
+  	cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+  	                                res, count,stream);
+
+  	cudaStreamSynchronize(
+  	    stream); // Note, would not be needed if allocated at initialization
+  	auto end = MPI_Wtime();
+  	fprintf(stderr,"CUB REDUCE TOOK: %14e\n",end-start);
+  }
+  cudaFree(d_temp_storage);
   return AC_SUCCESS;
 }
 

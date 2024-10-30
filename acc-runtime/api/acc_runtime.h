@@ -456,6 +456,9 @@ AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
                            const size_t count, const size_t num_segments,
                            AcReal* d_out);
 
+AcResult
+acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out);
+
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
                            AcReal* array);
 
