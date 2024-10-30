@@ -2029,11 +2029,6 @@ acCompute(AcKernel kernel, std::vector<Field> fields)
 }
 
 /** */
-
-
-
-
-
 template <size_t num_fields>
 static AcTaskDefinition
 acComputeWithParams(AcKernel kernel, Field (&fields)[num_fields], std::function<void(ParamLoadingInfo)> loader)

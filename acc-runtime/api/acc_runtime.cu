@@ -1219,7 +1219,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
                                         : props.maxThreadsPerBlock;
-  const size_t max_smem = props.sharedMemPerBlock;
+  const size_t max_smem           = props.sharedMemPerBlock;
 
   // Old heuristic
   // for (int z = 1; z <= max_threads_per_block; ++z) {
@@ -1715,9 +1715,9 @@ acReindexCross(const cudaStream_t stream, //
 
   const size_t block_offset = out_shape.x * out_shape.y * out_shape.z;
   const SOAVector out_bb11  = {
-      .x = &out[3 * block_offset],
-      .y = &out[4 * block_offset],
-      .z = &out[5 * block_offset],
+       .x = &out[3 * block_offset],
+       .y = &out[4 * block_offset],
+       .z = &out[5 * block_offset],
   };
   const SOAVector out_bb12 = {
       .x = &out[6 * block_offset],
