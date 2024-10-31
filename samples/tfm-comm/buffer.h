@@ -46,6 +46,7 @@ struct DeviceAllocator {
     }
     static void dealloc(void** ptr)
     {
+        WARNING_DESC("device freed");
         WARNCHK(ptr);
         WARNCHK(*ptr);
         WARNCHK_CUDA_API(cudaFree(*ptr));
@@ -106,6 +107,45 @@ template <typename T, typename Allocator = HostAllocator> struct Buffer {
         Allocator::dealloc((void**)&data);
         count = 0;
     }
+    // template <typename OtherAllocator> void migrate(Buffer<T, OtherAllocator> other) const
+    // {
+    //     ERRCHK(count == other.count);
+    //     if (std::is_same<Allocator, HostAllocator>::value &&
+    //         std::is_same<OtherAllocator, HostAllocator>::value) {
+    //         std::copy(data.begin(), data.end(), other.data.begin());
+    //     }
+    //     else if (std::is_same<Allocator, HostAllocatorPinned>::value ||
+    //              std::is_same<Allocator, HostAllocatorPinnedWriteCombined>::value) {
+    //         if (std::is_same<OtherAllocator, HostAllocatorPinned>::value ||
+    //             std::is_same<OtherAllocator, HostAllocatorPinnedWriteCombined>::value) {
+    //             ERRCHK_CUDA_API(
+    //                 cudaMemcpy(other.data, data, sizeof(data[0]) * count, cudaMemcpyHostToHost));
+    //         }
+    //         else if (std::is_same<OtherAllocator, DeviceAllocator>::value) {
+    //             ERRCHK_CUDA_API(
+    //                 cudaMemcpy(other.data, data, sizeof(data[0]) * count,
+    //                 cudaMemcpyHostToDevice));
+    //         }
+    //         else {
+    //             static_assert(false);
+    //         }
+    //     }
+    //     else {
+    //         if (std::is_same<OtherAllocator, HostAllocatorPinned>::value ||
+    //             std::is_same<OtherAllocator, HostAllocatorPinnedWriteCombined>::value) {
+    //             ERRCHK_CUDA_API(
+    //                 cudaMemcpy(other.data, data, sizeof(data[0]) * count,
+    //                 cudaMemcpyDeviceToHost));
+    //         }
+    //         else if (std::is_same<OtherAllocator, DeviceAllocator>::value) {
+    //             ERRCHK_CUDA_API(cudaMemcpy(other.data, data, sizeof(data[0]) * count,
+    //                                           cudaMemcpyDeviceToDevice));
+    //         }
+    //         else {
+    //             static_assert(false);
+    //         }
+    //     }
+    // }
 
     // Delete all other types of constructors
     Buffer(const Buffer&)            = delete; // Copy constructor
@@ -137,6 +177,42 @@ operator<<(std::ostream& os, const Buffer<T, HostAllocator>& buf)
 /**
  * Member functions
  */
+template <typename T>
+void
+migrate(const Buffer<T, HostAllocator>& in, Buffer<T, HostAllocator>& out)
+{
+    std::cerr << "default copy" << std::endl;
+    ERRCHK(in.count == out.count);
+    std::copy(in.data, in.data + in.count, out.data);
+}
+
+#if defined(DEVICE_ENABLED)
+template <typename T, typename A, typename B>
+void
+migrate(const Buffer<T, A>& in, Buffer<T, B>& out)
+{
+    ERRCHK(in.count == out.count);
+    const bool in_on_device  = std::is_same<A, DeviceAllocator>::value;
+    const bool out_on_device = std::is_same<B, DeviceAllocator>::value;
+
+    cudaMemcpyKind kind;
+    if (in_on_device) {
+        if (out_on_device)
+            kind = cudaMemcpyDeviceToDevice;
+        else
+            kind = cudaMemcpyDeviceToHost;
+    }
+    else {
+        if (out_on_device)
+            kind = cudaMemcpyHostToDevice;
+        else
+            kind = cudaMemcpyHostToHost;
+    }
+    std::cerr << "kind " << (kind == cudaMemcpyDeviceToHost) << std::endl;
+    ERRCHK_CUDA_API(cudaMemcpy(out.data, in.data, sizeof(in.data[0]) * in.count, kind));
+}
+#endif
+
 template <typename T>
 void
 fill(const T& value, Buffer<T, HostAllocator>& buffer)
