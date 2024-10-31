@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <vector>
 
-// Returns the non-trivial factors of n in increasing order
+// Returns the non-trivial unique factors of n in increasing order
 static std::vector<uint64_t>
 factorize(uint64_t n)
 {
@@ -20,6 +20,8 @@ factorize(uint64_t n)
     if (n > 1)
         factors.push_back(n); // Push back the remainder
 
+    auto last = std::unique(factors.begin(), factors.end());
+    factors.erase(last, factors.end());
     return factors;
 }
 
@@ -49,6 +51,7 @@ decompose(const Shape& nn, uint64_t nprocs)
     // Or maybe this is what they meant all along, but the description was just unclear
     // UPDATE: Actually this is now whole different concept: now searched for decomp that maximizes
     // surface area to volume ratio at each slice.
+    // Greedy algorithm: choose the current best factor at each iteration
     while (prod(nn) != prod(nprocs * local_nn * decomp)) {
         size_t best_axis      = SIZE_MAX;
         uint64_t best_factor  = 0;
@@ -56,7 +59,7 @@ decompose(const Shape& nn, uint64_t nprocs)
 
         auto factors = factorize(nprocs);
         for (const auto& factor : factors) {
-            for (size_t axis = 0; axis < nn.count; ++axis) {
+            for (size_t axis = nn.count - 1; axis < nn.count; --axis) {
                 if ((local_nn[axis] % factor) == 0) {
                     auto test_nn(local_nn);
                     test_nn[axis] /= factor;
@@ -78,16 +81,79 @@ decompose(const Shape& nn, uint64_t nprocs)
     return decomp;
 }
 
+std::vector<Shape>
+decompose_hierarchical(const Shape& nn, std::vector<uint64_t> nprocs_per_layer)
+{
+    std::vector<Shape> decompositions;
+
+    Shape curr_nn(nn);
+    for (const auto& nprocs : nprocs_per_layer) {
+        const Shape decomp = decompose(curr_nn, nprocs);
+        decompositions.push_back(decomp);
+        curr_nn = curr_nn / decomp;
+    }
+    return decompositions;
+}
+
 void
 test_decomp(void)
 {
-    std::cout << "hello from decomp" << std::endl;
+    {
+        const uint64_t nprocs = 32;
+        const Shape nn        = {512, 128, 128};
+        const Shape decomp    = decompose(nn, nprocs);
+        const Shape local_nn  = nn / decomp;
+        ERRCHK(nn == decomp * local_nn);
+    }
+    {
+        const uint64_t nprocs = 7;
+        const Shape nn        = {7 * 20, 128, 128};
+        const Shape decomp    = decompose(nn, nprocs);
+        const Shape local_nn  = nn / decomp;
+        ERRCHK(nn == decomp * local_nn);
+    }
+    {
+        const uint64_t nprocs = 11;
+        const Shape nn        = {9, 10, 11};
+        const Shape decomp    = decompose(nn, nprocs);
+        const Shape local_nn  = nn / decomp;
+        ERRCHK(nn == decomp * local_nn);
+    }
+    {
+        const uint64_t nprocs = 50;
+        const Shape nn        = {20, 30, 40};
+        const Shape decomp    = decompose(nn, nprocs);
+        const Shape local_nn  = nn / decomp;
+        ERRCHK(nn == decomp * local_nn);
+    }
+    {
+        Shape nn                               = {256, 128, 128};
+        std::vector<uint64_t> nprocs_per_layer = {16, 4, 2};
+        const auto decompositions              = decompose_hierarchical(nn, nprocs_per_layer);
 
-    const uint64_t nprocs = 32;
-    const Shape nn        = {512, 128, 128};
-    const Shape decomp    = decompose(nn, nprocs);
-    const Shape local_nn  = nn / decomp;
-    PRINT_DEBUG(nn);
-    PRINT_DEBUG(decomp);
-    PRINT_DEBUG(local_nn);
+        std::vector<Index> offsets;
+        for (const auto& decomp : decompositions) {
+            nn = nn / decomp;
+            offsets.push_back(nn);
+        }
+        // Index is then
+        // offset[0] * decompositions[0] + offset[1] * decompositions[1] + ...
+        ERRCHK(prod(decompositions[0]) == 16);
+        ERRCHK(prod(decompositions[1]) == 4);
+        ERRCHK(prod(decompositions[2]) == 2);
+        /*
+        // Test: get coords from rank
+        for (size_t i = 0; i < 16 * 4 * 2; ++i) {
+            Index coords = {0, 0, 0};
+            Index scale  = {1, 1, 1};
+            for (size_t j = decompositions.size() - 1; j < decompositions.size(); --j) {
+                coords = coords + scale * to_spatial(i / prod(scale), decompositions[j]);
+                scale  = scale * decompositions[j];
+            }
+            PRINT_DEBUG(i);
+            PRINT_DEBUG(coords);
+            std::cout << std::endl;
+        }
+        */
+    }
 }
