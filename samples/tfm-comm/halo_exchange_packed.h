@@ -5,9 +5,11 @@
 
 #include "packet.h"
 
-template <typename T> struct HaloExchangeTask {
+template <typename T> class HaloExchangeTask {
+  private:
     std::vector<std::unique_ptr<Packet<T>>> packets;
 
+  public:
     HaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
                      const size_t n_aggregate_buffers)
 

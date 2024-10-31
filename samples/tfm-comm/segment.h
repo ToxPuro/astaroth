@@ -8,7 +8,7 @@ struct Segment {
 
     // Constructors
     Segment(const Shape& in_dims)
-        : dims(in_dims), offset(Index(dims.count))
+        : dims(in_dims), offset(Index(in_dims.count))
     {
     }
     Segment(const Shape& in_dims, const Index& in_offset)
