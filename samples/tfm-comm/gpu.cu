@@ -19,6 +19,7 @@ static_assert(false);
 // #include "device_buffer.h"
 // #include "dbuffer.h"
 #include "buffer.h"
+#include "buffer_transfer.h"
 
 __global__ void
 kernel(const size_t count, const double* in, double* out)
@@ -32,8 +33,19 @@ int
 main()
 {
     const size_t count = 10;
-    double* hin        = (double*)malloc(count * sizeof(hin[0]));
-    double* hout       = (double*)malloc(count * sizeof(hout[0]));
+    Buffer<double> host_buffer(count);
+    host_buffer.fill_arange(0, count);
+    std::cout << "Before: " << host_buffer << std::endl;
+    Buffer<double> device_buffer(count, BUFFER_DEVICE);
+    // host_buffer.migrate(device_buffer);
+    // device_buffer.migrate(host_buffer);
+    HostToDeviceBufferExchangeTask<double> htod(count);
+    htod.launch(host_buffer);
+    htod.wait(device_buffer);
+    std::cout << "After: " << host_buffer << std::endl;
+
+    double* hin  = (double*)malloc(count * sizeof(hin[0]));
+    double* hout = (double*)malloc(count * sizeof(hout[0]));
     ERRCHK(hin);
     ERRCHK(hout);
 
