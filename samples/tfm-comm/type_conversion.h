@@ -8,10 +8,11 @@
 #include "errchk.h"
 
 template <typename T_target, typename T_source>
-typename std::enable_if<std::is_integral<T_target>::value && std::is_integral<T_source>::value,
-                        bool>::type
+bool
 can_convert(T_source value)
 {
+    static_assert(std::is_integral<T_target>::value, "Conversion enabled only for integral types");
+    static_assert(std::is_integral<T_source>::value, "Conversion enabled only for integral types");
     if (std::is_signed<T_source>::value && std::is_signed<T_target>::value) {
         return value >= std::numeric_limits<T_target>::min() &&
                value <= std::numeric_limits<T_target>::max();
