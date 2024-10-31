@@ -80,7 +80,7 @@ template <typename T> class IOTask {
         ERRCHK_MPI_API(MPI_Info_free(&info));
     };
 
-    void write(const MPI_Comm cart_comm, const std::string& path, const T* data)
+    void write(const MPI_Comm cart_comm, const T* data, const std::string& path)
     {
         MPI_Info info = MPI_INFO_NULL;
         ERRCHK_MPI_API(MPI_Info_create(&info));
@@ -117,7 +117,7 @@ template <typename T> class IOTask {
         ERRCHK_MPI_API(MPI_Info_free(&info));
     }
 
-    void launch_write(const MPI_Comm cart_comm, const std::string& path, const T* data)
+    void launch_write(const MPI_Comm cart_comm, const T* data, const std::string& path)
     {
         MPI_Info info = MPI_INFO_NULL;
         ERRCHK_MPI_API(MPI_Info_create(&info));

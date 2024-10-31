@@ -9,6 +9,7 @@
 #include "errchk_mpi.h"
 #include "mpi_utils.h"
 
+#include "buffer_transfer.h"
 #include "halo_exchange.h"
 #include "halo_exchange_packed.h"
 #include "io.h"
@@ -56,6 +57,14 @@ main()
         //     recv_reqs.pop_back();
         // }
 
+        // Migrate
+        HostToDeviceBufferExchangeTask<double> htod(mesh.buffer.count);
+        htod.launch(mesh.buffer);
+        htod.wait(mesh.buffer);
+        DeviceToHostBufferExchangeTask<double> dtoh(mesh.buffer.count);
+        dtoh.launch(mesh.buffer);
+        dtoh.wait(mesh.buffer);
+
         // Packet MPI/CUDA halo exchange task
         PackPtrArray<AcReal*> inputs = {mesh.buffer.data};
         HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, inputs.count);
@@ -69,7 +78,7 @@ main()
 
         // IO
         IOTask<AcReal> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
-        iotask.write(cart_comm, "test.dat", mesh.buffer.data);
+        iotask.write(cart_comm, mesh.buffer.data, "test.dat");
         // iotask.launch_write(cart_comm, "test.dat", mesh.buffer.data);
         // iotask.wait_write();
         iotask.read(cart_comm, "test.dat", mesh.buffer.data);

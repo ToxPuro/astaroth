@@ -4,6 +4,20 @@
 
 #include "buffer.h"
 
+#if defined(__CUDACC__)
+#define DEVICE_ENABLED
+#include "errchk_cuda.h"
+#include <cuda_runtime.h>
+#elif defined(__HIP_PLATFORM_AMD__)
+#define DEVICE_ENABLED
+#include "errchk_cuda.h"
+#include "hip.h"
+#include <hip/hip_runtime.h>
+#else
+#include "errchk.h"
+#define cudaStream_t void*
+#endif
+
 template <typename T> class DeviceToHostBufferExchangeTask {
   private:
     std::unique_ptr<Buffer<T>> host_staging_buffer;
@@ -33,19 +47,27 @@ template <typename T> class DeviceToHostBufferExchangeTask {
     {
         ERRCHK(!stream);
         ERRCHK(input.count == device_staging_buffer->count);
-        ERRCHK(input.type == BUFFER_DEVICE);
         input.migrate(*device_staging_buffer);
+#if defined(DEVICE_ENABLED)
+        ERRCHK(input.type == BUFFER_DEVICE);
         ERRCHK_CUDA_API(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
         ERRCHK_CUDA_API(
             cudaMemcpyAsync(host_staging_buffer->data, device_staging_buffer->data,
                             device_staging_buffer->count * sizeof(device_staging_buffer->data[0]),
                             cudaMemcpyDeviceToHost, stream));
+#else
+        WARNING_DESC("Device code was not enabled, migrating synchronously within host");
+        stream = &stream;
+        device_staging_buffer->migrate(*host_staging_buffer);
+#endif
     }
     void wait(Buffer<T>& output)
     {
         ERRCHK_EXPR_DESC(stream, "Function called but there was no memory operation in progress");
+#if defined(DEVICE_ENABLED)
         ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
         ERRCHK_CUDA_API(cudaStreamDestroy(stream));
+#endif
         stream = nullptr;
 
         host_staging_buffer->migrate(output);
@@ -85,17 +107,25 @@ template <typename T> class HostToDeviceBufferExchangeTask {
         ERRCHK(input.type == BUFFER_HOST ||
                input.type == BUFFER_HOST_PINNED); // Write-combined slow, not allowed
         input.migrate(*host_staging_buffer);
+#if defined(DEVICE_ENABLED)
         ERRCHK_CUDA_API(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
         ERRCHK_CUDA_API(
             cudaMemcpyAsync(device_staging_buffer->data, host_staging_buffer->data,
                             host_staging_buffer->count * sizeof(host_staging_buffer->data[0]),
                             cudaMemcpyHostToDevice, stream));
+#else
+        WARNING_DESC("Device code was not enabled, migrating synchronously within host");
+        stream = &stream;
+        host_staging_buffer->migrate(*device_staging_buffer);
+#endif
     }
     void wait(Buffer<T>& output)
     {
         ERRCHK_EXPR_DESC(stream, "Function called but there was no memory operation in progress");
+#if defined(DEVICE_ENABLED)
         ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
         ERRCHK_CUDA_API(cudaStreamDestroy(stream));
+#endif
         stream = nullptr;
 
         device_staging_buffer->migrate(output);
