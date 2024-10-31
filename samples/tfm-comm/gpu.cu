@@ -31,13 +31,6 @@ kernel(const size_t count, const double* in, double* out)
 int
 main()
 {
-    Buffer<double, DeviceAllocator> a(10);
-    Buffer<double, HostAllocatorPinned> b(10);
-    migrate(a, b);
-    Buffer<double> c(10);
-    Buffer<double> d(10);
-    migrate(c, d);
-
     const size_t count = 10;
     double* hin        = (double*)malloc(count * sizeof(hin[0]));
     double* hout       = (double*)malloc(count * sizeof(hout[0]));

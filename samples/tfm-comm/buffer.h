@@ -16,136 +16,22 @@
 #include "errchk.h"
 #endif
 
-// #define DEVICE_ENABLED
-
-struct HostAllocator {
-    static void* alloc(const size_t count, const size_t size)
-    {
-        WARNING_DESC("host");
-        void* ptr = malloc(count * size);
-        ERRCHK(ptr);
-        return ptr;
-    }
-    static void dealloc(void** ptr)
-    {
-        WARNCHK(ptr);
-        WARNCHK(*ptr);
-        free(*ptr);
-        *ptr = NULL;
-    }
+enum BufferType {
+    BUFFER_HOST,
+    BUFFER_HOST_PINNED,
+    BUFFER_HOST_PINNED_WRITE_COMBINED,
+    BUFFER_DEVICE,
+    BUFFER_NULL,
 };
 
-#if defined(DEVICE_ENABLED)
-struct DeviceAllocator {
-    static void* alloc(const size_t count, const size_t size)
-    {
-        WARNING_DESC("device");
-        void* ptr;
-        ERRCHK_CUDA_API(cudaMalloc(&ptr, count * size));
-        return ptr;
-    }
-    static void dealloc(void** ptr)
-    {
-        WARNING_DESC("device freed");
-        WARNCHK(ptr);
-        WARNCHK(*ptr);
-        WARNCHK_CUDA_API(cudaFree(*ptr));
-        *ptr = NULL;
-    }
-};
-
-struct HostAllocatorPinned {
-    static void* alloc(const size_t count, const size_t size)
-    {
-        WARNING_DESC("host pinned");
-        void* ptr;
-        ERRCHK_CUDA_API(cudaHostAlloc(&ptr, count * size, cudaHostAllocDefault));
-        return ptr;
-    }
-    static void dealloc(void** ptr)
-    {
-        WARNCHK(ptr);
-        WARNCHK(*ptr);
-        WARNCHK_CUDA_API(cudaFreeHost(*ptr));
-        *ptr = NULL;
-    }
-};
-
-struct HostAllocatorPinnedWriteCombined {
-    static void* alloc(const size_t count, const size_t size)
-    {
-        WARNING_DESC("host pinned write-combined");
-        void* ptr;
-        ERRCHK_CUDA_API(cudaHostAlloc(&ptr, count * size, cudaHostAllocWriteCombined));
-        return ptr;
-    }
-    static void dealloc(void** ptr)
-    {
-        WARNCHK(ptr);
-        WARNCHK(*ptr);
-        WARNCHK_CUDA_API(cudaFreeHost(*ptr));
-        *ptr = NULL;
-    }
-};
-#else
-#pragma message "Buffer: Device code not enabled, reverting back to host allocator"
-using DeviceAllocator                  = HostAllocator;
-using HostAllocatorPinned              = HostAllocator;
-using HostAllocatorPinnedWriteCombined = HostAllocator;
-#endif
-
-template <typename T, typename Allocator = HostAllocator> struct Buffer {
+template <typename T> struct Buffer {
     size_t count;
+    BufferType type;
     T* data;
 
-    Buffer(const size_t in_count)
-        : count(in_count), data((T*)Allocator::alloc(count, sizeof(data[0])))
-    {
-    }
-    ~Buffer()
-    {
-        Allocator::dealloc((void**)&data);
-        count = 0;
-    }
-    // template <typename OtherAllocator> void migrate(Buffer<T, OtherAllocator> other) const
-    // {
-    //     ERRCHK(count == other.count);
-    //     if (std::is_same<Allocator, HostAllocator>::value &&
-    //         std::is_same<OtherAllocator, HostAllocator>::value) {
-    //         std::copy(data.begin(), data.end(), other.data.begin());
-    //     }
-    //     else if (std::is_same<Allocator, HostAllocatorPinned>::value ||
-    //              std::is_same<Allocator, HostAllocatorPinnedWriteCombined>::value) {
-    //         if (std::is_same<OtherAllocator, HostAllocatorPinned>::value ||
-    //             std::is_same<OtherAllocator, HostAllocatorPinnedWriteCombined>::value) {
-    //             ERRCHK_CUDA_API(
-    //                 cudaMemcpy(other.data, data, sizeof(data[0]) * count, cudaMemcpyHostToHost));
-    //         }
-    //         else if (std::is_same<OtherAllocator, DeviceAllocator>::value) {
-    //             ERRCHK_CUDA_API(
-    //                 cudaMemcpy(other.data, data, sizeof(data[0]) * count,
-    //                 cudaMemcpyHostToDevice));
-    //         }
-    //         else {
-    //             static_assert(false);
-    //         }
-    //     }
-    //     else {
-    //         if (std::is_same<OtherAllocator, HostAllocatorPinned>::value ||
-    //             std::is_same<OtherAllocator, HostAllocatorPinnedWriteCombined>::value) {
-    //             ERRCHK_CUDA_API(
-    //                 cudaMemcpy(other.data, data, sizeof(data[0]) * count,
-    //                 cudaMemcpyDeviceToHost));
-    //         }
-    //         else if (std::is_same<OtherAllocator, DeviceAllocator>::value) {
-    //             ERRCHK_CUDA_API(cudaMemcpy(other.data, data, sizeof(data[0]) * count,
-    //                                           cudaMemcpyDeviceToDevice));
-    //         }
-    //         else {
-    //             static_assert(false);
-    //         }
-    //     }
-    // }
+    Buffer(const size_t in_count, const BufferType in_type = BUFFER_HOST);
+    ~Buffer();
+    Buffer(Buffer&& other) noexcept; // Move constructor
 
     // Delete all other types of constructors
     Buffer(const Buffer&)            = delete; // Copy constructor
@@ -153,21 +39,87 @@ template <typename T, typename Allocator = HostAllocator> struct Buffer {
     // Buffer(Buffer&&)                 = delete; // Move constructor
     Buffer& operator=(Buffer&&) = delete; // Move assignment operator
 
-    Buffer(Buffer&& other) noexcept
-        : count(other.count), data(other.data)
-    {
-        other.count = 0;
-        other.data  = nullptr;
-    }
+    // Other functions
+    void fill(const T& value);
+    void fill_arange(const T& min, const T& max);
+    void migrate(Buffer<T>& out) const;
 };
+
+template <typename T>
+Buffer<T>::Buffer(const size_t in_count, const BufferType in_type)
+    : count(in_count), type(in_type), data(nullptr)
+{
+#if !defined(DEVICE_ENABLED)
+    if (in_type != BUFFER_HOST) {
+        WARNING_DESC("Device code not enabled, falling back to host allocation");
+        type = BUFFER_HOST;
+    }
+#endif
+
+    // Allocate page-locked host memory
+    // - cudaHostAllocDefault: emulates to cudaMallocHost (allocates page-locked memory)
+    // - cudaHostAllocPortable: memory considered pinned by all CUDA contexts
+    // - cudaHostAllocMapped: allocates a host buffer the device can access directly,
+    // generates implicit PCI-e traffic. Likely used by unified memory cudaMallocManaged
+    // under the hood (See CUDA C programming guide 6.2.6.3)
+    // - cudaHostAllocWriteCombined: bypasses host L1/L2 to improve host-device transfers
+    // but results in very slow host-side reads (See CUDA C programming guide 6.2.6.2)
+    // unsigned int flags = cudaHostAllocDefault;
+    if (type == BUFFER_HOST) {
+        data = new T[count];
+    }
+#if defined(DEVICE_ENABLED)
+    else if (type == BUFFER_HOST_PINNED) {
+        ERRCHK_CUDA_API(cudaHostAlloc(&data, count * sizeof(data[0]), cudaHostAllocDefault));
+    }
+    else if (type == BUFFER_HOST_PINNED_WRITE_COMBINED) {
+        ERRCHK_CUDA_API(cudaHostAlloc(&data, count * sizeof(data[0]), cudaHostAllocWriteCombined));
+    }
+    else if (type == BUFFER_DEVICE) {
+        ERRCHK_CUDA_API(cudaMalloc(&data, count * sizeof(data[0])));
+    }
+#endif
+    else {
+        ERROR_DESC("Invalid type");
+    }
+}
+
+template <typename T>
+Buffer<T>::Buffer(Buffer&& other) noexcept
+    : count(other.count), type(other.type), data(other.data)
+{
+    other.count = 0;
+    other.type  = BUFFER_NULL;
+    other.data  = nullptr;
+}
+
+template <typename T> Buffer<T>::~Buffer()
+{
+    if (type == BUFFER_HOST) {
+        delete[] data;
+    }
+#if defined(DEVICE_ENABLED)
+    else if (type == BUFFER_HOST_PINNED || type == BUFFER_HOST_PINNED_WRITE_COMBINED) {
+        WARNCHK_CUDA_API(cudaFreeHost(data));
+    }
+    else if (type == BUFFER_DEVICE) {
+        WARNCHK_CUDA_API(cudaFree(data));
+    }
+#endif
+    else {
+        WARNING_DESC("Invalid type");
+    }
+    data = nullptr;
+}
 
 /**
  * Printing
  */
 template <typename T>
 std::ostream&
-operator<<(std::ostream& os, const Buffer<T, HostAllocator>& buf)
+operator<<(std::ostream& os, const Buffer<T>& buf)
 {
+    ERRCHK(buf.type != BUFFER_DEVICE); // TODO implement for device buffers
     os << "{";
     for (size_t i = 0; i < buf.count; ++i)
         os << buf.data[i] << (i + 1 < buf.count ? ", " : "}");
@@ -179,87 +131,86 @@ operator<<(std::ostream& os, const Buffer<T, HostAllocator>& buf)
  */
 template <typename T>
 void
-migrate(const Buffer<T, HostAllocator>& in, Buffer<T, HostAllocator>& out)
+Buffer<T>::fill(const T& value)
 {
-    std::cerr << "default copy" << std::endl;
-    ERRCHK(in.count == out.count);
-    std::copy(in.data, in.data + in.count, out.data);
+    ERRCHK(type != BUFFER_DEVICE); // TODO implement for device buffers
+    for (size_t i = 0; i < count; ++i)
+        data[i] = value;
 }
 
-#if defined(DEVICE_ENABLED)
-template <typename T, typename A, typename B>
+template <typename T>
 void
-migrate(const Buffer<T, A>& in, Buffer<T, B>& out)
+Buffer<T>::fill_arange(const T& min, const T& max)
 {
-    ERRCHK(in.count == out.count);
-    const bool in_on_device  = std::is_same<A, DeviceAllocator>::value;
-    const bool out_on_device = std::is_same<B, DeviceAllocator>::value;
+    ERRCHK(type != BUFFER_DEVICE); // TODO implement for device buffers
+    ERRCHK(min < max);
+    ERRCHK(max - min <= count);
+    for (size_t i = 0; i < max - min; ++i)
+        data[i] = static_cast<T>(min + i);
+}
 
-    cudaMemcpyKind kind;
-    if (in_on_device) {
-        if (out_on_device)
-            kind = cudaMemcpyDeviceToDevice;
-        else
-            kind = cudaMemcpyDeviceToHost;
+template <typename T>
+void
+Buffer<T>::migrate(Buffer<T>& out) const
+{
+    ERRCHK(count == out.count);
+    ERRCHK(type != BUFFER_NULL);
+    if (type == BUFFER_HOST && out.type == BUFFER_HOST) {
+        std::copy(data, data + count, out.data);
     }
     else {
-        if (out_on_device)
-            kind = cudaMemcpyHostToDevice;
-        else
-            kind = cudaMemcpyHostToHost;
-    }
-    std::cerr << "kind " << (kind == cudaMemcpyDeviceToHost) << std::endl;
-    ERRCHK_CUDA_API(cudaMemcpy(out.data, in.data, sizeof(in.data[0]) * in.count, kind));
-}
+#if defined(DEVICE_ENABLED)
+        const bool on_device     = (type == BUFFER_DEVICE);
+        const bool out_on_device = (out.type == BUFFER_DEVICE);
+        cudaMemcpyKind kind;
+        if (on_device) {
+            if (out_on_device)
+                kind = cudaMemcpyDeviceToDevice;
+            else
+                kind = cudaMemcpyDeviceToHost;
+        }
+        else {
+            if (out_on_device)
+                kind = cudaMemcpyHostToDevice;
+            else
+                kind = cudaMemcpyHostToHost;
+        }
+        ERRCHK_CUDA_API(cudaMemcpy(out.data, data, sizeof(data[0]) * count, kind));
+#else
+        ERROR_DESC("invalid type");
 #endif
-
-template <typename T>
-void
-fill(const T& value, Buffer<T, HostAllocator>& buffer)
-{
-    for (size_t i = 0; i < buffer.count; ++i)
-        buffer.data[i] = value;
-}
-
-template <typename T>
-void
-fill_arange(const T& min, const T& max, Buffer<T, HostAllocator>& buffer)
-{
-    ERRCHK(min < max);
-    ERRCHK(max - min <= buffer.count);
-    for (size_t i = 0; i < max - min; ++i)
-        buffer.data[i] = static_cast<T>(min + i);
+    }
 }
 
 /**
  * Other utility functions
  */
 template <typename T>
-Buffer<T, HostAllocator>
+Buffer<T>
 ones(const size_t count)
 {
-    Buffer<T, HostAllocator> buffer(count);
+    Buffer<T> buffer(count);
     for (size_t i = 0; i < count; ++i)
         buffer.data[i] = 1;
     return buffer;
 }
 
 template <typename T>
-Buffer<T, HostAllocator>
+Buffer<T>
 zeros(const size_t count)
 {
-    Buffer<T, HostAllocator> buffer(count);
+    Buffer<T> buffer(count);
     for (size_t i = 0; i < count; ++i)
         buffer.data[i] = 1;
     return buffer;
 }
 
 template <typename T>
-Buffer<T, HostAllocator>
+Buffer<T>
 arange(const size_t min, const size_t max)
 {
     ERRCHK(max > min);
-    Buffer<T, HostAllocator> buffer(max - min);
+    Buffer<T> buffer(max - min);
     for (size_t i = 0; i < buffer.count; ++i)
         buffer.data[i] = static_cast<T>(min + i);
     return buffer;
