@@ -16,6 +16,10 @@ value(Field s)
 {
 	return value_stencil(s)
 }
+value(Profile profile)
+{
+	return value_profile(profile)
+}
 
 elemental previous(Field s)
 {

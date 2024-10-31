@@ -1,8 +1,0 @@
-#ifdef TG_OUTPUT_HEADER
-TG_DTYPE TG_TYPE_GENERIC_FUNCTION(print)(const TG_DTYPE x);
-#endif // TG_OUTPUT_HEADER
-
-#ifdef TG_OUTPUT_SOURCE
-TG_DTYPE
-TG_TYPE_GENERIC_FUNCTION(print)(const TG_DTYPE x) { return x; }
-#endif // TG_OUTPUT_SOURCE

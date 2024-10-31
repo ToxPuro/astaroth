@@ -456,8 +456,17 @@ AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
                            const size_t count, const size_t num_segments,
                            AcReal* d_out);
 
+AcResult
+acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out);
+
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
                            AcReal* array);
+
+  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t counts));
+
+  FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size3_t count));
+
+  FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
 
 #ifdef __cplusplus
 
@@ -495,11 +504,6 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 	  return get_array_info(array).is_alive;
   }
 
-  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t counts));
-
-  FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size3_t count));
-
-  FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
 
   template <typename P>
   constexpr static auto

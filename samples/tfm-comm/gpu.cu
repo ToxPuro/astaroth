@@ -1,108 +1,59 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdlib>
 
-// #include "hip.h"
-// #include <hip/hip_runtime.h>
+#if defined(__CUDACC__)
+#include <cuda_runtime.h>
+#elif defined(__HIP_PLATFORM_AMD__)
+#include "hip.h"
+#include <hip/hip_runtime.h>
+#else
+static_assert(false);
+#endif
 
-// #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
 
-#include "errchk_gpu.h"
-
-typedef struct {
-    double* data;
-    size_t count;
-    bool on_device;
-} AcBuffer;
-
-AcBuffer
-acBufferCreate(const size_t count, const bool on_device)
-{
-    AcBuffer buffer    = {.count = count, .on_device = on_device};
-    const size_t bytes = sizeof(buffer.data[0]) * count;
-    if (buffer.on_device) {
-        ERRCHK_GPU_API(cudaMalloc((void**)&buffer.data, bytes));
-    }
-    else {
-        buffer.data = (double*)malloc(bytes);
-    }
-    ERRCHK(buffer.data != NULL);
-    return buffer;
-}
-
-void
-acBufferDestroy(AcBuffer* buffer)
-{
-    if (buffer->on_device)
-        cudaFree(buffer->data);
-    else
-        free(buffer->data);
-    buffer->data  = NULL;
-    buffer->count = 0;
-}
-
-void
-acBufferMigrate(const AcBuffer in, AcBuffer* out)
-{
-    cudaMemcpyKind kind;
-    if (in.on_device) {
-        if (out->on_device)
-            kind = cudaMemcpyDeviceToDevice;
-        else
-            kind = cudaMemcpyDeviceToHost;
-    }
-    else {
-        if (out->on_device)
-            kind = cudaMemcpyHostToDevice;
-        else
-            kind = cudaMemcpyHostToHost;
-    }
-
-    ERRCHK(out->count >= in.count);
-    ERRCHK_GPU_API(cudaMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
-}
-
-void
-acBufferPrint(const char* label, const AcBuffer buffer)
-{
-    std::cout << label;
-
-    const size_t max_print_elements = 5;
-    if (buffer.on_device) {
-        AcBuffer tmp = acBufferCreate(buffer.count, false);
-        acBufferMigrate(buffer, &tmp);
-        acBufferDestroy(&tmp);
-    }
-}
+#include "errchk.h"
+#include "errchk_cuda.h"
+#include "static_array.h"
 
 __global__ void
 kernel(const size_t count, const double* in, double* out)
 {
-    const size_t i = threadIdx.x * blockIdx.x * blockDim.x;
+    const size_t i = threadIdx.x + blockIdx.x * blockDim.x;
     if (i < count)
         out[i] = 2 * in[i];
 }
 
-__global__ void
-init(const size_t count, double* arr)
-{
-    const size_t i = threadIdx.x * blockIdx.x * blockDim.x;
-    if (i < count)
-        arr[i] = 1;
-}
-
 int
-main(void)
+main()
 {
+
     const size_t count = 10;
-    double *in, *out;
-    ERRCHK_GPU_API(cudaMalloc(&in, sizeof(in[0]) * count));
-    ERRCHK_GPU_API(cudaMalloc(&out, sizeof(out[0]) * count));
+    double* hin        = (double*)malloc(count * sizeof(hin[0]));
+    double* hout       = (double*)malloc(count * sizeof(hout[0]));
+    ERRCHK(hin);
+    ERRCHK(hout);
 
+    double *din, *dout;
+    ERRCHK_CUDA_API(cudaMalloc(&din, count * sizeof(din[0])));
+    ERRCHK_CUDA_API(cudaMalloc(&dout, count * sizeof(dout[0])));
+
+    for (size_t i = 0; i < count; ++i)
+        hin[i] = static_cast<double>(i);
+
+    ERRCHK_CUDA_API(cudaMemcpy(din, hin, count * sizeof(hin[0]), cudaMemcpyHostToDevice));
     const size_t tpb = 256;
-    const size_t bpg = 1;
-    ERRCHK_GPU_KERNEL();
+    const size_t bpg = (count + tpb - 1) / tpb;
+    kernel<<<bpg, tpb>>>(count, din, dout);
+    ERRCHK_CUDA_KERNEL();
+    ERRCHK_CUDA_API(cudaMemcpy(hout, dout, count * sizeof(dout[0]), cudaMemcpyDeviceToHost));
 
-    ERRCHK_GPU_API(cudaFree(in));
-    ERRCHK_GPU_API(cudaFree(out));
+    for (size_t i = 0; i < count; ++i)
+        std::cout << "i: " << hout[i] << std::endl;
+
+    ERRCHK_CUDA_API(cudaFree(dout));
+    ERRCHK_CUDA_API(cudaFree(din));
+    free(hout);
+    free(hin);
     return EXIT_SUCCESS;
 }

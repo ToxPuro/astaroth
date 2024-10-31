@@ -311,6 +311,7 @@ reset_all_files()
 		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","get_empty_pointer.h",
 			"kernel_region_write_info.h","kernel_region_read_info.h","taskgraph_bc_handles.h","user_declarations.h","taskgraph_kernels.h","taskgraph_kernel_bcs.h",
 			"info_access_operators.h","device_load_uniform.h","device_load_uniform_decl.h","device_load_uniform_overloads.h","device_load_uniform_loads.h",
+			"called_reduce_outputs.h",
 			};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    //if(!file_exists(files[i])) continue;

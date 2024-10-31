@@ -1,8 +1,8 @@
 ## CMake settings
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 ## Project settings
 project(tfm-comm)
@@ -48,55 +48,35 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 
 ## Packages
-add_library(tfm-utils SHARED mpi_utils.c type_conversion.c math_utils.c print.c partition.c dynarr.c segment.c buf.c)
+add_library(tfm-utils STATIC decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
 
-add_library(tfm-pack SHARED pack.cc pack.c)
-target_link_libraries(tfm-pack PRIVATE tfm-utils)
-
-add_library(tfm-comm SHARED comm.c packet.c)
-target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-utils tfm-pack)
-
-add_executable(test test.c)
-target_link_libraries(test PRIVATE tfm-utils tfm-comm tfm-pack)
-
-add_executable(run main.c)
-target_link_libraries(run PRIVATE tfm-utils tfm-comm tfm-pack)
-
-# Test that the MPI installation works
 find_package(MPI REQUIRED COMPONENTS C)
-add_executable(mpitest mpitest.c)
-target_link_libraries(mpitest PRIVATE MPI::MPI_C)
+add_executable(run main.cc packet.cc)
+target_link_libraries(run PRIVATE MPI::MPI_C tfm-utils)
 
-# Test CUDA-aware MPI
+## Automated tests
+include(CTest)
+add_executable(unit_test unit_test.cc)
+target_link_libraries(unit_test PRIVATE tfm-utils)
+
+add_test(NAME UnitTest COMMAND unit_test)
+
+
+## Other
 find_package(CUDAToolkit QUIET)
 find_package(HIP QUIET)
 if (CUDAToolkit_FOUND)
     message(STATUS "CUDA found")
     enable_language(CUDA)
-    add_library(buffer SHARED buffer.cu)
-    set_target_properties(buffer PROPERTIES CUDA_ARCHITECTURES "80")
+    add_executable(gpu gpu.cu errchk_print.c)
+    # set_target_properties(gpu PROPERTIES CUDA_ARCHITECTURES "60")
 elseif (HIP_FOUND)
     message(STATUS "HIP found")
     enable_language(HIP)
-    add_library(buffer SHARED buffer.cu)
-    target_link_libraries(buffer PRIVATE hip::host hip::device)
-    set_source_files_properties(buffer.cu PROPERTIES LANGUAGE HIP)
-    set_target_properties(buffer PROPERTIES HIP_ARCHITECTURES "gfx90a")
+    add_executable(gpu gpu.cu errchk_print.c)
+    target_link_libraries(gpu PRIVATE hip::host hip::device)
+    set_source_files_properties(gpu.cu PROPERTIES LANGUAGE HIP)
+    set_target_properties(gpu PROPERTIES HIP_ARCHITECTURES "gfx90a")
 else ()
-    message(WARNING "Did not find CUDA or HIP, falling back to C++ host implementation")
-    add_library(buffer SHARED buffer.cc)
+    message(WARNING "Did not find CUDA or HIP")
 endif ()
-
-add_executable(ca-mpi cuda-aware-mpi-test.c)
-target_link_libraries(ca-mpi PRIVATE MPI::MPI_C buffer)
-
-# Test CUDA-aware MPI IO
-add_executable(ca-mpi-io cuda-aware-mpi-io-test.c)
-target_link_libraries(ca-mpi-io PRIVATE MPI::MPI_C buffer)
-
-
-# find_package(cuda REQUIRED)
-# enable_language(CUDA)
-# add_executable(tfm-gpu gpu.cu)
-# target_link_libraries(tfm-gpu PRIVATE hip::host hip::device)
-# set_source_files_properties(gpu.cu PROPERTIES LANGUAGE HIP)

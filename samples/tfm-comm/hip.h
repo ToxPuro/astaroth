@@ -18,13 +18,15 @@
 */
 #pragma once
 
-#ifndef __HIP_PLATFORM_HCC__
-#define __HIP_PLATFORM_HCC__
-#endif
+// Should work without
+// #ifndef __HIP_PLATFORM_HCC__
+// #define __HIP_PLATFORM_HCC__
+// #endif
 
-#ifndef __HIP_PLATFORM_AMD__
-#define __HIP_PLATFORM_AMD__
-#endif
+// Should work without
+// #ifndef __HIP_PLATFORM_AMD__
+// #define __HIP_PLATFORM_AMD__
+// #endif
 
 #define CUresult hipError_t
 #define cudaError_t hipError_t
@@ -64,6 +66,7 @@
 #define cudaMemset hipMemset
 #define cudaMalloc hipMalloc
 #define cudaMallocHost hipMallocHost
+#define cudaMallocManaged hipMallocManaged
 #define cudaFree hipFree
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaGetDeviceCount hipGetDeviceCount

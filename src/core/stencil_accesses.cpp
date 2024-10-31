@@ -93,39 +93,8 @@ print(const char* , ...)
 #endif
 
 #define local_compdomain_idx ((LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx))
-
-void 
-reduce_sum_real(const bool&, const AcReal&, const AcRealOutputParam&){}
-void 
-reduce_min_real(const bool&, const AcReal&, const AcRealOutputParam&){}
-void 
-reduce_max_real(const bool&, const AcReal&, const AcRealOutputParam&){}
-void 
-reduce_sum_real_x(const bool&, const AcReal&, const Profile&){}
-void 
-reduce_sum_real_y(const bool&, const AcReal&, const Profile&){}
-void 
-reduce_sum_real_z(const bool&, const AcReal&, const Profile&){}
-void 
-reduce_sum_real_xy(const bool&, const AcReal&, const Profile&){}
-void 
-reduce_sum_real_xz(const bool&, const AcReal&, const Profile&){}
-void 
-reduce_sum_real_yx(const bool&, const AcReal&, const Profile&){}
-void 
-reduce_sum_real_yz(const bool&, const AcReal&, const Profile&){}
-void 
-reduce_sum_real_zx(const bool&, const AcReal&, const Profile&){}
-void 
-reduce_sum_real_zy(const bool&, const AcReal&, const Profile&){}
-
-
-void 
-reduce_sum_int(const bool&,  const int&, const AcIntOutputParam&){}
-void 
-reduce_min_int(const bool&,  const int&, const AcIntOutputParam&){}
-void 
-reduce_max_int(const bool&,  const int&, const AcIntOutputParam&){}
+FILE* called_reduce_outputs = NULL;
+static int num_reduced_outputs = 0;
 
 template <typename T>
 T
@@ -197,6 +166,55 @@ __ballot(bool)
 #define constexpr
 #include "acc_runtime.h"
 #undef constexpr
+
+#define reduce_sum_real    reduce
+#define reduce_min_real    reduce
+#define reduce_max_real    reduce
+#define reduce_sum_real_x  reduce
+#define reduce_sum_real_y  reduce
+#define reduce_sum_real_z  reduce
+#define reduce_sum_real_xy reduce
+#define reduce_sum_real_xz reduce
+#define reduce_sum_real_yx reduce
+#define reduce_sum_real_yz reduce
+#define reduce_sum_real_zx reduce
+#define reduce_sum_real_zy reduce
+#define reduce_sum_int     reduce
+#define reduce_min_int     reduce
+#define reduce_max_int     reduce
+
+static const char*
+get_name(const AcRealOutputParam& param)
+{
+        return real_output_names[param];
+}
+static const char*
+get_name(const AcIntOutputParam& param)
+{
+        return int_output_names[param];
+}
+
+static const char*
+get_name(const Profile& param)
+{
+        return profile_names[param];
+}
+
+AcReal
+value_profile(const Profile&)
+{
+	return 0.0;
+}
+
+template <typename T1, typename T2>
+void
+reduce(const bool&, const T1&, const T2& dst)
+{
+	if(called_reduce_outputs)
+	  fprintf(called_reduce_outputs,"%s%s",
+	    num_reduced_outputs ? "," : "",get_name(dst));
+	++num_reduced_outputs;
+}
 extern "C" 
 {
 	AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src);
@@ -449,6 +467,7 @@ reset_info_arrays()
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op[0]) * NUM_ALL_FIELDS);
     memset(written_fields, 0,    sizeof(written_fields[0]) * NUM_ALL_FIELDS);
     memset(previous_accessed, 0, sizeof(previous_accessed[0]) * NUM_ALL_FIELDS);
+    num_reduced_outputs = 0;
 }
 
 acAnalysisBCInfo 
@@ -523,6 +542,7 @@ main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
   if(!strcmp(argv[1],"-C")) return get_executed_conditionals();
+  called_reduce_outputs = fopen("called_reduce_outputs.h","w");
   const char* output = argv[1];
   FILE* fp           = fopen(output, "w+");
   assert(fp);
@@ -534,6 +554,7 @@ main(int argc, char* argv[])
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "= {");
+  bool output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS];
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     reset_info_arrays();
     if (!skip_kernel_in_analysis[k])
@@ -551,14 +572,13 @@ main(int argc, char* argv[])
     	    }
     	    read_fields[j] |= previous_accessed[j];
     	  }
+    	  output_previous_accessed[k][j] = previous_accessed[j];
     	}
-    }
-
-
-    
+    } 
     fwrite(read_fields,sizeof(int), NUM_ALL_FIELDS,fp_fields_read);
     fwrite(field_has_stencil_op,sizeof(int), NUM_ALL_FIELDS,fp_field_has_stencil_op);
     fwrite(written_fields,sizeof(int),NUM_ALL_FIELDS,fp_written_fields);
+    fprintf(called_reduce_outputs,"\n");
   }
 
 
@@ -572,24 +592,18 @@ main(int argc, char* argv[])
           "static int previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
-    memset(previous_accessed, 0,
-           sizeof(previous_accessed[0]) * NUM_ALL_FIELDS);
-    VertexBufferArray vba = vbaCreate(1000);
-    kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
-    vbaDestroy(&vba);
-
     for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
-        if (previous_accessed[j])
+        if (output_previous_accessed[k][j])
           fprintf(fp, "[%lu][%lu] = 1,", k, j);
   }
   fprintf(fp, "};");
-
-
   fclose(fp);
 
 #include "gmem_arrays_output_accesses.h"
 
 
+  fclose(called_reduce_outputs);
+  called_reduce_outputs = NULL;
   return EXIT_SUCCESS;
 }
 #endif

@@ -31,6 +31,21 @@ static string_vec primitive_datatypes = VEC_INITIALIZER;
 #define BOOL_STR      primitive_datatypes.data[2]
 #define LONG_STR      primitive_datatypes.data[3]
 #define LONG_LONG_STR primitive_datatypes.data[4]
+string_vec
+get_prof_types()
+{
+  string_vec prof_types = VEC_INITIALIZER;
+  push(&prof_types,intern("Profile<X>"));
+  push(&prof_types,intern("Profile<Y>"));
+  push(&prof_types,intern("Profile<Z>"));
+  push(&prof_types,intern("Profile<XY>"));
+  push(&prof_types,intern("Profile<XZ>"));
+  push(&prof_types,intern("Profile<YX>"));
+  push(&prof_types,intern("Profile<YZ>"));
+  push(&prof_types,intern("Profile<ZX>"));
+  push(&prof_types,intern("Profile<ZY>"));
+  return prof_types;
+}
 
 static const char* REAL_ARR_STR = NULL;
 
@@ -528,6 +543,7 @@ symboltable_reset(void)
   symbol_table[vertex_index].tqualifiers.size = 0;
   add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL,  intern("globalGridN"));     // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_base"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile"));  // TODO RECHECK
 					      	 //
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_min_real"));  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_max_real"));  // TODO RECHECK
@@ -2830,39 +2846,43 @@ gen_kernel_postfixes(ASTNode* root, const bool gen_mem_accesses)
 	gen_kernel_postfixes_recursive(root,gen_mem_accesses);
 }
 void
-gen_kernel_reduce_outputs()
+gen_kernel_reduce_outputs(const bool gen_mem_accesses)
 {
   FILE* fp = fopen("kernel_reduce_outputs.h","w");
-
-  string_vec prof_types = VEC_INITIALIZER;
-  push(&prof_types,intern("Profile<X>"));
-  push(&prof_types,intern("Profile<Y>"));
-  push(&prof_types,intern("Profile<Z>"));
-  push(&prof_types,intern("Profile<XY>"));
-  push(&prof_types,intern("Profile<XZ>"));
-  push(&prof_types,intern("Profile<YX>"));
-  push(&prof_types,intern("Profile<YZ>"));
-  push(&prof_types,intern("Profile<ZX>"));
-  push(&prof_types,intern("Profile<ZY>"));
+  string_vec prof_types = get_prof_types();
   int num_reduce_outputs = 0;
   for (size_t i = 0; i < num_symbols[0]; ++i)
     if (((symbol_table[i].tspecifier == REAL_STR || symbol_table[i].tspecifier == INT_STR) && str_vec_contains(symbol_table[i].tqualifiers,OUTPUT_STR))
 		    || str_vec_contains(prof_types,symbol_table[i].tspecifier)
 	)
 	    ++num_reduce_outputs;
-  fprintf(fp,"typedef enum{\n"
-	     "  AC_REAL_TYPE\n,"
-	     "  AC_INT_TYPE,\n"
-	     "  AC_PROF_TYPE\n"
-	     "} AcType;\n\n"
-	 );
-  //extra padding to help some compilers
+  //extra padding to make the code compile on some compilers
+  fprintf(fp,"typedef enum{\n");
+  string_vec datatypes = get_all_datatypes();
+  for (size_t i = 0; i < datatypes.size; ++i)
+  {
+	const char* define_name = convert_to_define_name(datatypes.data[i]);
+	const char* uppr_name =       strupr(define_name);
+	fprintf(fp,"  AC_%s_TYPE,\n",uppr_name);
+
+  }
+  free_str_vec(&datatypes);
+  fprintf(fp,"  AC_PROF_TYPE\n");
+  fprintf(fp,"} AcType;\n\n");
   fprintf(fp,"typedef struct {\n"
 	     "  int variable;\n"
 	     "  AcType type;\n"
+	     "  bool called;\n"
 	     "} KernelReduceOutput;\n\n"
 	 );
   fprintf(fp,"%s","static const KernelReduceOutput kernel_reduce_outputs[NUM_KERNELS][NUM_OUTPUTS+1] = { ");
+  int kernel_index = 0;
+  string_vec kernel_reduce_output_entries[num_kernels];
+  {
+  	FILE* csv_file = fopen("called_reduce_outputs.h","r");
+  	get_csv_entries(kernel_reduce_output_entries,csv_file);
+  	fclose(csv_file);
+  }
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
     if (symbol_table[i].tspecifier == KERNEL_STR)
@@ -2873,25 +2893,37 @@ gen_kernel_reduce_outputs()
       {
         fprintf(fp,"%s","{");
       	if(reduce_infos[index].outputs.size < (size_t) j+1)
-	{
-	        fprintf(fp,"%d,AC_REAL_TYPE",-1);
-	}
+	        fprintf(fp,"%d,AC_REAL_TYPE,false",-1);
       	else
 	{
-	      	fprintf(fp,"(int)%s,",reduce_infos[index].outputs.data[j]);
-		if(reduce_infos[index].output_types.data[j] == REAL_STR)
-        		fprintf(fp,"%s,","AC_REAL_TYPE");
-		else if(reduce_infos[index].output_types.data[j] == INT_STR)
-        		fprintf(fp,"%s,","AC_INT_TYPE");
-		else if(reduce_infos[index].output_types.data[j] == intern("Profile"))
+		const char* var = reduce_infos[index].outputs.data[j];
+	      	fprintf(fp,"(int)%s,",var);
+		if(reduce_infos[index].output_types.data[j] == intern("Profile"))
         		fprintf(fp,"%s,","AC_PROF_TYPE");
 		else
-			fatal("Unknown reduce output type: %s\n",reduce_infos[index].output_types.data[j]);
+		{
+			const char* define_name = convert_to_define_name(reduce_infos[index].output_types.data[j]);
+			const char* uppr_name =       strupr(define_name);
+			fprintf(fp,"AC_%s_TYPE,",uppr_name);
+		}
+		if(gen_mem_accesses || !OPTIMIZE_MEM_ACCESSES)
+		{
+			fprintf(fp,"%s,","true");
+		}
+		else
+		{
+			bool outputted = false;
+			for(size_t elem = 0; elem < kernel_reduce_output_entries[kernel_index].size; ++elem)
+				outputted |= !strcmp(var,kernel_reduce_output_entries[kernel_index].data[elem]);
+			fprintf(fp,"%s,",outputted ? "true" : "false");
+		}
+
 	}
         fprintf(fp,"%s","},");
       }
-      fprintf(fp,"{-1,AC_REAL_TYPE}");
+      fprintf(fp,"{-1,AC_REAL_TYPE,false}");
       fprintf(fp,"%s","},");
+      kernel_index++;
     }
   }
   fprintf(fp,"%s","};\n");
@@ -2951,7 +2983,7 @@ gen_kernel_postfixes_and_reduce_outputs(ASTNode* root, const bool gen_mem_access
 {
   gen_kernel_postfixes(root,gen_mem_accesses);
 
-  gen_kernel_reduce_outputs();
+  gen_kernel_reduce_outputs(gen_mem_accesses);
 }
 void
 gen_optimized_kernel_decls(ASTNode* node, const param_combinations combinations, const string_vec user_kernels_with_input_params,string_vec* const user_kernel_combinatorial_params)
@@ -4581,16 +4613,8 @@ count_variables(const char* datatype, const char* qual)
 static size_t
 count_profiles()
 {
-  string_vec prof_types = VEC_INITIALIZER;
-  push(&prof_types,intern("Profile<X>"));
-  push(&prof_types,intern("Profile<Y>"));
-  push(&prof_types,intern("Profile<Z>"));
-  push(&prof_types,intern("Profile<XY>"));
-  push(&prof_types,intern("Profile<XZ>"));
-  push(&prof_types,intern("Profile<YX>"));
-  push(&prof_types,intern("Profile<YZ>"));
-  push(&prof_types,intern("Profile<ZX>"));
-  push(&prof_types,intern("Profile<ZY>"));
+
+  string_vec prof_types = get_prof_types();
   size_t res = 0;
   for(size_t i = 0; i < prof_types.size; ++i)
 	  res += count_symbols(prof_types.data[i]);
@@ -4622,17 +4646,7 @@ gen_user_defines(const ASTNode* root, const char* out)
   gen_enums(fp,intern("WorkBuffer"),"","NUM_WORK_BUFFERS","WorkBuffer");
   gen_enums(fp,KERNEL_STR,"","NUM_KERNELS","AcKernel");
 
-  string_vec prof_types = VEC_INITIALIZER;
-  push(&prof_types,intern("Profile<X>"));
-  push(&prof_types,intern("Profile<Y>"));
-  push(&prof_types,intern("Profile<Z>"));
-  push(&prof_types,intern("Profile<XY>"));
-  push(&prof_types,intern("Profile<XZ>"));
-  push(&prof_types,intern("Profile<YX>"));
-  push(&prof_types,intern("Profile<YZ>"));
-  push(&prof_types,intern("Profile<ZX>"));
-  push(&prof_types,intern("Profile<ZY>"));
-
+  string_vec prof_types = get_prof_types();
   gen_enums_variadic(fp,prof_types,"","NUM_PROFILES","Profile");
 
 
@@ -5895,8 +5909,20 @@ mangle_dfunc_names(ASTNode* node, string_vec* dst_types, const char** dst_names,
 	free_func_params_info(&params_info);
 }
 static bool
+is_subtype(const char* a, const char* b)
+{
+	if(a != PROFILE_STR) return false;
+	bool res = false;
+	string_vec prof_types = get_prof_types();
+	for(size_t i = 0; i < prof_types.size; ++i)
+		res |= b == prof_types.data[i];
+	free_str_vec(&prof_types);
+	return res;
+}
+static bool
 compatible_types(const char* a, const char* b)
 {
+	if(is_subtype(a,b)) return true;
 	return !strcmp(a,b) 
 	       || (!strcmp(a,REAL_PTR_STR) && strstr(b,"AcArray") && strstr(b,REAL_STR)) ||
 	          (!strcmp(b,REAL_PTR_STR) && strstr(a,"AcArray") && strstr(a,REAL_STR)) ||
@@ -5975,7 +6001,7 @@ resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
 					possible_indexes_strict;
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		if(!strcmp(dfunc_name,"dot") && false)
+		if(!strcmp(dfunc_name,"value"))
 		{
 			char my_tmp[10000];
 			my_tmp[0] = '\0';
