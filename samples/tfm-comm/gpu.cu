@@ -31,6 +31,8 @@ kernel(const size_t count, const double* in, double* out)
 int
 main()
 {
+    Buffer<double> buffer(10, BUFFER_DEVICE);
+
     const size_t count = 10;
     double* hin        = (double*)malloc(count * sizeof(hin[0]));
     double* hout       = (double*)malloc(count * sizeof(hout[0]));

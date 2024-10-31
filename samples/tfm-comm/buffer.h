@@ -3,11 +3,11 @@
 
 #include <iostream> // Printing
 
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDACC__)
 #define ENABLED
 #include "errchk_cuda.h"
 #include <cuda_runtime.h>
-#elif defined(__HIP_COMPILE__)
+#elif defined(__HIP_PLATFORM_AMD__)
 #define ENABLED
 #include "errchk_cuda.h"
 #include "hip.h"
