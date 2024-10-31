@@ -345,6 +345,21 @@ operator%(const StaticArray<T, N>& a, const U& b)
     return c;
 }
 
+template <typename T, typename U, size_t N>
+bool __host__ __device__
+operator==(const StaticArray<T, N>& a, const StaticArray<U, N>& b)
+{
+    static_assert(std::is_integral<T>::value, "Operator enabled only for integral types");
+    static_assert(std::is_same<T, U>::value,
+                  "Operator not enabled for parameters of different types. Perform an "
+                  "explicit cast such that both operands are of the same type");
+    ERRCHK(a.count == b.count);
+    for (size_t i = 0; i < a.count; ++i)
+        if (a[i] != b[i])
+            return false;
+    return true;
+}
+
 template <typename T, size_t N>
 StaticArray<T, N> __host__ __device__
 operator-(const StaticArray<T, N>& a)

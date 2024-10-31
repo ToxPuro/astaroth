@@ -1,39 +1,9 @@
 #include "ndarray.h"
 
-#include <iostream>
-
-#include "math_utils.h"
-#include "print_debug.h"
-
 void
 test_ndarray(void)
 {
-    // std::cout << "hello" << std::endl;
-    // NdArray<double> a(Shape{2, 2, 2});
-    // NdArray<double> b(Shape{3, 3, 3}, 50);
-    // // b.buffer = ones(20);
-    // a = b;
-    // Buffer<double> a(10);
-    // auto a = ones<double>(10);
-    // auto a = zeros<double>(10);
-    // auto a = arange<double>(5, 20);
-    // Buffer<double> a(10);
-    // a.fill(1, dims, subdims, offset);
-    // PRINT_DEBUG(a);
-    // std::cout << a.buffer << std::endl;
-
-    // NdArray<double> a(Shape{4, 4}, Buffer<double>(10, 50));
-
-    // NdArray<double> mesh(Shape{8});
-    // Shape dims(2);
-    // mesh.fill(1, 7, 1);
-    // std::cout << mesh << std::endl;
-
-    // Shape dims    = {4, 4, 4};
-    // Shape subdims = {2, 2, 2};
-    // Index offset  = {1, 1, 1};
-    // NdArray<double> mesh(dims);
-    // mesh.fill(1, subdims, offset);
-    // mesh.print();
-    // std::cout << mesh << std::endl;
+    const Shape shape{64, 32, 16};
+    NdArray<double> arr(shape);
+    ERRCHK(arr.buffer.data);
 }

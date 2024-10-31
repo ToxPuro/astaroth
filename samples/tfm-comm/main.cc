@@ -21,7 +21,7 @@ main()
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
     try {
-        const Shape global_nn        = {4, 4};
+        const Shape global_nn        = {4, 4, 4};
         MPI_Comm cart_comm           = create_cart_comm(MPI_COMM_WORLD, global_nn);
         const Shape decomp           = get_decomposition(cart_comm);
         const Shape local_nn         = global_nn / decomp;
@@ -58,10 +58,10 @@ main()
         // }
 
         // Migrate
-        BufferExchangeTask<double> htod(mesh.buffer.count, BUFFER_EXCHANGE_HTOD);
+        BufferExchangeTask<AcReal> htod(mesh.buffer.count, BUFFER_EXCHANGE_HTOD);
         htod.launch(mesh.buffer);
         htod.wait(mesh.buffer);
-        BufferExchangeTask<double> dtoh(mesh.buffer.count, BUFFER_EXCHANGE_DTOH);
+        BufferExchangeTask<AcReal> dtoh(mesh.buffer.count, BUFFER_EXCHANGE_DTOH);
         dtoh.launch(mesh.buffer);
         dtoh.wait(mesh.buffer);
 

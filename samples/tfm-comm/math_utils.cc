@@ -1,5 +1,7 @@
 #include "math_utils.h"
 
+#include "errchk.h"
+
 uint64_t
 to_linear(const Index& coords, const Shape& shape)
 {
@@ -42,4 +44,39 @@ within_box(const Index& coords, const Shape& box_dims, const Index& box_offset)
         if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
             return false;
     return true;
+}
+
+void
+test_math_utils(void)
+{
+    {
+        const Index coords{0, 0, 0};
+        const Shape shape{1, 1, 1};
+
+        ERRCHK(to_linear(coords, shape) == 0);
+    }
+    {
+        const Index coords{1, 0};
+        const Shape shape{32, 32};
+
+        ERRCHK(to_linear(coords, shape) == 1);
+    }
+    {
+        const Index coords{31, 0};
+        const Shape shape{32, 32};
+
+        ERRCHK(to_linear(coords, shape) == 31);
+    }
+    {
+        const Index coords{0, 31};
+        const Shape shape{32, 32};
+
+        ERRCHK(to_linear(coords, shape) == 31 * 32);
+    }
+    {
+        const Index coords{1, 2, 3, 4};
+        const Shape shape{10, 9, 8, 7};
+
+        ERRCHK(to_linear(coords, shape) == 1 + 2 * 10 + 3 * 10 * 9 + 4 * 10 * 9 * 8);
+    }
 }
