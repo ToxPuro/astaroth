@@ -22,13 +22,13 @@ template <typename T> struct Packet {
     MPI_Request send_req;                   // MPI request for handling synchronization
     MPI_Request recv_req;                   // MPI request for handling synchronization
 
-    Packet(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
-           const Segment& segment, const size_t n_aggregate_buffers)
+    Packet(const Shape& local_mm_, const Shape& local_nn_, const Index& local_rr_,
+           const Segment& segment_, const size_t n_aggregate_buffers)
         : cart_comm(MPI_COMM_NULL),
-          local_mm(local_mm),
-          local_nn(local_nn),
-          local_rr(local_rr),
-          segment(segment),
+          local_mm(local_mm_),
+          local_nn(local_nn_),
+          local_rr(local_rr_),
+          segment(segment_),
           send_buffer(std::make_unique<Buffer<T>>(n_aggregate_buffers * prod(segment.dims))),
           recv_buffer(std::make_unique<Buffer<T>>(n_aggregate_buffers * prod(segment.dims))),
           send_req(MPI_REQUEST_NULL),
@@ -119,3 +119,5 @@ operator<<(std::ostream& os, const Packet<T>& obj)
     os << "}";
     return os;
 }
+
+void test_packet();

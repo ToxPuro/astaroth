@@ -2,14 +2,9 @@
 
 #include "buffer.h"
 #include "datatypes.h"
+#include "math_utils.h"
 
 #include <iomanip>
-
-uint64_t to_linear(const Index& coords, const Shape& shape);
-
-Index to_spatial(const uint64_t index, const Shape& shape);
-
-uint64_t prod(const size_t count, const uint64_t* arr);
 
 template <typename T>
 void
@@ -70,18 +65,18 @@ template <typename T> struct NdArray {
     Buffer<T> buffer;
 
     // Constructor
-    NdArray(const Shape& shape)
-        : shape(shape), buffer(prod(shape))
+    NdArray(const Shape& shape_)
+        : shape(shape_), buffer(prod(shape_))
     {
     }
 
-    NdArray(const Shape& shape, const T& fill_value)
-        : shape(shape), buffer(prod(shape), fill_value)
+    NdArray(const Shape& shape_, const T& fill_value)
+        : shape(shape_), buffer(prod(shape_), fill_value)
     {
     }
 
-    NdArray(const Shape& shape, const Buffer<T>& buffer)
-        : shape(shape), buffer(buffer)
+    NdArray(const Shape& shape_, const Buffer<T>& buffer_)
+        : shape(shape_), buffer(buffer_)
     {
     }
 

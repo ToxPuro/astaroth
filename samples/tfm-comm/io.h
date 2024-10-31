@@ -25,14 +25,14 @@ template <typename T> struct IOTask {
     MPI_Request req;
     MPI_File file;
 
-    IOTask(const Shape& file_dims, const Index& file_offset, const Shape& mesh_dims,
-           const Shape& mesh_subdims, const Index& mesh_offset)
-        : file_dims(file_dims),
-          file_offset(file_offset),
-          mesh_dims(mesh_dims),
-          mesh_subdims(mesh_subdims),
-          mesh_offset(mesh_offset),
-          staging_buffer(std::make_unique<Buffer<T>>(prod(mesh_dims))),
+    IOTask(const Shape& file_dims_, const Index& file_offset_, const Shape& mesh_dims_,
+           const Shape& mesh_subdims_, const Index& mesh_offset_)
+        : file_dims(file_dims_),
+          file_offset(file_offset_),
+          mesh_dims(mesh_dims_),
+          mesh_subdims(mesh_subdims_),
+          mesh_offset(mesh_offset_),
+          staging_buffer(std::make_unique<Buffer<T>>(prod(mesh_dims_))),
           req(MPI_REQUEST_NULL),
           file(MPI_FILE_NULL) {};
 

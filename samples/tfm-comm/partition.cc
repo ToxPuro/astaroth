@@ -2,7 +2,7 @@
 
 #include "print_debug.h"
 
-void
+static void
 partition_recursive(const Shape& mm, const Shape& nn, const Index& nn_offset,
                     const Segment& current_segment, const size_t axis,
                     std::vector<Segment>& segments)

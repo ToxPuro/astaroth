@@ -7,7 +7,7 @@
 #include <vector>
 
 // Returns the non-trivial factors of n in increasing order
-std::vector<uint64_t>
+static std::vector<uint64_t>
 factorize(uint64_t n)
 {
     std::vector<uint64_t> factors;
@@ -31,7 +31,7 @@ factorize(uint64_t n)
  * Also does not currently calculate the actual surface to volume ratio,
  * but a related number (halo to computational domain ratio)
  */
-double
+static double
 surface_area_to_volume(const Shape& nn)
 {
     const Shape rr(nn.count, 1);

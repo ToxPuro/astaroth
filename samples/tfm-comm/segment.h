@@ -7,12 +7,12 @@ struct Segment {
     Index offset; // Offset of the segment
 
     // Constructors
-    Segment(const Shape& dims)
-        : dims(dims), offset(Index(dims.count))
+    Segment(const Shape& dims_)
+        : dims(dims_), offset(Index(dims.count))
     {
     }
-    Segment(const Shape& dims, const Index& offset)
-        : dims(dims), offset(offset)
+    Segment(const Shape& dims_, const Index& offset_)
+        : dims(dims_), offset(offset_)
     {
     }
 };
