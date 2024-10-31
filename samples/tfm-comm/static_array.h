@@ -40,13 +40,13 @@ template <typename T, size_t N> struct StaticArray {
 
     // Vector-like constructor
     // StaticArray<int, N> a(10, 1)
-    __host__ __device__ StaticArray(const size_t count_, const T& fill_value_ = 0)
-        : count(count_), data{}
+    __host__ __device__ StaticArray(const size_t in_count, const T& fill_value = 0)
+        : count(in_count), data{}
     {
         ERRCHK(count > 0);
         ERRCHK(count <= N);
         for (size_t i = 0; i < count; ++i)
-            data[i] = fill_value_;
+            data[i] = fill_value;
     }
 
     // Initializer list constructor
@@ -70,8 +70,8 @@ template <typename T, size_t N> struct StaticArray {
     }
 
     // Construct from a pointer
-    __host__ __device__ StaticArray(const size_t count_, const T* arr)
-        : count(count_), data{}
+    __host__ __device__ StaticArray(const size_t in_count, const T* arr)
+        : count(in_count), data{}
     {
         ERRCHK(count > 0);
         ERRCHK(count <= N);

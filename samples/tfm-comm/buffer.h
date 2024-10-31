@@ -29,7 +29,7 @@ template <typename T> struct Buffer {
     BufferType type;
     T* data;
 
-    Buffer(const size_t count, const BufferType type = BUFFER_HOST);
+    Buffer(const size_t in_count, const BufferType in_type = BUFFER_HOST);
     ~Buffer();
     Buffer(Buffer&& other) noexcept; // Move constructor
 
@@ -45,8 +45,8 @@ template <typename T> struct Buffer {
 };
 
 template <typename T>
-Buffer<T>::Buffer(const size_t count_, const BufferType type_)
-    : count(count_), type(type_), data(nullptr)
+Buffer<T>::Buffer(const size_t in_count, const BufferType in_type)
+    : count(in_count), type(in_type), data(nullptr)
 {
     // Allocate page-locked host memory
     // - cudaHostAllocDefault: emulates to cudaMallocHost (allocates page-locked memory)

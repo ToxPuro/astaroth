@@ -65,18 +65,18 @@ template <typename T> struct NdArray {
     Buffer<T> buffer;
 
     // Constructor
-    NdArray(const Shape& shape_)
-        : shape(shape_), buffer(prod(shape_))
+    NdArray(const Shape& in_shape)
+        : shape(in_shape), buffer(prod(in_shape))
     {
     }
 
-    NdArray(const Shape& shape_, const T& fill_value)
-        : shape(shape_), buffer(prod(shape_), fill_value)
+    NdArray(const Shape& in_shape, const T& fill_value)
+        : shape(in_shape), buffer(prod(in_shape), fill_value)
     {
     }
 
-    NdArray(const Shape& shape_, const Buffer<T>& buffer_)
-        : shape(shape_), buffer(buffer_)
+    NdArray(const Shape& in_shape, const Buffer<T>& in_buffer)
+        : shape(in_shape), buffer(in_buffer)
     {
     }
 
