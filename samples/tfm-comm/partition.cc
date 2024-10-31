@@ -56,11 +56,40 @@ partition(const Shape& mm, const Shape& nn, const Index& nn_offset)
 void
 test_partition(void)
 {
-    // Shape rr = {2, 3};
-    // Shape nn = {128, 128};
-    // Shape mm = as<uint64_t>(2) * rr + nn;
-
-    // auto segments = partition(mm, nn, rr);
-    // PRINT_DEBUG(segments);
-    // PRINT_DEBUG(segments.size());
+    {
+        const Shape mm        = {8};
+        const Shape nn        = {6, 6};
+        const Index nn_offset = {1, 1};
+        ERRCHK(partition(mm, nn, nn_offset).size() == 3);
+    }
+    {
+        const Shape mm        = {8, 8};
+        const Shape nn        = {6, 6};
+        const Index nn_offset = {1, 1};
+        ERRCHK(partition(mm, nn, nn_offset).size() == 9);
+    }
+    {
+        const Shape mm        = {8, 8, 8};
+        const Shape nn        = {6, 6, 6};
+        const Index nn_offset = {1, 1, 1};
+        ERRCHK(partition(mm, nn, nn_offset).size() == 27);
+    }
+    {
+        const Shape mm        = {5, 6, 7, 8};
+        const Shape nn        = {3, 4, 5, 6};
+        const Index nn_offset = {1, 1, 1, 1};
+        ERRCHK(partition(mm, nn, nn_offset).size() == 3 * 3 * 3 * 3);
+    }
+    {
+        const Shape mm        = {4, 4, 4};
+        const Shape nn        = {4, 4, 4};
+        const Index nn_offset = {0, 0, 0};
+        ERRCHK(partition(mm, nn, nn_offset).size() == 1);
+    }
+    {
+        const Shape mm        = {4, 4};
+        const Shape nn        = {3, 3};
+        const Index nn_offset = {1, 1};
+        ERRCHK(partition(mm, nn, nn_offset).size() == 4);
+    }
 }
