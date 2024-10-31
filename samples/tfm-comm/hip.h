@@ -72,6 +72,7 @@
 #define cudaHostAllocDefault hipHostMallocDefault
 #define cudaHostAllocWriteCombined hipHostMallocWriteCombined
 #define cudaFree hipFree
+#define cudaFreeHost hipHostFree
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaGetDeviceCount hipGetDeviceCount
 #define cudaDeviceGetPCIBusId hipDeviceGetPCIBusId
