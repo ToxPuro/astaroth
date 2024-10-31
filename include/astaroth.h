@@ -932,10 +932,10 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acCompute,(const AcKernel kernel, Field
                            Field fields_out[], const size_t num_fields_out));
 
 #if __cplusplus
-OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acDSLBoundaryCondition,
+OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const std::function<void(ParamLoadingInfo step_info)>));
 #else
-OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acDSLBoundaryCondition,
+OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,void (*load_func)(ParamLoadingInfo step_info)));
 #endif
 /** */
@@ -1259,21 +1259,11 @@ FUNC_DEFINE(AcResult, acDeviceLoadVertexBuffer,(const Device device, const Strea
 FUNC_DEFINE(AcResult, acDeviceLoadMesh,(const Device device, const Stream stream, const AcMesh host_mesh));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceLoadRealArray,(const Device device, const Stream stream, const AcMeshInfo host_info,
-                                  const AcRealArrayParam array));
-/** */
-FUNC_DEFINE(AcResult, acDeviceLoadIntArray,(const Device device, const Stream stream, const AcMeshInfo host_info,
-                                  const AcIntArrayParam array));
 
-/** */
-FUNC_DEFINE(AcResult, acDeviceLoadBoolArray,(const Device device, const Stream stream, const AcMeshInfo host_info,
-                                  const AcBoolArrayParam array));
-/** */
-FUNC_DEFINE(AcResult, acDeviceLoadReal3Array,(const Device device, const Stream stream, const AcMeshInfo host_info,
-                                  const AcReal3ArrayParam array));
-/** */
-FUNC_DEFINE(AcResult, acDeviceLoadInt3Array,(const Device device, const Stream stream, const AcMeshInfo host_info,
-                                  const AcInt3ArrayParam array));
+#define DEVICE_LOAD_ARRAY_DECL(ENUM,DEF_NAME) \
+	FUNC_DEFINE(AcResult, acDeviceLoad##DEF_NAME##Array,(const Device device, const Stream stream, const AcMeshInfo host_info, const ENUM array));
+
+#include "device_load_uniform_decl.h"
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceSetVertexBuffer,(const Device device, const Stream stream,
@@ -1557,6 +1547,12 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 		fprintf(stderr,"Error message: %s\n",dlerror());
 		exit(EXIT_FAILURE);
 	}
+
+        LOAD_DSYM(acDeviceFinishReduceInt)
+        LOAD_DSYM(acKernelFlushInt)
+        LOAD_DSYM(acAnalysisGetKernelInfo)
+        LOAD_DSYM(acDeviceSwapAllProfileBuffers)
+	LOAD_DSYM(BASE_FUNC_NAME(acBoundaryCondition))
 	LOAD_DSYM(acGetLocalNN)
 	LOAD_DSYM(acGetLocalMM)
 	LOAD_DSYM(acGetGridNN)
@@ -1567,6 +1563,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	LOAD_DSYM(acGetLengths)
 	LOAD_DSYM(acHostMeshCopyVertexBuffers)
 	LOAD_DSYM(acHostMeshCopy)
+#include "device_load_uniform_loads.h"
 	*(void**)(&acGetKernelId) = dlsym(handle,"acGetKernelId");
 	if(!acGetKernelId) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelId");
 	*(void**)(&acGetKernelIdByName) = dlsym(handle,"acGetKernelIdByName");
@@ -1690,9 +1687,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acGridAccessMeshOnDiskSynchronousCollective) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridAccessMeshOnDiskSynchronousCollective");
 	*(void**)(&BASE_FUNC_NAME(acComputeWithParams)) = dlsym(handle,"acComputeWithParams");
 	*(void**)(&BASE_FUNC_NAME(acCompute)) = dlsym(handle,"acCompute");
-	*(void**)(&BASE_FUNC_NAME(acDSLBoundaryCondition)) = dlsym(handle,"acDSLBoundaryCondition");
 	*(void**)(&BASE_FUNC_NAME(acHaloExchange)) = dlsym(handle,"acHaloExchange");
-	*(void**)(&BASE_FUNC_NAME(acBoundaryCondition)) = dlsym(handle,"acBoundaryCondition");
 	*(void**)(&acSync) = dlsym(handle,"acSync");
 	if(!acSync) fprintf(stderr,"Astaroth error: was not able to load %s\n","acSync");
 	*(void**)(&acGridGetDefaultTaskGraph) = dlsym(handle,"acGridGetDefaultTaskGraph");
@@ -1834,10 +1829,6 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acDeviceLoadVertexBuffer) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceLoadVertexBuffer");
 	*(void**)(&acDeviceLoadMesh) = dlsym(handle,"acDeviceLoadMesh");
 	if(!acDeviceLoadMesh) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceLoadMesh");
-	*(void**)(&acDeviceLoadRealArray) = dlsym(handle,"acDeviceLoadRealArray");
-	if(!acDeviceLoadRealArray) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceLoadRealArray");
-	*(void**)(&acDeviceLoadIntArray) = dlsym(handle,"acDeviceLoadIntArray");
-	if(!acDeviceLoadIntArray) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceLoadIntArray");
 	*(void**)(&acDeviceSetVertexBuffer) = dlsym(handle,"acDeviceSetVertexBuffer");
 	if(!acDeviceSetVertexBuffer) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceSetVertexBuffer");
 	*(void**)(&acDeviceFlushOutputBuffers) = dlsym(handle,"acDeviceFlushOutputBuffers");
@@ -2043,16 +2034,16 @@ acComputeWithParams(AcKernel kernel, Field (&fields)[num_fields], std::function<
 
 template <size_t num_fields_in, size_t num_fields_out>
 static AcTaskDefinition
-acDSLBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields_in, num_fields_in, fields_out, num_fields_out, loader);
+    return BASE_FUNC_NAME(aBoundaryCondition)(boundary, kernel, fields_in, num_fields_in, fields_out, num_fields_out, loader);
 }
 
 template <size_t num_fields>
 static AcTaskDefinition
-acDSLBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field (&fields)[num_fields], std::function<void(ParamLoadingInfo)> loader)
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field (&fields)[num_fields], std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields, num_fields, fields, num_fields, loader);
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields, num_fields, fields, num_fields, loader);
 }
 
 
@@ -2120,7 +2111,7 @@ static inline
 AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
 template <typename T>
 static inline
@@ -2143,7 +2134,7 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
     	        p.params -> BOUNDCOND_PRESCRIBED_DERIVATIVE.f                = p.vtxbuf;
 	    }
     };
-    return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
 
 static inline
@@ -2151,14 +2142,14 @@ AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out)
 {
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
-    return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), loader);
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), loader);
 }
 static inline
 AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields)
 {
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
-    return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
 
 /** */

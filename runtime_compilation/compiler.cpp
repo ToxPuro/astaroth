@@ -72,7 +72,7 @@ std::string
 to_str(const AcReal value)
 {
 	char* tmp;
-	asprintf(&tmp,"%.14e\n",value);
+	asprintf(&tmp,"%.17g\n",value);
 	std::string res = tmp;
 	free(tmp);
 	return res;

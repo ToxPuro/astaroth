@@ -169,7 +169,7 @@ static const std::array<AcKernel,7> builtin_bcs  = {
 	    task_def.load_kernel_params_func = new LoadKernelParamsFunc({default_loader}); \
     }
 AcTaskDefinition
-acDSLBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const std::function<void(ParamLoadingInfo)> load_func)
+acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const std::function<void(ParamLoadingInfo)> load_func)
 {
     if((boundary & BOUNDARY_Z) && TWO_D)
     {

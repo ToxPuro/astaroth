@@ -132,16 +132,6 @@ acDeviceLoadVectorUniform(const Device device, const Stream stream, const AcReal
 	return acDeviceLoadUniform(device,stream,param,value);
 }
 
-#define GEN_DEVICE_LOAD_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
-	AcResult \
-	acDeviceLoad##VAL_TYPE_UPPER_CASE##Uniform(const Device device, const Stream stream, const PARAM_TYPE param, const VAL_TYPE value) \
-	{ \
-		return acDeviceLoadUniform(device,stream,param,value); \
-	}
-
-GEN_DEVICE_LOAD_UNIFORM(AcIntParam, int, Int)
-GEN_DEVICE_LOAD_UNIFORM(AcInt3Param, int3, Int3)
-GEN_DEVICE_LOAD_UNIFORM(AcBoolParam, bool, Bool)
 
 
 AcResult
@@ -637,11 +627,15 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
 		return acDeviceLoadArray(device,stream,host_info,array); \
 	}
 
-GEN_DEVICE_LOAD_ARRAY(AcRealArrayParam,  AcReal, Real)
-GEN_DEVICE_LOAD_ARRAY(AcIntArrayParam,   int, Int)
-GEN_DEVICE_LOAD_ARRAY(AcBoolArrayParam,  bool, Bool)
-GEN_DEVICE_LOAD_ARRAY(AcReal3ArrayParam, AcReal3, Real3)
-GEN_DEVICE_LOAD_ARRAY(AcInt3ArrayParam,  int3, Int3)
+#define GEN_DEVICE_LOAD_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	AcResult \
+	acDeviceLoad##VAL_TYPE_UPPER_CASE##Uniform(const Device device, const Stream stream, const PARAM_TYPE param, const VAL_TYPE value) \
+	{ \
+		return acDeviceLoadUniform(device,stream,param,value); \
+	}
+
+
+#include "device_load_uniform.h"
 
 AcResult
 acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh)

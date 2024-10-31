@@ -27,7 +27,7 @@
 #include "astaroth_utils.h"
 
 #include <stdint.h> // uint8_t, uint32_t
-#include <string.h>
+#include <string>
 #include <math.h>
 #include <ctype.h>
 #include <vector>

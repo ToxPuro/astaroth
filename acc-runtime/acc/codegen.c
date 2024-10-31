@@ -1018,6 +1018,13 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		    "}\n"
 	,upper_case_name, enum_name, datatype_scalar, uppr_name, define_name);
 
+        fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+	if(is_primitive_datatype(datatype_scalar))
+	{
+        	fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+		fprintf_filename("device_load_uniform_decl.h","DEVICE_LOAD_ARRAY_DECL(%sParam, %s)\n",enum_name,upper_case_name);
+		fprintf_filename("device_load_uniform_loads.h","LOAD_DSYM(acDeviceLoad%sArray)\n",upper_case_name);
+	}
 	fprintf_filename("device_get_output.h", "%s\nacDeviceGet%sOutput(Device device, const %sOutputParam param)\n"
 		    "{\n"
 		    "\tif constexpr(NUM_%s_OUTPUTS == 0) return (%s){};\n"
@@ -3287,7 +3294,7 @@ get_qualifiers(const ASTNode* decl, const char** tqualifiers)
 
       return n_tqualifiers;
 }
-void static 
+static void
 check_for_shadowing(const ASTNode* node)
 {
     if(symboltable_lookup_surrounding_scope(node->buffer) && is_right_child(NODE_DECLARATION,node) && !get_parent_node(NODE_FUNCTION_CALL,node) && get_node(NODE_TSPEC,get_parent_node(NODE_DECLARATION,node)->lhs))
