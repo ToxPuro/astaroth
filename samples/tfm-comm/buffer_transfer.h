@@ -31,7 +31,7 @@ template <typename T> class DeviceToHostBufferExchangeTask {
 
     void launch(const Buffer<T>& input)
     {
-        ERRCHK(stream = nullptr);
+        ERRCHK(!stream);
         ERRCHK(input.count == device_staging_buffer->count);
         ERRCHK(input.type == BUFFER_DEVICE);
         input.migrate(*device_staging_buffer);
@@ -80,7 +80,7 @@ template <typename T> class HostToDeviceBufferExchangeTask {
 
     void launch(const Buffer<T>& input)
     {
-        ERRCHK(stream = nullptr);
+        ERRCHK(!stream);
         ERRCHK(input.count == host_staging_buffer->count);
         ERRCHK(input.type == BUFFER_HOST ||
                input.type == BUFFER_HOST_PINNED); // Write-combined slow, not allowed

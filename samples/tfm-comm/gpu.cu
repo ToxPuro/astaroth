@@ -42,6 +42,9 @@ main()
     HostToDeviceBufferExchangeTask<double> htod(count);
     htod.launch(host_buffer);
     htod.wait(device_buffer);
+    HostToDeviceBufferExchangeTask<double> dtoh(count);
+    dtoh.launch(device_buffer);
+    dtoh.wait(host_buffer);
     std::cout << "After: " << host_buffer << std::endl;
 
     double* hin  = (double*)malloc(count * sizeof(hin[0]));
