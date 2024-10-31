@@ -58,10 +58,10 @@ main()
         // }
 
         // Migrate
-        HostToDeviceBufferExchangeTask<double> htod(mesh.buffer.count);
+        BufferExchangeTask<double> htod(mesh.buffer.count, BUFFER_EXCHANGE_HTOD);
         htod.launch(mesh.buffer);
         htod.wait(mesh.buffer);
-        DeviceToHostBufferExchangeTask<double> dtoh(mesh.buffer.count);
+        BufferExchangeTask<double> dtoh(mesh.buffer.count, BUFFER_EXCHANGE_DTOH);
         dtoh.launch(mesh.buffer);
         dtoh.wait(mesh.buffer);
 
