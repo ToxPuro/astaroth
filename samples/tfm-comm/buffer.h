@@ -4,11 +4,11 @@
 #include <iostream> // Printing
 
 #if defined(__CUDACC__)
-#define ENABLED
+#define DEVICE_ENABLED
 #include "errchk_cuda.h"
 #include <cuda_runtime.h>
 #elif defined(__HIP_PLATFORM_AMD__)
-#define ENABLED
+#define DEVICE_ENABLED
 #include "errchk_cuda.h"
 #include "hip.h"
 #include <hip/hip_runtime.h>
@@ -16,22 +16,96 @@
 #include "errchk.h"
 #endif
 
-enum BufferType {
-    BUFFER_HOST,
-    BUFFER_HOST_PINNED,
-    BUFFER_HOST_PINNED_WRITE_COMBINED,
-    BUFFER_DEVICE,
-    BUFFER_NULL,
+// #define DEVICE_ENABLED
+
+struct HostAllocator {
+    static void* alloc(const size_t count, const size_t size)
+    {
+        WARNING_DESC("host");
+        void* ptr = malloc(count * size);
+        ERRCHK(ptr);
+        return ptr;
+    }
+    static void dealloc(void** ptr)
+    {
+        WARNCHK(ptr);
+        WARNCHK(*ptr);
+        free(*ptr);
+        *ptr = NULL;
+    }
 };
 
-template <typename T> struct Buffer {
+#if defined(DEVICE_ENABLED)
+struct DeviceAllocator {
+    static void* alloc(const size_t count, const size_t size)
+    {
+        WARNING_DESC("device");
+        void* ptr;
+        ERRCHK_CUDA_API(cudaMalloc(&ptr, count * size));
+        return ptr;
+    }
+    static void dealloc(void** ptr)
+    {
+        WARNCHK(ptr);
+        WARNCHK(*ptr);
+        WARNCHK_CUDA_API(cudaFree(*ptr));
+        *ptr = NULL;
+    }
+};
+
+struct HostAllocatorPinned {
+    static void* alloc(const size_t count, const size_t size)
+    {
+        WARNING_DESC("host pinned");
+        void* ptr;
+        ERRCHK_CUDA_API(cudaHostAlloc(&ptr, count * size, cudaHostAllocDefault));
+        return ptr;
+    }
+    static void dealloc(void** ptr)
+    {
+        WARNCHK(ptr);
+        WARNCHK(*ptr);
+        WARNCHK_CUDA_API(cudaFreeHost(*ptr));
+        *ptr = NULL;
+    }
+};
+
+struct HostAllocatorPinnedWriteCombined {
+    static void* alloc(const size_t count, const size_t size)
+    {
+        WARNING_DESC("host pinned write-combined");
+        void* ptr;
+        ERRCHK_CUDA_API(cudaHostAlloc(&ptr, count * size, cudaHostAllocWriteCombined));
+        return ptr;
+    }
+    static void dealloc(void** ptr)
+    {
+        WARNCHK(ptr);
+        WARNCHK(*ptr);
+        WARNCHK_CUDA_API(cudaFreeHost(*ptr));
+        *ptr = NULL;
+    }
+};
+#else
+#pragma message "Buffer: Device code not enabled, reverting back to host allocator"
+using DeviceAllocator                  = HostAllocator;
+using HostAllocatorPinned              = HostAllocator;
+using HostAllocatorPinnedWriteCombined = HostAllocator;
+#endif
+
+template <typename T, typename Allocator = HostAllocator> struct Buffer {
     size_t count;
-    BufferType type;
     T* data;
 
-    Buffer(const size_t in_count, const BufferType in_type = BUFFER_HOST);
-    ~Buffer();
-    Buffer(Buffer&& other) noexcept; // Move constructor
+    Buffer(const size_t in_count)
+        : count(in_count), data((T*)Allocator::alloc(count, sizeof(data[0])))
+    {
+    }
+    ~Buffer()
+    {
+        Allocator::dealloc((void**)&data);
+        count = 0;
+    }
 
     // Delete all other types of constructors
     Buffer(const Buffer&)            = delete; // Copy constructor
@@ -39,93 +113,25 @@ template <typename T> struct Buffer {
     // Buffer(Buffer&&)                 = delete; // Move constructor
     Buffer& operator=(Buffer&&) = delete; // Move assignment operator
 
-    // Other functions
-    void fill(const T& value);
-    void fill_arange(const T& min, const T& max);
+    Buffer(Buffer&& other) noexcept
+        : count(other.count), data(other.data)
+    {
+        other.count = 0;
+        other.data  = nullptr;
+    }
 };
-
-template <typename T>
-Buffer<T>::Buffer(const size_t in_count, const BufferType in_type)
-    : count(in_count), type(in_type), data(nullptr)
-{
-    // Allocate page-locked host memory
-    // - cudaHostAllocDefault: emulates to cudaMallocHost (allocates page-locked memory)
-    // - cudaHostAllocPortable: memory considered pinned by all CUDA contexts
-    // - cudaHostAllocMapped: allocates a host buffer the device can access directly,
-    // generates implicit PCI-e traffic. Likely used by unified memory cudaMallocManaged
-    // under the hood (See CUDA C programming guide 6.2.6.3)
-    // - cudaHostAllocWriteCombined: bypasses host L1/L2 to improve host-device transfers
-    // but results in very slow host-side reads (See CUDA C programming guide 6.2.6.2)
-    // unsigned int flags = cudaHostAllocDefault;
-    switch (type) {
-    case BUFFER_HOST:
-        data = new T[count];
-        break;
-#if defined(ENABLED)
-    case BUFFER_HOST_PINNED:
-        ERRCHK_CUDA_API(cudaHostAlloc(&data, count * sizeof(data[0]), cudaHostAllocDefault));
-        break;
-    case BUFFER_HOST_PINNED_WRITE_COMBINED:
-        ERRCHK_CUDA_API(cudaHostAlloc(&data, count * sizeof(data[0]), cudaHostAllocWriteCombined));
-        break;
-    case BUFFER_DEVICE:
-        ERRCHK_CUDA_API(cudaMalloc(&data, count * sizeof(data[0])));
-        break;
-#endif
-    default:
-        WARNING_DESC("Device code not enabled, falling back to host allocation");
-        type = BUFFER_HOST;
-        data = new T[count];
-    }
-}
-
-template <typename T> Buffer<T>::~Buffer()
-{
-    switch (type) {
-    case BUFFER_HOST:
-        delete[] data;
-        break;
-#if defined(ENABLED)
-    case BUFFER_HOST_PINNED: /* Fallthrough*/
-    case BUFFER_HOST_PINNED_WRITE_COMBINED:
-        WARNCHK_CUDA_API(cudaFreeHost(data));
-        break;
-    case BUFFER_DEVICE:
-        WARNCHK_CUDA_API(cudaFree(data));
-        break;
-#endif
-    default:
-        WARNING_DESC("Invalid type");
-    }
-    data = nullptr;
-}
-
-template <typename T>
-Buffer<T>::Buffer(Buffer&& other) noexcept
-    : count(other.count), type(other.type), data(other.data)
-{
-    other.count = 0;
-    other.type  = BUFFER_NULL;
-    other.data  = nullptr;
-}
 
 /**
  * Printing
  */
 template <typename T>
 std::ostream&
-operator<<(std::ostream& os, const Buffer<T>& buf)
+operator<<(std::ostream& os, const Buffer<T, HostAllocator>& buf)
 {
-    if (buf.type != BUFFER_DEVICE) {
-        os << "{";
-        for (size_t i = 0; i < buf.count; ++i)
-            os << buf.data[i] << (i + 1 < buf.count ? ", " : "}");
-        return os;
-    }
-    else {
-        os << "{ Device buffer. Printing not implemented. }";
-        return os;
-    }
+    os << "{";
+    for (size_t i = 0; i < buf.count; ++i)
+        os << buf.data[i] << (i + 1 < buf.count ? ", " : "}");
+    return os;
 }
 
 /**
@@ -133,53 +139,51 @@ operator<<(std::ostream& os, const Buffer<T>& buf)
  */
 template <typename T>
 void
-Buffer<T>::fill(const T& value)
+fill(const T& value, Buffer<T, HostAllocator>& buffer)
 {
-    ERRCHK(type != BUFFER_DEVICE); // TODO implement for device buffers
-    for (size_t i = 0; i < count; ++i)
-        data[i] = value;
+    for (size_t i = 0; i < buffer.count; ++i)
+        buffer.data[i] = value;
 }
 
 template <typename T>
 void
-Buffer<T>::fill_arange(const T& min, const T& max)
+fill_arange(const T& min, const T& max, Buffer<T, HostAllocator>& buffer)
 {
-    ERRCHK(type != BUFFER_DEVICE); // TODO implement for device buffers
     ERRCHK(min < max);
-    ERRCHK(max - min <= count);
+    ERRCHK(max - min <= buffer.count);
     for (size_t i = 0; i < max - min; ++i)
-        data[i] = static_cast<T>(min + i);
+        buffer.data[i] = static_cast<T>(min + i);
 }
 
 /**
  * Other utility functions
  */
 template <typename T>
-Buffer<T>
+Buffer<T, HostAllocator>
 ones(const size_t count)
 {
-    Buffer<T> buffer(count);
+    Buffer<T, HostAllocator> buffer(count);
     for (size_t i = 0; i < count; ++i)
         buffer.data[i] = 1;
     return buffer;
 }
 
 template <typename T>
-Buffer<T>
+Buffer<T, HostAllocator>
 zeros(const size_t count)
 {
-    Buffer<T> buffer(count);
+    Buffer<T, HostAllocator> buffer(count);
     for (size_t i = 0; i < count; ++i)
         buffer.data[i] = 1;
     return buffer;
 }
 
 template <typename T>
-Buffer<T>
+Buffer<T, HostAllocator>
 arange(const size_t min, const size_t max)
 {
     ERRCHK(max > min);
-    Buffer<T> buffer(max - min);
+    Buffer<T, HostAllocator> buffer(max - min);
     for (size_t i = 0; i < buffer.count; ++i)
         buffer.data[i] = static_cast<T>(min + i);
     return buffer;
