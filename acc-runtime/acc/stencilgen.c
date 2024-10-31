@@ -208,30 +208,13 @@ gen_kernel_common_prefix()
 // Write vba.out
 #if 1
   // Original
-  printf("const auto write_base __attribute__((unused)) = [&](const int handle, const AcReal value) {");
-  printf("switch(handle) {\n");
-  for (size_t i = 0; i < NUM_FIELDS; ++i)
-    printf("case %zu: /* Fallthrough */\n", i);
+  printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {");
   printf("vba.out[handle][idx] = value;");
-  printf("break;");
-  for (size_t i = NUM_FIELDS; i < NUM_FIELDS + NUM_PROFILES; ++i)
-    printf("case %zu: /* Fallthrough */\n", i);
-  // JP: Only one thread writes out, but not trivial to choose which one
-  // Now assuming that the first thread of the xy slice writes
-  // the profile out. This works with arbitrary thread block dimensions
-  // in cases where the data that is written out also comes from a profile
-  // (i.e. not xy position dependent).
-  // However, the drawback is that the data written out is
-  // ambiguous if the data *is* xy position dependent, and
-  // I don't see a simple way to detect and warn about this
-  printf("if (threadIdx.x == 0 && threadIdx.y == 0) {");
-  printf("vba.profiles.out[handle - NUM_FIELDS][vertexIdx.z] = value;");
-  printf("}");
-  printf("break;");
-  printf("default:");
-  printf("printf(\"Warning: Invalid handle in write!\");");
-  printf("}");  // switch end
-  printf("};"); // write end
+  printf("};");
+
+  printf("const auto value_profile __attribute__((unused)) = [&](const Profile& handle) {");
+  printf("return vba.profiles.in[handle][idx];");
+  printf("};");
 
   //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
   //  in practice (no effect on the first pass, a slight slowdown in the second

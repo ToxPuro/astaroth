@@ -2170,7 +2170,7 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     int    local_res_int[NUM_OUTPUTS]{};
     for(int i = 0; i < NUM_OUTPUTS; ++i)
     {
-	    if(reduce_outputs[i].variable >= 0)
+	    if(reduce_outputs[i].variable >= 0 && reduce_outputs[i].called)
 	    {
 		if(reduce_outputs[i].type == AC_REAL_TYPE)
 	    		acDeviceFinishReduce(grid.device,reduce_outputs[i].variable,&local_res_real[i],reduce_kernels[i],reduce_ops[i],(AcRealOutputParam)reduce_outputs[i].variable);
@@ -2185,7 +2185,7 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     acDeviceSynchronizeStream(grid.device,STREAM_ALL);
     for(int i = 0; i < NUM_OUTPUTS; ++i)
     {
-	    if(reduce_outputs[i].variable >= 0)
+	    if(reduce_outputs[i].variable >= 0 && reduce_outputs[i].called)
 	    {
 		if(reduce_outputs[i].type == AC_REAL_TYPE)
     	    		grid.device -> output.real_outputs[reduce_outputs[i].variable] = local_res_real[i];

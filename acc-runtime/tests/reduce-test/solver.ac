@@ -34,6 +34,10 @@ Kernel test_reduce()
     reduce_sum(true,FIELD,PROF_ZX)
     reduce_sum(true,FIELD,PROF_ZY)
 }
+Kernel read_profile()
+{
+	write(FIELD, value(PROF_X))
+}
 BoundConds bcs
 {
 	periodic(BOUNDARY_XYZ)

@@ -462,6 +462,12 @@ acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcRe
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
                            AcReal* array);
 
+  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t counts));
+
+  FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size3_t count));
+
+  FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
+
 #ifdef __cplusplus
 
 #define GEN_LOAD_COMP_INFO(PARAM_TYPE,VAL_TYPE,TYPE) \
@@ -498,11 +504,6 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 	  return get_array_info(array).is_alive;
   }
 
-  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t counts));
-
-  FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size3_t count));
-
-  FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
 
   template <typename P>
   constexpr static auto

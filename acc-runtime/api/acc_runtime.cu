@@ -19,6 +19,7 @@
 #define AC_INSIDE_AC_LIBRARY 
 
 #include "acc_runtime.h"
+#include "../acc/string_vec.h"
 typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
@@ -59,9 +60,12 @@ static int3 AC_INTERNAL_global_int_vec = {0,0,0};
 
 static AcReal AC_INTERNAL_big_real_array[8*1024*1024]{0.0};
 static int AC_INTERNAL_big_int_array[8*1024*1024]{0};
-
-//the int key in the nested map corresponds to the starting vertexIdx linearized
-std::unordered_map<Kernel,std::unordered_map<int,int>> reduce_offsets;
+struct Int3Hash {
+    std::size_t operator()(const int3& v) const {
+        return std::hash<int>()(v.x) ^ std::hash<int>()(v.y) << 1 ^ std::hash<int>()(v.z) << 2;
+    }
+};
+std::array<std::unordered_map<int3,int,Int3Hash>,NUM_KERNELS> reduce_offsets;
 int kernel_running_reduce_offsets[NUM_KERNELS];
 
 #if AC_MPI_ENABLED
@@ -369,7 +373,7 @@ IDX(const int3 idx)
 
 
 typedef struct {
-  Kernel kernel;
+  AcKernel kernel;
   int3 dims;
   dim3 tpb;
 } TBConfig;
@@ -377,7 +381,7 @@ typedef struct {
 static std::vector<TBConfig> tbconfigs;
 
 
-static TBConfig getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba);
+static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 dims, VertexBufferArray vba);
 
 static __global__ void
 flush_kernel(AcReal* arr, const size_t n, const AcReal value)
@@ -778,18 +782,10 @@ get_num_of_reduce_output(const dim3 bpg, const dim3 tpb)
 	return num_of_warps_per_block*num_of_blocks;
 }
 
-int
-get_kernel_index(const Kernel kernel)
-{
-	for(int i = 0; i < NUM_KERNELS; ++i)
-		if (kernel == kernels[i]) return i;
-	return -1;
-}
 AcResult
-acLaunchKernel(AcKernel kernel_enum, const cudaStream_t stream, const int3 start,
+acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const int3 start,
                const int3 end, VertexBufferArray vba)
 {
-  const Kernel kernel = kernels[kernel_enum];
   const int3 n = end - start;
 
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
@@ -798,16 +794,15 @@ acLaunchKernel(AcKernel kernel_enum, const cudaStream_t stream, const int3 start
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
 
   const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
-  const int key = start.x + 10000*start.y + 10000*10000*start.z;
-  if (reduce_offsets[kernel].find(key) == reduce_offsets[kernel].end())
+  if (reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
   {
-  	reduce_offsets[kernel][key] = kernel_running_reduce_offsets[get_kernel_index(kernel)];
-  	kernel_running_reduce_offsets[get_kernel_index(kernel)] += get_num_of_reduce_output(bpg,tpb);
+  	reduce_offsets[kernel][start] = kernel_running_reduce_offsets[kernel];
+  	kernel_running_reduce_offsets[kernel] += get_num_of_reduce_output(bpg,tpb);
   }
 
-  vba.reduce_offset = reduce_offsets[kernel][key];
+  vba.reduce_offset = reduce_offsets[kernel][start];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
-  kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
+  kernels[kernel]<<<bpg, tpb, smem, stream>>>(start, end, vba);
   ERRCHK_CUDA_KERNEL();
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
@@ -815,10 +810,9 @@ acLaunchKernel(AcKernel kernel_enum, const cudaStream_t stream, const int3 start
 }
 
 AcResult
-acBenchmarkKernel(AcKernel kernel_enum, const int3 start, const int3 end,
+acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
                   VertexBufferArray vba)
 {
-  const Kernel kernel = kernels[kernel_enum];
   const int3 n = end - start;
 
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
@@ -834,7 +828,7 @@ acBenchmarkKernel(AcKernel kernel_enum, const int3 start, const int3 end,
 
   // Warmup
   cudaEventRecord(tstart);
-  kernel<<<bpg, tpb, smem>>>(start, end, vba);
+  kernels[kernel]<<<bpg, tpb, smem>>>(start, end, vba);
   cudaEventRecord(tstop);
   cudaEventSynchronize(tstop);
   ERRCHK_CUDA_KERNEL();
@@ -842,21 +836,12 @@ acBenchmarkKernel(AcKernel kernel_enum, const int3 start, const int3 end,
 
   // Benchmark
   cudaEventRecord(tstart); // Timing start
-  kernel<<<bpg, tpb, smem>>>(start, end, vba);
+  kernels[kernel]<<<bpg, tpb, smem>>>(start, end, vba);
   cudaEventRecord(tstop); // Timing stop
   cudaEventSynchronize(tstop);
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, tstart, tstop);
-
-  size_t kernel_id = NUM_KERNELS;
-  for (size_t i = 0; i < NUM_KERNELS; ++i) {
-    if (kernels[i] == kernel) {
-      kernel_id = i;
-    }
-  }
-  ERRCHK_ALWAYS(kernel_id < NUM_KERNELS);
-  printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel_id],
-         (double)milliseconds);
+  printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel],(double)milliseconds);
 
   // Timer destroy
   cudaEventDestroy(tstart);
@@ -1084,14 +1069,14 @@ void printProgressBar(FILE* stream, const int progress) {
     fprintf(stream,"] %d %%", progress);
 }
 void
-logAutotuningStatus(const size_t counter, const size_t num_samples, const Kernel kernel)
+logAutotuningStatus(const size_t counter, const size_t num_samples, const AcKernel kernel)
 {
     const size_t percent_of_num_samples = num_samples/100;
     for (size_t progress = 0; progress <= 100; ++progress)
     {
 	      if (counter == percent_of_num_samples*progress  && grid_pid == 0 && (progress % 10 == 0))
 	      {
-    			fprintf(stderr,"\nAutotuning %s ",kernel_names[get_kernel_index(kernel)]);
+    			fprintf(stderr,"\nAutotuning %s ",kernel_names[kernel]);
     			printProgressBar(stderr,progress);
 			if (progress == 100) fprintf(stderr,"\n");
 			fflush(stderr);
@@ -1166,10 +1151,8 @@ gather_best_measurement(const autotune_measurement local_best)
 
 
 static TBConfig
-autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
+autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
 {
-  vba.reduce_offset = 0;
-  ERRCHK_ALWAYS(get_kernel_index(kernel) < NUM_KERNELS);
   // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
   //        "(%d):\n",
   //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
@@ -1269,6 +1252,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   const size_t end_samples   = samples.size();
 #endif
   const size_t n_samples = end_samples-start_samples;
+  const Kernel func = kernels[kernel];
   for(size_t sample  = start_samples; sample < end_samples; ++sample)
   {
         if (log) logAutotuningStatus(counter,n_samples,kernel);
@@ -1288,11 +1272,11 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         cudaEventCreate(&tstart);
         cudaEventCreate(&tstop);
 
-        kernel<<<bpg, tpb, smem>>>(start, end, vba); // Dryrun
+        func<<<bpg, tpb, smem>>>(start, end, vba); // Dryrun
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
         for (int i = 0; i < num_iters; ++i)
-          kernel<<<bpg, tpb, smem>>>(start, end, vba);
+          func<<<bpg, tpb, smem>>>(start, end, vba);
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
 
@@ -1335,7 +1319,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                 nz, best_tpb.x, best_tpb.y, best_tpb.z,
                 (double)best_time / num_iters);
 #else
-        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g\n", IMPLEMENTATION, get_kernel_index(kernel), dims.x,
+        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g\n", IMPLEMENTATION, kernel, dims.x,
                 dims.y, dims.z, best_tpb.x, best_tpb.y, best_tpb.z,
                 (double)best_time / num_iters);
 #endif
@@ -1350,57 +1334,42 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   return c;
 }
 
-int
-get_entries(char** dst, const char* line)
-{
-      char* line_copy = strdup(line);
-      int counter = 0;
-      char* token;
-      token = strtok(line_copy,",");
-      while(token != NULL)
-      {
-              dst[counter] = strdup(token);
-              ++counter;
-              token = strtok(NULL,",");
-      }
-      free(line_copy);
-      return counter;
-}
 static int3
-read_optim_tpb(const Kernel kernel, const int3 dims)
+read_optim_tpb(const AcKernel kernel, const int3 dims)
 {
   const char* filename = autotune_csv_path;
   FILE *file = fopen ( filename, "r" );
   int3 res = {-1,-1,-1};
-  const double best_time = pow(10.0,20);
-  if (file != NULL) {
-    char line [1000];
-    while(fgets(line,sizeof line,file)!= NULL) /* read a line from a file */ {
-      char* entries[9];
-      int num_entries = get_entries(entries,line);
-      if (num_entries > 1)
-      {
-         int kernel_index  = atoi(entries[1]);
-         int3 read_dims = {atoi(entries[2]), atoi(entries[3]), atoi(entries[4])};
-         int3 tpb = {atoi(entries[5]), atoi(entries[6]), atoi(entries[7])};
-         double time = atof(entries[8]);
-	 res =  (read_dims == dims && kernel_index == get_kernel_index(kernel) && time < best_time) ? tpb  : res;
-      }
-      for(int i = 0; i < num_entries; ++i)
-             free(entries[i]);
-
+  double best_time     = (double)INFINITY;
+  string_vec entries[1000];
+  memset(entries,0,sizeof(string_vec)*1000);
+  const int n_entries = get_csv_entries(entries,file);
+  for(int i = 0; i < n_entries; ++i)
+  {
+	  string_vec entry = entries[i];
+	  if(entry.size > 1)
+      	  {
+      	     int kernel_index  = atoi(entry.data[1]);
+      	     int3 read_dims = {atoi(entry.data[2]), atoi(entry.data[3]), atoi(entry.data[4])};
+      	     int3 tpb = {atoi(entry.data[5]), atoi(entry.data[6]), atoi(entry.data[7])};
+      	     double time = atof(entry.data[8]);
+      	     if(time < best_time && kernel_index == kernel && read_dims == dims)
+      	     {
+      	    	 best_time = time;
+      	    	 res       = tpb;
+      	     }
+      	  }
+      	  for(size_t elem = 0; elem < entry.size; ++elem)
+      	         free((char*)entry.data[elem]);
+      	  free_str_vec(&entry);
   }
-    fclose(file);
-  }
-  else {
-    perror(filename); //print the error message on stderr.
-  }
+  fclose(file);
   return res;
 }
 
 
 static TBConfig
-getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
+getOptimalTBConfig(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
 {
   for (auto c : tbconfigs)
     if (c.kernel == kernel && c.dims == dims)

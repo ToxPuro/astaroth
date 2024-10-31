@@ -64,6 +64,7 @@ void strip_whitespace(char *str) {
 "BoundConds"          {return BOUNDCONDS; }
 "intrinsic"          {return INTRINSIC; }
 "__shared__"          {return SHARED; }
+"Profile"                 { return PROFILE;   }
 "Profile<X>"              { return PROFILE_X; }
 "Profile<Y>"              { return PROFILE_Y; }
 "Profile<Z>"              { return PROFILE_Z; }
