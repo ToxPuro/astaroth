@@ -86,9 +86,8 @@ gen_stencil_definitions(void)
         for (int height = 0; height < STENCIL_HEIGHT; ++height) {
           printf("{");
           for (int width = 0; width < STENCIL_WIDTH; ++width) {
-            printf("%s,", stencils[stencil][depth][height][width]
-                              ? stencils[stencil][depth][height][width]
-                              : "0");
+            const char* coeff = stencils[stencil][depth][height][width];
+	    printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff : "AcReal(NAN)");
           }
           printf("},");
         }
@@ -106,9 +105,8 @@ gen_stencil_definitions(void)
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
         printf("{");
         for (int width = 0; width < STENCIL_WIDTH; ++width) {
-          printf("%s,", stencils[stencil][height][width]
-                            ? stencils[stencil][height][width]
-                            : "0");
+            const char* coeff = stencils[stencil][depth][height][width];
+	    printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff : "AcReal(NAN)");
         }
         printf("},");
       }
@@ -212,8 +210,29 @@ gen_kernel_common_prefix()
   printf("vba.out[handle][idx] = value;");
   printf("};");
 
+  //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
+  //  in practice (no effect on the first pass, a slight slowdown in the second
+  //  pass 4.6 ms vs 4.3 ms)
+  // printf("const auto write=[&](const Field& field, const AcReal value)"
+  //  "{ __builtin_nontemporal_store(value, &vba.out[field][idx]); };");
+#else
+  // Buffered, no effect on performance
+  // !Remember to emit write insructions in ac.y if this is enabled!
+  printf("AcReal out_buffer[NUM_ALL_FIELDS];");
+  for (int field = 0; field < NUM_ALL_FIELDS; ++field)
+    printf("out_buffer[%d] = (AcReal)NAN;", field);
+
+  printf("const auto write=[&](const Field field, const AcReal value)"
+         "{ out_buffer[field] = value; };");
+/*
+for (int field = 0; field < NUM_ALL_FIELDS; ++field)
+printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
+*/
+#endif
+
   //TP: for now profile reads are not cached since they are usually read in only once and anyways since they are smaller can fit more easily to cache.
   //TP: if in the future a use case uses profiles a lot reconsider this
+  if(!NUM_PROFILES) return;
   printf("const auto value_profile_x __attribute__((unused)) = [&](const Profile& handle) {");
   printf("return vba.profiles.in[handle][vertexIdx.x];");
   printf("};");
@@ -250,25 +269,6 @@ gen_kernel_common_prefix()
   printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mz)*vertexIdx.y];");
   printf("};");
 
-  //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
-  //  in practice (no effect on the first pass, a slight slowdown in the second
-  //  pass 4.6 ms vs 4.3 ms)
-  // printf("const auto write=[&](const Field& field, const AcReal value)"
-  //  "{ __builtin_nontemporal_store(value, &vba.out[field][idx]); };");
-#else
-  // Buffered, no effect on performance
-  // !Remember to emit write insructions in ac.y if this is enabled!
-  printf("AcReal out_buffer[NUM_ALL_FIELDS];");
-  for (int field = 0; field < NUM_ALL_FIELDS; ++field)
-    printf("out_buffer[%d] = (AcReal)NAN;", field);
-
-  printf("const auto write=[&](const Field field, const AcReal value)"
-         "{ out_buffer[field] = value; };");
-/*
-for (int field = 0; field < NUM_ALL_FIELDS; ++field)
-printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
-*/
-#endif
     printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
           	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][0][idx] = val; };");
     printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
@@ -297,61 +297,65 @@ gen_kernel_prefix(const int curr_kernel)
 
   if(kernel_calls_reduce[curr_kernel] )
   {
-    printf("AcReal reduce_sum_res_real[NUM_REAL_OUTPUTS] = {\n");
-    for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
-            printf("0.0,");
-    printf("};\n");
-    printf("AcReal reduce_max_res_real[NUM_REAL_OUTPUTS] = {\n");
-    for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
-            printf("-1000000.0,");
-    printf("};\n");
-    printf("AcReal reduce_min_res_real[NUM_REAL_OUTPUTS] = {\n");
-    for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
-            printf("1000000.0,");
-    printf("};\n");
-    printf("bool should_reduce_real[NUM_REAL_OUTPUTS] = {\n");
-    	printf("false,");
-    printf("};\n");
+    if(NUM_REAL_OUTPUTS)
+    {
+    	printf("AcReal reduce_sum_res_real[NUM_REAL_OUTPUTS] = {\n");
+    	for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
+    	        printf("0.0,");
+    	printf("};\n");
+    	printf("AcReal reduce_max_res_real[NUM_REAL_OUTPUTS] = {\n");
+    	for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
+    	        printf("-1000000.0,");
+    	printf("};\n");
+    	printf("AcReal reduce_min_res_real[NUM_REAL_OUTPUTS] = {\n");
+    	for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
+    	        printf("1000000.0,");
+    	printf("};\n");
+    	printf("bool should_reduce_real[NUM_REAL_OUTPUTS] = {\n");
+    		printf("false,");
+    	printf("};\n");
+        printf("(void)reduce_sum_res_real;");
+        printf("(void)reduce_min_res_real;");
+        printf("(void)reduce_max_res_real;");
+        printf("const auto reduce_sum_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
+              	  "{ should_reduce_real[(int)output] = condition; reduce_sum_res_real[(int)output] = val; };");
+        printf("const auto reduce_min_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
+              	  "{ should_reduce_real[(int)output] = condition; reduce_min_res_real[(int)output] = val; };");
+        printf("const auto reduce_max_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
+    		  "{ should_reduce_real[(int)output] = condition; reduce_max_res_real[(int)output] = val; };");
+    }
+    if(NUM_INT_OUTPUTS)
+    {
+    	printf("int reduce_sum_res_int[NUM_INT_OUTPUTS] = {\n");
+    	for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
+    	        printf("0,");
+    	printf("};\n");
+    	printf("int reduce_max_res_int[NUM_INT_OUTPUTS] = {\n");
+    	for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
+    	        printf("-10000000,");
+    	printf("};\n");
+    	printf("int reduce_min_res_int[NUM_INT_OUTPUTS] = {\n");
+    	for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
+    	        printf("10000000,");
+    	printf("};\n");
+    	printf("bool should_reduce_int[NUM_INT_OUTPUTS] = {\n");
+    	for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
+    		printf("false,");
+    	printf("};\n");
+    	
 
-    printf("int reduce_sum_res_int[NUM_INT_OUTPUTS] = {\n");
-    for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
-            printf("0,");
-    printf("};\n");
-    printf("int reduce_max_res_int[NUM_INT_OUTPUTS] = {\n");
-    for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
-            printf("-10000000,");
-    printf("};\n");
-    printf("int reduce_min_res_int[NUM_INT_OUTPUTS] = {\n");
-    for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
-            printf("10000000,");
-    printf("};\n");
-    printf("bool should_reduce_int[NUM_INT_OUTPUTS] = {\n");
-    for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
-    	printf("false,");
-    printf("};\n");
-    
+    	printf("(void)reduce_sum_res_int;");
+    	printf("(void)reduce_min_res_int;");
+    	printf("(void)reduce_max_res_int;");
+        printf("const auto reduce_sum_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
+              	  "{ should_reduce_int[(int)output] = condition; reduce_sum_res_int[(int)output] = val; };");
+        printf("const auto reduce_min_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
+              	  "{ should_reduce_int[(int)output] = condition; reduce_min_res_int[(int)output] = val; };");
+        printf("const auto reduce_max_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
+   		  "{ should_reduce_int[(int)output] = condition; reduce_max_res_int[(int)output] = val; };");
+    }
 
-    printf("(void)reduce_sum_res_real;");
-    printf("(void)reduce_min_res_real;");
-    printf("(void)reduce_max_res_real;");
 
-    printf("(void)reduce_sum_res_int;");
-    printf("(void)reduce_min_res_int;");
-    printf("(void)reduce_max_res_int;");
-
-    printf("const auto reduce_sum_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-          	  "{ should_reduce_real[(int)output] = condition; reduce_sum_res_real[(int)output] = val; };");
-    printf("const auto reduce_min_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-          	  "{ should_reduce_real[(int)output] = condition; reduce_min_res_real[(int)output] = val; };");
-    printf("const auto reduce_max_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-		  "{ should_reduce_real[(int)output] = condition; reduce_max_res_real[(int)output] = val; };");
-
-    printf("const auto reduce_sum_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
-          	  "{ should_reduce_int[(int)output] = condition; reduce_sum_res_int[(int)output] = val; };");
-    printf("const auto reduce_min_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
-          	  "{ should_reduce_int[(int)output] = condition; reduce_min_res_int[(int)output] = val; };");
-    printf("const auto reduce_max_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
-		  "{ should_reduce_int[(int)output] = condition; reduce_max_res_int[(int)output] = val; };");
   }
 }
 
@@ -361,8 +365,10 @@ gen_return_if_oob(const int curr_kernel)
        printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
        if(kernel_calls_reduce[curr_kernel] )
        {
-	 printf("for(int i = 0; i < NUM_REAL_OUTPUTS; ++i) should_reduce_real[i] = out_of_bounds;\n");
-	 printf("for(int i = 0; i < NUM_INT_OUTPUTS; ++i)   should_reduce_int[i] = out_of_bounds;\n");
+	 if(NUM_REAL_OUTPUTS)
+	 	printf("for(int i = 0; i < NUM_REAL_OUTPUTS; ++i) should_reduce_real[i] = out_of_bounds;\n");
+	 if(NUM_INT_OUTPUTS)
+	 	printf("for(int i = 0; i < NUM_INT_OUTPUTS; ++i)   should_reduce_int[i] = out_of_bounds;\n");
        }
        printf("if(!out_of_bounds){\n#include \"user_non_scalar_constants.h\"\n");
 }
@@ -689,6 +695,16 @@ max(const uint64_t a, const uint64_t b)
 {
   return a > b ? a : b;
 }
+void
+printf_stencil_point(const int stencil, const int depth, const int height, const int width)
+{
+	const char* coeff = stencils[stencil][depth][height][width];
+	if(!strcmp(coeff,"1")) return;
+	if(!strstr(coeff,"DCONST"))
+	    printf("%s *",stencils[stencil][depth][height][width]);
+	else
+	    printf("stencils[%d][%d][%d][%d] *",stencil,depth,height,width);
+}
 
 void
 gen_kernel_body(const int curr_kernel)
@@ -778,8 +794,7 @@ gen_kernel_body(const int curr_kernel)
                   if (stencils[stencil][depth][height][width]) {
                     if (!stencil_initialized[field][stencil]) {
                       printf("auto f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
-                      printf("stencils[%d][%d][%d][%d] *", //
-                             stencil, depth, height, width);
+		      printf_stencil_point(stencil,depth,height,width);
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
                       printf("vba.in[%s]"
@@ -797,8 +812,7 @@ gen_kernel_body(const int curr_kernel)
                       printf("f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
                       printf("%s(f%s_s%s, ", stencil_binary_ops[stencil], field_names[get_original_index(field_remappings,field)],
                              stencil_names[stencil]);
-                      printf("stencils[%d][%d][%d][%d] *", //
-                             stencil, depth, height, width);
+		      printf_stencil_point(stencil,depth,height,width);
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
                       printf("vba.in[%s]"
@@ -834,8 +848,7 @@ gen_kernel_body(const int curr_kernel)
                   if (stencils[stencil][height][width]) {
                     if (!stencil_initialized[field][stencil]) {
                       printf("auto f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
-                      printf("stencils[%d][%d][%d] *", //
-                             stencil, height, width);
+		      printf_stencil_point(stencil,depth,height,width);
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
                       printf("vba.in[%s]"
@@ -852,8 +865,7 @@ gen_kernel_body(const int curr_kernel)
                       printf("f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
                       printf("%s(f%s_s%s, ", stencil_binary_ops[stencil], field_names[get_original_index(field_remappings,field)],
                              stencil_names[stencil]);
-                      printf("stencils[%d][%d][%d] *", //
-                             stencil, height, width);
+		      printf_stencil_point(stencil,depth,height,width);
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
                       printf("vba.in[%s]"
@@ -917,8 +929,7 @@ gen_kernel_body(const int curr_kernel)
                 if (stencils[stencil][depth][height][width]) {
                   if (!stencil_initialized[NUM_FIELDS + profile][stencil]) {
                     printf("auto p%d_s%d = ", profile, stencil);
-                    printf("stencils[%d][%d][%d][%d] *", //
-                           stencil, depth, height, width);
+		    printf_stencil_point(stencil,depth,height,width);
                     printf("%s(", stencil_unary_ops[stencil]);
 #if !AC_USE_HIP
                     printf("__ldg(&");
@@ -937,8 +948,7 @@ gen_kernel_body(const int curr_kernel)
                     printf("p%d_s%d = ", profile, stencil);
                     printf("%s(p%d_s%d, ", stencil_binary_ops[stencil], profile,
                            stencil);
-                    printf("stencils[%d][%d][%d][%d] *", //
-                           stencil, depth, height, width);
+		    printf_stencil_point(stencil,depth,height,width);
                     printf("%s(", stencil_unary_ops[stencil]);
 #if !AC_USE_HIP
                     printf("__ldg(&");

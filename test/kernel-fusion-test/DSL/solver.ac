@@ -1,0 +1,54 @@
+#include "../../../acc-runtime/stdlib/derivs.h"
+
+Field AX,AY,AZ
+
+output real AC_min_val
+
+
+
+Profile<X> AX_X_MEAN
+Profile<X> AY_X_MEAN
+Profile<X> AZ_X_MEAN
+
+Profile<Y> AX_Y_MEAN
+Profile<Y> AY_Y_MEAN
+Profile<Y> AZ_Y_MEAN
+
+
+Kernel reduce_aa_x()
+{
+    reduce_sum(true, AX, AX_X_MEAN)
+    reduce_sum(true, AY, AY_X_MEAN)
+    reduce_sum(true, AZ, AZ_X_MEAN)
+}
+Kernel reduce_aa_y()
+{
+    reduce_sum(true, AX, AX_Y_MEAN)
+    reduce_sum(true, AY, AY_Y_MEAN)
+    reduce_sum(true, AZ, AZ_Y_MEAN)
+}
+Kernel remove_aa_x()
+{
+	write(AX,AX-AX_X_MEAN)
+	write(AY,AY-AY_X_MEAN)
+	write(AZ,AZ-AZ_X_MEAN)
+}
+Kernel remove_aa_y()
+{
+	write(AX,AX-AX_Y_MEAN)
+	write(AY,AY-AY_Y_MEAN)
+	write(AZ,AZ-AZ_Y_MEAN)
+}
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps rhs(bcs)
+{
+	reduce_aa_x()
+	reduce_aa_y()
+	remove_aa_x()
+	remove_aa_y()
+}
+

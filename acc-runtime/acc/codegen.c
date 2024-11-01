@@ -4896,31 +4896,6 @@ gen_user_kernels(const char* out)
   fclose(fp);
 }
 
-void
-replace_dynamic_coeffs_stencilpoint(ASTNode* node)
-{
-  TRAVERSE_PREAMBLE(replace_dynamic_coeffs_stencilpoint);
-  if(!node->buffer) return;
-  if(!check_symbol(NODE_VARIABLE_ID, node->buffer, REAL_STR, DCONST_STR) && !check_symbol(NODE_VARIABLE_ID, node->buffer, INT_STR, DCONST_STR)) return;
-  //replace with zero to compile the stencil
-  astnode_set_buffer("NAN",node);
-  astnode_set_prefix("AcReal(",node);
-  astnode_set_postfix(")",node);
-}
-void replace_dynamic_coeffs(ASTNode* node)
-{
-  TRAVERSE_PREAMBLE(replace_dynamic_coeffs);
-  if(node->type != NODE_STENCIL) return;
-  ASTNode* list = node->rhs->lhs;
-  while(list->rhs)
-  {
-    ASTNode* stencil_point = list->rhs;
-    replace_dynamic_coeffs_stencilpoint(stencil_point->rhs->rhs);
-    list = list -> lhs;
-  }
-  ASTNode* stencil_point = list->lhs;
-  replace_dynamic_coeffs_stencilpoint(stencil_point->rhs->rhs);
-}
 //void
 //rename_identifiers(const char* new_name, ASTNode* node, const char* str_to_check)
 //{
@@ -6781,7 +6756,6 @@ stencilgen(ASTNode* root)
            stencil_coeffs_fp);
   fflush(stencil_coeffs_fp);
 
-  replace_dynamic_coeffs(root);
   if(!TWO_D)
   	fprintf(stencilgen, "static char* "
                       "dynamic_coeffs[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]["
