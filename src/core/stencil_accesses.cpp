@@ -94,7 +94,6 @@ print(const char* , ...)
 
 #define local_compdomain_idx ((LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx))
 FILE* called_reduce_outputs = NULL;
-static int num_reduced_outputs = 0;
 
 template <typename T>
 T
@@ -167,6 +166,15 @@ __ballot(bool)
 #include "acc_runtime.h"
 #undef constexpr
 
+static int stencils_accessed[NUM_ALL_FIELDS][NUM_STENCILS]{{}};
+static int previous_accessed[NUM_ALL_FIELDS]{};
+static int written_fields[NUM_ALL_FIELDS]{};
+static int read_fields[NUM_ALL_FIELDS]{};
+static int field_has_stencil_op[NUM_ALL_FIELDS]{};
+static int read_profiles[NUM_PROFILES]{};
+static int reduced_profiles[NUM_PROFILES]{};
+static int written_profiles[NUM_PROFILES]{};
+
 #define reduce_sum_real    reduce
 #define reduce_min_real    reduce
 #define reduce_max_real    reduce
@@ -183,37 +191,59 @@ __ballot(bool)
 #define reduce_min_int     reduce
 #define reduce_max_int     reduce
 
-static const char*
+
+
+#define value_profile_x value_profile
+#define value_profile_y value_profile
+#define value_profile_z value_profile
+#define value_profile_xy value_profile
+#define value_profile_xz value_profile
+#define value_profile_yx value_profile
+#define value_profile_yz value_profile
+#define value_profile_zx value_profile
+#define value_profile_zy value_profile
+AcReal
+value_profile(const Profile& prof)
+{
+	read_profiles[prof] = 1;
+	return 0.0;
+}
+
+static UNUSED const char* 
 get_name(const AcRealOutputParam& param)
 {
         return real_output_names[param];
 }
-static const char*
+static UNUSED const char* 
 get_name(const AcIntOutputParam& param)
 {
         return int_output_names[param];
 }
 
-static const char*
+static UNUSED const char* 
 get_name(const Profile& param)
 {
-        return profile_names[param];
+	if constexpr (NUM_PROFILES == 0) return "";
+	else return profile_names[param];
 }
 
-AcReal
-value_profile(const Profile&)
+
+void
+reduce(const bool& reduce, const AcReal, const Profile prof)
 {
-	return 0.0;
+	if(reduce)
+	{
+		reduced_profiles[prof] = 1;
+		if(called_reduce_outputs)
+	  		fprintf(called_reduce_outputs,"%s,",get_name(prof));
+	}
 }
-
 template <typename T1, typename T2>
 void
-reduce(const bool&, const T1&, const T2& dst)
+reduce(const bool& reduce, const T1&, const T2& dst)
 {
-	if(called_reduce_outputs)
-	  fprintf(called_reduce_outputs,"%s%s",
-	    num_reduced_outputs ? "," : "",get_name(dst));
-	++num_reduced_outputs;
+	if(reduce && called_reduce_outputs)
+	  fprintf(called_reduce_outputs,"%s,",get_name(dst));
 }
 extern "C" 
 {
@@ -261,11 +291,6 @@ AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
 [[maybe_unused]] static AcReal3 AC_INTERNAL_global_real_vec = {0.0,0.0,0.0};
 [[maybe_unused]] static int3 AC_INTERNAL_global_int_vec = {0,0,0};
 
-static int stencils_accessed[NUM_ALL_FIELDS][NUM_STENCILS]{{}};
-static int previous_accessed[NUM_ALL_FIELDS]{};
-static int written_fields[NUM_ALL_FIELDS]{};
-static int read_fields[NUM_ALL_FIELDS]{};
-static int field_has_stencil_op[NUM_ALL_FIELDS]{};
 #include "analysis_stencils.h"
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_WRITE    = (1 << 0);
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_WRITE = (1 << 1);
@@ -467,7 +492,13 @@ reset_info_arrays()
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op[0]) * NUM_ALL_FIELDS);
     memset(written_fields, 0,    sizeof(written_fields[0]) * NUM_ALL_FIELDS);
     memset(previous_accessed, 0, sizeof(previous_accessed[0]) * NUM_ALL_FIELDS);
-    num_reduced_outputs = 0;
+    //TP: would use memset but at least on Puhti the C++ compiler gives an incorrect warning that I am not multiplying the element size even though I am (I guess because the compiler simply sees zero if there are no profiles?)
+    for(int i = 0; i  < NUM_PROFILES; ++i)
+    {
+	    read_profiles[i] = 0;
+	    reduced_profiles[i] = 0;
+	    written_profiles[i] = 0;
+    }
 }
 
 acAnalysisBCInfo 
@@ -526,6 +557,12 @@ acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src)
 			src->read_fields[k][i]    = read_fields[i];
 			src->field_has_stencil_op[k][i] = field_has_stencil_op[i];
 			src->written_fields[k][i] = written_fields[i];
+		}
+		for(size_t i = 0; i < NUM_PROFILES; ++i)
+		{
+			src->read_profiles[k][i]    = read_profiles[i];
+			src->reduced_profiles[k][i] = reduced_profiles[i];
+			src->written_profiles[k][i] = written_profiles[i];
 		}
 	}
 	return AC_SUCCESS;

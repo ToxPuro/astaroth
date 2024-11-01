@@ -34,9 +34,19 @@ Kernel test_reduce()
     reduce_sum(true,FIELD,PROF_ZX)
     reduce_sum(true,FIELD,PROF_ZY)
 }
-Kernel read_profile()
+Kernel remove_means()
 {
-	write(FIELD, value(PROF_X))
+	res = value(FIELD)
+	res -= PROF_X
+	res -= PROF_Y
+	res -= PROF_Z
+	res -= PROF_XY
+	res -= PROF_XZ
+	res -= PROF_YX
+	res -= PROF_YZ
+	res -= PROF_ZX
+	res -= PROF_ZY
+	write(FIELD, res)
 }
 BoundConds bcs
 {
@@ -46,5 +56,6 @@ BoundConds bcs
 ComputeSteps rhs(bcs)
 {
 	test_reduce()
+	remove_means()
 }
 

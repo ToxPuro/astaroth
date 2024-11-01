@@ -109,12 +109,6 @@ main(int argc, char* argv[])
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridSynchronizeStream(STREAM_ALL);
 
-
-    acGridExecuteTaskGraph(graph,1);
-    acGridSynchronizeStream(STREAM_ALL);
-    acGridFinalizeReduceLocal(graph);
-    acGridSynchronizeStream(STREAM_ALL);
-
     AcBuffer gpu_field_zyx        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,ZYX,FIELD);
     AcBuffer gpu_field_xzy        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,XZY,FIELD);
     AcBuffer gpu_field_yxz        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,YXZ,FIELD);
@@ -127,6 +121,14 @@ main(int argc, char* argv[])
     AcBuffer field_yxz        =acBufferCopy(gpu_field_yxz,false);
     AcBuffer field_yzx        =acBufferCopy(gpu_field_yzx,false);
     AcBuffer field_zxy        =acBufferCopy(gpu_field_zxy,false);
+
+
+    acGridExecuteTaskGraph(graph,1);
+    acGridSynchronizeStream(STREAM_ALL);
+    acGridFinalizeReduceLocal(graph);
+    acGridSynchronizeStream(STREAM_ALL);
+    acGridStoreMesh(STREAM_DEFAULT,&candidate);
+
 
     const auto gpu_max_val = acDeviceGetOutput(acGridGetDevice(), AC_max_val);
     const auto gpu_min_val = acDeviceGetOutput(acGridGetDevice(), AC_min_val);
@@ -404,11 +406,14 @@ main(int argc, char* argv[])
     }
     AcReal cpu_sum_val = (AcReal)long_cpu_sum_val;
     AcReal epsilon  = pow(10.0,-12.0);
-    auto in_eps_threshold = [&](const auto a, const auto b)
+    auto relative_diff = [](const auto a, const auto b)
     {
 	    const auto abs_diff = fabs(a-b);
-	    const auto relative_diff = abs_diff/a;
-	    return relative_diff < epsilon;
+	    return  abs_diff/a;
+    };
+    auto in_eps_threshold = [&](const auto a, const auto b)
+    {
+	    return relative_diff(a,b) < epsilon;
     };
     bool sums_correct = true;
     for(int i = dims.n0.z; i < dims.n1.z; ++i)
@@ -497,6 +502,35 @@ main(int argc, char* argv[])
 		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",zy_sum[index],zy_sum_gpu[index]);
     	}
     }
+    //TP: since each profile is allowed to have epsilon amount of round-off the result using them should be at most epsilon*NUM_PROFILES
+    epsilon *= NUM_PROFILES;
+    bool remove_mean_correct = true;
+    for(int k = dims.n0.z; k < dims.n1.z; ++k)
+    {
+    	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
+    	{
+    		for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    		{
+    	    		auto res = model.vertex_buffer[FIELD][IDX(i,j,k)];
+			auto gpu_res =  candidate.vertex_buffer[FIELD][IDX(i,j,k)];
+			res -= x_sum[i];
+			res -= y_sum[j];
+			res -= z_sum[k];
+
+			res -= xy_sum[i + model.info[AC_mx]*j];
+			res -= xz_sum[i + model.info[AC_mx]*k];
+
+			res -= yx_sum[j + model.info[AC_my]*i];
+			res -= yz_sum[j + model.info[AC_my]*k];
+
+			res -= zx_sum[k + model.info[AC_mz]*i];
+			res -= zy_sum[k + model.info[AC_mz]*j];
+			const bool correct = in_eps_threshold(res,gpu_res);
+			remove_mean_correct &= correct;
+			if(!correct)  fprintf(stderr,"WRONG: %14e, %14e, %14e\n",res,gpu_res,relative_diff(res,gpu_res));
+    		}
+	}
+    }
 
     fprintf(stderr,"MAX REDUCTION... %s %14e %14e\n", cpu_max_val == gpu_max_val ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET,cpu_max_val,gpu_max_val);
     fprintf(stderr,"MIN REDUCTION... %s %14e %14e\n", cpu_min_val == gpu_min_val ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET,cpu_min_val,gpu_min_val);
@@ -516,6 +550,7 @@ main(int argc, char* argv[])
     fprintf(stderr,"YXZ TRANSPOSE... %s\n", yxz_correct       ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     fprintf(stderr,"YZX TRANSPOSE... %s\n", yzx_correct       ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     fprintf(stderr,"ZXY TRANSPOSE... %s\n", zxy_correct       ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    fprintf(stderr,"REMOVE MEAN... %s\n", remove_mean_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     if (pid == 0) {
         acHostMeshDestroy(&model);
         acHostMeshDestroy(&candidate);

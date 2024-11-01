@@ -212,8 +212,42 @@ gen_kernel_common_prefix()
   printf("vba.out[handle][idx] = value;");
   printf("};");
 
-  printf("const auto value_profile __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][idx];");
+  //TP: for now profile reads are not cached since they are usually read in only once and anyways since they are smaller can fit more easily to cache.
+  //TP: if in the future a use case uses profiles a lot reconsider this
+  printf("const auto value_profile_x __attribute__((unused)) = [&](const Profile& handle) {");
+  printf("return vba.profiles.in[handle][vertexIdx.x];");
+  printf("};");
+
+  printf("const auto value_profile_y __attribute__((unused)) = [&](const Profile& handle) {");
+  printf("return vba.profiles.in[handle][vertexIdx.y];");
+  printf("};");
+
+  printf("const auto value_profile_z __attribute__((unused)) = [&](const Profile& handle) {");
+  printf("return vba.profiles.in[handle][vertexIdx.z];");
+  printf("};");
+
+  printf("const auto value_profile_xy __attribute__((unused)) = [&](const Profile& handle) {");
+  printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mx)*vertexIdx.y];");
+  printf("};");
+
+  printf("const auto value_profile_xz __attribute__((unused)) = [&](const Profile& handle) {");
+  printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mx)*vertexIdx.z];");
+  printf("};");
+
+  printf("const auto value_profile_yx __attribute__((unused)) = [&](const Profile& handle) {");
+  printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_my)*vertexIdx.x];");
+  printf("};");
+
+  printf("const auto value_profile_yz __attribute__((unused)) = [&](const Profile& handle) {");
+  printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_my)*vertexIdx.z];");
+  printf("};");
+
+  printf("const auto value_profile_zx __attribute__((unused)) = [&](const Profile& handle) {");
+  printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mz)*vertexIdx.x];");
+  printf("};");
+
+  printf("const auto value_profile_zy __attribute__((unused)) = [&](const Profile& handle) {");
+  printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mz)*vertexIdx.y];");
   printf("};");
 
   //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect

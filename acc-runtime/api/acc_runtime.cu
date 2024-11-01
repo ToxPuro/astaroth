@@ -31,6 +31,7 @@ typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 #include "math_utils.h"
 #include <unordered_map>
 #include <utility>
+#include <sys/stat.h>
 
 #if AC_USE_HIP
 #include <hip/hip_runtime.h> // Needed in files that include kernels
@@ -517,6 +518,7 @@ device_malloc(void** dst, const int bytes)
  #else
     ERRCHK_CUDA_ALWAYS(cudaMalloc(dst, bytes));
   #endif
+  ERRCHK_ALWAYS(dst != NULL);
 }
 void
 device_malloc(AcReal** dst, const int bytes)
@@ -1153,6 +1155,9 @@ gather_best_measurement(const autotune_measurement local_best)
 static TBConfig
 autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
 {
+
+  //TP: have to set reduce offset zero since it might not be
+  vba.reduce_offset = 0;
   // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
   //        "(%d):\n",
   //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
@@ -1288,6 +1293,9 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
 
         // Discard failed runs (attempt to clear the error to cudaSuccess)
         if (cudaGetLastError() != cudaSuccess) {
+	  //TP: reset autotune results
+          FILE* fp = fopen(autotune_csv_path,"w");
+	  fclose(fp);
           // Exit in case of unrecoverable error that needs a device reset
           ERRCHK_CUDA_KERNEL_ALWAYS();
           ERRCHK_CUDA_ALWAYS(cudaGetLastError());
@@ -1334,9 +1342,16 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
   return c;
 }
 
+static bool
+file_exists(const char* filename)
+{
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
+}
 static int3
 read_optim_tpb(const AcKernel kernel, const int3 dims)
 {
+  if(!file_exists(autotune_csv_path)) return {-1,-1,-1};
   const char* filename = autotune_csv_path;
   FILE *file = fopen ( filename, "r" );
   int3 res = {-1,-1,-1};

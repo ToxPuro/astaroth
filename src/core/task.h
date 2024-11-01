@@ -60,6 +60,20 @@ struct TraceFile;
 
 enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input, None };
 
+typedef struct
+{
+	std::vector<Field> fields;
+	std::vector<Profile> profiles;
+} RegionMemory;
+
+typedef struct
+{
+	const Field*   fields;
+	const size_t   num_fields;
+	const Profile* profiles;
+	const size_t   num_profiles;
+} RegionMemoryInputParams;
+
 struct Region {
     int3 position;
     int3 dims;
@@ -69,7 +83,7 @@ struct Region {
     int3 id;
     int tag;
 
-    std::vector<Field> fields;
+    RegionMemory memory;
 
     // facet class 0 = inner core
     // facet class 1 = face
@@ -92,10 +106,10 @@ struct Region {
     static bool is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy);
     static bool is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary);
 
-    Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields);
-    Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t num_fields);
-    Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_);
-    Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_, RegionFamily family_);
+    Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputParams);
+    Region(RegionFamily family_, int3 id_, int3 nn, const RegionMemoryInputParams);
+    Region(int3 position_, int3 dims_, int tag_, const RegionMemory mem_);
+    Region(int3 position_, int3 dims_, int tag_, const RegionMemory mem_, RegionFamily family_);
 
     Region translate(int3 translation);
     bool overlaps(const Region* other) const;
@@ -304,6 +318,17 @@ typedef class BoundaryConditionTask : public Task {
     void advance(const TraceFile* trace_file);
     bool test();
 } BoundaryConditionTask;
+
+enum class ReduceState { Waiting = Task::wait_state, Running };
+typedef class ReduceTask : public Task {
+  public:
+    ReduceTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
+                std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    void reduce();
+    void advance(const TraceFile* trace_file);
+    bool test();
+} ReduceTask;
+
 
 
 

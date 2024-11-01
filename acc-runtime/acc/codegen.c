@@ -543,7 +543,18 @@ symboltable_reset(void)
   symbol_table[vertex_index].tqualifiers.size = 0;
   add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL,  intern("globalGridN"));     // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_base"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_x"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_y"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_z"));  // TODO RECHECK
+
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_xy"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_xz"));  // TODO RECHECK
+
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_yx"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_yz"));  // TODO RECHECK
+
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_zx"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_zy"));  // TODO RECHECK
 					      	 //
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_min_real"));  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_max_real"));  // TODO RECHECK
@@ -4533,7 +4544,7 @@ gen_field_info(FILE* fp)
   for(size_t i=0;i<num_of_fields;++i)
 	  fprintf(fp,"\"%s\",",field_names.data[i]);
   fprintf(fp,"};\n");
-  fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
+  fprintf(fp, "static const char** vtxbuf_names __attribute__((unused)) = field_names;\n");
   fclose(fp);
 
   fp = fopen("get_vtxbufs_funcs.h","w");
@@ -6087,17 +6098,22 @@ is_field_expr(const char* expr)
 {
 	return expr && (expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
 }
+bool
+is_value_applicable_type(const char* expr)
+{
+	return is_field_expr(expr) || is_subtype(PROFILE_STR,expr);
+}
 
 void
 transform_field_unary_ops(ASTNode* node)
 {
 	TRAVERSE_PREAMBLE(transform_field_unary_ops);
 	if(!node_is_unary_expr(node)) return;
-	const char* base_expr = get_expr_type(node->rhs);
+	const char* base_type= get_expr_type(node->rhs);
 	const char* unary_op = get_node_by_token(UNARY_OP,node->lhs)->buffer;
 	if(strcmps(unary_op,PLUS_STR,MINUS_STR)) return;
-	if(!base_expr) return;
-	if(!is_field_expr(base_expr)) return;
+	if(!base_type) return;
+	if(!is_value_applicable_type(base_type)) return;
 
 	ASTNode*  func_call = create_func_call(VALUE_STR,node->rhs);
 	ASTNode*  unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
@@ -6119,14 +6135,14 @@ transform_field_binary_ops(ASTNode* node)
         if(strcmps(op,PLUS_STR,MINUS_STR,DIV_STR,MULT_STR)) return;
 
 
-	if(is_field_expr(lhs_expr))
+	if(is_value_applicable_type(lhs_expr))
 	{
 		ASTNode* func_call = create_func_call(VALUE_STR,node->lhs);
 		ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
 		ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
 		node->lhs = expression;
 	}
-	if(is_field_expr(rhs_expr))
+	if(is_value_applicable_type(rhs_expr))
 	{
 
 		ASTNode* func_call = create_func_call(VALUE_STR,node->rhs->rhs);

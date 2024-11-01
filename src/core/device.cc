@@ -427,13 +427,13 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Reductions
     const int3 max_dims          = acGetLocalMM(device->local_config);
-    const size_t scratchpad_size = acKernelReduceGetMinimumScratchpadSize(max_dims);
+    const size_t scratchpad_size = acVertexBufferSize(device->local_config);
     device->vba.scratchpad_size = scratchpad_size;
     const int reduce_tpb_size = 128;
 
     {
 	//TP: this is dangerous since it is not always true for DSL reductions but for now keep it
-    	const size_t scratchpad_size_bytes = acKernelReduceGetMinimumScratchpadSize(max_dims)*sizeof(AcReal);
+    	const size_t scratchpad_size_bytes = scratchpad_size*sizeof(AcReal);
     	for(int i = 0; i < NUM_REAL_SCRATCHPADS; ++i) {
     	    for(int j = 0; j < 2; ++j)
     	    {
@@ -443,7 +443,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 		    );
     	    	if(j == 0)
     	    		acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads_real[i][j], scratchpad_size,
-				      i < NUM_REAL_OUTPUTS ? scratchpad_size_bytes : acVertexBufferSizeBytes(device->local_config)
+				      i < NUM_REAL_OUTPUTS ? scratchpad_size : acVertexBufferSize(device->local_config)
 				     );
     	    	else
     	    		acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads_real[i][j], (scratchpad_size+reduce_tpb_size-1)/reduce_tpb_size,0);
@@ -1655,52 +1655,6 @@ get_size_from_dim(const int dim, const AcMeshDims dims)
         		    dims.m1.z;
         return as_size_t(size);
 }
-AcShape
-get_transpose_buffer_shape(const AcMeshOrder order, const AcMeshDims dims)
-{
-	const int first_dim  = order % N_DIMS;
-	const int second_dim = (order/N_DIMS) % N_DIMS;
-	const int third_dim  = ((order/N_DIMS)/N_DIMS)  % N_DIMS;
-	return (AcShape){
-		get_size_from_dim(first_dim,dims),
-		get_size_from_dim(second_dim,dims),
-		get_size_from_dim(third_dim,dims),
-		1
-	};
-}
-AcShape
-get_reduction_shape(const AcProfileType type, const AcMeshDims dims)
-{
-	const AcShape order_size = get_transpose_buffer_shape(
-			get_mesh_order_for_prof(type),
-			dims
-			);
-	if(type & ONE_DIMENSIONAL_PROFILE)
-	{
-		return
-		{
-			order_size.x - 2*NGHOST,
-			order_size.y - 2*NGHOST,
-			order_size.z,
-			order_size.w
-		};
-	}
-	else if(type & TWO_DIMENSIONAL_PROFILE)
-		return
-		{
-			order_size.x - 2*NGHOST,
-			order_size.y,
-			order_size.z,
-			order_size.w
-		};
-	return order_size;
-}
-AcBuffer
-get_transpose_buffer(const AcMeshOrder order, const AcMeshDims dims)
-{
-    const AcShape transpose_buffer_shape = get_transpose_buffer_shape(order,dims);
-    return  acBufferCreate(transpose_buffer_shape, true);
-}
 AcBuffer
 acDeviceTransposeVertexBuffer(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
 {
@@ -1710,7 +1664,7 @@ AcBuffer
 acDeviceTransposeBase(const Device device, const Stream stream, const AcMeshOrder order, const AcReal* src)
 {
     const AcMeshDims dims = acGetMeshDims(device->local_config);
-    AcBuffer res = get_transpose_buffer(order,dims);
+    AcBuffer res = acBufferCreate(acGetTransposeBufferShape(order,dims),true);
     acTranspose(order,src,res.data, dims.m1, device->streams[stream]);
     return res;
 }
@@ -1718,42 +1672,11 @@ AcResult
 acDeviceReduceAverages(const Device device, const Stream stream, const Profile prof)
 {
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
-    const AcProfileType type = prof_types[prof];
-    const AcMeshDims dims = acGetMeshDims(device->local_config);
-    const AcShape buffer_shape = get_reduction_shape(type,dims);
-    AcBuffer gpu_transpose_buffer = acDeviceTranspose(device,stream,get_mesh_order_for_prof(type), device->vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)][0]);
-
-
-    AcBuffer buffer          = acBufferCreate(buffer_shape, true);
-
-    // Indices and shapes
-    const AcIndex in_offset = 
-    {
-	    .x = NGHOST,
-	    .y = NGHOST,
-	    .z = 0,
-	    .w = 0,
-    };
-    const AcShape in_shape    = gpu_transpose_buffer.shape;
-    const AcShape block_shape = gpu_transpose_buffer.shape;
-    // Remove ghost zones
-    const AcIndex buffer_offset = {
-        .x = 0,
-        .y = 0,
-        .z = 0,
-        .w = 0,
-    };
-    acReindex(device->streams[stream],                        //
-              gpu_transpose_buffer.data, in_offset, in_shape, //
-              buffer.data, buffer_offset, buffer_shape, block_shape);
-
-    const size_t num_segments = (type & ONE_DIMENSIONAL_PROFILE) ? buffer_shape.z*buffer_shape.w
-	                                                         : buffer_shape.y*buffer_shape.z*buffer_shape.w;
-    acSegmentedReduce(device->streams[stream], buffer.data, buffer.count, num_segments, device->vba.profiles.in[prof]);
-
-    acBufferDestroy(&buffer);
-    acBufferDestroy(&gpu_transpose_buffer);
-    return AC_SUCCESS;
+    return acReduceProfile(prof,acGetMeshDims(device->local_config),
+			   device->vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)][0],
+			   device->vba.profiles.in[prof],
+			   device->streams[stream]
+		    );
 }
 #endif
 

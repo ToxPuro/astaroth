@@ -195,6 +195,10 @@ typedef struct {
   	int read_fields[NUM_KERNELS][NUM_ALL_FIELDS];
   	int field_has_stencil_op[NUM_KERNELS][NUM_ALL_FIELDS];
   	int written_fields[NUM_KERNELS][NUM_ALL_FIELDS];
+	int read_profiles[NUM_KERNELS][NUM_PROFILES];
+	int reduced_profiles[NUM_KERNELS][NUM_PROFILES];
+	int written_profiles[NUM_KERNELS][NUM_PROFILES];
+
   } KernelAnalysisInfo;
 
   typedef struct {
@@ -481,6 +485,29 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   get_array_info(const P array)
   {
 #include "get_array_info.h"
+  }
+
+  static UNUSED const char* 
+  get_name(const AcRealOutputParam& param)
+  {
+          return real_output_names[param];
+  }
+  static UNUSED const char* 
+  get_name(const AcIntOutputParam& param)
+  {
+          return int_output_names[param];
+  }
+  
+  static UNUSED const char* 
+  get_name(const Profile& param)
+  {
+          return profile_names[param];
+  }
+
+  static UNUSED const char* 
+  get_name(const Field& param)
+  {
+          return field_names[param];
   }
 
   template <typename P>

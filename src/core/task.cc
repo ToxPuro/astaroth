@@ -80,36 +80,47 @@ ptr_copy(const T* src, const int n)
 }
 
 AcTaskDefinition
-acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out)
+acCompute(const AcKernel kernel, 
+		Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,
+		Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out
+		)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
     task_def.kernel_enum         = kernel;
+
     task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
-    task_def.load_kernel_params_func = new LoadKernelParamsFunc{[](ParamLoadingInfo){;}};
 
-    for(size_t i = 0; i < task_def.num_fields_in; ++i)
-	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
-    for(size_t i = 0; i < task_def.num_fields_out; ++i)
-	    ERRCHK_ALWAYS(task_def.fields_out[i] <= NUM_VTXBUF_HANDLES);
+    task_def.profiles_in      = ptr_copy(profiles_in,num_profiles_in);
+    task_def.num_profiles_in  = num_profiles_in;
+    task_def.profiles_out     = ptr_copy(profiles_out,num_profiles_out);
+    task_def.num_profiles_out = num_profiles_out;
+
+    task_def.load_kernel_params_func = new LoadKernelParamsFunc{[](ParamLoadingInfo){;}};
     return task_def;
 }
 
 AcTaskDefinition
 acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out, std::function<void(ParamLoadingInfo)> load_func)
+          const size_t num_fields_out, Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out,std::function<void(ParamLoadingInfo)> load_func)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
     task_def.kernel_enum         = kernel;
+
     task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
+
+    task_def.profiles_in      = ptr_copy(profiles_in,num_profiles_in);
+    task_def.num_profiles_in  = num_profiles_in;
+    task_def.profiles_out     = ptr_copy(profiles_out,num_profiles_out);
+    task_def.num_profiles_out = num_profiles_out;
+
     task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
 
     for(size_t i = 0; i < task_def.num_fields_in; ++i)
@@ -203,23 +214,27 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     return task_def;
 }
 
-Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields)
+Region::Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputParams mem_)
     : family(family_), tag(tag_) 
 {
     if(family == RegionFamily::Exchange_output)
-    	for(size_t i = 0; i < num_fields; ++i)
-	    ERRCHK_ALWAYS(fields_[i] <= NUM_VTXBUF_HANDLES);
-    fields = {};
+    	for(size_t i = 0; i < mem_.num_fields; ++i)
+	    ERRCHK_ALWAYS(mem_.fields[i] <= NUM_VTXBUF_HANDLES);
+
+    memory.profiles = {};
+    for(size_t i = 0; i < mem_.num_profiles; ++i)
+	    memory.profiles.push_back((Profile)i);
+    memory.fields = {};
     switch (family) {
     	case RegionFamily::Exchange_output: //Fallthrough
     	case RegionFamily::Exchange_input : {
-    	    for(size_t i = 0; i < num_fields; ++i)
-	    	if(vtxbuf_is_communicated[fields_[i]]) fields.push_back(fields_[i]);
+    	    for(size_t i = 0; i < mem_.num_fields; ++i)
+	    	if(vtxbuf_is_communicated[mem_.fields[i]]) memory.fields.push_back(mem_.fields[i]);
 	    break;
 	}
 	default:
-	    for(size_t i = 0; i < num_fields; ++i)
-		fields.push_back(fields_[i]);
+	    for(size_t i = 0; i < mem_.num_fields; ++i)
+		memory.fields.push_back(mem_.fields[i]);
 	break;
       }
       id = tag_to_id(tag);
@@ -279,25 +294,25 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
       volume = dims.x * dims.y * dims.z;
       }
       
-      Region::Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t num_fields)
-      : Region{family_, id_to_tag(id_), nn, fields_, num_fields}
+      Region::Region(RegionFamily family_, int3 id_, int3 nn, const RegionMemoryInputParams mem_)
+      : Region{family_, id_to_tag(id_), nn, mem_}
       {
       ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
       }
       
-      Region::Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_, RegionFamily family_)
+      Region::Region(int3 position_, int3 dims_, int tag_, const RegionMemory mem_, RegionFamily family_)
       : position(position_), dims(dims_), family(family_), tag(tag_)
       {
-      fields = {};
+      std::vector<Field> fields{};
       switch (family) {
       case RegionFamily::Exchange_output: {} //Fallthrough
       case RegionFamily::Exchange_input : {
-      	for(auto& field : fields_)
+      	for(auto& field : mem_.fields)
       	    	if(vtxbuf_is_communicated[field]) fields.push_back(field);
       	break;
       }
       default:
-      	for(auto& field : fields_)
+      	for(auto& field : mem_.fields)
       		fields.push_back(field);
       	break;
       
@@ -305,23 +320,32 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
       id          = tag_to_id(tag);
       facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
       volume = dims.x*dims.y*dims.z;
-}
+      memory.fields = fields;
+      memory.profiles = mem_.profiles;
+      }
 
-Region::Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_)
-: Region{position_, dims_, tag_, fields_, RegionFamily::None}{}
+Region::Region(int3 position_, int3 dims_, int tag_, const RegionMemory mem_)
+: Region{position_, dims_, tag_, mem_, RegionFamily::None}{}
 
 
 
 Region
 Region::translate(int3 translation)
 {
-return Region(this->position + translation, this->dims, this->tag, this->fields);
+return Region(this->position + translation, this->dims, this->tag, this->memory);
 }
 
 bool
 Region::overlaps(const Region* other) const
 {
-	return this->geometry_overlaps(other) && this->fields_overlap(other);
+	const bool vtxbuffers_overlap = this->geometry_overlaps(other) && this->fields_overlap(other);
+
+	bool profiles_overlap = false;
+	for(auto profile_1 : this->memory.profiles)
+		for(auto profile_2 : other->memory.profiles)
+			profiles_overlap |= profile_1 == profile_2;
+
+	return vtxbuffers_overlap || profiles_overlap;
 }
 bool
 Region::geometry_overlaps(const Region* other) const
@@ -346,8 +370,8 @@ Task::swaps_overlap(const Task* other)
 bool
 Region::fields_overlap(const Region* other) const
 {
-    for(auto field_1 : this->fields)
-	    for(auto field_2 : other->fields)
+    for(auto field_1 : this->memory.fields)
+	    for(auto field_2 : other->memory.fields)
 		    if(field_1 == field_2) return true;
     return false;
 }
@@ -595,8 +619,8 @@ Task::poll_stream()
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Compute_input, region_tag, nn, op.fields_in, op.num_fields_in),
-           Region(RegionFamily::Compute_output, region_tag, nn, op.fields_out, op.num_fields_out),
+           Region(RegionFamily::Compute_input, region_tag, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in}),
+           Region(RegionFamily::Compute_output, region_tag, nn,{op.fields_out, op.num_fields_out,op.profiles_out,op.num_profiles_out}),
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -617,6 +641,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
 }
+
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, Region output_region_, Device device_,std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
            input_region_,
@@ -779,10 +804,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
                                    AcGridInfo grid_info, uint3_64 decomp, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, halo_region_tag, grid_info.nn, op.fields_in,
-                  op.num_fields_in),
-           Region(RegionFamily::Exchange_output, halo_region_tag, grid_info.nn, op.fields_out,
-                  op.num_fields_out),
+           Region(RegionFamily::Exchange_input, halo_region_tag, grid_info.nn,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in }),
+           Region(RegionFamily::Exchange_output, halo_region_tag, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_out,op.num_profiles_out }),
            op, device_, swap_offset_),
       recv_buffers(output_region.dims, op.num_fields_in),
       send_buffers(input_region.dims, op.num_fields_out)
@@ -851,14 +874,14 @@ HaloExchangeTask::pack()
 {
     auto msg = send_buffers.get_fresh_buffer();
     acKernelPackData(stream, vba, input_region.position, input_region.dims,
-                             msg->data, input_region.fields.data(),
-                             input_region.fields.size());
+                             msg->data, input_region.memory.fields.data(),
+                             input_region.memory.fields.size());
 }
 
 void
 HaloExchangeTask::move()
 {
-	acKernelMoveData(stream, input_region.position, output_region.position, input_region.dims, output_region.dims, vba,input_region.fields.data(), input_region.fields.size());
+	acKernelMoveData(stream, input_region.position, output_region.position, input_region.dims, output_region.dims, vba,input_region.memory.fields.data(), input_region.memory.fields.size());
 }
 
 void
@@ -870,8 +893,8 @@ HaloExchangeTask::unpack()
     msg->unpin(device, stream);
 #endif
     acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
-                               vba, output_region.fields.data(),
-		    		output_region.fields.size());
+                               vba, output_region.memory.fields.data(),
+		    		output_region.memory.fields.size());
 }
 
 void
@@ -1140,14 +1163,83 @@ SyncTask::advance(const TraceFile* trace_file)
     acGridSynchronizeStream(STREAM_ALL);
 }
 
+ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
+                         std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+    : Task(order_,
+           Region(RegionFamily::Compute_input, region_tag, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in}),
+           Region(RegionFamily::Compute_output, region_tag, nn,{op.fields_out, op.num_fields_out,op.profiles_out,op.num_profiles_out}),
+           op, device_, swap_offset_)
+{
+    // stream = device->streams[STREAM_DEFAULT + region_tag];
+    {
+        cudaSetDevice(device->id);
+        int low_prio, high_prio;
+        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+    }
+    ERRCHK_ALWAYS(op.num_profiles_in  != 0);
+    ERRCHK_ALWAYS(op.num_profiles_out != 0);
+    ERRCHK_ALWAYS(op.num_profiles_out == op.num_profiles_in);
+
+    syncVBA();
+
+    name   = "Reduce " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
+           std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
+    task_type = TASKTYPE_REDUCE;
+}
+bool
+ReduceTask::test()
+{
+    switch (static_cast<ReduceState>(state)) {
+    case ReduceState::Running: {
+        return poll_stream();
+    }
+    default: {
+        ERROR("ReduceTask in an invalid state.");
+        return false;
+    }
+    }
+}
+
+void
+ReduceTask::reduce()
+{
+	if constexpr (NUM_PROFILES == 0) return;
+	for(const auto& prof : input_region.memory.profiles)
+	{
+	    acReduceProfile(prof,acGetMeshDims(device->local_config),
+				   device->vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)][0],
+				   device->vba.profiles.in[prof],
+				   stream
+			    );
+	}
+}
+void
+ReduceTask::advance(const TraceFile* trace_file)
+{
+    switch (static_cast<ReduceState>(state)) {
+    case ReduceState::Waiting:
+        trace_file->trace(this, "waiting", "running");
+        reduce();
+        state = static_cast<int>(ReduceState::Running);
+        break;
+    case ReduceState::Running:
+        trace_file->trace(this, "running", "waiting");
+        state = static_cast<int>(ReduceState::Waiting);
+        break;
+    default:
+        ERROR("ReduceTask in an invalid state.");
+    }
+}
+
 
 
 BoundaryConditionTask::BoundaryConditionTask(
     AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, int3 nn, Device device_,
     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
-           Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
+           Region(RegionFamily::Exchange_input, region_tag, nn,  {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in }),
+           Region(RegionFamily::Exchange_output, region_tag, nn, {op.fields_out, op.num_fields_out,op.profiles_out, op.num_profiles_out}),
            op, device_, swap_offset_),
        boundary_normal(boundary_normal_),
        fieldwise(op.fieldwise)
@@ -1192,9 +1284,9 @@ BoundaryConditionTask::BoundaryConditionTask(
     };
 
     // TODO: input_region is now set twice, overwritten here
-    auto input_fields = input_region.fields;
+    auto input_fields = input_region.memory.fields;
     input_region = Region(output_region.translate(translation));
-    input_region.fields = input_fields;
+    input_region.memory.fields = input_fields;
 
     if(boundary_normal.x == -1 && x_info.larger_input)
     	input_region.position.x -= NGHOST;
@@ -1245,7 +1337,7 @@ BoundaryConditionTask::populate_boundary_region()
      const int3 nn = acGetLocalNN(device->local_config);
      if(fieldwise)
      {
-     	for (auto variable : output_region.fields) {
+     	for (auto variable : output_region.memory.fields) {
      		params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
      		const int3 region_id = output_region.id;
      		const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + nn.x

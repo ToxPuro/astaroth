@@ -860,6 +860,7 @@ typedef enum AcTaskType {
     TASKTYPE_HALOEXCHANGE,
     TASKTYPE_BOUNDCOND,
     TASKTYPE_SYNC,
+    TASKTYPE_REDUCE,
 } AcTaskType;
 
 typedef enum AcBoundary {
@@ -908,6 +909,12 @@ typedef struct AcTaskDefinition {
     Field* fields_out;
     size_t num_fields_out;
 
+    Profile* profiles_in;
+    size_t num_profiles_in;
+
+    Profile* profiles_out;
+    size_t num_profiles_out;
+
     AcRealParam* parameters;
     size_t num_parameters;
     LoadKernelParamsFunc* load_kernel_params_func;
@@ -920,16 +927,16 @@ typedef struct AcTaskGraph AcTaskGraph;
 
 #if __cplusplus
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out, std::function<void(ParamLoadingInfo step_info)> loader));
+                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out, std::function<void(ParamLoadingInfo step_info)> loader));
 #else
 /** */
 FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out, void (*load_func)(ParamLoadingInfo step_info)));
+                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out, void (*load_func)(ParamLoadingInfo step_info)));
 #endif
 
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acCompute,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out));
+                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out));
 
 #if __cplusplus
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
@@ -1972,6 +1979,15 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 
 AcBuffer acBufferCreate(const AcShape shape, const bool on_device);
 
+AcMeshOrder
+acGetMeshOrderForProfile(const AcProfileType type);
+AcShape
+acGetTransposeBufferShape(const AcMeshOrder order, const AcMeshDims dims);
+AcShape
+acGetReductionShape(const AcProfileType type, const AcMeshDims dims);
+AcResult
+acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal* dst, const cudaStream_t stream);
+
 void acBufferDestroy(AcBuffer* buffer);
 
 AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
@@ -2011,12 +2027,12 @@ template <size_t num_fields>
 static AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields)[num_fields])
 {
-    return BASE_FUNC_NAME(acCompute)(kernel, fields, num_fields, fields, num_fields);
+    return BASE_FUNC_NAME(acCompute)(kernel, fields, num_fields, fields, num_fields, NULL, 0, NULL, 0);
 }
 static __attribute__((unused)) AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields)
 {
-	return BASE_FUNC_NAME(acCompute)(kernel, fields.data(), fields.size(), fields.data(), fields.size());
+	return BASE_FUNC_NAME(acCompute)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), NULL, 0, NULL, 0);
 }
 
 /** */
@@ -2024,7 +2040,7 @@ template <size_t num_fields>
 static AcTaskDefinition
 acComputeWithParams(AcKernel kernel, Field (&fields)[num_fields], std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields, num_fields, fields, num_fields, loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields, num_fields, fields, num_fields, NULL, 0, NULL, 0, loader);
 }
 
 template <size_t num_fields_in, size_t num_fields_out>
@@ -2059,25 +2075,31 @@ acComputeWithParams(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&
 static inline AcTaskDefinition
 acComputeWithParams(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0 ,loader);
 }
 
 static inline AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0, loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::vector<Profile> profile_in, std::vector<Profile> profile_out, std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), profile_in.data(), profile_in.size(), profile_out.data(), profile_out.size(), loader);
 }
 
 static inline AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out)
 {
-    return BASE_FUNC_NAME(acCompute)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size());
+    return BASE_FUNC_NAME(acCompute)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0);
 }
 
 static inline AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), NULL, 0 , NULL, 0, loader);
 }
 
 
@@ -2085,7 +2107,7 @@ template <size_t num_fields_in, size_t num_fields_out>
 static AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in, num_fields_in, fields_out, num_fields_out, loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in, num_fields_in, fields_out, num_fields_out, NULL, 0, NULL, 0, loader);
 }
 
 /** */

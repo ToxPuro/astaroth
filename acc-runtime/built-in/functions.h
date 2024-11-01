@@ -16,10 +16,50 @@ value(Field s)
 {
 	return value_stencil(s)
 }
-value(Profile profile)
+value(Profile<X> profile)
 {
-	return value_profile(profile)
+	return value_profile_x(profile)
 }
+value(Profile<Y> profile)
+{
+	return value_profile_y(profile)
+}
+
+value(Profile<Z> profile)
+{
+	return value_profile_z(profile)
+}
+
+value(Profile<XY> profile)
+{
+	return value_profile_xy(profile)
+}
+
+value(Profile<XZ> profile)
+{
+	return value_profile_xz(profile)
+}
+
+value(Profile<YX> profile)
+{
+	return value_profile_yx(profile)
+}
+
+value(Profile<YZ> profile)
+{
+	return value_profile_yz(profile)
+}
+
+value(Profile<ZX> profile)
+{
+	return value_profile_zx(profile)
+}
+
+value(Profile<ZY> profile)
+{
+	return value_profile_zy(profile)
+}
+
 
 elemental previous(Field s)
 {

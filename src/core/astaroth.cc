@@ -683,3 +683,119 @@ acBufferCopy(const AcBuffer in, const bool on_device)
     acBufferMigrate(in,&cpu_buffer);
     return cpu_buffer;
 }
+
+AcMeshOrder
+acGetMeshOrderForProfile(const AcProfileType type)
+{
+    	switch(type)
+    	{
+    	        case(PROFILE_X):
+    	    	    return ZYX;
+    	        case(PROFILE_Y):
+		    return XZY;
+    	        case(PROFILE_Z):
+			return XYZ;
+    	        case(PROFILE_XY):
+			return ZXY;
+    	        case(PROFILE_XZ):
+			return YXZ;
+    	        case(PROFILE_YX):
+			return ZYX;
+    	        case(PROFILE_YZ):
+			return XYZ;
+    	        case(PROFILE_ZX):
+			return YZX;
+    	        case(PROFILE_ZY):
+			return XZY;
+    	}
+	return XYZ;
+};
+
+static size_t
+get_size_from_dim(const int dim, const AcMeshDims dims)
+{
+    	const auto size   = dim == X_ORDER_INT ? dims.m1.x :
+        		    dim == Y_ORDER_INT ? dims.m1.y :
+        		    dims.m1.z;
+        return as_size_t(size);
+}
+AcShape
+acGetTransposeBufferShape(const AcMeshOrder order, const AcMeshDims dims)
+{
+	const int first_dim  = order % N_DIMS;
+	const int second_dim = (order/N_DIMS) % N_DIMS;
+	const int third_dim  = ((order/N_DIMS)/N_DIMS)  % N_DIMS;
+	return (AcShape){
+		get_size_from_dim(first_dim,dims),
+		get_size_from_dim(second_dim,dims),
+		get_size_from_dim(third_dim,dims),
+		1
+	};
+}
+AcShape
+acGetReductionShape(const AcProfileType type, const AcMeshDims dims)
+{
+	const AcShape order_size = acGetTransposeBufferShape(
+			acGetMeshOrderForProfile(type),
+			dims
+			);
+	if(type & ONE_DIMENSIONAL_PROFILE)
+	{
+		return
+		{
+			order_size.x - 2*NGHOST,
+			order_size.y - 2*NGHOST,
+			order_size.z,
+			order_size.w
+		};
+	}
+	else if(type & TWO_DIMENSIONAL_PROFILE)
+		return
+		{
+			order_size.x - 2*NGHOST,
+			order_size.y,
+			order_size.z,
+			order_size.w
+		};
+	return order_size;
+}
+AcResult
+acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal* dst, const cudaStream_t stream)
+{
+    if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
+    const AcProfileType type = prof_types[prof];
+    const AcShape buffer_shape = acGetReductionShape(type,dims);
+    const AcMeshOrder order    = acGetMeshOrderForProfile(type);
+    AcBuffer gpu_transpose_buffer = acBufferCreate(acGetTransposeBufferShape(order,dims),true);
+    acTranspose(acGetMeshOrderForProfile(type),src,gpu_transpose_buffer.data, dims.m1, stream);
+    AcBuffer buffer          = acBufferCreate(buffer_shape, true);
+    // Indices and shapes
+    const AcIndex in_offset = 
+    {
+	    .x = NGHOST,
+	    .y = NGHOST,
+	    .z = 0,
+	    .w = 0,
+    };
+    const AcShape in_shape    = gpu_transpose_buffer.shape;
+    const AcShape block_shape = gpu_transpose_buffer.shape;
+    // Remove ghost zones
+    const AcIndex buffer_offset = {
+        .x = 0,
+        .y = 0,
+        .z = 0,
+        .w = 0,
+    };
+    acReindex(stream,                        //
+              gpu_transpose_buffer.data, in_offset, in_shape, //
+              buffer.data, buffer_offset, buffer_shape, block_shape);
+
+    const size_t num_segments = (type & ONE_DIMENSIONAL_PROFILE) ? buffer_shape.z*buffer_shape.w
+	                                                         : buffer_shape.y*buffer_shape.z*buffer_shape.w;
+    acSegmentedReduce(stream, buffer.data, buffer.count, num_segments, dst);
+
+    acBufferDestroy(&buffer);
+    acBufferDestroy(&gpu_transpose_buffer);
+    return AC_SUCCESS;
+
+}
