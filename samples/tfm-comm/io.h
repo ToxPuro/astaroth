@@ -11,6 +11,9 @@
 //
 // MPI IO hints: pg. 648 in MPI 4.1 specification
 
+// Note: the same parent_comm must be used throughout:
+// this is important especially for the barrier: required
+// to be sure that all processes have written their result out to disk
 template <typename T> class IOTask {
 
   private:
@@ -163,5 +166,6 @@ template <typename T> class IOTask {
         ERRCHK_MPI(file == MPI_FILE_NULL);
     };
 
-    void barrier() { WARNING_DESC("TODO"); }
+    /** Ensures that all processes have written their segment to disk. */
+    void barrier(const MPI_Comm cart_comm) { MPI_Barrier(cart_comm); }
 };

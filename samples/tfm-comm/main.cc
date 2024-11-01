@@ -82,7 +82,7 @@ main()
         // iotask.launch_write(cart_comm, "test.dat", mesh.buffer.data);
         // iotask.wait_write();
         iotask.read(cart_comm, "test.dat", mesh.buffer.data);
-        iotask.barrier();
+        iotask.barrier(cart_comm);
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         mesh.display();

@@ -133,7 +133,10 @@ template <typename T> Buffer<T>::~Buffer()
     }
 #endif
     else {
-        WARNING_DESC("Invalid type");
+        if (count != 0) {
+            WARNING_DESC("Invalid type and nonzero count");
+            errchk_print_stacktrace();
+        }
     }
     data = nullptr;
 }
