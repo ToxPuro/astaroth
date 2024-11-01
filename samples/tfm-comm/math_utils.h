@@ -19,34 +19,4 @@ within_box(const StaticArray<T, N>& coords, const StaticArray<T, N>& box_dims,
     return true;
 }
 
-template <typename T>
-bool
-equals(const size_t count, const T* a, const T* b)
-{
-    for (size_t i = 0; i < count; ++i)
-        if (a[i] != b[i])
-            return false;
-    return true;
-}
-
-template <typename T>
-bool
-all_less_than(const size_t count, const T* a, const T* b)
-{
-    for (size_t i = 0; i < count; ++i)
-        if (a[i] >= b[i])
-            return false;
-    return true;
-}
-
-template <typename T>
-bool
-all_less_or_equal_than(const size_t count, const T* a, const T* b)
-{
-    for (size_t i = 0; i < count; ++i)
-        if (a[i] > b[i])
-            return false;
-    return true;
-}
-
 void test_math_utils(void);

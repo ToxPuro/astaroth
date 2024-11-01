@@ -29,17 +29,15 @@ template <typename T> struct Buffer {
     BufferType type;
     T* data;
 
+    // Constructors
     Buffer(const size_t in_count, const BufferType in_type = BUFFER_HOST);
+    Buffer(const Buffer&)            = delete;  // Copy
+    Buffer& operator=(const Buffer&) = delete;  // Copy assignment
+    Buffer(Buffer&&) noexcept;                  // Move
+    Buffer& operator=(const Buffer&&) = delete; // Move assignment
     ~Buffer();
-    Buffer(Buffer&& other) noexcept; // Move constructor
 
-    // Delete all other types of constructors
-    Buffer(const Buffer&)            = delete; // Copy constructor
-    Buffer& operator=(const Buffer&) = delete; // Copy assignment operator
-    // Buffer(Buffer&&)                 = delete; // Move constructor
-    Buffer& operator=(Buffer&&) = delete; // Move assignment operator
-
-    // Other functions
+    // Member functions
     void fill(const T& value);
     void fill_arange(const T& min, const T& max);
     void migrate(Buffer<T>& out) const;

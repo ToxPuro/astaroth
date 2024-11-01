@@ -82,16 +82,17 @@ main()
         // iotask.launch_write(cart_comm, "test.dat", mesh.buffer.data);
         // iotask.wait_write();
         iotask.read(cart_comm, "test.dat", mesh.buffer.data);
+        iotask.barrier();
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         mesh.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
-        ERRCHK_MPI_API(MPI_Finalize());
     }
     catch (std::exception& e) {
         ERRCHK_MPI_EXPR_DESC(false, "Exception caught");
     }
+    ERRCHK_MPI_API(MPI_Finalize());
     return EXIT_SUCCESS;
 }

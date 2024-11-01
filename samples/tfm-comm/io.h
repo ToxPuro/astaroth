@@ -21,7 +21,7 @@ template <typename T> class IOTask {
     Shape mesh_subdims;
     Index mesh_offset;
 
-    std::unique_ptr<Buffer<T>> staging_buffer; // Buffer used for IO
+    Buffer<T> staging_buffer; // Buffer used for IO
 
     MPI_Request req;
     MPI_File file;
@@ -34,7 +34,7 @@ template <typename T> class IOTask {
           mesh_dims(in_mesh_dims),
           mesh_subdims(in_mesh_subdims),
           mesh_offset(in_mesh_offset),
-          staging_buffer(std::make_unique<Buffer<T>>(prod(in_mesh_dims))),
+          staging_buffer(prod(in_mesh_dims)),
           req(MPI_REQUEST_NULL),
           file(MPI_FILE_NULL) {};
 
@@ -162,4 +162,6 @@ template <typename T> class IOTask {
         ERRCHK_MPI_API(MPI_File_close(&file));
         ERRCHK_MPI(file == MPI_FILE_NULL);
     };
+
+    void barrier() { WARNING_DESC("TODO"); }
 };

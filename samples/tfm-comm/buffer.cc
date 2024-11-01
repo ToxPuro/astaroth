@@ -10,5 +10,5 @@ test_buffer()
     a.fill_arange(0, count);
     Buffer<double> b(count);
     a.migrate(b);
-    ERRCHK(equals(a.count, a.data, b.data));
+    ERRCHK(std::equal(a.data, a.data + count, b.data));
 }
