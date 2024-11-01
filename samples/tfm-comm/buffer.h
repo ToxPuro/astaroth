@@ -30,11 +30,13 @@ template <typename T> struct Buffer {
     T* data;
 
     // Constructors
+    Buffer()
+        : count(0), type(BUFFER_NULL), data(nullptr) {};
     Buffer(const size_t in_count, const BufferType in_type = BUFFER_HOST);
-    Buffer(const Buffer&)            = delete;  // Copy
-    Buffer& operator=(const Buffer&) = delete;  // Copy assignment
-    Buffer(Buffer&&) noexcept;                  // Move
-    Buffer& operator=(const Buffer&&) = delete; // Move assignment
+    Buffer(const Buffer&)            = delete; // Copy
+    Buffer& operator=(const Buffer&) = delete; // Copy assignment
+    Buffer(Buffer&&) noexcept;                 // Move
+    Buffer& operator=(Buffer&&);               // Move assignment
     ~Buffer();
 
     // Member functions
@@ -89,6 +91,32 @@ Buffer<T>::Buffer(Buffer&& other) noexcept
     other.count = 0;
     other.type  = BUFFER_NULL;
     other.data  = nullptr;
+}
+
+template <typename T>
+Buffer<T>&
+Buffer<T>::operator=(Buffer&& other)
+{
+    if (this != &other) {
+        if (type == BUFFER_HOST) {
+            delete[] data;
+        }
+#if defined(DEVICE_ENABLED)
+        else if (type == BUFFER_HOST_PINNED || type == BUFFER_HOST_PINNED_WRITE_COMBINED) {
+            WARNCHK_CUDA_API(cudaFreeHost(data));
+        }
+        else if (type == BUFFER_DEVICE) {
+            WARNCHK_CUDA_API(cudaFree(data));
+        }
+#endif
+        count       = other.count;
+        type        = other.type;
+        data        = other.data;
+        other.count = 0;
+        other.type  = BUFFER_NULL;
+        other.data  = nullptr;
+    }
+    return *this;
 }
 
 template <typename T> Buffer<T>::~Buffer()

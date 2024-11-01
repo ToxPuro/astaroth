@@ -66,15 +66,15 @@ Packet<T>::Packet(Packet&& other) noexcept
       send_req(other.send_req),
       recv_req(other.recv_req)
 {
-    cart_comm = MPI_COMM_NULL;
-    // local_mm    = nullptr;
-    // local_nn    = nullptr;
-    // local_rr    = nullptr;
-    // segment     = nullptr;
-    send_buffer = nullptr;
-    recv_buffer = nullptr;
-    send_req    = MPI_REQUEST_NULL;
-    recv_req    = MPI_REQUEST_NULL;
+    other.cart_comm = MPI_COMM_NULL;
+    // other.local_mm    = nullptr;
+    // other.local_nn    = nullptr;
+    // other.local_rr    = nullptr;
+    // other.segment     = nullptr;
+    // other.send_buffer = nullptr;
+    // other.recv_buffer = nullptr;
+    other.send_req = MPI_REQUEST_NULL;
+    other.recv_req = MPI_REQUEST_NULL;
 }
 
 template <typename T> Packet<T>::~Packet()
