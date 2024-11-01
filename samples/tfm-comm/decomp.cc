@@ -82,7 +82,7 @@ decompose(const Shape& nn, uint64_t nprocs)
 }
 
 std::vector<Shape>
-decompose_hierarchical(const Shape& nn, std::vector<uint64_t> nprocs_per_layer)
+decompose_hierarchical(const Shape& nn, std::vector<uint64_t>& nprocs_per_layer)
 {
     std::vector<Shape> decompositions;
 
