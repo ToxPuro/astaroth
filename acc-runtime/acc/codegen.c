@@ -3687,7 +3687,7 @@ n_occurances(const char* str, const char test)
 	while(str[++i] != '\0') res += str[i] == test;
 	return res;
 }
-char*
+const char*
 get_array_elem_type(char* arr_type)
 {
 	if(n_occurances(arr_type,'<') == 1)
@@ -3696,13 +3696,13 @@ get_array_elem_type(char* arr_type)
 		while(arr_type[++start] != '<');
 		int end = start;
 		++start;
-		while(arr_type[++end] != ',');
+		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
 		arr_type[end] = '\0';
 		char* tmp = malloc(sizeof(char)*1000);
 		strcpy(tmp, &arr_type[start]);
-		return tmp;
+		return intern(tmp);
 	}
-	return arr_type;
+	return intern(arr_type);
 }
 const char*
 get_array_access_type(const ASTNode* node)
@@ -3719,7 +3719,7 @@ get_array_access_type(const ASTNode* node)
 		counter == 2 && base_type == MATRIX_STR ? REAL_STR :
 		base_type == MATRIX_STR ? REAL_PTR_STR:
 		strstr(base_type,MULT_STR) ? intern(remove_substring(strdup(base_type),MULT_STR)) :
-		strstr(base_type,"AcArray") ? intern(get_array_elem_type(strdup(base_type))) :
+		strstr(base_type,"AcArray") ? get_array_elem_type(strdup(base_type)) :
 		base_type == FIELD_STR  ? REAL_STR :
 		NULL;
 }
@@ -3999,7 +3999,7 @@ get_in_range_expr_type(ASTNode* node)
 	const char* base_type = get_expr_type(node->rhs);
 	const char* res = (!base_type)   ? NULL : 
 		strstr(base_type,MULT_STR) ? intern(remove_substring(strdup(base_type),MULT_STR)) :
-		strstr(base_type,"AcArray") ? intern(get_array_elem_type(strdup(base_type))) :
+		strstr(base_type,"AcArray") ? get_array_elem_type(strdup(base_type)) :
 		NULL;
 	if(!node->lhs->expr_type)
 		node->lhs->expr_type = res;
@@ -5909,7 +5909,7 @@ static bool
 compatible_types(const char* a, const char* b)
 {
 	if(is_subtype(a,b)) return true;
-	return !strcmp(a,b) 
+	const bool res = !strcmp(a,b) 
 	       || (!strcmp(a,REAL_PTR_STR) && strstr(b,"AcArray") && strstr(b,REAL_STR)) ||
 	          (!strcmp(b,REAL_PTR_STR) && strstr(a,"AcArray") && strstr(a,REAL_STR)) ||
                   (!strcmp(a,FIELD_STR) && !strcmp(b,"VertexBufferHandle"))  ||
@@ -5921,6 +5921,14 @@ compatible_types(const char* a, const char* b)
 		  || (a == REAL_PTR_STR && b == VTXBUF_PTR_STR)
 		  || (a == REAL3_PTR_STR && b == FIELD3_PTR_STR)
 		;
+	if(!res)
+	{
+		if(a == REAL_PTR_STR && get_array_elem_type(strdup(b)) == REAL_STR)
+			return true;
+		if(a == REAL3_PTR_STR && get_array_elem_type(strdup(b)) == REAL3_STR)
+			return true;
+	}
+	return res;
 }
 typedef struct 
 {
@@ -5987,13 +5995,13 @@ resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
 					possible_indexes_strict;
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		//if(!strcmp(dfunc_name,"value"))
+		//if(!strcmp(dfunc_name,"write"))
 		//{
 		//	char my_tmp[10000];
 		//	my_tmp[0] = '\0';
 		//	combine_all(node->rhs,my_tmp); 
 		//	printf("Not able to resolve: %s\n",my_tmp); 
-		//	printf("Not able to resolve: %s,%zu\n",call_info.types.data[0],possible_indexes.size); 
+		//	printf("Not able to resolve: %s,%zu\n",call_info.types.data[1],possible_indexes_conversion.size); 
 		//}
 		return res;
 	}
@@ -7146,7 +7154,6 @@ cache_func_calls(ASTNode* node)
 								cached_calls.data[i],
 								"="
 							);
-			add_no_auto(res->rhs,NULL);
 			push_to_statement_list(head,res);
 		}
 		free_str_vec(&cached_calls_expr);

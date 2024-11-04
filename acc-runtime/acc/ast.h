@@ -527,6 +527,7 @@ add_node_type(const NodeType type, ASTNode* node, const char* str_to_check)
 static inline void
 add_no_auto(ASTNode* node, const char* str_to_check)
 {
+	if(!node) return;
 	if(node->lhs)
 		add_no_auto(node->lhs,str_to_check);
 	if(node->rhs)

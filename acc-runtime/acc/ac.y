@@ -558,24 +558,26 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 
 			ASTNode* elems = build_list_node(nodes,",");
 			free_node_vec(&nodes);
+
 			//TP: create the equivalent of const Field CHEMISTRY = [CHEMISTRY_0, CHEMISTRY_1,...,CHEMISTRY_N]
-				ASTNode* type_declaration = create_type_declaration("const","VertexBufferHandle*",CONST_QL);
-				ASTNode* var_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
-				astnode_sprintf(var_identifier,"%s",field_name_str);
-				var_identifier->token = IDENTIFIER;
-				var_identifier->type = NODE_VARIABLE_ID;
-				ASTNode* arr_initializer = astnode_create(NODE_ARRAY_INITIALIZER,elems,NULL);
-				astnode_set_prefix("{",arr_initializer);
-				astnode_set_postfix("}",arr_initializer);
-				ASTNode* expression = astnode_create(NODE_UNKNOWN,arr_initializer,NULL);
-				ASTNode* assign_expression = astnode_create(NODE_UNKNOWN,expression,NULL);
-				ASTNode* assign_leaf = astnode_create(NODE_ASSIGNMENT, var_identifier,assign_expression);
-				ASTNode* assignment_list = astnode_create(NODE_UNKNOWN, assign_leaf,NULL);
-				ASTNode* var_definitions = astnode_create(NODE_ASSIGN_LIST,type_declaration,assignment_list);
-				var_definitions -> type |= NODE_NO_OUT;
-				var_definitions -> type |= NODE_DECLARATION;
-				astnode_set_postfix(";",var_definitions);
-			//TP: replace the orignal field identifier e.g. CHEMISTRY with the list of declarations CHEMISTRY_0 ... CHEMISTRY_N
+			ASTNode* type_declaration = create_type_declaration("const","VertexBufferHandle*",CONST_QL);
+			ASTNode* var_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
+			astnode_sprintf(var_identifier,"%s",field_name_str);
+			var_identifier->token = IDENTIFIER;
+			var_identifier->type = NODE_VARIABLE_ID;
+			ASTNode* arr_initializer = astnode_create(NODE_ARRAY_INITIALIZER,elems,NULL);
+			astnode_set_prefix("{",arr_initializer);
+			astnode_set_postfix("}",arr_initializer);
+			ASTNode* expression = astnode_create(NODE_UNKNOWN,arr_initializer,NULL);
+			ASTNode* assign_expression = astnode_create(NODE_UNKNOWN,expression,NULL);
+			ASTNode* assign_leaf = astnode_create(NODE_ASSIGNMENT, var_identifier,assign_expression);
+			ASTNode* assignment_list = astnode_create(NODE_UNKNOWN, assign_leaf,NULL);
+			ASTNode* var_definitions = astnode_create(NODE_ASSIGN_LIST,type_declaration,assignment_list);
+			var_definitions -> type |= NODE_NO_OUT;
+			var_definitions -> type |= NODE_DECLARATION;
+			astnode_set_postfix(";",var_definitions);
+
+			//TP: replace the orignal field identifier e.g. CHEMISTRY with the generated list of handles
 			declaration->rhs = astnode_dup(elems,NULL);
 			$$ = astnode_create(NODE_UNKNOWN,$$,var_definitions);
 		}
