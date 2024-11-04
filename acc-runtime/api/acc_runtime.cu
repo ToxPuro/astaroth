@@ -1796,6 +1796,7 @@ AcResult
 acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out)
 {
 
+  (void)d_out;
   void* d_temp_storage      = NULL;
   size_t temp_storage_bytes = 0;
   AcReal* res = NULL;
@@ -1807,19 +1808,10 @@ acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcRe
   cudaMalloc(&res, sizeof(AcReal));
   ERRCHK_ALWAYS(d_temp_storage);
 
-  cudaStreamSynchronize(
-      stream); // Note, would not be needed if allocated at initialization
-  for(int i = 0; i < 10; ++i)
-  {
-  	auto start = MPI_Wtime();
-  	cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
   	                                res, count,stream);
-
-  	cudaStreamSynchronize(
-  	    stream); // Note, would not be needed if allocated at initialization
-  	auto end = MPI_Wtime();
-  	fprintf(stderr,"CUB REDUCE TOOK: %14e\n",end-start);
-  }
+  cudaStreamSynchronize(
+    stream); // Note, would not be needed if allocated at initialization
   cudaFree(d_temp_storage);
   return AC_SUCCESS;
 }

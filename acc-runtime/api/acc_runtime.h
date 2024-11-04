@@ -507,8 +507,7 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   static UNUSED const char* 
   get_name(const Profile& param)
   {
-	  if constexpr (NUM_PROFILES == 0) return "";
-	  else return profile_names[param];
+	  return profile_names[param];
   }
 
   static UNUSED const char* 

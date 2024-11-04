@@ -1065,7 +1065,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	if(is_primitive_datatype(datatype_scalar))
 	{
         	fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
-		fprintf_filename("device_load_uniform_decl.h","DEVICE_LOAD_ARRAY_DECL(%sParam, %s)\n",enum_name,upper_case_name);
+		fprintf_filename("device_load_uniform_decl.h","DEVICE_LOAD_ARRAY_DECL(%sArrayParam, %s)\n",enum_name,upper_case_name);
 		fprintf_filename("device_load_uniform_loads.h","LOAD_DSYM(acDeviceLoad%sArray)\n",upper_case_name);
 	}
 	fprintf_filename("device_get_output.h", "%s\nacDeviceGet%sOutput(Device device, const %sOutputParam param)\n"
@@ -4396,6 +4396,8 @@ gen_names(const char* datatype, const char* type, FILE* fp)
 	fprintf(fp,"static const char* %s_names[] __attribute__((unused)) = {",datatype);
 	for(size_t i = 0; i < names.size; ++i)
   		fprintf(fp, "\"%s\",", names.data[i]);
+	//TP: add padding that in case there are 0 instances of the datatype to not get constant compiler warnings
+	fprintf(fp,"\"padding\",");
 	fprintf(fp,"};\n");
 	free_str_vec(&names);
 }
@@ -5985,14 +5987,14 @@ resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
 					possible_indexes_strict;
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		if(!strcmp(dfunc_name,"value"))
-		{
-			char my_tmp[10000];
-			my_tmp[0] = '\0';
-			combine_all(node->rhs,my_tmp); 
-			printf("Not able to resolve: %s\n",my_tmp); 
-			printf("Not able to resolve: %s,%zu\n",call_info.types.data[0],possible_indexes.size); 
-		}
+		//if(!strcmp(dfunc_name,"value"))
+		//{
+		//	char my_tmp[10000];
+		//	my_tmp[0] = '\0';
+		//	combine_all(node->rhs,my_tmp); 
+		//	printf("Not able to resolve: %s\n",my_tmp); 
+		//	printf("Not able to resolve: %s,%zu\n",call_info.types.data[0],possible_indexes.size); 
+		//}
 		return res;
 	}
 	{
