@@ -1,10 +1,20 @@
-#include "../../../acc-runtime/stdlib/derivs.h"
-
+hostdefine STENCIL_ORDER (0)
 Field AX,AY,AZ
 
-output real AC_min_val
 
 
+struct Profiles
+{
+	Profile<X> x;
+	Profile<Y> y;
+	Profile<Z> z;
+} 
+struct VectorProfiles
+{
+	Profiles x;
+	Profiles y;
+	Profiles z;
+}
 
 Profile<X> AX_X_MEAN
 Profile<X> AY_X_MEAN
@@ -14,30 +24,42 @@ Profile<Y> AX_Y_MEAN
 Profile<Y> AY_Y_MEAN
 Profile<Y> AZ_Y_MEAN
 
+Profile<Z> AX_Z_MEAN
+Profile<Z> AY_Z_MEAN
+Profile<Z> AZ_Z_MEAN
+const Profiles AX_MEANS       = {AX_X_MEAN,AX_Y_MEAN,AX_Z_MEAN}
+const Profiles AY_MEANS       = {AY_X_MEAN,AY_Y_MEAN,AY_Z_MEAN}
+const Profiles AZ_MEANS       = {AZ_X_MEAN,AZ_Y_MEAN,AZ_Z_MEAN}
+const VectorProfiles AA_MEANS = {AX_MEANS,AY_MEANS,AZ_MEANS}
+
+//VectorProfiles AA_MEANS
+
+
 
 Kernel reduce_aa_x()
 {
-    reduce_sum(true, AX, AX_X_MEAN)
-    reduce_sum(true, AY, AY_X_MEAN)
-    reduce_sum(true, AZ, AZ_X_MEAN)
+    	reduce_sum(true, AX, AA_MEANS.x.x)
+    	reduce_sum(true, AY, AA_MEANS.y.x)
+    	reduce_sum(true, AZ, AA_MEANS.z.x)
+
 }
 Kernel reduce_aa_y()
 {
-    reduce_sum(true, AX, AX_Y_MEAN)
-    reduce_sum(true, AY, AY_Y_MEAN)
-    reduce_sum(true, AZ, AZ_Y_MEAN)
+    reduce_sum(true, AX, AA_MEANS.x.y)
+    reduce_sum(true, AY, AA_MEANS.y.y)
+    reduce_sum(true, AZ, AA_MEANS.z.y)
 }
 Kernel remove_aa_x()
 {
-	write(AX,AX-AX_X_MEAN)
-	write(AY,AY-AY_X_MEAN)
-	write(AZ,AZ-AZ_X_MEAN)
+	write(AX,AX-AA_MEANS.x.x)
+	write(AY,AY-AA_MEANS.y.x)
+	write(AZ,AZ-AA_MEANS.z.x)
 }
 Kernel remove_aa_y()
 {
-	write(AX,AX-AX_Y_MEAN)
-	write(AY,AY-AY_Y_MEAN)
-	write(AZ,AZ-AZ_Y_MEAN)
+	write(AX,AX-AA_MEANS.x.y)
+	write(AY,AY-AA_MEANS.y.y)
+	write(AZ,AZ-AA_MEANS.z.y)
 }
 BoundConds bcs
 {
@@ -51,4 +73,4 @@ ComputeSteps rhs(bcs)
 	remove_aa_x()
 	remove_aa_y()
 }
-
+//#include "../../../build/acc-runtime/api/fused_kernels.h"

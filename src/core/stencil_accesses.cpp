@@ -93,7 +93,6 @@ print(const char* , ...)
 #endif
 
 #define local_compdomain_idx ((LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx))
-FILE* called_reduce_outputs = NULL;
 
 template <typename T>
 T
@@ -169,6 +168,7 @@ __ballot(bool)
 static int stencils_accessed[NUM_ALL_FIELDS][NUM_STENCILS]{{}};
 static int previous_accessed[NUM_ALL_FIELDS]{};
 static int written_fields[NUM_ALL_FIELDS]{};
+static int write_tmp_on_field[NUM_ALL_FIELDS]{};
 static int read_fields[NUM_ALL_FIELDS]{};
 static int field_has_stencil_op[NUM_ALL_FIELDS]{};
 static int read_profiles[NUM_PROFILES]{};
@@ -227,23 +227,21 @@ get_name(const Profile& param)
 	else return profile_names[param];
 }
 
-
+ 
+FILE* reduce_dst_integers = NULL;
 void
-reduce(const bool& reduce, const AcReal, const Profile prof)
+reduce(const bool&, const AcReal, const Profile prof)
 {
-	if(reduce)
-	{
-		reduced_profiles[prof] = 1;
-		if(called_reduce_outputs)
-	  		fprintf(called_reduce_outputs,"%s,",get_name(prof));
-	}
+	reduced_profiles[prof] = 1;
+	if(reduce_dst_integers)
+		fprintf(reduce_dst_integers,"%d,",prof);
 }
 template <typename T1, typename T2>
 void
-reduce(const bool& reduce, const T1&, const T2& dst)
+reduce(const bool&, const T1&, const T2& dst)
 {
-	if(reduce && called_reduce_outputs)
-	  fprintf(called_reduce_outputs,"%s,",get_name(dst));
+	if(reduce_dst_integers)
+		fprintf(reduce_dst_integers,"%d,",dst);
 }
 extern "C" 
 {
@@ -346,6 +344,11 @@ mark_as_written(const Field& field, const int x, const int y, const int z)
 			index_at_boundary(x,y,z) ? AC_IN_BOUNDS_WRITE : AC_OUT_OF_BOUNDS_WRITE;
 }
 void
+write_tmp(const Field& field, const AcReal&)
+{
+	write_tmp_on_field[field] |= AC_OUT_OF_BOUNDS_WRITE;
+}
+void
 write_base (const Field& field, const AcReal&)
 {
 	written_fields[field] |= AC_OUT_OF_BOUNDS_WRITE;
@@ -370,7 +373,7 @@ AC_INTERNAL_read_field(const Field& field, const int x, const int y, const int z
 }
 #define suppress_unused_warning(X) (void)X
 
-static std::vector<int> executed_conditionals{};
+static std::vector<int> executed_nodes{};
 #define constexpr
 #include "user_cpu_kernels.h"
 #undef  constexpr
@@ -465,21 +468,17 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 #endif
 }
 int
-get_executed_conditionals()
+get_executed_nodes()
 { 
-  fprintf(stderr,"Getting executed conditionals\n");
-  fflush(stderr);
-  executed_conditionals = {};
+  executed_nodes= {};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
 	  execute_kernel(k);
   }
-  FILE* fp_executed_conditionals = fopen("executed_conditionals.bin", "wb");
-  const int size = executed_conditionals.size();
-  fwrite(&size, sizeof(int), 1, fp_executed_conditionals);
-  fwrite(executed_conditionals.data(), sizeof(int), executed_conditionals.size(), fp_executed_conditionals);
-  fclose(fp_executed_conditionals);
-  fprintf(stderr,"Got executed conditionals\n");
-  fflush(stderr);
+  FILE* fp_executed_nodes= fopen("executed_nodes.bin", "wb");
+  const int size = executed_nodes.size();
+  fwrite(&size, sizeof(int), 1, fp_executed_nodes);
+  fwrite(executed_nodes.data(), sizeof(int), executed_nodes.size(), fp_executed_nodes);
+  fclose(fp_executed_nodes);
   return EXIT_SUCCESS;
 }	
 
@@ -491,6 +490,7 @@ reset_info_arrays()
     memset(read_fields,0, sizeof(read_fields[0]) * NUM_ALL_FIELDS);
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op[0]) * NUM_ALL_FIELDS);
     memset(written_fields, 0,    sizeof(written_fields[0]) * NUM_ALL_FIELDS);
+    memset(write_tmp_on_field, 0,    sizeof(write_tmp_on_field[0]) * NUM_ALL_FIELDS);
     memset(previous_accessed, 0, sizeof(previous_accessed[0]) * NUM_ALL_FIELDS);
     //TP: would use memset but at least on Puhti the C++ compiler gives an incorrect warning that I am not multiplying the element size even though I am (I guess because the compiler simply sees zero if there are no profiles?)
     for(int i = 0; i  < NUM_PROFILES; ++i)
@@ -578,27 +578,29 @@ main(int argc, char* argv[])
     fprintf(stderr, "Usage: ./main <output_file>\n");
     return EXIT_FAILURE;
   }
-  if(!strcmp(argv[1],"-C")) return get_executed_conditionals();
-  called_reduce_outputs = fopen("called_reduce_outputs.h","w");
+  if(!strcmp(argv[1],"-C")) return get_executed_nodes();
   const char* output = argv[1];
   FILE* fp           = fopen(output, "w+");
   assert(fp);
-
+  reduce_dst_integers = fopen("reduce_dst_integers.h","w");
   FILE* fp_fields_read = fopen("user_read_fields.bin","wb");
   FILE* fp_written_fields = fopen("user_written_fields.bin", "wb");
   FILE* fp_field_has_stencil_op = fopen("user_field_has_stencil_op.bin","wb");
+  FILE* fp_profiles_read = fopen("user_read_profiles.bin","wb");
+  FILE* fp_profiles_reduced = fopen("user_reduced_profiles.bin","wb");
 
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "= {");
   bool output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS];
+  int  write_tmp_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     reset_info_arrays();
     if (!skip_kernel_in_analysis[k])
     {
     	execute_kernel(k);
     	for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
-    	{
+    	{ 
     	  for (size_t i = 0; i < NUM_STENCILS; ++i)
     	  {
     	    if (stencils_accessed[j][i])
@@ -610,12 +612,14 @@ main(int argc, char* argv[])
     	    read_fields[j] |= previous_accessed[j];
     	  }
     	  output_previous_accessed[k][j] = previous_accessed[j];
+	  write_tmp_output[k][j] = write_tmp_on_field[j];
     	}
     } 
     fwrite(read_fields,sizeof(int), NUM_ALL_FIELDS,fp_fields_read);
     fwrite(field_has_stencil_op,sizeof(int), NUM_ALL_FIELDS,fp_field_has_stencil_op);
     fwrite(written_fields,sizeof(int),NUM_ALL_FIELDS,fp_written_fields);
-    fprintf(called_reduce_outputs,"\n");
+    fwrite(read_profiles   ,sizeof(int),NUM_PROFILES,fp_profiles_read);
+    fwrite(reduced_profiles,sizeof(int),NUM_PROFILES,fp_profiles_reduced);
   }
 
 
@@ -624,6 +628,9 @@ main(int argc, char* argv[])
   fclose(fp_written_fields);
   fclose(fp_fields_read);
   fclose(fp_field_has_stencil_op);
+  fclose(fp_profiles_read);
+  fclose(fp_profiles_reduced);
+  fclose(reduce_dst_integers);
 
   fprintf(fp,
           "static int previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
@@ -634,13 +641,19 @@ main(int argc, char* argv[])
           fprintf(fp, "[%lu][%lu] = 1,", k, j);
   }
   fprintf(fp, "};");
+
+  fprintf(fp,
+          "static int write_tmp_called[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
+          "= {");
+  for (size_t k = 0; k < NUM_KERNELS; ++k) {
+    for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
+        if (write_tmp_output[k][j])
+          fprintf(fp, "[%lu][%lu] = 1,", k, j);
+  }
+  fprintf(fp, "};");
   fclose(fp);
 
 #include "gmem_arrays_output_accesses.h"
-
-
-  fclose(called_reduce_outputs);
-  called_reduce_outputs = NULL;
   return EXIT_SUCCESS;
 }
 #endif

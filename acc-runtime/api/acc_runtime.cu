@@ -546,9 +546,9 @@ acPBACreate(const size3_t counts)
   ProfileBufferArray pba{};
   pba.count = counts.z;
   for (int i = 0; i < NUM_PROFILES; ++i) {
-
-    device_malloc(&pba.in[i],  prof_size(Profile(i),counts));
-    device_malloc(&pba.out[i], prof_size(Profile(i),counts));
+    const size_t bytes = prof_size(Profile(i),counts)*sizeof(AcReal);
+    device_malloc(&pba.in[i],  bytes);
+    device_malloc(&pba.out[i], bytes);
   }
 
   acPBAReset(0, &pba, counts);
@@ -560,8 +560,9 @@ void
 acPBADestroy(ProfileBufferArray* pba, const size3_t counts)
 {
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    device_free(&pba->in[i],  prof_size(Profile(i),counts));
-    device_free(&pba->out[i], prof_size(Profile(i),counts));
+    const size_t bytes = prof_size(Profile(i),counts)*sizeof(AcReal);
+    device_free(&pba->in[i],  bytes);
+    device_free(&pba->out[i], bytes);
     pba->in[i]  = NULL;
     pba->out[i] = NULL;
   }

@@ -33,6 +33,7 @@
   #include <cuda_runtime_api.h>  // Streams
   #endif
 
+  #include "builtin_enums.h"
   #include "datatypes.h"
   #include "errchk.h"
 
@@ -65,14 +66,6 @@ typedef enum {
   #include "func_attributes.h"
 
 #ifdef __cplusplus
-typedef struct Field3
-{
-	VertexBufferHandle x;
-	VertexBufferHandle y;
-	VertexBufferHandle z;
-	HOST_DEVICE_INLINE Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
-	HOST_DEVICE_INLINE Field3() : x{}, y{}, z{} {}
-} Field3;
 
 
 HOST_DEVICE_INLINE Field3 
@@ -105,6 +98,19 @@ typedef enum {
 	ZYX = Z_ORDER_INT + N_DIMS*Y_ORDER_INT + N_DIMS*N_DIMS*X_ORDER_INT,
 } AcMeshOrder;
 
+
+typedef enum KernelReduceOp
+{
+	NO_REDUCE,
+	REDUCE_MIN,
+	REDUCE_MAX,
+	REDUCE_SUM,
+} KernelReduceOp;
+typedef struct {
+  int variable;
+  AcType type;
+  bool called;
+} KernelReduceOutput;
   #include "kernel_reduce_outputs.h"
   #include "user_input_typedefs.h"
 

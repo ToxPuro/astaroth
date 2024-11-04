@@ -57,7 +57,6 @@ void strip_whitespace(char *str) {
 "Tensor"                { return TENSOR; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
-"Field3"                { return FIELD3; }
 "VtxBuffer"                 { return VTXBUFFER; }
 "WorkBuffer"            {return WORK_BUFFER; }
 "ComputeSteps"          {return COMPUTESTEPS; }
@@ -155,11 +154,11 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 				}
 				if(str_vec_contains(enum_names,intern(yytext)))
 					return ENUM_TYPE;
-				if(yytext[strlen(yytext)-1] == '_')
-				{
-					fprintf(stderr,"Fatal error: Identifiers ending in _ are not allowed: %s\n",yytext);
-					exit(EXIT_FAILURE);
-				}
+				//if(yytext[strlen(yytext)-1] == '_')
+				//{
+				//	fprintf(stderr,"Fatal error: Identifiers ending in _ are not allowed: %s\n",yytext);
+				//	exit(EXIT_FAILURE);
+				//}
 					
 				return IDENTIFIER; 
 			  }   

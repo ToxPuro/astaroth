@@ -37,3 +37,9 @@ typedef AcBool3 struct bool3
 	bool y;
 	bool z;
 }
+struct Field3
+{
+	Field x;
+	Field y;
+	Field z;
+} 

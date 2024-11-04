@@ -88,8 +88,13 @@ main(int argc, char* argv[])
     // GPU alloc & compute
     acGridInit(info);
     auto graph = acGetDSLTaskGraph(rhs);
+    acGridSynchronizeStream(STREAM_ALL);
+    acGridLoadMesh(STREAM_DEFAULT,model);
+    acGridSynchronizeStream(STREAM_ALL);
     acGridExecuteTaskGraph(graph,1);
+    acGridSynchronizeStream(STREAM_ALL);
     acGridStoreMesh(STREAM_DEFAULT,&candidate);
+    acGridSynchronizeStream(STREAM_ALL);
     AcReal3* x_sum   = (AcReal3*)malloc(sizeof(AcReal3)*model.info.int_params[AC_mx]);
     AcReal3* y_sum   = (AcReal3*)malloc(sizeof(AcReal3)*model.info.int_params[AC_my]);
 
@@ -101,6 +106,7 @@ main(int argc, char* argv[])
     };
     auto in_eps_threshold = [&](const auto a, const auto b)
     {
+	    if(a != 0.0 && b == 0.0) return false;
 	    return relative_diff(a,b) < epsilon;
     };
 
@@ -153,6 +159,7 @@ main(int argc, char* argv[])
       {
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
 	{
+		//printf("TRUE: %14e|GPU: %14e\n",model.vertex_buffer[AX][IDX(i,j,k)], candidate.vertex_buffer[AX][IDX(i,j,k)]);
 		ax_correct &= in_eps_threshold(model.vertex_buffer[AX][IDX(i,j,k)],candidate.vertex_buffer[AX][IDX(i,j,k)]);
 		ay_correct &= in_eps_threshold(model.vertex_buffer[AY][IDX(i,j,k)],candidate.vertex_buffer[AY][IDX(i,j,k)]);
 		az_correct &= in_eps_threshold(model.vertex_buffer[AZ][IDX(i,j,k)],candidate.vertex_buffer[AZ][IDX(i,j,k)]);

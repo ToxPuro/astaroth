@@ -5000,6 +5000,8 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 		std::array<bool,NUM_ALL_FIELDS> field_consumed{};
 		std::fill(field_consumed.begin(), field_consumed.end(),false);
 		std::fill(field_written_to.begin(), field_written_to.end(),false);
+		std::array<bool,NUM_PROFILES> profile_consumed{};
+		std::fill(profile_consumed.begin(), profile_consumed.end(),false);
 		for(size_t i = 0; i < kernel_calls.size(); ++i)
 		{
 			if(call_level_set[i] == -1)
@@ -5011,6 +5013,12 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 				const bool field_accessed = info.read_fields[kernel_index][j] || info.field_has_stencil_op[kernel_index][j];
 			  	can_compute &= !(field_consumed[j] && field_accessed);
 			  	field_consumed[j] |= info.written_fields[kernel_index][j];
+			  }
+			  for(int j = 0; j < NUM_PROFILES; ++j)
+			  {
+				const bool profile_accessed = info.read_profiles[kernel_index][j] || info.reduced_profiles[kernel_index][j];
+				can_compute &= !profile_consumed[j] || !profile_accessed;
+				profile_consumed[j] |= info.reduced_profiles[kernel_index][j];
 			  }
 			  for(size_t j = 0; j < NUM_ALL_FIELDS; ++j)
 			  	field_written_to[j] |= (can_compute && info.written_fields[kernel_index][j]);

@@ -60,6 +60,7 @@ typedef struct {
 } Volume;
 typedef Volume size3_t;
 
+#include "builtin_enums.h"
 #include "user_typedefs.h"
 
 #ifdef __cplusplus

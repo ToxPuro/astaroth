@@ -44,6 +44,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "builtin_enums.h"
 #include "user_defines.h"
 
 #include "stencil_accesses.h"
@@ -636,6 +637,24 @@ gen_stencil_functions(const int curr_kernel)
     printf("}");
     printf("};");
   }
+  bool tmp_writes = false;
+  for(int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
+  {
+        const int field = get_original_index(field_remappings,original_field);
+	tmp_writes |= (write_tmp_called[curr_kernel][field]);
+  }
+  if(!tmp_writes) return;
+  printf("const auto write_tmp __attribute__((unused)) = [&](const Field& field, const AcReal& value){"
+	 "switch(field) {"
+		 );
+
+  for(int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
+  {
+        const int field = get_original_index(field_remappings,original_field);
+	if(write_tmp_called[curr_kernel][field])
+		printf("case %s: f%s_s%s = value; break;",field_names[field],field_names[field],stencil_names[0]);
+  }
+  printf("}};\n");
 }
 
 #if TWO_D == 0

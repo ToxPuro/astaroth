@@ -122,7 +122,7 @@ const int AC_const_int_2nd = 4
 auxiliary Field BFIELDX
 auxiliary Field BFIELDY
 auxiliary Field BFIELDZ
-const Field3 BFIELD = Field3(BFIELDX,BFIELDY,BFIELDZ)
+const Field3 BFIELD = {BFIELDX,BFIELDY,BFIELDZ}
 #endif
 
 #if LSHOCK 
@@ -263,10 +263,10 @@ real AC_current_time
 
 
 
-const Field3 UU  = Field3(VTXBUF_UUX,VTXBUF_UUY,VTXBUF_UUZ)
+const Field3 UU  = {VTXBUF_UUX,VTXBUF_UUY,VTXBUF_UUZ}
 
 #if LMAGNETIC
-const Field3 AA  = Field3(VTXBUF_AX,VTXBUF_AY,VTXBUF_AZ)
+const Field3 AA  = {VTXBUF_AX,VTXBUF_AY,VTXBUF_AZ}
 #endif
 
 

@@ -311,7 +311,8 @@ reset_all_files()
 		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","get_empty_pointer.h",
 			"kernel_region_write_info.h","kernel_region_read_info.h","taskgraph_bc_handles.h","user_declarations.h","taskgraph_kernels.h","taskgraph_kernel_bcs.h",
 			"info_access_operators.h","device_load_uniform.h","device_load_uniform_decl.h","device_load_uniform_overloads.h","device_load_uniform_loads.h",
-			"called_reduce_outputs.h",
+			"reduce_dst_integers.h","fused_kernels.h",
+			"builtin_enums.h",
 			};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    //if(!file_exists(files[i])) continue;
@@ -488,7 +489,7 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER NON_RETURNING_FUNC_CALL
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
-%token INT UINT REAL MATRIX TENSOR FIELD FIELD3 STENCIL WORK_BUFFER PROFILE
+%token INT UINT REAL MATRIX TENSOR FIELD STENCIL WORK_BUFFER PROFILE
 %token BOOL INTRINSIC LONG_LONG LONG 
 %token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION UTILITY SUM MAX COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
@@ -679,7 +680,6 @@ bool: BOOL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 tensor: TENSOR { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcTensor", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-field3: FIELD3         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 work_buffer: WORK_BUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 stencil: STENCIL       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("Stencil", $$); /*astnode_set_buffer(yytext, $$);*/ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 return: RETURN         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("return", $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$);};
@@ -758,7 +758,6 @@ scalar_type_specifier:
 
 non_scalar_arr_types:
                  field        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-               | field3       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
                | struct_type  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 type_specifier: 
 	        scalar_type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
@@ -777,7 +776,6 @@ type_specifier:
 		   astnode_sprintf($1,"AcMatrixN<%s>",combine_all_new($3));
   		}
               | field        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | field3       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | work_buffer  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | enum_type    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
@@ -940,16 +938,17 @@ intrinsic_definition:
 		    		$$ = astnode_create(NODE_DECLARATION, $1, $2);
 				$$ -> type |= NODE_NO_OUT;
                 		set_identifier_type(NODE_FUNCTION_ID, $2);
-				if($$->lhs->lhs)
-				{
-					if(count_num_of_nodes_in_list($$->lhs->lhs) == 1 && !strcmp(get_node(NODE_TSPEC,$$->lhs->lhs)->lhs->buffer,"AcReal"))
-					{
-						ASTNode* base = astnode_create(NODE_UNKNOWN,create_type_qualifier("intrinsic",INTRINSIC),NULL);
-						ASTNode* tqualifiers = astnode_create(NODE_UNKNOWN,base,create_type_qualifier("AcReal",REAL));
-						$$->rhs->lhs->rhs = tqualifiers;
-						tqualifiers->parent = $$->rhs->lhs->rhs;
-					}
-				}
+ 				if($$->lhs->lhs)
+                                {
+                                        if(count_num_of_nodes_in_list($$->lhs->lhs) == 1 && !strcmp(get_node(NODE_TSPEC,$$->lhs->lhs)->lhs->buffer,"AcReal"))
+                                        {
+                                                ASTNode* base = astnode_create(NODE_UNKNOWN,create_type_qualifier("intrinsic",INTRINSIC),NULL);
+                                                ASTNode* tqualifiers = astnode_create(NODE_UNKNOWN,base,create_type_qualifier("AcReal",REAL));
+                                                $$->rhs->lhs->rhs = tqualifiers;
+                                                tqualifiers->parent = $$->rhs->lhs->rhs;
+                                        }
+                                }
+
 		    }
 		     ;
 variable_definitions: non_null_declaration { 
@@ -1010,15 +1009,15 @@ non_null_declaration: type_declaration declaration_list {
 		    		$$ = astnode_create(NODE_DECLARATION | NODE_GLOBAL, $1, $2); 
 				if(!$$->lhs->rhs)
 				{
-				    const char* tspec = get_node(NODE_TSPEC,$$->lhs)->lhs->buffer;
-				    if(strcmps(tspec,"Field","Field3","Profile<X>","Profile<Y>","Profile<Z>",
-						     "Profile<XY>","Profile<XZ>","Profile<YX>","Profile<YZ>","Profile<ZX>","Profile<ZY>"
-					      ))
-				    {
-				    	ASTNode* tqualifiers = create_type_qualifiers("dconst",DCONST_QL);
-				    	tqualifiers -> parent = $$->lhs;
-				    	$$->lhs->rhs = tqualifiers;
-				    }
+				      const char* tspec = get_node(NODE_TSPEC,$$->lhs)->lhs->buffer;
+				      if(strcmps(tspec,"Field","Field3","Profile<X>","Profile<Y>","Profile<Z>",
+				      	     "Profile<XY>","Profile<XZ>","Profile<YX>","Profile<YZ>","Profile<ZX>","Profile<ZY>"
+				            ))
+				      {
+				      	ASTNode* tqualifiers = create_type_qualifiers("dconst",DCONST_QL);
+				      	tqualifiers -> parent = $$->lhs;
+				      	$$->lhs->rhs = tqualifiers;
+				      }
 				}
 			}
            ;
@@ -1143,7 +1142,7 @@ if_root: compound_statement else_statement { $$ = astnode_create(NODE_UNKNOWN, $
 					}
 				}
 			    }
-       | statement 	    { $$ = astnode_create(NODE_UNKNOWN, $1, NULL);}
+       | statement 	    { ASTNode* compound_statement = astnode_create(NODE_BEGIN_SCOPE,$1,NULL); astnode_set_prefix("{",compound_statement); astnode_set_postfix("}",compound_statement);  $$ = astnode_create(NODE_UNKNOWN, compound_statement, NULL);}
          ;
 
 elif_statement: elif if_statement                 { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
