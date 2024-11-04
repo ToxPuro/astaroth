@@ -5,16 +5,16 @@
 
 template <typename T> struct GenericBuffer {
     size_t count;
-    std::unique_ptr<T, void (*)(T*)> data;
+    mem_t<T> data;
 
-    GenericBuffer(const size_t in_count, std::unique_ptr<T, void (*)(T*)> in_data)
+    GenericBuffer(const size_t in_count, mem_t<T> in_data)
         : count(in_count), data(std::move(in_data))
     {
     }
 };
 
 template <typename T> struct HostBuffer : public GenericBuffer<T> {
-    HostBuffer(const size_t in_count, std::unique_ptr<T, void (*)(T*)> in_data)
+    HostBuffer(const size_t in_count, mem_t<T> in_data)
         : GenericBuffer<T>(in_count, std::move(in_data))
     {
     }
@@ -31,6 +31,7 @@ template <typename T> struct HostBufferDefault : public HostBuffer<T> {
     }
 };
 
+#define DEVICE_ENABLED
 #if defined(DEVICE_ENABLED)
 template <typename T> struct HostBufferPinned : public HostBuffer<T> {
     HostBufferPinned(const size_t in_count)
@@ -47,7 +48,7 @@ template <typename T> struct HostBufferPinnedWriteCombined : public HostBuffer<T
 };
 
 template <typename T> struct DeviceBuffer : public GenericBuffer<T> {
-    DeviceBuffer(const size_t in_count, std::unique_ptr<T, void (*)(T*)> in_data)
+    DeviceBuffer(const size_t in_count, mem_t<T> in_data)
         : GenericBuffer<T>(in_count, std::move(in_data))
     {
     }
@@ -119,16 +120,16 @@ migrate(const HostBuffer<T>& in, HostBuffer<T>& out)
 
 // template <typename T> class HostBuffer {
 //     // size_t count;
-//     // std::unique_ptr<T, void (*)(T*)> data;
+//     // mem_t<T> data;
 // };
 // template <typename T> struct DeviceBuffer {
 //     // size_t count;
-//     // std::unique_ptr<T, void (*)(T*)> data;
+//     // mem_t<T> data;
 // };
 
 // template <typename T> struct HostBufferDefault : public HostBuffer<T> {
 //     size_t count;
-//     std::unique_ptr<T, void (*)(T*)> data;
+//     mem_t<T> data;
 
 //     HostBufferDefault(const size_t in_count)
 //         : count{in_count}, data{host::make_unique<T>(in_count)}
@@ -139,7 +140,7 @@ migrate(const HostBuffer<T>& in, HostBuffer<T>& out)
 // template <typename T> struct HostBufferPinned : public HostBuffer<T> {
 //   public:
 //     size_t count;
-//     std::unique_ptr<T, void (*)(T*)> data;
+//     mem_t<T> data;
 
 //     HostBufferPinned(const size_t in_count)
 //         : count(in_count), data{host::pinned::make_unique<T>(in_count)}
@@ -150,7 +151,7 @@ migrate(const HostBuffer<T>& in, HostBuffer<T>& out)
 // template <typename T> struct HostBufferPinnedWriteCombined : public HostBuffer<T> {
 //   public:
 //     size_t count;
-//     std::unique_ptr<T, void (*)(T*)> data;
+//     mem_t<T> data;
 
 //     HostBufferPinnedWriteCombined(const size_t in_count)
 //         : count(in_count), data{host::pinned::wc::make_unique<T>(in_count)}
@@ -161,7 +162,7 @@ migrate(const HostBuffer<T>& in, HostBuffer<T>& out)
 // template <typename T> struct DeviceBufferDefault : public DeviceBuffer<T> {
 //   public:
 //     size_t count;
-//     std::unique_ptr<T, void (*)(T*)> data;
+//     mem_t<T> data;
 
 //     DeviceBufferDefault(const size_t in_count)
 //         : count(in_count), data{device::make_unique<T>(in_count)}
