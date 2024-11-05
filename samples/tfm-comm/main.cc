@@ -64,12 +64,12 @@ main()
         // BufferExchangeTask<AcReal> dtoh(mesh.buffer.count, BUFFER_EXCHANGE_DTOH);
         // dtoh.launch(mesh.buffer);
         // dtoh.wait(mesh.buffer);
-        HostToDeviceBufferExchangeTask<AcReal> htod(mesh.buffer.count);
-        htod.launch(mesh.buffer);
-        htod.wait(mesh.buffer);
-        DeviceToHostBufferExchangeTask<AcReal> dtoh(mesh.buffer.count);
-        dtoh.launch(mesh.buffer);
-        dtoh.wait(mesh.buffer);
+        // HostToDeviceBufferExchangeTask<AcReal> htod(mesh.buffer.count);
+        // htod.launch(mesh.buffer);
+        // htod.wait(mesh.buffer);
+        // DeviceToHostBufferExchangeTask<AcReal> dtoh(mesh.buffer.count);
+        // dtoh.launch(mesh.buffer);
+        // dtoh.wait(mesh.buffer);
 
         // Packet MPI/CUDA halo exchange task
         PackPtrArray<AcReal*> inputs = {mesh.buffer.data};

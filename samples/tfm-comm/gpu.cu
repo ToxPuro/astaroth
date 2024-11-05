@@ -20,6 +20,7 @@
 #include "errchk_cuda.h"
 
 #include "buf.h"
+#include "buffer_transfer.h"
 
 int
 main(void)
@@ -60,6 +61,20 @@ main(void)
     migrate(c, d);
     a.fill(0);
     migrate(d, a);
+    PRINT_LOG("Initial");
+    a.display();
+
+    // a.fill(0);
+
+    BufferExchangeTask<double, PinnedHostMemoryResource, DeviceMemoryResource> htod(count);
+    htod.launch(a);
+    htod.wait(d);
+
+    PRINT_LOG("On device, launching back to host");
+    BufferExchangeTask<double, DeviceMemoryResource, PinnedHostMemoryResource> dtoh(count);
+    dtoh.launch(d);
+    dtoh.wait(a);
+    PRINT_LOG("After");
     a.display();
 
     return EXIT_SUCCESS;
