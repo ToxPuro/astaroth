@@ -14,6 +14,7 @@
 
 #include "buf.h"
 // #include "mem.h"
+#include "print_debug.h"
 #include <memory.h>
 
 template <typename T>
@@ -178,6 +179,8 @@ main(void)
     // auto b = HostBufferPinned<double>(10);
     // fill(a);
     // print(a);
+
+    PRINT_LOG("HElo");
 
     return EXIT_SUCCESS;
 }
