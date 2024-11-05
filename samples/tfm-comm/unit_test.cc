@@ -137,30 +137,30 @@ main(void)
     // auto d = host::pinned::wc::make_unique<double>(10);
 
     // buf copy
-    auto a = HostBufferDefault<double>(10);
-    auto b = HostBufferPinned<double>(10);
-    auto c = HostBufferPinnedWriteCombined<double>(10);
-    auto d = DeviceBufferDefault<double>(10);
+    // auto a = HostBufferDefault<double>(10);
+    // auto b = HostBufferPinned<double>(10);
+    // auto c = HostBufferPinnedWriteCombined<double>(10);
+    // auto d = DeviceBufferDefault<double>(10);
 
-    migrate(a, a);
-    migrate(a, b);
-    migrate(a, c);
-    migrate(a, d);
+    // migrate(a, a);
+    // migrate(a, b);
+    // migrate(a, c);
+    // migrate(a, d);
 
-    migrate(b, a);
-    migrate(b, b);
-    migrate(b, c);
-    migrate(b, d);
+    // migrate(b, a);
+    // migrate(b, b);
+    // migrate(b, c);
+    // migrate(b, d);
 
-    migrate(c, a);
-    migrate(c, b);
-    migrate(c, c);
-    migrate(c, d);
+    // migrate(c, a);
+    // migrate(c, b);
+    // migrate(c, c);
+    // migrate(c, d);
 
-    migrate(d, a);
-    migrate(d, b);
-    migrate(d, c);
-    migrate(d, d);
+    // migrate(d, a);
+    // migrate(d, b);
+    // migrate(d, c);
+    // migrate(d, d);
 
     // HostBuffer<double> e = HostBufferPinnedWriteCombined<double>(10);
     // migrate(e, c);
