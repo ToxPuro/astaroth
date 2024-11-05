@@ -4874,6 +4874,13 @@ gen_user_defines(const ASTNode* root, const char* out)
   	"#define STENCIL_HEIGHT (STENCIL_ORDER+1)\n"
   	"#define STENCIL_WIDTH (STENCIL_ORDER+1)\n"
   	"#define NGHOST (STENCIL_ORDER/2)\n"
+  	"#define NGHOST_X (STENCIL_ORDER/2)\n"
+  	"#define NGHOST_Y (STENCIL_ORDER/2)\n"
+  	"#if TWO_D == 0\n"
+	"#define NGHOST_Z (STENCIL_ORDER / 2)\n"
+	"#else\n"
+	"#define NGHOST_Z (0)\n"
+	"#endif\n"
   	,(!TWO_D) ? "#define STENCIL_DEPTH (STENCIL_ORDER+1)\n" : ""
 	 );
 

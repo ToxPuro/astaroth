@@ -32,13 +32,6 @@
 #include <mpi.h>
 #endif
 
-#define NGHOST_X (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
-#define NGHOST_Y (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
-#if TWO_D == 0
-#define NGHOST_Z (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
-#else
-#define NGHOST_Z (0) // Astaroth 2.0 backwards compatibility
-#endif
 
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused
 
