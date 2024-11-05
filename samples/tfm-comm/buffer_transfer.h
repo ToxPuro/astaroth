@@ -20,38 +20,40 @@
 
 #include "buf.h"
 
-// auto stream_create = []() {
-//     PRINT_LOG("new stream");
-//     cudaStream_t* stream = new cudaStream_t;
-//     // ERRCHK_CUDA_API(cudaStreamCreateWithFlags(stream, cudaStreamNonBlocking));
-//     ERRCHK_CUDA_API(cudaStreamCreate(stream));
-//     return stream;
-// };
-// auto stream_destroy = [](cudaStream_t* stream) noexcept {
-//     PRINT_LOG("delete stream");
-//     ERRCHK_CUDA_API(cudaStreamDestroy(*stream));
-//     delete stream;
-// };
-// std::unique_ptr<cudaStream_t, decltype(stream_destroy)> stream;
+auto stream_create = []() {
+    PRINT_LOG("new stream");
+    cudaStream_t* stream = new cudaStream_t;
+    // ERRCHK_CUDA_API(cudaStreamCreateWithFlags(stream, cudaStreamNonBlocking));
+    ERRCHK_CUDA_API(cudaStreamCreate(stream));
+    return stream;
+};
+auto stream_destroy = [](cudaStream_t* stream) noexcept {
+    PRINT_LOG("delete stream");
+    WARNCHK_CUDA_API(cudaStreamDestroy(*stream));
+    delete stream;
+};
 
 template <typename T, typename FirstStageResource, typename SecondStageResource>
 class BufferExchangeTask {
   protected:
     GenericBuffer<T, FirstStageResource> first_stage_buffer;
     GenericBuffer<T, SecondStageResource> second_stage_buffer;
-    cudaStream_t stream;
+    std::unique_ptr<cudaStream_t, decltype(stream_destroy)> stream;
+    bool in_progress;
 
   public:
     BufferExchangeTask(const size_t max_count)
-        : first_stage_buffer(max_count), second_stage_buffer(max_count), stream{nullptr}
+        : first_stage_buffer(max_count),
+          second_stage_buffer(max_count),
+          stream{stream_create(), stream_destroy},
+          in_progress{false}
     {
     }
 
     template <typename MemoryResource> void launch(const GenericBuffer<T, MemoryResource>& in)
     {
-        ERRCHK(!stream);
-        ERRCHK_CUDA_API(cudaStreamCreate(&stream));
-        // ERRCHK_CUDA_API(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+        ERRCHK(!in_progress);
+        in_progress = true;
 
         // Ensure that the input resource and the first-stage buffer is in the same memory space
         if constexpr (std::is_base_of<DeviceMemoryResource, FirstStageResource>::value) {
@@ -62,13 +64,13 @@ class BufferExchangeTask {
         }
 
         migrate(in, first_stage_buffer);
-        migrate_async(stream, first_stage_buffer, second_stage_buffer);
+        migrate_async(*(stream.get()), first_stage_buffer, second_stage_buffer);
     }
 
     template <typename MemoryResource> void wait(GenericBuffer<T, MemoryResource>& out)
     {
-        ERRCHK(stream);
-        ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
+        ERRCHK(in_progress);
+        ERRCHK_CUDA_API(cudaStreamSynchronize(*(stream.get())));
 
         // Ensure that the output resource and the second-stage buffer is in the same memory space
         if constexpr (std::is_base_of<DeviceMemoryResource, SecondStageResource>::value) {
@@ -79,8 +81,7 @@ class BufferExchangeTask {
         }
 
         migrate(second_stage_buffer, out);
-        ERRCHK_CUDA_API(cudaStreamDestroy(stream));
-        stream = nullptr;
+        in_progress = false;
     }
 };
 
