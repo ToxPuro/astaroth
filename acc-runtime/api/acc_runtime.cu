@@ -56,11 +56,6 @@ const bool useColor = false;
 #include "acc/implementation.h"
 
 static dim3 last_tpb = (dim3){0, 0, 0};
-static AcReal3 AC_INTERNAL_global_real_vec = {0.0,0.0,0.0};
-static int3 AC_INTERNAL_global_int_vec = {0,0,0};
-
-static AcReal AC_INTERNAL_big_real_array[8*1024*1024]{0.0};
-static int AC_INTERNAL_big_int_array[8*1024*1024]{0};
 struct Int3Hash {
     std::size_t operator()(const int3& v) const {
         return std::hash<int>()(v.x) ^ std::hash<int>()(v.y) << 1 ^ std::hash<int>()(v.z) << 2;
