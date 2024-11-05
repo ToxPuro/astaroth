@@ -89,9 +89,8 @@ main(void)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
         all_fields[i] = (Field)i;
     }
-    auto null_loader = [&](ParamLoadingInfo l){(void)l;};
     AcTaskDefinition ops[] = {
-	    acComputeWithParams(test_arr,all_fields,null_loader)
+	    acCompute(test_arr,all_fields)
     };
     AcTaskGraph* graph = acGridBuildTaskGraph(ops);
 

@@ -25,6 +25,7 @@ extern struct hashmap_s string_intern_hashmap;
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
+#include <limits.h>
 static string_vec primitive_datatypes = VEC_INITIALIZER;
 #define INT_STR       primitive_datatypes.data[0]
 #define REAL_STR      primitive_datatypes.data[1]
@@ -47,12 +48,14 @@ get_prof_types()
   return prof_types;
 }
 
+
 static const char* REAL_ARR_STR = NULL;
 
 static const char* REAL_PTR_STR = NULL;
 static const char* REAL3_PTR_STR = NULL;
 static const char* FIELD3_PTR_STR = NULL;
 static const char* VTXBUF_PTR_STR = NULL;
+static const char* FIELD_PTR_STR = NULL;
 static const char* STENCIL_STR    = NULL;
 
 static const char* MATRIX_STR   = NULL;
@@ -146,6 +149,10 @@ get_executed_nodes(const int round);
 #include "tab.h"
 #include <string.h>
 #include <ctype.h>
+extern string_vec const_ints;
+extern string_vec const_int_values;
+#include "expr.h"
+
 
 #define TRAVERSE_PREAMBLE(FUNC_NAME) \
 	if(node->lhs) \
@@ -356,8 +363,66 @@ has_optimization_info()
 {
  return written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 }
+string_vec
+get_struct_field_types(const char* struct_name);
+string_vec
+get_struct_field_names(const char* struct_name);
+bool
+consists_of_types(const string_vec target_types, const char* curr_type)
+{
+	if(str_vec_contains(target_types,curr_type)) return true;
+	string_vec types = get_struct_field_types(curr_type);
+	if(types.size == 0)
+	{
+		free_str_vec(&types);
+		return false;
+	}
+	bool res = true;
+	for(size_t i = 0; i < types.size; ++i)
+		res &= consists_of_types(target_types,types.data[i]);
+	return res;
+
+}
+bool is_primitive_datatype(const char* type)
+{
+	return str_vec_contains(primitive_datatypes,type);
+}
+bool
+all_real_struct(const char* struct_name)
+{
+	if(is_primitive_datatype(struct_name)) return false;
+	string_vec target_types = VEC_INITIALIZER;
+	push(&target_types,REAL_STR);
+	const bool res = consists_of_types(target_types,struct_name);
+	free_str_vec(&target_types);
+	return res;
+}
+string_vec
+get_allocating_types()
+{
+	static string_vec allocating_types = VEC_INITIALIZER;
+	if(allocating_types.size == 0)
+	{
+		push(&allocating_types,intern("Field"));
+		push(&allocating_types,intern("Field3"));
+		push(&allocating_types,intern("Profile<X>"));
+		push(&allocating_types,intern("Profile<Y>"));
+		push(&allocating_types,intern("Profile<Z>"));
+		push(&allocating_types,intern("Profile<XY>"));
+		push(&allocating_types,intern("Profile<XZ>"));
+		push(&allocating_types,intern("Profile<YX>"));
+		push(&allocating_types,intern("Profile<YZ>"));
+		push(&allocating_types,intern("Profile<ZX>"));
+		push(&allocating_types,intern("Profile<ZY>"));
+	}
+	return allocating_types;
+}
+bool is_allocating_type(const char* type)
+{
+	return consists_of_types(get_allocating_types(),type);
+}
 static int 
-add_symbol_base(const NodeType type, const char** tqualifiers, const size_t n_tqualifiers, const char* tspecifier,
+add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifiers, const char* tspecifier,
            const char* id, const char* postfix)
 {
   if(is_number(id))
@@ -365,8 +430,17 @@ add_symbol_base(const NodeType type, const char** tqualifiers, const size_t n_tq
 	  printf("WRONG: %s\n",id);
 	  exit(EXIT_FAILURE);
   }
+  const char* dconst_ql[1] = {DCONST_STR};
   assert(num_symbols[current_nest] < SYMBOL_TABLE_SIZE);
   symbol_table[num_symbols[current_nest]].type          = type;
+  if(type == NODE_VARIABLE_ID && current_nest == 0 && n_tqualifiers == 0 && tspecifier)
+  {
+	  if(!is_allocating_type(tspecifier))
+	  {
+		  tqualifiers = dconst_ql;
+		  n_tqualifiers = 1;
+	  }
+  }
   init_str_vec(&symbol_table[num_symbols[current_nest]].tqualifiers);
   for(size_t i = 0; i < n_tqualifiers; ++i)
       	push(&symbol_table[num_symbols[current_nest]].tqualifiers,tqualifiers[i]);
@@ -496,10 +570,6 @@ is_boundary_param(const char* param)
 }
 
 
-bool is_primitive_datatype(const char* type)
-{
-	return str_vec_contains(primitive_datatypes,type);
-}
 string_vec
 get_all_datatypes()
 {
@@ -2251,7 +2321,7 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 		fatal("Number of inputs %lu for %s in BoundConds does not match the number of input params %lu \n", call_info.expr.size-1, dfunc_name, params_info.expr.size);
 	const size_t num_of_rest_params = params_info.expr.size;
         free_func_params_info(&params_info);
-	fprintf(fp,"boundary_condition Kernel %s_%s()\n{\n",prefix,func_name);
+	fprintf(fp,"Kernel %s_%s()\n{\n",prefix,func_name);
 	fprintf(fp,"\t%s(",dfunc_name);
 	for(size_t j = 0; j <num_of_rest_params; ++j)
 	{
@@ -2344,8 +2414,6 @@ make_unique_bc_calls(ASTNode* node)
 void
 gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* names)
 {
-	if(!has_optimization_info())
-		return;
 	TRAVERSE_PREAMBLE_PARAMS(gen_user_boundcond_calls,root,names);
 	if(node->type != NODE_BOUNDCONDS_DEF) return;
 	const char* name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
@@ -2386,8 +2454,6 @@ gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* n
 void
 gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* names)
 {
-	if(!has_optimization_info())
-		return;
 	TRAVERSE_PREAMBLE_PARAMS(gen_user_taskgraphs_recursive,root,names);
 	if(node->type != NODE_TASKGRAPH_DEF)
 		return;
@@ -2466,11 +2532,9 @@ gen_user_taskgraphs(const ASTNode* root)
 	fprintf_filename_w("taskgraph_kernel_bcs.h","const std::vector<AcBoundary> DSLTaskGraphKernelBoundaries[NUM_DSL_TASKGRAPHS] = { ");
 	fprintf_filename_w("user_loaders.h","const std::vector<std::function<void(ParamLoadingInfo step_info)>> DSLTaskGraphKernelLoaders[NUM_DSL_TASKGRAPHS] = { ");
 
-	if(has_optimization_info())
-		gen_user_taskgraphs_recursive(root,root,&graph_names);
+	gen_user_taskgraphs_recursive(root,root,&graph_names);
 	string_vec bc_names = VEC_INITIALIZER;
-	if(has_optimization_info())
-		gen_user_boundcond_calls(root,root,&bc_names);
+	gen_user_boundcond_calls(root,root,&bc_names);
 
 	FILE* fp = fopen("taskgraph_enums.h","w");
 	fprintf(fp,"typedef enum {");
@@ -2731,7 +2795,6 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	}
 	const ASTNode* fn_identifier = get_node(NODE_FUNCTION_ID,node);
 	const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,fn_identifier->buffer,KERNEL_STR);
-	assert(kernel_reduce_info.ops.size  == kernel_reduce_info.outputs.size);
 
 #if AC_USE_HIP
 	const char* shuffle_instruction = "rocprim::warp_shuffle_down(";
@@ -3523,7 +3586,6 @@ get_func_call_params_info(const ASTNode* func_call)
 		res.expr_nodes = params;
 		return res;
 }
-
 string_vec
 get_struct_field_types(const char* struct_name)
 {
@@ -3533,22 +3595,21 @@ get_struct_field_types(const char* struct_name)
 			if(info.user_structs.data[i] == struct_name) res = str_vec_copy(info.user_struct_field_types[i]);
 		return res;
 }
+string_vec
+get_struct_field_names(const char* struct_name)
+{
+		const structs_info info = s_info;
+		string_vec res = VEC_INITIALIZER;
+		for(size_t i = 0; i < info.user_structs.size; ++i)
+			if(info.user_structs.data[i] == struct_name) res = str_vec_copy(info.user_struct_field_names[i]);
+		return res;
+}
+
 size_t
 get_number_of_members(const char* struct_name)
 {
 	string_vec types = get_struct_field_types(struct_name);
 	size_t res = types.size;
-	free_str_vec(&types);
-	return res;
-}
-bool
-all_real_struct(const char* struct_name)
-{
-	if(is_primitive_datatype(struct_name)) return false;
-	bool res = true;
-	string_vec types = get_struct_field_types(struct_name);
-	for(size_t i = 0; i < types.size; ++i)
-		res &= (types.data[i] && types.data[i] == REAL_STR);
 	free_str_vec(&types);
 	return res;
 }
@@ -4202,6 +4263,11 @@ is_builtin_constant(const char* name)
 void
 gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_builtin, FILE* fp_non_scalar_constants, FILE* fp_non_scalar_builtin)
 {
+		const ASTNode* name_node = get_node_by_token(IDENTIFIER,def);
+		if(!name_node)
+		{
+			fatal("Could not find name for const declaration: %s\n",combine_all_new(def));
+		}
 		const char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
 		if(!name) return;
         	const ASTNode* assignment = def->rhs;
@@ -4543,14 +4609,14 @@ gen_field_info(FILE* fp)
   	for(size_t i = 0; i < num_of_fields; ++i)
   	        fprintf(fp_enums,"%s,",field_names.data[i]);
 
-  	if(has_optimization_info())
-  		fprintf(fp_enums, "NUM_FIELDS=%ld,", num_of_alive_fields);
-  	else
-  		fprintf(fp_enums, "NUM_FIELDS=%ld,", num_of_fields);
-  	fprintf(fp_enums, "NUM_ALL_FIELDS=%ld,", num_of_fields);
-  	fprintf(fp_enums, "NUM_DEAD_FIELDS=%ld,", num_of_fields-num_of_alive_fields);
-  	fprintf(fp_enums, "NUM_COMMUNICATED_FIELDS=%d,", num_of_communicated_fields);
   	fprintf(fp_enums, "} Field;\n");
+  	if(has_optimization_info())
+  		fprintf(fp_enums, "#define NUM_FIELDS (%ld)\n", num_of_alive_fields);
+  	else
+  		fprintf(fp_enums, "#define NUM_FIELDS (%ld)\n", num_of_fields);
+	fprintf(fp_enums, "#define NUM_ALL_FIELDS (%ld)\n",num_of_fields);
+  	fprintf(fp_enums, "#define NUM_DEAD_FIELDS (%ld)\n", num_of_fields-num_of_alive_fields);
+  	fprintf(fp_enums, "#define NUM_COMMUNICATED_FIELDS (%d)\n", num_of_communicated_fields);
 	fclose(fp_enums);
   }
 
@@ -5443,8 +5509,7 @@ all_identifiers_are_const(const ASTNode* node)
 	if(!node->buffer)
 		return res;
 	if(check_symbol(NODE_FUNCTION_ID,node->buffer,0,0)) return true;
-	if(check_symbol(NODE_ANY,node->buffer,0,CONST_STR)) return true;
-	printf("NOT CONST: %s\n",node->buffer);
+	if(check_symbol(NODE_ANY,node->buffer,0,0)) return true;
 	return false;
 }
 void
@@ -5815,6 +5880,7 @@ field_to_real_conversion(ASTNode* node, const ASTNode* root)
 		      (params_info.types.data[i-offset] == REAL3_STR && call_info.types.data[i] == FIELD3_STR)
 		   || (params_info.types.data[i-offset] == REAL_STR && call_info.types.data[i] == FIELD_STR)
 		   || (params_info.types.data[i-offset] == REAL_PTR_STR && call_info.types.data[i] == VTXBUF_PTR_STR)
+		   || (params_info.types.data[i-offset] == REAL_PTR_STR && call_info.types.data[i] == FIELD_PTR_STR)
 		   || (params_info.types.data[i-offset] == REAL3_PTR_STR && call_info.types.data[i] == FIELD3_PTR_STR)
 		  )
 		{
@@ -5919,6 +5985,7 @@ compatible_types(const char* a, const char* b)
 		  || (a == REAL_STR && b == FIELD_STR)
 		  || (a == REAL3_STR && b == FIELD3_STR)
 		  || (a == REAL_PTR_STR && b == VTXBUF_PTR_STR)
+		  || (a == REAL_PTR_STR && b == FIELD_PTR_STR)
 		  || (a == REAL3_PTR_STR && b == FIELD3_PTR_STR)
 		;
 	if(!res)
@@ -6079,7 +6146,7 @@ transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* roo
 bool
 is_field_expr(const char* expr)
 {
-	return expr && (expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
+	return expr && (expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,FIELD_PTR_STR) || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
 }
 bool
 is_value_applicable_type(const char* expr)
@@ -6244,6 +6311,7 @@ gen_global_strings()
 	REAL3_PTR_STR = intern("AcReal3*");
 	FIELD3_PTR_STR = intern("Field3*");
 	VTXBUF_PTR_STR = intern("VertexBufferHandle*");
+	FIELD_PTR_STR = intern("Field*");
 
 	MATRIX_STR = intern("AcMatrix");
 	INT3_STR = intern("int3");
@@ -6636,18 +6704,157 @@ process_overrides(ASTNode* root)
 	process_overrides_recursive(root,overrided_vars);
 	free_str_vec(&overrided_vars);
 }
+static void
+set_identifier_type(const NodeType type, ASTNode* curr)
+{
+    assert(curr);
+    if (curr->token == IDENTIFIER) {
+        curr->type |= type;
+        return;
+    }
+
+    if (curr->rhs)
+        set_identifier_type(type, curr->rhs);
+    if (curr->lhs)
+        set_identifier_type(type, curr->lhs);
+}
+bool
+expand_allocating_types_base(ASTNode* node)
+{
+	bool res = false;
+	if(node->lhs)
+		res |= expand_allocating_types_base(node->lhs);
+	if(node->rhs)
+		res |= expand_allocating_types_base(node->rhs);
+	if(node->type  != (NODE_DECLARATION | NODE_GLOBAL)) return res;
+	const ASTNode* type_node = get_node(NODE_TSPEC,node);
+	if(!type_node) return res;
+	//const ASTNode* qualifier = get_node(NODE_TQUAL,node);
+	////TP: do this only for no qualifier declarations
+	//if(qualifier) return;
+	const char* type = intern(combine_all_new(type_node));
+	const ASTNode* tquals = node->lhs->rhs ? node->lhs->lhs : NULL;
+	if(!is_allocating_type(type)) return res;
+	const bool array_decl = get_node(NODE_ARRAY_ACCESS,node);
+	ASTNode* declaration_list_head = node->rhs;
+	if(array_decl)
+	{
+		const int num_elems = eval_int(declaration_list_head->lhs->rhs,true,NULL);
+		ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
+                const char* field_name_str = strdup(field_name->buffer);
+		node_vec id_nodes = VEC_INITIALIZER;
+		for(int i=0; i<num_elems;++i)
+		{
+			ASTNode* identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
+			identifier->token = IDENTIFIER;
+			astnode_sprintf(identifier,"%s_%d",field_name_str,i);
+			ASTNode* primary_expression = astnode_create(NODE_PRIMARY_EXPRESSION,identifier,NULL);
+			ASTNode* res_node = astnode_create(NODE_UNKNOWN,primary_expression,NULL);
+			set_identifier_type(NODE_VARIABLE_ID,res_node);
+			push_node(&id_nodes,res_node);
+		}
+		node_vec decl_nodes = VEC_INITIALIZER;
+		for(int i=0; i<num_elems;++i)
+		{
+			ASTNode* decl = astnode_create((NODE_DECLARATION | NODE_GLOBAL),
+					create_type_declaration_with_qualifiers(tquals,type),
+					astnode_dup(id_nodes.data[i],NULL)
+					);
+			ASTNode* res_node = astnode_create(NODE_UNKNOWN,decl,NULL);
+			push_node(&decl_nodes,res_node);
+		}
+
+
+		ASTNode* elems = build_list_node(id_nodes,",");
+		ASTNode* decls = build_list_node(decl_nodes,"");
+		free_node_vec(&id_nodes);
+		free_node_vec(&decl_nodes);
+
+		//TP: create the equivalent of const Field CHEMISTRY = [CHEMISTRY_0, CHEMISTRY_1,...,CHEMISTRY_N]
+		ASTNode* arr_initializer = create_arr_initializer(elems);
+		ASTNode* type_declaration = create_type_declaration("const",sprintf_intern("%s*",type));
+		ASTNode* const_declaration = create_const_declaration(arr_initializer,field_name_str,type_declaration);
+
+		//TP: replace the original field identifier e.g. CHEMISTRY with the generated list of handles
+		//node->lhs = astnode_dup(elems,NULL);
+		//node->rhs = var_definitions;
+		//node->rhs = astnode_dup(elems,NULL);
+		node->type = NODE_UNKNOWN;
+		node->lhs  = decls;
+		node->rhs  = const_declaration;
+		//ASTNode* res_node = astnode_create(NODE_UNKNOWN,astnode_dup(node,NULL), const_declaration);
+		//if(node->parent->rhs && node->parent->rhs->id)
+		//	node->parent->rhs = res_node;
+		//else
+		//	node->parent->lhs = res_node;
+		return true;
+	}
+	string_vec types = get_struct_field_types(type);
+	string_vec names = get_struct_field_names(type);
+	if(types.size > 0)
+	{
+		const char* var_name = get_node_by_token(IDENTIFIER,node->rhs)->buffer;
+		node_vec id_nodes = VEC_INITIALIZER;
+		for(size_t i = 0; i < types.size; ++i)
+		{
+			ASTNode* identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
+			identifier->token = IDENTIFIER;
+			astnode_sprintf(identifier,"%s_%s",var_name,to_upper_case(names.data[i]));
+			ASTNode* primary_expression = astnode_create(NODE_PRIMARY_EXPRESSION,identifier,NULL);
+			ASTNode* id_node = astnode_create(NODE_UNKNOWN,primary_expression,NULL);
+			set_identifier_type(NODE_VARIABLE_ID,id_node);
+			push_node(&id_nodes,id_node);
+		}
+		node_vec decl_nodes = VEC_INITIALIZER;
+		for(size_t i = 0; i < types.size; ++i)
+		{
+			ASTNode* decl = astnode_create((NODE_DECLARATION | NODE_GLOBAL),
+					create_type_declaration_with_qualifiers(tquals,types.data[i]),
+					astnode_dup(id_nodes.data[i],NULL)
+					);
+			ASTNode* res_node = astnode_create(NODE_UNKNOWN,decl,NULL);
+			push_node(&decl_nodes,res_node);
+		}
+		ASTNode* elems = build_list_node(id_nodes,",");
+		ASTNode* decls = build_list_node(decl_nodes,"");
+		ASTNode* struct_initializer = create_struct_initializer(elems);
+		ASTNode* type_declaration = create_type_declaration("const",type);
+		ASTNode* const_declaration = create_const_declaration(struct_initializer,var_name,type_declaration);
+		const ASTNode* res_name = get_node_by_token(IDENTIFIER,const_declaration->rhs);
+		ASTNode* new_lhs = astnode_create(NODE_DECLARATION | NODE_GLOBAL, astnode_dup(node->lhs,NULL),astnode_dup(elems,NULL));
+		node->type = NODE_UNKNOWN;
+		node->lhs = decls;
+		node->rhs = const_declaration;
+		free_node_vec(&id_nodes);
+		free_node_vec(&decl_nodes);
+		free_str_vec(&types);
+		free_str_vec(&names);
+		return true;
+	}
+	return res;
+}
+void
+expand_allocating_types(ASTNode* root)
+{
+	bool expand = true;
+	while(expand)
+	{
+		expand = expand_allocating_types_base(root);
+		//printf("Expanded: %d\n",expand);
+	}
+
+}
 void
 preprocess(ASTNode* root, const bool optimize_conditionals)
 {
   symboltable_reset();
   rename_scoped_variables(root,NULL,NULL);
   symboltable_reset();
-
-
   free_node_vec(&dfunc_nodes);
   free_str_vec(&dfunc_names);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
+  expand_allocating_types(root);
   canonalize(root);
   mark_kernel_inputs(root);
 
@@ -6668,6 +6875,8 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   symboltable_reset();
   traverse_base(root, 0, 0, NULL, true,NULL,false);
 }
+
+
 void
 gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 {
@@ -6686,6 +6895,7 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
   	ASTNode* root = astnode_dup(root_in,NULL);
   	s_info = read_user_structs(root);
 	e_info = read_user_enums(root);
+	expand_allocating_types(root);
 
 	symboltable_reset();
 	rename_scoped_variables(root,NULL,NULL);
@@ -6759,7 +6969,7 @@ stencilgen(ASTNode* root)
   //Fill symbol table
   traverse(root,
            NODE_VARIABLE_ID | NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION |
-               NODE_HOSTDEFINE | NODE_NO_OUT,
+               NODE_HOSTDEFINE | NODE_NO_OUT | NODE_FUNCTION_ID,
            stencil_coeffs_fp);
   fflush(stencil_coeffs_fp);
 
@@ -6781,7 +6991,7 @@ stencilgen(ASTNode* root)
                       "STENCIL_WIDTH] = {");
   traverse(root,
            NODE_VARIABLE_ID | NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION |
-               NODE_HOSTDEFINE | NODE_NO_OUT,
+               NODE_HOSTDEFINE | NODE_NO_OUT | NODE_FUNCTION_ID,
            stencilgen);
   fprintf(stencilgen, "};");
   fclose(stencilgen);

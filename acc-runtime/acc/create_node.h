@@ -10,19 +10,18 @@ create_identifier_node(const char* identifier)
 	return identifier_node;
 }
 static ASTNode*
-create_type_qualifier(const char* tqual, const int token)
+create_type_qualifier(const char* tqual)
 {
 	if(!tqual) return NULL;
 	ASTNode* tqual_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
 	astnode_set_buffer(tqual,tqual_identifier);
-	tqual_identifier -> token = token;
 	ASTNode* type_qualifier  = astnode_create(NODE_TQUAL,tqual_identifier,NULL);
 	return type_qualifier;
 }
 static ASTNode*
-create_type_qualifiers(const char* tqual, const int token)
+create_type_qualifiers(const char* tqual)
 {
-	ASTNode* type_qualifiers = astnode_create(NODE_UNKNOWN,create_type_qualifier(tqual,token),NULL);
+	ASTNode* type_qualifiers = astnode_create(NODE_UNKNOWN,create_type_qualifier(tqual),NULL);
 	return type_qualifiers;
 }
 static ASTNode*
@@ -35,20 +34,31 @@ create_tspec(const char* tspec_str)
 	return tspec;
 }
 static ASTNode*
-create_type_declaration(const char* tqual, const char* tspec, const int token)
+create_type_declaration_with_qualifiers(const ASTNode* qualifiers, const char* tspec)
+{
+
+	if(qualifiers && tspec)
+		return  astnode_create(NODE_UNKNOWN,astnode_dup(qualifiers,NULL),create_tspec(tspec));
+	if(tspec)
+		return  astnode_create(NODE_UNKNOWN,create_tspec(tspec),NULL);
+	return  astnode_create(NODE_UNKNOWN,astnode_dup(qualifiers,NULL),NULL);
+
+}
+static ASTNode*
+create_type_declaration(const char* tqual, const char* tspec)
 {
 
 	if(tqual && tspec)
-		return  astnode_create(NODE_UNKNOWN,create_type_qualifiers(tqual,token),create_tspec(tspec));
+		return  astnode_create(NODE_UNKNOWN,create_type_qualifiers(tqual),create_tspec(tspec));
 	if(tspec)
 		return  astnode_create(NODE_UNKNOWN,create_tspec(tspec),NULL);
-	return  astnode_create(NODE_UNKNOWN,create_type_qualifiers(tqual,token),NULL);
+	return  astnode_create(NODE_UNKNOWN,create_type_qualifiers(tqual),NULL);
 
 }
 static ASTNode*
 create_declaration(const char* identifier, const char* type, const char* tqual)
 {
-	ASTNode* type_decl   = (type == NULL && tqual == NULL) ? NULL : create_type_declaration(tqual, type, 0);
+	ASTNode* type_decl   = (type == NULL && tqual == NULL) ? NULL : create_type_declaration(tqual, type);
 	ASTNode* decl_vars   = astnode_create(NODE_UNKNOWN,create_identifier_node(identifier),NULL);
 	ASTNode* declaration = astnode_create(NODE_DECLARATION,type_decl,decl_vars);
 	return declaration;
@@ -136,4 +146,33 @@ create_assignment(const ASTNode* lhs, const ASTNode* assign_expr, const char* op
 			      create_assignment_body(assign_expr,op)
 			      )
 		));
+}
+static ASTNode* create_arr_initializer(const ASTNode* elems)
+{
+		ASTNode* arr_initializer = astnode_create(NODE_ARRAY_INITIALIZER,astnode_dup(elems,NULL),NULL);
+		astnode_set_prefix("{",arr_initializer);
+		astnode_set_postfix("}",arr_initializer);
+		return arr_initializer;
+}
+static ASTNode* create_struct_initializer(const ASTNode* elems)
+{
+		ASTNode* arr_initializer = astnode_create(NODE_STRUCT_INITIALIZER,astnode_dup(elems,NULL),NULL);
+		astnode_set_prefix("{",arr_initializer);
+		astnode_set_postfix("}",arr_initializer);
+		return arr_initializer;
+}
+static ASTNode* create_const_declaration(const ASTNode* rhs, const char* name, const ASTNode* type_declaration)
+{
+		ASTNode* expression = astnode_create(NODE_UNKNOWN,astnode_dup(rhs,NULL),NULL);
+		ASTNode* assign_expression = astnode_create(NODE_UNKNOWN,expression,NULL);
+		ASTNode* var_identifier = astnode_create(NODE_VARIABLE_ID,NULL,NULL);
+		astnode_sprintf(var_identifier,"%s",name);
+		var_identifier->token = IDENTIFIER;
+		ASTNode* assign_leaf = astnode_create(NODE_ASSIGNMENT, var_identifier,assign_expression);
+		ASTNode* assignment_list = astnode_create(NODE_UNKNOWN, assign_leaf,NULL);
+		ASTNode* var_definitions = astnode_create(NODE_ASSIGN_LIST,astnode_dup(type_declaration,NULL),assignment_list);
+		var_definitions -> type |= NODE_NO_OUT;
+		var_definitions -> type |= NODE_DECLARATION;
+		astnode_set_postfix(";",var_definitions);
+		return var_definitions;
 }

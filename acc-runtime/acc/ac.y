@@ -11,7 +11,6 @@ extern struct hashmap_s string_intern_hashmap;
 #include "ast.h"
 #include "codegen.h"
 #include <ctype.h>
-#include "tinyexpr.h"
 #include <dirent.h>
 #include <math.h>
 #include <limits.h>
@@ -39,8 +38,8 @@ const char* stage4_name_backup;
 const char* dir_backup;
 
 //These are used to evaluate constant int expressions 
-static string_vec const_ints;
-static string_vec const_int_values;
+string_vec const_ints;
+string_vec const_int_values;
 
 
 void
@@ -75,15 +74,15 @@ astnode_hostdefine(const char* buffer, const int token)
 
 static void process_global_assignment(ASTNode* node, ASTNode* variable_definition, ASTNode* assignment, ASTNode* declaration_list);
 static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier);
-void set_identifier_type(const NodeType type, ASTNode* curr);
+static void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node_by_token(const int token, const ASTNode* node);
 static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_code);
 static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names);
-static ASTNode* create_type_declaration(const char* tqual, const char* tspec, const int token);
-static ASTNode* create_type_qualifiers(const char* tqual,int token);
-static ASTNode* create_type_qualifier(const char* tqual, const int token);
+static ASTNode* create_type_declaration(const char* tqual, const char* tspec);
+static ASTNode* create_type_qualifiers(const char* tqual);
+static ASTNode* create_type_qualifier(const char* tqual);
 #include "create_node_decl.h"
 
 bool is_directory(const char *path) {
@@ -410,13 +409,13 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	reset_all_files();
   	gen_output_files(new_root);
 
+        FILE* fp_cpu = fopen("user_kernels.h.raw", "w");
+        assert(fp_cpu);
+        generate(new_root, fp_cpu, true, optimize_conditionals);
+	fclose(fp_cpu);
+
 	if(OPTIMIZE_MEM_ACCESSES)
 	{
-	
-        	FILE* fp_cpu = fopen("user_kernels.h.raw", "w");
-        	assert(fp_cpu);
-        	generate(new_root, fp_cpu, true, optimize_conditionals);
-		fclose(fp_cpu);
      		generate_mem_accesses(); // Uncomment to enable stencil mem access checking
 	}
 	reset_diff_files();
@@ -533,54 +532,16 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    const bool are_arrays = (get_node(NODE_ARRAY_ACCESS,declaration) != NULL) ||
 				    (get_node(NODE_ARRAY_INITIALIZER,declaration) != NULL);
 	    const ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
+	    const char* type = combine_all_new(type_specifier);
             ASTNode* assignment = (ASTNode*)get_node(NODE_ASSIGNMENT, variable_definition);
 	
             if (get_node_by_token(FIELD, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-		if(are_arrays)
-		{
-			const int num_fields = eval_int(declaration_list_head->lhs->rhs,true,NULL);
-			ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
-                        const char* field_name_str = strdup(field_name->buffer);
-			node_vec nodes = VEC_INITIALIZER;
-			for(int i=0; i<num_fields;++i)
-			{
-
-				ASTNode* identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
-				identifier->token = IDENTIFIER;
-				astnode_sprintf(identifier,"%s_%d",field_name_str,i);
-				ASTNode* primary_expression = astnode_create(NODE_PRIMARY_EXPRESSION,identifier,NULL);
-				ASTNode* node = astnode_create(NODE_UNKNOWN,primary_expression,NULL);
-				set_identifier_type(NODE_VARIABLE_ID,node);
-				push_node(&nodes,node);
-			}
-
-			ASTNode* elems = build_list_node(nodes,",");
-			free_node_vec(&nodes);
-
-			//TP: create the equivalent of const Field CHEMISTRY = [CHEMISTRY_0, CHEMISTRY_1,...,CHEMISTRY_N]
-			ASTNode* type_declaration = create_type_declaration("const","VertexBufferHandle*",CONST_QL);
-			ASTNode* var_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
-			astnode_sprintf(var_identifier,"%s",field_name_str);
-			var_identifier->token = IDENTIFIER;
-			var_identifier->type = NODE_VARIABLE_ID;
-			ASTNode* arr_initializer = astnode_create(NODE_ARRAY_INITIALIZER,elems,NULL);
-			astnode_set_prefix("{",arr_initializer);
-			astnode_set_postfix("}",arr_initializer);
-			ASTNode* expression = astnode_create(NODE_UNKNOWN,arr_initializer,NULL);
-			ASTNode* assign_expression = astnode_create(NODE_UNKNOWN,expression,NULL);
-			ASTNode* assign_leaf = astnode_create(NODE_ASSIGNMENT, var_identifier,assign_expression);
-			ASTNode* assignment_list = astnode_create(NODE_UNKNOWN, assign_leaf,NULL);
-			ASTNode* var_definitions = astnode_create(NODE_ASSIGN_LIST,type_declaration,assignment_list);
-			var_definitions -> type |= NODE_NO_OUT;
-			var_definitions -> type |= NODE_DECLARATION;
-			astnode_set_postfix(";",var_definitions);
-
-			//TP: replace the orignal field identifier e.g. CHEMISTRY with the generated list of handles
-			declaration->rhs = astnode_dup(elems,NULL);
-			$$ = astnode_create(NODE_UNKNOWN,$$,var_definitions);
-		}
+            } 
+            else if (!strcmp(type,"Field3")) {
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
             else if(get_node_by_token(WORK_BUFFER, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
@@ -944,8 +905,8 @@ intrinsic_definition:
                                 {
                                         if(count_num_of_nodes_in_list($$->lhs->lhs) == 1 && !strcmp(get_node(NODE_TSPEC,$$->lhs->lhs)->lhs->buffer,"AcReal"))
                                         {
-                                                ASTNode* base = astnode_create(NODE_UNKNOWN,create_type_qualifier("intrinsic",INTRINSIC),NULL);
-                                                ASTNode* tqualifiers = astnode_create(NODE_UNKNOWN,base,create_type_qualifier("AcReal",REAL));
+                                                ASTNode* base = astnode_create(NODE_UNKNOWN,create_type_qualifier("intrinsic"),NULL);
+                                                ASTNode* tqualifiers = astnode_create(NODE_UNKNOWN,base,create_type_qualifier("AcReal"));
                                                 $$->rhs->lhs->rhs = tqualifiers;
                                                 tqualifiers->parent = $$->rhs->lhs->rhs;
                                         }
@@ -973,18 +934,6 @@ variable_definitions: non_null_declaration {
 					ASTNode* tspec = (ASTNode*) get_node(NODE_TSPEC,$1);
 					astnode_sprintf(tspec->lhs,"%s*",tspec->lhs->buffer);
 				  }
-				  if(!$$->lhs->rhs)
-				  {
-					const char* tspec = get_node(NODE_TSPEC,$$->lhs)->lhs->buffer;
-				        if(strcmps(tspec,"Field","Field3","Profile<X>","Profile<Y>","Profile<Z>",
-						     "Profile<XY>","Profile<XZ>","Profile<YX>","Profile<YZ>","Profile<ZX>","Profile<ZY>"
-					      ))
-					{
-						ASTNode* tqualifiers = create_type_qualifiers("dconst",DCONST_QL);
-						tqualifiers -> parent = $$->lhs;
-						$$->lhs->rhs = tqualifiers;
-					}
-				  }
 				}
                    ;
 
@@ -1009,18 +958,6 @@ non_null_declaration: type_declaration declaration_list {
 				}
 
 		    		$$ = astnode_create(NODE_DECLARATION | NODE_GLOBAL, $1, $2); 
-				if(!$$->lhs->rhs)
-				{
-				      const char* tspec = get_node(NODE_TSPEC,$$->lhs)->lhs->buffer;
-				      if(strcmps(tspec,"Field","Field3","Profile<X>","Profile<Y>","Profile<Z>",
-				      	     "Profile<XY>","Profile<XZ>","Profile<YX>","Profile<YZ>","Profile<ZX>","Profile<ZY>"
-				            ))
-				      {
-				      	ASTNode* tqualifiers = create_type_qualifiers("dconst",DCONST_QL);
-				      	tqualifiers -> parent = $$->lhs;
-				      	$$->lhs->rhs = tqualifiers;
-				      }
-				}
 			}
            ;
 
@@ -1250,7 +1187,7 @@ function_definition: declaration function_body {
 			    ASTNode* tdecl = $$->lhs->lhs;
 			    if(!tdecl->lhs && INLINING)
 			    {
-				    ASTNode* tqualifiers = create_type_qualifiers("inline",INLINE);
+				    ASTNode* tqualifiers = create_type_qualifiers("inline");
 				    tqualifiers -> parent = tdecl;
 				    tdecl->lhs = tqualifiers;
 			    }
@@ -1309,7 +1246,7 @@ stencilpoint_list: stencilpoint                       { $$ = astnode_create(NODE
 stencil_body: '{' stencilpoint_list '}' { $$ = astnode_create(NODE_BEGIN_SCOPE, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("},", $$); }
             ;
 
-stencil_definition: declaration stencil_body { $$ = astnode_create(NODE_STENCIL, $1, $2); set_identifier_type(NODE_VARIABLE_ID, $$->lhs); 
+stencil_definition: declaration stencil_body { $$ = astnode_create(NODE_STENCIL, $1, $2); set_identifier_type(NODE_FUNCTION_ID, $$->lhs); 
 		  }
                   ;
 %%
@@ -1334,7 +1271,7 @@ yyerror(const char* str)
     exit(EXIT_FAILURE);
 }
 
-void
+static void
 set_identifier_type(const NodeType type, ASTNode* curr)
 {
     assert(curr);
@@ -1381,82 +1318,6 @@ set_identifier_infix(const char* infix, ASTNode* curr)
 }
 
 
-static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
-{
-	if(node->lhs)
-		replace_const_ints(node->lhs,values,names);
-	if(node->rhs)
-		replace_const_ints(node->rhs,values,names);
-	if(node->token != IDENTIFIER || !node->buffer) return;
-	const int index = str_vec_get_index(names,node->buffer);
-	if(index == -1) return;
-	astnode_set_buffer(values.data[index],node);
-	node->type |= NODE_VARIABLE_ID;
-	node->token = NUMBER;
-}
-
-static void eval_ternaries(ASTNode* node, const string_vec values, const string_vec names)
-{
-	if(node->lhs)
-		eval_ternaries(node->lhs,values,names);
-	if(node->rhs)
-		eval_ternaries(node->rhs,values,names);
-	if(node->type != NODE_TERNARY_EXPRESSION) return;
-	//TP: for now consider only that expr is a < b
-	//TP: where a and b are const int expressions
-	//printf("ORIG: %s\n",combine_all_new(node));
-	const ASTNode* cond = node->lhs;
-	if(cond->type != NODE_BINARY_EXPRESSION) return;
-	const char* op = get_node_by_token(BINARY_OP,cond->rhs)->buffer;
-	if(!op) return;
-	const bool less = !strcmp(op,"<");
-	const bool more = !strcmp(op,">");
-	if(!less && !more) return;
-	const int lhs = eval_int(cond->lhs,true,NULL);
-	const int rhs = eval_int(cond->rhs->rhs,true,NULL);
-	const bool is_left_child = node->parent->lhs && node->parent->lhs->id == node->id;
-	ASTNode* correct_node =  less ? 
-					(lhs < rhs) ? node->rhs->lhs : node->rhs->rhs
-				:more ? 
-					(lhs > rhs) ? node->rhs->lhs : node->rhs->rhs
-				     : NULL;
-	if(!correct_node) return;
-	correct_node->prefix = NULL;
-	if(is_left_child)
-		node->parent->lhs = correct_node; 
-	else
-		node->parent->rhs = correct_node; 
-	correct_node->parent = node->parent;
-	//printf("HMM: %d,%d,%d\n",lhs,rhs,more);
-	//printf("RES: %s\n",combine_all_new(correct_node));
-}
-
-static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_code)
-{
-	replace_const_ints(node,const_int_values,const_ints);
-	eval_ternaries(node,const_int_values,const_ints);
-	const char* copy = combine_all_new(node);
-	if(!strcmp(copy,"INT_MAX"))
-		return INT_MAX;
-        double* vals = malloc(sizeof(double)*const_ints.size);
-        int err;
-        te_expr* expr = te_compile(copy, NULL, 0, &err);
-        if(!expr)
-        {
-		if(failure_fatal)
-		{
-                	fprintf(stderr,"Parse error at tinyexpr\n");
-			fprintf(stderr,"Was not able to parse: %s\n",copy);
-                	exit(EXIT_FAILURE);
-		}
-		*error_code = 1;
-		te_free(expr);
-		return -1;
-        }
-        int res = (int) round(te_eval(expr));
-        te_free(expr);
-        return res;
-}
 static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier)
 {
                 variable_definition->type |= NODE_VARIABLE;
@@ -1539,3 +1400,4 @@ static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNod
 	
 	    }
 #include "create_node.h"
+#include "expr.h"

@@ -1,17 +1,14 @@
 #include "../../../acc-runtime/stdlib/math/funcs.h"
 Field Field_arr[3]
 const int ndustspec = 3
-Field DUST_X[ndustspec]
-Field DUST_Y[ndustspec]
-Field DUST_Z[ndustspec]
 
 //TP: should produce fields that have auxiliary type qualifier and that are either not communicated or communicated respectively
 //TP: as of 4-11-2024 does produce the correct qualifiers
 const int mcom = 9
 auxiliary Field timestep_registers[mcom]
-communicated auxiliary Field communicated_registers[mcom]
+communicated auxiliary Field communicated_registers[3*3]
+auxiliary Field3 DUST[ndustspec] 
 
-const Field3 DUST[ndustspec] = MakeField3(DUST_X,DUST_Y,DUST_Z)
 Kernel test_arr()
 {
 	arr = [1.0,2.0,3.0]

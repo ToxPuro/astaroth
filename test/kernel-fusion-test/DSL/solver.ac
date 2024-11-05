@@ -16,23 +16,8 @@ struct VectorProfiles
 	Profiles z;
 }
 
-Profile<X> AX_X_MEAN
-Profile<X> AY_X_MEAN
-Profile<X> AZ_X_MEAN
 
-Profile<Y> AX_Y_MEAN
-Profile<Y> AY_Y_MEAN
-Profile<Y> AZ_Y_MEAN
-
-Profile<Z> AX_Z_MEAN
-Profile<Z> AY_Z_MEAN
-Profile<Z> AZ_Z_MEAN
-const Profiles AX_MEANS       = {AX_X_MEAN,AX_Y_MEAN,AX_Z_MEAN}
-const Profiles AY_MEANS       = {AY_X_MEAN,AY_Y_MEAN,AY_Z_MEAN}
-const Profiles AZ_MEANS       = {AZ_X_MEAN,AZ_Y_MEAN,AZ_Z_MEAN}
-const VectorProfiles AA_MEANS = {AX_MEANS,AY_MEANS,AZ_MEANS}
-
-//VectorProfiles AA_MEANS
+VectorProfiles AA_MEANS
 
 
 
