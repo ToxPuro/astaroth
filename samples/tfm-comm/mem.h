@@ -17,16 +17,16 @@
 
 #include "print_debug.h"
 
-template <typename T> struct HostMemoryResource {
-    static T* nalloc(const size_t count)
+struct HostMemoryResource {
+    static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host");
-        T* ptr = (T*)malloc(count * sizeof(ptr[0]));
+        void* ptr = malloc(bytes);
         ERRCHK(ptr);
         return ptr;
     }
 
-    static void ndealloc(T* ptr) noexcept
+    static void dealloc(void* ptr) noexcept
     {
         PRINT_LOG("host");
         WARNCHK(ptr);
@@ -35,16 +35,16 @@ template <typename T> struct HostMemoryResource {
 };
 
 #if defined(DEVICE_ENABLED)
-template <typename T> struct PinnedHostMemoryResource : public HostMemoryResource<T> {
-    static T* nalloc(const size_t count)
+struct PinnedHostMemoryResource : public HostMemoryResource {
+    static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host pinned");
-        T* ptr = nullptr;
-        ERRCHK_CUDA_API(cudaHostAlloc(&ptr, count * sizeof(ptr[0]), cudaHostAllocDefault));
+        void* ptr = nullptr;
+        ERRCHK_CUDA_API(cudaHostAlloc(&ptr, bytes, cudaHostAllocDefault));
         return ptr;
     }
 
-    static void ndealloc(T* ptr) noexcept
+    static void dealloc(void* ptr) noexcept
     {
         PRINT_LOG("host pinned");
         WARNCHK(ptr);
@@ -52,16 +52,16 @@ template <typename T> struct PinnedHostMemoryResource : public HostMemoryResourc
     }
 };
 
-template <typename T> struct PinnedWriteCombinedHostMemoryResource : public HostMemoryResource<T> {
-    static T* nalloc(const size_t count)
+struct PinnedWriteCombinedHostMemoryResource : public HostMemoryResource {
+    static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host pinned write-combined");
-        T* ptr = nullptr;
-        ERRCHK_CUDA_API(cudaHostAlloc(&ptr, count * sizeof(ptr[0]), cudaHostAllocWriteCombined));
+        void* ptr = nullptr;
+        ERRCHK_CUDA_API(cudaHostAlloc(&ptr, bytes, cudaHostAllocWriteCombined));
         return ptr;
     }
 
-    static void ndealloc(T* ptr) noexcept
+    static void dealloc(void* ptr) noexcept
     {
         PRINT_LOG("host pinned write-combined");
         WARNCHK(ptr);
@@ -69,16 +69,16 @@ template <typename T> struct PinnedWriteCombinedHostMemoryResource : public Host
     }
 };
 
-template <typename T> struct DeviceMemoryResource {
-    static T* nalloc(const size_t count)
+struct DeviceMemoryResource {
+    static void* alloc(const size_t bytes)
     {
         PRINT_LOG("device");
-        T* ptr = nullptr;
-        ERRCHK_CUDA_API(cudaMalloc(&ptr, count * sizeof(ptr[0])));
+        void* ptr = nullptr;
+        ERRCHK_CUDA_API(cudaMalloc(&ptr, bytes));
         return ptr;
     }
 
-    static void ndealloc(T* ptr) noexcept
+    static void dealloc(void* ptr) noexcept
     {
         PRINT_LOG("device");
         WARNCHK(ptr);
@@ -87,7 +87,7 @@ template <typename T> struct DeviceMemoryResource {
 };
 #else
 #pragma message("Device code was not enabled. Falling back to host-only memory allocations")
-template <typename T> using PinnedHostMemoryResource              = HostMemoryResource<T>;
-template <typename T> using PinnedWriteCombinedHostMemoryResource = HostMemoryResource<T>;
-template <typename T> using DeviceMemoryResource                  = HostMemoryResource<T>;
+using PinnedHostMemoryResource              = HostMemoryResource;
+using PinnedWriteCombinedHostMemoryResource = HostMemoryResource;
+using DeviceMemoryResource                  = HostMemoryResource;
 #endif
