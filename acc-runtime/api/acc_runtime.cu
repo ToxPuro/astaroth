@@ -68,7 +68,7 @@ int kernel_running_reduce_offsets[NUM_KERNELS];
 static MPI_Comm runtime_comm = MPI_COMM_NULL;
 #endif
 static int grid_pid = 0;
-static int nprocs   = 0;
+[[maybe_unused]] static int nprocs   = 0;
 
 #if AC_MPI_ENABLED
 AcResult
@@ -153,6 +153,7 @@ is_valid_configuration(const Volume dims, const Volume tpb)
   case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
     if (tpb.z > 1)
       return false;
+      [[fallthrough]];
   case EXPLICIT_CACHING: // Fallthrough
   case EXPLICIT_CACHING_3D_BLOCKING: {
 
@@ -1468,7 +1469,7 @@ acOutOfBounds(const AcIndex& index, const AcShape& shape)
          (index.w >= shape.w);
 }
 
-static __host__ __device__ constexpr AcIndex
+static __host__ __device__ constexpr AcIndex __attribute__((unused))
 min(const AcIndex& a, const AcIndex& b)
 {
   return (AcIndex){
@@ -1490,8 +1491,8 @@ operator+(const AcIndex& a, const AcIndex& b)
   };
 }
 
-static __host__ __device__ constexpr AcIndex
-operator-(const AcIndex& a, const AcIndex& b)
+static __host__ __device__ constexpr AcIndex __attribute__((unused))
+operator-(const AcIndex& a, const AcIndex& b) 
 {
   return (AcIndex){
       a.x - b.x,

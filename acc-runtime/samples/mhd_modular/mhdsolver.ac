@@ -5,6 +5,7 @@
 #include "../../stdlib/operators.h"
 #include "../../stdlib/reductions.h"
 #include "../../standalone_params.h"
+#include "../../stdlib/units.h"
 const int AC_2d_ints = [[1,2,3], [2,3,4]]
 const int AC_const_ints = [1,2,3]
 const int AC_const_ints_len = 3
@@ -873,7 +874,6 @@ utility Kernel constant() {
 }
 real AC_density_scale_cgs
 real AC_impossible
-real AC_unit_length
 real AC_density_scale_factor
 int AC_ldensity_nolog
 
