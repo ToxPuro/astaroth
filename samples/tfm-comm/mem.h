@@ -6,7 +6,7 @@
 
 #include "errchk.h"
 
-template <typename T> using mem_t = std::unique_ptr<T, void (*)(T*)>;
+template <typename T> using mem_t = std::unique_ptr<T[], void (*)(T*)>;
 
 namespace host {
 template <typename T>
@@ -25,7 +25,7 @@ make_unique(const size_t count)
     std::cout << "malloc host" << std::endl;
     T* ptr = (T*)malloc(count * sizeof(T));
     ERRCHK(ptr);
-    return mem_t<T>(ptr, dealloc);
+    return mem_t<T>(ptr, host::dealloc);
 }
 } // namespace host
 
@@ -36,7 +36,7 @@ dealloc(T* ptr) noexcept
 {
     std::cout << "dealloc host pinned" << std::endl;
     WARNCHK(ptr);
-    free(ptr);
+    WARNCHK_CUDA_API(cudaFreeHost(ptr));
 }
 
 template <typename T>
@@ -44,7 +44,8 @@ mem_t<T>
 make_unique(const size_t count)
 {
     std::cout << "malloc host pinned" << std::endl;
-    T* ptr = (T*)malloc(count * sizeof(T));
+    T* ptr;
+    ERRCHK_CUDA_API(cudaHostAlloc(&ptr, count * sizeof(ptr[0]), cudaHostAllocDefault));
     ERRCHK(ptr);
     return mem_t<T>(ptr, dealloc);
 }
@@ -69,7 +70,7 @@ dealloc(T* ptr) noexcept
 {
     std::cout << "dealloc device" << std::endl;
     WARNCHK(ptr);
-    free(ptr);
+    WARNCHK_CUDA_API(cudaFree(ptr));
 }
 
 template <typename T>
@@ -77,7 +78,8 @@ mem_t<T>
 make_unique(const size_t count)
 {
     std::cout << "malloc device" << std::endl;
-    T* ptr = (T*)malloc(count * sizeof(T));
+    T* ptr;
+    ERRCHK_CUDA_API(cudaMalloc(&ptr, count * sizeof(ptr[0])));
     ERRCHK(ptr);
     return mem_t<T>(ptr, dealloc);
 }

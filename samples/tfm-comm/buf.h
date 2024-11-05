@@ -20,8 +20,20 @@ template <typename T> struct HostBuffer : public GenericBuffer<T> {
     }
 
     // Enable the subscript[] operator
-    __host__ __device__ T& operator[](size_t i) { return this->data.get()[i]; }
-    __host__ __device__ const T& operator[](size_t i) const { return this->data.get()[i]; }
+    // __host__ __device__ T& operator[](size_t i) { return this->data.get()[i]; }
+    // __host__ __device__ const T& operator[](size_t i) const { return this->data.get()[i]; }
+
+    void arange()
+    {
+        for (size_t i = 0; i < this->count; ++i)
+            this->data[i] = static_cast<T>(i);
+    }
+
+    void display() const
+    {
+        for (size_t i = 0; i < this->count; ++i)
+            std::cout << i << ": " << this->data[i] << std::endl;
+    }
 };
 
 template <typename T> struct HostBufferDefault : public HostBuffer<T> {

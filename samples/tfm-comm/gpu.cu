@@ -1,99 +1,203 @@
 #include <cstdlib>
+#include <iostream>
+#include <memory>
 
 #if defined(__CUDACC__)
+#define DEVICE_ENABLED
+#include "errchk_cuda.h"
 #include <cuda_runtime.h>
 #elif defined(__HIP_PLATFORM_AMD__)
+#define DEVICE_ENABLED
+#include "errchk_cuda.h"
 #include "hip.h"
 #include <hip/hip_runtime.h>
 #else
-static_assert(false);
+#include "errchk.h"
+#define cudaStream_t void*
 #endif
-
-#include <iostream>
-#include <vector>
 
 #include "errchk.h"
 #include "errchk_cuda.h"
-#include "static_array.h"
 
-// #include "device_buffer.h"
-// #include "dbuffer.h"
-#include "buffer.h"
-#include "buffer_transfer.h"
+#include "buf.h"
 
-__global__ void
-kernel(const size_t count, const double* in, double* out)
+#if true
+template <typename T> struct host_memory_resource {
+    static T* alloc(const size_t count)
+    {
+        std::cout << "malloc host" << std::endl;
+        T* ptr = (T*)malloc(count * sizeof(T));
+        ERRCHK(ptr);
+        return ptr;
+    }
+
+    static void dealloc(T* ptr) noexcept
+    {
+        std::cout << "dealloc host" << std::endl;
+        WARNCHK(ptr);
+        free(ptr);
+    }
+};
+template <typename T> struct pinned_host_memory_resource : public host_memory_resource<T> {
+    static T* alloc(const size_t count)
+    {
+        std::cout << "malloc host pinned" << std::endl;
+        T* ptr = (T*)malloc(count * sizeof(T));
+        ERRCHK(ptr);
+        return ptr;
+    }
+
+    static void dealloc(T* ptr) noexcept
+    {
+        std::cout << "dealloc host pinned" << std::endl;
+        WARNCHK(ptr);
+        free(ptr);
+    }
+};
+template <typename T>
+struct pinned_write_combined_host_memory_resource : public host_memory_resource<T> {
+    static T* alloc(const size_t count)
+    {
+        std::cout << "malloc host pinned wc" << std::endl;
+        T* ptr = (T*)malloc(count * sizeof(T));
+        ERRCHK(ptr);
+        return ptr;
+    }
+
+    static void dealloc(T* ptr) noexcept
+    {
+        std::cout << "dealloc host pinned wc" << std::endl;
+        WARNCHK(ptr);
+        free(ptr);
+    }
+};
+template <typename T> struct device_memory_resource {
+    static T* alloc(const size_t count)
+    {
+        std::cout << "malloc device" << std::endl;
+        T* ptr = nullptr;
+        ERRCHK_CUDA_API(cudaMalloc(&ptr, count * sizeof(T)));
+        return ptr;
+    }
+
+    static void dealloc(T* ptr) noexcept
+    {
+        std::cout << "dealloc device" << std::endl;
+        WARNCHK(ptr);
+        WARNCHK_CUDA_API(cudaFree(ptr));
+    }
+};
+
+template <typename T, template <typename> typename Allocator = host_memory_resource> struct Buffer {
+    const size_t count;
+    std::unique_ptr<T[], decltype(&Allocator<T>::dealloc)> data;
+
+    Buffer(const size_t in_count)
+        : count{in_count}, data{Allocator<T>::alloc(in_count), Allocator<T>::dealloc}
+    {
+    }
+
+    void arange()
+    {
+        static_assert(std::is_base_of<host_memory_resource<T>, Allocator<T>>::value);
+        for (size_t i = 0; i < count; ++i)
+            data[i] = static_cast<T>(i);
+    }
+
+    void display() const
+    {
+        static_assert(std::is_base_of<host_memory_resource<T>, Allocator<T>>::value);
+        for (size_t i = 0; i < count; ++i)
+            std::cout << i << ": " << data[i] << std::endl;
+    }
+};
+
+template <typename T, template <typename> typename AllocatorA,
+          template <typename> typename AllocatorB>
+typename std::enable_if<std::is_base_of<host_memory_resource<T>, AllocatorA<T>>::value &&
+                        std::is_base_of<host_memory_resource<T>, AllocatorB<T>>::value>::type
+migrate(const Buffer<T, AllocatorA>& in, const Buffer<T, AllocatorB>& out)
 {
-    const size_t i = threadIdx.x + blockIdx.x * blockDim.x;
-    if (i < count)
-        out[i] = 2 * in[i];
+    std::cout << "htoh" << std::endl;
 }
+
+template <typename T, template <typename> typename AllocatorA,
+          template <typename> typename AllocatorB>
+typename std::enable_if<std::is_base_of<device_memory_resource<T>, AllocatorA<T>>::value &&
+                        std::is_base_of<host_memory_resource<T>, AllocatorB<T>>::value>::type
+migrate(const Buffer<T, AllocatorA>& in, const Buffer<T, AllocatorB>& out)
+{
+    std::cout << "dtoh" << std::endl;
+}
+
+template <typename T, template <typename> typename AllocatorA,
+          template <typename> typename AllocatorB>
+typename std::enable_if<std::is_base_of<host_memory_resource<T>, AllocatorA<T>>::value &&
+                        std::is_base_of<device_memory_resource<T>, AllocatorB<T>>::value>::type
+migrate(const Buffer<T, AllocatorA>& in, const Buffer<T, AllocatorB>& out)
+{
+    std::cout << "htod" << std::endl;
+}
+
+template <typename T, template <typename> typename AllocatorA,
+          template <typename> typename AllocatorB>
+typename std::enable_if<std::is_base_of<device_memory_resource<T>, AllocatorA<T>>::value &&
+                        std::is_base_of<device_memory_resource<T>, AllocatorB<T>>::value>::type
+migrate(const Buffer<T, AllocatorA>& in, const Buffer<T, AllocatorB>& out)
+{
+    std::cout << "dtod" << std::endl;
+}
+#endif
 
 int
-main()
+main(void)
 {
-    const size_t count = 10;
-    Buffer<double> host_buffer(count);
-    host_buffer.fill_arange(0, count);
-    std::cout << "Before: " << host_buffer << std::endl;
-    Buffer<double> device_buffer(count, BUFFER_DEVICE);
-    // host_buffer.migrate(device_buffer);
-    // device_buffer.migrate(host_buffer);
-    HostToDeviceBufferExchangeTask<double> htod(count);
-    htod.launch(host_buffer);
-    htod.wait(device_buffer);
-    HostToDeviceBufferExchangeTask<double> dtoh(count);
-    dtoh.launch(device_buffer);
-    dtoh.wait(host_buffer);
-    std::cout << "After: " << host_buffer << std::endl;
+    std::cout << "hello" << std::endl;
 
-    double* hin  = (double*)malloc(count * sizeof(hin[0]));
-    double* hout = (double*)malloc(count * sizeof(hout[0]));
-    ERRCHK(hin);
-    ERRCHK(hout);
+#if true
+    Buffer<double> hbuf(10);
+    hbuf.arange(); //
+    hbuf.data[0] = 100;
+    hbuf.display();
 
-    double *din, *dout;
-    ERRCHK_CUDA_API(cudaMalloc(&din, count * sizeof(din[0])));
-    ERRCHK_CUDA_API(cudaMalloc(&dout, count * sizeof(dout[0])));
+    Buffer<double, pinned_host_memory_resource> hbuf_pinned(10);
+    hbuf_pinned.arange();
 
-    for (size_t i = 0; i < count; ++i)
-        hin[i] = static_cast<double>(i);
+    Buffer<double, host_memory_resource> a(10);
+    Buffer<double, pinned_host_memory_resource> b(10);
+    Buffer<double, pinned_write_combined_host_memory_resource> c(10);
+    Buffer<double, device_memory_resource> d(10);
+    migrate(a, a);
+    migrate(a, b);
+    migrate(a, c);
+    migrate(a, d);
 
-    ERRCHK_CUDA_API(cudaMemcpy(din, hin, count * sizeof(hin[0]), cudaMemcpyHostToDevice));
-    const size_t tpb = 256;
-    const size_t bpg = (count + tpb - 1) / tpb;
-    kernel<<<bpg, tpb>>>(count, din, dout);
-    ERRCHK_CUDA_KERNEL();
-    ERRCHK_CUDA_API(cudaMemcpy(hout, dout, count * sizeof(dout[0]), cudaMemcpyDeviceToHost));
+    migrate(b, a);
+    migrate(b, b);
+    migrate(b, c);
+    migrate(b, d);
 
-    for (size_t i = 0; i < count; ++i)
-        std::cout << "i: " << hout[i] << std::endl;
+    migrate(c, a);
+    migrate(c, b);
+    migrate(c, c);
+    migrate(c, d);
 
-    ERRCHK_CUDA_API(cudaFree(dout));
-    ERRCHK_CUDA_API(cudaFree(din));
-    free(hout);
-    free(hin);
+    migrate(d, a);
+    migrate(d, b);
+    migrate(d, c);
+    migrate(d, d);
+#else
+
+    HostBufferDefault<double> hbuf(10);
+    hbuf.arange(); //
+    hbuf.data[0] = 100;
+    hbuf.display();
+
+    HostBufferPinned<double> hbuf_pinned(10);
+    hbuf_pinned.arange(); //
+    hbuf_pinned.data[0] = 100;
+    hbuf_pinned.display();
+#endif
+
     return EXIT_SUCCESS;
 }
-
-// int
-// main_draft(void)
-// {
-//     const size_t count = 10;
-//     Buffer<double> hin(count);
-//     Buffer<double> hout(count);
-//     // Buffer<double> din(count, true); // count, on_device, pinned
-//     // Buffer<double> dout(count, true);
-//     // Buffer<double> din(count, true);
-//     din.pin();
-//     din.unpin();
-//     Buffer::migrate_async();
-//     Buffer::sync();
-
-//     hin.fill_arange();
-//     Buffer::migrate(hin, din);
-//     // Kernel
-//     Buffer::migrate(dout, hout);
-
-//     return EXIT_SUCCESS;
-// }
