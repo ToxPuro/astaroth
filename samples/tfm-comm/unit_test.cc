@@ -1,4 +1,5 @@
 #include "buffer.h"
+#include "buffer_exchange.h"
 #include "decomp.h"
 #include "math_utils.h"
 #include "ndarray.h"
@@ -16,6 +17,7 @@ main(void)
     test_decomp();
     test_buffer();
     test_math_utils();
+    test_buffer_exchange();
 
     return EXIT_SUCCESS;
 }

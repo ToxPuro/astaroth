@@ -102,7 +102,7 @@ void
 migrate_async(const void* stream, const Buffer<T, MemoryResourceA>& in,
               Buffer<T, MemoryResourceB>& out)
 {
-    PRINT_LOG("non-cuda htoh async (not async in reality, blocks)");
+    PRINT_LOG("non-cuda htoh async (note: blocking, stream ignored)");
     (void)stream; // Unused
     migrate(in, out);
 }

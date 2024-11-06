@@ -79,3 +79,5 @@ using HostToDeviceBufferExchangeTask = BufferExchangeTask<T, PinnedWriteCombined
 template <typename T>
 using DeviceToHostBufferExchangeTask = BufferExchangeTask<T, DeviceMemoryResource,
                                                           PinnedHostMemoryResource>;
+
+void test_buffer_exchange(void);
