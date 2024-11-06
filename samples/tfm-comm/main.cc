@@ -58,20 +58,25 @@ main()
         // }
 
         // Migrate
-        // BufferExchangeTask<AcReal> htod(mesh.buffer.count, BUFFER_EXCHANGE_HTOD);
-        // htod.launch(mesh.buffer);
-        // htod.wait(mesh.buffer);
-        // BufferExchangeTask<AcReal> dtoh(mesh.buffer.count, BUFFER_EXCHANGE_DTOH);
-        // dtoh.launch(mesh.buffer);
-        // dtoh.wait(mesh.buffer);
-        // HostToDeviceBufferExchangeTask<AcReal> htod(mesh.buffer.count);
-        // htod.launch(mesh.buffer);
-        // htod.wait(mesh.buffer);
-        // DeviceToHostBufferExchangeTask<AcReal> dtoh(mesh.buffer.count);
-        // dtoh.launch(mesh.buffer);
-        // dtoh.wait(mesh.buffer);
+        const size_t count = 10;
+        GenericBuffer<AcReal, HostMemoryResource> hbuf(count);
+        GenericBuffer<AcReal, DeviceMemoryResource> dbuf(count);
 
-        // Packet MPI/CUDA halo exchange task
+        HostToDeviceBufferExchangeTask<AcReal> htod(count);
+        hbuf.arange(count * static_cast<AcReal>(get_rank(cart_comm)));
+        htod.launch(hbuf);
+        htod.wait(dbuf);
+        hbuf.fill(0);
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        hbuf.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+
+        DeviceToHostBufferExchangeTask<AcReal> dtoh(count);
+        dtoh.launch(dbuf);
+        dtoh.wait(hbuf);
+        hbuf.display();
+
+        // Packed MPI/CUDA halo exchange task
         PackPtrArray<AcReal*> inputs = {mesh.buffer.data};
         HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, inputs.count);
         task.launch(cart_comm, inputs);
