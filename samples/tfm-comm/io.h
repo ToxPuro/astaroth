@@ -123,7 +123,9 @@ template <typename T> class IOTask {
         ERRCHK_MPI_API(MPI_Info_free(&info));
     }
 
-    void launch_write(const MPI_Comm cart_comm, const T* data, const std::string& path)
+    template <typename MemoryResource>
+    void launch_write(const MPI_Comm cart_comm, const Buffer<T, MemoryResource>& input,
+                      const std::string& path)
     {
         MPI_Info info = MPI_INFO_NULL;
         ERRCHK_MPI_API(MPI_Info_create(&info));
@@ -145,13 +147,14 @@ template <typename T> class IOTask {
 
         ERRCHK_MPI(file == MPI_FILE_NULL);
 
-        // TODO: copy input to the staging buffer
+        // Migrate input to the staging buffer
+        migrate(input, staging_buffer);
 
         ERRCHK_MPI_API(
             MPI_File_open(cart_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
         ERRCHK_MPI_API(
             MPI_File_set_view(file, 0, get_mpi_dtype<T>(), global_subarray, "native", info));
-        ERRCHK_MPI_API(MPI_File_iwrite_all(file, data, 1, local_subarray, &req));
+        ERRCHK_MPI_API(MPI_File_iwrite_all(file, staging_buffer.data(), 1, local_subarray, &req));
         ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
         ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
         ERRCHK_MPI_API(MPI_Info_free(&info));
