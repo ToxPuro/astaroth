@@ -5997,12 +5997,14 @@ field_to_real_conversion(ASTNode* node, const ASTNode* root)
 		fatal("number of parameters does not match, expected %zu but got %zu in %s\n",params_info.types.size, call_info.types.size, combine_all_new(node));
 	for(size_t i = offset; i < call_info.types.size; ++i)
 	{
+		if(!call_info.types.data[i]) continue;
 		if(
 		      (params_info.types.data[i-offset] == REAL3_STR && call_info.types.data[i] == FIELD3_STR)
 		   || (params_info.types.data[i-offset] == REAL_STR && call_info.types.data[i] == FIELD_STR)
 		   || (params_info.types.data[i-offset] == REAL_PTR_STR && call_info.types.data[i] == VTXBUF_PTR_STR)
 		   || (params_info.types.data[i-offset] == REAL_PTR_STR && call_info.types.data[i] == FIELD_PTR_STR)
 		   || (params_info.types.data[i-offset] == REAL3_PTR_STR && call_info.types.data[i] == FIELD3_PTR_STR)
+		   || (params_info.types.data[i-offset] == REAL_STR      && strstr(call_info.types.data[i],"Profile"))
 		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
@@ -6361,14 +6363,6 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 		}
 		else
 			fatal("Missing elemental case for func: %s\nReturn type: %s\n",dfunc_name,node->expr_type);
-	}
-	else if(info.expr.size == 2 && info.types.data[0] == REAL3_STR && info.types.data[1] == REAL3_STR && !strstr(dfunc_name,"AC_INTERNAL_COPY"))
-	{
-		const char* func_body = combine_all_new_with_whitespace(node->rhs->rhs->lhs);
-		fprintf(stream,"%s_AC_INTERNAL_COPY (real3 %s, real3 %s){%s}\n",dfunc_name,info.expr.data[0],info.expr.data[1],func_body);
-		fprintf(stream,"%s (Field3 field, real3 vec){return %s_AC_INTERNAL_COPY(value(field), vec) }\n",dfunc_name,dfunc_name);
-		fprintf(stream,"%s (real3  vec,   Field3 field){return %s_AC_INTERNAL_COPY(vec, value(field)) }\n",dfunc_name,dfunc_name);
-		fprintf(stream,"%s (Field3 a, Field3 b){return %s_AC_INTERNAL_COPY(value(a), value(b)) }\n",dfunc_name,dfunc_name);
 	}
 	free_func_params_info(&info);
 }

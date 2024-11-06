@@ -4967,14 +4967,22 @@ gen_halo_exchange_and_boundconds(
 					for(const auto& field : processed_boundcond.out)
 						field_boundconds_processed[field][boundcond] = true;
 					bool has_dependency = false;
+					const char* dependent_bc = NULL;
+					const char* preq_field   = NULL;
 					for(const auto& field : processed_boundcond.in)
 					{
 						if(std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end()) continue;
-						has_dependency |= processed_boundcond.info.larger_input || field_boundconds[field][boundcond].info.larger_output;
+						const bool depend = processed_boundcond.info.larger_input;
+						if(depend)
+						{
+							has_dependency = true;
+							dependent_bc = kernel_names[processed_boundcond.kernel];
+							preq_field   = field_names[field];
+						}
 					}
 
 					if(has_dependency)
-						fatal("%s","BC needs to be called since some other bc depends on it\nTODO implement this --- now easier with an actual example use case ---")
+						fatal("BC of %s needs to be called since %s depends on it\nTODO implement this --- now easier with an actual example use case ---",preq_field,dependent_bc)
 
                                 }
                                 all_are_processed = true;
