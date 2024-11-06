@@ -216,8 +216,14 @@ The DSL compiler can also infer these qualifiers if OPTIMIZE_FIELDS=ON from `wri
 Designed for variables that are inputs to Kernels, but should not be allocated/loaded to the GPU.
 > Note: At the moment, mostly useful for `ComputeSteps`
 * `output`
-At the moment, restricted to `real` scalar quantities resulting from reductions across the whole subdomain.
+At the moment, restricted to `real` and `int` scalar quantities resulting from reductions across the whole subdomain.
 > Note: implicitly allocates memory on the GPU to perform reductions.
+
+* `utility`
+Tells the compiler that the `Kernel` should be skiped when inferring which `Fields` are dead.
+
+* `fixed_boundary`
+Tells the compiler that in `ComputeSteps` before the kernel boundary values inside the local subdomain should not be updated via boundary conditions. Rather the values on the boundaries should be carried over from before, i.e. the boundary values stay fixed from previous `Kernel` calls.
 
 
 
@@ -284,6 +290,7 @@ The same is also true for `Field3,real3`,`Field[],real[]` and `Field3[],real3[]`
 
 Overloading is supported.
 In case there are multiple possible functions that an overloaded call could be resolved to the functions are prioritized in the following order:  
+
 * Functions that have for all input parameters their types defined and do not require converting the parameters supplied in the call to the input types
 * Functions that have for all input parameters their types defined
 * Functions that do not require converting the parameters supplied in the call to the input types
@@ -598,7 +605,7 @@ One can get the value of a `Profile` that corresponds to the local vertex by cal
 The same rules about inserting automatic `value` calls hold for `Profiles` as for `Fields`.
 
 ### Allocating declarations
-`Field` and `Profile` types are special types compared to other types because the imply memory allocations.
+`Field` and `Profile` types are special types compared to other types because they imply allocations on the global memory, for which the sizes are inferable from the types.  
 Thus naturally aggregates, arrays and structures, that consist only of `Fields` and `Profiles` and other aggregates of them, also imply memory allocations.
 A perfect example is `Field3`. It is a structure that consists of three `Field` members and thus `Field3` declaration implies the same memory allocations that three separate `Field` declarations would imply. Another common example are `Field[]` variables.
 One can consider declarations of such aggregate varibles as syntactic sugar for recursively declaring the base `Fields` or `Profiles` and combining them together in the right structures.
