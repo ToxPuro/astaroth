@@ -79,6 +79,24 @@ errchk_print_warning(const char* function, const char* file, const long line,
     fflush(stderr);
 }
 
+__attribute__((__format__(__printf__, 3, 4))) void
+errchk_print_log(const char* function, const long line, const char* fmt, ...)
+{
+    time_t now          = time(NULL);
+    struct tm* timeinfo = localtime(&now);
+    char timestamp[20];
+    strftime(timestamp, sizeof(timestamp), "%H:%M:%S", timeinfo);
+    printf("[%s] %s:%ld", timestamp, function, line);
+    if (fmt && fmt[0] != '\0') {
+        printf(", ");
+        va_list args;
+        va_start(args, fmt);
+        vprintf(fmt, args);
+        va_end(args);
+    }
+    printf("\n");
+}
+
 void
 errchk_print_stacktrace(void)
 {

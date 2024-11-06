@@ -42,15 +42,14 @@ print_debug_array(const std::string& label, const size_t count, const T* arr)
 #define PRINT_DEBUG(value) (print_debug(#value, (value)))
 #define PRINT_DEBUG_ARRAY(count, arr) (print_debug_array(#arr, (count), (arr)))
 
-#include <ctime>
-static inline void
-print_log(const std::string& func, const int line, const std::string& msg)
+#include <cxxabi.h>
+template <typename T>
+void
+print_demangled(const T& obj)
 {
-    time_t now   = time(0);
-    tm* timeinfo = localtime(&now);
-    char timestamp[20];
-    strftime(timestamp, sizeof(timestamp), "%H:%M:%S", timeinfo);
-    std::cout << "[" << timestamp << "] " << func << ":" << line << ", " << msg << std::endl;
+    int status;
+    std::unique_ptr<char, void (*)(void*)> res{abi::__cxa_demangle(typeid(obj).name(), nullptr,
+                                                                   nullptr, &status),
+                                               std::free};
+    std::cout << "Type: " << (status == 0 ? res.get() : typeid(obj).name()) << std::endl;
 }
-
-#define PRINT_LOG(msg) (print_log(__func__, __LINE__, msg))

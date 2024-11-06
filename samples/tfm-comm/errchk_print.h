@@ -13,6 +13,8 @@
 #define ERROR(expr, ...) (errchk_print_error(__func__, __FILE__, __LINE__, #expr, __VA_ARGS__))
 #define WARNING(expr, ...) (errchk_print_warning(__func__, __FILE__, __LINE__, #expr, __VA_ARGS__))
 
+#define PRINT_LOG(...) (errchk_print_log(__func__, __LINE__, __VA_ARGS__))
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,6 +24,8 @@ void errchk_print_error(const char* function, const char* file, const long line,
 
 void errchk_print_warning(const char* function, const char* file, const long line,
                           const char* expression, const char* fmt, ...);
+
+void errchk_print_log(const char* function, const long line, const char* fmt, ...);
 
 void errchk_print_stacktrace(void);
 
