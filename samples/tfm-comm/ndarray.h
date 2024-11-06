@@ -4,6 +4,8 @@
 #include "datatypes.h"
 #include "math_utils.h"
 
+#include "buf.h"
+
 #include <iomanip>
 
 template <typename T>
@@ -60,9 +62,9 @@ ndarray_print(const char* label, const size_t ndims, const size_t* dims, const T
     ndarray_print_recursive<T>(ndims, dims, array);
 }
 
-template <typename T> struct NdArray {
+template <typename T, typename MemoryResource = HostMemoryResource> struct NdArray {
     Shape shape;
-    Buffer<T> buffer;
+    GenericBuffer<T, MemoryResource> buffer;
 
     // Constructor
     NdArray(const Shape& in_shape)
@@ -70,26 +72,16 @@ template <typename T> struct NdArray {
     {
     }
 
-    NdArray(const Shape& in_shape, const T& fill_value)
-        : shape(in_shape), buffer(prod(in_shape), fill_value)
-    {
-    }
-
-    NdArray(const Shape& in_shape, const Buffer<T>& in_buffer)
-        : shape(in_shape), buffer(in_buffer)
-    {
-    }
-
     void fill(const T& fill_value, const Shape& subdims, const Index& offset)
     {
         ERRCHK(subdims.count == offset.count);
         ndarray_fill<T>(fill_value, shape.count, shape.data, subdims.data, offset.data,
-                        buffer.data);
+                        buffer.data());
     }
 
     void fill_arange(const T& start = 0) { buffer.fill_arange(start, start + buffer.count); }
 
-    void display() { ndarray_print_recursive(shape.count, shape.data, buffer.data); }
+    void display() { ndarray_print_recursive(shape.count, shape.data, buffer.data()); }
 };
 
 template <typename T>

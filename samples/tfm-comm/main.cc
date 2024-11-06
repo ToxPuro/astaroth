@@ -51,7 +51,8 @@ main()
 
         // Basic MPI halo exchange task
         // auto recv_reqs = create_halo_exchange_task<AcReal>(cart_comm, local_mm, local_nn, rr,
-        //                                            mesh.buffer.data, mesh.buffer.data);
+        //                                            mesh.buffer.data(),
+        //                                            mesh.buffer.data());
         // while (!recv_reqs.empty()) {
         //     wait_and_destroy_request(recv_reqs.back());
         //     recv_reqs.pop_back();
@@ -77,7 +78,7 @@ main()
         hbuf.display();
 
         // Packed MPI/CUDA halo exchange task
-        PackPtrArray<AcReal*> inputs = {mesh.buffer.data};
+        PackPtrArray<AcReal*> inputs = {mesh.buffer.data()};
         HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, inputs.count);
         task.launch(cart_comm, inputs);
         task.wait(inputs);
@@ -89,10 +90,10 @@ main()
 
         // IO
         IOTask<AcReal> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
-        iotask.write(cart_comm, mesh.buffer.data, "test.dat");
-        // iotask.launch_write(cart_comm, "test.dat", mesh.buffer.data);
+        iotask.write(cart_comm, mesh.buffer.data(), "test.dat");
+        // iotask.launch_write(cart_comm, "test.dat", mesh.buffer.data());
         // iotask.wait_write();
-        iotask.read(cart_comm, "test.dat", mesh.buffer.data);
+        iotask.read(cart_comm, "test.dat", mesh.buffer.data());
         iotask.barrier(cart_comm);
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)

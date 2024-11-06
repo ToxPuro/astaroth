@@ -4,36 +4,41 @@
 
 #include "mem.h"
 
-template <typename T, typename MemoryResource = HostMemoryResource> struct GenericBuffer {
+template <typename T, typename MemoryResource = HostMemoryResource> class GenericBuffer {
+  private:
     const size_t count;
-    std::unique_ptr<T[], decltype(&MemoryResource::dealloc)> data;
+    std::unique_ptr<T[], decltype(&MemoryResource::dealloc)> resource;
 
+  public:
     GenericBuffer(const size_t in_count)
         : count{in_count},
-          data{static_cast<T*>(MemoryResource::alloc(in_count * sizeof(T))),
-               MemoryResource::dealloc}
+          resource{static_cast<T*>(MemoryResource::alloc(in_count * sizeof(T))),
+                   MemoryResource::dealloc}
     {
     }
+
+    T* data() const { return resource.get(); }
+    size_t size() const { return count; }
 
     void fill(const T& value)
     {
         static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value);
         for (size_t i = 0; i < count; ++i)
-            data[i] = value;
+            resource[i] = value;
     }
 
     void arange(const size_t min = 0)
     {
         static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value);
         for (size_t i = 0; i < count; ++i)
-            data[i] = static_cast<T>(min + i);
+            resource[i] = static_cast<T>(min + i);
     }
 
     void display() const
     {
         static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value);
         for (size_t i = 0; i < count; ++i)
-            std::cout << i << ": " << data[i] << std::endl;
+            std::cout << i << ": " << resource[i] << std::endl;
     }
 };
 
@@ -68,9 +73,9 @@ template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
 migrate(const GenericBuffer<T, MemoryResourceA>& in, GenericBuffer<T, MemoryResourceB>& out)
 {
-    ERRCHK(in.count == out.count);
+    ERRCHK(in.size() == out.size());
     const cudaMemcpyKind kind = get_kind<MemoryResourceA, MemoryResourceB>();
-    ERRCHK_CUDA_API(cudaMemcpy(out.data.get(), in.data.get(), in.count * sizeof(in.data[0]), kind));
+    ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(in.resource[0]), kind));
 }
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
@@ -78,10 +83,10 @@ void
 migrate_async(const cudaStream_t stream, const GenericBuffer<T, MemoryResourceA>& in,
               GenericBuffer<T, MemoryResourceB>& out)
 {
-    ERRCHK(in.count == out.count);
+    ERRCHK(in.size() == out.size());
     const cudaMemcpyKind kind = get_kind<MemoryResourceA, MemoryResourceB>();
-    ERRCHK_CUDA_API(cudaMemcpyAsync(out.data.get(), in.data.get(), in.count * sizeof(in.data[0]),
-                                    kind, stream));
+    ERRCHK_CUDA_API(
+        cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in.resource[0]), kind, stream));
 }
 #else
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
@@ -89,8 +94,8 @@ void
 migrate(const GenericBuffer<T, MemoryResourceA>& in, const GenericBuffer<T, MemoryResourceB>& out)
 {
     PRINT_LOG("non-cuda htoh");
-    ERRCHK(in.count == out.count);
-    std::copy(in.data.get(), in.data.get() + in.count, out.data.get());
+    ERRCHK(in.size() == out.size());
+    std::copy(in.data(), in.data() + in.size(), out.data());
 }
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void

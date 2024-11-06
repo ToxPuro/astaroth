@@ -44,3 +44,13 @@ errchk_print_mpi_api_error(const int errorcode, const char* function, const char
     } while (0)
 
 // throw std::runtime_error("MPI API error");
+
+// Uncomment to disable all MPI calls
+// #undef ERRCHK_MPI_API
+// #define ERRCHK_MPI_API(errcode)
+
+// #undef ERRCHK_MPI
+// #define ERRCHK_MPI(expr)
+
+// #undef ERRCHK_MPI_EXPR_DESC
+// #define ERRCHK_MPI_EXPR_DESC(expr, ...)
