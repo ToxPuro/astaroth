@@ -237,3 +237,37 @@ get_dtype()
         return MPI_DATATYPE_NULL;
     }
 }
+
+/**
+ * Managed MPI handles
+ * However, the added layer of indirection and complexity may outweigh the benefits
+ */
+// #include <functional>
+// #include <memory>
+// using mpi_comm_ptr_t     = std::unique_ptr<MPI_Comm, std::function<void(MPI_Comm*)>>;
+// using mpi_datatype_ptr_t = std::unique_ptr<MPI_Datatype, std::function<void(MPI_Datatype*)>>;
+// using mpi_request_ptr_t  = std::unique_ptr<MPI_Request, std::function<void(MPI_Request*)>>;
+
+// class ManagedMPIComm {
+//   private:
+//     mpi_comm_ptr_t handle;
+
+//     static MPI_Comm* alloc(const MPI_Comm& parent_comm, const Shape& global_nn)
+//     {
+//         MPI_Comm* cart_comm = new MPI_Comm;
+//         *cart_comm          = create_cart_comm(parent_comm, global_nn);
+//         return cart_comm;
+//     }
+
+//     static void dealloc(MPI_Comm* cart_comm) noexcept
+//     {
+//         ERRCHK_MPI_API(MPI_Comm_free(cart_comm));
+//         delete cart_comm;
+//     }
+
+//   public:
+//     ManagedMPIComm(const MPI_Comm& parent_comm, const Shape& global_nn)
+//         : handle{alloc(parent_comm, global_nn), &dealloc}
+//     {
+//     }
+// };
