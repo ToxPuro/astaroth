@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "buf.h"
+#include "buffer.h"
 #include "pack.h"
 #include "segment.h"
 
@@ -21,8 +21,8 @@ template <typename T> class Packet {
 
     Segment segment; // Shape of the data block the packet represents (for packing or unpacking)
 
-    GenericBuffer<T> send_buffer;
-    GenericBuffer<T> recv_buffer;
+    Buffer<T> send_buffer;
+    Buffer<T> recv_buffer;
     MPI_Request send_req; // MPI request for handling synchronization
     MPI_Request recv_req; // MPI request for handling synchronization
 

@@ -60,8 +60,8 @@ main()
 
         // Migrate
         const size_t count = 10;
-        GenericBuffer<AcReal, HostMemoryResource> hbuf(count);
-        GenericBuffer<AcReal, DeviceMemoryResource> dbuf(count);
+        Buffer<AcReal, HostMemoryResource> hbuf(count);
+        Buffer<AcReal, DeviceMemoryResource> dbuf(count);
 
         HostToDeviceBufferExchangeTask<AcReal> htod(count);
         hbuf.arange(static_cast<AcReal>(count * get_rank(cart_comm)));

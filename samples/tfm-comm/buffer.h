@@ -4,13 +4,13 @@
 
 #include "mem.h"
 
-template <typename T, typename MemoryResource = HostMemoryResource> class GenericBuffer {
+template <typename T, typename MemoryResource = HostMemoryResource> class Buffer {
   private:
     const size_t count;
     std::unique_ptr<T[], decltype(&MemoryResource::dealloc)> resource;
 
   public:
-    GenericBuffer(const size_t in_count)
+    Buffer(const size_t in_count)
         : count{in_count},
           resource{static_cast<T*>(MemoryResource::alloc(in_count * sizeof(T))),
                    MemoryResource::dealloc}
@@ -71,7 +71,7 @@ get_kind()
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate(const GenericBuffer<T, MemoryResourceA>& in, GenericBuffer<T, MemoryResourceB>& out)
+migrate(const Buffer<T, MemoryResourceA>& in, Buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
     const cudaMemcpyKind kind = get_kind<MemoryResourceA, MemoryResourceB>();
@@ -80,8 +80,8 @@ migrate(const GenericBuffer<T, MemoryResourceA>& in, GenericBuffer<T, MemoryReso
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate_async(const cudaStream_t stream, const GenericBuffer<T, MemoryResourceA>& in,
-              GenericBuffer<T, MemoryResourceB>& out)
+migrate_async(const cudaStream_t stream, const Buffer<T, MemoryResourceA>& in,
+              Buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
     const cudaMemcpyKind kind = get_kind<MemoryResourceA, MemoryResourceB>();
@@ -91,7 +91,7 @@ migrate_async(const cudaStream_t stream, const GenericBuffer<T, MemoryResourceA>
 #else
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate(const GenericBuffer<T, MemoryResourceA>& in, const GenericBuffer<T, MemoryResourceB>& out)
+migrate(const Buffer<T, MemoryResourceA>& in, const Buffer<T, MemoryResourceB>& out)
 {
     PRINT_LOG("non-cuda htoh");
     ERRCHK(in.size() == out.size());
@@ -99,8 +99,8 @@ migrate(const GenericBuffer<T, MemoryResourceA>& in, const GenericBuffer<T, Memo
 }
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate_async(const void* stream, const GenericBuffer<T, MemoryResourceA>& in,
-              GenericBuffer<T, MemoryResourceB>& out)
+migrate_async(const void* stream, const Buffer<T, MemoryResourceA>& in,
+              Buffer<T, MemoryResourceB>& out)
 {
     PRINT_LOG("non-cuda htoh async (not async in reality, blocks)");
     (void)stream; // Unused
@@ -108,4 +108,4 @@ migrate_async(const void* stream, const GenericBuffer<T, MemoryResourceA>& in,
 }
 #endif
 
-void test_buf();
+void test_buffer();

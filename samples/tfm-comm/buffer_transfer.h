@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "buf.h"
+#include "buffer.h"
 
 #if defined(__CUDACC__)
 #define DEVICE_ENABLED
@@ -40,8 +40,8 @@ auto stream_destroy = [](cudaStream_t* stream) noexcept {
 template <typename T, typename FirstStageResource, typename SecondStageResource>
 class BufferExchangeTask {
   protected:
-    GenericBuffer<T, FirstStageResource> first_stage_buffer;
-    GenericBuffer<T, SecondStageResource> second_stage_buffer;
+    Buffer<T, FirstStageResource> first_stage_buffer;
+    Buffer<T, SecondStageResource> second_stage_buffer;
     std::unique_ptr<cudaStream_t, decltype(stream_destroy)> stream;
     bool in_progress;
 
@@ -54,7 +54,7 @@ class BufferExchangeTask {
     {
     }
 
-    template <typename MemoryResource> void launch(const GenericBuffer<T, MemoryResource>& in)
+    template <typename MemoryResource> void launch(const Buffer<T, MemoryResource>& in)
     {
         ERRCHK(!in_progress);
         in_progress = true;
@@ -71,7 +71,7 @@ class BufferExchangeTask {
         migrate_async(*stream, first_stage_buffer, second_stage_buffer);
     }
 
-    template <typename MemoryResource> void wait(GenericBuffer<T, MemoryResource>& out)
+    template <typename MemoryResource> void wait(Buffer<T, MemoryResource>& out)
     {
         ERRCHK(in_progress);
 #if defined(DEVICE_ENABLED)

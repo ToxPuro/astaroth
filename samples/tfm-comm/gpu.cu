@@ -19,7 +19,7 @@
 #include "errchk.h"
 #include "errchk_cuda.h"
 
-#include "buf.h"
+#include "buffer.h"
 #include "buffer_transfer.h"
 
 int
@@ -29,10 +29,10 @@ main(void)
 
     const size_t count = 10;
 
-    GenericBuffer<double, HostMemoryResource> a(count);
-    GenericBuffer<double, PinnedHostMemoryResource> b(count);
-    GenericBuffer<double, PinnedWriteCombinedHostMemoryResource> c(count);
-    GenericBuffer<double, DeviceMemoryResource> d(count);
+    Buffer<double, HostMemoryResource> a(count);
+    Buffer<double, PinnedHostMemoryResource> b(count);
+    Buffer<double, PinnedWriteCombinedHostMemoryResource> c(count);
+    Buffer<double, DeviceMemoryResource> d(count);
     migrate(a, a);
     migrate(a, b);
     migrate(a, c);

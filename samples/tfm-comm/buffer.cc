@@ -1,14 +1,14 @@
-#include "buf.h"
+#include "buffer.h"
 
 #include "errchk.h"
 
 void
-test_buf()
+test_buffer()
 {
     const size_t count = 10;
-    GenericBuffer<double> a(count);
+    Buffer<double> a(count);
     a.arange();
-    GenericBuffer<double> b(count);
+    Buffer<double> b(count);
     migrate(a, b);
     ERRCHK(std::equal(a.data(), a.data() + count, b.data()));
 }

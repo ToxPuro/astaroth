@@ -1,6 +1,6 @@
 #pragma once
 
-#include "buf.h"
+#include "buffer.h"
 #include "datatypes.h"
 #include "math_utils.h"
 
@@ -62,7 +62,7 @@ ndarray_print(const char* label, const size_t ndims, const size_t* dims, const T
 
 template <typename T, typename MemoryResource = HostMemoryResource> struct NdArray {
     Shape shape;
-    GenericBuffer<T, MemoryResource> buffer;
+    Buffer<T, MemoryResource> buffer;
 
     // Constructor
     NdArray(const Shape& in_shape)
