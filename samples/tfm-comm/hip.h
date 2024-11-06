@@ -51,6 +51,8 @@
 #define cudaStreamCreateWithPriority hipStreamCreateWithPriority
 #define cudaStreamCreateWithFlags hipStreamCreateWithFlags
 #define cudaStreamDestroy hipStreamDestroy
+#define cudaStreamDefault hipStreamDefault
+#define cudaStreamNonBlocking hipStreamNonBlocking
 #define cudaMemcpyKind hipMemcpyKind
 #define cudaMemcpyHostToDevice hipMemcpyHostToDevice
 #define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost

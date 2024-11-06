@@ -2,20 +2,6 @@
 #include <iostream>
 #include <memory>
 
-// #if defined(__CUDACC__)
-// #define DEVICE_ENABLED
-// #include "errchk_cuda.h"
-// #include <cuda_runtime.h>
-// #elif defined(__HIP_PLATFORM_AMD__)
-// #define DEVICE_ENABLED
-// #include "errchk_cuda.h"
-// #include "hip.h"
-// #include <hip/hip_runtime.h>
-// #else
-// #include "errchk.h"
-// #define cudaStream_t void*
-// #endif
-
 #include "errchk.h"
 #include "errchk_cuda.h"
 

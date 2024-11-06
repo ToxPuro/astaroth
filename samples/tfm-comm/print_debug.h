@@ -43,6 +43,7 @@ print_debug_array(const std::string& label, const size_t count, const T* arr)
 #define PRINT_DEBUG_ARRAY(count, arr) (print_debug_array(#arr, (count), (arr)))
 
 #include <cxxabi.h>
+#include <memory>
 template <typename T>
 void
 print_demangled(const T& obj)
