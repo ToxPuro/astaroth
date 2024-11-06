@@ -20,7 +20,7 @@
 #include "errchk_cuda.h"
 
 #include "buffer.h"
-#include "buffer_transfer.h"
+#include "buffer_exchange.h"
 
 int
 main(void)

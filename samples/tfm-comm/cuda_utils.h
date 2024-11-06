@@ -13,8 +13,10 @@
 #include <hip/hip_runtime.h>
 #else
 #include "errchk.h"
+using cudaStream_t                       = void*;
+constexpr unsigned int cudaStreamDefault = 0;
 #endif
 
-cudaStream_t* cuda_stream_create(const unsigned int flags);
+cudaStream_t* cuda_stream_create(const unsigned int flags = cudaStreamDefault);
 
 void cuda_stream_destroy(cudaStream_t* stream) noexcept;

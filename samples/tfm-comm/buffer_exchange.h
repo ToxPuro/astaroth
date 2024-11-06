@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "buffer.h"
+#include "cuda_utils.h"
 
 #if defined(__CUDACC__)
 #define DEVICE_ENABLED
@@ -18,38 +19,19 @@
 #define cudaStream_t void*
 #endif
 
-auto stream_create = []() {
-    PRINT_LOG("new stream");
-    cudaStream_t* stream = new cudaStream_t;
-#if defined(DEVICE_ENABLED)
-    // ERRCHK_CUDA_API(cudaStreamCreateWithFlags(stream, cudaStreamNonBlocking));
-    ERRCHK_CUDA_API(cudaStreamCreate(stream));
-#else
-    *stream = nullptr;
-#endif
-    return stream;
-};
-auto stream_destroy = [](cudaStream_t* stream) noexcept {
-    PRINT_LOG("delete stream");
-#if defined(DEVICE_ENABLED)
-    WARNCHK_CUDA_API(cudaStreamDestroy(*stream));
-#endif
-    delete stream;
-};
-
 template <typename T, typename FirstStageResource, typename SecondStageResource>
 class BufferExchangeTask {
   protected:
     Buffer<T, FirstStageResource> first_stage_buffer;
     Buffer<T, SecondStageResource> second_stage_buffer;
-    std::unique_ptr<cudaStream_t, decltype(stream_destroy)> stream;
+    std::unique_ptr<cudaStream_t, decltype(&cuda_stream_destroy)> stream;
     bool in_progress;
 
   public:
     BufferExchangeTask(const size_t max_count)
         : first_stage_buffer(max_count),
           second_stage_buffer(max_count),
-          stream{stream_create(), stream_destroy},
+          stream{cuda_stream_create(), &cuda_stream_destroy},
           in_progress{false}
     {
     }

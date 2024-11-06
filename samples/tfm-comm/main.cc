@@ -9,7 +9,7 @@
 #include "errchk_mpi.h"
 #include "mpi_utils.h"
 
-#include "buffer_transfer.h"
+#include "buffer_exchange.h"
 #include "halo_exchange.h"
 #include "halo_exchange_packed.h"
 #include "io.h"
