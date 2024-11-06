@@ -5132,6 +5132,11 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 		std::vector<AcKernel> level_set_kernels{};
 		for(auto& call : level_set_call_indexes)
 			level_set_kernels.push_back(kernel_calls[call]);
+
+		bool level_set_has_fixed_boundary = true;
+		for(auto& kernel : level_set_kernels)
+			level_set_has_fixed_boundary &= kernel_has_fixed_boundary[kernel];
+
 		std::vector<Field> input_fields_not_communicated{};
 		for(auto& kernel : level_set_kernels)
 		{
@@ -5143,18 +5148,26 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 			}
 
 		}
-		for(auto& field : input_fields_not_communicated)
+		if(!level_set_has_fixed_boundary)
 		{
-			bool need_to_call_bc = false;
-			need_to_call_bc |= field_boundconds[field][0].info.larger_output;
-			need_to_call_bc |= field_boundconds[field][1].info.larger_output;
-			need_to_call_bc |= field_boundconds[field][2].info.larger_output;
-			need_to_call_bc |= field_boundconds[field][3].info.larger_output;
-			need_to_call_bc |= field_boundconds[field][4].info.larger_output;
-			need_to_call_bc |= field_boundconds[field][5].info.larger_output;
-			if(need_to_call_bc)
-				fatal("%s","BC that sets the actual boundary needs to be inserted even though the ghost zones are not needed\nTODO implement this --- now easier with an actual example use case ---")
+			for(auto& field : input_fields_not_communicated)
+			{
+				bool need_to_call_bc = false;
+				need_to_call_bc |= field_boundconds[field][0].info.larger_output;
+				need_to_call_bc |= field_boundconds[field][1].info.larger_output;
+				need_to_call_bc |= field_boundconds[field][2].info.larger_output;
+				need_to_call_bc |= field_boundconds[field][3].info.larger_output;
+				need_to_call_bc |= field_boundconds[field][4].info.larger_output;
+				need_to_call_bc |= field_boundconds[field][5].info.larger_output;
+				if(need_to_call_bc)
+					fatal("%s","BC that sets the actual boundary needs to be inserted even though the ghost zones are not needed\nTODO implement this --- now easier with an actual example use case ---")
 
+			}
+		}
+		else
+		{
+			for(auto& kernel : level_set_kernels)
+				if(!kernel_has_fixed_boundary[kernel]) fatal("%s\n", "TODO: kernels that have fixed boundaries should not be in the same level set as those that do not have\n");
 		}
 		for(auto& call : level_set_call_indexes)
 		{

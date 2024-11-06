@@ -103,6 +103,7 @@ static const char* INLINE_STR = NULL;
 static const char* UTILITY_STR = NULL;
 static const char* ELEMENTAL_STR = NULL;
 static const char* BOUNDCOND_STR = NULL;
+static const char* FIXED_BOUNDARY_STR = NULL;
 static const char* RUN_CONST_STR = NULL;
 static const char* CONST_DIMS_STR = NULL;
 static const char* DCONST_STR = NULL;
@@ -3422,7 +3423,7 @@ output_qualifiers(FILE* stream, const ASTNode* node, const char** tqualifiers, c
         if (n_tqualifiers)
 	  for(size_t i=0; i<n_tqualifiers;++i)
 	  {
-		if(tqualifiers[i] != BOUNDCOND_STR && tqualifiers[i] != ELEMENTAL_STR && tqualifiers[i] != UTILITY_STR)
+		if(tqualifiers[i] != BOUNDCOND_STR && tqualifiers[i] != FIXED_BOUNDARY_STR && tqualifiers[i] != ELEMENTAL_STR && tqualifiers[i] != UTILITY_STR)
           		fprintf(stream, "%s ", tqualifiers[i]);
 	  }
 }
@@ -4885,6 +4886,18 @@ gen_user_defines(const ASTNode* root, const char* out)
 	      fprintf(fp,"false,");
     }
   fprintf(fp, "};");
+
+  fprintf(fp, "static const bool kernel_has_fixed_boundary[NUM_KERNELS] = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].tspecifier == KERNEL_STR)
+    {
+      if (str_vec_contains(symbol_table[i].tqualifiers,FIXED_BOUNDARY_STR))
+	      fprintf(fp,"true,");
+      else
+	      fprintf(fp,"false,");
+    }
+  fprintf(fp, "};");
+
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   // START---------------------------
 
@@ -5999,10 +6012,10 @@ field_to_real_conversion(ASTNode* node, const ASTNode* root)
 	{
 		if(!call_info.types.data[i]) continue;
 		if(
-		      (params_info.types.data[i-offset] == REAL3_STR && call_info.types.data[i] == FIELD3_STR)
-		   || (params_info.types.data[i-offset] == REAL_STR && call_info.types.data[i] == FIELD_STR)
-		   || (params_info.types.data[i-offset] == REAL_PTR_STR && call_info.types.data[i] == VTXBUF_PTR_STR)
-		   || (params_info.types.data[i-offset] == REAL_PTR_STR && call_info.types.data[i] == FIELD_PTR_STR)
+		      (params_info.types.data[i-offset] == REAL3_STR     && call_info.types.data[i] == FIELD3_STR)
+		   || (params_info.types.data[i-offset] == REAL_STR      && call_info.types.data[i] == FIELD_STR)
+		   || (params_info.types.data[i-offset] == REAL_PTR_STR  && call_info.types.data[i] == VTXBUF_PTR_STR)
+		   || (params_info.types.data[i-offset] == REAL_PTR_STR  && call_info.types.data[i] == FIELD_PTR_STR)
 		   || (params_info.types.data[i-offset] == REAL3_PTR_STR && call_info.types.data[i] == FIELD3_PTR_STR)
 		   || (params_info.types.data[i-offset] == REAL_STR      && strstr(call_info.types.data[i],"Profile"))
 		  )
@@ -6456,6 +6469,7 @@ gen_global_strings()
 	INLINE_STR = intern("inline");
 	UTILITY_STR = intern("utility");
 	BOUNDCOND_STR = intern("boundcond");
+	FIXED_BOUNDARY_STR = intern("fixed_boundary");
 	ELEMENTAL_STR = intern("elemental");
 	AUXILIARY_STR = intern("auxiliary");
 	COMMUNICATED_STR = intern("communicated");
