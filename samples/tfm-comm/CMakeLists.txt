@@ -52,7 +52,7 @@ add_compile_options(# C/CXX/CUDA/HIP
 add_library(tfm-utils STATIC decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
 
 find_package(MPI REQUIRED COMPONENTS C)
-add_executable(run main.cc packet.cc)
+add_executable(run main.cc packet.cc mpi_utils.cc)
 target_link_libraries(run PRIVATE MPI::MPI_C tfm-utils)
 
 ## Automated tests

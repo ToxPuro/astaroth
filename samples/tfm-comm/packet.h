@@ -114,8 +114,8 @@ Packet<T>::launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
 
     // Post recv
     const int tag = 0;
-    ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data, as<int>(count), get_dtype<T>(), recv_neighbor, tag,
-                             cart_comm, &recv_req));
+    ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data, as<int>(count), get_mpi_dtype<T>(), recv_neighbor,
+                             tag, cart_comm, &recv_req));
 
     // Block until the previous send has completed before reusing the buffer
     ERRCHK_MPI_EXPR_DESC(send_req == MPI_REQUEST_NULL,
@@ -124,8 +124,8 @@ Packet<T>::launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
 
     // Pack, post send, and ensure the message has left the pack buffer
     pack(local_mm, segment.dims, send_offset, inputs, send_buffer.data);
-    ERRCHK_MPI_API(MPI_Isend(send_buffer.data, as<int>(count), get_dtype<T>(), send_neighbor, tag,
-                             cart_comm, &send_req));
+    ERRCHK_MPI_API(MPI_Isend(send_buffer.data, as<int>(count), get_mpi_dtype<T>(), send_neighbor,
+                             tag, cart_comm, &send_req));
 
     ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
 }

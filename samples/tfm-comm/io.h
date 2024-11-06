@@ -57,13 +57,14 @@ template <typename T> class IOTask {
         // independent rw
 
         MPI_Datatype global_subarray = create_subarray(file_dims, mesh_subdims, file_offset,
-                                                       get_dtype<T>());
+                                                       get_mpi_dtype<T>());
         MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
-                                                       get_dtype<T>());
+                                                       get_mpi_dtype<T>());
 
         ERRCHK_MPI_EXPR_DESC(file == MPI_FILE_NULL, "Previous IO operation was still in progress.");
         ERRCHK_MPI_API(MPI_File_open(cart_comm, path.c_str(), MPI_MODE_RDONLY, info, &file));
-        ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_dtype<T>(), global_subarray, "native", info));
+        ERRCHK_MPI_API(
+            MPI_File_set_view(file, 0, get_mpi_dtype<T>(), global_subarray, "native", info));
 
         MPI_Offset bytes;
         ERRCHK_MPI_API(MPI_File_get_size(file, &bytes));
@@ -99,14 +100,15 @@ template <typename T> class IOTask {
         // independent rw
 
         MPI_Datatype global_subarray = create_subarray(file_dims, mesh_subdims, file_offset,
-                                                       get_dtype<T>());
+                                                       get_mpi_dtype<T>());
         MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
-                                                       get_dtype<T>());
+                                                       get_mpi_dtype<T>());
 
         ERRCHK_MPI_EXPR_DESC(file == MPI_FILE_NULL, "Previous IO operation was still in progress.");
         ERRCHK_MPI_API(
             MPI_File_open(cart_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
-        ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_dtype<T>(), global_subarray, "native", info));
+        ERRCHK_MPI_API(
+            MPI_File_set_view(file, 0, get_mpi_dtype<T>(), global_subarray, "native", info));
 
         MPI_Status status;
         status.MPI_ERROR = MPI_SUCCESS;
@@ -136,9 +138,9 @@ template <typename T> class IOTask {
         // independent rw
 
         MPI_Datatype global_subarray = create_subarray(file_dims, mesh_subdims, file_offset,
-                                                       get_dtype<T>());
+                                                       get_mpi_dtype<T>());
         MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
-                                                       get_dtype<T>());
+                                                       get_mpi_dtype<T>());
 
         ERRCHK_MPI(file == MPI_FILE_NULL);
 
@@ -146,7 +148,8 @@ template <typename T> class IOTask {
 
         ERRCHK_MPI_API(
             MPI_File_open(cart_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
-        ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_dtype<T>(), global_subarray, "native", info));
+        ERRCHK_MPI_API(
+            MPI_File_set_view(file, 0, get_mpi_dtype<T>(), global_subarray, "native", info));
         ERRCHK_MPI_API(MPI_File_iwrite_all(file, data, 1, local_subarray, &req));
         ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
         ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
