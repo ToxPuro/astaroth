@@ -65,7 +65,7 @@ create_halo_exchange_task(const MPI_Comm parent_comm, const Shape& local_mm, con
         ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
     }
     while (!send_reqs.empty()) {
-        wait_request(send_reqs.back());
+        wait_and_destroy_request(send_reqs.back());
         send_reqs.pop_back();
     }
 

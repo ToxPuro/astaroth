@@ -53,7 +53,7 @@ main()
         // auto recv_reqs = create_halo_exchange_task<AcReal>(cart_comm, local_mm, local_nn, rr,
         //                                            mesh.buffer.data, mesh.buffer.data);
         // while (!recv_reqs.empty()) {
-        //     wait_request(recv_reqs.back());
+        //     wait_and_destroy_request(recv_reqs.back());
         //     recv_reqs.pop_back();
         // }
 

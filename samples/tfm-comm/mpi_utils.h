@@ -64,7 +64,7 @@ get_direction(const Index& offset, const Shape& nn, const Index& rr)
 }
 
 static inline void
-mpi_comm_print_info(const MPI_Comm& comm)
+print_mpi_comm(const MPI_Comm& comm)
 {
     int rank, nprocs, ndims;
     ERRCHK_MPI_API(MPI_Comm_rank(comm, &rank));
@@ -84,8 +84,10 @@ mpi_comm_print_info(const MPI_Comm& comm)
 }
 
 /** Creates a cartesian communicator with topology information attached
- * The resource must be freed after use
- * ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
+ * The resource must be freed after use with
+ *  destroy_cart_comm(cart_comm)
+ * or
+ *  ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
  */
 static inline MPI_Comm
 create_cart_comm(const MPI_Comm& parent_comm, const Shape& global_nn)
@@ -111,10 +113,19 @@ create_cart_comm(const MPI_Comm& parent_comm, const Shape& global_nn)
     return cart_comm;
 }
 
+static inline void
+destroy_cart_comm(MPI_Comm& cart_comm)
+{
+    ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
+    cart_comm = MPI_COMM_NULL;
+}
+
 /** Create and commit a subarray
  * The returned resource is ready to use.
- * The returned resource must be freed after use.
- * ERRCHK_MPI_API(MPI_Type_free(&subarray))
+ * The returned resource must be freed after use with either
+ *  destroy_subarray(subarray)
+ * or
+ *  ERRCHK_MPI_API(MPI_Type_free(&subarray))
  * */
 static inline MPI_Datatype
 create_subarray(const Shape& dims, const Shape& subdims, const Index& offset,
@@ -129,6 +140,13 @@ create_subarray(const Shape& dims, const Shape& subdims, const Index& offset,
                                             mpi_offset.data, MPI_ORDER_C, dtype, &subarray));
     ERRCHK_MPI_API(MPI_Type_commit(&subarray));
     return subarray;
+}
+
+static inline void
+destroy_subarray(MPI_Datatype& subarray)
+{
+    ERRCHK_MPI_API(MPI_Type_free(&subarray));
+    subarray = MPI_DATATYPE_NULL;
 }
 
 static inline Shape
@@ -198,7 +216,7 @@ get_neighbor(const MPI_Comm& cart_comm, const Direction& dir)
 }
 
 static inline void
-wait_request(MPI_Request& req)
+wait_and_destroy_request(MPI_Request& req)
 {
     MPI_Status status;
     status.MPI_ERROR = MPI_SUCCESS;

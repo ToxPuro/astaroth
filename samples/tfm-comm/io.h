@@ -161,7 +161,7 @@ template <typename T> class IOTask {
         ERRCHK_MPI_EXPR_DESC(req != MPI_REQUEST_NULL,
                              "Function called but there was no write operation in progress. "
                              "Function launch_write must be called before wait_write.");
-        wait_request(req);
+        wait_and_destroy_request(req);
         ERRCHK_MPI_API(MPI_File_close(&file));
         ERRCHK_MPI(file == MPI_FILE_NULL);
     };
