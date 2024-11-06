@@ -107,3 +107,5 @@ migrate_async(const void* stream, const GenericBuffer<T, MemoryResourceA>& in,
     migrate(in, out);
 }
 #endif
+
+void test_buf();

@@ -1,3 +1,4 @@
+#include "buf.h"
 #include "buffer.h"
 #include "decomp.h"
 #include "math_utils.h"
@@ -15,6 +16,7 @@ main(void)
     test_partition();
     test_decomp();
     test_buffer();
+    test_buf();
     test_math_utils();
 
     return EXIT_SUCCESS;
