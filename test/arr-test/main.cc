@@ -161,6 +161,7 @@ main(void)
         acHostMeshRandomize(&model);
 
     acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridSynchronizeStream(STREAM_DEFAULT);
 
     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
     	acGridExecuteTaskGraph(graph,1);
@@ -197,7 +198,9 @@ main(void)
 #else
 			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[comp_y][info.int_params[AC_dconst_int]] + threeD_real_arr[k][j][i]);
 #endif
+			auto val = model.vertex_buffer[FIELD_Z][IDX(i,j,k)];
 			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2])*((AcReal)fourD_float_arr[0][k][j][i] + (AcReal)fourD_float_arr[1][k][j][i] + (AcReal)fourD_float_arr[2][k][j][i]);
+			fourD_float_arr[0][k][j][i] =  test_arr[1];
                 }
             }
         }
@@ -212,15 +215,24 @@ main(void)
     fflush(stdout);
     int read_global_arr[nx];
     AcReal read_2d[ny][nx];
+    float read_fourD_float_arr[3][mz][my][mx];
     acStoreUniform(AC_global_arr, read_global_arr, get_array_length(AC_global_arr,model.info));
     acStoreUniform(AC_2d_reals,&read_2d[0][0], get_array_length(AC_2d_reals,model.info));
+    acStoreUniform(AC_4d_float_arr,&read_fourD_float_arr[0][0][0][0], get_array_length(AC_4d_float_arr,model.info));
     bool arrays_are_the_same = true;
     for(int i = 0; i < info.int_params[AC_nx]; ++i)
 	    arrays_are_the_same &= (read_global_arr[i] == global_arr[i]);
     for(int i = 0; i < info.int_params[AC_nx]; ++i)
     	for(int j = 0; j < info.int_params[AC_nx]; ++j)
 	    arrays_are_the_same &= (read_2d[j][i] == twoD_real_arr[j][i]);
+    bool updated_arrays_are_the_same = true;
+    for(int k = 0; k < mz; ++k)
+    	for(int j = 0; j < my; ++j)
+    		for(int i = 0; i < mx; ++i)
+			for(int l = 0; l < 3; ++l)
+				updated_arrays_are_the_same &= (read_fourD_float_arr[l][k][j][i] == fourD_float_arr[l][k][j][i]);
     printf("LOAD STORE GMEM ARRAY... %s \n", arrays_are_the_same ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    printf("GMEM ARRAY UPDATE ... %s \n", updated_arrays_are_the_same ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     if (pid == 0) {
         acHostMeshDestroy(&model);
         acHostMeshDestroy(&candidate);

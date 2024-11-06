@@ -5143,7 +5143,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 			auto fields = get_kernel_fields(kernel);
 			for(auto& field : fields.in)
 			{
-				if(std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end())
+				if(std::find(communicated_fields.begin(), communicated_fields.end(), field) == communicated_fields.end())
 					input_fields_not_communicated.push_back(field);
 			}
 

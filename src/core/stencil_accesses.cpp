@@ -275,12 +275,12 @@ acAnalysisLoadMeshInfo(const AcMeshInfo info)
 
 #include "dconst_arrays_decl.h"
 #include "gmem_arrays_accessed_decl.h"
-#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) static const DATATYPE ARR_NAME##return_var{}; \
-							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) static DATATYPE ARR_NAME##return_var{}; \
+							    struct tmp_struct_##ARR_NAME {DATATYPE& operator[](const int) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
 
-#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, DIMS) static const DATATYPE ARR_NAME##return_var{}; \
-							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, DIMS) static DATATYPE ARR_NAME##return_var{}; \
+							    struct tmp_struct_##ARR_NAME {DATATYPE& operator[](const int) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
 #include "gmem_arrays_decl.h"
 

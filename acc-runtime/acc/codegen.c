@@ -1663,7 +1663,7 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
     else if(str_vec_contains(sym->tqualifiers,GLOBAL_MEM_STR))
     {
 	
-    	if(!str_vec_contains(sym->tqualifiers,DYNAMIC_STR))
+    	if(!str_vec_contains(sym->tqualifiers,DYNAMIC_STR) && !is_left_child(NODE_ASSIGNMENT,node))
 	{
 		astnode_sprintf_prefix(base,"%s%s",
 				 is_primitive_datatype(datatype_scalar) ? "__ldg(": "",
