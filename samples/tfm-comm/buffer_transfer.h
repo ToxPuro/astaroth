@@ -23,13 +23,19 @@
 auto stream_create = []() {
     PRINT_LOG("new stream");
     cudaStream_t* stream = new cudaStream_t;
+#if defined(DEVICE_ENABLED)
     // ERRCHK_CUDA_API(cudaStreamCreateWithFlags(stream, cudaStreamNonBlocking));
     ERRCHK_CUDA_API(cudaStreamCreate(stream));
+#else
+    *stream = nullptr;
+#endif
     return stream;
 };
 auto stream_destroy = [](cudaStream_t* stream) noexcept {
     PRINT_LOG("delete stream");
+#if defined(DEVICE_ENABLED)
     WARNCHK_CUDA_API(cudaStreamDestroy(*stream));
+#endif
     delete stream;
 };
 
@@ -70,7 +76,9 @@ class BufferExchangeTask {
     template <typename MemoryResource> void wait(GenericBuffer<T, MemoryResource>& out)
     {
         ERRCHK(in_progress);
+#if defined(DEVICE_ENABLED)
         ERRCHK_CUDA_API(cudaStreamSynchronize(*stream));
+#endif
 
         // Ensure that the output resource and the second-stage buffer is in the same memory space
         if constexpr (std::is_base_of<DeviceMemoryResource, SecondStageResource>::value) {
