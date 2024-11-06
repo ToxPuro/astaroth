@@ -605,7 +605,7 @@ One can get the value of a `Profile` that corresponds to the local vertex by cal
 The same rules about inserting automatic `value` calls hold for `Profiles` as for `Fields`.
 
 ### Allocating declarations
-`Field` and `Profile` types are special types compared to other types because the imply memory allocations.
+`Field` and `Profile` types are special types compared to other types because they imply allocations on the global memory, for which the sizes are inferable from the types.  
 Thus naturally aggregates, arrays and structures, that consist only of `Fields` and `Profiles` and other aggregates of them, also imply memory allocations.
 A perfect example is `Field3`. It is a structure that consists of three `Field` members and thus `Field3` declaration implies the same memory allocations that three separate `Field` declarations would imply. Another common example are `Field[]` variables.
 One can consider declarations of such aggregate varibles as syntactic sugar for recursively declaring the base `Fields` or `Profiles` and combining them together in the right structures.
