@@ -53,6 +53,8 @@ void strip_whitespace(char *str) {
 "long long"             { return LONG_LONG; } /* Type specifiers */
 "uint"                  { return UINT; }
 "real"                  { return REAL; }
+"float"                 { return FLOAT; }
+"double"                { return DOUBLE; }
 "bool"                  { return BOOL; }
 "Tensor"                { return TENSOR; }
 "Matrix"                { return MATRIX; }

@@ -62,8 +62,7 @@ main(void)
 
     // CPU alloc
     AcMeshInfo info;
-    AcCompInfo comp_info = acInitCompInfo();
-    acLoadConfig(AC_DEFAULT_CONFIG, &info, &comp_info);
+    acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
     const int max_devices = 1;
     if (nprocs > max_devices) {
@@ -101,17 +100,22 @@ main(void)
     //these are read from config
     //info.int_arrays[AC_test_int_arr] = (int*)test_int_arr;
     //info.real_arrays[AC_test_arr_2] = (AcReal*)test_arr_2;
-    int global_arr[nx];
+    int   global_arr[nx];
+    float float_arr[nx];
 #if AC_ROW_MAJOR_ORDER
     AcReal twoD_real_arr[nx][ny];
     AcReal threeD_real_arr[mx][my][mz];
 #else
     AcReal twoD_real_arr[ny][nx];
     AcReal threeD_real_arr[mz][my][mx];
+    float  fourD_float_arr[3][mz][my][mx];
 #endif
 
     for(int i = 0; i < nx; ++i)
-		    global_arr[i] = 1;
+    {
+		    global_arr[i] = rand();
+		    float_arr[i]  = (1.0*rand())/RAND_MAX;
+    }
     for(int j = 0; j < ny; ++j)
     	for(int i = 0; i < nx; ++i)
 #if AC_ROW_MAJOR_ORDER
@@ -123,25 +127,30 @@ main(void)
     for(int k = 0; k < mz; ++k)
     	for(int j = 0; j < my; ++j)
     		for(int i = 0; i < mx; ++i)
+		{
 #if AC_ROW_MAJOR_ORDER
 			threeD_real_arr[i][j][k]  = (1.0*rand())/RAND_MAX;
 #else
 			threeD_real_arr[k][j][i]  = (1.0*rand())/RAND_MAX;
+			for(int l = 0; l < 3; ++l)
+				fourD_float_arr[l][k][j][i] = (1.0*rand())/RAND_MAX;
+		}
 #endif
-    info.int_arrays[AC_global_arr] = global_arr;
-    info.real_arrays[AC_2d_reals]  = &twoD_real_arr[0][0];
-    info.real_arrays[AC_2d_reals_dims_from_config]  = &twoD_real_arr[0][0];
-    info.real_arrays[AC_3d_reals]  = &threeD_real_arr[0][0][0];
-    info.int_params[AC_dconst_int] = nx-NGHOST_X;
+    info[AC_global_arr] = global_arr;
+    info[AC_float_arr] = float_arr;
+    info[AC_2d_reals]  = &twoD_real_arr[0][0];
+    info[AC_2d_reals_dims_from_config]  = &twoD_real_arr[0][0];
+    info[AC_3d_reals]  = &threeD_real_arr[0][0][0];
+    info[AC_4d_float_arr]  = &fourD_float_arr[0][0][0][0];
+    info[AC_dconst_int] = nx-NGHOST_X;
     acGridInit(info);
 
     Field all_fields[NUM_VTXBUF_HANDLES];
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
         all_fields[i] = (Field)i;
     }
-    auto null_loader = [&](ParamLoadingInfo l){(void)l;};
     AcTaskDefinition ops[] = {
-	    acComputeWithParams(test_arr,all_fields,null_loader)
+	    acCompute(update,all_fields)
     };
     AcTaskGraph* graph = acGridBuildTaskGraph(ops);
 
@@ -188,7 +197,7 @@ main(void)
 #else
 			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[comp_y][info.int_params[AC_dconst_int]] + threeD_real_arr[k][j][i]);
 #endif
-			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2]);
+			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2])*((AcReal)fourD_float_arr[0][k][j][i] + (AcReal)fourD_float_arr[1][k][j][i] + (AcReal)fourD_float_arr[2][k][j][i]);
                 }
             }
         }

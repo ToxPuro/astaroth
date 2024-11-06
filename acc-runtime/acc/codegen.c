@@ -32,6 +32,10 @@ static string_vec primitive_datatypes = VEC_INITIALIZER;
 #define BOOL_STR      primitive_datatypes.data[2]
 #define LONG_STR      primitive_datatypes.data[3]
 #define LONG_LONG_STR primitive_datatypes.data[4]
+//TP: only one of these should be active at any time since either float or double equals AcReal
+#define FLOAT_STR     primitive_datatypes.data[5]
+#define DOUBLE_STR    primitive_datatypes.data[5]
+#define MAX_ARRAY_RANK (10)
 string_vec
 get_prof_types()
 {
@@ -106,6 +110,7 @@ static const char* DCONST_STR = NULL;
 static const char* FIELD_STR      = NULL;
 static const char* KERNEL_STR      = NULL;
 static const char* FIELD3_STR      = NULL;
+static const char* FIELD4_STR      = NULL;
 static const char* PROFILE_STR      = NULL;
 
 static const char* BOUNDARY_X_TOP_STR = NULL; 
@@ -892,7 +897,7 @@ get_array_info(Symbol* sym, const bool accessed, const ASTNode* root)
 	res.accessed = accessed;
 	if (!accessed) push(&sym->tqualifiers,DEAD_STR);
 	bool const_dims = true;
-	for(size_t dim = 0; dim < 3; ++dim) const_dims &= (dim >= res.dims.size || is_number_expression(res.dims.data[dim]));
+	for(size_t dim = 0; dim < MAX_ARRAY_RANK; ++dim) const_dims &= (dim >= res.dims.size || is_number_expression(res.dims.data[dim]));
 	if (const_dims) push(&sym->tqualifiers,CONST_DIMS_STR);
 
 	return res;
@@ -904,14 +909,14 @@ output_array_info(FILE* fp, array_info info)
 	fprintf(fp,"%s,",info.is_dconst ? "true" : "false");
 	fprintf(fp,"%zu,",info.dims.size);
 	fprintf(fp,"%s","{{");
-	for(size_t dim = 0; dim < 3; ++dim)
+	for(size_t dim = 0; dim < MAX_ARRAY_RANK; ++dim)
 	{
 		if(dim >= info.dims.size) fprintf(fp,"%s,","-1");
 		else {fprintf(fp,"%s,",info.dims.data[dim]);}
 	}
 
 	fprintf(fp,"%s","},{");
-	for(size_t dim = 0; dim < 3; ++dim)
+	for(size_t dim = 0; dim < MAX_ARRAY_RANK; ++dim)
 	{
 		const bool integer_dim = (dim >= info.dims.size || is_number_expression(info.dims.data[dim]));
 		fprintf(fp,"%s,",integer_dim ? "false" : "true");
@@ -1890,6 +1895,32 @@ gen_kernel_structs(const ASTNode* root)
 			}
 			fprintf(fp,"return AC_FAILURE;}\n");
 		}
+		//TP: you have to generate some load types always since the library assumes they exist
+		const size_t num_always_produced = 5;
+		string_vec always_produced_load_types[num_always_produced];
+		memset(always_produced_load_types,0,sizeof(string_vec)*num_always_produced);
+		push(&always_produced_load_types[0],FIELD_STR);
+		push(&always_produced_load_types[0],REAL_PTR_STR);
+
+		push(&always_produced_load_types[1],FIELD3_STR);
+		push(&always_produced_load_types[1],REAL_PTR_STR);
+
+		push(&always_produced_load_types[2],FIELD4_STR);
+		push(&always_produced_load_types[2],REAL_PTR_STR);
+
+		push(&always_produced_load_types[3],FIELD_STR);
+
+		push(&always_produced_load_types[4],FIELD_STR);
+		push(&always_produced_load_types[4],REAL_STR);
+		for(size_t i = 0; i < num_always_produced; ++i)
+		{
+			string_vec types = always_produced_load_types[i];
+			if(str_vec_in(unique_input_types,num_unique_input_types,types)) continue;
+			fprintf(fp,"AcResult acLoadKernelParams(acKernelInputParams&, const AcKernel,");
+			for(size_t j = 0; j < types.size; ++j)
+				fprintf(fp,"%s %s",types.data[j],(j < types.size-1) ? "," : "");
+			fprintf(fp,"){return AC_FAILURE;}\n");
+		}
 		fclose(fp);
 		fp = fopen("load_ac_kernel_params_def.h","w");
 		for(int i = 0; i < num_unique_input_types; ++i)
@@ -1899,6 +1930,16 @@ gen_kernel_structs(const ASTNode* root)
 			for(size_t j = 0; j < types.size; ++j)
 				fprintf(fp,"%s p_%ld%s",types.data[j],j,(j < types.size-1) ? "," : "");
 			fprintf(fp,");");
+		}
+		for(size_t i = 0; i < num_always_produced; ++i)
+		{
+			string_vec types = always_produced_load_types[i];
+			if(str_vec_in(unique_input_types,num_unique_input_types,types)) continue;
+			fprintf(fp,"AcResult acLoadKernelParams(acKernelInputParams&, const AcKernel,");
+			for(size_t j = 0; j < types.size; ++j)
+				fprintf(fp,"%s %s",types.data[j],(j < types.size-1) ? "," : "");
+			fprintf(fp,");\n");
+			free_str_vec(&types);
 		}
 		fclose(fp);
 	}
@@ -3264,17 +3305,6 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 	node->parent->parent->parent->lhs = NULL;
 	node->parent->parent->parent->rhs = NULL;
 }
-int
-str_to_qualifier(const char* str)
-{
-	if(!strcmp(str,REAL_STR))     return REAL;
-	if(!strcmp(str,REAL3_STR))    return REAL3;
-	if(!strcmp(str,INT_STR))        return INT;
-	if(!strcmp(str,INT3_STR))       return INT3;
-	if(!strcmp(str,LONG_STR))        return LONG;
-	if(!strcmp(str,LONG_LONG_STR))       return LONG_LONG;
-	return 0;
-}
 static void
 check_for_undeclared_use_in_range(const ASTNode* node)
 {
@@ -3896,7 +3926,7 @@ get_binary_expr_type(const ASTNode* node)
                 (lhs_real || rhs_real) && (lhs_int || rhs_int) ? REAL_STR :
                 !strcmp_null_ok(op,MULT_STR) && !strcmp(lhs_res,MATRIX_STR) &&  !strcmp(rhs_res,REAL3_STR) ? REAL3_STR :
 		!strcmp(lhs_res,COMPLEX_STR) || !strcmp(rhs_res,COMPLEX_STR)   ? COMPLEX_STR  :
-		lhs_real && !strcmps(rhs_res,INT_STR,LONG_STR,LONG_LONG_STR)    ?  REAL_STR  :
+		lhs_real && !strcmps(rhs_res,INT_STR,LONG_STR,LONG_LONG_STR,DOUBLE_STR,FLOAT_STR)    ?  REAL_STR  :
 		op && !strcmps(op,MULT_STR,DIV_STR,PLUS_STR,MINUS_STR)     && lhs_real && !rhs_int  ?  rhs_res   :
 		op && !strcmps(op,MULT_STR,DIV_STR,PLUS_STR,MINUS_STR)  && rhs_real && !lhs_int  ?  lhs_res   :
 		!strcmp(lhs_res,rhs_res) ? lhs_res :
@@ -6392,6 +6422,11 @@ gen_global_strings()
 	push(&primitive_datatypes,intern("long"));
 	push(&primitive_datatypes,intern("long long"));
 
+	if(AC_DOUBLE_PRECISION)
+		push(&primitive_datatypes,intern("float"));
+	else
+		push(&primitive_datatypes,intern("double"));
+
 	VALUE_STR = intern("value");
 
 	COMPLEX_STR= intern("AcComplex");
@@ -6443,6 +6478,7 @@ gen_global_strings()
 	STENCIL_STR = intern("Stencil");
 	KERNEL_STR = intern("Kernel");
 	FIELD3_STR = intern("Field3");
+	FIELD4_STR = intern("Field4");
 	PROFILE_STR = intern("Profile");
 
 	MULT_STR = intern("*");
@@ -7590,7 +7626,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	  FILE* fp_info = fopen("array_info.h","w");
   	  fprintf(fp_info,"\n #ifdef __cplusplus\n");
   	  fprintf(fp_info,"\n#include <array>\n");
-  	  fprintf(fp_info,"typedef struct {std::array<int,3>  len; std::array<bool,3> from_config;} AcArrayDims;\n");
+  	  fprintf(fp_info,"typedef struct {std::array<int,%d>  len; std::array<bool,%d> from_config;} AcArrayDims;\n",MAX_ARRAY_RANK,MAX_ARRAY_RANK);
   	  fprintf(fp_info,"typedef struct { bool is_dconst; int num_dims; AcArrayDims dims; const char* name; bool is_alive;} array_info;\n");
   	  for (size_t i = 0; i < datatypes.size; ++i)
   	  	  gen_array_info(fp_info,datatypes.data[i],root);
@@ -7602,9 +7638,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	  for (size_t i = 0; i < datatypes.size; ++i)
 	  	gen_gmem_array_declarations(datatypes.data[i],root);
   }
-  const char* array_datatypes[] = {INT_STR,REAL_STR,BOOL_STR,INT3_STR,REAL3_STR,LONG_STR,LONG_LONG_STR};
-  for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i)
-  	gen_array_reads(root,root,array_datatypes[i]);
+  //TP: currently only support scalar arrays
+  for(size_t i = 0; i  < primitive_datatypes.size; ++i)
+  	gen_array_reads(root,root,primitive_datatypes.data[i]);
 
   // Stencils
 
@@ -7719,9 +7755,9 @@ compile_helper(const bool log)
 #endif
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "gcc -Wshadow -I. -I " ACC_RUNTIME_API_DIR " %s %s %s " 
+  sprintf(cmd, "gcc -Wshadow -I. -I " ACC_RUNTIME_API_DIR " %s %s -DTWO_D=%d -DAC_DOUBLE_PRECISION=%d " 
 	       STENCILACC_SRC " -lm -lstdc++ -o " STENCILACC_EXEC" "
-  ,api_includes, use_hip, TWO_D ? "-DTWO_D=1 " : "-DTWO_D=0 "
+  ,api_includes, use_hip, TWO_D, AC_DOUBLE_PRECISION
   );
 
   /*

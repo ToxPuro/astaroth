@@ -486,7 +486,8 @@ main(int argc, char** argv)
 }
 %}
 
-%token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER NON_RETURNING_FUNC_CALL
+%token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT DOUBLE 
+%token NON_RETURNING_FUNC_CALL
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
 %token INT UINT REAL MATRIX TENSOR FIELD STENCIL WORK_BUFFER PROFILE
@@ -640,6 +641,8 @@ long_long: LONG_LONG   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 long     : LONG        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 real: REAL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+float:  FLOAT          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(AC_DOUBLE_PRECISION ? "float" : "AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+double: DOUBLE         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(AC_DOUBLE_PRECISION ? "AcReal": "double", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 bool: BOOL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("bool", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 tensor: TENSOR { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcTensor", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -717,6 +720,8 @@ scalar_type_specifier:
               | long         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | long_long    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | float        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | double       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | bool         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 
 
@@ -840,7 +845,15 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
                   | base_identifier '.' identifier          { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
                   | postfix_expression '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
                   | postfix_expression '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); } 
-                  | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3);   $$->expr_type = intern(combine_all_new($$->lhs)); astnode_set_infix("(", $$); astnode_set_postfix(")", $$);  $$->lhs->type ^= NODE_TSPEC; $$->token = CAST; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
+                  | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3);   
+								 $$->expr_type = intern(combine_all_new($$->lhs)); 
+							         if(!strcmp($$->expr_type,"AcReal"))
+								 	astnode_set_infix("(AcReal)(", $$); 
+								 else
+								 	astnode_set_infix("(", $$); 
+								 astnode_set_postfix(")", $$);  
+								 $$->lhs->type ^= NODE_TSPEC; $$->token = CAST; /* Unset NODE_TSPEC flag, casts are handled as functions */ 
+							       }
                   | '(' type_specifier ')' struct_initializer { 
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
 						astnode_set_infix(")",$$); 
