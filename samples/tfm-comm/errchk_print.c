@@ -95,6 +95,7 @@ errchk_print_log(const char* function, const long line, const char* fmt, ...)
         va_end(args);
     }
     printf("\n");
+    fflush(stdout);
 }
 
 void
