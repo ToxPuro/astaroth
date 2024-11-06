@@ -216,8 +216,14 @@ The DSL compiler can also infer these qualifiers if OPTIMIZE_FIELDS=ON from `wri
 Designed for variables that are inputs to Kernels, but should not be allocated/loaded to the GPU.
 > Note: At the moment, mostly useful for `ComputeSteps`
 * `output`
-At the moment, restricted to `real` scalar quantities resulting from reductions across the whole subdomain.
+At the moment, restricted to `real` and `int` scalar quantities resulting from reductions across the whole subdomain.
 > Note: implicitly allocates memory on the GPU to perform reductions.
+
+* `utility`
+Tells the compiler that the `Kernel` should be skiped when inferring which `Fields` are dead.
+
+* `fixed_boundary`
+Tells the compiler that in `ComputeSteps` before the kernel boundary values inside the local subdomain should not be updated via boundary conditions. Rather the values on the boundaries should be carried over from before, i.e. the boundary values stay fixed from previous `Kernel` calls.
 
 
 
