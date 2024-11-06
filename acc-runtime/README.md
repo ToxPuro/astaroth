@@ -85,12 +85,14 @@ By default we use C++ type inference rules (`auto`) with extensions where they w
 
 ### Fields
 
-A `Field` is a scalar array that can be used in conjuction with `Stencil` operations. For convenience, 
-a vector field can be constructed from three scalar fields by declaring them a `Field3` structure.
-To get the value of a `Field` or `Field3` at the current vertex use the built-in function `value`.
+A `Field` is a scalar array that can be used in conjuction with `Stencil` operations and for operations involving only the current vertex point. 
+A vector field can be constructed either by combining three scalar `Fields` into a `Field3` structure or one declaring a `Field3` structure on its own.
+
+To get the value of a `Field` at the current vertex use the built-in function `value`.
 A `Field` can be used directly in unary expressions and binary arithmetic expressions (`+`, `-`, `/`,`*`)
 which is equivalent to calling `value` on the `Field`.
 Also, calling a built-in math functions with `Field` is equivalent to first calling `value` on the `Field`.
+The same applies for `Field3` and for arrays of them (`Field[]` and `Field3[]`).
 
 > Note: Internally, Field is an enum handle (VertexBufferHandle) referring to the input and output buffers (data cubes).
 > Note: The numerical value of the handle is monotonically increasing in the order of the declarations of the `Fields`.
@@ -107,7 +109,8 @@ const int n_species = ...
 Field chemistry[n_species]
 for i 0:n_species
 {
-    chemistry[i] = 0.0
+    species_val = value(chemistry[i])
+    ...
 }
 ```
 
@@ -122,6 +125,10 @@ The following primitive C++ types are usable:
 * `long long`
 
 * `real` (by default double, float if DOUBLE_PRECISION=OFF)
+
+* `float`
+
+* `double`
     
 > Note: Whenever possible one should prefer using bools compared to e.g. integers which only have the values 0 and 1, since using bools gives the DSL compiler more information, which it can use to perform optimizations.
 
@@ -244,10 +251,11 @@ Kernel kernel() {
 ```
 
 ### Casting
-One can use C++ casting.
+One can use C and C++ casting.
 ```
 var7 = real(1)        // Cast
 vec0 = real3(1, 2, 3) // Cast
+complex_val = (complex){real_val,imag_val} // Cast
 ```
 
 ## Looping
@@ -270,7 +278,20 @@ for i in 0:10 { // Note: 10 is exclusive
 
 ## Functions
 Functions follow the C declaration syntax.
-We support overloading for functions for which all input parameter types are declared.
+
+For functions which have take in a `real` parameter one can also provide a `Field` expression in the function call, with the expression being automatically converted to `real` by calling `value` with the value of the expression.
+The same is also true for `Field3,real3`,`Field[],real[]` and `Field3[],real3[]`.
+
+Overloading is supported.
+In case there are multiple possible functions that an overloaded call could be resolved to the functions are prioritized in the following order:  
+* Functions that have for all input parameters their types defined and do not require converting the parameters supplied in the call to the input types
+* Functions that have for all input parameters their types defined
+* Functions that do not require converting the parameters supplied in the call to the input types
+* Rest suitable functions
+
+After applying the overloading resolution rules each function call should have only a single unique prefered function.
+> Note: This is most likely broken when declaring overloaded functions, where for some input parameters types are defined and for some not.
+A general solution to this is to define the input type of all input parameters, or simply to consider the priority rules in more detail and see why uniqueness fails.
 ```
 func(param) {
     print("%s", param)
@@ -294,6 +315,12 @@ func3(real3 v) {
 			fabs(v.z)
 		)
 }
+func3(v) {
+	return 0.0
+}
+func3(v1,v2) {
+	return 0.0
+}
 elemental abs(real x)
 {
 	return fabs(x)
@@ -306,25 +333,20 @@ The `elemental` type qualifier on a function means that it is a pure function th
 for which the function's semantics is composable on structures and arrays containing the type of the return value.
 
 In the previous example functions we had some duplicate code since `func3` basically applies `func2` to all of its members. 
-Since the `abs` function that takes in a real value has been declared `elemental` it can also be called with a `real3` and will produce the same effect as if `abs` was called on all of the members of the parameter.
-
-The semantics of passing a `Field` parameter to `elemental` functions is always the same as if `value` was first called on the `Field`.
+Since the `abs` function that takes in a `real` value has been declared `elemental` it can also be called with a `real3` and will produce the same effect as if `abs` was called on all of the members of the parameter.
 
 * A `elemental` function taking a `real` parameter can be called with:
 	* `real`
 	* `real3`
+    * `real[]`
+    * `real3[]`
+    
+
+* A `elemental` function taking a`Field` parameter can be called with:
 	* `Field`
-	* `Field3`
-
-* A `elemental` function taking a `real3` parameter can be called with:
-	* `real3`
-	* `Field3`
-
-* A `elemental` function taking two `real3` parameters can be called with:
-	* `real3`,`real3`
-	* `real3`,`Field3`
-	* `Field3`,`real3`
-	* `Field3`,`Field3`
+    * `Field3`
+    * `Field[]`
+    * `Field3[]`
 
 ### Printing
 ```
@@ -557,16 +579,56 @@ func(Field f)
 ```
 
 > Note: Accessing field elements this way is suboptimal compared to accessing then using a `Stencil` or calling `value` since the reads are not cached. Only access field elements this way if otherwise not possible.
+
+### Profiles
+`Profiles` are either one- or two-dimensional arrays of `reals` that have extents equal to the side lengths of the local subdomain, with halos included.
+Thus there 9 different possible types of `Profiles`:
+
+* `Profile<X>`
+* `Profile<Y>`
+* `Profile<Z>`
+* `Profile<XY>`
+* `Profile<XZ>`
+* `Profile<YX>`
+* `Profile<YZ>`
+* `Profile<ZX>`
+* `Profile<ZY>`
+
+One can get the value of a `Profile` that corresponds to the local vertex by calling `value` on it. For example the value of a `Profile<X>` would depend only on the x-coordinate of the vertex where as for a `Profile<XY>` it would depend on both the x- and y-coordinates.
+The same rules about inserting automatic `value` calls hold for `Profiles` as for `Fields`.
+
+### Allocating declarations
+`Field` and `Profile` types are special types compared to other types because the imply memory allocations.
+Thus naturally aggregates, arrays and structures, that consist only of `Fields` and `Profiles` and other aggregates of them, also imply memory allocations.
+A perfect example is `Field3`. It is a structure that consists of three `Field` members and thus `Field3` declaration implies the same memory allocations that three separate `Field` declarations would imply. Another common example are `Field[]` variables.
+One can consider declarations of such aggregate varibles as syntactic sugar for recursively declaring the base `Fields` or `Profiles` and combining them together in the right structures.
+```
+Field3 field_vecs[3] \\This can be considered syntactic sugar for the following:
+
+Field field_vecs0_X,field_vecs_0_Y,field_vecs_0_Z
+const Field3 field_vecs_0 = {field_vecs_0_X,field_vecs_0_Y,field_vecs_0_Z}
+Field field_vecs1_X,field_vecs_1_Y,field_vecs_1_Z
+const Field3 field_vecs_1 = {field_vecs_1_X,field_vecs_1_Y,field_vecs_1_Z}
+Field field_vecs2_X,field_vecs_2_Y,field_vecs_2_Z
+const Field3 field_vecs_2 = {field_vecs_2_X,field_vecs_2_Y,field_vecs_2_Z}
+const Field3 field_vecs = {field_vecs_0,field_vecs_1,fields_vecs_2}
+```
+
+> Note: Here it helps to understand that `Fields` and `Profiles` are handles to memory, not memory themselves, and thus it is clear that the const assignments do not imply memory allocations but simple grouping of handles.
+
+
 ### Reductions
 This is still an experimental feature that only works if MPI is enabled and which still possibly changes in the future.
 
-Reductions work only if the kernel is called at each vertex point of the domain.
+The reduction results make sense only if the kernel is called at each vertex point of the domain.
 ```
 output real max_derux
 Field ux
+Profile<X> X_PROFILE
 Kernel reduce_kernel()
 {
-	reduce_max(true,derx(ux),max_derux)
+	reduce_max(true,derx(ux),max_derux) //scalar reduction
+    reduce_sum(true,ux,X_PROFILE) //Reduction along y and z resulting in array that is x-dependent.
 }
 ```
 
@@ -575,11 +637,12 @@ Kernel reduce_kernel()
 	* The value to reduce at this vertex
 	* The output value to which to store the reduced value
 
-After executing the kernels the reduction has to be finalized with calling either `acGridFinalizeReduceLocal(graph)`, which reduces the values only on the local subdomain, or `acGridFinalize` which will reduce the value across processes.
-The reduced values can be accessed with `acDeviceGetOutput`.
+After executing the kernels scalar reductions have to be finalized with calling either `acGridFinalizeReduceLocal(graph)`, which reduces the values only on the local subdomain, or `acGridFinalize` which will reduce the value across processes.
+The reduced scalar values can be accessed with `acDeviceGetOutput` with `Profiles` with the corresponding API functions.
+
+When the result of the reduction is a `Profile` finalization is automatically included in the execution of the `TaskGraph`.
 
 ### ComputeSteps
-**Requires that all conditionals are known at compile-time (Note compilation can happen at runtime)**
 This is still a experimental feature that only works if MPI is enabled and which still possibly changes in the future.
 
 The `BoundConds` construct is used to declare how to calculate the values of `Field`s when the boundary conditions are to be imposed.
