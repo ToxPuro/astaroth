@@ -43,3 +43,11 @@ struct Field3
 	Field y;
 	Field z;
 } 
+
+struct Field4
+{
+	Field x;
+	Field y;
+	Field z;
+	Field w;
+} 

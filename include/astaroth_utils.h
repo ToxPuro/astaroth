@@ -78,12 +78,12 @@ FUNC_DEFINE(AcResult, acHostMeshClear,(AcMesh* mesh));
 FUNC_DEFINE(AcResult, acHostIntegrateStep,(AcMesh mesh, const AcReal dt));
 
 /** */
-FUNC_DEFINE(AcReal, acHostReduceScal,(const AcMesh mesh, const ReductionType rtype, const VertexBufferHandle a));
+FUNC_DEFINE(AcReal, acHostReduceScal,(const AcMesh mesh, const AcReduction reduction, const VertexBufferHandle a));
 
 /** */
-FUNC_DEFINE(AcReal, acHostReduceVec,(const AcMesh mesh, const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b, const VertexBufferHandle c));
+FUNC_DEFINE(AcReal, acHostReduceVec,(const AcMesh mesh, const AcReduction reduction, const VertexBufferHandle a, const VertexBufferHandle b, const VertexBufferHandle c));
 /** */
-FUNC_DEFINE(AcReal, acHostReduceVecScal,(const AcMesh mesh, const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b, const VertexBufferHandle c, const VertexBufferHandle d));
+FUNC_DEFINE(AcReal, acHostReduceVecScal,(const AcMesh mesh, const AcReduction reduction, const VertexBufferHandle a, const VertexBufferHandle b, const VertexBufferHandle c, const VertexBufferHandle d));
 
 FUNC_DEFINE(bool, acEvalError,(const char* label, const Error error));
 

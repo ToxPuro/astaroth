@@ -99,13 +99,13 @@ typedef enum {
 } AcMeshOrder;
 
 
-typedef enum KernelReduceOp
+typedef enum AcReduceOp
 {
 	NO_REDUCE,
 	REDUCE_MIN,
 	REDUCE_MAX,
 	REDUCE_SUM,
-} KernelReduceOp;
+} AcReduceOp;
 typedef struct {
   int variable;
   AcType type;
@@ -467,7 +467,10 @@ AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
                            AcReal* d_out);
 
 AcResult
-acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out);
+acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out,const AcReduceOp);
+
+AcResult
+acReduceInt(const cudaStream_t stream, const int* d_in, const size_t count, int* d_out,const AcReduceOp);
 
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
                            AcReal* array);
@@ -483,6 +486,7 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 #define GEN_LOAD_COMP_INFO(PARAM_TYPE,VAL_TYPE,TYPE) \
   static AcResult __attribute__((unused)) acLoadCompInfo(const PARAM_TYPE param, const VAL_TYPE val, AcCompInfo* info) {return acLoad##TYPE##CompInfo(param,val,info);};
 #include "load_comp_info_overloads.h"
+#include "load_ac_kernel_params_def.h"
 
 #endif
 

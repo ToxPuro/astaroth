@@ -141,3 +141,18 @@ str_vec_remove(string_vec* vec, const char* elem_to_remove)
 	free_str_vec(vec);
 	*vec = res;
 }
+static inline bool
+str_vec_eq(const string_vec a, const string_vec b)
+{
+	if(a.size != b.size) return false;
+	for(size_t i = 0; i < a.size; ++i)
+		if(a.data[i] != b.data[i]) return false;
+	return true;
+}
+static inline bool
+str_vec_in(const string_vec* elems, const int n_elems, const string_vec b)
+{
+	for(int i = 0; i < n_elems; ++i)
+		if(str_vec_eq(elems[i],b)) return true;
+	return false;
+}

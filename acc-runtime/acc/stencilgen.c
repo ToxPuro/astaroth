@@ -165,10 +165,15 @@ gen_stencil_definitions(void)
 void
 gen_kernel_common_prefix()
 {
+  printf("const int3 tid = (int3){"
+         "threadIdx.x + blockIdx.x * blockDim.x,"
+         "threadIdx.y + blockIdx.y * blockDim.y,"
+         "threadIdx.z + blockIdx.z * blockDim.z,"
+         "};");
   printf("const int3 vertexIdx = (int3){"
-         "threadIdx.x + blockIdx.x * blockDim.x + start.x,"
-         "threadIdx.y + blockIdx.y * blockDim.y + start.y,"
-         "threadIdx.z + blockIdx.z * blockDim.z + start.z,"
+         "tid.x + start.x,"
+         "tid.y + start.y,"
+         "tid.z + start.z,"
          "};");
   printf("const int3 globalVertexIdx = (int3){"
          "d_multigpu_offset.x + vertexIdx.x,"

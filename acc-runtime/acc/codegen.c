@@ -625,7 +625,10 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("threadIdx"));       // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("blockIdx"));        // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("vertexIdx"));       // TODO REMOVE
+  //add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("idx"));       // TODO REMOVE
+  add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("tid"));       // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("start"));       // TODO REMOVE
+  add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("end"));       // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR, intern("globalVertexIdx")); // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("globalGridN"));     // TODO REMOVE
 
@@ -1771,13 +1774,6 @@ mark_as_input(ASTNode* kernel_root, const ASTNode* param)
 }
 
 void
-process_param_codegen(const ASTNode* param, FILE* stream)
-{
-	const char* param_type = get_node(NODE_TSPEC,param->lhs)->lhs->buffer;
-	const char* param_name = param->rhs->buffer;
-	fprintf(stream,"%s %s;", param_type, param_name);
-}
-void
 mark_kernel_inputs(const ASTNode* node)
 {
 	TRAVERSE_PREAMBLE(mark_kernel_inputs);
@@ -1793,42 +1789,163 @@ mark_kernel_inputs(const ASTNode* node)
 	free_node_vec(&params);
 }
 
-void
-gen_kernel_structs_recursive(const ASTNode* node, FILE* stream)
+typedef struct
 {
-	TRAVERSE_PREAMBLE_PARAMS(gen_kernel_structs_recursive,stream);
-	if(!(node->type & NODE_KFUNCTION))
-		return;
-	if(!node->rhs->lhs)
-		return;
+	string_vec types;
+	string_vec expr;
+	node_vec expr_nodes;
+} func_params_info;
 
+#define FUNC_PARAMS_INITIALIZER {.types = VEC_INITIALIZER, .expr = VEC_INITIALIZER, .expr_nodes = VEC_INITIALIZER}
+void
+free_func_params_info(func_params_info* info)
+{
+	free_str_vec(&info -> types);
+	free_str_vec(&info -> expr);
+	free_node_vec(&info -> expr_nodes);
+}
+
+void
+get_function_params_info_recursive(const ASTNode* node, const char* func_name, func_params_info* dst)
+{
+	TRAVERSE_PREAMBLE_PARAMS(get_function_params_info_recursive,func_name,dst);
+	if(!(node->type & NODE_FUNCTION))
+		return;
+	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,node);
+	if(!fn_identifier)
+		return;
+	if(fn_identifier->buffer != func_name)
+		return;
         ASTNode* param_list_head = node->rhs->lhs;
-        ASTNode* compound_statement = node->rhs->rhs;
-        param_list_head->type |= NODE_NO_OUT;
-
-        const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER, node->lhs);
-	FILE* fp = fopen("user_input_typedefs.h","a");
-	fprintf(fp,"typedef struct %sInputParams {", fn_identifier->buffer);
-
-	node_vec params = get_nodes_in_list(param_list_head);
+	if(!param_list_head) return;
+	node_vec params = get_nodes_in_list(node->rhs->lhs);
 	for(size_t i = 0; i < params.size; ++i)
-		process_param_codegen(params.data[i],fp);
+	{
+	  	const ASTNode* param = params.data[i];
+		const ASTNode* tspec = get_node(NODE_TSPEC,param->lhs);
+	  	push(&dst->types,(tspec) ? tspec->lhs->buffer : NULL);
+	  	push(&dst->expr,param->rhs->buffer);
+	  	push_node(&dst->expr_nodes,param->rhs);
+	}
 	free_node_vec(&params);
-
-	fprintf(fp,"} %sInputParams;\n",fn_identifier->buffer);
-	fclose(fp);
-
-	fprintf(stream,"%sInputParams %s;\n", fn_identifier->buffer,fn_identifier->buffer);
-
+}
+func_params_info
+get_function_params_info(const ASTNode* node, const char* func_name)
+{
+	func_params_info res = FUNC_PARAMS_INITIALIZER;
+	get_function_params_info_recursive(node,func_name,&res);
+	return res;
 }
 void
 gen_kernel_structs(const ASTNode* root)
 {
-	FILE* fp_structs = fopen("user_input_typedefs.h","a");
-	fprintf(fp_structs,"typedef union acKernelInputParams {\n\n");
-	gen_kernel_structs_recursive(root,fp_structs);
-	fprintf(fp_structs,"} acKernelInputParams;\n\n");
-	fclose(fp_structs);
+	FILE* stream = fopen("user_input_typedefs.h","a");
+	fprintf(stream,"typedef union acKernelInputParams {\n\n");
+	string_vec names = VEC_INITIALIZER;
+	func_params_info infos[num_kernels];
+	int kernel_index = 0;
+	for(size_t sym = 0; sym< num_symbols[0]; ++sym)
+	{
+		if(symbol_table[sym].tspecifier != KERNEL_STR) continue;
+		const char* name = symbol_table[sym].identifier;
+		push(&names,name);
+		infos[kernel_index] = get_function_params_info(root,name);
+		kernel_index++;
+	}
+	string_vec unique_input_types[num_kernels];
+	int num_unique_input_types = 0;
+	memset(unique_input_types,0,sizeof(string_vec)*num_kernels);
+	for(size_t k = 0; k < num_kernels; ++k)
+	{
+		string_vec types = infos[k].types;
+		if(types.size == 0) continue;
+		if(!str_vec_in(unique_input_types,num_unique_input_types,types))
+		{
+			unique_input_types[num_unique_input_types] = types;
+			++num_unique_input_types;
+		}
+	}
+	{
+		FILE* fp = fopen("load_ac_kernel_params.h","w");
+		for(int i = 0; i < num_unique_input_types; ++i)
+		{
+			fprintf(fp,"AcResult acLoadKernelParams(acKernelInputParams& params, const AcKernel kernel,");
+			const string_vec types = unique_input_types[i];
+			for(size_t j = 0; j < types.size; ++j)
+				fprintf(fp,"%s p_%ld%s",types.data[j],j,(j < types.size-1) ? "," : "");
+			fprintf(fp,"){\n");
+			for(size_t k = 0; k < num_kernels; ++k)
+			{
+				const func_params_info info = infos[k];
+				const char* name = names.data[k];
+				if(!str_vec_eq(infos[k].types,types)) continue;
+				fprintf(fp,"if(kernel == %s){ \n",name);
+				for(size_t j = 0; j < types.size; ++j)
+				{
+					fprintf(fp,"params.%s.%s = p_%ld;\n",
+							name,info.expr.data[j],j
+							);
+				}
+				fprintf(fp,"return AC_SUCCESS;}\n");
+			}
+			fprintf(fp,"return AC_FAILURE;}\n");
+		}
+		fclose(fp);
+		fp = fopen("load_ac_kernel_params_def.h","w");
+		for(int i = 0; i < num_unique_input_types; ++i)
+		{
+			fprintf(fp,"AcResult acLoadKernelParams(acKernelInputParams& params, const AcKernel kernel,");
+			const string_vec types = unique_input_types[i];
+			for(size_t j = 0; j < types.size; ++j)
+				fprintf(fp,"%s p_%ld%s",types.data[j],j,(j < types.size-1) ? "," : "");
+			fprintf(fp,");");
+		}
+		fclose(fp);
+	}
+	for(size_t k = 0; k < num_kernels; ++k)
+	{
+		func_params_info info = infos[k];
+		const char* name = names.data[k];
+		FILE* fp = fopen("user_input_typedefs.h","a");
+		fprintf(fp,"typedef struct %sInputParams {", name);
+		for(size_t i = 0; i < info.types.size; ++i)
+			fprintf(fp,"%s %s;",info.types.data[i],info.expr.data[i]);
+		fprintf(fp,"} %sInputParams;\n",name);
+		fclose(fp);
+		fprintf(stream,"%sInputParams %s;\n", name,name);
+		fp = fopen("safe_vtxbuf_input_params.h","a");
+		fprintf(fp,"if(kernel == %s){ \n",name);
+		for(size_t i = 0; i < info.types.size; ++i)
+		{
+			const char* param_name = info.expr.data[i];
+			const char* param_type = info.types.data[i];
+			if(strstr(param_type,"*"))
+			{
+				if(param_type != REAL_PTR_STR)
+					fatal("How to handle non-real input ptr?\n");
+				fprintf(fp,"vba.kernel_input_params.%s.%s = vba.reduce_scratchpads_real[0][0];\n",name,param_name);
+			}
+		}
+		fprintf(fp,"}\n");
+		fclose(fp);
+	}
+	FILE* fp = fopen("kernel_input_param_str.h","w");
+	fprintf(fp,"const char* kernel_input_param_strs[] = {");
+	for(size_t k = 0; k < num_kernels; ++k)
+	{
+		fprintf(fp,"\"");
+		const string_vec types = infos[k].types;
+		for(size_t i = 0; i < types.size; ++i)
+			fprintf(fp,"%s%s",types.data[i],i < types.size -1 ? "," : "");
+		fprintf(fp,"\",");
+	}
+	fprintf(fp,"};\n");
+	fclose(fp);
+	for(size_t k = 0; k < num_kernels; ++k)
+		free_func_params_info(&infos[k]);
+	fprintf(stream,"} acKernelInputParams;\n\n");
+	fclose(stream);
+	free_str_vec(&names);
 }
 
 
@@ -1998,53 +2115,6 @@ gen_user_structs()
 	}
 }
 
-typedef struct
-{
-	string_vec types;
-	string_vec expr;
-	node_vec expr_nodes;
-} func_params_info;
-
-#define FUNC_PARAMS_INITIALIZER {.types = VEC_INITIALIZER, .expr = VEC_INITIALIZER, .expr_nodes = VEC_INITIALIZER}
-void
-free_func_params_info(func_params_info* info)
-{
-	free_str_vec(&info -> types);
-	free_str_vec(&info -> expr);
-	free_node_vec(&info -> expr_nodes);
-}
-
-void
-get_function_params_info_recursive(const ASTNode* node, const char* func_name, func_params_info* dst)
-{
-	TRAVERSE_PREAMBLE_PARAMS(get_function_params_info_recursive,func_name,dst);
-	if(!(node->type & NODE_FUNCTION))
-		return;
-	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,node);
-	if(!fn_identifier)
-		return;
-	if(fn_identifier->buffer != func_name)
-		return;
-        ASTNode* param_list_head = node->rhs->lhs;
-	if(!param_list_head) return;
-	node_vec params = get_nodes_in_list(node->rhs->lhs);
-	for(size_t i = 0; i < params.size; ++i)
-	{
-	  	const ASTNode* param = params.data[i];
-		const ASTNode* tspec = get_node(NODE_TSPEC,param->lhs);
-	  	push(&dst->types,(tspec) ? tspec->lhs->buffer : NULL);
-	  	push(&dst->expr,param->rhs->buffer);
-	  	push_node(&dst->expr_nodes,param->rhs);
-	}
-	free_node_vec(&params);
-}
-func_params_info
-get_function_params_info(const ASTNode* node, const char* func_name)
-{
-	func_params_info res = FUNC_PARAMS_INITIALIZER;
-	get_function_params_info_recursive(node,func_name,&res);
-	return res;
-}
 
 
 
@@ -3006,7 +3076,7 @@ gen_kernel_reduce_outputs(const bool gen_mem_accesses)
 	  free_str_vec(&kernel_reduce_output_entries[i]);
 
   //extra padding to help some compilers
-  fprintf(fp,"%s","static const KernelReduceOp kernel_reduce_ops[NUM_KERNELS][NUM_OUTPUTS+1] = { ");
+  fprintf(fp,"%s","static const AcReduceOp kernel_reduce_ops[NUM_KERNELS][NUM_OUTPUTS+1] = { ");
   for (size_t i = 0; i < num_symbols[0]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
     {
@@ -3151,12 +3221,9 @@ replace_boolean_dconsts_in_optimized(ASTNode* node, const string_vec* vals, stri
 	node->rhs = NULL;
 }
 void
-gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_kernels_with_input_params, string_vec* user_kernel_combinatorial_params)
+gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_kernels_with_input_params, string_vec* user_kernel_combinatorial_params, const bool gen_mem_accesses)
 {
-	if(node->lhs)
-		gen_kernel_input_params(node->lhs,vals,user_kernels_with_input_params,user_kernel_combinatorial_params);
-	if(node->rhs)
-		gen_kernel_input_params(node->rhs,vals,user_kernels_with_input_params,user_kernel_combinatorial_params);
+	TRAVERSE_PREAMBLE_PARAMS(gen_kernel_input_params,vals,user_kernels_with_input_params,user_kernel_combinatorial_params,gen_mem_accesses);
 	if(!(node->type & NODE_INPUT && node->buffer))
 		return;
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
@@ -3166,9 +3233,22 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 	const int combinations_index = get_suffix_int(kernel_name,"_optimized_");
 	remove_suffix(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,kernel_name);
-
+	const char* type = get_expr_type(node);
 	if(combinations_index == -1)
 	{
+
+		if(type && strstr(type,"*") && gen_mem_accesses)
+		{
+			if(type == REAL_PTR_STR)
+			{
+				astnode_sprintf(node,"vba.out[0]");
+				return;
+			}
+			else
+			{
+				fatal("How to handle non-real input pointer?\n");
+			}
+		}
 		astnode_sprintf(node,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
 		return;
 	}
@@ -4162,11 +4242,15 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 	const char* type = get_expr_type(node->parent);
 	if(!type || strcmps(type,FIELD_STR,"VertexBufferHandle"))
 		return;
-
 	ASTNode* array_access = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,node);
 	if(!array_access || !is_left_child(NODE_ARRAY_ACCESS,node))	return;
 	while(get_parent_node(NODE_ARRAY_ACCESS,array_access)) array_access = (ASTNode*) get_parent_node(NODE_ARRAY_ACCESS,array_access);
 
+	if(node->type & NODE_MEMBER_ID)
+	{
+		node = (ASTNode*)get_parent_node(NODE_STRUCT_EXPRESSION,node);
+		while(node->parent->type & NODE_STRUCT_EXPRESSION) node = node->parent;
+	}
 
 	node_vec nodes = VEC_INITIALIZER;
 	get_array_access_nodes(array_access,&nodes);
@@ -7476,7 +7560,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   // Fill the symbol table
   gen_user_taskgraphs(root);
   combinatorial_params_info info = get_combinatorial_params_info(root);
-  gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
+  gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
   replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
   free_combinatorial_params_info(&info);
   gen_kernel_postfixes_and_reduce_outputs(root,gen_mem_accesses);

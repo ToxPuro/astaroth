@@ -246,66 +246,6 @@ acBoundcondStepGBC(const AcMeshInfo config)
 #endif
 }
 
-AcReal
-acReduceScal(const ReductionType rtype, const VertexBufferHandle vtxbuf_handle)
-{
-#if TWO_D == 1
-    (void)rtype;
-    (void)vtxbuf_handle;
-    fprintf(stderr,"acReduceScal not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-#else
-    ERRCHK_ALWAYS(num_nodes);
-
-    AcReal result;
-    acNodeReduceScal(nodes[0], STREAM_DEFAULT, rtype, vtxbuf_handle, &result);
-    return result;
-#endif
-}
-
-AcReal
-acReduceVec(const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b,
-            const VertexBufferHandle c)
-{
-#if TWO_D == 1
-    (void)rtype;
-    (void)a;
-    (void)b;
-    (void)c;
-    fprintf(stderr,"acReduceVec not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-
-    AcReal result;
-    acNodeReduceVec(nodes[0], STREAM_DEFAULT, rtype, a, b, c, &result);
-    return result;
-#endif
-}
-
-AcReal
-acReduceVecScal(const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b,
-                const VertexBufferHandle c, const VertexBufferHandle d)
-{
-#if TWO_D == 1
-    (void)rtype;
-    (void)a;
-    (void)b;
-    (void)c;
-    (void)d;
-    fprintf(stderr,"acReduceVecScal not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-
-    AcReal result;
-    acNodeReduceVecScal(nodes[0], STREAM_DEFAULT, rtype, a, b, c, d, &result);
-    return result;
-#endif
-}
-
 AcResult
 acStoreWithOffset(const int3 dst, const size_t num_vertices, AcMesh* host_mesh)
 {

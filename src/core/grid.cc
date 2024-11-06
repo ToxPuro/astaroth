@@ -2182,7 +2182,7 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
 	    reduce_outputs[i].type = AC_REAL_TYPE;
     }
     std::array<AcKernel,NUM_OUTPUTS> reduce_kernels;
-    std::array<KernelReduceOp,NUM_OUTPUTS> reduce_ops;
+    std::array<AcReduceOp,NUM_OUTPUTS> reduce_ops;
     acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
     for(int i = 0; i < NUM_OUTPUTS; ++i)
     {
@@ -2229,6 +2229,22 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     }
     return AC_SUCCESS;
 }
+MPI_Op
+to_mpi_op(const AcReduceOp op)
+{
+	switch(op)
+	{
+		case(REDUCE_SUM):
+			return MPI_SUM;
+		case(REDUCE_MIN):
+			return MPI_MIN;
+		case(REDUCE_MAX):
+			return MPI_MAX;
+		case(NO_REDUCE):
+			fatal("%s","Should not call to_mpi_op for NO_REDUCE\n");
+	}
+	fatal("%s","No mapping from AcReduceOp to MPI_Op\n");
+}
 
 AcResult
 acGridFinalizeReduce(AcTaskGraph* graph)
@@ -2240,7 +2256,7 @@ acGridFinalizeReduce(AcTaskGraph* graph)
     for(int i = 0; i < NUM_OUTPUTS; ++i)
 	    reduce_outputs[i].variable = -1;
     AcKernel reduce_kernels[NUM_OUTPUTS];
-    KernelReduceOp reduce_ops[NUM_OUTPUTS];
+    AcReduceOp reduce_ops[NUM_OUTPUTS];
     acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
     for(int i = 0; i < NUM_OUTPUTS; ++i)
     {
@@ -2264,20 +2280,7 @@ acGridFinalizeReduce(AcTaskGraph* graph)
 		else
 			fatal("%s","Unknown reduce output type\n");
     	        AcReal mpi_res{};
-    	        switch(reduce_ops[i])
-    	        {
-    	    	case(REDUCE_SUM):
-    		    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_SUM, astaroth_comm);
-    	    		break;
-    	    	case(REDUCE_MIN):
-    		    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_MIN, astaroth_comm);
-    	    		break;
-    	    	case(REDUCE_MAX):
-    		    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_MAX, astaroth_comm);
-    	    		break;
-    	    	case(NO_REDUCE):
-    	    		break;
-    	        }
+    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, to_mpi_op(reduce_ops[i]), astaroth_comm);
     	        grid.device->output.real_outputs[reduce_outputs[i].variable] = mpi_res;
     	}
     }
@@ -2386,29 +2389,30 @@ acGridPeriodicBoundconds(const Stream stream)
     
     return AC_SUCCESS;
 }
+size_t
+get_n_global_points()
+{
+	return (grid.nn.x * grid.decomposition.x *
+		grid.nn.y * grid.decomposition.y * 
+		grid.nn.z * grid.decomposition.z);
+}
+
+AcReal
+get_cell_volume()
+{
+	const AcReal3 spacings = get_spacings();
+	const AcReal cell_volume   = spacings.x*spacings.y
+#if TWO_D == 0
+				     *spacings.z
+#endif
+				     ;
+	return cell_volume;
+}
 
 static AcResult
-distributedScalarReduction(const AcReal local_result, const ReductionType rtype, AcReal* result)
+distributedScalarReduction(const AcReal local_result, const AcReduction reduction, AcReal* result)
 {
-    MPI_Op op;
-    if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX ||
-        rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MAX || rtype == RTYPE_GAUSSIAN_WINDOW_MAX ||
-        rtype == RTYPE_RADIAL_WINDOW_MAX) {
-        op = MPI_MAX;
-    }
-    else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN ||
-             rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MIN || rtype == RTYPE_GAUSSIAN_WINDOW_MIN ||
-             rtype == RTYPE_RADIAL_WINDOW_MIN) {
-        op = MPI_MIN;
-    }
-    else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM ||
-             rtype == RTYPE_ALFVEN_RMS || rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ||
-             rtype == RTYPE_GAUSSIAN_WINDOW_SUM || rtype == RTYPE_RADIAL_WINDOW_SUM) {
-        op = MPI_SUM;
-    }
-    else {
-        ERROR("Unrecognised rtype");
-    }
+    const MPI_Op op = to_mpi_op(reduction.reduce_op);
 
     int rank;
     MPI_Comm_rank(astaroth_comm, &rank);
@@ -2416,29 +2420,21 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     AcReal mpi_res;
     MPI_Allreduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, astaroth_comm);
 
-    if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
-        const AcReal inv_n = AcReal(1.) / (grid.nn.x * grid.decomposition.x * grid.nn.y *
-                                           grid.decomposition.y * grid.nn.z * grid.decomposition.z);
-        mpi_res            = sqrt(inv_n * mpi_res);
+    //TP: If I am not mistaken this won't generalize to non-cartesian coordinates
+    //TP: spacings should be included in the mapping function
+    if (reduction.post_processing_op == AC_RMS) {
+        mpi_res            = sqrt(mpi_res/get_n_global_points());
     }
 
 #ifdef AC_INTEGRATION_ENABLED
 
-    if ( rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
+    //TP: should this be done for other radial reductions?
+    if (reduction.post_processing_op == AC_RADIAL_WINDOW_RMS) {
         // MV NOTE: This has to be calculated here separately, because does not
         //          know what GPU is doing. 
-	const AcReal3 spacings = get_spacings();
-	const AcReal cell_volume   = spacings.x*spacings.y
-#if TWO_D == 0
-				     *spacings.z
-#endif
-				     ;
-
-        const AcReal sphere_volume = (4.0 / 3.0) * M_PI *
-                                     grid.device->local_config[AC_window_radius] *
-                                     grid.device->local_config[AC_window_radius] *
-                                     grid.device->local_config[AC_window_radius];
-
+	const AcReal cell_volume = get_cell_volume(); 
+	const AcReal window_radius = grid.device->local_config[AC_window_radius];
+        const AcReal sphere_volume = (4.0 / 3.0) * M_PI * window_radius*window_radius*window_radius;
         // only include whole cells
         const AcReal cell_number = AcReal(int(sphere_volume / cell_volume));
 
@@ -2450,7 +2446,7 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
 }
 
 AcResult
-acGridReduceScal(const Stream stream, const ReductionType rtype,
+acGridReduceScal(const Stream stream, const AcReduction reduction,
                  const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
     ERRCHK(grid.initialized);
@@ -2458,13 +2454,13 @@ acGridReduceScal(const Stream stream, const ReductionType rtype,
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    if (acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
+    if (acDeviceReduceScalNoPostProcessing(device, stream, reduction, vtxbuf_handle, &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
 
-    return distributedScalarReduction(local_result, rtype, result);
+    return distributedScalarReduction(local_result, reduction, result);
 }
 
 AcResult
-acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBufferHandle vtxbuf0,
+acGridReduceVec(const Stream stream, const AcReduction reduction, const VertexBufferHandle vtxbuf0,
                 const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, AcReal* result)
 {
     ERRCHK(grid.initialized);
@@ -2472,19 +2468,19 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    if (acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
+    if (acDeviceReduceVecNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
 
-    return distributedScalarReduction(local_result, rtype, result);
+    return distributedScalarReduction(local_result, reduction, result);
 }
 
 AcResult
-acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBufferHandle* vtxbufs, AcReal* result)
+acGridReduceVec(const Stream stream, const AcReduction reduction, const VertexBufferHandle* vtxbufs, AcReal* result)
 {
-    return acGridReduceVec(stream, rtype, vtxbufs[0], vtxbufs[1], vtxbufs[2], result);
+    return acGridReduceVec(stream, reduction, vtxbufs[0], vtxbufs[1], vtxbufs[2], result);
 }
 
 AcResult
-acGridReduceVecScal(const Stream stream, const ReductionType rtype,
+acGridReduceVecScal(const Stream stream, const AcReduction reduction,
                     const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                     const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                     AcReal* result)
@@ -2494,14 +2490,14 @@ acGridReduceVecScal(const Stream stream, const ReductionType rtype,
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    if (acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+    if (acDeviceReduceVecScalNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
                                      &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
 
-    return distributedScalarReduction(local_result, rtype, result);
+    return distributedScalarReduction(local_result, reduction, result);
 }
 
 AcResult
-acGridReduceXYAverage(const Stream stream, const Field field, const Profile profile)
+acGridReduceXY(const Stream stream, const Field field, const Profile profile, const AcReduction reduction)
 {
     ERRCHK(grid.initialized);
     const Device device = grid.device;
@@ -2509,7 +2505,7 @@ acGridReduceXYAverage(const Stream stream, const Field field, const Profile prof
 
     // Strategy:
     // 1) Reduce the local result to device->vba.profiles.in
-    acDeviceReduceXYAverage(device, stream, field, profile);
+    acDeviceReduceXY(device, stream, field, profile,reduction);
 
     // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
     int nprocs, pid;

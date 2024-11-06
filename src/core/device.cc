@@ -429,7 +429,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     const int3 max_dims          = acGetLocalMM(device->local_config);
     const size_t scratchpad_size = acVertexBufferSize(device->local_config);
     device->vba.scratchpad_size = scratchpad_size;
-    const int reduce_tpb_size = 128;
+    //const int reduce_tpb_size = 128;
 
     {
 	//TP: this is dangerous since it is not always true for DSL reductions but for now keep it
@@ -441,12 +441,9 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     	    	    cudaMalloc((void**)&device->vba.reduce_scratchpads_real[i][j], 
 			    i < NUM_REAL_OUTPUTS ? scratchpad_size_bytes : acVertexBufferSizeBytes(device->local_config))
 		    );
-    	    	if(j == 0)
-    	    		acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads_real[i][j], scratchpad_size,
-				      i < NUM_REAL_OUTPUTS ? scratchpad_size : acVertexBufferSize(device->local_config)
-				     );
-    	    	else
-    	    		acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads_real[i][j], (scratchpad_size+reduce_tpb_size-1)/reduce_tpb_size,0);
+    	    	acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads_real[i][j], scratchpad_size,
+			      i < NUM_REAL_OUTPUTS ? scratchpad_size : acVertexBufferSize(device->local_config)
+			     );
     	    }
     	}
     }
@@ -457,10 +454,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     	    {
     	    	ERRCHK_CUDA_ALWAYS(
     	    	    cudaMalloc((void**)&device->vba.reduce_scratchpads_int[i][j], scratchpad_size_bytes));
-    	    	if(j == 0)
-    	    		acKernelFlushInt(STREAM_DEFAULT,device->vba.reduce_scratchpads_int[i][j], scratchpad_size,0);
-    	    	else
-    	    		acKernelFlushInt(STREAM_DEFAULT,device->vba.reduce_scratchpads_int[i][j], (scratchpad_size+reduce_tpb_size-1)/reduce_tpb_size,0);
+    	    	acKernelFlushInt(STREAM_DEFAULT,device->vba.reduce_scratchpads_int[i][j], scratchpad_size,0);
     	    }
     	}
     }
@@ -961,7 +955,7 @@ acDeviceGeneralBoundconds(const Device device, const Stream stream, const int3 s
 //}
 
 AcResult
-acDeviceReduceScalNotAveraged(const Device device, const Stream stream, const ReductionType rtype,
+acDeviceReduceScalNoPostProcessing(const Device device, const Stream stream, const AcReduction reduction,
                               const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
@@ -970,37 +964,34 @@ acDeviceReduceScalNotAveraged(const Device device, const Stream stream, const Re
     const int3 start = acGetMinNN(device->local_config);
     const int3 end   = acGetMaxNN(device->local_config);
 
-    *result = acKernelReduceScal(device->streams[stream], rtype, device->vba.in[vtxbuf_handle],
-                                 start, end, device->vba.reduce_scratchpads_real[0], device->vba.scratchpad_size);
+    *result = acKernelReduceScal(device->streams[stream], reduction, vtxbuf_handle,
+                                 start, end, device->vba.reduce_scratchpads_real[0], device->vba.scratchpad_size,device->vba);
     return AC_SUCCESS;
 }
 
 AcResult
-acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
+acDeviceReduceScal(const Device device, const Stream stream, const AcReduction reduction,
                    const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
-    acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, result);
+    acDeviceReduceScalNoPostProcessing(device, stream, reduction, vtxbuf_handle, result);
 
-    switch (rtype) {
-    case RTYPE_RMS:                      /* Fallthrough */
-    case RTYPE_RMS_EXP:                  /* Fallthrough */
-    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
-    case RTYPE_ALFVEN_RMS: {
-	const int3 nn = acGetLocalNN(device->local_config);
-        const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
-        *result            = sqrt(inv_n * *result);
-        break;
-    }
-    default: /* Do nothing */
-        break;
+    switch (reduction.post_processing_op) {
+    	case AC_RMS: {
+    	    const int3 nn = acGetLocalNN(device->local_config);
+    	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+    	    *result            = sqrt(inv_n * *result);
+    	    break;
+    	}
+    	default: /* Do nothing */
+        	break;
     };
 
     return AC_SUCCESS;
 }
 
 AcResult
-acDeviceReduceVecNotAveraged(const Device device, const Stream stream, const ReductionType rtype,
+acDeviceReduceVecNoPostProcessing(const Device device, const Stream stream, const AcReduction reduction,
                              const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                              const VertexBufferHandle vtxbuf2, AcReal* result)
 {
@@ -1012,56 +1003,55 @@ acDeviceReduceVecNotAveraged(const Device device, const Stream stream, const Red
     const int3 start = acGetMinNN(device->local_config);
     const int3 end   = acGetMaxNN(device->local_config);
 
-    *result = acKernelReduceVec(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
-                                device->vba.in[vtxbuf1], device->vba.in[vtxbuf2],
+    *result = acKernelReduceVec(device->streams[stream], reduction, start, end, {vtxbuf0,vtxbuf1,vtxbuf2},device->vba,
                                 device->vba.reduce_scratchpads_real[0], device->vba.scratchpad_size);
     return AC_SUCCESS;
 }
 
 AcResult
-acDeviceReduceVec(const Device device, const Stream stream, const ReductionType rtype,
+acDeviceReduceVec(const Device device, const Stream stream, const AcReduction reduction,
                   const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                   const VertexBufferHandle vtxbuf2, AcReal* result)
 {
     if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
     if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
     if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
-    acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, result);
-
-    switch (rtype) {
-    case RTYPE_RMS:                      /* Fallthrough */
-    case RTYPE_RMS_EXP:                  /* Fallthrough */
-    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
-    case RTYPE_ALFVEN_RMS: {
-	const int3 nn = acGetLocalNN(device->local_config);
-        const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
-        *result            = sqrt(inv_n * *result);
-        break;
-    }
-    default: /* Do nothing */
-        break;
+    acDeviceReduceVecNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, result);
+    switch (reduction.post_processing_op) {
+    	case AC_RMS: {
+    	    const int3 nn = acGetLocalNN(device->local_config);
+    	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+    	    *result            = sqrt(inv_n * *result);
+    	    break;
+    	}
+    	default: /* Do nothing */
+        	break;
     };
 
     return AC_SUCCESS;
 }
 
 AcResult
-acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutputParam output)
+acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output)
 {
-	AcReal res = AcKernelReduce(device->streams[stream],device->vba.reduce_scratchpads_real[(int) output], acGetKernelReduceScratchPadSize(kernel),reduce_op);
-	*result = res;
+	auto in  = device->vba.reduce_scratchpads_real[(int)output][0];
+	auto out = device->vba.reduce_scratchpads_real[(int)output][1];
+	acReduce(device->streams[stream],in,acGetKernelReduceScratchPadSize(kernel),out,reduce_op);
+	cudaMemcpyAsync(result,out,sizeof(out[0]),cudaMemcpyDeviceToHost,device->streams[stream]);
 	return AC_SUCCESS;
 }
 AcResult
-acDeviceFinishReduceInt(Device device, const Stream stream, int* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcIntOutputParam output)
+acDeviceFinishReduceInt(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
 {
-	int res = AcKernelReduceInt(device->streams[stream],device->vba.reduce_scratchpads_int[(int) output], acGetKernelReduceScratchPadSize(kernel),reduce_op);
-	*result = res;
+	auto in  = device->vba.reduce_scratchpads_int[(int)output][0];
+	auto out = device->vba.reduce_scratchpads_int[(int)output][1];
+	acReduceInt(device->streams[stream],in, acGetKernelReduceScratchPadSize(kernel),out,reduce_op);
+	cudaMemcpyAsync(result,out,sizeof(out[0]),cudaMemcpyDeviceToHost,device->streams[stream]);
 	return AC_SUCCESS;
 }
 AcResult
-acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream,
-                                 const ReductionType rtype, const VertexBufferHandle vtxbuf0,
+acDeviceReduceVecScalNoPostProcessing(const Device device, const Stream stream,
+                                 const AcReduction reduction, const VertexBufferHandle vtxbuf0,
                                  const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
                                  const VertexBufferHandle vtxbuf3, AcReal* result)
 {
@@ -1074,15 +1064,15 @@ acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream,
     const int3 start = acGetMinNN(device->local_config);
     const int3 end   = acGetMaxNN(device->local_config);
 
-    *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
-                                    device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
-                                    device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
+    *result = acKernelReduceVecScal(device->streams[stream], reduction, start, end,
+		    		    {vtxbuf0,vtxbuf1,vtxbuf2,vtxbuf3},
+				    device->vba,
                                     device->vba.reduce_scratchpads_real[0], device->vba.scratchpad_size);
     return AC_SUCCESS;
 }
 
 AcResult
-acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionType rtype,
+acDeviceReduceVecScal(const Device device, const Stream stream, const AcReduction reduction,
                       const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                       const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                       AcReal* result)
@@ -1091,21 +1081,21 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
     if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
     if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
     if(!vtxbuf_is_alive[vtxbuf3]) return AC_NOT_ALLOCATED;
-    acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+    acDeviceReduceVecScalNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
                                      result);
-
-    switch (rtype) {
-    case RTYPE_RMS:                      /* Fallthrough */
-    case RTYPE_RMS_EXP:                  /* Fallthrough */
-    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
-    case RTYPE_ALFVEN_RMS: {
-	const int3 nn = acGetLocalNN(device->local_config);
-        const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
-        *result            = sqrt(inv_n * *result);
-        break;
-    }
-    default: /* Do nothing */
-        break;
+    switch (reduction.post_processing_op) {
+    	case AC_RMS: {
+    	    const int3 nn = acGetLocalNN(device->local_config);
+    	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+    	    *result            = sqrt(inv_n * *result);
+    	    break;
+    	}
+        case AC_RADIAL_WINDOW_RMS: {
+	   ERROR("AC_RMS_RADIAL_WINDOW not implemented for acDeviceReduceVecScal\n");
+	   break;
+	}
+    	default: /* Do nothing */
+        	break;
     };
 
     return AC_SUCCESS;
@@ -1113,8 +1103,8 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
 
 /** XY averages */
 AcResult
-acDeviceReduceXYAverage(const Device device, const Stream stream, const Field field,
-                        const Profile profile)
+acDeviceReduceXY(const Device device, const Stream stream, const Field field,
+                        const Profile profile, const AcReduction reduction)
 {
     if constexpr(NUM_PROFILES == 0) return AC_FAILURE;
     cudaSetDevice(device->id);
@@ -1126,10 +1116,10 @@ acDeviceReduceXYAverage(const Device device, const Stream stream, const Field fi
         const int3 start    = (int3){dims.n0.x, dims.n0.y, k};
         const int3 end      = (int3){dims.n1.x, dims.n1.y, k + 1};
         const size_t nxy    = (end.x - start.x) * (end.y - start.y);
-        const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], RTYPE_SUM,
-                                                              device->vba.in[field], start, end,
+        const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], reduction,
+                                                              field, start, end,
                                                               device->vba.reduce_scratchpads_real[0],
-                                                              device->vba.scratchpad_size);
+                                                              device->vba.scratchpad_size,device->vba);
         // printf("%zu Profile: %g\n", k, result);
         // Could be optimized by performing the reduction completely in
         // device memory without the redundant device-host-device transfer

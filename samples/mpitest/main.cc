@@ -20,6 +20,7 @@
     Running: mpirun -np <num processes> <executable>
 */
 #include "astaroth.h"
+#include "../../stdlib/reduction.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
 
@@ -28,7 +29,6 @@
 #include <mpi.h>
 #include <vector>
 
-#define NUM_INTEGRATION_STEPS (100)
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 static bool finalized = false;
@@ -42,9 +42,9 @@ acAbort(void)
 }
 
 int
-main(void)
+main(int argc, char* argv[])
 {
-
+    const size_t NUM_INTEGRATION_STEPS = argc >  1 ? (size_t)atoi(argv[1]) : 100;
     MPI_Init(NULL,NULL);
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -224,24 +224,24 @@ main(void)
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 
-    const ReductionType scal_reductions[] = {RTYPE_MAX, RTYPE_MIN, RTYPE_SUM, RTYPE_RMS,
+    const AcReduction scal_reductions[] = {RTYPE_MAX, RTYPE_MIN, RTYPE_SUM, RTYPE_RMS,
                                              RTYPE_RMS_EXP};
     for (size_t i = 0; i < ARRAY_SIZE(scal_reductions); ++i) { // NOTE: not using NUM_RTYPES here
         const VertexBufferHandle v0 = (VertexBufferHandle)0;
-        const ReductionType rtype   = scal_reductions[i];
+        const auto reduction = scal_reductions[i];
 
         AcReal candval;
-        acGridReduceScal(STREAM_DEFAULT, rtype, v0, &candval);
+        acGridReduceScal(STREAM_DEFAULT, reduction, v0, &candval);
 
         if (pid == 0) {
-            const AcReal modelval = acHostReduceScal(model, rtype, v0);
+            const AcReal modelval = acHostReduceScal(model, reduction, v0);
 
             Error error             = acGetError(modelval, candval);
             error.maximum_magnitude = acHostReduceScal(model, RTYPE_MAX, v0);
             error.minimum_magnitude = acHostReduceScal(model, RTYPE_MIN, v0);
 
-            if (!acEvalError(rtype_names[rtype], error)) {
-                fprintf(stderr, "Scalar %s: cand %g model %g\n", rtype_names[i], candval, modelval);
+            if (!acEvalError(reduction.name, error)) {
+                fprintf(stderr, "Scalar %s: cand %g model %g\n", reduction.name, candval, modelval);
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }
@@ -255,7 +255,7 @@ main(void)
     }
     fflush(stdout);
 
-    const ReductionType vec_reductions[] = {RTYPE_MAX, RTYPE_MIN, RTYPE_SUM, RTYPE_RMS,
+    const AcReduction vec_reductions[] = {RTYPE_MAX, RTYPE_MIN, RTYPE_SUM, RTYPE_RMS,
                                             RTYPE_RMS_EXP};
     for (size_t i = 0; i < ARRAY_SIZE(vec_reductions); ++i) { // NOTE: 2 instead of NUM_RTYPES
         const VertexBufferHandle v0 = (VertexBufferHandle)0;
@@ -263,17 +263,17 @@ main(void)
         const VertexBufferHandle v2 = (VertexBufferHandle)2;
         AcReal candval;
 
-        const ReductionType rtype = vec_reductions[i];
-        acGridReduceVec(STREAM_DEFAULT, rtype, v0, v1, v2, &candval);
+        const auto reduction = vec_reductions[i];
+        acGridReduceVec(STREAM_DEFAULT, reduction, v0, v1, v2, &candval);
         if (pid == 0) {
-            const AcReal modelval = acHostReduceVec(model, rtype, v0, v1, v2);
+            const AcReal modelval = acHostReduceVec(model, reduction, v0, v1, v2);
 
             Error error             = acGetError(modelval, candval);
             error.maximum_magnitude = acHostReduceVec(model, RTYPE_MAX, v0, v1, v2);
             error.minimum_magnitude = acHostReduceVec(model, RTYPE_MIN, v0, v1, v1);
 
-            if (!acEvalError(rtype_names[rtype], error)) {
-                fprintf(stderr, "Vector %s: cand %g model %g\n", rtype_names[i], candval, modelval);
+            if (!acEvalError(reduction.name, error)) {
+                fprintf(stderr, "Vector %s: cand %g model %g\n", reduction.name, candval, modelval);
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }
@@ -286,7 +286,7 @@ main(void)
     }
     fflush(stdout);
 
-    const ReductionType alf_reductions[] = {RTYPE_ALFVEN_MAX, RTYPE_ALFVEN_MIN, RTYPE_ALFVEN_RMS};
+    const AcReduction alf_reductions[] = {RTYPE_ALFVEN_MAX, RTYPE_ALFVEN_MIN, RTYPE_ALFVEN_RMS};
     for (size_t i = 0; i < ARRAY_SIZE(alf_reductions); ++i) { // NOTE: 2 instead of NUM_RTYPES
         const VertexBufferHandle v0 = (VertexBufferHandle)0;
         const VertexBufferHandle v1 = (VertexBufferHandle)1;
@@ -294,17 +294,17 @@ main(void)
         const VertexBufferHandle v3 = (VertexBufferHandle)3;
         AcReal candval;
 
-        const ReductionType rtype = alf_reductions[i];
-        acGridReduceVecScal(STREAM_DEFAULT, rtype, v0, v1, v2, v3, &candval);
+        const auto reduction = alf_reductions[i];
+        acGridReduceVecScal(STREAM_DEFAULT, reduction, v0, v1, v2, v3, &candval);
         if (pid == 0) {
-            const AcReal modelval = acHostReduceVecScal(model, rtype, v0, v1, v2, v3);
+            const AcReal modelval = acHostReduceVecScal(model, reduction, v0, v1, v2, v3);
 
             Error error             = acGetError(modelval, candval);
             error.maximum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MAX, v0, v1, v2, v3);
             error.minimum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MIN, v0, v1, v1, v3);
 
-            if (!acEvalError(rtype_names[rtype], error)) {
-                fprintf(stderr, "Alfven %s: cand %g model %g\n", rtype_names[i], candval, modelval);
+            if (!acEvalError(reduction.name, error)) {
+                fprintf(stderr, "Alfven %s: cand %g model %g\n", reduction.name, candval, modelval);
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }

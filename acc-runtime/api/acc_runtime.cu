@@ -151,9 +151,8 @@ is_valid_configuration(const Volume dims, const Volume tpb)
     return true;
   }
   case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
-    if (tpb.z > 1)
-      return false;
-      [[fallthrough]];
+    if (tpb.z > 1) return false;
+    [[fallthrough]];
   case EXPLICIT_CACHING: // Fallthrough
   case EXPLICIT_CACHING_3D_BLOCKING: {
 
@@ -1148,13 +1147,18 @@ gather_best_measurement(const autotune_measurement local_best)
 #endif
 }
 
+void
+make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel kernel)
+{
+  //TP: have to set reduce offset zero since it might not be
+  vba.reduce_offset = 0;
+#include "safe_vtxbuf_input_params.h"
+}
 
 static TBConfig
 autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
 {
-
-  //TP: have to set reduce offset zero since it might not be
-  vba.reduce_offset = 0;
+  make_vtxbuf_input_params_safe(vba,kernel);
   // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
   //        "(%d):\n",
   //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
@@ -1191,7 +1195,8 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
 
 
   //TP: since autotuning should be quite fast when the dim is not NGHOST only log for actually 3d portions
-  const bool log = (dims.x > NGHOST_X && dims.y > NGHOST_Y && dims.z > NGHOST_Z);
+  const bool builtin_kernel = strlen(kernel_names[kernel]) > 2 && kernel_names[kernel][0] == 'A' && kernel_names[kernel][1] == 'C';
+  const bool log = !builtin_kernel && (dims.x > NGHOST_X && dims.y > NGHOST_Y && dims.z > NGHOST_Z);
 
   dim3 best_tpb(0, 0, 0);
   float best_time     = INFINITY;
@@ -1401,7 +1406,7 @@ acGetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 	//#include "user_kernel_ifs.h"
 	//silence unused warnings
 	(void)vba;
-	//TP: for now this is no-op in the future in some cases we choose which kernel to call passed on the input params
+	//TP: for now this is no-op in the future in some cases we choose which kernel to call based on the input params
 	return kernel_enum;
 	//return kernels[(int) kernel_enum];
 }
@@ -1789,23 +1794,68 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
   return AC_SUCCESS;
 }
 AcResult
-acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out)
+acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out, const AcReduceOp reduce_op)
 {
 
   (void)d_out;
   void* d_temp_storage      = NULL;
   size_t temp_storage_bytes = 0;
-  AcReal* res = NULL;
   cudaMalloc(&d_temp_storage, temp_storage_bytes);
-  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-                                  res, count,stream);
-  // printf("Temp storage: %zu bytes\n", temp_storage_bytes);
+  if(reduce_op == REDUCE_SUM)
+	  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
+  else if(reduce_op == REDUCE_MIN)
+	  cub::DeviceReduce::Min(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
+  else if(reduce_op == REDUCE_MAX)
+	  cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
   cudaMalloc(&d_temp_storage, temp_storage_bytes);
-  cudaMalloc(&res, sizeof(AcReal));
   ERRCHK_ALWAYS(d_temp_storage);
 
-  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-  	                                res, count,stream);
+  if(reduce_op == REDUCE_SUM)
+	  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
+  else if(reduce_op == REDUCE_MIN)
+	  cub::DeviceReduce::Min(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
+  else if(reduce_op == REDUCE_MAX)
+	  cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
+  cudaStreamSynchronize(
+    stream); // Note, would not be needed if allocated at initialization
+  cudaFree(d_temp_storage);
+  return AC_SUCCESS;
+}
+AcResult
+acReduceInt(const cudaStream_t stream, const int* d_in, const size_t count, int* d_out, const AcReduceOp reduce_op)
+{
+
+  (void)d_out;
+  void* d_temp_storage      = NULL;
+  size_t temp_storage_bytes = 0;
+  cudaMalloc(&d_temp_storage, temp_storage_bytes);
+  if(reduce_op == REDUCE_SUM)
+	  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
+  else if(reduce_op == REDUCE_MIN)
+	  cub::DeviceReduce::Min(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
+  else if(reduce_op == REDUCE_MAX)
+	  cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
+  cudaMalloc(&d_temp_storage, temp_storage_bytes);
+  ERRCHK_ALWAYS(d_temp_storage);
+
+  if(reduce_op == REDUCE_SUM)
+	  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
+  else if(reduce_op == REDUCE_MIN)
+	  cub::DeviceReduce::Min(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
+  else if(reduce_op == REDUCE_MAX)
+	  cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_in,
+                         d_out, count,stream);
   cudaStreamSynchronize(
     stream); // Note, would not be needed if allocated at initialization
   cudaFree(d_temp_storage);
@@ -2080,3 +2130,4 @@ acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const int3 
 	}
 	return AC_SUCCESS;
 }
+#include "load_ac_kernel_params.h"

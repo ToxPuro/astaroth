@@ -1,11 +1,12 @@
+hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
 #include "../../stdlib/integrators.h"
 #include "../../stdlib/math"
 #include "../../stdlib/grid.h"
 #include "../../stdlib/derivs.h"
 #include "../../stdlib/operators.h"
-#include "../../stdlib/reductions.h"
 #include "../../standalone_params.h"
 #include "../../stdlib/units.h"
+#include "../../stdlib/map.h"
 const int AC_2d_ints = [[1,2,3], [2,3,4]]
 const int AC_const_ints = [1,2,3]
 const int AC_const_ints_len = 3
@@ -84,7 +85,6 @@ real AC_gamma, AC_nu_visc, AC_zeta, AC_eta
 real AC_lnrho0, AC_mu0, AC_lnT0
 */
 // Note: not used by mhdsolver.ac at the moment (src/utils/modelsolver.c does)
-hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
@@ -945,3 +945,4 @@ ComputeSteps AC_rhs(boundconds)
         twopass_solve_final(AC_ITERATION_NUMBER,AcInputCurrentTime);
 }
 
+#include "../../stdlib/bc.h"

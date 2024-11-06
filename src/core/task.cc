@@ -160,25 +160,8 @@ acHaloExchange(Field fields[], const size_t num_fields)
 }
 
 
-static const std::array<AcKernel,7> builtin_bcs  = {
-					BOUNDCOND_SYMMETRIC,
-					BOUNDCOND_ANTISYMMETRIC,
-					BOUNDCOND_A2,
-					BOUNDCOND_CONST,
-					BOUNDCOND_INFLOW,
-					BOUNDCOND_OUTFLOW,
-					BOUNDCOND_PRESCRIBED_DERIVATIVE,
-				};
+#include "kernel_input_param_str.h"
 
-#define DEFAULT_LOADER(FUNC) \
-    else if(kernel == FUNC) \
-    { \
-	    auto default_loader = [](ParamLoadingInfo p) \
-	    { \
-		    p.params->FUNC.f = p.vtxbuf; \
-	    }; \
-	    task_def.load_kernel_params_func = new LoadKernelParamsFunc({default_loader}); \
-    }
 AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const std::function<void(ParamLoadingInfo)> load_func)
 {
@@ -197,16 +180,17 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
-    const bool builtin = (std::find(builtin_bcs.begin(), builtin_bcs.end(), kernel) != builtin_bcs.end());
-    task_def.fieldwise = builtin;
-    if (!builtin || kernel == BOUNDCOND_CONST|| kernel == BOUNDCOND_PRESCRIBED_DERIVATIVE)
+    task_def.fieldwise = strstr(kernel_input_param_strs[kernel],"Field");
+    if (!strcmp(kernel_input_param_strs[kernel],"Field"))
+    {
+    	auto default_loader = [&](ParamLoadingInfo p)
+    	{
+    	        acLoadKernelParams(*p.params,kernel,p.vtxbuf);
+    	};
+	task_def.load_kernel_params_func = new LoadKernelParamsFunc({default_loader});
+    }
+    else
     	task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
-    DEFAULT_LOADER(BOUNDCOND_SYMMETRIC)
-    DEFAULT_LOADER(BOUNDCOND_ANTISYMMETRIC)
-    DEFAULT_LOADER(BOUNDCOND_A2)
-    DEFAULT_LOADER(BOUNDCOND_A2)
-    DEFAULT_LOADER(BOUNDCOND_INFLOW)
-    DEFAULT_LOADER(BOUNDCOND_OUTFLOW)
     for(size_t i = 0; i < task_def.num_fields_in; ++i)
 	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
     for(size_t i = 0; i < task_def.num_fields_out; ++i)

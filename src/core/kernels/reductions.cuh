@@ -19,486 +19,8 @@
 #pragma once
 #include <assert.h>
 
-// Function pointer definitions
-typedef AcReal (*MapFn)(const AcReal&);
-typedef AcReal (*MapVecFn)(const AcReal&, const AcReal&, const AcReal&);
-typedef AcReal (*MapVecScalFn)(const AcReal&, const AcReal&, const AcReal&, const AcReal&);
-typedef AcReal (*ReduceFn)(const AcReal&, const AcReal&);
-typedef int    (*ReduceFnInt)(const int&, const int&);
-typedef AcReal (*CoordFn)(const AcReal3&);
-typedef void (*GridLocFn)(AcReal*, AcReal*, AcReal*, const int3&);
 
-// Map functions
-static __device__ inline AcReal
-map_value(const AcReal& a)
-{
-    return a;
-}
 
-static __device__ inline AcReal
-map_square(const AcReal& a)
-{
-    return a * a;
-}
-
-static __device__ inline AcReal
-map_exp_square(const AcReal& a)
-{
-    return exp(a) * exp(a);
-}
-
-static __device__ inline AcReal
-map_length_vec(const AcReal& a, const AcReal& b, const AcReal& c)
-{
-    return sqrt(a * a + b * b + c * c);
-}
-
-static __device__ inline AcReal
-map_square_vec(const AcReal& a, const AcReal& b, const AcReal& c)
-{
-    return map_square(a) + map_square(b) + map_square(c);
-}
-
-static __device__ inline AcReal
-map_exp_square_vec(const AcReal& a, const AcReal& b, const AcReal& c)
-{
-    return map_exp_square(a) + map_exp_square(b) + map_exp_square(c);
-}
-
-static __device__ inline AcReal
-map_length_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d)
-{
-    return sqrt(a * a + b * b + c * c) / sqrt(exp(d));
-}
-
-static __device__ inline AcReal
-map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d)
-{
-    return (map_square(a) + map_square(b) + map_square(c)) / (exp(d));
-}
-
-// Coordinate based functions
-
-// Here physical coordinate in the grid is calculating by assuming that
-// coordinate (0.0, 0.0, 0.0) corresresponds to index (0, 0, 0)
-// with distance between grid points being AC_dsx, AC_dsy, AC_dsz
-// respectively.
-//
-
-#ifdef AC_INTEGRATION_ENABLED
-static __device__ inline void
-cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1,
-                        const int3& globalVertexIdx)
-{
-    *coord_x1 = AcReal(globalVertexIdx.x - STENCIL_ORDER/2)*VAL(AC_dsx);
-    *coord_y1 = AcReal(globalVertexIdx.y - STENCIL_ORDER/2)*VAL(AC_dsy);
-#if TWO_D == 0
-    *coord_z1 = AcReal(globalVertexIdx.z - STENCIL_ORDER/2)*VAL(AC_dsz);
-#else
-    *coord_z1 = AcReal(0.0);
-#endif
-}
-
-static __device__ inline AcReal
-distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1, const AcReal coord_x2,
-         const AcReal coord_y2, const AcReal coord_z2)
-{
-    return sqrt((coord_x1 - coord_x2) * (coord_x1 - coord_x2) +
-                (coord_y1 - coord_y2) * (coord_y1 - coord_y2) +
-                (coord_z1 - coord_z2) * (coord_z1 - coord_z2));
-}
-
-static __device__ inline AcReal
-radial_window(const AcReal3& coordinate)
-{
-    AcReal loc_weight = 0.0;
-
-    const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-                                   VAL(AC_center_x), VAL(AC_center_y), 
-                                   VAL(AC_center_z)); 
-
-    if (radius <= VAL(AC_window_radius)) loc_weight = 1.0;  
-    //if (radius <= DCONST(AC_window_radius)) printf("Condition met radial_window \n");  OKOK
-
-    return loc_weight;
-}
-
-static __device__ inline AcReal
-gaussian_window(const AcReal3& coordinate)
-{
-    const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-                                   VAL(AC_center_x), VAL(AC_center_y), 
-                                   VAL(AC_center_z)); 
-    const AcReal rscale = VAL(AC_window_radius);
-
-    // if (radius <= DCONST(AC_window_radius)) printf("Condition met gaussian_window \n");  OKOK
-
-    // printf("radius %e, rscale %e, radius/rscale %e, exp((radius/rscale))^2 %e \n",
-    //         radius, rscale, radius/rscale, exp(-(radius/rscale)*(radius/rscale)));
-    return exp(-(radius / rscale) * (radius / rscale));
-}
-#else
-static __device__ inline void
-cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1,
-                        const int3&)
-{
-    // Produce nan to halt the code
-    *coord_x1 = 0.0 / 0.0;
-    *coord_y1 = 0.0 / 0.0;
-    *coord_z1 = 0.0 / 0.0;
-}
-
-static __device__ inline AcReal
-distance(const AcReal , const AcReal , const AcReal , const AcReal ,
-         const AcReal , const AcReal )
-{
-    // Produce nan to halt the code
-    return 0.0 / 0.0;
-}
-
-static __device__ inline AcReal
-radial_window(const AcReal3& )
-{
-    // Produce nan to halt the code
-    return 0.0 / 0.0;
-}
-
-static __device__ inline AcReal
-gaussian_window(const AcReal3& )
-{
-    // Produce nan to halt the code
-    return 0.0 / 0.0;
-}
-#endif
-
-// Reduce functions
-static __device__ inline AcReal
-reduce_max(const AcReal& a, const AcReal& b)
-{
-    return a > b ? a : b;
-}
-
-static __device__ inline AcReal
-reduce_min(const AcReal& a, const AcReal& b)
-{
-    return a < b ? a : b;
-}
-
-static __device__ inline AcReal
-reduce_sum(const AcReal& a, const AcReal& b)
-{
-    return a + b;
-}
-static __device__ inline int
-reduce_max_int(const int& a, const int& b)
-{
-    return a > b ? a : b;
-}
-
-static __device__ inline int
-reduce_min_int(const int& a, const int& b)
-{
-    return a > b ? a : b;
-}
-
-static __device__ inline int
-reduce_sum_int(const int& a, const int& b)
-{
-    return a + b;
-}
-
-bool __device__
-bound_check(const int3 end)
-{
-#if TWO_D == 0
-    return ((end <= (int3){VAL(AC_mx), VAL(AC_my), VAL(AC_mz)}));
-#else
-    return ((end <= (int3){VAL(AC_mx), VAL(AC_my), 1}));
-#endif
-}
-
-/** Map data from a 3D array into a 1D array */
-template <MapFn map_fn>
-__global__ void
-map(const AcReal* in, const int3 start, const int3 end, AcReal* out)
-{
-    assert((start >= (int3){0, 0, 0}));
-    assert(bound_check(end));
-
-    const int3 tid = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x,
-        threadIdx.y + blockIdx.y * blockDim.y,
-        threadIdx.z + blockIdx.z * blockDim.z,
-    };
-
-    const int3 in_idx3d = start + tid;
-    const size_t in_idx = IDX(in_idx3d);
-
-    const int3 dims      = end - start;
-    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
-    if (within_bounds)
-        out[out_idx] = map_fn(in[in_idx]);
-}
-
-template <MapVecFn map_fn>
-__global__ void
-map_vec(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 start, const int3 end,
-        AcReal* out)
-{
-    assert((start >= (int3){0, 0, 0}));
-    assert(bound_check(end));
-
-    const int3 tid = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x,
-        threadIdx.y + blockIdx.y * blockDim.y,
-        threadIdx.z + blockIdx.z * blockDim.z,
-    };
-
-    const int3 in_idx3d = start + tid;
-    const size_t in_idx = IDX(in_idx3d);
-
-    const int3 dims      = end - start;
-    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
-    if (within_bounds)
-        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx]);
-}
-
-template <MapVecScalFn map_fn>
-__global__ void
-map_vec_scal(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcReal* in3,
-             const int3 start, const int3 end, AcReal* out)
-{
-    assert((start >= (int3){0, 0, 0}));
-    assert(bound_check(end));
-
-    const int3 tid = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x,
-        threadIdx.y + blockIdx.y * blockDim.y,
-        threadIdx.z + blockIdx.z * blockDim.z,
-    };
-
-    const int3 in_idx3d = start + tid;
-    const size_t in_idx = IDX(in_idx3d);
-
-    const int3 dims      = end - start;
-    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
-    if (within_bounds)
-        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx]);
-}
-
-template <MapFn map_fn, GridLocFn grid_loc_fn, CoordFn coord_fn>
-__global__ void
-map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
-{
-    assert((start >= (int3){0, 0, 0}));
-    assert(bound_check(end));
-
-    const int3 tid = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x,
-        threadIdx.y + blockIdx.y * blockDim.y,
-        threadIdx.z + blockIdx.z * blockDim.z,
-    };
-
-    const int3 in_idx3d = start + tid;
-    const size_t in_idx = IDX(in_idx3d);
-
-    // Based on DSL boilerplate
-    const int3 vertexIdx = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x + start.x,
-        threadIdx.y + blockIdx.y * blockDim.y + start.y,
-        threadIdx.z + blockIdx.z * blockDim.z + start.z,
-    };
-    const int3 globalVertexIdx = (int3){
-        d_multigpu_offset.x + vertexIdx.x,
-        d_multigpu_offset.y + vertexIdx.y,
-        d_multigpu_offset.z + vertexIdx.z,
-    };
-
-    // Get coordinate location based on the indices
-    // and apply a suitable weihting and window function
-    AcReal3 coordinate;
-    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, globalVertexIdx);
-    const AcReal loc_weight = coord_fn(coordinate);
-
-    const int3 dims      = end - start;
-    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
-    if (within_bounds)
-        out[out_idx] = map_fn(in[in_idx]) * loc_weight;
-}
-
-template <MapVecFn map_fn, GridLocFn grid_loc_fn, CoordFn coord_fn>
-__global__ void
-map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 start,
-              const int3 end, AcReal* out)
-{
-    assert((start >= (int3){0, 0, 0}));
-    assert(bound_check(end));
-
-    const int3 tid = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x,
-        threadIdx.y + blockIdx.y * blockDim.y,
-        threadIdx.z + blockIdx.z * blockDim.z,
-    };
-
-    const int3 in_idx3d = start + tid;
-    const size_t in_idx = IDX(in_idx3d);
-
-    // Based on DSL boilerplate
-    const int3 vertexIdx = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x + start.x,
-        threadIdx.y + blockIdx.y * blockDim.y + start.y,
-        threadIdx.z + blockIdx.z * blockDim.z + start.z,
-    };
-    const int3 globalVertexIdx = (int3){
-        d_multigpu_offset.x + vertexIdx.x,
-        d_multigpu_offset.y + vertexIdx.y,
-        d_multigpu_offset.z + vertexIdx.z,
-    };
-
-    // Get coordinate location based on the indices
-    // and apply a suitable weihting and window function
-    AcReal3 coordinate;
-    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, globalVertexIdx);
-    const AcReal loc_weight = coord_fn(coordinate);
-
-    const int3 dims      = end - start;
-    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
-    if (within_bounds)
-        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx]) * loc_weight;
-}
-
-template <MapVecScalFn map_fn, GridLocFn grid_loc_fn, CoordFn coord_fn>
-__global__ void
-map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcReal* in3,
-                   const int3 start, const int3 end, AcReal* out)
-{
-    assert((start >= (int3){0, 0, 0}));
-    assert(bound_check(end));
-
-    const int3 tid = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x,
-        threadIdx.y + blockIdx.y * blockDim.y,
-        threadIdx.z + blockIdx.z * blockDim.z,
-    };
-
-    const int3 in_idx3d = start + tid;
-    const size_t in_idx = IDX(in_idx3d);
-
-    // Based on DSL boilerplate
-    const int3 vertexIdx = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x + start.x,
-        threadIdx.y + blockIdx.y * blockDim.y + start.y,
-        threadIdx.z + blockIdx.z * blockDim.z + start.z,
-    };
-    const int3 globalVertexIdx = (int3){
-        d_multigpu_offset.x + vertexIdx.x,
-        d_multigpu_offset.y + vertexIdx.y,
-        d_multigpu_offset.z + vertexIdx.z,
-    };
-
-    // Get coordinate location based on the indices
-    // and apply a suitable weihting and window function
-    AcReal3 coordinate;
-    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, globalVertexIdx);
-    const AcReal loc_weight = coord_fn(coordinate);
-
-    const int3 dims      = end - start;
-    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
-    if (within_bounds)
-        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx]) * loc_weight;
-}
-
-template <ReduceFn reduce_fn>
-__global__ void
-reduce(const AcReal* in, const size_t count, AcReal* out)
-{
-    // Note: possible integer overflow when GPU memory becomes large enough
-    const size_t curr = threadIdx.x + blockIdx.x * blockDim.x;
-
-    extern __shared__ AcReal smem[];
-    if (curr < count)
-        smem[threadIdx.x] = in[curr];
-    else
-        smem[threadIdx.x] = AC_REAL_INVALID_VALUE;
-
-    __syncthreads();
-
-    size_t offset = blockDim.x / 2;
-    while (offset > 0) {
-        if (threadIdx.x < offset) {
-            const AcReal a = smem[threadIdx.x];
-            const AcReal b = smem[threadIdx.x + offset];
-
-            // If the mesh dimensions are not divisible by mapping tbdims, and mapping tb dims are
-            // not divisible by reduction tb dims, then it is possible for `a` to be invalid but `b`
-            // to be valid
-            if (a != AC_REAL_INVALID_VALUE && b != AC_REAL_INVALID_VALUE)
-                smem[threadIdx.x] = reduce_fn(a, b);
-            else if (a != AC_REAL_INVALID_VALUE)
-                smem[threadIdx.x] = a;
-            else
-                smem[threadIdx.x] = b;
-        }
-
-        offset /= 2;
-        __syncthreads();
-    }
-
-    if (!threadIdx.x)
-        out[blockIdx.x] = smem[threadIdx.x];
-}
-
-template <ReduceFnInt reduce_fn>
-__global__ void
-reduce_int(const int* in, const size_t count, int* out)
-{
-    // Note: possible integer overflow when GPU memory becomes large enough
-    const size_t curr = threadIdx.x + blockIdx.x * blockDim.x;
-
-    extern __shared__ int smem_int[];
-    if (curr < count)
-        smem_int[threadIdx.x] = in[curr];
-    else
-        smem_int[threadIdx.x] = 0;
-
-    __syncthreads();
-
-    size_t offset = blockDim.x / 2;
-    while (offset > 0) {
-        if (threadIdx.x < offset) {
-            const int a = smem_int[threadIdx.x];
-            const int b = smem_int[threadIdx.x + offset];
-
-            // If the mesh dimensions are not divisible by mapping tbdims, and mapping tb dims are
-            // not divisible by reduction tb dims, then it is possible for `a` to be invalid but `b`
-            // to be valid
-            if (a != AC_REAL_INVALID_VALUE && b != AC_REAL_INVALID_VALUE)
-                smem_int[threadIdx.x] = reduce_fn(a, b);
-            else if (a != AC_REAL_INVALID_VALUE)
-                smem_int[threadIdx.x] = a;
-            else
-                smem_int[threadIdx.x] = b;
-        }
-
-        offset /= 2;
-        __syncthreads();
-    }
-
-    if (!threadIdx.x)
-        out[blockIdx.x] = smem_int[threadIdx.x];
-}
 
 template <typename T>
 static void
@@ -539,93 +61,11 @@ acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims)
 {
     return sizeof(AcReal) * acKernelReduceGetMinimumScratchpadSize(max_dims);
 }
-AcReal
-AcKernelReduce(const cudaStream_t stream, AcReal* scratchpads[2], const int initial_count, const KernelReduceOp reduce_op)
-{
-    // Reduce
-    AcReal* in  = scratchpads[0];
-    AcReal* out = scratchpads[1];
-    size_t count = initial_count;
-    do {
-        const size_t tpb  = 128;
-        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
-        const size_t smem = tpb * sizeof(in[0]);
-	switch(reduce_op)
-	{
-		case(REDUCE_SUM):
-			reduce<reduce_sum><<<bpg,tpb,smem,stream>>>(in,count,out);
-			break;
-		case(REDUCE_MIN):
-			reduce<reduce_min><<<bpg,tpb,smem,stream>>>(in,count,out);
-			break;
-		case(REDUCE_MAX):
-			reduce<reduce_max><<<bpg,tpb,smem,stream>>>(in,count,out);
-			break;
-		case(NO_REDUCE):
-			break;
-	}
-        ERRCHK_CUDA_KERNEL();
-        swap_ptrs(&in, &out);
-
-        count = bpg;
-    } while (count > 1);
-
-     // Copy the result back to host
-    AcReal result;
-    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
-    // NOTE This function does NOT synchronize the device or even the stream after reduction to allow overlap of multiple streams
-    //cudaStreamSynchronize(stream);
-
-    //cudaDeviceSynchronize();
-    // fprintf(stderr, "%s device result %g\n", rtype_names[rtype], result);
-    return result;
-}
-int
-AcKernelReduceInt(const cudaStream_t stream, int* scratchpads[2], const int initial_count, const KernelReduceOp reduce_op)
-{
-    // Reduce
-    int* in  = scratchpads[0];
-    int* out = scratchpads[1];
-    size_t count = initial_count;
-    do {
-        const size_t tpb  = 128;
-        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
-        const size_t smem = tpb * sizeof(in[0]);
-	switch(reduce_op)
-	{
-		case(REDUCE_SUM):
-			reduce_int<reduce_sum_int><<<bpg,tpb,smem,stream>>>(in,count,out);
-			break;
-		case(REDUCE_MIN):
-			reduce_int<reduce_min_int><<<bpg,tpb,smem,stream>>>(in,count,out);
-			break;
-		case(REDUCE_MAX):
-			reduce_int<reduce_max_int><<<bpg,tpb,smem,stream>>>(in,count,out);
-			break;
-		case(NO_REDUCE):
-			break;
-	}
-        ERRCHK_CUDA_KERNEL();
-        swap_ptrs(&in, &out);
-
-        count = bpg;
-    } while (count > 1);
-
-     // Copy the result back to host
-    int result;
-    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
-    // NOTE This function does NOT synchronize the device or even the stream after reduction to allow overlap of multiple streams
-    //cudaStreamSynchronize(stream);
-
-    //cudaDeviceSynchronize();
-    // fprintf(stderr, "%s device result %g\n", rtype_names[rtype], result);
-    return result;
-}
 
 AcReal
-acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const AcReal* vtxbuf,
+acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const VertexBufferHandle vtxbuf,
                    const int3 start, const int3 end, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
-                   const size_t scratchpad_size)
+                   const size_t scratchpad_size, VertexBufferArray vba)
 {
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
@@ -642,98 +82,32 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
     const size_t initial_count = dims.x * dims.y * dims.z;
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
-    // Map
+    const AcKernel map_kernel = reduction.map_vtxbuf_single;
+    if(map_kernel == AC_NULL_KERNEL)
     {
-        const Volume tpb = get_map_tpb();
-        const Volume bpg = get_map_bpg(dims, tpb);
-
-        switch (rtype) {
-        case RTYPE_MAX: /* Fallthrough */
-        case RTYPE_MIN: /* Fallthrough */
-        case RTYPE_SUM:
-            map<map_value><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
-            break;
-        case RTYPE_RMS:
-            map<map_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
-            break;
-        case RTYPE_RMS_EXP:
-            map<map_exp_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
-            break;
-
-#ifdef AC_INTEGRATION_ENABLED
-        case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_RADIAL_WINDOW_SUM:
-            map_coord<map_value, cartesian_grid_location, radial_window>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
-            break;
-        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_SUM:
-            map_coord<map_value, cartesian_grid_location, gaussian_window>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
-            break;
-#endif
-        default:
-            ERROR("Invalid reduction type in acKernelReduceScal");
-            return AC_FAILURE;
-        };
-        swap_ptrs(&in, &out);
+      ERROR("Invalid reduction type in acKernelReduceScal");
+      return AC_FAILURE;
     }
+    acLoadKernelParams(vba.kernel_input_params,map_kernel,vtxbuf,out); 
+    acLaunchKernel(map_kernel,stream,start,end,vba);
+    swap_ptrs(&in, &out);
 
-    // Reduce
-    size_t count = initial_count;
-    do {
-        const size_t tpb  = 128;
-        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
-        const size_t smem = tpb * sizeof(in[0]);
-
-        switch (rtype) {
-        case RTYPE_RADIAL_WINDOW_MAX:   /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_MAX:
-            reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
-            break;
-        case RTYPE_RADIAL_WINDOW_MIN:   /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_MIN:
-            reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
-            break;
-        case RTYPE_RADIAL_WINDOW_SUM:   /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_SUM: /* Fallthrough */
-        case RTYPE_SUM:                 /* Fallthrough */
-        case RTYPE_RMS:                 /* Fallthrough */
-        case RTYPE_RMS_EXP:
-            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
-            break;
-        default:
-            ERROR("Invalid reduction type in acKernelReduceScal");
-            return AC_FAILURE;
-        };
-        ERRCHK_CUDA_KERNEL();
-        swap_ptrs(&in, &out);
-
-        count = bpg;
-    } while (count > 1);
-
-    // Copy the result back to host
+    acReduce(stream,in,initial_count,out,reduction.reduce_op);
     AcReal result;
-    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
+    cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream);
     cudaStreamSynchronize(stream);
-
+    
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
     // could be done in parallel, but allowing that also exposes the users to potential bugs with
     // race conditions
     cudaDeviceSynchronize();
-    // fprintf(stderr, "%s device result %g\n", rtype_names[rtype], result);
     return result;
 }
 
 AcReal
-acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const int3 start,
-                  const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                  const AcReal* vtxbuf2, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const int3 start,
+                  const int3 end, const Field3 vector, VertexBufferArray vba, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
                   const size_t scratchpad_size)
 {
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
@@ -751,91 +125,21 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
     const size_t initial_count = dims.x * dims.y * dims.z;
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
-    // Map
+    const AcKernel map_kernel = reduction.map_vtxbuf_vec;
+    if(map_kernel == AC_NULL_KERNEL)
     {
-        const Volume tpb = get_map_tpb();
-        const Volume bpg = get_map_bpg(dims, tpb);
-        switch (rtype) {
-        case RTYPE_MAX: /* Fallthrough */
-        case RTYPE_MIN: /* Fallthrough */
-        case RTYPE_SUM:
-            map_vec<map_length_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
-                                                                               vtxbuf2, start, end,
-                                                                               out);
-            break;
-        case RTYPE_RMS:
-            map_vec<map_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
-                                                                               vtxbuf2, start, end,
-                                                                               out);
-            break;
-        case RTYPE_RMS_EXP:
-            map_vec<map_exp_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
-                                                                                   vtxbuf2, start,
-                                                                                   end, out);
-            break;
-#ifdef AC_INTEGRATION_ENABLED
-        case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_RADIAL_WINDOW_SUM:
-            map_vec_coord<map_length_vec, cartesian_grid_location, radial_window>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end,
-                                                            out);
-            break;
-        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_SUM:
-            map_vec_coord<map_length_vec, cartesian_grid_location, gaussian_window>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end,
-                                                            out);
-            break;
-#endif
-        default:
-            ERROR("Invalid reduction type in acKernelReduceScal");
-            return AC_FAILURE;
-        };
-        swap_ptrs(&in, &out);
+      ERROR("Invalid reduction type in acKernelReduceVec");
+      return AC_FAILURE;
     }
+    acLoadKernelParams(vba.kernel_input_params,map_kernel,vector,out); 
+    acLaunchKernel(map_kernel,stream,start,end,vba);
+    swap_ptrs(&in, &out);
 
-    // Reduce
-    size_t count = initial_count;
-    do {
-        const size_t tpb  = 128;
-        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
-        const size_t smem = tpb * sizeof(in[0]);
-
-        switch (rtype) {
-        case RTYPE_RADIAL_WINDOW_MAX:   /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_MAX:
-            reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
-            break;
-        case RTYPE_RADIAL_WINDOW_MIN:   /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_MIN:
-            reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
-            break;
-        case RTYPE_RADIAL_WINDOW_SUM:   /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_SUM: /* Fallthrough */
-        case RTYPE_SUM:                 /* Fallthrough */
-        case RTYPE_RMS:                 /* Fallthrough */
-        case RTYPE_RMS_EXP:
-            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
-            break;
-        default:
-            ERROR("Invalid reduction type in acKernelReduceScal");
-            return AC_FAILURE;
-        };
-        ERRCHK_CUDA_KERNEL();
-        swap_ptrs(&in, &out);
-
-        count = bpg;
-    } while (count > 1);
-
-    // Copy the result back to host
+    acReduce(stream,in,initial_count,out,reduction.reduce_op);
     AcReal result;
-    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
+    cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream);
     cudaStreamSynchronize(stream);
-
+    
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
     // could be done in parallel, but allowing that also exposes the users to potential bugs with
@@ -845,9 +149,8 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
 }
 
 AcReal
-acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
-                      const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                      const AcReal* vtxbuf2, const AcReal* vtxbuf3,
+acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, const int3 start,
+                      const int3 end, const Field4 vtxbufs,VertexBufferArray vba,
                       AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS], const size_t scratchpad_size)
 {
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
@@ -864,79 +167,22 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
     const int3 dims            = end - start;
     const size_t initial_count = dims.x * dims.y * dims.z;
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
-
-    // Map
+    const AcKernel map_kernel = reduction.map_vtxbuf_vec_scal;
+    if(map_kernel == AC_NULL_KERNEL)
     {
-        const Volume tpb = get_map_tpb();
-        const Volume bpg = get_map_bpg(dims, tpb);
-        switch (rtype) {
-        case RTYPE_ALFVEN_MAX: /* Fallthrough */
-        case RTYPE_ALFVEN_MIN:
-            map_vec_scal<map_length_alf>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                                            start, end, out);
-            break;
-        case RTYPE_ALFVEN_RMS:
-            map_vec_scal<map_square_alf>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                                            start, end, out);
-            break;
-#ifdef AC_INTEGRATION_ENABLED
-        case RTYPE_ALFVEN_RADIAL_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_ALFVEN_RADIAL_WINDOW_MIN: /* Fallthrough */
-            map_vec_scal_coord<map_length_alf, cartesian_grid_location, radial_window>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                                            start, end, out);
-            break;
-        case RTYPE_ALFVEN_RADIAL_WINDOW_RMS:
-            map_vec_scal_coord<map_square_alf, cartesian_grid_location, radial_window>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                                            start, end, out);
-            break;
-#endif
-        default:
-            fprintf(stderr, "Rtype %s (%d)\n", rtype_names[rtype], rtype);
-            ERROR("Invalid reduction type in acKernelReduceVecScal");
-            return AC_FAILURE;
-        };
-        swap_ptrs(&in, &out);
+      ERROR("Invalid reduction type in acKernelReduceVecScal");
+      return AC_FAILURE;
     }
 
-    // Reduce
-    size_t count = initial_count;
-    do {
-        const size_t tpb  = 128;
-        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
-        const size_t smem = tpb * sizeof(in[0]);
+    acLoadKernelParams(vba.kernel_input_params,map_kernel,vtxbufs,out); 
+    acLaunchKernel(map_kernel,stream,start,end,vba);
+    swap_ptrs(&in, &out);
 
-        switch (rtype) {
-        case RTYPE_ALFVEN_RADIAL_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_ALFVEN_MAX:
-            reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
-            break;
-        case RTYPE_ALFVEN_RADIAL_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_ALFVEN_MIN:
-            reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
-            break;
-        case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
-        case RTYPE_ALFVEN_RMS:
-            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
-            break;
-        default:
-            ERROR("Invalid reduction type in acKernelReduceScal");
-            return AC_FAILURE;
-        };
-        ERRCHK_CUDA_KERNEL();
-        swap_ptrs(&in, &out);
-
-        count = bpg;
-    } while (count > 1);
-
-    // Copy the result back to host
+    acReduce(stream,in,initial_count,out,reduction.reduce_op);
     AcReal result;
-    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
+    cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream);
     cudaStreamSynchronize(stream);
-
+    
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
     // could be done in parallel, but allowing that also exposes the users to potential bugs with

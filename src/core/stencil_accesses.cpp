@@ -150,7 +150,7 @@ __ballot(bool)
 
 
 
-#define idx ((int)IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z))
+#define idx  ((int)IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z))
 
 #endif
 #undef  __device__
@@ -249,6 +249,7 @@ extern "C"
 }
 //#include "user_constants.h"
 typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
+#define tid  ((int3){0,0,0})
 #include "user_kernel_declarations.h"
 
 constexpr AcMeshInfo

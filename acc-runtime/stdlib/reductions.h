@@ -1,2 +1,0 @@
-run_const real AC_sum_radius
-run_const real AC_window_radius

@@ -921,27 +921,23 @@ acNodeGeneralBoundconds(const Node node, const Stream stream, const AcMeshInfo c
 }
 
 static AcReal
-simple_final_reduce_scal(const Node node, const ReductionType& rtype, const AcReal* results,
+simple_final_reduce_scal(const Node node, const AcReduction& reduction, const AcReal* results,
                          const int& n)
 {
     AcReal res = results[0];
     for (int i = 1; i < n; ++i) {
-        if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX) {
+	if (reduction.reduce_op == REDUCE_MAX)
             res = max(res, results[i]);
-        }
-        else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN) {
+        else if (reduction.reduce_op == REDUCE_MIN)
             res = min(res, results[i]);
-        }
-        else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM ||
-                 rtype == RTYPE_ALFVEN_RMS) {
+        else if (reduction.reduce_op == REDUCE_SUM)
             res = sum(res, results[i]);
-        }
         else {
             ERROR("Invalid rtype");
         }
     }
 
-    if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
+    if (reduction.post_processing_op == AC_RMS) {
         const AcReal inv_n = AcReal(1.) / (node->grid.n.x * node->grid.n.y * node->grid.n.z);
         res                = sqrt(inv_n * res);
     }
@@ -949,7 +945,7 @@ simple_final_reduce_scal(const Node node, const ReductionType& rtype, const AcRe
 }
 
 AcResult
-acNodeReduceScal(const Node node, const Stream stream, const ReductionType rtype,
+acNodeReduceScal(const Node node, const Stream stream, const AcReduction reduction,
                  const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
@@ -957,16 +953,16 @@ acNodeReduceScal(const Node node, const Stream stream, const ReductionType rtype
     AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceReduceScal(node->devices[i], stream, rtype, vtxbuf_handle, &results[i]);
+        acDeviceReduceScal(node->devices[i], stream, reduction, vtxbuf_handle, &results[i]);
     }
 
-    *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
+    *result = simple_final_reduce_scal(node, reduction, results, node->num_devices);
     free(results);
     return AC_SUCCESS;
 }
 
 AcResult
-acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
+acNodeReduceVec(const Node node, const Stream stream, const AcReduction reduction,
                 const VertexBufferHandle a, const VertexBufferHandle b, const VertexBufferHandle c,
                 AcReal* result)
 {
@@ -975,16 +971,16 @@ acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
     AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceReduceVec(node->devices[i], stream, rtype, a, b, c, &results[i]);
+        acDeviceReduceVec(node->devices[i], stream, reduction, a, b, c, &results[i]);
     }
 
-    *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
+    *result = simple_final_reduce_scal(node, reduction, results, node->num_devices);
     free(results);
     return AC_SUCCESS;
 }
 
 AcResult
-acNodeReduceVecScal(const Node node, const Stream stream, const ReductionType rtype,
+acNodeReduceVecScal(const Node node, const Stream stream, const AcReduction reduction,
                     const VertexBufferHandle a, const VertexBufferHandle b,
                     const VertexBufferHandle c, const VertexBufferHandle d, AcReal* result)
 {
@@ -993,10 +989,10 @@ acNodeReduceVecScal(const Node node, const Stream stream, const ReductionType rt
     AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceReduceVecScal(node->devices[i], stream, rtype, a, b, c, d, &results[i]);
+        acDeviceReduceVecScal(node->devices[i], stream, reduction, a, b, c, d, &results[i]);
     }
 
-    *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
+    *result = simple_final_reduce_scal(node, reduction, results, node->num_devices);
     free(results);
     return AC_SUCCESS;
 }

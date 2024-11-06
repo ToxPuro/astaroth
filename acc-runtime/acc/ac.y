@@ -311,7 +311,8 @@ reset_all_files()
 			"kernel_region_write_info.h","kernel_region_read_info.h","taskgraph_bc_handles.h","user_declarations.h","taskgraph_kernels.h","taskgraph_kernel_bcs.h",
 			"info_access_operators.h","device_load_uniform.h","device_load_uniform_decl.h","device_load_uniform_overloads.h","device_load_uniform_loads.h",
 			"reduce_dst_integers.h","fused_kernels.h",
-			"builtin_enums.h",
+			"builtin_enums.h","safe_vtxbuf_input_params.h","load_ac_kernel_params.h","load_ac_kernel_params_def.h",
+			"kernel_input_param_str.h",
 			};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    //if(!file_exists(files[i])) continue;
@@ -1161,6 +1162,7 @@ function_definition: declaration function_body {
                         if (get_node_by_token(KERNEL, $$)) {
 			    astnode_set_prefix("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n",$$);
                             $$->type |= NODE_KFUNCTION;
+			    if($$->rhs->lhs) $$->rhs->lhs->type |= NODE_NO_OUT;
                             // Set kernel built-in variables
                             const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
                             astnode_set_prefix(default_param_list, $$->rhs);

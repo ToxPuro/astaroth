@@ -83,24 +83,6 @@ typedef int Stream;
 enum {AC_H2D, AC_D2H};    // pack/unpack direction
 typedef enum {AC_XZ=0, AC_YZ=1, AC_BOT=0, AC_TOP=2, NUM_PLATE_BUFFERS=4} PlateType;
 
-#define AC_FOR_RTYPES(FUNC)                                                       \
-    FUNC(RTYPE_MAX)                                                               \
-    FUNC(RTYPE_MIN)                                                               \
-    FUNC(RTYPE_SUM)                                                               \
-    FUNC(RTYPE_RMS)                                                               \
-    FUNC(RTYPE_RMS_EXP)                                                           \
-    FUNC(RTYPE_ALFVEN_MAX)                                                        \
-    FUNC(RTYPE_ALFVEN_MIN)                                                        \
-    FUNC(RTYPE_ALFVEN_RMS)                                                        \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_MAX)                                          \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_MIN)                                          \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_RMS)                                          \
-    FUNC(RTYPE_RADIAL_WINDOW_MAX)                                                 \
-    FUNC(RTYPE_RADIAL_WINDOW_MIN)                                                 \
-    FUNC(RTYPE_RADIAL_WINDOW_SUM)                                                 \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_MAX)                                               \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_MIN)                                               \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_SUM)
 
 #define RTYPE_ISNAN (RTYPE_SUM)
 
@@ -120,10 +102,24 @@ typedef enum {AC_XZ=0, AC_YZ=1, AC_BOT=0, AC_TOP=2, NUM_PLATE_BUFFERS=4} PlateTy
 #define AC_GEN_ID(X) X,
 
 
+
+
 typedef enum {
-    AC_FOR_RTYPES(AC_GEN_ID) //
-    NUM_RTYPES
-} ReductionType;
+	AC_NO_REDUCE_POST_PROCESSING,
+	AC_RMS,
+	AC_RADIAL_WINDOW_RMS
+} AcReductionPostProcessingOp;
+
+typedef struct
+{
+	const AcReduceOp reduce_op;
+	const AcReductionPostProcessingOp post_processing_op;
+	const AcKernel map_vtxbuf_single;
+	const AcKernel map_vtxbuf_vec;
+	const AcKernel map_vtxbuf_vec_scal;
+	const char* name;
+} AcReduction;
+
 
 typedef enum {
     AC_FOR_INIT_TYPES(AC_GEN_ID) //
@@ -159,7 +155,6 @@ enum class AcMPICommStrategy:int{
 #undef AC_GEN_ID
 
 #define AC_GEN_STR(X) #X,
-static const char* rtype_names[] _UNUSED        = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
 static const char* initcondtype_names[] _UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
 
 
@@ -473,13 +468,6 @@ acQueryInitcondtypes(void)
         printf("%s (%d)\n", initcondtype_names[i], i);
 }
 
-/** Prints a list of reduction types */
-static inline void
-acQueryRtypes(void)
-{
-    for (int i = 0; i < NUM_RTYPES; ++i)
-        printf("%s (%d)\n", rtype_names[i], i);
-}
 
 /** Prints a list of int parameters */
 static inline void
@@ -618,19 +606,6 @@ FUNC_DEFINE(AcResult, acBoundcondStep,(void));
 /** Applies general outer boundary conditions for the Mesh distributed among the devices visible to
  * the caller*/
 FUNC_DEFINE(AcResult, acBoundcondStepGBC,(const AcMeshInfo config));
-
-/** Does a scalar reduction with the data stored in some vertex buffer */
-FUNC_DEFINE(AcReal, acReduceScal,(const ReductionType rtype, const VertexBufferHandle vtxbuf_handle));
-
-/** Does a vector reduction with vertex buffers where the vector components are (a, b, c) */
-FUNC_DEFINE(AcReal, acReduceVec,(const ReductionType rtype, const VertexBufferHandle a,
-                   const VertexBufferHandle b, const VertexBufferHandle c));
-
-/** Does a reduction for an operation which requires a vector and a scalar with vertex buffers
- *  * where the vector components are (a, b, c) and scalr is (d) */
-FUNC_DEFINE(AcReal, acReduceVecScal,(const ReductionType rtype, const VertexBufferHandle a,
-                       const VertexBufferHandle b, const VertexBufferHandle c,
-                       const VertexBufferHandle d));
 
 /** Stores a subset of the mesh stored across the devices visible to the caller back to host memory.
  */
@@ -784,22 +759,22 @@ FUNC_DEFINE(AcResult, acGridPeriodicBoundconds,(const Stream stream));
 
 
 /** */
-FUNC_DEFINE(AcResult, acGridReduceScal,(const Stream stream, const ReductionType rtype,
+FUNC_DEFINE(AcResult, acGridReduceScal,(const Stream stream, const AcReduction reduction,
                           const VertexBufferHandle vtxbuf_handle, AcReal* result));
 
 /** */
-FUNC_DEFINE(AcResult, acGridReduceVec,(const Stream stream, const ReductionType rtype,
+FUNC_DEFINE(AcResult, acGridReduceVec,(const Stream stream, const AcReduction reduction,
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result));
 
 /** */
-FUNC_DEFINE(AcResult, acGridReduceVecScal,(const Stream stream, const ReductionType rtype,
+FUNC_DEFINE(AcResult, acGridReduceVecScal,(const Stream stream, const AcReduction reduction,
                              const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                              const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                              AcReal* result));
 
 /** */
-AcResult acGridReduceXYAverage(const Stream stream, const Field field, const Profile profile);
+AcResult acGridReduceXY(const Stream stream, const Field field, const Profile profile, const AcReduction reduction);
 
 typedef enum {
     ACCESS_READ,
@@ -1138,14 +1113,14 @@ FUNC_DEFINE(AcResult, acNodeGeneralBoundcondStep,(const Node node, const Stream 
 FUNC_DEFINE(AcResult, acNodeGeneralBoundconds,(const Node node, const Stream stream, const AcMeshInfo config));
 
 /** */
-FUNC_DEFINE(AcResult, acNodeReduceScal,(const Node node, const Stream stream, const ReductionType rtype,
+FUNC_DEFINE(AcResult, acNodeReduceScal,(const Node node, const Stream stream, const AcReduction reduction,
                           const VertexBufferHandle vtxbuf_handle, AcReal* result));
 /** */
-FUNC_DEFINE(AcResult, acNodeReduceVec,(const Node node, const Stream stream_type, const ReductionType rtype,
+FUNC_DEFINE(AcResult, acNodeReduceVec,(const Node node, const Stream stream_type, const AcReduction reduction,
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result));
 /** */
-FUNC_DEFINE(AcResult, acNodeReduceVecScal,(const Node node, const Stream stream_type, const ReductionType rtype,
+FUNC_DEFINE(AcResult, acNodeReduceVecScal,(const Node node, const Stream stream_type, const AcReduction reduction,
                              const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                              const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                              AcReal* result));
@@ -1334,28 +1309,28 @@ FUNC_DEFINE(AcResult, acDeviceGeneralBoundconds,(const Device device, const Stre
                                    const int3 end, const AcMeshInfo config, const int3 bindex));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceReduceScalNotAveraged,(const Device device, const Stream stream,
-                                       const ReductionType rtype,
+FUNC_DEFINE(AcResult, acDeviceReduceScalNoPostProcessing,(const Device device, const Stream stream,
+                                       const AcReduction reduction,
                                        const VertexBufferHandle vtxbuf_handle, AcReal* result));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceReduceScal,(const Device device, const Stream stream, const ReductionType rtype,
+FUNC_DEFINE(AcResult, acDeviceReduceScal,(const Device device, const Stream stream, const AcReduction reduction,
                             const VertexBufferHandle vtxbuf_handle, AcReal* result));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceReduceVecNotAveraged,(const Device device, const Stream stream_type,
-                                      const ReductionType rtype, const VertexBufferHandle vtxbuf0,
+FUNC_DEFINE(AcResult, acDeviceReduceVecNoPostProcessing,(const Device device, const Stream stream_type,
+                                      const AcReduction reduction, const VertexBufferHandle vtxbuf0,
                                       const VertexBufferHandle vtxbuf1,
                                       const VertexBufferHandle vtxbuf2, AcReal* result));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceReduceVec,(const Device device, const Stream stream_type, const ReductionType rtype,
+FUNC_DEFINE(AcResult, acDeviceReduceVec,(const Device device, const Stream stream_type, const AcReduction reduction,
                            const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                            const VertexBufferHandle vtxbuf2, AcReal* result));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceReduceVecScalNotAveraged,(const Device device, const Stream stream_type,
-                                          const ReductionType rtype,
+FUNC_DEFINE(AcResult, acDeviceReduceVecScalNoPostProcessing,(const Device device, const Stream stream_type,
+                                          const AcReduction reduction,
                                           const VertexBufferHandle vtxbuf0,
                                           const VertexBufferHandle vtxbuf1,
                                           const VertexBufferHandle vtxbuf2,
@@ -1363,13 +1338,13 @@ FUNC_DEFINE(AcResult, acDeviceReduceVecScalNotAveraged,(const Device device, con
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceReduceVecScal,(const Device device, const Stream stream_type,
-                               const ReductionType rtype, const VertexBufferHandle vtxbuf0,
+                               const AcReduction reduction, const VertexBufferHandle vtxbuf0,
                                const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
                                const VertexBufferHandle vtxbuf3, AcReal* result));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceReduceXYAverage,(const Device device, const Stream stream, const Field field,
-                                 const Profile profile));
+FUNC_DEFINE(AcResult, acDeviceReduceXY,(const Device device, const Stream stream, const Field field,
+                                 const Profile profile, const AcReduction reduction));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffer,(const Device device, const Profile handle));
@@ -1401,9 +1376,9 @@ FUNC_DEFINE(AcResult, acDeviceLoadProfile,(const Device device, const AcReal* ho
 FUNC_DEFINE(AcResult, acDeviceStoreProfile,(const Device device, const Profile profile, AcMesh* host_mesh));
 
 /** */
-FUNC_DEFINE(AcResult,  acDeviceFinishReduce,(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutputParam output));
+FUNC_DEFINE(AcResult,  acDeviceFinishReduce,(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output));
 /** */
-FUNC_DEFINE(AcResult,  acDeviceFinishReduceInt,(Device device, const Stream stream, int* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcIntOutputParam output));
+FUNC_DEFINE(AcResult,  acDeviceFinishReduceInt,(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceUpdate,(Device device, const AcMeshInfo info));
@@ -2133,16 +2108,7 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
     [&](ParamLoadingInfo p)
     {
             auto config = acDeviceGetLocalConfig(p.device);
-	    if(kernel == BOUNDCOND_CONST)
-	    {
-            	p.params -> BOUNDCOND_CONST.const_val = config[param];
-            	p.params -> BOUNDCOND_CONST.f         = p.vtxbuf;
-	    }
-	    else if(kernel == BOUNDCOND_PRESCRIBED_DERIVATIVE)
-	    {
-    	        p.params -> BOUNDCOND_PRESCRIBED_DERIVATIVE.prescribed_value = config[param];
-    	        p.params -> BOUNDCOND_PRESCRIBED_DERIVATIVE.f                = p.vtxbuf;
-	    }
+	    acLoadKernelParams(*p.params,kernel,p.vtxbuf,config[param]); 
     };
     return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
