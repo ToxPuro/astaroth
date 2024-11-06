@@ -64,13 +64,13 @@ class BufferExchangeTask {
         }
 
         migrate(in, first_stage_buffer);
-        migrate_async(*(stream.get()), first_stage_buffer, second_stage_buffer);
+        migrate_async(*stream, first_stage_buffer, second_stage_buffer);
     }
 
     template <typename MemoryResource> void wait(GenericBuffer<T, MemoryResource>& out)
     {
         ERRCHK(in_progress);
-        ERRCHK_CUDA_API(cudaStreamSynchronize(*(stream.get())));
+        ERRCHK_CUDA_API(cudaStreamSynchronize(*stream));
 
         // Ensure that the output resource and the second-stage buffer is in the same memory space
         if constexpr (std::is_base_of<DeviceMemoryResource, SecondStageResource>::value) {
