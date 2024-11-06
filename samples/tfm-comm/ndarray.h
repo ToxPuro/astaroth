@@ -1,10 +1,8 @@
 #pragma once
 
-#include "buffer.h"
+#include "buf.h"
 #include "datatypes.h"
 #include "math_utils.h"
-
-#include "buf.h"
 
 #include <iomanip>
 

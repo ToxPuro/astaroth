@@ -2,6 +2,7 @@
 
 #include <mpi.h>
 
+#include "buf.h"
 #include "mpi_utils.h"
 
 // TODO
@@ -24,7 +25,7 @@ template <typename T> class IOTask {
     Shape mesh_subdims;
     Index mesh_offset;
 
-    Buffer<T> staging_buffer; // Buffer used for IO
+    GenericBuffer<T> staging_buffer; // Buffer used for IO
 
     MPI_Request req;
     MPI_File file;

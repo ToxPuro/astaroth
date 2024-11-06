@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "buffer.h"
+#include "buf.h"
 #include "pack.h"
 #include "segment.h"
 
@@ -21,8 +21,8 @@ template <typename T> class Packet {
 
     Segment segment; // Shape of the data block the packet represents (for packing or unpacking)
 
-    Buffer<T> send_buffer;
-    Buffer<T> recv_buffer;
+    GenericBuffer<T> send_buffer;
+    GenericBuffer<T> recv_buffer;
     MPI_Request send_req; // MPI request for handling synchronization
     MPI_Request recv_req; // MPI request for handling synchronization
 
@@ -95,8 +95,8 @@ void
 Packet<T>::launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
 {
     const size_t count = inputs.count * prod(segment.dims);
-    ERRCHK(count <= send_buffer.count);
-    ERRCHK(count <= recv_buffer.count);
+    ERRCHK(count <= send_buffer.size());
+    ERRCHK(count <= recv_buffer.size());
 
     // Duplicate the communicator to ensure the operation does not interfere
     // with other operations on the parent communicator
@@ -114,7 +114,7 @@ Packet<T>::launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
 
     // Post recv
     const int tag = 0;
-    ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data, as<int>(count), get_mpi_dtype<T>(), recv_neighbor,
+    ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(), as<int>(count), get_mpi_dtype<T>(), recv_neighbor,
                              tag, cart_comm, &recv_req));
 
     // Block until the previous send has completed before reusing the buffer
@@ -123,8 +123,8 @@ Packet<T>::launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
                          "wait after launch to synchronize.");
 
     // Pack, post send, and ensure the message has left the pack buffer
-    pack(local_mm, segment.dims, send_offset, inputs, send_buffer.data);
-    ERRCHK_MPI_API(MPI_Isend(send_buffer.data, as<int>(count), get_mpi_dtype<T>(), send_neighbor,
+    pack(local_mm, segment.dims, send_offset, inputs, send_buffer.data());
+    ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), get_mpi_dtype<T>(), send_neighbor,
                              tag, cart_comm, &send_req));
 
     ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
@@ -137,7 +137,7 @@ Packet<T>::wait(PackPtrArray<T*> outputs)
     ERRCHK_MPI_EXPR_DESC(recv_req != MPI_REQUEST_NULL, "wait called but no request in flight");
     wait_and_destroy_request(recv_req);
     ERRCHK(recv_req == MPI_REQUEST_NULL);
-    unpack(recv_buffer.data, local_mm, segment.dims, segment.offset, outputs);
+    unpack(recv_buffer.data(), local_mm, segment.dims, segment.offset, outputs);
 
     ERRCHK_MPI_EXPR_DESC(send_req != MPI_REQUEST_NULL, "wait called but no request in flight");
     wait_and_destroy_request(send_req);

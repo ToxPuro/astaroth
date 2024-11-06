@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "buffer.h"
+#include "buf.h"
 
 #if defined(__CUDACC__)
 #define DEVICE_ENABLED
@@ -17,8 +17,6 @@
 #include "errchk.h"
 #define cudaStream_t void*
 #endif
-
-#include "buf.h"
 
 auto stream_create = []() {
     PRINT_LOG("new stream");
