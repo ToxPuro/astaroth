@@ -290,6 +290,7 @@ The same is also true for `Field3,real3`,`Field[],real[]` and `Field3[],real3[]`
 
 Overloading is supported.
 In case there are multiple possible functions that an overloaded call could be resolved to the functions are prioritized in the following order:  
+
 * Functions that have for all input parameters their types defined and do not require converting the parameters supplied in the call to the input types
 * Functions that have for all input parameters their types defined
 * Functions that do not require converting the parameters supplied in the call to the input types
