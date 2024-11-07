@@ -16,11 +16,71 @@
 
 #include <unistd.h>
 
+static void
+benchmark(void)
+{
+    const size_t num_samples = 5;
+
+    // Stream creation
+    for (size_t i = 0; i < num_samples; ++i) {
+        cudaStream_t stream;
+        BENCHMARK(cudaStreamCreate(&stream));
+        BENCHMARK(cudaStreamDestroy(stream));
+    }
+
+    // Buffers
+    const size_t count = (1000 * 1024 * 1024) / sizeof(double);
+    Buffer<double, HostMemoryResource> hbuf(count);
+    Buffer<double, DeviceMemoryResource> dbuf(count);
+
+    // C++ standard library
+    for (size_t i = 0; i < num_samples; ++i)
+        BENCHMARK(std::copy(hbuf.data(), hbuf.data() + hbuf.size(), hbuf.data()));
+
+    // Regular htoh and dtod
+    for (size_t i = 0; i < num_samples; ++i)
+        BENCHMARK(migrate(hbuf, hbuf));
+
+    for (size_t i = 0; i < num_samples; ++i)
+        BENCHMARK(migrate(dbuf, dbuf));
+
+    // Regular dtoh and htod
+    for (size_t i = 0; i < num_samples; ++i)
+        BENCHMARK(migrate(hbuf, dbuf));
+
+    for (size_t i = 0; i < num_samples; ++i)
+        BENCHMARK(migrate(dbuf, hbuf));
+
+    // Pinned
+    Buffer<double, PinnedHostMemoryResource> phbuf(count);
+    for (size_t i = 0; i < num_samples; ++i)
+        BENCHMARK(migrate(phbuf, dbuf));
+
+    for (size_t i = 0; i < num_samples; ++i)
+        BENCHMARK(migrate(dbuf, phbuf));
+
+    // Pinned write-combined
+    Buffer<double, PinnedWriteCombinedHostMemoryResource> pwchbuf(count);
+    for (size_t i = 0; i < num_samples; ++i)
+        BENCHMARK(migrate(pwchbuf, dbuf));
+
+    for (size_t i = 0; i < num_samples; ++i)
+        BENCHMARK(migrate(dbuf, pwchbuf));
+}
+
 int
 main()
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
     try {
+        int nprocs;
+        ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
+        int device_count;
+        ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
+        ERRCHK_CUDA_API(cudaSetDevice(nprocs % device_count));
+        ERRCHK_CUDA_API(cudaDeviceSynchronize());
+        benchmark();
+
         const Shape global_nn        = {4, 4};
         MPI_Comm cart_comm           = cart_comm_create(MPI_COMM_WORLD, global_nn);
         const Shape decomp           = get_decomposition(cart_comm);
