@@ -71,7 +71,14 @@ benchmark(void)
 int
 main()
 {
-    ERRCHK_MPI_API(MPI_Init(NULL, NULL));
+    // ERRCHK_MPI_API(MPI_Init(NULL, NULL));
+    int provided, claimed, is_thread_main;
+    ERRCHK_MPI_API(MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided));
+    ERRCHK_MPI_API(MPI_Query_thread(&claimed));
+    ERRCHK_MPI(provided == claimed);
+    ERRCHK_MPI_API(MPI_Is_thread_main(&is_thread_main));
+    ERRCHK_MPI(is_thread_main);
+
     try {
         int nprocs;
         ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
@@ -150,9 +157,9 @@ main()
 
         // IO
         IOTask<AcReal> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
-        iotask.write(cart_comm, mesh.buffer.data(), "test.dat");
-        // iotask.launch_write(cart_comm, mesh.buffer, "test.dat");
-        // iotask.wait_write();
+        // iotask.write(cart_comm, mesh.buffer.data(), "test.dat");
+        iotask.launch_write(cart_comm, mesh.buffer, "test.dat");
+        iotask.wait_write();
         iotask.read(cart_comm, "test.dat", mesh.buffer.data());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
