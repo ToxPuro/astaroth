@@ -135,12 +135,12 @@ void
 Packet<T>::wait(PackPtrArray<T*> outputs)
 {
     ERRCHK_MPI_EXPR_DESC(recv_req != MPI_REQUEST_NULL, "wait called but no request in flight");
-    wait_and_destroy_request(recv_req);
+    request_wait_and_destroy(recv_req);
     ERRCHK(recv_req == MPI_REQUEST_NULL);
     unpack(recv_buffer.data(), local_mm, segment.dims, segment.offset, outputs);
 
     ERRCHK_MPI_EXPR_DESC(send_req != MPI_REQUEST_NULL, "wait called but no request in flight");
-    wait_and_destroy_request(send_req);
+    request_wait_and_destroy(send_req);
     ERRCHK(send_req == MPI_REQUEST_NULL);
 }
 

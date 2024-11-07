@@ -57,9 +57,9 @@ template <typename T> class IOTask {
         // ERRCHK_MPI_API(MPI_Info_set(info, "romio_no_indep_rw", "...")); // Enable/disable
         // independent rw
 
-        MPI_Datatype global_subarray = create_subarray(file_dims, mesh_subdims, file_offset,
+        MPI_Datatype global_subarray = subarray_create(file_dims, mesh_subdims, file_offset,
                                                        get_mpi_dtype<T>());
-        MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
+        MPI_Datatype local_subarray  = subarray_create(mesh_dims, mesh_subdims, mesh_offset,
                                                        get_mpi_dtype<T>());
 
         ERRCHK_MPI_EXPR_DESC(file == MPI_FILE_NULL, "Previous IO operation was still in progress.");
@@ -100,9 +100,9 @@ template <typename T> class IOTask {
         // ERRCHK_MPI_API(MPI_Info_set(info, "romio_no_indep_rw", "...")); // Enable/disable
         // independent rw
 
-        MPI_Datatype global_subarray = create_subarray(file_dims, mesh_subdims, file_offset,
+        MPI_Datatype global_subarray = subarray_create(file_dims, mesh_subdims, file_offset,
                                                        get_mpi_dtype<T>());
-        MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
+        MPI_Datatype local_subarray  = subarray_create(mesh_dims, mesh_subdims, mesh_offset,
                                                        get_mpi_dtype<T>());
 
         ERRCHK_MPI_EXPR_DESC(file == MPI_FILE_NULL, "Previous IO operation was still in progress.");
@@ -140,9 +140,9 @@ template <typename T> class IOTask {
         // ERRCHK_MPI_API(MPI_Info_set(info, "romio_no_indep_rw", "...")); // Enable/disable
         // independent rw
 
-        MPI_Datatype global_subarray = create_subarray(file_dims, mesh_subdims, file_offset,
+        MPI_Datatype global_subarray = subarray_create(file_dims, mesh_subdims, file_offset,
                                                        get_mpi_dtype<T>());
-        MPI_Datatype local_subarray  = create_subarray(mesh_dims, mesh_subdims, mesh_offset,
+        MPI_Datatype local_subarray  = subarray_create(mesh_dims, mesh_subdims, mesh_offset,
                                                        get_mpi_dtype<T>());
 
         ERRCHK_MPI(file == MPI_FILE_NULL);
@@ -168,7 +168,7 @@ template <typename T> class IOTask {
         ERRCHK_MPI_EXPR_DESC(req != MPI_REQUEST_NULL,
                              "Function called but there was no write operation in progress. "
                              "Function launch_write must be called before wait_write.");
-        wait_and_destroy_request(req);
+        request_wait_and_destroy(req);
         ERRCHK_MPI_API(MPI_File_close(&file));
         ERRCHK_MPI(file == MPI_FILE_NULL);
     };

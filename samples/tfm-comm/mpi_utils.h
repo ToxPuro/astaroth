@@ -53,25 +53,30 @@ void print_mpi_comm(const MPI_Comm& comm);
 
 /** Creates a cartesian communicator with topology information attached
  * The resource must be freed after use with
- *  destroy_cart_comm(cart_comm)
+ *  cart_comm_destroy(cart_comm)
  * or
  *  ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
  */
-MPI_Comm create_cart_comm(const MPI_Comm& parent_comm, const Shape& global_nn);
+MPI_Comm cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn);
 
-void destroy_cart_comm(MPI_Comm& cart_comm);
+void cart_comm_destroy(MPI_Comm& cart_comm);
 
 /** Create and commit a subarray
  * The returned resource is ready to use.
  * The returned resource must be freed after use with either
- *  destroy_subarray(subarray)
+ *  subarray_destroy(subarray)
  * or
  *  ERRCHK_MPI_API(MPI_Type_free(&subarray))
  * */
-MPI_Datatype create_subarray(const Shape& dims, const Shape& subdims, const Index& offset,
+MPI_Datatype subarray_create(const Shape& dims, const Shape& subdims, const Index& offset,
                              const MPI_Datatype& dtype);
 
-void destroy_subarray(MPI_Datatype& subarray);
+void subarray_destroy(MPI_Datatype& subarray);
+
+/** Block until the request has completed and deallocate it.
+ * The MPI_Request is set to MPI_REQUEST_NULL after deallocation.
+ */
+void request_wait_and_destroy(MPI_Request& req);
 
 Shape get_decomposition(const MPI_Comm& cart_comm);
 
@@ -80,8 +85,6 @@ Index get_coords(const MPI_Comm& cart_comm);
 int get_rank(const MPI_Comm& cart_comm);
 
 int get_neighbor(const MPI_Comm& cart_comm, const Direction& dir);
-
-void wait_and_destroy_request(MPI_Request& req);
 
 /** Map type to MPI enum representing the type
  * Usage: MPIType<double>::value // returns MPI_DOUBLE

@@ -22,7 +22,7 @@ main()
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
     try {
         const Shape global_nn        = {4, 4};
-        MPI_Comm cart_comm           = create_cart_comm(MPI_COMM_WORLD, global_nn);
+        MPI_Comm cart_comm           = cart_comm_create(MPI_COMM_WORLD, global_nn);
         const Shape decomp           = get_decomposition(cart_comm);
         const Shape local_nn         = global_nn / decomp;
         const Index coords           = get_coords(cart_comm);
@@ -54,7 +54,7 @@ main()
         //                                            mesh.buffer.data(),
         //                                            mesh.buffer.data());
         // while (!recv_reqs.empty()) {
-        //     wait_and_destroy_request(recv_reqs.back());
+        //     request_wait_and_destroy(recv_reqs.back());
         //     recv_reqs.pop_back();
         // }
 

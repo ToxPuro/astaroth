@@ -40,7 +40,7 @@ print_mpi_comm(const MPI_Comm& comm)
 }
 
 MPI_Comm
-create_cart_comm(const MPI_Comm& parent_comm, const Shape& global_nn)
+cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn)
 {
     // Get the number of processes
     int mpi_nprocs = -1;
@@ -64,14 +64,14 @@ create_cart_comm(const MPI_Comm& parent_comm, const Shape& global_nn)
 }
 
 void
-destroy_cart_comm(MPI_Comm& cart_comm)
+cart_comm_destroy(MPI_Comm& cart_comm)
 {
     ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     cart_comm = MPI_COMM_NULL;
 }
 
 MPI_Datatype
-create_subarray(const Shape& dims, const Shape& subdims, const Index& offset,
+subarray_create(const Shape& dims, const Shape& subdims, const Index& offset,
                 const MPI_Datatype& dtype)
 {
     MPIShape mpi_dims(dims.reversed());
@@ -86,10 +86,22 @@ create_subarray(const Shape& dims, const Shape& subdims, const Index& offset,
 }
 
 void
-destroy_subarray(MPI_Datatype& subarray)
+subarray_destroy(MPI_Datatype& subarray)
 {
     ERRCHK_MPI_API(MPI_Type_free(&subarray));
     subarray = MPI_DATATYPE_NULL;
+}
+
+void
+request_wait_and_destroy(MPI_Request& req)
+{
+    MPI_Status status;
+    status.MPI_ERROR = MPI_SUCCESS;
+    ERRCHK_MPI_API(MPI_Wait(&req, &status));
+    ERRCHK_MPI_API(status.MPI_ERROR);
+    if (req != MPI_REQUEST_NULL)
+        ERRCHK_MPI_API(MPI_Request_free(&req));
+    ERRCHK_MPI(req == MPI_REQUEST_NULL);
 }
 
 Shape
@@ -158,18 +170,6 @@ get_neighbor(const MPI_Comm& cart_comm, const Direction& dir)
     return neighbor_rank;
 }
 
-void
-wait_and_destroy_request(MPI_Request& req)
-{
-    MPI_Status status;
-    status.MPI_ERROR = MPI_SUCCESS;
-    ERRCHK_MPI_API(MPI_Wait(&req, &status));
-    ERRCHK_MPI_API(status.MPI_ERROR);
-    if (req != MPI_REQUEST_NULL)
-        ERRCHK_MPI_API(MPI_Request_free(&req));
-    ERRCHK_MPI(req == MPI_REQUEST_NULL);
-}
-
 /**
  * Managed MPI handles
  * However, the added layer of indirection and complexity may outweigh the benefits
@@ -187,7 +187,7 @@ wait_and_destroy_request(MPI_Request& req)
 //     static MPI_Comm* alloc(const MPI_Comm& parent_comm, const Shape& global_nn)
 //     {
 //         MPI_Comm* cart_comm = new MPI_Comm;
-//         *cart_comm          = create_cart_comm(parent_comm, global_nn);
+//         *cart_comm          = cart_comm_create(parent_comm, global_nn);
 //         return cart_comm;
 //     }
 
