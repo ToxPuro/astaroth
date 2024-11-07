@@ -28,3 +28,13 @@
             errchk_print_stacktrace();                                                             \
         }                                                                                          \
     } while (0)
+
+#include <chrono>
+#define BENCHMARK(cmd)                                                                             \
+    do {                                                                                           \
+        const auto start__ = std::chrono::system_clock::now();                                     \
+        (cmd);                                                                                     \
+        const auto ms_elapsed__ = std::chrono::duration_cast<std::chrono::milliseconds>(           \
+            std::chrono::system_clock::now() - start__);                                           \
+        std::cout << "[" << ms_elapsed__.count() << " ms] " << #cmd << std::endl;                  \
+    } while (0)
