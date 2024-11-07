@@ -28,7 +28,7 @@
 #include <mpi.h>
 #include <vector>
 
-#define NUM_INTEGRATION_STEPS (2)
+#define NUM_INTEGRATION_STEPS (1)
 
 static bool finalized = false;
 
@@ -143,6 +143,7 @@ main(void)
     info[AC_3d_reals]  = &threeD_real_arr[0][0][0];
     info[AC_4d_float_arr]  = &fourD_float_arr[0][0][0][0];
     info[AC_dconst_int] = nx-NGHOST_X;
+    info[AC_4d_float_arr_out]  = &fourD_float_arr[0][0][0][0];
     acGridInit(info);
 
     Field all_fields[NUM_VTXBUF_HANDLES];
@@ -162,28 +163,29 @@ main(void)
 
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridSynchronizeStream(STREAM_DEFAULT);
+    acDeviceLoad(acGridGetDevice(), STREAM_DEFAULT,info,AC_4d_float_arr_out);
 
     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
     	acGridExecuteTaskGraph(graph,1);
 
     //acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    acGridSynchronizeStream(STREAM_DEFAULT);
 
+    const int nx_min = model.info[AC_nx_min];
+    const int nx_max = model.info[AC_nx_max];
 
-    const int nx_min = model.info.int_params[AC_nx_min];
-    const int nx_max = model.info.int_params[AC_nx_max];
+    const int ny_min = model.info[AC_ny_min];
+    const int ny_max = model.info[AC_ny_max];
 
-    const int ny_min = model.info.int_params[AC_ny_min];
-    const int ny_max = model.info.int_params[AC_ny_max];
-
-    const int nz_min = model.info.int_params[AC_nz_min];
-    const int nz_max = model.info.int_params[AC_nz_max];
+    const int nz_min = model.info[AC_nz_min];
+    const int nz_max = model.info[AC_nz_max];
     auto IDX = [&](const int i, const int j, const int k)
     {
 	    return acVertexBufferIdx(i,j,k,model.info);
     };
 
-    for (int step_number = 0; step_number < 1; ++step_number) {
+    for (int step_number = 0; step_number < NUM_INTEGRATION_STEPS; ++step_number) {
 
 	//test arr with random compute
         for (int k = nz_min; k < nz_max; ++k) {
@@ -200,7 +202,7 @@ main(void)
 #endif
 			auto val = model.vertex_buffer[FIELD_Z][IDX(i,j,k)];
 			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2])*((AcReal)fourD_float_arr[0][k][j][i] + (AcReal)fourD_float_arr[1][k][j][i] + (AcReal)fourD_float_arr[2][k][j][i]);
-			fourD_float_arr[0][k][j][i] =  test_arr[1];
+			fourD_float_arr[0][k][j][i] *=  test_arr[1];
                 }
             }
         }
@@ -216,9 +218,9 @@ main(void)
     int read_global_arr[nx];
     AcReal read_2d[ny][nx];
     float read_fourD_float_arr[3][mz][my][mx];
-    acStoreUniform(AC_global_arr, read_global_arr, get_array_length(AC_global_arr,model.info));
-    acStoreUniform(AC_2d_reals,&read_2d[0][0], get_array_length(AC_2d_reals,model.info));
-    acStoreUniform(AC_4d_float_arr,&read_fourD_float_arr[0][0][0][0], get_array_length(AC_4d_float_arr,model.info));
+    acDeviceStore(acGridGetDevice(), STREAM_DEFAULT, AC_global_arr, read_global_arr);
+    acDeviceStore(acGridGetDevice(), STREAM_DEFAULT, AC_2d_reals, &read_2d[0][0]);
+    acDeviceStore(acGridGetDevice(), STREAM_DEFAULT, AC_4d_float_arr_out, &read_fourD_float_arr[0][0][0][0]);
     bool arrays_are_the_same = true;
     for(int i = 0; i < info.int_params[AC_nx]; ++i)
 	    arrays_are_the_same &= (read_global_arr[i] == global_arr[i]);
@@ -230,7 +232,11 @@ main(void)
     	for(int j = 0; j < my; ++j)
     		for(int i = 0; i < mx; ++i)
 			for(int l = 0; l < 3; ++l)
-				updated_arrays_are_the_same &= (read_fourD_float_arr[l][k][j][i] == fourD_float_arr[l][k][j][i]);
+			{
+				const bool eq = (read_fourD_float_arr[l][k][j][i] == fourD_float_arr[l][k][j][i]);
+				updated_arrays_are_the_same &= eq;
+				if(!eq) fprintf(stderr,"different at %d,%d,%d,%d\n",i,j,k,l);
+			}
     printf("LOAD STORE GMEM ARRAY... %s \n", arrays_are_the_same ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     printf("GMEM ARRAY UPDATE ... %s \n", updated_arrays_are_the_same ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     if (pid == 0) {

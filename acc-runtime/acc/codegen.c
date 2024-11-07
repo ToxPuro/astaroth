@@ -1145,7 +1145,16 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	{
         	fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 		fprintf_filename("device_load_uniform_decl.h","DEVICE_LOAD_ARRAY_DECL(%sArrayParam, %s)\n",enum_name,upper_case_name);
+		fprintf_filename("device_load_uniform_overloads.h","OVERLOAD_DEVICE_LOAD_ARRAY(%sArrayParam, %s)\n",enum_name,upper_case_name);
 		fprintf_filename("device_load_uniform_loads.h","LOAD_DSYM(acDeviceLoad%sArray)\n",upper_case_name);
+
+
+		fprintf_filename("device_store_uniform.h","GEN_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+		fprintf_filename("device_store_uniform.h","GEN_DEVICE_STORE_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+		fprintf_filename("device_store_uniform_decl.h","DECL_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+		fprintf_filename("device_store_uniform_decl.h","DECL_DEVICE_STORE_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+		fprintf_filename("device_store_overloads.h","OVERLOAD_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+		fprintf_filename("device_store_overloads.h","OVERLOAD_DEVICE_STORE_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 	}
 	fprintf_filename("device_get_output.h", "%s\nacDeviceGet%sOutput(Device device, const %sOutputParam param)\n"
 		    "{\n"
@@ -1331,6 +1340,19 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		"constexpr static bool UNUSED IsCompParam(const %sArrayParam&)     {return false;}\n"
 		"constexpr static bool UNUSED IsCompParam(const %sCompArrayParam&) {return true;}\n"
 		"constexpr static bool UNUSED IsCompParam(const %sCompParam&)      {return true;}\n"
+		,datatype_scalar
+		,enum_name
+		,enum_name
+		,enum_name
+		,enum_name
+		);
+
+	fprintf_filename("is_array_param.h",
+		"constexpr static bool UNUSED IsArrayParam(const %s&)               {return false;}\n"       
+		"constexpr static bool UNUSED IsArrayParam(const %sParam&)          {return false;}\n"  
+		"constexpr static bool UNUSED IsArrayParam(const %sArrayParam&)     {return true;}\n"
+		"constexpr static bool UNUSED IsArrayParam(const %sCompArrayParam&) {return true;}\n"
+		"constexpr static bool UNUSED IsArrayParam(const %sCompParam&)      {return false;}\n"
 		,datatype_scalar
 		,enum_name
 		,enum_name

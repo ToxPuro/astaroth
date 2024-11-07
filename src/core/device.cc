@@ -155,19 +155,24 @@ static AcResult
 acDeviceStoreUniform(const Device device, const Stream stream, const P param, V* value)
 {
 	cudaSetDevice(device->id);
-	return acStoreUniform(device->streams[stream], param, value);
+	if constexpr (IsArrayParam(param))
+		return acStoreUniform(param, value, get_array_length(param,device->local_config));
+	else
+		return acStoreUniform(device->streams[stream], param, value);
 }
-
 #define GEN_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
 	AcResult \
 	acDeviceStore##VAL_TYPE_UPPER_CASE##Uniform(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value) \
 	{ \
     		return acDeviceStoreUniform(device, stream, param, value);\
 	}
-
-GEN_DEVICE_STORE_UNIFORM(AcIntParam, int, Int)
-GEN_DEVICE_STORE_UNIFORM(AcInt3Param, int3, Int3)
-GEN_DEVICE_STORE_UNIFORM(AcBoolParam, bool, Bool)
+#define GEN_DEVICE_STORE_ARRAY(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	AcResult \
+	acDeviceStore##VAL_TYPE_UPPER_CASE##Array(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value) \
+	{ \
+    		return acDeviceStoreUniform(device, stream, param, value);\
+	}
+#include "device_store_uniform.h"
 
 AcResult
 acDeviceUpdate(Device device, const AcMeshInfo config)

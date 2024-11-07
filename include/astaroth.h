@@ -1239,6 +1239,12 @@ FUNC_DEFINE(AcResult, acDeviceLoadMesh,(const Device device, const Stream stream
 	FUNC_DEFINE(AcResult, acDeviceLoad##DEF_NAME##Array,(const Device device, const Stream stream, const AcMeshInfo host_info, const ENUM array));
 
 #include "device_load_uniform_decl.h"
+#define DECL_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	FUNC_DEFINE(AcResult,acDeviceStore##VAL_TYPE_UPPER_CASE##Uniform,(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value));
+#define DECL_DEVICE_STORE_ARRAY(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	FUNC_DEFINE(AcResult,acDeviceStore##VAL_TYPE_UPPER_CASE##Array,(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value));
+#include "device_store_uniform_decl.h"
+
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceSetVertexBuffer,(const Device device, const Stream stream,
@@ -1984,6 +1990,15 @@ acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder or
 #endif
 
 
+#define OVERLOAD_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	static UNUSED AcResult acDeviceStore(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value) { return acDeviceStore##VAL_TYPE_UPPER_CASE##Uniform(device,stream,param,value); }
+#define OVERLOAD_DEVICE_STORE_ARRAY(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	static UNUSED AcResult acDeviceStore(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value) { return acDeviceStore##VAL_TYPE_UPPER_CASE##Array(device,stream,param,value); }
+#define OVERLOAD_DEVICE_LOAD_ARRAY(ENUM,DEF_NAME) \
+	static UNUSED AcResult acDeviceLoad(const Device device, const Stream stream, const AcMeshInfo host_info, const ENUM array) { return acDeviceLoad##DEF_NAME##Array(device,stream,host_info,array);}
+
+#include "device_store_overloads.h"
+#include "device_load_uniform_overloads.h"
 #include "device_set_input_overloads.h"
 #include "device_get_input_overloads.h"
 #include "device_get_output_overloads.h"

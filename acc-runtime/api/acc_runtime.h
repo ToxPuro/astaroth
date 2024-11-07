@@ -156,6 +156,7 @@ typedef struct {
 
   #ifdef __cplusplus
 #include "is_comptime_param.h"
+#include "is_array_param.h"
 #endif
 
   typedef struct AcMeshInfo{

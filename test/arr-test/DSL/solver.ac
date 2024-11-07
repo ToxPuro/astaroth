@@ -1,4 +1,4 @@
-Field3 FIELD
+auxiliary Field3 FIELD
 
 const int test_arr_size = 6;
 gmem int AC_global_arr[AC_nx]
@@ -18,6 +18,7 @@ gmem real AC_2d_reals_dims_from_config[AC_nx][AC_ny]
 
 gmem real AC_3d_reals[AC_mx][AC_my][AC_mz]
 gmem float AC_float_arr[AC_nx]
+gmem float AC_4d_float_arr_out[AC_mx][AC_my][AC_mz][3]
 gmem float AC_4d_float_arr[AC_mx][AC_my][AC_mz][3]
 
 dconst int AC_dconst_int
@@ -27,5 +28,5 @@ Kernel update()
 	write(FIELD_X,AC_test_int_arr[0]*(AC_test_arr[0] + AC_test_arr[3] + AC_test_arr_2[0])*AC_global_arr[vertexIdx.x-NGHOST]);
 	write(FIELD_Y,AC_test_int_arr[1]*(AC_test_arr[1] + AC_test_arr[4] + AC_test_arr_2[1] + AC_2d_reals[AC_dconst_int][vertexIdx.y - NGHOST] + AC_3d_reals[vertexIdx.x][vertexIdx.y][vertexIdx.z]));
 	write(FIELD_Z,AC_test_int_arr[2]*(AC_test_arr[2] + AC_test_arr[5] + AC_test_arr_2[2])*(real(AC_4d_float_arr[vertexIdx.x][vertexIdx.y][vertexIdx.z][0]) + real(AC_4d_float_arr[vertexIdx.x][vertexIdx.y][vertexIdx.z][1]) + real(AC_4d_float_arr[vertexIdx.x][vertexIdx.y][vertexIdx.z][2])));
-	AC_4d_float_arr[vertexIdx.x][vertexIdx.y][vertexIdx.z][0] = AC_test_arr[1]
+	AC_4d_float_arr_out[vertexIdx.x][vertexIdx.y][vertexIdx.z][0] = AC_test_arr[1]*real(AC_4d_float_arr_out[vertexIdx.x][vertexIdx.y][vertexIdx.z][0]);
 }
