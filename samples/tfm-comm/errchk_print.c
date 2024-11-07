@@ -86,7 +86,7 @@ errchk_print_log(const char* function, const long line, const char* fmt, ...)
     timespec_get(&ts, TIME_UTC);
     char timestamp[20];
     strftime(timestamp, sizeof(timestamp), "%H:%M:%S", localtime(&ts.tv_sec));
-    printf("[%s.%03ld] ", timestamp, ts.tv_nsec / 1000000);
+    printf("[%s.%03ld] %s:%ld ", timestamp, ts.tv_nsec / 1000000, function, line);
 
     if (fmt && fmt[0] != '\0') {
         va_list args;
