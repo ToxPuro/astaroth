@@ -104,3 +104,69 @@ get_mpi_dtype()
         return MPI_DATATYPE_NULL;
     }
 }
+
+/**
+ * Helper wrappers for MPI types
+ */
+struct MPIRequest {
+    MPI_Request handle;
+
+    MPIRequest()
+        : handle{MPI_REQUEST_NULL}
+    {
+    }
+    // Move
+    // MPIRequest(MPIRequest&& other) noexcept
+    //     : handle{other.handle}
+    // {
+    //     other.handle = MPI_REQUEST_NULL;
+    // }
+
+    // Move assignment
+    // MPIRequest& operator=(MPIRequest&& other) noexcept
+    // {
+    //     if (this != &other) {
+    //         ERRCHK_MPI_API(handle == MPI_REQUEST_NULL);
+    //         if (handle != MPI_REQUEST_NULL)
+    //             synchronize();
+    //         handle       = other.handle;
+    //         other.handle = MPI_REQUEST_NULL;
+    //     }
+    //     return *this;
+    // }
+
+    ~MPIRequest()
+    {
+        ERRCHK_MPI(handle == MPI_REQUEST_NULL);
+        request_wait_and_destroy(handle);
+        ERRCHK_MPI(handle == MPI_REQUEST_NULL);
+    }
+
+    MPIRequest(MPIRequest&& other) noexcept  = delete; // Move
+    MPIRequest& operator=(MPIRequest&&)      = delete; // Move assignment
+    MPIRequest(const MPIRequest&)            = delete; // Copy
+    MPIRequest& operator=(const MPIRequest&) = delete; // Copy assignment
+
+    // Other functions
+    void wait() { request_wait_and_destroy(handle); }
+};
+
+struct MPIComm {
+    MPI_Comm handle;
+
+    MPIComm(const MPI_Comm& parent_comm, const Shape& global_nn)
+        : handle{cart_comm_create(parent_comm, global_nn)}
+    {
+    }
+
+    ~MPIComm()
+    {
+        ERRCHK_MPI(handle != MPI_COMM_NULL);
+        ERRCHK_MPI_API(MPI_Comm_free(&handle));
+    }
+
+    MPIComm(MPIComm&& other) noexcept  = delete; // Move
+    MPIComm& operator=(MPIComm&&)      = delete; // Move assignment
+    MPIComm(const MPIComm&)            = delete; // Copy
+    MPIComm& operator=(const MPIComm&) = delete; // Copy assignment
+};
