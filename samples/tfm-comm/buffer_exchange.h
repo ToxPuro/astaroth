@@ -24,14 +24,14 @@ class BufferExchangeTask {
   protected:
     Buffer<T, FirstStageResource> first_stage_buffer;
     Buffer<T, SecondStageResource> second_stage_buffer;
-    std::unique_ptr<cudaStream_t, decltype(&cuda_stream_destroy)> stream;
+    std::unique_ptr<cudaStream_t, decltype(&cuda_stream_destroy)> stream_ptr;
     bool in_progress;
 
   public:
     BufferExchangeTask(const size_t max_count)
         : first_stage_buffer(max_count),
           second_stage_buffer(max_count),
-          stream{cuda_stream_create(), &cuda_stream_destroy},
+          stream_ptr{cuda_stream_create(), &cuda_stream_destroy},
           in_progress{false}
     {
     }
@@ -52,14 +52,14 @@ class BufferExchangeTask {
         PRINT_LOG("migrating to first-stage buffer");
         migrate(in, first_stage_buffer);
         PRINT_LOG("async migrate to second-stage buffer");
-        migrate_async(*stream, first_stage_buffer, second_stage_buffer);
+        migrate_async(*stream_ptr, first_stage_buffer, second_stage_buffer);
     }
 
     template <typename MemoryResource> void wait(Buffer<T, MemoryResource>& out)
     {
         ERRCHK(in_progress);
 #if defined(DEVICE_ENABLED)
-        ERRCHK_CUDA_API(cudaStreamSynchronize(*stream));
+        ERRCHK_CUDA_API(cudaStreamSynchronize(*stream_ptr));
 #endif
 
         // Ensure that the output resource and the second-stage buffer is in the same memory space
