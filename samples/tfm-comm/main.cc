@@ -160,10 +160,10 @@ main()
 
         // IO
         IOTask<AcReal> iotask(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr);
-        iotask.write(mesh.buffer.data(), "test.dat");
-        // iotask.launch_write(mesh.buffer, "test.dat");
-        // iotask.wait_write();
+        // iotask.write(mesh.buffer.data(), "test.dat");
+        iotask.launch_write(mesh.buffer, "test.dat");
         mesh.fill(-1, local_mm, Index(local_mm.count, as<uint64_t>(0)));
+        iotask.wait_write();
         iotask.read("test.dat", mesh.buffer.data());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)

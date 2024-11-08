@@ -59,8 +59,11 @@ template <typename T> class IOTask {
         // Set MPI errors as non-fatal
         // ERRCHK_MPI_API(MPI_Comm_set_errhandler(cart_comm, MPI_ERRORS_RETURN));
 
+        // Subarrays
         global_subarray = subarray_create(file_dims, mesh_subdims, file_offset, get_mpi_dtype<T>());
         local_subarray  = subarray_create(mesh_dims, mesh_subdims, mesh_offset, get_mpi_dtype<T>());
+
+        // Info
         ERRCHK_MPI_API(MPI_Info_create(&info));
         ERRCHK_MPI_API(MPI_Info_set(info, "blocksize", "4096"));
         ERRCHK_MPI_API(MPI_Info_set(info, "striping_factor", "4"));
@@ -177,8 +180,15 @@ template <typename T> class IOTask {
         ERRCHK_MPI(req == MPI_REQUEST_NULL);
         ERRCHK_MPI_API(MPI_File_close(&file));
         ERRCHK_MPI(file == MPI_FILE_NULL);
+
+        // Ensure all processess have written their segment to disk.
+        // Not strictly needed here and comes with a slight overhead
+        // However, will cause hard-to-trace issues if the reader
+        // tries to access the data without barrier.
+        ERRCHK_MPI_API(MPI_Barrier(cart_comm));
+        in_progress = false;
     };
 
     /** Ensures that all processes have written their segment to disk. */
-    void barrier() { ERRCHK_MPI_API(MPI_Barrier(cart_comm)); }
+    // void barrier() { ERRCHK_MPI_API(MPI_Barrier(cart_comm)); in_progress = false; }
 };
