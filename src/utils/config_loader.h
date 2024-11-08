@@ -58,38 +58,17 @@ find_array(const char keyword[], const array_info* info, const int n)
 	return -1;
 }
 
-#ifdef AC_INTEGRATION_ENABLED
-static bool
-is_bctype(const int idx)
-{
-    return idx == AC_bc_type_top_x || idx == AC_bc_type_bot_x || //
-           idx == AC_bc_type_top_y || idx == AC_bc_type_bot_y 
-#if TWO_D == 0
-	   || idx == AC_bc_type_top_z || idx == AC_bc_type_bot_z
-#endif
-	  ;
-}
-#else
 static bool
 is_bctype(const int)
 {
 	return false;
 }
-#endif
 
-#ifdef AC_INTEGRATION_ENABLED
-static bool
-is_initcondtype(const int idx)
-{
-    return idx == AC_init_type;
-}
-#else
 static bool
 is_initcondtype(const int)
 {
     return false;
 }
-#endif
 
 static int
 parse_intparam(const size_t idx, const char* value, const bool run_const)

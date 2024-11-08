@@ -1623,6 +1623,65 @@ get_index_node(const ASTNode* array_access_start, const string_vec var_dims_in)
 	if(node->rhs) \
 		FUNC_NAME(node->rhs,__VA_ARGS__); 
 void
+gen_matrix_reads(ASTNode* node)
+{
+  TRAVERSE_PREAMBLE(gen_matrix_reads);
+  if(!(node->type & NODE_ARRAY_ACCESS)) return;
+  const char* base_type = get_expr_type(node->lhs);
+  if(base_type != MATRIX_STR) return;
+  astnode_sprintf_postfix(node->lhs,".data");
+}
+#define max(a,b) (a > b ? a : b)
+#define min(a,b) (a < b ? a : b)
+static int
+count_nest(const ASTNode* node,const NodeType type)
+{
+	int lhs_res =  (node->lhs) ? count_nest(node->lhs,type) : 0;
+	int rhs_res =  (node->rhs) ? count_nest(node->rhs,type) : 0;
+	return max(lhs_res,rhs_res) + (node->type == type);
+}
+void
+get_const_array_var_dims_recursive(const char* name, const ASTNode* node, string_vec* res)
+{
+	if(node->lhs)
+		get_const_array_var_dims_recursive(name,node->lhs,res);
+	if(node->rhs)
+		get_const_array_var_dims_recursive(name,node->rhs,res);
+	if(!(node->type & NODE_ASSIGN_LIST)) return;
+	if(!has_qualifier(node,"const")) return;
+	const ASTNode* tspec = get_node(NODE_TSPEC,node);
+	if(!tspec) return;
+	node_vec assignments = get_nodes_in_list(node->rhs);
+	for(size_t i = 0; i < assignments.size; ++i)
+	{
+		const ASTNode* def = assignments.data[i];
+        	const ASTNode* assignment = def->rhs;
+		const char* def_name  = get_node_by_token(IDENTIFIER, def)->buffer;
+		if(def_name != name) continue;
+		const ASTNode* array_initializer  = get_node(NODE_ARRAY_INITIALIZER, assignment);
+		const int array_dim = array_initializer ? count_nest(array_initializer,NODE_ARRAY_INITIALIZER) : 0;
+		if(array_initializer)
+		{
+			const int num_of_elems = array_initializer ? count_num_of_nodes_in_list(array_initializer->lhs) : 0;
+			push(res,intern(itoa(num_of_elems)));
+			const ASTNode* second_array_initializer = get_node(NODE_ARRAY_INITIALIZER, array_initializer->lhs);
+			if(second_array_initializer)
+			{
+				const int num_of_elems_in_list = count_num_of_nodes_in_list(second_array_initializer->lhs);
+				push(res,intern(itoa(num_of_elems_in_list)));
+			}
+		}
+	}
+}
+string_vec
+get_const_array_var_dims(const char* name, const ASTNode* node)
+{
+	string_vec res = VEC_INITIALIZER;
+	get_const_array_var_dims_recursive(name,node,&res);
+	return res;
+
+}
+void
 gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
 {
   TRAVERSE_PREAMBLE_PARAMS(gen_array_reads,root,datatype_scalar);
@@ -1634,7 +1693,7 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
   const char* datatype = sprintf_intern("%s*",datatype_scalar);
   const int l_current_nest = 0;
   const Symbol* sym = get_symbol(NODE_VARIABLE_ID,intern(array_name),intern(datatype));
- if(!sym || str_vec_contains(sym->tqualifiers,CONST_STR))
+  if(!sym)
        return;
 
   {
@@ -1650,11 +1709,12 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
 	    astnode_sprintf(node,"(%s){}",datatype_scalar);
 	    return;
     }
-    string_vec var_dims = get_array_var_dims(array_name, root);
+    string_vec var_dims =  get_array_var_dims(array_name, root);
+    if(var_dims.size == 0) var_dims = get_const_array_var_dims(array_name, root);
 	
     ASTNode* elem_index         = get_index_node(node,var_dims);
     if(!elem_index)
-	    fatal("Incorrect array access: %s\n",combine_all_new(node));
+	    fatal("Incorrect array access: %s,%ld\n",combine_all_new(node),var_dims.size);
     ASTNode* base = node;
     base->lhs=NULL;
     base->rhs=NULL;
@@ -1663,6 +1723,7 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
     base->infix=NULL;
 
     ASTNode* identifier_node = create_primary_expression(
+            str_vec_contains(sym->tqualifiers,CONST_STR) ? sym->identifier :
 	    sprintf_intern(
 		    "AC_INTERNAL_%s_%s_arrays_%s",
         	    str_vec_contains(sym->tqualifiers,DCONST_STR) ? "d" : "gmem",
@@ -1679,7 +1740,7 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
 
     astnode_set_prefix("[",elem_access);
     astnode_set_postfix("]",elem_access);
-    if(str_vec_contains(sym->tqualifiers,DCONST_STR))
+    if(str_vec_contains(sym->tqualifiers,DCONST_STR,CONST_STR))
     {
     }
     else if(str_vec_contains(sym->tqualifiers,GLOBAL_MEM_STR))
@@ -3455,10 +3516,57 @@ typedef struct
 	int token;
 } tspecifier;
 
+static int
+n_occurances(const char* str, const char test)
+{
+	int res = 0;
+	int i = -1;
+	while(str[++i] != '\0') res += str[i] == test;
+	return res;
+}
+const char*
+get_array_elem_type(char* arr_type)
+{
+	if(n_occurances(arr_type,'<') == 1)
+	{
+		int start = 0;
+		while(arr_type[++start] != '<');
+		int end = start;
+		++start;
+		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
+		arr_type[end] = '\0';
+		char* tmp = malloc(sizeof(char)*1000);
+		strcpy(tmp, &arr_type[start]);
+		return intern(tmp);
+	}
+	return intern(arr_type);
+}
+const char*
+get_array_elem_size(char* arr_type)
+{
+	if(n_occurances(arr_type,'<') == 1)
+	{
+		int start = 0;
+		while(arr_type[++start] != '<');
+		int end = start;
+		++start;
+		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
+		arr_type[end] = '\0';
+		++end;
+		start = end;
+		while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
+		arr_type[end] = '\0';
+		char* tmp = malloc(sizeof(char)*1000);
+		strcpy(tmp, &arr_type[start]);
+		return intern(tmp);
+	}
+	return intern(arr_type);
+}
 
-void
+const char*
 output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 {
+	const char* res = NULL;
         if (tspec.id) 
 	{
           //TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
@@ -3467,6 +3575,11 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 	  //TP: Hacks
 	  else if(strstr(tspec.id,"WITH_INLINE"))
           	fprintf(stream, "%s ", "auto");
+	  else if(strstr(tspec.id,"AcArray"))
+	  {
+		  fprintf(stream, "%s ", get_array_elem_type(strdup(tspec.id)));
+		  res = get_array_elem_size(strdup(tspec.id));
+	  }
 	  else if(tspec.id != KERNEL_STR)
 	  {
             fprintf(stream, "%s ", type_output(tspec.id));
@@ -3485,12 +3598,19 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
             		fprintf(stream, "%s ", "auto");
 		else
 		{
-		  fprintf(stream, "%s ",type_output(node->expr_type));
+	  		if(strstr(node->expr_type,"AcArray"))
+	  		{
+	  		        fprintf(stream, "%s ", get_array_elem_type(strdup(node->expr_type)));
+	  		        res = get_array_elem_size(strdup(node->expr_type));
+	  		}
+			else
+		  		fprintf(stream, "%s ",type_output(node->expr_type));
 		}
 	  }
 	  else
           	fprintf(stream, "auto ");
 	}
+	return res;
 	//else if(node->expr_type && !(node->type & INPUT))
 	//  fprintf(stream,"%s ",node->expr_type);
 }
@@ -3556,9 +3676,10 @@ refresh_current_hashmap()
     const unsigned initial_size = 2000;
     hashmap_create(initial_size, &symbol_table_hashmap[current_nest]);
 }
-void
+const char* 
 add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, bool do_checks, const ASTNode* decl, const char* postfix, const bool skip_global_dup_check)
 {
+  const char* res = NULL;
   if (node->buffer && node->token == IDENTIFIER && !(node->type & exclude)) {
     if (do_checks) check_for_shadowing(node);
     if (!symboltable_lookup(node->buffer)) {
@@ -3569,7 +3690,7 @@ add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, b
 
       if (stream) {
 	output_qualifiers(stream,node,tqualifiers,n_tqualifiers);
-	output_specifier(stream,tspec,node);
+	res = output_specifier(stream,tspec,node);
       }
       if (!(node->type & NODE_MEMBER_ID))
       {
@@ -3580,6 +3701,7 @@ add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, b
     else if(do_checks && !skip_global_dup_check && current_nest == 0 && !(node->type & NODE_FUNCTION_ID))
 	    fatal("Multiple declarations of %s\n",node->buffer);
   }
+  return res;
 }
 static bool
 is_left_child_of(const ASTNode* parent, const ASTNode* node_to_search)
@@ -3673,12 +3795,14 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
   if (node->lhs)
     traverse_base(node->lhs, return_on, exclude, stream, do_checks,decl,skip_global_dup_check);
 
-  add_to_symbol_table(node,exclude,stream,do_checks,decl,NULL,skip_global_dup_check);
+  const char* size = add_to_symbol_table(node,exclude,stream,do_checks,decl,NULL,skip_global_dup_check);
 
   // Infix translation
   if (stream && node->infix) 
     fprintf(stream, "%s", node->infix);
   translate_buffer_body(stream, node);
+  if(size)
+	  fprintf(stream, "[%s] ",size);
 
   // Traverse RHS
   if (node->rhs)
@@ -3872,31 +3996,6 @@ get_primary_expr_type(const ASTNode* node)
 		(get_node_by_token(STRING,node)) ? "char*" :
 	  (!sym) ? NULL :
 	  sym->tspecifier;
-}
-static int
-n_occurances(const char* str, const char test)
-{
-	int res = 0;
-	int i = -1;
-	while(str[++i] != '\0') res += str[i] == test;
-	return res;
-}
-const char*
-get_array_elem_type(char* arr_type)
-{
-	if(n_occurances(arr_type,'<') == 1)
-	{
-		int start = 0;
-		while(arr_type[++start] != '<');
-		int end = start;
-		++start;
-		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
-		arr_type[end] = '\0';
-		char* tmp = malloc(sizeof(char)*1000);
-		strcpy(tmp, &arr_type[start]);
-		return intern(tmp);
-	}
-	return intern(arr_type);
 }
 const char*
 get_array_access_type(const ASTNode* node)
@@ -4382,15 +4481,6 @@ gen_dconsts(const ASTNode* root, FILE* stream)
 }
 
 
-#define max(a,b) (a > b ? a : b)
-#define min(a,b) (a > b ? a : b)
-static int
-count_nest(const ASTNode* node,const NodeType type)
-{
-	int lhs_res =  (node->lhs) ? count_nest(node->lhs,type) : 0;
-	int rhs_res =  (node->rhs) ? count_nest(node->rhs,type) : 0;
-	return max(lhs_res,rhs_res) + (node->type == type);
-}
 
 bool
 is_builtin_constant(const char* name)
@@ -4428,22 +4518,22 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 			if(array_dim == 1)
 			{
 				if(is_builtin_constant(name))
-					fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+					fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems, assignment_val);
 				else
 				{
-					fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
-					fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+					fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems, assignment_val);
+					fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems, assignment_val);
 				}
 			}
 			else if(array_dim == 2)
 			{
 				const int num_of_elems_in_list = count_num_of_nodes_in_list(second_array_initializer->lhs);
 				if(is_builtin_constant(name))
-					fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
+					fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d*%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems_in_list, num_of_elems, assignment_val);
 				else
 				{
-					fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
-					fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
+					fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d*%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems_in_list, num_of_elems, assignment_val);
+					fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d][%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems_in_list, num_of_elems, assignment_val);
 				}
 
 			}
@@ -4453,8 +4543,8 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 		else if(array_access)
 		{
 			const char* num_of_elems = combine_all_new(array_access->rhs);
-				fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%s> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
-				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%s> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+				fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const %s %s[%s] = %s;\n#endif\n",datatype_scalar, name, num_of_elems, assignment_val);
+				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const %s %s[%s] = %s;\n#endif\n",datatype_scalar, name, num_of_elems, assignment_val);
 		}
 		else
 		{
@@ -4839,10 +4929,21 @@ to_dsl_type(const char* type)
 	return NULL;
 }
 
+void
+remove_extra_braces_in_arr_initializers(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(remove_extra_braces_in_arr_initializers);
+	if(!(node->type & NODE_ARRAY_INITIALIZER)) return;
+	if(!get_parent_node(NODE_ARRAY_INITIALIZER,node)) return;
+	astnode_set_postfix("",node);
+	astnode_set_prefix("",node);
+}
 
 static void
-gen_user_defines(const ASTNode* root, const char* out)
+gen_user_defines(const ASTNode* root_in, const char* out)
 {
+  ASTNode* root = astnode_dup(root_in,NULL);
+  remove_extra_braces_in_arr_initializers(root);
   FILE* fp = fopen(out, "w");
   fprintf(fp, "#pragma once\n");
   assert(fp);
@@ -5073,6 +5174,7 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp_bi_non_scalar_constants,"#pragma once\n");
 
   gen_const_variables(root,fp,fp_built_in,fp_non_scalar_constants,fp_bi_non_scalar_constants);
+
 
   fclose(fp);
   fclose(fp_built_in);
@@ -5788,8 +5890,6 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const string_v
 	{
 	  bool is_constexpr = all_identifiers_are_constexpr(node->rhs);
 	  ASTNode* lhs_identifier = get_node_by_token(IDENTIFIER,node->lhs);
-	  if(strstr(lhs_identifier->buffer,"INTERNAL_COPY_313"))
-		  printf("HI\n");
 	  const int index = str_vec_get_index(names,lhs_identifier->buffer);
 	  if(assign_counts.data[index] != 1)
 		  return res;
@@ -7004,6 +7104,7 @@ expand_allocating_types(ASTNode* root)
 void
 preprocess(ASTNode* root, const bool optimize_conditionals)
 {
+  remove_extra_braces_in_arr_initializers(root);
   symboltable_reset();
   rename_scoped_variables(root,NULL,NULL);
   symboltable_reset();
@@ -7671,6 +7772,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   //TP: currently only support scalar arrays
   for(size_t i = 0; i  < primitive_datatypes.size; ++i)
   	gen_array_reads(root,root,primitive_datatypes.data[i]);
+  gen_matrix_reads(root);
 
   // Stencils
 

@@ -122,12 +122,6 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
     task_def.num_profiles_out = num_profiles_out;
 
     task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
-
-    for(size_t i = 0; i < task_def.num_fields_in; ++i)
-	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
-    for(size_t i = 0; i < task_def.num_fields_out; ++i)
-	    ERRCHK_ALWAYS(task_def.fields_out[i] <= NUM_VTXBUF_HANDLES);
-    return task_def;
     return task_def;
 }
 
@@ -152,10 +146,6 @@ acHaloExchange(Field fields[], const size_t num_fields)
     task_def.fields_out = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
 
-    for(size_t i = 0; i < task_def.num_fields_in; ++i)
-	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
-    for(size_t i = 0; i < task_def.num_fields_out; ++i)
-	    ERRCHK_ALWAYS(task_def.fields_out[i] <= NUM_VTXBUF_HANDLES);
     return task_def;
 }
 
@@ -191,20 +181,12 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     }
     else
     	task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
-    for(size_t i = 0; i < task_def.num_fields_in; ++i)
-	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
-    for(size_t i = 0; i < task_def.num_fields_out; ++i)
-	    ERRCHK_ALWAYS(task_def.fields_out[i] <= NUM_VTXBUF_HANDLES);
     return task_def;
 }
 
 Region::Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputParams mem_)
     : family(family_), tag(tag_) 
 {
-    if(family == RegionFamily::Exchange_output)
-    	for(size_t i = 0; i < mem_.num_fields; ++i)
-	    ERRCHK_ALWAYS(mem_.fields[i] <= NUM_VTXBUF_HANDLES);
-
     memory.profiles = {};
     for(size_t i = 0; i < mem_.num_profiles; ++i)
 	    memory.profiles.push_back((Profile)i);

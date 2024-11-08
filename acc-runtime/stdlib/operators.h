@@ -143,7 +143,7 @@ traceless_rateof_strain(v) {
     return S
 }
 
-gradient_of_divergence(v) {
+gradient_of_divergence(Field3 v) {
     return real3(
         derxx(v.x) + derxy(v.y) + derxz(v.z),
         derxy(v.x) + deryy(v.y) + deryz(v.z),
@@ -152,14 +152,14 @@ gradient_of_divergence(v) {
 }
 
 contract(Matrix mat) {
-    return dot(mat[0], mat[0]) +
-           dot(mat[1], mat[1]) +
-           dot(mat[2], mat[2])
+    return dot(mat.row(0), mat.row(0)) +
+           dot(mat.row(1), mat.row(1)) +
+           dot(mat.row(2), mat.row(2))
 }
 contract(Matrix a, Matrix b) {
-    return dot(a[0], b[0]) +
-           dot(a[1], b[1]) +
-           dot(a[2], b[2])
+    return dot(a.row(0), b.row(0)) +
+           dot(a.row(1), b.row(1)) +
+           dot(a.row(2), b.row(2))
 }
 
 norm2(real3 v) {

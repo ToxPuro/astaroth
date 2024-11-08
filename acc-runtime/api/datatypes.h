@@ -63,60 +63,8 @@ typedef Volume size3_t;
 #include "builtin_enums.h"
 #include "user_typedefs.h"
 
+
 #ifdef __cplusplus
-#include <initializer_list>
-template <typename T, std::size_t N>
-class AcArray{
-public:
-    HOST_DEVICE_INLINE T& operator[](const std::size_t index) {
-        return arr_[index];
-    }
-
-    HOST_DEVICE_INLINE const T& operator[](const std::size_t index) const {
-        return arr_[index];
-    }
-
-
-    // Additional functions to interact with the internal array
-    HOST_DEVICE_INLINE std::size_t size() const noexcept {
-        return N;
-    }
-
-    HOST_DEVICE_INLINE T* data() noexcept {
-        return arr_;
-    }
-
-    HOST_DEVICE_INLINE const T* data() const noexcept {
-        return arr_;
-    }
-    HOST_DEVICE_INLINE AcArray(std::initializer_list<T> init) : arr_{}{
-        std::size_t i = 0;
-        for (auto it = init.begin(); it != init.end() && i < N; ++it, ++i) {
-            arr_[i] = *it;
-        }
-    }
-    HOST_DEVICE_INLINE const T* begin() const
-    {
-	    return arr_;
-    }
-    HOST_DEVICE_INLINE const T* end() const
-    {
-	    return arr_ + N;
-    }
-    HOST_DEVICE_INLINE T* begin()
-    {
-	    return arr_;
-    }
-    HOST_DEVICE_INLINE T* end()
-    {
-	    return arr_ + N;
-    }
-
-    HOST_DEVICE_INLINE AcArray(void) : arr_{}{}
-
-private:
-    T arr_[N];
-};
 static HOST_DEVICE_INLINE size3_t
 operator+(const size3_t& a, const size3_t& b)
 {

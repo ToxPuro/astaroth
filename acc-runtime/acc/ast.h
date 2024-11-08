@@ -303,7 +303,7 @@ static inline  void combine_buffers(const ASTNode* node, char* res){
 }
 static const char* combine_buffers_new(const ASTNode* node)
 {
-	static char res[4098];
+	static char res[10000];
 	combine_buffers(node,res);
 	return res;
 }

@@ -68,21 +68,6 @@ typedef enum {
 #ifdef __cplusplus
 
 
-HOST_DEVICE_INLINE Field3 
-MakeField3(const Field& x, const Field& y, const Field& z)
-{
-	return (Field3){x,y,z};
-}
-template <size_t N>
-HOST_DEVICE_INLINE
-AcArray<Field3,N>
-MakeField3(const AcArray<Field,N>& x, const AcArray<Field,N>& y, const AcArray<Field,N>& z)
-{
-	AcArray<Field3,N> res{};
-	for(size_t i = 0; i < N; ++i)
-		res[i] = (Field3){x[i],y[i],z[i]};
-	return res;
-}
 #endif
 #define N_DIMS (3)
 #define X_ORDER_INT (0)

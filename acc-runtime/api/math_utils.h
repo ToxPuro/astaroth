@@ -420,19 +420,9 @@ is_valid(const AcReal3& a)
  * AcMatrix
  */
 
-template <typename T, std::size_t N>
-static HOST_DEVICE_INLINE int
-size(const AcArray<T,N>& arr)
-{
-	(void)arr;
-	return N;
-}
 
 typedef struct AcMatrix {
-  //AcReal data[3][3] = {{0}};
-  //TP: default initializer will initialize all values to 0.0
-  AcArray<AcArray<AcReal,3>,3> data = {};
-
+  AcReal data[3][3]{};
   HOST_DEVICE_INLINE AcMatrix() {}
 
   HOST_DEVICE_INLINE AcMatrix(const AcReal3 row0, const AcReal3 row1,
@@ -473,12 +463,6 @@ typedef struct AcMatrix {
   {
     return AcMatrix(-row(0), -row(1), -row(2));
   }
-  HOST_DEVICE_INLINE const AcArray<AcReal,3>& operator[](const size_t index) const {
-	  return data[index];
-  }
-  HOST_DEVICE_INLINE AcArray<AcReal,3>& operator[](const size_t index) {
-	  return data[index];
-  }
 } AcMatrix;
 
 static HOST_DEVICE_INLINE AcMatrix
@@ -502,6 +486,7 @@ operator*(const AcReal& v, const AcMatrix& m)
 }
 
 
+/**
 #define GEN_STD_ARRAY_OPERATOR(OPERATOR)  \
 template <typename T, const size_t N, typename F> \
 static constexpr  void \
@@ -576,181 +561,4 @@ AC_dot(const AcArray<T,N>& a, const AcArray<T,N>& b)
                 res += a[i]*b[i];
         return res;
 }
-
-template <size_t N>
-class AcMatrixN {
-public:
-    AcArray<AcArray<AcReal, N>, N> data;
-    template<typename... Args,typename = std::enable_if_t<sizeof...(Args) == N>>
-    constexpr AcMatrixN(Args&&... args) : data{std::forward<Args>(args)...} {
-	     static_assert(sizeof...(Args) == N, "You need to pass N vectors of length N");
-    }
-    constexpr AcMatrixN(): data{} {}
-    constexpr AcArray<AcReal,N> row(const size_t row)  const { return data[row];}
-    constexpr AcArray<AcReal,N> col(const size_t col)  const
-    { 
-	    AcArray<AcReal,N> res{};
-	    for(size_t i = 0; i < N; ++i)
-		    res[i] = data[i][col];
-	    return res;
-    }
-   constexpr AcArray<AcReal,N> operator*(const AcArray<AcReal,N>& v) const
-   {
-     AcArray<AcReal,N> res{};
-     for(size_t i = 0; i < N; ++i)
-	     res[i] = AC_dot(data[i],v);
-     return res;
-   }
-   constexpr AcMatrixN<N> operator-() const
-   {
-	   AcMatrixN<N> res{};
-	   for(size_t i = 0; i < N; ++i)
-	           res.data[i] = -data[i];
-	   return res;
-
-   }
-};
-template <const size_t N>
-constexpr static AcMatrixN<N>
-operator*(const AcReal& v, const AcMatrixN<N>& m)
-{
-	AcMatrixN<N> res;
-	for(size_t i = 0; i < N; ++i)
-		res.data[i] = v*m.data[i];
-	return res;
-}
-
-template <const size_t N>
-constexpr static AcMatrixN<N>
-operator-(const AcMatrixN<N>& A, const AcMatrixN<N>& B)
-{
-  AcMatrixN<N> res;
-  for(size_t i = 0; i < N; ++i)
-	  res.data[i] = A.data[i] - B.data[i];
-  return res;
-}
-
-template <const size_t N>
-constexpr static AcMatrixN<N>
-operator+(const AcMatrixN<N>& A, const AcMatrixN<N>& B)
-{
-  AcMatrixN<N> res;
-  for(size_t i = 0; i < N; ++i)
-	  res.data[i] = A.data[i] + B.data[i];
-  return res;
-}
-
-template <const size_t N>
-constexpr static AcMatrixN<N>
-operator*(const AcMatrixN<N>& A, const AcMatrixN<N>& B)
-{
-  AcMatrixN<N> res;
-  for(size_t i = 0; i < N; ++i)
-	  res.data[i] = A.data[i] * B.data[i];
-  return res;
-}
-
-template <const size_t N>
-constexpr static AcMatrixN<N>
-operator/(const AcMatrixN<N>& A, const AcMatrixN<N>& B)
-{
-  AcMatrixN<N> res;
-  for(size_t i = 0; i < N; ++i)
-	  res.data[i] = A.data[i] / B.data[i];
-  return res;
-}
-
-template <const size_t N>
-constexpr static void
-operator+=(AcMatrixN<N>& A, const AcMatrixN<N>& B)
-{
-  for(size_t i = 0; i < N; ++i)
-	  A.data[i] += B.data[i];
-}
-
-template <const size_t N>
-constexpr static void
-operator-=(AcMatrixN<N>& A, const AcMatrixN<N>& B)
-{
-  for(size_t i = 0; i < N; ++i)
-	  A.data[i] -= B.data[i];
-}
-
-template <const size_t N>
-constexpr static void
-operator*=(AcMatrixN<N>& A, const AcMatrixN<N>& B)
-{
-  for(size_t i = 0; i < N; ++i)
-	  A.data[i] *= B.data[i];
-}
-
-template <const size_t N>
-constexpr static void
-operator/=(AcMatrixN<N>& A, const AcMatrixN<N>& B)
-{
-  for(size_t i = 0; i < N; ++i)
-	  A.data[i] /= B.data[i];
-}
-
-
-
-static HOST_DEVICE AcMatrix
-operator-(const AcMatrix& A, const AcMatrix& B)
-{
-  return AcMatrix(A.row(0) - B.row(0), //
-                  A.row(1) - B.row(1), //
-                  A.row(2) - B.row(2));
-}
-static HOST_DEVICE AcMatrix
-operator+(const AcMatrix& A, const AcMatrix& B)
-{
-  return AcMatrix(A.row(0) + B.row(0), //
-                  A.row(1) + B.row(1), //
-                  A.row(2) + B.row(2));
-}
-static HOST_DEVICE_INLINE AcReal
-multm2_sym(const AcMatrix& m)
-{
-//Squared sum of symmetric matix
-  AcReal res = m.data[0][0]*m.data[0][0];
-  for(int i=1;i<=2;i++){
-    res += m.data[i][i]*m.data[i][i];
-    for(int j=0;j<=i-1;j++){
-      res += 2*m.data[i][j]*m.data[i][j];
-    }
-  }
-  return res;
-}
-static HOST_DEVICE_INLINE AcReal3
-diagonal(const AcMatrix& m)
-{
-  return (AcReal3){m.data[0][0], m.data[1][1], m.data[2][2]};
-}
-
-
-/*
- * AcTensor
- */
-
-typedef struct AcTensor {
-  //AcReal data[3][3] = {{0}};
-  //TP: default initializer will initialize all values to 0.0
-  AcArray<AcMatrix,3> data = {};
-
-  HOST_DEVICE_INLINE AcTensor() {}
-
-  HOST_DEVICE_INLINE AcTensor(const AcMatrix mat0, const AcMatrix mat1,
-                       const AcMatrix mat2)
-  {
-    data[0] = mat0;
-    data[1] = mat1;
-    data[2] = mat2;
-  }
-
-  HOST_DEVICE_INLINE const AcMatrix& operator[](const size_t index) const {
-	  return data[index];
-  }
-  HOST_DEVICE_INLINE AcMatrix& operator[](const size_t index) {
-	  return data[index];
-  }
-} AcTensor;
+**/
