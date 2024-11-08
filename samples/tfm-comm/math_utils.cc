@@ -15,7 +15,7 @@ to_linear(const Index& coords, const Shape& shape)
     return result;
 }
 
-void
+static void
 test_to_linear(void)
 {
     {
@@ -63,7 +63,7 @@ to_spatial(const uint64_t index, const Shape& shape)
     return coords;
 }
 
-void
+static void
 test_to_spatial(void)
 {
     {

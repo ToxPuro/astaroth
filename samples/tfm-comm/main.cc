@@ -16,12 +16,10 @@
 
 #include <unistd.h>
 
-#if defined(__CUDACC__)
-#define DEVICE_ENABLED
+#if defined(CUDA_ENABLED)
 #include "errchk_cuda.h"
 #include <cuda_runtime.h>
-#elif defined(__HIP_PLATFORM_AMD__)
-#define DEVICE_ENABLED
+#elif defined(HIP_ENABLED)
 #include "errchk_cuda.h"
 #include "hip.h"
 #include <hip/hip_runtime.h>
