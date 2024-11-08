@@ -45,6 +45,24 @@ drand()
 	return (double)(rand()) / (double)(rand());
 }
 
+#if AC_ROW_MAJOR_ORDER
+#define TWO_D_ARR(i,j) [i][j]
+#else
+#define TWO_D_ARR(i,j) [j][i]
+#endif
+
+#if AC_ROW_MAJOR_ORDER
+#define THREE_D_ARR(i,j,k) [i][j][k]
+#else
+#define THREE_D_ARR(i,j,k) [k][j][i]
+#endif
+
+#if AC_ROW_MAJOR_ORDER
+#define FOUR_D_ARR(i,j,k,l) [i][j][k][l]
+#else
+#define FOUR_D_ARR(i,j,k,l) [l][k][j][i]
+#endif
+
 int
 main(void)
 {
@@ -102,14 +120,9 @@ main(void)
     //info.real_arrays[AC_test_arr_2] = (AcReal*)test_arr_2;
     int   global_arr[nx];
     float float_arr[nx];
-#if AC_ROW_MAJOR_ORDER
-    AcReal twoD_real_arr[nx][ny];
-    AcReal threeD_real_arr[mx][my][mz];
-#else
-    AcReal twoD_real_arr[ny][nx];
-    AcReal threeD_real_arr[mz][my][mx];
-    float  fourD_float_arr[3][mz][my][mx];
-#endif
+    AcReal twoD_real_arr TWO_D_ARR(nx,ny);
+    AcReal threeD_real_arr THREE_D_ARR(mx,my,mz);
+    float  fourD_float_arr FOUR_D_ARR(mx,my,mz,3);
 
     for(int i = 0; i < nx; ++i)
     {
@@ -118,24 +131,16 @@ main(void)
     }
     for(int j = 0; j < ny; ++j)
     	for(int i = 0; i < nx; ++i)
-#if AC_ROW_MAJOR_ORDER
-		twoD_real_arr[i][j] = (1.0*rand())/RAND_MAX;
-#else
-		twoD_real_arr[j][i] = (1.0*rand())/RAND_MAX;
-#endif
+		twoD_real_arr TWO_D_ARR(i,j) = (1.0*rand())/RAND_MAX;
 
     for(int k = 0; k < mz; ++k)
     	for(int j = 0; j < my; ++j)
     		for(int i = 0; i < mx; ++i)
 		{
-#if AC_ROW_MAJOR_ORDER
-			threeD_real_arr[i][j][k]  = (1.0*rand())/RAND_MAX;
-#else
-			threeD_real_arr[k][j][i]  = (1.0*rand())/RAND_MAX;
+			threeD_real_arr THREE_D_ARR(i,j,k)  = (1.0*rand())/RAND_MAX;
 			for(int l = 0; l < 3; ++l)
-				fourD_float_arr[l][k][j][i] = (1.0*rand())/RAND_MAX;
+				fourD_float_arr FOUR_D_ARR(i,j,k,l) = (1.0*rand())/RAND_MAX;
 		}
-#endif
     info[AC_global_arr] = global_arr;
     info[AC_float_arr] = float_arr;
     info[AC_2d_reals]  = &twoD_real_arr[0][0];
@@ -195,14 +200,10 @@ main(void)
 			int comp_y = j - NGHOST_Y;
 			[[maybe_unused]] int comp_z = j - NGHOST_Z;
 			model.vertex_buffer[FIELD_X][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-NGHOST_X];
-#if AC_ROW_MAJOR_ORDER
-			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[info.int_params[AC_dconst_int]][comp_y] + threeD_real_arr[i][j][k]);
-#else
-			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[comp_y][info.int_params[AC_dconst_int]] + threeD_real_arr[k][j][i]);
-#endif
-			auto val = model.vertex_buffer[FIELD_Z][IDX(i,j,k)];
-			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2])*((AcReal)fourD_float_arr[0][k][j][i] + (AcReal)fourD_float_arr[1][k][j][i] + (AcReal)fourD_float_arr[2][k][j][i]);
-			fourD_float_arr[0][k][j][i] *=  test_arr[1];
+			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr TWO_D_ARR(info[AC_dconst_int],comp_y) + threeD_real_arr THREE_D_ARR(i,j,k));
+			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2])*((AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,0) + (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,1)  + (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,2));
+
+			fourD_float_arr FOUR_D_ARR(i,j,k,0) *=  test_arr[1];
                 }
             }
         }
@@ -216,8 +217,8 @@ main(void)
 
     fflush(stdout);
     int read_global_arr[nx];
-    AcReal read_2d[ny][nx];
-    float read_fourD_float_arr[3][mz][my][mx];
+    AcReal read_2d TWO_D_ARR(nx,ny);
+    float read_fourD_float_arr FOUR_D_ARR(mx,my,mz,3);
     acDeviceStore(acGridGetDevice(), STREAM_DEFAULT, AC_global_arr, read_global_arr);
     acDeviceStore(acGridGetDevice(), STREAM_DEFAULT, AC_2d_reals, &read_2d[0][0]);
     acDeviceStore(acGridGetDevice(), STREAM_DEFAULT, AC_4d_float_arr_out, &read_fourD_float_arr[0][0][0][0]);
@@ -225,15 +226,15 @@ main(void)
     for(int i = 0; i < info.int_params[AC_nx]; ++i)
 	    arrays_are_the_same &= (read_global_arr[i] == global_arr[i]);
     for(int i = 0; i < info.int_params[AC_nx]; ++i)
-    	for(int j = 0; j < info.int_params[AC_nx]; ++j)
-	    arrays_are_the_same &= (read_2d[j][i] == twoD_real_arr[j][i]);
+    	for(int j = 0; j < info.int_params[AC_ny]; ++j)
+	    arrays_are_the_same &= (read_2d TWO_D_ARR(i,j) == twoD_real_arr TWO_D_ARR(i,j));
     bool updated_arrays_are_the_same = true;
     for(int k = 0; k < mz; ++k)
     	for(int j = 0; j < my; ++j)
     		for(int i = 0; i < mx; ++i)
 			for(int l = 0; l < 3; ++l)
 			{
-				const bool eq = (read_fourD_float_arr[l][k][j][i] == fourD_float_arr[l][k][j][i]);
+				const bool eq = (read_fourD_float_arr FOUR_D_ARR(i,j,k,l) == fourD_float_arr FOUR_D_ARR(i,j,k,l));
 				updated_arrays_are_the_same &= eq;
 				if(!eq) fprintf(stderr,"different at %d,%d,%d,%d\n",i,j,k,l);
 			}
