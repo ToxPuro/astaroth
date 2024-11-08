@@ -14,7 +14,6 @@
 template <typename T> class Packet {
 
   private:
-    MPI_Comm cart_comm;
     Shape local_mm;
     Shape local_nn;
     Index local_rr;
@@ -23,10 +22,12 @@ template <typename T> class Packet {
 
     Buffer<T> send_buffer;
     Buffer<T> recv_buffer;
-    MPI_Request send_req; // MPI request for handling synchronization
-    MPI_Request recv_req; // MPI request for handling synchronization
 
-    bool in_progress;
+    MPI_Comm cart_comm   = MPI_COMM_NULL;
+    MPI_Request send_req = MPI_REQUEST_NULL; // MPI request for handling synchronization
+    MPI_Request recv_req = MPI_REQUEST_NULL; // MPI request for handling synchronization
+
+    bool in_progress = false;
 
   public:
     Packet(const Shape& in_local_mm, const Shape& in_local_nn, const Index& in_local_rr,
@@ -42,33 +43,39 @@ template <typename T> class Packet {
     void launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs);
     void wait(PackPtrArray<T*> outputs);
     bool ready();
+
+    friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T>& obj)
+    {
+        os << "{";
+        os << "segment: " << obj.segment << ", ";
+        os << "buffer: " << obj.buffer << ", ";
+        os << "req: " << obj.req;
+        os << "}";
+        return os;
+    }
 };
 
 template <typename T>
 Packet<T>::Packet(const Shape& in_local_mm, const Shape& in_local_nn, const Index& in_local_rr,
                   const Segment& in_segment, const size_t n_aggregate_buffers)
-    : cart_comm(MPI_COMM_NULL),
-      local_mm(in_local_mm),
+    : local_mm(in_local_mm),
       local_nn(in_local_nn),
       local_rr(in_local_rr),
       segment(in_segment),
       send_buffer(n_aggregate_buffers * prod(in_segment.dims)),
-      recv_buffer(n_aggregate_buffers * prod(in_segment.dims)),
-      send_req(MPI_REQUEST_NULL),
-      recv_req(MPI_REQUEST_NULL),
-      in_progress{false}
+      recv_buffer(n_aggregate_buffers * prod(in_segment.dims))
 {
 }
 
 template <typename T>
 Packet<T>::Packet(Packet&& other) noexcept
-    : cart_comm(other.cart_comm),
-      local_mm(other.local_mm),
+    : local_mm(other.local_mm),
       local_nn(other.local_nn),
       local_rr(other.local_rr),
       segment(other.segment),
       send_buffer(std::move(other.send_buffer)),
       recv_buffer(std::move(other.recv_buffer)),
+      cart_comm(other.cart_comm),
       send_req(other.send_req),
       recv_req(other.recv_req),
       in_progress{other.in_progress}
@@ -180,18 +187,6 @@ Packet<T>::ready()
     ERRCHK_MPI_API(status.MPI_ERROR);
 
     return send_ready && recv_ready;
-}
-
-template <typename T>
-__host__ std::ostream&
-operator<<(std::ostream& os, const Packet<T>& obj)
-{
-    os << "{";
-    os << "segment: " << obj.segment << ", ";
-    os << "buffer: " << obj.buffer << ", ";
-    os << "req: " << obj.req;
-    os << "}";
-    return os;
 }
 
 void test_packet();

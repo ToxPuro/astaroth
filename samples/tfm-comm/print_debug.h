@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cxxabi.h>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 template <typename T>
@@ -42,15 +44,13 @@ print_debug_array(const std::string& label, const size_t count, const T* arr)
 #define PRINT_DEBUG(value) (print_debug(#value, (value)))
 #define PRINT_DEBUG_ARRAY(count, arr) (print_debug_array(#arr, (count), (arr)))
 
-#include <cxxabi.h>
-#include <memory>
 template <typename T>
 void
 print_demangled(const T& obj)
 {
     int status;
-    std::unique_ptr<char, void (*)(void*)> res{abi::__cxa_demangle(typeid(obj).name(), nullptr,
+    std::unique_ptr<char, void (*)(char*)> res{abi::__cxa_demangle(typeid(obj).name(), nullptr,
                                                                    nullptr, &status),
-                                               std::free};
+                                               [](char* ptr) { std::free(ptr); }};
     std::cout << "Type: " << (status == 0 ? res.get() : typeid(obj).name()) << std::endl;
 }

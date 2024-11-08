@@ -93,21 +93,6 @@ benchmark(void)
 int
 main()
 {
-    ERRCHK_MPI_API(MPI_Init(NULL, NULL));
-    // int provided, claimed, is_thread_main;
-    // ERRCHK_MPI_API(MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided));
-    // ERRCHK_MPI_API(MPI_Query_thread(&claimed));
-    // ERRCHK_MPI(provided == claimed);
-    // ERRCHK_MPI_API(MPI_Is_thread_main(&is_thread_main));
-    // ERRCHK_MPI(is_thread_main);
-
-    ERRCHK_MPI_API(MPI_Finalize());
-    return EXIT_SUCCESS;
-}
-
-int
-main_old()
-{
     // ERRCHK_MPI_API(MPI_Init(NULL, NULL));
     int provided, claimed, is_thread_main;
     ERRCHK_MPI_API(MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided));
@@ -125,7 +110,7 @@ main_old()
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
         benchmark();
 
-        const Shape global_nn        = {4, 4};
+        const Shape global_nn        = {4, 4, 4};
         MPI_Comm cart_comm           = cart_comm_create(MPI_COMM_WORLD, global_nn);
         const Shape decomp           = get_decomposition(cart_comm);
         const Shape local_nn         = global_nn / decomp;
@@ -203,6 +188,12 @@ main_old()
         iotask.wait_write();
         iotask.read("test.dat", mesh.buffer.data());
 
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        mesh.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+
+        task.launch(cart_comm, inputs);
+        task.wait(inputs);
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         mesh.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)

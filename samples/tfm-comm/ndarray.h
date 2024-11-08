@@ -65,7 +65,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> struct NdArr
     Buffer<T, MemoryResource> buffer;
 
     // Constructor
-    NdArray(const Shape& in_shape)
+    explicit NdArray(const Shape& in_shape)
         : shape(in_shape), buffer(prod(in_shape))
     {
     }
@@ -80,17 +80,15 @@ template <typename T, typename MemoryResource = HostMemoryResource> struct NdArr
     void fill_arange(const T& start = 0) { buffer.fill_arange(start, start + buffer.count); }
 
     void display() { ndarray_print_recursive(shape.count, shape.data, buffer.data()); }
-};
 
-template <typename T>
-std::ostream&
-operator<<(std::ostream& os, const NdArray<T>& obj)
-{
-    os << "{";
-    os << "shape: " << obj.shape << ", ";
-    os << "buffer: " << obj.buffer;
-    os << "}";
-    return os;
-}
+    friend std::ostream& operator<<(std::ostream& os, const NdArray<T>& obj)
+    {
+        os << "{";
+        os << "shape: " << obj.shape << ", ";
+        os << "buffer: " << obj.buffer;
+        os << "}";
+        return os;
+    }
+};
 
 void test_ndarray(void);

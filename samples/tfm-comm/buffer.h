@@ -10,7 +10,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
     std::unique_ptr<T[], decltype(&MemoryResource::dealloc)> resource;
 
   public:
-    Buffer(const size_t in_count)
+    explicit Buffer(const size_t in_count)
         : count{in_count},
           resource{static_cast<T*>(MemoryResource::alloc(in_count * sizeof(T))),
                    MemoryResource::dealloc}
@@ -22,21 +22,21 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
 
     void fill(const T& value)
     {
-        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value);
+        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>);
         for (size_t i = 0; i < count; ++i)
             resource[i] = value;
     }
 
     void arange(const size_t min = 0)
     {
-        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value);
+        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>);
         for (size_t i = 0; i < count; ++i)
             resource[i] = static_cast<T>(min + i);
     }
 
     void display() const
     {
-        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value);
+        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>);
         for (size_t i = 0; i < count; ++i)
             std::cout << i << ": " << resource[i] << std::endl;
     }

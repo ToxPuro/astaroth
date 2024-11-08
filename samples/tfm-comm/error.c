@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static const char* errorcode_descriptions[NUM_ERRORCODES] = {
+static const char* const errorcode_descriptions[NUM_ERRORCODES] = {
     [ERRORCODE_SUCCESS]         = "Success",
     [ERRORCODE_GENERIC_FAILURE] = "Generic failure",
     [ERRORCODE_TEST_FAILURE]    = "Module test failed",

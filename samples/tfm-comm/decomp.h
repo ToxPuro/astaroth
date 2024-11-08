@@ -24,6 +24,7 @@ Shape decompose(const Shape& nn, uint64_t nprocs);
  * the decomposition can be calculated by
  * decompose_hierarchical(nn, std::vector<uint64_t>{8, 4, 2});
  */
-std::vector<Shape> decompose_hierarchical(const Shape& nn, std::vector<uint64_t>& nprocs_per_layer);
+std::vector<Shape> decompose_hierarchical(const Shape& nn,
+                                          const std::vector<uint64_t>& nprocs_per_layer);
 
 void test_decomp(void);

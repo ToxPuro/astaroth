@@ -27,14 +27,14 @@ template <typename T> class IOTask {
 
     Buffer<T> staging_buffer; // Buffer used for IO
 
-    MPI_Comm cart_comm;
-    MPI_Request req;
-    MPI_File file;
-    MPI_Datatype global_subarray;
-    MPI_Datatype local_subarray;
-    MPI_Info info;
+    MPI_Comm cart_comm           = MPI_COMM_NULL;
+    MPI_Request req              = MPI_REQUEST_NULL;
+    MPI_File file                = MPI_FILE_NULL;
+    MPI_Datatype global_subarray = MPI_DATATYPE_NULL;
+    MPI_Datatype local_subarray  = MPI_DATATYPE_NULL;
+    MPI_Info info                = MPI_INFO_NULL;
 
-    bool in_progress;
+    bool in_progress = false;
 
   public:
     IOTask(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& in_file_offset,
@@ -44,14 +44,7 @@ template <typename T> class IOTask {
           mesh_dims(in_mesh_dims),
           mesh_subdims(in_mesh_subdims),
           mesh_offset(in_mesh_offset),
-          staging_buffer(prod(in_mesh_dims)),
-          cart_comm{MPI_COMM_NULL},
-          req{MPI_REQUEST_NULL},
-          file{MPI_FILE_NULL},
-          global_subarray{MPI_DATATYPE_NULL},
-          local_subarray{MPI_DATATYPE_NULL},
-          info{MPI_INFO_NULL},
-          in_progress{false}
+          staging_buffer(prod(in_mesh_dims))
     {
         // Duplicate the communicator
         ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &cart_comm));
