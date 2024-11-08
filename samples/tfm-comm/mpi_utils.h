@@ -108,6 +108,7 @@ get_mpi_dtype()
 /**
  * Helper wrappers for MPI types
  */
+#if 0
 struct MPIRequest {
     MPI_Request handle;
 
@@ -139,7 +140,6 @@ struct MPIRequest {
     {
         ERRCHK_MPI(handle == MPI_REQUEST_NULL);
         request_wait_and_destroy(handle);
-        ERRCHK_MPI(handle == MPI_REQUEST_NULL);
     }
 
     MPIRequest(MPIRequest&& other) noexcept  = delete; // Move
@@ -170,3 +170,4 @@ struct MPIComm {
     MPIComm(const MPIComm&)            = delete; // Copy
     MPIComm& operator=(const MPIComm&) = delete; // Copy assignment
 };
+#endif

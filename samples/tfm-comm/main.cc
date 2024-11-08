@@ -95,6 +95,9 @@ main()
         const Index coords           = get_coords(cart_comm);
         const Index global_nn_offset = coords * local_nn;
 
+        // Set MPI errors as non-fatal
+        // ERRCHK_MPI_API(MPI_Comm_set_errhandler(cart_comm, MPI_ERRORS_RETURN));
+
         // Print grid information
         // MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         // PRINT_DEBUG(global_nn);
@@ -156,11 +159,12 @@ main()
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         // IO
-        IOTask<AcReal> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
-        // iotask.write(cart_comm, mesh.buffer.data(), "test.dat");
-        iotask.launch_write(cart_comm, mesh.buffer, "test.dat");
-        iotask.wait_write();
-        iotask.read(cart_comm, "test.dat", mesh.buffer.data());
+        IOTask<AcReal> iotask(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr);
+        iotask.write(mesh.buffer.data(), "test.dat");
+        // iotask.launch_write(mesh.buffer, "test.dat");
+        // iotask.wait_write();
+        mesh.fill(-1, local_mm, Index(local_mm.count, as<uint64_t>(0)));
+        iotask.read("test.dat", mesh.buffer.data());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         mesh.display();
