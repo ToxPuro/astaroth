@@ -100,36 +100,36 @@ test_decomp(void)
 {
     {
         const uint64_t nprocs = 32;
-        const Shape nn        = {512, 128, 128};
-        const Shape decomp    = decompose(nn, nprocs);
-        const Shape local_nn  = nn / decomp;
+        const Shape nn{512, 128, 128};
+        const Shape decomp   = decompose(nn, nprocs);
+        const Shape local_nn = nn / decomp;
         ERRCHK(nn == decomp * local_nn);
     }
     {
         const uint64_t nprocs = 7;
-        const Shape nn        = {7 * 20, 128, 128};
-        const Shape decomp    = decompose(nn, nprocs);
-        const Shape local_nn  = nn / decomp;
+        const Shape nn{7 * 20, 128, 128};
+        const Shape decomp   = decompose(nn, nprocs);
+        const Shape local_nn = nn / decomp;
         ERRCHK(nn == decomp * local_nn);
     }
     {
         const uint64_t nprocs = 11;
-        const Shape nn        = {9, 10, 11};
-        const Shape decomp    = decompose(nn, nprocs);
-        const Shape local_nn  = nn / decomp;
+        const Shape nn{9, 10, 11};
+        const Shape decomp   = decompose(nn, nprocs);
+        const Shape local_nn = nn / decomp;
         ERRCHK(nn == decomp * local_nn);
     }
     {
         const uint64_t nprocs = 50;
-        const Shape nn        = {20, 30, 40};
-        const Shape decomp    = decompose(nn, nprocs);
-        const Shape local_nn  = nn / decomp;
+        const Shape nn{20, 30, 40};
+        const Shape decomp   = decompose(nn, nprocs);
+        const Shape local_nn = nn / decomp;
         ERRCHK(nn == decomp * local_nn);
     }
     {
-        Shape nn                               = {256, 128, 128};
-        std::vector<uint64_t> nprocs_per_layer = {16, 4, 2};
-        const auto decompositions              = decompose_hierarchical(nn, nprocs_per_layer);
+        Shape nn{256, 128, 128};
+        std::vector<uint64_t> nprocs_per_layer{16, 4, 2};
+        const auto decompositions = decompose_hierarchical(nn, nprocs_per_layer);
 
         std::vector<Index> offsets;
         for (const auto& decomp : decompositions) {

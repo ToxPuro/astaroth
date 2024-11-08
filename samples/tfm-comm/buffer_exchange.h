@@ -25,22 +25,20 @@ class BufferExchangeTask {
   private:
     Buffer<T, FirstStageResource> first_stage_buffer;
     Buffer<T, SecondStageResource> second_stage_buffer;
-    cudaStream_t stream;
-    bool in_progress;
+
+    cudaStream_t stream = nullptr;
+    bool in_progress    = false;
 
   public:
     explicit BufferExchangeTask(const size_t max_count)
-        : first_stage_buffer(max_count),
-          second_stage_buffer(max_count),
-          stream{nullptr},
-          in_progress{false}
+        : first_stage_buffer(max_count), second_stage_buffer(max_count)
     {
     }
 
     BufferExchangeTask(const BufferExchangeTask&)            = delete; // Copy
     BufferExchangeTask& operator=(const BufferExchangeTask&) = delete; // Copy assignment
-    BufferExchangeTask(BufferExchangeTask&&) noexcept;                 // Move
-    BufferExchangeTask& operator=(BufferExchangeTask&&) = delete;      // Move assignment
+    BufferExchangeTask(BufferExchangeTask&&) noexcept        = delete; // Move
+    BufferExchangeTask& operator=(BufferExchangeTask&&)      = delete; // Move assignment
 
     ~BufferExchangeTask()
     {

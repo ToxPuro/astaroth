@@ -110,7 +110,7 @@ main()
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
         benchmark();
 
-        const Shape global_nn        = {4, 4, 4};
+        const Shape global_nn{4, 4, 4};
         MPI_Comm cart_comm           = cart_comm_create(MPI_COMM_WORLD, global_nn);
         const Shape decomp           = get_decomposition(cart_comm);
         const Shape local_nn         = global_nn / decomp;
@@ -170,7 +170,7 @@ main()
         hbuf.display();
 
         // Packed MPI/CUDA halo exchange task
-        PackPtrArray<AcReal*> inputs = {mesh.buffer.data()};
+        PackPtrArray<AcReal*> inputs{mesh.buffer.data()};
         HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, inputs.count);
         task.launch(cart_comm, inputs);
         task.wait(inputs);

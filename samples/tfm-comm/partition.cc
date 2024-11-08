@@ -57,39 +57,39 @@ void
 test_partition(void)
 {
     {
-        const Shape mm        = {8};
-        const Shape nn        = {6, 6};
-        const Index nn_offset = {1, 1};
+        const Shape mm{8};
+        const Shape nn{6, 6};
+        const Index nn_offset{1, 1};
         ERRCHK(partition(mm, nn, nn_offset).size() == 3);
     }
     {
-        const Shape mm        = {8, 8};
-        const Shape nn        = {6, 6};
-        const Index nn_offset = {1, 1};
+        const Shape mm{8, 8};
+        const Shape nn{6, 6};
+        const Index nn_offset{1, 1};
         ERRCHK(partition(mm, nn, nn_offset).size() == 9);
     }
     {
-        const Shape mm        = {8, 8, 8};
-        const Shape nn        = {6, 6, 6};
-        const Index nn_offset = {1, 1, 1};
+        const Shape mm{8, 8, 8};
+        const Shape nn{6, 6, 6};
+        const Index nn_offset{1, 1, 1};
         ERRCHK(partition(mm, nn, nn_offset).size() == 27);
     }
     {
-        const Shape mm        = {5, 6, 7, 8};
-        const Shape nn        = {3, 4, 5, 6};
-        const Index nn_offset = {1, 1, 1, 1};
+        const Shape mm{5, 6, 7, 8};
+        const Shape nn{3, 4, 5, 6};
+        const Index nn_offset{1, 1, 1, 1};
         ERRCHK(partition(mm, nn, nn_offset).size() == 3 * 3 * 3 * 3);
     }
     {
-        const Shape mm        = {4, 4, 4};
-        const Shape nn        = {4, 4, 4};
-        const Index nn_offset = {0, 0, 0};
+        const Shape mm{4, 4, 4};
+        const Shape nn{4, 4, 4};
+        const Index nn_offset{0, 0, 0};
         ERRCHK(partition(mm, nn, nn_offset).size() == 1);
     }
     {
-        const Shape mm        = {4, 4};
-        const Shape nn        = {3, 3};
-        const Index nn_offset = {1, 1};
+        const Shape mm{4, 4};
+        const Shape nn{3, 3};
+        const Index nn_offset{1, 1};
         ERRCHK(partition(mm, nn, nn_offset).size() == 4);
     }
 }

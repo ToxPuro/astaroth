@@ -26,21 +26,21 @@ test_static_array(void)
         // PRINT_DEBUG(a);
     }
     {
-        StaticArray<uint64_t, 3> a = {3, 4, 5};
+        StaticArray<uint64_t, 3> a{3, 4, 5};
         ERRCHK((a == StaticArray<uint64_t, 3>{3, 4, 5}));
     }
     {
-        StaticArray<uint64_t, 3> a = {1, 2, 3};
-        StaticArray<uint64_t, 3> b = {4, 5, 6};
-        StaticArray<uint64_t, 3> c = {5, 7, 9};
+        StaticArray<uint64_t, 3> a{1, 2, 3};
+        StaticArray<uint64_t, 3> b{4, 5, 6};
+        StaticArray<uint64_t, 3> c{5, 7, 9};
         ERRCHK(a + b == c);
         // PRINT_DEBUG(a + b);
     }
     {
-        StaticArray<uint64_t, 3> a = {1, 2, 3};
-        StaticArray<uint64_t, 3> b = {4, 5, 6};
-        StaticArray<uint64_t, 3> c = {2, 1, 9};
-        StaticArray<uint64_t, 3> d = {2 * 1 + 4 / 2, 2 * 2 + 5 / 1, 2 * 3 + 6 / 9};
+        StaticArray<uint64_t, 3> a{1, 2, 3};
+        StaticArray<uint64_t, 3> b{4, 5, 6};
+        StaticArray<uint64_t, 3> c{2, 1, 9};
+        StaticArray<uint64_t, 3> d{2 * 1 + 4 / 2, 2 * 2 + 5 / 1, 2 * 3 + 6 / 9};
         ERRCHK(as<uint64_t>(2) * a + b / c == d);
     }
     {
