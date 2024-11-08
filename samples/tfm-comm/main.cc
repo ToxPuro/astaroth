@@ -16,6 +16,28 @@
 
 #include <unistd.h>
 
+#if defined(__CUDACC__)
+#define DEVICE_ENABLED
+#include "errchk_cuda.h"
+#include <cuda_runtime.h>
+#elif defined(__HIP_PLATFORM_AMD__)
+#define DEVICE_ENABLED
+#include "errchk_cuda.h"
+#include "hip.h"
+#include <hip/hip_runtime.h>
+#else
+#include "errchk.h"
+void
+cudaStreamCreate(cudaStream_t* stream)
+{
+    *stream = nullptr;
+}
+void
+cudaStreamDestroy(cudaStream_t stream)
+{
+}
+#endif
+
 static void
 benchmark(void)
 {
@@ -70,6 +92,21 @@ benchmark(void)
 
 int
 main()
+{
+    ERRCHK_MPI_API(MPI_Init(NULL, NULL));
+    // int provided, claimed, is_thread_main;
+    // ERRCHK_MPI_API(MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided));
+    // ERRCHK_MPI_API(MPI_Query_thread(&claimed));
+    // ERRCHK_MPI(provided == claimed);
+    // ERRCHK_MPI_API(MPI_Is_thread_main(&is_thread_main));
+    // ERRCHK_MPI(is_thread_main);
+
+    ERRCHK_MPI_API(MPI_Finalize());
+    return EXIT_SUCCESS;
+}
+
+int
+main_old()
 {
     // ERRCHK_MPI_API(MPI_Init(NULL, NULL));
     int provided, claimed, is_thread_main;

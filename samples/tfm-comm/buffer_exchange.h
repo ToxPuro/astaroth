@@ -3,7 +3,6 @@
 #include <memory>
 
 #include "buffer.h"
-#include "cuda_utils.h"
 
 #if defined(__CUDACC__)
 #define DEVICE_ENABLED
@@ -16,19 +15,21 @@
 #include <hip/hip_runtime.h>
 #else
 #include "errchk.h"
-#define cudaStream_t void*
+using cudaStream_t                   = unsigned int*;
+const unsigned int cudaStreamDefault = 0;
+#define ERRCHK_CUDA_API(errcode) /* Disable all CUDA calls */
 #endif
 
 template <typename T, typename FirstStageResource, typename SecondStageResource>
 class BufferExchangeTask {
-  protected:
+  private:
     Buffer<T, FirstStageResource> first_stage_buffer;
     Buffer<T, SecondStageResource> second_stage_buffer;
     cudaStream_t stream;
     bool in_progress;
 
   public:
-    BufferExchangeTask(const size_t max_count)
+    explicit BufferExchangeTask(const size_t max_count)
         : first_stage_buffer(max_count),
           second_stage_buffer(max_count),
           stream{nullptr},
@@ -53,12 +54,9 @@ class BufferExchangeTask {
         in_progress = true;
 
         // Ensure that the input resource and the first-stage buffer is in the same memory space
-        if constexpr (std::is_base_of<DeviceMemoryResource, FirstStageResource>::value) {
-            static_assert(std::is_base_of<DeviceMemoryResource, MemoryResource>::value);
-        }
-        else {
-            static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value);
-        }
+        static_assert((std::is_base_of_v<DeviceMemoryResource, FirstStageResource> &&
+                       std::is_base_of_v<DeviceMemoryResource, MemoryResource>) ||
+                      std::is_base_of_v<HostMemoryResource, MemoryResource>);
 
         PRINT_LOG("migrating to first-stage buffer");
         migrate(in, first_stage_buffer);
@@ -76,12 +74,9 @@ class BufferExchangeTask {
         ERRCHK(in_progress);
 
         // Ensure that the output resource and the second-stage buffer is in the same memory space
-        if constexpr (std::is_base_of<DeviceMemoryResource, SecondStageResource>::value) {
-            static_assert(std::is_base_of<DeviceMemoryResource, MemoryResource>::value);
-        }
-        else {
-            static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value);
-        }
+        static_assert((std::is_base_of_v<DeviceMemoryResource, SecondStageResource> &&
+                       std::is_base_of_v<DeviceMemoryResource, MemoryResource>) ||
+                      std::is_base_of_v<HostMemoryResource, MemoryResource>);
 
         // Synchronize stream
         ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
