@@ -29,8 +29,8 @@ template <typename T, size_t N> struct StaticArray {
     __host__ __device__ constexpr size_t capacity(void) const { return N; }
 
     // Enable the subscript[] operator
-    __host__ __device__ T& operator[](size_t i) { return data[i]; }
-    __host__ __device__ const T& operator[](size_t i) const { return data[i]; }
+    __host__ __device__ T& operator[](const size_t i) { ERRCHK(i < count); return data[i]; }
+    __host__ __device__ const T& operator[](const size_t i) const { ERRCHK(i < count); return data[i]; }
 
     static_assert(sizeof(T) * N <= 1024,
                   "Warning: tried to stack-allocate an array larger than 1024 bytes.");

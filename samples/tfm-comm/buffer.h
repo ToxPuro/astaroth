@@ -17,6 +17,10 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
     {
     }
 
+    // Enable subscript notation
+    T& operator[](const size_t i) { ERRCHK(i < count); return resource[i]; }
+    const T& operator[](const size_t i) const { ERRCHK(i < count); return resource[i]; }
+
     T* data() const { return resource.get(); }
     size_t size() const { return count; }
 
