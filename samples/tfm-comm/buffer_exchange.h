@@ -58,8 +58,7 @@ class BufferExchangeTask {
         migrate(in, first_stage_buffer);
 
         PRINT_LOG("stream create");
-        const unsigned int flags = cudaStreamDefault;
-        ERRCHK_CUDA_API(cudaStreamCreateWithFlags(&stream, flags));
+        ERRCHK_CUDA_API(cudaStreamCreateWithFlags(&stream, cudaStreamDefault));
 
         PRINT_LOG("async migrate to second-stage buffer");
         migrate_async(stream, first_stage_buffer, second_stage_buffer);
