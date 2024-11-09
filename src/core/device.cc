@@ -513,8 +513,9 @@ AcResult acDeviceGetVBApointers(Device device, AcReal *vbapointer[2]) {
 }
 
 AcResult
-acDeviceDestroy(Device device)
+acDeviceDestroy(Device* device_ptr)
 {
+    Device device = *device_ptr;
     cudaSetDevice(device->id);
 #if AC_VERBOSE
     printf("Destroying device %d (%p)\n", device->id, device);
@@ -546,6 +547,7 @@ acDeviceDestroy(Device device)
 
     // Destroy Device
     free(device);
+    *device_ptr = NULL;
     return AC_SUCCESS;
 }
 

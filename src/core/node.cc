@@ -328,7 +328,7 @@ acNodeDestroy(Node node)
 
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceDestroy(node->devices[i]);
+        acDeviceDestroy(&node->devices[i]);
     }
     free(node);
 

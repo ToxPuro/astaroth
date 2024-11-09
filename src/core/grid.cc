@@ -589,7 +589,7 @@ acGridInitBase(const AcMesh user_mesh)
 AcResult
 acGridQuit(void)
 {
-    ERRCHK(grid.initialized);
+    ERRCHK_ALWAYS(grid.initialized);
     acGridSynchronizeStream(STREAM_ALL);
 
     // Random number generator
@@ -609,7 +609,7 @@ acGridQuit(void)
 		    new_mesh.vertex_buffer[i] = NULL;
 	    grid.submesh = new_mesh;
     }
-    acDeviceDestroy(grid.device);
+    acDeviceDestroy(&grid.device);
     compat_acDecompositionQuit();
     // acDecompositionInfoDestroy(&grid.decomposition_info);
 

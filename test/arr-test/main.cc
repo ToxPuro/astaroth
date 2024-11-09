@@ -90,14 +90,17 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
-    constexpr int nx = 2*9;
-    constexpr int ny = 2*11;
-    [[maybe_unused]] constexpr int nz = 4*7;
+    constexpr int nx = AC_nx_const;
+    constexpr int ny = AC_ny_const;
+    [[maybe_unused]] constexpr int nz = 4*9;
+    //constexpr int nx = 2*9;
+    //constexpr int ny = nx;
+    //[[maybe_unused]] constexpr int nz = nx;
+    acSetMeshDims(nx, ny, nz, &info);
 
-    constexpr int mx = 2*9  + 2*NGHOST;
-    constexpr int my = 2*11 + 2*NGHOST;
-    constexpr int mz = 4*7  + 2*NGHOST;
+    constexpr int mx = nx + 2*NGHOST;
+    constexpr int my = ny + 2*NGHOST;
+    constexpr int mz = nz + 2*NGHOST;
     //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;

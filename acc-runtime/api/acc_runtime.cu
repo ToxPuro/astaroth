@@ -100,7 +100,7 @@ acGetKernelReduceScratchPadMinSize()
 	return res;
 }
 Volume
-get_bpg(const Volume dims, const Volume tpb)
+get_bpg(Volume dims, const Volume tpb)
 {
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING:             // Fallthrough
@@ -311,49 +311,6 @@ LOCAL_COMPDOMAIN_IDX(const int3 coord)
   return (coord.x) + (coord.y) * VAL(AC_nx) + (coord.z) * VAL(AC_nxy);
 }
 
-__device__ constexpr int
-IDX(const int i)
-{
-  return i;
-}
-
-#if 1
-__device__ __forceinline__ int
-IDX(const int i, const int j, const int k)
-{
-  return DEVICE_VTXBUF_IDX(i, j, k);
-}
-#else
-constexpr __device__ int
-IDX(const uint i, const uint j, const uint k)
-{
-  /*
-  const int precision   = 32; // Bits
-  const int dimensions  = 3;
-  const int bits = ceil(precision / dimensions);
-  */
-  const int dimensions = 3;
-  const int bits       = 11;
-
-  uint idx = 0;
-#pragma unroll
-  for (uint bit = 0; bit < bits; ++bit) {
-    const uint mask = 0b1 << bit;
-    idx |= ((i & mask) << 0) << (dimensions - 1) * bit;
-    idx |= ((j & mask) << 1) << (dimensions - 1) * bit;
-    idx |= ((k & mask) << 2) << (dimensions - 1) * bit;
-  }
-  return idx;
-}
-#endif
-
-// Only used in reductions
-__device__ __forceinline__ int
-IDX(const int3 idx)
-{
-  return DEVICE_VTXBUF_IDX(idx.x, idx.y, idx.z);
-}
-
 #define print printf                          // TODO is this a good idea?
 #define len(arr) sizeof(arr) / sizeof(arr[0]) // Leads to bugs if the user
 // passes an array into a device function and then calls len (need to modify
@@ -393,7 +350,20 @@ flush_kernel_int(int* arr, const size_t n, const int value)
   if (idx < n)
     arr[idx] = value;
 }
-
+template <typename T>
+T TO_CORRECT_ORDER(const T vol)
+{
+#if AC_ROW_MAJOR_ORDER
+	return (T){vol.z,vol.y,vol.x};
+#else
+	return vol;
+#endif
+}
+size_t TO_CORRECT_ORDER(const size_t size)
+{
+	return size;
+}
+#define KERNEL_LAUNCH(func,bgp,tpb,...) func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
 AcResult
 acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
               const AcReal value)
@@ -401,7 +371,7 @@ acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
   ERRCHK_ALWAYS(arr);
   const size_t tpb = 256;
   const size_t bpg = (size_t)(ceil((double)n / tpb));
-  flush_kernel<<<bpg, tpb, 0, stream>>>(arr, n, value);
+  KERNEL_LAUNCH(flush_kernel,bpg,tpb,0,stream)(arr,n,value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }
@@ -412,7 +382,7 @@ acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
 {
   const size_t tpb = 256;
   const size_t bpg = (size_t)(ceil((double)n / tpb));
-  flush_kernel_int<<<bpg, tpb, 0, stream>>>(arr, n, value);
+  KERNEL_LAUNCH(flush_kernel_int,bpg,tpb,0,stream)(arr,n,value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }
@@ -800,7 +770,7 @@ acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const int3 start,
 
   vba.reduce_offset = reduce_offsets[kernel][start];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
-  kernels[kernel]<<<bpg, tpb, smem, stream>>>(start, end, vba);
+  KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba);
   ERRCHK_CUDA_KERNEL();
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
@@ -826,7 +796,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
 
   // Warmup
   cudaEventRecord(tstart);
-  kernels[kernel]<<<bpg, tpb, smem>>>(start, end, vba);
+  KERNEL_LAUNCH(kernels[kernel],bpg, tpb, smem)(start, end, vba);
   cudaEventRecord(tstop);
   cudaEventSynchronize(tstop);
   ERRCHK_CUDA_KERNEL();
@@ -834,7 +804,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
 
   // Benchmark
   cudaEventRecord(tstart); // Timing start
-  kernels[kernel]<<<bpg, tpb, smem>>>(start, end, vba);
+  KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem)(start, end, vba);
   cudaEventRecord(tstop); // Timing stop
   cudaEventSynchronize(tstop);
   float milliseconds = 0;
@@ -1279,11 +1249,11 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
         cudaEventCreate(&tstart);
         cudaEventCreate(&tstop);
 
-        func<<<bpg, tpb, smem>>>(start, end, vba); // Dryrun
+        KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba); // Dryrun
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
         for (int i = 0; i < num_iters; ++i)
-          func<<<bpg, tpb, smem>>>(start, end, vba);
+          KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba); // Dryrun
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
 
@@ -1558,7 +1528,7 @@ acReindex(const cudaStream_t stream, //
   const size_t tpb   = min(256ul, count);
   const size_t bpg   = (count + tpb - 1) / tpb;
 
-  reindex<<<bpg, tpb, 0, stream>>>(in, in_offset, in_shape, //
+  KERNEL_LAUNCH(reindex,bpg, tpb, 0, stream)(in, in_offset, in_shape, //
                                    out, out_offset, out_shape, block_shape);
   ERRCHK_CUDA_KERNEL();
 
@@ -1733,7 +1703,7 @@ acReindexCross(const cudaStream_t stream, //
   const size_t tpb   = min(256ul, count);
   const size_t bpg   = (count + tpb - 1) / tpb;
 
-  reindex_cross<<<bpg, tpb, 0, stream>>>(arrays, in_offset, in_shape,
+  KERNEL_LAUNCH(reindex_cross,bpg, tpb, 0, stream)(arrays, in_offset, in_shape,
                                          out_offset, out_shape, block_shape);
   return AC_SUCCESS;
 }
@@ -1875,7 +1845,7 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 {
   const size_t tpb = 256;
   const size_t bpg = (count + tpb - 1) / tpb;
-  multiply_inplace<<<bpg, tpb>>>(value, count, array);
+  KERNEL_LAUNCH(multiply_inplace,bpg, tpb,0,0)(value, count, array);
   ERRCHK_CUDA_KERNEL();
   return AC_SUCCESS;
 }
@@ -2064,7 +2034,7 @@ acTransposeXYZ_ZYX(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 	const dim3 tpb = {32,1,32};
 
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	transpose_xyz_to_zyx<<<bpg, tpb, 0, stream>>>(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_zyx,bpg, tpb, 0, stream)(src,dst);
 	return AC_SUCCESS;
 }
 static AcResult
@@ -2073,7 +2043,7 @@ acTransposeXYZ_ZXY(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 	const dim3 tpb = {32,1,32};
 
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	transpose_xyz_to_zxy<<<bpg, tpb, 0, stream>>>(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_zxy,bpg, tpb, 0, stream)(src,dst);
 	return AC_SUCCESS;
 }
 static AcResult
@@ -2082,7 +2052,7 @@ acTransposeXYZ_YXZ(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 	const dim3 tpb = {32,32,1};
 
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	transpose_xyz_to_yxz<<<bpg, tpb, 0, stream>>>(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_yxz,bpg, tpb, 0, stream)(src,dst);
 	return AC_SUCCESS;
 }
 static AcResult
@@ -2091,7 +2061,7 @@ acTransposeXYZ_YZX(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 	const dim3 tpb = {32,32,1};
 
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	transpose_xyz_to_yzx<<<bpg, tpb, 0, stream>>>(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_yzx,bpg, tpb, 0, stream)(src,dst);
 	return AC_SUCCESS;
 }
 static AcResult
@@ -2099,7 +2069,7 @@ acTransposeXYZ_XZY(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 {
 	const dim3 tpb = {32,32,1};
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	transpose_xyz_to_xzy<<<bpg, tpb, 0, stream>>>(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_xzy,bpg, tpb, 0, stream)(src,dst);
 	return AC_SUCCESS;
 }
 static AcResult
@@ -2107,7 +2077,7 @@ acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 {
 	const dim3 tpb = {32,32,1};
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	transpose_xyz_to_xyz<<<bpg, tpb, 0, stream>>>(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_xyz,bpg, tpb, 0, stream)(src,dst);
 	return AC_SUCCESS;
 }
 AcResult

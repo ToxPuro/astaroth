@@ -129,6 +129,8 @@ IDX(const int3 idx)
   return 0;
 }
 
+#define DEVICE_VTXBUF_IDX IDX
+
 static int UNUSED
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
 {

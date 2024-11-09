@@ -165,11 +165,19 @@ gen_stencil_definitions(void)
 void
 gen_kernel_common_prefix()
 {
+#if AC_ROW_MAJOR_ORDER
+  printf("const int3 tid = (int3){"
+         "threadIdx.z + blockIdx.z * blockDim.z,"
+         "threadIdx.y + blockIdx.y * blockDim.y,"
+         "threadIdx.x + blockIdx.x * blockDim.x,"
+         "};");
+#else
   printf("const int3 tid = (int3){"
          "threadIdx.x + blockIdx.x * blockDim.x,"
          "threadIdx.y + blockIdx.y * blockDim.y,"
          "threadIdx.z + blockIdx.z * blockDim.z,"
          "};");
+#endif
   printf("const int3 vertexIdx = (int3){"
          "tid.x + start.x,"
          "tid.y + start.y,"
@@ -185,7 +193,7 @@ gen_kernel_common_prefix()
 #else
   printf("const int3 globalGridN = (int3){VAL(AC_nxgrid), VAL(AC_nygrid), 1};");
 #endif
-  printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
+  printf("const int idx = DEVICE_VTXBUF_IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
 #if TWO_D == 0
     printf(
@@ -515,7 +523,7 @@ prefetch_stencil_elements(const int curr_kernel)
               printf("const auto f%d_%d_%d_%d = ", //
                      field, depth, height, width);
               printf("__ldg(&");
-              printf("vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+              printf("vba.in[%d][DEVICE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                      "vertexIdx.z+(%d))]",
                      field, -STENCIL_ORDER / 2 + width,
                      -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
@@ -822,7 +830,7 @@ gen_kernel_body(const int curr_kernel)
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
                       printf("vba.in[%s]"
-                             "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                             "[DEVICE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                              "vertexIdx.z+(%d))])",
                              field_names[get_original_index(field_remappings,field)], -STENCIL_ORDER / 2 + width,
                              -STENCIL_ORDER / 2 + height,
@@ -840,7 +848,7 @@ gen_kernel_body(const int curr_kernel)
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
                       printf("vba.in[%s]"
-                             "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                             "[DEVICE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                              "vertexIdx.z+(%d))])",
                              field_names[get_original_index(field_remappings,field)], -STENCIL_ORDER / 2 + width,
                              -STENCIL_ORDER / 2 + height,
@@ -876,7 +884,7 @@ gen_kernel_body(const int curr_kernel)
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
                       printf("vba.in[%s]"
-                             "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                             "[DEVICE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                              "0)])",
                              field_names[get_original_index(field_remappings,field)], -STENCIL_ORDER / 2 + width,
                              -STENCIL_ORDER / 2 + height);
@@ -893,7 +901,7 @@ gen_kernel_body(const int curr_kernel)
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
                       printf("vba.in[%s]"
-                             "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                             "[DEVICE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                              "0)])",
                              field_names[get_original_index(field_remappings,field)], -STENCIL_ORDER / 2 + width,
                              -STENCIL_ORDER / 2 + height);

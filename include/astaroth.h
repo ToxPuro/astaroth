@@ -1151,7 +1151,7 @@ FUNC_DEFINE(AcResult, acNodeGetVBApointers,(Node* node_handle, AcReal *vbapointe
 FUNC_DEFINE(AcResult, acDeviceCreate,(const int id, const AcMeshInfo device_config, Device* device));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceDestroy,(Device device));
+FUNC_DEFINE(AcResult, acDeviceDestroy,(Device* device));
 
 /** Resets the mesh to default values defined in acc_runtime.cu:acVBAReset */
 FUNC_DEFINE(AcResult, acDeviceResetMesh,(const Device device, const Stream stream));

@@ -3000,7 +3000,13 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	const char* warp_size  = "constexpr size_t warp_size = 32;";
 	const char* warp_id= "const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;";
 #endif
-
+	astnode_sprintf_postfix(compound_statement,"%s %s\n%s\n%s",compound_statement->postfix,
+						warp_size,warp_id,
+						"const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) % warp_size;"
+						"const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;"
+						"const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;"
+						"const int out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;"
+			);
 	for(size_t i = 0; i < kernel_reduce_info.size; ++i)
 	{
 		const char* dst_type = get_reduce_dst_type(kernel_reduce_info.data[i]);
@@ -3009,16 +3015,10 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 		const char* output = get_reduce_dst(kernel_reduce_info.data[i]);
 		const char* define_name = convert_to_define_name(dst_type);
 	 	astnode_sprintf_postfix(compound_statement,"%sif(should_reduce_%s[(int)%s]){"
-						"%s"
-						"%s"
-						"const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) % warp_size;"
-						"const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;"
-						"const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;"
-						"const int out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;"
 						"for(int offset = warp_size/2; offset > 0; offset /= 2){ \n"
 						,compound_statement->postfix
 						,define_name
-						,output,warp_size,warp_id
+						,output
 				      );
 
 		const char* array_name = sprintf_intern("%s_%s",
@@ -4415,7 +4415,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 	ASTNode* idx_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
 	if(!gen_mem_accesses)
 	{
-		astnode_set_prefix("IDX(",idx_node);
+		astnode_set_prefix("DEVICE_VTXBUF_IDX(",idx_node);
 		astnode_set_postfix(")",idx_node);
 	}
 	ASTNode* rhs = astnode_create(NODE_UNKNOWN, idx_node, NULL);
@@ -4431,7 +4431,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 		astnode_set_infix(",",before_lhs);
 		astnode_set_postfix(");",before_lhs);
 
-		astnode_set_prefix("IDX(",idx_node);
+		astnode_set_prefix("DEVICE_VTXBUF_IDX(",idx_node);
 		astnode_set_postfix(")",idx_node);
 	}
 
@@ -7507,9 +7507,10 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
            "-DIMPLEMENTATION=%d "
            "-DMAX_THREADS_PER_BLOCK=%d "
            "-DTWO_D=%d "
+           "-DAC_ROW_MAJOR_ORDER=%d "
            "-Wfloat-conversion -Wshadow -I. %s -lm "
            "-o %s",
-           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, TWO_D,STENCILGEN_SRC,
+           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, TWO_D,AC_ROW_MAJOR_ORDER,STENCILGEN_SRC,
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);

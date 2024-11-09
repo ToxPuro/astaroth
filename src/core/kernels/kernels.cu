@@ -46,38 +46,4 @@ acKernelDummy(void)
 #include "packing.cuh"
 #include "reductions.cuh"
 #include "volume_copy.cuh"
-#include "pack_unpack.cuh"
-
-AcResult
-acKernel(const KernelParameters params, VertexBufferArray vba)
-{
-#ifdef AC_INTEGRATION_ENABLED
-    acLaunchKernel(params.kernel_enum, params.stream, params.start, params.end, vba);
-    return AC_SUCCESS;
-#else
-    (void)params; // Unused
-    (void)vba;    // Unused
-    ERROR("acKernel() called but AC_step_number not defined!");
-    return AC_FAILURE;
-#endif
-}
-#if PACKED_DATA_TRANSFERS
-void
-acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate)
-{
-    const dim3 tpb(256, 1, 1);
-    const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
-
-    packUnpackPlate<AC_H2D><<<bpg, tpb, 0, device->streams[stream]>>>(device->plate_buffers[plate], device->vba, start, end);
-}
-
-void
-acPackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate)
-{                               
-    const dim3 tpb(256, 1, 1);
-    const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
-
-    packUnpackPlate<AC_D2H><<<bpg, tpb, 0, device->streams[stream]>>>(device->plate_buffers[plate], device->vba, start, end);
-}
-#endif
-
+//#include "pack_unpack.cuh"
