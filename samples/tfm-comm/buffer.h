@@ -51,8 +51,8 @@ template <typename MemoryResourceA, typename MemoryResourceB>
 constexpr cudaMemcpyKind
 get_kind()
 {
-    if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceA>::value) {
-        if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
+    if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceA>) {
+        if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceB>) {
             PRINT_LOG("dtod");
             return cudaMemcpyDeviceToDevice;
         }
@@ -62,7 +62,7 @@ get_kind()
         }
     }
     else {
-        if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
+        if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceB>) {
             PRINT_LOG("htod");
             return cudaMemcpyHostToDevice;
         }

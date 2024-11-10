@@ -84,7 +84,7 @@ template <typename T, size_t N> struct StaticArray {
     template <typename U> T __host__ __device__ dot(const StaticArray<U, N> other) const
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         T res = 0;
@@ -106,7 +106,7 @@ template <typename T, size_t N> struct StaticArray {
                                                            const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
@@ -120,7 +120,7 @@ template <typename T, size_t N> struct StaticArray {
     friend StaticArray<T, N> __host__ __device__ operator+(const T& a, const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(b.count);
@@ -133,7 +133,7 @@ template <typename T, size_t N> struct StaticArray {
     friend StaticArray<T, N> __host__ __device__ operator+(const StaticArray<T, N>& a, const U& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(a.count);
@@ -147,7 +147,7 @@ template <typename T, size_t N> struct StaticArray {
                                                            const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
@@ -161,7 +161,7 @@ template <typename T, size_t N> struct StaticArray {
     friend StaticArray<T, N> __host__ __device__ operator-(const T& a, const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(b.count);
@@ -174,7 +174,7 @@ template <typename T, size_t N> struct StaticArray {
     friend StaticArray<T, N> __host__ __device__ operator-(const StaticArray<T, N>& a, const U& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(a.count);
@@ -188,7 +188,7 @@ template <typename T, size_t N> struct StaticArray {
                                                            const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
@@ -202,7 +202,7 @@ template <typename T, size_t N> struct StaticArray {
     friend StaticArray<T, N> __host__ __device__ operator*(const T& a, const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(b.count);
@@ -215,7 +215,7 @@ template <typename T, size_t N> struct StaticArray {
     friend StaticArray<T, N> __host__ __device__ operator*(const StaticArray<T, N>& a, const U& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(a.count);
@@ -229,7 +229,7 @@ template <typename T, size_t N> struct StaticArray {
                                                            const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
@@ -245,7 +245,7 @@ template <typename T, size_t N> struct StaticArray {
     friend StaticArray<T, N> __host__ __device__ operator/(const T& a, const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         ERRCHK(b != 0);
@@ -261,7 +261,7 @@ template <typename T, size_t N> struct StaticArray {
     friend StaticArray<T, N> __host__ __device__ operator/(const StaticArray<T, N>& a, const U& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         ERRCHK(b != 0);
@@ -276,7 +276,7 @@ template <typename T, size_t N> struct StaticArray {
                                                            const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
@@ -290,7 +290,7 @@ template <typename T, size_t N> struct StaticArray {
     friend StaticArray<T, N> __host__ __device__ operator%(const T& a, const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(b.count);
@@ -303,7 +303,7 @@ template <typename T, size_t N> struct StaticArray {
     friend StaticArray<T, N> __host__ __device__ operator%(const StaticArray<T, N>& a, const U& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(a.count);
@@ -317,7 +317,7 @@ template <typename T, size_t N> struct StaticArray {
                                                const StaticArray<U, N>& b)
     {
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-        static_assert(std::is_same<T, U>::value,
+        static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
