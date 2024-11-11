@@ -88,7 +88,7 @@ mpi_info_make_unique()
                           [](MPI_Info* ptr) {
                               PRINT_LOG("delete");
                               if (*ptr != MPI_INFO_NULL)
-                                  ERRCHK_MPI_API(MPI_Type_free(ptr));
+                                  ERRCHK_MPI_API(MPI_Info_free(ptr));
                               delete ptr;
                           }};
 }
