@@ -327,6 +327,21 @@ template <typename T, size_t N> struct StaticArray {
         return true;
     }
 
+    template <typename U>
+    friend bool __host__ __device__ operator>=(const StaticArray<T, N>& a,
+                                               const StaticArray<U, N>& b)
+    {
+        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
+        static_assert(std::is_same_v<T, U>,
+                      "Operator not enabled for parameters of different types. Perform an "
+                      "explicit cast such that both operands are of the same type");
+        ERRCHK(a.count == b.count);
+        for (size_t i = 0; i < a.count; ++i)
+            if (a[i] < b[i])
+                return false;
+        return true;
+    }
+
     friend StaticArray<T, N> __host__ __device__ operator-(const StaticArray<T, N>& a)
     {
         static_assert(std::is_signed_v<T>, "Operator enabled only for signed types");

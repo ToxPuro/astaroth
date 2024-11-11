@@ -129,6 +129,7 @@ main()
 
         const Shape rr(global_nn.count, 1); // Symmetric halo
         const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
+        ERRCHK_MPI(local_nn >= rr); // Must be larger than the boundary area to avoid boundary artifacts
 
         NdArray<AcReal> mesh(local_mm);
         // mesh.fill_arange(as<uint64_t>(get_rank(cart_comm)) * prod(local_mm));
@@ -181,9 +182,12 @@ main()
         // IO
         IOTask<AcReal> iotask(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr);
         // iotask.write(mesh.buffer.data(), "test.dat");
+        PRINT_LOG("Launch write");
         iotask.launch_write(mesh.buffer, "test.dat");
         mesh.fill(-1, local_mm, Index(local_mm.count, as<uint64_t>(0)));
+        PRINT_LOG("Wait write");
         iotask.wait_write();
+        PRINT_LOG("Read write");
         iotask.read("test.dat", mesh.buffer.data());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
