@@ -1,5 +1,45 @@
 #include "pack.h"
 
+// static __host__ __device__ uint64_t
+// to_linear(const Index& coords, const Shape& shape)
+// {
+//     uint64_t result = 0;
+//     for (size_t j = 0; j < shape.count; ++j) {
+//         uint64_t factor = 1;
+//         for (size_t i = 0; i < j; ++i)
+//             factor *= shape[i];
+//         result += coords[j] * factor;
+//     }
+//     return result;
+// }
+
+// static __host__ __device__ Index
+// to_spatial(const uint64_t index, const Shape& shape)
+// {
+//     Index coords(shape.count);
+//     for (size_t j = 0; j < shape.count; ++j) {
+//         uint64_t divisor = 1;
+//         for (size_t i = 0; i < j; ++i)
+//             divisor *= shape[i];
+//         coords[j] = (index / divisor) % shape[j];
+//     }
+//     return coords;
+// }
+
+template <typename T>
+__global__ void
+kernel_pack(const Shape mm, const Shape block_shape, const Index block_offset,
+            const PackPtrArray<T*> inputs, T* output)
+{
+}
+
+template <typename T>
+__global__ void
+kernel_unpack(const T* input, const Shape mm, const Shape block_shape, const Index block_offset,
+              PackPtrArray<T*> outputs)
+{
+}
+
 template <typename T>
 void
 pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,

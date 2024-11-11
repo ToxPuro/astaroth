@@ -13,29 +13,29 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 ## Project-wide compilation flags
 add_compile_options(# C/CXX/CUDA/HIP
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wfatal-errors>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wall>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wextra>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wdouble-promotion>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wfloat-conversion>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wshadow>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wno-unused-result>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wconversion>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wsign-conversion>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wvla>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wcast-align>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wcast-qual>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wfloat-equal>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wformat=2>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wmissing-declarations>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wmissing-include-dirs>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wpointer-arith>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wredundant-decls>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wsequence-point>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wswitch>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wunreachable-code>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wunused-but-set-parameter>
-                    $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wwrite-strings>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfatal-errors>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wall>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wextra>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wdouble-promotion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfloat-conversion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wshadow>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-result>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wconversion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wsign-conversion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wvla>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wcast-align>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wcast-qual>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfloat-equal>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wformat=2>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wmissing-declarations>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wmissing-include-dirs>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wpointer-arith>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wredundant-decls>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wsequence-point>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wswitch>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wunreachable-code>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wunused-but-set-parameter>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wwrite-strings>
                     # C/CXX
                     $<$<COMPILE_LANGUAGE:C,CXX>:-Wpedantic>
                     $<$<COMPILE_LANGUAGE:C,CXX>:-pedantic-errors>
@@ -47,8 +47,10 @@ add_compile_options(# C/CXX/CUDA/HIP
                     $<$<COMPILE_LANGUAGE:C>:-Wbad-function-cast>
                     $<$<COMPILE_LANGUAGE:C>:-Wmissing-prototypes>
                     $<$<COMPILE_LANGUAGE:C>:-Wnested-externs>
-                    # CUDA/HIP
-                    $<$<COMPILE_LANGUAGE:CUDA,HIP>:-Wno-redundant-decls>
+                    # HIP
+                    $<$<COMPILE_LANGUAGE:HIP>:-Wno-redundant-decls>
+                    # CUDA
+                    $<$<COMPILE_LANGUAGE:CUDA,HIP>:--restrict>
 )
 
 ## Check whether device code is available on the system
@@ -62,6 +64,8 @@ if(CUDAToolkit_FOUND)
     add_compile_options(-DCUDA_ENABLED)
     set_property(GLOBAL PROPERTY CUDA_ARCHITECTURES "60")
     target_link_libraries(device-libraries INTERFACE CUDA::cudart)
+
+    add_library(device-module STATIC pack.cu)
 elseif(HIP_FOUND)
     message(STATUS "HIP found")
     enable_language(HIP)
@@ -69,13 +73,16 @@ elseif(HIP_FOUND)
     add_compile_options(-DHIP_ENABLED)
     set_property(GLOBAL PROPERTY HIP_ARCHITECTURES "gfx90a")
     target_link_libraries(device-libraries INTERFACE hip::host hip::device)
+
+    add_library(device-module STATIC pack.cu)
 else()
     message(WARNING "Did not find CUDA or HIP, compiling in host-only mode")
+    add_library(device-module STATIC pack.cc)
 endif()
 
 ## Packages
-add_library(tfm-utils STATIC pack.cc buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
-target_link_libraries(tfm-utils PRIVATE device-libraries)
+add_library(tfm-utils STATIC buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
+target_link_libraries(tfm-utils PRIVATE device-module device-libraries)
 
 find_package(MPI REQUIRED COMPONENTS C)
 add_executable(run main.cc packet.cc mpi_utils.cc)

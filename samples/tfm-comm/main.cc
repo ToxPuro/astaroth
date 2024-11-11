@@ -154,7 +154,7 @@ main()
         Buffer<AcReal, DeviceMemoryResource> dbuf(count);
 
         HostToDeviceBufferExchangeTask<AcReal> htod(count);
-        hbuf.arange(static_cast<AcReal>(count * get_rank(cart_comm)));
+        hbuf.arange(static_cast<size_t>(count * as<size_t>(get_rank(cart_comm))));
         htod.launch(hbuf);
         htod.wait(dbuf);
         hbuf.fill(0);
