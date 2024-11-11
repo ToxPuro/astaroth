@@ -70,34 +70,36 @@ kernel_unpack(const T* input, const Shape mm, const Shape block_shape, const Ind
     }
 }
 
-template <typename T>
+template <typename T, typename MemoryResource>
 void
 pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-     const PackPtrArray<T*>& inputs, T* output)
+     const PackPtrArray<T*>& inputs, Buffer<T, MemoryResource>& output)
 {
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
-    kernel_pack<<<bpg, tpb>>>(mm, block_shape, block_offset, inputs, output);
+    kernel_pack<<<bpg, tpb>>>(mm, block_shape, block_offset, inputs, output.data());
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
 
-template <typename T>
+template <typename T, typename MemoryResource>
 void
-unpack(const T* input, const Shape& mm, const Shape& block_shape, const Index& block_offset,
-       PackPtrArray<T*>& outputs)
+unpack(const Buffer<T, MemoryResource>& input, const Shape& mm, const Shape& block_shape,
+       const Index& block_offset, PackPtrArray<T*>& outputs)
 {
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
-    kernel_unpack<<<bpg, tpb>>>(input, mm, block_shape, block_offset, outputs);
+    kernel_unpack<<<bpg, tpb>>>(input.data(), mm, block_shape, block_offset, outputs);
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
 
-template void pack<AcReal>(const Shape&, const Shape&, const Index&, const PackPtrArray<AcReal*>&,
-                           AcReal*);
+template void pack<AcReal, DeviceMemoryResource>(const Shape&, const Shape&, const Index&,
+                                                 const PackPtrArray<AcReal*>&,
+                                                 Buffer<AcReal, DeviceMemoryResource>&);
 
-template void unpack<AcReal>(const AcReal*, const Shape&, const Shape&, const Index&,
-                             PackPtrArray<AcReal*>&);
+template void unpack<AcReal, DeviceMemoryResource>(const Buffer<AcReal, DeviceMemoryResource>&,
+                                                   const Shape&, const Shape&, const Index&,
+                                                   PackPtrArray<AcReal*>&);

@@ -149,7 +149,7 @@ Packet<T>::launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
 
     // Pack, post send, and ensure the message has left the pack buffer
     ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
-    pack(local_mm, segment.dims, send_offset, inputs, pack_buffer.data());
+    pack(local_mm, segment.dims, send_offset, inputs, pack_buffer);
     migrate(pack_buffer, send_buffer);
     ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), get_mpi_dtype<T>(), send_neighbor,
                              tag, cart_comm, &send_req));
@@ -167,7 +167,7 @@ Packet<T>::wait(PackPtrArray<T*> outputs)
 
     // Unpack
     migrate(recv_buffer, unpack_buffer);
-    unpack(unpack_buffer.data(), local_mm, segment.dims, segment.offset, outputs);
+    unpack(unpack_buffer, local_mm, segment.dims, segment.offset, outputs);
 
     // Wait send
     ERRCHK_MPI_EXPR_DESC(send_req != MPI_REQUEST_NULL, "wait called but no request in flight");

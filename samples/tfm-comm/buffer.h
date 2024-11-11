@@ -34,33 +34,45 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
 
     void fill(const T& value)
     {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>);
+        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+                      "Only enabled for host buffer");
         for (size_t i = 0; i < count; ++i)
             resource[i] = value;
     }
 
     void arange(const size_t min = 0)
     {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>);
+        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+                      "Only enabled for host buffer");
         for (size_t i = 0; i < count; ++i)
             resource[i] = static_cast<T>(min + i);
     }
 
     void display() const
     {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>);
+        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+                      "Only enabled for host buffer");
         for (size_t i = 0; i < count; ++i)
             std::cout << i << ": " << resource[i] << std::endl;
     }
 };
 
 #if defined(DEVICE_ENABLED)
+#if defined(CUDA_ENABLED)
+#include "errchk_cuda.h"
+#include <cuda_runtime.h>
+#elif defined(HIP_ENABLED)
+#include "errchk_cuda.h"
+#include "hip.h"
+#include <hip/hip_runtime.h>
+#endif
+
 template <typename MemoryResourceA, typename MemoryResourceB>
-constexpr cudaMemcpyKind
+cudaMemcpyKind
 get_kind()
 {
-    if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceA>) {
-        if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceB>) {
+    if (std::is_base_of<DeviceMemoryResource, MemoryResourceA>::value) {
+        if (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
             PRINT_LOG("dtod");
             return cudaMemcpyDeviceToDevice;
         }
@@ -70,7 +82,7 @@ get_kind()
         }
     }
     else {
-        if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceB>) {
+        if (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
             PRINT_LOG("htod");
             return cudaMemcpyHostToDevice;
         }

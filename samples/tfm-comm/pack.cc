@@ -1,9 +1,9 @@
 #include "pack.h"
 
-template <typename T>
+template <typename T, typename MemoryResource>
 void
 pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-     const PackPtrArray<T*>& inputs, T* output)
+     const PackPtrArray<T*>& inputs, Buffer<T, MemoryResource>& output)
 {
     const uint64_t block_nelems = prod(block_shape);
     for (uint64_t i = 0; i < block_nelems; ++i) {
@@ -23,10 +23,10 @@ pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
     }
 }
 
-template <typename T>
+template <typename T, typename MemoryResource>
 void
-unpack(const T* input, const Shape& mm, const Shape& block_shape, const Index& block_offset,
-       PackPtrArray<T*>& outputs)
+unpack(const Buffer<T, MemoryResource>& input, const Shape& mm, const Shape& block_shape,
+       const Index& block_offset, PackPtrArray<T*>& outputs)
 {
     const uint64_t block_nelems = prod(block_shape);
     for (uint64_t i = 0; i < block_nelems; ++i) {
@@ -46,8 +46,10 @@ unpack(const T* input, const Shape& mm, const Shape& block_shape, const Index& b
     }
 }
 
-template void pack<AcReal>(const Shape&, const Shape&, const Index&, const PackPtrArray<AcReal*>&,
-                           AcReal*);
+template void pack<AcReal, HostMemoryResource>(const Shape&, const Shape&, const Index&,
+                                               const PackPtrArray<AcReal*>&,
+                                               Buffer<AcReal, HostMemoryResource>&);
 
-template void unpack<AcReal>(const AcReal*, const Shape&, const Shape&, const Index&,
-                             PackPtrArray<AcReal*>&);
+template void unpack<AcReal, HostMemoryResource>(const Buffer<AcReal, HostMemoryResource>&,
+                                                 const Shape&, const Shape&, const Index&,
+                                                 PackPtrArray<AcReal*>&);

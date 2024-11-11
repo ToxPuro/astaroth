@@ -1,7 +1,9 @@
 ## CMake settings
 cmake_minimum_required(VERSION 3.10)
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 11)
+# set(CMAKE_CUDA_STANDARD 17)
+# set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 #set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -65,7 +67,7 @@ if(CUDAToolkit_FOUND)
     set_property(GLOBAL PROPERTY CUDA_ARCHITECTURES "60")
     target_link_libraries(device-libraries INTERFACE CUDA::cudart)
 
-    add_library(device-module STATIC pack.cu)
+    add_library(device-module STATIC pack.cu pack.cc)
 elseif(HIP_FOUND)
     message(STATUS "HIP found")
     enable_language(HIP)
@@ -74,7 +76,7 @@ elseif(HIP_FOUND)
     set_property(GLOBAL PROPERTY HIP_ARCHITECTURES "gfx90a")
     target_link_libraries(device-libraries INTERFACE hip::host hip::device)
 
-    add_library(device-module STATIC pack.cu)
+    add_library(device-module STATIC pack.cu pack.cc)
 else()
     message(WARNING "Did not find CUDA or HIP, compiling in host-only mode")
     add_library(device-module STATIC pack.cc)
@@ -84,9 +86,9 @@ endif()
 add_library(tfm-utils STATIC buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
 target_link_libraries(tfm-utils PRIVATE device-module device-libraries)
 
-find_package(MPI REQUIRED COMPONENTS C)
+find_package(MPI REQUIRED COMPONENTS CXX)
 add_executable(run main.cc packet.cc mpi_utils.cc)
-target_link_libraries(run PRIVATE MPI::MPI_C tfm-utils)
+target_link_libraries(run PRIVATE MPI::MPI_CXX tfm-utils)
 
 ## Automated tests
 include(CTest)
