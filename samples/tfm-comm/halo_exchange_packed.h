@@ -14,6 +14,8 @@ template <typename T> class HaloExchangeTask {
                      const size_t n_aggregate_buffers)
 
     {
+        ERRCHK_MPI(local_nn >= local_rr); // Must be larger than the boundary area to avoid boundary artifacts
+
         // Partition the mesh
         auto segments = partition(local_mm, local_nn, local_rr);
 

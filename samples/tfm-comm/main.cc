@@ -129,7 +129,6 @@ main()
 
         const Shape rr(global_nn.count, 1); // Symmetric halo
         const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
-        ERRCHK_MPI(local_nn >= rr); // Must be larger than the boundary area to avoid boundary artifacts
 
         NdArray<AcReal> mesh(local_mm);
         // mesh.fill_arange(as<uint64_t>(get_rank(cart_comm)) * prod(local_mm));
