@@ -6,7 +6,7 @@
 
 #if defined(__CUDA_ARCH__)
 #include <cuda_runtime.h>
-#elif defined(__HIP_DEVICE_COMPILE__)
+#elif defined(__HIP_DEVICE_COMPILE__) && __HIP_DEVICE_COMPILE__ == 1
 #include "hip.h"
 #include <hip/hip_runtime.h>
 #else
@@ -20,6 +20,14 @@
 
 #include "errchk.h"
 #include "type_conversion.h"
+
+// Disable errchecks in device code (not supported as of 2024-11-11)
+#if defined(__CUDA_ARCH__) || (defined(__HIP_DEVICE_COMPILE__) && __HIP_DEVICE_COMPILE__ == 1)
+#undef ERRCHK
+#define ERRCHK(expr)
+#undef ERRCHK_EXPR_DESC
+#define ERRCHK_EXPR_DESC(expr, ...)
+#endif
 
 template <typename T, size_t N> struct StaticArray {
     size_t count;

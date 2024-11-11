@@ -168,10 +168,13 @@ main()
         hbuf.display();
 
         // Packed MPI/CUDA halo exchange task
-        PackPtrArray<AcReal*> inputs{mesh.buffer.data()};
+        NdArray<AcReal, DeviceMemoryResource> device_mesh(local_mm);
+        migrate(mesh.buffer, device_mesh.buffer);
+        PackPtrArray<AcReal*> inputs{device_mesh.buffer.data()};
         HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, inputs.count);
         task.launch(cart_comm, inputs);
         task.wait(inputs);
+        migrate(device_mesh.buffer, mesh.buffer);
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)

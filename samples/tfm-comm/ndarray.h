@@ -81,8 +81,9 @@ template <typename T, typename MemoryResource = HostMemoryResource> struct NdArr
 
     void display() { ndarray_print_recursive(shape.count, shape.data, buffer.data()); }
 
-    friend std::ostream& operator<<(std::ostream& os, const NdArray<T>& obj)
+    friend std::ostream& operator<<(std::ostream& os, const NdArray<T, MemoryResource>& obj)
     {
+        static_assert(std::is_base_of_v<DeviceMemoryResource, MemoryResource>);
         os << "{";
         os << "shape: " << obj.shape << ", ";
         os << "buffer: " << obj.buffer;

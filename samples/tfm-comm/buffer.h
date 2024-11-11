@@ -18,8 +18,16 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
     }
 
     // Enable subscript notation
-    T& operator[](const size_t i) { ERRCHK(i < count); return resource[i]; }
-    const T& operator[](const size_t i) const { ERRCHK(i < count); return resource[i]; }
+    T& operator[](const size_t i)
+    {
+        ERRCHK(i < count);
+        return resource[i];
+    }
+    const T& operator[](const size_t i) const
+    {
+        ERRCHK(i < count);
+        return resource[i];
+    }
 
     T* data() const { return resource.get(); }
     size_t size() const { return count; }
@@ -79,7 +87,7 @@ migrate(const Buffer<T, MemoryResourceA>& in, Buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
     const cudaMemcpyKind kind = get_kind<MemoryResourceA, MemoryResourceB>();
-    ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(in.data()[0]), kind));
+    ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(in[0]), kind));
 }
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
@@ -90,7 +98,7 @@ migrate_async(const cudaStream_t stream, const Buffer<T, MemoryResourceA>& in,
     ERRCHK(in.size() == out.size());
     const cudaMemcpyKind kind = get_kind<MemoryResourceA, MemoryResourceB>();
     ERRCHK_CUDA_API(
-        cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in.data()[0]), kind, stream));
+        cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in[0]), kind, stream));
 }
 #else
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
