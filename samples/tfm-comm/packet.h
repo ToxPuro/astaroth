@@ -20,8 +20,8 @@ template <typename T> class Packet {
 
     Segment segment; // Shape of the data block the packet represents (for packing or unpacking)
 
-    Buffer<T> send_buffer;
-    Buffer<T> recv_buffer;
+    Buffer<T, HostMemoryResource> send_buffer;
+    Buffer<T, HostMemoryResource> recv_buffer;
 
     MPI_Comm cart_comm   = MPI_COMM_NULL;
     MPI_Request send_req = MPI_REQUEST_NULL; // MPI request for handling synchronization
