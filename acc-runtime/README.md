@@ -242,8 +242,7 @@ real arr[3] (at global scope)         //equivalent to dconst arr[3]. Dimensions 
 gmem real arr[AC_nx] //declaration for global array stored on the GPU global memory. Dimensions need to be known at compile time or be dconst int variables [not expressions involving dconsts].
 gmem arr[AC_mx][AC_my]           //Multidimensional global array.
 ```
-> Note: By default arrays are stored in column-major format,
-but by setting ROW_MAJOR_ORDER=ON arrays are stored in row-major order
+> Note: Arrays are stored in column-major format, if you want to pass arrays in row-major set AC_host_has_row_memory_order=1
 If OPTIMIZE_ARRAYS=ON the DSL compiler will identify unused `gmem` arrays and will not allocate them on the GPU.
 
 ```
@@ -550,6 +549,8 @@ Not meaningful for DSL
 int AC_proc_mapping_strategy
 int AC_decompose_strategy
 int AC_MPI_comm_strategy
+int AC_MPI_comm_strategy
+bool AC_host_has_row_memory_order
 Coordinate vectors of a Lagrangian grid (need LAGRANGIAN_GRID=ON)
 Field COORDS_X
 Field COORDS_Y

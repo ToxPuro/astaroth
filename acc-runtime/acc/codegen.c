@@ -1583,25 +1583,13 @@ get_index_node(const ASTNode* array_access_start, const string_vec var_dims_in)
     	        return NULL;
     	}
 	string_vec var_dims = VEC_INITIALIZER;
-	if(!AC_ROW_MAJOR_ORDER)
-		var_dims = str_vec_copy(var_dims_in);
-	else
-		for(int i = var_dims_in.size - 1; i >= 0; --i)
-			push(&var_dims,var_dims_in.data[i]);
-
+	var_dims = str_vec_copy(var_dims_in);
 	node_vec new_accesses = VEC_INITIALIZER;
-	if(!AC_ROW_MAJOR_ORDER)
-    		for(size_t j = 0; j < array_accesses.size; ++j)
-		{
-			ASTNode* prefix_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
-			push_node(&new_accesses,astnode_create(NODE_UNKNOWN,prefix_node,(ASTNode*)array_accesses.data[j]));
-		}
-	else
-    		for(int j = array_accesses.size-1; j >= 0; --j)
-		{
-			ASTNode* prefix_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
-			push_node(&new_accesses,astnode_create(NODE_UNKNOWN,prefix_node,(ASTNode*)array_accesses.data[j]));
-		}
+    	for(size_t j = 0; j < array_accesses.size; ++j)
+	{
+		ASTNode* prefix_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
+		push_node(&new_accesses,astnode_create(NODE_UNKNOWN,prefix_node,(ASTNode*)array_accesses.data[j]));
+	}
     	for(size_t j = 0; j < array_accesses.size; ++j)
     	{
 		ASTNode* node = (ASTNode*) new_accesses.data[j];
@@ -7536,10 +7524,9 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
            "-DIMPLEMENTATION=%d "
            "-DMAX_THREADS_PER_BLOCK=%d "
            "-DTWO_D=%d "
-           "-DAC_ROW_MAJOR_ORDER=%d "
            "-Wfloat-conversion -Wshadow -I. %s -lm "
            "-o %s",
-           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, TWO_D,AC_ROW_MAJOR_ORDER,STENCILGEN_SRC,
+           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, TWO_D,STENCILGEN_SRC,
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);

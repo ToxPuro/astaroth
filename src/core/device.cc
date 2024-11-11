@@ -150,13 +150,76 @@ acDeviceStoreVectorUniform(const Device device, const Stream stream, const AcRea
     return acStoreReal3Uniform(device->streams[stream], param, value);
 }
 
+// Recursive function to generate indices
+void generateIndicesHelper(const std::vector<size_t>& dimensions, std::vector<int>& currentIndex,
+                           std::vector<std::vector<int>>& result, size_t depth) {
+    if (depth == dimensions.size()) {
+        result.push_back(currentIndex);
+        return;
+    }
+
+    for (size_t i = 0; i < dimensions[depth]; ++i) {
+        currentIndex[depth] = i;
+        generateIndicesHelper(dimensions, currentIndex, result, depth + 1);
+    }
+}
+
+// Main function to generate index range
+std::vector<std::vector<int>> generateIndexRange(const std::vector<size_t>& dimensions) {
+    std::vector<std::vector<int>> result;
+    std::vector<int> currentIndex(dimensions.size(), 0);
+    generateIndicesHelper(dimensions, currentIndex, result, 0);
+    return result;
+}
+
 template <typename P, typename V>
 static AcResult
 acDeviceStoreUniform(const Device device, const Stream stream, const P param, V* value)
 {
 	cudaSetDevice(device->id);
 	if constexpr (IsArrayParam(param))
-		return acStoreUniform(param, value, get_array_length(param,device->local_config));
+	{
+		auto column_to_row_order = [](const P array, const AcMeshInfo host_info, auto* src, auto* dst)
+		{
+			const int n_dims       = get_array_n_dims(array);
+			const auto sizes_array = get_array_dim_sizes(array,host_info);
+			std::vector<size_t> sizes{sizes_array.data(), sizes_array.data() + n_dims};
+			auto column_major_index = [&](const auto& indexes)
+			{
+				size_t res = 0;
+				size_t coeff = 1;
+				for(int i = 0; i < n_dims; ++i)
+				{
+					res += coeff*indexes[i];
+					coeff *= sizes[i];
+				}
+				return res;
+			};
+			auto row_major_index = [&](const auto& indexes)
+			{
+				size_t res = 0;
+				size_t coeff = 1;
+				for(int i = n_dims-1; i >= 0; --i)
+				{
+					res += coeff*indexes[i];
+					coeff *= sizes[i];
+				}
+				return res;
+			};
+			auto index_range = generateIndexRange(sizes);
+			for(const auto& index : index_range)
+				dst[row_major_index(index)] = src[column_major_index(index)];
+		};
+		const size_t len = get_array_length(param,device->local_config);
+		V* dst = device->local_config[AC_host_has_row_memory_order] ? (V*)malloc(sizeof(V)*len) : value;
+		ERRCHK_ALWAYS(acStoreUniform(param, dst, len) == AC_SUCCESS);
+		if(device->local_config[AC_host_has_row_memory_order])
+		{
+			column_to_row_order(param,device->local_config,dst,value);
+			free(dst);
+		}
+		return AC_SUCCESS;
+	}
 	else
 		return acStoreUniform(device->streams[stream], param, value);
 }
@@ -183,11 +246,56 @@ acDeviceUpdate(Device device, const AcMeshInfo config)
 }
 
 
+
+
 template <typename P>
 AcResult
 acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info, const P array)
 {
+	auto row_to_column_order = [](const P array, const AcMeshInfo host_info)
+	{
+		auto* src = host_info[array];
+		const size_t len = get_array_length(array,host_info);
+		auto* dst = (decltype(src)) malloc(sizeof(decltype(src))*len);
+		const int n_dims       = get_array_n_dims(array);
+		const auto sizes_array = get_array_dim_sizes(array,host_info);
+		std::vector<size_t> sizes{sizes_array.data(), sizes_array.data() + n_dims};
+		auto column_major_index = [&](const auto& indexes)
+		{
+			size_t res = 0;
+			size_t coeff = 1;
+			for(int i = 0; i < n_dims; ++i)
+			{
+				res += coeff*indexes[i];
+				coeff *= sizes[i];
+			}
+			return res;
+		};
+		auto row_major_index = [&](const auto& indexes)
+		{
+			size_t res = 0;
+			size_t coeff = 1;
+			for(int i = n_dims-1; i >= 0; --i)
+			{
+				res += coeff*indexes[i];
+				coeff *= sizes[i];
+			}
+			return res;
+		};
+		auto index_range = generateIndexRange(sizes);
+		for(const auto& index : index_range)
+			dst[column_major_index(index)] = src[row_major_index(index)];
+		return dst;
+	};
+
 	cudaSetDevice(device->id);
+	if(device->local_config[AC_host_has_row_memory_order])
+	{
+		auto* values = row_to_column_order(array,host_info);
+		auto res= acLoadUniform(device->streams[stream],array,values,get_array_length(array,host_info));
+		free(values);
+		return res;
+	}
 	return acLoadUniform(device->streams[stream],array,host_info[array], get_array_length(array,host_info));
 }
 

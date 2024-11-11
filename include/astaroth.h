@@ -430,19 +430,11 @@ acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
 {
     const int3 mm = acGetLocalMM(info);
 
-#if AC_ROW_MAJOR_ORDER
-    return (int3){
-        (int)i % mm.z,
-        ((int)i % (mm.z * mm.y)) / mm.z,
-        (int)i / (mm.z * mm.y),
-    };
-#else
     return (int3){
         (int)i % mm.x,
         ((int)i % (mm.x * mm.y)) / mm.x,
         (int)i / (mm.x * mm.y),
     };
-#endif
 }
 
 /** Prints all parameters inside AcMeshInfo */

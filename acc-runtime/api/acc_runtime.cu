@@ -312,18 +312,8 @@ VAL(const int3& val)
 #include "store_dconst_arrays.h"
 
 
-#if AC_ROW_MAJOR_ORDER
-#define DEVICE_VTXBUF_IDX(i, j, k)                                             \
-  ((k) + (j)*VAL(AC_mz) + (i)*VAL(AC_myz))
-
-#else
-
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*VAL(AC_mx) + (k)*VAL(AC_mxy))
-
-#endif
-
-
 
 __device__ int
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
@@ -373,11 +363,7 @@ flush_kernel_int(int* arr, const size_t n, const int value)
 template <typename T>
 T TO_CORRECT_ORDER(const T vol)
 {
-#if AC_ROW_MAJOR_ORDER
-	return (T){vol.z,vol.y,vol.x};
-#else
 	return vol;
-#endif
 }
 size_t TO_CORRECT_ORDER(const size_t size)
 {

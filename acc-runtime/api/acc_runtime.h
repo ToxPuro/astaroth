@@ -18,13 +18,8 @@
   */
   #pragma once
 
-  #if AC_ROW_MAJOR_ORDER
-  #define AC_INDEX_ORDER(i,j,k,x,y,z) \
-  	k + z*j + y*z*i
-  #else
   #define AC_INDEX_ORDER(i,j,k,x,y,z) \
   	i + x*j + x*y*k
-  #endif
 
   #include <stdio.h>
   #include <stdbool.h>
@@ -589,14 +584,26 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   }
 
   template <typename P>
-  constexpr static int
-  get_array_length(const P array, const AcMeshInfo host_info)
+  constexpr static auto
+  get_array_dim_sizes(const P array, const AcMeshInfo host_info)
   {
 	  AcArrayDims dims     = get_array_info(array).dims;
 	  int num_dims         = get_array_info(array).num_dims;
-	  int res = 1;
+	  std::array<size_t,20> res{};
 	  for(int i = 0; i < num_dims; ++i)
-		  res *= dims.from_config[i] ? host_info.int_params[dims.len[i]] : dims.len[i];
+	  	res[i] = (dims.from_config[i] ? host_info.int_params[dims.len[i]] : dims.len[i]);
+	  return res;
+  }
+
+  template <typename P>
+  constexpr static int
+  get_array_length(const P array, const AcMeshInfo host_info)
+  {
+	  auto sizes = get_array_dim_sizes(array,host_info);
+	  int res = 1;
+	  int num_dims         = get_array_info(array).num_dims;
+	  for(int i = 0; i < num_dims; ++i)
+		  res *= sizes[i];
 	  return res;
   }
 

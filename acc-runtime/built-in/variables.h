@@ -114,6 +114,7 @@ Field COORDS_Z
 #endif
 
 run_const int3 AC_domain_decomposition
+run_const bool AC_host_has_row_memory_order
 int3 AC_multigpu_offset
 int3 AC_domain_coordinates
 

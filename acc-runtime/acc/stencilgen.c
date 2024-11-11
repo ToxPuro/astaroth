@@ -165,19 +165,11 @@ gen_stencil_definitions(void)
 void
 gen_kernel_common_prefix()
 {
-#if AC_ROW_MAJOR_ORDER
-  printf("const int3 tid = (int3){"
-         "threadIdx.z + blockIdx.z * blockDim.z,"
-         "threadIdx.y + blockIdx.y * blockDim.y,"
-         "threadIdx.x + blockIdx.x * blockDim.x,"
-         "};");
-#else
   printf("const int3 tid = (int3){"
          "threadIdx.x + blockIdx.x * blockDim.x,"
          "threadIdx.y + blockIdx.y * blockDim.y,"
          "threadIdx.z + blockIdx.z * blockDim.z,"
          "};");
-#endif
   printf("const int3 vertexIdx = (int3){"
          "tid.x + start.x,"
          "tid.y + start.y,"

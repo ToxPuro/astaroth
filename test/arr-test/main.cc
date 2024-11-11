@@ -29,6 +29,7 @@
 #include <vector>
 
 #define NUM_INTEGRATION_STEPS (1)
+#define ROW_MAJOR_ORDER (0)
 
 static bool finalized = false;
 
@@ -45,19 +46,19 @@ drand()
 	return (double)(rand()) / (double)(rand());
 }
 
-#if AC_ROW_MAJOR_ORDER
+#if ROW_MAJOR_ORDER
 #define TWO_D_ARR(i,j) [i][j]
 #else
 #define TWO_D_ARR(i,j) [j][i]
 #endif
 
-#if AC_ROW_MAJOR_ORDER
+#if ROW_MAJOR_ORDER
 #define THREE_D_ARR(i,j,k) [i][j][k]
 #else
 #define THREE_D_ARR(i,j,k) [k][j][i]
 #endif
 
-#if AC_ROW_MAJOR_ORDER
+#if ROW_MAJOR_ORDER
 #define FOUR_D_ARR(i,j,k,l) [i][j][k][l]
 #else
 #define FOUR_D_ARR(i,j,k,l) [l][k][j][i]
@@ -81,6 +82,7 @@ main(void)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    info[AC_host_has_row_memory_order] = ROW_MAJOR_ORDER;
 
     const int max_devices = 1;
     if (nprocs > max_devices) {
