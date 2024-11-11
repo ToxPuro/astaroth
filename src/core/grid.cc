@@ -4577,7 +4577,7 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 		for(size_t j = 0; j < bcs.size(); ++j)
 			dependency_matrix[i][j] = i != j && overlaps(bcs[i].in,bcs[j].out) && (bcs[i].boundary & bcs[j].boundary);
 	//Kahn's algorithm
-	std::stack<size_t> vertices_under_work;
+	std::queue<size_t> vertices_under_work;
 
 	auto no_incoming_edges = [&](const size_t current_vertex)
 	{
@@ -4605,7 +4605,7 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 	std::vector<size_t> res{};
 	while(vertices_under_work.size() != 0)
 	{
-		auto current_vertex = vertices_under_work.top();
+		auto current_vertex = vertices_under_work.front();
 		vertices_under_work.pop();
 		res.push_back(current_vertex);
 		for(const auto& vertex : get_dependent_vertices(current_vertex))
