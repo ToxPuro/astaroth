@@ -1105,7 +1105,7 @@ SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
 
     // Synctask is on default stream
     {
-        stream = STREAM_DEFAULT;
+        stream = device->streams[STREAM_DEFAULT];
     }
     syncVBA();
 

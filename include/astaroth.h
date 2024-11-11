@@ -42,42 +42,45 @@ typedef struct {
     AcMeshInfo info;
 } AcMesh;
 
-#define STREAM_0 (0)
-#define STREAM_1 (1)
-#define STREAM_2 (2)
-#define STREAM_3 (3)
-#define STREAM_4 (4)
-#define STREAM_5 (5)
-#define STREAM_6 (6)
-#define STREAM_7 (7)
-#define STREAM_8 (8)
-#define STREAM_9 (9)
-#define STREAM_10 (10)
-#define STREAM_11 (11)
-#define STREAM_12 (12)
-#define STREAM_13 (13)
-#define STREAM_14 (14)
-#define STREAM_15 (15)
-#define STREAM_16 (16)
-#define STREAM_17 (17)
-#define STREAM_18 (18)
-#define STREAM_19 (19)
-#define STREAM_20 (20)
-#define STREAM_21 (21)
-#define STREAM_22 (22)
-#define STREAM_23 (23)
-#define STREAM_24 (24)
-#define STREAM_25 (25)
-#define STREAM_26 (26)
-#define STREAM_27 (27)
-#define STREAM_28 (28)
-#define STREAM_29 (29)
-#define STREAM_30 (30)
-#define STREAM_31 (31)
+typedef enum {
+	STREAM_0,
+	STREAM_1,
+	STREAM_2,
+	STREAM_3,
+	STREAM_4,
+	STREAM_5,
+	STREAM_6,
+	STREAM_7,
+	STREAM_8,
+	STREAM_9,
+	STREAM_10,
+	STREAM_11,
+	STREAM_12,
+	STREAM_13,
+	STREAM_14,
+	STREAM_15,
+	STREAM_16,
+	STREAM_17,
+	STREAM_18,
+	STREAM_19,
+	STREAM_20,
+	STREAM_21,
+	STREAM_22,
+	STREAM_23,
+	STREAM_24,
+	STREAM_25,
+	STREAM_26,
+	STREAM_27,
+	STREAM_28,
+	STREAM_29,
+	STREAM_30,
+	STREAM_31,
+	STREAM_ALL,
+} Stream;
+
+const Stream STREAM_DEFAULT = STREAM_0;
 #define NUM_STREAMS (32)
-#define STREAM_DEFAULT (STREAM_0)
-#define STREAM_ALL (NUM_STREAMS)
-typedef int Stream;
+
 
 // For plate buffers.
 enum {AC_H2D, AC_D2H};    // pack/unpack direction

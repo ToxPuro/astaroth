@@ -552,7 +552,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     	    	    cudaMalloc((void**)&device->vba.reduce_scratchpads_real[i][j], 
 			    i < NUM_REAL_OUTPUTS ? scratchpad_size_bytes : acVertexBufferSizeBytes(device->local_config))
 		    );
-    	    	acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads_real[i][j], scratchpad_size,
+    	    	acKernelFlush(device->streams[STREAM_DEFAULT],device->vba.reduce_scratchpads_real[i][j], scratchpad_size,
 			      i < NUM_REAL_OUTPUTS ? scratchpad_size : acVertexBufferSize(device->local_config)
 			     );
     	    }
@@ -565,7 +565,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     	    {
     	    	ERRCHK_CUDA_ALWAYS(
     	    	    cudaMalloc((void**)&device->vba.reduce_scratchpads_int[i][j], scratchpad_size_bytes));
-    	    	acKernelFlushInt(STREAM_DEFAULT,device->vba.reduce_scratchpads_int[i][j], scratchpad_size,0);
+    	    	acKernelFlushInt(device->streams[STREAM_DEFAULT],device->vba.reduce_scratchpads_int[i][j], scratchpad_size,0);
     	    }
     	}
     }

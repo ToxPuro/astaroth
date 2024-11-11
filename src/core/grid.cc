@@ -2116,9 +2116,9 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
 	    if(reduce_outputs[i].variable >= 0 && reduce_outputs[i].called)
 	    {
 		if(reduce_outputs[i].type == AC_REAL_TYPE)
-	    		acDeviceFinishReduce(grid.device,reduce_outputs[i].variable,&local_res_real[i],reduce_kernels[i],reduce_ops[i],(AcRealOutputParam)reduce_outputs[i].variable);
+	    		acDeviceFinishReduce(grid.device,(Stream)reduce_outputs[i].variable,&local_res_real[i],reduce_kernels[i],reduce_ops[i],(AcRealOutputParam)reduce_outputs[i].variable);
 		else if(reduce_outputs[i].type == AC_INT_TYPE)
-	    		acDeviceFinishReduceInt(grid.device,reduce_outputs[i].variable,&local_res_int[i],reduce_kernels[i],reduce_ops[i],(AcIntOutputParam)reduce_outputs[i].variable);
+	    		acDeviceFinishReduceInt(grid.device,(Stream)reduce_outputs[i].variable,&local_res_int[i],reduce_kernels[i],reduce_ops[i],(AcIntOutputParam)reduce_outputs[i].variable);
 		else if(reduce_outputs[i].type == AC_PROF_TYPE)
 			;//acDeviceReduceAverages(grid.device, reduce_outputs[i].variable, (Profile)reduce_outputs[i].variable);
 		else
@@ -4042,7 +4042,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 	const int3 out_volume = acGetLocalMM(grid.device->local_config);
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
         cudaMemcpy(in, host_buffer, bytes, cudaMemcpyHostToDevice);
-        retval = acDeviceVolumeCopy(device, field, in, in_offset, in_volume, out, out_offset,
+        retval = acDeviceVolumeCopy(device, (Stream)field, in, in_offset, in_volume, out, out_offset,
                                     out_volume);
         ERRCHK_ALWAYS(retval == AC_SUCCESS);
     }
