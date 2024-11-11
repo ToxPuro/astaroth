@@ -619,6 +619,7 @@ main(int argc, char* argv[])
     fwrite(written_fields,sizeof(int),NUM_ALL_FIELDS,fp_written_fields);
     fwrite(read_profiles   ,sizeof(int),NUM_PROFILES,fp_profiles_read);
     fwrite(reduced_profiles,sizeof(int),NUM_PROFILES,fp_profiles_reduced);
+    fprintf(reduce_dst_integers,"\n");
   }
 
 

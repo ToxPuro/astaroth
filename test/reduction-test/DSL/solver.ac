@@ -17,6 +17,10 @@ output real AC_max_val
 output real AC_sum_val
 output int  AC_int_sum_val
 
+//TP: there was a bug where reductions worked only if you had a single kernel.
+//This is a regression test against it
+Kernel empty()
+{}
 Kernel test_reduce()
 {
     reduce_min(true, FIELD, AC_min_val)
