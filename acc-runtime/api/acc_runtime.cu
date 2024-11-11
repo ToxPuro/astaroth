@@ -1172,7 +1172,8 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
 
   //TP: since autotuning should be quite fast when the dim is not NGHOST only log for actually 3d portions
   const bool builtin_kernel = strlen(kernel_names[kernel]) > 2 && kernel_names[kernel][0] == 'A' && kernel_names[kernel][1] == 'C';
-  const bool log = !builtin_kernel && (dims.x > NGHOST_X && dims.y > NGHOST_Y && dims.z > NGHOST_Z);
+  const bool large_launch = (dims.x > NGHOST_X && dims.y > NGHOST_Y && dims.z > NGHOST_Z);
+  const bool log = !builtin_kernel && large_launch;
 
   dim3 best_tpb(0, 0, 0);
   float best_time     = INFINITY;
@@ -1224,16 +1225,19 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
     }
   }
   size_t counter  = 0;
-#if AC_MPI_ENABLED
-  const size_t portion = (size_t)ceil((1.0*samples.size())/nprocs);
-  const size_t start_samples = portion*grid_pid;
-  const size_t end_samples   = min(samples.size(), portion*(grid_pid+1));
-  //const size_t start_samples = 0;
-  //const size_t end_samples   = samples.size();
-#else
-  const size_t start_samples = 0;
-  const size_t end_samples   = samples.size();
-#endif
+  size_t start_samples{};
+  size_t end_samples{};
+  if(large_launch && AC_MPI_ENABLED)
+  {
+  	const size_t portion = (size_t)ceil((1.0*samples.size())/nprocs);
+  	start_samples = portion*grid_pid;
+  	end_samples   = min(samples.size(), portion*(grid_pid+1));
+  }
+  else
+  {
+  	start_samples = 0;
+  	end_samples   = samples.size();
+  }
   const size_t n_samples = end_samples-start_samples;
   const Kernel func = kernels[kernel];
   for(size_t sample  = start_samples; sample < end_samples; ++sample)
@@ -1289,13 +1293,10 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
         //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         // fflush(stdout);
   }
-  const autotune_measurement best_measurement = gather_best_measurement({best_time,best_tpb});
-  //const autotune_measurement best_measurement({best_time,best_tpb});
+  const autotune_measurement best_measurement = 
+	  large_launch ? gather_best_measurement({best_time,best_tpb}) : (autotune_measurement){best_time,best_tpb};
   c.tpb = best_measurement.tpb;
   best_time = best_measurement.time;
-  // printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x,
-  // best_tpb.y,
-  //        best_tpb.z, (double)best_time / num_iters);
   if(grid_pid == 0)
   {
         FILE* fp = fopen(autotune_csv_path, "a");
@@ -1305,9 +1306,9 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
                 nz, best_tpb.x, best_tpb.y, best_tpb.z,
                 (double)best_time / num_iters);
 #else
-        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g\n", IMPLEMENTATION, kernel, dims.x,
+        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g, %s\n", IMPLEMENTATION, kernel, dims.x,
                 dims.y, dims.z, best_tpb.x, best_tpb.y, best_tpb.z,
-                (double)best_time / num_iters);
+                (double)best_time / num_iters, kernel_names[kernel]);
 #endif
         fclose(fp);
   }
