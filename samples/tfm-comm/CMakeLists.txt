@@ -74,7 +74,7 @@ else()
 endif()
 
 ## Packages
-add_library(tfm-utils STATIC buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
+add_library(tfm-utils STATIC pack.cc buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
 target_link_libraries(tfm-utils PRIVATE device-libraries)
 
 find_package(MPI REQUIRED COMPONENTS C)
