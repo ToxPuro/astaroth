@@ -242,8 +242,8 @@ real arr[3] (at global scope)         //equivalent to dconst arr[3]. Dimensions 
 gmem real arr[AC_nx] //declaration for global array stored on the GPU global memory. Dimensions need to be known at compile time or be dconst int variables [not expressions involving dconsts].
 gmem arr[AC_mx][AC_my]           //Multidimensional global array.
 ```
-> Note: Arrays are stored in column-major format, if you want to pass arrays in row-major set AC_host_has_row_memory_order=1. Arrays are still internally stored as column-major but the arrays are converted correctly between the two data formats. If you have use case where having Astaroth store data in row-major format would be important make a pull request describing the use case and we can consider supporting it.  
-in branch `reference-row-major-implementation` one can find a version of Astaroth that internally supports also row-major.
+> Note: Arrays are stored in column-major format, if you want to pass arrays in row-major set AC_host_has_row_memory_order=1. Arrays are still internally stored as column-major but the arrays are converted correctly between the two data formats. If you have a use case where having Astaroth store data in row-major format would be important make a pull request describing the use case and we can consider supporting it.  
+In branch `reference-row-major-implementation` one can find a version of Astaroth that internally supports also row-major.
 If OPTIMIZE_ARRAYS=ON the DSL compiler will identify unused `gmem` arrays and will not allocate them on the GPU.
 
 ```
