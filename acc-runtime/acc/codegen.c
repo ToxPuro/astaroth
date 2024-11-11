@@ -1930,8 +1930,7 @@ get_function_params_info(const ASTNode* node, const char* func_name)
 void
 gen_kernel_structs(const ASTNode* root)
 {
-	FILE* stream = fopen("user_input_typedefs.h","a");
-	fprintf(stream,"typedef union acKernelInputParams {\n\n");
+
 	string_vec names = VEC_INITIALIZER;
 	func_params_info infos[num_kernels];
 	int kernel_index = 0;
@@ -2034,12 +2033,11 @@ gen_kernel_structs(const ASTNode* root)
 		func_params_info info = infos[k];
 		const char* name = names.data[k];
 		FILE* fp = fopen("user_input_typedefs.h","a");
-		fprintf(fp,"typedef struct %sInputParams {", name);
+		fprintf(fp,"\ntypedef struct %sInputParams {", name);
 		for(size_t i = 0; i < info.types.size; ++i)
 			fprintf(fp,"%s %s;",info.types.data[i],info.expr.data[i]);
 		fprintf(fp,"} %sInputParams;\n",name);
 		fclose(fp);
-		fprintf(stream,"%sInputParams %s;\n", name,name);
 		fp = fopen("safe_vtxbuf_input_params.h","a");
 		fprintf(fp,"if(kernel == %s){ \n",name);
 		for(size_t i = 0; i < info.types.size; ++i)
@@ -2070,6 +2068,14 @@ gen_kernel_structs(const ASTNode* root)
 	fclose(fp);
 	for(size_t k = 0; k < num_kernels; ++k)
 		free_func_params_info(&infos[k]);
+
+	FILE* stream = fopen("user_input_typedefs.h","a");
+	fprintf(stream,"\ntypedef union acKernelInputParams {\n\n");
+	for(size_t k = 0; k < num_kernels; ++k)
+	{
+		const char* name = names.data[k];
+		fprintf(stream,"%sInputParams %s;\n", name,name);
+	}
 	fprintf(stream,"} acKernelInputParams;\n\n");
 	fclose(stream);
 	free_str_vec(&names);
