@@ -17,6 +17,15 @@
       along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
   */
   #pragma once
+
+  #if AC_ROW_MAJOR_ORDER
+  #define AC_INDEX_ORDER(i,j,k,x,y,z) \
+  	k + z*j + y*z*i
+  #else
+  #define AC_INDEX_ORDER(i,j,k,x,y,z) \
+  	i + x*j + x*y*k
+  #endif
+
   #include <stdio.h>
   #include <stdbool.h>
   #if AC_MPI_ENABLED

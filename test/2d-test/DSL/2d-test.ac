@@ -1,6 +1,6 @@
 Field UU
 
-#include "../../stdlib/derivs.h"
+#include "../../../acc-runtime/stdlib/derivs.h"
 input real AC_dt
 Kernel singlepass_solve(real dt) {
     write(UU, value(UU) + dt*( derxx(UU) + deryy(UU)))

@@ -135,8 +135,7 @@ main(void)
 
     // CPU alloc
     AcMeshInfo info;
-    AcCompInfo comp_info = acInitCompInfo();
-    acLoadConfig(AC_DEFAULT_CONFIG, &info, &comp_info);
+    acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
     info.real_params[AC_dsx] = a;
     info.real_params[AC_dsy] = h;
@@ -195,7 +194,8 @@ main(void)
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridSynchronizeStream(STREAM_ALL);
 
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    auto periodic = acGetDSLTaskGraph(bcs);
+    acGridExecuteTaskGraph(periodic,1);
     acGridSynchronizeStream(STREAM_ALL);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
@@ -207,9 +207,10 @@ main(void)
         }
     }
     fflush(stdout);
-    acGridExecuteTaskGraph(initialize, 1);
+    acGridExecuteTaskGraph(initialize,1);
     acGridSynchronizeStream(STREAM_ALL);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridExecuteTaskGraph(periodic,1);
+    acGridSynchronizeStream(STREAM_ALL);
 
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     acHostMeshApplyPeriodicBounds(&candidate);

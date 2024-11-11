@@ -1310,12 +1310,8 @@ BoundaryConditionTask::populate_boundary_region()
      		                                           : region_id.x == -1 ? 0 : NGHOST_X),
      		                         (region_id.y == 1 ? NGHOST_Y + nn.y
      		                                           : region_id.y == -1 ? 0 : NGHOST_Y),
-#if TWO_D == 0
      		                         (region_id.z == 1 ? NGHOST_Z + nn.z
      		                                           : region_id.z == -1 ? 0 : NGHOST_Z)};
-#else	
-     	   			 0};
-#endif
      		const int3 end = start + boundary_dims;
      		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
      	}
@@ -1327,12 +1323,8 @@ BoundaryConditionTask::populate_boundary_region()
      		                                           : region_id.x == -1 ? 0 : NGHOST_X),
      		                         (region_id.y == 1 ? NGHOST_Y + nn.y
      		                                           : region_id.y == -1 ? 0 : NGHOST_Y),
-#if TWO_D == 0
      		                         (region_id.z == 1 ? NGHOST_Z + nn.z
      		                                           : region_id.z == -1 ? 0 : NGHOST_Z)};
-#else	
-     	   			 0};
-#endif
      		const int3 end = start + boundary_dims;
      		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
      }

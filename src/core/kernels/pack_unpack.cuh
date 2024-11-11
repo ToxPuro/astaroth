@@ -27,7 +27,7 @@ template <int direction>  static __global__ void packUnpackPlate(AcReal* __restr
               yIdx = xyIdx / y_block_size,
               xIdx = xyIdx % y_block_size;
 
-    const int vba_idx = IDX(start+(int3){xIdx,yIdx,zIdx});
+    const int vba_idx = DEVICE_VTXBUF_IDX(start+(int3){xIdx,yIdx,zIdx});
 
     if (direction==AC_D2H){
       //vba.out[vba_handle][vba_idx] = (AcReal)(-vba_idx-1);  // filling the buffer with the index for debugging purposes
@@ -56,7 +56,7 @@ __global__ void setPlate(VertexBufferArray vba, int3 start, int3 end)
               yIdx = xyIdx / y_block_size,
               xIdx = xyIdx % y_block_size;
     
-    const int vba_idx = IDX(start+(int3){xIdx,yIdx,zIdx});
+    const int vba_idx = DEVICE_VTXBUF_IDX(start+(int3){xIdx,yIdx,zIdx});
     vba.out[vba_handle][vba_idx] = (AcReal)(-vba_idx-1);
 //printf("vba= %f \n",vba.out[vba_handle][vba_idx]);
 }

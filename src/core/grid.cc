@@ -288,11 +288,7 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 
     ERRCHK_ALWAYS(submesh_config[AC_nx] % decomp.x == 0);
     ERRCHK_ALWAYS(submesh_config[AC_ny] % decomp.y == 0);
-#if TWO_D == 0
     ERRCHK_ALWAYS(submesh_config[AC_nz] % decomp.z == 0);
-#else
-    ERRCHK_ALWAYS(decomp.z == 1);
-#endif
 
     const int3 nn = acGetLocalNN(submesh_config);
     const int submesh_nx = nn.x / decomp.x;
@@ -316,11 +312,7 @@ get_global_nn()
 {
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-#if TWO_D == 0
-	return acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
-#else
-	return acConstructInt3Param(AC_nxgrid, AC_nygrid, 1, info);
-#endif
+    return acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
 }
 
 
@@ -331,24 +323,12 @@ check_that_decomp_valid(const AcMeshInfo info)
     const int3 nn = acGetLocalNN(info);
     const bool nx_valid = nn.x % decomp.x == 0;
     const bool ny_valid = nn.y % decomp.y == 0;
-#if TWO_D == 0
     const bool nz_valid = nn.z % decomp.z == 0;
-#endif
-#if TWO_D == 0
     if (!nx_valid || !ny_valid || !nz_valid) {
-#else
-    if (!nx_valid || !ny_valid) {
         WARNING("Mesh dimensions must be divisible by the decomposition\n");
-#endif
-#if TWO_D == 0
         fprintf(stderr, "Decomposition: (%lu, %lu, %lu)\n", decomp.x, decomp.y, decomp.z);
         fprintf(stderr, "Mesh dimensions: (%d, %d, %d)\n", nn.x, nn.y, nn.z);
         fprintf(stderr, "Divisible: (%d, %d, %d)\n", nx_valid, ny_valid, nz_valid);
-#else
-        fprintf(stderr, "Decomposition: (%lu, %lu)\n", decomp.x, decomp.y);
-        fprintf(stderr, "Mesh dimensions: (%d, %d)\n", nn.x, nn.y);
-        fprintf(stderr, "Divisible: (%d, %d)\n", nx_valid, ny_valid);
-#endif
     }
 }
 #ifdef AC_INTEGRATION_ENABLED
@@ -1416,7 +1396,6 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
     const int3 nn = acGetLocalNN(grid.device->local_config);
     const int3 mm = acGetLocalMM(grid.device->local_config);
 
-#if TWO_D == 0
     // Send to self
     if (pid == 0) {
         for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
@@ -1434,25 +1413,7 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
             }
         }
     }
-#else
-    // Send to self
-    if (pid == 0) {
-        for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
-            // For pencils
-            for (int j = 0; j < mm.y; ++j) {
-                const int i       = 0;
-                const int count   = mm.x;
-                const int src_idx = acVertexBufferIdx(i, j, 1, grid.submesh.info);
-                const int dst_idx = acVertexBufferIdx(i, j, 1, host_mesh->info);
-                memcpy(&host_mesh->vertex_buffer[vtxbuf][dst_idx],   //
-                       &grid.submesh.vertex_buffer[vtxbuf][src_idx], //
-                       count * sizeof(grid.submesh.vertex_buffer[i][0]));
-            }
-        }
-    }
-#endif
 
-#if TWO_D == 0
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         // For pencils
         for (int k = 0; k < mm.z; ++k) {
@@ -1483,35 +1444,6 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
             }
         }
     }
-#else
-    for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
-        for (int j = 0; j < mm.y; ++j) {
-            const int i     = 0;
-            const int count = mm.x;
-
-            if (pid == 0) {
-                for (int tgt_pid = 1; tgt_pid < ac_nprocs(); ++tgt_pid) {
-                    const int3 tgt_pid3d = getPid3D(tgt_pid);
-                    const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                          j + tgt_pid3d.y * nn.y, //
-                                                          1 + tgt_pid3d.z * nn.z, //
-                                                          host_mesh->info);
-
-                    // Recv
-                    MPI_Status status;
-                    MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count,
-                             AC_REAL_MPI_TYPE, tgt_pid, 0, astaroth_comm, &status);
-                }
-            }
-            else {
-                // Send
-                const int src_idx = acVertexBufferIdx(i, j, 1, grid.submesh.info);
-                MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
-                         0, 0, astaroth_comm);
-            }
-        }
-    }
-#endif
     MPI_Barrier(astaroth_comm);
 
     return AC_SUCCESS;
@@ -1810,19 +1742,11 @@ getinputregions(std::vector<Region> output_regions, const RegionMemory memory)
 //	bool passed = TestRegions(regions,target_volume);
 //	if (!passed) exit(0);
 //}
-#if TWO_D == 0
 static AcReal3 
 get_spacings()
 {
 	return acConstructReal3Param(AC_dsx,AC_dsy,AC_dsz,grid.device->local_config);
 }
-#else
-static AcReal3 
-get_spacings()
-{
-	return acConstructReal3Param(AC_dsx,AC_dsy,0.0,grid.device->local_config);
-}
-#endif
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 {
@@ -1910,17 +1834,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
         if (op.task_type == TASKTYPE_BOUNDCOND && op.kernel_enum == BOUNDCOND_PERIODIC) {
             graph->periodic_boundaries = (AcBoundary)(graph->periodic_boundaries | op.boundary);
         }
-	if(op.task_type == TASKTYPE_HALOEXCHANGE)
-	{
-	  for(size_t index = 0; index < op.num_fields_in; ++index)
-	  {
-	  	ERRCHK_ALWAYS(op.fields_in[index]  <= NUM_VTXBUF_HANDLES);
-	  }
-	  for(size_t index = 0; index < op.num_fields_out; ++index)
-	  {
-	  	ERRCHK_ALWAYS(op.fields_out[index]  <= NUM_VTXBUF_HANDLES);
-	  }
-	}
         switch (op.task_type) {
 
         case TASKTYPE_COMPUTE: {
@@ -2402,9 +2315,7 @@ get_cell_volume()
 {
 	const AcReal3 spacings = get_spacings();
 	const AcReal cell_volume   = spacings.x*spacings.y
-#if TWO_D == 0
 				     *spacings.z
-#endif
 				     ;
 	return cell_volume;
 }

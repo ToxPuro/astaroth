@@ -130,7 +130,7 @@ get_maximum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 	{
     		for (int z = z_start; z < z_end; ++z) 
 		{
-			const size_t i = x+y*mm.x+z*mm.y*mm.z;
+			const size_t i = acVertexBufferIdx(x,y,z,info);
         		maximum = std::max(maximum, std::abs(field[i]));
 		}
 	}
@@ -162,7 +162,7 @@ get_minimum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 	{
     		for (int z = z_start; z < z_end; ++z) 
 		{
-			const size_t i = x+y*mm.x+z*mm.x*mm.y;
+			const size_t i = acVertexBufferIdx(x,y,z,info);
         		minimum = std::min(minimum, std::abs(field[i]));
 		}
 	}
@@ -201,7 +201,7 @@ get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo
 	{
     		for (int z = z_start; z < z_end; ++z) 
 		{
-			const size_t i = x+y*mm.x+z*mm.x*mm.y;
+			const size_t i = acVertexBufferIdx(x,y,z,info);
         		Error curr_error = acGetError(model[i], candidate[i]);
         		if (curr_error.abs_error > error.abs_error)
 			{

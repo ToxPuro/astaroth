@@ -486,45 +486,25 @@ acGetKernelIdByName(const char* name)
 int3
 acGetLocalNN(const AcMeshInfo info)
 {
-#if TWO_D == 0
-	auto z = AC_nz;
-#else
-	auto z = 1;
-#endif
-    return acConstructInt3Param(AC_nx, AC_ny, z, info);
+    return acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
 }
 
 int3
 acGetLocalMM(const AcMeshInfo info)
 {
-#if TWO_D == 0
-	auto z = AC_mz;
-#else
-	int z = 1;
-#endif
-    return acConstructInt3Param(AC_mx, AC_my, z, info);
+    return acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
 }
 
 int3
 acGetGridNN(const AcMeshInfo info)
 {
-#if TWO_D == 0
-	auto z = AC_nzgrid;
-#else
-	auto z = 1;
-#endif
-    return acConstructInt3Param(AC_nxgrid, AC_nygrid, z, info);
+    return acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
 }
 
 int3
 acGetGridMM(const AcMeshInfo info)
 {
-#if TWO_D == 0
-	auto z = AC_mzgrid;
-#else
-	auto z = 1;
-#endif
-    return acConstructInt3Param(AC_mxgrid, AC_mygrid, z, info);
+    return acConstructInt3Param(AC_mxgrid, AC_mygrid, AC_mzgrid, info);
 }
 
 int3
@@ -536,34 +516,19 @@ acGetMinNN(const AcMeshInfo info)
 int3
 acGetMaxNN(const AcMeshInfo info)
 {
-#if TWO_D == 0
-	auto z = AC_nz_max;
-#else
-	auto z = 1;
-#endif
-    return acConstructInt3Param(AC_nx_max, AC_ny_max, z, info);
+    return acConstructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max, info);
 }
 
 int3
 acGetGridMaxNN(const AcMeshInfo info)
 {
-#if TWO_D == 0
-	auto z = AC_nzgrid_max;
-#else
-	auto z = 1;
-#endif
-    return acConstructInt3Param(AC_nxgrid_max, AC_nygrid_max, z, info);
+    return acConstructInt3Param(AC_nxgrid_max, AC_nygrid_max, AC_nzgrid_max, info);
 }
 
 AcReal3
 acGetLengths(const AcMeshInfo info)
 {
-#if TWO_D == 0
-	auto z = AC_zlen;
-#else
-	auto z = -1.0;
-#endif
-	return acConstructReal3Param(AC_xlen,AC_ylen,z,info);
+	return acConstructReal3Param(AC_xlen,AC_ylen,AC_zlen,info);
 }
 
 

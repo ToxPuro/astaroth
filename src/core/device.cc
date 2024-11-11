@@ -233,9 +233,7 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 
     ERRCHK_ALWAYS(device_config[AC_nx] == device->local_config[AC_nx]);
     ERRCHK_ALWAYS(device_config[AC_ny] == device->local_config[AC_ny]);
-#if TWO_D == 0
     ERRCHK_ALWAYS(device_config[AC_nz] == device->local_config[AC_nz]);
-#endif
     ERRCHK_ALWAYS(device_config[AC_multigpu_offset] == device->local_config[AC_multigpu_offset]);
 
     AcScalarTypes::run<load_all_scalars_uniform>(device,device_config);
@@ -333,6 +331,10 @@ acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 AcResult
 acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 {
+	[[maybe_unused]] auto DCONST = [&](const auto& param)
+	{
+		return device->local_config[param];
+	};
 	#include "coeffs.h"
 	for(int stencil=0;stencil<NUM_STENCILS;stencil++)
 	{
@@ -387,9 +389,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     if (
         device->local_config[AC_nxgrid] <= 0 ||
         device->local_config[AC_nygrid] <= 0 ||
-#if TWO_D == 0
         device->local_config[AC_nzgrid] <= 0 ||
-#endif
         device->local_config.int3_params[AC_multigpu_offset].x < 0 ||
         device->local_config.int3_params[AC_multigpu_offset].y < 0 ||
         device->local_config.int3_params[AC_multigpu_offset].z < 0) {
@@ -399,9 +399,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
         device->local_config.int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
 	acCopyFromInfo(device_config,device->local_config,AC_nxgrid);
 	acCopyFromInfo(device_config,device->local_config,AC_nygrid);
-#if TWO_D == 0
 	acCopyFromInfo(device_config,device->local_config,AC_nzgrid);
-#endif
     }
 
 #if AC_VERBOSE
@@ -923,21 +921,9 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream ,
                              const int3 , const AcMeshInfo , const int3 )
 {
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
-#if TWO_D == 1
-        (void)device;
-	(void)stream;
-	(void)vtxbuf_handle;
-	(void)start;
-	(void)end;
-	(void)config;
-	(void)bindex;
-	fprintf(stderr,"acDeviceGeneralBoundCondStep not supported for 2d\n");
-	exit(EXIT_FAILURE);
-#else
     cudaSetDevice(device->id);
     fprintf(stderr,"NOT ANYMORE SUPPORTED\n");
     exit(EXIT_FAILURE);
-#endif
 }
 
 AcResult

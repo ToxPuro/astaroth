@@ -106,7 +106,7 @@ gen_stencil_definitions(void)
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
         printf("{");
         for (int width = 0; width < STENCIL_WIDTH; ++width) {
-            const char* coeff = stencils[stencil][depth][height][width];
+            const char* coeff = stencils[stencil][height][width];
 	    printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff : "AcReal(NAN)");
         }
         printf("},");
@@ -730,12 +730,21 @@ max(const uint64_t a, const uint64_t b)
 void
 printf_stencil_point(const int stencil, const int depth, const int height, const int width)
 {
+#if TWO_D == 0
 	const char* coeff = stencils[stencil][depth][height][width];
+#else
+	(void)depth;
+	const char* coeff = stencils[stencil][height][width];
+#endif
 	if(!strcmp(coeff,"1")) return;
 	if(!strstr(coeff,"DCONST"))
-	    printf("%s *",stencils[stencil][depth][height][width]);
+	    printf("%s *",coeff);
 	else
+#if TWO_D == 0
 	    printf("stencils[%d][%d][%d][%d] *",stencil,depth,height,width);
+#else
+	    printf("stencils[%d][%d][%d] *",stencil,height,width);
+#endif
 }
 
 void
@@ -880,7 +889,7 @@ gen_kernel_body(const int curr_kernel)
                   if (stencils[stencil][height][width]) {
                     if (!stencil_initialized[field][stencil]) {
                       printf("auto f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
-		      printf_stencil_point(stencil,depth,height,width);
+		      printf_stencil_point(stencil,0,height,width);
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
                       printf("vba.in[%s]"
@@ -897,7 +906,7 @@ gen_kernel_body(const int curr_kernel)
                       printf("f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
                       printf("%s(f%s_s%s, ", stencil_binary_ops[stencil], field_names[get_original_index(field_remappings,field)],
                              stencil_names[stencil]);
-		      printf_stencil_point(stencil,depth,height,width);
+		      printf_stencil_point(stencil,0,height,width);
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
                       printf("vba.in[%s]"

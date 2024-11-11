@@ -690,6 +690,20 @@ symboltable_reset(void)
 
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_PI"));
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_EPSILON"));
+  if(TWO_D)
+  {
+  	add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, intern("AC_nz"));
+  	add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, intern("AC_mz"));
+  	add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, intern("AC_mzgrid"));
+  	add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, intern("AC_nzgrid"));
+  	add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, intern("AC_nzgrid_max"));
+  	add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, intern("AC_mzgrid_max"));
+  	add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, intern("AC_nz_max"));
+  	add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, intern("AC_nz_min"));
+  	add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_dsz"));
+  	add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_zlen"));
+  }
+
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("NUM_FIELDS"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("NUM_PROFILES"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("NUM_VTXBUF_HANDLES"));
@@ -5133,6 +5147,21 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 	"#endif\n"
   	,(!TWO_D) ? "#define STENCIL_DEPTH (STENCIL_ORDER+1)\n" : ""
 	 );
+  if(TWO_D)
+  {
+  	fprintf(fp,"#define AC_nz     (1)\n");
+  	fprintf(fp,"#define AC_mz     (1)\n");
+  	fprintf(fp,"#define AC_mzgrid (1)\n");
+  	fprintf(fp,"#define AC_nzgrid (1)\n");
+  	fprintf(fp,"#define AC_nzgrid_max (1)\n");
+  	fprintf(fp,"#define AC_mzgrid_max (1)\n");
+  	fprintf(fp,"#define AC_nz_min (0)\n");
+  	fprintf(fp,"#define AC_nz_max (1)\n");
+  	fprintf(fp,"#define AC_dsz    (1.0)\n");
+  	fprintf(fp,"#define AC_zlen   (1.0)\n");
+  	fprintf(fp,"#define AC_myz    (AC_my)\n");
+  	fprintf(fp,"#define AC_mxz    (AC_mz)\n");
+  }
 
   char cwd[9000];
   cwd[0] = '\0';

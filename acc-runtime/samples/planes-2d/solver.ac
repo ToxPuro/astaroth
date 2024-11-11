@@ -1,6 +1,6 @@
 #include "../../stdlib/math"
+#include "../../stdlib/bc.h"
 hostdefine STENCIL_ORDER (2)
-hostdefine AC_INTEGRATION_ENABLED
 real AC_current_time
 real AC_dt
 int AC_step_num

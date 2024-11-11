@@ -49,10 +49,10 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
 #endif
 
     // Bounds for the computational domain, i.e. nx_min <= i < nx_max
-    push_val(AC_nx_min,STENCIL_ORDER/2);
-    push_val(AC_ny_min,STENCIL_ORDER/2);
+    push_val(AC_nx_min,NGHOST_X);
+    push_val(AC_ny_min,NGHOST_Y);
 #if TWO_D == 0
-    push_val(AC_nz_min,STENCIL_ORDER/2);
+    push_val(AC_nz_min,NGHOST_Z);
 #endif
 
     push_val(AC_nx_max,config[nx_param] + NGHOST_X); 
@@ -87,13 +87,15 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
     push_val(AC_xlen,config[AC_nxgrid]*config[AC_dsx]); 
     push_val(AC_ylen,config[AC_nygrid]*config[AC_dsy]); 
 
-    push_val(AC_dsmin,std::min(std::min(config[AC_dsx],config[AC_dsy]),config[AC_dsz]));
 #if TWO_D == 0
+    push_val(AC_dsmin,std::min(std::min(config[AC_dsx],config[AC_dsy]),config[AC_dsz]));
     push_val(AC_mxz,config[AC_mx]*config[AC_mz]); 
     push_val(AC_myz,config[AC_my]*config[AC_mz]); 
     push_val(AC_nxyz,config[AC_nxy]*config[nz_param]); 
     push_val(AC_nxyzgrid,config[AC_nxygrid]*config[AC_nzgrid]); 
     push_val(AC_zlen,config[AC_nzgrid]*config[AC_dsz]); 
+#else
+    push_val(AC_dsmin,std::min(config[AC_dsx],config[AC_dsy]));
 #endif
 
     push_val(AC_inv_dsx,1.0/config[AC_dsx]);
@@ -193,7 +195,7 @@ acSetMeshDimsBase(const size_t nx, const size_t ny,AcMeshInfo& config)
     push_val(AC_nx,nx);
     push_val(AC_ny,ny);
     
-    return acHostUpdateBuiltInParamsBase(config,comp_info);
+    return acHostUpdateBuiltInParamsBase(config);
 }
 #endif
 #if TWO_D == 0

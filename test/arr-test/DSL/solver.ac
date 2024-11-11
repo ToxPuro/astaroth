@@ -1,4 +1,5 @@
 auxiliary Field3 FIELD
+hostdefine STENCIL_ORDER (0)
 
 const int test_arr_size = 6;
 gmem int AC_global_arr[AC_nx]

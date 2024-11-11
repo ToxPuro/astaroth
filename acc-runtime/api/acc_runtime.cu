@@ -294,15 +294,35 @@ VAL(const int& val)
 	return val;
 }
 
+DEVICE_INLINE int3
+VAL(const AcInt3Param& param)
+{
+	return DCONST(param);
+}
+
+DEVICE_INLINE int3
+VAL(const int3& val)
+{
+	return val;
+}
+
 
 #include "get_address.h"
 #include "load_dconst_arrays.h"
 #include "store_dconst_arrays.h"
 
 
+#if AC_ROW_MAJOR_ORDER
+#define DEVICE_VTXBUF_IDX(i, j, k)                                             \
+  ((k) + (j)*VAL(AC_mz) + (i)*VAL(AC_myz))
+
+#else
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*VAL(AC_mx) + (k)*VAL(AC_mxy))
+
+#endif
+
 
 
 __device__ int

@@ -150,7 +150,7 @@ main(void)
     info[AC_2d_reals_dims_from_config]  = &twoD_real_arr[0][0];
     info[AC_3d_reals]  = &threeD_real_arr[0][0][0];
     info[AC_4d_float_arr]  = &fourD_float_arr[0][0][0][0];
-    info[AC_dconst_int] = nx-NGHOST_X;
+    info[AC_dconst_int] = nx-1-NGHOST_X;
     info[AC_4d_float_arr_out]  = &fourD_float_arr[0][0][0][0];
     acGridInit(info);
 

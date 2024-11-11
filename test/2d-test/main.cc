@@ -68,7 +68,7 @@ main(void)
 
     // CPU alloc
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info, NULL);
+    acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
     const int max_devices = 8;
     if (nprocs > max_devices) {
@@ -199,8 +199,8 @@ main(void)
               for (int j = ny_min; j < ny_max; ++j) {
                   for (int i = nx_min; i < nx_max; ++i) {
           		const int index = IDX(i,j,k);
-          		derxx[index] = calc_derxx(i,j,k,model.vertex_buffer[UU],acGetInfoValue(model.info,AC_dsx));
-          		deryy[index] = calc_deryy(i,j,k,model.vertex_buffer[UU],acGetInfoValue(model.info,AC_dsy));
+          		derxx[index] = calc_derxx(i,j,k,model.vertex_buffer[UU],model.info[AC_dsx]);
+          		deryy[index] = calc_deryy(i,j,k,model.vertex_buffer[UU],model.info[AC_dsy]);
           		temp[index] = model.vertex_buffer[UU][IDX(i-1,j,k)];
                   }
               }

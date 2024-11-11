@@ -397,37 +397,31 @@ FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 static inline size_t
 acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    const int x = info[AC_mxgrid];
+    [[maybe_unused]] const int x = info[AC_mxgrid];
     const int y = info[AC_mygrid];
-    return as_size_t(i) +                          //
-           as_size_t(j) * x + //
-           as_size_t(k) * x * y;
+    [[maybe_unused]] const int z = info[AC_mzgrid];
+    return AC_INDEX_ORDER(i,j,k,x,y,z);
 }
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    const int x = info[AC_mx];
+    [[maybe_unused]] const int x = info[AC_mx];
     const int y = info[AC_my];
-    return as_size_t(i) +                          //
-           as_size_t(j) * x + //
-           as_size_t(k) * x * y;
+    [[maybe_unused]] const int z = info[AC_mz];
+    return AC_INDEX_ORDER(i,j,k,x,y,z);
 }
 #else
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
     const int3 mm = acGetLocalMM(info);
-    return as_size_t(i) +                          //
-           as_size_t(j) * mm.x + //
-           as_size_t(k) * mm.x * mm.y;
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 static inline size_t
 acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
     const int3 mm = acGetGridMM(info);
-    return as_size_t(i) +                          //
-           as_size_t(j) * mm.x + //
-           as_size_t(k) * mm.x * mm.y;
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 #endif
 
@@ -436,11 +430,19 @@ acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
 {
     const int3 mm = acGetLocalMM(info);
 
+#if AC_ROW_MAJOR_ORDER
+    return (int3){
+        (int)i % mm.z,
+        ((int)i % (mm.z * mm.y)) / mm.z,
+        (int)i / (mm.z * mm.y),
+    };
+#else
     return (int3){
         (int)i % mm.x,
         ((int)i % (mm.x * mm.y)) / mm.x,
         (int)i / (mm.x * mm.y),
     };
+#endif
 }
 
 /** Prints all parameters inside AcMeshInfo */
