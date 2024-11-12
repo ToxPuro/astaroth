@@ -223,6 +223,8 @@ class MPIRequestWrapper {
     }
     void wait()
     {
+        ERRCHK(req != MPI_REQUEST_NULL);
+
         MPI_Status status;
         status.MPI_ERROR = MPI_SUCCESS;
         ERRCHK_MPI_API(MPI_Wait(&req, &status));
@@ -231,19 +233,16 @@ class MPIRequestWrapper {
             ERRCHK_MPI_API(MPI_Request_free(&req));
         ERRCHK_MPI(req == MPI_REQUEST_NULL);
     }
-    bool is_ready()
+    bool ready() const
     {
-        if (req == MPI_REQUEST_NULL) {
-            return true;
-        }
-        else {
-            int ready = 0;
-            MPI_Status status;
-            status.MPI_ERROR = MPI_SUCCESS;
-            ERRCHK_MPI_API(MPI_Test(&req, &ready, &status));
-            ERRCHK_MPI_API(status.MPI_ERROR);
-            return ready;
-        }
+        ERRCHK(req != MPI_REQUEST_NULL);
+
+        int flag = 0;
+        MPI_Status status;
+        status.MPI_ERROR = MPI_SUCCESS;
+        ERRCHK_MPI_API(MPI_Request_get_status(req, &flag, &status));
+        ERRCHK_MPI_API(status.MPI_ERROR);
+        return flag;
     }
 };
 

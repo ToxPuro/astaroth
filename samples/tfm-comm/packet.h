@@ -48,6 +48,7 @@ template <typename T> class Packet {
     void launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs);
     void wait(PackPtrArray<T*> outputs);
     bool ready();
+    bool complete();
 
     friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T>& obj)
     {
@@ -115,10 +116,14 @@ template <typename T>
 bool
 Packet<T>::ready()
 {
-    if (!in_progress)
-        return true;
-    else
-        return send_req.is_ready() && recv_req.is_ready();
+    return send_req.ready() && recv_req.ready();
+}
+
+template <typename T>
+bool
+Packet<T>::complete()
+{
+    return !in_progress;
 }
 
 void test_packet();

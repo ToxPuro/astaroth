@@ -14,7 +14,8 @@ template <typename T> class HaloExchangeTask {
                      const size_t n_aggregate_buffers)
 
     {
-        ERRCHK_MPI(local_nn >= local_rr); // Must be larger than the boundary area to avoid boundary artifacts
+        ERRCHK_MPI(local_nn >=
+                   local_rr); // Must be larger than the boundary area to avoid boundary artifacts
 
         // Partition the mesh
         auto segments = partition(local_mm, local_nn, local_rr);
@@ -42,8 +43,22 @@ template <typename T> class HaloExchangeTask {
 
     void wait(const PackPtrArray<T*> outputs)
     {
-        // TODO: round-robin busy-wait to choose packet to unpack
-        for (auto& packet : packets)
-            packet.wait(outputs);
+        // Round-robin busy-wait to choose packet to unpack
+        while (true) {
+            bool all_ready = true;
+            for (auto& packet : packets) {
+                if (!packet.complete()) { // Not waited
+                    if (packet.ready())   // Ready to wait
+                        packet.wait(outputs);
+                    else
+                        all_ready = false;
+                }
+            }
+            if (all_ready)
+                break;
+        }
+        // Simple loop over the packets
+        // for (auto& packet : packets)
+        //     packet.wait(outputs);
     }
 };
