@@ -117,10 +117,10 @@ class MPICommWrapper {
         : comm{MPI_COMM_NULL}
     {
     }
+
     MPICommWrapper(const MPI_Comm& parent_comm)
         : MPICommWrapper()
     {
-        std::cout << "dup" << std::endl;
         ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
     }
 
@@ -156,9 +156,10 @@ class MPICommWrapper {
 
     MPI_Comm* get()
     {
-        ERRCHK_MPI(comm == MPI_COMM_NULL);
+        ERRCHK_MPI(comm == MPI_COMM_NULL); // Should not modify directly if non-null
         return &comm;
     }
+
     MPI_Comm value() const
     {
         ERRCHK_MPI(comm != MPI_COMM_NULL);
@@ -216,96 +217,31 @@ class MPIRequestWrapper {
                              "wait before attempting to modify req.");
         return &req;
     }
-    MPI_Request value() const
+
+    bool ready() const
     {
-        ERRCHK(req != MPI_REQUEST_NULL);
-        return req;
+        ERRCHK_MPI(req != MPI_REQUEST_NULL);
+
+        int flag          = 0;
+        MPI_Status status = {};
+        status.MPI_ERROR  = MPI_SUCCESS;
+        ERRCHK_MPI_API(MPI_Request_get_status(req, &flag, &status));
+        ERRCHK_MPI_API(status.MPI_ERROR);
+        return flag;
     }
+
     void wait()
     {
-        ERRCHK(req != MPI_REQUEST_NULL);
+        ERRCHK_MPI(req != MPI_REQUEST_NULL);
 
-        MPI_Status status;
-        status.MPI_ERROR = MPI_SUCCESS;
+        MPI_Status status = {};
+        status.MPI_ERROR  = MPI_SUCCESS;
         ERRCHK_MPI_API(MPI_Wait(&req, &status));
         ERRCHK_MPI_API(status.MPI_ERROR);
         if (req != MPI_REQUEST_NULL)
             ERRCHK_MPI_API(MPI_Request_free(&req));
         ERRCHK_MPI(req == MPI_REQUEST_NULL);
     }
-    bool ready() const
-    {
-        ERRCHK(req != MPI_REQUEST_NULL);
 
-        int flag = 0;
-        MPI_Status status;
-        status.MPI_ERROR = MPI_SUCCESS;
-        ERRCHK_MPI_API(MPI_Request_get_status(req, &flag, &status));
-        ERRCHK_MPI_API(status.MPI_ERROR);
-        return flag;
-    }
+    // bool complete() const { return req == MPI_REQUEST_NULL; }
 };
-
-#if 0
-struct MPIRequest {
-    MPI_Request handle;
-
-    MPIRequest()
-        : handle{MPI_REQUEST_NULL}
-    {
-    }
-    // Move
-    // MPIRequest(MPIRequest&& other) noexcept
-    //     : handle{other.handle}
-    // {
-    //     other.handle = MPI_REQUEST_NULL;
-    // }
-
-    // Move assignment
-    // MPIRequest& operator=(MPIRequest&& other) noexcept
-    // {
-    //     if (this != &other) {
-    //         ERRCHK_MPI_API(handle == MPI_REQUEST_NULL);
-    //         if (handle != MPI_REQUEST_NULL)
-    //             synchronize();
-    //         handle       = other.handle;
-    //         other.handle = MPI_REQUEST_NULL;
-    //     }
-    //     return *this;
-    // }
-
-    ~MPIRequest()
-    {
-        ERRCHK_MPI(handle == MPI_REQUEST_NULL);
-        request_wait_and_destroy(handle);
-    }
-
-    MPIRequest(MPIRequest&& other) noexcept  = delete; // Move
-    MPIRequest& operator=(MPIRequest&&)      = delete; // Move assignment
-    MPIRequest(const MPIRequest&)            = delete; // Copy
-    MPIRequest& operator=(const MPIRequest&) = delete; // Copy assignment
-
-    // Other functions
-    void wait() { request_wait_and_destroy(handle); }
-};
-
-struct MPIComm {
-    MPI_Comm handle;
-
-    MPIComm(const MPI_Comm& parent_comm, const Shape& global_nn)
-        : handle{cart_comm_create(parent_comm, global_nn)}
-    {
-    }
-
-    ~MPIComm()
-    {
-        ERRCHK_MPI(handle != MPI_COMM_NULL);
-        ERRCHK_MPI_API(MPI_Comm_free(&handle));
-    }
-
-    MPIComm(MPIComm&& other) noexcept  = delete; // Move
-    MPIComm& operator=(MPIComm&&)      = delete; // Move assignment
-    MPIComm(const MPIComm&)            = delete; // Copy
-    MPIComm& operator=(const MPIComm&) = delete; // Copy assignment
-};
-#endif
