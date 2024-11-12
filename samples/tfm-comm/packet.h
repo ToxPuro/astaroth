@@ -21,8 +21,8 @@ template <typename T> class Packet {
     Segment segment; // Shape of the data block the packet represents (for packing or unpacking)
 
     Buffer<T, DeviceMemoryResource> pack_buffer;
-    Buffer<T, HostMemoryResource> send_buffer;
-    Buffer<T, HostMemoryResource> recv_buffer;
+    Buffer<T, PinnedHostMemoryResource> send_buffer;
+    Buffer<T, PinnedHostMemoryResource> recv_buffer;
     Buffer<T, DeviceMemoryResource> unpack_buffer;
 
     MPICommWrapper cart_comm;
