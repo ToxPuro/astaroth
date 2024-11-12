@@ -64,9 +64,9 @@ get_diffusion_val(real time, real distance_2)
 
 GetCoordsBase(i,j,k)
 {
-	x  = (AC_dsx*(i-((AC_nxgrid+1)/2.0)))
-	y  = (AC_dsy*(j-((AC_nygrid+1)/2.0)))
-	z  = (AC_dsz*(k-((AC_nzgrid+1)/2.0)))
+	x  = (AC_ds.x*(i-((AC_ngrid.x+1)/2.0)))
+	y  = (AC_ds.y*(j-((AC_ngrid.y+1)/2.0)))
+	z  = (AC_ds.z*(k-((AC_ngrid.z+1)/2.0)))
         return (real3){x,y,z};
 }
 GetCoords(i,j,k)
@@ -80,10 +80,10 @@ Kernel initial_condition()
 {
 	const inittime = 1.0
 	x,y,z = GetCoords(globalVertexIdx.x+1-NGHOST,globalVertexIdx.y+1-NGHOST,globalVertexIdx.z+1-NGHOST)
-	write(COORDS_X,x)
-	write(COORDS_Y,y)
-	write(COORDS_Z,z)
-	x_center, y_center, z_center = GetCoords(AC_nxgrid/2, AC_nygrid/2, AC_nzgrid/2);
+	write(AC_COORDS.x,x)
+	write(AC_COORDS.y,y)
+	write(AC_COORDS.z,z)
+	x_center, y_center, z_center = GetCoords(AC_ngrid.x/2, AC_ngrid.y/2, AC_ngrid.z/2);
 	distance_to_center_squared = pow(x-x_center,2.0) + pow(y-y_center,2.0) + pow(z-z_center,2.0)
 
 	const real accumulated_time = nsteps*sim_dt;
@@ -95,27 +95,27 @@ Kernel initial_condition()
 }
 Kernel singlepass_solve()
 {	
-	const real v0x     = diff_left(COORDS_X)
-	const real v1x     =  diff_down(COORDS_X)
-	const real v2x     = diff_right(COORDS_X)
-	const real v3x     =    diff_up(COORDS_X)
-	const real v4x     =  diff_back(COORDS_X)
-	const real v5x     = diff_front(COORDS_X)
+	const real v0x     = diff_left(AC_COORDS.x)
+	const real v1x     =  diff_down(AC_COORDS.x)
+	const real v2x     = diff_right(AC_COORDS.x)
+	const real v3x     =    diff_up(AC_COORDS.x)
+	const real v4x     =  diff_back(AC_COORDS.x)
+	const real v5x     = diff_front(AC_COORDS.x)
 	
-	const real v0y     = diff_left(COORDS_Y)
-	const real v1y     =  diff_down(COORDS_Y)
-	const real v2y     = diff_right(COORDS_Y)
-	const real v3y     =    diff_up(COORDS_Y)
-	const real v4y     =  diff_back(COORDS_Y)
-	const real v5y     = diff_front(COORDS_Y)
+	const real v0y     = diff_left(AC_COORDS.y)
+	const real v1y     =  diff_down(AC_COORDS.y)
+	const real v2y     = diff_right(AC_COORDS.y)
+	const real v3y     =    diff_up(AC_COORDS.y)
+	const real v4y     =  diff_back(AC_COORDS.y)
+	const real v5y     = diff_front(AC_COORDS.y)
 
 
-	const real v0z     = diff_left(COORDS_Z)
-	const real v1z     =  diff_down(COORDS_Z)
-	const real v2z     = diff_right(COORDS_Z)
-	const real v3z     =    diff_up(COORDS_Z)
-	const real v4z     =  diff_back(COORDS_Z)
-	const real v5z     = diff_front(COORDS_Z)
+	const real v0z     = diff_left(AC_COORDS.z)
+	const real v1z     =  diff_down(AC_COORDS.z)
+	const real v2z     = diff_right(AC_COORDS.z)
+	const real v3z     =    diff_up(AC_COORDS.z)
+	const real v4z     =  diff_back(AC_COORDS.z)
+	const real v5z     = diff_front(AC_COORDS.z)
 
 
 

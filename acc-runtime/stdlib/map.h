@@ -61,24 +61,24 @@ run_const real AC_window_radius
 
 radial_window()
 {
-	position = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
-                         (globalVertexIdx.y - AC_ny_min) * AC_dsy,
-	                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
-	center = real3(((globalGridN.x-1) * AC_dsx)/2.0,
-                 ((globalGridN.y-1) * AC_dsy)/2.0,
-                 ((globalGridN.z-1) * AC_dsz)/2.0)
+	position = real3((globalVertexIdx.x - AC_nmin.x) * AC_ds.x,
+                         (globalVertexIdx.y - AC_nmin.y) * AC_ds.y,
+	                 (globalVertexIdx.z - AC_nmin.z) * AC_ds.z)
+	center = real3(((AC_ngrid.x-1) * AC_ds.x)/2.0,
+                 ((AC_ngrid.y-1) * AC_ds.y)/2.0,
+                 ((AC_ngrid.z-1) * AC_ds.z)/2.0)
 	displacement = position-center;
 	distance_to_center = sqrt(AC_dot(displacement,displacement))
 	return distance_to_center < AC_window_radius ? 1.0 : 0.0;
 }
 gaussian_window()
 {
-	position = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
-                         (globalVertexIdx.y - AC_ny_min) * AC_dsy,
-	                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
-	center = real3(((globalGridN.x-1) * AC_dsx)/2.0,
-                 ((globalGridN.y-1) * AC_dsy)/2.0,
-                 ((globalGridN.z-1) * AC_dsz)/2.0)
+	position = real3((globalVertexIdx.x - AC_nmin.x) * AC_ds.x,
+                         (globalVertexIdx.y - AC_nmin.y) * AC_ds.y,
+	                 (globalVertexIdx.z - AC_nmin.z) * AC_ds.z)
+	center = real3(((AC_ngrid.x-1) * AC_ds.x)/2.0,
+                 ((AC_ngrid.y-1) * AC_ds.y)/2.0,
+                 ((AC_ngrid.z-1) * AC_ds.z)/2.0)
 	displacement = position-center;
 	distance_to_center = sqrt(AC_dot(displacement,displacement))
     	return exp(-(distance_to_center / AC_window_radius) * (distance_to_center / AC_window_radius));

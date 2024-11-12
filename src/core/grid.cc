@@ -286,22 +286,15 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 
     const uint3_64 decomp = get_decomp(global_config);
 
-    ERRCHK_ALWAYS(submesh_config[AC_nx] % decomp.x == 0);
-    ERRCHK_ALWAYS(submesh_config[AC_ny] % decomp.y == 0);
-    ERRCHK_ALWAYS(submesh_config[AC_nz] % decomp.z == 0);
+    ERRCHK_ALWAYS(submesh_config[AC_nlocal].x % decomp.x == 0);
+    ERRCHK_ALWAYS(submesh_config[AC_nlocal].y % decomp.y == 0);
+    ERRCHK_ALWAYS(submesh_config[AC_nlocal].z % decomp.z == 0);
 
     const int3 nn = acGetLocalNN(submesh_config);
-    const int submesh_nx = nn.x / decomp.x;
-    const int submesh_ny = nn.y / decomp.y;
-    const int submesh_nz = nn.z / decomp.z;
+    const int3 submesh_n = nn / decomp;
 
-    set_info_val(submesh_config,AC_nx,submesh_nx);
-    set_info_val(submesh_config,AC_ny,submesh_ny);
-#if TWO_D == 0
-    set_info_val(submesh_config,AC_nz,submesh_nz);
-#endif
-    submesh_config[AC_multigpu_offset] = getPid3D(global_config)*
-                                                     (int3){submesh_nx, submesh_ny, submesh_nz};
+    set_info_val(submesh_config,AC_nlocal,submesh_n);
+    submesh_config[AC_multigpu_offset] = getPid3D(global_config)*submesh_n;
     set_info_val(submesh_config,AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z});
     submesh_config[AC_domain_coordinates] = getPid3D(global_config);
     acHostUpdateBuiltinParams(&submesh_config);
@@ -312,7 +305,7 @@ get_global_nn()
 {
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-    return acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
+    return info[AC_ngrid];
 }
 
 
@@ -435,10 +428,8 @@ check_that_mesh_large_enough(const AcMeshInfo info)
     if (nn.y < STENCIL_HEIGHT)
         fprintf(stderr, "nn.y %d too small, must be >= %d (stencil height)\n", nn.y,
                 STENCIL_HEIGHT);
-#if TWO_D == 0
-    if (nn.z < STENCIL_DEPTH)
+    if (nn.z < STENCIL_DEPTH && !TWO_D)
         fprintf(stderr, "nn.z %d too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
-#endif
 }
 
 AcMesh
@@ -479,8 +470,9 @@ acGridInitBase(const AcMesh user_mesh)
 
     check_that_device_allocation_valid();
 
-    if(info[AC_decompose_strategy] == (int)AcDecomposeStrategy::Hierarchical)
 
+    acInitDecomposition(TWO_D);
+    if(info[AC_decompose_strategy] == (int)AcDecomposeStrategy::Hierarchical)
     {
         int device_count = -1;
         cudaGetDeviceCount(&device_count);
@@ -1745,7 +1737,7 @@ getinputregions(std::vector<Region> output_regions, const RegionMemory memory)
 static AcReal3 
 get_spacings()
 {
-	return acConstructReal3Param(AC_dsx,AC_dsy,AC_dsz,grid.device->local_config);
+	return grid.device->local_config[AC_ds];
 }
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
@@ -2494,7 +2486,6 @@ acGridSwapBuffers(void)
 }
 
 /** */
-#if TWO_D == 0
 AcResult
 acGridLoadStencil(const Stream stream, const Stencil stencil,
                   const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -2504,20 +2495,8 @@ acGridLoadStencil(const Stream stream, const Stencil stencil,
     acGridSynchronizeStream(stream);
     return acDeviceLoadStencil(grid.device, stream, stencil, data);
 }
-#else
-AcResult
-acGridLoadStencil(const Stream stream, const Stencil stencil,
-                  const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    ERRCHK(grid.initialized);
-
-    acGridSynchronizeStream(stream);
-    return acDeviceLoadStencil(grid.device, stream, stencil, data);
-}
-#endif
 
 /** */
-#if TWO_D == 0
 AcResult
 acGridStoreStencil(const Stream stream, const Stencil stencil,
                    AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -2527,20 +2506,8 @@ acGridStoreStencil(const Stream stream, const Stencil stencil,
     acGridSynchronizeStream(stream);
     return acDeviceStoreStencil(grid.device, stream, stencil, data);
 }
-#else
-AcResult
-acGridStoreStencil(const Stream stream, const Stencil stencil,
-                   AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    ERRCHK(grid.initialized);
-
-    acGridSynchronizeStream(stream);
-    return acDeviceStoreStencil(grid.device, stream, stencil, data);
-}
-#endif
 
 /** */
-#if TWO_D == 0
 AcResult
 acGridLoadStencils(const Stream stream,
                    const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -2556,26 +2523,8 @@ acGridLoadStencils(const Stream stream,
 
     return (AcResult)retval;
 }
-#else
-AcResult
-acGridLoadStencils(const Stream stream,
-                   const AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    ERRCHK(grid.initialized);
-    ERRCHK((int)AC_SUCCESS == 0);
-    ERRCHK((int)AC_FAILURE == 1);
-    acGridSynchronizeStream(stream);
-
-    int retval = 0;
-    for (size_t i = 0; i < NUM_STENCILS; ++i)
-        retval |= acGridLoadStencil(stream, (Stencil)i, data[i]);
-
-    return (AcResult)retval;
-}
-#endif
 
 /** */
-#if TWO_D == 0
 AcResult
 acGridStoreStencils(const Stream stream,
                     AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -2591,23 +2540,6 @@ acGridStoreStencils(const Stream stream,
 
     return (AcResult)retval;
 }
-#else
-AcResult
-acGridStoreStencils(const Stream stream,
-                    AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    ERRCHK(grid.initialized);
-    ERRCHK((int)AC_SUCCESS == 0);
-    ERRCHK((int)AC_FAILURE == 1);
-    acGridSynchronizeStream(stream);
-
-    int retval = 0;
-    for (size_t i = 0; i < NUM_STENCILS; ++i)
-        retval |= acGridStoreStencil(stream, (Stencil)i, data[i]);
-
-    return (AcResult)retval;
-}
-#endif
 
 /*
 static AcResult
@@ -3128,7 +3060,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
-	const int3 slice_volume = acConstructInt3Param(AC_nx,AC_ny,1,info);
+	const int3 slice_volume = (int3){info[AC_nlocal].x, info[AC_nlocal].y, 1};
         const int3 slice_offset = (int3){0, 0, local_z};
 
         const AcReal* in     = device->vba.in[field];
@@ -3286,7 +3218,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
 
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
-	const int3 slice_volume = acConstructInt3Param(AC_nx,AC_ny,1,info);
+	const int3 slice_volume = (int3){info[AC_nlocal].x, info[AC_nlocal].y, 1};
         const int3 slice_offset = (int3){0, 0, local_z};
 
 	const AcReal* in = device->vba.in[field];
@@ -4744,11 +4676,9 @@ get_field_boundconds(const AcDSLTaskGraph bc_graph)
 void
 check_field_boundconds(const FieldBCs field_boundconds)
 {
-#if TWO_D
-	const std::vector<AcBoundary> boundaries_to_check  = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT};
-#else
-	const std::vector<AcBoundary> boundaries_to_check  = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
-#endif
+	const std::vector<AcBoundary> boundaries_to_check  = 
+	TWO_D ? (std::vector<AcBoundary>){BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT}
+	      : (std::vector<AcBoundary>){BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
 	for(size_t field = 0; field < NUM_VTXBUF_HANDLES; ++field)
 	{
 		if(!vtxbuf_is_communicated[field]) continue;
@@ -4799,13 +4729,8 @@ gen_halo_exchange_and_boundconds(
 			if(!ac_pid()) fprintf(stream,"}");
 		};
 		std::vector<AcTaskDefinition> res{};
-#if TWO_D 
-		constexpr int num_boundaries = 4;
-		std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT};
-#else
-		constexpr int num_boundaries = 6;
-		std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
-#endif
+		constexpr int num_boundaries = TWO_D ? 4 : 6;
+		std::vector<AcBoundary> boundaries = TWO_D ? (std::vector<AcBoundary>){BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT} : (std::vector<AcBoundary>){BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
 		std::array<std::array<bool,num_boundaries>,NUM_ALL_FIELDS>  field_boundconds_processed{};
 
 		std::vector<Field> output_fields{};

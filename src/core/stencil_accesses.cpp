@@ -21,6 +21,7 @@ bool should_reduce_real[1000] = {false};
 bool should_reduce_int[1000] = {false};
 
 
+#define DEVICE_INLINE
 #ifndef AC_IN_AC_LIBRARY
 #define AC_IN_AC_LIBRARY
 #endif
@@ -77,20 +78,8 @@ print(const char* , ...)
 #define vertexIdx ((int3){start.x, start.y, start.z})
 #define globalVertexIdx ((int3){vertexIdx.x, vertexIdx.y, vertexIdx.z})
 
-#if TWO_D == 0
+#define localCompdomainVertexIdx ((int3){NGHOST_X,NGHOST_Y,NGHOST_Z})
 
-#define globalGridN ((int3) {NGHOST*2, NGHOST*2,NGHOST*2})
-#else
-
-#define globalGridN ((int3) {NGHOST*2, NGHOST*2,1})
-#endif
-
-
-#if TWO_D == 0
-#define localCompdomainVertexIdx ((int3){vertexIdx.x - (STENCIL_WIDTH-1)/2, vertexIdx.y - (STENCIL_HEIGHT-1)/2, vertexIdx.y - (STENCIL_DEPTH-1)/2})
-#else
-#define localCompdomainVertexIdx ((int3){vertexIdx.x - (STENCIL_WIDTH-1)/2, vertexIdx.y - (STENCIL_HEIGHT-1)/2, 0})
-#endif
 
 #define local_compdomain_idx ((LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx))
 
@@ -298,42 +287,13 @@ AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
 [[maybe_unused]] constexpr int AC_ALL_READ      = ~0;
 
 
-AcReal
-VAL(const AcRealParam& param)
-{
-	return DCONST(param);
-}
-
-AcReal
-VAL(const AcReal& val)
-{
-	return val;
-}
-
-int
-VAL(const AcIntParam& param)
-{
-	return DCONST(param);
-}
-
-int
-VAL(const int& val)
-{
-	return val;
-}
-
 bool
 index_at_boundary(const int x, const int y, const int z)
 {
-#if TWO_D
-	(void)z;
-#endif
 	return  
-	      ((x < NGHOST) || (x >= VAL(AC_nx_max)))
-	   || ((y < NGHOST) || (y >= VAL(AC_ny_max)))
-#if TWO_D == 0
-	   || ((z < NGHOST) || (z >= VAL(AC_nz_max)))
-#endif
+	      ((x < NGHOST_X) || (x >= VAL(AC_nlocal_max).x))
+	   || ((y < NGHOST_Y) || (y >= VAL(AC_nlocal_max).y))
+	   || ((z < NGHOST_Z) || (z >= VAL(AC_nlocal_max).z))
 	   ;
 }
 void
@@ -435,7 +395,7 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 
 	if(BOUNDARY_X_TOP & boundary)
 	{
-		int3 start = (int3){VAL(AC_nx)+NGHOST, NGHOST, NGHOST};
+		int3 start = (int3){VAL(AC_nlocal).x+NGHOST, NGHOST, NGHOST};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA);
 	}
@@ -447,11 +407,10 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 	}
 	if(BOUNDARY_Y_TOP & boundary)
 	{
-		int3 start = (int3){NGHOST, VAL(AC_ny)+NGHOST, NGHOST};
+		int3 start = (int3){NGHOST, VAL(AC_nlocal).y+NGHOST, NGHOST};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA);
 	}
-#if TWO_D == 0
 	if(BOUNDARY_Z_BOT  & boundary)
 	{
 		int3 start = (int3){NGHOST, NGHOST, 0};
@@ -460,11 +419,10 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 	}
 	if(BOUNDARY_Z_TOP & boundary)
 	{
-		int3 start = (int3){NGHOST, NGHOST, VAL(AC_nz)+NGHOST};
+		int3 start = (int3){NGHOST, NGHOST, VAL(AC_nlocal).z+NGHOST};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA);
 	}
-#endif
 }
 int
 get_executed_nodes()

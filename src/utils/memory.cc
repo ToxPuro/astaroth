@@ -108,10 +108,10 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
                     ERRCHK(dst_idx < acVertexBufferSize(info));
                     mesh->vertex_buffer[w][dst_idx] = mesh->vertex_buffer[w][src_idx];
 #if AC_LAGRANGIAN_GRID
-                    mesh->vertex_buffer[COORDS_X][dst_idx] += (w == COORDS_X) * lengths.x*((i_dst >= nx_max) -(i_dst < nx_min));;
-                    mesh->vertex_buffer[COORDS_Y][dst_idx] += (w == COORDS_Y) * lengths.y*((j_dst >= ny_max) -(j_dst < ny_min));;
+                    mesh->vertex_buffer[AC_COORDS_X][dst_idx] += (w == AC_COORDS_X) * lengths.x*((i_dst >= nx_max) -(i_dst < nx_min));;
+                    mesh->vertex_buffer[AC_COORDS_Y][dst_idx] += (w == AC_COORDS_Y) * lengths.y*((j_dst >= ny_max) -(j_dst < ny_min));;
 #if TWO_D == 0
-                    mesh->vertex_buffer[COORDS_Z][dst_idx] += (w == COORDS_Z) * lengths.z*((k_dst >= nz_max) -(k_dst < nz_min));
+                    mesh->vertex_buffer[AC_COORDS_Z][dst_idx] += (w == AC_COORDS_Z) * lengths.z*((k_dst >= nz_max) -(k_dst < nz_min));
 #endif
 #endif
                 }

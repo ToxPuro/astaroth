@@ -78,7 +78,7 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(64, 64, &info);
+    acSetMeshDims(64, 64, 1, &info);
     //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
@@ -199,8 +199,8 @@ main(void)
               for (int j = ny_min; j < ny_max; ++j) {
                   for (int i = nx_min; i < nx_max; ++i) {
           		const int index = IDX(i,j,k);
-          		derxx[index] = calc_derxx(i,j,k,model.vertex_buffer[UU],model.info[AC_dsx]);
-          		deryy[index] = calc_deryy(i,j,k,model.vertex_buffer[UU],model.info[AC_dsy]);
+          		derxx[index] = calc_derxx(i,j,k,model.vertex_buffer[UU],model.info[AC_ds].x);
+          		deryy[index] = calc_deryy(i,j,k,model.vertex_buffer[UU],model.info[AC_ds].y);
           		temp[index] = model.vertex_buffer[UU][IDX(i-1,j,k)];
                   }
               }

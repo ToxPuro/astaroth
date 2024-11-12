@@ -82,7 +82,7 @@ matrix_coeff*{
 };
 
 Field PHI
-Field ORIGINAL_COORDS_X, ORIGINAL_COORDS_Y
+Field3 ORIGINAL_COORDS
 Field UX, UY
 Field STRESS11, STRESS12, STRESS21, STRESS22
 Field VELOCITY_X, VELOCITY_Y
@@ -112,8 +112,8 @@ const Matrix TrStr =
 
 GetCoordsBase(i,j)
 {
-	x  = (AC_dsx*(i-((AC_nxgrid+1)/2.0)))
-	y  = (AC_dsy*(j-((AC_nygrid+1)/2.0)))
+	x  = (AC_ds.x*(i-((AC_ngrid.x+1)/2.0)))
+	y  = (AC_ds.y*(j-((AC_ngrid.y+1)/2.0)))
         return (real2){x,y};
 }
 GetCoords(i,j)
@@ -127,17 +127,17 @@ Field SOLUTION
 Kernel initial_condition()
 {
 	real2 coords = GetCoords(globalVertexIdx.x+1-NGHOST,globalVertexIdx.y+1-NGHOST)
-	write(COORDS_X,coords.x)
-	write(COORDS_Y,coords.y)
+	write(AC_COORDS.x,coords.x)
+	write(AC_COORDS.y,coords.y)
 
-	write(ORIGINAL_COORDS_X,coords.x)
-	write(ORIGINAL_COORDS_Y,coords.y)
+	write(ORIGINAL_COORDS.x,coords.x)
+	write(ORIGINAL_COORDS.y,coords.y)
 
-	x_center, y_center = GetCoords(AC_nxgrid/2, AC_nygrid/2);
+	x_center, y_center = GetCoords(AC_ngrid.x/2, AC_ngrid.y/2);
 	distance_to_center = sqrt(pow(coords.x-x_center,2.0) + pow(coords.y-y_center,2.0))
 	const real initial_phi_size = 0.5*pow(10.0,-7.0)
-	const real transitlength = 5*AC_dsx*pow(10.0,-8.0)
-	const real magic_coeff = 0.51*AC_dsx*pow(10.0,-8)
+	const real transitlength = 5*AC_ds.x*pow(10.0,-8.0)
+	const real magic_coeff = 0.51*AC_ds.x*pow(10.0,-8)
 	if(distance_to_center < initial_phi_size + transitlength + magic_coeff)
 	{
 		if(distance_to_center < initial_phi_size + magic_coeff)
@@ -161,14 +161,14 @@ Kernel twopass_solve_final(int step_num, real current_time) {
 
 Kernel calc_displacement()
 {
-	write(UX, COORDS_X - ORIGINAL_COORDS_X)
-	write(UY, COORDS_Y - ORIGINAL_COORDS_Y)
+	write(UX, AC_COORDS.x - ORIGINAL_COORDS.x)
+	write(UY, AC_COORDS.y - ORIGINAL_COORDS.y)
 }
 
 Kernel calculate_stresses()
 {
-	simple_shear_x = get_first_order_derivatives(ORIGINAL_COORDS_X,ORIGINAL_COORDS_Y, UX)
-	simple_shear_y = get_first_order_derivatives(ORIGINAL_COORDS_X,ORIGINAL_COORDS_Y, UY)
+	simple_shear_x = get_first_order_derivatives(ORIGINAL_COORDS.x,ORIGINAL_COORDS.y, UX)
+	simple_shear_y = get_first_order_derivatives(ORIGINAL_COORDS.x,ORIGINAL_COORDS.y, UY)
 
 	//TP: calc strains
 	real strainxx = simple_shear_x.x-PHI*TrStr[0][0]
@@ -190,10 +190,10 @@ Kernel calculate_stresses()
 
 Kernel calculate_acceleration()
 {	
-	dxstressxx, dystressxx = get_first_order_derivatives(COORDS_X, COORDS_Y, STRESS11)
-	dxstressxy, dystressxy = get_first_order_derivatives(COORDS_X, COORDS_Y, STRESS12)
-	dxstressyx, dystressyx = get_first_order_derivatives(COORDS_X, COORDS_Y, STRESS21)
-	dxstressyy, dystressyy = get_first_order_derivatives(COORDS_X, COORDS_Y, STRESS22)
+	dxstressxx, dystressxx = get_first_order_derivatives(AC_COORDS.x, AC_COORDS.y, STRESS11)
+	dxstressxy, dystressxy = get_first_order_derivatives(AC_COORDS.x, AC_COORDS.y, STRESS12)
+	dxstressyx, dystressyx = get_first_order_derivatives(AC_COORDS.x, AC_COORDS.y, STRESS21)
+	dxstressyy, dystressyy = get_first_order_derivatives(AC_COORDS.x, AC_COORDS.y, STRESS22)
 	
 	const real damping_coeff = pow(10.0,15.0)
 	ax = (dxstressxx + dystressxy)/ro - VELOCITY_X*damping_coeff/ro
@@ -208,8 +208,8 @@ Kernel smooth_velocities_and_update_coordinates()
 	smoothed_vel_x  = smooth(VELOCITY_X)
 	smoothed_vel_y  = smooth(VELOCITY_Y)
 	
-	write(COORDS_X, COORDS_X + eldt*smoothed_vel_x + 0.5*eldt*eldt*ACCELERATION_X)
-	write(COORDS_Y, COORDS_Y + eldt*smoothed_vel_y + 0.5*eldt*eldt*ACCELERATION_Y)
+	write(AC_COORDS.x, AC_COORDS.x + eldt*smoothed_vel_x + 0.5*eldt*eldt*ACCELERATION_X)
+	write(AC_COORDS.y, AC_COORDS.y + eldt*smoothed_vel_y + 0.5*eldt*eldt*ACCELERATION_Y)
 
 	write(VELOCITY_X, smoothed_vel_x)
 	write(VELOCITY_Y, smoothed_vel_y)

@@ -1232,19 +1232,10 @@ assignment_body_designated: assignment_op expression { $$ = astnode_create(NODE_
 stencilpoint: stencil_index_list assignment_body_designated { 
 	    								$$ = astnode_create(NODE_UNKNOWN, $1, $2); 
 									const int num_of_indexes = count_num_of_nodes_in_list($1);
-									if(TWO_D && num_of_indexes != 2)
-									{
-										fprintf(stderr,"Can only use 2D stencils when building for 2D simulation\n");
-										assert(num_of_indexes == 2);
-										exit(EXIT_FAILURE);
-									}
-									else if(!TWO_D && num_of_indexes < 3)
-										fprintf(stderr,"Specify indexes for all three dimensions\n");
-									else if(!TWO_D && num_of_indexes > 3)
-										fprintf(stderr,"Only three dimensional stencils for 3D simulation\n");
-									if(!TWO_D && num_of_indexes != 3)	
+									if(num_of_indexes != 3)	
 									{
 										assert(num_of_indexes == 3);
+										fatal("Have to specify [z][y][x] offsets for stencils\n");
 										exit(EXIT_FAILURE);
 									}
 							    }

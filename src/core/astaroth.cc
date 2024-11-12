@@ -30,31 +30,17 @@ static Node nodes[max_num_nodes] = {0};
 static int num_nodes             = 0;
 
 AcResult
-acInit(const AcMeshInfo mesh_info)
+acInit(const AcMeshInfo)
 {
-#if TWO_D == 1
-     (void)mesh_info;
-     fprintf(stderr,"acInit not supported for 2D simulations\n");
-     exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    num_nodes = 1;
-    return acNodeCreate(0, mesh_info, &nodes[0]);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
 acQuit(void)
 {
-#if TWO_D == 1
-     fprintf(stderr,"acQuit not supported for 2D simulations\n");
-     exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    num_nodes = 0;
-    return acNodeDestroy(nodes[0]);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
@@ -71,224 +57,106 @@ acCheckDeviceAvailability(void)
 AcResult
 acSynchronize(void)
 {
-#if TWO_D == 1
-     fprintf(stderr,"acSynchronize not supported for 2D simulations\n");
-     exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeSynchronizeStream(nodes[0], STREAM_ALL);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acSynchronizeStream(const Stream stream)
+acSynchronizeStream(const Stream )
 {
-#if TWO_D == 1
-    (void)stream;
-    fprintf(stderr,"acSynchronizeStream not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeSynchronizeStream(nodes[0], stream);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acLoadDeviceConstant(const AcRealParam param, const AcReal value)
+acLoadDeviceConstant(const AcRealParam , const AcReal )
 {
-#if TWO_D == 1
-    (void)param;
-    (void)value;
-    fprintf(stderr,"acLoadDeviceConstant not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeLoadConstant(nodes[0], STREAM_DEFAULT, param, value);
-#endif
+	return AC_FAILURE;
+	fprintf(stderr,"DEPRECATED\n");
 }
 
 AcResult
-acLoad(const AcMesh host_mesh)
+acLoad(const AcMesh )
 {
-#if TWO_D == 1
-    (void)host_mesh;
-    fprintf(stderr,"acLoad not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeLoadMesh(nodes[0], STREAM_DEFAULT, host_mesh);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acSetVertexBuffer(const VertexBufferHandle handle, const AcReal value)
+acSetVertexBuffer(const VertexBufferHandle , const AcReal )
 {
-#if TWO_D == 1
-    (void)value;
-    (void)handle;
-    fprintf(stderr,"acSetVertexBuffer not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeSetVertexBuffer(nodes[0], STREAM_DEFAULT, handle, value);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acStore(AcMesh* host_mesh)
+acStore(AcMesh* )
 {
-#if TWO_D == 1
-    (void)host_mesh;
-    fprintf(stderr,"acStore not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeStoreMesh(nodes[0], STREAM_DEFAULT, host_mesh);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acIntegrate(const AcReal dt)
+acIntegrate(const AcReal )
 {
-#if TWO_D == 1
-   (void)dt;
-   fprintf(stderr,"acIntegrate not supported for 2D simulations\n");
-   exit(EXIT_FAILURE);
-   return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeIntegrate(nodes[0], dt);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acIntegrateGBC(const AcMeshInfo config, const AcReal dt)
+acIntegrateGBC(const AcMeshInfo , const AcReal )
 {
-#if TWO_D == 1
-    (void)config;
-    (void)dt;
-    fprintf(stderr,"acIntegrateGDBC not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeIntegrateGBC(nodes[0], config, dt);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acIntegrateStep(const int isubstep, const AcReal dt)
+acIntegrateStep(const int , const AcReal )
 {
-#if TWO_D == 1
-    (void)isubstep;
-    (void)dt;
-    fprintf(stderr,"acIntegrateStep not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    DeviceConfiguration config;
-    acNodeQueryDeviceConfiguration(nodes[0], &config);
-
-    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
-    const int3 end   = start + config.grid.n;
-    return acNodeIntegrateSubstep(nodes[0], STREAM_DEFAULT, isubstep, start, end, dt);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acIntegrateStepWithOffset(const int isubstep, const AcReal dt, const int3 start, const int3 end)
+acIntegrateStepWithOffset(const int , const AcReal , const int3 , const int3 )
 {
-#if TWO_D == 1
-    (void)isubstep;
-    (void)dt;
-    (void)start; 
-    (void)end; 
-    fprintf(stderr,"acIntegrateStepWithOffset not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeIntegrateSubstep(nodes[0], STREAM_DEFAULT, isubstep, start, end, dt);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
 acBoundcondStep(void)
 {
-#if TWO_D == 1
-    fprintf(stderr,"acIntegrateStepWithOffset not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodePeriodicBoundconds(nodes[0], STREAM_DEFAULT);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acBoundcondStepGBC(const AcMeshInfo config)
+acBoundcondStepGBC(const AcMeshInfo)
 {
-#if TWO_D == 1
-    (void)config;
-    fprintf(stderr,"acBoundcondStepGBC not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeGeneralBoundconds(nodes[0], STREAM_DEFAULT, config);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acStoreWithOffset(const int3 dst, const size_t num_vertices, AcMesh* host_mesh)
+acStoreWithOffset(const int3 , const size_t , AcMesh* )
 {
-#if TWO_D == 1
-    (void)dst;
-    (void)num_vertices;
-    (void)host_mesh;
-    fprintf(stderr,"acStoreWithOffset not supported for 2D simulations\n");
-    exit(EXIT_FAILURE);
-    return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeStoreMeshWithOffset(nodes[0], STREAM_DEFAULT, dst, dst, num_vertices, host_mesh);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
-acLoadWithOffset(const AcMesh host_mesh, const int3 src, const int num_vertices)
+acLoadWithOffset(const AcMesh , const int3 , const int )
 {
-#if TWO_D == 1
-     (void)host_mesh;
-     (void)src;
-     (void)num_vertices;
-     fprintf(stderr,"acLoadWithOffset not supported for 2D simulations\n");
-     exit(EXIT_FAILURE);
-     return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeLoadMeshWithOffset(nodes[0], STREAM_DEFAULT, host_mesh, src, src, num_vertices);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 AcResult
 acSynchronizeMesh(void)
 {
-#if TWO_D == 1
-     fprintf(stderr,"acSynchronizeMesh not supported for 2D simulations\n");
-     exit(EXIT_FAILURE);
-     return AC_FAILURE;
-#else
-    ERRCHK_ALWAYS(num_nodes);
-    return acNodeSynchronizeMesh(nodes[0], STREAM_DEFAULT);
-#endif
+	fprintf(stderr,"DEPRECATED\n");
+	return AC_FAILURE;
 }
 
 int
@@ -486,49 +354,49 @@ acGetKernelIdByName(const char* name)
 int3
 acGetLocalNN(const AcMeshInfo info)
 {
-    return acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    return info[AC_nlocal];
 }
 
 int3
 acGetLocalMM(const AcMeshInfo info)
 {
-    return acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+    return info[AC_mlocal];
 }
 
 int3
 acGetGridNN(const AcMeshInfo info)
 {
-    return acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
+    return info[AC_ngrid];
 }
 
 int3
 acGetGridMM(const AcMeshInfo info)
 {
-    return acConstructInt3Param(AC_mxgrid, AC_mygrid, AC_mzgrid, info);
-}
-
-int3
-acGetMinNN(const AcMeshInfo info)
-{
-    return acConstructInt3Param(NGHOST_X, NGHOST_Y, NGHOST_Z, info);
+    return info[AC_mgrid];
 }
 
 int3
 acGetMaxNN(const AcMeshInfo info)
 {
-    return acConstructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max, info);
+    return info[AC_nlocal_max];
+}
+
+int3
+acGetMinNN(const AcMeshInfo info)
+{
+    return info[AC_nmin];
 }
 
 int3
 acGetGridMaxNN(const AcMeshInfo info)
 {
-    return acConstructInt3Param(AC_nxgrid_max, AC_nygrid_max, AC_nzgrid_max, info);
+    return info[AC_ngrid_max];
 }
 
 AcReal3
 acGetLengths(const AcMeshInfo info)
 {
-	return acConstructReal3Param(AC_xlen,AC_ylen,AC_zlen,info);
+	return info[AC_len];
 }
 
 

@@ -195,23 +195,11 @@ decompose_info(const MPI_Comm comm, AcCompInfo& info)
 {
   auto decomp = get_decomp(comm,info);
   auto& config = info.config;
-  ERRCHK_ALWAYS(config.int_params[AC_nx] % decomp.x == 0);
-  ERRCHK_ALWAYS(config.int_params[AC_ny] % decomp.y == 0);
-#if TWO_D == 0
-  ERRCHK_ALWAYS(config.int_params[AC_nz] % decomp.z == 0);
-#else
-  ERRCHK_ALWAYS(config.int_params[AC_nz]  == 1);
-#endif
-  const int3 nn = (int3){config.int_params[AC_nx], config.int_params[AC_ny], config.int_params[AC_nz]};
-  const int submesh_nx = nn.x / decomp.x;
-  const int submesh_ny = nn.y / decomp.y;
-  const int submesh_nz = nn.z / decomp.z;
+  ERRCHK_ALWAYS(config[AC_nlocal].x % decomp.x == 0);
+  ERRCHK_ALWAYS(config[AC_nlocal].y % decomp.y == 0);
+  ERRCHK_ALWAYS(config[AC_nlocal].z % decomp.z == 0);
 
-  acLoadCompInfo(AC_nx,submesh_nx,&info);
-  acLoadCompInfo(AC_ny,submesh_ny,&info);
-#if TWO_D == 0
-  acLoadCompInfo(AC_nz,submesh_nz,&info);
-#endif
+  acLoadCompInfo(AC_nlocal,config[AC_nlocal]/decomp);
   acLoadCompInfo(AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z},&info);
   acHostUpdateBuiltinCompParams(&info);
 }

@@ -266,45 +266,9 @@ __device__ __constant__ AcMeshInfo d_mesh_info;
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
 
 
+#define DEVICE_INLINE __device__ __forceinline__
 #include "dconst_decl.h"
 
-#define DEVICE_INLINE __device__ __forceinline__
-
-DEVICE_INLINE AcReal
-VAL(const AcRealParam& param)
-{
-	return DCONST(param);
-}
-
-DEVICE_INLINE AcReal
-VAL(const AcReal& val)
-{
-	return val;
-}
-
-DEVICE_INLINE int
-VAL(const AcIntParam& param)
-{
-	return DCONST(param);
-}
-
-DEVICE_INLINE int
-VAL(const int& val)
-{
-	return val;
-}
-
-DEVICE_INLINE int3
-VAL(const AcInt3Param& param)
-{
-	return DCONST(param);
-}
-
-DEVICE_INLINE int3
-VAL(const int3& val)
-{
-	return val;
-}
 
 
 #include "get_address.h"
@@ -313,12 +277,12 @@ VAL(const int3& val)
 
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
-  ((i) + (j)*VAL(AC_mx) + (k)*VAL(AC_mxy))
+  ((i) + (j)*VAL(AC_mlocal).x + (k)*VAL(AC_mlocal_products).xy)
 
 __device__ int
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
 {
-  return (coord.x) + (coord.y) * VAL(AC_nx) + (coord.z) * VAL(AC_nxy);
+  return (coord.x) + (coord.y) * VAL(AC_nlocal).x + (coord.z) * VAL(AC_nlocal_products).xy;
 }
 
 #define print printf                          // TODO is this a good idea?
@@ -611,14 +575,8 @@ get_val(const AcMeshInfo config, const AcIntParam param)
 size3_t
 buffer_dims(const AcMeshInfo config)
 {
-	const int x = get_val(config,AC_mx);
-	const int y = get_val(config,AC_my);
-#if TWO_D == 0
-	const int z = get_val(config,AC_mz);
-#else
-	const int z = 1;
-#endif
-	return (size3_t){as_size_t(x),as_size_t(y),as_size_t(z)};
+	auto mm = config[AC_mlocal];
+	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
 }
 
 VertexBufferArray
@@ -826,7 +784,6 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
 }
 
 
-#if TWO_D == 0
 AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -849,31 +806,7 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
-#else
-AcResult
-acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
-              const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-  ERRCHK_ALWAYS(stencil < NUM_STENCILS);
 
-  // Note important cudaDeviceSynchronize below
-  //
-  // Constant memory allocated for stencils is shared among kernel
-  // invocations, therefore a race condition is possible when updating
-  // the coefficients. To avoid this, all kernels that can access
-  // the coefficients must be completed before starting async copy to
-  // constant memory
-  cudaDeviceSynchronize();
-
-  const size_t bytes = sizeof(data[0][0]) * STENCIL_HEIGHT * STENCIL_WIDTH;
-  const cudaError_t retval = cudaMemcpyToSymbol(
-      stencils, data, bytes, stencil * bytes, cudaMemcpyHostToDevice);
-
-  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
-};
-#endif
-
-#if TWO_D == 0
 AcResult
 acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
                AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -890,24 +823,6 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
-#else
-AcResult
-acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
-               AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-  ERRCHK_ALWAYS(stencil < NUM_STENCILS);
-
-  // Ensure all acLoadUniform calls have completed before continuing
-  cudaDeviceSynchronize();
-
-  const size_t bytes = sizeof(data[0][0]) * STENCIL_HEIGHT * STENCIL_WIDTH;
-  const cudaError_t retval = cudaMemcpyFromSymbol(
-      data, stencils, bytes, stencil * bytes, cudaMemcpyDeviceToHost);
-
-  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
-};
-#endif
-
 
 
 template <typename P, typename V>
@@ -1154,19 +1069,11 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
       .tpb    = (dim3){0, 0, 0},
   };
 
-#if TWO_D == 0
   const int3 start = (int3){
-      STENCIL_ORDER / 2,
-      STENCIL_ORDER / 2,
-      STENCIL_ORDER / 2,
+	  NGHOST_X,
+	  NGHOST_Y,
+	  NGHOST_Z
   };
-#else
-  const int3 start = (int3){
-      STENCIL_ORDER / 2,
-      STENCIL_ORDER / 2,
-      0,
-  };
-#endif
   const int3 end = start + dims;
 
 
@@ -1884,15 +1791,15 @@ transpose_xyz_to_zyx(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.x
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
-	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mz) ||  (int)out_vertexIdx.y >= VAL(AC_my) || (int)out_vertexIdx.z >= VAL(AC_mx);
+	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
+	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mlocal).z ||  (int)out_vertexIdx.y >= VAL(AC_mlocal).y || (int)out_vertexIdx.z >= VAL(AC_mlocal).x;
 
 
 
 	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] : 0.0;
 	__syncthreads();
 	if(!out_oob)
-		dst[out_vertexIdx.x +VAL(AC_mz)*out_vertexIdx.y + VAL(AC_myz)*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
+		dst[out_vertexIdx.x +VAL(AC_mlocal).z*out_vertexIdx.y + VAL(AC_mlocal_products).yz*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
 }
 void __global__ 
 transpose_xyz_to_zxy(const AcReal* src, AcReal* dst)
@@ -1917,15 +1824,15 @@ transpose_xyz_to_zxy(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.x
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
-	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mz) ||  (int)out_vertexIdx.y >= VAL(AC_my) || (int)out_vertexIdx.z >= VAL(AC_mx);
+	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
+	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mlocal).z ||  (int)out_vertexIdx.y >= VAL(AC_mlocal).y || (int)out_vertexIdx.z >= VAL(AC_mlocal).x;
 
 
 
 	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] : 0.0;
 	__syncthreads();
 	if(!out_oob)
-		dst[out_vertexIdx.x +VAL(AC_mz)*out_vertexIdx.z + VAL(AC_mxz)*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
+		dst[out_vertexIdx.x +VAL(AC_mlocal).z*out_vertexIdx.z + VAL(AC_mlocal_products).xz*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
 }
 void __global__ 
 transpose_xyz_to_xyz(const AcReal* src, AcReal* dst)
@@ -1943,7 +1850,7 @@ transpose_xyz_to_xyz(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.z
 	};
-	const bool oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
+	const bool oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
 	if(oob) return;
 	dst[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] = src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)];
 }
@@ -1970,15 +1877,15 @@ transpose_xyz_to_yxz(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.x,
 		threadIdx.z + block_offset.z
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
-	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_my) ||  (int)out_vertexIdx.y >= VAL(AC_mx) || (int)out_vertexIdx.z >= VAL(AC_mz);
+	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
+	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mlocal).y ||  (int)out_vertexIdx.y >= VAL(AC_mlocal).x || (int)out_vertexIdx.z >= VAL(AC_mlocal).z;
 
 
 
 	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] : 0.0;
 	__syncthreads();
 	if(!out_oob)
-		dst[out_vertexIdx.x +VAL(AC_my)*out_vertexIdx.y + VAL(AC_mxy)*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
+		dst[out_vertexIdx.x +VAL(AC_mlocal).y*out_vertexIdx.y + VAL(AC_mlocal_products).xy*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
 }
 void __global__ 
 transpose_xyz_to_yzx(const AcReal* src, AcReal* dst)
@@ -2003,15 +1910,15 @@ transpose_xyz_to_yzx(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.x,
 		threadIdx.z + block_offset.z
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
-	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_my) ||  (int)out_vertexIdx.y >= VAL(AC_mx) || (int)out_vertexIdx.z >= VAL(AC_mz);
+	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
+	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mlocal).y ||  (int)out_vertexIdx.y >= VAL(AC_mlocal).x || (int)out_vertexIdx.z >= VAL(AC_mlocal).z;
 
 
 
 	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] : 0.0;
 	__syncthreads();
 	if(!out_oob)
-		dst[out_vertexIdx.x +VAL(AC_my)*out_vertexIdx.z + VAL(AC_myz)*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];
+		dst[out_vertexIdx.x +VAL(AC_mlocal).y*out_vertexIdx.z + VAL(AC_mlocal_products).yz*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];
 }
 void __global__ 
 transpose_xyz_to_xzy(const AcReal* src, AcReal* dst)
@@ -2030,9 +1937,9 @@ transpose_xyz_to_xzy(const AcReal* src, AcReal* dst)
 		threadIdx.z + in_block_offset.z
 	};
 
-	const bool oob  =  (int)vertexIdx.x  >= VAL(AC_mx)    ||  (int)vertexIdx.y >= VAL(AC_my)     || (int)vertexIdx.z >= VAL(AC_mz);
+	const bool oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
 	if(oob) return;
-	dst[vertexIdx.x + VAL(AC_mx)*vertexIdx.z + VAL(AC_mxz)*vertexIdx.y] 
+	dst[vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z + VAL(AC_mlocal_products).xz*vertexIdx.y] 
 		= src[DEVICE_VTXBUF_IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)];
 }
 static AcResult

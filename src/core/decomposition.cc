@@ -23,15 +23,22 @@
 
 #define DECOMPOSITION_TYPE_ZORDER (1)
 #define DECOMPOSITION_TYPE_HIERARCHICAL (2)
-#if TWO_D == 0
-#define MPI_DECOMPOSITION_AXES (3)
-#else
-#define MPI_DECOMPOSITION_AXES (2)
-#endif
+int MPI_DECOMPOSITION_AXES = 3;
+bool TWO_DIMENSIONAL_SETUP = false;
 
 #define DECOMPOSITION_TYPE (DECOMPOSITION_TYPE_ZORDER)
 // #define DECOMPOSITION_TYPE (DECOMPOSITION_TYPE_HIERARCHICAL)
 
+
+void
+acInitDecomposition(const bool two_dimensional_setup)
+{
+	if(two_dimensional_setup)
+	{
+		MPI_DECOMPOSITION_AXES = 2;
+		TWO_DIMENSIONAL_SETUP  = true;
+	}
+}
 static void
 acPrint_size_t(const char* label, const size_t value)
 {
@@ -459,13 +466,16 @@ morton3D(const uint64_t pid)
     else if (MPI_DECOMPOSITION_AXES == 2) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << 2 * bit;
-#if TWO_D == 0
-            j |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
-            k |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
-#else
-            i |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
-            j |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
-#endif
+	    if(TWO_DIMENSIONAL_SETUP)
+	    {
+            	j |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
+            	k |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
+	    }
+	    else
+	    {
+            	i |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
+            	j |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
+	    }
         }
     }
     else if (MPI_DECOMPOSITION_AXES == 1) {
@@ -498,13 +508,16 @@ morton1D(const uint3_64 pid)
     else if (MPI_DECOMPOSITION_AXES == 2) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << bit;
-#if TWO_D == 0
-            i |= ((pid.y & mask) << 0) << 1 * bit;
-            i |= ((pid.z & mask) << 1) << 1 * bit;
-#else
-            i |= ((pid.x & mask) << 0) << 1 * bit;
-            i |= ((pid.y & mask) << 1) << 1 * bit;
-#endif
+	    if(TWO_DIMENSIONAL_SETUP)
+	    {
+            	i |= ((pid.y & mask) << 0) << 1 * bit;
+            	i |= ((pid.z & mask) << 1) << 1 * bit;
+	    }
+	    else
+	    {
+            	i |= ((pid.x & mask) << 0) << 1 * bit;
+            	i |= ((pid.y & mask) << 1) << 1 * bit;
+	    }
         }
     }
     else if (MPI_DECOMPOSITION_AXES == 1) {

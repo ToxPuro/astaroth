@@ -280,16 +280,10 @@ typedef struct {
   FUNC_DEFINE(AcResult, acBenchmarkKernel,(AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-#if TWO_D == 0
   FUNC_DEFINE(AcResult, acLoadStencil,(const Stencil stencil, const cudaStream_t stream, const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
   FUNC_DEFINE(AcResult, acStoreStencil,(const Stencil stencil, const cudaStream_t stream, AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
-#else
-  FUNC_DEFINE(AcResult,acLoadStencil,(const Stencil stencil, const cudaStream_t stream, const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]));
-
-  FUNC_DEFINE(AcResult, acStoreStencil(const Stencil stencil, const cudaStream_t stream, AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]));
-#endif
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
 #include "load_and_store_uniform_header.h"
@@ -547,7 +541,7 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 	  int num_dims         = get_array_info(array).num_dims;
 	  bool res = true;
 	  for(int i = 0; i < num_dims; ++i)
-		  res &= !dims.from_config[i];
+		  res &= !dims[i].from_config;
 	  return res;
   }
 
@@ -575,11 +569,11 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   constexpr static int
   get_const_dims_array_length(const P array)
   {
-	  AcArrayDims dims     = get_array_info(array).dims;
+	  auto dims     = get_array_info(array).dims;
 	  int num_dims         = get_array_info(array).num_dims;
 	  int res = 1;
 	  for(int i = 0; i < num_dims; ++i)
-		  res *= dims.len[i];
+		  res *= dims[i].base;
 	  return res;
   }
 
@@ -587,11 +581,37 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   constexpr static auto
   get_array_dim_sizes(const P array, const AcMeshInfo host_info)
   {
-	  AcArrayDims dims     = get_array_info(array).dims;
+	  auto dims            = get_array_info(array).dims;
 	  int num_dims         = get_array_info(array).num_dims;
 	  std::array<size_t,20> res{};
 	  for(int i = 0; i < num_dims; ++i)
-	  	res[i] = (dims.from_config[i] ? host_info.int_params[dims.len[i]] : dims.len[i]);
+	  {
+		  if(!dims[i].from_config)
+		  {
+			  res[i] = dims[i].base;
+			  continue;
+		  }
+		  if(dims[i].member == NULL)
+		  {
+			  res[i] = host_info.int_params[dims[i].base];
+			  continue;
+		  }
+		  if(!strcmp(dims[i].member,"x"))
+		  {
+			  res[i] = host_info.int3_params[dims[i].base].x;
+			  continue;
+		  }
+		  if(!strcmp(dims[i].member,"y"))
+		  {
+			  res[i] = host_info.int3_params[dims[i].base].y;
+			  continue;
+		  }
+		  if(!strcmp(dims[i].member,"z"))
+		  {
+			  res[i] = host_info.int3_params[dims[i].base].z;
+			  continue;
+		  }
+	  }
 	  return res;
   }
 

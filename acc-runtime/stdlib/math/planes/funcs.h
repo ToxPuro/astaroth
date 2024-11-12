@@ -84,26 +84,26 @@ Plane_y_coefficient(real3 a, real3 b)
 #if TWO_D == 1
 Stencil diff_up
 {
-	[1][0]  =  1,
-	[0][0]  = -1
+	[0][1][0]  =  1,
+	[0][0][0]  = -1
 }
 
 Stencil diff_down
 {
-	[-1][0] =  1,
-	[0][0]  = -1
+	[0][-1][0] =  1,
+	[0][0][0]  = -1
 }
 
 Stencil diff_right
 {
-	[0][1]  =  1,
-	[0][0]  = -1
+	[0][0][1]  =  1,
+	[0][0][0]  = -1
 }
 
 Stencil diff_left
 {
-	[0][-1] =  1,
-	[0][0]  = -1
+	[0][0][-1] =  1,
+	[0][0][0]  = -1
 }
 
 get_first_order_derivatives(Field coordsx, Field coordsy, Field F)

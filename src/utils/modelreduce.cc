@@ -85,26 +85,16 @@ squared_alf(const long double a, const long double b, const long double c, const
 int
 get_initial_idx(AcMeshInfo info)
 {
-#if TWO_D == 0
     const int initial_idx = acGridVertexBufferIdx(NGHOST_X,
                                               NGHOST_Y,
                                               NGHOST_Z, info);
-#else
-    const int initial_idx = acGridVertexBufferIdx(NGHOST_X,
-                                              NGHOST_Y,
-                                              0,info);
-#endif
     return initial_idx;
 
 }
 long double
 get_inv_n(AcMeshInfo info)
 {
-#if TWO_D == 0
-	const int n_grid_points = info[AC_nxyzgrid];
-#else
-	const int n_grid_points = info[AC_nxygrid];
-#endif
+	const int n_grid_points = info[AC_ngrid_products].xyz;
         return (long double)1.0l / n_grid_points;
 }
 

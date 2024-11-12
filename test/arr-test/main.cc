@@ -182,14 +182,15 @@ main(void)
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     acGridSynchronizeStream(STREAM_DEFAULT);
 
-    const int nx_min = model.info[AC_nx_min];
-    const int nx_max = model.info[AC_nx_max];
+    const int nx_min = model.info[AC_nmin].x;
+    const int nx_max = model.info[AC_nlocal_max].x;
 
-    const int ny_min = model.info[AC_ny_min];
-    const int ny_max = model.info[AC_ny_max];
+    const int ny_min = model.info[AC_nmin].y;
+    const int ny_max = model.info[AC_nlocal_max].y;
 
-    const int nz_min = model.info[AC_nz_min];
-    const int nz_max = model.info[AC_nz_max];
+    const int nz_min = model.info[AC_nmin].z;
+    const int nz_max = model.info[AC_nlocal_max].z;
+
     auto IDX = [&](const int i, const int j, const int k)
     {
 	    return acVertexBufferIdx(i,j,k,model.info);
@@ -228,10 +229,10 @@ main(void)
     acDeviceStore(acGridGetDevice(), STREAM_DEFAULT, AC_2d_reals, &read_2d[0][0]);
     acDeviceStore(acGridGetDevice(), STREAM_DEFAULT, AC_4d_float_arr_out, &read_fourD_float_arr[0][0][0][0]);
     bool arrays_are_the_same = true;
-    for(int i = 0; i < info.int_params[AC_nx]; ++i)
+    for(int i = 0; i < info[AC_nlocal].x; ++i)
 	    arrays_are_the_same &= (read_global_arr[i] == global_arr[i]);
-    for(int i = 0; i < info.int_params[AC_nx]; ++i)
-    	for(int j = 0; j < info.int_params[AC_ny]; ++j)
+    for(int i = 0; i < info[AC_nlocal].x; ++i)
+    	for(int j = 0; j < info[AC_nlocal].y; ++j)
 	    arrays_are_the_same &= (read_2d TWO_D_ARR(i,j) == twoD_real_arr TWO_D_ARR(i,j));
     bool updated_arrays_are_the_same = true;
     for(int k = 0; k < mz; ++k)

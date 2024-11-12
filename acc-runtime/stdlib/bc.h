@@ -1,23 +1,23 @@
 inline get_normal()
 {
-           const int z = (vertexIdx.z >= AC_nz_max)
-			-(vertexIdx.z < AC_nz_min);
-           const int y = (z == 0)*((vertexIdx.y >= AC_ny_max)
-			-(vertexIdx.y < AC_ny_min));
-           const int x = (z == 0 && y == 0)*((vertexIdx.x >= AC_nx_max)
-			-(vertexIdx.x < AC_nx_min));
+           const int z = (vertexIdx.z >= AC_nlocal_max.z)
+			-(vertexIdx.z < AC_nmin.z);
+           const int y = (z == 0)*((vertexIdx.y >= AC_nlocal_max.y)
+			-(vertexIdx.y < AC_nmin.y));
+           const int x = (z == 0 && y == 0)*((vertexIdx.x >= AC_nlocal_max.x)
+			-(vertexIdx.x < AC_nmin.x));
 	   return (int3){x,y,z}
 }
 inline get_boundary(int3 normal)
 {
-	const int x =  normal.x == 1  ? AC_nx_max-1
-		     : normal.x == -1 ? AC_nx_min
+	const int x =  normal.x == 1  ? AC_nlocal_max.x-1
+		     : normal.x == -1 ? AC_nmin.x
 		     : vertexIdx.x;
-	const int y =  normal.y == 1  ? AC_ny_max-1
-		     : normal.y == -1 ? AC_ny_min
+	const int y =  normal.y == 1  ? AC_nlocal_max.y-1
+		     : normal.y == -1 ? AC_nmin.y
 		     : vertexIdx.y;
-	const int z =  normal.z == 1  ? AC_nz_max-1
-		     : normal.z == -1 ? AC_nz_min
+	const int z =  normal.z == 1  ? AC_nlocal_max.z-1
+		     : normal.z == -1 ? AC_nmin.z
 		     : vertexIdx.z;
 	return (int3){x,y,z}
 }
@@ -70,17 +70,13 @@ utility Kernel BOUNDCOND_CONST(Field f, real const_val)
 		f[ghost.x][ghost.y][ghost.z] = const_val;
 	}
 }
-inline get_boundcond_spacing(int3 normal)
-{
-	return normal.x*AC_dsx + normal.y*AC_dsy + normal.z*AC_dsz;
-}
 utility Kernel BOUNDCOND_PRESCRIBED_DERIVATIVE(Field f, real prescribed_value)
 {
 	const int3 normal = get_normal()
 	const int3 boundary = get_boundary(normal)
 	int3 domain = boundary
 	int3 ghost  = boundary
-	const real spacing = get_boundcond_spacing(normal)
+	const real spacing = dot(normal,AC_ds)
 	for i in 0:NGHOST
 	{
 		real distance = 2.0*(i+1)*spacing;

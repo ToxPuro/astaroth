@@ -131,18 +131,11 @@
 static const int MAX_NUM_DEVICES = 32;
 
 static inline void UNUSED
-set_info_val(AcMeshInfo& info, const AcIntParam param, const int value)
-{
-	info[param] = value;
-}
-static inline void UNUSED
 set_info_val(AcMeshInfo& info, const AcInt3Param param, const int3 value)
 {
 	info[param] = value;
 }
 
-static inline void UNUSED
-set_info_val(AcMeshInfo& , const int , const int ){}
 
 static inline void UNUSED
 set_info_val(AcMeshInfo& , const int3 , const int3 ){}
@@ -223,7 +216,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     // Check that node->num_devices is divisible with AC_nz. This makes decomposing the
     // problem domain to multiple GPUs much easier since we do not have to worry
     // about remainders
-    ERRCHK_ALWAYS(node->config[AC_nz] % node->num_devices == 0);
+    ERRCHK_ALWAYS(node->config[AC_nlocal].z % node->num_devices == 0);
 
     // Decompose the problem domain
     // The main grid
@@ -231,7 +224,12 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
 
     // Subgrids
     AcMeshInfo subgrid_config = node->config;
-    set_info_val(subgrid_config,AC_nz,node->config[AC_nz] / node->num_devices);
+    set_info_val(subgrid_config,AC_nlocal,
+		    			{node->config[AC_nlocal].x,
+					 node->config[AC_nlocal].y,
+		    			 node->config[AC_nlocal].z / node->num_devices
+					 }
+		);
     acHostUpdateBuiltinParams(&subgrid_config);
 #if AC_VERBOSE
     printf("###############################################################\n");

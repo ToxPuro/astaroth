@@ -70,6 +70,23 @@ is_initcondtype(const int)
     return false;
 }
 
+static int3
+parse_int3param(const char* value)
+{
+	int x, y, z;
+    	sscanf(value,"{%d,%d,%d}", &x, &y, &z);
+	return (int3){x,y,z};
+}
+
+static AcReal3
+parse_real3param(const char* value)
+{
+	double x, y, z;
+    	sscanf(value,"{%lg,%lg,%lg}", &x, &y, &z);
+	return (AcReal3){(AcReal)x,(AcReal)y,(AcReal)z};
+}
+
+
 static int
 parse_intparam(const size_t idx, const char* value, const bool run_const)
 {
@@ -118,18 +135,16 @@ get_entries(const char* line)
       return dst;
 }
 
-static int
-length_from_dims(const AcArrayDims dims)
-{
-	const auto lens = dims.len;
-	int res = 1;
-	for(auto& len : lens)
-		res *= std::max(len,1);
-	return res;
-}
 static void
 parse_config(const char* path, AcMeshInfo* config)
 {
+	auto length_from_dims = [](const auto& dims)
+	{
+		int res = 1;
+		for(auto& len : dims)
+			res *= std::max(len.base,1);
+		return res;
+	};
     FILE* fp;
     fp = fopen(path, "r");
     // For knowing which .conf file will be used
@@ -151,6 +166,18 @@ parse_config(const char* path, AcMeshInfo* config)
         }
         else if ((idx = find_str(keyword, int_comp_param_names, NUM_INT_COMP_PARAMS)) >= 0) {
 	    acPushToConfig(*config,static_cast<AcIntCompParam>(idx),parse_intparam(idx,value,true));
+        }
+        else if ((idx = find_str(keyword, int3param_names, NUM_INT3_PARAMS)) >= 0) {
+	    acPushToConfig(*config,static_cast<AcInt3Param>(idx),parse_int3param(value));
+        }
+        else if ((idx = find_str(keyword, int3_comp_param_names, NUM_INT3_COMP_PARAMS)) >= 0) {
+	    acPushToConfig(*config,static_cast<AcInt3CompParam>(idx),parse_int3param(value));
+        }
+        else if ((idx = find_str(keyword, real3param_names, NUM_REAL3_PARAMS)) >= 0) {
+	    acPushToConfig(*config,static_cast<AcReal3Param>(idx),parse_real3param(value));
+        }
+        else if ((idx = find_str(keyword, real3_comp_param_names, NUM_REAL3_COMP_PARAMS)) >= 0) {
+	    acPushToConfig(*config,static_cast<AcReal3CompParam>(idx),parse_real3param(value));
         }
         else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0) {
             AcReal real_val = atof(value);

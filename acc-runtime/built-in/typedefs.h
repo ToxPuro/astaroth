@@ -37,6 +37,12 @@ typedef AcBool3 struct bool3
 	bool y;
 	bool z;
 }
+
+struct Field2
+{
+	Field x;
+	Field y;
+} 
 struct Field3
 {
 	Field x;
@@ -51,3 +57,11 @@ struct Field4
 	Field z;
 	Field w;
 } 
+
+struct AcDimProducts
+{
+	int xy;
+	int xz;
+	int yz;
+	long xyz;
+};

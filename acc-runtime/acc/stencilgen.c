@@ -71,12 +71,15 @@ void
 gen_stencil_definitions(void)
 {
   if (!NUM_ALL_FIELDS)
+  {
     raise_error("Must declare at least one Field in the DSL code!");
+  }
 
   if (!NUM_STENCILS)
+  {
     raise_error("Must declare at least one Stencil in the DSL code!");
+  }
 
-#if TWO_D == 0
     printf(
         "static __device__ /*const*/ AcReal /*__restrict__*/ "
         "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={");
@@ -97,26 +100,7 @@ gen_stencil_definitions(void)
       printf("},");
     }
     printf("};");
-#else
-    printf(
-        "static __device__ /*const*/ AcReal /*__restrict__*/ "
-        "stencils[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH]={");
-    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-      printf("{");
-      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-        printf("{");
-        for (int width = 0; width < STENCIL_WIDTH; ++width) {
-            const char* coeff = stencils[stencil][height][width];
-	    printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff : "AcReal(NAN)");
-        }
-        printf("},");
-      }
-      printf("},");
-    }
-    printf("};");
-#endif
   FILE* stencil_coeffs_file= fopen("coeffs.h", "w");
-#if TWO_D == 0
   fprintf(stencil_coeffs_file,
       "AcReal "
       "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={");
@@ -138,25 +122,6 @@ gen_stencil_definitions(void)
     fprintf(stencil_coeffs_file,"},");
   }
   fprintf(stencil_coeffs_file,"};");
-#else
-  fprintf(stencil_coeffs_file,
-      "AcReal "
-      "stencils[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH]={");
-  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-    fprintf(stencil_coeffs_file,"{");
-    for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-      fprintf(stencil_coeffs_file,"{");
-      for (int width = 0; width < STENCIL_WIDTH; ++width) {
-        fprintf(stencil_coeffs_file,"%s,", dynamic_coeffs[stencil][height][width]
-                          ? dynamic_coeffs[stencil][height][width]
-                          : "0");
-      }
-      fprintf(stencil_coeffs_file,"},");
-    }
-    fprintf(stencil_coeffs_file,"},");
-  }
-  fprintf(stencil_coeffs_file,"};");
-#endif
   fclose(stencil_coeffs_file);
 }
 
@@ -180,33 +145,18 @@ gen_kernel_common_prefix()
          "d_multigpu_offset.y + vertexIdx.y,"
          "d_multigpu_offset.z + vertexIdx.z,"
          "};");
-#if TWO_D == 0
-  printf("const int3 globalGridN = (int3){VAL(AC_nxgrid),VAL(AC_nygrid), VAL(AC_nzgrid)};");
-#else
-  printf("const int3 globalGridN = (int3){VAL(AC_nxgrid), VAL(AC_nygrid), 1};");
-#endif
   printf("const int idx = DEVICE_VTXBUF_IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
-#if TWO_D == 0
     printf(
         "const int3 localCompdomainVertexIdx = (int3){"
         "threadIdx.x + blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
         "threadIdx.y + blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
         "threadIdx.z + blockIdx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2,"
         "};");
-#else
-    printf(
-        "const int3 localCompdomainVertexIdx = (int3){"
-        "threadIdx.x + blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
-        "threadIdx.y + blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
-        "0,"
-        "};");
-#endif
   printf("const int local_compdomain_idx = "
          "LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx);");
 
   printf("(void)globalVertexIdx;"); // Silence unused warning
-  printf("(void)globalGridN;");     // Silence unused warning
   printf("(void)local_compdomain_idx;");     // Silence unused warning
 					     //
 // Write vba.out
@@ -585,9 +535,6 @@ get_stencils_valid_for_profiles(bool stencil_valid_for_profiles[NUM_STENCILS])
   // Check which stencils are invalid for profiles
   // (computed in a new array to avoid side effects).
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-#if TWO_D == 1
-    stencil_valid_for_profiles[stencil] = false;
-#else
     stencil_valid_for_profiles[stencil] = true;
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
@@ -602,7 +549,6 @@ get_stencils_valid_for_profiles(bool stencil_valid_for_profiles[NUM_STENCILS])
         }
       }
     }
-#endif
   }
 }
 
@@ -662,9 +608,7 @@ gen_stencil_functions(const int curr_kernel)
   printf("}};\n");
 }
 
-#if TWO_D == 0
 #include "3d_caching_implementations.h"
-#endif
 
 
 #include <stdint.h>
@@ -722,21 +666,12 @@ max(const uint64_t a, const uint64_t b)
 void
 printf_stencil_point(const int stencil, const int depth, const int height, const int width)
 {
-#if TWO_D == 0
 	const char* coeff = stencils[stencil][depth][height][width];
-#else
-	(void)depth;
-	const char* coeff = stencils[stencil][height][width];
-#endif
 	if(!strcmp(coeff,"1")) return;
 	if(!strstr(coeff,"DCONST"))
 	    printf("%s *",coeff);
 	else
-#if TWO_D == 0
 	    printf("stencils[%d][%d][%d][%d] *",stencil,depth,height,width);
-#else
-	    printf("stencils[%d][%d][%d] *",stencil,height,width);
-#endif
 }
 
 void
@@ -806,10 +741,11 @@ gen_kernel_body(const int curr_kernel)
     const int BLOCK_SIZE = NUM_ALL_FIELDS;
     const int NUM_BLOCKS = (NUM_ALL_FIELDS + BLOCK_SIZE - 1) / BLOCK_SIZE;
     if (BLOCK_SIZE * NUM_BLOCKS < NUM_ALL_FIELDS)
+    {
       raise_error("Invalid BLOCK_SIZE * NUM_BLOCKS, was smaller than "
                   "NUM_ALL_FIELDS in stencilgen.c\n");
+    }
 
-#if TWO_D == 0
       for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
         for (int height = 0; height < STENCIL_HEIGHT; ++height) {
           for (int width = 0; width < STENCIL_WIDTH; ++width) {
@@ -864,58 +800,6 @@ gen_kernel_body(const int curr_kernel)
           }
         }
       }
-#else
-        for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-          for (int width = 0; width < STENCIL_WIDTH; ++width) {
-            for (int field_block = 0; field_block < NUM_BLOCKS; ++field_block) {
-              for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-                for (int foffset = 0; foffset < BLOCK_SIZE; ++foffset) {
-                  const int field = foffset + field_block * BLOCK_SIZE;
-                  if (field >= NUM_ALL_FIELDS)
-                    break;
-
-                  // Skip if the stencil is not used
-                  if (!stencils_accessed[curr_kernel][field][stencil])
-                    continue;
-
-                  if (stencils[stencil][height][width]) {
-                    if (!stencil_initialized[field][stencil]) {
-                      printf("auto f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
-		      printf_stencil_point(stencil,0,height,width);
-                      printf("%s(", stencil_unary_ops[stencil]);
-                      printf("__ldg(&");
-                      printf("vba.in[%s]"
-                             "[DEVICE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                             "0)])",
-                             field_names[get_original_index(field_remappings,field)], -STENCIL_ORDER / 2 + width,
-                             -STENCIL_ORDER / 2 + height);
-                      printf(")");
-                      printf(";");
-
-                      stencil_initialized[field][stencil] = 1;
-                    }
-                    else {
-                      printf("f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
-                      printf("%s(f%s_s%s, ", stencil_binary_ops[stencil], field_names[get_original_index(field_remappings,field)],
-                             stencil_names[stencil]);
-		      printf_stencil_point(stencil,0,height,width);
-                      printf("%s(", stencil_unary_ops[stencil]);
-                      printf("__ldg(&");
-                      printf("vba.in[%s]"
-                             "[DEVICE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                             "0)])",
-                             field_names[get_original_index(field_remappings,field)], -STENCIL_ORDER / 2 + width,
-                             -STENCIL_ORDER / 2 + height);
-                      printf(")");
-                      printf(");");
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-#endif
 
     bool stencil_valid_for_profiles[NUM_STENCILS];
     get_stencils_valid_for_profiles(stencil_valid_for_profiles);
@@ -928,7 +812,6 @@ gen_kernel_body(const int curr_kernel)
     // }
 
     // Profiles
-#if TWO_D == 0
     const int PROFILE_BLOCK_SIZE = NUM_PROFILES;
     const int NUM_PROFILE_BLOCKS = NUM_PROFILES ? (NUM_PROFILES +
                                                    PROFILE_BLOCK_SIZE - 1) /
@@ -1001,7 +884,6 @@ gen_kernel_body(const int curr_kernel)
         }
       }
     }
-#endif
 
     gen_stencil_functions(curr_kernel);
     /*
@@ -1018,7 +900,6 @@ gen_kernel_body(const int curr_kernel)
 
     return;
   }
-#if TWO_D == 0
   case EXPLICIT_CACHING: {
     gen_kernel_prefix(curr_kernel); // Note no bounds check
 
@@ -1099,7 +980,6 @@ gen_kernel_body(const int curr_kernel)
     #endif
     return;
   }
-#endif
   default: {
     fprintf(stderr,
             "Fatal error: invalid IMPLEMENTATION passed to stencilgen.c");

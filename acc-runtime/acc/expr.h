@@ -1,7 +1,7 @@
 #include "tinyexpr.h"
 static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
 {
-	if(node->lhs)
+	if(node->lhs && !(node->type & (NODE_DECLARATION | NODE_ASSIGNMENT)))
 		replace_const_ints(node->lhs,values,names);
 	if(node->rhs)
 		replace_const_ints(node->rhs,values,names);
@@ -9,7 +9,7 @@ static void replace_const_ints(ASTNode* node, const string_vec values, const str
 	const int index = str_vec_get_index(names,node->buffer);
 	if(index == -1) return;
 	astnode_set_buffer(values.data[index],node);
-	node->type |= NODE_VARIABLE_ID;
+	node->type = NODE_UNKNOWN;
 	node->token = NUMBER;
 }
 static void eval_ternaries(ASTNode* node, const string_vec values, const string_vec names);

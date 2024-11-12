@@ -2,7 +2,7 @@ auxiliary Field3 FIELD
 hostdefine STENCIL_ORDER (0)
 
 const int test_arr_size = 6;
-gmem int AC_global_arr[AC_nx]
+gmem int AC_global_arr[AC_nlocal.x]
 dconst real AC_test_arr[test_arr_size];
 dconst real AC_test_arr_2[(2-1)*2+1];
 dconst int AC_test_int_arr[test_arr_size/2];
@@ -11,16 +11,18 @@ dconst int AC_test_int_arr[test_arr_size/2];
 const int AC_nx_const = 2*9
 const int AC_ny_const = 2*11
 
-//gmem real AC_2d_reals[AC_nx][AC_ny]
+const int3 AC_nlocal_const = {AC_nx_const,AC_ny_const,2}
+
+//gmem real AC_2d_reals[AC_nlocal.x][AC_nlocal.y]
 //TP: testing gmem arrays with const dims
 //If constant dimensions we can skip a pointer indirection when using the gmem arr
-gmem real AC_2d_reals[AC_nx_const][AC_ny_const]
-gmem real AC_2d_reals_dims_from_config[AC_nx][AC_ny]
+gmem real AC_2d_reals[AC_nx_const][AC_nlocal_const.y]
+gmem real AC_2d_reals_dims_from_config[AC_nlocal.x][AC_nlocal.y]
 
-gmem real AC_3d_reals[AC_mx][AC_my][AC_mz]
-gmem float AC_float_arr[AC_nx]
-gmem float AC_4d_float_arr_out[AC_mx][AC_my][AC_mz][3]
-gmem float AC_4d_float_arr[AC_mx][AC_my][AC_mz][3]
+gmem real AC_3d_reals[AC_mlocal.x][AC_mlocal.y][AC_mlocal.z]
+gmem float AC_float_arr[AC_nlocal.x]
+gmem float AC_4d_float_arr_out[AC_mlocal.x][AC_mlocal.y][AC_mlocal.z][3]
+gmem float AC_4d_float_arr[AC_mlocal.x][AC_mlocal.y][AC_mlocal.z][3]
 
 dconst int AC_dconst_int
 

@@ -11,128 +11,58 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
 	    else
 	    	return acPushToConfig(config,param,val);
     };
-    auto is_loaded = [&](auto param)
-    {
-	    return config.run_consts.is_loaded[param];
-    };
-    auto nx_param = !IsCompParam(AC_nx) ? AC_nx
-	    	    : is_loaded(AC_nx) ? AC_nx : AC_nxgrid;
-    auto ny_param = !IsCompParam(AC_ny) ? AC_ny
-	    	    : is_loaded(AC_ny) ? AC_ny : AC_nygrid;
-#if TWO_D == 0
-    auto nz_param = !IsCompParam(AC_nz) ? AC_nz
-	    	    : is_loaded(AC_nz) ? AC_nz : AC_nzgrid;
-#endif
-
-    ERRCHK_ALWAYS(config[nx_param]);
-    ERRCHK_ALWAYS(config[ny_param]);
-#if TWO_D == 0
-    ERRCHK_ALWAYS(config[nz_param]);
-#endif
-
-    if(!IsCompParam(AC_nx) && config[AC_nx] <= 0) push_val(AC_nx,config[AC_nxgrid]);
-    if(!IsCompParam(AC_ny) && config[AC_ny] <= 0) push_val(AC_ny,config[AC_nygrid]);
-#if TWO_D == 0
-    if(!IsCompParam(AC_nz) && config[AC_nz] <= 0) push_val(AC_nz,config[AC_nzgrid]);
-#endif
-    if(IsCompParam(AC_nx) && !is_loaded(AC_nx)) push_val(AC_nx,config[AC_nxgrid]);
-    if(IsCompParam(AC_ny) && !is_loaded(AC_ny)) push_val(AC_ny,config[AC_nygrid]);
-#if TWO_D == 0
-    if(IsCompParam(AC_nz) && !is_loaded(AC_nz)) push_val(AC_nz,config[AC_nzgrid]);
-#endif
-
-
-    push_val(AC_mx,config[nx_param] + STENCIL_ORDER);
-    push_val(AC_my,config[ny_param] + STENCIL_ORDER);
-#if TWO_D == 0
-    push_val(AC_mz,config[nz_param] + STENCIL_ORDER);
-#endif
-
-    // Bounds for the computational domain, i.e. nx_min <= i < nx_max
-    push_val(AC_nx_min,NGHOST_X);
-    push_val(AC_ny_min,NGHOST_Y);
-#if TWO_D == 0
-    push_val(AC_nz_min,NGHOST_Z);
-#endif
-
-    push_val(AC_nx_max,config[nx_param] + NGHOST_X); 
-    push_val(AC_ny_max,config[ny_param] + NGHOST_Y); 
-#if TWO_D == 0
-    push_val(AC_nz_max,config[nz_param] + NGHOST_Z); 
-#endif
-
-    ERRCHK_ALWAYS(!IsCompParam(AC_nxgrid)  || is_loaded(AC_nxgrid));
-    ERRCHK_ALWAYS(!IsCompParam(AC_nygrid)  || is_loaded(AC_nygrid));
-#if TWO_D == 0
-    ERRCHK_ALWAYS(!IsCompParam(AC_nzgrid)  || is_loaded(AC_nzgrid));
-#endif
-
-    push_val(AC_nxgrid_max,config[AC_nxgrid] + NGHOST_X); 
-    push_val(AC_nygrid_max,config[AC_nygrid] + NGHOST_Y); 
-#if TWO_D == 0
-    push_val(AC_nzgrid_max,config[AC_nzgrid] + NGHOST_Z); 
-#endif
-
-    push_val(AC_mxgrid,config[AC_nxgrid] + 2*NGHOST_X); 
-    push_val(AC_mygrid,config[AC_nygrid] + 2*NGHOST_Y); 
-#if TWO_D == 0
-    push_val(AC_mzgrid,config[AC_nzgrid] + 2*NGHOST_Z); 
-#endif
-    /* Additional helper params */
-    // Int helpers
-    push_val(AC_mxy,config[AC_mx]*config[AC_my]); 
-    push_val(AC_nxy,config[AC_nx]*config[AC_ny]); 
-    push_val(AC_nxygrid,config[AC_nxgrid]*config[AC_nygrid]); 
-
-    push_val(AC_xlen,config[AC_nxgrid]*config[AC_dsx]); 
-    push_val(AC_ylen,config[AC_nygrid]*config[AC_dsy]); 
 
 #if TWO_D == 0
-    push_val(AC_dsmin,std::min(std::min(config[AC_dsx],config[AC_dsy]),config[AC_dsz]));
-    push_val(AC_mxz,config[AC_mx]*config[AC_mz]); 
-    push_val(AC_myz,config[AC_my]*config[AC_mz]); 
-    push_val(AC_nxyz,config[AC_nxy]*config[nz_param]); 
-    push_val(AC_nxyzgrid,config[AC_nxygrid]*config[AC_nzgrid]); 
-    push_val(AC_zlen,config[AC_nzgrid]*config[AC_dsz]); 
+    push_val(AC_dsmin,std::min(std::min(config[AC_ds].x,config[AC_ds].y),config[AC_ds].z));
 #else
-    push_val(AC_dsmin,std::min(config[AC_dsx],config[AC_dsy]));
+    push_val(AC_ds,(AcReal3){config[AC_ds].x, config[AC_ds].y, 1.0});
+    push_val(AC_ngrid, (int3){config[AC_ngrid].x, config[AC_ngrid].y, 1});
+    push_val(AC_nlocal, (int3){config[AC_nlocal].x, config[AC_nlocal].y, 1});
 #endif
+    push_val(AC_mlocal,config[AC_nlocal] + 2*(int3){NGHOST_X,NGHOST_Y,NGHOST_Z});
+    push_val(AC_mgrid ,config[AC_ngrid]  + 2*(int3){NGHOST_X,NGHOST_Y,NGHOST_Z});
 
-    push_val(AC_inv_dsx,1.0/config[AC_dsx]);
-    push_val(AC_inv_dsy,1.0/config[AC_dsy]);
-#if TWO_D == 0
-    push_val(AC_inv_dsz,1.0/config[AC_dsz]);
-#endif
+    push_val(AC_nlocal_max,config[AC_nlocal] + (int3){NGHOST_X,NGHOST_Y,NGHOST_Z});
+    push_val(AC_ngrid_max,config[AC_ngrid]   + (int3){NGHOST_X,NGHOST_Y,NGHOST_Z});
+    const int3 nmin = (int3)
+    {
+	    NGHOST_X,
+	    NGHOST_Y,
+	    NGHOST_Z
+    };
+    auto get_products = [&](const auto& param)
+    {
+		   return (AcDimProducts){
+		    	config[param].x*config[param].y,	
+		    	config[param].x*config[param].z,	
+		    	config[param].y*config[param].z,	
+		    	config[param].x*config[param].y*config[param].z,	
+		    };
+    };
+    push_val(AC_nmin,nmin);
 
-    push_val(AC_inv_dsx_2,config[AC_inv_dsx]*config[AC_inv_dsx]);
-    push_val(AC_inv_dsy_2,config[AC_inv_dsy]*config[AC_inv_dsy]);
-#if TWO_D == 0
-    push_val(AC_inv_dsz_2,config[AC_inv_dsz]*config[AC_inv_dsz]);
-#endif
+    push_val(AC_nlocal_products,get_products(AC_nlocal));
+    push_val(AC_mlocal_products,get_products(AC_mlocal));
+    push_val(AC_ngrid_products,get_products(AC_ngrid));
+    push_val(AC_mgrid_products,get_products(AC_mgrid));
+    push_val(AC_len,
+    	(AcReal3)
+    	{
+    		config[AC_ngrid].x*config[AC_ds].x,
+    		config[AC_ngrid].y*config[AC_ds].y,
+    		config[AC_ngrid].z*config[AC_ds].z
+    	}
+    );
 
-    push_val(AC_inv_dsx_3,config[AC_inv_dsx_2]*config[AC_inv_dsx]);
-    push_val(AC_inv_dsy_3,config[AC_inv_dsy_2]*config[AC_inv_dsy]);
-#if TWO_D == 0
-    push_val(AC_inv_dsz_3,config[AC_inv_dsz_2]*config[AC_inv_dsz]);
-#endif
 
-    push_val(AC_inv_dsx_4,config[AC_inv_dsx_2]*config[AC_inv_dsx_2]);
-    push_val(AC_inv_dsy_4,config[AC_inv_dsy_2]*config[AC_inv_dsy_2]);
-#if TWO_D == 0
-    push_val(AC_inv_dsz_4,config[AC_inv_dsz_2]*config[AC_inv_dsz_2]);
-#endif
+    const AcReal3 unit = {1.0,1.0,1.0};
+    push_val(AC_inv_ds,unit/config[AC_ds]);
+    push_val(AC_inv_ds_2,config[AC_inv_ds]*config[AC_inv_ds]);
+    push_val(AC_inv_ds_3,config[AC_inv_ds_2]*config[AC_inv_ds]);
+    push_val(AC_inv_ds_4,config[AC_inv_ds_2]*config[AC_inv_ds_2]);
+    push_val(AC_inv_ds_5,config[AC_inv_ds_3]*config[AC_inv_ds_2]);
+    push_val(AC_inv_ds_6,config[AC_inv_ds_3]*config[AC_inv_ds_3]);
 
-    push_val(AC_inv_dsx_5,config[AC_inv_dsx_3]*config[AC_inv_dsx_2]);
-    push_val(AC_inv_dsy_5,config[AC_inv_dsy_3]*config[AC_inv_dsy_2]);
-#if TWO_D == 0
-    push_val(AC_inv_dsz_5,config[AC_inv_dsz_3]*config[AC_inv_dsz_2]);
-#endif
-
-    push_val(AC_inv_dsx_6,config[AC_inv_dsx_3]*config[AC_inv_dsx_3]);
-    push_val(AC_inv_dsy_6,config[AC_inv_dsy_3]*config[AC_inv_dsy_3]);
-#if TWO_D == 0
-    push_val(AC_inv_dsz_6,config[AC_inv_dsz_3]*config[AC_inv_dsz_3]);
-#endif
     return AC_SUCCESS;
 }
 
@@ -156,59 +86,25 @@ acHostUpdateBuiltinCompParams(AcCompInfo* comp_config)
 }
 
 
-#if TWO_D == 0
 AcResult
-acSetMeshDimsBase(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo& config)
+acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* config_ptr)
 {
+
+    AcMeshInfo& config = *config_ptr;
     auto push_val = [&](auto param, auto val)
     {
 	    if constexpr(std::is_same<decltype(param), int>::value || std::is_same<decltype(param), AcReal>::value);
 	    else
 	    	return acPushToConfig(config,param,val);
     };
-    push_val(AC_nxgrid,nx);
-    push_val(AC_nygrid,ny);
-    push_val(AC_nzgrid,nz);
-    
-    //needed to keep since before acGridInit the user can call this arbitary number of times
-    push_val(AC_nx,nx);
-    push_val(AC_ny,ny);
-    push_val(AC_nz,nz);
-    
-    return acHostUpdateBuiltInParamsBase(config);
-}
-
-#else
-AcResult
-acSetMeshDimsBase(const size_t nx, const size_t ny,AcMeshInfo& config)
-{
-    auto push_val = [&](auto param, auto val)
+    const int3 ngrid = 
     {
-	    if constexpr(std::is_same<decltype(param), int>::value || std::is_same<decltype(param), AcReal>::value);
-	    else
-	    	return acPushToConfig(config,param,val);
+	    nx,
+	    ny,
+	    nz
     };
-    push_val(AC_nxgrid,nx);
-    push_val(AC_nygrid,ny);
-    
-    //needed to keep since before acGridInit the user can call this arbitary number of times
-    push_val(AC_nx,nx);
-    push_val(AC_ny,ny);
+    push_val(AC_ngrid,ngrid);
+    push_val(AC_nlocal,ngrid);
     
     return acHostUpdateBuiltInParamsBase(config);
 }
-#endif
-#if TWO_D == 0
-AcResult
-acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info)
-{
-
-	return acSetMeshDimsBase(nx,ny,nz,*info);
-}
-#else
-AcResult
-acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info)
-{
-	return acSetMeshDimsBase(nx,ny,*info);
-}
-#endif

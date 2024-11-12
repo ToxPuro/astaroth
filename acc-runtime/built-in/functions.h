@@ -1,15 +1,7 @@
-#if TWO_D
-Stencil value_stencil
-{ 
-	[0][0] = 1
-}
-#else
 Stencil value_stencil
 {
 	[0][0][0] = 1
 }
-#endif
-
 
 elemental
 value(Field s)
@@ -92,9 +84,9 @@ write(Field dst, real src)
 
 write(Field3 dst, real3 src)
 {
-	write(dst.x, src.x)
-	write(dst.y, src.y)
-	write(dst.z, src.z)
+	write_base(dst.x, src.x)
+	write_base(dst.y, src.y)
+	write_base(dst.z, src.z)
 }
 write(Field[] dst, real[] src)
 {
@@ -125,15 +117,17 @@ cross(real3 a, real3 b)
 {
 	return AC_cross(a,b)
 }
-
 dot(real3 a, real3 b)
 {
 	return AC_dot(a, b)
 }
-dot(real[] a, real[] b)
+
+dot(a, b)
 {
 	return AC_dot(a, b)
 }
+
+
 reduce_min(bool condition, real val, param)
 {
 	reduce_min_real(condition,val,param)

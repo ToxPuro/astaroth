@@ -243,7 +243,6 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
 }
 
 /** Writes an error slice in the z direction */
-#if TWO_D == 0
 AcResult
 acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candidate, const size_t z)
 {
@@ -273,7 +272,6 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
     fclose(fp);
     return AC_SUCCESS;
 }
-#endif
 
 /** Writes out the entire diff of two meshes */
 AcResult

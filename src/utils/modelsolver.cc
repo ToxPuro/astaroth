@@ -112,6 +112,22 @@ UNUSED getInt(const AcIntParam param)
 {
     return mesh_info->int_params[param];
 }
+static inline int 
+UNUSED getInt(const int val)
+{
+	return val;
+}
+
+static inline int3
+UNUSED getInt(const AcInt3Param param)
+{
+    return mesh_info->int3_params[param];
+}
+static inline int3
+UNUSED getInt(const int3 param)
+{
+	return param;
+}
 
 static inline Scalar
 UNUSED getReal(const AcRealParam param)
@@ -119,16 +135,34 @@ UNUSED getReal(const AcRealParam param)
     return (Scalar)mesh_info->real_params[param];
 }
 
-static inline int 
-UNUSED getInt(const int val)
-{
-	return val;
-}
 
 static inline Scalar
 UNUSED getReal(const AcReal val)
 {
 	return (Scalar)val;
+}
+
+static inline Vector
+UNUSED getReal(const AcReal3Param param)
+{
+    const AcReal3 val = mesh_info->real3_params[param];
+    return (Vector)
+    {
+	    (Scalar)val.x,
+	    (Scalar)val.y,
+	    (Scalar)val.z
+    };
+}
+
+static inline Vector
+UNUSED getReal(const AcReal3 val)
+{
+    return (Vector)
+    {
+	    (Scalar)val.x,
+	    (Scalar)val.y,
+	    (Scalar)val.z
+    };
 }
 
 static inline int
@@ -271,7 +305,7 @@ derx(const int i, const int j, const int k, const AcReal* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
-    return first_derivative(pencil, ((Scalar)1. / getReal(AC_dsx)));
+    return first_derivative(pencil, ((Scalar)1. / getReal(AC_ds).x));
 }
 
 static inline Scalar
@@ -282,7 +316,7 @@ derxx(const int i, const int j, const int k, const AcReal* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
-    return second_derivative(pencil, ((Scalar)1. / getReal(AC_dsx)));
+    return second_derivative(pencil, ((Scalar)1. / getReal(AC_ds).x));
 }
 
 static inline Scalar
@@ -300,8 +334,8 @@ derxy(const int i, const int j, const int k, const AcReal* arr)
         pencil_b[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, //
                                            j + STENCIL_ORDER / 2 - offset, k)];
 
-    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsx)),
-                            ((Scalar)1. / getReal(AC_dsy)));
+    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_ds).x),
+                            ((Scalar)1. / getReal(AC_ds).y));
 }
 
 static inline Scalar
@@ -319,8 +353,8 @@ derxz(const int i, const int j, const int k, const AcReal* arr)
         pencil_b[offset] = (Scalar)
             arr[IDX(i + offset - STENCIL_ORDER / 2, j, k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsx)),
-                            ((Scalar)1. / getReal(AC_dsz)));
+    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_ds).x),
+                            ((Scalar)1. / getReal(AC_ds).z));
 }
 
 static inline Scalar
@@ -331,7 +365,7 @@ dery(const int i, const int j, const int k, const AcReal* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = (Scalar)arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
-    return first_derivative(pencil, ((Scalar)1. / getReal(AC_dsy)));
+    return first_derivative(pencil, ((Scalar)1. / getReal(AC_ds).y));
 }
 
 static inline Scalar
@@ -342,7 +376,7 @@ deryy(const int i, const int j, const int k, const AcReal* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = (Scalar)arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
-    return second_derivative(pencil, ((Scalar)1. / getReal(AC_dsy)));
+    return second_derivative(pencil, ((Scalar)1. / getReal(AC_ds).y));
 }
 
 static inline Scalar
@@ -360,8 +394,8 @@ deryz(const int i, const int j, const int k, const AcReal* arr)
         pencil_b[offset] = (Scalar)
             arr[IDX(i, j + offset - STENCIL_ORDER / 2, k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsy)),
-                            ((Scalar)1. / getReal(AC_dsz)));
+    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_ds).y),
+                            ((Scalar)1. / getReal(AC_ds).z));
 }
 
 static inline Scalar
@@ -372,7 +406,7 @@ derz(const int i, const int j, const int k, const AcReal* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = (Scalar)arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
-    return first_derivative(pencil, ((Scalar)1. / getReal(AC_dsz)));
+    return first_derivative(pencil, ((Scalar)1. / getReal(AC_ds).z));
 }
 
 static inline Scalar
@@ -383,14 +417,14 @@ derzz(const int i, const int j, const int k, const AcReal* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = (Scalar)arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
-    return second_derivative(pencil, ((Scalar)1. / getReal(AC_dsz)));
+    return second_derivative(pencil, ((Scalar)1. / getReal(AC_ds).z));
 }
 
 #if LUPWD
 static inline Scalar
 der6x_upwd(const int i, const int j, const int k, const AcReal* arr)
 {
-    Scalar inv_ds = ((Scalar)1. / getReal(AC_dsx));
+    Scalar inv_ds = ((Scalar)1. / getReal(AC_ds).x);
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
            (-(Scalar)(20.0) * (Scalar)arr[IDX(i, j, k)] +
@@ -402,7 +436,7 @@ der6x_upwd(const int i, const int j, const int k, const AcReal* arr)
 static inline Scalar
 der6y_upwd(const int i, const int j, const int k, const AcReal* arr)
 {
-    Scalar inv_ds = ((Scalar)1. / getReal(AC_dsy));
+    Scalar inv_ds = ((Scalar)1. / getReal(AC_ds).y);
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
            (-(Scalar)(20.0) * (Scalar)arr[IDX(i, j, k)] +
@@ -414,7 +448,7 @@ der6y_upwd(const int i, const int j, const int k, const AcReal* arr)
 static inline Scalar
 der6z_upwd(const int i, const int j, const int k, const AcReal* arr)
 {
-    Scalar inv_ds = ((Scalar)1. / getReal(AC_dsz));
+    Scalar inv_ds = ((Scalar)1. / getReal(AC_ds).z);
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
            (-(Scalar)(20.0) * (Scalar)arr[IDX(i, j, k)] +
@@ -932,9 +966,9 @@ Vector
 helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vector ff_im, Scalar phi)
 {
     (void)magnitude; // WARNING: unused
-    xx.x = xx.x * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsx) * getInt(AC_nxgrid)));
-    xx.y = xx.y * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsy) * getInt(AC_nygrid)));
-    xx.z = xx.z * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsz) * getInt(AC_nzgrid)));
+    xx.x = xx.x * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_ds).x * getInt(AC_ngrid).x));
+    xx.y = xx.y * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_ds).y * getInt(AC_ngrid).y));
+    xx.z = xx.z * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_ds).z * getInt(AC_ngrid).z));
 
     Scalar cos_phi     = cos(phi);
     Scalar sin_phi     = sin(phi);
@@ -956,14 +990,14 @@ helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vecto
 Vector
 forcing(int3 globalVertexIdx, Scalar dt)
 {
-    Vector a = (Scalar)(.5) * (Vector){getInt(AC_nxgrid) * getReal(AC_dsx),
-                                       getInt(AC_nygrid) * getReal(AC_dsy),
-                                       getInt(AC_nzgrid) * getReal(AC_dsz)}; // source (origin)
+    Vector a = (Scalar)(.5) * (Vector){getInt(AC_ngrid).x * getReal(AC_ds).x,
+                                       getInt(AC_ngrid).y * getReal(AC_ds).y,
+                                       getInt(AC_ngrid).z * getReal(AC_ds).z}; // source (origin)
     (void)a;                                                             // WARNING: not used
     Vector xx = (Vector){
-        (globalVertexIdx.x - getInt(AC_nx_min)) * getReal(AC_dsx),
-        (globalVertexIdx.y - getInt(AC_ny_min)) * getReal(AC_dsy),
-        (globalVertexIdx.z - getInt(AC_nz_min)) * getReal(AC_dsz),
+        (globalVertexIdx.x - getInt(AC_nmin).x) * getReal(AC_ds).x,
+        (globalVertexIdx.y - getInt(AC_nmin).y) * getReal(AC_ds).y,
+        (globalVertexIdx.z - getInt(AC_nmin).z) * getReal(AC_ds).z,
     }; // sink (current index)
     const Scalar cs2 = getReal(AC_cs2_sound);
     const Scalar cs  = sqrt(cs2);
@@ -1129,9 +1163,9 @@ checkConfiguration(const AcMeshInfo info)
     }
 #endif
 
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info[AC_dsx]));
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info[AC_dsy]));
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info[AC_dsz]));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info[AC_ds].x));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info[AC_ds].y));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info[AC_ds].z));
     // ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
 }
 
@@ -1151,14 +1185,14 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
     AcMesh intermediate_mesh;
     acHostGridMeshCreate(mesh.info, &intermediate_mesh);
 
-    const int nx_min = getInt(AC_nx_min);
-    const int nx_max = getInt(AC_nxgrid_max);
+    const int nx_min = getInt(AC_nmin).x;
+    const int nx_max = getInt(AC_ngrid_max).x;
 
-    const int ny_min = getInt(AC_ny_min);
-    const int ny_max = getInt(AC_nygrid_max);
+    const int ny_min = getInt(AC_nmin).y;
+    const int ny_max = getInt(AC_ngrid_max).y;
 
-    const int nz_min = getInt(AC_nz_min);
-    const int nz_max = getInt(AC_nzgrid_max);
+    const int nz_min = getInt(AC_nmin).z;
+    const int nz_max = getInt(AC_ngrid_max).z;
 
     for (int step_number = 0; step_number < 3; ++step_number) {
 

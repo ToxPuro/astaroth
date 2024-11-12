@@ -68,32 +68,33 @@ is_on_boundary()
                                 VAL(AC_domain_coordinates).x == 0);
     const int y = (VAL(AC_domain_coordinates).y == VAL(AC_domain_decomposition).y - 1 ||
                                 VAL(AC_domain_coordinates).y == 0);
-#if TWO_D == 0
     const int z = (VAL(AC_domain_coordinates).z == VAL(AC_domain_decomposition).z - 1 ||
                                 VAL(AC_domain_coordinates).z == 0);
-#else
-    const int z = 0;
-#endif
     return (int3){x,y,z};
 }
 #endif
 
 #if AC_LAGRANGIAN_GRID
+//TP: this could be rewritten to return real2 or real3 but works the way it is for now
 static inline __device__ AcReal
-lagrangian_correction(const int j, const int3 coords)
+lagrangian_correction(const int j, const Field2 coords, const int3 indexes)
 {
-      const int3 on_boundary = is_on_boundary();
-      const AcReal x_coeff = on_boundary.x*(j == COORDS_X)*VAL(AC_xlen);
-      const AcReal y_coeff = on_boundary.y*(j == COORDS_Y)*VAL(AC_ylen);
-#if TWO_D == 0
-      const AcReal z_coeff = on_boundary.z*(j == COORDS_Z)*VAL(AC_zlen);
-#endif
-      return  x_coeff*((coords.x >= VAL(AC_nx_max)) - (coords.x < VAL(AC_nx_min)))
-                       + y_coeff*((coords.y >= VAL(AC_ny_max)) - (coords.y < VAL(AC_ny_min)))
-#if TWO_D == 0
-                       + z_coeff*((coords.z >= VAL(AC_nz_max)) - (coords.z < VAL(AC_nz_min)))
-#endif
-                       ;
+	const int3 on_boundary = is_on_boundary();
+	const AcReal x_coeff = on_boundary.x*(j == coords.x)*VAL(AC_len).x;
+	const AcReal y_coeff = on_boundary.y*(j == coords.y)*VAL(AC_len).y;
+        return  x_coeff*((indexes.x >= VAL(AC_nlocal_max).x) - (indexes.x < VAL(AC_nmin).x))
+              + y_coeff*((indexes.y >= VAL(AC_nlocal_max).y) - (indexes.y < VAL(AC_nmin).y));
+}
+static inline __device__ AcReal
+lagrangian_correction(const int j, const Field3 coords, const int3 indexes)
+{
+	const int3 on_boundary = is_on_boundary();
+	const AcReal x_coeff = on_boundary.x*(j == coords.x)*VAL(AC_len).x;
+	const AcReal y_coeff = on_boundary.y*(j == coords.y)*VAL(AC_len).y;
+	const AcReal z_coeff = on_boundary.z*(j == coords.z)*VAL(AC_len).z;
+        return  x_coeff*((indexes.x >= VAL(AC_nlocal_max).x) - (indexes.x < VAL(AC_nmin).x))
+              + y_coeff*((indexes.y >= VAL(AC_nlocal_max).y) - (indexes.y < VAL(AC_nmin).y))
+              + z_coeff*((indexes.z >= VAL(AC_nlocal_max).z) - (indexes.z < VAL(AC_nmin).z));
 }
 #endif
 
@@ -130,7 +131,7 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
     {
       vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
 #if AC_LAGRANGIAN_GRID
-      vba.in[j][unpacked_idx] += lagrangian_correction(j, (int3){i_unpacked,j_unpacked,k_unpacked});
+      vba.in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked,j_unpacked,k_unpacked});
 #endif
       i += is_communicated(static_cast<Field>(j));
     }
@@ -204,14 +205,10 @@ kernel_partial_move_data(const VertexBufferArray vba, const int3 src_start, cons
     for (size_t i = 0; i < num_vtxbufs; ++i)
     {
         vba.in[vtxbufs.data[i]][dst_idx] = vba.in[vtxbufs.data[i]][unpacked_idx];
-    }
 #if AC_LAGRANGIAN_GRID
-    vba.in[COORDS_X][dst_idx] += VAL(AC_xlen)*((i_dst >= VAL(AC_nx_max)) -(i_dst < VAL(AC_nx_min)));
-    vba.in[COORDS_Y][dst_idx] += VAL(AC_ylen)*((j_dst >= VAL(AC_ny_max)) -(j_dst < VAL(AC_ny_min)));
-#if TWO_D == 0
-    vba.in[COORDS_Z][dst_idx] += VAL(AC_zlen)*((k_dst >= VAL(AC_nz_max)) -(k_dst < VAL(AC_nz_min)));
+        vba.in[vtxbufs.data[i]][dst_idx] += lagrangian_correction(i, AC_COORDS, (int3){i_dst, j_dst, k_dst});
 #endif
-#endif
+    }
 }
 
 static __global__ void
@@ -247,7 +244,7 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
 	     const int j = vtxbufs.data[i];
 	     vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
 #if AC_LAGRANGIAN_GRID
-             vba.in[j][unpacked_idx] += lagrangian_correction(j, (int3){i_unpacked, j_unpacked, k_unpacked});
+             vba.in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked, j_unpacked, k_unpacked});
 #endif
      }
 

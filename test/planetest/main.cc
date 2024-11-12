@@ -137,12 +137,7 @@ main(void)
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
-    info.real_params[AC_dsx] = a;
-    info.real_params[AC_dsy] = h;
-#if TWO_D == 0
-    info.real_params[AC_dsz] = d;
-#endif
-
+    info[AC_ds] = {a,h,d};
     const int max_devices = 2 * 2 * 4;
     if (nprocs > max_devices) {
         fprintf(stderr,
@@ -152,11 +147,7 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-#if TWO_D == 0
     acSetMeshDims(npointsx_grid, npointsy_grid, npointsz_grid, &info);
-#else
-    acSetMeshDims(npointsx_grid, npointsy_grid, &info);
-#endif
     //acSetMeshDims(44, 44, 44, &info);
     //
 
@@ -239,7 +230,7 @@ main(void)
             for(int i = 0; i< end; ++i)
             {
 		const int idx = IDX_COMP_DOMAIN(i, npointsy_grid/2, npointsz_grid/2);
-            	x[i] = candidate.vertex_buffer[COORDS_X][idx];
+            	x[i] = candidate.vertex_buffer[AC_COORDS.x][idx];
                 u[i] = candidate.vertex_buffer[U][idx];
                 analytical[i] = candidate.vertex_buffer[SOLUTION][idx];
 

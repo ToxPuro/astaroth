@@ -7,20 +7,17 @@ run_const real AC_center_x
 run_const real AC_center_y
 run_const real AC_center_z
 
-gmem real AC_x[AC_mx]
-gmem real AC_y[AC_my]
-gmem real AC_z[AC_mz]
+gmem real AC_x[AC_mlocal.x]
+gmem real AC_y[AC_mlocal.y]
+gmem real AC_z[AC_mlocal.z]
+
 
 grid_position() {
 //MR: generalize, using x,y,z?
-    return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
-                 (globalVertexIdx.y - AC_ny_min) * AC_dsy,
-                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+    return (globalVertexIdx - AC_nlocal)*AC_ds
 }
 
 grid_centre() {
 //MR: generalize, using x,y,z?
-    return real3(((globalGridN.x-1) * AC_dsx)/2.0,
-                 ((globalGridN.y-1) * AC_dsy)/2.0,
-                 ((globalGridN.z-1) * AC_dsz)/2.0)
+    return ((AC_ngrid-1)*AC_ds)*0.5;
 }

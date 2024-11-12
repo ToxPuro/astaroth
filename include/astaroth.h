@@ -400,18 +400,14 @@ FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 static inline size_t
 acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    [[maybe_unused]] const int x = info[AC_mxgrid];
-    const int y = info[AC_mygrid];
-    [[maybe_unused]] const int z = info[AC_mzgrid];
-    return AC_INDEX_ORDER(i,j,k,x,y,z);
+    auto mm = info[AC_mgrid];
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    [[maybe_unused]] const int x = info[AC_mx];
-    const int y = info[AC_my];
-    [[maybe_unused]] const int z = info[AC_mz];
-    return AC_INDEX_ORDER(i,j,k,x,y,z);
+    auto mm = info[AC_mlocal];
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 #else
 static inline size_t
@@ -949,7 +945,6 @@ FUNC_DEFINE(AcResult, acGridLaunchKernel,(const Stream stream, const AcKernel ke
 
 
 /** */
-#if TWO_D == 0
 FUNC_DEFINE(AcResult, acGridLoadStencil,(const Stream stream, const Stencil stencil,
                            const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
@@ -964,15 +959,6 @@ FUNC_DEFINE(AcResult, acGridLoadStencils,(const Stream stream,
 /** */
 FUNC_DEFINE(AcResult, acGridStoreStencils,(const Stream stream,
                     AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
-#else
-FUNC_DEFINE(AcResult, acGridLoadStencil,(const Stream stream, const Stencil stencil, const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]));
-/** */
-FUNC_DEFINE(AcResult, acGridStoreStencil,(const Stream stream, const Stencil stencil,AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]));
-
-FUNC_DEFINE(AcResult, acGridLoadStencils,(const Stream stream, const AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH]));
-
-FUNC_DEFINE(AcResult, acGridStoreStencils,(const Stream stream,AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH]));
-#endif
 
 #endif // AC_MPI_ENABLED
 
@@ -1400,21 +1386,12 @@ FUNC_DEFINE(AcResult, acDeviceBenchmarkKernel,(const Device device, const AcKern
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadStencilsFromConfig,(const Device device, const Stream stream));
-#if TWO_D == 0
-/** */
+
 FUNC_DEFINE(AcResult, acDeviceLoadStencil,(const Device device, const Stream stream, const Stencil stencil,const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadStencils,(const Device device, const Stream stream, const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 /** */
 FUNC_DEFINE(AcResult, acDeviceStoreStencil,(const Device device, const Stream stream, const Stencil stencil,AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
-#else
-/** */
-FUNC_DEFINE(AcResult, acDeviceLoadStencil,(const Device device, const Stream stream, const Stencil stencil, const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]));
-/** */
-FUNC_DEFINE(AcResult,acDeviceLoadStencils,(const Device device, const Stream stream,const AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH]));
-/** */
-FUNC_DEFINE(AcResult, acDeviceStoreStencil,(const Device device, const Stream stream, const Stencil stencil, AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]));
-#endif
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceVolumeCopy,(const Device device, const Stream stream,const AcReal* in, const int3 in_offset, const int3 in_volume,AcReal* out, const int3 out_offset, const int3 out_volume));
@@ -1478,11 +1455,7 @@ FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
 
 /** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
  * parameters derived from them (mx, my, mz, nx_min, and others) */
-#if TWO_D == 0
 AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
-#else
-AcResult acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info);
-#endif
 
 /*
  * =============================================================================

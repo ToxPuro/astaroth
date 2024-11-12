@@ -24,8 +24,8 @@ get_diffusion_val(real time, real distance_2)
 
 GetCoordsBase(i,j)
 {
-	x  = (AC_dsx*(i-((AC_nxgrid+1)/2.0)))
-	y  = (AC_dsy*(j-((AC_nygrid+1)/2.0)))
+	x  = (AC_ds.x*(i-((AC_ngrid.x+1)/2.0)))
+	y  = (AC_ds.y*(j-((AC_ngrid.y+1)/2.0)))
         return (real2){x,y};
 }
 GetCoords(i,j)
@@ -39,9 +39,9 @@ Kernel initial_condition()
 {
 	const inittime = 1.0
 	real2 coords = GetCoords(globalVertexIdx.x+1-NGHOST,globalVertexIdx.y+1-NGHOST)
-	write(COORDS_X,coords.x)
-	write(COORDS_Y,coords.y)
-	x_center, y_center = GetCoords(AC_nxgrid/2, AC_nygrid/2);
+	write(AC_COORDS.x,coords.x)
+	write(AC_COORDS.y,coords.y)
+	x_center, y_center = GetCoords(AC_ngrid.x/2, AC_ngrid.y/2);
 	distance_to_center_squared = pow(coords.x-x_center,2.0) + pow(coords.y-y_center,2.0)
 
 	const real accumulated_time = nsteps*sim_dt;
@@ -53,15 +53,15 @@ Kernel initial_condition()
 }
 Kernel singlepass_solve()
 {	
-	const real v0x     = diff_left(COORDS_X)
-	const real v1x     = diff_down(COORDS_X)
-	const real v2x     = diff_right(COORDS_X)
-	const real v3x     = diff_up(COORDS_X)
+	const real v0x     = diff_left(AC_COORDS.x)
+	const real v1x     = diff_down(AC_COORDS.x)
+	const real v2x     = diff_right(AC_COORDS.x)
+	const real v3x     = diff_up(AC_COORDS.x)
 
-	const real v0y     = diff_left(COORDS_Y)
-	const real v1y     = diff_down(COORDS_Y)
-	const real v2y     = diff_right(COORDS_Y)
-	const real v3y     = diff_up(COORDS_Y)
+	const real v0y     = diff_left(AC_COORDS.y)
+	const real v1y     = diff_down(AC_COORDS.y)
+	const real v2y     = diff_right(AC_COORDS.y)
+	const real v3y     = diff_up(AC_COORDS.y)
 
 
 

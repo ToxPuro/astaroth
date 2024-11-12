@@ -399,6 +399,18 @@ AC_dot(const AcReal3& a, const AcReal3& b)
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
+static HOST_DEVICE_INLINE AcReal
+AC_dot(const int3& a, const AcReal3& b)
+{
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+static HOST_DEVICE_INLINE AcReal
+AC_dot(const AcReal3& a, const int3& b)
+{
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
 static HOST_DEVICE_INLINE AcReal3
 AC_cross(const AcReal3& a, const AcReal3& b)
 {

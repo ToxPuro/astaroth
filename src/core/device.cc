@@ -339,9 +339,7 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
     AcMeshInfo device_config = config;
     acHostUpdateBuiltinParams(&device_config);
 
-    ERRCHK_ALWAYS(device_config[AC_nx] == device->local_config[AC_nx]);
-    ERRCHK_ALWAYS(device_config[AC_ny] == device->local_config[AC_ny]);
-    ERRCHK_ALWAYS(device_config[AC_nz] == device->local_config[AC_nz]);
+    ERRCHK_ALWAYS(device_config[AC_nlocal] == device->local_config[AC_nlocal]);
     ERRCHK_ALWAYS(device_config[AC_multigpu_offset] == device->local_config[AC_multigpu_offset]);
 
     AcScalarTypes::run<load_all_scalars_uniform>(device,device_config);
@@ -368,7 +366,6 @@ acDeviceSynchronizeStream(const Device device, const Stream stream)
     return AC_SUCCESS;
 }
 
-#if TWO_D == 0
 AcResult
 acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
                     const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -376,17 +373,7 @@ acDeviceLoadStencil(const Device device, const Stream stream, const Stencil sten
     cudaSetDevice(device->id);
     return acLoadStencil(stencil, device->streams[stream], data);
 }
-#else
-AcResult
-acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
-                    const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    cudaSetDevice(device->id);
-    return acLoadStencil(stencil, device->streams[stream], data);
-}
-#endif
 
-#if TWO_D == 0
 AcResult
 acDeviceLoadStencils(const Device device, const Stream stream,
                      const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -396,19 +383,7 @@ acDeviceLoadStencils(const Device device, const Stream stream,
         retval |= acDeviceLoadStencil(device, stream, (Stencil)i, data[i]);
     return (AcResult)retval;
 }
-#else
-AcResult
-acDeviceLoadStencils(const Device device, const Stream stream,
-                     const AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    int retval = 0;
-    for (size_t i = 0; i < NUM_STENCILS; ++i)
-        retval |= acDeviceLoadStencil(device, stream, (Stencil)i, data[i]);
-    return (AcResult)retval;
-}
-#endif
 
-#if TWO_D == 0
 AcResult
 acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 {
@@ -435,38 +410,13 @@ acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 	}
 	return acDeviceLoadStencils(device, stream, stencils);
 }
-#else
-AcResult
-acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
-{
-	[[maybe_unused]] auto DCONST = [&](const auto& param)
-	{
-		return device->local_config[param];
-	};
-	#include "coeffs.h"
-	for(int stencil=0;stencil<NUM_STENCILS;stencil++)
-	{
-	        for(int x = 0; x<STENCIL_WIDTH; ++x)
-	        {
-	                for(int y=0;y<STENCIL_HEIGHT;++y)
-	                {
-	                    if(isnan(stencils[stencil][x][y]))
-	                    {
-	                            printf("loading a nan to stencil: %d, at %d,%d!!\n", stencil,x,y);
-	                    }
-	                }
-	        }
-	}
-	return acDeviceLoadStencils(device, stream, stencils);
-}
-#endif
 void
-acCopyFromInfo(const AcMeshInfo src, AcMeshInfo dst, AcIntParam param)
+acCopyFromInfo(const AcMeshInfo src, AcMeshInfo dst, AcInt3Param param)
 {
 	dst[param] = src[param];
 }
 void
-acCopyFromInfo(const AcMeshInfo, AcMeshInfo, const int){}
+acCopyFromInfo(const AcMeshInfo, AcMeshInfo, const int3){}
 
 AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
@@ -495,9 +445,9 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // Check that AC_global_grid_n and AC_multigpu_offset are valid
     // Replace if not and give a warning otherwise
     if (
-        device->local_config[AC_nxgrid] <= 0 ||
-        device->local_config[AC_nygrid] <= 0 ||
-        device->local_config[AC_nzgrid] <= 0 ||
+        device->local_config[AC_ngrid].x <= 0 ||
+        device->local_config[AC_ngrid].y <= 0 ||
+        device->local_config[AC_ngrid].z <= 0 ||
         device->local_config.int3_params[AC_multigpu_offset].x < 0 ||
         device->local_config.int3_params[AC_multigpu_offset].y < 0 ||
         device->local_config.int3_params[AC_multigpu_offset].z < 0) {
@@ -505,9 +455,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
                 "acDeviceCreate. Replacing with AC_global_grid_n = local grid size and "
                 "AC_multigpu_offset = (int3){0,0,0}.");
         device->local_config.int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
-	acCopyFromInfo(device_config,device->local_config,AC_nxgrid);
-	acCopyFromInfo(device_config,device->local_config,AC_nygrid);
-	acCopyFromInfo(device_config,device->local_config,AC_nzgrid);
+	acCopyFromInfo(device_config,device->local_config,AC_ngrid);
     }
 
 #if AC_VERBOSE
@@ -927,7 +875,6 @@ acDeviceBenchmarkKernel(const Device device, const AcKernel kernel, const int3 s
 }
 
 /** */
-#if TWO_D == 0
 AcResult
 acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
                      AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -935,15 +882,6 @@ acDeviceStoreStencil(const Device device, const Stream stream, const Stencil ste
     cudaSetDevice(device->id);
     return acStoreStencil(stencil, device->streams[stream], data);
 }
-#else
-AcResult
-acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
-                     AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    cudaSetDevice(device->id);
-    return acStoreStencil(stencil, device->streams[stream], data);
-}
-#endif
 AcResult
 acDeviceIntegrateSubstep(const Device device, const Stream stream, const int step_number,
                          const int3 start, const int3 end, const AcReal dt)

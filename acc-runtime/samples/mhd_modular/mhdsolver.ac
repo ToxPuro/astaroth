@@ -66,11 +66,11 @@ const real3 AC_const_real3_arr_2 = [AC_const_real3, AC_const_real3]
 const int AC_nx_const = 22
 const int AC_ny_const = 22
 
-gmem real AC_real_gmem_arr[AC_nx]
-//gmem real AC_gmem_const_dims[AC_nx_const][AC_ny]
+gmem real AC_real_gmem_arr[3]
+//gmem real AC_gmem_const_dims[AC_nx_const][3]
 gmem real AC_gmem_const_dims[AC_nx_const][AC_ny_const]
 
-gmem real3 AC_real3_gmem_arr[AC_nx]
+gmem real3 AC_real3_gmem_arr[3]
 
 
 
@@ -291,10 +291,7 @@ induction() {
 // helicity
 helical_forcing(k_force, xx, ff_re, ff_im, phi)
 {
-    real3 yy
-    yy.x = xx.x * (2.0 * R_PI / (AC_dsx * AC_nxgrid))
-    yy.y = xx.y * (2.0 * R_PI / (AC_dsy * AC_nygrid))
-    yy.z = xx.z * (2.0 * R_PI / (AC_dsz * AC_nzgrid))
+    const real3 yy = 2.0*R_PI * (xx / (AC_ds * AC_ngrid))
 
     cos_phi     = cos(phi)
     sin_phi     = sin(phi)
@@ -312,9 +309,7 @@ helical_forcing(k_force, xx, ff_re, ff_im, phi)
 
 forcing(dt)
 {
-    xx = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
-               (globalVertexIdx.y - AC_ny_min) * AC_dsy,
-               (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+    xx = (globalVertexIdx - AC_nmin)*AC_ds
     cs  = sqrt(AC_cs2_sound)
 
     // Placeholders until determined properly
@@ -459,7 +454,7 @@ Kernel shock_2_max()
 
 Kernel shock_3_smooth()
 {
-    dsmin = AC_dsx //Here assuming that all spacing are equal
+    dsmin = AC_ds_min 
     cshock = 1.0  
 
     s_shock = smooth_kernel(VTXBUF_SHOCK)
@@ -723,7 +718,7 @@ Kernel haatouken() {
 
     uu_radial = 0.0
 
-    if rr > 2.0*AC_dsx { 
+    if rr > 2.0*AC_ds.x { 
         uu_radial = AC_init_ampl_uu * 
                     exp(-pow((rr - AC_init_shell_radius), 2.0) / (2.0 * pow(AC_init_shell_width, 2.0))) *
                     exp(-pow(theta , 2.0) / (2.0 * pow(R_PI / 8.0, 2.0))) *
@@ -749,59 +744,6 @@ Kernel haatouken() {
     write(UU, UU + uu_addition)
 }
 
-get_d_from_normal(normal)
-{
-    return 
-    	normal.x != 0.0 ? AC_dsx :
-	normal.y != 0.0 ? AC_dsy :
-	AC_dsz
-}
-get_uudir(boundary_in, int3 normal_in, VtxBuffer vtxbuf)
-{
-    real uudir_out = (normal_in.x != 0) ? vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.x :
-		     (normal_in.y != 0) ? vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.y :
-		     vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.z
-    return uudir_out
-}
-
-get_boundary_from_normal(normal_in)
-{
-    return 
-    (int3)
-    {
-    	(normal_in.x ==  1) ? NGHOST + AC_nx - 1 :
-	(normal_in.x == -1) ? NGHOST :
-	vertexIdx.x,
-
-    	normal_in.y ==  1 ? NGHOST + AC_ny - 1 :
-    	normal_in.y == -1 ? NGHOST :
-    	vertexIdx.y,
-
-    	normal_in.z ==  1 ? NGHOST + AC_nz - 1 :
-    	normal_in.z == -1 ? NGHOST :
-    	vertexIdx.z;
-    }	
-}
-prescribed_derivative_boundcond(int3 normal, VtxBuffer vtxbuf, real der_val)
-{
-    d = get_d_from_normal(normal)
-    real direction = (normal.x != 0) ? normal.x :
-		     (normal.y != 0) ? normal.y : 
-		     normal.z;
-    int3 boundary = get_boundary_from_normal(normal)
-    int3 ghost  = boundary
-    int3 domain = boundary
-    for  i  in 0:NGHOST {
-        domain = domain - normal
-        ghost  = ghost + normal
-	distance = 2 * (i + 1)*d
-	//distance = direction < 0.0 ? -distance : distance
-	if direction < 0.0
-		distance = -distance
-	distance = 2 ? 1 : 0
-	vtxbuf[ghost.x][ghost.y][ghost.z] = vtxbuf[domain.x][domain.y][domain.z] + distance*der_val
-    }
-}
 
 
 beltrami(real ampl, ex, ey, ez, kx, ky, kz, phase) {
@@ -846,7 +788,7 @@ radial_vector_field(ampl) {
                   0.0,
                   0.0)
 
-    if (rr >= 2.0*AC_dsx){
+    if (rr >= 2.0*AC_ds.x){
 
         theta = real(atan2(rr_xy, xx.z))
 
