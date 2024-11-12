@@ -51,20 +51,6 @@ template <typename T> class HaloExchangeTask {
                 if (!packet.complete() && packet.ready())
                     packet.wait(outputs);
         }
-        // Round-robin busy-wait to choose packet to unpack
-        // while (true) {
-        //     bool all_ready = true;
-        //     for (auto& packet : packets) {
-        //         if (!packet.complete()) { // Not waited
-        //             if (packet.ready())   // Ready to wait
-        //                 packet.wait(outputs);
-        //             else
-        //                 all_ready = false;
-        //         }
-        //     }
-        //     if (all_ready)
-        //         break;
-        // }
         // Simple loop over the packets
         // for (auto& packet : packets)
         //     packet.wait(outputs);
