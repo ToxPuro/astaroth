@@ -108,6 +108,145 @@ get_mpi_dtype()
 /**
  * Helper wrappers for MPI types
  */
+class MPICommWrapper {
+  private:
+    MPI_Comm comm;
+
+  public:
+    MPICommWrapper()
+        : comm{MPI_COMM_NULL}
+    {
+    }
+    MPICommWrapper(const MPI_Comm& parent_comm)
+        : MPICommWrapper()
+    {
+        std::cout << "dup" << std::endl;
+        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+    }
+
+    MPICommWrapper(const MPICommWrapper&)            = delete; // Copy constructor
+    MPICommWrapper& operator=(const MPICommWrapper&) = delete; // Copy assignment
+    // MPICommWrapper(MPICommWrapper&& other) noexcept            = delete; // Move constructor
+    // MPICommWrapper& operator=(MPICommWrapper&& other) noexcept = delete; // Move assignment
+
+    // Move constructor
+    MPICommWrapper(MPICommWrapper&& other) noexcept
+        : comm{other.comm}
+    {
+        other.comm = MPI_COMM_NULL;
+    }
+
+    // Move assignment
+    MPICommWrapper& operator=(MPICommWrapper&& other) noexcept
+    {
+        if (this != &other) {
+            if (comm != MPI_COMM_NULL)
+                ERRCHK_MPI_API(MPI_Comm_free(&comm));
+            comm       = other.comm;
+            other.comm = MPI_COMM_NULL;
+        }
+        return *this;
+    }
+
+    ~MPICommWrapper()
+    {
+        if (comm != MPI_COMM_NULL)
+            ERRCHK_MPI_API(MPI_Comm_free(&comm));
+    }
+
+    MPI_Comm* get()
+    {
+        ERRCHK_MPI(comm == MPI_COMM_NULL);
+        return &comm;
+    }
+    MPI_Comm value() const
+    {
+        ERRCHK_MPI(comm != MPI_COMM_NULL);
+        return comm;
+    }
+};
+
+class MPIRequestWrapper {
+  private:
+    MPI_Request req;
+
+  public:
+    MPIRequestWrapper()
+        : req{MPI_REQUEST_NULL}
+    {
+    }
+
+    MPIRequestWrapper(const MPIRequestWrapper&)            = delete; // Copy
+    MPIRequestWrapper& operator=(const MPIRequestWrapper&) = delete; // Copy assignment
+
+    // Move constructor
+    MPIRequestWrapper(MPIRequestWrapper&& other) noexcept
+        : req{other.req}
+    {
+        other.req = MPI_REQUEST_NULL;
+    }
+
+    // Move assignment
+    MPIRequestWrapper& operator=(MPIRequestWrapper&& other) noexcept
+    {
+        if (this != &other) {
+            ERRCHK_MPI_EXPR_DESC(req == MPI_REQUEST_NULL,
+                                 "Attempted to overwrite an ongoing request. This should not "
+                                 "happen. "
+                                 "Call wait on the request to synchronize before move assignment.");
+            req       = other.req;
+            other.req = MPI_REQUEST_NULL;
+        }
+        return *this;
+    }
+
+    ~MPIRequestWrapper()
+    {
+        ERRCHK_MPI_EXPR_DESC(req == MPI_REQUEST_NULL,
+                             "Attempted to destroy an ongoing request. This should not happen. "
+                             "Call wait on the request to synchronize before deleting.");
+        if (req != MPI_REQUEST_NULL)
+            ERRCHK_MPI_API(MPI_Request_free(&req));
+    }
+
+    MPI_Request* get()
+    {
+        ERRCHK_MPI_EXPR_DESC(req == MPI_REQUEST_NULL,
+                             "A request was still in flight. This should not happen: call "
+                             "wait before attempting to modify req.");
+        return &req;
+    }
+    MPI_Request value() const
+    {
+        ERRCHK(req != MPI_REQUEST_NULL);
+        return req;
+    }
+    void wait()
+    {
+        MPI_Status status;
+        status.MPI_ERROR = MPI_SUCCESS;
+        ERRCHK_MPI_API(MPI_Wait(&req, &status));
+        ERRCHK_MPI_API(status.MPI_ERROR);
+        if (req != MPI_REQUEST_NULL)
+            ERRCHK_MPI_API(MPI_Request_free(&req));
+        ERRCHK_MPI(req == MPI_REQUEST_NULL);
+    }
+    bool is_ready()
+    {
+        if (req == MPI_REQUEST_NULL) {
+            return true;
+        }
+        else {
+            int ready = 0;
+            MPI_Status status;
+            status.MPI_ERROR = MPI_SUCCESS;
+            ERRCHK_MPI_API(MPI_Test(&req, &ready, &status));
+            ERRCHK_MPI_API(status.MPI_ERROR);
+            return ready;
+        }
+    }
+};
+
 #if 0
 struct MPIRequest {
     MPI_Request handle;
