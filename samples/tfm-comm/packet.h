@@ -46,9 +46,9 @@ template <typename T> class Packet {
     }
 
     void launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs);
+    bool ready() const;
     void wait(PackPtrArray<T*> outputs);
-    bool ready();
-    bool complete();
+    bool complete() const;
 
     friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T>& obj)
     {
@@ -65,12 +65,12 @@ template <typename T>
 void
 Packet<T>::launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
 {
-    ERRCHK(!in_progress);
+    ERRCHK_MPI(!in_progress);
     in_progress = true;
 
     const size_t count = inputs.count * prod(segment.dims);
-    ERRCHK(count <= send_buffer.size());
-    ERRCHK(count <= recv_buffer.size());
+    ERRCHK_MPI(count <= send_buffer.size());
+    ERRCHK_MPI(count <= recv_buffer.size());
 
     // Duplicate the communicator to ensure the operation does not interfere
     // with other operations on the parent communicator
@@ -95,6 +95,15 @@ Packet<T>::launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
 }
 
 template <typename T>
+bool
+Packet<T>::ready() const
+{
+    ERRCHK_MPI_EXPR_DESC(in_progress, "ready called but no request in flight. Ready state should "
+                                      "only be checked if complete() evaluates true");
+    return send_req.ready() && recv_req.ready();
+}
+
+template <typename T>
 void
 Packet<T>::wait(PackPtrArray<T*> outputs)
 {
@@ -109,20 +118,15 @@ Packet<T>::wait(PackPtrArray<T*> outputs)
     // Wait send
     send_req.wait();
 
+    // Return back to the completed state
     in_progress = false;
 }
 
 template <typename T>
 bool
-Packet<T>::ready()
+Packet<T>::complete() const
 {
-    return send_req.ready() && recv_req.ready();
-}
-
-template <typename T>
-bool
-Packet<T>::complete()
-{
+    ERRCHK_MPI(!in_progress == (send_req.complete() && recv_req.complete()));
     return !in_progress;
 }
 

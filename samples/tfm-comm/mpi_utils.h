@@ -243,5 +243,5 @@ class MPIRequestWrapper {
         ERRCHK_MPI(req == MPI_REQUEST_NULL);
     }
 
-    // bool complete() const { return req == MPI_REQUEST_NULL; }
+    bool complete() const { return req == MPI_REQUEST_NULL; }
 };

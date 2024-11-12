@@ -37,6 +37,8 @@ template <typename T> class HaloExchangeTask {
 
     void launch(const MPI_Comm parent_comm, const PackPtrArray<T*> inputs)
     {
+        ERRCHK_MPI(complete());
+
         for (auto& packet : packets)
             packet.launch(parent_comm, inputs);
     }
@@ -44,21 +46,36 @@ template <typename T> class HaloExchangeTask {
     void wait(const PackPtrArray<T*> outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
-        while (true) {
-            bool all_ready = true;
-            for (auto& packet : packets) {
-                if (!packet.complete()) { // Not waited
-                    if (packet.ready())   // Ready to wait
-                        packet.wait(outputs);
-                    else
-                        all_ready = false;
-                }
-            }
-            if (all_ready)
-                break;
+        while (!complete()) {
+            for (auto& packet : packets)
+                if (!packet.complete() && packet.ready())
+                    packet.wait(outputs);
         }
+        // Round-robin busy-wait to choose packet to unpack
+        // while (true) {
+        //     bool all_ready = true;
+        //     for (auto& packet : packets) {
+        //         if (!packet.complete()) { // Not waited
+        //             if (packet.ready())   // Ready to wait
+        //                 packet.wait(outputs);
+        //             else
+        //                 all_ready = false;
+        //         }
+        //     }
+        //     if (all_ready)
+        //         break;
+        // }
         // Simple loop over the packets
         // for (auto& packet : packets)
         //     packet.wait(outputs);
+    }
+
+    bool complete()
+    {
+        for (const auto& packet : packets)
+            if (!packet.complete())
+                return false;
+
+        return true;
     }
 };
