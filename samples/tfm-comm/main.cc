@@ -91,7 +91,6 @@ benchmark(void)
 int
 main()
 {
-    // ERRCHK_MPI_API(MPI_Init(NULL, NULL));
     int provided, claimed, is_thread_main;
     ERRCHK_MPI_API(MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided));
     ERRCHK_MPI_API(MPI_Query_thread(&claimed));
@@ -100,13 +99,14 @@ main()
     ERRCHK_MPI(is_thread_main);
 
     try {
-        int nprocs;
+        int rank, nprocs;
+        ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
         ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
         int device_count;
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
-        ERRCHK_CUDA_API(cudaSetDevice(nprocs % device_count));
+        ERRCHK_CUDA_API(cudaSetDevice(rank % device_count));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
-        benchmark();
+        // benchmark();
 
         const Shape global_nn{4, 4, 4};
         MPI_Comm cart_comm           = cart_comm_create(MPI_COMM_WORLD, global_nn);
