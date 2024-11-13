@@ -144,6 +144,7 @@ class MPICommWrapper {
     MPICommWrapper& operator=(MPICommWrapper&& other) noexcept
     {
         if (this != &other) {
+            ERRCHK_MPI(comm == MPI_COMM_NULL);
             if (comm != MPI_COMM_NULL)
                 ERRCHK_MPI_API(MPI_Comm_free(&comm));
             comm       = other.comm;
@@ -154,6 +155,7 @@ class MPICommWrapper {
 
     ~MPICommWrapper()
     {
+        // ERRCHK_MPI(comm == MPI_COMM_NULL); // TODO consider enabling
         if (comm != MPI_COMM_NULL)
             ERRCHK_MPI_API(MPI_Comm_free(&comm));
     }
