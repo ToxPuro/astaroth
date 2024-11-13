@@ -92,6 +92,36 @@ subarray_destroy(MPI_Datatype& subarray)
     subarray = MPI_DATATYPE_NULL;
 }
 
+/** Creates an MPI_Info structure with IO tuning parameters.
+ * The resource must be freed after use to avoid memory leaks with
+ * info_destroy(info)
+ * or
+ * ERRCHK_MPI_API(MPI_Info_free(&info));
+ */
+MPI_Info
+info_create(void)
+{
+    MPI_Info info{MPI_INFO_NULL};
+    ERRCHK_MPI_API(MPI_Info_create(&info));
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "blocksize", "4096"));
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_factor", "4"));
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_unit", "...")); // Size of stripe chunks
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "cb_buffer_size", "...")); // Collective buffer
+    // size ERRCHK_MPI_API(MPI_Info_set(*info, "romio_ds_read", "...")); // Data sieving
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_ds_write", "...")); // Data sieving
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_read", "...")); // Collective buffering
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_write", "...")); // Collective buffering
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_no_indep_rw", "...")); // Enable/disable
+    return info;
+}
+
+void
+info_destroy(MPI_Info& info)
+{
+    ERRCHK_MPI_API(MPI_Info_free(&info));
+    info = MPI_INFO_NULL;
+}
+
 void
 request_wait_and_destroy(MPI_Request& req)
 {

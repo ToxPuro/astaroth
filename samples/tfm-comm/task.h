@@ -17,17 +17,7 @@ mpi_read(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& in
     ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &local_comm));
 
     // Info
-    MPI_Info info{MPI_INFO_NULL};
-    ERRCHK_MPI_API(MPI_Info_create(&info));
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "blocksize", "4096"));
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_factor", "4"));
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_unit", "...")); // Size of stripe chunks
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "cb_buffer_size", "...")); // Collective buffer
-    // size ERRCHK_MPI_API(MPI_Info_set(*info, "romio_ds_read", "...")); // Data sieving
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_ds_write", "...")); // Data sieving
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_read", "...")); // Collective buffering
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_write", "...")); // Collective buffering
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_no_indep_rw", "...")); // Enable/disable
+    MPI_Info info = info_create();
 
     // Subarrays
     MPI_Datatype global_subarray = subarray_create(in_file_dims, in_mesh_subdims, in_file_offset,
@@ -67,17 +57,7 @@ mpi_write(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& i
     ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &local_comm));
 
     // Info
-    MPI_Info info{MPI_INFO_NULL};
-    ERRCHK_MPI_API(MPI_Info_create(&info));
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "blocksize", "4096"));
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_factor", "4"));
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_unit", "...")); // Size of stripe chunks
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "cb_buffer_size", "...")); // Collective buffer
-    // size ERRCHK_MPI_API(MPI_Info_set(*info, "romio_ds_read", "...")); // Data sieving
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_ds_write", "...")); // Data sieving
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_read", "...")); // Collective buffering
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_write", "...")); // Collective buffering
-    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_no_indep_rw", "...")); // Enable/disable
+    MPI_Info info = info_create();
 
     // Subarrays
     MPI_Datatype global_subarray = subarray_create(in_file_dims, in_mesh_subdims, in_file_offset,
@@ -123,16 +103,7 @@ template <typename T> class IOTaskAsync {
         ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &local_comm));
 
         // Info
-        ERRCHK_MPI_API(MPI_Info_create(&info));
-        // ERRCHK_MPI_API(MPI_Info_set(*info, "blocksize", "4096"));
-        // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_factor", "4"));
-        // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_unit", "...")); // Size of stripe chunks
-        // ERRCHK_MPI_API(MPI_Info_set(*info, "cb_buffer_size", "...")); // Collective buffer
-        // size ERRCHK_MPI_API(MPI_Info_set(*info, "romio_ds_read", "...")); // Data sieving
-        // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_ds_write", "...")); // Data sieving
-        // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_read", "...")); // Collective buffering
-        // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_write", "...")); // Collective buffering
-        // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_no_indep_rw", "...")); // Enable/disable
+        info = info_create();
 
         // Subarrays
         global_subarray = subarray_create(in_file_dims, in_mesh_subdims, in_file_offset,
