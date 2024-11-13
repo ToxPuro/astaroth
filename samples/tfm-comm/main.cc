@@ -16,6 +16,8 @@
 
 #include <unistd.h>
 
+#include "task.h"
+
 #if defined(CUDA_ENABLED)
 #include "errchk_cuda.h"
 #include <cuda_runtime.h>
@@ -140,13 +142,12 @@ main()
         // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         // Basic MPI halo exchange task
-        // auto recv_reqs = create_halo_exchange_task<AcReal>(cart_comm, local_mm, local_nn, rr,
-        //                                            mesh.buffer.data(),
-        //                                            mesh.buffer.data());
-        // while (!recv_reqs.empty()) {
-        //     request_wait_and_destroy(recv_reqs.back());
-        //     recv_reqs.pop_back();
-        // }
+        auto recv_reqs = launch_halo_exchange<AcReal>(cart_comm, local_mm, local_nn, rr,
+                                                      mesh.buffer.data(), mesh.buffer.data());
+        while (!recv_reqs.empty()) {
+            request_wait_and_destroy(recv_reqs.back());
+            recv_reqs.pop_back();
+        }
 
         // Migrate
         const size_t count = 10;
@@ -170,10 +171,10 @@ main()
         // Packed MPI/CUDA halo exchange task
         NdArray<AcReal, DeviceMemoryResource> device_mesh(local_mm);
         migrate(mesh.buffer, device_mesh.buffer);
-        PackPtrArray<AcReal*> inputs{device_mesh.buffer.data()};
-        HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, inputs.count);
-        task.launch(cart_comm, inputs);
-        task.wait(inputs);
+        PackPtrArray<AcReal*> device_inputs{device_mesh.buffer.data()};
+        HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, device_inputs.count);
+        task.launch(cart_comm, device_inputs);
+        task.wait(device_inputs);
         migrate(device_mesh.buffer, mesh.buffer);
 
         // Print mesh
@@ -182,20 +183,35 @@ main()
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         // IO
-        IOTask<AcReal> iotask(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr);
-        // iotask.write(mesh.buffer.data(), "test.dat");
-        PRINT_LOG("Launch write");
+        // IOTask<AcReal> iotask(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr);
+        // // iotask.write(mesh.buffer.data(), "test.dat");
+        // PRINT_LOG("Launch write");
+        // iotask.launch_write(mesh.buffer, "test.dat");
+        // mesh.fill(-1, local_mm, Index(local_mm.count, as<uint64_t>(0)));
+        // PRINT_LOG("Wait write");
+        // iotask.wait_write();
+        // PRINT_LOG("Read write");
+        // iotask.read("test.dat", mesh.buffer.data());
+        // IOTask<AcReal> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
+        // // iotask.write(cart_comm, mesh.buffer.data(), "test.dat");
+        // iotask.launch_write(cart_comm, mesh.buffer, "test.dat");
+        // mesh.fill(-1, local_mm, Index(local_mm.count, as<uint64_t>(0)));
+        // iotask.wait_write();
+        // iotask.read(cart_comm, "test.dat", mesh.buffer.data());
+        // mpi_write(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,
+        //           mesh.buffer.data(), "test.dat");
+        IOTaskAsync<AcReal> iotask(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr);
         iotask.launch_write(mesh.buffer, "test.dat");
         mesh.fill(-1, local_mm, Index(local_mm.count, as<uint64_t>(0)));
-        PRINT_LOG("Wait write");
         iotask.wait_write();
-        PRINT_LOG("Read write");
-        iotask.read("test.dat", mesh.buffer.data());
+        mpi_read(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr, "test.dat",
+                 mesh.buffer.data());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         mesh.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
+        PackPtrArray<AcReal*> inputs{mesh.buffer.data()};
         task.launch(cart_comm, inputs);
         task.wait(inputs);
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
