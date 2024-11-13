@@ -120,16 +120,10 @@ get_mpi_dtype()
  */
 class MPICommWrapper {
   private:
-    MPI_Comm comm;
+    MPI_Comm comm{MPI_COMM_NULL};
 
   public:
-    MPICommWrapper()
-        : comm{MPI_COMM_NULL}
-    {
-    }
-
-    MPICommWrapper(const MPI_Comm& parent_comm)
-        : MPICommWrapper()
+    explicit MPICommWrapper(const MPI_Comm& parent_comm)
     {
         ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
     }
@@ -179,13 +173,10 @@ class MPICommWrapper {
 
 class MPIRequestWrapper {
   private:
-    MPI_Request req;
+    MPI_Request req{MPI_REQUEST_NULL};
 
   public:
-    MPIRequestWrapper()
-        : req{MPI_REQUEST_NULL}
-    {
-    }
+    MPIRequestWrapper() = default;
 
     MPIRequestWrapper(const MPIRequestWrapper&)            = delete; // Copy
     MPIRequestWrapper& operator=(const MPIRequestWrapper&) = delete; // Copy assignment
@@ -258,14 +249,9 @@ class MPIRequestWrapper {
 
 class MPIFileWrapper {
   private:
-    MPI_File file;
+    MPI_File file{MPI_FILE_NULL};
 
   public:
-    MPIFileWrapper()
-        : file{MPI_FILE_NULL}
-    {
-    }
-
     MPIFileWrapper(const MPIFileWrapper&)            = delete; // Copy constructor
     MPIFileWrapper& operator=(const MPIFileWrapper&) = delete; // Copy assignment
     // MPIFileWrapper(MPIFileWrapper&& other) noexcept            = delete; // Move constructor
@@ -319,12 +305,12 @@ template <typename T>
 static inline subarray_ptr_t
 datatype_make_unique(const Shape& dims, const Shape& subdims, const Index& offset)
 {
-    MPI_Datatype* ptr   = new MPI_Datatype{MPI_DATATYPE_NULL};
+    auto* ptr           = new MPI_Datatype{MPI_DATATYPE_NULL};
     *ptr                = subarray_create(dims, subdims, offset, get_mpi_dtype<T>());
-    static auto deleter = [](MPI_Datatype* ptr) {
-        if (*ptr != MPI_DATATYPE_NULL)
-            ERRCHK_MPI_API(MPI_Type_free(ptr));
-        delete ptr;
+    static auto deleter = [](MPI_Datatype* in_ptr) {
+        if (*in_ptr != MPI_DATATYPE_NULL)
+            ERRCHK_MPI_API(MPI_Type_free(in_ptr));
+        delete in_ptr;
     };
     return subarray_ptr_t{ptr, deleter};
 }
@@ -332,7 +318,7 @@ datatype_make_unique(const Shape& dims, const Shape& subdims, const Index& offse
 static inline info_ptr_t
 info_make_unique()
 {
-    MPI_Info* ptr = new MPI_Info{MPI_INFO_NULL};
+    auto* ptr = new MPI_Info{MPI_INFO_NULL};
     // ERRCHK_MPI_API(MPI_Info_create(&*info));
     // ERRCHK_MPI_API(MPI_Info_set(*info, "blocksize", "4096"));
     // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_factor", "4"));
@@ -344,10 +330,10 @@ info_make_unique()
     // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_write", "...")); // Collective buffering
     // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_no_indep_rw", "...")); // Enable/disable
     // independent rw
-    static auto deleter = [](MPI_Info* ptr) {
-        if (*ptr != MPI_INFO_NULL)
-            ERRCHK_MPI_API(MPI_Info_free(ptr));
-        delete ptr;
+    static auto deleter = [](MPI_Info* in_ptr) {
+        if (*in_ptr != MPI_INFO_NULL)
+            ERRCHK_MPI_API(MPI_Info_free(in_ptr));
+        delete in_ptr;
     };
     return info_ptr_t{ptr, deleter};
 }

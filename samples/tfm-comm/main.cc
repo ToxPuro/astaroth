@@ -170,8 +170,8 @@ main()
         NdArray<AcReal, DeviceMemoryResource> device_mesh(local_mm);
         migrate(mesh.buffer, device_mesh.buffer);
         PackPtrArray<AcReal*> device_inputs{device_mesh.buffer.data()};
-        HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, device_inputs.count);
-        task.launch(cart_comm, device_inputs);
+        HaloExchangeTask<AcReal> task(cart_comm, local_mm, local_nn, rr, device_inputs.count);
+        task.launch(device_inputs);
         task.wait(device_inputs);
         migrate(device_mesh.buffer, mesh.buffer);
 
@@ -210,7 +210,7 @@ main()
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         PackPtrArray<AcReal*> inputs{mesh.buffer.data()};
-        task.launch(cart_comm, inputs);
+        task.launch(inputs);
         task.wait(inputs);
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         mesh.display();

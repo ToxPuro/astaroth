@@ -32,8 +32,8 @@ template <typename T> class Packet {
     bool in_progress = false;
 
   public:
-    Packet(const Shape& in_local_mm, const Shape& in_local_nn, const Index& in_local_rr,
-           const Segment& in_segment, const size_t n_aggregate_buffers)
+    Packet(const MPI_Comm& parent_comm, const Shape& in_local_mm, const Shape& in_local_nn,
+           const Index& in_local_rr, const Segment& in_segment, const size_t n_aggregate_buffers)
         : local_mm(in_local_mm),
           local_nn(in_local_nn),
           local_rr(in_local_rr),
@@ -41,11 +41,12 @@ template <typename T> class Packet {
           pack_buffer(n_aggregate_buffers * prod(in_segment.dims)),
           send_buffer(n_aggregate_buffers * prod(in_segment.dims)),
           recv_buffer(n_aggregate_buffers * prod(in_segment.dims)),
-          unpack_buffer(n_aggregate_buffers * prod(in_segment.dims))
+          unpack_buffer(n_aggregate_buffers * prod(in_segment.dims)),
+          cart_comm{parent_comm}
     {
     }
 
-    void launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs);
+    void launch(const PackPtrArray<T*> inputs);
     bool ready() const;
     void wait(PackPtrArray<T*> outputs);
     bool complete() const;
@@ -63,7 +64,7 @@ template <typename T> class Packet {
 
 template <typename T>
 void
-Packet<T>::launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
+Packet<T>::launch(const PackPtrArray<T*> inputs)
 {
     ERRCHK_MPI(!in_progress);
     in_progress = true;
@@ -71,10 +72,6 @@ Packet<T>::launch(const MPI_Comm& parent_comm, const PackPtrArray<T*> inputs)
     const size_t count = inputs.count * prod(segment.dims);
     ERRCHK_MPI(count <= send_buffer.size());
     ERRCHK_MPI(count <= recv_buffer.size());
-
-    // Duplicate the communicator to ensure the operation does not interfere
-    // with other operations on the parent communicator
-    cart_comm = MPICommWrapper(parent_comm);
 
     Index send_offset = ((local_nn + segment.offset - local_rr) % local_nn) + local_rr;
 

@@ -10,8 +10,8 @@ template <typename T> class HaloExchangeTask {
     std::vector<Packet<T>> packets;
 
   public:
-    HaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
-                     const size_t n_aggregate_buffers)
+    HaloExchangeTask(const MPI_Comm& parent_comm, const Shape& local_mm, const Shape& local_nn,
+                     const Index& local_rr, const size_t n_aggregate_buffers)
 
     {
         // Must be larger than the boundary area to avoid boundary artifacts
@@ -31,19 +31,19 @@ template <typename T> class HaloExchangeTask {
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
             packets.push_back(
-                Packet<T>(local_mm, local_nn, local_rr, segment, n_aggregate_buffers));
+                Packet<T>(parent_comm, local_mm, local_nn, local_rr, segment, n_aggregate_buffers));
         }
     }
 
-    void launch(const MPI_Comm parent_comm, const PackPtrArray<T*> inputs)
+    void launch(const PackPtrArray<T*>& inputs)
     {
         ERRCHK_MPI(complete());
 
         for (auto& packet : packets)
-            packet.launch(parent_comm, inputs);
+            packet.launch(inputs);
     }
 
-    void wait(const PackPtrArray<T*> outputs)
+    void wait(const PackPtrArray<T*>& outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         while (!complete()) {
