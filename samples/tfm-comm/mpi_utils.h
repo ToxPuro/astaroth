@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <functional>
+
 #include "datatypes.h"
 #include "errchk_mpi.h"
 #include "print_debug.h"
@@ -245,3 +247,99 @@ class MPIRequestWrapper {
 
     bool complete() const { return req == MPI_REQUEST_NULL; }
 };
+
+class MPIFileWrapper {
+  private:
+    MPI_File file;
+
+  public:
+    MPIFileWrapper()
+        : file{MPI_FILE_NULL}
+    {
+    }
+
+    MPIFileWrapper(const MPIFileWrapper&)            = delete; // Copy constructor
+    MPIFileWrapper& operator=(const MPIFileWrapper&) = delete; // Copy assignment
+    // MPIFileWrapper(MPIFileWrapper&& other) noexcept            = delete; // Move constructor
+    // MPIFileWrapper& operator=(MPIFileWrapper&& other) noexcept = delete; // Move assignment
+
+    // Move constructor
+    MPIFileWrapper(MPIFileWrapper&& other) noexcept
+        : file{other.file}
+    {
+        other.file = MPI_FILE_NULL;
+    }
+
+    // Move assignment
+    MPIFileWrapper& operator=(MPIFileWrapper&& other) noexcept
+    {
+        if (this != &other) {
+            ERRCHK_MPI_EXPR_DESC(file == MPI_FILE_NULL,
+                                 "Tried to copy assign to a file that was still open");
+            if (file != MPI_FILE_NULL)
+                ERRCHK_MPI_API(MPI_File_close(&file));
+            file       = other.file;
+            other.file = MPI_FILE_NULL;
+        }
+        return *this;
+    }
+
+    ~MPIFileWrapper()
+    {
+        ERRCHK_MPI_EXPR_DESC(file == MPI_FILE_NULL, "Tried to delete a file that was still open");
+        if (file != MPI_FILE_NULL)
+            ERRCHK_MPI_API(MPI_File_close(&file));
+    }
+
+    MPI_File* get()
+    {
+        // ERRCHK_MPI(file == MPI_FILE_NULL); // Should not modify directly if non-null
+        return &file;
+    }
+
+    MPI_File value() const
+    {
+        // ERRCHK_MPI(file != MPI_FILE_NULL);
+        return file;
+    }
+};
+
+using subarray_ptr_t = std::unique_ptr<MPI_Datatype, std::function<void(MPI_Datatype*)>>;
+using info_ptr_t     = std::unique_ptr<MPI_Info, std::function<void(MPI_Info*)>>;
+
+template <typename T>
+static inline subarray_ptr_t
+datatype_make_unique(const Shape& dims, const Shape& subdims, const Index& offset)
+{
+    MPI_Datatype* ptr   = new MPI_Datatype{MPI_DATATYPE_NULL};
+    *ptr                = subarray_create(dims, subdims, offset, get_mpi_dtype<T>());
+    static auto deleter = [](MPI_Datatype* ptr) {
+        if (*ptr != MPI_DATATYPE_NULL)
+            ERRCHK_MPI_API(MPI_Type_free(ptr));
+        delete ptr;
+    };
+    return subarray_ptr_t{ptr, deleter};
+}
+
+static inline info_ptr_t
+info_make_unique()
+{
+    MPI_Info* ptr = new MPI_Info{MPI_INFO_NULL};
+    // ERRCHK_MPI_API(MPI_Info_create(&*info));
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "blocksize", "4096"));
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_factor", "4"));
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "striping_unit", "...")); // Size of stripe chunks
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "cb_buffer_size", "...")); // Collective buffer
+    // size ERRCHK_MPI_API(MPI_Info_set(*info, "romio_ds_read", "...")); // Data sieving
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_ds_write", "...")); // Data sieving
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_read", "...")); // Collective buffering
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_cb_write", "...")); // Collective buffering
+    // ERRCHK_MPI_API(MPI_Info_set(*info, "romio_no_indep_rw", "...")); // Enable/disable
+    // independent rw
+    static auto deleter = [](MPI_Info* ptr) {
+        if (*ptr != MPI_INFO_NULL)
+            ERRCHK_MPI_API(MPI_Info_free(ptr));
+        delete ptr;
+    };
+    return info_ptr_t{ptr, deleter};
+}
