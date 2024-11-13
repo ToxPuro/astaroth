@@ -16,8 +16,6 @@
 
 #include <unistd.h>
 
-#include "task.h"
-
 #if defined(CUDA_ENABLED)
 #include "errchk_cuda.h"
 #include <cuda_runtime.h>
