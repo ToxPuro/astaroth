@@ -14,8 +14,8 @@ template <typename T> class HaloExchangeTask {
                      const size_t n_aggregate_buffers)
 
     {
-        ERRCHK_MPI(local_nn >=
-                   local_rr); // Must be larger than the boundary area to avoid boundary artifacts
+        // Must be larger than the boundary area to avoid boundary artifacts
+        ERRCHK_MPI(local_nn >= local_rr);
 
         // Partition the mesh
         auto segments = partition(local_mm, local_nn, local_rr);
@@ -58,10 +58,7 @@ template <typename T> class HaloExchangeTask {
 
     bool complete()
     {
-        for (const auto& packet : packets)
-            if (!packet.complete())
-                return false;
-
-        return true;
+        return std::all_of(packets.begin(), packets.end(),
+                           [](const Packet<T>& packet) { return packet.complete(); });
     }
 };
