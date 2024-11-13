@@ -1132,6 +1132,14 @@ for_expression: identifier in expression {
 			ASTNode* init_expression = $3->lhs;
 			ASTNode* end_expression  = $3->rhs;
 
+			//TP: hack to suppress warnings about different signed comparisons for loops like: i in 0:size(arr)
+			//TP: either use this or make size calls return an int
+			//TP: for now return int from size calls, not sure which is better...
+			//{
+			//	const char* end_str = combine_all_new(end_expression);
+			//	if(strstr(end_str,"size("))
+			//		$1->expr_type = intern("size_t");
+			//}
 			ASTNode* init = astnode_create(NODE_UNKNOWN,init_expression,astnode_dup($1,NULL));
 			astnode_set_prefix("=",init);
 			astnode_set_prefix(";",init->rhs);

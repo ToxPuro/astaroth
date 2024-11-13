@@ -334,8 +334,10 @@ AC_INTERNAL_read_field(const Field& field, const int x, const int y, const int z
 
 static std::vector<int> executed_nodes{};
 #define constexpr
+#define size(arr) (int)(sizeof(arr)/sizeof(arr[0]))
 #include "user_cpu_kernels.h"
 #undef  constexpr
+#undef size
 
 
 

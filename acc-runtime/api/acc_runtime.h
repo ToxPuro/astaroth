@@ -41,6 +41,7 @@
   #include "datatypes.h"
   #include "errchk.h"
 
+#define AC_SIZE(arr) sizeof(arr)/sizeof(arr[0])
 #define ONE_DIMENSIONAL_PROFILE (1 << 20)
 #define TWO_DIMENSIONAL_PROFILE (1 << 21)
 typedef enum {

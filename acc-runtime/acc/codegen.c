@@ -3640,52 +3640,48 @@ const char*
 output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 {
 	const char* res = NULL;
-        if (tspec.id) 
+	const char* tspecifier = NULL;
+        if (tspec.id)
 	{
-          //TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
-	  if(tspec.id[strlen(tspec.id)-1] == '*' || tspec.id[strlen(tspec.id)-2] == '*')
-            fprintf(stream, "%s ", "auto");
-	  //TP: Hacks
-	  else if(strstr(tspec.id,"WITH_INLINE"))
-          	fprintf(stream, "%s ", "auto");
-	  else if(strstr(tspec.id,"AcArray"))
-	  {
-		  fprintf(stream, "%s ", get_array_elem_type(strdup(tspec.id)));
-		  res = get_array_elem_size(strdup(tspec.id));
-	  }
-	  else if(tspec.id != KERNEL_STR)
-	  {
-            fprintf(stream, "%s ", type_output(tspec.id));
-	  }
+	  tspecifier = tspec.id;
         }
         else if (add_auto(node))
 	{
 	  if(node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, " constexpr ");
 	  if(node->expr_type)
 	  {
-          	//TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
-	  	if(node->expr_type[strlen(node->expr_type)-1] == '*' || node->expr_type[strlen(node->expr_type)-2] == '*')
-            		fprintf(stream, "%s ", "auto");
-		//TP: Hacks
-		else if(strstr(node->expr_type,"WITH_INLINE"))
-            		fprintf(stream, "%s ", "auto");
-		else
-		{
-	  		if(strstr(node->expr_type,"AcArray"))
-	  		{
-	  		        fprintf(stream, "%s ", get_array_elem_type(strdup(node->expr_type)));
-	  		        res = get_array_elem_size(strdup(node->expr_type));
-	  		}
-			else
-		  		fprintf(stream, "%s ",type_output(node->expr_type));
-		}
+		tspecifier = node->expr_type;
 	  }
 	  else
           	fprintf(stream, "auto ");
 	}
+	if(tspecifier)
+	{
+	  const bool is_reference = tspecifier[strlen(tspecifier)-1] == '&';
+          //TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
+	  if(tspecifier[strlen(tspecifier)-1] == '*' || tspecifier[strlen(tspecifier)-2] == '*')
+            fprintf(stream, "%s%s ", "auto", is_reference ? "&" : "");
+	  //TP: Hacks
+	  else if(strstr(tspecifier,"WITH_INLINE"))
+            fprintf(stream, "%s%s ", "auto", is_reference ? "&" : "");
+	  else if(strstr(tspecifier,"AcArray"))
+	  {
+		  if(is_reference)
+		  {
+			  fprintf(stream, "auto& ");
+		  }
+		  else
+		  {
+		  	fprintf(stream, "%s ", get_array_elem_type(strdup(tspecifier)));
+		  	res = get_array_elem_size(strdup(tspecifier));
+		  }
+	  }
+	  else if(tspecifier != KERNEL_STR)
+	  {
+            fprintf(stream, "%s ", type_output(tspecifier));
+	  }
+	}
 	return res;
-	//else if(node->expr_type && !(node->type & INPUT))
-	//  fprintf(stream,"%s ",node->expr_type);
 }
 
 tspecifier
@@ -4372,6 +4368,14 @@ get_in_range_expr_type(ASTNode* node)
 	return res;
 }
 const char*
+get_identifier_expr_type(ASTNode* node)
+{
+  	const Symbol* sym = get_symbol_token(NODE_VARIABLE_ID,node->buffer,NULL);
+	if(sym)
+		node->expr_type = sym->tspecifier;
+	return node->expr_type;
+}
+const char*
 get_expr_type(ASTNode* node)
 {
 
@@ -4405,6 +4409,8 @@ get_expr_type(ASTNode* node)
 		get_type_declaration_type(node);
 	else if(node->type & NODE_ASSIGNMENT && get_parent_node(NODE_FUNCTION,node) &&  !get_node(NODE_MEMBER_ID,node->lhs) && !get_node(NODE_ARRAY_ACCESS,node->lhs))
 		res = get_assignment_expr_type(node);
+	else if(node->token == IDENTIFIER)
+		res = get_identifier_expr_type(node);
 	else
 	{
 		if(node->lhs && !res)
@@ -5457,6 +5463,15 @@ void replace_return_nodes(ASTNode* node, const ASTNode* decl_node)
 	if(!is_return_node(node)) return;
 	replace_node(node,create_assignment(decl_node,node->rhs,EQ_STR));
 }
+bool
+should_be_reference(const ASTNode* node)
+{
+	const bool is_constexpr = all_identifiers_are_constexpr(node);
+	const char* param_type  = get_expr_type((ASTNode*)node);
+	const bool param_is_arr = param_type && (strstr(param_type,"*") || strstr(param_type,"AcArray"));
+	const bool is_reference = !is_constexpr || param_is_arr;
+	return is_reference;
+}
 
 ASTNode*
 inline_returning_function(const ASTNode* node, int counter)
@@ -5466,6 +5481,8 @@ inline_returning_function(const ASTNode* node, int counter)
 	if(!func_node || !func_node->lhs) return NULL;
 	const char* func_name = get_node_by_token(IDENTIFIER,func_node->lhs)->buffer;
 	if(!func_name || !check_symbol(NODE_DFUNCTION_ID,func_name,0,INLINE_STR)) return NULL;
+
+
 	const ASTNode* dfunc = get_dfunc(func_name);
 	if(!dfunc) return NULL;
 	if(!dfunc->rhs->rhs->lhs) return NULL;
@@ -5481,9 +5498,8 @@ inline_returning_function(const ASTNode* node, int counter)
 	for(size_t i = 0; i < params.size; ++i)
 	{
 
-		const bool is_constexpr = all_identifiers_are_constexpr(params.data[i]);
 		const char* type = params_info.types.data[i] ? sprintf_intern("%s%s",
-				params_info.types.data[i], is_constexpr ? "" : "&")
+				params_info.types.data[i], should_be_reference(params.data[i]) ? "&" : "")
 			: NULL;
 		ASTNode* alias = create_assignment(create_declaration(params_info.expr.data[i],type,CONST_STR),params.data[i],EQ_STR);
 		add_to_node_list(dfunc_statements,alias);
@@ -5522,9 +5538,8 @@ inline_non_returning_function(const ASTNode* node, int counter)
 	func_params_info params_info = get_function_params_info(dfunc,func_name);
 	for(size_t i = 0; i < params.size; ++i)
 	{
-		const bool is_constexpr = all_identifiers_are_constexpr(params.data[i]);
 		const char* type = params_info.types.data[i] ? sprintf_intern("%s%s",
-				params_info.types.data[i], is_constexpr ? "" : "&")
+				params_info.types.data[i], should_be_reference(params.data[i]) ? "&" : "")
 			: NULL;
 		ASTNode* alias = create_assignment(create_declaration(params_info.expr.data[i],type,CONST_STR),params.data[i],EQ_STR);
 		add_to_node_list(dfunc_statements,alias);
@@ -5549,9 +5564,9 @@ inline_dfuncs_recursive(ASTNode* node, int* counter)
 
 	if(!(node->type & NODE_ASSIGNMENT) && node->token != NON_RETURNING_FUNC_CALL) return res;
 	ASTNode* func_node = (ASTNode*) get_node(NODE_FUNCTION_CALL,node);
-	if(!func_node || !func_node->lhs) return NULL;
+	if(!func_node || !func_node->lhs) return res;
 	const char* func_name = get_node_by_token(IDENTIFIER,func_node)->buffer;
-	if(!func_name || !check_symbol(NODE_DFUNCTION_ID,func_name,0,INLINE_STR)) return NULL;
+	if(!func_name || !check_symbol(NODE_DFUNCTION_ID,func_name,0,INLINE_STR)) return res;
 	ASTNode* res_node = node->type & NODE_ASSIGNMENT
 			    ? inline_returning_function(node,*counter)
 			    : inline_non_returning_function(node,*counter);
@@ -5605,7 +5620,10 @@ turn_inline_function_calls_to_assignments_in_statement(ASTNode* node, ASTNode* b
 	if(!(in_unary_op || get_parent_node(NODE_FUNCTION_CALL,node) || get_parent_node_by_token(BINARY,node) || get_parent_node_by_token(CAST,node))) return res;
 	char* inline_var_name;
 	asprintf(&inline_var_name,"inlined_var_return_value_%d",*counter);
-	ASTNode* decl  = create_declaration(inline_var_name,NULL,NULL);
+	const char* type = get_expr_type(node) ? sprintf_intern("%s%s",
+			get_expr_type(node), should_be_reference(node) ? "&" : "")
+		: NULL;
+	ASTNode* decl  = create_declaration(inline_var_name,type,CONST_STR);
 	ASTNode* node_res = create_assignment(decl,node,"=");
 	replace_node(node,create_primary_expression(inline_var_name));
 	ASTNode* head = (ASTNode*)get_parent_node_inclusive(NODE_STATEMENT_LIST_HEAD,base_statement);
@@ -5652,7 +5670,7 @@ inline_dfuncs(ASTNode* node)
 void
 transform_arrays_to_std_arrays_in_func(ASTNode* node)
 {
-	TRAVERSE_PREAMBLE(transform_arrays_to_std_arrays_in_func);
+	TRAVERSE_PREAMBLE(transform_arrays_to_std_arrays_in_func)
 	if(!(node->type & NODE_DECLARATION))
 		return;
 	if(!node->rhs)
@@ -6121,22 +6139,35 @@ flow_type_info(ASTNode* node)
 }
 
 static ASTNode* 
-create_func_call(const char* func_name, const ASTNode* param)
+create_func_call(const char* func_name, const node_vec params)
 {
 
 	ASTNode* postfix_expression = astnode_create(NODE_UNKNOWN,
 			     create_primary_expression(func_name),
 			     NULL);
-	ASTNode* func_call = astnode_create(NODE_FUNCTION_CALL,postfix_expression,astnode_dup(param,NULL));
+	ASTNode* expression_list = build_list_node(params,",");
+	//ASTNode* expression_list = astnode_create(NODE_UNKNOWN,astnode_dup(param,NULL), NULL);
+	ASTNode* func_call = astnode_create(NODE_FUNCTION_CALL,postfix_expression,expression_list);
 	astnode_set_infix("(",func_call); 
 	astnode_set_postfix(")",func_call); 
 	return func_call;
 }
 
 static ASTNode* 
+create_func_call_expr_variadic(const char* func_name, const node_vec params)
+{
+	ASTNode* func_call = create_func_call(func_name,params);
+	ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
+	ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
+	return expression;
+}
+static ASTNode* 
 create_func_call_expr(const char* func_name, const ASTNode* param)
 {
-	ASTNode* func_call = create_func_call(func_name,param);
+	node_vec params = VEC_INITIALIZER;
+	push_node(&params,param);
+	ASTNode* func_call = create_func_call(func_name,params);
+	free_node_vec(&params);
 	ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
 	ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
 	return expression;
@@ -6173,7 +6204,7 @@ field_to_real_conversion(ASTNode* node, const ASTNode* root)
 		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
-			expr->expr_type = params_info.types.data[i-offset];
+			//expr->expr_type = params_info.types.data[i-offset];
 			replace_node(
 					expr,
 					create_func_call_expr(VALUE_STR,expr)
@@ -6189,7 +6220,7 @@ field_to_real_conversion(ASTNode* node, const ASTNode* root)
 void
 gen_type_info(ASTNode* root)
 {
-  	transform_arrays_to_std_arrays(root);
+        transform_arrays_to_std_arrays(root);
   	if(dfunc_nodes.size == 0)
   		get_nodes(root,&dfunc_nodes,&dfunc_names,NODE_DFUNCTION);
 	bool has_changed = true;
@@ -6264,8 +6295,7 @@ compatible_types(const char* a, const char* b)
 {
 	if(is_subtype(a,b)) return true;
 	const bool res = !strcmp(a,b) 
-	       || (!strcmp(a,REAL_PTR_STR) && strstr(b,"AcArray") && strstr(b,REAL_STR)) ||
-	          (!strcmp(b,REAL_PTR_STR) && strstr(a,"AcArray") && strstr(a,REAL_STR)) ||
+	       || 
                   (!strcmp(a,FIELD_STR) && !strcmp(b,"VertexBufferHandle"))  ||
 		  (!strcmp(b,FIELD_STR) && !strcmp(a,"VertexBufferHandle"))  ||
                   (!strcmp(a,"Field*") && !strcmp(b,VTXBUF_PTR_STR))  ||
@@ -6279,9 +6309,13 @@ compatible_types(const char* a, const char* b)
 	if(!res)
 	{
 		if(a == REAL_PTR_STR && get_array_elem_type(strdup(b)) == REAL_STR)
+		{
 			return true;
+		}
 		if(a == REAL3_PTR_STR && get_array_elem_type(strdup(b)) == REAL3_STR)
+		{
 			return true;
+		}
 	}
 	return res;
 }
@@ -6291,7 +6325,7 @@ typedef struct
 	const char*const * names;
 } dfunc_possibilities;
 static int_vec
-get_possible_dfuncs(const func_params_info call_info, const dfunc_possibilities possibilities, const int dfunc_index, const bool strict, const bool use_auto, const char* func_name)
+get_possible_dfuncs(const func_params_info call_info, const dfunc_possibilities possibilities, const int dfunc_index, const bool strict, const bool use_auto, const bool allow_unknowns, const char* func_name)
 {
 	int overload_index = MAX_DFUNCS*dfunc_index-1;
 	int_vec possible_indexes = VEC_INITIALIZER;
@@ -6314,7 +6348,7 @@ get_possible_dfuncs(const func_params_info call_info, const dfunc_possibilities 
 			else
 				possible &= !call_type || !func_type || compatible_types(func_type,call_type);
 			if(!use_auto) possible &= func_type != NULL;
-			if(!use_auto) possible &= call_type != NULL;
+			if(!allow_unknowns) possible &= call_type != NULL;
 
 		}
 		if(possible)
@@ -6342,26 +6376,29 @@ resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
 	const char* dfunc_name = duplicate_dfuncs.names.data[dfunc_index];
 	func_params_info call_info = get_func_call_params_info(node);
 	int correct_types = -1;
-	int_vec possible_indexes_conversion              = get_possible_dfuncs(call_info,possibilities,dfunc_index,false,true,dfunc_name);
-	int_vec possible_indexes_conversion_no_auto      = get_possible_dfuncs(call_info,possibilities,dfunc_index,false,false,dfunc_name);
-	int_vec possible_indexes_strict          = get_possible_dfuncs(call_info,possibilities,dfunc_index,true,true,dfunc_name);
-	int_vec possible_indexes_strict_no_auto  = get_possible_dfuncs(call_info,possibilities,dfunc_index,true,false,dfunc_name);
+	int_vec possible_indexes_strict_no_auto          = get_possible_dfuncs(call_info,possibilities,dfunc_index,true,false ,false,dfunc_name);
+	int_vec possible_indexes_conversion_no_auto      = get_possible_dfuncs(call_info,possibilities,dfunc_index,false,false,false,dfunc_name);
+
+	int_vec possible_indexes_strict_unknowns     = get_possible_dfuncs(call_info,possibilities,dfunc_index,true,false, true,dfunc_name);
+	int_vec possible_indexes_conversion_unknowns = get_possible_dfuncs(call_info,possibilities,dfunc_index,false,false,true,dfunc_name);
+
+	int_vec possible_indexes_strict                  = get_possible_dfuncs(call_info,possibilities,dfunc_index,true,true, true,dfunc_name);
+	int_vec possible_indexes_conversion              = get_possible_dfuncs(call_info,possibilities,dfunc_index,false,true,true,dfunc_name);
 	//TP: by default use the strict rules but if there no suitable ones use conversion rules
 	//TP: if there are multiple possibilities pick the one with all specified parameters
 	const int_vec possible_indexes = 
+					possible_indexes_strict_unknowns.size     == 1 ? possible_indexes_strict_unknowns  :
+					possible_indexes_conversion_unknowns.size     == 1 ? possible_indexes_conversion_unknowns  :
 					possible_indexes_strict_no_auto.size      > 0 ? possible_indexes_strict_no_auto :
 					possible_indexes_conversion_no_auto.size  > 0 ? possible_indexes_conversion_no_auto :
 					possible_indexes_strict.size              > 0 ? possible_indexes_strict :
 					possible_indexes_conversion;
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		//if(!strcmp(dfunc_name,"dot"))
+		//if(!strcmp(dfunc_name,"add_arr"))
 		//{
-		//	char my_tmp[10000];
-		//	my_tmp[0] = '\0';
-		//	combine_all(node->rhs,my_tmp); 
-		//	printf("Not able to resolve: %s\n",my_tmp); 
-		//	printf("Not able to resolve: %s,%zu\n",call_info.types.data[1],possible_indexes_conversion.size); 
+		//	printf("Not able to resolve: %s\n",combine_all_new(node->rhs)); 
+		//	printf("Not able to resolve: %s,%s,%zu\n",call_info.types.data[0],call_info.types.data[1],possible_indexes_conversion.size); 
 		//}
 		return res;
 	}
@@ -6375,7 +6412,73 @@ resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
 	free_str_vec(&call_info.types);
 	free_int_vec(&possible_indexes_strict);
 	free_int_vec(&possible_indexes_conversion);
+	free_int_vec(&possible_indexes_strict_no_auto);
+	free_int_vec(&possible_indexes_conversion_no_auto);
+	free_int_vec(&possible_indexes_strict_unknowns);
+	free_int_vec(&possible_indexes_conversion_unknowns);
 	return true;
+}
+void
+transform_array_binary_ops(ASTNode* node)
+{
+	if(node->lhs)
+		transform_array_binary_ops(node->lhs);
+	if(node->rhs)
+		transform_array_binary_ops(node->rhs);
+	if(!node_is_binary_expr(node)) return;
+
+	const char* lhs_expr = get_expr_type(node->lhs);
+	const char* rhs_expr = get_expr_type(node->rhs);
+	if(!lhs_expr || !rhs_expr) return;
+	const char* op = node->rhs->lhs->buffer;
+        if(!op) return;
+        if(strcmps(op,PLUS_STR,MINUS_STR,DIV_STR,MULT_STR)) return;
+
+	const bool lhs_is_array = strstr(lhs_expr,"*") || strstr(lhs_expr,"AcArray");
+	const bool rhs_is_array = strstr(rhs_expr,"*") || strstr(rhs_expr,"AcArray");
+	if(lhs_is_array && rhs_is_array)
+	{
+		node_vec params = VEC_INITIALIZER;
+		push_node(&params,node->lhs);
+		push_node(&params,node->rhs->rhs);
+		const char* func_name = 
+			op == PLUS_STR  ? intern("add_arr") :
+			op == MINUS_STR ? intern("sub_arr") :
+			op == MULT_STR  ? intern("mult_arr") :
+			op == DIV_STR   ? intern("div_arr") :
+			NULL;
+		replace_node(node, create_func_call_expr_variadic(func_name,params));
+		free_node_vec(&params);
+	}
+}
+void
+make_into_reference(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(make_into_reference);
+	if(!node->expr_type) return;
+	node->expr_type = sprintf_intern("%s&",node->expr_type);
+}
+
+void
+transform_array_assignments(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(transform_array_assignments);
+	if(!(node->type & NODE_ASSIGNMENT)) return;
+	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
+	if(!function) return;
+	const char* op = node->rhs->lhs->buffer;
+	if(op != EQ_STR) return;
+	const char* rhs_type = get_expr_type(node->rhs);
+	if(!rhs_type) return;
+	const bool is_arr = (strstr(rhs_type,"*") || strstr(rhs_type,"AcArray"));
+	if(is_arr && !get_node(NODE_ARRAY_INITIALIZER,node->rhs->rhs))
+	{
+		replace_node(
+				node->rhs->rhs,
+				create_func_call_expr(intern("dup_arr"),node->rhs->rhs)
+			);
+		make_into_reference(node->lhs);
+	}
 }
 
 void
@@ -6400,11 +6503,18 @@ gen_overloads(ASTNode* root)
 
 
   const dfunc_possibilities overload_possibilities = {dfunc_possible_types,dfunc_possible_names}; 
+  int overload_counter = 0;
   while(overloaded_something)
   {
 	overloaded_something = false;
   	gen_type_info(root);
+	if(overload_counter == 0)
+	{
+  		transform_array_assignments(root);
+	}
+  	transform_array_binary_ops(root);
 	overloaded_something |= resolve_overloaded_calls(root,overload_possibilities);
+	overload_counter++;
   	//for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
   	        //overloaded_something |= resolve_overloaded_calls(root,duplicate_dfuncs.data[i],dfunc_possible_types,i);
   }
@@ -6412,6 +6522,12 @@ gen_overloads(ASTNode* root)
 	  free_str_vec(&dfunc_possible_types[i]);
 }
 
+void
+reset_expr_types(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(reset_expr_types);
+	node->expr_type = NULL;
+}
 void
 transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* root)
 {
@@ -6458,9 +6574,7 @@ transform_field_unary_ops(ASTNode* node)
 	if(!base_type) return;
 	if(!is_value_applicable_type(base_type)) return;
 
-	ASTNode*  func_call = create_func_call(VALUE_STR,node->rhs);
-	ASTNode*  unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
-	node->rhs = unary_expression;
+	node->rhs = create_func_call_expr(VALUE_STR,node->rhs);;
 }
 void
 transform_field_binary_ops(ASTNode* node)
@@ -6479,19 +6593,9 @@ transform_field_binary_ops(ASTNode* node)
 
 
 	if(is_value_applicable_type(lhs_expr))
-	{
-		ASTNode* func_call = create_func_call(VALUE_STR,node->lhs);
-		ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
-		ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
-		node->lhs = expression;
-	}
+		node->lhs = create_func_call_expr(VALUE_STR,node->lhs);
 	if(is_value_applicable_type(rhs_expr))
-	{
-
-		ASTNode* func_call = create_func_call(VALUE_STR,node->rhs->rhs);
-		ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
-		node->rhs->rhs = unary_expression;
-	}
+		node->rhs->rhs = create_func_call_expr(VALUE_STR,node->rhs->rhs);
 }
 void
 gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, FILE* stream)
@@ -6743,7 +6847,6 @@ transform_broadcast_assignments(ASTNode* node)
 	if(!(node->type & NODE_ASSIGNMENT)) return;
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
 	if(!function) return;
-	const char* function_name = get_node_by_token(IDENTIFIER,function->lhs)->buffer;
 	const char* op = node->rhs->lhs->buffer;
 	if(op != EQ_STR) return;
 	if(count_num_of_nodes_in_list(node->rhs->rhs) != 1)   return;
@@ -7159,6 +7262,7 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   //We use duplicate dfuncs from gen_boundcond_kernels
   //duplicate_dfuncs = get_duplicate_dfuncs(root);
   mark_first_declarations(root);
+
   gen_overloads(root);
   eval_conditionals(root,root);
   transform_broadcast_assignments(root);
@@ -7643,8 +7747,11 @@ cache_func_calls(ASTNode* node)
 		cache_func_calls_in_function(node, &cached_calls_expr, &cached_calls);
 		for(size_t i = 0; i < cached_calls.size; ++i)
 		{
+			const char* type = get_expr_type((ASTNode*)cached_calls.data[i]) ? sprintf_intern("%s%s",
+					get_expr_type((ASTNode*)cached_calls.data[i]), should_be_reference(cached_calls.data[i]) ? "&" : "")
+				: NULL;
 			ASTNode* res = create_assignment(
-								create_declaration(get_cached_var_name(i),NULL,NULL),
+								create_declaration(get_cached_var_name(i),type,CONST_STR),
 								cached_calls.data[i],
 								"="
 							);
@@ -7813,6 +7920,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   cache_func_calls(root);
   inline_dfuncs(root);
   gen_type_info(root);
+  gen_type_info(root);
   gen_constexpr_info(root,gen_mem_accesses);
 
   // Device functions
@@ -7914,7 +8022,7 @@ compile_helper(const bool log)
 #endif
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "gcc -Wshadow -I. -I " ACC_RUNTIME_API_DIR " %s %s -DAC_DOUBLE_PRECISION=%d " 
+  sprintf(cmd, "gcc -I. -I " ACC_RUNTIME_API_DIR " %s %s -DAC_DOUBLE_PRECISION=%d " 
 	       STENCILACC_SRC " -lm -lstdc++ -o " STENCILACC_EXEC" "
   ,api_includes, use_hip, AC_DOUBLE_PRECISION
   );

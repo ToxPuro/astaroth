@@ -286,7 +286,6 @@ LOCAL_COMPDOMAIN_IDX(const int3 coord)
 }
 
 #define print printf                          // TODO is this a good idea?
-#define len(arr) sizeof(arr) / sizeof(arr[0]) // Leads to bugs if the user
 // passes an array into a device function and then calls len (need to modify
 // the compiler to always pass arrays to functions as references before
 // re-enabling)
@@ -295,7 +294,9 @@ LOCAL_COMPDOMAIN_IDX(const int3 coord)
 
 #define suppress_unused_warning(X) (void)X
 #define longlong long long
+#define size(arr) (int)(sizeof(arr) / sizeof(arr[0])) // Leads to bugs if the user
 #include "user_kernels.h"
+#undef size
 #undef longlong
 
 

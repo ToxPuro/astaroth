@@ -109,14 +109,15 @@ main(void)
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
 
 
-    const int nx_min = model.info.int_params[AC_nx_min];
-    const int nx_max = model.info.int_params[AC_nx_max];
+    const int nx_min = model.info[AC_nmin].x;
+    const int nx_max = model.info[AC_nlocal_max].x;
 
-    const int ny_min = model.info.int_params[AC_ny_min];
-    const int ny_max = model.info.int_params[AC_ny_max];
+    const int ny_min = model.info[AC_nmin].y;
+    const int ny_max = model.info[AC_nlocal_max].y;
 
-    const int nz_min = model.info.int_params[AC_nz_min];
-    const int nz_max = model.info.int_params[AC_nz_max];
+    const int nz_min = model.info[AC_nmin].z;
+    const int nz_max = model.info[AC_nlocal_max].z;
+
     auto IDX = [&](const int i, const int j, const int k)
     {
 	    return acVertexBufferIdx(i,j,k,model.info);
@@ -132,11 +133,11 @@ main(void)
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
-			for (size_t field = 0; field < Field_arr.size(); ++field)
+			for (size_t field = 0; field < AC_SIZE(Field_arr); ++field)
 			{
 				model.vertex_buffer[Field_arr[field]][IDX(i,j,k)] += arr[field];
 			}
-			for(size_t field = 0; field < DUST.size(); ++field)
+			for(size_t field = 0; field < AC_SIZE(DUST); ++field)
 			{
 
 				model.vertex_buffer[DUST[field].x][IDX(i,j,k)] += vec_arr[field].x;

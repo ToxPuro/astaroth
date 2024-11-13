@@ -88,14 +88,14 @@ write(Field3 dst, real3 src)
 	write_base(dst.y, src.y)
 	write_base(dst.z, src.z)
 }
-write(Field[] dst, real[] src)
+inline write(Field[] dst, real[] src)
 {
 	for i in 0:size(dst)
 	{
 		write(dst[i],src[i])
 	}
 }
-write(Field3[] dst, real3[] src)
+inline write(Field3[] dst, real3[] src)
 {
 	for i in 0:size(dst)
 	{
@@ -188,4 +188,104 @@ reduce_sum(bool condition, real val, Profile<ZX> prof)
 reduce_sum(bool condition, real val, Profile<ZY> prof)
 {
 	reduce_sum_real_zy(condition, val, prof);
+}
+
+inline add_arr(real[] a, real[] b)
+{
+	real res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] + b[i]
+	}
+	return res;
+}
+
+inline add_arr(real3[] a, real3[] b)
+{
+	real3 res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] + b[i]
+	}
+	return res;
+}
+
+inline div_arr(real[] a, real[] b)
+{
+	real res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] / b[i]
+	}
+	return res;
+}
+
+inline div_arr(real3[] a, real3[] b)
+{
+	real3 res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] / b[i]
+	}
+	return res;
+}
+
+inline mult_arr(real[] a, real[] b)
+{
+	real res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] * b[i]
+	}
+	return res;
+}
+
+inline mult_arr(real3[] a, real3[] b)
+{
+	real3 res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] * b[i]
+	}
+	return res;
+}
+
+inline sub_arr(real[] a, real[] b)
+{
+	real res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] - b[i]
+	}
+	return res;
+}
+
+inline sub_arr(real3[] a, real3[] b)
+{
+	real3 res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] - b[i]
+	}
+	return res;
+}
+
+inline dup_arr(real[] a)
+{
+	real res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i]
+	}
+	return res;
+}
+
+inline dup_arr(real3[] a)
+{
+	real3 res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i]
+	}
+	return res;
 }
