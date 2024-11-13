@@ -153,6 +153,8 @@ template <typename T> class IOTaskAsync {
 
     ~IOTaskAsync()
     {
+        ERRCHK_MPI(!in_progress);
+
         ERRCHK_MPI(req == MPI_REQUEST_NULL);
         if (req != MPI_REQUEST_NULL)
             ERRCHK_MPI_API(MPI_Request_free(&req));
