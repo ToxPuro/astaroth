@@ -166,8 +166,10 @@ template <typename T> class IOTaskAsync {
     {
         ERRCHK_MPI(in_progress);
         ERRCHK_MPI_API(MPI_Wait(&req, MPI_STATUS_IGNORE));
-        ERRCHK_MPI(req == MPI_REQUEST_NULL);
         ERRCHK_MPI_API(MPI_File_close(&file));
+
+        // Check that the MPI implementation reset the resources
+        ERRCHK_MPI(req == MPI_REQUEST_NULL);
         ERRCHK_MPI(file == MPI_FILE_NULL);
 
         // Ensure all processess have written their segment to disk.
