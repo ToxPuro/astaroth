@@ -10,6 +10,9 @@ set(CMAKE_BUILD_TYPE Debug)
 ## Project settings
 project(acc-comm)
 
+## Options
+option(HOST_ONLY_MODE "Enables compilation without CUDA/HIP toolkits" OFF)
+
 ## Linting
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -56,45 +59,54 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 
 ## Check whether device code is available on the system
-find_package(CUDAToolkit QUIET)
-find_package(HIP QUIET)
-if(CUDAToolkit_FOUND)
-    message(STATUS "CUDA found")
-    enable_language(CUDA)
-    add_compile_options(-DDEVICE_ENABLED)
-    add_compile_options(-DCUDA_ENABLED)
-    # set_property(GLOBAL PROPERTY CMAKE_CUDA_ARCHITECTURES "60")
-    set(CMAKE_CUDA_ARCHITECTURES "60")
-    
-    add_library(device-module STATIC pack.cu pack.cc)
-elseif(HIP_FOUND)
-    message(STATUS "HIP found")
-    enable_language(HIP)
-    add_compile_options(-DDEVICE_ENABLED)
-    add_compile_options(-DHIP_ENABLED)
-    # set_property(GLOBAL PROPERTY HIP_ARCHITECTURES "gfx90a")
-    set(CMAKE_HIP_ARCHITECTURES "gfx90a")
-
-    set_source_files_properties(pack.cu PROPERTIES LANGUAGE HIP)
-    add_library(device-module STATIC pack.cu pack.cc)
-else()
-    message(WARNING "Did not find CUDA or HIP, compiling in host-only mode")
+if(HOST_ONLY_MODE)
+    message("Building in host-only mode")
     add_library(device-module STATIC pack.cc)
+else()
+    find_package(CUDAToolkit QUIET)
+    find_package(HIP QUIET)
+    if(CUDAToolkit_FOUND)
+        message(STATUS "CUDA found")
+        enable_language(CUDA)
+        add_compile_options(-DDEVICE_ENABLED)
+        add_compile_options(-DCUDA_ENABLED)
+        # set_property(GLOBAL PROPERTY CMAKE_CUDA_ARCHITECTURES "60")
+        set(CMAKE_CUDA_ARCHITECTURES "60")
+        
+        add_library(device-module STATIC pack.cu pack.cc)
+    elseif(HIP_FOUND)
+        message(STATUS "HIP found")
+        enable_language(HIP)
+        add_compile_options(-DDEVICE_ENABLED)
+        add_compile_options(-DHIP_ENABLED)
+        # set_property(GLOBAL PROPERTY HIP_ARCHITECTURES "gfx90a")
+        set(CMAKE_HIP_ARCHITECTURES "gfx90a")
+
+        set_source_files_properties(pack.cu PROPERTIES LANGUAGE HIP)
+        add_library(device-module STATIC pack.cu pack.cc)
+    else()
+        message(WARNING "Did not find CUDA or HIP, compiling in host-only mode")
+        add_library(device-module STATIC pack.cc)
+    endif()
 endif()
 
 # ## Packages
 add_library(acc-comm-utils STATIC buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
 
 find_package(MPI REQUIRED COMPONENTS C)
-add_executable(run main.cc packet.cc mpi_utils.cc)
+add_executable(run main.cc halo_exchange.cc packet.cc mpi_utils.cc)
 target_link_libraries(run PRIVATE MPI::MPI_C acc-comm-utils device-module)
 
 # ## Automated tests
 include(CTest)
 add_executable(unit_test unit_test.cc)
 target_link_libraries(unit_test PRIVATE acc-comm-utils device-module)
-
 add_test(NAME UnitTest COMMAND unit_test)
+
+add_executable(comm_test comm_test.cc halo_exchange.cc)
+target_link_libraries(comm_test PRIVATE acc-comm-utils)
+add_test(NAME CommTest COMMAND mpirun -n 1 --oversubscribe ./comm_test)
+# add_test(NAME CommTest COMMAND srun --account=project_462000613 -t 00:05:00 -p debug --ntasks-per-node=1 --nodes=1 comm_test)
 
 if(CUDAToolkit_FOUND)
     add_library(devicetest devicetest.cu)

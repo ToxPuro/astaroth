@@ -72,3 +72,5 @@ launch_halo_exchange(const MPI_Comm parent_comm, const Shape& local_mm, const Sh
     ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     return recv_reqs;
 }
+
+void test_halo_exchange(void);
