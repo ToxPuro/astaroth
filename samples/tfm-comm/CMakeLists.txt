@@ -52,7 +52,7 @@ add_compile_options(# C/CXX/CUDA/HIP
                     # HIP
                     $<$<COMPILE_LANGUAGE:HIP>:-Wno-redundant-decls>
                     # CUDA
-                    $<$<COMPILE_LANGUAGE:CUDA,HIP>:--restrict>
+                    $<$<COMPILE_LANGUAGE:CUDA>:--restrict>
 )
 
 ## Check whether device code is available on the system
