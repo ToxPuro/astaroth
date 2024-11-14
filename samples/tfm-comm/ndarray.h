@@ -77,12 +77,14 @@ template <typename T, typename MemoryResource = HostMemoryResource> struct NdArr
                         buffer.data());
     }
 
-    void fill_arange(const T& start = 0) { buffer.fill_arange(start, start + buffer.count); }
+    void arange(const T& start = 0) { buffer.arange(start); }
 
     void display() { ndarray_print_recursive(shape.count, shape.data, buffer.data()); }
 
-    friend std::ostream& operator<<(std::ostream& os, const NdArray<T>& obj)
+    friend std::ostream& operator<<(std::ostream& os, const NdArray<T, MemoryResource>& obj)
     {
+        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+                      "Can currently print only host memory");
         os << "{";
         os << "shape: " << obj.shape << ", ";
         os << "buffer: " << obj.buffer;

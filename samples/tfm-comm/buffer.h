@@ -17,38 +17,63 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
     {
     }
 
-    T* data() const { return resource.get(); }
+    // Enable subscript notation
+    T& operator[](const size_t i)
+    {
+        ERRCHK(i < count);
+        return resource[i];
+    }
+    const T& operator[](const size_t i) const
+    {
+        ERRCHK(i < count);
+        return resource[i];
+    }
+
+    T* data() { return resource.get(); }
+    const T* data() const { return resource.get(); }
     size_t size() const { return count; }
 
     void fill(const T& value)
     {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>);
+        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+                      "Only enabled for host buffer");
         for (size_t i = 0; i < count; ++i)
             resource[i] = value;
     }
 
-    void arange(const size_t min = 0)
+    void arange(const T& min = 0)
     {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>);
+        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+                      "Only enabled for host buffer");
         for (size_t i = 0; i < count; ++i)
-            resource[i] = static_cast<T>(min + i);
+            resource[i] = min + static_cast<T>(i);
     }
 
     void display() const
     {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>);
+        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+                      "Only enabled for host buffer");
         for (size_t i = 0; i < count; ++i)
             std::cout << i << ": " << resource[i] << std::endl;
     }
 };
 
 #if defined(DEVICE_ENABLED)
+#if defined(CUDA_ENABLED)
+#include <cuda_runtime.h>
+#elif defined(HIP_ENABLED)
+#include "hip.h"
+#include <hip/hip_runtime.h>
+#endif
+
+#include "errchk_cuda.h"
+
 template <typename MemoryResourceA, typename MemoryResourceB>
-constexpr cudaMemcpyKind
+cudaMemcpyKind
 get_kind()
 {
-    if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceA>::value) {
-        if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
+    if (std::is_base_of<DeviceMemoryResource, MemoryResourceA>::value) {
+        if (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
             PRINT_LOG("dtod");
             return cudaMemcpyDeviceToDevice;
         }
@@ -58,7 +83,7 @@ get_kind()
         }
     }
     else {
-        if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
+        if (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
             PRINT_LOG("htod");
             return cudaMemcpyHostToDevice;
         }
@@ -75,7 +100,7 @@ migrate(const Buffer<T, MemoryResourceA>& in, Buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
     const cudaMemcpyKind kind = get_kind<MemoryResourceA, MemoryResourceB>();
-    ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(in.data()[0]), kind));
+    ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(in[0]), kind));
 }
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
@@ -86,12 +111,12 @@ migrate_async(const cudaStream_t stream, const Buffer<T, MemoryResourceA>& in,
     ERRCHK(in.size() == out.size());
     const cudaMemcpyKind kind = get_kind<MemoryResourceA, MemoryResourceB>();
     ERRCHK_CUDA_API(
-        cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in.data()[0]), kind, stream));
+        cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in[0]), kind, stream));
 }
 #else
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate(const Buffer<T, MemoryResourceA>& in, const Buffer<T, MemoryResourceB>& out)
+migrate(const Buffer<T, MemoryResourceA>& in, Buffer<T, MemoryResourceB>& out)
 {
     PRINT_LOG("non-cuda htoh");
     ERRCHK(in.size() == out.size());

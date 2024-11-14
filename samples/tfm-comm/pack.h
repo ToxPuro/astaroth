@@ -1,53 +1,47 @@
 #pragma once
+#include "buffer.h"
 #include "datatypes.h"
+
+#if defined(CUDA_ENABLED)
+#include "errchk_cuda.h"
+#include <cuda_runtime.h>
+#elif defined(HIP_ENABLED)
+#include "errchk_cuda.h"
+#include "hip.h"
+#include <hip/hip_runtime.h>
+#else
+#include "errchk.h"
+#endif
 
 #include "math_utils.h"
 
 constexpr size_t PACK_MAX_INPUTS         = 27;
 template <typename T> using PackPtrArray = StaticArray<T, PACK_MAX_INPUTS>;
 
-template <typename T>
-void
-pack(const Shape mm, const Shape block_shape, const Index block_offset,
-     const PackPtrArray<T*> inputs, T* output)
-{
-    const uint64_t block_nelems = prod(block_shape);
-    for (uint64_t i = 0; i < block_nelems; ++i) {
-        for (size_t j = 0; j < inputs.count; ++j) {
+template <typename T, typename MemoryResource>
+void pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
+          const PackPtrArray<T*>& inputs, Buffer<T, MemoryResource>& output);
 
-            // Block coords
-            const Index block_coords = to_spatial(i, block_shape);
+template <typename T, typename MemoryResource>
+void unpack(const Buffer<T, MemoryResource>& input, const Shape& mm, const Shape& block_shape,
+            const Index& block_offset, PackPtrArray<T*>& outputs);
 
-            // Input coords
-            const Index in_coords = block_offset + block_coords;
+extern template void pack<AcReal, HostMemoryResource>(const Shape&, const Shape&, const Index&,
+                                                      const PackPtrArray<AcReal*>&,
+                                                      Buffer<AcReal, HostMemoryResource>&);
 
-            const uint64_t in_idx = to_linear(in_coords, mm);
-            ERRCHK(in_idx < prod(mm));
+extern template void unpack<AcReal, HostMemoryResource>(const Buffer<AcReal, HostMemoryResource>&,
+                                                        const Shape&, const Shape&, const Index&,
+                                                        PackPtrArray<AcReal*>&);
 
-            output[i + j * block_nelems] = inputs[j][in_idx];
-        }
-    }
-}
+#if defined(DEVICE_ENABLED)
+extern template void pack<AcReal, DeviceMemoryResource>(const Shape&, const Shape&, const Index&,
+                                                        const PackPtrArray<AcReal*>&,
+                                                        Buffer<AcReal, DeviceMemoryResource>&);
 
-template <typename T>
-void
-unpack(const T* input, const Shape mm, const Shape block_shape, const Index block_offset,
-       PackPtrArray<T*> outputs)
-{
-    const uint64_t block_nelems = prod(block_shape);
-    for (uint64_t i = 0; i < block_nelems; ++i) {
-        for (size_t j = 0; j < outputs.count; ++j) {
+extern template void
+unpack<AcReal, DeviceMemoryResource>(const Buffer<AcReal, DeviceMemoryResource>&, const Shape&,
+                                     const Shape&, const Index&, PackPtrArray<AcReal*>&);
+#endif
 
-            // Block coords
-            const Index block_coords = to_spatial(i, block_shape);
-
-            // Input coords
-            const Index in_coords = block_offset + block_coords;
-
-            const uint64_t in_idx = to_linear(in_coords, mm);
-            ERRCHK(in_idx < prod(mm));
-
-            outputs[j][in_idx] = input[i + j * block_nelems];
-        }
-    }
-}
+void test_pack(void);

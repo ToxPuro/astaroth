@@ -9,15 +9,15 @@
 #include "mpi_utils.h"
 #include <mpi.h>
 
-/** Launches the halo communication task and returns recv requested that must
+/** Launches the halo exchange and returns recv requests that must
  * be waited on to confirm that the exchange is complete.
  * Wait on send requests are called automatically, and when this function
- * returns, the send buffer can be modified at will.
+ * returns, the send buffer can be freely modified.
  */
 template <typename T>
 std::vector<MPI_Request>
-create_halo_exchange_task(const MPI_Comm parent_comm, const Shape& local_mm, const Shape& local_nn,
-                          const Shape& rr, const T* send_data, T* recv_data)
+launch_halo_exchange(const MPI_Comm parent_comm, const Shape& local_mm, const Shape& local_nn,
+                     const Shape& rr, const T* send_data, T* recv_data)
 {
     // Duplicate the communicator to ensure the operation does not interfere
     // with other operations on the parent communicator
@@ -72,3 +72,5 @@ create_halo_exchange_task(const MPI_Comm parent_comm, const Shape& local_mm, con
     ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     return recv_reqs;
 }
+
+void test_halo_exchange(void);

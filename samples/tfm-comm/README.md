@@ -17,3 +17,19 @@
 - Structs should be kept as simple as possible and close to C to avoid C++ pitfalls when developers with varying level of experience work with the code. For example, the drawbacks of using i.e. inheritance often outweigh the benefits and make the code harder to maintain, especially when composition is almost always a better option.
 - The classic C-style/procedural approach should always be considered first, i.e., if functionality can be implemented using simple structs and composition, prefer that over complex templated classes that have private/protected/public members that inherit and overload many functions. Generic/abstract programming should only be used in cases where it makes the system easier to understand and reduces the amount of code.
 - Nevertheless, strive to write idiomatic C++ (RAII, returning values, throwing exceptions, passing function parameters by reference&, avoiding raw pointers where possible, etc)
+
+
+# Concurrency
+
+- *MPI:* All calls should originate from a single thread: `std::future`, `pthreads`, `fork`, and other mechanisms should not be used because
+    - MPI calls are executed sequentially even if called concurrently: therefore, if one thread is blocking on one MPI call, another thread cannot launch any further MPI calls before the first thread has completed its MPI call
+    - "When multiple threads make MPI calls concurrently, the outcome will be as if the calls executed sequentially in some (any) order" W. Gropp, lecture slides: https://wgropp.cs.illinois.edu/courses/cs598-s15/lectures/lecture36.pdf
+    - *Immediate result:* achieving asynchronous execution with synchronous MPI + threads *is not possible*. The only way to achieve truly asynchronous calls with MPI is to use MPI's asynchronous interface or a separate program with its own MPI context.
+    - Furthermore, spawning new processes is strongly discouraged by major MPI implementations. See, e.g., https://docs.open-mpi.org/en/v5.0.0/tuning-apps/fork-system-popen.html
+    - *Recommendation:* use the asynchronous MPI interface and `MPI_Request`s for handling concurrency with MPI
+
+- *CUDA:* concurrency should be handled exclusively with `cudaStream_t`s. Using `std::future` and other tools for creating host threads requires special care because at least the current device and new streams are exclusive to a specific host thread, and these must be set/created in each host thread.
+
+- Host threads: if asynchronous MPI IO is not supported on the system, implementing it with `std::future` or other host thread mechanisms requires that MPI is initialized with `MPI_init_threads`, which will likely cause a slight overhead to all MPI calls and may not be supported or work well on all system. The safest approach is to rely on single-threaded MPI, and use whichever asynchronous MPI IO functions are available. If asynchronous MPI IO is not available on the system, there is likely a reason for it and implementing a proper workaround ourselves will likely be non-trivial.
+
+- *Bottom line:* **the whole communication module should be completely single-threaded, and rely on MPI and CUDA features for achieving asynchronous execution.**
