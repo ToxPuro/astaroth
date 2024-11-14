@@ -83,7 +83,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> struct NdArr
 
     friend std::ostream& operator<<(std::ostream& os, const NdArray<T, MemoryResource>& obj)
     {
-        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
                       "Can currently print only host memory");
         os << "{";
         os << "shape: " << obj.shape << ", ";

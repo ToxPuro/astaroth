@@ -49,9 +49,9 @@ class BufferExchangeTask {
         in_progress = true;
 
         // Ensure that the input resource and the first-stage buffer is in the same memory space
-        static_assert((std::is_base_of<DeviceMemoryResource, FirstStageResource>::value &&
-                       std::is_base_of<DeviceMemoryResource, MemoryResource>::value) ||
-                          std::is_base_of<HostMemoryResource, MemoryResource>::value,
+        static_assert((std::is_base_of_v<DeviceMemoryResource, FirstStageResource> &&
+                       std::is_base_of_v<DeviceMemoryResource, MemoryResource>) ||
+                          std::is_base_of_v<HostMemoryResource, MemoryResource>,
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 
@@ -73,9 +73,9 @@ class BufferExchangeTask {
         ERRCHK(in_progress);
 
         // Ensure that the output resource and the second-stage buffer is in the same memory space
-        static_assert((std::is_base_of<DeviceMemoryResource, SecondStageResource>::value &&
-                       std::is_base_of<DeviceMemoryResource, MemoryResource>::value) ||
-                          std::is_base_of<HostMemoryResource, MemoryResource>::value,
+        static_assert((std::is_base_of_v<DeviceMemoryResource, SecondStageResource> &&
+                       std::is_base_of_v<DeviceMemoryResource, MemoryResource>) ||
+                          std::is_base_of_v<HostMemoryResource, MemoryResource>,
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 

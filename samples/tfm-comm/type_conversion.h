@@ -12,18 +12,18 @@ constexpr bool
 can_convert(T_source value)
 {
     static_assert(std::is_integral_v<T_target>, "Conversion enabled only for integral types");
-    static_assert(std::is_integral<T_source>::value, "Conversion enabled only for integral types");
-    if constexpr (std::is_signed<T_source>::value && std::is_signed<T_target>::value) {
+    static_assert(std::is_integral_v<T_source>, "Conversion enabled only for integral types");
+    if constexpr (std::is_signed_v<T_source> && std::is_signed_v<T_target>) {
         return value >= std::numeric_limits<T_target>::min() &&
                value <= std::numeric_limits<T_target>::max();
     }
-    else if constexpr (std::is_unsigned<T_source>::value && std::is_unsigned<T_target>::value) {
+    else if constexpr (std::is_unsigned_v<T_source> && std::is_unsigned_v<T_target>) {
         return value <= std::numeric_limits<T_target>::max();
     }
-    else if constexpr (std::is_signed<T_source>::value && std::is_unsigned<T_target>::value) {
+    else if constexpr (std::is_signed_v<T_source> && std::is_unsigned_v<T_target>) {
         return value >= 0 && static_cast<uintmax_t>(value) <= std::numeric_limits<T_target>::max();
     }
-    else if constexpr (std::is_unsigned<T_source>::value && std::is_signed<T_target>::value) {
+    else if constexpr (std::is_unsigned_v<T_source> && std::is_signed_v<T_target>) {
         return value <= static_cast<uintmax_t>(std::numeric_limits<T_target>::max());
     }
 }

@@ -35,7 +35,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
 
     void fill(const T& value)
     {
-        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
                       "Only enabled for host buffer");
         for (size_t i = 0; i < count; ++i)
             resource[i] = value;
@@ -43,7 +43,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
 
     void arange(const T& min = 0)
     {
-        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
                       "Only enabled for host buffer");
         for (size_t i = 0; i < count; ++i)
             resource[i] = min + static_cast<T>(i);
@@ -51,7 +51,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
 
     void display() const
     {
-        static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
+        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
                       "Only enabled for host buffer");
         for (size_t i = 0; i < count; ++i)
             std::cout << i << ": " << resource[i] << std::endl;
@@ -72,8 +72,8 @@ template <typename MemoryResourceA, typename MemoryResourceB>
 constexpr cudaMemcpyKind
 get_kind()
 {
-    if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceA>::value) {
-        if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
+    if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceA>) {
+        if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceB>) {
             PRINT_LOG("dtod");
             return cudaMemcpyDeviceToDevice;
         }
@@ -83,7 +83,7 @@ get_kind()
         }
     }
     else {
-        if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
+        if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceB>) {
             PRINT_LOG("htod");
             return cudaMemcpyHostToDevice;
         }

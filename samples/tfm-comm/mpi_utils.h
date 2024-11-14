@@ -103,10 +103,10 @@ template <typename T>
 constexpr MPI_Datatype
 get_mpi_dtype()
 {
-    if constexpr (std::is_same<T, double>::value) {
+    if constexpr (std::is_same_v<T, double>) {
         return MPI_DOUBLE;
     }
-    else if constexpr (std::is_same<T, float>::value) {
+    else if constexpr (std::is_same_v<T, float>) {
         return MPI_DOUBLE;
     }
     else {
