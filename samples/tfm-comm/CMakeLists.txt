@@ -2,13 +2,13 @@
 cmake_minimum_required(VERSION 3.10)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
-# set(CMAKE_CUDA_STANDARD 17)
-# set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_STANDARD 11)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 #set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(CMAKE_BUILD_TYPE Debug)
 
 ## Project settings
-project(tfm-comm)
+project(acc-comm)
 
 ## Linting
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -83,17 +83,17 @@ else()
 endif()
 
 ## Packages
-add_library(tfm-utils STATIC buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
-target_link_libraries(tfm-utils PRIVATE device-module device-libraries)
+add_library(acc-comm-utils STATIC buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
+target_link_libraries(acc-comm-utils PRIVATE device-module device-libraries)
 
 find_package(MPI REQUIRED COMPONENTS CXX)
 add_executable(run main.cc packet.cc mpi_utils.cc)
-target_link_libraries(run PRIVATE MPI::MPI_CXX tfm-utils)
+target_link_libraries(run PRIVATE MPI::MPI_CXX acc-comm-utils)
 
 ## Automated tests
 include(CTest)
 add_executable(unit_test unit_test.cc)
-target_link_libraries(unit_test PRIVATE tfm-utils)
+target_link_libraries(unit_test PRIVATE acc-comm-utils)
 
 add_test(NAME UnitTest COMMAND unit_test)
 
