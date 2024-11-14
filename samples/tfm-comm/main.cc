@@ -131,7 +131,7 @@ main()
         NdArray<AcReal, DeviceMemoryResource> dout(local_mm);
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
-        hin.arange(static_cast<size_t>(get_rank(cart_comm)) * static_cast<size_t>(prod(local_mm)));
+        hin.arange(static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
         // hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -150,8 +150,8 @@ main()
 #if true
         PRINT_LOG("Testing basic halo exchange"); //-------------------------------
         if (nprocs == 1) {
-            hin.arange(static_cast<size_t>(get_rank(cart_comm)) *
-                       static_cast<size_t>(prod(local_mm)));
+            hin.arange(static_cast<AcReal>(get_rank(cart_comm)) *
+                       static_cast<AcReal>(prod(local_mm)));
         }
         else {
             hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
@@ -176,8 +176,8 @@ main()
 #if true
         PRINT_LOG("Testing packed halo exchange"); //-------------------------------
         if (nprocs == 1) {
-            hin.arange(static_cast<size_t>(get_rank(cart_comm)) *
-                       static_cast<size_t>(prod(local_mm)));
+            hin.arange(static_cast<AcReal>(get_rank(cart_comm)) *
+                       static_cast<AcReal>(prod(local_mm)));
         }
         else {
             hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
@@ -205,7 +205,7 @@ main()
 
 #if true
         PRINT_LOG("Testing IO"); //-------------------------------
-        hin.arange(static_cast<size_t>(get_rank(cart_comm)) * static_cast<size_t>(prod(local_mm)));
+        hin.arange(static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
 
         IOTaskAsync<AcReal> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
         // iotask.launch_write(cart_comm, hin.buffer, "test.dat");

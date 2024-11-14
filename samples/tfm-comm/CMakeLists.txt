@@ -53,7 +53,8 @@ add_compile_options(# C/CXX/CUDA/HIP
                     $<$<COMPILE_LANGUAGE:C>:-Wmissing-prototypes>
                     $<$<COMPILE_LANGUAGE:C>:-Wnested-externs>
                     # HIP
-                    $<$<COMPILE_LANGUAGE:HIP>:-Wno-redundant-decls>
+                    #$<$<COMPILE_LANGUAGE:HIP>:-Wno-redundant-decls>
+                    #$<$<COMPILE_LANGUAGE:HIP>:-Wno-implicit-int-float-conversion>
                     # CUDA
                     #$<$<COMPILE_LANGUAGE:CUDA>:--restrict>
 )
@@ -70,7 +71,6 @@ else()
         enable_language(CUDA)
         add_compile_options(-DDEVICE_ENABLED)
         add_compile_options(-DCUDA_ENABLED)
-        # set_property(GLOBAL PROPERTY CMAKE_CUDA_ARCHITECTURES "60")
         set(CMAKE_CUDA_ARCHITECTURES "60")
         
         add_library(device-module STATIC pack.cu pack.cc)
@@ -79,8 +79,8 @@ else()
         enable_language(HIP)
         add_compile_options(-DDEVICE_ENABLED)
         add_compile_options(-DHIP_ENABLED)
-        # set_property(GLOBAL PROPERTY HIP_ARCHITECTURES "gfx90a")
         set(CMAKE_HIP_ARCHITECTURES "gfx90a")
+        include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
         set_source_files_properties(pack.cu PROPERTIES LANGUAGE HIP)
         add_library(device-module STATIC pack.cu pack.cc)

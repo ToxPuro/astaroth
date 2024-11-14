@@ -77,7 +77,7 @@ main(void)
         auto hout{std::make_unique<double[]>(count)};
 
         for (size_t i = 0; i < count; ++i)
-            hin[i] = i;
+            hin[i] = static_cast<double>(i);
         print("hin", count, hin.get());
 
         migrate(count, hin, din);

@@ -41,12 +41,12 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
             resource[i] = value;
     }
 
-    void arange(const size_t min = 0)
+    void arange(const T& min = 0)
     {
         static_assert(std::is_base_of<HostMemoryResource, MemoryResource>::value,
                       "Only enabled for host buffer");
         for (size_t i = 0; i < count; ++i)
-            resource[i] = static_cast<T>(min + i);
+            resource[i] = min + static_cast<T>(i);
     }
 
     void display() const

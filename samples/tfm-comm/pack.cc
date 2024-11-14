@@ -54,34 +54,40 @@ template void unpack<AcReal, HostMemoryResource>(const Buffer<AcReal, HostMemory
                                                  const Shape&, const Shape&, const Index&,
                                                  PackPtrArray<AcReal*>&);
 
-// #include "buffer.h"
+template void pack<uint64_t, HostMemoryResource>(const Shape&, const Shape&, const Index&,
+                                                 const PackPtrArray<uint64_t*>&,
+                                                 Buffer<uint64_t, HostMemoryResource>&);
+
+template void unpack<uint64_t, HostMemoryResource>(const Buffer<uint64_t, HostMemoryResource>&,
+                                                   const Shape&, const Shape&, const Index&,
+                                                   PackPtrArray<uint64_t*>&);
 
 void
 test_pack(void)
 {
     const size_t count = 10;
     const size_t rr    = 1;
-    Buffer<double, HostMemoryResource> hin(count);
-    Buffer<double, DeviceMemoryResource> din(count);
-    Buffer<double, DeviceMemoryResource> dout(count - 2 * rr);
-    Buffer<double, HostMemoryResource> hout(count - 2 * rr);
+    Buffer<uint64_t, HostMemoryResource> hin(count);
+    Buffer<uint64_t, DeviceMemoryResource> din(count);
+    Buffer<uint64_t, DeviceMemoryResource> dout(count - 2 * rr);
+    Buffer<uint64_t, HostMemoryResource> hout(count - 2 * rr);
     hin.arange();
-    hout.fill(-1);
+    hout.fill(0);
     migrate(hin, din);
 
     Shape mm{count};
     Shape block_shape{count - 2 * rr};
     Index block_offset{rr};
-    PackPtrArray<double*> inputs{din.data()};
+    PackPtrArray<uint64_t*> inputs{din.data()};
     pack(mm, block_shape, block_offset, inputs, dout);
     migrate(dout, hout);
     // hout.display();
-    ERRCHK(hout[0] == static_cast<double>(1));
-    ERRCHK(hout[1] == static_cast<double>(2));
-    ERRCHK(hout[2] == static_cast<double>(3));
-    ERRCHK(hout[3] == static_cast<double>(4));
-    ERRCHK(hout[4] == static_cast<double>(5));
-    ERRCHK(hout[5] == static_cast<double>(6));
-    ERRCHK(hout[6] == static_cast<double>(7));
-    ERRCHK(hout[7] == static_cast<double>(8));
+    ERRCHK(hout[0] == 1);
+    ERRCHK(hout[1] == 2);
+    ERRCHK(hout[2] == 3);
+    ERRCHK(hout[3] == 4);
+    ERRCHK(hout[4] == 5);
+    ERRCHK(hout[5] == 6);
+    ERRCHK(hout[6] == 7);
+    ERRCHK(hout[7] == 8);
 }

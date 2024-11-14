@@ -78,7 +78,8 @@ pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
-    kernel_pack<<<bpg, tpb>>>(mm, block_shape, block_offset, inputs, output.data());
+    kernel_pack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm, block_shape, block_offset, inputs,
+                                                          output.data());
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
@@ -91,7 +92,8 @@ unpack(const Buffer<T, MemoryResource>& input, const Shape& mm, const Shape& blo
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
-    kernel_unpack<<<bpg, tpb>>>(input.data(), mm, block_shape, block_offset, outputs);
+    kernel_unpack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input.data(), mm, block_shape,
+                                                            block_offset, outputs);
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
