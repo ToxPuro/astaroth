@@ -33,6 +33,7 @@ cudaStreamCreate(cudaStream_t* stream)
 void
 cudaStreamDestroy(cudaStream_t stream)
 {
+    (void)stream; // Unused
 }
 #endif
 
@@ -108,7 +109,7 @@ main()
         ERRCHK_CUDA_API(cudaSetDevice(rank % device_count));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 #endif
-        // benchmark();
+        benchmark();
 
         const Shape global_nn{4, 4, 4};
         MPI_Comm cart_comm           = cart_comm_create(MPI_COMM_WORLD, global_nn);
