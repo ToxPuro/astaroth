@@ -8,22 +8,22 @@
 #include "errchk.h"
 
 template <typename T_target, typename T_source>
-bool
+constexpr bool
 can_convert(T_source value)
 {
     static_assert(std::is_integral<T_target>::value, "Conversion enabled only for integral types");
     static_assert(std::is_integral<T_source>::value, "Conversion enabled only for integral types");
-    if (std::is_signed<T_source>::value && std::is_signed<T_target>::value) {
+    if constexpr (std::is_signed<T_source>::value && std::is_signed<T_target>::value) {
         return value >= std::numeric_limits<T_target>::min() &&
                value <= std::numeric_limits<T_target>::max();
     }
-    else if (std::is_unsigned<T_source>::value && std::is_unsigned<T_target>::value) {
+    else if constexpr (std::is_unsigned<T_source>::value && std::is_unsigned<T_target>::value) {
         return value <= std::numeric_limits<T_target>::max();
     }
-    else if (std::is_signed<T_source>::value && std::is_unsigned<T_target>::value) {
+    else if constexpr (std::is_signed<T_source>::value && std::is_unsigned<T_target>::value) {
         return value >= 0 && static_cast<uintmax_t>(value) <= std::numeric_limits<T_target>::max();
     }
-    else if (std::is_unsigned<T_source>::value && std::is_signed<T_target>::value) {
+    else if constexpr (std::is_unsigned<T_source>::value && std::is_signed<T_target>::value) {
         return value <= static_cast<uintmax_t>(std::numeric_limits<T_target>::max());
     }
 }

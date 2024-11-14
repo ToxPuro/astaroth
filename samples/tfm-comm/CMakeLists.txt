@@ -2,8 +2,12 @@
 cmake_minimum_required(VERSION 3.10)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CUDA_STANDARD 11)
+set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_HIP_STANDARD 17)
+set(CMAKE_HIP_STANDARD_REQUIRED ON)
+
+## Build type
 #set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -104,7 +108,7 @@ target_link_libraries(unit_test PRIVATE acc-comm-utils device-module)
 add_test(NAME UnitTest COMMAND unit_test)
 
 add_executable(comm_test comm_test.cc halo_exchange.cc)
-target_link_libraries(comm_test PRIVATE acc-comm-utils)
+target_link_libraries(comm_test PRIVATE MPI::MPI_C acc-comm-utils)
 add_test(NAME CommTest COMMAND mpirun -n 1 --oversubscribe ./comm_test)
 # add_test(NAME CommTest COMMAND srun --account=project_462000613 -t 00:05:00 -p debug --ntasks-per-node=1 --nodes=1 comm_test)
 
