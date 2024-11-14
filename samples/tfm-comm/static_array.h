@@ -4,18 +4,14 @@
 #include <iostream>
 #include <type_traits>
 
-#if defined(__CUDA_ARCH__)
+#if defined(CUDA_ENABLED)
 #include <cuda_runtime.h>
-#elif defined(__HIP_DEVICE_COMPILE__) && __HIP_DEVICE_COMPILE__ == 1
+#elif defined(HIP_ENABLED)
 #include "hip.h"
 #include <hip/hip_runtime.h>
 #else
-#if !defined(__host__)
 #define __host__
-#endif
-#if !defined(__device__)
 #define __device__
-#endif
 #endif
 
 #include "errchk.h"

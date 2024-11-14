@@ -24,13 +24,13 @@ struct HostMemoryResource {
 
 #if defined(DEVICE_ENABLED)
 #if defined(CUDA_ENABLED)
-#include "errchk_cuda.h"
 #include <cuda_runtime.h>
 #elif defined(HIP_ENABLED)
-#include "errchk_cuda.h"
 #include "hip.h"
 #include <hip/hip_runtime.h>
 #endif
+
+#include "errchk_cuda.h"
 
 struct PinnedHostMemoryResource : public HostMemoryResource {
     static void* alloc(const size_t bytes)

@@ -77,7 +77,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> struct NdArr
                         buffer.data());
     }
 
-    void fill_arange(const T& start = 0) { buffer.fill_arange(start, start + buffer.count); }
+    void arange(const T& start = 0) { buffer.arange(start); }
 
     void display() { ndarray_print_recursive(shape.count, shape.data, buffer.data()); }
 

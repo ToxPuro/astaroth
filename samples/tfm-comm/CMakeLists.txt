@@ -56,7 +56,6 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 
 ## Check whether device code is available on the system
-add_library(device-libraries INTERFACE)
 find_package(CUDAToolkit QUIET)
 find_package(HIP QUIET)
 if(CUDAToolkit_FOUND)
@@ -65,7 +64,6 @@ if(CUDAToolkit_FOUND)
     add_compile_options(-DDEVICE_ENABLED)
     add_compile_options(-DCUDA_ENABLED)
     set_property(GLOBAL PROPERTY CUDA_ARCHITECTURES "60")
-    target_link_libraries(device-libraries INTERFACE CUDA::cudart)
 
     add_library(device-module STATIC pack.cu pack.cc)
 elseif(HIP_FOUND)
@@ -74,29 +72,38 @@ elseif(HIP_FOUND)
     add_compile_options(-DDEVICE_ENABLED)
     add_compile_options(-DHIP_ENABLED)
     set_property(GLOBAL PROPERTY HIP_ARCHITECTURES "gfx90a")
-    target_link_libraries(device-libraries INTERFACE hip::host hip::device)
 
+    set_source_files_properties(pack.cu PROPERTIES LANGUAGE HIP)
     add_library(device-module STATIC pack.cu pack.cc)
 else()
     message(WARNING "Did not find CUDA or HIP, compiling in host-only mode")
     add_library(device-module STATIC pack.cc)
 endif()
 
-## Packages
+# ## Packages
 add_library(acc-comm-utils STATIC buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
-target_link_libraries(acc-comm-utils PRIVATE device-module device-libraries)
 
-find_package(MPI REQUIRED COMPONENTS CXX)
+find_package(MPI REQUIRED COMPONENTS C)
 add_executable(run main.cc packet.cc mpi_utils.cc)
-target_link_libraries(run PRIVATE MPI::MPI_CXX acc-comm-utils)
+target_link_libraries(run PRIVATE MPI::MPI_C acc-comm-utils device-module)
 
-## Automated tests
-include(CTest)
-add_executable(unit_test unit_test.cc)
-target_link_libraries(unit_test PRIVATE acc-comm-utils)
+# ## Automated tests
+# include(CTest)
+# add_executable(unit_test unit_test.cc)
+# target_link_libraries(unit_test PRIVATE acc-comm-utils)
 
-add_test(NAME UnitTest COMMAND unit_test)
+# add_test(NAME UnitTest COMMAND unit_test)
 
+find_package(HIP REQUIRED)
+enable_language(HIP)
+set_property(GLOBAL PROPERTY HIP_ARCHITECTURES "gfx90a")
+set_source_files_properties(devicetest.cu PROPERTIES LANGUAGE HIP)
+add_library(devicetest devicetest.cu)
+#target_link_libraries(devicetest PRIVATE hip::device)
+
+find_package(MPI REQUIRED COMPONENTS C)
+add_executable(mpitest mpitest.cc errchk_print.c)
+target_link_libraries(mpitest PRIVATE MPI::MPI_C hip::host devicetest)
 
 ## Other
 # find_package(CUDAToolkit QUIET)

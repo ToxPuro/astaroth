@@ -111,118 +111,95 @@ main()
 #endif
         benchmark();
 
-        const Shape global_nn{4, 4, 4};
+        const Shape global_nn{4, 4};
         MPI_Comm cart_comm           = cart_comm_create(MPI_COMM_WORLD, global_nn);
         const Shape decomp           = get_decomposition(cart_comm);
         const Shape local_nn         = global_nn / decomp;
         const Index coords           = get_coords(cart_comm);
         const Index global_nn_offset = coords * local_nn;
 
-        // Set MPI errors as non-fatal
-        // ERRCHK_MPI_API(MPI_Comm_set_errhandler(cart_comm, MPI_ERRORS_RETURN));
-
-        // Print grid information
-        // MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        // PRINT_DEBUG(global_nn);
-        // PRINT_DEBUG(local_nn);
-        // PRINT_DEBUG(decomp);
-        // PRINT_DEBUG(coords);
-        // PRINT_DEBUG(global_nn_offset);
-        // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
-
         const Shape rr(global_nn.count, 1); // Symmetric halo
         const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
 
-        NdArray<AcReal> mesh(local_mm);
-        // mesh.fill_arange(as<uint64_t>(get_rank(cart_comm)) * prod(local_mm));
-        mesh.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        NdArray<AcReal, HostMemoryResource> hin(local_mm);
+        NdArray<AcReal, HostMemoryResource> hout(local_mm);
+
+        NdArray<AcReal, DeviceMemoryResource> din(local_mm);
+        NdArray<AcReal, DeviceMemoryResource> dout(local_mm);
+
+        PRINT_LOG("Testing migration"); //-----------------------------------------
+        hin.arange(static_cast<size_t>(get_rank(cart_comm)) * static_cast<size_t>(prod(local_mm)));
+        // hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        // Print mesh
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        hin.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+
+        migrate(hin.buffer, din.buffer);
+        migrate(din.buffer, hout.buffer);
 
         // Print mesh
-        // MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        // mesh.display();
-        // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        PRINT_LOG("Should be arange");
+        hout.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+
+        PRINT_LOG("Testing basic halo exchange"); //-------------------------------
+        // hin.arange(static_cast<size_t>(get_rank(cart_comm)));
+        hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        migrate(hin.buffer, din.buffer);
 
         // Basic MPI halo exchange task
         auto recv_reqs = launch_halo_exchange<AcReal>(cart_comm, local_mm, local_nn, rr,
-                                                      mesh.buffer.data(), mesh.buffer.data());
+                                                      din.buffer.data(), din.buffer.data());
         while (!recv_reqs.empty()) {
             request_wait_and_destroy(recv_reqs.back());
             recv_reqs.pop_back();
         }
-
-        // Migrate
-        const size_t count = 10;
-        Buffer<AcReal, HostMemoryResource> hbuf(count);
-        Buffer<AcReal, DeviceMemoryResource> dbuf(count);
-
-        HostToDeviceBufferExchangeTask<AcReal> htod(count);
-        hbuf.arange(static_cast<size_t>(count * as<size_t>(get_rank(cart_comm))));
-        htod.launch(hbuf);
-        htod.wait(dbuf);
-        hbuf.fill(0);
+        migrate(din.buffer, hin.buffer);
+        // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        hbuf.display();
+        PRINT_LOG("Should be properly exchanged");
+        hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        DeviceToHostBufferExchangeTask<AcReal> dtoh(count);
-        dtoh.launch(dbuf);
-        dtoh.wait(hbuf);
-        hbuf.display();
+        PRINT_LOG("Testing packed halo exchange"); //-------------------------------
+        hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        migrate(hin.buffer, din.buffer);
 
-        // Packed MPI/CUDA halo exchange task
-        NdArray<AcReal, DeviceMemoryResource> device_mesh(local_mm);
-        migrate(mesh.buffer, device_mesh.buffer);
-        PackPtrArray<AcReal*> device_inputs{device_mesh.buffer.data()};
-        HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, device_inputs.count);
-        task.launch(cart_comm, device_inputs);
-        task.wait(device_inputs);
-        migrate(device_mesh.buffer, mesh.buffer);
+        HaloExchangeTask<AcReal> halo_exchange{local_mm, local_nn, rr, 1};
+        PackPtrArray<AcReal*> inputs{din.buffer.data()};
+        halo_exchange.launch(cart_comm, inputs);
+        halo_exchange.wait(inputs);
+        migrate(din.buffer, hin.buffer);
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        mesh.display();
+        PRINT_LOG("Should be properly exchanged");
+        hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        // IO
-        // IOTask<AcReal> iotask(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr);
-        // // iotask.write(mesh.buffer.data(), "test.dat");
-        // PRINT_LOG("Launch write");
-        // iotask.launch_write(mesh.buffer, "test.dat");
-        // mesh.fill(-1, local_mm, Index(local_mm.count, as<uint64_t>(0)));
-        // PRINT_LOG("Wait write");
-        // iotask.wait_write();
-        // PRINT_LOG("Read write");
-        // iotask.read("test.dat", mesh.buffer.data());
-        // IOTask<AcReal> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
-        // // iotask.write(cart_comm, mesh.buffer.data(), "test.dat");
-        // iotask.launch_write(cart_comm, mesh.buffer, "test.dat");
-        // mesh.fill(-1, local_mm, Index(local_mm.count, as<uint64_t>(0)));
-        // iotask.wait_write();
-        // iotask.read(cart_comm, "test.dat", mesh.buffer.data());
-        // mpi_write(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,
-        //           mesh.buffer.data(), "test.dat");
-        IOTaskAsync<AcReal> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
-        iotask.launch_write(cart_comm, mesh.buffer, "test.dat");
-        mesh.fill(-1, local_mm, Index(local_mm.count, as<uint64_t>(0)));
+        PRINT_LOG("Testing IO"); //-------------------------------
+        hin.arange(static_cast<size_t>(get_rank(cart_comm)) * static_cast<size_t>(prod(local_mm)));
+
+        IOTaskAsync<AcReal> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
+        iotask.launch_write(cart_comm, hin.buffer, "test.dat");
+        hin.buffer.fill(0);
         iotask.wait_write();
         mpi_read(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr, "test.dat",
-                 mesh.buffer.data());
+                 hin.buffer.data());
 
+        // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        mesh.display();
-        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
-
-        PackPtrArray<AcReal*> inputs{mesh.buffer.data()};
-        task.launch(cart_comm, inputs);
-        task.wait(inputs);
-        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        mesh.display();
+        PRINT_LOG("Should be arange");
+        hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     }
     catch (std::exception& e) {
-        ERRCHK_MPI_EXPR_DESC(false, "Exception caught");
+        PRINT_LOG("Exception caught");
+        MPI_Abort(MPI_COMM_WORLD, -1);
     }
     ERRCHK_MPI_API(MPI_Finalize());
     return EXIT_SUCCESS;

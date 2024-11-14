@@ -34,6 +34,7 @@ extern template void unpack<AcReal, HostMemoryResource>(const Buffer<AcReal, Hos
                                                         const Shape&, const Shape&, const Index&,
                                                         PackPtrArray<AcReal*>&);
 
+#if defined(DEVICE_ENABLED)
 extern template void pack<AcReal, DeviceMemoryResource>(const Shape&, const Shape&, const Index&,
                                                         const PackPtrArray<AcReal*>&,
                                                         Buffer<AcReal, DeviceMemoryResource>&);
@@ -41,3 +42,4 @@ extern template void pack<AcReal, DeviceMemoryResource>(const Shape&, const Shap
 extern template void
 unpack<AcReal, DeviceMemoryResource>(const Buffer<AcReal, DeviceMemoryResource>&, const Shape&,
                                      const Shape&, const Index&, PackPtrArray<AcReal*>&);
+#endif
