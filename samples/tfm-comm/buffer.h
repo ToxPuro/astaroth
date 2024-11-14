@@ -69,11 +69,11 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
 #include "errchk_cuda.h"
 
 template <typename MemoryResourceA, typename MemoryResourceB>
-cudaMemcpyKind
+constexpr cudaMemcpyKind
 get_kind()
 {
-    if (std::is_base_of<DeviceMemoryResource, MemoryResourceA>::value) {
-        if (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
+    if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceA>::value) {
+        if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
             PRINT_LOG("dtod");
             return cudaMemcpyDeviceToDevice;
         }
@@ -83,7 +83,7 @@ get_kind()
         }
     }
     else {
-        if (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
+        if constexpr (std::is_base_of<DeviceMemoryResource, MemoryResourceB>::value) {
             PRINT_LOG("htod");
             return cudaMemcpyHostToDevice;
         }

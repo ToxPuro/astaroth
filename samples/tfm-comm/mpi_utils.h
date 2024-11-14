@@ -100,13 +100,13 @@ int get_neighbor(const MPI_Comm& cart_comm, const Direction& dir);
  * Usage: MPIType<double>::value // returns MPI_DOUBLE
  */
 template <typename T>
-MPI_Datatype
+constexpr MPI_Datatype
 get_mpi_dtype()
 {
-    if (std::is_same<T, double>::value) {
+    if constexpr (std::is_same<T, double>::value) {
         return MPI_DOUBLE;
     }
-    else if (std::is_same<T, float>::value) {
+    else if constexpr (std::is_same<T, float>::value) {
         return MPI_DOUBLE;
     }
     else {
