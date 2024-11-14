@@ -13,8 +13,8 @@ mpi_read(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& in
          const std::string& path, T* data)
 {
     // Communicator
-    MPI_Comm local_comm{MPI_COMM_NULL};
-    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &local_comm));
+    MPI_Comm comm{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
 
     // Info
     MPI_Info info = info_create();
@@ -27,7 +27,7 @@ mpi_read(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& in
 
     // File
     MPI_File file{MPI_FILE_NULL};
-    ERRCHK_MPI_API(MPI_File_open(local_comm, path.c_str(), MPI_MODE_RDONLY, info, &file));
+    ERRCHK_MPI_API(MPI_File_open(comm, path.c_str(), MPI_MODE_RDONLY, info, &file));
     ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_mpi_dtype<T>(), global_subarray, "native", info));
 
     // Check that the file is in the expected format
@@ -43,7 +43,7 @@ mpi_read(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& in
     ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
     ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
     ERRCHK_MPI_API(MPI_Info_free(&info));
-    ERRCHK_MPI_API(MPI_Comm_free(&local_comm));
+    ERRCHK_MPI_API(MPI_Comm_free(&comm));
 }
 
 template <typename T>
@@ -53,8 +53,8 @@ mpi_write(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& i
           const T* data, const std::string& path)
 {
     // Communicator
-    MPI_Comm local_comm{MPI_COMM_NULL};
-    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &local_comm));
+    MPI_Comm comm{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
 
     // Info
     MPI_Info info = info_create();
@@ -68,7 +68,7 @@ mpi_write(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& i
     // File
     MPI_File file{MPI_FILE_NULL};
     ERRCHK_MPI_API(
-        MPI_File_open(local_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
+        MPI_File_open(comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
     ERRCHK_MPI_API(MPI_File_set_view(file, 0, get_mpi_dtype<T>(), global_subarray, "native", info));
 
     ERRCHK_MPI_API(MPI_File_write_all(file, data, 1, local_subarray, MPI_STATUS_IGNORE));
@@ -77,78 +77,33 @@ mpi_write(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& i
     ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
     ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
     ERRCHK_MPI_API(MPI_Info_free(&info));
-    ERRCHK_MPI_API(MPI_Comm_free(&local_comm));
+    ERRCHK_MPI_API(MPI_Comm_free(&comm));
 }
 
 template <typename T> class IOTaskAsync {
   private:
-    MPI_Comm local_comm{MPI_COMM_NULL};
     MPI_Info info{MPI_INFO_NULL};
     MPI_Datatype global_subarray{MPI_DATATYPE_NULL};
     MPI_Datatype local_subarray{MPI_DATATYPE_NULL};
 
-    Buffer<T> staging_buffer;
-    MPI_Request req{MPI_REQUEST_NULL};
+    Buffer<T, PinnedHostMemoryResource> staging_buffer;
+
+    MPI_Comm comm{MPI_COMM_NULL};
     MPI_File file{MPI_FILE_NULL};
+    MPI_Request req{MPI_REQUEST_NULL};
 
     bool in_progress{false};
 
   public:
-    IOTaskAsync(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& in_file_offset,
-                const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
-                const Index& in_mesh_offset)
-        : staging_buffer(prod(in_mesh_dims))
+    IOTaskAsync(const Shape& in_file_dims, const Index& in_file_offset, const Shape& in_mesh_dims,
+                const Shape& in_mesh_subdims, const Index& in_mesh_offset)
+        : info{info_create()},
+          global_subarray{
+              subarray_create(in_file_dims, in_mesh_subdims, in_file_offset, get_mpi_dtype<T>())},
+          local_subarray{
+              subarray_create(in_mesh_dims, in_mesh_subdims, in_mesh_offset, get_mpi_dtype<T>())},
+          staging_buffer(prod(in_mesh_dims))
     {
-        // Communicator
-        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &local_comm));
-
-        // Info
-        info = info_create();
-
-        // Subarrays
-        global_subarray = subarray_create(in_file_dims, in_mesh_subdims, in_file_offset,
-                                          get_mpi_dtype<T>());
-        local_subarray  = subarray_create(in_mesh_dims, in_mesh_subdims, in_mesh_offset,
-                                          get_mpi_dtype<T>());
-    }
-
-    template <typename MemoryResource>
-    void launch_write(const Buffer<T, MemoryResource>& input, const std::string& path)
-    {
-        ERRCHK_MPI(!in_progress);
-        in_progress = true;
-
-        migrate(input, staging_buffer); // TODO: transfers the whole buffer at the moment, would be
-                                        // better to migrate only in_mesh_subdims instead (but need
-                                        // to pack and change in_mesh_offset to zero)
-
-        ERRCHK_MPI(file == MPI_FILE_NULL);
-        ERRCHK_MPI_API(MPI_File_open(local_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY,
-                                     info, &file));
-        ERRCHK_MPI_API(
-            MPI_File_set_view(file, 0, get_mpi_dtype<T>(), global_subarray, "native", info));
-
-        ERRCHK_MPI(file != MPI_FILE_NULL);
-        ERRCHK_MPI(req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_File_iwrite_all(file, staging_buffer.data(), 1, local_subarray, &req));
-    }
-
-    void wait_write()
-    {
-        ERRCHK_MPI(in_progress);
-        ERRCHK_MPI_API(MPI_Wait(&req, MPI_STATUS_IGNORE));
-        ERRCHK_MPI_API(MPI_File_close(&file));
-
-        // Check that the MPI implementation reset the resources
-        ERRCHK_MPI(req == MPI_REQUEST_NULL);
-        ERRCHK_MPI(file == MPI_FILE_NULL);
-
-        // Ensure all processess have written their segment to disk.
-        // Not strictly needed here and comes with a slight overhead
-        // However, will cause hard-to-trace issues if the reader
-        // tries to access the data without barrier.
-        ERRCHK_MPI_API(MPI_Barrier(local_comm));
-        in_progress = false;
     }
 
     ~IOTaskAsync()
@@ -163,10 +118,61 @@ template <typename T> class IOTaskAsync {
         if (file != MPI_FILE_NULL)
             ERRCHK_MPI_API(MPI_File_close(&file));
 
+        ERRCHK_MPI(comm == MPI_COMM_NULL);
+        if (comm != MPI_COMM_NULL)
+            ERRCHK_MPI_API(MPI_Comm_free(&comm));
+
         ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
         ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
         ERRCHK_MPI_API(MPI_Info_free(&info));
-        ERRCHK_MPI_API(MPI_Comm_free(&local_comm));
+    }
+
+    template <typename MemoryResource>
+    void launch_write(const MPI_Comm& parent_comm, const Buffer<T, MemoryResource>& input,
+                      const std::string& path)
+    {
+        ERRCHK_MPI(!in_progress);
+        in_progress = true;
+
+        // Communicator
+        ERRCHK_MPI(comm == MPI_COMM_NULL);
+        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+
+        migrate(input, staging_buffer); // TODO: transfers the whole buffer at the moment, would be
+                                        // better to migrate only in_mesh_subdims instead (but need
+                                        // to pack and change in_mesh_offset to zero)
+
+        ERRCHK_MPI(file == MPI_FILE_NULL);
+        ERRCHK_MPI_API(
+            MPI_File_open(comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
+        ERRCHK_MPI_API(
+            MPI_File_set_view(file, 0, get_mpi_dtype<T>(), global_subarray, "native", info));
+
+        ERRCHK_MPI(file != MPI_FILE_NULL);
+        ERRCHK_MPI(req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_File_iwrite_all(file, staging_buffer.data(), 1, local_subarray, &req));
+    }
+
+    void wait_write()
+    {
+        ERRCHK_MPI(in_progress);
+        ERRCHK_MPI_API(MPI_Wait(&req, MPI_STATUS_IGNORE));
+        ERRCHK_MPI_API(MPI_File_close(&file));
+
+        // Ensure all processess have written their segment to disk.
+        // Not strictly needed here and comes with a slight overhead
+        // However, will cause hard-to-trace issues if the reader
+        // tries to access the data without barrier.
+        ERRCHK_MPI_API(MPI_Barrier(comm));
+        ERRCHK_MPI_API(MPI_Comm_free(&comm));
+
+        // Check that the MPI implementation reset the resources
+        ERRCHK_MPI(req == MPI_REQUEST_NULL);
+        ERRCHK_MPI(file == MPI_FILE_NULL);
+        ERRCHK_MPI(comm == MPI_COMM_NULL);
+
+        // Complete
+        in_progress = false;
     }
 
     IOTaskAsync(const IOTaskAsync&)            = delete; // Copy constructor
