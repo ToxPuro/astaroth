@@ -46,21 +46,19 @@ template <typename T> class HaloExchangeTask {
         // Round-robin busy-wait to choose packet to unpack
         // while (!complete()) {
         //     for (auto& packet : packets)
-        //         if (!packet.complete() && packet.ready())
-        //             packet.wait(outputs);
+        //         if (!packet->complete() && packet->ready())
+        //             packet->wait(outputs);
         // }
         // Simple loop over the packets
         for (auto& packet : packets)
             packet->wait(outputs);
     }
 
-    bool complete()
+    bool complete() const
     {
         for (const auto& packet : packets)
             if (!packet->complete())
                 return false;
         return true;
-        // return std::all_of(packets.begin(), packets.end(),
-        //                    [](const Packet<T>& packet) { return packet.complete(); });
     }
 };
