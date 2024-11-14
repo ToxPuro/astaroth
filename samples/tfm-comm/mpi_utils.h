@@ -118,6 +118,7 @@ get_mpi_dtype()
 /**
  * Helper wrappers for MPI types
  */
+#if false
 class MPICommWrapper {
   private:
     MPI_Comm comm{MPI_COMM_NULL};
@@ -339,3 +340,4 @@ info_make_unique()
     };
     return info_ptr_t{ptr, deleter};
 }
+#endif
