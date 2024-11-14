@@ -109,7 +109,10 @@ main()
         ERRCHK_CUDA_API(cudaSetDevice(rank % device_count));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 #endif
+
+#if true
         benchmark();
+#endif
 
         const Shape global_nn{4, 4};
         MPI_Comm cart_comm           = cart_comm_create(MPI_COMM_WORLD, global_nn);
@@ -144,10 +147,15 @@ main()
         hout.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-#if 0
+#if true
         PRINT_LOG("Testing basic halo exchange"); //-------------------------------
-        // hin.arange(static_cast<size_t>(get_rank(cart_comm)));
-        hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        if (nprocs == 1) {
+            hin.arange(static_cast<size_t>(get_rank(cart_comm)) *
+                       static_cast<size_t>(prod(local_mm)));
+        }
+        else {
+            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        }
         migrate(hin.buffer, din.buffer);
 
         // Basic MPI halo exchange task
@@ -165,30 +173,49 @@ main()
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 #endif
 
+#if true
         PRINT_LOG("Testing packed halo exchange"); //-------------------------------
-        hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        if (nprocs == 1) {
+            hin.arange(static_cast<size_t>(get_rank(cart_comm)) *
+                       static_cast<size_t>(prod(local_mm)));
+        }
+        else {
+            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        }
         migrate(hin.buffer, din.buffer);
+
+        // Print mesh
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        PRINT_LOG("Hin before exhange");
+        hin.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         HaloExchangeTask<AcReal> halo_exchange{local_mm, local_nn, rr, 1};
         PackPtrArray<AcReal*> inputs{din.buffer.data()};
         halo_exchange.launch(cart_comm, inputs);
+        ERRCHK_CUDA_API(cudaDeviceSynchronize());
         halo_exchange.wait(inputs);
+        ERRCHK_CUDA_API(cudaDeviceSynchronize());
         migrate(din.buffer, hin.buffer);
+        ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         PRINT_LOG("Should be properly exchanged");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+#endif
 
-#if 0
+#if true
         PRINT_LOG("Testing IO"); //-------------------------------
         hin.arange(static_cast<size_t>(get_rank(cart_comm)) * static_cast<size_t>(prod(local_mm)));
 
         IOTaskAsync<AcReal> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
-        iotask.launch_write(cart_comm, hin.buffer, "test.dat");
+        // iotask.launch_write(cart_comm, hin.buffer, "test.dat");
+        // iotask.wait_write();
+        mpi_write(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr, hin.buffer.data(),
+                  "test.dat");
         hin.buffer.fill(0);
-        iotask.wait_write();
         mpi_read(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr, "test.dat",
                  hin.buffer.data());
 

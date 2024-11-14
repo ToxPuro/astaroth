@@ -90,14 +90,9 @@ template <typename T> class Packet {
                                  recv_neighbor, tag, comm, &recv_req));
 
         // Pack and post send
-        PRINT_LOG("pack");
         pack(local_mm, segment.dims, send_offset, inputs, send_buffer);
-        Buffer<T, HostMemoryResource> tmpbuf(count);
-        migrate(send_buffer, tmpbuf);
-        tmpbuf.display();
 
         ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
-        PRINT_LOG("send");
         ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), get_mpi_dtype<T>(),
                                  send_neighbor, tag, comm, &send_req));
     }
@@ -119,7 +114,6 @@ template <typename T> class Packet {
         ERRCHK_MPI(in_progress);
         ERRCHK_MPI_API(MPI_Wait(&recv_req, MPI_STATUS_IGNORE));
         unpack(recv_buffer, local_mm, segment.dims, segment.offset, outputs);
-        PRINT_LOG("recvd");
 
         ERRCHK_MPI_API(MPI_Wait(&send_req, MPI_STATUS_IGNORE));
         ERRCHK_MPI_API(MPI_Comm_free(&comm));

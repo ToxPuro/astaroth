@@ -52,7 +52,7 @@ add_compile_options(# C/CXX/CUDA/HIP
                     # HIP
                     $<$<COMPILE_LANGUAGE:HIP>:-Wno-redundant-decls>
                     # CUDA
-                    $<$<COMPILE_LANGUAGE:CUDA>:--restrict>
+                    #$<$<COMPILE_LANGUAGE:CUDA>:--restrict>
 )
 
 ## Check whether device code is available on the system
@@ -96,16 +96,16 @@ target_link_libraries(unit_test PRIVATE acc-comm-utils device-module)
 
 add_test(NAME UnitTest COMMAND unit_test)
 
-# find_package(HIP REQUIRED)
-# enable_language(HIP)
-# set_property(GLOBAL PROPERTY HIP_ARCHITECTURES "gfx90a")
-# set_source_files_properties(devicetest.cu PROPERTIES LANGUAGE HIP)
-# add_library(devicetest devicetest.cu)
-# #target_link_libraries(devicetest PRIVATE hip::device)
+if(CUDAToolkit_FOUND)
+add_library(devicetest devicetest.cu)
+elseif(HIP_FOUND)
+set_source_files_properties(devicetest.cu PROPERTIES LANGUAGE HIP)
+add_library(devicetest devicetest.cu)
+endif()
 
-# find_package(MPI REQUIRED COMPONENTS C)
-# add_executable(mpitest mpitest.cc errchk_print.c)
-# target_link_libraries(mpitest PRIVATE MPI::MPI_C hip::host devicetest)
+find_package(MPI REQUIRED COMPONENTS C)
+add_executable(mpitest mpitest.cc errchk_print.c)
+target_link_libraries(mpitest PRIVATE MPI::MPI_C devicetest)
 
 ## Other
 # find_package(CUDAToolkit QUIET)

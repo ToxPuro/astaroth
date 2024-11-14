@@ -75,5 +75,13 @@ test_pack(void)
     PackPtrArray<double*> inputs{din.data()};
     pack(mm, block_shape, block_offset, inputs, dout);
     migrate(dout, hout);
-    hout.display();
+    // hout.display();
+    ERRCHK(hout[0] == static_cast<double>(1));
+    ERRCHK(hout[1] == static_cast<double>(2));
+    ERRCHK(hout[2] == static_cast<double>(3));
+    ERRCHK(hout[3] == static_cast<double>(4));
+    ERRCHK(hout[4] == static_cast<double>(5));
+    ERRCHK(hout[5] == static_cast<double>(6));
+    ERRCHK(hout[6] == static_cast<double>(7));
+    ERRCHK(hout[7] == static_cast<double>(8));
 }
