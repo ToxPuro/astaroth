@@ -30,7 +30,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
     }
 
     T* data() { return resource.get(); }
-    T* data() const { return resource.get(); }
+    const T* data() const { return resource.get(); }
     size_t size() const { return count; }
 
     void fill(const T& value)
@@ -116,7 +116,7 @@ migrate_async(const cudaStream_t stream, const Buffer<T, MemoryResourceA>& in,
 #else
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate(const Buffer<T, MemoryResourceA>& in, const Buffer<T, MemoryResourceB>& out)
+migrate(const Buffer<T, MemoryResourceA>& in, Buffer<T, MemoryResourceB>& out)
 {
     PRINT_LOG("non-cuda htoh");
     ERRCHK(in.size() == out.size());
