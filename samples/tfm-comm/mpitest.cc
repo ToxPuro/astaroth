@@ -9,6 +9,7 @@
 
 #include "errchk_cuda.h"
 
+#if defined(DEVICE_ENABLED)
 namespace device {
 template <typename T>
 T*
@@ -92,3 +93,11 @@ main(void)
     }
     return EXIT_SUCCESS;
 }
+#else
+int
+main(void)
+{
+    std::cerr << "not implemented for host" << std::endl;
+    return EXIT_FAILURE;
+}
+#endif

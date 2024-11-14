@@ -110,7 +110,7 @@ main()
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 #endif
 
-#if true
+#if defined(DEVICE_ENABLED)
         benchmark();
 #endif
 
@@ -193,11 +193,8 @@ main()
         HaloExchangeTask<AcReal> halo_exchange{local_mm, local_nn, rr, 1};
         PackPtrArray<AcReal*> inputs{din.buffer.data()};
         halo_exchange.launch(cart_comm, inputs);
-        ERRCHK_CUDA_API(cudaDeviceSynchronize());
         halo_exchange.wait(inputs);
-        ERRCHK_CUDA_API(cudaDeviceSynchronize());
         migrate(din.buffer, hin.buffer);
-        ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
