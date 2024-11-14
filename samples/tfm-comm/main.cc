@@ -102,10 +102,12 @@ main()
         int rank, nprocs;
         ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
         ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
+#if defined(DEVICE_ENABLED)
         int device_count;
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
         ERRCHK_CUDA_API(cudaSetDevice(rank % device_count));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
+#endif
         // benchmark();
 
         const Shape global_nn{4, 4, 4};

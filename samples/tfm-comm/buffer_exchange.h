@@ -15,7 +15,6 @@
 #include "errchk.h"
 using cudaStream_t                   = unsigned int*;
 const unsigned int cudaStreamDefault = 0;
-#define ERRCHK_CUDA_API(errcode) /* Disable all CUDA calls */
 #endif
 
 template <typename T, typename FirstStageResource, typename SecondStageResource>
@@ -24,8 +23,8 @@ class BufferExchangeTask {
     Buffer<T, FirstStageResource> first_stage_buffer;
     Buffer<T, SecondStageResource> second_stage_buffer;
 
-    cudaStream_t stream = nullptr;
-    bool in_progress    = false;
+    cudaStream_t stream{nullptr};
+    bool in_progress{false};
 
   public:
     explicit BufferExchangeTask(const size_t max_count)
@@ -59,8 +58,11 @@ class BufferExchangeTask {
         PRINT_LOG("migrating to first-stage buffer");
         migrate(in, first_stage_buffer);
 
+#if defined(DEVICE_ENABLED)
         PRINT_LOG("stream create");
+        ERRCHK(stream == nullptr);
         ERRCHK_CUDA_API(cudaStreamCreateWithFlags(&stream, cudaStreamDefault));
+#endif
 
         PRINT_LOG("async migrate to second-stage buffer");
         migrate_async(stream, first_stage_buffer, second_stage_buffer);
@@ -77,13 +79,18 @@ class BufferExchangeTask {
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 
-        // Synchronize stream
+// Synchronize stream
+#if defined(DEVICE_ENABLED)
+        ERRCHK(stream != nullptr);
         ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
         ERRCHK_CUDA_API(cudaStreamDestroy(stream));
         stream = nullptr;
+#endif
 
         // Migrate to output buffer
         migrate(second_stage_buffer, out);
+
+        // Complete
         in_progress = false;
     }
 };
