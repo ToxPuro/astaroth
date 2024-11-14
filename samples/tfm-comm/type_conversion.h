@@ -11,7 +11,7 @@ template <typename T_target, typename T_source>
 constexpr bool
 can_convert(T_source value)
 {
-    static_assert(std::is_integral<T_target>::value, "Conversion enabled only for integral types");
+    static_assert(std::is_integral_v<T_target>, "Conversion enabled only for integral types");
     static_assert(std::is_integral<T_source>::value, "Conversion enabled only for integral types");
     if constexpr (std::is_signed<T_source>::value && std::is_signed<T_target>::value) {
         return value >= std::numeric_limits<T_target>::min() &&
