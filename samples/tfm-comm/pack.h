@@ -43,3 +43,5 @@ extern template void
 unpack<AcReal, DeviceMemoryResource>(const Buffer<AcReal, DeviceMemoryResource>&, const Shape&,
                                      const Shape&, const Index&, PackPtrArray<AcReal*>&);
 #endif
+
+void test_pack(void);

@@ -29,6 +29,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
         return resource[i];
     }
 
+    T* data() { return resource.get(); }
     T* data() const { return resource.get(); }
     size_t size() const { return count; }
 

@@ -53,3 +53,27 @@ template void pack<AcReal, HostMemoryResource>(const Shape&, const Shape&, const
 template void unpack<AcReal, HostMemoryResource>(const Buffer<AcReal, HostMemoryResource>&,
                                                  const Shape&, const Shape&, const Index&,
                                                  PackPtrArray<AcReal*>&);
+
+// #include "buffer.h"
+
+void
+test_pack(void)
+{
+    const size_t count = 10;
+    const size_t rr    = 1;
+    Buffer<double, HostMemoryResource> hin(count);
+    Buffer<double, DeviceMemoryResource> din(count);
+    Buffer<double, DeviceMemoryResource> dout(count - 2 * rr);
+    Buffer<double, HostMemoryResource> hout(count - 2 * rr);
+    hin.arange();
+    hout.fill(-1);
+    migrate(hin, din);
+
+    Shape mm{count};
+    Shape block_shape{count - 2 * rr};
+    Index block_offset{rr};
+    PackPtrArray<double*> inputs{din.data()};
+    pack(mm, block_shape, block_offset, inputs, dout);
+    migrate(dout, hout);
+    hout.display();
+}

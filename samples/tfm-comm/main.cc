@@ -144,6 +144,7 @@ main()
         hout.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
+#if 0
         PRINT_LOG("Testing basic halo exchange"); //-------------------------------
         // hin.arange(static_cast<size_t>(get_rank(cart_comm)));
         hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
@@ -162,6 +163,7 @@ main()
         PRINT_LOG("Should be properly exchanged");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+#endif
 
         PRINT_LOG("Testing packed halo exchange"); //-------------------------------
         hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
@@ -179,6 +181,7 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
+#if 0
         PRINT_LOG("Testing IO"); //-------------------------------
         hin.arange(static_cast<size_t>(get_rank(cart_comm)) * static_cast<size_t>(prod(local_mm)));
 
@@ -194,6 +197,7 @@ main()
         PRINT_LOG("Should be arange");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+#endif
 
         ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     }

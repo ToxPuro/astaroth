@@ -3,6 +3,7 @@
 #include "decomp.h"
 #include "math_utils.h"
 #include "ndarray.h"
+#include "pack.h"
 #include "partition.h"
 #include "static_array.h"
 #include "type_conversion.h"
@@ -18,6 +19,7 @@ main(void)
     test_buffer();
     test_math_utils();
     test_buffer_exchange();
+    test_pack();
 
     return EXIT_SUCCESS;
 }
