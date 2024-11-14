@@ -170,8 +170,8 @@ main()
         NdArray<AcReal, DeviceMemoryResource> device_mesh(local_mm);
         migrate(mesh.buffer, device_mesh.buffer);
         PackPtrArray<AcReal*> device_inputs{device_mesh.buffer.data()};
-        HaloExchangeTask<AcReal> task(cart_comm, local_mm, local_nn, rr, device_inputs.count);
-        task.launch(device_inputs);
+        HaloExchangeTask<AcReal> task(local_mm, local_nn, rr, device_inputs.count);
+        task.launch(cart_comm, device_inputs);
         task.wait(device_inputs);
         migrate(device_mesh.buffer, mesh.buffer);
 
@@ -198,8 +198,8 @@ main()
         // iotask.read(cart_comm, "test.dat", mesh.buffer.data());
         // mpi_write(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,
         //           mesh.buffer.data(), "test.dat");
-        IOTaskAsync<AcReal> iotask(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr);
-        iotask.launch_write(mesh.buffer, "test.dat");
+        IOTaskAsync<AcReal> iotask(global_nn, global_nn_offset, local_mm, local_nn, rr);
+        iotask.launch_write(cart_comm, mesh.buffer, "test.dat");
         mesh.fill(-1, local_mm, Index(local_mm.count, as<uint64_t>(0)));
         iotask.wait_write();
         mpi_read(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr, "test.dat",
@@ -210,7 +210,7 @@ main()
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         PackPtrArray<AcReal*> inputs{mesh.buffer.data()};
-        task.launch(inputs);
+        task.launch(cart_comm, inputs);
         task.wait(inputs);
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         mesh.display();

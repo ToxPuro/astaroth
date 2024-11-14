@@ -20,36 +20,113 @@ template <typename T> class Packet {
 
     Segment segment; // Shape of the data block the packet represents (for packing or unpacking)
 
-    Buffer<T, DeviceMemoryResource> pack_buffer;
-    Buffer<T, PinnedHostMemoryResource> send_buffer;
-    Buffer<T, PinnedHostMemoryResource> recv_buffer;
-    Buffer<T, DeviceMemoryResource> unpack_buffer;
+    Buffer<T, DeviceMemoryResource> send_buffer;
+    Buffer<T, DeviceMemoryResource> recv_buffer;
 
-    MPICommWrapper cart_comm;
-    MPIRequestWrapper send_req; // MPI request for handling synchronization
-    MPIRequestWrapper recv_req; // MPI request for handling synchronization
+    MPI_Comm comm{MPI_COMM_NULL};
+    MPI_Request send_req{MPI_REQUEST_NULL};
+    MPI_Request recv_req{MPI_REQUEST_NULL};
 
     bool in_progress = false;
 
   public:
-    Packet(const MPI_Comm& parent_comm, const Shape& in_local_mm, const Shape& in_local_nn,
-           const Index& in_local_rr, const Segment& in_segment, const size_t n_aggregate_buffers)
+    Packet(const Shape& in_local_mm, const Shape& in_local_nn, const Index& in_local_rr,
+           const Segment& in_segment, const size_t n_aggregate_buffers)
         : local_mm(in_local_mm),
           local_nn(in_local_nn),
           local_rr(in_local_rr),
           segment(in_segment),
-          pack_buffer(n_aggregate_buffers * prod(in_segment.dims)),
           send_buffer(n_aggregate_buffers * prod(in_segment.dims)),
-          recv_buffer(n_aggregate_buffers * prod(in_segment.dims)),
-          unpack_buffer(n_aggregate_buffers * prod(in_segment.dims)),
-          cart_comm{parent_comm}
+          recv_buffer(n_aggregate_buffers * prod(in_segment.dims))
     {
     }
 
-    void launch(const PackPtrArray<T*> inputs);
-    bool ready() const;
-    void wait(PackPtrArray<T*> outputs);
-    bool complete() const;
+    ~Packet()
+    {
+        ERRCHK_MPI(!in_progress);
+
+        ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
+        if (recv_req != MPI_REQUEST_NULL)
+            ERRCHK_MPI_API(MPI_Request_free(&recv_req));
+
+        ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
+        if (send_req != MPI_REQUEST_NULL)
+            ERRCHK_MPI_API(MPI_Request_free(&send_req));
+
+        ERRCHK_MPI(comm == MPI_COMM_NULL);
+        if (comm != MPI_COMM_NULL)
+            ERRCHK_MPI_API(MPI_Comm_free(&comm));
+    }
+
+    Packet(const Packet&)            = delete; // Copy constructor
+    Packet& operator=(const Packet&) = delete; // Copy assignment operator
+    Packet(Packet&&)                 = delete; // Move constructor
+    Packet& operator=(Packet&&)      = delete; // Move assignment operator
+
+    void launch(const MPI_Comm& parent_comm, const PackPtrArray<T*>& inputs)
+    {
+        ERRCHK_MPI(!in_progress);
+        in_progress = true;
+
+        // Communicator
+        ERRCHK_MPI(comm == MPI_COMM_NULL);
+        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+
+        // Find the direction and neighbors of the segment
+        const size_t count = inputs.count * prod(segment.dims);
+        ERRCHK_MPI(count <= send_buffer.size());
+        ERRCHK_MPI(count <= recv_buffer.size());
+
+        Index send_offset = ((local_nn + segment.offset - local_rr) % local_nn) + local_rr;
+
+        const Direction recv_direction = get_direction(segment.offset, local_nn, local_rr);
+        const int recv_neighbor        = get_neighbor(comm, recv_direction);
+        const int send_neighbor        = get_neighbor(comm, -recv_direction);
+
+        // Post recv
+        const int tag = 0;
+        ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(), as<int>(count), get_mpi_dtype<T>(),
+                                 recv_neighbor, tag, comm, &recv_req));
+
+        // Pack and post send
+        pack(local_mm, segment.dims, send_offset, inputs, send_buffer);
+        ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), get_mpi_dtype<T>(),
+                                 send_neighbor, tag, comm, &send_req));
+    }
+
+    bool ready() const
+    {
+        ERRCHK_MPI(in_progress);
+        ERRCHK_MPI(send_req != MPI_REQUEST_NULL);
+        ERRCHK_MPI(recv_req != MPI_REQUEST_NULL);
+
+        int send_flag, recv_flag;
+        ERRCHK_MPI_API(MPI_Request_get_status(send_req, &send_flag, MPI_STATUS_IGNORE));
+        ERRCHK_MPI_API(MPI_Request_get_status(recv_req, &recv_flag, MPI_STATUS_IGNORE));
+        return in_progress && send_flag && recv_flag;
+    };
+
+    void wait(PackPtrArray<T*>& outputs)
+    {
+        ERRCHK_MPI(in_progress);
+        ERRCHK_MPI_API(MPI_Wait(&recv_req, MPI_STATUS_IGNORE));
+        unpack(recv_buffer, local_mm, segment.dims, segment.offset, outputs);
+
+        ERRCHK_MPI_API(MPI_Wait(&send_req, MPI_STATUS_IGNORE));
+        ERRCHK_MPI_API(MPI_Comm_free(&comm));
+
+        // Check that the MPI implementation reset the resources
+        ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI(comm == MPI_COMM_NULL);
+
+        // Complete
+        in_progress = false;
+    }
+
+    bool complete() const { return !in_progress; };
 
     friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T>& obj)
     {
@@ -61,70 +138,5 @@ template <typename T> class Packet {
         return os;
     }
 };
-
-template <typename T>
-void
-Packet<T>::launch(const PackPtrArray<T*> inputs)
-{
-    ERRCHK_MPI(!in_progress);
-    in_progress = true;
-
-    const size_t count = inputs.count * prod(segment.dims);
-    ERRCHK_MPI(count <= send_buffer.size());
-    ERRCHK_MPI(count <= recv_buffer.size());
-
-    Index send_offset = ((local_nn + segment.offset - local_rr) % local_nn) + local_rr;
-
-    const Direction recv_direction = get_direction(segment.offset, local_nn, local_rr);
-    const int recv_neighbor        = get_neighbor(cart_comm.value(), recv_direction);
-    const int send_neighbor        = get_neighbor(cart_comm.value(), -recv_direction);
-
-    // Post recv
-    const int tag = 0;
-    ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(), as<int>(count), get_mpi_dtype<T>(), recv_neighbor,
-                             tag, cart_comm.value(), recv_req.get()));
-
-    // Pack, post send, and ensure the message has left the pack buffer
-    pack(local_mm, segment.dims, send_offset, inputs, pack_buffer);
-    migrate(pack_buffer, send_buffer);
-    ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), get_mpi_dtype<T>(), send_neighbor,
-                             tag, cart_comm.value(), send_req.get()));
-}
-
-template <typename T>
-bool
-Packet<T>::ready() const
-{
-    ERRCHK_MPI_EXPR_DESC(in_progress, "ready called but no request in flight. Ready state should "
-                                      "only be checked if complete() evaluates true");
-    return send_req.ready() && recv_req.ready();
-}
-
-template <typename T>
-void
-Packet<T>::wait(PackPtrArray<T*> outputs)
-{
-    // Wait recv
-    ERRCHK_MPI_EXPR_DESC(in_progress, "wait called but no request in flight");
-    recv_req.wait();
-
-    // Unpack
-    migrate(recv_buffer, unpack_buffer);
-    unpack(unpack_buffer, local_mm, segment.dims, segment.offset, outputs);
-
-    // Wait send
-    send_req.wait();
-
-    // Return back to the completed state
-    in_progress = false;
-}
-
-template <typename T>
-bool
-Packet<T>::complete() const
-{
-    ERRCHK_MPI(!in_progress == (send_req.complete() && recv_req.complete()));
-    return !in_progress;
-}
 
 void test_packet();
