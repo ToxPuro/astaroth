@@ -95,6 +95,7 @@ decompose_hierarchical(const Shape& nn, const std::vector<uint64_t>& nprocs_per_
         decompositions.push_back(decomp);
         curr_nn = curr_nn / decomp;
     }
+    std::reverse(decompositions.begin(), decompositions.end());
     return decompositions;
 }
 
@@ -106,9 +107,9 @@ to_spatial(const uint64_t in_index, const std::vector<Shape>& in_decompositions)
     Index scale(count, static_cast<uint64_t>(1));
     ERRCHK(coords[0] == 0);
     ERRCHK(scale[0] == 1);
-    for (size_t j = in_decompositions.size() - 1; j < in_decompositions.size(); --j) {
-        coords = coords + scale * to_spatial(in_index / prod(scale), in_decompositions[j]);
-        scale  = scale * in_decompositions[j];
+    for (const auto& dims : in_decompositions) {
+        coords = coords + scale * to_spatial(in_index / prod(scale), dims);
+        scale  = scale * dims;
     }
     return coords;
 }
@@ -120,10 +121,9 @@ to_linear(const Index& in_coords, const std::vector<Shape>& in_decompositions)
     Index scale(count, static_cast<uint64_t>(1));
     ERRCHK(scale[0] == 1);
     uint64_t index = 0;
-    for (size_t j = in_decompositions.size() - 1; j < in_decompositions.size(); --j) {
-        index = index + prod(scale) * to_linear((in_coords / scale) % in_decompositions[j],
-                                                in_decompositions[j]);
-        scale = scale * in_decompositions[j];
+    for (const auto& dims : in_decompositions) {
+        index = index + prod(scale) * to_linear((in_coords / scale) % dims, dims);
+        scale = scale * dims;
     }
     return index;
 }
@@ -134,6 +134,9 @@ vecprod(const std::vector<uint64_t>& vec)
     return std::reduce(vec.begin(), vec.end(), static_cast<uint64_t>(1),
                        std::multiplies<uint64_t>());
 }
+
+#include "ndarray.h"
+#include <memory.h>
 
 void
 test_decomp(void)
@@ -178,9 +181,9 @@ test_decomp(void)
         }
         // Index is then
         // offset[0] * decompositions[0] + offset[1] * decompositions[1] + ...
-        ERRCHK(prod(decompositions[0]) == 16);
+        ERRCHK(prod(decompositions[0]) == 2);
         ERRCHK(prod(decompositions[1]) == 4);
-        ERRCHK(prod(decompositions[2]) == 2);
+        ERRCHK(prod(decompositions[2]) == 16);
     }
     {
         Shape nn{32, 32, 32};
@@ -239,5 +242,18 @@ test_decomp(void)
         for (size_t i = 0; i < vecprod(nprocs_per_layer); ++i) {
             ERRCHK(i == to_linear(to_spatial(i, decompositions), decompositions));
         }
+    }
+    {
+        std::vector<Shape> decompositions{Shape{2, 2}, Shape{4, 1}, Shape{1, 4}};
+        const Shape gdecomp{8, 8};
+        const size_t count = prod(gdecomp);
+
+        auto buf = std::make_unique<uint64_t[]>(count);
+
+        for (size_t i = 0; i < count; ++i) {
+            Index coords                            = to_spatial(i, decompositions);
+            buf[coords[0] + coords[1] * gdecomp[0]] = i;
+        }
+        // ndarray_print("buf", gdecomp.count, gdecomp.data, buf.get());
     }
 }

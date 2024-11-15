@@ -53,7 +53,7 @@ ndarray_print_recursive(const size_t ndims, const uint64_t* dims, const T* array
 
 template <typename T>
 void
-ndarray_print(const char* label, const size_t ndims, const size_t* dims, const T* array)
+ndarray_print(const char* label, const size_t ndims, const uint64_t* dims, const T* array)
 {
     ERRCHK(array != NULL);
     printf("%s:\n", label);
