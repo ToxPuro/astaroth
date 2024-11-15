@@ -63,7 +63,7 @@ template <typename T, size_t N> struct StaticArray {
 
     // Initializer list constructor
     // StaticArray<int, 3> a = {1,2,3}
-    __host__ __device__ explicit StaticArray(const std::initializer_list<T>& init_list)
+    __host__ __device__ StaticArray(const std::initializer_list<T>& init_list)
         : count(init_list.size())
     {
         ERRCHK(count > 0);
@@ -82,7 +82,7 @@ template <typename T, size_t N> struct StaticArray {
     }
 
     // Construct from a pointer
-    __host__ __device__ StaticArray(const size_t in_count, const T* arr)
+    __host__ __device__ explicit StaticArray(const size_t in_count, const T* arr)
         : count(in_count)
     {
         ERRCHK(count > 0);

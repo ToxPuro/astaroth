@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <vector>
 
+#include "math_utils.h"
+
 // Returns the non-trivial unique factors of n in increasing order
 static std::vector<uint64_t>
 factorize(uint64_t n)
@@ -72,6 +74,7 @@ decompose(const Shape& nn, uint64_t nprocs)
                 }
             }
         }
+        ERRCHK(best_factor > 0);
         nprocs /= best_factor;
         local_nn[best_axis] /= best_factor;
         decomp[best_axis] *= best_factor;
@@ -93,6 +96,43 @@ decompose_hierarchical(const Shape& nn, const std::vector<uint64_t>& nprocs_per_
         curr_nn = curr_nn / decomp;
     }
     return decompositions;
+}
+
+static Index
+to_spatial(const uint64_t in_index, const std::vector<Shape>& in_decompositions)
+{
+    const size_t count = in_decompositions[0].count;
+    Index coords(count, static_cast<uint64_t>(0));
+    Index scale(count, static_cast<uint64_t>(1));
+    ERRCHK(coords[0] == 0);
+    ERRCHK(scale[0] == 1);
+    for (size_t j = in_decompositions.size() - 1; j < in_decompositions.size(); --j) {
+        coords = coords + scale * to_spatial(in_index / prod(scale), in_decompositions[j]);
+        scale  = scale * in_decompositions[j];
+    }
+    return coords;
+}
+
+static uint64_t
+to_linear(const Index& in_coords, const std::vector<Shape>& in_decompositions)
+{
+    const size_t count = in_decompositions[0].count;
+    Index scale(count, static_cast<uint64_t>(1));
+    ERRCHK(scale[0] == 1);
+    uint64_t index = 0;
+    for (size_t j = in_decompositions.size() - 1; j < in_decompositions.size(); --j) {
+        index = index + prod(scale) * to_linear((in_coords / scale) % in_decompositions[j],
+                                                in_decompositions[j]);
+        scale = scale * in_decompositions[j];
+    }
+    return index;
+}
+
+static uint64_t
+vecprod(const std::vector<uint64_t>& vec)
+{
+    return std::reduce(vec.begin(), vec.end(), static_cast<uint64_t>(1),
+                       std::multiplies<uint64_t>());
 }
 
 void
@@ -141,19 +181,63 @@ test_decomp(void)
         ERRCHK(prod(decompositions[0]) == 16);
         ERRCHK(prod(decompositions[1]) == 4);
         ERRCHK(prod(decompositions[2]) == 2);
-        /*
-        // Test: get coords from rank
-        for (size_t i = 0; i < 16 * 4 * 2; ++i) {
+    }
+    {
+        Shape nn{32, 32, 32};
+        std::vector<uint64_t> nprocs_per_layer{16, 8, 4};
+        const auto decompositions = decompose_hierarchical(nn, nprocs_per_layer);
+
+        std::vector<Index> offsets;
+        for (const auto& decomp : decompositions) {
+            nn = nn / decomp;
+            offsets.push_back(nn);
+            // PRINT_DEBUG(decomp);
+        }
+
+        for (size_t i = 0; i < vecprod(nprocs_per_layer); ++i) {
+            // Forward
             Index coords = {0, 0, 0};
             Index scale  = {1, 1, 1};
             for (size_t j = decompositions.size() - 1; j < decompositions.size(); --j) {
                 coords = coords + scale * to_spatial(i / prod(scale), decompositions[j]);
                 scale  = scale * decompositions[j];
             }
-            PRINT_DEBUG(i);
-            PRINT_DEBUG(coords);
-            std::cout << std::endl;
+            // PRINT_DEBUG(i);
+            // PRINT_DEBUG(coords);
+
+            // Backward
+            scale        = {1, 1, 1};
+            size_t index = 0;
+            for (size_t j = decompositions.size() - 1; j < decompositions.size(); --j) {
+                index = index + prod(scale) * to_linear((coords / scale) % decompositions[j],
+                                                        decompositions[j]);
+                scale = scale * decompositions[j];
+            }
+            ERRCHK(i == index);
         }
-        */
+    }
+    {
+        Shape nn{32, 16};
+        std::vector<uint64_t> nprocs_per_layer{16, 4};
+        const auto decompositions = decompose_hierarchical(nn, nprocs_per_layer);
+        for (size_t i = 0; i < vecprod(nprocs_per_layer); ++i) {
+            ERRCHK(i == to_linear(to_spatial(i, decompositions), decompositions));
+        }
+    }
+    {
+        Shape nn{130, 111, 64, 250 * 7};
+        std::vector<uint64_t> nprocs_per_layer{7, 5};
+        const auto decompositions = decompose_hierarchical(nn, nprocs_per_layer);
+        for (size_t i = 0; i < vecprod(nprocs_per_layer); ++i) {
+            ERRCHK(i == to_linear(to_spatial(i, decompositions), decompositions));
+        }
+    }
+    {
+        Shape nn{32, 8, 128, 64};
+        std::vector<uint64_t> nprocs_per_layer{32, 64, 2, 8};
+        const auto decompositions = decompose_hierarchical(nn, nprocs_per_layer);
+        for (size_t i = 0; i < vecprod(nprocs_per_layer); ++i) {
+            ERRCHK(i == to_linear(to_spatial(i, decompositions), decompositions));
+        }
     }
 }
