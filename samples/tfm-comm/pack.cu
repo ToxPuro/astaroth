@@ -26,10 +26,10 @@ device_to_spatial(const uint64_t index, const Shape& shape)
     return coords;
 }
 
-template <typename T>
+template <typename T, size_t N>
 __global__ void
 kernel_pack(const Shape mm, const Shape block_shape, const Index block_offset,
-            const PackPtrArray<T*> inputs, T* output)
+            const ac::array<T*, N> inputs, T* output)
 {
     const uint64_t i = static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
     const uint64_t block_nelems{prod(block_shape)};
@@ -48,10 +48,10 @@ kernel_pack(const Shape mm, const Shape block_shape, const Index block_offset,
     }
 }
 
-template <typename T>
+template <typename T, size_t N>
 __global__ void
 kernel_unpack(const T* input, const Shape mm, const Shape block_shape, const Index block_offset,
-              PackPtrArray<T*> outputs)
+              ac::array<T*, N> outputs)
 {
     const uint64_t i = static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
     const uint64_t block_nelems{prod(block_shape)};
@@ -70,10 +70,10 @@ kernel_unpack(const T* input, const Shape mm, const Shape block_shape, const Ind
     }
 }
 
-template <typename T, typename MemoryResource>
+template <typename T, size_t N>
 void
 pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-     const PackPtrArray<T*>& inputs, Buffer<T, MemoryResource>& output)
+     const ac::array<T*, N>& inputs, ac::device_vector<T>& output)
 {
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
@@ -84,10 +84,10 @@ pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
     cudaDeviceSynchronize();
 }
 
-template <typename T, typename MemoryResource>
+template <typename T, size_t N>
 void
-unpack(const Buffer<T, MemoryResource>& input, const Shape& mm, const Shape& block_shape,
-       const Index& block_offset, PackPtrArray<T*>& outputs)
+unpack(const ac::device_vector<T>& input, const Shape& mm, const Shape& block_shape,
+       const Index& block_offset, ac::array<T*, N>& outputs)
 {
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
@@ -98,10 +98,10 @@ unpack(const Buffer<T, MemoryResource>& input, const Shape& mm, const Shape& blo
     cudaDeviceSynchronize();
 }
 
-template void pack<AcReal, DeviceMemoryResource>(const Shape&, const Shape&, const Index&,
-                                                 const PackPtrArray<AcReal*>&,
-                                                 Buffer<AcReal, DeviceMemoryResource>&);
+template void pack<AcReal, PACK_MAX_INPUTS>(const Shape&, const Shape&, const Index&,
+                                            const ac::array<AcReal, PACK_MAX_INPUTS>&,
+                                            Buffer<AcReal, DeviceMemoryResource>&);
 
-template void unpack<AcReal, DeviceMemoryResource>(const Buffer<AcReal, DeviceMemoryResource>&,
-                                                   const Shape&, const Shape&, const Index&,
-                                                   PackPtrArray<AcReal*>&);
+template void unpack<AcReal, PACK_MAX_INPUTS>(const Buffer<AcReal, DeviceMemoryResource>&,
+                                              const Shape&, const Shape&, const Index&,
+                                              ac::array<AcReal, PACK_MAX_INPUTS>&);

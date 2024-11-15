@@ -5,6 +5,7 @@
 #include "math_utils.h"
 
 #include <iomanip>
+#include <iostream>
 
 template <typename T>
 void
@@ -72,14 +73,14 @@ template <typename T, typename MemoryResource = HostMemoryResource> struct NdArr
 
     void fill(const T& fill_value, const Shape& subdims, const Index& offset)
     {
-        ERRCHK(subdims.count == offset.count);
-        ndarray_fill<T>(fill_value, shape.count, shape.data, subdims.data, offset.data,
+        ERRCHK(subdims.size() == offset.size());
+        ndarray_fill<T>(fill_value, shape.size(), shape.data(), subdims.data(), offset.data(),
                         buffer.data());
     }
 
     void arange(const T& start = 0) { buffer.arange(start); }
 
-    void display() { ndarray_print_recursive(shape.count, shape.data, buffer.data()); }
+    void display() { ndarray_print_recursive(shape.size(), shape.data(), buffer.data()); }
 
     friend std::ostream& operator<<(std::ostream& os, const NdArray<T, MemoryResource>& obj)
     {

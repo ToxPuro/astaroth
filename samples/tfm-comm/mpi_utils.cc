@@ -1,5 +1,38 @@
 #include "mpi_utils.h"
 
+template <size_t N>
+auto
+astaroth_to_mpi_format(const ac::array<uint64_t, N>& in)
+{
+    ac::array<int, N> out;
+    for (size_t i = 0; i < in.size(); ++i)
+        out[i] = as<int>(in[i]);
+    std::reverse(out.begin(), out.end());
+    return out;
+}
+
+template <size_t N>
+auto
+astaroth_to_mpi_format(const ac::array<int64_t, N>& in)
+{
+    ac::array<int, N> out;
+    for (size_t i = 0; i < in.size(); ++i)
+        out[i] = as<int>(in[i]);
+    std::reverse(out.begin(), out.end());
+    return out;
+}
+
+template <size_t N>
+auto
+mpi_to_astaroth_format(const ac::array<int, N>& in)
+{
+    ac::array<uint64_t, N> out;
+    for (size_t i = 0; i < in.size(); ++i)
+        out[i] = as<uint64_t>(in[i]);
+    std::reverse(out.begin(), out.end());
+    return out;
+}
+
 int
 get_tag(void)
 {
@@ -13,8 +46,8 @@ get_tag(void)
 Direction
 get_direction(const Index& offset, const Shape& nn, const Index& rr)
 {
-    Direction dir(offset.count);
-    for (size_t i = 0; i < offset.count; ++i)
+    Direction dir{};
+    for (size_t i = 0; i < offset.size(); ++i)
         dir[i] = offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
     return dir;
 }
@@ -27,10 +60,11 @@ print_mpi_comm(const MPI_Comm& comm)
     ERRCHK_MPI_API(MPI_Comm_size(comm, &nprocs));
     ERRCHK_MPI_API(MPI_Cartdim_get(comm, &ndims));
 
-    MPIShape mpi_decomp(as<size_t>(ndims));
-    MPIShape mpi_periods(as<size_t>(ndims));
-    MPIIndex mpi_coords(as<size_t>(ndims));
-    ERRCHK_MPI_API(MPI_Cart_get(comm, ndims, mpi_decomp.data, mpi_periods.data, mpi_coords.data));
+    MPIShape mpi_decomp{};
+    MPIShape mpi_periods{};
+    MPIIndex mpi_coords{};
+    ERRCHK_MPI_API(
+        MPI_Cart_get(comm, ndims, mpi_decomp.data(), mpi_periods.data(), mpi_coords.data()));
 
     MPI_SYNCHRONOUS_BLOCK_START(comm);
     PRINT_DEBUG(mpi_decomp);
@@ -47,15 +81,15 @@ cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn)
     ERRCHK_MPI_API(MPI_Comm_size(parent_comm, &mpi_nprocs));
 
     // Use MPI for finding the decomposition
-    MPIShape mpi_decomp(global_nn.count, 0); // Decompose all dimensions
-    ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(mpi_decomp.count), mpi_decomp.data));
+    MPIShape mpi_decomp{}; // Decompose all dimensions
+    ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(mpi_decomp.size()), mpi_decomp.data()));
 
     // Create the Cartesian communicator
     MPI_Comm cart_comm = MPI_COMM_NULL;
-    MPIShape mpi_periods(global_nn.count, 1); // Periodic in all dimensions
+    MPIShape mpi_periods{ones<int>()}; // Periodic in all dimensions
     int reorder = 1; // Enable reordering (but likely inop with most MPI implementations)
-    ERRCHK_MPI_API(MPI_Cart_create(parent_comm, as<int>(mpi_decomp.count), mpi_decomp.data,
-                                   mpi_periods.data, reorder, &cart_comm));
+    ERRCHK_MPI_API(MPI_Cart_create(parent_comm, as<int>(mpi_decomp.size()), mpi_decomp.data(),
+                                   mpi_periods.data(), reorder, &cart_comm));
 
     // Can also add custom decomposition and rank reordering here instead:
     // int reorder = 0;
@@ -74,13 +108,14 @@ MPI_Datatype
 subarray_create(const Shape& dims, const Shape& subdims, const Index& offset,
                 const MPI_Datatype& dtype)
 {
-    MPIShape mpi_dims(dims.reversed());
-    MPIShape mpi_subdims(subdims.reversed());
-    MPIIndex mpi_offset(offset.reversed());
+    MPIShape mpi_dims{astaroth_to_mpi_format(dims)};
+    MPIShape mpi_subdims{astaroth_to_mpi_format(subdims)};
+    MPIIndex mpi_offset{astaroth_to_mpi_format(offset)};
 
     MPI_Datatype subarray = MPI_DATATYPE_NULL;
-    ERRCHK_MPI_API(MPI_Type_create_subarray(as<int>(dims.count), mpi_dims.data, mpi_subdims.data,
-                                            mpi_offset.data, MPI_ORDER_C, dtype, &subarray));
+    ERRCHK_MPI_API(MPI_Type_create_subarray(as<int>(dims.size()), mpi_dims.data(),
+                                            mpi_subdims.data(), mpi_offset.data(), MPI_ORDER_C,
+                                            dtype, &subarray));
     ERRCHK_MPI_API(MPI_Type_commit(&subarray));
     return subarray;
 }
@@ -140,12 +175,12 @@ get_decomposition(const MPI_Comm& cart_comm)
     int mpi_ndims = -1;
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
-    MPIShape mpi_decomp(as<size_t>(mpi_ndims));
-    MPIShape mpi_periods(as<size_t>(mpi_ndims));
-    MPIIndex mpi_coords(as<size_t>(mpi_ndims));
-    ERRCHK_MPI_API(
-        MPI_Cart_get(cart_comm, mpi_ndims, mpi_decomp.data, mpi_periods.data, mpi_coords.data));
-    return Shape(mpi_decomp.reversed());
+    MPIShape mpi_decomp{};
+    MPIShape mpi_periods{};
+    MPIIndex mpi_coords{};
+    ERRCHK_MPI_API(MPI_Cart_get(cart_comm, mpi_ndims, mpi_decomp.data(), mpi_periods.data(),
+                                mpi_coords.data()));
+    return mpi_to_astaroth_format(mpi_decomp);
 }
 
 Index
@@ -160,9 +195,9 @@ get_coords(const MPI_Comm& cart_comm)
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
     // Get the coordinates of the current process
-    MPIIndex mpi_coords(as<size_t>(mpi_ndims), -1);
-    ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data));
-    return Index(mpi_coords.reversed());
+    MPIIndex mpi_coords{fill(-1)};
+    ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data()));
+    return mpi_to_astaroth_format(mpi_coords);
 }
 
 int
@@ -185,18 +220,18 @@ get_neighbor(const MPI_Comm& cart_comm, const Direction& dir)
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
     // Get the coordinates of the current process
-    MPIIndex mpi_coords(as<size_t>(mpi_ndims), -1);
-    ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data));
+    MPIIndex mpi_coords{fill(-1)};
+    ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data()));
 
     // Get the direction of the neighboring process
-    MPIIndex mpi_dir(dir.reversed());
+    MPIIndex mpi_dir{astaroth_to_mpi_format(dir)};
 
     // Get the coordinates of the neighbor
     MPIIndex mpi_neighbor = mpi_coords + mpi_dir;
 
     // Get the rank of the neighboring process
     int neighbor_rank = MPI_PROC_NULL;
-    ERRCHK_MPI_API(MPI_Cart_rank(cart_comm, mpi_neighbor.data, &neighbor_rank));
+    ERRCHK_MPI_API(MPI_Cart_rank(cart_comm, mpi_neighbor.data(), &neighbor_rank));
     return neighbor_rank;
 }
 

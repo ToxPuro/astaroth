@@ -4,6 +4,7 @@
 #include "print_debug.h"
 
 #include <algorithm>
+#include <iostream>
 #include <vector>
 
 #include "math_utils.h"
@@ -38,15 +39,15 @@ factorize(uint64_t n)
 static double
 surface_area_to_volume(const Shape& nn)
 {
-    const Shape rr(nn.count, 1);
+    const Shape rr{ones()};
     return static_cast<double>((prod(as<uint64_t>(2) * rr + nn))) / static_cast<double>(prod(nn));
 }
 
 Shape
 decompose(const Shape& nn, uint64_t nprocs)
 {
-    Shape local_nn(nn);
-    Shape decomp(nn.count, 1);
+    Shape local_nn{};
+    Shape decomp{ones()};
 
     // More flexible dims (inspired by W.D. Gropp https://doi.org/10.1145/3236367.3236377)
     // Adapted to try out all factors to work with a wider range of dims
@@ -61,7 +62,7 @@ decompose(const Shape& nn, uint64_t nprocs)
 
         auto factors = factorize(nprocs);
         for (const auto& factor : factors) {
-            for (size_t axis = nn.count - 1; axis < nn.count; --axis) {
+            for (size_t axis = nn.size() - 1; axis < nn.size(); --axis) {
                 if ((local_nn[axis] % factor) == 0) {
                     auto test_nn(local_nn);
                     test_nn[axis] /= factor;
@@ -102,9 +103,9 @@ decompose_hierarchical(const Shape& nn, const std::vector<uint64_t>& nprocs_per_
 static Index
 to_spatial(const uint64_t in_index, const std::vector<Shape>& in_decompositions)
 {
-    const size_t count = in_decompositions[0].count;
-    Index coords(count, static_cast<uint64_t>(0));
-    Index scale(count, static_cast<uint64_t>(1));
+    const size_t count = in_decompositions[0].size();
+    Index coords{};
+    Index scale{ones()};
     ERRCHK(coords[0] == 0);
     ERRCHK(scale[0] == 1);
     for (const auto& dims : in_decompositions) {
@@ -117,8 +118,8 @@ to_spatial(const uint64_t in_index, const std::vector<Shape>& in_decompositions)
 static uint64_t
 to_linear(const Index& in_coords, const std::vector<Shape>& in_decompositions)
 {
-    const size_t count = in_decompositions[0].count;
-    Index scale(count, static_cast<uint64_t>(1));
+    const size_t count = in_decompositions[0].size();
+    Index scale{ones()};
     ERRCHK(scale[0] == 1);
     uint64_t index = 0;
     for (const auto& dims : in_decompositions) {
@@ -254,6 +255,6 @@ test_decomp(void)
             Index coords                            = to_spatial(i, decompositions);
             buf[coords[0] + coords[1] * gdecomp[0]] = i;
         }
-        // ndarray_print("buf", gdecomp.count, gdecomp.data, buf.get());
+        // ndarray_print("buf", gdecomp.size(), gdecomp.data, buf.get());
     }
 }

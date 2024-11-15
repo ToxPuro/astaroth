@@ -121,7 +121,7 @@ main()
         const Index coords           = get_coords(cart_comm);
         const Index global_nn_offset = coords * local_nn;
 
-        const Shape rr(global_nn.count, 1); // Symmetric halo
+        const Shape rr{ones()}; // Symmetric halo
         const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
 
         NdArray<AcReal, HostMemoryResource> hin(local_mm);
@@ -132,7 +132,7 @@ main()
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
         hin.arange(static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
-        // hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        // hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index{});
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         hin.display();
@@ -154,7 +154,7 @@ main()
                        static_cast<AcReal>(prod(local_mm)));
         }
         else {
-            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index{});
         }
         migrate(hin.buffer, din.buffer);
 
@@ -180,7 +180,7 @@ main()
                        static_cast<AcReal>(prod(local_mm)));
         }
         else {
-            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index{});
         }
         migrate(hin.buffer, din.buffer);
 

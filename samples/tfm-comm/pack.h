@@ -15,33 +15,33 @@
 
 #include "math_utils.h"
 
-constexpr size_t PACK_MAX_INPUTS         = 27;
-template <typename T> using PackPtrArray = StaticArray<T, PACK_MAX_INPUTS>;
+constexpr size_t PACK_MAX_INPUTS         = 1;
+template <typename T> using PackPtrArray = ac::array<T, PACK_MAX_INPUTS>;
 
-template <typename T, typename MemoryResource>
+template <typename T, size_t N>
 void pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-          const PackPtrArray<T*>& inputs, Buffer<T, MemoryResource>& output);
+          const ac::array<T*, N>& inputs, ac::device_vector<T>& output);
 
-template <typename T, typename MemoryResource>
-void unpack(const Buffer<T, MemoryResource>& input, const Shape& mm, const Shape& block_shape,
-            const Index& block_offset, PackPtrArray<T*>& outputs);
+template <typename T, size_t N>
+void unpack(const ac::device_vector<T>& input, const Shape& mm, const Shape& block_shape,
+            const Index& block_offset, ac::array<T*, N>& outputs);
 
-extern template void pack<AcReal, HostMemoryResource>(const Shape&, const Shape&, const Index&,
-                                                      const PackPtrArray<AcReal*>&,
-                                                      Buffer<AcReal, HostMemoryResource>&);
+extern template void pack<AcReal, PACK_MAX_INPUTS>(const Shape&, const Shape&, const Index&,
+                                                   const ac::array<AcReal*, PACK_MAX_INPUTS>&,
+                                                   ac::host_vector<AcReal>&);
 
-extern template void unpack<AcReal, HostMemoryResource>(const Buffer<AcReal, HostMemoryResource>&,
-                                                        const Shape&, const Shape&, const Index&,
-                                                        PackPtrArray<AcReal*>&);
+extern template void unpack<AcReal, PACK_MAX_INPUTS>(const ac::host_vector<AcReal>&, const Shape&,
+                                                     const Shape&, const Index&,
+                                                     ac::array<AcReal*, PACK_MAX_INPUTS>&);
 
 #if defined(DEVICE_ENABLED)
-extern template void pack<AcReal, DeviceMemoryResource>(const Shape&, const Shape&, const Index&,
-                                                        const PackPtrArray<AcReal*>&,
-                                                        Buffer<AcReal, DeviceMemoryResource>&);
+extern template void pack<AcReal, PACK_MAX_INPUTS>(const Shape&, const Shape&, const Index&,
+                                                   const ac::array<AcReal*>&,
+                                                   ac::device_vector<AcReal>&);
 
-extern template void
-unpack<AcReal, DeviceMemoryResource>(const Buffer<AcReal, DeviceMemoryResource>&, const Shape&,
-                                     const Shape&, const Index&, PackPtrArray<AcReal*>&);
+extern template void unpack<AcReal, PACK_MAX_INPUTS>(const ac::device_vector<AcReal>&, const Shape&,
+                                                     const Shape&, const Index&,
+                                                     ac::array<AcReal*>&);
 #endif
 
 void test_pack(void);

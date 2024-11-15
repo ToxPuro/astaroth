@@ -1,13 +1,15 @@
 #include "pack.h"
 
-template <typename T, typename MemoryResource>
+#include <numeric>
+
+template <typename T, size_t N>
 void
 pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-     const PackPtrArray<T*>& inputs, Buffer<T, MemoryResource>& output)
+     const ac::array<T*, N>& inputs, ac::host_vector<T>& output)
 {
     const uint64_t block_nelems = prod(block_shape);
     for (uint64_t i = 0; i < block_nelems; ++i) {
-        for (size_t j = 0; j < inputs.count; ++j) {
+        for (size_t j = 0; j < inputs.size(); ++j) {
 
             // Block coords
             const Index block_coords = to_spatial(i, block_shape);
@@ -23,14 +25,14 @@ pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
     }
 }
 
-template <typename T, typename MemoryResource>
+template <typename T, size_t N>
 void
-unpack(const Buffer<T, MemoryResource>& input, const Shape& mm, const Shape& block_shape,
-       const Index& block_offset, PackPtrArray<T*>& outputs)
+unpack(const ac::host_vector<T>& input, const Shape& mm, const Shape& block_shape,
+       const Index& block_offset, ac::array<T*, N>& outputs)
 {
     const uint64_t block_nelems = prod(block_shape);
     for (uint64_t i = 0; i < block_nelems; ++i) {
-        for (size_t j = 0; j < outputs.count; ++j) {
+        for (size_t j = 0; j < outputs.size(); ++j) {
 
             // Block coords
             const Index block_coords = to_spatial(i, block_shape);
@@ -46,41 +48,42 @@ unpack(const Buffer<T, MemoryResource>& input, const Shape& mm, const Shape& blo
     }
 }
 
-template void pack<AcReal, HostMemoryResource>(const Shape&, const Shape&, const Index&,
-                                               const PackPtrArray<AcReal*>&,
-                                               Buffer<AcReal, HostMemoryResource>&);
+template void pack<AcReal, PACK_MAX_INPUTS>(const Shape&, const Shape&, const Index&,
+                                            const ac::array<AcReal*, PACK_MAX_INPUTS>&,
+                                            ac::host_vector<AcReal>&);
 
-template void unpack<AcReal, HostMemoryResource>(const Buffer<AcReal, HostMemoryResource>&,
-                                                 const Shape&, const Shape&, const Index&,
-                                                 PackPtrArray<AcReal*>&);
+template void unpack<AcReal, PACK_MAX_INPUTS>(const ac::host_vector<AcReal>&, const Shape&,
+                                              const Shape&, const Index&,
+                                              ac::array<AcReal*, PACK_MAX_INPUTS>&);
 
-template void pack<uint64_t, HostMemoryResource>(const Shape&, const Shape&, const Index&,
-                                                 const PackPtrArray<uint64_t*>&,
-                                                 Buffer<uint64_t, HostMemoryResource>&);
+template void pack<uint64_t, PACK_MAX_INPUTS>(const Shape&, const Shape&, const Index&,
+                                              const std::array<uint64_t*, PACK_MAX_INPUTS>&,
+                                              ac::host_vector<uint64_t>&);
 
-template void unpack<uint64_t, HostMemoryResource>(const Buffer<uint64_t, HostMemoryResource>&,
-                                                   const Shape&, const Shape&, const Index&,
-                                                   PackPtrArray<uint64_t*>&);
+template void unpack<uint64_t, PACK_MAX_INPUTS>(const ac::host_vector<uint64_t>&, const Shape&,
+                                                const Shape&, const Index&,
+                                                std::array<uint64_t*, PACK_MAX_INPUTS>&);
 
 void
 test_pack(void)
 {
     const size_t count = 10;
     const size_t rr    = 1;
-    Buffer<uint64_t, HostMemoryResource> hin(count);
-    Buffer<uint64_t, DeviceMemoryResource> din(count);
-    Buffer<uint64_t, DeviceMemoryResource> dout(count - 2 * rr);
-    Buffer<uint64_t, HostMemoryResource> hout(count - 2 * rr);
-    hin.arange();
-    hout.fill(0);
-    migrate(hin, din);
+    ac::host_vector<uint64_t> hin(count);
+    ac::device_vector<uint64_t> din(count);
+    ac::device_vector<uint64_t> dout(count - 2 * rr);
+    ac::host_vector<uint64_t> hout(count - 2 * rr);
+    std::iota(hin.begin(), hin.end(), 0);
+    std::fill(hout.begin(), hout.end(), 0);
+    ac::copy(hin.begin(), hin.end(), din.begin());
 
     Shape mm{count};
     Shape block_shape{count - 2 * rr};
     Index block_offset{rr};
-    PackPtrArray<uint64_t*> inputs{din.data()};
+    ac::array<uint64_t*, PACK_MAX_INPUTS> inputs{din.data()};
     pack(mm, block_shape, block_offset, inputs, dout);
-    migrate(dout, hout);
+    ac::copy(dout.begin(), dout.end(), hout.begin());
+
     // hout.display();
     ERRCHK(hout[0] == 1);
     ERRCHK(hout[1] == 2);
