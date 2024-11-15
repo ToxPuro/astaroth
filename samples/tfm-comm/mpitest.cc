@@ -81,7 +81,11 @@ main(void)
         print("hin", count, hin.get());
 
         migrate(count, hin, din);
-        call_device(0, count, din.get(), dout.get());
+        BENCHMARK(call_device(0, count, din.get(), dout.get()));
+        BENCHMARK(call_device(0, count, din.get(), dout.get()));
+        BENCHMARK(call_device(0, count, din.get(), dout.get()));
+        BENCHMARK(call_device(0, count, din.get(), dout.get()));
+        BENCHMARK(call_device(0, count, din.get(), dout.get()));
         migrate(count, dout, hout);
 
         print("hout", count, hout.get());
