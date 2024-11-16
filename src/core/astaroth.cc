@@ -30,20 +30,6 @@ static Node nodes[max_num_nodes] = {0};
 static int num_nodes             = 0;
 
 AcResult
-acInit(const AcMeshInfo)
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acQuit(void)
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
 acCheckDeviceAvailability(void)
 {
     int device_count; // Separate from num_devices to avoid side effects
@@ -52,111 +38,6 @@ acCheckDeviceAvailability(void)
         return AC_SUCCESS;
     else
         return AC_FAILURE;
-}
-
-AcResult
-acSynchronize(void)
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acSynchronizeStream(const Stream )
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acLoadDeviceConstant(const AcRealParam , const AcReal )
-{
-	return AC_FAILURE;
-	fprintf(stderr,"DEPRECATED\n");
-}
-
-AcResult
-acLoad(const AcMesh )
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acSetVertexBuffer(const VertexBufferHandle , const AcReal )
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acStore(AcMesh* )
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acIntegrate(const AcReal )
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acIntegrateGBC(const AcMeshInfo , const AcReal )
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acIntegrateStep(const int , const AcReal )
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acIntegrateStepWithOffset(const int , const AcReal , const int3 , const int3 )
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acBoundcondStep(void)
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acBoundcondStepGBC(const AcMeshInfo)
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acStoreWithOffset(const int3 , const size_t , AcMesh* )
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acLoadWithOffset(const AcMesh , const int3 , const int )
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
-}
-
-AcResult
-acSynchronizeMesh(void)
-{
-	fprintf(stderr,"DEPRECATED\n");
-	return AC_FAILURE;
 }
 
 int

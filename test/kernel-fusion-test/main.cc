@@ -22,6 +22,7 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
+#include "user_constants.h"
 
 #if AC_MPI_ENABLED
 
@@ -95,8 +96,8 @@ main(int argc, char* argv[])
     acGridSynchronizeStream(STREAM_ALL);
     acGridStoreMesh(STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
-    AcReal3* x_sum   = (AcReal3*)malloc(sizeof(AcReal3)*model.info.int_params[AC_mx]);
-    AcReal3* y_sum   = (AcReal3*)malloc(sizeof(AcReal3)*model.info.int_params[AC_my]);
+    AcReal3* x_sum   = (AcReal3*)malloc(sizeof(AcReal3)*model.info[AC_mlocal].x);
+    AcReal3* y_sum   = (AcReal3*)malloc(sizeof(AcReal3)*model.info[AC_mlocal].y);
 
     AcReal epsilon  = pow(10.0,-12.0);
     auto relative_diff = [](const auto a, const auto b)
@@ -122,7 +123,7 @@ main(int argc, char* argv[])
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
     		for(int j = dims.n0.y; j < dims.n1.y; ++j)
 		{
-			x_sum[i] += (AcReal3){model.vertex_buffer[AX][IDX(i,j,k)],model.vertex_buffer[AY][IDX(i,j,k)],model.vertex_buffer[AZ][IDX(i,j,k)]};
+			x_sum[i] += (AcReal3){model.vertex_buffer[AA.x.field][IDX(i,j,k)],model.vertex_buffer[AA.y.field][IDX(i,j,k)],model.vertex_buffer[AA.z.field][IDX(i,j,k)]};
 		}
     }
     for(int j = dims.n0.y; j < dims.n1.y; ++j)
@@ -131,7 +132,7 @@ main(int argc, char* argv[])
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
     		for(int i = dims.n0.x; i < dims.n1.x; ++i)
 		{
-			y_sum[j] += (AcReal3){model.vertex_buffer[AX][IDX(i,j,k)],model.vertex_buffer[AY][IDX(i,j,k)],model.vertex_buffer[AZ][IDX(i,j,k)]};
+			y_sum[j] += (AcReal3){model.vertex_buffer[AA.x.field][IDX(i,j,k)],model.vertex_buffer[AA.y.field][IDX(i,j,k)],model.vertex_buffer[AA.z.field][IDX(i,j,k)]};
 		}
     }
     for(int i = dims.n0.x; i < dims.n1.x; ++i)
@@ -140,13 +141,13 @@ main(int argc, char* argv[])
       {
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
 	{
-		model.vertex_buffer[AX][IDX(i,j,k)] -= x_sum[i].x;
-		model.vertex_buffer[AY][IDX(i,j,k)] -= x_sum[i].y;
-		model.vertex_buffer[AZ][IDX(i,j,k)] -= x_sum[i].z;
+		model.vertex_buffer[AA.x.field][IDX(i,j,k)] -= x_sum[i].x;
+		model.vertex_buffer[AA.y.field][IDX(i,j,k)] -= x_sum[i].y;
+		model.vertex_buffer[AA.z.field][IDX(i,j,k)] -= x_sum[i].z;
 
-		model.vertex_buffer[AX][IDX(i,j,k)] -= y_sum[j].x;
-		model.vertex_buffer[AY][IDX(i,j,k)] -= y_sum[j].y;
-		model.vertex_buffer[AZ][IDX(i,j,k)] -= y_sum[j].z;
+		model.vertex_buffer[AA.x.field][IDX(i,j,k)] -= y_sum[j].x;
+		model.vertex_buffer[AA.y.field][IDX(i,j,k)] -= y_sum[j].y;
+		model.vertex_buffer[AA.z.field][IDX(i,j,k)] -= y_sum[j].z;
 	}
       }
     }
@@ -160,9 +161,9 @@ main(int argc, char* argv[])
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
 	{
 		//printf("TRUE: %14e|GPU: %14e\n",model.vertex_buffer[AX][IDX(i,j,k)], candidate.vertex_buffer[AX][IDX(i,j,k)]);
-		ax_correct &= in_eps_threshold(model.vertex_buffer[AX][IDX(i,j,k)],candidate.vertex_buffer[AX][IDX(i,j,k)]);
-		ay_correct &= in_eps_threshold(model.vertex_buffer[AY][IDX(i,j,k)],candidate.vertex_buffer[AY][IDX(i,j,k)]);
-		az_correct &= in_eps_threshold(model.vertex_buffer[AZ][IDX(i,j,k)],candidate.vertex_buffer[AZ][IDX(i,j,k)]);
+		ax_correct &= in_eps_threshold(model.vertex_buffer[AA.x.field][IDX(i,j,k)],candidate.vertex_buffer[AA.x.field][IDX(i,j,k)]);
+		ay_correct &= in_eps_threshold(model.vertex_buffer[AA.x.field][IDX(i,j,k)],candidate.vertex_buffer[AA.y.field][IDX(i,j,k)]);
+		az_correct &= in_eps_threshold(model.vertex_buffer[AA.x.field][IDX(i,j,k)],candidate.vertex_buffer[AA.z.field][IDX(i,j,k)]);
 	}
       }
     }

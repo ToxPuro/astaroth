@@ -1862,6 +1862,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	      auto task = std::make_shared<ComputeTask>(op,0,full_input_region,full_region,device,swap_offset);
               graph->all_tasks.push_back(task);
               //done here since we want to write only to out not to in what launching the taskgraph would do
+	      //always remember to call the loader since otherwise might not be safe to execute taskgraph
+    	      op.load_kernel_params_func->loader({&grid.device->vba.kernel_input_params,grid.device, 0, {}, {}});
               acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
 	    }
 	    else
@@ -1873,6 +1875,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, grid_info.nn, device, swap_offset);
             	    graph->all_tasks.push_back(task);
             	    //done here since we want to write only to out not to in what launching the taskgraph would do
+	      	    //always remember to call the loader since otherwise might not be safe to execute taskgraph
+    	      	    op.load_kernel_params_func->loader({&grid.device->vba.kernel_input_params,grid.device, 0, {}, {}});
             	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
             	}
 	    }
@@ -4411,7 +4415,6 @@ get_kernel_analysis_info()
 #include "taskgraph_kernels.h"
 #include "taskgraph_bc_handles.h"
 #include "taskgraph_kernel_bcs.h"
-#include "user_loaders.h"
 
 bool
 is_bc_taskgraph(const AcDSLTaskGraph graph)
@@ -4687,31 +4690,9 @@ check_field_boundconds(const FieldBCs field_boundconds)
 				fatal("FATAL AC ERROR: Missing boundcond for field %s at boundary %s\n",field_names[field], boundary_str(boundaries_to_check[bc]))
 	}
 }
+static AcTaskDefinition
+gen_taskgraph_kernel_entry(const int call, const AcDSLTaskGraph graph, FILE* stream);
 
-AcTaskDefinition
-gen_taskgraph_kernel_entry(const int call, const AcDSLTaskGraph graph, FILE* stream)
-{
-	auto log = [&](const auto& elems)
-	{
-		if(!ac_pid()) fprintf(stream,"{");
-		for(const auto& elem: elems)
-			if(!ac_pid()) fprintf(stream, "%s,",get_name(elem));
-		if(!ac_pid()) fprintf(stream,"}");
-	};
-	const auto kernel = DSLTaskGraphKernels[graph][call];
-	auto fields = get_kernel_fields(kernel);
-	auto profiles = get_kernel_profiles(kernel);
-	if(!ac_pid()) fprintf(stream,"%s(",kernel_names[kernel]);
-	log(fields.in);
-	if(!ac_pid()) fprintf(stream,",");
-	log(fields.out);
-	if(!ac_pid()) fprintf(stream,",");
-	log(profiles.in);
-	if(!ac_pid()) fprintf(stream,",");
-	log(profiles.out);
-	if(!ac_pid()) fprintf(stream,")\n");
-	return acCompute(kernel,fields.in,fields.out,profiles.in,profiles.out,DSLTaskGraphKernelLoaders[graph][call]);
-}
 std::vector<AcTaskDefinition>
 gen_halo_exchange_and_boundconds(
 		const std::vector<Field>& fields,
@@ -5025,6 +5006,34 @@ acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 	return acGridBuildTaskGraph(
 		acGetDSLTaskGraphOps(graph)
 			);
+}
+
+#include "user_constants.h"
+#include "user_loaders.h"
+static AcTaskDefinition
+gen_taskgraph_kernel_entry(const int call, const AcDSLTaskGraph graph, FILE* stream)
+{
+
+	auto log = [&](const auto& elems)
+	{
+		if(!ac_pid()) fprintf(stream,"{");
+		for(const auto& elem: elems)
+			if(!ac_pid()) fprintf(stream, "%s,",get_name(elem));
+		if(!ac_pid()) fprintf(stream,"}");
+	};
+	const auto kernel = DSLTaskGraphKernels[graph][call];
+	auto fields = get_kernel_fields(kernel);
+	auto profiles = get_kernel_profiles(kernel);
+	if(!ac_pid()) fprintf(stream,"%s(",kernel_names[kernel]);
+	log(fields.in);
+	if(!ac_pid()) fprintf(stream,",");
+	log(fields.out);
+	if(!ac_pid()) fprintf(stream,",");
+	log(profiles.in);
+	if(!ac_pid()) fprintf(stream,",");
+	log(profiles.out);
+	if(!ac_pid()) fprintf(stream,")\n");
+	return acCompute(kernel,fields.in,fields.out,profiles.in,profiles.out,DSLTaskGraphKernelLoaders[graph][call]);
 }
 
 #endif // AC_MPI_ENABLED

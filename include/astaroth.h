@@ -546,72 +546,8 @@ acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
  * Legacy interface
  * =============================================================================
  */
-/** Allocates all memory and initializes the devices visible to the caller. Should be
- * called before any other function in this interface. */
-FUNC_DEFINE(AcResult, acInit,(const AcMeshInfo mesh));
 
-/** Frees all GPU allocations and resets all devices in the node. Should be
- * called at exit. */
-FUNC_DEFINE(AcResult, acQuit,(void));
-
-/** Checks whether there are any CUDA devices available. Returns AC_SUCCESS if there is 1 or more,
- * AC_FAILURE otherwise. */
 FUNC_DEFINE(AcResult, acCheckDeviceAvailability,(void));
-
-/** Synchronizes a specific stream. All streams are synchronized if STREAM_ALL is passed as a
- * parameter*/
-FUNC_DEFINE(AcResult, acSynchronizeStream,(const Stream stream));
-
-/** */
-FUNC_DEFINE(AcResult, acSynchronizeMesh,(void));
-
-/** Loads a constant to the memories of the devices visible to the caller */
-FUNC_DEFINE(AcResult, acLoadDeviceConstant,(const AcRealParam param, const AcReal value));
-
-/** Loads a constant to the memories of the devices visible to the caller */
-FUNC_DEFINE(AcResult, acLoadVectorConstant,(const AcReal3Param param, const AcReal3 value));
-
-/** Loads an AcMesh to the devices visible to the caller */
-FUNC_DEFINE(AcResult, acLoad,(const AcMesh host_mesh));
-
-/** Sets the whole mesh to some value */
-FUNC_DEFINE(AcResult, acSetVertexBuffer,(const VertexBufferHandle handle, const AcReal value));
-
-/** Stores the AcMesh distributed among the devices visible to the caller back to the host*/
-FUNC_DEFINE(AcResult, acStore,(AcMesh* host_mesh));
-
-// Loads a YZ-plate 
-FUNC_DEFINE(AcResult, acLoadYZPlate,(const int3 start, const int3 end, AcMesh* host_mesh, AcReal *yzPlateBuffer));
- 
-/** Performs Runge-Kutta 3 integration. Note: Boundary conditions are not applied after the final
- * substep and the user is responsible for calling acBoundcondStep before reading the data. */
-FUNC_DEFINE(AcResult, acIntegrate,(const AcReal dt));
-
-/** Performs Runge-Kutta 3 integration. Note: Boundary conditions are not applied after the final
- * substep and the user is responsible for calling acBoundcondStep before reading the data.
- * Has customizable boundary conditions. */
-FUNC_DEFINE(AcResult, acIntegrateGBC,(const AcMeshInfo config, const AcReal dt));
-
-/** Applies periodic boundary conditions for the Mesh distributed among the devices visible to
- * the caller*/
-FUNC_DEFINE(AcResult, acBoundcondStep,(void));
-
-/** Applies general outer boundary conditions for the Mesh distributed among the devices visible to
- * the caller*/
-FUNC_DEFINE(AcResult, acBoundcondStepGBC,(const AcMeshInfo config));
-
-/** Stores a subset of the mesh stored across the devices visible to the caller back to host memory.
- */
-FUNC_DEFINE(AcResult, acStoreWithOffset,(const int3 dst, const size_t num_vertices, AcMesh* host_mesh));
-
-/** Will potentially be deprecated in later versions. Added only to fix backwards compatibility with
- * PC for now.*/
-FUNC_DEFINE(AcResult, acIntegrateStep,(const int isubstep, const AcReal dt));
-FUNC_DEFINE(AcResult, acIntegrateStepWithOffset,(const int isubstep, const AcReal dt, const int3 start,
-                                   const int3 end));
-FUNC_DEFINE(AcResult, acSynchronize,(void));
-FUNC_DEFINE(AcResult, acLoadWithOffset,(const AcMesh host_mesh, const int3 src, const int num_vertices));
-
 FUNC_DEFINE(int, acGetNumDevicesPerNode,(void));
 
 /** Returns the number of fields (vertexbuffer handles). */
@@ -1183,18 +1119,6 @@ FUNC_DEFINE(AcResult, acDeviceStoreVectorUniform,(const Device device, const Str
                                     const AcReal3Param param, AcReal3* value));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceStoreIntUniform,(const Device device, const Stream stream, const AcIntParam param,
-                                 int* value));
-/** */
-FUNC_DEFINE(AcResult, acDeviceStoreBoolUniform,(const Device device, const Stream stream, const AcBoolParam param,
-                                 bool* value));
-
-/** */
-FUNC_DEFINE(AcResult, acDeviceStoreInt3Uniform,(const Device device, const Stream stream, const AcInt3Param param,
-                                  int3* value));
-
-
-/** */
 FUNC_DEFINE(AcResult, acDeviceLoadMeshInfo,(const Device device, const AcMeshInfo device_config));
 
 
@@ -1503,89 +1427,17 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
         LOAD_DSYM(acKernelFlushInt)
         LOAD_DSYM(acAnalysisGetKernelInfo)
         LOAD_DSYM(acDeviceSwapAllProfileBuffers)
+#if AC_MPI_ENABLED
 	LOAD_DSYM(BASE_FUNC_NAME(acBoundaryCondition))
-	LOAD_DSYM(acGetLocalNN)
-	LOAD_DSYM(acGetLocalMM)
-	LOAD_DSYM(acGetGridNN)
-	LOAD_DSYM(acGetGridMM)
-	LOAD_DSYM(acGetMinNN)
-	LOAD_DSYM(acGetMaxNN)
-	LOAD_DSYM(acGetGridMaxNN)
-	LOAD_DSYM(acGetLengths)
-	LOAD_DSYM(acHostMeshCopyVertexBuffers)
-	LOAD_DSYM(acHostMeshCopy)
-#include "device_load_uniform_loads.h"
-	*(void**)(&acGetKernelId) = dlsym(handle,"acGetKernelId");
-	if(!acGetKernelId) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelId");
-	*(void**)(&acGetKernelIdByName) = dlsym(handle,"acGetKernelIdByName");
-	if(!acGetKernelIdByName) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelIdByName");
+	LOAD_DSYM(ac_MPI_Init)
+	LOAD_DSYM(ac_MPI_Init_thread)
+	LOAD_DSYM(ac_MPI_Finalize);
+	*(void**)(&acGridMPIComm) = dlsym(handle,"acGridMPIComm");
+	if(!acGridMPIComm) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridMPIComm");
 	*(void**)(&acGridDecomposeMeshInfo) = dlsym(handle,"acGridDecomposeMeshInfo");
 	if(!acGridDecomposeMeshInfo) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridDecomposeMeshInfo");
 	*(void**)(&acGridGetLocalMeshInfo) = dlsym(handle,"acGridGetLocalMeshInfo");
 	if(!acGridGetLocalMeshInfo) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridGetLocalMeshInfo");
-	*(void**)(&acInit) = dlsym(handle,"acInit");
-	if(!acInit) fprintf(stderr,"Astaroth error: was not able to load %s\n","acInit");
-	*(void**)(&acQuit) = dlsym(handle,"acQuit");
-	if(!acQuit) fprintf(stderr,"Astaroth error: was not able to load %s\n","acQuit");
-	*(void**)(&acCheckDeviceAvailability) = dlsym(handle,"acCheckDeviceAvailability");
-	if(!acCheckDeviceAvailability) fprintf(stderr,"Astaroth error: was not able to load %s\n","acCheckDeviceAvailability");
-	*(void**)(&acSynchronizeStream) = dlsym(handle,"acSynchronizeStream");
-	if(!acSynchronizeStream) fprintf(stderr,"Astaroth error: was not able to load %s\n","acSynchronizeStream");
-	*(void**)(&acSynchronizeMesh) = dlsym(handle,"acSynchronizeMesh");
-	if(!acSynchronizeMesh) fprintf(stderr,"Astaroth error: was not able to load %s\n","acSynchronizeMesh");
-	*(void**)(&acLoadDeviceConstant) = dlsym(handle,"acLoadDeviceConstant");
-	if(!acLoadDeviceConstant) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadDeviceConstant");
-	*(void**)(&acLoadVectorConstant) = dlsym(handle,"acLoadVectorConstant");
-	if(!acLoadVectorConstant) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadVectorConstant");
-	*(void**)(&acLoad) = dlsym(handle,"acLoad");
-	if(!acLoad) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoad");
-	*(void**)(&acSetVertexBuffer) = dlsym(handle,"acSetVertexBuffer");
-	if(!acSetVertexBuffer) fprintf(stderr,"Astaroth error: was not able to load %s\n","acSetVertexBuffer");
-	*(void**)(&acStore) = dlsym(handle,"acStore");
-	if(!acStore) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStore");
-	*(void**)(&acLoadYZPlate) = dlsym(handle,"acLoadYZPlate");
-	if(!acLoadYZPlate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadYZPlate");
-	*(void**)(&acIntegrate) = dlsym(handle,"acIntegrate");
-	if(!acIntegrate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acIntegrate");
-	*(void**)(&acIntegrateGBC) = dlsym(handle,"acIntegrateGBC");
-	if(!acIntegrateGBC) fprintf(stderr,"Astaroth error: was not able to load %s\n","acIntegrateGBC");
-	*(void**)(&acBoundcondStep) = dlsym(handle,"acBoundcondStep");
-	if(!acBoundcondStep) fprintf(stderr,"Astaroth error: was not able to load %s\n","acBoundcondStep");
-	*(void**)(&acBoundcondStepGBC) = dlsym(handle,"acBoundcondStepGBC");
-	if(!acBoundcondStepGBC) fprintf(stderr,"Astaroth error: was not able to load %s\n","acBoundcondStepGBC");
-	*(void**)(&acReduceScal) = dlsym(handle,"acReduceScal");
-	if(!acReduceScal) fprintf(stderr,"Astaroth error: was not able to load %s\n","acReduceScal");
-	*(void**)(&acReduceVec) = dlsym(handle,"acReduceVec");
-	if(!acReduceVec) fprintf(stderr,"Astaroth error: was not able to load %s\n","acReduceVec");
-	*(void**)(&acReduceVecScal) = dlsym(handle,"acReduceVecScal");
-	if(!acReduceVecScal) fprintf(stderr,"Astaroth error: was not able to load %s\n","acReduceVecScal");
-	*(void**)(&acStoreWithOffset) = dlsym(handle,"acStoreWithOffset");
-	if(!acStoreWithOffset) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreWithOffset");
-	*(void**)(&acIntegrateStep) = dlsym(handle,"acIntegrateStep");
-	if(!acIntegrateStep) fprintf(stderr,"Astaroth error: was not able to load %s\n","acIntegrateStep");
-	*(void**)(&acIntegrateStepWithOffset) = dlsym(handle,"acIntegrateStepWithOffset");
-	if(!acIntegrateStepWithOffset) fprintf(stderr,"Astaroth error: was not able to load %s\n","acIntegrateStepWithOffset");
-	*(void**)(&acSynchronize) = dlsym(handle,"acSynchronize");
-	if(!acSynchronize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acSynchronize");
-	*(void**)(&acLoadWithOffset) = dlsym(handle,"acLoadWithOffset");
-	if(!acLoadWithOffset) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadWithOffset");
-	*(void**)(&acGetNumDevicesPerNode) = dlsym(handle,"acGetNumDevicesPerNode");
-	if(!acGetNumDevicesPerNode) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetNumDevicesPerNode");
-	*(void**)(&acGetNumFields) = dlsym(handle,"acGetNumFields");
-	if(!acGetNumFields) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetNumFields");
-	*(void**)(&acGetFieldHandle) = dlsym(handle,"acGetFieldHandle");
-	if(!acGetFieldHandle) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetFieldHandle");
-	*(void**)(&acGetNode) = dlsym(handle,"acGetNode");
-	if(!acGetNode) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetNode");
-	*(void**)(&ac_MPI_Init) = dlsym(handle,"ac_MPI_Init");
-	if(!ac_MPI_Init) fprintf(stderr,"Astaroth error: was not able to load %s\n","ac_MPI_Init");
-	*(void**)(&ac_MPI_Init_thread) = dlsym(handle,"ac_MPI_Init_thread");
-	if(!ac_MPI_Init_thread) fprintf(stderr,"Astaroth error: was not able to load %s\n","ac_MPI_Init_thread");
-	*(void**)(&ac_MPI_Finalize) = dlsym(handle,"ac_MPI_Finalize");
-	if(!ac_MPI_Finalize) fprintf(stderr,"Astaroth error: was not able to load %s\n","ac_MPI_Finalize");
-	*(void**)(&acGridMPIComm) = dlsym(handle,"acGridMPIComm");
-	if(!acGridMPIComm) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridMPIComm");
-	LOAD_DSYM(acGridInitBase);
 	*(void**)(&acGridQuit) = dlsym(handle,"acGridQuit");
 	if(!acGridQuit) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridQuit");
 	*(void**)(&acGridGetDevice) = dlsym(handle,"acGridGetDevice");
@@ -1639,8 +1491,6 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	*(void**)(&BASE_FUNC_NAME(acComputeWithParams)) = dlsym(handle,"acComputeWithParams");
 	*(void**)(&BASE_FUNC_NAME(acCompute)) = dlsym(handle,"acCompute");
 	*(void**)(&BASE_FUNC_NAME(acHaloExchange)) = dlsym(handle,"acHaloExchange");
-	*(void**)(&acSync) = dlsym(handle,"acSync");
-	if(!acSync) fprintf(stderr,"Astaroth error: was not able to load %s\n","acSync");
 	*(void**)(&acGridGetDefaultTaskGraph) = dlsym(handle,"acGridGetDefaultTaskGraph");
 	if(!acGridGetDefaultTaskGraph) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridGetDefaultTaskGraph");
 	*(void**)(&acGridTaskGraphHasPeriodicBoundcondsX) = dlsym(handle,"acGridTaskGraphHasPeriodicBoundcondsX");
@@ -1670,6 +1520,35 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acGridLoadStencils) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridLoadStencils");
 	*(void**)(&acGridStoreStencils) = dlsym(handle,"acGridStoreStencils");
 	if(!acGridStoreStencils) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridStoreStencils");
+	LOAD_DSYM(acGridInitBase);
+#endif
+	LOAD_DSYM(acGetLocalNN)
+	LOAD_DSYM(acGetLocalMM)
+	LOAD_DSYM(acGetGridNN)
+	LOAD_DSYM(acGetGridMM)
+	LOAD_DSYM(acGetMinNN)
+	LOAD_DSYM(acGetMaxNN)
+	LOAD_DSYM(acGetGridMaxNN)
+	LOAD_DSYM(acGetLengths)
+	LOAD_DSYM(acHostMeshCopyVertexBuffers)
+	LOAD_DSYM(acHostMeshCopy)
+#include "device_load_uniform_loads.h"
+	*(void**)(&acGetKernelId) = dlsym(handle,"acGetKernelId");
+	if(!acGetKernelId) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelId");
+	*(void**)(&acGetKernelIdByName) = dlsym(handle,"acGetKernelIdByName");
+	if(!acGetKernelIdByName) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelIdByName");
+	*(void**)(&acCheckDeviceAvailability) = dlsym(handle,"acCheckDeviceAvailability");
+	if(!acCheckDeviceAvailability) fprintf(stderr,"Astaroth error: was not able to load %s\n","acCheckDeviceAvailability");
+	*(void**)(&acGetNumDevicesPerNode) = dlsym(handle,"acGetNumDevicesPerNode");
+	if(!acGetNumDevicesPerNode) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetNumDevicesPerNode");
+	*(void**)(&acGetNumFields) = dlsym(handle,"acGetNumFields");
+	if(!acGetNumFields) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetNumFields");
+	*(void**)(&acGetFieldHandle) = dlsym(handle,"acGetFieldHandle");
+	if(!acGetFieldHandle) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetFieldHandle");
+	*(void**)(&acGetNode) = dlsym(handle,"acGetNode");
+	if(!acGetNode) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetNode");
+
+
 	*(void**)(&acNodeCreate) = dlsym(handle,"acNodeCreate");
 	if(!acNodeCreate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acNodeCreate");
 	*(void**)(&acNodeDestroy) = dlsym(handle,"acNodeDestroy");
@@ -1814,16 +1693,13 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acDeviceGeneralBoundcondStep) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceGeneralBoundcondStep");
 	*(void**)(&acDeviceGeneralBoundconds) = dlsym(handle,"acDeviceGeneralBoundconds");
 	if(!acDeviceGeneralBoundconds) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceGeneralBoundconds");
-	*(void**)(&acDeviceReduceScalNotAveraged) = dlsym(handle,"acDeviceReduceScalNotAveraged");
-	if(!acDeviceReduceScalNotAveraged) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceReduceScalNotAveraged");
+	LOAD_DSYM(acDeviceReduceScalNoPostProcessing)
 	*(void**)(&acDeviceReduceScal) = dlsym(handle,"acDeviceReduceScal");
 	if(!acDeviceReduceScal) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceReduceScal");
-	*(void**)(&acDeviceReduceVecNotAveraged) = dlsym(handle,"acDeviceReduceVecNotAveraged");
-	if(!acDeviceReduceVecNotAveraged) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceReduceVecNotAveraged");
+	LOAD_DSYM(acDeviceReduceVecNoPostProcessing)
 	*(void**)(&acDeviceReduceVec) = dlsym(handle,"acDeviceReduceVec");
 	if(!acDeviceReduceVec) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceReduceVec");
-	*(void**)(&acDeviceReduceVecScalNotAveraged) = dlsym(handle,"acDeviceReduceVecScalNotAveraged");
-	if(!acDeviceReduceVecScalNotAveraged) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceReduceVecScalNotAveraged");
+	LOAD_DSYM(acDeviceReduceVecScalNoPostProcessing)
 	*(void**)(&acDeviceReduceVecScal) = dlsym(handle,"acDeviceReduceVecScal");
 	if(!acDeviceReduceVecScal) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceReduceVecScal");
 	*(void**)(&acDeviceFinishReduce) = dlsym(handle,"acDeviceFinishReduce");

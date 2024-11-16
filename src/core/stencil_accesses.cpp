@@ -287,6 +287,11 @@ AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
 [[maybe_unused]] constexpr int AC_ALL_READ      = ~0;
 
 
+int3
+VAL(const AcInt3CompParam&)
+{
+	return (int3){0,0,0};
+}
 bool
 index_at_boundary(const int x, const int y, const int z)
 {

@@ -1,5 +1,4 @@
 hostdefine STENCIL_ORDER (0)
-Field AX,AY,AZ
 
 
 
@@ -9,42 +8,52 @@ struct Profiles
 	Profile<Y> y;
 	Profile<Z> z;
 } 
-struct VectorProfiles
+
+
+struct FieldObject
 {
-	Profiles x;
-	Profiles y;
-	Profiles z;
+	Field field;
+	Profiles profiles;
+}
+struct VectorFieldObject
+{
+	FieldObject x;
+	FieldObject y;
+	FieldObject z;
 }
 
 
-VectorProfiles AA_MEANS
+VectorFieldObject AA
 
 
 
-Kernel reduce_aa_x()
+
+
+
+Kernel reduce_vec_x(VectorFieldObject v)
 {
-    	reduce_sum(true, AX, AA_MEANS.x.x)
-    	reduce_sum(true, AY, AA_MEANS.y.x)
-    	reduce_sum(true, AZ, AA_MEANS.z.x)
+    	reduce_sum(true, v.x.field, v.x.profiles.x)
+    	reduce_sum(true, v.y.field, v.y.profiles.x)
+    	reduce_sum(true, v.z.field, v.z.profiles.x)
 
 }
-Kernel reduce_aa_y()
+Kernel reduce_vec_y(VectorFieldObject v)
 {
-    reduce_sum(true, AX, AA_MEANS.x.y)
-    reduce_sum(true, AY, AA_MEANS.y.y)
-    reduce_sum(true, AZ, AA_MEANS.z.y)
+    reduce_sum(true, v.x.field, v.x.profiles.y)
+    reduce_sum(true, v.y.field, v.y.profiles.y)
+    reduce_sum(true, v.z.field, v.z.profiles.y)
 }
-Kernel remove_aa_x()
+Kernel remove_vec_x(VectorFieldObject v)
 {
-	write(AX,AX-AA_MEANS.x.x)
-	write(AY,AY-AA_MEANS.y.x)
-	write(AZ,AZ-AA_MEANS.z.x)
+	write(v.x.field,v.x.field-v.x.profiles.x)
+	write(v.y.field,v.y.field-v.y.profiles.x)
+	write(v.z.field,v.z.field-v.z.profiles.x)
 }
-Kernel remove_aa_y()
+Kernel remove_vec_y(VectorFieldObject v)
 {
-	write(AX,AX-AA_MEANS.x.y)
-	write(AY,AY-AA_MEANS.y.y)
-	write(AZ,AZ-AA_MEANS.z.y)
+	write(v.x.field,v.x.field-v.x.profiles.y)
+	write(v.y.field,v.y.field-v.y.profiles.y)
+	write(v.z.field,v.z.field-v.z.profiles.y)
 }
 BoundConds bcs
 {
@@ -53,9 +62,9 @@ BoundConds bcs
 
 ComputeSteps rhs(bcs)
 {
-	reduce_aa_x()
-	reduce_aa_y()
-	remove_aa_x()
-	remove_aa_y()
+	reduce_vec_x(AA)
+	reduce_vec_y(AA)
+	remove_vec_x(AA)
+	remove_vec_y(AA)
 }
 //#include "../../../build/acc-runtime/api/fused_kernels.h"

@@ -1249,6 +1249,11 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	,upper_case_name, enum_name, datatype_scalar, uppr_name, define_name);
 
         fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+
+	fprintf_filename("device_store_uniform.h","GEN_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+	fprintf_filename("device_store_uniform_decl.h","DECL_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+	fprintf_filename("device_store_overloads.h","OVERLOAD_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
+
 	if(is_primitive_datatype(datatype_scalar))
 	{
         	fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
@@ -1257,11 +1262,8 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		fprintf_filename("device_load_uniform_loads.h","LOAD_DSYM(acDeviceLoad%sArray)\n",upper_case_name);
 
 
-		fprintf_filename("device_store_uniform.h","GEN_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 		fprintf_filename("device_store_uniform.h","GEN_DEVICE_STORE_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
-		fprintf_filename("device_store_uniform_decl.h","DECL_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 		fprintf_filename("device_store_uniform_decl.h","DECL_DEVICE_STORE_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
-		fprintf_filename("device_store_overloads.h","OVERLOAD_DEVICE_STORE_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 		fprintf_filename("device_store_overloads.h","OVERLOAD_DEVICE_STORE_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 	}
 	fprintf_filename("device_get_output.h", "%s\nacDeviceGet%sOutput(Device device, const %sOutputParam param)\n"
@@ -1950,15 +1952,17 @@ typedef struct
 {
 	string_vec types;
 	string_vec expr;
+	int_vec    is_constexpr;
 	node_vec expr_nodes;
 } func_params_info;
 
-#define FUNC_PARAMS_INITIALIZER {.types = VEC_INITIALIZER, .expr = VEC_INITIALIZER, .expr_nodes = VEC_INITIALIZER}
+#define FUNC_PARAMS_INITIALIZER {.types = VEC_INITIALIZER, .expr = VEC_INITIALIZER, .is_constexpr = VEC_INITIALIZER, .expr_nodes = VEC_INITIALIZER}
 void
 free_func_params_info(func_params_info* info)
 {
 	free_str_vec(&info -> types);
 	free_str_vec(&info -> expr);
+	free_int_vec(&info -> is_constexpr);
 	free_node_vec(&info -> expr_nodes);
 }
 
@@ -1982,6 +1986,7 @@ get_function_params_info_recursive(const ASTNode* node, const char* func_name, f
 		const ASTNode* tspec = get_node(NODE_TSPEC,param->lhs);
 	  	push(&dst->types,(tspec) ? tspec->lhs->buffer : NULL);
 	  	push(&dst->expr,param->rhs->buffer);
+	  	push_int(&dst->is_constexpr,false);
 	  	push_node(&dst->expr_nodes,param->rhs);
 	}
 	free_node_vec(&params);
@@ -2357,7 +2362,7 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root)
 
 			char* input_param = strdup(call_info.expr.data[i]);
 			replace_substring(&input_param,"AC_ITERATION_NUMBER","p.step_number");
-			if (is_number(call_info.expr.data[i]) || is_real(call_info.expr.data[i]) || !strcmp(input_param,"p.step_number"))
+			if (call_info.is_constexpr.data[i] || !strcmp(input_param,"p.step_number"))
 				fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], input_param);
 			else
 				fprintf(stream, "p.params -> %s.%s = acDeviceGetInput(acGridGetDevice(),%s); \n", func_name,params_info.expr.data[i], input_param);
@@ -3073,7 +3078,11 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	const char* warp_size  = "constexpr size_t warp_size = 32;";
 	const char* warp_id= "const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;";
 #endif
-	astnode_sprintf_postfix(compound_statement,"%s %s\n%s\n%s",compound_statement->postfix,
+	bool all_profiles = true;
+	for(size_t i = 0; i < kernel_reduce_info.size; ++i) 
+	  all_profiles &= (strstr(get_reduce_dst_type(kernel_reduce_info.data[i]),"Profile") != NULL);
+	if(!all_profiles)
+		astnode_sprintf_postfix(compound_statement,"%s %s\n%s\n%s",compound_statement->postfix,
 						warp_size,warp_id,
 						"const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) % warp_size;"
 						"const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;"
@@ -3600,6 +3609,7 @@ n_occurances(const char* str, const char test)
 const char*
 get_array_elem_type(char* arr_type)
 {
+	if(!strstr(arr_type,"AcArray")) return NULL;
 	if(n_occurances(arr_type,'<') == 1)
 	{
 		int start = 0;
@@ -3908,6 +3918,7 @@ get_func_call_params_info(const ASTNode* func_call)
 
 			push(&res.expr,intern(combine_all_new(params.data[i])));
 			push(&res.types,intern(get_expr_type((ASTNode*) params.data[i])));
+			push_int(&res.is_constexpr,all_identifiers_are_constexpr(params.data[i]));
 	        }	
 		res.expr_nodes = params;
 		return res;
@@ -3943,9 +3954,8 @@ get_number_of_members(const char* struct_name)
 const char*
 get_user_struct_member_expr(const ASTNode* node)
 {
-		char* res = NULL;
 		const char* struct_type = get_expr_type(node->lhs);
-		const char* field_name = get_node(NODE_MEMBER_ID,node)->buffer;
+		const char* field_name = get_node(NODE_MEMBER_ID,node->rhs)->buffer;
 		if(!field_name) return NULL;
 		const structs_info info = s_info;
 		int index = -1;
@@ -3957,8 +3967,12 @@ get_user_struct_member_expr(const ASTNode* node)
 		for(size_t i = 0; i < info.user_struct_field_names[index].size; ++i)
 			if(info.user_struct_field_names[index].data[i] == field_name) field_index = i;
 		if(field_index == -1)
+		{
+			fatal("NO %s member in %s: %s\n",field_name,struct_type,combine_all_new(node));
 			return NULL;
-		return info.user_struct_field_types[index].data[field_index];
+		}
+		const char* res = info.user_struct_field_types[index].data[field_index];
+		return res;
 }
 void
 get_dfunc_identifiers_recursive(const ASTNode* node, string_vec* res)
@@ -6395,10 +6409,10 @@ resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
 					possible_indexes_conversion;
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		//if(!strcmp(dfunc_name,"add_arr"))
+		//if(!strcmp(dfunc_name,"reduce_sum"))
 		//{
-		//	printf("Not able to resolve: %s\n",combine_all_new(node->rhs)); 
-		//	printf("Not able to resolve: %s,%s,%zu\n",call_info.types.data[0],call_info.types.data[1],possible_indexes_conversion.size); 
+		//	printf("DEBUG: Not able to resolve: %s\n",combine_all_new(node->rhs)); 
+		//	printf("DEBUG: Not able to resolve: %s,%s,%zu\n",call_info.types.data[0],call_info.types.data[1],possible_indexes_conversion.size); 
 		//}
 		return res;
 	}

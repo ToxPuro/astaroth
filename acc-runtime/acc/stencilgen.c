@@ -162,15 +162,22 @@ gen_kernel_common_prefix()
 // Write vba.out
 #if 1
   // Original
-  printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {");
-  printf("vba.out[handle][idx] = value;");
-  printf("};");
-
+  const bool AC_NON_TEMPORAL_WRITES = true;
+  if(!AC_NON_TEMPORAL_WRITES)
+  {
+  	printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {");
+  	printf("vba.out[handle][idx] = value;");
+  	printf("};");
+  }
+  else
+  {
   //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
   //  in practice (no effect on the first pass, a slight slowdown in the second
   //  pass 4.6 ms vs 4.3 ms)
-  // printf("const auto write=[&](const Field& field, const AcReal value)"
-  //  "{ __builtin_nontemporal_store(value, &vba.out[field][idx]); };");
+   printf("const auto write_base __attribute__((unused)) =[&](const Field& field, const AcReal value)"
+    "{ __builtin_nontemporal_store(value, &vba.out[field][idx]); };");
+  }
+
 #else
   // Buffered, no effect on performance
   // !Remember to emit write insructions in ac.y if this is enabled!
@@ -202,27 +209,27 @@ printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
   printf("};");
 
   printf("const auto value_profile_xy __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mx)*vertexIdx.y];");
+  printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.y];");
   printf("};");
 
   printf("const auto value_profile_xz __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mx)*vertexIdx.z];");
+  printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z];");
   printf("};");
 
   printf("const auto value_profile_yx __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_my)*vertexIdx.x];");
+  printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.x];");
   printf("};");
 
   printf("const auto value_profile_yz __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_my)*vertexIdx.z];");
+  printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z];");
   printf("};");
 
   printf("const auto value_profile_zx __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mz)*vertexIdx.x];");
+  printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.x];");
   printf("};");
 
   printf("const auto value_profile_zy __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mz)*vertexIdx.y];");
+  printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.y];");
   printf("};");
 
     printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
@@ -666,9 +673,10 @@ max(const uint64_t a, const uint64_t b)
 void
 printf_stencil_point(const int stencil, const int depth, const int height, const int width)
 {
+	const bool no_load = false;
 	const char* coeff = stencils[stencil][depth][height][width];
 	if(!strcmp(coeff,"1")) return;
-	if(!strstr(coeff,"DCONST"))
+	if(!strstr(coeff,"DCONST") && no_load)
 	    printf("%s *",coeff);
 	else
 	    printf("stencils[%d][%d][%d][%d] *",stencil,depth,height,width);

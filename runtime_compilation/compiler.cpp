@@ -77,6 +77,13 @@ to_str(const AcReal value)
 	free(tmp);
 	return res;
 }
+#if AC_DOUBLE_PRECISION
+std::string
+to_str(const float value)
+{
+	return to_str((AcReal)value);
+}
+#endif
 
 std::string
 to_str(const bool value)
@@ -123,35 +130,34 @@ struct load_arrays
 			const char* name = get_array_name(array);
 			const bool is_loaded = info.is_loaded[array];
 			auto* loaded_val = info.config[array];
+			const auto dims = get_array_dim_sizes(array,{});
 			if(n_dims == 1)
 			{
 				fprintf(fp,"override const %s %s = [",type.c_str(),name);
-				const AcArrayDims dims = get_array_dims(array);
-				for(int j = 0; j < dims.len[0]; ++j)
+				for(size_t j = 0; j < dims[0]; ++j)
 				{
 					auto val = is_loaded ? loaded_val[j] : default_value;
 					std::string val_string = to_str(val);
 					fprintf(fp,"%s",val_string.c_str());
-					if(j < dims.len[0]-1) fprintf(fp,"%s",",");
+					if(j < dims[0]-1) fprintf(fp,"%s",",");
 				}
 				fprintf(fp,"%s","]\n");
 			}
 			else if(n_dims == 2)
 			{
 				fprintf(fp,"override const %s %s = [", type.c_str(), name);
-				const AcArrayDims dims = get_array_dims(array);
-				for(int y = 0; y < dims.len[1]; ++y)
+				for(size_t y = 0; y < dims[1]; ++y)
 				{
 					fprintf(fp,"%s","[");
-					for(int x = 0; x < dims.len[0]; ++x)
+					for(size_t x = 0; x < dims[0]; ++x)
 					{
-						auto val = is_loaded ? loaded_val[x + y*dims.len[0]] : default_value;
+						auto val = is_loaded ? loaded_val[x + y*dims[0]] : default_value;
 						std::string val_string = to_str(val);
 						fprintf(fp,"%s",val_string.c_str());
-						if(x < dims.len[0]-1) fprintf(fp,"%s",",");
+						if(x < dims[0]-1) fprintf(fp,"%s",",");
 					}
 					fprintf(fp,"%s","]");
-					if(y < dims.len[1]-1) fprintf(fp,"%s",",");
+					if(y < dims[1]-1) fprintf(fp,"%s",",");
 				}
 				fprintf(fp,"]\n");
 			}
@@ -209,9 +215,7 @@ decompose_info(const MPI_Comm comm, AcCompInfo& info)
 void
 check_that_built_ins_loaded(const AcCompInfo info)
 {
-	ERRCHK_ALWAYS(info.is_loaded[AC_nx] || info.is_loaded[AC_nxgrid]);
-	ERRCHK_ALWAYS(info.is_loaded[AC_ny] || info.is_loaded[AC_nygrid]);
-	ERRCHK_ALWAYS(info.is_loaded[AC_nz] || info.is_loaded[AC_nzgrid]);
+	ERRCHK_ALWAYS(info.is_loaded[AC_nlocal] || info.is_loaded[AC_ngrid]);
 
 #if AC_MPI_ENABLED
 	ERRCHK_ALWAYS(info.is_loaded[AC_proc_mapping_strategy]);
