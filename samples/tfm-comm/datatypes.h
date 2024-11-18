@@ -37,6 +37,14 @@ template <typename T, size_t N> using array    = std::array<T, N>;
 using std::copy;
 using std::multiplies;
 using std::reduce;
+
+// raw_pointer_cast unwraps a thrust::device_ptr
+template <typename T>
+T
+raw_pointer_cast(const T& ptr) noexcept
+{
+    return ptr;
+}
 } // namespace ac
 #define __host__
 #define __device__
@@ -51,21 +59,21 @@ template <size_t N> using MPIIndex  = ac::array<int, N>;
 template <size_t N> using MPIShape  = ac::array<int, N>;
 using AcReal                        = double;
 
-template <typename T = uint64_t>
+template <typename T, size_t N>
 [[nodiscard]] auto
 ones()
 {
-    ac::array<T, NDIMS> arr{};
-    std::fill_n(arr.begin(), NDIMS, as<T>(1));
+    ac::array<T, N> arr{};
+    std::fill_n(arr.begin(), N, as<T>(1));
     return arr;
 };
 
-template <typename T = uint64_t>
+template <typename T, size_t N>
 [[nodiscard]] auto
 fill(const T& fill_value)
 {
-    ac::array<T, NDIMS> arr{};
-    std::fill_n(arr.begin(), NDIMS, fill_value);
+    ac::array<T, N> arr{};
+    std::fill_n(arr.begin(), N, fill_value);
     return arr;
 };
 

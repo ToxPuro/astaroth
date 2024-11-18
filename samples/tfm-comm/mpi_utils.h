@@ -53,6 +53,35 @@ Direction get_direction(const Index& offset, const Shape& nn, const Index& rr);
 
 void print_mpi_comm(const MPI_Comm& comm);
 
+/**
+ * Initializes MPI in funneled mode
+ * Funneled mode that is required for correct CUDA/MPI programs that
+ * utilize, e.g., asynchronous host-to-host memory copies
+ */
+void init_mpi_funneled();
+
+/** Aborts the MPI program on MPI_COMM_WORLD with error code -1 */
+void abort_mpi() noexcept;
+
+/**
+ * Finalizes the MPI context
+ * Should be called last in the program.
+ * With exception handling, this can be achieved by
+ * ```c++
+ * init_mpi_funneled();
+ * try {
+ *  MPI commands here
+ *  ...
+ * }
+ * catch (const std::except& e) {
+ *  Handle exception
+ *  abort_mpi();
+ * }
+ * finalize_mpi();
+ * ```
+ */
+void finalize_mpi();
+
 /** Creates a cartesian communicator with topology information attached
  * The resource must be freed after use with
  *  cart_comm_destroy(cart_comm)

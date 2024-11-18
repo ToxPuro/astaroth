@@ -1,0 +1,56 @@
+#include <cstdio>
+#include <iostream>
+
+#include "datatypes.h"
+
+#include "errchk_mpi.h"
+#include "mpi_utils.h"
+#include <mpi.h>
+
+int
+main()
+{
+    init_mpi_funneled();
+    try {
+        int rank, nprocs;
+        ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
+        ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
+#if defined(DEVICE_ENABLED)
+        int device_count;
+        ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
+        ERRCHK_CUDA_API(cudaSetDevice(rank % device_count));
+        ERRCHK_CUDA_API(cudaDeviceSynchronize());
+#endif
+
+        constexpr size_t ndims = 2;
+        const Shape<ndims> global_nn{4, 4};
+        MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
+        const Shape<ndims> decomp{get_decomposition(cart_comm)};
+        const Shape<ndims> local_nn{global_nn / decomp};
+        const Index<ndims> coords{get_coords(cart_comm)};
+        const Index<ndims> global_nn_offset{coords * local_nn};
+
+        auto rr{ones<uint64_t, ndims>()}; // Symmetric halo
+        auto local_mm = as<uint64_t>(2) * rr + local_nn;
+
+        const size_t count = prod(local_mm);
+        ac::host_vector<AcReal> lnrho(count);
+        ac::host_vector<AcReal> ux(count);
+        ac::host_vector<AcReal> uy(count);
+        ac::host_vector<AcReal> uz(count);
+
+        // Raw pointer cast is required to convert from device_ptr wrapper returned with
+        // device_vector.data() to a raw pointer
+        ac::array<AcReal*, 10> inputs{
+            ac::raw_pointer_cast(lnrho.data()),
+            ac::raw_pointer_cast(ux.data()),
+            ac::raw_pointer_cast(uy.data()),
+            ac::raw_pointer_cast(uz.data()),
+        };
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Exception caught: " << e.what() << std::endl;
+        abort_mpi();
+    }
+    finalize_mpi();
+}

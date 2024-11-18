@@ -73,6 +73,33 @@ print_mpi_comm(const MPI_Comm& comm)
     MPI_SYNCHRONOUS_BLOCK_END(comm);
 }
 
+void
+init_mpi_funneled()
+{
+    int provided;
+    ERRCHK_MPI_API(MPI_Init_thread(nullptr, nullptr, MPI_THREAD_FUNNELED, &provided));
+
+    int claimed;
+    ERRCHK_MPI_API(MPI_Query_thread(&claimed));
+    ERRCHK_MPI(provided == claimed);
+
+    int is_thread_main;
+    ERRCHK_MPI_API(MPI_Is_thread_main(&is_thread_main));
+    ERRCHK_MPI(is_thread_main);
+}
+
+void
+abort_mpi() noexcept
+{
+    MPI_Abort(MPI_COMM_WORLD, -1);
+}
+
+void
+finalize_mpi()
+{
+    ERRCHK_MPI_API(MPI_Finalize());
+}
+
 MPI_Comm
 cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn)
 {
