@@ -1,4 +1,5 @@
 #include "astaroth.h"
+#include "math_utils.h"
 
 AcResult
 acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
@@ -99,9 +100,9 @@ acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* con
     };
     const int3 ngrid = 
     {
-	    nx,
-	    ny,
-	    nz
+	    (int)nx,
+	    (int)ny,
+	    (int)nz
     };
     push_val(AC_ngrid,ngrid);
     push_val(AC_nlocal,ngrid);

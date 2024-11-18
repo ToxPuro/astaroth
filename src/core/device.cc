@@ -252,7 +252,7 @@ template <typename P>
 AcResult
 acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info, const P array)
 {
-	auto row_to_column_order = [](const P array, const AcMeshInfo host_info)
+	auto row_to_column_order = [&]()
 	{
 		auto* src = host_info[array];
 		const size_t len = get_array_length(array,host_info);
@@ -291,7 +291,7 @@ acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo hos
 	cudaSetDevice(device->id);
 	if(device->local_config[AC_host_has_row_memory_order])
 	{
-		auto* values = row_to_column_order(array,host_info);
+		auto* values = row_to_column_order();
 		auto res= acLoadUniform(device->streams[stream],array,values,get_array_length(array,host_info));
 		free(values);
 		return res;

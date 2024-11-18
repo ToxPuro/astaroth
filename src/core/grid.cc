@@ -291,7 +291,8 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     ERRCHK_ALWAYS(submesh_config[AC_nlocal].z % decomp.z == 0);
 
     const int3 nn = acGetLocalNN(submesh_config);
-    const int3 submesh_n = nn / decomp;
+    const auto submesh_n_size_t = nn / decomp;
+    int3 submesh_n = (int3){(int)submesh_n_size_t.x,(int)submesh_n_size_t.y,(int)submesh_n_size_t.z};
 
     set_info_val(submesh_config,AC_nlocal,submesh_n);
     submesh_config[AC_multigpu_offset] = getPid3D(global_config)*submesh_n;
