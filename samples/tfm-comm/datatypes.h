@@ -19,24 +19,41 @@ using thrust::reduce;
 // CUDA-specific
 #include <cuda/std/array>
 namespace ac {
-template <typename T, size_t N> using array = cuda::std::array<T, N>;
+template <typename T, size_t N> using base_array = cuda::std::array<T, N>;
 }
 #elif defined(HIP_ENABLED)
 // HIP-specific
 namespace ac {
-template <typename T, size_t N> using array = std::array<T, N>;
+template <typename T, size_t N> using base_array = std::array<T, N>;
 }
 #endif
 #else
 #include <vector>
 namespace ac {
-template <typename T> using host_vector        = std::vector<T>;
-template <typename T> using pinned_host_vector = std::vector<T>;
-template <typename T> using device_vector      = std::vector<T>;
-// template <typename T, size_t N> using array    = std::array<T, N>;
+template <typename T> using host_vector          = std::vector<T>;
+template <typename T> using pinned_host_vector   = std::vector<T>;
+template <typename T> using device_vector        = std::vector<T>;
+template <typename T, size_t N> using base_array = std::array<T, N>;
+using std::copy;
+using std::multiplies;
+using std::reduce;
+
+// raw_pointer_cast unwraps a thrust::device_ptr
+template <typename T>
+T
+raw_pointer_cast(const T& ptr) noexcept
+{
+    return ptr;
+}
+} // namespace ac
+#define __host__
+#define __device__
+#endif
+
+namespace ac {
 template <typename T, size_t N> class array {
   private:
-    std::array<T, N> resource{};
+    ac::base_array<T, N> resource{};
 
   public:
     // Default constructor
@@ -69,21 +86,7 @@ template <typename T, size_t N> class array {
     auto data() { return resource.data(); }
     auto data() const { return resource.data(); }
 };
-using std::copy;
-using std::multiplies;
-using std::reduce;
-
-// raw_pointer_cast unwraps a thrust::device_ptr
-template <typename T>
-T
-raw_pointer_cast(const T& ptr) noexcept
-{
-    return ptr;
-}
 } // namespace ac
-#define __host__
-#define __device__
-#endif
 
 constexpr size_t NDIMS = 2;
 
