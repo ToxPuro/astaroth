@@ -33,7 +33,42 @@ namespace ac {
 template <typename T> using host_vector        = std::vector<T>;
 template <typename T> using pinned_host_vector = std::vector<T>;
 template <typename T> using device_vector      = std::vector<T>;
-template <typename T, size_t N> using array    = std::array<T, N>;
+// template <typename T, size_t N> using array    = std::array<T, N>;
+template <typename T, size_t N> class array {
+  private:
+    std::array<T, N> resource{};
+
+  public:
+    // Default constructor
+    array() = default;
+
+    // Initializer list constructor
+    // StaticArray<int, 3> a = {1,2,3}
+    array(const std::initializer_list<T>& init_list)
+    {
+        ERRCHK(init_list.size() == N);
+        std::copy(init_list.begin(), init_list.end(), resource.begin());
+    }
+
+    // Enable the subscript[] operator
+    T& operator[](const size_t i)
+    {
+        ERRCHK(i < N);
+        return resource[i];
+    }
+    const T& operator[](const size_t i) const
+    {
+        ERRCHK(i < N);
+        return resource[i];
+    }
+    auto size() const { return resource.size(); }
+    auto begin() { return resource.begin(); }
+    auto begin() const { return resource.begin(); }
+    auto end() { return resource.end(); }
+    auto end() const { return resource.end(); }
+    auto data() { return resource.data(); }
+    auto data() const { return resource.data(); }
+};
 using std::copy;
 using std::multiplies;
 using std::reduce;
@@ -50,7 +85,7 @@ raw_pointer_cast(const T& ptr) noexcept
 #define __device__
 #endif
 
-constexpr size_t NDIMS = 3;
+constexpr size_t NDIMS = 2;
 
 template <size_t N> using Index     = ac::array<uint64_t, N>;
 template <size_t N> using Shape     = ac::array<uint64_t, N>;
