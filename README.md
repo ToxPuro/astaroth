@@ -48,7 +48,7 @@ In the base directory, run
 
 If you need a functioning and documented example of how to run Astaroth in standalone more out of the box,
 
-[please see this shock turbulence run example](config/samples/shockturb/README.md) in the directory `config/samples/shockturb/`. 
+[please see this shock turbulence run example](config/samples/shockturb/README.md) in the directory `config/samples/shockturb/`.
 
 ## Running on clusters (Slurm)
 
@@ -135,7 +135,7 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 | DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc-runtime/samples/mhd_modular` |
 | DSL_MODULE_FILE | Optionally can specify which file in DSL_MODULE_DIR to compile | empty |
 | PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
-| VERBOSE | Enables various non-critical warning and status messages. | OFF | 
+| VERBOSE | Enables various non-critical warning and status messages. | OFF |
 | BUILD_UTILS | "Builds the utility library. | ON |
 | BUILD_ACC_RUNTIME_LIBRARY | "Builds the standalone acc runtime library" | OFF |
 | USE_HIP | "Use HIP as the underlying GPGPU library instead of CUDA" | OFF |

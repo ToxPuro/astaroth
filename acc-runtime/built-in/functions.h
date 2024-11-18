@@ -58,24 +58,6 @@ elemental previous(Field s)
 	return previous_base(s)
 }
 
-vecvalue(Field3 v)
-{
-	return
-		real3(
-		   value_stencil(v.x),
-		   value_stencil(v.y),
-		   value_stencil(v.z)
-		)
-}
-vecprevious(Field3 v)
-{
-	return
-		real3(
-		   previous_base(v.x),
-		   previous_base(v.y),
-		   previous_base(v.z)
-		)
-}
 
 write(Field dst, real src)
 {
@@ -288,4 +270,13 @@ inline dup_arr(real3[] a)
 		res[i] = a[i]
 	}
 	return res;
+}
+sum(real3 a)
+{
+	return a.x + a.y + a.z
+}
+
+sum(real2 a)
+{
+	return a.x + a.y
 }

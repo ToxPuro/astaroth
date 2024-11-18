@@ -690,7 +690,6 @@ symboltable_reset(void)
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("multm2_sym"));   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("diagonal"));   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("sum"));   // TODO RECHECK
 
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_PI"));
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_EPSILON"));
@@ -1864,12 +1863,10 @@ read_user_enums_recursive(const ASTNode* node,string_vec* user_enums, string_vec
 	{
 		const int enum_index = push(user_enums,node->lhs->buffer);
 		ASTNode* enums_head = node->rhs;
-		while(enums_head->rhs)
-		{
-			push(&user_enum_options[enum_index],get_node_by_token(IDENTIFIER,enums_head->rhs)->buffer);
-			enums_head = enums_head->lhs;
-		}
-		push(&user_enum_options[enum_index],get_node_by_token(IDENTIFIER,enums_head->lhs)->buffer);
+		node_vec nodes = get_nodes_in_list(node->rhs);
+		for(size_t i = 0; i < nodes.size; ++i)
+			push(&user_enum_options[enum_index],get_node_by_token(IDENTIFIER,nodes.data[i])->buffer);
+		free_node_vec(&nodes);
 	}
 	if(node->lhs)
 		read_user_enums_recursive(node->lhs,user_enums,user_enum_options);
@@ -3501,7 +3498,15 @@ check_for_undeclared_function(const ASTNode* node)
 			if(strstr(func_name,"AC_MANGLED_NAME")) return;
 			fprintf(stderr,FATAL_ERROR_MESSAGE);
                         if(str_vec_contains(duplicate_dfuncs.names,func_name))
+			{
                                 fprintf(stderr,"Unable to resolve overloaded function: %s\nIn:\t%s\n",func_name,tmp);
+
+				func_params_info info = get_func_call_params_info(func_call_node);
+				fprintf(stderr,"Types: ");
+				for(size_t i = 0; i < info.types.size; ++i)
+					fprintf(stderr,"%s%s",info.types.data[i],i < info.types.size-1 ? "," : "");
+				fprintf(stderr,"\n");
+			}
                         else
                                 fprintf(stderr,"Undeclared function used: %s\nIn:\t%s\n",func_name,tmp);
 			if(surrounding_func)
@@ -4261,6 +4266,7 @@ gen_declared_type_info(ASTNode* node);
 const char*
 get_func_call_expr_type(ASTNode* node)
 {
+	//TP: hack for Matrix member function calls
 	if(node->lhs->type == NODE_STRUCT_EXPRESSION)
 	{
 	       const ASTNode* struct_expr   = node->lhs;
@@ -6429,10 +6435,20 @@ resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
 					possible_indexes_conversion;
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		//if(!strcmp(dfunc_name,"reduce_sum"))
+		//if(!strcmp(dfunc_name,"rk3_intermediate"))
 		//{
-		//	printf("DEBUG: Not able to resolve: %s\n",combine_all_new(node->rhs)); 
-		//	printf("DEBUG: Not able to resolve: %s,%s,%zu\n",call_info.types.data[0],call_info.types.data[1],possible_indexes_conversion.size); 
+		//	printf("Not able to resolve: %s\n",combine_all_new(node->rhs)); 
+		//	printf("Not able to resolve: %s,%s,%s,%s\n",call_info.types.data[0],call_info.types.data[1],call_info.types.data[2],call_info.types.data[3]); 
+		//	int overload_index = MAX_DFUNCS*dfunc_index-1;
+    		//	//TP: ugly hack to resolve calls in BoundConds
+		//	const int param_offset = (call_info.expr.size > 0 && is_boundary_param(call_info.expr.data[0])) ? 1 : 0;
+		//	while(possibilities.names[++overload_index] == dfunc_name)
+		//	{
+		//		for(size_t i = 0; i < possibilities.types[overload_index].size; ++i)
+		//			printf("%s,",possibilities.types[overload_index].data[i]);
+		//		printf("\n");
+		//	}
+		//	printf("Not able to resolve: %zu\n",possible_indexes.size); 
 		//}
 		return res;
 	}
