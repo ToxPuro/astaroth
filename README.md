@@ -1,3 +1,4 @@
+#FRED TEST PERMISSIONS
 # Astaroth - A Scalable Multi-GPU Library for Stencil Computations {#mainpage}
 
 [API specification](doc/Astaroth_API_specification_and_user_manual/API_specification_and_user_manual.md)| [Astaroth DSL](acc-runtime/README.md) | [Contributing](CONTRIBUTING.md) | [Licence](LICENCE.md) | [Repository](https://bitbucket.org/jpekkila/astaroth) | [Issue Tracker](https://bitbucket.org/jpekkila/astaroth/issues?status=new&status=open) | [Wiki](https://bitbucket.org/jpekkila/astaroth/wiki/Home)
