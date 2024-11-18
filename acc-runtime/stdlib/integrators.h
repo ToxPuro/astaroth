@@ -98,4 +98,81 @@ euler(real f, real update, real dt_in)
 {
 	return f + update*dt_in
 }
+/*--------------------------------------------------------------------------------------------------------------------------*/
+#define RK_ORDER (4)
+
+rk4(real s0, real s1, real roc, int step_num, real dt) {
+
+#elif RK_ORDER == 4
+    // Explicit Runge-Kutta 4th vs 3rd order 2 Register 5-step scheme
+    // "C" indicate scheme compromises stability and accuracy criteria
+    beta= [ 1153189308089./22510343858157.,
+            1772645290293./4653164025191.,
+           -1672844663538./4480602732383.,
+            2114624349019./3568978502595.,
+            5198255086312./14908931495163.]
+    bhat= [ 1016888040809./7410784769900.,
+           11231460423587./58533540763752.,
+           -1563879915014./6823010717585.,
+             606302364029./971179775848.,
+            1097981568119./3980877426909.]
+    alpha=[  970286171893./4311952581923.,
+            6584761158862./12103376702013.,
+            2251764453980./15575788980749.,
+           26877169314380./34165994151039., 0.0]
+    itter=5
+#endif
+    return s1 + beta[step_num + 1] * ((alpha[step_num] / beta[step_num]) * (s1 - s0) + roc * dt)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+#define RK_ORDER (4)
+
+rk4(real s0, real s1, real roc, int step_num, real dt) {
+
+#elif RK_ORDER == 4
+    // Explicit Runge-Kutta 4th vs 3rd order 2 Register 5-step scheme
+    // "C" indicate scheme compromises stability and accuracy criteria
+    beta= [ 1153189308089./22510343858157.,
+            1772645290293./4653164025191.,
+           -1672844663538./4480602732383.,
+            2114624349019./3568978502595.,
+            5198255086312./14908931495163.]
+    bhat= [ 1016888040809./7410784769900.,
+           11231460423587./58533540763752.,
+           -1563879915014./6823010717585.,
+             606302364029./971179775848.,
+            1097981568119./3980877426909.]
+    alpha=[  970286171893./4311952581923.,
+            6584761158862./12103376702013.,
+            2251764453980./15575788980749.,
+           26877169314380./34165994151039., 0.0]
+    itter=5
+#endif
+    // roc represents cumulative error
+    // s0, s1 are registers alternating rhs and farray
+    if num_step == 1
+        errdf = 0.
+    if mod(step_num, 2) == 1
+        errdf = errdf + dt*(beta(step_num)-bhat(step_num)) * s0
+        s1 =  s1 + dt * alpha(step_num) * s0
+        s0 =  s1 + dt * (beta(step_num) - alpha(step_num)) * s0
+
+        return s1, s0, roc
+    else
+        errdf = errdf + dt*(beta(step_num)-bhat(step_num)) * s1
+        s0 =  s0 + dt * alpha(step_num) * s1
+        s1 =  s0 + dt * (beta(step_num) - alpha(step_num)) * s1
+    return s0, s1, roc
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+#define RK_ORDER (4)
+
+rk4(real3 f, real3 w, real3 roc, int step_num, real dt) {
+
+  return real3( rk3(f.x,w.x,roc.x,step_num,dt),
+                rk3(f.y,w.y,roc.y,step_num,dt),
+                rk3(f.z,w.z,roc.z,step_num,dt)
+              )
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
 
