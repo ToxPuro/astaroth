@@ -2,17 +2,17 @@
 
 #include "datatypes.h"
 
-struct Segment {
-    Shape dims;   // Dimensions of the segment
-    Index offset; // Offset of the segment
+template <size_t N> struct Segment {
+    Shape<N> dims{};   // Dimensions of the segment
+    Index<N> offset{}; // Offset of the segment
 
     // Constructors
-    explicit Segment(const Shape& in_dims)
-        : dims{in_dims}, offset{}
+    explicit Segment(const Shape<N>& in_dims)
+        : dims{in_dims}
     {
     }
-    Segment(const Shape& in_dims, const Index& in_offset)
-        : dims{in_dims}, offset{}
+    Segment(const Shape<N>& in_dims, const Index<N>& in_offset)
+        : dims{in_dims}, offset{in_offset}
     {
     }
 
@@ -26,4 +26,4 @@ struct Segment {
     }
 };
 
-__host__ std::ostream& operator<<(std::ostream& os, const Segment& obj);
+template <size_t N> __host__ std::ostream& operator<<(std::ostream& os, const Segment<N>& obj);

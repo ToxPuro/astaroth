@@ -5,12 +5,12 @@
 
 #include "packet.h"
 
-template <typename T> class HaloExchangeTask {
+template <typename T, size_t N> class HaloExchangeTask {
   private:
-    std::vector<std::unique_ptr<Packet<T>>> packets;
+    std::vector<std::unique_ptr<Packet<T, N>>> packets;
 
   public:
-    HaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
+    HaloExchangeTask(const Shape<N>& local_mm, const Shape<N>& local_nn, const Index<N>& local_rr,
                      const size_t n_aggregate_buffers)
 
     {
@@ -30,18 +30,18 @@ template <typename T> class HaloExchangeTask {
 
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
-            packets.push_back(std::make_unique<Packet<T>>(local_mm, local_nn, local_rr, segment,
-                                                          n_aggregate_buffers));
+            packets.push_back(std::make_unique<Packet<T, N>>(local_mm, local_nn, local_rr, segment,
+                                                             n_aggregate_buffers));
         }
     }
 
-    void launch(const MPI_Comm& parent_comm, const PackPtrArray<T*>& inputs)
+    template <size_t M> void launch(const MPI_Comm& parent_comm, const ac::array<T*, M>& inputs)
     {
         for (auto& packet : packets)
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(PackPtrArray<T*>& outputs)
+    template <size_t M> void wait(ac::array<T*, M>& outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         // while (!complete()) {

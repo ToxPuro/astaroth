@@ -11,14 +11,15 @@
 
 #include <mpi.h>
 
-template <typename T> class Packet {
+template <typename T, size_t N> class Packet {
 
   private:
-    Shape local_mm;
-    Shape local_nn;
-    Index local_rr;
+    Shape<N> local_mm;
+    Shape<N> local_nn;
+    Index<N> local_rr;
 
-    Segment segment; // Shape of the data block the packet represents (for packing or unpacking)
+    Segment<N>
+        segment; // Shape<N> of the data block the packet represents (for packing or unpacking)
 
     ac::device_vector<T> send_buffer;
     ac::device_vector<T> recv_buffer;
@@ -30,8 +31,8 @@ template <typename T> class Packet {
     bool in_progress = false;
 
   public:
-    Packet(const Shape& in_local_mm, const Shape& in_local_nn, const Index& in_local_rr,
-           const Segment& in_segment, const size_t n_aggregate_buffers)
+    Packet(const Shape<N>& in_local_mm, const Shape<N>& in_local_nn, const Index<N>& in_local_rr,
+           const Segment<N>& in_segment, const size_t n_aggregate_buffers)
         : local_mm(in_local_mm),
           local_nn(in_local_nn),
           local_rr(in_local_rr),
@@ -63,7 +64,7 @@ template <typename T> class Packet {
     Packet(Packet&&)                 = delete; // Move constructor
     Packet& operator=(Packet&&)      = delete; // Move assignment operator
 
-    void launch(const MPI_Comm& parent_comm, const PackPtrArray<T*>& inputs)
+    template <size_t M> void launch(const MPI_Comm& parent_comm, const ac::array<T*, M>& inputs)
     {
         ERRCHK_MPI(!in_progress);
         in_progress = true;
@@ -77,11 +78,11 @@ template <typename T> class Packet {
         ERRCHK_MPI(count <= send_buffer.size());
         ERRCHK_MPI(count <= recv_buffer.size());
 
-        Index send_offset = ((local_nn + segment.offset - local_rr) % local_nn) + local_rr;
+        Index<N> send_offset = ((local_nn + segment.offset - local_rr) % local_nn) + local_rr;
 
-        const Direction recv_direction = get_direction(segment.offset, local_nn, local_rr);
-        const int recv_neighbor        = get_neighbor(comm, recv_direction);
-        const int send_neighbor        = get_neighbor(comm, -recv_direction);
+        auto recv_direction     = get_direction(segment.offset, local_nn, local_rr);
+        const int recv_neighbor = get_neighbor(comm, recv_direction);
+        const int send_neighbor = get_neighbor(comm, -recv_direction);
 
         // Post recv
         const int tag = 0;
@@ -109,7 +110,7 @@ template <typename T> class Packet {
         return in_progress && send_flag && recv_flag;
     };
 
-    void wait(PackPtrArray<T*>& outputs)
+    template <size_t M> void wait(ac::array<T*, M>& outputs)
     {
         ERRCHK_MPI(in_progress);
         ERRCHK_MPI_API(MPI_Wait(&recv_req, MPI_STATUS_IGNORE));
@@ -129,7 +130,7 @@ template <typename T> class Packet {
 
     bool complete() const { return !in_progress; };
 
-    friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T>& obj)
+    friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T, N>& obj)
     {
         os << "{";
         os << "segment: " << obj.segment << ", ";

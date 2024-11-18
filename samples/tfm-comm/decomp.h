@@ -9,7 +9,7 @@
  * Uses a greedy algorithm to maximize the surface area to volume
  * ratio at each cut.
  */
-Shape decompose(const Shape& nn, uint64_t nprocs);
+template <size_t N> Shape<N> decompose(const Shape<N>& nn, uint64_t nprocs);
 
 /**
  * Perform a layered decomposition.
@@ -24,7 +24,8 @@ Shape decompose(const Shape& nn, uint64_t nprocs);
  * the decomposition can be calculated by
  * decompose_hierarchical(nn, std::vector<uint64_t>{2, 4, 8});
  */
-std::vector<Shape> decompose_hierarchical(const Shape& nn,
-                                          const std::vector<uint64_t>& nprocs_per_layer);
+template <size_t N>
+std::vector<Shape<N>> decompose_hierarchical(const Shape<N>& nn,
+                                             const std::vector<uint64_t>& nprocs_per_layer);
 
 void test_decomp(void);

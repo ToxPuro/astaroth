@@ -61,17 +61,17 @@ ndarray_print(const char* label, const size_t ndims, const uint64_t* dims, const
     ndarray_print_recursive<T>(ndims, dims, array);
 }
 
-template <typename T, typename MemoryResource = HostMemoryResource> struct NdArray {
-    Shape shape;
+template <typename T, size_t N, typename MemoryResource = HostMemoryResource> struct NdArray {
+    Shape<N> shape{};
     Buffer<T, MemoryResource> buffer;
 
     // Constructor
-    explicit NdArray(const Shape& in_shape)
-        : shape(in_shape), buffer(prod(in_shape))
+    explicit NdArray(const Shape<N>& in_shape)
+        : shape{in_shape}, buffer{prod(in_shape)}
     {
     }
 
-    void fill(const T& fill_value, const Shape& subdims, const Index& offset)
+    void fill(const T& fill_value, const Shape<N>& subdims, const Index<N>& offset)
     {
         ERRCHK(subdims.size() == offset.size());
         ndarray_fill<T>(fill_value, shape.size(), shape.data(), subdims.data(), offset.data(),
@@ -82,7 +82,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> struct NdArr
 
     void display() { ndarray_print_recursive(shape.size(), shape.data(), buffer.data()); }
 
-    friend std::ostream& operator<<(std::ostream& os, const NdArray<T, MemoryResource>& obj)
+    friend std::ostream& operator<<(std::ostream& os, const NdArray<T, N, MemoryResource>& obj)
     {
         static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
                       "Can currently print only host memory");

@@ -2,68 +2,6 @@
 
 #include <numeric>
 
-template <typename T, size_t N>
-void
-pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-     const ac::array<T*, N>& inputs, ac::host_vector<T>& output)
-{
-    const uint64_t block_nelems = prod(block_shape);
-    for (uint64_t i = 0; i < block_nelems; ++i) {
-        for (size_t j = 0; j < inputs.size(); ++j) {
-
-            // Block coords
-            const Index block_coords = to_spatial(i, block_shape);
-
-            // Input coords
-            const Index in_coords = block_offset + block_coords;
-
-            const uint64_t in_idx = to_linear(in_coords, mm);
-            ERRCHK(in_idx < prod(mm));
-
-            output[i + j * block_nelems] = inputs[j][in_idx];
-        }
-    }
-}
-
-template <typename T, size_t N>
-void
-unpack(const ac::host_vector<T>& input, const Shape& mm, const Shape& block_shape,
-       const Index& block_offset, ac::array<T*, N>& outputs)
-{
-    const uint64_t block_nelems = prod(block_shape);
-    for (uint64_t i = 0; i < block_nelems; ++i) {
-        for (size_t j = 0; j < outputs.size(); ++j) {
-
-            // Block coords
-            const Index block_coords = to_spatial(i, block_shape);
-
-            // Input coords
-            const Index in_coords = block_offset + block_coords;
-
-            const uint64_t in_idx = to_linear(in_coords, mm);
-            ERRCHK(in_idx < prod(mm));
-
-            outputs[j][in_idx] = input[i + j * block_nelems];
-        }
-    }
-}
-
-template void pack<AcReal, PACK_MAX_INPUTS>(const Shape&, const Shape&, const Index&,
-                                            const ac::array<AcReal*, PACK_MAX_INPUTS>&,
-                                            ac::host_vector<AcReal>&);
-
-template void unpack<AcReal, PACK_MAX_INPUTS>(const ac::host_vector<AcReal>&, const Shape&,
-                                              const Shape&, const Index&,
-                                              ac::array<AcReal*, PACK_MAX_INPUTS>&);
-
-template void pack<uint64_t, PACK_MAX_INPUTS>(const Shape&, const Shape&, const Index&,
-                                              const std::array<uint64_t*, PACK_MAX_INPUTS>&,
-                                              ac::host_vector<uint64_t>&);
-
-template void unpack<uint64_t, PACK_MAX_INPUTS>(const ac::host_vector<uint64_t>&, const Shape&,
-                                                const Shape&, const Index&,
-                                                std::array<uint64_t*, PACK_MAX_INPUTS>&);
-
 void
 test_pack(void)
 {
@@ -77,10 +15,10 @@ test_pack(void)
     std::fill(hout.begin(), hout.end(), 0);
     ac::copy(hin.begin(), hin.end(), din.begin());
 
-    Shape mm{count};
-    Shape block_shape{count - 2 * rr};
-    Index block_offset{rr};
-    ac::array<uint64_t*, PACK_MAX_INPUTS> inputs{din.data()};
+    Shape<NDIMS> mm{count};
+    Shape<NDIMS> block_shape{count - 2 * rr};
+    Index<NDIMS> block_offset{rr};
+    ac::array<uint64_t*, 1> inputs{din.data()};
     pack(mm, block_shape, block_offset, inputs, dout);
     ac::copy(dout.begin(), dout.end(), hout.begin());
 

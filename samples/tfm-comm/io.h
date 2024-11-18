@@ -6,11 +6,11 @@
 
 #include "buffer.h"
 
-template <typename T>
+template <typename T, size_t N>
 void
-mpi_read(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& in_file_offset,
-         const Shape& in_mesh_dims, const Shape& in_mesh_subdims, const Index& in_mesh_offset,
-         const std::string& path, T* data)
+mpi_read(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims, const Index<N>& in_file_offset,
+         const Shape<N>& in_mesh_dims, const Shape<N>& in_mesh_subdims,
+         const Index<N>& in_mesh_offset, const std::string& path, T* data)
 {
     // Communicator
     MPI_Comm comm{MPI_COMM_NULL};
@@ -46,11 +46,11 @@ mpi_read(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& in
     ERRCHK_MPI_API(MPI_Comm_free(&comm));
 }
 
-template <typename T>
+template <typename T, size_t N>
 void
-mpi_write(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& in_file_offset,
-          const Shape& in_mesh_dims, const Shape& in_mesh_subdims, const Index& in_mesh_offset,
-          const T* data, const std::string& path)
+mpi_write(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims, const Index<N>& in_file_offset,
+          const Shape<N>& in_mesh_dims, const Shape<N>& in_mesh_subdims,
+          const Index<N>& in_mesh_offset, const T* data, const std::string& path)
 {
     // Communicator
     MPI_Comm comm{MPI_COMM_NULL};
@@ -80,7 +80,7 @@ mpi_write(const MPI_Comm& parent_comm, const Shape& in_file_dims, const Index& i
     ERRCHK_MPI_API(MPI_Comm_free(&comm));
 }
 
-template <typename T> class IOTaskAsync {
+template <typename T, size_t N> class IOTaskAsync {
   private:
     MPI_Info info{MPI_INFO_NULL};
     MPI_Datatype global_subarray{MPI_DATATYPE_NULL};
@@ -95,8 +95,9 @@ template <typename T> class IOTaskAsync {
     bool in_progress{false};
 
   public:
-    IOTaskAsync(const Shape& in_file_dims, const Index& in_file_offset, const Shape& in_mesh_dims,
-                const Shape& in_mesh_subdims, const Index& in_mesh_offset)
+    IOTaskAsync(const Shape<N>& in_file_dims, const Index<N>& in_file_offset,
+                const Shape<N>& in_mesh_dims, const Shape<N>& in_mesh_subdims,
+                const Index<N>& in_mesh_offset)
         : info{info_create()},
           global_subarray{
               subarray_create(in_file_dims, in_mesh_subdims, in_file_offset, get_mpi_dtype<T>())},

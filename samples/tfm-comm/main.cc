@@ -113,26 +113,27 @@ main()
 #if defined(DEVICE_ENABLED)
         benchmark();
 #endif
+        constexpr size_t N = NDIMS;
 
-        const Shape global_nn{4, 4};
-        MPI_Comm cart_comm           = cart_comm_create(MPI_COMM_WORLD, global_nn);
-        const Shape decomp           = get_decomposition(cart_comm);
-        const Shape local_nn         = global_nn / decomp;
-        const Index coords           = get_coords(cart_comm);
-        const Index global_nn_offset = coords * local_nn;
+        const Shape<N> global_nn{4, 4};
+        MPI_Comm cart_comm              = cart_comm_create(MPI_COMM_WORLD, global_nn);
+        const Shape<N> decomp           = get_decomposition<N>(cart_comm);
+        const Shape<N> local_nn         = global_nn / decomp;
+        const Index<N> coords           = get_coords<N>(cart_comm);
+        const Index<N> global_nn_offset = coords * local_nn;
 
-        const Shape rr{ones()}; // Symmetric halo
-        const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
+        const Shape<N> rr{ones<uint64_t, N>()}; // Symmetric halo
+        const Shape<N> local_mm = as<uint64_t>(2) * rr + local_nn;
 
-        NdArray<AcReal, HostMemoryResource> hin(local_mm);
-        NdArray<AcReal, HostMemoryResource> hout(local_mm);
+        NdArray<AcReal, N, HostMemoryResource> hin(local_mm);
+        NdArray<AcReal, N, HostMemoryResource> hout(local_mm);
 
-        NdArray<AcReal, DeviceMemoryResource> din(local_mm);
-        NdArray<AcReal, DeviceMemoryResource> dout(local_mm);
+        NdArray<AcReal, N, DeviceMemoryResource> din(local_mm);
+        NdArray<AcReal, N, DeviceMemoryResource> dout(local_mm);
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
         hin.arange(static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
-        // hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index{});
+        // hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index<N>{});
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         hin.display();
@@ -154,7 +155,7 @@ main()
                        static_cast<AcReal>(prod(local_mm)));
         }
         else {
-            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index{});
+            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index<N>{});
         }
         migrate(hin.buffer, din.buffer);
 
@@ -180,7 +181,7 @@ main()
                        static_cast<AcReal>(prod(local_mm)));
         }
         else {
-            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index{});
+            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index<N>{});
         }
         migrate(hin.buffer, din.buffer);
 
@@ -190,8 +191,8 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        HaloExchangeTask<AcReal> halo_exchange{local_mm, local_nn, rr, 1};
-        PackPtrArray<AcReal*> inputs{din.buffer.data()};
+        HaloExchangeTask<AcReal, N> halo_exchange{local_mm, local_nn, rr, 1};
+        ac::array<AcReal*, 1> inputs{din.buffer.data()};
         halo_exchange.launch(cart_comm, inputs);
         halo_exchange.wait(inputs);
         migrate(din.buffer, hin.buffer);
@@ -207,7 +208,7 @@ main()
         PRINT_LOG("Testing IO"); //-------------------------------
         hin.arange(static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
 
-        IOTaskAsync<AcReal> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
+        IOTaskAsync<AcReal, N> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
         // iotask.launch_write(cart_comm, hin.buffer, "test.dat");
         // iotask.wait_write();
         mpi_write(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr, hin.buffer.data(),
