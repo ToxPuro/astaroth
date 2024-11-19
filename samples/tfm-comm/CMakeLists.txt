@@ -74,7 +74,7 @@ if(NOT HOST_ONLY_MODE AND CUDAToolkit_FOUND)
     set(CMAKE_CUDA_ARCHITECTURES "60")
     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
     
-    add_library(device-module STATIC pack.cu pack.cc)
+    add_library(device-module STATIC pack.cu)
 elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
     message(STATUS "HIP found")
     enable_language(HIP)
@@ -84,15 +84,14 @@ elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
     set_source_files_properties(pack.cu PROPERTIES LANGUAGE HIP)
-    add_library(device-module STATIC pack.cu pack.cc)
+    add_library(device-module STATIC pack.cu)
 else()
     message(WARNING "Did not find CUDA or HIP, compiling in host-only mode")
-    add_library(device-module STATIC pack.cc)
 endif()
 
 ## Packages
 # add_library(acc-comm-utils STATIC buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
-add_library(acc-comm-utils STATIC buffer_exchange.cc decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc type_conversion.cc errchk_print.c)
+add_library(acc-comm-utils STATIC buffer_exchange.cc decomp.cc pack.cc partition.cc segment.cc ndarray.cc math_utils.cc type_conversion.cc errchk_print.c)
 target_link_libraries(acc-comm-utils PUBLIC CUDA::cudart)
 
 find_package(MPI REQUIRED COMPONENTS C)

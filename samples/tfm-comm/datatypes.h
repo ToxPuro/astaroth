@@ -40,8 +40,6 @@ using std::copy;
 using std::fill_n;
 using std::multiplies;
 using std::reduce;
-#define __host__
-#define __device__
 // raw_pointer_cast unwraps a thrust::device_ptr
 template <typename T>
 T
@@ -73,10 +71,9 @@ template <typename T, size_t N> class array {
 
     // Initializer list constructor
     // StaticArray<int, 3> a = {1,2,3}
-    __host__ __device__ array(const std::initializer_list<T>& init_list)
+    __host__ __device__ array(const std::initializer_list<T>& init_list) : resource{init_list}
     {
         ERRCHK(init_list.size() == N);
-        ac::copy(init_list.begin(), init_list.end(), resource.begin());
     }
 
     // Enable the subscript[] operator
