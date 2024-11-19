@@ -121,13 +121,13 @@ template <typename T, size_t N> class array {
         ERRCHK(i < N);
         return resource[i];
     }
-    __host__ __device__ const auto size() const { return resource.size(); }
+    __host__ __device__ auto size() const { return resource.size(); }
     auto begin() { return resource.begin(); }
-    const auto begin() const { return resource.begin(); }
+    auto begin() const { return resource.begin(); }
     auto end() { return resource.end(); }
-    const auto end() const { return resource.end(); }
+    auto end() const { return resource.end(); }
     auto data() { return resource.data(); }
-    const auto data() const { return resource.data(); }
+    auto data() const { return resource.data(); }
 };
 } // namespace ac
 
@@ -423,5 +423,4 @@ prod(const ac::array<T, N>& arr)
     return result;
 }
 
-void
-test_datatypes(void);
+void test_datatypes(void);
