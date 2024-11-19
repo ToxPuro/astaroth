@@ -103,7 +103,7 @@ template <typename T, size_t N> class IOTaskAsync {
               subarray_create(in_file_dims, in_mesh_subdims, in_file_offset, get_mpi_dtype<T>())},
           local_subarray{
               subarray_create(in_mesh_dims, in_mesh_subdims, in_mesh_offset, get_mpi_dtype<T>())},
-          staging_buffer(prod(in_mesh_dims))
+          staging_buffer{prod(in_mesh_dims)}
     {
     }
 

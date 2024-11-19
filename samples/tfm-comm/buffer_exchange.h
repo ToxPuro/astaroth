@@ -28,7 +28,7 @@ class BufferExchangeTask {
 
   public:
     explicit BufferExchangeTask(const size_t max_count)
-        : first_stage_buffer(max_count), second_stage_buffer(max_count)
+        : first_stage_buffer{max_count}, second_stage_buffer{max_count}
     {
     }
 

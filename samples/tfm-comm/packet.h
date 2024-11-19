@@ -33,12 +33,12 @@ template <typename T, size_t N> class Packet {
   public:
     Packet(const Shape<N>& in_local_mm, const Shape<N>& in_local_nn, const Index<N>& in_local_rr,
            const Segment<N>& in_segment, const size_t n_aggregate_buffers)
-        : local_mm(in_local_mm),
-          local_nn(in_local_nn),
-          local_rr(in_local_rr),
-          segment(in_segment),
-          send_buffer(n_aggregate_buffers * prod(in_segment.dims)),
-          recv_buffer(n_aggregate_buffers * prod(in_segment.dims))
+        : local_mm{in_local_mm},
+          local_nn{in_local_nn},
+          local_rr{in_local_rr},
+          segment{in_segment},
+          send_buffer{n_aggregate_buffers * prod(in_segment.dims)},
+          recv_buffer{n_aggregate_buffers * prod(in_segment.dims)}
     {
     }
 
