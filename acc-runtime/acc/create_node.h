@@ -29,7 +29,6 @@ create_tspec(const char* tspec_str)
 {
 	ASTNode* tspec_identifier  = astnode_create(NODE_UNKNOWN,NULL,NULL);
 	astnode_set_buffer(tspec_str,tspec_identifier);
-	tspec_identifier -> token = IDENTIFIER;
 	ASTNode* tspec  = astnode_create(NODE_TSPEC,tspec_identifier,NULL);
 	return tspec;
 }

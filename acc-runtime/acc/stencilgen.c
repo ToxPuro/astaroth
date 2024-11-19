@@ -159,40 +159,6 @@ gen_kernel_common_prefix()
   printf("(void)globalVertexIdx;"); // Silence unused warning
   printf("(void)local_compdomain_idx;");     // Silence unused warning
 					     //
-// Write vba.out
-#if 1
-  // Original
-  const bool AC_NON_TEMPORAL_WRITES = true;
-  if(!AC_NON_TEMPORAL_WRITES)
-  {
-  	printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {");
-  	printf("vba.out[handle][idx] = value;");
-  	printf("};");
-  }
-  else
-  {
-  //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
-  //  in practice (no effect on the first pass, a slight slowdown in the second
-  //  pass 4.6 ms vs 4.3 ms)
-   printf("const auto write_base __attribute__((unused)) =[&](const Field& field, const AcReal value)"
-    "{ __builtin_nontemporal_store(value, &vba.out[field][idx]); };");
-  }
-
-#else
-  // Buffered, no effect on performance
-  // !Remember to emit write insructions in ac.y if this is enabled!
-  printf("AcReal out_buffer[NUM_ALL_FIELDS];");
-  for (int field = 0; field < NUM_ALL_FIELDS; ++field)
-    printf("out_buffer[%d] = (AcReal)NAN;", field);
-
-  printf("const auto write=[&](const Field field, const AcReal value)"
-         "{ out_buffer[field] = value; };");
-/*
-for (int field = 0; field < NUM_ALL_FIELDS; ++field)
-printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
-*/
-#endif
-
   //TP: for now profile reads are not cached since they are usually read in only once and anyways since they are smaller can fit more easily to cache.
   //TP: if in the future a use case uses profiles a lot reconsider this
   if(!NUM_PROFILES) return;
@@ -253,10 +219,90 @@ printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
 
 }
 
+bool
+has_buffered_writes(const char* kernel_name)
+{
+	return strstr(kernel_name,"FUSED") != NULL;
+}
+
+static int
+get_original_index(const int* mappings, const int field)
+{
+	for(int i = 0; i <= NUM_ALL_FIELDS; ++i)
+		if (mappings[i] == field) return i;
+	return -1;
+}
+
+void
+gen_kernel_write_funcs(const int curr_kernel)
+{
+  // Write vba.out
+  #if 1
+    // Original
+    bool written_something = false;
+    for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+	    written_something |= write_called[curr_kernel][field];
+    if(!written_something) return;
+    if(has_buffered_writes(kernel_names[curr_kernel]))
+    {
+  	    for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
+  	    {
+      	      if (stencils_accessed[curr_kernel][original_field][0]) continue;
+  	      if(!write_called[curr_kernel][original_field]) continue;
+	      //TP: field is buffered written but not read, for now simply set value to 0
+  	      const int field = get_original_index(field_remappings,original_field);
+	      printf("f%s_value_stencil = 0.0;",field_names[field]);
+	    }
+	    printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {");
+            printf("switch (handle) {");
+  	    for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
+  	    {
+  	      if(!write_called[curr_kernel][original_field]) continue;
+  	      const int field = get_original_index(field_remappings,original_field);
+      	      printf("case %s: { f%s_svalue_stencil = value; break;}", field_names[field], field_names[field]);
+  	    }
+      	    printf("default: { break;}");
+	    printf("}};");
+	    return;
+    }
+
+    const bool AC_NON_TEMPORAL_WRITES = false;
+    if(!AC_NON_TEMPORAL_WRITES)
+    {
+    	printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {");
+    	printf("vba.out[handle][idx] = value;");
+    	printf("};");
+    }
+    else
+    {
+    //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
+    //  in practice (no effect on the first pass, a slight slowdown in the second
+    //  pass 4.6 ms vs 4.3 ms)
+     printf("const auto write_base __attribute__((unused)) =[&](const Field& field, const AcReal value)"
+      "{ __builtin_nontemporal_store(value, &vba.out[field][idx]); };");
+    }
+  
+  #else
+    // Buffered, no effect on performance
+    // !Remember to emit write insructions in ac.y if this is enabled!
+    printf("AcReal out_buffer[NUM_ALL_FIELDS];");
+    for (int field = 0; field < NUM_ALL_FIELDS; ++field)
+      printf("out_buffer[%d] = (AcReal)NAN;", field);
+  
+    printf("const auto write=[&](const Field field, const AcReal value)"
+           "{ out_buffer[field] = value; };");
+  /*
+  for (int field = 0; field < NUM_ALL_FIELDS; ++field)
+  printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
+  */
+  #endif
+}
+
 void
 gen_kernel_prefix(const int curr_kernel)
 {
   gen_kernel_common_prefix();
+
 
   if(kernel_calls_reduce[curr_kernel] )
   {
@@ -334,13 +380,6 @@ gen_return_if_oob(const int curr_kernel)
 	 	printf("for(int i = 0; i < NUM_INT_OUTPUTS; ++i)   should_reduce_int[i] = out_of_bounds;\n");
        }
        printf("if(!out_of_bounds){\n#include \"user_non_scalar_constants.h\"\n");
-}
-static int
-get_original_index(const int* mappings, const int field)
-{
-	for(int i = 0; i <= NUM_ALL_FIELDS; ++i)
-		if (mappings[i] == field) return i;
-	return -1;
 }
 
 static void
@@ -595,24 +634,6 @@ gen_stencil_functions(const int curr_kernel)
     printf("}");
     printf("};");
   }
-  bool tmp_writes = false;
-  for(int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
-  {
-        const int field = get_original_index(field_remappings,original_field);
-	tmp_writes |= (write_tmp_called[curr_kernel][field]);
-  }
-  if(!tmp_writes) return;
-  printf("const auto write_tmp __attribute__((unused)) = [&](const Field& field, const AcReal& value){"
-	 "switch(field) {"
-		 );
-
-  for(int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
-  {
-        const int field = get_original_index(field_remappings,original_field);
-	if(write_tmp_called[curr_kernel][field])
-		printf("case %s: f%s_s%s = value; break;",field_names[field],field_names[field],stencil_names[0]);
-  }
-  printf("}};\n");
 }
 
 #include "3d_caching_implementations.h"
@@ -1012,6 +1033,7 @@ main(int argc, char** argv)
   else if (argc == 3) {
     const int curr_kernel = atoi(argv[2]);
     gen_kernel_body(curr_kernel);
+    gen_kernel_write_funcs(curr_kernel);
   }
   else {
     fprintf(stderr, "Fatal error: invalid arguments passed to stencilgen.c");

@@ -159,7 +159,6 @@ __ballot(bool)
 static int stencils_accessed[NUM_ALL_FIELDS][NUM_STENCILS]{{}};
 static int previous_accessed[NUM_ALL_FIELDS]{};
 static int written_fields[NUM_ALL_FIELDS]{};
-static int write_tmp_on_field[NUM_ALL_FIELDS]{};
 static int read_fields[NUM_ALL_FIELDS]{};
 static int field_has_stencil_op[NUM_ALL_FIELDS]{};
 static int read_profiles[NUM_PROFILES]{};
@@ -308,14 +307,9 @@ mark_as_written(const Field& field, const int x, const int y, const int z)
 			index_at_boundary(x,y,z) ? AC_IN_BOUNDS_WRITE : AC_OUT_OF_BOUNDS_WRITE;
 }
 void
-write_tmp(const Field& field, const AcReal&)
-{
-	write_tmp_on_field[field] |= AC_OUT_OF_BOUNDS_WRITE;
-}
-void
 write_base (const Field& field, const AcReal&)
 {
-	written_fields[field] |= AC_OUT_OF_BOUNDS_WRITE;
+	written_fields[field] |= AC_IN_BOUNDS_WRITE;
 }
 void
 write_to_index (const Field& field, const int&, const AcReal&)
@@ -454,7 +448,6 @@ reset_info_arrays()
     memset(read_fields,0, sizeof(read_fields[0]) * NUM_ALL_FIELDS);
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op[0]) * NUM_ALL_FIELDS);
     memset(written_fields, 0,    sizeof(written_fields[0]) * NUM_ALL_FIELDS);
-    memset(write_tmp_on_field, 0,    sizeof(write_tmp_on_field[0]) * NUM_ALL_FIELDS);
     memset(previous_accessed, 0, sizeof(previous_accessed[0]) * NUM_ALL_FIELDS);
     //TP: would use memset but at least on Puhti the C++ compiler gives an incorrect warning that I am not multiplying the element size even though I am (I guess because the compiler simply sees zero if there are no profiles?)
     for(int i = 0; i  < NUM_PROFILES; ++i)
@@ -556,8 +549,8 @@ main(int argc, char* argv[])
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "= {");
-  bool output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS];
-  int  write_tmp_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
+  int  write_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
+  int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS]{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     reset_info_arrays();
     if (!skip_kernel_in_analysis[k])
@@ -576,7 +569,7 @@ main(int argc, char* argv[])
     	    read_fields[j] |= previous_accessed[j];
     	  }
     	  output_previous_accessed[k][j] = previous_accessed[j];
-	  write_tmp_output[k][j] = write_tmp_on_field[j];
+	  write_output[k][j] = written_fields[j];
     	}
     } 
     fwrite(read_fields,sizeof(int), NUM_ALL_FIELDS,fp_fields_read);
@@ -608,11 +601,11 @@ main(int argc, char* argv[])
   fprintf(fp, "};");
 
   fprintf(fp,
-          "static int write_tmp_called[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
+          "static int write_called[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
-        if (write_tmp_output[k][j])
+        if (write_output[k][j])
           fprintf(fp, "[%lu][%lu] = 1,", k, j);
   }
   fprintf(fp, "};");

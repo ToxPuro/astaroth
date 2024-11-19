@@ -65,6 +65,6 @@ ComputeSteps rhs(bcs)
 	reduce_vec_x(AA)
 	reduce_vec_y(AA)
 	remove_vec_x(AA)
-	remove_vec_y(AA)
+	remove_vec_y(AA)	
 }
 //#include "../../../build/acc-runtime/api/fused_kernels.h"

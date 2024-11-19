@@ -25,7 +25,7 @@ if(RUNTIME_COMPILATION)
       endif()
   endif()
 else()
-  add_library(astaroth_core device.cc decomposition.cc grid.cc task.cc node.cc astaroth.cc debug.cc update_params.cc logging.c stencil_accesses.cpp)
+  add_library(astaroth_core device.cc decomposition.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc update_params.cc logging.c stencil_accesses.cpp)
   target_compile_definitions(astaroth_core PUBLIC AC_CPU_CODE)
   set_source_files_properties(
     stencil_accesses.cpp

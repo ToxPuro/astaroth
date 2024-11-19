@@ -2102,52 +2102,62 @@ gen_kernel_structs(const ASTNode* root)
 	{
 		func_params_info info = infos[k];
 		const char* name = names.data[k];
-		FILE* fp = fopen("user_input_typedefs.h","a");
-		fprintf(fp,"\ntypedef struct %sInputParams {", name);
-		for(size_t i = 0; i < info.types.size; ++i)
-			fprintf(fp,"%s %s;",info.types.data[i],info.expr.data[i]);
-		fprintf(fp,"} %sInputParams;\n",name);
-		fclose(fp);
-		fp = fopen("safe_vtxbuf_input_params.h","a");
-		fprintf(fp,"if(kernel == %s){ \n",name);
-		for(size_t i = 0; i < info.types.size; ++i)
 		{
-			const char* param_name = info.expr.data[i];
-			const char* param_type = info.types.data[i];
-			if(strstr(param_type,"*"))
-			{
-				if(param_type != REAL_PTR_STR)
-					fatal("How to handle non-real input ptr?\n");
-				fprintf(fp,"vba.kernel_input_params.%s.%s = vba.reduce_scratchpads_real[0][0];\n",name,param_name);
-			}
+			FILE* fp = fopen("user_input_typedefs.h","a");
+			fprintf(fp,"\ntypedef struct %sInputParams {", name);
+			for(size_t i = 0; i < info.types.size; ++i)
+				fprintf(fp,"%s %s;",info.types.data[i],info.expr.data[i]);
+			fprintf(fp,"} %sInputParams;\n",name);
+			fclose(fp);
 		}
-		fprintf(fp,"}\n");
+
+		{
+			FILE* fp = fopen("safe_vtxbuf_input_params.h","a");
+			fprintf(fp,"if(kernel == %s){ \n",name);
+			for(size_t i = 0; i < info.types.size; ++i)
+			{
+				const char* param_name = info.expr.data[i];
+				const char* param_type = info.types.data[i];
+				if(strstr(param_type,"*"))
+				{
+					if(param_type != REAL_PTR_STR)
+						fatal("How to handle non-real input ptr?\n");
+					fprintf(fp,"vba.kernel_input_params.%s.%s = vba.reduce_scratchpads_real[0][0];\n",name,param_name);
+				}
+			}
+			fprintf(fp,"}\n");
+			fclose(fp);
+		}
+	}
+	{
+		FILE* fp = fopen("kernel_input_param_str.h","w");
+		fprintf(fp,"const char* kernel_input_param_strs[] = {");
+		for(size_t k = 0; k < num_kernels; ++k)
+		{
+			fprintf(fp,"\"");
+			const string_vec types = infos[k].types;
+			for(size_t i = 0; i < types.size; ++i)
+				fprintf(fp,"%s%s",types.data[i],i < types.size -1 ? "," : "");
+			fprintf(fp,"\",");
+		}
+		fprintf(fp,"};\n");
 		fclose(fp);
 	}
-	FILE* fp = fopen("kernel_input_param_str.h","w");
-	fprintf(fp,"const char* kernel_input_param_strs[] = {");
-	for(size_t k = 0; k < num_kernels; ++k)
-	{
-		fprintf(fp,"\"");
-		const string_vec types = infos[k].types;
-		for(size_t i = 0; i < types.size; ++i)
-			fprintf(fp,"%s%s",types.data[i],i < types.size -1 ? "," : "");
-		fprintf(fp,"\",");
-	}
-	fprintf(fp,"};\n");
-	fclose(fp);
 	for(size_t k = 0; k < num_kernels; ++k)
 		free_func_params_info(&infos[k]);
 
-	FILE* stream = fopen("user_input_typedefs.h","a");
-	fprintf(stream,"\ntypedef union acKernelInputParams {\n\n");
-	for(size_t k = 0; k < num_kernels; ++k)
 	{
-		const char* name = names.data[k];
-		fprintf(stream,"%sInputParams %s;\n", name,name);
+		FILE* stream = fopen("user_input_typedefs.h","a");
+		fprintf(stream,"\ntypedef union acKernelInputParams {\n\n");
+		for(size_t k = 0; k < num_kernels; ++k)
+		{
+			const char* name = names.data[k];
+			fprintf(stream,"%sInputParams %s;\n", name,name);
+		}
+		fprintf(stream,"} acKernelInputParams;\n\n");
+		fclose(stream);
 	}
-	fprintf(stream,"} acKernelInputParams;\n\n");
-	fclose(stream);
+
 	free_str_vec(&names);
 }
 
@@ -2227,50 +2237,45 @@ gen_user_enums()
   user_enums_info enum_info = e_info;
   for (size_t i = 0; i < enum_info.names.size; ++i)
   {
-	  char res[7000];
-	  sprintf(res,"%s {\n","typedef enum");
+	  fprintf_filename("user_typedefs.h","%s {\n","typedef enum");
 	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
 	  {
 		  const char* separator = (j < enum_info.options[i].size - 1) ? ",\n" : "";
-		  strcatprintf(res,"%s%s",enum_info.options[i].data[j],separator);
+		  fprintf_filename("user_typedefs.h","%s%s",enum_info.options[i].data[j],separator);
 	  }
-	  strcatprintf(res,"} %s;\n",enum_info.names.data[i]);
-  	  file_append("user_typedefs.h",res);
+	  fprintf_filename("user_typedefs.h","} %s;\n",enum_info.names.data[i]);
 
-	  sprintf(res,"std::string to_str(const %s value)\n"
+	  fprintf_filename("to_str_funcs.h","std::string to_str(const %s value)\n"
 		       "{\n"
 		       "switch(value)\n"
 		       "{\n"
 		       ,enum_info.names.data[i]);
 
 	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
-		  strcatprintf(res,"case %s: return \"%s\";\n",enum_info.options[i].data[j],enum_info.options[i].data[j]);
-	  strcat(res,"}return \"\";\n}\n");
-	  file_append("to_str_funcs.h",res);
+		  fprintf_filename("to_str_funcs.h","case %s: return \"%s\";\n",enum_info.options[i].data[j],enum_info.options[i].data[j]);
+	  fprintf_filename("to_str_funcs.h","}return \"\";\n}\n");
 
-	  sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n",enum_info.names.data[i], enum_info.names.data[i]);
-	  file_append("to_str_funcs.h",res);
+	  fprintf_filename("to_str_funcs.h","template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n",enum_info.names.data[i], enum_info.names.data[i]);
   }
 }
 void
 gen_user_structs()
 {
+	FILE* fp = fopen("user_typedefs.h","a");
 	for(size_t i = 0; i < s_info.user_structs.size; ++i)
 	{
 		const char* struct_name = s_info.user_structs.data[i];
-		FILE* struct_def = fopen("user_typedefs.h","a");
 		//TP: we use the struct coming from HIP/CUDA
 		if(struct_name != INT3_STR)
 		{
-			fprintf(struct_def,"typedef struct %s {",struct_name);
+			fprintf(fp,"typedef struct %s {",struct_name);
 			for(size_t j = 0; j < s_info.user_struct_field_names[i].size; ++j)
 			{
 				const char* type = s_info.user_struct_field_types[i].data[j];
 				const char* name = s_info.user_struct_field_names[i].data[j];
-				fprintf(struct_def, "%s %s;", type_output(type), name);
+				fprintf(fp, "%s %s;", type_output(type), name);
 			}
-			fprintf(struct_def, "} %s;\n", s_info.user_structs.data[i]);
-        		fclose(struct_def);
+			fprintf(fp, "} %s;\n", s_info.user_structs.data[i]);
 		}
 
 		bool all_reals = true;
@@ -2281,7 +2286,6 @@ gen_user_structs()
 			all_scalar_types &= s_info.user_struct_field_types[i].data[j] == REAL_STR || s_info.user_struct_field_types[i].data[j] == INT_STR;
 		}
 		if(!all_scalar_types) continue;
-		FILE* fp = fopen("user_typedefs.h","a");
 		fprintf(fp,"#ifdef __cplusplus\n");
 
 
@@ -2312,10 +2316,8 @@ gen_user_structs()
 		
 
 		fprintf(fp,"#endif\n");
-
-				   
-		fclose(fp);
 	}
+	fclose(fp);
 }
 
 
@@ -3047,6 +3049,13 @@ gen_reduce_info(const ASTNode* root)
 				push_node(&reduce_infos[i],reduce_infos[j].data[k]);
 		}
 }
+
+bool
+has_buffered_writes(const char* kernel_name)
+{
+	return strstr(kernel_name,"FUSED") != NULL;
+}
+
 void
 gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 {
@@ -3059,14 +3068,24 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	  astnode_sprintf_postfix(compound_statement,"%s; (void)vba;}",compound_statement->postfix);
 	  return;
 	}
-	const node_vec kernel_reduce_info = reduce_infos[str_vec_get_index(calling_info.names,get_node_by_token(IDENTIFIER,node->lhs)->buffer)];
+
+	const char* fn_name = get_node(NODE_FUNCTION_ID,node)->buffer;
+	const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,fn_name,KERNEL_STR);
+	if(has_optimization_info() && has_buffered_writes(fn_name))
+	{
+		for(size_t i = 0; i < num_fields; ++i)
+		{
+			if(!written_fields[i + num_fields*kernel_index]) continue;
+	  		const char* name = get_symbol_by_index(NODE_VARIABLE_ID,i,FIELD_STR)->identifier;
+			astnode_sprintf_postfix(compound_statement,"vba.out[%s][idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
+		}
+	}
+	const node_vec kernel_reduce_info = reduce_infos[str_vec_get_index(calling_info.names,fn_name)];
 	if(kernel_reduce_info.size == 0)
 	{
 	  astnode_sprintf_postfix(compound_statement,"%s}",compound_statement->postfix);
 	  return;
 	}
-	const ASTNode* fn_identifier = get_node(NODE_FUNCTION_ID,node);
-	const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,fn_identifier->buffer,KERNEL_STR);
 
 #if AC_USE_HIP
 	const char* shuffle_instruction = "rocprim::warp_shuffle_down(";
@@ -3136,7 +3155,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 				break;
 		 	case(NO_REDUCE):
 				printf("WRONG!\n");
-				printf("%s\n",fn_identifier->buffer);
+				printf("%s\n",fn_name);
       				exit(EXIT_FAILURE);
 	 	}
 
@@ -3177,7 +3196,7 @@ init_populate(const ASTNode* node, funcs_calling_info* info, const NodeType func
 void
 gen_calling_info(const ASTNode* root)
 {
-	if(calling_info.names.size != 0) return;
+	memset(&calling_info,0,sizeof(calling_info));
 	calling_info.called_funcs = malloc(sizeof(string_vec)*MAX_FUNCS);
 	for(int i = 0; i < MAX_FUNCS; ++i) 
 	{
@@ -3657,31 +3676,31 @@ const char*
 output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 {
 	const char* res = NULL;
-	const char* tspecifier = NULL;
+	const char* tspecifier_out = NULL;
         if (tspec.id)
 	{
-	  tspecifier = tspec.id;
+	  tspecifier_out = tspec.id;
         }
         else if (add_auto(node))
 	{
 	  if(node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, " constexpr ");
 	  if(node->expr_type)
 	  {
-		tspecifier = node->expr_type;
+		tspecifier_out = node->expr_type;
 	  }
 	  else
           	fprintf(stream, "auto ");
 	}
-	if(tspecifier)
+	if(tspecifier_out)
 	{
-	  const bool is_reference = tspecifier[strlen(tspecifier)-1] == '&';
+	  const bool is_reference = tspecifier_out[strlen(tspecifier_out)-1] == '&';
           //TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
-	  if(tspecifier[strlen(tspecifier)-1] == '*' || tspecifier[strlen(tspecifier)-2] == '*')
+	  if(tspecifier_out[strlen(tspecifier_out)-1] == '*' || tspecifier_out[strlen(tspecifier_out)-2] == '*')
             fprintf(stream, "%s%s ", "auto", is_reference ? "&" : "");
 	  //TP: Hacks
-	  else if(strstr(tspecifier,"WITH_INLINE"))
+	  else if(strstr(tspecifier_out,"WITH_INLINE"))
             fprintf(stream, "%s%s ", "auto", is_reference ? "&" : "");
-	  else if(strstr(tspecifier,"AcArray"))
+	  else if(strstr(tspecifier_out,"AcArray"))
 	  {
 		  if(is_reference)
 		  {
@@ -3689,13 +3708,13 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 		  }
 		  else
 		  {
-		  	fprintf(stream, "%s ", get_array_elem_type(strdup(tspecifier)));
-		  	res = get_array_elem_size(strdup(tspecifier));
+		  	fprintf(stream, "%s ", get_array_elem_type(strdup(tspecifier_out)));
+		  	res = get_array_elem_size(strdup(tspecifier_out));
 		  }
 	  }
-	  else if(tspecifier != KERNEL_STR)
+	  else if(tspecifier_out != KERNEL_STR)
 	  {
-            fprintf(stream, "%s ", type_output(tspecifier));
+            fprintf(stream, "%s ", type_output(tspecifier_out));
 	  }
 	}
 	return res;
@@ -5794,8 +5813,6 @@ eval_ands(ASTNode* node)
 	/**
 	if(strstr(lhs_val,"false") && !strstr(lhs_val,"!"))
 	{
-		printf("HI: %s\n",lhs_val);
-		printf("HI: %s\n",combine_all_new(node));
 		exit(EXIT_FAILURE);
 	}
 	**/
@@ -7326,7 +7343,6 @@ monomorphize_kernel_calls(ASTNode* node)
 	TRAVERSE_PREAMBLE(monomorphize_kernel_calls);
 	if(node->type != NODE_TASKGRAPH_DEF)
 		return;
-	const char* name = node->lhs->lhs->buffer;
 	node_vec kernel_call_nodes = get_nodes_in_list(node->rhs);
 	for(size_t i = 0; i < kernel_call_nodes.size; ++i)
 	{
@@ -7349,10 +7365,204 @@ monomorphize_kernel_calls(ASTNode* node)
 	}
 	free_node_vec(&kernel_call_nodes);
 }
+const char*
+get_fused_res_name(const node_vec kernels)
+{
+	const char* res = get_node_by_token(IDENTIFIER,kernels.data[0])->buffer;
+	for(size_t i = 1; i < kernels.size; ++i)
+	{
+		const char* name = get_node_by_token(IDENTIFIER,kernels.data[i])->buffer;
+		res = sprintf_intern("%s_FUSED_%s",res,name);
+	}
+	return res;
+}
+bool can_fuse_kernels(const node_vec kernels)
+{
+	bool updated_fields[num_fields];
+	bool updated_profiles[num_profiles];
+	memset(updated_fields,false,num_fields*sizeof(bool));
+	memset(updated_profiles,false,num_profiles*sizeof(bool));
+
+	for(size_t i = 0; i < kernels.size; ++i)
+	{
+		const char* func_name = get_node_by_token(IDENTIFIER,kernels.data[i])->buffer;
+		const int kernel_index = get_symbol_index(NODE_FUNCTION_ID, func_name, KERNEL_STR);
+		if(kernel_index == -1) fatal("Did not find kernel: %s\n",func_name);
+
+		//TP: can't fuse if Field F is updated before and then used in a succeeding call
+		for(size_t field_index = 0; field_index < num_fields; ++field_index)
+			if(field_has_stencil_op[field_index + num_fields*kernel_index] && updated_fields[field_index]) return false;
+
+		//TP: can't fuse if Profile P is updated before and then used in succeeding call
+		for(size_t profile_index = 0; profile_index < num_profiles; ++profile_index)
+			if(read_profiles[profile_index + num_profiles*kernel_index] && updated_profiles[profile_index]) return false;
+
+		for(size_t field_index = 0; field_index < num_fields; ++field_index)
+			updated_fields[field_index] |= written_fields[field_index + num_fields*kernel_index];
+
+		for(size_t profile_index = 0; profile_index < num_profiles; ++profile_index)
+			updated_profiles[profile_index] |= reduced_profiles[profile_index + num_profiles*kernel_index];
+	}
+	return true;
+}
+bool should_fuse_kernels(const node_vec kernels)
+{
+	bool fields_in_working_memory[num_fields];
+	bool fields_written[num_fields];
+	bool stencil_computed[num_fields];
+	memset(fields_in_working_memory,false,num_fields*sizeof(bool));
+	memset(fields_written,false,num_fields*sizeof(bool));
+	memset(stencil_computed,false,num_fields*sizeof(bool));
+	for(size_t i = 0; i < kernels.size; ++i)
+	{
+		const char* func_name = get_node_by_token(IDENTIFIER,kernels.data[i])->buffer;
+		const int kernel_index = get_symbol_index(NODE_FUNCTION_ID, func_name, KERNEL_STR);
+		if(kernel_index == -1) fatal("Did not find kernel: %s\n",func_name);
+
+		for(size_t field_index = 0; field_index < num_fields; ++field_index)
+		{
+			//TP: we save gmem accesses since can skip reading the field from gmem
+			if(fields_in_working_memory[field_index] && read_fields[field_index + num_fields*kernel_index]) return true;
+			//TP: we save gmem accesses since can combine some output writes together
+			if(fields_written[field_index] && written_fields[field_index + num_fields*kernel_index]) return true;
+		}
+
+		for(size_t field_index = 0; field_index < num_fields; ++field_index)
+		{
+			fields_in_working_memory[field_index] |= written_fields[field_index + num_fields*kernel_index];
+			fields_in_working_memory[field_index] |= read_fields[field_index + num_fields*kernel_index];
+
+			fields_written[field_index] |= written_fields[field_index + num_fields*kernel_index];
+		}
+	}
+	return true;
+}
+
+ASTNode*
+fuse_kernels(const node_vec kernels)
+{
+	if(!has_optimization_info()) return NULL;
+	node_vec bodies = VEC_INITIALIZER;
+	//TP: have to be in reverse order that bodies before come before
+	for(int i = kernels.size-1; i >= 0; --i)
+		push_node(&bodies,kernels.data[i]->rhs->rhs->lhs);
+
+	ASTNode* combined_body = build_list_node(bodies,"");
+
+	ASTNode* compound_statement = astnode_create(NODE_BEGIN_SCOPE,combined_body,NULL);
+	astnode_set_prefix("{",compound_statement);
+	astnode_set_postfix("}",compound_statement);
+
+	const char* res_name = get_fused_res_name(kernels);
+	ASTNode* decl = create_declaration(res_name,KERNEL_STR,NULL);
+        set_identifier_type(NODE_FUNCTION_ID, decl);
+
+	ASTNode* function_body = astnode_create(NODE_BEGIN_SCOPE,NULL,compound_statement);
+	astnode_set_prefix("(",function_body);
+	astnode_set_infix(")",function_body);
+	ASTNode* func_def = astnode_create(NODE_KFUNCTION,decl,function_body);
+	func_def->type |= NODE_KFUNCTION;
+        const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
+        astnode_set_prefix(default_param_list, func_def->rhs);
+	astnode_set_prefix("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n",func_def);
+	return func_def;
+}
+void
+fuse_kernel_calls(const node_vec calls, ASTNode* tail_node, string_vec* generated_names)
+{
+	if(calls.size <= 1) return;
+	node_vec kernels = VEC_INITIALIZER;
+	for(size_t i = 0; i< calls.size; ++i)
+	{
+		const ASTNode* call = calls.data[i];
+		const char* func_name = get_node_by_token(IDENTIFIER,call)->buffer;
+		const int index = str_vec_get_index(kfunc_names,func_name);
+		push_node(&kernels,kfunc_nodes.data[index]);
+		
+	}
+	//TP: it can be possible that in different combination branches the same kernel is trying to be generated, simply skip if already generated
+	const char* res_name = get_fused_res_name(kernels);
+	if(str_vec_contains(*generated_names,res_name)) return;
+	push(generated_names,res_name);
+
+	const bool fuse = can_fuse_kernels(kernels) && should_fuse_kernels(kernels);
+	if(!fuse)
+	{
+		free_node_vec(&kernels);
+		return;
+	}
+	ASTNode* fused_kernel = fuse_kernels(kernels);
+
+	ASTNode* append_node = tail_node;
+	while(append_node->lhs) append_node = append_node->lhs;
+	ASTNode* new_node = astnode_create(NODE_UNKNOWN,NULL,fused_kernel);
+	append_node->lhs = new_node;
+
+	free_node_vec(&kernels);
+}
+void
+gen_all_fused_combinations(const node_vec input, const int index, const node_vec prev, ASTNode* tail_node, string_vec* generated_names)
+{
+	if(index == (int)input.size)
+	{
+		fuse_kernel_calls(prev,tail_node,generated_names);
+		return;
+	}
+	node_vec lhs = VEC_INITIALIZER;
+	node_vec rhs = VEC_INITIALIZER;
+	for(size_t i = 0; i < prev.size; ++i)
+	{
+		push_node(&lhs,prev.data[i]);
+		push_node(&rhs,prev.data[i]);
+	}	
+	push_node(&rhs,input.data[index]);
+
+	gen_all_fused_combinations(input,index+1,lhs,tail_node,generated_names);
+	gen_all_fused_combinations(input,index+1,rhs,tail_node,generated_names);
+
+	free_node_vec(&lhs);
+	free_node_vec(&rhs);
+}
+void
+fuse_computesteps_calls(ASTNode* node, ASTNode* tail_node)
+{
+	TRAVERSE_PREAMBLE_PARAMS(fuse_computesteps_calls,tail_node);
+	if(node->type != NODE_TASKGRAPH_DEF) return;
+	node_vec kernel_call_nodes = get_nodes_in_list(node->rhs);
+	node_vec no_param_calls = VEC_INITIALIZER;
+	for(size_t i= 0; i < kernel_call_nodes.size; ++i)
+	{
+		func_params_info params_info =  get_func_call_params_info(kernel_call_nodes.data[i]);
+		free_func_params_info(&params_info);
+		if(params_info.expr.size == 0) push_node(&no_param_calls,kernel_call_nodes.data[i]);
+	}
+	free_node_vec(&kernel_call_nodes);
+	node_vec empty_node = VEC_INITIALIZER;
+	string_vec generated_names = VEC_INITIALIZER;
+	gen_all_fused_combinations(no_param_calls,0,empty_node,tail_node,&generated_names);
+}
+ASTNode*
+get_tail_node(ASTNode* node)
+{
+	if(node->rhs) return get_tail_node(node->rhs);
+	return node;
+}
+void
+gen_fused_kernels(ASTNode* root)
+{
+	if(!has_optimization_info() && kfunc_nodes.size == 0) return;
+	fuse_computesteps_calls(root, get_tail_node(root));
+}
+
 void
 preprocess(ASTNode* root, const bool optimize_conditionals)
 {
+  memset(&kfunc_nodes,0,sizeof(kfunc_nodes));
+  memset(&kfunc_names,0,sizeof(kfunc_names));
   get_nodes(root,&kfunc_nodes,&kfunc_names,NODE_KFUNCTION);
+
+//  for(size_t i = 0; i < kfunc_nodes.size; ++i)
+//	  printf("HMM: %s\n",kfunc_names.data[i]);
   remove_extra_braces_in_arr_initializers(root);
   symboltable_reset();
   rename_scoped_variables(root,NULL,NULL);
@@ -7365,6 +7575,7 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   canonalize(root);
 
 
+  if(monomorphization_index == 0)
   {
   	traverse(root, 0, NULL);
   	monomorphize_kernel_calls(root);
@@ -7395,6 +7606,14 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   memset(&params,0,sizeof(params));
   params.do_checks = true;
   traverse_base(root, 0, 0, NULL, params);
+}
+void
+gen_kfunc_info(const ASTNode* root)
+{
+  memset(&kfunc_nodes,0,sizeof(kfunc_nodes));
+  memset(&kfunc_names,0,sizeof(kfunc_names));
+  get_nodes(root,&kfunc_nodes,&kfunc_names,NODE_KFUNCTION);
+  gen_calling_info(root);
 }
 
 
@@ -7527,7 +7746,11 @@ gen_output_files(ASTNode* root)
   traverse(root, 0, NULL);
   process_overrides(root);
 
-  file_append("user_typedefs.h","#include \"func_attributes.h\"\n");
+  {
+  	FILE* fp = fopen("user_typedefs.h","w");
+	fprintf(fp,"#include \"func_attributes.h\"\n");
+	fclose(fp);
+  }
   gen_user_enums();
   gen_user_structs();
   replace_const_ints(root,const_int_values,const_ints);
@@ -7547,7 +7770,6 @@ gen_output_files(ASTNode* root)
 	const char* define_name = convert_to_define_name(datatypes.data[i]);
 	const char* uppr_name =       strupr(define_name);
 	fprintf(fp,"  AC_%s_TYPE,\n",uppr_name);
-
   }
   free_str_vec(&datatypes);
   fprintf(fp,"  AC_PROF_TYPE\n");
@@ -7735,7 +7957,7 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
     fprintf(tmp, "};");
     fprintf(tmp,
             "static int "
-            "write_tmp_called[NUM_KERNELS][NUM_ALL_FIELDS] = {");
+            "write_called[NUM_KERNELS][NUM_ALL_FIELDS] = {");
     for (size_t i = 0; i < num_kernels; ++i)
       for (size_t j = 0; j < num_fields; ++j)
           fprintf(tmp, "[%lu][%lu] = 1,", i, j);
@@ -7903,24 +8125,6 @@ rename_kernels(ASTNode* node)
 		printf("RENAMED\n");
 	}
 }
-const ASTNode*
-get_func_head(const char* func_name, const ASTNode* node)
-{
-	if(node->lhs)
-	{
-		const ASTNode* lhs_res = get_func_head(func_name, node->lhs);
-		if(lhs_res) return lhs_res;
-	}
-	if(node->rhs)
-	{
-		const ASTNode* rhs_res = get_func_head(func_name, node->rhs);
-		if(rhs_res) return rhs_res;
-	}
-	if(!(node->type & NODE_FUNCTION)) return NULL;
-	if (func_name == get_node_by_token(IDENTIFIER,node)->buffer)
-		return node;
-	return NULL;
-}
 void replace_write_calls(ASTNode* node, const ASTNode* decl_node)
 {
 	TRAVERSE_PREAMBLE_PARAMS(replace_return_nodes,decl_node);
@@ -7928,38 +8132,7 @@ void replace_write_calls(ASTNode* node, const ASTNode* decl_node)
 	replace_node(node,create_assignment(decl_node,node->rhs,EQ_STR));
 }
 
-void fuse_kernels(const char* a, const char* b, const ASTNode* root)
-{
-	if(!has_optimization_info()) return;
-	const int a_index = get_symbol_index(NODE_FUNCTION_ID, a, KERNEL_STR);
-	const int b_index = get_symbol_index(NODE_FUNCTION_ID, b, KERNEL_STR);
-	const ASTNode* a_head = get_func_head(a,root);
-	const ASTNode* b_head = get_func_head(b,root);
-	if(!a_head) return;
-	if(!b_head) return;
-	//TP: for now do not fuse kernels that have stencil ops
-	for(size_t field_index = 0; field_index < num_fields; ++field_index)
-	{
-		if(field_has_stencil_op[field_index + num_fields*a_index]) return;
-		if(field_has_stencil_op[field_index + num_fields*b_index]) return;
-	}
-	////TP: fusing makes only sense if the inputs overlap
-	bool inputs_overlap = false;
-	for(size_t field_index = 0; field_index < num_fields; ++field_index)
-	{
-		inputs_overlap |= (read_fields[field_index + num_fields*a_index] && read_fields[field_index + num_fields*b_index]);
-		inputs_overlap |= (written_fields[field_index + num_fields*a_index] && read_fields[field_index + num_fields*b_index]);
-	}
-	if(!inputs_overlap) return;
-	const ASTNode* a_body = a_head->rhs->rhs->lhs;
-	const ASTNode* b_body = b_head->rhs->rhs->lhs;
-	FILE* fp = fopen("fused_kernels.h","a");
-	fprintf(fp,"Kernel %s_FUSED_%s () {\n",a,b);
-	fprintf(fp,"%s",combine_all_new_with_whitespace(a_body));
-	fprintf(fp,"%s",combine_all_new_with_whitespace(b_body));
-	fprintf(fp,"}\n");
-	fclose(fp);
-}
+
 void
 check_uniquenes(const ASTNode* root, const NodeType type, const char* message_name)
 {

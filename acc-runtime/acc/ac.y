@@ -418,6 +418,15 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	if(OPTIMIZE_MEM_ACCESSES)
 	{
      		generate_mem_accesses(); // Uncomment to enable stencil mem access checking
+
+		gen_fused_kernels(new_root);
+		gen_kfunc_info(new_root);
+		reset_all_files();
+		gen_output_files(new_root);
+		fp_cpu = fopen("user_kernels.h.raw","w");
+		generate(new_root,fp_cpu,true,optimize_conditionals);
+		fclose(fp_cpu);
+		generate_mem_accesses();
 	}
 	reset_diff_files();
         FILE* fp = fopen("user_kernels.h.raw", "w");
@@ -1190,15 +1199,6 @@ function_definition: declaration function_body {
                             // Set kernel built-in variables
                             const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
                             astnode_set_prefix(default_param_list, $$->rhs);
-
-                            assert(compound_statement);
-                            astnode_set_prefix("{", compound_statement);
-                            astnode_set_postfix(
-                              //"\n#pragma unroll\n"
-                              //"for (int field = 0; field < NUM_FIELDS; ++field)"
-                              //"if (!isnan(out_buffer[field]))"
-                              //"vba.out[field][idx] = out_buffer[field];"
-                              "}", compound_statement);
                         } else {
                             astnode_set_infix(" __attribute__((unused)) =[&]", $$);
                             astnode_set_postfix(";", $$);
