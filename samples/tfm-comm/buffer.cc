@@ -1,6 +1,7 @@
 #include "buffer.h"
 
-#include "cuda_utils.h"
+#include <numeric>
+
 #include "errchk.h"
 
 void
@@ -9,10 +10,10 @@ test_buffer()
     {
         const size_t count = 10;
         Buffer<double> a(count);
-        a.arange();
+        std::iota(a.begin(), a.end(), 0);
         Buffer<double> b(count);
         migrate(a, b);
-        ERRCHK(std::equal(a.data(), a.data() + count, b.data()));
+        ERRCHK(std::equal(a.begin(), a.end(), b.begin()));
     }
     {
         const size_t count = 10;
@@ -41,17 +42,17 @@ test_buffer()
         migrate(d, c);
         migrate(d, d);
 
-        a.arange();
-        b.fill(0);
+        std::iota(a.begin(), a.end(), 0);
+        std::fill(b.begin(), b.end(), 0);
         migrate(a, b);
-        c.fill(0);
+        std::fill(c.begin(), c.end(), 0);
         migrate(b, c);
         migrate(c, d);
-        c.fill(0);
+        std::fill(c.begin(), c.end(), 0);
         migrate(d, c);
-        b.fill(0);
+        std::fill(b.begin(), b.end(), 0);
         migrate(c, b);
-        ERRCHK(std::equal(a.data(), a.data() + a.size(), b.data()));
+        ERRCHK(std::equal(a.begin(), a.end(), b.begin()));
     }
     // {
     //     const size_t count = 10;

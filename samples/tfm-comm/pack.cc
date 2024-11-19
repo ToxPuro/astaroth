@@ -16,9 +16,9 @@ test_pack(void)
     // ac::copy(hin.begin(), hin.end(), din.begin());
     migrate(hin, din);
 
-    Shape<NDIMS> mm{count};
-    Shape<NDIMS> block_shape{count - 2 * rr};
-    Index<NDIMS> block_offset{rr};
+    Shape<1> mm{count};
+    Shape<1> block_shape{count - 2 * rr};
+    Index<1> block_offset{rr};
     ac::array<uint64_t*, 1> inputs{din.data()};
     pack(mm, block_shape, block_offset, inputs, dout);
     migrate(dout, hout);

@@ -16,6 +16,12 @@ template <typename T, size_t N> using base_array = std::array<T, N>;
 }
 #endif
 
+#if defined(DEVICE_ENABLED)
+#else
+#define __host__
+#define __device__
+#endif
+
 // #if defined(DEVICE_ENABLED)
 // namespace ac{
 //     template <typename T> using host_vector = Buffer<T, HostMemoryResource>;
@@ -124,8 +130,6 @@ template <typename T, size_t N> class array {
     const auto data() const { return resource.data(); }
 };
 } // namespace ac
-
-constexpr size_t NDIMS = 2;
 
 template <size_t N> using Index     = ac::array<uint64_t, N>;
 template <size_t N> using Shape     = ac::array<uint64_t, N>;
@@ -418,3 +422,6 @@ prod(const ac::array<T, N>& arr)
         result *= arr[i];
     return result;
 }
+
+void
+test_datatypes(void);

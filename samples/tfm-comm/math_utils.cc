@@ -97,9 +97,9 @@ test_within_box(void)
         ERRCHK(within_box(coords, box_dims, box_offset) == false);
     }
     {
-        const ac::array<uint64_t, 10> box_offset{0, 0, 0, 0, 0, 0, 0};
-        const ac::array<uint64_t, 10> box_dims{1, 2, 3, 4, 5, 6, 7};
-        const ac::array<uint64_t, 10> coords{0, 1, 2, 3, 4, 5, 6};
+        const ac::array<uint64_t, 7> box_offset{0, 0, 0, 0, 0, 0, 0};
+        const ac::array<uint64_t, 7> box_dims{1, 2, 3, 4, 5, 6, 7};
+        const ac::array<uint64_t, 7> coords{0, 1, 2, 3, 4, 5, 6};
         ERRCHK(within_box(coords, box_dims, box_offset) == true);
     }
 }

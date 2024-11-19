@@ -5,21 +5,21 @@
 #include "ndarray.h"
 #include "pack.h"
 #include "partition.h"
-#include "static_array.h"
+#include "datatypes.h"
 #include "type_conversion.h"
 
 int
 main(void)
 {
     test_type_conversion();
-    test_static_array();
+    test_datatypes();
+    test_math_utils();
+    test_buffer();
     test_ndarray();
     test_partition();
     test_decomp();
-    test_buffer();
-    test_math_utils();
-    test_buffer_exchange();
     test_pack();
+    test_buffer_exchange();
 
     return EXIT_SUCCESS;
 }

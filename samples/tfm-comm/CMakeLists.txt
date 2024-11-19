@@ -74,7 +74,7 @@ if(NOT HOST_ONLY_MODE AND CUDAToolkit_FOUND)
     set(CMAKE_CUDA_ARCHITECTURES "60")
     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
     
-    add_library(device-module STATIC pack.cu)
+    add_library(device-module STATIC pack.cc pack.cu)
 elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
     message(STATUS "HIP found")
     enable_language(HIP)
@@ -84,15 +84,15 @@ elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
     set_source_files_properties(pack.cu PROPERTIES LANGUAGE HIP)
-    add_library(device-module STATIC pack.cu)
+    add_library(device-module STATIC pack.cc pack.cu)
 else()
     message(WARNING "Did not find CUDA or HIP, compiling in host-only mode")
+    add_library(device-module STATIC pack.cc)
 endif()
 
 ## Packages
 # add_library(acc-comm-utils STATIC buffer_exchange.cc decomp.cc partition.cc segment.cc buffer.cc ndarray.cc math_utils.cc static_array.cc type_conversion.cc errchk_print.c)
-add_library(acc-comm-utils STATIC buffer_exchange.cc decomp.cc pack.cc partition.cc segment.cc ndarray.cc math_utils.cc type_conversion.cc errchk_print.c)
-target_link_libraries(acc-comm-utils PUBLIC CUDA::cudart)
+add_library(acc-comm-utils STATIC buffer_exchange.cc buffer.cc decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc datatypes.cc type_conversion.cc errchk_print.c)
 
 find_package(MPI REQUIRED COMPONENTS C)
 add_executable(run main.cc halo_exchange.cc packet.cc mpi_utils.cc)
@@ -135,11 +135,11 @@ target_link_libraries(run PRIVATE MPI::MPI_C acc-comm-utils device-module)
 # add_executable(run main.cc halo_exchange.cc packet.cc mpi_utils.cc)
 # target_link_libraries(run PRIVATE MPI::MPI_C acc-comm-utils device-module)
 
-# # ## Automated tests
-# include(CTest)
-# add_executable(unit_test unit_test.cc)
-# target_link_libraries(unit_test PRIVATE acc-comm-utils device-module)
-# add_test(NAME UnitTest COMMAND unit_test)
+## Automated tests
+include(CTest)
+add_executable(unit_test unit_test.cc)
+target_link_libraries(unit_test PRIVATE acc-comm-utils device-module)
+add_test(NAME UnitTest COMMAND unit_test)
 
 # add_executable(comm_test comm_test.cc halo_exchange.cc)
 # target_link_libraries(comm_test PRIVATE MPI::MPI_C acc-comm-utils)

@@ -116,10 +116,10 @@ unpack(const Buffer<T, DeviceMemoryResource>& input, const Shape<N>& mm, const S
 // Specialization
 template
 void
-pack<AcReal, NDIMS, MAX_PACK_COUNT>(const Shape<NDIMS>& mm, const Shape<NDIMS>& block_shape, const Index<NDIMS>& block_offset,
-     const ac::array<AcReal*, MAX_PACK_COUNT>& inputs, Buffer<AcReal, DeviceMemoryResource>& output);
+pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(const Shape<PACK_NDIMS>& mm, const Shape<PACK_NDIMS>& block_shape, const Index<PACK_NDIMS>& block_offset,
+     const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs, Buffer<AcReal, DeviceMemoryResource>& output);
 
 template
 void
-unpack<AcReal, NDIMS, MAX_PACK_COUNT>(const Buffer<AcReal, DeviceMemoryResource>& input, const Shape<NDIMS>& mm, const Shape<NDIMS>& block_shape,
-       const Index<NDIMS>& block_offset, ac::array<AcReal*, MAX_PACK_COUNT>& outputs);
+unpack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(const Buffer<AcReal, DeviceMemoryResource>& input, const Shape<PACK_NDIMS>& mm, const Shape<PACK_NDIMS>& block_shape,
+       const Index<PACK_NDIMS>& block_offset, ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& outputs);
