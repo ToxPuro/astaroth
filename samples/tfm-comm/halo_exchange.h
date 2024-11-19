@@ -40,10 +40,10 @@ launch_halo_exchange(const MPI_Comm parent_comm, const Shape<N>& local_mm, const
     for (const Segment<N>& segment : segments) {
         const Index<N> recv_offset{segment.offset};
         const Index<N> send_offset{((local_nn + recv_offset - rr) % local_nn) + rr};
-        MPI_Datatype recv_subarray = subarray_create(local_mm, segment.dims, recv_offset,
-                                                     get_mpi_dtype<T>());
-        MPI_Datatype send_subarray = subarray_create(local_mm, segment.dims, send_offset,
-                                                     get_mpi_dtype<T>());
+        MPI_Datatype recv_subarray{subarray_create(local_mm, segment.dims, recv_offset,
+                                                     get_mpi_dtype<T>())};
+        MPI_Datatype send_subarray{subarray_create(local_mm, segment.dims, send_offset,
+                                                     get_mpi_dtype<T>())};
 
         const Direction<N> recv_direction{get_direction(segment.offset, local_nn, rr)};
         const int recv_neighbor{get_neighbor(cart_comm, recv_direction)};

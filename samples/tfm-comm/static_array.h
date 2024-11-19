@@ -62,7 +62,7 @@ template <typename T, size_t N> struct StaticArray {
     }
 
     // Initializer list constructor
-    // StaticArray<int, 3> a = {1,2,3}
+    // StaticArray<int, 3> a{1,2,3}
     __host__ __device__ StaticArray(const std::initializer_list<T>& init_list)
         : count(init_list.size())
     {

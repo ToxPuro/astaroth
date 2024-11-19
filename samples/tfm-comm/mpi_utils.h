@@ -393,7 +393,7 @@ class MPIRequestWrapper {
         ERRCHK_MPI(req != MPI_REQUEST_NULL);
 
         int flag{0};
-        MPI_Status status = {};
+        MPI_Status status{};
         status.MPI_ERROR  = MPI_SUCCESS;
         ERRCHK_MPI_API(MPI_Request_get_status(req, &flag, &status));
         ERRCHK_MPI_API(status.MPI_ERROR);
@@ -404,7 +404,7 @@ class MPIRequestWrapper {
     {
         ERRCHK_MPI(req != MPI_REQUEST_NULL);
 
-        MPI_Status status = {};
+        MPI_Status status{};
         status.MPI_ERROR  = MPI_SUCCESS;
         ERRCHK_MPI_API(MPI_Wait(&req, &status));
         ERRCHK_MPI_API(status.MPI_ERROR);

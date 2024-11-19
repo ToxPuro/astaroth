@@ -84,8 +84,8 @@ test_decomp(void)
 
         for (size_t i{0}; i < vecprod(nprocs_per_layer); ++i) {
             // Forward
-            Index<3> coords = {0, 0, 0};
-            Index<3> scale  = {1, 1, 1};
+            Index<3> coords{0, 0, 0};
+            Index<3> scale{1, 1, 1};
             for (size_t j{decompositions.size() - 1}; j < decompositions.size(); --j) {
                 coords = coords + scale * to_spatial(i / prod(scale), decompositions[j]);
                 scale  = scale * decompositions[j];
