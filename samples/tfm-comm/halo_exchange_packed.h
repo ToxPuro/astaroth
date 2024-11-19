@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "packet.h"
+#include "partition.h"
 
 template <typename T, size_t N> class HaloExchangeTask {
   private:

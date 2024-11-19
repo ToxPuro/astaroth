@@ -8,9 +8,10 @@
 
 template <typename T, size_t N>
 void
-mpi_read(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims, const Index<N>& in_file_offset,
-         const Shape<N>& in_mesh_dims, const Shape<N>& in_mesh_subdims,
-         const Index<N>& in_mesh_offset, const std::string& path, T* data)
+mpi_read_collective(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims,
+                    const Index<N>& in_file_offset, const Shape<N>& in_mesh_dims,
+                    const Shape<N>& in_mesh_subdims, const Index<N>& in_mesh_offset,
+                    const std::string& path, T* data)
 {
     // Communicator
     MPI_Comm comm{MPI_COMM_NULL};
@@ -48,9 +49,10 @@ mpi_read(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims, const Index<
 
 template <typename T, size_t N>
 void
-mpi_write(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims, const Index<N>& in_file_offset,
-          const Shape<N>& in_mesh_dims, const Shape<N>& in_mesh_subdims,
-          const Index<N>& in_mesh_offset, const T* data, const std::string& path)
+mpi_write_collective(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims,
+                     const Index<N>& in_file_offset, const Shape<N>& in_mesh_dims,
+                     const Shape<N>& in_mesh_subdims, const Index<N>& in_mesh_offset, const T* data,
+                     const std::string& path)
 {
     // Communicator
     MPI_Comm comm{MPI_COMM_NULL};
@@ -80,13 +82,14 @@ mpi_write(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims, const Index
     ERRCHK_MPI_API(MPI_Comm_free(&comm));
 }
 
-template <typename T, size_t N> class IOTaskAsync {
+template <typename T, size_t N, typename StagingMemoryResource = PinnedHostMemoryResource>
+class IOTaskAsync {
   private:
     MPI_Info info{MPI_INFO_NULL};
     MPI_Datatype global_subarray{MPI_DATATYPE_NULL};
     MPI_Datatype local_subarray{MPI_DATATYPE_NULL};
 
-    Buffer<T, PinnedHostMemoryResource> staging_buffer;
+    Buffer<T, StagingMemoryResource> staging_buffer;
 
     MPI_Comm comm{MPI_COMM_NULL};
     MPI_File file{MPI_FILE_NULL};
@@ -129,8 +132,8 @@ template <typename T, size_t N> class IOTaskAsync {
     }
 
     template <typename MemoryResource>
-    void launch_write(const MPI_Comm& parent_comm, const Buffer<T, MemoryResource>& input,
-                      const std::string& path)
+    void launch_write_collective(const MPI_Comm& parent_comm,
+                                 const Buffer<T, MemoryResource>& input, const std::string& path)
     {
         ERRCHK_MPI(!in_progress);
         in_progress = true;
@@ -154,7 +157,7 @@ template <typename T, size_t N> class IOTaskAsync {
         ERRCHK_MPI_API(MPI_File_iwrite_all(file, staging_buffer.data(), 1, local_subarray, &req));
     }
 
-    void wait_write()
+    void wait_write_collective()
     {
         ERRCHK_MPI(in_progress);
         ERRCHK_MPI_API(MPI_Wait(&req, MPI_STATUS_IGNORE));

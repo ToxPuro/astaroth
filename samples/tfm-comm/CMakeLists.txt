@@ -93,9 +93,15 @@ endif()
 ## Packages
 add_library(acc-comm-utils STATIC buffer_exchange.cc buffer.cc decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc datatypes.cc type_conversion.cc errchk_print.c)
 
+
 find_package(MPI REQUIRED COMPONENTS C)
 add_executable(run main.cc halo_exchange.cc packet.cc mpi_utils.cc)
 target_link_libraries(run PRIVATE MPI::MPI_C device-module acc-comm-utils)
+
+add_library(acc-comm SHARED halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc buffer.cc decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc datatypes.cc type_conversion.cc errchk_print.c)
+target_link_libraries(acc-comm PUBLIC MPI::MPI_C device-module)
+add_executable(tfm tfm.cc)
+target_link_libraries(tfm PRIVATE acc-comm)
 
 ## Automated tests
 include(CTest)

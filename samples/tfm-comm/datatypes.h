@@ -140,6 +140,15 @@ using AcReal                        = double;
 
 template <typename T, size_t N>
 [[nodiscard]] auto
+zeros()
+{
+    ac::array<T, N> arr{};
+    std::fill_n(arr.begin(), N, as<T>(0));
+    return arr;
+};
+
+template <typename T, size_t N>
+[[nodiscard]] auto
 ones()
 {
     ac::array<T, N> arr{};
