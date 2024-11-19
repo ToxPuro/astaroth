@@ -18,7 +18,7 @@
 template <typename T, size_t N, size_t M>
 void
 pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offset,
-     const ac::array<T*, M>& inputs, ac::host_vector<T>& output)
+     const ac::array<T*, M>& inputs, Buffer<T, HostMemoryResource>& output)
 {
     const uint64_t block_nelems = prod(block_shape);
     for (uint64_t i = 0; i < block_nelems; ++i) {
@@ -40,7 +40,7 @@ pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offs
 
 template <typename T, size_t N, size_t M>
 void
-unpack(const ac::host_vector<T>& input, const Shape<N>& mm, const Shape<N>& block_shape,
+unpack(const Buffer<T, HostMemoryResource>& input, const Shape<N>& mm, const Shape<N>& block_shape,
        const Index<N>& block_offset, ac::array<T*, M>& outputs)
 {
     const uint64_t block_nelems = prod(block_shape);
@@ -67,21 +67,21 @@ constexpr size_t MAX_PACK_COUNT = 1;
 template <typename T, size_t N, size_t M>
 void
 pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offset,
-     const ac::array<T*, M>& inputs, ac::device_vector<T>& output);
+     const ac::array<T*, M>& inputs, Buffer<T, DeviceMemoryResource>& output);
 
 template <typename T, size_t N, size_t M>
 void
-unpack(const ac::device_vector<T>& input, const Shape<N>& mm, const Shape<N>& block_shape,
+unpack(const Buffer<T, DeviceMemoryResource>& input, const Shape<N>& mm, const Shape<N>& block_shape,
        const Index<N>& block_offset, ac::array<T*, M>& outputs);
 
 extern template
 void
 pack<AcReal, NDIMS, MAX_PACK_COUNT>(const Shape<NDIMS>& mm, const Shape<NDIMS>& block_shape, const Index<NDIMS>& block_offset,
-     const ac::array<AcReal*, MAX_PACK_COUNT>& inputs, ac::device_vector<AcReal>& output);
+     const ac::array<AcReal*, MAX_PACK_COUNT>& inputs, Buffer<AcReal, DeviceMemoryResource>& output);
 
 extern template
 void
-unpack<AcReal, NDIMS, MAX_PACK_COUNT>(const ac::device_vector<AcReal>& input, const Shape<NDIMS>& mm, const Shape<NDIMS>& block_shape,
+unpack<AcReal, NDIMS, MAX_PACK_COUNT>(const Buffer<AcReal, DeviceMemoryResource>& input, const Shape<NDIMS>& mm, const Shape<NDIMS>& block_shape,
        const Index<NDIMS>& block_offset, ac::array<AcReal*, MAX_PACK_COUNT>& outputs);
 #endif
 

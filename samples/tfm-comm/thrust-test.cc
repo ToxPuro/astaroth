@@ -30,7 +30,7 @@ using std::reduce;
 
 template <typename T>
 static void
-print(const std::string& label, const ac::host_vector<T>& vec)
+print(const std::string& label, const Buffer<T, HostMemoryResource>& vec)
 {
     std::cout << label << ": { ";
     for (const auto& elem : vec)
@@ -82,7 +82,7 @@ main()
     Shape mm{4, 4};
     const size_t count = prod(mm);
 
-    ac::host_vector<double> hin(count);
+    Buffer<double, HostMemoryResource> hin(count);
     std::iota(hin.begin(), hin.end(), 1);
     print("hin", hin);
 
@@ -90,11 +90,11 @@ main()
 
     // std::copy_if(hin.begin(), hin.end(), hout.begin(), [](const double& val) { return val > 6;
     // });
-    ac::device_vector<double> din(count);
+    Buffer<double, DeviceMemoryResource> din(count);
     ac::copy(hin.begin(), hin.end(), din.begin());
 
-    ac::device_vector<double> dout(count - 2);
-    ac::host_vector<double> hout(count - 2);
+    Buffer<double, DeviceMemoryResource> dout(count - 2);
+    Buffer<double, HostMemoryResource> hout(count - 2);
     pack<<<1, 256>>>(count - 2, 1, thrust::raw_pointer_cast(din.data()),
                      thrust::raw_pointer_cast(dout.data()));
     ac::copy(dout.begin(), dout.end(), hout.begin());

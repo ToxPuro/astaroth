@@ -7,10 +7,10 @@ test_pack(void)
 {
     const size_t count = 10;
     const size_t rr    = 1;
-    ac::host_vector<uint64_t> hin(count);
-    ac::device_vector<uint64_t> din(count);
-    ac::device_vector<uint64_t> dout(count - 2 * rr);
-    ac::host_vector<uint64_t> hout(count - 2 * rr);
+    Buffer<uint64_t, HostMemoryResource> hin(count);
+    Buffer<uint64_t, DeviceMemoryResource> din(count);
+    Buffer<uint64_t, DeviceMemoryResource> dout(count - 2 * rr);
+    Buffer<uint64_t, HostMemoryResource> hout(count - 2 * rr);
     std::iota(hin.begin(), hin.end(), 0);
     std::fill(hout.begin(), hout.end(), 0);
     // ac::copy(hin.begin(), hin.end(), din.begin());

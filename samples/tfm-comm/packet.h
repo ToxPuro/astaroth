@@ -21,8 +21,8 @@ template <typename T, size_t N> class Packet {
     Segment<N>
         segment; // Shape<N> of the data block the packet represents (for packing or unpacking)
 
-    ac::device_vector<T> send_buffer;
-    ac::device_vector<T> recv_buffer;
+    Buffer<T, DeviceMemoryResource> send_buffer;
+    Buffer<T, DeviceMemoryResource> recv_buffer;
 
     MPI_Comm comm{MPI_COMM_NULL};
     MPI_Request send_req{MPI_REQUEST_NULL};

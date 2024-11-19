@@ -34,10 +34,10 @@ main()
         auto local_mm = as<uint64_t>(2) * rr + local_nn;
 
         const size_t count = prod(local_mm);
-        ac::host_vector<AcReal> lnrho(count);
-        ac::host_vector<AcReal> ux(count);
-        ac::host_vector<AcReal> uy(count);
-        ac::host_vector<AcReal> uz(count);
+        Buffer<AcReal, HostMemoryResource> lnrho(count);
+        Buffer<AcReal, HostMemoryResource> ux(count);
+        Buffer<AcReal, HostMemoryResource> uy(count);
+        Buffer<AcReal, HostMemoryResource> uz(count);
 
         // Raw pointer cast is required to convert from device_ptr wrapper returned with
         // device_vector.data() to a raw pointer

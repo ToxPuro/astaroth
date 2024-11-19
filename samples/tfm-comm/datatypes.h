@@ -16,19 +16,19 @@ template <typename T, size_t N> using base_array = std::array<T, N>;
 }
 #endif
 
-#if defined(DEVICE_ENABLED)
-namespace ac{
-    template <typename T> using host_vector = Buffer<T, HostMemoryResource>;
-    template <typename T> using pinned_host_vector = Buffer<T, PinnedHostMemoryResource>;
-    template <typename T> using device_vector = Buffer<T, DeviceMemoryResource>;
-}
-#else
-namespace ac{
-    template <typename T> using host_vector = Buffer<T, HostMemoryResource>;
-    template <typename T> using pinned_host_vector = Buffer<T, HostMemoryResource>;
-    template <typename T> using device_vector = Buffer<T, HostMemoryResource>;
-}
-#endif
+// #if defined(DEVICE_ENABLED)
+// namespace ac{
+//     template <typename T> using host_vector = Buffer<T, HostMemoryResource>;
+//     template <typename T> using pinned_host_vector = Buffer<T, PinnedHostMemoryResource>;
+//     template <typename T> using device_vector = Buffer<T, DeviceMemoryResource>;
+// }
+// #else
+// namespace ac{
+//     template <typename T> using host_vector = Buffer<T, HostMemoryResource>;
+//     template <typename T> using pinned_host_vector = Buffer<T, HostMemoryResource>;
+//     template <typename T> using device_vector = Buffer<T, HostMemoryResource>;
+// }
+// #endif
 
 // #if defined(DEVICE_ENABLED)
 // // Common GPU
