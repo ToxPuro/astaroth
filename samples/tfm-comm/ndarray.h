@@ -71,14 +71,21 @@ template <typename T, size_t N, typename MemoryResource = HostMemoryResource> st
     {
     }
 
+    T* data() { return buffer.data(); }
+    const T* data() const { return buffer.data(); }
+    size_t size() const { return buffer.size(); }
+
+    T* begin() { return data(); }
+    const T* begin() const { return data(); }
+    T* end() { return data() + size(); }
+    const T* end() const { return data() + size(); }
+
     void fill(const T& fill_value, const Shape<N>& subdims, const Index<N>& offset)
     {
         ERRCHK(subdims.size() == offset.size());
         ndarray_fill<T>(fill_value, shape.size(), shape.data(), subdims.data(), offset.data(),
                         buffer.data());
     }
-
-    void arange(const T& start = 0) { buffer.arange(start); }
 
     void display() { ndarray_print_recursive(shape.size(), shape.data(), buffer.data()); }
 

@@ -4,6 +4,9 @@
 #include "errchk.h"
 #include "ndarray.h"
 
+#include <numeric>
+#include <algorithm>
+
 #include <mpi.h>
 
 #include "errchk_mpi.h"
@@ -132,8 +135,8 @@ main()
         NdArray<AcReal, N, DeviceMemoryResource> dout(local_mm);
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
-        hin.arange(static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
-        // hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index<N>{});
+        std::iota(hin.begin(), hin.end(),static_cast<AcReal>(get_rank(cart_comm)) *
+                       static_cast<AcReal>(prod(local_mm)));
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         hin.display();
@@ -151,11 +154,11 @@ main()
 #if true
         PRINT_LOG("Testing basic halo exchange"); //-------------------------------
         if (nprocs == 1) {
-            hin.arange(static_cast<AcReal>(get_rank(cart_comm)) *
+            std::iota(hin.begin(), hin.end(),static_cast<AcReal>(get_rank(cart_comm)) *
                        static_cast<AcReal>(prod(local_mm)));
         }
         else {
-            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index<N>{});
+            std::fill(hin.begin(), hin.end(), static_cast<AcReal>(get_rank(cart_comm)));
         }
         migrate(hin.buffer, din.buffer);
 
@@ -177,11 +180,11 @@ main()
 #if true
         PRINT_LOG("Testing packed halo exchange"); //-------------------------------
         if (nprocs == 1) {
-            hin.arange(static_cast<AcReal>(get_rank(cart_comm)) *
+            std::iota(hin.begin(), hin.end(),static_cast<AcReal>(get_rank(cart_comm)) *
                        static_cast<AcReal>(prod(local_mm)));
         }
         else {
-            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index<N>{});
+            std::fill(hin.begin(), hin.end(), static_cast<AcReal>(get_rank(cart_comm)));
         }
         migrate(hin.buffer, din.buffer);
 
@@ -206,14 +209,15 @@ main()
 
 #if true
         PRINT_LOG("Testing IO"); //-------------------------------
-        hin.arange(static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
+        std::iota(hin.begin(), hin.end(),static_cast<AcReal>(get_rank(cart_comm)) *
+                       static_cast<AcReal>(prod(local_mm)));
 
         IOTaskAsync<AcReal, N> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
         // iotask.launch_write(cart_comm, hin.buffer, "test.dat");
         // iotask.wait_write();
         mpi_write(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr, hin.buffer.data(),
                   "test.dat");
-        hin.buffer.fill(0);
+        std::fill(hin.begin(), hin.end(), 0);
         mpi_read(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr, "test.dat",
                  hin.buffer.data());
 

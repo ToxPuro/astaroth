@@ -38,21 +38,6 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
     T* end() { return data() + size(); }
     const T* end() const { return data() + size(); }
 
-    void fill(const T& value)
-    {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
-                      "Only enabled for host buffer");
-        for (size_t i = 0; i < count; ++i)
-            resource[i] = value;
-    }
-
-    void arange(const T& min = 0)
-    {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
-                      "Only enabled for host buffer");
-        for (size_t i = 0; i < count; ++i)
-            resource[i] = min + static_cast<T>(i);
-    }
 
     void display() const
     {

@@ -1,5 +1,7 @@
 #include "buffer_exchange.h"
 
+#include <numeric>
+
 #include "errchk.h"
 
 void
@@ -11,7 +13,7 @@ test_buffer_exchange(void)
     Buffer<double, PinnedHostMemoryResource> c(count);
 
     BufferExchangeTask<double, PinnedHostMemoryResource, DeviceMemoryResource> htod(count);
-    a.arange();
+    std::iota(a.begin(), a.end(), 0);
     htod.launch(a);
     htod.wait(b);
 
