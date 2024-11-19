@@ -3,7 +3,7 @@
 int
 get_tag(void)
 {
-    static int tag = -1;
+    static int tag{-1};
     ++tag;
     if (tag < 0 || tag >= MPI_TAG_UB_MIN_VALUE)
         tag = 0;
@@ -118,7 +118,7 @@ request_wait_and_destroy(MPI_Request& req)
 int
 get_rank(const MPI_Comm& cart_comm)
 {
-    int rank = MPI_PROC_NULL;
+    int rank{MPI_PROC_NULL};
     ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
     return rank;
 }

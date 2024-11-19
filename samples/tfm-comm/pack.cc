@@ -5,8 +5,8 @@
 void
 test_pack(void)
 {
-    const size_t count = 10;
-    const size_t rr    = 1;
+    const size_t count{10};
+    const size_t rr{1};
     Buffer<uint64_t, HostMemoryResource> hin(count);
     Buffer<uint64_t, DeviceMemoryResource> din(count);
     Buffer<uint64_t, DeviceMemoryResource> dout(count - 2 * rr);

@@ -14,7 +14,7 @@
 #else
 #include "errchk.h"
 using cudaStream_t                   = unsigned int*;
-const unsigned int cudaStreamDefault = 0;
+const unsigned int cudaStreamDefault{0};
 #endif
 
 template <typename T, typename FirstStageResource, typename SecondStageResource>

@@ -25,10 +25,10 @@ launch_halo_exchange(const MPI_Comm parent_comm, const Shape<N>& local_mm, const
     ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &cart_comm));
 
     // Partition the domain
-    auto segments = partition(local_mm, local_nn, rr);
+    auto segments{partition(local_mm, local_nn, rr)};
 
     // Prune the segment containing the computational domain
-    for (size_t i = 0; i < segments.size(); ++i) {
+    for (size_t i{0}; i < segments.size(); ++i) {
         if (within_box(segments[i].offset, local_nn, rr)) {
             segments.erase(segments.begin() + as<long>(i));
             --i;
@@ -38,18 +38,18 @@ launch_halo_exchange(const MPI_Comm parent_comm, const Shape<N>& local_mm, const
     std::vector<MPI_Request> send_reqs;
     std::vector<MPI_Request> recv_reqs;
     for (const Segment<N>& segment : segments) {
-        const Index<N> recv_offset = segment.offset;
-        const Index<N> send_offset = ((local_nn + recv_offset - rr) % local_nn) + rr;
+        const Index<N> recv_offset{segment.offset};
+        const Index<N> send_offset{((local_nn + recv_offset - rr) % local_nn) + rr};
         MPI_Datatype recv_subarray = subarray_create(local_mm, segment.dims, recv_offset,
                                                      get_mpi_dtype<T>());
         MPI_Datatype send_subarray = subarray_create(local_mm, segment.dims, send_offset,
                                                      get_mpi_dtype<T>());
 
-        const Direction<N> recv_direction = get_direction(segment.offset, local_nn, rr);
-        const int recv_neighbor           = get_neighbor(cart_comm, recv_direction);
-        const int send_neighbor           = get_neighbor(cart_comm, -recv_direction);
+        const Direction<N> recv_direction{get_direction(segment.offset, local_nn, rr)};
+        const int recv_neighbor{get_neighbor(cart_comm, recv_direction)};
+        const int send_neighbor{get_neighbor(cart_comm, -recv_direction)};
 
-        const int tag = get_tag();
+        const int tag{get_tag()};
 
         MPI_Request recv_req;
         ERRCHK_MPI_API(

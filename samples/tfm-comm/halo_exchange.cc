@@ -9,10 +9,10 @@ test_halo_exchange(void)
 {
 
     // // Partition the domain
-    // auto segments = partition(local_mm, local_nn, rr);
+    // auto segments{partition(local_mm, local_nn, rr)};
 
     // // Prune the segment containing the computational domain
-    // for (size_t i = 0; i < segments.size(); ++i) {
+    // for (size_t i{0}; i < segments.size(); ++i) {
     //     if (within_box(segments[i].offset, local_nn, rr)) {
     //         segments.erase(segments.begin() + as<long>(i));
     //         --i;

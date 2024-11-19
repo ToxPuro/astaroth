@@ -43,15 +43,15 @@ static void
 ndarray_print_recursive(const size_t ndims, const uint64_t* dims, const T* array)
 {
     if (ndims == 1) {
-        for (size_t i = 0; i < dims[0]; ++i)
+        for (size_t i{0}; i < dims[0]; ++i)
             std::cout << std::setw(4) << array[i];
         std::cout << std::endl;
     }
     else {
-        // const uint64_t offset = prod(ndims - 1, dims);
+        // const uint64_t offset{prod(ndims - 1, dims)};
         const uint64_t offset = ac::reduce(dims, dims + ndims - 1, static_cast<uint64_t>(1),
                                            ac::multiplies<uint64_t>());
-        for (size_t i = 0; i < dims[ndims - 1]; ++i) {
+        for (size_t i{0}; i < dims[ndims - 1]; ++i) {
             if (ndims > 4)
                 printf("%zu. %zu-dimensional hypercube:\n", i, ndims - 1);
             if (ndims == 4)
@@ -70,7 +70,7 @@ template <typename T>
 __global__ void
 pack(const uint64_t blocksize, const uint64_t offset, const T* in, T* out)
 {
-    const uint64_t i = static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+    const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     if (i < blocksize)
         out[i] = in[offset + i];
 }
@@ -80,7 +80,7 @@ main()
 {
     std::cout << "hello" << std::endl;
     Shape mm{4, 4};
-    const size_t count = prod(mm);
+    const size_t count{prod(mm)};
 
     Buffer<double, HostMemoryResource> hin(count);
     std::iota(hin.begin(), hin.end(), 1);

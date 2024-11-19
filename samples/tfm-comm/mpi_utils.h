@@ -48,7 +48,7 @@ auto
 astaroth_to_mpi_format(const ac::array<uint64_t, N>& in)
 {
     ac::array<int, N> out;
-    for (size_t i = 0; i < in.size(); ++i)
+    for (size_t i{0}; i < in.size(); ++i)
         out[i] = as<int>(in[i]);
     std::reverse(out.begin(), out.end());
     return out;
@@ -59,7 +59,7 @@ auto
 astaroth_to_mpi_format(const ac::array<int64_t, N>& in)
 {
     ac::array<int, N> out;
-    for (size_t i = 0; i < in.size(); ++i)
+    for (size_t i{0}; i < in.size(); ++i)
         out[i] = as<int>(in[i]);
     std::reverse(out.begin(), out.end());
     return out;
@@ -70,7 +70,7 @@ auto
 mpi_to_astaroth_format(const ac::array<int, N>& in)
 {
     ac::array<uint64_t, N> out;
-    for (size_t i = 0; i < in.size(); ++i)
+    for (size_t i{0}; i < in.size(); ++i)
         out[i] = as<uint64_t>(in[i]);
     std::reverse(out.begin(), out.end());
     return out;
@@ -82,7 +82,7 @@ mpi_to_astaroth_format(const ac::array<int, N>& in)
 // MPI_TAG_UB is required to be at least this large by the MPI 4.1 standard
 // However, not all implementations seem to define it (note int*) and
 // MPI_Comm_get_attr fails, so must be hardcoded here
-constexpr int MPI_TAG_UB_MIN_VALUE = 32767;
+constexpr int MPI_TAG_UB_MIN_VALUE{32767};
 
 int get_tag(void);
 
@@ -91,7 +91,7 @@ Direction<N>
 get_direction(const Index<N>& offset, const Shape<N>& nn, const Index<N>& rr)
 {
     Direction<N> dir{};
-    for (size_t i = 0; i < offset.size(); ++i)
+    for (size_t i{0}; i < offset.size(); ++i)
         dir[i] = offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
     return dir;
 }
@@ -138,7 +138,7 @@ MPI_Comm
 cart_comm_create(const MPI_Comm& parent_comm, const Shape<N>& global_nn)
 {
     // Get the number of processes
-    int mpi_nprocs = -1;
+    int mpi_nprocs{-1};
     ERRCHK_MPI_API(MPI_Comm_size(parent_comm, &mpi_nprocs));
 
     // Use MPI for finding the decomposition
@@ -148,12 +148,12 @@ cart_comm_create(const MPI_Comm& parent_comm, const Shape<N>& global_nn)
     // Create the Cartesian communicator
     MPI_Comm cart_comm{MPI_COMM_NULL};
     MPIShape<N> mpi_periods{ones<int, N>()}; // Periodic in all dimensions
-    int reorder = 1; // Enable reordering (but likely inop with most MPI implementations)
+    int reorder{1}; // Enable reordering (but likely inop with most MPI implementations)
     ERRCHK_MPI_API(MPI_Cart_create(parent_comm, as<int>(mpi_decomp.size()), mpi_decomp.data(),
                                    mpi_periods.data(), reorder, &cart_comm));
 
     // Can also add custom decomposition and rank reordering here instead:
-    // int reorder = 0;
+    // int reorder{0};
     // ...
     return cart_comm;
 }
@@ -203,7 +203,7 @@ template <size_t N>
 Shape<N>
 get_decomposition(const MPI_Comm& cart_comm)
 {
-    int mpi_ndims = -1;
+    int mpi_ndims{-1};
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
     MPIShape<N> mpi_decomp{};
@@ -219,11 +219,11 @@ Index<N>
 get_coords(const MPI_Comm& cart_comm)
 {
     // Get the rank of the current process
-    int rank = MPI_PROC_NULL;
+    int rank{MPI_PROC_NULL};
     ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
 
     // Get dimensions of the communicator
-    int mpi_ndims = -1;
+    int mpi_ndims{-1};
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
     // Get the coordinates of the current process
@@ -239,11 +239,11 @@ int
 get_neighbor(const MPI_Comm& cart_comm, const Direction<N>& dir)
 {
     // Get the rank of the current process
-    int rank = MPI_PROC_NULL;
+    int rank{MPI_PROC_NULL};
     ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
 
     // Get dimensions of the communicator
-    int mpi_ndims = -1;
+    int mpi_ndims{-1};
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
     // Get the coordinates of the current process
@@ -254,10 +254,10 @@ get_neighbor(const MPI_Comm& cart_comm, const Direction<N>& dir)
     MPIIndex<N> mpi_dir{astaroth_to_mpi_format(dir)};
 
     // Get the coordinates of the neighbor
-    MPIIndex<N> mpi_neighbor = mpi_coords + mpi_dir;
+    MPIIndex<N> mpi_neighbor{mpi_coords + mpi_dir};
 
     // Get the rank of the neighboring process
-    int neighbor_rank = MPI_PROC_NULL;
+    int neighbor_rank{MPI_PROC_NULL};
     ERRCHK_MPI_API(MPI_Cart_rank(cart_comm, mpi_neighbor.data(), &neighbor_rank));
     return neighbor_rank;
 }
@@ -392,7 +392,7 @@ class MPIRequestWrapper {
     {
         ERRCHK_MPI(req != MPI_REQUEST_NULL);
 
-        int flag          = 0;
+        int flag{0};
         MPI_Status status = {};
         status.MPI_ERROR  = MPI_SUCCESS;
         ERRCHK_MPI_API(MPI_Request_get_status(req, &flag, &status));

@@ -74,18 +74,18 @@ template <typename T, size_t N> class Packet {
         ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
 
         // Find the direction and neighbors of the segment
-        const size_t count = inputs.size() * prod(segment.dims);
+        const size_t count{inputs.size() * prod(segment.dims)};
         ERRCHK_MPI(count <= send_buffer.size());
         ERRCHK_MPI(count <= recv_buffer.size());
 
-        Index<N> send_offset = ((local_nn + segment.offset - local_rr) % local_nn) + local_rr;
+        Index<N> send_offset{((local_nn + segment.offset - local_rr) % local_nn) + local_rr};
 
-        auto recv_direction     = get_direction(segment.offset, local_nn, local_rr);
-        const int recv_neighbor = get_neighbor(comm, recv_direction);
-        const int send_neighbor = get_neighbor(comm, -recv_direction);
+        auto recv_direction{get_direction(segment.offset, local_nn, local_rr)};
+        const int recv_neighbor{get_neighbor(comm, recv_direction)};
+        const int send_neighbor{get_neighbor(comm, -recv_direction)};
 
         // Post recv
-        const int tag = 0;
+        const int tag{0};
         ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
         ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(), as<int>(count), get_mpi_dtype<T>(),
                                  recv_neighbor, tag, comm, &recv_req));

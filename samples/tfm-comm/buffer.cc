@@ -8,7 +8,7 @@ void
 test_buffer()
 {
     {
-        const size_t count = 10;
+        const size_t count{10};
         Buffer<double> a(count);
         std::iota(a.begin(), a.end(), 0);
         Buffer<double> b(count);
@@ -16,7 +16,7 @@ test_buffer()
         ERRCHK(std::equal(a.begin(), a.end(), b.begin()));
     }
     {
-        const size_t count = 10;
+        const size_t count{10};
 
         Buffer<double, HostMemoryResource> a(count);
         Buffer<double, PinnedHostMemoryResource> b(count);
@@ -55,7 +55,7 @@ test_buffer()
         ERRCHK(std::equal(a.begin(), a.end(), b.begin()));
     }
     // {
-    //     const size_t count = 10;
+    //     const size_t count{10};
     //     Buffer<double, HostMemoryResource> a(count);
     //     Buffer<double, DeviceMemoryResource> b(count);
     //     Buffer<double, PinnedHostMemoryResource> c(count);

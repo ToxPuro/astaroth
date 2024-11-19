@@ -7,7 +7,7 @@
 void
 test_buffer_exchange(void)
 {
-    const size_t count = 10;
+    const size_t count{10};
     Buffer<double, HostMemoryResource> a(count);
     Buffer<double, DeviceMemoryResource> b(count);
     Buffer<double, PinnedHostMemoryResource> c(count);

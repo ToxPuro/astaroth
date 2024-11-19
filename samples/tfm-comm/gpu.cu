@@ -13,7 +13,5 @@
 int
 main(void)
 {
-    const auto lala = decompose<3>(Shape<3>{4,4,4}, 2);
-
     return EXIT_SUCCESS;
 }

@@ -20,10 +20,10 @@ partition_recursive(const Shape<N>& mm, const Shape<N>& nn, const Index<N>& nn_o
     else { // Partition
 
         // Split points
-        const size_t x0 = current_segment.offset[axis];
-        const size_t x1 = nn_offset[axis];
-        const size_t x2 = nn_offset[axis] + nn[axis];
-        const size_t x3 = current_segment.offset[axis] + current_segment.dims[axis];
+        const size_t x0{current_segment.offset[axis]};
+        const size_t x1{nn_offset[axis]};
+        const size_t x2{nn_offset[axis] + nn[axis]};
+        const size_t x3{current_segment.offset[axis] + current_segment.dims[axis]};
 
         { // Left
             Segment<N> new_segment(current_segment);

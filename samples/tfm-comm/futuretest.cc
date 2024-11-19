@@ -30,8 +30,8 @@ main(void)
     ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 
-    const size_t count = 10;
-    const size_t rr    = 2;
+    const size_t count{10};
+    const size_t rr{2};
     std::vector<int> vec(2 * rr + count, rank);
 
     MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
@@ -129,8 +129,8 @@ main(void)
         ERRCHK_MPI_API(MPI_Comm_free(&comm));
         return recv_req;
     });
-    MPI_Request fwd_req               = forward.get();
-    MPI_Request bwd_req               = backward.get();
+    MPI_Request fwd_req{forward.get()};
+    MPI_Request bwd_req{backward.get()};
     ERRCHK_MPI_API(MPI_Waitall(2, (MPI_Request[]){fwd_req, bwd_req}, MPI_STATUSES_IGNORE));
     // ERRCHK_MPI_API(MPI_Wait(&fwd_req, MPI_STATUS_IGNORE));
     // ERRCHK_MPI_API(MPI_Wait(&bwd_req, MPI_STATUS_IGNORE));

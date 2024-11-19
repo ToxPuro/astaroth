@@ -15,7 +15,7 @@ test_datatypes(void)
 
     {
         ac::array<uint64_t, 1> a{3};
-        for (size_t i = 0; i < a.size(); ++i)
+        for (size_t i{0}; i < a.size(); ++i)
             ERRCHK(a[i] == 3);
         // PRINT_DEBUG(a);
     }

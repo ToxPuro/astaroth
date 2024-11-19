@@ -18,10 +18,10 @@ template <typename T, size_t N> class HaloExchangeTask {
         ERRCHK_MPI(local_nn >= local_rr);
 
         // Partition the mesh
-        auto segments = partition(local_mm, local_nn, local_rr);
+        auto segments{partition(local_mm, local_nn, local_rr)};
 
         // Prune the segment containing the computational domain
-        for (size_t i = 0; i < segments.size(); ++i) {
+        for (size_t i{0}; i < segments.size(); ++i) {
             if (within_box(segments[i].offset, local_nn, local_rr)) {
                 segments.erase(segments.begin() + as<long>(i));
                 --i;

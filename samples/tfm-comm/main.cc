@@ -43,52 +43,52 @@ cudaStreamDestroy(cudaStream_t stream)
 static void
 benchmark(void)
 {
-    const size_t num_samples = 5;
+    const size_t num_samples{5};
 
     // Stream creation
-    for (size_t i = 0; i < num_samples; ++i) {
+    for (size_t i{0}; i < num_samples; ++i) {
         cudaStream_t stream;
         BENCHMARK(cudaStreamCreate(&stream));
         BENCHMARK(cudaStreamDestroy(stream));
     }
 
     // Buffers
-    const size_t count = (1000 * 1024 * 1024) / sizeof(double);
+    const size_t count{(1000 * 1024 * 1024) / sizeof(double)};
     Buffer<double, HostMemoryResource> hbuf(count);
     Buffer<double, DeviceMemoryResource> dbuf(count);
 
     // C++ standard library
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(std::copy(hbuf.data(), hbuf.data() + hbuf.size(), hbuf.data()));
 
     // Regular htoh and dtod
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(hbuf, hbuf));
 
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(dbuf, dbuf));
 
     // Regular dtoh and htod
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(hbuf, dbuf));
 
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(dbuf, hbuf));
 
     // Pinned
     Buffer<double, PinnedHostMemoryResource> phbuf(count);
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(phbuf, dbuf));
 
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(dbuf, phbuf));
 
     // Pinned write-combined
     Buffer<double, PinnedWriteCombinedHostMemoryResource> pwchbuf(count);
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(pwchbuf, dbuf));
 
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(dbuf, pwchbuf));
 }
 
@@ -116,17 +116,17 @@ main()
 #if defined(DEVICE_ENABLED)
         benchmark();
 #endif
-        constexpr size_t N = 2;
+        constexpr size_t N{2};
 
         const Shape<N> global_nn{4, 4};
-        MPI_Comm cart_comm              = cart_comm_create(MPI_COMM_WORLD, global_nn);
-        const Shape<N> decomp           = get_decomposition<N>(cart_comm);
-        const Shape<N> local_nn         = global_nn / decomp;
-        const Index<N> coords           = get_coords<N>(cart_comm);
-        const Index<N> global_nn_offset = coords * local_nn;
+        MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
+        const Shape<N> decomp{get_decomposition<N>(cart_comm)};
+        const Shape<N> local_nn{global_nn / decomp};
+        const Index<N> coords{get_coords<N>(cart_comm)};
+        const Index<N> global_nn_offset{coords * local_nn};
 
         const Shape<N> rr{ones<uint64_t, N>()}; // Symmetric halo
-        const Shape<N> local_mm = as<uint64_t>(2) * rr + local_nn;
+        const Shape<N> local_mm{as<uint64_t>(2) * rr + local_nn};
 
         NdArray<AcReal, N, HostMemoryResource> hin(local_mm);
         NdArray<AcReal, N, HostMemoryResource> hout(local_mm);

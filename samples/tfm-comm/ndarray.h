@@ -20,8 +20,8 @@ ndarray_fill(const T& value, const size_t ndims, const uint64_t* dims, const uin
         ERRCHK(dims[ndims - 1] > 0);                                      // Invalid dims
         ERRCHK(subdims[ndims - 1] > 0);                                   // Invalid subdims
 
-        const uint64_t offset = prod(ndims - 1, dims);
-        for (size_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
+        const uint64_t offset{prod(ndims - 1, dims)};
+        for (size_t i{start[ndims - 1]}; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
             ndarray_fill<T>(value, ndims - 1, dims, subdims, start, &arr[i * offset]);
     }
 }
@@ -31,13 +31,13 @@ static void
 ndarray_print_recursive(const size_t ndims, const uint64_t* dims, const T* array)
 {
     if (ndims == 1) {
-        for (size_t i = 0; i < dims[0]; ++i)
+        for (size_t i{0}; i < dims[0]; ++i)
             std::cout << std::setw(4) << array[i];
         std::cout << std::endl;
     }
     else {
-        const uint64_t offset = prod(ndims - 1, dims);
-        for (size_t i = 0; i < dims[ndims - 1]; ++i) {
+        const uint64_t offset{prod(ndims - 1, dims)};
+        for (size_t i{0}; i < dims[ndims - 1]; ++i) {
             if (ndims > 4)
                 printf("%zu. %zu-dimensional hypercube:\n", i, ndims - 1);
             if (ndims == 4)

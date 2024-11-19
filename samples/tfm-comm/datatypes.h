@@ -165,7 +165,7 @@ fill(const T& fill_value)
 //                   "Operator not enabled for parameters of different types. Perform an "
 //                   "explicit cast such that both operands are of the same type");
 //     T res = 0;
-//     for (size_t i = 0; i < count; ++i)
+//     for (size_t i{0}; i < count; ++i)
 //         res += data[i] * other[i];
 //     return res;
 // }
@@ -178,7 +178,7 @@ operator+(const ac::array<T, N>& a, const ac::array<T, N>& b)
 
     ERRCHK(a.size() == b.size());
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a[i] + b[i];
     return c;
 }
@@ -190,7 +190,7 @@ operator+(const T& a, const ac::array<T, N>& b)
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
 
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a + b[i];
     return c;
 }
@@ -202,7 +202,7 @@ operator+(const ac::array<T, N>& a, const T& b)
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
 
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a[i] + b;
     return c;
 }
@@ -215,7 +215,7 @@ operator-(const ac::array<T, N>& a, const ac::array<T, N>& b)
 
     ERRCHK(a.size() == b.size());
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a[i] - b[i];
     return c;
 }
@@ -227,7 +227,7 @@ operator-(const T& a, const ac::array<T, N>& b)
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
 
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a - b[i];
     return c;
 }
@@ -239,7 +239,7 @@ operator-(const ac::array<T, N>& a, const T& b)
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
 
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a[i] - b;
     return c;
 }
@@ -252,7 +252,7 @@ operator*(const ac::array<T, N>& a, const ac::array<T, N>& b)
 
     ERRCHK(a.size() == b.size());
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a[i] * b[i];
     return c;
 }
@@ -264,7 +264,7 @@ operator*(const T& a, const ac::array<T, N>& b)
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
 
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a * b[i];
     return c;
 }
@@ -276,7 +276,7 @@ operator*(const ac::array<T, N>& a, const T& b)
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
 
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a[i] * b;
     return c;
 }
@@ -289,7 +289,7 @@ operator/(const ac::array<T, N>& a, const ac::array<T, N>& b)
 
     ERRCHK(a.size() == b.size());
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i) {
+    for (size_t i{0}; i < c.size(); ++i) {
         ERRCHK(b[i] != 0);
         c[i] = a[i] / b[i];
     }
@@ -304,7 +304,7 @@ operator/(const T& a, const ac::array<T, N>& b)
 
     ERRCHK(b != 0);
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i) {
+    for (size_t i{0}; i < c.size(); ++i) {
         ERRCHK(b[i] != 0);
         c[i] = a / b[i];
     }
@@ -319,7 +319,7 @@ operator/(const ac::array<T, N>& a, const T& b)
 
     ERRCHK(b != 0);
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a[i] / b;
     return c;
 }
@@ -332,7 +332,7 @@ operator%(const ac::array<T, N>& a, const ac::array<T, N>& b)
 
     ERRCHK(a.size() == b.size());
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a[i] % b[i];
     return c;
 }
@@ -344,7 +344,7 @@ operator%(const T& a, const ac::array<T, N>& b)
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
 
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a % b[i];
     return c;
 }
@@ -356,7 +356,7 @@ operator%(const ac::array<T, N>& a, const T& b)
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
 
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a[i] % b;
     return c;
 }
@@ -370,7 +370,7 @@ operator==(const ac::array<T, N>& a, const ac::array<U, N>& b)
                   "Operator not enabled for parameters of different types. Perform an "
                   "explicit cast such that both operands are of the same type");
     ERRCHK(a.size() == b.size());
-    for (size_t i = 0; i < a.size(); ++i)
+    for (size_t i{0}; i < a.size(); ++i)
         if (a[i] != b[i])
             return false;
     return true;
@@ -385,7 +385,7 @@ operator>=(const ac::array<T, N>& a, const ac::array<U, N>& b)
                   "Operator not enabled for parameters of different types. Perform an "
                   "explicit cast such that both operands are of the same type");
     ERRCHK(a.size() == b.size());
-    for (size_t i = 0; i < a.size(); ++i)
+    for (size_t i{0}; i < a.size(); ++i)
         if (a[i] < b[i])
             return false;
     return true;
@@ -397,7 +397,7 @@ operator-(const ac::array<T, N>& a)
 {
     static_assert(std::is_signed_v<T>, "Operator enabled only for signed types");
     ac::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = -a[i];
     return c;
 }
@@ -407,7 +407,7 @@ __host__ std::ostream&
 operator<<(std::ostream& os, const ac::array<T, N>& obj)
 {
     os << "{";
-    for (size_t i = 0; i < obj.size(); ++i)
+    for (size_t i{0}; i < obj.size(); ++i)
         os << obj[i] << (i + 1 < obj.size() ? ", " : "}");
     return os;
 }
@@ -417,8 +417,8 @@ T __host__ __device__
 prod(const ac::array<T, N>& arr)
 {
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-    T result = 1;
-    for (size_t i = 0; i < arr.size(); ++i)
+    T result{1};
+    for (size_t i{0}; i < arr.size(); ++i)
         result *= arr[i];
     return result;
 }

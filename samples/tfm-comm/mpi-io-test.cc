@@ -39,7 +39,7 @@ main(void)
     ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
     {
-        int buf = 1;
+        int buf{1};
         MPI_File file{};
         MPI_Request req{};
         fprintf(stderr, "Opening file\n");

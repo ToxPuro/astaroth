@@ -11,7 +11,7 @@ inline std::vector<uint64_t>
 factorize(uint64_t n)
 {
     std::vector<uint64_t> factors;
-    for (uint64_t d = 2; d * d <= n; ++d) {
+    for (uint64_t d{2}; d * d <= n; ++d) {
         while (n % d == 0) {
             factors.push_back(d);
             n /= d;
@@ -20,7 +20,7 @@ factorize(uint64_t n)
     if (n > 1)
         factors.push_back(n); // Push back the remainder
 
-    auto last = std::unique(factors.begin(), factors.end());
+    auto last{std::unique(factors.begin(), factors.end())};
     factors.erase(last, factors.end());
     return factors;
 }
@@ -60,17 +60,17 @@ decompose(const Shape<N>& nn, uint64_t nprocs)
     // surface area to volume ratio at each slice.
     // Greedy algorithm: choose the current best factor at each iteration
     while (prod(nn) != prod(nprocs * local_nn * decomp)) {
-        size_t best_axis      = SIZE_MAX;
-        uint64_t best_factor  = 0;
-        double best_sa_to_vol = std::numeric_limits<double>::max();
+        size_t best_axis{SIZE_MAX};
+        uint64_t best_factor{0};
+        double best_sa_to_vol{std::numeric_limits<double>::max()};
 
-        auto factors = factorize(nprocs);
+        auto factors{factorize(nprocs)};
         for (const auto& factor : factors) {
-            for (size_t axis = nn.size() - 1; axis < nn.size(); --axis) {
+            for (size_t axis{nn.size() - 1}; axis < nn.size(); --axis) {
                 if ((local_nn[axis] % factor) == 0) {
                     auto test_nn{local_nn};
                     test_nn[axis] /= factor;
-                    double sa_to_vol = surface_area_to_volume(test_nn);
+                    double sa_to_vol{surface_area_to_volume(test_nn)};
                     if (sa_to_vol < best_sa_to_vol) {
                         best_axis      = axis;
                         best_factor    = factor;
@@ -110,7 +110,7 @@ decompose_hierarchical(const Shape<N>& nn, const std::vector<uint64_t>& nprocs_p
 
     Shape<N> curr_nn{nn};
     for (const auto& nprocs : nprocs_per_layer) {
-        const Shape<N> decomp = decompose(curr_nn, nprocs);
+        const Shape<N> decomp{decompose(curr_nn, nprocs)};
         decompositions.push_back(decomp);
         curr_nn = curr_nn / decomp;
     }
@@ -139,7 +139,7 @@ hierarchical_to_linear(const Index<N>& in_coords, const std::vector<Shape<N>>& i
 {
     Index<N> scale{ones<uint64_t, N>()};
     ERRCHK(scale[0] == 1);
-    uint64_t index = 0;
+    uint64_t index{0};
     for (const auto& dims : in_decompositions) {
         index = index + prod(scale) * to_linear((in_coords / scale) % dims, dims);
         scale = scale * dims;

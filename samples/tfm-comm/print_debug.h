@@ -11,13 +11,13 @@ operator<<(std::ostream& os, const std::vector<T>& vec)
 {
     if (vec.size() < 8) {
         os << "{";
-        for (size_t i = 0; i < vec.size(); ++i)
+        for (size_t i{0}; i < vec.size(); ++i)
             os << vec[i] << (i + 1 < vec.size() ? ", " : "");
         os << "}";
     }
     else {
         os << "{\n";
-        for (size_t i = 0; i < vec.size(); ++i)
+        for (size_t i{0}; i < vec.size(); ++i)
             os << "\t" << i << ": " << vec[i] << (i + 1 < vec.size() ? ", " : "") << std::endl;
         os << "}";
     }
@@ -36,7 +36,7 @@ void
 print_debug_array(const std::string& label, const size_t count, const T* arr)
 {
     std::cout << label << ": {";
-    for (size_t i = 0; i < count; ++i)
+    for (size_t i{0}; i < count; ++i)
         std::cout << arr[i] << (i + 1 < count ? ", " : "");
     std::cout << "}" << std::endl;
 }

@@ -43,7 +43,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
     {
         static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
                       "Only enabled for host buffer");
-        for (size_t i = 0; i < count; ++i)
+        for (size_t i{0}; i < count; ++i)
             std::cout << i << ": " << resource[i] << std::endl;
     }
 };
@@ -89,7 +89,7 @@ void
 migrate(const Buffer<T, MemoryResourceA>& in, Buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
-    const cudaMemcpyKind kind = get_kind<MemoryResourceA, MemoryResourceB>();
+    const cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
     ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(in[0]), kind));
 }
 
@@ -99,7 +99,7 @@ migrate_async(const cudaStream_t stream, const Buffer<T, MemoryResourceA>& in,
               Buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
-    const cudaMemcpyKind kind = get_kind<MemoryResourceA, MemoryResourceB>();
+    const cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
     ERRCHK_CUDA_API(
         cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in[0]), kind, stream));
 }

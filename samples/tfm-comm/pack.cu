@@ -5,10 +5,10 @@ template <size_t N>
 static __device__ uint64_t
 to_linear(const Index<N>& coords, const Shape<N>& shape)
 {
-    uint64_t result = 0;
-    for (size_t j = 0; j < shape.size(); ++j) {
-        uint64_t factor = 1;
-        for (size_t i = 0; i < j; ++i)
+    uint64_t result{0};
+    for (size_t j{0}; j < shape.size(); ++j) {
+        uint64_t factor{1};
+        for (size_t i{0}; i < j; ++i)
             factor *= shape[i];
         result += coords[j] * factor;
     }
@@ -20,9 +20,9 @@ static __device__ Index<N>
 to_spatial(const uint64_t index, const Shape<N>& shape)
 {
     Index<N> coords;
-    for (size_t j = 0; j < shape.size(); ++j) {
-        uint64_t divisor = 1;
-        for (size_t i = 0; i < j; ++i)
+    for (size_t j{0}; j < shape.size(); ++j) {
+        uint64_t divisor{1};
+        for (size_t i{0}; i < j; ++i)
             divisor *= shape[i];
         coords[j] = (index / divisor) % shape[j];
     }
@@ -35,7 +35,7 @@ prod(const ac::array<T, N>& arr)
 {
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
     T result = 1;
-    for (size_t i = 0; i < arr.size(); ++i)
+    for (size_t i{0}; i < arr.size(); ++i)
         result *= arr[i];
     return result;
 }
@@ -45,17 +45,17 @@ __global__ void
 kernel_pack(const Shape<N> mm, const Shape<N> block_shape, const Index<N> block_offset,
             const ac::array<T*, M> inputs, T* output)
 {
-    const uint64_t i = static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+    const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{device::prod(block_shape)};
     if (i < block_nelems) {
-        for (size_t j = 0; j < inputs.size(); ++j) {
+        for (size_t j{0}; j < inputs.size(); ++j) {
 
             // Block coords
-            const Index<N> block_coords = device::to_spatial(i, block_shape);
+            const Index<N> block_coords{device::to_spatial(i, block_shape)};
 
             // Input coords
-            const Index<N> in_coords = block_offset + block_coords;
-            const uint64_t in_idx    = device::to_linear(in_coords, mm);
+            const Index<N> in_coords{block_offset + block_coords};
+            const uint64_t in_idx{device::to_linear(in_coords, mm)};
 
             output[i + j * block_nelems] = inputs[j][in_idx];
         }
@@ -67,17 +67,17 @@ __global__ void
 kernel_unpack(const T* input, const Shape<N> mm, const Shape<N> block_shape,
               const Index<N> block_offset, ac::array<T*, M> outputs)
 {
-    const uint64_t i = static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+    const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{prod(block_shape)};
     if (i < block_nelems) {
-        for (size_t j = 0; j < outputs.size(); ++j) {
+        for (size_t j{0}; j < outputs.size(); ++j) {
 
             // Block coords
-            const Index<N> block_coords = device::to_spatial(i, block_shape);
+            const Index<N> block_coords{device::to_spatial(i, block_shape)};
 
             // Input coords
-            const Index<N> in_coords = block_offset + block_coords;
-            const uint64_t in_idx    = device::to_linear(in_coords, mm);
+            const Index<N> in_coords{block_offset + block_coords};
+            const uint64_t in_idx{device::to_linear(in_coords, mm)};
 
             outputs[j][in_idx] = input[i + j * block_nelems];
         }

@@ -15,25 +15,25 @@
 
 #include "math_utils.h"
 
-constexpr size_t PACK_NDIMS = 2;
-constexpr size_t PACK_MAX_NAGGR_BUFS = 1;
+constexpr size_t PACK_NDIMS{2};
+constexpr size_t PACK_MAX_NAGGR_BUFS{1};
 
 template <typename T, size_t N, size_t M>
 void
 pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offset,
      const ac::array<T*, M>& inputs, Buffer<T, HostMemoryResource>& output)
 {
-    const uint64_t block_nelems = prod(block_shape);
-    for (uint64_t i = 0; i < block_nelems; ++i) {
-        for (size_t j = 0; j < inputs.size(); ++j) {
+    const uint64_t block_nelems{prod(block_shape)};
+    for (uint64_t i{0}; i < block_nelems; ++i) {
+        for (size_t j{0}; j < inputs.size(); ++j) {
 
             // Block coords
-            const Index<N> block_coords = to_spatial(i, block_shape);
+            const Index<N> block_coords{to_spatial(i, block_shape)};
 
             // Input coords
-            const Index<N> in_coords = block_offset + block_coords;
+            const Index<N> in_coords{block_offset + block_coords};
 
-            const uint64_t in_idx = to_linear(in_coords, mm);
+            const uint64_t in_idx{to_linear(in_coords, mm)};
             ERRCHK(in_idx < prod(mm));
 
             output[i + j * block_nelems] = inputs[j][in_idx];
@@ -46,17 +46,17 @@ void
 unpack(const Buffer<T, HostMemoryResource>& input, const Shape<N>& mm, const Shape<N>& block_shape,
        const Index<N>& block_offset, ac::array<T*, M>& outputs)
 {
-    const uint64_t block_nelems = prod(block_shape);
-    for (uint64_t i = 0; i < block_nelems; ++i) {
-        for (size_t j = 0; j < outputs.size(); ++j) {
+    const uint64_t block_nelems{prod(block_shape)};
+    for (uint64_t i{0}; i < block_nelems; ++i) {
+        for (size_t j{0}; j < outputs.size(); ++j) {
 
             // Block coords
-            const Index<N> block_coords = to_spatial(i, block_shape);
+            const Index<N> block_coords{to_spatial(i, block_shape)};
 
             // Input coords
-            const Index<N> in_coords = block_offset + block_coords;
+            const Index<N> in_coords{block_offset + block_coords};
 
-            const uint64_t in_idx = to_linear(in_coords, mm);
+            const uint64_t in_idx{to_linear(in_coords, mm)};
             ERRCHK(in_idx < prod(mm));
 
             outputs[j][in_idx] = input[i + j * block_nelems];
