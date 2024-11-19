@@ -1,11 +1,11 @@
 #include "buffer.h"
 #include "buffer_exchange.h"
+#include "datatypes.h"
 #include "decomp.h"
 #include "math_utils.h"
 #include "ndarray.h"
 #include "pack.h"
 #include "partition.h"
-#include "datatypes.h"
 #include "type_conversion.h"
 
 int

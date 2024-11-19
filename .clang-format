@@ -3,7 +3,7 @@ IndentWidth: 4
 UseTab: Never
 BreakBeforeBraces: Stroustrup
 AlignConsecutiveAssignments: true
-AlignAfterOpenBracket: BlockIndent
+AlignAfterOpenBracket: true
 AlwaysBreakAfterReturnType: TopLevelDefinitions
 PointerAlignment: Left
 BreakBeforeBinaryOperators: None

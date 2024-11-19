@@ -13,7 +13,7 @@
 #include <hip/hip_runtime.h>
 #else
 #include "errchk.h"
-using cudaStream_t                   = unsigned int*;
+using cudaStream_t = unsigned int*;
 const unsigned int cudaStreamDefault{0};
 #endif
 

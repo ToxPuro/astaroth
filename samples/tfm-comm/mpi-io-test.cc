@@ -23,7 +23,6 @@ errchk_print_mpi_api_error(const int errorcode, const char* function, const char
         }                                                                                          \
     } while (0)
 
-
 int
 main(void)
 {
@@ -47,11 +46,14 @@ main(void)
                                      MPI_INFO_NULL, &file));
         // fprintf(stderr, "Launching iwrite_all\n");
         // ERRCHK_MPI_API(
-        //     MPI_File_iwrite_all(file, &buf, 1, MPI_INT, &req)); // This line causes a segmentation
-        //                                                         // on one machine but not on another
+        //     MPI_File_iwrite_all(file, &buf, 1, MPI_INT, &req)); // This line causes a
+        //     segmentation
+        //                                                         // on one machine but not on
+        //                                                         another
         // fprintf(stderr, "Waiting\n");
         // ERRCHK_MPI_API(MPI_Wait(&req, MPI_STATUS_IGNORE));
-        ERRCHK_MPI_API(MPI_File_write_all(file, &buf, 1, MPI_INT, MPI_STATUS_IGNORE)); // This completes without errors
+        ERRCHK_MPI_API(MPI_File_write_all(file, &buf, 1, MPI_INT,
+                                          MPI_STATUS_IGNORE)); // This completes without errors
         fprintf(stderr, "File closed\n");
         ERRCHK_MPI_API(MPI_File_close(&file));
     }

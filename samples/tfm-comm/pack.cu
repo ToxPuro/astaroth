@@ -93,33 +93,35 @@ pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offs
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
-    device::kernel_pack<T, N, M><<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm, block_shape, block_offset,
-                                                                  inputs, output.data());
+    device::kernel_pack<T, N, M><<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm, block_shape,
+                                                                           block_offset, inputs,
+                                                                           output.data());
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
 
 template <typename T, size_t N, size_t M>
 void
-unpack(const Buffer<T, DeviceMemoryResource>& input, const Shape<N>& mm, const Shape<N>& block_shape,
-       const Index<N>& block_offset, ac::array<T*, M>& outputs)
+unpack(const Buffer<T, DeviceMemoryResource>& input, const Shape<N>& mm,
+       const Shape<N>& block_shape, const Index<N>& block_offset, ac::array<T*, M>& outputs)
 {
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
-    device::kernel_unpack<T, N, M><<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input.data(), mm, block_shape,
-                                                                    block_offset, outputs);
+    device::kernel_unpack<T, N, M><<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input.data(), mm,
+                                                                             block_shape,
+                                                                             block_offset, outputs);
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
 
 // Specialization
-template
-void
-pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(const Shape<PACK_NDIMS>& mm, const Shape<PACK_NDIMS>& block_shape, const Index<PACK_NDIMS>& block_offset,
-     const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs, Buffer<AcReal, DeviceMemoryResource>& output);
+template void pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(
+    const Shape<PACK_NDIMS>& mm, const Shape<PACK_NDIMS>& block_shape,
+    const Index<PACK_NDIMS>& block_offset, const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs,
+    Buffer<AcReal, DeviceMemoryResource>& output);
 
-template
-void
-unpack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(const Buffer<AcReal, DeviceMemoryResource>& input, const Shape<PACK_NDIMS>& mm, const Shape<PACK_NDIMS>& block_shape,
-       const Index<PACK_NDIMS>& block_offset, ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& outputs);
+template void unpack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(
+    const Buffer<AcReal, DeviceMemoryResource>& input, const Shape<PACK_NDIMS>& mm,
+    const Shape<PACK_NDIMS>& block_shape, const Index<PACK_NDIMS>& block_offset,
+    ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& outputs);

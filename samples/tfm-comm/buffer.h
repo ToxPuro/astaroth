@@ -38,7 +38,6 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
     T* end() { return data() + size(); }
     const T* end() const { return data() + size(); }
 
-
     void display() const
     {
         static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,

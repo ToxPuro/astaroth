@@ -31,7 +31,7 @@
 #include <chrono>
 #define BENCHMARK(cmd)                                                                             \
     do {                                                                                           \
-        const auto start__{std::chrono::system_clock::now()};                                     \
+        const auto start__{std::chrono::system_clock::now()};                                      \
         (cmd);                                                                                     \
         const auto ms_elapsed__ = std::chrono::duration_cast<std::chrono::milliseconds>(           \
             std::chrono::system_clock::now() - start__);                                           \

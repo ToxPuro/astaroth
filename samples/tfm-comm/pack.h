@@ -67,24 +67,22 @@ unpack(const Buffer<T, HostMemoryResource>& input, const Shape<N>& mm, const Sha
 #if defined(DEVICE_ENABLED)
 
 template <typename T, size_t N, size_t M>
-void
-pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offset,
-     const ac::array<T*, M>& inputs, Buffer<T, DeviceMemoryResource>& output);
+void pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offset,
+          const ac::array<T*, M>& inputs, Buffer<T, DeviceMemoryResource>& output);
 
 template <typename T, size_t N, size_t M>
-void
-unpack(const Buffer<T, DeviceMemoryResource>& input, const Shape<N>& mm, const Shape<N>& block_shape,
-       const Index<N>& block_offset, ac::array<T*, M>& outputs);
+void unpack(const Buffer<T, DeviceMemoryResource>& input, const Shape<N>& mm,
+            const Shape<N>& block_shape, const Index<N>& block_offset, ac::array<T*, M>& outputs);
 
-extern template
-void
-pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(const Shape<PACK_NDIMS>& mm, const Shape<PACK_NDIMS>& block_shape, const Index<PACK_NDIMS>& block_offset,
-     const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs, Buffer<AcReal, DeviceMemoryResource>& output);
+extern template void pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(
+    const Shape<PACK_NDIMS>& mm, const Shape<PACK_NDIMS>& block_shape,
+    const Index<PACK_NDIMS>& block_offset, const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs,
+    Buffer<AcReal, DeviceMemoryResource>& output);
 
-extern template
-void
-unpack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(const Buffer<AcReal, DeviceMemoryResource>& input, const Shape<PACK_NDIMS>& mm, const Shape<PACK_NDIMS>& block_shape,
-       const Index<PACK_NDIMS>& block_offset, ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& outputs);
+extern template void unpack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(
+    const Buffer<AcReal, DeviceMemoryResource>& input, const Shape<PACK_NDIMS>& mm,
+    const Shape<PACK_NDIMS>& block_shape, const Index<PACK_NDIMS>& block_offset,
+    ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& outputs);
 
 #endif
 

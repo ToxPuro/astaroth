@@ -5,13 +5,10 @@
 
 #include <algorithm>
 #include <iostream>
-#include <vector>
 #include <numeric>
+#include <vector>
 
 #include "math_utils.h"
-
-
-
 
 static uint64_t
 vecprod(const std::vector<uint64_t>& vec)
@@ -94,7 +91,7 @@ test_decomp(void)
             // PRINDIMST_DEBUG(coords);
 
             // Backward
-            scale        = {1, 1, 1};
+            scale = {1, 1, 1};
             size_t index{0};
             for (size_t j{decompositions.size() - 1}; j < decompositions.size(); --j) {
                 index = index + prod(scale) * to_linear((coords / scale) % decompositions[j],

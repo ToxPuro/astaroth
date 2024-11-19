@@ -39,7 +39,7 @@ other_kernel(const std::array<int, 3> values, const size_t count, const T* in, T
     const size_t i{static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     if (i < count) {
         const auto more_values{values + values};
-        out[i]                 = values[0] + values[1] + values[2] + more_values[0];
+        out[i] = values[0] + values[1] + values[2] + more_values[0];
     }
 }
 

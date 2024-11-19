@@ -4,8 +4,8 @@
 #include "errchk.h"
 #include "ndarray.h"
 
-#include <numeric>
 #include <algorithm>
+#include <numeric>
 
 #include <mpi.h>
 
@@ -135,8 +135,8 @@ main()
         NdArray<AcReal, N, DeviceMemoryResource> dout(local_mm);
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
-        std::iota(hin.begin(), hin.end(),static_cast<AcReal>(get_rank(cart_comm)) *
-                       static_cast<AcReal>(prod(local_mm)));
+        std::iota(hin.begin(), hin.end(),
+                  static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         hin.display();
@@ -154,8 +154,9 @@ main()
 #if true
         PRINT_LOG("Testing basic halo exchange"); //-------------------------------
         if (nprocs == 1) {
-            std::iota(hin.begin(), hin.end(),static_cast<AcReal>(get_rank(cart_comm)) *
-                       static_cast<AcReal>(prod(local_mm)));
+            std::iota(hin.begin(), hin.end(),
+                      static_cast<AcReal>(get_rank(cart_comm)) *
+                          static_cast<AcReal>(prod(local_mm)));
         }
         else {
             std::fill(hin.begin(), hin.end(), static_cast<AcReal>(get_rank(cart_comm)));
@@ -180,8 +181,9 @@ main()
 #if true
         PRINT_LOG("Testing packed halo exchange"); //-------------------------------
         if (nprocs == 1) {
-            std::iota(hin.begin(), hin.end(),static_cast<AcReal>(get_rank(cart_comm)) *
-                       static_cast<AcReal>(prod(local_mm)));
+            std::iota(hin.begin(), hin.end(),
+                      static_cast<AcReal>(get_rank(cart_comm)) *
+                          static_cast<AcReal>(prod(local_mm)));
         }
         else {
             std::fill(hin.begin(), hin.end(), static_cast<AcReal>(get_rank(cart_comm)));
@@ -209,8 +211,8 @@ main()
 
 #if true
         PRINT_LOG("Testing IO"); //-------------------------------
-        std::iota(hin.begin(), hin.end(),static_cast<AcReal>(get_rank(cart_comm)) *
-                       static_cast<AcReal>(prod(local_mm)));
+        std::iota(hin.begin(), hin.end(),
+                  static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
 
         IOTaskAsync<AcReal, N> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
         // iotask.launch_write(cart_comm, hin.buffer, "test.dat");
