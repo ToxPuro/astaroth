@@ -42,10 +42,10 @@ main()
         // Raw pointer cast is required to convert from device_ptr wrapper returned with
         // device_vector.data() to a raw pointer
         ac::array<AcReal*, 10> inputs{
-            ac::raw_pointer_cast(lnrho.data()),
-            ac::raw_pointer_cast(ux.data()),
-            ac::raw_pointer_cast(uy.data()),
-            ac::raw_pointer_cast(uz.data()),
+            lnrho.data(),
+            ux.data(),
+            uy.data(),
+            uz.data(),
         };
     }
     catch (const std::exception& e) {

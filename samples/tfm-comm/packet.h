@@ -87,14 +87,14 @@ template <typename T, size_t N> class Packet {
         // Post recv
         const int tag = 0;
         ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_Irecv(ac::raw_pointer_cast(recv_buffer.data()), as<int>(count), get_mpi_dtype<T>(),
+        ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(), as<int>(count), get_mpi_dtype<T>(),
                                  recv_neighbor, tag, comm, &recv_req));
 
         // Pack and post send
         pack(local_mm, segment.dims, send_offset, inputs, send_buffer);
 
         ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_Isend(ac::raw_pointer_cast(send_buffer.data()), as<int>(count), get_mpi_dtype<T>(),
+        ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), get_mpi_dtype<T>(),
                                  send_neighbor, tag, comm, &send_req));
     }
 

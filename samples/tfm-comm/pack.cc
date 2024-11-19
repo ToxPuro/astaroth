@@ -13,14 +13,16 @@ test_pack(void)
     ac::host_vector<uint64_t> hout(count - 2 * rr);
     std::iota(hin.begin(), hin.end(), 0);
     std::fill(hout.begin(), hout.end(), 0);
-    ac::copy(hin.begin(), hin.end(), din.begin());
+    // ac::copy(hin.begin(), hin.end(), din.begin());
+    migrate(hin, din);
 
     Shape<NDIMS> mm{count};
     Shape<NDIMS> block_shape{count - 2 * rr};
     Index<NDIMS> block_offset{rr};
-    ac::array<uint64_t*, 1> inputs{ac::raw_pointer_cast(din.data())};
+    ac::array<uint64_t*, 1> inputs{din.data()};
     pack(mm, block_shape, block_offset, inputs, dout);
-    ac::copy(dout.begin(), dout.end(), hout.begin());
+    migrate(dout, hout);
+    // ac::copy(dout.begin(), dout.end(), hout.begin());
 
     // hout.display();
     ERRCHK(hout[0] == 1);

@@ -94,7 +94,7 @@ pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offs
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
     device::kernel_pack<T, N, M><<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm, block_shape, block_offset,
-                                                                  inputs, ac::raw_pointer_cast(output.data()));
+                                                                  inputs, output.data());
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
@@ -107,7 +107,7 @@ unpack(const ac::device_vector<T>& input, const Shape<N>& mm, const Shape<N>& bl
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
-    device::kernel_unpack<T, N, M><<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(ac::raw_pointer_cast(input.data()), mm, block_shape,
+    device::kernel_unpack<T, N, M><<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input.data(), mm, block_shape,
                                                                     block_offset, outputs);
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
