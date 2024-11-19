@@ -12,8 +12,10 @@ template <typename T> using host_vector        = thrust::host_vector<T>;
 template <typename T> using pinned_host_vector = thrust::host_vector<T>; // TODO
 template <typename T> using device_vector      = thrust::device_vector<T>;
 using thrust::copy;
+using thrust::fill_n;
 using thrust::multiplies;
 using thrust::reduce;
+using thrust::raw_pointer_cast;
 } // namespace ac
 #if defined(CUDA_ENABLED)
 // CUDA-specific
@@ -35,9 +37,11 @@ template <typename T> using pinned_host_vector   = std::vector<T>;
 template <typename T> using device_vector        = std::vector<T>;
 template <typename T, size_t N> using base_array = std::array<T, N>;
 using std::copy;
+using std::fill_n;
 using std::multiplies;
 using std::reduce;
-
+#define __host__
+#define __device__
 // raw_pointer_cast unwraps a thrust::device_ptr
 template <typename T>
 T
@@ -50,6 +54,14 @@ raw_pointer_cast(const T& ptr) noexcept
 #define __device__
 #endif
 
+// Disable errchecks in device code (not supported as of 2024-11-11)
+#if defined(__CUDA_ARCH__) || (defined(__HIP_DEVICE_COMPILE__) && __HIP_DEVICE_COMPILE__ == 1)
+#undef ERRCHK
+#define ERRCHK(expr)
+#undef ERRCHK_EXPR_DESC
+#define ERRCHK_EXPR_DESC(expr, ...)
+#endif
+
 namespace ac {
 template <typename T, size_t N> class array {
   private:
@@ -57,28 +69,28 @@ template <typename T, size_t N> class array {
 
   public:
     // Default constructor
-    array() = default;
+    __host__ __device__ array() = default;
 
     // Initializer list constructor
     // StaticArray<int, 3> a = {1,2,3}
-    array(const std::initializer_list<T>& init_list)
+    __host__ __device__ array(const std::initializer_list<T>& init_list)
     {
         ERRCHK(init_list.size() == N);
-        std::copy(init_list.begin(), init_list.end(), resource.begin());
+        ac::copy(init_list.begin(), init_list.end(), resource.begin());
     }
 
     // Enable the subscript[] operator
-    T& operator[](const size_t i)
+    __host__ __device__ T& operator[](const size_t i)
     {
         ERRCHK(i < N);
         return resource[i];
     }
-    const T& operator[](const size_t i) const
+    __host__ __device__ const T& operator[](const size_t i) const
     {
         ERRCHK(i < N);
         return resource[i];
     }
-    auto size() const { return resource.size(); }
+    __host__ __device__ auto size() const { return resource.size(); }
     auto begin() { return resource.begin(); }
     auto begin() const { return resource.begin(); }
     auto end() { return resource.end(); }
@@ -102,7 +114,7 @@ template <typename T, size_t N>
 ones()
 {
     ac::array<T, N> arr{};
-    std::fill_n(arr.begin(), N, as<T>(1));
+    ac::fill_n(arr.begin(), N, as<T>(1));
     return arr;
 };
 
@@ -111,7 +123,7 @@ template <typename T, size_t N>
 fill(const T& fill_value)
 {
     ac::array<T, N> arr{};
-    std::fill_n(arr.begin(), N, fill_value);
+    ac::fill_n(arr.begin(), N, fill_value);
     return arr;
 };
 
@@ -373,7 +385,7 @@ operator<<(std::ostream& os, const ac::array<T, N>& obj)
 
 template <typename T, size_t N>
 T __host__ __device__
-prod(const ac::array<T, N> arr)
+prod(const ac::array<T, N>& arr)
 {
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
     T result = 1;

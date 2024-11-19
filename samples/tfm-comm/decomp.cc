@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+#include <numeric>
 
 #include "math_utils.h"
 
