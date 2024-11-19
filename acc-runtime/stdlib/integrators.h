@@ -4,9 +4,24 @@ const real rk1_beta  = [1.0]
 const real rk2_alpha = [0.0,      -1/2.0]
 const real rk2_beta  = [1.0/2.0,   1.0]
 
-const real rk3_alpha =[ 0.,   -5./9.,   -153./128. ]
-const real rk3_beta  =[ 1./3., 15./ 16., 8./15.    ]
-
+const real rk3_alpha = [ 0.,   -5./9.,   -153./128. ]
+const real rk3_beta  = [ 1./3., 15./ 16., 8./15.    ]
+/*--------------------------------------------------------------------------------------------------------------------------*/
+const real rkf4_beta = [ 1153189308089./22510343858157.,
+                         1772645290293./4653164025191.,
+                        -1672844663538./4480602732383.,
+                         2114624349019./3568978502595.,
+                         5198255086312./14908931495163.]
+const real rkf4_bhat= [ 1016888040809./7410784769900.,
+                        11231460423587./58533540763752.,
+                       -1563879915014./6823010717585.,
+                         606302364029./971179775848.,
+                         1097981568119./3980877426909.]
+const real rkf4_alpha=[ 970286171893./4311952581923.,
+                        6584761158862./12103376702013.,
+                        2251764453980./15575788980749.,
+                        26877169314380./34165994151039., 0.0]
+/*--------------------------------------------------------------------------------------------------------------------------*/
 run_const int AC_rk_order
 rk3(Field f, real roc, int step_num, real dt) {
     /*
@@ -21,7 +36,7 @@ rk3(Field f, real roc, int step_num, real dt) {
     const real s1 = previous(f)
     const real s0 = value(f)
     return s1 + rk3_beta[step_num + 1] * ((rk3_alpha[step_num] / rk3_beta[step_num]) * (s1 - s0) + roc * dt)
-} /*--------------------------------------------------------------------------------------------------------------------------*/
+}
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3(Field3 field, real3 roc, int step_num, real dt) {
 	return real3(
@@ -132,32 +147,16 @@ rk3_intermediate(real3 w,real3 roc,int step_num,real dt){
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-
-const real rkf4_beta_coeffs = [1153189308089./22510343858157.,
-                1772645290293./4653164025191.,
-               -1672844663538./4480602732383.,
-                2114624349019./3568978502595.,
-                5198255086312./14908931495163.]
-const real rkf4_bhat_coeffs= [   1016888040809./7410784769900.,
-               11231460423587./58533540763752.,
-               -1563879915014./6823010717585.,
-                 606302364029./971179775848.,
-                1097981568119./3980877426909.]
-const real rkf4_alpha_coeffs=[ 970286171893./4311952581923.,
-                6584761158862./12103376702013.,
-                2251764453980./15575788980749.,
-               26877169314380./34165994151039., 0.0]
-
 rkf4_alpha(Field f_alpha, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
     error_message(AC_rk_order != 4, "Used rkf4_alpha but AC_rk_order is not 4!\n");
-    return f_alpha + rkf4_alpha_coeffs[step_num]*roc*dt
+    return f_alpha + rkf4_alpha[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rkf4_beta(Field f_beta, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
     error_message(AC_rk_order != 4, "Used rkf4_beta but AC_rk_order is not 4!\n");
-    return f_beta + rkf4_beta_coeffs[step_num]*roc*dt
+    return f_beta + rkf4_beta[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rkf4_alpha(Field3 f_alpha, real3 roc, int step_num, real dt) {
@@ -175,28 +174,29 @@ rkf4_beta(Field3 f_beta, real3 roc, int step_num, real dt) {
 			rkf4_beta(f_beta.z,roc.z,step_num,dt)
 		    )
 }
+/*--------------------------------------------------------------------------------------------------------------------*/
 rkf4_error(real df, int step_num,real dt)
 {
     	error_message(AC_rk_order != 4, "Used rkf4_error but AC_rk_order is not 4!\n");
-	return dt*(rkf4_beta_coeffs[step_num] - rkf4_bhat_coeffs[step_num])*df
+	return dt*(rkf4_beta[step_num] - rkf4_bhat[step_num])*df
 }
+/*--------------------------------------------------------------------------------------------------------------------*/
 rkf4_error(real3 df, int step_num, real dt)
 {
-	return 
-		real3(
-				rkf4_error(df.x,step_num,dt),
-				rkf4_error(df.y,step_num,dt),
-				rkf4_error(df.z,step_num,dt)
+	return real3(
+			rkf4_error(df.x,step_num,dt),
+			rkf4_error(df.y,step_num,dt),
+			rkf4_error(df.z,step_num,dt)
 		     )
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rk_intermediate(Field f, real df, int step_num, real dt)
 {
-	if(AC_rk_order == 1)
+	if (AC_rk_order == 1)
 		return rk1_intermediate(f,df,step_num,dt)
-	else if(AC_rk_order == 2)
+	else if (AC_rk_order == 2)
 		return rk2_intermediate(f,df,step_num,dt)
-	else if(AC_rk_order == 3)
+	else if (AC_rk_order == 3)
 		return rk3_intermediate(f,df,step_num,dt)
 	else
 		return 0.0;
@@ -208,16 +208,16 @@ rk_intermediate(Field3 f, real3 df, int step_num, real dt)
 			rk_intermediate(f.x,df.x,step_num,dt),
 			rk_intermediate(f.y,df.y,step_num,dt),
 			rk_intermediate(f.z,df.z,step_num,dt)
-			)
+		    )
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rk_final(Field f, int step_num)
 {
-	if(AC_rk_order == 1)
+	if (AC_rk_order == 1)
 		return rk1_final(f,step_num)
-	else if(AC_rk_order == 2)
+	else if (AC_rk_order == 2)
 		return rk2_final(f,step_num)
-	else if(AC_rk_order == 3)
+	else if (AC_rk_order == 3)
 		return rk3_final(f,step_num)
 	else 
 		return 0.0;

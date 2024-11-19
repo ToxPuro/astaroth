@@ -19,7 +19,296 @@
 #pragma once
 #include <assert.h>
 
-
+//<<<<<<< Updated upstream
+//
+//=======
+//// Function pointer definitions
+//typedef AcReal (*MapFn)(const AcReal&);
+//typedef AcReal (*MapVecFn)(const AcReal&, const AcReal&, const AcReal&);
+////typedef AcReal (*MapScalFacScalFn)(const AcReal&, const AcReal&, const AcReal&);
+//typedef AcReal (*MapVecScalFn)(const AcReal&, const AcReal&, const AcReal&, const AcReal&);
+//typedef AcReal (*ReduceFn)(const AcReal&, const AcReal&);
+//typedef int    (*ReduceFnInt)(const int&, const int&);
+//typedef AcReal (*CoordFn)(const AcReal3&);
+//typedef void (*GridLocFn)(AcReal*, AcReal*, AcReal*, const int3&);
+//
+//// Map functions
+//static __device__ inline AcReal
+//map_value(const AcReal& a)
+//{
+//    return a;
+//}
+//
+//static __device__ inline AcReal
+//map_square(const AcReal& a)
+//{
+//    return a * a;
+//}
+//
+//static __device__ inline AcReal
+//map_exp_square(const AcReal& a)
+//{
+//    return exp(2.*a);
+//}
+//
+//static __device__ inline AcReal
+//map_exp_fac(const AcReal& a, const AcReal& b, const AcReal & fac)
+//{
+//    return exp(a + fac*b);
+//}
+//
+//static __device__ inline AcReal
+//map_length_vec(const AcReal& a, const AcReal& b, const AcReal& c)
+//{
+//    return sqrt(a * a + b * b + c * c);
+//}
+//
+//static __device__ inline AcReal
+//map_square_vec(const AcReal& a, const AcReal& b, const AcReal& c)
+//{
+//    return map_square(a) + map_square(b) + map_square(c);
+//}
+//
+//static __device__ inline AcReal
+//map_exp_square_vec(const AcReal& a, const AcReal& b, const AcReal& c)
+//{
+//    return map_exp_square(a) + map_exp_square(b) + map_exp_square(c);
+//}
+//
+//static __device__ inline AcReal
+//map_length_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d)
+//{
+//    return sqrt(a * a + b * b + c * c) / sqrt(exp(d));
+//}
+//
+//static __device__ inline AcReal
+//map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d)
+//{
+//    return (map_square(a) + map_square(b) + map_square(c)) / (exp(d));
+//}
+//
+//// Coordinate based functions
+//
+//// Here physical coordinate in the grid is calculating by assuming that
+//// coordinate (0.0, 0.0, 0.0) corresresponds to index (0, 0, 0)
+//// with distance between grid points being AC_dsx, AC_dsy, AC_dsz
+//// respectively.
+////
+//
+//#ifdef AC_INTEGRATION_ENABLED
+//static __device__ inline void
+//cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1,
+//                        const int3& globalVertexIdx)
+//{
+//    *coord_x1 = AcReal(globalVertexIdx.x - STENCIL_ORDER/2)*VAL(AC_dsx);
+//    *coord_y1 = AcReal(globalVertexIdx.y - STENCIL_ORDER/2)*VAL(AC_dsy);
+//#if TWO_D == 0
+//    *coord_z1 = AcReal(globalVertexIdx.z - STENCIL_ORDER/2)*VAL(AC_dsz);
+//#else
+//    *coord_z1 = AcReal(0.0);
+//#endif
+//}
+//
+//static __device__ inline AcReal
+//distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1, const AcReal coord_x2,
+//         const AcReal coord_y2, const AcReal coord_z2)
+//{
+//    return sqrt((coord_x1 - coord_x2) * (coord_x1 - coord_x2) +
+//                (coord_y1 - coord_y2) * (coord_y1 - coord_y2) +
+//                (coord_z1 - coord_z2) * (coord_z1 - coord_z2));
+//}
+//
+//static __device__ inline AcReal
+//radial_window(const AcReal3& coordinate)
+//{
+//    AcReal loc_weight = 0.0;
+//
+//    const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
+//                                   VAL(AC_center_x), VAL(AC_center_y), 
+//                                   VAL(AC_center_z)); 
+//
+//    if (radius <= VAL(AC_window_radius)) loc_weight = 1.0;  
+//    //if (radius <= DCONST(AC_window_radius)) printf("Condition met radial_window \n");  OKOK
+//
+//    return loc_weight;
+//}
+//
+//static __device__ inline AcReal
+//gaussian_window(const AcReal3& coordinate)
+//{
+//    const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
+//                                   VAL(AC_center_x), VAL(AC_center_y), 
+//                                   VAL(AC_center_z)); 
+//    const AcReal rscale = VAL(AC_window_radius);
+//
+//    // if (radius <= DCONST(AC_window_radius)) printf("Condition met gaussian_window \n");  OKOK
+//
+//    // printf("radius %e, rscale %e, radius/rscale %e, exp((radius/rscale))^2 %e \n",
+//    //         radius, rscale, radius/rscale, exp(-(radius/rscale)*(radius/rscale)));
+//    return exp(-(radius / rscale) * (radius / rscale));
+//}
+//#else
+//static __device__ inline void
+//cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1,
+//                        const int3&)
+//{
+//    // Produce nan to halt the code
+//    *coord_x1 = 0.0 / 0.0;
+//    *coord_y1 = 0.0 / 0.0;
+//    *coord_z1 = 0.0 / 0.0;
+//}
+//
+//static __device__ inline AcReal
+//distance(const AcReal , const AcReal , const AcReal , const AcReal ,
+//         const AcReal , const AcReal )
+//{
+//    // Produce nan to halt the code
+//    return 0.0 / 0.0;
+//}
+//
+//static __device__ inline AcReal
+//radial_window(const AcReal3& )
+//{
+//    // Produce nan to halt the code
+//    return 0.0 / 0.0;
+//}
+//
+//static __device__ inline AcReal
+//gaussian_window(const AcReal3& )
+//{
+//    // Produce nan to halt the code
+//    return 0.0 / 0.0;
+//}
+//#endif
+//
+//// Reduce functions
+//static __device__ inline AcReal
+//reduce_max(const AcReal& a, const AcReal& b)
+//{
+//    return a > b ? a : b;
+//}
+//
+//static __device__ inline AcReal
+//reduce_min(const AcReal& a, const AcReal& b)
+//{
+//    return a < b ? a : b;
+//}
+//
+//static __device__ inline AcReal
+//reduce_sum(const AcReal& a, const AcReal& b)
+//{
+//    return a + b;
+//}
+//static __device__ inline int
+//reduce_max_int(const int& a, const int& b)
+//{
+//    return a > b ? a : b;
+//}
+//
+//static __device__ inline int
+//reduce_min_int(const int& a, const int& b)
+//{
+//    return a > b ? a : b;
+//}
+//
+//static __device__ inline int
+//reduce_sum_int(const int& a, const int& b)
+//{
+//    return a + b;
+//}
+//
+//bool __device__
+//bound_check(const int3 end)
+//{
+//#if TWO_D == 0
+//    return ((end <= (int3){VAL(AC_mx), VAL(AC_my), VAL(AC_mz)}));
+//#else
+//    return ((end <= (int3){VAL(AC_mx), VAL(AC_my), 1}));
+//#endif
+//}
+//
+///** Map data from a 3D array into a 1D array */
+//template <MapFn map_fn>
+//__global__ void
+//map(const AcReal* in, const int3 start, const int3 end, AcReal* out)
+//{
+//    assert((start >= (int3){0, 0, 0}));
+//    assert(bound_check(end));
+//
+//    const int3 tid = (int3){
+//        threadIdx.x + blockIdx.x * blockDim.x,
+//        threadIdx.y + blockIdx.y * blockDim.y,
+//        threadIdx.z + blockIdx.z * blockDim.z,
+//    };
+//
+//    const int3 in_idx3d = start + tid;
+//    const size_t in_idx = IDX(in_idx3d);
+//
+//    const int3 dims      = end - start;
+//    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+//
+//    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+//    if (within_bounds)
+//        out[out_idx] = map_fn(in[in_idx]);
+//}
+//
+//template <MapVecFn map_fn>
+//__global__ void
+//map_vec(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 start, const int3 end,
+//        AcReal* out)
+//{
+//    assert((start >= (int3){0, 0, 0}));
+//    assert(bound_check(end));
+//
+//    const int3 tid = (int3){
+//        threadIdx.x + blockIdx.x * blockDim.x,
+//        threadIdx.y + blockIdx.y * blockDim.y,
+//        threadIdx.z + blockIdx.z * blockDim.z,
+//    };
+//
+//    const int3 in_idx3d = start + tid;
+//    const size_t in_idx = IDX(in_idx3d);
+//
+//    const int3 dims      = end - start;
+//    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+//
+//    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+//    if (within_bounds)
+//        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx]);
+//}
+///*
+//template <MapScalFacScalFn map_fn>
+//__global__ void
+//map_scal_scal(const AcReal* in0, const AcReal* in1, const AcReal* fac, const int3 start, const int3 end, AcReal* out)
+//{
+//    assert((start >= (int3){0, 0, 0}));
+//    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+//
+//    const int3 tid = (int3){
+//        threadIdx.x + blockIdx.x * blockDim.x,
+//        threadIdx.y + blockIdx.y * blockDim.y,
+//        threadIdx.z + blockIdx.z * blockDim.z,
+//    };
+//
+//    const int3 in_idx3d = start + tid;
+//    const size_t in_idx = IDX(in_idx3d);
+//
+//    const int3 dims      = end - start;
+//    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+//
+//    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+//    if (within_bounds)
+//        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], *fac);
+//}
+//*/
+//template <MapVecScalFn map_fn>
+//__global__ void
+//map_vec_scal(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcReal* in3,
+//             const int3 start, const int3 end, AcReal* out)
+//{
+//    assert((start >= (int3){0, 0, 0}));
+//    assert(bound_check(end));
+//>>>>>>> Stashed changes
 
 
 template <typename T>
