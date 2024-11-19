@@ -6,11 +6,13 @@
 // #endif
 
 #include <iostream>
+#include <array>
+
 
 #include "errchk_cuda.h"
 #include "type_conversion.h"
 
-// #include <hip/std/array>
+#include <cuda/std/array>
 
 template <typename T>
 __global__ void
@@ -22,11 +24,11 @@ kernel(const size_t count, const T* in, T* out)
 }
 
 template <typename T, size_t N>
-std::array<T, N> __device__
-operator+(const std::array<T, N>& a, const std::array<T, N>& b)
+cuda::std::array<T, N> __device__
+operator+(const cuda::std::array<T, N>& a, const cuda::std::array<T, N>& b)
 {
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-    std::array<T, N> c;
+    cuda::std::array<T, N> c;
     for (size_t i = 0; i < c.size(); ++i)
         c[i] = a[i] + b[i];
     return c;
@@ -34,7 +36,7 @@ operator+(const std::array<T, N>& a, const std::array<T, N>& b)
 
 template <typename T>
 __global__ void
-other_kernel(const std::array<int, 3> values, const size_t count, const T* in, T* out)
+other_kernel(const cuda::std::array<int, 3> values, const size_t count, const T* in, T* out)
 {
     const size_t i = static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x;
     if (i < count) {
@@ -49,12 +51,12 @@ call_device(const cudaStream_t stream, const size_t count, const T* in, T* out)
 {
     const size_t tpb{256};
     const size_t bpg{(count + tpb - 1) / count};
-    kernel<<<as<uint32_t>(bpg), as<uint32_t>(tpb), 0, stream>>>(count, in, out);
+    kernel<T><<<as<uint32_t>(bpg), as<uint32_t>(tpb), 0, stream>>>(count, in, out);
     ERRCHK_CUDA_KERNEL();
 
     std::cout << "hello from call_device" << std::endl;
-    std::array<int, 3> vals{1, 2, 3};
-    other_kernel<<<as<uint32_t>(bpg), as<uint32_t>(tpb), 0, stream>>>(vals, count, in, out);
+    cuda::std::array<int, 3> vals{1, 2, 3};
+    other_kernel<T><<<as<uint32_t>(bpg), as<uint32_t>(tpb), 0, stream>>>(vals, count, in, out);
     ERRCHK_CUDA_KERNEL();
 }
 

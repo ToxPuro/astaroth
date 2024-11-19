@@ -4,6 +4,7 @@
 #include "print_debug.h"
 
 #include <algorithm>
+#include <numeric>
 #include <vector>
 
 #include "math_utils.h"
