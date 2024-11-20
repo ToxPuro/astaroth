@@ -11,8 +11,8 @@ template <typename T, size_t N> class HaloExchangeTask {
     std::vector<std::unique_ptr<Packet<T, N>>> packets;
 
   public:
-    HaloExchangeTask(const Shape<N>& local_mm, const Shape<N>& local_nn, const Index<N>& local_rr,
-                     const size_t n_aggregate_buffers)
+    HaloExchangeTask(const ac::shape<N>& local_mm, const ac::shape<N>& local_nn,
+                     const ac::index<N>& local_rr, const size_t n_aggregate_buffers)
 
     {
         // Must be larger than the boundary area to avoid boundary artifacts

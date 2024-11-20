@@ -17,7 +17,7 @@ to_linear(const ac::array<uint64_t, N>& coords, const ac::array<uint64_t, N>& sh
 }
 
 template <size_t N>
-Index<N>
+ac::index<N>
 to_spatial(const uint64_t index, const ac::array<uint64_t, N>& shape)
 {
     ac::array<uint64_t, N> coords;

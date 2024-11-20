@@ -42,26 +42,26 @@ test_to_spatial(void)
 {
     {
         const uint64_t i{0};
-        const Shape<3> shape{4, 5, 6};
-        const Shape<3> coords{0, 0, 0};
+        const ac::shape<3> shape{4, 5, 6};
+        const ac::shape<3> coords{0, 0, 0};
         ERRCHK(to_spatial(i, shape) == coords);
     }
     {
         const uint64_t i{4};
-        const Shape<3> shape{4, 5, 6};
-        const Shape<3> coords{0, 1, 0};
+        const ac::shape<3> shape{4, 5, 6};
+        const ac::shape<3> coords{0, 1, 0};
         ERRCHK(to_spatial(i, shape) == coords);
     }
     {
         const uint64_t i{4 * 5};
-        const Shape<3> shape{4, 5, 6};
-        const Shape<3> coords{0, 0, 1};
+        const ac::shape<3> shape{4, 5, 6};
+        const ac::shape<3> coords{0, 0, 1};
         ERRCHK(to_spatial(i, shape) == coords);
     }
     {
         const uint64_t i{4 * 5 * 6 - 1};
-        const Shape<3> shape{4, 5, 6};
-        const Shape<3> coords{3, 4, 5};
+        const ac::shape<3> shape{4, 5, 6};
+        const ac::shape<3> coords{3, 4, 5};
         ERRCHK(to_spatial(i, shape) == coords);
     }
 }
@@ -79,21 +79,21 @@ static void
 test_within_box(void)
 {
     {
-        const Index<3> box_offset{0, 0, 0};
-        const Shape<3> box_dims{10, 10, 10};
-        const Index<3> coords{0, 0, 0};
+        const ac::index<3> box_offset{0, 0, 0};
+        const ac::shape<3> box_dims{10, 10, 10};
+        const ac::index<3> coords{0, 0, 0};
         ERRCHK(within_box(coords, box_dims, box_offset) == true);
     }
     {
-        const Index<3> box_offset{0, 0, 0};
-        const Shape<3> box_dims{10, 10, 10};
-        const Index<3> coords{0, 10, 0};
+        const ac::index<3> box_offset{0, 0, 0};
+        const ac::shape<3> box_dims{10, 10, 10};
+        const ac::index<3> coords{0, 10, 0};
         ERRCHK(within_box(coords, box_dims, box_offset) == false);
     }
     {
-        const Index<3> box_offset{0, 0, 0};
-        const Shape<3> box_dims{10, 10, 10};
-        const Index<3> coords{11, 11, 11};
+        const ac::index<3> box_offset{0, 0, 0};
+        const ac::shape<3> box_dims{10, 10, 10};
+        const ac::index<3> coords{11, 11, 11};
         ERRCHK(within_box(coords, box_dims, box_offset) == false);
     }
     {

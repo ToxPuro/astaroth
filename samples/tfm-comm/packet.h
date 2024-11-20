@@ -14,12 +14,12 @@
 template <typename T, size_t N> class Packet {
 
   private:
-    Shape<N> local_mm;
-    Shape<N> local_nn;
-    Index<N> local_rr;
+    ac::shape<N> local_mm;
+    ac::shape<N> local_nn;
+    ac::index<N> local_rr;
 
     Segment<N>
-        segment; // Shape<N> of the data block the packet represents (for packing or unpacking)
+        segment; // ac::shape<N> of the data block the packet represents (for packing or unpacking)
 
     Buffer<T, DeviceMemoryResource> send_buffer;
     Buffer<T, DeviceMemoryResource> recv_buffer;
@@ -31,8 +31,9 @@ template <typename T, size_t N> class Packet {
     bool in_progress = false;
 
   public:
-    Packet(const Shape<N>& in_local_mm, const Shape<N>& in_local_nn, const Index<N>& in_local_rr,
-           const Segment<N>& in_segment, const size_t n_aggregate_buffers)
+    Packet(const ac::shape<N>& in_local_mm, const ac::shape<N>& in_local_nn,
+           const ac::index<N>& in_local_rr, const Segment<N>& in_segment,
+           const size_t n_aggregate_buffers)
         : local_mm{in_local_mm},
           local_nn{in_local_nn},
           local_rr{in_local_rr},
@@ -78,7 +79,7 @@ template <typename T, size_t N> class Packet {
         ERRCHK_MPI(count <= send_buffer.size());
         ERRCHK_MPI(count <= recv_buffer.size());
 
-        Index<N> send_offset{((local_nn + segment.offset - local_rr) % local_nn) + local_rr};
+        ac::index<N> send_offset{((local_nn + segment.offset - local_rr) % local_nn) + local_rr};
 
         auto recv_direction{get_direction(segment.offset, local_nn, local_rr)};
         const int recv_neighbor{get_neighbor(comm, recv_direction)};

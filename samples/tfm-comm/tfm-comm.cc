@@ -23,12 +23,12 @@ main()
 #endif
 
         constexpr size_t ndims{2};
-        const Shape<ndims> global_nn{4, 4};
+        const ac::shape<ndims> global_nn{4, 4};
         MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
-        const Shape<ndims> decomp{get_decomposition(cart_comm)};
-        const Shape<ndims> local_nn{global_nn / decomp};
-        const Index<ndims> coords{get_coords(cart_comm)};
-        const Index<ndims> global_nn_offset{coords * local_nn};
+        const ac::shape<ndims> decomp{get_decomposition(cart_comm)};
+        const ac::shape<ndims> local_nn{global_nn / decomp};
+        const ac::index<ndims> coords{get_coords(cart_comm)};
+        const ac::index<ndims> global_nn_offset{coords * local_nn};
 
         auto rr{ones<uint64_t, ndims>()}; // Symmetric halo
         auto local_mm{as<uint64_t>(2) * rr + local_nn};

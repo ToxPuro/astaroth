@@ -35,7 +35,7 @@ factorize(uint64_t n)
  */
 template <size_t N>
 inline double
-surface_area_to_volume(const Shape<N>& nn)
+surface_area_to_volume(const ac::shape<N>& nn)
 {
     const auto rr{ones<uint64_t, N>()};
     return static_cast<double>((prod(as<uint64_t>(2) * rr + nn))) / static_cast<double>(prod(nn));
@@ -47,11 +47,11 @@ surface_area_to_volume(const Shape<N>& nn)
  * ratio at each cut.
  */
 template <size_t N>
-Shape<N>
-decompose(const Shape<N>& nn, uint64_t nprocs)
+ac::shape<N>
+decompose(const ac::shape<N>& nn, uint64_t nprocs)
 {
-    Shape<N> local_nn{nn};
-    Shape<N> decomp{ones<uint64_t, N>()};
+    ac::shape<N> local_nn{nn};
+    ac::shape<N> decomp{ones<uint64_t, N>()};
 
     // More flexible dims (inspired by W.D. Gropp https://doi.org/10.1145/3236367.3236377)
     // Adapted to try out all factors to work with a wider range of dims
@@ -103,14 +103,14 @@ decompose(const Shape<N>& nn, uint64_t nprocs)
  * decompose_hierarchical(nn, std::vector<uint64_t>{2, 4, 8});
  */
 template <size_t N>
-std::vector<Shape<N>>
-decompose_hierarchical(const Shape<N>& nn, const std::vector<uint64_t>& nprocs_per_layer)
+std::vector<ac::shape<N>>
+decompose_hierarchical(const ac::shape<N>& nn, const std::vector<uint64_t>& nprocs_per_layer)
 {
-    std::vector<Shape<N>> decompositions;
+    std::vector<ac::shape<N>> decompositions;
 
-    Shape<N> curr_nn{nn};
+    ac::shape<N> curr_nn{nn};
     for (const auto& nprocs : nprocs_per_layer) {
-        const Shape<N> decomp{decompose(curr_nn, nprocs)};
+        const ac::shape<N> decomp{decompose(curr_nn, nprocs)};
         decompositions.push_back(decomp);
         curr_nn = curr_nn / decomp;
     }
@@ -119,11 +119,11 @@ decompose_hierarchical(const Shape<N>& nn, const std::vector<uint64_t>& nprocs_p
 }
 
 template <size_t N>
-Index<N>
-hierarchical_to_spatial(const uint64_t in_index, const std::vector<Shape<N>>& in_decompositions)
+ac::index<N>
+hierarchical_to_spatial(const uint64_t in_index, const std::vector<ac::shape<N>>& in_decompositions)
 {
-    Index<N> coords{};
-    Index<N> scale{ones<uint64_t, N>()};
+    ac::index<N> coords{};
+    ac::index<N> scale{ones<uint64_t, N>()};
     ERRCHK(coords[0] == 0);
     ERRCHK(scale[0] == 1);
     for (const auto& dims : in_decompositions) {
@@ -135,9 +135,10 @@ hierarchical_to_spatial(const uint64_t in_index, const std::vector<Shape<N>>& in
 
 template <size_t N>
 uint64_t
-hierarchical_to_linear(const Index<N>& in_coords, const std::vector<Shape<N>>& in_decompositions)
+hierarchical_to_linear(const ac::index<N>& in_coords,
+                       const std::vector<ac::shape<N>>& in_decompositions)
 {
-    Index<N> scale{ones<uint64_t, N>()};
+    ac::index<N> scale{ones<uint64_t, N>()};
     ERRCHK(scale[0] == 1);
     uint64_t index{0};
     for (const auto& dims : in_decompositions) {

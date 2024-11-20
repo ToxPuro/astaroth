@@ -4,7 +4,7 @@
 #include <numeric>
 
 #include "datatypes.h"
-#include "ndarray.h"
+#include "ndvector.h"
 
 #include "mpi_utils.h"
 #include <mpi.h>
@@ -15,10 +15,15 @@
 #include "errchk.h"
 #include "print_debug.h"
 
-template <typename T, size_t N>
+constexpr size_t ndims = 2;
+using AcReal           = double;
+using Shape            = ac::shape<ndims>;
+using Index            = ac::index<ndims>;
+using NdVector         = ac::ndvector<AcReal, ndims, HostMemoryResource>;
+using HaloExchange     = HaloExchangeTask<AcReal, ndims>;
+
 static void
-compute_loop(const MPI_Comm& cart_comm, HaloExchangeTask<T, N>& halo_exchange,
-             std::vector<T*>& buffers)
+compute_loop(const MPI_Comm& cart_comm, HaloExchange& halo_exchange, std::vector<AcReal*>& buffers)
 {
     halo_exchange.launch(cart_comm, buffers);
     halo_exchange.wait(buffers);
@@ -29,23 +34,22 @@ main()
 {
     init_mpi_funneled();
     try {
-        constexpr size_t ndims = 2;
-        const Shape<ndims> global_nn{8, 8};
 
+        const Shape global_nn{8, 8};
         MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
-        const Shape<ndims> decomp{get_decomposition<ndims>(cart_comm)};
-        const Shape<ndims> local_nn{global_nn / decomp};
-        const Index<ndims> coords{get_coords<ndims>(cart_comm)};
-        const Index<ndims> global_nn_offset{coords * local_nn};
+        const Shape decomp{get_decomposition<ndims>(cart_comm)};
+        const Shape local_nn{global_nn / decomp};
+        const Index coords{get_coords<ndims>(cart_comm)};
+        const Index global_nn_offset{coords * local_nn};
 
-        const Shape<ndims> rr{as<uint64_t>(2) * ones<uint64_t, ndims>()}; // Symmetric halo
-        const Shape<ndims> local_mm{as<uint64_t>(2) * rr + local_nn};
+        const Shape rr{as<uint64_t>(2) * ones<uint64_t, ndims>()}; // Symmetric halo
+        const Shape local_mm{as<uint64_t>(2) * rr + local_nn};
         const int rank{get_rank(cart_comm)};
 
         // Initialize the mesh
-        NdArray<AcReal, ndims, HostMemoryResource> lnrho(local_mm);
-        NdArray<AcReal, ndims, HostMemoryResource> ux(local_mm);
-        NdArray<AcReal, ndims, HostMemoryResource> uy(local_mm);
+        NdVector lnrho(local_mm);
+        NdVector ux(local_mm);
+        NdVector uy(local_mm);
         // const auto start_index = static_cast<AcReal>(rank * prod(local_mm));
         // std::iota(lnrho.begin(), lnrho.end(), start_index);
         std::fill(lnrho.begin(), lnrho.end(), static_cast<AcReal>(rank));
@@ -54,10 +58,10 @@ main()
 
         // Halo exchange
         std::vector<AcReal*> buffers{lnrho.data(), ux.data(), uy.data()};
-        HaloExchangeTask<AcReal, ndims> halo_exchange{local_mm, local_nn, rr, buffers.size()};
+        HaloExchange halo_exchange{local_mm, local_nn, rr, buffers.size()};
         // halo_exchange.launch(cart_comm, buffers);
         // halo_exchange.wait(buffers);
-        BENCHMARK((compute_loop<AcReal, ndims>(cart_comm, halo_exchange, buffers)));
+        BENCHMARK((compute_loop(cart_comm, halo_exchange, buffers)));
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         lnrho.display();
@@ -71,9 +75,9 @@ main()
                              lnrho.data(), filepath);
 
         PRINT_LOG("reading...");
-        NdArray<AcReal, ndims, HostMemoryResource> global_mesh{global_nn};
-        mpi_read_collective(cart_comm, global_nn, Index<ndims>{}, global_nn, global_nn,
-                            Index<ndims>{}, filepath, global_mesh.data());
+        NdVector global_mesh{global_nn};
+        mpi_read_collective(cart_comm, global_nn, Index{}, global_nn, global_nn, Index{}, filepath,
+                            global_mesh.data());
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         if (rank == 0) {
             global_mesh.display();

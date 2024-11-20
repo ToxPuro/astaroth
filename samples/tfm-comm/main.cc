@@ -118,15 +118,15 @@ main()
 #endif
         constexpr size_t N{2};
 
-        const Shape<N> global_nn{4, 4};
+        const ac::shape<N> global_nn{4, 4};
         MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
-        const Shape<N> decomp{get_decomposition<N>(cart_comm)};
-        const Shape<N> local_nn{global_nn / decomp};
-        const Index<N> coords{get_coords<N>(cart_comm)};
-        const Index<N> global_nn_offset{coords * local_nn};
+        const ac::shape<N> decomp{get_decomposition<N>(cart_comm)};
+        const ac::shape<N> local_nn{global_nn / decomp};
+        const ac::index<N> coords{get_coords<N>(cart_comm)};
+        const ac::index<N> global_nn_offset{coords * local_nn};
 
-        const Shape<N> rr{ones<uint64_t, N>()}; // Symmetric halo
-        const Shape<N> local_mm{as<uint64_t>(2) * rr + local_nn};
+        const ac::shape<N> rr{ones<uint64_t, N>()}; // Symmetric halo
+        const ac::shape<N> local_mm{as<uint64_t>(2) * rr + local_nn};
 
         NdArray<AcReal, N, HostMemoryResource> hin(local_mm);
         NdArray<AcReal, N, HostMemoryResource> hout(local_mm);

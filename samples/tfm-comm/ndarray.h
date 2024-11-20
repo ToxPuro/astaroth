@@ -62,11 +62,11 @@ ndarray_print(const char* label, const size_t ndims, const uint64_t* dims, const
 }
 
 template <typename T, size_t N, typename MemoryResource = HostMemoryResource> struct NdArray {
-    Shape<N> shape{};
+    ac::shape<N> shape{};
     Buffer<T, MemoryResource> buffer;
 
     // Constructor
-    explicit NdArray(const Shape<N>& in_shape)
+    explicit NdArray(const ac::shape<N>& in_shape)
         : shape{in_shape}, buffer{prod(in_shape)}
     {
     }
@@ -80,7 +80,7 @@ template <typename T, size_t N, typename MemoryResource = HostMemoryResource> st
     T* end() { return data() + size(); }
     const T* end() const { return data() + size(); }
 
-    void fill(const T& fill_value, const Shape<N>& subdims, const Index<N>& offset)
+    void fill(const T& fill_value, const ac::shape<N>& subdims, const ac::index<N>& offset)
     {
         ERRCHK(subdims.size() == offset.size());
         ndarray_fill<T>(fill_value, shape.size(), shape.data(), subdims.data(), offset.data(),

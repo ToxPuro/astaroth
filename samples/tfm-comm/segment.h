@@ -3,15 +3,15 @@
 #include "datatypes.h"
 
 template <size_t N> struct Segment {
-    Shape<N> dims{};   // Dimensions of the segment
-    Index<N> offset{}; // Offset of the segment
+    ac::shape<N> dims{};   // Dimensions of the segment
+    ac::index<N> offset{}; // Offset of the segment
 
     // Constructors
-    explicit Segment(const Shape<N>& in_dims)
+    explicit Segment(const ac::shape<N>& in_dims)
         : dims{in_dims}
     {
     }
-    Segment(const Shape<N>& in_dims, const Index<N>& in_offset)
+    Segment(const ac::shape<N>& in_dims, const ac::index<N>& in_offset)
         : dims{in_dims}, offset{in_offset}
     {
     }

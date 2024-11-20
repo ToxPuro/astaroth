@@ -7,7 +7,7 @@
 namespace detail {
 template <size_t N>
 static void
-partition_recursive(const Shape<N>& mm, const Shape<N>& nn, const Index<N>& nn_offset,
+partition_recursive(const ac::shape<N>& mm, const ac::shape<N>& nn, const ac::index<N>& nn_offset,
                     const Segment<N>& current_segment, const size_t axis,
                     std::vector<Segment<N>>& segments)
 {
@@ -54,7 +54,7 @@ partition_recursive(const Shape<N>& mm, const Shape<N>& nn, const Index<N>& nn_o
  */
 template <size_t N>
 std::vector<Segment<N>>
-partition(const Shape<N>& mm, const Shape<N>& nn, const Index<N>& nn_offset)
+partition(const ac::shape<N>& mm, const ac::shape<N>& nn, const ac::index<N>& nn_offset)
 {
     std::vector<Segment<N>> segments;
     Segment<N> initial_segment(mm);

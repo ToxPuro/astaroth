@@ -16,8 +16,9 @@
  */
 template <typename T, size_t N>
 std::vector<MPI_Request>
-launch_halo_exchange(const MPI_Comm parent_comm, const Shape<N>& local_mm, const Shape<N>& local_nn,
-                     const Shape<N>& rr, const T* send_data, T* recv_data)
+launch_halo_exchange(const MPI_Comm parent_comm, const ac::shape<N>& local_mm,
+                     const ac::shape<N>& local_nn, const ac::shape<N>& rr, const T* send_data,
+                     T* recv_data)
 {
     // Duplicate the communicator to ensure the operation does not interfere
     // with other operations on the parent communicator
@@ -38,14 +39,14 @@ launch_halo_exchange(const MPI_Comm parent_comm, const Shape<N>& local_mm, const
     std::vector<MPI_Request> send_reqs;
     std::vector<MPI_Request> recv_reqs;
     for (const Segment<N>& segment : segments) {
-        const Index<N> recv_offset{segment.offset};
-        const Index<N> send_offset{((local_nn + recv_offset - rr) % local_nn) + rr};
+        const ac::index<N> recv_offset{segment.offset};
+        const ac::index<N> send_offset{((local_nn + recv_offset - rr) % local_nn) + rr};
         MPI_Datatype recv_subarray{
             subarray_create(local_mm, segment.dims, recv_offset, get_mpi_dtype<T>())};
         MPI_Datatype send_subarray{
             subarray_create(local_mm, segment.dims, send_offset, get_mpi_dtype<T>())};
 
-        const Direction<N> recv_direction{get_direction(segment.offset, local_nn, rr)};
+        const ac::dir<N> recv_direction{get_direction(segment.offset, local_nn, rr)};
         const int recv_neighbor{get_neighbor(cart_comm, recv_direction)};
         const int send_neighbor{get_neighbor(cart_comm, -recv_direction)};
 

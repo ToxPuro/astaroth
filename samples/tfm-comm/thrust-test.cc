@@ -79,7 +79,7 @@ int
 main()
 {
     std::cout << "hello" << std::endl;
-    Shape mm{4, 4};
+    ac::shape mm{4, 4};
     const size_t count{prod(mm)};
 
     Buffer<double, HostMemoryResource> hin(count);

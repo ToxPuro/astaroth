@@ -137,7 +137,7 @@ get_rank(const MPI_Comm& cart_comm)
 //   private:
 //     mpi_comm_ptr_t handle;
 
-//     static MPI_Comm* alloc(const MPI_Comm& parent_comm, const Shape<N>& global_nn)
+//     static MPI_Comm* alloc(const MPI_Comm& parent_comm, const ac::shape<N>& global_nn)
 //     {
 //         MPI_Comm* cart_comm = new MPI_Comm;
 //         *cart_comm          = cart_comm_create(parent_comm, global_nn);
@@ -151,7 +151,7 @@ get_rank(const MPI_Comm& cart_comm)
 //     }
 
 //   public:
-//     ManagedMPIComm(const MPI_Comm& parent_comm, const Shape<N>& global_nn)
+//     ManagedMPIComm(const MPI_Comm& parent_comm, const ac::shape<N>& global_nn)
 //         : handle{alloc(parent_comm, global_nn), &dealloc}
 //     {
 //     }

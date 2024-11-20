@@ -9,6 +9,12 @@
 #include "print_debug.h"
 
 /**
+ * Datatypes
+ */
+template <size_t N> using MPIIndex = ac::array<int, N>;
+template <size_t N> using MPIShape = ac::array<int, N>;
+
+/**
  * Helper macros for printing
  */
 #define MPI_SYNCHRONOUS_BLOCK_START(communicator)                                                  \
@@ -87,10 +93,10 @@ constexpr int MPI_TAG_UB_MIN_VALUE{32767};
 int get_tag(void);
 
 template <size_t N>
-Direction<N>
-get_direction(const Index<N>& offset, const Shape<N>& nn, const Index<N>& rr)
+ac::dir<N>
+get_direction(const ac::index<N>& offset, const ac::shape<N>& nn, const ac::index<N>& rr)
 {
-    Direction<N> dir{};
+    ac::dir<N> dir{};
     for (size_t i{0}; i < offset.size(); ++i)
         dir[i] = offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
     return dir;
@@ -135,7 +141,7 @@ void finalize_mpi();
  */
 template <size_t N>
 MPI_Comm
-cart_comm_create(const MPI_Comm& parent_comm, const Shape<N>& global_nn)
+cart_comm_create(const MPI_Comm& parent_comm, const ac::shape<N>& global_nn)
 {
     // Get the number of processes
     int mpi_nprocs{-1};
@@ -169,7 +175,7 @@ void cart_comm_destroy(MPI_Comm& cart_comm);
  * */
 template <size_t N>
 MPI_Datatype
-subarray_create(const Shape<N>& dims, const Shape<N>& subdims, const Index<N>& offset,
+subarray_create(const ac::shape<N>& dims, const ac::shape<N>& subdims, const ac::index<N>& offset,
                 const MPI_Datatype& dtype)
 {
     MPIShape<N> mpi_dims{astaroth_to_mpi_format(dims)};
@@ -200,7 +206,7 @@ void info_destroy(MPI_Info& info);
 void request_wait_and_destroy(MPI_Request& req);
 
 template <size_t N>
-Shape<N>
+ac::shape<N>
 get_decomposition(const MPI_Comm& cart_comm)
 {
     int mpi_ndims{-1};
@@ -215,7 +221,7 @@ get_decomposition(const MPI_Comm& cart_comm)
 }
 
 template <size_t N>
-Index<N>
+ac::index<N>
 get_coords(const MPI_Comm& cart_comm)
 {
     // Get the rank of the current process
@@ -236,7 +242,7 @@ int get_rank(const MPI_Comm& cart_comm);
 
 template <size_t N>
 int
-get_neighbor(const MPI_Comm& cart_comm, const Direction<N>& dir)
+get_neighbor(const MPI_Comm& cart_comm, const ac::dir<N>& dir)
 {
     // Get the rank of the current process
     int rank{MPI_PROC_NULL};
@@ -472,7 +478,7 @@ using info_ptr_t     = std::unique_ptr<MPI_Info, std::function<void(MPI_Info*)>>
 
 template <typename T, size_t N>
 static inline subarray_ptr_t
-datatype_make_unique(const Shape<N>& dims, const Shape<N>& subdims, const Index<N>& offset)
+datatype_make_unique(const ac::shape<N>& dims, const ac::shape<N>& subdims, const ac::index<N>& offset)
 {
     auto* ptr           = new MPI_Datatype{MPI_DATATYPE_NULL};
     *ptr                = subarray_create(dims, subdims, offset, get_mpi_dtype<T>());

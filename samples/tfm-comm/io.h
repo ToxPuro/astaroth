@@ -8,9 +8,9 @@
 
 template <typename T, size_t N>
 void
-mpi_read_collective(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims,
-                    const Index<N>& in_file_offset, const Shape<N>& in_mesh_dims,
-                    const Shape<N>& in_mesh_subdims, const Index<N>& in_mesh_offset,
+mpi_read_collective(const MPI_Comm& parent_comm, const ac::shape<N>& in_file_dims,
+                    const ac::index<N>& in_file_offset, const ac::shape<N>& in_mesh_dims,
+                    const ac::shape<N>& in_mesh_subdims, const ac::index<N>& in_mesh_offset,
                     const std::string& path, T* data)
 {
     // Communicator
@@ -49,10 +49,10 @@ mpi_read_collective(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims,
 
 template <typename T, size_t N>
 void
-mpi_write_collective(const MPI_Comm& parent_comm, const Shape<N>& in_file_dims,
-                     const Index<N>& in_file_offset, const Shape<N>& in_mesh_dims,
-                     const Shape<N>& in_mesh_subdims, const Index<N>& in_mesh_offset, const T* data,
-                     const std::string& path)
+mpi_write_collective(const MPI_Comm& parent_comm, const ac::shape<N>& in_file_dims,
+                     const ac::index<N>& in_file_offset, const ac::shape<N>& in_mesh_dims,
+                     const ac::shape<N>& in_mesh_subdims, const ac::index<N>& in_mesh_offset,
+                     const T* data, const std::string& path)
 {
     // Communicator
     MPI_Comm comm{MPI_COMM_NULL};
@@ -98,9 +98,9 @@ class IOTaskAsync {
     bool in_progress{false};
 
   public:
-    IOTaskAsync(const Shape<N>& in_file_dims, const Index<N>& in_file_offset,
-                const Shape<N>& in_mesh_dims, const Shape<N>& in_mesh_subdims,
-                const Index<N>& in_mesh_offset)
+    IOTaskAsync(const ac::shape<N>& in_file_dims, const ac::index<N>& in_file_offset,
+                const ac::shape<N>& in_mesh_dims, const ac::shape<N>& in_mesh_subdims,
+                const ac::index<N>& in_mesh_offset)
         : info{info_create()},
           global_subarray{
               subarray_create(in_file_dims, in_mesh_subdims, in_file_offset, get_mpi_dtype<T>())},
