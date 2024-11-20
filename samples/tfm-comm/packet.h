@@ -64,7 +64,7 @@ template <typename T, size_t N> class Packet {
     Packet(Packet&&)                 = delete; // Move constructor
     Packet& operator=(Packet&&)      = delete; // Move assignment operator
 
-    template <size_t M> void launch(const MPI_Comm& parent_comm, const ac::array<T*, M>& inputs)
+    void launch(const MPI_Comm& parent_comm, const std::vector<T*>& inputs)
     {
         ERRCHK_MPI(!in_progress);
         in_progress = true;
@@ -91,7 +91,7 @@ template <typename T, size_t N> class Packet {
                                  recv_neighbor, tag, comm, &recv_req));
 
         // Pack and post send
-        pack(local_mm, segment.dims, send_offset, inputs, send_buffer);
+        pack(local_mm, segment.dims, send_offset, inputs, send_buffer.data());
 
         ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
         ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), get_mpi_dtype<T>(),
@@ -110,11 +110,11 @@ template <typename T, size_t N> class Packet {
         return in_progress && send_flag && recv_flag;
     };
 
-    template <size_t M> void wait(ac::array<T*, M>& outputs)
+    void wait(std::vector<T*>& outputs)
     {
         ERRCHK_MPI(in_progress);
         ERRCHK_MPI_API(MPI_Wait(&recv_req, MPI_STATUS_IGNORE));
-        unpack(recv_buffer, local_mm, segment.dims, segment.offset, outputs);
+        unpack(recv_buffer.data(), local_mm, segment.dims, segment.offset, outputs);
 
         ERRCHK_MPI_API(MPI_Wait(&send_req, MPI_STATUS_IGNORE));
         ERRCHK_MPI_API(MPI_Comm_free(&comm));

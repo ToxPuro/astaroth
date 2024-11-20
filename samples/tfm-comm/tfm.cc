@@ -15,10 +15,10 @@
 #include "errchk.h"
 #include "print_debug.h"
 
-template <typename T, size_t N, size_t M>
+template <typename T, size_t N>
 static void
 compute_loop(const MPI_Comm& cart_comm, HaloExchangeTask<T, N>& halo_exchange,
-             ac::array<T*, M>& buffers)
+             std::vector<T*>& buffers)
 {
     halo_exchange.launch(cart_comm, buffers);
     halo_exchange.wait(buffers);
@@ -53,11 +53,11 @@ main()
         std::fill(uy.begin(), uy.end(), static_cast<AcReal>(rank) + 20);
 
         // Halo exchange
-        ac::array<AcReal*, 3> buffers{lnrho.data(), ux.data(), uy.data()};
+        std::vector<AcReal*> buffers{lnrho.data(), ux.data(), uy.data()};
         HaloExchangeTask<AcReal, ndims> halo_exchange{local_mm, local_nn, rr, buffers.size()};
         // halo_exchange.launch(cart_comm, buffers);
         // halo_exchange.wait(buffers);
-        BENCHMARK((compute_loop<AcReal, ndims, 3>(cart_comm, halo_exchange, buffers)));
+        BENCHMARK((compute_loop<AcReal, ndims>(cart_comm, halo_exchange, buffers)));
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         lnrho.display();

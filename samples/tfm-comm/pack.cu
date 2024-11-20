@@ -3,7 +3,7 @@
 namespace device {
 template <size_t N>
 static __device__ uint64_t
-to_linear(const Index<N>& coords, const Shape<N>& shape)
+to_linear(const ac::shape<N>& coords, const ac::shape<N>& shape)
 {
     uint64_t result{0};
     for (size_t j{0}; j < shape.size(); ++j) {
@@ -16,10 +16,10 @@ to_linear(const Index<N>& coords, const Shape<N>& shape)
 }
 
 template <size_t N>
-static __device__ Index<N>
-to_spatial(const uint64_t index, const Shape<N>& shape)
+static __device__ ac::shape<N>
+to_spatial(const uint64_t index, const ac::shape<N>& shape)
 {
-    Index<N> coords;
+    ac::shape<N> coords;
     for (size_t j{0}; j < shape.size(); ++j) {
         uint64_t divisor{1};
         for (size_t i{0}; i < j; ++i)
@@ -42,7 +42,7 @@ prod(const ac::array<T, N>& arr)
 
 template <typename T, size_t N, size_t M>
 __global__ void
-kernel_pack(const Shape<N> mm, const Shape<N> block_shape, const Index<N> block_offset,
+kernel_pack(const ac::shape<N> mm, const ac::shape<N> block_shape, const ac::shape<N> block_offset,
             const ac::array<T*, M> inputs, T* output)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
@@ -51,10 +51,10 @@ kernel_pack(const Shape<N> mm, const Shape<N> block_shape, const Index<N> block_
         for (size_t j{0}; j < inputs.size(); ++j) {
 
             // Block coords
-            const Index<N> block_coords{device::to_spatial(i, block_shape)};
+            const ac::shape<N> block_coords{device::to_spatial(i, block_shape)};
 
             // Input coords
-            const Index<N> in_coords{block_offset + block_coords};
+            const ac::shape<N> in_coords{block_offset + block_coords};
             const uint64_t in_idx{device::to_linear(in_coords, mm)};
 
             output[i + j * block_nelems] = inputs[j][in_idx];
@@ -64,8 +64,8 @@ kernel_pack(const Shape<N> mm, const Shape<N> block_shape, const Index<N> block_
 
 template <typename T, size_t N, size_t M>
 __global__ void
-kernel_unpack(const T* input, const Shape<N> mm, const Shape<N> block_shape,
-              const Index<N> block_offset, ac::array<T*, M> outputs)
+kernel_unpack(const T* input, const ac::shape<N> mm, const ac::shape<N> block_shape,
+              const ac::shape<N> block_offset, ac::array<T*, M> outputs)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{prod(block_shape)};
@@ -73,10 +73,10 @@ kernel_unpack(const T* input, const Shape<N> mm, const Shape<N> block_shape,
         for (size_t j{0}; j < outputs.size(); ++j) {
 
             // Block coords
-            const Index<N> block_coords{device::to_spatial(i, block_shape)};
+            const ac::shape<N> block_coords{device::to_spatial(i, block_shape)};
 
             // Input coords
-            const Index<N> in_coords{block_offset + block_coords};
+            const ac::shape<N> in_coords{block_offset + block_coords};
             const uint64_t in_idx{device::to_linear(in_coords, mm)};
 
             outputs[j][in_idx] = input[i + j * block_nelems];
@@ -87,7 +87,7 @@ kernel_unpack(const T* input, const Shape<N> mm, const Shape<N> block_shape,
 
 template <typename T, size_t N, size_t M>
 void
-pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offset,
+pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::shape<N>& block_offset,
      const ac::array<T*, M>& inputs, Buffer<T, DeviceMemoryResource>& output)
 {
     const uint64_t block_nelems{prod(block_shape)};
@@ -102,8 +102,8 @@ pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offs
 
 template <typename T, size_t N, size_t M>
 void
-unpack(const Buffer<T, DeviceMemoryResource>& input, const Shape<N>& mm,
-       const Shape<N>& block_shape, const Index<N>& block_offset, ac::array<T*, M>& outputs)
+unpack(const Buffer<T, DeviceMemoryResource>& input, const ac::shape<N>& mm,
+       const ac::shape<N>& block_shape, const ac::shape<N>& block_offset, ac::array<T*, M>& outputs)
 {
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
@@ -116,12 +116,14 @@ unpack(const Buffer<T, DeviceMemoryResource>& input, const Shape<N>& mm,
 }
 
 // Specialization
-template void pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(
-    const Shape<PACK_NDIMS>& mm, const Shape<PACK_NDIMS>& block_shape,
-    const Index<PACK_NDIMS>& block_offset, const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs,
-    Buffer<AcReal, DeviceMemoryResource>& output);
+template void
+pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(const ac::shape<PACK_NDIMS>& mm,
+                                              const ac::shape<PACK_NDIMS>& block_shape,
+                                              const ac::shape<PACK_NDIMS>& block_offset,
+                                              const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs,
+                                              Buffer<AcReal, DeviceMemoryResource>& output);
 
 template void unpack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(
-    const Buffer<AcReal, DeviceMemoryResource>& input, const Shape<PACK_NDIMS>& mm,
-    const Shape<PACK_NDIMS>& block_shape, const Index<PACK_NDIMS>& block_offset,
+    const Buffer<AcReal, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm,
+    const ac::shape<PACK_NDIMS>& block_shape, const ac::shape<PACK_NDIMS>& block_offset,
     ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& outputs);

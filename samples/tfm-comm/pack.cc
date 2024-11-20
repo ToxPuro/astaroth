@@ -2,6 +2,62 @@
 
 #include <numeric>
 
+template <typename T, size_t ndims>
+void
+pack(const ac::shape<ndims>& mm, const ac::shape<ndims>& block_shape,
+     const ac::shape<ndims>& block_offset, const std::vector<T*>& inputs, T* output)
+{
+    const uint64_t block_nelems{prod(block_shape)};
+    for (uint64_t i{0}; i < block_nelems; ++i) {
+        for (size_t j{0}; j < inputs.size(); ++j) {
+
+            // Block coords
+            const ac::shape<ndims> block_coords{to_spatial(i, block_shape)};
+
+            // Input coords
+            const ac::shape<ndims> in_coords{block_offset + block_coords};
+
+            const uint64_t in_idx{to_linear(in_coords, mm)};
+            ERRCHK(in_idx < prod(mm));
+
+            output[i + j * block_nelems] = inputs[j][in_idx];
+        }
+    }
+}
+
+template <typename T, size_t ndims>
+void
+unpack(const T* input, const ac::shape<ndims>& mm, const ac::shape<ndims>& block_shape,
+       const ac::shape<ndims>& block_offset, std::vector<T*>& outputs)
+{
+    const uint64_t block_nelems{prod(block_shape)};
+    for (uint64_t i{0}; i < block_nelems; ++i) {
+        for (size_t j{0}; j < outputs.size(); ++j) {
+
+            // Block coords
+            const ac::shape<ndims> block_coords{to_spatial(i, block_shape)};
+
+            // Input coords
+            const ac::shape<ndims> in_coords{block_offset + block_coords};
+
+            const uint64_t in_idx{to_linear(in_coords, mm)};
+            ERRCHK(in_idx < prod(mm));
+
+            outputs[j][in_idx] = input[i + j * block_nelems];
+        }
+    }
+}
+
+/**
+ * Forwards declarations (For user types)
+ */
+template void pack<UserType, UserNdims>(const UserShape& mm, const UserShape& block_shape,
+                                        const UserIndex& block_offset,
+                                        const std::vector<UserType*>& inputs, UserType* output);
+
+template void unpack(const UserType* input, const UserShape& mm, const UserShape& block_shape,
+                     const UserShape& block_offset, std::vector<UserType*>& outputs);
+
 void
 test_pack(void)
 {
@@ -16,11 +72,11 @@ test_pack(void)
     // ac::copy(hin.begin(), hin.end(), din.begin());
     migrate(hin, din);
 
-    Shape<1> mm{count};
-    Shape<1> block_shape{count - 2 * rr};
-    Index<1> block_offset{rr};
-    ac::array<uint64_t*, 1> inputs{din.data()};
-    pack(mm, block_shape, block_offset, inputs, dout);
+    ac::shape<1> mm{count};
+    ac::shape<1> block_shape{count - 2 * rr};
+    ac::shape<1> block_offset{rr};
+    std::vector<uint64_t*> inputs{din.data()};
+    pack(mm, block_shape, block_offset, inputs, dout.data());
     migrate(dout, hout);
     // ac::copy(dout.begin(), dout.end(), hout.begin());
 

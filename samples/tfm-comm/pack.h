@@ -15,73 +15,53 @@
 
 #include "math_utils.h"
 
-constexpr size_t PACK_NDIMS{2};
-constexpr size_t PACK_MAX_NAGGR_BUFS{1};
+// User types
+constexpr size_t UserNdims = 2;
+using UserShape            = ac::shape<UserNdims>;
+using UserIndex            = ac::shape<UserNdims>;
+using UserType             = double;
 
-template <typename T, size_t N, size_t M>
-void
-pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offset,
-     const ac::array<T*, M>& inputs, Buffer<T, HostMemoryResource>& output)
-{
-    const uint64_t block_nelems{prod(block_shape)};
-    for (uint64_t i{0}; i < block_nelems; ++i) {
-        for (size_t j{0}; j < inputs.size(); ++j) {
+// Forward declarations
+template <typename T, size_t ndims>
+void pack(const ac::shape<ndims>& mm, const ac::shape<ndims>& block_shape,
+          const ac::shape<ndims>& block_offset, const std::vector<T*>& inputs, T* output);
 
-            // Block coords
-            const Index<N> block_coords{to_spatial(i, block_shape)};
+template <typename T, size_t ndims>
+void unpack(const T* input, const ac::shape<ndims>& mm, const ac::shape<ndims>& block_shape,
+            const ac::shape<ndims>& block_offset, std::vector<T*>& outputs);
 
-            // Input coords
-            const Index<N> in_coords{block_offset + block_coords};
+// The actual kernel
+extern template void pack<UserType, UserNdims>(const UserShape& mm, const UserShape& block_shape,
+                                               const UserIndex& block_offset,
+                                               const std::vector<UserType*>& inputs,
+                                               UserType* output);
 
-            const uint64_t in_idx{to_linear(in_coords, mm)};
-            ERRCHK(in_idx < prod(mm));
-
-            output[i + j * block_nelems] = inputs[j][in_idx];
-        }
-    }
-}
-
-template <typename T, size_t N, size_t M>
-void
-unpack(const Buffer<T, HostMemoryResource>& input, const Shape<N>& mm, const Shape<N>& block_shape,
-       const Index<N>& block_offset, ac::array<T*, M>& outputs)
-{
-    const uint64_t block_nelems{prod(block_shape)};
-    for (uint64_t i{0}; i < block_nelems; ++i) {
-        for (size_t j{0}; j < outputs.size(); ++j) {
-
-            // Block coords
-            const Index<N> block_coords{to_spatial(i, block_shape)};
-
-            // Input coords
-            const Index<N> in_coords{block_offset + block_coords};
-
-            const uint64_t in_idx{to_linear(in_coords, mm)};
-            ERRCHK(in_idx < prod(mm));
-
-            outputs[j][in_idx] = input[i + j * block_nelems];
-        }
-    }
-}
+extern template void unpack(const UserType* input, const UserShape& mm,
+                            const UserShape& block_shape, const UserShape& block_offset,
+                            std::vector<UserType*>& outputs);
 
 #if defined(DEVICE_ENABLED)
 
 template <typename T, size_t N, size_t M>
-void pack(const Shape<N>& mm, const Shape<N>& block_shape, const Index<N>& block_offset,
-          const ac::array<T*, M>& inputs, Buffer<T, DeviceMemoryResource>& output);
+void pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape,
+          const ac::shape<ndims>& block_offset, const ac::array<T*, M>& inputs,
+          Buffer<T, DeviceMemoryResource>& output);
 
 template <typename T, size_t N, size_t M>
-void unpack(const Buffer<T, DeviceMemoryResource>& input, const Shape<N>& mm,
-            const Shape<N>& block_shape, const Index<N>& block_offset, ac::array<T*, M>& outputs);
+void unpack(const Buffer<T, DeviceMemoryResource>& input, const ac::shape<N>& mm,
+            const ac::shape<N>& block_shape, const ac::shape<ndims>& block_offset,
+            ac::array<T*, M>& outputs);
 
-extern template void pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(
-    const Shape<PACK_NDIMS>& mm, const Shape<PACK_NDIMS>& block_shape,
-    const Index<PACK_NDIMS>& block_offset, const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs,
-    Buffer<AcReal, DeviceMemoryResource>& output);
+extern template void
+pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(const ac::shape<PACK_NDIMS>& mm,
+                                              const ac::shape<PACK_NDIMS>& block_shape,
+                                              const ac::shape<PACK_NDIMS>& block_offset,
+                                              const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs,
+                                              Buffer<AcReal, DeviceMemoryResource>& output);
 
 extern template void unpack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(
-    const Buffer<AcReal, DeviceMemoryResource>& input, const Shape<PACK_NDIMS>& mm,
-    const Shape<PACK_NDIMS>& block_shape, const Index<PACK_NDIMS>& block_offset,
+    const Buffer<AcReal, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm,
+    const ac::shape<PACK_NDIMS>& block_shape, const ac::shape<PACK_NDIMS>& block_offset,
     ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& outputs);
 
 #endif

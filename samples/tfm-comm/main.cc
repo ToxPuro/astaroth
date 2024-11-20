@@ -197,7 +197,7 @@ main()
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         HaloExchangeTask<AcReal, N> halo_exchange{local_mm, local_nn, rr, 1};
-        ac::array<AcReal*, 1> inputs{din.buffer.data()};
+        std::vector<AcReal*> inputs{din.buffer.data()};
         halo_exchange.launch(cart_comm, inputs);
         halo_exchange.wait(inputs);
         migrate(din.buffer, hin.buffer);

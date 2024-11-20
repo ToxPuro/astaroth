@@ -66,6 +66,8 @@ template <typename T, size_t N> class array {
     auto data() { return resource.data(); }
     auto data() const { return resource.data(); }
 };
+
+template <size_t N> using shape = ac::array<uint64_t, N>;
 } // namespace ac
 
 template <size_t N> using Index     = ac::array<uint64_t, N>;

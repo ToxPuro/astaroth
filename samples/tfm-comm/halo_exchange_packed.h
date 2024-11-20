@@ -36,13 +36,13 @@ template <typename T, size_t N> class HaloExchangeTask {
         }
     }
 
-    template <size_t M> void launch(const MPI_Comm& parent_comm, const ac::array<T*, M>& inputs)
+    void launch(const MPI_Comm& parent_comm, const std::vector<T*>& inputs)
     {
         for (auto& packet : packets)
             packet->launch(parent_comm, inputs);
     }
 
-    template <size_t M> void wait(ac::array<T*, M>& outputs)
+    void wait(std::vector<T*>& outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         // while (!complete()) {
