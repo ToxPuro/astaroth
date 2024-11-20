@@ -22,69 +22,6 @@ template <typename T, size_t N> using base_array = std::array<T, N>;
 #define __device__
 #endif
 
-// #if defined(DEVICE_ENABLED)
-// namespace ac{
-//     template <typename T> using host_vector = Buffer<T, HostMemoryResource>;
-//     template <typename T> using pinned_host_vector = Buffer<T, PinnedHostMemoryResource>;
-//     template <typename T> using device_vector = Buffer<T, DeviceMemoryResource>;
-// }
-// #else
-// namespace ac{
-//     template <typename T> using host_vector = Buffer<T, HostMemoryResource>;
-//     template <typename T> using pinned_host_vector = Buffer<T, HostMemoryResource>;
-//     template <typename T> using device_vector = Buffer<T, HostMemoryResource>;
-// }
-// #endif
-
-// #if defined(DEVICE_ENABLED)
-// // Common GPU
-// #include <thrust/device_vector.h>
-// #include <thrust/host_vector.h>
-// namespace ac {
-// template <typename T> using host_vector        = thrust::host_vector<T>;
-// template <typename T> using pinned_host_vector = thrust::host_vector<T>; // TODO
-// template <typename T> using device_vector      = thrust::device_vector<T>;
-// using thrust::copy;
-// using thrust::fill_n;
-// using thrust::multiplies;
-// using thrust::reduce;
-// using thrust::raw_pointer_cast;
-// } // namespace ac
-// #if defined(CUDA_ENABLED)
-// // CUDA-specific
-// #include <cuda/std/array>
-// namespace ac {
-// template <typename T, size_t N> using base_array = cuda::std::array<T, N>;
-// }
-// #elif defined(HIP_ENABLED)
-// // HIP-specific
-// namespace ac {
-// template <typename T, size_t N> using base_array = std::array<T, N>;
-// }
-// #endif
-// #else
-// #include <vector>
-// namespace ac {
-// template <typename T> using host_vector          = std::vector<T>;
-// template <typename T> using pinned_host_vector   = std::vector<T>;
-// template <typename T> using device_vector        = std::vector<T>;
-// template <typename T, size_t N> using base_array = std::array<T, N>;
-// using std::copy;
-// using std::fill_n;
-// using std::multiplies;
-// using std::reduce;
-// // raw_pointer_cast unwraps a thrust::device_ptr
-// template <typename T>
-// T
-// raw_pointer_cast(const T& ptr) noexcept
-// {
-//     return ptr;
-// }
-// } // namespace ac
-// #define __host__
-// #define __device__
-// #endif
-
 // Disable errchecks in device code (not supported as of 2024-11-11)
 #if defined(__CUDA_ARCH__) || (defined(__HIP_DEVICE_COMPILE__) && __HIP_DEVICE_COMPILE__ == 1)
 #undef ERRCHK

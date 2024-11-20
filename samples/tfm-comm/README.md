@@ -35,3 +35,34 @@
 - *Bottom line:* **the whole communication module should be completely single-threaded, and rely on MPI and CUDA features for achieving asynchronous execution.**
 
 - Further notes about Thrust. *It should be assumed that all Thrust functions are asynchronous.* In practice, functions that return values to host are generally synchronous, but thrust's asynchronous model is *not well defined*. Therefore one needs to be very careful with thrust functions. Prefer explicit functions provided by Astaroth and avoid Thrust's own functions for concurrent implementations. In non-concurrent cases and if using Thrust, use `cudaDeviceSynchronize` to ensure that the function has completed.
+
+# Base types
+
+```C++
+namespace ac{
+    #if defined (CUDA_ENABLED)
+    template <typename T, size_t N> using base_array = cuda::std::array<T, N>;
+    #else
+    template <typename T, size_t N> using base_array = std::array<T, N>;
+    #endif
+
+    template<typename T, size_t N>
+    struct array {
+        ac::base_array<T, N> resource;
+    };
+
+    template<size_t N> using shape = ac::array<uint64_t, N>;
+
+    template<typename T, typename MemoryResource>
+    struct vector {
+        std::size_t capacity;
+        std::unique_ptr<T> resource;
+    };
+
+    template <typename T, size_t N, typename MemoryResource>
+    struct ndvector {
+        ac::shape<N> shape;
+        ac::vector<T, MemoryResource> resource;
+    }
+}
+```
