@@ -1,18 +1,20 @@
+#include "array.h"
 #include "buffer.h"
 #include "buffer_exchange.h"
-#include "datatypes.h"
 #include "decomp.h"
 #include "math_utils.h"
 #include "ndarray.h"
+#include "ndvector.h"
 #include "pack.h"
 #include "partition.h"
 #include "type_conversion.h"
+#include "vector.h"
 
 int
 main(void)
 {
     test_type_conversion();
-    test_datatypes();
+    test_array();
     test_math_utils();
     test_buffer();
     test_ndarray();
@@ -20,6 +22,8 @@ main(void)
     test_decomp();
     test_pack();
     test_buffer_exchange();
+    test_vector();
+    test_ndvector();
 
     return EXIT_SUCCESS;
 }

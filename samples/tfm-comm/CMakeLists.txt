@@ -91,7 +91,7 @@ else()
 endif()
 
 ## Packages
-add_library(acc-comm-utils STATIC buffer_exchange.cc buffer.cc decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc datatypes.cc type_conversion.cc errchk_print.c)
+add_library(acc-comm-utils STATIC buffer_exchange.cc ndvector.cc vector.cc buffer.cc decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc array.cc type_conversion.cc errchk_print.c)
 
 
 find_package(MPI REQUIRED COMPONENTS C)
