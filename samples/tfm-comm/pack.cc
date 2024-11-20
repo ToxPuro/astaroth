@@ -2,20 +2,20 @@
 
 #include <numeric>
 
-template <typename T, size_t ndims>
+template <typename T, size_t N>
 void
-pack(const ac::shape<ndims>& mm, const ac::shape<ndims>& block_shape,
-     const ac::shape<ndims>& block_offset, const std::vector<T*>& inputs, T* output)
+pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+     const std::vector<T*>& inputs, T* output)
 {
     const uint64_t block_nelems{prod(block_shape)};
     for (uint64_t i{0}; i < block_nelems; ++i) {
         for (size_t j{0}; j < inputs.size(); ++j) {
 
             // Block coords
-            const ac::shape<ndims> block_coords{to_spatial(i, block_shape)};
+            const ac::shape<N> block_coords{to_spatial(i, block_shape)};
 
             // Input coords
-            const ac::shape<ndims> in_coords{block_offset + block_coords};
+            const ac::shape<N> in_coords{block_offset + block_coords};
 
             const uint64_t in_idx{to_linear(in_coords, mm)};
             ERRCHK(in_idx < prod(mm));
@@ -25,20 +25,20 @@ pack(const ac::shape<ndims>& mm, const ac::shape<ndims>& block_shape,
     }
 }
 
-template <typename T, size_t ndims>
+template <typename T, size_t N>
 void
-unpack(const T* input, const ac::shape<ndims>& mm, const ac::shape<ndims>& block_shape,
-       const ac::shape<ndims>& block_offset, std::vector<T*>& outputs)
+unpack(const T* input, const ac::shape<N>& mm, const ac::shape<N>& block_shape,
+       const ac::index<N>& block_offset, std::vector<T*>& outputs)
 {
     const uint64_t block_nelems{prod(block_shape)};
     for (uint64_t i{0}; i < block_nelems; ++i) {
         for (size_t j{0}; j < outputs.size(); ++j) {
 
             // Block coords
-            const ac::shape<ndims> block_coords{to_spatial(i, block_shape)};
+            const ac::shape<N> block_coords{to_spatial(i, block_shape)};
 
             // Input coords
-            const ac::shape<ndims> in_coords{block_offset + block_coords};
+            const ac::shape<N> in_coords{block_offset + block_coords};
 
             const uint64_t in_idx{to_linear(in_coords, mm)};
             ERRCHK(in_idx < prod(mm));

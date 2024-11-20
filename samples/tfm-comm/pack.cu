@@ -85,45 +85,53 @@ kernel_unpack(const T* input, const ac::shape<N> mm, const ac::shape<N> block_sh
 }
 } // namespace device
 
-template <typename T, size_t N, size_t M>
+template <typename T, size_t N>
 void
-pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::shape<N>& block_offset,
-     const ac::array<T*, M>& inputs, Buffer<T, DeviceMemoryResource>& output)
+pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+     const std::vector<T*>& inputs, T* output)
 {
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
-    device::kernel_pack<T, N, M><<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm, block_shape,
-                                                                           block_offset, inputs,
-                                                                           output.data());
+
+    constexpr size_t ninputs = 1;
+    ERRCHK(inputs.size() == ninputs);
+    std::array<T, ninputs> input_array{inputs};
+    device::kernel_pack<T, N, M>
+        <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm, block_shape, block_offset, input_array,
+                                                   output.data());
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
 
-template <typename T, size_t N, size_t M>
+template <typename T, size_t N>
 void
-unpack(const Buffer<T, DeviceMemoryResource>& input, const ac::shape<N>& mm,
-       const ac::shape<N>& block_shape, const ac::shape<N>& block_offset, ac::array<T*, M>& outputs)
+unpack(const T* input, const ac::shape<N>& mm, const ac::shape<N>& block_shape,
+       const ac::index<N>& block_offset, std::vector<T*>& outputs)
 {
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
-    device::kernel_unpack<T, N, M><<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input.data(), mm,
-                                                                             block_shape,
-                                                                             block_offset, outputs);
+
+    constexpr size_t noutputs = 1;
+    ERRCHK(outputs.size() == noutputs);
+    std::array<T, noutputs> output_array{outputs};
+    device::kernel_unpack<T, N, M>
+        <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input.data(), mm, block_shape, block_offset,
+                                                   output_array);
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
 
 // Specialization
-template void
-pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(const ac::shape<PACK_NDIMS>& mm,
-                                              const ac::shape<PACK_NDIMS>& block_shape,
-                                              const ac::shape<PACK_NDIMS>& block_offset,
-                                              const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs,
-                                              Buffer<AcReal, DeviceMemoryResource>& output);
+template void pack<UserType, UserNdims>(const ac::shape<UserNdims>& mm,
+                                        const ac::shape<UserNdims>& block_shape,
+                                        const ac::index<UserNdims>& block_offset,
+                                        const std::vector<UserType*>& inputs,
+                                        Buffer<UserType, DeviceMemoryResource>& output);
 
-template void unpack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(
-    const Buffer<AcReal, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm,
-    const ac::shape<PACK_NDIMS>& block_shape, const ac::shape<PACK_NDIMS>& block_offset,
-    ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& outputs);
+template void unpack<UserType, UserNdims>(const Buffer<UserType, DeviceMemoryResource>& input,
+                                          const ac::shape<UserNdims>& mm,
+                                          const ac::shape<UserNdims>& block_shape,
+                                          const ac::index<UserNdims>& block_offset,
+                                          std::vector<UserType*>& outputs);

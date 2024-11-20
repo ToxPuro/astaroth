@@ -22,13 +22,13 @@ using UserIndex            = ac::shape<UserNdims>;
 using UserType             = double;
 
 // Forward declarations
-template <typename T, size_t ndims>
-void pack(const ac::shape<ndims>& mm, const ac::shape<ndims>& block_shape,
-          const ac::shape<ndims>& block_offset, const std::vector<T*>& inputs, T* output);
+template <typename T, size_t N>
+void pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+          const std::vector<T*>& inputs, T* output);
 
-template <typename T, size_t ndims>
-void unpack(const T* input, const ac::shape<ndims>& mm, const ac::shape<ndims>& block_shape,
-            const ac::shape<ndims>& block_offset, std::vector<T*>& outputs);
+template <typename T, size_t N>
+void unpack(const T* input, const ac::shape<N>& mm, const ac::shape<N>& block_shape,
+            const ac::index<N>& block_offset, std::vector<T*>& outputs);
 
 // The actual kernel
 extern template void pack<UserType, UserNdims>(const UserShape& mm, const UserShape& block_shape,
@@ -42,27 +42,17 @@ extern template void unpack(const UserType* input, const UserShape& mm,
 
 #if defined(DEVICE_ENABLED)
 
-template <typename T, size_t N, size_t M>
-void pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape,
-          const ac::shape<ndims>& block_offset, const ac::array<T*, M>& inputs,
-          Buffer<T, DeviceMemoryResource>& output);
-
-template <typename T, size_t N, size_t M>
-void unpack(const Buffer<T, DeviceMemoryResource>& input, const ac::shape<N>& mm,
-            const ac::shape<N>& block_shape, const ac::shape<ndims>& block_offset,
-            ac::array<T*, M>& outputs);
+extern template void pack<UserType, UserNdims>(const ac::shape<UserNdims>& mm,
+                                               const ac::shape<UserNdims>& block_shape,
+                                               const ac::index<UserNdims>& block_offset,
+                                               const std::vector<UserType*>& inputs,
+                                               Buffer<UserType, DeviceMemoryResource>& output);
 
 extern template void
-pack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(const ac::shape<PACK_NDIMS>& mm,
-                                              const ac::shape<PACK_NDIMS>& block_shape,
-                                              const ac::shape<PACK_NDIMS>& block_offset,
-                                              const ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& inputs,
-                                              Buffer<AcReal, DeviceMemoryResource>& output);
-
-extern template void unpack<AcReal, PACK_NDIMS, PACK_MAX_NAGGR_BUFS>(
-    const Buffer<AcReal, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm,
-    const ac::shape<PACK_NDIMS>& block_shape, const ac::shape<PACK_NDIMS>& block_offset,
-    ac::array<AcReal*, PACK_MAX_NAGGR_BUFS>& outputs);
+unpack<UserType, UserNdims>(const Buffer<UserType, DeviceMemoryResource>& input,
+                            const ac::shape<UserNdims>& mm, const ac::shape<UserNdims>& block_shape,
+                            const ac::index<UserNdims>& block_offset,
+                            std::vector<UserType*>& outputs);
 
 #endif
 
