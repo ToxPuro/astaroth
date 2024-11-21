@@ -1,7 +1,6 @@
 #include "halo_exchange.h"
 #include "halo_exchange_packed.h"
 
-#include "ndarray.h"
 #include "partition.h"
 
 void

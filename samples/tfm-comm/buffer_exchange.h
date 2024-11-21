@@ -2,7 +2,8 @@
 
 #include <memory>
 
-#include "buffer.h"
+// #include "buffer.h"
+#include "vector.h"
 
 #if defined(CUDA_ENABLED)
 #include "errchk_cuda.h"
@@ -20,8 +21,8 @@ const unsigned int cudaStreamDefault{0};
 template <typename T, typename FirstStageResource, typename SecondStageResource>
 class BufferExchangeTask {
   private:
-    Buffer<T, FirstStageResource> first_stage_buffer;
-    Buffer<T, SecondStageResource> second_stage_buffer;
+    ac::vector<T, FirstStageResource> first_stage_buffer;
+    ac::vector<T, SecondStageResource> second_stage_buffer;
 
     cudaStream_t stream{nullptr};
     bool in_progress{false};
@@ -43,7 +44,7 @@ class BufferExchangeTask {
         WARNCHK(!stream);
     }
 
-    template <typename MemoryResource> void launch(const Buffer<T, MemoryResource>& in)
+    template <typename MemoryResource> void launch(const ac::vector<T, MemoryResource>& in)
     {
         ERRCHK(!in_progress);
         in_progress = true;
@@ -68,7 +69,7 @@ class BufferExchangeTask {
         migrate_async(stream, first_stage_buffer, second_stage_buffer);
     }
 
-    template <typename MemoryResource> void wait(Buffer<T, MemoryResource>& out)
+    template <typename MemoryResource> void wait(ac::vector<T, MemoryResource>& out)
     {
         ERRCHK(in_progress);
 

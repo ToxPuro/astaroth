@@ -19,11 +19,12 @@ constexpr size_t ndims = 2;
 using AcReal           = double;
 using Shape            = ac::shape<ndims>;
 using Index            = ac::index<ndims>;
+using Vector           = ac::vector<AcReal, HostMemoryResource>;
 using NdVector         = ac::ndvector<AcReal, ndims, HostMemoryResource>;
-using HaloExchange     = HaloExchangeTask<AcReal, ndims>;
+using HaloExchange     = HaloExchangeTask<AcReal, ndims, HostMemoryResource>;
 
 static void
-compute_loop(const MPI_Comm& cart_comm, HaloExchange& halo_exchange, std::vector<AcReal*>& buffers)
+compute_loop(const MPI_Comm& cart_comm, HaloExchange& halo_exchange, std::vector<Vector*>& buffers)
 {
     halo_exchange.launch(cart_comm, buffers);
     halo_exchange.wait(buffers);
@@ -57,7 +58,7 @@ main()
         std::fill(uy.begin(), uy.end(), static_cast<AcReal>(rank) + 20);
 
         // Halo exchange
-        std::vector<AcReal*> buffers{lnrho.data(), ux.data(), uy.data()};
+        std::vector<Vector*> buffers{&lnrho.vector(), &ux.vector(), &uy.vector()};
         HaloExchange halo_exchange{local_mm, local_nn, rr, buffers.size()};
         // halo_exchange.launch(cart_comm, buffers);
         // halo_exchange.wait(buffers);

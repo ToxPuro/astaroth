@@ -8,3 +8,4 @@
 // template <size_t N> using MPIIndex  = ac::array<int, N>;
 // template <size_t N> using MPIShape  = ac::array<int, N>;
 using AcReal = double;
+constexpr size_t NDIMS = 2;

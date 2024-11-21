@@ -3,11 +3,10 @@
 void
 test_vector(void)
 {
-    std::cout << "hello" << std::endl;
-    const ac::vector<double> vec(10);
+    const ac::vector<double, HostMemoryResource> vec(10);
     ERRCHK(vec.size() == 10);
 
-    const auto vec1 = ac::vector<int>(20, -1);
+    const auto vec1 = ac::vector<int, PinnedHostMemoryResource>(20, -1);
     ERRCHK(vec1.size() == 20);
     ERRCHK(vec1[0] == -1);
     ERRCHK(vec1[vec1.size() - 1] == -1);

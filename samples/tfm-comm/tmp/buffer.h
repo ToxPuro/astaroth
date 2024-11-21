@@ -88,7 +88,7 @@ void
 migrate(const Buffer<T, MemoryResourceA>& in, Buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
-    constexpr cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
+    const cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
     ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(in[0]), kind));
 }
 
@@ -98,7 +98,7 @@ migrate_async(const cudaStream_t stream, const Buffer<T, MemoryResourceA>& in,
               Buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
-    constexpr cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
+    const cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
     ERRCHK_CUDA_API(
         cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in[0]), kind, stream));
 }

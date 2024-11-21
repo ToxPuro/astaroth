@@ -42,7 +42,10 @@ template <typename T, size_t N> class array {
     __host__ __device__ array(const std::initializer_list<T>& init_list)
     {
         ERRCHK(init_list.size() == N);
-        std::copy(init_list.begin(), init_list.end(), resource.begin());
+        // std::copy(init_list.begin(), init_list.end(), resource.begin());
+        size_t i{0};
+        for (const auto& elem : init_list)
+            resource[i++] = elem;
     }
 
     // Enable the subscript[] operator

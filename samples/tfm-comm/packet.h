@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "buffer.h"
+// #include "buffer.h"
 #include "pack.h"
 #include "segment.h"
 
@@ -11,18 +11,17 @@
 
 #include <mpi.h>
 
-template <typename T, size_t N> class Packet {
+template <typename T, size_t N, typename MemoryResource> class Packet {
 
   private:
     ac::shape<N> local_mm;
     ac::shape<N> local_nn;
     ac::index<N> local_rr;
 
-    Segment<N>
-        segment; // ac::shape<N> of the data block the packet represents (for packing or unpacking)
+    Segment<N> segment;
 
-    Buffer<T, DeviceMemoryResource> send_buffer;
-    Buffer<T, DeviceMemoryResource> recv_buffer;
+    ac::vector<T, MemoryResource> send_buffer;
+    ac::vector<T, MemoryResource> recv_buffer;
 
     MPI_Comm comm{MPI_COMM_NULL};
     MPI_Request send_req{MPI_REQUEST_NULL};
@@ -65,7 +64,7 @@ template <typename T, size_t N> class Packet {
     Packet(Packet&&)                 = delete; // Move constructor
     Packet& operator=(Packet&&)      = delete; // Move assignment operator
 
-    void launch(const MPI_Comm& parent_comm, const std::vector<T*>& inputs)
+    void launch(const MPI_Comm& parent_comm, const std::vector<ac::vector<T, MemoryResource>*>& inputs)
     {
         ERRCHK_MPI(!in_progress);
         in_progress = true;
@@ -92,7 +91,7 @@ template <typename T, size_t N> class Packet {
                                  recv_neighbor, tag, comm, &recv_req));
 
         // Pack and post send
-        pack(local_mm, segment.dims, send_offset, inputs, send_buffer.data());
+        pack(local_mm, segment.dims, send_offset, inputs, send_buffer);
 
         ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
         ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), get_mpi_dtype<T>(),
@@ -111,11 +110,11 @@ template <typename T, size_t N> class Packet {
         return in_progress && send_flag && recv_flag;
     };
 
-    void wait(std::vector<T*>& outputs)
+    void wait(std::vector<ac::vector<T, MemoryResource>*>& outputs)
     {
         ERRCHK_MPI(in_progress);
         ERRCHK_MPI_API(MPI_Wait(&recv_req, MPI_STATUS_IGNORE));
-        unpack(recv_buffer.data(), local_mm, segment.dims, segment.offset, outputs);
+        unpack(recv_buffer, local_mm, segment.dims, segment.offset, outputs);
 
         ERRCHK_MPI_API(MPI_Wait(&send_req, MPI_STATUS_IGNORE));
         ERRCHK_MPI_API(MPI_Comm_free(&comm));
@@ -131,7 +130,7 @@ template <typename T, size_t N> class Packet {
 
     bool complete() const { return !in_progress; };
 
-    friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T, N>& obj)
+    friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T, N, MemoryResource>& obj)
     {
         os << "{";
         os << "segment: " << obj.segment << ", ";

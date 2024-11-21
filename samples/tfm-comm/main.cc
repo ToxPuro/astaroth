@@ -2,7 +2,8 @@
 
 #include "datatypes.h"
 #include "errchk.h"
-#include "ndarray.h"
+// #include "ndarray.h"
+#include "ndvector.h"
 
 #include <algorithm>
 #include <numeric>
@@ -28,12 +29,12 @@
 #include <hip/hip_runtime.h>
 #else
 #include "errchk.h"
-void
+static void
 cudaStreamCreate(cudaStream_t* stream)
 {
     *stream = nullptr;
 }
-void
+static void
 cudaStreamDestroy(cudaStream_t stream)
 {
     (void)stream; // Unused
@@ -52,10 +53,10 @@ benchmark(void)
         BENCHMARK(cudaStreamDestroy(stream));
     }
 
-    // Buffers
+    // ac::vectors
     const size_t count{(1000 * 1024 * 1024) / sizeof(double)};
-    Buffer<double, HostMemoryResource> hbuf(count);
-    Buffer<double, DeviceMemoryResource> dbuf(count);
+    ac::vector<double, HostMemoryResource> hbuf(count);
+    ac::vector<double, DeviceMemoryResource> dbuf(count);
 
     // C++ standard library
     for (size_t i{0}; i < num_samples; ++i)
@@ -76,7 +77,7 @@ benchmark(void)
         BENCHMARK(migrate(dbuf, hbuf));
 
     // Pinned
-    Buffer<double, PinnedHostMemoryResource> phbuf(count);
+    ac::vector<double, PinnedHostMemoryResource> phbuf(count);
     for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(phbuf, dbuf));
 
@@ -84,7 +85,7 @@ benchmark(void)
         BENCHMARK(migrate(dbuf, phbuf));
 
     // Pinned write-combined
-    Buffer<double, PinnedWriteCombinedHostMemoryResource> pwchbuf(count);
+    ac::vector<double, PinnedWriteCombinedHostMemoryResource> pwchbuf(count);
     for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(pwchbuf, dbuf));
 
@@ -128,11 +129,11 @@ main()
         const ac::shape<N> rr{ones<uint64_t, N>()}; // Symmetric halo
         const ac::shape<N> local_mm{as<uint64_t>(2) * rr + local_nn};
 
-        NdArray<AcReal, N, HostMemoryResource> hin(local_mm);
-        NdArray<AcReal, N, HostMemoryResource> hout(local_mm);
+        ac::ndvector<AcReal, N, HostMemoryResource> hin(local_mm);
+        ac::ndvector<AcReal, N, HostMemoryResource> hout(local_mm);
 
-        NdArray<AcReal, N, DeviceMemoryResource> din(local_mm);
-        NdArray<AcReal, N, DeviceMemoryResource> dout(local_mm);
+        ac::ndvector<AcReal, N, DeviceMemoryResource> din(local_mm);
+        ac::ndvector<AcReal, N, DeviceMemoryResource> dout(local_mm);
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
         std::iota(hin.begin(), hin.end(),
@@ -142,8 +143,8 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        migrate(hin.buffer, din.buffer);
-        migrate(din.buffer, hout.buffer);
+        migrate(hin.vector(), din.vector());
+        migrate(din.vector(), hout.vector());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -161,16 +162,16 @@ main()
         else {
             std::fill(hin.begin(), hin.end(), static_cast<AcReal>(get_rank(cart_comm)));
         }
-        migrate(hin.buffer, din.buffer);
+        migrate(hin.vector(), din.vector());
 
         // Basic MPI halo exchange task
         auto recv_reqs = launch_halo_exchange<AcReal>(cart_comm, local_mm, local_nn, rr,
-                                                      din.buffer.data(), din.buffer.data());
+                                                      din.vector().data(), din.vector().data());
         while (!recv_reqs.empty()) {
             request_wait_and_destroy(recv_reqs.back());
             recv_reqs.pop_back();
         }
-        migrate(din.buffer, hin.buffer);
+        migrate(din.vector(), hin.vector());
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         PRINT_LOG("Should be properly exchanged");
@@ -188,7 +189,7 @@ main()
         else {
             std::fill(hin.begin(), hin.end(), static_cast<AcReal>(get_rank(cart_comm)));
         }
-        migrate(hin.buffer, din.buffer);
+        migrate(hin.vector(), din.vector());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -196,11 +197,11 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        HaloExchangeTask<AcReal, N> halo_exchange{local_mm, local_nn, rr, 1};
-        std::vector<AcReal*> inputs{din.buffer.data()};
+        HaloExchangeTask<AcReal, N, DeviceMemoryResource> halo_exchange{local_mm, local_nn, rr, 1};
+        std::vector<ac::vector<AcReal, DeviceMemoryResource>*> inputs{&din.vector()};
         halo_exchange.launch(cart_comm, inputs);
         halo_exchange.wait(inputs);
-        migrate(din.buffer, hin.buffer);
+        migrate(din.vector(), hin.vector());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -215,13 +216,13 @@ main()
                   static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
 
         IOTaskAsync<AcReal, N> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
-        // iotask.launch_write_collective(cart_comm, hin.buffer, "test.dat");
+        // iotask.launch_write_collective(cart_comm, hin.vector(), "test.dat");
         // iotask.wait_write_collective();
         mpi_write_collective(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,
-                             hin.buffer.data(), "test.dat");
+                             hin.vector().data(), "test.dat");
         std::fill(hin.begin(), hin.end(), 0);
         mpi_read_collective(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,
-                            "test.dat", hin.buffer.data());
+                            "test.dat", hin.vector().data());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)

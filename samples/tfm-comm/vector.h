@@ -5,7 +5,7 @@
 #include "mem.h"
 
 namespace ac {
-template <typename T, typename MemoryResource = HostMemoryResource> class vector {
+template <typename T, typename MemoryResource> class vector {
   private:
     const size_t count;
     std::unique_ptr<T, decltype(&MemoryResource::dealloc)> resource;
@@ -65,16 +65,16 @@ template <typename T, typename MemoryResource = HostMemoryResource> class vector
             std::cout << i << ": " << resource[i] << std::endl;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const ac::vector<T>& obj)
-    {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
-                      "Only enabled for host vector");
-        os << "{ ";
-        for (const auto& elem : obj)
-            os << elem << " ";
-        os << "}";
-        return os;
-    }
+    // friend std::ostream& operator<<(std::ostream& os, const ac::vector<T>& obj)
+    // {
+    //     static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
+    //                   "Only enabled for host vector");
+    //     os << "{ ";
+    //     for (const auto& elem : obj)
+    //         os << elem << " ";
+    //     os << "}";
+    //     return os;
+    // }
 };
 } // namespace ac
 
@@ -116,20 +116,20 @@ get_kind()
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate(const ac::vector<T, MemoryResourceA>& in, vector<T, MemoryResourceB>& out)
+migrate(const ac::vector<T, MemoryResourceA>& in, ac::vector<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
-    constexpr cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
+    const cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
     ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(in[0]), kind));
 }
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
 migrate_async(const cudaStream_t stream, const ac::vector<T, MemoryResourceA>& in,
-              vector<T, MemoryResourceB>& out)
+              ac::vector<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
-    constexpr cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
+    const cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
     ERRCHK_CUDA_API(
         cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in[0]), kind, stream));
 }

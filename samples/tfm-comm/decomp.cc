@@ -7,6 +7,7 @@
 #include <iostream>
 #include <numeric>
 #include <vector>
+#include <memory.h>
 
 #include "math_utils.h"
 
@@ -17,8 +18,6 @@ vecprod(const std::vector<uint64_t>& vec)
                        std::multiplies<uint64_t>());
 }
 
-#include "ndarray.h"
-#include <memory.h>
 
 void
 test_decomp(void)

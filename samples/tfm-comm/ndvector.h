@@ -42,10 +42,10 @@ ndvector_print(const char* label, const size_t ndims, const uint64_t* dims, cons
 }
 
 namespace ac {
-template <typename T, size_t N, typename MemoryResource = HostMemoryResource> class ndvector {
+template <typename T, size_t N, typename MemoryResource> class ndvector {
   private:
     ac::shape<N> shape{};
-    ac::vector<T> resource{};
+    ac::vector<T, MemoryResource> resource{};
 
   public:
     explicit ndvector(const ac::shape<N>& in_shape)
@@ -58,6 +58,8 @@ template <typename T, size_t N, typename MemoryResource = HostMemoryResource> cl
     {
     }
 
+    ac::vector<T, MemoryResource>& vector() { return resource; }
+    const ac::vector<T, MemoryResource>& vector() const { return resource; }
     T* data() { return resource.data(); }
     const T* data() const { return resource.data(); }
     size_t size() const { return resource.size(); }
@@ -94,7 +96,7 @@ ndvector_fill(const T& value, const size_t ndims, const uint64_t* dims, const ui
 template <typename T, size_t N>
 void
 fill(const T& fill_value, const ac::shape<N>& subdims, const ac::shape<N>& offset,
-     ac::ndvector<T, N>& ndvec)
+     ac::ndvector<T, N, HostMemoryResource>& ndvec)
 {
     ERRCHK(offset + subdims <= ndvec.dims());
     ndvector_fill<T>(fill_value, ndvec.dims().size(), ndvec.dims().data(), subdims.data(),

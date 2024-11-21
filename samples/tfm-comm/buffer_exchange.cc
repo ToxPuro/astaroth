@@ -8,9 +8,9 @@ void
 test_buffer_exchange(void)
 {
     const size_t count{10};
-    Buffer<double, HostMemoryResource> a(count);
-    Buffer<double, DeviceMemoryResource> b(count);
-    Buffer<double, PinnedHostMemoryResource> c(count);
+    ac::vector<double, HostMemoryResource> a(count);
+    ac::vector<double, DeviceMemoryResource> b(count);
+    ac::vector<double, PinnedHostMemoryResource> c(count);
 
     BufferExchangeTask<double, PinnedHostMemoryResource, DeviceMemoryResource> htod(count);
     std::iota(a.begin(), a.end(), 0);

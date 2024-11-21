@@ -66,6 +66,7 @@ add_compile_options(# C/CXX/CUDA/HIP
 ## Check whether device code is available on the system
 find_package(CUDAToolkit QUIET)
 find_package(HIP QUIET)
+add_library(device-libraries INTERFACE)
 if(NOT HOST_ONLY_MODE AND CUDAToolkit_FOUND)
     message(STATUS "CUDA found")
     enable_language(CUDA)
@@ -74,7 +75,7 @@ if(NOT HOST_ONLY_MODE AND CUDAToolkit_FOUND)
     set(CMAKE_CUDA_ARCHITECTURES "60")
     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
     
-    add_library(device-module STATIC pack.cc pack.cu)
+    target_link_libraries(device-libraries INTERFACE CUDA::cudart)
 elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
     message(STATUS "HIP found")
     enable_language(HIP)
@@ -84,30 +85,31 @@ elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
     set_source_files_properties(pack.cu PROPERTIES LANGUAGE HIP)
-    add_library(device-module STATIC pack.cc pack.cu)
+    target_link_libraries(device-libraries INTERFACE hip::host)
 else()
     message(WARNING "Did not find CUDA or HIP, compiling in host-only mode")
-    add_library(device-module STATIC pack.cc)
+    # add_library(device-module STATIC pack.cc)
 endif()
 
 ## Packages
-add_library(acc-comm-utils STATIC buffer_exchange.cc ndvector.cc vector.cc buffer.cc decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc array.cc type_conversion.cc errchk_print.c)
-
-
 find_package(MPI REQUIRED COMPONENTS C)
-add_executable(run main.cc halo_exchange.cc packet.cc mpi_utils.cc)
-target_link_libraries(run PRIVATE MPI::MPI_C device-module acc-comm-utils)
+add_library(acc-comm SHARED halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc pack.cu pack.cc ndvector.cc vector.cc decomp.cc partition.cc segment.cc math_utils.cc array.cc type_conversion.cc errchk_print.c)
+target_link_libraries(acc-comm PUBLIC MPI::MPI_C device-libraries)
 
-add_library(acc-comm SHARED halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc buffer.cc decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc datatypes.cc type_conversion.cc errchk_print.c)
-target_link_libraries(acc-comm PUBLIC MPI::MPI_C device-module)
-add_executable(tfm tfm.cc)
-target_link_libraries(tfm PRIVATE acc-comm)
+add_executable(run main.cc )
+target_link_libraries(run PRIVATE acc-comm)
+
+# add_library(acc-comm SHARED halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc buffer.cc decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc type_conversion.cc errchk_print.c)
+# target_link_libraries(acc-comm PUBLIC MPI::MPI_C)
+# add_executable(tfm tfm.cc)
+# target_link_libraries(tfm PRIVATE acc-comm)
 
 ## Automated tests
 include(CTest)
 add_executable(unit_test unit_test.cc)
-target_link_libraries(unit_test PRIVATE acc-comm-utils device-module)
+target_link_libraries(unit_test PRIVATE acc-comm)
 add_test(NAME UnitTest COMMAND unit_test)
+
 
 # add_executable(comm_test comm_test.cc halo_exchange.cc)
 # target_link_libraries(comm_test PRIVATE MPI::MPI_C acc-comm-utils)

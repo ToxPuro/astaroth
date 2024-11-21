@@ -23,6 +23,7 @@ struct HostMemoryResource {
 };
 
 #if defined(DEVICE_ENABLED)
+
 #if defined(CUDA_ENABLED)
 #include <cuda_runtime.h>
 #elif defined(HIP_ENABLED)
