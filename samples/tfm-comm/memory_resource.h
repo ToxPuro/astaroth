@@ -43,7 +43,7 @@ struct pinned_host_memory_resource : public host_memory_resource {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host pinned");
-        void* ptr = nullptr;
+        void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaHostAlloc(&ptr, bytes, cudaHostAllocDefault));
         return ptr;
     }
@@ -60,7 +60,7 @@ struct pinned_write_combined_host_memory_resource : public host_memory_resource 
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host pinned write-combined");
-        void* ptr = nullptr;
+        void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaHostAlloc(&ptr, bytes, cudaHostAllocWriteCombined));
         return ptr;
     }
@@ -77,7 +77,7 @@ struct device_memory_resource {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("device");
-        void* ptr = nullptr;
+        void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaMalloc(&ptr, bytes));
         return ptr;
     }
