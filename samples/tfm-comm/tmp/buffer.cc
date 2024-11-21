@@ -18,10 +18,10 @@ test_buffer()
     {
         const size_t count{10};
 
-        Buffer<double, HostMemoryResource> a(count);
-        Buffer<double, PinnedHostMemoryResource> b(count);
-        Buffer<double, PinnedWriteCombinedHostMemoryResource> c(count);
-        Buffer<double, DeviceMemoryResource> d(count);
+        Buffer<double, ac::mr::host_memory_resource> a(count);
+        Buffer<double, ac::mr::pinned_host_memory_resource> b(count);
+        Buffer<double, ac::mr::pinned_write_combined_host_memory_resource> c(count);
+        Buffer<double, ac::mr::device_memory_resource> d(count);
         migrate(a, a);
         migrate(a, b);
         migrate(a, c);
@@ -56,9 +56,9 @@ test_buffer()
     }
     // {
     //     const size_t count{10};
-    //     Buffer<double, HostMemoryResource> a(count);
-    //     Buffer<double, DeviceMemoryResource> b(count);
-    //     Buffer<double, PinnedHostMemoryResource> c(count);
+    //     Buffer<double, ac::mr::host_memory_resource> a(count);
+    //     Buffer<double, ac::mr::device_memory_resource> b(count);
+    //     Buffer<double, ac::mr::pinned_host_memory_resource> c(count);
 
     //     std::unique_ptr<cudaStream_t, decltype(&cuda_stream_destroy)>
     //         stream{cuda_stream_create(cudaStreamNonBlocking), &cuda_stream_destroy};

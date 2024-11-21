@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <memory>
 
-#include "mem.h"
+#include "memory_resource.h"
 
 namespace ac {
 template <typename T, typename MemoryResource> class buffer {
@@ -21,7 +21,7 @@ template <typename T, typename MemoryResource> class buffer {
     explicit buffer(const size_t in_count, const T& fill_value)
         : buffer(in_count)
     {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
+        static_assert(std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Only supported for host memory types");
         std::fill(begin(), end(), fill_value);
     }
@@ -52,14 +52,14 @@ template <typename T, typename MemoryResource> class buffer {
     // buffer(const std::initializer_list<T>& init_list)
     //     : buffer(init_list.size())
     // {
-    //     static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
+    //     static_assert(std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
     //                   "Only enabled for host buffer");
     //     std::copy(init_list.begin(), init_list.end(), begin());
     // }
 
     void display() const
     {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
+        static_assert(std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Only enabled for host buffer");
         for (size_t i{0}; i < count; ++i)
             std::cout << i << ": " << resource[i] << std::endl;
@@ -67,7 +67,7 @@ template <typename T, typename MemoryResource> class buffer {
 
     // friend std::ostream& operator<<(std::ostream& os, const ac::buffer<T>& obj)
     // {
-    //     static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
+    //     static_assert(std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
     //                   "Only enabled for host buffer");
     //     os << "{ ";
     //     for (const auto& elem : obj)
@@ -92,8 +92,8 @@ template <typename MemoryResourceA, typename MemoryResourceB>
 constexpr cudaMemcpyKind
 get_kind()
 {
-    if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceA>) {
-        if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceB>) {
+    if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceA>) {
+        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
             PRINT_LOG("dtod");
             return cudaMemcpyDeviceToDevice;
         }
@@ -103,7 +103,7 @@ get_kind()
         }
     }
     else {
-        if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceB>) {
+        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
             PRINT_LOG("htod");
             return cudaMemcpyHostToDevice;
         }

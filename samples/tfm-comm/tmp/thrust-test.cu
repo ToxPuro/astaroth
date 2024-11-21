@@ -30,7 +30,7 @@ using std::reduce;
 
 template <typename T>
 static void
-print(const std::string& label, const Buffer<T, HostMemoryResource>& vec)
+print(const std::string& label, const Buffer<T, ac::mr::host_memory_resource>& vec)
 {
     std::cout << label << ": { ";
     for (const auto& elem : vec)
@@ -82,7 +82,7 @@ main()
     Shape<2> mm{4, 4};
     const size_t count{prod(mm)};
 
-    Buffer<double, HostMemoryResource> hin(count);
+    Buffer<double, ac::mr::host_memory_resource> hin(count);
     std::iota(hin.begin(), hin.end(), 1);
     print("hin", hin);
 
@@ -90,11 +90,11 @@ main()
 
     // std::copy_if(hin.begin(), hin.end(), hout.begin(), [](const double& val) { return val > 6;
     // });
-    Buffer<double, DeviceMemoryResource> din(count);
+    Buffer<double, ac::mr::device_memory_resource> din(count);
     ac::copy(hin.begin(), hin.end(), din.begin());
 
-    Buffer<double, DeviceMemoryResource> dout(count - 2);
-    Buffer<double, HostMemoryResource> hout(count - 2);
+    Buffer<double, ac::mr::device_memory_resource> dout(count - 2);
+    Buffer<double, ac::mr::host_memory_resource> hout(count - 2);
     pack<<<1, 256>>>(count - 2, 1, thrust::raw_pointer_cast(din.data()),
                      thrust::raw_pointer_cast(dout.data()));
     ac::copy(dout.begin(), dout.end(), hout.begin());

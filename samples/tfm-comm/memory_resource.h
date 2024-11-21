@@ -5,7 +5,8 @@
 #include "errchk.h"
 #include "print_debug.h"
 
-struct HostMemoryResource {
+namespace ac::mr {
+struct host_memory_resource {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host");
@@ -33,7 +34,7 @@ struct HostMemoryResource {
 
 #include "errchk_cuda.h"
 
-struct PinnedHostMemoryResource : public HostMemoryResource {
+struct pinned_host_memory_resource : public host_memory_resource {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host pinned");
@@ -50,7 +51,7 @@ struct PinnedHostMemoryResource : public HostMemoryResource {
     }
 };
 
-struct PinnedWriteCombinedHostMemoryResource : public HostMemoryResource {
+struct pinned_write_combined_host_memory_resource : public host_memory_resource {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host pinned write-combined");
@@ -67,7 +68,7 @@ struct PinnedWriteCombinedHostMemoryResource : public HostMemoryResource {
     }
 };
 
-struct DeviceMemoryResource {
+struct device_memory_resource {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("device");
@@ -85,7 +86,8 @@ struct DeviceMemoryResource {
 };
 #else
 #pragma message("Device code was not enabled. Falling back to host-only memory allocations")
-using PinnedHostMemoryResource              = HostMemoryResource;
-using PinnedWriteCombinedHostMemoryResource = HostMemoryResource;
-using DeviceMemoryResource                  = HostMemoryResource;
+using pinned_host_memory_resource                = ac::mr::host_memory_resource;
+using pinned_write_combined_host_memory_resource = ac::mr::host_memory_resource;
+using device_memory_resource                     = ac::mr::host_memory_resource;
 #endif
+} // namespace ac::mr

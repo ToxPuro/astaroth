@@ -124,11 +124,10 @@ unpack(const T* input, const ac::shape<N>& mm, const ac::shape<N>& block_shape,
 }
 
 // Specialization
- template void pack<UserType, UserNdims, DeviceMemoryResource>(const UserShape& mm, const UserShape& block_shape,
-                                               const UserIndex& block_offset,
-                                               const std::vector<UserType*>& inputs,
-                                               UserType* output);
+template void pack<UserType, UserNdims, ac::mr::device_memory_resource>(
+    const UserShape& mm, const UserShape& block_shape, const UserIndex& block_offset,
+    const std::vector<UserType*>& inputs, UserType* output);
 
- template void unpack<UserType, UserNdims, DeviceMemoryResource>(const UserType* input, const UserShape& mm,
-                            const UserShape& block_shape, const UserShape& block_offset,
-                            std::vector<UserType*>& outputs);
+template void unpack<UserType, UserNdims, ac::mr::device_memory_resource>(
+    const UserType* input, const UserShape& mm, const UserShape& block_shape,
+    const UserShape& block_offset, std::vector<UserType*>& outputs);

@@ -61,7 +61,8 @@ ndarray_print(const char* label, const size_t ndims, const uint64_t* dims, const
     ndarray_print_recursive<T>(ndims, dims, array);
 }
 
-template <typename T, size_t N, typename MemoryResource = HostMemoryResource> struct NdArray {
+template <typename T, size_t N, typename MemoryResource = ac::mr::host_memory_resource>
+struct NdArray {
     ac::shape<N> shape{};
     Buffer<T, MemoryResource> buffer;
 
@@ -91,7 +92,7 @@ template <typename T, size_t N, typename MemoryResource = HostMemoryResource> st
 
     friend std::ostream& operator<<(std::ostream& os, const NdArray<T, N, MemoryResource>& obj)
     {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
+        static_assert(std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Can currently print only host memory");
         os << "{";
         os << "shape: " << obj.shape << ", ";

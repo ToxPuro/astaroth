@@ -51,17 +51,13 @@ unpack(const T* input, const ac::shape<N>& mm, const ac::shape<N>& block_shape,
 /**
  * Forwards declarations (For user types)
  */
-template void pack<UserType, UserNdims, HostMemoryResource>(const UserShape& mm,
-                                                            const UserShape& block_shape,
-                                                            const UserIndex& block_offset,
-                                                            const std::vector<UserType*>& inputs,
-                                                            UserType* output);
+template void pack<UserType, UserNdims, ac::mr::host_memory_resource>(
+    const UserShape& mm, const UserShape& block_shape, const UserIndex& block_offset,
+    const std::vector<UserType*>& inputs, UserType* output);
 
-template void unpack<UserType, UserNdims, HostMemoryResource>(const UserType* input,
-                                                              const UserShape& mm,
-                                                              const UserShape& block_shape,
-                                                              const UserShape& block_offset,
-                                                              std::vector<UserType*>& outputs);
+template void unpack<UserType, UserNdims, ac::mr::host_memory_resource>(
+    const UserType* input, const UserShape& mm, const UserShape& block_shape,
+    const UserShape& block_offset, std::vector<UserType*>& outputs);
 
 #include "buffer.h"
 
@@ -70,10 +66,10 @@ test_pack(void)
 {
     const size_t count{10};
     const size_t rr{1};
-    Buffer<uint64_t, HostMemoryResource> hin(count);
-    Buffer<uint64_t, DeviceMemoryResource> din(count);
-    Buffer<uint64_t, DeviceMemoryResource> dout(count - 2 * rr);
-    Buffer<uint64_t, HostMemoryResource> hout(count - 2 * rr);
+    Buffer<uint64_t, ac::mr::host_memory_resource> hin(count);
+    Buffer<uint64_t, ac::mr::device_memory_resource> din(count);
+    Buffer<uint64_t, ac::mr::device_memory_resource> dout(count - 2 * rr);
+    Buffer<uint64_t, ac::mr::host_memory_resource> hout(count - 2 * rr);
     std::iota(hin.begin(), hin.end(), 0);
     std::fill(hout.begin(), hout.end(), 0);
     // ac::copy(hin.begin(), hin.end(), din.begin());
@@ -83,7 +79,8 @@ test_pack(void)
     ac::shape<1> block_shape{count - 2 * rr};
     ac::shape<1> block_offset{rr};
     std::vector<uint64_t*> inputs{din.data()};
-    pack<uint64_t, 1, HostMemoryResource>(mm, block_shape, block_offset, inputs, dout.data());
+    pack<uint64_t, 1, ac::mr::host_memory_resource>(mm, block_shape, block_offset, inputs,
+                                                    dout.data());
     migrate(dout, hout);
     // ac::copy(dout.begin(), dout.end(), hout.begin());
 

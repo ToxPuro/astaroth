@@ -2,9 +2,9 @@
 #include <cstddef>
 #include <memory>
 
-#include "mem.h"
+#include "memory_resource.h"
 
-template <typename T, typename MemoryResource = HostMemoryResource> class Buffer {
+template <typename T, typename MemoryResource = ac::mr::host_memory_resource> class Buffer {
   private:
     const size_t count;
     std::unique_ptr<T[], decltype(&MemoryResource::dealloc)> resource;
@@ -40,7 +40,7 @@ template <typename T, typename MemoryResource = HostMemoryResource> class Buffer
 
     void display() const
     {
-        static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
+        static_assert(std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Only enabled for host buffer");
         for (size_t i{0}; i < count; ++i)
             std::cout << i << ": " << resource[i] << std::endl;
@@ -61,8 +61,8 @@ template <typename MemoryResourceA, typename MemoryResourceB>
 constexpr cudaMemcpyKind
 get_kind()
 {
-    if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceA>) {
-        if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceB>) {
+    if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceA>) {
+        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
             PRINT_LOG("dtod");
             return cudaMemcpyDeviceToDevice;
         }
@@ -72,7 +72,7 @@ get_kind()
         }
     }
     else {
-        if constexpr (std::is_base_of_v<DeviceMemoryResource, MemoryResourceB>) {
+        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
             PRINT_LOG("htod");
             return cudaMemcpyHostToDevice;
         }

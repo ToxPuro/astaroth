@@ -19,9 +19,9 @@ constexpr size_t ndims = 2;
 using AcReal           = double;
 using Shape            = ac::shape<ndims>;
 using Index            = ac::index<ndims>;
-using Vector           = ac::buffer<AcReal, HostMemoryResource>;
-using NdVector         = ac::ndbuffer<AcReal, ndims, HostMemoryResource>;
-using HaloExchange     = HaloExchangeTask<AcReal, ndims, HostMemoryResource>;
+using Vector           = ac::buffer<AcReal, ac::mr::host_memory_resource>;
+using NdVector         = ac::ndbuffer<AcReal, ndims, ac::mr::host_memory_resource>;
+using HaloExchange     = HaloExchangeTask<AcReal, ndims, ac::mr::host_memory_resource>;
 
 static void
 compute_loop(const MPI_Comm& cart_comm, HaloExchange& halo_exchange, std::vector<Vector*>& buffers)

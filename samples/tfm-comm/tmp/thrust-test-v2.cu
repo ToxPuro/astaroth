@@ -31,7 +31,7 @@ using std::reduce;
 
 template <typename T>
 static void
-print(const std::string& label, const Buffer<T, HostMemoryResource>& vec)
+print(const std::string& label, const Buffer<T, ac::mr::host_memory_resource>& vec)
 {
     std::cout << label << ": { ";
     for (const auto& elem : vec)
@@ -43,11 +43,11 @@ int
 main()
 {
     constexpr size_t count{10};
-    Buffer<int, HostMemoryResource> hin(count);
-    Buffer<int, HostMemoryResource> hout(count);
+    Buffer<int, ac::mr::host_memory_resource> hin(count);
+    Buffer<int, ac::mr::host_memory_resource> hout(count);
 
-    Buffer<int, DeviceMemoryResource> din(count);
-    Buffer<int, DeviceMemoryResource> dout(count);
+    Buffer<int, ac::mr::device_memory_resource> din(count);
+    Buffer<int, ac::mr::device_memory_resource> dout(count);
 
     std::cout << "Complete" << std::endl;
     return EXIT_SUCCESS;

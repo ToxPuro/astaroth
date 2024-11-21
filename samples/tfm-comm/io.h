@@ -82,7 +82,8 @@ mpi_write_collective(const MPI_Comm& parent_comm, const ac::shape<N>& in_file_di
     ERRCHK_MPI_API(MPI_Comm_free(&comm));
 }
 
-template <typename T, size_t N, typename StagingMemoryResource = PinnedHostMemoryResource>
+template <typename T, size_t N,
+          typename StagingMemoryResource = ac::mr::pinned_host_memory_resource>
 class IOTaskAsync {
   private:
     MPI_Info info{MPI_INFO_NULL};

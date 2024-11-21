@@ -55,8 +55,8 @@ benchmark(void)
 
     // ac::buffers
     const size_t count{(1000 * 1024 * 1024) / sizeof(double)};
-    ac::buffer<double, HostMemoryResource> hbuf(count);
-    ac::buffer<double, DeviceMemoryResource> dbuf(count);
+    ac::buffer<double, ac::mr::host_memory_resource> hbuf(count);
+    ac::buffer<double, ac::mr::device_memory_resource> dbuf(count);
 
     // C++ standard library
     for (size_t i{0}; i < num_samples; ++i)
@@ -77,7 +77,7 @@ benchmark(void)
         BENCHMARK(migrate(dbuf, hbuf));
 
     // Pinned
-    ac::buffer<double, PinnedHostMemoryResource> phbuf(count);
+    ac::buffer<double, ac::mr::pinned_host_memory_resource> phbuf(count);
     for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(phbuf, dbuf));
 
@@ -85,7 +85,7 @@ benchmark(void)
         BENCHMARK(migrate(dbuf, phbuf));
 
     // Pinned write-combined
-    ac::buffer<double, PinnedWriteCombinedHostMemoryResource> pwchbuf(count);
+    ac::buffer<double, ac::mr::pinned_write_combined_host_memory_resource> pwchbuf(count);
     for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(pwchbuf, dbuf));
 
@@ -129,11 +129,11 @@ main()
         const ac::shape<N> rr{ones<uint64_t, N>()}; // Symmetric halo
         const ac::shape<N> local_mm{as<uint64_t>(2) * rr + local_nn};
 
-        ac::ndbuffer<AcReal, N, HostMemoryResource> hin(local_mm);
-        ac::ndbuffer<AcReal, N, HostMemoryResource> hout(local_mm);
+        ac::ndbuffer<AcReal, N, ac::mr::host_memory_resource> hin(local_mm);
+        ac::ndbuffer<AcReal, N, ac::mr::host_memory_resource> hout(local_mm);
 
-        ac::ndbuffer<AcReal, N, DeviceMemoryResource> din(local_mm);
-        ac::ndbuffer<AcReal, N, DeviceMemoryResource> dout(local_mm);
+        ac::ndbuffer<AcReal, N, ac::mr::device_memory_resource> din(local_mm);
+        ac::ndbuffer<AcReal, N, ac::mr::device_memory_resource> dout(local_mm);
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
         std::iota(hin.begin(), hin.end(),
@@ -197,8 +197,9 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        HaloExchangeTask<AcReal, N, DeviceMemoryResource> halo_exchange{local_mm, local_nn, rr, 1};
-        std::vector<ac::buffer<AcReal, DeviceMemoryResource>*> inputs{&din.buffer};
+        HaloExchangeTask<AcReal, N, ac::mr::device_memory_resource> halo_exchange{local_mm,
+                                                                                  local_nn, rr, 1};
+        std::vector<ac::buffer<AcReal, ac::mr::device_memory_resource>*> inputs{&din.buffer};
         halo_exchange.launch(cart_comm, inputs);
         halo_exchange.wait(inputs);
         migrate(din.buffer, hin.buffer);

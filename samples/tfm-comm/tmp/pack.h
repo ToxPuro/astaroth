@@ -31,25 +31,23 @@ void unpack(const T* input, const ac::shape<N>& mm, const ac::shape<N>& block_sh
             const ac::index<N>& block_offset, std::vector<T*>& outputs);
 
 // The actual kernel
-extern template void pack<UserType, UserNdims, HostMemoryResource>(const UserShape& mm, const UserShape& block_shape,
-                                               const UserIndex& block_offset,
-                                               const std::vector<UserType*>& inputs,
-                                               UserType* output);
+extern template void pack<UserType, UserNdims, ac::mr::host_memory_resource>(
+    const UserShape& mm, const UserShape& block_shape, const UserIndex& block_offset,
+    const std::vector<UserType*>& inputs, UserType* output);
 
-extern template void unpack<UserType, UserNdims, HostMemoryResource>(const UserType* input, const UserShape& mm,
-                            const UserShape& block_shape, const UserShape& block_offset,
-                            std::vector<UserType*>& outputs);
+extern template void unpack<UserType, UserNdims, ac::mr::host_memory_resource>(
+    const UserType* input, const UserShape& mm, const UserShape& block_shape,
+    const UserShape& block_offset, std::vector<UserType*>& outputs);
 
 #if defined(DEVICE_ENABLED)
 
-extern template void pack<UserType, UserNdims, DeviceMemoryResource>(const UserShape& mm, const UserShape& block_shape,
-                                               const UserIndex& block_offset,
-                                               const std::vector<UserType*>& inputs,
-                                               UserType* output);
+extern template void pack<UserType, UserNdims, ac::mr::device_memory_resource>(
+    const UserShape& mm, const UserShape& block_shape, const UserIndex& block_offset,
+    const std::vector<UserType*>& inputs, UserType* output);
 
-extern template void unpack<UserType, UserNdims, DeviceMemoryResource>(const UserType* input, const UserShape& mm,
-                            const UserShape& block_shape, const UserShape& block_offset,
-                            std::vector<UserType*>& outputs);
+extern template void unpack<UserType, UserNdims, ac::mr::device_memory_resource>(
+    const UserType* input, const UserShape& mm, const UserShape& block_shape,
+    const UserShape& block_offset, std::vector<UserType*>& outputs);
 
 #endif
 

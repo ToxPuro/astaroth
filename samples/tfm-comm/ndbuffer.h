@@ -93,7 +93,7 @@ ndbuffer_fill(const T& value, const size_t ndims, const uint64_t* dims, const ui
 template <typename T, size_t N>
 void
 fill(const T& fill_value, const ac::shape<N>& subdims, const ac::shape<N>& offset,
-     ac::ndbuffer<T, N, HostMemoryResource>& ndbuf)
+     ac::ndbuffer<T, N, ac::mr::host_memory_resource>& ndbuf)
 {
     ERRCHK(offset + subdims <= ndbuf.shape);
     ndbuffer_fill<T>(fill_value, ndbuf.shape.size(), ndbuf.shape.data(), subdims.data(),

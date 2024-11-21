@@ -18,5 +18,5 @@ test_halo_exchange(void)
     //     }
     // }
 
-    // NdArray<int, HostMemoryResource> hin()
+    // NdArray<int, ac::mr::host_memory_resource> hin()
 }

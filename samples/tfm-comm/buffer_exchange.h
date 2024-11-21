@@ -50,9 +50,9 @@ class BufferExchangeTask {
         in_progress = true;
 
         // Ensure that the input resource and the first-stage buffer is in the same memory space
-        static_assert((std::is_base_of_v<DeviceMemoryResource, FirstStageResource> &&
-                       std::is_base_of_v<DeviceMemoryResource, MemoryResource>) ||
-                          std::is_base_of_v<HostMemoryResource, MemoryResource>,
+        static_assert((std::is_base_of_v<ac::mr::device_memory_resource, FirstStageResource> &&
+                       std::is_base_of_v<ac::mr::device_memory_resource, MemoryResource>) ||
+                          std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 
@@ -74,9 +74,9 @@ class BufferExchangeTask {
         ERRCHK(in_progress);
 
         // Ensure that the output resource and the second-stage buffer is in the same memory space
-        static_assert((std::is_base_of_v<DeviceMemoryResource, SecondStageResource> &&
-                       std::is_base_of_v<DeviceMemoryResource, MemoryResource>) ||
-                          std::is_base_of_v<HostMemoryResource, MemoryResource>,
+        static_assert((std::is_base_of_v<ac::mr::device_memory_resource, SecondStageResource> &&
+                       std::is_base_of_v<ac::mr::device_memory_resource, MemoryResource>) ||
+                          std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 
@@ -97,10 +97,10 @@ class BufferExchangeTask {
 };
 
 template <typename T>
-using HostToDeviceBufferExchangeTask = BufferExchangeTask<T, PinnedWriteCombinedHostMemoryResource,
-                                                          DeviceMemoryResource>;
+using HostToDeviceBufferExchangeTask = BufferExchangeTask<
+    T, ac::mr::pinned_write_combined_host_memory_resource, ac::mr::device_memory_resource>;
 template <typename T>
-using DeviceToHostBufferExchangeTask = BufferExchangeTask<T, DeviceMemoryResource,
-                                                          PinnedHostMemoryResource>;
+using DeviceToHostBufferExchangeTask = BufferExchangeTask<T, ac::mr::device_memory_resource,
+                                                          ac::mr::pinned_host_memory_resource>;
 
 void test_buffer_exchange(void);
