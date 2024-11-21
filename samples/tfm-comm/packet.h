@@ -18,7 +18,7 @@ template <typename T, size_t N, typename MemoryResource> class Packet {
     ac::shape<N> local_nn;
     ac::index<N> local_rr;
 
-    Segment<N> segment;
+    ac::segment<N> segment;
 
     ac::buffer<T, MemoryResource> send_buffer;
     ac::buffer<T, MemoryResource> recv_buffer;
@@ -31,7 +31,7 @@ template <typename T, size_t N, typename MemoryResource> class Packet {
 
   public:
     Packet(const ac::shape<N>& in_local_mm, const ac::shape<N>& in_local_nn,
-           const ac::index<N>& in_local_rr, const Segment<N>& in_segment,
+           const ac::index<N>& in_local_rr, const ac::segment<N>& in_segment,
            const size_t n_aggregate_buffers)
         : local_mm{in_local_mm},
           local_nn{in_local_nn},

@@ -8,8 +8,8 @@ namespace detail {
 template <size_t N>
 static void
 partition_recursive(const ac::shape<N>& mm, const ac::shape<N>& nn, const ac::index<N>& nn_offset,
-                    const Segment<N>& current_segment, const size_t axis,
-                    std::vector<Segment<N>>& segments)
+                    const ac::segment<N>& current_segment, const size_t axis,
+                    std::vector<ac::segment<N>>& segments)
 {
     if (prod(current_segment.dims) == 0) { // Empty segment
         return;
@@ -26,21 +26,21 @@ partition_recursive(const ac::shape<N>& mm, const ac::shape<N>& nn, const ac::in
         const size_t x3{current_segment.offset[axis] + current_segment.dims[axis]};
 
         { // Left
-            Segment<N> new_segment(current_segment);
+            ac::segment<N> new_segment(current_segment);
             new_segment.offset[axis] = x0;
             new_segment.dims[axis]   = x1 - x0;
             partition_recursive(mm, nn, nn_offset, new_segment, axis + 1, segments);
         }
 
         { // Center
-            Segment<N> new_segment(current_segment);
+            ac::segment<N> new_segment(current_segment);
             new_segment.offset[axis] = x1;
             new_segment.dims[axis]   = x2 - x1;
             partition_recursive(mm, nn, nn_offset, new_segment, axis + 1, segments);
         }
 
         { // Right
-            Segment<N> new_segment(current_segment);
+            ac::segment<N> new_segment(current_segment);
             new_segment.offset[axis] = x2;
             new_segment.dims[axis]   = x3 - x2;
             partition_recursive(mm, nn, nn_offset, new_segment, axis + 1, segments);
@@ -53,11 +53,11 @@ partition_recursive(const ac::shape<N>& mm, const ac::shape<N>& nn, const ac::in
  * Partition the domain mm into segments that surround the halo-less domain nn offset by nn_offset
  */
 template <size_t N>
-std::vector<Segment<N>>
+std::vector<ac::segment<N>>
 partition(const ac::shape<N>& mm, const ac::shape<N>& nn, const ac::index<N>& nn_offset)
 {
-    std::vector<Segment<N>> segments;
-    Segment<N> initial_segment(mm);
+    std::vector<ac::segment<N>> segments;
+    ac::segment<N> initial_segment(mm);
     detail::partition_recursive(mm, nn, nn_offset, initial_segment, 0, segments);
     return segments;
 }
