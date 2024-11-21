@@ -4,24 +4,25 @@
 #include <vector>
 
 #include "packet.h"
+#include "partition.h"
 
-template <typename T> class HaloExchangeTask {
+template <typename T, size_t N, typename MemoryResource> class HaloExchangeTask {
   private:
-    std::vector<std::unique_ptr<Packet<T>>> packets;
+    std::vector<std::unique_ptr<Packet<T, N, MemoryResource>>> packets;
 
   public:
-    HaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
-                     const size_t n_aggregate_buffers)
+    HaloExchangeTask(const ac::shape<N>& local_mm, const ac::shape<N>& local_nn,
+                     const ac::index<N>& local_rr, const size_t n_aggregate_buffers)
 
     {
         // Must be larger than the boundary area to avoid boundary artifacts
         ERRCHK_MPI(local_nn >= local_rr);
 
         // Partition the mesh
-        auto segments = partition(local_mm, local_nn, local_rr);
+        auto segments{partition(local_mm, local_nn, local_rr)};
 
         // Prune the segment containing the computational domain
-        for (size_t i = 0; i < segments.size(); ++i) {
+        for (size_t i{0}; i < segments.size(); ++i) {
             if (within_box(segments[i].offset, local_nn, local_rr)) {
                 segments.erase(segments.begin() + as<long>(i));
                 --i;
@@ -30,18 +31,20 @@ template <typename T> class HaloExchangeTask {
 
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
-            packets.push_back(std::make_unique<Packet<T>>(local_mm, local_nn, local_rr, segment,
-                                                          n_aggregate_buffers));
+            packets.push_back(std::make_unique<Packet<T, N, MemoryResource>>(local_mm, local_nn,
+                                                                             local_rr, segment,
+                                                                             n_aggregate_buffers));
         }
     }
 
-    void launch(const MPI_Comm& parent_comm, const PackPtrArray<T*>& inputs)
+    void launch(const MPI_Comm& parent_comm,
+                const std::vector<ac::buffer<T, MemoryResource>*>& inputs)
     {
         for (auto& packet : packets)
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(PackPtrArray<T*>& outputs)
+    void wait(std::vector<ac::buffer<T, MemoryResource>*>& outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         // while (!complete()) {

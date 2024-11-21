@@ -1,71 +1,22 @@
 #include "buffer.h"
 
-#include "cuda_utils.h"
-#include "errchk.h"
-
 void
-test_buffer()
+test_buffer(void)
 {
-    {
-        const size_t count = 10;
-        Buffer<double> a(count);
-        a.arange();
-        Buffer<double> b(count);
-        migrate(a, b);
-        ERRCHK(std::equal(a.data(), a.data() + count, b.data()));
-    }
-    {
-        const size_t count = 10;
+    const ac::buffer<double, ac::mr::host_memory_resource> vec(10);
+    ERRCHK(vec.size() == 10);
 
-        Buffer<double, HostMemoryResource> a(count);
-        Buffer<double, PinnedHostMemoryResource> b(count);
-        Buffer<double, PinnedWriteCombinedHostMemoryResource> c(count);
-        Buffer<double, DeviceMemoryResource> d(count);
-        migrate(a, a);
-        migrate(a, b);
-        migrate(a, c);
-        migrate(a, d);
+    const auto vec1 = ac::buffer<int, ac::mr::pinned_host_memory_resource>(20, -1);
+    ERRCHK(vec1.size() == 20);
+    ERRCHK(vec1[0] == -1);
+    ERRCHK(vec1[vec1.size() - 1] == -1);
 
-        migrate(b, a);
-        migrate(b, b);
-        migrate(b, c);
-        migrate(b, d);
-
-        migrate(c, a);
-        migrate(c, b);
-        migrate(c, c);
-        migrate(c, d);
-
-        migrate(d, a);
-        migrate(d, b);
-        migrate(d, c);
-        migrate(d, d);
-
-        a.arange();
-        b.fill(0);
-        migrate(a, b);
-        c.fill(0);
-        migrate(b, c);
-        migrate(c, d);
-        c.fill(0);
-        migrate(d, c);
-        b.fill(0);
-        migrate(c, b);
-        ERRCHK(std::equal(a.data(), a.data() + a.size(), b.data()));
-    }
-    // {
-    //     const size_t count = 10;
-    //     Buffer<double, HostMemoryResource> a(count);
-    //     Buffer<double, DeviceMemoryResource> b(count);
-    //     Buffer<double, PinnedHostMemoryResource> c(count);
-
-    //     std::unique_ptr<cudaStream_t, decltype(&cuda_stream_destroy)>
-    //         stream{cuda_stream_create(cudaStreamNonBlocking), &cuda_stream_destroy};
-
-    //     a.arange();
-    //     migrate_async(*stream, a, b);
-    //     migrate_async(*stream, b, c);
-    //     ERRCHK_CUDA_API(cudaStreamSynchronize(*stream));
-    //     ERRCHK(std::equal(a.data(), a.data() + a.size(), c.data()));
-    // }
+    // Initializer list constructor disabled to avoid confusion
+    // use std::fill, std::iota, and other functions to initialize
+    // the buffer after creation
+    // const ac::buffer<uint64_t> vec2{1, 2, 3, 4};
+    // ERRCHK(vec2[0] == 1);
+    // ERRCHK(vec2[1] == 2);
+    // ERRCHK(vec2[2] == 3);
+    // ERRCHK(vec2[3] == 4);
 }

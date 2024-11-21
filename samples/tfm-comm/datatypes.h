@@ -1,12 +1,11 @@
 #pragma once
 
-#include "static_array.h"
+#include "array.h"
 
-constexpr size_t MAX_NDIMS = 4;
-
-using Index     = StaticArray<uint64_t, MAX_NDIMS>;
-using Shape     = StaticArray<uint64_t, MAX_NDIMS>;
-using Direction = StaticArray<int64_t, MAX_NDIMS>;
-using MPIIndex  = StaticArray<int, MAX_NDIMS>;
-using MPIShape  = StaticArray<int, MAX_NDIMS>;
-using AcReal    = double;
+// template <size_t N> using Index     = ac::array<uint64_t, N>;
+// template <size_t N> using Shape     = ac::array<uint64_t, N>;
+// template <size_t N> using Direction = ac::array<int64_t, N>;
+// template <size_t N> using MPIIndex  = ac::array<int, N>;
+// template <size_t N> using MPIShape  = ac::array<int, N>;
+using AcReal = double;
+constexpr size_t NDIMS = 2;

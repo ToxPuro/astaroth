@@ -41,7 +41,7 @@ static void
 print(const std::string& label, const size_t count, const T* data)
 {
     std::cout << label << ": { ";
-    for (size_t i = 0; i < count; ++i)
+    for (size_t i{0}; i < count; ++i)
         std::cout << data[i] << " ";
     std::cout << "}" << std::endl;
 }
@@ -70,13 +70,13 @@ main(void)
         ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
         std::cout << "Hello from " << rank << std::endl;
 
-        const size_t count = 10;
+        const size_t count{10};
         auto hin{std::make_unique<double[]>(count)};
         auto din{device::make_unique<double>(count)};
         auto dout{device::make_unique<double>(count)};
         auto hout{std::make_unique<double[]>(count)};
 
-        for (size_t i = 0; i < count; ++i)
+        for (size_t i{0}; i < count; ++i)
             hin[i] = static_cast<double>(i);
         print("hin", count, hin.get());
 

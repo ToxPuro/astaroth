@@ -32,7 +32,7 @@
 //     CUDAStream(CUDAStream&& other) noexcept
 //         : stream{other.stream}
 //     {
-//         other.stream = nullptr;
+// other.stream{nullptr};
 //     }
 
 //     // Move assignment
@@ -40,8 +40,8 @@
 //     {
 //         if (this != &other) {
 //             WARNCHK_CUDA_API(cudaStreamDestroy(stream));
-//             stream       = other.stream;
-//             other.stream = nullptr;
+// stream{other.stream};
+// other.stream{nullptr};
 //         }
 //         return *this;
 //     }
@@ -50,7 +50,7 @@
 //     {
 //         PRINT_LOG("delete stream");
 //         WARNCHK_CUDA_API(cudaStreamDestroy(stream));
-//         stream = nullptr;
+// stream{nullptr};
 //     }
 
 //     CUDAStream(const CUDAStream&)            = delete; // Copy
@@ -66,7 +66,7 @@
 // cuda_stream_create(const unsigned int flags = cudaStreamDefault)
 // {
 //     PRINT_LOG("new stream");
-//     cudaStream_t* stream = new cudaStream_t;
+//     cudaStream_t* stream{new cudaStream_t};
 //     // ERRCHK_CUDA_API(cudaStreamCreate(stream));
 //     ERRCHK_CUDA_API(cudaStreamCreateWithFlags(stream, flags));
 //     return stream;
@@ -80,15 +80,15 @@
 //     delete stream;
 // }
 // #else
-// using cudaStream_t                       = unsigned int;
-// constexpr unsigned int cudaStreamDefault = 0;
+// using cudaStream_t{unsigned int};
+// constexpr unsigned int cudaStreamDefault{0};
 
 // static inline cudaStream_t*
 // cuda_stream_create(const unsigned int flags = cudaStreamDefault)
 // {
 //     PRINT_LOG("new stream");
-//     cudaStream_t* stream = new cudaStream_t;
-//     *stream              = flags;
+//     cudaStream_t* stream{new cudaStream_t};
+// *stream{flags};
 //     return stream;
 // }
 

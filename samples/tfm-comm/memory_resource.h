@@ -5,7 +5,9 @@
 #include "errchk.h"
 #include "print_debug.h"
 
-struct HostMemoryResource {
+namespace ac::mr {
+
+struct host_memory_resource {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host");
@@ -22,7 +24,10 @@ struct HostMemoryResource {
     }
 };
 
+} // namespace ac::mr
+
 #if defined(DEVICE_ENABLED)
+
 #if defined(CUDA_ENABLED)
 #include <cuda_runtime.h>
 #elif defined(HIP_ENABLED)
@@ -32,11 +37,13 @@ struct HostMemoryResource {
 
 #include "errchk_cuda.h"
 
-struct PinnedHostMemoryResource : public HostMemoryResource {
+namespace ac::mr {
+
+struct pinned_host_memory_resource : public host_memory_resource {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host pinned");
-        void* ptr = nullptr;
+        void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaHostAlloc(&ptr, bytes, cudaHostAllocDefault));
         return ptr;
     }
@@ -49,11 +56,11 @@ struct PinnedHostMemoryResource : public HostMemoryResource {
     }
 };
 
-struct PinnedWriteCombinedHostMemoryResource : public HostMemoryResource {
+struct pinned_write_combined_host_memory_resource : public host_memory_resource {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("host pinned write-combined");
-        void* ptr = nullptr;
+        void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaHostAlloc(&ptr, bytes, cudaHostAllocWriteCombined));
         return ptr;
     }
@@ -66,11 +73,11 @@ struct PinnedWriteCombinedHostMemoryResource : public HostMemoryResource {
     }
 };
 
-struct DeviceMemoryResource {
+struct device_memory_resource {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG("device");
-        void* ptr = nullptr;
+        void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaMalloc(&ptr, bytes));
         return ptr;
     }
@@ -82,9 +89,16 @@ struct DeviceMemoryResource {
         WARNCHK_CUDA_API(cudaFree(ptr));
     }
 };
+
+} // namespace ac::mr
+
 #else
+
 #pragma message("Device code was not enabled. Falling back to host-only memory allocations")
-using PinnedHostMemoryResource              = HostMemoryResource;
-using PinnedWriteCombinedHostMemoryResource = HostMemoryResource;
-using DeviceMemoryResource                  = HostMemoryResource;
+namespace ac::mr {
+using pinned_host_memory_resource                = ac::mr::host_memory_resource;
+using pinned_write_combined_host_memory_resource = ac::mr::host_memory_resource;
+using device_memory_resource                     = ac::mr::host_memory_resource;
+} // namespace ac::mr
+
 #endif

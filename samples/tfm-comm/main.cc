@@ -2,7 +2,11 @@
 
 #include "datatypes.h"
 #include "errchk.h"
-#include "ndarray.h"
+// #include "ndarray.h"
+#include "ndbuffer.h"
+
+#include <algorithm>
+#include <numeric>
 
 #include <mpi.h>
 
@@ -25,12 +29,12 @@
 #include <hip/hip_runtime.h>
 #else
 #include "errchk.h"
-void
+static void
 cudaStreamCreate(cudaStream_t* stream)
 {
     *stream = nullptr;
 }
-void
+static void
 cudaStreamDestroy(cudaStream_t stream)
 {
     (void)stream; // Unused
@@ -40,52 +44,52 @@ cudaStreamDestroy(cudaStream_t stream)
 static void
 benchmark(void)
 {
-    const size_t num_samples = 5;
+    const size_t num_samples{5};
 
     // Stream creation
-    for (size_t i = 0; i < num_samples; ++i) {
+    for (size_t i{0}; i < num_samples; ++i) {
         cudaStream_t stream;
         BENCHMARK(cudaStreamCreate(&stream));
         BENCHMARK(cudaStreamDestroy(stream));
     }
 
-    // Buffers
-    const size_t count = (1000 * 1024 * 1024) / sizeof(double);
-    Buffer<double, HostMemoryResource> hbuf(count);
-    Buffer<double, DeviceMemoryResource> dbuf(count);
+    // ac::buffers
+    const size_t count{(1000 * 1024 * 1024) / sizeof(double)};
+    ac::buffer<double, ac::mr::host_memory_resource> hbuf(count);
+    ac::buffer<double, ac::mr::device_memory_resource> dbuf(count);
 
     // C++ standard library
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(std::copy(hbuf.data(), hbuf.data() + hbuf.size(), hbuf.data()));
 
     // Regular htoh and dtod
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(hbuf, hbuf));
 
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(dbuf, dbuf));
 
     // Regular dtoh and htod
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(hbuf, dbuf));
 
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(dbuf, hbuf));
 
     // Pinned
-    Buffer<double, PinnedHostMemoryResource> phbuf(count);
-    for (size_t i = 0; i < num_samples; ++i)
+    ac::buffer<double, ac::mr::pinned_host_memory_resource> phbuf(count);
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(phbuf, dbuf));
 
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(dbuf, phbuf));
 
     // Pinned write-combined
-    Buffer<double, PinnedWriteCombinedHostMemoryResource> pwchbuf(count);
-    for (size_t i = 0; i < num_samples; ++i)
+    ac::buffer<double, ac::mr::pinned_write_combined_host_memory_resource> pwchbuf(count);
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(pwchbuf, dbuf));
 
-    for (size_t i = 0; i < num_samples; ++i)
+    for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(dbuf, pwchbuf));
 }
 
@@ -113,26 +117,27 @@ main()
 #if defined(DEVICE_ENABLED)
         benchmark();
 #endif
+        constexpr size_t N{2};
 
-        const Shape global_nn{4, 4};
-        MPI_Comm cart_comm           = cart_comm_create(MPI_COMM_WORLD, global_nn);
-        const Shape decomp           = get_decomposition(cart_comm);
-        const Shape local_nn         = global_nn / decomp;
-        const Index coords           = get_coords(cart_comm);
-        const Index global_nn_offset = coords * local_nn;
+        const ac::shape<N> global_nn{4, 4};
+        MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
+        const ac::shape<N> decomp{get_decomposition<N>(cart_comm)};
+        const ac::shape<N> local_nn{global_nn / decomp};
+        const ac::index<N> coords{get_coords<N>(cart_comm)};
+        const ac::index<N> global_nn_offset{coords * local_nn};
 
-        const Shape rr(global_nn.count, 1); // Symmetric halo
-        const Shape local_mm = as<uint64_t>(2) * rr + local_nn;
+        const ac::shape<N> rr{ones<uint64_t, N>()}; // Symmetric halo
+        const ac::shape<N> local_mm{as<uint64_t>(2) * rr + local_nn};
 
-        NdArray<AcReal, HostMemoryResource> hin(local_mm);
-        NdArray<AcReal, HostMemoryResource> hout(local_mm);
+        ac::ndbuffer<AcReal, N, ac::mr::host_memory_resource> hin(local_mm);
+        ac::ndbuffer<AcReal, N, ac::mr::host_memory_resource> hout(local_mm);
 
-        NdArray<AcReal, DeviceMemoryResource> din(local_mm);
-        NdArray<AcReal, DeviceMemoryResource> dout(local_mm);
+        ac::ndbuffer<AcReal, N, ac::mr::device_memory_resource> din(local_mm);
+        ac::ndbuffer<AcReal, N, ac::mr::device_memory_resource> dout(local_mm);
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
-        hin.arange(static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
-        // hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+        std::iota(hin.begin(), hin.end(),
+                  static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         hin.display();
@@ -150,11 +155,12 @@ main()
 #if true
         PRINT_LOG("Testing basic halo exchange"); //-------------------------------
         if (nprocs == 1) {
-            hin.arange(static_cast<AcReal>(get_rank(cart_comm)) *
-                       static_cast<AcReal>(prod(local_mm)));
+            std::iota(hin.begin(), hin.end(),
+                      static_cast<AcReal>(get_rank(cart_comm)) *
+                          static_cast<AcReal>(prod(local_mm)));
         }
         else {
-            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+            std::fill(hin.begin(), hin.end(), static_cast<AcReal>(get_rank(cart_comm)));
         }
         migrate(hin.buffer, din.buffer);
 
@@ -176,11 +182,12 @@ main()
 #if true
         PRINT_LOG("Testing packed halo exchange"); //-------------------------------
         if (nprocs == 1) {
-            hin.arange(static_cast<AcReal>(get_rank(cart_comm)) *
-                       static_cast<AcReal>(prod(local_mm)));
+            std::iota(hin.begin(), hin.end(),
+                      static_cast<AcReal>(get_rank(cart_comm)) *
+                          static_cast<AcReal>(prod(local_mm)));
         }
         else {
-            hin.fill(static_cast<AcReal>(get_rank(cart_comm)), local_mm, Index(local_mm.count));
+            std::fill(hin.begin(), hin.end(), static_cast<AcReal>(get_rank(cart_comm)));
         }
         migrate(hin.buffer, din.buffer);
 
@@ -190,8 +197,9 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        HaloExchangeTask<AcReal> halo_exchange{local_mm, local_nn, rr, 1};
-        PackPtrArray<AcReal*> inputs{din.buffer.data()};
+        HaloExchangeTask<AcReal, N, ac::mr::device_memory_resource> halo_exchange{local_mm,
+                                                                                  local_nn, rr, 1};
+        std::vector<ac::buffer<AcReal, ac::mr::device_memory_resource>*> inputs{&din.buffer};
         halo_exchange.launch(cart_comm, inputs);
         halo_exchange.wait(inputs);
         migrate(din.buffer, hin.buffer);
@@ -205,16 +213,17 @@ main()
 
 #if true
         PRINT_LOG("Testing IO"); //-------------------------------
-        hin.arange(static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
+        std::iota(hin.begin(), hin.end(),
+                  static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
 
-        IOTaskAsync<AcReal> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
-        // iotask.launch_write(cart_comm, hin.buffer, "test.dat");
-        // iotask.wait_write();
-        mpi_write(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr, hin.buffer.data(),
-                  "test.dat");
-        hin.buffer.fill(0);
-        mpi_read(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr, "test.dat",
-                 hin.buffer.data());
+        IOTaskAsync<AcReal, N> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
+        // iotask.launch_write_collective(cart_comm, hin.buffer, "test.dat");
+        // iotask.wait_write_collective();
+        mpi_write_collective(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,
+                             hin.buffer.data(), "test.dat");
+        std::fill(hin.begin(), hin.end(), 0);
+        mpi_read_collective(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,
+                            "test.dat", hin.buffer.data());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)

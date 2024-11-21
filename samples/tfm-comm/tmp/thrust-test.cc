@@ -6,8 +6,8 @@
 #include <numeric> // iota
 
 #if defined(DEVICE_ENABLED)
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
+#include <thrust/device_buffer.h>
+#include <thrust/host_buffer.h>
 namespace ac {
 template <typename T> using host_vector   = thrust::host_vector<T>;
 template <typename T> using device_vector = thrust::device_vector<T>;
@@ -30,7 +30,7 @@ using std::reduce;
 
 template <typename T>
 static void
-print(const std::string& label, const ac::host_vector<T>& vec)
+print(const std::string& label, const Buffer<T, ac::mr::host_memory_resource>& vec)
 {
     std::cout << label << ": { ";
     for (const auto& elem : vec)
@@ -43,15 +43,15 @@ static void
 ndarray_print_recursive(const size_t ndims, const uint64_t* dims, const T* array)
 {
     if (ndims == 1) {
-        for (size_t i = 0; i < dims[0]; ++i)
+        for (size_t i{0}; i < dims[0]; ++i)
             std::cout << std::setw(4) << array[i];
         std::cout << std::endl;
     }
     else {
-        // const uint64_t offset = prod(ndims - 1, dims);
+        // const uint64_t offset{prod(ndims - 1, dims)};
         const uint64_t offset = ac::reduce(dims, dims + ndims - 1, static_cast<uint64_t>(1),
                                            ac::multiplies<uint64_t>());
-        for (size_t i = 0; i < dims[ndims - 1]; ++i) {
+        for (size_t i{0}; i < dims[ndims - 1]; ++i) {
             if (ndims > 4)
                 printf("%zu. %zu-dimensional hypercube:\n", i, ndims - 1);
             if (ndims == 4)
@@ -70,7 +70,7 @@ template <typename T>
 __global__ void
 pack(const uint64_t blocksize, const uint64_t offset, const T* in, T* out)
 {
-    const uint64_t i = static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+    const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     if (i < blocksize)
         out[i] = in[offset + i];
 }
@@ -79,10 +79,10 @@ int
 main()
 {
     std::cout << "hello" << std::endl;
-    Shape mm{4, 4};
-    const size_t count = prod(mm);
+    ac::shape mm{4, 4};
+    const size_t count{prod(mm)};
 
-    ac::host_vector<double> hin(count);
+    Buffer<double, ac::mr::host_memory_resource> hin(count);
     std::iota(hin.begin(), hin.end(), 1);
     print("hin", hin);
 
@@ -90,11 +90,11 @@ main()
 
     // std::copy_if(hin.begin(), hin.end(), hout.begin(), [](const double& val) { return val > 6;
     // });
-    ac::device_vector<double> din(count);
+    Buffer<double, ac::mr::device_memory_resource> din(count);
     ac::copy(hin.begin(), hin.end(), din.begin());
 
-    ac::device_vector<double> dout(count - 2);
-    ac::host_vector<double> hout(count - 2);
+    Buffer<double, ac::mr::device_memory_resource> dout(count - 2);
+    Buffer<double, ac::mr::host_memory_resource> hout(count - 2);
     pack<<<1, 256>>>(count - 2, 1, thrust::raw_pointer_cast(din.data()),
                      thrust::raw_pointer_cast(dout.data()));
     ac::copy(dout.begin(), dout.end(), hout.begin());

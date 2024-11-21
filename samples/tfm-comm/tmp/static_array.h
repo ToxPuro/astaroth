@@ -57,12 +57,12 @@ template <typename T, size_t N> struct StaticArray {
     {
         ERRCHK(count > 0);
         ERRCHK(count <= N);
-        for (size_t i = 0; i < count; ++i)
+        for (size_t i{0}; i < count; ++i)
             data[i] = fill_value;
     }
 
     // Initializer list constructor
-    // StaticArray<int, 3> a = {1,2,3}
+    // StaticArray<int, 3> a{1,2,3}
     __host__ __device__ StaticArray(const std::initializer_list<T>& init_list)
         : count(init_list.size())
     {
@@ -77,7 +77,7 @@ template <typename T, size_t N> struct StaticArray {
     __host__ __device__ explicit StaticArray(const StaticArray<U, N>& other)
         : count(other.count)
     {
-        for (size_t i = 0; i < count; ++i)
+        for (size_t i{0}; i < count; ++i)
             data[i] = as<T>(other.data[i]);
     }
 
@@ -88,7 +88,7 @@ template <typename T, size_t N> struct StaticArray {
         ERRCHK(count > 0);
         ERRCHK(count <= N);
         ERRCHK(arr);
-        for (size_t i = 0; i < count; ++i)
+        for (size_t i{0}; i < count; ++i)
             data[i] = arr[i];
     }
 
@@ -100,7 +100,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         T res = 0;
-        for (size_t i = 0; i < count; ++i)
+        for (size_t i{0}; i < count; ++i)
             res += data[i] * other[i];
         return res;
     }
@@ -108,7 +108,7 @@ template <typename T, size_t N> struct StaticArray {
     __host__ StaticArray<T, N> reversed() const
     {
         StaticArray<T, N> out(count);
-        for (size_t i = 0; i < count; ++i)
+        for (size_t i{0}; i < count; ++i)
             out.data[i] = data[count - 1 - i];
         return out;
     }
@@ -123,7 +123,7 @@ template <typename T, size_t N> struct StaticArray {
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a[i] + b[i];
         return c;
     }
@@ -136,7 +136,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(b.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a + b[i];
         return c;
     }
@@ -149,7 +149,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a[i] + b;
         return c;
     }
@@ -164,7 +164,7 @@ template <typename T, size_t N> struct StaticArray {
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a[i] - b[i];
         return c;
     }
@@ -177,7 +177,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(b.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a - b[i];
         return c;
     }
@@ -190,7 +190,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a[i] - b;
         return c;
     }
@@ -205,7 +205,7 @@ template <typename T, size_t N> struct StaticArray {
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a[i] * b[i];
         return c;
     }
@@ -218,7 +218,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(b.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a * b[i];
         return c;
     }
@@ -231,7 +231,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a[i] * b;
         return c;
     }
@@ -246,7 +246,7 @@ template <typename T, size_t N> struct StaticArray {
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i) {
+        for (size_t i{0}; i < c.count; ++i) {
             ERRCHK(b[i] != 0);
             c[i] = a[i] / b[i];
         }
@@ -262,7 +262,7 @@ template <typename T, size_t N> struct StaticArray {
                       "explicit cast such that both operands are of the same type");
         ERRCHK(b != 0);
         StaticArray<T, N> c(b.count);
-        for (size_t i = 0; i < c.count; ++i) {
+        for (size_t i{0}; i < c.count; ++i) {
             ERRCHK(b[i] != 0);
             c[i] = a / b[i];
         }
@@ -278,7 +278,7 @@ template <typename T, size_t N> struct StaticArray {
                       "explicit cast such that both operands are of the same type");
         ERRCHK(b != 0);
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a[i] / b;
         return c;
     }
@@ -293,7 +293,7 @@ template <typename T, size_t N> struct StaticArray {
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a[i] % b[i];
         return c;
     }
@@ -306,7 +306,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(b.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a % b[i];
         return c;
     }
@@ -319,7 +319,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = a[i] % b;
         return c;
     }
@@ -333,7 +333,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
-        for (size_t i = 0; i < a.count; ++i)
+        for (size_t i{0}; i < a.count; ++i)
             if (a[i] != b[i])
                 return false;
         return true;
@@ -348,7 +348,7 @@ template <typename T, size_t N> struct StaticArray {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
         ERRCHK(a.count == b.count);
-        for (size_t i = 0; i < a.count; ++i)
+        for (size_t i{0}; i < a.count; ++i)
             if (a[i] < b[i])
                 return false;
         return true;
@@ -358,7 +358,7 @@ template <typename T, size_t N> struct StaticArray {
     {
         static_assert(std::is_signed_v<T>, "Operator enabled only for signed types");
         StaticArray<T, N> c(a.count);
-        for (size_t i = 0; i < c.count; ++i)
+        for (size_t i{0}; i < c.count; ++i)
             c[i] = -a[i];
         return c;
     }
@@ -366,7 +366,7 @@ template <typename T, size_t N> struct StaticArray {
     friend __host__ std::ostream& operator<<(std::ostream& os, const StaticArray<T, N>& obj)
     {
         os << "{";
-        for (size_t i = 0; i < obj.count; ++i)
+        for (size_t i{0}; i < obj.count; ++i)
             os << obj[i] << (i + 1 < obj.count ? ", " : "}");
         return os;
     }
@@ -378,7 +378,7 @@ prod(const StaticArray<T, N> arr)
 {
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
     T result = 1;
-    for (size_t i = 0; i < arr.count; ++i)
+    for (size_t i{0}; i < arr.count; ++i)
         result *= arr[i];
     return result;
 }
@@ -389,7 +389,7 @@ prod(const StaticArray<T, N> arr)
 // {
 //     ERRCHK(a.count == b.count);
 //     StaticArray<T, N> c(a.count);
-//     for (size_t i = 0; i < c.count; ++i)
+//     for (size_t i{0}; i < c.count; ++i)
 //         c[i] = a[i] + b[i];
 //     return c;
 // }

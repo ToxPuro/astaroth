@@ -15,13 +15,13 @@ test_static_array(void)
 
     {
         StaticArray<uint64_t, 4> a(3);
-        for (size_t i = 0; i < a.count; ++i)
+        for (size_t i{0}; i < a.count; ++i)
             ERRCHK(a[i] == 0);
         // PRINT_DEBUG(a);
     }
     {
         StaticArray<uint64_t, 4> a(2, 5);
-        for (size_t i = 0; i < a.count; ++i)
+        for (size_t i{0}; i < a.count; ++i)
             ERRCHK(a[i] == 5);
         // PRINT_DEBUG(a);
     }

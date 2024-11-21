@@ -18,7 +18,7 @@ template <typename T>
 __global__ void
 kernel(const size_t count, const T* in, T* out)
 {
-    const size_t i = static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+    const size_t i{static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     if (i < count)
         out[i] = 2 * in[i];
 }
@@ -28,8 +28,8 @@ cuda::std::array<T, N> __device__
 operator+(const cuda::std::array<T, N>& a, const cuda::std::array<T, N>& b)
 {
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-    cuda::std::array<T, N> c;
-    for (size_t i = 0; i < c.size(); ++i)
+    std::array<T, N> c;
+    for (size_t i{0}; i < c.size(); ++i)
         c[i] = a[i] + b[i];
     return c;
 }
@@ -38,10 +38,10 @@ template <typename T>
 __global__ void
 other_kernel(const cuda::std::array<int, 3> values, const size_t count, const T* in, T* out)
 {
-    const size_t i = static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+    const size_t i{static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     if (i < count) {
-        const auto more_values = values + values;
-        out[i]                 = values[0] + values[1] + values[2] + more_values[0];
+        const auto more_values{values + values};
+        out[i] = values[0] + values[1] + values[2] + more_values[0];
     }
 }
 

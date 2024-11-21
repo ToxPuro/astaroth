@@ -1,25 +1,25 @@
+#include "array.h"
 #include "buffer.h"
 #include "buffer_exchange.h"
 #include "decomp.h"
 #include "math_utils.h"
-#include "ndarray.h"
+#include "ndbuffer.h"
 #include "pack.h"
 #include "partition.h"
-#include "static_array.h"
 #include "type_conversion.h"
 
 int
 main(void)
 {
     test_type_conversion();
-    test_static_array();
-    test_ndarray();
+    test_array();
+    test_math_utils();
     test_partition();
     test_decomp();
-    test_buffer();
-    test_math_utils();
-    test_buffer_exchange();
     test_pack();
+    test_buffer_exchange();
+    test_buffer();
+    test_ndbuffer();
 
     return EXIT_SUCCESS;
 }

@@ -2,6 +2,7 @@
 
 #include <memory>
 
+// #include "buffer.h"
 #include "buffer.h"
 
 #if defined(CUDA_ENABLED)
@@ -13,22 +14,22 @@
 #include <hip/hip_runtime.h>
 #else
 #include "errchk.h"
-using cudaStream_t                   = unsigned int*;
-const unsigned int cudaStreamDefault = 0;
+using cudaStream_t = unsigned int*;
+const unsigned int cudaStreamDefault{0};
 #endif
 
 template <typename T, typename FirstStageResource, typename SecondStageResource>
 class BufferExchangeTask {
   private:
-    Buffer<T, FirstStageResource> first_stage_buffer;
-    Buffer<T, SecondStageResource> second_stage_buffer;
+    ac::buffer<T, FirstStageResource> first_stage_buffer;
+    ac::buffer<T, SecondStageResource> second_stage_buffer;
 
     cudaStream_t stream{nullptr};
     bool in_progress{false};
 
   public:
     explicit BufferExchangeTask(const size_t max_count)
-        : first_stage_buffer(max_count), second_stage_buffer(max_count)
+        : first_stage_buffer{max_count}, second_stage_buffer{max_count}
     {
     }
 
@@ -43,15 +44,15 @@ class BufferExchangeTask {
         WARNCHK(!stream);
     }
 
-    template <typename MemoryResource> void launch(const Buffer<T, MemoryResource>& in)
+    template <typename MemoryResource> void launch(const ac::buffer<T, MemoryResource>& in)
     {
         ERRCHK(!in_progress);
         in_progress = true;
 
         // Ensure that the input resource and the first-stage buffer is in the same memory space
-        static_assert((std::is_base_of_v<DeviceMemoryResource, FirstStageResource> &&
-                       std::is_base_of_v<DeviceMemoryResource, MemoryResource>) ||
-                          std::is_base_of_v<HostMemoryResource, MemoryResource>,
+        static_assert((std::is_base_of_v<ac::mr::device_memory_resource, FirstStageResource> &&
+                       std::is_base_of_v<ac::mr::device_memory_resource, MemoryResource>) ||
+                          std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 
@@ -68,14 +69,14 @@ class BufferExchangeTask {
         migrate_async(stream, first_stage_buffer, second_stage_buffer);
     }
 
-    template <typename MemoryResource> void wait(Buffer<T, MemoryResource>& out)
+    template <typename MemoryResource> void wait(ac::buffer<T, MemoryResource>& out)
     {
         ERRCHK(in_progress);
 
         // Ensure that the output resource and the second-stage buffer is in the same memory space
-        static_assert((std::is_base_of_v<DeviceMemoryResource, SecondStageResource> &&
-                       std::is_base_of_v<DeviceMemoryResource, MemoryResource>) ||
-                          std::is_base_of_v<HostMemoryResource, MemoryResource>,
+        static_assert((std::is_base_of_v<ac::mr::device_memory_resource, SecondStageResource> &&
+                       std::is_base_of_v<ac::mr::device_memory_resource, MemoryResource>) ||
+                          std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 
@@ -96,10 +97,10 @@ class BufferExchangeTask {
 };
 
 template <typename T>
-using HostToDeviceBufferExchangeTask = BufferExchangeTask<T, PinnedWriteCombinedHostMemoryResource,
-                                                          DeviceMemoryResource>;
+using HostToDeviceBufferExchangeTask = BufferExchangeTask<
+    T, ac::mr::pinned_write_combined_host_memory_resource, ac::mr::device_memory_resource>;
 template <typename T>
-using DeviceToHostBufferExchangeTask = BufferExchangeTask<T, DeviceMemoryResource,
-                                                          PinnedHostMemoryResource>;
+using DeviceToHostBufferExchangeTask = BufferExchangeTask<T, ac::mr::device_memory_resource,
+                                                          ac::mr::pinned_host_memory_resource>;
 
 void test_buffer_exchange(void);

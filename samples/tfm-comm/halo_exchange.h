@@ -14,10 +14,11 @@
  * Wait on send requests are called automatically, and when this function
  * returns, the send buffer can be freely modified.
  */
-template <typename T>
+template <typename T, size_t N>
 std::vector<MPI_Request>
-launch_halo_exchange(const MPI_Comm parent_comm, const Shape& local_mm, const Shape& local_nn,
-                     const Shape& rr, const T* send_data, T* recv_data)
+launch_halo_exchange(const MPI_Comm parent_comm, const ac::shape<N>& local_mm,
+                     const ac::shape<N>& local_nn, const ac::shape<N>& rr, const T* send_data,
+                     T* recv_data)
 {
     // Duplicate the communicator to ensure the operation does not interfere
     // with other operations on the parent communicator
@@ -25,10 +26,10 @@ launch_halo_exchange(const MPI_Comm parent_comm, const Shape& local_mm, const Sh
     ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &cart_comm));
 
     // Partition the domain
-    auto segments = partition(local_mm, local_nn, rr);
+    auto segments{partition(local_mm, local_nn, rr)};
 
     // Prune the segment containing the computational domain
-    for (size_t i = 0; i < segments.size(); ++i) {
+    for (size_t i{0}; i < segments.size(); ++i) {
         if (within_box(segments[i].offset, local_nn, rr)) {
             segments.erase(segments.begin() + as<long>(i));
             --i;
@@ -37,19 +38,19 @@ launch_halo_exchange(const MPI_Comm parent_comm, const Shape& local_mm, const Sh
 
     std::vector<MPI_Request> send_reqs;
     std::vector<MPI_Request> recv_reqs;
-    for (const Segment& segment : segments) {
-        const Index recv_offset    = segment.offset;
-        const Index send_offset    = ((local_nn + recv_offset - rr) % local_nn) + rr;
-        MPI_Datatype recv_subarray = subarray_create(local_mm, segment.dims, recv_offset,
-                                                     get_mpi_dtype<T>());
-        MPI_Datatype send_subarray = subarray_create(local_mm, segment.dims, send_offset,
-                                                     get_mpi_dtype<T>());
+    for (const ac::segment<N>& segment : segments) {
+        const ac::index<N> recv_offset{segment.offset};
+        const ac::index<N> send_offset{((local_nn + recv_offset - rr) % local_nn) + rr};
+        MPI_Datatype recv_subarray{
+            subarray_create(local_mm, segment.dims, recv_offset, get_mpi_dtype<T>())};
+        MPI_Datatype send_subarray{
+            subarray_create(local_mm, segment.dims, send_offset, get_mpi_dtype<T>())};
 
-        const Direction recv_direction = get_direction(segment.offset, local_nn, rr);
-        const int recv_neighbor        = get_neighbor(cart_comm, recv_direction);
-        const int send_neighbor        = get_neighbor(cart_comm, -recv_direction);
+        const ac::dir<N> recv_direction{get_direction(segment.offset, local_nn, rr)};
+        const int recv_neighbor{get_neighbor(cart_comm, recv_direction)};
+        const int send_neighbor{get_neighbor(cart_comm, -recv_direction)};
 
-        const int tag = get_tag();
+        const int tag{get_tag()};
 
         MPI_Request recv_req;
         ERRCHK_MPI_API(
