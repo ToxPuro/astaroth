@@ -20,8 +20,8 @@ template <typename T, size_t N, typename MemoryResource> class Packet {
 
     Segment<N> segment;
 
-    ac::vector<T, MemoryResource> send_buffer;
-    ac::vector<T, MemoryResource> recv_buffer;
+    ac::buffer<T, MemoryResource> send_buffer;
+    ac::buffer<T, MemoryResource> recv_buffer;
 
     MPI_Comm comm{MPI_COMM_NULL};
     MPI_Request send_req{MPI_REQUEST_NULL};
@@ -64,7 +64,8 @@ template <typename T, size_t N, typename MemoryResource> class Packet {
     Packet(Packet&&)                 = delete; // Move constructor
     Packet& operator=(Packet&&)      = delete; // Move assignment operator
 
-    void launch(const MPI_Comm& parent_comm, const std::vector<ac::vector<T, MemoryResource>*>& inputs)
+    void launch(const MPI_Comm& parent_comm,
+                const std::vector<ac::buffer<T, MemoryResource>*>& inputs)
     {
         ERRCHK_MPI(!in_progress);
         in_progress = true;
@@ -110,7 +111,7 @@ template <typename T, size_t N, typename MemoryResource> class Packet {
         return in_progress && send_flag && recv_flag;
     };
 
-    void wait(std::vector<ac::vector<T, MemoryResource>*>& outputs)
+    void wait(std::vector<ac::buffer<T, MemoryResource>*>& outputs)
     {
         ERRCHK_MPI(in_progress);
         ERRCHK_MPI_API(MPI_Wait(&recv_req, MPI_STATUS_IGNORE));
@@ -130,7 +131,8 @@ template <typename T, size_t N, typename MemoryResource> class Packet {
 
     bool complete() const { return !in_progress; };
 
-    friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T, N, MemoryResource>& obj)
+    friend __host__ std::ostream& operator<<(std::ostream& os,
+                                             const Packet<T, N, MemoryResource>& obj)
     {
         os << "{";
         os << "segment: " << obj.segment << ", ";

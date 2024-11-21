@@ -1,12 +1,12 @@
 #include "array.h"
+#include "buffer.h"
 #include "buffer_exchange.h"
 #include "decomp.h"
 #include "math_utils.h"
-#include "ndvector.h"
+#include "ndbuffer.h"
 #include "pack.h"
 #include "partition.h"
 #include "type_conversion.h"
-#include "vector.h"
 
 int
 main(void)
@@ -18,8 +18,8 @@ main(void)
     test_decomp();
     test_pack();
     test_buffer_exchange();
-    test_vector();
-    test_ndvector();
+    test_buffer();
+    test_ndbuffer();
 
     return EXIT_SUCCESS;
 }

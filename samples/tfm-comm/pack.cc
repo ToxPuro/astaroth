@@ -7,10 +7,10 @@ test_pack(void)
 {
     const size_t count{10};
     const size_t rr{1};
-    ac::vector<uint64_t, HostMemoryResource> hin(count);
-    ac::vector<uint64_t, DeviceMemoryResource> din(count);
-    ac::vector<uint64_t, DeviceMemoryResource> dout(count - 2 * rr);
-    ac::vector<uint64_t, HostMemoryResource> hout(count - 2 * rr);
+    ac::buffer<uint64_t, HostMemoryResource> hin(count);
+    ac::buffer<uint64_t, DeviceMemoryResource> din(count);
+    ac::buffer<uint64_t, DeviceMemoryResource> dout(count - 2 * rr);
+    ac::buffer<uint64_t, HostMemoryResource> hout(count - 2 * rr);
     std::iota(hin.begin(), hin.end(), 0);
     std::fill(hout.begin(), hout.end(), 0);
     // ac::copy(hin.begin(), hin.end(), din.begin());
@@ -19,7 +19,7 @@ test_pack(void)
     ac::shape<1> mm{count};
     ac::shape<1> block_shape{count - 2 * rr};
     ac::shape<1> block_offset{rr};
-    std::vector<ac::vector<uint64_t, DeviceMemoryResource>*> inputs{&din};
+    std::vector<ac::buffer<uint64_t, DeviceMemoryResource>*> inputs{&din};
     pack(mm, block_shape, block_offset, inputs, dout);
     migrate(dout, hout);
     // ac::copy(dout.begin(), dout.end(), hout.begin());
@@ -35,10 +35,10 @@ test_pack(void)
     ERRCHK(hout[7] == 8);
 
     // std::cout << "-------PACK------" << std::endl;
-    // ac::vector<double> a(10, 0);
-    // ac::vector<double> b(10, 1);
-    // ac::vector<double> c(10, 2);
-    // std::vector<ac::vector<double>*> d{&a, &b, &c};
+    // ac::buffer<double> a(10, 0);
+    // ac::buffer<double> b(10, 1);
+    // ac::buffer<double> c(10, 2);
+    // std::vector<ac::buffer<double>*> d{&a, &b, &c};
     // std::cout << a << std::endl;
     // std::cout << *d[1] << std::endl;
     // std::cout << "-----------------" << std::endl;

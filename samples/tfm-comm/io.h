@@ -89,7 +89,7 @@ class IOTaskAsync {
     MPI_Datatype global_subarray{MPI_DATATYPE_NULL};
     MPI_Datatype local_subarray{MPI_DATATYPE_NULL};
 
-    ac::vector<T, StagingMemoryResource> staging_buffer;
+    ac::buffer<T, StagingMemoryResource> staging_buffer;
 
     MPI_Comm comm{MPI_COMM_NULL};
     MPI_File file{MPI_FILE_NULL};
@@ -133,7 +133,8 @@ class IOTaskAsync {
 
     template <typename MemoryResource>
     void launch_write_collective(const MPI_Comm& parent_comm,
-                                 const ac::vector<T, MemoryResource>& input, const std::string& path)
+                                 const ac::buffer<T, MemoryResource>& input,
+                                 const std::string& path)
     {
         ERRCHK_MPI(!in_progress);
         in_progress = true;

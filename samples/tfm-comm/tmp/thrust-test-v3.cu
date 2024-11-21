@@ -1,8 +1,8 @@
 #include <cstdlib>
 #include <iostream>
 
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
+#include <thrust/device_buffer.h>
+#include <thrust/host_buffer.h>
 #include <thrust/system/cuda/memory_resource.h>
 
 template <typename vector>

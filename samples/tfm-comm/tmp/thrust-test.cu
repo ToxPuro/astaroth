@@ -6,8 +6,8 @@
 #include <numeric> // iota
 
 #if defined(DEVICE_ENABLED)
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
+#include <thrust/device_buffer.h>
+#include <thrust/host_buffer.h>
 namespace ac {
 template <typename T> using host_vector   = thrust::host_vector<T>;
 template <typename T> using device_vector = thrust::device_vector<T>;

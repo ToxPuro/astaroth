@@ -31,18 +31,20 @@ template <typename T, size_t N, typename MemoryResource> class HaloExchangeTask 
 
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
-            packets.push_back(std::make_unique<Packet<T, N, MemoryResource>>(local_mm, local_nn, local_rr, segment,
-                                                             n_aggregate_buffers));
+            packets.push_back(std::make_unique<Packet<T, N, MemoryResource>>(local_mm, local_nn,
+                                                                             local_rr, segment,
+                                                                             n_aggregate_buffers));
         }
     }
 
-    void launch(const MPI_Comm& parent_comm, const std::vector<ac::vector<T, MemoryResource>*>& inputs)
+    void launch(const MPI_Comm& parent_comm,
+                const std::vector<ac::buffer<T, MemoryResource>*>& inputs)
     {
         for (auto& packet : packets)
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(std::vector<ac::vector<T, MemoryResource>*>& outputs)
+    void wait(std::vector<ac::buffer<T, MemoryResource>*>& outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         // while (!complete()) {

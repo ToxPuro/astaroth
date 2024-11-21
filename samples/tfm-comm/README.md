@@ -62,7 +62,7 @@ namespace ac{
     template <typename T, size_t N, typename MemoryResource>
     struct ndvector {
         ac::shape<N> shape;
-        ac::vector<T, MemoryResource> resource;
+        ac::buffer<T, MemoryResource> resource;
     }
 }
 ```

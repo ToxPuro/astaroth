@@ -4,7 +4,7 @@
 #include <numeric>
 
 #include "datatypes.h"
-#include "ndvector.h"
+#include "ndbuffer.h"
 
 #include "mpi_utils.h"
 #include <mpi.h>
@@ -19,8 +19,8 @@ constexpr size_t ndims = 2;
 using AcReal           = double;
 using Shape            = ac::shape<ndims>;
 using Index            = ac::index<ndims>;
-using Vector           = ac::vector<AcReal, HostMemoryResource>;
-using NdVector         = ac::ndvector<AcReal, ndims, HostMemoryResource>;
+using Vector           = ac::buffer<AcReal, HostMemoryResource>;
+using NdVector         = ac::ndbuffer<AcReal, ndims, HostMemoryResource>;
 using HaloExchange     = HaloExchangeTask<AcReal, ndims, HostMemoryResource>;
 
 static void
@@ -58,7 +58,7 @@ main()
         std::fill(uy.begin(), uy.end(), static_cast<AcReal>(rank) + 20);
 
         // Halo exchange
-        std::vector<Vector*> buffers{&lnrho.vector(), &ux.vector(), &uy.vector()};
+        std::vector<Vector*> buffers{&lnrhobuffer, &uxbuffer, &uybuffer};
         HaloExchange halo_exchange{local_mm, local_nn, rr, buffers.size()};
         // halo_exchange.launch(cart_comm, buffers);
         // halo_exchange.wait(buffers);

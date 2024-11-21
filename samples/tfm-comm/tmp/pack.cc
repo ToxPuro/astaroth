@@ -51,16 +51,19 @@ unpack(const T* input, const ac::shape<N>& mm, const ac::shape<N>& block_shape,
 /**
  * Forwards declarations (For user types)
  */
- template void pack<UserType, UserNdims, HostMemoryResource>(const UserShape& mm, const UserShape& block_shape,
-                                               const UserIndex& block_offset,
-                                               const std::vector<UserType*>& inputs,
-                                               UserType* output);
+template void pack<UserType, UserNdims, HostMemoryResource>(const UserShape& mm,
+                                                            const UserShape& block_shape,
+                                                            const UserIndex& block_offset,
+                                                            const std::vector<UserType*>& inputs,
+                                                            UserType* output);
 
- template void unpack<UserType, UserNdims, HostMemoryResource>(const UserType* input, const UserShape& mm,
-                            const UserShape& block_shape, const UserShape& block_offset,
-                            std::vector<UserType*>& outputs);
+template void unpack<UserType, UserNdims, HostMemoryResource>(const UserType* input,
+                                                              const UserShape& mm,
+                                                              const UserShape& block_shape,
+                                                              const UserShape& block_offset,
+                                                              std::vector<UserType*>& outputs);
 
-#include "vector.h"
+#include "buffer.h"
 
 void
 test_pack(void)
@@ -95,10 +98,10 @@ test_pack(void)
     ERRCHK(hout[7] == 8);
 
     // std::cout << "-------PACK------" << std::endl;
-    // ac::vector<double> a(10, 0);
-    // ac::vector<double> b(10, 1);
-    // ac::vector<double> c(10, 2);
-    // std::vector<ac::vector<double>*> d{&a, &b, &c};
+    // ac::buffer<double> a(10, 0);
+    // ac::buffer<double> b(10, 1);
+    // ac::buffer<double> c(10, 2);
+    // std::vector<ac::buffer<double>*> d{&a, &b, &c};
     // std::cout << a << std::endl;
     // std::cout << *d[1] << std::endl;
     // std::cout << "-----------------" << std::endl;

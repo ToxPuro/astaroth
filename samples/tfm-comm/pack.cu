@@ -87,116 +87,124 @@ kernel_unpack(const T* input, const ac::shape<N> mm, const ac::shape<N> block_sh
 }
 } // namespace device
 
-template<typename T, size_t N>
-void pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, 
-          const ac::index<N>& block_offset, 
-          const std::vector<ac::vector<T, DeviceMemoryResource>*>& inputs, 
-          ac::vector<T, DeviceMemoryResource>& output)
+template <typename T, size_t N>
+void
+pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+     const std::vector<ac::buffer<T, DeviceMemoryResource>*>& inputs,
+     ac::buffer<T, DeviceMemoryResource>& output)
 {
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
 
-    switch(inputs.size()) {
-        case 1:{
-            ac::array<T*, 1> input_array{inputs[0]->data()};
-            device::kernel_pack<T, N, 1>
-        <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm, block_shape, block_offset, input_array,
-                                                   output.data());
-            break;}
-        default:
-            ERRCHK_EXPR_DESC(false, "input size %zu not supported", inputs.size());
+    switch (inputs.size()) {
+    case 1: {
+        ac::array<T*, 1> input_array{inputs[0]->data()};
+        device::kernel_pack<T, N, 1>
+            <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm, block_shape, block_offset, input_array,
+                                                       output.data());
+        break;
+    }
+    default:
+        ERRCHK_EXPR_DESC(false, "input size %zu not supported", inputs.size());
     }
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
 
-template<typename T, size_t N>
-void unpack(const ac::vector<T, DeviceMemoryResource>& input, const ac::shape<N>& mm, const ac::shape<N>& block_shape, 
-          const ac::index<N>& block_offset, std::vector<ac::vector<T, DeviceMemoryResource>*>& outputs)
+template <typename T, size_t N>
+void
+unpack(const ac::buffer<T, DeviceMemoryResource>& input, const ac::shape<N>& mm,
+       const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+       std::vector<ac::buffer<T, DeviceMemoryResource>*>& outputs)
 {
     const uint64_t block_nelems{prod(block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
 
     switch (outputs.size()) {
-    case 1:{
-    ac::array<T*, 1> output_array{outputs[0]->data()};
-    device::kernel_unpack<T, N, 1>
-        <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input.data(), mm, block_shape, block_offset,
-                                                   output_array);
-                                                   break;}
-                                                   default:
-            ERRCHK_EXPR_DESC(false, "input size %zu not supported", inputs.size());
-                                                   }
+    case 1: {
+        ac::array<T*, 1> output_array{outputs[0]->data()};
+        device::kernel_unpack<T, N, 1>
+            <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input.data(), mm, block_shape, block_offset,
+                                                       output_array);
+        break;
+    }
+    default:
+        ERRCHK_EXPR_DESC(false, "input size %zu not supported", inputs.size());
+    }
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
 
 // Specialization
-template<typename T, size_t N>
-void pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, 
-          const ac::index<N>& block_offset, 
-          const std::vector<ac::vector<T, DeviceMemoryResource>*>& inputs, 
-          ac::vector<T, DeviceMemoryResource>& output);
+template <typename T, size_t N>
+void pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+          const std::vector<ac::buffer<T, DeviceMemoryResource>*>& inputs,
+          ac::buffer<T, DeviceMemoryResource>& output);
 
-template<typename T, size_t N>
-void unpack(const ac::vector<T, DeviceMemoryResource>& input, const ac::shape<N>& mm, const ac::shape<N>& block_shape, 
-          const ac::index<N>& block_offset, std::vector<ac::vector<T, DeviceMemoryResource>*>& outputs);
+template <typename T, size_t N>
+void unpack(const ac::buffer<T, DeviceMemoryResource>& input, const ac::shape<N>& mm,
+            const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+            std::vector<ac::buffer<T, DeviceMemoryResource>*>& outputs);
 
 #define PACK_DTYPE double
 #define PACK_NDIMS (1)
- template
-void pack<PACK_DTYPE, PACK_NDIMS>(const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape, 
-          const ac::index<PACK_NDIMS>& block_offset, 
-          const std::vector<ac::vector<PACK_DTYPE, DeviceMemoryResource>*>& inputs, 
-          ac::vector<PACK_DTYPE, DeviceMemoryResource>& output);
+template void pack<PACK_DTYPE, PACK_NDIMS>(
+    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
+    const ac::index<PACK_NDIMS>& block_offset,
+    const std::vector<ac::buffer<PACK_DTYPE, DeviceMemoryResource>*>& inputs,
+    ac::buffer<PACK_DTYPE, DeviceMemoryResource>& output);
 
- template
-void unpack<PACK_DTYPE, PACK_NDIMS>(const ac::vector<PACK_DTYPE, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape, 
-          const ac::index<PACK_NDIMS>& block_offset, std::vector<ac::vector<PACK_DTYPE, DeviceMemoryResource>*>& outputs);
+template void unpack<PACK_DTYPE, PACK_NDIMS>(
+    const ac::buffer<PACK_DTYPE, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm,
+    const ac::shape<PACK_NDIMS>& block_shape, const ac::index<PACK_NDIMS>& block_offset,
+    std::vector<ac::buffer<PACK_DTYPE, DeviceMemoryResource>*>& outputs);
 #undef PACK_DTYPE
 #undef PACK_NDIMS
 
 #define PACK_DTYPE double
 #define PACK_NDIMS (2)
- template
-void pack<PACK_DTYPE, PACK_NDIMS>(const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape, 
-          const ac::index<PACK_NDIMS>& block_offset, 
-          const std::vector<ac::vector<PACK_DTYPE, DeviceMemoryResource>*>& inputs, 
-          ac::vector<PACK_DTYPE, DeviceMemoryResource>& output);
+template void pack<PACK_DTYPE, PACK_NDIMS>(
+    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
+    const ac::index<PACK_NDIMS>& block_offset,
+    const std::vector<ac::buffer<PACK_DTYPE, DeviceMemoryResource>*>& inputs,
+    ac::buffer<PACK_DTYPE, DeviceMemoryResource>& output);
 
- template
-void unpack<PACK_DTYPE, PACK_NDIMS>(const ac::vector<PACK_DTYPE, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape, 
-          const ac::index<PACK_NDIMS>& block_offset, std::vector<ac::vector<PACK_DTYPE, DeviceMemoryResource>*>& outputs);
+template void unpack<PACK_DTYPE, PACK_NDIMS>(
+    const ac::buffer<PACK_DTYPE, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm,
+    const ac::shape<PACK_NDIMS>& block_shape, const ac::index<PACK_NDIMS>& block_offset,
+    std::vector<ac::buffer<PACK_DTYPE, DeviceMemoryResource>*>& outputs);
 #undef PACK_DTYPE
 #undef PACK_NDIMS
 
 #define PACK_DTYPE double
 #define PACK_NDIMS (3)
- template
-void pack<PACK_DTYPE, PACK_NDIMS>(const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape, 
-          const ac::index<PACK_NDIMS>& block_offset, 
-          const std::vector<ac::vector<PACK_DTYPE, DeviceMemoryResource>*>& inputs, 
-          ac::vector<PACK_DTYPE, DeviceMemoryResource>& output);
+template void pack<PACK_DTYPE, PACK_NDIMS>(
+    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
+    const ac::index<PACK_NDIMS>& block_offset,
+    const std::vector<ac::buffer<PACK_DTYPE, DeviceMemoryResource>*>& inputs,
+    ac::buffer<PACK_DTYPE, DeviceMemoryResource>& output);
 
- template
-void unpack<PACK_DTYPE, PACK_NDIMS>(const ac::vector<PACK_DTYPE, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape, 
-          const ac::index<PACK_NDIMS>& block_offset, std::vector<ac::vector<PACK_DTYPE, DeviceMemoryResource>*>& outputs);
+template void unpack<PACK_DTYPE, PACK_NDIMS>(
+    const ac::buffer<PACK_DTYPE, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm,
+    const ac::shape<PACK_NDIMS>& block_shape, const ac::index<PACK_NDIMS>& block_offset,
+    std::vector<ac::buffer<PACK_DTYPE, DeviceMemoryResource>*>& outputs);
 #undef PACK_DTYPE
 #undef PACK_NDIMS
 
 #define PACK_DTYPE uint64_t
 #define PACK_NDIMS (1)
- template
-void pack<PACK_DTYPE, PACK_NDIMS>(const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape, 
-          const ac::index<PACK_NDIMS>& block_offset, 
-          const std::vector<ac::vector<PACK_DTYPE, DeviceMemoryResource>*>& inputs, 
-          ac::vector<PACK_DTYPE, DeviceMemoryResource>& output);
+template void pack<PACK_DTYPE, PACK_NDIMS>(
+    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
+    const ac::index<PACK_NDIMS>& block_offset,
+    const std::vector<ac::buffer<PACK_DTYPE, DeviceMemoryResource>*>& inputs,
+    ac::buffer<PACK_DTYPE, DeviceMemoryResource>& output);
 
- template
-void unpack<PACK_DTYPE, PACK_NDIMS>(const ac::vector<PACK_DTYPE, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape, 
-          const ac::index<PACK_NDIMS>& block_offset, std::vector<ac::vector<PACK_DTYPE, DeviceMemoryResource>*>& outputs);
+template void unpack<PACK_DTYPE, PACK_NDIMS>(
+    const ac::buffer<PACK_DTYPE, DeviceMemoryResource>& input, const ac::shape<PACK_NDIMS>& mm,
+    const ac::shape<PACK_NDIMS>& block_shape, const ac::index<PACK_NDIMS>& block_offset,
+    std::vector<ac::buffer<PACK_DTYPE, DeviceMemoryResource>*>& outputs);
 #undef PACK_DTYPE
 #undef PACK_NDIMS
 

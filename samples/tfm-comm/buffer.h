@@ -5,21 +5,21 @@
 #include "mem.h"
 
 namespace ac {
-template <typename T, typename MemoryResource> class vector {
+template <typename T, typename MemoryResource> class buffer {
   private:
     const size_t count;
     std::unique_ptr<T, decltype(&MemoryResource::dealloc)> resource;
 
   public:
-    explicit vector(const size_t in_count)
+    explicit buffer(const size_t in_count)
         : count{in_count},
           resource{static_cast<T*>(MemoryResource::alloc(in_count * sizeof(T))),
                    MemoryResource::dealloc}
     {
     }
 
-    explicit vector(const size_t in_count, const T& fill_value)
-        : vector(in_count)
+    explicit buffer(const size_t in_count, const T& fill_value)
+        : buffer(in_count)
     {
         static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
                       "Only supported for host memory types");
@@ -48,27 +48,27 @@ template <typename T, typename MemoryResource> class vector {
     const T* end() const { return data() + size(); }
 
     // // Initializer list constructor
-    // // ac::vector<int, 3> a{1,2,3}
-    // vector(const std::initializer_list<T>& init_list)
-    //     : vector(init_list.size())
+    // // ac::buffer<int, 3> a{1,2,3}
+    // buffer(const std::initializer_list<T>& init_list)
+    //     : buffer(init_list.size())
     // {
     //     static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
-    //                   "Only enabled for host vector");
+    //                   "Only enabled for host buffer");
     //     std::copy(init_list.begin(), init_list.end(), begin());
     // }
 
     void display() const
     {
         static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
-                      "Only enabled for host vector");
+                      "Only enabled for host buffer");
         for (size_t i{0}; i < count; ++i)
             std::cout << i << ": " << resource[i] << std::endl;
     }
 
-    // friend std::ostream& operator<<(std::ostream& os, const ac::vector<T>& obj)
+    // friend std::ostream& operator<<(std::ostream& os, const ac::buffer<T>& obj)
     // {
     //     static_assert(std::is_base_of_v<HostMemoryResource, MemoryResource>,
-    //                   "Only enabled for host vector");
+    //                   "Only enabled for host buffer");
     //     os << "{ ";
     //     for (const auto& elem : obj)
     //         os << elem << " ";
@@ -116,7 +116,7 @@ get_kind()
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate(const ac::vector<T, MemoryResourceA>& in, ac::vector<T, MemoryResourceB>& out)
+migrate(const ac::buffer<T, MemoryResourceA>& in, ac::buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
     const cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
@@ -125,8 +125,8 @@ migrate(const ac::vector<T, MemoryResourceA>& in, ac::vector<T, MemoryResourceB>
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate_async(const cudaStream_t stream, const ac::vector<T, MemoryResourceA>& in,
-              ac::vector<T, MemoryResourceB>& out)
+migrate_async(const cudaStream_t stream, const ac::buffer<T, MemoryResourceA>& in,
+              ac::buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
     const cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
@@ -136,7 +136,7 @@ migrate_async(const cudaStream_t stream, const ac::vector<T, MemoryResourceA>& i
 #else
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate(const ac::vector<T, MemoryResourceA>& in, ac::vector<T, MemoryResourceB>& out)
+migrate(const ac::buffer<T, MemoryResourceA>& in, ac::buffer<T, MemoryResourceB>& out)
 {
     PRINT_LOG("non-cuda htoh");
     ERRCHK(in.size() == out.size());
@@ -144,8 +144,8 @@ migrate(const ac::vector<T, MemoryResourceA>& in, ac::vector<T, MemoryResourceB>
 }
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-migrate_async(const void* stream, const ac::vector<T, MemoryResourceA>& in,
-              ac::vector<T, MemoryResourceB>& out)
+migrate_async(const void* stream, const ac::buffer<T, MemoryResourceA>& in,
+              ac::buffer<T, MemoryResourceB>& out)
 {
     PRINT_LOG("non-cuda htoh async (note: blocking, stream ignored)");
     (void)stream; // Unused
@@ -153,4 +153,4 @@ migrate_async(const void* stream, const ac::vector<T, MemoryResourceA>& in,
 }
 #endif
 
-void test_vector();
+void test_buffer();
