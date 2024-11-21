@@ -100,9 +100,9 @@ target_link_libraries(acc-comm PUBLIC MPI::MPI_C device-libraries)
 add_executable(run main.cc )
 target_link_libraries(run PRIVATE acc-comm)
 
-add_executable(tfm tfm.cc)
-target_link_libraries(tfm PRIVATE acc-comm)
-target_include_directories(tfm PRIVATE $ENV{THRUST_INCLUDE_DIR} $ENV{CUB_INCLUDE_DIR} $ENV{CUDACXX_INCLUDE_DIR})
+# add_executable(tfm tfm.cc)
+# target_link_libraries(tfm PRIVATE acc-comm)
+# target_include_directories(tfm PRIVATE $ENV{THRUST_INCLUDE_DIR} $ENV{CUB_INCLUDE_DIR} $ENV{CUDACXX_INCLUDE_DIR})
 
 # add_library(acc-comm SHARED halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc buffer.cc decomp.cc partition.cc segment.cc ndarray.cc math_utils.cc type_conversion.cc errchk_print.c)
 # target_link_libraries(acc-comm PUBLIC MPI::MPI_C)
