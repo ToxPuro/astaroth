@@ -21,8 +21,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../acc-comm acc-comm)
 
 set(BUILD_ACC_RUNTIME_LIBRARY ON)
-add_compile_definitions(OPTIMIZE_MEM_ACCESSES "ON")
-add_compile_definitions(DSL_MODULE_DIR=$ASTAROTH/samples/tfm/mhd)
+set(OPTIMIZE_MEM_ACCESSES ON)
+set(DSL_MODULE_DIR $ENV{ASTAROTH}/samples/tfm/mhd)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../acc-runtime acc-runtime)
 
 ## Module compilation flags
