@@ -75,7 +75,7 @@ template <size_t N> using Shape     = ac::array<uint64_t, N>;
 template <size_t N> using Direction = ac::array<int64_t, N>;
 template <size_t N> using MPIIndex  = ac::array<int, N>;
 template <size_t N> using MPIShape  = ac::array<int, N>;
-using AcReal                        = double;
+using UserType                      = double;
 
 template <typename T, size_t N>
 [[nodiscard]] auto

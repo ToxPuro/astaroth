@@ -16,12 +16,12 @@
 #include "print_debug.h"
 
 constexpr size_t ndims = 2;
-using AcReal           = double;
+using UserType         = double;
 using Shape            = ac::shape<ndims>;
 using Index            = ac::index<ndims>;
-using Vector           = ac::buffer<AcReal, ac::mr::host_memory_resource>;
-using NdVector         = ac::ndbuffer<AcReal, ndims, ac::mr::host_memory_resource>;
-using HaloExchange     = HaloExchangeTask<AcReal, ndims, ac::mr::host_memory_resource>;
+using Vector           = ac::buffer<UserType, ac::mr::host_memory_resource>;
+using NdVector         = ac::ndbuffer<UserType, ndims, ac::mr::host_memory_resource>;
+using HaloExchange     = HaloExchangeTask<UserType, ndims, ac::mr::host_memory_resource>;
 
 static void
 compute_loop(const MPI_Comm& cart_comm, HaloExchange& halo_exchange, std::vector<Vector*>& buffers)
@@ -51,11 +51,11 @@ main()
         NdVector lnrho(local_mm);
         NdVector ux(local_mm);
         NdVector uy(local_mm);
-        // const auto start_index = static_cast<AcReal>(rank * prod(local_mm));
+        // const auto start_index = static_cast<UserType>(rank * prod(local_mm));
         // std::iota(lnrho.begin(), lnrho.end(), start_index);
-        std::fill(lnrho.begin(), lnrho.end(), static_cast<AcReal>(rank));
-        std::fill(ux.begin(), ux.end(), static_cast<AcReal>(rank) + 10);
-        std::fill(uy.begin(), uy.end(), static_cast<AcReal>(rank) + 20);
+        std::fill(lnrho.begin(), lnrho.end(), static_cast<UserType>(rank));
+        std::fill(ux.begin(), ux.end(), static_cast<UserType>(rank) + 10);
+        std::fill(uy.begin(), uy.end(), static_cast<UserType>(rank) + 20);
 
         // Halo exchange
         std::vector<Vector*> buffers{&lnrhobuffer, &uxbuffer, &uybuffer};

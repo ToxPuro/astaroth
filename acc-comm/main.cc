@@ -129,15 +129,16 @@ main()
         const ac::shape<N> rr{ones<uint64_t, N>()}; // Symmetric halo
         const ac::shape<N> local_mm{as<uint64_t>(2) * rr + local_nn};
 
-        ac::ndbuffer<AcReal, N, ac::mr::host_memory_resource> hin(local_mm);
-        ac::ndbuffer<AcReal, N, ac::mr::host_memory_resource> hout(local_mm);
+        ac::ndbuffer<UserType, N, ac::mr::host_memory_resource> hin(local_mm);
+        ac::ndbuffer<UserType, N, ac::mr::host_memory_resource> hout(local_mm);
 
-        ac::ndbuffer<AcReal, N, ac::mr::device_memory_resource> din(local_mm);
-        ac::ndbuffer<AcReal, N, ac::mr::device_memory_resource> dout(local_mm);
+        ac::ndbuffer<UserType, N, ac::mr::device_memory_resource> din(local_mm);
+        ac::ndbuffer<UserType, N, ac::mr::device_memory_resource> dout(local_mm);
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
         std::iota(hin.begin(), hin.end(),
-                  static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
+                  static_cast<UserType>(get_rank(cart_comm)) *
+                      static_cast<UserType>(prod(local_mm)));
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         hin.display();
@@ -156,17 +157,17 @@ main()
         PRINT_LOG("Testing basic halo exchange"); //-------------------------------
         if (nprocs == 1) {
             std::iota(hin.begin(), hin.end(),
-                      static_cast<AcReal>(get_rank(cart_comm)) *
-                          static_cast<AcReal>(prod(local_mm)));
+                      static_cast<UserType>(get_rank(cart_comm)) *
+                          static_cast<UserType>(prod(local_mm)));
         }
         else {
-            std::fill(hin.begin(), hin.end(), static_cast<AcReal>(get_rank(cart_comm)));
+            std::fill(hin.begin(), hin.end(), static_cast<UserType>(get_rank(cart_comm)));
         }
         migrate(hin.buffer, din.buffer);
 
         // Basic MPI halo exchange task
-        auto recv_reqs = launch_halo_exchange<AcReal>(cart_comm, local_mm, local_nn, rr,
-                                                      din.buffer.data(), din.buffer.data());
+        auto recv_reqs = launch_halo_exchange<UserType>(cart_comm, local_mm, local_nn, rr,
+                                                        din.buffer.data(), din.buffer.data());
         while (!recv_reqs.empty()) {
             request_wait_and_destroy(recv_reqs.back());
             recv_reqs.pop_back();
@@ -183,11 +184,11 @@ main()
         PRINT_LOG("Testing packed halo exchange"); //-------------------------------
         if (nprocs == 1) {
             std::iota(hin.begin(), hin.end(),
-                      static_cast<AcReal>(get_rank(cart_comm)) *
-                          static_cast<AcReal>(prod(local_mm)));
+                      static_cast<UserType>(get_rank(cart_comm)) *
+                          static_cast<UserType>(prod(local_mm)));
         }
         else {
-            std::fill(hin.begin(), hin.end(), static_cast<AcReal>(get_rank(cart_comm)));
+            std::fill(hin.begin(), hin.end(), static_cast<UserType>(get_rank(cart_comm)));
         }
         migrate(hin.buffer, din.buffer);
 
@@ -197,9 +198,10 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        HaloExchangeTask<AcReal, N, ac::mr::device_memory_resource> halo_exchange{local_mm,
-                                                                                  local_nn, rr, 1};
-        std::vector<ac::buffer<AcReal, ac::mr::device_memory_resource>*> inputs{&din.buffer};
+        HaloExchangeTask<UserType, N, ac::mr::device_memory_resource> halo_exchange{local_mm,
+                                                                                    local_nn, rr,
+                                                                                    1};
+        std::vector<ac::buffer<UserType, ac::mr::device_memory_resource>*> inputs{&din.buffer};
         halo_exchange.launch(cart_comm, inputs);
         halo_exchange.wait(inputs);
         migrate(din.buffer, hin.buffer);
@@ -214,9 +216,10 @@ main()
 #if true
         PRINT_LOG("Testing IO"); //-------------------------------
         std::iota(hin.begin(), hin.end(),
-                  static_cast<AcReal>(get_rank(cart_comm)) * static_cast<AcReal>(prod(local_mm)));
+                  static_cast<UserType>(get_rank(cart_comm)) *
+                      static_cast<UserType>(prod(local_mm)));
 
-        IOTaskAsync<AcReal, N> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
+        IOTaskAsync<UserType, N> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
         // iotask.launch_write_collective(cart_comm, hin.buffer, "test.dat");
         // iotask.wait_write_collective();
         mpi_write_collective(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,
