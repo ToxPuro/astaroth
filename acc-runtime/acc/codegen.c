@@ -505,25 +505,25 @@ gen_user_defines(const ASTNode* root, const char* out)
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_STENCIL_ID)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"out-of-bounds\"};");
 
   fprintf(fp, "static const char* field_names[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_FIELD_ID)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"out-of-bounds\"};");
 
   fprintf(fp, "static const char* profile_names[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_PROFILE_ID)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"out-of-bounds\"};");
 
   fprintf(fp, "static const char* kernel_names[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"out-of-bounds\"};");
 
   fprintf(fp,
           "static const char* intparam_names[] __attribute__((unused)) = {");
@@ -531,7 +531,7 @@ gen_user_defines(const ASTNode* root, const char* out)
     if (symbol_table[i].type & NODE_DCONST_ID &&
         !strcmp(symbol_table[i].tspecifier, "int"))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"out-of-bounds\"};");
 
   fprintf(fp,
           "static const char* int3param_names[] __attribute__((unused)) = {");
@@ -539,7 +539,7 @@ gen_user_defines(const ASTNode* root, const char* out)
     if (symbol_table[i].type & NODE_DCONST_ID &&
         !strcmp(symbol_table[i].tspecifier, "int3"))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"out-of-bounds\"};");
 
   fprintf(fp,
           "static const char* realparam_names[] __attribute__((unused)) = {");
@@ -547,7 +547,7 @@ gen_user_defines(const ASTNode* root, const char* out)
     if (symbol_table[i].type & NODE_DCONST_ID &&
         !strcmp(symbol_table[i].tspecifier, "AcReal"))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"out-of-bounds\"};");
 
   fprintf(fp,
           "static const char* real3param_names[] __attribute__((unused)) = {");
@@ -555,7 +555,7 @@ gen_user_defines(const ASTNode* root, const char* out)
     if (symbol_table[i].type & NODE_DCONST_ID &&
         !strcmp(symbol_table[i].tspecifier, "AcReal3"))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"out-of-bounds\"};");
 
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   fprintf(fp, "\n// Redefined for backwards compatibility START\n");
