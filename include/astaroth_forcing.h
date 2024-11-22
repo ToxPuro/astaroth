@@ -18,6 +18,10 @@ extern "C" {
 ForcingParams generateForcingParams(const AcReal relhel, const AcReal magnitude, const AcReal kmin,
                                     const AcReal kmax);
 
+int loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* info);
+
+void printForcingParams(const ForcingParams forcing_params);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
