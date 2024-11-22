@@ -18,9 +18,12 @@ project(astaroth-tfm)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Subdirectories
-set(BUILD_ACC_RUNTIME_LIBRARY ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../acc-runtime acc-runtime)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../acc-comm acc-comm)
+
+set(BUILD_ACC_RUNTIME_LIBRARY ON)
+add_compile_definitions(OPTIMIZE_MEM_ACCESSES "ON")
+add_compile_definitions(DSL_MODULE_DIR=$ASTAROTH/samples/tfm/mhd)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../acc-runtime acc-runtime)
 
 ## Module compilation flags
 add_compile_options(# C/CXX/CUDA/HIP
@@ -68,3 +71,4 @@ add_compile_options(# C/CXX/CUDA/HIP
 # Module
 add_executable(tfm tfm.cc)
 target_link_libraries(tfm PRIVATE acc-comm acc-runtime)
+target_include_directories(tfm SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../acc-runtime ${CMAKE_CURRENT_SOURCE_DIR}/../../acc-comm)
