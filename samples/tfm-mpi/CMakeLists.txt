@@ -18,12 +18,17 @@ project(astaroth-tfm)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Subdirectories
+## ACC comm
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../acc-comm acc-comm)
 
+## ACC runtime
 set(BUILD_ACC_RUNTIME_LIBRARY ON)
 set(OPTIMIZE_MEM_ACCESSES ON)
 set(DSL_MODULE_DIR $ENV{ASTAROTH}/samples/tfm/mhd)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../acc-runtime acc-runtime)
+
+## INI
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../3rdparty/inih 3rdparty/inih)
 
 ## Module compilation flags
 add_compile_options(# C/CXX/CUDA/HIP
@@ -69,6 +74,18 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 
 # Module
-add_executable(tfm tfm.cc)
-target_link_libraries(tfm PRIVATE acc-comm acc-runtime)
-target_include_directories(tfm SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../acc-runtime ${CMAKE_CURRENT_SOURCE_DIR}/../../acc-comm)
+add_library(astaroth_random ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/astaroth_random.cc)
+target_link_libraries(astaroth_random acc-runtime)
+
+add_library(astaroth_forcing ${CMAKE_CURRENT_SOURCE_DIR}/../..utils/astaroth_forcing.cc)
+target_link_libraries(astaroth_forcing acc-runtime acc-random)
+
+add_executable(tfm tfm.cc tfm_utils.c)
+target_link_libraries(tfm PRIVATE acc-comm acc-runtime astaroth_forcing inih)
+target_include_directories(
+    tfm SYSTEM PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../acc-runtime
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../acc-comm
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../3rdparty/inih
+)

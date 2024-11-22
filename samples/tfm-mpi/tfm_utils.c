@@ -1,0 +1,231 @@
+#include "tfm_utils.h"
+
+#include <getopt.h>
+#include <string.h>
+
+#include "ini.h"
+
+#include "astaroth_forcing.h"
+
+int
+acParseArguments(const int argc, char* argv[], Arguments* args)
+{
+    // Default arguments
+    args->config_path = NULL; // AC_DEFAULT_CONFIG;
+
+    // Options
+    const char short_options[]         = {"c:"};
+    const struct option long_options[] = {
+        {"config", required_argument, 0, 'c'},
+        {"help", required_argument, 0, 'h'},
+        {0, 0, 0, 0},
+    };
+    const char* explanations[] = {
+        "Path to the config INI file",
+        "Print this message",
+    };
+
+    // Parse
+    int opt;
+    int option_index;
+    while ((opt = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1) {
+        switch (opt) {
+        case 'c':
+            args->config_path = optarg;
+            break;
+        // case 0:
+        //     printf("Option with no short options\n");
+        //     break;
+        case 'h': /* Fallthrough */
+        default:
+            fprintf(stderr, "Usage: %s <options>\n", argv[0]);
+            fprintf(stderr, "Options:\n");
+            for (size_t i = 0; long_options[i].name != NULL; ++i) {
+                printf("\t--%s", long_options[i].name);
+                if (long_options[i].has_arg == required_argument)
+                    printf(" <argument>");
+                printf(": %s", explanations[i]);
+                printf("\n");
+            }
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+static int
+config_handler(void* user, const char* section, const char* name, const char* value)
+{
+    AcMeshInfo* info = (AcMeshInfo*)user;
+
+    for (size_t i = 0; i < NUM_INT_PARAMS; ++i) {
+        if (strcmp(name, intparam_names[i]) == 0) {
+            info->int_params[i] = atoi(value);
+            return 1;
+        }
+    }
+    for (size_t i = 0; i < NUM_REAL_PARAMS; ++i) {
+        if (strcmp(name, realparam_names[i]) == 0) {
+            info->real_params[i] = atof(value);
+            return 1;
+        }
+    }
+
+    fprintf(stderr, "Invalid parameter in section [%s]: %s = %s\n", section, name, value);
+    return 0;
+}
+
+int
+acParseINI(const char* filepath, AcMeshInfo* info)
+{
+    // Initialize AcMeshInfo to default values
+    for (size_t i = 0; i < NUM_INT_PARAMS; ++i)
+        info->int_params[i] = INT_MIN;
+    for (size_t i = 0; i < NUM_INT3_PARAMS; ++i)
+        info->int3_params[i] = (int3){INT_MIN, INT_MIN, INT_MIN};
+    for (size_t i = 0; i < NUM_REAL_PARAMS; ++i)
+        info->real_params[i] = NAN;
+    for (size_t i = 0; i < NUM_REAL3_PARAMS; ++i)
+        info->real3_params[i] = (AcReal3){NAN, NAN, NAN};
+
+    // Parse
+    int retval = ini_parse(filepath, config_handler, info);
+
+    // Error handling
+    if (retval > 0)
+        fprintf(stderr, "Error on line %d when parsing config \"%s\"\n", retval, filepath);
+    else if (retval == -1)
+        fprintf(stderr, "File open error %d when parsing config \"%s\"\n", retval, filepath);
+    else if (retval == -2)
+        fprintf(stderr, "Memory allocation error %d when parsing config \"%s\"\n", retval,
+                filepath);
+    else if (retval < 0)
+        fprintf(stderr, "Unknown error %d when parsing config \"%s\"\n", retval, filepath);
+    if (retval != 0)
+        return -1;
+
+    // Update the rest of the parameters
+    acHostUpdateBuiltinParams(info);
+
+    // Check for uninitialized values
+    for (size_t i = 0; i < NUM_INT_PARAMS; ++i)
+        if (info->int_params[i] == INT_MIN)
+            fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", intparam_names[i]);
+    for (size_t i = 0; i < NUM_REAL_PARAMS; ++i)
+        if (info->real_params[i] == (AcReal)NAN)
+            fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", realparam_names[i]);
+    return 0;
+}
+
+void
+acPrintArguments(const Arguments args)
+{
+    printf("[config_path]: %s\n", args.config_path);
+}
+
+int
+acHostUpdateBuiltinParams(AcMeshInfo* config)
+{
+    ERRCHK_ALWAYS(config->int_params[AC_nx] > 0);
+    ERRCHK_ALWAYS(config->int_params[AC_ny] > 0);
+    ERRCHK_ALWAYS(config->int_params[AC_nz] > 0);
+
+    config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER;
+    ///////////// PAD TEST
+    // config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER + PAD_SIZE;
+    ///////////// PAD TEST
+    config->int_params[AC_my] = config->int_params[AC_ny] + STENCIL_ORDER;
+    config->int_params[AC_mz] = config->int_params[AC_nz] + STENCIL_ORDER;
+
+    // Bounds for the computational domain, i.e. nx_min <= i < nx_max
+    config->int_params[AC_nx_min] = STENCIL_ORDER / 2;
+    config->int_params[AC_ny_min] = STENCIL_ORDER / 2;
+    config->int_params[AC_nz_min] = STENCIL_ORDER / 2;
+
+    config->int_params[AC_nx_max] = config->int_params[AC_nx_min] + config->int_params[AC_nx];
+    config->int_params[AC_ny_max] = config->int_params[AC_ny_min] + config->int_params[AC_ny];
+    config->int_params[AC_nz_max] = config->int_params[AC_nz_min] + config->int_params[AC_nz];
+
+    /*
+    #ifdef AC_dsx
+        printf("HELLO!\n");
+        ERRCHK_ALWAYS(config->real_params[AC_dsx] > 0);
+        config->real_params[AC_inv_dsx] = (AcReal)(1.) / config->real_params[AC_dsx];
+        ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsx]));
+    #endif
+    #ifdef AC_dsy
+        ERRCHK_ALWAYS(config->real_params[AC_dsy] > 0);
+        config->real_params[AC_inv_dsy] = (AcReal)(1.) / config->real_params[AC_dsy];
+        ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsy]));
+    #endif
+    #ifdef AC_dsz
+        ERRCHK_ALWAYS(config->real_params[AC_dsz] > 0);
+        config->real_params[AC_inv_dsz] = (AcReal)(1.) / config->real_params[AC_dsz];
+        ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsz]));
+    #endif
+    */
+
+    /* Additional helper params */
+    // Int helpers
+    config->int_params[AC_mxy]  = config->int_params[AC_mx] * config->int_params[AC_my];
+    config->int_params[AC_nxy]  = config->int_params[AC_nx] * config->int_params[AC_ny];
+    config->int_params[AC_nxyz] = config->int_params[AC_nxy] * config->int_params[AC_nz];
+
+    /* Multi-GPU params */
+    config->int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
+    config->int3_params[AC_global_grid_n]   = (int3){
+        config->int_params[AC_nx],
+        config->int_params[AC_ny],
+        config->int_params[AC_nz],
+    };
+
+    return 0;
+}
+
+int
+acHostUpdateMHDSpecificParams(AcMeshInfo* info)
+{
+    // Forcing
+    ForcingParams forcing_params = generateForcingParams(info->real_params[AC_relhel],
+                                                         info->real_params[AC_forcing_magnitude],
+                                                         info->real_params[AC_kmin],
+                                                         info->real_params[AC_kmax]);
+    loadForcingParamsToMeshInfo(forcing_params, info);
+
+    // Derived values
+    info->real_params[AC_cs2_sound] = info->real_params[AC_cs_sound] *
+                                      info->real_params[AC_cs_sound];
+
+    // Other
+    info->real_params[AC_center_x] = info->real_params[AC_box_size_x] / 2;
+    info->real_params[AC_center_y] = info->real_params[AC_box_size_y] / 2;
+    info->real_params[AC_center_z] = info->real_params[AC_box_size_z] / 2;
+
+    return 0;
+}
+
+int
+acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info)
+{
+    info->real_params[AC_dsx] = info->real_params[AC_box_size_x] / (info->int_params[AC_nx] - 1);
+    info->real_params[AC_dsy] = info->real_params[AC_box_size_y] / (info->int_params[AC_ny] - 1);
+    info->real_params[AC_dsz] = info->real_params[AC_box_size_z] / (info->int_params[AC_nz] - 1);
+
+    return 0;
+}
+
+void
+acPrintMeshInfo(const AcMeshInfo config)
+{
+    for (int i = 0; i < NUM_INT_PARAMS; ++i)
+        printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
+    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+        printf("[%s]: (%d, %d, %d)\n", int3param_names[i], config.int3_params[i].x,
+               config.int3_params[i].y, config.int3_params[i].z);
+    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+        printf("[%s]: %g\n", realparam_names[i], (double)(config.real_params[i]));
+    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.real3_params[i].x),
+               (double)(config.real3_params[i].y), (double)(config.real3_params[i].z));
+}
