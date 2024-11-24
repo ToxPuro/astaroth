@@ -67,14 +67,6 @@ template <typename T, size_t N> class array {
     auto data() { return resource.data(); }
     auto data() const { return resource.data(); }
 
-    __host__ ac::array<T, N> reversed() const
-    {
-        ac::array<T, N> out{};
-        for (size_t i{0}; i < N; ++i)
-            out.resource[i] = resource[N - 1 - i];
-        return out;
-    }
-
     template <typename U>
     friend __host__ __device__ ac::array<T, N> operator+(const ac::array<T, N>& a,
                                                          const ac::array<U, N>& b)
