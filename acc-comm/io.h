@@ -4,7 +4,7 @@
 
 #include "mpi_utils.h"
 
-// #include "buffer.h"
+#include "buffer.h"
 
 template <typename T, size_t N>
 void

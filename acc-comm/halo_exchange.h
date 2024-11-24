@@ -16,7 +16,7 @@
  */
 template <typename T, size_t N>
 std::vector<MPI_Request>
-launch_halo_exchange(const MPI_Comm parent_comm, const ac::shape<N>& local_mm,
+launch_halo_exchange(const MPI_Comm& parent_comm, const ac::shape<N>& local_mm,
                      const ac::shape<N>& local_nn, const ac::shape<N>& rr, const T* send_data,
                      T* recv_data)
 {

@@ -4,6 +4,10 @@
 
 #include "mpi_utils.h"
 
+#include "halo_exchange_packed.h"
+#include "io.h"
+#include "memory_resource.h"
+
 template <size_t N>
 static ac::shape<N>
 make_shape(const size_t ndims, const uint64_t* data)
@@ -30,7 +34,7 @@ ACM_MPI_Init_funneled(void)
 ACM_Errorcode
 ACM_MPI_Abort(void)
 {
-    MPI_Abort(MPI_COMM_WORLD, -1);
+    ERRCHK_MPI_API(MPI_Abort(MPI_COMM_WORLD, -1));
     return ACM_ERRORCODE_SUCCESS;
 }
 
@@ -232,4 +236,166 @@ ACM_Get_global_nn_offset(const MPI_Comm cart_comm, const size_t ndims, const uin
         std::cerr << e.what() << std::endl;
         return ACM_ERRORCODE_GENERIC_FAILURE;
     }
+}
+
+ACM_Errorcode
+ACM_IO_Read_collective(const MPI_Comm cart_comm, const size_t ndims, const uint64_t* in_file_dims,
+                       const uint64_t* in_file_offset, const uint64_t* in_mesh_dims,
+                       const uint64_t* in_mesh_subdims, const uint64_t* in_mesh_offset,
+                       const char* path, double* data)
+{
+    try {
+        switch (ndims) {
+        case 1: {
+            constexpr size_t NDIMS = 1;
+            mpi_read_collective<double, NDIMS>(cart_comm, make_shape<NDIMS>(ndims, in_file_dims),
+                                               make_shape<NDIMS>(ndims, in_file_offset),
+                                               make_shape<NDIMS>(ndims, in_mesh_dims),
+                                               make_shape<NDIMS>(ndims, in_mesh_subdims),
+                                               make_shape<NDIMS>(ndims, in_mesh_offset),
+                                               std::string(path), data);
+            return ACM_ERRORCODE_SUCCESS;
+        }
+        case 2: {
+            constexpr size_t NDIMS = 2;
+            mpi_read_collective<double, NDIMS>(cart_comm, make_shape<NDIMS>(ndims, in_file_dims),
+                                               make_shape<NDIMS>(ndims, in_file_offset),
+                                               make_shape<NDIMS>(ndims, in_mesh_dims),
+                                               make_shape<NDIMS>(ndims, in_mesh_subdims),
+                                               make_shape<NDIMS>(ndims, in_mesh_offset),
+                                               std::string(path), data);
+            return ACM_ERRORCODE_SUCCESS;
+        }
+        case 3: {
+            constexpr size_t NDIMS = 3;
+            mpi_read_collective<double, NDIMS>(cart_comm, make_shape<NDIMS>(ndims, in_file_dims),
+                                               make_shape<NDIMS>(ndims, in_file_offset),
+                                               make_shape<NDIMS>(ndims, in_mesh_dims),
+                                               make_shape<NDIMS>(ndims, in_mesh_subdims),
+                                               make_shape<NDIMS>(ndims, in_mesh_offset),
+                                               std::string(path), data);
+            return ACM_ERRORCODE_SUCCESS;
+        }
+        default:
+            return ACM_ERRORCODE_UNSUPPORTED_NDIMS;
+        }
+        return ACM_ERRORCODE_SUCCESS;
+    }
+    catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return ACM_ERRORCODE_GENERIC_FAILURE;
+    }
+}
+
+ACM_Errorcode
+ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t ndims,
+                        const uint64_t* in_file_dims, const uint64_t* in_file_offset,
+                        const uint64_t* in_mesh_dims, const uint64_t* in_mesh_subdims,
+                        const uint64_t* in_mesh_offset, const double* data, const char* path)
+{
+    try {
+        switch (ndims) {
+        case 1: {
+            constexpr size_t NDIMS = 1;
+            mpi_write_collective<double, NDIMS>(parent_comm, make_shape<NDIMS>(ndims, in_file_dims),
+                                                make_shape<NDIMS>(ndims, in_file_offset),
+                                                make_shape<NDIMS>(ndims, in_mesh_dims),
+                                                make_shape<NDIMS>(ndims, in_mesh_subdims),
+                                                make_shape<NDIMS>(ndims, in_mesh_offset), data,
+                                                std::string(path));
+            return ACM_ERRORCODE_SUCCESS;
+        }
+        case 2: {
+            constexpr size_t NDIMS = 2;
+            mpi_write_collective<double, NDIMS>(parent_comm, make_shape<NDIMS>(ndims, in_file_dims),
+                                                make_shape<NDIMS>(ndims, in_file_offset),
+                                                make_shape<NDIMS>(ndims, in_mesh_dims),
+                                                make_shape<NDIMS>(ndims, in_mesh_subdims),
+                                                make_shape<NDIMS>(ndims, in_mesh_offset), data,
+                                                std::string(path));
+            return ACM_ERRORCODE_SUCCESS;
+        }
+        case 3: {
+            constexpr size_t NDIMS = 3;
+            mpi_write_collective<double, NDIMS>(parent_comm, make_shape<NDIMS>(ndims, in_file_dims),
+                                                make_shape<NDIMS>(ndims, in_file_offset),
+                                                make_shape<NDIMS>(ndims, in_mesh_dims),
+                                                make_shape<NDIMS>(ndims, in_mesh_subdims),
+                                                make_shape<NDIMS>(ndims, in_mesh_offset), data,
+                                                std::string(path));
+            return ACM_ERRORCODE_SUCCESS;
+        }
+        default:
+            return ACM_ERRORCODE_UNSUPPORTED_NDIMS;
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return ACM_ERRORCODE_GENERIC_FAILURE;
+    }
+}
+
+ACM_Errorcode
+ACM_IO_Task_create(const size_t ndims, const uint64_t* in_file_dims, const uint64_t* in_file_offset,
+                   const uint64_t* in_mesh_dims, const uint64_t* in_mesh_subdims,
+                   const uint64_t* in_mesh_offset, ACM_IO_Task* task)
+{
+    return ACM_ERRORCODE_NOT_IMPLEMENTED;
+}
+
+ACM_Errorcode
+ACM_IO_Task_destroy(ACM_IO_Task* task)
+{
+    return ACM_ERRORCODE_NOT_IMPLEMENTED;
+}
+
+ACM_Errorcode
+ACM_IO_Launch_write_collective(const MPI_Comm parent_comm, const double* input, const char* path,
+                               ACM_IO_Task* task)
+{
+    return ACM_ERRORCODE_NOT_IMPLEMENTED;
+}
+
+ACM_Errorcode
+ACM_IO_Wait_write_collective(ACM_IO_Task* task)
+{
+    return ACM_ERRORCODE_NOT_IMPLEMENTED;
+}
+
+ACM_Errorcode
+ACM_COMM_Launch_halo_exchange(const MPI_Comm parent_comm, const size_t ndims,
+                              const uint64_t* local_mm, const uint64_t* local_nn,
+                              const uint64_t* rr, const double* send_data, double* recv_data,
+                              size_t* recv_req_count, MPI_Request* recv_reqs)
+{
+    return ACM_ERRORCODE_NOT_IMPLEMENTED;
+}
+
+ACM_Errorcode
+ACM_COMM_Halo_Exchange_Task_create(const size_t ndims, const uint64_t* local_mm,
+                                   const uint64_t* local_nn, const uint64_t* local_rr,
+                                   const size_t n_aggregate_buffers,
+                                   ACM_COMM_Halo_Exchange_Task* task)
+{
+    return ACM_ERRORCODE_NOT_IMPLEMENTED;
+}
+
+ACM_Errorcode
+ACM_COMM_Halo_Exchange_Task_destroy(ACM_COMM_Halo_Exchange_Task* task)
+{
+    return ACM_ERRORCODE_NOT_IMPLEMENTED;
+}
+
+ACM_Errorcode
+ACM_COMM_Halo_Exchange_Task_launch(const MPI_Comm parent_comm, const size_t ninputs,
+                                   const double* inputs[], ACM_COMM_Halo_Exchange_Task* task)
+{
+    return ACM_ERRORCODE_NOT_IMPLEMENTED;
+}
+
+ACM_Errorcode
+ACM_COMM_Halo_Exchange_Task_wait(const size_t noutputs, double* outputs,
+                                 ACM_COMM_Halo_Exchange_Task* task)
+{
+    return ACM_ERRORCODE_NOT_IMPLEMENTED;
 }
