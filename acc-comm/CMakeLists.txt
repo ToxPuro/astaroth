@@ -94,7 +94,7 @@ endif()
 
 ## Packages
 find_package(MPI REQUIRED COMPONENTS C)
-add_library(acc-comm SHARED halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc pack.cu pack.cc ndbuffer.cc buffer.cc decomp.cc partition.cc segment.cc math_utils.cc array.cc type_conversion.cc errchk_print.c)
+add_library(acc-comm SHARED acm.cc acm_error.c halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc pack.cu pack.cc ndbuffer.cc buffer.cc decomp.cc partition.cc segment.cc math_utils.cc array.cc type_conversion.cc errchk_print.c)
 target_link_libraries(acc-comm PUBLIC MPI::MPI_C device-libraries)
 
 add_executable(run main.cc )
@@ -115,6 +115,9 @@ add_executable(unit_test unit_test.cc)
 target_link_libraries(unit_test PRIVATE acc-comm)
 add_test(NAME UnitTest COMMAND unit_test)
 
+add_executable(c_test c_test.c)
+target_link_libraries(c_test PRIVATE acc-comm)
+add_test(NAME C_Test COMMAND c_test)
 
 # add_executable(comm_test comm_test.cc halo_exchange.cc)
 # target_link_libraries(comm_test PRIVATE MPI::MPI_C acc-comm-utils)
