@@ -41,33 +41,33 @@ message("project source dir ${PROJECT_SOURCE_DIR}")
 if (BUILD_ACC_RUNTIME_LIBRARY)
     if (USE_HIP)
         add_definitions(-DAC_USE_HIP=1)
-        list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)             # Default
-        list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3) # Lumi
-	list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/hip /opt/rocm-default) # Frontier
+        # list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)             # Default
+        # list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3) # Lumi
+	    # list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/hip /opt/rocm-default) # Frontier
 
-        enable_language(CXX)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
-        set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE CXX)
+        enable_language(HIP)
+        set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE HIP)
+        # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
     else()
         enable_language(CUDA)
-        string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
-        set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow --compiler-options=${CUDA_COMMON_FLAGS}")
+        # string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
+        # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow --compiler-options=${CUDA_COMMON_FLAGS}")
 
         # Set device code architecture
-        if (NOT CUDA_ARCHITECTURES)
-            set(CMAKE_CUDA_ARCHITECTURES 70) # Default
-        else ()
-            set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
-        endif()
+        # if (NOT CUDA_ARCHITECTURES)
+        #     set(CMAKE_CUDA_ARCHITECTURES "70") # Default
+        # else ()
+        #     set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
+        # endif()
     endif()
 
     include_directories(${PROJECT_BINARY_DIR})
 
     add_library(acc-runtime STATIC acc_runtime.cu)
     target_link_libraries(acc-runtime acc-runtime-headers)
-    target_compile_features(acc-runtime PRIVATE cxx_std_17)
+    # target_compile_features(acc-runtime PRIVATE cxx_std_17)
 
     add_library(acc-runtime-shared SHARED acc_runtime.cu)
     target_link_libraries(acc-runtime-shared acc-runtime-headers)
-    target_compile_features(acc-runtime-shared PRIVATE cxx_std_17)
+    # target_compile_features(acc-runtime-shared PRIVATE cxx_std_17)
 endif()

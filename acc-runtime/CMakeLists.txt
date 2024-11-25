@@ -1,33 +1,52 @@
 ## CMake settings
-cmake_minimum_required(VERSION 3.19)
-
-## Project options
-option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
-if (USE_HIP)
-    find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
-    set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
-    set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
-
-    # Rocm
-    #include_directories(/opt/rocm/include)
-    #link_directories(/opt/rocm/lib)
-    
-    # Roctracer
-    include_directories(/opt/rocm/roctracer/include)
-    link_directories(/opt/rocm/roctracer/lib)
-
-    # Rocrand
-    include_directories(/opt/rocm/hiprand/include)
-    include_directories(/opt/rocm/rocrand/include)
-    link_directories(/opt/rocm/hiprand/lib)
-    link_directories(/opt/rocm/rocrand/lib)
-endif()
+cmake_minimum_required(VERSION 3.21)
 
 ## Project settings
 project(acc-runtime)
 
+## Standards
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_HIP_STANDARD 17)
+set(CMAKE_HIP_STANDARD_REQUIRED ON)
+
+## Build type
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+
+## Options
+option(USE_HIP "Enables compilation without CUDA/HIP toolkits" OFF)
+
+## Linting
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 ## Project-wide compilation flags
 set(COMMON_FLAGS "-Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow")
+
+## CUDA and HIP
+find_package(CUDAToolkit QUIET)
+find_package(HIP QUIET)
+if(NOT USE_HIP AND CUDAToolkit_FOUND)
+    message(STATUS "CUDA found")
+    enable_language(CUDA)
+    add_compile_options(-DDEVICE_ENABLED)
+    add_compile_options(-DCUDA_ENABLED)
+    set(CMAKE_CUDA_ARCHITECTURES "60;70")
+    include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
+elseif(USE_HIP OR HIP_FOUND)
+    set(USE_HIP ON)
+    message(STATUS "HIP found")
+    enable_language(HIP)
+    add_compile_options(-DDEVICE_ENABLED)
+    add_compile_options(-DHIP_ENABLED)
+    set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+    include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
+else()
+    message(ERROR "Did not find CUDA or HIP")
+endif()
 
 ## Include directories
 include_directories(.)
