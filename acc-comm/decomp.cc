@@ -210,7 +210,7 @@ test_decomp(void)
             // PRINDIMST_DEBUG(coords);
 
             // Backward
-            scale = {1, 1, 1};
+            scale = Index{1, 1, 1};
             size_t index{0};
             for (size_t j{decompositions.size() - 1}; j < decompositions.size(); --j) {
                 index = index + prod(scale) * to_linear((coords / scale) % decompositions[j],

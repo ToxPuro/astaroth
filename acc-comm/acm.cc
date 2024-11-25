@@ -8,14 +8,6 @@
 #include "io.h"
 #include "memory_resource.h"
 
-static Shape
-make_shape(const size_t ndims, const uint64_t* data)
-{
-    Shape shape(ndims);
-    std::copy_n(data, ndims, shape.begin());
-    return shape;
-}
-
 ACM_Errorcode
 ACM_MPI_Init_funneled(void)
 {
@@ -54,7 +46,7 @@ ACM_MPI_Cart_comm_create(const MPI_Comm parent_comm, const size_t ndims, const u
                          MPI_Comm* cart_comm)
 {
     try {
-        *cart_comm = cart_comm_create(parent_comm, make_shape(ndims, global_nn));
+        *cart_comm = cart_comm_create(parent_comm, Shape(ndims, global_nn));
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {
@@ -109,8 +101,7 @@ ACM_Get_local_nn(const MPI_Comm cart_comm, const size_t ndims, const uint64_t* g
                  uint64_t* local_nn_out)
 {
     try {
-        constexpr size_t NDIMS = 1;
-        const auto global_nn{make_shape(ndims, global_nn_in)};
+        const auto global_nn{Shape(ndims, global_nn_in)};
         const auto decomp   = get_decomposition(cart_comm);
         const auto local_nn = global_nn / decomp;
         std::copy(local_nn.begin(), local_nn.end(), local_nn_out);
@@ -127,8 +118,7 @@ ACM_Get_global_nn_offset(const MPI_Comm cart_comm, const size_t ndims, const uin
                          uint64_t* global_nn_offset_out)
 {
     try {
-        constexpr size_t NDIMS = 1;
-        const auto global_nn{make_shape(ndims, global_nn_in)};
+        const auto global_nn{Shape(ndims, global_nn_in)};
         const auto decomp{get_decomposition(cart_comm)};
         const auto local_nn{global_nn / decomp};
         const auto coords{get_coords(cart_comm)};
@@ -149,12 +139,10 @@ ACM_IO_Read_collective(const MPI_Comm cart_comm, const size_t ndims, const uint6
                        const char* path, double* data)
 {
     try {
-        constexpr size_t NDIMS = 1;
-        mpi_read_collective<double>(cart_comm, make_shape(ndims, in_file_dims),
-                                    make_shape(ndims, in_file_offset),
-                                    make_shape(ndims, in_mesh_dims),
-                                    make_shape(ndims, in_mesh_subdims),
-                                    make_shape(ndims, in_mesh_offset), std::string(path), data);
+        mpi_read_collective<double>(cart_comm, Shape(ndims, in_file_dims),
+                                    Shape(ndims, in_file_offset), Shape(ndims, in_mesh_dims),
+                                    Shape(ndims, in_mesh_subdims), Shape(ndims, in_mesh_offset),
+                                    std::string(path), data);
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {
@@ -170,12 +158,10 @@ ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t ndims,
                         const uint64_t* in_mesh_offset, const double* data, const char* path)
 {
     try {
-        constexpr size_t NDIMS = 1;
-        mpi_write_collective<double>(parent_comm, make_shape(ndims, in_file_dims),
-                                     make_shape(ndims, in_file_offset),
-                                     make_shape(ndims, in_mesh_dims),
-                                     make_shape(ndims, in_mesh_subdims),
-                                     make_shape(ndims, in_mesh_offset), data, std::string(path));
+        mpi_write_collective<double>(parent_comm, Shape(ndims, in_file_dims),
+                                     Shape(ndims, in_file_offset), Shape(ndims, in_mesh_dims),
+                                     Shape(ndims, in_mesh_subdims), Shape(ndims, in_mesh_offset),
+                                     data, std::string(path));
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {

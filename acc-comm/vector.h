@@ -15,24 +15,27 @@ template <typename T> class vector {
     ac::base_vector<T> resource;
 
   public:
-    // Default constructor
-    vector()
-        : resource() {};
-
-    vector(const size_t count)
-        : resource(count, as<T>(0))
-    {
-    }
-
-    vector(const size_t count, const T& fill_value)
+    // Vector-like constructor
+    // ac::vector<int> a(10, 1)
+    explicit vector(const size_t count, const T& fill_value = 0)
         : resource(count, fill_value)
     {
     }
 
+    // Construct from C-style count and pointer
+    // ac::vector(count, ptr)
+    explicit vector(const size_t count, const T* arr)
+        : vector(count)
+    {
+        ERRCHK(count > 0);
+        ERRCHK(arr);
+        std::copy_n(arr, count, resource.begin());
+    }
+
     // Initializer list constructor
-    // ac::vector<int, 3> a{1,2,3}
-    vector(const std::initializer_list<T>& init_list)
-        : resource(init_list)
+    // ac::vector<int> a{1,2,3}
+    explicit vector(const std::initializer_list<T>& init_list)
+        : resource{init_list}
     {
     }
 
