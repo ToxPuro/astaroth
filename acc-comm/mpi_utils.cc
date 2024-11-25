@@ -57,9 +57,9 @@ print_mpi_comm(const MPI_Comm& comm)
     ERRCHK_MPI_API(MPI_Comm_size(comm, &nprocs));
     ERRCHK_MPI_API(MPI_Cartdim_get(comm, &ndims));
 
-    MPIShape mpi_decomp(ndims);
-    MPIShape mpi_periods(ndims);
-    MPIIndex mpi_coords(ndims);
+    MPIShape mpi_decomp(as<size_t>(ndims));
+    MPIShape mpi_periods(as<size_t>(ndims));
+    MPIIndex mpi_coords(as<size_t>(ndims));
     ERRCHK_MPI_API(
         MPI_Cart_get(comm, ndims, mpi_decomp.data(), mpi_periods.data(), mpi_coords.data()));
 

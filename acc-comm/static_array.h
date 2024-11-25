@@ -8,7 +8,6 @@
 #include "errchk.h"
 #include "type_conversion.h"
 
-#include "vector.h"
 
 namespace ac {
 
@@ -62,13 +61,13 @@ template <typename T, size_t N> class static_array {
 
     // Copy constructor with proper casting
     // static_array<T, N> a(static_array<U, N> b)
-    template <typename U>
-    __host__ __device__ explicit static_array(const static_array<U, N>& other)
-        : count(other.count)
-    {
-        for (size_t i{0}; i < count; ++i)
-            data[i] = as<T>(other.data[i]);
-    }
+    // template <typename U>
+    // __host__ __device__ explicit static_array(const static_array<U, N>& other)
+    //     : count(other.count)
+    // {
+    //     for (size_t i{0}; i < count; ++i)
+    //         data[i] = as<T>(other.data[i]);
+    // }
 
     // Construct from a pointer
     __host__ __device__ explicit static_array(const size_t in_count, const T* arr)
@@ -83,19 +82,19 @@ template <typename T, size_t N> class static_array {
 
     // Construct from a vector
     // template<typename VectorType>
-    __host__ __device__ static_array(const ac::vector<T>& vec)
-        : static_array(vec.size())
-    {
-        for (size_t i{0}; i < vec.size(); ++i)
-            data[i] = vec[i];
-    }
+    // __host__ __device__ static_array(const ac::vector<T>& vec)
+    //     : static_array(vec.size())
+    // {
+    //     for (size_t i{0}; i < vec.size(); ++i)
+    //         data[i] = vec[i];
+    // }
 
-    __host__ __device__ static_array(const std::vector<T>& vec)
-        : static_array(vec.size())
-    {
-        for (size_t i{0}; i < vec.size(); ++i)
-            data[i] = vec[i];
-    }
+    // __host__ __device__ static_array(const std::vector<T>& vec)
+    //     : static_array(vec.size())
+    // {
+    //     for (size_t i{0}; i < vec.size(); ++i)
+    //         data[i] = vec[i];
+    // }
 
     __host__ __device__ size_t size() const { return count; }
 

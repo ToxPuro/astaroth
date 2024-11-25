@@ -3,8 +3,6 @@
 #include "cuda_utils.h"
 #include "type_conversion.h"
 
-#include "vector.h"
-
 namespace ac {
 template <typename T, size_t N> class array {
   private:
@@ -21,15 +19,6 @@ template <typename T, size_t N> class array {
         ERRCHK(init_list.size() == N);
         for (size_t i{0}; i < N; ++i)
             resource[i] = init_list.begin()[i];
-    }
-
-    // Construct from vector
-    // ac::array<int, 3> arr(ac::vector<int>{1,2,3});
-    explicit __host__ __device__ array(const ac::vector<T>& vec)
-    {
-        ERRCHK(vec.size() == N);
-        for (size_t i{0}; i < N; ++i)
-            resource[i] = vec[i];
     }
 
     // Enable the subscript[] operator

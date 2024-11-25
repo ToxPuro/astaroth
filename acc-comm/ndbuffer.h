@@ -1,9 +1,11 @@
 #pragma once
 #include <iomanip>
 
+#include "vector"
 #include "buffer.h"
 
 #include "math_utils.h"
+
 
 template <typename T>
 static void
@@ -42,15 +44,15 @@ ndbuffer_print(const char* label, const size_t ndims, const uint64_t* dims, cons
 
 namespace ac {
 template <typename T, typename MemoryResource> struct ndbuffer {
-    Shape shape;
+    ac::vector<uint64_t> shape;
     ac::buffer<T, MemoryResource> buffer;
 
-    explicit ndbuffer(const Shape& in_shape)
+    explicit ndbuffer(const ac::vector<uint64_t>& in_shape)
         : shape{in_shape}, buffer(prod(in_shape))
     {
     }
 
-    explicit ndbuffer(const Shape& in_shape, const T& fill_value)
+    explicit ndbuffer(const ac::vector<uint64_t>& in_shape, const T& fill_value)
         : shape{in_shape}, buffer(prod(in_shape), fill_value)
     {
     }
@@ -91,7 +93,7 @@ ndbuffer_fill(const T& value, const size_t ndims, const uint64_t* dims, const ui
 
 template <typename T>
 void
-fill(const T& fill_value, const Shape& subdims, const Shape& offset,
+fill(const T& fill_value, const ac::vector<uint64_t>& subdims, const ac::vector<uint64_t>& offset,
      ac::ndbuffer<T, ac::mr::host_memory_resource>& ndbuf)
 {
     ERRCHK(offset + subdims <= ndbuf.shape);
