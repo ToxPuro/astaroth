@@ -4,7 +4,7 @@
 #include "type_conversion.h"
 
 static void
-test_fn(std::vector<uint64_t> arr)
+test_fn(const std::vector<uint64_t>& arr)
 {
     ERRCHK((arr == std::vector<uint64_t>{1, 2, 3}));
 }
