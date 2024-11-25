@@ -41,6 +41,8 @@ cudaStreamDestroy(cudaStream_t stream)
 }
 #endif
 
+using UserType = double;
+
 static void
 benchmark(void)
 {
