@@ -1,5 +1,10 @@
 ## CMake settings
 cmake_minimum_required(VERSION 3.10)
+
+## Project settings
+project(acc-comm)
+
+## Standards
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
@@ -8,11 +13,9 @@ set(CMAKE_HIP_STANDARD 17)
 set(CMAKE_HIP_STANDARD_REQUIRED ON)
 
 ## Build type
-#set(CMAKE_BUILD_TYPE RelWithDebInfo)
-set(CMAKE_BUILD_TYPE Debug)
-
-## Project settings
-project(acc-comm)
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
 
 ## Options
 option(HOST_ONLY_MODE "Enables compilation without CUDA/HIP toolkits" OFF)
