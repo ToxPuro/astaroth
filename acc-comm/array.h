@@ -383,7 +383,7 @@ prod(const ac::array<T, N>& arr)
 }
 
 template <typename T, size_t N, typename U>
-__host__ __device__ T
+[[nodiscard]] __host__ __device__ T
 dot(const ac::array<T, N>& a, const ac::array<U, N>& b)
 {
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
