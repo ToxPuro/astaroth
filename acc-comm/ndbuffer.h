@@ -42,16 +42,16 @@ ndbuffer_print(const char* label, const size_t ndims, const uint64_t* dims, cons
 }
 
 namespace ac {
-template <typename T, size_t N, typename MemoryResource> struct ndbuffer {
-    ac::shape<N> shape;
+template <typename T, typename MemoryResource> struct ndbuffer {
+    Shape shape;
     ac::buffer<T, MemoryResource> buffer;
 
-    explicit ndbuffer(const ac::shape<N>& in_shape)
+    explicit ndbuffer(const Shape& in_shape)
         : shape{in_shape}, buffer(prod(in_shape))
     {
     }
 
-    explicit ndbuffer(const ac::shape<N>& in_shape, const T& fill_value)
+    explicit ndbuffer(const Shape& in_shape, const T& fill_value)
         : shape{in_shape}, buffer(prod(in_shape), fill_value)
     {
     }
@@ -62,7 +62,7 @@ template <typename T, size_t N, typename MemoryResource> struct ndbuffer {
     const T* end() const { return buffer.data() + buffer.size(); }
 
     template <typename OtherMemoryResource>
-    void migrate(ac::ndbuffer<T, N, OtherMemoryResource>& other)
+    void migrate(ac::ndbuffer<T, OtherMemoryResource>& other)
     {
         migrate(buffer, other.buffer);
     }
@@ -90,10 +90,10 @@ ndbuffer_fill(const T& value, const size_t ndims, const uint64_t* dims, const ui
     }
 }
 
-template <typename T, size_t N>
+template <typename T>
 void
-fill(const T& fill_value, const ac::shape<N>& subdims, const ac::shape<N>& offset,
-     ac::ndbuffer<T, N, ac::mr::host_memory_resource>& ndbuf)
+fill(const T& fill_value, const Shape& subdims, const Shape& offset,
+     ac::ndbuffer<T, ac::mr::host_memory_resource>& ndbuf)
 {
     ERRCHK(offset + subdims <= ndbuf.shape);
     ndbuffer_fill<T>(fill_value, ndbuf.shape.size(), ndbuf.shape.data(), subdims.data(),

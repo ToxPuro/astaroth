@@ -1,11 +1,8 @@
 #pragma once
 
-#include "array.h"
+#include "vector.h"
 
-// template <size_t N> using Index     = ac::array<uint64_t, N>;
-// template <size_t N> using Shape     = ac::array<uint64_t, N>;
-// template <size_t N> using Direction = ac::array<int64_t, N>;
-// template <size_t N> using MPIIndex  = ac::array<int, N>;
-// template <size_t N> using MPIShape  = ac::array<int, N>;
-using UserType = double;
-// constexpr size_t NDIMS = 2;
+using Index     = ac::vector<uint64_t>;
+using Shape     = ac::vector<uint64_t>;
+using Direction = ac::vector<int64_t>;
+using UserType  = double;

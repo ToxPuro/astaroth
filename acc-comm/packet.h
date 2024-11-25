@@ -11,14 +11,14 @@
 
 #include <mpi.h>
 
-template <typename T, size_t N, typename MemoryResource> class Packet {
+template <typename T, typename MemoryResource> class Packet {
 
   private:
-    ac::shape<N> local_mm;
-    ac::shape<N> local_nn;
-    ac::index<N> local_rr;
+    Shape local_mm;
+    Shape local_nn;
+    Index local_rr;
 
-    ac::segment<N> segment;
+    ac::segment segment;
 
     ac::buffer<T, MemoryResource> send_buffer;
     ac::buffer<T, MemoryResource> recv_buffer;
@@ -30,9 +30,8 @@ template <typename T, size_t N, typename MemoryResource> class Packet {
     bool in_progress = false;
 
   public:
-    Packet(const ac::shape<N>& in_local_mm, const ac::shape<N>& in_local_nn,
-           const ac::index<N>& in_local_rr, const ac::segment<N>& in_segment,
-           const size_t n_aggregate_buffers)
+    Packet(const Shape& in_local_mm, const Shape& in_local_nn, const Index& in_local_rr,
+           const ac::segment& in_segment, const size_t n_aggregate_buffers)
         : local_mm{in_local_mm},
           local_nn{in_local_nn},
           local_rr{in_local_rr},
@@ -79,7 +78,7 @@ template <typename T, size_t N, typename MemoryResource> class Packet {
         ERRCHK_MPI(count <= send_buffer.size());
         ERRCHK_MPI(count <= recv_buffer.size());
 
-        ac::index<N> send_offset{((local_nn + segment.offset - local_rr) % local_nn) + local_rr};
+        Index send_offset{((local_nn + segment.offset - local_rr) % local_nn) + local_rr};
 
         auto recv_direction{get_direction(segment.offset, local_nn, local_rr)};
         const int recv_neighbor{get_neighbor(comm, recv_direction)};
@@ -131,8 +130,7 @@ template <typename T, size_t N, typename MemoryResource> class Packet {
 
     bool complete() const { return !in_progress; };
 
-    friend __host__ std::ostream& operator<<(std::ostream& os,
-                                             const Packet<T, N, MemoryResource>& obj)
+    friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T, MemoryResource>& obj)
     {
         os << "{";
         os << "segment: " << obj.segment << ", ";

@@ -16,9 +16,9 @@ test_pack(void)
     // ac::copy(hin.begin(), hin.end(), din.begin());
     migrate(hin, din);
 
-    ac::shape<1> mm{count};
-    ac::shape<1> block_shape{count - 2 * rr};
-    ac::shape<1> block_offset{rr};
+    Shape mm{count};
+    Shape block_shape{count - 2 * rr};
+    Shape block_offset{rr};
     std::vector<ac::buffer<uint64_t, ac::mr::device_memory_resource>*> inputs{&din};
     pack(mm, block_shape, block_offset, inputs, dout);
     migrate(dout, hout);

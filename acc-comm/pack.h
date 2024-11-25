@@ -5,9 +5,9 @@
 
 #include "math_utils.h"
 
-template <typename T, size_t N>
+template <typename T>
 void
-pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
      const std::vector<ac::buffer<T, ac::mr::host_memory_resource>*>& inputs,
      ac::buffer<T, ac::mr::host_memory_resource>& output)
 {
@@ -16,10 +16,10 @@ pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::index<N>
         for (size_t j{0}; j < inputs.size(); ++j) {
 
             // Block coords
-            const ac::shape<N> block_coords{to_spatial(i, block_shape)};
+            const Shape block_coords{to_spatial(i, block_shape)};
 
             // Input coords
-            const ac::shape<N> in_coords{block_offset + block_coords};
+            const Shape in_coords{block_offset + block_coords};
 
             const uint64_t in_idx{to_linear(in_coords, mm)};
             ERRCHK(in_idx < prod(mm));
@@ -29,10 +29,10 @@ pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::index<N>
     }
 }
 
-template <typename T, size_t N>
+template <typename T>
 void
-unpack(const ac::buffer<T, ac::mr::host_memory_resource>& input, const ac::shape<N>& mm,
-       const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+unpack(const ac::buffer<T, ac::mr::host_memory_resource>& input, const Shape& mm,
+       const Shape& block_shape, const Index& block_offset,
        std::vector<ac::buffer<T, ac::mr::host_memory_resource>*>& outputs)
 {
     const uint64_t block_nelems{prod(block_shape)};
@@ -40,10 +40,10 @@ unpack(const ac::buffer<T, ac::mr::host_memory_resource>& input, const ac::shape
         for (size_t j{0}; j < outputs.size(); ++j) {
 
             // Block coords
-            const ac::shape<N> block_coords{to_spatial(i, block_shape)};
+            const Shape block_coords{to_spatial(i, block_shape)};
 
             // Input coords
-            const ac::shape<N> in_coords{block_offset + block_coords};
+            const Shape in_coords{block_offset + block_coords};
 
             const uint64_t in_idx{to_linear(in_coords, mm)};
             ERRCHK(in_idx < prod(mm));
@@ -55,79 +55,39 @@ unpack(const ac::buffer<T, ac::mr::host_memory_resource>& input, const ac::shape
 
 #if defined(DEVICE_ENABLED)
 
-template <typename T, size_t N>
-void pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+template <typename T>
+void pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
           const std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& inputs,
           ac::buffer<T, ac::mr::device_memory_resource>& output);
 
-template <typename T, size_t N>
-void unpack(const ac::buffer<T, ac::mr::device_memory_resource>& input, const ac::shape<N>& mm,
-            const ac::shape<N>& block_shape, const ac::index<N>& block_offset,
+template <typename T>
+void unpack(const ac::buffer<T, ac::mr::device_memory_resource>& input, const Shape& mm,
+            const Shape& block_shape, const Index& block_offset,
             std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& outputs);
 
 #define PACK_DTYPE double
-#define PACK_NDIMS (1)
-extern template void pack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
-    ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
+extern template void
+pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+                 const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
+                 ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
 
-extern template void unpack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
+extern template void
+unpack<PACK_DTYPE>(const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
+                   const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+                   std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
 #undef PACK_DTYPE
-#undef PACK_NDIMS
-
-#define PACK_DTYPE double
-#define PACK_NDIMS (2)
-extern template void pack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
-    ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
-
-extern template void unpack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
-#undef PACK_DTYPE
-#undef PACK_NDIMS
-
-#define PACK_DTYPE double
-#define PACK_NDIMS (3)
-extern template void pack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
-    ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
-
-extern template void unpack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
-#undef PACK_DTYPE
-#undef PACK_NDIMS
 
 #define PACK_DTYPE uint64_t
-#define PACK_NDIMS (1)
-extern template void pack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
-    ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
+extern template void
+pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+                 const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
+                 ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
 
-extern template void unpack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
+extern template void
+unpack<PACK_DTYPE>(const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
+                   const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+                   std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
 #undef PACK_DTYPE
-#undef PACK_NDIMS
 
 #endif
 

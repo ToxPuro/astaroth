@@ -6,13 +6,13 @@
 #include "packet.h"
 #include "partition.h"
 
-template <typename T, size_t N, typename MemoryResource> class HaloExchangeTask {
+template <typename T, typename MemoryResource> class HaloExchangeTask {
   private:
-    std::vector<std::unique_ptr<Packet<T, N, MemoryResource>>> packets;
+    std::vector<std::unique_ptr<Packet<T, MemoryResource>>> packets;
 
   public:
-    HaloExchangeTask(const ac::shape<N>& local_mm, const ac::shape<N>& local_nn,
-                     const ac::index<N>& local_rr, const size_t n_aggregate_buffers)
+    HaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
+                     const size_t n_aggregate_buffers)
 
     {
         // Must be larger than the boundary area to avoid boundary artifacts
@@ -31,9 +31,9 @@ template <typename T, size_t N, typename MemoryResource> class HaloExchangeTask 
 
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
-            packets.push_back(std::make_unique<Packet<T, N, MemoryResource>>(local_mm, local_nn,
-                                                                             local_rr, segment,
-                                                                             n_aggregate_buffers));
+            packets.push_back(std::make_unique<Packet<T, MemoryResource>>(local_mm, local_nn,
+                                                                          local_rr, segment,
+                                                                          n_aggregate_buffers));
         }
     }
 

@@ -33,7 +33,7 @@ to_spatial(const uint64_t index, const ac::shape<N>& shape)
 
 template <typename T, size_t N>
 static __device__ T
-prod(const ac::array<T, N>& arr)
+prod(const ac::vector<T>& arr)
 {
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
     T result = 1;
@@ -45,7 +45,7 @@ prod(const ac::array<T, N>& arr)
 template <typename T, size_t N, size_t M>
 __global__ void
 kernel_pack(const ac::shape<N> mm, const ac::shape<N> block_shape, const ac::shape<N> block_offset,
-            const ac::array<T*, M> inputs, T* output)
+            const ac::vector<T*> inputs, T* output)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{device::prod(block_shape)};
@@ -67,7 +67,7 @@ kernel_pack(const ac::shape<N> mm, const ac::shape<N> block_shape, const ac::sha
 template <typename T, size_t N, size_t M>
 __global__ void
 kernel_unpack(const T* input, const ac::shape<N> mm, const ac::shape<N> block_shape,
-              const ac::shape<N> block_offset, ac::array<T*, M> outputs)
+              const ac::shape<N> block_offset, ac::vector<T*> outputs)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{prod(block_shape)};
@@ -99,7 +99,7 @@ pack(const ac::shape<N>& mm, const ac::shape<N>& block_shape, const ac::index<N>
 
     switch (inputs.size()) {
     case 1: {
-        ac::array<T*, 1> input_array{inputs[0]->data()};
+        ac::vector<T*> input_array{inputs[0]->data()};
         device::kernel_pack<T, N, 1>
             <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm, block_shape, block_offset, input_array,
                                                        output.data());
@@ -124,7 +124,7 @@ unpack(const ac::buffer<T, ac::mr::device_memory_resource>& input, const ac::sha
 
     switch (outputs.size()) {
     case 1: {
-        ac::array<T*, 1> output_array{outputs[0]->data()};
+        ac::vector<T*> output_array{outputs[0]->data()};
         device::kernel_unpack<T, N, 1>
             <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input.data(), mm, block_shape, block_offset,
                                                        output_array);
@@ -149,67 +149,27 @@ void unpack(const ac::buffer<T, ac::mr::device_memory_resource>& input, const ac
             std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& outputs);
 
 #define PACK_DTYPE double
-#define PACK_NDIMS (1)
-template void pack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
-    ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
+template void
+pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+                 const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
+                 ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
 
-template void unpack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
+template void
+unpack<PACK_DTYPE>(const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
+                   const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+                   std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
 #undef PACK_DTYPE
-#undef PACK_NDIMS
-
-#define PACK_DTYPE double
-#define PACK_NDIMS (2)
-template void pack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
-    ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
-
-template void unpack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
-#undef PACK_DTYPE
-#undef PACK_NDIMS
-
-#define PACK_DTYPE double
-#define PACK_NDIMS (3)
-template void pack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
-    ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
-
-template void unpack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
-#undef PACK_DTYPE
-#undef PACK_NDIMS
 
 #define PACK_DTYPE uint64_t
-#define PACK_NDIMS (1)
-template void pack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
-    ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
+template void
+pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+                 const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
+                 ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
 
-template void unpack<PACK_DTYPE, PACK_NDIMS>(
-    const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-    const ac::shape<PACK_NDIMS>& mm, const ac::shape<PACK_NDIMS>& block_shape,
-    const ac::index<PACK_NDIMS>& block_offset,
-    std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
+template void
+unpack<PACK_DTYPE>(const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
+                   const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+                   std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
 #undef PACK_DTYPE
-#undef PACK_NDIMS
 
 #endif

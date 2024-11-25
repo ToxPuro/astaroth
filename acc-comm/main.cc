@@ -119,21 +119,21 @@ main()
 #endif
         constexpr size_t N{2};
 
-        const ac::shape<N> global_nn{4, 4};
+        const Shape global_nn{4, 4};
         MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
-        const ac::shape<N> decomp{get_decomposition<N>(cart_comm)};
-        const ac::shape<N> local_nn{global_nn / decomp};
-        const ac::index<N> coords{get_coords<N>(cart_comm)};
-        const ac::index<N> global_nn_offset{coords * local_nn};
+        const Shape decomp{get_decomposition(cart_comm)};
+        const Shape local_nn{global_nn / decomp};
+        const Index coords{get_coords(cart_comm)};
+        const Index global_nn_offset{coords * local_nn};
 
-        const ac::shape<N> rr{ones<uint64_t, N>()}; // Symmetric halo
-        const ac::shape<N> local_mm{as<uint64_t>(2) * rr + local_nn};
+        const Shape rr(global_nn.size(), 1); // Symmetric halo
+        const Shape local_mm{as<uint64_t>(2) * rr + local_nn};
 
-        ac::ndbuffer<UserType, N, ac::mr::host_memory_resource> hin(local_mm);
-        ac::ndbuffer<UserType, N, ac::mr::host_memory_resource> hout(local_mm);
+        ac::ndbuffer<UserType, ac::mr::host_memory_resource> hin(local_mm);
+        ac::ndbuffer<UserType, ac::mr::host_memory_resource> hout(local_mm);
 
-        ac::ndbuffer<UserType, N, ac::mr::device_memory_resource> din(local_mm);
-        ac::ndbuffer<UserType, N, ac::mr::device_memory_resource> dout(local_mm);
+        ac::ndbuffer<UserType, ac::mr::device_memory_resource> din(local_mm);
+        ac::ndbuffer<UserType, ac::mr::device_memory_resource> dout(local_mm);
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
         std::iota(hin.begin(), hin.end(),
@@ -198,9 +198,8 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        HaloExchangeTask<UserType, N, ac::mr::device_memory_resource> halo_exchange{local_mm,
-                                                                                    local_nn, rr,
-                                                                                    1};
+        HaloExchangeTask<UserType, ac::mr::device_memory_resource> halo_exchange{local_mm, local_nn,
+                                                                                 rr, 1};
         std::vector<ac::buffer<UserType, ac::mr::device_memory_resource>*> inputs{&din.buffer};
         halo_exchange.launch(cart_comm, inputs);
         halo_exchange.wait(inputs);
@@ -219,7 +218,7 @@ main()
                   static_cast<UserType>(get_rank(cart_comm)) *
                       static_cast<UserType>(prod(local_mm)));
 
-        IOTaskAsync<UserType, N> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
+        IOTaskAsync<UserType> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
         // iotask.launch_write_collective(cart_comm, hin.buffer, "test.dat");
         // iotask.wait_write_collective();
         mpi_write_collective(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,

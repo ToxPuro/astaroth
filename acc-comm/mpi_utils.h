@@ -7,12 +7,13 @@
 #include "datatypes.h"
 #include "errchk_mpi.h"
 #include "print_debug.h"
+#include "type_conversion.h"
 
 /**
  * Datatypes
  */
-template <size_t N> using MPIIndex = ac::array<int, N>;
-template <size_t N> using MPIShape = ac::array<int, N>;
+using MPIIndex = ac::vector<int>;
+using MPIShape = ac::vector<int>;
 
 /**
  * Helper macros for printing
@@ -49,38 +50,11 @@ template <size_t N> using MPIShape = ac::array<int, N>;
  * Functions for converting between Astaroth's uint64_t column major
  * and MPI's int row major formats
  */
-template <size_t N>
-auto
-astaroth_to_mpi_format(const ac::array<uint64_t, N>& in)
-{
-    ac::array<int, N> out;
-    for (size_t i{0}; i < in.size(); ++i)
-        out[i] = as<int>(in[i]);
-    std::reverse(out.begin(), out.end());
-    return out;
-}
+ac::vector<int> astaroth_to_mpi_format(const ac::vector<uint64_t>& in);
 
-template <size_t N>
-auto
-astaroth_to_mpi_format(const ac::array<int64_t, N>& in)
-{
-    ac::array<int, N> out;
-    for (size_t i{0}; i < in.size(); ++i)
-        out[i] = as<int>(in[i]);
-    std::reverse(out.begin(), out.end());
-    return out;
-}
+ac::vector<int> astaroth_to_mpi_format(const Direction& in);
 
-template <size_t N>
-auto
-mpi_to_astaroth_format(const ac::array<int, N>& in)
-{
-    ac::array<uint64_t, N> out;
-    for (size_t i{0}; i < in.size(); ++i)
-        out[i] = as<uint64_t>(in[i]);
-    std::reverse(out.begin(), out.end());
-    return out;
-}
+ac::vector<uint64_t> mpi_to_astaroth_format(const ac::vector<int>& in);
 
 /**
  * Wrappers for core functions
@@ -92,15 +66,7 @@ constexpr int MPI_TAG_UB_MIN_VALUE{32767};
 
 int get_tag(void);
 
-template <size_t N>
-ac::dir<N>
-get_direction(const ac::index<N>& offset, const ac::shape<N>& nn, const ac::index<N>& rr)
-{
-    ac::dir<N> dir{};
-    for (size_t i{0}; i < offset.size(); ++i)
-        dir[i] = offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
-    return dir;
-}
+Direction get_direction(const Index& offset, const Shape& nn, const Index& rr);
 
 void print_mpi_comm(const MPI_Comm& comm);
 
@@ -139,30 +105,7 @@ void finalize_mpi();
  * or
  *  ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
  */
-template <size_t N>
-MPI_Comm
-cart_comm_create(const MPI_Comm& parent_comm, const ac::shape<N>& global_nn)
-{
-    // Get the number of processes
-    int mpi_nprocs{-1};
-    ERRCHK_MPI_API(MPI_Comm_size(parent_comm, &mpi_nprocs));
-
-    // Use MPI for finding the decomposition
-    MPIShape<N> mpi_decomp{}; // Decompose all dimensions
-    ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(mpi_decomp.size()), mpi_decomp.data()));
-
-    // Create the Cartesian communicator
-    MPI_Comm cart_comm{MPI_COMM_NULL};
-    MPIShape<N> mpi_periods{ones<int, N>()}; // Periodic in all dimensions
-    int reorder{1}; // Enable reordering (but likely inop with most MPI implementations)
-    ERRCHK_MPI_API(MPI_Cart_create(parent_comm, as<int>(mpi_decomp.size()), mpi_decomp.data(),
-                                   mpi_periods.data(), reorder, &cart_comm));
-
-    // Can also add custom decomposition and rank reordering here instead:
-    // int reorder{0};
-    // ...
-    return cart_comm;
-}
+MPI_Comm cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn);
 
 void cart_comm_destroy(MPI_Comm& cart_comm);
 
@@ -173,22 +116,8 @@ void cart_comm_destroy(MPI_Comm& cart_comm);
  * or
  *  ERRCHK_MPI_API(MPI_Type_free(&subarray))
  * */
-template <size_t N>
-MPI_Datatype
-subarray_create(const ac::shape<N>& dims, const ac::shape<N>& subdims, const ac::index<N>& offset,
-                const MPI_Datatype& dtype)
-{
-    MPIShape<N> mpi_dims{astaroth_to_mpi_format(dims)};
-    MPIShape<N> mpi_subdims{astaroth_to_mpi_format(subdims)};
-    MPIIndex<N> mpi_offset{astaroth_to_mpi_format(offset)};
-
-    MPI_Datatype subarray = MPI_DATATYPE_NULL;
-    ERRCHK_MPI_API(MPI_Type_create_subarray(as<int>(dims.size()), mpi_dims.data(),
-                                            mpi_subdims.data(), mpi_offset.data(), MPI_ORDER_C,
-                                            dtype, &subarray));
-    ERRCHK_MPI_API(MPI_Type_commit(&subarray));
-    return subarray;
-}
+MPI_Datatype subarray_create(const Shape& dims, const Shape& subdims, const Index& offset,
+                             const MPI_Datatype& dtype);
 
 void subarray_destroy(MPI_Datatype& subarray);
 
@@ -205,68 +134,13 @@ void info_destroy(MPI_Info& info);
  */
 void request_wait_and_destroy(MPI_Request& req);
 
-template <size_t N>
-ac::shape<N>
-get_decomposition(const MPI_Comm& cart_comm)
-{
-    int mpi_ndims{-1};
-    ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
+Shape get_decomposition(const MPI_Comm& cart_comm);
 
-    MPIShape<N> mpi_decomp{};
-    MPIShape<N> mpi_periods{};
-    MPIIndex<N> mpi_coords{};
-    ERRCHK_MPI_API(MPI_Cart_get(cart_comm, mpi_ndims, mpi_decomp.data(), mpi_periods.data(),
-                                mpi_coords.data()));
-    return mpi_to_astaroth_format(mpi_decomp);
-}
-
-template <size_t N>
-ac::index<N>
-get_coords(const MPI_Comm& cart_comm)
-{
-    // Get the rank of the current process
-    int rank{MPI_PROC_NULL};
-    ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
-
-    // Get dimensions of the communicator
-    int mpi_ndims{-1};
-    ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
-
-    // Get the coordinates of the current process
-    MPIIndex<N> mpi_coords{fill<int, N>(-1)};
-    ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data()));
-    return mpi_to_astaroth_format(mpi_coords);
-}
+Index get_coords(const MPI_Comm& cart_comm);
 
 int get_rank(const MPI_Comm& cart_comm);
 
-template <size_t N>
-int
-get_neighbor(const MPI_Comm& cart_comm, const ac::dir<N>& dir)
-{
-    // Get the rank of the current process
-    int rank{MPI_PROC_NULL};
-    ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
-
-    // Get dimensions of the communicator
-    int mpi_ndims{-1};
-    ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
-
-    // Get the coordinates of the current process
-    MPIIndex<N> mpi_coords{fill<int, N>(-1)};
-    ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data()));
-
-    // Get the direction of the neighboring process
-    MPIIndex<N> mpi_dir{astaroth_to_mpi_format(dir)};
-
-    // Get the coordinates of the neighbor
-    MPIIndex<N> mpi_neighbor{mpi_coords + mpi_dir};
-
-    // Get the rank of the neighboring process
-    int neighbor_rank{MPI_PROC_NULL};
-    ERRCHK_MPI_API(MPI_Cart_rank(cart_comm, mpi_neighbor.data(), &neighbor_rank));
-    return neighbor_rank;
-}
+int get_neighbor(const MPI_Comm& cart_comm, const Direction& dir);
 
 /** Map type to MPI enum representing the type
  * Usage: MPIType<double>::value // returns MPI_DOUBLE
@@ -478,7 +352,7 @@ using info_ptr_t     = std::unique_ptr<MPI_Info, std::function<void(MPI_Info*)>>
 
 template <typename T, size_t N>
 static inline subarray_ptr_t
-datatype_make_unique(const ac::shape<N>& dims, const ac::shape<N>& subdims, const ac::index<N>& offset)
+datatype_make_unique(const Shape& dims, const Shape& subdims, const Index& offset)
 {
     auto* ptr           = new MPI_Datatype{MPI_DATATYPE_NULL};
     *ptr                = subarray_create(dims, subdims, offset, get_mpi_dtype<T>());
