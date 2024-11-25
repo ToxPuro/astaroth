@@ -94,7 +94,7 @@ endif()
 
 ## Packages
 find_package(MPI REQUIRED COMPONENTS C)
-add_library(acc-comm SHARED acm.cc acm_error.c halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc pack.cu pack.cc ndbuffer.cc buffer.cc decomp.cc partition.cc segment.cc math_utils.cc array.cc type_conversion.cc errchk_print.c)
+add_library(acc-comm SHARED acm.cc acm_error.c halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc pack.cu pack.cc ndbuffer.cc buffer.cc decomp.cc partition.cc segment.cc math_utils.cc vector.cc array.cc type_conversion.cc errchk_print.c)
 target_link_libraries(acc-comm PUBLIC MPI::MPI_C device-libraries)
 
 add_executable(run main.cc )

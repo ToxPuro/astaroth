@@ -7,6 +7,7 @@
 #include "pack.h"
 #include "partition.h"
 #include "type_conversion.h"
+#include "vector.h"
 
 int
 main(void)
@@ -20,6 +21,7 @@ main(void)
     test_buffer_exchange();
     test_buffer();
     test_ndbuffer();
+    test_vector();
 
     return EXIT_SUCCESS;
 }
