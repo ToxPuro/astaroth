@@ -52,10 +52,4 @@ test_array(void)
     {
         test_fn(ac::array<uint64_t, 3>{1, 2, 3});
     }
-    {
-        ac::shape<2> a{1, 2};
-        ac::shape<2> b{2, 3};
-        ac::shape<2> c{3, 5};
-        ERRCHK(a + b == c);
-    }
 }

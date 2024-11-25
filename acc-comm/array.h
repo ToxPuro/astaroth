@@ -27,6 +27,7 @@ template <typename T, size_t N> class array {
         ERRCHK(i < N);
         return resource[i];
     }
+
     __host__ __device__ const T& operator[](const size_t i) const
     {
         ERRCHK(i < N);
@@ -315,9 +316,6 @@ template <typename T, size_t N> class array {
     }
 };
 
-template <size_t N> using shape = ac::array<uint64_t, N>;
-template <size_t N> using index = ac::array<uint64_t, N>;
-template <size_t N> using dir   = ac::array<int64_t, N>;
 } // namespace ac
 
 template <typename T, size_t N>

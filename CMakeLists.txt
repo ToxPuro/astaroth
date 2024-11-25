@@ -176,6 +176,14 @@ if (NOT BUILD_SHARED_LIBS)
     add_subdirectory(samples/ac-interpreter)
 endif()
 
+## Third party
+add_subdirectory(3rdparty/inih)
+include_directories(3rdparty/inih)
+
+## Astaroth communication module
+add_subdirectory(acc-comm)
+include_directories(acc-comm)
+
 if (BUILD_UTILS)
     add_subdirectory(src/utils)
 endif()
