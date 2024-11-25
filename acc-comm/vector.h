@@ -50,13 +50,14 @@ template <typename T> class vector {
         ERRCHK(i < resource.size());
         return resource[i];
     }
-    auto size() const { return resource.size(); }
+    size_t size() const { return resource.size(); }
+    auto data() { return resource.data(); }
+    auto data() const { return resource.data(); }
+
     auto begin() { return resource.begin(); }
     auto begin() const { return resource.begin(); }
     auto end() { return resource.end(); }
     auto end() const { return resource.end(); }
-    auto data() { return resource.data(); }
-    auto data() const { return resource.data(); }
 };
 
 } // namespace ac

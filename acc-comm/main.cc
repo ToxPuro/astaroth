@@ -117,8 +117,6 @@ main()
 #if defined(DEVICE_ENABLED)
         benchmark();
 #endif
-        constexpr size_t N{2};
-
         const Shape global_nn{4, 4};
         MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
         const Shape decomp{get_decomposition(cart_comm)};

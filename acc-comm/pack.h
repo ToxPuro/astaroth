@@ -1,6 +1,5 @@
 #pragma once
 
-#include "array.h"
 #include "buffer.h"
 
 #include "math_utils.h"

@@ -1,7 +1,6 @@
 #pragma once
 #include <iomanip>
 
-#include "array.h"
 #include "buffer.h"
 
 #include "math_utils.h"

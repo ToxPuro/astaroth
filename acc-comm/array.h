@@ -1,37 +1,12 @@
 #pragma once
 
+#include "cuda_utils.h"
 #include "type_conversion.h"
-
-#if defined(CUDA_ENABLED)
-#include <cuda/std/array>
-namespace ac {
-template <typename T, size_t N> using base_array = cuda::std::array<T, N>;
-}
-#else
-#include <array>
-namespace ac {
-template <typename T, size_t N> using base_array = std::array<T, N>;
-}
-#endif
-
-// Mask __host__ __device__ directives if device runtime APIs are not available
-#if !defined(DEVICE_ENABLED)
-#define __host__
-#define __device__
-#endif
-
-// Disable errchecks in device code (not supported as of 2024-11-11)
-#if defined(__CUDA_ARCH__) || (defined(__HIP_DEVICE_COMPILE__) && __HIP_DEVICE_COMPILE__ == 1)
-#undef ERRCHK
-#define ERRCHK(expr)
-#undef ERRCHK_EXPR_DESC
-#define ERRCHK_EXPR_DESC(expr, ...)
-#endif
 
 namespace ac {
 template <typename T, size_t N> class array {
   private:
-    ac::base_array<T, N> resource{};
+    T resource[N]{};
 
   public:
     // Default constructor
@@ -42,10 +17,8 @@ template <typename T, size_t N> class array {
     explicit __host__ __device__ array(const std::initializer_list<T>& init_list)
     {
         ERRCHK(init_list.size() == N);
-        // std::copy(init_list.begin(), init_list.end(), resource.begin());
-        size_t i{0};
-        for (const auto& elem : init_list)
-            resource[i++] = elem;
+        for (size_t i{0}; i < N; ++i)
+            resource[i] = init_list.begin()[i];
     }
 
     // Enable the subscript[] operator
@@ -59,13 +32,16 @@ template <typename T, size_t N> class array {
         ERRCHK(i < N);
         return resource[i];
     }
-    __host__ __device__ auto size() const { return resource.size(); }
-    auto begin() { return resource.begin(); }
-    auto begin() const { return resource.begin(); }
-    auto end() { return resource.end(); }
-    auto end() const { return resource.end(); }
-    auto data() { return resource.data(); }
-    auto data() const { return resource.data(); }
+
+    constexpr __host__ __device__ size_t size() const { return N; }
+
+    T* data() { return resource; }
+    T* data() const { return resource; }
+
+    T* begin() { return data(); }
+    T* begin() const { return data(); }
+    T* end() { return data() + size(); }
+    T* end() const { return data() + size(); }
 
     template <typename U>
     friend __host__ __device__ ac::array<T, N> operator+(const ac::array<T, N>& a,

@@ -2,7 +2,7 @@
 
 #include <memory>
 
-// #include "buffer.h"
+#include "buffer.h"
 #include "pack.h"
 #include "segment.h"
 
@@ -130,7 +130,7 @@ template <typename T, typename MemoryResource> class Packet {
 
     bool complete() const { return !in_progress; };
 
-    friend __host__ std::ostream& operator<<(std::ostream& os, const Packet<T, MemoryResource>& obj)
+    friend std::ostream& operator<<(std::ostream& os, const Packet<T, MemoryResource>& obj)
     {
         os << "{";
         os << "segment: " << obj.segment << ", ";
