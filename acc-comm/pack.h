@@ -66,25 +66,25 @@ void unpack(const ac::buffer<T, ac::mr::device_memory_resource>& input, const Sh
 
 #define PACK_DTYPE double
 extern template void
-pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const Index& block_offset,
                  const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
                  ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
 
 extern template void
 unpack<PACK_DTYPE>(const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-                   const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+                   const Shape& mm, const Shape& block_shape, const Index& block_offset,
                    std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
 #undef PACK_DTYPE
 
 #define PACK_DTYPE uint64_t
 extern template void
-pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const Index& block_offset,
                  const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
                  ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
 
 extern template void
 unpack<PACK_DTYPE>(const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-                   const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+                   const Shape& mm, const Shape& block_shape, const Index& block_offset,
                    std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
 #undef PACK_DTYPE
 

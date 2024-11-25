@@ -2,6 +2,8 @@
 
 #include "errchk.h"
 
+#include "cuda_utils.h"
+
 #define ERRCHK_CUDA_API(errcode)                                                                   \
     do {                                                                                           \
         const cudaError_t _tmp_cuda_api_errcode_ = (errcode);                                      \

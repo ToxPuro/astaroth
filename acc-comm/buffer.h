@@ -79,13 +79,8 @@ template <typename T, typename MemoryResource> class buffer {
 } // namespace ac
 
 #if defined(DEVICE_ENABLED)
-#if defined(CUDA_ENABLED)
-#include <cuda_runtime.h>
-#elif defined(HIP_ENABLED)
-#include "hip.h"
-#include <hip/hip_runtime.h>
-#endif
 
+#include "cuda_utils.h"
 #include "errchk_cuda.h"
 
 template <typename MemoryResourceA, typename MemoryResourceB>

@@ -5,13 +5,8 @@
 // #include "buffer.h"
 #include "buffer.h"
 
-#if defined(CUDA_ENABLED)
+#if defined(DEVICE_ENABLED)
 #include "errchk_cuda.h"
-#include <cuda_runtime.h>
-#elif defined(HIP_ENABLED)
-#include "errchk_cuda.h"
-#include "hip.h"
-#include <hip/hip_runtime.h>
 #else
 #include "errchk.h"
 using cudaStream_t = unsigned int*;

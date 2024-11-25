@@ -1,7 +1,18 @@
 #pragma once
 
 // Remove __host__ __device__ if compiling without device libraries
-#if !defined(DEVICE_ENABLED)
+#if defined(DEVICE_ENABLED)
+
+#if defined(CUDA_ENABLED)
+#include <cuda_runtime.h>
+#elif defined(HIP_ENABLED)
+#include "hip.h"
+#include <hip/hip_runtime.h>
+#else
+static_assert(false, "Device code was enabled but neither CUDA_ENABLED nor HIP_ENABLED is set");
+#endif
+
+#else
 #define __host__
 #define __device__
 #endif
