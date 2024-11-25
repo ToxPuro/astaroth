@@ -8,9 +8,9 @@ constexpr size_t MAX_NDIMS       = 4;
 constexpr size_t MAX_N_AGGR_BUFS = 8;
 
 namespace device {
-template <size_t N>
+
 static __device__ uint64_t
-to_linear(const ac::static_array<uint64_t, N>& coords, const ac::static_array<uint64_t, N>& shape)
+to_linear(const ac::static_array<uint64_t, MAX_NDIMS>& coords, const ac::static_array<uint64_t, MAX_NDIMS>& shape)
 {
     uint64_t result{0};
     for (size_t j{0}; j < shape.size(); ++j) {
@@ -22,11 +22,11 @@ to_linear(const ac::static_array<uint64_t, N>& coords, const ac::static_array<ui
     return result;
 }
 
-template <size_t N>
-static __device__ ac::static_array<uint64_t, N>
-to_spatial(const uint64_t index, const ac::static_array<uint64_t, N>& shape)
+
+static __device__ ac::static_array<uint64_t, MAX_NDIMS>
+to_spatial(const uint64_t index, const ac::static_array<uint64_t, MAX_NDIMS>& shape)
 {
-    ac::static_array<uint64_t, N> coords;
+    ac::static_array<uint64_t, MAX_NDIMS> coords(shape.size());
     for (size_t j{0}; j < shape.size(); ++j) {
         uint64_t divisor{1};
         for (size_t i{0}; i < j; ++i)
@@ -36,21 +36,21 @@ to_spatial(const uint64_t index, const ac::static_array<uint64_t, N>& shape)
     return coords;
 }
 
-template <typename T, size_t N>
+template <typename T>
 static __device__ T
-prod(const ac::vector<T>& arr)
+prod(const ac::static_array<T, MAX_NDIMS>& arr)
 {
     static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
-    T result = 1;
+    T result{1};
     for (size_t i{0}; i < arr.size(); ++i)
         result *= arr[i];
     return result;
 }
 
-template <typename T, size_t N, size_t M>
+template <typename T>
 __global__ void
-kernel_pack(const ac::static_array<uint64_t, N> mm, const ac::static_array<uint64_t, N> block_shape,
-            const ac::static_array<uint64_t, N> block_offset, const ac::static_array<T*, M> inputs,
+kernel_pack(const ac::static_array<uint64_t, MAX_NDIMS> mm, const ac::static_array<uint64_t, MAX_NDIMS> block_shape,
+            const ac::static_array<uint64_t, MAX_NDIMS> block_offset, const ac::static_array<T*, MAX_N_AGGR_BUFS> inputs,
             T* output)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
@@ -59,10 +59,10 @@ kernel_pack(const ac::static_array<uint64_t, N> mm, const ac::static_array<uint6
         for (size_t j{0}; j < inputs.size(); ++j) {
 
             // Block coords
-            const ac::static_array<uint64_t, N> block_coords{device::to_spatial(i, block_shape)};
+            const ac::static_array<uint64_t, MAX_NDIMS> block_coords{device::to_spatial(i, block_shape)};
 
             // Input coords
-            const ac::static_array<uint64_t, N> in_coords{block_offset + block_coords};
+            const ac::static_array<uint64_t, MAX_NDIMS> in_coords{block_offset + block_coords};
             const uint64_t in_idx{device::to_linear(in_coords, mm)};
 
             output[i + j * block_nelems] = inputs[j][in_idx];
@@ -70,12 +70,12 @@ kernel_pack(const ac::static_array<uint64_t, N> mm, const ac::static_array<uint6
     }
 }
 
-#if 0
-template <typename T, size_t N, size_t M>
+
+template <typename T>
 __global__ void
-kernel_unpack(const T* input, const ac::static_array<uint64_t, N> mm,
-              const ac::static_array<uint64_t, N> block_shape, const ac::static_array<uint64_t, N> block_offset,
-              ac::static_array<T*, M> outputs)
+kernel_unpack(const T* input, const ac::static_array<uint64_t, MAX_NDIMS> mm,
+              const ac::static_array<uint64_t, MAX_NDIMS> block_shape, const ac::static_array<uint64_t, MAX_NDIMS> block_offset,
+              ac::static_array<T*, MAX_N_AGGR_BUFS> outputs)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{prod(block_shape)};
@@ -83,22 +83,32 @@ kernel_unpack(const T* input, const ac::static_array<uint64_t, N> mm,
         for (size_t j{0}; j < outputs.size(); ++j) {
 
             // Block coords
-            const ac::static_array<uint64_t, N> block_coords{device::to_spatial(i, block_shape)};
+            const ac::static_array<uint64_t, MAX_NDIMS> block_coords{device::to_spatial(i, block_shape)};
 
             // Input coords
-            const ac::static_array<uint64_t, N> in_coords{block_offset + block_coords};
+            const ac::static_array<uint64_t, MAX_NDIMS> in_coords{block_offset + block_coords};
             const uint64_t in_idx{device::to_linear(in_coords, mm)};
 
             outputs[j][in_idx] = input[i + j * block_nelems];
         }
     }
 }
-#endif
+
 } // namespace device
 
 template <typename T>
 static std::vector<T*>
 unwrap(const std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& buffers)
+{
+    std::vector<T*> output;
+    for (ac::buffer<T, ac::mr::device_memory_resource>* ptr : buffers)
+        output.push_back(ptr->data());
+    return output;
+}
+
+template <typename T>
+static std::vector<T*>
+unwrap(std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& buffers)
 {
     std::vector<T*> output;
     for (ac::buffer<T, ac::mr::device_memory_resource>* ptr : buffers)
@@ -120,48 +130,34 @@ pack(const Shape& in_mm, const Shape& in_block_shape, const Index& in_block_offs
     const auto block_shape  = ac::static_array<uint64_t, MAX_NDIMS>(in_block_shape);
     const auto block_offset = ac::static_array<uint64_t, MAX_NDIMS>(in_block_offset);
     const auto inputs       = ac::static_array<T*, MAX_N_AGGR_BUFS>(unwrap(in_inputs));
-    const auto output       = in_output.data;
+    const auto output       = in_output.data();
 
-    kernel_pack
+    device::kernel_pack
         <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm, block_shape, block_offset, inputs, output);
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
-
-    // switch (mm.size()) {
-    // case 1: {
-    //     constexpr size_t N = 1;
-    //     switch (inputs.size()) {
-    //     }
-    // }
-    // }
-
-    // switch (inputs.size()) {
-    // case 1: {
-    //     constexpr size_t M = 1;
-    //     device::kernel_pack<T, N, M>
-    //         <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(ac::array<T, N>(mm),
-    //                                                    ac::array<T, N>(block_shape),
-    //                                                    ac::array<T, N>(block_offset),
-    //                                                    ac::array<T*, M>{inputs[0].data()},
-    //                                                    output.data());
-    //     break;
-    // }
-    // default:
-    //     ERRCHK_EXPR_DESC(false, "input size %zu not supported", inputs.size());
-    // }
-    // ERRCHK_CUDA_KERNEL();
-    // cudaDeviceSynchronize();
 }
 
 template <typename T>
 void
-unpack(const ac::buffer<T, ac::mr::device_memory_resource>& input, const Shape& mm,
-       const Shape& block_shape, const Index& block_offset,
-       std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& outputs)
+unpack(const ac::buffer<T, ac::mr::device_memory_resource>& in_input, const Shape& in_mm,
+       const Shape& in_block_shape, const Index& in_block_offset,
+       std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& in_outputs)
 {
-    // const uint64_t block_nelems{prod(block_shape)};
-    // const uint64_t tpb{256};
-    // const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
+    const uint64_t block_nelems{prod(in_block_shape)};
+    const uint64_t tpb{256};
+    const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
+
+    const auto input       = in_input.data();
+    const auto mm           = ac::static_array<uint64_t, MAX_NDIMS>(in_mm);
+    const auto block_shape  = ac::static_array<uint64_t, MAX_NDIMS>(in_block_shape);
+    const auto block_offset = ac::static_array<uint64_t, MAX_NDIMS>(in_block_offset);
+    const auto outputs       = ac::static_array<T*, MAX_N_AGGR_BUFS>(unwrap(in_outputs));
+
+    device::kernel_unpack
+        <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input, mm, block_shape, block_offset, outputs);
+    ERRCHK_CUDA_KERNEL();
+    cudaDeviceSynchronize();
 
     // switch (outputs.size()) {
     // case 1: {

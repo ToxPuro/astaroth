@@ -82,15 +82,22 @@ template <typename T, size_t N> class static_array {
     }
 
     // Construct from a vector
-    template<typename VectorType>
-    __host__ explicit static_array(const VectorType<T>& vec)
+    // template<typename VectorType>
+    __host__ __device__ static_array(const ac::vector<T>& vec)
         : static_array(vec.size())
     {
         for (size_t i{0}; i < vec.size(); ++i)
             data[i] = vec[i];
     }
 
-    __host__ __device__ size_t size() { return count; }
+    __host__ __device__ static_array(const std::vector<T>& vec)
+        : static_array(vec.size())
+    {
+        for (size_t i{0}; i < vec.size(); ++i)
+            data[i] = vec[i];
+    }
+
+    __host__ __device__ size_t size() const { return count; }
 
     // Common operations
     template <typename U> T __host__ __device__ dot(const static_array<U, N> other) const
