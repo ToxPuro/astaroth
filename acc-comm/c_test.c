@@ -28,6 +28,7 @@ print_array(const char* label, const size_t count, const uint64_t* arr)
 }
 
 #define PRINT_ARRAY_DEBUG(count, arr) (print_array(#arr, (count), (arr)))
+#define MAX_NDIMS ((size_t)4)
 
 int
 main(void)
@@ -36,17 +37,21 @@ main(void)
 
     const uint64_t global_nn[] = {128, 128, 128};
     const size_t ndims         = ARRAY_SIZE(global_nn);
+    if (ndims > MAX_NDIMS) {
+        fprintf(stderr, "ndims %zu larger than MAX_NDIMS %zu\n", ndims, MAX_NDIMS);
+        return EXIT_FAILURE;
+    }
 
     MPI_Comm cart_comm;
     ERRCHK_ACM(ACM_MPI_Cart_comm_create(MPI_COMM_WORLD, ndims, global_nn, &cart_comm));
 
-    uint64_t local_nn[ndims] = {0};
+    uint64_t local_nn[MAX_NDIMS] = {0};
     ERRCHK_ACM(ACM_Get_local_nn(cart_comm, ndims, global_nn, local_nn));
 
-    uint64_t decomp[ndims] = {0};
+    uint64_t decomp[MAX_NDIMS] = {0};
     ERRCHK_ACM(ACM_Get_decomposition(cart_comm, ndims, decomp));
 
-    uint64_t global_nn_offset[ndims] = {0};
+    uint64_t global_nn_offset[MAX_NDIMS] = {0};
     ERRCHK_ACM(ACM_Get_global_nn_offset(cart_comm, ndims, global_nn, global_nn_offset));
 
     PRINT_ARRAY_DEBUG(ndims, global_nn);
