@@ -11,6 +11,11 @@
 
 #include "tfm_utils.h"
 
+#include "acc-comm/print_debug.h"
+
+#include <mpi.h>
+#include "acc-comm/mpi_utils.h"
+
 #define ERRCHK_ACM(errcode)                                                                        \
     do {                                                                                           \
         const ACM_Errorcode _tmp_acm_api_errcode_ = (errcode);                                     \
@@ -22,57 +27,81 @@
         }                                                                                          \
     } while (0)
 
+#define ERRCHK_AC(errcode)                                                                        \
+    do {                                                                                           \
+        const AcResult _tmp_ac_api_errcode_ = (errcode);                                     \
+        if (_tmp_ac_api_errcode_ != AC_SUCCESS) {                                      \
+            errchk_print_error(__func__, __FILE__, __LINE__, #errcode);                            \
+            errchk_print_stacktrace();                                                             \
+            MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
+        }                                                                                          \
+    } while (0)
+
 constexpr size_t NDIMS{3};
 
-// static get_local_box_size(const size_t ndims, )
+static int get_local_box_size(const size_t ndims, const uint64_t* global_nn, const double* global_box_size, const uint64_t* local_nn, double* local_box_size)
+{
+    for (size_t i = 0; i < ndims; ++i) {
+        
+        // Division by zero
+        if (!global_nn[i])
+            return -1;
+
+        local_box_size[i] = (static_cast<double>(local_nn[i]) / static_cast<double>(global_nn[i])) * global_box_size[i];
+    }
+    
+    return 0;
+}
 
 static AcMeshInfo get_local_mesh_info(const MPI_Comm cart_comm, const AcMeshInfo info)
 {
-    return AcMeshInfo{};
-    // const uint64_t global_nn[NDIMS]{
-    //     as<uint64_t>(info.int_params[AC_global_nx]), 
-    //     as<uint64_t>(info.int_params[AC_global_ny]), 
-    //     as<uint64_t>(info.int_params[AC_global_nz])
-    // };
-    // const AcReal global_box_size[NDIMS]{
-    //     info.real_params[AC_global_box_size_x], 
-    //     info.real_params[AC_global_box_size_y], 
-    //     info.real_params[AC_global_box_size_z]
-    // };
-    // const uint64_t rr[NDIMS]{
-    //     as<uint64_t>((STENCIL_WIDTH - 1)/2), 
-    //     as<uint64_t>((STENCIL_HEIGHT - 1)/2), 
-    //     as<uint64_t>((STENCIL_DEPTH - 1)/2)
-    // };
-    // uint64_t local_nn[NDIMS]{};
-    // uint64_t global_nn_offset[NDIMS]{};
-    // double box_size[NDIMS]{};
+    const uint64_t global_nn[NDIMS]{
+        as<uint64_t>(info.int_params[AC_global_nx]), 
+        as<uint64_t>(info.int_params[AC_global_ny]), 
+        as<uint64_t>(info.int_params[AC_global_nz])
+    };
+    const AcReal global_box_size[NDIMS]{
+        static_cast<double>(info.real_params[AC_global_sx]), 
+        static_cast<double>(info.real_params[AC_global_sy]), 
+        static_cast<double>(info.real_params[AC_global_sz])
+    };
+    uint64_t local_nn[NDIMS]{};
+    ERRCHK_ACM(ACM_Get_local_nn(cart_comm, NDIMS, global_nn, local_nn));
+    
+    uint64_t global_nn_offset[NDIMS]{};
+    ERRCHK_ACM(ACM_Get_global_nn_offset(cart_comm, NDIMS, global_nn, global_nn_offset));
+    
+    double local_box_size[NDIMS]{};
+    ERRCHK(get_local_box_size(NDIMS, global_nn, global_box_size, local_nn, local_box_size) == 0);
 
-    // ERRCHK_ACM(ACM_Get_local_nn(cart_comm, NDIMS, global_nn, local_nn));
-    // ERRCHK_ACM(ACM_Get_global_nn_offset(cart_comm, NDIMS, global_nn, global_nn_offset));
-    // ERRCHK(get_local_box_size())
+    AcMeshInfo local_info{info};
+    local_info.int_params[AC_nx] = as<int>(local_nn[0]);
+    local_info.int_params[AC_ny] = as<int>(local_nn[1]);
+    local_info.int_params[AC_nz] = as<int>(local_nn[2]);
 
-    // AcMeshInfo local_info{info};
-    // local_info.int_params[AC_nx] = local_nn[0];
-    // local_info.int_params[AC_ny] = local_nn[1];
-    // local_info.int_params[AC_nz] = local_nn[2];
+    local_info.int3_params[AC_multigpu_offset] = {
+        as<int>(global_nn_offset[0]),
+        as<int>(global_nn_offset[1]),
+        as<int>(global_nn_offset[2]),
+    };
 
-    // local_info.int3_params[AC_multigpu_offset] = (int3){
-    //     global_nn_offset[0],
-    //     global_nn_offset[1],
-    //     global_nn_offset[2],
-    // };
+    local_info.real_params[AC_sx] = static_cast<AcReal>(local_box_size[0]);
+    local_info.real_params[AC_sy] = static_cast<AcReal>(local_box_size[1]);
+    local_info.real_params[AC_sz] = static_cast<AcReal>(local_box_size[2]);
+    
+    // Backwards compatibility
+    local_info.int3_params[AC_global_grid_n] = {
+        as<int>(global_nn[0]),
+        as<int>(global_nn[1]),
+        as<int>(global_nn[2]),
+    };
 
-    // local_info.int3_params[AC_global_grid_n] = (int3){
-    //     global_nn[0],
-    //     global_nn[1],
-    //     global_nn[2],
-    // };
-    // ERRCHK(acHostUpdateBuiltinParams(&local_info) == 0);
-    // ERRCHK(acHostUpdateMHDSpecificParams(&local_info) == 0);
-    // ERRCHK(acHostUpdateTFMSpecificGlobalParams(&local_info) == 0);
+    ERRCHK(acHostUpdateLocalBuiltinParams(&local_info) == 0);
+    ERRCHK(acHostUpdateMHDSpecificParams(&local_info) == 0);
+    ERRCHK(acHostUpdateTFMSpecificGlobalParams(&local_info) == 0);
 
-    // return local_info;
+    WARNCHK(acVerifyMeshInfo(local_info) == 0);
+    return local_info;
 }
 
 int main(int argc, char* argv[])
@@ -87,6 +116,7 @@ int main(int argc, char* argv[])
         ERRCHK(acParseArguments(argc, argv, &args) == 0);
         ERRCHK(acPrintArguments(args) == 0);
 
+        // Load configuration
         AcMeshInfo info{};
         if (args.config_path) {
             ERRCHK(acParseINI(args.config_path, &info) == 0);
@@ -97,25 +127,57 @@ int main(int argc, char* argv[])
         }
         ERRCHK(acPrintMeshInfo(info) == 0);
 
-        const uint64_t global_nn[NDIMS]{
+        const uint64_t global_nn_c[NDIMS]{
             as<uint64_t>(info.int_params[AC_global_nx]), 
             as<uint64_t>(info.int_params[AC_global_ny]), 
             as<uint64_t>(info.int_params[AC_global_nz])
         };
-        PRINT_DEBUG(global_nn);
+        PRINT_DEBUG_ARRAY(NDIMS, global_nn_c);
 
+        // Create the Cartesian communicator
         MPI_Comm cart_comm;
-        ERRCHK_ACM(ACM_MPI_Cart_comm_create(MPI_COMM_WORLD, NDIMS, global_nn, &cart_comm));
+        ERRCHK_ACM(ACM_MPI_Cart_comm_create(MPI_COMM_WORLD, NDIMS, global_nn_c, &cart_comm));
 
-        const AcMeshInfo local_info = get_local_mesh_info(cart_comm, info);
-        ERRCHK(acPrintMeshInfo(local_info) == 0);
+        // Fill the local mesh configuration (overwrite the earlier info
+        info = get_local_mesh_info(cart_comm, info);
+        ERRCHK(acPrintMeshInfo(info) == 0);
 
-    // constexpr size_t NDIMS{3};
-    // const uint64_t global_nn[NDIMS];
-    // const uint64_t local_nn[NDIMS];
-    // const uint64_t global_nn_offset[NDIMS];
-    // const uint64_t rr[NDIMS];
+        // Select device
+        int original_rank, nprocs;
+        ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &original_rank));
+        ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
+
+        int device_count;
+        ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
+        ERRCHK_CUDA_API(cudaSetDevice(original_rank % device_count));
+        ERRCHK_CUDA_API(cudaDeviceSynchronize());
     
+        // Allocate buffers
+        const Shape global_nn {
+            as<uint64_t>(info.int_params[AC_global_nx]), 
+            as<uint64_t>(info.int_params[AC_global_ny]), 
+            as<uint64_t>(info.int_params[AC_global_nz])
+        };
+        const Shape local_nn {
+            as<uint64_t>(info.int_params[AC_nx]), 
+            as<uint64_t>(info.int_params[AC_ny]), 
+            as<uint64_t>(info.int_params[AC_nz])
+        };
+        const Index rr {
+            as<uint64_t>((STENCIL_WIDTH - 1)/2), 
+            as<uint64_t>((STENCIL_HEIGHT - 1)/2), 
+            as<uint64_t>((STENCIL_DEPTH - 1)/2)
+        };
+        const Shape local_mm{as<uint64_t>(2) * rr + local_nn};
+
+
+        // std::unique_ptr<VertexBufferArray, std::decltype(&acVBADestroy)> vba{acVBACreate(1,1,1), &acVBADestroy};
+        // auto vba = std::unique_ptr<VertexBufferArray, std::decltype(&acVBADestroy)>(acVBACreate(local_mm[0], local_mm[1], local_mm[2]), &acVBADestroy);
+        // VertexBufferArray vba = acVBACreate(local_mm[0], local_mm[1], local_mm[2]);
+        // ERRCHK_AC(acVBADestroy(&vba));
+
+
+        ERRCHK_ACM(ACM_MPI_Cart_comm_destroy(&cart_comm));
 
     } catch (const std::exception& e){
         std::cerr << e.what() << std::endl;

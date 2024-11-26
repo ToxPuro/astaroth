@@ -106,17 +106,49 @@ acParseINI(const char* filepath, AcMeshInfo* info)
     if (retval != 0)
         return -1;
 
+
+    // Update and verification should be handled elsewhere
     // Update the rest of the parameters
     // acHostUpdateBuiltinParams(info);
 
     // Check for uninitialized values
-    for (size_t i = 0; i < NUM_INT_PARAMS; ++i)
-        if (info->int_params[i] == INT_MIN)
+    // for (size_t i = 0; i < NUM_INT_PARAMS; ++i)
+    //     if (info->int_params[i] == INT_MIN)
+    //         fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", intparam_names[i]);
+    // for (size_t i = 0; i < NUM_REAL_PARAMS; ++i)
+    //     if (info->real_params[i] == (AcReal)NAN)
+    //         fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", realparam_names[i]);
+    // return 0;
+}
+
+int acVerifyMeshInfo(const AcMeshInfo info)
+{
+    int retval = 0;
+    for (size_t i = 0; i < NUM_INT_PARAMS; ++i) {
+        if (info.int_params[i] == INT_MIN) {
+            retval = -1;
             fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", intparam_names[i]);
-    for (size_t i = 0; i < NUM_REAL_PARAMS; ++i)
-        if (info->real_params[i] == (AcReal)NAN)
+        }
+    }
+    for (size_t i = 0; i < NUM_INT3_PARAMS; ++i) {
+        if (info.int3_params[i].x == INT_MIN || info.int3_params[i].y == INT_MIN || info.int3_params[i].z == INT_MIN) {
+            retval = -1;
+            fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", int3param_names[i]);
+        }
+    }
+    for (size_t i = 0; i < NUM_REAL_PARAMS; ++i) {
+        if (info.real_params[i] == (AcReal)NAN){
+            retval = -1;
             fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", realparam_names[i]);
-    return 0;
+        }
+    }
+    for (size_t i = 0; i < NUM_REAL3_PARAMS; ++i) {
+        if (info.real3_params[i].x == (AcReal)NAN || info.real3_params[i].y == (AcReal)NAN || info.real3_params[i].z == (AcReal)NAN) {
+            retval = -1;
+            fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", real3param_names[i]);
+        }
+    }
+    return retval;
 }
 
 int
@@ -127,7 +159,7 @@ acPrintArguments(const Arguments args)
 }
 
 int
-acHostUpdateBuiltinParams(AcMeshInfo* config)
+acHostUpdateLocalBuiltinParams(AcMeshInfo* config)
 {
     ERRCHK_ALWAYS(config->int_params[AC_nx] > 0);
     ERRCHK_ALWAYS(config->int_params[AC_ny] > 0);
@@ -200,9 +232,9 @@ acHostUpdateMHDSpecificParams(AcMeshInfo* info)
                                       info->real_params[AC_cs_sound];
 
     // Other
-    info->real_params[AC_center_x] = info->real_params[AC_global_box_size_x] / 2;
-    info->real_params[AC_center_y] = info->real_params[AC_global_box_size_y] / 2;
-    info->real_params[AC_center_z] = info->real_params[AC_global_box_size_z] / 2;
+    info->real_params[AC_center_x] = info->real_params[AC_global_sx] / 2;
+    info->real_params[AC_center_y] = info->real_params[AC_global_sy] / 2;
+    info->real_params[AC_center_z] = info->real_params[AC_global_sz] / 2;
 
     return 0;
 }
@@ -210,9 +242,9 @@ acHostUpdateMHDSpecificParams(AcMeshInfo* info)
 int
 acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info)
 {
-    info->real_params[AC_dsx] = info->real_params[AC_global_box_size_x] / (info->int_params[AC_global_nx] - 1);
-    info->real_params[AC_dsy] = info->real_params[AC_global_box_size_y] / (info->int_params[AC_global_ny] - 1);
-    info->real_params[AC_dsz] = info->real_params[AC_global_box_size_z] / (info->int_params[AC_global_nz] - 1);
+    info->real_params[AC_dsx] = info->real_params[AC_global_sx] / (info->int_params[AC_global_nx] - 1);
+    info->real_params[AC_dsy] = info->real_params[AC_global_sy] / (info->int_params[AC_global_ny] - 1);
+    info->real_params[AC_dsz] = info->real_params[AC_global_sz] / (info->int_params[AC_global_nz] - 1);
 
     return 0;
 }

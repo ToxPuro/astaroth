@@ -16,11 +16,13 @@ int acParseINI(const char* filepath, AcMeshInfo* info);
 
 int acPrintArguments(const Arguments args);
 
-int acHostUpdateBuiltinParams(AcMeshInfo* config);
+int acHostUpdateLocalBuiltinParams(AcMeshInfo* config);
 
 int acHostUpdateMHDSpecificParams(AcMeshInfo* info);
 
 int acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info);
+
+int acVerifyMeshInfo(const AcMeshInfo info);
 
 int acPrintMeshInfo(const AcMeshInfo config);
 
