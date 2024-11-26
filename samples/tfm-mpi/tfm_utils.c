@@ -6,6 +6,7 @@
 #include "ini.h"
 
 #include "astaroth_forcing.h"
+#include "acc-runtime/api/errchk.h"
 
 int
 acParseArguments(const int argc, char* argv[], Arguments* args)
@@ -106,7 +107,7 @@ acParseINI(const char* filepath, AcMeshInfo* info)
         return -1;
 
     // Update the rest of the parameters
-    acHostUpdateBuiltinParams(info);
+    // acHostUpdateBuiltinParams(info);
 
     // Check for uninitialized values
     for (size_t i = 0; i < NUM_INT_PARAMS; ++i)
@@ -118,10 +119,11 @@ acParseINI(const char* filepath, AcMeshInfo* info)
     return 0;
 }
 
-void
+int
 acPrintArguments(const Arguments args)
 {
     printf("[config_path]: %s\n", args.config_path);
+    return 0;
 }
 
 int
@@ -173,12 +175,12 @@ acHostUpdateBuiltinParams(AcMeshInfo* config)
     config->int_params[AC_nxyz] = config->int_params[AC_nxy] * config->int_params[AC_nz];
 
     /* Multi-GPU params */
-    config->int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
-    config->int3_params[AC_global_grid_n]   = (int3){
-        config->int_params[AC_nx],
-        config->int_params[AC_ny],
-        config->int_params[AC_nz],
-    };
+    // config->int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
+    // config->int3_params[AC_global_grid_n]   = (int3){
+    //     config->int_params[AC_nx],
+    //     config->int_params[AC_ny],
+    //     config->int_params[AC_nz],
+    // };
 
     return 0;
 }
@@ -198,9 +200,9 @@ acHostUpdateMHDSpecificParams(AcMeshInfo* info)
                                       info->real_params[AC_cs_sound];
 
     // Other
-    info->real_params[AC_center_x] = info->real_params[AC_box_size_x] / 2;
-    info->real_params[AC_center_y] = info->real_params[AC_box_size_y] / 2;
-    info->real_params[AC_center_z] = info->real_params[AC_box_size_z] / 2;
+    info->real_params[AC_center_x] = info->real_params[AC_global_box_size_x] / 2;
+    info->real_params[AC_center_y] = info->real_params[AC_global_box_size_y] / 2;
+    info->real_params[AC_center_z] = info->real_params[AC_global_box_size_z] / 2;
 
     return 0;
 }
@@ -208,14 +210,14 @@ acHostUpdateMHDSpecificParams(AcMeshInfo* info)
 int
 acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info)
 {
-    info->real_params[AC_dsx] = info->real_params[AC_box_size_x] / (info->int_params[AC_nx] - 1);
-    info->real_params[AC_dsy] = info->real_params[AC_box_size_y] / (info->int_params[AC_ny] - 1);
-    info->real_params[AC_dsz] = info->real_params[AC_box_size_z] / (info->int_params[AC_nz] - 1);
+    info->real_params[AC_dsx] = info->real_params[AC_global_box_size_x] / (info->int_params[AC_global_nx] - 1);
+    info->real_params[AC_dsy] = info->real_params[AC_global_box_size_y] / (info->int_params[AC_global_ny] - 1);
+    info->real_params[AC_dsz] = info->real_params[AC_global_box_size_z] / (info->int_params[AC_global_nz] - 1);
 
     return 0;
 }
 
-void
+int
 acPrintMeshInfo(const AcMeshInfo config)
 {
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
@@ -228,4 +230,6 @@ acPrintMeshInfo(const AcMeshInfo config)
     for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
         printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.real3_params[i].x),
                (double)(config.real3_params[i].y), (double)(config.real3_params[i].z));
+
+    return 0;
 }

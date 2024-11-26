@@ -1,72 +1,129 @@
-#include <cstdlib>
 #include <iostream>
+#include <cstdlib>
 
-#include "acc_runtime.h"
+#include "acc-runtime/api/acc_runtime.h"
+
+#include "acc-comm/acm.h"
+#include "acc-comm/errchk.h"
+#include "acc-comm/type_conversion.h"
+
+#include "acc-comm/vector.h"
 
 #include "tfm_utils.h"
 
-#include "array.h"
+#define ERRCHK_ACM(errcode)                                                                        \
+    do {                                                                                           \
+        const ACM_Errorcode _tmp_acm_api_errcode_ = (errcode);                                     \
+        if (_tmp_acm_api_errcode_ != ACM_ERRORCODE_SUCCESS) {                                      \
+            errchk_print_error(__func__, __FILE__, __LINE__, #errcode,                             \
+                               ACM_Get_errorcode_description(errcode));                            \
+            errchk_print_stacktrace();                                                             \
+            MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
+        }                                                                                          \
+    } while (0)
 
-#include "mpi_utils.h"
-#include <mpi.h>
+constexpr size_t NDIMS{3};
 
-#include "errchk_cuda.h"
-#include "errchk_mpi.h"
+// static get_local_box_size(const size_t ndims, )
 
-using Shape = ac::shape<3>;
-using Index = ac::shape<3>;
-
-int
-main(const int argc, char* argv[])
+static AcMeshInfo get_local_mesh_info(const MPI_Comm cart_comm, const AcMeshInfo info)
 {
-    init_mpi_funneled();
+    return AcMeshInfo{};
+    // const uint64_t global_nn[NDIMS]{
+    //     as<uint64_t>(info.int_params[AC_global_nx]), 
+    //     as<uint64_t>(info.int_params[AC_global_ny]), 
+    //     as<uint64_t>(info.int_params[AC_global_nz])
+    // };
+    // const AcReal global_box_size[NDIMS]{
+    //     info.real_params[AC_global_box_size_x], 
+    //     info.real_params[AC_global_box_size_y], 
+    //     info.real_params[AC_global_box_size_z]
+    // };
+    // const uint64_t rr[NDIMS]{
+    //     as<uint64_t>((STENCIL_WIDTH - 1)/2), 
+    //     as<uint64_t>((STENCIL_HEIGHT - 1)/2), 
+    //     as<uint64_t>((STENCIL_DEPTH - 1)/2)
+    // };
+    // uint64_t local_nn[NDIMS]{};
+    // uint64_t global_nn_offset[NDIMS]{};
+    // double box_size[NDIMS]{};
+
+    // ERRCHK_ACM(ACM_Get_local_nn(cart_comm, NDIMS, global_nn, local_nn));
+    // ERRCHK_ACM(ACM_Get_global_nn_offset(cart_comm, NDIMS, global_nn, global_nn_offset));
+    // ERRCHK(get_local_box_size())
+
+    // AcMeshInfo local_info{info};
+    // local_info.int_params[AC_nx] = local_nn[0];
+    // local_info.int_params[AC_ny] = local_nn[1];
+    // local_info.int_params[AC_nz] = local_nn[2];
+
+    // local_info.int3_params[AC_multigpu_offset] = (int3){
+    //     global_nn_offset[0],
+    //     global_nn_offset[1],
+    //     global_nn_offset[2],
+    // };
+
+    // local_info.int3_params[AC_global_grid_n] = (int3){
+    //     global_nn[0],
+    //     global_nn[1],
+    //     global_nn[2],
+    // };
+    // ERRCHK(acHostUpdateBuiltinParams(&local_info) == 0);
+    // ERRCHK(acHostUpdateMHDSpecificParams(&local_info) == 0);
+    // ERRCHK(acHostUpdateTFMSpecificGlobalParams(&local_info) == 0);
+
+    // return local_info;
+}
+
+int main(int argc, char* argv[])
+{
+    // Init MPI
+    ERRCHK_ACM(ACM_MPI_Init_funneled());
+
     try {
-        // Load config
-        Arguments args;
-        ERRCHK_MPI(acParseArguments(argc, argv, &args) == 0);
 
-        printf("Arguments:\n");
-        acPrintArguments(args);
-        printf("\n");
+        // Parse arguments
+        Arguments args{};
+        ERRCHK(acParseArguments(argc, argv, &args) == 0);
+        ERRCHK(acPrintArguments(args) == 0);
 
-        if (args.config_path == nullptr) {
-            throw std::invalid_argument("Error: Must supply config path. Pass --h for usage.");
+        AcMeshInfo info{};
+        if (args.config_path) {
+            ERRCHK(acParseINI(args.config_path, &info) == 0);
+        } else {
+            const std::string config_path{AC_DEFAULT_TFM_CONFIG};
+            PRINT_LOG("No config path supplied, using %s", config_path.c_str());
+            ERRCHK(acParseINI(config_path.c_str(), &info) == 0);
         }
+        ERRCHK(acPrintMeshInfo(info) == 0);
 
-        // Mesh configuration
-        AcMeshInfo info;
-        ERRCHK_MPI(acParseINI(args.config_path, &info) == 0);
-        ERRCHK_MPI(acHostUpdateTFMSpecificGlobalParams(&info) == 0);
-        ERRCHK_MPI(acHostUpdateMHDSpecificParams(&info) == 0);
+        const uint64_t global_nn[NDIMS]{
+            as<uint64_t>(info.int_params[AC_global_nx]), 
+            as<uint64_t>(info.int_params[AC_global_ny]), 
+            as<uint64_t>(info.int_params[AC_global_nz])
+        };
+        PRINT_DEBUG(global_nn);
 
-        printf("MeshInfo:\n");
-        acPrintMeshInfo(info);
-        printf("\n");
+        MPI_Comm cart_comm;
+        ERRCHK_ACM(ACM_MPI_Cart_comm_create(MPI_COMM_WORLD, NDIMS, global_nn, &cart_comm));
 
-        // // Setup communicator
-        // const Shape global_nn{8, 8};
-        // MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
-        // const Shape decomp{get_decomposition<ndims>(cart_comm)};
-        // const Shape local_nn{global_nn / decomp};
-        // const Index coords{get_coords<ndims>(cart_comm)};
-        // const Index global_nn_offset{coords * local_nn};
+        const AcMeshInfo local_info = get_local_mesh_info(cart_comm, info);
+        ERRCHK(acPrintMeshInfo(local_info) == 0);
 
-        // const Shape rr{as<uint64_t>(2) * ones<uint64_t, ndims>()}; // Symmetric halo
-        // const Shape local_mm{as<uint64_t>(2) * rr + local_nn};
-        // const int rank{get_rank(cart_comm)};
+    // constexpr size_t NDIMS{3};
+    // const uint64_t global_nn[NDIMS];
+    // const uint64_t local_nn[NDIMS];
+    // const uint64_t global_nn_offset[NDIMS];
+    // const uint64_t rr[NDIMS];
+    
 
-        // // Setup device
-        // // Use the original rank to set the device s.t. the cpu-gpu binding set with slurm is
-        // // correct
-        // int original_rank{get_rank(MPI_COMM_WORLD)};
-        // int device_count;
-        // ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
-        // ERRCHK_CUDA_API(cudaSetDevice(original_rank % device_count));
-    }
-    catch (const std::exception& e) {
+    } catch (const std::exception& e){
         std::cerr << e.what() << std::endl;
-        MPI_Abort(MPI_COMM_WORLD, -1);
+        ERRCHK_ACM(ACM_MPI_Abort());
     }
-    finalize_mpi();
+
+    // Finalize MPI
+    ERRCHK_ACM(ACM_MPI_Finalize());
+    std::cout << "Complete" << std::endl;
     return EXIT_SUCCESS;
 }
