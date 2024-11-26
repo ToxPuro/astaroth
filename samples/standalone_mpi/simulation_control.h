@@ -11,6 +11,8 @@
 
 #include "astaroth_utils.h"
 
+#include "grid_detail.h"
+
 // Structure for keeping track of any generic condition
 struct SimulationPeriod {
 

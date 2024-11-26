@@ -20,7 +20,7 @@
 #include "astaroth.h"
 
 #if AC_MPI_ENABLED
-#include <mpi.h>
+// #include <mpi.h> // Not needed for device compilation
 #include <stdbool.h>
 
 #define MPI_GPUDIRECT_DISABLED (0)

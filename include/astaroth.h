@@ -20,9 +20,9 @@
 
 #include "acc_runtime.h"
 
-#if AC_MPI_ENABLED
-#include <mpi.h>
-#endif
+// #if AC_MPI_ENABLED
+// #include <mpi.h>
+// #endif
 
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
 
@@ -549,12 +549,14 @@ Destroys the communicator and calls MPI_Finalize
 */
 void ac_MPI_Finalize();
 
-/**
-Returns the MPI communicator used by all Astaroth processes.
+/** Returns the rank of the Astaroth communicator */
+int ac_MPI_Comm_rank();
 
-If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD
- */
-MPI_Comm acGridMPIComm();
+/** Returns the size of the Astaroth communicator */
+int ac_MPI_Comm_size();
+
+/** Calls MPI_Barrier on the Astaroth communicator */
+void ac_MPI_Barrier();
 
 /**
 Initializes all available devices.
