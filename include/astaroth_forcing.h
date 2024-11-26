@@ -1,6 +1,6 @@
 #pragma once
 
-#include "datatypes.h"
+#include "acc_runtime.h"
 
 typedef struct {
     AcReal magnitude;

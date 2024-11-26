@@ -2,7 +2,11 @@
 # V3.9 required for first-class CUDA support
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.21)
+
+## Project settings
+project(astaroth)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Options
 option(DOUBLE_PRECISION   "Generates double precision code."                    ON)
@@ -25,17 +29,6 @@ option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
 option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
 
-if (USE_HIP)
-    find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
-    set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
-    set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
-endif()
-
-
-
-## Project settings
-project(astaroth C CXX)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
 # -Werror TODO readd
@@ -48,45 +41,69 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # For IDE highlighting (clangd)
 
 ## Build type
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release") # Default
+    set(CMAKE_BUILD_TYPE "RelWithDebSymbols") # Default
 endif()
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
+## CUDA and HIP
+find_package(CUDAToolkit QUIET)
+find_package(HIP QUIET)
+if(NOT USE_HIP AND CUDAToolkit_FOUND)
+    message(STATUS "CUDA found")
+    enable_language(CUDA)
+    add_compile_options(-DDEVICE_ENABLED)
+    add_compile_options(-DCUDA_ENABLED)
+    set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
+    include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
+elseif(USE_HIP OR HIP_FOUND)
+    set(USE_HIP ON)
+    message(STATUS "HIP found")
+    enable_language(HIP)
+    add_compile_options(-DDEVICE_ENABLED)
+    add_compile_options(-DHIP_ENABLED)
+    set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+    include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
+
+    # Backwards-compatibility
+    add_definitions(-DAC_USE_HIP=1)
+else()
+    message(ERROR "Did not find CUDA or HIP")
+endif()
 
 ## CUDA/HIP
-if (USE_HIP)
-    add_definitions(-DAC_USE_HIP=1)
+# if (USE_HIP)
+    # add_definitions(-DAC_USE_HIP=1)
 
-    set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --offload-arch=gfx908 --offload-arch=gfx90a")
+    # set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
+    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --offload-arch=gfx908 --offload-arch=gfx90a")
 
-    # Workaround for finding HIP on Triton
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)
-    # Workaround for finding HIP on Lumi
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3)
-    # Workaround for finding roctracer on Frontier
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/roctracer /opt/rocm-default)
-    include_directories(/opt/rocm-default/roctracer/include)
-    link_directories(/opt/rocm-default/roctracer/lib)
+    # # Workaround for finding HIP on Triton
+    # list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)
+    # # Workaround for finding HIP on Lumi
+    # list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3)
+    # # Workaround for finding roctracer on Frontier
+    # list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/roctracer /opt/rocm-default)
+    # include_directories(/opt/rocm-default/roctracer/include)
+    # link_directories(/opt/rocm-default/roctracer/lib)
 
 
-    # Rocm
-    #include_directories(/opt/rocm/include)
-    #link_directories(/opt/rocm/lib)
+    # # Rocm
+    # #include_directories(/opt/rocm/include)
+    # #link_directories(/opt/rocm/lib)
 
-    # Roctracer
-    include_directories(/opt/rocm-5.2.3/roctracer/include)
-    link_directories(/opt/rocm-5.2.3/roctracer/lib)
+    # # Roctracer
+    # include_directories(/opt/rocm-5.2.3/roctracer/include)
+    # link_directories(/opt/rocm-5.2.3/roctracer/lib)
 
-    # Rocrand
-    include_directories(/opt/rocm-5.2.3/hiprand/include)
-    include_directories(/opt/rocm-5.2.3/rocrand/include)
-    link_directories(/opt/rocm-5.2.3/hiprand/lib)
-    link_directories(/opt/rocm-5.2.3/rocrand/lib)
+    # # Rocrand
+    # include_directories(/opt/rocm-5.2.3/hiprand/include)
+    # include_directories(/opt/rocm-5.2.3/rocrand/include)
+    # link_directories(/opt/rocm-5.2.3/hiprand/lib)
+    # link_directories(/opt/rocm-5.2.3/rocrand/lib)
 
-    find_package(hip)
-else ()
-    enable_language(CUDA)
+    # find_package(hip)
+# else ()
+    # enable_language(CUDA)
 
     # Commented out CUDA host compiler flags: seem to be ignored anyways
     #string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
@@ -99,23 +116,23 @@ else ()
 
     # Not supported with older CUDA
     # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --Werror all-warnings")
-    if (NOT DOUBLE_PRECISION)
-      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=--warn-on-double-precision-use") # -Werror,
-    endif()
+    # if (NOT DOUBLE_PRECISION)
+    #   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=--warn-on-double-precision-use") # -Werror,
+    # endif()
     #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -dlcm=ca") # Cache global loads in L1
     #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -dlcm=cg") # Cache global loads in L2 (default on >= NVIDIA Fermi)
 
     # Set device code architecture
-    if (NOT CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES 60 61 70 80) # Default
-    else ()
-        set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
-    endif()
+    # if (NOT CUDA_ARCHITECTURES)
+    #     set(CMAKE_CUDA_ARCHITECTURES 60 61 70 80) # Default
+    # else ()
+    #     set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
+    # endif()
 
     # CUB and Thrust
-    include_directories(${CUB_PATH})
-    include_directories(${THRUST_PATH})
-endif()
+    # include_directories(${CUB_PATH}) // Built-in support in modern CUDA & HIP
+    # include_directories(${THRUST_PATH})
+# endif()
 
 include(FetchContent)
 
@@ -128,7 +145,7 @@ if (VERBOSE)
 endif ()
 if (MPI_ENABLED)
     find_package(MPI REQUIRED COMPONENTS C)
-    include_directories(${MPI_C_INCLUDE_DIRS})
+    # include_directories(${MPI_C_INCLUDE_DIRS})
     add_definitions(-DAC_MPI_ENABLED=1)
 endif ()
 if (USE_POSIX_IO)
@@ -157,8 +174,8 @@ endif()
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
 ## Includes
-include_directories(include)                                   # Library headers
-include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers
+# include_directories(include)                                   # Library headers
+# include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers # Already included earlier
 
 # Additional program modules
 if (PROGRAM_MODULE_DIR)
@@ -182,7 +199,7 @@ include_directories(3rdparty/inih)
 
 ## Astaroth communication module
 add_subdirectory(acc-comm)
-include_directories(acc-comm)
+# include_directories(acc-comm)
 
 if (BUILD_UTILS)
     add_subdirectory(src/utils)
@@ -203,8 +220,8 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/mpi-io)
     add_subdirectory(samples/mpi-io-multithreaded)
     add_subdirectory(samples/pc-varfile-import)
-    add_subdirectory(samples/bwtest)
-    add_subdirectory(samples/microbenchmark)
+    # add_subdirectory(samples/bwtest)
+    # add_subdirectory(samples/microbenchmark)
 
     if (BUILD_MLLIB_SAMPLES)
 	# Workaround for finding miopen on Triton
