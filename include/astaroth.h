@@ -187,42 +187,22 @@ extern "C" {
  * Helper functions
  * =============================================================================
  */
-static inline size_t
-acVertexBufferSize(const AcMeshInfo info)
-{
-    return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) *
-           as_size_t(info.int_params[AC_mz]);
-}
+size_t
+acVertexBufferSize(const AcMeshInfo info);
 
-static inline size_t
-acVertexBufferSizeBytes(const AcMeshInfo info)
-{
-    return sizeof(AcReal) * acVertexBufferSize(info);
-}
+size_t
+acVertexBufferSizeBytes(const AcMeshInfo info);
 
-static inline size_t
-acVertexBufferCompdomainSize(const AcMeshInfo info)
-{
-    return as_size_t(info.int_params[AC_nx]) * as_size_t(info.int_params[AC_ny]) *
-           as_size_t(info.int_params[AC_nz]);
-}
+size_t
+acVertexBufferCompdomainSize(const AcMeshInfo info);
 
-static inline size_t
-acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
-{
-    return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
-}
 
-static inline int3
+size_t
+acVertexBufferCompdomainSizeBytes(const AcMeshInfo info);
+
+int3
 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
-                     const AcMeshInfo info)
-{
-    return (int3){
-        info.int_params[a],
-        info.int_params[b],
-        info.int_params[c],
-    };
-}
+                     const AcMeshInfo info);
 
 typedef struct {
     int3 n0, n1;
@@ -272,13 +252,9 @@ AcMeshInfo acGridDecomposeMeshInfo(const AcMeshInfo global_config);
 
 AcMeshInfo acGridGetLocalMeshInfo(void);
 
-static inline size_t
+size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
-{
-    return as_size_t(i) +                          //
-           as_size_t(j) * info.int_params[AC_mx] + //
-           as_size_t(k) * info.int_params[AC_mx] * info.int_params[AC_my];
-}
+;
 
 static inline int3
 acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)

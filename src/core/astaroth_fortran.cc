@@ -19,6 +19,7 @@
 #include "astaroth_fortran.h"
 
 #include "astaroth.h"
+#include "acc-runtime/api/errchk.h"
 
 /**
  * Utils

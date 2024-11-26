@@ -25,6 +25,7 @@
  *
  */
 #include "astaroth.h"
+#include "acc-runtime/api/errchk.h"
 
 typedef long double Scalar;
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))

@@ -49,7 +49,7 @@ else()
 endif()
 
 ## Include directories
-include_directories(.)
+# include_directories(.)
 
 ## Compile options
 if (NOT DEFINED IMPLEMENTATION)

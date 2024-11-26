@@ -30,7 +30,6 @@
 #endif
 
 #include "datatypes.h"
-#include "errchk.h"
 
 #include "user_defines.h"
 

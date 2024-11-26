@@ -1,5 +1,6 @@
 ## Astaroth Core
 add_library(astaroth_core device.cc grid.cc task.cc node.cc astaroth.cc astaroth_fortran.cc debug.cc decomposition.cc)
+target_include_directories(astaroth_core PRIVATE ${CMAKE_SOURCE_DIR})
 
 if (USE_HIP)
     # find_package(hip) # Already found earlier
