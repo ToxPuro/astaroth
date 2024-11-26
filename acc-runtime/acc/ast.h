@@ -122,6 +122,7 @@ typedef struct astnode_s {
 static inline ASTNode*
 astnode_dup(const ASTNode* node, ASTNode* parent)
 {
+	if(!node) return NULL;
 	ASTNode* res = (ASTNode*)calloc(1,sizeof(node[0]));
 	res->id = node->id;
 	res->type = node->type;

@@ -99,9 +99,9 @@ typedef enum AcReduceOp
 typedef struct {
   int variable;
   AcType type;
-  bool called;
+  AcReduceOp op;
+  AcKernel kernel;
 } KernelReduceOutput;
-  #include "kernel_reduce_outputs.h"
   #include "user_input_typedefs.h"
 
 #if AC_RUNTIME_COMPILATION
@@ -191,11 +191,13 @@ typedef struct {
   {
   	int read_fields[NUM_KERNELS][NUM_ALL_FIELDS];
   	int field_has_stencil_op[NUM_KERNELS][NUM_ALL_FIELDS];
+  	int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS];
   	int written_fields[NUM_KERNELS][NUM_ALL_FIELDS];
 	int read_profiles[NUM_KERNELS][NUM_PROFILES];
 	int reduced_profiles[NUM_KERNELS][NUM_PROFILES];
 	int written_profiles[NUM_KERNELS][NUM_PROFILES];
-
+	KernelReduceOutput reduce_outputs[NUM_KERNELS][NUM_OUTPUTS+1];
+	size_t n_reduce_outputs[NUM_KERNELS];
   } KernelAnalysisInfo;
 
   typedef struct {

@@ -90,6 +90,7 @@ typedef struct Grid {
     size_t mpi_tag_space_count;
     bool mpi_initialized;
     bool copied_user_mesh = false;
+    KernelAnalysisInfo kernel_analysis_info{};
 } Grid;
 
 static Grid grid = {};
@@ -455,6 +456,30 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
     return submesh;
 }
 
+void
+check_compile_info_matches_runtime_info(const KernelAnalysisInfo info)
+{
+#include "stencil_accesses.h"
+	for(int k = 0; k < NUM_KERNELS; ++k)
+		for(int j = 0; j < NUM_ALL_FIELDS; ++j)
+			for(int i = 0; i < NUM_STENCILS; ++i)
+			{
+				if(info.stencils_accessed[k][j][i] && !stencils_accessed[k][j][i])
+					fatal("In Kernel %s Stencil %s used for %s at runtime but not generated!\n"
+					      "Most likely that stencill is executed in a control-flow path that was not taken.\n"
+					      "Consider either runtime-compilation or rewriting the kernel do avoid the conditional stencil call\n"
+					      ,kernel_names[k], stencil_names[i], field_names[i]
+					      );
+				if(!info.stencils_accessed[k][j][i] && stencils_accessed[k][j][i])
+					acLogFromRootProc(ac_pid(), "PERF WARNING: In Kernel %s Stencil %s generated for %s but not accessed at runtime!\n"
+							            "Most likely because the stencil call is performed inside conditional control-flow.\n"
+								    "Consider using runtime-compilation to skip the unnecessary generation of Stencil access\n"
+					     ,kernel_names[k], stencil_names[i], field_names[i]
+					      );
+			}
+
+}
+
 AcResult
 acGridInitBase(const AcMesh user_mesh)
 {
@@ -556,6 +581,8 @@ acGridInitBase(const AcMesh user_mesh)
     	FILE* fp = fopen("taskgraph_log.txt","w");
     	fclose(fp);
     }
+    acAnalysisGetKernelInfo(grid.device->local_config,&grid.kernel_analysis_info);	
+    check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
     return AC_SUCCESS;
 }
 
@@ -2081,52 +2108,45 @@ acGridDestroyTaskGraph(AcTaskGraph* graph)
     delete graph;
     return AC_SUCCESS;
 }
+std::vector<KernelReduceOutput>
+get_reduce_outputs(const AcTaskGraph* graph)
+{
+    std::vector<KernelReduceOutput> reduce_outputs{};
+    for (auto& task : graph->all_tasks) {
+    	if(!task->isComputeTask()) continue;
+    	auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
+    	auto kernel       = compute_task -> getKernel();
+    	for(size_t i = 0; i < grid.kernel_analysis_info.n_reduce_outputs[kernel]; ++i)
+    	    reduce_outputs.push_back(grid.kernel_analysis_info.reduce_outputs[kernel][i]);
+    }
+    return reduce_outputs;
+}
 
 AcResult
 acGridFinalizeReduceLocal(AcTaskGraph* graph)
 {
-    std::array<KernelReduceOutput,NUM_OUTPUTS> reduce_outputs;
-    for(int i = 0; i < NUM_OUTPUTS; ++i)
-    {
-	    reduce_outputs[i].variable = -1;
-	    reduce_outputs[i].type = AC_REAL_TYPE;
-    }
-    std::array<AcKernel,NUM_OUTPUTS> reduce_kernels;
-    std::array<AcReduceOp,NUM_OUTPUTS> reduce_ops;
-    acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
-    for(int i = 0; i < NUM_OUTPUTS; ++i)
-    {
-    	for (auto& task : graph->all_tasks) {
-    	    if(reduce_outputs[i].variable < 0 && task->isComputeTask())
-    	    {
-    	            auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
-    	            reduce_kernels[i] = compute_task -> getKernel();
-    	            reduce_outputs[i] =  kernel_reduce_outputs[(int)reduce_kernels[i]][i];
-    	            reduce_ops[i] = kernel_reduce_ops[(int)reduce_kernels[i]][i];
-    	    }
-    	}
-    }
+    if constexpr(NUM_OUTPUTS == 0) return AC_SUCCESS;
     AcReal local_res_real[NUM_OUTPUTS]{};
     int    local_res_int[NUM_OUTPUTS]{};
-    for(int i = 0; i < NUM_OUTPUTS; ++i)
+    const auto reduce_outputs = get_reduce_outputs(graph);
+    for(size_t i = 0; i < reduce_outputs.size(); ++i)
     {
-	    if(reduce_outputs[i].variable >= 0 && reduce_outputs[i].called)
-	    {
-		if(reduce_outputs[i].type == AC_REAL_TYPE)
-	    		acDeviceFinishReduce(grid.device,(Stream)reduce_outputs[i].variable,&local_res_real[i],reduce_kernels[i],reduce_ops[i],(AcRealOutputParam)reduce_outputs[i].variable);
-		else if(reduce_outputs[i].type == AC_INT_TYPE)
-	    		acDeviceFinishReduceInt(grid.device,(Stream)reduce_outputs[i].variable,&local_res_int[i],reduce_kernels[i],reduce_ops[i],(AcIntOutputParam)reduce_outputs[i].variable);
-		else if(reduce_outputs[i].type == AC_PROF_TYPE)
-			;//acDeviceReduceAverages(grid.device, reduce_outputs[i].variable, (Profile)reduce_outputs[i].variable);
-		else
-			fatal("Unknown reduce output type: %d,%d\n",i,reduce_outputs[i].type);
-	    }
+	    const auto var    = reduce_outputs[i].variable;
+	    const auto op     = reduce_outputs[i].op;
+	    const auto kernel = reduce_outputs[i].kernel;
+	    if(reduce_outputs[i].type == AC_REAL_TYPE)
+	    	acDeviceFinishReduce(grid.device,(Stream)i,&local_res_real[i],kernel,op,(AcRealOutputParam)var);
+	    else if(reduce_outputs[i].type == AC_INT_TYPE)
+	    	acDeviceFinishReduceInt(grid.device,(Stream)i,&local_res_int[i],kernel,op,(AcIntOutputParam)var);
+	    else if(reduce_outputs[i].type == AC_PROF_TYPE)
+		;//acDeviceReduceAverages(grid.device, reduce_outputs[i].variable, (Profile)reduce_outputs[i].variable);
+	    else
+		fatal("Unknown reduce output type: %d,%d\n",i,reduce_outputs[i].type);
     }
+
     acDeviceSynchronizeStream(grid.device,STREAM_ALL);
-    for(int i = 0; i < NUM_OUTPUTS; ++i)
+    for(size_t i = 0; i < reduce_outputs.size(); ++i)
     {
-	    if(reduce_outputs[i].variable >= 0 && reduce_outputs[i].called)
-	    {
 		if(reduce_outputs[i].type == AC_REAL_TYPE)
     	    		grid.device -> output.real_outputs[reduce_outputs[i].variable] = local_res_real[i];
 		else if(reduce_outputs[i].type == AC_INT_TYPE)
@@ -2135,7 +2155,6 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
 			;
 		else
 			fatal("Unknown reduce output type: %d,%d\n",i,reduce_outputs[i].type);
-	    }
     }
     return AC_SUCCESS;
 }
@@ -2159,27 +2178,9 @@ to_mpi_op(const AcReduceOp op)
 AcResult
 acGridFinalizeReduce(AcTaskGraph* graph)
 {
+    if constexpr(NUM_OUTPUTS == 0) return AC_SUCCESS;
     acGridFinalizeReduceLocal(graph);
-    //copypasted from acGridFinalizeReduceLocal.
-    //TODO: remove copypaste
-    KernelReduceOutput reduce_outputs[NUM_OUTPUTS];
-    for(int i = 0; i < NUM_OUTPUTS; ++i)
-	    reduce_outputs[i].variable = -1;
-    AcKernel reduce_kernels[NUM_OUTPUTS];
-    AcReduceOp reduce_ops[NUM_OUTPUTS];
-    acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
-    for(int i = 0; i < NUM_OUTPUTS; ++i)
-    {
-    	for (auto& task : graph->all_tasks) {
-    	    if(reduce_outputs[i].variable < 0 && task->isComputeTask())
-    	    {
-    	            auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
-    	            reduce_kernels[i] = compute_task -> getKernel();
-    	            reduce_outputs[i] =  kernel_reduce_outputs[(int)reduce_kernels[i]][i];
-    	            reduce_ops[i] = kernel_reduce_ops[(int)reduce_kernels[i]][i];
-    	    }
-    	}
-    }
+    const auto reduce_outputs = get_reduce_outputs(graph);
     for(int i = 0; i < NUM_OUTPUTS; ++i)
     {
     	if(reduce_outputs[i].variable >=0)
@@ -2190,7 +2191,7 @@ acGridFinalizeReduce(AcTaskGraph* graph)
 		else
 			fatal("%s","Unknown reduce output type\n");
     	        AcReal mpi_res{};
-    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, to_mpi_op(reduce_ops[i]), astaroth_comm);
+    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, to_mpi_op(reduce_outputs[i].op), astaroth_comm);
     	        grid.device->output.real_outputs[reduce_outputs[i].variable] = mpi_res;
     	}
     }

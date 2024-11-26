@@ -165,22 +165,62 @@ static int read_profiles[NUM_PROFILES]{};
 static int reduced_profiles[NUM_PROFILES]{};
 static int written_profiles[NUM_PROFILES]{};
 
-#define reduce_sum_real    reduce
-#define reduce_min_real    reduce
-#define reduce_max_real    reduce
-#define reduce_sum_real_x  reduce
-#define reduce_sum_real_y  reduce
-#define reduce_sum_real_z  reduce
-#define reduce_sum_real_xy reduce
-#define reduce_sum_real_xz reduce
-#define reduce_sum_real_yx reduce
-#define reduce_sum_real_yz reduce
-#define reduce_sum_real_zx reduce
-#define reduce_sum_real_zy reduce
-#define reduce_sum_int     reduce
-#define reduce_min_int     reduce
-#define reduce_max_int     reduce
+AcKernel current_kernel{};
+#define reduce_sum_real_x  reduce_prof
+#define reduce_sum_real_y  reduce_prof
+#define reduce_sum_real_z  reduce_prof
+#define reduce_sum_real_xy reduce_prof
+#define reduce_sum_real_xz reduce_prof
+#define reduce_sum_real_yx reduce_prof
+#define reduce_sum_real_yz reduce_prof
+#define reduce_sum_real_zx reduce_prof
+#define reduce_sum_real_zy reduce_prof
 
+std::vector<KernelReduceOutput> reduce_outputs{};
+
+void
+reduce_sum_real(const bool&, const AcReal, const AcRealOutputParam dst)
+{
+	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_SUM,current_kernel});
+}
+
+void
+reduce_max_real(const bool&, const AcReal, const AcRealOutputParam dst)
+{
+	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_MAX,current_kernel});
+}
+
+void
+reduce_min_real(const bool&, const AcReal, const AcRealOutputParam dst)
+{
+	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_MIN,current_kernel});
+}
+
+void
+reduce_sum_int(const bool&, const AcReal, const AcIntOutputParam dst)
+{
+	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_SUM,current_kernel});
+}
+
+void
+reduce_max_int(const bool&, const AcReal, const AcIntOutputParam dst)
+{
+	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MAX,current_kernel});
+}
+
+void
+reduce_min_int(const bool&, const AcReal, const AcIntOutputParam dst)
+{
+	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MIN,current_kernel});
+}
+
+void
+reduce_prof(const bool&, const AcReal, const Profile dst)
+{
+	if constexpr (NUM_PROFILES != 0)
+		reduced_profiles[(int)dst] |= 1;
+	reduce_outputs.push_back({(int)dst,AC_PROF_TYPE, REDUCE_SUM,current_kernel});
+}
 
 
 #define value_profile_x value_profile
@@ -195,7 +235,8 @@ static int written_profiles[NUM_PROFILES]{};
 AcReal
 value_profile(const Profile& prof)
 {
-	read_profiles[prof] = 1;
+	if constexpr (NUM_PROFILES != 0)
+		read_profiles[prof] = 1;
 	return 0.0;
 }
 
@@ -217,21 +258,6 @@ get_name(const Profile& param)
 }
 
  
-FILE* reduce_dst_integers = NULL;
-void
-reduce(const bool&, const AcReal, const Profile prof)
-{
-	reduced_profiles[prof] = 1;
-	if(reduce_dst_integers)
-		fprintf(reduce_dst_integers,"%d,",prof);
-}
-template <typename T1, typename T2>
-void
-reduce(const bool&, const T1&, const T2& dst)
-{
-	if(reduce_dst_integers)
-		fprintf(reduce_dst_integers,"%d,",dst);
-}
 extern "C" 
 {
 	AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src);
@@ -443,12 +469,13 @@ get_executed_nodes()
 void
 reset_info_arrays()
 {
-    memset(stencils_accessed, 0,
-           sizeof(stencils_accessed[0][0]) * NUM_ALL_FIELDS * NUM_STENCILS);
-    memset(read_fields,0, sizeof(read_fields[0]) * NUM_ALL_FIELDS);
-    memset(field_has_stencil_op,0, sizeof(field_has_stencil_op[0]) * NUM_ALL_FIELDS);
-    memset(written_fields, 0,    sizeof(written_fields[0]) * NUM_ALL_FIELDS);
-    memset(previous_accessed, 0, sizeof(previous_accessed[0]) * NUM_ALL_FIELDS);
+    memset(stencils_accessed, 0,sizeof(stencils_accessed));
+    memset(read_fields,0, sizeof(read_fields));
+    memset(field_has_stencil_op,0, sizeof(field_has_stencil_op));
+    memset(written_fields, 0,    sizeof(written_fields));
+    memset(previous_accessed, 0, sizeof(previous_accessed));
+    std::vector<KernelReduceOutput> empty_vec{};
+    reduce_outputs = empty_vec;
     //TP: would use memset but at least on Puhti the C++ compiler gives an incorrect warning that I am not multiplying the element size even though I am (I guess because the compiler simply sees zero if there are no profiles?)
     for(int i = 0; i  < NUM_PROFILES; ++i)
     {
@@ -487,11 +514,13 @@ acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary b
 	return (acAnalysisBCInfo){larger_input,larger_output};
 }
 AcResult
-acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src)
+acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
 {
 	d_mesh_info = info;
+	memset(dst->stencils_accessed,false,sizeof(dst->stencils_accessed));
 	for(size_t k = 0; k <NUM_KERNELS; ++k)
 	{
+		current_kernel = (AcKernel)k;
 		reset_info_arrays();
     		if (!skip_kernel_in_analysis[k])
     		{
@@ -505,21 +534,30 @@ acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src)
     		              if(i == 0) read_fields[j] |= stencils_accessed[j][i];
     			      field_has_stencil_op[j] |= (i != 0);
     			    }
+			    dst->stencils_accessed[k][j][i] |= stencils_accessed[j][i];
     			    read_fields[j] |= previous_accessed[j];
     			  }
     			}
     		}
 		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
 		{
-			src->read_fields[k][i]    = read_fields[i];
-			src->field_has_stencil_op[k][i] = field_has_stencil_op[i];
-			src->written_fields[k][i] = written_fields[i];
+			dst->read_fields[k][i]    = read_fields[i];
+			dst->field_has_stencil_op[k][i] = field_has_stencil_op[i];
+			dst->written_fields[k][i] = written_fields[i];
 		}
 		for(size_t i = 0; i < NUM_PROFILES; ++i)
 		{
-			src->read_profiles[k][i]    = read_profiles[i];
-			src->reduced_profiles[k][i] = reduced_profiles[i];
-			src->written_profiles[k][i] = written_profiles[i];
+			dst->read_profiles[k][i]    = read_profiles[i];
+			dst->reduced_profiles[k][i] = reduced_profiles[i];
+			dst->written_profiles[k][i] = written_profiles[i];
+		}
+		dst->n_reduce_outputs[k] = reduce_outputs.size();
+		for(size_t i = 0; i < reduce_outputs.size(); ++i)
+			dst->reduce_outputs[k][i] = reduce_outputs[i];
+		if(dst->n_reduce_outputs[k] > NUM_OUTPUTS)
+		{
+			fprintf(stderr,"Can not reduce variables multiple times in a Kernel\n");
+			exit(EXIT_FAILURE);
 		}
 	}
 	return AC_SUCCESS;
@@ -539,20 +577,21 @@ main(int argc, char* argv[])
   const char* output = argv[1];
   FILE* fp           = fopen(output, "w+");
   assert(fp);
-  reduce_dst_integers = fopen("reduce_dst_integers.h","w");
   FILE* fp_fields_read = fopen("user_read_fields.bin","wb");
   FILE* fp_written_fields = fopen("user_written_fields.bin", "wb");
-  FILE* fp_field_has_stencil_op = fopen("user_field_has_stencil_op.bin","wb");
+  FILE* fp_field_has_stencil_op    = fopen("user_field_has_stencil_op.bin","wb");
+  FILE* fp_field_has_previous_call = fopen("user_field_has_previous_call.bin","wb");
   FILE* fp_profiles_read = fopen("user_read_profiles.bin","wb");
   FILE* fp_profiles_reduced = fopen("user_reduced_profiles.bin","wb");
 
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
-          "= {");
+          "__attribute__((unused)) =  {");
   int  write_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
   int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS]{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     reset_info_arrays();
+    fprintf(fp,"{");
     if (!skip_kernel_in_analysis[k])
     {
     	execute_kernel(k);
@@ -564,7 +603,6 @@ main(int argc, char* argv[])
     	    {
 	      if(i == 0) read_fields[j] |= stencils_accessed[j][i];
     	      field_has_stencil_op[j] |= (i != 0);
-    	      fprintf(fp, "[%lu][%lu][%lu] = 1,", k, j, i);
     	    }
     	    read_fields[j] |= previous_accessed[j];
     	  }
@@ -572,12 +610,24 @@ main(int argc, char* argv[])
 	  write_output[k][j] = written_fields[j];
     	}
     } 
+
+    for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
+    { 
+      fprintf(fp,"{");
+      for (size_t i = 0; i < NUM_STENCILS; ++i)
+      {
+        fprintf(fp,"%d,",stencils_accessed[j][i]);
+      }
+      fprintf(fp,"},");
+    }
+    fprintf(fp,"},");
+
     fwrite(read_fields,sizeof(int), NUM_ALL_FIELDS,fp_fields_read);
     fwrite(field_has_stencil_op,sizeof(int), NUM_ALL_FIELDS,fp_field_has_stencil_op);
+    fwrite(previous_accessed,sizeof(int), NUM_ALL_FIELDS,fp_field_has_previous_call);
     fwrite(written_fields,sizeof(int),NUM_ALL_FIELDS,fp_written_fields);
     fwrite(read_profiles   ,sizeof(int),NUM_PROFILES,fp_profiles_read);
     fwrite(reduced_profiles,sizeof(int),NUM_PROFILES,fp_profiles_reduced);
-    fprintf(reduce_dst_integers,"\n");
   }
 
 
@@ -588,25 +638,26 @@ main(int argc, char* argv[])
   fclose(fp_field_has_stencil_op);
   fclose(fp_profiles_read);
   fclose(fp_profiles_reduced);
-  fclose(reduce_dst_integers);
 
   fprintf(fp,
           "static int previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
-          "= {");
+          "__attribute__((unused)) =  {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
+    fprintf(fp,"{");
     for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
-        if (output_previous_accessed[k][j])
-          fprintf(fp, "[%lu][%lu] = 1,", k, j);
+        fprintf(fp, "%d,", output_previous_accessed[k][j]);
+    fprintf(fp,"},");
   }
   fprintf(fp, "};");
 
   fprintf(fp,
           "static int write_called[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
-          "= {");
+          "__attribute__((unused)) =  {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
+    fprintf(fp,"{");
     for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
-        if (write_output[k][j])
-          fprintf(fp, "[%lu][%lu] = 1,", k, j);
+        fprintf(fp, "%d,", write_output[k][j]);
+    fprintf(fp,"},");
   }
   fprintf(fp, "};");
   fclose(fp);

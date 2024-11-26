@@ -213,11 +213,12 @@ to_upper_case(const char* src)
 	return intern(res);
 }
 
-static int* written_fields       = NULL;
-static int* read_fields          = NULL;
-static int* read_profiles        = NULL;
-static int* reduced_profiles     = NULL;
-static int* field_has_stencil_op = NULL;
+static int* written_fields           = NULL;
+static int* read_fields              = NULL;
+static int* read_profiles            = NULL;
+static int* reduced_profiles         = NULL;
+static int* field_has_stencil_op     = NULL;
+static int* field_has_previous_call  = NULL;
 static size_t num_fields   = 0;
 static size_t num_profiles = 0;
 static size_t num_kernels  = 0;
@@ -372,7 +373,7 @@ static const char* EMPTY_STR      = NULL;
 bool
 has_optimization_info()
 {
- return written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
+ return written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields && field_has_previous_call;
 }
 string_vec
 get_struct_field_types(const char* struct_name);
@@ -3228,7 +3229,6 @@ gen_kernel_postfixes(ASTNode* root, const bool gen_mem_accesses)
 void
 gen_kernel_reduce_outputs(const bool gen_mem_accesses)
 {
-  FILE* fp = fopen("kernel_reduce_outputs.h","w");
   string_vec prof_types = get_prof_types();
   int num_reduce_outputs = 0;
   for (size_t i = 0; i < num_symbols[0]; ++i)
@@ -3236,106 +3236,9 @@ gen_kernel_reduce_outputs(const bool gen_mem_accesses)
 		    || str_vec_contains(prof_types,symbol_table[i].tspecifier)
 	)
 	    ++num_reduce_outputs;
-  //extra padding to make the code compile on some compilers
-  fprintf(fp,"%s","static const KernelReduceOutput kernel_reduce_outputs[NUM_KERNELS][NUM_OUTPUTS+1] = { ");
-  string_vec kernel_reduce_output_entries[num_kernels];
-  memset(kernel_reduce_output_entries,0,sizeof(kernel_reduce_output_entries));
-  if(file_exists("reduce_dst_integers.h"))
-  {
-       FILE* csv_file = fopen("reduce_dst_integers.h","r");
-       get_csv_entries(kernel_reduce_output_entries,csv_file);
-       fclose(csv_file);
-  }
-
-  int kernel_index = 0;
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  {
-    if (symbol_table[i].tspecifier == KERNEL_STR)
-    {
-      const size_t index = str_vec_get_index(calling_info.names,symbol_table[i].identifier);
-      const string_vec dst_ints = kernel_reduce_output_entries[kernel_index];
-      int active_call_index = 0;
-      fprintf(fp,"%s","{");
-      for(int j = 0; j < num_reduce_outputs; ++j)
-      {
-        fprintf(fp,"%s","{");
-      	if(reduce_infos[index].size < (size_t) j+1)
-	        fprintf(fp,"%d,AC_REAL_TYPE,false",-1);
-      	else
-	{
-		const char* var      = get_reduce_dst(reduce_infos[index].data[j]);
-		const char* dst_type = get_reduce_dst_type(reduce_infos[index].data[j]);
-	      	fprintf(fp,"(int)%s,",gen_mem_accesses || dst_ints.size == 0 ? "-1" : dst_ints.data[active_call_index]);
-		if(dst_type == intern("Profile"))
-        		fprintf(fp,"%s,","AC_PROF_TYPE");
-		else
-		{
-			const char* define_name = convert_to_define_name(dst_type);
-			const char* uppr_name =       strupr(define_name);
-			fprintf(fp,"AC_%s_TYPE,",uppr_name);
-		}
-		if(gen_mem_accesses || !OPTIMIZE_MEM_ACCESSES)
-		{
-			fprintf(fp,"%s,","true");
-			if(gen_mem_accesses)
-			{
-				astnode_sprintf_postfix((ASTNode*)reduce_infos[index].data[j],"%s;executed_nodes.push_back(%d)",reduce_infos[index].data[j]->postfix,reduce_infos[index].data[j]->id);
-			}
-		}
-		else
-		{
-			fprintf(fp,"%s,",is_called(reduce_infos[index].data[j]) ? "true" : "false");
-			active_call_index += is_called(reduce_infos[index].data[j]);
-		}
-
-	}
-        fprintf(fp,"%s","},");
-      }
-      fprintf(fp,"{-1,AC_REAL_TYPE,false}");
-      fprintf(fp,"%s","},");
-      kernel_index++;
-    }
-  }
-  fprintf(fp,"%s","};\n");
-  for(size_t i = 0; i < num_kernels; ++i)
-	  free_str_vec(&kernel_reduce_output_entries[i]);
 
   //extra padding to help some compilers
-  fprintf(fp,"%s","static const AcReduceOp kernel_reduce_ops[NUM_KERNELS][NUM_OUTPUTS+1] = { ");
-  for (size_t i = 0; i < num_symbols[0]; ++i)
-    if (symbol_table[i].tspecifier == KERNEL_STR)
-    {
-      const size_t index = str_vec_get_index(calling_info.names,symbol_table[i].identifier);
-      fprintf(fp,"%s","{");
-      for(int j = 0; j < num_reduce_outputs; ++j)
-      {
-      	if(reduce_infos[index].size < (size_t) j+1)
-        	fprintf(fp,"%s,","NO_REDUCE");
-	else
-	{
-      		switch(get_reduce_type(reduce_infos[index].data[j]))
-      		{
-      		        case(NO_REDUCE):
-      		        	fprintf(fp,"%s,","NO_REDUCE");
-      		        	break;
-      		        case(REDUCE_MIN):
-      		        	fprintf(fp,"%s,","REDUCE_MIN");
-      		        	break;
-      		        case(REDUCE_MAX):
-      		        	fprintf(fp,"%s,","REDUCE_MAX");
-      		        	break;
-      		        case(REDUCE_SUM):
-      		        	fprintf(fp,"%s,","REDUCE_SUM");
-      		        	break;
-      		}
-	}
-      }
-      fprintf(fp,"NO_REDUCE");
-      fprintf(fp,"%s","},");
-    }
-  fprintf(fp,"%s","};\n");
-  fclose(fp);
-  fp = fopen("kernel_reduce_info.h","w");
+  FILE* fp = fopen("kernel_reduce_info.h","w");
   fprintf(fp, "\nstatic const int kernel_calls_reduce[] = {");
 
   for (size_t i = 0; i < num_symbols[0]; ++i)
@@ -7319,10 +7222,14 @@ gen_monomorphized_kernel(const char* func_name, const string_vec input_params)
 	if(index == -1) fatal("Was not able to monomorhpize: %s\n",func_name);
 	ASTNode* node = (ASTNode*)kfunc_nodes.data[index];
 
+	func_params_info params_info = get_function_params_info(node, func_name);
+	//TP: could but no need to monomorphize kernels with no input params, would simply slow things down
+	if(params_info.expr_nodes.size == 0) return -1;
+
 	ASTNode* new_node = astnode_dup(node,NULL);
 	ASTNode* function_id = (ASTNode*) get_node(NODE_FUNCTION_ID,new_node->lhs);
 	astnode_sprintf(function_id,get_monomorphized_name(function_id->buffer,monomorphization_index));
-	func_params_info params_info = get_function_params_info(node, func_name);
+
 	for(size_t i = 0; i < params_info.expr.size; ++i)
 		rename_variables(new_node,input_params.data[i],params_info.types.data[i],params_info.expr.data[i]);
 
@@ -7356,6 +7263,7 @@ monomorphize_kernel_calls(ASTNode* node)
 		if(all_are_constexpr)
 		{
 			const int res_index = gen_monomorphized_kernel(func_name,params_info.expr);
+			if(res_index == -1) continue;
 			ASTNode* fn_identifier = (ASTNode*)get_node_by_token(IDENTIFIER,func_call);
 			astnode_sprintf(fn_identifier,get_monomorphized_name(fn_identifier->buffer, res_index));
 			//TP: all input params are monomorphized, so don't pass anything
@@ -7379,9 +7287,11 @@ get_fused_res_name(const node_vec kernels)
 bool can_fuse_kernels(const node_vec kernels)
 {
 	bool updated_fields[num_fields];
+	bool stencil_used[num_fields];
 	bool updated_profiles[num_profiles];
 	memset(updated_fields,false,num_fields*sizeof(bool));
 	memset(updated_profiles,false,num_profiles*sizeof(bool));
+	memset(stencil_used,false,num_profiles*sizeof(bool));
 
 	for(size_t i = 0; i < kernels.size; ++i)
 	{
@@ -7389,9 +7299,13 @@ bool can_fuse_kernels(const node_vec kernels)
 		const int kernel_index = get_symbol_index(NODE_FUNCTION_ID, func_name, KERNEL_STR);
 		if(kernel_index == -1) fatal("Did not find kernel: %s\n",func_name);
 
-		//TP: can't fuse if Field F is updated before and then used in a succeeding call
+		//TP: can't fuse if Field F is updated before and then used in a succeding stencil call
 		for(size_t field_index = 0; field_index < num_fields; ++field_index)
 			if(field_has_stencil_op[field_index + num_fields*kernel_index] && updated_fields[field_index]) return false;
+
+		//TP: For now skip fusing kernels with previous called, since this in general quite unsafe
+		for(size_t field_index = 0; field_index < num_fields; ++field_index)
+			if(field_has_previous_call[field_index + num_fields*kernel_index]) return false;
 
 		//TP: can't fuse if Profile P is updated before and then used in succeeding call
 		for(size_t profile_index = 0; profile_index < num_profiles; ++profile_index)
@@ -7399,6 +7313,9 @@ bool can_fuse_kernels(const node_vec kernels)
 
 		for(size_t field_index = 0; field_index < num_fields; ++field_index)
 			updated_fields[field_index] |= written_fields[field_index + num_fields*kernel_index];
+
+		for(size_t field_index = 0; field_index < num_fields; ++field_index)
+			stencil_used[field_index] |= field_has_stencil_op[field_index + num_fields*kernel_index];
 
 		for(size_t profile_index = 0; profile_index < num_profiles; ++profile_index)
 			updated_profiles[profile_index] |= reduced_profiles[profile_index + num_profiles*kernel_index];
@@ -7941,26 +7858,43 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
     assert(tmp);
     fprintf(tmp,
             "static int "
-            "stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS][NUM_STENCILS] = {");
+            "stencils_accessed [NUM_KERNELS][NUM_ALL_FIELDS][NUM_STENCILS] __attribute__((unused)) = {");
     for (size_t i = 0; i < num_kernels; ++i)
+    {
+      fprintf(tmp,"{");
       for (size_t j = 0; j < num_fields; ++j)
+      {
+        fprintf(tmp,"{");
         for (size_t k = 0; k < num_stencils; ++k)
-          fprintf(tmp, "[%lu][%lu][%lu] = 1,", i, j, k);
+          fprintf(tmp, "1,");
+      	fprintf(tmp,"},");
+      }
+      fprintf(tmp,"},");
+    }
     fprintf(tmp, "};");
 
     fprintf(tmp,
             "static int "
-            "previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS] = {");
+            "previous_accessed [NUM_KERNELS][NUM_ALL_FIELDS] __attribute__((unused)) = {");
     for (size_t i = 0; i < num_kernels; ++i)
+    {
+      fprintf(tmp,"{");
       for (size_t j = 0; j < num_fields; ++j)
-          fprintf(tmp, "[%lu][%lu] = 1,", i, j);
+          fprintf(tmp, "1,");
+      fprintf(tmp,"},");
+    }
     fprintf(tmp, "};");
+
     fprintf(tmp,
             "static int "
-            "write_called[NUM_KERNELS][NUM_ALL_FIELDS] = {");
+            "write_called [NUM_KERNELS][NUM_ALL_FIELDS] __attribute__((unused)) = {");
     for (size_t i = 0; i < num_kernels; ++i)
+    {
+      fprintf(tmp,"{");
       for (size_t j = 0; j < num_fields; ++j)
-          fprintf(tmp, "[%lu][%lu] = 1,", i, j);
+          fprintf(tmp, "1,");
+      fprintf(tmp,"},");
+    }
     fprintf(tmp, "};");
     fclose(tmp);
   }
@@ -8155,7 +8089,6 @@ check_uniquenes(const ASTNode* root, const NodeType type, const char* message_na
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals)
 { 
-
   (void)optimize_conditionals;
   symboltable_reset();
   ASTNode* root = astnode_dup(root_in,NULL);
@@ -8426,6 +8359,11 @@ generate_mem_accesses(void)
   fp = fopen("user_field_has_stencil_op.bin", "rb");
   field_has_stencil_op = (int*)malloc(num_kernels*num_fields*sizeof(int));
   fread(field_has_stencil_op, sizeof(int), num_kernels*num_fields, fp);
+  fclose(fp);
+
+  fp = fopen("user_field_has_previous_call.bin", "rb");
+  field_has_previous_call= (int*)malloc(num_kernels*num_fields*sizeof(int));
+  fread(field_has_previous_call, sizeof(int), num_kernels*num_fields, fp);
   fclose(fp);
 
   fp = fopen("user_read_profiles.bin","rb");

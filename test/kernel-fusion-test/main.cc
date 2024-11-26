@@ -91,11 +91,13 @@ main(int argc, char* argv[])
     auto graph = acGetDSLTaskGraph(rhs);
     acGridSynchronizeStream(STREAM_ALL);
     acGridLoadMesh(STREAM_DEFAULT,model);
+
     acGridSynchronizeStream(STREAM_ALL);
     acGridExecuteTaskGraph(graph,1);
     acGridSynchronizeStream(STREAM_ALL);
     acGridStoreMesh(STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
+
     AcReal3* x_sum   = (AcReal3*)malloc(sizeof(AcReal3)*model.info[AC_mlocal].x);
     AcReal3* y_sum   = (AcReal3*)malloc(sizeof(AcReal3)*model.info[AC_mlocal].y);
 

@@ -163,9 +163,8 @@ main(int argc, char* argv[])
     bool transpose_correct = true;
     {
 
-    	auto TRANSPOSED_IDX = [](const int z, const int y, const int x)
+    	auto TRANSPOSED_IDX = [&](const int z, const int y, const int x)
     	{
-    	    const auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     	    return x + dims.m1.z*y + dims.m1.y*dims.m1.z*z;
     	};
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
@@ -189,9 +188,8 @@ main(int argc, char* argv[])
     bool xzy_correct = true;
     {
 
-    	auto TRANSPOSED_IDX = [](const int x, const int z, const int y)
+    	auto TRANSPOSED_IDX = [&](const int x, const int z, const int y)
     	{
-    	    const auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     	    return x + dims.m1.x*y + dims.m1.x*dims.m1.z*z;
     	};
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
@@ -215,9 +213,8 @@ main(int argc, char* argv[])
     bool yxz_correct = true;
     {
 
-    	auto TRANSPOSED_IDX = [](const int y, const int x, const int z)
+    	auto TRANSPOSED_IDX = [&](const int y, const int x, const int z)
     	{
-    	    const auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     	    return x + dims.m1.y*y + dims.m1.y*dims.m1.x*z;
     	};
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
@@ -241,9 +238,8 @@ main(int argc, char* argv[])
     bool yzx_correct = true;
     {
 
-    	auto TRANSPOSED_IDX = [](const int z, const int x, const int y)
+    	auto TRANSPOSED_IDX = [&](const int z, const int x, const int y)
     	{
-    	    const auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     	    return x + dims.m1.y*y + dims.m1.y*dims.m1.z*z;
     	};
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
@@ -267,9 +263,8 @@ main(int argc, char* argv[])
     bool zxy_correct = true;
     {
 
-    	auto TRANSPOSED_IDX = [](const int y, const int z, const int x)
+    	auto TRANSPOSED_IDX = [&](const int y, const int z, const int x)
     	{
-    	    const auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     	    return x + dims.m1.z*y + dims.m1.x*dims.m1.z*z;
     	};
     	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
@@ -290,15 +285,15 @@ main(int argc, char* argv[])
     	    }
     	}
     }
-    AcReal* z_sum   = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mz]);
-    AcReal* x_sum   = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mx]);
-    AcReal* y_sum   = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_my]);
-    AcReal* xy_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mxy]);
-    AcReal* xz_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mxz]);
-    AcReal* yx_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mxy]);
-    AcReal* yz_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_myz]);
-    AcReal* zx_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mxz]);
-    AcReal* zy_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_myz]);
+    AcReal* z_sum   = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].z);
+    AcReal* x_sum   = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].x);
+    AcReal* y_sum   = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].y);
+    AcReal* xy_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].xy);
+    AcReal* xz_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].xz);
+    AcReal* yx_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].xy);
+    AcReal* yz_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].yz);
+    AcReal* zx_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].xz);
+    AcReal* zy_sum  = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].yz);
     for(int i = dims.n0.x; i < dims.n1.x; ++i)
     {
 	x_sum[i] = 0.0;
@@ -336,7 +331,7 @@ main(int argc, char* argv[])
     {
     	for(int j = dims.n0.y; j < dims.n1.y; ++j)
     	{
-		const int index = i + model.info[AC_mx]*j;
+		const int index = i + model.info[AC_mlocal].x*j;
 		xy_sum[index] = 0.0;
     		for(int k = dims.n0.z; k < dims.n1.z;  ++k)
     		{
@@ -348,7 +343,7 @@ main(int argc, char* argv[])
     {
     	for(int k = dims.n0.z; k < dims.n1.z; ++k)
     	{
-		const int index = i + model.info[AC_mx]*k;
+		const int index = i + model.info[AC_mlocal].x*k;
 		xz_sum[index] = 0.0;
     		for(int j = dims.n0.y; j < dims.n1.y;  ++j)
     		{
@@ -360,7 +355,7 @@ main(int argc, char* argv[])
     {
     	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
     	{
-		const int index = j + model.info[AC_my]*i;
+		const int index = j + model.info[AC_mlocal].y*i;
 		yx_sum[index] = 0.0;
     		for(int k = dims.n0.z; k < dims.n1.z; ++k)
     		{
@@ -372,7 +367,7 @@ main(int argc, char* argv[])
     {
     	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
     	{
-		const int index = j + model.info[AC_my]*k;
+		const int index = j + model.info[AC_mlocal].y*k;
 		yz_sum[index] = 0.0;
     		for(int i = dims.n0.x; i < dims.n1.x; ++i)
     		{
@@ -384,7 +379,7 @@ main(int argc, char* argv[])
     {
     	for(int i = dims.n0.x; i < dims.n1.x; ++i)
     	{
-		const int index = k + model.info[AC_mz]*i;
+		const int index = k + model.info[AC_mlocal].z*i;
 		zx_sum[index] = 0.0;
     		for(int j = dims.n0.y; j < dims.n1.y;  ++j)
     		{
@@ -396,7 +391,7 @@ main(int argc, char* argv[])
     {
     	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
     	{
-		const int index = k + model.info[AC_mz]*j;
+		const int index = k + model.info[AC_mlocal].z*j;
 		zy_sum[index] = 0.0;
     		for(int i = dims.n0.x; i < dims.n1.x; ++i)
     		{
@@ -441,7 +436,7 @@ main(int argc, char* argv[])
     {
     	for(int j = dims.n0.y; j < dims.n1.y; ++j)
     	{
-		const int index = i + model.info[AC_mx]*j;
+		const int index = i + model.info[AC_mlocal].x*j;
 		const bool correct = in_eps_threshold(xy_sum[index],xy_sum_gpu[index]);
 		xy_sum_correct &= correct;
 		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",xy_sum[index],xy_sum_gpu[index]);
@@ -452,7 +447,7 @@ main(int argc, char* argv[])
     {
     	for(int k = dims.n0.z; k < dims.n1.z; ++k)
     	{
-		const int index = i + model.info[AC_mx]*k;
+		const int index = i + model.info[AC_mlocal].x*k;
 		const bool correct = in_eps_threshold(xz_sum[index],xz_sum_gpu[index]);
 		xz_sum_correct &= correct;
 		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",xz_sum[index],xz_sum_gpu[index]);
@@ -463,7 +458,7 @@ main(int argc, char* argv[])
     {
     	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
     	{
-		const int index = j + model.info[AC_my]*i;
+		const int index = j + model.info[AC_mlocal].y*i;
 		const bool correct = in_eps_threshold(yx_sum[index],yx_sum_gpu[index]);
 		yx_sum_correct &= correct;
 		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",yx_sum[index],yx_sum_gpu[index]);
@@ -474,7 +469,7 @@ main(int argc, char* argv[])
     {
     	for(int k = dims.n0.z; k < dims.n1.z; ++k)
     	{
-		const int index = j + model.info[AC_my]*k;
+		const int index = j + model.info[AC_mlocal].y*k;
 		const bool correct = in_eps_threshold(yz_sum[index],yz_sum_gpu[index]);
 		yz_sum_correct &= correct;
 		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",yz_sum[index],yz_sum_gpu[index]);
@@ -485,7 +480,7 @@ main(int argc, char* argv[])
     {
     	for(int i = dims.n0.x; i < dims.n1.x; ++i)
     	{
-		const int index = k + model.info[AC_mz]*i;
+		const int index = k + model.info[AC_mlocal].z*i;
 		const bool correct = in_eps_threshold(zx_sum[index],zx_sum_gpu[index]);
 		zx_sum_correct &= correct;
 		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",zx_sum[index],zx_sum_gpu[index]);
@@ -496,7 +491,7 @@ main(int argc, char* argv[])
     {
     	for(int j = dims.n0.y; j < dims.n1.y;  ++j)
     	{
-		const int index = k + model.info[AC_mz]*j;
+		const int index = k + model.info[AC_mlocal].z*j;
 		const bool correct = in_eps_threshold(zy_sum[index],zy_sum_gpu[index]);
 		zy_sum_correct &= correct;
 		if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",zy_sum[index],zy_sum_gpu[index]);
@@ -517,14 +512,14 @@ main(int argc, char* argv[])
 			res -= y_sum[j];
 			res -= z_sum[k];
 
-			res -= xy_sum[i + model.info[AC_mx]*j];
-			res -= xz_sum[i + model.info[AC_mx]*k];
+			res -= xy_sum[i + model.info[AC_mlocal].x*j];
+			res -= xz_sum[i + model.info[AC_mlocal].x*k];
 
-			res -= yx_sum[j + model.info[AC_my]*i];
-			res -= yz_sum[j + model.info[AC_my]*k];
+			res -= yx_sum[j + model.info[AC_mlocal].y*i];
+			res -= yz_sum[j + model.info[AC_mlocal].y*k];
 
-			res -= zx_sum[k + model.info[AC_mz]*i];
-			res -= zy_sum[k + model.info[AC_mz]*j];
+			res -= zx_sum[k + model.info[AC_mlocal].z*i];
+			res -= zy_sum[k + model.info[AC_mlocal].z*j];
 			const bool correct = in_eps_threshold(res,gpu_res);
 			remove_mean_correct &= correct;
 			if(!correct)  fprintf(stderr,"WRONG: %14e, %14e, %14e\n",res,gpu_res,relative_diff(res,gpu_res));
