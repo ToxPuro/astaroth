@@ -177,13 +177,9 @@ add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 # include_directories(include)                                   # Library headers
 # include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers # Already included earlier
 
-# Additional program modules
-if (PROGRAM_MODULE_DIR)
-    get_filename_component(resolved_program_dir "${PROGRAM_MODULE_DIR}" ABSOLUTE
-                           BASE_DIR ${CMAKE_SOURCE_DIR})
-    add_subdirectory(${resolved_program_dir})
-    message("Resolved program module dir: " ${resolved_program_dir})
-endif()
+## Third party
+add_subdirectory(3rdparty/inih)
+include_directories(3rdparty/inih)
 
 ## Subdirectories
 add_subdirectory(acc-runtime)
@@ -192,10 +188,6 @@ add_subdirectory(src/core)
 if (NOT BUILD_SHARED_LIBS)
     add_subdirectory(samples/ac-interpreter)
 endif()
-
-## Third party
-add_subdirectory(3rdparty/inih)
-include_directories(3rdparty/inih)
 
 ## Astaroth communication module
 add_subdirectory(acc-comm)
@@ -259,4 +251,12 @@ if (BUILD_SAMPLES)
   #if (MPI_ENABLED)
   #  add_subdirectory(samples/bwtest)
   #endif()
+endif()
+
+# Additional program modules
+if (PROGRAM_MODULE_DIR)
+    get_filename_component(resolved_program_dir "${PROGRAM_MODULE_DIR}" ABSOLUTE
+                           BASE_DIR ${CMAKE_SOURCE_DIR})
+    add_subdirectory(${resolved_program_dir})
+    message("Resolved program module dir: " ${resolved_program_dir})
 endif()
