@@ -1,5 +1,5 @@
 ## Options
-option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" OFF)
+option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" ON)
 
 ## DSL module dir
 if (NOT DEFINED DSL_MODULE_DIR)
