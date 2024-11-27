@@ -34,7 +34,7 @@ if(NOT USE_HIP AND CUDAToolkit_FOUND)
     enable_language(CUDA)
     add_compile_options(-DDEVICE_ENABLED)
     add_compile_options(-DCUDA_ENABLED)
-    set(CMAKE_CUDA_ARCHITECTURES "60;70")
+    set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
 elseif(USE_HIP OR HIP_FOUND)
     set(USE_HIP ON)

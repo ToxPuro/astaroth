@@ -250,7 +250,8 @@ int main(int argc, char* argv[])
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
         // ERRCHK_AC(acLaunchKernel(singlepass_solve, stream, make_int3(rr), make_int3(rr + Shape(rr.size(), 1)), *(vba_ptr.get())));
-        // ERRCHK_AC(acLaunchKernel(singlepass_solve, stream, make_int3(rr), make_int3(rr + local_nn), *vba_ptr));
+        ERRCHK_AC(acLaunchKernel(singlepass_solve, stream, make_int3(rr), make_int3(rr + local_nn), *vba_ptr));
+        ERRCHK_CUDA_KERNEL();
         ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
