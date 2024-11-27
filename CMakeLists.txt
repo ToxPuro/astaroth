@@ -176,6 +176,7 @@ add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 ## Includes
 # include_directories(include)                                   # Library headers
 # include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers # Already included earlier
+include_directories(${CMAKE_SOURCE_DIR})
 
 ## Third party
 add_subdirectory(3rdparty/inih)
