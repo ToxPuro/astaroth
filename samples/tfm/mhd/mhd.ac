@@ -82,7 +82,16 @@ Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
 real AC_dsx, AC_dsy, AC_dsz
 real AC_dt
 int AC_step_number
-real AC_box_size_x, AC_box_size_y, AC_box_size_z
+
+// User configuration parameters
+int AC_global_nx, AC_global_ny, AC_global_nz
+real AC_global_sx, AC_global_sy, AC_global_sz
+
+// Local mesh information derived from the configuration
+int AC_nx, AC_ny, AC_nz
+real AC_sx, AC_sy, AC_sz
+real AC_dsx, AC_dsy, AC_dsz
+
 
 // Run parameters
 real AC_cdt
