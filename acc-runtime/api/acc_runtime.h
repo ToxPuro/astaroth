@@ -18,6 +18,7 @@
 */
 #pragma once
 #include <stdio.h>
+#include <stdint.h>
 
 #if AC_USE_HIP
 #include "hip.h"
