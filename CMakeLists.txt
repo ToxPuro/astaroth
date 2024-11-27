@@ -62,7 +62,13 @@ elseif(USE_HIP OR HIP_FOUND)
     add_compile_options(-DDEVICE_ENABLED)
     add_compile_options(-DHIP_ENABLED)
     set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
-    include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
+    include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Sile:qnce warnings originating from HIP headers
+    message(STATUS "HIP include directories" ${HIP_INCLUDE_DIRS})
+    message(STATUS "HIP library directories" ${HIP_LIBRARY_DIRS})
+    message(STATUS "ROCM path" ${ROCM_PATH})
+
+    find_library(ROCTRACER NAMES roctracer64 PATHS ${ROCM_PATH}/lib REQUIRED)
+    find_library(HIPRAND NAMES hiprand PATHS ${ROCM_PATH}/lib REQUIRED)
 
     # Backwards-compatibility
     add_definitions(-DAC_USE_HIP=1)
