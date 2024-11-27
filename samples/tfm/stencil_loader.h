@@ -21,6 +21,7 @@
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "acc-runtime/api/errchk.h"
 
 #define DER1_3 (AcReal)(1. / 60.)
 #define DER1_2 (AcReal)(-3. / 20.)
@@ -60,6 +61,9 @@ AcReal* get_stencil_coeffs(const AcMeshInfo info)
     AcReal der6upwd[] = {DER6UPWD_3, DER6UPWD_2, DER6UPWD_1, DER6UPWD_0,
                          DER6UPWD_1, DER6UPWD_2, DER6UPWD_3};
 
+    ERRCHK_ALWAYS(info.real_params[AC_dsx] > 0);
+    ERRCHK_ALWAYS(info.real_params[AC_dsy] > 0);
+    ERRCHK_ALWAYS(info.real_params[AC_dsz] > 0);
     const AcReal inv_dsx = (AcReal)(1.0) / info.real_params[AC_dsx];
     const AcReal inv_dsy = (AcReal)(1.0) / info.real_params[AC_dsy];
     const AcReal inv_dsz = (AcReal)(1.0) / info.real_params[AC_dsz];
@@ -134,8 +138,10 @@ AcReal* get_stencil_coeffs(const AcMeshInfo info)
     memcpy(retval, stencils, sizeof(stencils));
 
     // AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH] = {{{{0}}}};
-    for (int i = 0; i < NUM_STENCILS*STENCIL_DEPTH*STENCIL_HEIGHT*STENCIL_WIDTH; ++i)
+    for (int i = 0; i < NUM_STENCILS*STENCIL_DEPTH*STENCIL_HEIGHT*STENCIL_WIDTH; ++i) {
+        // printf("%d: %g, %g\n", i, ((AcReal*)stencils)[i], retval[i]);
         ERRCHK_ALWAYS(((AcReal*)stencils)[i] == retval[i]);
+    }
 
     return retval;
 }
