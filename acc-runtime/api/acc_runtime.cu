@@ -600,6 +600,16 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
 };
 
 AcResult
+acLoadStencils(const cudaStream_t stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acLoadStencil((Stencil)i, stream, data[i]);
+    return (AcResult)retval;
+}
+
+AcResult
 acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
                AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
@@ -948,7 +958,7 @@ acPBASwapBuffers(VertexBufferArray* vba)
     acPBASwapBuffer((Profile)i, vba);
 }
 
-void
+AcResult
 acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
 {
   for (int i = 0; i < NUM_INT_PARAMS; ++i)
@@ -962,6 +972,8 @@ acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
 
   for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
     acLoadReal3Uniform(stream, (AcReal3Param)i, info.real3_params[i]);
+
+  return AC_SUCCESS;
 }
 
 //---------------

@@ -106,6 +106,10 @@ AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t stream,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
+AcResult
+acLoadStencils(const cudaStream_t stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+
 /** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult
 acStoreStencil(const Stencil stencil, const cudaStream_t stream,
@@ -154,7 +158,7 @@ void acPBASwapBuffer(const Profile profile, VertexBufferArray* vba);
 
 void acPBASwapBuffers(VertexBufferArray* vba);
 
-void acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
+AcResult acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
 
 // Testing
 typedef struct {
