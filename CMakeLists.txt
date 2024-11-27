@@ -15,7 +15,7 @@ option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            
 option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
 option(BUILD_MLLIB_SAMPLES "Builds samples that use cuDNN or MIOpen" OFF)
 option(MPI_ENABLED        "Enables additional functions for MPI communciation." OFF)
-option(USE_POSIX_IO       "Uses POSIX I/O less error prone, but increased overheads." OFF)
+option(USE_POSIX_IO       "Uses POSIX I/O less error prone, but increased overheads." ON)
 option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
 option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
 option(VERBOSE            "Enables various status and warning messages"         OFF)
