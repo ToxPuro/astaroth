@@ -17,6 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <stdbool.h>
 
 #include "acc_runtime.h"
 
