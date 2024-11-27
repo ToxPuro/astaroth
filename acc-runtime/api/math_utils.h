@@ -42,13 +42,13 @@
 
 #define UNUSED __attribute__((unused))
 
-#if defined(__CUDACC__) || defined(__HIPCC__)
+#if defined(DEVICE_ENABLED)
 #define HOST_DEVICE __host__ __device__ UNUSED
 #define HOST_DEVICE_INLINE __host__ __device__ __forceinline__ UNUSED
 #else
 #define HOST_DEVICE UNUSED
 #define HOST_DEVICE_INLINE inline UNUSED
-#endif // __CUDACC__
+#endif // DEVICE_ENABLED
 
 // Disabled for now, issues on lumi (exp, cos, sin ambiguous)
 #define ENABLE_COMPLEX_DATATYPE (0)
@@ -77,7 +77,7 @@ expc(const acComplex& val)
   return acComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
 }
 
-#if defined(__CUDACC__)
+#if defined(CUDA_ENABLED)
 // These are already overloaded in the HIP API
 /*
 static HOST_DEVICE_INLINE acComplex
@@ -196,7 +196,7 @@ operator-(const int3& a)
   return (int3){-a.x, -a.y, -a.z};
 }
 
-#if defined(__CUDACC__)
+#if defined(CUDA_ENABLED)
 // Defined in the HIP API
 static HOST_DEVICE_INLINE int3
 operator*(const int3& a, const int3& b)
@@ -296,7 +296,7 @@ is_valid(const AcReal a)
 /*
  * AcReal2
  */
-#if defined(__CUDACC__)
+#if defined(CUDA_ENABLED)
 static HOST_DEVICE_INLINE AcReal2
 operator+(const AcReal2& a, const AcReal2& b)
 {
