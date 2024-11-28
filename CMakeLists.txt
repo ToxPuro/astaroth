@@ -169,6 +169,7 @@ if (PROGRAM_MODULE_DIR)
 endif()
 
 ## Subdirectories
+add_subdirectory(3rdparty/inih)
 add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
