@@ -33,6 +33,9 @@ target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${M
 if (USE_HIP)
     target_link_libraries(acc-runtime-headers INTERFACE ${ROCTRACER})
     target_link_libraries(acc-runtime-headers INTERFACE ${HIPRAND})
+    set_property(TARGET acc-runtime-headers PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
+else()
+    set_property(TARGET acc-runtime-headers PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 endif()
 
 message("project source dir ${PROJECT_SOURCE_DIR}")
@@ -40,12 +43,15 @@ message("project source dir ${PROJECT_SOURCE_DIR}")
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
 
-    if (USE_HIP)
-        set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE HIP)
-    endif()
-    
     add_library(acc-runtime STATIC acc_runtime.cu)
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
     target_link_libraries(acc-runtime acc-runtime-headers)
+
+    if (USE_HIP)
+        set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE HIP)
+        set_property(TARGET acc-runtime PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
+    else()
+        set_property(TARGET acc-runtime PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+    endif()
 
 endif()

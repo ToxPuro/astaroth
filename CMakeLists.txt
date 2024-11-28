@@ -58,9 +58,8 @@ if(NOT USE_HIP AND CUDAToolkit_FOUND)
     add_compile_options(-DCUDA_ENABLED)
     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
 
-    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
-    endif()
+    set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
+    message(STATUS "Enabled CUDA architectures (Astaroth): " ${CMAKE_CUDA_ARCHITECTURES})
 elseif(USE_HIP OR HIP_FOUND)
     set(USE_HIP ON)
     message(STATUS "HIP found")
@@ -69,9 +68,8 @@ elseif(USE_HIP OR HIP_FOUND)
     add_compile_options(-DHIP_ENABLED)
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
-    if(NOT DEFINED CMAKE_HIP_ARCHITECTURES)
-        set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
-    endif()
+    set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+    message(STATUS "Enabled HIP architectures (Astaroth): " ${CMAKE_HIP_ARCHITECTURES})
 else()
     message(ERROR "Did not find CUDA or HIP")
 endif()
