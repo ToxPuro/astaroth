@@ -19,13 +19,6 @@
 #pragma once
 #include "astaroth.h"
 
-#if AC_MPI_ENABLED
-#include <mpi.h>
-#include <stdbool.h>
-
-#define MPI_GPUDIRECT_DISABLED (0)
-#endif // AC_MPI_ENABLED
-
 struct device_s {
     int id;
     AcMeshInfo local_config;

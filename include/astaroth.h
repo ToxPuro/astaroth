@@ -17,12 +17,9 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <stdbool.h>
 
 #include "acc_runtime.h"
-
-#if AC_MPI_ENABLED
-#include <mpi.h>
-#endif
 
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
 
@@ -548,13 +545,6 @@ AcResult ac_MPI_Init_thread(int thread_level);
 Destroys the communicator and calls MPI_Finalize
 */
 void ac_MPI_Finalize();
-
-/**
-Returns the MPI communicator used by all Astaroth processes.
-
-If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD
- */
-MPI_Comm acGridMPIComm();
 
 /**
 Initializes all available devices.
