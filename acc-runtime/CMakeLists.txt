@@ -17,11 +17,9 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-## Project-wide compilation flags
-set(ACC_RUNTIME_COMMON_FLAGS "-Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow")
-
 ## Project options
 option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
+
 ## CUDA and HIP
 find_package(CUDAToolkit QUIET)
 find_package(HIP QUIET)

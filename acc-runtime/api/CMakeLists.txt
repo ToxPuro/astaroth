@@ -26,7 +26,7 @@ add_custom_command (
     OUTPUT ${DSL_HEADERS}
 )
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
-target_include_directories(acc-runtime-headers INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 
