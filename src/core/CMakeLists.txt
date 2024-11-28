@@ -8,6 +8,11 @@ if (MPI_ENABLED)
     target_link_libraries(astaroth_core PUBLIC MPI::MPI_C)
 endif()
 
+if (USE_HIP)
+    # May need to link to hip::host at some point
+else()
+    target_link_libraries(astaroth_core PUBLIC CUDA::cudart_static)
+endif()
 
 # JP: disabled due to being error-prone, verbose, and not using modern CMake practices
 # JP: Should consider enabling something here, e.g., CRAYPE GTL if still needed
