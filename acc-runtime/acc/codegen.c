@@ -3227,16 +3227,8 @@ gen_kernel_postfixes(ASTNode* root, const bool gen_mem_accesses)
 	gen_kernel_postfixes_recursive(root,gen_mem_accesses);
 }
 void
-gen_kernel_reduce_outputs(const bool gen_mem_accesses)
+gen_kernel_reduce_outputs()
 {
-  string_vec prof_types = get_prof_types();
-  int num_reduce_outputs = 0;
-  for (size_t i = 0; i < num_symbols[0]; ++i)
-    if (((symbol_table[i].tspecifier == REAL_STR || symbol_table[i].tspecifier == INT_STR) && str_vec_contains(symbol_table[i].tqualifiers,OUTPUT_STR))
-		    || str_vec_contains(prof_types,symbol_table[i].tspecifier)
-	)
-	    ++num_reduce_outputs;
-
   //extra padding to help some compilers
   FILE* fp = fopen("kernel_reduce_info.h","w");
   fprintf(fp, "\nstatic const int kernel_calls_reduce[] = {");
@@ -3251,13 +3243,6 @@ gen_kernel_reduce_outputs(const bool gen_mem_accesses)
 
   fprintf(fp, "};\n");
   fclose(fp);
-}
-void
-gen_kernel_postfixes_and_reduce_outputs(ASTNode* root, const bool gen_mem_accesses)
-{
-  gen_kernel_postfixes(root,gen_mem_accesses);
-
-  gen_kernel_reduce_outputs(gen_mem_accesses);
 }
 void
 gen_optimized_kernel_decls(ASTNode* node, const param_combinations combinations, const string_vec user_kernels_with_input_params,string_vec* const user_kernel_combinatorial_params)
@@ -4542,7 +4527,7 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 		if(struct_initializer && !array_initializer)
 			if(!struct_initializer->parent->postfix)
 				astnode_sprintf_prefix(struct_initializer->parent,"(%s)",datatype_scalar);
-		const char* assignment_val = intern(combine_all_new(assignment));
+		const char* assignment_val = intern(combine_all_new_with_whitespace(assignment));
 		const int array_dim = array_initializer ? count_nest(array_initializer,NODE_ARRAY_INITIALIZER) : 0;
 		if(array_initializer)
 		{
@@ -7919,7 +7904,7 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
 
   char build_cmd[4096];
   snprintf(build_cmd, 4096,
-           "gcc -std=c11 -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
+           "gcc -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
            "-DIMPLEMENTATION=%d "
            "-DMAX_THREADS_PER_BLOCK=%d "
            "-Wfloat-conversion -Wshadow -I. %s -lm "
@@ -8125,7 +8110,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
   replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
   free_combinatorial_params_info(&info);
-  gen_kernel_postfixes_and_reduce_outputs(root,gen_mem_accesses);
+  gen_kernel_postfixes(root,gen_mem_accesses);
+  gen_kernel_reduce_outputs();
 
 
   // print_symbol_table();
@@ -8283,8 +8269,8 @@ compile_helper(const bool log)
 #endif
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "gcc -I. -I " ACC_RUNTIME_API_DIR " %s %s -DAC_DOUBLE_PRECISION=%d " 
-	       STENCILACC_SRC " -lm -lstdc++ -o " STENCILACC_EXEC" "
+  sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " %s %s -DAC_DOUBLE_PRECISION=%d " 
+	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
   ,api_includes, use_hip, AC_DOUBLE_PRECISION
   );
 

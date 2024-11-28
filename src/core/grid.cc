@@ -468,13 +468,13 @@ check_compile_info_matches_runtime_info(const KernelAnalysisInfo info)
 					fatal("In Kernel %s Stencil %s used for %s at runtime but not generated!\n"
 					      "Most likely that stencill is executed in a control-flow path that was not taken.\n"
 					      "Consider either runtime-compilation or rewriting the kernel do avoid the conditional stencil call\n"
-					      ,kernel_names[k], stencil_names[i], field_names[i]
+					      ,kernel_names[k], stencil_names[i], field_names[j]
 					      );
 				if(!info.stencils_accessed[k][j][i] && stencils_accessed[k][j][i])
 					acLogFromRootProc(ac_pid(), "PERF WARNING: In Kernel %s Stencil %s generated for %s but not accessed at runtime!\n"
 							            "Most likely because the stencil call is performed inside conditional control-flow.\n"
-								    "Consider using runtime-compilation to skip the unnecessary generation of Stencil access\n"
-					     ,kernel_names[k], stencil_names[i], field_names[i]
+								    "Consider refactoring the code or using runtime-compilation to skip the unnecessary Stencil computation\n"
+					     ,kernel_names[k], stencil_names[i], field_names[j]
 					      );
 			}
 
@@ -1767,6 +1767,7 @@ get_spacings()
 {
 	return grid.device->local_config[AC_ds];
 }
+
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 {
@@ -2108,6 +2109,7 @@ acGridDestroyTaskGraph(AcTaskGraph* graph)
     delete graph;
     return AC_SUCCESS;
 }
+
 std::vector<KernelReduceOutput>
 get_reduce_outputs(const AcTaskGraph* graph)
 {

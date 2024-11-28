@@ -145,7 +145,8 @@ gen_kernel_common_prefix()
          "d_multigpu_offset.y + vertexIdx.y,"
          "d_multigpu_offset.z + vertexIdx.z,"
          "};");
-  printf("const int idx = DEVICE_VTXBUF_IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
+  printf("[[maybe_unused]] const int idx = DEVICE_VTXBUF_IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
+  printf("(void)vba;");
 
     printf(
         "const int3 localCompdomainVertexIdx = (int3){"

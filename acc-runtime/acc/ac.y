@@ -869,14 +869,14 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
                   | '(' type_specifier ')' struct_initializer { 
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
 						astnode_set_infix(")",$$); 
-						const char* type = combine_all_new($$->lhs);
+						const char* type = combine_all_new_with_whitespace($$->lhs);
 						astnode_sprintf_prefix($$,"(%s",type);
 						$$->token = CAST;
 						}
                   | '(' type_specifier ')' primary_expression { 
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
 						astnode_set_infix(")",$$); 
-						const char* type = combine_all_new($$->lhs);
+						const char* type = combine_all_new_with_whitespace($$->lhs);
 						if(!strcmps(type,"int","AcReal"))
 							astnode_sprintf_prefix($$,"(%s",type);
 						$$->token = CAST;
