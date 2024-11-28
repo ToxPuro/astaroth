@@ -473,7 +473,7 @@ check_compile_info_matches_runtime_info(const KernelAnalysisInfo info)
 				if(!info.stencils_accessed[k][j][i] && stencils_accessed[k][j][i])
 					acLogFromRootProc(ac_pid(), "PERF WARNING: In Kernel %s Stencil %s generated for %s but not accessed at runtime!\n"
 							            "Most likely because the stencil call is performed inside conditional control-flow.\n"
-								    "Consider refactoring the code or using runtime-compilation to skip the unnecessary Stencil computation\n"
+								    "Consider refactoring the code,turning OPTIMIZE_MEM_ACCESSES and/or using runtime-compilation to skip the unnecessary Stencil computation\n"
 					     ,kernel_names[k], stencil_names[i], field_names[j]
 					      );
 			}
