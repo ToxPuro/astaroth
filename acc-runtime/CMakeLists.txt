@@ -40,6 +40,9 @@ elseif(USE_HIP OR HIP_FOUND)
     add_compile_options(-DHIP_ENABLED)
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
+    find_library(ROCTRACER NAMES roctracer64 PATHS ${ROCM_PATH}/lib REQUIRED)
+    find_library(HIPRAND NAMES hiprand PATHS ${ROCM_PATH}/lib REQUIRED)
+
     set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
     message(STATUS "Enabled HIP architectures (ACC): " ${CMAKE_HIP_ARCHITECTURES})
 else()
