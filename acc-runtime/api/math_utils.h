@@ -195,7 +195,7 @@ operator-(const int3& a)
   return (int3){-a.x, -a.y, -a.z};
 }
 
-#if !USE_HIP
+#if !AC_USE_HIP
 // Defined in the HIP API
 static HOST_DEVICE_INLINE int3
 operator*(const int3& a, const int3& b)
