@@ -2,7 +2,8 @@
 # V3.9 required for first-class CUDA support
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
-cmake_minimum_required(VERSION 3.18)
+# V3.21 required for first-class HIP support
+cmake_minimum_required(VERSION 3.21)
 
 ## Project settings
 project(astaroth)
