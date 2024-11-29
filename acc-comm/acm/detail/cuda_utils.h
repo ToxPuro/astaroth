@@ -1,17 +1,17 @@
 #pragma once
 
 // Remove __host__ __device__ if compiling without device libraries
-#if defined(DEVICE_ENABLED)
+#if defined(ACM_DEVICE_ENABLED)
 
-#if defined(CUDA_ENABLED)
+#if defined(ACM_CUDA_ENABLED)
 #include <cuda_runtime.h>
-#elif defined(HIP_ENABLED)
+#elif defined(ACM_HIP_ENABLED)
 #include "hip.h"
 // #pragma gcc system_header // TODO check that this does not disable warnings elsewhere
 #pragma clang system_header // TODO check that this does not disable warnings elsewhere
 #include <hip/hip_runtime.h>
 #else
-static_assert(false, "Device code was enabled but neither CUDA_ENABLED nor HIP_ENABLED is set");
+static_assert(false, "Device code was enabled but neither ACM_CUDA_ENABLED nor ACM_HIP_ENABLED is set");
 #endif
 
 #else

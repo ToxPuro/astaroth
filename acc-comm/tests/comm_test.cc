@@ -19,9 +19,9 @@
 
 #include <unistd.h>
 
-#if defined(CUDA_ENABLED)
+#if defined(ACM_CUDA_ENABLED)
 #include "acm/detail/errchk_cuda.h"
-#elif defined(HIP_ENABLED)
+#elif defined(ACM_HIP_ENABLED)
 #include "acm/detail/errchk_cuda.h"
 #include "acm/detail/hip.h"
 #else
@@ -107,7 +107,7 @@ main()
         int rank, nprocs;
         ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
         ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
-#if defined(DEVICE_ENABLED)
+#if defined(ACM_DEVICE_ENABLED)
         int device_count;
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
         ERRCHK_CUDA_API(cudaSetDevice(rank % device_count));

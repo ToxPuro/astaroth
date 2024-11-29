@@ -78,7 +78,7 @@ template <typename T, typename MemoryResource> class buffer {
 };
 } // namespace ac
 
-#if defined(DEVICE_ENABLED)
+#if defined(ACM_DEVICE_ENABLED)
 
 #include "cuda_utils.h"
 #include "errchk_cuda.h"

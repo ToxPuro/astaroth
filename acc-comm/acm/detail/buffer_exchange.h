@@ -5,7 +5,7 @@
 // #include "buffer.h"
 #include "buffer.h"
 
-#if defined(DEVICE_ENABLED)
+#if defined(ACM_DEVICE_ENABLED)
 #include "errchk_cuda.h"
 #else
 #include "errchk.h"
@@ -54,7 +54,7 @@ class BufferExchangeTask {
         PRINT_LOG("migrating to first-stage buffer");
         migrate(in, first_stage_buffer);
 
-#if defined(DEVICE_ENABLED)
+#if defined(ACM_DEVICE_ENABLED)
         PRINT_LOG("stream create");
         ERRCHK(stream == nullptr);
         ERRCHK_CUDA_API(cudaStreamCreateWithFlags(&stream, cudaStreamDefault));
@@ -76,7 +76,7 @@ class BufferExchangeTask {
                       "buffer");
 
 // Synchronize stream
-#if defined(DEVICE_ENABLED)
+#if defined(ACM_DEVICE_ENABLED)
         ERRCHK(stream != nullptr);
         ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
         ERRCHK_CUDA_API(cudaStreamDestroy(stream));

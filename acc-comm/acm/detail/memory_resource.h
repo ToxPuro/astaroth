@@ -26,7 +26,7 @@ struct host_memory_resource {
 
 } // namespace ac::mr
 
-#if defined(DEVICE_ENABLED)
+#if defined(ACM_DEVICE_ENABLED)
 
 #include "cuda_utils.h"
 #include "errchk_cuda.h"
@@ -88,7 +88,8 @@ struct device_memory_resource {
 
 #else
 
-// #pragma message("Device code was not enabled. Falling back to host-only memory allocations")
+static_assert(false);
+#pragma message("Device code was not enabled. Falling back to host-only memory allocations")
 namespace ac::mr {
 using pinned_host_memory_resource                = ac::mr::host_memory_resource;
 using pinned_write_combined_host_memory_resource = ac::mr::host_memory_resource;

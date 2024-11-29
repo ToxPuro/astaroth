@@ -80,8 +80,8 @@ add_subdirectory(tests)
 # if(NOT HOST_ONLY_MODE AND CUDAToolkit_FOUND)
 #     message(STATUS "CUDA found")
 #     enable_language(CUDA)
-#     add_compile_options(-DDEVICE_ENABLED)
-#     add_compile_options(-DCUDA_ENABLED)
+#     add_compile_definitions(ACM_DEVICE_ENABLED)
+#     add_compile_options(ACM_CUDA_ENABLED)
 #     set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
 #     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
     
@@ -89,8 +89,8 @@ add_subdirectory(tests)
 # elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
 #     message(STATUS "HIP found")
 #     enable_language(HIP)
-#     add_compile_options(-DDEVICE_ENABLED)
-#     add_compile_options(-DHIP_ENABLED)
+#     add_compile_definitions(ACM_DEVICE_ENABLED)
+#     add_compile_definitions(ACM_HIP_ENABLED)
 #     set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
 #     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 

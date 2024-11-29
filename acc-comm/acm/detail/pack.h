@@ -52,7 +52,7 @@ unpack(const ac::buffer<T, ac::mr::host_memory_resource>& input, const Shape& mm
     }
 }
 
-#if defined(DEVICE_ENABLED)
+#if defined(ACM_DEVICE_ENABLED)
 
 template <typename T>
 void pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,

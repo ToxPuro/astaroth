@@ -1,6 +1,6 @@
 #include "pack.h"
 
-#if defined(DEVICE_ENABLED)
+#if defined(ACM_DEVICE_ENABLED)
 
 #include "static_array.h"
 
@@ -10,7 +10,7 @@ constexpr size_t MAX_N_AGGR_BUFS = 8;
 namespace device {
 
 template <typename T, size_t N>
-static __host__ __device__ ac::static_array<T, N>
+static ac::static_array<T, N>
 make_static_array(const ac::vector<T>& in)
 {
     ac::static_array<T, N> out(in.size());
@@ -20,7 +20,7 @@ make_static_array(const ac::vector<T>& in)
 }
 
 template <typename T, size_t N>
-static __host__ __device__ ac::static_array<T, N>
+static ac::static_array<T, N>
 make_static_array(const std::vector<T>& in)
 {
     ac::static_array<T, N> out(in.size());

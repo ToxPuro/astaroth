@@ -40,7 +40,7 @@
 
 ```C++
 namespace ac{
-    #if defined (CUDA_ENABLED)
+    #if defined (ACM_CUDA_ENABLED)
     template <typename T, size_t N> using base_array = cuda::std::array<T, N>;
     #else
     template <typename T, size_t N> using base_array = std::array<T, N>;
