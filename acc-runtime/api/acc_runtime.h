@@ -159,7 +159,7 @@ void acPBASwapBuffer(const Profile profile, VertexBufferArray* vba);
 
 void acPBASwapBuffers(VertexBufferArray* vba);
 
-void acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
+AcResult acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
 
 // Testing
 typedef struct {
