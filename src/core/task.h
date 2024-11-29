@@ -23,6 +23,7 @@
 #include <mpi.h>
 #include <string>
 #include <vector>
+#include <array>
 
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray

@@ -21,10 +21,6 @@
 
 #include "acc_runtime.h"
 
-// #if AC_MPI_ENABLED
-// #include <mpi.h>
-// #endif
-
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
 
 typedef struct {

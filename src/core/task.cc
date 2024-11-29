@@ -37,6 +37,7 @@
 #include "task.h"
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "grid_detail.h"
 
 #include <cassert>
 #include <memory>
@@ -47,8 +48,6 @@
 #include "decomposition.h" //getPid and friends
 #include "errchk.h"
 #include "kernels/kernels.h" //AcRealPacked, ComputeKernel
-
-#include "grid_detail.h" // acGridMPIComm
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 

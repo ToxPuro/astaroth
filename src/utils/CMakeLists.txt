@@ -11,5 +11,4 @@ target_link_libraries(astaroth_forcing astaroth_core astaroth_random)
 
 add_library(astaroth_utils config_loader.c memory.c verification.c modelreduce.c profiles.c logging.c)
 target_link_libraries(astaroth_utils modelsolver astaroth_core)
-target_include_directories(astaroth_utils PRIVATE ${CMAKE_SOURCE_DIR})
 
