@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.0)
 
 ## Project settings
 project(acc C)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Options

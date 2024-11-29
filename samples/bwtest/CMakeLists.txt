@@ -1,27 +1,29 @@
 add_executable(bwtest bwtest.cu)
 add_executable(bwtest-stencil bwtest-stencil.cu)
 add_executable(bwtest-benchmark bwtest-benchmark.cu)
-add_executable(bwtest-io bwtest-io.cu)
+# add_executable(bwtest-io bwtest-io.cu)
 
 if (USE_HIP)
-set_source_files_properties(bwtest.cu bwtest-stencil.cu bwtest-benchmark.cu bwtest-io.cu PROPERTIES LANGUAGE CXX)
+    set_source_files_properties(bwtest.cu bwtest-stencil.cu bwtest-benchmark.cu bwtest-io.cu PROPERTIES LANGUAGE HIP)
 endif()
 
 target_link_libraries(bwtest acc-runtime-headers)
 target_link_libraries(bwtest-stencil acc-runtime-headers)
 
 # MPI
-if (MPI_ENABLED)
-    target_link_libraries(bwtest-io MPI::MPI_C)
-endif()
+# if (MPI_ENABLED)
+#     find_package(MPI REQUIRED COMPONENTS C)
+#     target_link_libraries(bwtest-io MPI::MPI_C)
+# endif()
 
 # OpenMP
 find_package(OpenMP)
-target_link_libraries(bwtest-io OpenMP::OpenMP_C)
+# target_link_libraries(bwtest-io OpenMP::OpenMP_C)
 
 target_link_libraries(bwtest-benchmark acc-runtime-headers) # temporarily for rocprof
 target_include_directories(bwtest-benchmark PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtime/api)
-target_include_directories(bwtest-io PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtime/api)
+# target_include_directories(bwtest-io PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtime/api)
+# target_include_directories(bwtest-io PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 if(USE_SMEM)
     set(USE_SMEM 1)

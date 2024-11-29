@@ -37,6 +37,7 @@
 #include "task.h"
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "grid_detail.h"
 
 #include <cassert>
 #include <memory>
