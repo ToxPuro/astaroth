@@ -30,6 +30,7 @@
 #include <stdlib.h> // rand
 
 #include "datatypes.h"
+#include "errchk.h"
 
 #if AC_DOUBLE_PRECISION != 1
 #define exp(x) expf(x)

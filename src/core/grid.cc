@@ -148,6 +148,25 @@ acGridMPIComm()
     return astaroth_comm;
 }
 
+int ac_MPI_Comm_rank()
+{
+    int rank;
+    MPI_Comm_rank(acGridMPIComm(), &rank);
+    return rank;
+}
+
+int ac_MPI_Comm_size()
+{
+    int nprocs;
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+    return nprocs;
+}
+
+void ac_MPI_Barrier()
+{
+    MPI_Barrier(acGridMPIComm());
+}
+
 AcResult
 acGridSynchronizeStream(const Stream stream)
 {
@@ -1886,17 +1905,7 @@ acGridReduceXYAverages(const Stream stream)
     MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in, NUM_PROFILES * device->vba.profiles.count,
                   AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
 
-    // 4) Average
-    // auto array_begin = thrust::device_pointer_cast(device->vba.profiles.in);
-    // auto array_end = thrust::device_pointer_cast(device->vba.profiles.in + NUM_PROFILES *
-    // device->vba.profiles.count);
-    const size_t gnx = as_size_t(device->local_config.int3_params[AC_global_grid_n].x);
-    const size_t gny = as_size_t(device->local_config.int3_params[AC_global_grid_n].y);
-    cudaSetDevice(device->id);
-    acMultiplyInplace(1. / (gnx * gny), NUM_PROFILES * device->vba.profiles.count,
-                      device->vba.profiles.in[0]);
-
-    // 5) Optional: Test
+    // 4) Optional: Test
     // AcReal arr[device->vba.profiles.count];
     // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
     //            cudaMemcpyDeviceToHost);

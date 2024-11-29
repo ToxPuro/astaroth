@@ -25,6 +25,7 @@
  *
  */
 #include "astaroth.h"
+#include "errchk.h"
 
 typedef long double Scalar;
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
@@ -99,9 +100,12 @@ acHostReduceXYAverage(const AcReal* in, const AcMeshDims dims, AcReal* out)
 }
 
 /** box_size: size of the simulation box in real physical units (usually 2*M_PI)
-    nz: number of indices in the computational domain in the z direction
-    offset: offset for the first index off the computational domain (usually the radius of the
-   stencil) */
+    nz: number of indices in the global computational domain in the z direction
+    offset: offset for the first index off the computational domain
+            single GPU: (0 - stencil radius in the z dimension)
+            multi-GPU: (pz * local mz - stencil radius) where pz the process
+                       index in the z dimension
+    profile_count: number of elements in the profile (local mz) */
 AcResult
 acHostInitProfileToCosineWave(const long double box_size, const size_t nz, const long offset,
                               const AcReal amplitude, const AcReal wavenumber,
@@ -109,7 +113,7 @@ acHostInitProfileToCosineWave(const long double box_size, const size_t nz, const
 {
     const long double spacing = box_size / (nz - 1);
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = amplitude * cos(wavenumber * spacing * ((long)i - offset));
+        profile[i] = amplitude * cos(wavenumber * spacing * ((long)i + offset));
     }
     return AC_SUCCESS;
 }
@@ -122,7 +126,7 @@ acHostInitProfileToSineWave(const long double box_size, const size_t nz, const l
 {
     const long double spacing = box_size / (nz - 1);
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = amplitude * sin(wavenumber * spacing * ((long)i - offset));
+        profile[i] = amplitude * sin(wavenumber * spacing * ((long)i + offset));
     }
     return AC_SUCCESS;
 }

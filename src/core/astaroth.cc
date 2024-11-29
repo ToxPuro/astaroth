@@ -359,3 +359,101 @@ acGetKernelIdByName(const char* name)
             name);
     return (size_t)-1;
 }
+
+AcBuffer
+acBufferCreate(const size_t count, const bool on_device)
+{
+    AcBuffer buffer    = {.count = count, .on_device = on_device};
+    const size_t bytes = sizeof(buffer.data[0]) * count;
+    if (buffer.on_device) {
+        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&buffer.data, bytes));
+    }
+    else {
+        buffer.data = (AcReal*)malloc(bytes);
+    }
+    ERRCHK_ALWAYS(buffer.data);
+    return buffer;
+}
+
+void
+acBufferDestroy(AcBuffer* buffer)
+{
+    if (buffer->on_device)
+        cudaFree(buffer->data);
+    else
+        free(buffer->data);
+    buffer->data  = NULL;
+    buffer->count = 0;
+}
+
+AcResult
+acBufferMigrate(const AcBuffer in, AcBuffer* out)
+{
+    cudaMemcpyKind kind;
+    if (in.on_device) {
+        if (out->on_device)
+            kind = cudaMemcpyDeviceToDevice;
+        else
+            kind = cudaMemcpyDeviceToHost;
+    }
+    else {
+        if (out->on_device)
+            kind = cudaMemcpyHostToDevice;
+        else
+            kind = cudaMemcpyHostToHost;
+    }
+
+    ERRCHK_ALWAYS(in.count == out->count);
+    ERRCHK_CUDA_ALWAYS(cudaMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
+    return AC_SUCCESS;
+}
+
+/*
+ * =============================================================================
+ * Helper functions
+ * =============================================================================
+ */
+ size_t
+acVertexBufferSize(const AcMeshInfo info)
+{
+    return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) *
+           as_size_t(info.int_params[AC_mz]);
+}
+
+size_t
+acVertexBufferSizeBytes(const AcMeshInfo info)
+{
+    return sizeof(AcReal) * acVertexBufferSize(info);
+}
+
+size_t
+acVertexBufferCompdomainSize(const AcMeshInfo info)
+{
+    return as_size_t(info.int_params[AC_nx]) * as_size_t(info.int_params[AC_ny]) *
+           as_size_t(info.int_params[AC_nz]);
+}
+
+size_t
+acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
+{
+    return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
+}
+
+int3
+acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
+                     const AcMeshInfo info)
+{
+    return (int3){
+        info.int_params[a],
+        info.int_params[b],
+        info.int_params[c],
+    };
+}
+
+size_t
+acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    return as_size_t(i) +                          //
+           as_size_t(j) * info.int_params[AC_mx] + //
+           as_size_t(k) * info.int_params[AC_mx] * info.int_params[AC_my];
+}

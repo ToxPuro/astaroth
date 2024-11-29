@@ -600,6 +600,16 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
 };
 
 AcResult
+acLoadStencils(const cudaStream_t stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acLoadStencil((Stencil)i, stream, data[i]);
+    return (AcResult)retval;
+}
+
+AcResult
 acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
                AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
@@ -1180,7 +1190,7 @@ acReindexCross(const cudaStream_t stream, //
                AcReal* out, const AcIndex out_offset, const AcShape out_shape,
                const AcShape block_shape)
 {
-#ifdef AC_TFM_ENABLED
+#if 0 // ifdef AC_TFM_ENABLED
   const SOAVector uu = {
       .x = vba.in[VTXBUF_UUX],
       .y = vba.in[VTXBUF_UUY],
