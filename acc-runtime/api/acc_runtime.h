@@ -18,6 +18,7 @@
 */
 #pragma once
 #include <stdio.h>
+#include <stdint.h>
 
 #if AC_USE_HIP
 #include "hip.h"
@@ -30,7 +31,6 @@
 #endif
 
 #include "datatypes.h"
-#include "errchk.h"
 
 #include "user_defines.h"
 
@@ -106,6 +106,10 @@ AcResult acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
 AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t stream,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+
+AcResult
+acLoadStencils(const cudaStream_t stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
 /** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult
