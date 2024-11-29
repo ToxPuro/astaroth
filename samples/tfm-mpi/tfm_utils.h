@@ -24,7 +24,7 @@ int acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info);
 
 int acVerifyMeshInfo(const AcMeshInfo info);
 
-int acPrintMeshInfo(const AcMeshInfo config);
+int acPrintMeshInfoTFM(const AcMeshInfo config);
 
 #ifdef __cplusplus
 }

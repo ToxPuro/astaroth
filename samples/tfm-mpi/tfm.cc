@@ -3,8 +3,6 @@
 #include <functional>
 #include <iostream>
 
-#include "acc-runtime/api/acc_runtime.h"
-
 #include "acm/acm.h"
 
 #include "acm/detail/errchk.h"
@@ -15,6 +13,9 @@
 
 #include "stencil_loader.h"
 #include "tfm_utils.h"
+
+// #include "acc-runtime/api/acc_runtime.h"
+#include "astaroth.h"
 
 #include <mpi.h>
 
@@ -189,7 +190,7 @@ main(int argc, char* argv[])
             PRINT_LOG("No config path supplied, using %s", config_path.c_str());
             ERRCHK(acParseINI(config_path.c_str(), &raw_info) == 0);
         }
-        // ERRCHK(acPrintMeshInfo(raw_info) == 0);
+        // ERRCHK(acPrintMeshInfoTFM(raw_info) == 0);
 
         const uint64_t global_nn_c[NDIMS]{as<uint64_t>(raw_info.int_params[AC_global_nx]),
                                           as<uint64_t>(raw_info.int_params[AC_global_ny]),
@@ -202,7 +203,7 @@ main(int argc, char* argv[])
 
         // Fill the local mesh configuration (overwrite the earlier info
         const AcMeshInfo local_info = get_local_mesh_info(cart_comm, raw_info);
-        ERRCHK(acPrintMeshInfo(local_info) == 0);
+        ERRCHK(acPrintMeshInfoTFM(local_info) == 0);
 
         // Select device
         int original_rank, nprocs;

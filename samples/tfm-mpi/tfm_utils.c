@@ -257,7 +257,7 @@ acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info)
 }
 
 int
-acPrintMeshInfo(const AcMeshInfo config)
+acPrintMeshInfoTFM(const AcMeshInfo config)
 {
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
         printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
