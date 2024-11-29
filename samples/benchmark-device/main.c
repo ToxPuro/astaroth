@@ -4,6 +4,7 @@
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "errchk.h"
 
 #include "timer_hires.h"
 

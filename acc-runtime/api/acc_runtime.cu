@@ -958,7 +958,7 @@ acPBASwapBuffers(VertexBufferArray* vba)
     acPBASwapBuffer((Profile)i, vba);
 }
 
-AcResult
+void
 acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
 {
   for (int i = 0; i < NUM_INT_PARAMS; ++i)
@@ -972,8 +972,6 @@ acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
 
   for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
     acLoadReal3Uniform(stream, (AcReal3Param)i, info.real3_params[i]);
-
-  return AC_SUCCESS;
 }
 
 //---------------

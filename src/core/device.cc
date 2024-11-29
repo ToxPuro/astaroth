@@ -19,6 +19,7 @@
 #include "astaroth.h"
 
 #include "kernels/kernels.h"
+#include "errchk.h"
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
     AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
