@@ -4,21 +4,19 @@
 
 #include "acc-runtime/api/acc_runtime.h"
 
-#include "acc-comm/acm.h"
-#include "acc-comm/errchk.h"
-#include "acc-comm/type_conversion.h"
+#include "acm/acm.h"
 
-#include "acc-comm/vector.h"
+#include "acm/detail/errchk.h"
+#include "acm/detail/type_conversion.h"
+#include "acm/detail/vector.h"
+#include "acm/detail/print_debug.h"
+#include "acm/detail/mpi_utils.h"
 
 #include "tfm_utils.h"
-
-#include "acc-comm/print_debug.h"
+#include "stencil_loader.h"
 
 #include <mpi.h>
-#include "acc-comm/mpi_utils.h"
 
-// #include "astaroth.h"
-#include "stencil_loader.h"
 
 #define ERRCHK_ACM(errcode)                                                                        \
     do {                                                                                           \
@@ -240,7 +238,7 @@ int main(int argc, char* argv[])
         get_stencil_coeffs(local_info, stencils);
         
         auto vba_ptr = make_vba(local_mm);
-        ERRCHK_AC(acLoadMeshInfo(local_info, stream));
+        acLoadMeshInfo(local_info, stream);
         ERRCHK_AC(acLoadRealUniform(stream, AC_dt, 1e-3));
         ERRCHK_AC(acLoadIntUniform(stream, AC_step_number, 0));
         ERRCHK_AC(acLoadStencils(stream, stencils));

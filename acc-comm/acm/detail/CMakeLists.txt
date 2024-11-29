@@ -19,7 +19,7 @@ if(NOT HOST_ONLY_MODE AND CUDAToolkit_FOUND)
     
 
     set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
-    message(STATUS "Enabled CUDA architectures (ACC): " ${CMAKE_CUDA_ARCHITECTURES})
+    message(STATUS "Enabled CUDA architectures (ACM): " ${CMAKE_CUDA_ARCHITECTURES})
     set_source_files_properties(pack.cu PROPERTIES LANGUAGE CUDA)
     set_property(TARGET acm PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
@@ -32,7 +32,7 @@ elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
     target_link_libraries(acm PUBLIC hip::host)
 
     set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
-    message(STATUS "Enabled HIP architectures (ACC): " ${CMAKE_HIP_ARCHITECTURES})
+    message(STATUS "Enabled HIP architectures (ACM): " ${CMAKE_HIP_ARCHITECTURES})
     set_source_files_properties(pack.cu PROPERTIES LANGUAGE HIP)
     set_property(TARGET acm PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
 else()
