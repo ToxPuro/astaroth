@@ -1,0 +1,40 @@
+
+## Find packages
+find_package(CUDAToolkit QUIET)
+find_package(HIP QUIET)
+
+## Setup CUDA/HIP
+add_library(acm-device-api INTERFACE)
+if(NOT HOST_ONLY_MODE AND CUDAToolkit_FOUND)
+    message(STATUS "CUDA found")
+    enable_language(CUDA)
+    set(CUDA_ENABLED)
+    add_compile_options(-DDEVICE_ENABLED)
+    add_compile_options(-DCUDA_ENABLED)
+    include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
+    
+    target_link_libraries(acm-device-api INTERFACE CUDA::cudart)
+elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
+    message(STATUS "HIP found")
+    enable_language(HIP)
+    set(HIP_ENABLED)
+    add_compile_options(-DDEVICE_ENABLED)
+    add_compile_options(-DHIP_ENABLED)
+    include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
+
+    target_link_libraries(acm-device-api INTERFACE hip::host)
+else()
+    message(WARNING "Did not find CUDA or HIP, compiling in host-only mode")
+    # add_compile_options(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CPP)
+    # add_library(device-module STATIC pack.cc)
+endif()
+
+## Subdirectories
+add_subdirectory(device)
+
+## Library
+find_package(MPI REQUIRED COMPONENTS C)
+add_library(acm SHARED acm.cc acm_error.c halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc pack.cc ndbuffer.cc buffer.cc decomp.cc partition.cc segment.cc math_utils.cc vector.cc static_array.cc array.cc type_conversion.cc errchk_print.c)
+target_link_libraries(acm PRIVATE MPI::MPI_C acm-device-api acm-device-libraries)
+
+target_include_directories(acm PUBLIC ${PROJECT_SOURCE_DIR})

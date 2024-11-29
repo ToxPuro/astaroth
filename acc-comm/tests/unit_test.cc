@@ -1,13 +1,13 @@
-#include "array.h"
-#include "buffer.h"
-#include "buffer_exchange.h"
-#include "decomp.h"
-#include "math_utils.h"
-#include "ndbuffer.h"
-#include "pack.h"
-#include "partition.h"
-#include "type_conversion.h"
-#include "vector.h"
+#include "acm/detail/array.h"
+#include "acm/detail/buffer.h"
+#include "acm/detail/buffer_exchange.h"
+#include "acm/detail/decomp.h"
+#include "acm/detail/math_utils.h"
+#include "acm/detail/ndbuffer.h"
+#include "acm/detail/pack.h"
+#include "acm/detail/partition.h"
+#include "acm/detail/type_conversion.h"
+#include "acm/detail/vector.h"
 
 int
 main(void)

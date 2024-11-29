@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "acm.h"
-#include "errchk_print.h"
+#include "acm/acm.h"
+#include "acm/detail/errchk_print.h"
 
 #define ERRCHK_ACM(errcode)                                                                        \
     do {                                                                                           \

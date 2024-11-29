@@ -1,34 +1,33 @@
 #include <cstdlib>
 
-#include "datatypes.h"
-#include "errchk.h"
-// #include "ndarray.h"
-#include "ndbuffer.h"
+#include "acm/detail/datatypes.h"
+#include "acm/detail/errchk.h"
+#include "acm/detail/ndbuffer.h"
 
 #include <algorithm>
 #include <numeric>
 
 #include <mpi.h>
 
-#include "errchk_mpi.h"
-#include "mpi_utils.h"
+#include "acm/detail/errchk_mpi.h"
+#include "acm/detail/mpi_utils.h"
 
-#include "buffer_exchange.h"
-#include "halo_exchange.h"
-#include "halo_exchange_packed.h"
-#include "io.h"
+#include "acm/detail/buffer_exchange.h"
+#include "acm/detail/halo_exchange.h"
+#include "acm/detail/halo_exchange_packed.h"
+#include "acm/detail/io.h"
 
 #include <unistd.h>
 
 #if defined(CUDA_ENABLED)
-#include "errchk_cuda.h"
+#include "acm/detail/errchk_cuda.h"
 #include <cuda_runtime.h>
 #elif defined(HIP_ENABLED)
-#include "errchk_cuda.h"
-#include "hip.h"
+#include "acm/detail/errchk_cuda.h"
+#include "acm/detail/hip.h"
 #include <hip/hip_runtime.h>
 #else
-#include "errchk.h"
+#include "acm/detail/errchk.h"
 static void
 cudaStreamCreate(cudaStream_t* stream)
 {
