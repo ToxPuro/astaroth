@@ -21,7 +21,6 @@
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
-#include "acc-runtime/api/errchk.h"
 
 int
 main(void)

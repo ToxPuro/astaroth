@@ -27,8 +27,6 @@
 #include "astaroth_utils.h"
 #include "stencil_loader.h"
 
-#include "grid_detail.h"
-
 #include "timer_hires.h"
 
 #include <getopt.h>

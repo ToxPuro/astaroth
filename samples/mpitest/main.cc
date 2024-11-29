@@ -21,6 +21,7 @@
 */
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "grid_detail.h"
 #include "errchk.h"
 
 #if AC_MPI_ENABLED
@@ -38,7 +39,7 @@ void
 acAbort(void)
 {
     if (!finalized)
-        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
 }
 
 int
@@ -49,8 +50,9 @@ main(void)
 
     ac_MPI_Init();
 
-    int pid = ac_MPI_Comm_rank();
-    int nprocs = ac_MPI_Comm_size();
+    int nprocs, pid;
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
 
     // Set random seed for reproducibility
     srand(321654987);
@@ -65,7 +67,7 @@ main(void)
                 "Cannot run autotest, nprocs (%d) > max_devices (%d). Please modify "
                 "mpitest/main.cc to use a larger mesh.\n",
                 nprocs, max_devices);
-        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
     acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
