@@ -413,7 +413,7 @@ acBufferMigrate(const AcBuffer in, AcBuffer* out)
  * Helper functions
  * =============================================================================
  */
- size_t
+size_t
 acVertexBufferSize(const AcMeshInfo info)
 {
     return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) *
