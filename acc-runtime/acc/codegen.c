@@ -36,6 +36,11 @@ static string_vec primitive_datatypes = VEC_INITIALIZER;
 #define FLOAT_STR     primitive_datatypes.data[5]
 #define DOUBLE_STR    primitive_datatypes.data[5]
 #define MAX_ARRAY_RANK (10)
+#if AC_USE_HIP
+const bool HIP_ON = true;
+#else
+const bool HIP_ON = false;
+#endif
 string_vec
 get_prof_types()
 {
@@ -7829,7 +7834,7 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
            "-Wfloat-conversion -Wshadow -I. %s -lm "
 	   "-DAC_USE_HIP=%d "
            "-o %s",
-           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,AC_USE_HIP,
+           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,HIP_ON,
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);
@@ -8175,7 +8180,7 @@ compile_helper(const bool log)
   {
   	printf("Compiling %s...\n", STENCILACC_SRC);
 #if AC_USE_HIP
-  	printf("--- USE_HIP: `%d`\n", AC_USE_HIP);
+  	printf("--- USE_HIP: `%d`\n", HIP_ON);
 #else
   	printf("--- USE_HIP not defined\n");
 #endif
@@ -8186,7 +8191,7 @@ compile_helper(const bool log)
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
   sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " %s -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d " 
 	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
-  ,api_includes, AC_DOUBLE_PRECISION, AC_USE_HIP
+  ,api_includes, AC_DOUBLE_PRECISION,HIP_ON 
   );
 
   /*

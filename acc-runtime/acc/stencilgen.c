@@ -374,13 +374,13 @@ gen_kernel_reduce_funcs(const int curr_kernel)
   {
 #if AC_USE_HIP
 	const char* warp_size  = "const size_t warp_size = rocprim::warp_size();";
-	const char* warp_id= "const size_t warp_id = rocprim::warp_id();\n";
+	const char* warp_id= "const size_t warp_id = rocprim::warp_id();";
 #else
 	const char* warp_size  = "constexpr size_t warp_size = 32;";
 	const char* warp_id= "const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;";
 #endif
-    printf(warp_size);
-    printf(warp_id);
+    printf("%s",warp_size);
+    printf("%s",warp_id);
     printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
     printf("const size_t warp_leader_id  = __ffsll(AC_INTERNAL_active_threads)-1;");
     printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
@@ -399,7 +399,11 @@ gen_return_if_oob(const int curr_kernel)
 {
        printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
        if(kernel_calls_reduce[curr_kernel] )
+#if AC_USE_HIP
 	       printf("const auto AC_INTERNAL_active_threads = __ballot(!out_of_bounds);");
+#else
+	       printf("const auto AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,!out_of_bounds);");
+#endif
        printf("if(out_of_bounds) return;");
        printf("{\n#include \"user_non_scalar_constants.h\"\n");
 }
