@@ -148,21 +148,24 @@ acGridMPIComm()
     return astaroth_comm;
 }
 
-int ac_MPI_Comm_rank()
+int
+ac_MPI_Comm_rank()
 {
     int rank;
     MPI_Comm_rank(acGridMPIComm(), &rank);
     return rank;
 }
 
-int ac_MPI_Comm_size()
+int
+ac_MPI_Comm_size()
 {
     int nprocs;
     MPI_Comm_size(acGridMPIComm(), &nprocs);
     return nprocs;
 }
 
-void ac_MPI_Barrier()
+void
+ac_MPI_Barrier()
 {
     MPI_Barrier(acGridMPIComm());
 }
