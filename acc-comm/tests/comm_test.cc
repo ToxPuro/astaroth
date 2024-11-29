@@ -21,12 +21,11 @@
 
 #if defined(CUDA_ENABLED)
 #include "acm/detail/errchk_cuda.h"
-#include <cuda_runtime.h>
 #elif defined(HIP_ENABLED)
 #include "acm/detail/errchk_cuda.h"
 #include "acm/detail/hip.h"
-#include <hip/hip_runtime.h>
 #else
+#include "acm/detail/cuda_utils.h"
 #include "acm/detail/errchk.h"
 static void
 cudaStreamCreate(cudaStream_t* stream)
@@ -115,9 +114,8 @@ main()
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 #endif
 
-#if defined(DEVICE_ENABLED)
         benchmark();
-#endif
+
         const Shape global_nn{4, 4};
         MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
         const Shape decomp{get_decomposition(cart_comm)};

@@ -69,9 +69,23 @@ ACM_MPI_Cart_comm_destroy(MPI_Comm* cart_comm)
 }
 
 ACM_Errorcode
+ACM_Get_ndims(const MPI_Comm cart_comm, int* ndims)
+{
+    try {
+        *ndims = get_ndims(cart_comm);
+        return ACM_ERRORCODE_SUCCESS;
+    } 
+    catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return ACM_ERRORCODE_GENERIC_FAILURE;
+    }
+}
+
+ACM_Errorcode
 ACM_Get_decomposition(const MPI_Comm cart_comm, const size_t ndims, uint64_t* decomp_out)
 {
     try {
+        ERRCHK(get_ndims(cart_comm) == as<int>(ndims));
         const auto decomp = get_decomposition(cart_comm);
         std::copy(decomp.begin(), decomp.end(), decomp_out);
         return ACM_ERRORCODE_SUCCESS;
@@ -86,6 +100,7 @@ ACM_Errorcode
 ACM_Get_coords(const MPI_Comm cart_comm, const size_t ndims, uint64_t* coords_out)
 {
     try {
+        ERRCHK(get_ndims(cart_comm) == as<int>(ndims));
         const auto coords = get_coords(cart_comm);
         std::copy(coords.begin(), coords.end(), coords_out);
         return ACM_ERRORCODE_SUCCESS;
@@ -170,67 +185,67 @@ ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t ndims,
     }
 }
 
-ACM_Errorcode
-ACM_IO_Task_create(const size_t ndims, const uint64_t* in_file_dims, const uint64_t* in_file_offset,
-                   const uint64_t* in_mesh_dims, const uint64_t* in_mesh_subdims,
-                   const uint64_t* in_mesh_offset, ACM_IO_Task* task)
-{
-    return ACM_ERRORCODE_NOT_IMPLEMENTED;
-}
+// ACM_Errorcode
+// ACM_IO_Task_create(const size_t ndims, const uint64_t* in_file_dims, const uint64_t* in_file_offset,
+//                    const uint64_t* in_mesh_dims, const uint64_t* in_mesh_subdims,
+//                    const uint64_t* in_mesh_offset, ACM_IO_Task* task)
+// {
+//     return ACM_ERRORCODE_NOT_IMPLEMENTED;
+// }
 
-ACM_Errorcode
-ACM_IO_Task_destroy(ACM_IO_Task* task)
-{
-    return ACM_ERRORCODE_NOT_IMPLEMENTED;
-}
+// ACM_Errorcode
+// ACM_IO_Task_destroy(ACM_IO_Task* task)
+// {
+//     return ACM_ERRORCODE_NOT_IMPLEMENTED;
+// }
 
-ACM_Errorcode
-ACM_IO_Launch_write_collective(const MPI_Comm parent_comm, const double* input, const char* path,
-                               ACM_IO_Task* task)
-{
-    return ACM_ERRORCODE_NOT_IMPLEMENTED;
-}
+// ACM_Errorcode
+// ACM_IO_Launch_write_collective(const MPI_Comm parent_comm, const double* input, const char* path,
+//                                ACM_IO_Task* task)
+// {
+//     return ACM_ERRORCODE_NOT_IMPLEMENTED;
+// }
 
-ACM_Errorcode
-ACM_IO_Wait_write_collective(ACM_IO_Task* task)
-{
-    return ACM_ERRORCODE_NOT_IMPLEMENTED;
-}
+// ACM_Errorcode
+// ACM_IO_Wait_write_collective(ACM_IO_Task* task)
+// {
+//     return ACM_ERRORCODE_NOT_IMPLEMENTED;
+// }
 
-ACM_Errorcode
-ACM_COMM_Launch_halo_exchange(const MPI_Comm parent_comm, const size_t ndims,
-                              const uint64_t* local_mm, const uint64_t* local_nn,
-                              const uint64_t* rr, const double* send_data, double* recv_data,
-                              size_t* recv_req_count, MPI_Request* recv_reqs)
-{
-    return ACM_ERRORCODE_NOT_IMPLEMENTED;
-}
+// ACM_Errorcode
+// ACM_COMM_Launch_halo_exchange(const MPI_Comm parent_comm, const size_t ndims,
+//                               const uint64_t* local_mm, const uint64_t* local_nn,
+//                               const uint64_t* rr, const double* send_data, double* recv_data,
+//                               size_t* recv_req_count, MPI_Request* recv_reqs)
+// {
+//     return ACM_ERRORCODE_NOT_IMPLEMENTED;
+// }
 
-ACM_Errorcode
-ACM_COMM_Halo_Exchange_Task_create(const size_t ndims, const uint64_t* local_mm,
-                                   const uint64_t* local_nn, const uint64_t* local_rr,
-                                   const size_t n_aggregate_buffers,
-                                   ACM_COMM_Halo_Exchange_Task* task)
-{
-    return ACM_ERRORCODE_NOT_IMPLEMENTED;
-}
+// ACM_Errorcode
+// ACM_COMM_Halo_Exchange_Task_create(const size_t ndims, const uint64_t* local_mm,
+//                                    const uint64_t* local_nn, const uint64_t* local_rr,
+//                                    const size_t n_aggregate_buffers,
+//                                    ACM_COMM_Halo_Exchange_Task* task)
+// {
+//     return ACM_ERRORCODE_NOT_IMPLEMENTED;
+// }
 
-ACM_Errorcode
-ACM_COMM_Halo_Exchange_Task_destroy(ACM_COMM_Halo_Exchange_Task* task)
-{
-    return ACM_ERRORCODE_NOT_IMPLEMENTED;
-}
+// ACM_Errorcode
+// ACM_COMM_Halo_Exchange_Task_destroy(ACM_COMM_Halo_Exchange_Task* task)
+// {
+//     return ACM_ERRORCODE_NOT_IMPLEMENTED;
+// }
 
-ACM_Errorcode
-ACM_COMM_Halo_Exchange_Task_launch(const MPI_Comm parent_comm, const size_t ninputs,
-                                   const double* inputs[], ACM_COMM_Halo_Exchange_Task* task)
-{
-    return ACM_ERRORCODE_NOT_IMPLEMENTED;
-}
+// ACM_Errorcode
+// ACM_COMM_Halo_Exchange_Task_launch(const MPI_Comm parent_comm, const size_t ninputs,
+//                                    const double* inputs[], ACM_COMM_Halo_Exchange_Task* task)
+// {
+//     return ACM_ERRORCODE_NOT_IMPLEMENTED;
+// }
 
-ACM_Errorcode
-ACM_COMM_Halo_Exchange_Task_wait(const size_t noutputs, double* outputs,
-                                 ACM_COMM_Halo_Exchange_Task* task)
-{
-    return ACM_ERRORCODE_NOT_IMPLEMENTED;
-}
+// ACM_Errorcode
+// ACM_COMM_Halo_Exchange_Task_wait(const size_t noutputs, double* outputs,
+//                                  ACM_COMM_Halo_Exchange_Task* task)
+// {
+//     return ACM_ERRORCODE_NOT_IMPLEMENTED;
+// }

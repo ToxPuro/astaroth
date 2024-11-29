@@ -7,6 +7,8 @@
 #include <cuda_runtime.h>
 #elif defined(HIP_ENABLED)
 #include "hip.h"
+// #pragma gcc system_header // TODO check that this does not disable warnings elsewhere
+#pragma clang system_header // TODO check that this does not disable warnings elsewhere
 #include <hip/hip_runtime.h>
 #else
 static_assert(false, "Device code was enabled but neither CUDA_ENABLED nor HIP_ENABLED is set");

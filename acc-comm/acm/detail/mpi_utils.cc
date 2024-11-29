@@ -49,13 +49,22 @@ get_direction(const Index& offset, const Shape& nn, const Index& rr)
     return dir;
 }
 
-void
-print_mpi_comm(const MPI_Comm& comm)
+int
+get_ndims(const MPI_Comm& comm)
 {
     int rank, nprocs, ndims;
     ERRCHK_MPI_API(MPI_Comm_rank(comm, &rank));
     ERRCHK_MPI_API(MPI_Comm_size(comm, &nprocs));
     ERRCHK_MPI_API(MPI_Cartdim_get(comm, &ndims));
+    (void)rank; // Unused
+    (void)nprocs; // Unused
+    return ndims;
+}
+
+void
+print_mpi_comm(const MPI_Comm& comm)
+{
+    const int ndims = get_ndims(comm);
 
     MPIShape mpi_decomp(as<size_t>(ndims));
     MPIShape mpi_periods(as<size_t>(ndims));

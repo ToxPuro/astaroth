@@ -68,6 +68,8 @@ int get_tag(void);
 
 Direction get_direction(const Index& offset, const Shape& nn, const Index& rr);
 
+int get_ndims(const MPI_Comm& comm);
+
 void print_mpi_comm(const MPI_Comm& comm);
 
 /**
