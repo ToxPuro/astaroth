@@ -191,6 +191,10 @@ if (BUILD_MHD_SAMPLES)
     add_subdirectory(samples/stencil-loader)
 endif()
 
+if(MPI_ENABLED)
+    add_subdirectory(acc-comm)
+endif()
+
 # User-specified program modules
 if (PROGRAM_MODULE_DIR)
     get_filename_component(resolved_program_dir "${PROGRAM_MODULE_DIR}" ABSOLUTE
