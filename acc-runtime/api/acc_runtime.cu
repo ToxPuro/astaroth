@@ -601,12 +601,13 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
 
 AcResult
 acLoadStencils(const cudaStream_t stream,
-                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+               const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]
+                                [STENCIL_WIDTH])
 {
-    int retval = 0;
-    for (size_t i = 0; i < NUM_STENCILS; ++i)
-        retval |= acLoadStencil((Stencil)i, stream, data[i]);
-    return (AcResult)retval;
+  int retval = 0;
+  for (size_t i = 0; i < NUM_STENCILS; ++i)
+    retval |= acLoadStencil((Stencil)i, stream, data[i]);
+  return (AcResult)retval;
 }
 
 AcResult
