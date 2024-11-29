@@ -100,14 +100,18 @@ main(int argc, char* argv[])
 	return acVertexBufferIdx(x,y,z,acGridGetLocalMeshInfo());
     };
     constexpr int RAND_RANGE = 100;
-    for(int k = dims.n0.x; k < dims.n1.x;  ++k)
+    for(int k = dims.n0.z; k < dims.n1.z;  ++k)
     	for(int j = dims.n0.y; j < dims.n1.y; ++j)
-    		for(int i = dims.n0.z; i < dims.n1.z; ++i)
-			model.vertex_buffer[FIELD][IDX(i,j,k)] = (model.vertex_buffer[FIELD][IDX(i,j,k)]-0.5)*RAND_RANGE;
+    		for(int i = dims.n0.x; i < dims.n1.x; ++i)
+		{
+			model.vertex_buffer[FIELD][IDX(i,j,k)] = 1.0;
+		}
+			//model.vertex_buffer[FIELD][IDX(i,j,k)] = (model.vertex_buffer[FIELD][IDX(i,j,k)]-0.5)*RAND_RANGE;
 
 
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridSynchronizeStream(STREAM_ALL);
+    printf("LOADED MESH TO GPU\n");
 
     AcBuffer gpu_field_zyx        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,ZYX,FIELD);
     AcBuffer gpu_field_xzy        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,XZY,FIELD);
@@ -317,10 +321,7 @@ main(int argc, char* argv[])
 		{
 			auto val   = model.vertex_buffer[FIELD][IDX(i,j,k)];
 			cpu_max_val = (val > cpu_max_val)  ? val : cpu_max_val;
-			if(val < cpu_min_val)
-			{
-				cpu_min_val = val;
-			}
+			cpu_min_val = (val < cpu_min_val)  ? val : cpu_min_val;
 			long_cpu_sum_val += (long double)val;
 			cpu_int_sum += (int)val;
 			z_sum[k] += val;

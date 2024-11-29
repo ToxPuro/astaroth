@@ -3087,87 +3087,6 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	  astnode_sprintf_postfix(compound_statement,"%s}",compound_statement->postfix);
 	  return;
 	}
-
-#if AC_USE_HIP
-	const char* shuffle_instruction = "rocprim::warp_shuffle_down(";
-	const char* warp_size  = "const size_t warp_size = rocprim::warp_size();";
-	const char* warp_id= "const size_t warp_id = rocprim::warp_id();\n";
-#else
-	const char* shuffle_instruction = "__shfl_down_sync(0xffffffff,";
-	const char* warp_size  = "constexpr size_t warp_size = 32;";
-	const char* warp_id= "const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;";
-#endif
-	bool all_profiles = true;
-	for(size_t i = 0; i < kernel_reduce_info.size; ++i) 
-	  all_profiles &= (strstr(get_reduce_dst_type(kernel_reduce_info.data[i]),"Profile") != NULL);
-	if(!all_profiles)
-		astnode_sprintf_postfix(compound_statement,"%s %s\n%s\n%s",compound_statement->postfix,
-						warp_size,warp_id,
-						"const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) % warp_size;"
-						"const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;"
-						"const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;"
-						"const int out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;"
-			);
-	for(size_t i = 0; i < kernel_reduce_info.size; ++i)
-	{
-		const char* dst_type = get_reduce_dst_type(kernel_reduce_info.data[i]);
-		if(strstr(dst_type,"Profile")) continue;
-		ReduceOp reduce_op = get_reduce_type(kernel_reduce_info.data[i]);
-		const char* output = get_reduce_dst(kernel_reduce_info.data[i]);
-		const char* define_name = convert_to_define_name(dst_type);
-	 	astnode_sprintf_postfix(compound_statement,"%sif(should_reduce_%s[(int)%s]){"
-						"for(int offset = warp_size/2; offset > 0; offset /= 2){ \n"
-						,compound_statement->postfix
-						,define_name
-						,output
-				      );
-
-		const char* array_name = sprintf_intern("%s_%s",
-			reduce_op == REDUCE_SUM ? "reduce_sum_res" :
-			reduce_op == REDUCE_MIN ? "reduce_min_res" :
-			reduce_op == REDUCE_MAX ? "reduce_max_res" :
-			NULL,
-			define_name
-			);
-
-
-		const char* res_name = sprintf_intern("%s[(int)%s]",array_name,output);
-	 	switch(reduce_op)
-	 	{
-		 	case(REDUCE_SUM):
-				astnode_sprintf_postfix(compound_statement,"%s%s += %s%s,offset);\n",compound_statement->postfix,res_name,shuffle_instruction,res_name);
-				break;
-		 	case(REDUCE_MIN):
-				astnode_sprintf_postfix(compound_statement,"%s"
-						"const AcReal shuffle_tmp = %s%s,offset);"
-						"%s = (shuffle_tmp < %s) ? shuffle_tmp : %s;\n"
-						,compound_statement->postfix
-						,shuffle_instruction,res_name
-						,res_name,res_name,res_name
-						);
-				break;
-		 	case(REDUCE_MAX):
-				astnode_sprintf_postfix(compound_statement,"%s"
-						"const AcReal shuffle_tmp = %s%s,offset);"
-						"%s = (shuffle_tmp > %s) ? shuffle_tmp : %s;\n"
-						,compound_statement->postfix
-						,shuffle_instruction,res_name
-						,res_name,res_name,res_name);
-				break;
-		 	case(NO_REDUCE):
-				printf("WRONG!\n");
-				printf("%s\n",fn_name);
-      				exit(EXIT_FAILURE);
-	 	}
-
-	 	astnode_sprintf_postfix(compound_statement,
-				"%s"
-				"}\n"
-				"if(lane_id == 0) {vba.reduce_scratchpads_%s[(int)%s][0][out_index] = %s;}}\n"
-		,compound_statement->postfix
-		,define_name
-		,output,res_name);
-	}
 	astnode_sprintf_postfix(compound_statement,"%s}",compound_statement->postfix);
 }
 
@@ -7908,8 +7827,9 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
            "-DIMPLEMENTATION=%d "
            "-DMAX_THREADS_PER_BLOCK=%d "
            "-Wfloat-conversion -Wshadow -I. %s -lm "
+	   "-DAC_USE_HIP=%d "
            "-o %s",
-           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,
+           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,AC_USE_HIP,
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);
@@ -8262,16 +8182,11 @@ compile_helper(const bool log)
   	printf("--- ACC_RUNTIME_API_DIR: `%s`\n", ACC_RUNTIME_API_DIR);
   	printf("--- GPU_API_INCLUDES: `%s`\n", GPU_API_INCLUDES);
   }
-#if AC_USE_HIP
-  const char* use_hip = "-DAC_USE_HIP=1 ";
-#else
-  const char* use_hip = "";
-#endif
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " %s %s -DAC_DOUBLE_PRECISION=%d " 
+  sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " %s -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d " 
 	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
-  ,api_includes, use_hip, AC_DOUBLE_PRECISION
+  ,api_includes, AC_DOUBLE_PRECISION, AC_USE_HIP
   );
 
   /*

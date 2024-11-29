@@ -302,85 +302,106 @@ gen_kernel_write_funcs(const int curr_kernel)
 void
 gen_kernel_prefix(const int curr_kernel)
 {
+  (void)curr_kernel;
   gen_kernel_common_prefix();
+}
+typedef enum ReduceOp
+{
+	NO_REDUCE,
+	REDUCE_MIN,
+	REDUCE_MAX,
+	REDUCE_SUM,
+} ReduceOp;
+void
+print_reduce_ops(const ReduceOp op, const char* define_name)
+{
+#if AC_USE_HIP
+	const char* shuffle_instruction = "rocprim::warp_shuffle_down(";
+#else
+	const char* shuffle_instruction = "__shfl_down_sync(AC_INTERNAL_active_threads,";
+#endif
+	printf(
+              	  "if (!condition) return;"
+		  "for(int offset = warp_size/2; offset > 0; offset /= 2){"
+		  "if(!((AC_INTERNAL_active_threads >> (lane_id + offset)) & 1)) continue;"
+		  "const auto shuffle_tmp = %sval,offset);"
+	      ,shuffle_instruction);
+	if(op == REDUCE_SUM)
+	{
+		printf(
+		  "val += shuffle_tmp;"
+	      	);
+	}
+	else if(op == REDUCE_MIN)
+	{
+		printf(
+		  "val = val > shuffle_tmp ? shuffle_tmp : val;"
+	      	);
+	}
+	else if(op == REDUCE_MAX)
+	{
+		printf(
+		  "val = val > shuffle_tmp ? val : shuffle_tmp;"
+	      	);
+	}
 
+	printf(
+		  "}"
+		  "if(lane_id == warp_leader_id) {vba.reduce_scratchpads_%s[(int)output][0][warp_out_index] = val;}"
+	      ,define_name);
+}
+void
+printf_reduce_funcs(const char* datatype, const char* define_name, const char* enum_name)
+{
+        printf("const auto reduce_sum_%s __attribute__((unused)) = [&](const bool& condition, %s val, const %sOutputParam& output) {",define_name,datatype,enum_name);
+	print_reduce_ops(REDUCE_SUM, define_name);
+	printf("};");
 
+        printf("const auto reduce_min_%s __attribute__((unused)) = [&](const bool& condition, %s val, const %sOutputParam& output) {",define_name,datatype,enum_name);
+	print_reduce_ops(REDUCE_MIN, define_name);
+	printf("};");
+
+        printf("const auto reduce_max_%s __attribute__((unused)) = [&](const bool& condition, %s val, const %sOutputParam& output) {",define_name,datatype,enum_name);
+	print_reduce_ops(REDUCE_MAX, define_name);
+	printf("};");
+
+}
+
+void
+gen_kernel_reduce_funcs(const int curr_kernel)
+{
   if(kernel_calls_reduce[curr_kernel] )
   {
+#if AC_USE_HIP
+	const char* warp_size  = "const size_t warp_size = rocprim::warp_size();";
+	const char* warp_id= "const size_t warp_id = rocprim::warp_id();\n";
+#else
+	const char* warp_size  = "constexpr size_t warp_size = 32;";
+	const char* warp_id= "const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;";
+#endif
+    printf(warp_size);
+    printf(warp_id);
+    printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
+    printf("const size_t warp_leader_id  = __ffsll(AC_INTERNAL_active_threads)-1;");
+    printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
+    printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
+    printf("const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
     if(NUM_REAL_OUTPUTS)
-    {
-    	printf("AcReal reduce_sum_res_real[NUM_REAL_OUTPUTS] = {\n");
-    	for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
-    	        printf("0.0,");
-    	printf("};\n");
-    	printf("AcReal reduce_max_res_real[NUM_REAL_OUTPUTS] = {\n");
-    	for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
-    	        printf("-1000000.0,");
-    	printf("};\n");
-    	printf("AcReal reduce_min_res_real[NUM_REAL_OUTPUTS] = {\n");
-    	for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
-    	        printf("1000000.0,");
-    	printf("};\n");
-    	printf("bool should_reduce_real[NUM_REAL_OUTPUTS] = {\n");
-    		printf("false,");
-    	printf("};\n");
-        printf("(void)reduce_sum_res_real;");
-        printf("(void)reduce_min_res_real;");
-        printf("(void)reduce_max_res_real;");
-        printf("const auto reduce_sum_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-              	  "{ should_reduce_real[(int)output] = condition; reduce_sum_res_real[(int)output] = val; };");
-        printf("const auto reduce_min_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-              	  "{ should_reduce_real[(int)output] = condition; reduce_min_res_real[(int)output] = val; };");
-        printf("const auto reduce_max_real __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-    		  "{ should_reduce_real[(int)output] = condition; reduce_max_res_real[(int)output] = val; };");
-    }
+	printf_reduce_funcs("AcReal","real","AcReal");
     if(NUM_INT_OUTPUTS)
-    {
-    	printf("int reduce_sum_res_int[NUM_INT_OUTPUTS] = {\n");
-    	for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
-    	        printf("0,");
-    	printf("};\n");
-    	printf("int reduce_max_res_int[NUM_INT_OUTPUTS] = {\n");
-    	for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
-    	        printf("-10000000,");
-    	printf("};\n");
-    	printf("int reduce_min_res_int[NUM_INT_OUTPUTS] = {\n");
-    	for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
-    	        printf("10000000,");
-    	printf("};\n");
-    	printf("bool should_reduce_int[NUM_INT_OUTPUTS] = {\n");
-    	for(int i = 0; i< NUM_INT_OUTPUTS;  ++i)
-    		printf("false,");
-    	printf("};\n");
-    	
-
-    	printf("(void)reduce_sum_res_int;");
-    	printf("(void)reduce_min_res_int;");
-    	printf("(void)reduce_max_res_int;");
-        printf("const auto reduce_sum_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
-              	  "{ should_reduce_int[(int)output] = condition; reduce_sum_res_int[(int)output] = val; };");
-        printf("const auto reduce_min_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
-              	  "{ should_reduce_int[(int)output] = condition; reduce_min_res_int[(int)output] = val; };");
-        printf("const auto reduce_max_int __attribute__((unused)) = [&](const bool& condition, const int& val, const AcIntOutputParam& output)"
-   		  "{ should_reduce_int[(int)output] = condition; reduce_max_res_int[(int)output] = val; };");
-    }
+	printf_reduce_funcs("int","int","AcInt");
 
 
   }
 }
-
 static void
 gen_return_if_oob(const int curr_kernel)
 {
        printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
        if(kernel_calls_reduce[curr_kernel] )
-       {
-	 if(NUM_REAL_OUTPUTS)
-	 	printf("for(int i = 0; i < NUM_REAL_OUTPUTS; ++i) should_reduce_real[i] = out_of_bounds;\n");
-	 if(NUM_INT_OUTPUTS)
-	 	printf("for(int i = 0; i < NUM_INT_OUTPUTS; ++i)   should_reduce_int[i] = out_of_bounds;\n");
-       }
-       printf("if(!out_of_bounds){\n#include \"user_non_scalar_constants.h\"\n");
+	       printf("const auto AC_INTERNAL_active_threads = __ballot(!out_of_bounds);");
+       printf("if(out_of_bounds) return;");
+       printf("{\n#include \"user_non_scalar_constants.h\"\n");
 }
 
 static void
@@ -719,6 +740,7 @@ gen_kernel_body(const int curr_kernel)
   case IMPLICIT_CACHING: {
     gen_kernel_prefix(curr_kernel);
     gen_return_if_oob(curr_kernel);
+    gen_kernel_reduce_funcs(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
 
     int stencil_initialized[NUM_ALL_FIELDS + NUM_PROFILES][NUM_STENCILS] = {0};
@@ -877,15 +899,11 @@ gen_kernel_body(const int curr_kernel)
                     printf("auto p%d_s%d = ", profile, stencil);
 		    printf_stencil_point(stencil,depth,height,width);
                     printf("%s(", stencil_unary_ops[stencil]);
-#if !AC_USE_HIP
                     printf("__ldg(&");
-#endif
                     printf("vba.profiles.in[%d]"
                            "[vertexIdx.z+(%d)])",
                            profile, -STENCIL_ORDER / 2 + depth);
-#if !AC_USE_HIP
                     printf(")");
-#endif
                     printf(";");
 
                     stencil_initialized[NUM_FIELDS + profile][stencil] = 1;
@@ -896,15 +914,11 @@ gen_kernel_body(const int curr_kernel)
                            stencil);
 		    printf_stencil_point(stencil,depth,height,width);
                     printf("%s(", stencil_unary_ops[stencil]);
-#if !AC_USE_HIP
                     printf("__ldg(&");
-#endif
                     printf("vba.profiles.in[%d]"
                            "[vertexIdx.z+(%d)])",
                            profile, -STENCIL_ORDER / 2 + depth);
-#if !AC_USE_HIP
                     printf(")");
-#endif
                     printf(");");
                   }
                 }
@@ -935,6 +949,7 @@ gen_kernel_body(const int curr_kernel)
 
     prefetch_stencil_elems_to_smem_and_compute_stencil_ops(curr_kernel);
     gen_return_if_oob(curr_kernel);
+    gen_kernel_reduce_funcs(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -945,6 +960,7 @@ gen_kernel_body(const int curr_kernel)
 
     prefetch_stencil_elems_to_smem_3d_and_compute_stencil_ops(curr_kernel);
     gen_return_if_oob(curr_kernel);
+    gen_kernel_reduce_funcs(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -955,6 +971,7 @@ gen_kernel_body(const int curr_kernel)
 
     prefetch_stencil_elems_to_smem_4d_and_compute_stencil_ops(curr_kernel);
     gen_return_if_oob(curr_kernel);
+    gen_kernel_reduce_funcs(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -967,6 +984,7 @@ gen_kernel_body(const int curr_kernel)
     prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
         curr_kernel);
     gen_return_if_oob(curr_kernel);
+    gen_kernel_reduce_funcs(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -980,6 +998,7 @@ gen_kernel_body(const int curr_kernel)
     prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
         curr_kernel);
     gen_return_if_oob(curr_kernel);
+    gen_kernel_reduce_funcs(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -992,6 +1011,7 @@ gen_kernel_body(const int curr_kernel)
     // prefetch_stencil_elems_to_smem_pingpong_txyblocked_and_compute_stencil_ops(
     //     curr_kernel);
     gen_return_if_oob(curr_kernel);
+    gen_kernel_reduce_funcs(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
@@ -1004,6 +1024,7 @@ gen_kernel_body(const int curr_kernel)
     prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
         curr_kernel);
     gen_return_if_oob(curr_kernel);
+    gen_kernel_reduce_funcs(curr_kernel);
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);

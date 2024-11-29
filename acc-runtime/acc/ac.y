@@ -876,9 +876,9 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
                   | '(' type_specifier ')' primary_expression { 
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
 						astnode_set_infix(")",$$); 
-						const char* type = combine_all_new_with_whitespace($$->lhs);
+						const char* type = combine_all_new($$->lhs);
 						if(!strcmps(type,"int","AcReal"))
-							astnode_sprintf_prefix($$,"(%s",type);
+							astnode_sprintf_prefix($$,"(%s",combine_all_new_with_whitespace($$->lhs));
 						$$->token = CAST;
 						}
                   | '[' expression_list ']' { $$ = astnode_create(NODE_ARRAY_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
