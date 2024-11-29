@@ -1,11 +1,10 @@
 #pragma once
 #include <iomanip>
 
-#include "vector"
 #include "buffer.h"
+#include "vector"
 
 #include "math_utils.h"
-
 
 template <typename T>
 static void

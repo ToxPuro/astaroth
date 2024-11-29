@@ -8,7 +8,6 @@
 #include "errchk.h"
 #include "type_conversion.h"
 
-
 namespace ac {
 
 template <typename T, size_t N> class static_array {
