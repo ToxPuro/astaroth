@@ -5,4 +5,4 @@ cmake_minimum_required(VERSION 3.0)
 project(inih C)
 
 ## Library
-add_library(inih SHARED ini.c)
+add_library(inih STATIC ini.c)

@@ -33,4 +33,3 @@ benchmark-data/
 compile_commands.json
 .DS_Store
 .vscode
-tmp/
