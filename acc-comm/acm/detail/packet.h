@@ -80,21 +80,21 @@ template <typename T, typename MemoryResource> class Packet {
 
         Index send_offset{((local_nn + segment.offset - local_rr) % local_nn) + local_rr};
 
-        auto recv_direction{get_direction(segment.offset, local_nn, local_rr)};
-        const int recv_neighbor{get_neighbor(comm, recv_direction)};
-        const int send_neighbor{get_neighbor(comm, -recv_direction)};
+        auto recv_direction{ac::mpi::get_direction(segment.offset, local_nn, local_rr)};
+        const int recv_neighbor{ac::mpi::get_neighbor(comm, recv_direction)};
+        const int send_neighbor{ac::mpi::get_neighbor(comm, -recv_direction)};
 
         // Post recv
         const int tag{0};
         ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(), as<int>(count), get_mpi_dtype<T>(),
+        ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(), as<int>(count), ac::mpi::get_mpi_dtype<T>(),
                                  recv_neighbor, tag, comm, &recv_req));
 
         // Pack and post send
         pack(local_mm, segment.dims, send_offset, inputs, send_buffer);
 
         ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), get_mpi_dtype<T>(),
+        ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), ac::mpi::get_mpi_dtype<T>(),
                                  send_neighbor, tag, comm, &send_req));
     }
 

@@ -12,7 +12,7 @@ ACM_Errorcode
 ACM_MPI_Init_funneled(void)
 {
     try {
-        init_mpi_funneled();
+        ac::mpi::init_mpi_funneled();
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {
@@ -32,7 +32,7 @@ ACM_Errorcode
 ACM_MPI_Finalize(void)
 {
     try {
-        finalize_mpi();
+        ac::mpi::finalize_mpi();
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {
@@ -46,7 +46,7 @@ ACM_MPI_Cart_comm_create(const MPI_Comm parent_comm, const size_t ndims, const u
                          MPI_Comm* cart_comm)
 {
     try {
-        *cart_comm = cart_comm_create(parent_comm, Shape(ndims, global_nn));
+        *cart_comm = ac::mpi::cart_comm_create(parent_comm, Shape(ndims, global_nn));
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {
@@ -59,7 +59,7 @@ ACM_Errorcode
 ACM_MPI_Cart_comm_destroy(MPI_Comm* cart_comm)
 {
     try {
-        cart_comm_destroy(*cart_comm);
+        ac::mpi::cart_comm_destroy(*cart_comm);
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {
@@ -72,9 +72,9 @@ ACM_Errorcode
 ACM_Get_ndims(const MPI_Comm cart_comm, int* ndims)
 {
     try {
-        *ndims = get_ndims(cart_comm);
+        *ndims = ac::mpi::get_ndims(cart_comm);
         return ACM_ERRORCODE_SUCCESS;
-    } 
+    }
     catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return ACM_ERRORCODE_GENERIC_FAILURE;
@@ -85,8 +85,8 @@ ACM_Errorcode
 ACM_Get_decomposition(const MPI_Comm cart_comm, const size_t ndims, uint64_t* decomp_out)
 {
     try {
-        ERRCHK(get_ndims(cart_comm) == as<int>(ndims));
-        const auto decomp = get_decomposition(cart_comm);
+        ERRCHK(ac::mpi::get_ndims(cart_comm) == as<int>(ndims));
+        const auto decomp = ac::mpi::get_decomposition(cart_comm);
         std::copy(decomp.begin(), decomp.end(), decomp_out);
         return ACM_ERRORCODE_SUCCESS;
     }
@@ -100,8 +100,8 @@ ACM_Errorcode
 ACM_Get_coords(const MPI_Comm cart_comm, const size_t ndims, uint64_t* coords_out)
 {
     try {
-        ERRCHK(get_ndims(cart_comm) == as<int>(ndims));
-        const auto coords = get_coords(cart_comm);
+        ERRCHK(ac::mpi::get_ndims(cart_comm) == as<int>(ndims));
+        const auto coords = ac::mpi::get_coords(cart_comm);
         std::copy(coords.begin(), coords.end(), coords_out);
         return ACM_ERRORCODE_SUCCESS;
     }
@@ -117,7 +117,7 @@ ACM_Get_local_nn(const MPI_Comm cart_comm, const size_t ndims, const uint64_t* g
 {
     try {
         const auto global_nn{Shape(ndims, global_nn_in)};
-        const auto decomp   = get_decomposition(cart_comm);
+        const auto decomp   = ac::mpi::get_decomposition(cart_comm);
         const auto local_nn = global_nn / decomp;
         std::copy(local_nn.begin(), local_nn.end(), local_nn_out);
         return ACM_ERRORCODE_SUCCESS;
@@ -134,9 +134,9 @@ ACM_Get_global_nn_offset(const MPI_Comm cart_comm, const size_t ndims, const uin
 {
     try {
         const auto global_nn{Shape(ndims, global_nn_in)};
-        const auto decomp{get_decomposition(cart_comm)};
+        const auto decomp{ac::mpi::get_decomposition(cart_comm)};
         const auto local_nn{global_nn / decomp};
-        const auto coords{get_coords(cart_comm)};
+        const auto coords{ac::mpi::get_coords(cart_comm)};
         const auto global_nn_offset{coords * local_nn};
         std::copy(global_nn_offset.begin(), global_nn_offset.end(), global_nn_offset_out);
         return ACM_ERRORCODE_SUCCESS;
@@ -186,7 +186,8 @@ ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t ndims,
 }
 
 // ACM_Errorcode
-// ACM_IO_Task_create(const size_t ndims, const uint64_t* in_file_dims, const uint64_t* in_file_offset,
+// ACM_IO_Task_create(const size_t ndims, const uint64_t* in_file_dims, const uint64_t*
+// in_file_offset,
 //                    const uint64_t* in_mesh_dims, const uint64_t* in_mesh_subdims,
 //                    const uint64_t* in_mesh_offset, ACM_IO_Task* task)
 // {

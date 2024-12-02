@@ -117,10 +117,10 @@ main()
         benchmark();
 
         const Shape global_nn{4, 4};
-        MPI_Comm cart_comm{cart_comm_create(MPI_COMM_WORLD, global_nn)};
-        const Shape decomp{get_decomposition(cart_comm)};
+        MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+        const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
         const Shape local_nn{global_nn / decomp};
-        const Index coords{get_coords(cart_comm)};
+        const Index coords{ac::mpi::get_coords(cart_comm)};
         const Index global_nn_offset{coords * local_nn};
 
         const Shape rr(global_nn.size(), 1); // Symmetric halo
@@ -134,7 +134,7 @@ main()
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
         std::iota(hin.begin(), hin.end(),
-                  static_cast<UserType>(get_rank(cart_comm)) *
+                  static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                       static_cast<UserType>(prod(local_mm)));
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -154,11 +154,11 @@ main()
         PRINT_LOG("Testing basic halo exchange"); //-------------------------------
         if (nprocs == 1) {
             std::iota(hin.begin(), hin.end(),
-                      static_cast<UserType>(get_rank(cart_comm)) *
+                      static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                           static_cast<UserType>(prod(local_mm)));
         }
         else {
-            std::fill(hin.begin(), hin.end(), static_cast<UserType>(get_rank(cart_comm)));
+            std::fill(hin.begin(), hin.end(), static_cast<UserType>(ac::mpi::get_rank(cart_comm)));
         }
         migrate(hin.buffer, din.buffer);
 
@@ -166,7 +166,7 @@ main()
         auto recv_reqs = launch_halo_exchange<UserType>(cart_comm, local_mm, local_nn, rr,
                                                         din.buffer.data(), din.buffer.data());
         while (!recv_reqs.empty()) {
-            request_wait_and_destroy(recv_reqs.back());
+            ac::mpi::request_wait_and_destroy(recv_reqs.back());
             recv_reqs.pop_back();
         }
         migrate(din.buffer, hin.buffer);
@@ -181,11 +181,11 @@ main()
         PRINT_LOG("Testing packed halo exchange"); //-------------------------------
         if (nprocs == 1) {
             std::iota(hin.begin(), hin.end(),
-                      static_cast<UserType>(get_rank(cart_comm)) *
+                      static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                           static_cast<UserType>(prod(local_mm)));
         }
         else {
-            std::fill(hin.begin(), hin.end(), static_cast<UserType>(get_rank(cart_comm)));
+            std::fill(hin.begin(), hin.end(), static_cast<UserType>(ac::mpi::get_rank(cart_comm)));
         }
         migrate(hin.buffer, din.buffer);
 
@@ -212,7 +212,7 @@ main()
 #if true
         PRINT_LOG("Testing IO"); //-------------------------------
         std::iota(hin.begin(), hin.end(),
-                  static_cast<UserType>(get_rank(cart_comm)) *
+                  static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                       static_cast<UserType>(prod(local_mm)));
 
         IOTaskAsync<UserType> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};

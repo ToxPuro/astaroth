@@ -34,6 +34,8 @@
         MPI_SYNCHRONOUS_BLOCK_END((communicator))                                                  \
     } while (0)
 
+namespace ac::mpi {
+
 /**
  * Initializes MPI in funneled mode
  * Funneled mode that is required for correct CUDA/MPI programs that
@@ -137,3 +139,5 @@ get_mpi_dtype()
         return MPI_DATATYPE_NULL;
     }
 }
+
+} // namespace ac::mpi
