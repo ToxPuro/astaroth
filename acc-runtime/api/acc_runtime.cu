@@ -1103,8 +1103,10 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
 
   // New: require that tpb.x is a multiple of the minimum transaction or L2
   // cache line size
-  const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
-  const int x_increment = min(minimum_transaction_size_in_elems,dims.x);
+  //const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
+  //New: require that tpb.x is a multiple of the warp size, since otherwise not contiguous mem accesses and this makes autotuning faster
+  //const int x_increment = min(minimum_transaction_size_in_elems,dims.x);
+  const int x_increment = min(props.warpSize,dims.x);
 
   std::vector<int3> samples{};
   for (int z = 1; z <= min(max_threads_per_block,dims.z); ++z) {

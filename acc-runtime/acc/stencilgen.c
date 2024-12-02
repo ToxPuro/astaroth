@@ -323,8 +323,8 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 	printf(
               	  "if (!condition) return;"
 		  "for(int offset = warp_size/2; offset > 0; offset /= 2){"
-		  "if(!((AC_INTERNAL_active_threads >> (lane_id + offset)) & 1)) continue;"
 		  "const auto shuffle_tmp = %sval,offset);"
+		  "if(!((AC_INTERNAL_active_threads >> (lane_id + offset)) & 1)) continue;"
 	      ,shuffle_instruction);
 	if(op == REDUCE_SUM)
 	{
