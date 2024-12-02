@@ -1294,3 +1294,10 @@ acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf, co
     acHostMeshDestroy(&host_mesh);
     return AC_SUCCESS;
 }
+
+AcResult
+acDeviceGetVBA(const Device device, VertexBufferArray* vba)
+{
+    *vba = device->vba;
+    return AC_SUCCESS;
+}
