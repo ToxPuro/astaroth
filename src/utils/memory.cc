@@ -17,6 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "astaroth_utils.h"
+#include "user_builtin_non_scalar_constants.h"
 
 #include "errchk.h"
 
@@ -39,15 +40,33 @@ acHostMeshSet(const AcReal value, AcMesh* mesh)
 
     return AC_SUCCESS;
 }
+#if AC_LAGRANGIAN_GRID
+static inline __device__ AcReal
+lagrangian_correction(const Field j, const Field2 coords, const int3 indexes, const AcReal3 lengths, const int3 nn_min, const int3 nn_max)
+{
+	const AcReal x_coeff = (j == coords.x)*lengths.x;
+	const AcReal y_coeff = (j == coords.y)*lengths.y;
+        return  x_coeff*((indexes.x >= nn_max.x) - (indexes.x < nn_min.x))
+              + y_coeff*((indexes.y >= nn_max.y) - (indexes.y < nn_min.y));
+}
+static inline __device__ AcReal
+lagrangian_correction(const int j, const Field3 coords, const int3 indexes, const AcReal3 lengths, const int3 nn_min, const int3 nn_max)
+{
+	const AcReal x_coeff = (j == coords.x)*lengths.x;
+	const AcReal y_coeff = (j == coords.y)*lengths.y;
+	const AcReal z_coeff = (j == coords.z)*lengths.z;
+        return  x_coeff*((indexes.x >= nn_max.x) - (indexes.x < nn_min.x))
+              + y_coeff*((indexes.y >= nn_max.y) - (indexes.y < nn_min.y))
+              + z_coeff*((indexes.z >= nn_max.z) - (indexes.z < nn_min.z));
+}
+#endif
+
 
 AcResult
 acHostMeshApplyPeriodicBounds(AcMesh* mesh)
 {
     const AcMeshInfo info = mesh->info;
 
-#if AC_LAGRANGIAN_GRID
-    const AcReal3 lengths = acGetLengths(info);
-#endif
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
 	if (!vtxbuf_is_communicated[w]) continue;
         const int3 start = (int3){0, 0, 0};
@@ -108,11 +127,7 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
                     ERRCHK(dst_idx < acVertexBufferSize(info));
                     mesh->vertex_buffer[w][dst_idx] = mesh->vertex_buffer[w][src_idx];
 #if AC_LAGRANGIAN_GRID
-                    mesh->vertex_buffer[AC_COORDS_X][dst_idx] += (w == AC_COORDS_X) * lengths.x*((i_dst >= nx_max) -(i_dst < nx_min));;
-                    mesh->vertex_buffer[AC_COORDS_Y][dst_idx] += (w == AC_COORDS_Y) * lengths.y*((j_dst >= ny_max) -(j_dst < ny_min));;
-#if TWO_D == 0
-                    mesh->vertex_buffer[AC_COORDS_Z][dst_idx] += (w == AC_COORDS_Z) * lengths.z*((k_dst >= nz_max) -(k_dst < nz_min));
-#endif
+		    mesh->vertex_buffer[w][dst_idx] += lagrangian_correction((Field)w,AC_COORDS,{i_dst,j_dst,k_dst},acGetLengths(info),nn_min,nn_max);
 #endif
                 }
             }

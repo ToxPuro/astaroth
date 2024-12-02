@@ -196,15 +196,16 @@ main(void)
 	    return acVertexBufferIdx(i,j,k,model.info);
     };
 
+    const auto ghosts = acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin];
     for (int step_number = 0; step_number < NUM_INTEGRATION_STEPS; ++step_number) {
 
 	//test arr with random compute
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
-			[[maybe_unused]] int comp_x = i - NGHOST_X;
-			int comp_y = j - NGHOST_Y;
-			[[maybe_unused]] int comp_z = j - NGHOST_Z;
+			[[maybe_unused]] int comp_x = i - ghosts.x;
+			int comp_y = j - ghosts.y;
+			[[maybe_unused]] int comp_z = j - ghosts.z;
 			model.vertex_buffer[FIELD_X][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-NGHOST_X];
 			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr TWO_D_ARR(info[AC_dconst_int],comp_y) + threeD_real_arr THREE_D_ARR(i,j,k));
 			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2])*((AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,0) + (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,1)  + (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,2));

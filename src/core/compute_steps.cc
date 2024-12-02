@@ -305,13 +305,33 @@ get_field_boundconds(const AcDSLTaskGraph bc_graph)
 	return res;
 }
 
+std::vector<AcBoundary>
+get_boundaries()
+{
+		const auto info = get_info();
+		std::vector<AcBoundary> boundaries{};
+		if(!info[AC_dimension_inactive].x)
+		{
+			boundaries.push_back(BOUNDARY_X_TOP);
+			boundaries.push_back(BOUNDARY_X_BOT);
+		}
+		if(!info[AC_dimension_inactive].y)
+		{
+			boundaries.push_back(BOUNDARY_Y_TOP);
+			boundaries.push_back(BOUNDARY_Y_BOT);
+		}
+		if(!info[AC_dimension_inactive].z)
+		{
+			boundaries.push_back(BOUNDARY_Z_TOP);
+			boundaries.push_back(BOUNDARY_Z_BOT);
+		}
+		return boundaries;
+}
 
 void
 check_field_boundconds(const FieldBCs field_boundconds)
 {
-	const std::vector<AcBoundary> boundaries_to_check  = 
-	TWO_D ? (std::vector<AcBoundary>){BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT}
-	      : (std::vector<AcBoundary>){BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
+	const std::vector<AcBoundary> boundaries_to_check  = get_boundaries();
 	for(size_t field = 0; field < NUM_VTXBUF_HANDLES; ++field)
 	{
 		if(!vtxbuf_is_communicated[field]) continue;
@@ -347,9 +367,13 @@ gen_halo_exchange_and_boundconds(
 			if(!ac_pid()) fprintf(stream,"}");
 		};
 		std::vector<AcTaskDefinition> res{};
-		constexpr int num_boundaries = TWO_D ? 4 : 6;
-		std::vector<AcBoundary> boundaries = TWO_D ? (std::vector<AcBoundary>){BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT} : (std::vector<AcBoundary>){BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
-		std::array<std::array<bool,num_boundaries>,NUM_ALL_FIELDS>  field_boundconds_processed{};
+		const auto info = get_info();
+		const std::vector<AcBoundary> boundaries = get_boundaries();
+		std::array<std::vector<bool>,NUM_ALL_FIELDS>  field_boundconds_processed{};
+		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
+		{
+			field_boundconds_processed[i].push_back(false);
+		}
 
 		std::vector<Field> output_fields{};
 		for(auto& field : fields)
@@ -365,13 +389,13 @@ gen_halo_exchange_and_boundconds(
 			if(!ac_pid()) fprintf(stream, ")\n");
 			res.push_back(acHaloExchange(output_fields));
 			const Field one_communicated_field = output_fields[0];
-			const auto x_boundcond = field_boundconds[one_communicated_field][0];
-			const auto y_boundcond = field_boundconds[one_communicated_field][1];
-			const auto z_boundcond = num_boundaries > 4 ? field_boundconds[one_communicated_field][4] : (BoundCond){};
+			const auto x_boundcond = !info[AC_dimension_inactive].x ? field_boundconds[one_communicated_field][0] : (BoundCond){};
+			const auto y_boundcond = !info[AC_dimension_inactive].y ? field_boundconds[one_communicated_field][2] : (BoundCond){};
+			const auto z_boundcond = !info[AC_dimension_inactive].z ? field_boundconds[one_communicated_field][4] : (BoundCond){};
 			
-			const bool x_periodic = x_boundcond.kernel == BOUNDCOND_PERIODIC;
-			const bool y_periodic = y_boundcond.kernel == BOUNDCOND_PERIODIC;
-			const bool z_periodic = num_boundaries > 4 && z_boundcond.kernel == BOUNDCOND_PERIODIC;
+			const bool x_periodic = !info[AC_dimension_inactive].x && x_boundcond.kernel == BOUNDCOND_PERIODIC;
+			const bool y_periodic = !info[AC_dimension_inactive].y && y_boundcond.kernel == BOUNDCOND_PERIODIC;
+			const bool z_periodic = !info[AC_dimension_inactive].z && z_boundcond.kernel == BOUNDCOND_PERIODIC;
 
 			if(x_periodic)
 			{

@@ -78,7 +78,7 @@ print(const char* , ...)
 #define vertexIdx ((int3){start.x, start.y, start.z})
 #define globalVertexIdx ((int3){vertexIdx.x, vertexIdx.y, vertexIdx.z})
 
-#define localCompdomainVertexIdx ((int3){NGHOST_X,NGHOST_Y,NGHOST_Z})
+#define localCompdomainVertexIdx (d_mesh_info[AC_nmin])
 
 
 #define local_compdomain_idx ((LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx))
@@ -321,9 +321,9 @@ bool
 index_at_boundary(const int x, const int y, const int z)
 {
 	return  
-	      ((x < NGHOST_X) || (x >= VAL(AC_nlocal_max).x))
-	   || ((y < NGHOST_Y) || (y >= VAL(AC_nlocal_max).y))
-	   || ((z < NGHOST_Z) || (z >= VAL(AC_nlocal_max).z))
+	      ((x < VAL(AC_nmin).x) || (x >= VAL(AC_nlocal_max).x))
+	   || ((y < VAL(AC_nmin).y) || (y >= VAL(AC_nlocal_max).y))
+	   || ((z < VAL(AC_nmin).z) || (z >= VAL(AC_nlocal_max).z))
 	   ;
 }
 void

@@ -326,6 +326,20 @@ check_that_decomp_valid(const AcMeshInfo info)
         fprintf(stderr, "Divisible: (%d, %d, %d)\n", nx_valid, ny_valid, nz_valid);
     }
 }
+AcBoundary
+get_full_boundary()
+{
+    const auto inactive = grid.device->local_config[AC_dimension_inactive];
+    return
+	    (!inactive.x && inactive.y && inactive.z) ? BOUNDARY_X :
+	    (inactive.x && !inactive.y && inactive.z) ? BOUNDARY_Y :
+	    (inactive.x && inactive.y && !inactive.z) ? BOUNDARY_Z :
+	    (!inactive.x && !inactive.y && inactive.z) ? BOUNDARY_XY :
+	    (!inactive.x && inactive.y && !inactive.z) ? BOUNDARY_XZ :
+	    (inactive.x && !inactive.y && !inactive.z) ? BOUNDARY_YZ :
+	    (!inactive.x && !inactive.y && !inactive.z) ? BOUNDARY_XYZ :
+	    BOUNDARY_NONE;
+}
 #ifdef AC_INTEGRATION_ENABLED
 void
 gen_default_taskgraph()
@@ -347,9 +361,10 @@ gen_default_taskgraph()
 	    l.params -> twopass_solve_final.current_time= 
 		   l.device->local_config[AC_current_time];
     };
+
     AcTaskDefinition default_ops[] = {
 	    acHaloExchange(all_fields),
-            acBoundaryCondition((!TWO_D ? BOUNDARY_XYZ : BOUNDARY_XY), BOUNDCOND_PERIODIC,all_fields_vec),
+            acBoundaryCondition(get_full_boundary(), BOUNDCOND_PERIODIC,all_fields_vec),
 	    acComputeWithParams(twopass_solve_intermediate, all_fields,intermediate_loader),
 	    acComputeWithParams(twopass_solve_final, all_fields,final_loader)
     };
@@ -425,12 +440,12 @@ void
 check_that_mesh_large_enough(const AcMeshInfo info)
 {
     const int3 nn = acGetLocalNN(info);
-    if (nn.x < STENCIL_WIDTH)
+    if (nn.x < STENCIL_WIDTH && !info[AC_dimension_inactive].x)
         fprintf(stderr, "nn.x %d too small, must be >= %d (stencil width)\n", nn.x, STENCIL_WIDTH);
-    if (nn.y < STENCIL_HEIGHT)
+    if (nn.y < STENCIL_HEIGHT && !info[AC_dimension_inactive].y)
         fprintf(stderr, "nn.y %d too small, must be >= %d (stencil height)\n", nn.y,
                 STENCIL_HEIGHT);
-    if (nn.z < STENCIL_DEPTH && !TWO_D)
+    if (nn.z < STENCIL_DEPTH && !info[AC_dimension_inactive].z)
         fprintf(stderr, "nn.z %d too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
 }
 
@@ -497,7 +512,8 @@ acGridInitBase(const AcMesh user_mesh)
     check_that_device_allocation_valid();
 
 
-    acInitDecomposition(TWO_D);
+    const int n_active_dimensions = !info[AC_dimension_inactive].x + !info[AC_dimension_inactive].y + !info[AC_dimension_inactive].z;
+    acInitDecomposition(n_active_dimensions == 2);
     if(info[AC_decompose_strategy] == (int)AcDecomposeStrategy::Hierarchical)
     {
         int device_count = -1;
@@ -668,14 +684,10 @@ acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 v
     return acDeviceLoadInt3Uniform(grid.device, stream, param, buffer);
 }
 
-const int3
-get_rr()
+static int3 
+get_ghost_zone_sizes()
 {
-    return (int3){
-	NGHOST_X,
-	NGHOST_Y,
-	NGHOST_Z
-    };
+	return grid.device->local_config[AC_nmin];
 }
 
 AcResult
@@ -685,7 +697,7 @@ acGridLoadMeshWorking(const Stream stream, const AcMesh host_mesh)
     acGridSynchronizeStream(stream);
 
 
-    const int3 rr = get_rr();
+    const int3 rr = get_ghost_zone_sizes();
     const int3 monolithic_mm = get_global_nn() + 2 * rr;
     const int3 monolithic_nn = acGetLocalNN(grid.device->local_config);
     const int3 monolithic_offset = rr;
@@ -926,11 +938,7 @@ get_subarray(const int pid, //
     const AcMeshInfo info = device->local_config;
 
     const int3 pid3d = getPid3D(pid);
-    const int3 rr    = (int3){
-	 NGHOST_X,
-	 NGHOST_Y,
-	 NGHOST_Z
-    };
+    const int3 rr    = get_ghost_zone_sizes(); 
 
     const int3 min = (int3){0, 0, 0};
     const int3 max = getPid3D(nprocs - 1); // inclusive
@@ -997,7 +1005,7 @@ get_subarray(const int pid, //
     const AcMeshInfo info = device->local_config;
 
     const int3 pid3d = getPid3D(pid);
-    const int3 rr = get_rr();
+    const int3 rr = get_ghost_zone_sizes();
 
     const int3 min = (int3){0, 0, 0};
     const int3 max = getPid3D(ac_nprocs() - 1); // inclusive
@@ -1231,7 +1239,7 @@ acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
     */
 
 
-    const int3 rr = get_rr();
+    const int3 rr = get_ghost_zone_sizes();
     const int3 monolithic_mm     = get_global_nn() + 2 * rr;
     const int3 monolithic_nn     = acGetLocalNN(grid.device->local_config);
     const int3 monolithic_offset = rr;
@@ -1339,12 +1347,13 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
     const int3 nn = acGetLocalNN(grid.device->local_config);
 
     // Send to self
+    auto ghost_zone_sizes = get_ghost_zone_sizes();
     if (pid == 0) {
         for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
             // For pencils
-            for (int k = NGHOST_Z; k < NGHOST_Z + nn.z; ++k) {
-                for (int j = NGHOST_Y; j < NGHOST_Y + nn.y; ++j) {
-                    const int i       = NGHOST_X;
+            for (int k = ghost_zone_sizes.z; k < ghost_zone_sizes.z + nn.z; ++k) {
+                for (int j = ghost_zone_sizes.y; j < ghost_zone_sizes.y + nn.y; ++j) {
+                    const int i       = ghost_zone_sizes.x;
                     const int count   = nn.x;
                     const int src_idx = acVertexBufferIdx(i, j, k, host_mesh.info);
                     const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
@@ -1358,9 +1367,9 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
 
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         // For pencils
-        for (int k = NGHOST_Z; k < NGHOST_Z + nn.z; ++k) {
-            for (int j = NGHOST_Y; j < NGHOST_Y + nn.y; ++j) {
-                const int i     = NGHOST_X;
+        for (int k = ghost_zone_sizes.z; k < ghost_zone_sizes.z + nn.z; ++k) {
+            for (int j = ghost_zone_sizes.y; j < ghost_zone_sizes.y + nn.y; ++j) {
+                const int i     = ghost_zone_sizes.x;
                 const int count = nn.x;
 
                 if (pid != 0) {
@@ -1494,9 +1503,9 @@ check_ops(const std::vector<AcTaskDefinition> ops)
 
     bool error   = false;
     bool warning = false;
-    const int FULL_BOUNDARY = (TWO_D) ? BOUNDARY_XY : BOUNDARY_XYZ;
 
     std::string task_graph_repr = "{";
+    const auto inactive = grid.device->local_config[AC_dimension_inactive];
 
     for (size_t i = 0; i < ops.size() ; i++) {
         AcTaskDefinition op = ops[i];
@@ -1518,7 +1527,7 @@ check_ops(const std::vector<AcTaskDefinition> ops)
                 compute_before_halo_exchange = true;
                 warning                      = true;
             }
-            if (boundaries_defined != FULL_BOUNDARY) {
+            if (boundaries_defined != get_full_boundary()) {
                 compute_before_boundary_condition = true;
                 warning                           = true;
             }
@@ -1543,25 +1552,25 @@ check_ops(const std::vector<AcTaskDefinition> ops)
         error = true;
     }
 
-    if (boundaries_defined != FULL_BOUNDARY) {
+    if (boundaries_defined != get_full_boundary()) {
         error = true;
     }
-    if ((boundaries_defined & BOUNDARY_X_TOP) != BOUNDARY_X_TOP) {
+    if ((boundaries_defined & BOUNDARY_X_TOP) != BOUNDARY_X_TOP && !inactive.x) {
         msg += " - Boundary conditions not defined for top X boundary.\n";
     }
-    if ((boundaries_defined & BOUNDARY_X_BOT) != BOUNDARY_X_BOT) {
+    if ((boundaries_defined & BOUNDARY_X_BOT) != BOUNDARY_X_BOT && !inactive.x) {
         msg += " - Boundary conditions not defined for bottom X boundary.\n";
     }
-    if ((boundaries_defined & BOUNDARY_Y_TOP) != BOUNDARY_Y_TOP) {
+    if ((boundaries_defined & BOUNDARY_Y_TOP) != BOUNDARY_Y_TOP && !inactive.y) {
         msg += " - Boundary conditions not defined for top Y boundary.\n";
     }
-    if ((boundaries_defined & BOUNDARY_Y_BOT) != BOUNDARY_Y_BOT) {
+    if ((boundaries_defined & BOUNDARY_Y_BOT) != BOUNDARY_Y_BOT && !inactive.y) {
         msg += " - Boundary conditions not defined for bottom Y boundary.\n";
     }
-    if ((boundaries_defined & BOUNDARY_Z_TOP) != BOUNDARY_Z_TOP && !TWO_D) {
+    if ((boundaries_defined & BOUNDARY_Z_TOP) != BOUNDARY_Z_TOP && !inactive.z) {
         msg += " - Boundary conditions not defined for top Z boundary.\n";
     }
-    if ((boundaries_defined & BOUNDARY_Z_BOT) != BOUNDARY_Z_BOT && !TWO_D) {
+    if ((boundaries_defined & BOUNDARY_Z_BOT) != BOUNDARY_Z_BOT && !inactive.z) {
         msg += " - Boundary conditions not defined for bottom Z boundary.\n";
     }
 
@@ -1610,8 +1619,9 @@ check_ops(const std::vector<AcTaskDefinition> ops)
 Region
 FullRegion(int3 mm, const RegionMemory mem)
 {
-	int3 position = {NGHOST_X,NGHOST_Y,NGHOST_Z};
-	int3 last_position = {mm.x-NGHOST_X, mm.y-NGHOST_Y,mm.z-NGHOST_Z};
+	const auto ghosts = get_ghost_zone_sizes();
+	int3 position = ghosts;
+	int3 last_position = {mm.x-ghosts.x, mm.y-ghosts.y,mm.z-ghosts.z};
 	int3 dims = last_position - position;
         return Region(position,dims,0,mem,RegionFamily::Compute_output);
 }
@@ -1670,7 +1680,7 @@ FullRegion(int3 mm, const RegionMemory mem)
 Region
 GetInputRegion(Region region, const RegionMemory mem)
 {
-	int3 nghost3 = {NGHOST_X,NGHOST_Y,NGHOST_Z};
+	const auto nghost3 = get_ghost_zone_sizes();
 	return Region{region.position-nghost3,region.dims+2*nghost3,0,mem,RegionFamily::Compute_input};
 }
 //
@@ -1766,6 +1776,12 @@ static AcReal3
 get_spacings()
 {
 	return grid.device->local_config[AC_ds];
+}
+
+static int3 
+nn_to_mm(const int3 nn)
+{
+	return nn + 2*get_ghost_zone_sizes();
 }
 
 AcTaskGraph*
@@ -1881,7 +1897,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    std::vector<Profile> profiles_in(op.profiles_in,op.profiles_in+op.num_profiles_in);
 
 
-	    int3 mm = grid.nn + (int3){2*NGHOST_X,2*NGHOST_Y,2*NGHOST_Z};
+	    int3 mm = nn_to_mm(grid.nn);
 	    Region full_region = FullRegion(mm,{fields_out,profiles_out});
 	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in})[0];
             //for (int tag = Region::min_comp_tag; tag < 1; tag++) {
@@ -1898,7 +1914,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    else
 	    {
             	for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-		    if(TWO_D && Region::tag_to_id(tag).z != 0) continue;
+		    if(grid.device->local_config[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
+		    if(grid.device->local_config[AC_dimension_inactive].y  && Region::tag_to_id(tag).y != 0) continue;
+		    if(grid.device->local_config[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
 	    	    //auto task = std::make_shared<ComputeTask>(op,tag,full_input_region,full_region,device,swap_offset);
             	    //graph->all_tasks.push_back(task);
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, grid_info.nn, device, swap_offset);
@@ -1921,7 +1939,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
             acVerboseLogFromRootProc(rank, "Creating halo exchange tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-		if(TWO_D && Region::tag_to_id(tag).z != 0) continue;
+		if(grid.device->local_config[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
+		if(grid.device->local_config[AC_dimension_inactive].y  && Region::tag_to_id(tag).y != 0) continue;
+		if(grid.device->local_config[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
                 if (!Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp,
                                                                    device, swap_offset);

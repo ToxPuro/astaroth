@@ -17,6 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "vtxbuf_is_communicated_func.h"
+#include "user_builtin_non_scalar_constants.h"
 #pragma once
 struct GpuVtxBufHandles 
 {
