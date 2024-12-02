@@ -37,7 +37,7 @@ static_cast_vec(const ac::vector<U>& in)
 }
 
 static AcMeshInfo
-get_local_mesh_info(const MPI_Comm cart_comm, const AcMeshInfo info)
+get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
 {
     // Calculate local dimensions
     Shape global_nn{as<uint64_t>(info.int_params[AC_global_nx]),
@@ -92,47 +92,116 @@ get_local_mesh_info(const MPI_Comm cart_comm, const AcMeshInfo info)
     return local_info;
 }
 
-int
-acInitTFMProfiles(const Device device)
+static int
+init_tfm_profiles(const Device& device)
 {
-    const AcMeshInfo info  = acDeviceGetLocalConfig(device);
-    const AcReal global_lz = info.real_params[AC_sz];
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+
+    const AcReal global_sz = info.real_params[AC_sz];
     const size_t global_nz = as<size_t>(info.int3_params[AC_global_grid_n].z);
-    const long offset      = -info.int_params[AC_nz_min]; // TODO take multigpu into account
+    const long offset      = -info.int_params[AC_nz_min] + info.int3_params[AC_multigpu_offset].z;
     const size_t local_mz  = as<size_t>(info.int_params[AC_mz]);
 
     const AcReal amplitude  = info.real_params[AC_profile_amplitude];
     const AcReal wavenumber = info.real_params[AC_profile_wavenumber];
 
-    AcReal host_profile[local_mz];
+    // AcReal host_profile[local_mz];
+    auto host_profile{std::make_unique<AcReal[]>(local_mz)};
 
     // All to zero
-    acHostInitProfileToValue(0, local_mz, host_profile);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_x);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_y);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_z);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_x);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_y);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_z);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_x);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_y);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_z);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_x);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_y);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_z);
+    acHostInitProfileToValue(0, local_mz, host_profile.get());
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_y);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_z);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_y);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_z);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_x);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_z);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_x);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_z);
 
     // B1c (here B11) and B2c (here B21) to cosine
-    acHostInitProfileToCosineWave(global_lz, global_nz, offset, amplitude, wavenumber, local_mz,
-                                  host_profile);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_x);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_y);
+    acHostInitProfileToCosineWave(global_sz, global_nz, offset, amplitude, wavenumber, local_mz,
+                                  host_profile.get());
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y);
 
     // B1s (here B12) and B2s (here B22)
-    acHostInitProfileToSineWave(global_lz, global_nz, offset, amplitude, wavenumber, local_mz,
-                                host_profile);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_x);
-    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_y);
+    acHostInitProfileToSineWave(global_sz, global_nz, offset, amplitude, wavenumber, local_mz,
+                                host_profile.get());
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x);
+    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y);
 
+    return 0;
+}
+
+namespace acc {
+Shape
+get_global_nn(const AcMeshInfo& info)
+{
+    return Shape{as<uint64_t>(info.int_params[AC_global_nx]),
+                 as<uint64_t>(info.int_params[AC_global_ny]),
+                 as<uint64_t>(info.int_params[AC_global_nz])};
+}
+Index
+get_local_nn_offset()
+{
+    return Index{(STENCIL_WIDTH - 1) / 2, (STENCIL_HEIGHT - 1) / 2, (STENCIL_DEPTH - 1) / 2};
+}
+} // namespace acc
+
+static int
+acDeviceWriteProfileToDisk(const Device device, const Profile profile, const char* filepath)
+{
+    AcMeshInfo info{};
+    acDeviceGetLocalConfig(device, &info);
+    const size_t mz = as<size_t>(info.int3_params[AC_global_grid_n].z +
+                                 2 * ((STENCIL_DEPTH - 1) / 2));
+
+    AcBuffer host_profile = acBufferCreate(mz, false);
+    acDeviceStoreProfile(device, profile, host_profile.data, host_profile.count);
+    acHostWriteProfileToFile(filepath, host_profile.data, host_profile.count);
+    acBufferDestroy(&host_profile);
+    return EXIT_SUCCESS;
+}
+
+static int
+write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const size_t step)
+{
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    AcMeshInfo local_info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &local_info));
+
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        char filepath[4096];
+        sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
+        printf("Writing %s\n", filepath);
+        ac::mpi::write_collective_simple(parent_comm, ac::mpi::get_dtype<AcReal>(),
+                                         acc::get_global_nn(local_info), acc::get_local_nn_offset(),
+                                         vba.in[i], std::string(filepath));
+    }
+    for (int i = 0; i < NUM_PROFILES; ++i) {
+        char filepath[4096];
+        sprintf(filepath, "debug-step-%012zu-tfm-%s.profile", step, profile_names[i]);
+        printf("Writing %s\n", filepath);
+        const Shape profile_global_nz{as<uint64_t>(local_info.int_params[AC_global_nz])};
+        const Shape profile_local_mz{as<uint64_t>(local_info.int_params[AC_mz])};
+        const Shape profile_local_nz{as<uint64_t>(local_info.int_params[AC_nz])};
+        const Shape profile_local_nz_offset{as<uint64_t>(local_info.int_params[AC_nz_min])};
+        const Index coords{ac::mpi::get_coords(parent_comm)[2]};
+        const Shape profile_global_nz_offset{coords * profile_local_nz};
+        ac::mpi::write_collective(parent_comm, ac::mpi::get_dtype<AcReal>(), profile_global_nz,
+                                  profile_global_nz_offset, profile_local_mz, profile_local_nz,
+                                  profile_local_nz_offset, vba.profiles.in[i],
+                                  std::string(filepath));
+        acDeviceWriteProfileToDisk(device, PROFILE_B11mean_x, "test.profile");
+    }
     return 0;
 }
 
@@ -200,14 +269,19 @@ main(int argc, char* argv[])
         VertexBufferArray vba;
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
         ac::mpi::write_collective_simple(cart_comm, ac::mpi::get_dtype<AcReal>(), global_nn,
-                                         local_nn_offset, vba.in[0], "test.dat");
+                                         local_nn_offset, vba.in[VTXBUF_LNRHO], "test.dat");
         ac::mpi::read_collective_simple(cart_comm, ac::mpi::get_dtype<AcReal>(), global_nn,
-                                        local_nn_offset, "test.dat", vba.out[0]);
+                                        local_nn_offset, "test.dat", vba.out[VTXBUF_LNRHO]);
 
         // Dryrun
         const AcMeshDims dims = acGetMeshDims(local_info);
-        acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 0, dims.n0, dims.n1, 1e-5);
-        acDeviceResetMesh(device, STREAM_DEFAULT);
+        ERRCHK_AC(acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 0, dims.n0, dims.n1, 1e-5));
+        ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
+        ERRCHK_AC(acDeviceSwapBuffers(device));
+        ERRCHK(init_tfm_profiles(device) == 0);
+
+        // Write data out
+        ERRCHK(write_diagnostic_step(cart_comm, device, 0) == 0);
 
         // Cleanup
         ERRCHK_AC(acDeviceDestroy(device));
