@@ -317,6 +317,137 @@ get_direction(const Index& offset, const Shape& nn, const Index& rr)
     return dir;
 }
 
+void
+read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
+                const Index& in_file_offset, const Shape& in_mesh_dims,
+                const Shape& in_mesh_subdims, const Index& in_mesh_offset, const std::string& path,
+                void* data)
+{
+    // Communicator
+    MPI_Comm comm{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+
+    // Info
+    MPI_Info info = ac::mpi::info_create();
+
+    // Subarrays
+    MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims, in_mesh_subdims,
+                                                            in_file_offset, etype);
+    MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims, in_mesh_subdims,
+                                                            in_mesh_offset, etype);
+
+    // File
+    MPI_File file{MPI_FILE_NULL};
+    ERRCHK_MPI_API(MPI_File_open(comm, path.c_str(), MPI_MODE_RDONLY, info, &file));
+    ERRCHK_MPI_API(MPI_File_set_view(file, 0, etype, global_subarray, "native", info));
+
+    // Check that the file is in the expected format
+    int etype_bytes{-1};
+    ERRCHK_MPI_API(MPI_Type_size(etype, &etype_bytes));
+
+    MPI_Offset bytes{0};
+    ERRCHK_MPI_API(MPI_File_get_size(file, &bytes));
+    ERRCHK_MPI_EXPR_DESC(as<uint64_t>(bytes) == prod(in_file_dims) * as<uint64_t>(etype_bytes),
+                         "Tried to read a file that had unexpected file size. Ensure that "
+                         "the file read/written using the same grid dimensions.");
+
+    ERRCHK_MPI_API(MPI_File_read_all(file, data, 1, local_subarray, MPI_STATUS_IGNORE));
+
+    ERRCHK_MPI_API(MPI_File_close(&file));
+    ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
+    ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
+    ERRCHK_MPI_API(MPI_Info_free(&info));
+    ERRCHK_MPI_API(MPI_Comm_free(&comm));
+}
+
+void
+write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
+                 const Index& in_file_offset, const Shape& in_mesh_dims,
+                 const Shape& in_mesh_subdims, const Index& in_mesh_offset, const void* data,
+                 const std::string& path)
+{
+    // Communicator
+    MPI_Comm comm{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+
+    // Info
+    MPI_Info info = ac::mpi::info_create();
+
+    // Subarrays
+    MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims, in_mesh_subdims,
+                                                            in_file_offset, etype);
+    MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims, in_mesh_subdims,
+                                                            in_mesh_offset, etype);
+
+    // File
+    MPI_File file{MPI_FILE_NULL};
+    ERRCHK_MPI_API(
+        MPI_File_open(comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
+    ERRCHK_MPI_API(MPI_File_set_view(file, 0, etype, global_subarray, "native", info));
+
+    ERRCHK_MPI_API(MPI_File_write_all(file, data, 1, local_subarray, MPI_STATUS_IGNORE));
+
+    ERRCHK_MPI_API(MPI_File_close(&file));
+    ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
+    ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
+    ERRCHK_MPI_API(MPI_Info_free(&info));
+    ERRCHK_MPI_API(MPI_Comm_free(&comm));
+}
+
+// Shape
+// get_local_nn(const MPI_Comm& cart_comm, const Shape& global_nn)
+// {
+//     const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
+//     return Shape{global_nn / decomp};
+// }
+
+// Index
+// get_global_nn_offset(const MPI_Comm& cart_comm, const Shape& global_nn)
+// {
+//     const Shape local_nn{get_local_nn(cart_comm, global_nn)};
+//     const Index coords{ac::mpi::get_coords(parent_comm)};
+//     return Index{coords * local_nn};
+// }
+
+// Shape
+// get_local_mm(const MPI_Comm& cart_comm, const Shape& global_nn, const Index& rr)
+// {
+//     const Shape local_nn{get_local_nn(cart_comm, global_nn)};
+//     return Shape{as<uint64_t>(2) * rr + local_nn};
+// }
+
+void
+read_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
+                       const Shape& global_nn, const Index& local_nn_offset,
+                       const std::string& path, void* data)
+{
+    const Shape decomp{ac::mpi::get_decomposition(parent_comm)};
+    const Shape local_nn{global_nn / decomp};
+
+    const Index coords{ac::mpi::get_coords(parent_comm)};
+    const Index global_nn_offset{coords * local_nn};
+
+    const Shape local_mm{as<uint64_t>(2) * local_nn_offset + local_nn};
+    read_collective(parent_comm, etype, global_nn, global_nn_offset, local_mm, local_nn,
+                    local_nn_offset, path, data);
+}
+
+void
+write_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
+                        const Shape& global_nn, const Index& local_nn_offset, const void* data,
+                        const std::string& path)
+{
+    const Shape decomp{ac::mpi::get_decomposition(parent_comm)};
+    const Shape local_nn{global_nn / decomp};
+
+    const Index coords{ac::mpi::get_coords(parent_comm)};
+    const Index global_nn_offset{coords * local_nn};
+
+    const Shape local_mm{as<uint64_t>(2) * local_nn_offset + local_nn};
+    write_collective(parent_comm, etype, global_nn, global_nn_offset, local_mm, local_nn,
+                     local_nn_offset, data, path);
+}
+
 } // namespace ac::mpi
 
 /**

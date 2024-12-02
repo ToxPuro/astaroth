@@ -154,10 +154,10 @@ ACM_IO_Read_collective(const MPI_Comm cart_comm, const size_t ndims, const uint6
                        const char* path, double* data)
 {
     try {
-        mpi_read_collective<double>(cart_comm, Shape(ndims, in_file_dims),
-                                    Shape(ndims, in_file_offset), Shape(ndims, in_mesh_dims),
-                                    Shape(ndims, in_mesh_subdims), Shape(ndims, in_mesh_offset),
-                                    std::string(path), data);
+        ac::mpi::read_collective(cart_comm, ac::mpi::get_dtype<double>(),
+                                 Shape(ndims, in_file_dims), Shape(ndims, in_file_offset),
+                                 Shape(ndims, in_mesh_dims), Shape(ndims, in_mesh_subdims),
+                                 Shape(ndims, in_mesh_offset), std::string(path), data);
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {
@@ -173,10 +173,10 @@ ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t ndims,
                         const uint64_t* in_mesh_offset, const double* data, const char* path)
 {
     try {
-        mpi_write_collective<double>(parent_comm, Shape(ndims, in_file_dims),
-                                     Shape(ndims, in_file_offset), Shape(ndims, in_mesh_dims),
-                                     Shape(ndims, in_mesh_subdims), Shape(ndims, in_mesh_offset),
-                                     data, std::string(path));
+        ac::mpi::write_collective(parent_comm, ac::mpi::get_dtype<double>(),
+                                  Shape(ndims, in_file_dims), Shape(ndims, in_file_offset),
+                                  Shape(ndims, in_mesh_dims), Shape(ndims, in_mesh_subdims),
+                                  Shape(ndims, in_mesh_offset), data, std::string(path));
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {

@@ -218,11 +218,13 @@ main()
         IOTaskAsync<UserType> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
         // iotask.launch_write_collective(cart_comm, hin.buffer, "test.dat");
         // iotask.wait_write_collective();
-        mpi_write_collective(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,
-                             hin.buffer.data(), "test.dat");
+        ac::mpi::write_collective(cart_comm, ac::mpi::get_dtype<UserType>(), global_nn,
+                                  global_nn_offset, local_mm, local_nn, rr, hin.buffer.data(),
+                                  "test.dat");
         std::fill(hin.begin(), hin.end(), 0);
-        mpi_read_collective(cart_comm, global_nn, global_nn_offset, local_mm, local_nn, rr,
-                            "test.dat", hin.buffer.data());
+        ac::mpi::read_collective(cart_comm, ac::mpi::get_dtype<UserType>(), global_nn,
+                                 global_nn_offset, local_mm, local_nn, rr, "test.dat",
+                                 hin.buffer.data());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
