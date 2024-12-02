@@ -99,10 +99,11 @@ acDevicePrintInfo(const Device device)
     return AC_SUCCESS;
 }
 
-AcMeshInfo
-acDeviceGetLocalConfig(const Device device)
+AcResult
+acDeviceGetLocalConfig(const Device device, AcMeshInfo* info)
 {
-    return device->local_config;
+    *info = device->local_config;
+    return AC_SUCCESS;
 }
 
 AcResult

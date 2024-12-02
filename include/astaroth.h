@@ -1173,7 +1173,7 @@ AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle v
                                  const char* filepath);
 
 /** */
-AcMeshInfo acDeviceGetLocalConfig(const Device device);
+AcResult acDeviceGetLocalConfig(const Device device, AcMeshInfo* info);
 
 /*
  * =============================================================================
