@@ -1,7 +1,9 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
+#include <type_traits>
 #include <vector>
 
 #include "errchk.h"
@@ -67,7 +69,6 @@ template <typename T> class vector {
     friend ac::vector<T> operator+(const ac::vector<T>& a, const ac::vector<U>& b)
     {
         ERRCHK(a.size() == b.size());
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -80,7 +81,6 @@ template <typename T> class vector {
 
     template <typename U> friend ac::vector<T> operator+(const T& a, const ac::vector<U>& b)
     {
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -92,7 +92,6 @@ template <typename T> class vector {
 
     template <typename U> friend ac::vector<T> operator+(const ac::vector<T>& a, const U& b)
     {
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -106,7 +105,6 @@ template <typename T> class vector {
     friend ac::vector<T> operator-(const ac::vector<T>& a, const ac::vector<U>& b)
     {
         ERRCHK(a.size() == b.size());
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -119,7 +117,6 @@ template <typename T> class vector {
 
     template <typename U> friend ac::vector<T> operator-(const T& a, const ac::vector<U>& b)
     {
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -131,7 +128,6 @@ template <typename T> class vector {
 
     template <typename U> friend ac::vector<T> operator-(const ac::vector<T>& a, const U& b)
     {
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -145,7 +141,6 @@ template <typename T> class vector {
     friend ac::vector<T> operator*(const ac::vector<T>& a, const ac::vector<U>& b)
     {
         ERRCHK(a.size() == b.size());
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -158,7 +153,6 @@ template <typename T> class vector {
 
     template <typename U> friend ac::vector<T> operator*(const T& a, const ac::vector<U>& b)
     {
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -170,7 +164,6 @@ template <typename T> class vector {
 
     template <typename U> friend ac::vector<T> operator*(const ac::vector<T>& a, const U& b)
     {
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -184,44 +177,50 @@ template <typename T> class vector {
     friend ac::vector<T> operator/(const ac::vector<T>& a, const ac::vector<U>& b)
     {
         ERRCHK(a.size() == b.size());
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
 
         ac::vector<T> c(a.size());
         for (size_t i{0}; i < a.size(); ++i) {
-            ERRCHK(b[i] != 0);
+            if constexpr (std::is_integral_v<U>)
+                ERRCHK(b[i] != 0);
             c[i] = a[i] / b[i];
+            if constexpr (std::is_floating_point_v<T>)
+                ERRCHK(std::isnormal(c[i]));
         }
         return c;
     }
 
     template <typename U> friend ac::vector<T> operator/(const T& a, const ac::vector<U>& b)
     {
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ERRCHK(b != 0);
         ac::vector<T> c(a.size());
         for (size_t i{0}; i < a.size(); ++i) {
-            ERRCHK(b[i] != 0);
+            if constexpr (std::is_integral_v<U>)
+                ERRCHK(b[i] != 0);
             c[i] = a / b[i];
+            if constexpr (std::is_floating_point_v<T>)
+                ERRCHK(std::isnormal(c[i]));
         }
         return c;
     }
 
     template <typename U> friend ac::vector<T> operator/(const ac::vector<T>& a, const U& b)
     {
-        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ERRCHK(b != 0);
+        if constexpr (std::is_integral_v<U>)
+            ERRCHK(b != 0);
         ac::vector<T> c(a.size());
-        for (size_t i{0}; i < a.size(); ++i)
+        for (size_t i{0}; i < a.size(); ++i) {
             c[i] = a[i] / b;
+            if constexpr (std::is_floating_point_v<T>)
+                ERRCHK(!std::isnormal(c[i]));
+        }
         return c;
     }
 
@@ -331,7 +330,6 @@ template <typename T>
 [[nodiscard]] T
 prod(const ac::vector<T>& arr)
 {
-    static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
     T result{1};
     for (size_t i{0}; i < arr.size(); ++i)
         result *= arr[i];
@@ -343,7 +341,6 @@ template <typename T, typename U>
 dot(const ac::vector<T>& a, const ac::vector<U>& b)
 {
     ERRCHK(a.size() == b.size());
-    static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
     static_assert(std::is_same_v<T, U>,
                   "Operator not enabled for parameters of different types. Perform an "
                   "explicit cast such that both operands are of the same type");
