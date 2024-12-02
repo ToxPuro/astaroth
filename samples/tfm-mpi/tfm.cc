@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "astaroth.h"
+#include "device_detail.h"
 
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/mpi_utils.h"
@@ -25,7 +26,9 @@
 
 using Dims = ac::vector<AcReal>;
 
-template <typename T, typename U> static static_cast(const ac::vector<U>& in)
+template <typename T, typename U>
+ac::vector<T>
+static_cast_vec(const ac::vector<U>& in)
 {
     ac::vector<T> out(in.size());
     for (size_t i{0}; i < in.size(); ++i)
@@ -46,7 +49,7 @@ get_local_mesh_info(const MPI_Comm cart_comm, const AcMeshInfo info)
 
     const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
     const Shape local_nn{global_nn / decomp};
-    const Dims local_ss{global_ss / static_cast<AcReal>(decomp)};
+    const Dims local_ss{global_ss / static_cast_vec<AcReal>(decomp)};
 
     const Index coords{ac::mpi::get_coords(cart_comm)};
     const Index global_nn_offset{coords * local_nn};
@@ -161,6 +164,8 @@ main(int argc, char* argv[])
         Dims global_ss{static_cast<AcReal>(raw_info.real_params[AC_global_sx]),
                        static_cast<AcReal>(raw_info.real_params[AC_global_sy]),
                        static_cast<AcReal>(raw_info.real_params[AC_global_sz])};
+        Index local_nn_offset{(STENCIL_WIDTH - 1) / 2, (STENCIL_HEIGHT - 1) / 2,
+                              (STENCIL_DEPTH - 1) / 2};
 
         // Create the Cartesian communicator
         MPI_Comm cart_comm = ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn);
@@ -190,6 +195,14 @@ main(int argc, char* argv[])
         ERRCHK(get_stencil_coeffs(local_info, stencils) == 0);
         ERRCHK_AC(acDeviceLoadStencils(device, STREAM_DEFAULT, stencils));
         ERRCHK_AC(acDevicePrintInfo(device));
+
+        // Read & Write
+        VertexBufferArray vba;
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        ac::mpi::write_collective_simple(cart_comm, ac::mpi::get_dtype<AcReal>(), global_nn,
+                                         local_nn_offset, vba.in[0], "test.dat");
+        ac::mpi::read_collective_simple(cart_comm, ac::mpi::get_dtype<AcReal>(), global_nn,
+                                        local_nn_offset, "test.dat", vba.out[0]);
 
         // Dryrun
         const AcMeshDims dims = acGetMeshDims(local_info);
