@@ -1,34 +1,17 @@
-#include <cstdint>
 #include <cstdlib>
-#include <functional>
+#include <exception>
 #include <iostream>
 
-#include "acm/acm.h"
+#include "astaroth.h"
 
-#include "acm/detail/errchk.h"
+#include "acm/detail/errchk_mpi.h"
 #include "acm/detail/mpi_utils.h"
-#include "acm/detail/print_debug.h"
 #include "acm/detail/type_conversion.h"
-#include "acm/detail/vector.h"
 
 #include "stencil_loader.h"
 #include "tfm_utils.h"
 
-// #include "acc-runtime/api/acc_runtime.h"
-#include "astaroth.h"
-
 #include <mpi.h>
-
-#define ERRCHK_ACM(errcode)                                                                        \
-    do {                                                                                           \
-        const ACM_Errorcode _tmp_acm_api_errcode_ = (errcode);                                     \
-        if (_tmp_acm_api_errcode_ != ACM_ERRORCODE_SUCCESS) {                                      \
-            errchk_print_error(__func__, __FILE__, __LINE__, #errcode,                             \
-                               ACM_Get_errorcode_description(errcode));                            \
-            errchk_print_stacktrace();                                                             \
-            MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
-        }                                                                                          \
-    } while (0)
 
 #define ERRCHK_AC(errcode)                                                                         \
     do {                                                                                           \
@@ -40,98 +23,37 @@
         }                                                                                          \
     } while (0)
 
-constexpr size_t NDIMS{3};
+using Dims = ac::vector<AcReal>;
 
-static int
-get_local_box_size(const size_t ndims, const uint64_t* global_nn, const double* global_box_size,
-                   const uint64_t* local_nn, double* local_box_size)
+template <typename T, typename U> static static_cast(const ac::vector<U>& in)
 {
-    for (size_t i = 0; i < ndims; ++i) {
-
-        // Division by zero
-        if (!global_nn[i])
-            return -1;
-
-        local_box_size[i] = (static_cast<double>(local_nn[i]) / static_cast<double>(global_nn[i])) *
-                            global_box_size[i];
-    }
-
-    return 0;
-}
-
-// static VertexBufferArray* vba_alloc(const Shape& mm)
-// {
-//     auto* vba = new VertexBufferArray;
-//     *vba = acVBACreate(mm[0], mm[1], mm[2]);
-//     return vba;
-// }
-
-// static void vba_dealloc(VertexBufferArray* vba)
-// {
-//     acVBADestroy(vba);
-//     delete vba;
-// }
-
-using vba_ptr_t = std::unique_ptr<VertexBufferArray, std::function<void(VertexBufferArray*)>>;
-
-static auto
-make_vba(const Shape& mm)
-{
-    return vba_ptr_t{[&mm]() {
-                         auto* vba = new VertexBufferArray;
-                         *vba      = acVBACreate(mm[0], mm[1], mm[2]);
-                         return vba;
-                     }(),
-                     [](VertexBufferArray* vba) {
-                         acVBADestroy(vba);
-                         delete vba;
-                     }};
-}
-
-// using device_ptr_t = std::unique_ptr<Device, std::function<void(Device*)>>;
-
-// static auto
-// make_device(const int id, const AcMeshInfo& local_info)
-// {
-//     return device_ptr_t{
-//         [id, &local_info](){
-//             auto* device = new Device;
-//             ERRCHK_AC(acDeviceCreate(id, local_info, device));
-//             return device;
-//         }(),
-//         [](Device* device){
-//             acDeviceDestroy(*device);
-//             delete device;
-//         }
-//     };
-// }
-
-static int3
-make_int3(const Shape& shape)
-{
-    ERRCHK(shape.size() == 3);
-    return {as<int>(shape[0]), as<int>(shape[1]), as<int>(shape[2])};
+    ac::vector<T> out(in.size());
+    for (size_t i{0}; i < in.size(); ++i)
+        out[i] = static_cast<T>(in[i]);
+    return out;
 }
 
 static AcMeshInfo
 get_local_mesh_info(const MPI_Comm cart_comm, const AcMeshInfo info)
 {
-    const uint64_t global_nn[NDIMS]{as<uint64_t>(info.int_params[AC_global_nx]),
-                                    as<uint64_t>(info.int_params[AC_global_ny]),
-                                    as<uint64_t>(info.int_params[AC_global_nz])};
-    const AcReal global_box_size[NDIMS]{static_cast<double>(info.real_params[AC_global_sx]),
-                                        static_cast<double>(info.real_params[AC_global_sy]),
-                                        static_cast<double>(info.real_params[AC_global_sz])};
-    uint64_t local_nn[NDIMS]{};
-    ERRCHK_ACM(ACM_Get_local_nn(cart_comm, NDIMS, global_nn, local_nn));
+    // Calculate local dimensions
+    Shape global_nn{as<uint64_t>(info.int_params[AC_global_nx]),
+                    as<uint64_t>(info.int_params[AC_global_ny]),
+                    as<uint64_t>(info.int_params[AC_global_nz])};
+    Dims global_ss{static_cast<AcReal>(info.real_params[AC_global_sx]),
+                   static_cast<AcReal>(info.real_params[AC_global_sy]),
+                   static_cast<AcReal>(info.real_params[AC_global_sz])};
 
-    uint64_t global_nn_offset[NDIMS]{};
-    ERRCHK_ACM(ACM_Get_global_nn_offset(cart_comm, NDIMS, global_nn, global_nn_offset));
+    const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
+    const Shape local_nn{global_nn / decomp};
+    const Dims local_ss{global_ss / static_cast<AcReal>(decomp)};
 
-    double local_box_size[NDIMS]{};
-    ERRCHK(get_local_box_size(NDIMS, global_nn, global_box_size, local_nn, local_box_size) == 0);
+    const Index coords{ac::mpi::get_coords(cart_comm)};
+    const Index global_nn_offset{coords * local_nn};
 
+    // Fill AcMeshInfo
     AcMeshInfo local_info{info};
+
     local_info.int_params[AC_nx] = as<int>(local_nn[0]);
     local_info.int_params[AC_ny] = as<int>(local_nn[1]);
     local_info.int_params[AC_nz] = as<int>(local_nn[2]);
@@ -142,9 +64,9 @@ get_local_mesh_info(const MPI_Comm cart_comm, const AcMeshInfo info)
         as<int>(global_nn_offset[2]),
     };
 
-    local_info.real_params[AC_sx] = static_cast<AcReal>(local_box_size[0]);
-    local_info.real_params[AC_sy] = static_cast<AcReal>(local_box_size[1]);
-    local_info.real_params[AC_sz] = static_cast<AcReal>(local_box_size[2]);
+    local_info.real_params[AC_sx] = static_cast<AcReal>(local_ss[0]);
+    local_info.real_params[AC_sy] = static_cast<AcReal>(local_ss[1]);
+    local_info.real_params[AC_sz] = static_cast<AcReal>(local_ss[2]);
 
     // Backwards compatibility
     local_info.int3_params[AC_global_grid_n] = {
@@ -168,11 +90,53 @@ get_local_mesh_info(const MPI_Comm cart_comm, const AcMeshInfo info)
 }
 
 int
+acInitTFMProfiles(const Device device)
+{
+    const AcMeshInfo info  = acDeviceGetLocalConfig(device);
+    const AcReal global_lz = info.real_params[AC_sz];
+    const size_t global_nz = as<size_t>(info.int3_params[AC_global_grid_n].z);
+    const long offset      = -info.int_params[AC_nz_min]; // TODO take multigpu into account
+    const size_t local_mz  = as<size_t>(info.int_params[AC_mz]);
+
+    const AcReal amplitude  = info.real_params[AC_profile_amplitude];
+    const AcReal wavenumber = info.real_params[AC_profile_wavenumber];
+
+    AcReal host_profile[local_mz];
+
+    // All to zero
+    acHostInitProfileToValue(0, local_mz, host_profile);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_y);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_z);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_y);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_z);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_y);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_z);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_y);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_z);
+
+    // B1c (here B11) and B2c (here B21) to cosine
+    acHostInitProfileToCosineWave(global_lz, global_nz, offset, amplitude, wavenumber, local_mz,
+                                  host_profile);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_y);
+
+    // B1s (here B12) and B2s (here B22)
+    acHostInitProfileToSineWave(global_lz, global_nz, offset, amplitude, wavenumber, local_mz,
+                                host_profile);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_y);
+
+    return 0;
+}
+
+int
 main(int argc, char* argv[])
 {
-    // Init MPI
-    ERRCHK_ACM(ACM_MPI_Init_funneled());
-
+    ac::mpi::init_funneled();
     try {
 
         // Parse arguments
@@ -186,20 +150,20 @@ main(int argc, char* argv[])
             ERRCHK(acParseINI(args.config_path, &raw_info) == 0);
         }
         else {
-            const std::string config_path{AC_DEFAULT_TFM_CONFIG};
-            PRINT_LOG("No config path supplied, using %s", config_path.c_str());
-            ERRCHK(acParseINI(config_path.c_str(), &raw_info) == 0);
+            const std::string default_config{AC_DEFAULT_TFM_CONFIG};
+            PRINT_LOG("No config path supplied, using %s", default_config.c_str());
+            ERRCHK(acParseINI(default_config.c_str(), &raw_info) == 0);
         }
-        // ERRCHK(acPrintMeshInfoTFM(raw_info) == 0);
 
-        const uint64_t global_nn_c[NDIMS]{as<uint64_t>(raw_info.int_params[AC_global_nx]),
-                                          as<uint64_t>(raw_info.int_params[AC_global_ny]),
-                                          as<uint64_t>(raw_info.int_params[AC_global_nz])};
-        PRINT_DEBUG_ARRAY(NDIMS, global_nn_c);
+        Shape global_nn{as<uint64_t>(raw_info.int_params[AC_global_nx]),
+                        as<uint64_t>(raw_info.int_params[AC_global_ny]),
+                        as<uint64_t>(raw_info.int_params[AC_global_nz])};
+        Dims global_ss{static_cast<AcReal>(raw_info.real_params[AC_global_sx]),
+                       static_cast<AcReal>(raw_info.real_params[AC_global_sy]),
+                       static_cast<AcReal>(raw_info.real_params[AC_global_sz])};
 
         // Create the Cartesian communicator
-        MPI_Comm cart_comm{MPI_COMM_NULL};
-        ERRCHK_ACM(ACM_MPI_Cart_comm_create(MPI_COMM_WORLD, NDIMS, global_nn_c, &cart_comm));
+        MPI_Comm cart_comm = ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn);
 
         // Fill the local mesh configuration (overwrite the earlier info
         const AcMeshInfo local_info = get_local_mesh_info(cart_comm, raw_info);
@@ -212,55 +176,35 @@ main(int argc, char* argv[])
 
         int device_count;
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
-        ERRCHK_CUDA_API(cudaSetDevice(original_rank % device_count));
+
+        const int device_id = original_rank % device_count;
+        ERRCHK_CUDA_API(cudaSetDevice(device_id));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
-        // Setup mesh dimensions
-        const Shape global_nn{as<uint64_t>(local_info.int_params[AC_global_nx]),
-                              as<uint64_t>(local_info.int_params[AC_global_ny]),
-                              as<uint64_t>(local_info.int_params[AC_global_nz])};
-        const Shape local_nn{as<uint64_t>(local_info.int_params[AC_nx]),
-                             as<uint64_t>(local_info.int_params[AC_ny]),
-                             as<uint64_t>(local_info.int_params[AC_nz])};
-        const Index rr{as<uint64_t>((STENCIL_WIDTH - 1) / 2),
-                       as<uint64_t>((STENCIL_HEIGHT - 1) / 2),
-                       as<uint64_t>((STENCIL_DEPTH - 1) / 2)};
-        const Shape local_mm{as<uint64_t>(local_info.int_params[AC_mx]),
-                             as<uint64_t>(local_info.int_params[AC_my]),
-                             as<uint64_t>(local_info.int_params[AC_mz])};
+        // Create device
+        Device device;
+        ERRCHK_AC(acDeviceCreate(device_id, local_info, &device));
 
         // Setup device memory
-        const cudaStream_t stream = 0;
         AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH];
-        get_stencil_coeffs(local_info, stencils);
+        ERRCHK(get_stencil_coeffs(local_info, stencils) == 0);
+        ERRCHK_AC(acDeviceLoadStencils(device, STREAM_DEFAULT, stencils));
+        ERRCHK_AC(acDevicePrintInfo(device));
 
-        auto vba_ptr = make_vba(local_mm);
-        ERRCHK_AC(acLoadMeshInfo(local_info, stream));
-        ERRCHK_AC(acLoadRealUniform(stream, AC_dt, 1e-3));
-        ERRCHK_AC(acLoadIntUniform(stream, AC_step_number, 0));
-        ERRCHK_AC(acLoadStencils(stream, stencils));
-        ERRCHK_CUDA_API(cudaDeviceSynchronize());
+        // Dryrun
+        const AcMeshDims dims = acGetMeshDims(local_info);
+        acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 0, dims.n0, dims.n1, 1e-5);
+        acDeviceResetMesh(device, STREAM_DEFAULT);
 
-        ERRCHK_AC(acVBAReset(stream, vba_ptr.get()));
-        ERRCHK_CUDA_API(cudaDeviceSynchronize());
-
-        // ERRCHK_AC(acLaunchKernel(singlepass_solve, stream, make_int3(rr), make_int3(rr +
-        // Shape(rr.size(), 1)), *(vba_ptr.get())));
-        ERRCHK_AC(acLaunchKernel(singlepass_solve, stream, make_int3(rr), make_int3(rr + local_nn),
-                                 *vba_ptr));
-        ERRCHK_CUDA_KERNEL();
-        ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
-        ERRCHK_CUDA_API(cudaDeviceSynchronize());
-
-        ERRCHK_ACM(ACM_MPI_Cart_comm_destroy(&cart_comm));
+        // Cleanup
+        ERRCHK_AC(acDeviceDestroy(device));
+        ac::mpi::cart_comm_destroy(cart_comm);
     }
-    catch (const std::exception& e) {
+    catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
-        ERRCHK_ACM(ACM_MPI_Abort());
+        ac::mpi::abort();
     }
-
-    // Finalize MPI
-    ERRCHK_ACM(ACM_MPI_Finalize());
+    ac::mpi::finalize();
     std::cout << "Complete" << std::endl;
     return EXIT_SUCCESS;
 }
