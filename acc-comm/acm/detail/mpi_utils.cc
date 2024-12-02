@@ -1,5 +1,20 @@
 #include "mpi_utils.h"
 
+#include <algorithm>
+
+#include "errchk_mpi.h"
+#include "type_conversion.h"
+
+/**
+ * Datatypes
+ */
+using MPIIndex = ac::vector<int>;
+using MPIShape = ac::vector<int>;
+
+/**
+ * Functions to convert between Astaroth's uint64_t column major
+ * and MPI's int row major formats
+ */
 ac::vector<int>
 astaroth_to_mpi_format(const ac::vector<uint64_t>& in)
 {
@@ -28,37 +43,6 @@ mpi_to_astaroth_format(const ac::vector<int>& in)
         out[i] = as<uint64_t>(in[i]);
     std::reverse(out.begin(), out.end());
     return out;
-}
-
-int
-get_tag(void)
-{
-    static int tag{-1};
-    ++tag;
-    if (tag < 0 || tag >= MPI_TAG_UB_MIN_VALUE)
-        tag = 0;
-    return tag;
-}
-
-Direction
-get_direction(const Index& offset, const Shape& nn, const Index& rr)
-{
-    Direction dir(offset.size());
-    for (size_t i{0}; i < offset.size(); ++i)
-        dir[i] = offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
-    return dir;
-}
-
-int
-get_ndims(const MPI_Comm& comm)
-{
-    int rank, nprocs, ndims;
-    ERRCHK_MPI_API(MPI_Comm_rank(comm, &rank));
-    ERRCHK_MPI_API(MPI_Comm_size(comm, &nprocs));
-    ERRCHK_MPI_API(MPI_Cartdim_get(comm, &ndims));
-    (void)rank; // Unused
-    (void)nprocs; // Unused
-    return ndims;
 }
 
 void
@@ -193,18 +177,59 @@ info_destroy(MPI_Info& info)
     info = MPI_INFO_NULL;
 }
 
-Shape
-get_decomposition(const MPI_Comm& cart_comm)
+void
+request_wait_and_destroy(MPI_Request& req)
 {
-    int mpi_ndims{-1};
-    ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
+    MPI_Status status;
+    status.MPI_ERROR = MPI_SUCCESS;
+    ERRCHK_MPI_API(MPI_Wait(&req, &status));
+    ERRCHK_MPI_API(status.MPI_ERROR);
+    if (req != MPI_REQUEST_NULL)
+        ERRCHK_MPI_API(MPI_Request_free(&req));
+    ERRCHK_MPI(req == MPI_REQUEST_NULL);
+}
 
-    MPIShape mpi_decomp(as<size_t>(mpi_ndims));
-    MPIShape mpi_periods(as<size_t>(mpi_ndims));
-    MPIIndex mpi_coords(as<size_t>(mpi_ndims));
-    ERRCHK_MPI_API(MPI_Cart_get(cart_comm, mpi_ndims, mpi_decomp.data(), mpi_periods.data(),
-                                mpi_coords.data()));
-    return mpi_to_astaroth_format(mpi_decomp);
+int
+get_tag(void)
+{
+    // MPI_TAG_UB is required to be at least this large by the MPI 4.1 standard
+    // However, not all implementations seem to define it (note int*) and
+    // MPI_Comm_get_attr fails, so must be hardcoded here
+    constexpr int MPI_TAG_UB_MIN_VALUE{32767};
+
+    static int tag{-1};
+    ++tag;
+    if (tag < 0 || tag >= MPI_TAG_UB_MIN_VALUE)
+        tag = 0;
+    return tag;
+}
+
+int
+get_rank(const MPI_Comm& cart_comm)
+{
+    int rank{MPI_PROC_NULL};
+    ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
+    return rank;
+}
+
+int
+get_size(const MPI_Comm& cart_comm)
+{
+    int size{-1};
+    ERRCHK_MPI_API(MPI_Comm_size(cart_comm, &size));
+    return size;
+}
+
+int
+get_ndims(const MPI_Comm& comm)
+{
+    int rank, nprocs, ndims;
+    ERRCHK_MPI_API(MPI_Comm_rank(comm, &rank));
+    ERRCHK_MPI_API(MPI_Comm_size(comm, &nprocs));
+    ERRCHK_MPI_API(MPI_Cartdim_get(comm, &ndims));
+    (void)rank;   // Unused
+    (void)nprocs; // Unused
+    return ndims;
 }
 
 Index
@@ -224,24 +249,18 @@ get_coords(const MPI_Comm& cart_comm)
     return mpi_to_astaroth_format(mpi_coords);
 }
 
-void
-request_wait_and_destroy(MPI_Request& req)
+Shape
+get_decomposition(const MPI_Comm& cart_comm)
 {
-    MPI_Status status;
-    status.MPI_ERROR = MPI_SUCCESS;
-    ERRCHK_MPI_API(MPI_Wait(&req, &status));
-    ERRCHK_MPI_API(status.MPI_ERROR);
-    if (req != MPI_REQUEST_NULL)
-        ERRCHK_MPI_API(MPI_Request_free(&req));
-    ERRCHK_MPI(req == MPI_REQUEST_NULL);
-}
+    int mpi_ndims{-1};
+    ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
-int
-get_rank(const MPI_Comm& cart_comm)
-{
-    int rank{MPI_PROC_NULL};
-    ERRCHK_MPI_API(MPI_Comm_rank(cart_comm, &rank));
-    return rank;
+    MPIShape mpi_decomp(as<size_t>(mpi_ndims));
+    MPIShape mpi_periods(as<size_t>(mpi_ndims));
+    MPIIndex mpi_coords(as<size_t>(mpi_ndims));
+    ERRCHK_MPI_API(MPI_Cart_get(cart_comm, mpi_ndims, mpi_decomp.data(), mpi_periods.data(),
+                                mpi_coords.data()));
+    return mpi_to_astaroth_format(mpi_decomp);
 }
 
 int
@@ -269,6 +288,15 @@ get_neighbor(const MPI_Comm& cart_comm, const Direction& dir)
     int neighbor_rank{MPI_PROC_NULL};
     ERRCHK_MPI_API(MPI_Cart_rank(cart_comm, mpi_neighbor.data(), &neighbor_rank));
     return neighbor_rank;
+}
+
+Direction
+get_direction(const Index& offset, const Shape& nn, const Index& rr)
+{
+    Direction dir(offset.size());
+    for (size_t i{0}; i < offset.size(); ++i)
+        dir[i] = offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
+    return dir;
 }
 
 /**
