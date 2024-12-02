@@ -24,6 +24,7 @@ typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
 
+static AcBool3 dimension_inactive{};
 #include <math.h> 
 #include <vector> // tbconfig
 
@@ -583,7 +584,9 @@ buffer_dims(const AcMeshInfo config)
 VertexBufferArray
 acVBACreate(const AcMeshInfo config)
 {
-  //TP: cannot call normal acVertexBufferDims since that would make us depend on astaroth core
+  //TP: !HACK!
+  //TP: Get active dimensions at the time VBA is created, works for now but should be moved somewhere else
+  dimension_inactive = config[AC_dimension_inactive];
   const size3_t counts = buffer_dims(config);
   VertexBufferArray vba;
   size_t count = counts.x*counts.y*counts.z;
@@ -1070,17 +1073,18 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
       .tpb    = (dim3){0, 0, 0},
   };
 
-  const int3 start = (int3){
-	  NGHOST_X,
-	  NGHOST_Y,
-	  NGHOST_Z
+  const int3 ghosts = (int3){
+	  dimension_inactive.x ? 0 : NGHOST,
+	  dimension_inactive.y ? 0 : NGHOST,
+	  dimension_inactive.z ? 0 : NGHOST
   };
+  const int3 start = ghosts;
   const int3 end = start + dims;
 
 
   //TP: since autotuning should be quite fast when the dim is not NGHOST only log for actually 3d portions
   const bool builtin_kernel = strlen(kernel_names[kernel]) > 2 && kernel_names[kernel][0] == 'A' && kernel_names[kernel][1] == 'C';
-  const bool large_launch = (dims.x > NGHOST_X && dims.y > NGHOST_Y && dims.z > NGHOST_Z);
+  const bool large_launch = (dims.x > ghosts.x && dims.y > ghosts.y && dims.z > ghosts.z);
   const bool log = !builtin_kernel && large_launch;
 
   dim3 best_tpb(0, 0, 0);

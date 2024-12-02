@@ -187,6 +187,7 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
 Region::Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputParams mem_)
     : family(family_), tag(tag_) 
 {
+    const auto ghosts = acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin];
     memory.profiles = {};
     for(size_t i = 0; i < mem_.num_profiles; ++i)
 	    memory.profiles.push_back((Profile)i);
@@ -215,42 +216,42 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputP
       case RegionFamily::Compute_output: {
       // clang-format off
       position = (int3){
-      	    id.x == -1  ? NGHOST_X : id.x == 1 ? nn.x : NGHOST_X * 2,
-      	    id.y == -1  ? NGHOST_Y : id.y == 1 ? nn.y : NGHOST_Y * 2,
-      	    id.z == -1  ? NGHOST_Z : id.z == 1 ? nn.z : NGHOST_Z * 2};
+      	    id.x == -1  ? ghosts.x : id.x == 1 ? nn.x : ghosts.x * 2,
+      	    id.y == -1  ? ghosts.y : id.y == 1 ? nn.y : ghosts.y * 2,
+      	    id.z == -1  ? ghosts.z : id.z == 1 ? nn.z : ghosts.z * 2};
       // clang-format on
-      dims = (int3){id.x == 0 ? nn.x - NGHOST_X * 2 : NGHOST_X,
-      	      id.y == 0 ? nn.y - NGHOST_Y * 2 : NGHOST_Y,
-      	      id.z == 0 ? nn.z - NGHOST_Z * 2 : NGHOST_Z};
+      dims = (int3){id.x == 0 ? nn.x - ghosts.x* 2 : ghosts.x,
+      	      id.y == 0 ? nn.y - ghosts.y * 2 : ghosts.y,
+      	      id.z == 0 ? nn.z - ghosts.z * 2 : ghosts.z};
       break;
       }
       case RegionFamily::Compute_input: {
       // clang-format off
       position = (int3){
-      	    id.x == -1  ? 0 : id.x == 1 ? nn.x - NGHOST_X : NGHOST_X ,
-      	    id.y == -1  ? 0 : id.y == 1 ? nn.y - NGHOST_Y : NGHOST_Y ,
-      	    id.z == -1  ? 0 : id.z == 1 ? nn.z - NGHOST_Z : NGHOST_Z };
+      	    id.x == -1  ? 0 : id.x == 1 ? nn.x - ghosts.x : ghosts.x ,
+      	    id.y == -1  ? 0 : id.y == 1 ? nn.y - ghosts.y : ghosts.y ,
+      	    id.z == -1  ? 0 : id.z == 1 ? nn.z - ghosts.z : ghosts.z };
       // clang-format on
-      dims = (int3){id.x == 0 ? nn.x : NGHOST_X * 3, id.y == 0 ? nn.y : NGHOST_Y * 3,
-      	      id.z == 0 ? nn.z : NGHOST_Z * 3};
+      dims = (int3){id.x == 0 ? nn.x : ghosts.x * 3, id.y == 0 ? nn.y : ghosts.y * 3,
+      	      id.z == 0 ? nn.z : ghosts.z * 3};
       break;
       }
       case RegionFamily::Exchange_output: {
       // clang-format off
       position = (int3){
-      	    id.x == -1  ? 0 : id.x == 1 ? NGHOST_X + nn.x : NGHOST_X,
-      	    id.y == -1  ? 0 : id.y == 1 ? NGHOST_Y + nn.y : NGHOST_Y,
-      	    id.z == -1  ? 0 : id.z == 1 ? NGHOST_Z + nn.z : NGHOST_Z};
+      	    id.x == -1  ? 0 : id.x == 1 ? ghosts.x+ nn.x :  ghosts.x,
+      	    id.y == -1  ? 0 : id.y == 1 ? ghosts.y + nn.y : ghosts.y,
+      	    id.z == -1  ? 0 : id.z == 1 ? ghosts.z + nn.z : ghosts.z};
       // clang-format on
-      dims = (int3){id.x == 0 ? nn.x : NGHOST_X, id.y == 0 ? nn.y : NGHOST_Y,
-      	      id.z == 0 ? nn.z : NGHOST_Z};
+      dims = (int3){id.x == 0 ? nn.x : ghosts.x , id.y == 0 ? nn.y : ghosts.y,
+      	      id.z == 0 ? nn.z : ghosts.z};
       break;
       }
       case RegionFamily::Exchange_input: {
-      position = (int3){id.x == 1 ? nn.x : NGHOST_X, id.y == 1 ? nn.y : NGHOST_Y,
-      		  id.z == 1 ? nn.z : NGHOST_Z};
-      dims = (int3){id.x == 0 ? nn.x : NGHOST_X, id.y == 0 ? nn.y : NGHOST_Y,
-      	      id.z == 0 ? nn.z : NGHOST_Z};
+      position = (int3){id.x == 1 ? nn.x : ghosts.x, id.y == 1 ? nn.y : ghosts.y,
+      		  id.z == 1 ? nn.z : ghosts.z};
+      dims = (int3){id.x == 0 ? nn.x : ghosts.x, id.y == 0 ? nn.y : ghosts.y,
+      	      id.z == 0 ? nn.z : ghosts.z};
       break;
       }
       default: {
@@ -812,7 +813,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     //Thus if you directly moving data through kernels you have to remap the output position to the other side of the boundary
     if(sendingToItself())
     {
-	    const int3 mm = {grid_info.nn.x + NGHOST_X, grid_info.nn.y + NGHOST_Y, grid_info.nn.z + NGHOST_Z};
+	    const auto ghosts = device->local_config[AC_nmin];
+	    const int3 mm = {grid_info.nn.x + ghosts.x, grid_info.nn.y + ghosts.y, grid_info.nn.z + ghosts.z};
 	    output_region.position -= int3{input_region.id.x*mm.x, input_region.id.y*mm.y, input_region.id.z*mm.z};
 	    output_region.id = -input_region.id;
     }
@@ -1098,8 +1100,8 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
-           Region({0,0,0},{2*NGHOST_X+nn.x,2*NGHOST_Y+nn.y,2*NGHOST_Z+nn.z}, 0, {}),
-           Region({0,0,0},{2*NGHOST_X+nn.x,2*NGHOST_Y+nn.y,2*NGHOST_Z+nn.z}, 0, {}),
+           Region({0,0,0},{2*device->local_config[AC_nmin].x+nn.x,2*device->local_config[AC_nmin].y+nn.y,2*device->local_config[AC_nmin].z+nn.z}, 0, {}),
+           Region({0,0,0},{2*device->local_config[AC_nmin].x+nn.x,2*device->local_config[AC_nmin].y+nn.y,2*device->local_config[AC_nmin].z+nn.z}, 0, {}),
            op, device_, swap_offset_)
 {
 
@@ -1253,21 +1255,22 @@ BoundaryConditionTask::BoundaryConditionTask(
     auto input_fields = input_region.memory.fields;
     input_region = Region(output_region.translate(translation));
     input_region.memory.fields = input_fields;
+    const auto ghosts = device->local_config[AC_nmin];
 
     if(boundary_normal.x == -1 && x_info.larger_input)
-    	input_region.position.x -= NGHOST;
+    	input_region.position.x -= ghosts.x;
     if(boundary_normal.x == 1 && x_info.larger_input)
-    	input_region.dims.x += NGHOST;
+    	input_region.dims.x += ghosts.x;
 
     if(boundary_normal.y == -1 && y_info.larger_input)
-    	output_region.position.y -= NGHOST;
+    	output_region.position.y -= ghosts.y;
     if(boundary_normal.y == 1  && y_info.larger_input)
-    	input_region.dims.y += NGHOST;
+    	input_region.dims.y += ghosts.y;
 
     if(boundary_normal.z == -1 && z_info.larger_input)
-    	input_region.position.z -= NGHOST;
+    	input_region.position.z -= ghosts.z;
     if(boundary_normal.z == 1  && z_info.larger_input)
-    	input_region.dims.z += NGHOST;
+    	input_region.dims.z += ghosts.z;
 
     if(boundary_normal.x == -1 && x_info.larger_output)
     	output_region.dims.x += 1;
@@ -1301,17 +1304,18 @@ void
 BoundaryConditionTask::populate_boundary_region()
 {
      const int3 nn = acGetLocalNN(device->local_config);
+     const auto ghosts = device->local_config[AC_nmin];
      if(fieldwise)
      {
      	for (auto variable : output_region.memory.fields) {
      		params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
      		const int3 region_id = output_region.id;
-     		const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + nn.x
-     		                                           : region_id.x == -1 ? 0 : NGHOST_X),
-     		                         (region_id.y == 1 ? NGHOST_Y + nn.y
-     		                                           : region_id.y == -1 ? 0 : NGHOST_Y),
-     		                         (region_id.z == 1 ? NGHOST_Z + nn.z
-     		                                           : region_id.z == -1 ? 0 : NGHOST_Z)};
+     		const int3 start = (int3){(region_id.x == 1 ? ghosts.x+ nn.x
+     		                                           : region_id.x == -1 ? 0 : ghosts.x),
+     		                         (region_id.y == 1 ? ghosts.y+ nn.y
+     		                                           : region_id.y == -1 ? 0 : ghosts.y),
+     		                         (region_id.z == 1 ? ghosts.z + nn.z
+     		                                           : region_id.z == -1 ? 0 : ghosts.z)};
      		const int3 end = start + boundary_dims;
      		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
      	}
@@ -1319,12 +1323,12 @@ BoundaryConditionTask::populate_boundary_region()
      else
      {
      		const int3 region_id = output_region.id;
-     		const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + nn.x
-     		                                           : region_id.x == -1 ? 0 : NGHOST_X),
-     		                         (region_id.y == 1 ? NGHOST_Y + nn.y
-     		                                           : region_id.y == -1 ? 0 : NGHOST_Y),
-     		                         (region_id.z == 1 ? NGHOST_Z + nn.z
-     		                                           : region_id.z == -1 ? 0 : NGHOST_Z)};
+     		const int3 start = (int3){(region_id.x == 1 ? ghosts.x + nn.x
+     		                                           : region_id.x == -1 ? 0 : ghosts.x),
+     		                         (region_id.y == 1 ? ghosts.y + nn.y
+     		                                           : region_id.y == -1 ? 0 : ghosts.y),
+     		                         (region_id.z == 1 ? ghosts.z + nn.z
+     		                                           : region_id.z == -1 ? 0 : ghosts.z)};
      		const int3 end = start + boundary_dims;
      		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
      }

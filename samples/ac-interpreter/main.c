@@ -110,20 +110,12 @@ cmdReduceAll(const Device device)
 int3
 get_nn_min(AcMeshInfo info)
 {
-#if TWO_D == 0
-	return acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
-#else
-	return (int3){info.int_params[AC_nx_min],info.int_params[AC_ny_min],0};
-#endif
+	return info[AC_nmin];
 }
 int3
 get_nn_max(AcMeshInfo info)
 {
-#if TWO_D == 0
-	return acConstructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max, info);
-#else
-	return (int3){info.int_params[AC_nx_max],info.int_params[AC_ny_max],1};
-#endif
+	return info[AC_nlocal_max];
 }
 AcResult
 cmdLaunchKernel(const Device device, const AcMeshInfo info, const char* str)

@@ -13,24 +13,28 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
 	    	return acPushToConfig(config,param,val);
     };
 
-#if TWO_D == 0
-    push_val(AC_dsmin,std::min(std::min(config[AC_ds].x,config[AC_ds].y),config[AC_ds].z));
-#else
-    push_val(AC_ds,(AcReal3){config[AC_ds].x, config[AC_ds].y, 1.0});
-    push_val(AC_ngrid, (int3){config[AC_ngrid].x, config[AC_ngrid].y, 1});
-    push_val(AC_nlocal, (int3){config[AC_nlocal].x, config[AC_nlocal].y, 1});
-#endif
-    push_val(AC_mlocal,config[AC_nlocal] + 2*(int3){NGHOST_X,NGHOST_Y,NGHOST_Z});
-    push_val(AC_mgrid ,config[AC_ngrid]  + 2*(int3){NGHOST_X,NGHOST_Y,NGHOST_Z});
-
-    push_val(AC_nlocal_max,config[AC_nlocal] + (int3){NGHOST_X,NGHOST_Y,NGHOST_Z});
-    push_val(AC_ngrid_max,config[AC_ngrid]   + (int3){NGHOST_X,NGHOST_Y,NGHOST_Z});
     const int3 nmin = (int3)
     {
-	    NGHOST_X,
-	    NGHOST_Y,
-	    NGHOST_Z
+	    config[AC_dimension_inactive].x ? 0 : NGHOST,
+	    config[AC_dimension_inactive].y ? 0 : NGHOST,
+	    config[AC_dimension_inactive].z ? 0 : NGHOST
     };
+    push_val(AC_nmin,nmin);
+
+    if(config[AC_dimension_inactive].z)
+    	push_val(AC_dsmin,std::min(std::min(config[AC_ds].x,config[AC_ds].y),config[AC_ds].z));
+    else
+    {
+    	push_val(AC_ds,(AcReal3){config[AC_ds].x, config[AC_ds].y, 1.0});
+    	push_val(AC_ngrid, (int3){config[AC_ngrid].x, config[AC_ngrid].y, 1});
+    	push_val(AC_nlocal, (int3){config[AC_nlocal].x, config[AC_nlocal].y, 1});
+    }
+
+    push_val(AC_mlocal,config[AC_nlocal] + 2*config[AC_nmin]);
+    push_val(AC_mgrid ,config[AC_ngrid]  + 2*config[AC_nmin]);
+
+    push_val(AC_nlocal_max,config[AC_nlocal] + config[AC_nmin]);
+    push_val(AC_ngrid_max,config[AC_ngrid]   + config[AC_nmin]);
     auto get_products = [&](const auto& param)
     {
 		   return (AcDimProducts){
@@ -40,7 +44,6 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
 		    	config[param].x*config[param].y*config[param].z,	
 		    };
     };
-    push_val(AC_nmin,nmin);
 
     push_val(AC_nlocal_products,get_products(AC_nlocal));
     push_val(AC_mlocal_products,get_products(AC_mlocal));

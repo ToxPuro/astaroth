@@ -22,6 +22,7 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
+#include "user_builtin_non_scalar_constants.h"
 
 #if AC_MPI_ENABLED
 
@@ -51,9 +52,13 @@ const int npointsx = npointsx_grid;
 const int npointsy = npointsy_grid;
 const int npointsz = npointsz_grid;
 
-const int mpointsx = npointsx + 2*NGHOST_X;
-const int mpointsy = npointsy + 2*NGHOST_Y;
-const int mpointsz = npointsz + 2*NGHOST_Z;
+const int mpointsx = npointsx + 2*NGHOST;
+const int mpointsy = npointsy + 2*NGHOST;
+#if TWO_D == 0
+const int mpointsz = npointsz + 2*NGHOST;
+#else
+const int mpointsz = npointsz;
+#endif
 
 //Triangle with all angles 60 degree
 constexpr AcReal a=Lengthscale/(2.0*npointsx_grid); //length of one side of a triangle
@@ -85,7 +90,8 @@ IDX_WITH_HALO(const int i, const int j, const int k)
 int 
 IDX_COMP_DOMAIN(const int i, const int j, const int k)
 {
-	return IDX_WITH_HALO(NGHOST_X+i, NGHOST_Y+j, NGHOST_Z+k);
+	const auto ghosts = acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin];
+	return IDX_WITH_HALO(ghosts.x+i, ghosts.y+j, ghosts.z+k);
 }
 
 

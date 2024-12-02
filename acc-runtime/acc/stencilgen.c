@@ -405,7 +405,10 @@ gen_return_if_oob(const int curr_kernel)
 	       printf("const auto AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,!out_of_bounds);");
 #endif
        printf("if(out_of_bounds) return;");
-       printf("{\n#include \"user_non_scalar_constants.h\"\n");
+       printf("{\n"
+			"#include \"user_non_scalar_constants.h\"\n"
+			"#include \"user_builtin_non_scalar_constants.h\"\n"
+	     );
 }
 
 static void
