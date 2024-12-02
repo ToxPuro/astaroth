@@ -1,6 +1,8 @@
 #pragma once
+#include <iostream>
 
 #include "cuda_utils.h"
+#include "errchk.h"
 #include "type_conversion.h"
 
 namespace ac {

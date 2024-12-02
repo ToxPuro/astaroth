@@ -318,6 +318,7 @@ get_direction(const Index& offset, const Shape& nn, const Index& rr)
 }
 
 } // namespace ac::mpi
+
 /**
  * Managed MPI handles
  * However, the added layer of indirection and complexity may outweigh the benefits
