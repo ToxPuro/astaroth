@@ -12,7 +12,7 @@ ACM_Errorcode
 ACM_MPI_Init_funneled(void)
 {
     try {
-        ac::mpi::init_mpi_funneled();
+        ac::mpi::init_funneled();
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {
@@ -32,7 +32,7 @@ ACM_Errorcode
 ACM_MPI_Finalize(void)
 {
     try {
-        ac::mpi::finalize_mpi();
+        ac::mpi::finalize();
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {

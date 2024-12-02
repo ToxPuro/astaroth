@@ -41,29 +41,29 @@ namespace ac::mpi {
  * Funneled mode that is required for correct CUDA/MPI programs that
  * utilize, e.g., asynchronous host-to-host memory copies
  */
-void init_mpi_funneled();
+void init_funneled();
 
 /** Aborts the MPI program on MPI_COMM_WORLD with error code -1 */
-void abort_mpi() noexcept;
+void abort() noexcept;
 
 /**
  * Finalizes the MPI context
  * Should be called last in the program.
  * With exception handling, this can be achieved by
  * ```c++
- * init_mpi_funneled();
+ * ac::mpi::init_funneled();
  * try {
  *  MPI commands here
  *  ...
  * }
  * catch (const std::except& e) {
  *  Handle exception
- *  abort_mpi();
+ *  ac::mpi::abort();
  * }
- * finalize_mpi();
+ * ac::mpi::finalize();
  * ```
  */
-void finalize_mpi();
+void finalize();
 
 /** Creates a cartesian communicator with topology information attached
  * The resource must be freed after use with
@@ -101,7 +101,14 @@ void info_destroy(MPI_Info& info);
 void request_wait_and_destroy(MPI_Request& req);
 
 /** Getters */
-int get_tag(void);
+
+/** Returns the next tag within [0, MPI_TAG_UB_MIN_VALUE]. Note: all processes must take part in
+ * calling get_next_tag, otherwise tags will become out of sync.
+ * Commented out as error-prone. */
+// int get_next_tag(void);
+
+/** Increments the tag. The tag will be within the interval [0, 32767] afterwards. */
+void increment_tag(int16_t& tag);
 
 int get_rank(const MPI_Comm& cart_comm);
 
@@ -116,9 +123,8 @@ Shape get_decomposition(const MPI_Comm& cart_comm);
 /** Returns the neighbor rank at the offset from current coordinates.  */
 int get_neighbor(const MPI_Comm& cart_comm, const Direction& dir);
 
-/** Returns the direction (integer coordinates) of the offset within the mesh.
-For example, Coordinates Index offset{0,0,0} with Index rr{1,1,1} correspond
-to Direction dir{-1, -1, -1} */
+/** Returns the integer direction of the immediate neighbor (at Chebyshev distance 1) that has
+ * ownership of the data at offset w.r.t. the local computational domain of the current process */
 Direction get_direction(const Index& offset, const Shape& nn, const Index& rr);
 
 /** Map type to MPI enum representing the type
@@ -126,7 +132,7 @@ Direction get_direction(const Index& offset, const Shape& nn, const Index& rr);
  */
 template <typename T>
 constexpr MPI_Datatype
-get_mpi_dtype()
+get_dtype()
 {
     if constexpr (std::is_same_v<T, double>) {
         return MPI_DOUBLE;

@@ -1,6 +1,7 @@
 #include "mpi_utils.h"
 
 #include <algorithm>
+#include <limits>
 
 #include "errchk_mpi.h"
 #include "type_conversion.h"
@@ -66,7 +67,7 @@ print_mpi_comm(const MPI_Comm& comm)
 }
 
 void
-init_mpi_funneled()
+init_funneled()
 {
     int provided;
     ERRCHK_MPI_API(MPI_Init_thread(nullptr, nullptr, MPI_THREAD_FUNNELED, &provided));
@@ -81,13 +82,13 @@ init_mpi_funneled()
 }
 
 void
-abort_mpi() noexcept
+abort() noexcept
 {
     MPI_Abort(MPI_COMM_WORLD, -1);
 }
 
 void
-finalize_mpi()
+finalize()
 {
     ERRCHK_MPI_API(MPI_Finalize());
 }
@@ -191,19 +192,34 @@ request_wait_and_destroy(MPI_Request& req)
     ERRCHK_MPI(req == MPI_REQUEST_NULL);
 }
 
-int
-get_tag(void)
+// int
+// get_next_tag(void)
+// {
+//     // MPI_TAG_UB is required to be at least this large by the MPI 4.1 standard
+//     // However, not all implementations seem to define it (note int*) and
+//     // MPI_Comm_get_attr fails, so must be hardcoded here
+//     constexpr int MPI_TAG_UB_MIN_VALUE{32767};
+
+//     static int tag{-1};
+//     ++tag;
+//     if (tag < 0 || tag >= MPI_TAG_UB_MIN_VALUE)
+//         tag = 0;
+//     return tag;
+// }
+
+void
+increment_tag(int16_t& tag)
 {
     // MPI_TAG_UB is required to be at least this large by the MPI 4.1 standard
     // However, not all implementations seem to define it (note int*) and
     // MPI_Comm_get_attr fails, so must be hardcoded here
     constexpr int MPI_TAG_UB_MIN_VALUE{32767};
+    static_assert(std::numeric_limits<int16_t>::max() == MPI_TAG_UB_MIN_VALUE);
+    ERRCHK_MPI(tag >= 0);
 
-    static int tag{-1};
     ++tag;
-    if (tag < 0 || tag >= MPI_TAG_UB_MIN_VALUE)
+    if (tag < 0)
         tag = 0;
-    return tag;
 }
 
 int

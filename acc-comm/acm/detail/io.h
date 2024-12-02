@@ -23,16 +23,15 @@ mpi_read_collective(const MPI_Comm& parent_comm, const Shape& in_file_dims,
     // Subarrays
     MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims, in_mesh_subdims,
                                                             in_file_offset,
-                                                            ac::mpi::get_mpi_dtype<T>());
+                                                            ac::mpi::get_dtype<T>());
     MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims, in_mesh_subdims,
-                                                            in_mesh_offset,
-                                                            ac::mpi::get_mpi_dtype<T>());
+                                                            in_mesh_offset, ac::mpi::get_dtype<T>());
 
     // File
     MPI_File file{MPI_FILE_NULL};
     ERRCHK_MPI_API(MPI_File_open(comm, path.c_str(), MPI_MODE_RDONLY, info, &file));
     ERRCHK_MPI_API(
-        MPI_File_set_view(file, 0, ac::mpi::get_mpi_dtype<T>(), global_subarray, "native", info));
+        MPI_File_set_view(file, 0, ac::mpi::get_dtype<T>(), global_subarray, "native", info));
 
     // Check that the file is in the expected format
     MPI_Offset bytes{0};
@@ -67,17 +66,16 @@ mpi_write_collective(const MPI_Comm& parent_comm, const Shape& in_file_dims,
     // Subarrays
     MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims, in_mesh_subdims,
                                                             in_file_offset,
-                                                            ac::mpi::get_mpi_dtype<T>());
+                                                            ac::mpi::get_dtype<T>());
     MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims, in_mesh_subdims,
-                                                            in_mesh_offset,
-                                                            ac::mpi::get_mpi_dtype<T>());
+                                                            in_mesh_offset, ac::mpi::get_dtype<T>());
 
     // File
     MPI_File file{MPI_FILE_NULL};
     ERRCHK_MPI_API(
         MPI_File_open(comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
     ERRCHK_MPI_API(
-        MPI_File_set_view(file, 0, ac::mpi::get_mpi_dtype<T>(), global_subarray, "native", info));
+        MPI_File_set_view(file, 0, ac::mpi::get_dtype<T>(), global_subarray, "native", info));
 
     ERRCHK_MPI_API(MPI_File_write_all(file, data, 1, local_subarray, MPI_STATUS_IGNORE));
 
@@ -108,9 +106,9 @@ class IOTaskAsync {
                 const Shape& in_mesh_subdims, const Index& in_mesh_offset)
         : info{ac::mpi::info_create()},
           global_subarray{ac::mpi::subarray_create(in_file_dims, in_mesh_subdims, in_file_offset,
-                                                   ac::mpi::get_mpi_dtype<T>())},
+                                                   ac::mpi::get_dtype<T>())},
           local_subarray{ac::mpi::subarray_create(in_mesh_dims, in_mesh_subdims, in_mesh_offset,
-                                                  ac::mpi::get_mpi_dtype<T>())},
+                                                  ac::mpi::get_dtype<T>())},
           staging_buffer{prod(in_mesh_dims)}
     {
     }
@@ -155,8 +153,8 @@ class IOTaskAsync {
         ERRCHK_MPI(file == MPI_FILE_NULL);
         ERRCHK_MPI_API(
             MPI_File_open(comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
-        ERRCHK_MPI_API(MPI_File_set_view(file, 0, ac::mpi::get_mpi_dtype<T>(), global_subarray,
-                                         "native", info));
+        ERRCHK_MPI_API(
+            MPI_File_set_view(file, 0, ac::mpi::get_dtype<T>(), global_subarray, "native", info));
 
         ERRCHK_MPI(file != MPI_FILE_NULL);
         ERRCHK_MPI(req == MPI_REQUEST_NULL);

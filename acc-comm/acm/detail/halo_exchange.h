@@ -37,19 +37,18 @@ launch_halo_exchange(const MPI_Comm& parent_comm, const Shape& local_mm, const S
 
     std::vector<MPI_Request> send_reqs;
     std::vector<MPI_Request> recv_reqs;
+    int16_t tag{0};
     for (const ac::segment& segment : segments) {
         const Index recv_offset{segment.offset};
         const Index send_offset{((local_nn + recv_offset - rr) % local_nn) + rr};
-        MPI_Datatype recv_subarray{ac::mpi::subarray_create(local_mm, segment.dims, recv_offset,
-                                                            ac::mpi::get_mpi_dtype<T>())};
-        MPI_Datatype send_subarray{ac::mpi::subarray_create(local_mm, segment.dims, send_offset,
-                                                            ac::mpi::get_mpi_dtype<T>())};
+        MPI_Datatype recv_subarray{
+            ac::mpi::subarray_create(local_mm, segment.dims, recv_offset, ac::mpi::get_dtype<T>())};
+        MPI_Datatype send_subarray{
+            ac::mpi::subarray_create(local_mm, segment.dims, send_offset, ac::mpi::get_dtype<T>())};
 
         const Direction recv_direction{ac::mpi::get_direction(segment.offset, local_nn, rr)};
         const int recv_neighbor{ac::mpi::get_neighbor(cart_comm, recv_direction)};
         const int send_neighbor{ac::mpi::get_neighbor(cart_comm, -recv_direction)};
-
-        const int tag{ac::mpi::get_tag()};
 
         MPI_Request recv_req;
         ERRCHK_MPI_API(
@@ -63,6 +62,7 @@ launch_halo_exchange(const MPI_Comm& parent_comm, const Shape& local_mm, const S
 
         ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
         ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
+        ac::mpi::increment_tag(tag);
     }
     while (!send_reqs.empty()) {
         ac::mpi::request_wait_and_destroy(send_reqs.back());
