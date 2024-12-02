@@ -1,4 +1,4 @@
-hostdefine STENCIL_ORDER (0)
+hostdefine STENCIL_ORDER (2)
 Field FIELD
 output real AC_min_val
 

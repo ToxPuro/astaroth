@@ -1075,6 +1075,14 @@ acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const Ac
 {
 	auto in  = device->vba.reduce_scratchpads_real[(int)output][0];
 	auto out = device->vba.reduce_scratchpads_real[(int)output][1];
+	ERRCHK_ALWAYS(in != NULL);
+	ERRCHK_ALWAYS(out != NULL);
+	ERRCHK_ALWAYS(result != NULL);
+	if(stream >= NUM_STREAMS)
+	{
+		fprintf(stderr,"Stream: %d\n",stream);
+		ERRCHK_ALWAYS(stream < NUM_STREAMS);
+	}
 	acReduce(device->streams[stream],in,acGetKernelReduceScratchPadSize(kernel),out,reduce_op);
 	cudaMemcpyAsync(result,out,sizeof(out[0]),cudaMemcpyDeviceToHost,device->streams[stream]);
 	return AC_SUCCESS;

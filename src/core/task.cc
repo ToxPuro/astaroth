@@ -223,6 +223,11 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputP
       dims = (int3){id.x == 0 ? nn.x - ghosts.x* 2 : ghosts.x,
       	      id.y == 0 ? nn.y - ghosts.y * 2 : ghosts.y,
       	      id.z == 0 ? nn.z - ghosts.z * 2 : ghosts.z};
+      if(dims.x == 0 || dims.y == 0 || dims.z == 0)
+      {
+	      fprintf(stderr,"Incorrect region dims: %d,%d,%d\n",dims.x,dims.y,dims.z);
+	      ERRCHK_ALWAYS(dims.x != 0 && dims.y != 0 && dims.z != 0);
+      }
       break;
       }
       case RegionFamily::Compute_input: {
@@ -232,8 +237,17 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputP
       	    id.y == -1  ? 0 : id.y == 1 ? nn.y - ghosts.y : ghosts.y ,
       	    id.z == -1  ? 0 : id.z == 1 ? nn.z - ghosts.z : ghosts.z };
       // clang-format on
-      dims = (int3){id.x == 0 ? nn.x : ghosts.x * 3, id.y == 0 ? nn.y : ghosts.y * 3,
-      	      id.z == 0 ? nn.z : ghosts.z * 3};
+      dims = (int3){
+	      		id.x == 0 ? nn.x : ghosts.x * 3, 
+			id.y == 0 ? nn.y : ghosts.y * 3,
+      	      	        id.z == 0 ? nn.z : ghosts.z * 3};
+      if(dims.x == 0 || dims.y == 0 || dims.z == 0)
+      {
+	      fprintf(stderr,"Incorrect region dims: %d,%d,%d\n",dims.x,dims.y,dims.z);
+	      fprintf(stderr,"Id: %d,%d,%d\n",id.x,id.y,id.z);
+	      fprintf(stderr,"Ghosts: %d,%d,%d\n",ghosts.x,ghosts.y,ghosts.z);
+	      ERRCHK_ALWAYS(dims.x != 0 && dims.y != 0 && dims.z != 0);
+      }
       break;
       }
       case RegionFamily::Exchange_output: {
@@ -1100,8 +1114,8 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
-           Region({0,0,0},{2*device->local_config[AC_nmin].x+nn.x,2*device->local_config[AC_nmin].y+nn.y,2*device->local_config[AC_nmin].z+nn.z}, 0, {}),
-           Region({0,0,0},{2*device->local_config[AC_nmin].x+nn.x,2*device->local_config[AC_nmin].y+nn.y,2*device->local_config[AC_nmin].z+nn.z}, 0, {}),
+           Region({0,0,0},{2*device_->local_config[AC_nmin].x+nn.x,2*device_->local_config[AC_nmin].y+nn.y,2*device_->local_config[AC_nmin].z+nn.z}, 0, {}),
+           Region({0,0,0},{2*device_->local_config[AC_nmin].x+nn.x,2*device_->local_config[AC_nmin].y+nn.y,2*device_->local_config[AC_nmin].z+nn.z}, 0, {}),
            op, device_, swap_offset_)
 {
 

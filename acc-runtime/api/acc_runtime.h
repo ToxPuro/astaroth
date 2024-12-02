@@ -407,7 +407,8 @@ typedef struct {
     	  // memset reads the second parameter as a byte even though it says int in
           // the function declaration
     	  memset(&res, (uint8_t)0xFF, sizeof(res));
-	  memset(&res.bool_params,false,sizeof(res.bool_params));
+	  memset(&res.bool_params,0,sizeof(res.bool_params));
+	  memset(&res.bool3_params,0,sizeof(res.bool3_params));
     	  //these are set to nullpointers for the users convenience that the user doesn't have to set them to null elsewhere
     	  //if they are present in the config then they are initialized correctly
     	  memset(res.real_arrays, 0,NUM_REAL_ARRAYS *sizeof(AcReal*));

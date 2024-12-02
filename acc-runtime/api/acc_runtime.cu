@@ -1684,73 +1684,67 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
   free(offsets);
   return AC_SUCCESS;
 }
+typedef struct
+{
+	void* data;
+	size_t bytes;
+} AcDeviceTmpBuffer;
+template <typename T>
+void
+cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* d_in, const size_t count, T* d_out,  AcReduceOp reduce_op)
+{
+  switch(reduce_op)
+  {
+	  case(REDUCE_SUM):
+	  	cub::DeviceReduce::Sum(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream);
+	  	break;
+	  case(REDUCE_MIN):
+	  	cub::DeviceReduce::Min(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream);
+	  	break;
+	  case(REDUCE_MAX):
+	  	cub::DeviceReduce::Max(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream);
+	  	break;
+	default:
+		ERRCHK_ALWAYS(reduce_op != NO_REDUCE);
+  }
+  if (cudaGetLastError() != cudaSuccess) {
+          ERRCHK_CUDA_KERNEL_ALWAYS();
+          ERRCHK_CUDA_ALWAYS(cudaGetLastError());
+  }
+}
+template <typename T>
+AcResult
+acReduceBase(const cudaStream_t stream, const T* d_in, const size_t count, T* d_out, const AcReduceOp reduce_op)
+{
+  ERRCHK_ALWAYS(count != 0);
+  ERRCHK_ALWAYS(d_in  != NULL);
+  ERRCHK_ALWAYS(d_out != NULL);
+
+  AcDeviceTmpBuffer temp_storage{NULL,0};
+  cub_reduce(temp_storage,stream,d_in,count,d_out,reduce_op);
+
+  ERRCHK_ALWAYS(temp_storage.bytes != 0);
+  ERRCHK_CUDA_ALWAYS(cudaMalloc(&temp_storage.data, temp_storage.bytes));
+  ERRCHK_ALWAYS(temp_storage.data);
+
+  cub_reduce(temp_storage,stream,d_in,count,d_out,reduce_op);
+  cudaStreamSynchronize(
+    stream); // Note, would not be needed if allocated at initialization
+  cudaFree(temp_storage.data);
+  return AC_SUCCESS;
+}
+
 AcResult
 acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out, const AcReduceOp reduce_op)
 {
-
-  (void)d_out;
-  void* d_temp_storage      = NULL;
-  size_t temp_storage_bytes = 0;
-  cudaMalloc(&d_temp_storage, temp_storage_bytes);
-  if(reduce_op == REDUCE_SUM)
-	  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  else if(reduce_op == REDUCE_MIN)
-	  cub::DeviceReduce::Min(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  else if(reduce_op == REDUCE_MAX)
-	  cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  cudaMalloc(&d_temp_storage, temp_storage_bytes);
-  ERRCHK_ALWAYS(d_temp_storage);
-
-  if(reduce_op == REDUCE_SUM)
-	  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  else if(reduce_op == REDUCE_MIN)
-	  cub::DeviceReduce::Min(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  else if(reduce_op == REDUCE_MAX)
-	  cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  cudaStreamSynchronize(
-    stream); // Note, would not be needed if allocated at initialization
-  cudaFree(d_temp_storage);
-  return AC_SUCCESS;
+	return acReduceBase(stream,d_in,count,d_out,reduce_op);
 }
+
+
 AcResult
 acReduceInt(const cudaStream_t stream, const int* d_in, const size_t count, int* d_out, const AcReduceOp reduce_op)
 {
-
-  (void)d_out;
-  void* d_temp_storage      = NULL;
-  size_t temp_storage_bytes = 0;
-  cudaMalloc(&d_temp_storage, temp_storage_bytes);
-  if(reduce_op == REDUCE_SUM)
-	  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  else if(reduce_op == REDUCE_MIN)
-	  cub::DeviceReduce::Min(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  else if(reduce_op == REDUCE_MAX)
-	  cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  cudaMalloc(&d_temp_storage, temp_storage_bytes);
-  ERRCHK_ALWAYS(d_temp_storage);
-
-  if(reduce_op == REDUCE_SUM)
-	  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  else if(reduce_op == REDUCE_MIN)
-	  cub::DeviceReduce::Min(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  else if(reduce_op == REDUCE_MAX)
-	  cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_in,
-                         d_out, count,stream);
-  cudaStreamSynchronize(
-    stream); // Note, would not be needed if allocated at initialization
-  cudaFree(d_temp_storage);
-  return AC_SUCCESS;
+	return acReduceBase(stream,d_in,count,d_out,reduce_op);
 }
 
 static __global__ void

@@ -8,20 +8,26 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
     //TP: utility lambdas
     auto push_val = [&](auto param, auto val)
     {
-	    if constexpr(std::is_same<decltype(param), int>::value || std::is_same<decltype(param), AcReal>::value);
+	    if constexpr(
+			    std::is_same<decltype(param), int>::value     || 
+			    std::is_same<decltype(param), AcReal>::value  ||
+			    std::is_same<decltype(param), AcReal3>::value ||
+			    std::is_same<decltype(param), int3>::value    ||
+			    std::is_same<decltype(param), AcBool3>::value
+			);
 	    else
 	    	return acPushToConfig(config,param,val);
     };
 
-    const int3 nmin = (int3)
-    {
-	    config[AC_dimension_inactive].x ? 0 : NGHOST,
-	    config[AC_dimension_inactive].y ? 0 : NGHOST,
-	    config[AC_dimension_inactive].z ? 0 : NGHOST
-    };
-    push_val(AC_nmin,nmin);
+    push_val(AC_nmin,
+    	(int3){
+    	        config[AC_dimension_inactive].x ? 0 : NGHOST,
+    	        config[AC_dimension_inactive].y ? 0 : NGHOST,
+    	        config[AC_dimension_inactive].z ? 0 : NGHOST
+    	}
+    );
 
-    if(config[AC_dimension_inactive].z)
+    if(!config[AC_dimension_inactive].z)
     	push_val(AC_dsmin,std::min(std::min(config[AC_ds].x,config[AC_ds].y),config[AC_ds].z));
     else
     {

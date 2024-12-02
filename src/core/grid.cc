@@ -1902,7 +1902,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in})[0];
             //for (int tag = Region::min_comp_tag; tag < 1; tag++) {
 	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
-	    if(comm_size == 1)
+	    if((comm_size == 1 && false) || (NGHOST == 0))
 	    {
 	      auto task = std::make_shared<ComputeTask>(op,0,full_input_region,full_region,device,swap_offset);
               graph->all_tasks.push_back(task);
@@ -1924,6 +1924,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
             	    //done here since we want to write only to out not to in what launching the taskgraph would do
 	      	    //always remember to call the loader since otherwise might not be safe to execute taskgraph
     	      	    op.load_kernel_params_func->loader({&grid.device->vba.kernel_input_params,grid.device, 0, {}, {}});
+		    fprintf(stderr,"GRID: %d,%d,%d\n",task->output_region.dims.x,task->output_region.dims.y,task->output_region.dims.z);
             	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
             	}
 	    }
@@ -2141,6 +2142,7 @@ get_reduce_outputs(const AcTaskGraph* graph)
     	for(size_t i = 0; i < grid.kernel_analysis_info.n_reduce_outputs[kernel]; ++i)
     	    reduce_outputs.push_back(grid.kernel_analysis_info.reduce_outputs[kernel][i]);
     }
+    ERRCHK_ALWAYS(reduce_outputs.size()  < NUM_STREAMS);
     return reduce_outputs;
 }
 
@@ -2157,9 +2159,9 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
 	    const auto op     = reduce_outputs[i].op;
 	    const auto kernel = reduce_outputs[i].kernel;
 	    if(reduce_outputs[i].type == AC_REAL_TYPE)
-	    	acDeviceFinishReduce(grid.device,(Stream)i,&local_res_real[i],kernel,op,(AcRealOutputParam)var);
+	    	acDeviceFinishReduce(grid.device,(Stream)(int)i,&local_res_real[i],kernel,op,(AcRealOutputParam)var);
 	    else if(reduce_outputs[i].type == AC_INT_TYPE)
-	    	acDeviceFinishReduceInt(grid.device,(Stream)i,&local_res_int[i],kernel,op,(AcIntOutputParam)var);
+	    	acDeviceFinishReduceInt(grid.device,(Stream)(int)i,&local_res_int[i],kernel,op,(AcIntOutputParam)var);
 	    else if(reduce_outputs[i].type == AC_PROF_TYPE)
 		;//acDeviceReduceAverages(grid.device, reduce_outputs[i].variable, (Profile)reduce_outputs[i].variable);
 	    else
