@@ -195,10 +195,22 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
         const Shape profile_local_nz_offset{as<uint64_t>(local_info.int_params[AC_nz_min])};
         const Index coords{ac::mpi::get_coords(parent_comm)[2]};
         const Shape profile_global_nz_offset{coords * profile_local_nz};
-        ac::mpi::write_collective(parent_comm, ac::mpi::get_dtype<AcReal>(), profile_global_nz,
-                                  profile_global_nz_offset, profile_local_mz, profile_local_nz,
-                                  profile_local_nz_offset, vba.profiles.in[i],
-                                  std::string(filepath));
+
+        const int rank{ac::mpi::get_rank(parent_comm)};
+        const Index coords_3d{ac::mpi::get_coords(parent_comm)};
+        const Shape decomp_3d{ac::mpi::get_decomposition(parent_comm)};
+        const int color = (coords_3d[0] + coords_3d[1] * decomp_3d[0]) == 0 ? 0 : MPI_UNDEFINED;
+
+        MPI_Comm profile_comm{MPI_COMM_NULL};
+        ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, rank, &profile_comm));
+
+        if (profile_comm != MPI_COMM_NULL) {
+            ac::mpi::write_collective(profile_comm, ac::mpi::get_dtype<AcReal>(), profile_global_nz,
+                                      profile_global_nz_offset, profile_local_mz, profile_local_nz,
+                                      profile_local_nz_offset, vba.profiles.in[i],
+                                      std::string(filepath));
+            ERRCHK_MPI_API(MPI_Comm_free(&profile_comm));
+        }
     }
     return 0;
 }
