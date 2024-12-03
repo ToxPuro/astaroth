@@ -98,7 +98,7 @@ init_tfm_profiles(const Device& device)
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
-    const AcReal global_sz = info.real_params[AC_sz];
+    const AcReal global_sz = info.real_params[AC_global_sz];
     const size_t global_nz = as<size_t>(info.int3_params[AC_global_grid_n].z);
     const long offset      = -info.int_params[AC_nz_min] + info.int3_params[AC_multigpu_offset].z;
     const size_t local_mz  = as<size_t>(info.int_params[AC_mz]);
@@ -106,7 +106,6 @@ init_tfm_profiles(const Device& device)
     const AcReal amplitude  = info.real_params[AC_profile_amplitude];
     const AcReal wavenumber = info.real_params[AC_profile_wavenumber];
 
-    // AcReal host_profile[local_mz];
     auto host_profile{std::make_unique<AcReal[]>(local_mz)};
 
     // All to zero
@@ -200,7 +199,6 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
                                   profile_global_nz_offset, profile_local_mz, profile_local_nz,
                                   profile_local_nz_offset, vba.profiles.in[i],
                                   std::string(filepath));
-        acDeviceWriteProfileToDisk(device, PROFILE_B11mean_x, "test.profile");
     }
     return 0;
 }
@@ -260,7 +258,7 @@ main(int argc, char* argv[])
         ERRCHK_AC(acDeviceCreate(device_id, local_info, &device));
 
         // Setup device memory
-        AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH];
+        AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
         ERRCHK(get_stencil_coeffs(local_info, stencils) == 0);
         ERRCHK_AC(acDeviceLoadStencils(device, STREAM_DEFAULT, stencils));
         ERRCHK_AC(acDevicePrintInfo(device));
