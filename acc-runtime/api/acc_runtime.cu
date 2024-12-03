@@ -40,6 +40,7 @@ static AcBool3 dimension_inactive{};
 #endif
 
 #include "user_kernel_declarations.h"
+#include "kernel_reduce_info.h"
 
 
 #define USE_COMPRESSIBLE_MEMORY (0)
@@ -134,8 +135,9 @@ get_warp_size()
   return props.warpSize;
 }
 
+
 bool
-is_valid_configuration(const Volume dims, const Volume tpb)
+is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel)
 {
   const size_t warp_size = get_warp_size();
   const size_t xmax      = (size_t)(warp_size * ceil(1. * dims.x / warp_size));
@@ -146,45 +148,45 @@ is_valid_configuration(const Volume dims, const Volume tpb)
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: {
 
-    if (too_large)
-      return false;
+	    if (too_large)
+	      return false;
 
-    return true;
-  }
-  case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
-    if (tpb.z > 1) return false;
-    [[fallthrough]];
-  case EXPLICIT_CACHING: // Fallthrough
-  case EXPLICIT_CACHING_3D_BLOCKING: {
+	    return true;
+	  }
+	  case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
+	    if (tpb.z > 1) return false;
+	    [[fallthrough]];
+	  case EXPLICIT_CACHING: // Fallthrough
+	  case EXPLICIT_CACHING_3D_BLOCKING: {
 
-    // For some reason does not work without this
-    // Probably because of break vs continue when fetching (some threads
-    // quit too early if the dims are not divisible)
-    return !(dims.x % tpb.x) && !(dims.y % tpb.y) && !(dims.z % tpb.z);
-  }
-  case EXPLICIT_PINGPONG_txw: {
-    return (tpb.y == 1) && (tpb.z == 1);
-  }
-  case EXPLICIT_PINGPONG_txy: {
-    return (tpb.z == 1);
-  }
-  case EXPLICIT_PINGPONG_txyblocked: {
-    return (tpb.z == 1);
-  }
-  case EXPLICIT_PINGPONG_txyz: {
-    return true;
-  }
-  case EXPLICIT_ROLLING_PINGPONG: {
-    // OK for every other rolling pingpong implementation
-    // return true;
+	    // For some reason does not work without this
+	    // Probably because of break vs continue when fetching (some threads
+	    // quit too early if the dims are not divisible)
+	    return !(dims.x % tpb.x) && !(dims.y % tpb.y) && !(dims.z % tpb.z);
+	  }
+	  case EXPLICIT_PINGPONG_txw: {
+	    return (tpb.y == 1) && (tpb.z == 1);
+	  }
+	  case EXPLICIT_PINGPONG_txy: {
+	    return (tpb.z == 1);
+	  }
+	  case EXPLICIT_PINGPONG_txyblocked: {
+	    return (tpb.z == 1);
+	  }
+	  case EXPLICIT_PINGPONG_txyz: {
+	    return true;
+	  }
+	  case EXPLICIT_ROLLING_PINGPONG: {
+	    // OK for every other rolling pingpong implementation
+	    // return true;
 
-    // Required only when unrolling smem loads
-    // Ensures two unrolls is enough to fill the smem buffer
-    return (2 * tpb.x >= STENCIL_WIDTH - 1 + tpb.x) &&
-           (2 * tpb.y >= STENCIL_HEIGHT - 1 + tpb.y);
-  }
-  default: {
-    ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
+	    // Required only when unrolling smem loads
+	    // Ensures two unrolls is enough to fill the smem buffer
+	    return (2 * tpb.x >= STENCIL_WIDTH - 1 + tpb.x) &&
+		   (2 * tpb.y >= STENCIL_HEIGHT - 1 + tpb.y);
+	  }
+	  default: {
+	    ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
     return false;
   }
   }
@@ -1107,10 +1109,12 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
 
   // New: require that tpb.x is a multiple of the minimum transaction or L2
   // cache line size
-  //const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
-  //New: require that tpb.x is a multiple of the warp size, since otherwise not contiguous mem accesses and this makes autotuning faster
-  //const int x_increment = min(minimum_transaction_size_in_elems,dims.x);
-  const int x_increment = min(props.warpSize,dims.x);
+  const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
+  // New: restrict tpb.x to be at most dims.x since launching threads that are known to be oob feels simply wasteful
+  const int x_increment = min(
+		  			minimum_transaction_size_in_elems,
+		  			dims.x
+		            );
 
   std::vector<int3> samples{};
   for (int z = 1; z <= min(max_threads_per_block,dims.z); ++z) {
@@ -1131,7 +1135,7 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
         if ((x * y * z) % props.warpSize && (x*y*z) >props.warpSize)
           continue;
 
-        if (!is_valid_configuration(to_volume(dims), to_volume(tpb)))
+        if (!is_valid_configuration(to_volume(dims), to_volume(tpb),kernel))
           continue;
 	//TP: should be emplace back but on my laptop the CUDA compiler gives a cryptic error message that I do not care to debug
         samples.push_back((int3){x,y,z});

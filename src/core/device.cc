@@ -501,7 +501,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 			    i < NUM_REAL_OUTPUTS ? scratchpad_size_bytes : acVertexBufferSizeBytes(device->local_config))
 		    );
     	    	acKernelFlush(device->streams[STREAM_DEFAULT],device->vba.reduce_scratchpads_real[i][j], scratchpad_size,
-			      i < NUM_REAL_OUTPUTS ? scratchpad_size : acVertexBufferSize(device->local_config)
+				0.0
 			     );
     	    }
     	}
@@ -544,6 +544,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     acDeviceSynchronizeStream(device, STREAM_ALL);
     acDeviceSynchronizeStream(device, STREAM_ALL);
+    memset(&device->scratchpad_states,0,sizeof(device->scratchpad_states));
     return AC_SUCCESS;
 }
 
@@ -570,6 +571,7 @@ AcResult
 acDeviceDestroy(Device* device_ptr)
 {
     Device device = *device_ptr;
+    if(device == NULL) return AC_SUCCESS;
     cudaSetDevice(device->id);
 #if AC_VERBOSE
     printf("Destroying device %d (%p)\n", device->id, device);
@@ -1738,4 +1740,58 @@ acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf, co
 
     acHostMeshDestroy(&host_mesh);
     return AC_SUCCESS;
+}
+
+AcResult
+acDevicePreprocessScratchPad(Device device, const int variable, const AcType type,const AcReduceOp op)
+{
+	AcReduceOp* states =
+			type == AC_INT_TYPE  ? device->scratchpad_states.ints  :
+			type == AC_REAL_TYPE ? device->scratchpad_states.reals :
+			type == AC_PROF_TYPE ? &device->scratchpad_states.reals[NUM_REAL_OUTPUTS] :
+			NULL;
+
+	const int n_elems = 
+				type == AC_REAL_TYPE ?  NUM_REAL_OUTPUTS :
+				type == AC_PROF_TYPE ?  NUM_PROFILES     :
+				type == AC_INT_TYPE  ?  NUM_INT_OUTPUTS  :
+				0;
+	ERRCHK_ALWAYS(variable < n_elems);
+	if(states[variable] == op) return AC_SUCCESS;
+	states[variable] = op;
+	if(type == AC_REAL_TYPE)
+	{
+		if constexpr (NUM_REAL_OUTPUTS == 0) return AC_SUCCESS;
+		auto* dst = device->vba.reduce_scratchpads_real[variable][0];
+		if(op == REDUCE_SUM)
+    	    		acKernelFlush(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),0.0);
+		else if(op == REDUCE_MIN)
+    	    		acKernelFlush(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),AC_REAL_MAX);
+		else if(op == REDUCE_MAX)
+    	    		acKernelFlush(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),-AC_REAL_MAX);
+	}
+	else if(type == AC_PROF_TYPE)
+	{
+		if constexpr(NUM_PROFILES == 0) return AC_SUCCESS;
+		auto* dst = device->vba.reduce_scratchpads_real[NUM_REAL_OUTPUTS+variable][0];
+		if(op == REDUCE_SUM)
+    	    		acKernelFlush(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),0.0);
+		else if(op == REDUCE_MIN)
+    	    		acKernelFlush(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),AC_REAL_MAX);
+		else if(op == REDUCE_MAX)
+    	    		acKernelFlush(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),-AC_REAL_MAX);
+	}
+	else
+	{
+		if constexpr (NUM_INT_OUTPUTS == 0) return AC_SUCCESS;
+		auto* dst = device->vba.reduce_scratchpads_int[variable][0];
+		if(op == REDUCE_SUM)
+    	    		acKernelFlushInt(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),0);
+		else if(op == REDUCE_MIN)
+    	    		acKernelFlushInt(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),INT_MAX);
+		else if(op == REDUCE_MAX)
+    	    		acKernelFlushInt(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),-INT_MAX);
+	}
+	acDeviceSynchronizeStream(device,STREAM_DEFAULT);
+	return AC_SUCCESS;
 }

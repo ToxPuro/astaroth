@@ -316,37 +316,172 @@ void
 print_reduce_ops(const ReduceOp op, const char* define_name)
 {
 #if AC_USE_HIP
-	const char* shuffle_instruction = "rocprim::warp_shuffle_down(";
+	const char* shuffle_instruction = "rocprim::warp_shuffle(val,target_tid)";
 #else
-	const char* shuffle_instruction = "__shfl_down_sync(AC_INTERNAL_active_threads,";
+	const char* shuffle_instruction = "__shfl_sync(AC_INTERNAL_active_threads,val,target_tid)";
+#endif
+	const char* op_instruction = 
+		op == REDUCE_SUM ? "val += shuffle_tmp" :
+		op == REDUCE_MIN ? "val = val > shuffle_tmp ? shuffle_tmp : val;" :
+		op == REDUCE_MAX ? "val = val > shuffle_tmp ? val : shuffle_tmp;" :
+		NULL;
+	if(op == NO_REDUCE || op_instruction == NULL) 
+		printf("Incorrect reduction for %s\n",define_name);
+
+	//TP: the idea behind the algorithm is that if the target tid is inactive 
+	//we access the value the target tid was responsible for reducing
+	//
+	//The target tid should be the smallest **active** thread index between the normal target (lane_id + offset) 
+	//and those that the target tid is responsible for reducing.
+	//since the tid we access is active it has reduced all values it was responsible for
+	
+	//The smallest active thread index can be efficiently calculated with bit operations and ctz (Count Trailing Zeroes)
+	//Unfortunately CUDA does not support ctz so we calculate ctz with ffs-1 (Find First Set)
+	//Could use ctz on HIP but for not use ffs on both
+	printf("if constexpr (warp_size == 32) {"
+			"if (AC_INTERNAL_all_threads_active) {"
+				"size_t target_tid = lane_id + 16;"
+				"auto shuffle_tmp = %s;"
+		        	"%s;"
+
+				"target_tid = lane_id + 8;"
+				"shuffle_tmp = %s;"
+		        	"%s;"
+
+				"target_tid = lane_id + 4;"
+				"shuffle_tmp = %s;"
+		        	"%s;"
+
+				"target_tid = lane_id + 2;"
+				"shuffle_tmp = %s;"
+		        	"%s;"
+
+				"target_tid = lane_id + 1;"
+				"shuffle_tmp = %s;"
+		        	"%s;"
+			"}"
+			"else if (AC_INTERNAL_lower_active_threads_are_contiguos ) {"
+				"size_t target_tid = lane_id + 16;"
+				"auto shuffle_tmp = %s;"
+		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
+
+				"target_tid = lane_id + 8;"
+				"shuffle_tmp = %s;"
+		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
+
+				"target_tid = lane_id + 4;"
+				"shuffle_tmp = %s;"
+		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
+
+				"target_tid = lane_id + 2;"
+				"shuffle_tmp = %s;"
+		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
+
+				"target_tid = lane_id + 1;"
+				"shuffle_tmp = %s;"
+		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
+
+			"}"
+			"else {"
+				"size_t target_tid = lane_id + 16;"
+				"auto shuffle_tmp = %s;"
+		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
+
+				"size_t target_mask = (16777472 << lane_id);" //2^8 + 2^24
+				"size_t active = (AC_INTERNAL_active_threads & target_mask);"
+				"target_tid = !active ? 0 : __ffs(active)-1;"
+				"shuffle_tmp = %s;"
+		        	"if(target_tid) %s;"
+
+				"target_mask = (268439568 << lane_id);" //2^4+2^12+2^28
+				"active = (AC_INTERNAL_active_threads & target_mask);"
+				"target_tid = !active ? 0 : __ffs(active)-1;"
+				"shuffle_tmp = %s;"
+		        	"if(target_tid) %s;"
+
+				"target_mask = (1073758276 << lane_id);" //2^2+2^6+2^14+2^30
+				"active = (AC_INTERNAL_active_threads & target_mask);"
+				"target_tid = !active ? 0 : __ffs(active)-1;"
+				"shuffle_tmp = %s;"
+		        	"if(target_tid) %s;"
+
+				"target_mask = (2147516554<< lane_id);" //2^1+2^3+2^7+2^15+2^31
+				"active = (AC_INTERNAL_active_threads & target_mask);"
+				"target_tid = !active ? 0 : __ffs(active)-1;"
+				"shuffle_tmp = %s;"
+		        	"if(target_tid) %s;"
+			"}"
+		"}"
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	  );
+
+#if AC_USE_HIP
+//TP: if we use CUDA we get compiler warnings about too large shifts since active threads is unsigned long instead of unsigned long long
+	printf("else if constexpr (warp_size == 64) {"
+			"unsigned long long target_tid = lane_id + 32;"
+			"auto shuffle_tmp = %s;"
+		        "if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
+
+			"constexpr unsigned long long possible_tids_1 = (1 << 16) + (1 << 24);"
+			"unsigned long long target_mask = (possible_tids_1 << lane_id);"
+			"size_t active = (AC_INTERNAL_active_threads & target_mask);"
+			"target_tid = !active ? 0 : __ffsll(active)-1;"
+			"shuffle_tmp = %s;"
+		        "if(target_tid) %s;"
+
+			"constexpr unsigned long long possible_tids_2 = (1 << 8) + (1 << 24) + (1 << 56);"
+			"target_mask = (possible_tids_2 << lane_id);"
+			"active = (AC_INTERNAL_active_threads & target_mask);"
+			"target_tid = !active ? 0 : __ffsll(active)-1;"
+			"shuffle_tmp = %s;"
+		        "if(target_tid) %s;"
+
+			"constexpr unsigned long long possible_tids_3 = (1 << 4) + (1 << 12) + (1 << 28) + (1 << 60);"
+			"target_mask = (possible_tids_3 << lane_id);"
+			"active = (AC_INTERNAL_active_threads & target_mask);"
+			"target_tid = !active ? 0 : __ffsll(active)-1;"
+			"shuffle_tmp = %s;"
+		        "if(target_tid) %s;"
+
+			"constexpr unsigned long long possible_tids_4 = (1 << 2) + (1 << 6) + (1 << 14) + (1 << 30) + (1 << 62);"
+			"target_mask = (possible_tids_4 << lane_id);"
+			"active = (AC_INTERNAL_active_threads & target_mask);"
+			"target_tid = !active ? 0 : __ffsll(active)-1;"
+			"shuffle_tmp = %s;"
+		        "if(target_tid) %s;"
+
+			"constexpr unsigned long long possible_tids_5 = (1 << 1) + (1 << 3) + (1 << 7) + (1 << 15) + (1 << 31) + (1 << 63);"
+			"target_mask = (possible_tids_5 << lane_id);"
+			"active = (AC_INTERNAL_active_threads & target_mask);"
+			"target_tid = !active ? 0 : __ffsll(active)-1;"
+			"shuffle_tmp = %s;"
+		        "if(target_tid) %s;"
+		"}"
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	  );
 #endif
 	printf(
-              	  "if (!condition) return;"
-		  "for(int offset = warp_size/2; offset > 0; offset /= 2){"
-		  "const auto shuffle_tmp = %sval,offset);"
-		  "if(!((AC_INTERNAL_active_threads >> (lane_id + offset)) & 1)) continue;"
-	      ,shuffle_instruction);
-	if(op == REDUCE_SUM)
-	{
-		printf(
-		  "val += shuffle_tmp;"
-	      	);
-	}
-	else if(op == REDUCE_MIN)
-	{
-		printf(
-		  "val = val > shuffle_tmp ? shuffle_tmp : val;"
-	      	);
-	}
-	else if(op == REDUCE_MAX)
-	{
-		printf(
-		  "val = val > shuffle_tmp ? val : shuffle_tmp;"
-	      	);
-	}
-
-	printf(
-		  "}"
 		  "if(lane_id == warp_leader_id) {vba.reduce_scratchpads_%s[(int)output][0][warp_out_index] = val;}"
 	      ,define_name);
 }
@@ -373,16 +508,26 @@ gen_kernel_reduce_funcs(const int curr_kernel)
   if(kernel_calls_reduce[curr_kernel] )
   {
 #if AC_USE_HIP
-	const char* warp_size  = "const size_t warp_size = rocprim::warp_size();";
-	const char* warp_id= "const size_t warp_id = rocprim::warp_id();";
+	printf("constexpr size_t warp_size = warpSize;");
+        printf("const size_t warp_id = rocprim::warp_id();");
+        printf("constexpr unsign long long AC_INTERNAL_lower_warp_mask = (1 << (warp_size/2)) - 1;");
 #else
-	const char* warp_size  = "constexpr size_t warp_size = 32;";
-	const char* warp_id= "const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;";
+	printf("constexpr size_t warp_size = 32;");
+	printf("const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
+        printf("constexpr size_t AC_INTERNAL_lower_warp_mask = (1 << 16) - 1;");
 #endif
-    printf("%s",warp_size);
-    printf("%s",warp_id);
+    printf("const size_t AC_INTERNAL_lower_active_warp_mask = AC_INTERNAL_active_threads & AC_INTERNAL_lower_warp_mask;");
+    //TP: if lower (lane_id < warp_size/2) active threads are contiguous i.e. there are no inactive threads between active threads
+    //then can perform the reductions without calculating tids
+    printf("const bool AC_INTERNAL_lower_active_threads_are_contiguos = !(AC_INTERNAL_lower_active_warp_mask & (AC_INTERNAL_lower_active_warp_mask+1));");
+    //TP: if all threads are active can skip checks checking if target tid is active in reductions
+    printf("const bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
     printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
+#if AC_USE_HIP
     printf("const size_t warp_leader_id  = __ffsll(AC_INTERNAL_active_threads)-1;");
+#else
+    printf("const size_t warp_leader_id  = __ffs(AC_INTERNAL_active_threads)-1;");
+#endif
     printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
     printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
     printf("const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
@@ -399,11 +544,13 @@ gen_return_if_oob(const int curr_kernel)
 {
        printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
        if(kernel_calls_reduce[curr_kernel] )
+       {
 #if AC_USE_HIP
 	       printf("const auto AC_INTERNAL_active_threads = __ballot(!out_of_bounds);");
 #else
 	       printf("const auto AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,!out_of_bounds);");
 #endif
+       }
        printf("if(out_of_bounds) return;");
        printf("{\n"
 			"#include \"user_non_scalar_constants.h\"\n"

@@ -426,10 +426,10 @@ acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, Ac
     // Indices and shapes
     const AcIndex in_offset = 
     {
-	    .x = NGHOST,
-	    .y = NGHOST,
-	    .z = 0,
-	    .w = 0,
+	    NGHOST,
+	    (type & ONE_DIMENSIONAL_PROFILE) ? (size_t) NGHOST : 0,
+	    0,
+	    0,
     };
     const AcShape in_shape    = gpu_transpose_buffer.shape;
     const AcShape block_shape = gpu_transpose_buffer.shape;

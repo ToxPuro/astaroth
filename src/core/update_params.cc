@@ -18,6 +18,17 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
 	    else
 	    	return acPushToConfig(config,param,val);
     };
+//TP: for now TWO_D means XY setup
+#if TWO_D
+    push_val(AC_dimension_inactive,
+		    (AcBool3)
+		    {
+		    	true,
+			true,
+			false
+		    }
+	    );
+#endif
 
     push_val(AC_nmin,
     	(int3){

@@ -26,6 +26,12 @@
 #define MPI_GPUDIRECT_DISABLED (0)
 #endif // AC_MPI_ENABLED
 
+typedef struct
+{
+	AcReduceOp reals[NUM_REAL_SCRATCHPADS+1];	
+	AcReduceOp ints[NUM_INT_OUTPUTS+1];	
+} AcScratchpadStates;
+
 struct device_s {
     int id;
     AcMeshInfo local_config;
@@ -41,6 +47,7 @@ struct device_s {
     AcReal *plate_buffers[NUM_PLATE_BUFFERS];
 #endif
     AcDeviceKernelOutput output;
+    AcScratchpadStates scratchpad_states;
 };
 
 typedef AcReal AcRealPacked;

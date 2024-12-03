@@ -302,14 +302,13 @@ acAnalysisLoadMeshInfo(const AcMeshInfo info)
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
                               // least the max smem size of the device
-#include "analysis_stencils.h"
-[[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_WRITE    = (1 << 0);
-[[maybe_unused]] constexpr int AC_IN_BOUNDS_WRITE = (1 << 1);
-[[maybe_unused]] constexpr int AC_ALL_WRITE      = ~0;
+[[maybe_unused]] constexpr int AC_IN_BOUNDS_WRITE      = (1 << 0);
+[[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_WRITE  = (1 << 1);
 
-[[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_READ     = (1 << 0);
-[[maybe_unused]] constexpr int AC_IN_BOUNDS_READ  = (1 << 1);
-[[maybe_unused]] constexpr int AC_ALL_READ      = ~0;
+[[maybe_unused]] constexpr int AC_IN_BOUNDS_READ      = (1 << 0);
+[[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_READ  = (1 << 1);
+[[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
+#include "analysis_stencils.h"
 
 
 int3

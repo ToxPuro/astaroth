@@ -474,18 +474,22 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 void
 check_compile_info_matches_runtime_info(const KernelAnalysisInfo info)
 {
+[[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
 #include "stencil_accesses.h"
 	for(int k = 0; k < NUM_KERNELS; ++k)
 		for(int j = 0; j < NUM_ALL_FIELDS; ++j)
 			for(int i = 0; i < NUM_STENCILS; ++i)
 			{
-				if(info.stencils_accessed[k][j][i] && !stencils_accessed[k][j][i])
+				//TP: we are a little bit messy by storing info about array reads of vertexbuffers to stencils_accessed so have to check is the stencil call bit set to filter array reads
+				const bool comp_time = (stencils_accessed[k][j][i] & AC_STENCIL_CALL);
+				const bool run_time  = (info.stencils_accessed[k][j][i] & AC_STENCIL_CALL);
+				if(run_time && !comp_time)
 					fatal("In Kernel %s Stencil %s used for %s at runtime but not generated!\n"
 					      "Most likely that stencill is executed in a control-flow path that was not taken.\n"
 					      "Consider either runtime-compilation or rewriting the kernel do avoid the conditional stencil call\n"
 					      ,kernel_names[k], stencil_names[i], field_names[j]
 					      );
-				if(!info.stencils_accessed[k][j][i] && stencils_accessed[k][j][i])
+				if(!run_time && comp_time)
 					acLogFromRootProc(ac_pid(), "PERF WARNING: In Kernel %s Stencil %s generated for %s but not accessed at runtime!\n"
 							            "Most likely because the stencil call is performed inside conditional control-flow.\n"
 								    "Consider refactoring the code,turning OPTIMIZE_MEM_ACCESSES and/or using runtime-compilation to skip the unnecessary Stencil computation\n"
@@ -1924,7 +1928,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
             	    //done here since we want to write only to out not to in what launching the taskgraph would do
 	      	    //always remember to call the loader since otherwise might not be safe to execute taskgraph
     	      	    op.load_kernel_params_func->loader({&grid.device->vba.kernel_input_params,grid.device, 0, {}, {}});
-		    fprintf(stderr,"GRID: %d,%d,%d\n",task->output_region.dims.x,task->output_region.dims.y,task->output_region.dims.z);
             	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
             	}
 	    }
@@ -2137,12 +2140,20 @@ get_reduce_outputs(const AcTaskGraph* graph)
     std::vector<KernelReduceOutput> reduce_outputs{};
     for (auto& task : graph->all_tasks) {
     	if(!task->isComputeTask()) continue;
+	//TP: skip inner halo regions to not count outputs multiple times
+	if(task->output_region.id != (int3){0,0,0}) continue;
     	auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
     	auto kernel       = compute_task -> getKernel();
     	for(size_t i = 0; i < grid.kernel_analysis_info.n_reduce_outputs[kernel]; ++i)
     	    reduce_outputs.push_back(grid.kernel_analysis_info.reduce_outputs[kernel][i]);
     }
+    if(reduce_outputs.size()  >= NUM_STREAMS)
+    {
+	    fprintf(stderr,"%zu reduce outputs\n",reduce_outputs.size());
+    }
     ERRCHK_ALWAYS(reduce_outputs.size()  < NUM_STREAMS);
+    for(const auto& output: reduce_outputs)
+	    acDevicePreprocessScratchPad(grid.device,output.variable,output.type,output.op);
     return reduce_outputs;
 }
 
@@ -2227,6 +2238,8 @@ acGridFinalizeReduce(AcTaskGraph* graph)
 AcResult
 acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
 {
+    //TP: used to initialize reduce buffers
+    get_reduce_outputs(graph);
     ERRCHK(grid.initialized);
     // acGridSynchronizeStream(stream);
     // acDeviceSynchronizeStream(grid.device, stream);

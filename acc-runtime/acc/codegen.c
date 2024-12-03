@@ -7685,7 +7685,7 @@ gen_analysis_stencils(FILE* stream)
   string_vec stencil_names = get_names(STENCIL_STR);
   for (size_t i = 0; i < stencil_names.size; ++i)
     fprintf(stream,"AcReal %s(const Field& field_in)"
-           "{stencils_accessed[field_in][stencil_%s]=1;return AcReal(1.0);};\n",
+           "{stencils_accessed[field_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
            stencil_names.data[i], stencil_names.data[i]);
   free_str_vec(&stencil_names);
 }

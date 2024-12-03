@@ -85,9 +85,10 @@ squared_alf(const long double a, const long double b, const long double c, const
 int
 get_initial_idx(AcMeshInfo info)
 {
-    const int initial_idx = acGridVertexBufferIdx(NGHOST_X,
-                                              NGHOST_Y,
-                                              NGHOST_Z, info);
+    const int initial_idx = acGridVertexBufferIdx(info[AC_nmin].x,
+                                              info[AC_nmin].y,
+                                              info[AC_nmin].z, 
+					      info);
     return initial_idx;
 
 }
