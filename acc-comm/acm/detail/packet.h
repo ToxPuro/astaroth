@@ -69,15 +69,16 @@ template <typename T, typename MemoryResource> class Packet {
         ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
 
         // Find the direction and neighbors of the segment
-        const size_t count{inputs.size() * prod(segment.dims)};
-        ERRCHK_MPI(count <= send_buffer.size());
-        ERRCHK_MPI(count <= recv_buffer.size());
-
         Index send_offset{((local_nn + segment.offset - local_rr) % local_nn) + local_rr};
 
         auto recv_direction{ac::mpi::get_direction(segment.offset, local_nn, local_rr)};
         const int recv_neighbor{ac::mpi::get_neighbor(comm, recv_direction)};
         const int send_neighbor{ac::mpi::get_neighbor(comm, -recv_direction)};
+
+        // Calculate the bytes to send
+        const size_t count{inputs.size() * prod(segment.dims)};
+        ERRCHK_MPI(count <= send_buffer.size());
+        ERRCHK_MPI(count <= recv_buffer.size());
 
         // Post recv
         const int tag{0};
