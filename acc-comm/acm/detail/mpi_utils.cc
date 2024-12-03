@@ -104,7 +104,14 @@ cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn)
     const size_t ndims{global_nn.size()};
 
     // Use MPI for finding the decomposition
-    MPIShape mpi_decomp(ndims, 0); // Decompose all dimensions
+
+    // Decompose all dimensions
+    MPIShape mpi_decomp(ndims, 0);
+
+    // Decompose only the slowest moving dimension (last dimension in Astaroth, first in MPI)
+    // MPIShape mpi_decomp(ndims, 1);
+    // mpi_decomp[0] = 0;
+
     ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(ndims), mpi_decomp.data()));
 
     // Create the Cartesian communicator
