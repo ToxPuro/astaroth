@@ -58,11 +58,6 @@ template <typename T, typename MemoryResource> class Packet {
             ERRCHK_MPI_API(MPI_Comm_free(&comm));
     }
 
-    Packet(const Packet&)            = delete; // Copy constructor
-    Packet& operator=(const Packet&) = delete; // Copy assignment operator
-    Packet(Packet&&)                 = delete; // Move constructor
-    Packet& operator=(Packet&&)      = delete; // Move assignment operator
-
     void launch(const MPI_Comm& parent_comm,
                 const std::vector<ac::buffer<T, MemoryResource>*>& inputs)
     {
@@ -139,6 +134,11 @@ template <typename T, typename MemoryResource> class Packet {
         os << "}";
         return os;
     }
+
+    Packet(const Packet&)            = delete; // Copy constructor
+    Packet& operator=(const Packet&) = delete; // Copy assignment operator
+    Packet(Packet&&)                 = delete; // Move constructor
+    Packet& operator=(Packet&&)      = delete; // Move assignment operator
 };
 
 void test_packet();
