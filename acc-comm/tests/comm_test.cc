@@ -215,7 +215,8 @@ main()
                   static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                       static_cast<UserType>(prod(local_mm)));
 
-        IOTaskAsync<UserType> iotask{global_nn, global_nn_offset, local_mm, local_nn, rr};
+        ac::io::AsyncWriteTask<UserType> iotask{global_nn, global_nn_offset, local_mm, local_nn,
+                                                rr};
         // iotask.launch_write_collective(cart_comm, hin.buffer, "test.dat");
         // iotask.wait_write_collective();
         ac::mpi::write_collective(cart_comm, ac::mpi::get_dtype<UserType>(), global_nn,

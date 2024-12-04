@@ -3,6 +3,7 @@
 #include "acm/detail/buffer_exchange.h"
 #include "acm/detail/decomp.h"
 #include "acm/detail/math_utils.h"
+#include "acm/detail/memory_resource.h"
 #include "acm/detail/ndbuffer.h"
 #include "acm/detail/pack.h"
 #include "acm/detail/partition.h"
@@ -22,6 +23,7 @@ main(void)
     test_buffer();
     test_ndbuffer();
     test_vector();
+    test_memory_resource();
 
     return EXIT_SUCCESS;
 }

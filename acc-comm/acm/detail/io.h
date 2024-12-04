@@ -6,8 +6,10 @@
 
 #include "buffer.h"
 
+namespace ac::io {
+
 template <typename T, typename StagingMemoryResource = ac::mr::pinned_host_memory_resource>
-class IOTaskAsync {
+class AsyncWriteTask {
   private:
     MPI_Info info{MPI_INFO_NULL};
     MPI_Datatype global_subarray{MPI_DATATYPE_NULL};
@@ -22,8 +24,9 @@ class IOTaskAsync {
     bool in_progress{false};
 
   public:
-    IOTaskAsync(const Shape& in_file_dims, const Index& in_file_offset, const Shape& in_mesh_dims,
-                const Shape& in_mesh_subdims, const Index& in_mesh_offset)
+    AsyncWriteTask(const Shape& in_file_dims, const Index& in_file_offset,
+                   const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
+                   const Index& in_mesh_offset)
         : info{ac::mpi::info_create()},
           global_subarray{ac::mpi::subarray_create(in_file_dims, in_mesh_subdims, in_file_offset,
                                                    ac::mpi::get_dtype<T>())},
@@ -33,7 +36,7 @@ class IOTaskAsync {
     {
     }
 
-    ~IOTaskAsync()
+    ~AsyncWriteTask()
     {
         ERRCHK_MPI(!in_progress);
 
@@ -103,8 +106,10 @@ class IOTaskAsync {
         in_progress = false;
     }
 
-    IOTaskAsync(const IOTaskAsync&)            = delete; // Copy constructor
-    IOTaskAsync& operator=(const IOTaskAsync&) = delete; // Copy assignment operator
-    IOTaskAsync(IOTaskAsync&&)                 = delete; // Move constructor
-    IOTaskAsync& operator=(IOTaskAsync&&)      = delete; // Move assignment operator
+    AsyncWriteTask(const AsyncWriteTask&)            = delete; // Copy constructor
+    AsyncWriteTask& operator=(const AsyncWriteTask&) = delete; // Copy assignment operator
+    AsyncWriteTask(AsyncWriteTask&&)                 = delete; // Move constructor
+    AsyncWriteTask& operator=(AsyncWriteTask&&)      = delete; // Move assignment operator
 };
+
+} // namespace ac::io
