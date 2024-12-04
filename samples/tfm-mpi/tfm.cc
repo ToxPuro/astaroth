@@ -299,12 +299,16 @@ main(int argc, char* argv[])
         const auto global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
         const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, local_nn_offset)};
         const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
-        // auto iotask = ac::IOTaskAsync<AcReal>(global_nn, global_nn_offset, local_mm, local_nn,
-        //                                       local_nn_offset);
+        auto iotask = ac::io::AsyncWriteTask<AcReal>(global_nn, global_nn_offset, local_mm,
+                                                     local_nn, local_nn_offset);
+        iotask.launch_write_collective(cart_comm,
+                                       ac::mr::device_ptr<AcReal>{prod(local_mm),
+                                                                  vba.in[VTXBUF_LNRHO]},
+                                       "test.out");
+        iotask.wait_write_collective();
         // iotask.launch_write_collective(cart_comm,
         //                                ac::mr::device_ptr(prod(local_mm), vba.in[VTXBUF_LNRHO]),
         //                                "test_mesh.dat");
-        // iotask.wait_write_collective();
         // auto test_ptr{ac::mr::device_ptr<AcReal>(prod(local_mm), vba.in[VTXBUF_LNRHO])};
 
         // Cleanup

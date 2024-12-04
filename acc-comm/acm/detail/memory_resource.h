@@ -141,7 +141,7 @@ copy(const device_ptr<T>& in, device_ptr<T>& out)
 }
 template <typename T>
 void
-copy(const device_ptr<T>& in, host_ptr<T>& out)
+copy(const device_ptr<T>& in, host_ptr<T>&& out)
 {
     ac::mr::copy(in, cudaMemcpyDeviceToHost, out);
 }

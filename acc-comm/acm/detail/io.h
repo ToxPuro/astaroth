@@ -84,6 +84,35 @@ class AsyncWriteTask {
         ERRCHK_MPI_API(MPI_File_iwrite_all(file, staging_buffer.data(), 1, local_subarray, &req));
     }
 
+    // template <typename MemoryResource>
+    void launch_write_collective(const MPI_Comm& parent_comm, const ac::mr::device_ptr<T>& input,
+                                 const std::string& path)
+    {
+        ERRCHK_MPI(!in_progress);
+        in_progress = true;
+
+        // Communicator
+        ERRCHK_MPI(comm == MPI_COMM_NULL);
+        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+
+        // TODO: transfers the whole buffer at the moment, would be
+        // better to migrate only in_mesh_subdims instead (but need
+        // to pack and change in_mesh_offset to zero)
+        // migrate(input, staging_buffer);
+        ac::mr::copy<T>(input, ac::mr::host_ptr<T>{staging_buffer.size(),
+                                                   staging_buffer.data()}); // TODO better solution
+
+        ERRCHK_MPI(file == MPI_FILE_NULL);
+        ERRCHK_MPI_API(
+            MPI_File_open(comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
+        ERRCHK_MPI_API(
+            MPI_File_set_view(file, 0, ac::mpi::get_dtype<T>(), global_subarray, "native", info));
+
+        ERRCHK_MPI(file != MPI_FILE_NULL);
+        ERRCHK_MPI(req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_File_iwrite_all(file, staging_buffer.data(), 1, local_subarray, &req));
+    }
+
     void wait_write_collective()
     {
         ERRCHK_MPI(in_progress);
