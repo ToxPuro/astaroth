@@ -324,6 +324,28 @@ get_direction(const Index& offset, const Shape& nn, const Index& rr)
     return dir;
 }
 
+Shape
+get_local_nn(const MPI_Comm& cart_comm, const Shape& global_nn)
+{
+    const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
+    return Shape{global_nn / decomp};
+}
+
+Index
+get_global_nn_offset(const MPI_Comm& cart_comm, const Shape& global_nn)
+{
+    const Shape local_nn{get_local_nn(cart_comm, global_nn)};
+    const Index coords{ac::mpi::get_coords(cart_comm)};
+    return Index{coords * local_nn};
+}
+
+Shape
+get_local_mm(const MPI_Comm& cart_comm, const Shape& global_nn, const Index& rr)
+{
+    const Shape local_nn{get_local_nn(cart_comm, global_nn)};
+    return Shape{as<uint64_t>(2) * rr + local_nn};
+}
+
 void
 read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
                 const Index& in_file_offset, const Shape& in_mesh_dims,
@@ -400,28 +422,6 @@ write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const S
     ERRCHK_MPI_API(MPI_Info_free(&info));
     ERRCHK_MPI_API(MPI_Comm_free(&comm));
 }
-
-// Shape
-// get_local_nn(const MPI_Comm& cart_comm, const Shape& global_nn)
-// {
-//     const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
-//     return Shape{global_nn / decomp};
-// }
-
-// Index
-// get_global_nn_offset(const MPI_Comm& cart_comm, const Shape& global_nn)
-// {
-//     const Shape local_nn{get_local_nn(cart_comm, global_nn)};
-//     const Index coords{ac::mpi::get_coords(parent_comm)};
-//     return Index{coords * local_nn};
-// }
-
-// Shape
-// get_local_mm(const MPI_Comm& cart_comm, const Shape& global_nn, const Index& rr)
-// {
-//     const Shape local_nn{get_local_nn(cart_comm, global_nn)};
-//     return Shape{as<uint64_t>(2) * rr + local_nn};
-// }
 
 void
 read_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& etype,

@@ -127,6 +127,12 @@ int get_neighbor(const MPI_Comm& cart_comm, const Direction& dir);
  * ownership of the data at offset w.r.t. the local computational domain of the current process */
 Direction get_direction(const Index& offset, const Shape& nn, const Index& rr);
 
+Shape get_local_nn(const MPI_Comm& cart_comm, const Shape& global_nn);
+
+Index get_global_nn_offset(const MPI_Comm& cart_comm, const Shape& global_nn);
+
+Shape get_local_mm(const MPI_Comm& cart_comm, const Shape& global_nn, const Index& rr);
+
 /** Map type to MPI enum representing the type
  * Usage: MPIType<double>::value // returns MPI_DOUBLE
  */
