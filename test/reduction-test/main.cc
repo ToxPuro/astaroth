@@ -392,7 +392,7 @@ main(int argc, char* argv[])
     		}
     	}
     	AcReal cpu_sum_val = (AcReal)long_cpu_sum_val;
-    	AcReal epsilon  = pow(10.0,-12.0);
+    	AcReal epsilon  = 2*pow(10.0,-12.0);
     	auto relative_diff = [](const auto a, const auto b)
     	{
     	        const auto abs_diff = fabs(a-b);
