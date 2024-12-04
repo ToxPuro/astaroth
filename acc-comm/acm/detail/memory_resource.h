@@ -97,3 +97,33 @@ using device_memory_resource                     = ac::mr::host_memory_resource;
 } // namespace ac::mr
 
 #endif
+
+namespace ac::mr {
+
+template <typename T> class base_ptr {
+  protected:
+    const size_t _count;
+    T* _data;
+
+  public:
+    explicit base_ptr(const size_t count, T* data)
+        : _count{count}, _data{data}
+    {
+    }
+
+    size_t count() const { return _count; }
+    T* data() { return _data; }
+    T* data() const { return _data; }
+};
+
+template <typename T> class device_ptr : public base_ptr<T> {
+  public:
+    using base_ptr<T>::base_ptr;
+};
+
+template <typename T> class host_ptr : public base_ptr<T> {
+  public:
+    using base_ptr<T>::base_ptr;
+};
+
+} // namespace ac::mr
