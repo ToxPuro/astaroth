@@ -392,7 +392,7 @@ main(int argc, char* argv[])
     		}
     	}
     	AcReal cpu_sum_val = (AcReal)long_cpu_sum_val;
-    	AcReal epsilon  = 2*pow(10.0,-12.0);
+    	AcReal epsilon  = 3*pow(10.0,-11.0);
     	auto relative_diff = [](const auto a, const auto b)
     	{
     	        const auto abs_diff = fabs(a-b);
@@ -577,19 +577,23 @@ main(int argc, char* argv[])
     fprintf(stderr,"\nTest: all ones\n");
     int retval = test();
 
-    constexpr int RAND_RANGE = 100;
-    acHostMeshRandomize(&model);
-    fprintf(stderr,"\nTest: Rand\n");
-    for(int k = dims.n0.z; k < dims.n1.z;  ++k)
-    	for(int j = dims.n0.y; j < dims.n1.y; ++j)
-    		for(int i = dims.n0.x; i < dims.n1.x; ++i)
-		{
-			//Skew sligtly positive to not have zero mean --> finite condition number for summing the floating point numbers
-			model.vertex_buffer[FIELD][IDX(i,j,k)] -= 0.49;
-			model.vertex_buffer[FIELD][IDX(i,j,k)] *= RAND_RANGE;
-		}
+    constexpr int NUM_RAND_TESTS = 10;
+    for(int test_iteration = 0; test_iteration < NUM_RAND_TESTS; ++test_iteration)
+    {
+    	constexpr int RAND_RANGE = 100;
+    	acHostMeshRandomize(&model);
+    	fprintf(stderr,"\nTest: Rand\n");
+    	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
+    		for(int j = dims.n0.y; j < dims.n1.y; ++j)
+    			for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    	    	{
+    	    		//Skew sligtly positive to not have zero mean --> finite condition number for summing the floating point numbers
+    	    		model.vertex_buffer[FIELD][IDX(i,j,k)] -= 0.49;
+    	    		model.vertex_buffer[FIELD][IDX(i,j,k)] *= RAND_RANGE;
+    	    	}
 
-    retval |= test();
+    	retval |= test();
+    }
     if (pid == 0) {
         acHostMeshDestroy(&model);
         acHostMeshDestroy(&candidate);

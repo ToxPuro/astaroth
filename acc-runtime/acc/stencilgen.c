@@ -367,7 +367,7 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 				"shuffle_tmp = %s;"
 		        	"%s;"
 			"}"
-			"else if (AC_INTERNAL_lower_active_threads_are_contiguos ) {"
+			"else if (AC_INTERNAL_active_threads_are_contiguos ) {"
 				"size_t target_tid = lane_id + 16;"
 				"auto shuffle_tmp = %s;"
 		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
@@ -390,33 +390,44 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 
 			"}"
 			"else {"
-				"size_t target_tid = lane_id + 16;"
+				"unsigned long target_tid = lane_id ^ 1;"
 				"auto shuffle_tmp = %s;"
-		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
+				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
 
-				"size_t target_mask = (16777472 << lane_id);" //2^8 + 2^24
-				"auto active = (AC_INTERNAL_active_threads & target_mask);"
-				"target_tid = !active ? 0 : %s(active)-1;"
-				"shuffle_tmp = %s;"
-		        	"if(target_tid) %s;"
 
-				"target_mask = (268439568 << lane_id);" //2^4+2^12+2^28
-				"active = (AC_INTERNAL_active_threads & target_mask);"
-				"target_tid = !active ? 0 : %s(active)-1;"
+        			"int base_shift = ((lane_id & 2) ? 0 : 2);"
+        			"auto tid_shift = (lane_id & (~3));"
+        			"auto mask = AC_INTERNAL_active_threads & (3ULL << (tid_shift + base_shift));"
+				"auto smallest_active = %s(mask);"
+				"target_tid = smallest_active-1;"
 				"shuffle_tmp = %s;"
-		        	"if(target_tid) %s;"
+				"if(smallest_active) %s;"
 
-				"target_mask = (1073758276 << lane_id);" //2^2+2^6+2^14+2^30
-				"active = (AC_INTERNAL_active_threads & target_mask);"
-				"target_tid = !active ? 0 : %s(active)-1;"
-				"shuffle_tmp = %s;"
-		        	"if(target_tid) %s;"
 
-				"target_mask = (2147516554<< lane_id);" //2^1+2^3+2^7+2^15+2^31
-				"active = (AC_INTERNAL_active_threads & target_mask);"
-				"target_tid = !active ? 0 : %s(active)-1;"
+        			"base_shift = ((lane_id & 4) ? 0 : 4);"
+        			"tid_shift = (lane_id & (~7));"
+        			"mask = AC_INTERNAL_active_threads & (15ULL << (tid_shift + base_shift));"
+				"smallest_active = %s(mask);"
+				"target_tid = smallest_active-1;"
 				"shuffle_tmp = %s;"
-		        	"if(target_tid) %s;"
+				"if(smallest_active) %s;"
+
+        			"base_shift = ((lane_id & 8) ? 0 : 8);"
+        			"tid_shift = (lane_id & (~15));"
+        			"mask = AC_INTERNAL_active_threads & (255ULL << (tid_shift + base_shift));"
+				"smallest_active = %s(mask);"
+				"target_tid = smallest_active-1;"
+				"shuffle_tmp = %s;"
+				"if(smallest_active) %s;"
+
+        			"base_shift = ((lane_id & 16) ? 0 : 16);"
+        			"tid_shift = (lane_id & (~31));"
+        			"mask = AC_INTERNAL_active_threads & (65535ULL << (tid_shift + base_shift));"
+				"smallest_active = %s(mask);"
+				"target_tid = smallest_active-1;"
+				"shuffle_tmp = %s;"
+				"if(smallest_active) %s;"
+
 			"}"
 		"}"
 	      ,shuffle_instruction,op_instruction
@@ -467,7 +478,7 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 				"shuffle_tmp = %s;"
 				"%s;"
 			"}"
-			"else if (AC_INTERNAL_lower_active_threads_are_contiguos) {"
+			"else if (AC_INTERNAL_active_threads_are_contiguos) {"
 				"unsigned long long target_tid = lane_id + 32;"
 				"auto shuffle_tmp = %s;"
 				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
@@ -493,44 +504,52 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
 			"}"
 			"else {"
-				"unsigned long long target_tid = lane_id + 32;"
+				"unsigned long target_tid = lane_id ^ 1;"
 				"auto shuffle_tmp = %s;"
-		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
+				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
 
-				"constexpr unsigned long long possible_tids_1 = (AC_one << 16) + (AC_one << 48);"
-				"unsigned long long target_mask = (possible_tids_1 << lane_id);"
-				"auto active = (AC_INTERNAL_active_threads & target_mask);"
-				"target_tid = !active ? 0 : %s(active)-1;"
-				"shuffle_tmp = %s;"
-		        	"if(target_tid) %s;"
 
-				"const unsigned long long possible_tids_2 = (AC_one << 8) + (AC_one << 24) + (AC_one << 56);"
-				"target_mask = (possible_tids_2 << lane_id);"
-				"active = (AC_INTERNAL_active_threads & target_mask);"
-				"target_tid = !active ? 0 : %s(active)-1;"
+        			"int base_shift = ((lane_id & 2) ? 0 : 2);"
+        			"unsigned long long tid_shift = (lane_id & (~3));"
+        			"unsigned long long mask = AC_INTERNAL_active_threads & (3ULL << (tid_shift + base_shift));"
+				"unsigned long smallest_active = __ffsll(mask);"
+				"target_tid = smallest_active-1;"
 				"shuffle_tmp = %s;"
-		        	"if(target_tid) %s;"
+				"if(smallest_active) %s;"
 
-				"const unsigned long long possible_tids_3 = (AC_one << 4) + (AC_one << 12) + (AC_one << 28) + (AC_one << 60);"
-				"target_mask = (possible_tids_3 << lane_id);"
-				"active = (AC_INTERNAL_active_threads & target_mask);"
-				"target_tid = !active ? 0 : %s(active)-1;"
-				"shuffle_tmp = %s;"
-		        	"if(target_tid) %s;"
 
-				"const unsigned long long possible_tids_4 = (AC_one << 2) + (AC_one << 6) + (AC_one << 14) + (AC_one << 30) + (AC_one << 62);"
-				"target_mask = (possible_tids_4 << lane_id);"
-				"active = (AC_INTERNAL_active_threads & target_mask);"
-				"target_tid = !active ? 0 : %s(active)-1;"
+        			"base_shift = ((lane_id & 4) ? 0 : 4);"
+        			"tid_shift = (lane_id & (~7));"
+        			"mask = AC_INTERNAL_active_threads & (15ULL << (tid_shift + base_shift));"
+				"smallest_active = __ffsll(mask);"
+				"target_tid = smallest_active-1;"
 				"shuffle_tmp = %s;"
-		        	"if(target_tid) %s;"
+				"if(smallest_active) %s;"
 
-				"const unsigned long long possible_tids_5 = (AC_one << 1) + (AC_one << 3) + (AC_one << 7) + (AC_one << 15) + (AC_one << 31) + (AC_one << 63);"
-				"target_mask = (possible_tids_5 << lane_id);"
-				"active = (AC_INTERNAL_active_threads & target_mask);"
-				"target_tid = !active ? 0 : %s(active)-1;"
+        			"base_shift = ((lane_id & 8) ? 0 : 8);"
+        			"tid_shift = (lane_id & (~15));"
+        			"mask = AC_INTERNAL_active_threads & (255ULL << (tid_shift + base_shift));"
+				"smallest_active = __ffsll(mask);"
+				"target_tid = smallest_active-1;"
 				"shuffle_tmp = %s;"
-		        	"if(target_tid) %s;"
+				"if(smallest_active) %s;"
+
+        			"base_shift = ((lane_id & 16) ? 0 : 16);"
+        			"tid_shift = (lane_id & (~31));"
+        			"mask = AC_INTERNAL_active_threads & (65535ULL << (tid_shift + base_shift));"
+				"smallest_active = __ffsll(mask);"
+				"target_tid = smallest_active-1;"
+				"shuffle_tmp = %s;"
+				"if(smallest_active) %s;"
+
+        			"base_shift = ((lane_id & 32) ? 0 : 32);"
+        			"tid_shift = (lane_id & (~63));"
+        			"mask = AC_INTERNAL_active_threads & (4294967295ULL << (tid_shift + base_shift));"
+				"smallest_active = __ffsll(mask);"
+				"target_tid = smallest_active-1;"
+				"shuffle_tmp = %s;"
+				"if(smallest_active) %s;"
+
 			"}"
 		"}"
 	      ,shuffle_instruction,op_instruction
@@ -538,6 +557,14 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 	      ,shuffle_instruction,op_instruction
 	      ,shuffle_instruction,op_instruction
 	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
+	      ,shuffle_instruction,op_instruction
 
 	      ,shuffle_instruction,op_instruction
 	      ,shuffle_instruction,op_instruction
@@ -545,16 +572,6 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 	      ,shuffle_instruction,op_instruction
 	      ,shuffle_instruction,op_instruction
 	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-
-
-	      ,shuffle_instruction,op_instruction
-
-	      ,ffs_string,shuffle_instruction,op_instruction
-	      ,ffs_string,shuffle_instruction,op_instruction
-	      ,ffs_string,shuffle_instruction,op_instruction
-	      ,ffs_string,shuffle_instruction,op_instruction
-	      ,ffs_string,shuffle_instruction,op_instruction
 	  );
 #endif
 	printf(
@@ -586,17 +603,13 @@ gen_kernel_reduce_funcs(const int curr_kernel)
 #if AC_USE_HIP
 	printf("constexpr size_t warp_size = warpSize;");
         printf("const size_t warp_id = rocprim::warp_id();");
-	printf("constexpr unsigned long long AC_one = 1;");
-        printf("const unsigned long long AC_INTERNAL_lower_warp_mask = (AC_one << (warp_size/2)) - 1;");
 #else
 	printf("constexpr size_t warp_size = 32;");
 	printf("const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
-        printf("constexpr size_t AC_INTERNAL_lower_warp_mask = (1 << 16) - 1;");
 #endif
-    printf("const size_t AC_INTERNAL_lower_active_warp_mask = AC_INTERNAL_active_threads & AC_INTERNAL_lower_warp_mask;");
-    //TP: if lower (lane_id < warp_size/2) active threads are contiguous i.e. there are no inactive threads between active threads
+    //TP: if active threads are contigous i.e. not any inactive threads between active threads
     //then can perform the reductions without calculating tids
-    printf("const bool AC_INTERNAL_lower_active_threads_are_contiguos = !(AC_INTERNAL_lower_active_warp_mask & (AC_INTERNAL_lower_active_warp_mask+1));");
+    printf("const bool AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));");
     //TP: if all threads are active can skip checks checking if target tid is active in reductions
     printf("const bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
     printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
