@@ -88,7 +88,6 @@ struct device_memory_resource {
 
 #else
 
-static_assert(false);
 #pragma message("Device code was not enabled. Falling back to host-only memory allocations")
 namespace ac::mr {
 using pinned_host_memory_resource                = ac::mr::host_memory_resource;
@@ -102,23 +101,18 @@ namespace ac::mr {
 
 template <typename T> class base_ptr {
   protected:
-    const size_t _count;
+    const size_t _size;
     T* _data;
 
   public:
-    explicit base_ptr(const size_t count, T* data)
-        : _count{count}, _data{data}
+    explicit base_ptr(const size_t size, T* data)
+        : _size{size}, _data{data}
     {
     }
 
-    size_t count() const { return _count; }
+    size_t size() const { return _size; }
     T* data() { return _data; }
     T* data() const { return _data; }
-};
-
-template <typename T> class device_ptr : public base_ptr<T> {
-  public:
-    using base_ptr<T>::base_ptr;
 };
 
 template <typename T> class host_ptr : public base_ptr<T> {
@@ -126,4 +120,58 @@ template <typename T> class host_ptr : public base_ptr<T> {
     using base_ptr<T>::base_ptr;
 };
 
+#if defined(ACM_DEVICE_ENABLED)
+template <typename T> class device_ptr : public base_ptr<T> {
+  public:
+    using base_ptr<T>::base_ptr;
+};
+
+template <typename T>
+void
+copy(const base_ptr<T>& in, const cudaMemcpyKind& kind, base_ptr<T>& out)
+{
+    ERRCHK(in.size() <= out.size());
+    ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(T), kind));
+}
+template <typename T>
+void
+copy(const device_ptr<T>& in, device_ptr<T>& out)
+{
+    ac::mr::copy(in, cudaMemcpyDeviceToDevice, out);
+}
+template <typename T>
+void
+copy(const device_ptr<T>& in, host_ptr<T>& out)
+{
+    ac::mr::copy(in, cudaMemcpyDeviceToHost, out);
+}
+template <typename T>
+void
+copy(const host_ptr<T>& in, device_ptr<T>& out)
+{
+    ac::mr::copy(in, cudaMemcpyHostToDevice, out);
+}
+template <typename T>
+void
+copy(const host_ptr<T>& in, host_ptr<T>& out)
+{
+    ac::mr::copy(in, cudaMemcpyHostToHost, out);
+}
+
+#else
+
+template <typename T> using device_ptr = host_ptr<T>;
+
+template <typename T>
+void
+copy(const host_ptr<T>& in, host_ptr<T>& out)
+{
+    ERRCHK(in.size() <= out.size());
+    std::copy(in.data(), in.data() + in.size(), out.data());
+}
+
+#endif
+
 } // namespace ac::mr
+
+void test_memory_resource();

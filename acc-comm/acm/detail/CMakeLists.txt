@@ -2,7 +2,7 @@
 find_package(MPI REQUIRED COMPONENTS C)
 
 ## Library
-add_library(acm SHARED acm.cc acm_error.c halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc pack.cu pack.cc ndbuffer.cc buffer.cc decomp.cc partition.cc segment.cc math_utils.cc vector.cc static_array.cc array.cc type_conversion.cc errchk_print.c)
+add_library(acm SHARED acm.cc acm_error.c halo_exchange.cc packet.cc mpi_utils.cc buffer_exchange.cc pack.cu pack.cc ndbuffer.cc buffer.cc decomp.cc partition.cc segment.cc math_utils.cc vector.cc static_array.cc array.cc memory_resource.cc type_conversion.cc errchk_print.c)
 target_link_libraries(acm PUBLIC MPI::MPI_C)
 target_include_directories(acm PUBLIC ${PROJECT_SOURCE_DIR})
 
