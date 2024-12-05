@@ -814,6 +814,17 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
 };
 
 AcResult
+acLoadStencils(const cudaStream_t stream,
+               const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]
+                                [STENCIL_WIDTH])
+{
+  int retval = 0;
+  for (size_t i = 0; i < NUM_STENCILS; ++i)
+    retval |= acLoadStencil((Stencil)i, stream, data[i]);
+  return (AcResult)retval;
+}
+
+AcResult
 acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
                AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
@@ -944,6 +955,7 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 }
 
 #include "load_and_store_uniform_funcs.h"
+
 
 //TP: best would be to use carriage return to have a single line that simple keeps growing but that seems not to be always supported in SLURM environments. 
 // Or at least requires actions from the user
@@ -1335,20 +1347,26 @@ acPBASwapBuffers(VertexBufferArray* vba)
     acPBASwapBuffer((Profile)i, vba);
 }
 
-void
+AcResult
 acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
 {
   for (int i = 0; i < NUM_INT_PARAMS; ++i)
-    acLoadIntUniform(stream, (AcIntParam)i, info.int_params[i]);
+    ERRCHK_ALWAYS(acLoadIntUniform(stream, (AcIntParam)i, info.int_params[i]) ==
+                  AC_SUCCESS);
 
   for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-    acLoadInt3Uniform(stream, (AcInt3Param)i, info.int3_params[i]);
+    ERRCHK_ALWAYS(acLoadInt3Uniform(stream, (AcInt3Param)i,
+                                    info.int3_params[i]) == AC_SUCCESS);
 
   for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-    acLoadRealUniform(stream, (AcRealParam)i, info.real_params[i]);
+    ERRCHK_ALWAYS(acLoadRealUniform(stream, (AcRealParam)i,
+                                    info.real_params[i]) == AC_SUCCESS);
 
   for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-    acLoadReal3Uniform(stream, (AcReal3Param)i, info.real3_params[i]);
+    ERRCHK_ALWAYS(acLoadReal3Uniform(stream, (AcReal3Param)i,
+                                     info.real3_params[i]) == AC_SUCCESS);
+
+  return AC_SUCCESS;
 }
 
 //---------------
@@ -1642,8 +1660,8 @@ acReindexCross(const cudaStream_t , //
 {
   ERROR("acReindexCross called but AC_TFM_ENABLED was false");
   return AC_FAILURE;
-#endif
 }
+#endif
 
 #if AC_USE_HIP
 #include <hipcub/hipcub.hpp>
@@ -1768,9 +1786,6 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
   ERRCHK_CUDA_KERNEL();
   return AC_SUCCESS;
 }
-
-
-
 #define TILE_DIM (32)
 
 void __global__ 

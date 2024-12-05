@@ -86,7 +86,7 @@ init_op_vec(op_vec* vec)
 }
 
 
-static char*
+static __attribute__((unused)) char* 
 strdupnullok(const char* src)
 {
 	if(src == NULL) return NULL;
@@ -220,7 +220,7 @@ vasprintf(char **strp, const char *fmt, va_list ap)
     return res;
 }
 
-static int
+static __attribute__((unused)) int
 asprintf(char **strp, const char *fmt, ...)
 {
     int error;

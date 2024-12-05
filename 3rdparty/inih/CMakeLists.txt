@@ -5,4 +5,5 @@ cmake_minimum_required(VERSION 3.0)
 project(inih C)
 
 ## Library
-add_library(inih SHARED ini.c)
+add_library(inih STATIC ini.c)
+target_include_directories(inih PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

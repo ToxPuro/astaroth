@@ -119,6 +119,13 @@ acDeviceGetLocalConfig(const Device device)
 }
 
 AcResult
+acDeviceGetLocalConfig(const Device device, AcMeshInfo* info)
+{
+    *info = device->local_config;
+    return AC_SUCCESS;
+}
+
+AcResult
 acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcRealParam param,
                           const AcReal value)
 {

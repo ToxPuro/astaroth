@@ -30,6 +30,7 @@
 #include <math.h>   // isnan, isinf
 
 #include "datatypes.h"
+#include "errchk.h"
 
 #if AC_DOUBLE_PRECISION != 1
 #ifndef __cplusplus

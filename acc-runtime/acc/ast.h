@@ -219,13 +219,13 @@ astnode_set_postfix(const char* postfix, ASTNode* node)
 {
   node->postfix = intern(postfix);
 }
-static const char*
+static inline const char*
 sprintf_intern(const char* format, ...)
 {
 	static char buffer[10000];
 	va_list args;
 	va_start(args,format);
-	int ret = vsprintf(buffer, format, args);
+	 vsprintf(buffer, format, args);
 	va_end(args);
 	return intern(buffer);
 }
@@ -236,7 +236,7 @@ astnode_sprintf(ASTNode* node, const char* format, ...)
 	static char buffer[10000];
 	va_list args;
 	va_start(args,format);
-	int ret = vsprintf(buffer, format, args);
+	vsprintf(buffer, format, args);
 	va_end(args);
 	astnode_set_buffer(buffer,node);
 }
@@ -248,7 +248,7 @@ astnode_sprintf_postfix(ASTNode* node, const char* format, ...)
 	static char buffer[10000];
 	va_list args;
 	va_start(args,format);
-	int ret = vsprintf(buffer, format, args);
+	vsprintf(buffer, format, args);
 	va_end(args);
 	astnode_set_postfix(buffer,node);
 }
@@ -259,7 +259,7 @@ astnode_sprintf_infix(ASTNode* node, const char* format, ...)
 	static char buffer[10000];
 	va_list args;
 	va_start(args,format);
-	int ret = vsprintf(buffer, format, args);
+	vsprintf(buffer, format, args);
 	va_end(args);
 	astnode_set_infix(buffer,node);
 }
@@ -270,7 +270,7 @@ astnode_sprintf_prefix(ASTNode* node, const char* format, ...)
 	static char buffer[10000];
 	va_list args;
 	va_start(args,format);
-	int ret = vsprintf(buffer, format, args);
+	vsprintf(buffer, format, args);
 	va_end(args);
 	astnode_set_prefix(buffer,node);
 }
@@ -302,7 +302,7 @@ static inline  void combine_buffers(const ASTNode* node, char* res){
   res[0] = '\0';	
   combine_buffers_recursive(node,res);
 }
-static const char* combine_buffers_new(const ASTNode* node)
+static inline const char* combine_buffers_new(const ASTNode* node)
 {
 	static char res[10000];
 	combine_buffers(node,res);
@@ -463,7 +463,7 @@ get_parent_node_by_token(const int token, const ASTNode* node)
   return get_parent_node_by_token(token, node->parent);
 }
 
-static bool
+static inline bool
 is_left_child(const NodeType type, const ASTNode* node)
 {
 	const ASTNode* parent = get_parent_node(type,node);
@@ -471,7 +471,7 @@ is_left_child(const NodeType type, const ASTNode* node)
 	return get_node_by_id(node->id,parent->lhs) != NULL;
 }
 
-static bool
+static inline bool
 is_right_child(const NodeType type, const ASTNode* node)
 {
 	const ASTNode* parent = get_parent_node(type,node);
@@ -547,7 +547,7 @@ strcatprintf(char* dst, const char* format, ...)
 	static char buffer[10000];
 	va_list args;
 	va_start(args,format);
-	int ret = vsprintf(buffer, format, args);
+	vsprintf(buffer, format, args);
 	va_end(args);
 	strcat(dst,buffer);
 	
@@ -559,7 +559,7 @@ fprintf_filename(const char* filename, const char* format, ...)
 	FILE* fp = fopen(filename,"a");
 	va_list args;
 	va_start(args,format);
-	int ret = vfprintf(fp, format, args);
+	vfprintf(fp, format, args);
 	va_end(args);
 	fclose(fp);
 }
@@ -569,7 +569,7 @@ fprintf_filename_w(const char* filename, const char* format, ...)
 	FILE* fp = fopen(filename,"w");
 	va_list args;
 	va_start(args,format);
-	int ret = vfprintf(fp, format, args);
+	vfprintf(fp, format, args);
 	va_end(args);
 	fclose(fp);
 }
@@ -580,7 +580,7 @@ sprintf_new(const char* format, ...)
 	static char buffer[10000];
 	va_list args;
 	va_start(args,format);
-	int res = vsprintf(buffer,format,args);
+	vsprintf(buffer,format,args);
 	va_end(args);
 	return strdup(buffer);
 }
@@ -623,7 +623,7 @@ static inline char* readFile(const char *filename) {
     return buffer;
 }
 
-static inline void
+static  inline void
 file_append(const char* filename, const char* str_to_append)
 {
 	FILE* fp = fopen(filename,"a");
@@ -632,7 +632,7 @@ file_append(const char* filename, const char* str_to_append)
 }
 
 
-static inline bool
+static  inline bool
 is_number(const char* str)
 {
 	const size_t n = strlen(str);
@@ -641,7 +641,7 @@ is_number(const char* str)
 		res &= (isdigit(str[i]) > 0);
 	return res;
 }
-static inline bool
+static  inline bool
 is_number_expression(const char* str)
 {
 	const size_t n = strlen(str);
@@ -658,7 +658,7 @@ is_number_expression(const char* str)
 		       );
 	return res;
 }
-static inline bool
+static  inline bool
 is_real(const char* str)
 {
 	char* tmp = strdup(str);
@@ -671,7 +671,7 @@ is_real(const char* str)
 	return res;
 }
 
-static int
+static inline int
 count_num_of_nodes_in_list(const ASTNode* list_head)
 {
 	int res = 0;
@@ -683,7 +683,7 @@ count_num_of_nodes_in_list(const ASTNode* list_head)
 	res += (list_head->lhs != NULL);
 	return res;
 }
-static ASTNode*
+static inline ASTNode*
 get_node_in_list(const ASTNode* list_head, int index)
 {
 	bool last_elem = count_num_of_nodes_in_list(list_head) == index + 1;
@@ -693,7 +693,7 @@ get_node_in_list(const ASTNode* list_head, int index)
 	}
 	return last_elem ? list_head->lhs : list_head->rhs;
 }
-static bool has_qualifier(const ASTNode* node, const char* qualifier)
+static inline bool has_qualifier(const ASTNode* node, const char* qualifier)
 {
 	bool res = false;
 	if(node->lhs)
@@ -772,7 +772,7 @@ push_node(node_vec* dst, const ASTNode* src)
 	return dst->size-1;
 }
 
-static ASTNode*
+static inline ASTNode*
 build_list_node(const node_vec nodes, const char* separator)
 {
 	if(nodes.size == 0) return NULL;
@@ -785,7 +785,7 @@ build_list_node(const node_vec nodes, const char* separator)
 	return list_head;
 }
 
-static node_vec
+static inline node_vec
 get_nodes_in_list(const ASTNode* head)
 {
 	node_vec res = VEC_INITIALIZER;
@@ -803,7 +803,7 @@ get_nodes_in_list(const ASTNode* head)
 	return res;
 }
 
-static const ASTNode*
+static inline const ASTNode*
 get_node(const NodeType type, const ASTNode* node)
 {
   if(!node) 
@@ -822,7 +822,7 @@ get_node(const NodeType type, const ASTNode* node)
     return NULL;
 }
 
-static void
+static inline void
 get_array_access_nodes(const ASTNode* node, node_vec* dst)
 {
 	if(node->lhs)
@@ -832,7 +832,7 @@ get_array_access_nodes(const ASTNode* node, node_vec* dst)
 	if(node->type == NODE_ARRAY_ACCESS)
 		push_node(dst,node->rhs);
 }
-static void
+static inline void
 replace_node(ASTNode* original, ASTNode* replacement)
 {
 		if(original->parent->lhs && original->parent->lhs->id == original->id)
@@ -847,14 +847,4 @@ node_vec_contains(const node_vec vec, const char* str)
 	for(size_t i = 0; i < vec.size; ++i)
 		if(!strcmp(combine_all_new(vec.data[i]), str)) return true;
 	return false;
-}
-static void
-append_to_file(const char* filename, const char* format, ...)
-{
-	FILE* fp = fopen(filename,"a");
-	va_list args;
-	va_start(args,format);
-	vfprintf(fp,format,args);
-	va_end(args);
-	fclose(fp);
 }

@@ -20,7 +20,6 @@ static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_c
 	const char* copy = combine_all_new(node);
 	if(!strcmp(copy,"INT_MAX"))
 		return INT_MAX;
-        double* vals = malloc(sizeof(double)*const_ints.size);
         int err;
         te_expr* expr = te_compile(copy, NULL, 0, &err);
         if(!expr)

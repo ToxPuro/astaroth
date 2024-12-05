@@ -22,6 +22,7 @@
 #include "astaroth.h"
 #include "../../stdlib/reduction.h"
 #include "astaroth_utils.h"
+#include "grid_detail.h"
 #include "errchk.h"
 
 #if AC_MPI_ENABLED

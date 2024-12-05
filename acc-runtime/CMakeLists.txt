@@ -1,40 +1,53 @@
 ## CMake settings
-cmake_minimum_required(VERSION 3.19)
-
-## Project options
-option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
-if (USE_HIP)
-    find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
-    set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
-    set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
-
-    # Rocm
-    #include_directories(/opt/rocm/include)
-    #link_directories(/opt/rocm/lib)
-    
-    # Roctracer
-    #Deprecated (roctracer inlude will warn about deprecated header, better to include non deprecated header)
-    #include_directories(/opt/rocm/roctracer/include)
-    #link_directories(/opt/rocm/roctracer/lib)
-    #ROC_TRACER_PATH set in the first CMakeLists.txt
-    include_directories(${ROC_TRACER_PATH})
-    link_directories(${ROC_TRACER_PATH})
-
-    # Rocrand
-    include_directories(/opt/rocm/hiprand/include)
-    include_directories(/opt/rocm/rocrand/include)
-    link_directories(/opt/rocm/hiprand/lib)
-    link_directories(/opt/rocm/rocrand/lib)
-endif()
+cmake_minimum_required(VERSION 3.21)
 
 ## Project settings
 project(acc-runtime)
 
-## Project-wide compilation flags
-set(COMMON_FLAGS "-Wall -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-#pragma-messages -Wno-extra-tokens -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow")
+## Standards
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_HIP_STANDARD 17)
+set(CMAKE_HIP_STANDARD_REQUIRED ON)
 
-## Include directories
-include_directories(.)
+## Build type
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+
+## Project options
+option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
+
+## CUDA and HIP
+find_package(CUDAToolkit QUIET)
+find_package(HIP QUIET)
+if(NOT USE_HIP AND CUDAToolkit_FOUND)
+    message(STATUS "CUDA found")
+    enable_language(CUDA)
+    add_compile_definitions(DEVICE_ENABLED)
+    #add_compile_options(CUDA_ENABLED)
+    include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
+
+    set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
+    message(STATUS "Enabled CUDA architectures (ACC): " ${CMAKE_CUDA_ARCHITECTURES})
+elseif(USE_HIP OR HIP_FOUND)
+    set(USE_HIP ON)
+    message(STATUS "HIP found")
+    enable_language(HIP)
+    add_compile_definitions(DEVICE_ENABLED)
+    add_compile_definitions(HIP_ENABLED)
+    include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
+
+    find_library(ROCTRACER NAMES roctracer64 PATHS ${ROCM_PATH}/lib REQUIRED)
+    find_library(HIPRAND NAMES hiprand PATHS ${ROCM_PATH}/lib REQUIRED)
+
+    set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+    message(STATUS "Enabled HIP architectures (ACC): " ${CMAKE_HIP_ARCHITECTURES})
+else()
+    message(ERROR "Did not find CUDA or HIP")
+endif()
 
 ## Compile options
 if (NOT DEFINED IMPLEMENTATION)
@@ -43,13 +56,15 @@ endif()
 if (NOT DEFINED MAX_THREADS_PER_BLOCK)
     set(MAX_THREADS_PER_BLOCK 0)
 endif()
+
 add_compile_options(-DIMPLEMENTATION=${IMPLEMENTATION})
 add_compile_options(-DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
+
 if (USE_HIP)
-add_compile_options(-DAC_USE_HIP=1)
-add_compile_definitions(GPU_API_INCLUDES="/opt/rocm/include -I ${ROC_TRACER_PATH} ")
+    add_compile_options(-DAC_USE_HIP=1)
+    add_compile_definitions(GPU_API_INCLUDES="${ROCM_PATH}/include -I ${ROCM_PATH}/roctracer/include ")
 else()
-add_compile_definitions(GPU_API_INCLUDES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+    add_compile_definitions(GPU_API_INCLUDES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 endif()
 
 ## Subdirectories

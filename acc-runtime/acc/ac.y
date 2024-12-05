@@ -146,7 +146,6 @@ get_preprocessed_file(const char* filename, char* file_buf)
 {
 	const char* stage0 = "AC_INTERNAL_TO_GCC_STAGE0";
 	const char* stage1 = "AC_INTERNAL_TO_GCC_STAGE1";
-	const char* stage2 = "AC_INTERNAL_FROM_GCC";
 	FILE* in = fopen(filename,"r");
 	if(!in) return NULL;
 	FILE* out = fopen(stage0,"w");
@@ -477,8 +476,6 @@ main(int argc, char** argv)
     strcpy(stage0, file);
     const char* stage1 = "user_kernels.ac.pp_stage1";
     const char* stage2 = "user_kernels.ac.pp_stage2";
-    const char* stage3 = "user_kernels.ac.pp_stage3";
-    const char* stage4 = "user_kernels.ac.pp_stage4";
     const char* dir = dirname(file); // WARNING: dirname has side effects!
     dir_backup = dir;
     
@@ -540,7 +537,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             ASTNode* declaration_list = declaration->rhs;
             assert(declaration_list);
 
-	    ASTNode* declaration_list_head = declaration_list;
 	    const bool are_arrays = (get_node(NODE_ARRAY_ACCESS,declaration) != NULL) ||
 				    (get_node(NODE_ARRAY_INITIALIZER,declaration) != NULL);
 	    const ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
@@ -1191,7 +1187,6 @@ function_definition: declaration function_body {
                         assert(fn_identifier);
                         set_identifier_type(NODE_FUNCTION_ID, fn_identifier);
 
-                        ASTNode* compound_statement = $$->rhs->rhs;
                         if (get_node_by_token(KERNEL, $$)) {
 			    astnode_set_prefix("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n",$$);
                             $$->type |= NODE_KFUNCTION;
