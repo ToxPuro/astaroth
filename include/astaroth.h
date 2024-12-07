@@ -35,6 +35,18 @@
 
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused
 
+  typedef struct AcMeshInfo{
+  AcMeshInfoParams params;
+#if AC_MPI_ENABLED
+    MPI_Comm comm;
+#endif
+
+#ifdef __cplusplus
+#include "info_access_operators.h"
+#endif
+    AcCompInfo run_consts;
+  } AcMeshInfo;
+
 
 typedef struct {
     AcReal* vertex_buffer[NUM_ALL_FIELDS];
@@ -256,9 +268,9 @@ acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
                      const AcMeshInfo info)
 {
     return (int3){
-        info.int_params[a],
-        info.int_params[b],
-        info.int_params[c],
+        info.params.scalars.int_params[a],
+        info.params.scalars.int_params[b],
+        info.params.scalars.int_params[c],
     };
 }
 
@@ -267,9 +279,9 @@ acConstructReal3Param(const AcRealParam a, const AcRealParam b, const AcRealPara
                      const AcMeshInfo info)
 {
     return (AcReal3){
-        info.real_params[a],
-        info.real_params[b],
-        info.real_params[c],
+        info.params.scalars.real_params[a],
+        info.params.scalars.real_params[b],
+        info.params.scalars.real_params[c],
     };
 }
 
@@ -378,7 +390,7 @@ acGetGridMeshDims(const AcMeshInfo info)
 FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
 
 
-FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfo info, KernelAnalysisInfo* dst));
+FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfoParams info, KernelAnalysisInfo* dst));
 	
 
 
@@ -441,15 +453,24 @@ static inline void
 acPrintMeshInfo(const AcMeshInfo config)
 {
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
+    {
+        printf("[%s]: %d\n", intparam_names[i], config.params.scalars.int_params[i]);
+    }
     for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        printf("[%s]: (%d, %d, %d)\n", int3param_names[i], config.int3_params[i].x,
-               config.int3_params[i].y, config.int3_params[i].z);
+    {
+        printf("[%s]: (%d, %d, %d)\n", int3param_names[i],config.params.scalars.int3_params[i].x, config.params.scalars.int3_params[i].y, config.params.scalars.int3_params[i].z);
+    }
     for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        printf("[%s]: %g\n", realparam_names[i], (double)(config.real_params[i]));
+    {
+        printf("[%s]: %g\n", realparam_names[i], (double)(config.params.scalars.real_params[i]));
+    }
     for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.real3_params[i].x),
-               (double)(config.real3_params[i].y), (double)(config.real3_params[i].z));
+    {
+        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.params.scalars.real3_params[i].x),
+							    (double)(config.params.scalars.real3_params[i].y),
+							    (double)(config.params.scalars.real3_params[i].z)
+	      );
+    }
 }
 
 
@@ -523,7 +544,7 @@ acQueryKernels(void)
 static inline void
 acPrintIntParam(const AcIntParam a, const AcMeshInfo info)
 {
-    printf("%s: %d\n", intparam_names[a], info.int_params[a]);
+    printf("%s: %d\n", intparam_names[a], info.params.scalars.int_params[a]);
 }
 
 static inline void
@@ -537,7 +558,7 @@ acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, con
 static inline void
 acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
 {
-    const int3 vec = info.int3_params[a];
+    const int3 vec = info.params.scalars.int3_params[a];
     printf("{%s: (%d, %d, %d)}\n", int3param_names[a], vec.x, vec.y, vec.z);
 }
 
@@ -780,7 +801,7 @@ typedef enum AcBoundary {
 
 
 
-FUNC_DEFINE(acAnalysisBCInfo, acAnalysisGetBCInfo,(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary));
+FUNC_DEFINE(acAnalysisBCInfo, acAnalysisGetBCInfo,(const AcMeshInfoParams info, const AcKernel bc, const AcBoundary boundary));
 
 typedef struct ParamLoadingInfo {
         acKernelInputParams* params;
@@ -2009,3 +2030,48 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
 #include "astaroth_runtime_compilation.h"
 #endif
 
+#ifdef __cplusplus
+#include <type_traits>
+
+
+  template <typename P, typename V>
+  void
+  acPushToConfig(AcMeshInfo& config, P param, V val)
+  {
+	  static_assert(!std::is_same<P,int>::value);
+          if constexpr(IsCompParam(param))
+	  {
+	  	  config.run_consts.config[param] = val;
+	  	  config.run_consts.is_loaded[param] = true;
+	  }
+          else
+		  config[param] = val;
+  }
+
+#endif
+#include <string.h>
+
+  static AcCompInfo __attribute__((unused)) acInitCompInfo()
+  {
+	  AcCompInfo res;
+	  memset(&res.is_loaded,0,sizeof(res.is_loaded));
+	  return res;
+  }
+  static AcMeshInfo __attribute__((unused)) acInitInfo()
+  {
+	  AcMeshInfo res;
+    	  // memset reads the second parameter as a byte even though it says int in
+          // the function declaration
+    	  memset(&res, (uint8_t)0xFF, sizeof(res));
+	  memset(&res.params.scalars.bool_params,0, sizeof(res.params.scalars.bool_params));
+	  memset(&res.params.scalars.bool3_params,0,sizeof(res.params.scalars.bool3_params));
+    	  //these are set to nullpointers for the users convenience that the user doesn't have to set them to null elsewhere
+    	  //if they are present in the config then they are initialized correctly
+	  memset(&res.params.arrays, 0, sizeof(res.params.arrays));
+
+#if AC_MPI_ENABLED
+	  res.comm = MPI_COMM_NULL;
+#endif
+	  res.run_consts = acInitCompInfo();
+	  return res;
+  }

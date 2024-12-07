@@ -1,5 +1,6 @@
 #define AC_RUNTIME_SOURCE
 
+
 typedef enum AcBoundary {
     BOUNDARY_NONE  = 0,
     BOUNDARY_X_TOP = 0x01,
@@ -258,33 +259,34 @@ get_name(const Profile& param)
 }
 
  
+
 extern "C" 
 {
-	AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src);
-	acAnalysisBCInfo acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary);
+	AcResult acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* src);
+	acAnalysisBCInfo acAnalysisGetBCInfo(const AcMeshInfoParams info, const AcKernel bc, const AcBoundary boundary);
 }
 //#include "user_constants.h"
 typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 #define tid  ((int3){0,0,0})
 #include "user_kernel_declarations.h"
 
-constexpr AcMeshInfo
+constexpr AcMeshInfoScalars
 get_d_mesh_info()
 {
 	//TP: DCONST ints and bools have to be evaluated to 1 since PC depends on conditionals like if(int) and if(bool) being true at analysis 
-	AcMeshInfo res{};
+	AcMeshInfoParams res{};
   	for(int i = 0; i < NUM_INT_PARAMS; ++i)
-	  res.int_params[i] = 1;
+	  res.scalars.int_params[i] = 1;
   	for(int i = 0; i < NUM_BOOL_PARAMS; ++i)
-	  res.bool_params[i] = true;
-	return res;
+	  res.scalars.bool_params[i] = true;
+	return res.scalars;
 }
 
-static AcMeshInfo d_mesh_info = get_d_mesh_info();
+static AcMeshInfoScalars  d_mesh_info = get_d_mesh_info();
 
 AcResult
-acAnalysisLoadMeshInfo(const AcMeshInfo info) 
-{d_mesh_info = info; return AC_SUCCESS;}
+acAnalysisLoadMeshInfo(const AcMeshInfoParams info) 
+{d_mesh_info = info.scalars; return AC_SUCCESS;}
 
 #include "dconst_decl.h"
 #include "rconst_decl.h"
@@ -485,11 +487,11 @@ reset_info_arrays()
 }
 
 acAnalysisBCInfo 
-acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary)
+acAnalysisGetBCInfo(const AcMeshInfoParams info, const AcKernel bc, const AcBoundary boundary)
 {
 	bool larger_input  = false;
 	bool larger_output = false;
-	d_mesh_info = info;
+	d_mesh_info = info.scalars;
 	reset_info_arrays();
     	execute_kernel(bc,boundary);
     	for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
@@ -513,9 +515,9 @@ acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary b
 	return (acAnalysisBCInfo){larger_input,larger_output};
 }
 AcResult
-acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
+acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
 {
-	d_mesh_info = info;
+	d_mesh_info = info.scalars;
 	memset(dst->stencils_accessed,false,sizeof(dst->stencils_accessed));
 	for(size_t k = 0; k <NUM_KERNELS; ++k)
 	{

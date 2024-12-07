@@ -66,7 +66,7 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
-AcResult acAnalysisLoadMeshInfo(const AcMeshInfo info);
+AcResult acAnalysisLoadMeshInfo(const AcMeshInfoParams info);
 
 #ifdef USE_PERFSTUBS
 #define PERFSTUBS_USE_TIMER
@@ -498,6 +498,61 @@ check_compile_info_matches_runtime_info(const KernelAnalysisInfo info)
 			}
 
 }
+AcAutotuneMeasurement
+grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
+{
+        ERRCHK_ALWAYS(grid.initialized);
+        float* time_buffer = (float*)malloc(sizeof(float)*ac_nprocs());
+        int* x_dim = (int*)malloc(sizeof(int)*ac_nprocs());
+        int* y_dim = (int*)malloc(sizeof(int)*ac_nprocs());
+        int* z_dim = (int*)malloc(sizeof(int)*ac_nprocs());
+
+        int tpb_x = local_best.tpb.x;
+        int tpb_y = local_best.tpb.y;
+        int tpb_z = local_best.tpb.z;
+        MPI_Gather(&tpb_x,1,MPI_INT,x_dim,1,MPI_INT,0,astaroth_comm);
+        MPI_Gather(&tpb_y,1,MPI_INT,y_dim,1,MPI_INT,0,astaroth_comm);
+        MPI_Gather(&tpb_z,1,MPI_INT,z_dim,1,MPI_INT,0,astaroth_comm);
+        MPI_Gather(&local_best.time,1,MPI_FLOAT,time_buffer,1,MPI_FLOAT,0,astaroth_comm);
+
+        dim3 first_tpb(x_dim[0],y_dim[0],z_dim[0]);
+        AcAutotuneMeasurement res{time_buffer[0], first_tpb};
+        if(ac_pid() == 0)
+        {
+                for(int i = 0; i < ac_nprocs(); ++i)
+                {
+                        if(time_buffer[i]  < res.time)
+                        {
+                                res.time = time_buffer[i];
+                                dim3 res_tpb(x_dim[i],y_dim[i],z_dim[i]);
+                                res.tpb = res_tpb;
+                        }
+                }
+                MPI_Bcast(&res.time, 1, MPI_FLOAT, 0, astaroth_comm);
+                int x_res = res.tpb.x;
+                int y_res = res.tpb.y;
+                int z_res = res.tpb.z;
+                MPI_Bcast(&x_res, 1, MPI_INT, 0, astaroth_comm);
+                MPI_Bcast(&y_res, 1, MPI_INT, 0, astaroth_comm);
+                MPI_Bcast(&z_res, 1, MPI_INT, 0, astaroth_comm);
+        }
+        else
+        {
+                int x_res;
+                int y_res;
+                int z_res;
+                MPI_Bcast(&res.time, 1, MPI_FLOAT, 0, astaroth_comm);
+                MPI_Bcast(&x_res, 1, MPI_INT, 0, astaroth_comm);
+                MPI_Bcast(&y_res, 1, MPI_INT, 0, astaroth_comm);
+                MPI_Bcast(&z_res, 1, MPI_INT, 0, astaroth_comm);
+                res.tpb = dim3(x_res,y_res,z_res);
+        }
+        free(time_buffer);
+        free(x_dim);
+        free(y_dim);
+        free(z_dim);
+	return res;
+}
 
 AcResult
 acGridInitBase(const AcMesh user_mesh)
@@ -507,7 +562,7 @@ acGridInitBase(const AcMesh user_mesh)
     if (!grid.mpi_initialized)
       create_astaroth_comm(info);
 
-    acInitializeRuntimeMPI(astaroth_comm);
+    acInitializeRuntimeMPI(ac_pid(), ac_nprocs() ,grid_gather_best_measurement);
     // Check that MPI is initialized
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int name_len;
@@ -594,14 +649,14 @@ acGridInitBase(const AcMesh user_mesh)
 #ifdef AC_INTEGRATION_ENABLED
     gen_default_taskgraph();
 #endif
-    acAnalysisLoadMeshInfo(grid.device->local_config);
+    acAnalysisLoadMeshInfo(grid.device->local_config.params);
     //Refresh log files
     if(!ac_pid())
     {
     	FILE* fp = fopen("taskgraph_log.txt","w");
     	fclose(fp);
     }
-    acAnalysisGetKernelInfo(grid.device->local_config,&grid.kernel_analysis_info);	
+    acAnalysisGetKernelInfo(grid.device->local_config.params,&grid.kernel_analysis_info);	
     check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
     return AC_SUCCESS;
 }

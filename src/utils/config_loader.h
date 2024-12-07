@@ -208,10 +208,10 @@ parse_config(const char* path, AcMeshInfo* config)
 			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %d: SKIPPING\n",array_vals.size(),keyword,length_from_dims(int_array_info[idx].dims));
 		else
 		{
-			config->int_arrays[idx] = (int*)malloc(sizeof(AcReal)*length_from_dims(int_array_info[idx].dims));
+			config->params.arrays.int_arrays[idx] = (int*)malloc(sizeof(AcReal)*length_from_dims(int_array_info[idx].dims));
 			for(int i = 0; i < length_from_dims(int_array_info[idx].dims); ++i)
 			{
-				config->int_arrays[idx][i] =  atoi(array_vals[i].c_str());
+				config->params.arrays.int_arrays[idx][i] =  atoi(array_vals[i].c_str());
 			}
 		}
 
@@ -225,10 +225,10 @@ parse_config(const char* path, AcMeshInfo* config)
 			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %d: SKIPPING\n",array_vals.size(),keyword,length_from_dims(real_array_info[idx].dims));
 		else
 		{
-			config->real_arrays[idx] = (AcReal*)malloc(sizeof(AcReal)*length_from_dims(real_array_info[idx].dims));
+			config->params.arrays.real_arrays[idx] = (AcReal*)malloc(sizeof(AcReal)*length_from_dims(real_array_info[idx].dims));
 			for(int i = 0; i < length_from_dims(real_array_info[idx].dims); ++i)
 			{
-				config->real_arrays[idx][i] =  atof(array_vals[i].c_str());
+				config->params.arrays.real_arrays[idx][i] =  atof(array_vals[i].c_str());
 			}
 		}
 

@@ -26,7 +26,7 @@ KernelAnalysisInfo
 get_kernel_analysis_info()
 {
 	KernelAnalysisInfo res;
-	acAnalysisGetKernelInfo(get_info(),&res);
+	acAnalysisGetKernelInfo(get_info().params,&res);
 	return res;
 }
 #include "taskgraph_kernels.h"
@@ -228,7 +228,7 @@ get_boundconds(const AcDSLTaskGraph bc_graph)
 	std::vector<acAnalysisBCInfo> bc_infos{};
 	for(size_t i = 0; i < kernels.size(); ++i)
 	{
-		auto bc_info = acAnalysisGetBCInfo(get_info(),kernels[i],boundaries[i]);
+		auto bc_info = acAnalysisGetBCInfo(get_info().params,kernels[i],boundaries[i]);
 		auto fields = get_kernel_fields(kernels[i]);
 		res.push_back((BoundCond){kernels[i],boundaries[i],fields.in,fields.out,bc_info,0});
 	}

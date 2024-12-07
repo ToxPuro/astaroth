@@ -119,7 +119,7 @@ main(void)
     for(int i = 0; i < 6; ++i)
 	    test_arr[i] = drand();
     const AcReal test_arr_2[3] = {1.0, -2.0, 3.0};
-    info.real_arrays[AC_test_arr] = (AcReal*)test_arr;
+    info[AC_test_arr] = (AcReal*)test_arr;
     //these are read from config
     //info.int_arrays[AC_test_int_arr] = (int*)test_int_arr;
     //info.real_arrays[AC_test_arr_2] = (AcReal*)test_arr_2;
@@ -132,19 +132,19 @@ main(void)
     for(int i = 0; i < nx; ++i)
     {
 		    global_arr[i] = rand();
-		    float_arr[i]  = (1.0*rand())/RAND_MAX;
+		    float_arr[i]  = (float)(1.0*rand())/(float)RAND_MAX;
     }
     for(int j = 0; j < ny; ++j)
     	for(int i = 0; i < nx; ++i)
-		twoD_real_arr TWO_D_ARR(i,j) = (1.0*rand())/RAND_MAX;
+		twoD_real_arr TWO_D_ARR(i,j) = (1.0*rand())/(AcReal)RAND_MAX;
 
     for(int k = 0; k < mz; ++k)
     	for(int j = 0; j < my; ++j)
     		for(int i = 0; i < mx; ++i)
 		{
-			threeD_real_arr THREE_D_ARR(i,j,k)  = (1.0*rand())/RAND_MAX;
+			threeD_real_arr THREE_D_ARR(i,j,k)  = (1.0*rand())/(AcReal)RAND_MAX;
 			for(int l = 0; l < 3; ++l)
-				fourD_float_arr FOUR_D_ARR(i,j,k,l) = (1.0*rand())/RAND_MAX;
+				fourD_float_arr FOUR_D_ARR(i,j,k,l) = (float)(1.0*rand())/(float)RAND_MAX;
 		}
     info[AC_global_arr] = global_arr;
     info[AC_float_arr] = float_arr;
@@ -152,7 +152,7 @@ main(void)
     info[AC_2d_reals_dims_from_config]  = &twoD_real_arr[0][0];
     info[AC_3d_reals]  = &threeD_real_arr[0][0][0];
     info[AC_4d_float_arr]  = &fourD_float_arr[0][0][0][0];
-    info[AC_dconst_int] = nx-1-NGHOST_X;
+    info[AC_dconst_int] = nx-1-info[AC_nmin].x;
     info[AC_4d_float_arr_out]  = &fourD_float_arr[0][0][0][0];
     acGridInit(info);
 
@@ -206,11 +206,11 @@ main(void)
 			[[maybe_unused]] int comp_x = i - ghosts.x;
 			int comp_y = j - ghosts.y;
 			[[maybe_unused]] int comp_z = j - ghosts.z;
-			model.vertex_buffer[FIELD_X][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-NGHOST_X];
+			model.vertex_buffer[FIELD_X][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-info[AC_nmin].x];
 			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr TWO_D_ARR(info[AC_dconst_int],comp_y) + threeD_real_arr THREE_D_ARR(i,j,k));
 			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2])*((AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,0) + (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,1)  + (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,2));
 
-			fourD_float_arr FOUR_D_ARR(i,j,k,0) *=  test_arr[1];
+			fourD_float_arr FOUR_D_ARR(i,j,k,0) = (float) fourD_float_arr FOUR_D_ARR(i,j,k,0) * test_arr[1];
                 }
             }
         }

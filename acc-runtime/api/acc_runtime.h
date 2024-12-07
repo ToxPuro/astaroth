@@ -23,9 +23,7 @@
 
   #include <stdio.h>
   #include <stdbool.h>
-  #if AC_MPI_ENABLED
-  #include <mpi.h>
-  #endif
+
 
   #if AC_USE_HIP
   #include "hip.h"
@@ -110,9 +108,6 @@ typedef struct {
 
   #define NUM_REDUCE_SCRATCHPADS (2)
 
-  typedef struct {
-#include "device_mesh_info_decl.h"
-  } AcDeviceMeshInfo;
 
   typedef struct {
     int3 nn;
@@ -149,17 +144,28 @@ typedef struct {
 #include "is_array_param.h"
 #endif
 
-  typedef struct AcMeshInfo{
+  typedef struct AcMeshInfoArrays {
 #include "array_decl.h"
-#include "device_mesh_info_decl.h"
-#if AC_MPI_ENABLED
-    MPI_Comm comm;
-#endif
 #ifdef __cplusplus
-#include "info_access_operators.h"
+#include "array_info_access_operators.h"
 #endif
-    AcCompInfo run_consts;
-  } AcMeshInfo;
+  } AcMeshInfoArrays;
+
+  typedef struct AcMeshInfoScalars {
+#include "device_mesh_info_decl.h"
+#ifdef __cplusplus
+#include "scalar_info_access_operators.h"
+#endif
+  } AcMeshInfoScalars;
+
+  typedef struct AcMeshInfoParams {
+	  AcMeshInfoArrays arrays;
+	  AcMeshInfoScalars scalars;
+#ifdef __cplusplus
+#include "param_info_access_operators.h"
+#endif
+  } AcMeshInfoParams;
+
 
   typedef struct {
 #include "input_decl.h"
@@ -250,6 +256,14 @@ typedef struct {
 #define BASE_FUNC_NAME(func_name) func_name
 #endif
 
+typedef struct
+{
+        float time;
+        dim3 tpb;
+} AcAutotuneMeasurement;
+
+typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasurement);
+
 #endif
   #ifdef __cplusplus
   extern "C" {
@@ -258,7 +272,7 @@ typedef struct {
   #include "user_declarations.h"
 
 #if AC_MPI_ENABLED
-   FUNC_DEFINE(AcResult, acInitializeRuntimeMPI, (const MPI_Comm comm));
+   FUNC_DEFINE(AcResult, acInitializeRuntimeMPI, (const int grid_pid, const int nprocs, AcMeasurementGatherFunc));
 #endif
 
   FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream));
@@ -268,11 +282,11 @@ typedef struct {
 
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
 
-  FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfo config));
+  FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfoParams config));
 
-  FUNC_DEFINE(void, acUpdateArrays ,(const AcMeshInfo config));
+  FUNC_DEFINE(void, acUpdateArrays ,(const AcMeshInfoParams config));
 
-  FUNC_DEFINE(void, acVBADestroy,(VertexBufferArray* vba, const AcMeshInfo config));
+  FUNC_DEFINE(void, acVBADestroy,(VertexBufferArray* vba, const AcMeshInfoParams config));
 
   FUNC_DEFINE(AcResult, acRandInitAlt,(const uint64_t seed, const size_t count, const size_t rank));
 
@@ -378,51 +392,6 @@ typedef struct {
 #include <type_traits>
 #include <string.h>
 
-  #ifdef __cplusplus
-
-  template <typename P, typename V>
-  void
-  acPushToConfig(AcMeshInfo& config, P param, V val)
-  {
-	  static_assert(!std::is_same<P,int>::value);
-          if constexpr(IsCompParam(param))
-	  {
-	  	  config.run_consts.config[param] = val;
-	  	  config.run_consts.is_loaded[param] = true;
-	  }
-          else
-		  config[param] = val;
-  }
-
-  #endif
-  static AcCompInfo __attribute__((unused)) acInitCompInfo()
-  {
-	  AcCompInfo res;
-	  memset(&res.is_loaded,0,sizeof(res.is_loaded));
-	  return res;
-  }
-  static AcMeshInfo __attribute__((unused)) acInitInfo()
-  {
-	  AcMeshInfo res;
-    	  // memset reads the second parameter as a byte even though it says int in
-          // the function declaration
-    	  memset(&res, (uint8_t)0xFF, sizeof(res));
-	  memset(&res.bool_params,0,sizeof(res.bool_params));
-	  memset(&res.bool3_params,0,sizeof(res.bool3_params));
-    	  //these are set to nullpointers for the users convenience that the user doesn't have to set them to null elsewhere
-    	  //if they are present in the config then they are initialized correctly
-    	  memset(res.real_arrays, 0,NUM_REAL_ARRAYS *sizeof(AcReal*));
-    	  memset(res.int_arrays,  0,NUM_INT_ARRAYS  *sizeof(int*));
-    	  memset(res.bool_arrays, 0,NUM_BOOL_ARRAYS *sizeof(bool*));
-    	  memset(res.int3_arrays, 0,NUM_INT3_ARRAYS *sizeof(int*));
-    	  memset(res.real3_arrays,0,NUM_REAL3_ARRAYS*sizeof(int*));
-
-#if AC_MPI_ENABLED
-	  res.comm = MPI_COMM_NULL;
-#endif
-	  res.run_consts = acInitCompInfo();
-	  return res;
-  }
 #include "load_comp_info.h"
 
 void acVBASwapBuffer(const Field field, VertexBufferArray* vba);
@@ -433,7 +402,7 @@ void acPBASwapBuffer(const Profile profile, VertexBufferArray* vba);
 
 void acPBASwapBuffers(VertexBufferArray* vba);
 
-void acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
+void acLoadMeshInfo(const AcMeshInfoParams info, const cudaStream_t stream);
 
 
 // Returns the number of elements contained within shape
@@ -585,7 +554,7 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 
   template <typename P>
   constexpr static auto
-  get_array_dim_sizes(const P array, const AcMeshInfo host_info)
+  get_array_dim_sizes(const P array, const AcMeshInfoScalars info)
   {
 	  auto dims            = get_array_info(array).dims;
 	  int num_dims         = get_array_info(array).num_dims;
@@ -599,22 +568,22 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 		  }
 		  if(dims[i].member == NULL)
 		  {
-			  res[i] = host_info.int_params[dims[i].base];
+			  res[i] = info.int_params[dims[i].base];
 			  continue;
 		  }
 		  if(!strcmp(dims[i].member,"x"))
 		  {
-			  res[i] = host_info.int3_params[dims[i].base].x;
+			  res[i] = info.int3_params[dims[i].base].x;
 			  continue;
 		  }
 		  if(!strcmp(dims[i].member,"y"))
 		  {
-			  res[i] = host_info.int3_params[dims[i].base].y;
+			  res[i] = info.int3_params[dims[i].base].y;
 			  continue;
 		  }
 		  if(!strcmp(dims[i].member,"z"))
 		  {
-			  res[i] = host_info.int3_params[dims[i].base].z;
+			  res[i] = info.int3_params[dims[i].base].z;
 			  continue;
 		  }
 	  }
@@ -623,9 +592,9 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 
   template <typename P>
   constexpr static int
-  get_array_length(const P array, const AcMeshInfo host_info)
+  get_array_length(const P array, const AcMeshInfoScalars info)
   {
-	  auto sizes = get_array_dim_sizes(array,host_info);
+	  auto sizes = get_array_dim_sizes(array,info);
 	  int res = 1;
 	  int num_dims         = get_array_info(array).num_dims;
 	  for(int i = 0; i < num_dims; ++i)

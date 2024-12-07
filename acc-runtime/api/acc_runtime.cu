@@ -66,19 +66,17 @@ struct Int3Hash {
 std::array<std::unordered_map<int3,int,Int3Hash>,NUM_KERNELS> reduce_offsets;
 int kernel_running_reduce_offsets[NUM_KERNELS];
 
-#if AC_MPI_ENABLED
-static MPI_Comm runtime_comm = MPI_COMM_NULL;
-#endif
 static int grid_pid = 0;
 [[maybe_unused]] static int nprocs   = 0;
+static AcMeasurementGatherFunc gather_func  = NULL;
 
 #if AC_MPI_ENABLED
 AcResult
-acInitializeRuntimeMPI(const MPI_Comm comm)
+acInitializeRuntimeMPI(const int _grid_pid,const int _nprocs, const AcMeasurementGatherFunc mpi_gather_func)
 {
-	runtime_comm = comm;
-	MPI_Comm_rank(runtime_comm,&grid_pid);
-	MPI_Comm_size(runtime_comm,&nprocs);
+	grid_pid = _grid_pid;
+	nprocs   = _nprocs;
+	gather_func = mpi_gather_func;
 	return AC_SUCCESS;
 }
 #endif
@@ -254,7 +252,7 @@ get_smem(const Volume tpb, const size_t stencil_order,
 #endif
 */
 
-__device__ __constant__ AcMeshInfo d_mesh_info;
+__device__ __constant__ AcMeshInfoScalars d_mesh_info;
 #include "dconst_arrays_decl.h"
 //TP: We do this ugly macro because I want to keep the generated headers the same if we are compiling cpu analysis and for the actual gpu comp
 #define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME 
@@ -544,7 +542,7 @@ device_malloc(T** dst, const int bytes)
 template <typename P>
 struct allocate_arrays
 {
-	void operator()(const AcMeshInfo& config) 
+	void operator()(const AcMeshInfoParams& config) 
 	{
 		for(P array : get_params<P>())
 		{
@@ -552,39 +550,26 @@ struct allocate_arrays
 			{
 
 #if AC_VERBOSE
-				fprintf(stderr,"Allocating %s|%d\n",get_name(array),get_array_length(array,config));
+				fprintf(stderr,"Allocating %s|%d\n",get_name(array),get_array_length(array,config.scalars));
 				fflush(stderr);
 #endif
 				auto d_mem_ptr = get_empty_pointer(array);
-			        device_malloc(((void**)&d_mem_ptr), sizeof(config[array][0])*get_array_length(array,config));
+			        device_malloc(((void**)&d_mem_ptr), sizeof(config[array][0])*get_array_length(array,config.scalars));
 				memcpy_to_gmem_array(array,d_mem_ptr);
 			}
 		}
 	}
 };
 
-int
-get_val(const AcMeshInfo, const int val)
-{
-	return val;
-}
-
-int
-get_val(const AcMeshInfo config, const AcIntParam param)
-{
-	return config.int_params[param];
-}
-
-
 size3_t
-buffer_dims(const AcMeshInfo config)
+buffer_dims(const AcMeshInfoParams config)
 {
 	auto mm = config[AC_mlocal];
 	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
 }
 
 VertexBufferArray
-acVBACreate(const AcMeshInfo config)
+acVBACreate(const AcMeshInfoParams config)
 {
   //TP: !HACK!
   //TP: Get active dimensions at the time VBA is created, works for now but should be moved somewhere else
@@ -644,7 +629,7 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
 template <typename P>
 struct update_arrays
 {
-	void operator()(const AcMeshInfo& config)
+	void operator()(const AcMeshInfoParams& config)
 	{
 		for(P array : get_params<P>())
 		{
@@ -652,7 +637,7 @@ struct update_arrays
 			auto config_array = config[array];
 			auto gmem_array   = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
-			size_t bytes = sizeof(config_array[0])*get_array_length(array,config);
+			size_t bytes = sizeof(config_array[0])*get_array_length(array,config.scalars);
 			if (config_array == nullptr && gmem_array != nullptr) 
 				device_free(&gmem_array,bytes);
 			else if (config_array != nullptr && gmem_array  == nullptr) 
@@ -662,7 +647,7 @@ struct update_arrays
 	}
 };
 void
-acUpdateArrays(const AcMeshInfo config)
+acUpdateArrays(const AcMeshInfoParams config)
 {
   AcArrayTypes::run<update_arrays>(config);
 }
@@ -670,7 +655,7 @@ acUpdateArrays(const AcMeshInfo config)
 template <typename P>
 struct free_arrays
 {
-	void operator()(const AcMeshInfo& config)
+	void operator()(const AcMeshInfoParams& config)
 	{
 		for(P array: get_params<P>())
 		{
@@ -678,14 +663,14 @@ struct free_arrays
 			if (config_array == nullptr || is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
 			auto gmem_array = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
-			device_free(&gmem_array, get_array_length(array,config));
+			device_free(&gmem_array, get_array_length(array,config.scalars));
 			memcpy_to_gmem_array(array,gmem_array);
 		}
 	}
 };
 
 void
-acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
+acVBADestroy(VertexBufferArray* vba, const AcMeshInfoParams config)
 {
   for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) { 
     //TP: if dead then not allocated and thus nothing to free
@@ -979,66 +964,11 @@ logAutotuningStatus(const size_t counter, const size_t num_samples, const AcKern
     }
 }
 
-typedef struct
-{
-        float time;
-        dim3 tpb;
-} autotune_measurement;
-static autotune_measurement
-gather_best_measurement(const autotune_measurement local_best)
+static AcAutotuneMeasurement
+gather_best_measurement(const AcAutotuneMeasurement local_best)
 {
 #if AC_MPI_ENABLED
-        ERRCHK_ALWAYS(runtime_comm != MPI_COMM_NULL);
-        float* time_buffer = (float*)malloc(sizeof(float)*nprocs);
-        int* x_dim = (int*)malloc(sizeof(int)*nprocs);
-        int* y_dim = (int*)malloc(sizeof(int)*nprocs);
-        int* z_dim = (int*)malloc(sizeof(int)*nprocs);
-
-        int tpb_x = local_best.tpb.x;
-        int tpb_y = local_best.tpb.y;
-        int tpb_z = local_best.tpb.z;
-        MPI_Gather(&tpb_x,1,MPI_INT,x_dim,1,MPI_INT,0,runtime_comm);
-        MPI_Gather(&tpb_y,1,MPI_INT,y_dim,1,MPI_INT,0,runtime_comm);
-        MPI_Gather(&tpb_z,1,MPI_INT,z_dim,1,MPI_INT,0,runtime_comm);
-        MPI_Gather(&local_best.time,1,MPI_FLOAT,time_buffer,1,MPI_FLOAT,0,runtime_comm);
-
-        dim3 first_tpb(x_dim[0],y_dim[0],z_dim[0]);
-        autotune_measurement res{time_buffer[0], first_tpb};
-        if(grid_pid == 0)
-        {
-                for(int i = 0; i < nprocs; ++i)
-                {
-                        if(time_buffer[i]  < res.time)
-                        {
-                                res.time = time_buffer[i];
-                                dim3 res_tpb(x_dim[i],y_dim[i],z_dim[i]);
-                                res.tpb = res_tpb;
-                        }
-                }
-                MPI_Bcast(&res.time, 1, MPI_FLOAT, 0, runtime_comm);
-                int x_res = res.tpb.x;
-                int y_res = res.tpb.y;
-                int z_res = res.tpb.z;
-                MPI_Bcast(&x_res, 1, MPI_INT, 0, runtime_comm);
-                MPI_Bcast(&y_res, 1, MPI_INT, 0, runtime_comm);
-                MPI_Bcast(&z_res, 1, MPI_INT, 0, runtime_comm);
-        }
-        else
-        {
-                int x_res;
-                int y_res;
-                int z_res;
-                MPI_Bcast(&res.time, 1, MPI_FLOAT, 0, runtime_comm);
-                MPI_Bcast(&x_res, 1, MPI_INT, 0, runtime_comm);
-                MPI_Bcast(&y_res, 1, MPI_INT, 0, runtime_comm);
-                MPI_Bcast(&z_res, 1, MPI_INT, 0, runtime_comm);
-                res.tpb = dim3(x_res,y_res,z_res);
-        }
-        free(time_buffer);
-        free(x_dim);
-        free(y_dim);
-        free(z_dim);
-        return res;
+	return gather_func(local_best);
 #else
         return local_best;
 #endif
@@ -1211,8 +1141,8 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
         //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         // fflush(stdout);
   }
-  const autotune_measurement best_measurement = 
-	  large_launch ? gather_best_measurement({best_time,best_tpb}) : (autotune_measurement){best_time,best_tpb};
+  const AcAutotuneMeasurement best_measurement = 
+	  large_launch ? gather_best_measurement({best_time,best_tpb}) : (AcAutotuneMeasurement){best_time,best_tpb};
   c.tpb = best_measurement.tpb;
   best_time = best_measurement.time;
   if(grid_pid == 0)
@@ -1336,7 +1266,7 @@ acPBASwapBuffers(VertexBufferArray* vba)
 }
 
 void
-acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
+acLoadMeshInfo(const AcMeshInfoScalars info, const cudaStream_t stream)
 {
   for (int i = 0; i < NUM_INT_PARAMS; ++i)
     acLoadIntUniform(stream, (AcIntParam)i, info.int_params[i]);

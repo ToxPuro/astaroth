@@ -175,9 +175,9 @@ __attribute__((unused)) static inline void
 print(const AcMeshInfo config)
 {
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
+        printf("[%s]: %d\n", intparam_names[i], config.params.scalars.int_params[i]);
     for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        printf("[%s]: %g\n", realparam_names[i], double(config.real_params[i]));
+        printf("[%s]: %g\n", realparam_names[i], double(config.params.scalars.real_params[i]));
 }
 
 
@@ -258,7 +258,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     for (int i = 0; i < node->num_devices; ++i) {
         const int3 multinode_offset                    = (int3){0, 0, 0}; // Placeholder
         const int3 multigpu_offset                     = (int3){0, 0, i * node->subgrid.n.z};
-        subgrid_config.int3_params[AC_multigpu_offset] = multinode_offset + multigpu_offset;
+        subgrid_config[AC_multigpu_offset] = multinode_offset + multigpu_offset;
 
         acDeviceCreate(i, subgrid_config, &node->devices[i]);
         acDevicePrintInfo(node->devices[i]);

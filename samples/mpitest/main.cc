@@ -116,7 +116,7 @@ main(int argc, char* argv[])
     // GPU alloc & compute
     AcReal* gmem_arr = (AcReal*)malloc(sizeof(AcReal)*100);
     memset(gmem_arr,0,sizeof(AcReal)*100);
-    info.real_arrays[AC_real_gmem_arr] = gmem_arr;
+    info[AC_real_gmem_arr] = gmem_arr;
     acGridInit(info);
 
     // Load/Store

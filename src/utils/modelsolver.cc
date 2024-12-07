@@ -109,8 +109,8 @@ static AcMeshInfo* mesh_info = NULL;
 
 static inline int
 UNUSED getInt(const AcIntParam param)
-{
-    return mesh_info->int_params[param];
+{ 
+    return (*mesh_info)[param];
 }
 static inline int 
 UNUSED getInt(const int val)
@@ -121,7 +121,7 @@ UNUSED getInt(const int val)
 static inline int3
 UNUSED getInt(const AcInt3Param param)
 {
-    return mesh_info->int3_params[param];
+    return (*mesh_info)[param];
 }
 static inline int3
 UNUSED getInt(const int3 param)
@@ -132,7 +132,7 @@ UNUSED getInt(const int3 param)
 static inline Scalar
 UNUSED getReal(const AcRealParam param)
 {
-    return (Scalar)mesh_info->real_params[param];
+    return (Scalar)(*mesh_info)[param];
 }
 
 
@@ -145,7 +145,7 @@ UNUSED getReal(const AcReal val)
 static inline Vector
 UNUSED getReal(const AcReal3Param param)
 {
-    const AcReal3 val = mesh_info->real3_params[param];
+    const AcReal3 val = (*mesh_info)[param];
     return (Vector)
     {
 	    (Scalar)val.x,

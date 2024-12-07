@@ -182,7 +182,7 @@ acDeviceStoreUniform(const Device device, const Stream stream, const P param, V*
 		auto column_to_row_order = [](const P array, const AcMeshInfo host_info, auto* src, auto* dst)
 		{
 			const int n_dims       = get_array_n_dims(array);
-			const auto sizes_array = get_array_dim_sizes(array,host_info);
+			const auto sizes_array = get_array_dim_sizes(array,host_info.params.scalars);
 			std::vector<size_t> sizes{sizes_array.data(), sizes_array.data() + n_dims};
 			auto column_major_index = [&](const auto& indexes)
 			{
@@ -210,7 +210,7 @@ acDeviceStoreUniform(const Device device, const Stream stream, const P param, V*
 			for(const auto& index : index_range)
 				dst[row_major_index(index)] = src[column_major_index(index)];
 		};
-		const size_t len = get_array_length(param,device->local_config);
+		const size_t len = get_array_length(param,device->local_config.params.scalars);
 		V* dst = device->local_config[AC_host_has_row_memory_order] ? (V*)malloc(sizeof(V)*len) : value;
 		ERRCHK_ALWAYS(acStoreUniform(param, dst, len) == AC_SUCCESS);
 		if(device->local_config[AC_host_has_row_memory_order])
@@ -240,7 +240,7 @@ acDeviceStoreUniform(const Device device, const Stream stream, const P param, V*
 AcResult
 acDeviceUpdate(Device device, const AcMeshInfo config)
 {
-    acUpdateArrays(config);
+    acUpdateArrays(config.params);
     acDeviceLoadMeshInfo(device,config);
     return AC_SUCCESS;
 }
@@ -255,10 +255,10 @@ acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo hos
 	auto row_to_column_order = [&]()
 	{
 		auto* src = host_info[array];
-		const size_t len = get_array_length(array,host_info);
+		const size_t len = get_array_length(array,host_info.params.scalars);
 		auto* dst = (decltype(src)) malloc(sizeof(decltype(src))*len);
 		const int n_dims       = get_array_n_dims(array);
-		const auto sizes_array = get_array_dim_sizes(array,host_info);
+		const auto sizes_array = get_array_dim_sizes(array,host_info.params.scalars);
 		std::vector<size_t> sizes{sizes_array.data(), sizes_array.data() + n_dims};
 		auto column_major_index = [&](const auto& indexes)
 		{
@@ -292,11 +292,11 @@ acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo hos
 	if(device->local_config[AC_host_has_row_memory_order])
 	{
 		auto* values = row_to_column_order();
-		auto res= acLoadUniform(device->streams[stream],array,values,get_array_length(array,host_info));
+		auto res= acLoadUniform(device->streams[stream],array,values,get_array_length(array,host_info.params.scalars));
 		free(values);
 		return res;
 	}
-	return acLoadUniform(device->streams[stream],array,host_info[array], get_array_length(array,host_info));
+	return acLoadUniform(device->streams[stream],array,host_info[array], get_array_length(array,host_info.params.scalars));
 }
 
 
@@ -448,13 +448,13 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
         device->local_config[AC_ngrid].x <= 0 ||
         device->local_config[AC_ngrid].y <= 0 ||
         device->local_config[AC_ngrid].z <= 0 ||
-        device->local_config.int3_params[AC_multigpu_offset].x < 0 ||
-        device->local_config.int3_params[AC_multigpu_offset].y < 0 ||
-        device->local_config.int3_params[AC_multigpu_offset].z < 0) {
+        device->local_config[AC_multigpu_offset].x < 0 ||
+        device->local_config[AC_multigpu_offset].y < 0 ||
+        device->local_config[AC_multigpu_offset].z < 0) {
         WARNING("Invalid AC_global_grid_n or AC_multigpu_offset passed in device_config to "
                 "acDeviceCreate. Replacing with AC_global_grid_n = local grid size and "
                 "AC_multigpu_offset = (int3){0,0,0}.");
-        device->local_config.int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
+        device->local_config[AC_multigpu_offset] = (int3){0, 0, 0};
 	acCopyFromInfo(device_config,device->local_config,AC_ngrid);
     }
 
@@ -482,7 +482,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Memory
     // VBA in/out
-    device->vba = acVBACreate(device_config);
+    device->vba = acVBACreate(device_config.params);
 
     // Reductions
     const int3 max_dims          = acGetLocalMM(device->local_config);
@@ -579,7 +579,7 @@ acDeviceDestroy(Device* device_ptr)
     acDeviceSynchronizeStream(device, STREAM_ALL);
 
     // Memory
-    acVBADestroy(&device->vba,device->local_config);
+    acVBADestroy(&device->vba,device->local_config.params);
     
 #if PACKED_DATA_TRANSFERS
 // Free data required for packed tranfers here (cudaFree)

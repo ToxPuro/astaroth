@@ -1241,16 +1241,16 @@ BoundaryConditionTask::BoundaryConditionTask(
 
 
     acAnalysisBCInfo x_info =
-	    		  boundary_normal.x == -1 ? acAnalysisGetBCInfo(device->local_config,op.kernel_enum,BOUNDARY_X_BOT) :
-	    		  boundary_normal.x == 1  ? acAnalysisGetBCInfo(device->local_config,op.kernel_enum,BOUNDARY_X_TOP) :
+	    		  boundary_normal.x == -1 ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_X_BOT) :
+	    		  boundary_normal.x == 1  ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_X_TOP) :
 	    		  (acAnalysisBCInfo){false,false};
     acAnalysisBCInfo y_info =
-	    		  boundary_normal.y == -1 ? acAnalysisGetBCInfo(device->local_config,op.kernel_enum,BOUNDARY_Y_BOT) :
-	    		  boundary_normal.y == 1  ? acAnalysisGetBCInfo(device->local_config,op.kernel_enum,BOUNDARY_Y_TOP) :
+	    		  boundary_normal.y == -1 ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_Y_BOT) :
+	    		  boundary_normal.y == 1  ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_Y_TOP) :
 	    		  (acAnalysisBCInfo){false,false};
     acAnalysisBCInfo z_info =
-	    		  boundary_normal.z == -1 ? acAnalysisGetBCInfo(device->local_config,op.kernel_enum,BOUNDARY_Z_BOT) :
-	    		  boundary_normal.z == 1  ? acAnalysisGetBCInfo(device->local_config,op.kernel_enum,BOUNDARY_Z_TOP) :
+	    		  boundary_normal.z == -1 ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_Z_BOT) :
+	    		  boundary_normal.z == 1  ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_Z_TOP) :
 	    		  (acAnalysisBCInfo){false,false};
 
 

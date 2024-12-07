@@ -1194,13 +1194,27 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	sprintf(tmp,"%s*",datatype_scalar);
 	const char* datatype = intern(tmp);
 	fprintf_filename("info_access_operators.h","%s operator[](const %s param) const {return param;}\n",datatype_scalar,datatype_scalar);
-	fprintf_filename("info_access_operators.h","const %s& operator[](const %sParam param) const {return %s_params[param];}\n"
+	fprintf_filename("scalar_info_access_operators.h","const %s& operator[](const %sParam param) const {return %s_params[param];}\n"
 		,datatype_scalar,enum_name,define_name);
+
+	fprintf_filename("info_access_operators.h","const %s& operator[](const %sParam param) const {return params.scalars.%s_params[param];}\n"
+		,datatype_scalar,enum_name,define_name);
+	fprintf_filename("param_info_access_operators.h","const %s& operator[](const %sParam param) const {return scalars.%s_params[param];}\n"
+		,datatype_scalar,enum_name,define_name);
+
 	fprintf_filename("info_access_operators.h","const %s& operator[](const %sCompParam param) const {return run_consts.config.%s_params[param];}\n"
 		,datatype_scalar,enum_name,define_name);
-	fprintf_filename("info_access_operators.h","%s* const& operator[](const %sArrayParam param) const {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
-	fprintf_filename("info_access_operators.h","%s& operator[](const %sParam param) {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
-	fprintf_filename("info_access_operators.h","%s* & operator[](const %sArrayParam param) {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("info_access_operators.h","%s* const& operator[](const %sArrayParam param) const {return params.arrays.%s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("param_info_access_operators.h","%s* const& operator[](const %sArrayParam param) const {return arrays.%s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+
+	fprintf_filename("array_info_access_operators.h","%s* const& operator[](const %sArrayParam param) const {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+
+	fprintf_filename("scalar_info_access_operators.h","%s& operator[](const %sParam param) {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
+
+	fprintf_filename("info_access_operators.h","%s& operator[](const %sParam param) {return params.scalars.%s_params[param];}\n",datatype_scalar,enum_name,define_name);
+
+	fprintf_filename("info_access_operators.h","%s* & operator[](const %sArrayParam param) {return params.arrays.%s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("array_info_access_operators.h","%s* & operator[](const %sArrayParam param) {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
 
 	fprintf_filename("comp_info_access_operators.h","const %s& operator[](const %sCompParam param) const {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
 	fprintf_filename("comp_info_access_operators.h","const %s* const& operator[](const %sCompArrayParam param) const {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
@@ -1217,8 +1231,6 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
 
 	fprintf_filename("array_decl.h","%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,define_name,uppr_name);
-
-	fprintf_filename("get_vba_array.h","if constexpr(std::is_same<P,%sArrayParam>::value) return vba.%s_arrays[(int)param];\n",enum_name,define_name);
 
 	fprintf_filename("get_default_value.h","if constexpr(std::is_same<P,%sCompParam>::value) return (%s){};\n",enum_name,datatype_scalar);
 
@@ -2726,7 +2738,7 @@ gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* n
 		}
 		fprintf(stream,"},");
 		fclose(stream);
-		fprintf_filename("user_loaders.h","{}");
+		fprintf_filename("user_loaders.h","{},");
 
 		free_node_vec(&calls);
 	}
@@ -2807,10 +2819,10 @@ gen_user_taskgraphs(const ASTNode* root)
 {
 	make_unique_bc_calls((ASTNode*) root);
 	string_vec graph_names = VEC_INITIALIZER;
-	fprintf_filename_w("taskgraph_bc_handles.h","const AcDSLTaskGraph DSLTaskGraphBCs[NUM_DSL_TASKGRAPHS] = { ");
-	fprintf_filename_w("taskgraph_kernels.h","const std::vector<AcKernel> DSLTaskGraphKernels[NUM_DSL_TASKGRAPHS] = { ");
-	fprintf_filename_w("taskgraph_kernel_bcs.h","const std::vector<AcBoundary> DSLTaskGraphKernelBoundaries[NUM_DSL_TASKGRAPHS] = { ");
-	fprintf_filename_w("user_loaders.h","const std::vector<std::function<void(ParamLoadingInfo step_info)>> DSLTaskGraphKernelLoaders[NUM_DSL_TASKGRAPHS] = { ");
+	fprintf_filename_w("taskgraph_bc_handles.h","const AcDSLTaskGraph DSLTaskGraphBCs[NUM_DSL_TASKGRAPHS+1] = { ");
+	fprintf_filename_w("taskgraph_kernels.h","const std::vector<AcKernel> DSLTaskGraphKernels[NUM_DSL_TASKGRAPHS+1] = { ");
+	fprintf_filename_w("taskgraph_kernel_bcs.h","const std::vector<AcBoundary> DSLTaskGraphKernelBoundaries[NUM_DSL_TASKGRAPHS+1] = { ");
+	fprintf_filename_w("user_loaders.h","const std::vector<std::function<void(ParamLoadingInfo step_info)>> DSLTaskGraphKernelLoaders[NUM_DSL_TASKGRAPHS+1] = { ");
 
 	gen_user_taskgraphs_recursive(root,root,&graph_names);
 	string_vec bc_names = VEC_INITIALIZER;
@@ -2829,14 +2841,23 @@ gen_user_taskgraphs(const ASTNode* root)
 		fprintf(fp,"\"%s\",",graph_names.data[i]);
 	for(size_t i = 0; i < bc_names.size; ++i)
 		fprintf(fp,"\"%s\",",bc_names.data[i]);
+	fprintf(fp,"\"out_of_bounds\"");
 	fprintf(fp,"};\n");
 
 
 	free_str_vec(&graph_names);
 	free_str_vec(&bc_names);
 	fclose(fp);
+
+
+	//TP: pad by one to suppress compiler warnings in case of no compute steps
+	fprintf_filename("taskgraph_bc_handles.h","{}");
+	fprintf_filename("taskgraph_kernels.h"   ,"{}");
+	fprintf_filename("taskgraph_kernel_bcs.h","{}");
+	fprintf_filename("user_loaders.h","{}");
+
 	fprintf_filename("taskgraph_bc_handles.h","};\n");
-	fprintf_filename("taskgraph_kernels.h","};\n");
+	fprintf_filename("taskgraph_kernels.h"   ,"};\n");
 	fprintf_filename("taskgraph_kernel_bcs.h","};\n");
 	fprintf_filename("user_loaders.h","};\n");
 }
