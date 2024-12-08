@@ -41,24 +41,10 @@
 #include "task.h"
 #include "astaroth.h"
 
+
 AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
-struct device_s {
-    int id;
-    AcMeshInfo local_config;
-    AcInputs input;
 
-    // Concurrency
-    cudaStream_t streams[NUM_STREAMS];
-
-    // Memory
-    VertexBufferArray vba;
-#if PACKED_DATA_TRANSFERS
-    // Declare memory for buffers in device memory needed for packed data transfers.
-    AcReal *plate_buffers[NUM_PLATE_BUFFERS];
-#endif
-    AcDeviceKernelOutput output;
-    AcScratchpadStates scratchpad_states;
-};
+#include "internal_device_funcs.h"
 
 #include "astaroth_utils.h"
 #include "grid_detail.h"
@@ -443,7 +429,7 @@ Region::is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary
 /* Task interface */
 Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
            Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : device(device_), vba(device->vba), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
+    : device(device_), vba(acDeviceGetVBA(device)), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
       order(order_), active(true), boundary(BOUNDARY_NONE), input_region(input_region_),
       output_region(output_region_),
       input_parameters(op.parameters, op.parameters + op.num_parameters)
@@ -563,23 +549,29 @@ Task::satisfyDependency(size_t iteration)
         dep_cntr.counts[iteration]++;
     }
 }
+void
+set_device(const Device device)
+{
+    cudaSetDevice(acDeviceGetId(device));
+}
 
 void
 Task::syncVBA()
 {
-    cudaSetDevice(device->id);
+    set_device(device);
+    const auto device_vba = acDeviceGetVBA(device);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         if (swap_offset[i]) {
-            vba.in[i]  = device->vba.out[i];
-            vba.out[i] = device->vba.in[i];
+            vba.in[i]  = device_vba.out[i];
+            vba.out[i] = device_vba.in[i];
         }
         else {
-            vba.in[i]  = device->vba.in[i];
-            vba.out[i] = device->vba.out[i];
+            vba.in[i]  = device_vba.in[i];
+            vba.out[i] = device_vba.out[i];
         }
     }
     for(int i=0;i<NUM_WORK_BUFFERS; ++i)
-        vba.w[i] = device->vba.w[i];
+        vba.w[i] = device_vba.w[i];
 }
 
 void
@@ -624,7 +616,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     {
-        cudaSetDevice(device->id);
+	set_device(device);
+
         int low_prio, high_prio;
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
@@ -649,7 +642,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, 
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     {
-        cudaSetDevice(device->id);
+	set_device(device);
+
         int low_prio, high_prio;
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
@@ -748,7 +742,7 @@ HaloMessage::~HaloMessage()
 void
 HaloMessage::pin(const Device device, const cudaStream_t stream)
 {
-    cudaSetDevice(device->id);
+    set_device(device);
     pinned       = true;
     size_t bytes = length * sizeof(AcRealPacked);
     ERRCHK_CUDA(cudaMemcpyAsync(data_pinned, data, bytes, cudaMemcpyDefault, stream));
@@ -760,7 +754,7 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
     if (!pinned)
         return;
 
-    cudaSetDevice(device->id);
+    set_device(device);
     pinned       = false;
     size_t bytes = length * sizeof(AcRealPacked);
     ERRCHK_CUDA(cudaMemcpyAsync(data, data_pinned, bytes, cudaMemcpyDefault, stream));
@@ -812,7 +806,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
     {
-        cudaSetDevice(device->id);
+	set_device(device);
+
         int low_prio, high_prio;
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
@@ -823,7 +818,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     syncVBA();
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done syncing VBA\n");
 
-    const auto proc_strategy = device->local_config[AC_proc_mapping_strategy];
+    const auto proc_strategy = acDeviceGetLocalConfig(device)[AC_proc_mapping_strategy];
     counterpart_rank = getPid(getPid3D(rank, decomp, proc_strategy) + output_region.id, decomp, proc_strategy);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
     send_tag = tag_0 + input_region.tag;
@@ -845,7 +840,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     //Thus if you directly moving data through kernels you have to remap the output position to the other side of the boundary
     if(sendingToItself())
     {
-	    const auto ghosts = device->local_config[AC_nmin];
+	    const auto ghosts = acDeviceGetLocalConfig(device)[AC_nmin];
 	    const int3 mm = {grid_info.nn.x + ghosts.x, grid_info.nn.y + ghosts.y, grid_info.nn.z + ghosts.z};
 	    output_region.position -= int3{input_region.id.x*mm.x, input_region.id.y*mm.y, input_region.id.z*mm.z};
 	    output_region.id = -input_region.id;
@@ -864,7 +859,7 @@ HaloExchangeTask::~HaloExchangeTask()
         MPI_Cancel(&msg->request);
     }
 
-    cudaSetDevice(device->id);
+    set_device(device);
     // dependents.clear();
     cudaStreamDestroy(stream);
 }
@@ -958,7 +953,7 @@ HaloExchangeTask::sendDevice()
 void
 HaloExchangeTask::exchangeDevice()
 {
-    // cudaSetDevice(device->id);
+    // set_device(device);
     receiveDevice();
     sendDevice();
 }
@@ -996,7 +991,7 @@ HaloExchangeTask::sendHost()
 void
 HaloExchangeTask::exchangeHost()
 {
-    // cudaSetDevice(device->id);
+    // set_device(device);
     receiveHost();
     sendHost();
 }
@@ -1131,15 +1126,17 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 
 SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+	//TP: this will make tasks with larger than necessary regions in case of two dimensional setup
+	//but that does not really harm since the whole point of this task is to be a dummy that synchronizes
     : Task(order_,
-           Region({0,0,0},{2*device_->local_config[AC_nmin].x+nn.x,2*device_->local_config[AC_nmin].y+nn.y,2*device_->local_config[AC_nmin].z+nn.z}, 0, {}),
-           Region({0,0,0},{2*device_->local_config[AC_nmin].x+nn.x,2*device_->local_config[AC_nmin].y+nn.y,2*device_->local_config[AC_nmin].z+nn.z}, 0, {}),
+           Region({0,0,0},{2*NGHOST+nn.x,2*NGHOST+nn.y,2*NGHOST+nn.z}, 0, {}),
+           Region({0,0,0},{2*NGHOST+nn.x,2*NGHOST+nn.y,2*NGHOST+nn.z}, 0, {}),
            op, device_, swap_offset_)
 {
 
     // Synctask is on default stream
     {
-        stream = device->streams[STREAM_DEFAULT];
+        stream = 0;
     }
     syncVBA();
 
@@ -1172,7 +1169,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, int3 nn,
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     {
-        cudaSetDevice(device->id);
+        set_device(device);
         int low_prio, high_prio;
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
@@ -1207,9 +1204,9 @@ ReduceTask::reduce()
 	if constexpr (NUM_PROFILES == 0) return;
 	for(const auto& prof : input_region.memory.profiles)
 	{
-	    acReduceProfile(prof,acGetMeshDims(device->local_config),
-				   device->vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)][0],
-				   device->vba.profiles.in[prof],
+	    acReduceProfile(prof,acGetMeshDims(acDeviceGetLocalConfig(device)),
+			           acDeviceGetProfileReduceScratchpad(device,prof),
+			           acDeviceGetProfileBuffer(device,prof),
 				   stream
 			    );
 	}
@@ -1250,7 +1247,7 @@ BoundaryConditionTask::BoundaryConditionTask(
 
     // Create stream for boundary condition task
     {
-        cudaSetDevice(device->id);
+        set_device(device);
         int low_prio, high_prio;
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
@@ -1258,17 +1255,18 @@ BoundaryConditionTask::BoundaryConditionTask(
     syncVBA();
 
 
+    const auto local_config = acDeviceGetLocalConfig(device);
     acAnalysisBCInfo x_info =
-	    		  boundary_normal.x == -1 ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_X_BOT) :
-	    		  boundary_normal.x == 1  ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_X_TOP) :
+	    		  boundary_normal.x == -1 ? acAnalysisGetBCInfo(local_config.params,op.kernel_enum,BOUNDARY_X_BOT) :
+	    		  boundary_normal.x == 1  ? acAnalysisGetBCInfo(local_config.params,op.kernel_enum,BOUNDARY_X_TOP) :
 	    		  (acAnalysisBCInfo){false,false};
     acAnalysisBCInfo y_info =
-	    		  boundary_normal.y == -1 ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_Y_BOT) :
-	    		  boundary_normal.y == 1  ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_Y_TOP) :
+	    		  boundary_normal.y == -1 ? acAnalysisGetBCInfo(local_config.params,op.kernel_enum,BOUNDARY_Y_BOT) :
+	    		  boundary_normal.y == 1  ? acAnalysisGetBCInfo(local_config.params,op.kernel_enum,BOUNDARY_Y_TOP) :
 	    		  (acAnalysisBCInfo){false,false};
     acAnalysisBCInfo z_info =
-	    		  boundary_normal.z == -1 ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_Z_BOT) :
-	    		  boundary_normal.z == 1  ? acAnalysisGetBCInfo(device->local_config.params,op.kernel_enum,BOUNDARY_Z_TOP) :
+	    		  boundary_normal.z == -1 ? acAnalysisGetBCInfo(local_config.params,op.kernel_enum,BOUNDARY_Z_BOT) :
+	    		  boundary_normal.z == 1  ? acAnalysisGetBCInfo(local_config.params,op.kernel_enum,BOUNDARY_Z_TOP) :
 	    		  (acAnalysisBCInfo){false,false};
 
 
@@ -1287,7 +1285,7 @@ BoundaryConditionTask::BoundaryConditionTask(
     auto input_fields = input_region.memory.fields;
     input_region = Region(output_region.translate(translation));
     input_region.memory.fields = input_fields;
-    const auto ghosts = device->local_config[AC_nmin];
+    const auto ghosts = local_config[AC_nmin];
 
     if(boundary_normal.x == -1 && x_info.larger_input)
     	input_region.position.x -= ghosts.x;
@@ -1335,8 +1333,8 @@ BoundaryConditionTask::BoundaryConditionTask(
 void
 BoundaryConditionTask::populate_boundary_region()
 {
-     const int3 nn = acGetLocalNN(device->local_config);
-     const auto ghosts = device->local_config[AC_nmin];
+     const int3 nn = acGetLocalNN(acDeviceGetLocalConfig(device));
+     const auto ghosts = acDeviceGetLocalConfig(device)[AC_nmin];
      if(fieldwise)
      {
      	for (auto variable : output_region.memory.fields) {
