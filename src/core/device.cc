@@ -24,6 +24,25 @@
 #include "astaroth.h"
 #include "../../acc-runtime/api/math_utils.h"
 #include "kernels/kernels.h"
+
+struct device_s {
+    int id;
+    AcMeshInfo local_config;
+    AcInputs input;
+
+    // Concurrency
+    cudaStream_t streams[NUM_STREAMS];
+
+    // Memory
+    VertexBufferArray vba;
+#if PACKED_DATA_TRANSFERS
+    // Declare memory for buffers in device memory needed for packed data transfers.
+    AcReal *plate_buffers[NUM_PLATE_BUFFERS];
+#endif
+    AcDeviceKernelOutput output;
+    AcScratchpadStates scratchpad_states;
+};
+
 #include <math.h>
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
@@ -1802,3 +1821,41 @@ acDevicePreprocessScratchPad(Device device, const int variable, const AcType typ
 	acDeviceSynchronizeStream(device,STREAM_DEFAULT);
 	return AC_SUCCESS;
 }
+
+//TP: these are internal not user-facing device-layer functions
+//These exists since other modules should not modify the device structure directly but do it through API functions
+//Because they are internal it is okay for them not to return an error code: any errors are fatal!!
+VertexBufferArray
+acDeviceGetVBA(const Device device)
+{
+	return device->vba;
+}
+
+int 
+acDeviceGetId(const Device device)
+{
+	return device->id;
+}
+
+AcReal*
+acDeviceGetProfileReduceScratchpad(const Device device, const Profile prof)
+{
+	return device->vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)][0];
+}
+
+AcReal*
+acDeviceGetProfileBuffer(const Device device, const Profile prof)
+{
+	return device->vba.profiles.in[prof];
+}
+
+AcReal**
+acDeviceGetStartOfProfiles(const Device device)
+{
+	return device->vba.profiles.in;
+}
+
+#include "device_set_output.h"
+
+
+

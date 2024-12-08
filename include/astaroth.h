@@ -117,26 +117,6 @@ typedef enum {AC_XZ=0, AC_YZ=1, AC_BOT=0, AC_TOP=2, NUM_PLATE_BUFFERS=4} PlateTy
 
 #define AC_GEN_ID(X) X,
 
-
-
-
-typedef enum {
-	AC_NO_REDUCE_POST_PROCESSING,
-	AC_RMS,
-	AC_RADIAL_WINDOW_RMS
-} AcReductionPostProcessingOp;
-
-typedef struct
-{
-	const AcReduceOp reduce_op;
-	const AcReductionPostProcessingOp post_processing_op;
-	const AcKernel map_vtxbuf_single;
-	const AcKernel map_vtxbuf_vec;
-	const AcKernel map_vtxbuf_vec_scal;
-	const char* name;
-} AcReduction;
-
-
 typedef enum {
     AC_FOR_INIT_TYPES(AC_GEN_ID) //
     NUM_INIT_TYPES

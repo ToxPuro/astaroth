@@ -93,6 +93,24 @@ typedef struct Grid {
     KernelAnalysisInfo kernel_analysis_info{};
 } Grid;
 
+struct device_s {
+    int id;
+    AcMeshInfo local_config;
+    AcInputs input;
+
+    // Concurrency
+    cudaStream_t streams[NUM_STREAMS];
+
+    // Memory
+    VertexBufferArray vba;
+#if PACKED_DATA_TRANSFERS
+    // Declare memory for buffers in device memory needed for packed data transfers.
+    AcReal *plate_buffers[NUM_PLATE_BUFFERS];
+#endif
+    AcDeviceKernelOutput output;
+    AcScratchpadStates scratchpad_states;
+};
+
 static Grid grid = {};
 
 static constexpr int astaroth_comm_split_key = 666;

@@ -305,7 +305,7 @@ reset_all_files()
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","comp_info_access_operators.h","loaded_info_access_operators.h","scalar_info_access_operators.h","array_info_access_operators.h","param_info_access_operators.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
 		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
 		  "fields_info.h","profiles_info.h","is_comptime_param.h","load_comp_info.h","load_comp_info_overloads.h","device_set_input_decls.h","device_set_input.h","device_set_input_loads.h","device_set_input_overloads.h",
-		  "device_get_output_decls.h","device_get_input_decls.h","device_get_output.h","device_get_input.h","device_get_output_overloads.h","device_get_input_overloads.h","device_get_input_loads.h","device_get_output_loads.h",
+		  "device_get_output_decls.h","device_get_input_decls.h","device_get_output.h","device_get_input.h","device_get_output_overloads.h","device_get_input_overloads.h","device_get_input_loads.h","device_get_output_loads.h","device_set_output.h","device_set_output_overloads.h","device_set_output_decl.h",
 		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","get_empty_pointer.h",
 			"kernel_region_write_info.h","kernel_region_read_info.h","taskgraph_bc_handles.h","user_declarations.h","taskgraph_kernels.h","taskgraph_kernel_bcs.h",
 			"info_access_operators.h","device_load_uniform.h","device_load_uniform_decl.h","device_load_uniform_overloads.h","device_load_uniform_loads.h",

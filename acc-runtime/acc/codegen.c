@@ -1251,13 +1251,6 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			);
 	
 
-	fprintf_filename("device_set_input.h", "AcResult\nacDeviceSet%sInput(Device device, const %sInputParam param, const %s val)\n"
-		    "{\n"
-		    "\tif constexpr(NUM_%s_INPUT_PARAMS == 0) return AC_FAILURE;\n"
-		    "\tdevice->input.%s_params[param] = val;\n"
-		    "\treturn AC_SUCCESS;\n"
-		    "}\n"
-	,upper_case_name, enum_name, datatype_scalar, uppr_name, define_name);
 
         fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_UNIFORM(%sParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 
@@ -1284,6 +1277,15 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		    "}\n"
 	,datatype_scalar,upper_case_name, enum_name, uppr_name, datatype_scalar,define_name);
 
+
+	fprintf_filename("device_set_input.h", "AcResult \nacDeviceSet%sInput(Device device, const %sInputParam param, const %s val)\n"
+		    "{\n"
+		    "\tif constexpr(NUM_%s_INPUT_PARAMS == 0) return AC_FAILURE;\n"
+		    "\tdevice->input.%s_params[param] = val; return AC_SUCCESS;\n"
+		    "}\n"
+	,upper_case_name, enum_name, datatype_scalar, uppr_name, define_name);
+
+
 	fprintf_filename("device_get_input.h", "%s\nacDeviceGet%sInput(Device device, const %sInputParam param)\n"
 		    "{\n"
 		    "\tif constexpr(NUM_%s_INPUT_PARAMS == 0) return (%s){};\n"
@@ -1300,6 +1302,20 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("device_set_input_overloads.h","#ifdef __cplusplus\nstatic inline AcResult acDeviceSetInput(Device device, const %sInputParam& param, const %s& val){ return acDeviceSet%sInput(device,param,val); }\n#endif\n",enum_name, datatype_scalar, upper_case_name);	
 
 	fprintf_filename("device_get_output_overloads.h","#ifdef __cplusplus\nstatic inline %s acDeviceGetOutput(Device device, const %sOutputParam& param){ return acDeviceGet%sOutput(device,param); }\n#endif\n",datatype_scalar,enum_name, upper_case_name);	
+
+
+	fprintf_filename("device_set_output.h", "AcResult\nacDeviceSet%sOutput(Device device, const %sOutputParam param, const %s val)\n"
+		    "{\n"
+		    "\tif constexpr(NUM_%s_OUTPUTS == 0) return AC_FAILURE;\n"
+		    "\tdevice->output.%s_outputs[param] = val;\n"
+		    "\treturn AC_SUCCESS;\n"
+		    "}\n"
+	,upper_case_name, enum_name, datatype_scalar, uppr_name, define_name);
+
+	fprintf_filename("device_set_output_decl.h", "AcResult\nacDeviceSet%sOutput(Device device, const %sOutputParam param, const %s val);\n"
+	,upper_case_name, enum_name, datatype_scalar);
+
+	fprintf_filename("device_set_output_overloads.h","#ifdef __cplusplus\nstatic inline AcResult acDeviceSetOutput(Device device, const %sOutputParam& param, const %s val){ return acDeviceSet%sOutput(device,param,val); }\n#endif\n",enum_name, datatype_scalar, upper_case_name);	
 
 	fprintf_filename("device_get_input_overloads.h","#ifdef __cplusplus\nstatic inline %s acDeviceGetInput(Device device, const %sInputParam& param){ return acDeviceGet%sInput(device,param); }\n#endif\n",datatype_scalar,enum_name, upper_case_name);	
 	

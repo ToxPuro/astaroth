@@ -17,11 +17,12 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#include "astaroth.h"
+//#include "astaroth.h"
+#include "acc_runtime.h"
 
-#if AC_MPI_ENABLED
-#include <mpi.h>
 #include <stdbool.h>
+#if AC_MPI_ENABLED
+//#include <mpi.h>
 
 #define MPI_GPUDIRECT_DISABLED (0)
 #endif // AC_MPI_ENABLED
@@ -32,46 +33,20 @@ typedef struct
 	AcReduceOp ints[NUM_INT_OUTPUTS+1];	
 } AcScratchpadStates;
 
-struct device_s {
-    int id;
-    AcMeshInfo local_config;
-    AcInputs input;
-
-    // Concurrency
-    cudaStream_t streams[NUM_STREAMS];
-
-    // Memory
-    VertexBufferArray vba;
-#if PACKED_DATA_TRANSFERS
-    // Declare memory for buffers in device memory needed for packed data transfers.
-    AcReal *plate_buffers[NUM_PLATE_BUFFERS];
-#endif
-    AcDeviceKernelOutput output;
-    AcScratchpadStates scratchpad_states;
-};
 
 typedef AcReal AcRealPacked;
 
-typedef struct {
-    AcKernel kernel_enum;
-    cudaStream_t stream;
-    int step_number;
-    int3 start;
-    int3 end;
-    #if AC_MPI_ENABLED
-    LoadKernelParamsFunc* load_func;
-    #endif
-} KernelParameters;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 
-AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
-                                   AcReal* vtxbuf, const VertexBufferHandle vtxbuf_handle,
-                                   const AcMeshInfo config, const int3 bindex);
-
+//TP: deprecated
+//AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
+//                                   AcReal* vtxbuf, const VertexBufferHandle vtxbuf_handle,
+//                                   const AcMeshInfoParams config, const int3 bindex);
+//
 /** */
 AcResult acKernelDummy(void);
 
@@ -128,10 +103,10 @@ AcResult acKernelVolumeCopy(const cudaStream_t stream,                          
                             AcReal* out, const int3 out_offset, const int3 out_volume);
 
 // Astaroth 2.0 backwards compatibility.
-AcResult acKernel(const KernelParameters params, VertexBufferArray vba);
-
-void acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate);
-void acPackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate);
+//
+//TP: not used and should anyway be behind macro defs
+//void acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate);
+//void acPackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate);
 
 #ifdef __cplusplus
 } // extern "C"

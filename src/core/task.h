@@ -34,6 +34,18 @@
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);
 
+//TP: TODO: move somewhere more appropriate
+typedef struct {
+    AcKernel kernel_enum;
+    cudaStream_t stream;
+    int step_number;
+    int3 start;
+    int3 end;
+    #if AC_MPI_ENABLED
+    LoadKernelParamsFunc* load_func;
+    #endif
+} KernelParameters;
+
 struct TraceFile;
 
 /**

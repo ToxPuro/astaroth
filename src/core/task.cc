@@ -42,6 +42,23 @@
 #include "astaroth.h"
 
 AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
+struct device_s {
+    int id;
+    AcMeshInfo local_config;
+    AcInputs input;
+
+    // Concurrency
+    cudaStream_t streams[NUM_STREAMS];
+
+    // Memory
+    VertexBufferArray vba;
+#if PACKED_DATA_TRANSFERS
+    // Declare memory for buffers in device memory needed for packed data transfers.
+    AcReal *plate_buffers[NUM_PLATE_BUFFERS];
+#endif
+    AcDeviceKernelOutput output;
+    AcScratchpadStates scratchpad_states;
+};
 
 #include "astaroth_utils.h"
 #include "grid_detail.h"

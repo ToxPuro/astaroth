@@ -29,7 +29,7 @@
   #include "hip.h"
 
   #include <hip/hip_runtime_api.h> // Streams
-  #include <roctracer_ext.h>       // Profiling
+  #include <roctracer/roctracer_ext.h>       // Profiling
   #else
   #include <cuda_profiler_api.h> // Profiling
   #include <cuda_runtime_api.h>  // Streams
@@ -53,6 +53,7 @@ typedef enum {
 	PROFILE_ZX = (1 << 7) | TWO_DIMENSIONAL_PROFILE,
 	PROFILE_ZY = (1 << 8) | TWO_DIMENSIONAL_PROFILE,
 } AcProfileType;
+
 
   //copied from the sample setup
 #ifdef __cplusplus
@@ -94,12 +95,30 @@ typedef enum AcReduceOp
 	REDUCE_MAX,
 	REDUCE_SUM,
 } AcReduceOp;
+
 typedef struct {
   int variable;
   AcType type;
   AcReduceOp op;
   AcKernel kernel;
 } KernelReduceOutput;
+
+typedef enum {
+	AC_NO_REDUCE_POST_PROCESSING,
+	AC_RMS,
+	AC_RADIAL_WINDOW_RMS
+} AcReductionPostProcessingOp;
+
+typedef struct
+{
+	const AcReduceOp reduce_op;
+	const AcReductionPostProcessingOp post_processing_op;
+	const AcKernel map_vtxbuf_single;
+	const AcKernel map_vtxbuf_vec;
+	const AcKernel map_vtxbuf_vec_scal;
+	const char* name;
+} AcReduction;
+
   #include "user_input_typedefs.h"
 
 #if AC_RUNTIME_COMPILATION
