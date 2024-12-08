@@ -100,7 +100,7 @@ get_csv_entry(const char* line)
       free(line_copy);
       return res;
 }
-static int
+static int __attribute__((unused))
 get_csv_entries(string_vec* dst, FILE* file)
 {
 	if(file == NULL) return 0;

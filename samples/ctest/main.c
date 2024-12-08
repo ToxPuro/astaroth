@@ -21,6 +21,7 @@
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "errchk.h"
 
 int
 main(void)

@@ -76,7 +76,6 @@ acGetNode(void)
 }
 
 
-
 AcResult
 acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 {

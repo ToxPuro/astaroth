@@ -19,6 +19,7 @@
 #pragma once
 #include "astaroth.h"
 
+#include <array>
 #include <memory>
 #include <mpi.h>
 #include <string>

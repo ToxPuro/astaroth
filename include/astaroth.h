@@ -17,6 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <stdbool.h>
 
 #ifdef __cplusplus
 #include <functional>
@@ -263,16 +264,8 @@ acConstructInt3Param(const T1 a, const T2 b, const T3 c,
 extern "C" {
 #endif
 
-static inline int3
-acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
-                     const AcMeshInfo info)
-{
-    return (int3){
-        info.params.scalars.int_params[a],
-        info.params.scalars.int_params[b],
-        info.params.scalars.int_params[c],
-    };
-}
+int3 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
+                          const AcMeshInfo info);
 
 static inline AcReal3
 acConstructReal3Param(const AcRealParam a, const AcRealParam b, const AcRealParam c,
@@ -628,12 +621,16 @@ Destroys the communicator and calls MPI_Finalize
 */
 FUNC_DEFINE(void, ac_MPI_Finalize,());
 
-/**
-Returns the MPI communicator used by all Astaroth processes.
+/** Returns the rank of the Astaroth communicator */
+int ac_MPI_Comm_rank();
 
-If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD
- */
+/** If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD */
 FUNC_DEFINE(MPI_Comm, acGridMPIComm,());
+/** Returns the size of the Astaroth communicator */
+FUNC_DEFINE(int, ac_MPI_Comm_size,());
+
+/** Calls MPI_Barrier on the Astaroth communicator */
+FUNC_DEFINE(void, ac_MPI_Barrier,());
 
 /**
 Initializes all available devices.

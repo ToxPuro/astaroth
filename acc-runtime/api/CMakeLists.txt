@@ -81,46 +81,28 @@ target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMEN
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 
 if (USE_HIP)
-    target_link_libraries(acc-runtime-headers INTERFACE roctracer64)
-    target_link_libraries(acc-runtime-headers INTERFACE hiprand)
+    target_link_libraries(acc-runtime-headers INTERFACE ${ROCTRACER})
+    target_link_libraries(acc-runtime-headers INTERFACE ${HIPRAND})
+    set_property(TARGET acc-runtime-headers PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
+else()
+    set_property(TARGET acc-runtime-headers PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 endif()
 
 message("project source dir ${PROJECT_SOURCE_DIR}")
 
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
-    if (USE_HIP)
-        add_definitions(-DAC_USE_HIP=1)
-	list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)             # Default
-        list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0) # Triton
-        list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3) # Lumi
-	list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.3.3/hip /opt/rocm-5.3.3) # Dardel
-	list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/hip /opt/rocm-default) # Frontier
+    add_library(acc-runtime STATIC acc_runtime.cu)
+    target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    target_link_libraries(acc-runtime acc-runtime-headers)
 
-        enable_language(CXX)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
-        set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE CXX)
+    if (USE_HIP)
+        set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE HIP)
+        set_property(TARGET acc-runtime PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
     else()
-        enable_language(CUDA)
-        string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
-        set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wall -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-#warnings -Wno-#pragma-messages -Wno-extra-tokens -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow --compiler-options=${CUDA_COMMON_FLAGS}")
-        # Set device code architecture
-        if (NOT CUDA_ARCHITECTURES)
-            set(CMAKE_CUDA_ARCHITECTURES 70) # Default
-        else ()
-            set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
-        endif()
+        set_property(TARGET acc-runtime PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
     endif()
 
-    include_directories(${PROJECT_BINARY_DIR})
-
-    add_library(acc-runtime STATIC acc_runtime.cu)
-    target_link_libraries(acc-runtime acc-runtime-headers)
-    target_compile_features(acc-runtime PRIVATE cxx_std_17)
-
-    add_library(acc-runtime-shared SHARED acc_runtime.cu)
-    target_link_libraries(acc-runtime-shared acc-runtime-headers)
-    target_compile_features(acc-runtime-shared PRIVATE cxx_std_17)
 endif()
 
 if (ADJACENT_VERTEX_BUFFERS)

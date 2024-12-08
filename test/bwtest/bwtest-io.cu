@@ -9,7 +9,7 @@
 
 #include "common.h"
 
-#include "timer_hires.h" // From acc-runtime/api
+#include "timer_hires.h" // From astaroth/include
 
 #if !AC_MPI_ENABLED
 int
@@ -25,7 +25,9 @@ main(void)
 #endif
 #include <assert.h>
 
+#if AC_MPI_ENABLED
 #include <mpi.h>
+#endif
 
 int
 main(int argc, char* argv[])

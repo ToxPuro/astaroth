@@ -44,6 +44,7 @@
 AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 
 #include "astaroth_utils.h"
+#include "grid_detail.h"
 
 #include <cassert>
 #include <memory>
