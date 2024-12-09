@@ -24,6 +24,7 @@ endif()
 
 ## Options
 option(DOUBLE_PRECISION   "Generates double precision code."                    ON)
+option(INCLUDE_3RD_PARTIES "Whether to include 3rd party dependencies"          OFF)
 option(BUILD_STANDALONE   "Build the standalone_mpi executable to run standard simulation." ON)
 option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
 option(BUILD_TESTS        "Builds tests in test subdirectory."            OFF)
