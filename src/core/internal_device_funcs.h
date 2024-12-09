@@ -1,4 +1,4 @@
-VertexBufferArray
+VertexBufferArray&
 acDeviceGetVBA(const Device device);
 
 int

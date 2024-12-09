@@ -1825,7 +1825,7 @@ acDevicePreprocessScratchPad(Device device, const int variable, const AcType typ
 //TP: these are internal not user-facing device-layer functions
 //These exists since other modules should not modify the device structure directly but do it through API functions
 //Because they are internal it is okay for them not to return an error code: any errors are fatal!!
-VertexBufferArray
+VertexBufferArray&
 acDeviceGetVBA(const Device device)
 {
 	return device->vba;
