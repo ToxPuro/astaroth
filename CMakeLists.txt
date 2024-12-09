@@ -153,7 +153,9 @@ add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 ## Subdirectories
 
 # 3rd party
-add_subdirectory(3rdparty/inih)
+if(INCLUDE_3RD_PARTIES)
+	add_subdirectory(3rdparty/inih)
+endif()
 
 # Astaroth modules
 add_subdirectory(acc-runtime)
