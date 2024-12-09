@@ -219,13 +219,13 @@ if (BUILD_SAMPLES AND NOT BUILD_TESTS)
     #endif()
 endif()
 
-if (BUILD_MLLIB_SAMPLES)
+if (BUILD_SAMPLES AND BUILD_MLLIB_SAMPLES)
 # Workaround for finding miopen on Triton
 link_directories(/opt/rocm/miopen/lib/)
     add_subdirectory(samples/microbenchmark-nn)
 endif ()
 
-if (BUILD_MHD_SAMPLES)
+if (BUILD_SAMPLES AND BUILD_MHD_SAMPLES)
     # add_subdirectory(samples/standalone)
     # add_subdirectory(samples/standalone_mpi)
     add_subdirectory(samples/mpitest)
