@@ -373,10 +373,12 @@ gen_default_taskgraph()
 {
     acLogFromRootProc(ac_pid(), "acGridInit: Creating default task graph\n");
     std::vector<Field> all_fields_vec{};
+    std::vector<Field> all_comm_fields_vec{};
     Field all_fields[NUM_VTXBUF_HANDLES];
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
         all_fields_vec.push_back(Field(i));
 	all_fields[i] = Field(i);
+	if(vtxbuf_is_communicated[i]) all_comm_fields_vec.push_back(Field(i));
     }
     auto intermediate_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_intermediate.step_num = l.step_number;
@@ -390,10 +392,13 @@ gen_default_taskgraph()
     };
 
     AcTaskDefinition default_ops[] = {
-	    acHaloExchange(all_fields),
-            acBoundaryCondition(get_full_boundary(), BOUNDCOND_PERIODIC,all_fields_vec),
-	    acComputeWithParams(twopass_solve_intermediate, all_fields,intermediate_loader),
-	    acComputeWithParams(twopass_solve_final, all_fields,final_loader)
+	    acHaloExchange(all_comm_fields_vec),
+            //acBoundaryCondition(get_full_boundary(), BOUNDCOND_PERIODIC,all_fields_vec),
+            acBoundaryCondition(BOUNDARY_X, BOUNDCOND_PERIODIC,all_comm_fields_vec),
+            acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_PERIODIC,all_comm_fields_vec),
+            acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_PERIODIC,all_comm_fields_vec),
+	    acComputeWithParams(twopass_solve_intermediate, all_comm_fields_vec,all_fields_vec,intermediate_loader),
+	    acComputeWithParams(twopass_solve_final, all_comm_fields_vec,all_comm_fields_vec,final_loader)
     };
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
     acLogFromRootProc(ac_pid(), "acGridInit: Done creating default task graph\n");
@@ -1988,7 +1993,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in})[0];
             //for (int tag = Region::min_comp_tag; tag < 1; tag++) {
 	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
-	    if((comm_size == 1 && false) || (NGHOST == 0))
+	    if(((comm_size == 1) || (NGHOST == 0)))
 	    {
 	      auto task = std::make_shared<ComputeTask>(op,0,full_input_region,full_region,device,swap_offset);
               graph->all_tasks.push_back(task);

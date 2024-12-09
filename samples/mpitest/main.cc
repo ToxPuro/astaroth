@@ -172,8 +172,7 @@ main(int argc, char* argv[])
 
     // Device integrate
     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
-        //acGridIntegrate(STREAM_DEFAULT, dt);
-    	acGridExecuteTaskGraph(dsl_graph,3);
+        acGridIntegrate(STREAM_DEFAULT, dt);
 
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);

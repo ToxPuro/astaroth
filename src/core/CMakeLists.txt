@@ -35,6 +35,20 @@ else()
 	
 	if (USE_HIP)
 	    # May need to link to hip::host at some point
+	     if(DEFINED ENV{CRAYPE_VERSION})
+	         # Workaround due to hip/cmake/cray PE issue with GPU RDMA
+	         # If we're on a Cray machine, link against the GTL library
+	         # WARNING: this path may break, works on LUMI in June of 2023
+	         target_link_directories(astaroth_core
+	             PUBLIC
+	 	    /opt/cray/pe/lib64
+	 	#/opt/rocm-5.2.3/llvm/lib
+	         )
+	         target_link_libraries(astaroth_core
+	             PUBLIC
+	             mpi_gtl_hsa
+	         )
+	     endif()
 	else()
 	    target_link_libraries(astaroth_core PUBLIC CUDA::cudart_static)
 	endif()

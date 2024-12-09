@@ -34,7 +34,7 @@ acRandInitAlt(const uint64_t seed, const size_t count, const size_t rank)
   const size_t tpb = 256;
   const size_t bpg = as_size_t(ceil(1. * count / tpb));
   rand_init<<<bpg, tpb>>>(seed, count, rank);
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
   return AC_SUCCESS;
 }
@@ -167,7 +167,7 @@ acRandInit(const uint64_t seed, const Volume m_local, const Volume m_global,
 void
 acRandQuit(void)
 {
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
   ERRCHK_CUDA_ALWAYS(cudaFree(states));
   states = NULL;
 }

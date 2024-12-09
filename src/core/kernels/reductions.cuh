@@ -71,7 +71,7 @@ acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
     // could be done in parallel, but allowing that also exposes the users to potential bugs with
     // race conditions
-    cudaDeviceSynchronize();
+    ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
     ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
     AcReal* in  = scratchpads[0];
@@ -94,14 +94,14 @@ acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const
 
     acReduce(stream,in,initial_count,out,reduction.reduce_op);
     AcReal result;
-    cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream);
-    cudaStreamSynchronize(stream);
+    ERRCHK_CUDA(cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream));
+    ERRCHK_CUDA_ALWAYS(cudaStreamSynchronize(stream));
     
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
     // could be done in parallel, but allowing that also exposes the users to potential bugs with
     // race conditions
-    cudaDeviceSynchronize();
+    ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
     return result;
 }
 
@@ -114,7 +114,7 @@ acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const 
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
     // could be done in parallel, but allowing that also exposes the users to potential bugs with
     // race conditions
-    cudaDeviceSynchronize();
+    ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
     ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
     AcReal* in  = scratchpads[0];
@@ -137,14 +137,14 @@ acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const 
 
     acReduce(stream,in,initial_count,out,reduction.reduce_op);
     AcReal result;
-    cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream);
-    cudaStreamSynchronize(stream);
+    ERRCHK_CUDA(cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream));
+    ERRCHK_CUDA_ALWAYS(cudaStreamSynchronize(stream));
     
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
     // could be done in parallel, but allowing that also exposes the users to potential bugs with
     // race conditions
-    cudaDeviceSynchronize();
+    ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
     return result;
 }
 
@@ -157,7 +157,7 @@ acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, co
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
     // could be done in parallel, but allowing that also exposes the users to potential bugs with
     // race conditions
-    cudaDeviceSynchronize();
+    ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
     ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
     AcReal* in  = scratchpads[0];
@@ -180,13 +180,13 @@ acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, co
 
     acReduce(stream,in,initial_count,out,reduction.reduce_op);
     AcReal result;
-    cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream);
-    cudaStreamSynchronize(stream);
+    ERRCHK_CUDA(cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream));
+    ERRCHK_CUDA_ALWAYS(cudaStreamSynchronize(stream));
     
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
     // could be done in parallel, but allowing that also exposes the users to potential bugs with
     // race conditions
-    cudaDeviceSynchronize();
+    ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
     return result;
 }

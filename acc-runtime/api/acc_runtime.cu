@@ -125,19 +125,19 @@ get_bpg(Volume dims, const Volume tpb)
   }
 }
 
-size_t
-get_warp_size()
+cudaDeviceProp
+get_device_prop()
 {
   cudaDeviceProp props;
-  cudaGetDeviceProperties(&props, 0);
-  return props.warpSize;
+  (void)cudaGetDeviceProperties(&props, 0);
+  return props;
 }
 
 
 bool
 is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel)
 {
-  const size_t warp_size = get_warp_size();
+  const size_t warp_size = get_device_prop().warpSize;
   const size_t xmax      = (size_t)(warp_size * ceil(1. * dims.x / warp_size));
   const size_t ymax      = (size_t)(warp_size * ceil(1. * dims.y / warp_size));
   const size_t zmax      = (size_t)(warp_size * ceil(1. * dims.z / warp_size));
@@ -470,7 +470,7 @@ device_free(T** dst, const int bytes)
 #if USE_COMPRESSIBLE_MEMORY
   freeCompressible(*dst, bytes);
 #else
-  cudaFree(*dst);
+  ERRCHK_CUDA_ALWAYS(cudaFree(*dst));
   //used to silence unused warning
   (void)bytes;
 #endif
@@ -489,7 +489,7 @@ acPBACreate(const size3_t counts)
   }
 
   acPBAReset(0, &pba, counts);
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
   return pba;
 }
 
@@ -622,7 +622,7 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
   vba.profiles = acPBACreate(counts);
 
   acVBAReset(0, &vba);
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
   return vba;
 }
 
@@ -699,7 +699,7 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfoParams config)
 int
 get_num_of_reduce_output(const dim3 bpg, const dim3 tpb)
 {
-	const size_t warp_size = get_warp_size();
+	const size_t warp_size = get_device_prop().warpSize;
 	const int num_of_warps_per_block = (tpb.x*tpb.y*tpb.z + warp_size-1)/warp_size;
 	const int num_of_blocks = bpg.x*bpg.y*bpg.z;
 	return num_of_warps_per_block*num_of_blocks;
@@ -746,29 +746,29 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
 
   // Timer create
   cudaEvent_t tstart, tstop;
-  cudaEventCreate(&tstart);
-  cudaEventCreate(&tstop);
+  ERRCHK_CUDA(cudaEventCreate(&tstart));
+  ERRCHK_CUDA(cudaEventCreate(&tstop));
 
   // Warmup
-  cudaEventRecord(tstart);
+  ERRCHK_CUDA(cudaEventRecord(tstart));
   KERNEL_LAUNCH(kernels[kernel],bpg, tpb, smem)(start, end, vba);
-  cudaEventRecord(tstop);
-  cudaEventSynchronize(tstop);
+  ERRCHK_CUDA(cudaEventRecord(tstop));
+  ERRCHK_CUDA(cudaEventSynchronize(tstop));
   ERRCHK_CUDA_KERNEL();
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
   // Benchmark
-  cudaEventRecord(tstart); // Timing start
+  ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
   KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem)(start, end, vba);
-  cudaEventRecord(tstop); // Timing stop
-  cudaEventSynchronize(tstop);
+  ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+  ERRCHK_CUDA(cudaEventSynchronize(tstop));
   float milliseconds = 0;
-  cudaEventElapsedTime(&milliseconds, tstart, tstop);
+  ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
   printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel],(double)milliseconds);
 
   // Timer destroy
-  cudaEventDestroy(tstart);
-  cudaEventDestroy(tstop);
+  ERRCHK_CUDA(cudaEventDestroy(tstart));
+  ERRCHK_CUDA(cudaEventDestroy(tstop));
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
   return AC_SUCCESS;
@@ -788,7 +788,7 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
   // the coefficients. To avoid this, all kernels that can access
   // the coefficients must be completed before starting async copy to
   // constant memory
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
@@ -816,7 +816,7 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   ERRCHK_ALWAYS(stencil < NUM_STENCILS);
 
   // Ensure all acLoadUniform calls have completed before continuing
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
@@ -853,7 +853,7 @@ acLoadUniform(const P param, const V value)
   		}
 	}
   	ERRCHK_ALWAYS(param < get_num_params<P>());
-  	cudaDeviceSynchronize(); /* See note in acLoadStencil */
+  	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize()); /* See note in acLoadStencil */
 
   	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
   	const cudaError_t retval = cudaMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);
@@ -870,7 +870,7 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 	fprintf(stderr,"Loading %s\n",get_name(array));
 	fflush(stderr);
 #endif
-	cudaDeviceSynchronize();
+	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 	ERRCHK_ALWAYS(values  != nullptr);
 	const size_t bytes = length*sizeof(values[0]);
 	if (!is_dconst(array))
@@ -909,7 +909,7 @@ AcResult
 acStoreUniform(const P param, V* value)
 {
 	ERRCHK_ALWAYS(param < get_num_params<P>());
-	cudaDeviceSynchronize();
+	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
   	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
 	const cudaError_t retval = cudaMemcpyFromSymbol(value, d_mesh_info, sizeof(V), offset, cudaMemcpyDeviceToHost);
 	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
@@ -1036,8 +1036,7 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
   const int num_iters = 2;
 
   // Get device hardware information
-  cudaDeviceProp props;
-  cudaGetDeviceProperties(&props, 0);
+  const auto props = get_device_prop();
   const int max_threads_per_block = MAX_THREADS_PER_BLOCK
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
@@ -1116,22 +1115,22 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
                                      sizeof(AcReal));
 
         cudaEvent_t tstart, tstop;
-        cudaEventCreate(&tstart);
-        cudaEventCreate(&tstop);
+        ERRCHK_CUDA(cudaEventCreate(&tstart));
+        ERRCHK_CUDA(cudaEventCreate(&tstop));
 
         KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba); // Dryrun
-        cudaDeviceSynchronize();
-        cudaEventRecord(tstart); // Timing start
+        ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+        ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
         for (int i = 0; i < num_iters; ++i)
           KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba); // Dryrun
-        cudaEventRecord(tstop); // Timing stop
-        cudaEventSynchronize(tstop);
+        ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+        ERRCHK_CUDA(cudaEventSynchronize(tstop));
 
         float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, tstart, tstop);
+        ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
 
-        cudaEventDestroy(tstart);
-        cudaEventDestroy(tstop);
+        ERRCHK_CUDA(cudaEventDestroy(tstart));
+        ERRCHK_CUDA(cudaEventDestroy(tstop));
 
         // Discard failed runs (attempt to clear the error to cudaSuccess)
         if (cudaGetLastError() != cudaSuccess) {
@@ -1611,28 +1610,28 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
   }
 
   size_t* d_offsets = NULL;
-  cudaMalloc(&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1));
+  ERRCHK_CUDA_ALWAYS(cudaMalloc(&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1)));
   ERRCHK_ALWAYS(d_offsets);
-  cudaMemcpy(d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),
-             cudaMemcpyHostToDevice);
+  ERRCHK_CUDA(cudaMemcpy(d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),
+             cudaMemcpyHostToDevice));
 
   void* d_temp_storage      = NULL;
   size_t temp_storage_bytes = 0;
-  cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+  ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
                                   d_out, num_segments, d_offsets, d_offsets + 1,
-                                  stream);
+                                  stream));
   // printf("Temp storage: %zu bytes\n", temp_storage_bytes);
-  cudaMalloc(&d_temp_storage, temp_storage_bytes);
+  ERRCHK_CUDA_ALWAYS(cudaMalloc(&d_temp_storage, temp_storage_bytes));
   ERRCHK_ALWAYS(d_temp_storage);
 
-  cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+  ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
                             d_out, num_segments, d_offsets, d_offsets + 1,
-                            stream);
+                            stream));
 
-  cudaStreamSynchronize(
-      stream); // Note, would not be needed if allocated at initialization
-  cudaFree(d_temp_storage);
-  cudaFree(d_offsets);
+  ERRCHK_CUDA_ALWAYS(cudaStreamSynchronize(
+      stream)); // Note, would not be needed if allocated at initialization
+  ERRCHK_CUDA_ALWAYS(cudaFree(d_temp_storage));
+  ERRCHK_CUDA_ALWAYS(cudaFree(d_offsets));
   free(offsets);
   return AC_SUCCESS;
 }
@@ -1648,13 +1647,13 @@ cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* 
   switch(reduce_op)
   {
 	  case(REDUCE_SUM):
-	  	cub::DeviceReduce::Sum(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream);
+	  	ERRCHK_CUDA(cub::DeviceReduce::Sum(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
 	  	break;
 	  case(REDUCE_MIN):
-	  	cub::DeviceReduce::Min(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream);
+	  	ERRCHK_CUDA(cub::DeviceReduce::Min(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
 	  	break;
 	  case(REDUCE_MAX):
-	  	cub::DeviceReduce::Max(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream);
+	  	ERRCHK_CUDA(cub::DeviceReduce::Max(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
 	  	break;
 	default:
 		ERRCHK_ALWAYS(reduce_op != NO_REDUCE);
@@ -1680,9 +1679,9 @@ acReduceBase(const cudaStream_t stream, const T* d_in, const size_t count, T* d_
   ERRCHK_ALWAYS(temp_storage.data);
 
   cub_reduce(temp_storage,stream,d_in,count,d_out,reduce_op);
-  cudaStreamSynchronize(
-    stream); // Note, would not be needed if allocated at initialization
-  cudaFree(temp_storage.data);
+  ERRCHK_CUDA_ALWAYS(cudaStreamSynchronize(
+    stream)); // Note, would not be needed if allocated at initialization
+  ERRCHK_CUDA_ALWAYS(cudaFree(temp_storage.data));
   return AC_SUCCESS;
 }
 
