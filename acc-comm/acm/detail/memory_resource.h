@@ -113,6 +113,19 @@ template <typename T> class base_ptr {
     size_t size() const { return _size; }
     T* data() { return _data; }
     T* data() const { return _data; }
+
+    // Enable the subscript[] operator
+    T& operator[](const size_t i)
+    {
+        ERRCHK(i < _size);
+        return _data[i];
+    }
+
+    const T& operator[](const size_t i) const
+    {
+        ERRCHK(i < _size);
+        return _data[i];
+    }
 };
 
 template <typename T> class host_ptr : public base_ptr<T> {
