@@ -77,8 +77,9 @@ gmem real3 AC_real3_gmem_arr[3]
 
 int AC_2d_int[AC_const_int][AC_const_int*2]
 
-int AC_step_number
-real AC_dt
+input int AC_step_number
+input real AC_dt
+input real AC_current_time
 
 /*
 real AC_gamma, AC_nu_visc, AC_zeta, AC_eta
@@ -258,7 +259,6 @@ real AC_unit_mass
 real AC_sq2GM_star
 real AC_cs2_sound
 //
-real AC_current_time
 
 
 

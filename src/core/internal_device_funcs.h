@@ -1,4 +1,4 @@
-VertexBufferArray&
+VertexBufferArray
 acDeviceGetVBA(const Device device);
 
 int
@@ -12,6 +12,9 @@ acDeviceGetProfileBuffer(const Device, const Profile prof);
 
 AcReal**
 acDeviceGetStartOfProfiles(const Device device);
+
+acKernelInputParams*
+acDeviceGetKernelInputParams(const Device device);
 
 #include "device_set_output_decl.h"
 #include "device_set_output_overloads.h"
