@@ -150,18 +150,30 @@ main(int argc, char* argv[])
 
     //// Dryrun
     const AcReal dt = (AcReal)FLT_EPSILON;
+    //acDeviceSetInput(acGridGetDevice(),AC_dt,dt);
+    //acDeviceSetInput(acGridGetDevice(),AC_current_time,dt);
+
     acGridIntegrate(STREAM_DEFAULT, dt);
+    acGridSynchronizeStream(STREAM_DEFAULT);
+
+    AcTaskGraph* dsl_graph = acGetDSLTaskGraph(AC_rhs);
+    acGridExecuteTaskGraph(dsl_graph,1);
+    acGridSynchronizeStream(STREAM_DEFAULT);
+
 
     // Integration
     if (pid == 0)
         acHostGridMeshRandomize(&model);
 
     acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridSynchronizeStream(STREAM_DEFAULT);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridSynchronizeStream(STREAM_DEFAULT);
 
     // Device integrate
     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
-        acGridIntegrate(STREAM_DEFAULT, dt);
+        //acGridIntegrate(STREAM_DEFAULT, dt);
+    	acGridExecuteTaskGraph(dsl_graph,3);
 
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
@@ -181,17 +193,16 @@ main(int argc, char* argv[])
     }
     fflush(stdout);
 
-    AcTaskGraph* dsl_graph = acGetDSLTaskGraph(AC_rhs);
-    // Dryrun
-    acDeviceSetInput(acGridGetDevice(),AcInputdt,dt);
-    acGridExecuteTaskGraph(dsl_graph,1);
+    acGridSynchronizeStream(STREAM_DEFAULT);
 
     // Integration
     if (pid == 0)
         acHostGridMeshRandomize(&model);
 
     acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridSynchronizeStream(STREAM_DEFAULT);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridSynchronizeStream(STREAM_DEFAULT);
 
     // Device integrate
     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)

@@ -876,15 +876,10 @@ BoundConds boundconds{
   periodic(BOUNDARY_Z)
 }
 
-input int  AcInputStepNum
-input real AcInputdt
-input real AcInputCurrentTime
-
-
 ComputeSteps AC_rhs(boundconds)
 {
-        twopass_solve_intermediate(AC_ITERATION_NUMBER,AcInputdt)
-        twopass_solve_final(AC_ITERATION_NUMBER,AcInputCurrentTime);
+        twopass_solve_intermediate(AC_ITERATION_NUMBER,AC_dt)
+        twopass_solve_final(AC_ITERATION_NUMBER,AC_current_time);
 }
 
 #include "../../stdlib/bc.h"
