@@ -197,7 +197,8 @@ main()
 
         HaloExchangeTask<UserType, ac::mr::device_memory_resource> halo_exchange{local_mm, local_nn,
                                                                                  rr, 1};
-        std::vector<ac::buffer<UserType, ac::mr::device_memory_resource>*> inputs{&din.buffer};
+        std::vector<ac::mr::device_ptr<UserType>> inputs{
+            ac::mr::device_ptr<UserType>{din.size(), din.data()}};
         halo_exchange.launch(cart_comm, inputs);
         halo_exchange.wait(inputs);
         migrate(din.buffer, hin.buffer);

@@ -37,14 +37,13 @@ template <typename T, typename MemoryResource> class HaloExchangeTask {
         }
     }
 
-    void launch(const MPI_Comm& parent_comm,
-                const std::vector<ac::buffer<T, MemoryResource>*>& inputs)
+    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
     {
         for (auto& packet : packets)
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(std::vector<ac::buffer<T, MemoryResource>*>& outputs)
+    void wait(std::vector<ac::mr::device_ptr<T>>& outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         // while (!complete()) {

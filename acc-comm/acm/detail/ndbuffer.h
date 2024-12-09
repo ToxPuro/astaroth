@@ -56,6 +56,10 @@ template <typename T, typename MemoryResource> struct ndbuffer {
     {
     }
 
+    size_t size() const { return buffer.size(); }
+    T* data() { return buffer.data(); }
+    const T* data() const { return buffer.data(); }
+
     T* begin() { return buffer.data(); }
     const T* begin() const { return buffer.data(); }
     T* end() { return buffer.data() + buffer.size(); }

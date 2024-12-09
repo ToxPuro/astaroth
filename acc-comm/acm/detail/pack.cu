@@ -121,29 +121,28 @@ kernel_unpack(const T* input, const ac::static_array<uint64_t, MAX_NDIMS> mm,
 
 template <typename T>
 static std::vector<T*>
-unwrap(const std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& buffers)
+unwrap(const std::vector<ac::mr::device_ptr<T>>& buffers)
 {
     std::vector<T*> output;
-    for (ac::buffer<T, ac::mr::device_memory_resource>* ptr : buffers)
-        output.push_back(ptr->data());
+    for (ac::mr::device_ptr<T> ptr : buffers)
+        output.push_back(ptr.data());
     return output;
 }
 
 template <typename T>
 static std::vector<T*>
-unwrap(std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& buffers)
+unwrap(std::vector<ac::mr::device_ptr<T>>& buffers)
 {
     std::vector<T*> output;
-    for (ac::buffer<T, ac::mr::device_memory_resource>* ptr : buffers)
-        output.push_back(ptr->data());
+    for (ac::mr::device_ptr<T> ptr : buffers)
+        output.push_back(ptr.data());
     return output;
 }
 
 template <typename T>
 void
 pack(const Shape& in_mm, const Shape& in_block_shape, const Index& in_block_offset,
-     const std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& in_inputs,
-     ac::buffer<T, ac::mr::device_memory_resource>& in_output)
+     const std::vector<ac::mr::device_ptr<T>>& in_inputs, ac::mr::device_ptr<T>&& in_output)
 {
     const uint64_t block_nelems{prod(in_block_shape)};
     const uint64_t tpb{256};
@@ -163,9 +162,8 @@ pack(const Shape& in_mm, const Shape& in_block_shape, const Index& in_block_offs
 
 template <typename T>
 void
-unpack(const ac::buffer<T, ac::mr::device_memory_resource>& in_input, const Shape& in_mm,
-       const Shape& in_block_shape, const Index& in_block_offset,
-       std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& in_outputs)
+unpack(const ac::mr::device_ptr<T>& in_input, const Shape& in_mm, const Shape& in_block_shape,
+       const Index& in_block_offset, std::vector<ac::mr::device_ptr<T>>& in_outputs)
 {
     const uint64_t block_nelems{prod(in_block_shape)};
     const uint64_t tpb{256};
@@ -201,36 +199,30 @@ unpack(const ac::buffer<T, ac::mr::device_memory_resource>& in_input, const Shap
 // Specialization
 template <typename T>
 void pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-          const std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& inputs,
-          ac::buffer<T, ac::mr::device_memory_resource>& output);
+          const std::vector<ac::mr::device_ptr<T>>& inputs, ac::mr::device_ptr<T>&& output);
 
 template <typename T>
-void unpack(const ac::buffer<T, ac::mr::device_memory_resource>& input, const Shape& mm,
-            const Shape& block_shape, const Index& block_offset,
-            std::vector<ac::buffer<T, ac::mr::device_memory_resource>*>& outputs);
+void unpack(const ac::mr::device_ptr<T>& input, const Shape& mm, const Shape& block_shape,
+            const Index& block_offset, std::vector<ac::mr::device_ptr<T>>& outputs);
 
 #define PACK_DTYPE double
-template void
-pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-                 const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
-                 ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
+template void pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const Index& block_offset,
+                               const std::vector<ac::mr::device_ptr<PACK_DTYPE>>& inputs,
+                               ac::mr::device_ptr<PACK_DTYPE>&& output);
 
-template void
-unpack<PACK_DTYPE>(const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-                   const Shape& mm, const Shape& block_shape, const Index& block_offset,
-                   std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
+template void unpack<PACK_DTYPE>(const ac::mr::device_ptr<PACK_DTYPE>& input, const Shape& mm,
+                                 const Shape& block_shape, const Index& block_offset,
+                                 std::vector<ac::mr::device_ptr<PACK_DTYPE>>& outputs);
 #undef PACK_DTYPE
 
 #define PACK_DTYPE uint64_t
-template void
-pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-                 const std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& inputs,
-                 ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& output);
+template void pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const Index& block_offset,
+                               const std::vector<ac::mr::device_ptr<PACK_DTYPE>>& inputs,
+                               ac::mr::device_ptr<PACK_DTYPE>&& output);
 
-template void
-unpack<PACK_DTYPE>(const ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>& input,
-                   const Shape& mm, const Shape& block_shape, const Index& block_offset,
-                   std::vector<ac::buffer<PACK_DTYPE, ac::mr::device_memory_resource>*>& outputs);
+template void unpack<PACK_DTYPE>(const ac::mr::device_ptr<PACK_DTYPE>& input, const Shape& mm,
+                                 const Shape& block_shape, const Index& block_offset,
+                                 std::vector<ac::mr::device_ptr<PACK_DTYPE>>& outputs);
 #undef PACK_DTYPE
 
 #endif
