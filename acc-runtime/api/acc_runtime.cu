@@ -1252,14 +1252,16 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
         ERRCHK_CUDA(cudaEventDestroy(tstop));
 
         // Discard failed runs (attempt to clear the error to cudaSuccess)
-        if (cudaGetLastError() != cudaSuccess) {
-	  //TP: reset autotune results
+        const auto err = cudaGetLastError();
+        //TP: it is fine to simply skip invalid configuration values since it can be because of too large tpb's
+        //We simply do not count them for finding the optim config
+        if(err == cudaErrorInvalidConfiguration) continue;
+        if (err != cudaSuccess) {
+          //TP: reset autotune results
+          fprintf(stderr,"\nFailed while autotuning: %s\nReason: %s\n",kernel_names[kernel],cudaGetErrorName(err));
           FILE* fp = fopen(autotune_csv_path,"w");
-	  fclose(fp);
-          // Exit in case of unrecoverable error that needs a device reset
-          ERRCHK_CUDA_KERNEL_ALWAYS();
-          ERRCHK_CUDA_ALWAYS(cudaGetLastError());
-          continue;
+          fclose(fp);
+          ERRCHK_ALWAYS(err == cudaSuccess);
         }
 
         if (milliseconds < best_time) {
