@@ -587,7 +587,7 @@ main(int argc, char* argv[])
     		for(int j = dims.n0.y; j < dims.n1.y; ++j)
     			for(int i = dims.n0.x; i < dims.n1.x; ++i)
     	    	{
-    	    		//Skew sligtly positive to not have zero mean --> finite condition number for summing the floating point numbers
+    	    		//Skew slightly positive to not have zero mean --> finite condition number for summing the floating point numbers
     	    		model.vertex_buffer[FIELD][IDX(i,j,k)] -= 0.49;
     	    		model.vertex_buffer[FIELD][IDX(i,j,k)] *= RAND_RANGE;
     	    	}
@@ -599,6 +599,10 @@ main(int argc, char* argv[])
         acHostMeshDestroy(&candidate);
     }
     finalized = true;
+    const int3 nn = acGetLocalNN(info);
+    AcReal full_size =    (AcReal)nn.x*nn.y*nn.z;
+    AcReal reduced_size = (AcReal)acGetKernelReduceScratchPadSize(test_reduce);
+    printf("Saving a factor of %14e memory for scratchpads for scalar reductions\n",full_size/reduced_size);
 
     acGridQuit();
     ac_MPI_Finalize();

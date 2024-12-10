@@ -413,7 +413,7 @@ acGetReductionShape(const AcProfileType type, const AcMeshDims dims)
 	return order_size;
 }
 AcResult
-acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal* dst, const cudaStream_t stream)
+acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal** tmp, size_t* tmp_size, AcReal* dst, const cudaStream_t stream)
 {
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     const AcProfileType type = prof_types[prof];
@@ -445,7 +445,7 @@ acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, Ac
 
     const size_t num_segments = (type & ONE_DIMENSIONAL_PROFILE) ? buffer_shape.z*buffer_shape.w
 	                                                         : buffer_shape.y*buffer_shape.z*buffer_shape.w;
-    acSegmentedReduce(stream, buffer.data, buffer.count, num_segments, dst);
+    acSegmentedReduce(stream, buffer.data, buffer.count, num_segments, dst,tmp,tmp_size);
 
     acBufferDestroy(&buffer);
     acBufferDestroy(&gpu_transpose_buffer);

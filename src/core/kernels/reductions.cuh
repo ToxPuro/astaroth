@@ -64,8 +64,8 @@ acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims)
 
 AcReal
 acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const VertexBufferHandle vtxbuf,
-                   const int3 start, const int3 end, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
-                   const size_t scratchpad_size, VertexBufferArray vba)
+                   const int3 start, const int3 end, const int scratchpad_index,
+                   const size_t scratchpad_size, VertexBufferArray* vba)
 {
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
@@ -73,9 +73,7 @@ acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const
     // race conditions
     ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
-    ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
-    AcReal* in  = scratchpads[0];
-    AcReal* out = scratchpads[1];
+    AcReal* in  = vba->on_device.reduce_scratchpads_real[scratchpad_index];
 
     // Compute block dimensions
     const int3 dims            = end - start;
@@ -88,11 +86,11 @@ acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const
       ERROR("Invalid reduction type in acKernelReduceScal");
       return AC_FAILURE;
     }
-    acLoadKernelParams(vba.kernel_input_params,map_kernel,vtxbuf,out); 
-    acLaunchKernel(map_kernel,stream,start,end,vba);
-    swap_ptrs(&in, &out);
+    acLoadKernelParams(vba->on_device.kernel_input_params,map_kernel,vtxbuf,in); 
+    acLaunchKernel(map_kernel,stream,start,end,*vba);
 
-    acReduce(stream,in,initial_count,out,reduction.reduce_op);
+    AcReal* out = vba->reduce_res_real[scratchpad_index];
+    acReduce(stream,in,initial_count,out,reduction.reduce_op,&vba->reduce_cub_tmp_real[scratchpad_index],&vba->reduce_cub_tmp_size_real[scratchpad_index]);
     AcReal result;
     ERRCHK_CUDA(cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream));
     ERRCHK_CUDA_ALWAYS(cudaStreamSynchronize(stream));
@@ -107,7 +105,7 @@ acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const
 
 AcReal
 acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const int3 start,
-                  const int3 end, const Field3 vector, VertexBufferArray vba, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                  const int3 end, const Field3 vector, VertexBufferArray* vba, const int scratchpad_index,
                   const size_t scratchpad_size)
 {
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
@@ -116,9 +114,7 @@ acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const 
     // race conditions
     ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
-    ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
-    AcReal* in  = scratchpads[0];
-    AcReal* out = scratchpads[1];
+    AcReal* in  = vba->on_device.reduce_scratchpads_real[scratchpad_index];
 
     // Set thread block dimensions
     const int3 dims            = end - start;
@@ -131,11 +127,11 @@ acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const 
       ERROR("Invalid reduction type in acKernelReduceVec");
       return AC_FAILURE;
     }
-    acLoadKernelParams(vba.kernel_input_params,map_kernel,vector,out); 
-    acLaunchKernel(map_kernel,stream,start,end,vba);
-    swap_ptrs(&in, &out);
+    acLoadKernelParams(vba->on_device.kernel_input_params,map_kernel,vector,in); 
+    acLaunchKernel(map_kernel,stream,start,end,*vba);
 
-    acReduce(stream,in,initial_count,out,reduction.reduce_op);
+    AcReal* out = vba->reduce_res_real[scratchpad_index];
+    acReduce(stream,in,initial_count,out,reduction.reduce_op,&vba->reduce_cub_tmp_real[scratchpad_index],&vba->reduce_cub_tmp_size_real[scratchpad_index]);
     AcReal result;
     ERRCHK_CUDA(cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream));
     ERRCHK_CUDA_ALWAYS(cudaStreamSynchronize(stream));
@@ -150,8 +146,8 @@ acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const 
 
 AcReal
 acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, const int3 start,
-                      const int3 end, const Field4 vtxbufs,VertexBufferArray vba,
-                      AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS], const size_t scratchpad_size)
+                      const int3 end, const Field4 vtxbufs,VertexBufferArray* vba,
+                      const int scratchpad_index, const size_t scratchpad_size)
 {
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
     // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
@@ -159,9 +155,7 @@ acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, co
     // race conditions
     ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
-    ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
-    AcReal* in  = scratchpads[0];
-    AcReal* out = scratchpads[1];
+    AcReal* in  = vba->on_device.reduce_scratchpads_real[scratchpad_index];
 
     // Set thread block dimensions
     const int3 dims            = end - start;
@@ -174,11 +168,11 @@ acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, co
       return AC_FAILURE;
     }
 
-    acLoadKernelParams(vba.kernel_input_params,map_kernel,vtxbufs,out); 
-    acLaunchKernel(map_kernel,stream,start,end,vba);
-    swap_ptrs(&in, &out);
+    acLoadKernelParams(vba->on_device.kernel_input_params,map_kernel,vtxbufs,in); 
+    acLaunchKernel(map_kernel,stream,start,end,*vba);
 
-    acReduce(stream,in,initial_count,out,reduction.reduce_op);
+    AcReal* out = vba->reduce_res_real[scratchpad_index];
+    acReduce(stream,in,initial_count,out,reduction.reduce_op,&vba->reduce_cub_tmp_real[scratchpad_index],&vba->reduce_cub_tmp_size_real[scratchpad_index]);
     AcReal result;
     ERRCHK_CUDA(cudaMemcpyAsync(&result, out, sizeof(out[0]), cudaMemcpyDeviceToHost, stream));
     ERRCHK_CUDA_ALWAYS(cudaStreamSynchronize(stream));

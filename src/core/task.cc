@@ -562,16 +562,16 @@ Task::syncVBA()
     const auto device_vba = acDeviceGetVBA(device);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         if (swap_offset[i]) {
-            vba.in[i]  = device_vba.out[i];
-            vba.out[i] = device_vba.in[i];
+            vba.on_device.in[i]  = device_vba.on_device.out[i];
+            vba.on_device.out[i] = device_vba.on_device.in[i];
         }
         else {
-            vba.in[i]  = device_vba.in[i];
-            vba.out[i] = device_vba.out[i];
+            vba.on_device.in[i]  = device_vba.on_device.in[i];
+            vba.on_device.out[i] = device_vba.on_device.out[i];
         }
     }
     for(int i=0;i<NUM_WORK_BUFFERS; ++i)
-        vba.w[i] = device_vba.w[i];
+        vba.on_device.w[i] = device_vba.on_device.w[i];
 }
 
 void
@@ -580,9 +580,9 @@ Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
 
         if (vtxbuf_swaps[i]) {
-            AcReal* tmp = vba.in[i];
-            vba.in[i]   = vba.out[i];
-            vba.out[i]  = tmp;
+            AcReal* tmp = vba.on_device.in[i];
+            vba.on_device.in[i]   = vba.on_device.out[i];
+            vba.on_device.out[i]  = tmp;
         }
     }
 }
@@ -672,7 +672,7 @@ ComputeTask::getKernel()
 void
 ComputeTask::compute()
 {
-    params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, {}, {}});
+    params.load_func->loader({&vba.on_device.kernel_input_params, device, (int)loop_cntr.i, {}, {}});
     acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, params.start, params.end, vba);
 }
 
@@ -876,7 +876,7 @@ HaloExchangeTask::pack()
 void
 HaloExchangeTask::move()
 {
-	acKernelMoveData(stream, input_region.position, output_region.position, input_region.dims, output_region.dims, vba,input_region.memory.fields.data(), input_region.memory.fields.size());
+	acKernelMoveData(stream, input_region.position, output_region.position, input_region.dims, output_region.dims, vba, input_region.memory.fields.data(), input_region.memory.fields.size());
 }
 
 void
@@ -1206,6 +1206,8 @@ ReduceTask::reduce()
 	{
 	    acReduceProfile(prof,acGetMeshDims(acDeviceGetLocalConfig(device)),
 			           acDeviceGetProfileReduceScratchpad(device,prof),
+			           acDeviceGetProfileCubTmp(device,prof),
+			           acDeviceGetProfileCubTmpSize(device,prof),
 			           acDeviceGetProfileBuffer(device,prof),
 				   stream
 			    );
@@ -1338,7 +1340,7 @@ BoundaryConditionTask::populate_boundary_region()
      if(fieldwise)
      {
      	for (auto variable : output_region.memory.fields) {
-     		params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
+     		params.load_func->loader({&vba.on_device.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
      		const int3 region_id = output_region.id;
      		const int3 start = (int3){(region_id.x == 1 ? ghosts.x+ nn.x
      		                                           : region_id.x == -1 ? 0 : ghosts.x),

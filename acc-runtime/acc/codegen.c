@@ -2132,7 +2132,7 @@ gen_kernel_structs(const ASTNode* root)
 				{
 					if(param_type != REAL_PTR_STR)
 						fatal("How to handle non-real input ptr?\n");
-					fprintf(fp,"vba.kernel_input_params.%s.%s = vba.reduce_scratchpads_real[0][0];\n",name,param_name);
+					fprintf(fp,"vba.on_device.kernel_input_params.%s.%s = vba.on_device.reduce_scratchpads_real[0];\n",name,param_name);
 				}
 			}
 			fprintf(fp,"}\n");
@@ -3224,7 +3224,7 @@ gen_kernel_ifs(ASTNode* node, const param_combinations combinations, const strin
 		string_vec combination_vals = combinations.vals[kernel_index + MAX_KERNELS*i];
 		fprintf(fp,"if(kernel_enum == %s ",get_node(NODE_FUNCTION_ID,node)->buffer);
 		for(size_t j = 0; j < combination_vals.size; ++j)
-			fprintf(fp, " && vba.kernel_input_params.%s.%s ==  %s ",get_node(NODE_FUNCTION_ID,node)->buffer,combination_params.data[j],combination_vals.data[j]);
+			fprintf(fp, " && vba.on_device.kernel_input_params.%s.%s ==  %s ",get_node(NODE_FUNCTION_ID,node)->buffer,combination_params.data[j],combination_vals.data[j]);
 
 		fprintf(fp,
 				")\n{\n"
@@ -5136,7 +5136,7 @@ gen_user_kernels(const char* out)
   // Astaroth 2.0 backwards compatibility START
   // Handles are now used to get optimized kernels for specific input param combinations
 
-  const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
+  const char* default_param_list=  "(const int3 start, const int3 end, DeviceVertexBufferArray vba";
   FILE* fp_dec = fopen("user_kernel_declarations.h","a");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
@@ -7270,7 +7270,7 @@ fuse_kernels(const node_vec kernels)
 	astnode_set_infix(")",function_body);
 	ASTNode* func_def = astnode_create(NODE_KFUNCTION,decl,function_body);
 	func_def->type |= NODE_KFUNCTION;
-        const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
+        const char* default_param_list=  "(const int3 start, const int3 end, DeviceVertexBufferArray vba";
         astnode_set_prefix(default_param_list, func_def->rhs);
 	astnode_set_prefix("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n",func_def);
 	return func_def;

@@ -1806,7 +1806,7 @@ acGetTransposeBufferShape(const AcMeshOrder order, const AcMeshDims dims);
 AcShape
 acGetReductionShape(const AcProfileType type, const AcMeshDims dims);
 AcResult
-acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal* dst, const cudaStream_t stream);
+acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal** tmp, size_t* tmp_size, AcReal* dst, const cudaStream_t stream);
 
 void acBufferDestroy(AcBuffer* buffer);
 

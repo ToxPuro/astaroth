@@ -25,7 +25,7 @@ struct GpuVtxBufHandles
 	VertexBufferHandle data[NUM_COMMUNICATED_FIELDS+1];
 };
 static __global__ void
-kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims,
+kernel_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const int3 dims,
                  AcRealPacked* packed)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
@@ -102,7 +102,7 @@ lagrangian_correction(const int j, const Field3 coords, const int3 indexes)
 
 static __global__ void
 kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
-                   VertexBufferArray vba)
+                   DeviceVertexBufferArray vba)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -139,7 +139,7 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
 }
 
 static __global__ void
-kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims,
+kernel_partial_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const int3 dims,
                          AcRealPacked* packed, GpuVtxBufHandles vtxbufs, size_t num_vtxbufs)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
@@ -175,7 +175,7 @@ kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, cons
 }
 
 static __global__ void
-kernel_partial_move_data(const VertexBufferArray vba, const int3 src_start, const int3 dst_start, const int3 dims,
+kernel_partial_move_data(const DeviceVertexBufferArray vba, const int3 src_start, const int3 dst_start, const int3 dims,
                          GpuVtxBufHandles vtxbufs, size_t num_vtxbufs)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
@@ -214,7 +214,7 @@ kernel_partial_move_data(const VertexBufferArray vba, const int3 src_start, cons
 
 static __global__ void
 kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
-                           VertexBufferArray vba, GpuVtxBufHandles vtxbufs , size_t num_vtxbufs)
+                           DeviceVertexBufferArray vba, GpuVtxBufHandles vtxbufs , size_t num_vtxbufs)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -260,7 +260,7 @@ acKernelPackDataFull(const cudaStream_t stream, const VertexBufferArray vba, con
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed);
+    kernel_pack_data<<<bpg, tpb, 0, stream>>>(vba.on_device, vba_start, dims, packed);
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;
@@ -275,7 +275,7 @@ acKernelUnpackDataFull(const cudaStream_t stream, const AcRealPacked* packed, co
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba);
+    kernel_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba.on_device);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
 }
@@ -296,7 +296,7 @@ acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
     GpuVtxBufHandles gpu_handles;
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    kernel_partial_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed, gpu_handles,
+    kernel_partial_pack_data<<<bpg, tpb, 0, stream>>>(vba.on_device, vba_start, dims, packed, gpu_handles,
                                                       num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
 
@@ -325,7 +325,7 @@ acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
     GpuVtxBufHandles gpu_handles;
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba, gpu_handles,
+    kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba.on_device, gpu_handles,
                                                         num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
@@ -348,7 +348,7 @@ acKernelMoveData(const cudaStream_t stream, const int3 src_start, const int3 dst
     GpuVtxBufHandles gpu_handles;
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    kernel_partial_move_data<<<bpg, tpb, 0, stream>>>(vba,src_start, dst_start, src_dims, gpu_handles,
+    kernel_partial_move_data<<<bpg, tpb, 0, stream>>>(vba.on_device,src_start, dst_start, src_dims, gpu_handles,
                                                         num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;

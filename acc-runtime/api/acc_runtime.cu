@@ -20,7 +20,7 @@
 
 #include "acc_runtime.h"
 #include "../acc/string_vec.h"
-typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
+typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
 
@@ -56,6 +56,11 @@ const bool useColor = false;
 
 
 #include "acc/implementation.h"
+typedef struct
+{
+	void* data;
+	size_t bytes;
+} AcDeviceTmpBuffer;
 
 static dim3 last_tpb = (dim3){0, 0, 0};
 struct Int3Hash {
@@ -137,11 +142,16 @@ get_device_prop()
 bool
 is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel)
 {
-  const size_t warp_size = get_device_prop().warpSize;
-  const size_t xmax      = (size_t)(warp_size * ceil(1. * dims.x / warp_size));
-  const size_t ymax      = (size_t)(warp_size * ceil(1. * dims.y / warp_size));
-  const size_t zmax      = (size_t)(warp_size * ceil(1. * dims.z / warp_size));
-  const bool too_large   = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
+  const size_t warp_size    = get_device_prop().warpSize;
+  const size_t xmax         = (size_t)(warp_size * ceil(1. * dims.x / warp_size));
+  const size_t ymax         = (size_t)(warp_size * ceil(1. * dims.y / warp_size));
+  const size_t zmax         = (size_t)(warp_size * ceil(1. * dims.z / warp_size));
+  const bool too_large      = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
+  const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
+  const bool single_tb      = (tpb.x >= dims.x) && (tpb.y >= dims.y) && (tpb.z >= dims.z);
+
+  //TP: if not utilizing the whole warp invalid, expect if dims are so small that could not utilize a whole warp 
+  if(not_full_warp && !single_tb) return false;
 
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: {
@@ -477,11 +487,20 @@ device_free(T** dst, const int bytes)
   *dst = NULL;
 }
 
+size_t
+device_resize(void** dst,const size_t old_bytes,const size_t new_bytes)
+{
+	if(old_bytes >= new_bytes) return old_bytes;
+	if(old_bytes) device_free(dst,old_bytes);
+	device_malloc(dst,new_bytes);
+	return new_bytes;
+}
+
+
 ProfileBufferArray
 acPBACreate(const size3_t counts)
 {
   ProfileBufferArray pba{};
-  pba.count = counts.z;
   for (int i = 0; i < NUM_PROFILES; ++i) {
     const size_t bytes = prof_size(Profile(i),counts)*sizeof(AcReal);
     device_malloc(&pba.in[i],  bytes);
@@ -503,23 +522,22 @@ acPBADestroy(ProfileBufferArray* pba, const size3_t counts)
     pba->in[i]  = NULL;
     pba->out[i] = NULL;
   }
-  pba->count = 0;
 }
 
 AcResult
 acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
-  const size_t count = vba->bytes / sizeof(vba->in[0][0]);
+  const size_t count = vba->bytes / sizeof(vba->on_device.in[0][0]);
 
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    ERRCHK_ALWAYS(vba->in[i]);
-    ERRCHK_ALWAYS(vba->out[i]);
-    acKernelFlush(stream, vba->in[i], count, (AcReal)0);
-    acKernelFlush(stream, vba->out[i], count, (AcReal)0);
+    ERRCHK_ALWAYS(vba->on_device.in[i]);
+    ERRCHK_ALWAYS(vba->on_device.out[i]);
+    acKernelFlush(stream, vba->on_device.in[i], count, (AcReal)0);
+    acKernelFlush(stream, vba->on_device.out[i], count, (AcReal)0);
   }
-  memset(&vba->kernel_input_params,0,sizeof(acKernelInputParams));
+  memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBAReset(stream, &vba->profiles, (size3_t){vba->mx,vba->my,vba->mz});
+  acPBAReset(stream, &vba->on_device.profiles, (size3_t){vba->mx,vba->my,vba->mz});
   return AC_SUCCESS;
 }
 
@@ -568,6 +586,74 @@ buffer_dims(const AcMeshInfoParams config)
 	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
 }
 
+#if AC_USE_HIP
+#include <hipcub/hipcub.hpp>
+#define cub hipcub
+#else
+#include <cub/cub.cuh>
+#endif
+
+template <typename T>
+void
+cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* d_in, const size_t count, T* d_out,  AcReduceOp reduce_op)
+{
+  switch(reduce_op)
+  {
+	  case(REDUCE_SUM):
+	  	ERRCHK_CUDA(cub::DeviceReduce::Sum(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
+	  	break;
+	  case(REDUCE_MIN):
+	  	ERRCHK_CUDA(cub::DeviceReduce::Min(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
+	  	break;
+	  case(REDUCE_MAX):
+	  	ERRCHK_CUDA(cub::DeviceReduce::Max(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
+	  	break;
+	default:
+		ERRCHK_ALWAYS(reduce_op != NO_REDUCE);
+  }
+  if (cudaGetLastError() != cudaSuccess) {
+          ERRCHK_CUDA_KERNEL_ALWAYS();
+          ERRCHK_CUDA_ALWAYS(cudaGetLastError());
+  }
+}
+
+void
+init_scratchpads(VertexBufferArray* vba, const size_t count)
+{
+    // Reductions
+    const size_t scratchpad_size = count;
+    vba->scratchpad_size = scratchpad_size;
+
+    {
+	//TP: this is dangerous since it is not always true for DSL reductions but for now keep it
+    	const size_t scratchpad_size_bytes = scratchpad_size*sizeof(AcReal);
+    	for(int i = 0; i < NUM_REAL_SCRATCHPADS; ++i) {
+	    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba->reduce_res_real[i],sizeof(AcReal)));
+    	    ERRCHK_CUDA_ALWAYS(
+    	        cudaMalloc((void**)&vba->on_device.reduce_scratchpads_real[i], 
+	    	    i < NUM_REAL_OUTPUTS ? scratchpad_size_bytes : scratchpad_size_bytes)
+	        );
+    	    acKernelFlush(0,vba->on_device.reduce_scratchpads_real[i], scratchpad_size,
+	    		0.0
+	    	     );
+	    vba->reduce_cub_tmp_real[i] = NULL;
+	    vba->reduce_cub_tmp_size_real[i] = 0;
+    	}
+    }
+    {
+    	const size_t scratchpad_size_bytes = scratchpad_size*sizeof(int);
+    	for(int i = 0; i < NUM_INT_OUTPUTS; ++i) {
+	    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba->reduce_res_int[i],sizeof(int)));
+    	    ERRCHK_CUDA_ALWAYS(
+    	        cudaMalloc((void**)&vba->on_device.reduce_scratchpads_int[i], scratchpad_size_bytes));
+    	    acKernelFlushInt(0,vba->on_device.reduce_scratchpads_int[i], scratchpad_size,0);
+
+	    vba->reduce_cub_tmp_int[i] = NULL;
+	    vba->reduce_cub_tmp_size_int[i] = 0;
+    	}
+    }
+}
+
 VertexBufferArray
 acVBACreate(const AcMeshInfoParams config)
 {
@@ -577,7 +663,7 @@ acVBACreate(const AcMeshInfoParams config)
   const size3_t counts = buffer_dims(config);
   VertexBufferArray vba;
   size_t count = counts.x*counts.y*counts.z;
-  size_t bytes = sizeof(vba.in[0][0]) * count;
+  size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
   vba.bytes          = bytes;
   vba.mx             = counts.x;
   vba.my             = counts.y;
@@ -592,34 +678,38 @@ acVBACreate(const AcMeshInfoParams config)
   acKernelFlush(STREAM_DEFAULT,allbuf_in, count*NUM_VTXBUF_HANDLES, (AcReal)0.0);
   ERRCHK_CUDA_ALWAYS(cudaMemset((void*)allbuf_out, 0, allbytes));
 
-  vba.in[0]=allbuf_in; vba.out[0]=allbuf_out;
-printf("i,vbas[0]= %p %p \n",vba.in[0],vba.out[0]);
+  vba.on_device.in[0]=allbuf_in; vba.on_device.out[0]=allbuf_out;
+  //printf("i,vbas[0]= %p %p \n",vba.on_device.in[0],vba.on_device.out[0]);
   for (size_t i = 1; i < NUM_VTXBUF_HANDLES; ++i) {
-    vba.in [i]=vba.in [i-1]+count;
-    vba.out[i]=vba.out[i-1]+count;
-printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
+    vba.on_device.in [i]=vba.on_device.in [i-1]+count;
+    vba.on_device.out[i]=vba.on_device.out[i-1]+count;
+    //printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
   }
 #else
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    device_malloc((void**) &vba.in[i],bytes);
+    device_malloc((void**) &vba.on_device.in[i],bytes);
     //Auxiliary fields need only a single copy so out can point to in
     if (vtxbuf_is_auxiliary[i])
     {
-      vba.out[i] = vba.in[i];
+      vba.on_device.out[i] = vba.on_device.in[i];
     }else{
-      device_malloc((void**) &vba.out[i],bytes);
+      device_malloc((void**) &vba.on_device.out[i],bytes);
     }
   }
 #endif
   //Allocate workbuffers
   for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
-    device_malloc((void**)&vba.w[i],bytes);
+    device_malloc((void**)&vba.on_device.w[i],bytes);
 
 
   AcArrayTypes::run<allocate_arrays>(config);
 
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  vba.profiles = acPBACreate(counts);
+  vba.on_device.profiles = acPBACreate(counts);
+  vba.profile_count = counts.z;
+  memset(&vba.on_device.reduce_scratchpads_real,0.0,sizeof(vba.on_device.reduce_scratchpads_real));
+  memset(&vba.on_device.reduce_scratchpads_int, 0,  sizeof(vba.on_device.reduce_scratchpads_int));
+  init_scratchpads(&vba,counts.x*counts.y*counts.z);
 
   acVBAReset(0, &vba);
   ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
@@ -670,24 +760,53 @@ struct free_arrays
 };
 
 void
+destroy_scratchpads(VertexBufferArray* vba)
+{
+    for(size_t j = 0; j < NUM_REAL_SCRATCHPADS; ++j)
+    {
+        ERRCHK_CUDA_ALWAYS(cudaFree(vba->on_device.reduce_scratchpads_real[j]));
+        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_cub_tmp_real[j]));
+        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_res_real[j]));
+
+	vba->on_device.reduce_scratchpads_real[j] = NULL;
+	vba->reduce_cub_tmp_real[j] = NULL;
+	vba->reduce_res_real[j] = NULL;
+    }
+
+
+    for(int j = 0; j < NUM_INT_OUTPUTS; ++j)
+    {
+        ERRCHK_CUDA_ALWAYS(cudaFree(vba->on_device.reduce_scratchpads_int[j]));
+        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_cub_tmp_int[j]));
+        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_res_int[j]));
+
+        vba->on_device.reduce_scratchpads_int[j] = NULL;
+        vba->reduce_cub_tmp_int[j] = NULL;
+        vba->reduce_res_int[j] = NULL;
+    }
+}
+
+void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfoParams config)
 {
+  destroy_scratchpads(vba);
   for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) { 
     //TP: if dead then not allocated and thus nothing to free
-    device_free(&(vba->in[i]), vba->bytes);
+    device_free(&(vba->on_device.in[i]), vba->bytes);
     if (vtxbuf_is_auxiliary[i])
-      vba->out[i] = NULL;
+      vba->on_device.out[i] = NULL;
     else
-      device_free(&(vba->out[i]), vba->bytes);
+      device_free(&(vba->on_device.out[i]), vba->bytes);
   }
   //Free workbuffers 
   for (int i = 0; i < NUM_WORK_BUFFERS; ++i) 
-    device_free(&(vba->w[i]), vba->bytes);
+    device_free(&(vba->on_device.w[i]), vba->bytes);
 
   //Free arrays
   AcArrayTypes::run<free_arrays>(config);
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBADestroy(&vba->profiles,(size3_t){vba->mx,vba->my,vba->mz});
+  acPBADestroy(&vba->on_device.profiles,(size3_t){vba->mx,vba->my,vba->mz});
+  vba->profile_count = 0;
   vba->bytes = 0;
   vba->mx    = 0;
   vba->my    = 0;
@@ -723,9 +842,9 @@ acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const int3 start,
   	kernel_running_reduce_offsets[kernel] += get_num_of_reduce_output(bpg,tpb);
   }
 
-  vba.reduce_offset = reduce_offsets[kernel][start];
+  vba.on_device.reduce_offset = reduce_offsets[kernel][start];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
-  KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba);
+  KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device);
   ERRCHK_CUDA_KERNEL();
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
@@ -751,7 +870,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
 
   // Warmup
   ERRCHK_CUDA(cudaEventRecord(tstart));
-  KERNEL_LAUNCH(kernels[kernel],bpg, tpb, smem)(start, end, vba);
+  KERNEL_LAUNCH(kernels[kernel],bpg, tpb, smem)(start, end, vba.on_device);
   ERRCHK_CUDA(cudaEventRecord(tstop));
   ERRCHK_CUDA(cudaEventSynchronize(tstop));
   ERRCHK_CUDA_KERNEL();
@@ -759,7 +878,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
 
   // Benchmark
   ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
-  KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem)(start, end, vba);
+  KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem)(start, end, vba.on_device);
   ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
   ERRCHK_CUDA(cudaEventSynchronize(tstop));
   float milliseconds = 0;
@@ -990,7 +1109,7 @@ void
 make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel kernel)
 {
   //TP: have to set reduce offset zero since it might not be
-  vba.reduce_offset = 0;
+  vba.on_device.reduce_offset = 0;
 #include "safe_vtxbuf_input_params.h"
 }
 
@@ -1118,11 +1237,11 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
         ERRCHK_CUDA(cudaEventCreate(&tstart));
         ERRCHK_CUDA(cudaEventCreate(&tstop));
 
-        KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba); // Dryrun
+        KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba.on_device); // Dryrun
         ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
         ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
         for (int i = 0; i < num_iters; ++i)
-          KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba); // Dryrun
+          KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba.on_device); // Dryrun
         ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
         ERRCHK_CUDA(cudaEventSynchronize(tstop));
 
@@ -1249,9 +1368,9 @@ acGetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 void
 acVBASwapBuffer(const Field field, VertexBufferArray* vba)
 {
-  AcReal* tmp     = vba->in[field];
-  vba->in[field]  = vba->out[field];
-  vba->out[field] = tmp;
+  AcReal* tmp     = vba->on_device.in[field];
+  vba->on_device.in[field]  = vba->on_device.out[field];
+  vba->on_device.out[field] = tmp;
 }
 
 void
@@ -1264,9 +1383,9 @@ acVBASwapBuffers(VertexBufferArray* vba)
 void
 acPBASwapBuffer(const Profile profile, VertexBufferArray* vba)
 {
-  AcReal* tmp                = vba->profiles.in[profile];
-  vba->profiles.in[profile]  = vba->profiles.out[profile];
-  vba->profiles.out[profile] = tmp;
+  AcReal* tmp                = vba->on_device.profiles.in[profile];
+  vba->on_device.profiles.in[profile]  = vba->on_device.profiles.out[profile];
+  vba->on_device.profiles.out[profile] = tmp;
 }
 
 void
@@ -1592,110 +1711,97 @@ acReindexCross(const cudaStream_t , //
 }
 #endif
 
-#if AC_USE_HIP
-#include <hipcub/hipcub.hpp>
-#define cub hipcub
-#else
-#include <cub/cub.cuh>
-#endif
-
-AcResult
-acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
-                  const size_t count, const size_t num_segments, AcReal* d_out)
+typedef struct
 {
+	size_t x;
+	size_t y;
+} size_t2;
+
+struct size_t2Hash {
+    std::size_t operator()(const size_t2& v) const {
+        return std::hash<size_t>()(v.x) ^ std::hash<size_t>()(v.y) << 1;
+    }
+};
+
+std::unordered_map<size_t2,size_t*,size_t2Hash> segmented_reduce_offsets{};
+
+static HOST_DEVICE_INLINE bool
+operator==(const size_t2& a, const size_t2& b)
+{
+  return a.x == b.x && a.y == b.y;
+}
+
+//TP: will return a cached allocation if one is found
+size_t*
+get_offsets(const size_t count, const size_t num_segments)
+{
+  const size_t2 key = {count,num_segments};
+  if(segmented_reduce_offsets.find(key) != segmented_reduce_offsets.end())
+	  return segmented_reduce_offsets[key];
+
   size_t* offsets = (size_t*)malloc(sizeof(offsets[0]) * (num_segments + 1));
   ERRCHK_ALWAYS(offsets);
   for (size_t i = 0; i <= num_segments; ++i) {
     offsets[i] = i * (count / num_segments);
   }
-
   size_t* d_offsets = NULL;
   ERRCHK_CUDA_ALWAYS(cudaMalloc(&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1)));
   ERRCHK_ALWAYS(d_offsets);
-  ERRCHK_CUDA(cudaMemcpy(d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),
-             cudaMemcpyHostToDevice));
+  ERRCHK_CUDA(cudaMemcpy(d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),cudaMemcpyHostToDevice));
+  free(offsets);
+  segmented_reduce_offsets[key] = d_offsets;
+  return d_offsets;
+}
+
+
+AcResult
+acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
+                  const size_t count, const size_t num_segments, AcReal* d_out, AcReal** tmp_buffer, size_t* tmp_size)
+{
+
+  size_t* d_offsets = get_offsets(count,num_segments);
 
   void* d_temp_storage      = NULL;
   size_t temp_storage_bytes = 0;
   ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
                                   d_out, num_segments, d_offsets, d_offsets + 1,
                                   stream));
-  // printf("Temp storage: %zu bytes\n", temp_storage_bytes);
-  ERRCHK_CUDA_ALWAYS(cudaMalloc(&d_temp_storage, temp_storage_bytes));
-  ERRCHK_ALWAYS(d_temp_storage);
 
-  ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+  *tmp_size = device_resize((void**)tmp_buffer,*tmp_size,temp_storage_bytes);
+  ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum((void*)(*tmp_buffer), temp_storage_bytes, d_in,
                             d_out, num_segments, d_offsets, d_offsets + 1,
                             stream));
-
-  ERRCHK_CUDA_ALWAYS(cudaStreamSynchronize(
-      stream)); // Note, would not be needed if allocated at initialization
-  ERRCHK_CUDA_ALWAYS(cudaFree(d_temp_storage));
-  ERRCHK_CUDA_ALWAYS(cudaFree(d_offsets));
-  free(offsets);
   return AC_SUCCESS;
 }
-typedef struct
-{
-	void* data;
-	size_t bytes;
-} AcDeviceTmpBuffer;
-template <typename T>
-void
-cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* d_in, const size_t count, T* d_out,  AcReduceOp reduce_op)
-{
-  switch(reduce_op)
-  {
-	  case(REDUCE_SUM):
-	  	ERRCHK_CUDA(cub::DeviceReduce::Sum(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
-	  	break;
-	  case(REDUCE_MIN):
-	  	ERRCHK_CUDA(cub::DeviceReduce::Min(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
-	  	break;
-	  case(REDUCE_MAX):
-	  	ERRCHK_CUDA(cub::DeviceReduce::Max(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
-	  	break;
-	default:
-		ERRCHK_ALWAYS(reduce_op != NO_REDUCE);
-  }
-  if (cudaGetLastError() != cudaSuccess) {
-          ERRCHK_CUDA_KERNEL_ALWAYS();
-          ERRCHK_CUDA_ALWAYS(cudaGetLastError());
-  }
-}
+
 template <typename T>
 AcResult
-acReduceBase(const cudaStream_t stream, const T* d_in, const size_t count, T* d_out, const AcReduceOp reduce_op)
+acReduceBase(const cudaStream_t stream, const T* d_in, const size_t count, T* d_out, const AcReduceOp reduce_op, T** tmp_buffer, size_t* tmp_buffer_size)
 {
-  ERRCHK_ALWAYS(count != 0);
-  ERRCHK_ALWAYS(d_in  != NULL);
-  ERRCHK_ALWAYS(d_out != NULL);
+  ERRCHK(count != 0);
+  ERRCHK(d_in  != NULL);
+  ERRCHK(d_out != NULL);
 
   AcDeviceTmpBuffer temp_storage{NULL,0};
   cub_reduce(temp_storage,stream,d_in,count,d_out,reduce_op);
 
-  ERRCHK_ALWAYS(temp_storage.bytes != 0);
-  ERRCHK_CUDA_ALWAYS(cudaMalloc(&temp_storage.data, temp_storage.bytes));
-  ERRCHK_ALWAYS(temp_storage.data);
-
+  *tmp_buffer_size = device_resize((void**)tmp_buffer,*tmp_buffer_size,temp_storage.bytes);
+  temp_storage.data = (void*)(*tmp_buffer);
   cub_reduce(temp_storage,stream,d_in,count,d_out,reduce_op);
-  ERRCHK_CUDA_ALWAYS(cudaStreamSynchronize(
-    stream)); // Note, would not be needed if allocated at initialization
-  ERRCHK_CUDA_ALWAYS(cudaFree(temp_storage.data));
   return AC_SUCCESS;
 }
 
 AcResult
-acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out, const AcReduceOp reduce_op)
+acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out, const AcReduceOp reduce_op, AcReal** tmp_buffer, size_t* tmp_buffer_size)
 {
-	return acReduceBase(stream,d_in,count,d_out,reduce_op);
+	return acReduceBase(stream,d_in,count,d_out,reduce_op,tmp_buffer,tmp_buffer_size);
 }
 
 
 AcResult
-acReduceInt(const cudaStream_t stream, const int* d_in, const size_t count, int* d_out, const AcReduceOp reduce_op)
+acReduceInt(const cudaStream_t stream, const int* d_in, const size_t count, int* d_out, const AcReduceOp reduce_op, int** tmp_buffer, size_t* tmp_buffer_size)
 {
-	return acReduceBase(stream,d_in,count,d_out,reduce_op);
+	return acReduceBase(stream,d_in,count,d_out,reduce_op,tmp_buffer,tmp_buffer_size);
 }
 
 static __global__ void

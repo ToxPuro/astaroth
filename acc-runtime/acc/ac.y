@@ -1192,7 +1192,7 @@ function_definition: declaration function_body {
                             $$->type |= NODE_KFUNCTION;
 			    if($$->rhs->lhs) $$->rhs->lhs->type |= NODE_NO_OUT;
                             // Set kernel built-in variables
-                            const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
+                            const char* default_param_list=  "(const int3 start, const int3 end, DeviceVertexBufferArray vba";
                             astnode_set_prefix(default_param_list, $$->rhs);
                         } else {
                             astnode_set_infix(" __attribute__((unused)) =[&]", $$);

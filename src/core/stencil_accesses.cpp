@@ -266,7 +266,7 @@ extern "C"
 	acAnalysisBCInfo acAnalysisGetBCInfo(const AcMeshInfoParams info, const AcKernel bc, const AcBoundary boundary);
 }
 //#include "user_constants.h"
-typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
+typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define tid  ((int3){0,0,0})
 #include "user_kernel_declarations.h"
 
@@ -373,14 +373,14 @@ vbaCreate(const size_t count)
   VertexBufferArray vba{};
   memset(&vba, 0, sizeof(vba));
 
-  const size_t bytes = sizeof(vba.in[0][0]) * count;
+  const size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    vba.in[i]  = (AcReal*)malloc(bytes);
-    vba.out[i] = (AcReal*)malloc(bytes);
+    vba.on_device.in[i]  = (AcReal*)malloc(bytes);
+    vba.on_device.out[i] = (AcReal*)malloc(bytes);
   }
   for (size_t i = 0; i < NUM_PROFILES; ++i) {
-    vba.profiles.in[i]  = (AcReal*)malloc(bytes);
-    vba.profiles.out[i] = (AcReal*)malloc(bytes);
+    vba.on_device.profiles.in[i]  = (AcReal*)malloc(bytes);
+    vba.on_device.profiles.out[i] = (AcReal*)malloc(bytes);
   }
 
   return vba;
@@ -390,16 +390,16 @@ void
 vbaDestroy(VertexBufferArray* vba)
 {
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    free(vba->in[i]);
-    free(vba->out[i]);
-    vba->in[i]  = NULL;
-    vba->out[i] = NULL;
+    free(vba->on_device.in[i]);
+    free(vba->on_device.out[i]);
+    vba->on_device.in[i]  = NULL;
+    vba->on_device.out[i] = NULL;
   }
   for (size_t i = 0; i < NUM_PROFILES; ++i) {
-    free(vba->profiles.in[i]);
-    free(vba->profiles.out[i]);
-    vba->profiles.in[i]  = NULL;
-    vba->profiles.out[i] = NULL;
+    free(vba->on_device.profiles.in[i]);
+    free(vba->on_device.profiles.out[i]);
+    vba->on_device.profiles.in[i]  = NULL;
+    vba->on_device.profiles.out[i] = NULL;
   }
 }
 VertexBufferArray VBA = vbaCreate(1000);
@@ -408,7 +408,7 @@ void
 execute_kernel(const int kernel_index)
 {
     const Kernel kernel = kernels[kernel_index];
-    kernel((int3){0, 0, 0}, (int3){1, 1, 1}, VBA);
+    kernel((int3){0, 0, 0}, (int3){1, 1, 1}, VBA.on_device);
 }
 void
 execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
@@ -418,38 +418,38 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 	{
 		int3 start = (int3){0,NGHOST,NGHOST};
 		int3 end   = start + (int3){1,1,1};
-    		kernel(start,end,VBA);
+    		kernel(start,end,VBA.on_device);
 	}
 
 	if(BOUNDARY_X_TOP & boundary)
 	{
 		int3 start = (int3){VAL(AC_nlocal).x+NGHOST, NGHOST, NGHOST};
 		int3 end   = start + (int3){1,1,1};
-    		kernel(start,end,VBA);
+    		kernel(start,end,VBA.on_device);
 	}
 	if(BOUNDARY_Y_BOT & boundary)
 	{
 		int3 start = (int3){NGHOST, 0, NGHOST};
 		int3 end   = start + (int3){1,1,1};
-    		kernel(start,end,VBA);
+    		kernel(start,end,VBA.on_device);
 	}
 	if(BOUNDARY_Y_TOP & boundary)
 	{
 		int3 start = (int3){NGHOST, VAL(AC_nlocal).y+NGHOST, NGHOST};
 		int3 end   = start + (int3){1,1,1};
-    		kernel(start,end,VBA);
+    		kernel(start,end,VBA.on_device);
 	}
 	if(BOUNDARY_Z_BOT  & boundary)
 	{
 		int3 start = (int3){NGHOST, NGHOST, 0};
 		int3 end   = start + (int3){1,1,1};
-    		kernel(start,end,VBA);
+    		kernel(start,end,VBA.on_device);
 	}
 	if(BOUNDARY_Z_TOP & boundary)
 	{
 		int3 start = (int3){NGHOST, NGHOST, VAL(AC_nlocal).z+NGHOST};
 		int3 end   = start + (int3){1,1,1};
-    		kernel(start,end,VBA);
+    		kernel(start,end,VBA.on_device);
 	}
 }
 int

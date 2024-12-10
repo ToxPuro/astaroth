@@ -193,22 +193,42 @@ typedef struct
 typedef struct {
   AcReal* in[NUM_PROFILES];
   AcReal* out[NUM_PROFILES];
-  size_t count;
 } ProfileBufferArray;
+
 
 
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
     AcReal* w[NUM_WORK_BUFFERS];
+    acKernelInputParams kernel_input_params;
+    AcReal* reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+    int* reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
+    int reduce_offset;
+    ProfileBufferArray profiles;
+  } DeviceVertexBufferArray;
+
+  typedef struct {
+    //Auxiliary metadata
     size_t bytes;
     size_t mx, my, mz;
-    acKernelInputParams kernel_input_params;
-    AcReal* reduce_scratchpads_real[NUM_REAL_SCRATCHPADS][NUM_REDUCE_SCRATCHPADS];
-    int* reduce_scratchpads_int[NUM_INT_OUTPUTS+1][NUM_REDUCE_SCRATCHPADS];
-    int reduce_offset;
     size_t scratchpad_size;
-    ProfileBufferArray profiles;
+    //All kernel parameters and memory allocated on the device
+    DeviceVertexBufferArray on_device;
+    size_t profile_count;
+
+    AcReal* reduce_cub_tmp_real[NUM_REAL_SCRATCHPADS];
+    int*    reduce_cub_tmp_int[NUM_INT_OUTPUTS+1];
+
+
+    AcReal* reduce_res_real[NUM_REAL_SCRATCHPADS];
+    int*    reduce_res_int[NUM_INT_OUTPUTS+1];
+
+    size_t reduce_cub_tmp_size_real[NUM_REAL_SCRATCHPADS];
+    size_t reduce_cub_tmp_size_int[NUM_INT_OUTPUTS+1];
+    size_t reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+    size_t reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
+
   } VertexBufferArray;
 
 
@@ -441,13 +461,13 @@ AcResult acReindexCross(const cudaStream_t stream, //
 
 AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
                            const size_t count, const size_t num_segments,
-                           AcReal* d_out);
+                           AcReal* d_out, AcReal** tmp, size_t* tmp_size);
 
 AcResult
-acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out,const AcReduceOp);
+acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out,const AcReduceOp, AcReal** tmp_buffer, size_t* tmp_buffer_size);
 
 AcResult
-acReduceInt(const cudaStream_t stream, const int* d_in, const size_t count, int* d_out,const AcReduceOp);
+acReduceInt(const cudaStream_t stream, const int* d_in, const size_t count, int* d_out,const AcReduceOp, int** tmp_buffer,size_t* tmp_buffer_size);
 
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
                            AcReal* array);
