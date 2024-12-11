@@ -7190,7 +7190,7 @@ bool can_fuse_kernels(const node_vec kernels)
 		const int kernel_index = get_symbol_index(NODE_FUNCTION_ID, func_name, KERNEL_STR);
 		if(kernel_index == -1) fatal("Did not find kernel: %s\n",func_name);
 
-		//TP: can't fuse if Field F is updated before and then used in a succeding stencil call
+		//TP: can't fuse if Field F is updated before and then used in a succeeding stencil call
 		for(size_t field_index = 0; field_index < num_fields; ++field_index)
 			if(field_has_stencil_op[field_index + num_fields*kernel_index] && updated_fields[field_index]) return false;
 
@@ -7218,9 +7218,11 @@ bool should_fuse_kernels(const node_vec kernels)
 	bool fields_in_working_memory[num_fields];
 	bool fields_written[num_fields];
 	bool stencil_computed[num_fields];
+
 	memset(fields_in_working_memory,false,num_fields*sizeof(bool));
 	memset(fields_written,false,num_fields*sizeof(bool));
 	memset(stencil_computed,false,num_fields*sizeof(bool));
+
 	for(size_t i = 0; i < kernels.size; ++i)
 	{
 		const char* func_name = get_node_by_token(IDENTIFIER,kernels.data[i])->buffer;
@@ -7239,6 +7241,9 @@ bool should_fuse_kernels(const node_vec kernels)
 		{
 			fields_in_working_memory[field_index] |= written_fields[field_index + num_fields*kernel_index];
 			fields_in_working_memory[field_index] |= read_fields[field_index + num_fields*kernel_index];
+			//TP: it is not required to check the stencil offsets since even if for example is reading one to the left
+			//and later reads at the current point there is reuse since the current point of the left vertex is the left of the current vertex thus is likely to be in the cache
+			fields_in_working_memory[field_index] |= field_has_stencil_op[field_index + num_fields*kernel_index];
 
 			fields_written[field_index] |= written_fields[field_index + num_fields*kernel_index];
 		}

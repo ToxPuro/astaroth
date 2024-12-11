@@ -79,8 +79,8 @@ get_kernel_fields(const AcKernel kernel)
 		KernelFields res{};
 		for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
 		{
-			if(info.read_fields[kernel][i]    || kernel == BOUNDCOND_PERIODIC)    res.in.push_back((Field)i);
-			if(info.written_fields[kernel][i] || kernel == BOUNDCOND_PERIODIC)    res.out.push_back((Field)i);
+			if(info.read_fields[kernel][i]             || info.field_has_stencil_op[kernel][i] || kernel == BOUNDCOND_PERIODIC)    res.in.push_back((Field)i);
+			if(info.written_fields[kernel][i]          || kernel == BOUNDCOND_PERIODIC)    res.out.push_back((Field)i);
 		}
 		return res;
 }
