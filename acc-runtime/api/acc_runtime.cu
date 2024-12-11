@@ -636,8 +636,10 @@ init_scratchpads(VertexBufferArray* vba, const size_t count)
     	    acKernelFlush(0,vba->on_device.reduce_scratchpads_real[i], scratchpad_size,
 	    		0.0
 	    	     );
-	    vba->reduce_cub_tmp_real[i] = NULL;
-	    vba->reduce_cub_tmp_size_real[i] = 0;
+	    vba->reduce_cub_tmp_real[i] = (AcReal**)malloc(sizeof(AcReal*));
+	    *(vba->reduce_cub_tmp_real[i]) = NULL;
+	    vba->reduce_cub_tmp_size_real[i] = (size_t*)malloc(sizeof(size_t));
+	    *(vba->reduce_cub_tmp_size_real[i]) = 0;
     	}
     }
     {
@@ -648,8 +650,10 @@ init_scratchpads(VertexBufferArray* vba, const size_t count)
     	        cudaMalloc((void**)&vba->on_device.reduce_scratchpads_int[i], scratchpad_size_bytes));
     	    acKernelFlushInt(0,vba->on_device.reduce_scratchpads_int[i], scratchpad_size,0);
 
-	    vba->reduce_cub_tmp_int[i] = NULL;
-	    vba->reduce_cub_tmp_size_int[i] = 0;
+	    vba->reduce_cub_tmp_int[i] = (int**)malloc(sizeof(int*));
+	    *(vba->reduce_cub_tmp_int[i]) = NULL;
+	    vba->reduce_cub_tmp_size_int[i] = (size_t*)malloc(sizeof(size_t));
+	    *(vba->reduce_cub_tmp_size_int[i]) = 0;
     	}
     }
 }
@@ -765,10 +769,13 @@ destroy_scratchpads(VertexBufferArray* vba)
     for(size_t j = 0; j < NUM_REAL_SCRATCHPADS; ++j)
     {
         ERRCHK_CUDA_ALWAYS(cudaFree(vba->on_device.reduce_scratchpads_real[j]));
-        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_cub_tmp_real[j]));
+        ERRCHK_CUDA_ALWAYS(cudaFree(*vba->reduce_cub_tmp_real[j]));
         ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_res_real[j]));
 
 	vba->on_device.reduce_scratchpads_real[j] = NULL;
+	free(vba->reduce_cub_tmp_real[j]);
+	free(vba->reduce_cub_tmp_size_real[j]);
+	vba->reduce_cub_tmp_size_real[j] = NULL;
 	vba->reduce_cub_tmp_real[j] = NULL;
 	vba->reduce_res_real[j] = NULL;
     }
@@ -777,10 +784,13 @@ destroy_scratchpads(VertexBufferArray* vba)
     for(int j = 0; j < NUM_INT_OUTPUTS; ++j)
     {
         ERRCHK_CUDA_ALWAYS(cudaFree(vba->on_device.reduce_scratchpads_int[j]));
-        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_cub_tmp_int[j]));
+        ERRCHK_CUDA_ALWAYS(cudaFree(*vba->reduce_cub_tmp_int[j]));
         ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_res_int[j]));
 
         vba->on_device.reduce_scratchpads_int[j] = NULL;
+	free(vba->reduce_cub_tmp_int[j]);
+	free(vba->reduce_cub_tmp_size_int[j]);
+	vba->reduce_cub_tmp_size_int[j] = NULL;
         vba->reduce_cub_tmp_int[j] = NULL;
         vba->reduce_res_int[j] = NULL;
     }

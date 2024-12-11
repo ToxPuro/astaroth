@@ -990,7 +990,7 @@ acDeviceReduceScalNoPostProcessing(const Device device, const Stream stream, con
     const int3 end   = acGetMaxNN(device->local_config);
 
     *result = acKernelReduceScal(device->streams[stream], reduction, vtxbuf_handle,
-                                 start, end, 0, device->vba.scratchpad_size,&device->vba);
+                                 start, end, 0, device->vba.scratchpad_size,device->vba);
     return AC_SUCCESS;
 }
 
@@ -1028,7 +1028,7 @@ acDeviceReduceVecNoPostProcessing(const Device device, const Stream stream, cons
     const int3 start = acGetMinNN(device->local_config);
     const int3 end   = acGetMaxNN(device->local_config);
 
-    *result = acKernelReduceVec(device->streams[stream], reduction, start, end, {vtxbuf0,vtxbuf1,vtxbuf2},&device->vba,
+    *result = acKernelReduceVec(device->streams[stream], reduction, start, end, {vtxbuf0,vtxbuf1,vtxbuf2},device->vba,
                                 0, device->vba.scratchpad_size);
     return AC_SUCCESS;
 }
@@ -1061,8 +1061,8 @@ acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const Ac
 {
 	auto in       = device->vba.on_device.reduce_scratchpads_real[(int)output];
 	auto out      = device->vba.reduce_res_real[(int)output];
-	auto tmp      = &device->vba.reduce_cub_tmp_real[(int)output];
-	auto tmp_size = &device->vba.reduce_cub_tmp_size_real[(int)output];
+	auto tmp      = device->vba.reduce_cub_tmp_real[(int)output];
+	auto tmp_size = device->vba.reduce_cub_tmp_size_real[(int)output];
 	ERRCHK_ALWAYS(in != NULL);
 	ERRCHK_ALWAYS(out != NULL);
 	ERRCHK_ALWAYS(result != NULL);
@@ -1080,8 +1080,8 @@ acDeviceFinishReduceInt(Device device, const Stream stream, int* result,const Ac
 {
 	auto in  = device->vba.on_device.reduce_scratchpads_int[(int)output];
 	auto out = device->vba.reduce_res_int[(int)output];
-	auto tmp      = &device->vba.reduce_cub_tmp_int[(int)output];
-	auto tmp_size = &device->vba.reduce_cub_tmp_size_int[(int)output];
+	auto tmp      = device->vba.reduce_cub_tmp_int[(int)output];
+	auto tmp_size = device->vba.reduce_cub_tmp_size_int[(int)output];
 	acReduceInt(device->streams[stream],in, acGetKernelReduceScratchPadSize(kernel),out,reduce_op,tmp,tmp_size);
 	cudaMemcpyAsync(result,out,sizeof(out[0]),cudaMemcpyDeviceToHost,device->streams[stream]);
 	return AC_SUCCESS;
@@ -1103,7 +1103,7 @@ acDeviceReduceVecScalNoPostProcessing(const Device device, const Stream stream,
 
     *result = acKernelReduceVecScal(device->streams[stream], reduction, start, end,
 		    		    {vtxbuf0,vtxbuf1,vtxbuf2,vtxbuf3},
-				    &device->vba,
+				    device->vba,
                                     0, device->vba.scratchpad_size);
     return AC_SUCCESS;
 }
@@ -1156,7 +1156,7 @@ acDeviceReduceXY(const Device device, const Stream stream, const Field field,
         const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], reduction,
                                                               field, start, end,
 							      0,
-                                                              device->vba.scratchpad_size,&device->vba);
+                                                              device->vba.scratchpad_size,device->vba);
         // printf("%zu Profile: %g\n", k, result);
         // Could be optimized by performing the reduction completely in
         // device memory without the redundant device-host-device transfer
@@ -1701,8 +1701,8 @@ acDeviceReduceAverages(const Device device, const Stream stream, const Profile p
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     return acReduceProfile(prof,acGetMeshDims(device->local_config),
 			   device->vba.on_device.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)],
-			   &device->vba.reduce_cub_tmp_real[PROF_SCRATCHPAD_INDEX(prof)],
-			   &device->vba.reduce_cub_tmp_size_real[PROF_SCRATCHPAD_INDEX(prof)],
+			   device->vba.reduce_cub_tmp_real[PROF_SCRATCHPAD_INDEX(prof)],
+			   device->vba.reduce_cub_tmp_size_real[PROF_SCRATCHPAD_INDEX(prof)],
 			   device->vba.on_device.profiles.in[prof],
 			   device->streams[stream]
 		    );
@@ -1821,12 +1821,12 @@ acDeviceGetProfileBuffer(const Device device, const Profile prof)
 AcReal**
 acDeviceGetProfileCubTmp(const Device device, const Profile prof)
 {
-	return &device->vba.reduce_cub_tmp_real[PROF_SCRATCHPAD_INDEX(prof)];
+	return device->vba.reduce_cub_tmp_real[PROF_SCRATCHPAD_INDEX(prof)];
 }
 size_t*
 acDeviceGetProfileCubTmpSize(const Device device, const Profile prof)
 {
-	return &device->vba.reduce_cub_tmp_size_real[PROF_SCRATCHPAD_INDEX(prof)];
+	return device->vba.reduce_cub_tmp_size_real[PROF_SCRATCHPAD_INDEX(prof)];
 }
 AcReal**
 acDeviceGetStartOfProfiles(const Device device)

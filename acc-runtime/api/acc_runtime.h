@@ -217,17 +217,17 @@ typedef struct {
     DeviceVertexBufferArray on_device;
     size_t profile_count;
 
-    AcReal* reduce_cub_tmp_real[NUM_REAL_SCRATCHPADS];
-    int*    reduce_cub_tmp_int[NUM_INT_OUTPUTS+1];
+    AcReal** reduce_cub_tmp_real[NUM_REAL_SCRATCHPADS];
+    int**    reduce_cub_tmp_int[NUM_INT_OUTPUTS+1];
 
 
     AcReal* reduce_res_real[NUM_REAL_SCRATCHPADS];
     int*    reduce_res_int[NUM_INT_OUTPUTS+1];
 
-    size_t reduce_cub_tmp_size_real[NUM_REAL_SCRATCHPADS];
-    size_t reduce_cub_tmp_size_int[NUM_INT_OUTPUTS+1];
-    size_t reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-    size_t reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
+    size_t* reduce_cub_tmp_size_real[NUM_REAL_SCRATCHPADS];
+    size_t* reduce_cub_tmp_size_int[NUM_INT_OUTPUTS+1];
+    size_t* reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+    size_t* reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
 
   } VertexBufferArray;
 
