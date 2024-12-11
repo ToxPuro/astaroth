@@ -73,7 +73,7 @@ acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const
     // race conditions
     ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
-    AcReal* in  = vba.on_device.reduce_scratchpads_real[scratchpad_index];
+    AcReal* in  = vba.reduce_scratchpads_real[scratchpad_index];
 
     // Compute block dimensions
     const int3 dims            = end - start;
@@ -114,7 +114,7 @@ acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const 
     // race conditions
     ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
-    AcReal* in  = vba.on_device.reduce_scratchpads_real[scratchpad_index];
+    AcReal* in  = vba.reduce_scratchpads_real[scratchpad_index];
 
     // Set thread block dimensions
     const int3 dims            = end - start;
@@ -155,7 +155,7 @@ acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, co
     // race conditions
     ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
-    AcReal* in  = vba.on_device.reduce_scratchpads_real[scratchpad_index];
+    AcReal* in  = vba.reduce_scratchpads_real[scratchpad_index];
 
     // Set thread block dimensions
     const int3 dims            = end - start;

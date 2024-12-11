@@ -1059,7 +1059,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const AcReduction re
 AcResult
 acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output)
 {
-	auto in       = device->vba.on_device.reduce_scratchpads_real[(int)output];
+	auto in       = device->vba.reduce_scratchpads_real[(int)output];
 	auto out      = device->vba.reduce_res_real[(int)output];
 	auto tmp      = device->vba.reduce_cub_tmp_real[(int)output];
 	auto tmp_size = device->vba.reduce_cub_tmp_size_real[(int)output];
@@ -1078,7 +1078,7 @@ acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const Ac
 AcResult
 acDeviceFinishReduceInt(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
 {
-	auto in  = device->vba.on_device.reduce_scratchpads_int[(int)output];
+	auto in  = device->vba.reduce_scratchpads_int[(int)output];
 	auto out = device->vba.reduce_res_int[(int)output];
 	auto tmp      = device->vba.reduce_cub_tmp_int[(int)output];
 	auto tmp_size = device->vba.reduce_cub_tmp_size_int[(int)output];
@@ -1700,7 +1700,7 @@ acDeviceReduceAverages(const Device device, const Stream stream, const Profile p
 {
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     return acReduceProfile(prof,acGetMeshDims(device->local_config),
-			   device->vba.on_device.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)],
+			   device->vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)],
 			   device->vba.reduce_cub_tmp_real[PROF_SCRATCHPAD_INDEX(prof)],
 			   device->vba.reduce_cub_tmp_size_real[PROF_SCRATCHPAD_INDEX(prof)],
 			   device->vba.on_device.profiles.in[prof],
@@ -1752,7 +1752,7 @@ acDevicePreprocessScratchPad(Device device, const int variable, const AcType typ
 	if(type == AC_REAL_TYPE)
 	{
 		if constexpr (NUM_REAL_OUTPUTS == 0) return AC_SUCCESS;
-		auto* dst = device->vba.on_device.reduce_scratchpads_real[variable];
+		auto* dst = device->vba.reduce_scratchpads_real[variable];
 		if(op == REDUCE_SUM)
     	    		acKernelFlush(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),0.0);
 		else if(op == REDUCE_MIN)
@@ -1763,7 +1763,7 @@ acDevicePreprocessScratchPad(Device device, const int variable, const AcType typ
 	else if(type == AC_PROF_TYPE)
 	{
 		if constexpr(NUM_PROFILES == 0) return AC_SUCCESS;
-		auto* dst = device->vba.on_device.reduce_scratchpads_real[NUM_REAL_OUTPUTS+variable];
+		auto* dst = device->vba.reduce_scratchpads_real[NUM_REAL_OUTPUTS+variable];
 		if(op == REDUCE_SUM)
     	    		acKernelFlush(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),0.0);
 		else if(op == REDUCE_MIN)
@@ -1774,7 +1774,7 @@ acDevicePreprocessScratchPad(Device device, const int variable, const AcType typ
 	else
 	{
 		if constexpr (NUM_INT_OUTPUTS == 0) return AC_SUCCESS;
-		auto* dst = device->vba.on_device.reduce_scratchpads_int[variable];
+		auto* dst = device->vba.reduce_scratchpads_int[variable];
 		if(op == REDUCE_SUM)
     	    		acKernelFlushInt(device->streams[STREAM_DEFAULT],dst, acVertexBufferSize(device->local_config),0);
 		else if(op == REDUCE_MIN)
@@ -1810,7 +1810,7 @@ acDeviceGetId(const Device device)
 AcReal*
 acDeviceGetProfileReduceScratchpad(const Device device, const Profile prof)
 {
-	return device->vba.on_device.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)];
+	return device->vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)];
 }
 
 AcReal*

@@ -206,23 +206,23 @@ gen_kernel_common_prefix()
   printf("};");
 
     printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
     printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
     printf("const auto reduce_sum_real_z __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
     printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
     printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
     printf("const auto reduce_sum_real_yx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
     printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
     printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
     printf("const auto reduce_sum_real_zy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
 
 }
 
@@ -575,7 +575,7 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 	  );
 #endif
 	printf(
-		  "if(lane_id == warp_leader_id) {vba.reduce_scratchpads_%s[(int)output][warp_out_index] = val;}"
+		  "if(lane_id == warp_leader_id) {d_symbol_reduce_scratchpads_%s[(int)output][warp_out_index] = val;}"
 	      ,define_name);
 }
 void

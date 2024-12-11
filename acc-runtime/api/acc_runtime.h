@@ -202,8 +202,6 @@ typedef struct {
     AcReal* out[NUM_VTXBUF_HANDLES];
     AcReal* w[NUM_WORK_BUFFERS];
     acKernelInputParams kernel_input_params;
-    AcReal* reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-    int* reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
     int reduce_offset;
     ProfileBufferArray profiles;
   } DeviceVertexBufferArray;
@@ -226,8 +224,13 @@ typedef struct {
 
     size_t* reduce_cub_tmp_size_real[NUM_REAL_SCRATCHPADS];
     size_t* reduce_cub_tmp_size_int[NUM_INT_OUTPUTS+1];
-    size_t* reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-    size_t* reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
+
+    AcReal* reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+    int* reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
+
+    size_t* reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
+    size_t* reduce_scratchpads_size_int[NUM_INT_OUTPUTS+1];
+
 
   } VertexBufferArray;
 
