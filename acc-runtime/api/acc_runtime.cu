@@ -138,6 +138,23 @@ get_device_prop()
   return props;
 }
 
+int3
+get_ghosts()
+{
+  return (int3){
+	  dimension_inactive.x ? 0 : NGHOST,
+	  dimension_inactive.y ? 0 : NGHOST,
+	  dimension_inactive.z ? 0 : NGHOST
+  };
+}
+template <typename T>
+bool
+is_large_launch(const T dims)
+{
+  const int3 ghosts = get_ghosts();
+  return (dims.x > ghosts.x && dims.y > ghosts.y && dims.z > ghosts.z);
+}
+
 
 bool
 is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel)
@@ -148,10 +165,10 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel)
   const size_t zmax         = (size_t)(warp_size * ceil(1. * dims.z / warp_size));
   const bool too_large      = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
   const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
-  const bool single_tb      = (tpb.x >= dims.x) && (tpb.y >= dims.y) && (tpb.z >= dims.z);
+//  const bool single_tb      = (tpb.x >= dims.x) && (tpb.y >= dims.y) && (tpb.z >= dims.z);
 
   //TP: if not utilizing the whole warp invalid, expect if dims are so small that could not utilize a whole warp 
-  if(not_full_warp && !single_tb) return false;
+  if(not_full_warp && is_large_launch(dims)) return false;
 
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: {
@@ -1193,18 +1210,14 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
       .tpb    = (dim3){0, 0, 0},
   };
 
-  const int3 ghosts = (int3){
-	  dimension_inactive.x ? 0 : NGHOST,
-	  dimension_inactive.y ? 0 : NGHOST,
-	  dimension_inactive.z ? 0 : NGHOST
-  };
+  const int3 ghosts = get_ghosts();
   const int3 start = ghosts;
   const int3 end = start + dims;
 
 
   //TP: since autotuning should be quite fast when the dim is not NGHOST only log for actually 3d portions
   const bool builtin_kernel = strlen(kernel_names[kernel]) > 2 && kernel_names[kernel][0] == 'A' && kernel_names[kernel][1] == 'C';
-  const bool large_launch = (dims.x > ghosts.x && dims.y > ghosts.y && dims.z > ghosts.z);
+  const bool large_launch   = is_large_launch(dims);
   const bool log = !builtin_kernel && large_launch;
 
   dim3 best_tpb(0, 0, 0);
@@ -1249,8 +1262,8 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
         if (smem > max_smem)
           continue;
 
-        if ((x * y * z) % props.warpSize && (x*y*z) >props.warpSize)
-          continue;
+        //if ((x * y * z) % props.warpSize && (x*y*z) >props.warpSize)
+        //  continue;
 
         if (!is_valid_configuration(to_volume(dims), to_volume(tpb),kernel))
           continue;
