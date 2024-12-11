@@ -409,6 +409,43 @@ all_real_struct(const char* struct_name)
 	free_str_vec(&target_types);
 	return res;
 }
+typedef struct
+{
+	string_vec names;
+	int_vec* called_funcs;
+} funcs_calling_info;
+
+static funcs_calling_info calling_info = {VEC_INITIALIZER, .called_funcs = NULL };
+static node_vec reduce_infos[MAX_FUNCS] = {[0 ... MAX_FUNCS -1] = VEC_INITIALIZER};
+
+void
+generate_error_messages()
+{
+	if(!has_optimization_info()) return;
+	for(size_t kernel = 0; kernel < num_kernels; ++kernel)
+	{
+		const char* kernel_name = get_symbol_by_index(NODE_FUNCTION_ID, kernel, KERNEL_STR)->identifier;
+		//These are empty Kernels by intent
+		if(kernel_name == intern("AC_NULL_KERNEL")) continue;
+		if(kernel_name == intern("BOUNDCOND_PERIODIC")) continue;
+		bool updates_something = false;
+		for(size_t j = 0; j < num_fields; ++j)
+		{
+			updates_something |= written_fields[j + num_fields*kernel];
+			updates_something |= reduced_profiles[j + num_profiles*kernel];
+		}
+      		const size_t index = str_vec_get_index(calling_info.names,kernel_name);
+		updates_something |= (reduce_infos[index].size != 0);
+		if(!updates_something)
+		{
+			printf("\n\n");
+			printf("AC WARNING: Kernel %s does not update anything!!!\n",kernel_name);
+			printf("AC WARNING: Kernel %s does not update anything!!!\n",kernel_name);
+			printf("AC WARNING: Kernel %s does not update anything!!!\n",kernel_name);
+			printf("\n\n");
+		}
+	}
+}
 string_vec
 get_allocating_types()
 {
@@ -2992,13 +3029,6 @@ get_suffix_int(const char *str, const char* suffix_match) {
 
 
 
-typedef struct
-{
-	string_vec names;
-	int_vec* called_funcs;
-} funcs_calling_info;
-
-static funcs_calling_info calling_info = {VEC_INITIALIZER, .called_funcs = NULL };
 
 
 void
@@ -3041,7 +3071,6 @@ get_reduce_dst_type(const ASTNode* node)
 	if(!type) fatal("Was not able to get reduce type: %s\n",combine_all_new(node));
 	return type;
 }
-static node_vec reduce_infos[MAX_FUNCS] = {[0 ... MAX_FUNCS -1] = VEC_INITIALIZER};
 void
 get_reduce_info(const ASTNode* node)
 {
@@ -8024,6 +8053,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   free_combinatorial_params_info(&info);
   gen_kernel_postfixes(root,gen_mem_accesses);
   gen_kernel_reduce_outputs();
+  generate_error_messages();
 
 
   // print_symbol_table();
