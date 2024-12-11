@@ -258,7 +258,7 @@ gen_kernel_write_funcs(const int curr_kernel)
   	      if(!write_called[curr_kernel][original_field]) continue;
 	      //TP: field is buffered written but not read, for now simply set value to 0
   	      const int field = get_original_index(field_remappings,original_field);
-	      printf("f%s_value_stencil = 0.0;",field_names[field]);
+	      printf("AcReal f%s_svalue_stencil = 0.0;",field_names[field]);
 	    }
 	    printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {");
             printf("switch (handle) {");
