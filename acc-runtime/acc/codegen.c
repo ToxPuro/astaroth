@@ -2169,7 +2169,7 @@ gen_kernel_structs(const ASTNode* root)
 				{
 					if(param_type != REAL_PTR_STR)
 						fatal("How to handle non-real input ptr?\n");
-					fprintf(fp,"vba.on_device.kernel_input_params.%s.%s = d_symbol_reduce_scratchpads_real[0];\n",name,param_name);
+					fprintf(fp,"vba.on_device.kernel_input_params.%s.%s = vba.on_device.out[0];\n",name,param_name);
 				}
 			}
 			fprintf(fp,"}\n");

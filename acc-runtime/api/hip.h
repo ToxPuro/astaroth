@@ -89,6 +89,7 @@
 #define cudaFuncCachePreferShared hipFuncCachePreferShared
 #define cudaFuncCachePreferL1 hipFuncCachePreferL1
 #define cudaErrorInvalidConfiguration hipErrorInvalidConfiguration
+#define cudaErrorLaunchOutOfResources hipErrorLaunchOutOfResources
 #define cudaGetErrorName hipGetErrorName
 
 #define curandStateXORWOW_t hiprandStateXORWOW_t

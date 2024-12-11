@@ -1326,6 +1326,7 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
         //TP: it is fine to simply skip invalid configuration values since it can be because of too large tpb's
         //We simply do not count them for finding the optim config
         if(err == cudaErrorInvalidConfiguration) continue;
+        if(err == cudaErrorLaunchOutOfResources) continue;
         if (err != cudaSuccess) {
           //TP: reset autotune results
           fprintf(stderr,"\nFailed while autotuning: %s\nReason: %s\n",kernel_names[kernel],cudaGetErrorName(err));
