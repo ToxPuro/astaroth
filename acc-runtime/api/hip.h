@@ -88,6 +88,8 @@
 #define cudaDeviceSetCacheConfig hipDeviceSetCacheConfig
 #define cudaFuncCachePreferShared hipFuncCachePreferShared
 #define cudaFuncCachePreferL1 hipFuncCachePreferL1
+#define cudaErrorInvalidConfiguration hipErrorInvalidConfiguration
+#define cudaGetErrorName hipGetErrorName
 
 #define curandStateXORWOW_t hiprandStateXORWOW_t
 #define curandStateMRG32k3a_t hiprandStateMRG32k3a_t
@@ -95,3 +97,4 @@
 #define curand_init hiprand_init
 #define curand_uniform hiprand_uniform
 #define curand_uniform_double hiprand_uniform_double
+
