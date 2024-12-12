@@ -192,7 +192,7 @@ main(void)
     acGridSynchronizeStream(STREAM_ALL);
 
     auto periodic = acGetDSLTaskGraph(bcs);
-    acGridExecuteTaskGraph(periodic,1);
+    acGridExecuteTaskGraphBase(periodic,1,true);
     acGridSynchronizeStream(STREAM_ALL);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
@@ -206,6 +206,7 @@ main(void)
     fflush(stdout);
     acGridExecuteTaskGraph(initialize,1);
     acGridSynchronizeStream(STREAM_ALL);
+
     acGridExecuteTaskGraph(periodic,1);
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -222,6 +223,19 @@ main(void)
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     acGridSynchronizeStream(STREAM_ALL);
     acHostMeshApplyPeriodicBounds(&candidate);
+
+    //TP: have to make a really imprecise test since periodic bcs cause drift from the actual analytical solution
+    //TP: one can generate plot of comparison of the analytical solution compared to the numerical one with plot.py
+    AcReal epsilon  = pow(10.0,-1.0);
+    auto relative_diff = [](const auto a_val, const auto b_val)
+    {
+            const auto abs_diff = fabs(a_val-b_val);
+            return  abs_diff/a_val;
+    };
+    auto in_eps_threshold = [&](const auto a_val, const auto b_val)
+    {
+            return relative_diff(a_val,b_val) < epsilon;
+    };
 
 
     if(pid  == 0)
@@ -252,6 +266,17 @@ main(void)
 	    fclose(fp_a);
 	    fclose(fp_x);
 	    fclose(fp_u);
+	    bool correct = true;
+	    for(size_t i = npointsx_grid/4; i < (3*npointsx_grid)/4; ++i)
+	    {
+				const int idx = IDX_COMP_DOMAIN(i, npointsy_grid/2, npointsz_grid/2);
+				const AcReal u_val = candidate.vertex_buffer[U][idx];
+				const AcReal a_val = candidate.vertex_buffer[SOLUTION][idx];
+				const bool in_eps = in_eps_threshold(u_val,a_val);
+				correct &= in_eps;
+				if(!in_eps) printf("U,A: %14e,%14e\n",u_val,a_val);
+	    }
+	    if(!correct) retval = AC_FAILURE;
     }
 
     if (pid == 0) {

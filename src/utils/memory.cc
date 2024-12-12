@@ -40,7 +40,6 @@ acHostMeshSet(const AcReal value, AcMesh* mesh)
 
     return AC_SUCCESS;
 }
-#if AC_LAGRANGIAN_GRID
 static inline __device__ AcReal
 lagrangian_correction(const Field j, const Field2 coords, const int3 indexes, const AcReal3 lengths, const int3 nn_min, const int3 nn_max)
 {
@@ -50,7 +49,7 @@ lagrangian_correction(const Field j, const Field2 coords, const int3 indexes, co
               + y_coeff*((indexes.y >= nn_max.y) - (indexes.y < nn_min.y));
 }
 static inline __device__ AcReal
-lagrangian_correction(const int j, const Field3 coords, const int3 indexes, const AcReal3 lengths, const int3 nn_min, const int3 nn_max)
+lagrangian_correction(const Field j, const Field3 coords, const int3 indexes, const AcReal3 lengths, const int3 nn_min, const int3 nn_max)
 {
 	const AcReal x_coeff = (j == coords.x)*lengths.x;
 	const AcReal y_coeff = (j == coords.y)*lengths.y;
@@ -59,14 +58,12 @@ lagrangian_correction(const int j, const Field3 coords, const int3 indexes, cons
               + y_coeff*((indexes.y >= nn_max.y) - (indexes.y < nn_min.y))
               + z_coeff*((indexes.z >= nn_max.z) - (indexes.z < nn_min.z));
 }
-#endif
 
 
 AcResult
 acHostMeshApplyPeriodicBounds(AcMesh* mesh)
 {
     const AcMeshInfo info = mesh->info;
-
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
 	if (!vtxbuf_is_communicated[w]) continue;
         const int3 start = (int3){0, 0, 0};
@@ -127,7 +124,10 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
                     ERRCHK(dst_idx < acVertexBufferSize(info));
                     mesh->vertex_buffer[w][dst_idx] = mesh->vertex_buffer[w][src_idx];
 #if AC_LAGRANGIAN_GRID
-		    mesh->vertex_buffer[w][dst_idx] += lagrangian_correction((Field)w,AC_COORDS,{i_dst,j_dst,k_dst},acGetLengths(info),nn_min,nn_max);
+		    {
+			const AcReal3 lengths = acGetLengths(info);
+			mesh->vertex_buffer[w][dst_idx] += lagrangian_correction((Field)w, AC_COORDS, {i_dst,j_dst,k_dst}, lengths, nn_min, nn_max);
+		    }
 #endif
                 }
             }

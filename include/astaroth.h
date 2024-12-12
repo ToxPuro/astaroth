@@ -869,6 +869,8 @@ FUNC_DEFINE(AcResult, acGridDestroyTaskGraph,(AcTaskGraph* graph));
 /** */
 FUNC_DEFINE(AcResult, acGridExecuteTaskGraph,(AcTaskGraph* graph, const size_t n_iterations));
 /** */
+FUNC_DEFINE(AcResult, acGridExecuteTaskGraphBase,(AcTaskGraph* graph, const size_t n_iterations, const bool include_all));
+/** */
 FUNC_DEFINE(AcResult, acGridFinalizeReduceLocal,(AcTaskGraph* graph));
 /** */
 FUNC_DEFINE(AcResult, acGridFinalizeReduce,(AcTaskGraph* graph));

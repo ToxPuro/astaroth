@@ -2,9 +2,10 @@
 #include "math_utils.h"
 
 AcResult
-acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
+acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
 {
     
+    AcMeshInfo& config = *config_ptr; 
     //TP: utility lambdas
     auto push_val = [&](auto param, auto val)
     {
@@ -23,9 +24,9 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
     push_val(AC_dimension_inactive,
 		    (AcBool3)
 		    {
-		    	true,
-			true,
-			false
+		    	false,
+			false,
+			true	
 		    }
 	    );
 #endif
@@ -37,6 +38,9 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
     	        config[AC_dimension_inactive].z ? 0 : NGHOST
     	}
     );
+#if AC_LAGRANGIAN_GRID
+    push_val(AC_lagrangian_grid,true);
+#endif
 
     if(!config[AC_dimension_inactive].z)
     	push_val(AC_dsmin,std::min(std::min(config[AC_ds].x,config[AC_ds].y),config[AC_ds].z));
@@ -88,20 +92,12 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config)
 }
 
 AcResult 
-acHostUpdateBuiltinParams(AcMeshInfo* config)
-{
-
-	return acHostUpdateBuiltInParamsBase(*config);
-}
-
-
-AcResult 
 acHostUpdateBuiltinCompParams(AcCompInfo* comp_config)
 {
 
 	AcMeshInfo config = acInitInfo();
 	config.run_consts = *comp_config;
-	auto res = acHostUpdateBuiltInParamsBase(config);
+	auto res = acHostUpdateBuiltinParams(&config);
 	*comp_config = config.run_consts;
 	return res;
 }
@@ -127,5 +123,5 @@ acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* con
     push_val(AC_ngrid,ngrid);
     push_val(AC_nlocal,ngrid);
     
-    return acHostUpdateBuiltInParamsBase(config);
+    return acHostUpdateBuiltinParams(&config);
 }

@@ -61,7 +61,6 @@ kernel_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const 
     }
 }
 
-#if AC_LAGRANGIAN_GRID
 static inline __device__ int3
 is_on_boundary()
 {
@@ -73,9 +72,7 @@ is_on_boundary()
                                 VAL(AC_domain_coordinates).z == 0);
     return (int3){x,y,z};
 }
-#endif
 
-#if AC_LAGRANGIAN_GRID
 //TP: this could be rewritten to return real2 or real3 but works the way it is for now
 static inline __device__ AcReal
 lagrangian_correction(const int j, const Field2 coords, const int3 indexes)
@@ -97,7 +94,6 @@ lagrangian_correction(const int j, const Field3 coords, const int3 indexes)
               + y_coeff*((indexes.y >= VAL(AC_nlocal_max).y) - (indexes.y < VAL(AC_nmin).y))
               + z_coeff*((indexes.z >= VAL(AC_nlocal_max).z) - (indexes.z < VAL(AC_nmin).z));
 }
-#endif
 
 
 static __global__ void
@@ -132,7 +128,7 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
     {
       vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
 #if AC_LAGRANGIAN_GRID
-      vba.in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked,j_unpacked,k_unpacked});
+      	vba.in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked,j_unpacked,k_unpacked});
 #endif
       i += is_communicated(static_cast<Field>(j));
     }
@@ -207,7 +203,7 @@ kernel_partial_move_data(const DeviceVertexBufferArray vba, const int3 src_start
     {
         vba.in[vtxbufs.data[i]][dst_idx] = vba.in[vtxbufs.data[i]][unpacked_idx];
 #if AC_LAGRANGIAN_GRID
-        vba.in[vtxbufs.data[i]][dst_idx] += lagrangian_correction(i, AC_COORDS, (int3){i_dst, j_dst, k_dst});
+        	vba.in[vtxbufs.data[i]][dst_idx] += lagrangian_correction(vtxbufs.data[i], AC_COORDS, (int3){i_dst, j_dst, k_dst});
 #endif
     }
 }
@@ -245,7 +241,7 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
 	     const int j = vtxbufs.data[i];
 	     vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
 #if AC_LAGRANGIAN_GRID
-             vba.in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked, j_unpacked, k_unpacked});
+             	vba.in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked, j_unpacked, k_unpacked});
 #endif
      }
 

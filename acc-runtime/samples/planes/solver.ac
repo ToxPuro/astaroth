@@ -1,9 +1,8 @@
 #include "../../stdlib/math"
 hostdefine STENCIL_ORDER (2)
-hostdefine AC_INTEGRATION_ENABLED
-real AC_current_time
-real AC_dt
-int AC_step_num
+input real AC_current_time
+input real AC_dt
+input int AC_step_number
 
 Stencil diff_front
 {
@@ -280,4 +279,20 @@ Kernel singlepass_solve()
 	update_val = sim_dt*D*(Dxx + Dyy+ Dzz)
 	write(U, U + update_val)
 }	
+
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+
+ComputeSteps AC_initialize(bcs)
+{
+	initial_condition()
+}
+ComputeSteps AC_solve(bcs)
+{
+	singlepass_solve()
+}
+
 

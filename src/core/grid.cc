@@ -2025,9 +2025,11 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
             acVerboseLogFromRootProc(rank, "Creating halo exchange tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y  && Region::tag_to_id(tag).y != 0) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
+
                 if (!Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp,
                                                                    device, swap_offset);
@@ -2049,6 +2051,11 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
         case TASKTYPE_BOUNDCOND: {
 	    int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+
+		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
+		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y  && Region::tag_to_id(tag).y != 0) continue;
+		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
+
                 acVerboseLogFromRootProc(rank,
                                          "tag %d, decomp %i %i %i, rank %i, op.boundary  %i \n ",
                                          tag, decomp.x, decomp.y, decomp.z, rank, op.boundary);
@@ -2323,7 +2330,7 @@ set_device_to_grid_device()
 
 
 AcResult
-acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
+acGridExecuteTaskGraphBase(AcTaskGraph* graph, size_t n_iterations, const bool include_inactive)
 {
     //TP: used to initialize reduce buffers
     get_reduce_outputs(graph);
@@ -2336,7 +2343,7 @@ acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
     }
 
     for (auto& task : graph->all_tasks) {
-        if (task->active) {
+        if (include_inactive || task->active) {
             task->syncVBA();
             task->setIterationParams(0, n_iterations);
         }
@@ -2345,7 +2352,7 @@ acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
     do {
         ready = true;
         for (auto& task : graph->all_tasks) {
-            if (task->active) {
+            if (include_inactive || task->active) {
                 task->update(graph->vtxbuf_swaps, &(graph->trace_file));
                 ready &= task->isFinished();
             }
@@ -2361,6 +2368,13 @@ acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
     }
     return AC_SUCCESS;
 }
+
+AcResult
+acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
+{
+        return acGridExecuteTaskGraphBase(graph,n_iterations,false);
+}
+
 
 #ifdef AC_INTEGRATION_ENABLED
 AcResult

@@ -131,6 +131,7 @@ main(int argc, char* argv[])
         }
     }
     fflush(stdout);
+
     // Boundconds
     if (pid == 0)
         acHostGridMeshRandomize(&model);
@@ -141,6 +142,24 @@ main(int argc, char* argv[])
     if (pid == 0) {
         acHostMeshApplyPeriodicBounds(&model);
         const AcResult res = acVerifyMesh("Periodic boundconds", model, candidate);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
+    }
+    fflush(stdout);
+
+    // DSL Boundconds
+    if (pid == 0)
+        acHostGridMeshRandomize(&model);
+
+    const auto periodic = acGetDSLTaskGraph(boundconds);
+    acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridExecuteTaskGraphBase(periodic,1,true);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (pid == 0) {
+        acHostMeshApplyPeriodicBounds(&model);
+        const AcResult res = acVerifyMesh("DSL Periodic boundconds", model, candidate);
         if (res != AC_SUCCESS) {
             retval = res;
             WARNCHK_ALWAYS(retval);
