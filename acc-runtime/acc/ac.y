@@ -418,14 +418,18 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	{
      		generate_mem_accesses(); // Uncomment to enable stencil mem access checking
 
-		gen_fused_kernels(new_root);
-		gen_kfunc_info(new_root);
-		reset_all_files();
-		gen_output_files(new_root);
-		fp_cpu = fopen("user_kernels.h.raw","w");
-		generate(new_root,fp_cpu,true,optimize_conditionals);
-		fclose(fp_cpu);
-		generate_mem_accesses();
+		if(FUSE_KERNELS)
+		{
+			gen_fused_kernels(new_root);
+			gen_kfunc_info(new_root);
+			reset_all_files();
+			gen_output_files(new_root);
+
+			fp_cpu = fopen("user_kernels.h.raw","w");
+			generate(new_root,fp_cpu,true,optimize_conditionals);
+			fclose(fp_cpu);
+			generate_mem_accesses();
+		}
 	}
 	reset_diff_files();
         FILE* fp = fopen("user_kernels.h.raw", "w");

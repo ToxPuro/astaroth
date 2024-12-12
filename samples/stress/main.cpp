@@ -60,10 +60,9 @@ main(void)
     srand(321654987);
     // CPU alloc
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG,&info,NULL);;
+    acLoadConfig(AC_DEFAULT_CONFIG,&info);
 
-    info.real_params[AC_dsx] = dsx;
-    info.real_params[AC_dsy] = dsy;
+    info[AC_ds] = {dsx,dsy,0};
     //info.real_params[AC_dsz] = d;
 
     const int max_devices = 2 * 2 * 4;
@@ -75,7 +74,7 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(npointsx_grid, npointsy_grid, &info);
+    acSetMeshDims(npointsx_grid, npointsy_grid, 1, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {
@@ -145,7 +144,7 @@ main(void)
     {
 		for(int y = NGHOST; y < npointsy_grid-NGHOST; ++y)
 		{
-			fprintf(fp,"%.7e %.7e %.7e\n",candidate.vertex_buffer[COORDS_X][x + npointsx_grid*y], candidate.vertex_buffer[COORDS_X][x + npointsx_grid*y],candidate.vertex_buffer[STRESS11][x + npointsx_grid*y]);
+			fprintf(fp,"%.7e %.7e %.7e\n",candidate.vertex_buffer[AC_COORDS_X][x + npointsx_grid*y], candidate.vertex_buffer[AC_COORDS_X][x + npointsx_grid*y],candidate.vertex_buffer[STRESS11][x + npointsx_grid*y]);
 		}
     }
     fclose(fp);

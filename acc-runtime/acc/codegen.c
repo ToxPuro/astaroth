@@ -3391,6 +3391,7 @@ check_for_undeclared_use_in_assignment(const ASTNode* node)
 	
 	  const bool used_in_assignment = is_right_child(NODE_ASSIGNMENT,node);
 	  if(used_in_assignment)
+	  {
 		  fatal(
 			"Undeclared variable or function used on the right hand side of an assignment\n"
 			"Assignment: %s\n"
@@ -3398,6 +3399,7 @@ check_for_undeclared_use_in_assignment(const ASTNode* node)
 			"\n"
 				  ,combine_all_new(get_parent_node(NODE_ASSIGNMENT,node)),node->buffer
 			);
+	  }
 }
 bool
 add_auto(const ASTNode* node)
@@ -7405,8 +7407,6 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   memset(&kfunc_names,0,sizeof(kfunc_names));
   get_nodes(root,&kfunc_nodes,&kfunc_names,NODE_KFUNCTION);
 
-//  for(size_t i = 0; i < kfunc_nodes.size; ++i)
-//	  printf("HMM: %s\n",kfunc_names.data[i]);
   remove_extra_braces_in_arr_initializers(root);
   symboltable_reset();
   rename_scoped_variables(root,NULL,NULL);
