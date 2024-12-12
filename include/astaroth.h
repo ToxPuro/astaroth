@@ -1377,6 +1377,8 @@ FUNC_DEFINE(AcResult, acHostGridMeshRandomize,(AcMesh* mesh));
 /** Destroys a mesh stored in host memory */
 FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
 
+FUNC_DEFINE(void, acStoreConfig,(const AcMeshInfo info, const char* filename));
+
 /** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
  * parameters derived from them (mx, my, mz, nx_min, and others) */
 AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);

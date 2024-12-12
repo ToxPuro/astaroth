@@ -80,7 +80,11 @@ if(NOT USE_HIP AND CUDAToolkit_FOUND)
     add_compile_options(-DCUDA_ENABLED)
     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
 
-    set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
+    ##TP: do not set GPU architectures to speedup debug compilations
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    else()
+    	set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
+    endif()
     message(STATUS "Enabled CUDA architectures (Astaroth): " ${CMAKE_CUDA_ARCHITECTURES})
 elseif(USE_HIP OR HIP_FOUND)
     set(USE_HIP ON)
@@ -90,7 +94,11 @@ elseif(USE_HIP OR HIP_FOUND)
     add_compile_options(-DHIP_ENABLED)
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
-    set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+    ##TP: do not set GPU architectures to speedup debug compilations
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    else()
+    	set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+    endif()
     message(STATUS "Enabled HIP architectures (Astaroth): " ${CMAKE_HIP_ARCHITECTURES})
 else()
     message(ERROR "Did not find CUDA or HIP")

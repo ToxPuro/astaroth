@@ -1258,8 +1258,9 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 	fprintf_filename("array_decl.h","%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,define_name,uppr_name);
 
+	fprintf_filename("get_default_value.h","if constexpr(std::is_same<P,%sParam>::value) return (%s){};\n",enum_name,datatype_scalar);
+	fprintf_filename("get_default_value.h","if constexpr(std::is_same<P,%sArrayParam>::value) return (%s){};\n",enum_name,datatype_scalar);
 	fprintf_filename("get_default_value.h","if constexpr(std::is_same<P,%sCompParam>::value) return (%s){};\n",enum_name,datatype_scalar);
-
 	fprintf_filename("get_default_value.h","if constexpr(std::is_same<P,%sCompArrayParam>::value) return (%s){};\n",enum_name,datatype_scalar);
 
 
@@ -1267,6 +1268,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 
 
+	fprintf_filename("get_param_name.h","if constexpr(std::is_same<P,%sParam>::value) return %sparam_names[(int)param];\n",enum_name,define_name);
 	fprintf_filename("get_param_name.h","if constexpr(std::is_same<P,%sCompParam>::value) return %s_comp_param_names[(int)param];\n",enum_name,define_name);
 
 

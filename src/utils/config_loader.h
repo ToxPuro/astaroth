@@ -118,12 +118,28 @@ parse_intparam(const size_t idx, const char* value, const bool run_const)
         return atoi(value);
     }
 }
+
+static void 
+extract_between_brackets(const char *str, char *result) {
+    const char *start = strchr(str, '[');
+    const char *end = strchr(start + 1, ']');
+
+    if (start && end && start < end) {
+        size_t len = end - start - 1;
+        strncpy(result, start + 1, len);
+        result[len] = '\0'; // Null-terminate the result
+    } else {
+        result[0] = '\0'; // No valid substring found
+    }
+}
+
 static std::vector<std::string>
 get_entries(const char* line)
 {
 
       std::vector<std::string> dst{};
-      char* line_copy = strdup(line);
+      char* line_copy = (char*)malloc(sizeof(char)*strlen(line));
+      extract_between_brackets(line,line_copy);
       char* token;
       token = strtok(line_copy,",");
       while(token != NULL)
