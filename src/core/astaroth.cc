@@ -452,3 +452,16 @@ acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, Ac
     return AC_SUCCESS;
 
 }
+
+#include "../config_helpers.h"
+void
+acStoreConfig(const AcMeshInfo info, const char* filename)
+{
+	FILE* fp = fopen(filename,"w");
+	AcScalarTypes::run<load_scalars>(info.params.scalars, fp, "", false);
+	AcArrayTypes::run<load_arrays>(info.params.arrays,    fp, "", false);
+
+	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
+	AcArrayCompTypes::run<load_comp_arrays>(info.run_consts,    fp, "", false);
+	fclose(fp);
+}

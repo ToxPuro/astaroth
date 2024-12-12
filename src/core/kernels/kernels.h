@@ -27,11 +27,6 @@
 #define MPI_GPUDIRECT_DISABLED (0)
 #endif // AC_MPI_ENABLED
 
-typedef struct
-{
-	AcReduceOp reals[NUM_REAL_SCRATCHPADS+1];	
-	AcReduceOp ints[NUM_INT_OUTPUTS+1];	
-} AcScratchpadStates;
 
 
 typedef AcReal AcRealPacked;

@@ -206,6 +206,12 @@ typedef struct {
     ProfileBufferArray profiles;
   } DeviceVertexBufferArray;
 
+  typedef struct
+  {
+  	AcReduceOp reals[NUM_REAL_SCRATCHPADS+1];	
+  	AcReduceOp ints[NUM_INT_OUTPUTS+1];	
+  } AcScratchpadStates;
+
   typedef struct {
     //Auxiliary metadata
     size_t bytes;
@@ -225,12 +231,12 @@ typedef struct {
     size_t* reduce_cub_tmp_size_real[NUM_REAL_SCRATCHPADS];
     size_t* reduce_cub_tmp_size_int[NUM_INT_OUTPUTS+1];
 
-    AcReal* reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-    int* reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
+    AcReal** reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+    int** reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
 
     size_t* reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
     size_t* reduce_scratchpads_size_int[NUM_INT_OUTPUTS+1];
-
+    AcScratchpadStates* scratchpad_states;
 
   } VertexBufferArray;
 
@@ -324,6 +330,8 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
 
+  FUNC_DEFINE(AcResult,acPreprocessScratchPad,(VertexBufferArray, const int variable, const AcType type,const AcReduceOp op));
+
   FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfoParams config));
 
   FUNC_DEFINE(void, acUpdateArrays ,(const AcMeshInfoParams config));
@@ -355,6 +363,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(int, acGetKernelReduceScratchPadSize,(const AcKernel kernel));
 
   FUNC_DEFINE(int, acGetKernelReduceScratchPadMinSize,());
+  FUNC_DEFINE(size_t,  acGetSmallestRealReduceScratchPadSizeBytes,());
 
 #if AC_RUNTIME_COMPILATION
   static AcResult __attribute__((unused)) acLoadRunTime()

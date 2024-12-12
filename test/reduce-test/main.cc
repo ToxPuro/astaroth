@@ -600,9 +600,10 @@ main(int argc, char* argv[])
     }
     finalized = true;
     const int3 nn = acGetLocalNN(info);
-    AcReal full_size =    (AcReal)nn.x*nn.y*nn.z;
-    AcReal reduced_size = (AcReal)acGetKernelReduceScratchPadSize(test_reduce);
+    AcReal full_size =    (AcReal)nn.x*nn.y*nn.z*sizeof(AcReal);
+    AcReal reduced_size = (AcReal)acGetSmallestRealReduceScratchPadSizeBytes();
     printf("Saving a factor of %14e memory for scratchpads for scalar reductions\n",full_size/reduced_size);
+    acStoreConfig(acDeviceGetLocalConfig(acGridGetDevice()), "reduce-test.conf");
 
     acGridQuit();
     ac_MPI_Finalize();
