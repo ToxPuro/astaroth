@@ -204,6 +204,7 @@ if (BUILD_SAMPLES AND NOT BUILD_TESTS)
     add_subdirectory(samples/mpi-io-multithreaded)
     add_subdirectory(samples/pc-varfile-import)
     add_subdirectory(samples/microbenchmark)
+    add_subdirectory(samples/stress)
 
     
     # add_subdirectory(samples/standalone)
