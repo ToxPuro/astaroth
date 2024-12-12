@@ -119,6 +119,10 @@ boundary_str(const AcBoundary bc)
                bc == BOUNDARY_Y_TOP ? "BOUNDARY_Y_TOP" :
                bc == BOUNDARY_Z_BOT ? "BOUNDARY_Z_BOT" :
                bc == BOUNDARY_Z_TOP ? "BOUNDARY_Z_TOP" :
+               bc == BOUNDARY_X     ? "BOUNDARY_X"   :
+               bc == BOUNDARY_Y     ? "BOUNDARY_Y"   :
+               bc == BOUNDARY_Z     ? "BOUNDARY_Z"   :
+               bc == BOUNDARY_XYZ   ? "BOUNDARY_XYZ"   :
                NULL;
 }
 template <typename T>

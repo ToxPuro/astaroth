@@ -40,6 +40,7 @@ run_const bool AC_host_has_row_memory_order
 int3 AC_multigpu_offset
 int3 AC_domain_coordinates
 bool3 AC_dimension_inactive
+bool  AC_lagrangian_grid
 
 //TP: these belong here but at the moment are deprecated
 /**

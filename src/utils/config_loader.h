@@ -167,7 +167,7 @@ parse_config(const char* path, AcMeshInfo* config)
     printf("Config file path: %s\n", path);
     ERRCHK_ALWAYS(fp != NULL);
 
-    const size_t BUF_SIZE = 128;
+    const size_t BUF_SIZE = 10000;
     char keyword[BUF_SIZE];
     char value[BUF_SIZE];
     int items_matched;
@@ -175,7 +175,6 @@ parse_config(const char* path, AcMeshInfo* config)
 
         if (items_matched < 2)
             continue;
-
         int idx = -1;
         if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0) {
 	    acPushToConfig(*config,static_cast<AcIntParam>(idx),parse_intparam(idx,value,false));
