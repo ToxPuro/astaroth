@@ -195,7 +195,7 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        HaloExchangeTask<UserType, ac::mr::device_memory_resource> halo_exchange{local_mm, local_nn,
+        ac::comm::AsyncHaloExchangeTask<UserType, ac::mr::device_memory_resource> halo_exchange{local_mm, local_nn,
                                                                                  rr, 1};
         std::vector<ac::mr::device_ptr<UserType>> inputs{
             ac::mr::device_ptr<UserType>{din.size(), din.data()}};
