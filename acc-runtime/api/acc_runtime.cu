@@ -380,7 +380,9 @@ size_t TO_CORRECT_ORDER(const size_t size)
 {
 	return size;
 }
-#define KERNEL_LAUNCH(func,bgp,tpb,...) func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
+#define KERNEL_LAUNCH(func,bgp,tpb,...) \
+	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
+
 AcResult
 acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
               const AcReal value)
@@ -575,7 +577,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
   }
   memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBAReset(stream, &vba->on_device.profiles, (size3_t){vba->mx,vba->my,vba->mz});
+  acPBAReset(stream, &vba->on_device.profiles, (size3_t){vba->mm.x,vba->mm.y,vba->mm.z});
   return AC_SUCCESS;
 }
 
@@ -621,6 +623,12 @@ size3_t
 buffer_dims(const AcMeshInfoParams config)
 {
 	auto mm = config[AC_mlocal];
+	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
+}
+size3_t
+subdomain_size(const AcMeshInfoParams config)
+{
+	auto mm = config[AC_nlocal];
 	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
 }
 
@@ -732,12 +740,51 @@ resize_scratchapd_int(const size_t i, const size_t new_bytes, const AcReduceOp s
 	allocate_scratchpad_int(i,new_bytes,state);
 }
 
+size3_t
+acGetProfileReduceScratchPadDims(const int profile, const size3_t mm, const size3_t nn)
+{
+	const auto type = prof_types[profile];
+    	if(type == PROFILE_YZ || type == PROFILE_ZY)
+    		return
+    		{
+    		    	    nn.x,
+    		    	    mm.y,
+    		    	    mm.z
+    		};
+    	if(type == PROFILE_XZ || type == PROFILE_ZX)
+		return
+    		{
+    		    	    mm.x,
+    		    	    nn.y,
+    		    	    mm.z
+    		};
+    	if(type == PROFILE_YX || type == PROFILE_XY)
+		return
+    		{
+    		    	    mm.x,
+    		    	    mm.y,
+    		    	    nn.z
+    		};
+	if(prof_types[profile] & ONE_DIMENSIONAL_PROFILE)
+		return (size3_t){nn.x, nn.y, nn.z};
+	return (size3_t){mm.x, mm.y, mm.z};
+}
+
+size_t
+get_profile_reduce_scratchpad_size(const int profile, const VertexBufferArray vba)
+{
+	const auto dims = acGetProfileReduceScratchPadDims(profile,vba.mm, vba.nn);
+	return dims.x*dims.y*dims.z*sizeof(AcReal);
+}
+
+
 void
-init_scratchpads(VertexBufferArray* vba, const size_t count)
+init_scratchpads(VertexBufferArray* vba)
 {
     vba->scratchpad_states = (AcScratchpadStates*)malloc(sizeof(AcScratchpadStates));
     memset(vba->scratchpad_states,0,sizeof(AcScratchpadStates));
     // Reductions
+    const size_t count = vba->mm.x*vba->mm.y*vba->mm.z;
     const size_t scratchpad_size = count;
     vba->scratchpad_size = scratchpad_size;
 
@@ -747,7 +794,9 @@ init_scratchpads(VertexBufferArray* vba, const size_t count)
     	for(int i = 0; i < NUM_REAL_SCRATCHPADS; ++i) {
 	    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba->reduce_res_real[i],sizeof(AcReal)));
 
-	    const size_t bytes = (i >= NUM_REAL_OUTPUTS || i == 0) ? scratchpad_size_bytes : 0;
+	    const size_t bytes = (i == 0) ? scratchpad_size_bytes :
+		                 (i >= NUM_REAL_OUTPUTS) ? get_profile_reduce_scratchpad_size(i-NUM_REAL_OUTPUTS,*vba) :
+				 0;
 	    allocate_scratchpad_real(i,bytes,vba->scratchpad_states->reals[i]);
 	    vba->reduce_scratchpads_real[i] = &d_reduce_scratchpads_real[i];
 
@@ -784,14 +833,12 @@ acVBACreate(const AcMeshInfoParams config)
   //TP: !HACK!
   //TP: Get active dimensions at the time VBA is created, works for now but should be moved somewhere else
   dimension_inactive = config[AC_dimension_inactive];
-  const size3_t counts = buffer_dims(config);
   VertexBufferArray vba;
-  size_t count = counts.x*counts.y*counts.z;
+  vba.mm = buffer_dims(config);
+  vba.nn = subdomain_size(config);
+  size_t count = vba.mm.x*vba.mm.y*vba.mm.z;
   size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
   vba.bytes          = bytes;
-  vba.mx             = counts.x;
-  vba.my             = counts.y;
-  vba.mz             = counts.z;
 #if AC_ADJACENT_VERTEX_BUFFERS
   const size_t allbytes = bytes*NUM_VTXBUF_HANDLES;
   AcReal *allbuf_in, *allbuf_out;
@@ -829,11 +876,11 @@ acVBACreate(const AcMeshInfoParams config)
   AcArrayTypes::run<allocate_arrays>(config);
 
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  vba.on_device.profiles = acPBACreate(counts);
-  vba.profile_count = counts.z;
+  vba.on_device.profiles = acPBACreate(vba.mm);
+  vba.profile_count = vba.mm.z;
   memset(&vba.reduce_scratchpads_real,0.0,sizeof(vba.reduce_scratchpads_real));
   memset(&vba.reduce_scratchpads_int, 0,  sizeof(vba.reduce_scratchpads_int));
-  init_scratchpads(&vba,counts.x*counts.y*counts.z);
+  init_scratchpads(&vba);
 
   acVBAReset(0, &vba);
   ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
@@ -937,12 +984,15 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfoParams config)
   //Free arrays
   AcArrayTypes::run<free_arrays>(config);
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBADestroy(&vba->on_device.profiles,(size3_t){vba->mx,vba->my,vba->mz});
+  acPBADestroy(&vba->on_device.profiles,(size3_t){vba->mm.x,vba->mm.y,vba->mm.z});
   vba->profile_count = 0;
   vba->bytes = 0;
-  vba->mx    = 0;
-  vba->my    = 0;
-  vba->mz    = 0;
+  vba->mm.x    = 0;
+  vba->mm.y    = 0;
+  vba->mm.z    = 0;
+  vba->nn.x    = 0;
+  vba->nn.y    = 0;
+  vba->nn.z    = 0;
 }
 
 
@@ -1905,6 +1955,7 @@ get_offsets(const size_t count, const size_t num_segments)
 
   size_t* offsets = (size_t*)malloc(sizeof(offsets[0]) * (num_segments + 1));
   ERRCHK_ALWAYS(offsets);
+  ERRCHK_ALWAYS(count % num_segments == 0);
   for (size_t i = 0; i <= num_segments; ++i) {
     offsets[i] = i * (count / num_segments);
   }
@@ -1935,6 +1986,7 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
   ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum((void*)(*tmp_buffer), temp_storage_bytes, d_in,
                             d_out, num_segments, d_offsets, d_offsets + 1,
                             stream));
+  ERRCHK_CUDA_KERNEL();
   return AC_SUCCESS;
 }
 
@@ -1988,7 +2040,7 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 #define TILE_DIM (32)
 
 void __global__ 
-transpose_xyz_to_zyx(const AcReal* src, AcReal* dst)
+transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const int3 dims)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2010,18 +2062,18 @@ transpose_xyz_to_zyx(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.x
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
-	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mlocal).z ||  (int)out_vertexIdx.y >= VAL(AC_mlocal).y || (int)out_vertexIdx.z >= VAL(AC_mlocal).x;
+	const bool in_oob  =  (int)vertexIdx.x  >= dims.x    ||  (int)vertexIdx.y >= dims.y     || (int)vertexIdx.z >= dims.z;
+	const bool out_oob =  (int)out_vertexIdx.x >= dims.z ||  (int)out_vertexIdx.y >= dims.y || (int)out_vertexIdx.z >= dims.x;
 
 
 
-	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] : 0.0;
+	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
 	__syncthreads();
 	if(!out_oob)
-		dst[out_vertexIdx.x +VAL(AC_mlocal).z*out_vertexIdx.y + VAL(AC_mlocal_products).yz*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
+		dst[out_vertexIdx.x +dims.z*out_vertexIdx.y + dims.z*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
 }
 void __global__ 
-transpose_xyz_to_zxy(const AcReal* src, AcReal* dst)
+transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const int3 dims)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2043,38 +2095,18 @@ transpose_xyz_to_zxy(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.x
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
-	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mlocal).z ||  (int)out_vertexIdx.y >= VAL(AC_mlocal).y || (int)out_vertexIdx.z >= VAL(AC_mlocal).x;
+	const bool in_oob  =  (int)vertexIdx.x  >= dims.x    ||  (int)vertexIdx.y >= dims.y     || (int)vertexIdx.z >= dims.z;
+	const bool out_oob =  (int)out_vertexIdx.x >= dims.z ||  (int)out_vertexIdx.y >= dims.y || (int)out_vertexIdx.z >= dims.x;
 
 
 
-	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] : 0.0;
+	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
 	__syncthreads();
 	if(!out_oob)
-		dst[out_vertexIdx.x +VAL(AC_mlocal).z*out_vertexIdx.z + VAL(AC_mlocal_products).xz*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
+		dst[out_vertexIdx.x +dims.z*out_vertexIdx.z + dims.z*dims.x*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
 }
 void __global__ 
-transpose_xyz_to_xyz(const AcReal* src, AcReal* dst)
-{
-	const dim3 block_offset =
-	{
-		blockIdx.x*TILE_DIM,
-		blockIdx.y*TILE_DIM,
-		blockIdx.z
-	};
-
-	const dim3 vertexIdx = 
-	{
-		threadIdx.x + block_offset.x,
-		threadIdx.y + block_offset.y,
-		threadIdx.z + block_offset.z
-	};
-	const bool oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
-	if(oob) return;
-	dst[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] = src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)];
-}
-void __global__ 
-transpose_xyz_to_yxz(const AcReal* src, AcReal* dst)
+transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const int3 dims)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2096,18 +2128,18 @@ transpose_xyz_to_yxz(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.x,
 		threadIdx.z + block_offset.z
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
-	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mlocal).y ||  (int)out_vertexIdx.y >= VAL(AC_mlocal).x || (int)out_vertexIdx.z >= VAL(AC_mlocal).z;
+	const bool in_oob  =  (int)vertexIdx.x  >= dims.x    ||  (int)vertexIdx.y >= dims.y     || (int)vertexIdx.z >= dims.z;
+	const bool out_oob =  (int)out_vertexIdx.x >= dims.y ||  (int)out_vertexIdx.y >= dims.x || (int)out_vertexIdx.z >= dims.z;
 
 
 
-	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] : 0.0;
+	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
 	__syncthreads();
 	if(!out_oob)
-		dst[out_vertexIdx.x +VAL(AC_mlocal).y*out_vertexIdx.y + VAL(AC_mlocal_products).xy*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
+		dst[out_vertexIdx.x +dims.y*out_vertexIdx.y + dims.x*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
 }
 void __global__ 
-transpose_xyz_to_yzx(const AcReal* src, AcReal* dst)
+transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const int3 dims)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2129,18 +2161,18 @@ transpose_xyz_to_yzx(const AcReal* src, AcReal* dst)
 		threadIdx.y + block_offset.x,
 		threadIdx.z + block_offset.z
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
-	const bool out_oob =  (int)out_vertexIdx.x >= VAL(AC_mlocal).y ||  (int)out_vertexIdx.y >= VAL(AC_mlocal).x || (int)out_vertexIdx.z >= VAL(AC_mlocal).z;
+	const bool in_oob  =  (int)vertexIdx.x  >= dims.x    ||  (int)vertexIdx.y >= dims.y     || (int)vertexIdx.z >= dims.z;
+	const bool out_oob =  (int)out_vertexIdx.x >= dims.y ||  (int)out_vertexIdx.y >= dims.x || (int)out_vertexIdx.z >= dims.z;
 
 
 
-	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[DEVICE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z)] : 0.0;
+	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
 	__syncthreads();
 	if(!out_oob)
-		dst[out_vertexIdx.x +VAL(AC_mlocal).y*out_vertexIdx.z + VAL(AC_mlocal_products).yz*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];
+		dst[out_vertexIdx.x +dims.y*out_vertexIdx.z + dims.y*dims.z*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];
 }
 void __global__ 
-transpose_xyz_to_xzy(const AcReal* src, AcReal* dst)
+transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const int3 dims)
 {
 	const dim3 in_block_offset =
 	{
@@ -2156,10 +2188,10 @@ transpose_xyz_to_xzy(const AcReal* src, AcReal* dst)
 		threadIdx.z + in_block_offset.z
 	};
 
-	const bool oob  =  (int)vertexIdx.x  >= VAL(AC_mlocal).x    ||  (int)vertexIdx.y >= VAL(AC_mlocal).y     || (int)vertexIdx.z >= VAL(AC_mlocal).z;
+	const bool oob  =  (int)vertexIdx.x  >= dims.x    ||  (int)vertexIdx.y >= dims.y     || (int)vertexIdx.z >= dims.z;
 	if(oob) return;
-	dst[vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z + VAL(AC_mlocal_products).xz*vertexIdx.y] 
-		= src[DEVICE_VTXBUF_IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)];
+	dst[vertexIdx.x + dims.x*vertexIdx.z + dims.x*dims.z*vertexIdx.y] 
+		= src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)];
 }
 static AcResult
 acTransposeXYZ_ZYX(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
@@ -2167,7 +2199,8 @@ acTransposeXYZ_ZYX(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 	const dim3 tpb = {32,1,32};
 
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_zyx,bpg, tpb, 0, stream)(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_zyx,bpg, tpb, 0, stream)(src,dst,dims);
+	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
@@ -2176,7 +2209,8 @@ acTransposeXYZ_ZXY(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 	const dim3 tpb = {32,1,32};
 
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_zxy,bpg, tpb, 0, stream)(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_zxy,bpg, tpb, 0, stream)(src,dst,dims);
+	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
@@ -2185,7 +2219,8 @@ acTransposeXYZ_YXZ(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 	const dim3 tpb = {32,32,1};
 
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_yxz,bpg, tpb, 0, stream)(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_yxz,bpg, tpb, 0, stream)(src,dst,dims);
+	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
@@ -2194,7 +2229,8 @@ acTransposeXYZ_YZX(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 	const dim3 tpb = {32,32,1};
 
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_yzx,bpg, tpb, 0, stream)(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_yzx,bpg, tpb, 0, stream)(src,dst,dims);
+	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
@@ -2202,15 +2238,15 @@ acTransposeXYZ_XZY(const AcReal* src, AcReal* dst, const int3 dims, const cudaSt
 {
 	const dim3 tpb = {32,32,1};
 	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_xzy,bpg, tpb, 0, stream)(src,dst);
+  	KERNEL_LAUNCH(transpose_xyz_to_xzy,bpg, tpb, 0, stream)(src,dst,dims);
+	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
 acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
 {
-	const dim3 tpb = {32,32,1};
-	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_xyz,bpg, tpb, 0, stream)(src,dst);
+	const size_t bytes = dims.x*dims.y*dims.z*sizeof(AcReal);
+	ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(dst,src,bytes,cudaMemcpyDeviceToDevice,stream));
 	return AC_SUCCESS;
 }
 AcResult
@@ -2231,6 +2267,7 @@ acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const int3 
 		case(ZYX):
 			return acTransposeXYZ_ZYX(src,dst,dims,stream);
 	}
+        ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 AcResult
@@ -2276,4 +2313,32 @@ acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType t
 	}
 	return AC_SUCCESS;
 }
+
+AcMeshOrder
+acGetMeshOrderForProfile(const AcProfileType type)
+{
+    	switch(type)
+    	{
+    	        case(PROFILE_X):
+    	    	    return ZYX;
+    	        case(PROFILE_Y):
+		    return XZY;
+    	        case(PROFILE_Z):
+			return XYZ;
+    	        case(PROFILE_XY):
+			return ZXY;
+    	        case(PROFILE_XZ):
+			return YXZ;
+    	        case(PROFILE_YX):
+			return ZYX;
+    	        case(PROFILE_YZ):
+			return XYZ;
+    	        case(PROFILE_ZX):
+			return YZX;
+    	        case(PROFILE_ZY):
+			return XZY;
+    	}
+	return XYZ;
+};
+
 #include "load_ac_kernel_params.h"

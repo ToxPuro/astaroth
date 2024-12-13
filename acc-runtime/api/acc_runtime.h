@@ -215,7 +215,8 @@ typedef struct {
   typedef struct {
     //Auxiliary metadata
     size_t bytes;
-    size_t mx, my, mz;
+    size3_t mm;
+    size3_t nn;
     size_t scratchpad_size;
     //All kernel parameters and memory allocated on the device
     DeviceVertexBufferArray on_device;
@@ -329,6 +330,9 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(AcResult, acKernelFlushInt,(const cudaStream_t stream, int* arr, const size_t n, const int value));
 
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
+
+  FUNC_DEFINE(AcMeshOrder, acGetMeshOrderForProfile,(const AcProfileType type));
+  FUNC_DEFINE(size3_t, acGetProfileReduceScratchPadDims,(const int profile, const size3_t mm, const size3_t nn));
 
   FUNC_DEFINE(AcResult,acPreprocessScratchPad,(VertexBufferArray, const int variable, const AcType type,const AcReduceOp op));
 
