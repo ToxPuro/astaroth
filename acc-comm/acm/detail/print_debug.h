@@ -5,24 +5,24 @@
 #include <memory>
 #include <vector>
 
-template <typename T>
-std::ostream&
-operator<<(std::ostream& os, const std::vector<T>& vec)
-{
-    if (vec.size() < 8) {
-        os << "{";
-        for (size_t i{0}; i < vec.size(); ++i)
-            os << vec[i] << (i + 1 < vec.size() ? ", " : "");
-        os << "}";
-    }
-    else {
-        os << "{\n";
-        for (size_t i{0}; i < vec.size(); ++i)
-            os << "\t" << i << ": " << vec[i] << (i + 1 < vec.size() ? ", " : "") << std::endl;
-        os << "}";
-    }
-    return os;
-}
+// template <typename T>
+// std::ostream&
+// operator<<(std::ostream& os, const std::vector<T>& vec)
+// {
+//     if (vec.size() < 8) {
+//         os << "{";
+//         for (size_t i{0}; i < vec.size(); ++i)
+//             os << vec[i] << (i + 1 < vec.size() ? ", " : "");
+//         os << "}";
+//     }
+//     else {
+//         os << "{\n";
+//         for (size_t i{0}; i < vec.size(); ++i)
+//             os << "\t" << i << ": " << vec[i] << (i + 1 < vec.size() ? ", " : "") << std::endl;
+//         os << "}";
+//     }
+//     return os;
+// }
 
 template <typename T>
 void
