@@ -6,12 +6,14 @@
 #include "packet.h"
 #include "partition.h"
 
-template <typename T, typename MemoryResource> class HaloExchangeTask {
+namespace ac::comm {
+
+template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
   private:
     std::vector<std::unique_ptr<Packet<T, MemoryResource>>> packets;
 
   public:
-    HaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
+    AsyncHaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
                      const size_t n_aggregate_buffers)
 
     {
@@ -22,12 +24,8 @@ template <typename T, typename MemoryResource> class HaloExchangeTask {
         auto segments{partition(local_mm, local_nn, local_rr)};
 
         // Prune the segment containing the computational domain
-        for (size_t i{0}; i < segments.size(); ++i) {
-            if (within_box(segments[i].offset, local_nn, local_rr)) {
-                segments.erase(segments.begin() + as<long>(i));
-                --i;
-            }
-        }
+        auto it{std::remove_if(segments.begin(), segments.end(), [local_nn, local_rr](const ac::segment& segment){ return within_box(segment.offset, local_nn, local_rr); })};
+        segments.erase(it, segments.end());
 
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
@@ -58,9 +56,18 @@ template <typename T, typename MemoryResource> class HaloExchangeTask {
 
     bool complete() const
     {
-        for (const auto& packet : packets)
-            if (!packet->complete())
+        const bool cc_allof_result{std::all_of(packets.begin(), packets.end(), std::mem_fn(&Packet<T, MemoryResource>::complete))};
+        
+        // TODO remove and return the cc_allof_result after testing
+        for (const auto& packet : packets){
+            if (!packet->complete()) {
+                ERRCHK_MPI(cc_allof_result == false);
                 return false;
+            }
+        }
+        ERRCHK_MPI(cc_allof_result == true);
         return true;
     }
 };
+
+}
