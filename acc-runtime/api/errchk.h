@@ -138,6 +138,7 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
   {                                                                            \
     ERRCHK_CUDA(cudaPeekAtLastError());                                        \
     ERRCHK_CUDA(cudaDeviceSynchronize());                                      \
+    ERRCHK_CUDA(cudaPeekAtLastError());                                        \
   }
 #endif
 
@@ -213,6 +214,7 @@ AS_SIZE_T(const int i, const char* file, const int line)
 
   return (size_t)(i);
 }
+
 #ifdef __cplusplus
 template <typename T>
 static inline size_t
@@ -230,5 +232,15 @@ AS_SIZE_T(unsigned int i, const char* file, const int line)
   INDIRECT_ERRCHK_ALWAYS(static_cast<long double>(i) <
                 static_cast<long double>(SIZE_MAX),file,line);
   return static_cast<size_t>(i);
+}
+
+static inline size3_t
+AS_SIZE_T(const int3 i, const char* file, const int line)
+{
+  INDIRECT_ERRCHK_ALWAYS(i.x >= 0, file, line);
+  INDIRECT_ERRCHK_ALWAYS(i.y >= 0, file, line);
+  INDIRECT_ERRCHK_ALWAYS(i.z >= 0, file, line);
+
+  return (size3_t){(size_t)i.x,(size_t)i.y,(size_t)i.z};
 }
 #endif

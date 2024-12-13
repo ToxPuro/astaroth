@@ -18,9 +18,9 @@
 */
 #pragma once
 #include <stdint.h> //uint64_t
-
-#include "errchk.h"
 #include "math_utils.h" //uint64_t, uint3_64
+#include "datatypes.h"
+#include "errchk.h"
 #include "astaroth.h"
 
 typedef struct {

@@ -206,23 +206,24 @@ gen_kernel_common_prefix()
   printf("};");
 
     printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][local_compdomain_idx] = val; };");
     printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][local_compdomain_idx] = val; };");
     printf("const auto reduce_sum_real_z __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][local_compdomain_idx] = val; };");
     printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*localCompdomainVertexIdx.z)] = val; };");
     printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*vertexIdx.z)] = val; };");
     printf("const auto reduce_sum_real_yx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*localCompdomainVertexIdx.z)] = val; };");
     printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = val; };");
     printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*vertexIdx.z)] = val; };");
     printf("const auto reduce_sum_real_zy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][idx] = val; };");
+          	  //"{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = val; };");
+          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = val; };");
 
 }
 

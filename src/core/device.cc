@@ -1215,9 +1215,8 @@ acDeviceStoreProfile(const Device device, const Profile profile, AcMesh* host_me
 {
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     cudaSetDevice(device->id);
-    const size3_t counts = (size3_t){device->vba.mx,device->vba.my,device->vba.mz};
     ERRCHK_CUDA(cudaMemcpy(host_mesh->profile[profile], device->vba.on_device.profiles.in[profile],
-                           prof_size(profile,counts),
+                           prof_size(profile,device->vba.mm),
                            cudaMemcpyDeviceToHost));
     return AC_SUCCESS;
 }
@@ -1690,7 +1689,7 @@ AcBuffer
 acDeviceTransposeBase(const Device device, const Stream stream, const AcMeshOrder order, const AcReal* src)
 {
     const AcMeshDims dims = acGetMeshDims(device->local_config);
-    AcBuffer res = acBufferCreate(acGetTransposeBufferShape(order,dims),true);
+    AcBuffer res = acBufferCreate(acGetTransposeBufferShape(order,dims.m1),true);
     acTranspose(order,src,res.data, dims.m1, device->streams[stream]);
     return res;
 }

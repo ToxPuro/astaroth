@@ -1802,14 +1802,9 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 
 AcBuffer acBufferCreate(const AcShape shape, const bool on_device);
 
-AcMeshOrder
-acGetMeshOrderForProfile(const AcProfileType type);
-AcShape
-acGetTransposeBufferShape(const AcMeshOrder order, const AcMeshDims dims);
-AcShape
-acGetReductionShape(const AcProfileType type, const AcMeshDims dims);
-AcResult
-acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal** tmp, size_t* tmp_size, AcReal* dst, const cudaStream_t stream);
+AcShape  acGetTransposeBufferShape(const AcMeshOrder order, const int3 dims);
+AcShape  acGetReductionShape(const AcProfileType type, const AcMeshDims dims);
+AcResult acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal** tmp, size_t* tmp_size, AcReal* dst, const cudaStream_t stream);
 
 void acBufferDestroy(AcBuffer* buffer);
 

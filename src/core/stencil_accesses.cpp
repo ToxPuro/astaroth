@@ -42,8 +42,8 @@ bool should_reduce_int[1000] = {false};
 #include <string.h>
 #include <vector>
 
-#include "errchk.h"
 #include "datatypes.h"
+#include "errchk.h"
 
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
