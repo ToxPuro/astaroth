@@ -62,7 +62,7 @@ template <typename T, typename MemoryResource> class buffer {
         static_assert(std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Only enabled for host buffer");
         for (size_t i{0}; i < count; ++i)
-            std::cout << i << ": " << resource[i] << std::endl;
+            std::cout << i << ": " << resource.get()[i] << std::endl;
     }
 
     // friend std::ostream& operator<<(std::ostream& os, const ac::buffer<T>& obj)

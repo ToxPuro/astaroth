@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -14,7 +15,7 @@ template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
 
   public:
     AsyncHaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
-                     const size_t n_aggregate_buffers)
+                          const size_t n_aggregate_buffers)
 
     {
         // Must be larger than the boundary area to avoid boundary artifacts
@@ -24,7 +25,10 @@ template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
         auto segments{partition(local_mm, local_nn, local_rr)};
 
         // Prune the segment containing the computational domain
-        auto it{std::remove_if(segments.begin(), segments.end(), [local_nn, local_rr](const ac::segment& segment){ return within_box(segment.offset, local_nn, local_rr); })};
+        auto it{std::remove_if(segments.begin(), segments.end(),
+                               [local_nn, local_rr](const ac::segment& segment) {
+                                   return within_box(segment.offset, local_nn, local_rr);
+                               })};
         segments.erase(it, segments.end());
 
         // Create packed send/recv buffers
@@ -56,10 +60,11 @@ template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
 
     bool complete() const
     {
-        const bool cc_allof_result{std::all_of(packets.begin(), packets.end(), std::mem_fn(&Packet<T, MemoryResource>::complete))};
-        
+        const bool cc_allof_result{std::all_of(packets.begin(), packets.end(),
+                                               std::mem_fn(&Packet<T, MemoryResource>::complete))};
+
         // TODO remove and return the cc_allof_result after testing
-        for (const auto& packet : packets){
+        for (const auto& packet : packets) {
             if (!packet->complete()) {
                 ERRCHK_MPI(cc_allof_result == false);
                 return false;
@@ -70,4 +75,4 @@ template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
     }
 };
 
-}
+} // namespace ac::comm
