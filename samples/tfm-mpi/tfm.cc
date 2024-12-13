@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <numeric>
 
 #include "astaroth.h"
 #include "device_detail.h"
@@ -9,8 +10,12 @@
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/type_conversion.h"
 
-#include "acm/detail/io.h"
 #include "acm/detail/memory_resource.h"
+
+#include "acm/detail/halo_exchange_packed.h"
+#include "acm/detail/io.h"
+
+#include "acm/detail/ndbuffer.h"
 
 #include "stencil_loader.h"
 #include "tfm_utils.h"
@@ -250,21 +255,21 @@ main(int argc, char* argv[])
                               (STENCIL_DEPTH - 1) / 2};
 
         // Create the Cartesian communicator
-        MPI_Comm cart_comm = ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn);
+        MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
         // Fill the local mesh configuration (overwrite the earlier info
         const AcMeshInfo local_info = get_local_mesh_info(cart_comm, raw_info);
         ERRCHK(acPrintMeshInfoTFM(local_info) == 0);
 
         // Select device
-        int original_rank, nprocs;
+        int original_rank{MPI_PROC_NULL}, nprocs{0};
         ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &original_rank));
         ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 
-        int device_count;
+        int device_count{-1};
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
 
-        const int device_id = original_rank % device_count;
+        const int device_id{original_rank % device_count};
         ERRCHK_CUDA_API(cudaSetDevice(device_id));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
@@ -279,7 +284,7 @@ main(int argc, char* argv[])
         ERRCHK_AC(acDevicePrintInfo(device));
 
         // Read & Write
-        VertexBufferArray vba;
+        VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
         ac::mpi::write_collective_simple(cart_comm, ac::mpi::get_dtype<AcReal>(), global_nn,
                                          local_nn_offset, vba.in[VTXBUF_LNRHO], "test.dat");
@@ -287,7 +292,7 @@ main(int argc, char* argv[])
                                         local_nn_offset, "test.dat", vba.out[VTXBUF_LNRHO]);
 
         // Dryrun
-        const AcMeshDims dims = acGetMeshDims(local_info);
+        const AcMeshDims dims{acGetMeshDims(local_info)};
         ERRCHK_AC(acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 0, dims.n0, dims.n1, 1e-5));
         ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
         ERRCHK_AC(acDeviceSwapBuffers(device));
@@ -306,10 +311,42 @@ main(int argc, char* argv[])
                                                                   vba.in[VTXBUF_LNRHO]},
                                        "test.out");
         iotask.wait_write_collective();
-        // iotask.launch_write_collective(cart_comm,
-        //                                ac::mr::device_ptr(prod(local_mm), vba.in[VTXBUF_LNRHO]),
-        //                                "test_mesh.dat");
-        // auto test_ptr{ac::mr::device_ptr<AcReal>(prod(local_mm), vba.in[VTXBUF_LNRHO])};
+
+        // Halo exchange
+        std::vector<ac::mr::device_ptr<AcReal>> hydro_fields{
+            ac::mr::device_ptr<AcReal>{prod(local_mm), vba.in[VTXBUF_LNRHO]},
+            ac::mr::device_ptr<AcReal>{prod(local_mm), vba.in[VTXBUF_UUX]},
+            ac::mr::device_ptr<AcReal>{prod(local_mm), vba.in[VTXBUF_UUY]},
+            ac::mr::device_ptr<AcReal>{prod(local_mm), vba.in[VTXBUF_UUZ]},
+        };
+
+        ac::ndbuffer<AcReal, ac::mr::host_memory_resource> debug_mesh{local_mm};
+        if (nprocs == 1) {
+            std::iota(debug_mesh.begin(), debug_mesh.end(),
+                      static_cast<AcReal>(ac::mpi::get_rank(cart_comm)) *
+                          static_cast<AcReal>(prod(local_mm)));
+        }
+        else {
+            std::fill(debug_mesh.begin(), debug_mesh.end(),
+                      static_cast<AcReal>(ac::mpi::get_rank(cart_comm)));
+        }
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        debug_mesh.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+        for (auto& ptr : hydro_fields)
+            ac::mr::copy(ac::mr::host_ptr<AcReal>{debug_mesh.size(), debug_mesh.data()}, ptr);
+
+        auto halo_exchange_task{ac::comm::AsyncHaloExchangeTask<
+            AcReal, ac::mr::device_memory_resource>(local_mm, local_nn, local_nn_offset,
+                                                    hydro_fields.size())};
+        halo_exchange_task.launch(cart_comm, hydro_fields);
+        halo_exchange_task.wait(hydro_fields);
+
+        for (auto& ptr : hydro_fields)
+            ac::mr::copy(ptr, ac::mr::host_ptr<AcReal>{debug_mesh.size(), debug_mesh.data()});
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        debug_mesh.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         // Cleanup
         ERRCHK_AC(acDeviceDestroy(device));
