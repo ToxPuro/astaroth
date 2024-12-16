@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "memory_resource.h"
+#include "pointer.h"
 
 namespace ac {
 template <typename T, typename MemoryResource> class buffer {

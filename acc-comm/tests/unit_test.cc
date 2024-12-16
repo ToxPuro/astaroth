@@ -7,6 +7,7 @@
 #include "acm/detail/ndbuffer.h"
 #include "acm/detail/pack.h"
 #include "acm/detail/partition.h"
+#include "acm/detail/pointer.h"
 #include "acm/detail/type_conversion.h"
 #include "acm/detail/vector.h"
 
@@ -24,6 +25,7 @@ main(void)
     test_ndbuffer();
     test_vector();
     test_memory_resource();
+    test_pointer();
 
     return EXIT_SUCCESS;
 }
