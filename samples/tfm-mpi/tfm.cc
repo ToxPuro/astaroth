@@ -32,6 +32,15 @@
         }                                                                                          \
     } while (0)
 
+#define BENCHMARK(cmd)                                                                             \
+    do {                                                                                           \
+        const auto start__{std::chrono::system_clock::now()};                                      \
+        (cmd);                                                                                     \
+        const auto ms_elapsed__ = std::chrono::duration_cast<std::chrono::milliseconds>(           \
+            std::chrono::system_clock::now() - start__);                                           \
+        std::cout << "[" << ms_elapsed__.count() << " ms] " << #cmd << std::endl;                  \
+    } while (0)
+
 using Dims = ac::vector<AcReal>;
 
 template <typename T, typename U>
@@ -91,8 +100,8 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
     ERRCHK(acHostUpdateTFMSpecificGlobalParams(&local_info) == 0);
 
     // Others to ensure nothing is left uninitialized
-    local_info.int_params[AC_init_type]     = 0;
-    local_info.int_params[AC_step_number]   = 0;
+    local_info.int_params[AC_init_type] = 0;
+    // local_info.int_params[AC_step_number]   = 0;
     local_info.real_params[AC_dt]           = 0;
     local_info.real3_params[AC_dummy_real3] = (AcReal3){0, 0, 0};
 
@@ -274,7 +283,7 @@ main(int argc, char* argv[])
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
         // Create device
-        Device device;
+        Device device{nullptr};
         ERRCHK_AC(acDeviceCreate(device_id, local_info, &device));
 
         // Setup device memory
@@ -293,7 +302,40 @@ main(int argc, char* argv[])
 
         // Dryrun
         const AcMeshDims dims{acGetMeshDims(local_info)};
-        ERRCHK_AC(acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 0, dims.n0, dims.n1, 1e-5));
+
+        std::vector<Kernel> hydro_kernels_step0{singlepass_solve_step0};
+        std::vector<Kernel> tfm_kernels_step0{singlepass_solve_step0_tfm_b11,
+                                              singlepass_solve_step0_tfm_b12,
+                                              singlepass_solve_step0_tfm_b21,
+                                              singlepass_solve_step0_tfm_b22};
+        std::vector<Kernel> hydro_kernels_step1{singlepass_solve_step1};
+        std::vector<Kernel> tfm_kernels_step1{singlepass_solve_step1_tfm_b11,
+                                              singlepass_solve_step1_tfm_b12,
+                                              singlepass_solve_step1_tfm_b21,
+                                              singlepass_solve_step1_tfm_b22};
+        std::vector<Kernel> hydro_kernels_step2{singlepass_solve_step2};
+        std::vector<Kernel> tfm_kernels_step2{singlepass_solve_step2_tfm_b11,
+                                              singlepass_solve_step2_tfm_b12,
+                                              singlepass_solve_step2_tfm_b21,
+                                              singlepass_solve_step2_tfm_b22};
+        std::vector<Kernel> all_kernels;
+        all_kernels.insert(all_kernels.end(), hydro_kernels_step0.begin(),
+                           hydro_kernels_step0.end());
+        all_kernels.insert(all_kernels.end(), tfm_kernels_step0.begin(), tfm_kernels_step0.end());
+        all_kernels.insert(all_kernels.end(), hydro_kernels_step1.begin(),
+                           hydro_kernels_step1.end());
+        all_kernels.insert(all_kernels.end(), tfm_kernels_step1.begin(), tfm_kernels_step1.end());
+        all_kernels.insert(all_kernels.end(), hydro_kernels_step2.begin(),
+                           hydro_kernels_step2.end());
+        all_kernels.insert(all_kernels.end(), tfm_kernels_step2.begin(), tfm_kernels_step2.end());
+
+        for (const auto& kernel : all_kernels)
+            ERRCHK_AC(acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1));
+
+        for (const auto& kernel : all_kernels) {
+            BENCHMARK(acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1));
+        }
+
         ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
         ERRCHK_AC(acDeviceSwapBuffers(device));
         ERRCHK(init_tfm_profiles(device) == 0);
@@ -306,47 +348,81 @@ main(int argc, char* argv[])
         const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
         auto iotask = ac::io::AsyncWriteTask<AcReal>(global_nn, global_nn_offset, local_mm,
                                                      local_nn, local_nn_offset);
+        const size_t count{prod(local_mm)};
         iotask.launch_write_collective(cart_comm,
-                                       ac::mr::device_ptr<AcReal>{prod(local_mm),
-                                                                  vba.in[VTXBUF_LNRHO]},
+                                       ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_LNRHO]},
                                        "test.out");
         iotask.wait_write_collective();
 
         // Halo exchange
         std::vector<ac::mr::device_ptr<AcReal>> hydro_fields{
-            ac::mr::device_ptr<AcReal>{prod(local_mm), vba.in[VTXBUF_LNRHO]},
-            ac::mr::device_ptr<AcReal>{prod(local_mm), vba.in[VTXBUF_UUX]},
-            ac::mr::device_ptr<AcReal>{prod(local_mm), vba.in[VTXBUF_UUY]},
-            ac::mr::device_ptr<AcReal>{prod(local_mm), vba.in[VTXBUF_UUZ]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_LNRHO]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_UUX]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_UUY]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_UUZ]},
+        };
+        std::vector<ac::mr::device_ptr<AcReal>> tfm_fields{
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a11_x]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a11_y]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a11_z]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a12_x]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a12_y]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a12_z]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a21_x]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a21_y]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a21_z]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a22_x]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a22_y]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_a22_z]},
+        };
+        std::vector<ac::mr::device_ptr<AcReal>> derived_fields{
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb11_x]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb11_y]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb11_z]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb12_x]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb12_y]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb12_z]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb21_x]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb21_y]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb21_z]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb22_x]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb22_y]},
+            ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb22_z]},
         };
 
         ac::ndbuffer<AcReal, ac::mr::host_memory_resource> debug_mesh{local_mm};
         if (nprocs == 1) {
             std::iota(debug_mesh.begin(), debug_mesh.end(),
                       static_cast<AcReal>(ac::mpi::get_rank(cart_comm)) *
-                          static_cast<AcReal>(prod(local_mm)));
+                          static_cast<AcReal>(count));
         }
         else {
             std::fill(debug_mesh.begin(), debug_mesh.end(),
                       static_cast<AcReal>(ac::mpi::get_rank(cart_comm)));
         }
-        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        debug_mesh.display();
-        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+        // MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        // debug_mesh.display();
+        // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
         for (auto& ptr : hydro_fields)
             ac::mr::copy(ac::mr::host_ptr<AcReal>{debug_mesh.size(), debug_mesh.data()}, ptr);
 
-        auto halo_exchange_task{ac::comm::AsyncHaloExchangeTask<
+        auto hydro_he{ac::comm::AsyncHaloExchangeTask<
             AcReal, ac::mr::device_memory_resource>(local_mm, local_nn, local_nn_offset,
                                                     hydro_fields.size())};
-        halo_exchange_task.launch(cart_comm, hydro_fields);
-        halo_exchange_task.wait(hydro_fields);
+        hydro_he.launch(cart_comm, hydro_fields);
+        hydro_he.wait(hydro_fields);
+
+        auto tfm_he{ac::comm::AsyncHaloExchangeTask<
+            AcReal, ac::mr::device_memory_resource>(local_mm, local_nn, local_nn_offset,
+                                                    tfm_fields.size())};
+        tfm_he.launch(cart_comm, tfm_fields);
+        tfm_he.wait(tfm_fields);
 
         for (auto& ptr : hydro_fields)
             ac::mr::copy(ptr, ac::mr::host_ptr<AcReal>{debug_mesh.size(), debug_mesh.data()});
-        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        debug_mesh.display();
-        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+        // MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        // debug_mesh.display();
+        // MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         // Cleanup
         ERRCHK_AC(acDeviceDestroy(device));

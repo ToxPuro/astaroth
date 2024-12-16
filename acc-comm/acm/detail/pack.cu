@@ -5,7 +5,7 @@
 #include "static_array.h"
 
 constexpr size_t MAX_NDIMS       = 4;
-constexpr size_t MAX_N_AGGR_BUFS = 8;
+constexpr size_t MAX_N_AGGR_BUFS = 12;
 
 namespace device {
 
@@ -144,6 +144,11 @@ void
 pack(const Shape& in_mm, const Shape& in_block_shape, const Index& in_block_offset,
      const std::vector<ac::mr::device_ptr<T>>& in_inputs, ac::mr::device_ptr<T>&& in_output)
 {
+    ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS, "Max ndims of pack is %zu (got %zu)\n", MAX_NDIMS,
+                     in_mm.shape());
+    ERRCHK_EXPR_DESC(in_inputs.size() <= MAX_N_AGGR_BUFS,
+                     "Gave %zu inputs but MAX_N_AGGR_BUFS is %zu\n", in_inputs.size(),
+                     MAX_N_AGGR_BUFS);
     const uint64_t block_nelems{prod(in_block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
@@ -165,6 +170,11 @@ void
 unpack(const ac::mr::device_ptr<T>& in_input, const Shape& in_mm, const Shape& in_block_shape,
        const Index& in_block_offset, std::vector<ac::mr::device_ptr<T>>& in_outputs)
 {
+    ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS, "Max ndims of pack is %zu (got %zu)\n", MAX_NDIMS,
+                     in_mm.shape());
+    ERRCHK_EXPR_DESC(in_outputs.size() <= MAX_N_AGGR_BUFS,
+                     "Gave %zu outputs but MAX_N_AGGR_BUFS is %zu\n", in_outputs.size(),
+                     MAX_N_AGGR_BUFS);
     const uint64_t block_nelems{prod(in_block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
