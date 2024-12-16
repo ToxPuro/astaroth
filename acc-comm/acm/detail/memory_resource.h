@@ -5,6 +5,11 @@
 #include "errchk.h"
 #include "print_debug.h"
 
+#if defined(ACM_DEVICE_ENABLED)
+#include "cuda_utils.h"
+#include "errchk_cuda.h"
+#endif
+
 namespace ac::mr {
 
 struct host_memory_resource {
@@ -24,14 +29,7 @@ struct host_memory_resource {
     }
 };
 
-} // namespace ac::mr
-
 #if defined(ACM_DEVICE_ENABLED)
-
-#include "cuda_utils.h"
-#include "errchk_cuda.h"
-
-namespace ac::mr {
 
 struct pinned_host_memory_resource : public host_memory_resource {
     static void* alloc(const size_t bytes)
@@ -84,27 +82,21 @@ struct device_memory_resource {
     }
 };
 
-} // namespace ac::mr
-
 #else
 
 #pragma message("Device code was not enabled. Falling back to host-only memory allocations")
-namespace ac::mr {
-using pinned_host_memory_resource                = ac::mr::host_memory_resource;
-using pinned_write_combined_host_memory_resource = ac::mr::host_memory_resource;
-using device_memory_resource                     = ac::mr::host_memory_resource;
-} // namespace ac::mr
+using pinned_host_memory_resource                = host_memory_resource;
+using pinned_write_combined_host_memory_resource = host_memory_resource;
+using device_memory_resource                     = host_memory_resource;
 
 #endif
-
-namespace ac::mr {
 
 template <typename MemoryResourceA, typename MemoryResourceB>
 constexpr cudaMemcpyKind
 get_kind()
 {
-    if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceA>) {
-        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
+    if constexpr (std::is_base_of_v<device_memory_resource, MemoryResourceA>) {
+        if constexpr (std::is_base_of_v<device_memory_resource, MemoryResourceB>) {
             PRINT_LOG("dtod");
             return cudaMemcpyDeviceToDevice;
         }
@@ -114,7 +106,7 @@ get_kind()
         }
     }
     else {
-        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
+        if constexpr (std::is_base_of_v<device_memory_resource, MemoryResourceB>) {
             PRINT_LOG("htod");
             return cudaMemcpyHostToDevice;
         }
@@ -154,8 +146,8 @@ template <typename T, typename MemoryResource> class base_ptr {
     }
 };
 
-template <typename T> using host_ptr   = base_ptr<T, ac::mr::host_memory_resource>;
-template <typename T> using device_ptr = base_ptr<T, ac::mr::device_memory_resource>;
+template <typename T> using host_ptr   = base_ptr<T, host_memory_resource>;
+template <typename T> using device_ptr = base_ptr<T, device_memory_resource>;
 
 #if defined(ACM_DEVICE_ENABLED)
 
@@ -165,7 +157,7 @@ copy(const base_ptr<T, MemoryResourceA> in, base_ptr<T, MemoryResourceB> out)
 {
     ERRCHK(in.size() <= out.size());
     ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(T),
-                               ac::mr::get_kind<MemoryResourceA, MemoryResourceB>()));
+                               get_kind<MemoryResourceA, MemoryResourceB>()));
 }
 
 #else
