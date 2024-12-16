@@ -84,8 +84,9 @@ class AsyncWriteTask {
         ERRCHK_MPI_API(MPI_File_iwrite_all(file, staging_buffer.data(), 1, local_subarray, &req));
     }
 
-    // template <typename MemoryResource>
-    void launch_write_collective(const MPI_Comm& parent_comm, const ac::mr::device_ptr<T>& input,
+    template <typename MemoryResource>
+    void launch_write_collective(const MPI_Comm& parent_comm,
+                                 const ac::mr::base_ptr<T, MemoryResource>& input,
                                  const std::string& path)
     {
         ERRCHK_MPI(!in_progress);

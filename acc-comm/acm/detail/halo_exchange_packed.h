@@ -39,13 +39,14 @@ template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
         }
     }
 
-    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
+    void launch(const MPI_Comm& parent_comm,
+                const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
     {
         for (auto& packet : packets)
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(std::vector<ac::mr::device_ptr<T>>& outputs)
+    void wait(std::vector<ac::mr::base_ptr<T, MemoryResource>>& outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         // while (!complete()) {
