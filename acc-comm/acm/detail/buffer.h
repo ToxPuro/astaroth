@@ -47,6 +47,9 @@ template <typename T, typename MemoryResource> class buffer {
     T* end() { return data() + size(); }
     const T* end() const { return data() + size(); }
 
+    auto get() { return ac::mr::base_ptr<T, MemoryResource>{size(), data()}; }
+    auto get() const { return ac::mr::base_ptr<T, MemoryResource>{size(), data()}; }
+
     // // Initializer list constructor
     // // ac::buffer<int, 3> a{1,2,3}
     // buffer(const std::initializer_list<T>& init_list)
