@@ -83,38 +83,12 @@ template <typename T, typename MemoryResource> class buffer {
 #include "cuda_utils.h"
 #include "errchk_cuda.h"
 
-template <typename MemoryResourceA, typename MemoryResourceB>
-constexpr cudaMemcpyKind
-get_kind()
-{
-    if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceA>) {
-        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
-            PRINT_LOG("dtod");
-            return cudaMemcpyDeviceToDevice;
-        }
-        else {
-            PRINT_LOG("dtoh");
-            return cudaMemcpyDeviceToHost;
-        }
-    }
-    else {
-        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
-            PRINT_LOG("htod");
-            return cudaMemcpyHostToDevice;
-        }
-        else {
-            PRINT_LOG("htoh");
-            return cudaMemcpyHostToHost;
-        }
-    }
-}
-
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
 migrate(const ac::buffer<T, MemoryResourceA>& in, ac::buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
-    const cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
+    const cudaMemcpyKind kind{ac::mr::get_kind<MemoryResourceA, MemoryResourceB>()};
     ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(in[0]), kind));
 }
 
@@ -124,7 +98,7 @@ migrate_async(const cudaStream_t stream, const ac::buffer<T, MemoryResourceA>& i
               ac::buffer<T, MemoryResourceB>& out)
 {
     ERRCHK(in.size() == out.size());
-    const cudaMemcpyKind kind{get_kind<MemoryResourceA, MemoryResourceB>()};
+    const cudaMemcpyKind kind{ac::mr::get_kind<MemoryResourceA, MemoryResourceB>()};
     ERRCHK_CUDA_API(
         cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in[0]), kind, stream));
 }
