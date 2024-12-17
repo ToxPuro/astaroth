@@ -25,7 +25,8 @@ template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
         auto segments{partition(local_mm, local_nn, local_rr)};
 
         // Prune the segment containing the computational domain
-        auto it{std::remove_if(segments.begin(), segments.end(),
+        auto it{std::remove_if(segments.begin(),
+                               segments.end(),
                                [local_nn, local_rr](const ac::segment& segment) {
                                    return within_box(segment.offset, local_nn, local_rr);
                                })};
@@ -33,8 +34,10 @@ template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
 
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
-            packets.push_back(std::make_unique<Packet<T, MemoryResource>>(local_mm, local_nn,
-                                                                          local_rr, segment,
+            packets.push_back(std::make_unique<Packet<T, MemoryResource>>(local_mm,
+                                                                          local_nn,
+                                                                          local_rr,
+                                                                          segment,
                                                                           n_aggregate_buffers));
         }
     }
@@ -61,7 +64,8 @@ template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
 
     bool complete() const
     {
-        const bool cc_allof_result{std::all_of(packets.begin(), packets.end(),
+        const bool cc_allof_result{std::all_of(packets.begin(),
+                                               packets.end(),
                                                std::mem_fn(&Packet<T, MemoryResource>::complete))};
 
         // TODO remove and return the cc_allof_result after testing
