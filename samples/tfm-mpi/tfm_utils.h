@@ -28,6 +28,9 @@ int acVerifyMeshInfo(const AcMeshInfo info);
 
 int acPrintMeshInfoTFM(const AcMeshInfo config);
 
+AcReal calc_timestep(const AcReal uumax, const AcReal vAmax, const AcReal shock_max,
+                     const AcMeshInfo info);
+
 #ifdef __cplusplus
 }
 #endif

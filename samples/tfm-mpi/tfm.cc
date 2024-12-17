@@ -55,22 +55,50 @@ static_cast_vec(const ac::vector<U>& in)
 
 namespace acr {
 
+auto
+get_param(const AcMeshInfo& info, const AcIntParam& param)
+{
+    return info.int_params[param];
+}
+
+auto
+get_param(const AcMeshInfo& info, const AcInt3Param& param)
+{
+    return info.int3_params[param];
+}
+
+auto
+get_param(const AcMeshInfo& info, const AcRealParam& param)
+{
+    return info.real_params[param];
+}
+
+auto
+get_param(const AcMeshInfo& info, const AcReal3Param& param)
+{
+    return info.real3_params[param];
+}
+
 Shape
 get_global_nn(const AcMeshInfo& info)
 {
-    ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Shape{as<uint64_t>(raw_info.int_params[AC_global_nx]),
-                 as<uint64_t>(raw_info.int_params[AC_global_ny]),
-                 as<uint64_t>(raw_info.int_params[AC_global_nz])};
+    ERRCHK(info.int_params[AC_global_nx] > 0);
+    ERRCHK(info.int_params[AC_global_ny] > 0);
+    ERRCHK(info.int_params[AC_global_nz] > 0);
+    return Shape{as<uint64_t>(info.int_params[AC_global_nx]),
+                 as<uint64_t>(info.int_params[AC_global_ny]),
+                 as<uint64_t>(info.int_params[AC_global_nz])};
 }
 
 Dims
 get_global_ss(const AcMeshInfo& info)
 {
-    ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Dims{static_cast<AcReal>(raw_info.real_params[AC_global_sx]),
-                static_cast<AcReal>(raw_info.real_params[AC_global_sy]),
-                static_cast<AcReal>(raw_info.real_params[AC_global_sz])};
+    ERRCHK(info.real_params[AC_global_sx] > 0);
+    ERRCHK(info.real_params[AC_global_sy] > 0);
+    ERRCHK(info.real_params[AC_global_sz] > 0);
+    return Dims{static_cast<AcReal>(info.real_params[AC_global_sx]),
+                static_cast<AcReal>(info.real_params[AC_global_sy]),
+                static_cast<AcReal>(info.real_params[AC_global_sz])};
 }
 
 Index
@@ -83,27 +111,27 @@ Index
 get_global_nn_offset(const AcMeshInfo& info)
 {
     ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Index{as<uint64_t>(raw_info.int_params[AC_multigpu_offset]).x,
-                 as<uint64_t>(raw_info.int_params[AC_multigpu_offset]).y,
-                 as<uint64_t>(raw_info.int_params[AC_multigpu_offset]).z};
+    return Index{as<uint64_t>(info.int3_params[AC_multigpu_offset].x),
+                 as<uint64_t>(info.int3_params[AC_multigpu_offset].y),
+                 as<uint64_t>(info.int3_params[AC_multigpu_offset].z)};
 }
 
 Shape
 get_local_nn(const AcMeshInfo& info)
 {
     ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Shape{as<uint64_t>(raw_info.int_params[AC_nx]),
-                 as<uint64_t>(raw_info.int_params[AC_ny]),
-                 as<uint64_t>(raw_info.int_params[AC_nz])};
+    return Shape{as<uint64_t>(info.int_params[AC_nx]),
+                 as<uint64_t>(info.int_params[AC_ny]),
+                 as<uint64_t>(info.int_params[AC_nz])};
 }
 
 Shape
 get_local_mm(const AcMeshInfo& info)
 {
     ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Shape{as<uint64_t>(raw_info.int_params[AC_mx]),
-                 as<uint64_t>(raw_info.int_params[AC_my]),
-                 as<uint64_t>(raw_info.int_params[AC_mz])};
+    return Shape{as<uint64_t>(info.int_params[AC_mx]),
+                 as<uint64_t>(info.int_params[AC_my]),
+                 as<uint64_t>(info.int_params[AC_mz])};
 }
 
 static AcMeshInfo
@@ -307,6 +335,40 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
     return 0;
 }
 
+static AcReal
+calc_and_distribute_timestep(const MPI_Comm& parent_comm, const Device& device)
+{
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+
+    AcReal uumax{0};
+    AcReal vAmax{0};
+    AcReal shock_max{0};
+
+    static bool warning_shown{false};
+    if (!warning_shown) {
+        WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
+        warning_shown = true;
+    }
+
+    MPI_Comm comm{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+    ERRCHK_AC(acDeviceReduceVec(device,
+                                STREAM_DEFAULT,
+                                RTYPE_MAX,
+                                VTXBUF_UUX,
+                                VTXBUF_UUY,
+                                VTXBUF_UUZ,
+                                &uumax));
+    ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, &uumax, 1, AC_REAL_MPI_TYPE, MPI_MAX, comm));
+    ERRCHK_MPI_API(MPI_Comm_free(&comm));
+
+    return calc_timestep(uumax, vAmax, shock_max, info);
+}
+
 namespace ac {
 
 class Grid {
@@ -314,6 +376,7 @@ class Grid {
     MPI_Comm cart_comm{MPI_COMM_NULL};
     AcMeshInfo local_info{};
     Device device{nullptr};
+    AcReal current_time{0};
 
   public:
     explicit Grid(const AcMeshInfo& raw_info)
@@ -321,7 +384,7 @@ class Grid {
         // Setup communicator and local mesh info
         auto global_nn{acr::get_global_nn(raw_info)};
         cart_comm  = ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn);
-        local_info = acr::get_local_mesh_info(raw_info);
+        local_info = acr::get_local_mesh_info(cart_comm, raw_info);
         ERRCHK(acPrintMeshInfoTFM(local_info) == 0);
 
         // Select and setup device
@@ -361,7 +424,8 @@ class Grid {
         ERRCHK_AC(acDevicePrintInfo(device));
 
         // Forcing parameter
-        update_forcing_params(device);
+        ERRCHK(acHostUpdateForcingParams(&local_info) == 0);
+        ERRCHK_AC(acDeviceLoadMeshInfo(device, local_info));
 
         // Profiles
         init_tfm_profiles(device);
@@ -383,32 +447,33 @@ class Grid {
             ERRCHK_AC(
                 acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_current_time, current_time));
 
-            // Timestep
-            const AcReal dt = calc_timestep(device, info);
+            // Timestep dependencies: hydro
+            // TODO hydro dependency
+            const AcReal dt = calc_and_distribute_timestep(cart_comm, device);
             ERRCHK_AC(acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt));
 
-            for (int step = 0; step < 3; ++step) {
-                ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step));
+            // for (int step = 0; step < 3; ++step) {
+            //     ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step));
 
-                // Hydro dependencies: hydro
-                hydro_he.wait(...);
-                hydro_compute_outer(...); // Needs to be synchronous
-                hydro_he.launch(...);
+            //     // Hydro dependencies: hydro
+            //     hydro_he.wait(...);
+            //     hydro_compute_outer(...); // Needs to be synchronous
+            //     hydro_he.launch(...);
 
-                // TFM dependencies: hydro, tfm, profiles
-                tfm_he.wait(...);
-                profiles_he.wait(...);
-                tfm_compute_outer(...); // Needs to be synchronous
-                tfm_he.launch(...);
+            //     // TFM dependencies: hydro, tfm, profiles
+            //     tfm_he.wait(...);
+            //     profiles_he.wait(...);
+            //     tfm_compute_outer(...); // Needs to be synchronous
+            //     tfm_he.launch(...);
 
-                hydro_compute_inner(...);
-                tfm_compute_inner(...);
-                ERRCHK_AC(acDeviceSwapBuffers(device));
+            //     hydro_compute_inner(...);
+            //     tfm_compute_inner(...);
+            //     ERRCHK_AC(acDeviceSwapBuffers(device));
 
-                // Profile dependencies: local tfm (uxb)
-                profiles_compute(...);
-                profiles_he.launch(...);
-            }
+            //     // Profile dependencies: local tfm (uxb)
+            //     profiles_compute(...);
+            //     profiles_he.launch(...);
+            // }
 
             current_time += dt;
         }
@@ -444,6 +509,8 @@ main(int argc, char* argv[])
             ERRCHK(acParseINI(default_config.c_str(), &raw_info) == 0);
         }
 
+        auto grid{ac::Grid(raw_info)};
+#if 0
         Shape global_nn{as<uint64_t>(raw_info.int_params[AC_global_nx]),
                         as<uint64_t>(raw_info.int_params[AC_global_ny]),
                         as<uint64_t>(raw_info.int_params[AC_global_nz])};
@@ -458,7 +525,7 @@ main(int argc, char* argv[])
         MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
         // Fill the local mesh configuration (overwrite the earlier info
-        const AcMeshInfo local_info = get_local_mesh_info(cart_comm, raw_info);
+        const AcMeshInfo local_info = acr::get_local_mesh_info(cart_comm, raw_info);
         ERRCHK(acPrintMeshInfoTFM(local_info) == 0);
 
         // Select device
@@ -555,7 +622,7 @@ main(int argc, char* argv[])
                                        "test.out");
         iotask.wait_write_collective();
 
-        // Halo exchange
+// Halo exchange
         std::vector<ac::mr::device_ptr<AcReal>> hydro_fields{
             ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_LNRHO]},
             ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_UUX]},
@@ -636,6 +703,7 @@ main(int argc, char* argv[])
         // Cleanup
         ERRCHK_AC(acDeviceDestroy(device));
         ac::mpi::cart_comm_destroy(cart_comm);
+#endif
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
