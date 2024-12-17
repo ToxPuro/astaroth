@@ -157,6 +157,7 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
     ERRCHK(acVerifyMeshInfo(local_info) == 0);
     return local_info;
 }
+
 } // namespace acr
 
 static int
@@ -177,18 +178,24 @@ init_tfm_profiles(const Device& device)
 
     // All to zero
     acHostInitProfileToValue(0, local_mz, host_profile.get());
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_y);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_z);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_y);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_z);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_x);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_z);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_x);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_z);
+    for (size_t profile{0}; profile < NUM_PROFILES; ++profile)
+        ERRCHK_AC(acDeviceLoadProfile(device,
+                                      host_profile.get(),
+                                      local_mz,
+                                      static_cast<Profile>(profile)));
+
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_y);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_z);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_y);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_z);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_x);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_z);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_x);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y);
+    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_z);
 
     // B1c (here B11) and B2c (here B21) to cosine
     acHostInitProfileToCosineWave(global_sz,
@@ -198,8 +205,8 @@ init_tfm_profiles(const Device& device)
                                   wavenumber,
                                   local_mz,
                                   host_profile.get());
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y);
+    ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x));
+    ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y));
 
     // B1s (here B12) and B2s (here B22)
     acHostInitProfileToSineWave(global_sz,
@@ -209,8 +216,8 @@ init_tfm_profiles(const Device& device)
                                 wavenumber,
                                 local_mz,
                                 host_profile.get());
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x);
-    acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y);
+    ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x));
+    ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y));
 
     return 0;
 }
@@ -311,7 +318,6 @@ class Grid {
   public:
     explicit Grid(const AcMeshInfo& raw_info)
     {
-
         // Setup communicator and local mesh info
         auto global_nn{acr::get_global_nn(raw_info)};
         cart_comm  = ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn);
@@ -334,17 +340,78 @@ class Grid {
 
         ERRCHK_AC(acDeviceCreate(device_id, local_info, &device));
 
-        // Setup device memory
-        AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
-        ERRCHK(get_stencil_coeffs(local_info, stencils) == 0);
-        ERRCHK_AC(acDeviceLoadStencils(device, STREAM_DEFAULT, stencils));
-        ERRCHK_AC(acDevicePrintInfo(device));
+        // Dryrun
+        reset_init_cond();
+        tfm_pipeline(5);
+        reset_init_cond();
     }
 
     ~Grid()
     {
         ERRCHK_AC(acDeviceDestroy(device));
         ac::mpi::cart_comm_destroy(cart_comm);
+    }
+
+    void reset_init_cond()
+    {
+        // Stencil coefficients
+        AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
+        ERRCHK(get_stencil_coeffs(local_info, stencils) == 0);
+        ERRCHK_AC(acDeviceLoadStencils(device, STREAM_DEFAULT, stencils));
+        ERRCHK_AC(acDevicePrintInfo(device));
+
+        // Forcing parameter
+        update_forcing_params(device);
+
+        // Profiles
+        init_tfm_profiles(device);
+
+        // Fields
+        ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
+        ERRCHK_AC(acDeviceSwapBuffers(device));
+        ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
+
+        // Note: all fields and profiles are initialized to 0 except
+        // the test profiles (PROFILE_B11 to PROFILE_B22)
+    }
+
+    void tfm_pipeline(const size_t niters)
+    {
+        for (size_t iter{0}; iter < niters; ++iter) {
+
+            // Current time
+            ERRCHK_AC(
+                acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_current_time, current_time));
+
+            // Timestep
+            const AcReal dt = calc_timestep(device, info);
+            ERRCHK_AC(acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt));
+
+            for (int step = 0; step < 3; ++step) {
+                ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step));
+
+                // Hydro dependencies: hydro
+                hydro_he.wait(...);
+                hydro_compute_outer(...); // Needs to be synchronous
+                hydro_he.launch(...);
+
+                // TFM dependencies: hydro, tfm, profiles
+                tfm_he.wait(...);
+                profiles_he.wait(...);
+                tfm_compute_outer(...); // Needs to be synchronous
+                tfm_he.launch(...);
+
+                hydro_compute_inner(...);
+                tfm_compute_inner(...);
+                ERRCHK_AC(acDeviceSwapBuffers(device));
+
+                // Profile dependencies: local tfm (uxb)
+                profiles_compute(...);
+                profiles_he.launch(...);
+            }
+
+            current_time += dt;
+        }
     }
 
     Grid(const Grid&)            = delete; // Copy constructor
@@ -437,34 +504,28 @@ main(int argc, char* argv[])
         // Dryrun
         const AcMeshDims dims{acGetMeshDims(local_info)};
 
-        std::vector<Kernel> hydro_kernels_step0{singlepass_solve_step0};
-        std::vector<Kernel> tfm_kernels_step0{singlepass_solve_step0_tfm_b11,
-                                              singlepass_solve_step0_tfm_b12,
-                                              singlepass_solve_step0_tfm_b21,
-                                              singlepass_solve_step0_tfm_b22};
-        std::vector<Kernel> hydro_kernels_step1{singlepass_solve_step1};
-        std::vector<Kernel> tfm_kernels_step1{singlepass_solve_step1_tfm_b11,
-                                              singlepass_solve_step1_tfm_b12,
-                                              singlepass_solve_step1_tfm_b21,
-                                              singlepass_solve_step1_tfm_b22};
-        std::vector<Kernel> hydro_kernels_step2{singlepass_solve_step2};
-        std::vector<Kernel> tfm_kernels_step2{singlepass_solve_step2_tfm_b11,
-                                              singlepass_solve_step2_tfm_b12,
-                                              singlepass_solve_step2_tfm_b21,
-                                              singlepass_solve_step2_tfm_b22};
+        std::vector<Kernel> hydro_kernels{singlepass_solve_step0};
+        std::vector<Kernel> tfm_kernels{singlepass_solve_step0_tfm_b11,
+                                        singlepass_solve_step0_tfm_b12,
+                                        singlepass_solve_step0_tfm_b21,
+                                        singlepass_solve_step0_tfm_b22};
+        std::vector<Kernel> hydro_kernels{singlepass_solve_step1};
+        std::vector<Kernel> tfm_kernels{singlepass_solve_step1_tfm_b11,
+                                        singlepass_solve_step1_tfm_b12,
+                                        singlepass_solve_step1_tfm_b21,
+                                        singlepass_solve_step1_tfm_b22};
+        std::vector<Kernel> hydro_kernels{singlepass_solve_step2};
+        std::vector<Kernel> tfm_kernels{singlepass_solve_step2_tfm_b11,
+                                        singlepass_solve_step2_tfm_b12,
+                                        singlepass_solve_step2_tfm_b21,
+                                        singlepass_solve_step2_tfm_b22};
         std::vector<Kernel> all_kernels;
-        all_kernels.insert(all_kernels.end(),
-                           hydro_kernels_step0.begin(),
-                           hydro_kernels_step0.end());
-        all_kernels.insert(all_kernels.end(), tfm_kernels_step0.begin(), tfm_kernels_step0.end());
-        all_kernels.insert(all_kernels.end(),
-                           hydro_kernels_step1.begin(),
-                           hydro_kernels_step1.end());
-        all_kernels.insert(all_kernels.end(), tfm_kernels_step1.begin(), tfm_kernels_step1.end());
-        all_kernels.insert(all_kernels.end(),
-                           hydro_kernels_step2.begin(),
-                           hydro_kernels_step2.end());
-        all_kernels.insert(all_kernels.end(), tfm_kernels_step2.begin(), tfm_kernels_step2.end());
+        all_kernels.insert(all_kernels.end(), hydro_kernels.begin(), hydro_kernels.end());
+        all_kernels.insert(all_kernels.end(), tfm_kernels.begin(), tfm_kernels.end());
+        all_kernels.insert(all_kernels.end(), hydro_kernels.begin(), hydro_kernels.end());
+        all_kernels.insert(all_kernels.end(), tfm_kernels.begin(), tfm_kernels.end());
+        all_kernels.insert(all_kernels.end(), hydro_kernels.begin(), hydro_kernels.end());
+        all_kernels.insert(all_kernels.end(), tfm_kernels.begin(), tfm_kernels.end());
 
         for (const auto& kernel : all_kernels)
             ERRCHK_AC(acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1));
