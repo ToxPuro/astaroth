@@ -216,13 +216,13 @@ init_tfm_profiles(const Device& device)
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
-    const AcReal global_sz = acr::get(info, AC_global_sz);
-    const size_t global_nz = as<size_t>(acr::get(info, AC_global_grid_n).z);
-    const long offset      = -acr::get(info, AC_nz_min) + acr::get(info, AC_multigpu_offset).z;
-    const size_t local_mz  = as<size_t>(acr::get(info, AC_mz));
+    const AcReal global_sz{acr::get(info, AC_global_sz)};
+    const size_t global_nz{as<size_t>(acr::get(info, AC_global_grid_n).z)};
+    const long offset{-acr::get(info, AC_nz_min) + acr::get(info, AC_multigpu_offset).z};
+    const size_t local_mz{as<size_t>(acr::get(info, AC_mz))};
 
-    const AcReal amplitude  = acr::get(info, AC_profile_amplitude);
-    const AcReal wavenumber = acr::get(info, AC_profile_wavenumber);
+    const AcReal amplitude{acr::get(info, AC_profile_amplitude)};
+    const AcReal wavenumber{acr::get(info, AC_profile_wavenumber)};
 
     auto host_profile{std::make_unique<AcReal[]>(local_mz)};
 
