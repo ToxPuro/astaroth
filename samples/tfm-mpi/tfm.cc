@@ -53,16 +53,65 @@ static_cast_vec(const ac::vector<U>& in)
     return out;
 }
 
+namespace acr {
+
+Shape
+get_global_nn(const AcMeshInfo& info)
+{
+    ERRCHK(acVerifyMeshInfo(info) == 0);
+    return Shape{as<uint64_t>(raw_info.int_params[AC_global_nx]),
+                 as<uint64_t>(raw_info.int_params[AC_global_ny]),
+                 as<uint64_t>(raw_info.int_params[AC_global_nz])};
+}
+
+Dims
+get_global_ss(const AcMeshInfo& info)
+{
+    ERRCHK(acVerifyMeshInfo(info) == 0);
+    return Dims{static_cast<AcReal>(raw_info.real_params[AC_global_sx]),
+                static_cast<AcReal>(raw_info.real_params[AC_global_sy]),
+                static_cast<AcReal>(raw_info.real_params[AC_global_sz])};
+}
+
+Index
+get_local_nn_offset()
+{
+    return Index{(STENCIL_WIDTH - 1) / 2, (STENCIL_HEIGHT - 1) / 2, (STENCIL_DEPTH - 1) / 2};
+}
+
+Index
+get_global_nn_offset(const AcMeshInfo& info)
+{
+    ERRCHK(acVerifyMeshInfo(info) == 0);
+    return Index{as<uint64_t>(raw_info.int_params[AC_multigpu_offset]).x,
+                 as<uint64_t>(raw_info.int_params[AC_multigpu_offset]).y,
+                 as<uint64_t>(raw_info.int_params[AC_multigpu_offset]).z};
+}
+
+Shape
+get_local_nn(const AcMeshInfo& info)
+{
+    ERRCHK(acVerifyMeshInfo(info) == 0);
+    return Shape{as<uint64_t>(raw_info.int_params[AC_nx]),
+                 as<uint64_t>(raw_info.int_params[AC_ny]),
+                 as<uint64_t>(raw_info.int_params[AC_nz])};
+}
+
+Shape
+get_local_mm(const AcMeshInfo& info)
+{
+    ERRCHK(acVerifyMeshInfo(info) == 0);
+    return Shape{as<uint64_t>(raw_info.int_params[AC_mx]),
+                 as<uint64_t>(raw_info.int_params[AC_my]),
+                 as<uint64_t>(raw_info.int_params[AC_mz])};
+}
+
 static AcMeshInfo
 get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
 {
     // Calculate local dimensions
-    Shape global_nn{as<uint64_t>(info.int_params[AC_global_nx]),
-                    as<uint64_t>(info.int_params[AC_global_ny]),
-                    as<uint64_t>(info.int_params[AC_global_nz])};
-    Dims global_ss{static_cast<AcReal>(info.real_params[AC_global_sx]),
-                   static_cast<AcReal>(info.real_params[AC_global_sy]),
-                   static_cast<AcReal>(info.real_params[AC_global_sz])};
+    Shape global_nn{acr::get_global_nn(info)};
+    Dims global_ss{acr::get_global_ss(info)};
 
     const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
     const Shape local_nn{global_nn / decomp};
@@ -108,6 +157,7 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
     ERRCHK(acVerifyMeshInfo(local_info) == 0);
     return local_info;
 }
+} // namespace acr
 
 static int
 init_tfm_profiles(const Device& device)
@@ -141,13 +191,23 @@ init_tfm_profiles(const Device& device)
     acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_z);
 
     // B1c (here B11) and B2c (here B21) to cosine
-    acHostInitProfileToCosineWave(global_sz, global_nz, offset, amplitude, wavenumber, local_mz,
+    acHostInitProfileToCosineWave(global_sz,
+                                  global_nz,
+                                  offset,
+                                  amplitude,
+                                  wavenumber,
+                                  local_mz,
                                   host_profile.get());
     acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x);
     acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y);
 
     // B1s (here B12) and B2s (here B22)
-    acHostInitProfileToSineWave(global_sz, global_nz, offset, amplitude, wavenumber, local_mz,
+    acHostInitProfileToSineWave(global_sz,
+                                global_nz,
+                                offset,
+                                amplitude,
+                                wavenumber,
+                                local_mz,
                                 host_profile.get());
     acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x);
     acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y);
@@ -198,9 +258,12 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
         printf("Writing %s\n", filepath);
-        ac::mpi::write_collective_simple(parent_comm, ac::mpi::get_dtype<AcReal>(),
-                                         acc::get_global_nn(local_info), acc::get_local_nn_offset(),
-                                         vba.in[i], std::string(filepath));
+        ac::mpi::write_collective_simple(parent_comm,
+                                         ac::mpi::get_dtype<AcReal>(),
+                                         acc::get_global_nn(local_info),
+                                         acc::get_local_nn_offset(),
+                                         vba.in[i],
+                                         std::string(filepath));
     }
     for (int i = 0; i < NUM_PROFILES; ++i) {
         char filepath[4096];
@@ -222,15 +285,75 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
         ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, rank, &profile_comm));
 
         if (profile_comm != MPI_COMM_NULL) {
-            ac::mpi::write_collective(profile_comm, ac::mpi::get_dtype<AcReal>(), profile_global_nz,
-                                      profile_global_nz_offset, profile_local_mz, profile_local_nz,
-                                      profile_local_nz_offset, vba.profiles.in[i],
+            ac::mpi::write_collective(profile_comm,
+                                      ac::mpi::get_dtype<AcReal>(),
+                                      profile_global_nz,
+                                      profile_global_nz_offset,
+                                      profile_local_mz,
+                                      profile_local_nz,
+                                      profile_local_nz_offset,
+                                      vba.profiles.in[i],
                                       std::string(filepath));
             ERRCHK_MPI_API(MPI_Comm_free(&profile_comm));
         }
     }
     return 0;
 }
+
+namespace ac {
+
+class Grid {
+  private:
+    MPI_Comm cart_comm{MPI_COMM_NULL};
+    AcMeshInfo local_info{};
+    Device device{nullptr};
+
+  public:
+    explicit Grid(const AcMeshInfo& raw_info)
+    {
+
+        // Setup communicator and local mesh info
+        auto global_nn{acr::get_global_nn(raw_info)};
+        cart_comm  = ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn);
+        local_info = acr::get_local_mesh_info(raw_info);
+        ERRCHK(acPrintMeshInfoTFM(local_info) == 0);
+
+        // Select and setup device
+        int original_rank{MPI_PROC_NULL};
+        ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &original_rank));
+
+        int nprocs{0};
+        ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
+
+        int device_count{0};
+        ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
+
+        const int device_id{original_rank % device_count};
+        ERRCHK_CUDA_API(cudaSetDevice(device_id));
+        ERRCHK_CUDA_API(cudaDeviceSynchronize());
+
+        ERRCHK_AC(acDeviceCreate(device_id, local_info, &device));
+
+        // Setup device memory
+        AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
+        ERRCHK(get_stencil_coeffs(local_info, stencils) == 0);
+        ERRCHK_AC(acDeviceLoadStencils(device, STREAM_DEFAULT, stencils));
+        ERRCHK_AC(acDevicePrintInfo(device));
+    }
+
+    ~Grid()
+    {
+        ERRCHK_AC(acDeviceDestroy(device));
+        ac::mpi::cart_comm_destroy(cart_comm);
+    }
+
+    Grid(const Grid&)            = delete; // Copy constructor
+    Grid& operator=(const Grid&) = delete; // Copy assignment operator
+    Grid(Grid&&)                 = delete; // Move constructor
+    Grid& operator=(Grid&&)      = delete; // Move assignment operator
+};
+
+} // namespace ac
 
 int
 main(int argc, char* argv[])
@@ -260,7 +383,8 @@ main(int argc, char* argv[])
         Dims global_ss{static_cast<AcReal>(raw_info.real_params[AC_global_sx]),
                        static_cast<AcReal>(raw_info.real_params[AC_global_sy]),
                        static_cast<AcReal>(raw_info.real_params[AC_global_sz])};
-        Index local_nn_offset{(STENCIL_WIDTH - 1) / 2, (STENCIL_HEIGHT - 1) / 2,
+        Index local_nn_offset{(STENCIL_WIDTH - 1) / 2,
+                              (STENCIL_HEIGHT - 1) / 2,
                               (STENCIL_DEPTH - 1) / 2};
 
         // Create the Cartesian communicator
@@ -271,8 +395,10 @@ main(int argc, char* argv[])
         ERRCHK(acPrintMeshInfoTFM(local_info) == 0);
 
         // Select device
-        int original_rank{MPI_PROC_NULL}, nprocs{0};
+        int original_rank{MPI_PROC_NULL};
         ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &original_rank));
+
+        int nprocs{0};
         ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 
         int device_count{-1};
@@ -295,10 +421,18 @@ main(int argc, char* argv[])
         // Read & Write
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        ac::mpi::write_collective_simple(cart_comm, ac::mpi::get_dtype<AcReal>(), global_nn,
-                                         local_nn_offset, vba.in[VTXBUF_LNRHO], "test.dat");
-        ac::mpi::read_collective_simple(cart_comm, ac::mpi::get_dtype<AcReal>(), global_nn,
-                                        local_nn_offset, "test.dat", vba.out[VTXBUF_LNRHO]);
+        ac::mpi::write_collective_simple(cart_comm,
+                                         ac::mpi::get_dtype<AcReal>(),
+                                         global_nn,
+                                         local_nn_offset,
+                                         vba.in[VTXBUF_LNRHO],
+                                         "test.dat");
+        ac::mpi::read_collective_simple(cart_comm,
+                                        ac::mpi::get_dtype<AcReal>(),
+                                        global_nn,
+                                        local_nn_offset,
+                                        "test.dat",
+                                        vba.out[VTXBUF_LNRHO]);
 
         // Dryrun
         const AcMeshDims dims{acGetMeshDims(local_info)};
@@ -319,13 +453,16 @@ main(int argc, char* argv[])
                                               singlepass_solve_step2_tfm_b21,
                                               singlepass_solve_step2_tfm_b22};
         std::vector<Kernel> all_kernels;
-        all_kernels.insert(all_kernels.end(), hydro_kernels_step0.begin(),
+        all_kernels.insert(all_kernels.end(),
+                           hydro_kernels_step0.begin(),
                            hydro_kernels_step0.end());
         all_kernels.insert(all_kernels.end(), tfm_kernels_step0.begin(), tfm_kernels_step0.end());
-        all_kernels.insert(all_kernels.end(), hydro_kernels_step1.begin(),
+        all_kernels.insert(all_kernels.end(),
+                           hydro_kernels_step1.begin(),
                            hydro_kernels_step1.end());
         all_kernels.insert(all_kernels.end(), tfm_kernels_step1.begin(), tfm_kernels_step1.end());
-        all_kernels.insert(all_kernels.end(), hydro_kernels_step2.begin(),
+        all_kernels.insert(all_kernels.end(),
+                           hydro_kernels_step2.begin(),
                            hydro_kernels_step2.end());
         all_kernels.insert(all_kernels.end(), tfm_kernels_step2.begin(), tfm_kernels_step2.end());
 
@@ -346,8 +483,11 @@ main(int argc, char* argv[])
         const auto global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
         const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, local_nn_offset)};
         const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
-        auto iotask = ac::io::AsyncWriteTask<AcReal>(global_nn, global_nn_offset, local_mm,
-                                                     local_nn, local_nn_offset);
+        auto iotask = ac::io::AsyncWriteTask<AcReal>(global_nn,
+                                                     global_nn_offset,
+                                                     local_mm,
+                                                     local_nn,
+                                                     local_nn_offset);
         const size_t count{prod(local_mm)};
         iotask.launch_write_collective(cart_comm,
                                        ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_LNRHO]},
@@ -392,12 +532,14 @@ main(int argc, char* argv[])
 
         ac::ndbuffer<AcReal, ac::mr::host_memory_resource> debug_mesh{local_mm};
         if (nprocs == 1) {
-            std::iota(debug_mesh.begin(), debug_mesh.end(),
+            std::iota(debug_mesh.begin(),
+                      debug_mesh.end(),
                       static_cast<AcReal>(ac::mpi::get_rank(cart_comm)) *
                           static_cast<AcReal>(count));
         }
         else {
-            std::fill(debug_mesh.begin(), debug_mesh.end(),
+            std::fill(debug_mesh.begin(),
+                      debug_mesh.end(),
                       static_cast<AcReal>(ac::mpi::get_rank(cart_comm)));
         }
         // MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -406,15 +548,21 @@ main(int argc, char* argv[])
         for (auto& ptr : hydro_fields)
             ac::mr::copy(ac::mr::host_ptr<AcReal>{debug_mesh.size(), debug_mesh.data()}, ptr);
 
-        auto hydro_he{ac::comm::AsyncHaloExchangeTask<
-            AcReal, ac::mr::device_memory_resource>(local_mm, local_nn, local_nn_offset,
-                                                    hydro_fields.size())};
+        auto hydro_he{
+            ac::comm::AsyncHaloExchangeTask<AcReal, ac::mr::device_memory_resource>(local_mm,
+                                                                                    local_nn,
+                                                                                    local_nn_offset,
+                                                                                    hydro_fields
+                                                                                        .size())};
         hydro_he.launch(cart_comm, hydro_fields);
         hydro_he.wait(hydro_fields);
 
-        auto tfm_he{ac::comm::AsyncHaloExchangeTask<
-            AcReal, ac::mr::device_memory_resource>(local_mm, local_nn, local_nn_offset,
-                                                    tfm_fields.size())};
+        auto tfm_he{
+            ac::comm::AsyncHaloExchangeTask<AcReal, ac::mr::device_memory_resource>(local_mm,
+                                                                                    local_nn,
+                                                                                    local_nn_offset,
+                                                                                    tfm_fields
+                                                                                        .size())};
         tfm_he.launch(cart_comm, tfm_fields);
         tfm_he.wait(tfm_fields);
 
