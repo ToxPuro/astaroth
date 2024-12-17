@@ -132,6 +132,12 @@ get_local_nn_offset()
 }
 
 Index
+get_local_rr()
+{
+    return get_local_nn_offset();
+}
+
+Index
 get_global_nn_offset(const AcMeshInfo& info)
 {
     ERRCHK(acVerifyMeshInfo(info) == 0);
@@ -391,6 +397,68 @@ calc_and_distribute_timestep(const MPI_Comm& parent_comm, const Device& device)
     return calc_timestep(uumax, vAmax, shock_max, info);
 }
 
+static int3
+to_int3(const ac::vector<uint64_t>& in)
+{
+    ERRCHK(in.size() == 3);
+    return int3{as<int>(in[0]), as<int>(in[1]), as<int>(in[2])};
+}
+
+/** Return outer or inner segments based on the return_outer_segments parameter */
+static std::vector<ac::segment>
+get_compute_segments(const Device& device, const bool return_outer_segments)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+
+    // Inner domain dimensions
+    const Shape mm{acr::get_local_nn(info)};
+    const Shape nn{acr::get_local_nn(info) - 2 * acr::get_local_rr()};
+    const Shape rr{acr::get_local_rr()};
+
+    // Partition the mesh
+    auto segments{partition(mm, nn, rr)};
+
+    if (return_outer_segments) {
+        // Prune the segments overlapping with the computational domain
+        auto it{
+            std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::segment& segment) {
+                return within_box(segment.offset, nn, rr);
+            })};
+        segments.erase(it, segments.end());
+    }
+    else {
+        // Prune the segments not within computational domain
+        auto it{
+            std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::segment& segment) {
+                return !within_box(segment.offset, nn, rr);
+            })};
+        segments.erase(it, segments.end());
+    }
+
+    // Offset the segments to start in the computational domain
+    for (auto& segment : segments)
+        segment.offset = segment.offset + acr::get_local_rr();
+
+    return segments;
+}
+
+static void
+compute(const Device& device, const std::vector<Kernel>& compute_kernels, const bool outer_segments)
+{
+    auto segments{get_compute_segments(device, outer_segments)};
+
+    for (const auto& segment : segments) {
+        for (const auto& kernel : compute_kernels) {
+            ERRCHK_AC(acDeviceLaunchKernel(device,
+                                           STREAM_DEFAULT,
+                                           kernel,
+                                           to_int3(segment.offset),
+                                           to_int3(segment.offset + segment.dims)));
+        }
+    }
+}
+
 namespace ac {
 
 class Grid {
@@ -470,15 +538,40 @@ class Grid {
                 acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_current_time, current_time));
 
             // Timestep dependencies: hydro
-            // TODO hydro dependency
+            // if (!hydro_he.complete())
+            //     hydro_he.wait(...);
             const AcReal dt = calc_and_distribute_timestep(cart_comm, device);
             ERRCHK_AC(acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt));
+
+            std::vector<Kernel> hydro_kernels_step0{singlepass_solve_step0};
+            std::vector<Kernel> tfm_kernels_step0{singlepass_solve_step0_tfm_b11,
+                                                  singlepass_solve_step0_tfm_b12,
+                                                  singlepass_solve_step0_tfm_b21,
+                                                  singlepass_solve_step0_tfm_b22};
+
+            compute(device, hydro_kernels_step0, true);
+            compute(device, tfm_kernels_step0, true);
+
+            compute(device, hydro_kernels_step0, false);
+            compute(device, tfm_kernels_step0, false);
+
+            // std::vector<Kernel> hydro_kernels_step1{singlepass_solve_step1};
+            // std::vector<Kernel> tfm_kernels_step1{singlepass_solve_step1_tfm_b11,
+            //                                       singlepass_solve_step1_tfm_b12,
+            //                                       singlepass_solve_step1_tfm_b21,
+            //                                       singlepass_solve_step1_tfm_b22};
+            // std::vector<Kernel> hydro_kernels_step2{singlepass_solve_step2};
+            // std::vector<Kernel> tfm_kernels_step2{singlepass_solve_step2_tfm_b11,
+            //                                       singlepass_solve_step2_tfm_b12,
+            //                                       singlepass_solve_step2_tfm_b21,
+            //                                       singlepass_solve_step2_tfm_b22};
 
             // for (int step = 0; step < 3; ++step) {
             //     ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step));
 
             //     // Hydro dependencies: hydro
-            //     hydro_he.wait(...);
+            //     if (!hydro_he.complete())
+            //       hydro_he.wait(...);
             //     hydro_compute_outer(...); // Needs to be synchronous
             //     hydro_he.launch(...);
 
@@ -499,6 +592,13 @@ class Grid {
 
             current_time += dt;
         }
+
+        // if (!hydro_he.complete())
+        //     hydro_he.wait();
+        // if (!tfm_he.complete())
+        //     tfm_he.wait();
+        // if (!profiles_he.complete())
+        //     profiles_he.wait();
     }
 
     Grid(const Grid&)            = delete; // Copy constructor
