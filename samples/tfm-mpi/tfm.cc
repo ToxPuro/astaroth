@@ -56,49 +56,73 @@ static_cast_vec(const ac::vector<U>& in)
 namespace acr {
 
 auto
-get_param(const AcMeshInfo& info, const AcIntParam& param)
+get(const AcMeshInfo& info, const AcIntParam& param)
 {
     return info.int_params[param];
 }
 
 auto
-get_param(const AcMeshInfo& info, const AcInt3Param& param)
+get(const AcMeshInfo& info, const AcInt3Param& param)
 {
     return info.int3_params[param];
 }
 
 auto
-get_param(const AcMeshInfo& info, const AcRealParam& param)
+get(const AcMeshInfo& info, const AcRealParam& param)
 {
     return info.real_params[param];
 }
 
 auto
-get_param(const AcMeshInfo& info, const AcReal3Param& param)
+get(const AcMeshInfo& info, const AcReal3Param& param)
 {
     return info.real3_params[param];
+}
+
+void
+set(const AcIntParam& param, const int value, AcMeshInfo& info)
+{
+    info.int_params[param] = value;
+}
+
+void
+set(const AcInt3Param& param, const int3& value, AcMeshInfo& info)
+{
+    info.int3_params[param] = value;
+}
+
+void
+set(const AcRealParam& param, const AcReal value, AcMeshInfo& info)
+{
+    info.real_params[param] = value;
+}
+
+void
+set(const AcReal3Param& param, const AcReal3& value, AcMeshInfo& info)
+{
+    info.real3_params[param] = value;
 }
 
 Shape
 get_global_nn(const AcMeshInfo& info)
 {
-    ERRCHK(info.int_params[AC_global_nx] > 0);
-    ERRCHK(info.int_params[AC_global_ny] > 0);
-    ERRCHK(info.int_params[AC_global_nz] > 0);
-    return Shape{as<uint64_t>(info.int_params[AC_global_nx]),
-                 as<uint64_t>(info.int_params[AC_global_ny]),
-                 as<uint64_t>(info.int_params[AC_global_nz])};
+    ERRCHK(acr::get(info, AC_global_nx) > 0);
+    ERRCHK(acr::get(info, AC_global_ny) > 0);
+    ERRCHK(acr::get(info, AC_global_nz) > 0);
+    return Shape{as<uint64_t>(acr::get(info, AC_global_nx)),
+                 as<uint64_t>(acr::get(info, AC_global_ny)),
+                 as<uint64_t>(acr::get(info, AC_global_nz))};
 }
 
 Dims
 get_global_ss(const AcMeshInfo& info)
 {
-    ERRCHK(info.real_params[AC_global_sx] > 0);
-    ERRCHK(info.real_params[AC_global_sy] > 0);
-    ERRCHK(info.real_params[AC_global_sz] > 0);
-    return Dims{static_cast<AcReal>(info.real_params[AC_global_sx]),
-                static_cast<AcReal>(info.real_params[AC_global_sy]),
-                static_cast<AcReal>(info.real_params[AC_global_sz])};
+    ERRCHK(acr::get(info, AC_global_sx) > 0);
+    ERRCHK(acr::get(info, AC_global_sy) > 0);
+    ERRCHK(acr::get(info, AC_global_sz) > 0);
+    return Dims{static_cast<AcReal>(acr::get(info, AC_global_sx)),
+                static_cast<AcReal>(acr::get(info, AC_global_sy)),
+                static_cast<AcReal>(acr::get(info, AC_global_sz))};
 }
 
 Index
@@ -111,27 +135,27 @@ Index
 get_global_nn_offset(const AcMeshInfo& info)
 {
     ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Index{as<uint64_t>(info.int3_params[AC_multigpu_offset].x),
-                 as<uint64_t>(info.int3_params[AC_multigpu_offset].y),
-                 as<uint64_t>(info.int3_params[AC_multigpu_offset].z)};
+    return Index{as<uint64_t>(acr::get(info, AC_multigpu_offset).x),
+                 as<uint64_t>(acr::get(info, AC_multigpu_offset).y),
+                 as<uint64_t>(acr::get(info, AC_multigpu_offset).z)};
 }
 
 Shape
 get_local_nn(const AcMeshInfo& info)
 {
     ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Shape{as<uint64_t>(info.int_params[AC_nx]),
-                 as<uint64_t>(info.int_params[AC_ny]),
-                 as<uint64_t>(info.int_params[AC_nz])};
+    return Shape{as<uint64_t>(acr::get(info, AC_nx)),
+                 as<uint64_t>(acr::get(info, AC_ny)),
+                 as<uint64_t>(acr::get(info, AC_nz))};
 }
 
 Shape
 get_local_mm(const AcMeshInfo& info)
 {
     ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Shape{as<uint64_t>(info.int_params[AC_mx]),
-                 as<uint64_t>(info.int_params[AC_my]),
-                 as<uint64_t>(info.int_params[AC_mz])};
+    return Shape{as<uint64_t>(acr::get(info, AC_mx)),
+                 as<uint64_t>(acr::get(info, AC_my)),
+                 as<uint64_t>(acr::get(info, AC_mz))};
 }
 
 static AcMeshInfo
@@ -151,9 +175,9 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
     // Fill AcMeshInfo
     AcMeshInfo local_info{info};
 
-    local_info.int_params[AC_nx] = as<int>(local_nn[0]);
-    local_info.int_params[AC_ny] = as<int>(local_nn[1]);
-    local_info.int_params[AC_nz] = as<int>(local_nn[2]);
+    acr::set(AC_nx, as<int>(local_nn[0]), local_info);
+    acr::set(AC_ny, as<int>(local_nn[1]), local_info);
+    acr::set(AC_nz, as<int>(local_nn[2]), local_info);
 
     local_info.int3_params[AC_multigpu_offset] = {
         as<int>(global_nn_offset[0]),
@@ -161,26 +185,24 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
         as<int>(global_nn_offset[2]),
     };
 
-    local_info.real_params[AC_sx] = static_cast<AcReal>(local_ss[0]);
-    local_info.real_params[AC_sy] = static_cast<AcReal>(local_ss[1]);
-    local_info.real_params[AC_sz] = static_cast<AcReal>(local_ss[2]);
+    acr::set(AC_sx, static_cast<AcReal>(local_ss[0]), local_info);
+    acr::set(AC_sy, static_cast<AcReal>(local_ss[1]), local_info);
+    acr::set(AC_sz, static_cast<AcReal>(local_ss[2]), local_info);
 
     // Backwards compatibility
-    local_info.int3_params[AC_global_grid_n] = {
-        as<int>(global_nn[0]),
-        as<int>(global_nn[1]),
-        as<int>(global_nn[2]),
-    };
+    acr::set(AC_global_grid_n,
+             int3{as<int>(global_nn[0]), as<int>(global_nn[1]), as<int>(global_nn[2])},
+             local_info);
 
     ERRCHK(acHostUpdateLocalBuiltinParams(&local_info) == 0);
     ERRCHK(acHostUpdateMHDSpecificParams(&local_info) == 0);
     ERRCHK(acHostUpdateTFMSpecificGlobalParams(&local_info) == 0);
 
     // Others to ensure nothing is left uninitialized
-    local_info.int_params[AC_init_type] = 0;
-    // local_info.int_params[AC_step_number]   = 0;
-    local_info.real_params[AC_dt]           = 0;
-    local_info.real3_params[AC_dummy_real3] = (AcReal3){0, 0, 0};
+    acr::set(AC_init_type, 0, local_info);
+    // acr::set(AC_step_number, 0, local_info);
+    acr::set(AC_dt, 0, local_info);
+    acr::set(AC_dummy_real3, (AcReal3){0, 0, 0}, local_info);
 
     ERRCHK(acVerifyMeshInfo(local_info) == 0);
     return local_info;
@@ -194,13 +216,13 @@ init_tfm_profiles(const Device& device)
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
-    const AcReal global_sz = info.real_params[AC_global_sz];
-    const size_t global_nz = as<size_t>(info.int3_params[AC_global_grid_n].z);
-    const long offset      = -info.int_params[AC_nz_min] + info.int3_params[AC_multigpu_offset].z;
-    const size_t local_mz  = as<size_t>(info.int_params[AC_mz]);
+    const AcReal global_sz = acr::get(info, AC_global_sz);
+    const size_t global_nz = as<size_t>(acr::get(info, AC_global_grid_n).z);
+    const long offset      = -acr::get(info, AC_nz_min) + acr::get(info, AC_multigpu_offset).z;
+    const size_t local_mz  = as<size_t>(acr::get(info, AC_mz));
 
-    const AcReal amplitude  = info.real_params[AC_profile_amplitude];
-    const AcReal wavenumber = info.real_params[AC_profile_wavenumber];
+    const AcReal amplitude  = acr::get(info, AC_profile_amplitude);
+    const AcReal wavenumber = acr::get(info, AC_profile_wavenumber);
 
     auto host_profile{std::make_unique<AcReal[]>(local_mz)};
 
@@ -254,9 +276,9 @@ namespace acc {
 Shape
 get_global_nn(const AcMeshInfo& info)
 {
-    return Shape{as<uint64_t>(info.int_params[AC_global_nx]),
-                 as<uint64_t>(info.int_params[AC_global_ny]),
-                 as<uint64_t>(info.int_params[AC_global_nz])};
+    return Shape{as<uint64_t>(acr::get(info, AC_global_nx)),
+                 as<uint64_t>(acr::get(info, AC_global_ny)),
+                 as<uint64_t>(acr::get(info, AC_global_nz))};
 }
 Index
 get_local_nn_offset()
@@ -270,7 +292,7 @@ acDeviceWriteProfileToDisk(const Device device, const Profile profile, const cha
 {
     AcMeshInfo info{};
     acDeviceGetLocalConfig(device, &info);
-    const size_t mz = as<size_t>(info.int3_params[AC_global_grid_n].z +
+    const size_t mz = as<size_t>(acr::get(info, AC_global_grid_n).z +
                                  2 * ((STENCIL_DEPTH - 1) / 2));
 
     AcBuffer host_profile = acBufferCreate(mz, false);
@@ -304,10 +326,10 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.profile", step, profile_names[i]);
         printf("Writing %s\n", filepath);
-        const Shape profile_global_nz{as<uint64_t>(local_info.int_params[AC_global_nz])};
-        const Shape profile_local_mz{as<uint64_t>(local_info.int_params[AC_mz])};
-        const Shape profile_local_nz{as<uint64_t>(local_info.int_params[AC_nz])};
-        const Shape profile_local_nz_offset{as<uint64_t>(local_info.int_params[AC_nz_min])};
+        const Shape profile_global_nz{as<uint64_t>(acr::get(local_info, AC_global_nz))};
+        const Shape profile_local_mz{as<uint64_t>(acr::get(local_info, AC_mz))};
+        const Shape profile_local_nz{as<uint64_t>(acr::get(local_info, AC_nz))};
+        const Shape profile_local_nz_offset{as<uint64_t>(acr::get(local_info, AC_nz_min))};
         const Index coords{ac::mpi::get_coords(parent_comm)[2]};
         const Shape profile_global_nz_offset{coords * profile_local_nz};
 
@@ -511,12 +533,12 @@ main(int argc, char* argv[])
 
         auto grid{ac::Grid(raw_info)};
 #if 0
-        Shape global_nn{as<uint64_t>(raw_info.int_params[AC_global_nx]),
-                        as<uint64_t>(raw_info.int_params[AC_global_ny]),
-                        as<uint64_t>(raw_info.int_params[AC_global_nz])};
-        Dims global_ss{static_cast<AcReal>(raw_info.real_params[AC_global_sx]),
-                       static_cast<AcReal>(raw_info.real_params[AC_global_sy]),
-                       static_cast<AcReal>(raw_info.real_params[AC_global_sz])};
+        Shape global_nn{as<uint64_t>(acr::get(raw_info, AC_global_nx)),
+                        as<uint64_t>(acr::get(raw_info, AC_global_ny)),
+                        as<uint64_t>(acr::get(raw_info, AC_global_nz))};
+        Dims global_ss{static_cast<AcReal>(acr::get(raw_info, AC_global_sx)),
+                       static_cast<AcReal>(acr::get(raw_info, AC_global_sy)),
+                       static_cast<AcReal>(acr::get(raw_info, AC_global_sz))};
         Index local_nn_offset{(STENCIL_WIDTH - 1) / 2,
                               (STENCIL_HEIGHT - 1) / 2,
                               (STENCIL_DEPTH - 1) / 2};
