@@ -448,6 +448,7 @@ compute(const Device& device, const std::vector<Kernel>& compute_kernels, const 
 {
     auto segments{get_compute_segments(device, outer_segments)};
 
+    ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
     for (const auto& segment : segments) {
         for (const auto& kernel : compute_kernels) {
             ERRCHK_AC(acDeviceLaunchKernel(device,
@@ -456,6 +457,93 @@ compute(const Device& device, const std::vector<Kernel>& compute_kernels, const 
                                            to_int3(segment.offset),
                                            to_int3(segment.offset + segment.dims)));
         }
+    }
+    ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
+}
+
+static auto
+get_hydro_fields(const Device& device)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+    const auto local_mm{acr::get_local_mm(info)};
+    const auto count{prod(local_mm)};
+
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    return std::vector<ac::mr::device_ptr<AcReal>>{
+        ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_LNRHO]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_UUX]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_UUY]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_UUZ]},
+    };
+}
+
+static auto
+get_tfm_fields(const Device& device)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+    const auto local_mm{acr::get_local_mm(info)};
+    const auto count{prod(local_mm)};
+
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    return std::vector<ac::mr::device_ptr<AcReal>>{
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a11_x]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a11_y]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a11_z]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a12_x]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a12_y]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a12_z]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a21_x]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a21_y]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a21_z]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a22_x]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a22_y]},
+        ac::mr::device_ptr<AcReal>{count, vba.in[TF_a22_z]},
+    };
+}
+
+static auto
+get_hydro_kernels(const size_t step)
+{
+    switch (step) {
+    case 0:
+        return std::vector<Kernel>{singlepass_solve_step0};
+    case 1:
+        return std::vector<Kernel>{singlepass_solve_step1};
+    case 2:
+        return std::vector<Kernel>{singlepass_solve_step2};
+    default:
+        ERRCHK(false);
+        return std::vector<Kernel>{};
+    }
+}
+
+static auto
+get_tfm_kernels(const size_t step)
+{
+    switch (step) {
+    case 0:
+        return std::vector<Kernel>{singlepass_solve_step0_tfm_b11,
+                                   singlepass_solve_step0_tfm_b12,
+                                   singlepass_solve_step0_tfm_b21,
+                                   singlepass_solve_step0_tfm_b22};
+    case 1:
+        return std::vector<Kernel>{singlepass_solve_step1_tfm_b11,
+                                   singlepass_solve_step1_tfm_b12,
+                                   singlepass_solve_step1_tfm_b21,
+                                   singlepass_solve_step1_tfm_b22};
+    case 2:
+        return std::vector<Kernel>{singlepass_solve_step2_tfm_b11,
+                                   singlepass_solve_step2_tfm_b12,
+                                   singlepass_solve_step2_tfm_b21,
+                                   singlepass_solve_step2_tfm_b22};
+    default:
+        return std::vector<Kernel>{};
     }
 }
 
@@ -531,6 +619,7 @@ class Grid {
 
     void tfm_pipeline(const size_t niters)
     {
+
         for (size_t iter{0}; iter < niters; ++iter) {
 
             // Current time
@@ -543,28 +632,19 @@ class Grid {
             const AcReal dt = calc_and_distribute_timestep(cart_comm, device);
             ERRCHK_AC(acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt));
 
-            std::vector<Kernel> hydro_kernels_step0{singlepass_solve_step0};
-            std::vector<Kernel> tfm_kernels_step0{singlepass_solve_step0_tfm_b11,
-                                                  singlepass_solve_step0_tfm_b12,
-                                                  singlepass_solve_step0_tfm_b21,
-                                                  singlepass_solve_step0_tfm_b22};
+            for (int step{0}; step < 3; ++step) {
+                compute(device, get_hydro_kernels(step), true);
+                compute(device, get_tfm_kernels(step), true);
 
-            compute(device, hydro_kernels_step0, true);
-            compute(device, tfm_kernels_step0, true);
+                compute(device, get_hydro_kernels(step), false);
+                compute(device, get_tfm_kernels(step), false);
 
-            compute(device, hydro_kernels_step0, false);
-            compute(device, tfm_kernels_step0, false);
+                BENCHMARK(compute(device, get_hydro_kernels(step), true));
+                BENCHMARK(compute(device, get_tfm_kernels(step), true));
 
-            // std::vector<Kernel> hydro_kernels_step1{singlepass_solve_step1};
-            // std::vector<Kernel> tfm_kernels_step1{singlepass_solve_step1_tfm_b11,
-            //                                       singlepass_solve_step1_tfm_b12,
-            //                                       singlepass_solve_step1_tfm_b21,
-            //                                       singlepass_solve_step1_tfm_b22};
-            // std::vector<Kernel> hydro_kernels_step2{singlepass_solve_step2};
-            // std::vector<Kernel> tfm_kernels_step2{singlepass_solve_step2_tfm_b11,
-            //                                       singlepass_solve_step2_tfm_b12,
-            //                                       singlepass_solve_step2_tfm_b21,
-            //                                       singlepass_solve_step2_tfm_b22};
+                BENCHMARK(compute(device, get_hydro_kernels(step), false));
+                BENCHMARK(compute(device, get_tfm_kernels(step), false));
+            }
 
             // for (int step = 0; step < 3; ++step) {
             //     ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step));
