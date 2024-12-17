@@ -18,6 +18,8 @@ int acPrintArguments(const Arguments args);
 
 int acHostUpdateLocalBuiltinParams(AcMeshInfo* config);
 
+int acHostUpdateForcingParams(AcMeshInfo* info);
+
 int acHostUpdateMHDSpecificParams(AcMeshInfo* info);
 
 int acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info);

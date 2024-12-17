@@ -101,7 +101,9 @@ acParseINI(const char* filepath, AcMeshInfo* info)
     else if (retval == -1)
         fprintf(stderr, "File open error %d when parsing config \"%s\"\n", retval, filepath);
     else if (retval == -2)
-        fprintf(stderr, "Memory allocation error %d when parsing config \"%s\"\n", retval,
+        fprintf(stderr,
+                "Memory allocation error %d when parsing config \"%s\"\n",
+                retval,
                 filepath);
     else if (retval < 0)
         fprintf(stderr, "Unknown error %d when parsing config \"%s\"\n", retval, filepath);
@@ -222,14 +224,22 @@ acHostUpdateLocalBuiltinParams(AcMeshInfo* config)
 }
 
 int
-acHostUpdateMHDSpecificParams(AcMeshInfo* info)
+acHostUpdateForcingParams(AcMeshInfo* info)
 {
-    // Forcing
     ForcingParams forcing_params = generateForcingParams(info->real_params[AC_relhel],
                                                          info->real_params[AC_forcing_magnitude],
                                                          info->real_params[AC_kmin],
                                                          info->real_params[AC_kmax]);
     loadForcingParamsToMeshInfo(forcing_params, info);
+
+    return 0;
+}
+
+int
+acHostUpdateMHDSpecificParams(AcMeshInfo* info)
+{
+    // Forcing
+    acHostUpdateForcingParams(info);
 
     // Derived values
     info->real_params[AC_cs2_sound] = info->real_params[AC_cs_sound] *
@@ -262,13 +272,19 @@ acPrintMeshInfoTFM(const AcMeshInfo config)
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
         printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
     for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        printf("[%s]: (%d, %d, %d)\n", int3param_names[i], config.int3_params[i].x,
-               config.int3_params[i].y, config.int3_params[i].z);
+        printf("[%s]: (%d, %d, %d)\n",
+               int3param_names[i],
+               config.int3_params[i].x,
+               config.int3_params[i].y,
+               config.int3_params[i].z);
     for (int i = 0; i < NUM_REAL_PARAMS; ++i)
         printf("[%s]: %g\n", realparam_names[i], (double)(config.real_params[i]));
     for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.real3_params[i].x),
-               (double)(config.real3_params[i].y), (double)(config.real3_params[i].z));
+        printf("[%s]: (%g, %g, %g)\n",
+               real3param_names[i],
+               (double)(config.real3_params[i].x),
+               (double)(config.real3_params[i].y),
+               (double)(config.real3_params[i].z));
 
     return 0;
 }
