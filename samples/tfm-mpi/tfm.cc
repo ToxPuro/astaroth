@@ -263,11 +263,9 @@ calc_and_distribute_timestep(const MPI_Comm& parent_comm, const Device& device)
     return calc_timestep(uumax, vAmax, shock_max, info);
 }
 
-enum class SegmentType { Inner, Outer };
-
 /** Return outer or inner segments based on the return_outer_segments parameter */
 static std::vector<ac::segment>
-get_compute_segments(const Device& device, const SegmentType type)
+get_compute_segments(const Device& device, const SegmentGroup type)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -280,7 +278,7 @@ get_compute_segments(const Device& device, const SegmentType type)
     // Partition the mesh
     auto segments{partition(mm, nn, rr)};
 
-    if (type == SegmentType::Outer) {
+    if (type == SegmentGroup::Outer) {
         // Prune the segments overlapping with the computational domain
         auto it{
             std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::segment& segment) {
@@ -322,10 +320,12 @@ compute(const Device& device, const std::vector<Kernel>& compute_kernels, const 
     ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
 }
 
-enum class BufferType { Input, Output };
+enum class FieldGroup { Hydro, TFM };
+enum class BufferGroup { Input, Output };
+enum class SegmentGroup { Inner, Outer };
 
 static auto
-get_hydro_fields(const Device& device, const BufferType type)
+get_fields(const Device& device, const FieldGroup& group, const BufferGroup& type)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -335,7 +335,61 @@ get_hydro_fields(const Device& device, const BufferType type)
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
-    if (type == BufferType::Input) {
+    std::vector<VertexBufferHandle> fields;
+    switch (group) {
+    case FieldGroup::Hydro:
+        fields = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
+        break;
+    case FieldGroup::TFM:
+        fields = {TF_a11_x,
+                  TF_a11_y,
+                  TF_a11_z,
+                  TF_a12_x,
+                  TF_a12_y,
+                  TF_a12_z,
+                  TF_a21_x,
+                  TF_a21_y,
+                  TF_a21_z,
+                  TF_a22_x,
+                  TF_a22_y,
+                  TF_a22_z};
+        break;
+    default:
+        ERROR("Unknown FieldGroup");
+    }
+
+    AcReal** field_ptrs{nullptr};
+    switch (type) {
+    case BufferGroup::Input:
+        field_ptrs = vba.in;
+        break;
+    case BufferGroup::Output:
+        field_ptrs = vba.out;
+        break;
+    default:
+        ERROR("Unknown BufferGroup");
+    }
+
+    std::vector<ac::mr::device_ptr<AcReal>> output;
+
+    for (const auto& field : fields)
+        output.push_back(ac::mr::device_ptr<AcReal>{count, field_ptrs[field]});
+
+    return output;
+}
+
+static auto
+get_hydro_fields(const Device& device, const BufferGroup type)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+    const auto local_mm{acr::get_local_mm(info)};
+    const auto count{prod(local_mm)};
+
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    if (type == BufferGroup::Input) {
         return std::vector<ac::mr::device_ptr<AcReal>>{
             ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_LNRHO]},
             ac::mr::device_ptr<AcReal>{count, vba.in[VTXBUF_UUX]},
@@ -354,7 +408,7 @@ get_hydro_fields(const Device& device, const BufferType type)
 }
 
 static auto
-get_tfm_fields(const Device& device, const BufferType type)
+get_tfm_fields(const Device& device, const BufferGroup type)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -364,7 +418,7 @@ get_tfm_fields(const Device& device, const BufferType type)
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
-    if (type == BufferType::Input) {
+    if (type == BufferGroup::Input) {
         return std::vector<ac::mr::device_ptr<AcReal>>{
             ac::mr::device_ptr<AcReal>{count, vba.in[TF_a11_x]},
             ac::mr::device_ptr<AcReal>{count, vba.in[TF_a11_y]},
@@ -395,6 +449,48 @@ get_tfm_fields(const Device& device, const BufferType type)
             ac::mr::device_ptr<AcReal>{count, vba.out[TF_a22_y]},
             ac::mr::device_ptr<AcReal>{count, vba.out[TF_a22_z]},
         };
+    }
+}
+
+static auto
+get_kernels(const FieldGroup group, const size_t step)
+{
+    switch (group) {
+    case FieldGroup::Hydro: {
+        switch (step) {
+        case 0:
+            return std::vector<Kernel>{singlepass_solve_step0};
+        case 1:
+            return std::vector<Kernel>{singlepass_solve_step1};
+        case 2:
+            return std::vector<Kernel>{singlepass_solve_step2};
+        default:
+            ERRCHK(false);
+            return std::vector<Kernel>{};
+        }
+    }
+    case FieldGroup::TFM: {
+        switch (step) {
+        case 0:
+            return std::vector<Kernel>{singlepass_solve_step0_tfm_b11,
+                                       singlepass_solve_step0_tfm_b12,
+                                       singlepass_solve_step0_tfm_b21,
+                                       singlepass_solve_step0_tfm_b22};
+        case 1:
+            return std::vector<Kernel>{singlepass_solve_step1_tfm_b11,
+                                       singlepass_solve_step1_tfm_b12,
+                                       singlepass_solve_step1_tfm_b21,
+                                       singlepass_solve_step1_tfm_b22};
+        case 2:
+            return std::vector<Kernel>{singlepass_solve_step2_tfm_b11,
+                                       singlepass_solve_step2_tfm_b12,
+                                       singlepass_solve_step2_tfm_b21,
+                                       singlepass_solve_step2_tfm_b22};
+        default:
+            ERRCHK(false);
+            return std::vector<Kernel>{};
+        }
+    }
     }
 }
 
@@ -479,11 +575,17 @@ class Grid {
         hydro_he = ac::comm::AsyncHaloExchangeTask{acr::get_local_mm(local_info),
                                                    acr::get_local_nn(local_info),
                                                    acr::get_local_rr(),
-                                                   get_hydro_fields().size()};
+                                                   get_fields(device,
+                                                              FieldGroup::Hydro,
+                                                              BufferGroup::Input)
+                                                       .size()};
         tfm_he   = ac::comm::AsyncHaloExchangeTask{acr::get_local_mm(local_info),
                                                  acr::get_local_nn(local_info),
                                                  acr::get_local_rr(),
-                                                 get_tfm_fields().size()};
+                                                 get_fields(device,
+                                                            FieldGroup::TFM,
+                                                            BufferGroup::Input)
+                                                     .size()};
 
         // Dryrun
         reset_init_cond();
@@ -523,6 +625,9 @@ class Grid {
 
     void tfm_pipeline(const size_t niters)
     {
+        // Ensure halos are up-to-date before starting integration
+        hydro_he.launch(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
+        tfm_he.launch(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
 
         for (size_t iter{0}; iter < niters; ++iter) {
 
@@ -530,27 +635,31 @@ class Grid {
             ERRCHK_AC(
                 acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_current_time, current_time));
 
-            // Timestep dependencies: hydro
-            if (!hydro_he.complete())
-                hydro_he.wait(get_hydro_fields(device, BufferType::Input));
+            // Timestep dependencies: local hydro (reduction skips ghost zones)
             const AcReal dt = calc_and_distribute_timestep(cart_comm, device);
             ERRCHK_AC(acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt));
 
             for (int step{0}; step < 3; ++step) {
 
-                if (!hydro_he.complete())
-                    hydro_he.wait(get_hydro_fields(device), BufferType::Input);
-                compute(device, get_hydro_kernels(step), SegmentType::Outer);
-                hydro_he.launch(get_hydro_fields(device), BufferType::Output);
+                // Hydro dependencies: hydro
+                hydro_he.wait(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
+                compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Outer);
+                hydro_he.launch(get_fields(device, FieldGroup::Hydro, BufferGroup::Output));
 
-                if (!tfm_he.complete())
-                    tfm_he.wait(get_tfm_fields(device), BufferType::Input);
-                compute(device, get_tfm_kernels(step), SegmentType::Outer);
-                tfm_he.launch(get_tfm_fields(device), BufferType::Output);
+                // TFM dependencies: hydro, tfm, profiles
+                tfm_he.wait(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
+                compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Outer);
+                tfm_he.launch(get_fields(device, FieldGroup::TFM, BufferGroup::Output));
 
-                compute(device, get_hydro_kernels(step), SegmentType::Inner);
-                compute(device, get_tfm_kernels(step), SegmentType::Inner);
+                compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Inner);
+                compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Inner);
+                ERRCHK_AC(acDeviceSwapBuffers(device));
+
+                // Profile dependencies: local tfm (uxb)
+                // TODO
             }
+
+            current_time += dt;
 
             // for (int step = 0; step < 3; ++step) {
             //     ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step));
@@ -575,8 +684,6 @@ class Grid {
             //     profiles_compute(...);
             //     profiles_he.launch(...);
             // }
-
-            current_time += dt;
         }
 
         // if (!hydro_he.complete())
