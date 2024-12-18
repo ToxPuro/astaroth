@@ -11,9 +11,11 @@ namespace ac::comm {
 
 template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
   private:
-    std::vector<std::unique_ptr<Packet<T, MemoryResource>>> packets;
+    std::vector<std::unique_ptr<Packet<T, MemoryResource>>> packets{};
 
   public:
+    AsyncHaloExchangeTask() = default; // TODO check if needed
+
     AsyncHaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
                           const size_t n_aggregate_buffers)
 
