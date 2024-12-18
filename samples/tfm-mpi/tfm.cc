@@ -623,11 +623,48 @@ class Grid {
         // the test profiles (PROFILE_B11 to PROFILE_B22)
     }
 
+    void reduce_xy_averages(const Stream stream)
+    {
+        // Strategy:
+        // 1) Reduce the local result to device->vba.profiles.in
+        ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
+
+        // 2) Create communicator that encompasses neighbors in the xy direction
+        const Index coords{ac::mpi::get_coords(cart_comm)};
+        // Key used to order the ranks in the new communicator: let MPI_Comm_split
+        // decide (should the same ordering as in the parent communicator by default)
+        const int color{as<int>(coords[2])};
+        const int key{0};
+        MPI_Comm xy_neighbors{MPI_COMM_NULL};
+        ERRCHK_MPI_API(MPI_Comm_split(cart_comm, color, key, &xy_neighbors));
+
+        // 3) Allreduce
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        MPI_Allreduce(MPI_IN_PLACE,
+                      vba.profiles.in,
+                      NUM_PROFILES * device->vba.profiles.count,
+                      AC_REAL_MPI_TYPE,
+                      MPI_SUM,
+                      xy_neighbors);
+
+        // 4) Optional: Test
+        // AcReal arr[device->vba.profiles.count];
+        // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
+        //            cudaMemcpyDeviceToHost);
+        // for (size_t i = 0; i < device->vba.profiles.count; ++i)
+        //     printf("%i: %g\n", i, arr[i]);
+
+        // 5) Free resources
+        ERRCHK_MPI_API(MPI_Comm_free(&xy_neighbors));
+    }
+
     void tfm_pipeline(const size_t niters)
     {
         // Ensure halos are up-to-date before starting integration
         hydro_he.launch(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
         tfm_he.launch(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
+        reduce_xy_averages(STREAM_DEFAULT);
 
         for (size_t iter{0}; iter < niters; ++iter) {
 
@@ -656,7 +693,7 @@ class Grid {
                 ERRCHK_AC(acDeviceSwapBuffers(device));
 
                 // Profile dependencies: local tfm (uxb)
-                // TODO
+                reduce_xy_averages(STREAM_DEFAULT);
             }
 
             current_time += dt;
@@ -725,6 +762,8 @@ main(int argc, char* argv[])
         }
 
         auto grid{ac::Grid(raw_info)};
+        grid.reset_init_cond();
+        grid.tfm_pipeline(10);
 #if 0
         Shape global_nn{as<uint64_t>(acr::get(raw_info, AC_global_nx)),
                         as<uint64_t>(acr::get(raw_info, AC_global_ny)),
