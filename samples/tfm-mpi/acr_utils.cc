@@ -61,6 +61,24 @@ get_global_nn(const AcMeshInfo& info)
                  as<uint64_t>(acr::get(info, AC_global_nz))};
 }
 
+Shape
+get_local_nn(const AcMeshInfo& info)
+{
+    ERRCHK(acVerifyMeshInfo(info) == 0);
+    return Shape{as<uint64_t>(acr::get(info, AC_nx)),
+                 as<uint64_t>(acr::get(info, AC_ny)),
+                 as<uint64_t>(acr::get(info, AC_nz))};
+}
+
+Shape
+get_local_mm(const AcMeshInfo& info)
+{
+    ERRCHK(acVerifyMeshInfo(info) == 0);
+    return Shape{as<uint64_t>(acr::get(info, AC_mx)),
+                 as<uint64_t>(acr::get(info, AC_my)),
+                 as<uint64_t>(acr::get(info, AC_mz))};
+}
+
 Dims
 get_global_ss(const AcMeshInfo& info)
 {
@@ -91,24 +109,6 @@ get_global_nn_offset(const AcMeshInfo& info)
     return Index{as<uint64_t>(acr::get(info, AC_multigpu_offset).x),
                  as<uint64_t>(acr::get(info, AC_multigpu_offset).y),
                  as<uint64_t>(acr::get(info, AC_multigpu_offset).z)};
-}
-
-Shape
-get_local_nn(const AcMeshInfo& info)
-{
-    ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Shape{as<uint64_t>(acr::get(info, AC_nx)),
-                 as<uint64_t>(acr::get(info, AC_ny)),
-                 as<uint64_t>(acr::get(info, AC_nz))};
-}
-
-Shape
-get_local_mm(const AcMeshInfo& info)
-{
-    ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Shape{as<uint64_t>(acr::get(info, AC_mx)),
-                 as<uint64_t>(acr::get(info, AC_my)),
-                 as<uint64_t>(acr::get(info, AC_mz))};
 }
 
 } // namespace acr

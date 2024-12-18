@@ -74,20 +74,14 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
     acr::set(AC_ny, as<int>(local_nn[1]), local_info);
     acr::set(AC_nz, as<int>(local_nn[2]), local_info);
 
-    local_info.int3_params[AC_multigpu_offset] = {
-        as<int>(global_nn_offset[0]),
-        as<int>(global_nn_offset[1]),
-        as<int>(global_nn_offset[2]),
-    };
+    local_info.int3_params[AC_multigpu_offset] = as<int3>(global_nn_offset);
 
     acr::set(AC_sx, static_cast<AcReal>(local_ss[0]), local_info);
     acr::set(AC_sy, static_cast<AcReal>(local_ss[1]), local_info);
     acr::set(AC_sz, static_cast<AcReal>(local_ss[2]), local_info);
 
     // Backwards compatibility
-    acr::set(AC_global_grid_n,
-             int3{as<int>(global_nn[0]), as<int>(global_nn[1]), as<int>(global_nn[2])},
-             local_info);
+    acr::set(AC_global_grid_n, as<int3>(global_nn), local_info);
 
     ERRCHK(acHostUpdateLocalBuiltinParams(&local_info) == 0);
     ERRCHK(acHostUpdateMHDSpecificParams(&local_info) == 0);
@@ -165,21 +159,6 @@ init_tfm_profiles(const Device& device)
     return 0;
 }
 
-namespace acc {
-Shape
-get_global_nn(const AcMeshInfo& info)
-{
-    return Shape{as<uint64_t>(acr::get(info, AC_global_nx)),
-                 as<uint64_t>(acr::get(info, AC_global_ny)),
-                 as<uint64_t>(acr::get(info, AC_global_nz))};
-}
-Index
-get_local_nn_offset()
-{
-    return Index{(STENCIL_WIDTH - 1) / 2, (STENCIL_HEIGHT - 1) / 2, (STENCIL_DEPTH - 1) / 2};
-}
-} // namespace acc
-
 static int
 acDeviceWriteProfileToDisk(const Device device, const Profile profile, const char* filepath)
 {
@@ -210,8 +189,8 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
         printf("Writing %s\n", filepath);
         ac::mpi::write_collective_simple(parent_comm,
                                          ac::mpi::get_dtype<AcReal>(),
-                                         acc::get_global_nn(local_info),
-                                         acc::get_local_nn_offset(),
+                                         acr::get_global_nn(local_info),
+                                         acr::get_local_nn_offset(),
                                          vba.in[i],
                                          std::string(filepath));
     }
@@ -282,13 +261,6 @@ calc_and_distribute_timestep(const MPI_Comm& parent_comm, const Device& device)
     ERRCHK_MPI_API(MPI_Comm_free(&comm));
 
     return calc_timestep(uumax, vAmax, shock_max, info);
-}
-
-static int3
-to_int3(const ac::vector<uint64_t>& in)
-{
-    ERRCHK(in.size() == 3);
-    return int3{as<int>(in[0]), as<int>(in[1]), as<int>(in[2])};
 }
 
 /** Return outer or inner segments based on the return_outer_segments parameter */
