@@ -91,6 +91,15 @@ get_global_ss(const AcMeshInfo& info)
 }
 
 Index
+get_global_nn_offset(const AcMeshInfo& info)
+{
+    ERRCHK(acVerifyMeshInfo(info) == 0);
+    return Index{as<uint64_t>(acr::get(info, AC_multigpu_offset).x),
+                 as<uint64_t>(acr::get(info, AC_multigpu_offset).y),
+                 as<uint64_t>(acr::get(info, AC_multigpu_offset).z)};
+}
+
+Index
 get_local_nn_offset()
 {
     return Index{(STENCIL_WIDTH - 1) / 2, (STENCIL_HEIGHT - 1) / 2, (STENCIL_DEPTH - 1) / 2};
@@ -100,15 +109,6 @@ Index
 get_local_rr()
 {
     return get_local_nn_offset();
-}
-
-Index
-get_global_nn_offset(const AcMeshInfo& info)
-{
-    ERRCHK(acVerifyMeshInfo(info) == 0);
-    return Index{as<uint64_t>(acr::get(info, AC_multigpu_offset).x),
-                 as<uint64_t>(acr::get(info, AC_multigpu_offset).y),
-                 as<uint64_t>(acr::get(info, AC_multigpu_offset).z)};
 }
 
 } // namespace acr

@@ -21,13 +21,13 @@ Shape get_local_mm(const AcMeshInfo& info);
 
 Dims get_global_ss(const AcMeshInfo& info);
 
+Index get_global_nn_offset(const AcMeshInfo& info);
 Index get_local_nn_offset();
 Index get_local_rr();
-Index get_global_nn_offset(const AcMeshInfo& info);
 
 } // namespace acr
 
-template <> static as<int3>(const ac::vector<uint64_t>& in)
+template <> as<int3>(const ac::vector<uint64_t>& in)
 {
     ERRCHK(in.size() == 3);
     return int3{as<int>(in[0]), as<int>(in[1]), as<int>(in[2])};
