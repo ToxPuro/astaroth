@@ -263,6 +263,31 @@ calc_and_distribute_timestep(const MPI_Comm& parent_comm, const Device& device)
     return calc_timestep(uumax, vAmax, shock_max, info);
 }
 
+static void
+loadForcingParamsToDevice(const Device device, const ForcingParams forcing_params)
+{
+    acDeviceLoadScalarUniform(device,
+                              STREAM_DEFAULT,
+                              AC_forcing_magnitude,
+                              forcing_params.magnitude);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_forcing_phase, forcing_params.phase);
+
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_k_forcex, forcing_params.k_force.x);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_k_forcey, forcing_params.k_force.y);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_k_forcez, forcing_params.k_force.z);
+
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_rex, forcing_params.ff_hel_re.x);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_rey, forcing_params.ff_hel_re.y);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_rez, forcing_params.ff_hel_re.z);
+
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_imx, forcing_params.ff_hel_im.x);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_imy, forcing_params.ff_hel_im.y);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_imz, forcing_params.ff_hel_im.z);
+
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_kaver, forcing_params.kaver);
+    acDeviceSynchronizeStream(device, STREAM_ALL);
+}
+
 /** Return outer or inner segments based on the return_outer_segments parameter */
 static std::vector<ac::segment>
 get_compute_segments(const Device& device, const SegmentGroup type)
@@ -543,8 +568,11 @@ class Grid {
     Device device{nullptr};
     AcReal current_time{0};
 
+    std::vector<VertexBufferHandle> write_fields{VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
+
     ac::comm::AsyncHaloExchangeTask hydro_he;
     ac::comm::AsyncHaloExchangeTask tfm_he;
+    std::vector<std::unique_ptr<ac::io::AsyncWriteTask>> write_tasks;
 
   public:
     explicit Grid(const AcMeshInfo& raw_info)
@@ -586,6 +614,16 @@ class Grid {
                                                             FieldGroup::TFM,
                                                             BufferGroup::Input)
                                                      .size()};
+
+        // Setup write tasks
+        for (const auto& field : write_fields) {
+            write_tasks.push_back(
+                std::unique_ptr<ac::io::AsyncWriteTask>{acr::get_global_mm(local_info),
+                                                        acr::get_global_nn_offset(local_info),
+                                                        acr::local_mm(local_info),
+                                                        acr::local_nn(local_info),
+                                                        acr::local_nn_offset(local_info)});
+        }
 
         // Dryrun
         reset_init_cond();
@@ -641,12 +679,12 @@ class Grid {
         // 3) Allreduce
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        MPI_Allreduce(MPI_IN_PLACE,
-                      vba.profiles.in,
-                      NUM_PROFILES * device->vba.profiles.count,
-                      AC_REAL_MPI_TYPE,
-                      MPI_SUM,
-                      xy_neighbors);
+        ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE,
+                                     vba.profiles.in,
+                                     NUM_PROFILES * device->vba.profiles.count,
+                                     AC_REAL_MPI_TYPE,
+                                     MPI_SUM,
+                                     xy_neighbors));
 
         // 4) Optional: Test
         // AcReal arr[device->vba.profiles.count];
@@ -659,12 +697,59 @@ class Grid {
         ERRCHK_MPI_API(MPI_Comm_free(&xy_neighbors));
     }
 
+    MPI_Request launch_reduce_xy_averages(const Stream stream)
+    {
+        // Strategy:
+        // 1) Reduce the local result to device->vba.profiles.in
+        ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
+
+        // 2) Create communicator that encompasses neighbors in the xy direction
+        const Index coords{ac::mpi::get_coords(cart_comm)};
+        // Key used to order the ranks in the new communicator: let MPI_Comm_split
+        // decide (should the same ordering as in the parent communicator by default)
+        const int color{as<int>(coords[2])};
+        const int key{0};
+        MPI_Comm xy_neighbors{MPI_COMM_NULL};
+        ERRCHK_MPI_API(MPI_Comm_split(cart_comm, color, key, &xy_neighbors));
+
+        // 3) Allreduce
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        // ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE,
+        //                              vba.profiles.in,
+        //                              NUM_PROFILES * device->vba.profiles.count,
+        //                              AC_REAL_MPI_TYPE,
+        //                              MPI_SUM,
+        //                              xy_neighbors));
+        MPI_Request req{MPI_REQUEST_NULL};
+        ERRCHK_MPI_API(MPI_Iallreduce(MPI_IN_PLACE,
+                                      vba.profiles.in,
+                                      NUM_PROFILES * device->vba.profiles.count,
+                                      AC_REAL_MPI_TYPE,
+                                      MPI_SUM,
+                                      xy_neighbors,
+                                      &req));
+
+        // 4) Optional: Test
+        // AcReal arr[device->vba.profiles.count];
+        // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
+        //            cudaMemcpyDeviceToHost);
+        // for (size_t i = 0; i < device->vba.profiles.count; ++i)
+        //     printf("%i: %g\n", i, arr[i]);
+
+        // 5) Free resources
+        ERRCHK_MPI_API(MPI_Comm_free(&xy_neighbors));
+
+        return req;
+    }
+
     void tfm_pipeline(const size_t niters)
     {
         // Ensure halos are up-to-date before starting integration
         hydro_he.launch(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
         tfm_he.launch(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
         reduce_xy_averages(STREAM_DEFAULT);
+        // MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)};
 
         for (size_t iter{0}; iter < niters; ++iter) {
 
@@ -676,6 +761,15 @@ class Grid {
             const AcReal dt = calc_and_distribute_timestep(cart_comm, device);
             ERRCHK_AC(acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt));
 
+            // Forcing
+            ForcingParams
+                forcing_params = generateForcingParams(info.real_params[AC_relhel],
+                                                       info.real_params[AC_forcing_magnitude],
+                                                       info.real_params[AC_kmin],
+                                                       info.real_params[AC_kmax]);
+            loadForcingParamsToDevice(device, forcing_params);
+            // printForcingParams(forcing_params);
+
             for (int step{0}; step < 3; ++step) {
 
                 // Hydro dependencies: hydro
@@ -684,6 +778,7 @@ class Grid {
                 hydro_he.launch(get_fields(device, FieldGroup::Hydro, BufferGroup::Output));
 
                 // TFM dependencies: hydro, tfm, profiles
+                // ac::mpi::request_wait_and_destroy(&xy_average_req);
                 tfm_he.wait(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
                 compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Outer);
                 tfm_he.launch(get_fields(device, FieldGroup::TFM, BufferGroup::Output));
@@ -693,42 +788,23 @@ class Grid {
                 ERRCHK_AC(acDeviceSwapBuffers(device));
 
                 // Profile dependencies: local tfm (uxb)
+                // ERRCHK_MPI(xy_average_req == MPI_REQUEST_NULL)
+                // xy_average_req = launch_reduce_xy_averages(STREAM_DEFAULT);
                 reduce_xy_averages(STREAM_DEFAULT);
             }
-
             current_time += dt;
 
-            // for (int step = 0; step < 3; ++step) {
-            //     ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step));
-
-            //     // Hydro dependencies: hydro
-            //     if (!hydro_he.complete())
-            //       hydro_he.wait(...);
-            //     hydro_compute_outer(...); // Needs to be synchronous
-            //     hydro_he.launch(...);
-
-            //     // TFM dependencies: hydro, tfm, profiles
-            //     tfm_he.wait(...);
-            //     profiles_he.wait(...);
-            //     tfm_compute_outer(...); // Needs to be synchronous
-            //     tfm_he.launch(...);
-
-            //     hydro_compute_inner(...);
-            //     tfm_compute_inner(...);
-            //     ERRCHK_AC(acDeviceSwapBuffers(device));
-
-            //     // Profile dependencies: local tfm (uxb)
-            //     profiles_compute(...);
-            //     profiles_he.launch(...);
-            // }
+            for (size_t i = 0; i < write_fields.size(); ++i) {
+                if (!write_tasks[i]->complete())
+                    write_tasks[i]->wait_write_collective();
+                write_tasks[i]
+                    ->launch_write_collective(cart_comm,
+                                              ac::mr::device_ptr<AcReal>{prod(acr::local_nn),
+                                                                         write_fields[i]});
+            }
         }
-
-        // if (!hydro_he.complete())
-        //     hydro_he.wait();
-        // if (!tfm_he.complete())
-        //     tfm_he.wait();
-        // if (!profiles_he.complete())
-        //     profiles_he.wait();
+        // if (xy_average_req != MPI_REQUEST_NULL)
+        //     ac::mpi::request_wait_and_destroy(&xy_average_req);
     }
 
     Grid(const Grid&)            = delete; // Copy constructor
