@@ -108,6 +108,8 @@ class AsyncWriteTask {
         in_progress = false;
     }
 
+    bool complete() const { return !in_progress; };
+
     AsyncWriteTask(const AsyncWriteTask&)            = delete; // Copy constructor
     AsyncWriteTask& operator=(const AsyncWriteTask&) = delete; // Copy assignment operator
     AsyncWriteTask(AsyncWriteTask&&)                 = delete; // Move constructor
