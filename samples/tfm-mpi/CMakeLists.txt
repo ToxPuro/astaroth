@@ -61,7 +61,7 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 
 # Module
-add_executable(tfm-mpi tfm.cc tfm_utils.c)
+add_executable(tfm-mpi tfm.cc tfm_utils.c acr_utils.cc)
 target_link_libraries(tfm-mpi PRIVATE acm astaroth_core astaroth_utils astaroth_forcing inih)
 target_include_directories(tfm-mpi PRIVATE ${CMAKE_SOURCE_DIR})
 target_compile_definitions(tfm-mpi PRIVATE AC_DEFAULT_TFM_CONFIG="${DSL_MODULE_DIR}/mhd.ini")
