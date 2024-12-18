@@ -345,9 +345,58 @@ compute(const Device& device, const std::vector<Kernel>& compute_kernels, const 
     ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
 }
 
-enum class FieldGroup { Hydro, TFM };
+enum class FieldGroup { Hydro, TFM, Bfield };
 enum class BufferGroup { Input, Output };
 enum class SegmentGroup { Inner, Outer };
+
+static auto
+get_field_handles(const FieldGroup& group)
+{
+    switch (group) {
+    case FieldGroup::Hydro:
+        return std::vector<VertexBufferHandle>{VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
+    case FieldGroup::TFM:
+        return std::vector<VertexBufferHandle>{TF_a11_x,
+                                               TF_a11_y,
+                                               TF_a11_z,
+                                               TF_a12_x,
+                                               TF_a12_y,
+                                               TF_a12_z,
+                                               TF_a21_x,
+                                               TF_a21_y,
+                                               TF_a21_z,
+                                               TF_a22_x,
+                                               TF_a22_y,
+                                               TF_a22_z};
+    case FieldGroup::Bfield:
+        return std::vector<VertexBufferHandle>{TF_uxb11_x,
+                                               TF_uxb11_y,
+                                               TF_uxb11_z,
+                                               TF_uxb12_x,
+                                               TF_uxb12_y,
+                                               TF_uxb12_z,
+                                               TF_uxb21_x,
+                                               TF_uxb21_y,
+                                               TF_uxb21_z,
+                                               TF_uxb22_x,
+                                               TF_uxb22_y,
+                                               TF_uxb22_z};
+    default:
+        ERRCHK(false);
+        return std::vector<VertexBufferHandle>{};
+    }
+}
+
+static auto
+get_field_paths(const std::vector<VertexBufferHandle>& handles)
+{
+    std::vector<std::string> paths;
+
+    for (const auto& handle : handles)
+        paths.push_back(str::string(field_names[handle]) + ".mesh");
+
+    return paths;
+}
 
 static auto
 get_fields(const Device& device, const FieldGroup& group, const BufferGroup& type)
@@ -360,28 +409,7 @@ get_fields(const Device& device, const FieldGroup& group, const BufferGroup& typ
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
-    std::vector<VertexBufferHandle> fields;
-    switch (group) {
-    case FieldGroup::Hydro:
-        fields = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
-        break;
-    case FieldGroup::TFM:
-        fields = {TF_a11_x,
-                  TF_a11_y,
-                  TF_a11_z,
-                  TF_a12_x,
-                  TF_a12_y,
-                  TF_a12_z,
-                  TF_a21_x,
-                  TF_a21_y,
-                  TF_a21_z,
-                  TF_a22_x,
-                  TF_a22_y,
-                  TF_a22_z};
-        break;
-    default:
-        ERROR("Unknown FieldGroup");
-    }
+    std::vector<VertexBufferHandle> fields{get_field_handles(group)};
 
     AcReal** field_ptrs{nullptr};
     switch (type) {
@@ -572,7 +600,8 @@ class Grid {
 
     ac::comm::AsyncHaloExchangeTask hydro_he;
     ac::comm::AsyncHaloExchangeTask tfm_he;
-    std::vector<std::unique_ptr<ac::io::AsyncWriteTask>> write_tasks;
+    ac::comm::BatchedAsyncWriteTask hydro_io;
+    ac::comm::BatchedAsyncWriteTask bfield_io;
 
   public:
     explicit Grid(const AcMeshInfo& raw_info)
@@ -616,14 +645,24 @@ class Grid {
                                                      .size()};
 
         // Setup write tasks
-        for (const auto& field : write_fields) {
-            write_tasks.push_back(
-                std::unique_ptr<ac::io::AsyncWriteTask>{acr::get_global_mm(local_info),
-                                                        acr::get_global_nn_offset(local_info),
-                                                        acr::local_mm(local_info),
-                                                        acr::local_nn(local_info),
-                                                        acr::local_nn_offset(local_info)});
-        }
+        hydro_io  = ac::io::BatchedAsyncWriteTask{acr::get_global_mm(local_info),
+                                                 acr::get_global_nn_offset(local_info),
+                                                 acr::local_mm(local_info),
+                                                 acr::local_nn(local_info),
+                                                 acr::local_nn_offset(local_info),
+                                                 get_fields(device,
+                                                            FieldGroup::Hydro,
+                                                            BufferGroup::Output)
+                                                     .size()};
+        bfield_io = ac::io::BatchedAsyncWriteTask{acr::get_global_mm(local_info),
+                                                  acr::get_global_nn_offset(local_info),
+                                                  acr::local_mm(local_info),
+                                                  acr::local_nn(local_info),
+                                                  acr::local_nn_offset(local_info),
+                                                  get_fields(device,
+                                                             FieldGroup::Bfield,
+                                                             BufferGroup::Output)
+                                                      .size()};
 
         // Dryrun
         reset_init_cond();
@@ -794,14 +833,17 @@ class Grid {
             }
             current_time += dt;
 
-            for (size_t i = 0; i < write_fields.size(); ++i) {
-                if (!write_tasks[i]->complete())
-                    write_tasks[i]->wait_write_collective();
-                write_tasks[i]
-                    ->launch_write_collective(cart_comm,
-                                              ac::mr::device_ptr<AcReal>{prod(acr::local_nn),
-                                                                         write_fields[i]});
-            }
+            // Write snapshot
+            hydro_io.launch(cart_comm,
+                            acr::get_fields(device, FieldGroup::Hydro, BufferGroup::Input),
+                            get_field_paths(FieldGroup::Hydro));
+            hydro_io.wait();
+            bfield_io.launch(cart_comm,
+                             acr::get_fields(device, FieldGroup::Bfield, BufferGroup::Input),
+                             get_field_paths(FieldGroup::Bfield));
+            bfield_io.wait();
+
+            // Write profiles
         }
         // if (xy_average_req != MPI_REQUEST_NULL)
         //     ac::mpi::request_wait_and_destroy(&xy_average_req);

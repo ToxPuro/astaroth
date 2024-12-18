@@ -116,4 +116,45 @@ class AsyncWriteTask {
     AsyncWriteTask& operator=(AsyncWriteTask&&)      = delete; // Move assignment operator
 };
 
+template <typename T, typename StagingMemoryResource = ac::mr::pinned_host_memory_resource>
+class BatchedAsyncWriteTask {
+  private:
+    std::vector<std::unique_ptr<AsyncWriteTask<T, StagingMemoryResource>>> write_tasks{};
+
+  public:
+    BatchedAsyncWriteTask(const Shape& in_file_dims, const Index& in_file_offset,
+                          const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
+                          const Index& in_mesh_offset, const size_t n_aggregate_buffers)
+    {
+        for (size_t i = 0; i < n_aggregate_buffers; ++i)
+            write_tasks.push_back(
+                std::make_unique<AsyncWriteTask<T, StagingMemoryResource>>(in_file_dims,
+                                                                           in_file_offset,
+                                                                           in_mesh_dims,
+                                                                           in_mesh_subdims,
+                                                                           in_mesh_offset));
+    }
+
+    void launch(const MPI_Comm& parent_comm,
+                const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs,
+                const std::vector<std::string>& paths)
+    {
+        for (size_t i = 0; i < inputs.size(); ++i)
+            write_tasks[i]->launch_write_collective(parent_comm, inputs[i], paths[i]);
+    }
+
+    void wait()
+    {
+        for (auto& ptr : write_tasks)
+            ptr->wait_write_collective();
+    }
+
+    bool complete() const
+    {
+        return std::all_of(write_tasks.begin(),
+                           write_tasks.end(),
+                           std::mem_fn(&Packet<T, MemoryResource>::complete));
+    }
+}
+
 } // namespace ac::io
