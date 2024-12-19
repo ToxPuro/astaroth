@@ -27,7 +27,7 @@
 
 enum class FieldGroup { Hydro, TFM, Bfield };
 enum class BufferGroup { Input, Output };
-enum class SegmentGroup { Inner, Outer };
+enum class SegmentGroup { Inner, Outer, Full };
 
 #define ERRCHK_AC(errcode)                                                                         \
     do {                                                                                           \
@@ -97,6 +97,9 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
     // acr::set(AC_step_number, 0, local_info);
     acr::set(AC_dt, 0, local_info);
     acr::set(AC_dummy_real3, (AcReal3){0, 0, 0}, local_info);
+
+    // Special: exclude inner domain (used to fuse outer integration)
+    acr::set(AC_exclude_inner, 0, local_info);
 
     ERRCHK(acVerifyMeshInfo(local_info) == 0);
     return local_info;
@@ -344,6 +347,10 @@ get_compute_segments(const Device& device, const SegmentGroup group)
                 return !within_box(segment.offset, nn, rr);
             })};
         segments.erase(it, segments.end());
+        break;
+    }
+    case SegmentGroup::Full: {
+        return std::vector<ac::segment>{ac::segment{nn, rr}};
         break;
     }
     default:
@@ -862,18 +869,25 @@ class Grid {
 
             for (int step{0}; step < 3; ++step) {
 
+                // Outer segments
+                ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 1));
+
                 // Hydro dependencies: hydro
                 hydro_he.wait(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
-                compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Outer);
+                // compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Outer);
+                compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Full);
                 hydro_he.launch(cart_comm,
                                 get_fields(device, FieldGroup::Hydro, BufferGroup::Output));
 
                 // TFM dependencies: hydro, tfm, profiles
                 // ac::mpi::request_wait_and_destroy(&xy_average_req);
                 tfm_he.wait(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
-                compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Outer);
+                // compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Outer);
+                compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Full);
                 tfm_he.launch(cart_comm, get_fields(device, FieldGroup::TFM, BufferGroup::Output));
 
+                // Inner segments
+                ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
                 compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Inner);
                 compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Inner);
                 ERRCHK_AC(acDeviceSwapBuffers(device));
@@ -885,7 +899,8 @@ class Grid {
             }
             current_time += dt;
 
-            // Write snapshot
+// Write snapshot
+#if 0
             hydro_io.wait();
             hydro_io.launch(cart_comm,
                             get_fields(device, FieldGroup::Hydro, BufferGroup::Input),
@@ -894,8 +909,10 @@ class Grid {
             bfield_io.launch(cart_comm,
                              get_fields(device, FieldGroup::Bfield, BufferGroup::Input),
                              get_field_paths(get_field_handles(FieldGroup::Bfield)));
+#endif
 
             // Write profiles
+            // TODO
         }
         hydro_he.wait(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
         tfm_he.wait(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
@@ -918,6 +935,7 @@ int
 main(int argc, char* argv[])
 {
     ac::mpi::init_funneled();
+    cudaProfilerStop();
     try {
 
         // Parse arguments
@@ -941,7 +959,10 @@ main(int argc, char* argv[])
 
         auto grid{ac::Grid<AcReal>(raw_info)};
         grid.reset_init_cond();
+
+        cudaProfilerStart();
         grid.tfm_pipeline(10);
+        cudaProfilerStop();
 #if 0
         Shape global_nn{as<uint64_t>(acr::get(raw_info, AC_global_nx)),
                         as<uint64_t>(acr::get(raw_info, AC_global_ny)),
