@@ -1266,7 +1266,7 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
                       device->vba.profiles.in[0]);
 
     acBufferDestroy(&buffer);
-    return AC_FAILURE;
+    return AC_SUCCESS;
 #else
     ERROR("acDeviceReduceXYAverages called but AC_TFM_ENABLED was false");
     return AC_FAILURE;
