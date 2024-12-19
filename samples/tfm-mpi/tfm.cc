@@ -749,8 +749,9 @@ class Grid {
         // 3) Allreduce
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
         ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE,
-                                     vba.profiles.in,
+                                     vba.profiles.in[0],
                                      NUM_PROFILES * vba.profiles.count,
                                      AC_REAL_MPI_TYPE,
                                      MPI_SUM,
@@ -794,7 +795,7 @@ class Grid {
         //                              xy_neighbors));
         MPI_Request req{MPI_REQUEST_NULL};
         ERRCHK_MPI_API(MPI_Iallreduce(MPI_IN_PLACE,
-                                      vba.profiles.in,
+                                      vba.profiles.in[0],
                                       NUM_PROFILES * vba.profiles.count,
                                       AC_REAL_MPI_TYPE,
                                       MPI_SUM,
