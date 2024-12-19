@@ -1331,3 +1331,40 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
   ERRCHK_CUDA_KERNEL();
   return AC_SUCCESS;
 }
+
+int
+acVerifyMeshInfo(const AcMeshInfo info)
+{
+  int retval = 0;
+  for (size_t i = 0; i < NUM_INT_PARAMS; ++i) {
+    if (info.int_params[i] == INT_MIN) {
+      retval = -1;
+      fprintf(stderr, "--- Warning: [%s] uninitialized ---\n",
+              intparam_names[i]);
+    }
+  }
+  for (size_t i = 0; i < NUM_INT3_PARAMS; ++i) {
+    if (info.int3_params[i].x == INT_MIN || info.int3_params[i].y == INT_MIN ||
+        info.int3_params[i].z == INT_MIN) {
+      retval = -1;
+      fprintf(stderr, "--- Warning: [%s] uninitialized ---\n",
+              int3param_names[i]);
+    }
+  }
+  for (size_t i = 0; i < NUM_REAL_PARAMS; ++i) {
+    if (isnan(info.real_params[i])) {
+      retval = -1;
+      fprintf(stderr, "--- Warning: [%s] uninitialized ---\n",
+              realparam_names[i]);
+    }
+  }
+  for (size_t i = 0; i < NUM_REAL3_PARAMS; ++i) {
+    if (isnan(info.real3_params[i].x) || isnan(info.real3_params[i].y) ||
+        isnan(info.real3_params[i].z)) {
+      retval = -1;
+      fprintf(stderr, "--- Warning: [%s] uninitialized ---\n",
+              real3param_names[i]);
+    }
+  }
+  return retval;
+}

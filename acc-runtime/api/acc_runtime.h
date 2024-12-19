@@ -189,6 +189,12 @@ AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
                            AcReal* array);
 
+/**
+ * Checks the mesh info for uninitialized values.
+ * Returns 0 on succes and -1 on failure.
+ */
+int acVerifyMeshInfo(const AcMeshInfo info);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
