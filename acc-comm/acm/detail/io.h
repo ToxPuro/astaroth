@@ -122,6 +122,8 @@ class BatchedAsyncWriteTask {
     std::vector<std::unique_ptr<AsyncWriteTask<T, StagingMemoryResource>>> write_tasks{};
 
   public:
+    BatchedAsyncWriteTask() = default;
+
     BatchedAsyncWriteTask(const Shape& in_file_dims, const Index& in_file_offset,
                           const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
                           const Index& in_mesh_offset, const size_t n_aggregate_buffers)

@@ -2,25 +2,25 @@
 
 namespace acr {
 
-auto
+int
 get(const AcMeshInfo& info, const AcIntParam& param)
 {
     return info.int_params[param];
 }
 
-auto
+int3
 get(const AcMeshInfo& info, const AcInt3Param& param)
 {
     return info.int3_params[param];
 }
 
-auto
+AcReal
 get(const AcMeshInfo& info, const AcRealParam& param)
 {
     return info.real_params[param];
 }
 
-auto
+AcReal3
 get(const AcMeshInfo& info, const AcReal3Param& param)
 {
     return info.real3_params[param];

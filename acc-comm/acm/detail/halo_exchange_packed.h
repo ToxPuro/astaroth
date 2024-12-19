@@ -9,12 +9,13 @@
 
 namespace ac::comm {
 
-template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
+template <typename T, typename MemoryResource = ac::mr::device_memory_resource>
+class AsyncHaloExchangeTask {
   private:
     std::vector<std::unique_ptr<Packet<T, MemoryResource>>> packets{};
 
   public:
-    AsyncHaloExchangeTask() = default; // TODO check if needed
+    AsyncHaloExchangeTask() = default;
 
     AsyncHaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
                           const size_t n_aggregate_buffers)
@@ -51,7 +52,7 @@ template <typename T, typename MemoryResource> class AsyncHaloExchangeTask {
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(std::vector<ac::mr::base_ptr<T, MemoryResource>>& outputs)
+    void wait(std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         // while (!complete()) {
