@@ -619,38 +619,44 @@ get_tfm_kernels(const size_t step)
     }
 }
 
+template <typename T, typename MemoryResource>
 static auto
 create_tfm_halo_exchange_task(const Device& device, const FieldGroup group)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
-    return ac::comm::AsyncHaloExchangeTask<
-        AcReal,
-        ac::mr::device_memory_resource>{acr::get_local_mm(info),
-                                        acr::get_local_nn(info),
-                                        acr::get_local_rr(),
-                                        get_fields(device, group, BufferGroup::Input).size()};
+    return ac::comm::AsyncHaloExchangeTask<T, MemoryResource>{acr::get_local_mm(info),
+                                                              acr::get_local_nn(info),
+                                                              acr::get_local_rr(),
+                                                              get_fields(device,
+                                                                         group,
+                                                                         BufferGroup::Input)
+                                                                  .size()};
 }
 
+template <typename T, typename MemoryResource>
 static auto
 create_tfm_io_batch_task(const Device& device, const FieldGroup group)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
-    return ac::io::BatchedAsyncWriteTask<
-        AcReal,
-        ac::mr::pinned_host_memory_resource>{acr::get_global_nn(info),
-                                             acr::get_global_nn_offset(info),
-                                             acr::get_local_mm(info),
-                                             acr::get_local_nn(info),
-                                             acr::get_local_nn_offset(),
-                                             get_fields(device, group, BufferGroup::Input).size()};
+    return ac::io::BatchedAsyncWriteTask<T, MemoryResource>{acr::get_global_nn(info),
+                                                            acr::get_global_nn_offset(info),
+                                                            acr::get_local_mm(info),
+                                                            acr::get_local_nn(info),
+                                                            acr::get_local_nn_offset(),
+                                                            get_fields(device,
+                                                                       group,
+                                                                       BufferGroup::Input)
+                                                                .size()};
 }
 
 namespace ac {
 
+template <typename T, typename HaloExchangeMemoryResource = ac::mr::device_memory_resource,
+          typename IOMemoryResource = ac::mr::pinned_host_memory_resource>
 class Grid {
   private:
     MPI_Comm cart_comm{MPI_COMM_NULL};
@@ -660,10 +666,10 @@ class Grid {
 
     std::vector<VertexBufferHandle> write_fields{VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
 
-    ac::comm::AsyncHaloExchangeTask<AcReal, ac::mr::device_memory_resource> hydro_he;
-    ac::comm::AsyncHaloExchangeTask<AcReal, ac::mr::device_memory_resource> tfm_he;
-    ac::io::BatchedAsyncWriteTask<AcReal, ac::mr::pinned_host_memory_resource> hydro_io;
-    ac::io::BatchedAsyncWriteTask<AcReal, ac::mr::pinned_host_memory_resource> bfield_io;
+    ac::comm::AsyncHaloExchangeTask<AcReal, HaloExchangeMemoryResource> hydro_he;
+    ac::comm::AsyncHaloExchangeTask<AcReal, HaloExchangeMemoryResource> tfm_he;
+    ac::io::BatchedAsyncWriteTask<AcReal, IOMemoryResource> hydro_io;
+    ac::io::BatchedAsyncWriteTask<AcReal, IOMemoryResource> bfield_io;
 
   public:
     explicit Grid(const AcMeshInfo& raw_info)
@@ -691,12 +697,14 @@ class Grid {
         ERRCHK_AC(acDeviceCreate(device_id, local_info, &device));
 
         // Setup halo exchange buffers
-        hydro_he = create_tfm_halo_exchange_task(device, FieldGroup::Hydro);
-        tfm_he   = create_tfm_halo_exchange_task(device, FieldGroup::TFM);
+        hydro_he = create_tfm_halo_exchange_task<T, HaloExchangeMemoryResource>(device,
+                                                                                FieldGroup::Hydro);
+        tfm_he   = create_tfm_halo_exchange_task<T, HaloExchangeMemoryResource>(device,
+                                                                              FieldGroup::TFM);
 
         // Setup write tasks
-        hydro_io  = create_tfm_io_batch_task(device, FieldGroup::Hydro);
-        bfield_io = create_tfm_io_batch_task(device, FieldGroup::Bfield);
+        hydro_io  = create_tfm_io_batch_task<T, IOMemoryResource>(device, FieldGroup::Hydro);
+        bfield_io = create_tfm_io_batch_task<T, IOMemoryResource>(device, FieldGroup::Bfield);
 
         // Dryrun
         reset_init_cond();
@@ -931,7 +939,7 @@ main(int argc, char* argv[])
         // Disable MPI_Abort on error and do manual error handling instead
         ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
 
-        auto grid{ac::Grid(raw_info)};
+        auto grid{ac::Grid<AcReal>(raw_info)};
         grid.reset_init_cond();
         grid.tfm_pipeline(10);
 #if 0
@@ -1082,7 +1090,7 @@ main(int argc, char* argv[])
             ac::mr::device_ptr<AcReal>{count, vba.in[TF_uxb22_z]},
         };
 
-        ac::ndbuffer<AcReal, ac::mr::host_memory_resource> debug_mesh{local_mm};
+        ac::ndbuffer<AcReal, IOMemoryResource> debug_mesh{local_mm};
         if (nprocs == 1) {
             std::iota(debug_mesh.begin(),
                       debug_mesh.end(),
@@ -1101,7 +1109,7 @@ main(int argc, char* argv[])
             ac::mr::copy(ac::mr::host_ptr<AcReal>{debug_mesh.size(), debug_mesh.data()}, ptr);
 
         auto hydro_he{
-            ac::comm::AsyncHaloExchangeTask<AcReal, ac::mr::device_memory_resource>(local_mm,
+            ac::comm::AsyncHaloExchangeTask<AcReal, HaloExchangeMemoryResource>(local_mm,
                                                                                     local_nn,
                                                                                     local_nn_offset,
                                                                                     hydro_fields
@@ -1110,7 +1118,7 @@ main(int argc, char* argv[])
         hydro_he.wait(hydro_fields);
 
         auto tfm_he{
-            ac::comm::AsyncHaloExchangeTask<AcReal, ac::mr::device_memory_resource>(local_mm,
+            ac::comm::AsyncHaloExchangeTask<AcReal, HaloExchangeMemoryResource>(local_mm,
                                                                                     local_nn,
                                                                                     local_nn_offset,
                                                                                     tfm_fields
