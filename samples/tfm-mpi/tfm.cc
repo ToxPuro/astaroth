@@ -48,7 +48,7 @@ enum class SegmentGroup { Inner, Outer };
         std::cout << "[" << ms_elapsed__.count() << " ms] " << #cmd << std::endl;                  \
     } while (0)
 
-static template <typename T, typename U>
+template <typename T, typename U>
 ac::vector<T>
 static_cast_vec(const ac::vector<U>& in)
 {
@@ -457,7 +457,7 @@ get_fields(const Device& device, const FieldGroup& group, const BufferGroup& typ
     return output;
 }
 
-static auto
+static std::vector<ac::mr::device_ptr<AcReal>>
 get_hydro_fields(const Device& device, const BufferGroup type)
 {
     AcMeshInfo info{};
@@ -484,9 +484,11 @@ get_hydro_fields(const Device& device, const BufferGroup type)
             ac::mr::device_ptr<AcReal>{count, vba.out[VTXBUF_UUZ]},
         };
     }
+    ERRCHK(false);
+    return std::vector<ac::mr::device_ptr<AcReal>>{};
 }
 
-static auto
+static std::vector<ac::mr::device_ptr<AcReal>>
 get_tfm_fields(const Device& device, const BufferGroup type)
 {
     AcMeshInfo info{};
@@ -529,9 +531,11 @@ get_tfm_fields(const Device& device, const BufferGroup type)
             ac::mr::device_ptr<AcReal>{count, vba.out[TF_a22_z]},
         };
     }
+    ERRCHK(false);
+    std::vector<ac::mr::device_ptr<AcReal>>{};
 }
 
-static auto
+static std::vector<Kernel>
 get_kernels(const FieldGroup group, const size_t step)
 {
     switch (group) {
@@ -571,6 +575,8 @@ get_kernels(const FieldGroup group, const size_t step)
         }
     }
     }
+    ERRCHK(false);
+    return std::vector<Kernel>{};
 }
 
 static auto
