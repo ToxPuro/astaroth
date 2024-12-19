@@ -11,6 +11,9 @@ hostdefine LTFM (1)
 
 hostdefine R_PI (AC_REAL_PI)
 
+hostdefine AC_ENABLE_EXCLUDE_INNER
+int AC_exclude_inner // Exclude the inner domain if this parameter is set (fuse outer integration)
+
 // Simulation control
 int AC_simulation_nsteps
 int AC_simulation_output_interval
