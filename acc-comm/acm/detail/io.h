@@ -135,6 +135,7 @@ class BatchedAsyncWriteTask {
                                                                            in_mesh_offset));
     }
 
+    template <typename MemoryResource>
     void launch(const MPI_Comm& parent_comm,
                 const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs,
                 const std::vector<std::string>& paths)
@@ -153,8 +154,8 @@ class BatchedAsyncWriteTask {
     {
         return std::all_of(write_tasks.begin(),
                            write_tasks.end(),
-                           std::mem_fn(&Packet<T, MemoryResource>::complete));
+                           std::mem_fn(&AsyncWriteTask<T, StagingMemoryResource>::complete));
     }
-}
+};
 
 } // namespace ac::io
