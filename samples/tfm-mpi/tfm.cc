@@ -611,6 +611,36 @@ get_tfm_kernels(const size_t step)
     }
 }
 
+static auto
+create_tfm_halo_exchange_task(const Device& device, const FieldGroup group)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+
+    return ac::comm::AsyncHaloExchangeTask<
+        AcReal,
+        ac::mr::device_memory_resource>{acr::get_local_mm(info),
+                                        acr::get_local_nn(info),
+                                        acr::get_local_rr(),
+                                        get_fields(device, group, BufferGroup::Input).size()};
+}
+
+static auto
+create_tfm_io_batch_task(const Device& device, const FieldGroup group)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+
+    return ac::io::BatchedAsyncWriteTask<
+        AcReal,
+        ac::mr::pinned_host_memory_resource>{acr::get_global_nn(info),
+                                             acr::get_global_nn_offset(info),
+                                             acr::get_local_mm(info),
+                                             acr::get_local_nn(info),
+                                             acr::get_local_nn_offset(),
+                                             get_fields(device, group, BufferGroup::Input).size()};
+}
+
 namespace ac {
 
 class Grid {
@@ -653,46 +683,12 @@ class Grid {
         ERRCHK_AC(acDeviceCreate(device_id, local_info, &device));
 
         // Setup halo exchange buffers
-        hydro_he = ac::comm::AsyncHaloExchangeTask<
-            AcReal,
-            ac::mr::device_memory_resource>{acr::get_local_mm(local_info),
-                                            acr::get_local_nn(local_info),
-                                            acr::get_local_rr(),
-                                            get_fields(device,
-                                                       FieldGroup::Hydro,
-                                                       BufferGroup::Input)
-                                                .size()};
-        tfm_he = ac::comm::AsyncHaloExchangeTask<
-            AcReal,
-            ac::mr::device_memory_resource>{acr::get_local_mm(local_info),
-                                            acr::get_local_nn(local_info),
-                                            acr::get_local_rr(),
-                                            get_fields(device, FieldGroup::TFM, BufferGroup::Input)
-                                                .size()};
+        hydro_he = create_tfm_halo_exchange_task(device, FieldGroup::Hydro);
+        tfm_he   = create_tfm_halo_exchange_task(device, FieldGroup::TFM);
 
         // Setup write tasks
-        hydro_io = ac::io::BatchedAsyncWriteTask<
-            AcReal,
-            ac::mr::pinned_host_memory_resource>{acr::get_global_nn(local_info),
-                                                 acr::get_global_nn_offset(local_info),
-                                                 acr::get_local_mm(local_info),
-                                                 acr::get_local_nn(local_info),
-                                                 acr::get_local_nn_offset(),
-                                                 get_fields(device,
-                                                            FieldGroup::Hydro,
-                                                            BufferGroup::Output)
-                                                     .size()};
-        bfield_io = ac::io::BatchedAsyncWriteTask<
-            AcReal,
-            ac::mr::pinned_host_memory_resource>{acr::get_global_nn(local_info),
-                                                 acr::get_global_nn_offset(local_info),
-                                                 acr::get_local_mm(local_info),
-                                                 acr::get_local_nn(local_info),
-                                                 acr::get_local_nn_offset(),
-                                                 get_fields(device,
-                                                            FieldGroup::Bfield,
-                                                            BufferGroup::Output)
-                                                     .size()};
+        hydro_io  = create_tfm_io_batch_task(device, FieldGroup::Hydro);
+        bfield_io = create_tfm_io_batch_task(device, FieldGroup::Bfield);
 
         // Dryrun
         reset_init_cond();
@@ -822,6 +818,14 @@ class Grid {
         reduce_xy_averages(STREAM_DEFAULT);
         // MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)};
 
+        // Write the initial step
+        hydro_io.launch(cart_comm,
+                        get_fields(device, FieldGroup::Hydro, BufferGroup::Input),
+                        get_field_paths(get_field_handles(FieldGroup::Hydro)));
+        bfield_io.launch(cart_comm,
+                         get_fields(device, FieldGroup::Bfield, BufferGroup::Input),
+                         get_field_paths(get_field_handles(FieldGroup::Bfield)));
+
         for (size_t iter{0}; iter < niters; ++iter) {
 
             // Current time
@@ -862,17 +866,22 @@ class Grid {
             current_time += dt;
 
             // Write snapshot
+            hydro_io.wait();
             hydro_io.launch(cart_comm,
                             get_fields(device, FieldGroup::Hydro, BufferGroup::Input),
                             get_field_paths(get_field_handles(FieldGroup::Hydro)));
-            hydro_io.wait();
+            bfield_io.wait();
             bfield_io.launch(cart_comm,
                              get_fields(device, FieldGroup::Bfield, BufferGroup::Input),
                              get_field_paths(get_field_handles(FieldGroup::Bfield)));
-            bfield_io.wait();
 
             // Write profiles
         }
+        hydro_he.wait(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
+        tfm_he.wait(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
+
+        hydro_io.wait();
+        bfield_io.wait();
         // if (xy_average_req != MPI_REQUEST_NULL)
         //     ac::mpi::request_wait_and_destroy(&xy_average_req);
     }
