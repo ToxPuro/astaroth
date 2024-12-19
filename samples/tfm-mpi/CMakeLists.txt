@@ -44,7 +44,7 @@ add_compile_options(# C/CXX/CUDA/HIP
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wwrite-strings>
                     # C/CXX
                     $<$<COMPILE_LANGUAGE:C,CXX>:-Wpedantic>
-                    $<$<COMPILE_LANGUAGE:C,CXX>:-pedantic-errors>
+                    #$<$<COMPILE_LANGUAGE:C,CXX>:-pedantic-errors>
                     $<$<COMPILE_LANGUAGE:C,CXX>:-Werror=implicit-fallthrough>
                     $<$<COMPILE_LANGUAGE:C,CXX>:-Wundef>
                     # C
