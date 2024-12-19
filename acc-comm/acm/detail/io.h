@@ -96,6 +96,7 @@ class AsyncWriteTask {
         // Not strictly needed here and comes with a slight overhead
         // However, will cause hard-to-trace issues if the reader
         // tries to access the data without barrier.
+        ERRCHK_MPI(comm != MPI_COMM_NULL);
         ERRCHK_MPI_API(MPI_Barrier(comm));
         ERRCHK_MPI_API(MPI_Comm_free(&comm));
 

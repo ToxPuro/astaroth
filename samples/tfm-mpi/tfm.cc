@@ -255,6 +255,8 @@ calc_and_distribute_timestep(const MPI_Comm& parent_comm, const Device& device)
 
     MPI_Comm comm{MPI_COMM_NULL};
     ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+    ERRCHK_MPI(comm != MPI_COMM_NULL);
+
     ERRCHK_AC(acDeviceReduceVec(device,
                                 STREAM_DEFAULT,
                                 RTYPE_MAX,
@@ -728,6 +730,8 @@ class Grid {
 
     void reduce_xy_averages(const Stream stream)
     {
+        ERRCHK_MPI(cart_comm != MPI_COMM_NULL);
+
         // Strategy:
         // 1) Reduce the local result to device->vba.profiles.in
         ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
@@ -737,9 +741,10 @@ class Grid {
         // Key used to order the ranks in the new communicator: let MPI_Comm_split
         // decide (should the same ordering as in the parent communicator by default)
         const int color{as<int>(coords[2])};
-        const int key{0};
+        const int key{ac::mpi::get_rank(cart_comm)};
         MPI_Comm xy_neighbors{MPI_COMM_NULL};
         ERRCHK_MPI_API(MPI_Comm_split(cart_comm, color, key, &xy_neighbors));
+        ERRCHK_MPI(xy_neighbors != MPI_COMM_NULL);
 
         // 3) Allreduce
         VertexBufferArray vba{};
@@ -774,7 +779,7 @@ class Grid {
         // Key used to order the ranks in the new communicator: let MPI_Comm_split
         // decide (should the same ordering as in the parent communicator by default)
         const int color{as<int>(coords[2])};
-        const int key{0};
+        const int key{ac::mpi::get_rank(cart_comm)};
         MPI_Comm xy_neighbors{MPI_COMM_NULL};
         ERRCHK_MPI_API(MPI_Comm_split(cart_comm, color, key, &xy_neighbors));
 
@@ -915,6 +920,9 @@ main(int argc, char* argv[])
             PRINT_LOG("No config path supplied, using %s", default_config.c_str());
             ERRCHK(acParseINI(default_config.c_str(), &raw_info) == 0);
         }
+
+        // Disable MPI_Abort on error and do manual error handling instead
+        ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
 
         auto grid{ac::Grid(raw_info)};
         grid.reset_init_cond();
