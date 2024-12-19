@@ -55,14 +55,14 @@ class AsyncHaloExchangeTask {
     void wait(std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
-        // while (!complete()) {
-        //     for (auto& packet : packets)
-        //         if (!packet->complete() && packet->ready())
-        //             packet->wait(outputs);
-        // }
+        while (!complete()) {
+            for (auto& packet : packets)
+                if (!packet->complete() && packet->ready())
+                    packet->wait(outputs);
+        }
         // Simple loop over the packets
-        for (auto& packet : packets)
-            packet->wait(outputs);
+        // for (auto& packet : packets)
+        //     packet->wait(outputs);
     }
 
     bool complete() const
