@@ -133,7 +133,8 @@ main()
         ac::ndbuffer<UserType, ac::mr::device_memory_resource> dout(local_mm);
 
         PRINT_LOG("Testing migration"); //-----------------------------------------
-        std::iota(hin.begin(), hin.end(),
+        std::iota(hin.begin(),
+                  hin.end(),
                   static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                       static_cast<UserType>(prod(local_mm)));
         // Print mesh
@@ -153,7 +154,8 @@ main()
 #if true
         PRINT_LOG("Testing basic halo exchange"); //-------------------------------
         if (nprocs == 1) {
-            std::iota(hin.begin(), hin.end(),
+            std::iota(hin.begin(),
+                      hin.end(),
                       static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                           static_cast<UserType>(prod(local_mm)));
         }
@@ -163,8 +165,12 @@ main()
         migrate(hin.buffer, din.buffer);
 
         // Basic MPI halo exchange task
-        auto recv_reqs = launch_halo_exchange<UserType>(cart_comm, local_mm, local_nn, rr,
-                                                        din.buffer.data(), din.buffer.data());
+        auto recv_reqs = launch_halo_exchange<UserType>(cart_comm,
+                                                        local_mm,
+                                                        local_nn,
+                                                        rr,
+                                                        din.buffer.data(),
+                                                        din.buffer.data());
         while (!recv_reqs.empty()) {
             ac::mpi::request_wait_and_destroy(recv_reqs.back());
             recv_reqs.pop_back();
@@ -180,7 +186,8 @@ main()
 #if true
         PRINT_LOG("Testing packed halo exchange"); //-------------------------------
         if (nprocs == 1) {
-            std::iota(hin.begin(), hin.end(),
+            std::iota(hin.begin(),
+                      hin.end(),
                       static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                           static_cast<UserType>(prod(local_mm)));
         }
@@ -195,8 +202,8 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        ac::comm::AsyncHaloExchangeTask<UserType, ac::mr::device_memory_resource> halo_exchange{local_mm, local_nn,
-                                                                                 rr, 1};
+        ac::comm::AsyncHaloExchangeTask<UserType, ac::mr::device_memory_resource>
+            halo_exchange{local_mm, local_nn, rr, 1};
         std::vector<ac::mr::device_ptr<UserType>> inputs{
             ac::mr::device_ptr<UserType>{din.size(), din.data()}};
 
@@ -212,7 +219,8 @@ main()
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         // Batched
-        WARNING_DESC("Note: batched halo_exchange does not work yet, try without pipelined exchange first");
+        WARNING_DESC(
+            "Note: batched halo_exchange does not work yet, try without pipelined exchange first");
         halo_exchange.launch_batched(cart_comm, inputs);
         halo_exchange.wait_batched(inputs);
         migrate(din.buffer, hin.buffer);
@@ -226,20 +234,36 @@ main()
 
 #if true
         PRINT_LOG("Testing IO"); //-------------------------------
-        std::iota(hin.begin(), hin.end(),
+        std::iota(hin.begin(),
+                  hin.end(),
                   static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                       static_cast<UserType>(prod(local_mm)));
 
-        ac::io::AsyncWriteTask<UserType> iotask{global_nn, global_nn_offset, local_mm, local_nn,
+        ac::io::AsyncWriteTask<UserType> iotask{global_nn,
+                                                global_nn_offset,
+                                                local_mm,
+                                                local_nn,
                                                 rr};
         // iotask.launch_write_collective(cart_comm, hin.buffer, "test.dat");
         // iotask.wait_write_collective();
-        ac::mpi::write_collective(cart_comm, ac::mpi::get_dtype<UserType>(), global_nn,
-                                  global_nn_offset, local_mm, local_nn, rr, hin.buffer.data(),
+        ac::mpi::write_collective(cart_comm,
+                                  ac::mpi::get_dtype<UserType>(),
+                                  global_nn,
+                                  global_nn_offset,
+                                  local_mm,
+                                  local_nn,
+                                  rr,
+                                  hin.buffer.data(),
                                   "test.dat");
         std::fill(hin.begin(), hin.end(), 0);
-        ac::mpi::read_collective(cart_comm, ac::mpi::get_dtype<UserType>(), global_nn,
-                                 global_nn_offset, local_mm, local_nn, rr, "test.dat",
+        ac::mpi::read_collective(cart_comm,
+                                 ac::mpi::get_dtype<UserType>(),
+                                 global_nn,
+                                 global_nn_offset,
+                                 local_mm,
+                                 local_nn,
+                                 rr,
+                                 "test.dat",
                                  hin.buffer.data());
 
         // Print mesh
