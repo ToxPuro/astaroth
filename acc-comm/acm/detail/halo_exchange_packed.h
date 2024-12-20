@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include "pack.h"
 #include "packet.h"
 #include "partition.h"
 
@@ -46,9 +47,19 @@ class AsyncHaloExchangeTask {
     }
 
     // Experimental
-    void pack(const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
+    void pack_all(const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
     {
         // TODO
+        // ac::pack_all(inputs, segments, packets);
+    }
+
+    void launch_experimental(const MPI_Comm& parent_comm,
+                             const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
+    {
+        // TODO
+        // pack_all(inputs, segments, packets);
+        // for (auto& packet : packets)
+        //     packet->launch_experimental(parent_comm, inputs);
     }
 
     // Experimental
