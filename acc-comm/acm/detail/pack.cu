@@ -7,9 +7,8 @@
 #include "convert.h"
 #include "static_array.h"
 
-constexpr size_t MAX_NDIMS          = 4;
-constexpr size_t MAX_N_AGGR_BUFS    = 12;
-constexpr size_t MAX_NPACK_SEGMENTS = 26;
+constexpr size_t MAX_NDIMS       = 4;
+constexpr size_t MAX_N_AGGR_BUFS = 12;
 
 namespace device {
 
