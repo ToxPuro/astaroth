@@ -354,17 +354,6 @@ pack_batched(const Shape& in_local_mm, //
         block_offsets[i] = device::make_static_array<uint64_t, MAX_NDIMS>(in_segments[i].offset);
     }
 
-    // std::vector<ac::static_array<uint64_t, MAX_NDIMS>> block_shapes_vec;
-    // std::transform(in_segments.begin(),
-    //                in_segments.end(),
-    //                block_shapes_vec.begin(),
-    //                [](const auto& segment) {
-    //                    return device::make_static_array<uint64_t, MAX_NDIMS>(segment.dims);
-    //                });
-    // const auto block_shapess{
-    //     device::make_static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS>(
-    //         block_shapes_vec)};
-
     const auto local_mm = device::make_static_array<uint64_t, MAX_NDIMS>(in_local_mm);
     const auto inputs   = device::make_static_array<T*, MAX_N_AGGR_BUFS>(unwrap(in_inputs));
     const auto outputs  = device::make_static_array<T*, MAX_NPACK_SEGMENTS>(unwrap(in_outputs));

@@ -15,8 +15,8 @@ class AsyncHaloExchangeTask {
   private:
     std::vector<std::unique_ptr<Packet<T, MemoryResource>>> packets{};
 
-    Shape _local_mm;                   // Experimental
-    std::vector<ac::segment> segments; // Experimental
+    Shape _local_mm{};                   // Experimental
+    std::vector<ac::segment> segments{}; // Experimental
 
   public:
     AsyncHaloExchangeTask() = default;

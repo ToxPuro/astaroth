@@ -840,8 +840,9 @@ class Grid {
     void tfm_pipeline(const size_t niters)
     {
         // Ensure halos are up-to-date before starting integration
-        hydro_he.launch_pipelined(cart_comm, get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
-        tfm_he.launch_pipelined(cart_comm, get_fields(device, FieldGroup::TFM, BufferGroup::Input));
+        hydro_he.launch_batched(cart_comm,
+                                get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
+        tfm_he.launch_batched(cart_comm, get_fields(device, FieldGroup::TFM, BufferGroup::Input));
         reduce_xy_averages(STREAM_DEFAULT);
         // MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)};
 
@@ -873,18 +874,19 @@ class Grid {
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 1));
 
                 // Hydro dependencies: hydro
-                hydro_he.wait_pipelined(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
+                hydro_he.wait_batched(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
                 // compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Outer);
                 compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Full);
-                hydro_he.launch_pipelined(cart_comm,
-                                get_fields(device, FieldGroup::Hydro, BufferGroup::Output));
+                hydro_he.launch_batched(cart_comm,
+                                        get_fields(device, FieldGroup::Hydro, BufferGroup::Output));
 
                 // TFM dependencies: hydro, tfm, profiles
                 // ac::mpi::request_wait_and_destroy(&xy_average_req);
-                tfm_he.wait_pipelined(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
+                tfm_he.wait_batched(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
                 // compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Outer);
                 compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Full);
-                tfm_he.launch_pipelined(cart_comm, get_fields(device, FieldGroup::TFM, BufferGroup::Output));
+                tfm_he.launch_batched(cart_comm,
+                                      get_fields(device, FieldGroup::TFM, BufferGroup::Output));
 
                 // Inner segments
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
@@ -914,8 +916,8 @@ class Grid {
             // Write profiles
             // TODO
         }
-        hydro_he.wait_pipelined(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
-        tfm_he.wait_pipelined(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
+        hydro_he.wait_batched(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
+        tfm_he.wait_batched(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
 
         hydro_io.wait();
         bfield_io.wait();
@@ -1135,8 +1137,8 @@ main(int argc, char* argv[])
                                                                                     local_nn_offset,
                                                                                     hydro_fields
                                                                                         .size())};
-        hydro_he.launch_pipelined(cart_comm, hydro_fields);
-        hydro_he.wait_pipelined(hydro_fields);
+        hydro_he.launch_batched(cart_comm, hydro_fields);
+        hydro_he.wait_batched(hydro_fields);
 
         auto tfm_he{
             ac::comm::AsyncHaloExchangeTask<AcReal, HaloExchangeMemoryResource>(local_mm,
@@ -1144,8 +1146,8 @@ main(int argc, char* argv[])
                                                                                     local_nn_offset,
                                                                                     tfm_fields
                                                                                         .size())};
-        tfm_he.launch_pipelined(cart_comm, tfm_fields);
-        tfm_he.wait_pipelined(tfm_fields);
+        tfm_he.launch_batched(cart_comm, tfm_fields);
+        tfm_he.wait_batched(tfm_fields);
 
         for (auto& ptr : hydro_fields)
             ac::mr::copy(ptr, ac::mr::host_ptr<AcReal>{debug_mesh.size(), debug_mesh.data()});

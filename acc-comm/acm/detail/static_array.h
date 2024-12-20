@@ -42,7 +42,7 @@ template <typename T, size_t N> class static_array {
     __host__ __device__ static_array(const size_t in_count, const T& fill_value = 0)
         : count(in_count)
     {
-        ERRCHK(count > 0);
+        // ERRCHK(count >= 0);
         ERRCHK(count <= N);
         for (size_t i{0}; i < count; ++i)
             data[i] = fill_value;
@@ -53,7 +53,7 @@ template <typename T, size_t N> class static_array {
     __host__ __device__ static_array(const std::initializer_list<T>& init_list)
         : count(init_list.size())
     {
-        ERRCHK(count > 0);
+        // ERRCHK(count > 0);
         ERRCHK(count <= N);
         std::copy(init_list.begin(), init_list.begin() + count, data);
     }
@@ -72,7 +72,7 @@ template <typename T, size_t N> class static_array {
     __host__ __device__ explicit static_array(const size_t in_count, const T* arr)
         : count(in_count)
     {
-        ERRCHK(count > 0);
+        // ERRCHK(count > 0);
         ERRCHK(count <= N);
         ERRCHK(arr);
         for (size_t i{0}; i < count; ++i)
