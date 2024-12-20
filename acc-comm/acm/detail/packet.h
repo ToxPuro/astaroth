@@ -58,7 +58,8 @@ template <typename T, typename MemoryResource> class Packet {
             ERRCHK_MPI_API(MPI_Comm_free(&comm));
     }
 
-    void launch_pipelined_pack_comm(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
+    void launch_pipelined(const MPI_Comm& parent_comm,
+                          const std::vector<ac::mr::device_ptr<T>>& inputs)
     {
         ERRCHK_MPI(!in_progress);
         in_progress = true;
@@ -82,16 +83,29 @@ template <typename T, typename MemoryResource> class Packet {
         // Post recv
         const int tag{0};
         ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(), as<int>(count), ac::mpi::get_dtype<T>(),
-                                 recv_neighbor, tag, comm, &recv_req));
+        ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(),
+                                 as<int>(count),
+                                 ac::mpi::get_dtype<T>(),
+                                 recv_neighbor,
+                                 tag,
+                                 comm,
+                                 &recv_req));
 
         // Pack and post send
-        pack(local_mm, segment.dims, send_offset, inputs,
+        pack(local_mm,
+             segment.dims,
+             send_offset,
+             inputs,
              ac::mr::device_ptr<T>{send_buffer.size(), send_buffer.data()});
 
         ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_Isend(send_buffer.data(), as<int>(count), ac::mpi::get_dtype<T>(),
-                                 send_neighbor, tag, comm, &send_req));
+        ERRCHK_MPI_API(MPI_Isend(send_buffer.data(),
+                                 as<int>(count),
+                                 ac::mpi::get_dtype<T>(),
+                                 send_neighbor,
+                                 tag,
+                                 comm,
+                                 &send_req));
     }
 
     bool ready() const
@@ -110,8 +124,11 @@ template <typename T, typename MemoryResource> class Packet {
     {
         ERRCHK_MPI(in_progress);
         ERRCHK_MPI_API(MPI_Wait(&recv_req, MPI_STATUS_IGNORE));
-        unpack(ac::mr::device_ptr<T>{recv_buffer.size(), recv_buffer.data()}, local_mm,
-               segment.dims, segment.offset, outputs);
+        unpack(ac::mr::device_ptr<T>{recv_buffer.size(), recv_buffer.data()},
+               local_mm,
+               segment.dims,
+               segment.offset,
+               outputs);
 
         ERRCHK_MPI_API(MPI_Wait(&send_req, MPI_STATUS_IGNORE));
         ERRCHK_MPI_API(MPI_Comm_free(&comm));

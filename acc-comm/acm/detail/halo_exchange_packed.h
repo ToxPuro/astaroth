@@ -47,14 +47,14 @@ class AsyncHaloExchangeTask {
     }
 
     // Experimental
-    void pack_all(const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
+    void pack_batched(const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
     {
         // TODO
         // ac::pack_all(inputs, segments, packets);
     }
 
-    void launch_experimental(const MPI_Comm& parent_comm,
-                             const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
+    void launch_batched(const MPI_Comm& parent_comm,
+                        const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
     {
         // TODO
         // pack_all(inputs, segments, packets);
@@ -64,11 +64,11 @@ class AsyncHaloExchangeTask {
 
     // Experimental
 
-    void launch(const MPI_Comm& parent_comm,
-                const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
+    void launch_pipelined(const MPI_Comm& parent_comm,
+                          const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
     {
         for (auto& packet : packets)
-            packet->launch_pipelined_pack_comm(parent_comm, inputs);
+            packet->launch_pipelined(parent_comm, inputs);
     }
 
     void wait(std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs)

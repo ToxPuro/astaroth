@@ -199,7 +199,7 @@ main()
                                                                                  rr, 1};
         std::vector<ac::mr::device_ptr<UserType>> inputs{
             ac::mr::device_ptr<UserType>{din.size(), din.data()}};
-        halo_exchange.launch(cart_comm, inputs);
+        halo_exchange.launch_pipelined(cart_comm, inputs);
         halo_exchange.wait(inputs);
         migrate(din.buffer, hin.buffer);
 
