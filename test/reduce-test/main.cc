@@ -101,10 +101,10 @@ main(int argc, char* argv[])
     };
     auto test = [&]()
     {
+        acHostMeshApplyPeriodicBounds(&model);
     	acGridLoadMesh(STREAM_DEFAULT, model);
     	acGridSynchronizeStream(STREAM_ALL);
 
-        acHostMeshApplyPeriodicBounds(&model);
 
     	AcBuffer gpu_field_zyx        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,ZYX,FIELD);
     	AcBuffer gpu_field_xzy        =acDeviceTranspose(acGridGetDevice(),STREAM_DEFAULT,XZY,FIELD);
@@ -318,9 +318,9 @@ main(int argc, char* argv[])
     	{
     	        const AcReal inv_dsx = (1.0/model.info[AC_ds].x);
     	        return
-    	    	    arr[IDX(i-3,j,k)]*(inv_dsx*-DER1_3) +
-    	    	    arr[IDX(i-2,j,k)]*(inv_dsx*-DER1_2) +
-    	    	    arr[IDX(i-1,j,k)]*(inv_dsx*-DER1_1) +
+    	    	    arr[IDX(i-3,j,k)]*(-inv_dsx*DER1_3) +
+    	    	    arr[IDX(i-2,j,k)]*(-inv_dsx*DER1_2) +
+    	    	    arr[IDX(i-1,j,k)]*(-inv_dsx*DER1_1) +
     	    	    arr[IDX(i+1,j,k)]*(inv_dsx*DER1_1) +
     	    	    arr[IDX(i+2,j,k)]*(inv_dsx*DER1_2) +
     	    	    arr[IDX(i+3,j,k)]*(inv_dsx*DER1_3);
@@ -430,7 +430,7 @@ main(int argc, char* argv[])
     	{
     		bool correct =  in_eps_threshold(y_sum[i],y_sum_gpu[i]);
     	    y_sum_correct &= correct;
-    	    //(if(!correct) fprintf(stderr,"Y SUM WRONG: %14e, %14e\n",y_sum[i],y_sum_gpu[i]);
+    	    if(!correct) fprintf(stderr,"Y SUM WRONG: %14e, %14e\n",y_sum[i],y_sum_gpu[i]);
     	}
     	bool xy_sum_correct = true;
     	bool dx_xy_sum_correct = true;

@@ -1102,6 +1102,24 @@ get_num_of_warps(const dim3 bpg, const dim3 tpb)
 	const int num_of_blocks = bpg.x*bpg.y*bpg.z;
 	return num_of_warps_per_block*num_of_blocks;
 }
+void
+resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba)
+{
+	const size_t reals_size = n_elems*sizeof(AcReal);
+	const size_t ints_size  = n_elems*sizeof(int);
+	if(smallest_reduce_scratchpad_size_real < reals_size)
+	{
+		smallest_reduce_scratchpad_size_real = reals_size;
+		for(int i = 0; i < NUM_REAL_SCRATCHPADS; ++i)
+			resize_scratchapd_real(i, reals_size, vba.scratchpad_states->reals[i]);
+	}
+	if(smallest_reduce_scratchpad_size_int < ints_size)
+	{
+		smallest_reduce_scratchpad_size_int = ints_size;
+		for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
+			resize_scratchapd_int(i, ints_size, vba.scratchpad_states->ints[i]);
+	}
+}
 
 AcResult
 acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
@@ -1121,21 +1139,7 @@ acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_vo
   {
   	reduce_offsets[kernel][start] = kernel_running_reduce_offsets[kernel];
   	kernel_running_reduce_offsets[kernel] += get_num_of_warps(bpg,tpb);
-	const int n_warps = get_num_of_warps(bpg,tpb);
-	const size_t reals_size = kernel_running_reduce_offsets[kernel]*sizeof(AcReal);	
-	const size_t ints_size  = kernel_running_reduce_offsets[kernel]*sizeof(AcReal);	
-	if(smallest_reduce_scratchpad_size_real < reals_size)
-	{
-		smallest_reduce_scratchpad_size_real = reals_size;
-		for(int i = 0; i < NUM_REAL_SCRATCHPADS; ++i)
-			resize_scratchapd_real(i, reals_size, vba.scratchpad_states->reals[i]);
-	}
-	if(smallest_reduce_scratchpad_size_int < ints_size)
-	{
-		smallest_reduce_scratchpad_size_int = ints_size;
-		for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
-			resize_scratchapd_int(i, ints_size, vba.scratchpad_states->ints[i]);
-	}
+	resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba);
   }
 
   if(kernel_calls_reduce[kernel]) vba.on_device.reduce_offset = reduce_offsets[kernel][start];
@@ -1524,22 +1528,7 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
                                 ));
 	const int n_warps = get_num_of_warps(bpg,tpb);
 	if(kernel_calls_reduce[kernel])
-	{
-		const size_t reals_size = n_warps*sizeof(AcReal);	
-		const size_t ints_size = n_warps*sizeof(AcReal);	
-		if(smallest_reduce_scratchpad_size_real < reals_size)
-		{
-			smallest_reduce_scratchpad_size_real = reals_size;
-			for(size_t i = 0; i < NUM_REAL_SCRATCHPADS; ++i)
-				resize_scratchapd_real(i, reals_size,vba.scratchpad_states->reals[i]);
-		}
-		if(smallest_reduce_scratchpad_size_int < ints_size)
-		{
-			smallest_reduce_scratchpad_size_int = ints_size;
-			for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
-				resize_scratchapd_int(i, ints_size,vba.scratchpad_states->ints[i]);
-		}
-	}
+		resize_scratchpads_to_fit(n_warps,vba);
         const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER,
                                      sizeof(AcReal));
 

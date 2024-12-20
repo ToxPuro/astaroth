@@ -266,9 +266,9 @@ gen_kernel_block_loops(const int curr_kernel)
 	{
 		if(!reduced_profiles[curr_kernel][i]) continue;
 		if(z_before && (prof_types[i] == PROFILE_XZ || prof_types[i] == PROFILE_ZX || prof_types[i] == PROFILE_Z))
-			printf("AcReal %s_reduce_output{};",profile_names[i]);
+			printf("AcReal %s_reduce_output{0.0};",profile_names[i]);
 		if(!z_before && (prof_types[i] == PROFILE_XY || prof_types[i] == PROFILE_YX || prof_types[i] == PROFILE_Y))
-			printf("AcReal %s_reduce_output{};",profile_names[i]);
+			printf("AcReal %s_reduce_output{0.0};",profile_names[i]);
 	}
 
 	if(!z_before)
@@ -382,7 +382,7 @@ gen_profile_funcs(const int kernel)
      	    printf("case %s: { ",profile_names[i]);
 	    	printf("%s_reduce_output += val;",profile_names[i]);
 		printf("if(current_block_idx_y == last_block_idx_y && current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x + VAL(AC_nlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
-	    printf("}");
+	    printf("break;}");
     }
     printf("default: {}");
     printf("}");
@@ -402,10 +402,10 @@ gen_profile_funcs(const int kernel)
 		printf("}");
 		printf("else {");
         	   	printf("const AcReal reduce_res = warp_reduce_sum_real(%s_reduce_output);",profile_names[i]);
-			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*profileReduceOutputVertexIdx.z)] = reduce_res;");
+			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*profileReduceOutputVertexIdx.z)] = reduce_res;");
 		printf("}");
 		printf("}");
-	    printf("}");
+	    printf("break;}");
     }
     printf("default: {}");
     printf("}");
@@ -429,7 +429,7 @@ gen_profile_funcs(const int kernel)
         			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*localCompdomainVertexIdx.z)] = reduce_res;");
         		printf("}");
         	printf("}");
-	    printf("}");
+	    printf("break;}");
     }
     printf("default: {}");
     printf("}");
@@ -444,7 +444,7 @@ gen_profile_funcs(const int kernel)
      	    printf("case %s: { ",profile_names[i]);
 	    	printf("%s_reduce_output += val;",profile_names[i]);
 		printf("if(current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
-	    printf("}");
+	    printf("break;}");
     }
     printf("default: {}");
     printf("}");
@@ -458,7 +458,7 @@ gen_profile_funcs(const int kernel)
      	    printf("case %s: { ",profile_names[i]);
 	    	printf("%s_reduce_output += val;",profile_names[i]);
 		printf("if(current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
-	    printf("}");
+	    printf("break;}");
     }
     printf("default: {}");
     printf("}");
@@ -472,7 +472,7 @@ gen_profile_funcs(const int kernel)
      	    printf("case %s: { ",profile_names[i]);
             	printf("%s_reduce_output%s += val;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
         	printf("if(current_block_idx_y == last_block_idx_y) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = %s_reduce_output%s;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
-            printf("}");
+            printf("break;}");
     }
     printf("default: {}");
     printf("}");
@@ -486,7 +486,7 @@ gen_profile_funcs(const int kernel)
      	    printf("case %s: { ",profile_names[i]);
             	printf("%s_reduce_output%s += val;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
         	printf("if(current_block_idx_y == last_block_idx_y) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = %s_reduce_output%s;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
-            printf("}");
+            printf("break;}");
     }
     printf("default: {}");
     printf("}");
