@@ -49,12 +49,10 @@ class AsyncHaloExchangeTask {
     void launch_batched(const MPI_Comm& parent_comm,
                         const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
     {
-        pack_batched(inputs, packets);
+        // pack_batched(local_mm);
         // for (auto& packet : packets)
         //     packet->launch_experimental(parent_comm);
     }
-
-    // Experimental
 
     void launch_pipelined(const MPI_Comm& parent_comm,
                           const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)

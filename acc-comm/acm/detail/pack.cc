@@ -60,9 +60,10 @@ test_pack(void)
     }
 
     {
-        using device_buffer   = ac::buffer<uint64_t, ac::mr::device_memory_resource>;
+        // using device_buffer   = ac::buffer<uint64_t, ac::mr::device_memory_resource>;
+        using host_buffer     = ac::buffer<uint64_t, ac::mr::host_memory_resource>;
         using device_ndbuffer = ac::ndbuffer<uint64_t, ac::mr::device_memory_resource>;
-        using host_buffer     = ac::ndbuffer<uint64_t, ac::mr::host_memory_resource>;
+        using host_ndbuffer   = ac::ndbuffer<uint64_t, ac::mr::host_memory_resource>;
 
         const Shape nn{10};
         const Shape rr{2};
@@ -71,7 +72,7 @@ test_pack(void)
         std::cout << "Generating..." << std::endl;
 
         constexpr size_t FIELD_COUNT(4);
-        std::vector<host_buffer> hbuffers;
+        std::vector<host_ndbuffer> hbuffers;
         std::vector<device_ndbuffer> dbuffers;
         for (size_t i{0}; i < FIELD_COUNT; ++i) {
             hbuffers.emplace_back(mm);
@@ -87,7 +88,7 @@ test_pack(void)
         segments.emplace_back(nn, rr);
         segments.emplace_back(rr, mm - rr);
 
-        std::vector<device_buffer> segment_buffers;
+        std::vector<host_buffer> segment_buffers;
         for (size_t i{0}; i < segments.size(); ++i)
             segment_buffers.emplace_back(dbuffers.size() * prod(segments[i].dims));
 
