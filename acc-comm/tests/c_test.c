@@ -9,7 +9,10 @@
     do {                                                                                           \
         const ACM_Errorcode _tmp_acm_api_errcode_ = (errcode);                                     \
         if (_tmp_acm_api_errcode_ != ACM_ERRORCODE_SUCCESS) {                                      \
-            errchk_print_error(__func__, __FILE__, __LINE__, #errcode,                             \
+            errchk_print_error(__func__,                                                           \
+                               __FILE__,                                                           \
+                               __LINE__,                                                           \
+                               #errcode,                                                           \
                                ACM_Get_errorcode_description(errcode));                            \
             errchk_print_stacktrace();                                                             \
             MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
