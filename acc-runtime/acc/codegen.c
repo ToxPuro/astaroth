@@ -222,6 +222,8 @@ static int* written_fields           = NULL;
 static int* read_fields              = NULL;
 static int* read_profiles            = NULL;
 static int* reduced_profiles         = NULL;
+static int* reduced_reals            = NULL;
+static int* reduced_ints             = NULL;
 static int* field_has_stencil_op     = NULL;
 static int* field_has_previous_call  = NULL;
 static size_t num_fields   = 0;
@@ -345,6 +347,22 @@ get_symbol_by_index(const NodeType type, const int index, const char* tspecifier
 }
 
 static const Symbol*
+get_symbol_by_index_and_qualifier(const NodeType type, const int index, const char* tspecifier, const char* tqual)
+{
+  int counter = 0;
+  for (size_t i = 0; i < num_symbols[0]; ++i)
+  {
+    if ((!tspecifier || symbol_table[i].tspecifier == tspecifier) && symbol_table[i].type & type && (str_vec_contains(symbol_table[i].tqualifiers,tqual)))
+    {
+	    if(counter == index)
+		    return &symbol_table[i];
+	    counter++;
+    }
+  }
+  return NULL;
+}
+
+static const Symbol*
 get_symbol(const NodeType type, const char* symbol, const char* tspecifier)
 {
   const Symbol* sym = (Symbol*)hashmap_get(&symbol_table_hashmap[0], symbol, strlen(symbol));
@@ -373,7 +391,7 @@ static const char* EMPTY_STR      = NULL;
 bool
 has_optimization_info()
 {
- return written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields && field_has_previous_call;
+ return written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields && field_has_previous_call && reduced_reals && reduced_ints && reduced_profiles;
 }
 string_vec
 get_struct_field_types(const char* struct_name);
@@ -3098,6 +3116,69 @@ has_buffered_writes(const char* kernel_name)
 {
 	return strstr(kernel_name,"FUSED") != NULL;
 }
+bool
+has_profile_reductions(const int kernel)
+{
+	if(!has_optimization_info()) return false;
+	for(size_t profile_index = 0; profile_index < num_profiles; ++profile_index)
+		if(reduced_profiles[profile_index + num_profiles*kernel]) return true;
+	return false;
+}
+bool
+has_stencil_ops(const int kernel)
+{
+	if(!has_optimization_info()) return true;
+	for(size_t field_index = 0; field_index < num_fields; ++field_index)
+		if(field_has_stencil_op[field_index + num_fields*kernel]) return true;
+	return false;
+}
+bool
+is_pure_reduce_kernel(const int kernel)
+{
+	return has_profile_reductions(kernel) && !has_stencil_ops(kernel);
+}
+
+bool
+has_block_loops(const int kernel)
+{
+	return has_profile_reductions(kernel);
+}
+
+#include "warp_reduce.h"
+static size_t
+count_variables(const char* datatype, const char* qual)
+{
+	size_t res = 0;
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    		if((!datatype || symbol_table[i].tspecifier == datatype) && str_vec_contains(symbol_table[i].tqualifiers,qual) && (symbol_table[i].type & NODE_VARIABLE_ID))
+      			++res;
+	return res;
+}
+void
+gen_final_reductions(const char* datatype, const int kernel_index, ASTNode* compound_statement, const int* reduced)
+{
+		const size_t n_elems = count_variables(datatype,OUTPUT_STR);
+		const char* define_name = convert_to_define_name(datatype);
+		for(size_t i = 0; i < n_elems; ++i)
+		{
+			if(!reduced[i + n_elems*kernel_index]) continue;
+			const Symbol* sym = get_symbol_by_index_and_qualifier(NODE_VARIABLE_ID, i, datatype ,OUTPUT_STR);
+			const ReduceOp op = (ReduceOp)reduced[i + n_elems*kernel_index];
+			astnode_sprintf_postfix(compound_statement,"%s"
+					"{"
+					"const auto val = warp_reduce_%s_%s(%s_reduce_output);"
+				        "if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_%s[%s][warp_out_index] = val;"
+					"}"
+			,compound_statement->postfix
+			,reduce_op_to_name(op)
+			,define_name
+			,sym->identifier
+			,define_name
+			,sym->identifier
+			);
+		}
+
+}
 
 void
 gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
@@ -3108,7 +3189,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	ASTNode* compound_statement = node->rhs->rhs;
 	if(gen_mem_accesses)
 	{
-	  astnode_sprintf_postfix(compound_statement,"%s; (void)vba;}",compound_statement->postfix);
+	  astnode_sprintf_postfix(compound_statement,"%s; (void)vba; (void)current_block_idx;}",compound_statement->postfix);
 	  return;
 	}
 
@@ -3123,13 +3204,15 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 			astnode_sprintf_postfix(compound_statement,"vba.out[%s][idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
 		}
 	}
-	const node_vec kernel_reduce_info = reduce_infos[str_vec_get_index(calling_info.names,fn_name)];
-	if(kernel_reduce_info.size == 0)
+	if(has_block_loops(kernel_index))
 	{
-	  astnode_sprintf_postfix(compound_statement,"%s}",compound_statement->postfix);
-	  return;
+		astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
+		gen_final_reductions(REAL_STR,kernel_index,compound_statement,reduced_reals);
+		gen_final_reductions(INT_STR,kernel_index,compound_statement,reduced_ints);
 	}
-	astnode_sprintf_postfix(compound_statement,"%s}",compound_statement->postfix);
+	astnode_sprintf_postfix(compound_statement,"%s"
+			"}"
+	,compound_statement->postfix);
 }
 
 
@@ -4702,15 +4785,6 @@ count_symbols_type(const NodeType type)
 	return res;
 }
 static size_t
-count_variables(const char* datatype, const char* qual)
-{
-	size_t res = 0;
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    		if((!datatype || symbol_table[i].tspecifier == datatype) && str_vec_contains(symbol_table[i].tqualifiers,qual) && (symbol_table[i].type & NODE_VARIABLE_ID))
-      			++res;
-	return res;
-}
-static size_t
 count_profiles()
 {
 
@@ -5129,6 +5203,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   //Done to refresh the autotune file when recompiling DSL code
   fp = fopen(autotune_path,"w");
+  fprintf(fp,"### Implementation,Enum,Dims.x,Dims.y,Dims.z,Tpb.x,Tpb.y,Tpb.z,Time,Kernel,BlockFactor.x,BlockFactor.y,BlockFactor.z ###\n");
   fclose(fp);
 
   fp = fopen("user_constants.h","w");
@@ -7777,6 +7852,22 @@ debug_prints(const ASTNode* node)
 	**/
 }
 void
+print_nested_ones(FILE* fp, size_t x, size_t y, size_t z, size_t dims)
+{
+    for (size_t i = 0; i < x; ++i)
+    {
+      if(dims >= 3) fprintf(fp,"{");
+      for (size_t j = 0; j < y; ++j)
+      {
+        if(dims >= 2) fprintf(fp,"{");
+        for (size_t k = 0; k < z; ++k)
+          fprintf(fp, "1,");
+      	if(dims >= 2) fprintf(fp,"},");
+      }
+      if(dims >= 3) fprintf(fp,"},");
+    }
+}
+void
 gen_stencils(const bool gen_mem_accesses, FILE* stream)
 {
   const size_t num_stencils = count_symbols(STENCIL_STR);
@@ -7785,44 +7876,47 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
     assert(tmp);
     fprintf(tmp,
             "static int "
-            "stencils_accessed [NUM_KERNELS][NUM_ALL_FIELDS][NUM_STENCILS] __attribute__((unused)) = {");
-    for (size_t i = 0; i < num_kernels; ++i)
-    {
-      fprintf(tmp,"{");
-      for (size_t j = 0; j < num_fields; ++j)
-      {
-        fprintf(tmp,"{");
-        for (size_t k = 0; k < num_stencils; ++k)
-          fprintf(tmp, "1,");
-      	fprintf(tmp,"},");
-      }
-      fprintf(tmp,"},");
-    }
+            "stencils_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] __attribute__((unused)) = {");
+    print_nested_ones(tmp,num_kernels,num_fields+num_profiles,num_stencils,3);
     fprintf(tmp, "};");
 
     fprintf(tmp,
             "static int "
-            "previous_accessed [NUM_KERNELS][NUM_ALL_FIELDS] __attribute__((unused)) = {");
-    for (size_t i = 0; i < num_kernels; ++i)
-    {
-      fprintf(tmp,"{");
-      for (size_t j = 0; j < num_fields; ++j)
-          fprintf(tmp, "1,");
-      fprintf(tmp,"},");
-    }
+            "previous_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_fields+num_profiles,2);
     fprintf(tmp, "};");
 
     fprintf(tmp,
             "static int "
-            "write_called [NUM_KERNELS][NUM_ALL_FIELDS] __attribute__((unused)) = {");
-    for (size_t i = 0; i < num_kernels; ++i)
-    {
-      fprintf(tmp,"{");
-      for (size_t j = 0; j < num_fields; ++j)
-          fprintf(tmp, "1,");
-      fprintf(tmp,"},");
-    }
+            "write_called [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_fields+num_profiles,2);
     fprintf(tmp, "};");
+
+    fprintf(tmp,
+            "static int "
+            "reduced_profiles [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_profiles,2);
+    fprintf(tmp, "};\n");
+
+    fprintf(tmp,
+            "static int "
+            "read_profiles [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_profiles,2);
+    fprintf(tmp, "};\n");
+
+    fprintf(tmp,
+	    "static int "
+	    "reduced_reals [NUM_KERNELS][NUM_REAL_OUTPUTS] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,count_variables(REAL_STR,OUTPUT_STR),2);
+    fprintf(tmp, "};\n");
+
+    fprintf(tmp,
+	    "static int "
+	    "reduced_ints [NUM_KERNELS][NUM_REAL_OUTPUTS] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,count_variables(INT_STR,OUTPUT_STR),2);
+    fprintf(tmp, "};\n");
+
+    fprintf(tmp, "const bool has_mem_access_info __attribute__((unused)) = false;\n");
     fclose(tmp);
   }
   /*
@@ -8269,7 +8363,8 @@ generate_mem_accesses(void)
   // Generate stencil accesses
   FILE* proc = popen("./" STENCILACC_EXEC " stencil_accesses.h", "r");
   assert(proc);
-  pclose(proc);
+  if(pclose(proc) != 0)
+	fatal("Something went wrong during analysis\n");
 
   FILE* fp = fopen("user_written_fields.bin", "rb");
   written_fields = (int*)malloc(num_kernels*num_fields*sizeof(int));
@@ -8300,6 +8395,18 @@ generate_mem_accesses(void)
   reduced_profiles  = (int*)malloc(num_kernels*num_profiles*sizeof(int));
   fread(reduced_profiles, sizeof(int), num_kernels*num_profiles, fp);
   fclose(fp);
+
+  fp = fopen("user_reduced_reals.bin","rb");
+  reduced_reals = (int*)malloc(num_kernels*count_variables(REAL_STR, OUTPUT_STR)*sizeof(int));
+  fread(reduced_reals, sizeof(int), num_kernels*count_variables(REAL_STR, OUTPUT_STR), fp);
+  fclose(fp);
+
+  fp = fopen("user_reduced_ints.bin","rb");
+  reduced_ints = (int*)malloc(num_kernels*count_variables(INT_STR, OUTPUT_STR)*sizeof(int));
+  fread(reduced_ints, sizeof(int), num_kernels*count_variables(INT_STR, OUTPUT_STR), fp);
+  fclose(fp);
+
+
 }
 
 

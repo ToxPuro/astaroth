@@ -25,6 +25,7 @@ typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define AcComplex(x,y)   (AcComplex){x,y}
 
 static AcBool3 dimension_inactive{};
+static int3    max_tpb_for_reduce_kernels{100,100,100};
 #include <math.h> 
 #include <vector> // tbconfig
 
@@ -104,6 +105,8 @@ acGetKernelReduceScratchPadMinSize()
 		res = (res < kernel_running_reduce_offsets[i]) ? kernel_running_reduce_offsets[i] : res;
 	return res;
 }
+#include "../../src/helpers/ceil_div.h"
+
 Volume
 get_bpg(Volume dims, const Volume tpb)
 {
@@ -118,9 +121,9 @@ get_bpg(Volume dims, const Volume tpb)
   case EXPLICIT_PINGPONG_txyz:       // Fallthrough
   case EXPLICIT_ROLLING_PINGPONG: {
     return (Volume){
-        (size_t)ceil(1. * dims.x / tpb.x),
-        (size_t)ceil(1. * dims.y / tpb.y),
-        (size_t)ceil(1. * dims.z / tpb.z),
+        ceil_div(dims.x,tpb.x),
+        ceil_div(dims.y,tpb.y),
+        ceil_div(dims.z,tpb.z),
     };
   }
   default: {
@@ -129,8 +132,19 @@ get_bpg(Volume dims, const Volume tpb)
   }
   }
 }
+#include "stencil_accesses.h"
+#include "../acc/mem_access_helper_funcs.h"
 
-cudaDeviceProp
+
+Volume
+get_bpg(Volume dims, const AcKernel kernel, const int3 block_factors, const Volume tpb)
+{
+	if(block_factors == (int3){1,1,1}) return get_bpg(dims,tpb);
+	if(kernel_has_block_loops(kernel)) return get_bpg(ceil_div(dims,block_factors), tpb);
+	return get_bpg(dims,tpb);
+}
+
+static cudaDeviceProp
 get_device_prop()
 {
   cudaDeviceProp props;
@@ -157,14 +171,24 @@ is_large_launch(const T dims)
 
 
 bool
-is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel)
+is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kernel)
 {
+
+
   const size_t warp_size    = get_device_prop().warpSize;
-  const size_t xmax         = (size_t)(warp_size * ceil(1. * dims.x / warp_size));
-  const size_t ymax         = (size_t)(warp_size * ceil(1. * dims.y / warp_size));
-  const size_t zmax         = (size_t)(warp_size * ceil(1. * dims.z / warp_size));
+  const size_t xmax         = (size_t)(warp_size * ceil_div(dims.x,warp_size));
+  const size_t ymax         = (size_t)(warp_size * ceil_div(dims.y,warp_size));
+  const size_t zmax         = (size_t)(warp_size * ceil_div(dims.z,warp_size));
   const bool too_large      = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
   const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
+  if(kernel_reduces_profile(kernel))
+  {
+	  if(tpb.y > max_tpb_for_reduce_kernels.y) return false;
+	  if(tpb.z > max_tpb_for_reduce_kernels.z) return false;
+	  //TP: if we enforce that tpb.x is a multiple of the warp size then 
+	  //can easily do warp reduce while doing a reduction whose result is not x-dependent --> major saving in memory and performance increase
+	  if(dims.x >= warp_size && tpb.x % warp_size != 0) return false;
+  }
 //  const bool single_tb      = (tpb.x >= dims.x) && (tpb.y >= dims.y) && (tpb.z >= dims.z);
 
   //TP: if not utilizing the whole warp invalid, expect if dims are so small that could not utilize a whole warp 
@@ -380,7 +404,12 @@ size_t TO_CORRECT_ORDER(const size_t size)
 {
 	return size;
 }
+
+
 #define KERNEL_LAUNCH(func,bgp,tpb,...) \
+	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
+
+#define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \
 	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
 
 AcResult
@@ -390,7 +419,7 @@ acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
   ERRCHK_ALWAYS(arr || n == 0);
   if(n == 0) return AC_SUCCESS;
   const size_t tpb = 256;
-  const size_t bpg = (size_t)(ceil((double)n / tpb));
+  const size_t bpg = ceil_div(n,tpb);
   KERNEL_LAUNCH(flush_kernel,bpg,tpb,0,stream)(arr,n,value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
@@ -403,7 +432,7 @@ acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
   ERRCHK_ALWAYS(arr || n == 0);
   if(n == 0) return AC_SUCCESS;
   const size_t tpb = 256;
-  const size_t bpg = (size_t)(ceil((double)n / tpb));
+  const size_t bpg = ceil_div(n,tpb);
   KERNEL_LAUNCH(flush_kernel_int,bpg,tpb,0,stream)(arr,n,value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
@@ -577,7 +606,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
   }
   memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBAReset(stream, &vba->on_device.profiles, (size3_t){vba->mm.x,vba->mm.y,vba->mm.z});
+  acPBAReset(stream, &vba->on_device.profiles, vba->dims.m1);
   return AC_SUCCESS;
 }
 
@@ -741,39 +770,67 @@ resize_scratchapd_int(const size_t i, const size_t new_bytes, const AcReduceOp s
 }
 
 size3_t
-acGetProfileReduceScratchPadDims(const int profile, const size3_t mm, const size3_t nn)
+acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
 {
 	const auto type = prof_types[profile];
     	if(type == PROFILE_YZ || type == PROFILE_ZY)
     		return
     		{
-    		    	    nn.x,
-    		    	    mm.y,
-    		    	    mm.z
+    		    	    dims.reduction_tile.x,
+    		    	    dims.m1.y,
+    		    	    dims.m1.z
     		};
     	if(type == PROFILE_XZ || type == PROFILE_ZX)
 		return
     		{
-    		    	    mm.x,
-    		    	    nn.y,
-    		    	    mm.z
+    		    	    dims.m1.x,
+    		    	    dims.reduction_tile.y,
+    		    	    dims.m1.z
     		};
     	if(type == PROFILE_YX || type == PROFILE_XY)
 		return
     		{
-    		    	    mm.x,
-    		    	    mm.y,
-    		    	    nn.z
+    		    	    dims.m1.x,
+    		    	    dims.m1.y,
+    		    	    dims.reduction_tile.z
     		};
-	if(prof_types[profile] & ONE_DIMENSIONAL_PROFILE)
-		return (size3_t){nn.x, nn.y, nn.z};
-	return (size3_t){mm.x, mm.y, mm.z};
+	if(type == PROFILE_X)
+	{
+		return
+		{
+			dims.nn.x,
+			dims.reduction_tile.y,
+			dims.reduction_tile.z
+		};
+	}
+	if(type == PROFILE_Y)
+	{
+		return
+		{
+			dims.reduction_tile.x,
+			dims.nn.y,
+			dims.reduction_tile.z
+		};
+	}
+	if(type == PROFILE_Z)
+	{
+		return
+		{
+			dims.reduction_tile.x,
+			dims.reduction_tile.y,
+			dims.nn.z
+		};
+	}
+	if(type & ONE_DIMENSIONAL_PROFILE)
+		return dims.nn;
+	return dims.m1;
 }
 
 size_t
 get_profile_reduce_scratchpad_size(const int profile, const VertexBufferArray vba)
 {
-	const auto dims = acGetProfileReduceScratchPadDims(profile,vba.mm, vba.nn);
+	if(!reduced_profiles[profile]) return 0;
+	const auto dims = acGetProfileReduceScratchPadDims(profile,vba.dims);
 	return dims.x*dims.y*dims.z*sizeof(AcReal);
 }
 
@@ -784,7 +841,7 @@ init_scratchpads(VertexBufferArray* vba)
     vba->scratchpad_states = (AcScratchpadStates*)malloc(sizeof(AcScratchpadStates));
     memset(vba->scratchpad_states,0,sizeof(AcScratchpadStates));
     // Reductions
-    const size_t count = vba->mm.x*vba->mm.y*vba->mm.z;
+    const size_t count = vba->dims.m1.x*vba->dims.m1.y*vba->dims.m1.z;
     const size_t scratchpad_size = count;
     vba->scratchpad_size = scratchpad_size;
 
@@ -794,7 +851,7 @@ init_scratchpads(VertexBufferArray* vba)
     	for(int i = 0; i < NUM_REAL_SCRATCHPADS; ++i) {
 	    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba->reduce_res_real[i],sizeof(AcReal)));
 
-	    const size_t bytes = (i == 0) ? scratchpad_size_bytes :
+	    const size_t bytes = (i >= 0) ? scratchpad_size_bytes :
 		                 (i >= NUM_REAL_OUTPUTS) ? get_profile_reduce_scratchpad_size(i-NUM_REAL_OUTPUTS,*vba) :
 				 0;
 	    allocate_scratchpad_real(i,bytes,vba->scratchpad_states->reals[i]);
@@ -807,6 +864,25 @@ init_scratchpads(VertexBufferArray* vba)
 	    *(vba->reduce_cub_tmp_size_real[i]) = 0;
 
 	    vba->reduce_scratchpads_size_real[i]    = &d_reduce_scratchpads_size_real[i];
+	    if(i >= NUM_REAL_OUTPUTS)
+	    {
+		    const Profile prof = (Profile)(i-NUM_REAL_OUTPUTS);
+		    const auto dims = acGetProfileReduceScratchPadDims(prof,vba->dims);
+		    vba->profile_reduce_buffers[prof].src = 
+		    {
+			    (*vba->reduce_scratchpads_real[i]),
+			    dims.x*dims.y*dims.z,
+			    true,
+			    (AcShape) { dims.x,dims.y,dims.z,1}
+		    };
+		    vba->profile_reduce_buffers[prof].transposed = acBufferCreateTransposed(
+				vba->profile_reduce_buffers[prof].src, 
+				acGetMeshOrderForProfile(prof_types[prof])
+				  );
+		    vba->profile_reduce_buffers[prof].mem_order = acGetMeshOrderForProfile(prof_types[prof]);
+		    vba->profile_reduce_buffers[prof].cub_tmp  = vba->reduce_cub_tmp_real[i];
+		    vba->profile_reduce_buffers[prof].cub_tmp_size = vba->reduce_cub_tmp_size_real[i];
+	    }
     	}
     }
     {
@@ -826,6 +902,30 @@ init_scratchpads(VertexBufferArray* vba)
     	}
     }
 }
+static inline AcMeshDims
+acGetMeshDims(const AcMeshInfoParams info)
+{
+   const Volume n0 = to_volume(info[AC_nmin]);
+   const Volume n1 = to_volume(info[AC_nlocal_max]);
+   const Volume m0 = (Volume){0, 0, 0};
+   const Volume m1 = to_volume(info[AC_mlocal]);
+   const Volume nn = to_volume(info[AC_nlocal]);
+   const Volume reduction_tile = (Volume)
+   {
+	   as_size_t(info.scalars.int3_params[AC_reduction_tile_dimensions].x),
+	   as_size_t(info.scalars.int3_params[AC_reduction_tile_dimensions].y),
+	   as_size_t(info.scalars.int3_params[AC_reduction_tile_dimensions].z)
+   };
+
+   return (AcMeshDims){
+       .n0 = n0,
+       .n1 = n1,
+       .m0 = m0,
+       .m1 = m1,
+       .nn = nn,
+       .reduction_tile = reduction_tile,
+   };
+}
 
 VertexBufferArray
 acVBACreate(const AcMeshInfoParams config)
@@ -833,10 +933,12 @@ acVBACreate(const AcMeshInfoParams config)
   //TP: !HACK!
   //TP: Get active dimensions at the time VBA is created, works for now but should be moved somewhere else
   dimension_inactive = config[AC_dimension_inactive];
+  max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
   VertexBufferArray vba;
-  vba.mm = buffer_dims(config);
-  vba.nn = subdomain_size(config);
-  size_t count = vba.mm.x*vba.mm.y*vba.mm.z;
+  vba.on_device.block_factor = config[AC_thread_block_loop_factors];
+  vba.dims = acGetMeshDims(config);
+  vba.dims.nn = subdomain_size(config);
+  size_t count = vba.dims.m1.x*vba.dims.m1.y*vba.dims.m1.z;
   size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
   vba.bytes          = bytes;
 #if AC_ADJACENT_VERTEX_BUFFERS
@@ -876,8 +978,8 @@ acVBACreate(const AcMeshInfoParams config)
   AcArrayTypes::run<allocate_arrays>(config);
 
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  vba.on_device.profiles = acPBACreate(vba.mm);
-  vba.profile_count = vba.mm.z;
+  vba.on_device.profiles = acPBACreate(vba.dims.m1);
+  vba.profile_count = vba.dims.m1.z;
   memset(&vba.reduce_scratchpads_real,0.0,sizeof(vba.reduce_scratchpads_real));
   memset(&vba.reduce_scratchpads_int, 0,  sizeof(vba.reduce_scratchpads_int));
   init_scratchpads(&vba);
@@ -984,15 +1086,10 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfoParams config)
   //Free arrays
   AcArrayTypes::run<free_arrays>(config);
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBADestroy(&vba->on_device.profiles,(size3_t){vba->mm.x,vba->mm.y,vba->mm.z});
+  acPBADestroy(&vba->on_device.profiles,(size3_t){vba->dims.m1.x,vba->dims.m1.y,vba->dims.m1.z});
   vba->profile_count = 0;
   vba->bytes = 0;
-  vba->mm.x    = 0;
-  vba->mm.y    = 0;
-  vba->mm.z    = 0;
-  vba->nn.x    = 0;
-  vba->nn.y    = 0;
-  vba->nn.z    = 0;
+  memset(&vba->dims,0,sizeof(vba->dims));
 }
 
 
@@ -1007,15 +1104,17 @@ get_num_of_warps(const dim3 bpg, const dim3 tpb)
 }
 
 AcResult
-acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const int3 start,
-               const int3 end, VertexBufferArray vba)
+acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
+               const Volume end_volume, VertexBufferArray vba)
 {
-  const int3 n = end - start;
+  const int3 start = to_int3(start_volume);
+  const int3 end   = to_int3(end_volume);
+  const int3 n     = to_int3(end_volume - start_volume);
 
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
-  const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
+  const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
 
   const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
   if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
@@ -1041,7 +1140,7 @@ acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const int3 start,
 
   if(kernel_calls_reduce[kernel]) vba.on_device.reduce_offset = reduce_offsets[kernel][start];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
-  KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device);
+  KERNEL_VBA_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device);
   ERRCHK_CUDA_KERNEL();
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
@@ -1400,7 +1499,7 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
   size_t end_samples{};
   if(large_launch && AC_MPI_ENABLED)
   {
-  	const size_t portion = (size_t)ceil((1.0*samples.size())/nprocs);
+  	const size_t portion = ceil_div(samples.size(),nprocs);
   	start_samples = portion*grid_pid;
   	end_samples   = min(samples.size(), portion*(grid_pid+1));
   }
@@ -1420,9 +1519,9 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
         auto z = samples[sample].z;
         const dim3 tpb(x, y, z);
         const dim3 bpg    = to_dim3(
-                                get_bpg(to_volume(dims),
-                                to_volume(tpb))
-                                );
+                                get_bpg(to_volume(dims),kernel,vba.on_device.block_factor,
+                                to_volume(tpb)
+                                ));
 	const int n_warps = get_num_of_warps(bpg,tpb);
 	if(kernel_calls_reduce[kernel])
 	{
@@ -1498,9 +1597,11 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
                 nz, best_tpb.x, best_tpb.y, best_tpb.z,
                 (double)best_time / num_iters);
 #else
-        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g, %s\n", IMPLEMENTATION, kernel, dims.x,
+        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g, %s, %d, %d, %d\n", IMPLEMENTATION, kernel, dims.x,
                 dims.y, dims.z, best_tpb.x, best_tpb.y, best_tpb.z,
-                (double)best_time / num_iters, kernel_names[kernel]);
+                (double)best_time / num_iters, kernel_names[kernel],
+		vba.on_device.block_factor.x,vba.on_device.block_factor.y,vba.on_device.block_factor.z
+		);
 #endif
         fclose(fp);
   }
@@ -1520,7 +1621,7 @@ file_exists(const char* filename)
   return (stat (filename, &buffer) == 0);
 }
 static int3
-read_optim_tpb(const AcKernel kernel, const int3 dims)
+read_optim_tpb(const AcKernel kernel, const int3 dims, const int3 block_factors)
 {
   if(!file_exists(autotune_csv_path)) return {-1,-1,-1};
   const char* filename = autotune_csv_path;
@@ -1533,13 +1634,14 @@ read_optim_tpb(const AcKernel kernel, const int3 dims)
   for(int i = 0; i < n_entries; ++i)
   {
 	  string_vec entry = entries[i];
-	  if(entry.size > 1)
+	  if(entry.size == 13)
       	  {
       	     int kernel_index  = atoi(entry.data[1]);
       	     int3 read_dims = {atoi(entry.data[2]), atoi(entry.data[3]), atoi(entry.data[4])};
       	     int3 tpb = {atoi(entry.data[5]), atoi(entry.data[6]), atoi(entry.data[7])};
       	     double time = atof(entry.data[8]);
-      	     if(time < best_time && kernel_index == kernel && read_dims == dims)
+      	     int3 read_block_factors = {atoi(entry.data[10]), atoi(entry.data[11]), atoi(entry.data[12])};
+      	     if(time < best_time && kernel_index == kernel && read_dims == dims && read_block_factors == block_factors)
       	     {
       	    	 best_time = time;
       	    	 res       = tpb;
@@ -1561,7 +1663,7 @@ getOptimalTBConfig(const AcKernel kernel, const int3 dims, VertexBufferArray vba
     if (c.kernel == kernel && c.dims == dims)
       return c;
 
-  const int3 read_tpb = read_optim_tpb(kernel,dims);
+  const int3 read_tpb = read_optim_tpb(kernel,dims,vba.on_device.block_factor);
   TBConfig c  = (read_tpb != (int3){-1,-1,-1})
           ? (TBConfig){kernel,dims,(dim3){(uint32_t)read_tpb.x, (uint32_t)read_tpb.y, (uint32_t)read_tpb.z}}
           : autotune(kernel,dims,vba);
@@ -1958,6 +2060,7 @@ get_offsets(const size_t count, const size_t num_segments)
   ERRCHK_ALWAYS(count % num_segments == 0);
   for (size_t i = 0; i <= num_segments; ++i) {
     offsets[i] = i * (count / num_segments);
+    ERRCHK_ALWAYS(offsets[i] <= count);
   }
   size_t* d_offsets = NULL;
   ERRCHK_CUDA_ALWAYS(cudaMalloc(&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1)));
@@ -2040,7 +2143,7 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 #define TILE_DIM (32)
 
 void __global__ 
-transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const int3 dims)
+transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2073,7 +2176,7 @@ transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const int3 dims)
 		dst[out_vertexIdx.x +dims.z*out_vertexIdx.y + dims.z*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
 }
 void __global__ 
-transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const int3 dims)
+transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2106,7 +2209,7 @@ transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const int3 dims)
 		dst[out_vertexIdx.x +dims.z*out_vertexIdx.z + dims.z*dims.x*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
 }
 void __global__ 
-transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const int3 dims)
+transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2139,7 +2242,7 @@ transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const int3 dims)
 		dst[out_vertexIdx.x +dims.y*out_vertexIdx.y + dims.x*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
 }
 void __global__ 
-transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const int3 dims)
+transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2172,7 +2275,7 @@ transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const int3 dims)
 		dst[out_vertexIdx.x +dims.y*out_vertexIdx.z + dims.y*dims.z*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];
 }
 void __global__ 
-transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const int3 dims)
+transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const Volume dims)
 {
 	const dim3 in_block_offset =
 	{
@@ -2194,63 +2297,63 @@ transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const int3 dims)
 		= src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)];
 }
 static AcResult
-acTransposeXYZ_ZYX(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_ZYX(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,1,32};
 
-	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
+	const dim3 bpg = to_dim3(get_bpg(dims,to_volume(tpb)));
   	KERNEL_LAUNCH(transpose_xyz_to_zyx,bpg, tpb, 0, stream)(src,dst,dims);
 	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_ZXY(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_ZXY(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,1,32};
 
-	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
+	const dim3 bpg = to_dim3(get_bpg(dims,to_volume(tpb)));
   	KERNEL_LAUNCH(transpose_xyz_to_zxy,bpg, tpb, 0, stream)(src,dst,dims);
 	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_YXZ(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_YXZ(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,32,1};
 
-	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
+	const dim3 bpg = to_dim3(get_bpg(dims,to_volume(tpb)));
   	KERNEL_LAUNCH(transpose_xyz_to_yxz,bpg, tpb, 0, stream)(src,dst,dims);
 	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_YZX(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_YZX(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,32,1};
 
-	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
+	const dim3 bpg = to_dim3(get_bpg(dims,to_volume(tpb)));
   	KERNEL_LAUNCH(transpose_xyz_to_yzx,bpg, tpb, 0, stream)(src,dst,dims);
 	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_XZY(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_XZY(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,32,1};
-	const dim3 bpg = to_dim3(get_bpg(to_volume(dims),to_volume(tpb)));
+	const dim3 bpg = to_dim3(get_bpg(dims,to_volume(tpb)));
   	KERNEL_LAUNCH(transpose_xyz_to_xzy,bpg, tpb, 0, stream)(src,dst,dims);
 	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
 {
 	const size_t bytes = dims.x*dims.y*dims.z*sizeof(AcReal);
 	ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(dst,src,bytes,cudaMemcpyDeviceToDevice,stream));
 	return AC_SUCCESS;
 }
 AcResult
-acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream)
+acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
 {
 	switch(order)
 	{

@@ -62,8 +62,9 @@ bool should_reduce_int[1000] = {false};
 #define __shared__
 
 #define threadIdx ((int3){0, 0, 0})
-#define blockIdx ((int3){0, 0, 0})
-#define blockDim ((int3){0, 0, 0})
+#define blockIdx ((dim3){0, 0, 0})
+#define blockDim ((int3){1, 1, 1})
+#define gridDim ((int3){1, 1, 1})
 #define make_int3(x, y, z) ((int3){x, y, z})
 #define make_float3(x, y, z) ((float3){x, y, z})
 #define make_double3(x, y, z) ((double3){x, y, z})
@@ -137,14 +138,34 @@ __ldg(T* val)
 uint64_t
 __ballot(bool)
 {
-	return 0;
+	return ~0;
 }
-
-
-
+#else
+uint64_t
+__ballot_sync(unsigned long, bool)
+{
+	return ~0;
+}
+template <typename T>
+T
+__shfl_down_sync(unsigned long, T val, int)
+{
+	return val;
+}
+template <typename T>
+T
+__shfl_sync(unsigned long, T val, int)
+{
+	return val;
+}
+int
+__ffs(unsigned long)
+{
+	return 1;
+}
+#endif
 #define idx  ((int)IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z))
 
-#endif
 #undef  __device__
 #define __device__
 
@@ -158,13 +179,15 @@ __ballot(bool)
 #undef constexpr
 
 static int stencils_accessed[NUM_ALL_FIELDS][NUM_STENCILS]{{}};
-static int previous_accessed[NUM_ALL_FIELDS]{};
+static int previous_accessed[NUM_ALL_FIELDS+NUM_PROFILES]{};
 static int written_fields[NUM_ALL_FIELDS]{};
 static int read_fields[NUM_ALL_FIELDS]{};
 static int field_has_stencil_op[NUM_ALL_FIELDS]{};
 static int read_profiles[NUM_PROFILES]{};
 static int reduced_profiles[NUM_PROFILES]{};
 static int written_profiles[NUM_PROFILES]{};
+static int reduced_reals[NUM_REAL_OUTPUTS]{};
+static int reduced_ints[NUM_REAL_OUTPUTS]{};
 
 AcKernel current_kernel{};
 #define reduce_sum_real_x  reduce_prof
@@ -182,36 +205,90 @@ std::vector<KernelReduceOutput> reduce_outputs{};
 void
 reduce_sum_real(const bool&, const AcReal, const AcRealOutputParam dst)
 {
+	if(reduced_reals[dst]) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+	reduced_reals[dst] = REDUCE_SUM;
 	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_SUM,current_kernel});
 }
 
 void
 reduce_max_real(const bool&, const AcReal, const AcRealOutputParam dst)
 {
+	if(reduced_reals[dst]) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+	reduced_reals[dst] = REDUCE_MAX;
 	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_MAX,current_kernel});
 }
 
 void
 reduce_min_real(const bool&, const AcReal, const AcRealOutputParam dst)
 {
+	if(reduced_reals[dst]) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",real_output_names[dst],kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+	reduced_reals[dst] = REDUCE_MIN;
 	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_MIN,current_kernel});
 }
 
 void
 reduce_sum_int(const bool&, const AcReal, const AcIntOutputParam dst)
 {
+	if(reduced_ints[dst]) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+	reduced_ints[dst] = REDUCE_SUM;
 	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_SUM,current_kernel});
 }
 
 void
 reduce_max_int(const bool&, const AcReal, const AcIntOutputParam dst)
 {
+	if(reduced_ints[dst]) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+	reduced_ints[dst] = REDUCE_MAX;
 	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MAX,current_kernel});
 }
 
 void
 reduce_min_int(const bool&, const AcReal, const AcIntOutputParam dst)
 {
+	if(reduced_ints[dst]) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",int_output_names[dst],kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+	reduced_ints[dst] = REDUCE_MIN;
 	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MIN,current_kernel});
 }
 
@@ -219,7 +296,7 @@ void
 reduce_prof(const bool&, const AcReal, const Profile dst)
 {
 	if constexpr (NUM_PROFILES != 0)
-		reduced_profiles[(int)dst] |= 1;
+		reduced_profiles[(int)dst] = REDUCE_SUM;
 	reduce_outputs.push_back({(int)dst,AC_PROF_TYPE, REDUCE_SUM,current_kernel});
 }
 
@@ -383,6 +460,7 @@ vbaCreate(const size_t count)
     vba.on_device.profiles.out[i] = (AcReal*)malloc(bytes);
   }
 
+  vba.on_device.block_factor = (int3){1,1,1};
   return vba;
 }
 
@@ -408,11 +486,13 @@ void
 execute_kernel(const int kernel_index)
 {
     const Kernel kernel = kernels[kernel_index];
+    current_kernel = (AcKernel)kernel_index;
     kernel((int3){0, 0, 0}, (int3){1, 1, 1}, VBA.on_device);
 }
 void
 execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 {
+        current_kernel = (AcKernel)kernel_index;
     	const Kernel kernel = kernels[kernel_index];
 	if(BOUNDARY_X_BOT & boundary)
 	{
@@ -484,6 +564,10 @@ reset_info_arrays()
 	    reduced_profiles[i] = 0;
 	    written_profiles[i] = 0;
     }
+    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+	    reduced_reals[i] = 0;
+    for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
+	    reduced_ints[i] = 0;
 }
 
 acAnalysisBCInfo 
@@ -521,7 +605,6 @@ acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
 	memset(dst->stencils_accessed,false,sizeof(dst->stencils_accessed));
 	for(size_t k = 0; k <NUM_KERNELS; ++k)
 	{
-		current_kernel = (AcKernel)k;
 		reset_info_arrays();
     		if (!skip_kernel_in_analysis[k])
     		{
@@ -563,6 +646,21 @@ acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
 	}
 	return AC_SUCCESS;
 }
+template <const size_t N>
+void
+print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N])
+{
+  fprintf(fp,
+          "static int %s[NUM_KERNELS][%ld] "
+          "__attribute__((unused)) =  {",name,N);
+  for (size_t k = 0; k < NUM_KERNELS; ++k) {
+    fprintf(fp,"{");
+    for (size_t j = 0; j < N; ++j)
+        fprintf(fp, "%d,", arr[k][j]);
+    fprintf(fp,"},");
+  }
+  fprintf(fp, "};");
+}
 
 #if AC_STENCIL_ACCESSES_MAIN
 int
@@ -584,12 +682,18 @@ main(int argc, char* argv[])
   FILE* fp_field_has_previous_call = fopen("user_field_has_previous_call.bin","wb");
   FILE* fp_profiles_read = fopen("user_read_profiles.bin","wb");
   FILE* fp_profiles_reduced = fopen("user_reduced_profiles.bin","wb");
+  FILE* fp_reals_reduced = fopen("user_reduced_reals.bin","wb");
+  FILE* fp_ints_reduced = fopen("user_reduced_ints.bin","wb");
 
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "__attribute__((unused)) =  {");
-  int  write_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
-  int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS]{};
+  int  write_output[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
+  int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
+  int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES]{};
+  int  output_reduced_reals[NUM_KERNELS][NUM_REAL_OUTPUTS]{};
+  int  output_reduced_ints[NUM_KERNELS][NUM_INT_OUTPUTS]{};
+  int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     reset_info_arrays();
     fprintf(fp,"{");
@@ -610,6 +714,15 @@ main(int argc, char* argv[])
     	  output_previous_accessed[k][j] = previous_accessed[j];
 	  write_output[k][j] = written_fields[j];
     	}
+	for(size_t j = 0; j < NUM_PROFILES; ++j)
+	{
+	  output_reduced_profiles[k][j] = reduced_profiles[j];
+	  output_read_profiles[k][j]    = read_profiles[j];
+	}
+	for(int j = 0; j < NUM_REAL_OUTPUTS; ++j)
+		output_reduced_reals[k][j] = reduced_reals[j];
+	for(int j = 0; j < NUM_INT_OUTPUTS; ++j)
+		output_reduced_ints[k][j] = reduced_ints[j];
     } 
 
     for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
@@ -629,6 +742,8 @@ main(int argc, char* argv[])
     fwrite(written_fields,sizeof(int),NUM_ALL_FIELDS,fp_written_fields);
     fwrite(read_profiles   ,sizeof(int),NUM_PROFILES,fp_profiles_read);
     fwrite(reduced_profiles,sizeof(int),NUM_PROFILES,fp_profiles_reduced);
+    fwrite(reduced_reals,sizeof(int),NUM_REAL_OUTPUTS,fp_reals_reduced);
+    fwrite(reduced_ints,sizeof(int),NUM_INT_OUTPUTS,fp_ints_reduced);
   }
 
 
@@ -640,30 +755,19 @@ main(int argc, char* argv[])
   fclose(fp_profiles_read);
   fclose(fp_profiles_reduced);
 
-  fprintf(fp,
-          "static int previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
-          "__attribute__((unused)) =  {");
-  for (size_t k = 0; k < NUM_KERNELS; ++k) {
-    fprintf(fp,"{");
-    for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
-        fprintf(fp, "%d,", output_previous_accessed[k][j]);
-    fprintf(fp,"},");
-  }
-  fprintf(fp, "};");
+  print_info_array(fp,"previous_accessed",output_previous_accessed);
+  print_info_array(fp,"write_called",write_output);
+  print_info_array(fp,"reduced_profiles",output_reduced_profiles);
+  print_info_array(fp,"read_profiles",output_read_profiles);
+  print_info_array(fp,"reduced_reals",output_reduced_reals);
+  print_info_array(fp,"reduced_ints",output_reduced_ints);
+  fprintf(fp,"const bool has_mem_access_info __attribute__((unused)) = true;\n");
 
-  fprintf(fp,
-          "static int write_called[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
-          "__attribute__((unused)) =  {");
-  for (size_t k = 0; k < NUM_KERNELS; ++k) {
-    fprintf(fp,"{");
-    for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
-        fprintf(fp, "%d,", write_output[k][j]);
-    fprintf(fp,"},");
-  }
-  fprintf(fp, "};");
   fclose(fp);
 
+
 #include "gmem_arrays_output_accesses.h"
+  fprintf(stderr,"Generated stencil accesses\n");
   return EXIT_SUCCESS;
 }
 #endif

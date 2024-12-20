@@ -18,6 +18,7 @@
 */
 #include "kernels.h"
 
+#include "../buffer.cc"
 #include "acc_runtime.cu"
 
 static __global__ void

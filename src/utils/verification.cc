@@ -112,23 +112,23 @@ get_maximum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 {
     AcReal maximum = (AcReal)-INFINITY;
 
-    const int3 nn_min = acGetMinNN(info);
-    const int x_start = communicated_field ? 0 : nn_min.x;
-    const int y_start = communicated_field ? 0 : nn_min.y;
-    const int z_start = communicated_field ? 0 : nn_min.z;
+    const Volume nn_min = acGetMinNN(info);
+    const size_t x_start = communicated_field ? 0 : nn_min.x;
+    const size_t y_start = communicated_field ? 0 : nn_min.y;
+    const size_t z_start = communicated_field ? 0 : nn_min.z;
 
-    const int3 nn = acGetGridNN(info);
-    const int3 mm = acGetGridMM(info);
+    const Volume nn = acGetGridNN(info);
+    const Volume mm = acGetGridMM(info);
 
-    const int x_end = communicated_field ? mm.x : nn.x;
-    const int y_end = communicated_field ? mm.y : nn.y;
-    const int z_end = communicated_field ? mm.z : nn.z;
+    const size_t x_end = communicated_field ? mm.x : nn.x;
+    const size_t y_end = communicated_field ? mm.y : nn.y;
+    const size_t z_end = communicated_field ? mm.z : nn.z;
 
-    for (int x = x_start; x < x_end; ++x) 
+    for (size_t x = x_start; x < x_end; ++x) 
     {
-    	for (int y = y_start; y < y_end; ++y) 
+    	for (size_t y = y_start; y < y_end; ++y) 
 	{
-    		for (int z = z_start; z < z_end; ++z) 
+    		for (size_t z = z_start; z < z_end; ++z) 
 		{
 			const size_t i = acVertexBufferIdx(x,y,z,info);
         		maximum = std::max(maximum, std::abs(field[i]));
@@ -143,24 +143,24 @@ get_minimum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 {
     AcReal minimum = (AcReal)INFINITY;
 
-    const int3 nn_min = acGetMinNN(info);
-    const int x_start = communicated_field ? 0 : nn_min.x;
-    const int y_start = communicated_field ? 0 : nn_min.y;
-    const int z_start = communicated_field ? 0 : nn_min.z;
+    const Volume nn_min = acGetMinNN(info);
+    const size_t x_start = communicated_field ? 0 : nn_min.x;
+    const size_t y_start = communicated_field ? 0 : nn_min.y;
+    const size_t z_start = communicated_field ? 0 : nn_min.z;
 
-    const int3 nn = acGetGridNN(info);
-    const int3 mm = acGetGridMM(info);
+    const Volume nn = acGetGridNN(info);
+    const Volume mm = acGetGridMM(info);
 
-    const int x_end = communicated_field ? mm.x : nn.x;
-    const int y_end = communicated_field ? mm.y : nn.y;
-    const int z_end = communicated_field ? mm.z : nn.z;
+    const size_t x_end = communicated_field ? mm.x : nn.x;
+    const size_t y_end = communicated_field ? mm.y : nn.y;
+    const size_t z_end = communicated_field ? mm.z : nn.z;
 
 
-    for (int x = x_start; x < x_end; ++x) 
+    for (size_t x = x_start; x < x_end; ++x) 
     {
-    	for (int y = y_start; y < y_end; ++y) 
+    	for (size_t y = y_start; y < y_end; ++y) 
 	{
-    		for (int z = z_start; z < z_end; ++z) 
+    		for (size_t z = z_start; z < z_end; ++z) 
 		{
 			const size_t i = acVertexBufferIdx(x,y,z,info);
         		minimum = std::min(minimum, std::abs(field[i]));
@@ -182,24 +182,24 @@ get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo
     error.abs_error = -1;
 
 
-    const int3 nn_min = acGetMinNN(info);
+    const Volume nn_min = acGetMinNN(info);
 
-    const int3 nn = acGetGridNN(info);
-    const int3 mm = acGetGridMM(info);
+    const Volume nn = acGetGridNN(info);
+    const Volume mm = acGetGridMM(info);
 
-    const int x_start = communicated_field ? 0 : nn_min.x;
-    const int y_start = communicated_field ? 0 : nn_min.y;
-    const int z_start = communicated_field ? 0 : nn_min.z;
+    const size_t x_start = communicated_field ? 0 : nn_min.x;
+    const size_t y_start = communicated_field ? 0 : nn_min.y;
+    const size_t z_start = communicated_field ? 0 : nn_min.z;
 
-    const int x_end = communicated_field ? mm.x : nn.x;
-    const int y_end = communicated_field ? mm.y : nn.y;
-    const int z_end = communicated_field ? mm.z : nn.z;
+    const size_t x_end = communicated_field ? mm.x : nn.x;
+    const size_t y_end = communicated_field ? mm.y : nn.y;
+    const size_t z_end = communicated_field ? mm.z : nn.z;
 
-    for (int x = x_start; x < x_end; ++x) 
+    for (size_t x = x_start; x < x_end; ++x) 
     {
-    	for (int y = y_start; y < y_end; ++y) 
+    	for (size_t y = y_start; y < y_end; ++y) 
 	{
-    		for (int z = z_start; z < z_end; ++z) 
+    		for (size_t z = z_start; z < z_end; ++z) 
 		{
 			const size_t i = acVertexBufferIdx(x,y,z,info);
         		Error curr_error = acGetError(model[i], candidate[i]);
@@ -227,7 +227,7 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
     fflush(stdout);
     printf("Errors at the point of the maximum absolute error:\n");
 
-    int errors_found = 0;
+    size_t errors_found = 0;
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         const Error error = get_max_abs_error(model.vertex_buffer[i], candidate.vertex_buffer[i],
                                               model.info, vtxbuf_is_communicated[i]);
@@ -237,7 +237,7 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
     }
 
     if (errors_found > 0)
-        printf("Failure. Found %d errors\n", errors_found);
+        printf("Failure. Found %ld errors\n", errors_found);
 
     return errors_found ? AC_FAILURE : AC_SUCCESS;
 }
@@ -249,8 +249,8 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
     ERRCHK_ALWAYS(NUM_VTXBUF_HANDLES > 0);
 
     const AcMeshInfo info = model.info;
-    const int3 mm = acGetGridMM(info);
-    ERRCHK_ALWAYS((int)z < mm.z);
+    const Volume mm = acGetGridMM(info);
+    ERRCHK_ALWAYS(z < mm.z);
 
     FILE* fp = fopen(path, "w");
     ERRCHK_ALWAYS(fp);
@@ -284,7 +284,7 @@ acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate)
     FILE* fp = fopen(path, "w");
     ERRCHK_ALWAYS(fp);
 
-    const int3 mm = acGetGridMaxNN(info);
+    const Volume mm = acGetGridMaxNN(info);
     const size_t mx = mm.x;
     const size_t my = mm.y;
     const size_t mz = mm.z;

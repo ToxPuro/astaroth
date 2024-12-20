@@ -188,13 +188,11 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     return task_def;
 }
 
-Region::Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputParams mem_)
+Region::Region(RegionFamily family_, int tag_, Volume nn, const RegionMemoryInputParams mem_)
     : family(family_), tag(tag_) 
 {
-    const auto ghosts = acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin];
-    memory.profiles = {};
-    for(size_t i = 0; i < mem_.num_profiles; ++i)
-	    memory.profiles.push_back((Profile)i);
+    const Volume ghosts = to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
+    memory.profiles = {mem_.profiles, mem_.profiles + mem_.num_profiles};
     memory.fields = {};
     switch (family) {
     	case RegionFamily::Exchange_output: //Fallthrough
@@ -219,56 +217,56 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputP
       switch (family) {
       case RegionFamily::Compute_output: {
       // clang-format off
-      position = (int3){
+      position = {
       	    id.x == -1  ? ghosts.x : id.x == 1 ? nn.x : ghosts.x * 2,
       	    id.y == -1  ? ghosts.y : id.y == 1 ? nn.y : ghosts.y * 2,
       	    id.z == -1  ? ghosts.z : id.z == 1 ? nn.z : ghosts.z * 2};
       // clang-format on
-      dims = (int3){id.x == 0 ? nn.x - ghosts.x* 2 : ghosts.x,
+      dims = {id.x == 0 ? nn.x - ghosts.x * 2 : ghosts.x,
       	      id.y == 0 ? nn.y - ghosts.y * 2 : ghosts.y,
       	      id.z == 0 ? nn.z - ghosts.z * 2 : ghosts.z};
       if(dims.x == 0 || dims.y == 0 || dims.z == 0)
       {
-	      fprintf(stderr,"Incorrect region dims: %d,%d,%d\n",dims.x,dims.y,dims.z);
+	      fprintf(stderr,"Incorrect region dims: %zu,%zu,%zu\n",dims.x,dims.y,dims.z);
 	      ERRCHK_ALWAYS(dims.x != 0 && dims.y != 0 && dims.z != 0);
       }
       break;
       }
       case RegionFamily::Compute_input: {
       // clang-format off
-      position = (int3){
+      position = {
       	    id.x == -1  ? 0 : id.x == 1 ? nn.x - ghosts.x : ghosts.x ,
       	    id.y == -1  ? 0 : id.y == 1 ? nn.y - ghosts.y : ghosts.y ,
       	    id.z == -1  ? 0 : id.z == 1 ? nn.z - ghosts.z : ghosts.z };
       // clang-format on
-      dims = (int3){
+      dims = {
 	      		id.x == 0 ? nn.x : ghosts.x * 3, 
 			id.y == 0 ? nn.y : ghosts.y * 3,
       	      	        id.z == 0 ? nn.z : ghosts.z * 3};
       if(dims.x == 0 || dims.y == 0 || dims.z == 0)
       {
-	      fprintf(stderr,"Incorrect region dims: %d,%d,%d\n",dims.x,dims.y,dims.z);
+	      fprintf(stderr,"Incorrect region dims: %zu,%zu,%zu\n",dims.x,dims.y,dims.z);
 	      fprintf(stderr,"Id: %d,%d,%d\n",id.x,id.y,id.z);
-	      fprintf(stderr,"Ghosts: %d,%d,%d\n",ghosts.x,ghosts.y,ghosts.z);
+	      fprintf(stderr,"Ghosts: %zu,%zu,%zu\n",ghosts.x,ghosts.y,ghosts.z);
 	      ERRCHK_ALWAYS(dims.x != 0 && dims.y != 0 && dims.z != 0);
       }
       break;
       }
       case RegionFamily::Exchange_output: {
       // clang-format off
-      position = (int3){
+      position = {
       	    id.x == -1  ? 0 : id.x == 1 ? ghosts.x+ nn.x :  ghosts.x,
       	    id.y == -1  ? 0 : id.y == 1 ? ghosts.y + nn.y : ghosts.y,
       	    id.z == -1  ? 0 : id.z == 1 ? ghosts.z + nn.z : ghosts.z};
       // clang-format on
-      dims = (int3){id.x == 0 ? nn.x : ghosts.x , id.y == 0 ? nn.y : ghosts.y,
+      dims = {id.x == 0 ? nn.x : ghosts.x , id.y == 0 ? nn.y : ghosts.y,
       	      id.z == 0 ? nn.z : ghosts.z};
       break;
       }
       case RegionFamily::Exchange_input: {
-      position = (int3){id.x == 1 ? nn.x : ghosts.x, id.y == 1 ? nn.y : ghosts.y,
+      position = {id.x == 1 ? nn.x : ghosts.x, id.y == 1 ? nn.y : ghosts.y,
       		  id.z == 1 ? nn.z : ghosts.z};
-      dims = (int3){id.x == 0 ? nn.x : ghosts.x, id.y == 0 ? nn.y : ghosts.y,
+      dims = {id.x == 0 ? nn.x : ghosts.x, id.y == 0 ? nn.y : ghosts.y,
       	      id.z == 0 ? nn.z : ghosts.z};
       break;
       }
@@ -279,13 +277,13 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputP
       volume = dims.x * dims.y * dims.z;
       }
       
-      Region::Region(RegionFamily family_, int3 id_, int3 nn, const RegionMemoryInputParams mem_)
+      Region::Region(RegionFamily family_, int3 id_, Volume nn, const RegionMemoryInputParams mem_)
       : Region{family_, id_to_tag(id_), nn, mem_}
       {
       ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
       }
       
-      Region::Region(int3 position_, int3 dims_, int tag_, const RegionMemory mem_, RegionFamily family_)
+      Region::Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_, RegionFamily family_)
       : position(position_), dims(dims_), family(family_), tag(tag_)
       {
       std::vector<Field> fields{};
@@ -309,7 +307,7 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputP
       memory.profiles = mem_.profiles;
       }
 
-Region::Region(int3 position_, int3 dims_, int tag_, const RegionMemory mem_)
+Region::Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_)
 : Region{position_, dims_, tag_, mem_, RegionFamily::None}{}
 
 
@@ -317,7 +315,7 @@ Region::Region(int3 position_, int3 dims_, int tag_, const RegionMemory mem_)
 Region
 Region::translate(int3 translation)
 {
-return Region(this->position + translation, this->dims, this->tag, this->memory);
+return Region(to_volume(this->position + translation), this->dims, this->tag, this->memory);
 }
 
 bool
@@ -607,7 +605,7 @@ Task::poll_stream()
 }
 
 /* Computation */
-ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
+ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
            Region(RegionFamily::Compute_input, region_tag, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in}),
@@ -713,7 +711,7 @@ ComputeTask::advance(const TraceFile* trace_file)
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-HaloMessage::HaloMessage(int3 dims, size_t num_vars)
+HaloMessage::HaloMessage(Volume dims, size_t num_vars)
 {
     length       = dims.x * dims.y * dims.z * num_vars;
     size_t bytes = length * sizeof(AcRealPacked);
@@ -764,7 +762,7 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 // HaloMessageSwapChain
 HaloMessageSwapChain::HaloMessageSwapChain() {}
 
-HaloMessageSwapChain::HaloMessageSwapChain(int3 dims, size_t num_vars)
+HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t num_vars)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
@@ -825,7 +823,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     recv_tag = tag_0 + Region::id_to_tag(-output_region.id);
 
     // Post receive immediately, this avoids unexpected messages
-    active = ((MPI_INCL_CORNERS) || output_region.facet_class != 3) ? true : false;
+    active = ((acDeviceGetLocalConfig(device)[AC_include_3d_halo_corners]) || output_region.facet_class != 3) ? true : false;
     if (active) {
         acVerboseLogFromRootProc(rank, "Halo exchange task ctor: posting early receive\n");
         receive();
@@ -841,8 +839,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     if(sendingToItself())
     {
 	    const auto ghosts = acDeviceGetLocalConfig(device)[AC_nmin];
-	    const int3 mm = {grid_info.nn.x + ghosts.x, grid_info.nn.y + ghosts.y, grid_info.nn.z + ghosts.z};
-	    output_region.position -= int3{input_region.id.x*mm.x, input_region.id.y*mm.y, input_region.id.z*mm.z};
+	    const Volume mm = {grid_info.nn.x + ghosts.x, grid_info.nn.y + ghosts.y, grid_info.nn.z + ghosts.z};
+	    output_region.position -= (int3){input_region.id.x*(int)mm.x, input_region.id.y*(int)mm.y, input_region.id.z*(int)mm.z};
 	    output_region.id = -input_region.id;
     }
 
@@ -1124,13 +1122,13 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 
 
 
-SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
+SyncTask::SyncTask(AcTaskDefinition op, int order_, Volume nn, Device device_,
                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
 	//TP: this will make tasks with larger than necessary regions in case of two dimensional setup
 	//but that does not really harm since the whole point of this task is to be a dummy that synchronizes
     : Task(order_,
-           Region({0,0,0},{2*NGHOST+nn.x,2*NGHOST+nn.y,2*NGHOST+nn.z}, 0, {}),
-           Region({0,0,0},{2*NGHOST+nn.x,2*NGHOST+nn.y,2*NGHOST+nn.z}, 0, {}),
+           Region({0,0,0},(Volume){(size_t)2*NGHOST+nn.x,(size_t)2*NGHOST+nn.y,(size_t)2*NGHOST+nn.z}, 0, {}),
+           Region({0,0,0},(Volume){(size_t)2*NGHOST+nn.x,(size_t)2*NGHOST+nn.y,(size_t)2*NGHOST+nn.z}, 0, {}),
            op, device_, swap_offset_)
 {
 
@@ -1160,7 +1158,7 @@ SyncTask::advance(const TraceFile* trace_file)
     acGridSynchronizeStream(STREAM_ALL);
 }
 
-ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
+ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
            Region(RegionFamily::Compute_input, region_tag, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in}),
@@ -1204,10 +1202,8 @@ ReduceTask::reduce()
 	if constexpr (NUM_PROFILES == 0) return;
 	for(const auto& prof : input_region.memory.profiles)
 	{
-	    acReduceProfile(prof,acGetMeshDims(acDeviceGetLocalConfig(device)),
-			           acDeviceGetProfileReduceScratchpad(device,prof),
-			           acDeviceGetProfileCubTmp(device,prof),
-			           acDeviceGetProfileCubTmpSize(device,prof),
+	    acReduceProfile(prof,
+			           acDeviceGetProfileReduceBuffer(device,prof),
 			           acDeviceGetProfileBuffer(device,prof),
 				   stream
 			    );
@@ -1234,7 +1230,7 @@ ReduceTask::advance(const TraceFile* trace_file)
 
 
 BoundaryConditionTask::BoundaryConditionTask(
-    AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, int3 nn, Device device_,
+    AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, Volume nn, Device device_,
     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
            Region(RegionFamily::Exchange_input, region_tag, nn,  {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in }),
@@ -1273,11 +1269,11 @@ BoundaryConditionTask::BoundaryConditionTask(
 
 
 
-    int3 translation = int3{(output_region.dims.x + 1) * (-boundary_normal.x),
-                            (output_region.dims.y + 1) * (-boundary_normal.y),
-                            (output_region.dims.z + 1) * (-boundary_normal.z)};
+    int3 translation = int3{(int)(output_region.dims.x + 1) * (-boundary_normal.x),
+                            (int)(output_region.dims.y + 1) * (-boundary_normal.y),
+                            (int)(output_region.dims.z + 1) * (-boundary_normal.z)};
 
-    boundary_dims = int3{
+    boundary_dims = {
         boundary_normal.x == 0 ? output_region.dims.x : 1,
         boundary_normal.y == 0 ? output_region.dims.y : 1,
         boundary_normal.z == 0 ? output_region.dims.z : 1,
@@ -1335,33 +1331,33 @@ BoundaryConditionTask::BoundaryConditionTask(
 void
 BoundaryConditionTask::populate_boundary_region()
 {
-     const int3 nn = acGetLocalNN(acDeviceGetLocalConfig(device));
+     const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
      const auto ghosts = acDeviceGetLocalConfig(device)[AC_nmin];
      if(fieldwise)
      {
      	for (auto variable : output_region.memory.fields) {
      		params.load_func->loader({&vba.on_device.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
      		const int3 region_id = output_region.id;
-     		const int3 start = (int3){(region_id.x == 1 ? ghosts.x+ nn.x
+     		const Volume start = {(region_id.x == 1 ? ghosts.x+ nn.x
      		                                           : region_id.x == -1 ? 0 : ghosts.x),
      		                         (region_id.y == 1 ? ghosts.y+ nn.y
      		                                           : region_id.y == -1 ? 0 : ghosts.y),
      		                         (region_id.z == 1 ? ghosts.z + nn.z
      		                                           : region_id.z == -1 ? 0 : ghosts.z)};
-     		const int3 end = start + boundary_dims;
+     		const Volume end = start + boundary_dims;
      		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
      	}
      }
      else
      {
      		const int3 region_id = output_region.id;
-     		const int3 start = (int3){(region_id.x == 1 ? ghosts.x + nn.x
+     		const Volume start = {(region_id.x == 1 ? ghosts.x + nn.x
      		                                           : region_id.x == -1 ? 0 : ghosts.x),
      		                         (region_id.y == 1 ? ghosts.y + nn.y
      		                                           : region_id.y == -1 ? 0 : ghosts.y),
      		                         (region_id.z == 1 ? ghosts.z + nn.z
      		                                           : region_id.z == -1 ? 0 : ghosts.z)};
-     		const int3 end = start + boundary_dims;
+     		const Volume end = start + boundary_dims;
      		acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
      }
 }

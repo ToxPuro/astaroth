@@ -35,12 +35,18 @@ Field2 AC_COORDS
 #endif
 #endif
 
-run_const int3 AC_domain_decomposition
-run_const bool AC_host_has_row_memory_order
+run_const int3  AC_domain_decomposition
+run_const bool  AC_host_has_row_memory_order
+run_const bool3 AC_dimension_inactive
+run_const bool  AC_lagrangian_grid
+int3 AC_thread_block_loop_factors
+int3 AC_max_tpb_for_reduce_kernels
+int3 AC_reduction_tile_dimensions
 int3 AC_multigpu_offset
 int3 AC_domain_coordinates
-bool3 AC_dimension_inactive
-bool  AC_lagrangian_grid
+
+run_const bool AC_include_3d_halo_corners
+
 
 //TP: these belong here but at the moment are deprecated
 /**

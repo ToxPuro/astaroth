@@ -47,17 +47,17 @@ kernel_volume_copy(const AcReal* in, const int3 in_offset, const int3 in_volume,
 
 AcResult
 acKernelVolumeCopy(const cudaStream_t stream,                                    //
-                   const AcReal* in, const int3 in_offset, const int3 in_volume, //
-                   AcReal* out, const int3 out_offset, const int3 out_volume)
+                   const AcReal* in, const Volume in_offset, const Volume in_volume, //
+                   AcReal* out, const Volume out_offset, const Volume out_volume)
 {
-    const int3 nn = min(in_volume, out_volume);
-    const dim3 tpb(min(512, nn.x), 1, 1);
+    const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
+    const dim3 tpb(512 < nn.x ? 512 : nn.x , 1, 1);
     const dim3 bpg((unsigned int)ceil(nn.x / double(tpb.x)),
                    (unsigned int)ceil(nn.y / double(tpb.y)),
                    (unsigned int)ceil(nn.z / double(tpb.z)));
 
-    kernel_volume_copy<<<bpg, tpb, 0, stream>>>(in, in_offset, in_volume, //
-                                                out, out_offset, out_volume);
+    kernel_volume_copy<<<bpg, tpb, 0, stream>>>(in, to_int3(in_offset), to_int3(in_volume), //
+                                                out, to_int3(out_offset), to_int3(out_volume));
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;

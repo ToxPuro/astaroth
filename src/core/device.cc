@@ -844,7 +844,7 @@ acDeviceTransferMesh(const Device src_device, const Stream stream, Device dst_de
 }
 AcResult
 acDeviceLaunchKernel(const Device device, const Stream stream, const AcKernel kernel,
-                     const int3 start, const int3 end)
+                     const Volume start, const Volume end)
 {
     cudaSetDevice(device->id);
     return acLaunchKernel(kernel, device->streams[stream], start, end, device->vba);
@@ -869,7 +869,7 @@ acDeviceStoreStencil(const Device device, const Stream stream, const Stencil ste
 }
 AcResult
 acDeviceIntegrateSubstep(const Device device, const Stream stream, const int step_number,
-                         const int3 start, const int3 end, const AcReal dt)
+                         const Volume start, const Volume end, const AcReal dt)
 {
 #ifdef AC_INTEGRATION_ENABLED
     const AcReal current_time = device->local_config[AC_current_time];
@@ -985,8 +985,8 @@ acDeviceReduceScalNoPostProcessing(const Device device, const Stream stream, con
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
 
-    const int3 start = acGetMinNN(device->local_config);
-    const int3 end   = acGetMaxNN(device->local_config);
+    const Volume start = acGetMinNN(device->local_config);
+    const Volume end   = acGetMaxNN(device->local_config);
 
     *result = acKernelReduceScal(device->streams[stream], reduction, vtxbuf_handle,
                                  start, end, 0, device->vba.scratchpad_size,device->vba);
@@ -1002,7 +1002,7 @@ acDeviceReduceScal(const Device device, const Stream stream, const AcReduction r
 
     switch (reduction.post_processing_op) {
     	case AC_RMS: {
-    	    const int3 nn = acGetLocalNN(device->local_config);
+    	    const Volume nn = acGetLocalNN(device->local_config);
     	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
     	    *result            = sqrt(inv_n * *result);
     	    break;
@@ -1024,8 +1024,8 @@ acDeviceReduceVecNoPostProcessing(const Device device, const Stream stream, cons
     if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
 
-    const int3 start = acGetMinNN(device->local_config);
-    const int3 end   = acGetMaxNN(device->local_config);
+    const Volume start = acGetMinNN(device->local_config);
+    const Volume end   = acGetMaxNN(device->local_config);
 
     *result = acKernelReduceVec(device->streams[stream], reduction, start, end, {vtxbuf0,vtxbuf1,vtxbuf2},device->vba,
                                 0, device->vba.scratchpad_size);
@@ -1043,7 +1043,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const AcReduction re
     acDeviceReduceVecNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, result);
     switch (reduction.post_processing_op) {
     	case AC_RMS: {
-    	    const int3 nn = acGetLocalNN(device->local_config);
+    	    const Volume nn = acGetLocalNN(device->local_config);
     	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
     	    *result            = sqrt(inv_n * *result);
     	    break;
@@ -1097,8 +1097,8 @@ acDeviceReduceVecScalNoPostProcessing(const Device device, const Stream stream,
     if(!vtxbuf_is_alive[vtxbuf3]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
 
-    const int3 start = acGetMinNN(device->local_config);
-    const int3 end   = acGetMaxNN(device->local_config);
+    const Volume start = acGetMinNN(device->local_config);
+    const Volume end   = acGetMaxNN(device->local_config);
 
     *result = acKernelReduceVecScal(device->streams[stream], reduction, start, end,
 		    		    {vtxbuf0,vtxbuf1,vtxbuf2,vtxbuf3},
@@ -1121,7 +1121,7 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const AcReductio
                                      result);
     switch (reduction.post_processing_op) {
     	case AC_RMS: {
-    	    const int3 nn = acGetLocalNN(device->local_config);
+    	    const Volume nn = acGetLocalNN(device->local_config);
     	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
     	    *result            = sqrt(inv_n * *result);
     	    break;
@@ -1148,9 +1148,9 @@ acDeviceReduceXY(const Device device, const Stream stream, const Field field,
 
     const AcMeshDims dims = acGetMeshDims(device->local_config);
 
-    for (int k = 0; k < dims.m1.z; ++k) {
-        const int3 start    = (int3){dims.n0.x, dims.n0.y, k};
-        const int3 end      = (int3){dims.n1.x, dims.n1.y, k + 1};
+    for (size_t k = 0; k < dims.m1.z; ++k) {
+        const Volume start    = {dims.n0.x, dims.n0.y, k};
+        const Volume end      = {dims.n1.x, dims.n1.y, k + 1};
         const size_t nxy    = (end.x - start.x) * (end.y - start.y);
         const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], reduction,
                                                               field, start, end,
@@ -1216,7 +1216,7 @@ acDeviceStoreProfile(const Device device, const Profile profile, AcMesh* host_me
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     cudaSetDevice(device->id);
     ERRCHK_CUDA(cudaMemcpy(host_mesh->profile[profile], device->vba.on_device.profiles.in[profile],
-                           prof_size(profile,device->vba.mm),
+                           prof_size(profile,device->vba.dims.m1),
                            cudaMemcpyDeviceToHost));
     return AC_SUCCESS;
 }
@@ -1245,8 +1245,8 @@ acDevicePrintProfiles(const Device device)
 
 AcResult
 acDeviceVolumeCopy(const Device device, const Stream stream,                     //
-                   const AcReal* in, const int3 in_offset, const int3 in_volume, //
-                   AcReal* out, const int3 out_offset, const int3 out_volume)
+                   const AcReal* in, const Volume in_offset, const Volume in_volume, //
+                   AcReal* out, const Volume out_offset, const Volume out_volume)
 {
     cudaSetDevice(device->id);
     return acKernelVolumeCopy(device->streams[stream], in, in_offset, in_volume, out, out_offset,
@@ -1646,40 +1646,6 @@ acDeviceReduceXYAverages(const Device , const Stream)
 {
 	return AC_FAILURE;
 }
-AcMeshOrder
-get_mesh_order_for_prof(const AcProfileType type)
-{
-    	switch(type)
-    	{
-    	        case(PROFILE_X):
-    	    	    return ZYX;
-    	        case(PROFILE_Y):
-		    return XZY;
-    	        case(PROFILE_Z):
-			return XYZ;
-    	        case(PROFILE_XY):
-			return ZXY;
-    	        case(PROFILE_XZ):
-			return YXZ;
-    	        case(PROFILE_YX):
-			return ZYX;
-    	        case(PROFILE_YZ):
-			return XYZ;
-    	        case(PROFILE_ZX):
-			return YZX;
-    	        case(PROFILE_ZY):
-			return XZY;
-    	}
-	return XYZ;
-};
-size_t
-get_size_from_dim(const int dim, const AcMeshDims dims)
-{
-    	const auto size   = dim == X_ORDER_INT ? dims.m1.x :
-        		    dim == Y_ORDER_INT ? dims.m1.y :
-        		    dims.m1.z;
-        return as_size_t(size);
-}
 AcBuffer
 acDeviceTransposeVertexBuffer(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
 {
@@ -1697,10 +1663,8 @@ AcResult
 acDeviceReduceAverages(const Device device, const Stream stream, const Profile prof)
 {
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
-    return acReduceProfile(prof,acGetMeshDims(device->local_config),
-			   *(device->vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)]),
-			   device->vba.reduce_cub_tmp_real[PROF_SCRATCHPAD_INDEX(prof)],
-			   device->vba.reduce_cub_tmp_size_real[PROF_SCRATCHPAD_INDEX(prof)],
+    return acReduceProfile(prof,
+			   device->vba.profile_reduce_buffers[prof],
 			   device->vba.on_device.profiles.in[prof],
 			   device->streams[stream]
 		    );
@@ -1757,10 +1721,10 @@ acDeviceGetId(const Device device)
 	return device->id;
 }
 
-AcReal*
-acDeviceGetProfileReduceScratchpad(const Device device, const Profile prof)
+AcReduceBuffer
+acDeviceGetProfileReduceBuffer(const Device device, const Profile prof)
 {
-	return *(device->vba.reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(prof)]);
+	return device->vba.profile_reduce_buffers[prof];
 }
 
 AcReal*
@@ -1768,17 +1732,6 @@ acDeviceGetProfileBuffer(const Device device, const Profile prof)
 {
 	if constexpr (NUM_PROFILES == 0) return NULL;
 	return device->vba.on_device.profiles.in[prof];
-}
-AcReal**
-acDeviceGetProfileCubTmp(const Device device, const Profile prof)
-{
-	if constexpr (NUM_PROFILES == 0) return NULL;
-	return device->vba.reduce_cub_tmp_real[PROF_SCRATCHPAD_INDEX(prof)];
-}
-size_t*
-acDeviceGetProfileCubTmpSize(const Device device, const Profile prof)
-{
-	return device->vba.reduce_cub_tmp_size_real[PROF_SCRATCHPAD_INDEX(prof)];
 }
 AcReal**
 acDeviceGetStartOfProfiles(const Device device)

@@ -39,8 +39,8 @@ typedef struct {
     AcKernel kernel_enum;
     cudaStream_t stream;
     int step_number;
-    int3 start;
-    int3 end;
+    Volume start;
+    Volume end;
     #if AC_MPI_ENABLED
     LoadKernelParamsFunc* load_func;
     #endif
@@ -88,8 +88,8 @@ typedef struct
 } RegionMemoryInputParams;
 
 struct Region {
-    int3 position;
-    int3 dims;
+    Volume position;
+    Volume dims;
     size_t volume;
 
     RegionFamily family;
@@ -119,10 +119,10 @@ struct Region {
     static bool is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy);
     static bool is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary);
 
-    Region(RegionFamily family_, int tag_, int3 nn, const RegionMemoryInputParams);
-    Region(RegionFamily family_, int3 id_, int3 nn, const RegionMemoryInputParams);
-    Region(int3 position_, int3 dims_, int tag_, const RegionMemory mem_);
-    Region(int3 position_, int3 dims_, int tag_, const RegionMemory mem_, RegionFamily family_);
+    Region(RegionFamily family_, int tag_, Volume nn, const RegionMemoryInputParams);
+    Region(RegionFamily family_, int3 id_, Volume nn, const RegionMemoryInputParams);
+    Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_);
+    Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_, RegionFamily family_);
 
     Region translate(int3 translation);
     bool overlaps(const Region* other) const;
@@ -216,7 +216,7 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-    ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
+    ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
 
@@ -239,7 +239,7 @@ typedef struct HaloMessage {
 #endif
     MPI_Request request;
 
-    HaloMessage(int3 dims, size_t num_vars);
+    HaloMessage(Volume dims, size_t num_vars);
     ~HaloMessage();
 #if !(USE_CUDA_AWARE_MPI)
     void pin(const Device device, const cudaStream_t stream);
@@ -252,7 +252,7 @@ typedef struct HaloMessageSwapChain {
     std::vector<HaloMessage> buffers;
 
     HaloMessageSwapChain();
-    HaloMessageSwapChain(int3 dims, size_t num_vars);
+    HaloMessageSwapChain(Volume dims, size_t num_vars);
 
     HaloMessage* get_current_buffer();
     HaloMessage* get_fresh_buffer();
@@ -308,7 +308,7 @@ typedef class HaloExchangeTask : public Task {
 
 typedef class SyncTask : public Task {
   public:
-    SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
+    SyncTask(AcTaskDefinition op, int order_, Volume nn, Device device_,
              std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void advance(const TraceFile* trace_file);
     bool test();
@@ -320,12 +320,12 @@ typedef class BoundaryConditionTask : public Task {
   private:
     KernelParameters params;
     int3 boundary_normal;
-    int3 boundary_dims;
+    Volume boundary_dims;
     bool fieldwise;
 
   public:
     BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
-                                    int region_tag, int3 nn, Device device_,
+                                    int region_tag, Volume nn, Device device_,
                                     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void populate_boundary_region();
     void advance(const TraceFile* trace_file);
@@ -335,7 +335,7 @@ typedef class BoundaryConditionTask : public Task {
 enum class ReduceState { Waiting = Task::wait_state, Running };
 typedef class ReduceTask : public Task {
   public:
-    ReduceTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
+    ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void reduce();
     void advance(const TraceFile* trace_file);

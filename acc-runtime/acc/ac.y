@@ -350,7 +350,6 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	  if(file_exists(ACC_GEN_PATH"/boundcond_kernels.h"))
        	  	process_includes(1, dir, ACC_GEN_PATH"/boundcond_kernels.h", out,log);
        	  process_includes(1, dir, ACC_BUILTIN_KERNELS, out,log);
-       	  process_includes(1, dir, ACC_BUILTIN_DEFAULT_VALUES, out,log);
           fclose(out);
         }
 

@@ -64,7 +64,7 @@ acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims)
 
 AcReal
 acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const VertexBufferHandle vtxbuf,
-                   const int3 start, const int3 end, const int scratchpad_index,
+                   const Volume start, const Volume end, const int scratchpad_index,
                    const size_t scratchpad_size, VertexBufferArray vba)
 {
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
@@ -76,7 +76,7 @@ acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const
     AcReal* in  = *(vba.reduce_scratchpads_real[scratchpad_index]);
 
     // Compute block dimensions
-    const int3 dims            = end - start;
+    const Volume dims            = end - start;
     const size_t initial_count = dims.x * dims.y * dims.z;
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
@@ -104,8 +104,8 @@ acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const
 }
 
 AcReal
-acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const int3 start,
-                  const int3 end, const Field3 vector, VertexBufferArray vba, const int scratchpad_index,
+acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const Volume start,
+                  const Volume end, const Field3 vector, VertexBufferArray vba, const int scratchpad_index,
                   const size_t scratchpad_size)
 {
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
@@ -117,7 +117,7 @@ acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const 
     AcReal* in  = *(vba.reduce_scratchpads_real[scratchpad_index]);
 
     // Set thread block dimensions
-    const int3 dims            = end - start;
+    const Volume dims            = end - start;
     const size_t initial_count = dims.x * dims.y * dims.z;
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
@@ -145,8 +145,8 @@ acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const 
 }
 
 AcReal
-acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, const int3 start,
-                      const int3 end, const Field4 vtxbufs,VertexBufferArray vba,
+acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, const Volume start,
+                      const Volume end, const Field4 vtxbufs,VertexBufferArray vba,
                       const int scratchpad_index, const size_t scratchpad_size)
 {
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
@@ -158,7 +158,7 @@ acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, co
     AcReal* in  = *(vba.reduce_scratchpads_real[scratchpad_index]);
 
     // Set thread block dimensions
-    const int3 dims            = end - start;
+    const Volume dims            = end - start;
     const size_t initial_count = dims.x * dims.y * dims.z;
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
     const AcKernel map_kernel = reduction.map_vtxbuf_vec_scal;

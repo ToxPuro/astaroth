@@ -177,6 +177,7 @@ typedef struct {
 
 
 
+
 #if AC_RUNTIME_COMPILATION
 
 #ifndef BASE_FUNC_NAME
@@ -264,30 +265,30 @@ acConstructReal3Param(const AcRealParam a, const AcRealParam b, const AcRealPara
  * =============================================================================
  */
 
-FUNC_DEFINE(int3, acGetLocalNN, (const AcMeshInfo info));
-FUNC_DEFINE(int3, acGetLocalMM, (const AcMeshInfo info));
-FUNC_DEFINE(int3, acGetGridNN, (const AcMeshInfo info));
-FUNC_DEFINE(int3, acGetGridMM, (const AcMeshInfo info));
-FUNC_DEFINE(int3, acGetMinNN, (const AcMeshInfo info));
-FUNC_DEFINE(int3, acGetMaxNN, (const AcMeshInfo info));
-FUNC_DEFINE(int3, acGetGridMaxNN, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetLocalNN, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetLocalMM, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetGridNN, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetGridMM, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetMinNN, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetMaxNN, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetGridMaxNN, (const AcMeshInfo info));
 FUNC_DEFINE(AcReal3, acGetLengths, (const AcMeshInfo info));
 
 
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info)
 {
-    const int3 mm = acGetLocalMM(info);
-    return as_size_t(mm.x)*as_size_t(mm.y)*as_size_t(mm.z);
+    const Volume mm = acGetLocalMM(info);
+    return mm.x*mm.y*mm.z;
 }
 static inline size_t
 acGridVertexBufferSize(const AcMeshInfo info)
 {
-    const int3 mm = acGetGridMM(info);
-    return as_size_t(mm.x)*as_size_t(mm.y)*as_size_t(mm.z);
+    const Volume mm = acGetGridMM(info);
+    return mm.x*mm.y*mm.z;
 }
 
-static inline int3
+static inline Volume 
 acVertexBufferDims(const AcMeshInfo info)
 {
     return acGetLocalMM(info);
@@ -303,8 +304,8 @@ acVertexBufferSizeBytes(const AcMeshInfo info)
 static inline size_t
 acVertexBufferCompdomainSize(const AcMeshInfo info)
 {
-    const int3 nn = acGetLocalNN(info);
-    return as_size_t(nn.x)*as_size_t(nn.y)*as_size_t(nn.z);
+    const Volume nn = acGetLocalNN(info);
+    return nn.x*nn.y*nn.z;
 }
 
 static inline size_t
@@ -313,25 +314,20 @@ acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
     return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
 }
 
-
-
-typedef struct {
-    int3 n0, n1;
-    int3 m0, m1;
-    int3 nn;
-} AcMeshDims;
-
-
-
-
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info)
 {
-   const int3 n0 = acGetMinNN(info);
-   const int3 n1 = acGetMaxNN(info);
-   const int3 m0 = (int3){0, 0, 0};
-   const int3 m1 = acGetLocalMM(info);
-   const int3 nn = acGetLocalNN(info);
+   const Volume n0 = acGetMinNN(info);
+   const Volume n1 = acGetMaxNN(info);
+   const Volume m0 = (Volume){0, 0, 0};
+   const Volume m1 = acGetLocalMM(info);
+   const Volume nn = acGetLocalNN(info);
+   const Volume reduction_tile = (Volume)
+   {
+	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].x),
+	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].y),
+	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].z)
+   };
 
    return (AcMeshDims){
        .n0 = n0,
@@ -339,17 +335,24 @@ acGetMeshDims(const AcMeshInfo info)
        .m0 = m0,
        .m1 = m1,
        .nn = nn,
+       .reduction_tile = reduction_tile,
    };
 }
 
 static inline AcMeshDims
 acGetGridMeshDims(const AcMeshInfo info)
 {
-   const int3 n0 = acGetMinNN(info);
-   const int3 n1 = acGetGridMaxNN(info);
-   const int3 m0 = (int3){0, 0, 0};
-   const int3 m1 = acGetGridMM(info);
-   const int3 nn = acGetGridNN(info);
+   const Volume n0 = acGetMinNN(info);
+   const Volume n1 = acGetGridMaxNN(info);
+   const Volume m0 = (Volume){0, 0, 0};
+   const Volume m1 = acGetGridMM(info);
+   const Volume nn = acGetGridNN(info);
+   const Volume reduction_tile = (Volume)
+   {
+	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].x),
+	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].y),
+	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].z)
+   };
 
    return (AcMeshDims){
        .n0 = n0,
@@ -357,6 +360,7 @@ acGetGridMeshDims(const AcMeshInfo info)
        .m0 = m0,
        .m1 = m1,
        .nn = nn,
+       .reduction_tile = reduction_tile,
    };
 }
 
@@ -398,13 +402,13 @@ acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    const int3 mm = acGetLocalMM(info);
+    const Volume mm = acGetLocalMM(info);
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 static inline size_t
 acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    const int3 mm = acGetGridMM(info);
+    const Volume mm = acGetGridMM(info);
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 #endif
@@ -412,12 +416,12 @@ acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo in
 static inline int3
 acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
 {
-    const int3 mm = acGetLocalMM(info);
+    const Volume mm = acGetLocalMM(info);
 
     return (int3){
-        (int)i % mm.x,
-        ((int)i % (mm.x * mm.y)) / mm.x,
-        (int)i / (mm.x * mm.y),
+        (int)i % (int)mm.x,
+        ((int)i % (int)(mm.x * mm.y)) / (int)mm.x,
+        (int)i / (int)(mm.x * mm.y),
     };
 }
 
@@ -876,8 +880,8 @@ FUNC_DEFINE(AcResult, acGridFinalizeReduceLocal,(AcTaskGraph* graph));
 FUNC_DEFINE(AcResult, acGridFinalizeReduce,(AcTaskGraph* graph));
 
 /** */
-FUNC_DEFINE(AcResult, acGridLaunchKernel,(const Stream stream, const AcKernel kernel, const int3 start,
-                            const int3 end));
+FUNC_DEFINE(AcResult, acGridLaunchKernel,(const Stream stream, const AcKernel kernel, const Volume start,
+                            const Volume end));
 
 
 /** */
@@ -1202,7 +1206,7 @@ FUNC_DEFINE(AcResult, acDeviceTransferMesh,(const Device src_device, const Strea
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceIntegrateSubstep,(const Device device, const Stream stream, const int step_number,
-                                  const int3 start, const int3 end, const AcReal dt));
+                                  const Volume start, const Volume end, const AcReal dt));
 /** */
 FUNC_DEFINE(AcResult, acDevicePeriodicBoundcondStep,(const Device device, const Stream stream,
                                        const VertexBufferHandle vtxbuf_handle, const int3 start,
@@ -1304,7 +1308,7 @@ FUNC_DEFINE(AcDeviceKernelOutput, acDeviceGetKernelOutput,(const Device device))
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceLaunchKernel,(const Device device, const Stream stream, const AcKernel kernel,
-                              const int3 start, const int3 end));
+                              const Volume start, const Volume end));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceBenchmarkKernel,(const Device device, const AcKernel kernel, const int3 start,
@@ -1320,7 +1324,7 @@ FUNC_DEFINE(AcResult, acDeviceLoadStencils,(const Device device, const Stream st
 FUNC_DEFINE(AcResult, acDeviceStoreStencil,(const Device device, const Stream stream, const Stencil stencil,AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceVolumeCopy,(const Device device, const Stream stream,const AcReal* in, const int3 in_offset, const int3 in_volume,AcReal* out, const int3 out_offset, const int3 out_volume));
+FUNC_DEFINE(AcResult, acDeviceVolumeCopy,(const Device device, const Stream stream,const AcReal* in, const Volume in_offset, const Volume in_volume,AcReal* out, const Volume out_offset, const Volume out_volume));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadPlateBuffer,(const Device device, int3 start, int3 end, const Stream stream,
@@ -1802,10 +1806,14 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
  */
 
 AcBuffer acBufferCreate(const AcShape shape, const bool on_device);
+AcBuffer acTransposeBuffer(const AcBuffer src, const AcMeshOrder order, const cudaStream_t stream);
 
-AcShape  acGetTransposeBufferShape(const AcMeshOrder order, const int3 dims);
+AcShape  acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims);
 AcShape  acGetReductionShape(const AcProfileType type, const AcMeshDims dims);
-AcResult acReduceProfile(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal** tmp, size_t* tmp_size, AcReal* dst, const cudaStream_t stream);
+AcResult acReduceProfile(const Profile prof, const AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream);
+
+AcBuffer
+acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaStream_t stream);
 
 void acBufferDestroy(AcBuffer* buffer);
 
@@ -2049,5 +2057,7 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
 	  res.comm = MPI_COMM_NULL;
 #endif
 	  res.run_consts = acInitCompInfo();
+	  res.params.scalars.int3_params[AC_thread_block_loop_factors] = (int3){1,1,1};
+	  res.params.scalars.int3_params[AC_max_tpb_for_reduce_kernels] = (int3){-1,8,8};
 	  return res;
   }

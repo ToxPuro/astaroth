@@ -2,10 +2,24 @@ hostdefine STENCIL_ORDER (6)
 Field FIELD
 output real AC_min_val
 
+#define DER1_3 (1. / 60.)
+#define DER1_2 (-3. / 20.)
+#define DER1_1 (3. / 4.)
+
+Stencil derx {
+    [0][0][-3] = -AC_inv_ds.x * DER1_3,
+    [0][0][-2] = -AC_inv_ds.x * DER1_2,
+    [0][0][-1] = -AC_inv_ds.x * DER1_1,
+    [0][0][1]  = AC_inv_ds.x * DER1_1,
+    [0][0][2]  = AC_inv_ds.x * DER1_2,
+    [0][0][3]  = AC_inv_ds.x * DER1_3
+}
+
 Profile<X> PROF_X
 Profile<Y> PROF_Y
 Profile<Z> PROF_Z
 Profile<XY> PROF_XY
+Profile<XY> DX_PROF_XY
 Profile<XZ> PROF_XZ
 Profile<YX> PROF_YX
 Profile<YZ> PROF_YZ
@@ -21,6 +35,7 @@ output int  AC_int_sum_val
 //This is a regression test against it
 Kernel empty()
 {}
+
 Kernel test_reduce()
 {
     reduce_min(true, FIELD, AC_min_val)
@@ -28,16 +43,24 @@ Kernel test_reduce()
     reduce_sum(true, FIELD, AC_sum_val)
     int int_val = (int) value(FIELD)
     reduce_sum(true,int_val,AC_int_sum_val)
+
     reduce_sum(true,FIELD,PROF_X)
     reduce_sum(true,FIELD,PROF_Y)
     reduce_sum(true,FIELD,PROF_Z)
-    reduce_sum(true,FIELD,PROF_XY)
+
     reduce_sum(true,FIELD,PROF_XZ)
+    reduce_sum(true,FIELD,PROF_XY)
+
     reduce_sum(true,FIELD,PROF_YX)
     reduce_sum(true,FIELD,PROF_YZ)
+
     reduce_sum(true,FIELD,PROF_ZX)
     reduce_sum(true,FIELD,PROF_ZY)
+
+
+    reduce_sum(true,derx(FIELD),DX_PROF_XY)
 }
+
 Kernel remove_means()
 {
 	res = value(FIELD)
@@ -52,6 +75,10 @@ Kernel remove_means()
 	res -= PROF_ZY
 	write(FIELD, res)
 }
+Kernel derx_kernel()
+{
+	write(FIELD,derx(FIELD))
+}
 BoundConds bcs
 {
 	periodic(BOUNDARY_XYZ)
@@ -61,5 +88,6 @@ ComputeSteps rhs(bcs)
 {
 	test_reduce()
 	remove_means()
+	//derx_kernel()
 }
 

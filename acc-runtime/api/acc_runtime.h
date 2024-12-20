@@ -97,6 +97,14 @@ typedef enum AcReduceOp
 } AcReduceOp;
 
 typedef struct {
+    size3_t n0, n1;
+    size3_t m0, m1;
+    size3_t nn;
+    size3_t reduction_tile;
+} AcMeshDims;
+
+
+typedef struct {
   int variable;
   AcType type;
   AcReduceOp op;
@@ -129,7 +137,7 @@ typedef struct
 
 
   typedef struct {
-    int3 nn;
+    Volume nn;
     AcReal3 lengths;
   } AcGridInfo;
 
@@ -204,6 +212,7 @@ typedef struct {
     acKernelInputParams kernel_input_params;
     int reduce_offset;
     ProfileBufferArray profiles;
+    int3 block_factor;
   } DeviceVertexBufferArray;
 
   typedef struct
@@ -213,10 +222,33 @@ typedef struct {
   } AcScratchpadStates;
 
   typedef struct {
+    size_t x, y, z, w;
+  } AcShape;
+
+  typedef struct AcBuffer{
+      AcReal* data;
+      size_t count;
+      bool on_device;
+      AcShape shape;
+#ifdef __cplusplus
+      const AcReal& operator[](const int index) {return data[index];}
+#endif
+  } AcBuffer;
+
+  typedef struct 
+  {
+	  AcBuffer src;
+	  AcBuffer transposed;
+	  AcMeshOrder mem_order;
+	  AcReal** cub_tmp;
+	  size_t* cub_tmp_size;
+  } AcReduceBuffer;
+
+
+  typedef struct {
     //Auxiliary metadata
     size_t bytes;
-    size3_t mm;
-    size3_t nn;
+    AcMeshDims dims;
     size_t scratchpad_size;
     //All kernel parameters and memory allocated on the device
     DeviceVertexBufferArray on_device;
@@ -239,6 +271,8 @@ typedef struct {
     size_t* reduce_scratchpads_size_int[NUM_INT_OUTPUTS+1];
     AcScratchpadStates* scratchpad_states;
 
+    AcReduceBuffer profile_reduce_buffers[NUM_PROFILES];
+
   } VertexBufferArray;
 
 
@@ -255,20 +289,8 @@ typedef struct {
 	size_t n_reduce_outputs[NUM_KERNELS];
   } KernelAnalysisInfo;
 
-  typedef struct {
-    size_t x, y, z, w;
-  } AcShape;
   typedef AcShape AcIndex;
   
-  typedef struct AcBuffer{
-      AcReal* data;
-      size_t count;
-      bool on_device;
-      AcShape shape;
-#ifdef __cplusplus
-      const AcReal& operator[](const int index) {return data[index];}
-#endif
-  } AcBuffer;
 
   typedef struct
   {
@@ -324,7 +346,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
    FUNC_DEFINE(AcResult, acInitializeRuntimeMPI, (const int grid_pid, const int nprocs, AcMeasurementGatherFunc));
 #endif
 
-  FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const int3 dims, const cudaStream_t stream));
+  FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream));
   FUNC_DEFINE(const AcKernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
   FUNC_DEFINE(AcResult, acKernelFlushInt,(const cudaStream_t stream, int* arr, const size_t n, const int value));
@@ -332,7 +354,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
 
   FUNC_DEFINE(AcMeshOrder, acGetMeshOrderForProfile,(const AcProfileType type));
-  FUNC_DEFINE(size3_t, acGetProfileReduceScratchPadDims,(const int profile, const size3_t mm, const size3_t nn));
+  FUNC_DEFINE(size3_t, acGetProfileReduceScratchPadDims,(const int profile, const AcMeshDims dims));
 
   FUNC_DEFINE(AcResult,acPreprocessScratchPad,(VertexBufferArray, const int variable, const AcType type,const AcReduceOp op));
 
@@ -346,7 +368,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(void, acRandQuit,(void));
 
-  FUNC_DEFINE(AcResult, acLaunchKernel,(AcKernel func, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray));
+  FUNC_DEFINE(AcResult, acLaunchKernel,(AcKernel func, const cudaStream_t stream, const Volume start, const Volume end, VertexBufferArray));
 
   FUNC_DEFINE(AcResult, acBenchmarkKernel,(AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba));
 

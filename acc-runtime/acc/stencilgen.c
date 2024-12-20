@@ -48,9 +48,34 @@
 #include "user_defines.h"
 
 #include "stencil_accesses.h"
+typedef enum ReduceOp
+{
+	NO_REDUCE,
+	REDUCE_MIN,
+	REDUCE_MAX,
+	REDUCE_SUM,
+} ReduceOp;
+
+void
+print_warp_reduce_func(const char* datatype, const char* define_name, const ReduceOp op);
+
 #include "stencilgen.h"
 
 #include "implementation.h"
+#define ONE_DIMENSIONAL_PROFILE (1 << 20)
+#define TWO_DIMENSIONAL_PROFILE (1 << 21)
+typedef enum {
+	PROFILE_X  = (1 << 0) | ONE_DIMENSIONAL_PROFILE,
+	PROFILE_Y  = (1 << 1) | ONE_DIMENSIONAL_PROFILE,
+	PROFILE_Z  = (1 << 2) | ONE_DIMENSIONAL_PROFILE,
+	PROFILE_XY = (1 << 3) | TWO_DIMENSIONAL_PROFILE,
+	PROFILE_XZ = (1 << 4) | TWO_DIMENSIONAL_PROFILE,
+	PROFILE_YX = (1 << 5) | TWO_DIMENSIONAL_PROFILE,
+	PROFILE_YZ = (1 << 6) | TWO_DIMENSIONAL_PROFILE,
+	PROFILE_ZX = (1 << 7) | TWO_DIMENSIONAL_PROFILE,
+	PROFILE_ZY = (1 << 8) | TWO_DIMENSIONAL_PROFILE,
+} AcProfileType;
+#include "profiles_info.h"
 
 #if AC_USE_HIP
 const char* ffs_string = "__ffsll";
@@ -132,14 +157,140 @@ gen_stencil_definitions(void)
 }
 
 #include "kernel_reduce_info.h"
+#include "mem_access_helper_funcs.h"
+
+bool
+z_block_loop_before_y(const int curr_kernel)
+{
+	int reductions_across_y = 0;
+	int reductions_across_z = 0;
+	for(int i = 0; i < NUM_PROFILES; ++i)
+	{
+		if(!reduced_profiles[curr_kernel][i]) continue;
+		reductions_across_y += (prof_types[i] == PROFILE_XZ || prof_types[i] == PROFILE_ZX || prof_types[i] == PROFILE_Z);
+		reductions_across_z += (prof_types[i] == PROFILE_YX || prof_types[i] == PROFILE_XY || prof_types[i] == PROFILE_Y);
+	}
+	return reductions_across_y > reductions_across_z;
+
+}
 
 void
-gen_kernel_common_prefix()
+gen_kernel_block_loops(const int curr_kernel)
 {
+  if(kernel_calls_reduce[curr_kernel] || kernel_reduces_profile(curr_kernel))
+  {
+#if AC_USE_HIP
+	printf("[[maybe_unused]] constexpr size_t warp_size = warpSize;");
+#else
+	printf("[[maybe_unused]] constexpr size_t warp_size = 32;");
+#endif
+  }
+  if(kernel_has_block_loops(curr_kernel))
+  {
+
+	const bool z_before = z_block_loop_before_y(curr_kernel);
+	if(kernel_has_block_loops(curr_kernel))
+	{
+		for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+		{
+			if(reduced_reals[curr_kernel][i] == REDUCE_SUM)
+				printf("AcReal %s_reduce_output = 0.0;",real_output_names[i]);
+			if(reduced_reals[curr_kernel][i] == REDUCE_MIN)
+				printf("AcReal %s_reduce_output = AC_REAL_MAX;",real_output_names[i]);
+			if(reduced_reals[curr_kernel][i] == REDUCE_MAX)
+				printf("AcReal %s_reduce_output = -AC_REAL_MAX;",real_output_names[i]);
+		}
+		for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
+		{
+			if(reduced_ints[curr_kernel][i] == REDUCE_SUM)
+				printf("int %s_reduce_output = 0.0;",int_output_names[i]);
+			if(reduced_ints[curr_kernel][i] == REDUCE_MIN)
+				printf("int %s_reduce_output = INT_MAX;",int_output_names[i]);
+			if(reduced_ints[curr_kernel][i] == REDUCE_MAX)
+				printf("int %s_reduce_output = -INT_MAX;",int_output_names[i]);
+		}
+	#if AC_USE_HIP
+	        printf("const size_t warp_id = rocprim::warp_id();");
+	#else
+		printf("const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
+	#endif
+	}
+	{
+	    	printf("constexpr size_t warp_leader_id  = 0;");
+	    	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
+	    	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
+	    	printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
+	    	printf("const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+	        printf("auto AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,1);");
+    		printf("bool AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));");
+    		//TP: if all threads are active can skip checks checking if target tid is active in reductions
+    		printf("bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
+  		print_warp_reduce_func("AcReal", "real", REDUCE_SUM);
+  		print_warp_reduce_func("AcReal", "real", REDUCE_MIN);
+  		print_warp_reduce_func("AcReal", "real", REDUCE_MAX);
+  		
+  		print_warp_reduce_func("int", "int", REDUCE_SUM);
+  		print_warp_reduce_func("int", "int", REDUCE_MIN);
+  		print_warp_reduce_func("int", "int", REDUCE_MAX);
+	}
+
+
+	printf("const auto step_size = gridDim*blockDim;");
+	printf("const auto should_not_be_more = end-start-threadIdx-(blockIdx*blockDim);");
+	printf("const int last_block_idx_y = min(vba.block_factor.y,((should_not_be_more.y + step_size.y - 1)/(step_size.y))) -1;");
+	printf("const int last_block_idx_z = min(vba.block_factor.z,((should_not_be_more.z + step_size.z - 1)/(step_size.z))) -1;");
+
+
+  	printf("for(int current_block_idx_x = 0; current_block_idx_x < vba.block_factor.x; ++current_block_idx_x) {");
+	for(int i = 0; i < NUM_PROFILES; ++i)
+	{
+		if(!reduced_profiles[curr_kernel][i]) continue;
+		if(prof_types[i] == PROFILE_X)
+			printf("AcReal %s_reduce_output = 0.0;",profile_names[i]);
+	}
+	for(int i = 0; i < NUM_PROFILES; ++i)
+	{
+		if(!reduced_profiles[curr_kernel][i]) continue;
+		if(!z_before && (prof_types[i] == PROFILE_XZ || prof_types[i] == PROFILE_ZX || prof_types[i] == PROFILE_Z))
+			printf("AcReal %s_reduce_output[16]{};",profile_names[i]);
+		if(z_before && (prof_types[i] == PROFILE_XY || prof_types[i] == PROFILE_YX || prof_types[i] == PROFILE_Y))
+			printf("AcReal %s_reduce_output[16]{};",profile_names[i]);
+	}
+
+	if(z_before)
+  		printf("for(int current_block_idx_z = 0; current_block_idx_z < vba.block_factor.z; ++current_block_idx_z) {");
+	else
+  		printf("for(int current_block_idx_y = 0; current_block_idx_y < vba.block_factor.y; ++current_block_idx_y) {");
+
+	for(int i = 0; i < NUM_PROFILES; ++i)
+	{
+		if(!reduced_profiles[curr_kernel][i]) continue;
+		if(z_before && (prof_types[i] == PROFILE_XZ || prof_types[i] == PROFILE_ZX || prof_types[i] == PROFILE_Z))
+			printf("AcReal %s_reduce_output{};",profile_names[i]);
+		if(!z_before && (prof_types[i] == PROFILE_XY || prof_types[i] == PROFILE_YX || prof_types[i] == PROFILE_Y))
+			printf("AcReal %s_reduce_output{};",profile_names[i]);
+	}
+
+	if(!z_before)
+  		printf("for(int current_block_idx_z = 0; current_block_idx_z < vba.block_factor.z; ++current_block_idx_z) {");
+	else
+  		printf("for(int current_block_idx_y = 0; current_block_idx_y < vba.block_factor.y; ++current_block_idx_y) {");
+  	printf("const dim3 current_block_idx = {"
+			"blockIdx.x + current_block_idx_x*gridDim.x," 
+			"blockIdx.y + current_block_idx_y*gridDim.y," 
+			"blockIdx.z + current_block_idx_z*gridDim.z," 
+			"};");
+	return;
+  }
+  printf("const dim3 current_block_idx = blockIdx;");
+}
+void
+gen_kernel_common_prefix()
+{ 
   printf("const int3 tid = (int3){"
-         "threadIdx.x + blockIdx.x * blockDim.x,"
-         "threadIdx.y + blockIdx.y * blockDim.y,"
-         "threadIdx.z + blockIdx.z * blockDim.z,"
+         "threadIdx.x + current_block_idx.x * blockDim.x,"
+         "threadIdx.y + current_block_idx.y * blockDim.y,"
+         "threadIdx.z + current_block_idx.z * blockDim.z,"
          "};");
   printf("const int3 vertexIdx = (int3){"
          "tid.x + start.x,"
@@ -156,9 +307,9 @@ gen_kernel_common_prefix()
 
     printf(
         "const int3 localCompdomainVertexIdx = (int3){"
-        "threadIdx.x + blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
-        "threadIdx.y + blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
-        "threadIdx.z + blockIdx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2,"
+        "threadIdx.x + current_block_idx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
+        "threadIdx.y + current_block_idx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
+        "threadIdx.z + current_block_idx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2,"
         "};");
   printf("const int local_compdomain_idx = "
          "LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx);");
@@ -166,65 +317,202 @@ gen_kernel_common_prefix()
   printf("(void)globalVertexIdx;"); // Silence unused warning
   printf("(void)local_compdomain_idx;");     // Silence unused warning
 					     //
+}
+void 
+gen_profile_funcs(const int kernel)
+{
   //TP: for now profile reads are not cached since they are usually read in only once and anyways since they are smaller can fit more easily to cache.
   //TP: if in the future a use case uses profiles a lot reconsider this
   if(!NUM_PROFILES) return;
-  printf("const auto value_profile_x __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.x];");
-  printf("};");
+  if(kernel_reads_profile(kernel))
+  {
+  	printf("const auto value_profile_x __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.x];");
+  	printf("};");
 
-  printf("const auto value_profile_y __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.y];");
-  printf("};");
+  	printf("const auto value_profile_y __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.y];");
+  	printf("};");
 
-  printf("const auto value_profile_z __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.z];");
-  printf("};");
+  	printf("const auto value_profile_z __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.z];");
+  	printf("};");
 
-  printf("const auto value_profile_xy __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.y];");
-  printf("};");
+  	printf("const auto value_profile_xy __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.y];");
+  	printf("};");
 
-  printf("const auto value_profile_xz __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z];");
-  printf("};");
+  	printf("const auto value_profile_xz __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z];");
+  	printf("};");
 
-  printf("const auto value_profile_yx __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.x];");
-  printf("};");
+  	printf("const auto value_profile_yx __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.x];");
+  	printf("};");
 
-  printf("const auto value_profile_yz __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z];");
-  printf("};");
+  	printf("const auto value_profile_yz __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z];");
+  	printf("};");
 
-  printf("const auto value_profile_zx __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.x];");
-  printf("};");
+  	printf("const auto value_profile_zx __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.x];");
+  	printf("};");
 
-  printf("const auto value_profile_zy __attribute__((unused)) = [&](const Profile& handle) {");
-  printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.y];");
-  printf("};");
+  	printf("const auto value_profile_zy __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.y];");
+  	printf("};");
+  }
+  if(kernel_reduces_profile(kernel))
+  {
+    const bool z_before = z_block_loop_before_y(kernel);
+    if(kernel_has_block_loops(kernel))
+    	printf("const int3 profileReduceOutputVertexIdx= (int3){"
+    	       "threadIdx.x + blockIdx.x * blockDim.x,"
+    	       "threadIdx.y + blockIdx.y * blockDim.y,"
+    	       "threadIdx.z + blockIdx.z * blockDim.z,"
+    	       "};");    
+    else
+    	printf("const int3& profileReduceOutputVertexIdx = vertexIdx;");
 
-    printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][local_compdomain_idx] = val; };");
-    printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][local_compdomain_idx] = val; };");
-    printf("const auto reduce_sum_real_z __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][local_compdomain_idx] = val; };");
-    printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*localCompdomainVertexIdx.z)] = val; };");
-    printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*vertexIdx.z)] = val; };");
-    printf("const auto reduce_sum_real_yx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*localCompdomainVertexIdx.z)] = val; };");
+    printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("switch (output) {");
+    for(int i = 0; i < NUM_PROFILES; ++i)
+    {
+	    if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_X) continue;
+     	    printf("case %s: { ",profile_names[i]);
+	    	printf("%s_reduce_output += val;",profile_names[i]);
+		printf("if(current_block_idx_y == last_block_idx_y && current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x + VAL(AC_nlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
+	    printf("}");
+    }
+    printf("default: {}");
+    printf("}");
+    printf("};");
+
+    //!!TP: NOTE this only works as long as blockfactor.x == 1!!
+    printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("switch (output) {");
+    for(int i = 0; i < NUM_PROFILES; ++i)
+    {
+	    if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_Y) continue;
+     	    printf("case %s: { ",profile_names[i]);
+	    	printf("%s_reduce_output += val;",profile_names[i]);
+		printf("if(current_block_idx_z == last_block_idx_z) {"); 
+        	printf("if(blockDim.x %% warp_size != 0) {");
+			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
+		printf("}");
+		printf("else {");
+        	   	printf("const AcReal reduce_res = warp_reduce_sum_real(%s_reduce_output);",profile_names[i]);
+			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*profileReduceOutputVertexIdx.z)] = reduce_res;");
+		printf("}");
+		printf("}");
+	    printf("}");
+    }
+    printf("default: {}");
+    printf("}");
+    printf("};");
+
+
+    //!!TP: NOTE this only works as long as blockfactor.x == 1!!
+    printf("const auto reduce_sum_real_z __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("switch (output) {");
+    for(int i = 0; i < NUM_PROFILES; ++i)
+    {
+            if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_Z) continue;
+     	    printf("case %s: { ",profile_names[i]);
+            	printf("%s_reduce_output[current_block_idx_z] += val;",profile_names[i]);
+        	printf("if(current_block_idx_y == last_block_idx_y) {"); 
+        		printf("if(blockDim.x %% warp_size != 0) {");
+        			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*localCompdomainVertexIdx.z)] = %s_reduce_output[current_block_idx_z];",profile_names[i]);
+        		printf("}");
+        		printf("else {");
+        	   		printf("const AcReal reduce_res = warp_reduce_sum_real(%s_reduce_output[current_block_idx_z]);",profile_names[i]);
+        			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*localCompdomainVertexIdx.z)] = reduce_res;");
+        		printf("}");
+        	printf("}");
+	    printf("}");
+    }
+    printf("default: {}");
+    printf("}");
+    printf("};");
+
+
+    printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("switch (output) {");
+    for(int i = 0; i < NUM_PROFILES; ++i)
+    {
+	    if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_XY) continue;
+     	    printf("case %s: { ",profile_names[i]);
+	    	printf("%s_reduce_output += val;",profile_names[i]);
+		printf("if(current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
+	    printf("}");
+    }
+    printf("default: {}");
+    printf("}");
+    printf("};");
+
+    printf("const auto reduce_sum_real_yx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("switch (output) {");
+    for(int i = 0; i < NUM_PROFILES; ++i)
+    {
+	    if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_YX) continue;
+     	    printf("case %s: { ",profile_names[i]);
+	    	printf("%s_reduce_output += val;",profile_names[i]);
+		printf("if(current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
+	    printf("}");
+    }
+    printf("default: {}");
+    printf("}");
+    printf("};");
+
+    printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("switch (output) {");
+    for(int i = 0; i < NUM_PROFILES; ++i)
+    {
+            if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_XZ) continue;
+     	    printf("case %s: { ",profile_names[i]);
+            	printf("%s_reduce_output%s += val;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
+        	printf("if(current_block_idx_y == last_block_idx_y) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = %s_reduce_output%s;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
+            printf("}");
+    }
+    printf("default: {}");
+    printf("}");
+    printf("};");
+
+    printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("switch (output) {");
+    for(int i = 0; i < NUM_PROFILES; ++i)
+    {
+            if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_ZX) continue;
+     	    printf("case %s: { ",profile_names[i]);
+            	printf("%s_reduce_output%s += val;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
+        	printf("if(current_block_idx_y == last_block_idx_y) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = %s_reduce_output%s;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
+            printf("}");
+    }
+    printf("default: {}");
+    printf("}");
+    printf("};");
+
+
+
+
     printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = val; };");
-    printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*vertexIdx.z)] = val; };");
-    printf("const auto reduce_sum_real_zy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
-          	  //"{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = val; };");
-          	  "{ d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = val; };");
+		   "{"
+		   "if(blockDim.x %% warp_size != 0) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = val;" 
+		   "else {"
+		   "const AcReal reduce_res = warp_reduce_sum_real(val);"
+          	   "if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = reduce_res;"
+		   "}"
+		   "};");
 
+    printf("const auto reduce_sum_real_zy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+		   "{"
+		   "if(blockDim.x %% warp_size != 0) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = val;" 
+		   "else {"
+		   "const AcReal reduce_res = warp_reduce_sum_real(val);"
+          	   "if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = reduce_res;"
+		   "}"
+		   "};");
+  }
 }
 
 bool
@@ -309,30 +597,51 @@ gen_kernel_write_funcs(const int curr_kernel)
 void
 gen_kernel_prefix(const int curr_kernel)
 {
-  (void)curr_kernel;
+  gen_kernel_block_loops(curr_kernel);
   gen_kernel_common_prefix();
+  gen_profile_funcs(curr_kernel);
 }
-typedef enum ReduceOp
+
+#include "warp_reduce.h"
+
+
+void
+print_butterfly_iteration(FILE* stream, const int iteration, const char* op_instruction, const char* base_shift_type, const char* tid_shift_type, const char* mask_type, const char* smallest_active_type)
 {
-	NO_REDUCE,
-	REDUCE_MIN,
-	REDUCE_MAX,
-	REDUCE_SUM,
-} ReduceOp;
+	//TP: optimization: don't need to calculcate first set bit since only a single bit can be active can do it with simple AND
+	if(iteration == 0)
+	{
+	       	fprintf(stream,"unsigned long target_tid = lane_id ^ 1;"
+	       			"auto shuffle_tmp = %s;"
+	       			"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
+				,shuffle_instruction
+				,op_instruction
+			);
+		return;
+	}
+	const int base_shift_num                = (1 << iteration);
+	const int tid_shift_num                 = (1 << (iteration+1))-1;
+	const unsigned long long mask_num       = (1 << base_shift_num)-1;
+	fprintf(stream,"%s base_shift = ((lane_id & %d) ? 0 : %d);",base_shift_type,base_shift_num,base_shift_num);
+	fprintf(stream,"%s tid_shift  = (lane_id & (~%d));",tid_shift_type,tid_shift_num);
+	fprintf(stream,"%s mask       = AC_INTERNAL_active_threads & (%lldULL << (tid_shift + base_shift));",mask_type,mask_num);
+	fprintf(stream,"%s smallest_active = %s(mask);",smallest_active_type,ffs_string);
+	fprintf(stream,"shuffle_tmp = %s;",shuffle_instruction);
+	fprintf(stream,"if(smallest_active) %s;",op_instruction);
+}
+void
+print_butterfly_warp_reduce(FILE* stream, const int warp_size, const char* op_instruction)
+{
+	print_butterfly_iteration(stream,0,op_instruction,"int","auto","auto","auto");
+	print_butterfly_iteration(stream,1,op_instruction,"int","auto","auto","auto");
+	for(int iteration= 2; (1 << iteration) < warp_size; ++iteration)
+		print_butterfly_iteration(stream,iteration,op_instruction,"","","","");
+}
+
 void
 print_reduce_ops(const ReduceOp op, const char* define_name)
 {
-	printf("if (!condition) return;");
-#if AC_USE_HIP
-	const char* shuffle_instruction = "rocprim::warp_shuffle(val,target_tid)";
-#else
-	const char* shuffle_instruction = "__shfl_sync(AC_INTERNAL_active_threads,val,target_tid)";
-#endif
-	const char* op_instruction = 
-		op == REDUCE_SUM ? "val += shuffle_tmp" :
-		op == REDUCE_MIN ? "val = val > shuffle_tmp ? shuffle_tmp : val;" :
-		op == REDUCE_MAX ? "val = val > shuffle_tmp ? val : shuffle_tmp;" :
-		NULL;
+	const char* op_instruction = get_op_instruction(op);
 	if(op == NO_REDUCE || op_instruction == NULL) 
 		printf("Incorrect reduction for %s\n",define_name);
 
@@ -346,254 +655,102 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 	//The smallest active thread index can be efficiently calculated with bit operations and ctz (Count Trailing Zeroes)
 	//Unfortunately CUDA does not support ctz so we calculate ctz with ffs-1 (Find First Set)
 	//Could use ctz on HIP but for not use ffs on both
-	printf("if constexpr (warp_size == 32) {"
-			"if (AC_INTERNAL_all_threads_active) {"
-				"size_t target_tid = lane_id + 16;"
-				"auto shuffle_tmp = %s;"
-		        	"%s;"
-
-				"target_tid = lane_id + 8;"
-				"shuffle_tmp = %s;"
-		        	"%s;"
-
-				"target_tid = lane_id + 4;"
-				"shuffle_tmp = %s;"
-		        	"%s;"
-
-				"target_tid = lane_id + 2;"
-				"shuffle_tmp = %s;"
-		        	"%s;"
-
-				"target_tid = lane_id + 1;"
-				"shuffle_tmp = %s;"
-		        	"%s;"
-			"}"
-			"else if (AC_INTERNAL_active_threads_are_contiguos ) {"
-				"size_t target_tid = lane_id + 16;"
-				"auto shuffle_tmp = %s;"
-		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-				"target_tid = lane_id + 8;"
-				"shuffle_tmp = %s;"
-		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-				"target_tid = lane_id + 4;"
-				"shuffle_tmp = %s;"
-		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-				"target_tid = lane_id + 2;"
-				"shuffle_tmp = %s;"
-		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-				"target_tid = lane_id + 1;"
-				"shuffle_tmp = %s;"
-		        	"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-			"}"
-			"else {"
-				"unsigned long target_tid = lane_id ^ 1;"
-				"auto shuffle_tmp = %s;"
-				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-
-        			"int base_shift = ((lane_id & 2) ? 0 : 2);"
-        			"auto tid_shift = (lane_id & (~3));"
-        			"auto mask = AC_INTERNAL_active_threads & (3ULL << (tid_shift + base_shift));"
-				"auto smallest_active = %s(mask);"
-				"target_tid = smallest_active-1;"
-				"shuffle_tmp = %s;"
-				"if(smallest_active) %s;"
-
-
-        			"base_shift = ((lane_id & 4) ? 0 : 4);"
-        			"tid_shift = (lane_id & (~7));"
-        			"mask = AC_INTERNAL_active_threads & (15ULL << (tid_shift + base_shift));"
-				"smallest_active = %s(mask);"
-				"target_tid = smallest_active-1;"
-				"shuffle_tmp = %s;"
-				"if(smallest_active) %s;"
-
-        			"base_shift = ((lane_id & 8) ? 0 : 8);"
-        			"tid_shift = (lane_id & (~15));"
-        			"mask = AC_INTERNAL_active_threads & (255ULL << (tid_shift + base_shift));"
-				"smallest_active = %s(mask);"
-				"target_tid = smallest_active-1;"
-				"shuffle_tmp = %s;"
-				"if(smallest_active) %s;"
-
-        			"base_shift = ((lane_id & 16) ? 0 : 16);"
-        			"tid_shift = (lane_id & (~31));"
-        			"mask = AC_INTERNAL_active_threads & (65535ULL << (tid_shift + base_shift));"
-				"smallest_active = %s(mask);"
-				"target_tid = smallest_active-1;"
-				"shuffle_tmp = %s;"
-				"if(smallest_active) %s;"
-
-			"}"
-		"}"
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-
-	      ,shuffle_instruction,op_instruction
-
-	      ,ffs_string,shuffle_instruction,op_instruction
-	      ,ffs_string,shuffle_instruction,op_instruction
-	      ,ffs_string,shuffle_instruction,op_instruction
-	      ,ffs_string,shuffle_instruction,op_instruction
-	  );
+	printf("if constexpr (warp_size == 32) {");
+	printf("if (AC_INTERNAL_all_threads_active) {");
+	print_warp_reduction(stdout,32,op_instruction,false);
+	printf("}");
+	printf("else if (AC_INTERNAL_active_threads_are_contiguos ) {");
+	print_warp_reduction(stdout,32,op_instruction,true);
+	printf("}");
+	printf("else {");
+	print_butterfly_warp_reduce(stdout, 32,op_instruction);
+	printf("}");
 
 #if AC_USE_HIP
 //TP: if we use CUDA we get compiler warnings about too large shifts since active threads is unsigned long instead of unsigned long long
-	printf("else if constexpr (warp_size == 64) {"
-			"if (AC_INTERNAL_all_threads_active) {"
-				"unsigned long long target_tid = lane_id + 32;"
-				"auto shuffle_tmp = %s;"
-				"%s;"
-
-				"target_tid = lane_id + 16;"
-				"shuffle_tmp = %s;"
-				"%s;"
-
-				"target_tid = lane_id + 8;"
-				"shuffle_tmp = %s;"
-				"%s;"
-
-				"target_tid = lane_id + 4;"
-				"shuffle_tmp = %s;"
-				"%s;"
-
-				"target_tid = lane_id + 2;"
-				"shuffle_tmp = %s;"
-				"%s;"
-
-				"target_tid = lane_id + 1;"
-				"shuffle_tmp = %s;"
-				"%s;"
-			"}"
-			"else if (AC_INTERNAL_active_threads_are_contiguos) {"
-				"unsigned long long target_tid = lane_id + 32;"
-				"auto shuffle_tmp = %s;"
-				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-				"target_tid = lane_id + 16;"
-				"shuffle_tmp = %s;"
-				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-				"target_tid = lane_id + 8;"
-				"shuffle_tmp = %s;"
-				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-				"target_tid = lane_id + 4;"
-				"shuffle_tmp = %s;"
-				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-				"target_tid = lane_id + 2;"
-				"shuffle_tmp = %s;"
-				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-				"target_tid = lane_id + 1;"
-				"shuffle_tmp = %s;"
-				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-			"}"
-			"else {"
-				"unsigned long target_tid = lane_id ^ 1;"
-				"auto shuffle_tmp = %s;"
-				"if((AC_INTERNAL_active_threads >> target_tid) & 1) %s;"
-
-
-        			"int base_shift = ((lane_id & 2) ? 0 : 2);"
-        			"unsigned long long tid_shift = (lane_id & (~3));"
-        			"unsigned long long mask = AC_INTERNAL_active_threads & (3ULL << (tid_shift + base_shift));"
-				"unsigned long smallest_active = __ffsll(mask);"
-				"target_tid = smallest_active-1;"
-				"shuffle_tmp = %s;"
-				"if(smallest_active) %s;"
-
-
-        			"base_shift = ((lane_id & 4) ? 0 : 4);"
-        			"tid_shift = (lane_id & (~7));"
-        			"mask = AC_INTERNAL_active_threads & (15ULL << (tid_shift + base_shift));"
-				"smallest_active = __ffsll(mask);"
-				"target_tid = smallest_active-1;"
-				"shuffle_tmp = %s;"
-				"if(smallest_active) %s;"
-
-        			"base_shift = ((lane_id & 8) ? 0 : 8);"
-        			"tid_shift = (lane_id & (~15));"
-        			"mask = AC_INTERNAL_active_threads & (255ULL << (tid_shift + base_shift));"
-				"smallest_active = __ffsll(mask);"
-				"target_tid = smallest_active-1;"
-				"shuffle_tmp = %s;"
-				"if(smallest_active) %s;"
-
-        			"base_shift = ((lane_id & 16) ? 0 : 16);"
-        			"tid_shift = (lane_id & (~31));"
-        			"mask = AC_INTERNAL_active_threads & (65535ULL << (tid_shift + base_shift));"
-				"smallest_active = __ffsll(mask);"
-				"target_tid = smallest_active-1;"
-				"shuffle_tmp = %s;"
-				"if(smallest_active) %s;"
-
-        			"base_shift = ((lane_id & 32) ? 0 : 32);"
-        			"tid_shift = (lane_id & (~63));"
-        			"mask = AC_INTERNAL_active_threads & (4294967295ULL << (tid_shift + base_shift));"
-				"smallest_active = __ffsll(mask);"
-				"target_tid = smallest_active-1;"
-				"shuffle_tmp = %s;"
-				"if(smallest_active) %s;"
-
-			"}"
-		"}"
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	      ,shuffle_instruction,op_instruction
-	  );
+	printf("else if constexpr (warp_size == 64) {");
+	printf("if (AC_INTERNAL_all_threads_active) {");
+	print_warp_reduction(stdout,64,op_instruction,false);
+	printf("}");
+	printf("else if (AC_INTERNAL_active_threads_are_contiguos) {");
+	print_warp_reduction(stdout,64,op_instruction,true);
+	printf("}");
+	printf("else {");
+	print_butterfly_warp_reduce(stdout, 32,op_instruction);
+	printf("}");
 #endif
+	printf("}");
+}
+void
+print_output_reduce_res(const char* define_name, const ReduceOp op, const int curr_kernel)
+{
+	if(kernel_has_block_loops(curr_kernel))
+	{
+		printf("if(lane_id == warp_leader_id) {");
+		printf("if(current_block_idx_x == 0 && current_block_idx_y == 0 && current_block_idx_z == 0) d_symbol_reduce_scratchpads_%s[(int)output][warp_out_index] = val;"
+			,define_name);
+		printf("else ");
+		if(op == REDUCE_SUM)
+			printf("d_symbol_reduce_scratchpads_%s[(int)output][warp_out_index] += val;"
+			,define_name);
+		if(op == REDUCE_MIN)
+			printf("d_symbol_reduce_scratchpads_%s[(int)output][warp_out_index] = min(val,d_symbol_reduce_scratchpads_%s[(int)output][warp_out_index]);"
+			,define_name,define_name);
+		if(op == REDUCE_MAX)
+			printf("d_symbol_reduce_scratchpads_%s[(int)output][warp_out_index] = max(val,d_symbol_reduce_scratchpads_%s[(int)output][warp_out_index]);"
+			,define_name,define_name);
+		printf("}");
+
+		return;
+	}
 	printf(
 		  "if(lane_id == warp_leader_id) {d_symbol_reduce_scratchpads_%s[(int)output][warp_out_index] = val;}"
 	      ,define_name);
 }
 void
-printf_reduce_funcs(const char* datatype, const char* define_name, const char* enum_name)
+print_warp_reduce_func(const char* datatype, const char* define_name, const ReduceOp op)
 {
-        printf("const auto reduce_sum_%s __attribute__((unused)) = [&](const bool& condition, %s val, const %sOutputParam& output) {",define_name,datatype,enum_name);
-	print_reduce_ops(REDUCE_SUM, define_name);
+	printf("const auto warp_reduce_%s_%s __attribute__((unused)) = [&](%s val) {",reduce_op_to_name(op), define_name, datatype);
+	print_reduce_ops(op, define_name);
+	printf("return val;");
 	printf("};");
-
-        printf("const auto reduce_min_%s __attribute__((unused)) = [&](const bool& condition, %s val, const %sOutputParam& output) {",define_name,datatype,enum_name);
-	print_reduce_ops(REDUCE_MIN, define_name);
+}
+void
+print_reduce_func(const char* datatype, const char* define_name, const char* enum_name, const int curr_kernel, const char** names, const int* is_reduced, const size_t n_elems, const ReduceOp op)
+{
+        printf("const auto reduce_%s_%s __attribute__((unused)) = [&](const bool& condition, %s val, const %sOutputParam& output) {",reduce_op_to_name(op),define_name,datatype,enum_name);
+	printf("if (!condition) return;");
+	if(kernel_has_block_loops(curr_kernel))
+	{
+		printf("switch(output) {");
+		for(size_t i = 0; i < n_elems; ++i)
+		{
+			if((ReduceOp)is_reduced[i] != op) continue;
+			printf("case %s: {",names[i]);
+			if(op == REDUCE_SUM)
+				printf("%s_reduce_output += val;",names[i]);
+			if(op == REDUCE_MIN)
+				printf("%s_reduce_output = min(%s_reduce_output,val);",names[i],names[i]);
+			if(op == REDUCE_MAX)
+				printf("%s_reduce_output = max(%s_reduce_output,val);",names[i],names[i]);
+			printf("}");
+		}
+		printf("default: {}");
+		printf("}");
+	}
+	else
+	{
+		print_reduce_ops(op, define_name);
+		print_output_reduce_res(define_name,op,curr_kernel);
+	}
 	printf("};");
-
-        printf("const auto reduce_max_%s __attribute__((unused)) = [&](const bool& condition, %s val, const %sOutputParam& output) {",define_name,datatype,enum_name);
-	print_reduce_ops(REDUCE_MAX, define_name);
-	printf("};");
-
+}
+void
+printf_reduce_funcs(const char* datatype, const char* define_name, const char* enum_name, const int curr_kernel, const char** names, const int* is_reduced, const size_t n_elems)
+{
+	print_reduce_func(datatype,define_name,enum_name,curr_kernel,names,is_reduced,n_elems,REDUCE_SUM);
+	print_reduce_func(datatype,define_name,enum_name,curr_kernel,names,is_reduced,n_elems,REDUCE_MIN);
+	print_reduce_func(datatype,define_name,enum_name,curr_kernel,names,is_reduced,n_elems,REDUCE_MAX);
 }
 
 void
@@ -601,27 +758,29 @@ gen_kernel_reduce_funcs(const int curr_kernel)
 {
   if(kernel_calls_reduce[curr_kernel] )
   {
+    if(!kernel_has_block_loops(curr_kernel))
+    {
+    	//TP: if active threads are contigous i.e. not any inactive threads between active threads
+    	//then can perform the reductions without calculating tids
+    	printf("const bool AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));");
+    	//TP: if all threads are active can skip checks checking if target tid is active in reductions
+    	printf("const bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
+
 #if AC_USE_HIP
-	printf("constexpr size_t warp_size = warpSize;");
         printf("const size_t warp_id = rocprim::warp_id();");
 #else
-	printf("constexpr size_t warp_size = 32;");
 	printf("const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
 #endif
-    //TP: if active threads are contigous i.e. not any inactive threads between active threads
-    //then can perform the reductions without calculating tids
-    printf("const bool AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));");
-    //TP: if all threads are active can skip checks checking if target tid is active in reductions
-    printf("const bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
-    printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
-    printf("const size_t warp_leader_id  = %s(AC_INTERNAL_active_threads)-1;",ffs_string);
-    printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
-    printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
-    printf("const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+    	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
+    	printf("const size_t warp_leader_id  = %s(AC_INTERNAL_active_threads)-1;",ffs_string);
+    	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
+    	printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
+    	printf("const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+    }
     if(NUM_REAL_OUTPUTS)
-	printf_reduce_funcs("AcReal","real","AcReal");
+	printf_reduce_funcs("AcReal","real","AcReal",curr_kernel,real_output_names,reduced_reals[curr_kernel],NUM_REAL_OUTPUTS);
     if(NUM_INT_OUTPUTS)
-	printf_reduce_funcs("int","int","AcInt");
+	printf_reduce_funcs("int","int","AcInt",curr_kernel,int_output_names,reduced_ints[curr_kernel],NUM_INT_OUTPUTS);
 
 
   }
@@ -629,16 +788,18 @@ gen_kernel_reduce_funcs(const int curr_kernel)
 static void
 gen_return_if_oob(const int curr_kernel)
 {
+
        printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
        if(kernel_calls_reduce[curr_kernel] )
        {
+		const char* type = kernel_has_block_loops(curr_kernel) ? "" : "const auto";
 #if AC_USE_HIP
-	       printf("const auto AC_INTERNAL_active_threads = __ballot(!out_of_bounds);");
+	       printf("%s AC_INTERNAL_active_threads = __ballot(!out_of_bounds);",type);
 #else
-	       printf("const auto AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,!out_of_bounds);");
+	       printf("%s AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,!out_of_bounds);",type);
 #endif
        }
-       printf("if(out_of_bounds) return;");
+       printf("if(out_of_bounds) %s;",kernel_has_block_loops(curr_kernel) ? "continue" : "return");
        printf("{\n"
 			"#include \"user_non_scalar_constants.h\"\n"
 			"#include \"user_builtin_non_scalar_constants.h\"\n"
@@ -709,6 +870,7 @@ gen_analysis_stencils(FILE* stream)
 void
 gen_stencil_accesses()
 {
+  gen_kernel_block_loops(0);
   gen_return_if_oob(0);
 }
 

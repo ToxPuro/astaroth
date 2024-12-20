@@ -85,7 +85,7 @@ typedef struct Grid {
     AcMesh submesh;         // Submesh in host memory. Used as scratch space.
     uint3_64 decomposition; // For backwards compatibility. Should use AcDecompositionInfo.
     bool initialized;
-    int3 nn;
+    Volume nn;
     std::shared_ptr<AcTaskGraph> default_tasks;
     size_t mpi_tag_space_count;
     bool mpi_initialized;
@@ -318,7 +318,7 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     ERRCHK_ALWAYS(submesh_config[AC_nlocal].y % decomp.y == 0);
     ERRCHK_ALWAYS(submesh_config[AC_nlocal].z % decomp.z == 0);
 
-    const int3 nn = acGetLocalNN(submesh_config);
+    const Volume nn = acGetLocalNN(submesh_config);
     const auto submesh_n_size_t = nn / decomp;
     int3 submesh_n = (int3){(int)submesh_n_size_t.x,(int)submesh_n_size_t.y,(int)submesh_n_size_t.z};
 
@@ -329,12 +329,12 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     acHostUpdateBuiltinParams(&submesh_config);
     return submesh_config;
 }
-int3
+Volume
 get_global_nn()
 {
     const Device device   = grid.device;
     const AcMeshInfo info = acDeviceGetLocalConfig(device);
-    return info[AC_ngrid];
+    return to_volume(info[AC_ngrid]);
 }
 
 
@@ -342,14 +342,14 @@ void
 check_that_decomp_valid(const AcMeshInfo info)
 {
     const uint3_64 decomp = get_decomp(info);
-    const int3 nn = acGetLocalNN(info);
+    const Volume nn = acGetLocalNN(info);
     const bool nx_valid = nn.x % decomp.x == 0;
     const bool ny_valid = nn.y % decomp.y == 0;
     const bool nz_valid = nn.z % decomp.z == 0;
     if (!nx_valid || !ny_valid || !nz_valid) {
         WARNING("Mesh dimensions must be divisible by the decomposition\n");
         fprintf(stderr, "Decomposition: (%lu, %lu, %lu)\n", decomp.x, decomp.y, decomp.z);
-        fprintf(stderr, "Mesh dimensions: (%d, %d, %d)\n", nn.x, nn.y, nn.z);
+        fprintf(stderr, "Mesh dimensions: (%ld, %ld, %ld)\n", nn.x, nn.y, nn.z);
         fprintf(stderr, "Divisible: (%d, %d, %d)\n", nx_valid, ny_valid, nz_valid);
     }
 }
@@ -419,14 +419,14 @@ log_grid_debug_info(const AcMeshInfo info)
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
 
-    const int3 nn = acGetLocalNN(info);
+    const Volume nn = acGetLocalNN(info);
     const int3 pid3d = getPid3D(info);
     const auto decomp = get_decomp(info);
 
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, ac_pid(), ac_nprocs(), pid3d.x,
            pid3d.y, pid3d.z);
     printf("Decomposition: %lu, %lu, %lu\n", decomp.x, decomp.y, decomp.z);
-    printf("Mesh size: %d, %d, %d\n", nn.x,nn.y,nn.z);
+    printf("Mesh size: %ld, %ld, %ld\n", nn.x,nn.y,nn.z);
     fflush(stdout);
     MPI_Barrier(astaroth_comm);
 }
@@ -466,14 +466,14 @@ check_that_device_allocation_valid()
 void 
 check_that_mesh_large_enough(const AcMeshInfo info)
 {
-    const int3 nn = acGetLocalNN(info);
+    const Volume nn = acGetLocalNN(info);
     if (nn.x < STENCIL_WIDTH && !info[AC_dimension_inactive].x)
-        fprintf(stderr, "nn.x %d too small, must be >= %d (stencil width)\n", nn.x, STENCIL_WIDTH);
+        fprintf(stderr, "nn.x %ld too small, must be >= %d (stencil width)\n", nn.x, STENCIL_WIDTH);
     if (nn.y < STENCIL_HEIGHT && !info[AC_dimension_inactive].y)
-        fprintf(stderr, "nn.y %d too small, must be >= %d (stencil height)\n", nn.y,
+        fprintf(stderr, "nn.y %ld too small, must be >= %d (stencil height)\n", nn.y,
                 STENCIL_HEIGHT);
     if (nn.z < STENCIL_DEPTH && !info[AC_dimension_inactive].z)
-        fprintf(stderr, "nn.z %d too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
+        fprintf(stderr, "nn.z %ld too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
 }
 
 AcMesh
@@ -770,10 +770,10 @@ acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 v
     return acDeviceLoadInt3Uniform(grid.device, stream, param, buffer);
 }
 
-static int3 
+static Volume
 get_ghost_zone_sizes()
 {
-	return acGridGetLocalMeshInfo()[AC_nmin];
+	return to_volume(acGridGetLocalMeshInfo()[AC_nmin]);
 }
 
 AcResult
@@ -783,29 +783,29 @@ acGridLoadMeshWorking(const Stream stream, const AcMesh host_mesh)
     acGridSynchronizeStream(stream);
 
 
-    const int3 rr = get_ghost_zone_sizes();
-    const int3 monolithic_mm = get_global_nn() + 2 * rr;
-    const int3 monolithic_nn = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 monolithic_offset = rr;
+    const Volume rr = get_ghost_zone_sizes();
+    const Volume monolithic_mm = get_global_nn() + 2 * rr;
+    const Volume monolithic_nn = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume monolithic_offset = rr;
 
     MPI_Datatype monolithic_subarray;
-    const int monolithic_mm_arr[]     = {monolithic_mm.z, monolithic_mm.y, monolithic_mm.x};
-    const int monolithic_nn_arr[]     = {monolithic_nn.z, monolithic_nn.y, monolithic_nn.x};
-    const int monolithic_offset_arr[] = {monolithic_offset.z, monolithic_offset.y,
-                                         monolithic_offset.x};
+    const int monolithic_mm_arr[]     = {(int)monolithic_mm.z, (int)monolithic_mm.y, (int)monolithic_mm.x};
+    const int monolithic_nn_arr[]     = {(int)monolithic_nn.z, (int)monolithic_nn.y, (int)monolithic_nn.x};
+    const int monolithic_offset_arr[] = {(int)monolithic_offset.z, (int)monolithic_offset.y,
+                                        (int) monolithic_offset.x};
     MPI_Type_create_subarray(3, monolithic_mm_arr, monolithic_nn_arr, monolithic_offset_arr,
                              MPI_ORDER_C, AC_REAL_MPI_TYPE, &monolithic_subarray);
     MPI_Type_commit(&monolithic_subarray);
 
-    const int3 distributed_mm = acGetLocalMM(acGridGetLocalMeshInfo());
-    const int3 distributed_nn = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 distributed_offset = rr;
+    const Volume distributed_mm = acGetLocalMM(acGridGetLocalMeshInfo());
+    const Volume distributed_nn = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume distributed_offset = rr;
 
     MPI_Datatype distributed_subarray;
-    const int distributed_mm_arr[]     = {distributed_mm.z, distributed_mm.y, distributed_mm.x};
-    const int distributed_nn_arr[]     = {distributed_nn.z, distributed_nn.y, distributed_nn.x};
-    const int distributed_offset_arr[] = {distributed_offset.z, distributed_offset.y,
-                                          distributed_offset.x};
+    const int distributed_mm_arr[]     = {(int)distributed_mm.z, (int)distributed_mm.y, (int)distributed_mm.x};
+    const int distributed_nn_arr[]     = {(int)distributed_nn.z, (int)distributed_nn.y, (int)distributed_nn.x};
+    const int distributed_offset_arr[] = {(int)distributed_offset.z, (int)distributed_offset.y,
+                                          (int)distributed_offset.x};
     MPI_Type_create_subarray(3, distributed_mm_arr, distributed_nn_arr, distributed_offset_arr,
                              MPI_ORDER_C, AC_REAL_MPI_TYPE, &distributed_subarray);
     MPI_Type_commit(&distributed_subarray);
@@ -1024,14 +1024,14 @@ get_subarray(const int pid, //
     const AcMeshInfo info = acDeviceGetLocalConfig(device);
 
     const int3 pid3d = getPid3D(pid);
-    const int3 rr    = get_ghost_zone_sizes(); 
+    const Volume rr    = get_ghost_zone_sizes(); 
 
     const int3 min = (int3){0, 0, 0};
     const int3 max = getPid3D(nprocs - 1); // inclusive
 
-    const int3 base_distributed_nn = acGetLocalNN(info);
-    int3 distributed_nn     = acGetLocalNN(info);
-    int3 distributed_offset = rr;
+    const int3 base_distributed_nn = to_int3(acGetLocalNN(info));
+    int3 distributed_nn     = to_int3(acGetLocalNN(info));
+    Volume distributed_offset = rr;
 
     if (pid3d.x == min.x) {
         distributed_offset.x -= rr.x;
@@ -1056,14 +1056,14 @@ get_subarray(const int pid, //
     }
 
     // Monolithic
-    to_mpi_array_order_c(acGetGridNN(info) + 2 * rr, monolithic_mm_arr);
+    to_mpi_array_order_c(to_int3(acGetGridNN(info) + 2 * rr), monolithic_mm_arr);
     to_mpi_array_order_c(distributed_nn, monolithic_nn_arr);
-    to_mpi_array_order_c(pid3d * base_distributed_nn + distributed_offset, monolithic_offset_arr);
+    to_mpi_array_order_c(to_int3(pid3d * base_distributed_nn + distributed_offset), monolithic_offset_arr);
 
     // Distributed
-    to_mpi_array_order_c(acGetLocalMM(info), distributed_mm_arr);
+    to_mpi_array_order_c(to_int3(acGetLocalMM(info)), distributed_mm_arr);
     to_mpi_array_order_c(distributed_nn, distributed_nn_arr);
-    to_mpi_array_order_c(distributed_offset, distributed_offset_arr);
+    to_mpi_array_order_c(to_int3(distributed_offset), distributed_offset_arr);
 
     /*
     printf("------\n");
@@ -1325,29 +1325,29 @@ acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
     */
 
 
-    const int3 rr = get_ghost_zone_sizes();
-    const int3 monolithic_mm     = get_global_nn() + 2 * rr;
-    const int3 monolithic_nn     = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 monolithic_offset = rr;
+    const Volume rr = get_ghost_zone_sizes();
+    const Volume monolithic_mm     = get_global_nn() + 2 * rr;
+    const Volume monolithic_nn     = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume monolithic_offset = rr;
 
     MPI_Datatype monolithic_subarray;
-    const int monolithic_mm_arr[]     = {monolithic_mm.z, monolithic_mm.y, monolithic_mm.x};
-    const int monolithic_nn_arr[]     = {monolithic_nn.z, monolithic_nn.y, monolithic_nn.x};
-    const int monolithic_offset_arr[] = {monolithic_offset.z, monolithic_offset.y,
-                                         monolithic_offset.x};
+    const int monolithic_mm_arr[]     = {(int)monolithic_mm.z, (int)monolithic_mm.y, (int)monolithic_mm.x};
+    const int monolithic_nn_arr[]     = {(int)monolithic_nn.z, (int)monolithic_nn.y, (int)monolithic_nn.x};
+    const int monolithic_offset_arr[] = {(int)monolithic_offset.z, (int)monolithic_offset.y,
+                                         (int)monolithic_offset.x};
     MPI_Type_create_subarray(3, monolithic_mm_arr, monolithic_nn_arr, monolithic_offset_arr,
                              MPI_ORDER_C, AC_REAL_MPI_TYPE, &monolithic_subarray);
     MPI_Type_commit(&monolithic_subarray);
 
-    const int3 distributed_mm     = acGetLocalMM(acGridGetLocalMeshInfo());
-    const int3 distributed_nn     = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 distributed_offset = rr;
+    const Volume distributed_mm     = acGetLocalMM(acGridGetLocalMeshInfo());
+    const Volume distributed_nn     = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume distributed_offset = rr;
 
     MPI_Datatype distributed_subarray;
-    const int distributed_mm_arr[]     = {distributed_mm.z, distributed_mm.y, distributed_mm.x};
-    const int distributed_nn_arr[]     = {distributed_nn.z, distributed_nn.y, distributed_nn.x};
-    const int distributed_offset_arr[] = {distributed_offset.z, distributed_offset.y,
-                                          distributed_offset.x};
+    const int distributed_mm_arr[]     = {(int)distributed_mm.z, (int)distributed_mm.y, (int)distributed_mm.x};
+    const int distributed_nn_arr[]     = {(int)distributed_nn.z, (int)distributed_nn.y, (int)distributed_nn.x};
+    const int distributed_offset_arr[] = {(int)distributed_offset.z, (int)distributed_offset.y,
+                                          (int)distributed_offset.x};
     MPI_Type_create_subarray(3, distributed_mm_arr, distributed_nn_arr, distributed_offset_arr,
                              MPI_ORDER_C, AC_REAL_MPI_TYPE, &distributed_subarray);
     MPI_Type_commit(&distributed_subarray);
@@ -1430,15 +1430,15 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
     ERRCHK_ALWAYS(&grid.submesh);
 
     // Submesh nn
-    const int3 nn = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume nn = acGetLocalNN(acGridGetLocalMeshInfo());
 
     // Send to self
     auto ghost_zone_sizes = get_ghost_zone_sizes();
     if (pid == 0) {
         for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
             // For pencils
-            for (int k = ghost_zone_sizes.z; k < ghost_zone_sizes.z + nn.z; ++k) {
-                for (int j = ghost_zone_sizes.y; j < ghost_zone_sizes.y + nn.y; ++j) {
+            for (size_t k = ghost_zone_sizes.z; k < ghost_zone_sizes.z + nn.z; ++k) {
+                for (size_t j = ghost_zone_sizes.y; j < ghost_zone_sizes.y + nn.y; ++j) {
                     const int i       = ghost_zone_sizes.x;
                     const int count   = nn.x;
                     const int src_idx = acVertexBufferIdx(i, j, k, host_mesh.info);
@@ -1453,8 +1453,8 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
 
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         // For pencils
-        for (int k = ghost_zone_sizes.z; k < ghost_zone_sizes.z + nn.z; ++k) {
-            for (int j = ghost_zone_sizes.y; j < ghost_zone_sizes.y + nn.y; ++j) {
+        for (size_t k = ghost_zone_sizes.z; k < ghost_zone_sizes.z + nn.z; ++k) {
+            for (size_t j = ghost_zone_sizes.y; j < ghost_zone_sizes.y + nn.y; ++j) {
                 const int i     = ghost_zone_sizes.x;
                 const int count = nn.x;
 
@@ -1508,15 +1508,15 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
         ERRCHK_ALWAYS(host_mesh);
 
     // Submesh nn and mm
-    const int3 nn = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 mm = acGetLocalMM(acGridGetLocalMeshInfo());
+    const Volume nn = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume mm = acGetLocalMM(acGridGetLocalMeshInfo());
 
     // Send to self
     if (pid == 0) {
         for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
             // For pencils
-            for (int k = 0; k < mm.z; ++k) {
-                for (int j = 0; j < mm.y; ++j) {
+            for (size_t k = 0; k < mm.z; ++k) {
+                for (size_t j = 0; j < mm.y; ++j) {
                     const int i       = 0;
                     const int count   = mm.x;
                     const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
@@ -1531,8 +1531,8 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
 
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         // For pencils
-        for (int k = 0; k < mm.z; ++k) {
-            for (int j = 0; j < mm.y; ++j) {
+        for (size_t k = 0; k < mm.z; ++k) {
+            for (size_t j = 0; j < mm.y; ++j) {
                 const int i     = 0;
                 const int count = mm.x;
 
@@ -1703,13 +1703,9 @@ check_ops(const std::vector<AcTaskDefinition> ops)
 //        return Region(position,dims,0,fields,RegionFamily::Compute_output);
 //}
 Region
-FullRegion(int3 mm, const RegionMemory mem)
+FullRegion(Volume nn, const RegionMemory mem)
 {
-	const auto ghosts = get_ghost_zone_sizes();
-	int3 position = ghosts;
-	int3 last_position = {mm.x-ghosts.x, mm.y-ghosts.y,mm.z-ghosts.z};
-	int3 dims = last_position - position;
-        return Region(position,dims,0,mem,RegionFamily::Compute_output);
+        return Region(get_ghost_zone_sizes(),nn,0,mem,RegionFamily::Compute_output);
 }
 //Region
 //LeftCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
@@ -1767,7 +1763,8 @@ Region
 GetInputRegion(Region region, const RegionMemory mem)
 {
 	const auto nghost3 = get_ghost_zone_sizes();
-	return Region{region.position-nghost3,region.dims+2*nghost3,0,mem,RegionFamily::Compute_input};
+	auto res = Region{region.position-nghost3,region.dims+2*nghost3,0,mem,RegionFamily::Compute_input};
+	return res;
 }
 //
 ////test that the compute regions cover what they should cover without overlap
@@ -1862,12 +1859,6 @@ static AcReal3
 get_spacings()
 {
 	return acGridGetLocalMeshInfo()[AC_ds];
-}
-
-static int3 
-nn_to_mm(const int3 nn)
-{
-	return nn + 2*get_ghost_zone_sizes();
 }
 
 AcTaskGraph*
@@ -1983,8 +1974,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    std::vector<Profile> profiles_in(op.profiles_in,op.profiles_in+op.num_profiles_in);
 
 
-	    int3 mm = nn_to_mm(grid.nn);
-	    Region full_region = FullRegion(mm,{fields_out,profiles_out});
+	    Region full_region = FullRegion(grid.nn,{fields_out,profiles_out});
 	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in})[0];
             //for (int tag = Region::min_comp_tag; tag < 1; tag++) {
 	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
@@ -2616,7 +2606,7 @@ acGridReduceXYAverages(const Stream )
 
 /** */
 AcResult
-acGridLaunchKernel(const Stream stream, const AcKernel kernel, const int3 start, const int3 end)
+acGridLaunchKernel(const Stream stream, const AcKernel kernel, const Volume start, const Volume end)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
@@ -3074,12 +3064,12 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 
 	auto vba = acDeviceGetVBA(device);
         const AcReal* in      = vba.on_device.in[i];
-        const int3 in_offset  = acGetMinNN(acGridGetLocalMeshInfo());
-	const int3 in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
+        const Volume in_offset  = acGetMinNN(acGridGetLocalMeshInfo());
+	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 	
         AcReal* out = vba.on_device.out[i];
-	const int3 out_offset = (int3){0, 0, 0,};
-	const int3 out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
+	const Volume out_offset = {0, 0, 0,};
+	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
@@ -3180,6 +3170,11 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 
     return AC_SUCCESS;
 }
+Volume
+int3_to_volume(const int3& a)
+{
+	return to_volume(a);
+}
 
 AcResult
 acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
@@ -3190,36 +3185,36 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
     const Device device       = grid.device;
     const AcMeshInfo info     = acDeviceGetLocalConfig(device);
-    const int3 local_nn = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 global_nn = get_global_nn();
-    const int3 global_offset  = info[AC_multigpu_offset];
-    const int3 global_pos_min = global_offset;
+    const Volume local_nn = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume global_nn = get_global_nn();
+    const Volume global_offset  = to_volume(info[AC_multigpu_offset]);
+    const Volume global_pos_min = global_offset;
     // const int3 global_pos_max = global_pos_min + local_nn;
 
-//Does work also for 2D
+    //Does work also for 2D
     const int global_z = global_nn.z / 2;
     const int local_z  = global_z - global_pos_min.z;
-    const int color    = local_z >= 0 && local_z < local_nn.z ? 0 : MPI_UNDEFINED;
+    const int color    = local_z >= 0 && local_z < (int)local_nn.z ? 0 : MPI_UNDEFINED;
 
     for (int field = 0; field < NUM_FIELDS; ++field) {
 
 
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
-	const int3 slice_volume = (int3){info[AC_nlocal].x, info[AC_nlocal].y, 1};
+	const Volume slice_volume = (Volume){(size_t)info[AC_nlocal].x, (size_t)info[AC_nlocal].y, 1};
         const int3 slice_offset = (int3){0, 0, local_z};
 
 	auto vba = acDeviceGetVBA(device);
         const AcReal* in     = vba.on_device.in[field];
 
 	const int3 in_offset = acGetMinNN(acGridGetLocalMeshInfo()) + slice_offset;
-	const int3 in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
+	const int3 in_volume = to_int3(acGetLocalMM(acGridGetLocalMeshInfo()));
         AcReal* out           = vba.on_device.out[field];
-        const int3 out_offset = (int3){0, 0, 0};
-        const int3 out_volume = slice_volume;
+        const Volume out_offset = {0, 0, 0};
+        const Volume out_volume = slice_volume;
 
         if (color != MPI_UNDEFINED)
-            acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+            acDeviceVolumeCopy(device, STREAM_DEFAULT, in, to_volume(in_offset), to_volume(in_volume), out, out_offset,
                                out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
@@ -3231,7 +3226,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
         char filepath[4096];
 #if USE_DISTRIBUTED_IO
-        sprintf(filepath, "%s/%s-segment-at_%d_%d_%d-dims_%d_%d-%s.slice", dir, vtxbuf_names[field],
+        sprintf(filepath, "%s/%s-segment-at_%ld_%ld_%d-dims_%ld_%ld-%s.slice", dir, vtxbuf_names[field],
                 global_pos_min.x, global_pos_min.y, global_z, local_nn.x, local_nn.y, label);
 #else
         sprintf(filepath, "%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field], global_nn.x,
@@ -3244,7 +3239,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
         acGridSynchronizeStream(STREAM_ALL);
         const auto write_async = [filepath, global_nn, global_pos_min, slice_volume,
                                   color](const AcReal* host_buffer_in, const size_t count_in
-                                        ) {
+                                        ) { 
 #if USE_PERFSTUBS
             PERFSTUBS_REGISTER_THREAD();
             PERFSTUBS_TIMER_START(_write_timer, "acGridWriteMeshToDiskLaunch::write_async");
@@ -3351,34 +3346,34 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
 
     const Device device       = grid.device;
     const AcMeshInfo info     = acDeviceGetLocalConfig(device);
-    const int3 local_nn = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 global_nn = get_global_nn();
-    const int3 global_offset  = info[AC_multigpu_offset];
-    const int3 global_pos_min = global_offset;
+    const Volume local_nn = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume global_nn = get_global_nn();
+    const Volume global_offset  = to_volume(info[AC_multigpu_offset]);
+    const Volume global_pos_min = global_offset;
     // const int3 global_pos_max = global_pos_min + local_nn;
 
     const int global_z = global_nn.z / 2;
     const int local_z  = global_z - global_pos_min.z;
-    const int color    = local_z >= 0 && local_z < local_nn.z ? 0 : MPI_UNDEFINED;
+    const int color    = local_z >= 0 && local_z < (int)local_nn.z ? 0 : MPI_UNDEFINED;
 
     for (int field = 0; field < NUM_FIELDS; ++field) {
 
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
-	const int3 slice_volume = (int3){info[AC_nlocal].x, info[AC_nlocal].y, 1};
+	const Volume slice_volume = {(size_t)info[AC_nlocal].x, (size_t)info[AC_nlocal].y, 1};
         const int3 slice_offset = (int3){0, 0, local_z};
 
 	auto vba = acDeviceGetVBA(device);
 	const AcReal* in = vba.on_device.in[field];
 	const int3 in_offset = acGetMinNN(acGridGetLocalMeshInfo()) + slice_offset;
-	const int3 in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
+	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 
         AcReal* out           = vba.on_device.out[field];
-        const int3 out_offset = (int3){0, 0, 0};
-        const int3 out_volume = slice_volume;
+        const Volume out_offset = {0, 0, 0};
+        const Volume out_volume = slice_volume;
 
         if (color != MPI_UNDEFINED)
-            acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+            acDeviceVolumeCopy(device, STREAM_DEFAULT, in, to_volume(in_offset), in_volume, out, out_offset,
                                out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
@@ -3389,7 +3384,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
             cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
         char filepath[4096];
-        sprintf(filepath, "%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field], global_nn.x,
+        sprintf(filepath, "%s/%s-dims_%ld_%ld-%s.slice", dir, vtxbuf_names[field], global_nn.x,
                 global_nn.y, label);
 
         // if (color != MPI_UNDEFINED)
@@ -3407,15 +3402,15 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
             MPI_Comm slice_communicator;
             MPI_Comm_split(astaroth_comm, color, 0, &slice_communicator);
             if (color != MPI_UNDEFINED) {
-                const int3 nn     = (int3){global_nn.x, global_nn.y, 1};
-                const int3 nn_sub = slice_volume;
+                const Volume nn     = (Volume){global_nn.x, global_nn.y, 1};
+                const Volume nn_sub = slice_volume;
 
-                const int nn_[]     = {nn.z, nn.y, nn.x};
-                const int nn_sub_[] = {nn_sub.z, nn_sub.y, nn_sub.x};
+                const int nn_[]     = {(int)nn.z, (int)nn.y, (int)nn.x};
+                const int nn_sub_[] = {(int)nn_sub.z, (int)nn_sub.y, (int)nn_sub.x};
                 const int offset_[] = {
                     0,
-                    global_pos_min.y,
-                    global_pos_min.x,
+                    (int)global_pos_min.y,
+                    (int)global_pos_min.x,
                 };
                 MPI_Datatype subdomain;
                 MPI_Type_create_subarray(3, nn_, nn_sub_, offset_, MPI_ORDER_C, AC_REAL_MPI_TYPE,
@@ -3611,13 +3606,13 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     const Device device   = grid.device;
     const AcMeshInfo info = acDeviceGetLocalConfig(device);
     // const int3 nn         = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid);
-    const int3 nn_sub = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 offset = info[AC_multigpu_offset]; // Without halo
+    const Volume nn_sub = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume offset = to_volume(info[AC_multigpu_offset]); // Without halo
 
     const size_t buflen = 4096;
     char filepath[buflen];
 #if USE_DISTRIBUTED_IO
-    sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
+    sprintf(filepath, "%s/%s-segment-%ld-%ld-%ld-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
             offset.y, offset.z, label);
 #else
     sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[vtxbuf], label);
@@ -3630,11 +3625,11 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     if (type == ACCESS_WRITE) {
 	auto vba = acDeviceGetVBA(device);
         const AcReal* in      = vba.on_device.in[vtxbuf];
-	const int3 in_offset = acGetMinNN(acGridGetLocalMeshInfo());
-	const int3 in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
+	const Volume in_offset = acGetMinNN(acGridGetLocalMeshInfo());
+	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
         AcReal* out           = vba.on_device.out[vtxbuf];
-        const int3 out_offset = (int3){0, 0, 0};
-	const int3 out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
+        const Volume out_offset = (Volume){0, 0, 0};
+	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
@@ -3650,7 +3645,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
 #ifndef NDEBUG
     if (type == ACCESS_READ) {
-        const int3 nn = get_global_nn();
+        const Volume nn = get_global_nn();
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
         FILE* fp                   = fopen(filepath, "r");
         ERRCHK_ALWAYS(fp);
@@ -3743,7 +3738,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
 #ifndef NDEBUG
     if (type == ACCESS_WRITE) {
-        const int3 nn = get_global_nn();
+        const Volume nn = get_global_nn();
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
         FILE* fp_in                   = fopen(filepath, "r");
         ERRCHK_ALWAYS(fp_in);
@@ -3766,13 +3761,13 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     if (type == ACCESS_READ) {
 	auto vba = acDeviceGetVBA(device);
         AcReal* in           = vba.on_device.out[vtxbuf];
-        const int3 in_offset = (int3){0, 0, 0};
-        const int3 in_volume = acGetLocalNN(acGridGetLocalMeshInfo());
+        const Volume in_offset = {0, 0, 0};
+        const Volume in_volume = acGetLocalNN(acGridGetLocalMeshInfo());
 
         AcReal* out           = vba.on_device.in[vtxbuf];
 
-	const int3 out_offset = acGetMinNN(acGridGetLocalMeshInfo());
-	const int3 out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
+	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
+	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
 
 #if BUFFER_DISK_WRITE_THROUGH_CPU
         // ---------------------------------------
@@ -3815,12 +3810,12 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
     const Device device   = grid.device;
     const AcMeshInfo info = acDeviceGetLocalConfig(device);
     // const int3 nn         = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid);
-    const int3 nn_sub = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 offset = info[AC_multigpu_offset]; // Without halo
+    const Volume nn_sub = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume offset = to_volume(info[AC_multigpu_offset]); // Without halo
 
     const size_t buflen = 4096;
     char filepath[buflen];
-    sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
+    sprintf(filepath, "%s/%s-segment-%ld-%ld-%ld-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
             offset.y, offset.z, label);
 #if AC_VERBOSE
     fprintf(stderr, "%s %s\n", type == ACCESS_WRITE ? "Writing" : "Reading", filepath);
@@ -3829,11 +3824,11 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
     if (type == ACCESS_WRITE) {
 	auto vba = acDeviceGetVBA(device);
         const AcReal* in      = vba.on_device.in[vtxbuf];
-	const int3 in_offset = acGetMinNN(acGridGetLocalMeshInfo());
-	const int3 in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
+	const Volume in_offset = acGetMinNN(acGridGetLocalMeshInfo());
+	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
         AcReal* out           = vba.on_device.out[vtxbuf];
-        const int3 out_offset = (int3){0, 0, 0};
-	const int3 out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
+        const Volume out_offset = (Volume){0, 0, 0};
+	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
@@ -3875,12 +3870,12 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
     if (type == ACCESS_READ) {
 	auto vba = acDeviceGetVBA(device);
         AcReal* in           = vba.on_device.out[vtxbuf];
-        const int3 in_offset = (int3){0, 0, 0};
-	const int3 in_volume = acGetLocalNN(acGridGetLocalMeshInfo());
+        const Volume in_offset = (Volume){0, 0, 0};
+	const Volume in_volume = acGetLocalNN(acGridGetLocalMeshInfo());
 
         AcReal* out           = vba.on_device.in[vtxbuf];
-	const int3 out_offset = acGetMinNN(acGridGetLocalMeshInfo());
-	const int3 out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
+	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
+	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 
 #if BUFFER_DISK_WRITE_THROUGH_CPU
         // ---------------------------------------
@@ -3922,9 +3917,9 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 
     const Device device   = grid.device;
     const AcMeshInfo info = acDeviceGetLocalConfig(device);
-    const int3 nn_sub = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 nn     = get_global_nn();
-    const int3 offset     = info[AC_multigpu_offset]; // Without halo
+    const Volume nn_sub = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume nn     = get_global_nn();
+    const Volume offset     = to_volume(info[AC_multigpu_offset]); // Without halo
 
     const size_t buflen = 4096;
     char filepath[buflen];
@@ -3936,11 +3931,11 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
     if (type == ACCESS_WRITE) {
 	auto vba = acDeviceGetVBA(device);
         const AcReal* in      = vba.on_device.in[vtxbuf];
-	const int3 in_offset = acGetMinNN(acGridGetLocalMeshInfo());
-	const int3 in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
+	const Volume in_offset = acGetMinNN(acGridGetLocalMeshInfo());
+	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
         AcReal* out           = vba.on_device.out[vtxbuf];
-        const int3 out_offset = (int3){0, 0, 0};
-        const int3 out_volume = nn_sub;
+        const Volume out_offset = {0, 0, 0};
+        const Volume out_volume = nn_sub;
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
@@ -3965,9 +3960,9 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 #endif
 
     MPI_Datatype subarray;
-    const int arr_nn[]     = {nn.z, nn.y, nn.x};
-    const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
-    const int arr_offset[] = {offset.z, offset.y, offset.x};
+    const int arr_nn[]     = {(int)nn.z, (int)nn.y, (int)nn.x};
+    const int arr_nn_sub[] = {(int)nn_sub.z, (int)nn_sub.y, (int)nn_sub.x};
+    const int arr_offset[] = {(int)offset.z, (int)offset.y, (int)offset.x};
 
     // printf(" nn.z     %3i, nn.y     %3i, nn.x     %3i, \n nn_sub.z %3i, nn_sub.y %3i, nn_sub.x
     // %3i, \n offset.z %3i, offset.y %3i, offset.x %3i  \n",
@@ -4010,12 +4005,12 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
     if (type == ACCESS_READ) {
 	auto vba = acDeviceGetVBA(device);
         AcReal* in           = vba.on_device.out[vtxbuf];
-        const int3 in_offset = (int3){0, 0, 0};
-        const int3 in_volume = nn_sub;
+        const Volume in_offset = {0, 0, 0};
+        const Volume in_volume = nn_sub;
 
         AcReal* out           = vba.on_device.in[vtxbuf];
-	const int3 out_offset = acGetMinNN(acGridGetLocalMeshInfo());
-	const int3 out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
+	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
+	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 
 #if BUFFER_DISK_WRITE_THROUGH_CPU
         // ---------------------------------------
@@ -4065,18 +4060,18 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
     // Set the helper variables
     const Device device         = grid.device;
     const AcMeshInfo info       = acDeviceGetLocalConfig(device);
-    const int3 subdomain_nn = acGetLocalNN(acGridGetLocalMeshInfo());
-    const int3 subdomain_offset = info[AC_multigpu_offset]; // Without halo
+    const Volume subdomain_nn = acGetLocalNN(acGridGetLocalMeshInfo());
+    const Volume subdomain_offset = to_volume(info[AC_multigpu_offset]); // Without halo
     int retval;
 
     // Load the fields to host memory
     MPI_Datatype subdomain;
     const int domain_mm_[]        = {mm.z, mm.y, mm.x};
-    const int subdomain_nn_[]     = {subdomain_nn.z, subdomain_nn.y, subdomain_nn.x};
+    const int subdomain_nn_[]     = {(int)subdomain_nn.z, (int)subdomain_nn.y, (int)subdomain_nn.x};
     const int subdomain_offset_[] = {
-        rr.z + subdomain_offset.z,
-        rr.y + subdomain_offset.y,
-        rr.x + subdomain_offset.x,
+        (int)(rr.z + subdomain_offset.z),
+        (int)(rr.y + subdomain_offset.y),
+        (int)(rr.x + subdomain_offset.x),
     }; // Offset the ghost zone
 
     MPI_Type_create_subarray(3, domain_mm_, subdomain_nn_, subdomain_offset_, MPI_ORDER_C,
@@ -4120,12 +4115,12 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
         // Load from host memory to device memory
 	auto vba = acDeviceGetVBA(device);
         AcReal* in           = vba.on_device.out[field];
-        const int3 in_offset = (int3){0, 0, 0};
-        const int3 in_volume = subdomain_nn;
+        const Volume in_offset = {0, 0, 0};
+        const Volume in_volume = subdomain_nn;
 
         AcReal* out           = vba.on_device.in[field];
-	const int3 out_offset = acGetMinNN(acGridGetLocalMeshInfo());
-	const int3 out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
+	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
+	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
         cudaMemcpy(in, host_buffer, bytes, cudaMemcpyHostToDevice);
         retval = acDeviceVolumeCopy(device, (Stream)field, in, in_offset, in_volume, out, out_offset,

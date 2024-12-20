@@ -180,14 +180,13 @@ print(const AcMeshInfo config)
         printf("[%s]: %g\n", realparam_names[i], double(config.params.scalars.real_params[i]));
 }
 
-
 static GridDims
 createGridDims(const AcMeshInfo config)
 {
     GridDims grid;
 
-    grid.m = acGetLocalMM(config);
-    grid.n = acGetLocalNN(config);
+    grid.m = to_int3(acGetLocalMM(config));
+    grid.n = to_int3(acGetLocalNN(config));
 
     return grid;
 }
@@ -632,7 +631,7 @@ acNodeIntegrateSubstep(const Node node, const Stream stream, const int isubstep,
         if (db.z >= da.z) {
             const int3 da_local = da - (int3){0, 0, i * node->subgrid.n.z};
             const int3 db_local = db - (int3){0, 0, i * node->subgrid.n.z};
-            acDeviceIntegrateSubstep(node->devices[i], stream, isubstep, da_local, db_local, dt);
+            acDeviceIntegrateSubstep(node->devices[i], stream, isubstep, to_volume(da_local), to_volume(db_local), dt);
         }
     }
     return AC_SUCCESS;
@@ -738,8 +737,8 @@ acNodeIntegrate(const Node node, const AcReal dt)
         // Inner inner
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) {
-            const int3 m1 = (int3){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = node->subgrid.n;
+            const Volume m1 = (Volume){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = to_volume(node->subgrid.n);
             acDeviceIntegrateSubstep(node->devices[i], STREAM_16, isubstep, m1, m2, dt);
         }
 
@@ -753,40 +752,40 @@ acNodeIntegrate(const Node node, const AcReal dt)
 
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Front
-            const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, node->subgrid.n.y, NGHOST};
+            const Volume m1 = {NGHOST, NGHOST, NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, (size_t)node->subgrid.n.y, NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_0, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Back
-            const int3 m1 = (int3){NGHOST, NGHOST, node->subgrid.n.z};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, node->subgrid.n.y, NGHOST};
+            const Volume m1 = {NGHOST, NGHOST, (size_t)node->subgrid.n.z};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, (size_t)node->subgrid.n.y, NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_1, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Bottom
-            const int3 m1 = (int3){NGHOST, NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, NGHOST, node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, NGHOST, (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_2, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Top
-            const int3 m1 = (int3){NGHOST, node->subgrid.n.y, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, NGHOST, node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, (size_t)node->subgrid.n.y, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, NGHOST, (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_3, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Left
-            const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
-                                        node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){NGHOST, (size_t)node->subgrid.n.y - 2 * NGHOST,
+                                        (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_4, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Right
-            const int3 m1 = (int3){node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
-                                        node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = (Volume){(size_t)node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){NGHOST, (size_t)node->subgrid.n.y - 2 * NGHOST,
+                                        (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_5, isubstep, m1, m2, dt);
         }
         acNodeSwapBuffers(node);
@@ -817,8 +816,8 @@ acNodeIntegrateGBC(const Node node, const AcMeshInfo config, const AcReal dt)
         // Inner inner
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) {
-            const int3 m1 = (int3){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = node->subgrid.n;
+            const Volume m1 = (Volume){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = to_volume(node->subgrid.n);
             acDeviceIntegrateSubstep(node->devices[i], STREAM_16, isubstep, m1, m2, dt);
         }
 
@@ -832,40 +831,40 @@ acNodeIntegrateGBC(const Node node, const AcMeshInfo config, const AcReal dt)
 
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Front
-            const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, node->subgrid.n.y, NGHOST};
+            const Volume m1 = (Volume){NGHOST, NGHOST, NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, (size_t)node->subgrid.n.y, NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_0, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Back
-            const int3 m1 = (int3){NGHOST, NGHOST, node->subgrid.n.z};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, node->subgrid.n.y, NGHOST};
+            const Volume m1 = (Volume){NGHOST, NGHOST, (size_t)node->subgrid.n.z};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, (size_t)node->subgrid.n.y, NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_1, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Bottom
-            const int3 m1 = (int3){NGHOST, NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, NGHOST, node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, NGHOST, (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_2, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Top
-            const int3 m1 = (int3){NGHOST, node->subgrid.n.y, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, NGHOST, node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, (size_t)node->subgrid.n.y, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, NGHOST, (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_3, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Left
-            const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
-                                        node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){NGHOST, (size_t)node->subgrid.n.y - 2 * NGHOST,
+                                        (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_4, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Right
-            const int3 m1 = (int3){node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
-                                        node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {(size_t)node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){NGHOST, (size_t)node->subgrid.n.y - 2 * NGHOST,
+                                        (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_5, isubstep, m1, m2, dt);
         }
         acNodeSwapBuffers(node);

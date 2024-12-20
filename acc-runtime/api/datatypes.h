@@ -58,6 +58,7 @@ typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
 typedef struct {
   size_t x, y, z;
 } Volume;
+
 typedef Volume size3_t;
 
 #include "builtin_enums.h"
@@ -104,3 +105,14 @@ operator==(const int3& a, const size3_t& b)
 }
 
 #endif
+static HOST_INLINE int3
+to_int3(Volume a)
+{
+	return 
+	(int3)
+	{
+		(int)a.x,
+		(int)a.y,
+		(int)a.z
+	};
+}

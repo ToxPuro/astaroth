@@ -1,0 +1,18 @@
+Field FIELD
+auxiliary Field AVERAGED_FIELD
+
+#include "../../../acc-runtime/stdlib/average.h"
+hostdefine STENCIL_ORDER (2)
+
+Kernel singlepass_solve() {
+    write(AVERAGED_FIELD, average_radius_1(FIELD))
+}
+
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+ComputeSteps rhs(bcs)
+{
+	singlepass_solve()
+}

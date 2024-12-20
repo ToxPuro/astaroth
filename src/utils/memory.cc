@@ -41,7 +41,7 @@ acHostMeshSet(const AcReal value, AcMesh* mesh)
     return AC_SUCCESS;
 }
 static inline __device__ AcReal
-lagrangian_correction(const Field j, const Field2 coords, const int3 indexes, const AcReal3 lengths, const int3 nn_min, const int3 nn_max)
+lagrangian_correction(const Field j, const Field2 coords, const Volume indexes, const AcReal3 lengths, const Volume nn_min, const Volume nn_max)
 {
 	const AcReal x_coeff = (j == coords.x)*lengths.x;
 	const AcReal y_coeff = (j == coords.y)*lengths.y;
@@ -49,7 +49,7 @@ lagrangian_correction(const Field j, const Field2 coords, const int3 indexes, co
               + y_coeff*((indexes.y >= nn_max.y) - (indexes.y < nn_min.y));
 }
 static inline __device__ AcReal
-lagrangian_correction(const Field j, const Field3 coords, const int3 indexes, const AcReal3 lengths, const int3 nn_min, const int3 nn_max)
+lagrangian_correction(const Field j, const Field3 coords, const Volume indexes, const AcReal3 lengths, const Volume nn_min, const Volume nn_max)
 {
 	const AcReal x_coeff = (j == coords.x)*lengths.x;
 	const AcReal y_coeff = (j == coords.y)*lengths.y;
@@ -66,31 +66,31 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
     const AcMeshInfo info = mesh->info;
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
 	if (!vtxbuf_is_communicated[w]) continue;
-        const int3 start = (int3){0, 0, 0};
-	const int3 end = acGetGridMM(info);
+        const Volume start = {0, 0, 0};
+	const Volume end = acGetGridMM(info);
 
-	const int3 nn = acGetGridNN(info);
-	const int nx = nn.x;
-	const int ny = nn.y;
-	const int nz = nn.z;
+	const Volume nn = acGetGridNN(info);
+	const size_t nx = nn.x;
+	const size_t ny = nn.y;
+	const size_t nz = nn.z;
 
-	const int3 nn_min = acGetMinNN(info);
+	const Volume nn_min = acGetMinNN(info);
 
-	const int nx_min = nn_min.x;
-	const int ny_min = nn_min.y;
-	const int nz_min = nn_min.z;
+	const size_t nx_min = nn_min.x;
+	const size_t ny_min = nn_min.y;
+	const size_t nz_min = nn_min.z;
 
 
         // The old kxt was inclusive, but our mx_max is exclusive
-	const int3 nn_max  = acGetGridMaxNN(info);
-        const int nx_max = nn_max.x;
-        const int ny_max = nn_max.y;
-        const int nz_max = nn_max.z;
+	const Volume nn_max  = acGetGridMaxNN(info);
+        const size_t nx_max = nn_max.x;
+        const size_t ny_max = nn_max.y;
+        const size_t nz_max = nn_max.z;
 
         // #pragma omp parallel for
-        for (int k_dst = start.z; k_dst < end.z; ++k_dst) {
-            for (int j_dst = start.y; j_dst < end.y; ++j_dst) {
-                for (int i_dst = start.x; i_dst < end.x; ++i_dst) {
+        for (size_t k_dst = start.z; k_dst < end.z; ++k_dst) {
+            for (size_t j_dst = start.y; j_dst < end.y; ++j_dst) {
+                for (size_t i_dst = start.x; i_dst < end.x; ++i_dst) {
 
                     // If destination index is inside the computational domain, return since
                     // the boundary conditions are only applied to the ghost zones
@@ -169,11 +169,11 @@ acHostMeshClear(AcMesh* mesh)
 AcResult
 acHostMeshWriteToFile(const AcMesh mesh, const size_t id)
 {
-    const int3 mm = acGetGridMM(mesh.info);
+    const Volume mm = acGetGridMM(mesh.info);
     FILE* header = fopen(dataformat_path, "w");
     ERRCHK_ALWAYS(header);
     fprintf(header, "use_double, mx, my, mz\n");
-    fprintf(header, "%d, %d, %d, %d\n", sizeof(AcReal) == 8, mm.x, mm.y, mm.z);
+    fprintf(header, "%d, %ld, %ld, %ld\n", sizeof(AcReal) == 8, mm.x, mm.y, mm.z);
     fclose(header);
 
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
@@ -208,12 +208,12 @@ acHostMeshReadFromFile(const size_t id, AcMesh* mesh)
     fgets(buf, len, header);
     fscanf(header, "%d, %d, %d, %d\n", &use_double, &mx, &my, &mz);
     fclose(header);
-    const int3 mm = acGetGridMM(mesh->info);
+    const Volume mm = acGetGridMM(mesh->info);
 
     ERRCHK_ALWAYS(use_double == (sizeof(AcReal) == 8));
-    ERRCHK_ALWAYS(mx == mm.x);
-    ERRCHK_ALWAYS(my == mm.y);
-    ERRCHK_ALWAYS(mz == mm.z);
+    ERRCHK_ALWAYS(mx == (int)mm.x);
+    ERRCHK_ALWAYS(my == (int)mm.y);
+    ERRCHK_ALWAYS(mz == (int)mm.z);
 
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
 

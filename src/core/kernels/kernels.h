@@ -51,15 +51,15 @@ AcResult acKernelDummy(void);
 
 /** */
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
-                          const int3 vba_start, const int3 dims, AcRealPacked* packed,
+                          const Volume vba_start, const Volume dims, AcRealPacked* packed,
 			  const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
 AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
-                            const int3 vba_start, const int3 dims, VertexBufferArray vba,
+                            const Volume vba_start, const Volume dims, VertexBufferArray vba,
 			    const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
 AcResult
-acKernelMoveData(const cudaStream_t stream, const int3 src_start, const int3 dst_start, const int3 src_dims, const int3 dst_dims, VertexBufferArray vba,
+acKernelMoveData(const cudaStream_t stream, const Volume src_start, const Volume dst_start, const Volume src_dims, const Volume dst_dims, VertexBufferArray vba,
                           const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
 /** */
@@ -76,27 +76,27 @@ size_t acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims);
 
 /** */
 AcReal acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction,
-                          const VertexBufferHandle vtxbuf, const int3 start, const int3 end,
+                          const VertexBufferHandle vtxbuf, const Volume start, const Volume end,
 			  const int scratchpad_index,
                           const size_t scratchpad_size, VertexBufferArray vba);
 
 /** */
-AcReal acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const int3 start,
-                         const int3 end, const Field3 vec, VertexBufferArray vba,
+AcReal acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const Volume start,
+                         const Volume end, const Field3 vec, VertexBufferArray vba,
 			 const int scratchpad_index,
                          const size_t scratchpad_size);
 
 /** */
 AcReal
-acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, const int3 start,
-                      const int3 end, const Field4 vtxbufs,VertexBufferArray vba,
+acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, const Volume start,
+                      const Volume end, const Field4 vtxbufs,VertexBufferArray vba,
 		      const int scratchpad_index,
                       const size_t scratchpad_size);
 
 /** */
 AcResult acKernelVolumeCopy(const cudaStream_t stream,                                    //
-                            const AcReal* in, const int3 in_offset, const int3 in_volume, //
-                            AcReal* out, const int3 out_offset, const int3 out_volume);
+                            const AcReal* in, const Volume in_offset, const Volume in_volume, //
+                            AcReal* out, const Volume out_offset, const Volume out_volume);
 
 // Astaroth 2.0 backwards compatibility.
 //
@@ -111,11 +111,11 @@ AcResult acKernelVolumeCopy(const cudaStream_t stream,                          
 
 /** */
 AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
-                            const int3 vba_start, const int3 dims, VertexBufferArray vba);
+                            const Volume vba_start, const Volume dims, VertexBufferArray vba);
 
 /** */
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
-                          const int3 vba_start, const int3 dims, AcRealPacked* packed);
+                          const Volume vba_start, const Volume dims, AcRealPacked* packed);
 #endif
 
 template <int direction>  static __global__ void packUnpackPlate(AcReal* __restrict__ buffer, VertexBufferArray vba, int3 start, int3 end);

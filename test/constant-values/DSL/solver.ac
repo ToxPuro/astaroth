@@ -1,0 +1,16 @@
+auxiliary Field FIELD
+
+hostdefine STENCIL_ORDER (0)
+
+Kernel singlepass_solve() {
+    write(FIELD, 1.0)
+}
+
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+ComputeSteps rhs(bcs)
+{
+	singlepass_solve()
+}

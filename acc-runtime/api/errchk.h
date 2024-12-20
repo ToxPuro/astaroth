@@ -53,7 +53,6 @@
     fprintf(stderr, "Error in file %s line %d: %s\n", __FILE__, __LINE__, str); \
     fprintf(stderr, "\n└──────────────────────── ERROR ───────────────────────────┘\n\n\n\n"); \
     fflush(stderr);                                                            \
-    exit(EXIT_FAILURE);                                                        \
     abort();                                                                   \
   }
 // clang-format on
@@ -99,7 +98,7 @@
  */
 // #if defined(__CUDA_RUNTIME_API_H__)
 static inline void
-cuda_assert(cudaError_t code, const char* file, int line, bool abort)
+cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
 {
   if (code != cudaSuccess) {
     time_t terr;
@@ -109,8 +108,8 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
             cudaGetErrorString(code));
     fflush(stderr);
 
-    if (abort)
-      exit(code);
+    if (should_abort)
+      abort();
   }
 }
 
