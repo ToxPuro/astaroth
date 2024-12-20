@@ -18,6 +18,8 @@ template <typename T, typename MemoryResource> class base_ptr {
     size_t size() const { return _size; }
     T* data() { return _data; }
     T* data() const { return _data; }
+    T* get() { return data(); }
+    T* get() const { return data(); }
 
     // Enable the subscript[] operator
     T& operator[](const size_t i)

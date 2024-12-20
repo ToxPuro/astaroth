@@ -1,8 +1,12 @@
 #include "pack.h"
+#include "pack_batched.h"
+#include <cstdint>
 
 #if defined(ACM_DEVICE_ENABLED)
 
 #include "static_array.h"
+
+#include "convert.h"
 
 constexpr size_t MAX_NDIMS          = 4;
 constexpr size_t MAX_N_AGGR_BUFS    = 12;
@@ -118,70 +122,6 @@ kernel_unpack(const T* input, const ac::static_array<uint64_t, MAX_NDIMS> mm,
     }
 }
 
-#if 0 // TODO
-template <typename T>
-__global__ void
-kernel_pack_batched(
-    const ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> mms,
-    const ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> block_shapes,
-    const ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> block_offsets,
-    const ac::static_array<T*, MAX_N_AGGR_BUFS> inputs, T* output)
-{
-    uint64_t current_block_offset{0};
-
-    for (size_t segid{0}; segid < MAX_NPACK_SEGMENTS; ++segid) {
-
-        const auto mm{mms[segid]};
-        const auto block_shape{block_shapes[segid]};
-        const auto block_offsets{block_offsets[segid]};
-
-        const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
-        const uint64_t block_nelems{device::prod(block_shape)};
-        if (i < block_nelems) {
-            for (size_t j{0}; j < inputs.size(); ++j) {
-
-                // Block coords
-                const ac::static_array<uint64_t, MAX_NDIMS> block_coords{
-                    device::to_spatial(i, block_shape)};
-
-                // Input coords
-                const ac::static_array<uint64_t, MAX_NDIMS> in_coords{block_offset + block_coords};
-                const uint64_t in_idx{device::to_linear(in_coords, mm)};
-
-                output[i + j * block_nelems + current_block_offset] = inputs[j][in_idx];
-            }
-        }
-        current_block_offset += block_nelems;
-    }
-}
-
-// TODO essentially copy-paste from above
-template <typename T>
-__global__ void
-kernel_unpack_batched(const T* input, const ac::static_array<uint64_t, MAX_NDIMS> mm,
-                      const ac::static_array<uint64_t, MAX_NDIMS> block_shape,
-                      const ac::static_array<uint64_t, MAX_NDIMS> block_offset,
-                      ac::static_array<T*, MAX_N_AGGR_BUFS> outputs)
-{
-    const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
-    const uint64_t block_nelems{prod(block_shape)};
-    if (i < block_nelems) {
-        for (size_t j{0}; j < outputs.size(); ++j) {
-
-            // Block coords
-            const ac::static_array<uint64_t, MAX_NDIMS> block_coords{
-                device::to_spatial(i, block_shape)};
-
-            // Input coords
-            const ac::static_array<uint64_t, MAX_NDIMS> in_coords{block_offset + block_coords};
-            const uint64_t in_idx{device::to_linear(in_coords, mm)};
-
-            outputs[j][in_idx] = input[i + j * block_nelems];
-        }
-    }
-}
-#endif
-
 } // namespace device
 
 template <typename T>
@@ -224,7 +164,7 @@ pack(const Shape& in_mm, const Shape& in_block_shape, const Index& in_block_offs
     const auto mm           = device::make_static_array<uint64_t, MAX_NDIMS>(in_mm);
     const auto block_shape  = device::make_static_array<uint64_t, MAX_NDIMS>(in_block_shape);
     const auto block_offset = device::make_static_array<uint64_t, MAX_NDIMS>(in_block_offset);
-    const auto inputs       = device::make_static_array<T*, MAX_N_AGGR_BUFS>(unwrap(in_inputs));
+    const auto inputs       = device::make_static_array<T*, MAX_N_AGGR_BUFS>(ac::unwrap(in_inputs));
     const auto output       = in_output.data();
 
     device::kernel_pack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm,
@@ -310,6 +250,213 @@ template void pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const 
 template void unpack<PACK_DTYPE>(const ac::mr::device_ptr<PACK_DTYPE>& input, const Shape& mm,
                                  const Shape& block_shape, const Index& block_offset,
                                  std::vector<ac::mr::device_ptr<PACK_DTYPE>>& outputs);
+#undef PACK_DTYPE
+
+// Batched
+namespace device {
+template <typename T>
+__global__ void
+kernel_pack_batched(
+    const ac::static_array<uint64_t, MAX_NDIMS> local_mm,
+    const ac::static_array<T*, MAX_N_AGGR_BUFS> inputs,
+    const ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> block_shapes,
+    const ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> block_offsets,
+    ac::static_array<T*, MAX_NPACK_SEGMENTS> outputs)
+{
+    for (size_t segid{0}; segid < outputs.size(); ++segid) {
+
+        const auto block_shape{block_shapes[segid]};
+        const auto block_offset{block_offsets[segid]};
+
+        const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
+        const uint64_t block_nelems{device::prod(block_shape)};
+        if (i < block_nelems) {
+            for (size_t j{0}; j < inputs.size(); ++j) {
+
+                // Block coords
+                const ac::static_array<uint64_t, MAX_NDIMS> block_coords{
+                    device::to_spatial(i, block_shape)};
+
+                // Input coords
+                const ac::static_array<uint64_t, MAX_NDIMS> in_coords{block_offset + block_coords};
+                const uint64_t in_idx{device::to_linear(in_coords, local_mm)};
+
+                outputs[segid][i + j * block_nelems] = inputs[j][in_idx];
+            }
+        }
+    }
+}
+
+template <typename T>
+__global__ void
+kernel_unpack_batched(
+    const ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> block_shapes,
+    const ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> block_offsets,
+    const ac::static_array<T*, MAX_NPACK_SEGMENTS> inputs,
+    const ac::static_array<uint64_t, MAX_NDIMS> local_mm,
+    ac::static_array<T*, MAX_N_AGGR_BUFS> outputs)
+{
+    for (size_t segid{0}; segid < inputs.size(); ++segid) {
+
+        const auto block_shape{block_shapes[segid]};
+        const auto block_offset{block_offsets[segid]};
+
+        const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
+        const uint64_t block_nelems{prod(block_shape)};
+        if (i < block_nelems) {
+            for (size_t j{0}; j < outputs.size(); ++j) {
+
+                // Block coords
+                const ac::static_array<uint64_t, MAX_NDIMS> block_coords{
+                    device::to_spatial(i, block_shape)};
+
+                // Input coords
+                const ac::static_array<uint64_t, MAX_NDIMS> in_coords{block_offset + block_coords};
+                const uint64_t in_idx{device::to_linear(in_coords, local_mm)};
+
+                outputs[j][in_idx] = inputs[segid][i + j * block_nelems];
+            }
+        }
+    }
+}
+} // namespace device
+
+template <typename T>
+void
+pack_batched(const Shape& in_local_mm, //
+             const std::vector<ac::mr::device_ptr<T>>& in_inputs,
+             const std::vector<ac::segment>& in_segments,
+             std::vector<ac::mr::device_ptr<T>> in_outputs)
+{
+    size_t max_count{0};
+    for (const auto& segment : in_segments) {
+        const size_t count{prod(segment.dims)};
+        max_count = count > max_count ? count : max_count;
+    }
+
+    const uint64_t block_nelems{max_count};
+    const uint64_t tpb{256};
+    const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
+
+    // std::vector<ac::static_array<uint64_t, MAX_NDIMS>> in_block_shapes;
+    // std::vector<ac::static_array<uint64_t, MAX_NDIMS>> in_block_offsets;
+    // for (const auto& seg : in_segments) {
+    //     in_block_shapes.push_back(device::make_static_array<uint64_t, MAX_NDIMS>(seg.dims));
+    //     in_block_offsets.push_back(device::make_static_array<uint64_t, MAX_NDIMS>(seg.offset));
+    // }
+    ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> block_shapes(
+        in_segments.size());
+    ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> block_offsets(
+        in_segments.size());
+    ERRCHK(in_segments.size() <= MAX_NPACK_SEGMENTS);
+    for (size_t i{0}; i < in_segments.size(); ++i) {
+        block_shapes[i]  = device::make_static_array<uint64_t, MAX_NDIMS>(in_segments[i].dims);
+        block_offsets[i] = device::make_static_array<uint64_t, MAX_NDIMS>(in_segments[i].offset);
+    }
+
+    // std::vector<ac::static_array<uint64_t, MAX_NDIMS>> block_shapes_vec;
+    // std::transform(in_segments.begin(),
+    //                in_segments.end(),
+    //                block_shapes_vec.begin(),
+    //                [](const auto& segment) {
+    //                    return device::make_static_array<uint64_t, MAX_NDIMS>(segment.dims);
+    //                });
+    // const auto block_shapess{
+    //     device::make_static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS>(
+    //         block_shapes_vec)};
+
+    const auto local_mm = device::make_static_array<uint64_t, MAX_NDIMS>(in_local_mm);
+    const auto inputs   = device::make_static_array<T*, MAX_N_AGGR_BUFS>(unwrap(in_inputs));
+    const auto outputs  = device::make_static_array<T*, MAX_NPACK_SEGMENTS>(unwrap(in_outputs));
+
+    device::kernel_pack_batched<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(local_mm,
+                                                                          inputs,
+                                                                          block_shapes,
+                                                                          block_offsets,
+                                                                          outputs);
+    ERRCHK_CUDA_KERNEL();
+    cudaDeviceSynchronize();
+}
+
+template <typename T>
+void
+unpack_batched(const std::vector<ac::segment>& in_segments,
+               const std::vector<ac::mr::device_ptr<T>>& in_inputs,
+               const Shape& in_local_mm, //
+               std::vector<ac::mr::device_ptr<T>>& in_outputs)
+{
+    size_t max_count{0};
+    for (const auto& segment : in_segments) {
+        const size_t count{prod(segment.dims)};
+        max_count = count > max_count ? count : max_count;
+    }
+
+    const uint64_t block_nelems{max_count};
+    const uint64_t tpb{256};
+    const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
+
+    // std::vector<ac::static_array<uint64_t, MAX_NDIMS>> in_block_shapes;
+    // std::vector<ac::static_array<uint64_t, MAX_NDIMS>> in_block_offsets;
+    // for (const auto& seg : in_segments) {
+    //     in_block_shapes.push_back(device::make_static_array<uint64_t, MAX_NDIMS>(seg.dims));
+    //     in_block_offsets.push_back(device::make_static_array<uint64_t, MAX_NDIMS>(seg.offset));
+    // }
+    ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> block_shapes(
+        in_segments.size());
+    ac::static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS> block_offsets(
+        in_segments.size());
+    ERRCHK(in_segments.size() <= MAX_NPACK_SEGMENTS);
+    for (size_t i{0}; i < in_segments.size(); ++i) {
+        block_shapes[i]  = device::make_static_array<uint64_t, MAX_NDIMS>(in_segments[i].dims);
+        block_offsets[i] = device::make_static_array<uint64_t, MAX_NDIMS>(in_segments[i].offset);
+    }
+
+    // std::vector<ac::static_array<uint64_t, MAX_NDIMS>> block_shapes_vec;
+    // std::transform(in_segments.begin(),
+    //                in_segments.end(),
+    //                block_shapes_vec.begin(),
+    //                [](const auto& segment) {
+    //                    return device::make_static_array<uint64_t, MAX_NDIMS>(segment.dims);
+    //                });
+    // const auto block_shapess{
+    //     device::make_static_array<ac::static_array<uint64_t, MAX_NDIMS>, MAX_NPACK_SEGMENTS>(
+    //         block_shapes_vec)};
+
+    const auto local_mm = device::make_static_array<uint64_t, MAX_NDIMS>(in_local_mm);
+    const auto inputs   = device::make_static_array<T*, MAX_NPACK_SEGMENTS>(unwrap(in_inputs));
+    const auto outputs  = device::make_static_array<T*, MAX_N_AGGR_BUFS>(unwrap(in_outputs));
+
+    device::kernel_unpack_batched<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(block_shapes,
+                                                                            block_offsets,
+                                                                            inputs,
+                                                                            local_mm,
+                                                                            outputs);
+    ERRCHK_CUDA_KERNEL();
+    cudaDeviceSynchronize();
+}
+
+#define PACK_DTYPE double
+template void pack_batched<PACK_DTYPE>(const Shape& local_mm, //
+                                       const std::vector<ac::mr::device_ptr<PACK_DTYPE>>& inputs,
+                                       const std::vector<ac::segment>& segments,
+                                       std::vector<ac::mr::device_ptr<PACK_DTYPE>> outputs);
+
+template void unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>& segments,
+                                         const std::vector<ac::mr::device_ptr<PACK_DTYPE>>& inputs,
+                                         const Shape& local_mm, //
+                                         std::vector<ac::mr::device_ptr<PACK_DTYPE>>& outputs);
+#undef PACK_DTYPE
+
+#define PACK_DTYPE uint64_t
+template void pack_batched<PACK_DTYPE>(const Shape& local_mm, //
+                                       const std::vector<ac::mr::device_ptr<PACK_DTYPE>>& inputs,
+                                       const std::vector<ac::segment>& segments,
+                                       std::vector<ac::mr::device_ptr<PACK_DTYPE>> outputs);
+
+template void unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>& segments,
+                                         const std::vector<ac::mr::device_ptr<PACK_DTYPE>>& inputs,
+                                         const Shape& local_mm, //
+                                         std::vector<ac::mr::device_ptr<PACK_DTYPE>>& outputs);
 #undef PACK_DTYPE
 
 #endif

@@ -31,7 +31,7 @@ template <typename T, size_t N> class static_array {
         return data[i];
     }
 
-    static_assert(sizeof(T) * N <= 1024,
+    static_assert(sizeof(T) * N <= 2048,
                   "Warning: tried to stack-allocate an array larger than 1024 bytes.");
 
     // Default constructor (disabled)

@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-#include "pack.h"
+#include "pack_batched.h"
 #include "packet.h"
 #include "partition.h"
 
@@ -46,20 +46,12 @@ class AsyncHaloExchangeTask {
         }
     }
 
-    // Experimental
-    void pack_batched(const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
-    {
-        // TODO
-        // ac::pack_all(inputs, segments, packets);
-    }
-
     void launch_batched(const MPI_Comm& parent_comm,
                         const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
     {
-        // TODO
-        // pack_all(inputs, segments, packets);
+        pack_batched(inputs, packets);
         // for (auto& packet : packets)
-        //     packet->launch_experimental(parent_comm, inputs);
+        //     packet->launch_experimental(parent_comm);
     }
 
     // Experimental
