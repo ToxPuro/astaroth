@@ -202,7 +202,7 @@ main()
 
         // Pipelined
         halo_exchange.launch_pipelined(cart_comm, inputs);
-        halo_exchange.wait(inputs);
+        halo_exchange.wait_pipelined(inputs);
         migrate(din.buffer, hin.buffer);
 
         // Print mesh
