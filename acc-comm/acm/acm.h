@@ -70,13 +70,14 @@ ACM_Errorcode ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t n
 //                                             MPI_Request* recv_reqs);
 
 // ACM_Errorcode ACM_COMM_Halo_Exchange_Task_create(const size_t ndims, const uint64_t* local_mm,
-//                                                  const uint64_t* local_nn, const uint64_t* local_rr,
-//                                                  const size_t n_aggregate_buffers,
+//                                                  const uint64_t* local_nn, const uint64_t*
+//                                                  local_rr, const size_t n_aggregate_buffers,
 //                                                  ACM_COMM_Halo_Exchange_Task* task);
 
 // ACM_Errorcode ACM_COMM_Halo_Exchange_Task_destroy(ACM_COMM_Halo_Exchange_Task* task);
 
-// ACM_Errorcode ACM_COMM_Halo_Exchange_Task_launch(const MPI_Comm parent_comm, const size_t ninputs,
+// ACM_Errorcode ACM_COMM_Halo_Exchange_Task_launch(const MPI_Comm parent_comm, const size_t
+// ninputs,
 //                                                  const double* inputs[],
 //                                                  ACM_COMM_Halo_Exchange_Task* task);
 

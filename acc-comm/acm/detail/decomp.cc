@@ -135,7 +135,9 @@ hierarchical_to_linear(const Index& in_coords, const std::vector<Shape>& in_deco
 static uint64_t
 vecprod(const std::vector<uint64_t>& vec)
 {
-    return std::reduce(vec.begin(), vec.end(), static_cast<uint64_t>(1),
+    return std::reduce(vec.begin(),
+                       vec.end(),
+                       static_cast<uint64_t>(1),
                        std::multiplies<uint64_t>());
 }
 

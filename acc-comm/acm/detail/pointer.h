@@ -67,7 +67,9 @@ void
 copy(const base_ptr<T, MemoryResourceA> in, base_ptr<T, MemoryResourceB> out)
 {
     ERRCHK(in.size() <= out.size());
-    ERRCHK_CUDA_API(cudaMemcpy(out.data(), in.data(), in.size() * sizeof(T),
+    ERRCHK_CUDA_API(cudaMemcpy(out.data(),
+                               in.data(),
+                               in.size() * sizeof(T),
                                get_kind<MemoryResourceA, MemoryResourceB>()));
 }
 

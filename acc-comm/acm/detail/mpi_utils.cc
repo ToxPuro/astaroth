@@ -118,8 +118,12 @@ cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn)
     MPI_Comm cart_comm{MPI_COMM_NULL};
     MPIShape mpi_periods(ndims, 1); // Periodic in all dimensions
     int reorder{1}; // Enable reordering (but likely inop with most MPI implementations)
-    ERRCHK_MPI_API(MPI_Cart_create(parent_comm, as<int>(ndims), mpi_decomp.data(),
-                                   mpi_periods.data(), reorder, &cart_comm));
+    ERRCHK_MPI_API(MPI_Cart_create(parent_comm,
+                                   as<int>(ndims),
+                                   mpi_decomp.data(),
+                                   mpi_periods.data(),
+                                   reorder,
+                                   &cart_comm));
 
     // Can also add custom decomposition and rank reordering here instead:
     // int reorder{0};
@@ -143,9 +147,13 @@ subarray_create(const Shape& dims, const Shape& subdims, const Index& offset,
     MPIIndex mpi_offset{astaroth_to_mpi_format(offset)};
 
     MPI_Datatype subarray{MPI_DATATYPE_NULL};
-    ERRCHK_MPI_API(MPI_Type_create_subarray(as<int>(dims.size()), mpi_dims.data(),
-                                            mpi_subdims.data(), mpi_offset.data(), MPI_ORDER_C,
-                                            dtype, &subarray));
+    ERRCHK_MPI_API(MPI_Type_create_subarray(as<int>(dims.size()),
+                                            mpi_dims.data(),
+                                            mpi_subdims.data(),
+                                            mpi_offset.data(),
+                                            MPI_ORDER_C,
+                                            dtype,
+                                            &subarray));
     ERRCHK_MPI_API(MPI_Type_commit(&subarray));
     return subarray;
 }
@@ -283,7 +291,10 @@ get_decomposition(const MPI_Comm& cart_comm)
     MPIShape mpi_decomp(as<size_t>(mpi_ndims));
     MPIShape mpi_periods(as<size_t>(mpi_ndims));
     MPIIndex mpi_coords(as<size_t>(mpi_ndims));
-    ERRCHK_MPI_API(MPI_Cart_get(cart_comm, mpi_ndims, mpi_decomp.data(), mpi_periods.data(),
+    ERRCHK_MPI_API(MPI_Cart_get(cart_comm,
+                                mpi_ndims,
+                                mpi_decomp.data(),
+                                mpi_periods.data(),
                                 mpi_coords.data()));
     return mpi_to_astaroth_format(mpi_decomp);
 }
@@ -360,10 +371,14 @@ read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Sh
     MPI_Info info = ac::mpi::info_create();
 
     // Subarrays
-    MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims, in_mesh_subdims,
-                                                            in_file_offset, etype);
-    MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims, in_mesh_subdims,
-                                                            in_mesh_offset, etype);
+    MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims,
+                                                            in_mesh_subdims,
+                                                            in_file_offset,
+                                                            etype);
+    MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims,
+                                                           in_mesh_subdims,
+                                                           in_mesh_offset,
+                                                           etype);
 
     // File
     MPI_File file{MPI_FILE_NULL};
@@ -403,10 +418,14 @@ write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const S
     MPI_Info info = ac::mpi::info_create();
 
     // Subarrays
-    MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims, in_mesh_subdims,
-                                                            in_file_offset, etype);
-    MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims, in_mesh_subdims,
-                                                            in_mesh_offset, etype);
+    MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims,
+                                                            in_mesh_subdims,
+                                                            in_file_offset,
+                                                            etype);
+    MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims,
+                                                           in_mesh_subdims,
+                                                           in_mesh_offset,
+                                                           etype);
 
     // File
     MPI_File file{MPI_FILE_NULL};
@@ -435,8 +454,15 @@ read_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
     const Index global_nn_offset{coords * local_nn};
 
     const Shape local_mm{as<uint64_t>(2) * local_nn_offset + local_nn};
-    read_collective(parent_comm, etype, global_nn, global_nn_offset, local_mm, local_nn,
-                    local_nn_offset, path, data);
+    read_collective(parent_comm,
+                    etype,
+                    global_nn,
+                    global_nn_offset,
+                    local_mm,
+                    local_nn,
+                    local_nn_offset,
+                    path,
+                    data);
 }
 
 void
@@ -451,8 +477,15 @@ write_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
     const Index global_nn_offset{coords * local_nn};
 
     const Shape local_mm{as<uint64_t>(2) * local_nn_offset + local_nn};
-    write_collective(parent_comm, etype, global_nn, global_nn_offset, local_mm, local_nn,
-                     local_nn_offset, data, path);
+    write_collective(parent_comm,
+                     etype,
+                     global_nn,
+                     global_nn_offset,
+                     local_mm,
+                     local_nn,
+                     local_nn_offset,
+                     data,
+                     path);
 }
 
 } // namespace ac::mpi

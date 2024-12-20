@@ -49,8 +49,10 @@ void
 print_demangled(const T& obj)
 {
     int status;
-    std::unique_ptr<char, void (*)(char*)> res{abi::__cxa_demangle(typeid(obj).name(), nullptr,
-                                                                   nullptr, &status),
+    std::unique_ptr<char, void (*)(char*)> res{abi::__cxa_demangle(typeid(obj).name(),
+                                                                   nullptr,
+                                                                   nullptr,
+                                                                   &status),
                                                [](char* ptr) { std::free(ptr); }};
     std::cout << "Type: " << (status == 0 ? res.get() : typeid(obj).name()) << std::endl;
 }

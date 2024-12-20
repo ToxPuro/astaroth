@@ -18,7 +18,10 @@ errchk_print_mpi_api_error(const int errorcode, const char* function, const char
     do {                                                                                           \
         const int _tmp_mpi_api_errcode_ = (errcode);                                               \
         if (_tmp_mpi_api_errcode_ != MPI_SUCCESS) {                                                \
-            errchk_print_mpi_api_error(_tmp_mpi_api_errcode_, __func__, __FILE__, __LINE__,        \
+            errchk_print_mpi_api_error(_tmp_mpi_api_errcode_,                                      \
+                                       __func__,                                                   \
+                                       __FILE__,                                                   \
+                                       __LINE__,                                                   \
                                        #errcode);                                                  \
             errchk_print_stacktrace();                                                             \
             MPI_Abort(MPI_COMM_WORLD, -1);                                                         \

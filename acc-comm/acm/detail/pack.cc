@@ -21,7 +21,10 @@ test_pack(void)
     Shape block_offset{rr};
     std::vector<ac::mr::device_ptr<uint64_t>> inputs{
         ac::mr::device_ptr<uint64_t>{din.size(), din.data()}};
-    pack(mm, block_shape, block_offset, inputs,
+    pack(mm,
+         block_shape,
+         block_offset,
+         inputs,
          ac::mr::device_ptr<uint64_t>{dout.size(), dout.data()});
     migrate(dout, hout);
     // ac::copy(dout.begin(), dout.end(), hout.begin());

@@ -22,8 +22,8 @@ test_memory_resource()
                                       pinned_host_memory_resource::alloc(10 * sizeof(double))),
                                   pinned_host_memory_resource::dealloc}};
 
-    using pinned_write_combined_host_unique_ptr = std::unique_ptr<
-        double, decltype(&pinned_write_combined_host_memory_resource::dealloc)>;
+    using pinned_write_combined_host_unique_ptr = std::
+        unique_ptr<double, decltype(&pinned_write_combined_host_memory_resource::dealloc)>;
     auto d{
         pinned_write_combined_host_unique_ptr{static_cast<double*>(
                                                   pinned_write_combined_host_memory_resource::alloc(

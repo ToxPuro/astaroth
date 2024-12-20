@@ -100,8 +100,12 @@ fill(const T& fill_value, const ac::vector<uint64_t>& subdims, const ac::vector<
      ac::ndbuffer<T, ac::mr::host_memory_resource>& ndbuf)
 {
     ERRCHK(offset + subdims <= ndbuf.shape);
-    ndbuffer_fill<T>(fill_value, ndbuf.shape.size(), ndbuf.shape.data(), subdims.data(),
-                     offset.data(), ndbuf.buffer.data());
+    ndbuffer_fill<T>(fill_value,
+                     ndbuf.shape.size(),
+                     ndbuf.shape.data(),
+                     subdims.data(),
+                     offset.data(),
+                     ndbuf.buffer.data());
 }
 
 void test_ndbuffer(void);
