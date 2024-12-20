@@ -3,20 +3,10 @@
 
 #include <numeric>
 
+#include "convert.h"
 #include "ndbuffer.h"
 #include <algorithm>
 #include <memory>
-
-class TestClass {
-  private:
-    std::shared_ptr<int> resource;
-
-  public:
-    TestClass(const size_t count)
-        : resource{std::make_shared<int>(count)}
-    {
-    }
-};
 
 void
 test_pack(void)
@@ -68,47 +58,11 @@ test_pack(void)
         // std::cout << *d[1] << std::endl;
         // std::cout << "-----------------" << std::endl;
     }
-    // {
-    //     const size_t count{10};
-    //     const size_t rr{1};
-    //     ac::buffer<uint64_t, ac::mr::host_memory_resource> hin(count);
-    //     ac::buffer<uint64_t, ac::mr::device_memory_resource> din(count);
-    //     ac::buffer<uint64_t, ac::mr::device_memory_resource> din2(count);
-    //     ac::buffer<uint64_t, ac::mr::device_memory_resource> dout2(count - 2 * rr);
-    //     ac::buffer<uint64_t, ac::mr::device_memory_resource> dout(count - 2 * rr);
-    //     ac::buffer<uint64_t, ac::mr::host_memory_resource> hout(count - 2 * rr);
-    //     std::iota(hin.begin(), hin.end(), 0);
-    //     std::fill(hout.begin(), hout.end(), 0);
-    //     // ac::copy(hin.begin(), hin.end(), din.begin());
-    //     migrate(hin, din);
-
-    //     Shape mm{count};
-    //     Shape block_shape{count - 2 * rr};
-    //     Shape block_offset{rr};
-    //     std::vector<ac::mr::device_ptr<uint64_t>> inputs{
-    //         ac::mr::device_ptr<uint64_t>{din.size(), din.data()}};
-
-    //     auto output{std::vector<ac::mr::device_ptr<uint64_t>>{
-    //         ac::mr::device_ptr<uint64_t>{dout.size(), dout.data()}}};
-    //     ac::segment segment{block_shape, block_offset};
-    //     pack_batched(mm, inputs, std::vector<ac::segment>{segment}, output);
-    //     migrate(dout, hout);
-    //     // ac::copy(dout.begin(), dout.end(), hout.begin());
-
-    //     // hout.display();
-    //     ERRCHK(hout[0] == 1);
-    //     ERRCHK(hout[1] == 2);
-    //     ERRCHK(hout[2] == 3);
-    //     ERRCHK(hout[3] == 4);
-    //     ERRCHK(hout[4] == 5);
-    //     ERRCHK(hout[5] == 6);
-    //     ERRCHK(hout[6] == 7);
-    //     ERRCHK(hout[7] == 8);
-    // }
 
     {
-        using device_buffer = ac::ndbuffer<uint64_t, ac::mr::device_memory_resource>;
-        using host_buffer   = ac::ndbuffer<uint64_t, ac::mr::host_memory_resource>;
+        using device_buffer   = ac::buffer<uint64_t, ac::mr::device_memory_resource>;
+        using device_ndbuffer = ac::ndbuffer<uint64_t, ac::mr::device_memory_resource>;
+        using host_buffer     = ac::ndbuffer<uint64_t, ac::mr::host_memory_resource>;
 
         const Shape nn{10};
         const Shape rr{2};
@@ -118,23 +72,59 @@ test_pack(void)
 
         constexpr size_t FIELD_COUNT(4);
         std::vector<host_buffer> hbuffers;
-        std::vector<device_buffer> dbuffers;
+        std::vector<device_ndbuffer> dbuffers;
         for (size_t i{0}; i < FIELD_COUNT; ++i) {
-            hbuffers.push_back(host_buffer{mm});
-            std::iota(hbuffers[i].begin(), hbuffers[i].end(), 0);
+            hbuffers.emplace_back(mm);
+            std::iota(hbuffers[i].begin(), hbuffers[i].end(), i * prod(mm));
             hbuffers[i].display();
 
-            dbuffers.push_back(device_buffer{mm});
+            dbuffers.emplace_back(mm);
             migrate(hbuffers[i].buffer, dbuffers[i].buffer);
         }
 
         std::vector<ac::segment> segments;
-        segments.push_back(ac::segment{rr, Index{0}});
-        segments.push_back(ac::segment{rr, mm - rr});
+        segments.emplace_back(rr, Index{0});
+        segments.emplace_back(nn, rr);
+        segments.emplace_back(rr, mm - rr);
+
+        std::vector<device_buffer> segment_buffers;
+        for (size_t i{0}; i < segments.size(); ++i)
+            segment_buffers.emplace_back(dbuffers.size() * prod(segments[i].dims));
+
+        pack_batched_host(mm, ac::unwrap(hbuffers), segments, ac::unwrap(segment_buffers));
+
+        for (const auto& buf : segment_buffers)
+            buf.display();
+
+        std::vector<uint64_t> lmodel{0, 1, 14, 15, 28, 29, 42, 43};
+        std::vector<uint64_t> cmodel{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 16, 17, 18, 19,
+                                     20, 21, 22, 23, 24, 25, 30, 31, 32, 33, 34, 35, 36, 37,
+                                     38, 39, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53};
+        std::vector<uint64_t> rmodel{12, 13, 26, 27, 40, 41, 54, 55};
+
+        ERRCHK(segment_buffers[0].size() == lmodel.size());
+        for (size_t i{0}; i < segment_buffers[0].size(); ++i)
+            ERRCHK(segment_buffers[0][i] == lmodel[i]);
+
+        ERRCHK(segment_buffers[1].size() == cmodel.size());
+        for (size_t i{0}; i < segment_buffers[0].size(); ++i)
+            ERRCHK(segment_buffers[1][i] == cmodel[i]);
+
+        ERRCHK(segment_buffers[2].size() == rmodel.size());
+        for (size_t i{0}; i < segment_buffers[0].size(); ++i)
+            ERRCHK(segment_buffers[2][i] == rmodel[i]);
+
+        for (auto& buf : hbuffers)
+            std::fill_n(buf.begin(), buf.size(), 0);
+
+        unpack_batched_host(segments, ac::unwrap(segment_buffers), mm, ac::unwrap(hbuffers));
+
+        for (size_t i{0}; i < hbuffers.size(); ++i) {
+            hbuffers[i].display();
+            for (size_t j{0}; j < hbuffers[i].buffer.size(); ++j)
+                ERRCHK(hbuffers[i].buffer[j] == j + i * hbuffers[i].buffer.size());
+        }
 
         std::cout << "Complete" << std::endl;
-        // vec.push_back(TestClass{10});
-        // std::vector<ac::buffer<uint64_t, ac::mr::host_memory_resource>> hbuffers{
-        //     ac::buffer<uint64_t, ac::mr::host_memory_resource>{10}};
     }
 }
