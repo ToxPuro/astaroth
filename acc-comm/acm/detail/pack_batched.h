@@ -73,7 +73,7 @@ template <typename T>
 void
 pack_batched(const Shape& local_mm, //
              const std::vector<ac::mr::host_ptr<T>>& inputs,
-             const std::vector<ac::segment>& segments, std::vector<ac::mr::host_ptr<T>>&& outputs)
+             const std::vector<ac::segment>& segments, std::vector<ac::mr::host_ptr<T>> outputs)
 {
     ERRCHK(segments.size() == outputs.size());
 
@@ -108,7 +108,7 @@ unpack_batched(const std::vector<ac::segment>& segments,
                const Shape& local_mm, //
                std::vector<ac::mr::host_ptr<T>>& outputs)
 {
-    ERRCHK(segments.size() == outputs.size());
+    ERRCHK(segments.size() == inputs.size());
     for (uint64_t segid{0}; segid < segments.size(); ++segid) {
 
         const auto block_shape{segments[segid].dims};

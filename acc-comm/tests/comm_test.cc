@@ -199,8 +199,22 @@ main()
                                                                                  rr, 1};
         std::vector<ac::mr::device_ptr<UserType>> inputs{
             ac::mr::device_ptr<UserType>{din.size(), din.data()}};
+
+        // Pipelined
         halo_exchange.launch_pipelined(cart_comm, inputs);
         halo_exchange.wait(inputs);
+        migrate(din.buffer, hin.buffer);
+
+        // Print mesh
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        PRINT_LOG("Should be properly exchanged");
+        hin.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+
+        // Batched
+        WARNING_DESC("Note: batched halo_exchange does not work yet, try without pipelined exchange first");
+        halo_exchange.launch_batched(cart_comm, inputs);
+        halo_exchange.wait_batched(inputs);
         migrate(din.buffer, hin.buffer);
 
         // Print mesh

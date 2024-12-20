@@ -5,7 +5,7 @@
 namespace ac::mr {
 
 template <typename T, typename MemoryResource> class base_ptr {
-  protected:
+  private:
     const size_t _size;
     T* _data;
 

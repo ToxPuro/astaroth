@@ -11,6 +11,8 @@
 
 #include <mpi.h>
 
+#include "convert.h" // Experimental
+
 template <typename T, typename MemoryResource> class Packet {
 
   private:
@@ -40,6 +42,10 @@ template <typename T, typename MemoryResource> class Packet {
           recv_buffer{n_aggregate_buffers * prod(in_segment.dims)}
     {
     }
+
+    // Experimental
+    ac::mr::base_ptr<T, MemoryResource> get_send_buffer_ptr() { return ac::ptr_cast(send_buffer); }
+    ac::mr::base_ptr<T, MemoryResource> get_recv_buffer_ptr() { return ac::ptr_cast(recv_buffer); }
 
     ~Packet()
     {
@@ -143,6 +149,69 @@ template <typename T, typename MemoryResource> class Packet {
     }
 
     bool complete() const { return !in_progress; };
+
+    // Experimental
+    void launch_batched(const MPI_Comm& parent_comm)
+    {
+        ERRCHK_MPI(!in_progress);
+        in_progress = true;
+
+        // Communicator
+        ERRCHK_MPI(comm == MPI_COMM_NULL);
+        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+
+        // Find the direction and neighbors of the segment
+        Index send_offset{((local_nn + segment.offset - local_rr) % local_nn) + local_rr};
+
+        auto recv_direction{ac::mpi::get_direction(segment.offset, local_nn, local_rr)};
+        const int recv_neighbor{ac::mpi::get_neighbor(comm, recv_direction)};
+        const int send_neighbor{ac::mpi::get_neighbor(comm, -recv_direction)};
+
+        // Calculate the bytes to send
+        // const size_t count{inputs.size() * prod(segment.dims)};
+        // ERRCHK_MPI(count <= send_buffer.size());
+        // ERRCHK_MPI(count <= recv_buffer.size());
+        const size_t count{send_buffer.size()};
+
+        // Post recv
+        const int tag{0};
+        ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(),
+                                 as<int>(count),
+                                 ac::mpi::get_dtype<T>(),
+                                 recv_neighbor,
+                                 tag,
+                                 comm,
+                                 &recv_req));
+
+        // Post send
+
+        ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_Isend(send_buffer.data(),
+                                 as<int>(count),
+                                 ac::mpi::get_dtype<T>(),
+                                 send_neighbor,
+                                 tag,
+                                 comm,
+                                 &send_req));
+    }
+
+    void wait_batched()
+    {
+        ERRCHK_MPI(in_progress);
+        ERRCHK_MPI_API(MPI_Wait(&recv_req, MPI_STATUS_IGNORE));
+
+        ERRCHK_MPI_API(MPI_Wait(&send_req, MPI_STATUS_IGNORE));
+        ERRCHK_MPI_API(MPI_Comm_free(&comm));
+
+        // Check that the MPI implementation reset the resources
+        ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI(comm == MPI_COMM_NULL);
+
+        // Complete
+        in_progress = false;
+    }
 
     friend std::ostream& operator<<(std::ostream& os, const Packet<T, MemoryResource>& obj)
     {
