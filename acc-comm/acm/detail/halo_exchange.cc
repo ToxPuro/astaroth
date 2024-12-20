@@ -19,4 +19,5 @@ test_halo_exchange(void)
     // }
 
     // NdArray<int, ac::mr::host_memory_resource> hin()
+    WARNING_DESC("Not implemented");
 }

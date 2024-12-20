@@ -58,7 +58,7 @@ template <typename T, typename MemoryResource> class Packet {
             ERRCHK_MPI_API(MPI_Comm_free(&comm));
     }
 
-    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
+    void launch_pipelined_pack_comm(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
     {
         ERRCHK_MPI(!in_progress);
         in_progress = true;
