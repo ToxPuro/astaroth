@@ -4,7 +4,6 @@
 #include <memory>
 #include <vector>
 
-#include "pack_batched.h"
 #include "packet.h"
 #include "partition.h"
 
@@ -15,22 +14,17 @@ class AsyncHaloExchangeTask {
   private:
     std::vector<std::unique_ptr<Packet<T, MemoryResource>>> packets{};
 
-    Shape _local_mm;                   // Experimental
-    std::vector<ac::segment> segments; // Experimental
-
   public:
     AsyncHaloExchangeTask() = default;
 
     AsyncHaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
                           const size_t n_aggregate_buffers)
-        : _local_mm{local_mm}
-
     {
         // Must be larger than the boundary area to avoid boundary artifacts
         ERRCHK_MPI(local_nn >= local_rr);
 
         // Partition the mesh
-        segments = partition(local_mm, local_nn, local_rr);
+        auto segments{partition(local_mm, local_nn, local_rr)};
 
         // Prune the segment containing the computational domain
         auto it{std::remove_if(segments.begin(),
@@ -50,41 +44,14 @@ class AsyncHaloExchangeTask {
         }
     }
 
-    // Experimental
-    void launch_batched(const MPI_Comm& parent_comm,
-                        const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
-    {
-        std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs;
-        for (const auto& packet : packets)
-            outputs.push_back(packet->get_send_buffer_ptr());
-
-        pack_batched(_local_mm, inputs, segments, outputs);
-
-        for (auto& packet : packets)
-            packet->launch_batched(parent_comm);
-    }
-
-    // Experimental
-    void wait_batched(std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs)
+    void launch(const MPI_Comm& parent_comm,
+                const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
     {
         for (auto& packet : packets)
-            packet->wait_batched();
-
-        std::vector<ac::mr::base_ptr<T, MemoryResource>> inputs;
-        for (const auto& packet : packets)
-            inputs.push_back(packet->get_recv_buffer_ptr());
-
-        unpack_batched(segments, inputs, _local_mm, outputs);
+            packet->launch(parent_comm, inputs);
     }
 
-    void launch_pipelined(const MPI_Comm& parent_comm,
-                          const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
-    {
-        for (auto& packet : packets)
-            packet->launch_pipelined(parent_comm, inputs);
-    }
-
-    void wait_pipelined(std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs)
+    void wait(std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         while (!complete()) {

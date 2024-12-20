@@ -1,12 +1,5 @@
 #pragma once
 
-#include "buffer.h"
-#include "ndbuffer.h"
-#include "static_array.h"
-#include "vector.h"
-
-#include "pointer.h"
-
 namespace ac {
 
 template <typename Container, typename T = typename Container::value_type>
@@ -27,6 +20,7 @@ unwrap(Container& in)
     return out;
 }
 
+#if 0
 template <typename T, typename MemoryResource>
 auto
 ptr_cast(const ac::ndbuffer<T, MemoryResource>& in)
@@ -94,5 +88,6 @@ ptr_cast(std::vector<ac::buffer<T, MemoryResource>>& in)
         out.push_back(ptr_cast(elem));
     return out;
 }
+#endif
 
 } // namespace ac
