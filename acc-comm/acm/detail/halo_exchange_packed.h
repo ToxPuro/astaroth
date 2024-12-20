@@ -84,7 +84,7 @@ class AsyncHaloExchangeTask {
             packet->launch_pipelined(parent_comm, inputs);
     }
 
-    void wait(std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs)
+    void wait_pipelined(std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         while (!complete()) {
