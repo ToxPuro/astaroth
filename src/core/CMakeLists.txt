@@ -4,10 +4,8 @@ if(RUNTIME_COMPILATION)
   add_library(astaroth_core update_params.cc decomposition.cc)
   target_link_libraries(astaroth_core PUBLIC acc-runtime-headers dl acc_runtime_compiler)
   if(MPI_ENABLED)
-    target_link_libraries(astaroth_core
-    PUBLIC
-    MPI::MPI_C
-    )
+    find_package(MPI REQUIRED COMPONENTS C)
+    target_link_libraries(astaroth_core PUBLIC MPI::MPI_C)
       if(DEFINED ENV{CRAYPE_VERSION})
           # Workaround due to hip/cmake/cray PE issue with GPU RDMA
           # If we're on a Cray machine, link against the GTL library
