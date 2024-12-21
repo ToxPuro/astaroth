@@ -78,20 +78,20 @@ size_t acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims);
 AcReal acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction,
                           const VertexBufferHandle vtxbuf, const Volume start, const Volume end,
 			  const int scratchpad_index,
-                          const size_t scratchpad_size, VertexBufferArray vba);
+                          VertexBufferArray vba);
 
 /** */
 AcReal acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const Volume start,
                          const Volume end, const Field3 vec, VertexBufferArray vba,
-			 const int scratchpad_index,
-                         const size_t scratchpad_size);
+			 const int scratchpad_index
+                         );
 
 /** */
 AcReal
 acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, const Volume start,
                       const Volume end, const Field4 vtxbufs,VertexBufferArray vba,
-		      const int scratchpad_index,
-                      const size_t scratchpad_size);
+		      const int scratchpad_index
+                   );
 
 /** */
 AcResult acKernelVolumeCopy(const cudaStream_t stream,                                    //

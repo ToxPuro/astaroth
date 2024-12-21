@@ -237,6 +237,24 @@ typedef struct {
 
   typedef struct 
   {
+	  AcReal** src;
+	  AcReal** cub_tmp;
+	  size_t* cub_tmp_size;
+	  size_t* buffer_size;
+	  AcReal* res;
+  } AcRealScalarReduceBuffer;
+
+  typedef struct 
+  {
+	  int** src;
+	  int** cub_tmp;
+	  size_t* cub_tmp_size;
+	  size_t* buffer_size;
+	  int* res;
+  } AcIntScalarReduceBuffer;
+
+  typedef struct 
+  {
 	  AcBuffer src;
 	  AcBuffer transposed;
 	  AcMeshOrder mem_order;
@@ -245,32 +263,26 @@ typedef struct {
   } AcReduceBuffer;
 
 
+
   typedef struct {
     //Auxiliary metadata
     size_t bytes;
     AcMeshDims dims;
-    size_t scratchpad_size;
     //All kernel parameters and memory allocated on the device
     DeviceVertexBufferArray on_device;
     size_t profile_count;
 
-    AcReal** reduce_cub_tmp_real[NUM_REAL_SCRATCHPADS];
-    int**    reduce_cub_tmp_int[NUM_INT_OUTPUTS+1];
+    //AcReal** reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+    //int** reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
 
+    //AcReal** reduce_cub_tmp_real[NUM_REAL_SCRATCHPADS];
+    //int**    reduce_cub_tmp_int[NUM_INT_OUTPUTS+1];
 
-    AcReal* reduce_res_real[NUM_REAL_SCRATCHPADS];
-    int*    reduce_res_int[NUM_INT_OUTPUTS+1];
-
-    size_t* reduce_cub_tmp_size_real[NUM_REAL_SCRATCHPADS];
-    size_t* reduce_cub_tmp_size_int[NUM_INT_OUTPUTS+1];
-
-    AcReal** reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-    int** reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
-
-    size_t* reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
-    size_t* reduce_scratchpads_size_int[NUM_INT_OUTPUTS+1];
+    //size_t* reduce_cub_tmp_size_real[NUM_REAL_SCRATCHPADS];
+    //size_t* reduce_cub_tmp_size_int[NUM_INT_OUTPUTS+1];
+    AcRealScalarReduceBuffer reduce_buffer_real[NUM_REAL_OUTPUTS+1];
+    AcIntScalarReduceBuffer  reduce_buffer_int[NUM_INT_OUTPUTS];
     AcScratchpadStates* scratchpad_states;
-
     AcReduceBuffer profile_reduce_buffers[NUM_PROFILES];
 
   } VertexBufferArray;
@@ -333,9 +345,8 @@ typedef struct
         dim3 tpb;
 } AcAutotuneMeasurement;
 
-typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasurement);
-
 #endif
+typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasurement);
   #ifdef __cplusplus
   extern "C" {
   #endif
@@ -352,6 +363,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(AcResult, acKernelFlushInt,(const cudaStream_t stream, int* arr, const size_t n, const int value));
 
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
+  FUNC_DEFINE(size_t,acGetRealScratchpadSize(const size_t i));
 
   FUNC_DEFINE(AcMeshOrder, acGetMeshOrderForProfile,(const AcProfileType type));
   FUNC_DEFINE(size3_t, acGetProfileReduceScratchPadDims,(const int profile, const AcMeshDims dims));
@@ -389,7 +401,6 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(int, acGetKernelReduceScratchPadSize,(const AcKernel kernel));
 
   FUNC_DEFINE(int, acGetKernelReduceScratchPadMinSize,());
-  FUNC_DEFINE(size_t,  acGetSmallestRealReduceScratchPadSizeBytes,());
 
 #if AC_RUNTIME_COMPILATION
   static AcResult __attribute__((unused)) acLoadRunTime()
@@ -502,10 +513,10 @@ AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
                            AcReal* d_out, AcReal** tmp, size_t* tmp_size);
 
 AcResult
-acReduce(const cudaStream_t stream, const AcReal* d_in, const size_t count, AcReal* d_out,const AcReduceOp, AcReal** tmp_buffer, size_t* tmp_buffer_size);
+acReduce(const cudaStream_t stream, const AcReduceOp, AcRealScalarReduceBuffer, const size_t count);
 
 AcResult
-acReduceInt(const cudaStream_t stream, const int* d_in, const size_t count, int* d_out,const AcReduceOp, int** tmp_buffer,size_t* tmp_buffer_size);
+acReduceInt(const cudaStream_t stream, const AcReduceOp, AcIntScalarReduceBuffer, const size_t count);
 
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
                            AcReal* array);

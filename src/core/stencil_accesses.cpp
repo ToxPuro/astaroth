@@ -205,6 +205,14 @@ std::vector<KernelReduceOutput> reduce_outputs{};
 void
 reduce_sum_real(const bool&, const AcReal, const AcRealOutputParam dst)
 {
+	if constexpr (NUM_REAL_OUTPUTS == 0) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"No real outputs but reduce_sum_real called!\n");
+		fprintf(stderr,"No real outputs but reduce_sum_real called!\n");
+		fprintf(stderr,"No real outputs but reduce_sum_real called!\n");
+		exit(EXIT_FAILURE);
+	}
 	if(reduced_reals[dst]) 
 	{
 		fprintf(stderr,"\nFATAL AC ERROR:\n");
@@ -220,6 +228,14 @@ reduce_sum_real(const bool&, const AcReal, const AcRealOutputParam dst)
 void
 reduce_max_real(const bool&, const AcReal, const AcRealOutputParam dst)
 {
+	if constexpr (NUM_REAL_OUTPUTS == 0) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"No real outputs but reduce_max_real called!\n");
+		fprintf(stderr,"No real outputs but reduce_max_real called!\n");
+		fprintf(stderr,"No real outputs but reduce_max_real called!\n");
+		exit(EXIT_FAILURE);
+	}
 	if(reduced_reals[dst]) 
 	{
 		fprintf(stderr,"\nFATAL AC ERROR:\n");
@@ -235,6 +251,14 @@ reduce_max_real(const bool&, const AcReal, const AcRealOutputParam dst)
 void
 reduce_min_real(const bool&, const AcReal, const AcRealOutputParam dst)
 {
+	if constexpr (NUM_REAL_OUTPUTS == 0) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"No real outputs but reduce_min_real called!\n");
+		fprintf(stderr,"No real outputs but reduce_min_real called!\n");
+		fprintf(stderr,"No real outputs but reduce_min_real called!\n");
+		exit(EXIT_FAILURE);
+	}
 	if(reduced_reals[dst]) 
 	{
 		fprintf(stderr,"\nFATAL AC ERROR:\n");
@@ -250,6 +274,14 @@ reduce_min_real(const bool&, const AcReal, const AcRealOutputParam dst)
 void
 reduce_sum_int(const bool&, const AcReal, const AcIntOutputParam dst)
 {
+	if constexpr (NUM_REAL_OUTPUTS == 0) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"No real outputs but reduce_sum_int called!\n");
+		fprintf(stderr,"No real outputs but reduce_sum_int called!\n");
+		fprintf(stderr,"No real outputs but reduce_sum_int called!\n");
+		exit(EXIT_FAILURE);
+	}
 	if(reduced_ints[dst]) 
 	{
 		fprintf(stderr,"\nFATAL AC ERROR:\n");
@@ -265,6 +297,14 @@ reduce_sum_int(const bool&, const AcReal, const AcIntOutputParam dst)
 void
 reduce_max_int(const bool&, const AcReal, const AcIntOutputParam dst)
 {
+	if constexpr (NUM_REAL_OUTPUTS == 0) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"No real outputs but reduce_max_int called!\n");
+		fprintf(stderr,"No real outputs but reduce_max_int called!\n");
+		fprintf(stderr,"No real outputs but reduce_max_int called!\n");
+		exit(EXIT_FAILURE);
+	}
 	if(reduced_ints[dst]) 
 	{
 		fprintf(stderr,"\nFATAL AC ERROR:\n");
@@ -280,6 +320,14 @@ reduce_max_int(const bool&, const AcReal, const AcIntOutputParam dst)
 void
 reduce_min_int(const bool&, const AcReal, const AcIntOutputParam dst)
 {
+	if constexpr (NUM_REAL_OUTPUTS == 0) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"No real outputs but reduce_min_int called!\n");
+		fprintf(stderr,"No real outputs but reduce_min_int called!\n");
+		fprintf(stderr,"No real outputs but reduce_min_int called!\n");
+		exit(EXIT_FAILURE);
+	}
 	if(reduced_ints[dst]) 
 	{
 		fprintf(stderr,"\nFATAL AC ERROR:\n");
@@ -295,8 +343,15 @@ reduce_min_int(const bool&, const AcReal, const AcIntOutputParam dst)
 void
 reduce_prof(const bool&, const AcReal, const Profile dst)
 {
-	if constexpr (NUM_PROFILES != 0)
-		reduced_profiles[(int)dst] = REDUCE_SUM;
+	if constexpr (NUM_PROFILES == 0) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"No profiles but trying to do a profile reduction!\n");
+		fprintf(stderr,"No profiles but trying to do a profile reduction!\n");
+		fprintf(stderr,"No profiles but trying to do a profile reduction!\n");
+		exit(EXIT_FAILURE);
+	}
+	reduced_profiles[(int)dst] = REDUCE_SUM;
 	reduce_outputs.push_back({(int)dst,AC_PROF_TYPE, REDUCE_SUM,current_kernel});
 }
 
@@ -659,6 +714,16 @@ print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N])
         fprintf(fp, "%d,", arr[k][j]);
     fprintf(fp,"},");
   }
+  fprintf(fp, "};");
+}
+
+void
+print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][0])
+{
+  (void)arr;
+  fprintf(fp,
+          "static int %s[NUM_KERNELS][%d] "
+          "__attribute__((unused)) =  {",name,0);
   fprintf(fp, "};");
 }
 

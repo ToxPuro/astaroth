@@ -629,9 +629,11 @@ main(int argc, char* argv[])
     }
     finalized = true;
     const Volume nn = acGetLocalNN(info);
+
     AcReal full_size =    (AcReal)nn.x*nn.y*nn.z*sizeof(AcReal);
-    AcReal reduced_size = (AcReal)acGetSmallestRealReduceScratchPadSizeBytes();
+    AcReal reduced_size = (AcReal)acGetRealScratchpadSize(AC_min_val);
     printf("Saving a factor of %14e memory for scratchpads for scalar reductions\n",full_size/reduced_size);
+
     acStoreConfig(acDeviceGetLocalConfig(acGridGetDevice()), "reduce-test.conf");
 
     acGridQuit();
