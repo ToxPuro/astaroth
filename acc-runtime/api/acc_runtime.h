@@ -326,9 +326,8 @@ typedef struct {
 #endif
 
 #ifndef FUNC_DEFINE
-#define FUNC_DEFINE(return_type, func_name, ...) static return_type (*func_name) __VA_ARGS__
+#define FUNC_DEFINE(return_type, func_name, ...) static UNUSED return_type (*func_name) __VA_ARGS__
 #endif
-
 #else
 
 #ifndef FUNC_DEFINE
@@ -339,13 +338,14 @@ typedef struct {
 #define BASE_FUNC_NAME(func_name) func_name
 #endif
 
+#endif
+
 typedef struct
 {
         float time;
         dim3 tpb;
 } AcAutotuneMeasurement;
 
-#endif
 typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasurement);
   #ifdef __cplusplus
   extern "C" {
@@ -354,7 +354,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   #include "user_declarations.h"
 
 #if AC_MPI_ENABLED
-   FUNC_DEFINE(AcResult, acInitializeRuntimeMPI, (const int grid_pid, const int nprocs, AcMeasurementGatherFunc));
+   FUNC_DEFINE(AcResult, acInitializeRuntimeMPI,(const int grid_pid, const int nprocs, AcMeasurementGatherFunc));
 #endif
 
   FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream));
@@ -363,7 +363,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(AcResult, acKernelFlushInt,(const cudaStream_t stream, int* arr, const size_t n, const int value));
 
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
-  FUNC_DEFINE(size_t,acGetRealScratchpadSize(const size_t i));
+  FUNC_DEFINE(size_t,acGetRealScratchpadSize,(const size_t i));
 
   FUNC_DEFINE(AcMeshOrder, acGetMeshOrderForProfile,(const AcProfileType type));
   FUNC_DEFINE(size3_t, acGetProfileReduceScratchPadDims,(const int profile, const AcMeshDims dims));

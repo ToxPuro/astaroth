@@ -47,7 +47,7 @@ typedef struct {
 #if AC_RUNTIME_COMPILATION
 
 #ifndef FUNC_DEFINE
-#define FUNC_DEFINE(return_type, func_name, ...) static return_type (*func_name) __VA_ARGS__
+#define FUNC_DEFINE(return_type, func_name, ...) static UNUSED return_type (*func_name) __VA_ARGS__
 #endif
 
 #else
@@ -118,38 +118,22 @@ static AcLibHandle __attribute__((unused)) acLoadUtils()
     		fprintf(stderr,"%s","Fatal error was not able to load Astaroth utils\n"); 
 		exit(EXIT_FAILURE);
 	}
-	*(void**)(&acHostVertexBufferSet) = dlsym(handle,"acHostVertexBufferSet");
-	if(!acHostVertexBufferSet) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostVertexBufferSet");
-	*(void**)(&acHostMeshSet) = dlsym(handle,"acHostMeshSet");
-	if(!acHostMeshSet) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshSet");
-	*(void**)(&acHostMeshApplyPeriodicBounds) = dlsym(handle,"acHostMeshApplyPeriodicBounds");
-	if(!acHostMeshApplyPeriodicBounds) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshApplyPeriodicBounds");
-	*(void**)(&acHostMeshApplyConstantBounds) = dlsym(handle,"acHostMeshApplyConstantBounds");
-	if(!acHostMeshApplyConstantBounds) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshApplyConstantBounds");
-	*(void**)(&acHostMeshClear) = dlsym(handle,"acHostMeshClear");
-	if(!acHostMeshClear) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshClear");
-	*(void**)(&acHostReduceScal) = dlsym(handle,"acHostReduceScal");
-	if(!acHostReduceScal) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostReduceScal");
-	*(void**)(&acHostReduceVec) = dlsym(handle,"acHostReduceVec");
-	if(!acHostReduceVec) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostReduceVec");
-	*(void**)(&acHostReduceVecScal) = dlsym(handle,"acHostReduceVecScal");
-	if(!acHostReduceVecScal) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostReduceVecScal");
-	*(void**)(&acEvalError) = dlsym(handle,"acEvalError");
-	if(!acEvalError) fprintf(stderr,"Astaroth error: was not able to load %s\n","acEvalError");
-	*(void**)(&acVerifyMesh) = dlsym(handle,"acVerifyMesh");
-	if(!acVerifyMesh) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVerifyMesh");
-	*(void**)(&acMeshDiffWriteSliceZ) = dlsym(handle,"acMeshDiffWriteSliceZ");
-	if(!acMeshDiffWriteSliceZ) fprintf(stderr,"Astaroth error: was not able to load %s\n","acMeshDiffWriteSliceZ");
-	*(void**)(&acMeshDiffWrite) = dlsym(handle,"acMeshDiffWrite");
-	if(!acMeshDiffWrite) fprintf(stderr,"Astaroth error: was not able to load %s\n","acMeshDiffWrite");
-	*(void**)(&acHostMeshWriteToFile) = dlsym(handle,"acHostMeshWriteToFile");
-	if(!acHostMeshWriteToFile) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshWriteToFile");
-	*(void**)(&acHostMeshReadFromFile) = dlsym(handle,"acHostMeshReadFromFile");
-	if(!acHostMeshReadFromFile) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshReadFromFile");
-	*(void**)(&acGetError) = dlsym(handle,"acGetError");
-	if(!acGetError) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetError");
-	*(void**)(&acHostIntegrateStep) = dlsym(handle,"acHostIntegrateStep");
-	if(!acHostIntegrateStep) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostIntegrateStep");
+	LOAD_DSYM(acHostVertexBufferSet);
+	LOAD_DSYM(acHostMeshSet);
+	LOAD_DSYM(acHostMeshApplyPeriodicBounds);
+	LOAD_DSYM(acHostMeshApplyConstantBounds);
+	LOAD_DSYM(acHostMeshClear);
+	LOAD_DSYM(acHostReduceScal);
+	LOAD_DSYM(acHostReduceVec);
+	LOAD_DSYM(acHostReduceVecScal);
+	LOAD_DSYM(acEvalError);
+	LOAD_DSYM(acVerifyMesh);
+	LOAD_DSYM(acMeshDiffWriteSliceZ);
+	LOAD_DSYM(acMeshDiffWrite);
+	LOAD_DSYM(acHostMeshWriteToFile);
+	LOAD_DSYM(acHostMeshReadFromFile);
+	LOAD_DSYM(acGetError);
+	LOAD_DSYM(acHostIntegrateStep);
 
 //#ifdef __cplusplus
 //	return AcLibHandle(handle);

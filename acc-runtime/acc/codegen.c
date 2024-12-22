@@ -1245,6 +1245,8 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		,datatype_scalar,enum_name,define_name);
 	fprintf_filename("param_info_access_operators.h","const %s& operator[](const %sParam param) const {return scalars.%s_params[param];}\n"
 		,datatype_scalar,enum_name,define_name);
+	fprintf_filename("param_info_access_operators.h","%s operator[](const %s val) const {return val;}\n"
+		,datatype_scalar,datatype_scalar);
 
 	fprintf_filename("info_access_operators.h","const %s& operator[](const %sCompParam param) const {return run_consts.config.%s_params[param];}\n"
 		,datatype_scalar,enum_name,define_name);

@@ -121,8 +121,10 @@ gen_stencil_definitions(void)
         for (int height = 0; height < STENCIL_HEIGHT; ++height) {
           printf("{");
           for (int width = 0; width < STENCIL_WIDTH; ++width) {
-            const char* coeff = stencils[stencil][depth][height][width];
-	    printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff : "AcReal(NAN)");
+            //const char* coeff = stencils[stencil][depth][height][width];
+	    //printf("%s,",coeff && !strstr(coeff,"DCONST") ? coeff : "AcReal(NAN)");
+	    //TP: always have initially nans in the stencils to ensure stencils are always loaded at runtime
+	    printf("AcReal(NAN),");
           }
           printf("},");
         }
@@ -177,6 +179,10 @@ z_block_loop_before_y(const int curr_kernel)
 void
 gen_kernel_block_loops(const int curr_kernel)
 {
+  printf(
+	"#include \"user_non_scalar_constants.h\"\n"
+	"#include \"user_builtin_non_scalar_constants.h\"\n"
+	 );
   if(kernel_calls_reduce[curr_kernel] || kernel_reduces_profile(curr_kernel))
   {
 #if AC_USE_HIP
@@ -800,10 +806,7 @@ gen_return_if_oob(const int curr_kernel)
 #endif
        }
        printf("if(out_of_bounds) %s;",kernel_has_block_loops(curr_kernel) ? "continue" : "return");
-       printf("{\n"
-			"#include \"user_non_scalar_constants.h\"\n"
-			"#include \"user_builtin_non_scalar_constants.h\"\n"
-	     );
+       printf("{\n");
 }
 
 static void

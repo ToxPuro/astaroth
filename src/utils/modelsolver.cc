@@ -25,6 +25,7 @@
  *
  */
 #include "astaroth_utils.h"
+#include "user_builtin_non_scalar_constants.h"
 #include "user_constants.h"
 
 #include <math.h>

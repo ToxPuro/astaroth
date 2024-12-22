@@ -76,9 +76,9 @@ main(int argc, char* argv[])
     acLoadCompInfo(AC_runtime_int_arr,int_arr,&info.run_consts);
     acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&info.run_consts);
 #if AC_USE_HIP
-    const char* build_str = "-DUSE_HIP=ON  -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+    const char* build_str = "-DUSE_HIP=ON  -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_MODEL=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #else
-    const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+    const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_MODEL=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #endif
     acCompile(build_str,info);
     acLoadLibrary();
@@ -150,27 +150,31 @@ main(int argc, char* argv[])
     fflush(stdout);
 
     // DSL Boundconds
-    if (pid == 0)
-        acHostGridMeshRandomize(&model);
+    // TP: Works only for a single proc but that is sufficient for now
+    if(nprocs == 1)
+    {
+    	if (pid == 0)
+    	    acHostGridMeshRandomize(&model);
 
-    const auto periodic = acGetDSLTaskGraph(boundconds);
-    acGridLoadMesh(STREAM_DEFAULT, model);
-    acGridExecuteTaskGraphBase(periodic,1,true);
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
-    if (pid == 0) {
-        acHostMeshApplyPeriodicBounds(&model);
-        const AcResult res = acVerifyMesh("DSL Periodic boundconds", model, candidate);
-        if (res != AC_SUCCESS) {
-            retval = res;
-            WARNCHK_ALWAYS(retval);
-        }
+    	const auto periodic = acGetDSLTaskGraph(boundconds);
+    	acGridLoadMesh(STREAM_DEFAULT, model);
+    	acGridSynchronizeStream(STREAM_DEFAULT);
+    	acGridExecuteTaskGraphBase(periodic,1,true);
+    	acGridSynchronizeStream(STREAM_DEFAULT);
+    	acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    	acGridSynchronizeStream(STREAM_DEFAULT);
+    	if (pid == 0) {
+    	    acHostMeshApplyPeriodicBounds(&model);
+    	    const AcResult res = acVerifyMesh("DSL Periodic boundconds", model, candidate);
+    	    if (res != AC_SUCCESS) {
+    	        retval = res;
+    	        WARNCHK_ALWAYS(retval);
+    	    }
+    	}
+    	fflush(stdout);
     }
-    fflush(stdout);
-
     //// Dryrun
     const AcReal dt = (AcReal)FLT_EPSILON;
-    //acDeviceSetInput(acGridGetDevice(),AC_dt,dt);
-    //acDeviceSetInput(acGridGetDevice(),AC_current_time,dt);
 
     acGridIntegrate(STREAM_DEFAULT, dt);
     acGridSynchronizeStream(STREAM_DEFAULT);

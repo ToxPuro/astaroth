@@ -124,7 +124,7 @@
  *
  */
 #include "astaroth.h"
-
+#include "user_builtin_non_scalar_constants.h"
 #include "math_utils.h"
 #if TWO_D == 0
 

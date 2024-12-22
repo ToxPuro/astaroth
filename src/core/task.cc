@@ -40,7 +40,7 @@
 
 #include "task.h"
 #include "astaroth.h"
-
+#include "user_builtin_non_scalar_constants.h"
 
 AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 

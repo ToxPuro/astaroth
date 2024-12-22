@@ -21,6 +21,7 @@
 #endif
 #include "astaroth.h"
 #include "buffer.cc"
+#include "user_builtin_non_scalar_constants.h"
 
 #include <string.h> // strcmp
 

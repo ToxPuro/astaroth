@@ -345,11 +345,8 @@ acGetRealScratchpadSize(const size_t i)
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*VAL(AC_mlocal).x + (k)*VAL(AC_mlocal_products).xy)
 
-__device__ int
-LOCAL_COMPDOMAIN_IDX(const int3 coord)
-{
-  return (coord.x) + (coord.y) * VAL(AC_nlocal).x + (coord.z) * VAL(AC_nlocal_products).xy;
-}
+#define LOCAL_COMPDOMAIN_IDX(coord) \
+	((coord.x) + (coord.y) * VAL(AC_nlocal).x + (coord.z) * VAL(AC_nlocal_products).xy)
 
 #define print printf                          // TODO is this a good idea?
 // passes an array into a device function and then calls len (need to modify
@@ -644,15 +641,18 @@ struct allocate_arrays
 	}
 };
 
+
 size3_t
 buffer_dims(const AcMeshInfoParams config)
 {
+	#include "user_builtin_non_scalar_constants.h"
 	auto mm = config[AC_mlocal];
 	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
 }
 size3_t
 subdomain_size(const AcMeshInfoParams config)
 {
+	#include "user_builtin_non_scalar_constants.h"
 	auto mm = config[AC_nlocal];
 	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
 }
@@ -897,6 +897,7 @@ init_scratchpads(VertexBufferArray* vba)
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfoParams info)
 {
+   #include "user_builtin_non_scalar_constants.h"
    const Volume n0 = to_volume(info[AC_nmin]);
    const Volume n1 = to_volume(info[AC_nlocal_max]);
    const Volume m0 = (Volume){0, 0, 0};
@@ -924,6 +925,7 @@ acVBACreate(const AcMeshInfoParams config)
 {
   //TP: !HACK!
   //TP: Get active dimensions at the time VBA is created, works for now but should be moved somewhere else
+  #include "user_builtin_non_scalar_constants.h"
   dimension_inactive = config[AC_dimension_inactive];
   max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
   VertexBufferArray vba;

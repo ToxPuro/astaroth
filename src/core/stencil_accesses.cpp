@@ -453,6 +453,7 @@ VAL(const AcInt3CompParam&)
 bool
 index_at_boundary(const int x, const int y, const int z)
 {
+#include "user_builtin_non_scalar_constants.h"
 	return  
 	      ((x < VAL(AC_nmin).x) || (x >= VAL(AC_nlocal_max).x))
 	   || ((y < VAL(AC_nmin).y) || (y >= VAL(AC_nlocal_max).y))
@@ -547,6 +548,8 @@ execute_kernel(const int kernel_index)
 void
 execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 {
+#include "user_builtin_non_scalar_constants.h"
+
         current_kernel = (AcKernel)kernel_index;
     	const Kernel kernel = kernels[kernel_index];
 	if(BOUNDARY_X_BOT & boundary)

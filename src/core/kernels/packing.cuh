@@ -17,7 +17,6 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "vtxbuf_is_communicated_func.h"
-#include "user_builtin_non_scalar_constants.h"
 #pragma once
 struct GpuVtxBufHandles 
 {
@@ -27,7 +26,8 @@ struct GpuVtxBufHandles
 static __global__ void
 kernel_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const int3 dims,
                  AcRealPacked* packed)
-{
+{ 
+    #include "user_builtin_non_scalar_constants.h"
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
     const int k_packed = threadIdx.z + blockIdx.z * blockDim.z;
@@ -64,6 +64,7 @@ kernel_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const 
 static inline __device__ int3
 is_on_boundary()
 {
+    #include "user_builtin_non_scalar_constants.h"
     const int x = (VAL(AC_domain_coordinates).x == VAL(AC_domain_decomposition).x - 1 ||
                                 VAL(AC_domain_coordinates).x == 0);
     const int y = (VAL(AC_domain_coordinates).y == VAL(AC_domain_decomposition).y - 1 ||
@@ -77,6 +78,7 @@ is_on_boundary()
 static inline __device__ AcReal
 lagrangian_correction(const int j, const Field2 coords, const int3 indexes)
 {
+    	#include "user_builtin_non_scalar_constants.h"
 	const int3 on_boundary = is_on_boundary();
 	const AcReal x_coeff = on_boundary.x*(j == coords.x)*VAL(AC_len).x;
 	const AcReal y_coeff = on_boundary.y*(j == coords.y)*VAL(AC_len).y;
@@ -86,6 +88,7 @@ lagrangian_correction(const int j, const Field2 coords, const int3 indexes)
 static inline __device__ AcReal
 lagrangian_correction(const int j, const Field3 coords, const int3 indexes)
 {
+    	#include "user_builtin_non_scalar_constants.h"
 	const int3 on_boundary = is_on_boundary();
 	const AcReal x_coeff = on_boundary.x*(j == coords.x)*VAL(AC_len).x;
 	const AcReal y_coeff = on_boundary.y*(j == coords.y)*VAL(AC_len).y;
@@ -100,6 +103,7 @@ static __global__ void
 kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
                    DeviceVertexBufferArray vba)
 {
+    #include "user_builtin_non_scalar_constants.h"
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
     const int k_packed = threadIdx.z + blockIdx.z * blockDim.z;
@@ -138,6 +142,7 @@ static __global__ void
 kernel_partial_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const int3 dims,
                          AcRealPacked* packed, GpuVtxBufHandles vtxbufs, size_t num_vtxbufs)
 {
+    #include "user_builtin_non_scalar_constants.h"
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
     const int k_packed = threadIdx.z + blockIdx.z * blockDim.z;
@@ -174,6 +179,7 @@ static __global__ void
 kernel_partial_move_data(const DeviceVertexBufferArray vba, const int3 src_start, const int3 dst_start, const int3 dims,
                          GpuVtxBufHandles vtxbufs, size_t num_vtxbufs)
 {
+    #include "user_builtin_non_scalar_constants.h"
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
     const int k_packed = threadIdx.z + blockIdx.z * blockDim.z;
@@ -212,6 +218,7 @@ static __global__ void
 kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
                            DeviceVertexBufferArray vba, GpuVtxBufHandles vtxbufs , size_t num_vtxbufs)
 {
+    #include "user_builtin_non_scalar_constants.h"
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
     const int k_packed = threadIdx.z + blockIdx.z * blockDim.z;

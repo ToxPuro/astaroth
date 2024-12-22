@@ -1,6 +1,7 @@
 #if AC_MPI_ENABLED 
 
 #include "astaroth.h"
+#include "user_builtin_non_scalar_constants.h"
 #include "astaroth_utils.h"
 #include "task.h"
 

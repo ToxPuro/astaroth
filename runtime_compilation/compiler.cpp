@@ -29,13 +29,17 @@ get_decomp(const MPI_Comm comm, const AcCompInfo info)
 void
 decompose_info(const MPI_Comm comm, AcCompInfo& info)
 {
-  auto decomp = get_decomp(comm,info);
+  const auto decomp = get_decomp(comm,info);
+  const int3 int3_decomp = (int3){(int)decomp.x,(int)decomp.y,(int)decomp.z};
   auto& config = info.config;
   ERRCHK_ALWAYS(config[AC_nlocal].x % decomp.x == 0);
   ERRCHK_ALWAYS(config[AC_nlocal].y % decomp.y == 0);
   ERRCHK_ALWAYS(config[AC_nlocal].z % decomp.z == 0);
 
-  acLoadCompInfo(AC_nlocal,config[AC_nlocal]/decomp);
+  config[AC_nlocal].x = config[AC_nlocal].x/int3_decomp.x;
+  config[AC_nlocal].y = config[AC_nlocal].y/int3_decomp.y;
+  config[AC_nlocal].z = config[AC_nlocal].z/int3_decomp.z;
+
   acLoadCompInfo(AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z},&info);
   acHostUpdateBuiltinCompParams(&info);
 }
@@ -59,8 +63,8 @@ void
 acLoadRunConstsBase(const char* filename, AcMeshInfo info)
 {
 	FILE* fp = fopen(filename,"w");
-	AcScalarCompTypes::run<load_scalars>(info.run_consts, fp);
-	AcArrayCompTypes::run<load_arrays>(info.run_consts, fp);
+	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp,"override const", true);
+	AcArrayCompTypes::run<load_comp_arrays>(info.run_consts, fp,"override const", true);
 	fclose(fp);
 }
 
