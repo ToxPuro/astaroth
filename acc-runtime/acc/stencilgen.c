@@ -636,7 +636,12 @@ print_butterfly_iteration(FILE* stream, const int iteration, const char* op_inst
 	}
 	const int base_shift_num                = (1 << iteration);
 	const int tid_shift_num                 = (1 << (iteration+1))-1;
-	const unsigned long long mask_num       = (1 << base_shift_num)-1;
+
+	//TP: for some reason produces 0 for shift of 32 without the conditional even though long long should not overflow??
+        const unsigned long long mask_num       =
+                base_shift_num == 32 ? 4294967295 :
+                (1 << base_shift_num)-1;
+
 	fprintf(stream,"%s base_shift = ((lane_id & %d) ? 0 : %d);",base_shift_type,base_shift_num,base_shift_num);
 	fprintf(stream,"%s tid_shift  = (lane_id & (~%d));",tid_shift_type,tid_shift_num);
 	fprintf(stream,"%s mask       = AC_INTERNAL_active_threads & (%lldULL << (tid_shift + base_shift));",mask_type,mask_num);
@@ -691,7 +696,7 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 	print_warp_reduction(stdout,64,op_instruction,true);
 	printf("}");
 	printf("else {");
-	print_butterfly_warp_reduce(stdout, 32,op_instruction);
+	print_butterfly_warp_reduce(stdout,64,op_instruction);
 	printf("}");
 #endif
 	printf("}");
