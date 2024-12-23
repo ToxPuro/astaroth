@@ -1897,13 +1897,15 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
 #endif
 #include <string.h>
 
-  static AcCompInfo __attribute__((unused)) acInitCompInfo()
+  static AcCompInfo UNUSED acInitCompInfo()
   {
 	  AcCompInfo res;
 	  memset(&res.is_loaded,0,sizeof(res.is_loaded));
+	  memset(&res.config.bool_params,0,sizeof(res.config.bool_params));
+	  memset(&res.config.bool3_params,0,sizeof(res.config.bool3_params));
 	  return res;
   }
-  static AcMeshInfo __attribute__((unused)) acInitInfo()
+  static AcMeshInfo UNUSED acInitInfo()
   {
 	  AcMeshInfo res;
     	  // memset reads the second parameter as a byte even though it says int in
@@ -1921,5 +1923,11 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
 	  res.run_consts = acInitCompInfo();
 	  res.params.scalars.int3_params[AC_thread_block_loop_factors] = (int3){1,1,1};
 	  res.params.scalars.int3_params[AC_max_tpb_for_reduce_kernels] = (int3){-1,8,8};
+	  return res;
+  }
+  static AcMesh UNUSED acInitMesh()
+  {
+	  AcMesh res;
+	  res.info = acInitInfo();
 	  return res;
   }
