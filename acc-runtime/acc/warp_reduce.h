@@ -8,6 +8,7 @@ void
 print_shuffle_down(FILE* stream, const int offset)
 {
 #if AC_USE_HIP
+	fprintf(stream,"rocprim::warp_shuffle_down(AC_INTERNAL_active_threads,val,%d)",offset);
 #else
 	fprintf(stream,"__shfl_down_sync(AC_INTERNAL_active_threads,val,%d)",offset);
 #endif

@@ -22,6 +22,8 @@ bool should_reduce_real[1000] = {false};
 bool should_reduce_int[1000] = {false};
 
 
+#define rocprim__warpSize() (64)
+
 #define DEVICE_INLINE
 #ifndef AC_IN_AC_LIBRARY
 #define AC_IN_AC_LIBRARY
@@ -30,20 +32,11 @@ bool should_reduce_int[1000] = {false};
 #include "func_attributes.h"
 
 #include <assert.h>
-/*
-#if AC_USE_HIP || __HIP_PLATFORM_HCC__ // Hack to ensure hip is used even if
-                                       // USE_HIP is not propagated properly
-                                       // TODO figure out better way
-#include <hip/hip_runtime.h>           // Needed in files that include kernels
-#else
-#include <cuda_runtime_api.h>
-#endif
-*/
+
 #include <string.h>
 #include <vector>
-
-#include "datatypes.h"
 #include "errchk.h"
+#include "datatypes.h"
 
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}

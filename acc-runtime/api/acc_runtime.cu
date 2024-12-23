@@ -18,6 +18,7 @@
 */
 #define AC_INSIDE_AC_LIBRARY 
 
+#define rocprim__warpSize() rocprim::warp_size()
 #include "acc_runtime.h"
 #include "../acc/string_vec.h"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
@@ -687,7 +688,7 @@ cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* 
           ERRCHK_CUDA_ALWAYS(cudaGetLastError());
   }
 }
-int
+AcReal
 get_reduce_state_flush_var_real(const AcReduceOp state)
 {
 	return 

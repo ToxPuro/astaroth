@@ -72,7 +72,9 @@ void
 acBufferDestroy(AcBuffer* buffer)
 {
     if (buffer->on_device)
-        cudaFree(buffer->data);
+    {
+        ERRCHK_CUDA_ALWAYS(cudaFree(buffer->data));
+    }
     else
         free(buffer->data);
     buffer->data  = NULL;

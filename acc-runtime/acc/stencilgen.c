@@ -186,7 +186,7 @@ gen_kernel_block_loops(const int curr_kernel)
   if(kernel_calls_reduce[curr_kernel] || kernel_reduces_profile(curr_kernel))
   {
 #if AC_USE_HIP
-	printf("[[maybe_unused]] constexpr size_t warp_size = warpSize;");
+	printf("[[maybe_unused]] constexpr size_t warp_size = rocprim__warpSize();");
 #else
 	printf("[[maybe_unused]] constexpr size_t warp_size = 32;");
 #endif
@@ -227,7 +227,11 @@ gen_kernel_block_loops(const int curr_kernel)
 	    	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
 	    	printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
 	    	printf("const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+       #if AC_USE_HIP
+	        printf("auto AC_INTERNAL_active_threads = __ballot(1);");
+       #else
 	        printf("auto AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,1);");
+       #endif
     		printf("bool AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));");
     		//TP: if all threads are active can skip checks checking if target tid is active in reductions
     		printf("bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
@@ -241,10 +245,15 @@ gen_kernel_block_loops(const int curr_kernel)
 	}
 
 
-	printf("const auto step_size = gridDim*blockDim;");
-	printf("const auto should_not_be_more = end-start-threadIdx-(blockIdx*blockDim);");
-	printf("const int last_block_idx_y = min(vba.block_factor.y,((should_not_be_more.y + step_size.y - 1)/(step_size.y))) -1;");
-	printf("const int last_block_idx_z = min(vba.block_factor.z,((should_not_be_more.z + step_size.z - 1)/(step_size.z))) -1;");
+	printf("const dim3 step_size = {"
+			"gridDim.x*blockDim.x,"
+			"gridDim.y*blockDim.y,"
+			"gridDim.z*blockDim.z"
+	       "};");
+	printf("const int should_not_be_more_y = end.y-start.y-threadIdx.y-(blockIdx.y*blockDim.y);");
+	printf("const int should_not_be_more_z = end.z-start.z-threadIdx.z-(blockIdx.z*blockDim.z);");
+	printf("const int last_block_idx_y = min(vba.block_factor.y,((should_not_be_more_y + step_size.y - 1)/(step_size.y))) -1;");
+	printf("const int last_block_idx_z = min(vba.block_factor.z,((should_not_be_more_z + step_size.z - 1)/(step_size.z))) -1;");
 
 
   	printf("for(int current_block_idx_x = 0; current_block_idx_x < vba.block_factor.x; ++current_block_idx_x) {");
@@ -674,7 +683,7 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 
 #if AC_USE_HIP
 //TP: if we use CUDA we get compiler warnings about too large shifts since active threads is unsigned long instead of unsigned long long
-	printf("else if constexpr (warp_size == 64) {");
+	printf("} else if constexpr (warp_size == 64) {");
 	printf("if (AC_INTERNAL_all_threads_active) {");
 	print_warp_reduction(stdout,64,op_instruction,false);
 	printf("}");
