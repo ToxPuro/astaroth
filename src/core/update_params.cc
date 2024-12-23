@@ -3,6 +3,14 @@
 #include "../helpers/ceil_div.h"
 #include "user_builtin_non_scalar_constants.h"
 
+static cudaDeviceProp
+get_device_prop()
+{
+  cudaDeviceProp props;
+  (void)cudaGetDeviceProperties(&props, 0);
+  return props;
+}
+
 AcResult
 acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
 {
@@ -90,6 +98,26 @@ acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
     push_val(AC_inv_ds_5,config[AC_inv_ds_3]*config[AC_inv_ds_2]);
     push_val(AC_inv_ds_6,config[AC_inv_ds_3]*config[AC_inv_ds_3]);
 
+    //TP: for safety have to add the maximum possible tpb dims for the reduce scratchpads
+    //If block_factor_z is say 2 can be that some of threads reduce something in the first iteration but not in the second
+    //Thus to be on the safe side one cannot use dims.reduction_tile.z but add tpb.z as a safety factor
+    const int3 safety_factor =
+    {
+	    0,
+	    config[AC_max_tpb_for_reduce_kernels].y,
+	    config[AC_max_tpb_for_reduce_kernels].z
+    };
+    //TP: because of this safety factor (worse for x since in general x is the biggest tpb) and because x is easy to reduce (can do warp reduce)
+    //AC_thread_block_loop_factors.x is for now enforced to be 1
+    ERRCHK_ALWAYS(config[AC_thread_block_loop_factors].x == 1);
+
+    int3 tile_dims = ceil_div(config[AC_nlocal],config[AC_thread_block_loop_factors]) + safety_factor;
+    tile_dims.x = 
+	config[AC_nlocal].x < get_device_prop().warpSize ? config[AC_nlocal].x 
+						    : ceil_div(config[AC_nlocal].x,get_device_prop().warpSize);
+    push_val(AC_reduction_tile_dimensions,tile_dims);
+    
+
     return AC_SUCCESS;
 }
 
@@ -102,14 +130,6 @@ acHostUpdateBuiltinCompParams(AcCompInfo* comp_config)
 	auto res = acHostUpdateBuiltinParams(&config);
 	*comp_config = config.run_consts;
 	return res;
-}
-
-static cudaDeviceProp
-get_device_prop()
-{
-  cudaDeviceProp props;
-  (void)cudaGetDeviceProperties(&props, 0);
-  return props;
 }
 
 
@@ -132,25 +152,5 @@ acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* con
     };
     push_val(AC_ngrid,ngrid);
     push_val(AC_nlocal,ngrid);
-
-    //TP: for safety have to add the maximum possible tpb dims for the reduce scratchpads
-    //If block_factor_z is say 2 can be that some of threads reduce something in the first iteration but not in the second
-    //Thus to be on the safe side one cannot use dims.reduction_tile.z but add tpb.z as a safety factor
-    const int3 safety_factor =
-    {
-	    0,
-	    config[AC_max_tpb_for_reduce_kernels].y,
-	    config[AC_max_tpb_for_reduce_kernels].z
-    };
-    //TP: because of this safety factor (worse for x since in general x is the biggest tpb) and because x is easy to reduce (can do warp reduce)
-    //AC_thread_block_loop_factors.x is for now enforced to be 1
-    ERRCHK_ALWAYS(config[AC_thread_block_loop_factors].x == 1);
-
-    int3 tile_dims = ceil_div(config[AC_nlocal],config[AC_thread_block_loop_factors]) + safety_factor;
-    tile_dims.x = 
-	config[AC_nlocal].x < get_device_prop().warpSize ? config[AC_nlocal].x 
-						    : ceil_div(config[AC_nlocal].x,get_device_prop().warpSize);
-    push_val(AC_reduction_tile_dimensions,tile_dims);
-    
     return acHostUpdateBuiltinParams(&config);
 }
