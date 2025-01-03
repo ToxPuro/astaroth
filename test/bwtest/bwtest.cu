@@ -31,7 +31,7 @@ acArrayCreate(const size_t count)
 void
 acArrayDestroy(Array* a)
 {
-    cudaFree(a->data);
+    ERRCHK_CUDA(cudaFree(a->data));
     a->data  = NULL;
     a->count = 0;
 }
@@ -39,7 +39,7 @@ acArrayDestroy(Array* a)
 void
 acArraySet(const uint8_t value, Array* a)
 {
-    cudaMemset(a->data, value, a->count * sizeof(a->data[0]));
+    ERRCHK_CUDA(cudaMemset(a->data, value, a->count * sizeof(a->data[0])));
 }
 
 __global__ void
@@ -111,24 +111,24 @@ benchmark(const size_t count)
     // Warmup
     for (size_t i = 0; i < 10; ++i)
         kernel<<<bpg, tpb>>>(a, b);
-    cudaDeviceSynchronize();
+    ERRCHK_CUDA(cudaDeviceSynchronize());
 
     // Benchmark
     cudaEvent_t tstart, tstop;
-    cudaEventCreate(&tstart);
-    cudaEventCreate(&tstop);
+    ERRCHK_CUDA(cudaEventCreate(&tstart));
+    ERRCHK_CUDA(cudaEventCreate(&tstop));
 
-    cudaEventRecord(tstart); // Timing start
+    ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
     kernel<<<bpg, tpb>>>(a, b);
-    cudaEventRecord(tstop); // Timing stop
-    cudaEventSynchronize(tstop);
+    ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+    ERRCHK_CUDA(cudaEventSynchronize(tstop));
 
     ERRCHK_CUDA_KERNEL_ALWAYS();
 
     float milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, tstart, tstop);
-    cudaEventDestroy(tstart);
-    cudaEventDestroy(tstop);
+    ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
+    ERRCHK_CUDA(cudaEventDestroy(tstart));
+    ERRCHK_CUDA(cudaEventDestroy(tstop));
 
     // Validate
     array_set_to_tid<<<bpg, tpb>>>(a);
@@ -150,12 +150,12 @@ void
 printDeviceInfo(const int device_id)
 {
     cudaDeviceProp props;
-    cudaGetDeviceProperties(&props, device_id);
+    ERRCHK_CUDA(cudaGetDeviceProperties(&props, device_id));
     printf("--------------------------------------------------\n");
     printf("Device Number: %d\n", device_id);
     const size_t bus_id_max_len = 128;
     char bus_id[bus_id_max_len];
-    cudaDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id);
+    ERRCHK_CUDA(cudaDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id));
     printf("  PCI bus ID: %s\n", bus_id);
     printf("    Device name: %s\n", props.name);
     printf("    Compute capability: %d.%d\n", props.major, props.minor);
@@ -181,7 +181,7 @@ printDeviceInfo(const int device_id)
 
     // Memory usage
     size_t free_bytes, total_bytes;
-    cudaMemGetInfo(&free_bytes, &total_bytes);
+    ERRCHK_CUDA(cudaMemGetInfo(&free_bytes, &total_bytes));
     const size_t used_bytes = total_bytes - free_bytes;
     printf("    Total global mem: %.2f GiB\n", props.totalGlobalMem / (1024.0 * 1024 * 1024));
     printf("    Gmem used (GiB): %.2f\n", used_bytes / (1024.0 * 1024 * 1024));

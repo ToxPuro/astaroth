@@ -19,6 +19,10 @@
 #define AC_INSIDE_AC_LIBRARY 
 
 #define rocprim__warpSize() rocprim::warp_size()
+#define rocprim__warpId()   rocprim::warp_id()
+#define rocprim__warp_shuffle_down rocprim::warp_shuffle_down
+#define rocprim__warp_shuffle rocprim::warp_shuffle
+
 #include "acc_runtime.h"
 #include "../acc/string_vec.h"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
@@ -182,6 +186,7 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
   const size_t zmax         = (size_t)(warp_size * ceil_div(dims.z,warp_size));
   const bool too_large      = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
   const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
+  //if(dims.x >= warp_size && tpb.x % warp_size != 0) return false;
   if(kernel_reduces_profile(kernel))
   {
 	  if(tpb.y > max_tpb_for_reduce_kernels.y) return false;

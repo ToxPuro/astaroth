@@ -39,7 +39,7 @@ acArrayCreate(const size_t count)
 void
 acArrayDestroy(Array* a)
 {
-    cudaFree(a->data);
+    ERRCHK_CUDA(cudaFree(a->data));
     a->data  = NULL;
     a->count = 0;
 }
@@ -64,12 +64,12 @@ void
 printDeviceInfo(const int device_id)
 {
     cudaDeviceProp props;
-    cudaGetDeviceProperties(&props, device_id);
+    ERRCHK_CUDA(cudaGetDeviceProperties(&props, device_id));
     printf("--------------------------------------------------\n");
     printf("Device Number: %d\n", device_id);
     const size_t bus_id_max_len = 128;
     char bus_id[bus_id_max_len];
-    cudaDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id);
+    ERRCHK_CUDA(cudaDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id));
     printf("  PCI bus ID: %s\n", bus_id);
     printf("    Device name: %s\n", props.name);
     printf("    Compute capability: %d.%d\n", props.major, props.minor);
@@ -95,7 +95,7 @@ printDeviceInfo(const int device_id)
 
     // Memory usage
     size_t free_bytes, total_bytes;
-    cudaMemGetInfo(&free_bytes, &total_bytes);
+    ERRCHK_CUDA(cudaMemGetInfo(&free_bytes, &total_bytes));
     const size_t used_bytes = total_bytes - free_bytes;
     printf("    Total global mem: %.2f GiB\n", props.totalGlobalMem / (1024.0 * 1024 * 1024));
     printf("    Gmem used (GiB): %.2f\n", used_bytes / (1024.0 * 1024 * 1024));
@@ -268,21 +268,21 @@ autotune(const Array a, const Array b)
 #endif
 
     cudaDeviceProp props;
-    cudaGetDeviceProperties(&props, 0);
+    ERRCHK_CUDA(cudaGetDeviceProperties(&props, 0));
     const size_t warp_size             = (size_t)props.warpSize;
     const size_t max_threads_per_block = (size_t)props.maxThreadsPerBlock;
 
     // Warmup
-    cudaEventCreate(&tstart);
-    cudaEventCreate(&tstop);
-    cudaEventRecord(tstart); // Timing start
+    ERRCHK_CUDA(cudaEventCreate(&tstart));
+    ERRCHK_CUDA(cudaEventCreate(&tstop));
+    ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
     for (size_t i = 0; i < 10; ++i)
         kernel<<<c.bpg, c.tpb, c.smem>>>(a, b);
-    cudaEventRecord(tstop); // Timing stop
-    cudaEventSynchronize(tstop);
-    cudaEventDestroy(tstart);
-    cudaEventDestroy(tstop);
-    cudaDeviceSynchronize();
+    ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+    ERRCHK_CUDA(cudaEventSynchronize(tstop));
+    ERRCHK_CUDA(cudaEventDestroy(tstart));
+    ERRCHK_CUDA(cudaEventDestroy(tstop));
+    ERRCHK_CUDA(cudaDeviceSynchronize());
 
     // Tune
     for (size_t tpb = 1; tpb <= max_threads_per_block; ++tpb) {
@@ -298,21 +298,21 @@ autotune(const Array a, const Array b)
         const size_t smem = 0;
 #endif
 
-        cudaEventCreate(&tstart);
-        cudaEventCreate(&tstop);
+        ERRCHK_CUDA(cudaEventCreate(&tstart));
+        ERRCHK_CUDA(cudaEventCreate(&tstop));
 
-        cudaDeviceSynchronize();
-        cudaEventRecord(tstart); // Timing start
+        ERRCHK_CUDA(cudaDeviceSynchronize());
+        ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
         for (size_t i = 0; i < num_iters; ++i)
             kernel<<<bpg, tpb, smem>>>(a, b);
-        cudaEventRecord(tstop); // Timing stop
-        cudaEventSynchronize(tstop);
+        ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+        ERRCHK_CUDA(cudaEventSynchronize(tstop));
 
         float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, tstart, tstop);
+        ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
 
-        cudaEventDestroy(tstart);
-        cudaEventDestroy(tstop);
+        ERRCHK_CUDA(cudaEventDestroy(tstart));
+        ERRCHK_CUDA(cudaEventDestroy(tstop));
 
         // Discard failed runs (attempt to clear the error to cudaSuccess)
         if (cudaGetLastError() != cudaSuccess) {
@@ -347,20 +347,20 @@ benchmark(const Array a, const Array b, const KernelConfig c)
 
     // Benchmark
     cudaEvent_t tstart, tstop;
-    cudaEventCreate(&tstart);
-    cudaEventCreate(&tstop);
+    ERRCHK_CUDA(cudaEventCreate(&tstart));
+    ERRCHK_CUDA(cudaEventCreate(&tstop));
 
-    cudaEventRecord(tstart); // Timing start
+    ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
     kernel<<<c.bpg, c.tpb, c.smem>>>(a, b);
-    cudaEventRecord(tstop); // Timing stop
-    cudaEventSynchronize(tstop);
+    ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+    ERRCHK_CUDA(cudaEventSynchronize(tstop));
 
     ERRCHK_CUDA_KERNEL_ALWAYS();
 
     float milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, tstart, tstop);
-    cudaEventDestroy(tstart);
-    cudaEventDestroy(tstop);
+    ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
+    ERRCHK_CUDA(cudaEventDestroy(tstart));
+    ERRCHK_CUDA(cudaEventDestroy(tstop));
 
     // Validate
     acArraySetToTID<<<c.bpg, c.tpb>>>(a);

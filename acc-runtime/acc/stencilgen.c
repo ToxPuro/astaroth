@@ -183,14 +183,11 @@ gen_kernel_block_loops(const int curr_kernel)
 	"#include \"user_non_scalar_constants.h\"\n"
 	"#include \"user_builtin_non_scalar_constants.h\"\n"
 	 );
-  if(kernel_calls_reduce[curr_kernel] || kernel_reduces_profile(curr_kernel))
-  {
 #if AC_USE_HIP
-	printf("[[maybe_unused]] constexpr size_t warp_size = rocprim__warpSize();");
+   printf("[[maybe_unused]] constexpr size_t warp_size = rocprim__warpSize();");
 #else
-	printf("[[maybe_unused]] constexpr size_t warp_size = 32;");
+   printf("[[maybe_unused]] constexpr size_t warp_size = 32;");
 #endif
-  }
   if(kernel_has_block_loops(curr_kernel))
   {
 
@@ -216,7 +213,7 @@ gen_kernel_block_loops(const int curr_kernel)
 				printf("int %s_reduce_output = -INT_MAX;",int_output_names[i]);
 		}
 	#if AC_USE_HIP
-	        printf("const size_t warp_id = rocprim::warp_id();");
+        	printf("const size_t warp_id = rocprim__warpId();");
 	#else
 		printf("const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
 	#endif
@@ -296,6 +293,13 @@ gen_kernel_block_loops(const int curr_kernel)
 			"blockIdx.z + current_block_idx_z*gridDim.z," 
 			"};");
 	return;
+  }
+  else
+  {
+	  printf("{"
+		 "{"
+		 "{"
+		);
   }
   printf("const dim3 current_block_idx = blockIdx;");
 }
@@ -787,7 +791,7 @@ gen_kernel_reduce_funcs(const int curr_kernel)
     	printf("const bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
 
 #if AC_USE_HIP
-        printf("const size_t warp_id = rocprim::warp_id();");
+        printf("const size_t warp_id = rocprim__warpId();");
 #else
 	printf("const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
 #endif

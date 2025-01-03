@@ -1,5 +1,5 @@
 #if AC_USE_HIP
-	const char* shuffle_instruction = "rocprim::warp_shuffle(val,target_tid)";
+	const char* shuffle_instruction = "rocprim__warp_shuffle(val,target_tid)";
 #else
 	const char* shuffle_instruction = "__shfl_sync(AC_INTERNAL_active_threads,val,target_tid)";
 #endif
@@ -8,7 +8,7 @@ void
 print_shuffle_down(FILE* stream, const int offset)
 {
 #if AC_USE_HIP
-	fprintf(stream,"rocprim::warp_shuffle_down(val,%d)",offset);
+	fprintf(stream,"rocprim__warp_shuffle_down(val,%d)",offset);
 #else
 	fprintf(stream,"__shfl_down_sync(AC_INTERNAL_active_threads,val,%d)",offset);
 #endif

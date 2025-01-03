@@ -128,7 +128,7 @@ acHostGridMeshCreate(const AcMeshInfo info, AcMesh* mesh)
     return AC_SUCCESS;
 }
 AcResult
-acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const int num_reals, 
+acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const size_t params_size, const size_t comp_info, const int num_reals, 
 		      const int num_ints, const int num_bools, const int num_real_arrays,
 		      const int num_int_arrays, const int num_bool_arrays)
 {
@@ -141,6 +141,16 @@ acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const
 	if(mesh_info_size != sizeof(AcMeshInfo))
 	{
 		fprintf(stderr,"Astaroth warning: mismatch in AcMeshInfo size: %zu|%zu\n",mesh_info_size,sizeof(AcMeshInfo));
+		res = AC_FAILURE;
+	}
+	if(params_size != sizeof(AcMeshInfoParams))
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in AcMeshInfoParams size: %zu|%zu\n",mesh_info_size,sizeof(AcMeshInfoParams));
+		res = AC_FAILURE;
+	}
+	if(comp_info != sizeof(AcCompInfo))
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in AcCompInfo size: %zu|%zu\n",comp_info,sizeof(AcCompInfo));
 		res = AC_FAILURE;
 	}
 	if(num_ints != NUM_INT_PARAMS)

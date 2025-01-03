@@ -32,7 +32,9 @@ static void
 arrayDestroy(Array* a)
 {
     if (a->on_device)
-        cudaFree(a->data);
+    {
+        ERRCHK_CUDA(cudaFree(a->data));
+    }
     else
         free(a->data);
     a->data  = NULL;
@@ -60,7 +62,7 @@ arrayRandomize(Array* a)
         Array b = arrayCreate(a->count, false);
         arrayRandomize(&b);
         const size_t bytes = a->count * sizeof(b.data[0]);
-        cudaMemcpy(a->data, b.data, bytes, cudaMemcpyHostToDevice);
+        ERRCHK_CUDA(cudaMemcpy(a->data, b.data, bytes, cudaMemcpyHostToDevice));
         arrayDestroy(&b);
     }
 }

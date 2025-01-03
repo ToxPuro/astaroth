@@ -144,7 +144,7 @@ autotune(const size_t array_length, const size_t domain_length, const int radius
     Array b = arrayCreate(array_length, true);
 
     cudaDeviceProp props;
-    cudaGetDeviceProperties(&props, 0);
+    ERRCHK_CUDA(cudaGetDeviceProperties(&props, 0));
     const size_t warp_size             = (size_t)props.warpSize;
     const size_t max_smem              = (size_t)props.sharedMemPerBlock;
     const size_t max_threads_per_block = MAX_THREADS_PER_BLOCK
@@ -154,16 +154,16 @@ autotune(const size_t array_length, const size_t domain_length, const int radius
 
     // Warmup
     cudaEvent_t tstart, tstop;
-    cudaEventCreate(&tstart);
-    cudaEventCreate(&tstop);
-    cudaEventRecord(tstart); // Timing start
+    ERRCHK_CUDA(cudaEventCreate(&tstart));
+    ERRCHK_CUDA(cudaEventCreate(&tstop));
+    ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
     for (size_t i = 0; i < 1; ++i)
         kernel<<<1, 1, max_smem>>>(domain_length, radius, pad, a, b);
-    cudaEventRecord(tstop); // Timing stop
-    cudaEventSynchronize(tstop);
-    cudaEventDestroy(tstart);
-    cudaEventDestroy(tstop);
-    cudaDeviceSynchronize();
+    ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+    ERRCHK_CUDA(cudaEventSynchronize(tstop));
+    ERRCHK_CUDA(cudaEventDestroy(tstart));
+    ERRCHK_CUDA(cudaEventDestroy(tstop));
+    ERRCHK_CUDA(cudaDeviceSynchronize());
 
     // Tune
     KernelConfig c = {
@@ -195,22 +195,22 @@ autotune(const size_t array_length, const size_t domain_length, const int radius
                "%zu}\n",
                c.array_length, c.domain_length, c.radius, c.pad, tpb, bpg, smem);
 
-        cudaEventCreate(&tstart);
-        cudaEventCreate(&tstop);
+        ERRCHK_CUDA(cudaEventCreate(&tstart));
+        ERRCHK_CUDA(cudaEventCreate(&tstop));
 
         kernel<<<bpg, tpb, smem>>>(domain_length, radius, pad, a, b);
-        cudaDeviceSynchronize();
-        cudaEventRecord(tstart); // Timing start
+        ERRCHK_CUDA(cudaDeviceSynchronize());
+        ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
         for (int i = 0; i < 10; ++i)
             kernel<<<bpg, tpb, smem>>>(domain_length, radius, pad, a, b);
-        cudaEventRecord(tstop); // Timing stop
-        cudaEventSynchronize(tstop);
+        ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+        ERRCHK_CUDA(cudaEventSynchronize(tstop));
 
         float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, tstart, tstop);
+        ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
 
-        cudaEventDestroy(tstart);
-        cudaEventDestroy(tstop);
+        ERRCHK_CUDA(cudaEventDestroy(tstart));
+        ERRCHK_CUDA(cudaEventDestroy(tstop));
 
         ERRCHK_CUDA_KERNEL_ALWAYS();
         //  Discard failed runs (attempt to clear the error to cudaSuccess)
@@ -269,9 +269,9 @@ verify(const KernelConfig c)
     model_kernel(c.domain_length, c.radius, c.pad, ahost, bhost);
 
     const size_t bytes = c.array_length * sizeof(ahost.data[0]);
-    cudaMemcpy(a.data, ahost.data, bytes, cudaMemcpyHostToDevice);
+    ERRCHK_CUDA(cudaMemcpy(a.data, ahost.data, bytes, cudaMemcpyHostToDevice));
     kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.radius, c.pad, a, b);
-    cudaMemcpy(ahost.data, b.data, bytes, cudaMemcpyDeviceToHost);
+    ERRCHK_CUDA(cudaMemcpy(ahost.data, b.data, bytes, cudaMemcpyDeviceToHost));
 
     const double* candidate = ahost.data;
     const double* model     = bhost.data;
@@ -309,20 +309,20 @@ benchmark(const KernelConfig c)
 
     // Benchmark
     cudaEvent_t tstart, tstop;
-    cudaEventCreate(&tstart);
-    cudaEventCreate(&tstop);
+    ERRCHK_CUDA(cudaEventCreate(&tstart));
+    ERRCHK_CUDA(cudaEventCreate(&tstop));
 
-    cudaEventRecord(tstart); // Timing start
+    ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
     for (size_t i = 0; i < num_iters; ++i)
         kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.radius, c.pad, a, b);
-    cudaEventRecord(tstop); // Timing stop
-    cudaEventSynchronize(tstop);
+    ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+    ERRCHK_CUDA(cudaEventSynchronize(tstop));
     ERRCHK_CUDA_KERNEL_ALWAYS();
 
     float milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, tstart, tstop);
-    cudaEventDestroy(tstart);
-    cudaEventDestroy(tstop);
+    ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
+    ERRCHK_CUDA(cudaEventDestroy(tstart));
+    ERRCHK_CUDA(cudaEventDestroy(tstop));
 
     const size_t bytes     = num_iters * sizeof(a.data[0]) * (2 * c.domain_length + 2 * c.radius);
     const double seconds   = (double)milliseconds / 1e3;
@@ -354,12 +354,12 @@ void
 printDeviceInfo(const int device_id)
 {
     cudaDeviceProp props;
-    cudaGetDeviceProperties(&props, device_id);
+    ERRCHK_CUDA(cudaGetDeviceProperties(&props, device_id));
     printf("--------------------------------------------------\n");
     printf("Device Number: %d\n", device_id);
     const size_t bus_id_max_len = 128;
     char bus_id[bus_id_max_len];
-    cudaDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id);
+    ERRCHK_CUDA(cudaDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id));
     printf("  PCI bus ID: %s\n", bus_id);
     printf("    Device name: %s\n", props.name);
     printf("    Compute capability: %d.%d\n", props.major, props.minor);
@@ -382,7 +382,7 @@ printDeviceInfo(const int device_id)
 
     // Memory usage
     size_t free_bytes, total_bytes;
-    cudaMemGetInfo(&free_bytes, &total_bytes);
+    ERRCHK_CUDA(cudaMemGetInfo(&free_bytes, &total_bytes));
     const size_t used_bytes = total_bytes - free_bytes;
     printf("    Total global mem: %.2f GiB\n", props.totalGlobalMem / (1024.0 * 1024 * 1024));
     printf("    Gmem used (GiB): %.2f\n", used_bytes / (1024.0 * 1024 * 1024));
@@ -425,7 +425,7 @@ main(int argc, char* argv[])
         count = size of the computational domain
         pad = size of the padding in the beginning (incl. halo)
     */
-    cudaProfilerStop();
+    ERRCHK_CUDA(cudaProfilerStop());
     if (argc != 3) {
         fprintf(stderr, "Usage: ./benchmark <problem size> <working set size>\n");
         fprintf(stderr, "       ./benchmark 0 0 # To use the defaults\n");
@@ -455,13 +455,13 @@ main(int argc, char* argv[])
     printf("USE_SMEM=%d\n", USE_SMEM);
     printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
 
-    // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
-    // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+    // ERRCHK_CUDA(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte));
+    // ERRCHK_CUDA(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
     KernelConfig c = autotune(array_length, domain_length, radius, pad);
     verify(c);
-    cudaProfilerStart();
+    ERRCHK_CUDA(cudaProfilerStart());
     benchmark(c);
-    cudaProfilerStop();
+    ERRCHK_CUDA(cudaProfilerStop());
     return EXIT_SUCCESS;
 }

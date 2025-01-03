@@ -1340,6 +1340,8 @@ FUNC_DEFINE(AcResult, acDeviceStorePlateBuffer,(const Device device, int3 start,
 FUNC_DEFINE(AcResult, acDeviceStoreIXYPlate,(const Device device, int3 start, int3 end, int src_offset, const Stream stream, 
                                AcMesh *host_mesh));
 
+/** */
+FUNC_DEFINE(AcMeshInfo,acDeviceGetLocalConfig,(const Device device));
 #if AC_RUNTIME_COMPILATION == 0
 /** */
 FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[2]));
@@ -1350,8 +1352,6 @@ FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[
 AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
                                  const char* filepath);
 
-/** */
-AcMeshInfo acDeviceGetLocalConfig(const Device device);
 
 /*
  * =============================================================================
@@ -1375,7 +1375,7 @@ FUNC_DEFINE(AcResult, acHostMeshCopy,(const AcMesh src, AcMesh* dst));
 FUNC_DEFINE(AcResult, acHostGridMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
 
 /** Checks that the loaded dynamic Astaroth is binary compatible with the loader */
-FUNC_DEFINE(AcResult, acVerifyCompatibility, (const size_t mesh_size, const size_t mesh_info_size, const int num_reals, const int num_ints, const int num_bools, const int num_real_arrays, const int num_int_arrays, const int num_bool_arrays));
+FUNC_DEFINE(AcResult, acVerifyCompatibility, (const size_t mesh_size, const size_t mesh_info_size, const size_t params_size, const size_t comp_info_size, const int num_reals, const int num_ints, const int num_bools, const int num_real_arrays, const int num_int_arrays, const int num_bool_arrays));
 
 /** Randomizes a host mesh */
 FUNC_DEFINE(AcResult, acHostMeshRandomize,(AcMesh* mesh));
@@ -1433,6 +1433,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 		exit(EXIT_FAILURE);
 	}
 
+	LOAD_DSYM(acDeviceGetLocalConfig)
         LOAD_DSYM(acDeviceFinishReduceInt)
         LOAD_DSYM(acKernelFlushInt)
         LOAD_DSYM(acAnalysisGetKernelInfo)
@@ -1628,7 +1629,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 //#else
 //	return handle;
 //#endif
-	const AcResult is_compatible = acVerifyCompatibility(sizeof(AcMesh), sizeof(AcMeshInfo), NUM_REAL_PARAMS, NUM_INT_PARAMS, NUM_BOOL_PARAMS, NUM_REAL_ARRAYS, NUM_INT_ARRAYS, NUM_BOOL_ARRAYS);
+	const AcResult is_compatible = acVerifyCompatibility(sizeof(AcMesh), sizeof(AcMeshInfo), sizeof(AcMeshInfoParams), sizeof(AcCompInfo), NUM_REAL_PARAMS, NUM_INT_PARAMS, NUM_BOOL_PARAMS, NUM_REAL_ARRAYS, NUM_INT_ARRAYS, NUM_BOOL_ARRAYS);
 	if(is_compatible == AC_FAILURE)
 	{
 		fprintf(stderr,"Library is not compatible\n");

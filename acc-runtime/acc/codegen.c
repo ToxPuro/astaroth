@@ -1664,11 +1664,13 @@ gen_datatype_enums(FILE* fp, const char* datatype_scalar)
   const char* uppr = strupr(convert_to_define_name(datatype_scalar));
   counter = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-     counter  += (symbol_table[i].tspecifier == datatype_scalar);
+  {
+     counter  += (symbol_table[i].tspecifier == datatype_scalar && symbol_table[i].type == NODE_VARIABLE_ID);
+  }
   fprintf(fp,"#define MAX_NUM_%s_COMP_PARAMS (%d)\n",uppr,counter);
   counter = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-     counter  += (symbol_table[i].tspecifier == datatype_arr);
+     counter  += (symbol_table[i].tspecifier == datatype_arr && symbol_table[i].type == NODE_VARIABLE_ID);
 
   fprintf(fp,"#define MAX_NUM_%s_COMP_ARRAYS (%d)\n",uppr,counter);
 }
@@ -2038,7 +2040,10 @@ free_func_params_info(func_params_info* info)
 void
 get_function_params_info_recursive(const ASTNode* node, const char* func_name, func_params_info* dst)
 {
-	TRAVERSE_PREAMBLE_PARAMS(get_function_params_info_recursive,func_name,dst);
+	if(!(node->type & NODE_FUNCTION))
+	{
+		TRAVERSE_PREAMBLE_PARAMS(get_function_params_info_recursive,func_name,dst);
+	}
 	if(!(node->type & NODE_FUNCTION))
 		return;
 	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,node);
@@ -3191,7 +3196,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 	ASTNode* compound_statement = node->rhs->rhs;
 	if(gen_mem_accesses)
 	{
-	  astnode_sprintf_postfix(compound_statement,"%s; (void)vba; (void)current_block_idx;}",compound_statement->postfix);
+	  astnode_sprintf_postfix(compound_statement,"%s; (void)vba; (void)current_block_idx;} } } }",compound_statement->postfix);
 	  return;
 	}
 
@@ -3206,9 +3211,9 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 			astnode_sprintf_postfix(compound_statement,"vba.out[%s][idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
 		}
 	}
+	astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
 	if(has_block_loops(kernel_index))
 	{
-		astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
 		gen_final_reductions(REAL_STR,kernel_index,compound_statement,reduced_reals);
 		gen_final_reductions(INT_STR,kernel_index,compound_statement,reduced_ints);
 	}

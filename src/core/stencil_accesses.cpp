@@ -23,6 +23,9 @@ bool should_reduce_int[1000] = {false};
 
 
 #define rocprim__warpSize() (64)
+#define rocprim__warpId()   (0)
+#define rocprim__warp_shuffle(mask,val)  (val)
+#define rocprim__warp_shuffle_down(mask,val)  (val)
 
 #define DEVICE_INLINE
 #ifndef AC_IN_AC_LIBRARY
@@ -56,8 +59,8 @@ bool should_reduce_int[1000] = {false};
 
 #define threadIdx ((int3){0, 0, 0})
 #define blockIdx ((dim3){0, 0, 0})
-#define blockDim ((int3){1, 1, 1})
-#define gridDim ((int3){1, 1, 1})
+#define blockDim ((dim3){1, 1, 1})
+#define gridDim ((dim3){1, 1, 1})
 #define make_int3(x, y, z) ((int3){x, y, z})
 #define make_float3(x, y, z) ((float3){x, y, z})
 #define make_double3(x, y, z) ((double3){x, y, z})
@@ -133,6 +136,13 @@ __ballot(bool)
 {
 	return ~0;
 }
+
+int
+__ffsll(unsigned long long)
+{
+	return 1;
+}
+
 #else
 uint64_t
 __ballot_sync(unsigned long, bool)
@@ -156,6 +166,7 @@ __ffs(unsigned long)
 {
 	return 1;
 }
+
 #endif
 #define idx  ((int)IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z))
 
@@ -487,6 +498,7 @@ AC_INTERNAL_read_field(const Field& field, const int x, const int y, const int z
 static std::vector<int> executed_nodes{};
 #define constexpr
 #define size(arr) (int)(sizeof(arr)/sizeof(arr[0]))
+#define min(a,b) a < b ? a : b
 #include "user_cpu_kernels.h"
 #undef  constexpr
 #undef size

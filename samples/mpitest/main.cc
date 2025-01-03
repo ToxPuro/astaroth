@@ -45,7 +45,12 @@ acAbort(void)
 int
 main(int argc, char* argv[])
 {
-    const size_t NUM_INTEGRATION_STEPS = argc >  1 ? (size_t)atoi(argv[1]) : 100;
+
+
+    const size_t nx = argc >  1 ? (size_t)atoi(argv[1]) : 2*9;
+    const size_t ny = argc >  2 ? (size_t)atoi(argv[2]) : 2*11;
+    const size_t nz = argc >  3 ? (size_t)atoi(argv[3]) : 4*7;
+    const size_t NUM_INTEGRATION_STEPS = argc >  4 ? (size_t)atoi(argv[4]) : 100;
     MPI_Init(NULL,NULL);
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -54,7 +59,7 @@ main(int argc, char* argv[])
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     info.comm = MPI_COMM_WORLD;
-    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
+    acSetMeshDims(nx, ny, nz, &info);
     acPushToConfig(info,AC_proc_mapping_strategy, (int)AcProcMappingStrategy::Linear);
     acPushToConfig(info,AC_decompose_strategy,    (int)AcDecomposeStrategy::Morton);
     acPushToConfig(info,AC_MPI_comm_strategy,    (int)AcMPICommStrategy::DuplicateMPICommWorld);
@@ -104,7 +109,6 @@ main(int argc, char* argv[])
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {

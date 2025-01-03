@@ -81,7 +81,7 @@ file_exists(const char* filename)
   return (stat (filename, &buffer) == 0);
 }
 void
-acCompile(const char* compilation_string, AcMeshInfo mesh_info)
+acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_info)
 {
 	AcCompInfo info = mesh_info.run_consts;
 	check_that_built_ins_loaded(info);
@@ -159,7 +159,7 @@ acCompile(const char* compilation_string, AcMeshInfo mesh_info)
 			fflush(stderr);
 			exit(EXIT_FAILURE);
 		}
-		sprintf(cmd,"cd %s && make -j",runtime_astaroth_build_path);
+		sprintf(cmd,"cd %s && make %s -j",runtime_astaroth_build_path,target);
 		retval = system(cmd);
 		if(retval)
 		{
