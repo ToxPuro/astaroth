@@ -278,12 +278,12 @@ reduce_min_real(const bool&, const AcReal, const AcRealOutputParam dst)
 void
 reduce_sum_int(const bool&, const AcReal, const AcIntOutputParam dst)
 {
-	if constexpr (NUM_REAL_OUTPUTS == 0) 
+	if constexpr (NUM_INT_OUTPUTS == 0) 
 	{
 		fprintf(stderr,"\nFATAL AC ERROR:\n");
-		fprintf(stderr,"No real outputs but reduce_sum_int called!\n");
-		fprintf(stderr,"No real outputs but reduce_sum_int called!\n");
-		fprintf(stderr,"No real outputs but reduce_sum_int called!\n");
+		fprintf(stderr,"No int outputs but reduce_sum_int called!\n");
+		fprintf(stderr,"No int outputs but reduce_sum_int called!\n");
+		fprintf(stderr,"No int outputs but reduce_sum_int called!\n");
 		exit(EXIT_FAILURE);
 	}
 	if(reduced_ints[dst]) 
@@ -301,12 +301,12 @@ reduce_sum_int(const bool&, const AcReal, const AcIntOutputParam dst)
 void
 reduce_max_int(const bool&, const AcReal, const AcIntOutputParam dst)
 {
-	if constexpr (NUM_REAL_OUTPUTS == 0) 
+	if constexpr (NUM_INT_OUTPUTS == 0) 
 	{
 		fprintf(stderr,"\nFATAL AC ERROR:\n");
-		fprintf(stderr,"No real outputs but reduce_max_int called!\n");
-		fprintf(stderr,"No real outputs but reduce_max_int called!\n");
-		fprintf(stderr,"No real outputs but reduce_max_int called!\n");
+		fprintf(stderr,"No int outputs but reduce_max_int called!\n");
+		fprintf(stderr,"No int outputs but reduce_max_int called!\n");
+		fprintf(stderr,"No int outputs but reduce_max_int called!\n");
 		exit(EXIT_FAILURE);
 	}
 	if(reduced_ints[dst]) 
@@ -324,12 +324,12 @@ reduce_max_int(const bool&, const AcReal, const AcIntOutputParam dst)
 void
 reduce_min_int(const bool&, const AcReal, const AcIntOutputParam dst)
 {
-	if constexpr (NUM_REAL_OUTPUTS == 0) 
+	if constexpr (NUM_INT_OUTPUTS == 0) 
 	{
 		fprintf(stderr,"\nFATAL AC ERROR:\n");
-		fprintf(stderr,"No real outputs but reduce_min_int called!\n");
-		fprintf(stderr,"No real outputs but reduce_min_int called!\n");
-		fprintf(stderr,"No real outputs but reduce_min_int called!\n");
+		fprintf(stderr,"No int outputs but reduce_min_int called!\n");
+		fprintf(stderr,"No int outputs but reduce_min_int called!\n");
+		fprintf(stderr,"No int outputs but reduce_min_int called!\n");
 		exit(EXIT_FAILURE);
 	}
 	if(reduced_ints[dst]) 
