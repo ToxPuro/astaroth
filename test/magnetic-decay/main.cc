@@ -104,6 +104,7 @@ main(void)
     }
     const AcReal dt = 0.0001;
     acDeviceSetInput(acGridGetDevice(), AC_dt,dt);
+    acDeviceSetInput(acGridGetDevice(), AC_step_num, 0);
     AcTaskGraph* graph = acGetDSLTaskGraph(AC_rhs);
 
     // dconst arr test
@@ -117,7 +118,7 @@ main(void)
 
 	for (size_t isubstep = 0; isubstep < 3; ++isubstep)
 	{
-  		acDeviceSetInput(acGridGetDevice(), AC_step_num, i);
+  		acDeviceSetInput(acGridGetDevice(), AC_step_num, isubstep);
         	acGridExecuteTaskGraph(graph,1);
         	acGridSynchronizeStream(STREAM_ALL);
 	}
