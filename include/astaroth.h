@@ -1624,6 +1624,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	LOAD_DSYM(acDebugFromRootProc);
 	LOAD_DSYM(acVA_DebugFromRootProc);
 	LOAD_DSYM(acVerifyCompatibility);
+	LOAD_DSYM(acStoreConfig);
 //#ifdef __cplusplus
 //	return AcLibHandle(handle);
 //#else
