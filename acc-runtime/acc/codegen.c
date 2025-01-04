@@ -4555,6 +4555,12 @@ is_builtin_constant(const char* name)
 	return strlen(name) > 2 && name[0] == 'A' && name[1] == 'C';
 }
 void
+print_const_array(FILE* fp, const char* datatype_scalar, const char* name, const int num_of_elems, const char* assignment_val)
+{
+	fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems, assignment_val);
+}
+
+void
 gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_builtin, FILE* fp_non_scalar_constants, FILE* fp_non_scalar_builtin)
 {
 		const ASTNode* name_node = get_node_by_token(IDENTIFIER,def);
@@ -4585,22 +4591,22 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 			if(array_dim == 1)
 			{
 				if(is_builtin_constant(name))
-					fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems, assignment_val);
+					print_const_array(fp_non_scalar_builtin,datatype_scalar,name,num_of_elems,assignment_val);
 				else
 				{
-					fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems, assignment_val);
-					fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems, assignment_val);
+					print_const_array(fp,datatype_scalar,name,num_of_elems,assignment_val);
+					print_const_array(fp_non_scalar_constants,datatype_scalar,name,num_of_elems,assignment_val);
 				}
 			}
 			else if(array_dim == 2)
 			{
 				const int num_of_elems_in_list = count_num_of_nodes_in_list(second_array_initializer->lhs);
 				if(is_builtin_constant(name))
-					fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d*%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems_in_list, num_of_elems, assignment_val);
+					print_const_array(fp_non_scalar_builtin,datatype_scalar,name,num_of_elems_in_list*num_of_elems,assignment_val);
 				else
 				{
-					fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d*%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems_in_list, num_of_elems, assignment_val);
-					fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s[%d][%d] = %s;\n#endif\n",datatype_scalar, name, num_of_elems_in_list, num_of_elems, assignment_val);
+					print_const_array(fp,datatype_scalar,name,num_of_elems_in_list*num_of_elems,assignment_val);
+					print_const_array(fp_non_scalar_constants,datatype_scalar,name,num_of_elems_in_list*num_of_elems,assignment_val);
 				}
 
 			}
@@ -4630,7 +4636,7 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 			{
                                fprintf(
 						is_builtin_constant(name) ? fp_non_scalar_builtin : fp_non_scalar_constants,  
-						"\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val
+						"\n#ifdef __cplusplus\n #define %s (%s)\n#endif\n", name, assignment_val
 				);
 			        if(!is_builtin_constant(name))
                                		fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);

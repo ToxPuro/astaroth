@@ -7,21 +7,23 @@ run_const real3 AC_inv_ds_3
 run_const real3 AC_inv_ds_4
 run_const real3 AC_inv_ds_5
 run_const real3 AC_inv_ds_6
-run_const int3 AC_nlocal
-run_const int3 AC_mlocal
 
-run_const int3 AC_ngrid
-run_const int3 AC_mgrid
-run_const int3 AC_nmin
-run_const int3 AC_nlocal_max
+//TP: these could be run_const but gives really bad performance otherwise
+int3 AC_nlocal
+int3 AC_mlocal
+int3 AC_ngrid
+int3 AC_mgrid
+int3 AC_nmin
+int3 AC_nlocal_max
+int3 AC_ngrid_max
 
-run_const int3 AC_ngrid_max
+
+AcDimProducts AC_nlocal_products
+AcDimProducts AC_ngrid_products
+AcDimProducts AC_mlocal_products
+AcDimProducts AC_mgrid_products
 
 
-run_const AcDimProducts AC_nlocal_products
-run_const AcDimProducts AC_ngrid_products
-run_const AcDimProducts AC_mlocal_products
-run_const AcDimProducts AC_mgrid_products
 run_const real3 AC_len
 
 run_const int AC_proc_mapping_strategy
