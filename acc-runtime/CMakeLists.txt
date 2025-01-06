@@ -27,7 +27,7 @@ if(NOT USE_HIP AND CUDAToolkit_FOUND)
     message(STATUS "CUDA found")
     enable_language(CUDA)
     add_compile_definitions(DEVICE_ENABLED)
-    add_compile_options(CUDA_ENABLED)
+    add_compile_definitions(CUDA_ENABLED)
     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
 
     set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
