@@ -633,7 +633,6 @@ acGridInit(const AcMeshInfo info)
 	return acGridInitBase(mesh);
 }
 
-
 /**
 Resets all devices on the current grid.
  */
@@ -1826,7 +1825,6 @@ static UNUSED AcResult
 acGridInit(const AcMesh mesh)
 {
 	return acGridInitBase(mesh);
-
 }
 static UNUSED AcBuffer
 acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
