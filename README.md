@@ -116,7 +116,7 @@ mkdir build && cd build                     # Create a build directory
 
 module load gcc bison flex cmake openmpi
 srun -p gpu-amd -t 00:05:00 --pty /bin/bash # Currently need to build on the gpu-amd partition, otherwise hipcc is not available
-cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Triton if BUILD_SHARED_LIBS=OFF due linker failure
+cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Triton if BUILD_SHARED_LIBS=OFF due linker failure (note: BUILD_SHARED_LIBS deprecated on 2025-01-07)
 ./devicetest                                # Check that everything works
 ```
 

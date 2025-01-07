@@ -61,6 +61,7 @@ if (PERFSTUBS_USE_STATIC)
 else (PERFSTUBS_USE_STATIC)
     set (BUILD_SHARED_LIBS ON)
     message(STATUS "Building shared object libraries and dynamic executables.")
+    message(ERROR "BUILD_SHARED_LIBS deprecated")
 endif (PERFSTUBS_USE_STATIC)
 
 # The version number.
@@ -129,6 +130,7 @@ add_library(perfstubs perfstubs_api/timer.c)
 
 if (BUILD_SHARED_LIBS)
     target_link_libraries(perfstubs INTERFACE dl m)
+    message(ERROR "BUILD_SHARED_LIBS deprecated")
 else()
     target_link_libraries(perfstubs INTERFACE m)
 endif()
