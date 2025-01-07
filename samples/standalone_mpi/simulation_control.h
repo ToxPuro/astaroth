@@ -10,7 +10,10 @@
 #include <string>
 
 #include "astaroth_utils.h"
+
+#if AC_MPI_ENABLED
 #include "grid_detail.h"
+#endif
 
 // Structure for keeping track of any generic condition
 struct SimulationPeriod {
