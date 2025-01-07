@@ -135,6 +135,20 @@ reduce_max(bool condition, int val, param)
 {
 	reduce_max_int(condition,val,param)
 }
+reduce_min(bool condition, float val, param)
+{
+	reduce_min_float(condition,val,param)
+}
+reduce_sum(bool condition, float val, param)
+{
+	reduce_sum_float(condition,val,param)
+}
+reduce_max(bool condition, float val, param)
+{
+	reduce_max_float(condition,val,param)
+}
+
+
 reduce_sum(bool condition, real val, Profile<X> prof)
 {
 	reduce_sum_real_x(condition, val, prof);

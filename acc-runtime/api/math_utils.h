@@ -517,8 +517,8 @@ typedef struct AcMatrix {
   AcReal data[3][3]{};
   HOST_DEVICE_INLINE AcMatrix() {}
 
-  HOST_DEVICE_INLINE AcMatrix(const AcReal3 row0, const AcReal3 row1,
-                       const AcReal3 row2)
+  HOST_DEVICE_INLINE AcMatrix(const AcReal3& row0, const AcReal3& row1,
+                       const AcReal3& row2)
   {
     data[0][0] = row0.x;
     data[0][1] = row0.y;
@@ -555,7 +555,38 @@ typedef struct AcMatrix {
   {
     return AcMatrix(-row(0), -row(1), -row(2));
   }
+  HOST_DEVICE_INLINE AcMatrix& operator=(const AcReal& s)
+  {
+	data[0][0] = s;
+	data[1][0] = s;
+	data[2][0] = s;
+
+	data[0][1] = s;
+	data[1][1] = s;
+	data[2][1] = s;
+
+	data[0][2] = s;
+	data[1][2] = s;
+	data[2][2] = s;
+
+	return *this;
+  }
 } AcMatrix;
+
+static HOST_DEVICE_INLINE AcReal
+multm2_sym(const AcMatrix m)
+{
+	AcReal res = m.data[0][0]*m.data[0][0];
+	for(int i = 1; i < 3; ++i)
+	{
+		res += m.data[i][i]*m.data[i][i];
+		for(int j = 0; j < i; ++j)
+		{
+			res += 2*m.data[i][j]*m.data[i][j];
+		}
+	}
+	return res;
+}
 
 static HOST_DEVICE_INLINE AcMatrix
 operator*(const AcReal& v, const AcMatrix& m)
@@ -573,6 +604,46 @@ operator*(const AcReal& v, const AcMatrix& m)
   out.data[2][0] = v * m.data[2][0];
   out.data[2][1] = v * m.data[2][1];
   out.data[2][2] = v * m.data[2][2];
+
+  return out;
+}
+
+static HOST_DEVICE_INLINE AcMatrix
+operator+(const AcMatrix& a, const AcMatrix& b)
+{
+  AcMatrix out;
+
+  out.data[0][0] = a.data[0][0] + b.data[0][0];
+  out.data[0][1] = a.data[0][1] + b.data[0][1];
+  out.data[0][2] = a.data[0][2] + b.data[0][2];
+
+  out.data[1][0] = a.data[1][0] + b.data[1][0];
+  out.data[1][1] = a.data[1][1] + b.data[1][1];
+  out.data[1][2] = a.data[1][2] + b.data[1][2];
+
+  out.data[2][0] = a.data[2][0] + b.data[2][0];
+  out.data[2][1] = a.data[2][1] + b.data[2][1];
+  out.data[2][2] = a.data[2][2] + b.data[2][2];
+
+  return out;
+}
+
+static HOST_DEVICE_INLINE AcMatrix
+operator-(const AcMatrix& a, const AcMatrix& b)
+{
+  AcMatrix out;
+
+  out.data[0][0] = a.data[0][0] - b.data[0][0];
+  out.data[0][1] = a.data[0][1] - b.data[0][1];
+  out.data[0][2] = a.data[0][2] - b.data[0][2];
+
+  out.data[1][0] = a.data[1][0] - b.data[1][0];
+  out.data[1][1] = a.data[1][1] - b.data[1][1];
+  out.data[1][2] = a.data[1][2] - b.data[1][2];
+
+  out.data[2][0] = a.data[2][0] - b.data[2][0];
+  out.data[2][1] = a.data[2][1] - b.data[2][1];
+  out.data[2][2] = a.data[2][2] - b.data[2][2];
 
   return out;
 }
@@ -783,4 +854,67 @@ operator!=(const Volume& a, const Volume& b)
 		a.z != b.z;
 
 }
+typedef struct AcTensor {
+  AcReal data[3][3][3]{};
 
+  HOST_DEVICE_INLINE AcTensor() {}
+
+  HOST_DEVICE_INLINE AcTensor(const AcMatrix& m0, const AcMatrix& m1,
+                       const AcMatrix& m2)
+  {
+    data[0][0][0] = m0.data[0][0];
+    data[0][0][1] = m0.data[0][1];
+    data[0][0][2] = m0.data[0][2];
+
+    data[0][1][0] = m0.data[1][0];
+    data[0][1][1] = m0.data[1][1];
+    data[0][1][2] = m0.data[1][2];
+
+    data[0][2][0] = m0.data[2][0];
+    data[0][2][1] = m0.data[2][1];
+    data[0][2][2] = m0.data[2][2];
+
+    data[1][0][0] = m1.data[0][0];
+    data[1][0][1] = m1.data[0][1];
+    data[1][0][2] = m1.data[0][2];
+
+    data[1][1][0] = m1.data[1][0];
+    data[1][1][1] = m1.data[1][1];
+    data[1][1][2] = m1.data[1][2];
+
+    data[1][2][0] = m1.data[2][0];
+    data[1][2][1] = m1.data[2][1];
+    data[1][2][2] = m1.data[2][2];
+
+    data[2][0][0] = m2.data[0][0];
+    data[2][0][1] = m2.data[0][1];
+    data[2][0][2] = m2.data[0][2];
+
+    data[2][1][0] = m2.data[1][0];
+    data[2][1][1] = m2.data[1][1];
+    data[2][1][2] = m2.data[1][2];
+
+    data[2][2][0] = m2.data[2][0];
+    data[2][2][1] = m2.data[2][1];
+    data[2][2][2] = m2.data[2][2];
+
+
+  }
+} AcTensor;
+
+HOST_DEVICE_INLINE AcReal3
+matmul_arr(AcReal* m, const AcReal3& v)
+{
+	AcReal x = m[0 + 3*0]*v.x;
+	x += m[0 + 3*1]*v.y;
+	x += m[0 + 3*2]*v.z;
+
+	AcReal y = m[1 + 3*0]*v.x;
+	y += m[1 + 3*1]*v.y;
+	y += m[1 + 3*2]*v.z;
+
+	AcReal z = m[2 + 3*0]*v.x;
+	z += m[2 + 3*1]*v.y;
+	z += m[2 + 3*2]*v.z;
+	return (AcReal3){x,y,z};
+}

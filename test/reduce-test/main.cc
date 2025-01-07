@@ -131,6 +131,7 @@ main(int argc, char* argv[])
     	const auto gpu_min_val = acDeviceGetOutput(acGridGetDevice(), AC_min_val);
     	const auto gpu_sum_val = acDeviceGetOutput(acGridGetDevice(), AC_sum_val);
     	const auto gpu_int_sum = acDeviceGetOutput(acGridGetDevice(), AC_int_sum_val);
+    	const auto gpu_float_sum = acDeviceGetOutput(acGridGetDevice(), AC_float_sum_val);
 
     	acGridSynchronizeStream(STREAM_ALL);
     	acDeviceStoreProfile(acGridGetDevice(), PROF_X,  &model);
@@ -158,6 +159,7 @@ main(int argc, char* argv[])
     	AcReal cpu_max_val = -1000000.000000000;
     	AcReal cpu_min_val = +1000000.000000000;
     	int cpu_int_sum = 0;
+    	float cpu_float_sum = 0;
     	long double long_cpu_sum_val = (long double)0.0;
     	bool transpose_correct = true;
     	{
@@ -303,7 +305,8 @@ main(int argc, char* argv[])
     	    		cpu_max_val = (val > cpu_max_val)  ? val : cpu_max_val;
     	    		cpu_min_val = (val < cpu_min_val)  ? val : cpu_min_val;
     	    		long_cpu_sum_val += (long double)val;
-    	    		cpu_int_sum += (size_t)val;
+    	    		cpu_int_sum += (int)val;
+    	    		cpu_float_sum += (float)val;
     	    		z_sum[k] += val;
     	    	}
     	    }
@@ -535,10 +538,15 @@ main(int argc, char* argv[])
     	    }
     	}
 
+	//higher epsilon for comparing single precision reduction
+	bool sum_correct = in_eps_threshold(cpu_sum_val,gpu_sum_val);
+	epsilon = pow(10.0,-5.0);
+	bool float_sum_correct = in_eps_threshold((double)cpu_float_sum,(double)gpu_float_sum);
     	fprintf(stderr,"MAX REDUCTION... %s %14e %14e\n", cpu_max_val == gpu_max_val ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET,cpu_max_val,gpu_max_val);
     	fprintf(stderr,"MIN REDUCTION... %s %14e %14e\n", cpu_min_val == gpu_min_val ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET,cpu_min_val,gpu_min_val);
-    	fprintf(stderr,"SUM REDUCTION... %s %14e %14e\n", in_eps_threshold(cpu_sum_val,gpu_sum_val) ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET,cpu_sum_val,gpu_sum_val);
+    	fprintf(stderr,"SUM REDUCTION... %s %14e %14e\n", sum_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET,cpu_sum_val,gpu_sum_val);
     	fprintf(stderr,"INT SUM REDUCTION... %s %d %d\n", cpu_int_sum == gpu_int_sum ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET,cpu_int_sum,gpu_int_sum); 
+    	fprintf(stderr,"FLOAT SUM REDUCTION... %s %14e %14e\n", float_sum_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET,(double)cpu_float_sum,(double)gpu_float_sum); 
     	fprintf(stderr,"X SUM REDUCTION... %s\n", x_sum_correct   ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     	fprintf(stderr,"Y SUM REDUCTION... %s\n", y_sum_correct   ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     	fprintf(stderr,"Z SUM REDUCTION... %s\n", sums_correct    ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
@@ -558,8 +566,9 @@ main(int argc, char* argv[])
     	bool correct = true;
     	correct &= cpu_max_val == gpu_max_val;
     	correct &= cpu_min_val == gpu_min_val;
-    	correct &= in_eps_threshold(cpu_sum_val,gpu_sum_val);
+    	correct &= sum_correct;
     	correct &= cpu_int_sum == gpu_int_sum;
+    	correct &= float_sum_correct;
 
     	correct &= transpose_correct;
     	correct &= xzy_correct;

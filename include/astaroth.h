@@ -1295,11 +1295,13 @@ FUNC_DEFINE(AcResult, acDeviceLoadProfile,(const Device device, const AcReal* ho
 FUNC_DEFINE(AcResult, acDeviceStoreProfile,(const Device device, const Profile profile, AcMesh* host_mesh));
 
 /** */
-FUNC_DEFINE(AcResult,  acDeviceFinishReduce,(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output));
+FUNC_DEFINE(AcResult,  acDeviceFinishReduceReal,(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output));
+/** */
+FUNC_DEFINE(AcResult,  acDeviceFinishReduceFloat,(Device device, const Stream stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output));
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduceInt,(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output));
-FUNC_DEFINE(AcResult,
-acDevicePreprocessScratchPad,(Device device, const int variable, const AcType type,const AcReduceOp op));
+/** */
+FUNC_DEFINE(AcResult,acDevicePreprocessScratchPad,(Device device, const int variable, const AcType type,const AcReduceOp op));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceUpdate,(Device device, const AcMeshInfo info));
@@ -1590,7 +1592,6 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	LOAD_DSYM(acDeviceReduceVec)
 	LOAD_DSYM(acDeviceReduceVecScalNoPostProcessing)
 	LOAD_DSYM(acDeviceReduceVecScal)
-	LOAD_DSYM(acDeviceFinishReduce)
 	LOAD_DSYM(acDeviceUpdate)
 	LOAD_DSYM(acDeviceGetKernelOutput)
 	LOAD_DSYM(acDeviceLaunchKernel)
@@ -1687,6 +1688,23 @@ AcBuffer acBufferCopy(const AcBuffer in, const bool on_device);
 
 #ifdef __cplusplus
 
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
+{
+	return acDeviceFinishReduceInt(device,stream,result,kernel,reduce_op,output);
+}
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output)
+{
+	return acDeviceFinishReduceReal(device,stream,result,kernel,reduce_op,output);
+}
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const Stream stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output)
+{
+	return acDeviceFinishReduceFloat(device,stream,result,kernel,reduce_op,output);
+}
 
 #if AC_MPI_ENABLED
 static UNUSED AcResult

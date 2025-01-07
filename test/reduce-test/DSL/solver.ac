@@ -29,6 +29,7 @@ Profile<ZY> PROF_ZY
 
 output real AC_max_val
 output real AC_sum_val
+output float AC_float_sum_val
 output int  AC_int_sum_val
 
 //TP: there was a bug where reductions worked only if you had a single kernel.
@@ -43,6 +44,8 @@ Kernel test_reduce()
     reduce_sum(true, FIELD, AC_sum_val)
     int int_val = (int) value(FIELD)
     reduce_sum(true,int_val,AC_int_sum_val)
+    float float_val = (float) value(FIELD)
+    reduce_sum(true,float_val,AC_float_sum_val)
 
     reduce_sum(true,FIELD,PROF_X)
     reduce_sum(true,FIELD,PROF_Y)

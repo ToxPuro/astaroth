@@ -8,6 +8,12 @@ run_const real3 AC_inv_ds_4
 run_const real3 AC_inv_ds_5
 run_const real3 AC_inv_ds_6
 
+run_const real3 AC_ds_2
+run_const real3 AC_ds_3
+run_const real3 AC_ds_4
+run_const real3 AC_ds_5
+run_const real3 AC_ds_6
+
 //TP: these could be run_const but gives really bad performance otherwise
 int3 AC_nlocal
 int3 AC_mlocal

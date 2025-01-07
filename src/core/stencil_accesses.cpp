@@ -190,8 +190,9 @@ static int field_has_stencil_op[NUM_ALL_FIELDS]{};
 static int read_profiles[NUM_PROFILES]{};
 static int reduced_profiles[NUM_PROFILES]{};
 static int written_profiles[NUM_PROFILES]{};
-static int reduced_reals[NUM_REAL_OUTPUTS]{};
-static int reduced_ints[NUM_REAL_OUTPUTS]{};
+static int reduced_reals[NUM_REAL_OUTPUTS+1]{};
+static int reduced_ints[NUM_INT_OUTPUTS+1]{};
+static int reduced_floats[NUM_FLOAT_OUTPUTS+1]{};
 
 AcKernel current_kernel{};
 #define reduce_sum_real_x  reduce_prof
@@ -276,7 +277,7 @@ reduce_min_real(const bool&, const AcReal, const AcRealOutputParam dst)
 }
 
 void
-reduce_sum_int(const bool&, const AcReal, const AcIntOutputParam dst)
+reduce_sum_int(const bool&, const int, const AcIntOutputParam dst)
 {
 	if constexpr (NUM_INT_OUTPUTS == 0) 
 	{
@@ -299,7 +300,7 @@ reduce_sum_int(const bool&, const AcReal, const AcIntOutputParam dst)
 }
 
 void
-reduce_max_int(const bool&, const AcReal, const AcIntOutputParam dst)
+reduce_max_int(const bool&, const int, const AcIntOutputParam dst)
 {
 	if constexpr (NUM_INT_OUTPUTS == 0) 
 	{
@@ -322,7 +323,7 @@ reduce_max_int(const bool&, const AcReal, const AcIntOutputParam dst)
 }
 
 void
-reduce_min_int(const bool&, const AcReal, const AcIntOutputParam dst)
+reduce_min_int(const bool&, const int, const AcIntOutputParam dst)
 {
 	if constexpr (NUM_INT_OUTPUTS == 0) 
 	{
@@ -343,6 +344,76 @@ reduce_min_int(const bool&, const AcReal, const AcIntOutputParam dst)
 	reduced_ints[dst] = REDUCE_MIN;
 	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MIN,current_kernel});
 }
+
+void
+reduce_sum_float(const bool&, const float, const AcFloatOutputParam dst)
+{
+	if constexpr (NUM_FLOAT_OUTPUTS == 0) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"No float outputs but reduce_sum_float called!\n");
+		fprintf(stderr,"No float outputs but reduce_sum_float called!\n");
+		fprintf(stderr,"No float outputs but reduce_sum_float called!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(reduced_floats[dst]) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+	reduced_floats[dst] = REDUCE_SUM;
+	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_SUM,current_kernel});
+}
+
+void
+reduce_max_float(const bool&, const float, const AcFloatOutputParam dst)
+{
+	if constexpr (NUM_FLOAT_OUTPUTS == 0) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"No float outputs but reduce_max_float called!\n");
+		fprintf(stderr,"No float outputs but reduce_max_float called!\n");
+		fprintf(stderr,"No float outputs but reduce_max_float called!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(reduced_floats[dst]) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+	reduced_floats[dst] = REDUCE_MAX;
+	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_MAX,current_kernel});
+}
+
+void
+reduce_min_float(const bool&, const float, const AcFloatOutputParam dst)
+{
+	if constexpr (NUM_FLOAT_OUTPUTS == 0) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"No float outputs but reduce_min_float called!\n");
+		fprintf(stderr,"No float outputs but reduce_min_float called!\n");
+		fprintf(stderr,"No float outputs but reduce_min_float called!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(reduced_floats[dst]) 
+	{
+		fprintf(stderr,"\nFATAL AC ERROR:\n");
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
+		fprintf(stderr,"Can not reduce %s more than once in %s!\n",float_output_names[dst],kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+	reduced_floats[dst] = REDUCE_MIN;
+	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_MIN,current_kernel});
+}
+
 
 void
 reduce_prof(const bool&, const AcReal, const Profile dst)
@@ -631,6 +702,8 @@ reset_info_arrays()
 	    reduced_reals[i] = 0;
     for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
 	    reduced_ints[i] = 0;
+    for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
+	    reduced_floats[i] = 0;
 }
 
 acAnalysisBCInfo 
@@ -757,6 +830,7 @@ main(int argc, char* argv[])
   FILE* fp_profiles_reduced = fopen("user_reduced_profiles.bin","wb");
   FILE* fp_reals_reduced = fopen("user_reduced_reals.bin","wb");
   FILE* fp_ints_reduced = fopen("user_reduced_ints.bin","wb");
+  FILE* fp_floats_reduced = fopen("user_reduced_floats.bin","wb");
 
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
@@ -764,8 +838,9 @@ main(int argc, char* argv[])
   int  write_output[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
   int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
   int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES]{};
-  int  output_reduced_reals[NUM_KERNELS][NUM_REAL_OUTPUTS]{};
-  int  output_reduced_ints[NUM_KERNELS][NUM_INT_OUTPUTS]{};
+  int  output_reduced_reals[NUM_KERNELS][NUM_REAL_OUTPUTS+1]{};
+  int  output_reduced_ints[NUM_KERNELS][NUM_INT_OUTPUTS+1]{};
+  int  output_reduced_floats[NUM_KERNELS][NUM_FLOAT_OUTPUTS+1]{};
   int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     reset_info_arrays();
@@ -796,6 +871,8 @@ main(int argc, char* argv[])
 		output_reduced_reals[k][j] = reduced_reals[j];
 	for(int j = 0; j < NUM_INT_OUTPUTS; ++j)
 		output_reduced_ints[k][j] = reduced_ints[j];
+	for(int j = 0; j < NUM_FLOAT_OUTPUTS; ++j)
+		output_reduced_floats[k][j] = reduced_floats[j];
     } 
 
     for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
@@ -817,6 +894,7 @@ main(int argc, char* argv[])
     fwrite(reduced_profiles,sizeof(int),NUM_PROFILES,fp_profiles_reduced);
     fwrite(reduced_reals,sizeof(int),NUM_REAL_OUTPUTS,fp_reals_reduced);
     fwrite(reduced_ints,sizeof(int),NUM_INT_OUTPUTS,fp_ints_reduced);
+    fwrite(reduced_floats,sizeof(int),NUM_FLOAT_OUTPUTS,fp_floats_reduced);
   }
 
 
@@ -834,6 +912,7 @@ main(int argc, char* argv[])
   print_info_array(fp,"read_profiles",output_read_profiles);
   print_info_array(fp,"reduced_reals",output_reduced_reals);
   print_info_array(fp,"reduced_ints",output_reduced_ints);
+  print_info_array(fp,"reduced_floats",output_reduced_floats);
   fprintf(fp,"const bool has_mem_access_info __attribute__((unused)) = true;\n");
 
   fclose(fp);

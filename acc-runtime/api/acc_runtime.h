@@ -219,6 +219,7 @@ typedef struct {
   {
   	AcReduceOp reals[NUM_REAL_SCRATCHPADS+1];	
   	AcReduceOp ints[NUM_INT_OUTPUTS+1];	
+  	AcReduceOp floats[NUM_FLOAT_OUTPUTS+1];	
   } AcScratchpadStates;
 
   typedef struct {
@@ -235,23 +236,7 @@ typedef struct {
 #endif
   } AcBuffer;
 
-  typedef struct 
-  {
-	  AcReal** src;
-	  AcReal** cub_tmp;
-	  size_t* cub_tmp_size;
-	  size_t* buffer_size;
-	  AcReal* res;
-  } AcRealScalarReduceBuffer;
-
-  typedef struct 
-  {
-	  int** src;
-	  int** cub_tmp;
-	  size_t* cub_tmp_size;
-	  size_t* buffer_size;
-	  int* res;
-  } AcIntScalarReduceBuffer;
+#include "scalar_reduce_buffer_defs.h"
 
   typedef struct 
   {
@@ -262,8 +247,6 @@ typedef struct {
 	  size_t* cub_tmp_size;
   } AcReduceBuffer;
 
-
-
   typedef struct {
     //Auxiliary metadata
     size_t bytes;
@@ -272,16 +255,8 @@ typedef struct {
     DeviceVertexBufferArray on_device;
     size_t profile_count;
 
-    //AcReal** reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-    //int** reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
+#include "scalar_reduce_buffers_in_vba.h"
 
-    //AcReal** reduce_cub_tmp_real[NUM_REAL_SCRATCHPADS];
-    //int**    reduce_cub_tmp_int[NUM_INT_OUTPUTS+1];
-
-    //size_t* reduce_cub_tmp_size_real[NUM_REAL_SCRATCHPADS];
-    //size_t* reduce_cub_tmp_size_int[NUM_INT_OUTPUTS+1];
-    AcRealScalarReduceBuffer reduce_buffer_real[NUM_REAL_OUTPUTS+1];
-    AcIntScalarReduceBuffer  reduce_buffer_int[NUM_INT_OUTPUTS];
     AcScratchpadStates* scratchpad_states;
     AcReduceBuffer profile_reduce_buffers[NUM_PROFILES];
 
@@ -513,10 +488,31 @@ AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
                            AcReal* d_out, AcReal** tmp, size_t* tmp_size);
 
 AcResult
-acReduce(const cudaStream_t stream, const AcReduceOp, AcRealScalarReduceBuffer, const size_t count);
+acReduceReal(const cudaStream_t stream, const AcReduceOp, AcRealScalarReduceBuffer, const size_t count);
 
 AcResult
 acReduceInt(const cudaStream_t stream, const AcReduceOp, AcIntScalarReduceBuffer, const size_t count);
+
+AcResult
+acReduceFloat(const cudaStream_t stream, const AcReduceOp, AcFloatScalarReduceBuffer, const size_t count);
+
+static UNUSED AcResult
+acReduce(const cudaStream_t stream, const AcReduceOp op, AcRealScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceReal(stream,op,buffer,count);
+}
+
+static UNUSED AcResult
+acReduce(const cudaStream_t stream, const AcReduceOp op, AcIntScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceInt(stream,op,buffer,count);
+}
+
+static UNUSED AcResult
+acReduce(const cudaStream_t stream, const AcReduceOp op, AcFloatScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceFloat(stream,op,buffer,count);
+}
 
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
                            AcReal* array);

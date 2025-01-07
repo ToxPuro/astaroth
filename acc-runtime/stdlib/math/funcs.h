@@ -12,6 +12,10 @@ set_min_val(real val, real min_val)
 {
 	return max(val,min_val)
 }
+set_max_val(real val, real max_val)
+{
+	return min(val,max_val)
+}
 set_zero_below_threshold(real val, real threshold)
 {
 	return val > threshold ? val : 0.0;
@@ -32,3 +36,7 @@ sign(real val, real set_sign)
 	return abs(val)*(set_sign < 0.0 ? -1.0 : 1.0);
 }
 
+modulo(real a, real p)
+{
+	return a - floor(a/p)*p
+}

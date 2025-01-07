@@ -106,7 +106,7 @@ elemental laplace(Field s) {
     return derxx(s) + deryy(s) + derzz(s)
 }
 
-traceless_strain(uij,divu)
+traceless_strain(Matrix uij,divu)
 {
   Matrix sij
   for row in 0:3{
@@ -197,4 +197,9 @@ del2fi_dxjk(Field3 v)
 del6fj(Field f, real3 vec)
 {
 	return vec.x*der6x(f) + vec.y*der6y(f) + vec.z*der6z(f)
+}
+gaussian_smooth(Field f)
+{
+	print("NOT IMPLEMENTED del6_strict\n")
+	return 0.
 }
