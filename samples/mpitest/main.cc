@@ -21,10 +21,10 @@
 */
 #include "astaroth.h"
 #include "astaroth_utils.h"
-#include "grid_detail.h"
 #include "errchk.h"
 
 #if AC_MPI_ENABLED
+#include "grid_detail.h"
 
 #include <mpi.h>
 #include <vector>
