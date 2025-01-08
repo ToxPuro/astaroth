@@ -31,18 +31,18 @@ pipelines:
           # Test ACC
           - mkdir -p acc-runtime/build
           - cd acc-runtime/build
-          - cmake -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j && cd acc
+          - cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j && cd acc
           - ../../tests/syntaxtest.sh
           - cd ../../../
           - mkdir -p build && cd build
-          - cmake -DUSE_HIP=OFF -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=OFF -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=OFF .. # Single precision
+          - cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=OFF -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=OFF .. # Single precision
           - make -j
           - rm -rf *
-          - cmake -DUSE_HIP=OFF -DCMAKE_BUILD_TYPE=Release -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
+          - cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DCMAKE_BUILD_TYPE=Release -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
           - make -j
           - rm -rf *
-          - cmake -DUSE_HIP=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_ACC_RUNTIME_LIBRARY=ON -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Debug
+          - cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_ACC_RUNTIME_LIBRARY=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Debug
           - make -j
           - rm -rf *
-          - cmake -DMPI_ENABLED=ON -DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DPROGRAM_MODULE_DIR=${PWD}/../samples/blur -DDSL_MODULE_DIR=../acc-runtime/samples/blur .. # Non-MHD sample
+          - cmake -DOPTIMIZE_MEM_ACCESSES=OFF -DMPI_ENABLED=ON -DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DPROGRAM_MODULE_DIR=${PWD}/../samples/blur -DDSL_MODULE_DIR=../acc-runtime/samples/blur .. # Non-MHD sample
           - make -j
