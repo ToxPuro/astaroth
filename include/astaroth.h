@@ -264,13 +264,19 @@ acPrintMeshInfo(const AcMeshInfo config)
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
         printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
     for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        printf("[%s]: (%d, %d, %d)\n", int3param_names[i], config.int3_params[i].x,
-               config.int3_params[i].y, config.int3_params[i].z);
+        printf("[%s]: (%d, %d, %d)\n",
+               int3param_names[i],
+               config.int3_params[i].x,
+               config.int3_params[i].y,
+               config.int3_params[i].z);
     for (int i = 0; i < NUM_REAL_PARAMS; ++i)
         printf("[%s]: %g\n", realparam_names[i], (double)(config.real_params[i]));
     for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.real3_params[i].x),
-               (double)(config.real3_params[i].y), (double)(config.real3_params[i].z));
+        printf("[%s]: (%g, %g, %g)\n",
+               real3param_names[i],
+               (double)(config.real3_params[i].x),
+               (double)(config.real3_params[i].y),
+               (double)(config.real3_params[i].z));
 }
 
 /** Prints a list of boundary condition types */
@@ -1276,7 +1282,11 @@ AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
                     Field (&fields)[num_fields], AcRealParam (&parameters)[num_parameters])
 {
-    return acBoundaryCondition(boundary, bound_cond, fields, num_fields, parameters,
+    return acBoundaryCondition(boundary,
+                               bound_cond,
+                               fields,
+                               num_fields,
+                               parameters,
                                num_parameters);
 }
 
