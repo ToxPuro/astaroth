@@ -402,27 +402,39 @@ gen_halo_exchange_and_boundconds(
 			const bool y_periodic = !info[AC_dimension_inactive].y && y_boundcond.kernel == BOUNDCOND_PERIODIC;
 			const bool z_periodic = !info[AC_dimension_inactive].z && z_boundcond.kernel == BOUNDCOND_PERIODIC;
 
-			if(x_periodic)
+			//TP: for some reason specifying periodic bc as a single task gives better perf as of 8.1.2025
+			const bool all_periodic = x_periodic && y_periodic && z_periodic;
+			if(all_periodic)
 			{
-				res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields));
-				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
-				log_fields(output_fields);
-				if(!ac_pid()) fprintf(stream,")\n");
+					res.push_back(acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,output_fields));
+					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XYZ,");
+					log_fields(output_fields);
+					if(!ac_pid()) fprintf(stream,")\n");
 			}
-			if(y_periodic)
+			else 
 			{
-				res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields));
-				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
-				log_fields(output_fields);
-				if(!ac_pid()) fprintf(stream,")\n");
-			}
-			if(z_periodic)
-			{
-				res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields));
-				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
-				log_fields(output_fields);
-				if(!ac_pid()) fprintf(stream,")\n");
-			}
+				if(x_periodic)
+				{
+					res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields));
+					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
+					log_fields(output_fields);
+					if(!ac_pid()) fprintf(stream,")\n");
+				}
+				if(y_periodic)
+				{
+					res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields));
+					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
+					log_fields(output_fields);
+					if(!ac_pid()) fprintf(stream,")\n");
+				}
+				if(z_periodic)
+				{
+					res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields));
+					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
+					log_fields(output_fields);
+					if(!ac_pid()) fprintf(stream,")\n");
+				}
+		        }
 
 			for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
                                 for(const auto& field : fields)

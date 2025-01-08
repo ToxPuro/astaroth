@@ -30,15 +30,17 @@ void
 decompose_info(const MPI_Comm comm, AcCompInfo& info)
 {
   const auto decomp = get_decomp(comm,info);
-  const int3 int3_decomp = (int3){(int)decomp.x,(int)decomp.y,(int)decomp.z};
-  auto& config = info.config;
-  ERRCHK_ALWAYS(config[AC_nlocal].x % decomp.x == 0);
-  ERRCHK_ALWAYS(config[AC_nlocal].y % decomp.y == 0);
-  ERRCHK_ALWAYS(config[AC_nlocal].z % decomp.z == 0);
+  //TP: is not run_const anymore since for some reason gives bad performance
+  //TODO: find out why!
+  //const int3 int3_decomp = (int3){(int)decomp.x,(int)decomp.y,(int)decomp.z};
+  //auto& config = info.config;
+  //ERRCHK_ALWAYS(config[AC_nlocal].x % decomp.x == 0);
+  //ERRCHK_ALWAYS(config[AC_nlocal].y % decomp.y == 0);
+  //ERRCHK_ALWAYS(config[AC_nlocal].z % decomp.z == 0);
 
-  config[AC_nlocal].x = config[AC_nlocal].x/int3_decomp.x;
-  config[AC_nlocal].y = config[AC_nlocal].y/int3_decomp.y;
-  config[AC_nlocal].z = config[AC_nlocal].z/int3_decomp.z;
+  //config[AC_nlocal].x = config[AC_nlocal].x/int3_decomp.x;
+  //config[AC_nlocal].y = config[AC_nlocal].y/int3_decomp.y;
+  //config[AC_nlocal].z = config[AC_nlocal].z/int3_decomp.z;
 
   acLoadCompInfo(AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z},&info);
   acHostUpdateBuiltinCompParams(&info);
@@ -49,7 +51,9 @@ decompose_info(const MPI_Comm comm, AcCompInfo& info)
 void
 check_that_built_ins_loaded(const AcCompInfo info)
 {
-	ERRCHK_ALWAYS(info.is_loaded[AC_nlocal] || info.is_loaded[AC_ngrid]);
+  	//TP: are not run_const anymore since for some reason gives bad performance
+  	//TODO: find out why!
+	//ERRCHK_ALWAYS(info.is_loaded[AC_nlocal] || info.is_loaded[AC_ngrid]);
 
 #if AC_MPI_ENABLED
 	ERRCHK_ALWAYS(info.is_loaded[AC_proc_mapping_strategy]);

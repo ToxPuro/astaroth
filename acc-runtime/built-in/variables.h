@@ -48,6 +48,7 @@ int3 AC_multigpu_offset
 int3 AC_domain_coordinates
 
 run_const bool AC_include_3d_halo_corners
+run_const bool AC_skip_single_gpu_optim
 
 
 //TP: these belong here but at the moment are deprecated

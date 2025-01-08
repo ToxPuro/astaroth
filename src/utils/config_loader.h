@@ -86,6 +86,12 @@ parse_real3param(const char* value)
 	return (AcReal3){(AcReal)x,(AcReal)y,(AcReal)z};
 }
 
+static bool
+parse_boolparam(const char* value)
+{
+	return atoi(value);
+}
+
 
 static int
 parse_intparam(const size_t idx, const char* value, const bool run_const)
@@ -181,6 +187,12 @@ parse_config(const char* path, AcMeshInfo* config)
         }
         else if ((idx = find_str(keyword, int_comp_param_names, NUM_INT_COMP_PARAMS)) >= 0) {
 	    acPushToConfig(*config,static_cast<AcIntCompParam>(idx),parse_intparam(idx,value,true));
+        }
+        if ((idx = find_str(keyword, boolparam_names, NUM_BOOL_PARAMS)) >= 0) {
+	    acPushToConfig(*config,static_cast<AcBoolParam>(idx),parse_boolparam(value));
+        }
+        else if ((idx = find_str(keyword, bool_comp_param_names, NUM_BOOL_COMP_PARAMS)) >= 0) {
+	    acPushToConfig(*config,static_cast<AcBoolCompParam>(idx),parse_boolparam(value));
         }
         else if ((idx = find_str(keyword, int3param_names, NUM_INT3_PARAMS)) >= 0) {
 	    acPushToConfig(*config,static_cast<AcInt3Param>(idx),parse_int3param(value));

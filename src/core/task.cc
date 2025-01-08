@@ -902,7 +902,7 @@ HaloExchangeTask::sendingToItself()
 	MPI_Comm_size(acGridMPIComm(), &n_procs);
 	//For now enable optim only if there is only a single proc
 	//Because reasoning about kernel moves is too difficult for the async tasks in TaskGraph
-	return rank == counterpart_rank && n_procs == 1;
+	return rank == counterpart_rank && n_procs == 1 && !acDeviceGetLocalConfig(device)[AC_skip_single_gpu_optim];
 }
 
 void
