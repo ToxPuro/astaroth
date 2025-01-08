@@ -118,8 +118,7 @@ acHostReduceScal(const AcMesh mesh, const ReductionType rtype, const VertexBuffe
 
     const int initial_idx = acVertexBufferIdx(mesh.info.int_params[AC_nx_min],
                                               mesh.info.int_params[AC_ny_min],
-                                              mesh.info.int_params[AC_nz_min],
-                                              mesh.info);
+                                              mesh.info.int_params[AC_nz_min], mesh.info);
 
     long double res;
     if (rtype == RTYPE_MAX || rtype == RTYPE_MIN)
@@ -187,8 +186,7 @@ acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const VertexBuffer
 
     const int initial_idx = acVertexBufferIdx(mesh.info.int_params[AC_nx_min],
                                               mesh.info.int_params[AC_ny_min],
-                                              mesh.info.int_params[AC_nz_min],
-                                              mesh.info);
+                                              mesh.info.int_params[AC_nz_min], mesh.info);
 
     long double res;
     if (rtype == RTYPE_MAX || rtype == RTYPE_MIN)
@@ -253,8 +251,7 @@ acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBu
 
     const int initial_idx = acVertexBufferIdx(mesh.info.int_params[AC_nx_min],
                                               mesh.info.int_params[AC_ny_min],
-                                              mesh.info.int_params[AC_nz_min],
-                                              mesh.info);
+                                              mesh.info.int_params[AC_nz_min], mesh.info);
 
     long double res;
     if (rtype == RTYPE_MAX || rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MAX ||

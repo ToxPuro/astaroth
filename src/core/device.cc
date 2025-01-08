@@ -22,9 +22,7 @@
 #include "kernels/kernels.h"
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
-    AcResult acDevice_##ID(const Device device,                                                    \
-                           const Stream stream,                                                    \
-                           const int3 start,                                                       \
+    AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
                            const int3 end)                                                         \
     {                                                                                              \
         cudaSetDevice(device->id);                                                                 \
@@ -190,21 +188,15 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
         acDeviceLoadIntUniform(device, STREAM_DEFAULT, (AcIntParam)i, device_config.int_params[i]);
 
     for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        acDeviceLoadInt3Uniform(device,
-                                STREAM_DEFAULT,
-                                (AcInt3Param)i,
+        acDeviceLoadInt3Uniform(device, STREAM_DEFAULT, (AcInt3Param)i,
                                 device_config.int3_params[i]);
 
     for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        acDeviceLoadScalarUniform(device,
-                                  STREAM_DEFAULT,
-                                  (AcRealParam)i,
+        acDeviceLoadScalarUniform(device, STREAM_DEFAULT, (AcRealParam)i,
                                   device_config.real_params[i]);
 
     for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-        acDeviceLoadVectorUniform(device,
-                                  STREAM_DEFAULT,
-                                  (AcReal3Param)i,
+        acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
                                   device_config.real3_params[i]);
 
     // OL: added this assignment to make sure that whenever we load a new config,
@@ -428,13 +420,8 @@ acDeviceLoadMeshWithOffset(const Device device, const Stream stream, const AcMes
 {
     WARNING("This function is deprecated");
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        acDeviceLoadVertexBufferWithOffset(device,
-                                           stream,
-                                           host_mesh,
-                                           (VertexBufferHandle)i,
-                                           src,
-                                           dst,
-                                           num_vertices);
+        acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, (VertexBufferHandle)i, src,
+                                           dst, num_vertices);
     }
     return AC_SUCCESS;
 }
@@ -446,12 +433,7 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
     const int3 src            = (int3){0, 0, 0};
     const int3 dst            = src;
     const size_t num_vertices = acVertexBufferSize(device->local_config);
-    acDeviceLoadVertexBufferWithOffset(device,
-                                       stream,
-                                       host_mesh,
-                                       vtxbuf_handle,
-                                       src,
-                                       dst,
+    acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst,
                                        num_vertices);
 
     return AC_SUCCESS;
@@ -481,16 +463,10 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
         data[i] = value;
 
     // Set both in and out for safety (not strictly needed)
-    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.in[handle],
-                                       data,
-                                       sizeof(data[0]) * count,
-                                       cudaMemcpyHostToDevice,
-                                       device->streams[stream]));
-    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.out[handle],
-                                       data,
-                                       sizeof(data[0]) * count,
-                                       cudaMemcpyHostToDevice,
-                                       device->streams[stream]));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.in[handle], data, sizeof(data[0]) * count,
+                                       cudaMemcpyHostToDevice, device->streams[stream]));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.out[handle], data, sizeof(data[0]) * count,
+                                       cudaMemcpyHostToDevice, device->streams[stream]));
 
     acDeviceSynchronizeStream(device, stream); // Need to synchronize before free
     free(data);
@@ -536,13 +512,8 @@ acDeviceStoreMeshWithOffset(const Device device, const Stream stream, const int3
 {
     WARNING("This function is deprecated");
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        acDeviceStoreVertexBufferWithOffset(device,
-                                            stream,
-                                            (VertexBufferHandle)i,
-                                            src,
-                                            dst,
-                                            num_vertices,
-                                            host_mesh);
+        acDeviceStoreVertexBufferWithOffset(device, stream, (VertexBufferHandle)i, src, dst,
+                                            num_vertices, host_mesh);
     }
 
     return AC_SUCCESS;
@@ -556,12 +527,7 @@ acDeviceStoreVertexBuffer(const Device device, const Stream stream,
     int3 dst                  = src;
     const size_t num_vertices = acVertexBufferSize(device->local_config);
 
-    acDeviceStoreVertexBufferWithOffset(device,
-                                        stream,
-                                        vtxbuf_handle,
-                                        src,
-                                        dst,
-                                        num_vertices,
+    acDeviceStoreVertexBufferWithOffset(device, stream, vtxbuf_handle, src, dst, num_vertices,
                                         host_mesh);
 
     return AC_SUCCESS;
@@ -590,11 +556,7 @@ acDeviceTransferVertexBufferWithOffset(const Device src_device, const Stream str
     AcReal* dst_ptr       = &dst_device->vba.in[vtxbuf_handle][dst_idx];
     const size_t bytes    = num_vertices * sizeof(src_ptr[0]);
 
-    ERRCHK_CUDA(cudaMemcpyPeerAsync(dst_ptr,
-                                    dst_device->id,
-                                    src_ptr,
-                                    src_device->id,
-                                    bytes,
+    ERRCHK_CUDA(cudaMemcpyPeerAsync(dst_ptr, dst_device->id, src_ptr, src_device->id, bytes,
                                     src_device->streams[stream]));
     return AC_SUCCESS;
 }
@@ -605,13 +567,8 @@ acDeviceTransferMeshWithOffset(const Device src_device, const Stream stream, con
 {
     WARNING("This function is deprecated");
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        acDeviceTransferVertexBufferWithOffset(src_device,
-                                               stream,
-                                               (VertexBufferHandle)i,
-                                               src,
-                                               dst,
-                                               num_vertices,
-                                               dst_device);
+        acDeviceTransferVertexBufferWithOffset(src_device, stream, (VertexBufferHandle)i, src, dst,
+                                               num_vertices, dst_device);
     }
     return AC_SUCCESS;
 }
@@ -624,13 +581,8 @@ acDeviceTransferVertexBuffer(const Device src_device, const Stream stream,
     int3 dst                  = src;
     const size_t num_vertices = acVertexBufferSize(src_device->local_config);
 
-    acDeviceTransferVertexBufferWithOffset(src_device,
-                                           stream,
-                                           vtxbuf_handle,
-                                           src,
-                                           dst,
-                                           num_vertices,
-                                           dst_device);
+    acDeviceTransferVertexBufferWithOffset(src_device, stream, vtxbuf_handle, src, dst,
+                                           num_vertices, dst_device);
     return AC_SUCCESS;
 }
 
@@ -717,11 +669,8 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     ERRCHK_ALWAYS(end.y == dims.n1.y);
     ERRCHK_ALWAYS(end.z == dims.n1.z);
 
-    const AcResult res = acLaunchKernel(twopass_solve_intermediate,
-                                        device->streams[stream],
-                                        start,
-                                        end,
-                                        device->vba);
+    const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
+                                        end, device->vba);
     if (res != AC_SUCCESS)
         return res;
 
@@ -746,9 +695,7 @@ acDevicePeriodicBoundcondStep(const Device device, const Stream stream,
                               const int3 end)
 {
     cudaSetDevice(device->id);
-    return acKernelPeriodicBoundconds(device->streams[stream],
-                                      start,
-                                      end,
+    return acKernelPeriodicBoundconds(device->streams[stream], start, end,
                                       device->vba.in[vtxbuf_handle]);
 }
 
@@ -768,13 +715,8 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
                              const int3 end, const AcMeshInfo config, const int3 bindex)
 {
     cudaSetDevice(device->id);
-    return acKernelGeneralBoundconds(device->streams[stream],
-                                     start,
-                                     end,
-                                     device->vba.in[vtxbuf_handle],
-                                     vtxbuf_handle,
-                                     config,
-                                     bindex);
+    return acKernelGeneralBoundconds(device->streams[stream], start, end,
+                                     device->vba.in[vtxbuf_handle], vtxbuf_handle, config, bindex);
 }
 
 AcResult
@@ -782,12 +724,7 @@ acDeviceGeneralBoundconds(const Device device, const Stream stream, const int3 s
                           const int3 end, const AcMeshInfo config, const int3 bindex)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        acDeviceGeneralBoundcondStep(device,
-                                     stream,
-                                     (VertexBufferHandle)i,
-                                     start,
-                                     end,
-                                     config,
+        acDeviceGeneralBoundcondStep(device, stream, (VertexBufferHandle)i, start, end, config,
                                      bindex);
     }
     return AC_SUCCESS;
@@ -812,13 +749,8 @@ acDeviceReduceScalNotAveraged(const Device device, const Stream stream, const Re
     const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
     const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
-    *result = acKernelReduceScal(device->streams[stream],
-                                 rtype,
-                                 device->vba.in[vtxbuf_handle],
-                                 start,
-                                 end,
-                                 device->reduce_scratchpads,
-                                 device->scratchpad_size);
+    *result = acKernelReduceScal(device->streams[stream], rtype, device->vba.in[vtxbuf_handle],
+                                 start, end, device->reduce_scratchpads, device->scratchpad_size);
     return AC_SUCCESS;
 }
 
@@ -855,15 +787,9 @@ acDeviceReduceVecNotAveraged(const Device device, const Stream stream, const Red
     const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
     const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
-    *result = acKernelReduceVec(device->streams[stream],
-                                rtype,
-                                start,
-                                end,
-                                device->vba.in[vtxbuf0],
-                                device->vba.in[vtxbuf1],
-                                device->vba.in[vtxbuf2],
-                                device->reduce_scratchpads,
-                                device->scratchpad_size);
+    *result = acKernelReduceVec(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
+                                device->vba.in[vtxbuf1], device->vba.in[vtxbuf2],
+                                device->reduce_scratchpads, device->scratchpad_size);
     return AC_SUCCESS;
 }
 
@@ -902,16 +828,10 @@ acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream,
     const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
     const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
-    *result = acKernelReduceVecScal(device->streams[stream],
-                                    rtype,
-                                    start,
-                                    end,
-                                    device->vba.in[vtxbuf0],
-                                    device->vba.in[vtxbuf1],
-                                    device->vba.in[vtxbuf2],
-                                    device->vba.in[vtxbuf3],
-                                    device->reduce_scratchpads,
-                                    device->scratchpad_size);
+    *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
+                                    device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
+                                    device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
+                                    device->reduce_scratchpads, device->scratchpad_size);
     return AC_SUCCESS;
 }
 
@@ -921,13 +841,7 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                       const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                       AcReal* result)
 {
-    acDeviceReduceVecScalNotAveraged(device,
-                                     stream,
-                                     rtype,
-                                     vtxbuf0,
-                                     vtxbuf1,
-                                     vtxbuf2,
-                                     vtxbuf3,
+    acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
                                      result);
 
     switch (rtype) {
@@ -961,19 +875,14 @@ acDeviceReduceXYAverage(const Device device, const Stream stream, const Field fi
         const int3 start    = (int3){dims.n0.x, dims.n0.y, k};
         const int3 end      = (int3){dims.n1.x, dims.n1.y, k + 1};
         const size_t nxy    = (end.x - start.x) * (end.y - start.y);
-        const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream],
-                                                              RTYPE_SUM,
-                                                              device->vba.in[field],
-                                                              start,
-                                                              end,
+        const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], RTYPE_SUM,
+                                                              device->vba.in[field], start, end,
                                                               device->reduce_scratchpads,
                                                               device->scratchpad_size);
         // printf("%zu Profile: %g\n", k, result);
         // Could be optimized by performing the reduction completely in
         // device memory without the redundant device-host-device transfer
-        cudaMemcpy(&device->vba.profiles.in[profile][k],
-                   &result,
-                   sizeof(result),
+        cudaMemcpy(&device->vba.profiles.in[profile][k], &result, sizeof(result),
                    cudaMemcpyHostToDevice);
     }
     return AC_SUCCESS;
@@ -1017,8 +926,7 @@ acDeviceLoadProfile(const Device device, const AcReal* hostprofile, const size_t
 {
     cudaSetDevice(device->id);
     ERRCHK_ALWAYS(hostprofile_count == device->vba.profiles.count);
-    ERRCHK_CUDA(cudaMemcpy(device->vba.profiles.in[profile],
-                           hostprofile,
+    ERRCHK_CUDA(cudaMemcpy(device->vba.profiles.in[profile], hostprofile,
                            sizeof(device->vba.profiles.in[profile][0]) * device->vba.profiles.count,
                            cudaMemcpyHostToDevice));
     return AC_SUCCESS;
@@ -1030,8 +938,7 @@ acDeviceStoreProfile(const Device device, const Profile profile, AcReal* hostpro
 {
     cudaSetDevice(device->id);
     ERRCHK_ALWAYS(hostprofile_count == device->vba.profiles.count);
-    ERRCHK_CUDA(cudaMemcpy(hostprofile,
-                           device->vba.profiles.in[profile],
+    ERRCHK_CUDA(cudaMemcpy(hostprofile, device->vba.profiles.in[profile],
                            sizeof(device->vba.profiles.in[profile][0]) * device->vba.profiles.count,
                            cudaMemcpyDeviceToHost));
     return AC_SUCCESS;
@@ -1047,9 +954,7 @@ acDevicePrintProfiles(const Device device)
     for (size_t i = 0; i < NUM_PROFILES; ++i) {
         const size_t count = device->vba.profiles.count;
         AcReal host_profile[count];
-        cudaMemcpy(host_profile,
-                   device->vba.profiles.in[i],
-                   sizeof(AcReal) * count,
+        cudaMemcpy(host_profile, device->vba.profiles.in[i], sizeof(AcReal) * count,
                    cudaMemcpyDeviceToHost);
         printf("Profile %s (%zu)-----------------\n", profile_names[i], i);
         for (size_t j = 0; j < count; ++j) {
@@ -1066,12 +971,7 @@ acDeviceVolumeCopy(const Device device, const Stream stream,                    
                    AcReal* out, const int3 out_offset, const int3 out_volume)
 {
     cudaSetDevice(device->id);
-    return acKernelVolumeCopy(device->streams[stream],
-                              in,
-                              in_offset,
-                              in_volume,
-                              out,
-                              out_offset,
+    return acKernelVolumeCopy(device->streams[stream], in, in_offset, in_volume, out, out_offset,
                               out_volume);
 }
 
@@ -1322,20 +1222,15 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
 
     // Reindex
     VertexBufferHandle reindex_fields[] = {
-        VTXBUF_UUX,
-        VTXBUF_UUY,
+        VTXBUF_UUX, VTXBUF_UUY,
         VTXBUF_UUZ, //
-        TF_uxb11_x,
-        TF_uxb11_y,
+        TF_uxb11_x, TF_uxb11_y,
         TF_uxb11_z, //
-        TF_uxb12_x,
-        TF_uxb12_y,
+        TF_uxb12_x, TF_uxb12_y,
         TF_uxb12_z, //
-        TF_uxb21_x,
-        TF_uxb21_y,
+        TF_uxb21_x, TF_uxb21_y,
         TF_uxb21_z, //
-        TF_uxb22_x,
-        TF_uxb22_y,
+        TF_uxb22_x, TF_uxb22_y,
         TF_uxb22_z, //
     };
     for (size_t w = 0; w < ARRAY_SIZE(reindex_fields); ++w) {
@@ -1346,13 +1241,9 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
             .w = w,
         };
         acReindex(device->streams[STREAM_DEFAULT], //
-                  device->vba.in[reindex_fields[w]],
-                  in_offset,
+                  device->vba.in[reindex_fields[w]], in_offset,
                   in_shape, //
-                  buffer.data,
-                  buffer_offset,
-                  buffer_shape,
-                  block_shape);
+                  buffer.data, buffer_offset, buffer_shape, block_shape);
     }
     // // Note no offset here: is applied in acMapCross instead due to how it works with SOA
     // vectors. const AcIndex buffer_offset = {
@@ -1371,17 +1262,13 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     // profiles in the output array.
     const size_t num_segments = buffer_shape.z * buffer_shape.w;
     acSegmentedReduce(device->streams[STREAM_DEFAULT], //
-                      buffer.data,
-                      buffer_size,
-                      num_segments,
-                      device->vba.profiles.in[0]);
+                      buffer.data, buffer_size, num_segments, device->vba.profiles.in[0]);
 
     // NOTE: Revisit this
     const size_t gnx = as_size_t(device->local_config.int3_params[AC_global_grid_n].x);
     const size_t gny = as_size_t(device->local_config.int3_params[AC_global_grid_n].y);
     cudaSetDevice(device->id);
-    acMultiplyInplace(1. / (gnx * gny),
-                      num_compute_profiles * device->vba.profiles.count,
+    acMultiplyInplace(1. / (gnx * gny), num_compute_profiles * device->vba.profiles.count,
                       device->vba.profiles.in[0]);
 
     acBufferDestroy(&buffer);
