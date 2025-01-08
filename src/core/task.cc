@@ -169,7 +169,8 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
                     id.y == -1  ? 0 : id.y == 1 ? nn.y - NGHOST : NGHOST ,
                     id.z == -1  ? 0 : id.z == 1 ? nn.z - NGHOST : NGHOST };
         // clang-format on
-        dims = (int3){id.x == 0 ? nn.x : NGHOST * 3, id.y == 0 ? nn.y : NGHOST * 3,
+        dims = (int3){id.x == 0 ? nn.x : NGHOST * 3,
+                      id.y == 0 ? nn.y : NGHOST * 3,
                       id.z == 0 ? nn.z : NGHOST * 3};
         break;
     }
@@ -180,14 +181,17 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
                     id.y == -1  ? 0 : id.y == 1 ? NGHOST + nn.y : NGHOST,
                     id.z == -1  ? 0 : id.z == 1 ? NGHOST + nn.z : NGHOST};
         // clang-format on
-        dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+        dims = (int3){id.x == 0 ? nn.x : NGHOST,
+                      id.y == 0 ? nn.y : NGHOST,
                       id.z == 0 ? nn.z : NGHOST};
         break;
     }
     case RegionFamily::Exchange_input: {
-        position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
+        position = (int3){id.x == 1 ? nn.x : NGHOST,
+                          id.y == 1 ? nn.y : NGHOST,
                           id.z == 1 ? nn.z : NGHOST};
-        dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+        dims = (int3){id.x == 0 ? nn.x : NGHOST,
+                      id.y == 0 ? nn.y : NGHOST,
                       id.z == 0 ? nn.z : NGHOST};
         break;
     }
@@ -464,7 +468,8 @@ Task::poll_stream()
     fprintf(stderr,
             "CUDA error in task %s while polling CUDA stream"
             " (probably occured in the CUDA kernel):\n\t%s\n",
-            name.c_str(), cudaGetErrorString(err));
+            name.c_str(),
+            cudaGetErrorString(err));
     fflush(stderr);
     exit(EXIT_FAILURE);
     return false;
@@ -490,7 +495,10 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
 
     // compute_func = compute_func_;
 
-    params = KernelParameters{kernels[(int)op.kernel], stream, 0, output_region.position,
+    params = KernelParameters{kernels[(int)op.kernel],
+                              stream,
+                              0,
+                              output_region.position,
                               output_region.position + output_region.dims};
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
@@ -738,8 +746,13 @@ HaloExchangeTask::receiveDevice()
     if (rank == 0) {
         // fprintf(stderr, "calling MPI_Irecv\n");
     }
-    MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              recv_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+    MPI_Irecv(msg->data,
+              msg->length,
+              AC_REAL_MPI_TYPE,
+              counterpart_rank,
+              recv_tag + HALO_TAG_OFFSET,
+              acGridMPIComm(),
+              &msg->request);
     if (rank == 0) {
         // fprintf(stderr, "Returned from MPI_Irecv\n");
     }
@@ -750,8 +763,13 @@ HaloExchangeTask::sendDevice()
 {
     auto msg = send_buffers.get_current_buffer();
     sync();
-    MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              send_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+    MPI_Isend(msg->data,
+              msg->length,
+              AC_REAL_MPI_TYPE,
+              counterpart_rank,
+              send_tag + HALO_TAG_OFFSET,
+              acGridMPIComm(),
+              &msg->request);
 }
 
 void
@@ -775,8 +793,13 @@ HaloExchangeTask::receiveHost()
     if (rank == 0) {
         // fprintf("Called MPI_Irecv\n");
     }
-    MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              recv_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+    MPI_Irecv(msg->data_pinned,
+              msg->length,
+              AC_REAL_MPI_TYPE,
+              counterpart_rank,
+              recv_tag + HALO_TAG_OFFSET,
+              acGridMPIComm(),
+              &msg->request);
     if (rank == 0) {
         // fprintf("Returned from MPI_Irecv\n");
     }
@@ -789,8 +812,13 @@ HaloExchangeTask::sendHost()
     auto msg = send_buffers.get_current_buffer();
     msg->pin(device, stream);
     sync();
-    MPI_Isend(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              send_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+    MPI_Isend(msg->data_pinned,
+              msg->length,
+              AC_REAL_MPI_TYPE,
+              counterpart_rank,
+              send_tag + HALO_TAG_OFFSET,
+              acGridMPIComm(),
+              &msg->request);
 }
 void
 HaloExchangeTask::exchangeHost()
@@ -948,41 +976,63 @@ BoundaryConditionTask::populate_boundary_region()
     for (auto variable : output_region.fields) {
         switch (boundcond) {
         case BOUNDCOND_SYMMETRIC: {
-            acKernelSymmetricBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+            acKernelSymmetricBoundconds(stream,
+                                        output_region.id,
+                                        boundary_normal,
+                                        boundary_dims,
                                         vba.in[variable]);
             break;
         }
         case BOUNDCOND_ANTISYMMETRIC: {
-            acKernelAntiSymmetricBoundconds(stream, output_region.id, boundary_normal,
-                                            boundary_dims, vba.in[variable]);
+            acKernelAntiSymmetricBoundconds(stream,
+                                            output_region.id,
+                                            boundary_normal,
+                                            boundary_dims,
+                                            vba.in[variable]);
             break;
         }
         case BOUNDCOND_A2: {
-            acKernelA2Boundconds(stream, output_region.id, boundary_normal, boundary_dims,
+            acKernelA2Boundconds(stream,
+                                 output_region.id,
+                                 boundary_normal,
+                                 boundary_dims,
                                  vba.in[variable]);
             break;
         }
         case BOUNDCOND_CONST: {
             assert(input_parameters.size() == 1);
-            acKernelConstBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                    vba.in[variable], input_parameters[0]);
+            acKernelConstBoundconds(stream,
+                                    output_region.id,
+                                    boundary_normal,
+                                    boundary_dims,
+                                    vba.in[variable],
+                                    input_parameters[0]);
             break;
         }
         case BOUNDCOND_PRESCRIBED_DERIVATIVE: {
             assert(input_parameters.size() == 1);
-            acKernelPrescribedDerivativeBoundconds(stream, output_region.id, boundary_normal,
-                                                   boundary_dims, vba.in[variable],
+            acKernelPrescribedDerivativeBoundconds(stream,
+                                                   output_region.id,
+                                                   boundary_normal,
+                                                   boundary_dims,
+                                                   vba.in[variable],
                                                    input_parameters[0]);
             break;
         }
         case BOUNDCOND_OUTFLOW: {
-            acKernelOutflowBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+            acKernelOutflowBoundconds(stream,
+                                      output_region.id,
+                                      boundary_normal,
+                                      boundary_dims,
                                       vba.in[variable]);
             break;
         }
 
         case BOUNDCOND_INFLOW: {
-            acKernelInflowBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+            acKernelInflowBoundconds(stream,
+                                     output_region.id,
+                                     boundary_normal,
+                                     boundary_dims,
                                      vba.in[variable]);
             break;
         }
@@ -1114,28 +1164,39 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
     switch (boundcond) {
 #if LENTROPY
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE: {
-        acKernelEntropyConstantTemperatureBoundconds(stream, output_region.id, boundary_normal,
-                                                     boundary_dims, vba);
+        acKernelEntropyConstantTemperatureBoundconds(stream,
+                                                     output_region.id,
+                                                     boundary_normal,
+                                                     boundary_dims,
+                                                     vba);
         break;
     }
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION: {
-        acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(stream, output_region.id,
+        acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(stream,
+                                                                      output_region.id,
                                                                       boundary_normal,
-                                                                      boundary_dims, vba);
+                                                                      boundary_dims,
+                                                                      vba);
         break;
     }
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX: {
         // printf("RUNNING SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX \n");
         assert(input_parameters.size() == 1);
-        acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal,
-                                                    boundary_dims, vba, input_parameters[0]);
+        acKernelEntropyPrescribedHeatFluxBoundconds(stream,
+                                                    output_region.id,
+                                                    boundary_normal,
+                                                    boundary_dims,
+                                                    vba,
+                                                    input_parameters[0]);
         break;
     }
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX: {
         assert(input_parameters.size() == 2);
-        acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(stream, output_region.id,
+        acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(stream,
+                                                                      output_region.id,
                                                                       boundary_normal,
-                                                                      boundary_dims, vba,
+                                                                      boundary_dims,
+                                                                      vba,
                                                                       input_parameters[0],
                                                                       input_parameters[1]);
         break;
