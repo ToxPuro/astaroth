@@ -27,6 +27,8 @@
 #include "astaroth_forcing.h"
 #include "astaroth_random.h"
 
+#include "errchk.h"
+
 #include <cmath>
 #include <map>
 #include <vector>
@@ -257,6 +259,7 @@ generateForcingParams(const AcReal relhel, const AcReal magnitude, const AcReal 
 int
 loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* info)
 {
+#if AC_INTEGRATION_ENABLED
     info->real_params[AC_forcing_magnitude] = forcing_params.magnitude;
     info->real_params[AC_forcing_phase]     = forcing_params.phase;
 
@@ -275,6 +278,10 @@ loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* info
     info->real_params[AC_kaver] = forcing_params.kaver;
 
     return 0;
+#else
+    WARNING("Called loadForcingParamsToMeshInfo but AC_INTEGRATION_ENABLED was false");
+    return -1;
+#endif
 }
 
 void
