@@ -903,6 +903,22 @@ typedef struct AcTensor {
 } AcTensor;
 
 HOST_DEVICE_INLINE AcReal3
+matmul_arr(const AcReal* m, const AcReal3& v)
+{
+	AcReal x = m[0 + 3*0]*v.x;
+	x += m[0 + 3*1]*v.y;
+	x += m[0 + 3*2]*v.z;
+
+	AcReal y = m[1 + 3*0]*v.x;
+	y += m[1 + 3*1]*v.y;
+	y += m[1 + 3*2]*v.z;
+
+	AcReal z = m[2 + 3*0]*v.x;
+	z += m[2 + 3*1]*v.y;
+	z += m[2 + 3*2]*v.z;
+	return (AcReal3){x,y,z};
+}
+HOST_DEVICE_INLINE AcReal3
 matmul_arr(AcReal* m, const AcReal3& v)
 {
 	AcReal x = m[0 + 3*0]*v.x;

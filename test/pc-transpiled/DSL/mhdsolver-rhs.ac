@@ -1,7 +1,7 @@
 const int NGHOST_VAL = 3
-#include "../../stdlib/math"
-#include "../../stdlib/derivs.h"
-#include "../../stdlib/operators.h"
+#include "../../../acc-runtime/stdlib/derivs.h"
+#include "../../../acc-runtime/stdlib/math"
+#include "../../../acc-runtime/stdlib/operators.h"
 #include "fieldecs.h"
 #define AC_lenergy__mod__cparam (lentropy__mod__cparam || ltemperature__mod__cparam || lthermal_energy__mod__cparam)
 #define AC_NGHOST__mod__cparam nghost__mod__cparam
@@ -12,7 +12,7 @@ gmem real AC_nphis2__mod__cdata[AC_mx__mod__cparam]
 //
 #include "var_declares.h"
 bool AC_lpencil__mod__cparam[AC_npencils__mod__cparam]
-Kernel rhs(){
+Kernel rhs_kernel(){
 #include "static_var_declares.h"
 #include "df_declares.h"
 real ac_transformed_pencil_ma2
@@ -3406,8 +3406,14 @@ if (AC_lvisc_forc_as_aux__mod__viscosity) {
 DF_VISC_FORCVEC = ac_transformed_pencil_fvisc
 }
 if (AC_lpencil__mod__cdata[AC_i_fcont__mod__cparam-1]) {
-for i_65_101 in 1:AC_n_forcing_cont_max__mod__cparam+1 {
-ac_transformed_pencil_fcont[i_65_101-1]=0.
+for j_65_101 in 1:AC_n_forcing_cont_max__mod__cparam+1 {
+ac_transformed_pencil_fcont[j_65_101-1].x=0.
+}
+for j_65_101 in 1:AC_n_forcing_cont_max__mod__cparam+1 {
+ac_transformed_pencil_fcont[j_65_101-1].y=0.
+}
+for j_65_101 in 1:AC_n_forcing_cont_max__mod__cparam+1 {
+ac_transformed_pencil_fcont[j_65_101-1].z=0.
 }
 }
 if (AC_lpencil__mod__cdata[AC_i_aa__mod__cparam-1]) {
@@ -6589,4 +6595,15 @@ DF_UVEC = df_iuu_pencil + DF_UVEC
 }
 headtt__mod__cdata=false
 lfirstpoint__mod__cdata=false
+}
+
+BoundConds boundconds{
+  periodic(BOUNDARY_X)
+  periodic(BOUNDARY_Y)
+  periodic(BOUNDARY_Z)
+}
+
+ComputeSteps rhs(boundconds)
+{
+	rhs_kernel()
 }

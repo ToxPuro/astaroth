@@ -1224,6 +1224,8 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		  {
                   	char array_length_str[100000];
                   	get_array_var_length(symbol_table[i].identifier,root,array_length_str);
+			if(!strcmp(array_length_str,"0"))
+				sprintf(array_length_str,"1");
 			fprintf(fp,"DECLARE_CONST_DIMS_GMEM_ARRAY(%s,%s,%s,%s);\n",datatype_scalar, define_name, symbol_table[i].identifier,array_length_str);
 		  }
 		  else
@@ -2142,9 +2144,12 @@ free_func_params_info(func_params_info* info)
 void
 get_function_params_info_recursive(const ASTNode* node, const char* func_name, func_params_info* dst)
 {
+	//TP: speed optim no need to traverse into the function itself
 	if(!(node->type & NODE_FUNCTION))
 	{
-		TRAVERSE_PREAMBLE_PARAMS(get_function_params_info_recursive,func_name,dst);
+		if(node->lhs) get_function_params_info_recursive(node->lhs,func_name,dst);
+		if(dst->types.size > 0) return;
+		if(node->rhs) get_function_params_info_recursive(node->rhs,func_name,dst);
 	}
 	if(!(node->type & NODE_FUNCTION))
 		return;
@@ -3867,15 +3872,15 @@ add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, b
   }
   return res;
 }
-static bool
-is_left_child_of(const ASTNode* parent, const ASTNode* node_to_search)
-{
-	if(!parent) return false;
-	if(!parent->lhs) return false;
-	return get_node_by_id(node_to_search->id,parent->lhs) != NULL;
-}
+//static bool
+//is_left_child_of(const ASTNode* parent, const ASTNode* node_to_search)
+//{
+//	if(!parent) return false;
+//	if(!parent->lhs) return false;
+//	return get_node_by_id(node_to_search->id,parent->lhs) != NULL;
+//}
 void
-rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_body)
+rename_scoped_variables_base(ASTNode* node, const ASTNode* decl, const ASTNode* func_body, const bool lhs_of_func_body, const bool lhs_of_func_call, bool child_of_enum)
 {
   FILE* stream = NULL;
   const bool do_checks = false;
@@ -3883,6 +3888,7 @@ rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_
   if(node->type == NODE_STRUCT_DEF) return;
   if(node->type & NODE_DECLARATION) decl = node;
   if(node->parent && node->parent->type & NODE_FUNCTION && node->parent->rhs->id == node->id) func_body = node;
+  child_of_enum |= (node->type & NODE_ENUM_DEF);
   // Do not translate tqualifiers or tspecifiers immediately
   if (node->parent &&
       (node->parent->type & NODE_TQUAL || node->parent->type & NODE_TSPEC))
@@ -3901,12 +3907,14 @@ rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_
   // Traverse LHS
   //TP: skip the lhs of func_body since that is input params
   if (node->lhs)
-    rename_scoped_variables(node->lhs, decl, func_body);
+  {  
+    rename_scoped_variables_base(node->lhs, decl, func_body, lhs_of_func_body || func_body != NULL, lhs_of_func_call || node->type & NODE_FUNCTION_CALL, child_of_enum);
+  }
 
   //TP: do not rename func params since it is not really needed and does not gel well together with kernel params
   //TP: also skip func calls since they should anways always be in the symbol table except because of hacks
   //TP: skip also enums since they are anyways unique
-  char* postfix = (is_left_child_of(func_body,node) || is_left_child(NODE_FUNCTION_CALL,node) || get_parent_node(NODE_ENUM_DEF,node)) ? NULL : itoa(nest_ids[current_nest]);
+  char* postfix = (lhs_of_func_call || lhs_of_func_call || child_of_enum) ? NULL : itoa(nest_ids[current_nest]);
 
   add_to_symbol_table(node,exclude,stream,do_checks,decl,postfix,true);
   free(postfix);
@@ -3919,13 +3927,18 @@ rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_
 
   // Traverse RHS
   if (node->rhs)
-    rename_scoped_variables(node->rhs, decl, func_body);
+    rename_scoped_variables_base(node->rhs, decl, func_body,lhs_of_func_body,lhs_of_func_call,child_of_enum);
 
   // Postfix logic
   if (node->type & NODE_BEGIN_SCOPE) {
     assert(current_nest > 0);
     --current_nest;
   }
+}
+void
+rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_body)
+{
+	rename_scoped_variables_base(node,decl,func_body,false,false,false);
 }
 typedef struct
 {
@@ -6451,13 +6464,13 @@ get_possible_dfuncs(const func_params_info call_info, const dfunc_possibilities 
 	return possible_indexes;
 }
 bool
-resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
+resolve_overloaded_calls_base(ASTNode* node, const dfunc_possibilities possibilities)
 {
 	bool res = false;
 	if(node->lhs)
-		res |= resolve_overloaded_calls(node->lhs,possibilities);
+		res |= resolve_overloaded_calls_base(node->lhs,possibilities);
 	if(node->rhs)
-		res |= resolve_overloaded_calls(node->rhs,possibilities);
+		res |= resolve_overloaded_calls_base(node->rhs,possibilities);
 	if(!(node->type & NODE_FUNCTION_CALL))
 		return res;
 	if(!get_node_by_token(IDENTIFIER,node->lhs))
@@ -6519,6 +6532,15 @@ resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
 	free_int_vec(&possible_indexes_conversion_unknowns);
 	return true;
 }
+
+bool
+resolve_overloaded_calls(ASTNode* node, const dfunc_possibilities possibilities)
+{
+	bool res = false;
+	if(node->rhs && node->rhs->type & NODE_FUNCTION) res |= resolve_overloaded_calls_base(node->rhs,possibilities);
+	if(node->lhs) res |= resolve_overloaded_calls(node->lhs,possibilities);
+	return res;
+}
 void
 transform_array_binary_ops(ASTNode* node)
 {
@@ -6554,12 +6576,18 @@ transform_array_binary_ops(ASTNode* node)
 	}
 	ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
 	if(!identifier) return;
-	if(!check_symbol(NODE_VARIABLE_ID,identifier->buffer,0,DCONST_STR)) return;
 	if(lhs_is_array && rhs_is_vec)
 	{
 		if(op != MULT_STR)
 			fatal("Only mat mul supported for array*vec!!\n");
-		astnode_sprintf(identifier,"AC_INTERNAL_d_real_arrays_%s",identifier->buffer);
+		if(check_symbol(NODE_VARIABLE_ID,identifier->buffer,0,DCONST_STR))
+		{
+			astnode_sprintf(identifier,"AC_INTERNAL_d_real_arrays_%s",identifier->buffer);
+		}
+		else if(check_symbol(NODE_VARIABLE_ID,identifier->buffer,0,RUN_CONST_STR))
+		{
+			astnode_sprintf(identifier,"AC_INTERNAL_run_const_array_here",identifier->buffer);
+		}
 		node_vec params = VEC_INITIALIZER;
 		push_node(&params,node->lhs);
 		push_node(&params,node->rhs->rhs);

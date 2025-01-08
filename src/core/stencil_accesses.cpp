@@ -22,6 +22,7 @@ bool should_reduce_real[1000] = {false};
 bool should_reduce_int[1000] = {false};
 
 
+
 #define rocprim__warpSize() (64)
 #define rocprim__warpId()   (0)
 #define rocprim__warp_shuffle(mask,val)  (val)
@@ -40,6 +41,7 @@ bool should_reduce_int[1000] = {false};
 #include <vector>
 #include "errchk.h"
 #include "datatypes.h"
+AcReal AC_INTERNAL_run_const_array_here[2000]{};
 
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
