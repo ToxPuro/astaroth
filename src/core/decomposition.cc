@@ -218,10 +218,7 @@ acHierarchicalDomainDecomposition(const size_t ndims, const size_t* dims,       
 
     for (size_t j = nlayers - 1; j < nlayers; --j) {
         // size_t local_dims[ndims];
-        dims_create(partitions_per_layer[j],
-                    ndims,
-                    global_dims,
-                    local_dims,
+        dims_create(partitions_per_layer[j], ndims, global_dims, local_dims,
                     &decompositions[j * ndims]);
         memcpy(global_dims, local_dims, ndims * sizeof(dims[0]));
         // printf("\tLayer %zu\n", j);
@@ -291,12 +288,8 @@ acDecompositionInfoCreate(const size_t ndims, const size_t* global_dims, //
     ERRCHK_ALWAYS(info.global_decomposition);
 
     memcpy(info.global_dims, global_dims, ndims * sizeof(global_dims[0]));
-    acHierarchicalDomainDecomposition(ndims,
-                                      global_dims,
-                                      nlayers,
-                                      partitions_per_layer,
-                                      info.local_dims,
-                                      info.decomposition);
+    acHierarchicalDomainDecomposition(ndims, global_dims, nlayers, partitions_per_layer,
+                                      info.local_dims, info.decomposition);
 
     size_t decomposition_transposed[ndims * nlayers];
     transpose(info.decomposition, nlayers, ndims, decomposition_transposed);
@@ -420,9 +413,7 @@ compat_acDecompositionInit(const size_t ndims, const size_t* global_dims, //
                            const size_t nlayers, const size_t* partitions_per_layer)
 {
     ERRCHK_ALWAYS(initialized == false);
-    g_decomposition_info = acDecompositionInfoCreate(ndims,
-                                                     global_dims,
-                                                     nlayers,
+    g_decomposition_info = acDecompositionInfoCreate(ndims, global_dims, nlayers,
                                                      partitions_per_layer);
     initialized          = true;
 }

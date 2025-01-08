@@ -190,11 +190,7 @@ acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_partial_pack_data<<<bpg, tpb, 0, stream>>>(vba,
-                                                      vba_start,
-                                                      dims,
-                                                      packed,
-                                                      vtxbufs,
+    kernel_partial_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed, vtxbufs,
                                                       num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
 
@@ -211,11 +207,7 @@ acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed,
-                                                        vba_start,
-                                                        dims,
-                                                        vba,
-                                                        vtxbufs,
+    kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba, vtxbufs,
                                                         num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;

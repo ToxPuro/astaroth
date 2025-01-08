@@ -150,8 +150,7 @@ gridIdx(const GridDims grid, const int3 idx)
 static int3
 gridIdx3d(const GridDims grid, const int idx)
 {
-    return (int3){idx % grid.m.x,
-                  (idx % (grid.m.x * grid.m.y)) / grid.m.x,
+    return (int3){idx % grid.m.x, (idx % (grid.m.x * grid.m.y)) / grid.m.x,
                   idx / (grid.m.x * grid.m.y)};
 }
 
@@ -409,13 +408,8 @@ acNodeSynchronizeVertexBuffer(const Node node, const Stream stream,
         const Device src_device = node->devices[i];
         Device dst_device       = node->devices[i + 1];
 
-        acDeviceTransferVertexBufferWithOffset(src_device,
-                                               stream,
-                                               vtxbuf_handle,
-                                               src,
-                                               dst,
-                                               num_vertices,
-                                               dst_device);
+        acDeviceTransferVertexBufferWithOffset(src_device, stream, vtxbuf_handle, src, dst,
+                                               num_vertices, dst_device);
     }
     // #pragma omp parallel for
     for (int i = 1; i < node->num_devices; ++i) {
@@ -426,13 +420,8 @@ acNodeSynchronizeVertexBuffer(const Node node, const Stream stream,
         const Device src_device = node->devices[i];
         Device dst_device       = node->devices[i - 1];
 
-        acDeviceTransferVertexBufferWithOffset(src_device,
-                                               stream,
-                                               vtxbuf_handle,
-                                               src,
-                                               dst,
-                                               num_vertices,
-                                               dst_device);
+        acDeviceTransferVertexBufferWithOffset(src_device, stream, vtxbuf_handle, src, dst,
+                                               num_vertices, dst_device);
     }
     return AC_SUCCESS;
 }
@@ -505,13 +494,8 @@ acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcM
             const int3 da_local = (int3){da.x, da.y, da.z - i * node->grid.n.z / node->num_devices};
             // printf("\t\tcopy %d cells to local index ", copy_cells); printInt3(da_local);
             // printf("\n");
-            acDeviceLoadVertexBufferWithOffset(node->devices[i],
-                                               stream,
-                                               host_mesh,
-                                               vtxbuf_handle,
-                                               da_global,
-                                               da_local,
-                                               copy_cells);
+            acDeviceLoadVertexBufferWithOffset(node->devices[i], stream, host_mesh, vtxbuf_handle,
+                                               da_global, da_local, copy_cells);
         }
         // printf("\n");
     }
@@ -523,12 +507,7 @@ acNodeLoadMeshWithOffset(const Node node, const Stream stream, const AcMesh host
                          const int3 src, const int3 dst, const int num_vertices)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        acNodeLoadVertexBufferWithOffset(node,
-                                         stream,
-                                         host_mesh,
-                                         (VertexBufferHandle)i,
-                                         src,
-                                         dst,
+        acNodeLoadVertexBufferWithOffset(node, stream, host_mesh, (VertexBufferHandle)i, src, dst,
                                          num_vertices);
     }
     return AC_SUCCESS;
@@ -542,12 +521,7 @@ acNodeLoadVertexBuffer(const Node node, const Stream stream, const AcMesh host_m
     const int3 dst            = src;
     const size_t num_vertices = acVertexBufferSize(host_mesh.info);
 
-    acNodeLoadVertexBufferWithOffset(node,
-                                     stream,
-                                     host_mesh,
-                                     vtxbuf_handle,
-                                     src,
-                                     dst,
+    acNodeLoadVertexBufferWithOffset(node, stream, host_mesh, vtxbuf_handle, src, dst,
                                      num_vertices);
     return AC_SUCCESS;
 }
@@ -590,8 +564,7 @@ acNodeStoreVertexBufferWithOffset(const Node node, const Stream stream,
         // New: Transfer ghost zones, but do not transfer overlapping halos.
         // DECOMPOSITION OFFSET HERE (d0 & d1)
         int3 d0 = (int3){0, 0, NGHOST + i * node->subgrid.n.z};
-        int3 d1 = (int3){node->subgrid.m.x,
-                         node->subgrid.m.y,
+        int3 d1 = (int3){node->subgrid.m.x, node->subgrid.m.y,
                          NGHOST + (i + 1) * node->subgrid.n.z};
         if (i == 0)
             d0.z = 0;
@@ -609,13 +582,8 @@ acNodeStoreVertexBufferWithOffset(const Node node, const Stream stream,
             // DECOMPOSITION OFFSET HERE
             const int3 da_local = (int3){da.x, da.y, da.z - i * node->grid.n.z / node->num_devices};
             const int3 da_global = da; // dst + da - src; // TODO fix
-            acDeviceStoreVertexBufferWithOffset(node->devices[i],
-                                                stream,
-                                                vtxbuf_handle,
-                                                da_local,
-                                                da_global,
-                                                copy_cells,
-                                                host_mesh);
+            acDeviceStoreVertexBufferWithOffset(node->devices[i], stream, vtxbuf_handle, da_local,
+                                                da_global, copy_cells, host_mesh);
         }
     }
     return AC_SUCCESS;
@@ -626,13 +594,8 @@ acNodeStoreMeshWithOffset(const Node node, const Stream stream, const int3 src, 
                           const int num_vertices, AcMesh* host_mesh)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        acNodeStoreVertexBufferWithOffset(node,
-                                          stream,
-                                          (VertexBufferHandle)i,
-                                          src,
-                                          dst,
-                                          num_vertices,
-                                          host_mesh);
+        acNodeStoreVertexBufferWithOffset(node, stream, (VertexBufferHandle)i, src, dst,
+                                          num_vertices, host_mesh);
     }
     return AC_SUCCESS;
 }
@@ -645,12 +608,7 @@ acNodeStoreVertexBuffer(const Node node, const Stream stream,
     const int3 dst            = src;
     const size_t num_vertices = acVertexBufferSize(host_mesh->info);
 
-    acNodeStoreVertexBufferWithOffset(node,
-                                      stream,
-                                      vtxbuf_handle,
-                                      src,
-                                      dst,
-                                      num_vertices,
+    acNodeStoreVertexBufferWithOffset(node, stream, vtxbuf_handle, src, dst, num_vertices,
                                       host_mesh);
 
     return AC_SUCCESS;
@@ -704,10 +662,7 @@ local_boundcondstep(const Node node, const Stream stream, const VertexBufferHand
         }
     }
     else {
-        acDevicePeriodicBoundcondStep(node->devices[0],
-                                      stream,
-                                      vtxbuf,
-                                      (int3){0, 0, 0},
+        acDevicePeriodicBoundcondStep(node->devices[0], stream, vtxbuf, (int3){0, 0, 0},
                                       node->subgrid.m);
     }
     return AC_SUCCESS;
@@ -731,13 +686,8 @@ local_boundcondstep_GBC(const Node node, const Stream stream, const VertexBuffer
         }
     }
     else {
-        acDeviceGeneralBoundcondStep(node->devices[0],
-                                     stream,
-                                     vtxbuf,
-                                     (int3){0, 0, 0},
-                                     node->subgrid.m,
-                                     config,
-                                     bindex);
+        acDeviceGeneralBoundcondStep(node->devices[0], stream, vtxbuf, (int3){0, 0, 0},
+                                     node->subgrid.m, config, bindex);
     }
     return AC_SUCCESS;
 }
@@ -757,13 +707,8 @@ global_boundcondstep(const Node node, const Stream stream, const VertexBufferHan
             const Device src_device = node->devices[node->num_devices - 1];
             Device dst_device       = node->devices[0];
 
-            acDeviceTransferVertexBufferWithOffset(src_device,
-                                                   stream,
-                                                   vtxbuf_handle,
-                                                   src,
-                                                   dst,
-                                                   num_vertices,
-                                                   dst_device);
+            acDeviceTransferVertexBufferWithOffset(src_device, stream, vtxbuf_handle, src, dst,
+                                                   num_vertices, dst_device);
         }
         {
             // ...|ooooooo|xxx <- ...|xxxoooo|...
@@ -773,13 +718,8 @@ global_boundcondstep(const Node node, const Stream stream, const VertexBufferHan
             const Device src_device = node->devices[0];
             Device dst_device       = node->devices[node->num_devices - 1];
 
-            acDeviceTransferVertexBufferWithOffset(src_device,
-                                                   stream,
-                                                   vtxbuf_handle,
-                                                   src,
-                                                   dst,
-                                                   num_vertices,
-                                                   dst_device);
+            acDeviceTransferVertexBufferWithOffset(src_device, stream, vtxbuf_handle, src, dst,
+                                                   num_vertices, dst_device);
         }
     }
     return AC_SUCCESS;
@@ -847,16 +787,14 @@ acNodeIntegrate(const Node node, const AcReal dt)
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Left
             const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST,
-                                        node->subgrid.n.y - 2 * NGHOST,
+            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
                                         node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_4, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Right
             const int3 m1 = (int3){node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST,
-                                        node->subgrid.n.y - 2 * NGHOST,
+            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
                                         node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_5, isubstep, m1, m2, dt);
         }
@@ -928,16 +866,14 @@ acNodeIntegrateGBC(const Node node, const AcMeshInfo config, const AcReal dt)
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Left
             const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST,
-                                        node->subgrid.n.y - 2 * NGHOST,
+            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
                                         node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_4, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Right
             const int3 m1 = (int3){node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST,
-                                        node->subgrid.n.y - 2 * NGHOST,
+            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
                                         node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_5, isubstep, m1, m2, dt);
         }

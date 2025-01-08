@@ -343,8 +343,7 @@ acGetKernelId(const Kernel kernel)
         if (kernel == kernels[id])
             return id;
     }
-    fprintf(stderr,
-            "acGetKernelId failed: did not find kernel %p from the list of kernels\n",
+    fprintf(stderr, "acGetKernelId failed: did not find kernel %p from the list of kernels\n",
             kernel);
     return (size_t)-1;
 }
@@ -356,8 +355,7 @@ acGetKernelIdByName(const char* name)
         if (!strcmp(kernel_names[id], name))
             return id;
     }
-    fprintf(stderr,
-            "acGetKernelIdByName failed: did not find kernel %s from the list of kernels\n",
+    fprintf(stderr, "acGetKernelIdByName failed: did not find kernel %s from the list of kernels\n",
             name);
     return (size_t)-1;
 }

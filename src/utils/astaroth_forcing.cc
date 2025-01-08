@@ -189,8 +189,7 @@ helical_forcing_special_vector(AcReal3* ff_hel_re, AcReal3* ff_hel_im, const AcR
     //                       k_cross_k_cross_e.z/denominator};
 
     // See PC forcing.f90 forcing_hel_both()
-    *ff_hel_im = (AcReal3){kabs * k_cross_e.x / denominator,
-                           kabs * k_cross_e.y / denominator,
+    *ff_hel_im = (AcReal3){kabs * k_cross_e.x / denominator, kabs * k_cross_e.y / denominator,
                            kabs * k_cross_e.z / denominator};
 
     *ff_hel_re = (AcReal3){relhel * k_cross_k_cross_e.x / denominator,
@@ -215,18 +214,10 @@ printForcingParams(const ForcingParams& forcing_params)
            "            : %lf\n"
            " k aver: %lf\n"
            "\n",
-           forcing_params.magnitude,
-           forcing_params.phase,
-           forcing_params.k_force.x,
-           forcing_params.k_force.y,
-           forcing_params.k_force.z,
-           forcing_params.ff_hel_re.x,
-           forcing_params.ff_hel_re.y,
-           forcing_params.ff_hel_re.z,
-           forcing_params.ff_hel_im.x,
-           forcing_params.ff_hel_im.y,
-           forcing_params.ff_hel_im.z,
-           forcing_params.kaver);
+           forcing_params.magnitude, forcing_params.phase, forcing_params.k_force.x,
+           forcing_params.k_force.y, forcing_params.k_force.z, forcing_params.ff_hel_re.x,
+           forcing_params.ff_hel_re.y, forcing_params.ff_hel_re.z, forcing_params.ff_hel_im.x,
+           forcing_params.ff_hel_im.y, forcing_params.ff_hel_im.z, forcing_params.kaver);
 }
 
 ForcingParams
@@ -310,16 +301,8 @@ printForcingParams(const ForcingParams forcing_params)
            "            : %lf\n"
            " k aver: %lf\n"
            "\n",
-           forcing_params.magnitude,
-           forcing_params.phase,
-           forcing_params.k_force.x,
-           forcing_params.k_force.y,
-           forcing_params.k_force.z,
-           forcing_params.ff_hel_re.x,
-           forcing_params.ff_hel_re.y,
-           forcing_params.ff_hel_re.z,
-           forcing_params.ff_hel_im.x,
-           forcing_params.ff_hel_im.y,
-           forcing_params.ff_hel_im.z,
-           forcing_params.kaver);
+           forcing_params.magnitude, forcing_params.phase, forcing_params.k_force.x,
+           forcing_params.k_force.y, forcing_params.k_force.z, forcing_params.ff_hel_re.x,
+           forcing_params.ff_hel_re.y, forcing_params.ff_hel_re.z, forcing_params.ff_hel_im.x,
+           forcing_params.ff_hel_im.y, forcing_params.ff_hel_im.z, forcing_params.kaver);
 }
