@@ -204,9 +204,11 @@ acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int
                    (unsigned int)ceil((end.y - start.y) / (double)tpb.y),
                    (unsigned int)ceil((end.z - start.z) / (double)tpb.z));
 
-    int3 bc_top = {config.int_params[AC_bc_type_top_x], config.int_params[AC_bc_type_top_y],
+    int3 bc_top = {config.int_params[AC_bc_type_top_x],
+                   config.int_params[AC_bc_type_top_y],
                    config.int_params[AC_bc_type_top_z]};
-    int3 bc_bot = {config.int_params[AC_bc_type_bot_x], config.int_params[AC_bc_type_bot_y],
+    int3 bc_bot = {config.int_params[AC_bc_type_bot_x],
+                   config.int_params[AC_bc_type_bot_y],
                    config.int_params[AC_bc_type_bot_z]};
 
     // #if AC_MPI_ENABLED

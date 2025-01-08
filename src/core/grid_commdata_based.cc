@@ -304,13 +304,23 @@ acTransferCommData(const Device device, //
 
         PackedData* dst = &data->dsts[b0_idx];
         if (onTheSameNode(pid, npid) || !MPI_USE_PINNED) {
-            MPI_Irecv(dst->data, count, datatype, npid, b0_idx, //
-                      MPI_COMM_WORLD, &data->recv_reqs[b0_idx]);
+            MPI_Irecv(dst->data,
+                      count,
+                      datatype,
+                      npid,
+                      b0_idx, //
+                      MPI_COMM_WORLD,
+                      &data->recv_reqs[b0_idx]);
             dst->pinned = false;
         }
         else {
-            MPI_Irecv(dst->data_pinned, count, datatype, npid, b0_idx, //
-                      MPI_COMM_WORLD, &data->recv_reqs[b0_idx]);
+            MPI_Irecv(dst->data_pinned,
+                      count,
+                      datatype,
+                      npid,
+                      b0_idx, //
+                      MPI_COMM_WORLD,
+                      &data->recv_reqs[b0_idx]);
             dst->pinned = true;
         }
     }
@@ -333,14 +343,24 @@ acTransferCommData(const Device device, //
         PackedData* src = &data->srcs[b0_idx];
         if (onTheSameNode(pid, npid) || !MPI_USE_PINNED) {
             cudaStreamSynchronize(data->streams[b0_idx]);
-            MPI_Isend(src->data, count, datatype, npid, b0_idx, //
-                      MPI_COMM_WORLD, &data->send_reqs[b0_idx]);
+            MPI_Isend(src->data,
+                      count,
+                      datatype,
+                      npid,
+                      b0_idx, //
+                      MPI_COMM_WORLD,
+                      &data->send_reqs[b0_idx]);
         }
         else {
             acPinPackedData(device, data->streams[b0_idx], src);
             cudaStreamSynchronize(data->streams[b0_idx]);
-            MPI_Isend(src->data_pinned, count, datatype, npid, b0_idx, //
-                      MPI_COMM_WORLD, &data->send_reqs[b0_idx]);
+            MPI_Isend(src->data_pinned,
+                      count,
+                      datatype,
+                      npid,
+                      b0_idx, //
+                      MPI_COMM_WORLD,
+                      &data->send_reqs[b0_idx]);
         }
     }
 
@@ -418,8 +438,13 @@ acGridInit(const AcMeshInfo info)
     const int3 pid3d             = getPid3D(pid, decomposition);
 
     MPI_Barrier(MPI_COMM_WORLD);
-    printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
-           pid3d.y, pid3d.z);
+    printf("Processor %s. Process %d of %d: (%d, %d, %d)\n",
+           processor_name,
+           pid,
+           nprocs,
+           pid3d.x,
+           pid3d.y,
+           pid3d.z);
     printf("Decomposition: %lu, %lu, %lu\n", decomposition.x, decomposition.y, decomposition.z);
     fflush(stdout);
     MPI_Barrier(MPI_COMM_WORLD);
@@ -593,20 +618,29 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
                     // Recv
                     MPI_Status status;
-                    MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE,
-                             0, 0, MPI_COMM_WORLD, &status);
+                    MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx],
+                             count,
+                             AC_REAL_MPI_TYPE,
+                             0,
+                             0,
+                             MPI_COMM_WORLD,
+                             &status);
                 }
                 else {
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh.info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh.info);
 
                         // Send
-                        MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
-                                 tgt_pid, 0, MPI_COMM_WORLD);
+                        MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx],
+                                 count,
+                                 AC_REAL_MPI_TYPE,
+                                 tgt_pid,
+                                 0,
+                                 MPI_COMM_WORLD);
                     }
                 }
             }
@@ -681,21 +715,30 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                 if (pid != 0) {
                     // Send
                     const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
-                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
-                             0, 0, MPI_COMM_WORLD);
+                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx],
+                             count,
+                             AC_REAL_MPI_TYPE,
+                             0,
+                             0,
+                             MPI_COMM_WORLD);
                 }
                 else {
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh->info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh->info);
 
                         // Recv
                         MPI_Status status;
-                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count,
-                                 AC_REAL_MPI_TYPE, tgt_pid, 0, MPI_COMM_WORLD, &status);
+                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx],
+                                 count,
+                                 AC_REAL_MPI_TYPE,
+                                 tgt_pid,
+                                 0,
+                                 MPI_COMM_WORLD,
+                                 &status);
                     }
                 }
             }

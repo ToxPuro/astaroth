@@ -108,8 +108,12 @@ radial_window(const AcReal3& coordinate)
 {
     AcReal loc_weight = 0.0;
 
-    const AcReal radius = distance(coordinate.x, coordinate.y, coordinate.z, DCONST(AC_center_x),
-                                   DCONST(AC_center_y), DCONST(AC_center_z));
+    const AcReal radius = distance(coordinate.x,
+                                   coordinate.y,
+                                   coordinate.z,
+                                   DCONST(AC_center_x),
+                                   DCONST(AC_center_y),
+                                   DCONST(AC_center_z));
 
     if (radius <= DCONST(AC_window_radius))
         loc_weight = 1.0;
@@ -121,8 +125,12 @@ radial_window(const AcReal3& coordinate)
 static __device__ inline AcReal
 gaussian_window(const AcReal3& coordinate)
 {
-    const AcReal radius = distance(coordinate.x, coordinate.y, coordinate.z, DCONST(AC_center_x),
-                                   DCONST(AC_center_y), DCONST(AC_center_z));
+    const AcReal radius = distance(coordinate.x,
+                                   coordinate.y,
+                                   coordinate.z,
+                                   DCONST(AC_center_x),
+                                   DCONST(AC_center_y),
+                                   DCONST(AC_center_z));
     const AcReal rscale = DCONST(AC_window_radius);
 
     // if (radius <= DCONST(AC_window_radius)) printf("Condition met gaussian_window \n");  OKOK
@@ -600,32 +608,49 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
         case RTYPE_MAX: /* Fallthrough */
         case RTYPE_MIN: /* Fallthrough */
         case RTYPE_SUM:
-            map_vec<map_length_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
-                                                                               vtxbuf2, start, end,
+            map_vec<map_length_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0,
+                                                                               vtxbuf1,
+                                                                               vtxbuf2,
+                                                                               start,
+                                                                               end,
                                                                                out);
             break;
         case RTYPE_RMS:
-            map_vec<map_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
-                                                                               vtxbuf2, start, end,
+            map_vec<map_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0,
+                                                                               vtxbuf1,
+                                                                               vtxbuf2,
+                                                                               start,
+                                                                               end,
                                                                                out);
             break;
         case RTYPE_RMS_EXP:
-            map_vec<map_exp_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
-                                                                                   vtxbuf2, start,
-                                                                                   end, out);
+            map_vec<map_exp_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0,
+                                                                                   vtxbuf1,
+                                                                                   vtxbuf2,
+                                                                                   start,
+                                                                                   end,
+                                                                                   out);
             break;
         case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
         case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
         case RTYPE_RADIAL_WINDOW_SUM:
             map_vec_coord<map_length_vec, cartesian_grid_location, radial_window>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end,
+                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0,
+                                                            vtxbuf1,
+                                                            vtxbuf2,
+                                                            start,
+                                                            end,
                                                             out);
             break;
         case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
         case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
         case RTYPE_GAUSSIAN_WINDOW_SUM:
             map_vec_coord<map_length_vec, cartesian_grid_location, gaussian_window>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end,
+                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0,
+                                                            vtxbuf1,
+                                                            vtxbuf2,
+                                                            start,
+                                                            end,
                                                             out);
             break;
         default:
@@ -711,25 +736,43 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
         switch (rtype) {
         case RTYPE_ALFVEN_MAX: /* Fallthrough */
         case RTYPE_ALFVEN_MIN:
-            map_vec_scal<map_length_alf>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                                            start, end, out);
+            map_vec_scal<map_length_alf><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0,
+                                                                                    vtxbuf1,
+                                                                                    vtxbuf2,
+                                                                                    vtxbuf3,
+                                                                                    start,
+                                                                                    end,
+                                                                                    out);
             break;
         case RTYPE_ALFVEN_RMS:
-            map_vec_scal<map_square_alf>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                                            start, end, out);
+            map_vec_scal<map_square_alf><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0,
+                                                                                    vtxbuf1,
+                                                                                    vtxbuf2,
+                                                                                    vtxbuf3,
+                                                                                    start,
+                                                                                    end,
+                                                                                    out);
             break;
         case RTYPE_ALFVEN_RADIAL_WINDOW_MAX: /* Fallthrough */
         case RTYPE_ALFVEN_RADIAL_WINDOW_MIN: /* Fallthrough */
             map_vec_scal_coord<map_length_alf, cartesian_grid_location, radial_window>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                                            start, end, out);
+                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0,
+                                                            vtxbuf1,
+                                                            vtxbuf2,
+                                                            vtxbuf3,
+                                                            start,
+                                                            end,
+                                                            out);
             break;
         case RTYPE_ALFVEN_RADIAL_WINDOW_RMS:
             map_vec_scal_coord<map_square_alf, cartesian_grid_location, radial_window>
-                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                                            start, end, out);
+                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0,
+                                                            vtxbuf1,
+                                                            vtxbuf2,
+                                                            vtxbuf3,
+                                                            start,
+                                                            end,
+                                                            out);
             break;
         default:
             fprintf(stderr, "Rtype %s (%d)\n", rtype_names[rtype], rtype);

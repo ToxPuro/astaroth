@@ -56,8 +56,12 @@ acKernelVolumeCopy(const cudaStream_t stream,                                   
                    (unsigned int)ceil(nn.y / double(tpb.y)),
                    (unsigned int)ceil(nn.z / double(tpb.z)));
 
-    kernel_volume_copy<<<bpg, tpb, 0, stream>>>(in, in_offset, in_volume, //
-                                                out, out_offset, out_volume);
+    kernel_volume_copy<<<bpg, tpb, 0, stream>>>(in,
+                                                in_offset,
+                                                in_volume, //
+                                                out,
+                                                out_offset,
+                                                out_volume);
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;
