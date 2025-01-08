@@ -1054,32 +1054,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const AcReduction re
     return AC_SUCCESS;
 }
 
-AcResult
-acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output)
-{
-	if constexpr (NUM_REAL_OUTPUTS == 0) return AC_FAILURE;
-	if(stream >= NUM_STREAMS)
-	{
-		fprintf(stderr,"Stream: %d\n",stream);
-		ERRCHK_ALWAYS(stream < NUM_STREAMS);
-	}
-	acReduce(device->streams[stream],reduce_op,device->vba.reduce_buffer_real[output],acGetKernelReduceScratchPadSize(kernel));
-	cudaMemcpyAsync(result,device->vba.reduce_buffer_real[output].res,sizeof(result[0]),cudaMemcpyDeviceToHost,device->streams[stream]);
-	return AC_SUCCESS;
-}
-AcResult
-acDeviceFinishReduceInt(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
-{
-	if constexpr (NUM_INT_OUTPUTS == 0) return AC_FAILURE;
-	if(stream >= NUM_STREAMS)
-	{
-		fprintf(stderr,"Stream: %d\n",stream);
-		ERRCHK_ALWAYS(stream < NUM_STREAMS);
-	}
-	acReduceInt(device->streams[stream],reduce_op,device->vba.reduce_buffer_int[output],acGetKernelReduceScratchPadSize(kernel));
-	cudaMemcpyAsync(result,device->vba.reduce_buffer_int[output].res,sizeof(result[0]),cudaMemcpyDeviceToHost,device->streams[stream]);
-	return AC_SUCCESS;
-}
+#include "device_finalize_reduce.h"
 AcResult
 acDeviceReduceVecScalNoPostProcessing(const Device device, const Stream stream,
                                  const AcReduction reduction, const VertexBufferHandle vtxbuf0,

@@ -2243,6 +2243,7 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     if constexpr(NUM_OUTPUTS == 0) return AC_SUCCESS;
     AcReal local_res_real[NUM_OUTPUTS]{};
     int    local_res_int[NUM_OUTPUTS]{};
+    float  local_res_float[NUM_OUTPUTS]{};
     const auto reduce_outputs = get_reduce_outputs(graph);
     for(size_t i = 0; i < reduce_outputs.size(); ++i)
     {
@@ -2252,7 +2253,9 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
 	    if(reduce_outputs[i].type == AC_REAL_TYPE)
 	    	acDeviceFinishReduce(grid.device,(Stream)(int)i,&local_res_real[i],kernel,op,(AcRealOutputParam)var);
 	    else if(reduce_outputs[i].type == AC_INT_TYPE)
-	    	acDeviceFinishReduceInt(grid.device,(Stream)(int)i,&local_res_int[i],kernel,op,(AcIntOutputParam)var);
+	    	acDeviceFinishReduce(grid.device,(Stream)(int)i,&local_res_int[i],kernel,op,(AcIntOutputParam)var);
+	    else if(reduce_outputs[i].type == AC_FLOAT_TYPE)
+	    	acDeviceFinishReduce(grid.device,(Stream)(float)i,&local_res_float[i],kernel,op,(AcFloatOutputParam)var);
 	    else if(reduce_outputs[i].type == AC_PROF_TYPE)
 		;//acDeviceReduceAverages(grid.device, reduce_outputs[i].variable, (Profile)reduce_outputs[i].variable);
 	    else
@@ -2266,6 +2269,8 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
 			acDeviceSetOutput(grid.device,(AcRealOutputParam)reduce_outputs[i].variable,local_res_real[i]);
 		else if(reduce_outputs[i].type == AC_INT_TYPE)
 			acDeviceSetOutput(grid.device,(AcIntOutputParam)reduce_outputs[i].variable,local_res_int[i]);
+		else if(reduce_outputs[i].type == AC_FLOAT_TYPE)
+			acDeviceSetOutput(grid.device,(AcFloatOutputParam)reduce_outputs[i].variable,local_res_float[i]);
 		else if(reduce_outputs[i].type == AC_PROF_TYPE)
 			;
 		else

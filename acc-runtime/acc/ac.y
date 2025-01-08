@@ -309,8 +309,8 @@ reset_all_files()
 		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","get_empty_pointer.h",
 			"kernel_region_write_info.h","kernel_region_read_info.h","taskgraph_bc_handles.h","user_declarations.h","taskgraph_kernels.h","taskgraph_kernel_bcs.h",
 			"info_access_operators.h","device_load_uniform.h","device_load_uniform_decl.h","device_load_uniform_overloads.h","device_load_uniform_loads.h",
-			"reduce_dst_integers.h","fused_kernels.h","device_store_uniform.h","device_store_uniform_decl.h","device_store_overloads.h",
-			"builtin_enums.h","safe_vtxbuf_input_params.h","load_ac_kernel_params.h","load_ac_kernel_params_def.h",
+			"reduce_dst_integers.h","fused_kernels.h","device_store_uniform.h","device_store_uniform_decl.h","device_store_overloads.h","device_finalize_reduce.h","scalar_reduce_buffer_defs.h","scalar_reduce_buffers_in_vba.h","reduce_helpers.h",
+			"builtin_enums.h","safe_vtxbuf_input_params.h","load_ac_kernel_params.h","load_ac_kernel_params_def.h"
 			"kernel_input_param_str.h","is_array_param.h"
 			};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
@@ -876,7 +876,7 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
 						astnode_set_infix(")",$$); 
 						const char* type = combine_all_new($$->lhs);
-						if(!strcmps(type,"int","AcReal"))
+						if(!strcmps(type,"float","int","AcReal"))
 							astnode_sprintf_prefix($$,"(%s",combine_all_new_with_whitespace($$->lhs));
 						$$->token = CAST;
 						}

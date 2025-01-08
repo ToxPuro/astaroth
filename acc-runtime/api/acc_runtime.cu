@@ -80,7 +80,6 @@ int kernel_running_reduce_offsets[NUM_KERNELS];
 static int grid_pid = 0;
 [[maybe_unused]] static int nprocs   = 0;
 static AcMeasurementGatherFunc gather_func  = NULL;
-
 #if AC_MPI_ENABLED
 AcResult
 acInitializeRuntimeMPI(const int _grid_pid,const int _nprocs, const AcMeasurementGatherFunc mpi_gather_func)
@@ -316,15 +315,165 @@ __device__ __constant__ AcMeshInfoScalars d_mesh_info;
 #define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
 #include "gmem_arrays_decl.h"
 
+AcReal
+get_reduce_state_flush_var_real(const AcReduceOp state)
+{
+	return 
+		(state == NO_REDUCE || state == REDUCE_SUM) ? 0.0 :
+		(state == REDUCE_MIN) ? AC_REAL_MAX :
+		(state == REDUCE_MAX) ? -AC_REAL_MAX :
+		0.0;
+}
+
+int
+get_reduce_state_flush_var_int(const AcReduceOp state)
+{
+	return 
+		(state == NO_REDUCE || state == REDUCE_SUM) ? 0 :
+		(state == REDUCE_MIN) ? INT_MAX:
+		(state == REDUCE_MAX) ? -INT_MAX:
+		0;
+}
+
+#if AC_DOUBLE_PRECISION
+float
+get_reduce_state_flush_var_float(const AcReduceOp state)
+{
+	return 
+		(state == NO_REDUCE || state == REDUCE_SUM) ? 0.0 :
+		(state == REDUCE_MIN) ? FLT_MAX :
+		(state == REDUCE_MAX) ? -FLT_MAX :
+		0.0;
+}
+#endif
+
+typedef struct {
+  AcKernel kernel;
+  int3 dims;
+  dim3 tpb;
+} TBConfig;
+
+static std::vector<TBConfig> tbconfigs;
+
+
+static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 dims, VertexBufferArray vba);
+
+static __global__ void
+flush_kernel(AcReal* arr, const size_t n, const AcReal value)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < n)
+    arr[idx] = value;
+}
+static __global__ void
+flush_kernel_int(int* arr, const size_t n, const int value)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < n)
+    arr[idx] = value;
+}
+
+static __global__ void
+flush_kernel_float(float* arr, const size_t n, const float value)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < n)
+    arr[idx] = value;
+}
+
+template <typename T>
+T TO_CORRECT_ORDER(const T vol)
+{
+	return vol;
+}
+size_t TO_CORRECT_ORDER(const size_t size)
+{
+	return size;
+}
+
+
+#define KERNEL_LAUNCH(func,bgp,tpb,...) \
+	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
+
+#define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \
+	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
+
+AcResult
+acKernelFlushReal(const cudaStream_t stream, AcReal* arr, const size_t n,
+              const AcReal value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
+AcResult
+acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
+              const int value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel_int,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
+AcResult
+acKernelFlushFloat(const cudaStream_t stream, float* arr, const size_t n,
+              const float value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel_float,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
+AcResult
+acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
+              const AcReal value)
+{
+	return acKernelFlushReal(stream,arr,n,value);
+}
+
+AcResult
+acKernelFlush(const cudaStream_t stream, int* arr, const size_t n,
+              const int value)
+{
+	return acKernelFlushInt(stream,arr,n,value);
+}
+
+AcResult
+acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
+              const float value)
+{
+	return acKernelFlushFloat(stream,arr,n,value);
+}
+
 __device__ __constant__ AcReal* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-__device__ __constant__ int*    d_symbol_reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
-
 static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-static int*    d_reduce_scratchpads_int[NUM_INT_OUTPUTS+1];
-
 static size_t d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
-static size_t d_reduce_scratchpads_size_int[NUM_INT_OUTPUTS+1];
 
+
+
+#include "reduce_helpers.h"
+
+
+void
+resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)
+{
+	resize_reals_to_fit(n_elems,vba,kernel);
+	resize_ints_to_fit(n_elems,vba,kernel);
+	resize_floats_to_fit(n_elems,vba,kernel);
+}
 
 size_t
 acGetRealScratchpadSize(const size_t i)
@@ -369,73 +518,6 @@ acGetRealScratchpadSize(const size_t i)
 #undef longlong
 
 
-typedef struct {
-  AcKernel kernel;
-  int3 dims;
-  dim3 tpb;
-} TBConfig;
-
-static std::vector<TBConfig> tbconfigs;
-
-
-static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 dims, VertexBufferArray vba);
-
-static __global__ void
-flush_kernel(AcReal* arr, const size_t n, const AcReal value)
-{
-  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < n)
-    arr[idx] = value;
-}
-static __global__ void
-flush_kernel_int(int* arr, const size_t n, const int value)
-{
-  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < n)
-    arr[idx] = value;
-}
-template <typename T>
-T TO_CORRECT_ORDER(const T vol)
-{
-	return vol;
-}
-size_t TO_CORRECT_ORDER(const size_t size)
-{
-	return size;
-}
-
-
-#define KERNEL_LAUNCH(func,bgp,tpb,...) \
-	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
-
-#define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \
-	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
-
-AcResult
-acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
-              const AcReal value)
-{
-  ERRCHK_ALWAYS(arr || n == 0);
-  if(n == 0) return AC_SUCCESS;
-  const size_t tpb = 256;
-  const size_t bpg = ceil_div(n,tpb);
-  KERNEL_LAUNCH(flush_kernel,bpg,tpb,0,stream)(arr,n,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
-}
-
-AcResult
-acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
-              const int value)
-{
-  ERRCHK_ALWAYS(arr || n == 0);
-  if(n == 0) return AC_SUCCESS;
-  const size_t tpb = 256;
-  const size_t bpg = ceil_div(n,tpb);
-  KERNEL_LAUNCH(flush_kernel_int,bpg,tpb,0,stream)(arr,n,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
-}
 
 #if USE_COMPRESSIBLE_MEMORY
 #include <cuda.h>
@@ -693,83 +775,7 @@ cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* 
           ERRCHK_CUDA_ALWAYS(cudaGetLastError());
   }
 }
-AcReal
-get_reduce_state_flush_var_real(const AcReduceOp state)
-{
-	return 
-		(state == NO_REDUCE || state == REDUCE_SUM) ? 0.0 :
-		(state == REDUCE_MIN) ? AC_REAL_MAX :
-		(state == REDUCE_MAX) ? -AC_REAL_MAX :
-		0.0;
-}
-int
-get_reduce_state_flush_var_int(const AcReduceOp state)
-{
-	return 
-		(state == NO_REDUCE || state == REDUCE_SUM) ? 0 :
-		(state == REDUCE_MIN) ? INT_MAX:
-		(state == REDUCE_MAX) ? -INT_MAX:
-		0;
-}
 
-void
-allocate_scratchpad_real(const size_t i, const size_t bytes, const AcReduceOp state)
-{
-	ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&d_reduce_scratchpads_real[i], bytes));
-	ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(d_symbol_reduce_scratchpads_real,&d_reduce_scratchpads_real[i],
-					      sizeof(AcReal*),sizeof(AcReal*)*i,cudaMemcpyHostToDevice
-				));
-	d_reduce_scratchpads_size_real[i]  = bytes;
-    	acKernelFlush(0,d_reduce_scratchpads_real[i], bytes/sizeof(AcReal),get_reduce_state_flush_var_real(state));
-}
-
-void
-free_scratchpad_real(const size_t i)
-{
-        ERRCHK_CUDA_ALWAYS(cudaFree(d_reduce_scratchpads_real[i]));
-        d_reduce_scratchpads_real[i] = NULL;
-	ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(d_symbol_reduce_scratchpads_real,&d_reduce_scratchpads_real[i],
-					      sizeof(AcReal*),sizeof(AcReal*)*i,cudaMemcpyHostToDevice
-				));
-	d_reduce_scratchpads_size_real[i] = 0;
-}
-void
-resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state)
-{
-	if(d_reduce_scratchpads_size_real[i] >= new_bytes) return;
-	free_scratchpad_real(i);
-	allocate_scratchpad_real(i,new_bytes,state);
-}
-
-void
-allocate_scratchpad_int(const size_t i, const size_t bytes, const AcReduceOp state)
-{
-	ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&d_reduce_scratchpads_int[i], bytes));
-	ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(d_symbol_reduce_scratchpads_int,&d_reduce_scratchpads_int[i],
-					      sizeof(int*),sizeof(int*)*i,cudaMemcpyHostToDevice
-				));
-	d_reduce_scratchpads_size_int[i] = bytes;
-    	acKernelFlushInt(0,d_reduce_scratchpads_int[i], bytes/sizeof(int),get_reduce_state_flush_var_int(state));
-}
-
-void
-free_scratchpad_int(const size_t i)
-{
-        ERRCHK_CUDA_ALWAYS(cudaFree(d_reduce_scratchpads_int[i]));
-        d_reduce_scratchpads_int[i] = NULL;
-	ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(d_symbol_reduce_scratchpads_int,&d_reduce_scratchpads_int[i],
-					      sizeof(int*),sizeof(int*)*i,cudaMemcpyHostToDevice
-				));
-	d_reduce_scratchpads_size_int[i]   = 0;
-}
-
-void
-resize_scratchpad_int(const size_t i, const size_t new_bytes, const AcReduceOp state)
-{
-	if(d_reduce_scratchpads_size_int[i] >= new_bytes) return;
-	free_scratchpad_int(i);
-	allocate_scratchpad_int(i,new_bytes,state);
-}
 
 size3_t
 acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
@@ -897,6 +903,19 @@ init_scratchpads(VertexBufferArray* vba)
 	    *(vba->reduce_buffer_int[i].cub_tmp_size) = 0;
 	    vba->reduce_buffer_int[i].buffer_size    = &d_reduce_scratchpads_size_int[i];
     	    device_malloc((void**) &vba->reduce_buffer_int[i].res,sizeof(int));
+    	}
+
+    	for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i) {
+	    const size_t bytes = 0;
+	    allocate_scratchpad_float(i,bytes,vba->scratchpad_states->floats[i]);
+
+	    vba->reduce_buffer_float[i].src= &d_reduce_scratchpads_float[i];
+	    vba->reduce_buffer_float[i].cub_tmp = (float**)malloc(sizeof(float*));
+	    *(vba->reduce_buffer_float[i].cub_tmp) = NULL;
+	    vba->reduce_buffer_float[i].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
+	    *(vba->reduce_buffer_float[i].cub_tmp_size) = 0;
+	    vba->reduce_buffer_float[i].buffer_size    = &d_reduce_scratchpads_size_float[i];
+    	    device_malloc((void**) &vba->reduce_buffer_float[i].res,sizeof(float));
     	}
     }
 }
@@ -1061,6 +1080,17 @@ destroy_scratchpads(VertexBufferArray* vba)
 	free(vba->reduce_buffer_int[j].cub_tmp);
 	free(vba->reduce_buffer_int[j].cub_tmp_size);
     }
+    for(int j = 0; j < NUM_FLOAT_OUTPUTS; ++j)
+    {
+	free_scratchpad_float(j);
+	vba->reduce_buffer_float[j].src = NULL;
+
+        ERRCHK_CUDA_ALWAYS(cudaFree(*vba->reduce_buffer_float[j].cub_tmp));
+        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_buffer_float[j].res));
+
+	free(vba->reduce_buffer_float[j].cub_tmp);
+	free(vba->reduce_buffer_float[j].cub_tmp_size);
+    }
 }
 
 void
@@ -1097,37 +1127,6 @@ get_num_of_warps(const dim3 bpg, const dim3 tpb)
 	const int num_of_warps_per_block = (tpb.x*tpb.y*tpb.z + warp_size-1)/warp_size;
 	const int num_of_blocks = bpg.x*bpg.y*bpg.z;
 	return num_of_warps_per_block*num_of_blocks;
-}
-void
-resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)
-{
-	{
-		bool real_reduced = false;
-		for(int i = 0; i < NUM_REAL_OUTPUTS; ++i) real_reduced |= reduced_reals[kernel][i];
-		if(real_reduced)
-		{
-			const size_t reals_size = n_elems*sizeof(AcReal);
-			for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
-			{
-				if(!reduced_reals[kernel][i]) continue;
-				resize_scratchpad_real(i, reals_size, vba.scratchpad_states->reals[i]);
-			}
-		}
-	}
-
-	{
-		bool int_reduced = false;
-		for(int i = 0; i < NUM_REAL_OUTPUTS; ++i) int_reduced |= reduced_reals[kernel][i];
-		if(int_reduced)
-		{
-			const size_t ints_size = n_elems*sizeof(int);
-			for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
-			{
-				if(!reduced_reals[kernel][i]) continue;
-				resize_scratchpad_int(i, ints_size, vba.scratchpad_states->ints[i]);
-			}
-		}
-	}
 }
 
 AcResult
@@ -2109,11 +2108,16 @@ acReduceBase(const cudaStream_t stream, const AcReduceOp reduce_op, T buffer, co
 }
 
 AcResult
-acReduce(const cudaStream_t stream, const AcReduceOp op, const AcRealScalarReduceBuffer buffer, const size_t count)
+acReduceReal(const cudaStream_t stream, const AcReduceOp op, const AcRealScalarReduceBuffer buffer, const size_t count)
 {
 	return acReduceBase(stream,op,buffer,count);
 }
 
+AcResult
+acReduceFloat(const cudaStream_t stream, const AcReduceOp op, const AcFloatScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceBase(stream,op,buffer,count);
+}
 
 AcResult
 acReduceInt(const cudaStream_t stream, const AcReduceOp op, const AcIntScalarReduceBuffer buffer, const size_t count)
@@ -2380,6 +2384,7 @@ AcResult
 acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType type,const AcReduceOp op)
 {
 	AcReduceOp* states =
+			type == AC_FLOAT_TYPE  ? vba.scratchpad_states->floats :
 			type == AC_INT_TYPE  ? vba.scratchpad_states->ints  :
 			type == AC_REAL_TYPE ? vba.scratchpad_states->reals :
 			type == AC_PROF_TYPE ? &vba.scratchpad_states->reals[NUM_REAL_OUTPUTS] :
@@ -2389,12 +2394,14 @@ acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType t
 				type == AC_REAL_TYPE ?  NUM_REAL_OUTPUTS :
 				type == AC_PROF_TYPE ?  NUM_PROFILES     :
 				type == AC_INT_TYPE  ?  NUM_INT_OUTPUTS  :
+				type == AC_FLOAT_TYPE  ?  NUM_FLOAT_OUTPUTS  :
 				0;
 	ERRCHK_ALWAYS(variable < n_elems);
 	if(states[variable] == op) return AC_SUCCESS;
 	states[variable] = op;
 	const size_t counts = 
 			type == AC_INT_TYPE  ? (*vba.reduce_buffer_int[variable].buffer_size)/sizeof(int) :
+			type == AC_FLOAT_TYPE  ? (*vba.reduce_buffer_float[variable].buffer_size)/sizeof(float) :
 			type == AC_REAL_TYPE ? (*vba.reduce_buffer_real[variable].buffer_size)/sizeof(AcReal) :
 			type == AC_PROF_TYPE ? (get_count(vba.profile_reduce_buffers[variable].src.shape))/sizeof(AcReal) :
 			0;
@@ -2411,11 +2418,17 @@ acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType t
 		AcReal* dst = vba.profile_reduce_buffers[variable].src.data;
 		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_real(op));
 	}
+	else if(type == AC_FLOAT_TYPE)
+	{
+		if constexpr(NUM_FLOAT_OUTPUTS  == 0) return AC_SUCCESS;
+		float* dst = *(vba.reduce_buffer_float[variable].src);
+		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_float(op));
+	}
 	else
 	{
 		if constexpr (NUM_INT_OUTPUTS == 0) return AC_SUCCESS;
 		int* dst = *(vba.reduce_buffer_int[variable].src);
-		acKernelFlushInt(0,dst,counts,get_reduce_state_flush_var_int(op));
+		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_int(op));
 	}
 	return AC_SUCCESS;
 }

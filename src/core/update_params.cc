@@ -98,6 +98,12 @@ acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
     push_val(AC_inv_ds_5,config[AC_inv_ds_3]*config[AC_inv_ds_2]);
     push_val(AC_inv_ds_6,config[AC_inv_ds_3]*config[AC_inv_ds_3]);
 
+    push_val(AC_ds_2,config[AC_ds]*config[AC_ds]);
+    push_val(AC_ds_3,config[AC_ds_2]*config[AC_ds]);
+    push_val(AC_ds_4,config[AC_ds_2]*config[AC_ds_2]);
+    push_val(AC_ds_5,config[AC_ds_3]*config[AC_ds_2]);
+    push_val(AC_ds_6,config[AC_ds_3]*config[AC_ds_3]);
+
     //TP: for safety have to add the maximum possible tpb dims for the reduce scratchpads
     //If block_factor_z is say 2 can be that some of threads reduce something in the first iteration but not in the second
     //Thus to be on the safe side one cannot use dims.reduction_tile.z but add tpb.z as a safety factor

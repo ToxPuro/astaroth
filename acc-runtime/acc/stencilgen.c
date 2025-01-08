@@ -212,6 +212,15 @@ gen_kernel_block_loops(const int curr_kernel)
 			if(reduced_ints[curr_kernel][i] == REDUCE_MAX)
 				printf("int %s_reduce_output = -INT_MAX;",int_output_names[i]);
 		}
+		for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
+		{
+			if(reduced_floats[curr_kernel][i] == REDUCE_SUM)
+				printf("float %s_reduce_output = 0.0;",float_output_names[i]);
+			if(reduced_floats[curr_kernel][i] == REDUCE_MIN)
+				printf("float %s_reduce_output = FLT_MAX;",float_output_names[i]);
+			if(reduced_floats[curr_kernel][i] == REDUCE_MAX)
+				printf("float %s_reduce_output = -FLT_MAX;",float_output_names[i]);
+		}
 	#if AC_USE_HIP
         	printf("const size_t warp_id = rocprim__warpId();");
 	#else
@@ -239,6 +248,10 @@ gen_kernel_block_loops(const int curr_kernel)
   		print_warp_reduce_func("int", "int", REDUCE_SUM);
   		print_warp_reduce_func("int", "int", REDUCE_MIN);
   		print_warp_reduce_func("int", "int", REDUCE_MAX);
+
+  		print_warp_reduce_func("float", "float", REDUCE_SUM);
+  		print_warp_reduce_func("float", "float", REDUCE_MIN);
+  		print_warp_reduce_func("float", "float", REDUCE_MAX);
 	}
 
 
@@ -805,6 +818,8 @@ gen_kernel_reduce_funcs(const int curr_kernel)
 	printf_reduce_funcs("AcReal","real","AcReal",curr_kernel,real_output_names,reduced_reals[curr_kernel],NUM_REAL_OUTPUTS);
     if(NUM_INT_OUTPUTS)
 	printf_reduce_funcs("int","int","AcInt",curr_kernel,int_output_names,reduced_ints[curr_kernel],NUM_INT_OUTPUTS);
+    if(NUM_FLOAT_OUTPUTS)
+	printf_reduce_funcs("float","float","AcFloat",curr_kernel,float_output_names,reduced_floats[curr_kernel],NUM_FLOAT_OUTPUTS);
 
 
   }
@@ -822,6 +837,9 @@ gen_return_if_oob(const int curr_kernel)
 #else
 	       printf("%s AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,!out_of_bounds);",type);
 #endif
+    		printf("%s AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));",type);
+    		//TP: if all threads are active can skip checks checking if target tid is active in reductions
+    		printf("%s AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;",type);
        }
        printf("if(out_of_bounds) %s;",kernel_has_block_loops(curr_kernel) ? "continue" : "return");
        printf("{\n");
