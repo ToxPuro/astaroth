@@ -1,0 +1,785 @@
+// Defines
+//hostdefine AC_INTEGRATION_ENABLED (0) // Enables acIntegrate() and other non-generic library functions
+hostdefine LDENSITY (1)
+hostdefine LHYDRO (1)
+hostdefine LMAGNETIC (0)
+hostdefine LENTROPY (0)
+hostdefine LTEMPERATURE (0)
+hostdefine LFORCING (1)
+hostdefine LUPWD (1)
+hostdefine LTFM (1)
+
+hostdefine R_PI (AC_REAL_PI)
+
+hostdefine AC_ENABLE_EXCLUDE_INNER
+int AC_exclude_inner // Exclude the inner domain if this parameter is set (fuse outer integration)
+
+// Simulation control
+int AC_simulation_nsteps
+int AC_simulation_output_interval
+
+// Fields
+Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
+#define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
+
+#if LMAGNETIC
+Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
+#define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
+#endif
+
+#if LENTROPY 
+Field VTXBUF_ENTROPY
+#endif
+
+#if LTFM
+hostdefine AC_TFM_ENABLED (1)
+
+real AC_eta_tfm
+real AC_profile_amplitude, AC_profile_wavenumber
+real3 AC_dummy_real3
+
+
+// Aliases for VTXBUF_UU to avoid confusion with the notation convention
+// for mean and fluctuating fields
+#define FIELD_u_x (VTXBUF_UUX)
+#define FIELD_u_y (VTXBUF_UUY)
+#define FIELD_u_z (VTXBUF_UUZ)
+
+// Test fields
+Field TF_a11_x, TF_a11_y, TF_a11_z
+Field TF_a12_x, TF_a12_y, TF_a12_z
+Field TF_a21_x, TF_a21_y, TF_a21_z
+Field TF_a22_x, TF_a22_y, TF_a22_z
+
+#define TF_a11 Field3(TF_a11_x, TF_a11_y, TF_a11_z)
+#define TF_a12 Field3(TF_a12_x, TF_a12_y, TF_a12_z)
+#define TF_a21 Field3(TF_a21_x, TF_a21_y, TF_a21_z)
+#define TF_a22 Field3(TF_a22_x, TF_a22_y, TF_a22_z)
+
+// Derived fields
+Field TF_uxb11_x, TF_uxb11_y, TF_uxb11_z
+Field TF_uxb12_x, TF_uxb12_y, TF_uxb12_z
+Field TF_uxb21_x, TF_uxb21_y, TF_uxb21_z
+Field TF_uxb22_x, TF_uxb22_y, TF_uxb22_z
+
+#define TF_uxb11 Field3(TF_uxb11_x, TF_uxb11_y, TF_uxb11_z)
+#define TF_uxb12 Field3(TF_uxb12_x, TF_uxb12_y, TF_uxb12_z)
+#define TF_uxb21 Field3(TF_uxb21_x, TF_uxb21_y, TF_uxb21_z)
+#define TF_uxb22 Field3(TF_uxb22_x, TF_uxb22_y, TF_uxb22_z)
+
+// Mean-field profiles
+Profile PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
+
+Profile PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z
+Profile PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z
+Profile PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z
+Profile PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z
+
+Profile PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z
+Profile PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z
+Profile PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z
+Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
+#endif
+
+// Device constants
+real AC_dsx, AC_dsy, AC_dsz
+real AC_dt
+// int AC_step_number
+
+// User configuration parameters
+int AC_global_nx, AC_global_ny, AC_global_nz
+real AC_global_sx, AC_global_sy, AC_global_sz
+
+// Local mesh information derived from the configuration
+int AC_nx, AC_ny, AC_nz
+real AC_sx, AC_sy, AC_sz
+real AC_dsx, AC_dsy, AC_dsz
+
+
+// Run parameters
+real AC_cdt
+real AC_cdtv
+real AC_cdts
+real AC_nu_visc
+real AC_cs_sound
+real AC_eta
+real AC_mu0
+real AC_cp_sound
+real AC_gamma
+real AC_lnT0
+real AC_lnrho0
+real AC_zeta
+real AC_K_heatcond
+
+//  Forcing parameters. User configured.
+real AC_forcing_magnitude
+real AC_relhel
+real AC_kmin
+real AC_kmax
+real AC_switch_forcing
+real AC_current_time
+
+//  Forcing parameters. Set by the generator.
+real AC_forcing_phase
+real AC_k_forcex
+real AC_k_forcey
+real AC_k_forcez
+real AC_kaver
+real AC_ff_hel_rex
+real AC_ff_hel_rey
+real AC_ff_hel_rez
+real AC_ff_hel_imx
+real AC_ff_hel_imy
+real AC_ff_hel_imz
+
+// Backwards compatibility (boundconds.cuh depends on these, not used here)
+real AC_cs2_sound
+real AC_center_x
+real AC_center_y
+real AC_center_z
+real AC_window_radius
+
+// Stencils
+Stencil value {
+    [0][0][0] = 1
+}
+
+Stencil derx {
+    [0][0][-3] = 1,
+    [0][0][-2] = 1,
+    [0][0][-1] = 1,
+    [0][0][1]  = 1,
+    [0][0][2]  = 1,
+    [0][0][3]  = 1
+}
+
+Stencil dery {
+    [0][-3][0] = 1,
+    [0][-2][0] = 1,
+    [0][-1][0] = 1,
+    [0][1][0]  = 1,
+    [0][2][0]  = 1,
+    [0][3][0]  = 1
+}
+
+Stencil derz {
+    [-3][0][0] = 1,
+    [-2][0][0] = 1,
+    [-1][0][0] = 1,
+    [1][0][0]  = 1,
+    [2][0][0]  = 1,
+    [3][0][0]  = 1
+}
+
+Stencil derxx {
+    [0][0][-3] = 1,
+    [0][0][-2] = 1,
+    [0][0][-1] = 1,
+    [0][0][0]  = 1,
+    [0][0][1]  = 1,
+    [0][0][2]  = 1,
+    [0][0][3]  = 1
+}
+
+Stencil deryy {
+    [0][-3][0] = 1,
+    [0][-2][0] = 1,
+    [0][-1][0] = 1,
+    [0][0][0]  = 1,
+    [0][1][0]  = 1,
+    [0][2][0]  = 1,
+    [0][3][0]  = 1
+}
+
+Stencil derzz {
+    [-3][0][0] = 1,
+    [-2][0][0] = 1,
+    [-1][0][0] = 1,
+    [0][0][0]  = 1,
+    [1][0][0]  = 1,
+    [2][0][0]  = 1,
+    [3][0][0]  = 1
+}
+
+Stencil derxy {
+    [0][-3][-3] = 1,
+    [0][-2][-2] = 1,
+    [0][-1][-1] = 1,
+    [0][0][0]  = 1,
+    [0][1][1]  = 1,
+    [0][2][2]  = 1,
+    [0][3][3]  = 1,
+    [0][-3][3] = 1,
+    [0][-2][2] = 1,
+    [0][-1][1] = 1,
+    [0][1][-1] = 1,
+    [0][2][-2] = 1,
+    [0][3][-3] = 1
+}
+
+Stencil derxz {
+    [-3][0][-3] = 1,
+    [-2][0][-2] = 1,
+    [-1][0][-1] = 1,
+    [0][0][0]  = 1,
+    [1][0][1]  = 1,
+    [2][0][2]  = 1,
+    [3][0][3]  = 1,
+    [-3][0][3] = 1,
+    [-2][0][2] = 1,
+    [-1][0][1] = 1,
+    [1][0][-1] = 1,
+    [2][0][-2] = 1,
+    [3][0][-3] = 1
+}
+
+Stencil deryz {
+    [-3][-3][0] = 1,
+    [-2][-2][0] = 1,
+    [-1][-1][0] = 1,
+    [0][0][0]  = 1,
+    [1][1][0]  = 1,
+    [2][2][0]  = 1,
+    [3][3][0]  = 1,
+    [-3][3][0] = 1,
+    [-2][2][0] = 1,
+    [-1][1][0] = 1,
+    [1][-1][0] = 1,
+    [2][-2][0] = 1,
+    [3][-3][0] = 1
+}
+
+Stencil der6x_upwd {
+    [0][0][-3] =  1,
+    [0][0][-2] =  1,
+    [0][0][-1] =  1,
+    [0][0][0]  =  1,
+    [0][0][1]  =  1,
+    [0][0][2]  =  1,
+    [0][0][3]  =  1
+}
+
+Stencil der6y_upwd {
+    [0][-3][0] =  1,
+    [0][-2][0] =  1,
+    [0][-1][0] =  1,
+    [0][0][0]  =  1,
+    [0][1][0]  =  1,
+    [0][2][0]  =  1,
+    [0][3][0]  =  1
+}
+
+Stencil der6z_upwd {
+    [-3][0][0] =  1,
+    [-2][0][0] =  1,
+    [-1][0][0] =  1,
+    [0][0][0]  =  1,
+    [1][0][0]  =  1,
+    [2][0][0]  =  1,
+    [3][0][0]  =  1
+}
+
+// Operations
+vecvalue(v) {
+    return real3(value(v.x), value(v.y), value(v.z))
+}
+
+vecvalue_abs(v) {
+    return real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
+}
+
+gradient(s) {
+    return real3(derx(s), dery(s), derz(s))
+}
+
+gradient6_upwd(s) {
+    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
+}
+
+gradients_upwd(v) {
+    return Matrix(gradient6_upwd(v.x), gradient6_upwd(v.y), gradient6_upwd(v.z))
+}
+
+gradients(v) {
+    return Matrix(gradient(v.x), gradient(v.y), gradient(v.z))
+}
+
+divergence(v) {
+    return derx(v.x) + dery(v.y) + derz(v.z)
+}
+
+curl(v) {
+    return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
+}
+
+laplace(s) {
+    return derxx(s) + deryy(s) + derzz(s)
+}
+
+veclaplace(v) {
+    return real3(laplace(v.x), laplace(v.y), laplace(v.z))
+}
+
+
+stress_tensor(v) {
+    Matrix S
+
+    S.data[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
+    S.data[0][1] = (1.0 / 2.0) * (dery(v.x) + derx(v.y))
+    S.data[0][2] = (1.0 / 2.0) * (derz(v.x) + derx(v.z))
+
+    S.data[1][0] = S.data[0][1]
+    S.data[1][1] = (2.0 / 3.0) * dery(v.y) - (1.0 / 3.0) * (derx(v.x) + derz(v.z))
+    S.data[1][2] = (1.0 / 2.0) * (derz(v.y) + dery(v.z))
+
+    S.data[2][0] = S.data[0][2]
+    S.data[2][1] = S.data[1][2]
+    S.data[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
+
+    return S
+}
+
+gradient_of_divergence(v) {
+    return real3(
+        derxx(v.x) + derxy(v.y) + derxz(v.z),
+        derxy(v.x) + deryy(v.y) + deryz(v.z),
+        derxz(v.x) + deryz(v.y) + derzz(v.z)
+    )
+}
+
+contract(mat) {
+    return dot(mat.row(0), mat.row(0)) +
+           dot(mat.row(1), mat.row(1)) +
+           dot(mat.row(2), mat.row(2))
+}
+
+// Simulation functions
+#if LFORCING
+// The Pencil Code forcing_hel_noshear(), manual Eq. 222, inspired forcing function with adjustable
+// helicity
+helical_forcing(k_force, xx, ff_re, ff_im, phi)
+{
+    real3 yy
+    yy.x = xx.x * (2.0 * R_PI / (AC_dsx * globalGridN.x))
+    yy.y = xx.y * (2.0 * R_PI / (AC_dsy * globalGridN.x))
+    yy.z = xx.z * (2.0 * R_PI / (AC_dsz * globalGridN.x))
+
+    cos_phi     = cos(phi)
+    sin_phi     = sin(phi)
+    cos_k_dot_x = cos(dot(k_force, yy))
+    sin_k_dot_x = sin(dot(k_force, yy))
+    real_comp_phase = cos_k_dot_x * cos_phi - sin_k_dot_x * sin_phi
+    imag_comp_phase = cos_k_dot_x * sin_phi + sin_k_dot_x * cos_phi
+
+    force = real3(ff_re.x * real_comp_phase - ff_im.x * imag_comp_phase,
+                  ff_re.y * real_comp_phase - ff_im.y * imag_comp_phase,
+                  ff_re.z * real_comp_phase - ff_im.z * imag_comp_phase)
+
+    return force
+}
+
+forcing()
+{
+    xx = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
+               (globalVertexIdx.y - AC_ny_min) * AC_dsy,
+               (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+    cs  = AC_cs_sound
+
+    // Placeholders until determined properly
+    k_force   = real3(AC_k_forcex,   AC_k_forcey,   AC_k_forcez  )
+    ff_re     = real3(AC_ff_hel_rex, AC_ff_hel_rey, AC_ff_hel_rez)
+    ff_im     = real3(AC_ff_hel_imx, AC_ff_hel_imy, AC_ff_hel_imz)
+
+    // Determine that forcing funtion type at this point.
+    force = helical_forcing(k_force, xx, ff_re, ff_im, AC_forcing_phase)
+
+    // Scaling N = magnitude*cs*sqrt(k*cs/dt)  * dt
+    NN = cs * AC_forcing_magnitude * sqrt(AC_kaver * cs)
+    // sqrt(dt) because 1/sqrt(dt)*dt = sqrt(dt)
+    force.x = sqrt(AC_dt) * NN * force.x
+    force.y = sqrt(AC_dt) * NN * force.y
+    force.z = sqrt(AC_dt) * NN * force.z
+
+    return force
+}
+#endif // LFORCING
+
+continuity() {
+    return -dot(vecvalue(UU), gradient(VTXBUF_LNRHO)) - divergence(UU)
+#if LUPWD
+           + dot(vecvalue_abs(UU), gradient6_upwd(VTXBUF_LNRHO))
+#endif
+}
+
+momentum() {
+    S = stress_tensor(UU)
+    cs2_sound = AC_cs_sound * AC_cs_sound
+#if LENTROPY 
+    cs2 = cs2_sound * exp(AC_gamma * value(VTXBUF_ENTROPY) / AC_cp_sound + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))
+#else
+    cs2 = cs2_sound
+#endif
+
+#if LMAGNETIC
+    j = (1. / AC_mu0) * (gradient_of_divergence(AA) - veclaplace(AA))
+    B = curl(AA)
+    inv_rho = 1. / exp(value(VTXBUF_LNRHO))
+#endif
+
+    mom = - gradients(UU) * vecvalue(UU)
+#if LUPWD
+          + gradients_upwd(UU) * vecvalue_abs(UU)
+#endif
+#if LENTROPY 
+          - cs2 * ((1. / AC_cp_sound) * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO))
+#else
+          - cs2 * gradient(VTXBUF_LNRHO)
+#endif
+#if LMAGNETIC
+          + inv_rho * cross(j, B)
+#endif
+          + AC_nu_visc * (veclaplace(UU) + (1. / 3.) * gradient_of_divergence(UU)
+                       + 2. * S * gradient(VTXBUF_LNRHO))
+          + AC_zeta * gradient_of_divergence(UU)
+
+    return mom
+}
+
+#if LMAGNETIC
+induction() {
+    return cross(vecvalue(UU), curl(AA)) + AC_eta * veclaplace(AA)
+}
+#endif
+
+#if LENTROPY 
+lnT() {
+    return AC_lnT0
+         + AC_gamma * value(VTXBUF_ENTROPY) / AC_cp_sound
+         + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0)
+}
+
+heat_conduction() {
+    inv_AC_cp_sound = 1. / AC_cp_sound
+    grad_ln_chi = -gradient(VTXBUF_LNRHO)
+
+    first_term = AC_gamma * inv_AC_cp_sound * laplace(VTXBUF_ENTROPY) + (AC_gamma - 1.) * laplace(VTXBUF_LNRHO)
+    second_term = AC_gamma * inv_AC_cp_sound * gradient(VTXBUF_ENTROPY) + (AC_gamma - 1.) * gradient(VTXBUF_LNRHO)
+    third_term = AC_gamma * (inv_AC_cp_sound * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO)) + grad_ln_chi
+
+    //chi = AC_THERMAL_CONDUCTIVITY / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
+    chi = AC_K_heatcond / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
+
+    return AC_cp_sound * chi * (first_term + dot(second_term, third_term))
+}
+
+entropy() {
+    S = stress_tensor(UU)
+    inv_pT = 1. / (exp(value(VTXBUF_LNRHO)) * exp(lnT()))
+#if LMAGNETIC
+    j = (1. / AC_mu0) * (gradient_of_divergence(AA) - veclaplace(AA))
+#else
+    j = real3(0,0,0)
+#endif
+    RHS = (0) - (0) + AC_eta * AC_mu0 * dot(j, j) +
+                       2. * exp(value(VTXBUF_LNRHO)) * AC_nu_visc * contract(S) +
+                       AC_zeta * exp(value(VTXBUF_LNRHO)) * divergence(UU) * divergence(UU)
+
+    return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
+}
+#endif
+
+// Integration: single-pass
+rk3_step0(s0, s1, roc) {
+    real alpha = 0., -5./9., -153. / 128.
+    real beta  = 1., 1. / 3., 15./ 16., 8. / 15.
+
+    return s1 + beta[0 + 1] * ((alpha[0] / beta[0]) * (s1 - s0) + roc * AC_dt)
+}
+rk3_step1(s0, s1, roc) {
+    real alpha = 0., -5./9., -153. / 128.
+    real beta  = 1., 1. / 3., 15./ 16., 8. / 15.
+
+    return s1 + beta[1 + 1] * ((alpha[1] / beta[1]) * (s1 - s0) + roc * AC_dt)
+}
+rk3_step2(s0, s1, roc) {
+    real alpha = 0., -5./9., -153. / 128.
+    real beta  = 1., 1. / 3., 15./ 16., 8. / 15.
+
+    return s1 + beta[2 + 1] * ((alpha[2] / beta[2]) * (s1 - s0) + roc * AC_dt)
+}
+
+#if LTFM
+roc_TF_a22_x() {
+    return AC_eta_tfm*deryy(TF_a22_x) + AC_eta_tfm*derzz(TF_a22_x) - AC_eta_tfm*derxy(TF_a22_y) - AC_eta_tfm*derxz(TF_a22_z) + value(FIELD_u_y)*value(PROFILE_B22mean_z) - value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*value(PROFILE_B22mean_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z) - value(PROFILE_Umean_y)*dery(TF_a22_x) + value(PROFILE_Umean_y)*derx(TF_a22_y) - value(PROFILE_Umean_z)*derz(TF_a22_x) + value(PROFILE_Umean_z)*derx(TF_a22_z) - value(PROFILE_ucrossb22mean_x)
+}
+roc_TF_a22_y() {
+    return AC_eta_tfm*derxx(TF_a22_y) + AC_eta_tfm*derzz(TF_a22_y) - AC_eta_tfm*derxy(TF_a22_x) - AC_eta_tfm*deryz(TF_a22_z) - value(FIELD_u_x)*value(PROFILE_B22mean_z) + value(FIELD_u_x)*dery(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_y) + value(FIELD_u_z)*value(PROFILE_B22mean_x) - value(FIELD_u_z)*derz(TF_a22_y) + value(FIELD_u_z)*dery(TF_a22_z) + value(PROFILE_Umean_x)*dery(TF_a22_x) - value(PROFILE_Umean_x)*derx(TF_a22_y) - value(PROFILE_Umean_z)*derz(TF_a22_y) + value(PROFILE_Umean_z)*dery(TF_a22_z) - value(PROFILE_ucrossb22mean_y)
+}
+roc_TF_a22_z() {
+    return AC_eta_tfm*derxx(TF_a22_z) + AC_eta_tfm*deryy(TF_a22_z) - AC_eta_tfm*derxz(TF_a22_x) - AC_eta_tfm*deryz(TF_a22_y) + value(FIELD_u_x)*value(PROFILE_B22mean_y) + value(FIELD_u_x)*derz(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_z) - value(FIELD_u_y)*value(PROFILE_B22mean_x) + value(FIELD_u_y)*derz(TF_a22_y) - value(FIELD_u_y)*dery(TF_a22_z) + value(PROFILE_Umean_x)*derz(TF_a22_x) - value(PROFILE_Umean_x)*derx(TF_a22_z) + value(PROFILE_Umean_y)*derz(TF_a22_y) - value(PROFILE_Umean_y)*dery(TF_a22_z) - value(PROFILE_ucrossb22mean_z)
+}
+roc_TF_a12_x() {
+    return AC_eta_tfm*deryy(TF_a12_x) + AC_eta_tfm*derzz(TF_a12_x) - AC_eta_tfm*derxy(TF_a12_y) - AC_eta_tfm*derxz(TF_a12_z) + value(FIELD_u_y)*value(PROFILE_B12mean_z) - value(FIELD_u_y)*dery(TF_a12_x) + value(FIELD_u_y)*derx(TF_a12_y) - value(FIELD_u_z)*value(PROFILE_B12mean_y) - value(FIELD_u_z)*derz(TF_a12_x) + value(FIELD_u_z)*derx(TF_a12_z) - value(PROFILE_Umean_y)*dery(TF_a12_x) + value(PROFILE_Umean_y)*derx(TF_a12_y) - value(PROFILE_Umean_z)*derz(TF_a12_x) + value(PROFILE_Umean_z)*derx(TF_a12_z) - value(PROFILE_ucrossb12mean_x)
+}
+roc_TF_a12_y() {
+    return AC_eta_tfm*derxx(TF_a12_y) + AC_eta_tfm*derzz(TF_a12_y) - AC_eta_tfm*derxy(TF_a12_x) - AC_eta_tfm*deryz(TF_a12_z) - value(FIELD_u_x)*value(PROFILE_B12mean_z) + value(FIELD_u_x)*dery(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_y) + value(FIELD_u_z)*value(PROFILE_B12mean_x) - value(FIELD_u_z)*derz(TF_a12_y) + value(FIELD_u_z)*dery(TF_a12_z) + value(PROFILE_Umean_x)*dery(TF_a12_x) - value(PROFILE_Umean_x)*derx(TF_a12_y) - value(PROFILE_Umean_z)*derz(TF_a12_y) + value(PROFILE_Umean_z)*dery(TF_a12_z) - value(PROFILE_ucrossb12mean_y)
+}
+roc_TF_a12_z() {
+    return AC_eta_tfm*derxx(TF_a12_z) + AC_eta_tfm*deryy(TF_a12_z) - AC_eta_tfm*derxz(TF_a12_x) - AC_eta_tfm*deryz(TF_a12_y) + value(FIELD_u_x)*value(PROFILE_B12mean_y) + value(FIELD_u_x)*derz(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_z) - value(FIELD_u_y)*value(PROFILE_B12mean_x) + value(FIELD_u_y)*derz(TF_a12_y) - value(FIELD_u_y)*dery(TF_a12_z) + value(PROFILE_Umean_x)*derz(TF_a12_x) - value(PROFILE_Umean_x)*derx(TF_a12_z) + value(PROFILE_Umean_y)*derz(TF_a12_y) - value(PROFILE_Umean_y)*dery(TF_a12_z) - value(PROFILE_ucrossb12mean_z)
+}
+roc_TF_a21_x() {
+    return AC_eta_tfm*deryy(TF_a21_x) + AC_eta_tfm*derzz(TF_a21_x) - AC_eta_tfm*derxy(TF_a21_y) - AC_eta_tfm*derxz(TF_a21_z) + value(FIELD_u_y)*value(PROFILE_B21mean_z) - value(FIELD_u_y)*dery(TF_a21_x) + value(FIELD_u_y)*derx(TF_a21_y) - value(FIELD_u_z)*value(PROFILE_B21mean_y) - value(FIELD_u_z)*derz(TF_a21_x) + value(FIELD_u_z)*derx(TF_a21_z) - value(PROFILE_Umean_y)*dery(TF_a21_x) + value(PROFILE_Umean_y)*derx(TF_a21_y) - value(PROFILE_Umean_z)*derz(TF_a21_x) + value(PROFILE_Umean_z)*derx(TF_a21_z) - value(PROFILE_ucrossb21mean_x)
+}
+roc_TF_a21_y() {
+    return AC_eta_tfm*derxx(TF_a21_y) + AC_eta_tfm*derzz(TF_a21_y) - AC_eta_tfm*derxy(TF_a21_x) - AC_eta_tfm*deryz(TF_a21_z) - value(FIELD_u_x)*value(PROFILE_B21mean_z) + value(FIELD_u_x)*dery(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_y) + value(FIELD_u_z)*value(PROFILE_B21mean_x) - value(FIELD_u_z)*derz(TF_a21_y) + value(FIELD_u_z)*dery(TF_a21_z) + value(PROFILE_Umean_x)*dery(TF_a21_x) - value(PROFILE_Umean_x)*derx(TF_a21_y) - value(PROFILE_Umean_z)*derz(TF_a21_y) + value(PROFILE_Umean_z)*dery(TF_a21_z) - value(PROFILE_ucrossb21mean_y)
+}
+roc_TF_a21_z() {
+    return AC_eta_tfm*derxx(TF_a21_z) + AC_eta_tfm*deryy(TF_a21_z) - AC_eta_tfm*derxz(TF_a21_x) - AC_eta_tfm*deryz(TF_a21_y) + value(FIELD_u_x)*value(PROFILE_B21mean_y) + value(FIELD_u_x)*derz(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_z) - value(FIELD_u_y)*value(PROFILE_B21mean_x) + value(FIELD_u_y)*derz(TF_a21_y) - value(FIELD_u_y)*dery(TF_a21_z) + value(PROFILE_Umean_x)*derz(TF_a21_x) - value(PROFILE_Umean_x)*derx(TF_a21_z) + value(PROFILE_Umean_y)*derz(TF_a21_y) - value(PROFILE_Umean_y)*dery(TF_a21_z) - value(PROFILE_ucrossb21mean_z)
+}
+roc_TF_a11_x() {
+    return AC_eta_tfm*deryy(TF_a11_x) + AC_eta_tfm*derzz(TF_a11_x) - AC_eta_tfm*derxy(TF_a11_y) - AC_eta_tfm*derxz(TF_a11_z) + value(FIELD_u_y)*value(PROFILE_B11mean_z) - value(FIELD_u_y)*dery(TF_a11_x) + value(FIELD_u_y)*derx(TF_a11_y) - value(FIELD_u_z)*value(PROFILE_B11mean_y) - value(FIELD_u_z)*derz(TF_a11_x) + value(FIELD_u_z)*derx(TF_a11_z) - value(PROFILE_Umean_y)*dery(TF_a11_x) + value(PROFILE_Umean_y)*derx(TF_a11_y) - value(PROFILE_Umean_z)*derz(TF_a11_x) + value(PROFILE_Umean_z)*derx(TF_a11_z) - value(PROFILE_ucrossb11mean_x)
+}
+roc_TF_a11_y() {
+    return AC_eta_tfm*derxx(TF_a11_y) + AC_eta_tfm*derzz(TF_a11_y) - AC_eta_tfm*derxy(TF_a11_x) - AC_eta_tfm*deryz(TF_a11_z) - value(FIELD_u_x)*value(PROFILE_B11mean_z) + value(FIELD_u_x)*dery(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_y) + value(FIELD_u_z)*value(PROFILE_B11mean_x) - value(FIELD_u_z)*derz(TF_a11_y) + value(FIELD_u_z)*dery(TF_a11_z) + value(PROFILE_Umean_x)*dery(TF_a11_x) - value(PROFILE_Umean_x)*derx(TF_a11_y) - value(PROFILE_Umean_z)*derz(TF_a11_y) + value(PROFILE_Umean_z)*dery(TF_a11_z) - value(PROFILE_ucrossb11mean_y)
+}
+roc_TF_a11_z() {
+    return AC_eta_tfm*derxx(TF_a11_z) + AC_eta_tfm*deryy(TF_a11_z) - AC_eta_tfm*derxz(TF_a11_x) - AC_eta_tfm*deryz(TF_a11_y) + value(FIELD_u_x)*value(PROFILE_B11mean_y) + value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) - value(FIELD_u_y)*value(PROFILE_B11mean_x) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z) + value(PROFILE_Umean_x)*derz(TF_a11_x) - value(PROFILE_Umean_x)*derx(TF_a11_z) + value(PROFILE_Umean_y)*derz(TF_a11_y) - value(PROFILE_Umean_y)*dery(TF_a11_z) - value(PROFILE_ucrossb11mean_z)
+}
+Kernel singlepass_solve_step0_tfm_b22(){
+    write(TF_a22_x, rk3_step0(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
+    write(TF_a22_y, rk3_step0(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
+    write(TF_a22_z, rk3_step0(previous(TF_a22_z), value(TF_a22_z), roc_TF_a22_z()))
+    write(TF_uxb22_x, -value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z))
+    write(TF_uxb22_y, value(FIELD_u_x)*dery(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_y) + value(FIELD_u_z)*dery(TF_a22_z))
+    write(TF_uxb22_z, value(FIELD_u_x)*derz(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_z) + value(FIELD_u_y)*derz(TF_a22_y) - value(FIELD_u_y)*dery(TF_a22_z))
+}
+Kernel singlepass_solve_step0_tfm_b12(){
+    write(TF_a12_x, rk3_step0(previous(TF_a12_x), value(TF_a12_x), roc_TF_a12_x()))
+    write(TF_a12_y, rk3_step0(previous(TF_a12_y), value(TF_a12_y), roc_TF_a12_y()))
+    write(TF_a12_z, rk3_step0(previous(TF_a12_z), value(TF_a12_z), roc_TF_a12_z()))
+    write(TF_uxb12_x, -value(FIELD_u_y)*dery(TF_a12_x) + value(FIELD_u_y)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_x) + value(FIELD_u_z)*derx(TF_a12_z))
+    write(TF_uxb12_y, value(FIELD_u_x)*dery(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_y) + value(FIELD_u_z)*dery(TF_a12_z))
+    write(TF_uxb12_z, value(FIELD_u_x)*derz(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_z) + value(FIELD_u_y)*derz(TF_a12_y) - value(FIELD_u_y)*dery(TF_a12_z))
+}
+Kernel singlepass_solve_step0_tfm_b11(){
+    write(TF_a11_x, rk3_step0(previous(TF_a11_x), value(TF_a11_x), roc_TF_a11_x()))
+    write(TF_a11_y, rk3_step0(previous(TF_a11_y), value(TF_a11_y), roc_TF_a11_y()))
+    write(TF_a11_z, rk3_step0(previous(TF_a11_z), value(TF_a11_z), roc_TF_a11_z()))
+    write(TF_uxb11_x, -value(FIELD_u_y)*dery(TF_a11_x) + value(FIELD_u_y)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_x) + value(FIELD_u_z)*derx(TF_a11_z))
+    write(TF_uxb11_y, value(FIELD_u_x)*dery(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_y) + value(FIELD_u_z)*dery(TF_a11_z))
+    write(TF_uxb11_z, value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z))
+}
+Kernel singlepass_solve_step0_tfm_b21(){
+    write(TF_a21_x, rk3_step0(previous(TF_a21_x), value(TF_a21_x), roc_TF_a21_x()))
+    write(TF_a21_y, rk3_step0(previous(TF_a21_y), value(TF_a21_y), roc_TF_a21_y()))
+    write(TF_a21_z, rk3_step0(previous(TF_a21_z), value(TF_a21_z), roc_TF_a21_z()))
+    write(TF_uxb21_x, -value(FIELD_u_y)*dery(TF_a21_x) + value(FIELD_u_y)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_x) + value(FIELD_u_z)*derx(TF_a21_z))
+    write(TF_uxb21_y, value(FIELD_u_x)*dery(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_y) + value(FIELD_u_z)*dery(TF_a21_z))
+    write(TF_uxb21_z, value(FIELD_u_x)*derz(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_z) + value(FIELD_u_y)*derz(TF_a21_y) - value(FIELD_u_y)*dery(TF_a21_z))
+}
+#endif
+
+Kernel singlepass_solve_step0() {
+    write(VTXBUF_LNRHO, rk3_step0(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
+
+#if LENTROPY 
+    write(VTXBUF_ENTROPY, rk3_step0(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
+#endif 
+    mom = momentum()
+
+#if LFORCING
+    //Add the forcing component to the velocity field at the last integration step.
+    //Important to init to zero here: ohterwise will produce numerical garbage! 
+    forcing_step = real3(0.0, 0.0, 0.0)
+    if 0 == 2 {
+        if AC_current_time > AC_switch_forcing {
+            forcing_step = forcing()
+        }
+    }
+    write(VTXBUF_UUX, rk3_step0(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
+    write(VTXBUF_UUY, rk3_step0(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3_step0(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
+#else 
+    write(VTXBUF_UUX, rk3_step0(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3_step0(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3_step0(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+#endif
+
+#if LMAGNETIC
+    ind = induction()
+    write(VTXBUF_AX, rk3_step0(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
+    write(VTXBUF_AY, rk3_step0(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
+    write(VTXBUF_AZ, rk3_step0(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
+#endif
+}
+//////////////////////
+#if LTFM
+Kernel singlepass_solve_step1_tfm_b22(){
+    write(TF_a22_x, rk3_step1(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
+    write(TF_a22_y, rk3_step1(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
+    write(TF_a22_z, rk3_step1(previous(TF_a22_z), value(TF_a22_z), roc_TF_a22_z()))
+    write(TF_uxb22_x, -value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z))
+    write(TF_uxb22_y, value(FIELD_u_x)*dery(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_y) + value(FIELD_u_z)*dery(TF_a22_z))
+    write(TF_uxb22_z, value(FIELD_u_x)*derz(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_z) + value(FIELD_u_y)*derz(TF_a22_y) - value(FIELD_u_y)*dery(TF_a22_z))
+}
+Kernel singlepass_solve_step1_tfm_b12(){
+    write(TF_a12_x, rk3_step1(previous(TF_a12_x), value(TF_a12_x), roc_TF_a12_x()))
+    write(TF_a12_y, rk3_step1(previous(TF_a12_y), value(TF_a12_y), roc_TF_a12_y()))
+    write(TF_a12_z, rk3_step1(previous(TF_a12_z), value(TF_a12_z), roc_TF_a12_z()))
+    write(TF_uxb12_x, -value(FIELD_u_y)*dery(TF_a12_x) + value(FIELD_u_y)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_x) + value(FIELD_u_z)*derx(TF_a12_z))
+    write(TF_uxb12_y, value(FIELD_u_x)*dery(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_y) + value(FIELD_u_z)*dery(TF_a12_z))
+    write(TF_uxb12_z, value(FIELD_u_x)*derz(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_z) + value(FIELD_u_y)*derz(TF_a12_y) - value(FIELD_u_y)*dery(TF_a12_z))
+}
+Kernel singlepass_solve_step1_tfm_b11(){
+    write(TF_a11_x, rk3_step1(previous(TF_a11_x), value(TF_a11_x), roc_TF_a11_x()))
+    write(TF_a11_y, rk3_step1(previous(TF_a11_y), value(TF_a11_y), roc_TF_a11_y()))
+    write(TF_a11_z, rk3_step1(previous(TF_a11_z), value(TF_a11_z), roc_TF_a11_z()))
+    write(TF_uxb11_x, -value(FIELD_u_y)*dery(TF_a11_x) + value(FIELD_u_y)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_x) + value(FIELD_u_z)*derx(TF_a11_z))
+    write(TF_uxb11_y, value(FIELD_u_x)*dery(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_y) + value(FIELD_u_z)*dery(TF_a11_z))
+    write(TF_uxb11_z, value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z))
+}
+Kernel singlepass_solve_step1_tfm_b21(){
+    write(TF_a21_x, rk3_step1(previous(TF_a21_x), value(TF_a21_x), roc_TF_a21_x()))
+    write(TF_a21_y, rk3_step1(previous(TF_a21_y), value(TF_a21_y), roc_TF_a21_y()))
+    write(TF_a21_z, rk3_step1(previous(TF_a21_z), value(TF_a21_z), roc_TF_a21_z()))
+    write(TF_uxb21_x, -value(FIELD_u_y)*dery(TF_a21_x) + value(FIELD_u_y)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_x) + value(FIELD_u_z)*derx(TF_a21_z))
+    write(TF_uxb21_y, value(FIELD_u_x)*dery(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_y) + value(FIELD_u_z)*dery(TF_a21_z))
+    write(TF_uxb21_z, value(FIELD_u_x)*derz(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_z) + value(FIELD_u_y)*derz(TF_a21_y) - value(FIELD_u_y)*dery(TF_a21_z))
+}
+#endif
+
+Kernel singlepass_solve_step1() {
+    write(VTXBUF_LNRHO, rk3_step1(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
+
+#if LENTROPY 
+    write(VTXBUF_ENTROPY, rk3_step1(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
+#endif 
+    mom = momentum()
+
+#if LFORCING
+    //Add the forcing component to the velocity field at the last integration step.
+    //Important to init to zero here: ohterwise will produce numerical garbage! 
+    forcing_step = real3(0.0, 0.0, 0.0)
+    if 1 == 2 {
+        if AC_current_time > AC_switch_forcing {
+            forcing_step = forcing()
+        }
+    }
+    write(VTXBUF_UUX, rk3_step1(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
+    write(VTXBUF_UUY, rk3_step1(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3_step1(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
+#else 
+    write(VTXBUF_UUX, rk3_step1(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3_step1(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3_step1(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+#endif
+
+#if LMAGNETIC
+    ind = induction()
+    write(VTXBUF_AX, rk3_step1(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
+    write(VTXBUF_AY, rk3_step1(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
+    write(VTXBUF_AZ, rk3_step1(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
+#endif
+}
+//////////////////////////////////////////
+#if LTFM
+Kernel singlepass_solve_step2_tfm_b22(){
+    write(TF_a22_x, rk3_step2(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
+    write(TF_a22_y, rk3_step2(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
+    write(TF_a22_z, rk3_step2(previous(TF_a22_z), value(TF_a22_z), roc_TF_a22_z()))
+    write(TF_uxb22_x, -value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z))
+    write(TF_uxb22_y, value(FIELD_u_x)*dery(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_y) + value(FIELD_u_z)*dery(TF_a22_z))
+    write(TF_uxb22_z, value(FIELD_u_x)*derz(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_z) + value(FIELD_u_y)*derz(TF_a22_y) - value(FIELD_u_y)*dery(TF_a22_z))
+}
+Kernel singlepass_solve_step2_tfm_b12(){
+    write(TF_a12_x, rk3_step2(previous(TF_a12_x), value(TF_a12_x), roc_TF_a12_x()))
+    write(TF_a12_y, rk3_step2(previous(TF_a12_y), value(TF_a12_y), roc_TF_a12_y()))
+    write(TF_a12_z, rk3_step2(previous(TF_a12_z), value(TF_a12_z), roc_TF_a12_z()))
+    write(TF_uxb12_x, -value(FIELD_u_y)*dery(TF_a12_x) + value(FIELD_u_y)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_x) + value(FIELD_u_z)*derx(TF_a12_z))
+    write(TF_uxb12_y, value(FIELD_u_x)*dery(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_y) + value(FIELD_u_z)*dery(TF_a12_z))
+    write(TF_uxb12_z, value(FIELD_u_x)*derz(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_z) + value(FIELD_u_y)*derz(TF_a12_y) - value(FIELD_u_y)*dery(TF_a12_z))
+}
+Kernel singlepass_solve_step2_tfm_b11(){
+    write(TF_a11_x, rk3_step2(previous(TF_a11_x), value(TF_a11_x), roc_TF_a11_x()))
+    write(TF_a11_y, rk3_step2(previous(TF_a11_y), value(TF_a11_y), roc_TF_a11_y()))
+    write(TF_a11_z, rk3_step2(previous(TF_a11_z), value(TF_a11_z), roc_TF_a11_z()))
+    write(TF_uxb11_x, -value(FIELD_u_y)*dery(TF_a11_x) + value(FIELD_u_y)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_x) + value(FIELD_u_z)*derx(TF_a11_z))
+    write(TF_uxb11_y, value(FIELD_u_x)*dery(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_y) + value(FIELD_u_z)*dery(TF_a11_z))
+    write(TF_uxb11_z, value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z))
+}
+Kernel singlepass_solve_step2_tfm_b21(){
+    write(TF_a21_x, rk3_step2(previous(TF_a21_x), value(TF_a21_x), roc_TF_a21_x()))
+    write(TF_a21_y, rk3_step2(previous(TF_a21_y), value(TF_a21_y), roc_TF_a21_y()))
+    write(TF_a21_z, rk3_step2(previous(TF_a21_z), value(TF_a21_z), roc_TF_a21_z()))
+    write(TF_uxb21_x, -value(FIELD_u_y)*dery(TF_a21_x) + value(FIELD_u_y)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_x) + value(FIELD_u_z)*derx(TF_a21_z))
+    write(TF_uxb21_y, value(FIELD_u_x)*dery(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_y) + value(FIELD_u_z)*dery(TF_a21_z))
+    write(TF_uxb21_z, value(FIELD_u_x)*derz(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_z) + value(FIELD_u_y)*derz(TF_a21_y) - value(FIELD_u_y)*dery(TF_a21_z))
+}
+#endif
+
+Kernel singlepass_solve_step2() {
+    write(VTXBUF_LNRHO, rk3_step2(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
+
+#if LENTROPY 
+    write(VTXBUF_ENTROPY, rk3_step2(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
+#endif 
+    mom = momentum()
+
+#if LFORCING
+    //Add the forcing component to the velocity field at the last integration step.
+    //Important to init to zero here: ohterwise will produce numerical garbage! 
+    forcing_step = real3(0.0, 0.0, 0.0)
+    if 2 == 2 {
+        if AC_current_time > AC_switch_forcing {
+            forcing_step = forcing()
+        }
+    }
+    write(VTXBUF_UUX, rk3_step2(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
+    write(VTXBUF_UUY, rk3_step2(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3_step2(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
+#else 
+    write(VTXBUF_UUX, rk3_step2(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3_step2(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3_step2(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+#endif
+
+#if LMAGNETIC
+    ind = induction()
+    write(VTXBUF_AX, rk3_step2(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
+    write(VTXBUF_AY, rk3_step2(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
+    write(VTXBUF_AZ, rk3_step2(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
+#endif
+}
+//////////////////////////////////////////
+
+
+#if LTFM
+Kernel init_profiles() {
+    for i in PROFILE_Umean_x:PROFILE_Umean_x+NUM_PROFILES {
+        write(i, 0)
+    }
+}
+
+Kernel diff_profiles() {
+    for i in PROFILE_Umean_x:PROFILE_Umean_x+NUM_PROFILES {
+        write(i, derz(i))
+    }
+}
+
+Kernel diff2_profiles() {
+    for i in PROFILE_Umean_x:PROFILE_Umean_x+NUM_PROFILES {
+        write(i, derzz(i))
+    }
+}
+#endif
+
+Kernel randomize() {
+    
+    // N.B. scale: result in (-AC_rng_scale, AC_rng_scale] range
+    AC_rng_scale = 1e-5
+
+    for field in 0:NUM_FIELDS+NUM_PROFILES {
+        r = 2.0 * rand_uniform() - 1.0
+        write(field, AC_rng_scale * r)
+    }
+}
