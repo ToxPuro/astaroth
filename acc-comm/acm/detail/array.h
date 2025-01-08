@@ -327,7 +327,7 @@ zeros()
     ac::array<T, N> arr{};
     std::fill_n(arr.begin(), N, as<T>(0));
     return arr;
-};
+}
 
 template <typename T, size_t N>
 [[nodiscard]] auto
@@ -336,7 +336,7 @@ ones()
     ac::array<T, N> arr{};
     std::fill_n(arr.begin(), N, as<T>(1));
     return arr;
-};
+}
 
 template <typename T, size_t N>
 [[nodiscard]] auto
@@ -345,7 +345,7 @@ fill(const T& fill_value)
     ac::array<T, N> arr{};
     std::fill_n(arr.begin(), N, fill_value);
     return arr;
-};
+}
 
 template <typename T, size_t N>
 [[nodiscard]] __host__ __device__ T
