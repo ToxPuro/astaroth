@@ -46,8 +46,7 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
     const AcMeshInfo info = mesh->info;
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         const int3 start = (int3){0, 0, 0};
-        const int3 end   = (int3){info.int_params[AC_mx],
-                                  info.int_params[AC_my],
+        const int3 end   = (int3){info.int_params[AC_mx], info.int_params[AC_my],
                                   info.int_params[AC_mz]};
 
         const int nx = info.int_params[AC_nx];
@@ -143,12 +142,8 @@ acHostMeshWriteToFile(const AcMesh mesh, const size_t id)
     FILE* header = fopen(dataformat_path, "w");
     ERRCHK_ALWAYS(header);
     fprintf(header, "use_double, mx, my, mz\n");
-    fprintf(header,
-            "%d, %d, %d, %d\n",
-            sizeof(AcReal) == 8,
-            mesh.info.int_params[AC_mx],
-            mesh.info.int_params[AC_my],
-            mesh.info.int_params[AC_mz]);
+    fprintf(header, "%d, %d, %d, %d\n", sizeof(AcReal) == 8, mesh.info.int_params[AC_mx],
+            mesh.info.int_params[AC_my], mesh.info.int_params[AC_mz]);
     fclose(header);
 
     for (size_t i = 0; i < NUM_FIELDS; ++i) {

@@ -89,14 +89,8 @@ print_error_to_file(const char* label, const Error error, const char* path)
 {
     FILE* file = fopen(path, "a");
     ERRCHK_ALWAYS(file);
-    fprintf(file,
-            "%s, %Lg, %Lg, %Lg, %g, %g\n",
-            label,
-            error.ulp_error,
-            error.abs_error,
-            error.rel_error,
-            (double)error.maximum_magnitude,
-            (double)error.minimum_magnitude);
+    fprintf(file, "%s, %Lg, %Lg, %Lg, %g, %g\n", label, error.ulp_error, error.abs_error,
+            error.rel_error, (double)error.maximum_magnitude, (double)error.minimum_magnitude);
     fclose(file);
 }
 
@@ -120,11 +114,9 @@ acEvalError(const char* label, const Error error)
     printf("%-15s... %s ", label, acceptable ? GRN "OK! " RESET : RED "FAIL! " RESET);
 
     printf("| %.3Lg (abs), %.3Lg (ulps), %.3Lg (rel). Range: [%.3g, %.3g]\n", //
-           error.abs_error,
-           error.ulp_error,
+           error.abs_error, error.ulp_error,
            error.rel_error, //
-           (double)error.minimum_magnitude,
-           (double)error.maximum_magnitude);
+           (double)error.minimum_magnitude, (double)error.maximum_magnitude);
     print_error_to_file(label, error, "verification.out");
 
     return acceptable;
@@ -183,8 +175,7 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
 
     int errors_found = 0;
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        const Error error     = get_max_abs_error(model.vertex_buffer[i],
-                                              candidate.vertex_buffer[i],
+        const Error error = get_max_abs_error(model.vertex_buffer[i], candidate.vertex_buffer[i],
                                               model.info);
         const bool acceptable = acEvalError(vtxbuf_names[i], error);
         if (!acceptable)

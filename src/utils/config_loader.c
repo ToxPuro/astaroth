@@ -124,8 +124,7 @@ parse_config(const char* path, AcMeshInfo* config)
             if (isnan(real_val)) {
                 fprintf(stderr,
                         "ERROR PARSING CONFIG: parameter \"%s\" value \"%s\" parsed as NAN\n",
-                        keyword,
-                        value);
+                        keyword, value);
             }
             // OL: should we fail here? Could be dangerous to continue
             config->real_params[idx] = real_val;
@@ -168,9 +167,8 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
 
 #if AC_VERBOSE
     if (uninitialized_config_val) {
-        fprintf(stderr,
-                "Some config values may be uninitialized. "
-                "See that all are defined in astaroth.conf\n");
+        fprintf(stderr, "Some config values may be uninitialized. "
+                        "See that all are defined in astaroth.conf\n");
     }
 #endif
 

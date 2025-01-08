@@ -22,18 +22,9 @@ writeTaskKey(FILE* fp, const Task* task)
         fprintf(fp, "\"HALOEXCHANGE\"");
         break;
     case TASKTYPE_BOUNDCOND: {
-        fprintf(fp,
-                "\"BOUNDCOND %i %i %i %i %i %i %i %i %i %i\" ",
-                task_boundary,
-                BOUNDARY_X,
-                BOUNDARY_X_TOP,
-                BOUNDARY_X_BOT,
-                BOUNDARY_Y,
-                BOUNDARY_Y_TOP,
-                BOUNDARY_Y_BOT,
-                BOUNDARY_Z,
-                BOUNDARY_Z_TOP,
-                BOUNDARY_Z_BOT);
+        fprintf(fp, "\"BOUNDCOND %i %i %i %i %i %i %i %i %i %i\" ", task_boundary, BOUNDARY_X,
+                BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT,
+                BOUNDARY_Z, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT);
         if (task_boundary == BOUNDARY_X)
             fprintf(fp, "\"BOUNDCOND X\"");
         if (task_boundary == BOUNDARY_X_TOP)

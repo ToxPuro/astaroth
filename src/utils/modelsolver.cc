@@ -155,11 +155,7 @@ first_derivative(const Scalar* pencil, const Scalar inv_ds)
     };
 #elif STENCIL_ORDER == 8
     const Scalar coefficients[] = {
-        0,
-        (Scalar)(4.0 / 5.0),
-        (Scalar)(-1.0 / 5.0),
-        (Scalar)(4.0 / 105.0),
-        (Scalar)(-1.0 / 280.0),
+        0, (Scalar)(4.0 / 5.0), (Scalar)(-1.0 / 5.0), (Scalar)(4.0 / 105.0), (Scalar)(-1.0 / 280.0),
     };
 #endif
 
@@ -194,11 +190,8 @@ second_derivative(const Scalar* pencil, const Scalar inv_ds)
     };
 #elif STENCIL_ORDER == 8
     const Scalar coefficients[] = {
-        (Scalar)(-205.0 / 72.0),
-        (Scalar)(8.0 / 5.0),
-        (Scalar)(-1.0 / 5.0),
-        (Scalar)(8.0 / 315.0),
-        (Scalar)(-1.0 / 560.0),
+        (Scalar)(-205.0 / 72.0), (Scalar)(8.0 / 5.0),    (Scalar)(-1.0 / 5.0),
+        (Scalar)(8.0 / 315.0),   (Scalar)(-1.0 / 560.0),
     };
 #endif
 
@@ -286,19 +279,15 @@ derxy(const int i, const int j, const int k, const AcReal* arr)
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil_a[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, //
-                                           j + offset - STENCIL_ORDER / 2,
-                                           k)];
+                                           j + offset - STENCIL_ORDER / 2, k)];
 
     Scalar pencil_b[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil_b[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, //
-                                           j + STENCIL_ORDER / 2 - offset,
-                                           k)];
+                                           j + STENCIL_ORDER / 2 - offset, k)];
 
-    return cross_derivative(pencil_a,
-                            pencil_b,
-                            ((Scalar)1. / getReal(AC_dsx)),
+    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsx)),
                             ((Scalar)1. / getReal(AC_dsy)));
 }
 
@@ -317,9 +306,7 @@ derxz(const int i, const int j, const int k, const AcReal* arr)
         pencil_b[offset] = (Scalar)
             arr[IDX(i + offset - STENCIL_ORDER / 2, j, k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a,
-                            pencil_b,
-                            ((Scalar)1. / getReal(AC_dsx)),
+    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsx)),
                             ((Scalar)1. / getReal(AC_dsz)));
 }
 
@@ -360,9 +347,7 @@ deryz(const int i, const int j, const int k, const AcReal* arr)
         pencil_b[offset] = (Scalar)
             arr[IDX(i, j + offset - STENCIL_ORDER / 2, k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a,
-                            pencil_b,
-                            ((Scalar)1. / getReal(AC_dsy)),
+    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsy)),
                             ((Scalar)1. / getReal(AC_dsz)));
 }
 
@@ -1010,21 +995,15 @@ solve_alpha_step(AcMesh in, const int step_number, const AcReal dt, const int i,
     const int idx = acVertexBufferIdx(i, j, k, in.info);
 
     const ScalarData lnrho = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_LNRHO);
-    const VectorData uu    = read_vec_data(i,
-                                        j,
-                                        k,
-                                        in.vertex_buffer,
-                                        (int3){VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ});
+    const VectorData uu    = read_vec_data(i, j, k, in.vertex_buffer,
+                                           (int3){VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ});
 
     Scalar rate_of_change[NUM_VTXBUF_HANDLES] = {0};
     rate_of_change[VTXBUF_LNRHO]              = continuity(uu, lnrho);
 
 #if LMAGNETIC
-    const VectorData aa       = read_vec_data(i,
-                                        j,
-                                        k,
-                                        in.vertex_buffer,
-                                        (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
+    const VectorData aa       = read_vec_data(i, j, k, in.vertex_buffer,
+                                              (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
     const Vector aa_res       = induction(uu, aa);
     rate_of_change[VTXBUF_AX] = aa_res.x;
     rate_of_change[VTXBUF_AY] = aa_res.y;
@@ -1113,10 +1092,8 @@ checkConfiguration(const AcMeshInfo info)
 #if AC_VERBOSE
     for (int i = 0; i < NUM_REAL_PARAMS; ++i) {
         if (!is_valid(info.real_params[i])) {
-            fprintf(stderr,
-                    "WARNING: Passed an invalid value %g to model solver (%s). Skipping.\n",
-                    (double)info.real_params[i],
-                    realparam_names[i]);
+            fprintf(stderr, "WARNING: Passed an invalid value %g to model solver (%s). Skipping.\n",
+                    (double)info.real_params[i], realparam_names[i]);
         }
     }
 
@@ -1124,20 +1101,17 @@ checkConfiguration(const AcMeshInfo info)
         if (!is_valid(info.real3_params[i].x)) {
             fprintf(stderr,
                     "WARNING: Passed an invalid value %g to model solver (%s.x). Skipping.\n",
-                    (double)info.real3_params[i].x,
-                    realparam_names[i]);
+                    (double)info.real3_params[i].x, realparam_names[i]);
         }
         if (!is_valid(info.real3_params[i].y)) {
             fprintf(stderr,
                     "WARNING: Passed an invalid value %g to model solver (%s.y). Skipping.\n",
-                    (double)info.real3_params[i].y,
-                    realparam_names[i]);
+                    (double)info.real3_params[i].y, realparam_names[i]);
         }
         if (!is_valid(info.real3_params[i].z)) {
             fprintf(stderr,
                     "WARNING: Passed an invalid value %g to model solver (%s.z). Skipping.\n",
-                    (double)info.real3_params[i].z,
-                    realparam_names[i]);
+                    (double)info.real3_params[i].z, realparam_names[i]);
         }
     }
 #endif
