@@ -387,8 +387,8 @@ acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
 {
   // Set pba.in data to all-nan and pba.out to 0
   for (size_t i = 0; i < NUM_PROFILES; ++i) {
-    acKernelFlush(stream, pba->in[i], pba->count, (AcReal)0);
-    acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0);
+    acKernelFlush(stream, pba->in[i], pba->count, (AcReal)NAN);
+    acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0.0);
   }
   return AC_SUCCESS;
 }
@@ -443,8 +443,8 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 
   // Set vba.in data to all-nan and vba.out to 0
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    acKernelFlush(stream, vba->in[i], count, (AcReal)0);
-    acKernelFlush(stream, vba->out[i], count, (AcReal)0);
+    acKernelFlush(stream, vba->in[i], count, (AcReal)NAN);
+    acKernelFlush(stream, vba->out[i], count, (AcReal)0.0);
   }
 
   // Note: should be moved out when refactoring VBA to KernelParameterArray

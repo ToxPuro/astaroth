@@ -11,4 +11,3 @@ PenaltyBreakAssignment: 10000
 PenaltyBreakBeforeFirstCallParameter: 10000
 ColumnLimit: 100
 PackConstructorInitializers: NextLineOnly
-BinPackArguments: false
