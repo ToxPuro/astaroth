@@ -25,6 +25,8 @@
 
 #include <mpi.h>
 
+#define AC_ENABLE_ASYNC_AVERAGES (1)
+
 enum class FieldGroup { Hydro, TFM, Bfield };
 enum class ProfileGroup { TFM_Nonlocal };
 enum class BufferGroup { Input, Output };
@@ -299,6 +301,7 @@ loadForcingParamsToDevice(const Device device, const ForcingParams forcing_param
     acDeviceSynchronizeStream(device, STREAM_ALL);
 }
 
+// TODO: deprecated (inefficient launch overheads compared to loading the whole info once)
 static void
 generateAndLoadForcingParamsToDevice(const Device device)
 {
@@ -426,24 +429,24 @@ get_profile_handles(const ProfileGroup& group)
 {
     switch (group) {
     case ProfileGroup::TFM_Nonlocal:
-        return std::vector<VertexBufferHandle>{PROFILE_Umean_x,
-                                               PROFILE_Umean_y,
-                                               PROFILE_Umean_z,
-                                               PROFILE_ucrossb11mean_x,
-                                               PROFILE_ucrossb11mean_y,
-                                               PROFILE_ucrossb11mean_z,
-                                               PROFILE_ucrossb12mean_x,
-                                               PROFILE_ucrossb12mean_y,
-                                               PROFILE_ucrossb12mean_z,
-                                               PROFILE_ucrossb21mean_x,
-                                               PROFILE_ucrossb21mean_y,
-                                               PROFILE_ucrossb21mean_z,
-                                               PROFILE_ucrossb22mean_x,
-                                               PROFILE_ucrossb22mean_y,
-                                               PROFILE_ucrossb22mean_z};
+        return std::vector<Profile>{PROFILE_Umean_x,
+                                    PROFILE_Umean_y,
+                                    PROFILE_Umean_z,
+                                    PROFILE_ucrossb11mean_x,
+                                    PROFILE_ucrossb11mean_y,
+                                    PROFILE_ucrossb11mean_z,
+                                    PROFILE_ucrossb12mean_x,
+                                    PROFILE_ucrossb12mean_y,
+                                    PROFILE_ucrossb12mean_z,
+                                    PROFILE_ucrossb21mean_x,
+                                    PROFILE_ucrossb21mean_y,
+                                    PROFILE_ucrossb21mean_z,
+                                    PROFILE_ucrossb22mean_x,
+                                    PROFILE_ucrossb22mean_y,
+                                    PROFILE_ucrossb22mean_z};
     default:
         ERRCHK(false);
-        return std::vector<VertexBufferHandle>{};
+        return std::vector<Profile>{};
     }
 }
 
@@ -780,6 +783,17 @@ class Grid {
         // the test profiles (PROFILE_B11 to PROFILE_B22)
     }
 
+    // void update_forcing_params()
+    // {
+    //     // Non-batched
+    //     // generateAndLoadForcingParamsToDevice(device);
+    //     // printForcingParams(forcing_params);
+
+    //     // Batched
+    //     ERRCHK(acHostUpdateForcingParams(&local_info) == 0);
+    //     ERRCHK_AC(acLoadMeshInfo(local_info, STREAM_DEFAULT));
+    // }
+
     void reduce_xy_averages(const Stream stream)
     {
         ERRCHK_MPI(cart_comm != MPI_COMM_NULL);
@@ -823,7 +837,7 @@ class Grid {
         ERRCHK_MPI_API(MPI_Comm_free(&xy_neighbors));
     }
 
-#if 0
+#if AC_ENABLE_ASYNC_AVERAGES
     MPI_Request launch_reduce_xy_averages(const Stream stream)
     {
         // Strategy:
@@ -848,10 +862,14 @@ class Grid {
         //                              AC_REAL_MPI_TYPE,
         //                              MPI_SUM,
         //                              xy_neighbors));
+
+        // Note: assumes that all profiles are contiguous and in correct order
+        // Error-prone: should be improved when time
         MPI_Request req{MPI_REQUEST_NULL};
         ERRCHK_MPI_API(MPI_Iallreduce(MPI_IN_PLACE,
                                       vba.profiles.in[0],
-                                      NUM_PROFILES * vba.profiles.count,
+                                      get_profile_handles(ProfileGroup::TFM_Nonlocal).size() *
+                                          vba.profiles.count,
                                       AC_REAL_MPI_TYPE,
                                       MPI_SUM,
                                       xy_neighbors,
@@ -876,8 +894,12 @@ class Grid {
         // Ensure halos are up-to-date before starting integration
         hydro_he.launch(cart_comm, get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
         tfm_he.launch(cart_comm, get_fields(device, FieldGroup::TFM, BufferGroup::Input));
+
+#if AC_ENABLE_ASYNC_AVERAGES
+        MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)}; // Averaging
+#else
         reduce_xy_averages(STREAM_DEFAULT);
-        // MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)};
+#endif
 
         // Write the initial step
         hydro_io.launch(cart_comm,
@@ -898,8 +920,18 @@ class Grid {
             ERRCHK_AC(acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt));
 
             // Forcing
-            generateAndLoadForcingParamsToDevice(device);
-            // printForcingParams(forcing_params);
+            // WARNING WARNING WARNING
+            // NOTE TODO IMPORTANT: current_time and dt are overwritten with this!
+            // If batche dconst load is faster, switch to an approach where all are
+            // updated with a single load, incl. the ones above.
+            // WARNING WARNING WARNING
+            // WARNING WARNING WARNING
+            // WARNING WARNING WARNING
+            ERRCHK(acHostUpdateForcingParams(&local_info) == 0);
+            ERRCHK_AC(acLoadMeshInfo(local_info, STREAM_DEFAULT));
+            // WARNING WARNING WARNING
+            // WARNING WARNING WARNING
+            // WARNING WARNING WARNING
 
             for (int step{0}; step < 3; ++step) {
 
@@ -915,8 +947,11 @@ class Grid {
                 hydro_he.launch(cart_comm,
                                 get_fields(device, FieldGroup::Hydro, BufferGroup::Output));
 
-                // TFM dependencies: hydro, tfm, profiles
-                // ac::mpi::request_wait_and_destroy(&xy_average_req);
+// TFM dependencies: hydro, tfm, profiles
+#if AC_ENABLE_ASYNC_AVERAGES
+                ERRCHK_MPI(xy_average_req != MPI_REQUEST_NULL);
+                ac::mpi::request_wait_and_destroy(xy_average_req); // Averaging
+#endif
                 tfm_he.wait(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
 
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
@@ -931,10 +966,13 @@ class Grid {
                 compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Inner);
                 ERRCHK_AC(acDeviceSwapBuffers(device));
 
-                // Profile dependencies: local tfm (uxb)
-                // ERRCHK_MPI(xy_average_req == MPI_REQUEST_NULL)
-                // xy_average_req = launch_reduce_xy_averages(STREAM_DEFAULT);
+// Profile dependencies: local tfm (uxb)
+#if AC_ENABLE_ASYNC_AVERAGES
+                ERRCHK_MPI(xy_average_req == MPI_REQUEST_NULL);
+                xy_average_req = launch_reduce_xy_averages(STREAM_DEFAULT); // Averaging
+#else
                 reduce_xy_averages(STREAM_DEFAULT);
+#endif
             }
             current_time += dt;
 
@@ -958,8 +996,11 @@ class Grid {
 
         hydro_io.wait();
         bfield_io.wait();
-        // if (xy_average_req != MPI_REQUEST_NULL)
-        //     ac::mpi::request_wait_and_destroy(&xy_average_req);
+
+#if AC_ENABLE_ASYNC_AVERAGES
+        ERRCHK(xy_average_req != MPI_REQUEST_NULL);
+        ac::mpi::request_wait_and_destroy(xy_average_req);
+#endif
     }
 
     Grid(const Grid&)            = delete; // Copy constructor

@@ -962,6 +962,7 @@ acPBASwapBuffers(VertexBufferArray* vba)
 AcResult
 acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
 {
+  /*
   for (int i = 0; i < NUM_INT_PARAMS; ++i)
     ERRCHK_ALWAYS(acLoadIntUniform(stream, (AcIntParam)i, info.int_params[i]) ==
                   AC_SUCCESS);
@@ -977,8 +978,13 @@ acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
   for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
     ERRCHK_ALWAYS(acLoadReal3Uniform(stream, (AcReal3Param)i,
                                      info.real3_params[i]) == AC_SUCCESS);
+  */
 
-  return AC_SUCCESS;
+  /* See note in acLoadStencil */
+  ERRCHK(cudaDeviceSynchronize() == CUDA_SUCCESS);
+  const cudaError_t retval = cudaMemcpyToSymbol(
+      d_mesh_info, &info, sizeof(info), 0, cudaMemcpyHostToDevice);
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
 //---------------
