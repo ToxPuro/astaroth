@@ -65,6 +65,9 @@ template <typename T, typename MemoryResource> struct ndbuffer {
     T* end() { return buffer.data() + buffer.size(); }
     const T* end() const { return buffer.data() + buffer.size(); }
 
+    auto get() { return ac::mr::base_ptr<T, MemoryResource>{size(), data()}; }
+    auto get() const { return ac::mr::base_ptr<T, MemoryResource>{size(), data()}; }
+
     template <typename OtherMemoryResource>
     void migrate(ac::ndbuffer<T, OtherMemoryResource>& other)
     {
@@ -94,6 +97,7 @@ ndbuffer_fill(const T& value, const size_t ndims, const uint64_t* dims, const ui
     }
 }
 
+namespace ac {
 template <typename T>
 void
 fill(const T& fill_value, const ac::vector<uint64_t>& subdims, const ac::vector<uint64_t>& offset,
@@ -107,5 +111,6 @@ fill(const T& fill_value, const ac::vector<uint64_t>& subdims, const ac::vector<
                      offset.data(),
                      ndbuf.buffer.data());
 }
+} // namespace ac
 
 void test_ndbuffer(void);
