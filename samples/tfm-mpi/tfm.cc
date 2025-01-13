@@ -26,6 +26,7 @@
 #include <mpi.h>
 
 enum class FieldGroup { Hydro, TFM, Bfield };
+enum class ProfileGroup { TFM_Nonlocal };
 enum class BufferGroup { Input, Output };
 enum class SegmentGroup { Inner, Outer, Full };
 
@@ -421,6 +422,32 @@ get_field_handles(const FieldGroup& group)
 }
 
 static auto
+get_profile_handles(const ProfileGroup& group)
+{
+    switch (group) {
+    case ProfileGroup::TFM_Nonlocal:
+        return std::vector<VertexBufferHandle>{PROFILE_Umean_x,
+                                               PROFILE_Umean_y,
+                                               PROFILE_Umean_z,
+                                               PROFILE_ucrossb11mean_x,
+                                               PROFILE_ucrossb11mean_y,
+                                               PROFILE_ucrossb11mean_z,
+                                               PROFILE_ucrossb12mean_x,
+                                               PROFILE_ucrossb12mean_y,
+                                               PROFILE_ucrossb12mean_z,
+                                               PROFILE_ucrossb21mean_x,
+                                               PROFILE_ucrossb21mean_y,
+                                               PROFILE_ucrossb21mean_z,
+                                               PROFILE_ucrossb22mean_x,
+                                               PROFILE_ucrossb22mean_y,
+                                               PROFILE_ucrossb22mean_z};
+    default:
+        ERRCHK(false);
+        return std::vector<VertexBufferHandle>{};
+    }
+}
+
+static auto
 get_field_paths(const std::vector<VertexBufferHandle>& handles)
 {
     std::vector<std::string> paths;
@@ -464,6 +491,7 @@ get_fields(const Device& device, const FieldGroup& group, const BufferGroup& typ
     return output;
 }
 
+// TODO: deprecated
 static std::vector<ac::mr::device_ptr<AcReal>>
 get_hydro_fields(const Device& device, const BufferGroup type)
 {
@@ -495,6 +523,7 @@ get_hydro_fields(const Device& device, const BufferGroup type)
     return std::vector<ac::mr::device_ptr<AcReal>>{};
 }
 
+// TODO: deprecated
 static std::vector<ac::mr::device_ptr<AcReal>>
 get_tfm_fields(const Device& device, const BufferGroup type)
 {
@@ -586,6 +615,7 @@ get_kernels(const FieldGroup group, const size_t step)
     return std::vector<Kernel>{};
 }
 
+// TODO: deprecated
 static auto
 get_hydro_kernels(const size_t step)
 {
@@ -602,6 +632,7 @@ get_hydro_kernels(const size_t step)
     }
 }
 
+// TODO: deprecated
 static auto
 get_tfm_kernels(const size_t step)
 {
@@ -738,7 +769,7 @@ class Grid {
         ERRCHK_AC(acDeviceLoadMeshInfo(device, local_info));
 
         // Profiles
-        init_tfm_profiles(device);
+        ERRCHK(init_tfm_profiles(device) == 0);
 
         // Fields
         ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
@@ -771,9 +802,12 @@ class Grid {
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
+        // Note: assumes that all profiles are contiguous and in correct order
+        // Error-prone: should be improved when time
         ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE,
                                      vba.profiles.in[0],
-                                     NUM_PROFILES * vba.profiles.count,
+                                     get_profile_handles(ProfileGroup::TFM_Nonlocal).size() *
+                                         vba.profiles.count,
                                      AC_REAL_MPI_TYPE,
                                      MPI_SUM,
                                      xy_neighbors));
@@ -874,16 +908,21 @@ class Grid {
 
                 // Hydro dependencies: hydro
                 hydro_he.wait(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
-                // compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Outer);
+                // Note: outer integration kernels fused here and AC_exclude_inner set:
+                // Operates only on the outer domain even though SegmentGroup:Full passed
                 compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Full);
+                // compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Outer);
                 hydro_he.launch(cart_comm,
                                 get_fields(device, FieldGroup::Hydro, BufferGroup::Output));
 
                 // TFM dependencies: hydro, tfm, profiles
                 // ac::mpi::request_wait_and_destroy(&xy_average_req);
                 tfm_he.wait(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
-                // compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Outer);
+
+                // Note: outer integration kernels fused here and AC_exclude_inner set:
+                // Operates only on the outer domain even though SegmentGroup:Full passed
                 compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Full);
+                // compute(device, get_kernels(FieldGroup::TFM, step), SegmentGroup::Outer);
                 tfm_he.launch(cart_comm, get_fields(device, FieldGroup::TFM, BufferGroup::Output));
 
                 // Inner segments
