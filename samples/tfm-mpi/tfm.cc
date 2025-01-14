@@ -410,8 +410,6 @@ class Grid {
     Device device{nullptr};
     AcReal current_time{0};
 
-    std::vector<VertexBufferHandle> write_fields{VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
-
     ac::comm::AsyncHaloExchangeTask<AcReal, HaloExchangeMemoryResource> hydro_he;
     ac::comm::AsyncHaloExchangeTask<AcReal, HaloExchangeMemoryResource> tfm_he;
     ac::io::BatchedAsyncWriteTask<AcReal, IOMemoryResource> hydro_io;
@@ -454,11 +452,7 @@ class Grid {
 
         // Dryrun
         reset_init_cond();
-        tfm_pipeline(5);
-
-        reset_init_cond();
-        test();
-
+        tfm_pipeline(3);
         reset_init_cond();
     }
 
@@ -468,8 +462,28 @@ class Grid {
         ac::mpi::cart_comm_destroy(cart_comm);
     }
 
+    void randomize()
+    {
+        // TODO
+    }
+
     void test()
     {
+        // VertexBufferArray vba{};
+        // ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+        // const auto local_mm{acr::get_local_mm(local_info)};
+        // const auto count{prod(local_mm)};
+        // ac::ndbuffer<AcReal, ac::mr::host_memory_resource> buf{local_mm};
+        // std::iota(buf.begin(), buf.end(), count * ac::mpi::get_rank(cart_comm));
+        // ac::mr::copy(buf.get(), ac::mr::device_ptr<AcReal>{count, vba.in[0]});
+
+        // mpi::write_collective_simple(cart_comm,
+        //                              ac::mpi::get_dtype<AcReal>(),
+        //                              acr::get_global_nn(local_info),
+        //                              acr::get_local_nn_offset(),
+        //                              vba.in[0],
+        //                              "test.mesh");
         /////////////////
         // // Domain
         // const auto mm{acr::get_local_mm(local_info)};
@@ -540,18 +554,17 @@ class Grid {
         ERRCHK_AC(acDeviceLoadStencils(device, STREAM_DEFAULT, stencils));
         ERRCHK_AC(acDevicePrintInfo(device));
 
-        // Forcing parameter
+        // Forcing parameters
         ERRCHK(acHostUpdateForcingParams(&local_info) == 0);
         ERRCHK_AC(acDeviceLoadMeshInfo(device, local_info));
-
-        // Profiles
-        ERRCHK(init_tfm_profiles(device) == 0);
 
         // Fields
         ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
         ERRCHK_AC(acDeviceSwapBuffers(device));
         ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
 
+        // Profiles
+        ERRCHK(init_tfm_profiles(device) == 0);
         // Note: all fields and profiles are initialized to 0 except
         // the test profiles (PROFILE_B11 to PROFILE_B22)
     }
@@ -633,6 +646,9 @@ class Grid {
 
     void tfm_pipeline(const size_t niters)
     {
+        // Write the initial step
+        write_diagnostic_step(cart_comm, device, 0);
+
         // Ensure halos are up-to-date before starting integration
         hydro_he.launch(cart_comm, get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
         tfm_he.launch(cart_comm, get_fields(device, FieldGroup::TFM, BufferGroup::Input));
@@ -643,15 +659,18 @@ class Grid {
         reduce_xy_averages(STREAM_DEFAULT);
 #endif
 
-        // Write the initial step
+// Write the initial step
+// #define AC_IO_ENABLED
+#if defined(AC_IO_ENABLED)
         hydro_io.launch(cart_comm,
                         get_fields(device, FieldGroup::Hydro, BufferGroup::Input),
                         get_field_paths(get_field_handles(FieldGroup::Hydro)));
         bfield_io.launch(cart_comm,
                          get_fields(device, FieldGroup::Bfield, BufferGroup::Input),
                          get_field_paths(get_field_handles(FieldGroup::Bfield)));
+#endif
 
-        for (size_t iter{0}; iter < niters; ++iter) {
+        for (size_t iter{1}; iter < niters; ++iter) {
 
             // Current time
             acr::set(AC_current_time, current_time, local_info);
@@ -669,14 +688,16 @@ class Grid {
             for (int step{0}; step < 3; ++step) {
 
                 // Outer segments
-                ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 1));
+                ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
 
                 // Hydro dependencies: hydro
                 hydro_he.wait(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
 
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
-                compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Full);
+                // TODO note: end index is not properly used, exits early
+                // compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Full);
+                compute(device, get_kernels(FieldGroup::Hydro, step), SegmentGroup::Outer);
                 hydro_he.launch(cart_comm,
                                 get_fields(device, FieldGroup::Hydro, BufferGroup::Output));
 
@@ -710,7 +731,7 @@ class Grid {
             current_time += dt;
 
 // Write snapshot
-#if 0
+#if defined(AC_IO_ENABLED)
             hydro_io.wait();
             hydro_io.launch(cart_comm,
                             get_fields(device, FieldGroup::Hydro, BufferGroup::Input),
@@ -728,8 +749,10 @@ class Grid {
         hydro_he.wait(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
         tfm_he.wait(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
 
+#if defined(AC_IO_ENABLED)
         hydro_io.wait();
         bfield_io.wait();
+#endif
 
 #if AC_ENABLE_ASYNC_AVERAGES
         ERRCHK(xy_average_req != MPI_REQUEST_NULL);
@@ -772,10 +795,11 @@ main(int argc, char* argv[])
         ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
 
         auto grid{ac::Grid<AcReal>(raw_info)};
+        grid.test();
         grid.reset_init_cond();
 
         cudaProfilerStart();
-        grid.tfm_pipeline(10);
+        grid.tfm_pipeline(acr::get(raw_info, AC_simulation_nsteps));
         cudaProfilerStop();
     }
     catch (std::exception& e) {
