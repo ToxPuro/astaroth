@@ -126,24 +126,12 @@ init_tfm_profiles(const Device& device)
 
     // All to zero
     acHostInitProfileToValue(0, local_mz, host_profile.get());
-    for (size_t profile{0}; profile < NUM_PROFILES; ++profile)
+    for (size_t profile{0}; profile < NUM_PROFILES; ++profile) {
         ERRCHK_AC(acDeviceLoadProfile(device,
                                       host_profile.get(),
                                       local_mz,
                                       static_cast<Profile>(profile)));
-
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_y);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_z);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_y);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_z);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_x);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_z);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_x);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y);
-    // acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_z);
+    }
 
     // B1c (here B11) and B2c (here B21) to cosine
     acHostInitProfileToCosineWave(global_sz,
@@ -170,6 +158,7 @@ init_tfm_profiles(const Device& device)
     return 0;
 }
 
+// TODO: deprecated
 static int
 acDeviceWriteProfileToDisk(const Device device, const Profile profile, const char* filepath)
 {
