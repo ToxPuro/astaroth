@@ -13,12 +13,17 @@
         }                                                                                          \
     } while (0)
 
+enum class BufferGroup { Input, Output };
+
 namespace acr {
 
 int get(const AcMeshInfo& info, const AcIntParam& param);
 int3 get(const AcMeshInfo& info, const AcInt3Param& param);
 AcReal get(const AcMeshInfo& info, const AcRealParam& param);
 AcReal3 get(const AcMeshInfo& info, const AcReal3Param& param);
+
+// std::vector<ac::mr::device_ptr<AcReal>>
+// get(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& group);
 
 void set(const AcIntParam& param, const int value, AcMeshInfo& info);
 void set(const AcInt3Param& param, const int3& value, AcMeshInfo& info);

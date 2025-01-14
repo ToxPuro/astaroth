@@ -5,7 +5,6 @@
 
 enum class FieldGroup { Hydro, TFM, Bfield };
 enum class ProfileGroup { TFM_Nonlocal };
-enum class BufferGroup { Input, Output };
 enum class SegmentGroup { Inner, Outer, Full };
 
 /**
@@ -22,4 +21,4 @@ std::vector<VertexBufferHandle> get_field_handles(const FieldGroup& group);
 std::vector<Profile> get_profile_handles(const ProfileGroup& group);
 
 /** Returns a vector of kernels used to update the fields in a field group */
-std::vector<Kernel> get_kernels(const FieldGroup group, const size_t step);
+std::vector<Kernel> get_kernels(const FieldGroup group, const int step);

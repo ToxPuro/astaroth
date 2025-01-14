@@ -1,4 +1,3 @@
-#pragma once
 #include "tfm_utils_cc.h"
 
 #include "acm/detail/errchk.h"
@@ -73,7 +72,7 @@ get_profile_handles(const ProfileGroup& group)
 }
 
 std::vector<Kernel>
-get_kernels(const FieldGroup group, const size_t step)
+get_kernels(const FieldGroup group, const int step)
 {
     switch (group) {
     case FieldGroup::Hydro: {
