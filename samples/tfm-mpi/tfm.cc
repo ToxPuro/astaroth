@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
@@ -750,6 +751,10 @@ class Grid {
         // Dryrun
         reset_init_cond();
         tfm_pipeline(5);
+
+        reset_init_cond();
+        test();
+
         reset_init_cond();
     }
 
@@ -757,6 +762,70 @@ class Grid {
     {
         ERRCHK_AC(acDeviceDestroy(device));
         ac::mpi::cart_comm_destroy(cart_comm);
+    }
+
+    void test()
+    {
+        /////////////////
+        // // Domain
+        // const auto mm{acr::get_local_mm(local_info)};
+        // const auto nn{acr::get_local_nn(local_info)};
+        // const auto rr{acr::get_local_rr()};
+        // const auto global_nn_offset{acr::get_global_nn_offset(local_info)};
+
+        // // Buffer
+        // ac::ndbuffer<AcReal, ac::mr::host_memory_resource> hbuf{mm, NAN};
+        // for (size_t k{rr[2]}; k < rr[2] + nn[2]; ++k) {
+        //     const Shape slice{nn[0], nn[1], 1};
+        //     const Index offset{rr[0], rr[1], k};
+
+        //     ac::fill(static_cast<AcReal>(k + acr::get_global_nn_offset(local_info)[2]),
+        //              slice,
+        //              offset,
+        //              hbuf);
+        // }
+        // hbuf.display();
+        // exit(0);
+        /////////////////
+
+        // ac::buffer<AcReal, ac::mr::host_memory_resource> buf{prod(mm)};
+        // std::iota(buf.begin(), buf.end(), prod(global_nn_offset) - prod(rr));
+        // buf.display();
+        // std::cout << "Global nn offset " << global_nn_offset << std::endl;
+
+        // std::vector<Field> fields{VTXBUF_UUX, VTXBUF_UUY};
+
+        // // Partition
+        // auto segments{partition(mm, nn, rr)};
+        // auto it{std::remove_if(segments.begin(), segments.end(), [nn, rr](const auto& segment) {
+        //     return within_box(segment.offset, nn, rr);
+        // })};
+        // segments.erase(it, segments.end());
+
+        // // Setup buffers
+        // ac::ndbuffer<AcReal, ac::mr::host_memory_resource> hux{mm, NAN}, huy{mm};
+        // for (size_t k{rr[2]}; k < rr[2] + nn[2]; ++k) {
+        //     const Shape slice{nn[0], nn[1], 1};
+        //     const Index offset{rr[0], rr[1], k};
+
+        //     ac::fill(static_cast<AcReal>(k + acr::get_global_nn_offset(local_info)[2]),
+        //              slice,
+        //              offset,
+        //              hux);
+        //     ac::fill(static_cast<AcReal>(k + acr::get_global_nn_offset(local_info)[2]),
+        //              slice,
+        //              offset,
+        //              huy);
+        // }
+
+        // ac::ndbuffer<AcReal, ac::mr::device_memory_resource> dux{mm}, duy{mm};
+        // ac::mr::copy(hux.get(), dux.get());
+        // ac::mr::copy(huy.get(), duy.get());
+
+        // ac::mr::copy(dux.get(), hux.get());
+        // ac::mr::copy(duy.get(), huy.get());
+
+        // hux.display();
     }
 
     void reset_init_cond()
