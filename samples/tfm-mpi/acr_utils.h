@@ -3,6 +3,16 @@
 #include "acc_runtime.h"
 #include "acm/detail/datatypes.h"
 
+#define ERRCHK_AC(errcode)                                                                         \
+    do {                                                                                           \
+        const AcResult _tmp_ac_api_errcode_ = (errcode);                                           \
+        if (_tmp_ac_api_errcode_ != AC_SUCCESS) {                                                  \
+            errchk_print_error(__func__, __FILE__, __LINE__, #errcode, "Astaroth error");          \
+            errchk_print_stacktrace();                                                             \
+            MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
+        }                                                                                          \
+    } while (0)
+
 namespace acr {
 
 int get(const AcMeshInfo& info, const AcIntParam& param);
