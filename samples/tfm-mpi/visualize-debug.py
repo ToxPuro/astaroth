@@ -6,8 +6,11 @@ import numpy as np
 import glob
 
 field = "UUX"
-files = glob.glob(f"../../build/*{field}*.mesh")
+# files = glob.glob(f"../../build/*{field}*.mesh")
+files = glob.glob(f'../../build/test.mesh')
 files.sort()
+
+nn = np.array((128, 128, 128))
 
 # Animate
 import matplotlib.animation as animation
@@ -20,7 +23,7 @@ for i, file in enumerate(files):
         file,
         dtype=np.double,
     )
-    arr = arr.reshape((38, 38, 38))
+    arr = arr.reshape(nn)
 
     data = arr[:, :, 16]
     im = ax.imshow(data, animated=True)
@@ -31,7 +34,7 @@ for i, file in enumerate(files):
 ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True, repeat_delay=1000)
 # plt.show()
 writer = animation.FFMpegWriter(fps=24, bitrate=1800)
-ani.save(f"{field}.mp4", writer=writer)
+# ani.save(f"{field}.mp4", writer=writer)
 
 
 # %%
@@ -40,13 +43,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import glob
 
-files = glob.glob("../../build/*LNRHO*.mesh")
+nn = np.array((128, 128, 128))
+
+files = glob.glob("../../build/*UUX*.mesh")
+# files = glob.glob(f'../../build/test.mesh')
+files.sort()
 for file in files:
     arr = np.fromfile(
         file,
         dtype=np.double,
     )
-    arr = arr.reshape((38, 38, 38))
+    arr = arr.reshape(nn)
 
     plt.imshow(arr[:, :, 16])
     plt.title(file)
@@ -79,8 +86,9 @@ fig.set_figheight(15)
 fig.set_figwidth(20)
 
 # for step in range(0, 10+1):
-step = 0
+step = 9
 files = glob.glob(f"../../build/debug-step-{str(step).zfill(12)}-tfm-*.profile")
+files.sort()
 print(files)
 for i, file in enumerate(files):
     arr = np.fromfile(
