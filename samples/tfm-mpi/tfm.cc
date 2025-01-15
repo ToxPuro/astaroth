@@ -27,7 +27,10 @@
 
 #include <mpi.h>
 
-#define AC_ENABLE_ASYNC_AVERAGES (1)
+// #define AC_ENABLE_ASYNC_AVERAGES
+#define AC_TEST_ONLY
+// #define AC_ENABLE_IO
+// #define AC_ASYNC_IO_ENABLED
 
 #define BENCHMARK(cmd)                                                                             \
     do {                                                                                           \
@@ -164,6 +167,7 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
     AcMeshInfo local_info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &local_info));
 
+    // Global mesh (collective)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
@@ -175,6 +179,22 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
                                          vba.in[i],
                                          std::string(filepath));
     }
+    // Local mesh incl. ghost zones
+    for (int i{0}; i < NUM_VTXBUF_HANDLES; ++i) {
+        char filepath[4096];
+        sprintf(filepath,
+                "proc-%d-debug-step-%012zu-tfm-%s.mesh",
+                ac::mpi::get_rank(parent_comm),
+                step,
+                vtxbuf_names[i]);
+        printf("Writing %s\n", filepath);
+        ac::mpi::write_distributed(parent_comm,
+                                   ac::mpi::get_dtype<AcReal>(),
+                                   acr::get_local_mm(local_info),
+                                   vba.in[i],
+                                   std::string(filepath));
+    }
+    // Global profile (collective)
     for (int i = 0; i < NUM_PROFILES; ++i) {
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.profile", step, profile_names[i]);
@@ -469,6 +489,9 @@ class Grid {
 
     void test()
     {
+        reset_init_cond();
+        write_diagnostic_step(cart_comm, device, 0); // Should be zero
+
         // VertexBufferArray vba{};
         // ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
@@ -544,6 +567,8 @@ class Grid {
         // ac::mr::copy(duy.get(), huy.get());
 
         // hux.display();
+
+        reset_init_cond();
     }
 
     void reset_init_cond()
@@ -605,7 +630,7 @@ class Grid {
         ERRCHK_MPI_API(MPI_Comm_free(&xy_neighbors));
     }
 
-#if AC_ENABLE_ASYNC_AVERAGES
+#if defined(AC_ENABLE_ASYNC_AVERAGES)
     MPI_Request launch_reduce_xy_averages(const Stream stream)
     {
         // Strategy:
@@ -646,22 +671,24 @@ class Grid {
 
     void tfm_pipeline(const size_t niters)
     {
-        // Write the initial step
+// Write the initial step
+#if defined(AC_ENABLE_IO)
         write_diagnostic_step(cart_comm, device, 0);
+#endif
 
         // Ensure halos are up-to-date before starting integration
         hydro_he.launch(cart_comm, get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
         tfm_he.launch(cart_comm, get_fields(device, FieldGroup::TFM, BufferGroup::Input));
 
-#if AC_ENABLE_ASYNC_AVERAGES
+#if defined(AC_ENABLE_ASYNC_AVERAGES)
         MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)}; // Averaging
 #else
         reduce_xy_averages(STREAM_DEFAULT);
 #endif
 
 // Write the initial step
-// #define AC_IO_ENABLED
-#if defined(AC_IO_ENABLED)
+// #define AC_ASYNC_IO_ENABLED
+#if defined(AC_ASYNC_IO_ENABLED)
         hydro_io.launch(cart_comm,
                         get_fields(device, FieldGroup::Hydro, BufferGroup::Input),
                         get_field_paths(get_field_handles(FieldGroup::Hydro)));
@@ -702,7 +729,7 @@ class Grid {
                                 get_fields(device, FieldGroup::Hydro, BufferGroup::Output));
 
 // TFM dependencies: hydro, tfm, profiles
-#if AC_ENABLE_ASYNC_AVERAGES
+#if defined(AC_ENABLE_ASYNC_AVERAGES)
                 ERRCHK_MPI(xy_average_req != MPI_REQUEST_NULL);
                 ac::mpi::request_wait_and_destroy(xy_average_req); // Averaging
 #endif
@@ -721,7 +748,7 @@ class Grid {
                 ERRCHK_AC(acDeviceSwapBuffers(device));
 
 // Profile dependencies: local tfm (uxb)
-#if AC_ENABLE_ASYNC_AVERAGES
+#if defined(AC_ENABLE_ASYNC_AVERAGES)
                 ERRCHK_MPI(xy_average_req == MPI_REQUEST_NULL);
                 xy_average_req = launch_reduce_xy_averages(STREAM_DEFAULT); // Averaging
 #else
@@ -731,7 +758,7 @@ class Grid {
             current_time += dt;
 
 // Write snapshot
-#if defined(AC_IO_ENABLED)
+#if defined(AC_ASYNC_IO_ENABLED)
             hydro_io.wait();
             hydro_io.launch(cart_comm,
                             get_fields(device, FieldGroup::Hydro, BufferGroup::Input),
@@ -742,19 +769,22 @@ class Grid {
                              get_field_paths(get_field_handles(FieldGroup::Bfield)));
 #endif
 
-            // Write mesh and profiles
-            // TODO: this is synchronous. Consider async.
-            write_diagnostic_step(cart_comm, device, iter);
+// Write mesh and profiles
+// TODO: this is synchronous. Consider async.
+#if defined(AC_ENABLE_IO)
+            if ((iter % acr::get(local_info, AC_simulation_output_interval)) == 0)
+                write_diagnostic_step(cart_comm, device, iter);
+#endif
         }
         hydro_he.wait(get_fields(device, FieldGroup::Hydro, BufferGroup::Input));
         tfm_he.wait(get_fields(device, FieldGroup::TFM, BufferGroup::Input));
 
-#if defined(AC_IO_ENABLED)
+#if defined(AC_ASYNC_IO_ENABLED)
         hydro_io.wait();
         bfield_io.wait();
 #endif
 
-#if AC_ENABLE_ASYNC_AVERAGES
+#if defined(AC_ENABLE_ASYNC_AVERAGES)
         ERRCHK(xy_average_req != MPI_REQUEST_NULL);
         ac::mpi::request_wait_and_destroy(xy_average_req);
 #endif
@@ -796,11 +826,12 @@ main(int argc, char* argv[])
 
         auto grid{ac::Grid<AcReal>(raw_info)};
         grid.test();
-        grid.reset_init_cond();
 
+#if !defined(AC_TEST_ONLY)
         cudaProfilerStart();
         grid.tfm_pipeline(acr::get(raw_info, AC_simulation_nsteps));
         cudaProfilerStop();
+#endif
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
