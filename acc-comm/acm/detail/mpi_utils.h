@@ -188,4 +188,12 @@ void write_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& et
                              const Shape& global_nn, const Index& local_nn_offset, const void* data,
                              const std::string& path);
 
+/** Writes a distributed snapshot. Each process should write to their own file. */
+void write_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& mm,
+                       const void* data, const std::string& path);
+
+/** Read a distributed snapshot. */
+void read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
+                      const void* data, const std::string& path);
+
 } // namespace ac::mpi

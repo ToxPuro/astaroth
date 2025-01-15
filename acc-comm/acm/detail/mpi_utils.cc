@@ -488,6 +488,35 @@ write_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
                      path);
 }
 
+void
+write_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
+                  const void* data, const std::string& path)
+{
+    MPI_File fp{MPI_FILE_NULL};
+    ERRCHK_MPI_API(MPI_File_open(parent_comm,
+                                 path.c_str(),
+                                 MPI_MODE_CREATE | MPI_MODE_WRONLY,
+                                 MPI_INFO_NULL, // Note: MPI_INFO_NULL
+                                 &fp));
+
+    ERRCHK_MPI_API(MPI_File_write(fp, data, as<int>(prod(local_mm)), etype, MPI_STATUS_IGNORE));
+    ERRCHK_MPI_API(MPI_File_close(&fp));
+}
+
+void
+read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
+                 const void* data, const std::string& path)
+{
+    MPI_File fp{MPI_FILE_NULL};
+    ERRCHK_MPI_API(MPI_File_open(parent_comm,
+                                 path.c_str(),
+                                 MPI_MODE_RDONLY,
+                                 MPI_INFO_NULL, // Note: MPI_INFO_NULL
+                                 &fp));
+    ERRCHK_MPI_API(MPI_File_write(fp, data, as<int>(prod(local_mm)), etype, MPI_STATUS_IGNORE));
+    ERRCHK_MPI_API(MPI_File_close(&fp));
+}
+
 } // namespace ac::mpi
 
 /**
