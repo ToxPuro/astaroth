@@ -6,11 +6,10 @@ import numpy as np
 import glob
 
 field = "UUX"
-# files = glob.glob(f"../../build/*{field}*.mesh")
-files = glob.glob(f'../../build/test.mesh')
+files = glob.glob(f"../../build/*{field}*.mesh")
 files.sort()
 
-nn = np.array((128, 128, 128))
+nn = np.array((32, 32, 32))
 
 # Animate
 import matplotlib.animation as animation
@@ -34,18 +33,18 @@ for i, file in enumerate(files):
 ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True, repeat_delay=1000)
 # plt.show()
 writer = animation.FFMpegWriter(fps=24, bitrate=1800)
-# ani.save(f"{field}.mp4", writer=writer)
+ani.save(f"{field}.mp4", writer=writer)
 
 
 # %%
-# Plot
+# Plot collective
 import matplotlib.pyplot as plt
 import numpy as np
 import glob
 
-nn = np.array((128, 128, 128))
+nn = np.array((32, 32, 32))
 
-files = glob.glob("../../build/*UUX*.mesh")
+files = glob.glob("../../build/debug*.mesh")
 # files = glob.glob(f'../../build/test.mesh')
 files.sort()
 for file in files:
@@ -54,6 +53,31 @@ for file in files:
         dtype=np.double,
     )
     arr = arr.reshape(nn)
+
+    plt.imshow(arr[:, :, 16])
+    plt.title(file)
+    # plt.colorbar()
+    plt.show()
+
+# %%
+# Plot distributed
+import matplotlib.pyplot as plt
+import numpy as np
+import glob
+
+nn = np.array((16,16,16))
+rr = np.array((3,3,3))
+mm = 2*rr + nn
+
+files = glob.glob("../../build/proc-0-*.mesh")
+# files = glob.glob(f'../../build/test.mesh')
+files.sort()
+for file in files:
+    arr = np.fromfile(
+        file,
+        dtype=np.double,
+    )
+    arr = arr.reshape(mm)
 
     plt.imshow(arr[:, :, 16])
     plt.title(file)
