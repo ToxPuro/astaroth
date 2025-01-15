@@ -318,7 +318,7 @@ acStoreConfig(const AcMeshInfo info, const char* filename)
 {
 	FILE* fp = fopen(filename,"w");
 	AcScalarTypes::run<load_scalars>(info.params.scalars, fp, "", false);
-	AcArrayTypes::run<load_arrays>(info.params.arrays,    fp, "", false);
+	AcArrayTypes::run<load_arrays>(info.params.arrays,info.params.scalars,    fp, "", false);
 
 	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
 	AcArrayCompTypes::run<load_comp_arrays>(info.run_consts,    fp, "", false);

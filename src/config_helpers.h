@@ -167,7 +167,7 @@ struct load_comp_scalars
 template <typename P>
 struct load_arrays
 {
-	void operator()(const AcMeshInfoArrays info, FILE* fp, const char* prefix, const bool output_datatype)
+	void operator()(const AcMeshInfoArrays info, const AcMeshInfoScalars scalars,FILE* fp, const char* prefix, const bool output_datatype)
 	{
 		const auto default_value = get_default_value<P>();
 		const std::string type = output_datatype ? get_value_type(default_value) : "";
@@ -177,7 +177,7 @@ struct load_arrays
 			const char* name = get_array_name(array);
 			auto* loaded_val = info[array];
 			if(loaded_val == NULL) continue;
-			const auto dims = get_array_dim_sizes(array,{});
+			const auto dims = get_array_dim_sizes(array,scalars);
 			if(n_dims == 1)
 			{
 				fprintf(fp,"%s %s %s = [",prefix,type.c_str(),name);
