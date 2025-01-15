@@ -517,6 +517,13 @@ read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const S
     ERRCHK_MPI_API(MPI_File_close(&fp));
 }
 
+void
+reduce_sum(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
+           const void* data)
+{
+    WARNING("TODO");
+}
+
 } // namespace ac::mpi
 
 /**

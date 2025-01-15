@@ -196,4 +196,8 @@ void write_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, c
 void read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
                       const void* data, const std::string& path);
 
+/** Collective reduce sum */
+void reduce_sum(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
+                const void* data);
+
 } // namespace ac::mpi
