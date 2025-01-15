@@ -24,7 +24,7 @@ for i, file in enumerate(files):
     )
     arr = arr.reshape(nn)
 
-    data = arr[:, :, 16]
+    data = arr[int(nn[0]/2), :, :]
     im = ax.imshow(data, animated=True)
     if i == 0:
         im = ax.imshow(data)
@@ -44,7 +44,7 @@ import glob
 
 nn = np.array((32, 32, 32))
 
-files = glob.glob("../../build/debug*.mesh")
+files = glob.glob("../../build/debug*00002*.mesh")
 # files = glob.glob(f'../../build/test.mesh')
 files.sort()
 for file in files:
@@ -54,7 +54,7 @@ for file in files:
     )
     arr = arr.reshape(nn)
 
-    plt.imshow(arr[:, :, 16])
+    plt.imshow(arr[int(nn[0]/2), :, :])
     plt.title(file)
     # plt.colorbar()
     plt.show()
@@ -68,8 +68,9 @@ import glob
 nn = np.array((16,16,16))
 rr = np.array((3,3,3))
 mm = 2*rr + nn
+nprocs = 8
 
-files = glob.glob("../../build/proc-0-*.mesh")
+files = glob.glob("../../build/proc-*00002-*UUX.mesh")
 # files = glob.glob(f'../../build/test.mesh')
 files.sort()
 for file in files:
@@ -79,7 +80,8 @@ for file in files:
     )
     arr = arr.reshape(mm)
 
-    plt.imshow(arr[:, :, 16])
+    plt.imshow(arr[int(nn[0]/2), :, :], vmin=0, vmax=nprocs)
+    plt.colorbar()
     plt.title(file)
     # plt.colorbar()
     plt.show()
@@ -110,7 +112,7 @@ fig.set_figheight(15)
 fig.set_figwidth(20)
 
 # for step in range(0, 10+1):
-step = 9
+step = 0
 files = glob.glob(f"../../build/debug-step-{str(step).zfill(12)}-tfm-*.profile")
 files.sort()
 print(files)
