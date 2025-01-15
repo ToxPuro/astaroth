@@ -59,7 +59,18 @@ curl(Field3 v) {
 bij(Field3 v)
 {
 	Matrix res;
-	print("Not implemented bij\n")
+	res[0][0] = deryx(v.z) - derzx(v.y)
+	res[0][1] = deryy(v.z) - derzy(v.y)
+	res[0][2] = deryz(v.z) - derzz(v.y)
+
+	res[1][0] = derzx(v.x) - derxx(v.z)
+	res[1][1] = derzy(v.x) - derxy(v.z)
+	res[1][2] = derzz(v.x) - derxz(v.z)
+
+	res[2][0] = derxx(v.y) - deryx(v.x)
+	res[2][1] = derxy(v.y) - deryy(v.x)
+	res[2][2] = derxz(v.y) - deryz(v.x)
+
 	return res;
 }
 
@@ -75,11 +86,23 @@ elemental del6(Field s) {
   return der6x(s) + der6y(s) + der6z(s)
 }
 
+elemental del6_exp(Field s) {
+  return exp(s)*(der6x(s) + der6y(s) + der6z(s))
+}
+
 del6_masked(Field s, int mask)
 {
 	x = mask == 1 ? 0.0 : der6x(s)
 	y = mask == 2 ? 0.0 : der6y(s)
 	z = mask == 3 ? 0.0 : der6z(s)
+	return x + y + z
+}
+
+del6_upwd_masked(Field s, int mask)
+{
+	x = mask == 1 ? 0.0 : der6x_upwd(s)
+	y = mask == 2 ? 0.0 : der6y_upwd(s)
+	z = mask == 3 ? 0.0 : der6z_upwd(s)
 	return x + y + z
 }
 
@@ -202,4 +225,8 @@ gaussian_smooth(Field f)
 {
 	print("NOT IMPLEMENTED del6_strict\n")
 	return 0.
+}
+curlcurl(Field3 v)
+{
+	return gradient_of_divergence(v) - laplace(v)
 }

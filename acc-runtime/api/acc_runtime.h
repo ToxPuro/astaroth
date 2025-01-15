@@ -487,14 +487,11 @@ AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
                            const size_t count, const size_t num_segments,
                            AcReal* d_out, AcReal** tmp, size_t* tmp_size);
 
-AcResult
-acReduceReal(const cudaStream_t stream, const AcReduceOp, AcRealScalarReduceBuffer, const size_t count);
+FUNC_DEFINE(AcResult, acReduceReal,(const cudaStream_t stream, const AcReduceOp, AcRealScalarReduceBuffer, const size_t count));
 
-AcResult
-acReduceInt(const cudaStream_t stream, const AcReduceOp, AcIntScalarReduceBuffer, const size_t count);
+FUNC_DEFINE(AcResult, acReduceInt,(const cudaStream_t stream, const AcReduceOp, AcIntScalarReduceBuffer, const size_t count));
 
-AcResult
-acReduceFloat(const cudaStream_t stream, const AcReduceOp, AcFloatScalarReduceBuffer, const size_t count);
+FUNC_DEFINE(AcResult, acReduceFloat,(const cudaStream_t stream, const AcReduceOp, AcFloatScalarReduceBuffer, const size_t count));
 
 static UNUSED AcResult
 acReduce(const cudaStream_t stream, const AcReduceOp op, AcRealScalarReduceBuffer buffer, const size_t count)

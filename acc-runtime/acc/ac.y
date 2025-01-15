@@ -511,7 +511,7 @@ main(int argc, char** argv)
 %token RANGE IN_RANGE
 %token CONST_DIMS
 %token CAST BASIC_STATEMENT
-%token TEMPLATE BINARY UNARY
+%token TEMPLATE BINARY UNARY PROGRAM
 
 %nonassoc QUESTION
 %nonassoc '<'
@@ -584,15 +584,16 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 variable_definition->type |= NODE_DCONST;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
+	    $$->token = PROGRAM;
          }
-       | program intrinsic_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-       | program function_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-       | program stencil_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-       | program hostdefine           { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-       | program struct_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-       | program steps_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-       | program boundconds_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-       | program enum_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+       | program intrinsic_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); $$->token = PROGRAM;}
+       | program function_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); $$->token = PROGRAM;}
+       | program stencil_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, $2); $$->token = PROGRAM;}
+       | program hostdefine           { $$ = astnode_create(NODE_UNKNOWN, $1, $2); $$->token = PROGRAM;}
+       | program struct_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, $2); $$->token = PROGRAM;}
+       | program steps_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); $$->token = PROGRAM;}
+       | program boundconds_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); $$->token = PROGRAM;}
+       | program enum_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, $2); $$->token = PROGRAM;}
        ;
 /*
  * =============================================================================
@@ -620,6 +621,7 @@ else: ELSE             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 while: WHILE           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 for: FOR               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 in: IN                 { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
+break_node: BREAK { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 dconst_ql: DCONST_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 profile_x:  PROFILE_X   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -1225,6 +1227,7 @@ function_body: '(' ')' compound_statement                { $$ = astnode_create(N
 
 function_call: declaration '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
              | declaration '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$);   }
+             | break_node { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
              ;
 
 /*

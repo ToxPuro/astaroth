@@ -4,8 +4,7 @@ Stencil value_stencil
 }
 
 elemental
-value(Field s)
-{
+value(Field s) {
 	return value_stencil(s)
 }
 value(Profile<X> profile)
@@ -236,6 +235,16 @@ inline mult_arr(real[] a, real[] b)
 	return res;
 }
 
+inline mult_arr(real[] a, real b)
+{
+	real res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] * b
+	}
+	return res;
+}
+
 inline mult_arr(real3[] a, real3[] b)
 {
 	real3 res[size(a)]
@@ -285,6 +294,17 @@ inline dup_arr(real3[] a)
 	}
 	return res;
 }
+
+inline create_neg_arr(real[] a)
+{
+	real res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = -a[i]
+	}
+	return res;
+}
+
 sum(real3 a)
 {
 	return a.x + a.y + a.z
@@ -294,3 +314,21 @@ sum(real2 a)
 {
 	return a.x + a.y
 }
+
+any_AC(bool[] arr, int arr_len)
+{
+	bool res = false
+	for i in 0:arr_len
+	{
+		res |= arr[i]
+	}
+	return res
+}
+
+
+//inline any(b) {return b.x || b.y || b.z}
+//inline all(b) {b.x && b.y && b.z}
+
+#define any(b) (b.x || b.y || b.z)
+#define all(b) (b.x && b.y && b.z)
+

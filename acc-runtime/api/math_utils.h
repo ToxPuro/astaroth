@@ -172,11 +172,10 @@ clamp(const T& val, const T& min, const T& max)
   return val < min ? min : val > max ? max : val;
 }
 
-static inline uint64_t
+static HOST_DEVICE_INLINE uint64_t
 mod(const int a, const int b)
 {
-  const int r = a % b;
-  return r < 0 ? as_size_t(r + b) : as_size_t(r);
+  return (a+b) % b;
 }
 
 static inline AcReal
@@ -403,18 +402,6 @@ static int
 volume_size(const T a)
 {
   return a.x*a.y*a.z; 
-}
-
-/*
- * AcBool3
- */
-static HOST_DEVICE bool
-any(const AcBool3& a){
-    return a.x || a.y || a.z;
-}
-static HOST_DEVICE bool
-all(const AcBool3& a){
-    return a.x && a.y && a.z;
 }
 
 /*
@@ -934,3 +921,25 @@ matmul_arr(AcReal* m, const AcReal3& v)
 	z += m[2 + 3*2]*v.z;
 	return (AcReal3){x,y,z};
 }
+template <typename T>
+HOST_DEVICE_INLINE void
+broadcast_scalar(T& arr, const AcReal& val)
+{
+	const size_t arr_len = sizeof(arr)/sizeof(arr[0]);
+	for(size_t i = 0; i < arr_len; ++i)
+		arr[i] = val;
+}
+template <typename T>
+HOST_DEVICE_INLINE void
+copy_arr(T& a, const T& b)
+{
+	const size_t arr_len = sizeof(a)/sizeof(a[0]);
+	for(size_t i = 0; i < arr_len; ++i)
+		a[i] = b[i];
+}
+HOST_DEVICE_INLINE uint64_t
+max(const uint64_t& a, const int& b)
+{
+	return a > (uint64_t)b ? a : (uint64_t)b;
+}
+

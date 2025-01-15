@@ -1,8 +1,19 @@
-Field F_UX, F_UY, F_UZ
+Field UUX, UUY, UUZ
+#define F_UX UUX
+#define F_UY UUY
+#define F_UZ UUZ
+
+Field RHO
+#define F_RHO  RHO
+#define F_LNRHO F_RHO
+
+Field AAX, AAY, AAZ
+#define F_AX AAX
+#define F_AY AAY
+#define F_AZ AAZ
+
 Field F_PHIUU
 Field F_U0X, F_U0Y, F_U0Z
-Field F_RHO
-#define F_LNRHO F_RHO
 Field F_LORENTZ
 Field F_GUIJ11,F_GUIJ21,F_GUIJ31,F_GUIJ12,F_GUIJ22,F_GUIJ32,F_GUIJ13,F_GUIJ23,F_GUIJ33
 Field F_OX, F_OY, F_OZ
@@ -20,13 +31,12 @@ Field F_GLOBAL_LNRHO0
 Field F_GLOBAL_SS0
 Field F_HYPVIS
 Field F_NUSMAG
-Field F_AX, F_AY, F_AZ
 Field F_BX, F_BY, F_BZ
 Field F_GLOBAL_EXT_BX, F_GLOBAL_EXT_BY, F_GLOBAL_EXT_BZ
 Field F_GLOBAL_EXT_AX, F_GLOBAL_EXT_AY, F_GLOBAL_EXT_AZ
 
-Field F_GLOBAL_EEXT[3]
-Field F_GLOBAL_JEXT[3]
+Field3 F_GLOBAL_EEXTVEC
+Field3 F_GLOBAL_JEXTVEC
 
 Field F_JX,F_JY,F_JZ
 Field F_EDOTX,F_EDOTY,F_EDOTZ
@@ -68,50 +78,31 @@ not_implemented(message)
 {
     print("NOT IMPLEMENTED: %s\n",message)
 }
-const real AC_tini__mod__cparam = AC_REAL_MIN*5.0
 
 
 tini_sqrt_div(real numerator, real a, real b)
 {
   return 
-     (abs(a) <= AC_tini__mod__cparam || abs(b) <= AC_tini__mod__cparam)
+     (abs(a) <= AC_REAL_MIN*5.0 || abs(b) <= AC_REAL_MIN*5.0)
      ? 0.0
      : numerator/(sqrt(a*b)) 
 }
 tini_sqrt_div_separate(real numerator, real a, real b)
 {
   return 
-     (abs(a) <= AC_tini__mod__cparam || abs(b) <= AC_tini__mod__cparam)
+     (abs(a) <= AC_REAL_MIN*5.0|| abs(b) <= AC_REAL_MIN*5.0)
      ? 0.0
      : numerator/(sqrt(a)*sqrt(b)) 
 }
 
 
 #define AC_maux__mod__cparam maux__mod__cparam
-const int AC_dimensionality__mod__cparam  = 3
 #define iphF_UU F_PHIUU
-const real AC_pi__mod__cparam = AC_REAL_PI
-const real AC_pi_1__mod__cparam=1./AC_pi__mod__cparam
-const real AC_pi4_1__mod__cparam=AC_pi_1__mod__cparam*AC_pi_1__mod__cparam*AC_pi_1__mod__cparam*AC_pi_1__mod__cparam
-const real AC_pi5_1__mod__cparam=AC_pi_1__mod__cparam*AC_pi_1__mod__cparam*AC_pi_1__mod__cparam*AC_pi_1__mod__cparam*AC_pi_1__mod__cparam
-const real AC_sqrt2pi__mod__cparam =AC_sqrt2__mod__cparam*AC_sqrtpi__mod__cparam
-const real AC_four_pi_over_three__mod__cparam =4.0/3.0*AC_pi__mod__cparam
-const real AC_dtor__mod__cparam  = AC_pi__mod__cparam/180.0
-const int AC_n1__mod__cparam = NGHOST_VAL+1
-const int AC_m1__mod__cparam = NGHOST_VAL+1
-const int AC_l1__mod__cparam = NGHOST_VAL+1
 
 #define AC_n2__mod__cparam AC_nx+NGHOST_VAL+1 
 #define AC_m2__mod__cparam AC_ny+NGHOST_VAL+1 
 #define AC_l2__mod__cparam AC_nz+NGHOST_VAL+1 
 
-run_const int AC_nx__mod__cparam
-run_const int AC_ny__mod__cparam
-run_const int AC_nz__mod__cparam
-
-run_const int AC_mx__mod__cparam
-run_const int AC_my__mod__cparam
-run_const int AC_mz__mod__cparam
 
 run_const int AC_nxyz_max
 
@@ -140,3 +131,13 @@ gmem real AC_dchit_prof_fluct_stored__mod__energy[AC_nxyz_max]
 #define AC_dsx AC_ds.x
 #define AC_dsy AC_ds.y
 #define AC_dsz AC_ds.z
+
+#define n__mod__cdata (vertexIdx.z+1)
+#define m__mod__cdata (vertexIdx.y+1)
+#define AC_n__mod__cdata (vertexIdx.z+1)
+#define AC_m__mod__cdata (vertexIdx.y+1)
+
+output real AC_df_rho_sum
+Field TEST_1, TEST_2,TEST_3,TEST_4
+
+#include "../../../../acc-runtime/stdlib/map.h"

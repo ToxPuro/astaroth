@@ -22,13 +22,15 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
+#include "../../stdlib/reduction.h"
 
 #if AC_MPI_ENABLED
 
 #include <mpi.h>
 #include <vector>
 
-#define NUM_INTEGRATION_STEPS (100)
+#define NUM_INTEGRATION_STEPS (1)
+#include "user_non_scalar_constants.h"
 
 
 #define DER2_3 (1. / 90.)
@@ -69,8 +71,18 @@ main(int argc, char* argv[])
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig("PC-AC.conf", &info);
-    fprintf(stderr,"Lorentz force on: %d\n",info[AC_llorentzforce__mod__magnetic]);
-    exit(EXIT_SUCCESS);
+
+    /**
+    int n_active = 0;
+    const bool* lpencil = info.run_consts.config[AC_lpencil__mod__cdata];
+    printf("LPENCIL IS NULL: %d\n",lpencil == NULL);
+    printf("DEL2U asked: %d\n",lpencil[i_del2u__mod__cparam-1]);
+    printf("EQUIDIST LOADED: %d\n",info.run_consts.is_loaded.bool3_params[AC_lequidist__mod__cdata]);
+    for(int i = 0; i < 270; ++i) n_active += lpencil[i];
+    printf("%d pencils active\n",n_active);
+    **/
+
+    finalized = true;
     info.comm = MPI_COMM_WORLD;
 
 #if AC_RUNTIME_COMPILATION
@@ -104,6 +116,33 @@ main(int argc, char* argv[])
     // GPU alloc & compute
     acGridInit(info);
 
+    acGridAccessMeshOnDiskSynchronousDistributed(F_UU.x, "PC-AC-data","initial-condition", ACCESS_READ);
+    acGridAccessMeshOnDiskSynchronousDistributed(F_UU.y, "PC-AC-data","initial-condition", ACCESS_READ);
+    acGridAccessMeshOnDiskSynchronousDistributed(F_UU.z, "PC-AC-data","initial-condition", ACCESS_READ);
+
+    acGridAccessMeshOnDiskSynchronousDistributed(F_AVEC.x, "PC-AC-data","initial-condition", ACCESS_READ);
+    acGridAccessMeshOnDiskSynchronousDistributed(F_AVEC.y, "PC-AC-data","initial-condition", ACCESS_READ);
+    acGridAccessMeshOnDiskSynchronousDistributed(F_AVEC.z, "PC-AC-data","initial-condition", ACCESS_READ);
+
+    acGridAccessMeshOnDiskSynchronousDistributed(RHO, "PC-AC-data","initial-condition", ACCESS_READ);
+
+    acGridAccessMeshOnDiskSynchronousDistributed(SS, "PC-AC-data","initial-condition", ACCESS_READ);
+
+    acGridSynchronizeStream(STREAM_ALL);
+
+    {
+    	AcReal uu_rms;
+    	AcReal3 uu_sum;
+    	// Calculate rms, min and max from the velocity vector field
+    	acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, F_UU.x, F_UU.y, F_UU.z, &uu_rms);
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.x,&uu_sum.x);
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.y,&uu_sum.y);
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.z,&uu_sum.z);
+    	acGridSynchronizeStream(STREAM_ALL);
+    	fprintf(stderr,"UU_RMS: %14e\n",uu_rms);
+    	fprintf(stderr,"UU_SUM: %14e\n",uu_sum.x + uu_sum.y + uu_sum.z);
+    	fflush(stderr);
+    }
 
     std::vector<Field> all_fields;
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
@@ -111,19 +150,79 @@ main(int argc, char* argv[])
     }
     AcTaskGraph* graph = acGetDSLTaskGraph(rhs);
 
-    acGridLoadMesh(STREAM_DEFAULT, model);
-
     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
     {
 
         acGridExecuteTaskGraph(graph,1);
         acGridSynchronizeStream(STREAM_ALL);
     }
-    	
+    acGridSynchronizeStream(STREAM_ALL);
+    acGridFinalizeReduceLocal(graph);
+    acGridSynchronizeStream(STREAM_ALL);
+    printf("DF RHO SUM: %14e\n",acDeviceGetOutput(acGridGetDevice(),AC_df_rho_sum));
+
+    acGridSynchronizeStream(STREAM_ALL);
+    {
+    	AcReal rho_sum;
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_1,&rho_sum);
+    	acGridSynchronizeStream(STREAM_ALL);
+    	printf("TEST_1 SUM: %14e\n",rho_sum);
+
+    	AcReal aax_sum;
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_2,&aax_sum);
+    	acGridSynchronizeStream(STREAM_ALL);
+    	printf("TEST_2 SUM: %14e\n",aax_sum);
+
+    	AcReal aay_sum;
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_3,&aay_sum);
+    	acGridSynchronizeStream(STREAM_ALL);
+    	printf("TEST_3 SUM: %14e\n",aay_sum);
+
+    	AcReal aaz_sum;
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_4 ,&aaz_sum);
+    	acGridSynchronizeStream(STREAM_ALL);
+    	printf("TEST_4 SUM: %14e\n",aaz_sum);
+    }
+
+    {
+    	AcReal uu_rms;
+    	AcReal3 uu_sum;
+    	// Calculate rms, min and max from the velocity vector field
+    	acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, F_UU.x, F_UU.y, F_UU.z, &uu_rms);
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.x,&uu_sum.x);
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.y,&uu_sum.y);
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.z,&uu_sum.z);
+    	acGridSynchronizeStream(STREAM_ALL);
+    	fprintf(stderr,"UU_RMS: %14e\n",uu_rms);
+    	fprintf(stderr,"UU_SUM: %14e\n",uu_sum.x + uu_sum.y + uu_sum.z);
+    	fflush(stderr);
+    }
 
     //acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridSynchronizeStream(STREAM_ALL);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    AcReal test_sum_1 = 0.0;
+    AcReal test_sum_2 = 0.0;
+    AcReal test_sum_3 = 0.0;
+    AcReal test_sum_4 = 0.0;
+    for(int x = NGHOST; x < 32+NGHOST; ++x)
+    {
+    	for(int y = NGHOST; y < 32+NGHOST; ++y)
+	{
+    		for(int z = NGHOST; z < 32+NGHOST; ++z)
+		{
+			test_sum_1 += candidate.vertex_buffer[TEST_1][acVertexBufferIdx(x,y,z,model.info)];
+			test_sum_2 += candidate.vertex_buffer[TEST_1][acVertexBufferIdx(x,y,z,model.info)];
+			test_sum_3 += candidate.vertex_buffer[TEST_1][acVertexBufferIdx(x,y,z,model.info)];
+			test_sum_4 += candidate.vertex_buffer[TEST_1][acVertexBufferIdx(x,y,z,model.info)];
+		}
+	}
+    }
+    fprintf(stderr,"TEST_SUM_1: %14e\n",test_sum_1);
+    fprintf(stderr,"TEST_SUM_2: %14e\n",test_sum_2);
+    fprintf(stderr,"TEST_SUM_3: %14e\n",test_sum_3);
+    fprintf(stderr,"TEST_SUM_4: %14e\n",test_sum_4);
+    fflush(stderr);
     //acHostMeshApplyPeriodicBounds(&candidate);
     //acDeviceSwapBuffer(acGridGetDevice(), UU);
     //acDeviceStoreMesh(acGridGetDevice(),STREAM_DEFAULT,&candidate);

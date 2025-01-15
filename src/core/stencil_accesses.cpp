@@ -42,6 +42,7 @@ bool should_reduce_int[1000] = {false};
 #include "errchk.h"
 #include "datatypes.h"
 AcReal AC_INTERNAL_run_const_array_here[2000]{};
+bool   AC_INTERNAL_run_const_bool_array_here[2000]{};
 
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
@@ -572,6 +573,13 @@ static std::vector<int> executed_nodes{};
 #define constexpr
 #define size(arr) (int)(sizeof(arr)/sizeof(arr[0]))
 #define min(a,b) a < b ? a : b
+
+bool*
+RCONST(AcBoolCompArrayParam param)
+{
+	return AC_INTERNAL_run_const_bool_array_here;
+}
+
 #include "user_cpu_kernels.h"
 #undef  constexpr
 #undef size

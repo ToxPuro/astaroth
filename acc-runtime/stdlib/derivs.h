@@ -290,6 +290,7 @@ Stencil derxy {
     [0][2][-2] = -AC_inv_ds.x * AC_inv_ds.y * DERX_2,
     [0][3][-3] = -AC_inv_ds.x * AC_inv_ds.y * DERX_3
 }
+#define deryx derxy
 
 Stencil derxz {
     [-3][0][-3] = AC_inv_ds.x * AC_inv_ds.z * DERX_3,
@@ -307,6 +308,8 @@ Stencil derxz {
     [3][0][-3] = -AC_inv_ds.x * AC_inv_ds.z * DERX_3
 }
 
+#define derzx derxz
+
 Stencil deryz {
     [-3][-3][0] = AC_inv_ds.y * AC_inv_ds.z * DERX_3,
     [-2][-2][0] = AC_inv_ds.y * AC_inv_ds.z * DERX_2,
@@ -322,6 +325,8 @@ Stencil deryz {
     [2][-2][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_2,
     [3][-3][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_3
 }
+
+#define derzy deryz
 
 Stencil der6x_upwd {
     [0][0][-3] =  AC_inv_ds.x * DER6UPWD_3,
@@ -353,6 +358,72 @@ Stencil der6z_upwd {
     [3][0][0]  =  AC_inv_ds.z * DER6UPWD_3
 }
 
+
+//derx(Field f)
+//{
+//	res =  DER1_3*-AC_inv_ds.x*f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z];
+//	res += DER1_3*+AC_inv_ds.x*f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z];
+//	res += DER1_2*-AC_inv_ds.x*f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z];
+//	res += DER1_2*+AC_inv_ds.x*f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z];
+//	res += DER1_1*-AC_inv_ds.x*f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z];
+//	res += DER1_1*+AC_inv_ds.x*f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z];
+//	return res;
+//}
+//
+//derxx(Field f)
+//{
+//	res =  DER2_0*+AC_inv_ds_2.x*f[vertexIdx.x][vertexIdx.y][vertexIdx.z];
+//	res += DER2_3*+AC_inv_ds_2.x*f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z];
+//	res += DER2_3*+AC_inv_ds_2.x*f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z];
+//	res += DER2_2*+AC_inv_ds_2.x*f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z];
+//	res += DER2_2*+AC_inv_ds_2.x*f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z];
+//	res += DER2_1*+AC_inv_ds_2.x*f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z];
+//	res += DER2_1*+AC_inv_ds_2.x*f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z];
+//	return res;
+//}
+//dery(Field f)
+//{
+//	res =  DER1_3*-AC_inv_ds.y*f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z];
+//	res += DER1_3*+AC_inv_ds.y*f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z];
+//	res += DER1_2*-AC_inv_ds.y*f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z];
+//	res += DER1_2*+AC_inv_ds.y*f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z];
+//	res += DER1_1*-AC_inv_ds.y*f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z];
+//	res += DER1_1*+AC_inv_ds.y*f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z];
+//	return res;
+//}
+//
+//deryy(Field f)
+//{
+//	res =  DER2_0*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y][vertexIdx.z];
+//	res +=  DER2_3*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z];
+//	res += DER2_3*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z];
+//	res += DER2_2*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z];
+//	res += DER2_2*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z];
+//	res += DER2_1*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z];
+//	res += DER2_1*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z];
+//	return res;
+//}
+//derz(Field f)
+//{
+//	res =  DER1_3*-AC_inv_ds.z*f[vertexIdx.x][vertexIdx.y][vertexIdx.z-3];
+//	res += DER1_3*+AC_inv_ds.z*f[vertexIdx.x][vertexIdx.y][vertexIdx.z+3];
+//	res += DER1_2*-AC_inv_ds.z*f[vertexIdx.x][vertexIdx.y][vertexIdx.z-2];
+//	res += DER1_2*+AC_inv_ds.z*f[vertexIdx.x][vertexIdx.y][vertexIdx.z+2];
+//	res += DER1_1*-AC_inv_ds.z*f[vertexIdx.x][vertexIdx.y][vertexIdx.z-1];
+//	res += DER1_1*+AC_inv_ds.z*f[vertexIdx.x][vertexIdx.y][vertexIdx.z+1];
+//	return res;
+//}
+//derzz(Field f)
+//{
+//	res =  DER2_0*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y][vertexIdx.z];
+//	res +=  DER2_3*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y][vertexIdx.z-3];
+//	res += DER2_3*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y][vertexIdx.z+3];
+//	res += DER2_2*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y][vertexIdx.z-2];
+//	res += DER2_2*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y][vertexIdx.z+2];
+//	res += DER2_1*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y][vertexIdx.z-1];
+//	res += DER2_1*+AC_inv_ds_2.y*f[vertexIdx.x][vertexIdx.y][vertexIdx.z+1];
+//	return res;
+//}
 
 
 

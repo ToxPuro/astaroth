@@ -40,3 +40,7 @@ modulo(real a, real p)
 {
 	return a - floor(a/p)*p
 }
+nint(real x)
+{
+	return round(x)
+}

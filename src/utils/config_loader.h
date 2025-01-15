@@ -25,6 +25,7 @@
  *
  */
 #include "astaroth_utils.h"
+#include "acc_runtime.h"
 
 #include <stdint.h> // uint8_t, uint32_t
 #include <string>
@@ -58,17 +59,18 @@ find_array(const char keyword[], const array_info* info, const int n)
 	return -1;
 }
 
-static bool
-is_bctype(const int)
-{
-	return false;
-}
+//static bool
+//is_bctype(const int)
+//{
+//	return false;
+//}
+//
+//static bool
+//is_initcondtype(const int)
+//{
+//    return false;
+//}
 
-static bool
-is_initcondtype(const int)
-{
-    return false;
-}
 
 static int3
 parse_int3param(const char* value)
@@ -89,46 +91,25 @@ parse_real3param(const char* value)
 static bool
 parse_boolparam(const char* value)
 {
+	if(!strcmp(value,"true"))
+		return true;
+	if(!strcmp(value,"True"))
+		return true;
+	if(!strcmp(value,"T"))
+		return true;
+	if(!strcmp(value,"false"))
+		return false;
+	if(!strcmp(value,"False"))
+		return false;
+	if(!strcmp(value,"F"))
+		return false;
 	return atoi(value);
 }
 
-
-static int
-parse_intparam(const size_t idx, const char* value, const bool run_const)
-{
-    if (is_bctype(idx) && !run_const) {
-        {
-            fprintf(stderr,
-                    "ERROR PARSING CONFIG: Invalid BC type: %s DEPRECATED\n",
-                    value);
-            ERROR("Invalid boundary condition type found in config| DEPRECATED");
-            return 0;
-        }
-    }
-    else if (is_initcondtype(idx) && !run_const) {
-        int initcondtype = -1;
-        if ((initcondtype = find_str(value, initcondtype_names, NUM_INIT_TYPES)) >= 0)
-            return initcondtype;
-        else {
-            fprintf(stderr,
-                    "ERROR PARSING CONFIG: Invalid initial condition type: %s, do not know what to "
-                    "do with it.\n",
-                    value);
-            fprintf(stdout, "Valid initial condition types:\n");
-            acQueryInitcondtypes();
-            ERROR("Invalid initial condition type found in config");
-            return 0;
-        }
-    }
-    else {
-        return atoi(value);
-    }
-}
-
 static void 
-extract_between_brackets(const char *str, char *result) {
-    const char *start = strchr(str, '[');
-    const char *end = strchr(start + 1, ']');
+extract_between_symbol(const char *str, char *result, const char symbol,const char end_symbol) {
+    const char *start = strchr(str, symbol);
+    const char *end = strchr(start + 1, end_symbol);
 
     if (start && end && start < end) {
         size_t len = end - start - 1;
@@ -140,12 +121,12 @@ extract_between_brackets(const char *str, char *result) {
 }
 
 static std::vector<std::string>
-get_entries(const char* line)
+get_entries(const char* line, const char symbol, const char end_symbol)
 {
 
       std::vector<std::string> dst{};
       char* line_copy = (char*)malloc(sizeof(char)*strlen(line));
-      extract_between_brackets(line,line_copy);
+      extract_between_symbol(line,line_copy,symbol,end_symbol);
       char* token;
       token = strtok(line_copy,",");
       while(token != NULL)
@@ -157,16 +138,53 @@ get_entries(const char* line)
       return dst;
 }
 
+static AcBool3
+parse_bool3param(const char* value)
+{
+	auto entries = get_entries(value,'{','}');
+	return (AcBool3){parse_boolparam(entries[0].c_str()),parse_boolparam(entries[1].c_str()),parse_boolparam(entries[2].c_str())};
+}
+
+static AcReal
+parse_realparam(const char* value)
+{
+	return atof(value);
+}
+static int
+parse_intparam(const char* value)
+{
+	return atoi(value);
+}
+
+
+#define LOAD_ARRAY(UPPER_CASE,DATATYPE,LOWER_CASE,UP_NAME) \
+        else if ((idx = find_array(keyword, LOWER_CASE##_array_info, NUM_##UPPER_CASE##_ARRAYS+NUM_##UPPER_CASE##_COMP_ARRAYS)) >= 0) { \
+		auto array_vals = get_entries(value,'[',']'); \
+		const bool is_comp = (idx >= NUM_##UPPER_CASE##_ARRAYS); \
+		idx -= NUM_##UPPER_CASE##_ARRAYS*is_comp; \
+		const auto size = (is_comp) ? \
+				get_array_length((Ac##UP_NAME##CompArrayParam)idx,config->params.scalars) :\
+				get_array_length((Ac##UP_NAME##ArrayParam)idx,config->params.scalars); \
+		if(array_vals.size() != (size_t)size) \
+			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %d: SKIPPING\n",array_vals.size(),keyword,size); \
+		else \
+		{ \
+			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size);\
+			for(int i = 0; i < size; ++i) \
+			{ \
+				dst[i] = parse_##LOWER_CASE##param(array_vals[i].c_str()); \
+			} \
+			if(is_comp) \
+			{ \
+				config->run_consts.config.LOWER_CASE##_arrays[idx] = dst; \
+				config->run_consts.is_loaded.LOWER_CASE##_arrays[idx] = true; \
+			} \
+		} \
+	}
+
 static void
 parse_config(const char* path, AcMeshInfo* config)
 {
-	auto length_from_dims = [](const auto& dims)
-	{
-		int res = 1;
-		for(auto& len : dims)
-			res *= std::max(len.base,1);
-		return res;
-	};
     FILE* fp;
     fp = fopen(path, "r");
     // For knowing which .conf file will be used
@@ -183,10 +201,10 @@ parse_config(const char* path, AcMeshInfo* config)
             continue;
         int idx = -1;
         if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0) {
-	    acPushToConfig(*config,static_cast<AcIntParam>(idx),parse_intparam(idx,value,false));
+	    acPushToConfig(*config,static_cast<AcIntParam>(idx),parse_intparam(value));
         }
         else if ((idx = find_str(keyword, int_comp_param_names, NUM_INT_COMP_PARAMS)) >= 0) {
-	    acPushToConfig(*config,static_cast<AcIntCompParam>(idx),parse_intparam(idx,value,true));
+	    acPushToConfig(*config,static_cast<AcIntCompParam>(idx),parse_intparam(value));
         }
         if ((idx = find_str(keyword, boolparam_names, NUM_BOOL_PARAMS)) >= 0) {
 	    acPushToConfig(*config,static_cast<AcBoolParam>(idx),parse_boolparam(value));
@@ -200,6 +218,12 @@ parse_config(const char* path, AcMeshInfo* config)
         else if ((idx = find_str(keyword, int3_comp_param_names, NUM_INT3_COMP_PARAMS)) >= 0) {
 	    acPushToConfig(*config,static_cast<AcInt3CompParam>(idx),parse_int3param(value));
         }
+        else if ((idx = find_str(keyword, bool3param_names, NUM_BOOL3_PARAMS)) >= 0) {
+	    acPushToConfig(*config,static_cast<AcBool3Param>(idx),parse_bool3param(value));
+        }
+        else if ((idx = find_str(keyword, bool3_comp_param_names, NUM_BOOL3_COMP_PARAMS)) >= 0) {
+	    acPushToConfig(*config,static_cast<AcBool3CompParam>(idx),parse_bool3param(value));
+        }
         else if ((idx = find_str(keyword, real3param_names, NUM_REAL3_PARAMS)) >= 0) {
 	    acPushToConfig(*config,static_cast<AcReal3Param>(idx),parse_real3param(value));
         }
@@ -207,7 +231,7 @@ parse_config(const char* path, AcMeshInfo* config)
 	    acPushToConfig(*config,static_cast<AcReal3CompParam>(idx),parse_real3param(value));
         }
         else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0) {
-            AcReal real_val = atof(value);
+            AcReal real_val = parse_realparam(value);
             if (isnan(real_val)) {
                 fprintf(stderr,
                         "ERROR PARSING CONFIG: parameter \"%s\" value \"%s\" parsed as NAN\n",
@@ -216,7 +240,7 @@ parse_config(const char* path, AcMeshInfo* config)
             // OL: should we fail here? Could be dangerous to continue
 	    acPushToConfig(*config,static_cast<AcRealParam>(idx),real_val);
         }
-        else if ((idx = find_str(keyword, real_comp_param_names, NUM_REAL_COMP_PARAMS)) >= 0) {
+        else if ((idx = find_str(keyword, real_comp_param_names, NUM_REAL_COMP_PARAMS)) >= 0) 	      {
             AcReal real_val = atof(value);
             if (isnan(real_val)) {
                 fprintf(stderr,
@@ -226,41 +250,10 @@ parse_config(const char* path, AcMeshInfo* config)
             // OL: should we fail here? Could be dangerous to continue
 	    acPushToConfig(*config,static_cast<AcRealCompParam>(idx),real_val);
         }
-        else if ((idx = find_array(keyword, int_array_info, NUM_INT_ARRAYS)) >= 0) {
-		if(!int_array_info[idx].is_dconst)
-			fprintf(stderr,"ERROR PARSING CONFIG: can't assign to global array: \"%s\": SKIPPING\n",keyword);
 
-		auto array_vals = get_entries(value);
-		if(array_vals.size() != (size_t)length_from_dims(int_array_info[idx].dims))
-			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %d: SKIPPING\n",array_vals.size(),keyword,length_from_dims(int_array_info[idx].dims));
-		else
-		{
-			config->params.arrays.int_arrays[idx] = (int*)malloc(sizeof(AcReal)*length_from_dims(int_array_info[idx].dims));
-			for(int i = 0; i < length_from_dims(int_array_info[idx].dims); ++i)
-			{
-				config->params.arrays.int_arrays[idx][i] =  atoi(array_vals[i].c_str());
-			}
-		}
-
-
-	}
-        else if ((idx = find_array(keyword, real_array_info, NUM_REAL_ARRAYS)) >= 0) {
-		if(!real_array_info[idx].is_dconst)
-			fprintf(stderr,"ERROR PARSING CONFIG: can't assign to global array: \"%s\": SKIPPING\n",keyword);
-		auto array_vals = get_entries(value);
-		if(array_vals.size() != (size_t)length_from_dims(real_array_info[idx].dims))
-			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %d: SKIPPING\n",array_vals.size(),keyword,length_from_dims(real_array_info[idx].dims));
-		else
-		{
-			config->params.arrays.real_arrays[idx] = (AcReal*)malloc(sizeof(AcReal)*length_from_dims(real_array_info[idx].dims));
-			for(int i = 0; i < length_from_dims(real_array_info[idx].dims); ++i)
-			{
-				config->params.arrays.real_arrays[idx][i] =  atof(array_vals[i].c_str());
-			}
-		}
-
-
-	}
+	LOAD_ARRAY(INT,int,int,Int)
+	LOAD_ARRAY(BOOL,bool,bool,Bool)
+	LOAD_ARRAY(REAL,AcReal,real,Real)
     }
 
     fclose(fp);

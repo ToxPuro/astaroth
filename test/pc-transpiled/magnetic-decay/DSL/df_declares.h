@@ -37,4 +37,8 @@ real DF_RHO            = 0.0
 #define DF_UX DF_UU.x
 #define DF_UY DF_UU.y
 #define DF_UZ DF_UU.z
+
+#define DF_AX DF_AA.x
+#define DF_AY DF_AA.y
+#define DF_AZ DF_AA.z
 #define AC_0 (0)
