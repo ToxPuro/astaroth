@@ -518,10 +518,17 @@ read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const S
 }
 
 void
-reduce_sum(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
-           const void* data)
+reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op, const size_t& axis,
+       const size_t& count, void* data)
 {
-    WARNING("TODO");
+    const auto coords{get_coords(parent_comm)};
+    const auto color{as<int>(coords[axis])};
+    const auto key{get_rank(parent_comm)};
+
+    MPI_Comm neighbors{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, key, &neighbors));
+    ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, data, count, etype, op, neighbors));
+    ERRCHK_MPI_API(MPI_Comm_free(&neighbors));
 }
 
 } // namespace ac::mpi

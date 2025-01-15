@@ -114,9 +114,9 @@ main()
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 #endif
 
-        benchmark();
+        // benchmark();
 
-        const Shape global_nn{4, 4};
+        const Shape global_nn{4, 4, 4};
         MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
         const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
         const Shape local_nn{global_nn / decomp};
@@ -257,6 +257,30 @@ main()
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         PRINT_LOG("Should be arange");
         hin.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+
+        // Test reductions
+        // std::cout << "decomposition: " << ac::mpi::get_decomposition(cart_comm) << std::endl;
+        std::vector<int> buf(10);
+        // std::iota(buf.begin(), buf.end(), as<size_t>(ac::mpi::get_rank(cart_comm)) * buf.size());
+        std::fill(buf.begin(), buf.end(), ac::mpi::get_rank(cart_comm));
+
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        PRINT_LOG("Reduce result before");
+        std::cout << ac::mpi::get_coords(cart_comm) << "{ ";
+        for (const auto& elem : buf)
+            std::cout << elem << " ";
+        std::cout << "}" << std::endl;
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+
+        ac::mpi::reduce(cart_comm, ac::mpi::get_dtype<int>(), MPI_SUM, 0, buf.size(), buf.data());
+
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        PRINT_LOG("Reduce result after");
+        std::cout << "{ ";
+        for (const auto& elem : buf)
+            std::cout << elem << " ";
+        std::cout << "}" << std::endl;
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 #endif
 
