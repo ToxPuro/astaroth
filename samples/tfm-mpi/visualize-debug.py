@@ -44,7 +44,7 @@ import glob
 
 nn = np.array((32, 32, 32))
 
-files = glob.glob("../../build/debug*00002*.mesh")
+files = glob.glob("../../build/debug*000004*.mesh")
 # files = glob.glob(f'../../build/test.mesh')
 files.sort()
 for file in files:
@@ -81,6 +81,34 @@ for file in files:
     arr = arr.reshape(mm)
 
     plt.imshow(arr[int(nn[0]/2), :, :], vmin=0, vmax=nprocs)
+    # plt.imshow(arr[0, :, :], vmin=0, vmax=nprocs)
+    plt.colorbar()
+    plt.title(file)
+    # plt.colorbar()
+    plt.show()
+
+# %%
+# Plot distributed
+import matplotlib.pyplot as plt
+import numpy as np
+import glob
+
+nn = np.array((16,16,16))
+rr = np.array((3,3,3))
+mm = 2*rr + nn
+
+files = glob.glob("../../build/proc-0-*00004*TF_a*_x*.mesh")
+# files = glob.glob(f'../../build/test.mesh')
+files.sort()
+for file in files:
+    arr = np.fromfile(
+        file,
+        dtype=np.double,
+    )
+    arr = arr.reshape(mm)
+
+    plt.imshow(arr[int(nn[0]/2), :, :])
+    # plt.imshow(arr[0, :, :], vmin=0, vmax=nprocs)
     plt.colorbar()
     plt.title(file)
     # plt.colorbar()
@@ -112,7 +140,7 @@ fig.set_figheight(15)
 fig.set_figwidth(20)
 
 # for step in range(0, 10+1):
-step = 0
+step = 5
 files = glob.glob(f"../../build/debug-step-{str(step).zfill(12)}-tfm-*.profile")
 files.sort()
 print(files)
