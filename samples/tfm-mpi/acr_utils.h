@@ -13,8 +13,6 @@
         }                                                                                          \
     } while (0)
 
-enum class BufferGroup { Input, Output };
-
 namespace acr {
 
 int get(const AcMeshInfo& info, const AcIntParam& param);
