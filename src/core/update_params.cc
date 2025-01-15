@@ -122,6 +122,7 @@ acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
 	config[AC_nlocal].x < get_device_prop().warpSize ? config[AC_nlocal].x 
 						    : ceil_div(config[AC_nlocal].x,get_device_prop().warpSize);
     push_val(AC_reduction_tile_dimensions,tile_dims);
+    push_val(AC_nlocal_max_dim,max(config[AC_nlocal]));
     
 
     return AC_SUCCESS;

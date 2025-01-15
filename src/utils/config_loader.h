@@ -179,6 +179,10 @@ parse_intparam(const char* value)
 				config->run_consts.config.LOWER_CASE##_arrays[idx] = dst; \
 				config->run_consts.is_loaded.LOWER_CASE##_arrays[idx] = true; \
 			} \
+			else \
+			{ \
+				config->params.arrays.LOWER_CASE##_arrays[idx] = dst; \
+			} \
 		} \
 	}
 

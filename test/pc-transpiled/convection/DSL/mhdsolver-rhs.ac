@@ -10,6 +10,7 @@ const int NGHOST_VAL = 3
 Kernel twopass_solve_intermediate(){
   #include "static_var_declares.h"
   #include "df_declares.h"
+  real max_hdiff = 0.0
   real ac_transformed_pencil_interdependency
   real ac_transformed_pencil_among
   real ac_transformed_pencil_by
@@ -1563,15 +1564,15 @@ Kernel twopass_solve_intermediate(){
         tmp3_13_14_15_100=value(F_UVEC)
         if (AC_lrelativistic__mod__hydro) {
           cs201_13_14_15_100=AC_cs20__mod__equationofstate+1.
-          tmp_rho_13_14_15_100=value(F_RHO)
+          tmp_rho_13_14_15_100=value(Field(AC_irho__mod__cdata-1))
           if (!AC_lhiggsless_old__mod__hydro && AC_lhiggsless__mod__hydro) {
-            if(AC_t__mod__cdata < value(F_HLESS)) {
+            if(AC_t__mod__cdata < value(Field(AC_ihless__mod__hydro-1))) {
               tmp_rho_13_14_15_100=tmp_rho_13_14_15_100-AC_eps_hless__mod__hydro
             }
           }
           if (AC_lmagnetic__mod__cparam) {
             if (AC_full_3d__mod__hydro) {
-              dd_13_14_15_100=(value(F_RHO)-0.5*AC_b_ext2__mod__magnetic)/(1.-0.25/value(F_LORENTZ))+AC_b_ext2__mod__magnetic
+              dd_13_14_15_100=(value(Field(AC_irho__mod__cdata-1))-0.5*AC_b_ext2__mod__magnetic)/(1.-0.25/value(Field(AC_ilorentz__mod__cdata-1)))+AC_b_ext2__mod__magnetic
               bx_5_13_14_15_100=ac_transformed_pencil_bb.x
               by_5_13_14_15_100=ac_transformed_pencil_bb.y
               bz_5_13_14_15_100=ac_transformed_pencil_bb.z
@@ -1591,17 +1592,17 @@ Kernel twopass_solve_intermediate(){
               ac_transformed_pencil_uu = tmp33_13_14_15_100*tmp3_13_14_15_100
             }
             else {
-              tmp_13_14_15_100=1./((value(F_RHO)-0.5*AC_b_ext2__mod__magnetic)/(1.-0.25/value(F_LORENTZ))+AC_b_ext2__mod__magnetic)
+              tmp_13_14_15_100=1./((value(Field(AC_irho__mod__cdata-1))-0.5*AC_b_ext2__mod__magnetic)/(1.-0.25/value(Field(AC_ilorentz__mod__cdata-1)))+AC_b_ext2__mod__magnetic)
               ac_transformed_pencil_uu = tmp_13_14_15_100*tmp3_13_14_15_100
             }
           }
           else {
-            tmp_13_14_15_100=1./(tmp_rho_13_14_15_100/(1.-0.25/value(F_LORENTZ)))
+            tmp_13_14_15_100=1./(tmp_rho_13_14_15_100/(1.-0.25/value(Field(AC_ilorentz__mod__cdata-1))))
             ac_transformed_pencil_uu = tmp_13_14_15_100*tmp3_13_14_15_100
           }
         }
         else {
-          ac_transformed_pencil_rho1=1./value(F_RHO)
+          ac_transformed_pencil_rho1=1./value(Field(AC_irho__mod__cdata-1))
           ac_transformed_pencil_uu = ac_transformed_pencil_rho1*tmp3_13_14_15_100
         }
       }
@@ -1926,10 +1927,10 @@ Kernel twopass_solve_intermediate(){
     }
     if (AC_lconservative__mod__hydro) {
       if (AC_ilorentz__mod__cdata != 0) {
-        ac_transformed_pencil_lorentz = value(F_LORENTZ)
+        ac_transformed_pencil_lorentz = value(Field(AC_ilorentz__mod__cdata-1))
       }
       if (!AC_lhiggsless_old__mod__hydro && AC_lhiggsless__mod__hydro) {
-        ac_transformed_pencil_hless = value(F_HLESS)
+        ac_transformed_pencil_hless = value(Field(AC_ihless__mod__hydro-1))
       }
     }
   }
@@ -1950,7 +1951,7 @@ Kernel twopass_solve_intermediate(){
     }
   }
   if (AC_ldensity_nolog__mod__cdata) {
-    ac_transformed_pencil_rho=value(F_RHO)
+    ac_transformed_pencil_rho=value(Field(AC_irho__mod__cdata-1))
     if (AC_lreference_state__mod__cdata) {
       ac_transformed_pencil_rho=ac_transformed_pencil_rho+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
     }
@@ -1973,7 +1974,7 @@ Kernel twopass_solve_intermediate(){
     }
     if (AC_lpencil__mod__cdata[AC_i_ugrho__mod__cparam-1]) {
       ac_transformed_pencil_ugrho = dot(ac_transformed_pencil_uu,ac_transformed_pencil_grho)
-      if (AC_lupw_rho__mod__density) ac_transformed_pencil_ugrho = ac_transformed_pencil_ugrho - del6_upwd(Field(AC_ilnrho__mod__cdata-1))
+      if (AC_lupw_rho__mod__density) ac_transformed_pencil_ugrho = ac_transformed_pencil_ugrho - dot(abs(ac_transformed_pencil_uu),gradient_upwd(Field(AC_ilnrho__mod__cdata-1)))
     }
     if (AC_lpencil__mod__cdata[AC_i_glnrho2__mod__cparam-1]) {
       ac_transformed_pencil_glnrho2 = dot(ac_transformed_pencil_glnrho,ac_transformed_pencil_glnrho)
@@ -2085,9 +2086,9 @@ Kernel twopass_solve_intermediate(){
     }
   }
   else {
-    ac_transformed_pencil_lnrho=value(F_LNRHO)
+    ac_transformed_pencil_lnrho=value(Field(AC_ilnrho__mod__cdata-1))
     if (AC_lpencil__mod__cdata[AC_i_rho1__mod__cparam-1]) {
-      ac_transformed_pencil_rho1=exp(-value(F_LNRHO))
+      ac_transformed_pencil_rho1=exp(-value(Field(AC_ilnrho__mod__cdata-1)))
     }
     if (AC_lpencil__mod__cdata[AC_i_rho__mod__cparam-1]) {
       ac_transformed_pencil_rho=1.0/ac_transformed_pencil_rho1
@@ -2103,7 +2104,7 @@ Kernel twopass_solve_intermediate(){
     if (AC_lpencil__mod__cdata[AC_i_uglnrho__mod__cparam-1]) {
       if (AC_lupw_lnrho__mod__density) {
         ac_transformed_pencil_uglnrho = dot(ac_transformed_pencil_uu,ac_transformed_pencil_glnrho)
-        if (AC_lupw_lnrho__mod__density) ac_transformed_pencil_uglnrho = ac_transformed_pencil_uglnrho - del6_upwd(Field(AC_ilnrho__mod__cdata-1))
+        if (AC_lupw_lnrho__mod__density) ac_transformed_pencil_uglnrho = ac_transformed_pencil_uglnrho - dot(abs(ac_transformed_pencil_uu),gradient_upwd(Field(AC_ilnrho__mod__cdata-1)))
       }
       else {
         ac_transformed_pencil_uglnrho = dot(ac_transformed_pencil_uu,ac_transformed_pencil_glnrho)
@@ -2268,7 +2269,7 @@ Kernel twopass_solve_intermediate(){
     }
     else {
       if (AC_lpencil__mod__cdata[AC_i_ss__mod__cparam-1]) {
-        ac_transformed_pencil_ss=value(F_EOSVAR2)
+        ac_transformed_pencil_ss=value(Field(AC_ieosvar2__mod__equationofstate-1))
         if (AC_lreference_state__mod__cdata) {
           ac_transformed_pencil_ss=ac_transformed_pencil_ss+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
         }
@@ -2375,7 +2376,7 @@ Kernel twopass_solve_intermediate(){
     }
     else {
       if (AC_lpencil__mod__cdata[AC_i_lntt__mod__cparam-1]) {
-        ac_transformed_pencil_lntt=value(F_EOSVAR2)
+        ac_transformed_pencil_lntt=value(Field(AC_ieosvar2__mod__equationofstate-1))
       }
       if (AC_lpencil__mod__cdata[AC_i_glntt__mod__cparam-1]) {
         ac_transformed_pencil_glntt = gradient(Field(AC_ieosvar2__mod__equationofstate-1))
@@ -2433,16 +2434,16 @@ Kernel twopass_solve_intermediate(){
   }
   else if(AC_ieosvars__mod__equationofstate == AC_ilnrho_tt__mod__equationofstate || AC_ieosvars__mod__equationofstate == AC_irho_tt__mod__equationofstate) {
     if (AC_lpencil__mod__cdata[AC_i_tt__mod__cparam-1]) {
-      ac_transformed_pencil_tt=value(F_EOSVAR2)
+      ac_transformed_pencil_tt=value(Field(AC_ieosvar2__mod__equationofstate-1))
     }
     if (AC_lpencil__mod__cdata[AC_i_tt1__mod__cparam-1] || AC_lpencil__mod__cdata[AC_i_hlntt__mod__cparam-1]) {
-      ac_transformed_pencil_tt1=1/value(F_EOSVAR2)
+      ac_transformed_pencil_tt1=1/value(Field(AC_ieosvar2__mod__equationofstate-1))
     }
     if (AC_lpencil__mod__cdata[AC_i_lntt__mod__cparam-1] || AC_lpencil__mod__cdata[AC_i_ss__mod__cparam-1] || AC_lpencil__mod__cdata[AC_i_ee__mod__cparam-1]) {
-      ac_transformed_pencil_lntt=log(value(F_EOSVAR2))
+      ac_transformed_pencil_lntt=log(value(Field(AC_ieosvar2__mod__equationofstate-1)))
     }
     if (AC_lpencil__mod__cdata[AC_i_cs2__mod__cparam-1]) {
-      ac_transformed_pencil_cs2=AC_cp__mod__equationofstate*AC_gamma_m1__mod__equationofstate*value(F_EOSVAR2)
+      ac_transformed_pencil_cs2=AC_cp__mod__equationofstate*AC_gamma_m1__mod__equationofstate*value(Field(AC_ieosvar2__mod__equationofstate-1))
     }
     if (AC_lpencil__mod__cdata[AC_i_gtt__mod__cparam-1]) {
       ac_transformed_pencil_gtt = gradient(Field(AC_ieosvar2__mod__equationofstate-1))
@@ -2538,7 +2539,7 @@ Kernel twopass_solve_intermediate(){
     }
     else if (AC_leos_localisothermal__mod__equationofstate) {
       if (AC_lpencil__mod__cdata[AC_i_cs2__mod__cparam-1]) {
-        ac_transformed_pencil_cs2=value(F_GLOBAL_CS2)
+        ac_transformed_pencil_cs2=value(Field(AC_iglobal_cs2__mod__equationofstate-1))
       }
       if (AC_lpencil__mod__cdata[AC_i_glntt__mod__cparam-1]) {
         ac_transformed_pencil_glntt=value(F_GLOBAL_GLNTVEC)
@@ -2553,22 +2554,22 @@ Kernel twopass_solve_intermediate(){
   else if(AC_ieosvars__mod__equationofstate == AC_ipp_ss__mod__equationofstate) {
     if (AC_lanelastic__mod__cparam) {
       if (AC_lanelastic_lin__mod__equationofstate) {
-        ac_transformed_pencil_pp=value(F_PP)
-        ac_transformed_pencil_ss=value(F_SS)
-        ac_transformed_pencil_ttb=AC_cs20__mod__equationofstate*AC_cp1__mod__equationofstate*exp(AC_gamma__mod__equationofstate*value(F_SS_B)*AC_cp1__mod__equationofstate+AC_gamma_m1__mod__equationofstate*ac_transformed_pencil_lnrho)/AC_gamma_m1__mod__equationofstate
+        ac_transformed_pencil_pp=value(Field(AC_ipp__mod__cdata-1))
+        ac_transformed_pencil_ss=value(Field(AC_iss__mod__cdata-1))
+        ac_transformed_pencil_ttb=AC_cs20__mod__equationofstate*AC_cp1__mod__equationofstate*exp(AC_gamma__mod__equationofstate*value(Field(AC_iss_b__mod__cdata-1))*AC_cp1__mod__equationofstate+AC_gamma_m1__mod__equationofstate*ac_transformed_pencil_lnrho)/AC_gamma_m1__mod__equationofstate
         ac_transformed_pencil_cs2=AC_cp__mod__equationofstate*ac_transformed_pencil_ttb*AC_gamma_m1__mod__equationofstate
         ac_transformed_pencil_tt1=1./ac_transformed_pencil_ttb
-        ac_transformed_pencil_rho_anel=(value(F_PP)/(value(F_RHO_B)*ac_transformed_pencil_cs2) - value(F_SS)*AC_cp1__mod__equationofstate)
+        ac_transformed_pencil_rho_anel=(value(Field(AC_ipp__mod__cdata-1))/(value(Field(AC_irho_b__mod__cdata-1))*ac_transformed_pencil_cs2) - value(Field(AC_iss__mod__cdata-1))*AC_cp1__mod__equationofstate)
       }
       else {
         if (AC_lpencil__mod__cdata[AC_i_pp__mod__cparam-1]) {
-          ac_transformed_pencil_pp=value(F_PP)
+          ac_transformed_pencil_pp=value(Field(AC_ipp__mod__cdata-1))
         }
         if (AC_lpencil__mod__cdata[AC_i_ss__mod__cparam-1]) {
-          ac_transformed_pencil_ss=value(F_SS)
+          ac_transformed_pencil_ss=value(Field(AC_iss__mod__cdata-1))
         }
         if (AC_lpencil__mod__cdata[AC_i_rho__mod__cparam-1]) {
-          ac_transformed_pencil_rho=value(F_RHO)
+          ac_transformed_pencil_rho=value(Field(AC_irho__mod__cdata-1))
         }
         if (AC_lpencil__mod__cdata[AC_i_lnrho__mod__cparam-1]) {
           ac_transformed_pencil_lnrho=log(ac_transformed_pencil_rho)
@@ -2647,11 +2648,11 @@ Kernel twopass_solve_intermediate(){
     else if (AC_leos_isothermal__mod__equationofstate) {
       if (AC_lanelastic__mod__cparam) {
         if (AC_lanelastic_lin__mod__equationofstate) {
-          ac_transformed_pencil_pp=value(F_PP)
-          ac_transformed_pencil_rho_anel=value(F_PP)/(value(F_RHO_B)*AC_cs20__mod__equationofstate)
+          ac_transformed_pencil_pp=value(Field(AC_ipp__mod__cdata-1))
+          ac_transformed_pencil_rho_anel=value(Field(AC_ipp__mod__cdata-1))/(value(Field(AC_irho_b__mod__cdata-1))*AC_cs20__mod__equationofstate)
         }
         else {
-          ac_transformed_pencil_pp=value(F_PP)
+          ac_transformed_pencil_pp=value(Field(AC_ipp__mod__cdata-1))
         }
       }
       else {
@@ -2703,7 +2704,7 @@ Kernel twopass_solve_intermediate(){
   else if(AC_ieosvars__mod__equationofstate == AC_irho_eth__mod__equationofstate || AC_ieosvars__mod__equationofstate == AC_ilnrho_eth__mod__equationofstate) {
     if (AC_lstratz__mod__cdata) {
       if (AC_lpencil__mod__cdata[AC_i_eths__mod__cparam-1]) {
-        ac_transformed_pencil_eths = 1.0 + value(F_ETH)
+        ac_transformed_pencil_eths = 1.0 + value(Field(AC_ieth__mod__cdata-1))
       }
       if (AC_lpencil__mod__cdata[AC_i_geths__mod__cparam-1]) {
         ac_transformed_pencil_geths = gradient(Field(AC_ieth__mod__cdata-1))
@@ -2714,7 +2715,7 @@ Kernel twopass_solve_intermediate(){
     }
     else {
       if (AC_lpencil__mod__cdata[AC_i_eth__mod__cparam-1]) {
-        ac_transformed_pencil_eth = value(F_ETH)
+        ac_transformed_pencil_eth = value(Field(AC_ieth__mod__cdata-1))
       }
       if (AC_lpencil__mod__cdata[AC_i_geth__mod__cparam-1]) {
         ac_transformed_pencil_geth = gradient(Field(AC_ieth__mod__cdata-1))
@@ -2773,14 +2774,14 @@ Kernel twopass_solve_intermediate(){
   }
   if (AC_lpencil__mod__cdata[AC_i_ugss__mod__cparam-1]) {
     ac_transformed_pencil_ugss = dot(ac_transformed_pencil_uu,ac_transformed_pencil_gss)
-    if (AC_lupw_ss__mod__energy) ac_transformed_pencil_ugss = ac_transformed_pencil_ugss - del6_upwd(Field(AC_iss__mod__cdata-1))
+    if (AC_lupw_ss__mod__energy) ac_transformed_pencil_ugss = ac_transformed_pencil_ugss - dot(abs(ac_transformed_pencil_uu),gradient_upwd(Field(AC_iss__mod__cdata-1)))
     if (AC_lreference_state__mod__cdata) {
       ac_transformed_pencil_ugss = ac_transformed_pencil_ugss + ac_transformed_pencil_uu.x*AC_reference_state__mod__density[vertexIdx.x][AC_iref_gs__mod__cparam-1]
     }
   }
   if (AC_lpencil__mod__cdata[AC_i_uglntt__mod__cparam-1]) {
     ac_transformed_pencil_uglntt = dot(ac_transformed_pencil_uu,ac_transformed_pencil_glntt)
-    if (AC_lupw_ss__mod__energy) ac_transformed_pencil_uglntt = ac_transformed_pencil_uglntt - del6_upwd(Field(AC_iss__mod__cdata-1))
+    if (AC_lupw_ss__mod__energy) ac_transformed_pencil_uglntt = ac_transformed_pencil_uglntt - dot(abs(ac_transformed_pencil_uu),gradient_upwd(Field(AC_iss__mod__cdata-1)))
   }
   if (AC_lpencil__mod__cdata[AC_i_sglntt__mod__cparam-1]) {
     ac_transformed_pencil_sglntt = ac_transformed_pencil_sij*ac_transformed_pencil_glntt
@@ -2814,10 +2815,10 @@ Kernel twopass_solve_intermediate(){
     }
   }
   if (AC_lpencil__mod__cdata[AC_i_initlnrho__mod__cparam-1] && AC_iglobal_lnrho0__mod__cdata!=0) {
-    ac_transformed_pencil_initlnrho=value(F_GLOBAL_LNRHO0)
+    ac_transformed_pencil_initlnrho=value(Field(AC_iglobal_lnrho0__mod__cdata-1))
   }
   if (AC_lpencil__mod__cdata[AC_i_initss__mod__cparam-1] && AC_iglobal_ss0__mod__cdata!=0) {
-    ac_transformed_pencil_initss=value(F_GLOBAL_SS0)
+    ac_transformed_pencil_initss=value(Field(AC_iglobal_ss0__mod__cdata-1))
   }
   if (AC_lpencil__mod__cdata[AC_i_uuadvec_gss__mod__cparam-1]) {
     ac_transformed_pencil_uuadvec_gss = dot(ac_transformed_pencil_uu_advec,ac_transformed_pencil_gss)
@@ -3252,7 +3253,7 @@ Kernel twopass_solve_intermediate(){
       }
       tmp4_66_100    = AC_y__mod__cdata[AC_m__mod__cdata-1]
       step_vector_return_value_49_66_100 = 0.5*(1+tanh((tmp4_66_100-AC_xyz1__mod__cdata.y-3*AC_dynu__mod__viscosity)/(AC_dynu__mod__viscosity+AC_tini__mod__cparam)))
-      step_vector_return_value_50_66_100 = 0.5*(1+tanh((tmp4_66_100-AC_xyz0__mod__cdata.y+3*AC_dynu__mod__viscosity)/(AC_dynu__mod__viscosity+AC_tini__mod__cparam)))
+      step_vector_return_value_50_66_100 = 0.5*(1+tanh((tmp4_66_100-AC_xyz0__mod__cdata.y+3*AC_dynu__mod__viscosity)/(-AC_dynu__mod__viscosity+AC_tini__mod__cparam)))
       prof_66_100    =     step_vector_return_value_49_66_100 +     step_vector_return_value_50_66_100
       arg_51_66_100 = abs((tmp4_66_100-AC_xyz1__mod__cdata.y-3*AC_dynu__mod__viscosity)/(AC_dynu__mod__viscosity+AC_tini__mod__cparam))
       if (abs(arg_51_66_100)>=8.)  {
@@ -3261,12 +3262,12 @@ Kernel twopass_solve_intermediate(){
       else {
         der_step_return_value_51_66_100 = 0.5/(AC_dynu__mod__viscosity*cosh(arg_51_66_100)*cosh(arg_51_66_100))
       }
-      arg_52_66_100 = abs((tmp4_66_100-AC_xyz0__mod__cdata.y+3*AC_dynu__mod__viscosity)/(AC_dynu__mod__viscosity+AC_tini__mod__cparam))
+      arg_52_66_100 = abs((tmp4_66_100-AC_xyz0__mod__cdata.y+3*AC_dynu__mod__viscosity)/(-AC_dynu__mod__viscosity+AC_tini__mod__cparam))
       if (abs(arg_52_66_100)>=8.)  {
-        der_step_return_value_52_66_100 = 2./AC_dynu__mod__viscosity*exp(-2.*abs(arg_52_66_100))
+        der_step_return_value_52_66_100 = 2./-AC_dynu__mod__viscosity*exp(-2.*abs(arg_52_66_100))
       }
       else {
-        der_step_return_value_52_66_100 = 0.5/(AC_dynu__mod__viscosity*cosh(arg_52_66_100)*cosh(arg_52_66_100))
+        der_step_return_value_52_66_100 = 0.5/(-AC_dynu__mod__viscosity*cosh(arg_52_66_100)*cosh(arg_52_66_100))
       }
       derprof_66_100 = der_step_return_value_51_66_100 + der_step_return_value_52_66_100
       pnu__mod__viscosity  = AC_nu__mod__viscosity + (AC_nu__mod__viscosity*(AC_nu_jump__mod__viscosity-1.))*prof_66_100
@@ -3299,16 +3300,16 @@ Kernel twopass_solve_intermediate(){
       }
     }
     if (AC_lvisc_nu_prof__mod__viscosity) {
-      step_vector_return_value_53_66_100 = 0.5*(1+tanh((ac_transformed_pencil_z_mn-AC_znu__mod__viscosity)/(AC_widthnu__mod__viscosity+AC_tini__mod__cparam)))
+      step_vector_return_value_53_66_100 = 0.5*(1+tanh((ac_transformed_pencil_z_mn-AC_znu__mod__viscosity)/(-AC_widthnu__mod__viscosity+AC_tini__mod__cparam)))
       pnu__mod__viscosity = AC_nu__mod__viscosity + (AC_nu__mod__viscosity*(AC_nu_jump__mod__viscosity-1.))*step_vector_return_value_53_66_100
       gradnu_66_100.x = 0.
       gradnu_66_100.y = 0.
-      arg_54_66_100 = abs((ac_transformed_pencil_z_mn-AC_znu__mod__viscosity)/(AC_widthnu__mod__viscosity+AC_tini__mod__cparam))
+      arg_54_66_100 = abs((ac_transformed_pencil_z_mn-AC_znu__mod__viscosity)/(-AC_widthnu__mod__viscosity+AC_tini__mod__cparam))
       if (abs(arg_54_66_100)>=8.)  {
-        der_step_return_value_54_66_100 = 2./AC_widthnu__mod__viscosity*exp(-2.*abs(arg_54_66_100))
+        der_step_return_value_54_66_100 = 2./-AC_widthnu__mod__viscosity*exp(-2.*abs(arg_54_66_100))
       }
       else {
-        der_step_return_value_54_66_100 = 0.5/(AC_widthnu__mod__viscosity*cosh(arg_54_66_100)*cosh(arg_54_66_100))
+        der_step_return_value_54_66_100 = 0.5/(-AC_widthnu__mod__viscosity*cosh(arg_54_66_100)*cosh(arg_54_66_100))
       }
       gradnu_66_100.z = (AC_nu__mod__viscosity*(AC_nu_jump__mod__viscosity-1.))*der_step_return_value_54_66_100
       sgradnu_66_100 = ac_transformed_pencil_sij*gradnu_66_100
@@ -3337,16 +3338,16 @@ Kernel twopass_solve_intermediate(){
       }
     }
     if (AC_lvisc_nu_shock_profz__mod__viscosity) {
-      step_vector_return_value_56_66_100 = 0.5*(1+tanh((ac_transformed_pencil_z_mn-AC_znu_shock__mod__viscosity)/(AC_widthnu_shock__mod__viscosity+AC_tini__mod__cparam)))
+      step_vector_return_value_56_66_100 = 0.5*(1+tanh((ac_transformed_pencil_z_mn-AC_znu_shock__mod__viscosity)/(-AC_widthnu_shock__mod__viscosity+AC_tini__mod__cparam)))
       pnu_shock_66_100 = AC_nu_shock__mod__viscosity + (AC_nu_shock__mod__viscosity*(AC_nu_jump_shock__mod__viscosity-1.))*step_vector_return_value_56_66_100
       gradnu_shock_66_100.x = 0.
       gradnu_shock_66_100.y = 0.
-      arg_57_66_100 = abs((ac_transformed_pencil_z_mn-AC_znu_shock__mod__viscosity)/(AC_widthnu_shock__mod__viscosity+AC_tini__mod__cparam))
+      arg_57_66_100 = abs((ac_transformed_pencil_z_mn-AC_znu_shock__mod__viscosity)/(-AC_widthnu_shock__mod__viscosity+AC_tini__mod__cparam))
       if (abs(arg_57_66_100)>=8.)  {
-        der_step_return_value_57_66_100 = 2./AC_widthnu_shock__mod__viscosity*exp(-2.*abs(arg_57_66_100))
+        der_step_return_value_57_66_100 = 2./-AC_widthnu_shock__mod__viscosity*exp(-2.*abs(arg_57_66_100))
       }
       else {
-        der_step_return_value_57_66_100 = 0.5/(AC_widthnu_shock__mod__viscosity*cosh(arg_57_66_100)*cosh(arg_57_66_100))
+        der_step_return_value_57_66_100 = 0.5/(-AC_widthnu_shock__mod__viscosity*cosh(arg_57_66_100)*cosh(arg_57_66_100))
       }
       gradnu_shock_66_100.z = (AC_nu_shock__mod__viscosity*(AC_nu_jump_shock__mod__viscosity-1.))*der_step_return_value_57_66_100
       tmp2_66_100 = ac_transformed_pencil_divu*ac_transformed_pencil_glnrho
@@ -3679,9 +3680,9 @@ Kernel twopass_solve_intermediate(){
       }
     }
     if (AC_lvisc_hyper3_mu_const_strict__mod__viscosity) {
-      ac_transformed_pencil_fvisc.x=ac_transformed_pencil_fvisc.x+AC_nu_hyper3__mod__viscosity*ac_transformed_pencil_rho1*value(Field(F_HYPVIS-1+1))
-      ac_transformed_pencil_fvisc.y=ac_transformed_pencil_fvisc.y+AC_nu_hyper3__mod__viscosity*ac_transformed_pencil_rho1*value(Field(F_HYPVIS-1+2))
-      ac_transformed_pencil_fvisc.z=ac_transformed_pencil_fvisc.z+AC_nu_hyper3__mod__viscosity*ac_transformed_pencil_rho1*value(Field(F_HYPVIS-1+3))
+      ac_transformed_pencil_fvisc.x=ac_transformed_pencil_fvisc.x+AC_nu_hyper3__mod__viscosity*ac_transformed_pencil_rho1*value(Field(AC_ihypvis__mod__cdata-1+1-1))
+      ac_transformed_pencil_fvisc.y=ac_transformed_pencil_fvisc.y+AC_nu_hyper3__mod__viscosity*ac_transformed_pencil_rho1*value(Field(AC_ihypvis__mod__cdata-1+2-1))
+      ac_transformed_pencil_fvisc.z=ac_transformed_pencil_fvisc.z+AC_nu_hyper3__mod__viscosity*ac_transformed_pencil_rho1*value(Field(AC_ihypvis__mod__cdata-1+3-1))
       if (ldiffus_total3_66_100) {
         ac_transformed_pencil_diffus_total3=ac_transformed_pencil_diffus_total3+AC_nu_hyper3__mod__viscosity
       }
@@ -3695,9 +3696,9 @@ Kernel twopass_solve_intermediate(){
       }
     }
     if (AC_lvisc_hyper3_nu_const_strict__mod__viscosity) {
-      ac_transformed_pencil_fvisc.x=ac_transformed_pencil_fvisc.x+AC_nu_hyper3__mod__viscosity*value(Field(F_HYPVIS-1+1))
-      ac_transformed_pencil_fvisc.y=ac_transformed_pencil_fvisc.y+AC_nu_hyper3__mod__viscosity*value(Field(F_HYPVIS-1+2))
-      ac_transformed_pencil_fvisc.z=ac_transformed_pencil_fvisc.z+AC_nu_hyper3__mod__viscosity*value(Field(F_HYPVIS-1+3))
+      ac_transformed_pencil_fvisc.x=ac_transformed_pencil_fvisc.x+AC_nu_hyper3__mod__viscosity*value(Field(AC_ihypvis__mod__cdata-1+1-1))
+      ac_transformed_pencil_fvisc.y=ac_transformed_pencil_fvisc.y+AC_nu_hyper3__mod__viscosity*value(Field(AC_ihypvis__mod__cdata-1+2-1))
+      ac_transformed_pencil_fvisc.z=ac_transformed_pencil_fvisc.z+AC_nu_hyper3__mod__viscosity*value(Field(AC_ihypvis__mod__cdata-1+3-1))
       if (ldiffus_total3_66_100) {
         ac_transformed_pencil_diffus_total3=ac_transformed_pencil_diffus_total3+AC_nu_hyper3__mod__viscosity
       }
@@ -3761,7 +3762,7 @@ Kernel twopass_solve_intermediate(){
     }
     if (AC_lvisc_smag__mod__cdata) {
       if (AC_lnusmag_as_aux__mod__viscosity) {
-        ac_transformed_pencil_nu_smag=value(F_NUSMAG)
+        ac_transformed_pencil_nu_smag=value(Field(AC_inusmag__mod__cdata-1))
         gradnu_66_100 = gradient(Field(AC_inusmag__mod__cdata-1))
       }
       else {
@@ -3967,7 +3968,7 @@ Kernel twopass_solve_intermediate(){
       }
     }
     if (AC_lpencil__mod__cdata[AC_i_aps__mod__cparam-1]) {
-      ac_transformed_pencil_aps=value(F_AZ)*ac_transformed_pencil_rcyl_mn
+      ac_transformed_pencil_aps=value(Field(AC_iaz__mod__cdata-1))*ac_transformed_pencil_rcyl_mn
     }
     if (AC_lpencil__mod__cdata[AC_i_bb__mod__cparam-1]) {
       if (AC_lbb_as_comaux__mod__magnetic) {
@@ -4156,13 +4157,13 @@ Kernel twopass_solve_intermediate(){
           }
         }
         if (AC_iglobal_ext_bx__mod__cdata!=0) {
-          ac_transformed_pencil_bb.x=ac_transformed_pencil_bb.x+b_ext_81_82_100.y*value(F_GLOBAL_EXT_BX)+b_ext_81_82_100.x
+          ac_transformed_pencil_bb.x=ac_transformed_pencil_bb.x+b_ext_81_82_100.y*value(Field(AC_iglobal_ext_bx__mod__cdata-1))+b_ext_81_82_100.x
         }
         if (AC_iglobal_ext_by__mod__cdata!=0) {
-          ac_transformed_pencil_bb.y=ac_transformed_pencil_bb.y+b_ext_81_82_100.y*value(F_GLOBAL_EXT_BY)
+          ac_transformed_pencil_bb.y=ac_transformed_pencil_bb.y+b_ext_81_82_100.y*value(Field(AC_iglobal_ext_by__mod__cdata-1))
         }
         if (AC_iglobal_ext_bz__mod__cdata!=0) {
-          ac_transformed_pencil_bb.z=ac_transformed_pencil_bb.z+b_ext_81_82_100.y*value(F_GLOBAL_EXT_BZ)+b_ext_81_82_100.z
+          ac_transformed_pencil_bb.z=ac_transformed_pencil_bb.z+b_ext_81_82_100.y*value(Field(AC_iglobal_ext_bz__mod__cdata-1))+b_ext_81_82_100.z
         }
       }
     }
@@ -4378,13 +4379,13 @@ Kernel twopass_solve_intermediate(){
       }
     }
     if (AC_lpencil__mod__cdata[AC_i_exa__mod__cparam-1]) {
-      ac_transformed_pencil_exa = cross(ac_transformed_pencil_uxb+AC_eta__mod__magnetic*ac_transformed_pencil_jj,ac_transformed_pencil_aa)
+      ac_transformed_pencil_exa = cross(-ac_transformed_pencil_uxb+AC_eta__mod__magnetic*ac_transformed_pencil_jj,ac_transformed_pencil_aa)
     }
     if (AC_lpencil__mod__cdata[AC_i_exatotal__mod__cparam-1]) {
       tmp_81_82_100.x = eta_total__mod__magnetic*ac_transformed_pencil_jj.x
       tmp_81_82_100.y = eta_total__mod__magnetic*ac_transformed_pencil_jj.y
       tmp_81_82_100.z = eta_total__mod__magnetic*ac_transformed_pencil_jj.z
-      ac_transformed_pencil_exatotal = cross(ac_transformed_pencil_uxb+tmp_81_82_100,ac_transformed_pencil_aa)
+      ac_transformed_pencil_exatotal = cross(-ac_transformed_pencil_uxb+tmp_81_82_100,ac_transformed_pencil_aa)
     }
     if (AC_lpencil__mod__cdata[AC_i_j2__mod__cparam-1]) {
       ac_transformed_pencil_j2 = dot(ac_transformed_pencil_jj,ac_transformed_pencil_jj)
@@ -4625,7 +4626,7 @@ Kernel twopass_solve_intermediate(){
       ac_transformed_pencil_del6a = del6((Field3){Field(AC_iaa__mod__cdata-1), Field(AC_iaa__mod__cdata), Field(AC_iaa__mod__cdata+1)})
     }
     if (AC_lpencil__mod__cdata[AC_i_e3xa__mod__cparam-1]) {
-      ac_transformed_pencil_e3xa = cross(ac_transformed_pencil_uxb+AC_eta_hyper3__mod__magnetic*ac_transformed_pencil_del6a,ac_transformed_pencil_aa)
+      ac_transformed_pencil_e3xa = cross(-ac_transformed_pencil_uxb+AC_eta_hyper3__mod__magnetic*ac_transformed_pencil_del6a,ac_transformed_pencil_aa)
     }
     if (AC_lpencil__mod__cdata[AC_i_oxj__mod__cparam-1]) {
       ac_transformed_pencil_oxj = cross(ac_transformed_pencil_oo,ac_transformed_pencil_jj)
@@ -4658,7 +4659,7 @@ Kernel twopass_solve_intermediate(){
     }
     if (AC_lpencil__mod__cdata[AC_i_lam__mod__cparam-1]) {
       if (AC_lcoulomb__mod__magnetic) {
-        ac_transformed_pencil_lam=value(F_LAM)
+        ac_transformed_pencil_lam=value(Field(AC_ilam__mod__magnetic-1))
       }
       else {
       }
@@ -5097,14 +5098,14 @@ Kernel twopass_solve_intermediate(){
   if (AC_lboussinesq__mod__cparam && AC_ltemperature__mod__cparam) {
     if (AC_lsphere_in_a_box__mod__cdata) {
       ju_131=1+AC_iuu__mod__cdata-1
-      DF_U_131=DF_U_131 + ac_transformed_pencil_r_mn*AC_ra__mod__hydro*AC_pr__mod__hydro*value(F_TT)*ac_transformed_pencil_evr.x
+      DF_U_131=DF_U_131 + ac_transformed_pencil_r_mn*AC_ra__mod__hydro*AC_pr__mod__hydro*value(Field(AC_itt__mod__cdata-1))*ac_transformed_pencil_evr.x
       ju_131=2+AC_iuu__mod__cdata-1
-      DF_U_131=DF_U_131 + ac_transformed_pencil_r_mn*AC_ra__mod__hydro*AC_pr__mod__hydro*value(F_TT)*ac_transformed_pencil_evr.y
+      DF_U_131=DF_U_131 + ac_transformed_pencil_r_mn*AC_ra__mod__hydro*AC_pr__mod__hydro*value(Field(AC_itt__mod__cdata-1))*ac_transformed_pencil_evr.y
       ju_131=3+AC_iuu__mod__cdata-1
-      DF_U_131=DF_U_131 + ac_transformed_pencil_r_mn*AC_ra__mod__hydro*AC_pr__mod__hydro*value(F_TT)*ac_transformed_pencil_evr.z
+      DF_U_131=DF_U_131 + ac_transformed_pencil_r_mn*AC_ra__mod__hydro*AC_pr__mod__hydro*value(Field(AC_itt__mod__cdata-1))*ac_transformed_pencil_evr.z
     }
     else {
-      DF_UZ=DF_UZ+AC_ra__mod__hydro*AC_pr__mod__hydro*value(F_TT)
+      DF_UZ=DF_UZ+AC_ra__mod__hydro*AC_pr__mod__hydro*value(Field(AC_itt__mod__cdata-1))
     }
   }
   if (AC_lforcing_cont_uu__mod__hydro) {
@@ -5122,16 +5123,16 @@ Kernel twopass_solve_intermediate(){
     if (AC_dampuext__mod__hydro > 0.0  &&  AC_rdampext__mod__hydro != AC_impossible__mod__cparam) {
       step_vector_return_value_116_122_131 = 0.5*(1+tanh((ac_transformed_pencil_r_mn-AC_rdampext__mod__hydro)/(AC_wdamp__mod__hydro+AC_tini__mod__cparam)))
       pdamp_122_131 = step_vector_return_value_116_122_131
-      DF_UX = DF_UX - AC_dampuext__mod__hydro*pdamp_122_131*value(F_UX)
-      DF_UY = DF_UY - AC_dampuext__mod__hydro*pdamp_122_131*value(F_UY)
-      DF_UZ = DF_UZ - AC_dampuext__mod__hydro*pdamp_122_131*value(F_UZ)
+      DF_UX = DF_UX - AC_dampuext__mod__hydro*pdamp_122_131*value(Field(AC_iux__mod__cdata-1))
+      DF_UY = DF_UY - AC_dampuext__mod__hydro*pdamp_122_131*value(Field(AC_iuy__mod__cdata-1))
+      DF_UZ = DF_UZ - AC_dampuext__mod__hydro*pdamp_122_131*value(Field(AC_iuz__mod__cdata-1))
     }
     if (AC_dampuint__mod__hydro > 0.0  &&  AC_rdampint__mod__hydro != AC_impossible__mod__cparam) {
       step_vector_return_value_117_122_131 = 0.5*(1+tanh((ac_transformed_pencil_r_mn-AC_rdampint__mod__hydro)/(AC_wdamp__mod__hydro+AC_tini__mod__cparam)))
       pdamp_122_131 = 1 - step_vector_return_value_117_122_131
-      DF_UX = DF_UX - AC_dampuint__mod__hydro*pdamp_122_131*value(F_UX)
-      DF_UY = DF_UY - AC_dampuint__mod__hydro*pdamp_122_131*value(F_UY)
-      DF_UZ = DF_UZ - AC_dampuint__mod__hydro*pdamp_122_131*value(F_UZ)
+      DF_UX = DF_UX - AC_dampuint__mod__hydro*pdamp_122_131*value(Field(AC_iux__mod__cdata-1))
+      DF_UY = DF_UY - AC_dampuint__mod__hydro*pdamp_122_131*value(Field(AC_iuy__mod__cdata-1))
+      DF_UZ = DF_UZ - AC_dampuint__mod__hydro*pdamp_122_131*value(Field(AC_iuz__mod__cdata-1))
     }
     if (AC_lomega_int__mod__hydro) {
       if (AC_lcylinder_in_a_box__mod__cdata) {
@@ -5142,9 +5143,9 @@ Kernel twopass_solve_intermediate(){
         step_vector_return_value_119_122_131 = 0.5*(1+tanh((ac_transformed_pencil_r_mn-AC_rdampext__mod__hydro)/(AC_wdamp__mod__hydro+AC_tini__mod__cparam)))
         pdamp_122_131 = step_vector_return_value_119_122_131
       }
-      fext__mod__hydro.x=-AC_dampuext__mod__hydro*pdamp_122_131*value(F_UX)
-      fext__mod__hydro.y=-AC_dampuext__mod__hydro*pdamp_122_131*value(F_UY)
-      fext__mod__hydro.z=-AC_dampuext__mod__hydro*pdamp_122_131*value(F_UZ)
+      fext__mod__hydro.x=-AC_dampuext__mod__hydro*pdamp_122_131*value(Field(AC_iux__mod__cdata-1))
+      fext__mod__hydro.y=-AC_dampuext__mod__hydro*pdamp_122_131*value(Field(AC_iuy__mod__cdata-1))
+      fext__mod__hydro.z=-AC_dampuext__mod__hydro*pdamp_122_131*value(Field(AC_iuz__mod__cdata-1))
       DF_UVEC=DF_UVEC+fext__mod__hydro
       if (AC_dampuint__mod__hydro > 0.0) {
         if (AC_lcylinder_in_a_box__mod__cdata) {
@@ -5155,29 +5156,29 @@ Kernel twopass_solve_intermediate(){
           step_vector_return_value_121_122_131 = 0.5*(1+tanh((ac_transformed_pencil_r_mn-AC_rdampint__mod__hydro)/(AC_wdamp__mod__hydro+AC_tini__mod__cparam)))
           pdamp_122_131 = 1 - step_vector_return_value_121_122_131
         }
-        fint__mod__hydro.x=-AC_dampuint__mod__hydro*pdamp_122_131*(value(F_UX)+AC_y__mod__cdata[AC_m__mod__cdata-1]*AC_omega_int__mod__hydro)
-        fint__mod__hydro.y=-AC_dampuint__mod__hydro*pdamp_122_131*(value(F_UY)-AC_x__mod__cdata[vertexIdx.x]*AC_omega_int__mod__hydro)
-        fint__mod__hydro.z=-AC_dampuint__mod__hydro*pdamp_122_131*(value(F_UZ))
+        fint__mod__hydro.x=-AC_dampuint__mod__hydro*pdamp_122_131*(value(Field(AC_iux__mod__cdata-1))+AC_y__mod__cdata[AC_m__mod__cdata-1]*AC_omega_int__mod__hydro)
+        fint__mod__hydro.y=-AC_dampuint__mod__hydro*pdamp_122_131*(value(Field(AC_iuy__mod__cdata-1))-AC_x__mod__cdata[vertexIdx.x]*AC_omega_int__mod__hydro)
+        fint__mod__hydro.z=-AC_dampuint__mod__hydro*pdamp_122_131*(value(Field(AC_iuz__mod__cdata-1)))
         DF_UVEC=DF_UVEC+fint__mod__hydro
       }
     }
   }
   if (AC_tau_diffrot1__mod__hydro!=0.) {
     if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_bs04_string__mod__cparam) {
-      DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(F_UY)-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+      DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuy__mod__cdata-1))-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_bs04c_string__mod__cparam) {
-      DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(F_UY)-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+      DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuy__mod__cdata-1))-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_bs04c1_string__mod__cparam) {
-      DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(F_UY)-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+      DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuy__mod__cdata-1))-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_bs04m_string__mod__cparam) {
-      DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(F_UZ)-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp4__mod__hydro[AC_m__mod__cdata-1])
+      DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuz__mod__cdata-1))-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp4__mod__hydro[AC_m__mod__cdata-1])
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_hp09_string__mod__cparam) {
       if (!AC_lcalc_uumeanxz__mod__hydro) {
-        DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(F_UY)-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+        DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuy__mod__cdata-1))-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
       }
       else {
         DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(AC_uumxz__mod__hydro[vertexIdx.x][AC_n__mod__cdata-1][2-1]-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
@@ -5188,7 +5189,7 @@ Kernel twopass_solve_intermediate(){
         DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(AC_uumx__mod__hydro[vertexIdx.x][AC_iuy__mod__cdata-1]-AC_shearx__mod__hydro*AC_x__mod__cdata[vertexIdx.x])
       }
       else {
-        DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(F_UY)-AC_shearx__mod__hydro*AC_x__mod__cdata[vertexIdx.x])
+        DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuy__mod__cdata-1))-AC_shearx__mod__hydro*AC_x__mod__cdata[vertexIdx.x])
       }
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_solar_dc99_string__mod__cparam) {
@@ -5196,12 +5197,12 @@ Kernel twopass_solve_intermediate(){
         DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(AC_uumxy__mod__hydro[vertexIdx.x][AC_m__mod__cdata-1][3-1]-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp4__mod__hydro[AC_m__mod__cdata-1])
       }
       else {
-        DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(F_UZ)-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp4__mod__hydro[AC_m__mod__cdata-1])
+        DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuz__mod__cdata-1))-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp4__mod__hydro[AC_m__mod__cdata-1])
       }
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_vertical_shear_string__mod__cparam) {
       if (!AC_lcalc_uumean__mod__hydro) {
-        DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(F_UY)-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+        DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuy__mod__cdata-1))-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
       }
       else {
         DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(AC_uumz__mod__hydro[AC_n__mod__cdata-1][2-1]-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
@@ -5209,25 +5210,25 @@ Kernel twopass_solve_intermediate(){
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_vertical_compression_string__mod__cparam) {
       if (!AC_lcalc_uumean__mod__hydro) {
-        DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(F_UZ)-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+        DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuz__mod__cdata-1))-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
       }
       else {
         DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(AC_uumz__mod__hydro[AC_n__mod__cdata-1][3-1]-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
       }
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_remove_vertical_shear_string__mod__cparam) {
-      DF_UX=value(F_UX)-AC_uumz__mod__hydro[AC_n__mod__cdata-1][1-1]
-      DF_UY=value(F_UY)-AC_uumz__mod__hydro[AC_n__mod__cdata-1][2-1]
+      DF_UX=value(Field(AC_iux__mod__cdata-1))-AC_uumz__mod__hydro[AC_n__mod__cdata-1][1-1]
+      DF_UY=value(Field(AC_iuy__mod__cdata-1))-AC_uumz__mod__hydro[AC_n__mod__cdata-1][2-1]
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_vertical_shear_x_string__mod__cparam) {
-      DF_UX=DF_UX-AC_tau_diffrot1__mod__hydro*(value(F_UX)-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+      DF_UX=DF_UX-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iux__mod__cdata-1))-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_vertical_shear_x_sinz_string__mod__cparam) {
-      DF_UX=DF_UX-AC_tau_diffrot1__mod__hydro*(value(F_UX)-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+      DF_UX=DF_UX-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iux__mod__cdata-1))-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_vertical_shear_z_string__mod__cparam) {
       if (!AC_lcalc_uumean__mod__hydro) {
-        DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(F_UY)-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+        DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuy__mod__cdata-1))-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
       }
       else {
         DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(AC_uumz__mod__hydro[AC_n__mod__cdata-1][2-1]-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
@@ -5240,11 +5241,11 @@ Kernel twopass_solve_intermediate(){
       DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*(AC_uumxz__mod__hydro[vertexIdx.x][AC_n__mod__cdata-1][2-1]-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_tachocline_string__mod__cparam) {
-      DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*value(F_UZ)
+      DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*value(Field(AC_iuz__mod__cdata-1))
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_solar_simple_string__mod__cparam) {
       if (AC_lspherical_coords__mod__cdata || AC_lcartesian_coords__mod__cdata) {
-        DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(F_UZ)-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp4__mod__hydro[AC_m__mod__cdata-1])
+        DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuz__mod__cdata-1))-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL]*AC_prof_amp4__mod__hydro[AC_m__mod__cdata-1])
       }
       if (AC_ldiffrot_test__mod__hydro) {
         DF_UX = 0.
@@ -5255,11 +5256,11 @@ Kernel twopass_solve_intermediate(){
       }
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_radial_uniform_shear_string__mod__cparam) {
-      DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(F_UZ)-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL])
+      DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuz__mod__cdata-1))-AC_prof_amp1__mod__hydro[vertexIdx.x-NGHOST_VAL])
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_breeze_string__mod__cparam) {
       if (!AC_lcalc_uumean__mod__hydro) {
-        DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(F_UZ)-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+        DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuz__mod__cdata-1))-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
       }
       else {
         DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(AC_uumz__mod__hydro[AC_n__mod__cdata-1][3-1]-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
@@ -5267,7 +5268,7 @@ Kernel twopass_solve_intermediate(){
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_slow_wind_string__mod__cparam) {
       if (!AC_lcalc_uumean__mod__hydro) {
-        DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(F_UZ)-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
+        DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(value(Field(AC_iuz__mod__cdata-1))-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
       }
       else {
         DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*(AC_uumz__mod__hydro[AC_n__mod__cdata-1][3-1]-AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1])
@@ -5289,9 +5290,9 @@ Kernel twopass_solve_intermediate(){
       }
       else if (AC_lcartesian_coords__mod__cdata) {
         if (!AC_lcalc_uumeanz__mod__hydro) {
-          DF_UX=DF_UX-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*(value(F_UX)-0.)
-          DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*(value(F_UY)-0.)
-          DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*(value(F_UZ)-0.)
+          DF_UX=DF_UX-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*(value(Field(AC_iux__mod__cdata-1))-0.)
+          DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*(value(Field(AC_iuy__mod__cdata-1))-0.)
+          DF_UZ=DF_UZ-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*(value(Field(AC_iuz__mod__cdata-1))-0.)
         }
         else {
           DF_UX=DF_UX-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*(AC_uumz__mod__hydro[AC_n__mod__cdata-1][1-1]-0.)
@@ -5302,8 +5303,8 @@ Kernel twopass_solve_intermediate(){
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_damp_horiz_vel_string__mod__cparam) {
       if (AC_lcartesian_coords__mod__cdata) {
-        DF_UX=DF_UX-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*value(F_UX)
-        DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*value(F_UY)
+        DF_UX=DF_UX-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*value(Field(AC_iux__mod__cdata-1))
+        DF_UY=DF_UY-AC_tau_diffrot1__mod__hydro*AC_prof_amp3__mod__hydro[AC_n__mod__cdata-1]*value(Field(AC_iuy__mod__cdata-1))
       }
     }
     else if(AC_string_enum_uuprof__mod__hydro == AC_string_enum_latitudinal_shear_string__mod__cparam) {
@@ -5332,12 +5333,12 @@ Kernel twopass_solve_intermediate(){
   if (AC_velocity_ceiling__mod__hydro!=0.) {
     neg_velocity_ceiling_124_131 = -AC_velocity_ceiling__mod__hydro
     if (AC_velocity_ceiling__mod__hydro>0.0) {
-      DF_UX = set_min_val(value(F_UX),neg_velocity_ceiling_124_131)
-      DF_UX = set_max_val(value(F_UX),AC_velocity_ceiling__mod__hydro)
-      DF_UY = set_min_val(value(F_UY),neg_velocity_ceiling_124_131)
-      DF_UY = set_max_val(value(F_UY),AC_velocity_ceiling__mod__hydro)
-      DF_UZ = set_min_val(value(F_UZ),neg_velocity_ceiling_124_131)
-      DF_UZ = set_max_val(value(F_UZ),AC_velocity_ceiling__mod__hydro)
+      DF_UX = set_min_val(value(Field(AC_iux__mod__cdata-1)),neg_velocity_ceiling_124_131)
+      DF_UX = set_max_val(value(Field(AC_iux__mod__cdata-1)),AC_velocity_ceiling__mod__hydro)
+      DF_UY = set_min_val(value(Field(AC_iuy__mod__cdata-1)),neg_velocity_ceiling_124_131)
+      DF_UY = set_max_val(value(Field(AC_iuy__mod__cdata-1)),AC_velocity_ceiling__mod__hydro)
+      DF_UZ = set_min_val(value(Field(AC_iuz__mod__cdata-1)),neg_velocity_ceiling_124_131)
+      DF_UZ = set_max_val(value(Field(AC_iuz__mod__cdata-1)),AC_velocity_ceiling__mod__hydro)
     }
   }
   if (AC_ladv_der_as_aux__mod__cdata) {
@@ -5511,15 +5512,15 @@ Kernel twopass_solve_intermediate(){
         dlnrhodt_136_143=AC_fprofile_x__mod__density[vertexIdx.x-NGHOST_VAL]
       }
       else if(AC_string_enum_mass_source_profile__mod__density == AC_string_enum_const_string__mod__cparam) {
-        dlnrhodt_136_143=-AC_mass_source_tau1__mod__density*(value(F_LNRHO)-AC_lnrho0__mod__equationofstate)
+        dlnrhodt_136_143=-AC_mass_source_tau1__mod__density*(value(Field(AC_ilnrho__mod__cdata-1))-AC_lnrho0__mod__equationofstate)
       }
       else if(AC_string_enum_mass_source_profile__mod__density == AC_string_enum_cylindric_string__mod__cparam) {
         step_vector_return_value_134_136_143 = 0.5*(1+tanh((ac_transformed_pencil_rcyl_mn-AC_r_int__mod__cdata)/(AC_wdamp__mod__density+AC_tini__mod__cparam)))
         pdamp_136_143=1.-step_vector_return_value_134_136_143
-        dlnrhodt_136_143=-AC_damplnrho_int__mod__density*pdamp_136_143*(value(F_LNRHO)-AC_lnrho_int__mod__density)
+        dlnrhodt_136_143=-AC_damplnrho_int__mod__density*pdamp_136_143*(value(Field(AC_ilnrho__mod__cdata-1))-AC_lnrho_int__mod__density)
         step_vector_return_value_135_136_143 = 0.5*(1+tanh((ac_transformed_pencil_rcyl_mn-AC_r_ext__mod__cdata)/(AC_wdamp__mod__density+AC_tini__mod__cparam)))
         pdamp_136_143=step_vector_return_value_135_136_143
-        dlnrhodt_136_143=dlnrhodt_136_143-AC_damplnrho_ext__mod__density*pdamp_136_143*(value(F_LNRHO)-AC_lnrho_ext__mod__density)
+        dlnrhodt_136_143=dlnrhodt_136_143-AC_damplnrho_ext__mod__density*pdamp_136_143*(value(Field(AC_ilnrho__mod__cdata-1))-AC_lnrho_ext__mod__density)
       }
       else {
       }
@@ -5870,7 +5871,7 @@ Kernel twopass_solve_intermediate(){
         }
         else if (AC_lsphere_in_a_box__mod__cdata || AC_lcylinder_in_a_box__mod__cdata) {
           if (true && AC_lhcond_global__mod__energy) {
-            hcond__mod__energy = value(F_GLOBAL_HCOND)
+            hcond__mod__energy = value(Field(AC_iglobal_hcond__mod__energy-1))
             glhc_155_231= value(F_GLOBAL_GLHVEC)
           }
           else {
@@ -5882,12 +5883,12 @@ Kernel twopass_solve_intermediate(){
               r_mn_153_155_231=sqrt(AC_x__mod__cdata[vertexIdx.x]*AC_x__mod__cdata[vertexIdx.x]+AC_y__mod__cdata[AC_m__mod__cdata-1]*AC_y__mod__cdata[AC_m__mod__cdata-1]+AC_z__mod__cdata[AC_n__mod__cdata-1]*AC_z__mod__cdata[AC_n__mod__cdata-1])
               r_mn1_153_155_231=1./r_mn_153_155_231
             }
-            arg_148_153_155_231 = abs((r_mn_153_155_231-AC_r_bcz__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
+            arg_148_153_155_231 = abs((r_mn_153_155_231-AC_r_bcz__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam))
             if (abs(arg_148_153_155_231)>=8.)  {
-              der_step_return_value_148_153_155_231 = 2./AC_widthss__mod__energy*exp(-2.*abs(arg_148_153_155_231))
+              der_step_return_value_148_153_155_231 = 2./-AC_widthss__mod__energy*exp(-2.*abs(arg_148_153_155_231))
             }
             else {
-              der_step_return_value_148_153_155_231 = 0.5/(AC_widthss__mod__energy*cosh(arg_148_153_155_231)*cosh(arg_148_153_155_231))
+              der_step_return_value_148_153_155_231 = 0.5/(-AC_widthss__mod__energy*cosh(arg_148_153_155_231)*cosh(arg_148_153_155_231))
             }
             arg_149_153_155_231 = abs((r_mn_153_155_231-AC_r_ext__mod__cdata)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
             if (abs(arg_149_153_155_231)>=8.)  {
@@ -5905,7 +5906,7 @@ Kernel twopass_solve_intermediate(){
             else {
               glhc_155_231.z = hcond__mod__energy*AC_z__mod__cdata[AC_n__mod__cdata-1]*r_mn1_153_155_231
             }
-            step_vector_return_value_150_153_155_231 = 0.5*(1+tanh((r_mn_153_155_231-AC_r_bcz__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
+            step_vector_return_value_150_153_155_231 = 0.5*(1+tanh((r_mn_153_155_231-AC_r_bcz__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam)))
             step_vector_return_value_151_153_155_231 = 0.5*(1+tanh((r_mn_153_155_231-AC_r_ext__mod__cdata)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
             hcond__mod__energy = 1.+(AC_hcond1__mod__energy-1.)*step_vector_return_value_150_153_155_231  +(AC_hcond2__mod__energy-1.)*step_vector_return_value_151_153_155_231
             if (true) {
@@ -5968,7 +5969,7 @@ Kernel twopass_solve_intermediate(){
         }
         else if (AC_lsphere_in_a_box__mod__cdata) {
           if (true && AC_lhcond_global__mod__energy) {
-            chit_prof__mod__energy = value(F_GLOBAL_HCOND)
+            chit_prof__mod__energy = value(Field(AC_iglobal_hcond__mod__energy-1))
             gradchit_prof_155_231= value(F_GLOBAL_GLHVEC)
           }
           else {
@@ -5980,12 +5981,12 @@ Kernel twopass_solve_intermediate(){
               r_mn_154_155_231=sqrt(AC_x__mod__cdata[vertexIdx.x]*AC_x__mod__cdata[vertexIdx.x]+AC_y__mod__cdata[AC_m__mod__cdata-1]*AC_y__mod__cdata[AC_m__mod__cdata-1]+AC_z__mod__cdata[AC_n__mod__cdata-1]*AC_z__mod__cdata[AC_n__mod__cdata-1])
               r_mn1_154_155_231=1./r_mn_154_155_231
             }
-            arg_148_154_155_231 = abs((r_mn_154_155_231-AC_xbot__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
+            arg_148_154_155_231 = abs((r_mn_154_155_231-AC_xbot__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam))
             if (abs(arg_148_154_155_231)>=8.)  {
-              der_step_return_value_148_154_155_231 = 2./AC_widthss__mod__energy*exp(-2.*abs(arg_148_154_155_231))
+              der_step_return_value_148_154_155_231 = 2./-AC_widthss__mod__energy*exp(-2.*abs(arg_148_154_155_231))
             }
             else {
-              der_step_return_value_148_154_155_231 = 0.5/(AC_widthss__mod__energy*cosh(arg_148_154_155_231)*cosh(arg_148_154_155_231))
+              der_step_return_value_148_154_155_231 = 0.5/(-AC_widthss__mod__energy*cosh(arg_148_154_155_231)*cosh(arg_148_154_155_231))
             }
             arg_149_154_155_231 = abs((r_mn_154_155_231-AC_xtop__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
             if (abs(arg_149_154_155_231)>=8.)  {
@@ -6003,7 +6004,7 @@ Kernel twopass_solve_intermediate(){
             else {
               gradchit_prof_155_231.z = chit_prof__mod__energy*AC_z__mod__cdata[AC_n__mod__cdata-1]*r_mn1_154_155_231
             }
-            step_vector_return_value_150_154_155_231 = 0.5*(1+tanh((r_mn_154_155_231-AC_xbot__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
+            step_vector_return_value_150_154_155_231 = 0.5*(1+tanh((r_mn_154_155_231-AC_xbot__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam)))
             step_vector_return_value_151_154_155_231 = 0.5*(1+tanh((r_mn_154_155_231-AC_xtop__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
             chit_prof__mod__energy = 1.+(AC_chit_prof1__mod__energy-1.)*step_vector_return_value_150_154_155_231  +(AC_chit_prof2__mod__energy-1.)*step_vector_return_value_151_154_155_231
             if (false) {
@@ -6157,7 +6158,7 @@ Kernel twopass_solve_intermediate(){
         }
         else if (AC_lsphere_in_a_box__mod__cdata) {
           if (true && AC_lhcond_global__mod__energy) {
-            chit_prof__mod__energy = value(F_GLOBAL_HCOND)
+            chit_prof__mod__energy = value(Field(AC_iglobal_hcond__mod__energy-1))
             gradchit_prof_159_231= value(F_GLOBAL_GLHVEC)
           }
           else {
@@ -6169,12 +6170,12 @@ Kernel twopass_solve_intermediate(){
               r_mn_158_159_231=sqrt(AC_x__mod__cdata[vertexIdx.x]*AC_x__mod__cdata[vertexIdx.x]+AC_y__mod__cdata[AC_m__mod__cdata-1]*AC_y__mod__cdata[AC_m__mod__cdata-1]+AC_z__mod__cdata[AC_n__mod__cdata-1]*AC_z__mod__cdata[AC_n__mod__cdata-1])
               r_mn1_158_159_231=1./r_mn_158_159_231
             }
-            arg_148_158_159_231 = abs((r_mn_158_159_231-AC_xbot__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
+            arg_148_158_159_231 = abs((r_mn_158_159_231-AC_xbot__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam))
             if (abs(arg_148_158_159_231)>=8.)  {
-              der_step_return_value_148_158_159_231 = 2./AC_widthss__mod__energy*exp(-2.*abs(arg_148_158_159_231))
+              der_step_return_value_148_158_159_231 = 2./-AC_widthss__mod__energy*exp(-2.*abs(arg_148_158_159_231))
             }
             else {
-              der_step_return_value_148_158_159_231 = 0.5/(AC_widthss__mod__energy*cosh(arg_148_158_159_231)*cosh(arg_148_158_159_231))
+              der_step_return_value_148_158_159_231 = 0.5/(-AC_widthss__mod__energy*cosh(arg_148_158_159_231)*cosh(arg_148_158_159_231))
             }
             arg_149_158_159_231 = abs((r_mn_158_159_231-AC_xtop__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
             if (abs(arg_149_158_159_231)>=8.)  {
@@ -6192,7 +6193,7 @@ Kernel twopass_solve_intermediate(){
             else {
               gradchit_prof_159_231.z = chit_prof__mod__energy*AC_z__mod__cdata[AC_n__mod__cdata-1]*r_mn1_158_159_231
             }
-            step_vector_return_value_150_158_159_231 = 0.5*(1+tanh((r_mn_158_159_231-AC_xbot__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
+            step_vector_return_value_150_158_159_231 = 0.5*(1+tanh((r_mn_158_159_231-AC_xbot__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam)))
             step_vector_return_value_151_158_159_231 = 0.5*(1+tanh((r_mn_158_159_231-AC_xtop__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
             chit_prof__mod__energy = 1.+(AC_chit_prof1__mod__energy-1.)*step_vector_return_value_150_158_159_231  +(AC_chit_prof2__mod__energy-1.)*step_vector_return_value_151_158_159_231
             if (false) {
@@ -6539,7 +6540,7 @@ Kernel twopass_solve_intermediate(){
   if (AC_lheatc_kramers__mod__energy) {
     k_kramers__mod__energy = AC_hcond0_kramers__mod__energy*pow(ac_transformed_pencil_rho1,(2.*AC_nkramers__mod__energy))*pow(ac_transformed_pencil_tt,(6.5*AC_nkramers__mod__energy))
     krho1_171_231 = k_kramers__mod__energy*ac_transformed_pencil_rho1
-    g2_171_231 = dot(2.*AC_nkramers__mod__energy*ac_transformed_pencil_glnrho+(6.5*AC_nkramers__mod__energy+1)*ac_transformed_pencil_glntt,ac_transformed_pencil_glntt)
+    g2_171_231 = dot(-2.*AC_nkramers__mod__energy*ac_transformed_pencil_glnrho+(6.5*AC_nkramers__mod__energy+1)*ac_transformed_pencil_glntt,ac_transformed_pencil_glntt)
     g2_chi_171_231 = dot(ac_transformed_pencil_glnrho+ac_transformed_pencil_glntt,ac_transformed_pencil_glntt)
     if (AC_chimax_kramers__mod__energy>0.) {
       if (krho1_171_231 > AC_chimax_kramers__mod__energy/ac_transformed_pencil_cp1) {
@@ -6589,7 +6590,7 @@ Kernel twopass_solve_intermediate(){
         }
         else if (AC_lsphere_in_a_box__mod__cdata) {
           if (true && AC_lhcond_global__mod__energy) {
-            chit_prof__mod__energy = value(F_GLOBAL_HCOND)
+            chit_prof__mod__energy = value(Field(AC_iglobal_hcond__mod__energy-1))
             gradchit_prof_171_231= value(F_GLOBAL_GLHVEC)
           }
           else {
@@ -6601,12 +6602,12 @@ Kernel twopass_solve_intermediate(){
               r_mn_170_171_231=sqrt(AC_x__mod__cdata[vertexIdx.x]*AC_x__mod__cdata[vertexIdx.x]+AC_y__mod__cdata[AC_m__mod__cdata-1]*AC_y__mod__cdata[AC_m__mod__cdata-1]+AC_z__mod__cdata[AC_n__mod__cdata-1]*AC_z__mod__cdata[AC_n__mod__cdata-1])
               r_mn1_170_171_231=1./r_mn_170_171_231
             }
-            arg_148_170_171_231 = abs((r_mn_170_171_231-AC_xbot__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
+            arg_148_170_171_231 = abs((r_mn_170_171_231-AC_xbot__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam))
             if (abs(arg_148_170_171_231)>=8.)  {
-              der_step_return_value_148_170_171_231 = 2./AC_widthss__mod__energy*exp(-2.*abs(arg_148_170_171_231))
+              der_step_return_value_148_170_171_231 = 2./-AC_widthss__mod__energy*exp(-2.*abs(arg_148_170_171_231))
             }
             else {
-              der_step_return_value_148_170_171_231 = 0.5/(AC_widthss__mod__energy*cosh(arg_148_170_171_231)*cosh(arg_148_170_171_231))
+              der_step_return_value_148_170_171_231 = 0.5/(-AC_widthss__mod__energy*cosh(arg_148_170_171_231)*cosh(arg_148_170_171_231))
             }
             arg_149_170_171_231 = abs((r_mn_170_171_231-AC_xtop__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
             if (abs(arg_149_170_171_231)>=8.)  {
@@ -6624,7 +6625,7 @@ Kernel twopass_solve_intermediate(){
             else {
               gradchit_prof_171_231.z = chit_prof__mod__energy*AC_z__mod__cdata[AC_n__mod__cdata-1]*r_mn1_170_171_231
             }
-            step_vector_return_value_150_170_171_231 = 0.5*(1+tanh((r_mn_170_171_231-AC_xbot__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
+            step_vector_return_value_150_170_171_231 = 0.5*(1+tanh((r_mn_170_171_231-AC_xbot__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam)))
             step_vector_return_value_151_170_171_231 = 0.5*(1+tanh((r_mn_170_171_231-AC_xtop__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
             chit_prof__mod__energy = 1.+(AC_chit_prof1__mod__energy-1.)*step_vector_return_value_150_170_171_231  +(AC_chit_prof2__mod__energy-1.)*step_vector_return_value_151_170_171_231
             if (false) {
@@ -6660,6 +6661,7 @@ Kernel twopass_solve_intermediate(){
       thdiff_171_231 = ac_transformed_pencil_cv1*thdiff_171_231
     }
     DF_SS = DF_SS + thdiff_171_231
+    max_hdiff = max(max_hdiff,thdiff_175_231)
     if (AC_lfirst__mod__cdata && AC_ldt__mod__cdata) {
       diffus_chi__mod__energy=diffus_chi__mod__energy+(ac_transformed_pencil_cv1*krho1_171_231+AC_chi_t__mod__energy)*dxyz_2__mod__cdata
     }
@@ -6683,7 +6685,7 @@ Kernel twopass_solve_intermediate(){
           }
           else if (AC_lsphere_in_a_box__mod__cdata) {
             if (true && AC_lhcond_global__mod__energy) {
-              chit_prof__mod__energy = value(F_GLOBAL_HCOND)
+              chit_prof__mod__energy = value(Field(AC_iglobal_hcond__mod__energy-1))
               gradchit_prof_175_231= value(F_GLOBAL_GLHVEC)
             }
             else {
@@ -6695,12 +6697,12 @@ Kernel twopass_solve_intermediate(){
                 r_mn_172_175_231=sqrt(AC_x__mod__cdata[vertexIdx.x]*AC_x__mod__cdata[vertexIdx.x]+AC_y__mod__cdata[AC_m__mod__cdata-1]*AC_y__mod__cdata[AC_m__mod__cdata-1]+AC_z__mod__cdata[AC_n__mod__cdata-1]*AC_z__mod__cdata[AC_n__mod__cdata-1])
                 r_mn1_172_175_231=1./r_mn_172_175_231
               }
-              arg_148_172_175_231 = abs((r_mn_172_175_231-AC_xbot__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
+              arg_148_172_175_231 = abs((r_mn_172_175_231-AC_xbot__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam))
               if (abs(arg_148_172_175_231)>=8.)  {
-                der_step_return_value_148_172_175_231 = 2./AC_widthss__mod__energy*exp(-2.*abs(arg_148_172_175_231))
+                der_step_return_value_148_172_175_231 = 2./-AC_widthss__mod__energy*exp(-2.*abs(arg_148_172_175_231))
               }
               else {
-                der_step_return_value_148_172_175_231 = 0.5/(AC_widthss__mod__energy*cosh(arg_148_172_175_231)*cosh(arg_148_172_175_231))
+                der_step_return_value_148_172_175_231 = 0.5/(-AC_widthss__mod__energy*cosh(arg_148_172_175_231)*cosh(arg_148_172_175_231))
               }
               arg_149_172_175_231 = abs((r_mn_172_175_231-AC_xtop__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
               if (abs(arg_149_172_175_231)>=8.)  {
@@ -6718,7 +6720,7 @@ Kernel twopass_solve_intermediate(){
               else {
                 gradchit_prof_175_231.z = chit_prof__mod__energy*AC_z__mod__cdata[AC_n__mod__cdata-1]*r_mn1_172_175_231
               }
-              step_vector_return_value_150_172_175_231 = 0.5*(1+tanh((r_mn_172_175_231-AC_xbot__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
+              step_vector_return_value_150_172_175_231 = 0.5*(1+tanh((r_mn_172_175_231-AC_xbot__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam)))
               step_vector_return_value_151_172_175_231 = 0.5*(1+tanh((r_mn_172_175_231-AC_xtop__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
               chit_prof__mod__energy = 1.+(AC_chit_prof1__mod__energy-1.)*step_vector_return_value_150_172_175_231  +(AC_chit_prof2__mod__energy-1.)*step_vector_return_value_151_172_175_231
               if (false) {
@@ -6810,10 +6812,10 @@ Kernel twopass_solve_intermediate(){
                   r_mn1_173_175_231=1./r_mn_173_175_231
                 }
                 if (abs(arg_148_173_175_231)>=8.)  {
-                  der_step_return_value_148_173_175_231 = 2./AC_widthss__mod__energy*exp(-2.*abs(arg_148_173_175_231))
+                  der_step_return_value_148_173_175_231 = 2./-AC_widthss__mod__energy*exp(-2.*abs(arg_148_173_175_231))
                 }
                 else {
-                  der_step_return_value_148_173_175_231 = 0.5/(AC_widthss__mod__energy*cosh(arg_148_173_175_231)*cosh(arg_148_173_175_231))
+                  der_step_return_value_148_173_175_231 = 0.5/(-AC_widthss__mod__energy*cosh(arg_148_173_175_231)*cosh(arg_148_173_175_231))
                 }
                 if (abs(arg_149_173_175_231)>=8.)  {
                   der_step_return_value_149_173_175_231 = 2./AC_widthss__mod__energy*exp(-2.*abs(arg_149_173_175_231))
@@ -6910,7 +6912,7 @@ Kernel twopass_solve_intermediate(){
           }
           else if (AC_lsphere_in_a_box__mod__cdata) {
             if (true && AC_lhcond_global__mod__energy) {
-              chit_prof_fluct__mod__energy = value(F_GLOBAL_HCOND)
+              chit_prof_fluct__mod__energy = value(Field(AC_iglobal_hcond__mod__energy-1))
               gradchit_prof_fluct_175_231= value(F_GLOBAL_GLHVEC)
             }
             else {
@@ -6922,12 +6924,12 @@ Kernel twopass_solve_intermediate(){
                 r_mn_174_175_231=sqrt(AC_x__mod__cdata[vertexIdx.x]*AC_x__mod__cdata[vertexIdx.x]+AC_y__mod__cdata[AC_m__mod__cdata-1]*AC_y__mod__cdata[AC_m__mod__cdata-1]+AC_z__mod__cdata[AC_n__mod__cdata-1]*AC_z__mod__cdata[AC_n__mod__cdata-1])
                 r_mn1_174_175_231=1./r_mn_174_175_231
               }
-              arg_148_174_175_231 = abs((r_mn_174_175_231-AC_xbot__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
+              arg_148_174_175_231 = abs((r_mn_174_175_231-AC_xbot__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam))
               if (abs(arg_148_174_175_231)>=8.)  {
-                der_step_return_value_148_174_175_231 = 2./AC_widthss__mod__energy*exp(-2.*abs(arg_148_174_175_231))
+                der_step_return_value_148_174_175_231 = 2./-AC_widthss__mod__energy*exp(-2.*abs(arg_148_174_175_231))
               }
               else {
-                der_step_return_value_148_174_175_231 = 0.5/(AC_widthss__mod__energy*cosh(arg_148_174_175_231)*cosh(arg_148_174_175_231))
+                der_step_return_value_148_174_175_231 = 0.5/(-AC_widthss__mod__energy*cosh(arg_148_174_175_231)*cosh(arg_148_174_175_231))
               }
               arg_149_174_175_231 = abs((r_mn_174_175_231-AC_xtop__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam))
               if (abs(arg_149_174_175_231)>=8.)  {
@@ -6945,7 +6947,7 @@ Kernel twopass_solve_intermediate(){
               else {
                 gradchit_prof_fluct_175_231.z = chit_prof_fluct__mod__energy*AC_z__mod__cdata[AC_n__mod__cdata-1]*r_mn1_174_175_231
               }
-              step_vector_return_value_150_174_175_231 = 0.5*(1+tanh((r_mn_174_175_231-AC_xbot__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
+              step_vector_return_value_150_174_175_231 = 0.5*(1+tanh((r_mn_174_175_231-AC_xbot__mod__energy)/(-AC_widthss__mod__energy+AC_tini__mod__cparam)))
               step_vector_return_value_151_174_175_231 = 0.5*(1+tanh((r_mn_174_175_231-AC_xtop__mod__energy)/(AC_widthss__mod__energy+AC_tini__mod__cparam)))
               chit_prof_fluct__mod__energy = 1.+(AC_chit_fluct_prof1__mod__energy-1.)*step_vector_return_value_150_174_175_231  +(AC_chit_fluct_prof2__mod__energy-1.)*step_vector_return_value_151_174_175_231
               if (false) {
@@ -6990,6 +6992,7 @@ Kernel twopass_solve_intermediate(){
         thdiff_175_231=thdiff_175_231+g2_175_231
       }
     }
+    max_hdiff = max(max_hdiff,thdiff_175_231)
     DF_SS = DF_SS + thdiff_175_231
     if (AC_lfirst__mod__cdata && AC_ldt__mod__cdata) {
       if (AC_chi_t0__mod__energy!=0. && (AC_lchit_total__mod__energy  ||  AC_lchit_mean__mod__energy)) {
@@ -7160,7 +7163,7 @@ Kernel twopass_solve_intermediate(){
       for i_178_231 in 1:AC_prof_nz__mod__energy-1+1 {
         if (AC_z__mod__cdata[AC_n__mod__cdata-1] >= AC_prof_z__mod__energy[i_178_231-1]  &&  AC_z__mod__cdata[AC_n__mod__cdata-1] < AC_prof_z__mod__energy[1+i_178_231-1]) {
           lnttor_178_231 = (AC_prof_lnt__mod__energy[i_178_231-1]*(AC_prof_z__mod__energy[1+i_178_231-1] - AC_z__mod__cdata[AC_n__mod__cdata-1]) +  AC_prof_lnt__mod__energy[1+i_178_231-1]*(AC_z__mod__cdata[AC_n__mod__cdata-1] - AC_prof_z__mod__energy[i_178_231-1]) ) / (AC_prof_z__mod__energy[1+i_178_231-1]-AC_prof_z__mod__energy[i_178_231-1])
-         break 
+          break
         }
       }
     }
@@ -7857,7 +7860,7 @@ Kernel twopass_solve_intermediate(){
       for i_214_231 in 1:AC_prof_nz__mod__energy-1+1 {
         if (AC_z__mod__cdata[AC_n__mod__cdata-1] >= AC_prof_z__mod__energy[i_214_231-1]  &&  AC_z__mod__cdata[AC_n__mod__cdata-1] < AC_prof_z__mod__energy[1+i_214_231-1]) {
           lnttor_214_231 = (AC_prof_lnt__mod__energy[i_214_231-1]*(AC_prof_z__mod__energy[1+i_214_231-1] - AC_z__mod__cdata[AC_n__mod__cdata-1]) +  AC_prof_lnt__mod__energy[1+i_214_231-1]*(AC_z__mod__cdata[AC_n__mod__cdata-1] - AC_prof_z__mod__energy[i_214_231-1]) ) / (AC_prof_z__mod__energy[1+i_214_231-1]-AC_prof_z__mod__energy[i_214_231-1])
-          break 
+          break
         }
       }
     }
@@ -7926,19 +7929,19 @@ Kernel twopass_solve_intermediate(){
           if (AC_lstratz__mod__cdata) {
           }
           else if (AC_irho_ss__mod__equationofstate == AC_ilnrho_ss__mod__equationofstate) {
-            lnrho__216_219_231 = value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
+            lnrho__216_219_231 = value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
           }
           else {
-            lnrho__216_219_231 = log(value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
+            lnrho__216_219_231 = log(value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
           }
           if (AC_pretend_lntt__mod__cdata) {
-            lntt__216_219_231=value(F_SS)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
+            lntt__216_219_231=value(Field(AC_iss__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
             if (false) {
               ss__216_219_231=AC_cv__mod__equationofstate*(lntt__216_219_231-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__216_219_231-AC_lnrho0__mod__equationofstate))
             }
           }
           else {
-            ss__216_219_231=value(F_SS)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
+            ss__216_219_231=value(Field(AC_iss__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
             lntt__216_219_231=AC_lntt0__mod__equationofstate+AC_cv1__mod__equationofstate*ss__216_219_231+AC_gamma_m1__mod__equationofstate*(lnrho__216_219_231-AC_lnrho0__mod__equationofstate)
           }
           ee__216_219_231=AC_cv__mod__equationofstate*exp(lntt__216_219_231)
@@ -7951,14 +7954,14 @@ Kernel twopass_solve_intermediate(){
           cs2__216_219_231=AC_cs20__mod__equationofstate*AC_cv1__mod__equationofstate*ee__216_219_231
         }
         else if(AC_irho_ss__mod__equationofstate == AC_ilnrho_ee__mod__equationofstate || AC_irho_ss__mod__equationofstate == AC_irho_ee__mod__equationofstate) {
-          ee__216_219_231=value(F_SS)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
+          ee__216_219_231=value(Field(AC_iss__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
           if (AC_irho_ss__mod__equationofstate==AC_ilnrho_ee__mod__equationofstate) {
-            lnrho__216_219_231=value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
-            pp__216_219_231=AC_gamma_m1__mod__equationofstate*ee__216_219_231*exp(value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
+            lnrho__216_219_231=value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
+            pp__216_219_231=AC_gamma_m1__mod__equationofstate*ee__216_219_231*exp(value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
           }
           else {
-            lnrho__216_219_231=log(value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
-            pp__216_219_231=AC_gamma_m1__mod__equationofstate*ee__216_219_231*value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
+            lnrho__216_219_231=log(value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
+            pp__216_219_231=AC_gamma_m1__mod__equationofstate*ee__216_219_231*value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
           }
           lntt__216_219_231=log(AC_cv1__mod__equationofstate*ee__216_219_231)
           if (false) {
@@ -7969,19 +7972,19 @@ Kernel twopass_solve_intermediate(){
           }
         }
         else if(AC_irho_ss__mod__equationofstate == AC_ilnrho_pp__mod__equationofstate || AC_irho_ss__mod__equationofstate == AC_irho_pp__mod__equationofstate) {
-          pp__216_219_231=value(F_SS)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
+          pp__216_219_231=value(Field(AC_iss__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
           if (AC_irho_ss__mod__equationofstate==AC_ilnrho_pp__mod__equationofstate) {
-            lnrho__216_219_231=value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
+            lnrho__216_219_231=value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
             ee__216_219_231=pp__216_219_231*exp(-lnrho__216_219_231)/AC_gamma_m1__mod__equationofstate
             if (false) {
               ss__216_219_231=AC_cv__mod__equationofstate*(log(pp__216_219_231*exp(-lnrho__216_219_231)*AC_gamma__mod__equationofstate/AC_cs20__mod__equationofstate)-AC_gamma_m1__mod__equationofstate*(lnrho__216_219_231-AC_lnrho0__mod__equationofstate))
             }
           }
           else {
-            lnrho__216_219_231=log(value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
-            ee__216_219_231=pp__216_219_231/value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]/AC_gamma_m1__mod__equationofstate
+            lnrho__216_219_231=log(value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
+            ee__216_219_231=pp__216_219_231/value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]/AC_gamma_m1__mod__equationofstate
             if (false) {
-              ss__216_219_231=AC_cv__mod__equationofstate*(log(pp__216_219_231/value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]*AC_gamma__mod__equationofstate/AC_cs20__mod__equationofstate)-AC_gamma_m1__mod__equationofstate*(lnrho__216_219_231-AC_lnrho0__mod__equationofstate))
+              ss__216_219_231=AC_cv__mod__equationofstate*(log(pp__216_219_231/value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]*AC_gamma__mod__equationofstate/AC_cs20__mod__equationofstate)-AC_gamma_m1__mod__equationofstate*(lnrho__216_219_231-AC_lnrho0__mod__equationofstate))
             }
           }
           if (false) {
@@ -7992,8 +7995,8 @@ Kernel twopass_solve_intermediate(){
           }
         }
         else if(AC_irho_ss__mod__equationofstate == AC_ilnrho_lntt__mod__equationofstate) {
-          lnrho__216_219_231=value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
-          lntt__216_219_231=value(F_SS)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
+          lnrho__216_219_231=value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
+          lntt__216_219_231=value(Field(AC_iss__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
           if (false) {
             ss__216_219_231=AC_cv__mod__equationofstate*(lntt__216_219_231-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__216_219_231-AC_lnrho0__mod__equationofstate))
           }
@@ -8006,8 +8009,8 @@ Kernel twopass_solve_intermediate(){
           }
         }
         else if(AC_irho_ss__mod__equationofstate == AC_ilnrho_tt__mod__equationofstate) {
-          lnrho__216_219_231=value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
-          tt__216_219_231=value(F_SS)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
+          lnrho__216_219_231=value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
+          tt__216_219_231=value(Field(AC_iss__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
           if (false) {
             ss__216_219_231=AC_cv__mod__equationofstate*(log(tt__216_219_231)-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__216_219_231-AC_lnrho0__mod__equationofstate))
           }
@@ -8020,23 +8023,23 @@ Kernel twopass_solve_intermediate(){
           }
         }
         else if(AC_irho_ss__mod__equationofstate == AC_irho_tt__mod__equationofstate) {
-          lnrho__216_219_231=log(value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
-          tt__216_219_231=value(F_SS)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
+          lnrho__216_219_231=log(value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
+          tt__216_219_231=value(Field(AC_iss__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
           if (false) {
             ss__216_219_231=AC_cv__mod__equationofstate*(log(tt__216_219_231)-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__216_219_231-AC_lnrho0__mod__equationofstate))
           }
           ee__216_219_231=AC_cv__mod__equationofstate*tt__216_219_231
           if (true) {
-            pp__216_219_231=ee__216_219_231*value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]*AC_gamma_m1__mod__equationofstate
+            pp__216_219_231=ee__216_219_231*value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]*AC_gamma_m1__mod__equationofstate
           }
           if (false) {
             cs2__216_219_231=AC_cp__mod__equationofstate*AC_gamma_m1__mod__equationofstate*tt__216_219_231
           }
         }
         else if(AC_irho_ss__mod__equationofstate == AC_ipp_ss__mod__equationofstate) {
-          pp__216_219_231=value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
+          pp__216_219_231=value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
           if (AC_pretend_lntt__mod__cdata) {
-            lntt__216_219_231=value(F_SS)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
+            lntt__216_219_231=value(Field(AC_iss__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
             lnrho__216_219_231=log(pp__216_219_231)-lntt__216_219_231-log(AC_gamma_m1__mod__equationofstate*AC_cv__mod__equationofstate)
             if (false) {
               ss__216_219_231=AC_cv__mod__equationofstate*(lntt__216_219_231-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__216_219_231-AC_lnrho0__mod__equationofstate))
@@ -8047,7 +8050,7 @@ Kernel twopass_solve_intermediate(){
             }
           }
           else {
-            ss__216_219_231=value(F_SS)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
+            ss__216_219_231=value(Field(AC_iss__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
             lnrho__216_219_231=log(pp__216_219_231)/AC_gamma__mod__equationofstate-ss__216_219_231/AC_cp__mod__equationofstate
             tt__216_219_231=pp__216_219_231/(AC_gamma_m1__mod__equationofstate*AC_cv__mod__equationofstate*exp(lnrho__216_219_231))
             if (false) {
@@ -8066,18 +8069,18 @@ Kernel twopass_solve_intermediate(){
           }
           else {
             if (AC_ldensity_nolog__mod__cdata) {
-              rho_216_219_231 = value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
+              rho_216_219_231 = value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
               if (false) {
-                lnrho__216_219_231 = log(value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
+                lnrho__216_219_231 = log(value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
               }
             }
             else {
-              rho_216_219_231 = exp(value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
+              rho_216_219_231 = exp(value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1])
               if (false) {
-                lnrho__216_219_231 = value(F_RHO)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
+                lnrho__216_219_231 = value(Field(AC_irho__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_rho__mod__cparam-1]
               }
             }
-            eth_216_219_231 = value(F_SS)+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
+            eth_216_219_231 = value(Field(AC_iss__mod__cdata-1))+AC_reference_state__mod__density[vertexIdx.x][AC_iref_s__mod__cparam-1]
           }
           if (false || false) {
             lntt__216_219_231 = log(AC_cv1__mod__equationofstate * eth_216_219_231 / rho_216_219_231)
@@ -8103,19 +8106,19 @@ Kernel twopass_solve_intermediate(){
           if (AC_lstratz__mod__cdata) {
           }
           else if (AC_irho_ss__mod__equationofstate == AC_ilnrho_ss__mod__equationofstate) {
-            lnrho__217_219_231 = value(F_RHO)
+            lnrho__217_219_231 = value(Field(AC_irho__mod__cdata-1))
           }
           else {
-            lnrho__217_219_231 = log(value(F_RHO))
+            lnrho__217_219_231 = log(value(Field(AC_irho__mod__cdata-1)))
           }
           if (AC_pretend_lntt__mod__cdata) {
-            lntt__217_219_231=value(F_SS)
+            lntt__217_219_231=value(Field(AC_iss__mod__cdata-1))
             if (false) {
               ss__217_219_231=AC_cv__mod__equationofstate*(lntt__217_219_231-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__217_219_231-AC_lnrho0__mod__equationofstate))
             }
           }
           else {
-            ss__217_219_231=value(F_SS)
+            ss__217_219_231=value(Field(AC_iss__mod__cdata-1))
             lntt__217_219_231=AC_lntt0__mod__equationofstate+AC_cv1__mod__equationofstate*ss__217_219_231+AC_gamma_m1__mod__equationofstate*(lnrho__217_219_231-AC_lnrho0__mod__equationofstate)
           }
           ee__217_219_231=AC_cv__mod__equationofstate*exp(lntt__217_219_231)
@@ -8128,14 +8131,14 @@ Kernel twopass_solve_intermediate(){
           cs2__217_219_231=AC_cs20__mod__equationofstate*AC_cv1__mod__equationofstate*ee__217_219_231
         }
         else if(AC_irho_ss__mod__equationofstate == AC_ilnrho_ee__mod__equationofstate || AC_irho_ss__mod__equationofstate == AC_irho_ee__mod__equationofstate) {
-          ee__217_219_231=value(F_SS)
+          ee__217_219_231=value(Field(AC_iss__mod__cdata-1))
           if (AC_irho_ss__mod__equationofstate==AC_ilnrho_ee__mod__equationofstate) {
-            lnrho__217_219_231=value(F_RHO)
-            pp__217_219_231=AC_gamma_m1__mod__equationofstate*ee__217_219_231*exp(value(F_RHO))
+            lnrho__217_219_231=value(Field(AC_irho__mod__cdata-1))
+            pp__217_219_231=AC_gamma_m1__mod__equationofstate*ee__217_219_231*exp(value(Field(AC_irho__mod__cdata-1)))
           }
           else {
-            lnrho__217_219_231=log(value(F_RHO))
-            pp__217_219_231=AC_gamma_m1__mod__equationofstate*ee__217_219_231*value(F_RHO)
+            lnrho__217_219_231=log(value(Field(AC_irho__mod__cdata-1)))
+            pp__217_219_231=AC_gamma_m1__mod__equationofstate*ee__217_219_231*value(Field(AC_irho__mod__cdata-1))
           }
           lntt__217_219_231=log(AC_cv1__mod__equationofstate*ee__217_219_231)
           if (false) {
@@ -8146,19 +8149,19 @@ Kernel twopass_solve_intermediate(){
           }
         }
         else if(AC_irho_ss__mod__equationofstate == AC_ilnrho_pp__mod__equationofstate || AC_irho_ss__mod__equationofstate == AC_irho_pp__mod__equationofstate) {
-          pp__217_219_231=value(F_SS)
+          pp__217_219_231=value(Field(AC_iss__mod__cdata-1))
           if (AC_irho_ss__mod__equationofstate==AC_ilnrho_pp__mod__equationofstate) {
-            lnrho__217_219_231=value(F_RHO)
+            lnrho__217_219_231=value(Field(AC_irho__mod__cdata-1))
             ee__217_219_231=pp__217_219_231*exp(-lnrho__217_219_231)/AC_gamma_m1__mod__equationofstate
             if (false) {
               ss__217_219_231=AC_cv__mod__equationofstate*(log(pp__217_219_231*exp(-lnrho__217_219_231)*AC_gamma__mod__equationofstate/AC_cs20__mod__equationofstate)-AC_gamma_m1__mod__equationofstate*(lnrho__217_219_231-AC_lnrho0__mod__equationofstate))
             }
           }
           else {
-            lnrho__217_219_231=log(value(F_RHO))
-            ee__217_219_231=pp__217_219_231/value(F_RHO)/AC_gamma_m1__mod__equationofstate
+            lnrho__217_219_231=log(value(Field(AC_irho__mod__cdata-1)))
+            ee__217_219_231=pp__217_219_231/value(Field(AC_irho__mod__cdata-1))/AC_gamma_m1__mod__equationofstate
             if (false) {
-              ss__217_219_231=AC_cv__mod__equationofstate*(log(pp__217_219_231/value(F_RHO)*AC_gamma__mod__equationofstate/AC_cs20__mod__equationofstate)-AC_gamma_m1__mod__equationofstate*(lnrho__217_219_231-AC_lnrho0__mod__equationofstate))
+              ss__217_219_231=AC_cv__mod__equationofstate*(log(pp__217_219_231/value(Field(AC_irho__mod__cdata-1))*AC_gamma__mod__equationofstate/AC_cs20__mod__equationofstate)-AC_gamma_m1__mod__equationofstate*(lnrho__217_219_231-AC_lnrho0__mod__equationofstate))
             }
           }
           if (false) {
@@ -8169,8 +8172,8 @@ Kernel twopass_solve_intermediate(){
           }
         }
         else if(AC_irho_ss__mod__equationofstate == AC_ilnrho_lntt__mod__equationofstate) {
-          lnrho__217_219_231=value(F_RHO)
-          lntt__217_219_231=value(F_SS)
+          lnrho__217_219_231=value(Field(AC_irho__mod__cdata-1))
+          lntt__217_219_231=value(Field(AC_iss__mod__cdata-1))
           if (false) {
             ss__217_219_231=AC_cv__mod__equationofstate*(lntt__217_219_231-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__217_219_231-AC_lnrho0__mod__equationofstate))
           }
@@ -8183,8 +8186,8 @@ Kernel twopass_solve_intermediate(){
           }
         }
         else if(AC_irho_ss__mod__equationofstate == AC_ilnrho_tt__mod__equationofstate) {
-          lnrho__217_219_231=value(F_RHO)
-          tt__217_219_231=value(F_SS)
+          lnrho__217_219_231=value(Field(AC_irho__mod__cdata-1))
+          tt__217_219_231=value(Field(AC_iss__mod__cdata-1))
           if (false) {
             ss__217_219_231=AC_cv__mod__equationofstate*(log(tt__217_219_231)-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__217_219_231-AC_lnrho0__mod__equationofstate))
           }
@@ -8197,23 +8200,23 @@ Kernel twopass_solve_intermediate(){
           }
         }
         else if(AC_irho_ss__mod__equationofstate == AC_irho_tt__mod__equationofstate) {
-          lnrho__217_219_231=log(value(F_RHO))
-          tt__217_219_231=value(F_SS)
+          lnrho__217_219_231=log(value(Field(AC_irho__mod__cdata-1)))
+          tt__217_219_231=value(Field(AC_iss__mod__cdata-1))
           if (false) {
             ss__217_219_231=AC_cv__mod__equationofstate*(log(tt__217_219_231)-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__217_219_231-AC_lnrho0__mod__equationofstate))
           }
           ee__217_219_231=AC_cv__mod__equationofstate*tt__217_219_231
           if (true) {
-            pp__217_219_231=ee__217_219_231*value(F_RHO)*AC_gamma_m1__mod__equationofstate
+            pp__217_219_231=ee__217_219_231*value(Field(AC_irho__mod__cdata-1))*AC_gamma_m1__mod__equationofstate
           }
           if (false) {
             cs2__217_219_231=AC_cp__mod__equationofstate*AC_gamma_m1__mod__equationofstate*tt__217_219_231
           }
         }
         else if(AC_irho_ss__mod__equationofstate == AC_ipp_ss__mod__equationofstate) {
-          pp__217_219_231=value(F_RHO)
+          pp__217_219_231=value(Field(AC_irho__mod__cdata-1))
           if (AC_pretend_lntt__mod__cdata) {
-            lntt__217_219_231=value(F_SS)
+            lntt__217_219_231=value(Field(AC_iss__mod__cdata-1))
             lnrho__217_219_231=log(pp__217_219_231)-lntt__217_219_231-log(AC_gamma_m1__mod__equationofstate*AC_cv__mod__equationofstate)
             if (false) {
               ss__217_219_231=AC_cv__mod__equationofstate*(lntt__217_219_231-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__217_219_231-AC_lnrho0__mod__equationofstate))
@@ -8224,7 +8227,7 @@ Kernel twopass_solve_intermediate(){
             }
           }
           else {
-            ss__217_219_231=value(F_SS)
+            ss__217_219_231=value(Field(AC_iss__mod__cdata-1))
             lnrho__217_219_231=log(pp__217_219_231)/AC_gamma__mod__equationofstate-ss__217_219_231/AC_cp__mod__equationofstate
             tt__217_219_231=pp__217_219_231/(AC_gamma_m1__mod__equationofstate*AC_cv__mod__equationofstate*exp(lnrho__217_219_231))
             if (false) {
@@ -8243,18 +8246,18 @@ Kernel twopass_solve_intermediate(){
           }
           else {
             if (AC_ldensity_nolog__mod__cdata) {
-              rho_217_219_231 = value(F_RHO)
+              rho_217_219_231 = value(Field(AC_irho__mod__cdata-1))
               if (false) {
-                lnrho__217_219_231 = log(value(F_RHO))
+                lnrho__217_219_231 = log(value(Field(AC_irho__mod__cdata-1)))
               }
             }
             else {
-              rho_217_219_231 = exp(value(F_RHO))
+              rho_217_219_231 = exp(value(Field(AC_irho__mod__cdata-1)))
               if (false) {
-                lnrho__217_219_231 = value(F_RHO)
+                lnrho__217_219_231 = value(Field(AC_irho__mod__cdata-1))
               }
             }
-            eth_217_219_231 = value(F_SS)
+            eth_217_219_231 = value(Field(AC_iss__mod__cdata-1))
           }
           if (false || false) {
             lntt__217_219_231 = log(AC_cv1__mod__equationofstate * eth_217_219_231 / rho_217_219_231)
@@ -8281,19 +8284,19 @@ Kernel twopass_solve_intermediate(){
         if (AC_lstratz__mod__cdata) {
         }
         else if (AC_ilnrho_ss__mod__equationofstate == AC_ilnrho_ss__mod__equationofstate) {
-          lnrho__218_219_231 = value(F_LNRHO)
+          lnrho__218_219_231 = value(Field(AC_ilnrho__mod__cdata-1))
         }
         else {
-          lnrho__218_219_231 = log(value(F_LNRHO))
+          lnrho__218_219_231 = log(value(Field(AC_ilnrho__mod__cdata-1)))
         }
         if (AC_pretend_lntt__mod__cdata) {
-          lntt__218_219_231=value(F_SS)
+          lntt__218_219_231=value(Field(AC_iss__mod__cdata-1))
           if (false) {
             ss__218_219_231=AC_cv__mod__equationofstate*(lntt__218_219_231-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__218_219_231-AC_lnrho0__mod__equationofstate))
           }
         }
         else {
-          ss__218_219_231=value(F_SS)
+          ss__218_219_231=value(Field(AC_iss__mod__cdata-1))
           lntt__218_219_231=AC_lntt0__mod__equationofstate+AC_cv1__mod__equationofstate*ss__218_219_231+AC_gamma_m1__mod__equationofstate*(lnrho__218_219_231-AC_lnrho0__mod__equationofstate)
         }
         ee__218_219_231=AC_cv__mod__equationofstate*exp(lntt__218_219_231)
@@ -8306,14 +8309,14 @@ Kernel twopass_solve_intermediate(){
         cs2__218_219_231=AC_cs20__mod__equationofstate*AC_cv1__mod__equationofstate*ee__218_219_231
       }
       else if(AC_ilnrho_ss__mod__equationofstate == AC_ilnrho_ee__mod__equationofstate || AC_ilnrho_ss__mod__equationofstate == AC_irho_ee__mod__equationofstate) {
-        ee__218_219_231=value(F_SS)
+        ee__218_219_231=value(Field(AC_iss__mod__cdata-1))
         if (AC_ilnrho_ss__mod__equationofstate==AC_ilnrho_ee__mod__equationofstate) {
-          lnrho__218_219_231=value(F_LNRHO)
-          pp__218_219_231=AC_gamma_m1__mod__equationofstate*ee__218_219_231*exp(value(F_LNRHO))
+          lnrho__218_219_231=value(Field(AC_ilnrho__mod__cdata-1))
+          pp__218_219_231=AC_gamma_m1__mod__equationofstate*ee__218_219_231*exp(value(Field(AC_ilnrho__mod__cdata-1)))
         }
         else {
-          lnrho__218_219_231=log(value(F_LNRHO))
-          pp__218_219_231=AC_gamma_m1__mod__equationofstate*ee__218_219_231*value(F_LNRHO)
+          lnrho__218_219_231=log(value(Field(AC_ilnrho__mod__cdata-1)))
+          pp__218_219_231=AC_gamma_m1__mod__equationofstate*ee__218_219_231*value(Field(AC_ilnrho__mod__cdata-1))
         }
         lntt__218_219_231=log(AC_cv1__mod__equationofstate*ee__218_219_231)
         if (false) {
@@ -8324,19 +8327,19 @@ Kernel twopass_solve_intermediate(){
         }
       }
       else if(AC_ilnrho_ss__mod__equationofstate == AC_ilnrho_pp__mod__equationofstate || AC_ilnrho_ss__mod__equationofstate == AC_irho_pp__mod__equationofstate) {
-        pp__218_219_231=value(F_SS)
+        pp__218_219_231=value(Field(AC_iss__mod__cdata-1))
         if (AC_ilnrho_ss__mod__equationofstate==AC_ilnrho_pp__mod__equationofstate) {
-          lnrho__218_219_231=value(F_LNRHO)
+          lnrho__218_219_231=value(Field(AC_ilnrho__mod__cdata-1))
           ee__218_219_231=pp__218_219_231*exp(-lnrho__218_219_231)/AC_gamma_m1__mod__equationofstate
           if (false) {
             ss__218_219_231=AC_cv__mod__equationofstate*(log(pp__218_219_231*exp(-lnrho__218_219_231)*AC_gamma__mod__equationofstate/AC_cs20__mod__equationofstate)-AC_gamma_m1__mod__equationofstate*(lnrho__218_219_231-AC_lnrho0__mod__equationofstate))
           }
         }
         else {
-          lnrho__218_219_231=log(value(F_LNRHO))
-          ee__218_219_231=pp__218_219_231/value(F_LNRHO)/AC_gamma_m1__mod__equationofstate
+          lnrho__218_219_231=log(value(Field(AC_ilnrho__mod__cdata-1)))
+          ee__218_219_231=pp__218_219_231/value(Field(AC_ilnrho__mod__cdata-1))/AC_gamma_m1__mod__equationofstate
           if (false) {
-            ss__218_219_231=AC_cv__mod__equationofstate*(log(pp__218_219_231/value(F_LNRHO)*AC_gamma__mod__equationofstate/AC_cs20__mod__equationofstate)-AC_gamma_m1__mod__equationofstate*(lnrho__218_219_231-AC_lnrho0__mod__equationofstate))
+            ss__218_219_231=AC_cv__mod__equationofstate*(log(pp__218_219_231/value(Field(AC_ilnrho__mod__cdata-1))*AC_gamma__mod__equationofstate/AC_cs20__mod__equationofstate)-AC_gamma_m1__mod__equationofstate*(lnrho__218_219_231-AC_lnrho0__mod__equationofstate))
           }
         }
         if (false) {
@@ -8347,8 +8350,8 @@ Kernel twopass_solve_intermediate(){
         }
       }
       else if(AC_ilnrho_ss__mod__equationofstate == AC_ilnrho_lntt__mod__equationofstate) {
-        lnrho__218_219_231=value(F_LNRHO)
-        lntt__218_219_231=value(F_SS)
+        lnrho__218_219_231=value(Field(AC_ilnrho__mod__cdata-1))
+        lntt__218_219_231=value(Field(AC_iss__mod__cdata-1))
         if (false) {
           ss__218_219_231=AC_cv__mod__equationofstate*(lntt__218_219_231-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__218_219_231-AC_lnrho0__mod__equationofstate))
         }
@@ -8361,8 +8364,8 @@ Kernel twopass_solve_intermediate(){
         }
       }
       else if(AC_ilnrho_ss__mod__equationofstate == AC_ilnrho_tt__mod__equationofstate) {
-        lnrho__218_219_231=value(F_LNRHO)
-        tt__218_219_231=value(F_SS)
+        lnrho__218_219_231=value(Field(AC_ilnrho__mod__cdata-1))
+        tt__218_219_231=value(Field(AC_iss__mod__cdata-1))
         if (false) {
           ss__218_219_231=AC_cv__mod__equationofstate*(log(tt__218_219_231)-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__218_219_231-AC_lnrho0__mod__equationofstate))
         }
@@ -8375,23 +8378,23 @@ Kernel twopass_solve_intermediate(){
         }
       }
       else if(AC_ilnrho_ss__mod__equationofstate == AC_irho_tt__mod__equationofstate) {
-        lnrho__218_219_231=log(value(F_LNRHO))
-        tt__218_219_231=value(F_SS)
+        lnrho__218_219_231=log(value(Field(AC_ilnrho__mod__cdata-1)))
+        tt__218_219_231=value(Field(AC_iss__mod__cdata-1))
         if (false) {
           ss__218_219_231=AC_cv__mod__equationofstate*(log(tt__218_219_231)-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__218_219_231-AC_lnrho0__mod__equationofstate))
         }
         ee__218_219_231=AC_cv__mod__equationofstate*tt__218_219_231
         if (true) {
-          pp__218_219_231=ee__218_219_231*value(F_LNRHO)*AC_gamma_m1__mod__equationofstate
+          pp__218_219_231=ee__218_219_231*value(Field(AC_ilnrho__mod__cdata-1))*AC_gamma_m1__mod__equationofstate
         }
         if (false) {
           cs2__218_219_231=AC_cp__mod__equationofstate*AC_gamma_m1__mod__equationofstate*tt__218_219_231
         }
       }
       else if(AC_ilnrho_ss__mod__equationofstate == AC_ipp_ss__mod__equationofstate) {
-        pp__218_219_231=value(F_LNRHO)
+        pp__218_219_231=value(Field(AC_ilnrho__mod__cdata-1))
         if (AC_pretend_lntt__mod__cdata) {
-          lntt__218_219_231=value(F_SS)
+          lntt__218_219_231=value(Field(AC_iss__mod__cdata-1))
           lnrho__218_219_231=log(pp__218_219_231)-lntt__218_219_231-log(AC_gamma_m1__mod__equationofstate*AC_cv__mod__equationofstate)
           if (false) {
             ss__218_219_231=AC_cv__mod__equationofstate*(lntt__218_219_231-AC_lntt0__mod__equationofstate-AC_gamma_m1__mod__equationofstate*(lnrho__218_219_231-AC_lnrho0__mod__equationofstate))
@@ -8402,7 +8405,7 @@ Kernel twopass_solve_intermediate(){
           }
         }
         else {
-          ss__218_219_231=value(F_SS)
+          ss__218_219_231=value(Field(AC_iss__mod__cdata-1))
           lnrho__218_219_231=log(pp__218_219_231)/AC_gamma__mod__equationofstate-ss__218_219_231/AC_cp__mod__equationofstate
           tt__218_219_231=pp__218_219_231/(AC_gamma_m1__mod__equationofstate*AC_cv__mod__equationofstate*exp(lnrho__218_219_231))
           if (false) {
@@ -8421,18 +8424,18 @@ Kernel twopass_solve_intermediate(){
         }
         else {
           if (AC_ldensity_nolog__mod__cdata) {
-            rho_218_219_231 = value(F_LNRHO)
+            rho_218_219_231 = value(Field(AC_ilnrho__mod__cdata-1))
             if (false) {
-              lnrho__218_219_231 = log(value(F_LNRHO))
+              lnrho__218_219_231 = log(value(Field(AC_ilnrho__mod__cdata-1)))
             }
           }
           else {
-            rho_218_219_231 = exp(value(F_LNRHO))
+            rho_218_219_231 = exp(value(Field(AC_ilnrho__mod__cdata-1)))
             if (false) {
-              lnrho__218_219_231 = value(F_LNRHO)
+              lnrho__218_219_231 = value(Field(AC_ilnrho__mod__cdata-1))
             }
           }
-          eth_218_219_231 = value(F_SS)
+          eth_218_219_231 = value(Field(AC_iss__mod__cdata-1))
         }
         if (false || false) {
           lntt__218_219_231 = log(AC_cv1__mod__equationofstate * eth_218_219_231 / rho_218_219_231)
@@ -8734,14 +8737,14 @@ Kernel twopass_solve_intermediate(){
       if (AC_lresi_rdep__mod__magnetic) {
         if(AC_string_enum_rdep_profile__mod__magnetic == AC_string_enum_step_string__mod__cparam) {
           tmp1_254_280=ac_transformed_pencil_r_mn
-          step_vector_return_value_244_254_280 = 0.5*(1+tanh((tmp1_254_280-AC_eta_r0__mod__magnetic)/(AC_eta_rwidth__mod__magnetic+AC_tini__mod__cparam)))
+          step_vector_return_value_244_254_280 = 0.5*(1+tanh((tmp1_254_280-AC_eta_r0__mod__magnetic)/(-AC_eta_rwidth__mod__magnetic+AC_tini__mod__cparam)))
           eta_r__mod__magnetic = AC_eta__mod__magnetic + AC_eta__mod__magnetic*(AC_eta_jump__mod__magnetic-1.)*step_vector_return_value_244_254_280
-          arg_245_254_280 = abs((tmp1_254_280-AC_eta_r0__mod__magnetic)/(AC_eta_rwidth__mod__magnetic+AC_tini__mod__cparam))
+          arg_245_254_280 = abs((tmp1_254_280-AC_eta_r0__mod__magnetic)/(-AC_eta_rwidth__mod__magnetic+AC_tini__mod__cparam))
           if (abs(arg_245_254_280)>=8.)  {
-            der_step_return_value_245_254_280 = 2./AC_eta_rwidth__mod__magnetic*exp(-2.*abs(arg_245_254_280))
+            der_step_return_value_245_254_280 = 2./-AC_eta_rwidth__mod__magnetic*exp(-2.*abs(arg_245_254_280))
           }
           else {
-            der_step_return_value_245_254_280 = 0.5/(AC_eta_rwidth__mod__magnetic*cosh(arg_245_254_280)*cosh(arg_245_254_280))
+            der_step_return_value_245_254_280 = 0.5/(-AC_eta_rwidth__mod__magnetic*cosh(arg_245_254_280)*cosh(arg_245_254_280))
           }
           tmp2_254_280 = AC_eta__mod__magnetic*(AC_eta_jump__mod__magnetic-1.)*der_step_return_value_245_254_280
           geta_r__mod__magnetic.x=tmp2_254_280*AC_x__mod__cdata[vertexIdx.x]*ac_transformed_pencil_r_mn1
@@ -9146,16 +9149,16 @@ Kernel twopass_solve_intermediate(){
         eta_total__mod__magnetic=eta_total__mod__magnetic+AC_eta_shock2__mod__magnetic*ac_transformed_pencil_shock*ac_transformed_pencil_shock
       }
       if (AC_lresi_eta_shock_profz__mod__magnetic) {
-        step_vector_return_value_265_280 = 0.5*(1+tanh((ac_transformed_pencil_z_mn-AC_eta_zshock__mod__magnetic)/(AC_eta_width_shock__mod__magnetic+AC_tini__mod__cparam)))
+        step_vector_return_value_265_280 = 0.5*(1+tanh((ac_transformed_pencil_z_mn-AC_eta_zshock__mod__magnetic)/(-AC_eta_width_shock__mod__magnetic+AC_tini__mod__cparam)))
         peta_shock_280 = AC_eta_shock__mod__magnetic + AC_eta_shock_jump1__mod__magnetic*step_vector_return_value_265_280
         gradeta_shock_280.x = 0.
         gradeta_shock_280.y = 0.
-        arg_266_280 = abs((ac_transformed_pencil_z_mn-AC_eta_zshock__mod__magnetic)/(AC_eta_width_shock__mod__magnetic+AC_tini__mod__cparam))
+        arg_266_280 = abs((ac_transformed_pencil_z_mn-AC_eta_zshock__mod__magnetic)/(-AC_eta_width_shock__mod__magnetic+AC_tini__mod__cparam))
         if (abs(arg_266_280)>=8.)  {
-          der_step_return_value_266_280 = 2./AC_eta_width_shock__mod__magnetic*exp(-2.*abs(arg_266_280))
+          der_step_return_value_266_280 = 2./-AC_eta_width_shock__mod__magnetic*exp(-2.*abs(arg_266_280))
         }
         else {
-          der_step_return_value_266_280 = 0.5/(AC_eta_width_shock__mod__magnetic*cosh(arg_266_280)*cosh(arg_266_280))
+          der_step_return_value_266_280 = 0.5/(-AC_eta_width_shock__mod__magnetic*cosh(arg_266_280)*cosh(arg_266_280))
         }
         gradeta_shock_280.z = AC_eta_shock_jump1__mod__magnetic*der_step_return_value_266_280
         if (AC_lweyl_gauge__mod__magnetic) {
@@ -9826,9 +9829,9 @@ Kernel twopass_solve_intermediate(){
       if (AC_tau_aa_exterior__mod__magnetic!=0.0) {
         if (AC_z__mod__cdata[AC_n__mod__cdata-1]>AC_zgrav__mod__gravity) {
           scl_274_280=1./AC_tau_aa_exterior__mod__magnetic
-          DF_AX=DF_AX-scl_274_280*value(F_AX)
-          DF_AY=DF_AY-scl_274_280*value(F_AY)
-          DF_AZ=DF_AZ-scl_274_280*value(F_AZ)
+          DF_AX=DF_AX-scl_274_280*value(Field(AC_iax__mod__cdata-1))
+          DF_AY=DF_AY-scl_274_280*value(Field(AC_iay__mod__cdata-1))
+          DF_AZ=DF_AZ-scl_274_280*value(Field(AC_iaz__mod__cdata-1))
         }
       }
       if (AC_tau_relprof__mod__magnetic!=0.0) {
@@ -9922,7 +9925,7 @@ Kernel twopass_solve_intermediate(){
           }
         }
       }
-      if (AC_lanelastic__mod__cparam) {
+      else if (AC_lanelastic__mod__cparam) {
         if (AC_lgravx_gas__mod__cdata) {
           DF_UX=DF_UX+ac_transformed_pencil_gg.x*ac_transformed_pencil_rho_anel
         }
@@ -9933,7 +9936,7 @@ Kernel twopass_solve_intermediate(){
           DF_UZ=DF_UZ+ac_transformed_pencil_gg.z*(-ac_transformed_pencil_ss)
         }
       }
-      if(!AC_lboussinesq_grav__mod__gravity && !AC_lanelastic__mod__cparam){
+      else {
         if (AC_lgravx_gas__mod__cdata) {
           gg_293.x=ac_transformed_pencil_gg.x
         }
@@ -10073,9 +10076,11 @@ Kernel twopass_solve_intermediate(){
     DF_RHZ = ac_transformed_pencil_rho*DF_UZ
     DF_UVEC = df_iuu_pencil + DF_UVEC
   }
-  headtt__mod__cdata=false
-  lfirstpoint__mod__cdata=false
-  write(TEST_1,DF_SS)
+  write(TEST_1,max_hdiff)
+  write(TEST_2,ac_transformed_pencil_del2lntt)
+  write(TEST_3,ac_transformed_pencil_del2lnrho)
+  write(TEST_4,ac_transformed_pencil_visc_heat)
+  write(TEST_5,DF_SS)
 }
 
 #include "taskgraph.h"

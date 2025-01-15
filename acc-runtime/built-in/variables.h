@@ -21,6 +21,7 @@ int3 AC_ngrid
 int3 AC_mgrid
 int3 AC_nmin
 int3 AC_nlocal_max
+int AC_nlocal_max_dim
 int3 AC_ngrid_max
 
 

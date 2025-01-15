@@ -71,6 +71,10 @@ main(int argc, char* argv[])
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig("PC-AC.conf", &info);
+    printf("MAX DIM: %d\n",info[AC_nlocal_max_dim]);
+    //printf("CHIT  IS NULL: %d\n",info[AC_chit_prof_stored__mod__energy] == NULL);
+    //printf("GRAVX IS NULL: %d\n",info[AC_gravx_xpencil__mod__gravity] == NULL);
+    //exit(EXIT_SUCCESS);
 
     /**
     int n_active = 0;
@@ -133,14 +137,19 @@ main(int argc, char* argv[])
     {
     	AcReal uu_rms;
     	AcReal3 uu_sum;
+    	AcReal  ss_sum;
     	// Calculate rms, min and max from the velocity vector field
     	acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, F_UU.x, F_UU.y, F_UU.z, &uu_rms);
     	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.x,&uu_sum.x);
     	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.y,&uu_sum.y);
     	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.z,&uu_sum.z);
+    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, SS,&ss_sum);
     	acGridSynchronizeStream(STREAM_ALL);
     	fprintf(stderr,"UU_RMS: %14e\n",uu_rms);
-    	fprintf(stderr,"UU_SUM: %14e\n",uu_sum.x + uu_sum.y + uu_sum.z);
+    	fprintf(stderr,"UUX_SUM: %14e\n",uu_sum.x);
+    	fprintf(stderr,"UUY_SUM: %14e\n",uu_sum.y);
+    	fprintf(stderr,"UUZ_SUM: %14e\n",uu_sum.z);
+    	fprintf(stderr,"SS_SUM: %14e\n",ss_sum);
     	fflush(stderr);
     }
 
@@ -162,27 +171,27 @@ main(int argc, char* argv[])
     printf("DF RHO SUM: %14e\n",acDeviceGetOutput(acGridGetDevice(),AC_df_rho_sum));
 
     acGridSynchronizeStream(STREAM_ALL);
-    {
-    	AcReal rho_sum;
-    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_1,&rho_sum);
-    	acGridSynchronizeStream(STREAM_ALL);
-    	printf("TEST_1 SUM: %14e\n",rho_sum);
+    //{
+    //	AcReal rho_sum;
+    //	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_1,&rho_sum);
+    //	acGridSynchronizeStream(STREAM_ALL);
+    //	printf("TEST_1 SUM: %14e\n",rho_sum);
 
-    	AcReal aax_sum;
-    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_2,&aax_sum);
-    	acGridSynchronizeStream(STREAM_ALL);
-    	printf("TEST_2 SUM: %14e\n",aax_sum);
+    //	AcReal aax_sum;
+    //	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_2,&aax_sum);
+    //	acGridSynchronizeStream(STREAM_ALL);
+    //	printf("TEST_2 SUM: %14e\n",aax_sum);
 
-    	AcReal aay_sum;
-    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_3,&aay_sum);
-    	acGridSynchronizeStream(STREAM_ALL);
-    	printf("TEST_3 SUM: %14e\n",aay_sum);
+    //	AcReal aay_sum;
+    //	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_3,&aay_sum);
+    //	acGridSynchronizeStream(STREAM_ALL);
+    //	printf("TEST_3 SUM: %14e\n",aay_sum);
 
-    	AcReal aaz_sum;
-    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_4 ,&aaz_sum);
-    	acGridSynchronizeStream(STREAM_ALL);
-    	printf("TEST_4 SUM: %14e\n",aaz_sum);
-    }
+    //	AcReal aaz_sum;
+    //	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, TEST_4 ,&aaz_sum);
+    //	acGridSynchronizeStream(STREAM_ALL);
+    //	printf("TEST_4 SUM: %14e\n",aaz_sum);
+    //}
 
     {
     	AcReal uu_rms;
@@ -205,16 +214,18 @@ main(int argc, char* argv[])
     AcReal test_sum_2 = 0.0;
     AcReal test_sum_3 = 0.0;
     AcReal test_sum_4 = 0.0;
-    for(int x = NGHOST; x < 32+NGHOST; ++x)
+    AcReal test_sum_5 = 0.0;
+    for(int y = NGHOST; y < 32+NGHOST; ++y)
     {
-    	for(int y = NGHOST; y < 32+NGHOST; ++y)
+    	for(int z = NGHOST; z < 32+NGHOST; ++z)
 	{
-    		for(int z = NGHOST; z < 32+NGHOST; ++z)
-		{
-			test_sum_1 += candidate.vertex_buffer[TEST_1][acVertexBufferIdx(x,y,z,model.info)];
-			test_sum_2 += candidate.vertex_buffer[TEST_1][acVertexBufferIdx(x,y,z,model.info)];
-			test_sum_3 += candidate.vertex_buffer[TEST_1][acVertexBufferIdx(x,y,z,model.info)];
-			test_sum_4 += candidate.vertex_buffer[TEST_1][acVertexBufferIdx(x,y,z,model.info)];
+    		for(int x = NGHOST; x < 32+NGHOST; ++x)
+    		{
+			test_sum_1 = std::max(test_sum_1,fabs(candidate.vertex_buffer[TEST_1][acVertexBufferIdx(x,y,z,model.info)]));
+			test_sum_2 = std::max(test_sum_2,fabs(candidate.vertex_buffer[TEST_2][acVertexBufferIdx(x,y,z,model.info)]));
+			test_sum_3 = std::max(test_sum_3,fabs(candidate.vertex_buffer[TEST_3][acVertexBufferIdx(x,y,z,model.info)]));
+			test_sum_4 = std::max(test_sum_4,fabs(candidate.vertex_buffer[TEST_4][acVertexBufferIdx(x,y,z,model.info)]));
+			test_sum_5 = std::max(test_sum_5,fabs(candidate.vertex_buffer[TEST_5][acVertexBufferIdx(x,y,z,model.info)]));
 		}
 	}
     }
@@ -222,6 +233,7 @@ main(int argc, char* argv[])
     fprintf(stderr,"TEST_SUM_2: %14e\n",test_sum_2);
     fprintf(stderr,"TEST_SUM_3: %14e\n",test_sum_3);
     fprintf(stderr,"TEST_SUM_4: %14e\n",test_sum_4);
+    fprintf(stderr,"TEST_SUM_5: %14e\n",test_sum_5);
     fflush(stderr);
     //acHostMeshApplyPeriodicBounds(&candidate);
     //acDeviceSwapBuffer(acGridGetDevice(), UU);

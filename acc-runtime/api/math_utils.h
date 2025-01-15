@@ -942,4 +942,10 @@ max(const uint64_t& a, const int& b)
 {
 	return a > (uint64_t)b ? a : (uint64_t)b;
 }
+HOST_DEVICE_INLINE int
+max(const int3& v)
+{
+	int res = v.y > v.x ? v.y : v.x;
+	return    v.z > res ? v.z : res;
+}
 

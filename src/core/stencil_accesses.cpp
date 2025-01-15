@@ -575,7 +575,7 @@ static std::vector<int> executed_nodes{};
 #define min(a,b) a < b ? a : b
 
 bool*
-RCONST(AcBoolCompArrayParam param)
+RCONST(AcBoolCompArrayParam)
 {
 	return AC_INTERNAL_run_const_bool_array_here;
 }

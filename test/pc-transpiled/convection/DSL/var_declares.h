@@ -522,6 +522,7 @@ run_const real AC_dipole_moment__mod__magnetic
 run_const real AC_pm_smag1__mod__magnetic
 run_const int AC_va2power_jxb__mod__magnetic
 run_const int AC_iua__mod__magnetic
+run_const int AC_ilam__mod__magnetic
 run_const bool AC_llorentzforce__mod__magnetic
 run_const bool AC_llorentz_rhoref__mod__magnetic
 run_const bool AC_linduction__mod__magnetic
@@ -793,6 +794,7 @@ run_const real AC_velocity_ceiling__mod__hydro
 run_const real AC_r_omega__mod__hydro
 run_const real AC_eps_hless__mod__hydro
 run_const int AC_itij__mod__hydro
+run_const int AC_ihless__mod__hydro
 const int lsh_max__mod__hydro = 2
 #define AC_lsh_max__mod__hydro lsh_max__mod__hydro
 run_const bool AC_llinearized_hydro__mod__hydro
@@ -996,6 +998,7 @@ run_const real AC_nheat_rho__mod__energy
 run_const real AC_nheat_tt__mod__energy
 const int nheatc_max__mod__energy = 4
 #define AC_nheatc_max__mod__energy nheatc_max__mod__energy
+run_const int AC_iglobal_hcond__mod__energy
 run_const int AC_ippaux__mod__energy
 run_const int AC_cool_type__mod__energy
 run_const bool AC_lheatc_kprof__mod__energy
@@ -1486,6 +1489,7 @@ const int irho_ee__mod__equationofstate = 15
 #define AC_irho_ee__mod__equationofstate irho_ee__mod__equationofstate
 const int irho_pp__mod__equationofstate = 16
 #define AC_irho_pp__mod__equationofstate irho_pp__mod__equationofstate
+run_const int AC_iglobal_cs2__mod__equationofstate
 run_const real AC_lntt0__mod__equationofstate
 run_const real AC_tt0__mod__equationofstate
 run_const real AC_cs0__mod__equationofstate
@@ -1637,6 +1641,9 @@ run_const bool AC_lshock_heat__mod__cdata
 run_const bool AC_pretend_lntt__mod__cdata
 run_const int AC_ilnrho__mod__cdata
 run_const int AC_irho__mod__cdata
+run_const int AC_irho_b__mod__cdata
+run_const int AC_iss_b__mod__cdata
+run_const int AC_ipp__mod__cdata
 run_const int AC_iuu__mod__cdata
 run_const int AC_iux__mod__cdata
 run_const int AC_iuy__mod__cdata
@@ -1648,6 +1655,9 @@ run_const int AC_iuu0__mod__cdata
 run_const int AC_ioo__mod__cdata
 run_const int AC_ivv__mod__cdata
 run_const int AC_iaa__mod__cdata
+run_const int AC_iax__mod__cdata
+run_const int AC_iay__mod__cdata
+run_const int AC_iaz__mod__cdata
 run_const int AC_iuutest__mod__cdata
 run_const int AC_ijx__mod__cdata
 run_const int AC_ijy__mod__cdata
@@ -1656,6 +1666,7 @@ run_const int AC_inusmag__mod__cdata
 run_const int AC_ietasmag__mod__cdata
 run_const int AC_iex__mod__cdata
 run_const int AC_ialfven__mod__cdata
+run_const int AC_ihypvis__mod__cdata
 run_const int AC_itt__mod__cdata
 run_const int AC_ieth__mod__cdata
 run_const int AC_iglobal_ext_bx__mod__cdata
