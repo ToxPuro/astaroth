@@ -28,8 +28,7 @@
 #include <mpi.h>
 
 // #define AC_ENABLE_ASYNC_AVERAGES
-#define AC_TEST_ONLY
-// #define AC_ENABLE_IO
+#define AC_ENABLE_IO
 // #define AC_ASYNC_IO_ENABLED
 
 #define BENCHMARK(cmd)                                                                             \
@@ -871,31 +870,6 @@ class Grid {
         ac::mpi::reduce(cart_comm, ac::mpi::get_dtype<AcReal>(), MPI_SUM, axis, count, data);
 
         PRINT_LOG("Exit");
-        // // 2) Create communicator that encompasses neighbors in the xy direction
-        // const Index coords{ac::mpi::get_coords(cart_comm)};
-        // // Key used to order the ranks in the new communicator: let MPI_Comm_split
-        // // decide (should the same ordering as in the parent communicator by default)
-        // const int color{as<int>(coords[2])};
-        // const int key{ac::mpi::get_rank(cart_comm)};
-        // MPI_Comm xy_neighbors{MPI_COMM_NULL};
-        // ERRCHK_MPI_API(MPI_Comm_split(cart_comm, color, key, &xy_neighbors));
-        // ERRCHK_MPI(xy_neighbors != MPI_COMM_NULL);
-
-        // // 3) Allreduce
-        // VertexBufferArray vba{};
-        // ERRCHK_AC(acDeviceGetVBA(device, &vba));
-
-        // // Note: assumes that all profiles are contiguous and in correct order
-        // // Error-prone: should be improved when time
-        // ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE,
-        //                              vba.profiles.in[0],
-        //                              1 * vba.profiles.count,
-        //                              AC_REAL_MPI_TYPE,
-        //                              MPI_SUM,
-        //                              xy_neighbors));
-
-        // // 4) Free resources
-        // ERRCHK_MPI_API(MPI_Comm_free(&xy_neighbors));
     }
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
@@ -1039,6 +1013,7 @@ class Grid {
 // Write mesh and profiles
 // TODO: this is synchronous. Consider async.
 #if defined(AC_ENABLE_IO)
+            // Note: ghost zones not up-to-date with this (working as intended)
             if ((iter % acr::get(local_info, AC_simulation_output_interval)) == 0)
                 write_diagnostic_step(cart_comm, device, iter);
 #endif
@@ -1090,13 +1065,11 @@ main(int argc, char* argv[])
         ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
 
         Grid grid{raw_info};
-        grid.test();
+        // grid.test();
 
-#if !defined(AC_TEST_ONLY)
         cudaProfilerStart();
         grid.tfm_pipeline(acr::get(raw_info, AC_simulation_nsteps));
         cudaProfilerStop();
-#endif
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
