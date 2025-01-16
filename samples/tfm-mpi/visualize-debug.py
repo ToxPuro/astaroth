@@ -44,7 +44,7 @@ import glob
 
 nn = np.array((32, 32, 32))
 
-files = glob.glob("../../build/debug*000004*.mesh")
+files = glob.glob("../../build/debug*00000*uxb*.mesh")
 # files = glob.glob(f'../../build/test.mesh')
 files.sort()
 for file in files:
@@ -140,7 +140,7 @@ fig.set_figheight(15)
 fig.set_figwidth(20)
 
 # for step in range(0, 10+1):
-step = 5
+step = 9
 files = glob.glob(f"../../build/debug-step-{str(step).zfill(12)}-tfm-*.profile")
 files.sort()
 print(files)
