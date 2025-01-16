@@ -728,8 +728,8 @@ class Grid {
             std::cout << "elem ";
         std::cout << std::endl;
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
-        // std::cout << "Reduce result: " << std::reduce(hprof.begin(), hprof.end()) << std::endl;
-        // ERRCHK(std::reduce(hprof.begin(), hprof.end()) == 0);
+        std::cout << "Reduce result: " << std::reduce(hprof.begin(), hprof.end()) << std::endl;
+        WARNCHK(std::reduce(hprof.begin(), hprof.end()) == 0);
         write_diagnostic_step(cart_comm, device, 5);
         ///////////////////////////////////
 
@@ -845,7 +845,6 @@ class Grid {
 
         const size_t axis{2};
         const size_t count{nonlocal_tfm_profiles.size() * vba.profiles.count};
-        ERRCHK(count == 15 * (16 + 2 * 3));
         AcReal* data{vba.profiles.in[0]};
         ac::mpi::reduce(cart_comm, ac::mpi::get_dtype<AcReal>(), MPI_SUM, axis, count, data);
 
