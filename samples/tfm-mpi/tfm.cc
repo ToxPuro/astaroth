@@ -725,7 +725,7 @@ class Grid {
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         for (const auto& elem : hprof)
-            std::cout << "elem ";
+            std::cout << elem << " ";
         std::cout << std::endl;
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
         std::cout << "Reduce result: " << std::reduce(hprof.begin(), hprof.end()) << std::endl;
@@ -839,6 +839,7 @@ class Grid {
         // Strategy:
         // 1) Reduce the local result to device->vba.profiles.in
         ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
+        ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
 
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
