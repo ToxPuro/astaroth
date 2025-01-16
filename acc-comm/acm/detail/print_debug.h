@@ -41,8 +41,19 @@ print_debug_array(const std::string& label, const size_t count, const T* arr)
     std::cout << "}" << std::endl;
 }
 
+template <typename T>
+void
+print_debug_vector(const std::string& label, const std::vector<T>& vec)
+{
+    std::cout << label << ": {";
+    for (size_t i{0}; i < vec.size(); ++i)
+        std::cout << vec[i] << (i + 1 < vec.size() ? ", " : "");
+    std::cout << "}" << std::endl;
+}
+
 #define PRINT_DEBUG(value) (print_debug(#value, (value)))
 #define PRINT_DEBUG_ARRAY(count, arr) (print_debug_array(#arr, (count), (arr)))
+#define PRINT_DEBUG_VECTOR(vec) (print_debug_vector(#vec, (vec)))
 
 template <typename T>
 void
