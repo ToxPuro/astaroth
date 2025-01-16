@@ -335,17 +335,23 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
     AcMeshInfo local_info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &local_info));
 
+    const auto local_mm{acr::get_local_mm(local_info)};
+    const auto local_mm_count{prod(local_mm)};
+    ac::buffer<AcReal, ac::mr::host_memory_resource> staging_buffer{local_mm_count};
+
     // Global mesh (collective)
     PRINT_LOG("Global mesh");
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
         PRINT_LOG("Writing %s", filepath);
+        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
+                     staging_buffer.get());
         ac::mpi::write_collective_simple(parent_comm,
                                          ac::mpi::get_dtype<AcReal>(),
                                          acr::get_global_nn(local_info),
                                          acr::get_local_nn_offset(),
-                                         vba.in[i],
+                                         staging_buffer.data(),
                                          std::string(filepath));
     }
     // Local mesh incl. ghost zones
@@ -358,10 +364,12 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
                 step,
                 vtxbuf_names[i]);
         PRINT_LOG("Writing %s", filepath);
+        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
+                     staging_buffer.get());
         ac::mpi::write_distributed(parent_comm,
                                    ac::mpi::get_dtype<AcReal>(),
                                    acr::get_local_mm(local_info),
-                                   vba.in[i],
+                                   staging_buffer.data(),
                                    std::string(filepath));
     }
     // Global profile (collective)
@@ -386,6 +394,8 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
         ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, rank, &profile_comm));
 
         if (profile_comm != MPI_COMM_NULL) {
+            ac::mr::copy(make_ptr(vba, static_cast<Profile>(i), BufferGroup::Input),
+                         staging_buffer.get());
             ac::mpi::write_collective(profile_comm,
                                       ac::mpi::get_dtype<AcReal>(),
                                       profile_global_nz,
@@ -393,7 +403,7 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
                                       profile_local_mz,
                                       profile_local_nz,
                                       profile_local_nz_offset,
-                                      vba.profiles.in[i],
+                                      staging_buffer.data(),
                                       std::string(filepath));
             ERRCHK_MPI_API(MPI_Comm_free(&profile_comm));
         }
