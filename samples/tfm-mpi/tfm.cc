@@ -276,6 +276,7 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
 static int
 init_tfm_profiles(const Device& device)
 {
+    PRINT_LOG("Enter");
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
@@ -327,6 +328,7 @@ init_tfm_profiles(const Device& device)
 static int
 write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const size_t step)
 {
+    PRINT_LOG("Enter");
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
@@ -334,10 +336,11 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
     ERRCHK_AC(acDeviceGetLocalConfig(device, &local_info));
 
     // Global mesh (collective)
+    PRINT_LOG("Global mesh");
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
-        printf("Writing %s\n", filepath);
+        PRINT_LOG("Writing %s", filepath);
         ac::mpi::write_collective_simple(parent_comm,
                                          ac::mpi::get_dtype<AcReal>(),
                                          acr::get_global_nn(local_info),
@@ -346,6 +349,7 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
                                          std::string(filepath));
     }
     // Local mesh incl. ghost zones
+    PRINT_LOG("Local mesh");
     for (int i{0}; i < NUM_VTXBUF_HANDLES; ++i) {
         char filepath[4096];
         sprintf(filepath,
@@ -353,7 +357,7 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
                 ac::mpi::get_rank(parent_comm),
                 step,
                 vtxbuf_names[i]);
-        printf("Writing %s\n", filepath);
+        PRINT_LOG("Writing %s", filepath);
         ac::mpi::write_distributed(parent_comm,
                                    ac::mpi::get_dtype<AcReal>(),
                                    acr::get_local_mm(local_info),
@@ -361,10 +365,11 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
                                    std::string(filepath));
     }
     // Global profile (collective)
+    PRINT_LOG("Global profile");
     for (int i = 0; i < NUM_PROFILES; ++i) {
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.profile", step, profile_names[i]);
-        printf("Writing %s\n", filepath);
+        PRINT_LOG("Writing %s", filepath);
         const Shape profile_global_nz{as<uint64_t>(acr::get(local_info, AC_global_nz))};
         const Shape profile_local_mz{as<uint64_t>(acr::get(local_info, AC_mz))};
         const Shape profile_local_nz{as<uint64_t>(acr::get(local_info, AC_nz))};
@@ -393,6 +398,7 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
             ERRCHK_MPI_API(MPI_Comm_free(&profile_comm));
         }
     }
+    PRINT_LOG("Exit");
     return 0;
 }
 
@@ -400,6 +406,7 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
 static AcReal
 calc_and_distribute_timestep(const MPI_Comm& parent_comm, const Device& device)
 {
+    PRINT_LOG("Enter");
     // VertexBufferArray vba{};
     // ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
@@ -450,6 +457,7 @@ std::vector<ac::segment>
 partition(const Shape& local_mm, const Shape& local_nn, const Shape& local_rr,
           const SegmentGroup& group)
 {
+    PRINT_LOG("Enter");
     switch (group) {
     case SegmentGroup::Halo: {
         const Shape mm{local_mm};
@@ -636,6 +644,7 @@ class Grid {
 
     void test()
     {
+        PRINT_LOG("Enter");
         reset_init_cond();
 
         // Test: Zeros
@@ -811,6 +820,7 @@ class Grid {
 
     void reset_init_cond()
     {
+        PRINT_LOG("Enter");
         // Stencil coefficients
         AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
         ERRCHK(get_stencil_coeffs(local_info, stencils) == 0);
@@ -834,6 +844,7 @@ class Grid {
 
     void reduce_xy_averages(const Stream stream)
     {
+        PRINT_LOG("Enter");
         ERRCHK_MPI(cart_comm != MPI_COMM_NULL);
 
         // Strategy:
@@ -849,6 +860,7 @@ class Grid {
         AcReal* data{vba.profiles.in[0]};
         ac::mpi::reduce(cart_comm, ac::mpi::get_dtype<AcReal>(), MPI_SUM, axis, count, data);
 
+        PRINT_LOG("Exit");
         // // 2) Create communicator that encompasses neighbors in the xy direction
         // const Index coords{ac::mpi::get_coords(cart_comm)};
         // // Key used to order the ranks in the new communicator: let MPI_Comm_split
