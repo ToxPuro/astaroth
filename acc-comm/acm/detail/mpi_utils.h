@@ -200,7 +200,7 @@ void write_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, c
 
 /** Read a distributed snapshot. */
 void read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
-                      const void* data, const std::string& path);
+                      const std::string& path, void* data);
 
 /**
  * Collective synchronous reduction.

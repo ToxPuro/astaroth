@@ -492,6 +492,7 @@ void
 write_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
                   const void* data, const std::string& path)
 {
+    // MPI IO
     MPI_File fp{MPI_FILE_NULL};
     ERRCHK_MPI_API(MPI_File_open(parent_comm,
                                  path.c_str(),
@@ -501,12 +502,26 @@ write_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const 
 
     ERRCHK_MPI_API(MPI_File_write(fp, data, as<int>(prod(local_mm)), etype, MPI_STATUS_IGNORE));
     ERRCHK_MPI_API(MPI_File_close(&fp));
+
+    // Posix
+    // FILE* fp{fopen(path.c_str(), "wb")};
+    // ERRCHK(fp != NULL);
+
+    // int size{-1};
+    // ERRCHK_MPI_API(MPI_Type_size(etype, &size));
+
+    // const size_t count{prod(local_mm)};
+    // const size_t elems_written{fwrite(data, as<size_t>(size), count, fp)};
+    // ERRCHK(elems_written == count);
+
+    // fclose(fp);
 }
 
 void
 read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
-                 const void* data, const std::string& path)
+                 const std::string& path, void* data)
 {
+    // MPI IO
     MPI_File fp{MPI_FILE_NULL};
     ERRCHK_MPI_API(MPI_File_open(parent_comm,
                                  path.c_str(),
@@ -515,6 +530,19 @@ read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const S
                                  &fp));
     ERRCHK_MPI_API(MPI_File_write(fp, data, as<int>(prod(local_mm)), etype, MPI_STATUS_IGNORE));
     ERRCHK_MPI_API(MPI_File_close(&fp));
+
+    // Posix
+    // FILE* fp{fopen(path.c_str(), "rb")};
+    // ERRCHK(fp != NULL);
+
+    // int size{-1};
+    // ERRCHK_MPI_API(MPI_Type_size(etype, &size));
+
+    // const size_t count{prod(local_mm)};
+    // const size_t elems_read{fread(data, as<size_t>(size), count, fp)};
+    // ERRCHK(elems_read == count);
+
+    // fclose(fp);
 }
 
 void
