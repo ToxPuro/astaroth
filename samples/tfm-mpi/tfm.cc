@@ -27,6 +27,9 @@
 
 #include <mpi.h>
 
+#include <algorithm>
+#include <random>
+
 // #define AC_ENABLE_ASYNC_AVERAGES
 #define AC_ENABLE_IO
 // #define AC_ASYNC_IO_ENABLED
@@ -739,26 +742,72 @@ class Grid {
 
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
         ac::buffer<AcReal, ac::mr::host_memory_resource> hprof{vba.profiles.count};
-        const auto dprof{make_ptr(vba, PROFILE_B21mean_z, BufferGroup::Input)};
-        ac::mr::copy(dprof, hprof.get());
+        // const auto dprof{make_ptr(vba, PROFILE_B21mean_z, BufferGroup::Input)};
+        // ac::mr::copy(dprof, hprof.get());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        for (const auto& elem : hprof)
-            std::cout << elem << " ";
-        std::cout << std::endl;
+        for (size_t i{0}; i < NUM_PROFILES; ++i) {
+            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::Input)};
+            ac::mr::copy(dprof, hprof.get());
+            std::cout << "Before profile " << profile_names[i] << std::endl;
+            for (const auto& elem : hprof)
+                std::cout << elem << " ";
+            std::cout << std::endl;
+        }
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        reduce_xy_averages(STREAM_DEFAULT);
-        ac::mr::copy(dprof, hprof.get());
+        // reduce_xy_averages(STREAM_DEFAULT);
+        ERRCHK_AC(acDeviceReduceXYAverages(device, STREAM_DEFAULT));
+        ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        for (const auto& elem : hprof)
-            std::cout << elem << " ";
-        std::cout << std::endl;
+        for (size_t i{0}; i < NUM_PROFILES; ++i) {
+            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::Input)};
+            ac::mr::copy(dprof, hprof.get());
+            std::cout << "After local Profile " << profile_names[i] << std::endl;
+            for (const auto& elem : hprof)
+                std::cout << elem << " ";
+            std::cout << std::endl;
+        }
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
+
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        const size_t reduce_count{NUM_PROFILES * vba.profiles.count};
+        AcReal* data{vba.profiles.in[0]};
+        const size_t axis{2};
+        ac::mpi::reduce(cart_comm, ac::mpi::get_dtype<AcReal>(), MPI_SUM, axis, reduce_count, data);
+        // ac::mr::copy(dprof, hprof.get());
+
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
+        for (size_t i{0}; i < NUM_PROFILES; ++i) {
+            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::Input)};
+            ac::mr::copy(dprof, hprof.get());
+            std::cout << "After reduce Profile " << profile_names[i] << std::endl;
+            for (const auto& elem : hprof)
+                std::cout << elem << " ";
+            std::cout << std::endl;
+        }
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
         std::cout << "Reduce result: " << std::reduce(hprof.begin(), hprof.end()) << std::endl;
         WARNCHK(std::reduce(hprof.begin(), hprof.end()) == 0);
         write_diagnostic_step(cart_comm, device, 5);
+
+        // Test randomized reduce
+        reset_init_cond();
+        // Randomize all fields
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        std::default_random_engine generator;
+        std::uniform_real_distribution<AcReal> distribution{0, 1};
+        for (size_t i{0}; i < NUM_FIELDS; ++i) {
+            ac::buffer<AcReal, ac::mr::host_memory_resource> tmp{prod(local_mm)};
+            std::generate(tmp.begin(), tmp.end(), [&]() { return distribution(generator); });
+            ac::mr::copy(tmp.get(), make_ptr(vba, static_cast<Field>(i), BufferGroup::Input));
+        }
+        reduce_xy_averages(STREAM_DEFAULT);
+        // Constant profiles (B) should be constant
+        // Other profiles should have distinct random distributions between [0, 1),
+        // where the average is near 0.5
+        write_diagnostic_step(cart_comm, device, 6);
         ///////////////////////////////////
 
         // const auto local_mm{acr::get_local_mm(local_info)};
@@ -875,7 +924,11 @@ class Grid {
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
         const size_t axis{2};
-        const size_t count{nonlocal_tfm_profiles.size() * vba.profiles.count};
+        // NOTE: possible bug in the MPI implementation on LUMI
+        // Reducing only a subset of profiles by using `nonlocal_tfm_profiles.size()`
+        // as the profile count causes garbage values to appear at the end (constant B profiles)
+        // This issue does not appear on Triton or Puhti.
+        const size_t count{NUM_PROFILES * vba.profiles.count};
         AcReal* data{vba.profiles.in[0]};
         ac::mpi::reduce(cart_comm, ac::mpi::get_dtype<AcReal>(), MPI_SUM, axis, count, data);
 
@@ -905,13 +958,15 @@ class Grid {
         // Note: assumes that all profiles are contiguous and in correct order
         // Error-prone: should be improved when time
         MPI_Request req{MPI_REQUEST_NULL};
-        ERRCHK_MPI_API(MPI_Iallreduce(MPI_IN_PLACE,
-                                      vba.profiles.in[0],
-                                      nonlocal_tfm_profiles.size() * vba.profiles.count,
-                                      AC_REAL_MPI_TYPE,
-                                      MPI_SUM,
-                                      xy_neighbors,
-                                      &req));
+        ERRCHK_MPI_API(
+            MPI_Iallreduce(MPI_IN_PLACE,
+                           vba.profiles.in[0],
+                           nonlocal_tfm_profiles.size() *
+                               vba.profiles.count, // Note possible MPI BUG here (see above)
+                           AC_REAL_MPI_TYPE,
+                           MPI_SUM,
+                           xy_neighbors,
+                           &req));
 
         // 5) Free resources
         ERRCHK_MPI_API(MPI_Comm_free(&xy_neighbors));
