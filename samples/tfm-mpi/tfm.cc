@@ -217,6 +217,16 @@ static_cast_vec(const ac::vector<U>& in)
     return out;
 }
 
+/** Appends two vectors and returns an appended vector */
+template <typename T>
+std::vector<T>
+appended(const std::vector<T>& a, const std::vector<T>& b)
+{
+    std::vector<T> c{a};
+    c.insert(c.end(), b.begin(), b.end());
+    return c;
+}
+
 /**
  * Decompose the domain set in the input info and returns a complete local mesh info with all
  * parameters set (incl. multi-device offsets, and others)
@@ -718,7 +728,7 @@ class Grid {
         tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::Input));
         tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::Input));
         compute(device, tfm_kernels[0], SegmentGroup::ComputeFull);
-        ac::device::swap_buffers(device, tfm_fields);
+        ac::device::swap_buffers(device, appended(tfm_fields, uxb_fields));
 
         tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::Input));
         tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::Input));
