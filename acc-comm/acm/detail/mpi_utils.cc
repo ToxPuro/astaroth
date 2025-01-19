@@ -553,7 +553,7 @@ reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
 
     MPI_Comm neighbors{MPI_COMM_NULL};
     ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, key, &neighbors));
-    ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, data, count, etype, op, neighbors));
+    ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, data, as<int>(count), etype, op, neighbors));
     ERRCHK_MPI_API(MPI_Comm_free(&neighbors));
 }
 
