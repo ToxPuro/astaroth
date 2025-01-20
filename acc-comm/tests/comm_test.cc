@@ -104,13 +104,13 @@ main()
     ERRCHK_MPI(is_thread_main);
 
     try {
-        int rank, nprocs;
-        ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
+        int original_rank, nprocs;
+        ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &original_rank));
         ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 #if defined(ACM_DEVICE_ENABLED)
         int device_count;
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
-        ERRCHK_CUDA_API(cudaSetDevice(rank % device_count));
+        ERRCHK_CUDA_API(cudaSetDevice(original_rank % device_count));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 #endif
 
