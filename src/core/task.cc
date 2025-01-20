@@ -1054,6 +1054,7 @@ void
 SyncTask::advance(const TraceFile* trace_file)
 {
     // no tracing for now
+    (void)trace_file; // Unused
 
     // Synchronize everything
     acGridSynchronizeStream(STREAM_ALL);
