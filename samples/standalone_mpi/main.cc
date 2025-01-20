@@ -943,8 +943,8 @@ main(int argc, char** argv)
         acPrintMeshInfo(info);
 
         acLogFromRootProc(pid, "Logging build configuration\n");
-        const char* is_on  = "ON";
-        const char* is_off = "OFF";
+        const char* is_on __attribute__((unused)) = "ON";
+        const char* is_off __attribute__((unused)) = "OFF";
 
         const char* forcing_flag =
 #if LFORCING
@@ -1145,6 +1145,8 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
         break;
     }
+    default:
+        ERROR("Unhandled PhysicsConfiguration");
     }
 
     acLogFromRootProc(pid, "sim = %i \n", sim);

@@ -1316,6 +1316,8 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
             // found_compute = true;
             task_graph_repr += "Compute,";
             break;
+        default:
+            ERROR("Unhandled task type in check_ops");
         }
     }
 
