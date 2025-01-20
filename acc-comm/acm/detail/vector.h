@@ -40,8 +40,9 @@ template <typename T> class vector {
 
     // Construct from std::vector
     // ac::vector(std::vector{1,2,3})
+    // ac::vector{{1,2,3}}
     explicit vector(const std::vector<T>& vec)
-        : vector(vec.size(), vec.data())
+        : resource{vec}
     {
     }
 
