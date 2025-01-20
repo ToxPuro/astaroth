@@ -84,7 +84,10 @@ struct device_memory_resource {
 
 #else
 
+#if !defined(ACM_HOST_ONLY_MODE_ENABLED)
 #pragma message("Device code was not enabled. Falling back to host-only memory allocations")
+#endif
+
 using pinned_host_memory_resource                = host_memory_resource;
 using pinned_write_combined_host_memory_resource = host_memory_resource;
 using device_memory_resource                     = host_memory_resource;

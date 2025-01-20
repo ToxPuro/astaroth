@@ -11,8 +11,10 @@
 #pragma clang system_header // TODO check that this does not disable warnings elsewhere
 #include <hip/hip_runtime.h>
 #else
+#if !defined(ACM_HOST_ONLY_MODE_ENABLED)
 static_assert(false,
               "Device code was enabled but neither ACM_CUDA_ENABLED nor ACM_HIP_ENABLED is set");
+#endif
 #endif
 
 #else
