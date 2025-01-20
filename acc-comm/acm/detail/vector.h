@@ -351,14 +351,14 @@ prod(const ac::vector<T>& arr)
 
 /** Element-wise multiplication of vectors a and b */
 template <typename T>
-[[nodiscard]] T
+[[nodiscard]] ac::vector<T>
 mul(const ac::vector<T>& a, const ac::vector<T>& b)
 {
     ERRCHK(a.size() == b.size());
 
     ac::vector<T> c(a.size());
 
-    for (size_t i{0}; i < a.size; ++i)
+    for (size_t i{0}; i < a.size(); ++i)
         c[i] = a[i] * b[i];
 
     return c;
