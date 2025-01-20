@@ -132,6 +132,16 @@ hierarchical_to_linear(const Index& in_coords, const std::vector<Shape>& in_deco
     return index;
 }
 
+Shape
+hierarchical_decomposition_to_global(const std::vector<Shape>& decomposition)
+{
+    ERRCHK(decomposition.size() > 0);
+    Shape global_decomp(decomposition[0].size(), 1);
+    for (const auto& vec : decomposition)
+        global_decomp = mul(global_decomp, vec);
+    return global_decomp;
+}
+
 static uint64_t
 vecprod(const std::vector<uint64_t>& vec)
 {
@@ -261,5 +271,9 @@ test_decomp(void)
             buf[coords[0] + coords[1] * gdecomp[0]] = i;
         }
         // ndarray_print("buf", gdecomp.size(), gdecomp.data, buf.get());
+    }
+    {
+        std::vector<Shape> decompositions{Shape{2, 2}, Shape{4, 1}, Shape{1, 4}};
+        ERRCHK((hierarchical_decomposition_to_global(decompositions) == Shape{8, 8}));
     }
 }

@@ -35,4 +35,12 @@ Index hierarchical_to_spatial(const uint64_t in_index, const std::vector<Shape>&
 uint64_t hierarchical_to_linear(const Index& in_coords,
                                 const std::vector<Shape>& in_decompositions);
 
+/**
+ * Construct a global decomposition from hierarchical.
+ * For example:
+ * std::vector<Shape> decompositions{Shape{2, 2}, Shape{4, 1}, Shape{1, 4}};
+ * ERRCHK((hierarchical_decomposition_to_global(decompositions) == Shape{8, 8}));
+ */
+Shape hierarchical_decomposition_to_global(const std::vector<Shape>& decomposition);
+
 void test_decomp(void);
