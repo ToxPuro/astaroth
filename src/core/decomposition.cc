@@ -19,6 +19,7 @@
 #include "decomposition.h"
 
 #include <string.h> // memcpy
+#include <limits.h> // INT_MAX
 
 #define DECOMPOSITION_TYPE_ZORDER (1)
 #define DECOMPOSITION_TYPE_HIERARCHICAL (2)
@@ -589,9 +590,12 @@ acVerifyDecomposition(const uint3_64 decomp)
     for (size_t i = 0; i < n; ++i)
         ERRCHK_ALWAYS(getPid(getPid3D(i, decomp), decomp) == static_cast<int>(i));
 
-    for (size_t k = 0; k < decomp.z; ++k) {
-        for (size_t j = 0; j < decomp.y; ++j) {
-            for (size_t i = 0; i < decomp.x; ++i) {
+    ERRCHK_ALWAYS(decomp.x <= INT_MAX);
+    ERRCHK_ALWAYS(decomp.y <= INT_MAX);
+    ERRCHK_ALWAYS(decomp.z <= INT_MAX);
+    for (int k = 0; k < static_cast<int>(decomp.z); ++k) {
+        for (int j = 0; j < static_cast<int>(decomp.y); ++j) {
+            for (int i = 0; i < static_cast<int>(decomp.x); ++i) {
 
                 const int3 center = {i, j, k};
 

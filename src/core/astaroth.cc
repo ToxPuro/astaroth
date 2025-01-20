@@ -363,7 +363,7 @@ acGetKernelIdByName(const char* name)
 AcBuffer
 acBufferCreate(const size_t count, const bool on_device)
 {
-    AcBuffer buffer    = {.count = count, .on_device = on_device};
+    AcBuffer buffer    = {.data = NULL, .count = count, .on_device = on_device};
     const size_t bytes = sizeof(buffer.data[0]) * count;
     if (buffer.on_device) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&buffer.data, bytes));

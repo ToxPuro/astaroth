@@ -151,7 +151,7 @@ main(int argc, char** argv)
     Timer t;
     // timer_reset(&t);
     double results[NSAMPLES] = {0};
-#pragma unroll
+// #pragma unroll
     for (int j = 0; j < NSAMPLES; ++j) {
         // Single substep
         // acNodeIntegrateSubstep(node, STREAM_DEFAULT, 2, n_min, n_max, dt);

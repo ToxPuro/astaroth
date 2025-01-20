@@ -386,7 +386,7 @@ AcResult
 acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
 {
   // Set pba.in data to all-nan and pba.out to 0
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  for (int i = 0; i < NUM_PROFILES; ++i) {
     acKernelFlush(stream, pba->in[i], pba->count, (AcReal)NAN);
     acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0.0);
   }
@@ -407,7 +407,7 @@ acPBACreate(const size_t count)
   ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&in, bytes));
   ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&out, bytes));
 #endif
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  for (int i = 0; i < NUM_PROFILES; ++i) {
     pba.in[i]  = &in[i * pba.count];
     pba.out[i] = &out[i * pba.count];
   }
@@ -429,7 +429,7 @@ acPBADestroy(ProfileBufferArray* pba)
   cudaFree(pba->in[0]);
   cudaFree(pba->out[0]);
 #endif
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  for (int i = 0; i < NUM_PROFILES; ++i) {
     pba->in[i]  = NULL;
     pba->out[i] = NULL;
   }
@@ -957,7 +957,7 @@ acPBASwapBuffer(const Profile profile, VertexBufferArray* vba)
 void
 acPBASwapBuffers(VertexBufferArray* vba)
 {
-  for (size_t i = 0; i < NUM_PROFILES; ++i)
+  for (int i = 0; i < NUM_PROFILES; ++i)
     acPBASwapBuffer((Profile)i, vba);
 }
 
@@ -1367,7 +1367,7 @@ acVerifyMeshInfo(const AcMeshInfo info)
               realparam_names[i]);
     }
   }
-  for (size_t i = 0; i < NUM_REAL3_PARAMS; ++i) {
+  for (int i = 0; i < NUM_REAL3_PARAMS; ++i) {
     if (isnan(info.real3_params[i].x) || isnan(info.real3_params[i].y) ||
         isnan(info.real3_params[i].z)) {
       retval = -1;
