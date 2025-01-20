@@ -21,7 +21,7 @@ using MPIShape = ac::vector<int>;
  * Functions to convert between Astaroth's uint64_t column major
  * and MPI's int row major formats
  */
-auto
+static auto
 astaroth_to_mpi_format(const ac::vector<uint64_t>& in)
 {
     ac::vector<int> out(in.size());
@@ -31,7 +31,7 @@ astaroth_to_mpi_format(const ac::vector<uint64_t>& in)
     return out;
 }
 
-auto
+static auto
 astaroth_to_mpi_format(const Direction& in)
 {
     ac::vector<int> out(in.size());
@@ -41,7 +41,7 @@ astaroth_to_mpi_format(const Direction& in)
     return out;
 }
 
-auto
+static auto
 mpi_to_astaroth_format(const ac::vector<int>& in)
 {
     ac::vector<uint64_t> out(in.size());
