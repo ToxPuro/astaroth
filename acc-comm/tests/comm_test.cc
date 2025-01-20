@@ -41,7 +41,7 @@ cudaStreamDestroy(cudaStream_t stream)
 
 using UserType = double;
 
-static void
+[[maybe_unused]] static void
 benchmark(void)
 {
     const size_t num_samples{5};
