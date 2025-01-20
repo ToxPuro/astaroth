@@ -227,3 +227,5 @@ void reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op
             const size_t& axis, const size_t& count, void* data);
 
 } // namespace ac::mpi
+
+void test_mpi_utils();

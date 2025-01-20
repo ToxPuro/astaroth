@@ -4,6 +4,7 @@
 #include "acm/detail/decomp.h"
 #include "acm/detail/math_utils.h"
 #include "acm/detail/memory_resource.h"
+#include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
 #include "acm/detail/pack.h"
 #include "acm/detail/partition.h"
@@ -26,6 +27,7 @@ main(void)
     test_vector();
     test_memory_resource();
     test_pointer();
+    test_mpi_utils();
 
     return EXIT_SUCCESS;
 }
