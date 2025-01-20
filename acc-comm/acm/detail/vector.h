@@ -1,3 +1,7 @@
+/**
+ * A vector class with support for arithmetic operations and additional error checking.
+ * Extends std::vector.
+ */
 #pragma once
 
 #include <algorithm>
@@ -11,11 +15,10 @@
 
 namespace ac {
 
-template <typename T> using base_vector = std::vector<T>;
-
 template <typename T> class vector {
   private:
-    ac::base_vector<T> resource;
+    using base_vector = std::vector<T>;
+    base_vector resource;
 
   public:
     // Vector-like constructor
@@ -33,6 +36,14 @@ template <typename T> class vector {
         ERRCHK(count > 0);
         ERRCHK(arr);
         std::copy_n(arr, count, resource.begin());
+    }
+
+    // Construct from std::vector
+    // ac::vector(std::vector{1,2,3})
+    // ac::vector{{1,2,3}}
+    explicit vector(const std::vector<T>& vec)
+        : resource{vec}
+    {
     }
 
     // Initializer list constructor
@@ -64,6 +75,9 @@ template <typename T> class vector {
     auto begin() const { return resource.begin(); }
     auto end() { return resource.end(); }
     auto end() const { return resource.end(); }
+
+    auto get() { return resource; }
+    auto get() const { return resource; }
 
     template <typename U>
     friend ac::vector<T> operator+(const ac::vector<T>& a, const ac::vector<U>& b)
@@ -336,6 +350,21 @@ prod(const ac::vector<T>& arr)
     return result;
 }
 
+/** Element-wise multiplication of vectors a and b */
+template <typename T>
+[[nodiscard]] ac::vector<T>
+mul(const ac::vector<T>& a, const ac::vector<T>& b)
+{
+    ERRCHK(a.size() == b.size());
+
+    ac::vector<T> c(a.size());
+
+    for (size_t i{0}; i < a.size(); ++i)
+        c[i] = a[i] * b[i];
+
+    return c;
+}
+
 template <typename T, typename U>
 [[nodiscard]] T
 dot(const ac::vector<T>& a, const ac::vector<U>& b)
@@ -348,6 +377,13 @@ dot(const ac::vector<T>& a, const ac::vector<U>& b)
     for (size_t i{0}; i < a.size(); ++i)
         result += a[i] * b[i];
     return result;
+}
+
+template <typename T>
+[[nodiscard]] ac::vector<T>
+make_vector(const size_t count, const T* arr)
+{
+    return ac::vector<T>(count, arr);
 }
 
 void test_vector(void);

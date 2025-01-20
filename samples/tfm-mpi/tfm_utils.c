@@ -44,11 +44,11 @@ acParseArguments(const int argc, char* argv[], Arguments* args)
             fprintf(stderr, "Usage: %s <options>\n", argv[0]);
             fprintf(stderr, "Options:\n");
             for (size_t i = 0; long_options[i].name != NULL; ++i) {
-                printf("\t--%s", long_options[i].name);
+                fprintf(stderr, "\t--%s", long_options[i].name);
                 if (long_options[i].has_arg == required_argument)
-                    printf(" <argument>");
-                printf(": %s", explanations[i]);
-                printf("\n");
+                    fprintf(stderr, " <argument>");
+                fprintf(stderr, ": %s", explanations[i]);
+                fprintf(stderr, "\n");
             }
             return -1;
         }

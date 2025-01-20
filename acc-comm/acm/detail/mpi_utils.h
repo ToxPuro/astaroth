@@ -71,7 +71,9 @@ void finalize();
  * or
  *  ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
  */
-MPI_Comm cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn);
+enum class RankReorderMethod { No, MPI_Default, Hierarchical };
+MPI_Comm cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn,
+                          const RankReorderMethod& reorder_method = RankReorderMethod::Hierarchical);
 
 void cart_comm_destroy(MPI_Comm& cart_comm);
 
@@ -146,6 +148,12 @@ get_dtype()
     else if constexpr (std::is_same_v<T, float>) {
         return MPI_DOUBLE;
     }
+    else if constexpr (std::is_same_v<T, int>) {
+        return MPI_INT;
+    }
+    else if constexpr (std::is_same_v<T, uint64_t>) {
+        return MPI_UINT64_T;
+    }
     else {
         ERROR_DESC("Unknown datatype");
         return MPI_DATATYPE_NULL;
@@ -188,4 +196,38 @@ void write_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& et
                              const Shape& global_nn, const Index& local_nn_offset, const void* data,
                              const std::string& path);
 
+/** Writes a distributed snapshot. Each process should write to their own file. */
+void write_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& mm,
+                       const void* data, const std::string& path);
+
+/** Read a distributed snapshot. */
+void read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
+                      const std::string& path, void* data);
+
+/**
+ * Collective synchronous reduction.
+ * Operates in-place on the input data.
+ * The axis parameter is used to group the processes based on their spatial coordinates
+ *
+ * For example, reducing along axis=0 (the fastest varying) in a 2D decomposition with
+ * processes
+ *
+ * axis 0  -->
+ * axis 1 |  0 2
+ *        v  1 3
+ *
+ * In this case, processes 0 and 1 do a mutual reduction (both will have the same result in their
+ * buffers afterwards). Likewise for processes 2 and 3. This, because the spatial axis 0 component
+ * of processes 0 and 1 is the same.
+ *
+ * A simple way to visualize this is to consider that
+ * axis = 0 => reduced along the yz plane
+ * axis = 1 => reduced along the xz plane
+ * axis = 2 => reduced along the xy plane
+ */
+void reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
+            const size_t& axis, const size_t& count, void* data);
+
 } // namespace ac::mpi
+
+void test_mpi_utils();

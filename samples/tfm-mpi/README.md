@@ -1,0 +1,100 @@
+# Astaroth TFM-MPI
+
+## Overview
+
+C++ implementation: `astaroth/samples/tfm-mpi/tfm.cc`
+
+DSL implementation: `astaroth/samples/tfm/mhd/mhd.ac`. Note that the directory is `tfm`, not `tfm-mpi`
+
+Config file: `astaroth/samples/tfm/mhd/mhd.ini`. Note also here the directory `tfm` instead of `tfm-mpi`.
+
+
+## Building
+
+There's a build script in `astaroth/samples/tfm-mpi/build.sh`.
+
+For example:
+```bash
+cd astaroth
+mkdir build && cd build
+../samples/tfm-mpi/build.sh
+```
+
+The build system determines automatically whether it should compile for AMD or Nvidia.
+
+## Setting up parameters
+
+### Magnetic parameters
+
+The default `AC_eta` and TFM-specific `AC_eta_tfm` are available in `astaroth/samples/tfm/mhd/mhd.ini`.
+
+### B-field profile amplitude and wavenumber
+
+See `AC_profile_amplitude` and `AC_profile_wavenumber` in `astaroth/samples/tfm/mhd/mhd.ini`.
+
+### Simulation steps
+See `AC_simulation_nsteps` and `AC_simulation_output_interval` in `astaroth/samples/tfm/mhd/mhd.ini`.
+
+### Forcing
+
+Forcing is currently always on and a new forcing vector generated at the start of each iteration. 
+
+## Running
+
+- The executable name is `tfm-mpi`.
+- The program expects one (1) MPI process per GPU.
+- There are eight (8) GPUs per node on LUMI.
+
+LUMI
+```bash
+export SRUNMPI2="srun --account=<project number> -t 00:05:00 -p dev-g --gpus-per-node=1 --ntasks-per-node=1 --nodes=1" # 1 GPU
+export SRUNMPI2="srun --account=<project number> -t 00:05:00 -p dev-g --gpus-per-node=2 --ntasks-per-node=2 --nodes=1" # 2 GPUs
+export SRUNMPI4="srun --account=<project number> -t 00:05:00 -p dev-g --gpus-per-node=4 --ntasks-per-node=4 --nodes=1" # 4 GPUs
+export SRUNMPI8="srun --account=<project number> -t 00:05:00 -p dev-g --gpus-per-node=8 --ntasks-per-node=8 --nodes=1" # 8 GPUs
+export SRUNMPI16="srun --account=<project number> -t 00:05:00 -p small-g --gpus-per-node=8 --ntasks-per-node=8 --nodes=2" # 16 GPUs, 2 nodes, note small-g instead of dev-g
+
+$SRUNMPI8 ./tfm-mpi
+```
+
+## Visualizing output
+
+- Outputs are monolithic files holding the computational domain
+- Halos are not included in the monolithic snapshots
+- `astaroth/samples/tfm-mpi/visualize-debug.py` can be used as a starting point for visualizing the snapshots and profiles. Currently hacked together, so have to manually set mesh dimensions, and execute only specific jupyter cells in the script (does not likely run from the command line). I have used mainly the code blocks `# Plot collective` around line 40 and `# Profiles` around line 120.
+- All files are written out as double-precision numbers in the ordering $x$-$y$-$z$ ($x$ fastest varying dimension). For example, the first 8 bytes correspond to the first double-precision value at index $(0, 0, 0)$ in the computational domain, the second corresponds to index $(1, 0, 0)$, etc.
+
+Debug output is in the format
+```bash
+debug-step-000000000060-tfm-PROFILE_ucrossb21mean_x.profile # Monolithic profiles, step number 60, contains global_nz elements 
+debug-step-000000000060-tfm-TF_a12_y.mesh # Monolithic field snapshots, step number 60, contains (global_nx, global_ny, global_nz) elements
+proc-7-debug-step-000000000090-tfm-TF_a12_z.mesh # Distributed field snapshot of process 7 (includes halos but they are not updated before writing to disk so they can contain garbage). Contains (local_mx, local_my, local_mz) elements
+```
+
+Test field handle and output file names
+```
+// Test fields
+Field TF_a11_x, TF_a11_y, TF_a11_z
+Field TF_a12_x, TF_a12_y, TF_a12_z
+Field TF_a21_x, TF_a21_y, TF_a21_z
+Field TF_a22_x, TF_a22_y, TF_a22_z
+```
+defined in the beginning of tfm/mhd/mhd.ac.
+
+Profile handle and output file names
+```
+// Mean-field profiles
+Profile PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
+
+Profile PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z
+Profile PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z
+Profile PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z
+Profile PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z
+
+Profile PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z
+Profile PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z
+Profile PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z
+Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
+```
+
+Profiles are named in format `Profile PROFILE_B12mean_x`, which corresponds to the $x$ component of the $\overline{B}^{12}$-field.
+These correspond to "Eq. 15 in "Scale dependence of alpha effect and turbulent diffusivity", Brandenburg, Rädler, and Schrinner, 2018, https://arxiv.org/pdf/0801.1320. Here $B^{1c}$ (Brandenburg) corresponds to $B^{11}$ (Astaroth).

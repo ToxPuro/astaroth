@@ -9,6 +9,8 @@ field = "UUX"
 files = glob.glob(f"../../build/*{field}*.mesh")
 files.sort()
 
+nn = np.array((32, 32, 32))
+
 # Animate
 import matplotlib.animation as animation
 import numpy as np
@@ -20,9 +22,9 @@ for i, file in enumerate(files):
         file,
         dtype=np.double,
     )
-    arr = arr.reshape((38, 38, 38))
+    arr = arr.reshape(nn)
 
-    data = arr[:, :, 16]
+    data = arr[int(nn[0]/2), :, :]
     im = ax.imshow(data, animated=True)
     if i == 0:
         im = ax.imshow(data)
@@ -35,20 +37,79 @@ ani.save(f"{field}.mp4", writer=writer)
 
 
 # %%
-# Plot
+# Plot collective
 import matplotlib.pyplot as plt
 import numpy as np
 import glob
 
-files = glob.glob("../../build/*LNRHO*.mesh")
+nn = np.array((32, 32, 32))
+
+files = glob.glob("../../build/debug*00000*uxb*.mesh")
+# files = glob.glob(f'../../build/test.mesh')
+files.sort()
 for file in files:
     arr = np.fromfile(
         file,
         dtype=np.double,
     )
-    arr = arr.reshape((38, 38, 38))
+    arr = arr.reshape(nn)
 
-    plt.imshow(arr[:, :, 16])
+    plt.imshow(arr[int(nn[0]/2), :, :])
+    plt.title(file)
+    # plt.colorbar()
+    plt.show()
+
+# %%
+# Plot distributed
+import matplotlib.pyplot as plt
+import numpy as np
+import glob
+
+nn = np.array((16,16,16))
+rr = np.array((3,3,3))
+mm = 2*rr + nn
+nprocs = 8
+
+files = glob.glob("../../build/proc-*00002-*UUX.mesh")
+# files = glob.glob(f'../../build/test.mesh')
+files.sort()
+for file in files:
+    arr = np.fromfile(
+        file,
+        dtype=np.double,
+    )
+    arr = arr.reshape(mm)
+
+    plt.imshow(arr[int(nn[0]/2), :, :], vmin=0, vmax=nprocs)
+    # plt.imshow(arr[0, :, :], vmin=0, vmax=nprocs)
+    plt.colorbar()
+    plt.title(file)
+    # plt.colorbar()
+    plt.show()
+
+# %%
+# Plot distributed
+import matplotlib.pyplot as plt
+import numpy as np
+import glob
+
+nn = np.array((16,16,16))
+rr = np.array((3,3,3))
+mm = 2*rr + nn
+
+files = glob.glob("../../build/proc-0-*00004*TF_a*_x*.mesh")
+# files = glob.glob(f'../../build/test.mesh')
+files.sort()
+for file in files:
+    arr = np.fromfile(
+        file,
+        dtype=np.double,
+    )
+    arr = arr.reshape(mm)
+
+    plt.imshow(arr[int(nn[0]/2), :, :])
+    # plt.imshow(arr[0, :, :], vmin=0, vmax=nprocs)
+    plt.colorbar()
     plt.title(file)
     # plt.colorbar()
     plt.show()
@@ -79,8 +140,9 @@ fig.set_figheight(15)
 fig.set_figwidth(20)
 
 # for step in range(0, 10+1):
-step = 0
+step = 6
 files = glob.glob(f"../../build/debug-step-{str(step).zfill(12)}-tfm-*.profile")
+files.sort()
 print(files)
 for i, file in enumerate(files):
     arr = np.fromfile(

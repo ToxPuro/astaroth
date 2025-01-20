@@ -1329,6 +1329,7 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
   const size_t bpg = (count + tpb - 1) / tpb;
   multiply_inplace<<<bpg, tpb>>>(value, count, array);
   ERRCHK_CUDA_KERNEL();
+  ERRCHK_CUDA(cudaDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
 }
 

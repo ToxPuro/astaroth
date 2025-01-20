@@ -13,5 +13,11 @@ add_executable(comm-test comm_test.cc)
 target_link_libraries(comm-test PRIVATE acm)
 add_test(NAME Comm_Test COMMAND comm-test)
 
-
-
+find_package(MPI COMPONENTS C)
+if (MPI_C_FOUND)
+    add_executable(acm-mpi-test mpi-test.cc)
+    target_link_libraries(acm-mpi-test PRIVATE MPI::MPI_C acm)
+    add_test(NAME MPI_Test COMMAND acm-mpi-test)
+else()
+    message(WARNING "MPI not found, skipping acm MPI tests")
+endif()
