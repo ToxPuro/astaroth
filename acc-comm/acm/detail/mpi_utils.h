@@ -71,7 +71,9 @@ void finalize();
  * or
  *  ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
  */
-MPI_Comm cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn);
+enum class RankReorderMethod { No, MPI_Default, Hierarchical };
+MPI_Comm cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn,
+                          const RankReorderMethod& reorder_method = RankReorderMethod::Hierarchical);
 
 void cart_comm_destroy(MPI_Comm& cart_comm);
 

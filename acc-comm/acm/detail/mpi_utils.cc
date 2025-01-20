@@ -114,8 +114,8 @@ finalize()
     ERRCHK_MPI_API(MPI_Finalize());
 }
 
-MPI_Comm
-cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn)
+static MPI_Comm
+cart_comm_mpi_create(const MPI_Comm& parent_comm, const Shape& global_nn, const int reorder)
 {
     // Get the number of processes
     int mpi_nprocs{-1};
@@ -136,7 +136,7 @@ cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn)
     // Create the Cartesian communicator
     MPI_Comm cart_comm{MPI_COMM_NULL};
     MPIShape mpi_periods(ndims, 1); // Periodic in all dimensions
-    int reorder{1}; // Enable reordering (but likely inop with most MPI implementations)
+    // int reorder{1}; // Enable reordering (but likely inop with most MPI implementations)
     ERRCHK_MPI_API(MPI_Cart_create(parent_comm,
                                    as<int>(ndims),
                                    mpi_decomp.data(),
@@ -217,7 +217,7 @@ test_get_nprocs_per_layer()
     }
 }
 
-MPI_Comm
+static MPI_Comm
 cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const Shape& global_nn)
 {
     // Get the number of processes
@@ -282,6 +282,23 @@ cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const Shape& global_n
     ERRCHK_MPI_API(MPI_Comm_free(&reordered_cart_comm));
 
     return cart_comm;
+}
+
+MPI_Comm
+cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn,
+                 const RankReorderMethod& reorder_method)
+{
+    switch (reorder_method) {
+    case RankReorderMethod::No:
+        return cart_comm_mpi_create(parent_comm, global_nn, 0);
+    case RankReorderMethod::MPI_Default:
+        return cart_comm_mpi_create(parent_comm, global_nn, 1);
+    case RankReorderMethod::Hierarchical:
+        return cart_comm_hierarchical_create(parent_comm, global_nn);
+    default:
+        ERRCHK_EXPR_DESC(false, "Unhandled reorder_method");
+        return MPI_COMM_NULL;
+    }
 }
 
 void
