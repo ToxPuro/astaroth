@@ -394,7 +394,7 @@ acGridInit(const AcMeshInfo info)
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };
-#endif DEBUG_SYNC
+#endif // DEBUG_SYNC
 
     // Random number generator
     // const auto rr            = (int3){STENCIL_WIDTH, STENCIL_HEIGHT, STENCIL_DEPTH};

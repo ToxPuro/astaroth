@@ -809,7 +809,7 @@ generate_mem_accesses(void)
   printf("--- GPU_API_INCLUDES: `%s`\n", GPU_API_INCLUDES);
 
   char cmd[4096];
-  sprintf(cmd, "gcc -Wshadow -I. ");
+  sprintf(cmd, "g++ -std=c++17 -Wshadow -I. ");
   strcat(cmd, "-I " ACC_RUNTIME_API_DIR " ");
   if (strlen(GPU_API_INCLUDES) > 0)
     strcat(cmd, " -I " GPU_API_INCLUDES " ");
