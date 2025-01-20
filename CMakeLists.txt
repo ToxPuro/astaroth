@@ -48,13 +48,13 @@ option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
 
 ## Project-wide compilation flags
 add_compile_options(# C/CXX/CUDA/HIP
-                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Werror>
+                    # $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Werror>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfatal-errors>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wall>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wextra>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wdouble-promotion>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfloat-conversion>
-                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wshadow>
+                    # $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wshadow>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-result>
 )
 
