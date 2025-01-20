@@ -111,7 +111,7 @@ constexpr size_t sim_log_msg_len         = 512;
 static size_t sim_tstamp_len             = 0;
 static char sim_log_msg[sim_log_msg_len] = "";
 
-static void
+static inline void
 set_simulation_timestamp(int step, AcReal time)
 {
     // TODO: only set step and time, and lazily create the log stamp whenever it's needed
@@ -119,7 +119,7 @@ set_simulation_timestamp(int step, AcReal time)
     sim_tstamp_len = strlen(sim_log_msg);
 }
 
-static void
+static inline void
 log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
 {
     if (pid == 0) {
@@ -131,7 +131,7 @@ log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
     }
 }
 
-static void
+static inline void
 log_from_root_proc_with_sim_progress(std::string msg, ...)
 {
     int pid = 0;
@@ -147,7 +147,7 @@ log_from_root_proc_with_sim_progress(std::string msg, ...)
     }
 }
 
-static void
+static inline void
 debug_log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
 {
 #ifndef NDEBUG

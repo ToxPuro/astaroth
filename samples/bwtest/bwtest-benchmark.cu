@@ -78,7 +78,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
         tmp += smem[threadIdx.x + i];
 
     const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
-    if (tid < domain_length)
+    if (tid < (int)domain_length)
         out.data[tid + pad] = tmp;
 }
 #else
@@ -98,7 +98,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
            Array out)
 {
     const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
-    if (tid < domain_length) {
+    if (tid < (int)domain_length) {
 
         double tmp = 0.0;
         for (int i = -radius; i <= radius; ++i)
@@ -112,7 +112,7 @@ void
 model_kernel(const size_t domain_length, const int radius, const size_t pad, const Array in,
              Array out)
 {
-    for (int tid = 0; tid < domain_length; ++tid) {
+    for (int tid = 0; tid < (int)domain_length; ++tid) {
         double tmp = 0.0;
         for (int i = -radius; i <= radius; ++i)
             tmp += in.data[tid + pad + i];
@@ -445,6 +445,7 @@ main(int argc, char* argv[])
     const size_t array_length  = pad + domain_length + radius;
     ERRCHK((2 * radius + 1) * sizeof(double) == working_set_size);
     ERRCHK(domain_length * sizeof(double) == problem_size);
+    ERRCHK(array_length <= MAX_INT);
 
     if (working_set_size > problem_size) {
         fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);

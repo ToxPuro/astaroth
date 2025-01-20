@@ -238,6 +238,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
            const Array in, Array out)
 {
+    (void)domain_length; // Unused. Note: correctness guaranteed by tpb*bpg*ept=domain_length in autotuning. Refer to notes on 2025-01-20 for proof (JP).
     extern __shared__ real smem[];
 
     const int base_idx = blockIdx.x * blockDim.x * ELEMS_PER_THREAD + pad - radius;
@@ -275,6 +276,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
            const Array in, Array out)
 {
+    (void)domain_length; // Unused. Note: correctness guaranteed by tpb*bpg*ept=domain_length in autotuning. Refer to notes on 2025-01-20 for proof (JP).
     const int tid              = (int)(threadIdx.x + blockIdx.x * blockDim.x * ELEMS_PER_THREAD);
     real tmp[ELEMS_PER_THREAD] = {0};
 
@@ -310,7 +312,7 @@ model_kernel(const size_t domain_length, const size_t pad, const int radius, con
              const Array in, Array out)
 {
     ERRCHK_ALWAYS(domain_length < INT_MAX)
-    for (int tid = 0; tid < domain_length; ++tid) {
+    for (int tid = 0; tid < static_cast<int>(domain_length); ++tid) {
         real tmp = 0.0;
         for (int i = -radius; i <= radius; i += stride)
             tmp += in.data[tid + pad + i];
@@ -553,14 +555,14 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
         const long double bandwidth = bytes / seconds;
 
         if (i == num_samples - 1) {
-            printf("Effective bandwidth: %Lg GiB/s\n", bandwidth / pow(1024, 3));
-            printf("\tBytes transferred: %Lg GiB\n", (long double)bytes / pow(1024, 3));
+            printf("Effective bandwidth: %Lg GiB/s\n", bandwidth / powl(1024, 3));
+            printf("\tBytes transferred: %Lg GiB\n", (long double)bytes / powl(1024, 3));
             //printf("\tTime elapsed: %Lg ms (CUDA)\n", (long double)milliseconds);
             printf("\tTime elapsed: %Lg ms (POSIX)\n", milliseconds);
         }
 
         // Write to file
-        fprintf(fp, "%s,%d,%zu,%zu,%d,%Lg,%Lg,%zu,%zu,%zu,%zu,%u,%u\n",
+        fprintf(fp, "%s,%d,%zu,%d,%d,%Lg,%Lg,%zu,%zu,%zu,%zu,%u,%u\n",
                 USE_SMEM ? "\"explicit\"" : "\"implicit\"", MAX_THREADS_PER_BLOCK, c.domain_length,
                 c.radius, c.stride, milliseconds, bandwidth, c.tpb, jobid, seed, i,
                 DOUBLE_PRECISION,MB_IMPLEMENTATION);
@@ -647,7 +649,7 @@ main(int argc, char* argv[])
     fprintf(stderr, "Usage: ./benchmark <computational domain length> <radius> <stride> <jobid> "
                     "<num_samples> <salt>\n");
     const size_t domain_length = (argc > 1) ? (size_t)atol(argv[1])
-                                            : 128 * pow(1024, 2) / sizeof(real);
+                                            : 128 * 1024*1024 / sizeof(real);
     const size_t radius        = (argc > 2) ? (size_t)atol(argv[2]) : 1;
     const int stride           = (argc > 3) ? (size_t)atol(argv[3]) : 1;
     const size_t jobid         = (argc > 4) ? (size_t)atol(argv[4]) : 0;
@@ -665,7 +667,7 @@ main(int argc, char* argv[])
 
     printf("Input parameters:\n");
     printf("\tdomain_length: %zu\n", domain_length);
-    printf("\tradius: %d\n", radius);
+    printf("\tradius: %zu\n", radius);
     printf("\tpad: %zu\n", pad);
     printf("\tstride: %d\n", stride);
     printf("\tjobid: %zu\n", jobid);

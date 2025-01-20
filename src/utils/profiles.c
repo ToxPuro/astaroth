@@ -42,7 +42,7 @@ xcorr(const AcReal* in, const size_t count, const Scalar* filter, const size_t f
         Scalar result = 0;
         for (size_t s = 0; s < filter_width; ++s) {
             ERRCHK_ALWAYS(i + s - radius < count);
-            result += filter[s] * in[i + s - radius];
+            result += filter[s] * (Scalar)in[i + s - radius];
         }
         out[i] = (AcReal)result;
     }
@@ -54,13 +54,13 @@ acHostProfileDerz(const AcReal* in, const size_t count, const AcReal grid_spacin
 {
 #if STENCIL_ORDER == 6
     const Scalar filter[] = {
-        (1 / grid_spacing) * (Scalar)(-1) / 60, //
-        (1 / grid_spacing) * (Scalar)(3) / 20,  //
-        (1 / grid_spacing) * (Scalar)(-3) / 4,  //
-        (1 / grid_spacing) * 0,                 //
-        (1 / grid_spacing) * (Scalar)(3) / 4,   //
-        (1 / grid_spacing) * (Scalar)(-3) / 20, //
-        (1 / grid_spacing) * (Scalar)(1) / 60,
+        (1 / (Scalar)grid_spacing) * (Scalar)(-1) / 60, //
+        (1 / (Scalar)grid_spacing) * (Scalar)(3) / 20,  //
+        (1 / (Scalar)grid_spacing) * (Scalar)(-3) / 4,  //
+        (1 / (Scalar)grid_spacing) * 0,                 //
+        (1 / (Scalar)grid_spacing) * (Scalar)(3) / 4,   //
+        (1 / (Scalar)grid_spacing) * (Scalar)(-3) / 20, //
+        (1 / (Scalar)grid_spacing) * (Scalar)(1) / 60,
     };
 #endif
 
@@ -72,13 +72,13 @@ acHostProfileDerzz(const AcReal* in, const size_t count, const AcReal grid_spaci
 {
 #if STENCIL_ORDER == 6
     const Scalar filter[] = {
-        (1 / (grid_spacing * grid_spacing)) * (Scalar)(1) / 90,   //
-        (1 / (grid_spacing * grid_spacing)) * (Scalar)(-3) / 20,  //
-        (1 / (grid_spacing * grid_spacing)) * (Scalar)(3) / 2,    //
-        (1 / (grid_spacing * grid_spacing)) * (Scalar)(-49) / 18, //
-        (1 / (grid_spacing * grid_spacing)) * (Scalar)(3) / 2,    //
-        (1 / (grid_spacing * grid_spacing)) * (Scalar)(-3) / 20,  //
-        (1 / (grid_spacing * grid_spacing)) * (Scalar)(1) / 90,
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(1) / 90,   //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(-3) / 20,  //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(3) / 2,    //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(-49) / 18, //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(3) / 2,    //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(-3) / 20,  //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(1) / 90,
     };
 #endif
 
@@ -93,7 +93,7 @@ acHostReduceXYAverage(const AcReal* in, const AcMeshDims dims, AcReal* out)
         for (size_t j = dims.n0.y; j < as_size_t(dims.n1.y); ++j) {
             for (size_t i = dims.n0.x; i < as_size_t(dims.n1.x); ++i) {
                 const size_t idx = i + j * dims.m1.x + k * dims.m1.x * dims.m1.y;
-                sum += in[idx];
+                sum += (Scalar)in[idx];
             }
         }
         out[k] = (AcReal)(sum / (dims.nn.x * dims.nn.y));
@@ -115,7 +115,7 @@ acHostInitProfileToCosineWave(const long double box_size, const size_t nz, const
 {
     const long double spacing = box_size / (nz - 1);
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = amplitude * cos(wavenumber * spacing * ((long)i + offset));
+        profile[i] = amplitude * cos((long double)wavenumber * spacing * ((long)i + offset));
     }
     return AC_SUCCESS;
 }
@@ -128,7 +128,7 @@ acHostInitProfileToSineWave(const long double box_size, const size_t nz, const l
 {
     const long double spacing = box_size / (nz - 1);
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = amplitude * sin(wavenumber * spacing * ((long)i + offset));
+        profile[i] = amplitude * sin((long double)wavenumber * spacing * ((long)i + offset));
     }
     return AC_SUCCESS;
 }
@@ -149,4 +149,5 @@ acHostWriteProfileToFile(const char* filepath, const AcReal* profile, const size
     const size_t count_written = fwrite(profile, sizeof(profile[0]), profile_count, fp);
     ERRCHK_ALWAYS(count_written == count_written);
     fclose(fp);
+    return AC_SUCCESS;
 }

@@ -47,10 +47,16 @@ option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs
 option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
 
 ## Project-wide compilation flags
-# -Werror TODO readd
-set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
+add_compile_options(# C/CXX/CUDA/HIP
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Werror>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfatal-errors>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wall>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wextra>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wdouble-promotion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfloat-conversion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wshadow>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-result>
+)
 
 ## CUDA and HIP
 find_package(CUDAToolkit QUIET)

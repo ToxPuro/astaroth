@@ -566,7 +566,7 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
   }
   ERRCHK_ALWAYS(kernel_id < NUM_KERNELS);
   printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel_id],
-         milliseconds);
+         static_cast<double>(milliseconds));
 
   // Timer destroy
   cudaEventDestroy(tstart);
@@ -1114,8 +1114,7 @@ reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
               const AcShape in_shape, const AcIndex out_offset,
               const AcShape out_shape, const AcShape block_shape)
 {
-  const size_t i    = (size_t)threadIdx.x + blockIdx.x * blockDim.x;
-  const AcIndex idx = to_spatial(i, block_shape);
+  const AcIndex idx = to_spatial(static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x, block_shape);
 
   const AcIndex in_pos  = idx + in_offset;
   const AcIndex out_pos = idx + out_offset;
@@ -1265,6 +1264,15 @@ acReindexCross(const cudaStream_t stream, //
   return AC_SUCCESS;
 #else
   ERROR("acReindexCross called but AC_TFM_ENABLED was false");
+  (void)stream; // Unused
+  (void)vba; // Unused
+  (void)in_offset; // Unused
+  (void)in_shape; // Unused
+  (void)out; // Unused
+  (void)out_offset; // Unused
+  (void)out_shape; // Unused
+  (void)block_shape; // Unused
+  (void)reindex_cross; // Unused
   return AC_FAILURE;
 #endif
 }

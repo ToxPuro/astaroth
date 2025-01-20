@@ -461,6 +461,10 @@ compat_acDecompositionInit(const size_t ndims, const size_t* global_dims, const 
 {
     WARNING("Called compat_acDecompositionInit but nothing done, using the legacy Z-order "
             "decomposition implementation");
+    (void)ndims; // Unused
+    (void)global_dims; // Unused
+    (void)nlayers; // Unused
+    (void)partitions_per_layer; // Unused
     return;
 }
 
@@ -581,8 +585,9 @@ void
 acVerifyDecomposition(const uint3_64 decomp)
 {
     const size_t n = decomp.x * decomp.y * decomp.z; // prod(info.ndims, info.global_decomposition);
+    ERRCHK_ALWAYS(n <= INT_MAX);
     for (size_t i = 0; i < n; ++i)
-        ERRCHK_ALWAYS(getPid(getPid3D(i, decomp), decomp) == i);
+        ERRCHK_ALWAYS(getPid(getPid3D(i, decomp), decomp) == static_cast<int>(i));
 
     for (size_t k = 0; k < decomp.z; ++k) {
         for (size_t j = 0; j < decomp.y; ++j) {

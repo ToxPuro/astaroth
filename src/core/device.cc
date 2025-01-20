@@ -870,8 +870,10 @@ acDeviceReduceXYAverage(const Device device, const Stream stream, const Field fi
     acDeviceSynchronizeStream(device, stream);
 
     const AcMeshDims dims = acGetMeshDims(device->local_config);
+    ERRCHK_ALWAYS(dims.m1.z >= 0);
+    const size_t m1z{static_cast<size_t>(dims.m1.z)};
 
-    for (size_t k = 0; k < dims.m1.z; ++k) {
+    for (size_t k = 0; k < m1z; ++k) {
         const int3 start    = (int3){dims.n0.x, dims.n0.y, k};
         const int3 end      = (int3){dims.n1.x, dims.n1.y, k + 1};
         const size_t nxy    = (end.x - start.x) * (end.y - start.y);
@@ -1275,6 +1277,8 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     return AC_SUCCESS;
 #else
     ERROR("acDeviceReduceXYAverages called but AC_TFM_ENABLED was false");
+    (void)device; // Unused
+    (void)stream; // Unused
     return AC_FAILURE;
 #endif
 }
