@@ -67,10 +67,10 @@ Kernel test_reduce()
 Kernel remove_means()
 {
 	res = value(FIELD)
-	res -= PROF_X
+	res -= PROF_X[vertexIdx.x]
 	res -= PROF_Y
 	res -= PROF_Z
-	res -= PROF_XY
+	res -= PROF_XY[vertexIdx.x][vertexIdx.y]
 	res -= PROF_XZ
 	res -= PROF_YX
 	res -= PROF_YZ

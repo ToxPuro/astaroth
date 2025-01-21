@@ -369,12 +369,17 @@ get_node_by_token(const int token, const ASTNode* node)
 
   if (node->token == token)
     return (ASTNode*) node;
-  else if (node->lhs && get_node_by_token(token, node->lhs))
-    return get_node_by_token(token, node->lhs);
-  else if (node->rhs && get_node_by_token(token, node->rhs))
-    return get_node_by_token(token, node->rhs);
-  else
-    return NULL;
+  if(node->lhs)
+  {
+	  ASTNode* lhs_res = get_node_by_token(token,node->lhs);
+	  if(lhs_res) return lhs_res;
+  }
+  if(node->rhs)
+  {
+	  ASTNode* rhs_res = get_node_by_token(token,node->rhs);
+	  if(rhs_res) return rhs_res;
+  }
+  return NULL;
 }
 static inline ASTNode*
 get_node_by_buffer(const char* test, const ASTNode* node)
@@ -784,6 +789,30 @@ build_list_node(const node_vec nodes, const char* separator)
 	}
 	return list_head;
 }
+static inline const ASTNode*
+get_node(const NodeType type, const ASTNode* node)
+{
+  if(!node) 
+  {
+  	  assert(node);
+	  fatal("WRONG; passed NULL to get_node\n");
+  }
+
+  if (node->type & type)
+    return node;
+  if(node->lhs)
+  {
+	  const ASTNode* lhs_res = get_node(type,node->lhs);
+	  if(lhs_res) return lhs_res;
+  }
+  if(node->rhs)
+  {
+	  const ASTNode* rhs_res = get_node(type,node->rhs);
+	  if(rhs_res) return rhs_res;
+  }
+  return NULL;
+}
+
 
 static inline node_vec
 get_nodes_in_list(const ASTNode* head)
@@ -803,24 +832,6 @@ get_nodes_in_list(const ASTNode* head)
 	return res;
 }
 
-static inline const ASTNode*
-get_node(const NodeType type, const ASTNode* node)
-{
-  if(!node) 
-  {
-  	  assert(node);
-	  fatal("WRONG; passed NULL to get_node\n");
-  }
-
-  if (node->type & type)
-    return node;
-  else if (node->lhs && get_node(type, node->lhs))
-    return get_node(type, node->lhs);
-  else if (node->rhs && get_node(type, node->rhs))
-    return get_node(type, node->rhs);
-  else
-    return NULL;
-}
 
 static inline void
 get_array_access_nodes(const ASTNode* node, node_vec* dst)

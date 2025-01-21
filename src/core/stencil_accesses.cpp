@@ -567,6 +567,18 @@ AC_INTERNAL_read_field(const Field& field, const int x, const int y, const int z
 							index_at_boundary(x,y,z) ? AC_IN_BOUNDS_READ : AC_OUT_OF_BOUNDS_READ;
 	return AcReal(1.0);
 }
+AcReal
+AC_INTERNAL_read_profile(const Profile& profile, const int)
+{
+	read_profiles[profile] |= 1;
+	return AcReal(1.0);
+}
+AcReal
+AC_INTERNAL_read_profile(const Profile& profile, const int, const int)
+{
+	read_profiles[profile] |= 1;
+	return AcReal(1.0);
+}
 #define suppress_unused_warning(X) (void)X
 
 static std::vector<int> executed_nodes{};

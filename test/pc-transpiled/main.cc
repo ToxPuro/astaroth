@@ -72,6 +72,8 @@ main(int argc, char* argv[])
     AcMeshInfo info;
     acLoadConfig("PC-AC.conf", &info);
     printf("MAX DIM: %d\n",info[AC_nlocal_max_dim]);
+    printf("SPHERICAL: %d\n",info[AC_lspherical_coords__mod__cdata]);
+    //printf("SHOCK ASKED FOR: %d\n",info.run_consts.config.bool_arrays[AC_lpencil__mod__cdata][i_shock__mod__cparam]);
     //printf("CHIT  IS NULL: %d\n",info[AC_chit_prof_stored__mod__energy] == NULL);
     //printf("GRAVX IS NULL: %d\n",info[AC_gravx_xpencil__mod__gravity] == NULL);
     //exit(EXIT_SUCCESS);

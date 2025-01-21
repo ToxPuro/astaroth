@@ -1,4 +1,7 @@
 const int NGHOST_VAL = 3
+
+
+#include "grid_arrays.h"
 #include "../../../../acc-runtime/stdlib/math"
 #include "../../../../acc-runtime/stdlib/derivs.h"
 #include "../../../../acc-runtime/stdlib/operators.h"
@@ -10,7 +13,6 @@ const int NGHOST_VAL = 3
 Kernel twopass_solve_intermediate(){
   #include "static_var_declares.h"
   #include "df_declares.h"
-  real max_hdiff = 0.0
   real ac_transformed_pencil_interdependency
   real ac_transformed_pencil_among
   real ac_transformed_pencil_by
@@ -1440,13 +1442,13 @@ Kernel twopass_solve_intermediate(){
       ac_transformed_pencil_u0ij = gradient_tensor((Field3){Field(AC_iuu0__mod__cdata-1), Field(AC_iuu0__mod__cdata), Field(AC_iuu0__mod__cdata+1)})
     }
     if (AC_lpencil__mod__cdata[AC_i_divu__mod__cparam-1]) {
-      ac_transformed_pencil_divu = divergence(ac_transformed_pencil_uij)
+      ac_transformed_pencil_divu = divergence(ac_transformed_pencil_uij,ac_transformed_pencil_uu)
     }
     if (AC_lpencil__mod__cdata[AC_i_divu0__mod__cparam-1]) {
-      ac_transformed_pencil_divu0 = divergence(ac_transformed_pencil_u0ij)
+      ac_transformed_pencil_divu0 = divergence(ac_transformed_pencil_u0ij,ac_transformed_pencil_uu0)
     }
     if (AC_lpencil__mod__cdata[AC_i_sij__mod__cparam-1]) {
-      ac_transformed_pencil_sij = traceless_strain(ac_transformed_pencil_uij,ac_transformed_pencil_divu)
+      ac_transformed_pencil_sij = traceless_strain(ac_transformed_pencil_uij,ac_transformed_pencil_divu,ac_transformed_pencil_uu)
       if (AC_lshear__mod__cparam  &&  AC_lshear_rateofstrain__mod__hydro) {
         ac_transformed_pencil_sij[1-1][2-1] = ac_transformed_pencil_sij[1-1][2-1] + AC_sshear__mod__cdata
         ac_transformed_pencil_sij[2-1][1-1] = ac_transformed_pencil_sij[2-1][1-1] + AC_sshear__mod__cdata
@@ -1633,10 +1635,10 @@ Kernel twopass_solve_intermediate(){
       }
     }
     if (AC_lpencil__mod__cdata[AC_i_divu__mod__cparam-1]) {
-      ac_transformed_pencil_divu = divergence(ac_transformed_pencil_uij)
+      ac_transformed_pencil_divu = divergence(ac_transformed_pencil_uij,ac_transformed_pencil_uu)
     }
     if (AC_lpencil__mod__cdata[AC_i_sij__mod__cparam-1]) {
-      ac_transformed_pencil_sij = traceless_strain(ac_transformed_pencil_uij,ac_transformed_pencil_divu)
+      ac_transformed_pencil_sij = traceless_strain(ac_transformed_pencil_uij,ac_transformed_pencil_divu,ac_transformed_pencil_uu)
       if (AC_lshear__mod__cparam  &&  AC_lshear_rateofstrain__mod__hydro) {
         ac_transformed_pencil_sij[1-1][2-1] = ac_transformed_pencil_sij[1-1][2-1] + AC_sshear__mod__cdata
         ac_transformed_pencil_sij[2-1][1-1] = ac_transformed_pencil_sij[2-1][1-1] + AC_sshear__mod__cdata
@@ -3958,7 +3960,7 @@ Kernel twopass_solve_intermediate(){
     }
     if (AC_lpencil__mod__cdata[AC_i_diva__mod__cparam-1]) {
       if (AC_lpencil__mod__cdata[AC_i_aij__mod__cparam-1]  &&  ! AC_lpencil_check_at_work__mod__cdata) {
-        ac_transformed_pencil_diva = divergence(ac_transformed_pencil_aij)
+        ac_transformed_pencil_diva = divergence(ac_transformed_pencil_aij,ac_transformed_pencil_aa)
       }
       else {
         ac_transformed_pencil_diva = divergence((Field3){Field(AC_iaa__mod__cdata-1), Field(AC_iaa__mod__cdata), Field(AC_iaa__mod__cdata+1)})
@@ -4256,7 +4258,9 @@ Kernel twopass_solve_intermediate(){
         }
       }
       else {
-        not_implemented("gij_etc with more than 6 params")
+        ac_transformed_pencil_bij = bij((Field3){Field(AC_iaa__mod__cdata-1), Field(AC_iaa__mod__cdata), Field(AC_iaa__mod__cdata+1)})
+        ac_transformed_pencil_del2a = laplace((Field3){Field(AC_iaa__mod__cdata-1), Field(AC_iaa__mod__cdata), Field(AC_iaa__mod__cdata+1)})
+        if(AC_lcovariant_magnetic__mod__magnetic) print("covariant bij not implemented")
         if (AC_lpencil__mod__cdata[AC_i_curlb__mod__cparam-1]  &&  ! AC_ljj_as_comaux__mod__magnetic) {
           ac_transformed_pencil_curlb=curl(ac_transformed_pencil_bij)
         }
@@ -4270,7 +4274,8 @@ Kernel twopass_solve_intermediate(){
         }
       }
       else {
-        not_implemented("gij_etc with more than 6 params")
+        ac_transformed_pencil_bij = bij((Field3){Field(AC_iaa__mod__cdata-1), Field(AC_iaa__mod__cdata), Field(AC_iaa__mod__cdata+1)})
+        if(AC_lcovariant_magnetic__mod__magnetic) print("covariant bij not implemented")
         if (AC_lpencil__mod__cdata[AC_i_curlb__mod__cparam-1] &&  ! AC_ljj_as_comaux__mod__magnetic) {
           ac_transformed_pencil_curlb=curl(ac_transformed_pencil_bij)
         }
@@ -4281,7 +4286,8 @@ Kernel twopass_solve_intermediate(){
         ac_transformed_pencil_del2a = laplace((Field3){Field(AC_iaa__mod__cdata-1), Field(AC_iaa__mod__cdata), Field(AC_iaa__mod__cdata+1)})
       }
       else {
-        not_implemented("gij_etc with more than 6 params")
+        ac_transformed_pencil_del2a = laplace((Field3){Field(AC_iaa__mod__cdata-1), Field(AC_iaa__mod__cdata), Field(AC_iaa__mod__cdata+1)})
+        if(AC_lcovariant_magnetic__mod__magnetic) print("covariant bij not implemented")
       }
     }
     if (AC_lpencil__mod__cdata[AC_i_bijtilde__mod__cparam-1]) {
@@ -6661,7 +6667,6 @@ Kernel twopass_solve_intermediate(){
       thdiff_171_231 = ac_transformed_pencil_cv1*thdiff_171_231
     }
     DF_SS = DF_SS + thdiff_171_231
-    max_hdiff = max(max_hdiff,thdiff_175_231)
     if (AC_lfirst__mod__cdata && AC_ldt__mod__cdata) {
       diffus_chi__mod__energy=diffus_chi__mod__energy+(ac_transformed_pencil_cv1*krho1_171_231+AC_chi_t__mod__energy)*dxyz_2__mod__cdata
     }
@@ -6992,7 +6997,6 @@ Kernel twopass_solve_intermediate(){
         thdiff_175_231=thdiff_175_231+g2_175_231
       }
     }
-    max_hdiff = max(max_hdiff,thdiff_175_231)
     DF_SS = DF_SS + thdiff_175_231
     if (AC_lfirst__mod__cdata && AC_ldt__mod__cdata) {
       if (AC_chi_t0__mod__energy!=0. && (AC_lchit_total__mod__energy  ||  AC_lchit_mean__mod__energy)) {
@@ -9936,7 +9940,7 @@ Kernel twopass_solve_intermediate(){
           DF_UZ=DF_UZ+ac_transformed_pencil_gg.z*(-ac_transformed_pencil_ss)
         }
       }
-      else {
+      if(!AC_lanelastic__mod__cparam && !AC_lboussinesq_grav__mod__gravity){
         if (AC_lgravx_gas__mod__cdata) {
           gg_293.x=ac_transformed_pencil_gg.x
         }
@@ -10076,11 +10080,8 @@ Kernel twopass_solve_intermediate(){
     DF_RHZ = ac_transformed_pencil_rho*DF_UZ
     DF_UVEC = df_iuu_pencil + DF_UVEC
   }
-  write(TEST_1,max_hdiff)
-  write(TEST_2,ac_transformed_pencil_del2lntt)
-  write(TEST_3,ac_transformed_pencil_del2lnrho)
-  write(TEST_4,ac_transformed_pencil_visc_heat)
-  write(TEST_5,DF_SS)
+  headtt__mod__cdata=false
+  lfirstpoint__mod__cdata=false
 }
 
 #include "taskgraph.h"

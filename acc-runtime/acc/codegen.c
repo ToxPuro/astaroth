@@ -1935,6 +1935,23 @@ get_const_array_var_dims(const char* name, const ASTNode* node)
 	return res;
 
 }
+
+const char*
+get_internal_array_name(const Symbol* sym)
+{
+	const char* datatype_scalar = intern(remove_substring(strdup(sym->tspecifier),"*"));
+    	if(str_vec_contains(sym->tqualifiers,DEAD_STR,RUN_CONST_STR))
+    	{
+	    return sprintf_intern("AC_INTERNAL_run_const_%s_array_here",datatype_scalar);
+	}
+        if(str_vec_contains(sym->tqualifiers,CONST_STR)) return sym->identifier;
+	return
+	    sprintf_intern(
+		    "AC_INTERNAL_%s_%s_arrays_%s",
+        	    str_vec_contains(sym->tqualifiers,DCONST_STR) ? "d" : "gmem",
+        	    convert_to_define_name(datatype_scalar), sym->identifier);
+}
+
 void
 gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
 {
@@ -1975,13 +1992,7 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
     base->postfix=NULL;
     base->infix=NULL;
 
-    ASTNode* identifier_node = create_primary_expression(
-            str_vec_contains(sym->tqualifiers,CONST_STR) ? sym->identifier :
-	    sprintf_intern(
-		    "AC_INTERNAL_%s_%s_arrays_%s",
-        	    str_vec_contains(sym->tqualifiers,DCONST_STR) ? "d" : "gmem",
-        	    convert_to_define_name(datatype_scalar), sym->identifier
-    ));
+    ASTNode* identifier_node = create_primary_expression(get_internal_array_name(sym));
     identifier_node->parent = base;
     base->lhs =  identifier_node;
     ASTNode* pointer_access = astnode_create(NODE_UNKNOWN,NULL,NULL);
@@ -4606,15 +4617,98 @@ test_type(ASTNode* node, const char* type)
 	       node->rhs && test_type(node->rhs,type) ? true : 
 	       false;
 }
+void
+gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
+{
+	TRAVERSE_PREAMBLE_PARAMS(gen_profile_reads,gen_mem_accesses)
+	if(node->token != IDENTIFIER)
+		return;
+	if(!node->buffer)
+		return;
+	if(!node->parent)
+		return;
+	//discard global const declarations
+	if(get_parent_node(NODE_GLOBAL,node))
+		return;
+	const char* type = get_expr_type(node->parent);
+	if(!type || !strstr(type,"Profile"))
+		return;
+	ASTNode* array_access = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,node);
+	if(!array_access || !is_left_child(NODE_ARRAY_ACCESS,node))	return;
+	while(get_parent_node(NODE_ARRAY_ACCESS,array_access)) array_access = (ASTNode*) get_parent_node(NODE_ARRAY_ACCESS,array_access);
+	if(node->type & NODE_MEMBER_ID)
+	{
+		node = (ASTNode*)get_parent_node(NODE_STRUCT_EXPRESSION,node);
+		while(node->parent->type & NODE_STRUCT_EXPRESSION) node = node->parent;
+	}
+	node_vec nodes = VEC_INITIALIZER;
+	get_array_access_nodes(array_access,&nodes);
+	if(!strcmps(type,"Profile<X>","Profile<Y>","Profile<Z>") && nodes.size != 1)	
+	{
+		fatal("Fatal error: only 1-dimensional reads are allowed for 1d Profiles\n");
+	}
+	if(strcmps(type,"Profile<X>","Profile<Y>","Profile<Z>") && nodes.size != 2)	
+	{
+		fatal("Fatal error: only 2-dimensional reads are allowed for 2d Profiles\n");
+	}
+	if(is_left_child(NODE_ASSIGNMENT,node))
+	{
+		fatal("Explicit writes to Profiles not allowed!\n");
+	}
+
+	ASTNode* idx_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
+	if(!gen_mem_accesses)
+	{
+		if(!strcmps(type,"Profile<XY>","Profile<XZ>"))
+		{
+			astnode_set_prefix("PROFILE_X_Y_OR_Z_INDEX(",idx_node);
+		}
+		else if(!strcmps(type,"Profile<YX>","Profile<YZ>"))
+		{
+			astnode_set_prefix("PROFILE_Y_X_OR_Z_INDEX(",idx_node);
+		}
+		else if(!strcmps(type,"Profile<ZX>","Profile<ZY>"))
+		{
+			astnode_set_prefix("PROFILE_Z_X_OR_Y_INDEX(",idx_node);
+		}
+		else
+			astnode_set_prefix("(",idx_node);
+		astnode_set_postfix(")",idx_node);
+	}
+	ASTNode* rhs = astnode_create(NODE_UNKNOWN, idx_node, NULL);
+	ASTNode* indexes = build_list_node(nodes,",");
+	idx_node->lhs = indexes;
+	indexes->parent = idx_node;
+
+	free_node_vec(&nodes);
+	astnode_free(array_access);
+
+        array_access->rhs = rhs;
+	ASTNode* before_lhs = NULL;
+	ASTNode* lhs = astnode_create(NODE_UNKNOWN, before_lhs, astnode_dup(node,NULL));
+	array_access->lhs = lhs;
+	if(gen_mem_accesses && !is_left_child(NODE_ASSIGNMENT,node))
+	{
+		astnode_set_postfix(")",rhs);
+
+		astnode_set_infix("AC_INTERNAL_read_profile(",lhs);
+		astnode_set_postfix(",",lhs);
+	}
+	else
+	{
+		astnode_set_prefix("[",rhs);
+		astnode_set_postfix("]",rhs);
+
+		astnode_set_infix("vba.profiles.in[",lhs);
+		astnode_set_postfix("]",lhs);
+	}
+	lhs->parent = array_access;
+}
 
 void
 gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_accesses)
 {
-	if(node->lhs)
-		gen_multidimensional_field_accesses_recursive(node->lhs,gen_mem_accesses);
-	if(node->rhs)
-		gen_multidimensional_field_accesses_recursive(node->rhs,gen_mem_accesses);
-
+	TRAVERSE_PREAMBLE_PARAMS(gen_multidimensional_field_accesses_recursive,gen_mem_accesses);
 	if(node->token != IDENTIFIER)
 		return;
 	if(!node->buffer)
@@ -6339,14 +6433,15 @@ create_func_call_expr(const char* func_name, const ASTNode* param)
 	ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
 	return expression;
 }
+
 bool
-field_to_real_conversion(ASTNode* node, const ASTNode* root)
+func_params_conversion(ASTNode* node, const ASTNode* root)
 {
 	bool res = false;
 	if(node->lhs)
-		res |= field_to_real_conversion(node->lhs,root);
+		res |= func_params_conversion(node->lhs,root);
 	if(node->rhs)
-		res |= field_to_real_conversion(node->rhs,root);
+		res |= func_params_conversion(node->rhs,root);
 	if(!(node->type & NODE_FUNCTION_CALL)) return res;
 	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	if(!check_symbol(NODE_DFUNCTION_ID,func_name,0,0)) return res;
@@ -6361,6 +6456,7 @@ field_to_real_conversion(ASTNode* node, const ASTNode* root)
 	for(size_t i = offset; i < call_info.types.size; ++i)
 	{
 		if(!call_info.types.data[i]) continue;
+		if(!params_info.types.data[i-offset]) continue;
 		if(
 		      (params_info.types.data[i-offset] == REAL3_STR     && call_info.types.data[i] == FIELD3_STR)
 		   || (params_info.types.data[i-offset] == REAL_STR      && call_info.types.data[i] == FIELD_STR)
@@ -6376,6 +6472,22 @@ field_to_real_conversion(ASTNode* node, const ASTNode* root)
 					expr,
 					create_func_call_expr(VALUE_STR,expr)
 				     );
+		}
+		//TP: This translates e.g. any_AC(arr,3) --> any_AC(AC_INTERNAL_d_bool_arrays_arr,3)
+		//TP: i.e. translates enums to the appropriate pointers when the function expects to take a pointer
+		//TP: This is probably not the best place to place this but works for now
+		if(strstr(params_info.types.data[i-offset],"*") && strstr(call_info.types.data[i],"*"))
+		{
+  			const Symbol* sym = get_symbol(NODE_VARIABLE_ID,intern(call_info.expr.data[i]),NULL);
+			if(sym)
+			{
+				ASTNode* identifier = get_node_by_token(IDENTIFIER,call_info.expr_nodes.data[i]);
+				if(identifier)
+				{
+
+					astnode_sprintf(identifier,"%s",get_internal_array_name(sym));
+				}
+			}
 		}
 	}
 	free_func_params_info(&call_info);
@@ -6397,7 +6509,7 @@ gen_type_info(ASTNode* root)
 	while(has_changed)
 	{
 		has_changed = gen_local_type_info(root);
-		has_changed |= field_to_real_conversion(root,root);
+		has_changed |= func_params_conversion(root,root);
 		has_changed |= flow_type_info(root);
 	}
 }
@@ -8449,6 +8561,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   check_global_array_dimensions(root);
 
   gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses);
+  gen_profile_reads(root,gen_mem_accesses);
 
 
 

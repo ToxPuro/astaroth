@@ -496,6 +496,15 @@ acGetRealScratchpadSize(const size_t i)
 #include "load_dconst_arrays.h"
 #include "store_dconst_arrays.h"
 
+#define PROFILE_X_Y_OR_Z_INDEX(i,j) \
+  ((i) + (j)*VAL(AC_mlocal).x)
+
+#define PROFILE_Y_X_OR_Z_INDEX(i,j) \
+  ((i) + (j)*VAL(AC_mlocal).y)
+
+#define PROFILE_Z_X_OR_Y_INDEX(i,j) \
+  ((i) + (j)*VAL(AC_mlocal).z)
+
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*VAL(AC_mlocal).x + (k)*VAL(AC_mlocal_products).xy)

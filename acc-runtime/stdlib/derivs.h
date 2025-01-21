@@ -1,3 +1,4 @@
+
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
@@ -55,63 +56,337 @@
 #define DER6UPWD_1 ( 15. / 60.)
 #define DER6UPWD_0 (-20. / 60.)
 
-//Corresponds to der5 in Pencil Code
-Stencil der5x {
-    [0][0][-3] = -AC_inv_ds_5.x * DER5_3,
-    [0][0][-2] = -AC_inv_ds_5.x * DER5_2,
-    [0][0][-1] = -AC_inv_ds_5.x * DER5_1,
-    [0][0][1]  = AC_inv_ds_5.x * DER5_1,
-    [0][0][2]  = AC_inv_ds_5.x * DER5_2,
-    [0][0][3]  = AC_inv_ds_5.x * DER5_3
-}
-Stencil der5y {
-    [0][-3][0] = -AC_inv_ds_5.y * DER5_3,
-    [0][-2][0] = -AC_inv_ds_5.y * DER5_2,
-    [0][-1][0] = -AC_inv_ds_5.y * DER5_1,
-    [0][1][0]  = AC_inv_ds_5.y * DER5_1,
-    [0][2][0]  = AC_inv_ds_5.y * DER5_2,
-    [0][3][0]  = AC_inv_ds_5.y * DER5_3
-}
-Stencil der5z {
-    [-3][0][0] = -AC_inv_ds_5.z * DER5_3,
-    [-2][0][0] = -AC_inv_ds_5.z * DER5_2,
-    [-1][0][0] = -AC_inv_ds_5.z * DER5_1,
-    [1][0][0]  = AC_inv_ds_5.z * DER5_1,
-    [2][0][0]  = AC_inv_ds_5.z * DER5_2,
-    [3][0][0]  = AC_inv_ds_5.z * DER5_3
+#define AC_INV_R         (AC_inv_r[vertexIdx.y])
+#define AC_INV_CYL_R     (AC_inv_cyl_r[vertexIdx.y])
+#define AC_INV_SIN_THETA (AC_inv_sin_theta[vertexIdx.z])
+#define AC_COT           (AC_cot_theta[vertexIdx.y])
+
+#define AC_INV_MAPPING_FUNC_DER_X (AC_inv_mapping_func_derivative_x[vertexIdx.x])
+#define AC_INV_MAPPING_FUNC_DER_Y (AC_inv_mapping_func_derivative_y[vertexIdx.y])
+#define AC_INV_MAPPING_FUNC_DER_Z (AC_inv_mapping_func_derivative_z[vertexIdx.z])
+
+#define AC_MAPPING_FUNC_TILDE_X  (AC_mapping_func_tilde_x[vertexIdx.x])
+#define AC_MAPPING_FUNC_TILDE_Y  (AC_mapping_func_tilde_y[vertexIdx.y])
+#define AC_MAPPING_FUNC_TILDE_Z  (AC_mapping_func_tilde_z[vertexIdx.z])
+
+Stencil derx_stencil {
+    [0][0][-3] = -DER1_3,
+    [0][0][-2] = -DER1_2,
+    [0][0][-1] = -DER1_1,
+    [0][0][1]  = DER1_1,
+    [0][0][2]  = DER1_2,
+    [0][0][3]  = DER1_3
 }
 
-der5x1y(Field f)
+derx(Field f)
 {
-	print("NOT implemented der5x1y\n")
-	return 0.0
+	if(!AC_nonequidistant_grid.x)
+	{
+		return derx_stencil(f)*AC_inv_ds.x
+	}
+	else
+	{
+		return derx_stencil(f)*AC_INV_MAPPING_FUNC_DER_X
+	}
 }
-der5x1z(Field f)
+
+Stencil dery_stencil {
+    [0][-3][0] = -DER1_3,
+    [0][-2][0] = -DER1_2,
+    [0][-1][0] = -DER1_1,
+    [0][1][0]  = DER1_1,
+    [0][2][0]  = DER1_2,
+    [0][3][0]  = DER1_3
+}
+
+dery(Field f)
 {
-	print("NOT implemented der5x1z\n")
-	return 0.0
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R
+	}
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_CYL_R
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.y)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Y
+	}
+	else
+	{
+		grid_factor = AC_inv_ds.y
+	}
+	return dery_stencil(f)*coordinate_factor*grid_factor
 }
-der5y1x(Field f)
+
+
+
+Stencil derz_stencil {
+    [-3][0][0] = -DER1_3,
+    [-2][0][0] = -DER1_2,
+    [-1][0][0] = -DER1_1,
+    [1][0][0]  = DER1_1,
+    [2][0][0]  = DER1_2,
+    [3][0][0]  = DER1_3
+}
+
+derz(Field f)
 {
-	print("NOT implemented der5y1x\n")
-	return 0.0
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.z)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Z
+	}
+	else
+	{
+		grid_factor = AC_inv_ds.y
+	}
+	return derz_stencil(f)*coordinate_factor*grid_factor
 }
-der5y1z(Field f)
+
+
+Stencil derxx_stencil {
+    [0][0][-3] = DER2_3,
+    [0][0][-2] = DER2_2,
+    [0][0][-1] = DER2_1,
+    [0][0][0]  = DER2_0,
+    [0][0][1]  = DER2_1,
+    [0][0][2]  = DER2_2,
+    [0][0][3]  = DER2_3
+}
+derxx(Field f)
 {
-	print("NOT implemented der5y1z\n")
-	return 0.0
+	if(!AC_nonequidistant_grid.x)
+	{
+		return derxx_stencil(f)*AC_inv_ds_2.x
+	}
+	else
+	{
+		return derxx_stencil(f)*(AC_INV_MAPPING_FUNC_DER_X*AC_INV_MAPPING_FUNC_DER_X) + derx(f)*AC_MAPPING_FUNC_TILDE_X
+	}
 }
-der5z1x(Field f)
+
+Stencil deryy_stencil {
+    [0][-3][0] = DER2_3,
+    [0][-2][0] = DER2_2,
+    [0][-1][0] = DER2_1,
+    [0][0][0]  = DER2_0,
+    [0][1][0]  = DER2_1,
+    [0][2][0]  = DER2_2,
+    [0][3][0]  = DER2_3
+}
+
+deryy(Field f)
 {
-	print("NOT implemented der5z1x\n")
-	return 0.0
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = (AC_INV_R*AC_INV_R)
+	}
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		coordinate_factor = (AC_INV_CYL_R*AC_INV_CYL_R)
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.y)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Y*AC_INV_MAPPING_FUNC_DER_Y
+		return deryy_stencil(f)
+	}
+	else
+	{
+		grid_factor = AC_inv_ds_2.y
+	}
+	res = deryy_stencil(f)*coordinate_factor*grid_factor
+	if(AC_nonequidistant_grid.y)
+	{
+		 res += AC_MAPPING_FUNC_TILDE_Y*dery(f)
+	}
+	return res
 }
-der5z1y(Field f)
+
+Stencil derzz_stencil {
+    [-3][0][0] = DER2_3,
+    [-2][0][0] = DER2_2,
+    [-1][0][0] = DER2_1,
+    [0][0][0]  = DER2_0,
+    [1][0][0]  = DER2_1,
+    [2][0][0]  = DER2_2,
+    [3][0][0]  = DER2_3
+}
+
+derzz(Field f)
 {
-	print("NOT implemented der5z1y\n")
-	return 0.0
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA;
+		coordinate_factor *= coordinate_factor
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.z)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Z*AC_INV_MAPPING_FUNC_DER_Z
+	}
+	else
+	{
+		grid_factor = AC_inv_ds_2.z
+	}
+	res = derzz_stencil(f)*coordinate_factor*grid_factor
+	if(AC_nonequidistant_grid.z)
+	{
+		 res += AC_MAPPING_FUNC_TILDE_Z*derz(f)
+	}
+	return res
 }
-//TP: corresponds to der4 in Pencil Code
+
+Stencil derxy_stencil {
+    [0][-3][-3]= DERX_3,
+    [0][-2][-2]= DERX_2,
+    [0][-1][-1]= DERX_1,
+    [0][0][0]  = DERX_0,
+    [0][1][1]  = DERX_1,
+    [0][2][2]  = DERX_2,
+    [0][3][3]  = DERX_3,
+    [0][-3][3] = -DERX_3,
+    [0][-2][2] = -DERX_2,
+    [0][-1][1] = -DERX_1,
+    [0][1][-1] = -DERX_1,
+    [0][2][-2] = -DERX_2,
+    [0][3][-3] = -DERX_3
+}
+derxy(Field f)
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R
+	}
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_CYL_R
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.x)
+	{
+		grid_factor *= AC_INV_MAPPING_FUNC_DER_X
+	}
+	else
+	{
+		grid_factor *= AC_inv_ds.x
+	}
+	if(AC_nonequidistant_grid.y)
+	{
+		grid_factor *= AC_INV_MAPPING_FUNC_DER_Y
+	}
+	else
+	{
+		grid_factor *= AC_inv_ds.y
+	}
+	return derxy_stencil(f)*coordinate_factor*grid_factor
+}
+#define deryx derxy
+
+Stencil derxz_stencil {
+    [-3][0][-3]  = DERX_3,
+    [-2][0][-2]  = DERX_2,
+    [-1][0][-1]  = DERX_1,
+    [0][0][0]    = DERX_0,
+    [1][0][1]    = DERX_1,
+    [2][0][2]    = DERX_2,
+    [3][0][3]    = DERX_3,
+    [-3][0][3]   = -DERX_3,
+    [-2][0][2]   = -DERX_2,
+    [-1][0][1]   = -DERX_1,
+    [1][0][-1]   = -DERX_1,
+    [2][0][-2]   = -DERX_2,
+    [3][0][-3]   = -DERX_3
+}
+derxz(Field f)
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.x)
+	{
+		grid_factor *= AC_INV_MAPPING_FUNC_DER_X
+	}
+	else
+	{
+		grid_factor *= AC_inv_ds.x
+	}
+	if(AC_nonequidistant_grid.z)
+	{
+		grid_factor *= AC_INV_MAPPING_FUNC_DER_Z
+	}
+	else
+	{
+		grid_factor *= AC_inv_ds.z
+	}
+	return derxz_stencil(f)*coordinate_factor*grid_factor
+}
+
+#define derzx derxz
+
+Stencil deryz_stencil {
+    [-3][-3][0] = DERX_3,
+    [-2][-2][0] = DERX_2,
+    [-1][-1][0] = DERX_1,
+    [0][0][0]   = DERX_0,
+    [1][1][0]   = DERX_1,
+    [2][2][0]   = DERX_2,
+    [3][3][0]   = DERX_3,
+    [-3][3][0]  = -DERX_3,
+    [-2][2][0]  = -DERX_2,
+    [-1][1][0]  = -DERX_1,
+    [1][-1][0]  = -DERX_1,
+    [2][-2][0]  = -DERX_2,
+    [3][-3][0]  = -DERX_3
+}
+deryz(Field f)
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R*AC_INV_R*AC_INV_SIN_THETA
+	}
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_CYL_R
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.y)
+	{
+		grid_factor *= AC_INV_MAPPING_FUNC_DER_Y
+	}
+	else
+	{
+		grid_factor *= AC_inv_ds.y
+	}
+	if(AC_nonequidistant_grid.z)
+	{
+		grid_factor *= AC_INV_MAPPING_FUNC_DER_Z
+	}
+	else
+	{
+		grid_factor *= AC_inv_ds.z
+	}
+	return deryz_stencil(f)*coordinate_factor*grid_factor
+}
+
+#define derzy deryz
+
 Stencil der4x {
     [0][0][-3] = AC_inv_ds_4.x * DER4_3,
     [0][0][-2] = AC_inv_ds_4.x * DER4_2,
@@ -121,7 +396,7 @@ Stencil der4x {
     [0][0][2]  = AC_inv_ds_4.x * DER4_2,
     [0][0][3]  = AC_inv_ds_4.x * DER4_3
 }
-Stencil der4y {
+Stencil der4y_stencil {
     [0][-3][0] = AC_inv_ds_4.y * DER4_3,
     [0][-2][0] = AC_inv_ds_4.y * DER4_2,
     [0][-1][0] = AC_inv_ds_4.y * DER4_1,
@@ -129,6 +404,24 @@ Stencil der4y {
     [0][1][0]  = AC_inv_ds_4.y * DER4_1,
     [0][2][0]  = AC_inv_ds_4.y * DER4_2,
     [0][3][0]  = AC_inv_ds_4.y * DER4_3
+}
+der4y(Field f)
+{
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		factor = AC_INV_R
+		factor *= factor
+		factor *= factor
+		return der4y_stencil(f)*(factor)
+	}
+	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		factor = AC_INV_CYL_R
+		factor *= factor
+		factor *= factor
+		return der4y_stencil(f)*(factor)
+	}
+	return der4y_stencil(f)
 }
 Stencil der4z {
     [-3][0][0] = AC_inv_ds_4.z * DER4_3,
@@ -139,48 +432,17 @@ Stencil der4z {
     [2][0][0]  = AC_inv_ds_4.z * DER4_2,
     [3][0][0]  = AC_inv_ds_4.z * DER4_3
 }
-//TP: corresponds to der6_main
-Stencil der6x {
-    [0][0][-3] = AC_inv_ds_6.x * DER6_3,
-    [0][0][-2] = AC_inv_ds_6.x * DER6_2,
-    [0][0][-1] = AC_inv_ds_6.x * DER6_1,
-    [0][0][0]  = AC_inv_ds_6.x * DER6_0,
-    [0][0][1]  = AC_inv_ds_6.x * DER6_1,
-    [0][0][2]  = AC_inv_ds_6.x * DER6_2,
-    [0][0][3]  = AC_inv_ds_6.x * DER6_3
-}
-Stencil der6y {
-    [0][-3][0] = AC_inv_ds_6.y * DER6_3,
-    [0][-2][0] = AC_inv_ds_6.y * DER6_2,
-    [0][-1][0] = AC_inv_ds_6.y * DER6_1,
-    [0][0][0]  = AC_inv_ds_6.y * DER6_0,
-    [0][1][0]  = AC_inv_ds_6.y * DER6_1,
-    [0][2][0]  = AC_inv_ds_6.y * DER6_2,
-    [0][3][0]  = AC_inv_ds_6.y * DER6_3
-}
-Stencil der6z {
-    [-3][0][0] = AC_inv_ds_6.z * DER6_3,
-    [-2][0][0] = AC_inv_ds_6.z * DER6_2,
-    [-1][0][0] = AC_inv_ds_6.z * DER6_1,
-    [0][0][0]  = AC_inv_ds_6.z * DER6_0,
-    [1][0][0]  = AC_inv_ds_6.z * DER6_1,
-    [2][0][0]  = AC_inv_ds_6.z * DER6_2,
-    [3][0][0]  = AC_inv_ds_6.z * DER6_3
-}
 
-//TP: we do it this way since these most probably called less often
-//Thus these should be less performant then the normal versions
-der6x_ignore_spacing(Field f)
+der4z(Field f)
 {
-	return AC_ds_6.x*der6x(f)
-}
-der6y_ignore_spacing(Field f)
-{
-	return AC_ds_6.x*der6y(f)
-}
-der6z_ignore_spacing(Field f)
-{
-	return AC_ds_6.z*der6z(f)
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		factor = AC_INV_R*AC_INV_SIN_THETA
+		factor *= factor
+		factor *= factor
+		return der4z_stencil(f)*(factor)
+	}
+	return der4z_stencil(f)
 }
 
 der4x2y(Field f)
@@ -218,146 +480,242 @@ der2i2j2k(Field f)
 	print("NOT implemented der2i2j2k\n")
 	return 0.0
 }
-Stencil derx {
-    [0][0][-3] = -AC_inv_ds.x * DER1_3,
-    [0][0][-2] = -AC_inv_ds.x * DER1_2,
-    [0][0][-1] = -AC_inv_ds.x * DER1_1,
-    [0][0][1]  = AC_inv_ds.x * DER1_1,
-    [0][0][2]  = AC_inv_ds.x * DER1_2,
-    [0][0][3]  = AC_inv_ds.x * DER1_3
+
+Stencil der5x {
+    [0][0][-3] = -AC_inv_ds_5.x * DER5_3,
+    [0][0][-2] = -AC_inv_ds_5.x * DER5_2,
+    [0][0][-1] = -AC_inv_ds_5.x * DER5_1,
+    [0][0][1]  = AC_inv_ds_5.x * DER5_1,
+    [0][0][2]  = AC_inv_ds_5.x * DER5_2,
+    [0][0][3]  = AC_inv_ds_5.x * DER5_3
+}
+Stencil der5y_stencil {
+    [0][-3][0] = -AC_inv_ds_5.y * DER5_3,
+    [0][-2][0] = -AC_inv_ds_5.y * DER5_2,
+    [0][-1][0] = -AC_inv_ds_5.y * DER5_1,
+    [0][1][0]  = AC_inv_ds_5.y * DER5_1,
+    [0][2][0]  = AC_inv_ds_5.y * DER5_2,
+    [0][3][0]  = AC_inv_ds_5.y * DER5_3
+}
+der5y(Field f)
+{
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		factor = AC_INV_R
+		factor *= factor
+		factor *= factor
+		factor *= AC_INV_R
+		return der5y_stencil(f)*(factor)
+	}
+	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		factor = AC_INV_CYL_R
+		factor *= factor
+		factor *= factor
+		factor *= AC_INV_CYL_R
+		return der5y_stencil(f)*(factor)
+	}
+	return der5y_stencil(f)
+}
+Stencil der5z_stencil {
+    [-3][0][0] = -AC_inv_ds_5.z * DER5_3,
+    [-2][0][0] = -AC_inv_ds_5.z * DER5_2,
+    [-1][0][0] = -AC_inv_ds_5.z * DER5_1,
+    [1][0][0]  = AC_inv_ds_5.z * DER5_1,
+    [2][0][0]  = AC_inv_ds_5.z * DER5_2,
+    [3][0][0]  = AC_inv_ds_5.z * DER5_3
 }
 
-Stencil dery {
-    [0][-3][0] = -AC_inv_ds.y * DER1_3,
-    [0][-2][0] = -AC_inv_ds.y * DER1_2,
-    [0][-1][0] = -AC_inv_ds.y * DER1_1,
-    [0][1][0]  = AC_inv_ds.y * DER1_1,
-    [0][2][0]  = AC_inv_ds.y * DER1_2,
-    [0][3][0]  = AC_inv_ds.y * DER1_3
+der5z(Field f)
+{
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		factor = AC_INV_R*AC_INV_SIN_THETA
+		factor *= factor
+		factor *= factor
+		factor *= AC_INV_R*AC_INV_SIN_THETA
+		return der5z_stencil(f)*(factor)
+	}
+	return der5z_stencil(f)
 }
 
-Stencil derz {
-    [-3][0][0] = -AC_inv_ds.z * DER1_3,
-    [-2][0][0] = -AC_inv_ds.z * DER1_2,
-    [-1][0][0] = -AC_inv_ds.z * DER1_1,
-    [1][0][0]  = AC_inv_ds.z * DER1_1,
-    [2][0][0]  = AC_inv_ds.z * DER1_2,
-    [3][0][0]  = AC_inv_ds.z * DER1_3
+der5x1y(Field f)
+{
+	print("NOT implemented der5x1y\n")
+	return 0.0
+}
+der5x1z(Field f)
+{
+	print("NOT implemented der5x1z\n")
+	return 0.0
+}
+der5y1x(Field f)
+{
+	print("NOT implemented der5y1x\n")
+	return 0.0
+}
+der5y1z(Field f)
+{
+	print("NOT implemented der5y1z\n")
+	return 0.0
+}
+der5z1x(Field f)
+{
+	print("NOT implemented der5z1x\n")
+	return 0.0
+}
+der5z1y(Field f)
+{
+	print("NOT implemented der5z1y\n")
+	return 0.0
 }
 
-Stencil derxx {
-    [0][0][-3] = AC_inv_ds_2.x * DER2_3,
-    [0][0][-2] = AC_inv_ds_2.x * DER2_2,
-    [0][0][-1] = AC_inv_ds_2.x * DER2_1,
-    [0][0][0]  = AC_inv_ds_2.x * DER2_0,
-    [0][0][1]  = AC_inv_ds_2.x * DER2_1,
-    [0][0][2]  = AC_inv_ds_2.x * DER2_2,
-    [0][0][3]  = AC_inv_ds_2.x * DER2_3
+
+//TP: corresponds to der6_main
+Stencil der6x_stencil {
+    [0][0][-3] = DER6_3,
+    [0][0][-2] = DER6_2,
+    [0][0][-1] = DER6_1,
+    [0][0][0]  = DER6_0,
+    [0][0][1]  = DER6_1,
+    [0][0][2]  = DER6_2,
+    [0][0][3]  = DER6_3
+}
+der6x(Field f)
+{
+	return der6x_stencil(f)*AC_inv_ds_6.x
+}
+Stencil der6y_stencil {
+    [0][-3][0] = DER6_3,
+    [0][-2][0] = DER6_2,
+    [0][-1][0] = DER6_1,
+    [0][0][0]  = DER6_0,
+    [0][1][0]  = DER6_1,
+    [0][2][0]  = DER6_2,
+    [0][3][0]  = DER6_3
+}
+Stencil der6z_stencil {
+    [-3][0][0] = DER6_3,
+    [-2][0][0] = DER6_2,
+    [-1][0][0] = DER6_1,
+    [0][0][0]  = DER6_0,
+    [1][0][0]  = DER6_1,
+    [2][0][0]  = DER6_2,
+    [3][0][0]  = DER6_3
+}
+der6y(Field f)
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		factor_1 = AC_INV_R
+		factor_2 = factor_1*factor_1
+		factor_4 = factor_2*factor_2
+		coordinate_factor = factor_4*factor_2
+	}
+	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		factor_1 = AC_INV_CYL_R
+		factor_2 = factor_1*factor_1
+		factor_4 = factor_2*factor_2
+		coordinate_factor = factor_4*factor_2
+	}
+	return der6y_stencil(f)*coordinate_factor*AC_inv_ds_6.y
 }
 
-Stencil deryy {
-    [0][-3][0] = AC_inv_ds_2.y * DER2_3,
-    [0][-2][0] = AC_inv_ds_2.y * DER2_2,
-    [0][-1][0] = AC_inv_ds_2.y * DER2_1,
-    [0][0][0]  = AC_inv_ds_2.y * DER2_0,
-    [0][1][0]  = AC_inv_ds_2.y * DER2_1,
-    [0][2][0]  = AC_inv_ds_2.y * DER2_2,
-    [0][3][0]  = AC_inv_ds_2.y * DER2_3
+der6z(Field f)
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		factor_1 = AC_INV_R*AC_INV_SIN_THETA
+		factor_2 = factor_1*factor_1
+		factor_4 = factor_2*factor_2
+		coordinate_factor = factor_4*factor_2
+
+	}
+	return der6z_stencil(f)*coordinate_factor*AC_inv_ds_6.z
 }
 
-Stencil derzz {
-    [-3][0][0] = AC_inv_ds_2.z * DER2_3,
-    [-2][0][0] = AC_inv_ds_2.z * DER2_2,
-    [-1][0][0] = AC_inv_ds_2.z * DER2_1,
-    [0][0][0]  = AC_inv_ds_2.z * DER2_0,
-    [1][0][0]  = AC_inv_ds_2.z * DER2_1,
-    [2][0][0]  = AC_inv_ds_2.z * DER2_2,
-    [3][0][0]  = AC_inv_ds_2.z * DER2_3
+der6x_upwd(Field f)
+{
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.x)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_X
+	}
+	else
+	{
+		grid_factor = AC_inv_ds.x
+	}
+	return der6x_stencil(f)*grid_factor
+}
+der6y_upwd(Field f)
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		factor_1 = AC_INV_R
+		factor_2 = factor_1*factor_1
+		factor_4 = factor_2*factor_2
+		coordinate_factor = factor_4*factor_2
+
+	}
+	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		factor_1 = AC_INV_CYL_R
+		factor_2 = factor_1*factor_1
+		factor_4 = factor_2*factor_2
+		coordinate_factor = factor_4*factor_2
+
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.y)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Y
+	}
+	else
+	{
+		grid_factor = AC_inv_ds.y
+	}
+	return der6y_stencil(f)*coordinate_factor*grid_factor
 }
 
-Stencil derxy {
-    [0][-3][-3] = AC_inv_ds.x * AC_inv_ds.y * DERX_3,
-    [0][-2][-2] = AC_inv_ds.x * AC_inv_ds.y * DERX_2,
-    [0][-1][-1] = AC_inv_ds.x * AC_inv_ds.y * DERX_1,
-    [0][0][0]  = AC_inv_ds.x * AC_inv_ds.y * DERX_0,
-    [0][1][1]  = AC_inv_ds.x * AC_inv_ds.y * DERX_1,
-    [0][2][2]  = AC_inv_ds.x * AC_inv_ds.y * DERX_2,
-    [0][3][3]  = AC_inv_ds.x * AC_inv_ds.y * DERX_3,
-    [0][-3][3] = -AC_inv_ds.x * AC_inv_ds.y * DERX_3,
-    [0][-2][2] = -AC_inv_ds.x * AC_inv_ds.y * DERX_2,
-    [0][-1][1] = -AC_inv_ds.x * AC_inv_ds.y * DERX_1,
-    [0][1][-1] = -AC_inv_ds.x * AC_inv_ds.y * DERX_1,
-    [0][2][-2] = -AC_inv_ds.x * AC_inv_ds.y * DERX_2,
-    [0][3][-3] = -AC_inv_ds.x * AC_inv_ds.y * DERX_3
-}
-#define deryx derxy
-
-Stencil derxz {
-    [-3][0][-3] = AC_inv_ds.x * AC_inv_ds.z * DERX_3,
-    [-2][0][-2] = AC_inv_ds.x * AC_inv_ds.z * DERX_2,
-    [-1][0][-1] = AC_inv_ds.x * AC_inv_ds.z * DERX_1,
-    [0][0][0]  = AC_inv_ds.x * AC_inv_ds.z * DERX_0,
-    [1][0][1]  = AC_inv_ds.x * AC_inv_ds.z * DERX_1,
-    [2][0][2]  = AC_inv_ds.x * AC_inv_ds.z * DERX_2,
-    [3][0][3]  = AC_inv_ds.x * AC_inv_ds.z * DERX_3,
-    [-3][0][3] = -AC_inv_ds.x * AC_inv_ds.z * DERX_3,
-    [-2][0][2] = -AC_inv_ds.x * AC_inv_ds.z * DERX_2,
-    [-1][0][1] = -AC_inv_ds.x * AC_inv_ds.z * DERX_1,
-    [1][0][-1] = -AC_inv_ds.x * AC_inv_ds.z * DERX_1,
-    [2][0][-2] = -AC_inv_ds.x * AC_inv_ds.z * DERX_2,
-    [3][0][-3] = -AC_inv_ds.x * AC_inv_ds.z * DERX_3
+der6z_upwd(Field f)
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		factor_1 = AC_INV_R*AC_INV_SIN_THETA
+		factor_2 = factor_1*factor_1
+		factor_4 = factor_2*factor_2
+		coordinate_factor = factor_4*factor_2
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.z)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Z
+	}
+	else
+	{
+		grid_factor = AC_inv_ds.z
+	}
+	return der6z_stencil(f)*coordinate_factor*grid_factor
 }
 
-#define derzx derxz
 
-Stencil deryz {
-    [-3][-3][0] = AC_inv_ds.y * AC_inv_ds.z * DERX_3,
-    [-2][-2][0] = AC_inv_ds.y * AC_inv_ds.z * DERX_2,
-    [-1][-1][0] = AC_inv_ds.y * AC_inv_ds.z * DERX_1,
-    [0][0][0]  = AC_inv_ds.y * AC_inv_ds.z * DERX_0,
-    [1][1][0]  = AC_inv_ds.y * AC_inv_ds.z * DERX_1,
-    [2][2][0]  = AC_inv_ds.y * AC_inv_ds.z * DERX_2,
-    [3][3][0]  = AC_inv_ds.y * AC_inv_ds.z * DERX_3,
-    [-3][3][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_3,
-    [-2][2][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_2,
-    [-1][1][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_1,
-    [1][-1][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_1,
-    [2][-2][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_2,
-    [3][-3][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_3
+der6x_ignore_spacing(Field f)
+{
+	return der6x_stencil(f)
 }
-
-#define derzy deryz
-
-Stencil der6x_upwd {
-    [0][0][-3] =  AC_inv_ds.x * DER6UPWD_3,
-    [0][0][-2] =  AC_inv_ds.x * DER6UPWD_2,
-    [0][0][-1] =  AC_inv_ds.x * DER6UPWD_1,
-    [0][0][0]  =  AC_inv_ds.x * DER6UPWD_0,
-    [0][0][1]  =  AC_inv_ds.x * DER6UPWD_1,
-    [0][0][2]  =  AC_inv_ds.x * DER6UPWD_2,
-    [0][0][3]  =  AC_inv_ds.x * DER6UPWD_3
+der6y_ignore_spacing(Field f)
+{
+	return der6y_stencil(f)
 }
-
-Stencil der6y_upwd {
-    [0][-3][0] =  AC_inv_ds.y * DER6UPWD_3,
-    [0][-2][0] =  AC_inv_ds.y * DER6UPWD_2,
-    [0][-1][0] =  AC_inv_ds.y * DER6UPWD_1,
-    [0][0][0]  =  AC_inv_ds.y * DER6UPWD_0,
-    [0][1][0]  =  AC_inv_ds.y * DER6UPWD_1,
-    [0][2][0]  =  AC_inv_ds.y * DER6UPWD_2,
-    [0][3][0]  =  AC_inv_ds.y * DER6UPWD_3
+der6z_ignore_spacing(Field f)
+{
+	return der6z_stencil(f)
 }
-
-Stencil der6z_upwd {
-    [-3][0][0] =  AC_inv_ds.z * DER6UPWD_3,
-    [-2][0][0] =  AC_inv_ds.z * DER6UPWD_2,
-    [-1][0][0] =  AC_inv_ds.z * DER6UPWD_1,
-    [0][0][0]  =  AC_inv_ds.z * DER6UPWD_0,
-    [1][0][0]  =  AC_inv_ds.z * DER6UPWD_1,
-    [2][0][0]  =  AC_inv_ds.z * DER6UPWD_2,
-    [3][0][0]  =  AC_inv_ds.z * DER6UPWD_3
-}
-
 
 //derx(Field f)
 //{

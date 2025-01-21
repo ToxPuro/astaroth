@@ -1,5 +1,9 @@
 u_dot_grad_vec(Matrix m,real3 v){
   //!!!return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
+  if(AC_coordinate_system != AC_CARTEESIAN_COORDINATES)
+  {
+	  print("NOT IMPLEMENTED u_dot_grad_vec for non-carteesian\n")
+  }
   return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
 }
 
@@ -46,37 +50,147 @@ elemental gradient6_upwd(s) {
 
 
 divergence(Field3 v) {
-    return derx(v.x) + dery(v.y) + derz(v.z)
+    g = derx(v.x) + dery(v.y) + derz(v.z)
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	   return g + AC_INV_R*(v.x*2 + AC_COT*v.y);
+    }
+    else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    return g+AC_INV_CYL_R*v.x
+    }
+    return g
 }
 divergence(Matrix m)
 {
-	return m[0][0] + m[1][1] + m[2][2]
+	b = m[0][0] + m[1][1] + m[2][2];
+	return b;
+}
+divergence(Matrix m, real3 a)
+{
+	b = m[0][0] + m[1][1] + m[2][2];
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		return b +2*AC_INV_R*(a.x + AC_COT*a.y)
+	}
+	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+	    return b+AC_INV_CYL_R*a.x
+	}
+		
+	return b;
 }
 
 curl(Field3 v) {
-    return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
-}
-bij(Field3 v)
-{
-	Matrix res;
-	res[0][0] = deryx(v.z) - derzx(v.y)
-	res[0][1] = deryy(v.z) - derzy(v.y)
-	res[0][2] = deryz(v.z) - derzz(v.y)
-
-	res[1][0] = derzx(v.x) - derxx(v.z)
-	res[1][1] = derzy(v.x) - derxy(v.z)
-	res[1][2] = derzz(v.x) - derxz(v.z)
-
-	res[2][0] = derxx(v.y) - deryx(v.x)
-	res[2][1] = derxy(v.y) - deryy(v.x)
-	res[2][2] = derxz(v.y) - deryz(v.x)
-
-	return res;
+    g = real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	    g.x += v.z*AC_INV_R*AC_COT
+	    g.y -= v.z*AC_INV_R
+	    g.z += v.y*AC_INV_R
+    }
+    else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    g.z += v.y*AC_INV_CYL_R
+    }
+    return g
 }
 
 curl(Matrix m) {
   return real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
 }
+
+curl(Matrix m, real3 v) {
+  g = real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
+  if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+  {
+          g.x += v.z*AC_INV_R*AC_COT
+          g.y -= v.z*AC_INV_R
+          g.z += v.y*AC_INV_R
+  }
+  else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+  {
+          g.z += v.y*AC_INV_CYL_R
+  }
+  return g
+}
+
+hessian(Field v)
+{
+	return Matrix(
+			real3(derxx(v), derxy(v), derxz(v)),
+			real3(derxy(v), deryy(v), deryz(v)),
+			real3(derxz(v), deryz(v), derzz(v))
+		     )
+}
+
+del2fi_dxjk(Field3 v)
+{
+	return Tensor(
+			hessian(v.x),
+			hessian(v.y),
+			hessian(v.z)
+		     )
+}
+
+bij(Field3 v)
+{
+    	d2A = del2fi_dxjk(v)
+    	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    	{
+    		d2A[0][0][0] -= AC_INV_R*dery(v.x)
+    		d2A[0][0][1] -= AC_INV_R*dery(v.y)
+    		d2A[0][0][2] -= AC_INV_R*dery(v.z)
+
+    		d2A[1][0][0] -= AC_INV_R*derz(v.x)
+    		d2A[1][0][1] -= AC_INV_R*derz(v.y)
+    		d2A[1][0][2] -= AC_INV_R*derz(v.z)
+
+    		d2A[2][1][0] -= AC_INV_R*derz(v.x)*AC_COT
+    		d2A[2][1][1] -= AC_INV_R*derz(v.y)*AC_COT
+    		d2A[2][1][2] -= AC_INV_R*derz(v.z)*AC_COT
+    	}
+    	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    	{
+    	        d2A[1][0][0] -= dery(v.x)*AC_INV_CYL_R
+    	        d2A[1][0][1] -= dery(v.y)*AC_INV_CYL_R
+    	        d2A[1][0][2] -= dery(v.z)*AC_INV_CYL_R
+    	}
+
+	Matrix res;
+	res[0][0] = d2A[1][0][2] - d2A[2][0][1] 
+	res[0][1] = d2A[1][1][2] - d2A[2][1][1] 
+	res[0][2] = d2A[1][2][2] - d2A[2][2][1] 
+
+	res[1][0] = d2A[2][0][1] - d2A[1][0][2] 
+	res[1][1] = d2A[2][1][1] - d2A[1][1][2] 
+	res[1][2] = d2A[2][2][1] - d2A[1][2][2] 
+
+	res[2][0] = d2A[0][0][1] - d2A[1][0][0] 
+	res[2][1] = d2A[0][1][1] - d2A[1][1][0] 
+	res[2][2] = d2A[0][2][1] - d2A[1][2][0] 
+
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+          res[3-1][2-1]+=dery(v.x)*AC_INV_R
+          res[2-1][3-1]+=-derz(v.z)*AC_INV_R
+          res[1-1][3-1]+=derz(v.z)*AC_INV_R*AC_COT
+          res[3-1][1-1]+=dery(v.x)*AC_INV_R           -v.y*(AC_INV_R*AC_INV_R)
+          res[2-1][1-1]+=-derz(v.x)*AC_INV_R           +v.z*(AC_INV_R*AC_INV_R)
+          res[1-1][2-1]+=derz(v.y)*AC_INV_R*AC_COT -v.z*(AC_INV_R*AC_INV_R)*(AC_INV_SIN_THETA*AC_INV_SIN_THETA)
+
+	}
+	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+	  
+          res[3-1][2-1]=res[3-1][2-1] + dery(v.y)*AC_INV_CYL_R
+          res[3-1][1-1]=res[3-1][1-1] + dery(v.x)*AC_INV_CYL_R-v.y*AC_INV_CYL_R*AC_INV_CYL_R
+	}
+
+
+	return res;
+}
+
 
 elemental del4(Field s) {
   return der4x(s) + der4y(s) + der4z(s)
@@ -125,8 +239,48 @@ elemental del6_upwd(Field s) {
   return der6x_upwd(s) + der6y_upwd(s) + der6z_upwd(s)
 }
 
-elemental laplace(Field s) {
-    return derxx(s) + deryy(s) + derzz(s)
+laplace(Field s) {
+    del2f = derxx(s) + deryy(s) + derzz(s)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    del2f += derx(s)*AC_INV_CYL_R
+    }
+    else if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	    del2f += 2*derx(s)*AC_INV_R
+	    del2f += 2*dery(s)*AC_INV_R*AC_COT
+    }
+    return del2f
+}
+
+laplace(Field3 s) {
+	del2f = real3(
+			laplace(s.x),
+			laplace(s.y),
+			laplace(s.z)
+		     )
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		del2f.x -= (2*dery(s.y)+s.x)*AC_INV_CYL_R*AC_INV_CYL_R
+		del2f.y += (2*dery(s.x)-s.y)*AC_INV_CYL_R*AC_INV_CYL_R
+	}
+	else if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		del2f.x += del2f.x + AC_INV_R*(
+				2*(
+					derx(s.x)-dery(s.y)-dery(s.z)
+					-AC_INV_R*(s.x+AC_COT*s.y)
+				)
+				+AC_COT*dery(s.x)
+				)	
+		del2f.y += AC_INV_R*(
+				2*(
+					derx(s.y)-AC_COT+derz(s.z)+dery(s.x)
+				)
+				+AC_COT*dery(s.y)-AC_INV_R*AC_INV_SIN_THETA*AC_INV_SIN_THETA*s.y
+				)
+	}
+	return del2f
 }
 
 traceless_strain(Matrix uij,divu)
@@ -147,6 +301,37 @@ gij5(v) {
 		  real3( der5x(v.y), der5y(v.y), der5z(v.y) ), 
 		  real3( der5x(v.z), der5y(v.z), der5z(v.z) ))
 }
+traceless_strain(Matrix uij,divu,uu)
+{
+  Matrix sij
+  for row in 0:3{
+    sij[row][row] = uij[row][row] - (1.0/3.0)*divu
+    for col in row+1:3{
+      sij[col][row] = 0.5*(uij[col][row]+uij[row][col])
+      sij[row][col] = sij[col][row]
+    }
+  }
+  if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+  {
+      sij[1-1][2-1]=sij[1-1][2-1]-0.5*AC_INV_R*uu.y
+      sij[1-1][3-1]=sij[1-1][3-1]-0.5*AC_INV_R*uu.z
+      sij[2-1][1-1]=sij[1-1][2-1]
+      sij[2-1][2-1]=sij[2-1][2-1]+AC_INV_R*uu.x
+      sij[2-1][3-1]=sij[2-1][3-1]-0.5*AC_INV_R*AC_COT*uu.z
+      sij[3-1][1-1]=sij[1-1][3-1]
+      sij[3-1][2-1]=sij[2-1][3-1]
+      sij[3-1][3-1]=sij[3-1][3-1]+AC_INV_R*uu.x+AC_COT*AC_INV_R*uu.y
+
+  }
+  else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+  {
+      sij[1-1][2-1]=sij[1-1][2-1]-0.5*AC_INV_CYL_R*uu.y
+      sij[2-1][2-1]=sij[2-1][2-1]+0.5*AC_INV_CYL_R*uu.x
+      sij[2-1][1-1]=sij[1-1][2-1]
+  }
+  return sij
+}
+
 
 traceless_rateof_strain(v) {
     Matrix S
@@ -167,11 +352,41 @@ traceless_rateof_strain(v) {
 }
 
 gradient_of_divergence(Field3 v) {
-    return real3(
-        derxx(v.x) + derxy(v.y) + derxz(v.z),
-        derxy(v.x) + deryy(v.y) + deryz(v.z),
-        derxz(v.x) + deryz(v.y) + derzz(v.z)
+    d2A = del2fi_dxjk(v)
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+        d2A[0][0][0] -= AC_INV_R*dery(v.x)
+        d2A[0][0][1] -= AC_INV_R*dery(v.y)
+        d2A[0][0][2] -= AC_INV_R*dery(v.z)
+
+        d2A[1][0][0] -= AC_INV_R*derz(v.x)
+        d2A[1][0][1] -= AC_INV_R*derz(v.y)
+        d2A[1][0][2] -= AC_INV_R*derz(v.z)
+
+        d2A[2][1][0] -= AC_INV_R*derz(v.x)*AC_COT
+        d2A[2][1][1] -= AC_INV_R*derz(v.y)*AC_COT
+        d2A[2][1][2] -= AC_INV_R*derz(v.z)*AC_COT
+    }
+    else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+            d2A[1][0][0] -= dery(v.x)*AC_INV_CYL_R
+            d2A[1][0][1] -= dery(v.y)*AC_INV_CYL_R
+            d2A[1][0][2] -= dery(v.z)*AC_INV_CYL_R
+    }
+
+    graddiv =
+    real3(
+        d2A[0][0][0] + d2A[1][0][1] + d2A[2][0][2],
+        d2A[0][1][0] + d2A[1][1][1] + d2A[2][1][2],
+        d2A[0][2][0] + d2A[1][2][1] + d2A[2][2][2]
     )
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+        graddiv.x += derx(v.x)*AC_INV_R*2+dery(v.x)*AC_INV_R*AC_COT-v.y*(AC_INV_R*AC_INV_R)*AC_COT-v.x*(AC_INV_R*AC_INV_R)*2
+        graddiv.y += derx(v.y)*AC_INV_R*2+dery(v.y)*AC_INV_R*AC_COT-v.y*(AC_INV_R)*AC_COT-v.y*(AC_INV_R*AC_INV_R)*(AC_INV_SIN_THETA*AC_INV_SIN_THETA)
+        graddiv.z += derx(v.z)*AC_INV_R*2+dery(v.z)*AC_INV_R*AC_COT
+    }
+    return graddiv
 }
 
 contract(Matrix mat) {
@@ -201,22 +416,6 @@ d2fi_dxj(Field3 v)
 		     )
 }
 
-hessian(Field v)
-{
-	return Matrix(
-			real3(derxx(v), derxy(v), derxz(v)),
-			real3(derxy(v), deryy(v), deryz(v)),
-			real3(derxz(v), deryz(v), derzz(v))
-		     )
-}
-del2fi_dxjk(Field3 v)
-{
-	return Tensor(
-			hessian(v.x),
-			hessian(v.y),
-			hessian(v.z)
-		     )
-}
 del6fj(Field f, real3 vec)
 {
 	return vec.x*der6x(f) + vec.y*der6y(f) + vec.z*der6z(f)

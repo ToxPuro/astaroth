@@ -57,6 +57,14 @@ int3 AC_domain_coordinates
 run_const bool AC_include_3d_halo_corners
 run_const bool AC_skip_single_gpu_optim
 
+run_const int AC_coordinate_system
+run_const bool3 AC_nonequidistant_grid
+
+//TP: set to -1 since that is the default value of a int config param
+hostdefine AC_CARTEESIAN_COORDINATES  (-1)
+hostdefine AC_SPHERICAL_COORDINATES   (1)
+hostdefine AC_CYLINDRICAL_COORDINATES (2)
+
 
 //TP: these belong here but at the moment are deprecated
 /**
