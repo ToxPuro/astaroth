@@ -36,6 +36,7 @@ gpu: 0 1 2 3
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #if AC_USE_HIP
 #include "hip.h"
@@ -445,7 +446,7 @@ main(int argc, char* argv[])
     const size_t array_length  = pad + domain_length + radius;
     ERRCHK((2 * radius + 1) * sizeof(double) == working_set_size);
     ERRCHK(domain_length * sizeof(double) == problem_size);
-    ERRCHK(array_length <= MAX_INT);
+    ERRCHK(array_length <= INT_MAX);
 
     if (working_set_size > problem_size) {
         fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
