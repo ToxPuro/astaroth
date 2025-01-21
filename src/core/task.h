@@ -117,6 +117,7 @@ typedef class Task {
   protected:
     Device device;
     cudaStream_t stream;
+    VertexBufferArray vba;
     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset;
 
     int state;
@@ -148,7 +149,6 @@ typedef class Task {
     static const int wait_state = 0;
 
   protected:
-    VertexBufferArray vba;
     bool poll_stream();
 
   public:

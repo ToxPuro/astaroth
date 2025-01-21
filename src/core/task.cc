@@ -300,6 +300,7 @@ Region::is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary
 Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
            Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : device(device_),
+      vba(device->vba),
       swap_offset(swap_offset_),
       state(wait_state),
       dep_cntr(),
@@ -309,8 +310,7 @@ Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefini
       boundary(BOUNDARY_NONE),
       input_region(input_region_),
       output_region(output_region_),
-      input_parameters(op.parameters, op.parameters + op.num_parameters),
-      vba(device->vba)
+      input_parameters(op.parameters, op.parameters + op.num_parameters)
 {
     MPI_Comm_rank(acGridMPIComm(), &rank);
 }
