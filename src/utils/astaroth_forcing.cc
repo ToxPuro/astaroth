@@ -281,7 +281,7 @@ loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* info
 #else
     WARNING("Called loadForcingParamsToMeshInfo but LFORCING was false");
     (void)forcing_params; // Unused
-    (void)info; // Unused
+    (void)info;           // Unused
     return -1;
 #endif
 }

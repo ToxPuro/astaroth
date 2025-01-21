@@ -1866,7 +1866,8 @@ acGridReduceXYAverage(const Stream stream, const Field field, const Profile prof
         // 1) Reduce the local result to device->vba.profiles.in
         acDeviceReduceXYAverage(device, stream, field, profile);
 
-        // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
+        // 2) Create communicator that encompasses the processes that are neighbors in the xy
+        // direction
         int nprocs, pid;
         MPI_Comm_size(astaroth_comm, &nprocs);
         MPI_Comm_rank(astaroth_comm, &pid);
@@ -1878,7 +1879,7 @@ acGridReduceXYAverage(const Stream stream, const Field field, const Profile prof
 
         // 3) Allreduce
         MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in[profile], device->vba.profiles.count,
-                    AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
+                      AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
 
         // 4) Optional: Test
         // AcReal arr[device->vba.profiles.count];
@@ -1888,7 +1889,8 @@ acGridReduceXYAverage(const Stream stream, const Field field, const Profile prof
         //     printf("%i: %g\n", i, arr[i]);
 
         return AC_SUCCESS;
-    } else {
+    }
+    else {
         return AC_FAILURE;
     }
 }
@@ -1905,7 +1907,8 @@ acGridReduceXYAverages(const Stream stream)
         // 1) Reduce the local result to device->vba.profiles.in
         acDeviceReduceXYAverages(device, stream);
 
-        // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
+        // 2) Create communicator that encompasses the processes that are neighbors in the xy
+        // direction
         int nprocs, pid;
         MPI_Comm_size(astaroth_comm, &nprocs);
         MPI_Comm_rank(astaroth_comm, &pid);
@@ -1916,8 +1919,9 @@ acGridReduceXYAverages(const Stream stream)
         MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
 
         // 3) Allreduce
-        MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in, NUM_PROFILES * device->vba.profiles.count,
-                    AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
+        MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in,
+                      NUM_PROFILES * device->vba.profiles.count, AC_REAL_MPI_TYPE, MPI_SUM,
+                      xy_neighbors);
 
         // 4) Optional: Test
         // AcReal arr[device->vba.profiles.count];
@@ -1927,7 +1931,8 @@ acGridReduceXYAverages(const Stream stream)
         //     printf("%i: %g\n", i, arr[i]);
 
         return AC_SUCCESS;
-    } else {
+    }
+    else {
         return AC_FAILURE;
     }
 }

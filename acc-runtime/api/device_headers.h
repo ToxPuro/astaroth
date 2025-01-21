@@ -1,5 +1,6 @@
 #pragma once
-#pragma GCC system_header // NOTE: Silences errors originating from CUDA/HIP headers
+#pragma GCC system_header // NOTE: Silences errors originating from CUDA/HIP
+                          // headers
 
 #if AC_USE_HIP
 #include "hip.h"

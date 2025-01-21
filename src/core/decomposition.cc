@@ -18,8 +18,8 @@
 */
 #include "decomposition.h"
 
-#include <string.h> // memcpy
 #include <limits.h> // INT_MAX
+#include <string.h> // memcpy
 
 #define DECOMPOSITION_TYPE_ZORDER (1)
 #define DECOMPOSITION_TYPE_HIERARCHICAL (2)
@@ -462,9 +462,9 @@ compat_acDecompositionInit(const size_t ndims, const size_t* global_dims, const 
 {
     WARNING("Called compat_acDecompositionInit but nothing done, using the legacy Z-order "
             "decomposition implementation");
-    (void)ndims; // Unused
-    (void)global_dims; // Unused
-    (void)nlayers; // Unused
+    (void)ndims;                // Unused
+    (void)global_dims;          // Unused
+    (void)nlayers;              // Unused
     (void)partitions_per_layer; // Unused
     return;
 }

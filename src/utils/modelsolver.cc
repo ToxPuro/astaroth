@@ -1042,8 +1042,9 @@ solve_alpha_step(AcMesh in, const int step_number, const AcReal dt, const int i,
             out->vertex_buffer[w][idx] = static_cast<AcReal>(rate_of_change[w] * (Scalar)dt);
         }
         else {
-            out->vertex_buffer[w][idx] = static_cast<AcReal>(alpha[step_number] * (Scalar)out->vertex_buffer[w][idx] +
-                                         rate_of_change[w] * (Scalar)dt);
+            out->vertex_buffer[w][idx] = static_cast<AcReal>(
+                alpha[step_number] * (Scalar)out->vertex_buffer[w][idx] +
+                rate_of_change[w] * (Scalar)dt);
         }
     }
 
@@ -1067,7 +1068,8 @@ solve_beta_step(const AcMesh in, const int step_number, const AcReal dt, const i
     const Scalar beta[] = {(Scalar)(1. / 3.), (Scalar)(15. / 16.), (Scalar)(8. / 15.)};
 
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        out->vertex_buffer[w][idx] += static_cast<AcReal>(beta[step_number] * (Scalar)in.vertex_buffer[w][idx]);
+        out->vertex_buffer[w][idx] += static_cast<AcReal>(beta[step_number] *
+                                                          (Scalar)in.vertex_buffer[w][idx]);
 
     (void)dt; // Suppress unused variable warning if forcing not used
     if (step_number == 2) {

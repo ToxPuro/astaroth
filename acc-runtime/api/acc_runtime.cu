@@ -631,9 +631,8 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See note in acLoadStencil */                     \
                                                                                \
-  const size_t offset = (size_t) &                                             \
-                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
-                        d_mesh_info;                                           \
+  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
+                        (size_t)&d_mesh_info;                                  \
                                                                                \
   const cudaError_t retval = cudaMemcpyToSymbol(                               \
       d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);     \
@@ -686,9 +685,8 @@ acLoadInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See notes in GEN_LOAD_UNIFORM */                 \
                                                                                \
-  const size_t offset = (size_t) &                                             \
-                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
-                        d_mesh_info;                                           \
+  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
+                        (size_t)&d_mesh_info;                                  \
                                                                                \
   const cudaError_t retval = cudaMemcpyFromSymbol(                             \
       value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost);     \
@@ -1040,7 +1038,7 @@ operator-(const AcIndex& a, const AcIndex& b)
   };
 }
 
- __host__ __device__ constexpr AcIndex
+__host__ __device__ constexpr AcIndex
 to_spatial(const size_t i, const AcShape& shape)
 {
   return (AcIndex){
@@ -1120,7 +1118,8 @@ reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
               const AcShape in_shape, const AcIndex out_offset,
               const AcShape out_shape, const AcShape block_shape)
 {
-  const AcIndex idx = to_spatial(static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x, block_shape);
+  const AcIndex idx = to_spatial(
+      static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x, block_shape);
 
   const AcIndex in_pos  = idx + in_offset;
   const AcIndex out_pos = idx + out_offset;
@@ -1270,14 +1269,14 @@ acReindexCross(const cudaStream_t stream, //
   return AC_SUCCESS;
 #else
   ERROR("acReindexCross called but AC_TFM_ENABLED was false");
-  (void)stream; // Unused
-  (void)vba; // Unused
-  (void)in_offset; // Unused
-  (void)in_shape; // Unused
-  (void)out; // Unused
-  (void)out_offset; // Unused
-  (void)out_shape; // Unused
-  (void)block_shape; // Unused
+  (void)stream;        // Unused
+  (void)vba;           // Unused
+  (void)in_offset;     // Unused
+  (void)in_shape;      // Unused
+  (void)out;           // Unused
+  (void)out_offset;    // Unused
+  (void)out_shape;     // Unused
+  (void)block_shape;   // Unused
   (void)reindex_cross; // Unused
   return AC_FAILURE;
 #endif
