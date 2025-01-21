@@ -24,8 +24,6 @@ int acHostUpdateMHDSpecificParams(AcMeshInfo* info);
 
 int acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info);
 
-int acVerifyMeshInfo(const AcMeshInfo info);
-
 int acPrintMeshInfoTFM(const AcMeshInfo config);
 
 AcReal calc_timestep(const AcReal uumax, const AcReal vAmax, const AcReal shock_max,

@@ -998,7 +998,7 @@ acShapeSize(const AcShape shape)
   return shape.x * shape.y * shape.z * shape.w;
 }
 
-static __host__ __device__ constexpr bool
+__host__ __device__ constexpr bool
 acOutOfBounds(const AcIndex& index, const AcShape& shape)
 {
   return (index.x >= shape.x) || //
@@ -1007,7 +1007,7 @@ acOutOfBounds(const AcIndex& index, const AcShape& shape)
          (index.w >= shape.w);
 }
 
-static __host__ __device__ constexpr AcIndex
+__host__ __device__ constexpr AcIndex
 min(const AcIndex& a, const AcIndex& b)
 {
   return (AcIndex){
@@ -1018,7 +1018,7 @@ min(const AcIndex& a, const AcIndex& b)
   };
 }
 
-static __host__ __device__ constexpr AcIndex
+__host__ __device__ constexpr AcIndex
 operator+(const AcIndex& a, const AcIndex& b)
 {
   return (AcIndex){
@@ -1029,7 +1029,7 @@ operator+(const AcIndex& a, const AcIndex& b)
   };
 }
 
-static __host__ __device__ constexpr AcIndex
+__host__ __device__ constexpr AcIndex
 operator-(const AcIndex& a, const AcIndex& b)
 {
   return (AcIndex){
@@ -1040,7 +1040,7 @@ operator-(const AcIndex& a, const AcIndex& b)
   };
 }
 
-static __host__ __device__ constexpr AcIndex
+ __host__ __device__ constexpr AcIndex
 to_spatial(const size_t i, const AcShape& shape)
 {
   return (AcIndex){
@@ -1051,7 +1051,7 @@ to_spatial(const size_t i, const AcShape& shape)
   };
 }
 
-static __host__ __device__ constexpr size_t
+__host__ __device__ constexpr size_t
 to_linear(const AcIndex& index, const AcShape& shape)
 {
   return index.x +           //

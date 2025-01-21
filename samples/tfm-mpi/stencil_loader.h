@@ -43,7 +43,7 @@
 
 #define MID (STENCIL_ORDER / 2)
 
-int get_stencil_coeffs(const AcMeshInfo info, AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+static int get_stencil_coeffs(const AcMeshInfo info, AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
     // MV: This line of code basically sets all stencil coefficients to zero
     // MV: which are not defined in the code bellow. The caused e.g. shock
