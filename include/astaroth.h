@@ -201,39 +201,7 @@ typedef struct {
     int3 nn;
 } AcMeshDims;
 
-static inline AcMeshDims
-acGetMeshDims(const AcMeshInfo info)
-{
-    const int3 n0 = (int3){
-        info.int_params[AC_nx_min],
-        info.int_params[AC_ny_min],
-        info.int_params[AC_nz_min],
-    };
-    const int3 n1 = (int3){
-        info.int_params[AC_nx_max],
-        info.int_params[AC_ny_max],
-        info.int_params[AC_nz_max],
-    };
-    const int3 m0 = (int3){0, 0, 0};
-    const int3 m1 = (int3){
-        info.int_params[AC_mx],
-        info.int_params[AC_my],
-        info.int_params[AC_mz],
-    };
-    const int3 nn = (int3){
-        info.int_params[AC_nx],
-        info.int_params[AC_ny],
-        info.int_params[AC_nz],
-    };
-
-    return (AcMeshDims){
-        .n0 = n0,
-        .n1 = n1,
-        .m0 = m0,
-        .m1 = m1,
-        .nn = nn,
-    };
-}
+AcMeshDims acGetMeshDims(const AcMeshInfo info);
 
 size_t acGetKernelId(const Kernel kernel);
 
@@ -245,89 +213,31 @@ AcMeshInfo acGridGetLocalMeshInfo(void);
 
 size_t acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info);
 
-static inline int3
-acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
-{
-    const int3 mm = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
-
-    return (int3){
-        (int)i % mm.x,
-        ((int)i % (mm.x * mm.y)) / mm.x,
-        (int)i / (mm.x * mm.y),
-    };
-}
+int3 acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info);
 
 /** Prints all parameters inside AcMeshInfo */
-static inline void
-acPrintMeshInfo(const AcMeshInfo config)
-{
-    for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
-    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        printf("[%s]: (%d, %d, %d)\n", int3param_names[i], config.int3_params[i].x,
-               config.int3_params[i].y, config.int3_params[i].z);
-    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        printf("[%s]: %g\n", realparam_names[i], (double)(config.real_params[i]));
-    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.real3_params[i].x),
-               (double)(config.real3_params[i].y), (double)(config.real3_params[i].z));
-}
+void acPrintMeshInfo(const AcMeshInfo config);
 
 /** Prints a list of boundary condition types */
-static inline void
-acQueryBCtypes(void)
-{
-    for (int i = 0; i < NUM_BCTYPES; ++i)
-        printf("%s (%d)\n", bctype_names[i], i);
-}
+void acQueryBCtypes(void);
 
 /** Prints a list of initial condition condition types */
-static inline void
-acQueryInitcondtypes(void)
-{
-    for (int i = 0; i < NUM_INIT_TYPES; ++i)
-        printf("%s (%d)\n", initcondtype_names[i], i);
-}
+void acQueryInitcondtypes(void);
 
 /** Prints a list of reduction types */
-static inline void
-acQueryRtypes(void)
-{
-    for (int i = 0; i < NUM_RTYPES; ++i)
-        printf("%s (%d)\n", rtype_names[i], i);
-}
+void acQueryRtypes(void);
 
 /** Prints a list of int parameters */
-static inline void
-acQueryIntparams(void)
-{
-    for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        printf("%s (%d)\n", intparam_names[i], i);
-}
+void acQueryIntparams(void);
 
 /** Prints a list of int3 parameters */
-static inline void
-acQueryInt3params(void)
-{
-    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        printf("%s (%d)\n", int3param_names[i], i);
-}
+void acQueryInt3params(void);
 
 /** Prints a list of real parameters */
-static inline void
-acQueryRealparams(void)
-{
-    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        printf("%s (%d)\n", realparam_names[i], i);
-}
+void acQueryRealparams(void);
 
 /** Prints a list of real3 parameters */
-static inline void
-acQueryReal3params(void)
-{
-    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-        printf("%s (%d)\n", real3param_names[i], i);
-}
+void acQueryReal3params(void);
 
 /** Prints a list of Scalar array handles */
 /*
@@ -340,41 +250,16 @@ acQueryScalarrays(void)
 */
 
 /** Prints a list of vertex buffer handles */
-static inline void
-acQueryVtxbufs(void)
-{
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
-        printf("%s (%d)\n", vtxbuf_names[i], i);
-}
+void acQueryVtxbufs(void);
 
 /** Prints a list of kernels */
-static inline void
-acQueryKernels(void)
-{
-    for (int i = 0; i < NUM_KERNELS; ++i)
-        printf("%s (%d)\n", kernel_names[i], i);
-}
+void acQueryKernels(void);
 
-static inline void
-acPrintIntParam(const AcIntParam a, const AcMeshInfo info)
-{
-    printf("%s: %d\n", intparam_names[a], info.int_params[a]);
-}
+void acPrintIntParam(const AcIntParam a, const AcMeshInfo info);
 
-static inline void
-acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info)
-{
-    acPrintIntParam(a, info);
-    acPrintIntParam(b, info);
-    acPrintIntParam(c, info);
-}
+void acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info);
 
-static inline void
-acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
-{
-    const int3 vec = info.int3_params[a];
-    printf("{%s: (%d, %d, %d)}\n", int3param_names[a], vec.x, vec.y, vec.z);
-}
+void acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info);
 
 /*
  * =============================================================================
