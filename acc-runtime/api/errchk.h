@@ -32,7 +32,8 @@
 #include <time.h>
 
 #if defined(AC_USE_HIP) && AC_USE_HIP
-#pragma GCC system_header // NOTE: Silences errors originating from HIP and CUDA headers
+#pragma GCC system_header // NOTE: Silences errors originating from HIP and CUDA
+                          // headers
 #include "hip.h"
 #include <hip/hip_runtime_api.h>
 #else
@@ -164,7 +165,7 @@ static inline size_t
 as_size_t(const T i)
 {
   if constexpr (std::is_signed_v<T>)
-      ERRCHK_ALWAYS(i >= 0);
+    ERRCHK_ALWAYS(i >= 0);
   ERRCHK_ALWAYS(static_cast<long double>(i) <
                 static_cast<long double>(SIZE_MAX));
   return static_cast<size_t>(i);

@@ -257,7 +257,8 @@ void acQueryKernels(void);
 
 void acPrintIntParam(const AcIntParam a, const AcMeshInfo info);
 
-void acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info);
+void acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c,
+                      const AcMeshInfo info);
 
 void acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info);
 

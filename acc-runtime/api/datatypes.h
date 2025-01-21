@@ -17,7 +17,8 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#pragma GCC system_header // NOTE: Silences errors originating from HIP and CUDA headers
+#pragma GCC system_header // NOTE: Silences errors originating from HIP and CUDA
+                          // headers
 
 #include <float.h> // DBL/FLT_EPSILON
 

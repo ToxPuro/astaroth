@@ -115,7 +115,8 @@ acHostInitProfileToCosineWave(const long double box_size, const size_t nz, const
 {
     const long double spacing = box_size / (nz - 1);
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = (AcReal)((long double)amplitude * cosl((long double)wavenumber * spacing * ((long)i + offset)));
+        profile[i] = (AcReal)((long double)amplitude *
+                              cosl((long double)wavenumber * spacing * ((long)i + offset)));
     }
     return AC_SUCCESS;
 }
@@ -128,7 +129,8 @@ acHostInitProfileToSineWave(const long double box_size, const size_t nz, const l
 {
     const long double spacing = box_size / (nz - 1);
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = (AcReal)((long double)amplitude * sinl((long double)wavenumber * spacing * ((long)i + offset)));
+        profile[i] = (AcReal)((long double)amplitude *
+                              sinl((long double)wavenumber * spacing * ((long)i + offset)));
     }
     return AC_SUCCESS;
 }
