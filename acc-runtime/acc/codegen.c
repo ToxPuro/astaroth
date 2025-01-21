@@ -621,6 +621,7 @@ gen_user_kernels(const ASTNode* root, const char* out)
   fprintf(fp, "};");
   // Astaroth 2.0 backwards compatibility END
 
+  fprintf(fp, "\n"); // Add newline at EOF
   fclose(fp);
 
   symboltable_reset();
