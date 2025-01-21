@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#if AC_USE_HIP
+#if defined(AC_USE_HIP) && AC_USE_HIP
 #pragma GCC system_header // NOTE: Silences errors originating from HIP and CUDA headers
 #include "hip.h"
 #include <hip/hip_runtime_api.h>
