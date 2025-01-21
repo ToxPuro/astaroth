@@ -476,7 +476,7 @@ enum class SegmentGroup {
     Full,
 };
 
-std::vector<ac::segment>
+static std::vector<ac::segment>
 partition(const Shape& local_mm, const Shape& local_nn, const Shape& local_rr,
           const SegmentGroup& group)
 {
@@ -542,7 +542,7 @@ partition(const Device& device, const SegmentGroup& group)
     return partition(info, group);
 }
 
-void
+static void
 test_experimental_partition()
 {
     const Shape nn{128, 128};
@@ -678,7 +678,7 @@ class Grid {
         // Test: Rank
         const auto local_mm{acr::get_local_mm(local_info)};
         ac::ndbuffer<AcReal, ac::mr::host_memory_resource> buf{local_mm,
-                                                               ac::mpi::get_rank(cart_comm)};
+                                                               static_cast<double>(ac::mpi::get_rank(cart_comm))};
 
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
