@@ -964,6 +964,8 @@ main(int argc, char** argv)
 #else
             is_off;
 #endif
+        (void)is_on;  // Unused if none of the above flags is on
+        (void)is_off; // Unused if none of the above flags is off
 
         acLogFromRootProc(pid, "Forcing is: %s\n", forcing_flag);
         acLogFromRootProc(pid, "Sink is: %s\n", sink_flag);
@@ -1145,6 +1147,8 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
         break;
     }
+    default:
+        ERROR("Unhandled PhysicsConfiguration");
     }
 
     acLogFromRootProc(pid, "sim = %i \n", sim);

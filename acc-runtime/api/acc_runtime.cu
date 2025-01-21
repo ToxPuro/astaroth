@@ -386,9 +386,9 @@ AcResult
 acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
 {
   // Set pba.in data to all-nan and pba.out to 0
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
-    acKernelFlush(stream, pba->in[i], pba->count, (AcReal)0);
-    acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0);
+  for (int i = 0; i < NUM_PROFILES; ++i) {
+    acKernelFlush(stream, pba->in[i], pba->count, (AcReal)NAN);
+    acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0.0);
   }
   return AC_SUCCESS;
 }
@@ -407,7 +407,7 @@ acPBACreate(const size_t count)
   ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&in, bytes));
   ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&out, bytes));
 #endif
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  for (int i = 0; i < NUM_PROFILES; ++i) {
     pba.in[i]  = &in[i * pba.count];
     pba.out[i] = &out[i * pba.count];
   }
@@ -429,7 +429,7 @@ acPBADestroy(ProfileBufferArray* pba)
   cudaFree(pba->in[0]);
   cudaFree(pba->out[0]);
 #endif
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  for (int i = 0; i < NUM_PROFILES; ++i) {
     pba->in[i]  = NULL;
     pba->out[i] = NULL;
   }
@@ -566,7 +566,7 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
   }
   ERRCHK_ALWAYS(kernel_id < NUM_KERNELS);
   printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel_id],
-         milliseconds);
+         static_cast<double>(milliseconds));
 
   // Timer destroy
   cudaEventDestroy(tstart);
@@ -957,7 +957,7 @@ acPBASwapBuffer(const Profile profile, VertexBufferArray* vba)
 void
 acPBASwapBuffers(VertexBufferArray* vba)
 {
-  for (size_t i = 0; i < NUM_PROFILES; ++i)
+  for (int i = 0; i < NUM_PROFILES; ++i)
     acPBASwapBuffer((Profile)i, vba);
 }
 
@@ -1120,8 +1120,7 @@ reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
               const AcShape in_shape, const AcIndex out_offset,
               const AcShape out_shape, const AcShape block_shape)
 {
-  const size_t i    = (size_t)threadIdx.x + blockIdx.x * blockDim.x;
-  const AcIndex idx = to_spatial(i, block_shape);
+  const AcIndex idx = to_spatial(static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x, block_shape);
 
   const AcIndex in_pos  = idx + in_offset;
   const AcIndex out_pos = idx + out_offset;
@@ -1271,6 +1270,15 @@ acReindexCross(const cudaStream_t stream, //
   return AC_SUCCESS;
 #else
   ERROR("acReindexCross called but AC_TFM_ENABLED was false");
+  (void)stream; // Unused
+  (void)vba; // Unused
+  (void)in_offset; // Unused
+  (void)in_shape; // Unused
+  (void)out; // Unused
+  (void)out_offset; // Unused
+  (void)out_shape; // Unused
+  (void)block_shape; // Unused
+  (void)reindex_cross; // Unused
   return AC_FAILURE;
 #endif
 }
@@ -1365,7 +1373,7 @@ acVerifyMeshInfo(const AcMeshInfo info)
               realparam_names[i]);
     }
   }
-  for (size_t i = 0; i < NUM_REAL3_PARAMS; ++i) {
+  for (int i = 0; i < NUM_REAL3_PARAMS; ++i) {
     if (isnan(info.real3_params[i].x) || isnan(info.real3_params[i].y) ||
         isnan(info.real3_params[i].z)) {
       retval = -1;

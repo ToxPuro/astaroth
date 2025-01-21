@@ -70,24 +70,6 @@ mul(const ac::vector<T>& a, const ac::vector<T>& b)
 }
 
 void
-print_mpi_comm(const MPI_Comm& comm)
-{
-    const int ndims = get_ndims(comm);
-
-    MPIShape mpi_decomp(as<size_t>(ndims));
-    MPIShape mpi_periods(as<size_t>(ndims));
-    MPIIndex mpi_coords(as<size_t>(ndims));
-    ERRCHK_MPI_API(
-        MPI_Cart_get(comm, ndims, mpi_decomp.data(), mpi_periods.data(), mpi_coords.data()));
-
-    MPI_SYNCHRONOUS_BLOCK_START(comm);
-    PRINT_DEBUG(mpi_decomp);
-    PRINT_DEBUG(mpi_periods);
-    PRINT_DEBUG(mpi_coords);
-    MPI_SYNCHRONOUS_BLOCK_END(comm);
-}
-
-void
 init_funneled()
 {
     int provided;
@@ -306,6 +288,24 @@ cart_comm_destroy(MPI_Comm& cart_comm)
 {
     ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     cart_comm = MPI_COMM_NULL;
+}
+
+void
+print_mpi_comm(const MPI_Comm& comm)
+{
+    const int ndims = get_ndims(comm);
+
+    MPIShape mpi_decomp(as<size_t>(ndims));
+    MPIShape mpi_periods(as<size_t>(ndims));
+    MPIIndex mpi_coords(as<size_t>(ndims));
+    ERRCHK_MPI_API(
+        MPI_Cart_get(comm, ndims, mpi_decomp.data(), mpi_periods.data(), mpi_coords.data()));
+
+    MPI_SYNCHRONOUS_BLOCK_START(comm);
+    PRINT_DEBUG(mpi_decomp);
+    PRINT_DEBUG(mpi_periods);
+    PRINT_DEBUG(mpi_coords);
+    MPI_SYNCHRONOUS_BLOCK_END(comm);
 }
 
 MPI_Datatype

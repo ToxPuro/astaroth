@@ -394,7 +394,7 @@ acGridInit(const AcMeshInfo info)
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };
-#endif DEBUG_SYNC
+#endif // DEBUG_SYNC
 
     // Random number generator
     // const auto rr            = (int3){STENCIL_WIDTH, STENCIL_HEIGHT, STENCIL_DEPTH};
@@ -1316,6 +1316,8 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
             // found_compute = true;
             task_graph_repr += "Compute,";
             break;
+        default:
+            ERROR("Unhandled task type in check_ops");
         }
     }
 
@@ -1855,71 +1857,79 @@ acGridReduceVecScal(const Stream stream, const ReductionType rtype,
 AcResult
 acGridReduceXYAverage(const Stream stream, const Field field, const Profile profile)
 {
-    ERRCHK(grid.initialized);
-    const Device device = grid.device;
-    acGridSynchronizeStream(STREAM_ALL);
+    if (profile >= 0 && profile < NUM_PROFILES) {
+        ERRCHK(grid.initialized);
+        const Device device = grid.device;
+        acGridSynchronizeStream(STREAM_ALL);
 
-    // Strategy:
-    // 1) Reduce the local result to device->vba.profiles.in
-    acDeviceReduceXYAverage(device, stream, field, profile);
+        // Strategy:
+        // 1) Reduce the local result to device->vba.profiles.in
+        acDeviceReduceXYAverage(device, stream, field, profile);
 
-    // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
-    int nprocs, pid;
-    MPI_Comm_size(astaroth_comm, &nprocs);
-    MPI_Comm_rank(astaroth_comm, &pid);
+        // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
+        int nprocs, pid;
+        MPI_Comm_size(astaroth_comm, &nprocs);
+        MPI_Comm_rank(astaroth_comm, &pid);
 
-    const uint3_64 decomp = decompose(nprocs);
-    const int3 pid3d      = getPid3D(pid, decomp);
-    MPI_Comm xy_neighbors;
-    MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
+        const uint3_64 decomp = decompose(nprocs);
+        const int3 pid3d      = getPid3D(pid, decomp);
+        MPI_Comm xy_neighbors;
+        MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
 
-    // 3) Allreduce
-    MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in[profile], device->vba.profiles.count,
-                  AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
+        // 3) Allreduce
+        MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in[profile], device->vba.profiles.count,
+                    AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
 
-    // 4) Optional: Test
-    // AcReal arr[device->vba.profiles.count];
-    // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
-    //            cudaMemcpyDeviceToHost);
-    // for (size_t i = 0; i < device->vba.profiles.count; ++i)
-    //     printf("%i: %g\n", i, arr[i]);
+        // 4) Optional: Test
+        // AcReal arr[device->vba.profiles.count];
+        // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
+        //            cudaMemcpyDeviceToHost);
+        // for (size_t i = 0; i < device->vba.profiles.count; ++i)
+        //     printf("%i: %g\n", i, arr[i]);
 
-    return AC_SUCCESS;
+        return AC_SUCCESS;
+    } else {
+        return AC_FAILURE;
+    }
 }
 
 AcResult
 acGridReduceXYAverages(const Stream stream)
 {
-    ERRCHK(grid.initialized);
-    const Device device = grid.device;
-    acGridSynchronizeStream(STREAM_ALL);
+    if (NUM_PROFILES > 0) {
+        ERRCHK(grid.initialized);
+        const Device device = grid.device;
+        acGridSynchronizeStream(STREAM_ALL);
 
-    // Strategy:
-    // 1) Reduce the local result to device->vba.profiles.in
-    acDeviceReduceXYAverages(device, stream);
+        // Strategy:
+        // 1) Reduce the local result to device->vba.profiles.in
+        acDeviceReduceXYAverages(device, stream);
 
-    // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
-    int nprocs, pid;
-    MPI_Comm_size(astaroth_comm, &nprocs);
-    MPI_Comm_rank(astaroth_comm, &pid);
+        // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
+        int nprocs, pid;
+        MPI_Comm_size(astaroth_comm, &nprocs);
+        MPI_Comm_rank(astaroth_comm, &pid);
 
-    const uint3_64 decomp = decompose(nprocs);
-    const int3 pid3d      = getPid3D(pid, decomp);
-    MPI_Comm xy_neighbors;
-    MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
+        const uint3_64 decomp = decompose(nprocs);
+        const int3 pid3d      = getPid3D(pid, decomp);
+        MPI_Comm xy_neighbors;
+        MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
 
-    // 3) Allreduce
-    MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in, NUM_PROFILES * device->vba.profiles.count,
-                  AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
+        // 3) Allreduce
+        MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in, NUM_PROFILES * device->vba.profiles.count,
+                    AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
 
-    // 4) Optional: Test
-    // AcReal arr[device->vba.profiles.count];
-    // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
-    //            cudaMemcpyDeviceToHost);
-    // for (size_t i = 0; i < device->vba.profiles.count; ++i)
-    //     printf("%i: %g\n", i, arr[i]);
+        // 4) Optional: Test
+        // AcReal arr[device->vba.profiles.count];
+        // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
+        //            cudaMemcpyDeviceToHost);
+        // for (size_t i = 0; i < device->vba.profiles.count; ++i)
+        //     printf("%i: %g\n", i, arr[i]);
 
-    return AC_SUCCESS;
+        return AC_SUCCESS;
+    } else {
+        return AC_FAILURE;
+    }
 }
 
 /** */

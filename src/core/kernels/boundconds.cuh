@@ -369,6 +369,13 @@ kernel_outflow_boundconds(const int3 region_id, const int3 normal, const int3 di
     }
     else if (normal.z != 0) {
         uudir = vtxbuf[boundary_idx]*normal.z;
+    } else {
+        // Error: Unhandled case: uudir, sign used uninitialized
+        // TODO fix
+        assert(false);
+        printf("ERROR: uudir invalid in kernel_outflow_boundconds\n");
+        uudir = 0;
+        sign = 0;
     }
 
     if (uudir >= 0.0) {
@@ -401,11 +408,12 @@ acKernelOutflowBoundconds(const cudaStream_t stream, const int3 region_id, const
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
+    WARNING("uudir may be used uninitialized in kernel_outflow_boundconds. TODO fix (see comments in kernel)");
     kernel_outflow_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
     return AC_SUCCESS;
 }
 
-static __global__ void
+__global__ void
 kernel_inflow_boundconds(const int3 region_id, const int3 normal, const int3 dims,
                             AcReal* vtxbuf)
 {
@@ -446,6 +454,14 @@ kernel_inflow_boundconds(const int3 region_id, const int3 normal, const int3 dim
     else if (normal.z != 0) {
         uudir = vtxbuf[boundary_idx]*normal.z;
     }
+    else {
+        // Error: Unhandled case: uudir, sign used uninitialized
+        // TODO fix
+        assert(false);
+        printf("ERROR: uudir invalid in kernel_outflow_boundconds\n");
+        uudir = 0;
+        sign = 0;
+    }
 
     if (uudir >= 0.0) {
         sign = -1.0;
@@ -477,6 +493,8 @@ acKernelInflowBoundconds(const cudaStream_t stream, const int3 region_id, const 
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
+    WARNING("uudir may be used uninitialized in kernel_inflow_boundconds. TODO fix (see comments in kernel)");
+    WARNING("acKernelInflowBoundconds called, but using GPU kernel kernel_outflow_boundconds internally. TODO verify whether this is intended.");
     kernel_outflow_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
     return AC_SUCCESS;
 }

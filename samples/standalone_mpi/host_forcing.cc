@@ -112,7 +112,7 @@ helical_forcing_k_generator(const AcReal kmax, const AcReal kmin)
                     // equal to the square maximal integer
                     if ((min_squared <= dist_squared || min_squared_int == dist_squared) &&
                         (max_squared >= dist_squared || max_squared_int == dist_squared)) {
-                        pop.push_back(AcReal3{x, y, z});
+                        pop.push_back(AcReal3{static_cast<AcReal>(x), static_cast<AcReal>(y), static_cast<AcReal>(z)});
                     }
                 }
             }

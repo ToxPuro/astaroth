@@ -561,7 +561,7 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "\n// Redefined for backwards compatibility START\n");
   fprintf(fp, "#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n");
   fprintf(fp, "typedef Field VertexBufferHandle;\n");
-  fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
+  fprintf(fp, "static const char** vtxbuf_names __attribute__((unused)) = field_names;\n");
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   // END-----------------------------
 
@@ -809,7 +809,7 @@ generate_mem_accesses(void)
   printf("--- GPU_API_INCLUDES: `%s`\n", GPU_API_INCLUDES);
 
   char cmd[4096];
-  sprintf(cmd, "gcc -Wshadow -I. ");
+  sprintf(cmd, "g++ -std=c++17 -Wshadow -I. ");
   strcat(cmd, "-I " ACC_RUNTIME_API_DIR " ");
   if (strlen(GPU_API_INCLUDES) > 0)
     strcat(cmd, " -I " GPU_API_INCLUDES " ");

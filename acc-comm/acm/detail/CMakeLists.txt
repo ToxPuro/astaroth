@@ -1,4 +1,5 @@
 ## Packages
+set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
 find_package(MPI REQUIRED COMPONENTS C)
 
 ## Library

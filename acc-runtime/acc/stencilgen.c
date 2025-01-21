@@ -100,30 +100,28 @@ gen_stencil_definitions(void)
 void
 gen_kernel_prefix(void)
 {
-  printf("const int3 vertexIdx = (int3){"
+  printf("const int3 vertexIdx __attribute__((unused)) = (int3){"
          "threadIdx.x + blockIdx.x * blockDim.x + start.x,"
          "threadIdx.y + blockIdx.y * blockDim.y + start.y,"
          "threadIdx.z + blockIdx.z * blockDim.z + start.z,"
          "};");
-  printf("const int3 globalVertexIdx = (int3){"
+  printf("const int3 globalVertexIdx __attribute__((unused)) = (int3){"
          "d_multigpu_offset.x + vertexIdx.x,"
          "d_multigpu_offset.y + vertexIdx.y,"
          "d_multigpu_offset.z + vertexIdx.z,"
          "};");
-  printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
+  printf("const int3 globalGridN __attribute__((unused)) = "
+         "d_mesh_info.int3_params[AC_global_grid_n];");
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
   printf(
-      "const int3 localCompdomainVertexIdx = (int3){"
+      "const int3 localCompdomainVertexIdx __attribute__((unused)) = (int3){"
       "threadIdx.x + blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
       "threadIdx.y + blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
       "threadIdx.z + blockIdx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2,"
       "};");
-  printf("const int local_compdomain_idx = "
+  printf("const int local_compdomain_idx __attribute__((unused)) = "
          "LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx);");
-
-  printf("(void)globalVertexIdx;"); // Silence unused warning
-  printf("(void)globalGridN;");     // Silence unused warning
 
 // Write vba.out
 #if 1
