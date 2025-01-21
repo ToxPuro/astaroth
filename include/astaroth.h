@@ -1358,6 +1358,9 @@ acHostUpdateBuiltinCompParams(AcCompInfo* comp_config);
 
 
 
+FUNC_DEFINE(AcReal*, acHostCreateVertexBuffer,(const AcMeshInfo info));
+FUNC_DEFINE(AcResult, acHostMeshCreateProfiles,(AcMesh* mesh));
+FUNC_DEFINE(AcResult, acHostMeshDestroyVertexBuffer,(AcReal** vtxbuf));
 /** Creates a mesh stored in host memory */
 FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
 /** Copies the VertexBuffers from src to dst*/
