@@ -107,7 +107,7 @@ int get_stencil_coeffs(const AcMeshInfo info, AcReal stencils[NUM_STENCILS][STEN
         stencils[stencil_der6z_upwd][i][MID][MID] = inv_dsz * der6upwd[i];
     }
 
-#if LSHOCK
+#if defined(LSHOCK) && LSHOCK
     // Detelmine coefficients for max5()
     // Set to 1 because of now specific weights
     for (size_t i = 0; i < STENCIL_ORDER + 1; ++i) {

@@ -4,7 +4,8 @@
 #include <iostream>
 #include <numeric>
 
-#include "astaroth.h"
+#include "astaroth_headers.h" // To suppress unnecessary warnings
+
 #include "astaroth_forcing.h"
 #include "device_detail.h"
 
@@ -272,7 +273,7 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
     acr::set(AC_init_type, 0, local_info);
     // acr::set(AC_step_number, 0, local_info);
     acr::set(AC_dt, 0, local_info);
-    acr::set(AC_dummy_real3, (AcReal3){0, 0, 0}, local_info);
+    acr::set(AC_dummy_real3, AcReal3{0, 0, 0}, local_info);
 
     // Special: exclude inner domain (used to fuse outer integration)
     acr::set(AC_exclude_inner, 0, local_info);
@@ -312,7 +313,7 @@ init_tfm_profiles(const Device& device)
     }
 
     // B1c (here B11) and B2c (here B21) to cosine
-    acHostInitProfileToCosineWave(global_sz,
+    acHostInitProfileToCosineWave(static_cast<long double>(global_sz),
                                   global_nz,
                                   offset,
                                   amplitude,
@@ -323,7 +324,7 @@ init_tfm_profiles(const Device& device)
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y));
 
     // B1s (here B12) and B2s (here B22)
-    acHostInitProfileToSineWave(global_sz,
+    acHostInitProfileToSineWave(static_cast<long double>(global_sz),
                                 global_nz,
                                 offset,
                                 amplitude,
@@ -681,7 +682,7 @@ class Grid {
 
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        const auto count{prod(local_mm)};
+        // const auto count{prod(local_mm)};
         for (auto& ptr : get_ptrs(vba, all_fields, BufferGroup::Input))
             ac::mr::copy(buf.get(), ptr);
 
@@ -789,7 +790,7 @@ class Grid {
         }
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
         std::cout << "Reduce result: " << std::reduce(hprof.begin(), hprof.end()) << std::endl;
-        WARNCHK(std::reduce(hprof.begin(), hprof.end()) == 0);
+        // WARNCHK(std::reduce(hprof.begin(), hprof.end()) == 0);
         write_diagnostic_step(cart_comm, device, 5);
 
         // Test randomized reduce
@@ -1003,7 +1004,7 @@ class Grid {
                          get_field_paths(get_field_handles(FieldGroup::Bfield)));
 #endif
 
-        for (size_t iter{1}; iter < niters; ++iter) {
+        for (uint64_t iter{1}; iter < niters; ++iter) {
 
             // Current time
             acr::set(AC_current_time, current_time, local_info);
@@ -1029,8 +1030,8 @@ class Grid {
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
                 // TODO note: end index is not properly used, exits early
-                // compute(device, hydro_kernels[step], SegmentGroup::ComputeFull);
-                compute(device, hydro_kernels[step], SegmentGroup::ComputeOuter);
+                // compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::ComputeFull);
+                compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::ComputeOuter);
                 hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::Output));
 
 // TFM dependencies: hydro, tfm, profiles
@@ -1043,14 +1044,14 @@ class Grid {
 
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
-                // compute(device, tfm_kernels[step], SegmentGroup::ComputeFull);
-                compute(device, tfm_kernels[step], SegmentGroup::ComputeOuter);
+                // compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::ComputeFull);
+                compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::ComputeOuter);
                 tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::Output));
 
                 // Inner segments
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
-                compute(device, hydro_kernels[step], SegmentGroup::ComputeInner);
-                compute(device, tfm_kernels[step], SegmentGroup::ComputeInner);
+                compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::ComputeInner);
+                compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::ComputeInner);
                 ERRCHK_AC(acDeviceSwapBuffers(device));
 
 // Profile dependencies: local tfm (uxb)
@@ -1079,7 +1080,7 @@ class Grid {
 // TODO: this is synchronous. Consider async.
 #if defined(AC_ENABLE_IO)
             // Note: ghost zones not up-to-date with this (working as intended)
-            if ((iter % acr::get(local_info, AC_simulation_output_interval)) == 0)
+            if ((iter % as<uint64_t>(acr::get(local_info, AC_simulation_output_interval))) == 0)
                 write_diagnostic_step(cart_comm, device, iter);
 #endif
         }
@@ -1133,7 +1134,7 @@ main(int argc, char* argv[])
         // grid.test();
 
         cudaProfilerStart();
-        grid.tfm_pipeline(acr::get(raw_info, AC_simulation_nsteps));
+        grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
         cudaProfilerStop();
     }
     catch (std::exception& e) {
