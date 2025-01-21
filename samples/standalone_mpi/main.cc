@@ -943,8 +943,8 @@ main(int argc, char** argv)
         acPrintMeshInfo(info);
 
         acLogFromRootProc(pid, "Logging build configuration\n");
-        const char* is_on __attribute__((unused)) = "ON";
-        const char* is_off __attribute__((unused)) = "OFF";
+        const char* is_on  = "ON";
+        const char* is_off = "OFF";
 
         const char* forcing_flag =
 #if LFORCING
@@ -964,6 +964,8 @@ main(int argc, char** argv)
 #else
             is_off;
 #endif
+        (void)is_on;  // Unused if none of the above flags is on
+        (void)is_off; // Unused if none of the above flags is off
 
         acLogFromRootProc(pid, "Forcing is: %s\n", forcing_flag);
         acLogFromRootProc(pid, "Sink is: %s\n", sink_flag);
