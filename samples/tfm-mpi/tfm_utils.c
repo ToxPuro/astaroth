@@ -88,9 +88,9 @@ acParseINI(const char* filepath, AcMeshInfo* info)
     for (size_t i = 0; i < NUM_INT3_PARAMS; ++i)
         info->int3_params[i] = (int3){INT_MIN, INT_MIN, INT_MIN};
     for (size_t i = 0; i < NUM_REAL_PARAMS; ++i)
-        info->real_params[i] = NAN;
+        info->real_params[i] = (AcReal)NAN;
     for (size_t i = 0; i < NUM_REAL3_PARAMS; ++i)
-        info->real3_params[i] = (AcReal3){NAN, NAN, NAN};
+        info->real3_params[i] = (AcReal3){(AcReal)NAN,(AcReal) NAN, (AcReal)NAN};
 
     // Parse
     int retval = ini_parse(filepath, config_handler, info);
@@ -107,9 +107,8 @@ acParseINI(const char* filepath, AcMeshInfo* info)
                 filepath);
     else if (retval < 0)
         fprintf(stderr, "Unknown error %d when parsing config \"%s\"\n", retval, filepath);
-    if (retval != 0)
-        return -1;
 
+    return retval;
     // Update and verification should be handled elsewhere
     // Update the rest of the parameters
     // acHostUpdateBuiltinParams(info);
@@ -256,14 +255,14 @@ acPrintMeshInfoTFM(const AcMeshInfo config)
     return 0;
 }
 
-static AcReal
-max(const AcReal a, const AcReal b)
+static long double
+max(const long double a, const long double b)
 {
     return a >= b ? a : b;
 }
 
-static AcReal
-min(const AcReal a, const AcReal b)
+static long double
+min(const long double a, const long double b)
 {
     return a < b ? a : b;
 }
@@ -285,9 +284,9 @@ calc_timestep(const AcReal uumax, const AcReal vAmax, const AcReal shock_max, co
     const long double eta       = (long double)info.real_params[AC_eta];
     const long double chi   = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
     const long double gamma = (long double)info.real_params[AC_gamma];
-    const long double dsmin = (long double)min(info.real_params[AC_dsx],
-                                               min(info.real_params[AC_dsy],
-                                                   info.real_params[AC_dsz]));
+    const long double dsmin = (long double)min((long double)info.real_params[AC_dsx],
+                                               min((long double)info.real_params[AC_dsy],
+                                                   (long double)info.real_params[AC_dsz]));
     // const long double nu_shock = (long double)info.real_params[AC_nu_shock];
 
     // Old ones from legacy Astaroth

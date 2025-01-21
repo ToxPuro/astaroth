@@ -28,6 +28,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 ## Project-wide compilation flags
 add_compile_options(# C/CXX/CUDA/HIP
+                    # $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Werror>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfatal-errors>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wall>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wextra>
