@@ -1,4 +1,4 @@
-#define RK_ORDER (3)
+#define RK_ORDER (4)
 
 #if RK_ORDER == 1
     // Euler
@@ -10,8 +10,24 @@
 #elif RK_ORDER == 3
     const real rk_alpha =[ 0., -5./9., -153./128. ]
     const real rk_beta  =[ 1./3., 15./ 16., 8./15.]
+#elif RK_ORDER == 4
+    const real rk_beta= [1153189308089./22510343858157.,
+                    1772645290293./4653164025191.,
+                   -1672844663538./4480602732383.,
+                    2114624349019./3568978502595.,
+                    5198255086312./14908931495163.]
+    const real bhat= [   1016888040809./7410784769900.,
+                   11231460423587./58533540763752.,
+                   -1563879915014./6823010717585.,
+                     606302364029./971179775848.,
+                    1097981568119./3980877426909.]
+    const real rk_alpha=[ 970286171893./4311952581923.,
+                    6584761158862./12103376702013.,
+                    2251764453980./15575788980749.,
+                   26877169314380./34165994151039., 0.0]
 #endif
 
+#if RK_ORDER == 3
 rk3(real s0, real s1, real roc, int step_num, real dt) {
     /*
     // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
@@ -90,6 +106,7 @@ rk3_final(Field3 field, int step_num) {
                 rk3_final(field.z,step_num)
               )
 }
+#endif
 /*--------------------------------------------------------------------------------------------------------------------------*/
 euler(real f, real update, real dt_in)
 {
@@ -101,69 +118,81 @@ rk4(real s0, real s1, real roc, int step_num, real dt) {
 
     // Explicit Runge-Kutta 4th vs 3rd order 2 Register 5-step scheme
     // "C" indicate scheme compromises stability and accuracy criteria
-    rkf_beta= [ 1153189308089./22510343858157.,
-            1772645290293./4653164025191.,
-           -1672844663538./4480602732383.,
-            2114624349019./3568978502595.,
-            5198255086312./14908931495163.]
-    bhat= [ 1016888040809./7410784769900.,
-           11231460423587./58533540763752.,
-           -1563879915014./6823010717585.,
-             606302364029./971179775848.,
-            1097981568119./3980877426909.]
-    rkf_alpha=[  970286171893./4311952581923.,
-            6584761158862./12103376702013.,
-            2251764453980./15575788980749.,
-           26877169314380./34165994151039., 0.0]
-    itter=5
-    return s1 + rkf_beta[step_num + 1] * ((rkf_alpha[step_num] / rkf_beta[step_num]) * (s1 - s0) + roc * dt)
+    return s1 + rk_beta[step_num + 1] * ((rk_alpha[step_num] / rk_beta[step_num]) * (s1 - s0) + roc * dt)
 }
-/*--------------------------------------------------------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------------------------*/
 
-rk4(real s0, real s1, real roc, int step_num, real dt) {
-
+rk4_intermediate(real w, real roc, int step_num, real dt) {
     // Explicit Runge-Kutta 4th vs 3rd order 2 Register 5-step scheme
-    // "C" indicate scheme compromises stability and accuracy criteria
-    rk_beta= [ 1153189308089./22510343858157.,
-            1772645290293./4653164025191.,
-           -1672844663538./4480602732383.,
-            2114624349019./3568978502595.,
-            5198255086312./14908931495163.]
-    bhat= [ 1016888040809./7410784769900.,
-           11231460423587./58533540763752.,
-           -1563879915014./6823010717585.,
-             606302364029./971179775848.,
-            1097981568119./3980877426909.]
-    rk_alpha=[  970286171893./4311952581923.,
-            6584761158862./12103376702013.,
-            2251764453980./15575788980749.,
-           26877169314380./34165994151039., 0.0]
-    itter=5
-    // roc represents cumulative error
-    // s0, s1 are registers alternating rhs and farray
-    if num_step == 1
-        errdf = 0.
-    if mod(step_num, 2) == 1
-        errdf = errdf + dt*(rk_beta(step_num)-bhat(step_num)) * s0
-        s1 =  s1 + dt * rk_alpha(step_num) * s0
-        s0 =  s1 + dt * (rk_beta(step_num) - rk_alpha(step_num)) * s0
-
-        return s1, s0, roc
-    else
-        errdf = errdf + dt*(rk_beta(step_num)-bhat(step_num)) * s1
-        s0 =  s0 + dt * rk_alpha(step_num) * s1
-        s1 =  s0 + dt * (rk_beta(step_num) - rk_alpha(step_num)) * s1
-    return s0, s1, roc
+    errdf = dt*(rk_beta[step_num]-bhat[step_num]) * roc
+    return (real2){w + dt * rk_alpha[step_num] * roc, errdf}
 }
-/*--------------------------------------------------------------------------------------------------------------------------*/
+struct rk4_vec_res
+{
+	real3 x;
+	real3 y;
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk4_intermediate(real3 w,real3 roc,int step_num,real dt){
+	res_x,error_x = rk4_intermediate(w.x,roc.x,step_num,dt)
+	res_y,error_y = rk4_intermediate(w.x,roc.x,step_num,dt)
+	res_z,error_z = rk4_intermediate(w.x,roc.x,step_num,dt)
+	return
+		(rk4_vec_res)
+		{
+			real3(res_x,res_y,res_z),
+			real3(error_x,error_y,error_z)
+		}
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+//rk4_intermediate(Field3 field, real3 roc, int step_num, real dt)
+//{
+//	return rk4_intermediate(previous(field), roc, step_num, dt)
+//}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk4_intermediate(Field field, real roc, int step_num, real dt)
+{
+	return rk4_intermediate(previous(field), roc, step_num, dt)
+}
+rk4_intermediate(Field3 field, real3 roc, int step_num, real dt)
+{
+	res_x,error_x = rk4_intermediate(field.x,roc.x,step_num,dt)
+	res_y,error_y = rk4_intermediate(field.x,roc.x,step_num,dt)
+	res_z,error_z = rk4_intermediate(field.x,roc.x,step_num,dt)
+	return
+		(rk4_vec_res)
+		{
+			real3(res_x,res_y,res_z),
+			real3(error_x,error_y,error_z)
+		}
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------------------------*/
 
-rk4(real3 f, real3 w, real3 roc, int step_num, real dt) {
+rk4_final(real f, real w, int step_num, real dt) {
 
-  return real3( rk3(f.x,w.x,roc.x,step_num,dt),
-                rk3(f.y,w.y,roc.y,step_num,dt),
-                rk3(f.z,w.z,roc.z,step_num,dt)
+    return  w + dt * (rk_beta[step_num] - rk_alpha[step_num]) * f
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk4_final(real3 f,real3 w,int step_num, real dt){
+  return real3( rk4_final(f.x,w.x,step_num,dt),
+                rk4_final(f.y,w.y,step_num,dt),
+                rk4_final(f.z,w.z,step_num,dt)
               )
 }
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk4_final(Field field, int step_num,real dt) {
+    return value(field) + (rk_beta[step_num] - rk_alpha[step_num])  * previous(field) * dt
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk4_final(Field3 field, int step_num, real dt) {
+  return real3( rk4_final(field.x,step_num,dt),
+                rk4_final(field.y,step_num,dt),
+                rk4_final(field.z,step_num,dt)
+              )
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
 #endif
 /*--------------------------------------------------------------------------------------------------------------------------*/
 
