@@ -3655,7 +3655,7 @@ add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, b
       }
     }
     else if(do_checks && !skip_global_dup_check && current_nest == 0 && !(node->type & NODE_FUNCTION_ID))
-	    fatal("Multiple declarations of %s,%s\n",node->buffer);
+	    fatal("Multiple declarations of %s\n",node->buffer);
   }
   return res;
 }
