@@ -6380,53 +6380,6 @@ transform_array_assignments(ASTNode* node)
 }
 
 void
-gen_overloads(ASTNode* root)
-{
-  bool overloaded_something = true;
-  string_vec dfunc_possible_types[MAX_DFUNCS * duplicate_dfuncs.names.size];
-  const char* dfunc_possible_names[MAX_DFUNCS * duplicate_dfuncs.names.size];
-  memset(dfunc_possible_types,0,sizeof(string_vec)*MAX_DFUNCS*duplicate_dfuncs.names.size);
-  memset(dfunc_possible_names,0,sizeof(char*)*MAX_DFUNCS*duplicate_dfuncs.names.size);
-  int counters[duplicate_dfuncs.names.size];
-  memset(counters,0,sizeof(int)*duplicate_dfuncs.names.size);
-  mangle_dfunc_names(root,dfunc_possible_types,dfunc_possible_names,counters);
-
-  
-  //TP: refresh the symbol table with the mangled names
-  symboltable_reset();
-  traverse(root, NODE_NO_OUT, NULL);
-
-  //TP we have to create the internal names here since it has to be done after name mangling but before transformation to AcArray
-  gen_dfunc_internal_names(root);
-
-
-  const dfunc_possibilities overload_possibilities = {dfunc_possible_types,dfunc_possible_names}; 
-  int overload_counter = 0;
-  while(overloaded_something)
-  {
-	overloaded_something = false;
-  	gen_type_info(root);
-	if(overload_counter == 0)
-	{
-  		transform_array_assignments(root);
-	}
-  	transform_array_binary_ops(root);
-	overloaded_something |= resolve_overloaded_calls(root,overload_possibilities);
-	overload_counter++;
-  	//for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
-  	        //overloaded_something |= resolve_overloaded_calls(root,duplicate_dfuncs.data[i],dfunc_possible_types,i);
-  }
-  for(size_t i = 0; i < MAX_DFUNCS*duplicate_dfuncs.names.size; ++i)
-	  free_str_vec(&dfunc_possible_types[i]);
-}
-
-void
-reset_expr_types(ASTNode* node)
-{
-	TRAVERSE_PREAMBLE(reset_expr_types);
-	node->expr_type = NULL;
-}
-void
 transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* root)
 {
 	if(node->lhs)
@@ -6455,6 +6408,7 @@ is_field_expr(const char* expr)
 {
 	return expr && (expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,FIELD_PTR_STR) || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
 }
+
 bool
 is_value_applicable_type(const char* expr)
 {
@@ -6495,6 +6449,66 @@ transform_field_binary_ops(ASTNode* node)
 	if(is_value_applicable_type(rhs_expr))
 		node->rhs->rhs = create_func_call_expr(VALUE_STR,node->rhs->rhs);
 }
+
+void
+transform_field_intrinsic_func_calls_and_ops(ASTNode* root)
+{
+  	traverse(root, NODE_NO_OUT, NULL);
+	transform_field_unary_ops(root);
+	transform_field_intrinsic_func_calls_recursive(root,root);
+	transform_field_binary_ops(root);
+}
+
+void
+gen_overloads(ASTNode* root)
+{
+  bool overloaded_something = true;
+  string_vec dfunc_possible_types[MAX_DFUNCS * duplicate_dfuncs.names.size];
+  const char* dfunc_possible_names[MAX_DFUNCS * duplicate_dfuncs.names.size];
+  memset(dfunc_possible_types,0,sizeof(string_vec)*MAX_DFUNCS*duplicate_dfuncs.names.size);
+  memset(dfunc_possible_names,0,sizeof(char*)*MAX_DFUNCS*duplicate_dfuncs.names.size);
+  int counters[duplicate_dfuncs.names.size];
+  memset(counters,0,sizeof(int)*duplicate_dfuncs.names.size);
+  mangle_dfunc_names(root,dfunc_possible_types,dfunc_possible_names,counters);
+
+  
+  //TP: refresh the symbol table with the mangled names
+  symboltable_reset();
+  traverse(root, NODE_NO_OUT, NULL);
+
+  //TP we have to create the internal names here since it has to be done after name mangling but before transformation to AcArray
+  gen_dfunc_internal_names(root);
+
+
+  const dfunc_possibilities overload_possibilities = {dfunc_possible_types,dfunc_possible_names}; 
+  int overload_counter = 0;
+  while(overloaded_something)
+  {
+  	transform_field_intrinsic_func_calls_and_ops(root);
+	overloaded_something = false;
+  	gen_type_info(root);
+	if(overload_counter == 0)
+	{
+  		transform_array_assignments(root);
+	}
+  	transform_array_binary_ops(root);
+	overloaded_something |= resolve_overloaded_calls(root,overload_possibilities);
+	overload_counter++;
+  	//for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
+  	        //overloaded_something |= resolve_overloaded_calls(root,duplicate_dfuncs.data[i],dfunc_possible_types,i);
+  }
+  for(size_t i = 0; i < MAX_DFUNCS*duplicate_dfuncs.names.size; ++i)
+	  free_str_vec(&dfunc_possible_types[i]);
+}
+
+void
+reset_expr_types(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(reset_expr_types);
+	node->expr_type = NULL;
+}
+
+
 void
 gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, FILE* stream)
 {
@@ -6539,14 +6553,6 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 	free_func_params_info(&info);
 }
 
-void
-transform_field_intrinsic_func_calls_and_ops(ASTNode* root)
-{
-  	traverse(root, NODE_NO_OUT, NULL);
-	transform_field_unary_ops(root);
-	transform_field_intrinsic_func_calls_recursive(root,root);
-	transform_field_binary_ops(root);
-}
 void
 mark_first_declarations_in_funcs(ASTNode* node, string_vec* names)
 {
@@ -7434,7 +7440,6 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   traverse(root, 0, NULL);
   check_for_writes_to_const_variables(root);
   process_overrides(root);
-  transform_field_intrinsic_func_calls_and_ops(root);
   //We use duplicate dfuncs from gen_boundcond_kernels
   //duplicate_dfuncs = get_duplicate_dfuncs(root);
   mark_first_declarations(root);
