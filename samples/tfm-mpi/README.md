@@ -46,9 +46,12 @@ Currently Loaded Modules:
 ### Commands
 There's a build script in `astaroth/samples/tfm-mpi/build.sh`.
 
+**IMPORTANT:** the build script relies on `$ASTAROTH` env variable being set to the base `astaroth` directory of the `2024-09-02-tfm-standalone` branch.
+
 For example:
 ```bash
 cd astaroth
+export ASTAROTH=$(pwd) # Note here (can add also to .bashrc)
 mkdir build && cd build
 ../samples/tfm-mpi/build.sh
 ```
