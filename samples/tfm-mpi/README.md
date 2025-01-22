@@ -30,6 +30,8 @@ module load craype-accel-amd-gfx90a
 module load rocm
 module load cray-python
 module load cray-hdf5
+module load LUMI/24.03 buildtools/24.03 # New
+module load craype-accel-amd-gfx90a # New, must be loaded after LUMI/24.03
 export MPICH_GPU_SUPPORT_ENABLED=1 # Note here
 ```
 Should have
