@@ -37,12 +37,13 @@ export MPICH_GPU_SUPPORT_ENABLED=1 # Note here
 Should have
 ```bash
 Currently Loaded Modules:
-  1) craype-x86-rome                        7) ModuleLabel/label (S)  13) cray-libsci/24.03.0
-  2) libfabric/1.15.2.0                     8) lumi-tools/24.05  (S)  14) PrgEnv-cray/8.5.0
-  3) craype-network-ofi                     9) init-lumi/0.2     (S)  15) craype-accel-amd-gfx90a
-  4) perftools-base/24.03.0                10) craype/2.7.31.11       16) rocm/6.0.3
-  5) xpmem/2.8.2-1.0_5.1__g84a27a5.shasta  11) cray-dsmml/0.3.0       17) cray-python/3.11.7
-  6) cce/17.0.1                            12) cray-mpich/8.1.29      18) cray-hdf5/1.12.2.11
+  1) perftools-base/24.03.0       8) cray-mpich/8.1.29    15) libfabric/1.15.2.0
+  2) cce/17.0.1                   9) cray-libsci/24.03.0  16) craype-network-ofi
+  3) ModuleLabel/label      (S)  10) PrgEnv-cray/8.5.0    17) xpmem/2.8.2-1.0_5.1__g84a27a5.shasta
+  4) lumi-tools/24.05       (S)  11) rocm/6.0.3           18) partition/L                          (S)
+  5) init-lumi/0.2          (S)  12) cray-python/3.11.7   19) LUMI/24.03                           (S)
+  6) craype/2.7.31.11            13) cray-hdf5/1.12.2.11  20) buildtools/24.03
+  7) cray-dsmml/0.3.0            14) craype-x86-rome      21) craype-accel-amd-gfx90a              (H)
 ```
 
 ### Commands
