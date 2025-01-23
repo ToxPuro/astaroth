@@ -2,7 +2,12 @@ auxiliary Field FIELD
 
 hostdefine STENCIL_ORDER (0)
 
-Kernel singlepass_solve() {
+enum MY_STEP_NUM
+{
+	FIRST,
+	SECOND
+}
+Kernel singlepass_solve(MY_STEP_NUM step_num) {
     write(FIELD, 1.0)
 }
 
@@ -12,5 +17,5 @@ BoundConds bcs
 }
 ComputeSteps rhs(bcs)
 {
-	singlepass_solve()
+	singlepass_solve((MY_STEP_NUM)0)
 }

@@ -3487,6 +3487,42 @@ gen_optimized_kernel_decls(ASTNode* node, const param_combinations combinations,
 	free_node_vec(&optimized_decls);
 }
 void
+gen_kernel_host_param_combinations(ASTNode* node, const param_combinations combinations, const string_vec user_kernels_with_input_params,string_vec* const user_kernel_combinatorial_params)
+{
+	if(node->lhs)
+		gen_kernel_host_param_combinations(node->lhs,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params);
+	if(node->rhs)
+		gen_kernel_host_param_combinations(node->rhs,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params);
+	if(!(node->type & NODE_KFUNCTION))
+		return;
+	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,get_node(NODE_FUNCTION_ID,node)->buffer);
+	if(kernel_index == -1)
+		return;
+	string_vec combination_params = user_kernel_combinatorial_params[kernel_index];
+	if(combination_params.size == 0)
+		return;
+	//fatal("HI\n");
+	//FILE* fp = fopen("user_kernels_ifs.h","a");
+	//FILE* fp_defs = fopen("user_defines.h","a");
+	//for(int i = 0; i < combinations.nums[kernel_index]; ++i)
+	//{
+	//	string_vec combination_vals = combinations.vals[kernel_index + MAX_KERNELS*i];
+	//	fprintf(fp,"if(kernel_enum == %s ",get_node(NODE_FUNCTION_ID,node)->buffer);
+	//	for(size_t j = 0; j < combination_vals.size; ++j)
+	//		fprintf(fp, " && vba.on_device.kernel_input_params.%s.%s ==  %s ",get_node(NODE_FUNCTION_ID,node)->buffer,combination_params.data[j],combination_vals.data[j]);
+
+	//	fprintf(fp,
+	//			")\n{\n"
+	//			"\treturn %s_optimized_%d;\n}\n"
+	//	,get_node(NODE_FUNCTION_ID,node)->buffer,i);
+	//	fprintf(fp_defs,"%s_optimized_%d,",get_node(NODE_FUNCTION_ID,node)->buffer,i);
+	//}
+	//
+	//fclose(fp);
+	//fprintf(fp_defs,"}\n");
+	//fclose(fp_defs);
+}
+void
 gen_kernel_ifs(ASTNode* node, const param_combinations combinations, const string_vec user_kernels_with_input_params,string_vec* const user_kernel_combinatorial_params)
 {
 	if(node->lhs)
@@ -3517,7 +3553,6 @@ gen_kernel_ifs(ASTNode* node, const param_combinations combinations, const strin
 		fprintf(fp_defs,"%s_optimized_%d,",get_node(NODE_FUNCTION_ID,node)->buffer,i);
 	}
 	
-	//printf("NUM of combinations: %d\n",combinations.nums[kernel_index]);
 	fclose(fp);
 	fprintf(fp_defs,"}\n");
 	fclose(fp_defs);
@@ -5993,6 +6028,7 @@ void
 gen_kernel_combinatorial_optimizations_and_input(ASTNode* root, const bool optimize_conditionals)
 {
   combinatorial_params_info info = get_combinatorial_params_info(root);
+  gen_kernel_host_param_combinations(root,info.params,info.kernels_with_input_params,info.kernel_combinatorial_params);
   if(optimize_conditionals)
   {
   	gen_kernel_ifs(root,info.params,info.kernels_with_input_params,info.kernel_combinatorial_params);
@@ -6673,20 +6709,20 @@ resolve_overloaded_calls_base(ASTNode* node, const dfunc_possibilities possibili
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
 		//if(!strcmp(dfunc_name,"rk3_intermediate"))
-		//{
-		//	printf("Not able to resolve: %s\n",combine_all_new(node->rhs)); 
-		//	printf("Not able to resolve: %s,%s,%s,%s\n",call_info.types.data[0],call_info.types.data[1],call_info.types.data[2],call_info.types.data[3]); 
-		//	int overload_index = MAX_DFUNCS*dfunc_index-1;
-    		//	//TP: ugly hack to resolve calls in BoundConds
-		//	const int param_offset = (call_info.expr.size > 0 && is_boundary_param(call_info.expr.data[0])) ? 1 : 0;
-		//	while(possibilities.names[++overload_index] == dfunc_name)
-		//	{
-		//		for(size_t i = 0; i < possibilities.types[overload_index].size; ++i)
-		//			printf("%s,",possibilities.types[overload_index].data[i]);
-		//		printf("\n");
-		//	}
-		//	printf("Not able to resolve: %zu\n",possible_indexes.size); 
-		//}
+		{
+			//printf("Not able to resolve: %s\n",combine_all_new(node->rhs)); 
+			//printf("Not able to resolve: %s,%s,%s,%s\n",call_info.types.data[0],call_info.types.data[1],call_info.types.data[2],call_info.types.data[3]); 
+			//int overload_index = MAX_DFUNCS*dfunc_index-1;
+    			////TP: ugly hack to resolve calls in BoundConds
+			//const int param_offset = (call_info.expr.size > 0 && is_boundary_param(call_info.expr.data[0])) ? 1 : 0;
+			//while(possibilities.names[++overload_index] == dfunc_name)
+			//{
+			//	for(size_t i = 0; i < possibilities.types[overload_index].size; ++i)
+			//		printf("%s,",possibilities.types[overload_index].data[i]);
+			//	printf("\n");
+			//}
+			//printf("Not able to resolve: %zu\n",possible_indexes.size); 
+		}
 		return res;
 	}
 	{
@@ -7630,7 +7666,7 @@ int
 gen_monomorphized_kernel(const char* func_name, const string_vec input_params)
 {
 	const int index = str_vec_get_index(kfunc_names,func_name);
-	if(index == -1) fatal("Was not able to monomorhpize: %s\n",func_name);
+	if(index == -1) fatal("No such kernel: %s\n",func_name);
 	ASTNode* node = (ASTNode*)kfunc_nodes.data[index];
 
 	func_params_info params_info = get_function_params_info(node, func_name);
@@ -7641,6 +7677,8 @@ gen_monomorphized_kernel(const char* func_name, const string_vec input_params)
 	ASTNode* function_id = (ASTNode*) get_node(NODE_FUNCTION_ID,new_node->lhs);
 	astnode_sprintf(function_id,get_monomorphized_name(function_id->buffer,monomorphization_index));
 
+	if(input_params.size != params_info.types.size)
+		fatal("Number of inputs for %s does not match the number of input params\n", func_name);
 	for(size_t i = 0; i < params_info.expr.size; ++i)
 		rename_variables(new_node,input_params.data[i],params_info.types.data[i],params_info.expr.data[i]);
 
