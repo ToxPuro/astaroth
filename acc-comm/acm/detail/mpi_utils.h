@@ -139,6 +139,8 @@ Index get_global_nn_offset(const MPI_Comm& cart_comm, const Shape& global_nn);
 
 Shape get_local_mm(const MPI_Comm& cart_comm, const Shape& global_nn, const Index& rr);
 
+Shape get_global_mm(const Shape& global_nn, const Index& rr);
+
 /** Map type to MPI enum representing the type
  * Usage: MPIType<double>::value // returns MPI_DOUBLE
  */

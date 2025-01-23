@@ -527,6 +527,12 @@ get_local_mm(const MPI_Comm& cart_comm, const Shape& global_nn, const Index& rr)
     return Shape{as<uint64_t>(2) * rr + local_nn};
 }
 
+Shape
+get_global_mm(const Shape& global_nn, const Index& rr)
+{
+    return Shape{as<uint64_t>(2) * rr + global_nn};
+}
+
 void
 read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
                 const Index& in_file_offset, const Shape& in_mesh_dims,
