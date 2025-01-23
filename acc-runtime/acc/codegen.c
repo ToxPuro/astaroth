@@ -3535,10 +3535,10 @@ free_combinatorial_params_info(combinatorial_params_info* info)
 void
 gen_kernel_ifs(ASTNode* root, const bool optimize_input_params)
 {
-	if(!optimize_input_params) return;
-	//TP: should be in reset_all_files but does not work for some reason
 	FILE* fp = fopen("user_kernels_ifs.h","w");
 	fclose(fp);
+	if(!optimize_input_params) return;
+	//TP: should be in reset_all_files but does not work for some reason
         combinatorial_params_info info = get_combinatorial_params_info(root);
  	gen_kernel_ifs_base(root,info.params,info.kernels_with_input_params,info.kernel_combinatorial_params);
         free_combinatorial_params_info(&info);
