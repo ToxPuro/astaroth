@@ -26,6 +26,7 @@
 #include "kernels/kernels.h"
 #include "user_builtin_non_scalar_constants.h"
 
+
 struct device_s {
     int id;
     AcMeshInfo local_config;

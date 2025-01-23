@@ -90,7 +90,7 @@ typedef struct Grid {
     std::shared_ptr<AcTaskGraph> default_tasks;
     size_t mpi_tag_space_count;
     bool mpi_initialized;
-    bool copied_user_mesh = false;
+    bool vertex_buffer_copied_from_user[NUM_VTXBUF_HANDLES]{};
     KernelAnalysisInfo kernel_analysis_info{};
 } Grid;
 
@@ -481,21 +481,22 @@ AcMesh
 create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 {
     AcMesh submesh;
-    if(user_mesh.vertex_buffer[0] != NULL)
+    for(int i = 0; i < NUM_FIELDS; ++i)
     {
-	    for(int i = 0; i < NUM_ALL_FIELDS; ++i) 
+	    if(user_mesh.vertex_buffer[i] != NULL)
+	    {
 			submesh.vertex_buffer[i] = user_mesh.vertex_buffer[i];
-	    submesh.info = submesh_info;
-	    grid.copied_user_mesh = true;
+    			grid.vertex_buffer_copied_from_user[i] = true;
+	    }
+	    else
+	    {
+    			acLogFromRootProc(ac_pid(), "acGridInit: Allocating CPU VertexBuffer\n");
+			submesh.vertex_buffer[i] = acHostCreateVertexBuffer(submesh_info);
+    			acLogFromRootProc(ac_pid(), "acGridInit: Done allocating CPU VertexBuffer\n");
+	    }
     }
-    else
-    {
-    	acLogFromRootProc(ac_pid(), "acGridInit: Allocating CPU mesh\n");
-    	acHostMeshCreate(submesh_info, &submesh);
-    	acLogFromRootProc(ac_pid(), "acGridInit: Done allocating CPU mesh\n");
-	//TP: not strictly needed but does not hurth to be pedantic
-	grid.copied_user_mesh = false;
-    }
+    submesh.info = submesh_info;
+    acHostMeshCreateProfiles(&submesh);
     return submesh;
 }
 
@@ -702,15 +703,13 @@ acGridQuit(void)
 
     grid.initialized   = false;
     grid.decomposition = (uint3_64){0, 0, 0};
-    if(!grid.copied_user_mesh)
-    	acHostMeshDestroy(&grid.submesh);
-    //TP: make sure the grid submesh is invalid even if the user has given it 
-    else
+    for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
     {
-	    AcMesh new_mesh;
-	    for(int i = 0; i < NUM_ALL_FIELDS; ++i)
-		    new_mesh.vertex_buffer[i] = NULL;
-	    grid.submesh = new_mesh;
+	if(!grid.vertex_buffer_copied_from_user[i])
+    		acHostMeshDestroyVertexBuffer(&grid.submesh.vertex_buffer[i]);
+	else
+		grid.submesh.vertex_buffer[i] = NULL;
+	grid.vertex_buffer_copied_from_user[i] = false;
     }
     acDeviceDestroy(&grid.device);
     compat_acDecompositionQuit();

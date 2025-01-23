@@ -312,6 +312,7 @@ reset_all_files()
 			"reduce_dst_integers.h","fused_kernels.h","device_store_uniform.h","device_store_uniform_decl.h","device_store_overloads.h","device_finalize_reduce.h","scalar_reduce_buffer_defs.h","scalar_reduce_buffers_in_vba.h","reduce_helpers.h",
 			"builtin_enums.h","safe_vtxbuf_input_params.h","load_ac_kernel_params.h","load_ac_kernel_params_def.h"
 			"kernel_input_param_str.h","is_array_param.h"
+			//,"user_kernels_ifs.h"
 			};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    //if(!file_exists(files[i])) continue;
@@ -323,7 +324,7 @@ reset_all_files()
 }
 
 
-int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals, const bool gen_extra_dfuncs, bool gen_bc_kernels)
+int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* dir, const bool gen_mem_accesses, const bool optimize_input_params, const bool gen_extra_dfuncs, bool gen_bc_kernels)
 {
 	init_str_vec(&const_ints);
 	init_str_vec(&const_int_values);
@@ -403,14 +404,14 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
 	ASTNode* new_root = astnode_dup(root,NULL);
-	preprocess(new_root, optimize_conditionals);
+	preprocess(new_root, optimize_input_params);
 
 	reset_all_files();
   	gen_output_files(new_root);
 
         FILE* fp_cpu = fopen("user_kernels.h.raw", "w");
         assert(fp_cpu);
-        generate(new_root, fp_cpu, true, optimize_conditionals);
+        generate(new_root, fp_cpu, true);
 	fclose(fp_cpu);
 
 	if(OPTIMIZE_MEM_ACCESSES)
@@ -425,7 +426,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 			gen_output_files(new_root);
 
 			fp_cpu = fopen("user_kernels.h.raw","w");
-			generate(new_root,fp_cpu,true,optimize_conditionals);
+			generate(new_root,fp_cpu,true);
 			fclose(fp_cpu);
 			generate_mem_accesses();
 		}
@@ -433,7 +434,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	reset_diff_files();
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
-        generate(new_root, fp, gen_mem_accesses, optimize_conditionals);
+        generate(new_root, fp, gen_mem_accesses);
 
 	astnode_destroy(root);
 	root = NULL;
@@ -488,7 +489,7 @@ main(int argc, char** argv)
     hashmap_create(initial_size, &string_intern_hashmap);
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, true,false); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, false,true); 
-    code_generation_pass(stage0, stage1, stage2,  dir, false, OPTIMIZE_CONDITIONALS, false,false);
+    code_generation_pass(stage0, stage1, stage2,  dir, false, OPTIMIZE_INPUT_PARAMS, false,false);
     
 
     return EXIT_SUCCESS;

@@ -570,13 +570,15 @@ AC_INTERNAL_read_field(const Field& field, const int x, const int y, const int z
 AcReal
 AC_INTERNAL_read_profile(const Profile& profile, const int)
 {
-	read_profiles[profile] |= 1;
+	if constexpr(NUM_PROFILES > 0)
+		read_profiles[profile] |= 1;
 	return AcReal(1.0);
 }
 AcReal
 AC_INTERNAL_read_profile(const Profile& profile, const int, const int)
 {
-	read_profiles[profile] |= 1;
+	if constexpr(NUM_PROFILES > 0)
+		read_profiles[profile] |= 1;
 	return AcReal(1.0);
 }
 #define suppress_unused_warning(X) (void)X

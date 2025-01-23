@@ -99,7 +99,10 @@ main(int argc, char* argv[])
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
         all_fields.push_back((Field)i);
     }
-    AcTaskGraph* graph = acGetDSLTaskGraph(rhs);
+    acDeviceSetInput(acGridGetDevice(), STEP_NUM, FIRST);
+    AcTaskGraph* graph = acGetOptimizedDSLTaskGraph(rhs);
+    acDeviceSetInput(acGridGetDevice(), STEP_NUM, SECOND);
+    graph = acGetOptimizedDSLTaskGraph(rhs);
 
     auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     auto IDX = [&](const int i, const int j, const int k)

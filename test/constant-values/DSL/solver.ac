@@ -7,8 +7,11 @@ enum MY_STEP_NUM
 	FIRST,
 	SECOND
 }
-Kernel singlepass_solve(MY_STEP_NUM step_num) {
-    write(FIELD, 1.0)
+
+input MY_STEP_NUM STEP_NUM
+Kernel singlepass_solve(MY_STEP_NUM step_num, real scaling_factor) {
+    write(FIELD, int(step_num)*scaling_factor)
+    //write(FIELD, 1.0)
 }
 
 BoundConds bcs
@@ -17,5 +20,5 @@ BoundConds bcs
 }
 ComputeSteps rhs(bcs)
 {
-	singlepass_solve((MY_STEP_NUM)0)
+	singlepass_solve(STEP_NUM,1.0)
 }

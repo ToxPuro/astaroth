@@ -635,6 +635,15 @@ operator-(const AcMatrix& a, const AcMatrix& b)
   return out;
 }
 
+static HOST_DEVICE_INLINE AcReal3
+operator*(AcReal3 v, const AcMatrix& m)
+{
+    return (AcReal3){
+        AC_dot(m.col(0), v),
+        AC_dot(m.col(1), v),
+        AC_dot(m.col(2), v),
+    };
+}
 
 /**
 #define GEN_STD_ARRAY_OPERATOR(OPERATOR)  \

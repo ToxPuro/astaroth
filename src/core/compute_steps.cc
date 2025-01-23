@@ -222,12 +222,30 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs)
 	return false;
 }
 
+#include "user_loaders.h"
+std::vector<AcKernel>
+get_optimized_kernels(const AcDSLTaskGraph graph)
+{
+	auto kernel_calls = DSLTaskGraphKernels[graph];
+	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
+	{
+		VertexBufferArray vba{};
+		auto loader = DSLTaskGraphKernelLoaders[graph][call_index];
+    		loader({&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}});
+		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
+		kernel_calls[call_index] = optimized_kernel;
+	}
+	return kernel_calls;
+}
+
 std::vector<BoundCond>
-get_boundconds(const AcDSLTaskGraph bc_graph)
+get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
 {
 
 	std::vector<BoundCond> res{};
-	const std::vector<AcKernel>   kernels    = DSLTaskGraphKernels[bc_graph];
+	const std::vector<AcKernel>   kernels    = optimized ?
+							get_optimized_kernels(bc_graph) :
+							DSLTaskGraphKernels[bc_graph];
 	const std::vector<AcBoundary> boundaries = DSLTaskGraphKernelBoundaries[bc_graph];
 	for(size_t i = 0; i < kernels.size(); ++i)
 	std::vector<acAnalysisBCInfo> bc_infos{};
@@ -268,12 +286,12 @@ log_boundcond(FILE* stream, const BoundCond bc, const AcBoundary boundary)
 	if(!ac_pid()) fprintf(stream,")\n");
 }
 std::vector<AcTaskDefinition>
-acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph)
+acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph, const bool optimized)
 {
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[bc_graph]);
 	std::vector<AcTaskDefinition> res{};
-	auto bcs = get_boundconds(bc_graph);
+	auto bcs = get_boundconds(bc_graph, optimized);
 	//TP: insert boundconds in topological order
 	for(size_t i = 0; i < bcs.size(); ++i)
 		for(auto& bc : bcs)
@@ -289,9 +307,9 @@ acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph)
 
 
 FieldBCs
-get_field_boundconds(const AcDSLTaskGraph bc_graph)
+get_field_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
 {
-	const auto bcs = get_boundconds(bc_graph);
+	const auto bcs = get_boundconds(bc_graph,optimized);
 	const std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
 
 	FieldBCs res{};
@@ -529,11 +547,52 @@ typedef struct
 	std::vector<Field> fields_communicated_before;
 } level_set;
 
-#include "user_loaders.h"
+
+// Combine hash helper function
+template <typename T>
+void hash_combine(std::size_t &seed, const T &value) {
+    seed ^= std::hash<T>{}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
+// Hash for a single vector
+struct VectorHash {
+    template <typename T>
+    std::size_t operator()(const std::vector<T> &vec) const {
+        std::size_t seed = 0;
+        for (const auto &elem : vec) {
+            hash_combine(seed, elem);
+        }
+        return seed;
+    }
+};
+// Hash for the tuple of two vectors
+struct TupleHash {
+    template <typename T>
+    std::size_t operator()(const std::tuple<std::vector<T>, std::vector<T>> &key) const {
+        const auto &[vec1, vec2] = key;
+        std::size_t seed = 0;
+        hash_combine(seed, VectorHash{}(vec1));
+        hash_combine(seed, VectorHash{}(vec2));
+        return seed;
+    }
+};
+
+// Equality comparator for the tuple of vectors
+struct TupleEqual {
+    template <typename T>
+    bool operator()(const std::tuple<std::vector<T>, std::vector<T>> &lhs,
+                    const std::tuple<std::vector<T>, std::vector<T>> &rhs) const {
+        return lhs == rhs; // Leverages operator== for vectors and tuple
+    }
+};
+
+
 std::vector<level_set>
-gen_level_sets(const AcDSLTaskGraph graph)
+gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 {
-	auto kernel_calls = DSLTaskGraphKernels[graph];
+	auto kernel_calls = optimized ?
+				get_optimized_kernels(graph) :
+				DSLTaskGraphKernels[graph];
 	const KernelAnalysisInfo info = get_kernel_analysis_info();
 	constexpr int MAX_TASKS = 100;
 	int n_level_sets = 0;
@@ -724,9 +783,9 @@ fuse_calls_between_level_sets(std::vector<level_set>& level_sets)
 }
 
 std::vector<level_set>
-get_level_sets(const AcDSLTaskGraph graph)
+get_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 {
-	auto level_sets = gen_level_sets(graph);
+	auto level_sets = gen_level_sets(graph,optimized);
 	bool fused_call_between_level_sets = true;
 	while(fused_call_between_level_sets)
 	{
@@ -738,17 +797,15 @@ get_level_sets(const AcDSLTaskGraph graph)
 }
 
 std::vector<AcTaskDefinition>
-acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
+acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 {
 	if(is_bc_taskgraph(graph))
-		return acGetDSLBCTaskGraphOps(graph);
+		return acGetDSLBCTaskGraphOps(graph,optimized);
 	const KernelAnalysisInfo info = get_kernel_analysis_info();
-	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph]);
+	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph],optimized);
 	check_field_boundconds(field_boundconds);
 	std::vector<AcTaskDefinition> res{};
-	auto kernel_calls = DSLTaskGraphKernels[graph];
-
-	auto level_sets = get_level_sets(graph);	
+	auto level_sets = get_level_sets(graph,optimized);	
 
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[graph]);
@@ -829,12 +886,26 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph)
 	return res;
 }
 
+using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>>;
+std::unordered_map<KeyType, AcTaskGraph*, TupleHash, TupleEqual> task_graphs{};
+
+AcTaskGraph*
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
+{
+	auto optimized_kernels = get_optimized_kernels(graph);
+	auto optimized_bcs      = get_optimized_kernels(DSLTaskGraphBCs[graph]);
+	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs);
+	if(task_graphs.find(key) != task_graphs.end())
+		return task_graphs[key];
+	auto res = acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,true));
+	task_graphs[key] = res;
+	return res;
+}
+
 AcTaskGraph*
 acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 {
-	return acGridBuildTaskGraph(
-		acGetDSLTaskGraphOps(graph)
-			);
+	return acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,false));
 }
 
 #include "user_constants.h"

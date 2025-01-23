@@ -40,7 +40,6 @@ acHostMeshSet(const AcReal value, AcMesh* mesh)
 
     return AC_SUCCESS;
 }
-#if AC_LAGRANGIAN_GRID
 static inline __device__ AcReal
 lagrangian_correction(const Field j, const Field2 coords, const Volume indexes, const AcReal3 lengths, const Volume nn_min, const Volume nn_max)
 {
@@ -60,7 +59,6 @@ lagrangian_correction(const Field j, const Field3 coords, const Volume indexes, 
               + y_coeff*((indexes.y >= nn_max.y) - (indexes.y < nn_min.y))
               + z_coeff*((indexes.z >= nn_max.z) - (indexes.z < nn_min.z));
 }
-#endif 
 
 
 AcResult

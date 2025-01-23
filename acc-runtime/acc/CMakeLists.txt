@@ -7,7 +7,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Options
 option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time, runtime compilation lessens this" OFF)
-option(OPTIMIZE_CONDITIONALS "Optimizes conditionals based on kernel input parameters by making copies of kernels for each combination of input params, works well with OPTIMIZE_MEM_ACCESSES since reduces the number of conditional accesses to kernels" OFF)
+option(OPTIMIZE_INPUT_PARAMS"Generates optimized kernels for each possible combination of kernel input parameters (taking only those into account that can have a finite number of different values), works well with OPTIMIZE_MEM_ACCESSES since reduces the amount of conditional control-flow in kernels" OFF)
 option(OPTIMIZE_FIELDS       "Optimizes fields to be auxiliary,(non-)communicated and dead based on writes, reads and stencil accesses in kernels. Pitfalls are conditional accesses and writes, which runtime compilation can lessen" OFF)
 option(OPTIMIZE_ARRAYS       "Does not allocate arrays that are not used based on DSL. Runtime compilation and optimize conditionals help to prevent unnoticed accesses in conditionals" OFF)
 option(FUSE_KERNELS          "Whether to fuse kernels or not" OFF)
@@ -63,10 +63,10 @@ else()
 		set(INLINING_VAL 0)
 	endif()
 	
-	if (OPTIMIZE_CONDITIONALS)
-		set(OPTIMIZE_CONDITIONALS_VAL 1)
+	if (OPTIMIZE_INPUT_PARAMS)
+		set(OPTIMIZE_INPUT_PARAMS_VAL 1)
 	else()
-		set(OPTIMIZE_CONDITIONALS_VAL 0)
+		set(OPTIMIZE_INPUT_PARAMS_VAL 0)
 	endif()
 
 	if (OPTIMIZE_FIELDS)
@@ -88,5 +88,5 @@ else()
 	endif()
 	
 	
-	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_CONDITIONALS=${OPTIMIZE_CONDITIONALS_VAL} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL} -DOPTIMIZE_ARRAYS=${OPTIMIZE_ARRAYS_VAL} -DINLINING=${INLINING_VAL} -DFUSE_KERNELS=${FUSE_KERNELS_VAL})
+	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_INPUT_PARAMS=${OPTIMIZE_INPUT_PARAMS_VAL} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL} -DOPTIMIZE_ARRAYS=${OPTIMIZE_ARRAYS_VAL} -DINLINING=${INLINING_VAL} -DFUSE_KERNELS=${FUSE_KERNELS_VAL})
 endif()

@@ -639,7 +639,6 @@ acGridInit(const AcMeshInfo info)
 	return acGridInitBase(mesh);
 }
 
-
 /**
 Resets all devices on the current grid.
  */
@@ -867,6 +866,7 @@ OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraph,(const AcTaskDefinitio
 
 /** */
 FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraph,(const AcDSLTaskGraph));
+FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
 
 
 /** */
@@ -1367,6 +1367,9 @@ acHostUpdateBuiltinCompParams(AcCompInfo* comp_config);
 
 
 
+FUNC_DEFINE(AcReal*, acHostCreateVertexBuffer,(const AcMeshInfo info));
+FUNC_DEFINE(AcResult, acHostMeshCreateProfiles,(AcMesh* mesh));
+FUNC_DEFINE(AcResult, acHostMeshDestroyVertexBuffer,(AcReal** vtxbuf));
 /** Creates a mesh stored in host memory */
 FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
 /** Copies the VertexBuffers from src to dst*/
@@ -1479,6 +1482,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	*(void**)(&(acGetDSLTaskGraph)) = dlsym(handle,"acGetDSLTaskGraph");
 	if(!acGetDSLTaskGraph) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetDSLTaskGraph");
 	if(!acGridDestroyTaskGraph) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridDestroyTaskGraph");
+	LOAD_DSYM(acGetOptimizedDSLTaskGraph);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousDistributed);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousCollective);
 	LOAD_DSYM(acGridGetDefaultTaskGraph);
@@ -1711,7 +1715,6 @@ static UNUSED AcResult
 acGridInit(const AcMesh mesh)
 {
 	return acGridInitBase(mesh);
-
 }
 static UNUSED AcBuffer
 acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)

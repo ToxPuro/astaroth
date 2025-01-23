@@ -77,18 +77,19 @@ acGetNode(void)
     return nodes[0];
 }
 
+AcReal*
+acHostCreateVertexBuffer(const AcMeshInfo info)
+{
+    const size_t n_cells = acVertexBufferSize(info);
+    AcReal* res = (AcReal*)calloc(n_cells, sizeof(AcReal));
+    ERRCHK_ALWAYS(res);
+    return res;
+}
 
 AcResult
-acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
+acHostMeshCreateProfiles(AcMesh* mesh)
 {
-    mesh->info = info;
-    acHostUpdateBuiltinParams(&mesh->info);
-    const size_t n_cells = acVertexBufferSize(mesh->info);
-    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
-        ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
-    }
-    const auto mm = acGetLocalMM(info);
+    const auto mm = acGetLocalMM(mesh->info);
     const size3_t counts = (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
     for(size_t p = 0; p < NUM_PROFILES; ++p)
     {
@@ -96,6 +97,16 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
             ERRCHK_ALWAYS(mesh->profile[p]);
     }
     return AC_SUCCESS;
+}
+
+AcResult
+acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
+{
+    mesh->info = info;
+    acHostUpdateBuiltinParams(&mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) 
+	mesh->vertex_buffer[w] = acHostCreateVertexBuffer(mesh->info);
+    return acHostMeshCreateProfiles(mesh);
 }
 AcResult
 acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst)
@@ -211,12 +222,19 @@ acHostGridMeshRandomize(AcMesh* mesh)
 
     return AC_SUCCESS;
 }
+AcResult
+acHostMeshDestroyVertexBuffer(AcReal** vtxbuf)
+{
+	free(*vtxbuf);
+	(*vtxbuf) = NULL;
+	return AC_SUCCESS;
+}
 
 AcResult
 acHostMeshDestroy(AcMesh* mesh)
 {
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        free(mesh->vertex_buffer[w]);
+	acHostMeshDestroyVertexBuffer(&mesh->vertex_buffer[w]);
 
     return AC_SUCCESS;
 }
@@ -294,6 +312,42 @@ acGetLengths(const AcMeshInfo info)
 
 #include "get_vtxbufs_funcs.h"
 #include "stencil_accesses.h"
+
+AcResult
+acReduceProfileX(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal** tmp, size_t* tmp_size, AcReal* dst, const cudaStream_t stream)
+{
+    if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
+    const AcProfileType type = prof_types[prof];
+    const AcMeshOrder order    = acGetMeshOrderForProfile(type);
+    dst += NGHOST;
+
+    const AcBuffer buffer_in =
+    {
+	    (AcReal*)src,
+	    as_size_t(dims.nn.x*dims.nn.y*dims.nn.z),
+	    true,
+	    (AcShape){
+		    as_size_t(dims.nn.x),
+		    as_size_t(dims.nn.y),
+		    as_size_t(dims.nn.z),
+		    1
+	    },
+    };
+
+    AcBuffer buffer = acTransposeBuffer(buffer_in, order, stream);
+    cudaDeviceSynchronize();
+
+    const size_t num_segments = (type & ONE_DIMENSIONAL_PROFILE) ? buffer.shape.z*buffer.shape.w
+	                                                         : buffer.shape.y*buffer.shape.z*buffer.shape.w;
+    fprintf(stderr,"PROFILE X n segments: %zu\n",num_segments);
+    fprintf(stderr,"PROFILE X elems: %zu\n",buffer.count);
+    acSegmentedReduce(stream, buffer.data, buffer.count, num_segments, dst,tmp,tmp_size);
+
+    acBufferDestroy(&buffer);
+    return AC_SUCCESS;
+
+}
+
 
 AcResult
 acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream)

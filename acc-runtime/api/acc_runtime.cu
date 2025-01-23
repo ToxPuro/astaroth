@@ -785,7 +785,6 @@ cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* 
   }
 }
 
-
 size3_t
 acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
 {
@@ -1680,10 +1679,9 @@ getOptimalTBConfig(const AcKernel kernel, const int3 dims, VertexBufferArray vba
 AcKernel
 acGetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 {
-	//#include "user_kernel_ifs.h"
+	#include "user_kernels_ifs.h"
 	//silence unused warnings
 	(void)vba;
-	//TP: for now this is no-op in the future in some cases we choose which kernel to call based on the input params
 	return kernel_enum;
 	//return kernels[(int) kernel_enum];
 }

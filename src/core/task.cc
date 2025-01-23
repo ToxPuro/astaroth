@@ -671,7 +671,7 @@ void
 ComputeTask::compute()
 {
     params.load_func->loader({&vba.on_device.kernel_input_params, device, (int)loop_cntr.i, {}, {}});
-    acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, params.start, params.end, vba);
+    acLaunchKernel(params.kernel_enum, params.stream, params.start, params.end, vba);
 }
 
 bool
