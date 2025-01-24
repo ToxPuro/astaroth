@@ -166,6 +166,15 @@ get_dtype()
     }
 }
 
+/** Communication */
+void scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
+             const Index& in_file_offset, const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
+             const Index& in_mesh_offset, const std::string& path, void* data);
+
+void gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
+            const Index& in_file_offset, const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
+            const Index& in_mesh_offset, const std::string& path, void* data);
+
 /** IO */
 
 /**
@@ -189,6 +198,7 @@ void write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
 /** A simplified routine for reading a a domain of shape `global_nn` from disk to memory address
  * specified by `data` based on the arrangement defined by the communicator.
  * The input memory address must be able to hold at least prod(global_nn) elements of type etype.
+ * TODO: consider renaming local_nn_offset to rr.
  */
 void read_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
                             const Shape& global_nn, const Index& local_nn_offset,
@@ -197,6 +207,7 @@ void read_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& ety
 /** A simplified routine for writing a domain of shape `global_nn` starting at `data` on disk based
  * on the arrangement defined by the communicator.
  * The output memory address must be able to hold at least prod(global_nn) elements of type etype.
+ * TODO: consider renaming local_nn_offset to rr.
  */
 void write_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
                              const Shape& global_nn, const Index& local_nn_offset, const void* data,

@@ -42,6 +42,12 @@ test_reduce(const MPI_Comm& cart_comm, const Shape& global_nn)
     }
 }
 
+void
+test_scatter_gather(const MPI_Comm& cart_comm, const Shape& global_nn)
+{
+    std::cout << "Hello" << std::endl;
+}
+
 int
 main()
 {
@@ -54,6 +60,8 @@ main()
         test_reduce<ac::mr::pinned_host_memory_resource>(cart_comm, global_nn);
         test_reduce<ac::mr::pinned_write_combined_host_memory_resource>(cart_comm, global_nn);
         test_reduce<ac::mr::device_memory_resource>(cart_comm, global_nn);
+
+        test_scatter_gather(cart_comm, global_nn);
 
         ac::mpi::cart_comm_destroy(cart_comm);
     }

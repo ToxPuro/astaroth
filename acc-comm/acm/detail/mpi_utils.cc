@@ -534,6 +534,20 @@ get_global_mm(const Shape& global_nn, const Index& rr)
 }
 
 void
+scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
+        const Index& in_file_offset, const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
+        const Index& in_mesh_offset, const std::string& path, void* data)
+{
+}
+
+void
+gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
+       const Index& in_file_offset, const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
+       const Index& in_mesh_offset, const std::string& path, void* data)
+{
+}
+
+void
 read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
                 const Index& in_file_offset, const Shape& in_mesh_dims,
                 const Shape& in_mesh_subdims, const Index& in_mesh_offset, const std::string& path,
