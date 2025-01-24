@@ -122,6 +122,10 @@ int get_size(const MPI_Comm& cart_comm);
 
 int get_ndims(const MPI_Comm& comm);
 
+/** Return coordinates of process rank */
+Index get_coords(const MPI_Comm& cart_comm, const int rank);
+
+/** Return coordinates of the current process */
 Index get_coords(const MPI_Comm& cart_comm);
 
 Shape get_decomposition(const MPI_Comm& cart_comm);
@@ -167,13 +171,11 @@ get_dtype()
 }
 
 /** Communication */
-void scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
-             const Index& in_file_offset, const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
-             const Index& in_mesh_offset, const std::string& path, void* data);
+void scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& global_nn,
+             const Shape& local_rr, const void* send_buffer, void* recv_buffer);
 
-void gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
-            const Index& in_file_offset, const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
-            const Index& in_mesh_offset, const std::string& path, void* data);
+void gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& global_nn,
+            const Shape& local_rr, const void* send_buffer, void* recv_buffer);
 
 /** IO */
 
