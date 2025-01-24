@@ -1344,11 +1344,8 @@ FUNC_DEFINE(AcResult, acDeviceStoreIXYPlate,(const Device device, int3 start, in
 
 /** */
 FUNC_DEFINE(AcMeshInfo,acDeviceGetLocalConfig,(const Device device));
-#if AC_RUNTIME_COMPILATION == 0
-/** */
-FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[2]));
-#endif
 
+FUNC_DEFINE(AcResult, acDeviceGetVertexBufferPtrs,(Device device, const VertexBufferHandle vtxbuf, AcReal** in, AcReal** out));
 
 /** */
 AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
@@ -1437,7 +1434,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 		fprintf(stderr,"Error message: %s\n",dlerror());
 		exit(EXIT_FAILURE);
 	}
-
+	LOAD_DSYM(acDeviceGetVertexBufferPtrs)
 	LOAD_DSYM(acDeviceGetLocalConfig)
         LOAD_DSYM(acDeviceFinishReduceInt)
         LOAD_DSYM(acKernelFlushInt)

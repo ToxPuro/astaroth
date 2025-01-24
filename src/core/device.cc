@@ -540,23 +540,10 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     return AC_SUCCESS;
 }
 
-AcResult acDeviceGetVBApointers(Device device, AcReal *vbapointer[2]) {
-#if USE_COMPRESSIBLE_MEMORY
-    printf("Compressible memory - vbapointers useless for offloading!\n");
-    return AC_FAILURE;
-#else
-    #if AC_ADJACENT_VERTEX_BUFFERS
-        vbapointer[0]=device->vba.on_device.in[0];
-        vbapointer[1]=device->vba.on_device.out[0];
-        return AC_SUCCESS;
-    #else
-	//suprres unused warning
-	(void) vbapointer;
-	(void) device;
-        printf("Vertex buffers not adjacent - vbapointers useless for offloading!\n");
-        return AC_FAILURE;
-    #endif
-#endif
+AcResult acDeviceGetVertexBufferPtrs(Device device, const VertexBufferHandle vtxbuf, AcReal** in, AcReal** out) {
+    *in  = device->vba.on_device.in[vtxbuf];
+    *out = device->vba.on_device.out[vtxbuf];
+    return AC_SUCCESS;
 }
 
 AcResult
