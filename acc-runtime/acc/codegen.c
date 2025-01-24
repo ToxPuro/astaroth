@@ -2200,22 +2200,43 @@ get_function_params_info(const ASTNode* node, const char* func_name)
 	get_function_params_info_recursive(node,func_name,&res);
 	return res;
 }
+
 void
-gen_kernel_structs(const ASTNode* root)
+remove_suffix(char *str, const char* suffix_match) {
+    char *optimizedPos = strstr(str, suffix_match);
+    if (optimizedPos != NULL) {
+        *optimizedPos = '\0'; // Replace suffix_match with null character
+    }
+}
+
+static func_params_info kernel_params_info[MAX_FUNCS];
+
+void
+gen_kernel_params_info(const ASTNode* root)
+{
+  memset(kernel_params_info,0,sizeof(kernel_params_info));
+  int kernel_index = 0;
+  for(size_t sym = 0; sym< num_symbols[0]; ++sym)
+  {
+  	if(symbol_table[sym].tspecifier != KERNEL_STR) continue;
+  	kernel_params_info[kernel_index] = get_function_params_info(root,symbol_table[sym].identifier);
+  	kernel_index++;
+  }
+}
+
+void
+gen_kernel_structs(ASTNode* root)
 {
 
+  	gen_kernel_params_info(root);
 	string_vec names = VEC_INITIALIZER;
-	func_params_info infos[num_kernels];
-	int kernel_index = 0;
-	for(size_t sym = 0; sym< num_symbols[0]; ++sym)
-	{
-		if(symbol_table[sym].tspecifier != KERNEL_STR) continue;
-		const char* name = symbol_table[sym].identifier;
-		push(&names,name);
-		infos[kernel_index] = get_function_params_info(root,name);
-		kernel_index++;
-	}
+  	for(size_t sym = 0; sym< num_symbols[0]; ++sym)
+  	{
+  		if(symbol_table[sym].tspecifier != KERNEL_STR) continue;
+		push(&names,symbol_table[sym].identifier);
+  	}
 	string_vec unique_input_types[num_kernels];
+	const func_params_info* infos = kernel_params_info;
 	int num_unique_input_types = 0;
 	memset(unique_input_types,0,sizeof(string_vec)*num_kernels);
 	for(size_t k = 0; k < num_kernels; ++k)
@@ -2241,12 +2262,14 @@ gen_kernel_structs(const ASTNode* root)
 			{
 				const func_params_info info = infos[k];
 				const char* name = names.data[k];
+				char* params_name = strdup(name);
+	        		remove_suffix(params_name,"_optimized_");
 				if(!str_vec_eq(infos[k].types,types)) continue;
 				fprintf(fp,"if(kernel == %s){ \n",name);
 				for(size_t j = 0; j < types.size; ++j)
 				{
 					fprintf(fp,"params.%s.%s = p_%ld;\n",
-							name,info.expr.data[j],j
+							params_name,info.expr.data[j],j
 							);
 				}
 				fprintf(fp,"return AC_SUCCESS;}\n");
@@ -2346,9 +2369,6 @@ gen_kernel_structs(const ASTNode* root)
 		fprintf(fp,"};\n");
 		fclose(fp);
 	}
-	for(size_t k = 0; k < num_kernels; ++k)
-		free_func_params_info(&infos[k]);
-
 	{
 		FILE* stream = fopen("user_input_typedefs.h","a");
 		fprintf(stream,"\ntypedef union acKernelInputParams {\n\n");
@@ -2739,13 +2759,6 @@ remove_ending_symbols(char* str, const char symbol)
 }
 
 void
-remove_suffix(char *str, const char* suffix_match) {
-    char *optimizedPos = strstr(str, suffix_match);
-    if (optimizedPos != NULL) {
-        *optimizedPos = '\0'; // Replace suffix_match with null character
-    }
-}
-void
 write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_name,const func_params_info call_info,FILE* fp)
 {
 
@@ -2965,10 +2978,10 @@ gen_user_taskgraphs(const ASTNode* root)
 {
 	make_unique_bc_calls((ASTNode*) root);
 	string_vec graph_names = VEC_INITIALIZER;
-	fprintf_filename_w("taskgraph_bc_handles.h","const AcDSLTaskGraph DSLTaskGraphBCs[NUM_DSL_TASKGRAPHS+1] = { ");
-	fprintf_filename_w("taskgraph_kernels.h","const std::vector<AcKernel> DSLTaskGraphKernels[NUM_DSL_TASKGRAPHS+1] = { ");
-	fprintf_filename_w("taskgraph_kernel_bcs.h","const std::vector<AcBoundary> DSLTaskGraphKernelBoundaries[NUM_DSL_TASKGRAPHS+1] = { ");
-	fprintf_filename_w("user_loaders.h","const std::vector<std::function<void(ParamLoadingInfo step_info)>> DSLTaskGraphKernelLoaders[NUM_DSL_TASKGRAPHS+1] = { ");
+	fprintf_filename_w("taskgraph_bc_handles.h","static const AcDSLTaskGraph DSLTaskGraphBCs[NUM_DSL_TASKGRAPHS+1] = { ");
+	fprintf_filename_w("taskgraph_kernels.h","static const std::vector<AcKernel> DSLTaskGraphKernels[NUM_DSL_TASKGRAPHS+1] = { ");
+	fprintf_filename_w("taskgraph_kernel_bcs.h","static const std::vector<AcBoundary> DSLTaskGraphKernelBoundaries[NUM_DSL_TASKGRAPHS+1] = { ");
+	fprintf_filename_w("user_loaders.h","static const std::vector<std::function<void(ParamLoadingInfo step_info)>> DSLTaskGraphKernelLoaders[NUM_DSL_TASKGRAPHS+1] = { ");
 
 	gen_user_taskgraphs_recursive(root,root,&graph_names);
 	string_vec bc_names = VEC_INITIALIZER;
@@ -3433,6 +3446,7 @@ gen_kernel_reduce_outputs()
 void
 append_to_tail_node(ASTNode* tail_node, ASTNode* new_node)
 {
+	////printf("HMM: %d\n",tail_node->token == PROGRAM);
 	while(tail_node->lhs) tail_node = tail_node->lhs;
 	tail_node->lhs = new_node;
 }
@@ -3440,7 +3454,7 @@ append_to_tail_node(ASTNode* tail_node, ASTNode* new_node)
 ASTNode*
 get_tail_node(ASTNode* node)
 {
-	if(node->rhs) return get_tail_node(node->rhs);
+	if(node->lhs) return get_tail_node(node->lhs);
 	return node;
 }
 
@@ -3584,6 +3598,7 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 	if(!function) return;
 	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,function->lhs);
 	char* kernel_name = strdup(fn_identifier->buffer);
+	if(strstr(kernel_name,"MONOMORPHIZED")) return;
 	const int combinations_index = get_suffix_int(kernel_name,"_optimized_");
 	remove_suffix(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,intern(kernel_name));
@@ -7639,7 +7654,7 @@ get_monomorphized_name(const char* base_name, const int index)
 	return sprintf_intern("%s_MONOMORPHIZED_%d",base_name,index);
 }
 int
-gen_monomorphized_kernel(const char* func_name, const string_vec input_params)
+gen_monomorphized_kernel(const char* func_name, const string_vec input_params, ASTNode* tail_node)
 {
 	const int index = str_vec_get_index(kfunc_names,func_name);
 	if(index == -1) fatal("No such kernel: %s\n",func_name);
@@ -7661,8 +7676,9 @@ gen_monomorphized_kernel(const char* func_name, const string_vec input_params)
 	//TP: atm monomorphized kernels don't have input parameters
 	new_node->rhs->lhs = NULL;
 
-	ASTNode* head = astnode_create(NODE_UNKNOWN,astnode_dup(node,NULL),new_node);
-	replace_node((ASTNode*)node,head);
+	ASTNode* head = astnode_create(NODE_UNKNOWN,NULL,new_node);
+	append_to_tail_node(tail_node, head);
+	//replace_node((ASTNode*)node,head);
 	++monomorphization_index;
 	//TP: returns the index that was used for the current monomorphization
 	free_func_params_info(&params_info);
@@ -7670,9 +7686,9 @@ gen_monomorphized_kernel(const char* func_name, const string_vec input_params)
 }
 
 void
-monomorphize_kernel_calls(ASTNode* node)
+monomorphize_kernel_calls(ASTNode* node, ASTNode* tail_node)
 {
-	TRAVERSE_PREAMBLE(monomorphize_kernel_calls);
+	TRAVERSE_PREAMBLE_PARAMS(monomorphize_kernel_calls,tail_node);
 	if(node->type != NODE_TASKGRAPH_DEF)
 		return;
 	node_vec kernel_call_nodes = get_nodes_in_list(node->rhs);
@@ -7687,7 +7703,7 @@ monomorphize_kernel_calls(ASTNode* node)
 		//if(all_are_constexpr) printf("Can monomorphize: %s\n",func_name);
 		if(all_are_constexpr)
 		{
-			const int res_index = gen_monomorphized_kernel(func_name,params_info.expr);
+			const int res_index = gen_monomorphized_kernel(func_name,params_info.expr,tail_node);
 			if(res_index == -1) continue;
 			ASTNode* fn_identifier = (ASTNode*)get_node_by_token(IDENTIFIER,func_call);
 			astnode_sprintf(fn_identifier,get_monomorphized_name(fn_identifier->buffer, res_index));
@@ -7937,7 +7953,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   {
   	traverse(root, 0, NULL);
   	gen_kernel_combinatorial_optimizations_and_input(root,optimize_input_params);
-  	monomorphize_kernel_calls(root);
+  	monomorphize_kernel_calls(root,get_tail_node(root));
 	memset(&kfunc_nodes,0,sizeof(kfunc_nodes));
 	memset(&kfunc_names,0,sizeof(kfunc_names));
   	get_nodes(root,&kfunc_nodes,&kfunc_names,NODE_KFUNCTION);
@@ -8077,12 +8093,15 @@ void
 gen_output_files(ASTNode* root)
 {
 
+
   //TP: Get number of run_const variable by skipping overrides
   traverse_base(root, NODE_ASSIGN_LIST, NODE_ASSIGN_LIST, NULL, (traverse_base_params){});
   num_profiles = count_profiles();
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
   symboltable_reset();
+
+
   traverse(root, 0, NULL);
   process_overrides(root);
 

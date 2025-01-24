@@ -232,7 +232,7 @@ gen_kernel_block_loops(const int curr_kernel)
 	    	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
 	    	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
 	    	printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
-	    	printf("const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+	    	printf("[[maybe_unused]] const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
        #if AC_USE_HIP
 	        printf("auto AC_INTERNAL_active_threads = __ballot(1);");
        #else
