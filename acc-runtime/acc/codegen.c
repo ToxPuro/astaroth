@@ -3025,6 +3025,11 @@ typedef struct
 	const char* name;
 } variable;
 
+bool
+is_enum_type(const char* type)
+{
+	return str_vec_contains(e_info.names,type);
+}
 
 void
 add_param_combinations(const variable var, const int kernel_index,const char* prefix, combinatorial_params combinatorials)
@@ -3043,7 +3048,7 @@ add_param_combinations(const variable var, const int kernel_index,const char* pr
 		  add_param_combinations((variable){struct_field_types.data[i],struct_field_names.data[i]},kernel_index,new_prefix,combinatorials);
 	  }
 	}
-	if(str_vec_contains(e_info.names,var.type))
+	if(is_enum_type(var.type))
 	{
 		const int param_index = push(&combinatorials.names[kernel_index],intern(full_name));
 
@@ -6583,6 +6588,8 @@ compatible_types(const char* a, const char* b)
 		  || (a == REAL_PTR_STR && b == VTXBUF_PTR_STR)
 		  || (a == REAL_PTR_STR && b == FIELD_PTR_STR)
 		  || (a == REAL3_PTR_STR && b == FIELD3_PTR_STR)
+		  || (a == INT_STR && is_enum_type(b))
+		  || (is_enum_type(a) && b == INT_STR)
 		;
 	if(!res)
 	{
@@ -6674,20 +6681,20 @@ resolve_overloaded_calls_base(ASTNode* node, const dfunc_possibilities possibili
 	//if(able_to_resolve) printf("Able to resolve: %s, %s\n",dfunc_name,combine_all_new(node->rhs));
 	if(!able_to_resolve) { 
 		//if(!strcmp(dfunc_name,"rk3_intermediate"))
-		{
-			//printf("Not able to resolve: %s\n",combine_all_new(node->rhs)); 
-			//printf("Not able to resolve: %s,%s,%s,%s\n",call_info.types.data[0],call_info.types.data[1],call_info.types.data[2],call_info.types.data[3]); 
-			//int overload_index = MAX_DFUNCS*dfunc_index-1;
-    			////TP: ugly hack to resolve calls in BoundConds
-			//const int param_offset = (call_info.expr.size > 0 && is_boundary_param(call_info.expr.data[0])) ? 1 : 0;
-			//while(possibilities.names[++overload_index] == dfunc_name)
-			//{
-			//	for(size_t i = 0; i < possibilities.types[overload_index].size; ++i)
-			//		printf("%s,",possibilities.types[overload_index].data[i]);
-			//	printf("\n");
-			//}
-			//printf("Not able to resolve: %zu\n",possible_indexes.size); 
-		}
+		//{
+		//	//printf("Not able to resolve: %s\n",combine_all_new(node->rhs)); 
+		//	//printf("Not able to resolve: %s,%s,%s,%s\n",call_info.types.data[0],call_info.types.data[1],call_info.types.data[2],call_info.types.data[3]); 
+		//	//int overload_index = MAX_DFUNCS*dfunc_index-1;
+    		//	////TP: ugly hack to resolve calls in BoundConds
+		//	//const int param_offset = (call_info.expr.size > 0 && is_boundary_param(call_info.expr.data[0])) ? 1 : 0;
+		//	//while(possibilities.names[++overload_index] == dfunc_name)
+		//	//{
+		//	//	for(size_t i = 0; i < possibilities.types[overload_index].size; ++i)
+		//	//		printf("%s,",possibilities.types[overload_index].data[i]);
+		//	//	printf("\n");
+		//	//}
+		//	//printf("Not able to resolve: %zu\n",possible_indexes.size); 
+		//}
 		return res;
 	}
 	{
@@ -8766,7 +8773,7 @@ get_executed_nodes(const int round)
   	format_source("user_kernels.h",dst);
   	FILE* proc = popen("./" STENCILACC_EXEC " -C", "r");
   	assert(proc);
-  	pclose(proc);
+  	if(pclose(proc) != 0) fatal("Could not get executed nodes\n");
 
   	free_int_vec(&executed_nodes);
   	FILE* fp = fopen("executed_nodes.bin","rb");

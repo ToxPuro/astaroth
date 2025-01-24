@@ -638,9 +638,36 @@ vbaDestroy(VertexBufferArray* vba)
 }
 VertexBufferArray VBA = vbaCreate(1000);
 
+
+void
+reset_info_arrays()
+{
+    memset(stencils_accessed, 0,sizeof(stencils_accessed));
+    memset(read_fields,0, sizeof(read_fields));
+    memset(field_has_stencil_op,0, sizeof(field_has_stencil_op));
+    memset(written_fields, 0,    sizeof(written_fields));
+    memset(previous_accessed, 0, sizeof(previous_accessed));
+    std::vector<KernelReduceOutput> empty_vec{};
+    reduce_outputs = empty_vec;
+    //TP: would use memset but at least on Puhti the C++ compiler gives an incorrect warning that I am not multiplying the element size even though I am (I guess because the compiler simply sees zero if there are no profiles?)
+    for(int i = 0; i  < NUM_PROFILES; ++i)
+    {
+	    read_profiles[i] = 0;
+	    reduced_profiles[i] = 0;
+	    written_profiles[i] = 0;
+    }
+    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+	    reduced_reals[i] = 0;
+    for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
+	    reduced_ints[i] = 0;
+    for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
+	    reduced_floats[i] = 0;
+}
+
 void
 execute_kernel(const int kernel_index)
 {
+    reset_info_arrays();
     const Kernel kernel = kernels[kernel_index];
     current_kernel = (AcKernel)kernel_index;
     kernel((int3){0, 0, 0}, (int3){1, 1, 1}, VBA.on_device);
@@ -650,6 +677,7 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 {
 #include "user_builtin_non_scalar_constants.h"
 
+	reset_info_arrays();
         current_kernel = (AcKernel)kernel_index;
     	const Kernel kernel = kernels[kernel_index];
 	if(BOUNDARY_X_BOT & boundary)
@@ -690,6 +718,7 @@ execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
     		kernel(start,end,VBA.on_device);
 	}
 }
+
 int
 get_executed_nodes()
 { 
@@ -705,30 +734,6 @@ get_executed_nodes()
   return EXIT_SUCCESS;
 }	
 
-void
-reset_info_arrays()
-{
-    memset(stencils_accessed, 0,sizeof(stencils_accessed));
-    memset(read_fields,0, sizeof(read_fields));
-    memset(field_has_stencil_op,0, sizeof(field_has_stencil_op));
-    memset(written_fields, 0,    sizeof(written_fields));
-    memset(previous_accessed, 0, sizeof(previous_accessed));
-    std::vector<KernelReduceOutput> empty_vec{};
-    reduce_outputs = empty_vec;
-    //TP: would use memset but at least on Puhti the C++ compiler gives an incorrect warning that I am not multiplying the element size even though I am (I guess because the compiler simply sees zero if there are no profiles?)
-    for(int i = 0; i  < NUM_PROFILES; ++i)
-    {
-	    read_profiles[i] = 0;
-	    reduced_profiles[i] = 0;
-	    written_profiles[i] = 0;
-    }
-    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
-	    reduced_reals[i] = 0;
-    for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
-	    reduced_ints[i] = 0;
-    for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
-	    reduced_floats[i] = 0;
-}
 
 acAnalysisBCInfo 
 acAnalysisGetBCInfo(const AcMeshInfoParams info, const AcKernel bc, const AcBoundary boundary)
@@ -736,7 +741,6 @@ acAnalysisGetBCInfo(const AcMeshInfoParams info, const AcKernel bc, const AcBoun
 	bool larger_input  = false;
 	bool larger_output = false;
 	d_mesh_info = info.scalars;
-	reset_info_arrays();
     	execute_kernel(bc,boundary);
     	for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
     	{
@@ -765,7 +769,6 @@ acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
 	memset(dst->stencils_accessed,false,sizeof(dst->stencils_accessed));
 	for(size_t k = 0; k <NUM_KERNELS; ++k)
 	{
-		reset_info_arrays();
     		if (!skip_kernel_in_analysis[k])
     		{
     			execute_kernel(k);
@@ -867,7 +870,6 @@ main(int argc, char* argv[])
   int  output_reduced_floats[NUM_KERNELS][NUM_FLOAT_OUTPUTS+1]{};
   int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
-    reset_info_arrays();
     fprintf(fp,"{");
     if (!skip_kernel_in_analysis[k])
     {
