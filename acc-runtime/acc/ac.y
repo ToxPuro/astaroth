@@ -528,7 +528,7 @@ main(int argc, char** argv)
 root: program { root = astnode_create(NODE_UNKNOWN, $1, NULL); }
     ;
 
-program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); }
+program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); $$->token = PROGRAM;}
        | program variable_definitions {
             $$ = astnode_create(NODE_UNKNOWN, $1, $2);
 
@@ -706,7 +706,7 @@ struct_definition:     struct_name'{' declarations '}' {
 			free(tmp);
                  }
 		 ;
-enum_definition: enum_name '{' declaration_list '}'{
+enum_definition: enum_name '{' declaration_list_trailing_allowed '}'{
                         $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
 			char* tmp = strdup($1->buffer);
 		        remove_substring(tmp,"enum");
@@ -845,7 +845,7 @@ primary_expression: identifier         { $$ = astnode_create(NODE_PRIMARY_EXPRES
                   ;
 
 struct_initializer: 
-                  '{' expression_list '}' { $$ = astnode_create(NODE_STRUCT_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
+                  '{' expression_list_trailing_allowed '}' { $$ = astnode_create(NODE_STRUCT_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
 		  ;
 
 base_identifier:
@@ -854,33 +854,41 @@ base_identifier:
                   | base_identifier '.' identifier     { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
 		  ;
 
+struct_access_expression:
+                   base_identifier '.' identifier          { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
+
+func_call:
+                    primary_expression '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
+                  | primary_expression '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); } 
+                  | struct_access_expression '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); } 
+
+
 postfix_expression: primary_expression                         { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                   | base_identifier '[' expression ']'      { $$ = astnode_create(NODE_ARRAY_ACCESS, $1, $3); astnode_set_infix("[", $$); astnode_set_postfix("]", $$); }
-                  | base_identifier '.' identifier          { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
-                  | postfix_expression '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
-                  | postfix_expression '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); } 
+                  | func_call                                {$$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+		  | struct_access_expression {$$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                   | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3);   
 								 $$->expr_type = intern(combine_all_new($$->lhs)); 
-							         if(!strcmp($$->expr_type,"AcReal"))
-								 	astnode_set_infix("(AcReal)(", $$); 
-								 else
-								 	astnode_set_infix("(", $$); 
 								 astnode_set_postfix(")", $$);  
+								 astnode_set_infix("(", $$); 
 								 $$->lhs->type ^= NODE_TSPEC; $$->token = CAST; /* Unset NODE_TSPEC flag, casts are handled as functions */ 
 							       }
                   | '(' type_specifier ')' struct_initializer { 
-						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
-						astnode_set_infix(")",$$); 
-						const char* type = combine_all_new_with_whitespace($$->lhs);
-						astnode_sprintf_prefix($$,"(%s",type);
+						$$ = astnode_create(NODE_UNKNOWN, $2, $4); 
+						astnode_set_prefix("(",$$);
+						astnode_set_infix(")",$$);
+						$$->token = CAST;
+						}
+                  | '(' type_specifier ')' func_call { 
+						$$ = astnode_create(NODE_UNKNOWN, $2, $4);
+						astnode_set_prefix("(",$$);
+						astnode_set_infix(")",$$);
 						$$->token = CAST;
 						}
                   | '(' type_specifier ')' primary_expression { 
-						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
-						astnode_set_infix(")",$$); 
-						const char* type = combine_all_new($$->lhs);
-						if(!strcmps(type,"float","int","AcReal"))
-							astnode_sprintf_prefix($$,"(%s",combine_all_new_with_whitespace($$->lhs));
+						$$ = astnode_create(NODE_UNKNOWN, $2, $4);
+						astnode_set_prefix("(",$$);
+						astnode_set_infix(")",$$);
 						$$->token = CAST;
 						}
                   | '[' expression_list ']' { $$ = astnode_create(NODE_ARRAY_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
@@ -906,6 +914,12 @@ expression: unary_expression             { $$ = astnode_create(NODE_EXPRESSION, 
 expression_list: expression                     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                | expression_list ',' expression { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); }
                ;
+
+expression_list_trailing_allowed: expression                     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+               | expression_list ',' expression { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); }
+               | expression_list ',' {$$ = $1;}
+               ;
+
 
 /*
  * =============================================================================
@@ -997,6 +1011,11 @@ declaration: type_declaration  declaration_list { $$ = astnode_create(NODE_DECLA
 
 declaration_list: base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                 | declaration_list ',' base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); /* Note ';' infix */ }
+                ;
+
+declaration_list_trailing_allowed: base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+                | declaration_list ',' base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); /* Note ';' infix */ }
+                | declaration_list ',' {$$ = $1;}
                 ;
 
 parameter: type_declaration identifier { $$ = astnode_create(NODE_DECLARATION, $1, $2); }
@@ -1260,6 +1279,7 @@ stencil_index_list: stencil_index            { $$ = astnode_create(NODE_UNKNOWN,
 
 stencilpoint_list: stencilpoint                       { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                  | stencilpoint_list ',' stencilpoint { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); }
+                 | stencilpoint_list ',' { $$ = $1; }
                  ;
 
 stencil_body: '{' stencilpoint_list '}' { $$ = astnode_create(NODE_BEGIN_SCOPE, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("},", $$); }

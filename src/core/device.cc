@@ -976,7 +976,7 @@ acDeviceReduceScalNoPostProcessing(const Device device, const Stream stream, con
     const Volume end   = acGetMaxNN(device->local_config);
 
     *result = acKernelReduceScal(device->streams[stream], reduction, vtxbuf_handle,
-                                 start, end, 0, device->vba);
+                                 start, end, AC_default_real_output, device->vba);
     return AC_SUCCESS;
 }
 
@@ -1015,7 +1015,7 @@ acDeviceReduceVecNoPostProcessing(const Device device, const Stream stream, cons
     const Volume end   = acGetMaxNN(device->local_config);
 
     *result = acKernelReduceVec(device->streams[stream], reduction, start, end, {vtxbuf0,vtxbuf1,vtxbuf2},device->vba,
-                                0);
+                                AC_default_real_output);
     return AC_SUCCESS;
 }
 
@@ -1061,7 +1061,7 @@ acDeviceReduceVecScalNoPostProcessing(const Device device, const Stream stream,
     *result = acKernelReduceVecScal(device->streams[stream], reduction, start, end,
 		    		    {vtxbuf0,vtxbuf1,vtxbuf2,vtxbuf3},
 				    device->vba,
-                                    0);
+                                    AC_default_real_output);
     return AC_SUCCESS;
 }
 
@@ -1112,7 +1112,7 @@ acDeviceReduceXY(const Device device, const Stream stream, const Field field,
         const size_t nxy    = (end.x - start.x) * (end.y - start.y);
         const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], reduction,
                                                               field, start, end,
-							      0,
+							      AC_default_real_output,
                                                               device->vba);
         // printf("%zu Profile: %g\n", k, result);
         // Could be optimized by performing the reduction completely in

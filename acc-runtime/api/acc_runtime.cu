@@ -616,9 +616,21 @@ acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t cou
   }
   return AC_SUCCESS;
 }
-void
-device_malloc(void** dst, const int bytes)
+int
+get_amount_of_device_memory_free()
 {
+	size_t free_mem, total_mem;
+	ERRCHK_CUDA_ALWAYS(cudaMemGetInfo(&free_mem,&total_mem));
+	return free_mem;
+}
+void
+device_malloc(void** dst, const size_t bytes)
+{
+  if(get_amount_of_device_memory_free() < bytes)
+  {
+	fprintf(stderr,"Tried to allocate %d bytes but have only %d bytes of memory left on the device\n", bytes, get_amount_of_device_memory_free());
+  	ERRCHK_ALWAYS(get_amount_of_device_memory_free() >= bytes);
+  }
  #if USE_COMPRESSIBLE_MEMORY 
     ERRCHK_CUDA_ALWAYS(mallocCompressible(dst, bytes));
  #else
@@ -627,7 +639,7 @@ device_malloc(void** dst, const int bytes)
   ERRCHK_ALWAYS(dst != NULL);
 }
 void
-device_malloc(AcReal** dst, const int bytes)
+device_malloc(AcReal** dst, const size_t bytes)
 {
 	device_malloc((void**)dst,bytes);
 }
@@ -861,10 +873,10 @@ init_scratchpads(VertexBufferArray* vba)
 	//TP: this is dangerous since it is not always true for DSL reductions but for now keep it
     	for(int i = 0; i < NUM_REAL_SCRATCHPADS; ++i) {
 	    const size_t bytes =  
-		    		  (i > 0 && i >= NUM_REAL_OUTPUTS) ? get_profile_reduce_scratchpad_size(i-NUM_REAL_OUTPUTS,*vba) :
+		    		  (i >= NUM_REAL_OUTPUTS) ? get_profile_reduce_scratchpad_size(i-NUM_REAL_OUTPUTS,*vba) :
 				  0;
 	    allocate_scratchpad_real(i,bytes,vba->scratchpad_states->reals[i]);
-	    if(i == 0 || i < NUM_REAL_OUTPUTS)
+	    if(i < NUM_REAL_OUTPUTS)
 	    {
 	    	vba->reduce_buffer_real[i].src = &d_reduce_scratchpads_real[i];
 	    	vba->reduce_buffer_real[i].cub_tmp = (AcReal**)malloc(sizeof(AcReal*));
@@ -972,8 +984,8 @@ acVBACreate(const AcMeshInfoParams config)
   const size_t allbytes = bytes*NUM_VTXBUF_HANDLES;
   AcReal *allbuf_in, *allbuf_out;
 
-  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&allbuf_in, allbytes));
-  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&allbuf_out, allbytes));
+  device_malloc((void**)&allbuf_in,allbytes);
+  device_malloc((void**)&allbuf_out,allbytes);
 
   acKernelFlush(STREAM_DEFAULT,allbuf_in, count*NUM_VTXBUF_HANDLES, (AcReal)0.0);
   ERRCHK_CUDA_ALWAYS(cudaMemset((void*)allbuf_out, 0, allbytes));
@@ -1056,9 +1068,18 @@ struct free_arrays
 		}
 	}
 };
-
 void
-destroy_scratchpads(VertexBufferArray* vba)
+destroy_profiles(VertexBufferArray* vba)
+{
+    for(int i = 0; i < NUM_PROFILES; ++i)
+    {
+        //TP: will break if allocated with compressed memory but too lazy to fix now: :(
+        device_free((void**)&(vba->profile_reduce_buffers[i].transposed),0);
+        free_scratchpad_real(i+NUM_REAL_OUTPUTS);
+    }
+}
+void
+destroy_real_scratchpads(VertexBufferArray* vba)
 {
     for(int j = 0; j < NUM_REAL_OUTPUTS; ++j)
     {
@@ -1071,12 +1092,15 @@ destroy_scratchpads(VertexBufferArray* vba)
 	free(vba->reduce_buffer_real[j].cub_tmp);
 	free(vba->reduce_buffer_real[j].cub_tmp_size);
     }
-    for(int i = 0; i < NUM_PROFILES; ++i)
-    {
-        //TP: will break if allocated with compressed memory but too lazy to fix now: :(
-        device_free((void**)&(vba->profile_reduce_buffers[i].transposed),0);
-        free_scratchpad_real(i+NUM_REAL_OUTPUTS);
-    }
+}
+
+void
+destroy_scratchpads(VertexBufferArray* vba)
+{
+    destroy_real_scratchpads(vba);
+
+    destroy_profiles(vba);
+
     for(int j = 0; j < NUM_INT_OUTPUTS; ++j)
     {
 	free_scratchpad_int(j);
@@ -2060,6 +2084,7 @@ get_offsets(const size_t count, const size_t num_segments)
 	  return segmented_reduce_offsets[key];
 
   size_t* offsets = (size_t*)malloc(sizeof(offsets[0]) * (num_segments + 1));
+  ERRCHK_ALWAYS(num_segments > 0);
   ERRCHK_ALWAYS(offsets);
   ERRCHK_ALWAYS(count % num_segments == 0);
   for (size_t i = 0; i <= num_segments; ++i) {

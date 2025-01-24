@@ -38,7 +38,7 @@ Kernel reduce_vec_x(VectorFieldObject v)
 
 }
 Kernel reduce_vec_y(VectorFieldObject v)
-{
+{ 
     reduce_sum(true, v.x.field, v.x.profiles.y)
     reduce_sum(true, v.y.field, v.y.profiles.y)
     reduce_sum(true, v.z.field, v.z.profiles.y)
@@ -65,5 +65,18 @@ ComputeSteps rhs(bcs)
 	reduce_vec_x(AA)
 	reduce_vec_y(AA)
 	remove_vec_x(AA)
-	remove_vec_y(AA)	
+	remove_vec_y((VectorFieldObject){
+		{
+			AA.x.field,
+			AA.x.profiles,
+		},
+		{
+			AA.y.field,
+			AA.y.profiles,
+		},
+		{
+			AA.z.field,
+			AA.z.profiles,
+		},
+	})	
 }

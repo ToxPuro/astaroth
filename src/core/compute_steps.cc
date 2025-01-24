@@ -221,8 +221,13 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs)
 	}
 	return false;
 }
+std::function<void(ParamLoadingInfo step_info)>
+get_loader(const int graph, const int call_index)
+{
+	#include "user_loaders.h"
+	return  DSLTaskGraphKernelLoaders[graph][call_index];
+}
 
-#include "user_loaders.h"
 std::vector<AcKernel>
 get_optimized_kernels(const AcDSLTaskGraph graph)
 {
@@ -230,7 +235,7 @@ get_optimized_kernels(const AcDSLTaskGraph graph)
 	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
 	{
 		VertexBufferArray vba{};
-		auto loader = DSLTaskGraphKernelLoaders[graph][call_index];
+		auto loader = get_loader(graph,call_index);
     		loader({&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}});
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
 		kernel_calls[call_index] = optimized_kernel;
@@ -660,7 +665,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 		{
 			if(call_level_set[call] == level_set_index)
 			{
-				level_set_calls.push_back((KernelCall){kernel_calls[call], DSLTaskGraphKernelLoaders[graph][call]});
+				level_set_calls.push_back((KernelCall){kernel_calls[call], get_loader(graph,call)});
 			}
 
 		}

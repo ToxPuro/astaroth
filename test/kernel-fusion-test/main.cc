@@ -119,29 +119,29 @@ main(int argc, char* argv[])
 	return acVertexBufferIdx(x,y,z,acGridGetLocalMeshInfo());
     };
 
-    for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
     {
 	x_sum[i] = (AcReal3){0.,0.,0.};
-    	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
-    		for(int j = dims.n0.y; j < dims.n1.y; ++j)
+    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
+    		for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
 		{
 			x_sum[i] += (AcReal3){model.vertex_buffer[AA.x.field][IDX(i,j,k)],model.vertex_buffer[AA.y.field][IDX(i,j,k)],model.vertex_buffer[AA.z.field][IDX(i,j,k)]};
 		}
     }
-    for(int j = dims.n0.y; j < dims.n1.y; ++j)
+    for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
     {
 	y_sum[j] = (AcReal3){0.,0.,0.};
-    	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
-    		for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
+    		for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
 		{
 			y_sum[j] += (AcReal3){model.vertex_buffer[AA.x.field][IDX(i,j,k)],model.vertex_buffer[AA.y.field][IDX(i,j,k)],model.vertex_buffer[AA.z.field][IDX(i,j,k)]};
 		}
     }
-    for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
     {
-      for(int j = dims.n0.y; j < dims.n1.y; ++j)
+      for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
       {
-    	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
+    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
 	{
 		model.vertex_buffer[AA.x.field][IDX(i,j,k)] -= x_sum[i].x;
 		model.vertex_buffer[AA.y.field][IDX(i,j,k)] -= x_sum[i].y;
@@ -156,11 +156,11 @@ main(int argc, char* argv[])
     bool ax_correct = true;
     bool ay_correct = true;
     bool az_correct = true;
-    for(int i = dims.n0.x; i < dims.n1.x; ++i)
+    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
     {
-      for(int j = dims.n0.y; j < dims.n1.y; ++j)
+      for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
       {
-    	for(int k = dims.n0.z; k < dims.n1.z;  ++k)
+    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
 	{
 		//printf("TRUE: %14e|GPU: %14e\n",model.vertex_buffer[AX][IDX(i,j,k)], candidate.vertex_buffer[AX][IDX(i,j,k)]);
 		ax_correct &= in_eps_threshold(model.vertex_buffer[AA.x.field][IDX(i,j,k)],candidate.vertex_buffer[AA.x.field][IDX(i,j,k)]);

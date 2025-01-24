@@ -91,6 +91,7 @@
 #define cudaErrorInvalidConfiguration hipErrorInvalidConfiguration
 #define cudaErrorLaunchOutOfResources hipErrorLaunchOutOfResources
 #define cudaGetErrorName hipGetErrorName
+#define cudaMemGetInfo   hipMemGetInfo
 
 #define curandStateXORWOW_t hiprandStateXORWOW_t
 #define curandStateMRG32k3a_t hiprandStateMRG32k3a_t

@@ -65,6 +65,7 @@ hostdefine AC_CARTEESIAN_COORDINATES  (-1)
 hostdefine AC_SPHERICAL_COORDINATES   (1)
 hostdefine AC_CYLINDRICAL_COORDINATES (2)
 
+output real AC_default_real_output
 //TP: these belong here but at the moment are deprecated
 /**
 run_const AC_xy_plate_bufsize

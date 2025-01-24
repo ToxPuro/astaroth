@@ -2571,6 +2571,7 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root)
 		func_params_info params_info =  get_function_params_info(root,func_name);
 
 		fprintf(stream,"[](ParamLoadingInfo p){\n");
+		fprintf(stream,"#include \"user_constants.h\"\n");
 		const int params_offset = is_boundcond ? 2 : 0;
 		if(!is_boundcond)
 		{
@@ -3757,7 +3758,9 @@ translate_buffer_body(FILE* stream, const ASTNode* node)
     else if(symbol && symbol->tspecifier == KERNEL_STR)
 	    fprintf(stream,"KERNEL_%s",node->buffer);
     else
+    {
       fprintf(stream, "%s", node->buffer);
+    }
   }
 }
 static void
@@ -4054,7 +4057,7 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
 	  return;
   // Do not translate tqualifiers or tspecifiers immediately
   if (node->parent &&
-      (node->parent->type & NODE_TQUAL || node->parent->type & NODE_TSPEC))
+      (node->parent->type & NODE_TQUAL || (params.decl && node->parent->type & NODE_TSPEC)))
     return;
 
   params.skip_shadowing_check |= (node->type & NODE_ARRAY_ACCESS);
@@ -5469,7 +5472,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   const size_t num_real_outputs = count_variables(REAL_STR,OUTPUT_STR);
   fprintf(fp,"\n#define  NUM_OUTPUTS (NUM_REAL_OUTPUTS+NUM_INT_OUTPUTS+NUM_FLOAT_OUTPUTS+NUM_PROFILES)\n");
   fprintf(fp,"\n#define  PROF_SCRATCHPAD_INDEX(PROF) (NUM_REAL_OUTPUTS+PROF)\n");
-  const size_t num_real_scratchpads = max(1,num_profiles+num_real_outputs);
+  const size_t num_real_scratchpads = num_profiles+num_real_outputs;
   fprintf(fp,"\n#define  NUM_REAL_SCRATCHPADS (%zu)\n",num_real_scratchpads);
  
   const size_t num_dconsts = count_variables(NULL,DCONST_STR);
@@ -6327,6 +6330,7 @@ gen_local_type_info(ASTNode* node)
 		(node->type & NODE_EXPRESSION && all_primary_expressions_and_func_calls_have_type(node)) ||
 		(node->type & NODE_ASSIGNMENT && node->rhs && get_parent_node(NODE_FUNCTION,node) &&  !get_node(NODE_MEMBER_ID,node->lhs))
 		|| (node->token == IN_RANGE)
+		|| (node->token == CAST)
 	)
 		get_expr_type(node);
 	res |=  node -> expr_type != NULL;
@@ -7261,9 +7265,6 @@ transform_broadcast_assignments(ASTNode* node)
 	const char* lhs_type = get_expr_type(node->lhs);
 	const char* rhs_type = get_expr_type(node->rhs);
 	if(!lhs_type || !rhs_type) return;
-	const char* left = combine_all_new(node->lhs);
-	if(strstr(left,"pencil_gcc"))
-		printf("HMM: %s,%d,%s\n",left,all_real_struct(lhs_type),lhs_type);
 	if(all_real_struct(lhs_type) && rhs_type == REAL_STR)
 	{
 		const ASTNode* expr = node->rhs->rhs->lhs;
