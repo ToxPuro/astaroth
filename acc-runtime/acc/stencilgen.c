@@ -797,12 +797,6 @@ gen_kernel_reduce_funcs(const int curr_kernel)
   {
     if(!kernel_has_block_loops(curr_kernel))
     {
-    	//TP: if active threads are contigous i.e. not any inactive threads between active threads
-    	//then can perform the reductions without calculating tids
-    	printf("const bool AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));");
-    	//TP: if all threads are active can skip checks checking if target tid is active in reductions
-    	printf("const bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
-
 #if AC_USE_HIP
         printf("const size_t warp_id = rocprim__warpId();");
 #else
@@ -837,6 +831,8 @@ gen_return_if_oob(const int curr_kernel)
 #else
 	       printf("%s AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,!out_of_bounds);",type);
 #endif
+    	        //TP: if active threads are contigous i.e. not any inactive threads between active threads
+    	        //then can perform the reductions without calculating tids
     		printf("%s AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));",type);
     		//TP: if all threads are active can skip checks checking if target tid is active in reductions
     		printf("%s AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;",type);
