@@ -104,9 +104,3 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
     endif()
 
 endif()
-
-if (ADJACENT_VERTEX_BUFFERS)
-    add_definitions(-DAC_ADJACENT_VERTEX_BUFFERS=1)
-else ()
-    add_definitions(-DAC_ADJACENT_VERTEX_BUFFERS=0)
-endif ()

@@ -91,6 +91,12 @@ typedef struct
 	std::vector<Profile> out;
 } KernelProfiles;
 
+typedef struct
+{
+	KernelFields   fields;
+	KernelProfiles profiles;
+} KernelOutputs;
+
 KernelProfiles
 get_kernel_profiles(const AcKernel kernel)
 {
@@ -110,6 +116,17 @@ get_kernel_fields(const std::vector<AcKernel> kernels)
 		for(const auto& kernel : kernels) res.push_back(get_kernel_fields(kernel));
 		return res;
 }
+KernelOutputs
+get_kernel_outputs(const AcKernel kernel)
+{
+	return 
+	{
+		get_kernel_fields(kernel),
+		get_kernel_profiles(kernel)
+	};
+}
+
+
 const char*
 boundary_str(const AcBoundary bc)
 {
@@ -229,19 +246,26 @@ get_loader(const int graph, const int call_index)
 }
 
 std::vector<AcKernel>
-get_optimized_kernels(const AcDSLTaskGraph graph)
+get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_ones)
 {
 	auto kernel_calls = DSLTaskGraphKernels[graph];
+	std::vector<AcKernel> res{};
 	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
 	{
 		VertexBufferArray vba{};
 		auto loader = get_loader(graph,call_index);
     		loader({&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}});
+		if(filter_unnecessary_ones)
+		{
+			auto outputs = get_kernel_outputs(kernel_calls[call_index]);
+			if(outputs.fields.out.size() == 0 && outputs.profiles.out.size() == 0) continue;
+		}
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
-		kernel_calls[call_index] = optimized_kernel;
+		res.push_back(optimized_kernel);
 	}
-	return kernel_calls;
+	return res;
 }
+
 
 std::vector<BoundCond>
 get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
@@ -249,7 +273,7 @@ get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
 
 	std::vector<BoundCond> res{};
 	const std::vector<AcKernel>   kernels    = optimized ?
-							get_optimized_kernels(bc_graph) :
+							get_optimized_kernels(bc_graph,false) :
 							DSLTaskGraphKernels[bc_graph];
 	const std::vector<AcBoundary> boundaries = DSLTaskGraphKernelBoundaries[bc_graph];
 	for(size_t i = 0; i < kernels.size(); ++i)
@@ -596,7 +620,7 @@ std::vector<level_set>
 gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 {
 	auto kernel_calls = optimized ?
-				get_optimized_kernels(graph) :
+				get_optimized_kernels(graph,true) :
 				DSLTaskGraphKernels[graph];
 	const KernelAnalysisInfo info = get_kernel_analysis_info();
 	constexpr int MAX_TASKS = 100;
@@ -897,8 +921,8 @@ std::unordered_map<KeyType, AcTaskGraph*, TupleHash, TupleEqual> task_graphs{};
 AcTaskGraph*
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 {
-	auto optimized_kernels = get_optimized_kernels(graph);
-	auto optimized_bcs      = get_optimized_kernels(DSLTaskGraphBCs[graph]);
+	auto optimized_kernels = get_optimized_kernels(graph,false);
+	auto optimized_bcs      = get_optimized_kernels(DSLTaskGraphBCs[graph],false);
 	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs);
 	if(task_graphs.find(key) != task_graphs.end())
 		return task_graphs[key];

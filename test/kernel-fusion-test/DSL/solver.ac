@@ -28,7 +28,10 @@ VectorFieldObject AA
 
 
 
-
+Kernel
+empty_kernel()
+{
+}
 
 Kernel reduce_vec_x(VectorFieldObject v)
 {
@@ -62,6 +65,7 @@ BoundConds bcs
 
 ComputeSteps rhs(bcs)
 {
+	empty_kernel()
 	reduce_vec_x(AA)
 	reduce_vec_y(AA)
 	remove_vec_x(AA)

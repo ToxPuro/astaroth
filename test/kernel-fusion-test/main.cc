@@ -88,7 +88,7 @@ main(int argc, char* argv[])
 
     // GPU alloc & compute
     acGridInit(info);
-    auto graph = acGetDSLTaskGraph(rhs);
+    auto graph = acGetOptimizedDSLTaskGraph(rhs);
     acGridSynchronizeStream(STREAM_ALL);
     acGridLoadMesh(STREAM_DEFAULT,model);
 

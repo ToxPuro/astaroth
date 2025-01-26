@@ -965,6 +965,9 @@ acGetMeshDims(const AcMeshInfoParams info)
    };
 }
 
+AcReal* vba_in_buff = NULL;
+AcReal* vba_out_buff = NULL;
+
 VertexBufferArray
 acVBACreate(const AcMeshInfoParams config)
 {
@@ -980,35 +983,30 @@ acVBACreate(const AcMeshInfoParams config)
   size_t count = vba.dims.m1.x*vba.dims.m1.y*vba.dims.m1.z;
   size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
   vba.bytes          = bytes;
-#if AC_ADJACENT_VERTEX_BUFFERS
-  const size_t allbytes = bytes*NUM_VTXBUF_HANDLES;
-  AcReal *allbuf_in, *allbuf_out;
+  int num_of_auxiliary_vtxbufs = 0;
+  for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+  	num_of_auxiliary_vtxbufs += vtxbuf_is_auxiliary[i];
+  
+  const size_t in_bytes =  bytes*NUM_VTXBUF_HANDLES;
+  const size_t out_bytes = bytes*(NUM_VTXBUF_HANDLES-num_of_auxiliary_vtxbufs);
+  ERRCHK_ALWAYS(vba_in_buff == NULL);
+  ERRCHK_ALWAYS(vba_out_buff == NULL);
+  device_malloc((void**)&vba_in_buff,in_bytes);
+  device_malloc((void**)&vba_out_buff,out_bytes);
 
-  device_malloc((void**)&allbuf_in,allbytes);
-  device_malloc((void**)&allbuf_out,allbytes);
-
-  acKernelFlush(STREAM_DEFAULT,allbuf_in, count*NUM_VTXBUF_HANDLES, (AcReal)0.0);
-  ERRCHK_CUDA_ALWAYS(cudaMemset((void*)allbuf_out, 0, allbytes));
-
-  vba.on_device.in[0]=allbuf_in; vba.on_device.out[0]=allbuf_out;
-  //printf("i,vbas[0]= %p %p \n",vba.on_device.in[0],vba.on_device.out[0]);
-  for (size_t i = 1; i < NUM_VTXBUF_HANDLES; ++i) {
-    vba.on_device.in [i]=vba.on_device.in [i-1]+count;
-    vba.on_device.out[i]=vba.on_device.out[i-1]+count;
-    //printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
-  }
-#else
+  size_t out_offset = 0;
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    device_malloc((void**) &vba.on_device.in[i],bytes);
-    //Auxiliary fields need only a single copy so out can point to in
+    vba.on_device.in[i] = vba_in_buff + count*i;
+    //device_malloc((void**) &vba.on_device.out[i],bytes);
     if (vtxbuf_is_auxiliary[i])
     {
       vba.on_device.out[i] = vba.on_device.in[i];
     }else{
-      device_malloc((void**) &vba.on_device.out[i],bytes);
+      vba.on_device.out[i] = (vba_out_buff + out_offset);
+      out_offset += count;
     }
   }
-#endif
+
   //Allocate workbuffers
   for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
     device_malloc((void**)&vba.on_device.w[i],bytes);
@@ -1129,14 +1127,9 @@ void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfoParams config)
 {
   destroy_scratchpads(vba);
-  for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) { 
-    //TP: if dead then not allocated and thus nothing to free
-    device_free(&(vba->on_device.in[i]), vba->bytes);
-    if (vtxbuf_is_auxiliary[i])
-      vba->on_device.out[i] = NULL;
-    else
-      device_free(&(vba->on_device.out[i]), vba->bytes);
-  }
+  //TP: does not work for compressible memory TODO: fix it if needed
+  device_free(&(vba_in_buff), 0);
+  device_free(&(vba_out_buff), 0);
   //Free workbuffers 
   for (int i = 0; i < NUM_WORK_BUFFERS; ++i) 
     device_free(&(vba->on_device.w[i]), vba->bytes);
