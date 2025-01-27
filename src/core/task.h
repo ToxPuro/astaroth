@@ -77,6 +77,7 @@ typedef struct
 {
 	std::vector<Field> fields;
 	std::vector<Profile> profiles;
+	std::vector<KernelReduceOutput> reduce_outputs;
 } RegionMemory;
 
 typedef struct
@@ -85,6 +86,8 @@ typedef struct
 	const size_t   num_fields;
 	const Profile* profiles;
 	const size_t   num_profiles;
+	const KernelReduceOutput* reduce_outputs;
+	const size_t  num_reduce_outputs;
 } RegionMemoryInputParams;
 
 struct Region {
@@ -332,8 +335,12 @@ typedef class BoundaryConditionTask : public Task {
     bool test();
 } BoundaryConditionTask;
 
-enum class ReduceState { Waiting = Task::wait_state, Running };
+enum class ReduceState { Waiting = Task::wait_state, Reducing, Loading };
 typedef class ReduceTask : public Task {
+  private:
+    AcReal local_res_real[NUM_OUTPUTS]{};
+    int    local_res_int[NUM_OUTPUTS]{};
+    float  local_res_float[NUM_OUTPUTS]{};
   public:
     ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);

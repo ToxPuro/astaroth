@@ -28,6 +28,8 @@ bool should_reduce_int[1000] = {false};
 #define rocprim__warp_shuffle(mask,val)  (val)
 #define rocprim__warp_shuffle_down(mask,val)  (val)
 
+#include <algorithm>
+
 #define DEVICE_INLINE
 #ifndef AC_IN_AC_LIBRARY
 #define AC_IN_AC_LIBRARY
@@ -208,7 +210,29 @@ AcKernel current_kernel{};
 #define reduce_sum_real_zx reduce_prof
 #define reduce_sum_real_zy reduce_prof
 
+std::vector<KernelReduceOutput> reduce_inputs{};
 std::vector<KernelReduceOutput> reduce_outputs{};
+
+AcReal
+value(const AcRealOutputParam& param)
+{
+	reduce_inputs.push_back({(int)param,AC_REAL_TYPE,REDUCE_SUM,current_kernel});
+	return (AcReal){};
+}
+
+int
+value(const AcIntOutputParam& param)
+{
+	reduce_inputs.push_back({(int)param,AC_REAL_TYPE,REDUCE_SUM,current_kernel});
+	return (int){};
+}
+
+float
+value(const AcFloatOutputParam& param)
+{
+	reduce_inputs.push_back({(int)param,AC_FLOAT_TYPE,REDUCE_SUM,current_kernel});
+	return (float){};
+}
 
 void
 reduce_sum_real(const bool&, const AcReal, const AcRealOutputParam dst)
@@ -649,6 +673,7 @@ reset_info_arrays()
     memset(previous_accessed, 0, sizeof(previous_accessed));
     std::vector<KernelReduceOutput> empty_vec{};
     reduce_outputs = empty_vec;
+    reduce_inputs  = empty_vec;
     //TP: would use memset but at least on Puhti the C++ compiler gives an incorrect warning that I am not multiplying the element size even though I am (I guess because the compiler simply sees zero if there are no profiles?)
     for(int i = 0; i  < NUM_PROFILES; ++i)
     {
@@ -806,6 +831,16 @@ acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
 			fprintf(stderr,"Can not reduce variables multiple times in a Kernel\n");
 			exit(EXIT_FAILURE);
 		}
+		
+		std::vector<KernelReduceOutput> unique_inputs{};
+		for(KernelReduceOutput entry : reduce_inputs)
+		{
+			if(std::find(unique_inputs.begin(), unique_inputs.end(), entry) == unique_inputs.end())
+				unique_inputs.push_back(entry);
+		}
+		dst->n_reduce_inputs[k] = unique_inputs.size();
+		for(size_t i = 0; i < unique_inputs.size(); ++i)
+			dst->reduce_inputs[k][i] = unique_inputs[i];
 	}
 	return AC_SUCCESS;
 }

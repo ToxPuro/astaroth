@@ -104,11 +104,20 @@ typedef struct {
 } AcMeshDims;
 
 
-typedef struct {
+typedef struct KernelReduceOutput {
   int variable;
   AcType type;
   AcReduceOp op;
   AcKernel kernel;
+#ifdef __cplusplus
+  bool operator==(const KernelReduceOutput& other) const
+  {
+	  return (variable == other.variable) &&
+		 (type == other.type) &&
+		 (op == other.op) &&
+		 (kernel == other.kernel);
+  }
+#endif
 } KernelReduceOutput;
 
 typedef enum {
@@ -169,6 +178,7 @@ typedef struct
   #ifdef __cplusplus
 #include "is_comptime_param.h"
 #include "is_array_param.h"
+#include "is_output_param.h"
 #endif
 
   typedef struct AcMeshInfoArrays {
@@ -272,7 +282,9 @@ typedef struct {
 	int read_profiles[NUM_KERNELS][NUM_PROFILES];
 	int reduced_profiles[NUM_KERNELS][NUM_PROFILES];
 	int written_profiles[NUM_KERNELS][NUM_PROFILES];
+	KernelReduceOutput reduce_inputs[NUM_KERNELS][NUM_OUTPUTS+1];
 	KernelReduceOutput reduce_outputs[NUM_KERNELS][NUM_OUTPUTS+1];
+	size_t n_reduce_inputs[NUM_KERNELS];
 	size_t n_reduce_outputs[NUM_KERNELS];
   } KernelAnalysisInfo;
 
@@ -494,6 +506,11 @@ FUNC_DEFINE(AcResult, acReduceInt,(const cudaStream_t stream, const AcReduceOp, 
 
 FUNC_DEFINE(AcResult, acReduceFloat,(const cudaStream_t stream, const AcReduceOp, AcFloatScalarReduceBuffer, const size_t count));
 
+FUNC_DEFINE(AcResult, acLoadRealReduceRes,(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value));
+FUNC_DEFINE(AcResult, acLoadIntReduceRes,(cudaStream_t stream, const AcIntOutputParam param, const int* value));
+FUNC_DEFINE(AcResult, acLoadFloatReduceRes,(cudaStream_t stream, const AcFloatOutputParam param, const float* value));
+
+
 static UNUSED AcResult
 acReduce(const cudaStream_t stream, const AcReduceOp op, AcRealScalarReduceBuffer buffer, const size_t count)
 {
@@ -511,6 +528,7 @@ acReduce(const cudaStream_t stream, const AcReduceOp op, AcFloatScalarReduceBuff
 {
 	return acReduceFloat(stream,op,buffer,count);
 }
+
 
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
                            AcReal* array);
@@ -546,6 +564,11 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   get_name(const AcIntOutputParam& param)
   {
           return int_output_names[param];
+  }
+  static UNUSED const char* 
+  get_name(const AcFloatOutputParam& param)
+  {
+          return float_output_names[param];
   }
   
   static UNUSED const char* 

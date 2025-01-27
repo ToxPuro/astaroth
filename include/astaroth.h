@@ -819,6 +819,12 @@ typedef struct AcTaskDefinition {
     size_t num_parameters;
     LoadKernelParamsFunc* load_kernel_params_func;
     bool fieldwise;
+
+    KernelReduceOutput* outputs_in;
+    size_t num_outputs_in;
+
+    KernelReduceOutput* outputs_out;
+    size_t num_outputs_out;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -827,7 +833,9 @@ typedef struct AcTaskGraph AcTaskGraph;
 
 #if __cplusplus
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out, std::function<void(ParamLoadingInfo step_info)> loader));
+                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out, 
+			   KernelReduceOutput reduce_outputs_in[], size_t num_outputs_in, KernelReduceOutput reduce_outputs_out[], size_t num_outputs_out,
+			   std::function<void(ParamLoadingInfo step_info)> loader));
 #else
 /** */
 FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
@@ -1301,6 +1309,12 @@ FUNC_DEFINE(AcResult,  acDeviceFinishReduceFloat,(Device device, const Stream st
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduceInt,(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output));
 /** */
+FUNC_DEFINE(AcResult,  acDeviceFinishReduceRealStream,(Device device, const cudaStream_t stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output));
+/** */
+FUNC_DEFINE(AcResult,  acDeviceFinishReduceFloatStream,(Device device, const cudaStream_t stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output));
+/** */
+FUNC_DEFINE(AcResult,  acDeviceFinishReduceIntStream,(Device device, const cudaStream_t stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output));
+/** */
 FUNC_DEFINE(AcResult,acDevicePreprocessScratchPad,(Device device, const int variable, const AcType type,const AcReduceOp op));
 
 /** */
@@ -1707,6 +1721,24 @@ acDeviceFinishReduce(Device device, const Stream stream, float* result,const AcK
 	return acDeviceFinishReduceFloat(device,stream,result,kernel,reduce_op,output);
 }
 
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const cudaStream_t stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
+{
+	return acDeviceFinishReduceIntStream(device,stream,result,kernel,reduce_op,output);
+}
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const cudaStream_t stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output)
+{
+	return acDeviceFinishReduceRealStream(device,stream,result,kernel,reduce_op,output);
+}
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const cudaStream_t stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output)
+{
+	return acDeviceFinishReduceFloatStream(device,stream,result,kernel,reduce_op,output);
+}
+
 #if AC_MPI_ENABLED
 static UNUSED AcResult
 acGridInit(const AcMesh mesh)
@@ -1789,19 +1821,29 @@ acComputeWithParams(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&
 static inline AcTaskDefinition
 acComputeWithParams(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0 ,loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0 , NULL, 0, NULL, 0, loader);
 }
 
 static inline AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0, loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0, NULL, 0, NULL, 0, loader);
 }
 
 static inline AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::vector<Profile> profile_in, std::vector<Profile> profile_out, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), profile_in.data(), profile_in.size(), profile_out.data(), profile_out.size(), loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), profile_in.data(), profile_in.size(), profile_out.data(), profile_out.size(), 
+		    			       NULL, 0, NULL, 0,
+		                               loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::vector<Profile> profile_in, std::vector<Profile> profile_out, std::vector<KernelReduceOutput> reduce_outputs_in, std::vector<KernelReduceOutput> reduce_outputs_out, std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), profile_in.data(), profile_in.size(), profile_out.data(), profile_out.size(), 
+		    			       reduce_outputs_in.data(), reduce_outputs_in.size(), reduce_outputs_out.data(), reduce_outputs_out.size(),
+		    	                       loader);
 }
 
 static inline AcTaskDefinition
@@ -1813,7 +1855,7 @@ acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fiel
 static inline AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), NULL, 0 , NULL, 0, loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), NULL, 0 , NULL, 0, NULL, 0, NULL, 0, loader);
 }
 
 
@@ -1821,7 +1863,7 @@ template <size_t num_fields_in, size_t num_fields_out>
 static AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in, num_fields_in, fields_out, num_fields_out, NULL, 0, NULL, 0, loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in, num_fields_in, fields_out, num_fields_out, NULL, 0, NULL, 0, NULL, 0, NULL, 0, loader);
 }
 
 /** */

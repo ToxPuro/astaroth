@@ -461,6 +461,8 @@ acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
 __device__ __constant__ AcReal* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
 static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
 static size_t d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
+__device__ __constant__ AcReal  d_reduce_real_res_symbol[NUM_REAL_SCRATCHPADS];
+
 
 
 
@@ -489,6 +491,7 @@ acGetRealScratchpadSize(const size_t i)
 
 #define DEVICE_INLINE __device__ __forceinline__
 #include "dconst_decl.h"
+#include "output_value_decl.h"
 
 
 
@@ -1278,6 +1281,29 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
 
+AcResult
+acLoadRealReduceRes(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value)
+{
+  	const size_t offset =   (size_t)(&d_reduce_real_res_symbol[param]) - (size_t)&d_reduce_real_res_symbol;
+	cudaMemcpyToSymbolAsync(d_reduce_real_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream);
+	return AC_SUCCESS;
+}
+
+AcResult
+acLoadIntReduceRes(cudaStream_t stream, const AcIntOutputParam param, const int* value)
+{
+  	const size_t offset =   (size_t)(&d_reduce_int_res_symbol[param]) - (size_t)&d_reduce_int_res_symbol;
+	cudaMemcpyToSymbolAsync(d_reduce_int_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream);
+	return AC_SUCCESS;
+}
+
+AcResult
+acLoadFloatReduceRes(cudaStream_t stream, const AcFloatOutputParam param, const float* value)
+{
+  	const size_t offset =   (size_t)&d_reduce_float_res_symbol[param]- (size_t)&d_reduce_float_res_symbol;
+	cudaMemcpyToSymbolAsync(d_reduce_float_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream);
+	return AC_SUCCESS;
+}
 
 template <typename P, typename V>
 static AcResult

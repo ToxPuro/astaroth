@@ -1309,6 +1309,8 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				" (std::is_same<P,%sArrayParam>::value) ? NUM_%s_ARRAYS : \n"
 				" (std::is_same<P,%sCompParam>::value)      ? NUM_%s_COMP_PARAMS : \n"
 				" (std::is_same<P,%sCompArrayParam>::value) ? NUM_%s_COMP_ARRAYS : \n"
+				" (std::is_same<P,%sOutputParam>::value) ? NUM_%s_OUTPUTS: \n"
+			,enum_name,uppr_name
 			,enum_name,uppr_name
 			,enum_name,uppr_name
 			,enum_name,uppr_name
@@ -1425,6 +1427,21 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				"}\n"
 				,upper_case_name,datatype_scalar,enum_name,uppr_name,define_name,define_name
 				);
+		
+		fprintf_filename("device_finalize_reduce.h",
+				"AcResult\n"
+				"acDeviceFinishReduce%sStream(Device device, const cudaStream_t stream, %s* result, const AcKernel kernel, const AcReduceOp reduce_op, const %sOutputParam output)\n"
+				"{\n"
+				"if constexpr (NUM_%s_OUTPUTS == 0) return AC_FAILURE;\n"
+				"acReduce(stream,reduce_op,device->vba.reduce_buffer_%s[output],acGetKernelReduceScratchPadSize(kernel));\n"
+				"cudaMemcpyAsync(result,device->vba.reduce_buffer_%s[output].res,sizeof(result[0]),cudaMemcpyDeviceToHost,stream);\n"
+				"acLoad%sReduceRes(stream,output,result);\n"
+				"return AC_SUCCESS;\n"
+				"}\n"
+				,upper_case_name,datatype_scalar,enum_name,uppr_name,define_name,define_name
+				,upper_case_name
+				);
+
 		fprintf_filename("scalar_reduce_buffer_defs.h",
 				"typedef struct\n"
 				"{\n"
@@ -1447,7 +1464,9 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 					"__device__  __constant__ %s* d_symbol_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
 					"static %s* d_reduce_scratchpads_%s[NUM_%s_OUTPUTS+1];\n"
 					"static size_t d_reduce_scratchpads_size_%s[NUM_%s_OUTPUTS+1];\n"
+					"__device__ __constant__ %s d_reduce_%s_res_symbol[NUM_%s_OUTPUTS+1];\n"
 					,datatype_scalar,define_name,uppr_name,datatype_scalar,define_name,uppr_name,define_name,uppr_name
+					,datatype_scalar,define_name,uppr_name
 					);
 		}
 		fprintf_filename("reduce_helpers.h",
@@ -1509,6 +1528,13 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("dconst_decl.h","%s DEVICE_INLINE  DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
 
+	//TP: TODO: compare the performance of having this one level of indirection vs. simply loading the value to dconst and using it from there
+	if(datatype_scalar == REAL_STR || datatype_scalar == INT_STR || datatype_scalar == FLOAT_STR)
+	{
+		fprintf_filename("output_value_decl.h","%s DEVICE_INLINE  value(const %sOutputParam& param){return d_reduce_%s_res_symbol[(int)param];}\n"
+			,datatype_scalar, enum_name, define_name);
+	}
+
 	fprintf_filename("dconst_decl.h","%s DEVICE_INLINE  VAL(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
 
@@ -1520,6 +1546,10 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 	fprintf_filename("get_address.h","size_t  get_address(const %sParam& param){ return (size_t)&d_mesh_info.%s_params[(int)param];}\n"
 			,enum_name, define_name);
+
+	//fprintf_filename("get_address.h","size_t  get_address(const %sOutputParam& param){ return (size_t)&d_output.%s_outputs[(int)param];}\n"
+	//		,enum_name, define_name);
+
 	fprintf_filename("load_dconst_arrays.h","cudaError_t\n"
 		   "load_array(const %s* values, const size_t bytes, const %sArrayParam arr)\n"
 		    "{\n",
@@ -1564,10 +1594,13 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	        "acStoreUniform(const cudaStream_t stream, const %sParam param, %s* value) { return acStore%sUniform(stream,param,value);}\n"
 		"static AcResult __attribute ((unused))"
 	        "acStoreUniform(const %sArrayParam param, %s* values, const size_t length) { return acStore%sArrayUniform(param,values,length);}\n"
+	        //"static AcResult __attribute ((unused)) "
+		//"acLoadOutput(const cudaStream_t stream, const %sOutputParam param, const %s value) { return acLoad%sOutput(stream,param,value);}\n"
 		,enum_name, datatype_scalar, upper_case_name
 		,enum_name, datatype_scalar, upper_case_name
 		,enum_name, datatype_scalar, upper_case_name
 		,enum_name, datatype_scalar, upper_case_name
+		//,enum_name, datatype_scalar, upper_case_name
 		);
 
 
@@ -1576,10 +1609,12 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	 	"AcResult acLoad%sArrayUniform(const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length) { return acLoadArrayUniform(param ,values, length); }\n"
 	 	"AcResult acStore%sUniform(const cudaStream_t, const %sParam param, %s* value) { return acStoreUniform(param,value); }\n"
 	 	"AcResult acStore%sArrayUniform(const %sArrayParam param, %s* values, const size_t length) { return acStoreArrayUniform(param ,values, length); }\n"
+	 	//"AcResult acLoad%sOutput (const cudaStream_t stream, const %sOutputParam param, const %s value) { return acLoadOutput(stream,param,value); }\n"
 	        ,upper_case_name, enum_name, datatype_scalar
 	        ,upper_case_name, enum_name, datatype_scalar
 	        ,upper_case_name, enum_name, datatype_scalar
 	        ,upper_case_name, enum_name, datatype_scalar
+	        //,upper_case_name, enum_name, datatype_scalar
 	     );
 
 
@@ -1587,9 +1622,11 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 	fprintf_filename("load_and_store_uniform_header.h",
 		"FUNC_DEFINE(AcResult, acLoad%sUniform,(const cudaStream_t, const %sParam param, const %s value));\n"
+		"FUNC_DEFINE(AcResult, acLoad%sOutput ,(const cudaStream_t, const %sOutputParam param, const %s value));\n"
 		"FUNC_DEFINE(AcResult, acLoad%sArrayUniform, (const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length));\n"
 		"FUNC_DEFINE(AcResult, acStore%sUniform,(const cudaStream_t, const %sParam param, %s* value));\n"
 		"FUNC_DEFINE(AcResult, acStore%sArrayUniform, (const %sArrayParam param, %s* values, const size_t length));\n"
+	    	,upper_case_name, enum_name, datatype_scalar
 	    	,upper_case_name, enum_name, datatype_scalar
 	    	,upper_case_name, enum_name, datatype_scalar
 	    	,upper_case_name, enum_name, datatype_scalar
@@ -1642,6 +1679,15 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			, enum_name, datatype_scalar, upper_case_name
 			, enum_name, datatype_scalar, upper_case_name
 			);
+
+	fprintf_filename("is_output_param.h",
+		"constexpr static bool UNUSED IsOutputParam(const %s&)               {return false;}\n"       
+		"constexpr static bool UNUSED IsOutputParam(const %sParam&)          {return false;}\n"  
+		"constexpr static bool UNUSED IsOutputParam(const %sOutputParam&)     {return true;}\n"
+		,datatype_scalar
+		,enum_name
+		,enum_name
+		);
 
 	fprintf_filename("is_comptime_param.h",
 		"constexpr static bool UNUSED IsCompParam(const %s&)               {return false;}\n"       
@@ -2543,7 +2589,29 @@ gen_user_structs()
 	fclose(fp);
 }
 
+static bool
+is_subtype(const char* a, const char* b)
+{
+	if(a != PROFILE_STR) return false;
+	bool res = false;
+	string_vec prof_types = get_prof_types();
+	for(size_t i = 0; i < prof_types.size; ++i)
+		res |= b == prof_types.data[i];
+	free_str_vec(&prof_types);
+	return res;
+}
 
+
+bool
+is_field_expr(const char* expr)
+{
+	return expr && (expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,FIELD_PTR_STR) || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
+}
+bool
+is_value_applicable_type(const char* expr)
+{
+	return is_field_expr(expr) || is_subtype(PROFILE_STR,expr);
+}
 
 
 
@@ -2588,6 +2656,8 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root)
 			char* input_param = strdup(call_info.expr.data[i]);
 			replace_substring(&input_param,"AC_ITERATION_NUMBER","p.step_number");
 			if (all_identifiers_are_constexpr(call_info.expr_nodes.data[i]) || !strcmp(input_param,"p.step_number"))
+				fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], input_param);
+			else if(is_value_applicable_type(call_info.types.data[i]))
 				fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], input_param);
 			else
 				fprintf(stream, "p.params -> %s.%s = acDeviceGetInput(acGridGetDevice(),%s); \n", func_name,params_info.expr.data[i], input_param);
@@ -6479,6 +6549,7 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 		fatal("number of parameters does not match, expected %zu but got %zu in %s\n",params_info.types.size, call_info.types.size, combine_all_new(node));
 	for(size_t i = offset; i < call_info.types.size; ++i)
 	{
+		const bool is_output_type = check_symbol(NODE_VARIABLE_ID,intern(call_info.expr.data[i]),0,OUTPUT_STR);
 		if(!call_info.types.data[i]) continue;
 		if(!params_info.types.data[i-offset]) continue;
 		if(
@@ -6488,6 +6559,7 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 		   || (params_info.types.data[i-offset] == REAL_PTR_STR  && call_info.types.data[i] == FIELD_PTR_STR)
 		   || (params_info.types.data[i-offset] == REAL3_PTR_STR && call_info.types.data[i] == FIELD3_PTR_STR)
 		   || (params_info.types.data[i-offset] == REAL_STR      && strstr(call_info.types.data[i],"Profile"))
+		   || (params_info.types.data[i-offset] == call_info.types.data[i] && is_output_type)
 		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
@@ -6580,17 +6652,6 @@ mangle_dfunc_names(ASTNode* node, string_vec* dst_types, const char** dst_names,
 	ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
 	astnode_set_buffer(get_mangled_name(dfunc_name,params_info.types),identifier);
 	free_func_params_info(&params_info);
-}
-static bool
-is_subtype(const char* a, const char* b)
-{
-	if(a != PROFILE_STR) return false;
-	bool res = false;
-	string_vec prof_types = get_prof_types();
-	for(size_t i = 0; i < prof_types.size; ++i)
-		res |= b == prof_types.data[i];
-	free_str_vec(&prof_types);
-	return res;
 }
 static bool
 compatible_types(const char* a, const char* b)
@@ -6911,17 +6972,6 @@ transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* roo
 	free_func_params_info(&param_info);
 }
 
-bool
-is_field_expr(const char* expr)
-{
-	return expr && (expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,FIELD_PTR_STR) || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
-}
-
-bool
-is_value_applicable_type(const char* expr)
-{
-	return is_field_expr(expr) || is_subtype(PROFILE_STR,expr);
-}
 
 void
 transform_field_unary_ops(ASTNode* node)
@@ -6934,7 +6984,7 @@ transform_field_unary_ops(ASTNode* node)
 	if(!base_type) return;
 	if(!is_value_applicable_type(base_type)) return;
 
-	node->rhs = create_func_call_expr(VALUE_STR,node->rhs);;
+	node->rhs = create_func_call_expr(VALUE_STR,node->rhs);
 }
 void
 transform_field_binary_ops(ASTNode* node)

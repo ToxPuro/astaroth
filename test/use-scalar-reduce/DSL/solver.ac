@@ -1,0 +1,35 @@
+Field F
+output real F_MAX
+Kernel
+empty_kernel()
+{
+}
+
+Kernel reduce_field(Field f)
+{
+	reduce_max(true,f,F_MAX)
+}
+
+Kernel set_field_to_max(Field f)
+{
+	write(f, F_MAX)
+}
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+ComputeSteps rhs_1(bcs)
+{
+	reduce_field(F)
+}
+
+ComputeSteps rhs_2(bcs)
+{
+	set_field_to_max(F)
+}
+
+ComputeSteps rhs(bcs)
+{
+	reduce_field(F)
+	set_field_to_max(F)
+}

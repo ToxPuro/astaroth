@@ -1866,21 +1866,31 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 {
     // ERRCHK(grid.initialized);
     std::vector<AcTaskDefinition> ops{};
+    //TP: insert reduce tasks in between of tasks
+    //If kernel A outputs P(profile or scalar to be reduced) then a reduce task reducing P should be inserted
     for(size_t i = 0; i < n_ops; ++i)
     {
 	    auto op = ops_in[i];
 	    ops.push_back(op);
-	    if(op.task_type == TASKTYPE_COMPUTE && op.num_profiles_out > 0)
+	    if(op.task_type == TASKTYPE_COMPUTE && (op.num_profiles_out > 0 || op.num_outputs_out > 0))
 	    {
 	  		auto reduce_op = op;
 			reduce_op.task_type = TASKTYPE_REDUCE;
+
 	  		reduce_op.profiles_in      = op.profiles_out;
 	  		reduce_op.num_profiles_in  = op.num_profiles_out;
 	  		reduce_op.profiles_out     = op.profiles_out;
 	  		reduce_op.num_profiles_out = op.num_profiles_out;
+
+			reduce_op.num_outputs_in  = op.num_outputs_out;
+			reduce_op.num_outputs_out = op.num_outputs_out;
+			reduce_op.outputs_in      = op.outputs_out;
+			reduce_op.outputs_out     = op.outputs_out;
+
 			ops.push_back(reduce_op);
 	    }
     }
+
     int rank;
     MPI_Comm_rank(astaroth_comm, &rank);
     int comm_size;
@@ -1973,9 +1983,11 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    std::vector<Profile> profiles_out(op.profiles_out,op.profiles_out+op.num_profiles_out);
 	    std::vector<Profile> profiles_in(op.profiles_in,op.profiles_in+op.num_profiles_in);
 
+	    std::vector<KernelReduceOutput> reduce_output_in(op.outputs_in,  op.outputs_in +op.num_outputs_in);
+	    std::vector<KernelReduceOutput> reduce_output_out(op.outputs_out,op.outputs_out+op.num_outputs_out);
 
-	    Region full_region = FullRegion(grid.nn,{fields_out,profiles_out});
-	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in})[0];
+	    Region full_region = FullRegion(grid.nn,{fields_out,profiles_out,reduce_output_out});
+	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in})[0];
             //for (int tag = Region::min_comp_tag; tag < 1; tag++) {
 	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
 	    if(((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim])

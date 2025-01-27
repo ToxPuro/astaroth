@@ -93,8 +93,16 @@ typedef struct
 
 typedef struct
 {
+	std::vector<KernelReduceOutput> in;
+	std::vector<KernelReduceOutput> out;
+}
+KernelReduceOutputs;
+
+typedef struct
+{
 	KernelFields   fields;
 	KernelProfiles profiles;
+	KernelReduceOutputs reduce_outputs;
 } KernelOutputs;
 
 KernelProfiles
@@ -109,6 +117,21 @@ get_kernel_profiles(const AcKernel kernel)
 		}
 		return res;
 }
+KernelReduceOutputs
+get_kernel_reduce_outputs(const AcKernel kernel)
+{
+	const KernelAnalysisInfo info = get_kernel_analysis_info();
+	KernelReduceOutputs res{};
+	for(size_t i = 0; i < info.n_reduce_outputs[kernel]; ++i)
+	{
+		res.out.push_back(info.reduce_outputs[kernel][i]);
+	}
+	for(size_t i = 0; i < info.n_reduce_inputs[kernel]; ++i)
+	{
+		res.in.push_back(info.reduce_inputs[kernel][i]);
+	}
+	return res;
+}
 std::vector<KernelFields>
 get_kernel_fields(const std::vector<AcKernel> kernels)
 {
@@ -122,7 +145,8 @@ get_kernel_outputs(const AcKernel kernel)
 	return 
 	{
 		get_kernel_fields(kernel),
-		get_kernel_profiles(kernel)
+		get_kernel_profiles(kernel),
+		get_kernel_reduce_outputs(kernel)
 	};
 }
 
@@ -258,7 +282,7 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 		if(filter_unnecessary_ones)
 		{
 			auto outputs = get_kernel_outputs(kernel_calls[call_index]);
-			if(outputs.fields.out.size() == 0 && outputs.profiles.out.size() == 0) continue;
+			if(outputs.fields.out.size() == 0 && outputs.profiles.out.size() == 0 && outputs.reduce_outputs.out.size() == 0) continue;
 		}
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
 		res.push_back(optimized_kernel);
@@ -949,8 +973,7 @@ gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
 			if(!ac_pid()) fprintf(stream, "%s,",get_name(elem));
 		if(!ac_pid()) fprintf(stream,"}");
 	};
-	auto fields = get_kernel_fields(call.kernel);
-	auto profiles = get_kernel_profiles(call.kernel);
+	auto[fields, profiles, reduce_outputs] = get_kernel_outputs(call.kernel);
 	if(!ac_pid()) fprintf(stream,"%s(",kernel_names[call.kernel]);
 	log(fields.in);
 	if(!ac_pid()) fprintf(stream,",");
@@ -959,7 +982,34 @@ gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
 	log(profiles.in);
 	if(!ac_pid()) fprintf(stream,",");
 	log(profiles.out);
+	if(!ac_pid()) fprintf(stream,",");
+	if(!ac_pid()) fprintf(stream,"{");
+	for(auto& e : reduce_outputs.in)
+	{
+		if(e.type == AC_REAL_TYPE)
+			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcRealOutputParam)e.variable));	
+		if(e.type == AC_INT_TYPE)
+			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcIntOutputParam)e.variable));	
+		if(e.type == AC_FLOAT_TYPE)
+			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcFloatOutputParam)e.variable));	
+	}
+	if(!ac_pid()) fprintf(stream,"}");
+
+	if(!ac_pid()) fprintf(stream,",");
+
+	if(!ac_pid()) fprintf(stream,"{");
+	for(auto& e : reduce_outputs.out)
+	{
+		if(e.type == AC_REAL_TYPE)
+			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcRealOutputParam)e.variable));	
+		if(e.type == AC_INT_TYPE)
+			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcIntOutputParam)e.variable));	
+		if(e.type == AC_FLOAT_TYPE)
+			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcFloatOutputParam)e.variable));	
+	}
+	if(!ac_pid()) fprintf(stream,"}");
+
 	if(!ac_pid()) fprintf(stream,")\n");
-	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.out,call.loader);
+	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.out,reduce_outputs.in,reduce_outputs.out,call.loader);
 }
 #endif // AC_MPI_ENABLED
