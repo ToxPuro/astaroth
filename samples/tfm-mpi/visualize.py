@@ -29,7 +29,7 @@ See Unix globbing for passing files/directories to the script more easily.
 
 
 parser.add_argument('--dims', type=int, default=[32, 32, 32], nargs=3, help='The dimensions of the computational domain in the order [z y x] (note z first). Should be the same as global_nn defined in mhd.ini')
-parser.add_argument('--slice-nz', type=int, default=0, nargs=1, help='Position on the nz axis to slice on. If set to 0, chooses the middle slice.')
+parser.add_argument('--slice-nz', type=int, default=-1, nargs=1, help='Position on the nz axis to slice on. If set to -1, chooses the middle slice.')
 parser.add_argument('--nsteps', type=int, default=100, nargs=1, help='Maximum steps to visualize (defined as AC_simulation_nsteps in mhd.ini)')
 parser.add_argument('--inputs', type=str, nargs='+', default=["*.mesh", "*.profile"], help='Input files to visualize (supports globbing)')
 parser.add_argument('--output-dir', type=str, nargs='+', default="output", help='The output directory')
@@ -37,6 +37,10 @@ parser.add_argument('--output-dir', type=str, nargs='+', default="output", help=
 #parser.add_argument('--show-grouped', action='store_true', help='Controls whether to write grouped plots')
 
 args = parser.parse_args()
+
+# Set slice_nz to middle if not specified
+if args.slice_nz < 0:
+    args.slize_nz = int(args.dims[0]/2)
 
 # Make directories
 print(f"Creating output directory at {args.output_dir}")
