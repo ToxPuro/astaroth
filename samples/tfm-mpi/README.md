@@ -99,7 +99,7 @@ $SRUNMPI8 ./tfm-mpi
 
 - Outputs are monolithic files holding the computational domain
 - Halos are not included in the monolithic snapshots
-- `astaroth/samples/tfm-mpi/visualize-debug.py` can be used as a starting point for visualizing the snapshots and profiles. Currently hacked together, so have to manually set mesh dimensions, and execute only specific jupyter cells in the script (does not likely run from the command line). I have used mainly the code blocks `# Plot collective` around line 40 and `# Profiles` around line 120.
+- `astaroth/samples/tfm-mpi/visualize.py` can be used as a starting point for visualizing the snapshots and profiles. To see an example how to visualize distributed slices, see `astaroth/samples/tfm-mpi/visualize-debug.py` (NOTE: works only when running individual jupyter cells and setting the dimensions manually).
 - All files are written out as double-precision numbers in the ordering $x$-$y$-$z$ ($x$ fastest varying dimension). For example, the first 8 bytes correspond to the first double-precision value at index $(0, 0, 0)$ in the computational domain, the second corresponds to index $(1, 0, 0)$, etc.
 
 Debug output is in the format
