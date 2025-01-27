@@ -235,7 +235,7 @@ value(const AcFloatOutputParam& param)
 }
 
 void
-reduce_sum_real(const bool&, const AcReal, const AcRealOutputParam dst)
+reduce_sum_real(const AcReal, const AcRealOutputParam dst)
 {
 	if constexpr (NUM_REAL_OUTPUTS == 0) 
 	{
@@ -258,7 +258,7 @@ reduce_sum_real(const bool&, const AcReal, const AcRealOutputParam dst)
 }
 
 void
-reduce_max_real(const bool&, const AcReal, const AcRealOutputParam dst)
+reduce_max_real(const AcReal, const AcRealOutputParam dst)
 {
 	if constexpr (NUM_REAL_OUTPUTS == 0) 
 	{
@@ -281,7 +281,7 @@ reduce_max_real(const bool&, const AcReal, const AcRealOutputParam dst)
 }
 
 void
-reduce_min_real(const bool&, const AcReal, const AcRealOutputParam dst)
+reduce_min_real(const AcReal, const AcRealOutputParam dst)
 {
 	if constexpr (NUM_REAL_OUTPUTS == 0) 
 	{
@@ -304,7 +304,7 @@ reduce_min_real(const bool&, const AcReal, const AcRealOutputParam dst)
 }
 
 void
-reduce_sum_int(const bool&, const int, const AcIntOutputParam dst)
+reduce_sum_int(const int, const AcIntOutputParam dst)
 {
 	if constexpr (NUM_INT_OUTPUTS == 0) 
 	{
@@ -327,7 +327,7 @@ reduce_sum_int(const bool&, const int, const AcIntOutputParam dst)
 }
 
 void
-reduce_max_int(const bool&, const int, const AcIntOutputParam dst)
+reduce_max_int(const int, const AcIntOutputParam dst)
 {
 	if constexpr (NUM_INT_OUTPUTS == 0) 
 	{
@@ -350,7 +350,7 @@ reduce_max_int(const bool&, const int, const AcIntOutputParam dst)
 }
 
 void
-reduce_min_int(const bool&, const int, const AcIntOutputParam dst)
+reduce_min_int(const int, const AcIntOutputParam dst)
 {
 	if constexpr (NUM_INT_OUTPUTS == 0) 
 	{
@@ -373,7 +373,7 @@ reduce_min_int(const bool&, const int, const AcIntOutputParam dst)
 }
 
 void
-reduce_sum_float(const bool&, const float, const AcFloatOutputParam dst)
+reduce_sum_float(const float, const AcFloatOutputParam dst)
 {
 	if constexpr (NUM_FLOAT_OUTPUTS == 0) 
 	{
@@ -396,7 +396,7 @@ reduce_sum_float(const bool&, const float, const AcFloatOutputParam dst)
 }
 
 void
-reduce_max_float(const bool&, const float, const AcFloatOutputParam dst)
+reduce_max_float(const float, const AcFloatOutputParam dst)
 {
 	if constexpr (NUM_FLOAT_OUTPUTS == 0) 
 	{
@@ -419,7 +419,7 @@ reduce_max_float(const bool&, const float, const AcFloatOutputParam dst)
 }
 
 void
-reduce_min_float(const bool&, const float, const AcFloatOutputParam dst)
+reduce_min_float(const float, const AcFloatOutputParam dst)
 {
 	if constexpr (NUM_FLOAT_OUTPUTS == 0) 
 	{
@@ -443,7 +443,7 @@ reduce_min_float(const bool&, const float, const AcFloatOutputParam dst)
 
 
 void
-reduce_prof(const bool&, const AcReal, const Profile dst)
+reduce_prof(const AcReal, const Profile dst)
 {
 	if constexpr (NUM_PROFILES == 0) 
 	{

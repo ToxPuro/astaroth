@@ -7,7 +7,7 @@ empty_kernel()
 
 Kernel reduce_field(Field f)
 {
-	reduce_max(true,f,F_MAX)
+	reduce_max(f,F_MAX)
 }
 
 Kernel set_field_to_max(Field f)

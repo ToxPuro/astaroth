@@ -1233,6 +1233,7 @@ ReduceTask::reduce()
 	    	acDeviceFinishReduceIntStream(device,stream,&local_res_int[i],kernel,op,(AcIntOutputParam)var);
 	    else if(reduce_outputs[i].type == AC_FLOAT_TYPE)
 	    	acDeviceFinishReduceFloatStream(device,stream,&local_res_float[i],kernel,op,(AcFloatOutputParam)var);
+	    else if(reduce_outputs[i].type == AC_PROF_TYPE) {}
 	    else
 	    {
 		    fprintf(stderr,"Unknown variable type: %d\n",reduce_outputs[i].type);
@@ -1250,9 +1251,28 @@ ReduceTask::advance(const TraceFile* trace_file)
         state = static_cast<int>(ReduceState::Reducing);
         break;
     case ReduceState::Reducing:
+    {
+	const auto& reduce_outputs = input_region.memory.reduce_outputs;
+    	for(size_t i = 0; i < reduce_outputs.size(); ++i)
+    	{
+	    if(reduce_outputs[i].type == AC_REAL_TYPE)
+	    	acDeviceSetOutput(device,(AcRealOutputParam)reduce_outputs[i].variable,local_res_real[i]);
+	    else if(reduce_outputs[i].type == AC_INT_TYPE)
+	    	acDeviceSetOutput(device,(AcIntOutputParam)reduce_outputs[i].variable,local_res_int[i]);
+	    else if(reduce_outputs[i].type == AC_FLOAT_TYPE)
+	    	acDeviceSetOutput(device,(AcFloatOutputParam)reduce_outputs[i].variable,local_res_float[i]);
+	    else if(reduce_outputs[i].type == AC_PROF_TYPE)
+	    	;
+	    else
+	    {
+	    	fprintf(stderr,"Unknown reduce output type: %ld,%d\n",i,reduce_outputs[i].type);
+		exit(EXIT_FAILURE);
+	    }
+    	}
         trace_file->trace(this, "reducing", "waiting");
         state = static_cast<int>(ReduceState::Waiting);
         break;
+    }
     default:
         ERROR("ReduceTask in an invalid state.");
     }

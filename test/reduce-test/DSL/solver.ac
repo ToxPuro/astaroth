@@ -39,27 +39,27 @@ Kernel empty()
 
 Kernel test_reduce()
 {
-    reduce_min(true, FIELD, AC_min_val)
-    reduce_max(true, FIELD, AC_max_val)
-    reduce_sum(true, FIELD, AC_sum_val)
-    reduce_sum(true,(int)value(FIELD),AC_int_sum_val)
-    reduce_sum(true,(float)value(FIELD),AC_float_sum_val)
+    reduce_min(FIELD, AC_min_val)
+    reduce_max(FIELD, AC_max_val)
+    reduce_sum(FIELD, AC_sum_val)
+    reduce_sum((int)value(FIELD),AC_int_sum_val)
+    reduce_sum((float)value(FIELD),AC_float_sum_val)
 
-    reduce_sum(true,FIELD,PROF_X)
-    reduce_sum(true,FIELD,PROF_Y)
-    reduce_sum(true,FIELD,PROF_Z)
+    reduce_sum(FIELD,PROF_X)
+    reduce_sum(FIELD,PROF_Y)
+    reduce_sum(FIELD,PROF_Z)
 
-    reduce_sum(true,FIELD,PROF_XZ)
-    reduce_sum(true,FIELD,PROF_XY)
+    reduce_sum(FIELD,PROF_XZ)
+    reduce_sum(FIELD,PROF_XY)
 
-    reduce_sum(true,FIELD,PROF_YX)
-    reduce_sum(true,FIELD,PROF_YZ)
+    reduce_sum(FIELD,PROF_YX)
+    reduce_sum(FIELD,PROF_YZ)
 
-    reduce_sum(true,FIELD,PROF_ZX)
-    reduce_sum(true,FIELD,PROF_ZY)
+    reduce_sum(FIELD,PROF_ZX)
+    reduce_sum(FIELD,PROF_ZY)
 
 
-    reduce_sum(true,derx(FIELD),DX_PROF_XY)
+    reduce_sum(derx(FIELD),DX_PROF_XY)
 }
 
 Kernel remove_means()

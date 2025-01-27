@@ -406,7 +406,7 @@ gen_profile_funcs(const int kernel)
     else
     	printf("const int3& profileReduceOutputVertexIdx = vertexIdx;");
 
-    printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
     printf("switch (output) {");
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
@@ -421,7 +421,7 @@ gen_profile_funcs(const int kernel)
     printf("};");
 
     //!!TP: NOTE this only works as long as blockfactor.x == 1!!
-    printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
     printf("switch (output) {");
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
@@ -445,7 +445,7 @@ gen_profile_funcs(const int kernel)
 
 
     //!!TP: NOTE this only works as long as blockfactor.x == 1!!
-    printf("const auto reduce_sum_real_z __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("const auto reduce_sum_real_z __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
     printf("switch (output) {");
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
@@ -468,7 +468,7 @@ gen_profile_funcs(const int kernel)
     printf("};");
 
 
-    printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
     printf("switch (output) {");
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
@@ -482,7 +482,7 @@ gen_profile_funcs(const int kernel)
     printf("}");
     printf("};");
 
-    printf("const auto reduce_sum_real_yx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("const auto reduce_sum_real_yx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
     printf("switch (output) {");
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
@@ -496,7 +496,7 @@ gen_profile_funcs(const int kernel)
     printf("}");
     printf("};");
 
-    printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
     printf("switch (output) {");
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
@@ -510,7 +510,7 @@ gen_profile_funcs(const int kernel)
     printf("}");
     printf("};");
 
-    printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output) {");
+    printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
     printf("switch (output) {");
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
@@ -527,7 +527,7 @@ gen_profile_funcs(const int kernel)
 
 
 
-    printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+    printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal& val, const Profile& output)"
 		   "{"
 		   "if(blockDim.x %% warp_size != 0) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = val;" 
 		   "else {"
@@ -536,7 +536,7 @@ gen_profile_funcs(const int kernel)
 		   "}"
 		   "};");
 
-    printf("const auto reduce_sum_real_zy __attribute__((unused)) = [&](const bool& , const AcReal& val, const Profile& output)"
+    printf("const auto reduce_sum_real_zy __attribute__((unused)) = [&](const AcReal& val, const Profile& output)"
 		   "{"
 		   "if(blockDim.x %% warp_size != 0) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z)] = val;" 
 		   "else {"
@@ -755,8 +755,7 @@ print_warp_reduce_func(const char* datatype, const char* define_name, const Redu
 void
 print_reduce_func(const char* datatype, const char* define_name, const char* enum_name, const int curr_kernel, const char** names, const int* is_reduced, const size_t n_elems, const ReduceOp op)
 {
-        printf("const auto reduce_%s_%s __attribute__((unused)) = [&](const bool& condition, %s val, const %sOutputParam& output) {",reduce_op_to_name(op),define_name,datatype,enum_name);
-	printf("if (!condition) return;");
+        printf("const auto reduce_%s_%s __attribute__((unused)) = [&](%s val, const %sOutputParam& output) {",reduce_op_to_name(op),define_name,datatype,enum_name);
 	if(kernel_has_block_loops(curr_kernel))
 	{
 		printf("switch(output) {");

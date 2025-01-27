@@ -109,80 +109,80 @@ dot(a, b)
 }
 
 
-reduce_min(bool condition, real val, param)
+reduce_min(real val, param)
 {
-	reduce_min_real(condition,val,param)
+	reduce_min_real(val,param)
 }
-reduce_sum(bool condition, real val, param)
+reduce_sum(real val, param)
 {
-	reduce_sum_real(condition,val,param)
+	reduce_sum_real(val,param)
 }
-reduce_max(bool condition, real val, param)
+reduce_max(real val, param)
 {
-	reduce_max_real(condition,val,param)
-}
-
-reduce_min(bool condition, int val, param)
-{
-	reduce_min_int(condition,val,param)
-}
-reduce_sum(bool condition, int val, param)
-{
-	reduce_sum_int(condition,val,param)
-}
-reduce_max(bool condition, int val, param)
-{
-	reduce_max_int(condition,val,param)
-}
-reduce_min(bool condition, float val, param)
-{
-	reduce_min_float(condition,val,param)
-}
-reduce_sum(bool condition, float val, param)
-{
-	reduce_sum_float(condition,val,param)
-}
-reduce_max(bool condition, float val, param)
-{
-	reduce_max_float(condition,val,param)
+	reduce_max_real(val,param)
 }
 
+reduce_min(int val, param)
+{
+	reduce_min_int(val,param)
+}
+reduce_sum(int val, param)
+{
+	reduce_sum_int(val,param)
+}
+reduce_max(int val, param)
+{
+	reduce_max_int(val,param)
+}
+reduce_min(float val, param)
+{
+	reduce_min_float(val,param)
+}
+reduce_sum(float val, param)
+{
+	reduce_sum_float(val,param)
+}
+reduce_max(float val, param)
+{
+	reduce_max_float(val,param)
+}
 
-reduce_sum(bool condition, real val, Profile<X> prof)
+
+reduce_sum(real val, Profile<X> prof)
 {
-	reduce_sum_real_x(condition, val, prof);
+	reduce_sum_real_x(val, prof);
 }
-reduce_sum(bool condition, real val, Profile<Y> prof)
+reduce_sum(real val, Profile<Y> prof)
 {
-	reduce_sum_real_y(condition, val, prof);
+	reduce_sum_real_y(val, prof);
 }
-reduce_sum(bool condition, real val, Profile<Z> prof)
+reduce_sum(real val, Profile<Z> prof)
 {
-	reduce_sum_real_z(condition, val, prof);
+	reduce_sum_real_z(val, prof);
 }
-reduce_sum(bool condition, real val, Profile<XY> prof)
+reduce_sum(real val, Profile<XY> prof)
 {
-	reduce_sum_real_xy(condition, val, prof);
+	reduce_sum_real_xy(val, prof);
 }
-reduce_sum(bool condition, real val, Profile<XZ> prof)
+reduce_sum(real val, Profile<XZ> prof)
 {
-	reduce_sum_real_xz(condition, val, prof);
+	reduce_sum_real_xz(val, prof);
 }
-reduce_sum(bool condition, real val, Profile<YX> prof)
+reduce_sum(real val, Profile<YX> prof)
 {
-	reduce_sum_real_yx(condition, val, prof);
+	reduce_sum_real_yx(val, prof);
 }
-reduce_sum(bool condition, real val, Profile<YZ> prof)
+reduce_sum(real val, Profile<YZ> prof)
 {
-	reduce_sum_real_yz(condition, val, prof);
+	reduce_sum_real_yz(val, prof);
 }
-reduce_sum(bool condition, real val, Profile<ZX> prof)
+reduce_sum(real val, Profile<ZX> prof)
 {
-	reduce_sum_real_zx(condition, val, prof);
+	reduce_sum_real_zx(val, prof);
 }
-reduce_sum(bool condition, real val, Profile<ZY> prof)
+reduce_sum(real val, Profile<ZY> prof)
 {
-	reduce_sum_real_zy(condition, val, prof);
+	reduce_sum_real_zy(val, prof);
 }
 
 inline add_arr(real[] a, real[] b)

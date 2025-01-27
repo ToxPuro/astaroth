@@ -122,8 +122,6 @@ main(int argc, char* argv[])
 
     	acGridExecuteTaskGraph(graph,1);
     	acGridSynchronizeStream(STREAM_ALL);
-    	acGridFinalizeReduceLocal(graph);
-    	acGridSynchronizeStream(STREAM_ALL);
     	acGridStoreMesh(STREAM_DEFAULT,&candidate);
 
 
