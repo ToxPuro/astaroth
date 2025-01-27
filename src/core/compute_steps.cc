@@ -282,7 +282,11 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 		if(filter_unnecessary_ones)
 		{
 			auto outputs = get_kernel_outputs(kernel_calls[call_index]);
-			if(outputs.fields.out.size() == 0 && outputs.profiles.out.size() == 0 && outputs.reduce_outputs.out.size() == 0) continue;
+			if(outputs.fields.out.size() == 0 && outputs.profiles.out.size() == 0 && outputs.reduce_outputs.out.size() == 0) 
+			{
+				res.push_back(AC_NULL_KERNEL);
+				continue;
+			}
 		}
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
 		res.push_back(optimized_kernel);
@@ -928,6 +932,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 		}
 		for(auto& call : current_level_set.calls)
 		{
+			if(call.kernel == AC_NULL_KERNEL) continue;
 			res.push_back(gen_taskgraph_kernel_entry(call,stream));
 			for(size_t field = 0; field < NUM_ALL_FIELDS; ++field)
 				field_written_out_before[field] |= info.written_fields[call.kernel][field];
@@ -965,7 +970,6 @@ acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 static AcTaskDefinition
 gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
 {
-
 	auto log = [&](const auto& elems)
 	{
 		if(!ac_pid()) fprintf(stream,"{");
