@@ -379,6 +379,37 @@ dot(const ac::vector<T>& a, const ac::vector<U>& b)
     return result;
 }
 
+template <typename T, typename U>
+[[nodiscard]] ac::vector<T>
+concat(const ac::vector<T>& a, const ac::vector<U>& b)
+{
+    static_assert(std::is_same_v<T, U>,
+                  "Operator not enabled for parameters of different types. Perform an "
+                  "explicit cast such that both operands are of the same type");
+    std::vector<T> c{a};
+    c.insert(c.end(), b.begin(), b.end());
+    return c;
+}
+
+template <typename T, typename U>
+[[nodiscard]] ac::vector<T>
+concat(const ac::vector<T>& a, const U& b)
+{
+    static_assert(std::is_same_v<T, U>,
+                  "Operator not enabled for parameters of different types. Perform an "
+                  "explicit cast such that both operands are of the same type");
+    return concat(a, ac::vector<U>{b});
+}
+template <typename T, typename U>
+[[nodiscard]] ac::vector<T>
+concat(const T& a, const ac::vector<U>& b)
+{
+    static_assert(std::is_same_v<T, U>,
+                  "Operator not enabled for parameters of different types. Perform an "
+                  "explicit cast such that both operands are of the same type");
+    return concat(ac::vector<T>{a}, b);
+}
+
 template <typename T>
 [[nodiscard]] ac::vector<T>
 make_vector(const size_t count, const T* arr)
