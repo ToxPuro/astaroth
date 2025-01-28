@@ -24,13 +24,13 @@ template <typename T, typename MemoryResource> class base_ptr {
     // Enable the subscript[] operator
     T& operator[](const size_t i)
     {
-        ERRCHK(i < _size);
+        ERRCHK(i < size());
         return _data[i];
     }
 
     const T& operator[](const size_t i) const
     {
-        ERRCHK(i < _size);
+        ERRCHK(i < size());
         return _data[i];
     }
 };
