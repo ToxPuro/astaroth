@@ -564,7 +564,6 @@ get_global_mm(const Shape& global_nn, const Index& rr)
     return Shape{as<uint64_t>(2) * rr + global_nn};
 }
 
-// Bugged
 void
 scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
                  const Shape& global_mm, const Index& subdomain_offset,
@@ -587,7 +586,7 @@ scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
     std::vector<int> displs(nprocs);
     for (size_t i{0}; i < nprocs; ++i) {
         const Index coords{get_coords(parent_comm, as<int>(i))};
-        displs[i] = as<int>(to_linear(mul(coords, local_nn) + subdomain_offset, global_mm));
+        displs[i] = as<int>(to_linear(mul(coords, local_nn), global_mm));
     }
 
     ERRCHK_MPI_API(MPI_Scatterv(send_buffer,
@@ -604,7 +603,6 @@ scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
     subarray_destroy(distributed_subarray);
 }
 
-// Bugged
 void
 gather_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
                 const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
@@ -626,7 +624,7 @@ gather_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
     std::vector<int> displs(nprocs);
     for (size_t i{0}; i < nprocs; ++i) {
         const Index coords{get_coords(parent_comm, as<int>(i))};
-        displs[i] = as<int>(to_linear(mul(coords, local_nn) + subdomain_offset, global_mm));
+        displs[i] = as<int>(to_linear(mul(coords, local_nn), global_mm));
     }
 
     ERRCHK_MPI_API(MPI_Gatherv(send_buffer,

@@ -4,6 +4,7 @@
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/ndbuffer.h"
 #include <numeric> // std::iota
+#include "acm/detail/partition.h"
 
 #include "acm/detail/mpi_utils.h"
 
@@ -98,6 +99,80 @@ test_scatter_gather(const MPI_Comm& cart_comm, const Shape& global_nn)
     }
 }
 
+void
+test_scatter_gather_advanced(const MPI_Comm& cart_comm, const Shape& global_nn)
+{
+    using T      = int;
+    using Buffer = ac::ndbuffer<T, ac::mr::host_memory_resource>;
+
+    const Index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
+    const Index zero_offset(global_nn.size(), static_cast<int>(0));
+    const Shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+
+    const Index rr(global_nn.size(), static_cast<uint64_t>(2));
+    const Shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+
+    const Shape global_mm{global_nn + static_cast<uint64_t>(2) *  rr};
+
+    Buffer monolithic{global_mm};
+    std::iota(monolithic.begin(), monolithic.end(), 1);
+    Buffer distributed{local_mm};
+
+    // Scatter
+    ac::mpi::scatter_advanced(cart_comm,
+                     ac::mpi::get_dtype<T>(),
+                     global_mm,
+                     rr,
+                     monolithic.data(),
+                     local_mm,
+                     local_nn,
+                     rr,
+                     distributed.data());
+
+    MPI_SYNCHRONOUS_BLOCK_START(cart_comm);
+    PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+    PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
+    monolithic.display();
+    distributed.display();
+    MPI_SYNCHRONOUS_BLOCK_END(cart_comm);
+
+    // Gather
+    Buffer monolithic_test{global_mm, 0}; // Initialize to zero
+    ac::mpi::gather_advanced(cart_comm,
+                     ac::mpi::get_dtype<T>(),
+                     local_mm,
+                     local_nn,
+                     rr,
+                     distributed.data(),
+                     global_mm,
+                     rr,
+                     monolithic_test.data()
+                     );
+
+    // Set boundaries to zero in the model solution
+    auto segments{partition(global_mm, global_nn, rr)};
+    auto it{std::remove_if(segments.begin(),
+                               segments.end(),
+                               [global_nn, rr](const ac::segment& segment) {
+                                   return within_box(segment.offset, global_nn, rr);
+                               })};
+    segments.erase(it, segments.end());
+    for (const auto& segment : segments)
+        fill(0, segment.dims, segment.offset, monolithic);
+
+
+    const auto rank{ac::mpi::get_rank(cart_comm)};
+    if (rank == 0) {
+        PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+        PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
+        monolithic.display();
+        monolithic_test.display();
+
+        for (size_t i{0}; i < monolithic_test.size(); ++i)
+            ERRCHK_MPI(monolithic.get()[i] == monolithic_test.get()[i]);
+    }
+}
+
 int
 main()
 {
@@ -135,6 +210,12 @@ main()
 
             test_scatter_gather(cart_comm, global_nn);
 
+            ac::mpi::cart_comm_destroy(cart_comm);
+        }
+        {
+            const Shape global_nn{8, 8};
+            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            test_scatter_gather_advanced(cart_comm, global_nn);
             ac::mpi::cart_comm_destroy(cart_comm);
         }
     }
