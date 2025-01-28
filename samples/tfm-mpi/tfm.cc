@@ -372,7 +372,7 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
     for (int i{0}; i < NUM_VTXBUF_HANDLES; ++i) {
         char filepath[4096];
         sprintf(filepath,
-                "proc-%d-debug-step-%012zu-tfm-%s.mesh",
+                "proc-%d-debug-step-%012zu-tfm-%s.mesh-distributed",
                 ac::mpi::get_rank(parent_comm),
                 step,
                 vtxbuf_names[i]);
@@ -678,7 +678,8 @@ class Grid {
         // Test: Rank
         const auto local_mm{acr::get_local_mm(local_info)};
         ac::ndbuffer<AcReal, ac::mr::host_memory_resource> buf{local_mm,
-                                                               static_cast<double>(ac::mpi::get_rank(cart_comm))};
+                                                               static_cast<double>(
+                                                                   ac::mpi::get_rank(cart_comm))};
 
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
@@ -887,6 +888,219 @@ class Grid {
         reset_init_cond();
     }
 
+    /**
+     *  Write uniformly random fields to disk.
+     *  The shape of each field is global_nn.
+     *  The range of values is [0, 1)
+     */
+    // void write_random_initial_condition_to_disk(const MPI_Comm& cart_comm, const std::string&
+    // label)
+    // {
+    //     // Allocate buffers
+    //     ac::buffer<AcReal, ac::mr::host_memory_resource>
+    //     buf{prod(acr::get_local_nn(local_info))};
+
+    //     // Setup random number generator
+    //     const auto rank{ac::mpi::get_rank(cart_comm)};
+    //     std::default_random_engine gen{as<unsigned>(12345 + rank * 1234)}; // use rank as seed
+    //     std::uniform_real_distribution<AcReal> dist{0, 1};
+    //     auto rng = [&]() { return dist(gen); };
+
+    //     // Write random initial condition to disk
+    //     for (size_t i{0}; i < NUM_FIELDS; ++i) {
+
+    //         // Fill buffer with random data
+    //         std::generate(buf.begin(), buf.end(), rng);
+
+    //         // Format the file path
+    //         std::ostringstream oss;
+    //         oss << label << "-vtxbuf-" << field_names[i] << ".mesh";
+    //         const auto path{oss.str()};
+
+    //         // Write collective
+    //         ac::mpi::write_collective(cart_comm,
+    //                                   ac::mpi::get_dtype<AcReal>(),
+    //                                   acr::get_global_nn(local_info),
+    //                                   acr::get_global_nn_offset(local_info),
+    //                                   acr::get_local_nn(local_info),
+    //                                   acr::get_local_nn(local_info),
+    //                                   Index(acr::get_local_rr().size(),
+    //                                   static_cast<uint64_t>(0)), buf.data(), path);
+    //     }
+    // }
+
+    // void read_snapshots_from_disk_to_device(const MPI_Comm& cart_comm, const std::string& label)
+    // {
+    //     VertexBufferArray vba{};
+    //     ERRCHK_AC(acDeviceGetVBA(device, &vba));
+    //     const auto local_mm{acr::get_local_mm(local_info)};
+    //     ac::buffer<AcReal, ac::mr::host_memory_resource> staging_buffer{prod(local_mm)};
+    //     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+
+    //         std::ostringstream oss;
+    //         oss << label << "-vtxbuf-" << field_names[i] << ".mesh";
+    //         const auto path{oss.str()};
+
+    //         ac::mpi::read_collective_simple(cart_comm,
+    //                                         ac::mpi::get_dtype<AcReal>(),
+    //                                         acr::get_global_nn(local_info),
+    //                                         acr::get_local_rr(),
+    //                                         staging_buffer,
+    //                                         path);
+
+    //         ac::mr::copy(staging_buffer.get(),
+    //                      make_ptr(vba, static_cast<Field>(i), BufferGroup::Input));
+    //     }
+    // }
+
+    // void write_snapshots_from_device_to_disk(const MPI_Comm& cart_comm, const std::string& label)
+    // {
+    //     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+
+    //         std::ostringstream oss;
+    //         oss << label << "-vtxbuf-" << field_names[i] << ".mesh";
+    //         const auto path{oss.str()};
+
+    //         ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
+    //                      staging_buffer.get());
+    //         ac::mpi::write_collective_simple(cart_comm,
+    //                                          ac::mpi::get_dtype<AcReal>(),
+    //                                          acr::get_global_nn(local_info),
+    //                                          acr::get_local_rr(),
+    //                                          staging_buffer.data(),
+    //                                          std::string(filepath));
+    //     }
+    // }
+
+    // void test_hydro_old()
+    // {
+    //     write_random_initial_condition_to_disk("initial");
+
+    //     // Read
+    //     read_snapshots_from_disk_to_device(cart_comm, "initial");
+
+    //     // Apply BCs
+    //     auto halo_exchange{make_halo_exchange_task(local_info, all_fields.size())};
+    //     halo_exchange.launch(cart_comm, get_ptrs(device, all_fields, BufferGroup::Input));
+    //     halo_exchange.wait(get_ptrs(device, all_fields, BufferGroup::Input));
+
+    //     // Write
+    //     write_snapshots_from_device_to_disk(cart_comm, "candidate");
+
+    //     // Setup CPU mesh info
+    //     const Shape global_nn{acr::get_global_nn(local_info)};
+    //     AcMeshInfo host_info{local_info};
+    //     acr::set(AC_nx, as<int>(global_nn[0]), host_info);
+    //     acr::set(AC_ny, as<int>(global_nn[1]), host_info);
+    //     acr::set(AC_nz, as<int>(global_nn[2]), host_info);
+    //     acHostUpdateBuiltinParams(&host_info);
+
+    //     // Setup CPU mesh
+    //     MPI_Comm leader{MPI_COMM_NULL};
+    //     if (rank == 0) {
+    //         ERRCHK_MPI_API(MPI_Comm_split(cart_comm, 0, 0, &leader));
+
+    //         AcMesh host_mesh{};
+    //         ERRCHK_AC(acHostMeshCreate(host_info, &host_mesh));
+    //         for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    //             const std::string label{"initial"};
+
+    //             std::ostringstream oss;
+    //             oss << label << "-vtxbuf-" << field_names[i] << ".mesh";
+    //             const auto path{oss.str()};
+
+    //             ac::mpi::read_collective(leader,
+    //                                      ac::mpi::get_dtype<AcReal>(),
+    //                                      acr::get_global_nn(host_info),
+    //                                      Index(global_nn.size, 0),
+    //                                      const Shape& in_mesh_dims,
+    //                                      const Shape& in_mesh_subdims,
+    //                                      const Index& in_mesh_offset,
+    //                                      const std::string& path,
+    //                                      void* data);
+    //         }
+
+    //         ERRCHK_AC(acHostMeshDestroy(&host_mesh));
+    //     }
+    //     else {
+    //         ERRCHK_MPI_API(MPI_Comm_split(cart_comm, MPI_UNDEFINED, 0, &leader));
+    //     }
+    // }
+
+    void test_hydro()
+    {
+        using Buffer = ac::buffer<AcReal, ac::mr::host_memory_resource>;
+
+        // Setup RNG
+        const auto rank{ac::mpi::get_rank(cart_comm)};
+        std::default_random_engine gen{as<unsigned>(12345 + rank * 1234)}; // use rank as seed
+        std::uniform_real_distribution<AcReal> dist{0, 1};
+        auto rng = [&]() { return dist(gen); };
+
+        // Allocate and initialize host buffers
+        const auto global_nn{acr::get_global_nn(local_info)};
+        const auto rr{acr::get_local_rr()};
+        const auto global_mm{global_nn + static_cast<uint64_t>(2) * rr};
+        const auto local_mm{acr::get_local_mm(local_info)};
+        const auto local_nn{acr::get_local_nn(local_info)};
+        const Index zeros{global_nn.size(), static_cast<uint64_t>(0)};
+
+        const auto stride{prod(global_mm)};
+        const auto count{static_cast<uint64_t>(NUM_FIELDS) * stride};
+        Buffer ref{count}; // Reference
+        Buffer tst{count}; // Test
+
+        // Setup the host mesh
+        AcMeshInfo host_info{local_info};
+        acr::set(AC_nx, as<int>(global_nn[0]), host_info);
+        acr::set(AC_ny, as<int>(global_nn[1]), host_info);
+        acr::set(AC_nz, as<int>(global_nn[2]), host_info);
+        acHostUpdateBuiltinParams(&host_info);
+
+        AcMesh refm{};
+        refm.info = host_info;
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            refm.vertex_buffer[i] = &ref[i * stride];
+
+        AcMesh tstm{};
+        tstm.info = host_info;
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            tstm.vertex_buffer[i] = &tst[i * stride];
+
+        // Setup VBA
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        const auto etype{ac::mpi::get_dtype<AcReal>()};
+
+        // Distribute mesh
+        std::generate(ref.begin(), ref.end(), rng); // Randomize
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::scatter_advanced(cart_comm,
+                                      etype,
+                                      global_mm,
+                                      rr,
+                                      refm.vertex_buffer[i],
+                                      local_mm,
+                                      local_nn,
+                                      rr,
+                                      vba.in[i]);
+
+        // Gather mesh
+        std::generate(tst.begin(), tst.end(), rng); // Randomize
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::gather_advanced(cart_comm,
+                                     etype,
+                                     local_mm,
+                                     local_nn,
+                                     rr,
+                                     vba.in[i],
+                                     global_mm,
+                                     rr,
+                                     refm.vertex_buffer[i]);
+
+        // ERRCHK_AC(acVerifyMeshCompDomain("Scatter/Gather", refm, tstm)); // TODO sort out
+    }
+
     void reset_init_cond()
     {
         PRINT_LOG("Enter");
@@ -1037,7 +1251,7 @@ class Grid {
 // TFM dependencies: hydro, tfm, profiles
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
                 ERRCHK_MPI(xy_average_req != MPI_REQUEST_NULL);
-                ac::mpi::request_wait_and_destroy(xy_average_req); // Averaging
+                ac::mpi::request_wait_and_destroy(&xy_average_req); // Averaging
 #endif
                 // TFM dependencies: tfm
                 tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::Input));
@@ -1094,7 +1308,7 @@ class Grid {
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
         ERRCHK(xy_average_req != MPI_REQUEST_NULL);
-        ac::mpi::request_wait_and_destroy(xy_average_req);
+        ac::mpi::request_wait_and_destroy(&xy_average_req);
 #endif
     }
 
@@ -1132,6 +1346,7 @@ main(int argc, char* argv[])
 
         Grid grid{raw_info};
         // grid.test();
+        // grid.test_hydro();
 
         cudaProfilerStart();
         grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
