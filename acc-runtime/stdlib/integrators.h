@@ -66,9 +66,12 @@ rk3_intermediate(Field field, real roc, int step_num, real dt)
 	return rk3_intermediate(previous(field), roc, step_num, dt)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_intermediate(Field3 field, real3 roc, int step_num, real dt)
+rk3_intermediate(Field3 w, real3 roc, int step_num, real dt)
 {
-	return rk3_intermediate(previous(field), roc, step_num, dt)
+  return real3( rk3_intermediate(w.x,roc.x,step_num,dt),
+                rk3_intermediate(w.y,roc.y,step_num,dt),
+                rk3_intermediate(w.z,roc.z,step_num,dt)
+              )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_final(real f, real w, int step_num) {
