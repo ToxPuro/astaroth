@@ -91,7 +91,7 @@ void print_mpi_comm(const MPI_Comm& comm);
 MPI_Datatype subarray_create(const Shape& dims, const Shape& subdims, const Index& offset,
                              const MPI_Datatype& dtype);
 
-void subarray_destroy(MPI_Datatype& subarray);
+void subarray_destroy(MPI_Datatype* subarray);
 
 /** Creates an MPI_Info structure with IO tuning parameters.
  * The resource must be freed after use to avoid memory leaks with
@@ -99,12 +99,12 @@ void subarray_destroy(MPI_Datatype& subarray);
  */
 MPI_Info info_create(void);
 
-void info_destroy(MPI_Info& info);
+void info_destroy(MPI_Info* info);
 
 /** Block until the request has completed and deallocate it.
  * The MPI_Request is set to MPI_REQUEST_NULL after deallocation.
  */
-void request_wait_and_destroy(MPI_Request& req);
+void request_wait_and_destroy(MPI_Request* req);
 
 /** Getters */
 

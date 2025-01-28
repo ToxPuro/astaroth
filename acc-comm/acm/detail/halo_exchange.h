@@ -65,7 +65,7 @@ launch_halo_exchange(const MPI_Comm& parent_comm, const Shape& local_mm, const S
         ac::mpi::increment_tag(tag);
     }
     while (!send_reqs.empty()) {
-        ac::mpi::request_wait_and_destroy(send_reqs.back());
+        ac::mpi::request_wait_and_destroy(&send_reqs.back());
         send_reqs.pop_back();
     }
 

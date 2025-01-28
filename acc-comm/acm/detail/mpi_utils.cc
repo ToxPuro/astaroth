@@ -341,20 +341,20 @@ subarray_create_resized(const Shape& dims, const Shape& subdims, const Index& of
     ERRCHK_MPI_API(MPI_Type_create_resized(subarray, lower_bound, extent, &resized_subarray));
     ERRCHK_MPI_API(MPI_Type_commit(&resized_subarray));
 
-    subarray_destroy(subarray);
+    subarray_destroy(&subarray);
     return resized_subarray;
 }
 
 void
-subarray_destroy(MPI_Datatype& subarray)
+subarray_destroy(MPI_Datatype* subarray)
 {
-    ERRCHK_MPI_API(MPI_Type_free(&subarray));
-    subarray = MPI_DATATYPE_NULL;
+    ERRCHK_MPI_API(MPI_Type_free(subarray));
+    *subarray = MPI_DATATYPE_NULL;
 }
 
 /** Creates an MPI_Info structure with IO tuning parameters.
  * The resource must be freed after use to avoid memory leaks with
- * info_destroy(info)
+ * info_destroy(&info)
  * or
  * ERRCHK_MPI_API(MPI_Info_free(&info));
  */
@@ -376,22 +376,22 @@ info_create(void)
 }
 
 void
-info_destroy(MPI_Info& info)
+info_destroy(MPI_Info* info)
 {
-    ERRCHK_MPI_API(MPI_Info_free(&info));
-    info = MPI_INFO_NULL;
+    ERRCHK_MPI_API(MPI_Info_free(info));
+    *info = MPI_INFO_NULL;
 }
 
 void
-request_wait_and_destroy(MPI_Request& req)
+request_wait_and_destroy(MPI_Request* req)
 {
     MPI_Status status;
     status.MPI_ERROR = MPI_SUCCESS;
-    ERRCHK_MPI_API(MPI_Wait(&req, &status));
+    ERRCHK_MPI_API(MPI_Wait(req, &status));
     ERRCHK_MPI_API(status.MPI_ERROR);
-    if (req != MPI_REQUEST_NULL)
-        ERRCHK_MPI_API(MPI_Request_free(&req));
-    ERRCHK_MPI(req == MPI_REQUEST_NULL);
+    if (*req != MPI_REQUEST_NULL)
+        ERRCHK_MPI_API(MPI_Request_free(req));
+    ERRCHK_MPI(*req == MPI_REQUEST_NULL);
 }
 
 // int
@@ -599,8 +599,8 @@ scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
                                 root,
                                 parent_comm));
 
-    subarray_destroy(monolithic_subarray);
-    subarray_destroy(distributed_subarray);
+    subarray_destroy(&monolithic_subarray);
+    subarray_destroy(&distributed_subarray);
 }
 
 void
@@ -637,8 +637,8 @@ gather_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
                                root,
                                parent_comm));
 
-    subarray_destroy(monolithic_subarray);
-    subarray_destroy(distributed_subarray);
+    subarray_destroy(&monolithic_subarray);
+    subarray_destroy(&distributed_subarray);
 }
 
 void
@@ -695,9 +695,9 @@ scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glo
                                 root_proc,
                                 parent_comm));
 
-    subarray_destroy(monolithic_subarray);
-    subarray_destroy(monolithic_subarray_prototype);
-    subarray_destroy(distributed_subarray);
+    subarray_destroy(&monolithic_subarray);
+    subarray_destroy(&monolithic_subarray_prototype);
+    subarray_destroy(&distributed_subarray);
 }
 
 void
@@ -741,9 +741,9 @@ gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glob
                                root_proc,
                                parent_comm));
 
-    subarray_destroy(monolithic_subarray);
-    subarray_destroy(monolithic_subarray_prototype);
-    subarray_destroy(distributed_subarray);
+    subarray_destroy(&monolithic_subarray);
+    subarray_destroy(&monolithic_subarray_prototype);
+    subarray_destroy(&distributed_subarray);
 }
 
 void

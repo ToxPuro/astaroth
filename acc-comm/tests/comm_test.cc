@@ -172,7 +172,7 @@ main()
                                                         din.buffer().data(),
                                                         din.buffer().data());
         while (!recv_reqs.empty()) {
-            ac::mpi::request_wait_and_destroy(recv_reqs.back());
+            ac::mpi::request_wait_and_destroy(&recv_reqs.back());
             recv_reqs.pop_back();
         }
         migrate(din.buffer(), hin.buffer());
