@@ -3214,7 +3214,7 @@ gen_kernel_num_of_combinations_recursive(const ASTNode* node, param_combinations
 	           add_param_combinations((variable){type,name},kernel_index,"",combinatorials);
 	   }
 	   free_func_params_info(&info);
-	   add_kernel_bool_dconst_to_combinations(node,kernel_index,combinatorials);
+	   //add_kernel_bool_dconst_to_combinations(node,kernel_index,combinatorials);
 	   gen_combinations(kernel_index,combinations,combinatorials);
 	}
 }
@@ -4032,8 +4032,19 @@ add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, b
         if(do_checks && !tspec.id) check_for_undeclared(node);
       }
     }
-    else if(do_checks && !skip_global_dup_check && current_nest == 0 && !(node->type & NODE_FUNCTION_ID))
-	    fatal("Multiple declarations of %s\n",node->buffer);
+   else if(do_checks && !skip_global_dup_check && current_nest == 0)
+   {
+         if(node->type & NODE_FUNCTION_ID)
+         {
+                 if(symboltable_lookup(node->buffer)->tspecifier == STENCIL_STR)
+                      fatal("Multiple declarations of %s\n",node->buffer);
+                 else if(get_tspec(decl).id == STENCIL_STR)
+                      fatal("Multiple declarations of %s\n",node->buffer);
+         }
+         else
+              fatal("Multiple declarations of %s\n",node->buffer);
+
+   }
   }
   return res;
 }
