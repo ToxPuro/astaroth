@@ -747,9 +747,9 @@ gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glob
 }
 
 void
-read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
-                const Index& in_file_offset, const Shape& in_mesh_dims,
-                const Shape& in_mesh_subdims, const Index& in_mesh_offset, const std::string& path,
+read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& file_dims,
+                const Index& file_offset, const Shape& mesh_dims,
+                const Shape& mesh_subdims, const Index& mesh_offset, const std::string& path,
                 void* data)
 {
     // Communicator
@@ -760,13 +760,13 @@ read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Sh
     MPI_Info info = ac::mpi::info_create();
 
     // Subarrays
-    MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims,
-                                                            in_mesh_subdims,
-                                                            in_file_offset,
+    MPI_Datatype global_subarray = ac::mpi::subarray_create(file_dims,
+                                                            mesh_subdims,
+                                                            file_offset,
                                                             etype);
-    MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims,
-                                                           in_mesh_subdims,
-                                                           in_mesh_offset,
+    MPI_Datatype local_subarray  = ac::mpi::subarray_create(mesh_dims,
+                                                           mesh_subdims,
+                                                           mesh_offset,
                                                            etype);
 
     // File
@@ -780,7 +780,7 @@ read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Sh
 
     MPI_Offset bytes{0};
     ERRCHK_MPI_API(MPI_File_get_size(file, &bytes));
-    ERRCHK_MPI_EXPR_DESC(as<uint64_t>(bytes) == prod(in_file_dims) * as<uint64_t>(etype_bytes),
+    ERRCHK_MPI_EXPR_DESC(as<uint64_t>(bytes) == prod(file_dims) * as<uint64_t>(etype_bytes),
                          "Tried to read a file that had unexpected file size. Ensure that "
                          "the file read/written using the same grid dimensions.");
 
@@ -794,9 +794,9 @@ read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Sh
 }
 
 void
-write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
-                 const Index& in_file_offset, const Shape& in_mesh_dims,
-                 const Shape& in_mesh_subdims, const Index& in_mesh_offset, const void* data,
+write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& file_dims,
+                 const Index& file_offset, const Shape& mesh_dims,
+                 const Shape& mesh_subdims, const Index& mesh_offset, const void* data,
                  const std::string& path)
 {
     // Communicator
@@ -807,13 +807,13 @@ write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const S
     MPI_Info info = ac::mpi::info_create();
 
     // Subarrays
-    MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims,
-                                                            in_mesh_subdims,
-                                                            in_file_offset,
+    MPI_Datatype global_subarray = ac::mpi::subarray_create(file_dims,
+                                                            mesh_subdims,
+                                                            file_offset,
                                                             etype);
-    MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims,
-                                                           in_mesh_subdims,
-                                                           in_mesh_offset,
+    MPI_Datatype local_subarray  = ac::mpi::subarray_create(mesh_dims,
+                                                           mesh_subdims,
+                                                           mesh_offset,
                                                            etype);
 
     // File

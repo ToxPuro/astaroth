@@ -40,20 +40,20 @@ ACM_Errorcode ACM_Get_global_nn_offset(const MPI_Comm cart_comm, const size_t nd
                                        uint64_t* global_nn_offset_out);
 
 ACM_Errorcode ACM_IO_Read_collective(const MPI_Comm parent_comm, const size_t ndims,
-                                     const uint64_t* in_file_dims, const uint64_t* in_file_offset,
-                                     const uint64_t* in_mesh_dims, const uint64_t* in_mesh_subdims,
-                                     const uint64_t* in_mesh_offset, const char* path,
+                                     const uint64_t* file_dims, const uint64_t* file_offset,
+                                     const uint64_t* mesh_dims, const uint64_t* mesh_subdims,
+                                     const uint64_t* mesh_offset, const char* path,
                                      double* data);
 
 ACM_Errorcode ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t ndims,
-                                      const uint64_t* in_file_dims, const uint64_t* in_file_offset,
-                                      const uint64_t* in_mesh_dims, const uint64_t* in_mesh_subdims,
-                                      const uint64_t* in_mesh_offset, const double* data,
+                                      const uint64_t* file_dims, const uint64_t* file_offset,
+                                      const uint64_t* mesh_dims, const uint64_t* mesh_subdims,
+                                      const uint64_t* mesh_offset, const double* data,
                                       const char* path);
 
-// ACM_Errorcode ACM_IO_Task_create(const size_t ndims, const uint64_t* in_file_dims,
-//                                  const uint64_t* in_file_offset, const uint64_t* in_mesh_dims,
-//                                  const uint64_t* in_mesh_subdims, const uint64_t* in_mesh_offset,
+// ACM_Errorcode ACM_IO_Task_create(const size_t ndims, const uint64_t* file_dims,
+//                                  const uint64_t* file_offset, const uint64_t* mesh_dims,
+//                                  const uint64_t* mesh_subdims, const uint64_t* mesh_offset,
 //                                  ACM_IO_Task* task);
 
 // ACM_Errorcode ACM_IO_Task_destroy(ACM_IO_Task* task);

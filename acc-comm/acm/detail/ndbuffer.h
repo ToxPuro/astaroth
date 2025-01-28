@@ -49,13 +49,13 @@ template <typename T, typename MemoryResource> struct ndbuffer {
 
     public:
     
-    explicit ndbuffer(const ac::vector<uint64_t>& in_shape)
-        : m_shape{in_shape}, m_buffer(prod(in_shape))
+    explicit ndbuffer(const ac::vector<uint64_t>& shape)
+        : m_shape{shape}, m_buffer(prod(shape))
     {
     }
 
-    explicit ndbuffer(const ac::vector<uint64_t>& in_shape, const T& fill_value)
-        : m_shape{in_shape}, m_buffer(prod(in_shape), fill_value)
+    explicit ndbuffer(const ac::vector<uint64_t>& shape, const T& fill_value)
+        : m_shape{shape}, m_buffer(prod(shape), fill_value)
     {
     }
 

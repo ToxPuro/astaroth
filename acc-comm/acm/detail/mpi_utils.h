@@ -195,18 +195,18 @@ void gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape&
  * The elementary type of the underlying data is passed as the etype arameter.
  */
 void read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
-                     const Shape& in_file_dims, const Index& in_file_offset,
-                     const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
-                     const Index& in_mesh_offset, const std::string& path, void* data);
+                     const Shape& file_dims, const Index& file_offset,
+                     const Shape& mesh_dims, const Shape& mesh_subdims,
+                     const Index& mesh_offset, const std::string& path, void* data);
 
 /**
  * Synchronous collective write.
  * The elementary type of the underlying data is passed as the etype parameter.
  */
 void write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
-                      const Shape& in_file_dims, const Index& in_file_offset,
-                      const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
-                      const Index& in_mesh_offset, const void* data, const std::string& path);
+                      const Shape& file_dims, const Index& file_offset,
+                      const Shape& mesh_dims, const Shape& mesh_subdims,
+                      const Index& mesh_offset, const void* data, const std::string& path);
 
 /** A simplified routine for reading a a domain of shape `global_nn` from disk to memory address
  * specified by `data` based on the arrangement defined by the communicator.

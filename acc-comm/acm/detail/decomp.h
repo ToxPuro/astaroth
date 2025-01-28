@@ -30,10 +30,10 @@ Shape decompose(const Shape& nn, uint64_t nprocs);
 std::vector<Shape> decompose_hierarchical(const Shape& nn,
                                           const std::vector<uint64_t>& nprocs_per_layer);
 
-Index hierarchical_to_spatial(const uint64_t in_index, const std::vector<Shape>& in_decompositions);
+Index hierarchical_to_spatial(const uint64_t index, const std::vector<Shape>& decompositions);
 
-uint64_t hierarchical_to_linear(const Index& in_coords,
-                                const std::vector<Shape>& in_decompositions);
+uint64_t hierarchical_to_linear(const Index& coords,
+                                const std::vector<Shape>& decompositions);
 
 /**
  * Construct a global decomposition from hierarchical.

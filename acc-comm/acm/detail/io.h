@@ -11,105 +11,105 @@ namespace ac::io {
 template <typename T, typename StagingMemoryResource = ac::mr::pinned_host_memory_resource>
 class AsyncWriteTask {
   private:
-    MPI_Info info{MPI_INFO_NULL};
-    MPI_Datatype global_subarray{MPI_DATATYPE_NULL};
-    MPI_Datatype local_subarray{MPI_DATATYPE_NULL};
+    MPI_Info m_info{MPI_INFO_NULL};
+    MPI_Datatype m_global_subarray{MPI_DATATYPE_NULL};
+    MPI_Datatype m_local_subarray{MPI_DATATYPE_NULL};
 
-    ac::buffer<T, StagingMemoryResource> staging_buffer;
+    ac::buffer<T, StagingMemoryResource> m_staging_buffer;
 
-    MPI_Comm comm{MPI_COMM_NULL};
-    MPI_File file{MPI_FILE_NULL};
-    MPI_Request req{MPI_REQUEST_NULL};
+    MPI_Comm m_comm{MPI_COMM_NULL};
+    MPI_File m_file{MPI_FILE_NULL};
+    MPI_Request m_req{MPI_REQUEST_NULL};
 
-    bool in_progress{false};
+    bool m_in_progress{false};
 
   public:
-    AsyncWriteTask(const Shape& in_file_dims, const Index& in_file_offset,
-                   const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
-                   const Index& in_mesh_offset)
-        : info{ac::mpi::info_create()},
-          global_subarray{ac::mpi::subarray_create(in_file_dims, in_mesh_subdims, in_file_offset,
+    AsyncWriteTask(const Shape& file_dims, const Index& file_offset,
+                   const Shape& mesh_dims, const Shape& mesh_subdims,
+                   const Index& mesh_offset)
+        : m_info{ac::mpi::info_create()},
+          m_global_subarray{ac::mpi::subarray_create(file_dims, mesh_subdims, file_offset,
                                                    ac::mpi::get_dtype<T>())},
-          local_subarray{ac::mpi::subarray_create(in_mesh_dims, in_mesh_subdims, in_mesh_offset,
+          m_local_subarray{ac::mpi::subarray_create(mesh_dims, mesh_subdims, mesh_offset,
                                                   ac::mpi::get_dtype<T>())},
-          staging_buffer{prod(in_mesh_dims)}
+          m_staging_buffer{prod(mesh_dims)}
     {
     }
 
     ~AsyncWriteTask()
     {
-        ERRCHK_MPI(!in_progress);
+        ERRCHK_MPI(!m_in_progress);
 
-        ERRCHK_MPI(req == MPI_REQUEST_NULL);
-        if (req != MPI_REQUEST_NULL)
-            ERRCHK_MPI_API(MPI_Request_free(&req));
+        ERRCHK_MPI(m_req == MPI_REQUEST_NULL);
+        if (m_req != MPI_REQUEST_NULL)
+            ERRCHK_MPI_API(MPI_Request_free(&m_req));
 
-        ERRCHK_MPI(file == MPI_FILE_NULL);
-        if (file != MPI_FILE_NULL)
-            ERRCHK_MPI_API(MPI_File_close(&file));
+        ERRCHK_MPI(m_file == MPI_FILE_NULL);
+        if (m_file != MPI_FILE_NULL)
+            ERRCHK_MPI_API(MPI_File_close(&m_file));
 
-        ERRCHK_MPI(comm == MPI_COMM_NULL);
-        if (comm != MPI_COMM_NULL)
-            ERRCHK_MPI_API(MPI_Comm_free(&comm));
+        ERRCHK_MPI(m_comm == MPI_COMM_NULL);
+        if (m_comm != MPI_COMM_NULL)
+            ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
 
-        ERRCHK_MPI_API(MPI_Type_free(&local_subarray));
-        ERRCHK_MPI_API(MPI_Type_free(&global_subarray));
-        ERRCHK_MPI_API(MPI_Info_free(&info));
+        ERRCHK_MPI_API(MPI_Type_free(&m_local_subarray));
+        ERRCHK_MPI_API(MPI_Type_free(&m_global_subarray));
+        ERRCHK_MPI_API(MPI_Info_free(&m_info));
     }
 
     template <typename MemoryResource>
-    void launch_write_collective(const MPI_Comm& parent_comm,
+    void launch_write_collective(const MPI_Comm& parent_m_comm,
                                  const ac::mr::base_ptr<T, MemoryResource>& input,
                                  const std::string& path)
     {
-        ERRCHK_MPI(!in_progress);
-        in_progress = true;
+        ERRCHK_MPI(!m_in_progress);
+        m_in_progress = true;
 
         // Communicator
-        ERRCHK_MPI(comm == MPI_COMM_NULL);
-        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+        ERRCHK_MPI(m_comm == MPI_COMM_NULL);
+        ERRCHK_MPI_API(MPI_Comm_dup(parent_m_comm, &m_comm));
 
         // TODO: transfers the whole buffer at the moment, would be
-        // better to migrate only in_mesh_subdims instead (but need
-        // to pack and change in_mesh_offset to zero)
-        // migrate(input, staging_buffer);
-        ac::mr::copy<T>(input, staging_buffer.get());
+        // better to migrate only mesh_subdims instead (but need
+        // to pack and change mesh_offset to zero)
+        // migrate(input, m_staging_buffer);
+        ac::mr::copy<T>(input, m_staging_buffer.get());
 
-        ERRCHK_MPI(file == MPI_FILE_NULL);
+        ERRCHK_MPI(m_file == MPI_FILE_NULL);
         ERRCHK_MPI_API(
-            MPI_File_open(comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &file));
+            MPI_File_open(m_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, m_info, &m_file));
         ERRCHK_MPI_API(
-            MPI_File_set_view(file, 0, ac::mpi::get_dtype<T>(), global_subarray, "native", info));
+            MPI_File_set_view(m_file, 0, ac::mpi::get_dtype<T>(), m_global_subarray, "native", m_info));
 
-        ERRCHK_MPI(file != MPI_FILE_NULL);
-        ERRCHK_MPI(req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_File_iwrite_all(file, staging_buffer.data(), 1, local_subarray, &req));
+        ERRCHK_MPI(m_file != MPI_FILE_NULL);
+        ERRCHK_MPI(m_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_File_iwrite_all(m_file, m_staging_buffer.data(), 1, m_local_subarray, &m_req));
     }
 
     void wait_write_collective()
     {
-        ERRCHK_MPI(in_progress);
-        ERRCHK_MPI_API(MPI_Wait(&req, MPI_STATUS_IGNORE));
-        ERRCHK_MPI_API(MPI_File_close(&file));
+        ERRCHK_MPI(m_in_progress);
+        ERRCHK_MPI_API(MPI_Wait(&m_req, MPI_STATUS_IGNORE));
+        ERRCHK_MPI_API(MPI_File_close(&m_file));
 
         // Ensure all processess have written their segment to disk.
         // Not strictly needed here and comes with a slight overhead
         // However, will cause hard-to-trace issues if the reader
         // tries to access the data without barrier.
-        ERRCHK_MPI(comm != MPI_COMM_NULL);
-        ERRCHK_MPI_API(MPI_Barrier(comm));
-        ERRCHK_MPI_API(MPI_Comm_free(&comm));
+        ERRCHK_MPI(m_comm != MPI_COMM_NULL);
+        ERRCHK_MPI_API(MPI_Barrier(m_comm));
+        ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
 
         // Check that the MPI implementation reset the resources
-        ERRCHK_MPI(req == MPI_REQUEST_NULL);
-        ERRCHK_MPI(file == MPI_FILE_NULL);
-        ERRCHK_MPI(comm == MPI_COMM_NULL);
+        ERRCHK_MPI(m_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI(m_file == MPI_FILE_NULL);
+        ERRCHK_MPI(m_comm == MPI_COMM_NULL);
 
         // Complete
-        in_progress = false;
+        m_in_progress = false;
     }
 
-    bool complete() const { return !in_progress; };
+    bool complete() const { return !m_in_progress; };
 
     AsyncWriteTask(const AsyncWriteTask&)            = delete; // Copy constructor
     AsyncWriteTask& operator=(const AsyncWriteTask&) = delete; // Copy assignment operator
@@ -125,26 +125,26 @@ class BatchedAsyncWriteTask {
   public:
     BatchedAsyncWriteTask() = default;
 
-    BatchedAsyncWriteTask(const Shape& in_file_dims, const Index& in_file_offset,
-                          const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
-                          const Index& in_mesh_offset, const size_t n_aggregate_buffers)
+    BatchedAsyncWriteTask(const Shape& file_dims, const Index& file_offset,
+                          const Shape& mesh_dims, const Shape& mesh_subdims,
+                          const Index& mesh_offset, const size_t n_aggregate_buffers)
     {
         for (size_t i = 0; i < n_aggregate_buffers; ++i)
             write_tasks.push_back(
-                std::make_unique<AsyncWriteTask<T, StagingMemoryResource>>(in_file_dims,
-                                                                           in_file_offset,
-                                                                           in_mesh_dims,
-                                                                           in_mesh_subdims,
-                                                                           in_mesh_offset));
+                std::make_unique<AsyncWriteTask<T, StagingMemoryResource>>(file_dims,
+                                                                           file_offset,
+                                                                           mesh_dims,
+                                                                           mesh_subdims,
+                                                                           mesh_offset));
     }
 
     template <typename MemoryResource>
-    void launch(const MPI_Comm& parent_comm,
+    void launch(const MPI_Comm& parent_m_comm,
                 const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs,
                 const std::vector<std::string>& paths)
     {
         for (size_t i = 0; i < inputs.size(); ++i)
-            write_tasks[i]->launch_write_collective(parent_comm, inputs[i], paths[i]);
+            write_tasks[i]->launch_write_collective(parent_m_comm, inputs[i], paths[i]);
     }
 
     void wait()
