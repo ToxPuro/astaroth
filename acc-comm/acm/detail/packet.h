@@ -16,139 +16,139 @@
 template <typename T, typename MemoryResource> class Packet {
 
   private:
-    Shape local_mm;
-    Shape local_nn;
-    Index local_rr;
+    Shape m_local_mm;
+    Shape m_local_nn;
+    Index m_local_rr;
 
-    ac::segment segment;
+    ac::segment m_segment;
 
-    ac::buffer<T, MemoryResource> send_buffer;
-    ac::buffer<T, MemoryResource> recv_buffer;
+    ac::buffer<T, MemoryResource> m_send_buffer;
+    ac::buffer<T, MemoryResource> m_recv_buffer;
 
-    MPI_Comm comm{MPI_COMM_NULL};
-    MPI_Request send_req{MPI_REQUEST_NULL};
-    MPI_Request recv_req{MPI_REQUEST_NULL};
+    MPI_Comm m_comm{MPI_COMM_NULL};
+    MPI_Request m_send_req{MPI_REQUEST_NULL};
+    MPI_Request m_recv_req{MPI_REQUEST_NULL};
 
-    bool in_progress = false;
+    bool m_in_progress = false;
 
   public:
-    Packet(const Shape& in_local_mm, const Shape& in_local_nn, const Index& in_local_rr,
-           const ac::segment& in_segment, const size_t n_aggregate_buffers)
-        : local_mm{in_local_mm},
-          local_nn{in_local_nn},
-          local_rr{in_local_rr},
-          segment{in_segment},
-          send_buffer{n_aggregate_buffers * prod(in_segment.dims)},
-          recv_buffer{n_aggregate_buffers * prod(in_segment.dims)}
+    Packet(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
+           const ac::segment& segment, const size_t n_aggregate_buffers)
+        : m_local_mm{local_mm},
+          m_local_nn{local_nn},
+          m_local_rr{local_rr},
+          m_segment{segment},
+          m_send_buffer{n_aggregate_buffers * prod(segment.dims)},
+          m_recv_buffer{n_aggregate_buffers * prod(segment.dims)}
     {
     }
 
     ~Packet()
     {
-        ERRCHK_MPI(!in_progress);
+        ERRCHK_MPI(!m_in_progress);
 
-        ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
-        if (recv_req != MPI_REQUEST_NULL)
-            ERRCHK_MPI_API(MPI_Request_free(&recv_req));
+        ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
+        if (m_recv_req != MPI_REQUEST_NULL)
+            ERRCHK_MPI_API(MPI_Request_free(&m_recv_req));
 
-        ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
-        if (send_req != MPI_REQUEST_NULL)
-            ERRCHK_MPI_API(MPI_Request_free(&send_req));
+        ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
+        if (m_send_req != MPI_REQUEST_NULL)
+            ERRCHK_MPI_API(MPI_Request_free(&m_send_req));
 
-        ERRCHK_MPI(comm == MPI_COMM_NULL);
-        if (comm != MPI_COMM_NULL)
-            ERRCHK_MPI_API(MPI_Comm_free(&comm));
+        ERRCHK_MPI(m_comm == MPI_COMM_NULL);
+        if (m_comm != MPI_COMM_NULL)
+            ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
     }
 
-    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
+    void launch(const MPI_Comm& parent_m_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
     {
-        ERRCHK_MPI(!in_progress);
-        in_progress = true;
+        ERRCHK_MPI(!m_in_progress);
+        m_in_progress = true;
 
         // Communicator
-        ERRCHK_MPI(comm == MPI_COMM_NULL);
-        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+        ERRCHK_MPI(m_comm == MPI_COMM_NULL);
+        ERRCHK_MPI_API(MPI_Comm_dup(parent_m_comm, &m_comm));
 
         // Find the direction and neighbors of the segment
-        Index send_offset{((local_nn + segment.offset - local_rr) % local_nn) + local_rr};
+        Index send_offset{((m_local_nn + m_segment.offset - m_local_rr) % m_local_nn) + m_local_rr};
 
-        auto recv_direction{ac::mpi::get_direction(segment.offset, local_nn, local_rr)};
-        const int recv_neighbor{ac::mpi::get_neighbor(comm, recv_direction)};
-        const int send_neighbor{ac::mpi::get_neighbor(comm, -recv_direction)};
+        auto recv_direction{ac::mpi::get_direction(m_segment.offset, m_local_nn, m_local_rr)};
+        const int recv_neighbor{ac::mpi::get_neighbor(m_comm, recv_direction)};
+        const int send_neighbor{ac::mpi::get_neighbor(m_comm, -recv_direction)};
 
         // Calculate the bytes to send
-        const size_t count{inputs.size() * prod(segment.dims)};
-        ERRCHK_MPI(count <= send_buffer.size());
-        ERRCHK_MPI(count <= recv_buffer.size());
+        const size_t count{inputs.size() * prod(m_segment.dims)};
+        ERRCHK_MPI(count <= m_send_buffer.size());
+        ERRCHK_MPI(count <= m_recv_buffer.size());
 
         // Post recv
         const int tag{0};
-        ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_Irecv(recv_buffer.data(),
+        ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_Irecv(m_recv_buffer.data(),
                                  as<int>(count),
                                  ac::mpi::get_dtype<T>(),
                                  recv_neighbor,
                                  tag,
-                                 comm,
-                                 &recv_req));
+                                 m_comm,
+                                 &m_recv_req));
 
         // Pack and post send
-        pack(local_mm,
-             segment.dims,
+        pack(m_local_mm,
+             m_segment.dims,
              send_offset,
              inputs,
-             ac::mr::device_ptr<T>{send_buffer.size(), send_buffer.data()});
+             ac::mr::device_ptr<T>{m_send_buffer.size(), m_send_buffer.data()});
 
-        ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_Isend(send_buffer.data(),
+        ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_Isend(m_send_buffer.data(),
                                  as<int>(count),
                                  ac::mpi::get_dtype<T>(),
                                  send_neighbor,
                                  tag,
-                                 comm,
-                                 &send_req));
+                                 m_comm,
+                                 &m_send_req));
     }
 
     bool ready() const
     {
-        ERRCHK_MPI(in_progress);
-        ERRCHK_MPI(send_req != MPI_REQUEST_NULL);
-        ERRCHK_MPI(recv_req != MPI_REQUEST_NULL);
+        ERRCHK_MPI(m_in_progress);
+        ERRCHK_MPI(m_send_req != MPI_REQUEST_NULL);
+        ERRCHK_MPI(m_recv_req != MPI_REQUEST_NULL);
 
         int send_flag, recv_flag;
-        ERRCHK_MPI_API(MPI_Request_get_status(send_req, &send_flag, MPI_STATUS_IGNORE));
-        ERRCHK_MPI_API(MPI_Request_get_status(recv_req, &recv_flag, MPI_STATUS_IGNORE));
-        return in_progress && send_flag && recv_flag;
+        ERRCHK_MPI_API(MPI_Request_get_status(m_send_req, &send_flag, MPI_STATUS_IGNORE));
+        ERRCHK_MPI_API(MPI_Request_get_status(m_recv_req, &recv_flag, MPI_STATUS_IGNORE));
+        return m_in_progress && send_flag && recv_flag;
     };
 
     void wait(std::vector<ac::mr::device_ptr<T>>& outputs)
     {
-        ERRCHK_MPI(in_progress);
-        ERRCHK_MPI_API(MPI_Wait(&recv_req, MPI_STATUS_IGNORE));
-        unpack(ac::mr::device_ptr<T>{recv_buffer.size(), recv_buffer.data()},
-               local_mm,
-               segment.dims,
-               segment.offset,
+        ERRCHK_MPI(m_in_progress);
+        ERRCHK_MPI_API(MPI_Wait(&m_recv_req, MPI_STATUS_IGNORE));
+        unpack(ac::mr::device_ptr<T>{m_recv_buffer.size(), m_recv_buffer.data()},
+               m_local_mm,
+               m_segment.dims,
+               m_segment.offset,
                outputs);
 
-        ERRCHK_MPI_API(MPI_Wait(&send_req, MPI_STATUS_IGNORE));
-        ERRCHK_MPI_API(MPI_Comm_free(&comm));
+        ERRCHK_MPI_API(MPI_Wait(&m_send_req, MPI_STATUS_IGNORE));
+        ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
 
         // Check that the MPI implementation reset the resources
-        ERRCHK_MPI(recv_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI(send_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI(comm == MPI_COMM_NULL);
+        ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI(m_comm == MPI_COMM_NULL);
 
         // Complete
-        in_progress = false;
+        m_in_progress = false;
     }
 
-    bool complete() const { return !in_progress; };
+    bool complete() const { return !m_in_progress; };
 
     friend std::ostream& operator<<(std::ostream& os, const Packet<T, MemoryResource>& obj)
     {
         os << "{";
-        os << "segment: " << obj.segment << ", ";
+        os << "segment: " << obj.m_segment << ", ";
         os << "buffer: " << obj.buffer << ", ";
         os << "req: " << obj.req;
         os << "}";

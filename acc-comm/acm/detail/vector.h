@@ -17,14 +17,13 @@ namespace ac {
 
 template <typename T> class vector {
   private:
-    using base_vector = std::vector<T>;
-    base_vector resource;
+    std::vector<T> m_resource;
 
   public:
     // Vector-like constructor
     // ac::vector<int> a(10, 1)
     explicit vector(const size_t count, const T& fill_value = 0)
-        : resource(count, fill_value)
+        : m_resource(count, fill_value)
     {
     }
 
@@ -35,49 +34,49 @@ template <typename T> class vector {
     {
         ERRCHK(count > 0);
         ERRCHK(arr);
-        std::copy_n(arr, count, resource.begin());
+        std::copy_n(arr, count, m_resource.begin());
     }
 
     // Construct from std::vector
     // ac::vector(std::vector{1,2,3})
     // ac::vector{{1,2,3}}
     explicit vector(const std::vector<T>& vec)
-        : resource{vec}
+        : m_resource{vec}
     {
     }
 
     // Initializer list constructor
     // ac::vector<int> a{1,2,3}
     explicit vector(const std::initializer_list<T>& init_list)
-        : resource{init_list}
+        : m_resource{init_list}
     {
     }
 
     // Enable the subscript[] operator
     T& operator[](const size_t i)
     {
-        ERRCHK(i < resource.size());
-        return resource[i];
+        ERRCHK(i < m_resource.size());
+        return m_resource[i];
     }
 
     const T& operator[](const size_t i) const
     {
-        ERRCHK(i < resource.size());
-        return resource[i];
+        ERRCHK(i < m_resource.size());
+        return m_resource[i];
     }
 
-    size_t size() const { return resource.size(); }
+    size_t size() const { return m_resource.size(); }
 
-    auto data() { return resource.data(); }
-    auto data() const { return resource.data(); }
+    auto data() { return m_resource.data(); }
+    auto data() const { return m_resource.data(); }
 
-    auto begin() { return resource.begin(); }
-    auto begin() const { return resource.begin(); }
-    auto end() { return resource.end(); }
-    auto end() const { return resource.end(); }
+    auto begin() { return m_resource.begin(); }
+    auto begin() const { return m_resource.begin(); }
+    auto end() { return m_resource.end(); }
+    auto end() const { return m_resource.end(); }
 
-    auto get() { return resource; }
-    auto get() const { return resource; }
+    auto get() { return m_resource; }
+    auto get() const { return m_resource; }
 
     template <typename U>
     friend ac::vector<T> operator+(const ac::vector<T>& a, const ac::vector<U>& b)

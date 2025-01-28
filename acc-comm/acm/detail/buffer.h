@@ -8,13 +8,13 @@
 namespace ac {
 template <typename T, typename MemoryResource> class buffer {
   private:
-    const size_t _count;
-    std::unique_ptr<T, decltype(&MemoryResource::dealloc)> _resource;
+    const size_t m_count;
+    std::unique_ptr<T, decltype(&MemoryResource::dealloc)> m_resource;
 
   public:
     explicit buffer(const size_t count)
-        : _count{count},
-          _resource{static_cast<T*>(MemoryResource::alloc(count * sizeof(T))),
+        : m_count{count},
+          m_resource{static_cast<T*>(MemoryResource::alloc(count * sizeof(T))),
                    MemoryResource::dealloc}
     {
     }
@@ -39,9 +39,9 @@ template <typename T, typename MemoryResource> class buffer {
         return data()[i];
     }
 
-    T* data() { return _resource.get(); }
-    const T* data() const { return _resource.get(); }
-    size_t size() const { return _count; }
+    T* data() { return m_resource.get(); }
+    const T* data() const { return m_resource.get(); }
+    size_t size() const { return m_count; }
 
     T* begin() { return data(); }
     const T* begin() const { return data(); }
@@ -66,7 +66,7 @@ template <typename T, typename MemoryResource> class buffer {
         static_assert(std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Only enabled for host buffer");
         for (size_t i{0}; i < size(); ++i)
-            std::cout << i << ": " << _resource.get()[i] << std::endl;
+            std::cout << i << ": " << m_resource.get()[i] << std::endl;
     }
 
     // friend std::ostream& operator<<(std::ostream& os, const ac::buffer<T, MemoryResource>& obj)

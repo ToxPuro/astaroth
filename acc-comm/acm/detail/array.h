@@ -8,7 +8,7 @@
 namespace ac {
 template <typename T, size_t N> class array {
   private:
-    T resource[N]{};
+    T m_resource[N]{};
 
   public:
     // Default constructor
@@ -20,26 +20,26 @@ template <typename T, size_t N> class array {
     {
         ERRCHK(init_list.size() == N);
         for (size_t i{0}; i < N; ++i)
-            resource[i] = init_list.begin()[i];
+            m_resource[i] = init_list.begin()[i];
     }
 
     // Enable the subscript[] operator
     __host__ __device__ T& operator[](const size_t i)
     {
         ERRCHK(i < N);
-        return resource[i];
+        return m_resource[i];
     }
 
     __host__ __device__ const T& operator[](const size_t i) const
     {
         ERRCHK(i < N);
-        return resource[i];
+        return m_resource[i];
     }
 
     constexpr __host__ __device__ size_t size() const { return N; }
 
-    T* data() { return resource; }
-    T* data() const { return resource; }
+    T* data() { return m_resource; }
+    T* data() const { return m_resource; }
 
     T* begin() { return data(); }
     T* begin() const { return data(); }
