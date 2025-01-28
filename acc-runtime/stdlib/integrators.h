@@ -146,7 +146,7 @@ rk4_beta(Field3 f_beta, real3 roc, int step_num, real dt) {
 }
 rk4_error(real df, int step_num,real dt)
 {
-	return dt*(rk4f_beta[step_num] - bhat[step_num])*df
+	return dt*(rk4f_beta[step_num] - rk4f_bhat[step_num])*df
 }
 rk4_error(real3 df, int step_num, real dt)
 {
