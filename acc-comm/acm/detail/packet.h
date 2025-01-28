@@ -60,14 +60,14 @@ template <typename T, typename MemoryResource> class Packet {
             ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
     }
 
-    void launch(const MPI_Comm& parent_m_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
+    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
     {
         ERRCHK_MPI(!m_in_progress);
         m_in_progress = true;
 
         // Communicator
         ERRCHK_MPI(m_comm == MPI_COMM_NULL);
-        ERRCHK_MPI_API(MPI_Comm_dup(parent_m_comm, &m_comm));
+        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &m_comm));
 
         // Find the direction and neighbors of the segment
         Index send_offset{((m_local_nn + m_segment.offset - m_local_rr) % m_local_nn) + m_local_rr};
