@@ -3525,8 +3525,11 @@ append_to_tail_node(ASTNode* tail_node, ASTNode* new_node)
 ASTNode*
 get_tail_node(ASTNode* node)
 {
-	if(node->lhs) return get_tail_node(node->lhs);
-	return node;
+	if(node->rhs) return get_tail_node(node->rhs);
+	ASTNode* new_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
+	node->rhs = new_node;
+	new_node->parent = node;
+	return new_node;
 }
 
 void
