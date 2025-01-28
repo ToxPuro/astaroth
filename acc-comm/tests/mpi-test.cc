@@ -186,7 +186,7 @@ main()
             test_reduce<ac::mr::pinned_host_memory_resource>(cart_comm, global_nn);
             test_reduce<ac::mr::pinned_write_combined_host_memory_resource>(cart_comm, global_nn);
             test_reduce<ac::mr::device_memory_resource>(cart_comm, global_nn);
-            ac::mpi::cart_comm_destroy(cart_comm);
+            ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
             const Shape global_nn{16};
@@ -194,7 +194,7 @@ main()
 
             test_scatter_gather(cart_comm, global_nn);
 
-            ac::mpi::cart_comm_destroy(cart_comm);
+            ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
             const Shape global_nn{8, 8};
@@ -202,7 +202,7 @@ main()
 
             test_scatter_gather(cart_comm, global_nn);
 
-            ac::mpi::cart_comm_destroy(cart_comm);
+            ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
             const Shape global_nn{8, 4, 2};
@@ -210,13 +210,13 @@ main()
 
             test_scatter_gather(cart_comm, global_nn);
 
-            ac::mpi::cart_comm_destroy(cart_comm);
+            ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
             const Shape global_nn{8, 8};
             MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
             test_scatter_gather_advanced(cart_comm, global_nn);
-            ac::mpi::cart_comm_destroy(cart_comm);
+            ac::mpi::cart_comm_destroy(&cart_comm);
         }
     }
     catch (const std::exception& e) {

@@ -59,7 +59,7 @@ ACM_Errorcode
 ACM_MPI_Cart_comm_destroy(MPI_Comm* cart_comm)
 {
     try {
-        ac::mpi::cart_comm_destroy(*cart_comm);
+        ac::mpi::cart_comm_destroy(cart_comm);
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {

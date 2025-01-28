@@ -284,10 +284,10 @@ cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn,
 }
 
 void
-cart_comm_destroy(MPI_Comm& cart_comm)
+cart_comm_destroy(MPI_Comm* cart_comm)
 {
-    ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
-    cart_comm = MPI_COMM_NULL;
+    ERRCHK_MPI_API(MPI_Comm_free(cart_comm));
+    *cart_comm = MPI_COMM_NULL;
 }
 
 void
@@ -1042,7 +1042,7 @@ test_mpi_utils()
     // ac::mpi::init_funneled();
     // const Shape global_nn{256, 128, 64};
     // MPI_Comm cart_comm{ac::mpi::cart_comm_hierarchical_create(MPI_COMM_WORLD, global_nn)};
-    // ac::mpi::cart_comm_destroy(cart_comm);
+    // ac::mpi::cart_comm_destroy(&cart_comm);
     // ac::mpi::finalize();
 
     // std::cout << "-----" << std::endl;

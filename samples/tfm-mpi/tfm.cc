@@ -657,7 +657,7 @@ class Grid {
     ~Grid()
     {
         ERRCHK_AC(acDeviceDestroy(device));
-        ac::mpi::cart_comm_destroy(cart_comm);
+        ac::mpi::cart_comm_destroy(&cart_comm);
     }
 
     void randomize()
