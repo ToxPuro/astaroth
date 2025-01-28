@@ -171,6 +171,17 @@ get_dtype()
 }
 
 /** Communication */
+void scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
+                      const Shape& global_mm, const Index& subdomain_offset,
+                      const void* send_buffer, //
+                      const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
+                      void* recv_buffer);
+
+void gather_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
+                     const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
+                     const void* send_buffer, //
+                     const Shape& global_mm, const Index& subdomain_offset, void* recv_buffer);
+
 void scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& global_nn,
              const Shape& local_rr, const void* send_buffer, void* recv_buffer);
 

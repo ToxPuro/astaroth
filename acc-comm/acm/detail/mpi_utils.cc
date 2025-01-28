@@ -328,6 +328,23 @@ subarray_create(const Shape& dims, const Shape& subdims, const Index& offset,
     return subarray;
 }
 
+MPI_Datatype
+subarray_create_resized(const Shape& dims, const Shape& subdims, const Index& offset,
+                        const MPI_Datatype& dtype, const MPI_Aint lower_bound,
+                        const MPI_Aint extent)
+{
+    ERRCHK_MPI(dims.size() == subdims.size());
+    ERRCHK_MPI(dims.size() == offset.size());
+    MPI_Datatype subarray{subarray_create(dims, subdims, offset, dtype)};
+
+    MPI_Datatype resized_subarray{MPI_DATATYPE_NULL};
+    ERRCHK_MPI_API(MPI_Type_create_resized(subarray, lower_bound, extent, &resized_subarray));
+    ERRCHK_MPI_API(MPI_Type_commit(&resized_subarray));
+
+    subarray_destroy(subarray);
+    return resized_subarray;
+}
+
 void
 subarray_destroy(MPI_Datatype& subarray)
 {
@@ -545,6 +562,85 @@ Shape
 get_global_mm(const Shape& global_nn, const Index& rr)
 {
     return Shape{as<uint64_t>(2) * rr + global_nn};
+}
+
+// Bugged
+void
+scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
+                 const Shape& global_mm, const Index& subdomain_offset,
+                 const void* send_buffer, //
+                 const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
+                 void* recv_buffer)
+{
+    constexpr int root{0};
+    const size_t nprocs{as<size_t>(get_size(parent_comm))};
+
+    constexpr int lb{0}; // Lower bound
+    int extent{-1};
+    ERRCHK_MPI_API(MPI_Type_size(etype, &extent)); // Use element size as extent
+
+    MPI_Datatype monolithic_subarray{
+        subarray_create_resized(global_mm, local_nn, subdomain_offset, etype, lb, extent)};
+    MPI_Datatype distributed_subarray{subarray_create(local_mm, local_nn, local_nn_offset, etype)};
+
+    std::vector<int> counts(nprocs, 1);
+    std::vector<int> displs(nprocs);
+    for (size_t i{0}; i < nprocs; ++i) {
+        const Index coords{get_coords(parent_comm, as<int>(i))};
+        displs[i] = as<int>(to_linear(mul(coords, local_nn) + subdomain_offset, global_mm));
+    }
+
+    ERRCHK_MPI_API(MPI_Scatterv(send_buffer,
+                                counts.data(),
+                                displs.data(),
+                                monolithic_subarray,
+                                recv_buffer,
+                                1,
+                                distributed_subarray,
+                                root,
+                                parent_comm));
+
+    subarray_destroy(monolithic_subarray);
+    subarray_destroy(distributed_subarray);
+}
+
+// Bugged
+void
+gather_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
+                const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
+                const void* send_buffer, //
+                const Shape& global_mm, const Index& subdomain_offset, void* recv_buffer)
+{
+    constexpr int root{0};
+    const size_t nprocs{as<size_t>(get_size(parent_comm))};
+
+    constexpr int lb{0}; // Lower bound
+    int extent{-1};
+    ERRCHK_MPI_API(MPI_Type_size(etype, &extent)); // Use element size as extent
+
+    MPI_Datatype monolithic_subarray{
+        subarray_create_resized(global_mm, local_nn, subdomain_offset, etype, lb, extent)};
+    MPI_Datatype distributed_subarray{subarray_create(local_mm, local_nn, local_nn_offset, etype)};
+
+    std::vector<int> counts(nprocs, 1);
+    std::vector<int> displs(nprocs);
+    for (size_t i{0}; i < nprocs; ++i) {
+        const Index coords{get_coords(parent_comm, as<int>(i))};
+        displs[i] = as<int>(to_linear(mul(coords, local_nn) + subdomain_offset, global_mm));
+    }
+
+    ERRCHK_MPI_API(MPI_Gatherv(send_buffer,
+                               1,
+                               distributed_subarray,
+                               recv_buffer,
+                               counts.data(),
+                               displs.data(),
+                               monolithic_subarray,
+                               root,
+                               parent_comm));
+
+    subarray_destroy(monolithic_subarray);
+    subarray_destroy(distributed_subarray);
 }
 
 void
