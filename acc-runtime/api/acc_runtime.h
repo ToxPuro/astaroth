@@ -391,6 +391,8 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(size_t,  acGetSmallestRealReduceScratchPadSizeBytes,());
 
 #if AC_RUNTIME_COMPILATION
+#define LOAD_DSYM(FUNC_NAME) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
+			     if(!FUNC_NAME) fprintf(stderr,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
   static AcResult __attribute__((unused)) acLoadRunTime()
   {
  	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_NOW | RTLD_GLOBAL);
@@ -448,8 +450,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 	if(!acStoreInt3Uniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreInt3Uniform");
 	*(void**)(&acKernelLaunchGetLastTPB) = dlsym(handle,"acKernelLaunchGetLastTPB");
 	if(!acKernelLaunchGetLastTPB) fprintf(stderr,"Astaroth error: was not able to load %s\n","acKernelLaunchGetLastTPB");
-	*(void**)(&GetOptimizedKernel) = dlsym(handle,"GetOptimizedKernel");
-	if(!GetOptimizedKernel) fprintf(stderr,"Astaroth error: was not able to load %s\n","GetOptimizedKernel");
+	LOAD_DSYM(acGetOptimizedKernel)
 	*(void**)(&acGetKernelReduceScratchPadSize) = dlsym(handle,"acGetKernelReduceScratchPadSize");
 	if(!acGetKernelReduceScratchPadSize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelReduceScratchPadSize");
 	*(void**)(&acGetKernelReduceScratchPadMinSize) = dlsym(handle,"acGetKernelReduceScratchPadMinSize");
