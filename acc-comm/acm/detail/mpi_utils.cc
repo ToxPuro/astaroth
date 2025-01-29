@@ -748,9 +748,8 @@ gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glob
 
 void
 read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& file_dims,
-                const Index& file_offset, const Shape& mesh_dims,
-                const Shape& mesh_subdims, const Index& mesh_offset, const std::string& path,
-                void* data)
+                const Index& file_offset, const Shape& mesh_dims, const Shape& mesh_subdims,
+                const Index& mesh_offset, const std::string& path, void* data)
 {
     // Communicator
     MPI_Comm comm{MPI_COMM_NULL};
@@ -795,9 +794,8 @@ read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Sh
 
 void
 write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& file_dims,
-                 const Index& file_offset, const Shape& mesh_dims,
-                 const Shape& mesh_subdims, const Index& mesh_offset, const void* data,
-                 const std::string& path)
+                 const Index& file_offset, const Shape& mesh_dims, const Shape& mesh_subdims,
+                 const Index& mesh_offset, const void* data, const std::string& path)
 {
     // Communicator
     MPI_Comm comm{MPI_COMM_NULL};
