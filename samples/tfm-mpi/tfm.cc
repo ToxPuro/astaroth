@@ -1027,7 +1027,7 @@ class Grid {
     //     }
     // }
 
-    void test_hydro()
+    void test_hydro_old2()
     {
         using Buffer = ac::buffer<AcReal, ac::mr::host_memory_resource>;
 
@@ -1099,6 +1099,141 @@ class Grid {
                                      refm.vertex_buffer[i]);
 
         // ERRCHK_AC(acVerifyMeshCompDomain("Scatter/Gather", refm, tstm)); // TODO sort out
+    }
+
+    void test_scatter_gather()
+    {
+        using Buffer = ac::buffer<AcReal, ac::mr::host_memory_resource>;
+
+        // Setup RNG
+        const auto rank{ac::mpi::get_rank(cart_comm)};
+        std::default_random_engine gen{as<unsigned>(12345 + rank * 1234)}; // use rank as seed
+        std::uniform_real_distribution<AcReal> dist{0, 1};
+        auto rng = [&]() { return dist(gen); };
+
+        // Allocate and initialize host buffers
+        const auto global_nn{acr::get_global_nn(local_info)};
+        const Index zeros(global_nn.size(), static_cast<uint64_t>(0));
+        const auto local_mm{acr::get_local_mm(local_info)};
+        const auto local_nn{acr::get_local_nn(local_info)};
+        const auto rr{acr::get_local_rr()};
+
+        const auto stride{prod(global_nn)};
+        const auto count{static_cast<uint64_t>(NUM_FIELDS) * stride};
+        Buffer ref{count}; // Reference
+        Buffer tst{count}; // Test
+
+        // Setup VBA
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        const auto etype{ac::mpi::get_dtype<AcReal>()};
+
+        // Distribute
+        std::generate(ref.begin(), ref.end(), rng); // Randomize
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::scatter_advanced(cart_comm,
+                                      etype,
+                                      global_nn,
+                                      zeros,
+                                      &ref[i * stride],
+                                      local_mm,
+                                      local_nn,
+                                      rr,
+                                      vba.in[i]);
+
+        // Gather
+        std::generate(tst.begin(), tst.end(), rng); // Randomize
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::gather_advanced(cart_comm,
+                                     etype,
+                                     local_mm,
+                                     local_nn,
+                                     rr,
+                                     vba.in[i],
+                                     global_nn,
+                                     zeros,
+                                     &tst[i * stride]);
+        // Check
+        if (rank == 0) { // Only root proc has the correct data
+            for (size_t i{0}; i < count; ++i)
+                ERRCHK(ref[i] == tst[i]); // Should be exact: FP comparison justified here
+        }
+    }
+
+    void test_hydro()
+    {
+        using Buffer = ac::buffer<AcReal, ac::mr::host_memory_resource>;
+
+        // Setup RNG
+        const auto rank{ac::mpi::get_rank(cart_comm)};
+        std::default_random_engine gen{as<unsigned>(12345 + rank * 1234)}; // use rank as seed
+        std::uniform_real_distribution<AcReal> dist{0, 1};
+        auto rng = [&]() { return dist(gen); };
+
+        // Allocate and initialize host buffers
+        const auto local_mm{acr::get_local_mm(local_info)};
+        const auto local_nn{acr::get_local_nn(local_info)};
+        const auto rr{acr::get_local_rr()};
+        const auto global_nn{acr::get_global_nn(local_info)};
+        const auto global_mm{global_nn + static_cast<uint64_t>(2) * rr};
+
+        const auto stride{prod(global_mm)};
+        const auto count{static_cast<uint64_t>(NUM_FIELDS) * stride};
+        Buffer ref{count}; // Reference
+        Buffer tst{count}; // Test
+
+        // Setup VBA
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        const auto etype{ac::mpi::get_dtype<AcReal>()};
+
+        // Distribute
+        std::generate(ref.begin(), ref.end(), rng); // Randomize
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::scatter_advanced(cart_comm,
+                                      etype,
+                                      global_mm,
+                                      rr,
+                                      &ref[i * stride],
+                                      local_mm,
+                                      local_nn,
+                                      rr,
+                                      vba.in[i]);
+
+        // Gather
+        std::generate(tst.begin(), tst.end(), rng); // Randomize
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::gather_advanced(cart_comm,
+                                     etype,
+                                     local_mm,
+                                     local_nn,
+                                     rr,
+                                     vba.in[i],
+                                     global_mm,
+                                     rr,
+                                     &tst[i * stride]);
+
+        // Setup the host mesh
+        AcMeshInfo host_info{local_info};
+        acr::set(AC_nx, as<int>(global_nn[0]), host_info);
+        acr::set(AC_ny, as<int>(global_nn[1]), host_info);
+        acr::set(AC_nz, as<int>(global_nn[2]), host_info);
+        acHostUpdateBuiltinParams(&host_info);
+
+        AcMesh refm{};
+        refm.info = host_info;
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            refm.vertex_buffer[i] = &ref[i * stride];
+
+        AcMesh tstm{};
+        tstm.info = host_info;
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            tstm.vertex_buffer[i] = &tst[i * stride];
+
+        // Check
+        if (rank == 0) { // Only root proc has the correct data
+            ERRCHK_AC(acVerifyMeshCompDomain("Scatter/Gather", refm, tstm));
+        }
     }
 
     void reset_init_cond()
