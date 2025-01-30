@@ -107,12 +107,12 @@ tini_sqrt_div_separate(real numerator, real a, real b)
 run_const int AC_nxyz_max
 
 
-gmem real AC_hcond_prof__mod__energy[AC_nxyz_max]
-gmem real AC_dlnhcond_prof__mod__energy[AC_nxyz_max]
-gmem real AC_chit_prof_stored__mod__energy[AC_nxyz_max]
-gmem real AC_dchit_prof_stored__mod__energy[AC_nxyz_max]
-gmem real AC_chit_prof_fluct_stored__mod__energy[AC_nxyz_max]
-gmem real AC_dchit_prof_fluct_stored__mod__energy[AC_nxyz_max]
+gmem real AC_hcond_prof__mod__energy[AC_nlocal_max_dim]
+gmem real AC_dlnhcond_prof__mod__energy[AC_nlocal_max_dim]
+gmem real AC_chit_prof_stored__mod__energy[AC_nlocal_max_dim]
+gmem real AC_dchit_prof_stored__mod__energy[AC_nlocal_max_dim]
+gmem real AC_chit_prof_fluct_stored__mod__energy[AC_nlocal_max_dim]
+gmem real AC_dchit_prof_fluct_stored__mod__energy[AC_nlocal_max_dim]
 
 #define AC_NGHOST_VAL__mod__cparam NGHOST_VAL
 
@@ -138,6 +138,6 @@ gmem real AC_dchit_prof_fluct_stored__mod__energy[AC_nxyz_max]
 #define AC_m__mod__cdata (vertexIdx.y+1)
 
 output real AC_df_rho_sum
-Field TEST_1, TEST_2,TEST_3,TEST_4
+Field TEST_1, TEST_2,TEST_3,TEST_4,TEST_5
 
 #include "../../../../acc-runtime/stdlib/map.h"

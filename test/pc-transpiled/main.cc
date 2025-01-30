@@ -132,7 +132,7 @@ main(int argc, char* argv[])
 
     acGridAccessMeshOnDiskSynchronousDistributed(RHO, "PC-AC-data","initial-condition", ACCESS_READ);
 
-    acGridAccessMeshOnDiskSynchronousDistributed(SS, "PC-AC-data","initial-condition", ACCESS_READ);
+    //acGridAccessMeshOnDiskSynchronousDistributed(SS, "PC-AC-data","initial-condition", ACCESS_READ);
 
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -145,7 +145,7 @@ main(int argc, char* argv[])
     	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.x,&uu_sum.x);
     	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.y,&uu_sum.y);
     	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, F_UU.z,&uu_sum.z);
-    	acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, SS,&ss_sum);
+    	//acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, SS,&ss_sum);
     	acGridSynchronizeStream(STREAM_ALL);
     	fprintf(stderr,"UU_RMS: %14e\n",uu_rms);
     	fprintf(stderr,"UUX_SUM: %14e\n",uu_sum.x);

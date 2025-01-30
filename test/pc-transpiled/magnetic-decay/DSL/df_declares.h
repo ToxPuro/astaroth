@@ -15,6 +15,7 @@ real3 DF_DIVA          = real3(0.0,0.0,0.0)
 real3 DF_BVEC          = real3(0.0,0.0,0.0)
 real3 DF_JVEC          = real3(0.0,0.0,0.0)
 real3 DF_AVEC          = real3(0.0,0.0,0.0)
+#define DF_AA DF_AVEC
 real3 DF_EVEC          = real3(0.0,0.0,0.0)
 real3 DF_JXBVEC        = real3(0.0,0.0,0.0)
 real3 DF_JXBVEC        = real3(0.0,0.0,0.0)
