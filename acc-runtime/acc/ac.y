@@ -311,7 +311,7 @@ reset_all_files()
 			"info_access_operators.h","device_load_uniform.h","device_load_uniform_decl.h","device_load_uniform_overloads.h","device_load_uniform_loads.h",
 			"reduce_dst_integers.h","fused_kernels.h","device_store_uniform.h","device_store_uniform_decl.h","device_store_overloads.h","device_finalize_reduce.h","scalar_reduce_buffer_defs.h","scalar_reduce_buffers_in_vba.h","reduce_helpers.h",
 			"builtin_enums.h","safe_vtxbuf_input_params.h","load_ac_kernel_params.h","load_ac_kernel_params_def.h"
-			"kernel_input_param_str.h","is_array_param.h","is_output_param.h","output_decl.h","output_value_decl.h"
+			,"kernel_input_param_str.h","is_array_param.h","is_output_param.h","output_decl.h","output_value_decl.h"
 			//,"user_kernels_ifs.h"
 			};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
