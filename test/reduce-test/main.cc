@@ -21,6 +21,7 @@
 */
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "user_constants.h"
 #include "errchk.h"
 
 #if AC_MPI_ENABLED
@@ -142,6 +143,11 @@ main(int argc, char* argv[])
     	acDeviceStoreProfile(acGridGetDevice(), PROF_YZ,  &model);
     	acDeviceStoreProfile(acGridGetDevice(), PROF_ZX,  &model);
     	acDeviceStoreProfile(acGridGetDevice(), PROF_ZY,  &model);
+
+    	acDeviceStoreProfile(acGridGetDevice(), VEC_Z_PROFILE.x,  &model);
+    	acDeviceStoreProfile(acGridGetDevice(), VEC_Z_PROFILE.y,  &model);
+    	acDeviceStoreProfile(acGridGetDevice(), VEC_Z_PROFILE.z,  &model);
+
     	acGridSynchronizeStream(STREAM_ALL);
     	const AcReal* x_sum_gpu = model.profile[PROF_X];
     	const AcReal* y_sum_gpu = model.profile[PROF_Y];
@@ -278,6 +284,10 @@ main(int argc, char* argv[])
     	AcReal* yz_sum      = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].yz);
     	AcReal* zx_sum      = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].xz);
     	AcReal* zy_sum      = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].yz);
+
+    	AcReal* vec_z_x_sum      = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].z);
+    	AcReal* vec_z_y_sum      = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].z);
+    	AcReal* vec_z_z_sum      = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].z);
     	for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
     	{
     	    x_sum[i] = 0.0;
@@ -295,6 +305,9 @@ main(int argc, char* argv[])
     	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
     	{
     	    z_sum[k] = 0.0;
+    	    vec_z_x_sum[k] = 0.0;
+    	    vec_z_y_sum[k] = 0.0;
+    	    vec_z_z_sum[k] = 0.0;
     		for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
     		{
     			for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -306,6 +319,9 @@ main(int argc, char* argv[])
     	    		cpu_int_sum += (int)val;
     	    		cpu_float_sum += (float)val;
     	    		z_sum[k] += val;
+    	    		vec_z_x_sum[k] += 1.0;
+    	    		vec_z_y_sum[k] += 2.0;
+    	    		vec_z_z_sum[k] += 3.0;
     	    	}
     	    }
     	}
@@ -415,7 +431,10 @@ main(int argc, char* argv[])
     	bool sums_correct = true;
     	for(size_t i = dims.n0.z; i < dims.n1.z; ++i)
     	{
-    		bool correct =  in_eps_threshold(z_sum[i],z_sum_gpu[i]);
+    	    bool correct =  in_eps_threshold(z_sum[i],z_sum_gpu[i]);
+	    correct &= in_eps_threshold(vec_z_x_sum[i],model.profile[VEC_Z_PROFILE.x][i]);
+	    correct &= in_eps_threshold(vec_z_y_sum[i],model.profile[VEC_Z_PROFILE.y][i]);
+	    correct &= in_eps_threshold(vec_z_z_sum[i],model.profile[VEC_Z_PROFILE.z][i]);
     	    sums_correct &= correct;
     	    //if(!correct) fprintf(stderr,"Z SUM WRONG: %14e, %14e\n",z_sum[i],z_sum_gpu[i]);
     	}
@@ -516,21 +535,28 @@ main(int argc, char* argv[])
     			for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
     			{
     		    		auto res = model.vertex_buffer[FIELD][IDX(i,j,k)];
-    	    		auto gpu_res =  candidate.vertex_buffer[FIELD][IDX(i,j,k)];
-    	    		res -= x_sum[i];
-    	    		res -= y_sum[j];
-    	    		res -= z_sum[k];
+    	    			auto gpu_res =  candidate.vertex_buffer[FIELD][IDX(i,j,k)];
+				AcReal res_2 = 0.0;
+    	    			auto gpu_res_2 =  candidate.vertex_buffer[FIELD_2][IDX(i,j,k)];
+    	    			res -= x_sum[i];
+    	    			res -= y_sum[j];
+    	    			res -= z_sum[k];
 
-    	    		res -= xy_sum[i + model.info[AC_mlocal].x*j];
-    	    		res -= xz_sum[i + model.info[AC_mlocal].x*k];
+				res_2 += vec_z_x_sum[k];
+				res_2 += vec_z_y_sum[k];
+				res_2 += vec_z_z_sum[k];
 
-    	    		res -= yx_sum[j + model.info[AC_mlocal].y*i];
-    	    		res -= yz_sum[j + model.info[AC_mlocal].y*k];
+    	    			res -= xy_sum[i + model.info[AC_mlocal].x*j];
+    	    			res -= xz_sum[i + model.info[AC_mlocal].x*k];
 
-    	    		res -= zx_sum[k + model.info[AC_mlocal].z*i];
-    	    		res -= zy_sum[k + model.info[AC_mlocal].z*j];
-    	    		const bool correct = in_eps_threshold(res,gpu_res);
-    	    		remove_mean_correct &= correct;
+    	    			res -= yx_sum[j + model.info[AC_mlocal].y*i];
+    	    			res -= yz_sum[j + model.info[AC_mlocal].y*k];
+
+    	    			res -= zx_sum[k + model.info[AC_mlocal].z*i];
+    	    			res -= zy_sum[k + model.info[AC_mlocal].z*j];
+    	    			bool correct = in_eps_threshold(res,gpu_res);
+				correct &= in_eps_threshold(res_2,gpu_res_2);
+    	    			remove_mean_correct &= correct;
     	    		//if(!correct)  fprintf(stderr,"WRONG REMOVE MEAN: %14e, %14e, %14e\n",res,gpu_res,relative_diff(res,gpu_res));
     			}
     	    }

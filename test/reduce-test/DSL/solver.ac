@@ -15,16 +15,34 @@ Stencil derx {
     [0][0][3]  = AC_inv_ds.x * DER1_3
 }
 
-Profile<X> PROF_X
-Profile<Y> PROF_Y
-Profile<Z> PROF_Z
-Profile<XY> PROF_XY
+struct ALL_PROFILES
+{
+	Profile<X> X
+	Profile<Y> Y
+	Profile<Z> Z
+	Profile<XY> XY
+	Profile<XZ> XZ
+	Profile<YX> YX
+	Profile<YZ> YZ
+	Profile<ZX> ZX
+	Profile<ZY> ZY
+}
+
+ALL_PROFILES PROF
+
 Profile<XY> DX_PROF_XY
-Profile<XZ> PROF_XZ
-Profile<YX> PROF_YX
-Profile<YZ> PROF_YZ
-Profile<ZX> PROF_ZX
-Profile<ZY> PROF_ZY
+
+
+struct VecZProfile
+{
+	Profile<Z> x
+	Profile<Z> y
+	Profile<Z> z
+}
+
+VecZProfile VEC_Z_PROFILE
+
+Field FIELD_2
 
 
 output real AC_max_val
@@ -37,6 +55,13 @@ output int  AC_int_sum_val
 Kernel empty()
 {}
 
+
+reduce_sum(real3 vec, VecZProfile prof)
+{
+	reduce_sum(vec.x,prof.x)
+	reduce_sum(vec.y,prof.y)
+	reduce_sum(vec.z,prof.z)
+}
 Kernel test_reduce()
 {
     reduce_min(FIELD, AC_min_val)
@@ -58,8 +83,10 @@ Kernel test_reduce()
     reduce_sum(FIELD,PROF_ZX)
     reduce_sum(FIELD,PROF_ZY)
 
-
     reduce_sum(derx(FIELD),DX_PROF_XY)
+
+    vec = real3(1.0,2.0,3.0)
+    reduce_sum(vec,VEC_Z_PROFILE)
 }
 
 Kernel remove_means()
@@ -75,6 +102,7 @@ Kernel remove_means()
 	res -= PROF_ZX
 	res -= PROF_ZY
 	write(FIELD, res)
+	write(FIELD_2,VEC_Z_PROFILE.x + VEC_Z_PROFILE.y + VEC_Z_PROFILE.z)
 }
 Kernel derx_kernel()
 {

@@ -396,7 +396,6 @@ gen_profile_funcs(const int kernel)
   }
   if(kernel_reduces_profile(kernel))
   {
-    const bool z_before = z_block_loop_before_y(kernel);
     if(kernel_has_block_loops(kernel))
     	printf("const int3 profileReduceOutputVertexIdx= (int3){"
     	       "threadIdx.x + blockIdx.x * blockDim.x,"
@@ -425,15 +424,19 @@ gen_profile_funcs(const int kernel)
     printf("switch (output) {");
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
+	    const char* access = 
+		    z_block_loop_before_y(kernel) ? "[current_block_idx_y]"
+		    				  : ""
+						  ;
 	    if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_Y) continue;
      	    printf("case %s: { ",profile_names[i]);
-	    	printf("%s_reduce_output += val;",profile_names[i]);
+	    	printf("%s_reduce_output%s += val;",profile_names[i],access);
 		printf("if(current_block_idx_z == last_block_idx_z) {"); 
         	printf("if(blockDim.x %% warp_size != 0) {");
-			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
+			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output%s;",profile_names[i],access);
 		printf("}");
 		printf("else {");
-        	   	printf("const AcReal reduce_res = warp_reduce_sum_real(%s_reduce_output);",profile_names[i]);
+        	   	printf("const AcReal reduce_res = warp_reduce_sum_real(%s_reduce_output%s);",profile_names[i],access);
 			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*profileReduceOutputVertexIdx.z)] = reduce_res;");
 		printf("}");
 		printf("}");
@@ -450,14 +453,18 @@ gen_profile_funcs(const int kernel)
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
             if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_Z) continue;
+	    const char* access = 
+		    z_block_loop_before_y(kernel) ? ""
+		    				  : "[current_block_idx_z]"
+						  ;
      	    printf("case %s: { ",profile_names[i]);
-            	printf("%s_reduce_output[current_block_idx_z] += val;",profile_names[i]);
+            	printf("%s_reduce_output%s += val;",profile_names[i],access);
         	printf("if(current_block_idx_y == last_block_idx_y) {"); 
         		printf("if(blockDim.x %% warp_size != 0) {");
-        			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*localCompdomainVertexIdx.z)] = %s_reduce_output[current_block_idx_z];",profile_names[i]);
+        			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*localCompdomainVertexIdx.z)] = %s_reduce_output%s;",profile_names[i],access);
         		printf("}");
         		printf("else {");
-        	   		printf("const AcReal reduce_res = warp_reduce_sum_real(%s_reduce_output[current_block_idx_z]);",profile_names[i]);
+        	   		printf("const AcReal reduce_res = warp_reduce_sum_real(%s_reduce_output%s);",profile_names[i],access);
         			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*localCompdomainVertexIdx.z)] = reduce_res;");
         		printf("}");
         	printf("}");
@@ -473,9 +480,13 @@ gen_profile_funcs(const int kernel)
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
 	    if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_XY) continue;
+	    const char* access = 
+		    z_block_loop_before_y(kernel) ? "[current_block_idx_y]"
+		    				  : ""
+						  ;
      	    printf("case %s: { ",profile_names[i]);
-	    	printf("%s_reduce_output += val;",profile_names[i]);
-		printf("if(current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
+	    	printf("%s_reduce_output%s += val;",profile_names[i],access);
+		printf("if(current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output%s;",profile_names[i],access);
 	    printf("break;}");
     }
     printf("default: {}");
@@ -486,10 +497,14 @@ gen_profile_funcs(const int kernel)
     printf("switch (output) {");
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
+	    const char* access = 
+		    z_block_loop_before_y(kernel) ? "[current_block_idx_y]"
+		    				  : ""
+						  ;
 	    if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_YX) continue;
      	    printf("case %s: { ",profile_names[i]);
-	    	printf("%s_reduce_output += val;",profile_names[i]);
-		printf("if(current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
+	    	printf("%s_reduce_output%s += val;",profile_names[i],access);
+		printf("if(current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output%s;",profile_names[i],access);
 	    printf("break;}");
     }
     printf("default: {}");
@@ -501,9 +516,13 @@ gen_profile_funcs(const int kernel)
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
             if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_XZ) continue;
+	    const char* access = 
+		    z_block_loop_before_y(kernel) ? ""
+		    				  : "[current_block_idx_z]"
+						  ;
      	    printf("case %s: { ",profile_names[i]);
-            	printf("%s_reduce_output%s += val;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
-        	printf("if(current_block_idx_y == last_block_idx_y) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = %s_reduce_output%s;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
+            	printf("%s_reduce_output%s += val;",profile_names[i],access);
+        	printf("if(current_block_idx_y == last_block_idx_y) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = %s_reduce_output%s;",profile_names[i],access);
             printf("break;}");
     }
     printf("default: {}");
@@ -514,10 +533,14 @@ gen_profile_funcs(const int kernel)
     printf("switch (output) {");
     for(int i = 0; i < NUM_PROFILES; ++i)
     {
+	    const char* access = 
+		    z_block_loop_before_y(kernel) ? ""
+		    				  : "[current_block_idx_z]"
+						  ;
             if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_ZX) continue;
      	    printf("case %s: { ",profile_names[i]);
-            	printf("%s_reduce_output%s += val;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
-        	printf("if(current_block_idx_y == last_block_idx_y) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = %s_reduce_output%s;",profile_names[i],z_before ? "" : "[current_block_idx_z]");
+            	printf("%s_reduce_output%s += val;",profile_names[i],access);
+        	printf("if(current_block_idx_y == last_block_idx_y) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = %s_reduce_output%s;",profile_names[i],access);
             printf("break;}");
     }
     printf("default: {}");
