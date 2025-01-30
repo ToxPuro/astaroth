@@ -56,6 +56,17 @@
 #define DER6UPWD_1 ( 15. / 60.)
 #define DER6UPWD_0 (-20. / 60.)
 
+gmem real AC_inv_r[AC_mlocal.x]
+gmem real AC_inv_cyl_r[AC_mlocal.x]
+gmem real AC_inv_sin_theta[AC_mlocal.z]
+gmem real AC_cot_theta[AC_mlocal.y]
+gmem real AC_inv_mapping_func_derivative_x[AC_mlocal.x]
+gmem real AC_inv_mapping_func_derivative_y[AC_mlocal.y]
+gmem real AC_inv_mapping_func_derivative_z[AC_mlocal.z]
+gmem real AC_mapping_func_tilde_x[AC_mlocal.x]
+gmem real AC_mapping_func_tilde_y[AC_mlocal.y]
+gmem real AC_mapping_func_tilde_z[AC_mlocal.z]
+
 #define AC_INV_R         (AC_inv_r[vertexIdx.y])
 #define AC_INV_CYL_R     (AC_inv_cyl_r[vertexIdx.y])
 #define AC_INV_SIN_THETA (AC_inv_sin_theta[vertexIdx.z])
@@ -147,7 +158,7 @@ derz(Field f)
 	}
 	else
 	{
-		grid_factor = AC_inv_ds.y
+		grid_factor = AC_inv_ds.z
 	}
 	return derz_stencil(f)*coordinate_factor*grid_factor
 }
@@ -423,7 +434,7 @@ der4y(Field f)
 	}
 	return der4y_stencil(f)
 }
-Stencil der4z {
+Stencil der4z_stencil {
     [-3][0][0] = AC_inv_ds_4.z * DER4_3,
     [-2][0][0] = AC_inv_ds_4.z * DER4_2,
     [-1][0][0] = AC_inv_ds_4.z * DER4_1,
@@ -639,14 +650,14 @@ der6z(Field f)
 
 der6x_upwd(Field f)
 {
-	grid_factor = 1.0
+	grid_factor = (1.0/60.0)
 	if(AC_nonequidistant_grid.x)
 	{
 		grid_factor = AC_INV_MAPPING_FUNC_DER_X
 	}
 	else
 	{
-		grid_factor = AC_inv_ds.x
+		grid_factor *= AC_inv_ds.x
 	}
 	return der6x_stencil(f)*grid_factor
 }
@@ -669,14 +680,14 @@ der6y_upwd(Field f)
 		coordinate_factor = factor_4*factor_2
 
 	}
-	grid_factor = 1.0
+	grid_factor = (1.0/60.0)
 	if(AC_nonequidistant_grid.y)
 	{
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Y
+		grid_factor *= AC_INV_MAPPING_FUNC_DER_Y
 	}
 	else
 	{
-		grid_factor = AC_inv_ds.y
+		grid_factor *= AC_inv_ds.y
 	}
 	return der6y_stencil(f)*coordinate_factor*grid_factor
 }
@@ -691,14 +702,14 @@ der6z_upwd(Field f)
 		factor_4 = factor_2*factor_2
 		coordinate_factor = factor_4*factor_2
 	}
-	grid_factor = 1.0
+	grid_factor = (1.0/60.0)
 	if(AC_nonequidistant_grid.z)
 	{
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Z
+		grid_factor *= AC_INV_MAPPING_FUNC_DER_Z
 	}
 	else
 	{
-		grid_factor = AC_inv_ds.z
+		grid_factor *= AC_inv_ds.z
 	}
 	return der6z_stencil(f)*coordinate_factor*grid_factor
 }

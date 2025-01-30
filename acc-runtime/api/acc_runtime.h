@@ -395,7 +395,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 			     if(!FUNC_NAME) fprintf(stderr,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
   static AcResult __attribute__((unused)) acLoadRunTime()
   {
- 	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_NOW | RTLD_GLOBAL);
+ 	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_LAZY | RTLD_GLOBAL);
 	if(!handle)
 	{
     		fprintf(stderr,"%s","Fatal error was not able to load Astaroth runtime\n"); 
