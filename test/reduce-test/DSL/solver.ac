@@ -5,6 +5,7 @@ output real AC_min_val
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
+#include "../../../acc-runtime/stdlib/profiles.h"
 
 Stencil derx {
     [0][0][-3] = -AC_inv_ds.x * DER1_3,
@@ -33,14 +34,6 @@ ALL_PROFILES PROF
 Profile<XY> DX_PROF_XY
 
 
-struct VecZProfile
-{
-	Profile<Z> x
-	Profile<Z> y
-	Profile<Z> z
-}
-
-VecZProfile VEC_Z_PROFILE
 
 Field FIELD_2
 
@@ -55,13 +48,8 @@ output int  AC_int_sum_val
 Kernel empty()
 {}
 
+VecZProfile VEC_Z_PROFILE
 
-reduce_sum(real3 vec, VecZProfile prof)
-{
-	reduce_sum(vec.x,prof.x)
-	reduce_sum(vec.y,prof.y)
-	reduce_sum(vec.z,prof.z)
-}
 Kernel test_reduce()
 {
     reduce_min(FIELD, AC_min_val)
