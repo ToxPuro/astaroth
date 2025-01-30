@@ -194,9 +194,8 @@ void gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape&
  * Synchronous collective read.
  * The elementary type of the underlying data is passed as the etype arameter.
  */
-void read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
-                     const Shape& file_dims, const Index& file_offset,
-                     const Shape& mesh_dims, const Shape& mesh_subdims,
+void read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& file_dims,
+                     const Index& file_offset, const Shape& mesh_dims, const Shape& mesh_subdims,
                      const Index& mesh_offset, const std::string& path, void* data);
 
 /**
@@ -204,9 +203,9 @@ void read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
  * The elementary type of the underlying data is passed as the etype parameter.
  */
 void write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
-                      const Shape& file_dims, const Index& file_offset,
-                      const Shape& mesh_dims, const Shape& mesh_subdims,
-                      const Index& mesh_offset, const void* data, const std::string& path);
+                      const Shape& file_dims, const Index& file_offset, const Shape& mesh_dims,
+                      const Shape& mesh_subdims, const Index& mesh_offset, const void* data,
+                      const std::string& path);
 
 /** A simplified routine for reading a a domain of shape `global_nn` from disk to memory address
  * specified by `data` based on the arrangement defined by the communicator.
@@ -237,7 +236,18 @@ void read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, co
 /**
  * Collective synchronous reduction.
  * Operates in-place on the input data.
+ * Operates on all axes.
+ * Returns the number of processes that contribute to the result.
+ */
+int reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
+           const size_t count, void* data);
+
+/**
+ * Collective synchronous reduction.
+ * Operates in-place on the input data.
  * The axis parameter is used to group the processes based on their spatial coordinates
+ * Returns the number of processes that contributed to the result
+ * (this can be used for, e.g., averaging)
  *
  * For example, reducing along axis=0 (the fastest varying) in a 2D decomposition with
  * processes
@@ -255,8 +265,8 @@ void read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, co
  * axis = 1 => reduced along the xz plane
  * axis = 2 => reduced along the xy plane
  */
-void reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
-            const size_t& axis, const size_t& count, void* data);
+int reduce_axis(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
+                const size_t& axis, const size_t count, void* data);
 
 } // namespace ac::mpi
 

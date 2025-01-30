@@ -932,18 +932,42 @@ read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const S
     // fclose(fp);
 }
 
-void
-reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op, const size_t& axis,
-       const size_t& count, void* data)
+int
+reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op, const size_t count,
+       void* data)
+{
+    int comm_size{-1};
+    ERRCHK_MPI_API(MPI_Comm_size(parent_comm, &comm_size));
+    ERRCHK_MPI(comm_size > 0);
+
+    ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, data, as<int>(count), etype, op, parent_comm));
+
+    return comm_size;
+}
+
+int
+reduce_axis(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
+            const size_t& axis, const size_t count, void* data)
 {
     const auto coords{get_coords(parent_comm)};
     const auto color{as<int>(coords[axis])};
     const auto key{get_rank(parent_comm)};
 
+    // Split the communicator
     MPI_Comm neighbors{MPI_COMM_NULL};
     ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, key, &neighbors));
+    ERRCHK_MPI(neighbors != MPI_COMM_NULL);
+
+    // Allreduce
     ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, data, as<int>(count), etype, op, neighbors));
+
+    // Get the size of the communicator and release resources
+    int comm_size{-1};
+    ERRCHK_MPI_API(MPI_Comm_size(neighbors, &comm_size));
+    ERRCHK_MPI(comm_size > 0);
+
     ERRCHK_MPI_API(MPI_Comm_free(&neighbors));
+    return comm_size;
 }
 
 } // namespace ac::mpi
