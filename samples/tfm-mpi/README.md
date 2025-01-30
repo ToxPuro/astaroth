@@ -72,7 +72,13 @@ The default `AC_eta` and TFM-specific `AC_eta_tfm` are available in `astaroth/sa
 See `AC_profile_amplitude` and `AC_profile_wavenumber` in `astaroth/samples/tfm/mhd/mhd.ini`.
 
 ### Simulation steps
-See `AC_simulation_nsteps` and `AC_simulation_output_interval` in `astaroth/samples/tfm/mhd/mhd.ini`.
+See
+```ini
+AC_simulation_nsteps                   = 100 ; The number of simulation steps
+AC_simulation_snapshot_output_interval = 50  ; The step interval for writing the mesh to disk
+AC_simulation_profile_output_interval  = 1   ; The step interval for writing the profiles to disk
+```
+in `astaroth/samples/tfm/mhd/mhd.ini`.
 
 ### Forcing
 

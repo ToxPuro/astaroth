@@ -337,6 +337,92 @@ init_tfm_profiles(const Device& device)
     return 0;
 }
 
+/** Synchronous write snapshots to disk */
+static int
+write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const size_t step)
+{
+    PRINT_LOG("Enter");
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    AcMeshInfo local_info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &local_info));
+
+    const auto local_mm{acr::get_local_mm(local_info)};
+    const auto local_mm_count{prod(local_mm)};
+    ac::buffer<AcReal, ac::mr::host_memory_resource> staging_buffer{local_mm_count};
+
+    // Global mesh (collective)
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        char filepath[4096];
+        sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
+        PRINT_LOG("Writing %s", filepath);
+        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
+                     staging_buffer.get());
+        ac::mpi::write_collective_simple(parent_comm,
+                                         ac::mpi::get_dtype<AcReal>(),
+                                         acr::get_global_nn(local_info),
+                                         acr::get_local_nn_offset(),
+                                         staging_buffer.data(),
+                                         std::string(filepath));
+    }
+    PRINT_LOG("Exit");
+    return 0;
+}
+
+static int
+write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const size_t step)
+{
+    PRINT_LOG("Enter");
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    AcMeshInfo local_info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &local_info));
+
+    const auto local_mm{acr::get_local_mm(local_info)};
+    const auto local_mm_count{prod(local_mm)};
+    ac::buffer<AcReal, ac::mr::host_memory_resource> staging_buffer{local_mm_count};
+
+    for (int i = 0; i < NUM_PROFILES; ++i) {
+        char filepath[4096];
+        sprintf(filepath, "debug-step-%012zu-tfm-%s.profile", step, profile_names[i]);
+        PRINT_LOG("Writing %s", filepath);
+        const Shape profile_global_nz{as<uint64_t>(acr::get(local_info, AC_global_nz))};
+        const Shape profile_local_mz{as<uint64_t>(acr::get(local_info, AC_mz))};
+        const Shape profile_local_nz{as<uint64_t>(acr::get(local_info, AC_nz))};
+        const Shape profile_local_nz_offset{as<uint64_t>(acr::get(local_info, AC_nz_min))};
+        const Index coords{ac::mpi::get_coords(parent_comm)[2]};
+        const Shape profile_global_nz_offset{coords * profile_local_nz};
+
+        const int rank{ac::mpi::get_rank(parent_comm)};
+        const Index coords_3d{ac::mpi::get_coords(parent_comm)};
+        const Shape decomp_3d{ac::mpi::get_decomposition(parent_comm)};
+        const int color = (coords_3d[0] + coords_3d[1] * decomp_3d[0]) == 0 ? 0 : MPI_UNDEFINED;
+
+        MPI_Comm profile_comm{MPI_COMM_NULL};
+        ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, rank, &profile_comm));
+
+        if (profile_comm != MPI_COMM_NULL) {
+            ac::mr::copy(make_ptr(vba, static_cast<Profile>(i), BufferGroup::Input),
+                         staging_buffer.get());
+            ac::mpi::write_collective(profile_comm,
+                                      ac::mpi::get_dtype<AcReal>(),
+                                      profile_global_nz,
+                                      profile_global_nz_offset,
+                                      profile_local_mz,
+                                      profile_local_nz,
+                                      profile_local_nz_offset,
+                                      staging_buffer.data(),
+                                      std::string(filepath));
+            ERRCHK_MPI_API(MPI_Comm_free(&profile_comm));
+        }
+    }
+
+    PRINT_LOG("Exit");
+    return 0;
+}
+
 /** Write both the mesh snapshot and profiles synchronously to disk */
 static int
 write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const size_t step)
@@ -777,7 +863,12 @@ class Grid {
         const size_t reduce_count{NUM_PROFILES * vba.profiles.count};
         AcReal* data{vba.profiles.in[0]};
         const size_t axis{2};
-        ac::mpi::reduce(cart_comm, ac::mpi::get_dtype<AcReal>(), MPI_SUM, axis, reduce_count, data);
+        ac::mpi::reduce_axis(cart_comm,
+                             ac::mpi::get_dtype<AcReal>(),
+                             MPI_SUM,
+                             axis,
+                             reduce_count,
+                             data);
         // ac::mr::copy(dprof, hprof.get());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -1435,8 +1526,12 @@ class Grid {
 // TODO: this is synchronous. Consider async.
 #if defined(AC_ENABLE_IO)
             // Note: ghost zones not up-to-date with this (working as intended)
-            if ((iter % as<uint64_t>(acr::get(local_info, AC_simulation_output_interval))) == 0)
-                write_diagnostic_step(cart_comm, device, iter);
+            if ((iter %
+                 as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0)
+                write_snapshots_to_disk(cart_comm, device, iter);
+            if ((iter %
+                 as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
+                write_profiles_to_disk(cart_comm, device, iter);
 #endif
         }
         hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::Input));
