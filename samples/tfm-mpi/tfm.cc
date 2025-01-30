@@ -1280,7 +1280,13 @@ class Grid {
         // This issue does not appear on Triton or Puhti.
         const size_t count{NUM_PROFILES * vba.profiles.count};
         AcReal* data{vba.profiles.in[0]};
-        ac::mpi::reduce(cart_comm, ac::mpi::get_dtype<AcReal>(), MPI_SUM, axis, count, data);
+        const auto collaborated_procs{ac::mpi::reduce_axis(cart_comm,
+                                                           ac::mpi::get_dtype<AcReal>(),
+                                                           MPI_SUM,
+                                                           axis,
+                                                           count,
+                                                           data)};
+        acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
 
         PRINT_LOG("Exit");
     }
