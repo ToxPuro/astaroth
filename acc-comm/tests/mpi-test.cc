@@ -3,14 +3,14 @@
 
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/ndbuffer.h"
-#include <numeric> // std::iota
 #include "acm/detail/partition.h"
+#include <numeric> // std::iota
 
 #include "acm/detail/mpi_utils.h"
 
 template <typename MemoryResource>
 void
-test_reduce(const MPI_Comm& cart_comm, const Shape& global_nn)
+test_reduce_axis(const MPI_Comm& cart_comm, const Shape& global_nn)
 {
     Shape decomp{ac::mpi::get_decomposition(cart_comm)};
     Index coords{ac::mpi::get_coords(cart_comm)};
@@ -24,12 +24,12 @@ test_reduce(const MPI_Comm& cart_comm, const Shape& global_nn)
         ac::buffer<int, MemoryResource> buf{count};
         migrate(tmp, buf);
 
-        ac::mpi::reduce(cart_comm,
-                        ac::mpi::get_dtype<int>(),
-                        MPI_SUM,
-                        axis,
-                        buf.size(),
-                        buf.data());
+        ac::mpi::reduce_axis(cart_comm,
+                             ac::mpi::get_dtype<int>(),
+                             MPI_SUM,
+                             axis,
+                             buf.size(),
+                             buf.data());
 
         migrate(buf, tmp);
 
@@ -112,7 +112,7 @@ test_scatter_gather_advanced(const MPI_Comm& cart_comm, const Shape& global_nn)
     const Index rr(global_nn.size(), static_cast<uint64_t>(2));
     const Shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
 
-    const Shape global_mm{global_nn + static_cast<uint64_t>(2) *  rr};
+    const Shape global_mm{global_nn + static_cast<uint64_t>(2) * rr};
 
     Buffer monolithic{global_mm};
     std::iota(monolithic.begin(), monolithic.end(), 1);
@@ -120,14 +120,14 @@ test_scatter_gather_advanced(const MPI_Comm& cart_comm, const Shape& global_nn)
 
     // Scatter
     ac::mpi::scatter_advanced(cart_comm,
-                     ac::mpi::get_dtype<T>(),
-                     global_mm,
-                     rr,
-                     monolithic.data(),
-                     local_mm,
-                     local_nn,
-                     rr,
-                     distributed.data());
+                              ac::mpi::get_dtype<T>(),
+                              global_mm,
+                              rr,
+                              monolithic.data(),
+                              local_mm,
+                              local_nn,
+                              rr,
+                              distributed.data());
 
     MPI_SYNCHRONOUS_BLOCK_START(cart_comm);
     PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
@@ -139,27 +139,25 @@ test_scatter_gather_advanced(const MPI_Comm& cart_comm, const Shape& global_nn)
     // Gather
     Buffer monolithic_test{global_mm, 0}; // Initialize to zero
     ac::mpi::gather_advanced(cart_comm,
-                     ac::mpi::get_dtype<T>(),
-                     local_mm,
-                     local_nn,
-                     rr,
-                     distributed.data(),
-                     global_mm,
-                     rr,
-                     monolithic_test.data()
-                     );
+                             ac::mpi::get_dtype<T>(),
+                             local_mm,
+                             local_nn,
+                             rr,
+                             distributed.data(),
+                             global_mm,
+                             rr,
+                             monolithic_test.data());
 
     // Set boundaries to zero in the model solution
     auto segments{partition(global_mm, global_nn, rr)};
     auto it{std::remove_if(segments.begin(),
-                               segments.end(),
-                               [global_nn, rr](const ac::segment& segment) {
-                                   return within_box(segment.offset, global_nn, rr);
-                               })};
+                           segments.end(),
+                           [global_nn, rr](const ac::segment& segment) {
+                               return within_box(segment.offset, global_nn, rr);
+                           })};
     segments.erase(it, segments.end());
     for (const auto& segment : segments)
         fill(0, segment.dims, segment.offset, monolithic);
-
 
     const auto rank{ac::mpi::get_rank(cart_comm)};
     if (rank == 0) {
@@ -182,10 +180,11 @@ main()
             const Shape global_nn{128, 128, 128};
             MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
-            test_reduce<ac::mr::host_memory_resource>(cart_comm, global_nn);
-            test_reduce<ac::mr::pinned_host_memory_resource>(cart_comm, global_nn);
-            test_reduce<ac::mr::pinned_write_combined_host_memory_resource>(cart_comm, global_nn);
-            test_reduce<ac::mr::device_memory_resource>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::host_memory_resource>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::pinned_host_memory_resource>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::pinned_write_combined_host_memory_resource>(cart_comm,
+                                                                                 global_nn);
+            test_reduce_axis<ac::mr::device_memory_resource>(cart_comm, global_nn);
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {

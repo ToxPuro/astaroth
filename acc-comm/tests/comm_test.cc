@@ -273,7 +273,12 @@ main()
         std::cout << "}" << std::endl;
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        ac::mpi::reduce(cart_comm, ac::mpi::get_dtype<int>(), MPI_SUM, 0, buf.size(), buf.data());
+        ac::mpi::reduce_axis(cart_comm,
+                             ac::mpi::get_dtype<int>(),
+                             MPI_SUM,
+                             0,
+                             buf.size(),
+                             buf.data());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         PRINT_LOG("Reduce result after");
