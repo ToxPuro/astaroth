@@ -88,7 +88,8 @@ get_kernel_fields(const AcKernel kernel)
 typedef struct
 {
 	std::vector<Profile> in;
-	std::vector<Profile> out;
+	std::vector<Profile> reduce_out;
+	std::vector<Profile> write_out;
 } KernelProfiles;
 
 typedef struct
@@ -112,8 +113,9 @@ get_kernel_profiles(const AcKernel kernel)
 		KernelProfiles res{};
 		for(int i = 0; i < NUM_PROFILES; ++i)
 		{
-			if(info.read_profiles[kernel][i]   )    res.in.push_back((Profile)i);
-			if(info.written_profiles[kernel][i] || info.reduced_profiles[kernel][i])    res.out.push_back((Profile)i);
+			if(info.read_profiles[kernel][i])       res.in.push_back((Profile)i);
+			if(info.reduced_profiles[kernel][i])    res.reduce_out.push_back((Profile)i);
+			if(info.written_profiles[kernel][i])    res.write_out.push_back((Profile)i);
 		}
 		return res;
 }
@@ -282,7 +284,7 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 		if(filter_unnecessary_ones)
 		{
 			auto outputs = get_kernel_outputs(kernel_calls[call_index]);
-			if(outputs.fields.out.size() == 0 && outputs.profiles.out.size() == 0 && outputs.reduce_outputs.out.size() == 0) 
+			if(outputs.fields.out.size() == 0 && outputs.profiles.write_out.size() == 0 && outputs.profiles.reduce_out.size() == 0 && outputs.reduce_outputs.out.size() == 0) 
 			{
 				res.push_back(AC_NULL_KERNEL);
 				continue;
@@ -760,7 +762,8 @@ level_set_has_overlap_in_input_and_output(const level_set& set)
 		for(const auto& field : fields.in)     in_fields.push_back(field);
 		for(const auto& field : fields.out)    out_fields.push_back(field);
 		for(const auto& profile: profiles.in)  in_profiles.push_back(profile);
-		for(const auto& profile: profiles.out) out_profiles.push_back(profile);
+		for(const auto& profile: profiles.reduce_out) out_profiles.push_back(profile);
+		for(const auto& profile: profiles.write_out)  out_profiles.push_back(profile);
 	}
 	return false;
 }
@@ -985,8 +988,11 @@ gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
 	if(!ac_pid()) fprintf(stream,",");
 	log(profiles.in);
 	if(!ac_pid()) fprintf(stream,",");
-	log(profiles.out);
+	log(profiles.reduce_out);
 	if(!ac_pid()) fprintf(stream,",");
+	log(profiles.write_out);
+	if(!ac_pid()) fprintf(stream,",");
+
 	if(!ac_pid()) fprintf(stream,"{");
 	for(auto& e : reduce_outputs.in)
 	{
@@ -1014,6 +1020,6 @@ gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
 	if(!ac_pid()) fprintf(stream,"}");
 
 	if(!ac_pid()) fprintf(stream,")\n");
-	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.out,reduce_outputs.in,reduce_outputs.out,call.loader);
+	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,call.loader);
 }
 #endif // AC_MPI_ENABLED

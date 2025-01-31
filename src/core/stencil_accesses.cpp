@@ -187,7 +187,7 @@ __ffs(unsigned long)
 #include "acc_runtime.h"
 #undef constexpr
 
-static int stencils_accessed[NUM_ALL_FIELDS][NUM_STENCILS]{{}};
+static int stencils_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS]{{}};
 static int previous_accessed[NUM_ALL_FIELDS+NUM_PROFILES]{};
 static int written_fields[NUM_ALL_FIELDS]{};
 static int read_fields[NUM_ALL_FIELDS]{};
@@ -573,6 +573,23 @@ write_base (const Field& field, const AcReal&)
 {
 	written_fields[field] |= AC_IN_BOUNDS_WRITE;
 }
+
+#define write_profile_x  write_profile
+#define write_profile_y  write_profile
+#define write_profile_z  write_profile
+#define write_profile_xy write_profile
+#define write_profile_xz write_profile
+#define write_profile_yx write_profile
+#define write_profile_yz write_profile
+#define write_profile_zx write_profile
+#define write_profile_zy write_profile
+AcReal
+write_profile(const Profile& prof, const AcReal&)
+{
+	if constexpr (NUM_PROFILES != 0)
+		written_profiles[prof] = 1;
+	return 0.0;
+}
 void
 write_to_index (const Field& field, const int&, const AcReal&)
 {
@@ -780,7 +797,7 @@ acAnalysisGetBCInfo(const AcMeshInfoParams info, const AcKernel bc, const AcBoun
     	  }
     	}
 
-	for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
+	for(size_t i = 0; i < NUM_ALL_FIELDS+NUM_PROFILES; ++i)
 	{
 		larger_input  |= (read_fields[i]    & AC_IN_BOUNDS_READ);
 		larger_output |= (written_fields[i] & AC_OUT_OF_BOUNDS_WRITE);
@@ -897,7 +914,8 @@ main(int argc, char* argv[])
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "__attribute__((unused)) =  {");
-  int  write_output[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
+  int  write_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
+  int  write_profile_output[NUM_KERNELS][NUM_PROFILES]{};
   int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
   int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES]{};
   int  output_reduced_reals[NUM_KERNELS][NUM_REAL_OUTPUTS+1]{};
@@ -927,6 +945,7 @@ main(int argc, char* argv[])
 	{
 	  output_reduced_profiles[k][j] = reduced_profiles[j];
 	  output_read_profiles[k][j]    = read_profiles[j];
+	  write_profile_output[k][j] = written_profiles[j];
 	}
 	for(int j = 0; j < NUM_REAL_OUTPUTS; ++j)
 		output_reduced_reals[k][j] = reduced_reals[j];
@@ -936,7 +955,7 @@ main(int argc, char* argv[])
 		output_reduced_floats[k][j] = reduced_floats[j];
     } 
 
-    for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
+    for (size_t j = 0; j < NUM_ALL_FIELDS+NUM_PROFILES; ++j)
     { 
       fprintf(fp,"{");
       for (size_t i = 0; i < NUM_STENCILS; ++i)
@@ -969,6 +988,7 @@ main(int argc, char* argv[])
 
   print_info_array(fp,"previous_accessed",output_previous_accessed);
   print_info_array(fp,"write_called",write_output);
+  print_info_array(fp,"write_called_profile",write_profile_output);
   print_info_array(fp,"reduced_profiles",output_reduced_profiles);
   print_info_array(fp,"read_profiles",output_read_profiles);
   print_info_array(fp,"reduced_reals",output_reduced_reals);

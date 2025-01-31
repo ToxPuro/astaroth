@@ -16,6 +16,17 @@ Stencil derx {
     [0][0][3]  = AC_inv_ds.x * DER1_3
 }
 
+Stencil derz {
+    [-3][0][0] = -AC_inv_ds.z * DER1_3,
+    [-2][0][0] = -AC_inv_ds.z * DER1_2,
+    [-1][0][0] = -AC_inv_ds.z * DER1_1,
+    [1][0][0]  = AC_inv_ds.z * DER1_1,
+    [2][0][0]  = AC_inv_ds.z * DER1_2,
+    [3][0][0]  = AC_inv_ds.z * DER1_3
+}
+
+
+//Profile<Z> PROF_Z_DER
 struct ALL_PROFILES
 {
 	Profile<X> X
@@ -33,9 +44,14 @@ ALL_PROFILES PROF
 
 Profile<XY> DX_PROF_XY
 
+Profile<Z> PROF_Z_DER
+
+ALL_PROFILES PROF_SCALED
+
 
 
 Field FIELD_2
+Field FIELD_3
 
 
 output real AC_max_val
@@ -47,7 +63,6 @@ output int  AC_int_sum_val
 //This is a regression test against it
 Kernel empty()
 {}
-
 VecZProfile VEC_Z_PROFILE
 
 Kernel test_reduce()
@@ -90,6 +105,23 @@ Kernel remove_means()
 	res -= PROF_ZX
 	res -= PROF_ZY
 	write(FIELD, res)
+	write(PROF_Z_DER,derz(PROF_Z))
+	const scaling_factor = 2.0
+
+	write(PROF_SCALED_X,PROF_X*scaling_factor)
+	write(PROF_SCALED_Y,PROF_Y*scaling_factor)
+	write(PROF_SCALED_Z,PROF_Z*scaling_factor)
+
+	write(PROF_SCALED_YX,PROF_YX*scaling_factor)
+	write(PROF_SCALED_ZX,PROF_ZX*scaling_factor)
+
+	write(PROF_SCALED_XY,PROF_XY*scaling_factor)
+	write(PROF_SCALED_ZY,PROF_ZY*scaling_factor)
+
+	write(PROF_SCALED_XZ,PROF_XZ*scaling_factor)
+	write(PROF_SCALED_YZ,PROF_YZ*scaling_factor)
+
+
 	write(FIELD_2,VEC_Z_PROFILE.x + VEC_Z_PROFILE.y + VEC_Z_PROFILE.z)
 }
 Kernel derx_kernel()

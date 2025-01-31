@@ -63,6 +63,51 @@ write(Field dst, real src)
 	write_base(dst,src)
 }
 
+write(Profile<X> dst, real src)
+{
+	write_profile_x(dst,src)
+}
+
+write(Profile<Y> dst, real src)
+{
+	write_profile_y(dst,src)
+}
+
+write(Profile<Z> dst, real src)
+{
+	write_profile_z(dst,src)
+}
+
+write(Profile<XY> dst, real src)
+{
+	write_profile_xy(dst,src)
+}
+
+write(Profile<XZ> dst, real src)
+{
+	write_profile_xz(dst,src)
+}
+
+write(Profile<YX> dst, real src)
+{
+	write_profile_yx(dst,src)
+}
+
+write(Profile<YZ> dst, real src)
+{
+	write_profile_yz(dst,src)
+}
+
+write(Profile<ZX> dst, real src)
+{
+	write_profile_zx(dst,src)
+}
+
+write(Profile<ZY> dst, real src)
+{
+	write_profile_zy(dst,src)
+}
+
 write(Field3 dst, real3 src)
 {
 	write_base(dst.x, src.x)

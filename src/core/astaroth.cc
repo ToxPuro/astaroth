@@ -355,7 +355,6 @@ acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cu
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     if(!reduced_profiles[prof])      return AC_NOT_ALLOCATED;
     const AcProfileType type = prof_types[prof];
-    if(type & ONE_DIMENSIONAL_PROFILE) dst += NGHOST;
     const AcMeshOrder order    = acGetMeshOrderForProfile(type);
     acTranspose(order,buffer.src.data,buffer.transposed.data,get_volume_from_shape(buffer.src.shape),stream);
 

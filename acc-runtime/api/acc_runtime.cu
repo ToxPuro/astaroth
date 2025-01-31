@@ -679,6 +679,7 @@ acPBACreate(const size3_t counts)
     const size_t bytes = prof_size(Profile(i),counts)*sizeof(AcReal);
     device_malloc(&pba.in[i],  bytes);
     device_malloc(&pba.out[i], bytes);
+    //pba.out[i] = pba.in[i];
   }
 
   acPBAReset(0, &pba, counts);
@@ -829,7 +830,7 @@ acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
 	{
 		return
 		{
-			dims.nn.x,
+			dims.m1.x,
 			dims.reduction_tile.y,
 			dims.reduction_tile.z
 		};
@@ -839,7 +840,7 @@ acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
 		return
 		{
 			dims.reduction_tile.x,
-			dims.nn.y,
+			dims.m1.y,
 			dims.reduction_tile.z
 		};
 	}
@@ -849,11 +850,9 @@ acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
 		{
 			dims.reduction_tile.x,
 			dims.reduction_tile.y,
-			dims.nn.z
+			dims.m1.z
 		};
 	}
-	if(type & ONE_DIMENSIONAL_PROFILE)
-		return dims.nn;
 	return dims.m1;
 }
 
@@ -1659,6 +1658,8 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
             ,dims.x,dims.y,dims.z);
   }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
+  //TP: done to ensure scratchpads are reset after autotuning
+  memset(vba.scratchpad_states,0,sizeof(AcScratchpadStates));
   return c;
 }
 
@@ -2431,15 +2432,9 @@ get_count(const AcShape shape)
 {
 	return shape.x*shape.y*shape.z*shape.w;
 }
-AcResult
-acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType type,const AcReduceOp op)
+static AcResult
+ac_flush_scratchpad(VertexBufferArray vba, const int variable, const AcType type, const AcReduceOp op)
 {
-	AcReduceOp* states =
-			type == AC_FLOAT_TYPE  ? vba.scratchpad_states->floats :
-			type == AC_INT_TYPE  ? vba.scratchpad_states->ints  :
-			type == AC_REAL_TYPE ? vba.scratchpad_states->reals :
-			type == AC_PROF_TYPE ? &vba.scratchpad_states->reals[NUM_REAL_OUTPUTS] :
-			NULL;
 
 	const int n_elems = 
 				type == AC_REAL_TYPE ?  NUM_REAL_OUTPUTS :
@@ -2448,40 +2443,63 @@ acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType t
 				type == AC_FLOAT_TYPE  ?  NUM_FLOAT_OUTPUTS  :
 				0;
 	ERRCHK_ALWAYS(variable < n_elems);
-	if(states[variable] == op) return AC_SUCCESS;
-	states[variable] = op;
 	const size_t counts = 
 			type == AC_INT_TYPE  ? (*vba.reduce_buffer_int[variable].buffer_size)/sizeof(int) :
 			type == AC_FLOAT_TYPE  ? (*vba.reduce_buffer_float[variable].buffer_size)/sizeof(float) :
 			type == AC_REAL_TYPE ? (*vba.reduce_buffer_real[variable].buffer_size)/sizeof(AcReal) :
-			type == AC_PROF_TYPE ? (get_count(vba.profile_reduce_buffers[variable].src.shape))/sizeof(AcReal) :
+			type == AC_PROF_TYPE ? (get_count(vba.profile_reduce_buffers[variable].src.shape)) :
 			0;
 
 	if(type == AC_REAL_TYPE)
 	{
-		if constexpr (NUM_REAL_OUTPUTS == 0) return AC_SUCCESS;
+		if constexpr (NUM_REAL_OUTPUTS == 0) return AC_FAILURE;
 		AcReal* dst = *(vba.reduce_buffer_real[variable].src);
 		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_real(op));
 	}
 	else if(type == AC_PROF_TYPE)
 	{
-		if constexpr(NUM_PROFILES == 0) return AC_SUCCESS;
+		if constexpr(NUM_PROFILES == 0) return AC_FAILURE;
 		AcReal* dst = vba.profile_reduce_buffers[variable].src.data;
 		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_real(op));
 	}
 	else if(type == AC_FLOAT_TYPE)
 	{
-		if constexpr(NUM_FLOAT_OUTPUTS  == 0) return AC_SUCCESS;
+		if constexpr(NUM_FLOAT_OUTPUTS  == 0) return AC_FAILURE;
 		float* dst = *(vba.reduce_buffer_float[variable].src);
 		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_float(op));
 	}
 	else
 	{
-		if constexpr (NUM_INT_OUTPUTS == 0) return AC_SUCCESS;
+		if constexpr (NUM_INT_OUTPUTS == 0) return AC_FAILURE;
 		int* dst = *(vba.reduce_buffer_int[variable].src);
 		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_int(op));
 	}
+  	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 	return AC_SUCCESS;
+}
+static AcReduceOp*
+get_reduce_buffer_states(const VertexBufferArray vba, const AcType type)
+{
+	return
+			type == AC_FLOAT_TYPE  ? vba.scratchpad_states->floats :
+			type == AC_INT_TYPE    ? vba.scratchpad_states->ints  :
+			type == AC_REAL_TYPE   ? vba.scratchpad_states->reals :
+			type == AC_PROF_TYPE   ? &vba.scratchpad_states->reals[NUM_REAL_OUTPUTS] :
+			NULL;
+}
+static AcReduceOp
+get_reduce_buffer_state(const VertexBufferArray vba, const int variable, const AcType type)
+{
+	return get_reduce_buffer_states(vba,type)[variable];
+
+}
+AcResult
+acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType type,const AcReduceOp op)
+{
+	AcReduceOp* states = get_reduce_buffer_states(vba,type);
+	if(states[variable] == op) return AC_SUCCESS;
+	states[variable] = op;
+	return ac_flush_scratchpad(vba,variable,type,op);
 }
 
 AcMeshOrder

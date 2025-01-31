@@ -149,7 +149,7 @@ typedef class Task {
     Device device;
     cudaStream_t stream;
     VertexBufferArray vba;
-    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset;
+    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset;
 
     int state;
 
@@ -184,7 +184,7 @@ typedef class Task {
 
   public:
     Task(int order_, Region input_region_, Region output_region, AcTaskDefinition op,
-         Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+         Device device_, std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     virtual ~Task() {};
 
     virtual bool test()                               = 0;
@@ -195,14 +195,14 @@ typedef class Task {
     bool isPrerequisiteTo(std::shared_ptr<Task> other);
 
     void setIterationParams(size_t begin, size_t end);
-    void update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile* trace_file);
+    void update(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> vtxbuf_swaps, const TraceFile* trace_file);
     bool isFinished();
 
     void notifyDependents();
     void satisfyDependency(size_t iteration);
 
     void syncVBA();
-    void swapVBA(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps);
+    void swapVBA(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> vtxbuf_swaps);
 
     void logStateChangedEvent(const char* from, const char* to);
     virtual bool isComputeTask();
@@ -220,8 +220,8 @@ typedef class ComputeTask : public Task {
 
   public:
     ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
-                std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
-    ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+                std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
+    ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
 
     ComputeTask(const ComputeTask& other)            = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
@@ -275,7 +275,7 @@ typedef class HaloExchangeTask : public Task {
   public:
     HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag, AcGridInfo grid_info,
                      uint3_64 decomp, Device device_,
-                     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+                     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     ~HaloExchangeTask();
     HaloExchangeTask(const HaloExchangeTask& other)            = delete;
     HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
@@ -312,7 +312,7 @@ typedef class HaloExchangeTask : public Task {
 typedef class SyncTask : public Task {
   public:
     SyncTask(AcTaskDefinition op, int order_, Volume nn, Device device_,
-             std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+             std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     void advance(const TraceFile* trace_file);
     bool test();
 } SyncTask;
@@ -329,7 +329,7 @@ typedef class BoundaryConditionTask : public Task {
   public:
     BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
                                     int region_tag, Volume nn, Device device_,
-                                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     void populate_boundary_region();
     void advance(const TraceFile* trace_file);
     bool test();
@@ -343,7 +343,7 @@ typedef class ReduceTask : public Task {
     float  local_res_float[NUM_OUTPUTS]{};
   public:
     ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
-                std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+                std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     void reduce();
     void advance(const TraceFile* trace_file);
     bool test();
@@ -365,7 +365,7 @@ struct TraceFile {
 };
 
 struct AcTaskGraph {
-    std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps;
+    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> device_swaps;
     std::vector<std::shared_ptr<Task>> all_tasks;
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;

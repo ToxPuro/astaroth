@@ -412,7 +412,7 @@ gen_profile_funcs(const int kernel)
 	    if(!reduced_profiles[kernel][i] || prof_types[i] != PROFILE_X) continue;
      	    printf("case %s: { ",profile_names[i]);
 	    	printf("%s_reduce_output += val;",profile_names[i]);
-		printf("if(current_block_idx_y == last_block_idx_y && current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x + VAL(AC_nlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
+		printf("if(current_block_idx_y == last_block_idx_y && current_block_idx_z == last_block_idx_z) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output;",profile_names[i]);
 	    printf("break;}");
     }
     printf("default: {}");
@@ -433,11 +433,11 @@ gen_profile_funcs(const int kernel)
 	    	printf("%s_reduce_output%s += val;",profile_names[i],access);
 		printf("if(current_block_idx_z == last_block_idx_z) {"); 
         	printf("if(blockDim.x %% warp_size != 0) {");
-			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output%s;",profile_names[i],access);
+			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(vertexIdx.y + VAL(AC_mlocal).y*profileReduceOutputVertexIdx.z)] = %s_reduce_output%s;",profile_names[i],access);
 		printf("}");
 		printf("else {");
         	   	printf("const AcReal reduce_res = warp_reduce_sum_real(%s_reduce_output%s);",profile_names[i],access);
-			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(localCompdomainVertexIdx.y + VAL(AC_nlocal).y*profileReduceOutputVertexIdx.z)] = reduce_res;");
+			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(vertexIdx.y + VAL(AC_mlocal).y*profileReduceOutputVertexIdx.z)] = reduce_res;");
 		printf("}");
 		printf("}");
 	    printf("break;}");
@@ -461,11 +461,11 @@ gen_profile_funcs(const int kernel)
             	printf("%s_reduce_output%s += val;",profile_names[i],access);
         	printf("if(current_block_idx_y == last_block_idx_y) {"); 
         		printf("if(blockDim.x %% warp_size != 0) {");
-        			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*localCompdomainVertexIdx.z)] = %s_reduce_output%s;",profile_names[i],access);
+        			printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][profileReduceOutputVertexIdx.x + VAL(AC_nlocal).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = %s_reduce_output%s;",profile_names[i],access);
         		printf("}");
         		printf("else {");
         	   		printf("const AcReal reduce_res = warp_reduce_sum_real(%s_reduce_output%s);",profile_names[i],access);
-        			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*localCompdomainVertexIdx.z)] = reduce_res;");
+        			printf("if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][localCompdomainVertexIdx.x/warp_size + VAL(AC_reduction_tile_dimensions).x*(profileReduceOutputVertexIdx.y + VAL(AC_reduction_tile_dimensions).y*vertexIdx.z)] = reduce_res;");
         		printf("}");
         	printf("}");
 	    printf("break;}");
@@ -590,6 +590,67 @@ gen_kernel_write_funcs(const int curr_kernel)
   // Write vba.out
   #if 1
     // Original
+    bool written_profile = false;
+    for(int profile = 0; profile < NUM_PROFILES; ++profile)
+	    written_profile |= write_called[curr_kernel][profile + NUM_ALL_FIELDS];
+    if(written_profile)
+    {
+    	printf("const auto write_profile_x __attribute__((unused)) = [&](const Profile& handle, const AcReal& value) {");
+	printf("if(vertexIdx.y == NGHOST && vertexIdx.z == NGHOST){");
+    	printf("  vba.profiles.out[handle][vertexIdx.x] = value;");
+    	printf("}");
+    	printf("};");
+	
+    	printf("const auto write_profile_y __attribute__((unused)) = [&](const Profile& handle, const AcReal& value) {");
+	printf("if(vertexIdx.x == NGHOST && vertexIdx.z == NGHOST){");
+    	printf("  vba.profiles.out[handle][vertexIdx.y] = value;");
+    	printf("}");
+    	printf("};");
+
+    	printf("const auto write_profile_z __attribute__((unused)) = [&](const Profile& handle, const AcReal& value) {");
+	printf("if(vertexIdx.x == NGHOST && vertexIdx.y == NGHOST){");
+    	printf("  vba.profiles.out[handle][vertexIdx.z] = value;");
+    	printf("}");
+    	printf("};");
+
+    	printf("const auto write_profile_xy __attribute__((unused)) = [&](const Profile& handle, const AcReal& value) {");
+	printf("if(vertexIdx.z == NGHOST){");
+    	printf("  vba.profiles.out[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.y] = value;");
+    	printf("}");
+    	printf("};");
+
+    	printf("const auto write_profile_xz __attribute__((unused)) = [&](const Profile& handle, const AcReal& value) {");
+	printf("if(vertexIdx.y == NGHOST){");
+    	printf("  vba.profiles.out[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z] = value;");
+    	printf("}");
+    	printf("};");
+
+
+    	printf("const auto write_profile_yx __attribute__((unused)) = [&](const Profile& handle, const AcReal& value) {");
+	printf("if(vertexIdx.z == NGHOST){");
+    	printf("  vba.profiles.out[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.x] = value;");
+    	printf("}");
+    	printf("};");
+
+    	printf("const auto write_profile_yz __attribute__((unused)) = [&](const Profile& handle, const AcReal& value) {");
+	printf("if(vertexIdx.x == NGHOST){");
+    	printf("  vba.profiles.out[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z] = value;");
+    	printf("}");
+    	printf("};");
+	
+    	printf("const auto write_profile_zx __attribute__((unused)) = [&](const Profile& handle, const AcReal& value) {");
+	printf("if(vertexIdx.y == NGHOST){");
+    	printf("  vba.profiles.out[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.x] = value;");
+    	printf("}");
+    	printf("};");
+
+    	printf("const auto write_profile_zy __attribute__((unused)) = [&](const Profile& handle, const AcReal& value) {");
+	printf("if(vertexIdx.x == NGHOST){");
+    	printf("  vba.profiles.out[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.y] = value;");
+    	printf("}");
+    	printf("};");
+
+    }
     bool written_something = false;
     for(int field = 0; field < NUM_ALL_FIELDS; ++field)
 	    written_something |= write_called[curr_kernel][field];
@@ -623,6 +684,7 @@ gen_kernel_write_funcs(const int curr_kernel)
     	printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {");
     	printf("vba.out[handle][idx] = value;");
     	printf("};");
+
     }
     else
     {
@@ -1091,7 +1153,7 @@ gen_stencil_functions(const int curr_kernel)
     for (int field = 0; field < NUM_ALL_FIELDS; ++field) gen_stencil |= stencils_accessed[curr_kernel][field][stencil];
     if(!gen_stencil)
     {
-	    printf("const auto %s __attribute__((unused)) = [&](const auto& field) { (void) field; return (AcReal)NAN;};",stencil_names[stencil]);
+	    printf("const auto %s __attribute__((unused)) = [&](const Field& field) { (void) field; return (AcReal)NAN;};",stencil_names[stencil]);
 	    continue;
     }
     printf("const auto %s __attribute__((unused)) = [&](const auto& field){",
@@ -1106,12 +1168,29 @@ gen_stencil_functions(const int curr_kernel)
       }
     }
 
+    printf("default: return (AcReal)NAN;");
+    printf("}");
+    printf("};");
+  }
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    //TP: don't gen stencil function at all if no fields use it. Done to declutter the resulting code and to speedup compilation
+    bool gen_stencil = false;
+    for (int profile = 0; profile < NUM_PROFILES; ++profile) gen_stencil |= stencils_accessed[curr_kernel][profile + NUM_ALL_FIELDS][stencil];
+    if(!gen_stencil)
+    {
+	    printf("const auto %s_profile __attribute__((unused)) = [&](const Profile& profile) { (void) profile; return (AcReal)NAN;};",stencil_names[stencil]);
+	    continue;
+    }
+    printf("const auto %s_profile __attribute__((unused)) = [&](const Profile& profile){",
+           stencil_names[stencil]);
+    printf("switch (profile) {");
     for (int profile = 0; profile < NUM_PROFILES; ++profile) {
       if (stencil_valid_for_profiles[stencil])
-        if (stencils_accessed[curr_kernel][NUM_FIELDS + profile][stencil])
-          printf("case %d: return p%d_s%d;", NUM_FIELDS + profile, profile,
+        if (stencils_accessed[curr_kernel][NUM_ALL_FIELDS + profile][stencil])
+          printf("case %s: return p%d_s%d;", profile_names[profile], profile,
                  stencil);
     }
+
     printf("default: return (AcReal)NAN;");
     printf("}");
     printf("};");

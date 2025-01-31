@@ -1872,15 +1872,15 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
     {
 	    auto op = ops_in[i];
 	    ops.push_back(op);
-	    if(op.task_type == TASKTYPE_COMPUTE && (op.num_profiles_out > 0 || op.num_outputs_out > 0))
+	    if(op.task_type == TASKTYPE_COMPUTE && (op.num_profiles_reduce_out > 0 || op.num_outputs_out > 0))
 	    {
 	  		auto reduce_op = op;
 			reduce_op.task_type = TASKTYPE_REDUCE;
 
-	  		reduce_op.profiles_in      = op.profiles_out;
-	  		reduce_op.num_profiles_in  = op.num_profiles_out;
-	  		reduce_op.profiles_out     = op.profiles_out;
-	  		reduce_op.num_profiles_out = op.num_profiles_out;
+	  		reduce_op.profiles_in      = op.profiles_reduce_out;
+	  		reduce_op.num_profiles_in  = op.num_profiles_reduce_out;
+	  		reduce_op.profiles_reduce_out     = op.profiles_reduce_out;
+	  		reduce_op.num_profiles_reduce_out = op.num_profiles_reduce_out;
 
 			reduce_op.num_outputs_in  = op.num_outputs_out;
 			reduce_op.num_outputs_out = op.num_outputs_out;
@@ -1947,7 +1947,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 
     // The tasks start at different offsets from the beginning of the iteration
     // this array of bools keep track of that state
-    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset{};
+    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset{};
     //int num_comp_tasks = 0;
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", ops.size());
     for (size_t i = 0; i < ops.size(); i++) {
@@ -1980,7 +1980,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
 	    std::vector<Field> fields_in(op.fields_in,op.fields_in+op.num_fields_in);
 
-	    std::vector<Profile> profiles_out(op.profiles_out,op.profiles_out+op.num_profiles_out);
+	    std::vector<Profile> profiles_out(op.profiles_reduce_out,op.profiles_reduce_out+op.num_profiles_reduce_out);
 	    std::vector<Profile> profiles_in(op.profiles_in,op.profiles_in+op.num_profiles_in);
 
 	    std::vector<KernelReduceOutput> reduce_output_in(op.outputs_in,  op.outputs_in +op.num_outputs_in);
@@ -2018,6 +2018,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
                 swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
+            }
+            for (size_t buf = 0; buf < op.num_profiles_write_out; buf++) {
+                swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES] = !swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES];
             }
 	    //++num_comp_tasks;
             break;
@@ -2103,7 +2106,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Done creating tasks\n");
 
     op_indices.push_back(graph->all_tasks.size());
-    graph->vtxbuf_swaps = swap_offset;
+    graph->device_swaps = swap_offset;
 
     graph->halo_tasks.shrink_to_fit();
     graph->all_tasks.shrink_to_fit();
@@ -2225,6 +2228,7 @@ acGridDestroyTaskGraph(AcTaskGraph* graph)
     return AC_SUCCESS;
 }
 
+
 std::vector<KernelReduceOutput>
 get_reduce_outputs(const AcTaskGraph* graph)
 {
@@ -2238,14 +2242,36 @@ get_reduce_outputs(const AcTaskGraph* graph)
     	for(size_t i = 0; i < grid.kernel_analysis_info.n_reduce_outputs[kernel]; ++i)
     	    reduce_outputs.push_back(grid.kernel_analysis_info.reduce_outputs[kernel][i]);
     }
-    if(reduce_outputs.size()  >= NUM_STREAMS)
-    {
-	    fprintf(stderr,"%zu reduce outputs\n",reduce_outputs.size());
-    }
-    ERRCHK_ALWAYS(reduce_outputs.size()  < NUM_STREAMS);
-    for(const auto& output: reduce_outputs)
-	    acDevicePreprocessScratchPad(grid.device,output.variable,output.type,output.op);
     return reduce_outputs;
+}
+std::vector<Profile>
+get_reduced_profiles(const AcTaskGraph* graph)
+{
+    std::vector<Profile> reduced_profiles{};
+    for (auto& task : graph->all_tasks) {
+    	if(!task->isComputeTask()) continue;
+	//TP: skip inner halo regions to not count outputs multiple times
+	if(task->output_region.id != (int3){0,0,0}) continue;
+    	auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
+    	auto kernel       = compute_task -> getKernel();
+    	for(size_t i = 0; i < NUM_PROFILES; ++i)
+	{
+	    if(grid.kernel_analysis_info.reduced_profiles[kernel][i])
+    	    	reduced_profiles.push_back(Profile(i));
+	}
+    }
+    return reduced_profiles;
+}
+
+static void
+preprocess_reduce_buffers(const AcTaskGraph* graph)
+{
+	const auto reduce_outputs = get_reduce_outputs(graph);
+    	for(const auto& output: reduce_outputs)
+		acDevicePreprocessScratchPad(grid.device,output.variable,output.type,output.op);
+	const auto reduced_profiles = get_reduced_profiles(graph);
+	for(const auto& profile: reduced_profiles)
+		acDevicePreprocessScratchPad(grid.device,profile,AC_PROF_TYPE,REDUCE_SUM);
 }
 
 AcResult
@@ -2339,8 +2365,7 @@ set_device_to_grid_device()
 AcResult
 acGridExecuteTaskGraphBase(AcTaskGraph* graph, size_t n_iterations, const bool include_inactive)
 {
-    //TP: used to initialize reduce buffers
-    get_reduce_outputs(graph);
+    preprocess_reduce_buffers(graph);
     ERRCHK(grid.initialized);
     // acGridSynchronizeStream(stream);
     // acDeviceSynchronizeStream(grid.device, stream);
@@ -2360,7 +2385,7 @@ acGridExecuteTaskGraphBase(AcTaskGraph* graph, size_t n_iterations, const bool i
         ready = true;
         for (auto& task : graph->all_tasks) {
             if (include_inactive || task->active) {
-                task->update(graph->vtxbuf_swaps, &(graph->trace_file));
+                task->update(graph->device_swaps, &(graph->trace_file));
                 ready &= task->isFinished();
             }
         }
@@ -2368,8 +2393,13 @@ acGridExecuteTaskGraphBase(AcTaskGraph* graph, size_t n_iterations, const bool i
 
     if (n_iterations % 2 != 0) {
         for (size_t i = 0; i < NUM_VTXBUF_HANDLES; i++) {
-            if (graph->vtxbuf_swaps[i]) {
+            if (graph->device_swaps[i]) {
                 acDeviceSwapBuffer(grid.device, (VertexBufferHandle)i);
+            }
+        }
+        for (size_t i = 0; i < NUM_PROFILES; i++) {
+            if (graph->device_swaps[i+NUM_VTXBUF_HANDLES]) {
+                acDeviceSwapProfileBuffer(grid.device, (Profile)i);
             }
         }
     }

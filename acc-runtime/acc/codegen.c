@@ -703,6 +703,21 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR, intern("globalVertexIdx")); // TODO REMOVE
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_base"));  // TODO RECHECK
+
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_x"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_y"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_z"));  // TODO RECHECK
+                                                           
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_xy"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_xz"));  // TODO RECHECK
+                                                           
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_yx"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_yz"));  // TODO RECHECK
+                                                           
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_zx"));  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_zy"));  // TODO RECHECK
+					      	 //
+
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_x"));  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_y"));  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_z"));  // TODO RECHECK
@@ -7030,6 +7045,25 @@ transform_field_intrinsic_func_calls_and_ops(ASTNode* root)
 	transform_field_intrinsic_func_calls_recursive(root,root);
 	transform_field_binary_ops(root);
 }
+void
+resolve_profile_stencils(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(resolve_profile_stencils);
+	if(!(node->type & NODE_FUNCTION_CALL)) return;
+	ASTNode* func_identifier = get_node_by_token(IDENTIFIER,node->lhs);
+	const char* func_name = func_identifier->buffer;
+	const Symbol* sym = symboltable_lookup(func_name);
+	if(!sym) return;
+        if(sym->tspecifier != STENCIL_STR) return;
+	func_params_info call_info  = get_func_call_params_info(node);
+	if(call_info.types.size == 1 && call_info.types.data[0] && strstr(call_info.types.data[0],"Profile")) 
+	{
+		const char* new_name = sprintf_intern("%s_profile",func_name);
+		astnode_set_buffer(new_name, func_identifier);
+	}
+	free_func_params_info(&call_info);
+
+}
 
 void
 gen_overloads(ASTNode* root)
@@ -7071,6 +7105,7 @@ gen_overloads(ASTNode* root)
   }
   for(size_t i = 0; i < MAX_DFUNCS*duplicate_dfuncs.names.size; ++i)
 	  free_str_vec(&dfunc_possible_types[i]);
+  resolve_profile_stencils(root);
 }
 
 void
@@ -8294,9 +8329,14 @@ gen_analysis_stencils(FILE* stream)
 {
   string_vec stencil_names = get_names(STENCIL_STR);
   for (size_t i = 0; i < stencil_names.size; ++i)
+  {
     fprintf(stream,"AcReal %s(const Field& field_in)"
            "{stencils_accessed[field_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
            stencil_names.data[i], stencil_names.data[i]);
+    fprintf(stream,"AcReal %s_profile(const Profile& profile_in)"
+           "{stencils_accessed[NUM_ALL_FIELDS+profile_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
+           stencil_names.data[i], stencil_names.data[i]);
+  }
   free_str_vec(&stencil_names);
 }
 
@@ -8398,8 +8438,14 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
 
     fprintf(tmp,
             "static int "
-            "write_called [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
-    print_nested_ones(tmp,1,num_kernels,num_fields+num_profiles,2);
+            "write_called [NUM_KERNELS][NUM_ALL_FIELDS] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_fields,2);
+    fprintf(tmp, "};");
+
+    fprintf(tmp,
+            "static int "
+            "write_profile_called [NUM_KERNELS][NUM_PROFILES] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_profiles,2);
     fprintf(tmp, "};");
 
     fprintf(tmp,

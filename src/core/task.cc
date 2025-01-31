@@ -83,6 +83,16 @@ ptr_copy(const T* src, const int n)
 	return res;
 }
 
+template <typename T>
+T*
+merge_ptrs(const T* a, const T* b, const size_t a_n, const size_t b_n)
+{
+	T* res = (T*)malloc(sizeof(T)*(a_n+b_n));
+	memcpy(res,a,sizeof(T)*a_n);
+	memcpy(res+a_n,b,sizeof(T)*b_n);
+	return res;
+}
+
 AcTaskDefinition
 acCompute(const AcKernel kernel, 
 		Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,
@@ -100,8 +110,8 @@ acCompute(const AcKernel kernel,
 
     task_def.profiles_in      = ptr_copy(profiles_in,num_profiles_in);
     task_def.num_profiles_in  = num_profiles_in;
-    task_def.profiles_out     = ptr_copy(profiles_out,num_profiles_out);
-    task_def.num_profiles_out = num_profiles_out;
+    task_def.profiles_reduce_out     = ptr_copy(profiles_out,num_profiles_out);
+    task_def.num_profiles_reduce_out = num_profiles_out;
 
     task_def.load_kernel_params_func = new LoadKernelParamsFunc{[](ParamLoadingInfo){;}};
     return task_def;
@@ -109,7 +119,8 @@ acCompute(const AcKernel kernel,
 
 AcTaskDefinition
 acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out, 
-		    Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out,
+		    Profile profiles_in[], const size_t num_profiles_in, Profile profiles_reduce_out[], const size_t num_profiles_reduce_out,
+		    Profile profiles_write_out[], const size_t num_profiles_write_out,
                     KernelReduceOutput outputs_in[], const size_t num_outputs_in, KernelReduceOutput outputs_out[], const size_t num_outputs_out,
 	            std::function<void(ParamLoadingInfo)> load_func)
 {
@@ -124,8 +135,11 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
 
     task_def.profiles_in      = ptr_copy(profiles_in,num_profiles_in);
     task_def.num_profiles_in  = num_profiles_in;
-    task_def.profiles_out     = ptr_copy(profiles_out,num_profiles_out);
-    task_def.num_profiles_out = num_profiles_out;
+    task_def.profiles_reduce_out     = ptr_copy(profiles_reduce_out,num_profiles_reduce_out);
+    task_def.num_profiles_reduce_out = num_profiles_reduce_out;
+
+    task_def.profiles_write_out     = ptr_copy(profiles_write_out,num_profiles_write_out);
+    task_def.num_profiles_write_out = num_profiles_write_out;
 
     task_def.outputs_in      = ptr_copy(outputs_in,num_outputs_in);
     task_def.num_outputs_in  = num_outputs_in;
@@ -439,7 +453,7 @@ Region::is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary
 
 /* Task interface */
 Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
-           Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+           Device device_, std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : device(device_), vba(acDeviceGetVBA(device)), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
       order(order_), active(true), boundary(BOUNDARY_NONE), input_region(input_region_),
       output_region(output_region_),
@@ -504,7 +518,7 @@ Task::isFinished()
 }
 
 void
-Task::update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile* trace_file)
+Task::update(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> vtxbuf_swaps, const TraceFile* trace_file)
 {
     if (isFinished())
         return;
@@ -581,20 +595,39 @@ Task::syncVBA()
             vba.on_device.out[i] = device_vba.on_device.out[i];
         }
     }
+    for (int i = 0; i < NUM_PROFILES; ++i) {
+        if (swap_offset[i+NUM_VTXBUF_HANDLES]) {
+            vba.on_device.profiles.in[i]  = device_vba.on_device.profiles.out[i];
+            vba.on_device.profiles.out[i] = device_vba.on_device.profiles.in[i];
+        }
+        else {
+            vba.on_device.profiles.in[i]  = device_vba.on_device.profiles.in[i];
+            vba.on_device.profiles.out[i] = device_vba.on_device.profiles.out[i];
+        }
+    }
     for(int i=0;i<NUM_WORK_BUFFERS; ++i)
         vba.on_device.w[i] = device_vba.on_device.w[i];
 }
 
 void
-Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps)
+Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> device_swaps)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
 
-        if (vtxbuf_swaps[i]) {
+        if (device_swaps[i]) {
             AcReal* tmp = vba.on_device.in[i];
             vba.on_device.in[i]   = vba.on_device.out[i];
             vba.on_device.out[i]  = tmp;
         }
+    }
+    for(int i = 0; i < NUM_PROFILES; ++i)
+    {
+	    if(device_swaps[i+NUM_VTXBUF_HANDLES])
+	    {
+            	AcReal* tmp = vba.on_device.profiles.in[i];
+            	vba.on_device.profiles.in[i]   = vba.on_device.profiles.out[i];
+            	vba.on_device.profiles.out[i]  = tmp;
+	    }
     }
 }
 
@@ -619,10 +652,13 @@ Task::poll_stream()
 
 /* Computation */
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
-                         std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+                         std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
            Region(RegionFamily::Compute_input, region_tag, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
-           Region(RegionFamily::Compute_output, region_tag, nn,{op.fields_out, op.num_fields_out,op.profiles_out,op.num_profiles_out,op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Compute_output, region_tag, nn,{op.fields_out, op.num_fields_out,
+		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
+		   op.num_profiles_reduce_out + op.num_profiles_write_out,
+		   op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -645,7 +681,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
     task_type = TASKTYPE_COMPUTE;
 }
 
-ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, Region output_region_, Device device_,std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, Region output_region_, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
            input_region_,
            output_region_,
@@ -806,10 +842,10 @@ HaloMessageSwapChain::get_fresh_buffer()
 // HaloExchangeTask
 HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag,
                                    AcGridInfo grid_info, uint3_64 decomp, Device device_,
-                                   std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+                                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
            Region(RegionFamily::Exchange_input, halo_region_tag, grid_info.nn,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
-           Region(RegionFamily::Exchange_output, halo_region_tag, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_out,op.num_profiles_out ,op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Exchange_output, halo_region_tag, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
       recv_buffers(output_region.dims, op.num_fields_in),
       send_buffers(input_region.dims, op.num_fields_out)
@@ -1136,7 +1172,7 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 
 
 SyncTask::SyncTask(AcTaskDefinition op, int order_, Volume nn, Device device_,
-                   std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
 	//TP: this will make tasks with larger than necessary regions in case of two dimensional setup
 	//but that does not really harm since the whole point of this task is to be a dummy that synchronizes
     : Task(order_,
@@ -1172,10 +1208,10 @@ SyncTask::advance(const TraceFile* trace_file)
 }
 
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
-                         std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+                         std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
            Region(RegionFamily::Compute_input, region_tag, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in}),
-           Region(RegionFamily::Compute_output, region_tag, nn,{op.fields_out, op.num_fields_out,op.profiles_out,op.num_profiles_out,op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Compute_output, region_tag, nn,{op.fields_out, op.num_fields_out,op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -1186,8 +1222,8 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume n
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     ERRCHK_ALWAYS(!(op.num_profiles_in  == 0 && op.num_outputs_in  == 0));
-    ERRCHK_ALWAYS(!(op.num_profiles_out == 0 && op.num_outputs_out == 0));
-    ERRCHK_ALWAYS(op.num_profiles_out == op.num_profiles_in);
+    ERRCHK_ALWAYS(!(op.num_profiles_reduce_out == 0 && op.num_outputs_out == 0));
+    ERRCHK_ALWAYS(op.num_profiles_reduce_out == op.num_profiles_in);
     ERRCHK_ALWAYS(op.num_outputs_out  == op.num_outputs_in);
 
     syncVBA();
@@ -1282,10 +1318,10 @@ ReduceTask::advance(const TraceFile* trace_file)
 
 BoundaryConditionTask::BoundaryConditionTask(
     AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, Volume nn, Device device_,
-    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
            Region(RegionFamily::Exchange_input, region_tag, nn,  {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in}),
-           Region(RegionFamily::Exchange_output, region_tag, nn, {op.fields_out, op.num_fields_out,op.profiles_out, op.num_profiles_out, op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Exchange_output, region_tag, nn, {op.fields_out, op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
        boundary_normal(boundary_normal_),
        fieldwise(op.fieldwise)

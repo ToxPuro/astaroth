@@ -812,8 +812,11 @@ typedef struct AcTaskDefinition {
     Profile* profiles_in;
     size_t num_profiles_in;
 
-    Profile* profiles_out;
-    size_t num_profiles_out;
+    Profile* profiles_reduce_out;
+    size_t num_profiles_reduce_out;
+
+    Profile* profiles_write_out;
+    size_t num_profiles_write_out;
 
     AcRealParam* parameters;
     size_t num_parameters;
@@ -833,7 +836,9 @@ typedef struct AcTaskGraph AcTaskGraph;
 
 #if __cplusplus
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out, 
+                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[],  const size_t num_profiles_in, 
+			   Profile profiles_reduce_out[], const size_t num_profiles_reduce_out, 
+			   Profile profiles_write_out[], const size_t num_profiles_write_out, 
 			   KernelReduceOutput reduce_outputs_in[], size_t num_outputs_in, KernelReduceOutput reduce_outputs_out[], size_t num_outputs_out,
 			   std::function<void(ParamLoadingInfo step_info)> loader));
 #else
@@ -1821,27 +1826,31 @@ acComputeWithParams(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&
 static inline AcTaskDefinition
 acComputeWithParams(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0 , NULL, 0, NULL, 0, loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0 , NULL, 0, NULL, 0, NULL, 0, loader);
 }
 
 static inline AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0, NULL, 0, NULL, 0, loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, 0, loader);
 }
 
 static inline AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::vector<Profile> profile_in, std::vector<Profile> profile_out, std::function<void(ParamLoadingInfo)> loader)
 {
     return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), profile_in.data(), profile_in.size(), profile_out.data(), profile_out.size(), 
+		    			       NULL, 0,
 		    			       NULL, 0, NULL, 0,
 		                               loader);
 }
 
 static inline AcTaskDefinition
-acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::vector<Profile> profile_in, std::vector<Profile> profile_out, std::vector<KernelReduceOutput> reduce_outputs_in, std::vector<KernelReduceOutput> reduce_outputs_out, std::function<void(ParamLoadingInfo)> loader)
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::vector<Profile> profile_in, std::vector<Profile> profile_reduce_out, 
+		std::vector<Profile> profile_write_out,
+		std::vector<KernelReduceOutput> reduce_outputs_in, std::vector<KernelReduceOutput> reduce_outputs_out, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), profile_in.data(), profile_in.size(), profile_out.data(), profile_out.size(), 
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), profile_in.data(), profile_in.size(), profile_reduce_out.data(), profile_reduce_out.size(), 
+		    			       profile_write_out.data(), profile_write_out.size(),
 		    			       reduce_outputs_in.data(), reduce_outputs_in.size(), reduce_outputs_out.data(), reduce_outputs_out.size(),
 		    	                       loader);
 }
@@ -1855,7 +1864,7 @@ acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fiel
 static inline AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
 {
-    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), NULL, 0 , NULL, 0, NULL, 0, NULL, 0, loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), NULL, 0 , NULL, 0, NULL, 0, NULL, 0, NULL, 0, loader);
 }
 
 
