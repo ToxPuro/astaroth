@@ -559,24 +559,27 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   static UNUSED const char* 
   get_name(const AcRealOutputParam& param)
   {
+	  if constexpr(NUM_REAL_OUTPUTS == 0) return "NO REAL OUTPUTS";
           return real_output_names[param];
   }
   static UNUSED const char* 
   get_name(const AcIntOutputParam& param)
   {
-          return int_output_names[param];
+	  if constexpr(NUM_INT_OUTPUTS == 0) return "NO INT OUTPUTS";
+	  else return int_output_names[param];
   }
   static UNUSED const char* 
   get_name(const AcFloatOutputParam& param)
   {
-          return float_output_names[param];
+	  if constexpr(NUM_FLOAT_OUTPUTS == 0) return "NO FLOAT OUTPUTS";
+	  else return float_output_names[param];
   }
   
   static UNUSED const char* 
   get_name(const Profile& param)
   {
 	  if constexpr(NUM_PROFILES==0) return "NO_PROFILES";
-	  return profile_names[param];
+	  else return profile_names[param];
   }
 
   static UNUSED const char* 

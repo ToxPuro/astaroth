@@ -1,20 +1,13 @@
-#define RK_ORDER (3)
+const real rk1_alpha = [0.0]
+const real rk1_beta  = [1.0]
 
-#if RK_ORDER == 1
-    // Euler
-    const real rk_alpha = [0.0, 0.0, 0.0, 0.0]
-    const real rk_beta  = [0.0, 1.0, 0.0, 0.0]
-#elif RK_ORDER == 2
-    const real rk_alpha = [0.0,     0.0, -1.0/2.0, 0.0]
-    const real rk_beta  = [0.0, 1.0/2.0,      1.0, 0.0]
-#elif RK_ORDER == 3
-    const real rk_alpha =[ 0., -5./9., -153./128. ]
-    const real rk_beta  =[ 1./3., 15./ 16., 8./15.]
-#elif RK_ORDER == 4
-#endif
+const real rk2_alpha = [0.0,      -1/2.0]
+const real rk2_beta  = [1.0/2.0,   1.0]
 
-#if RK_ORDER == 3
-rk3(real s0, real s1, real roc, int step_num, real dt) {
+const real rk3_alpha =[ 0.,   -5./9.,   -153./128. ]
+const real rk3_beta  =[ 1./3., 15./ 16., 8./15.    ]
+
+rk3(Field f, real roc, int step_num, real dt) {
     /*
     // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
     if AC_step_number > 0 {
@@ -24,46 +17,67 @@ rk3(real s0, real s1, real roc, int step_num, real dt) {
     }
     */
     // Workaround
-    return s1 + rk_beta[step_num + 1] * ((rk_alpha[step_num] / rk_beta[step_num]) * (s1 - s0) + roc * dt)
-}
-/*--------------------------------------------------------------------------------------------------------------------------*/
-rk3(real3 f,real3 w,real3 roc,int step_num,real dt){
-  return real3( rk3(f.x,w.x,roc.x,step_num,dt),
-                rk3(f.y,w.y,roc.y,step_num,dt),
-                rk3(f.z,w.z,roc.z,step_num,dt)
-              )
-}
-/*--------------------------------------------------------------------------------------------------------------------------*/
-rk3(Field field, real roc, int step_num, real dt) {
-	return rk3(previous(field), value(field), roc, step_num, dt)
-}
+    const real s1 = previous(f)
+    const real s0 = value(f)
+    return s1 + rk3_beta[step_num + 1] * ((rk3_alpha[step_num] / rk3_beta[step_num]) * (s1 - s0) + roc * dt)
+} /*--------------------------------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3(Field3 field, real3 roc, int step_num, real dt) {
-	return rk3(previous(field), value(field), roc, step_num, dt)
+	return real3(
+			rk3(field.x,roc.x,step_num,dt),
+			rk3(field.y,roc.y,step_num,dt),
+			rk3(field.z,roc.z,step_num,dt)
+		    )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_intermediate(real w, real roc, int step_num, real dt) {
-    // return rk_alpha[AC_step_number] * w + roc * AC_dt
-    // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
-
-    //if step_num > 0 {
-    //    return rk_alpha[step_num] * w + roc * AC_dt
-    //} else {
-    //    return roc * AC_dt
-    //}
-    return rk_alpha[step_num] * w + roc * dt
+rk1_intermediate(Field w, real roc, int step_num, real dt) {
+    return rk1_alpha[step_num] * previous(f) + roc * dt
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_intermediate(real3 w,real3 roc,int step_num,real dt){
-  return real3( rk3_intermediate(w.x,roc.x,step_num,dt),
-                rk3_intermediate(w.y,roc.y,step_num,dt),
-                rk3_intermediate(w.z,roc.z,step_num,dt)
+rk1_intermediate(Field3 w, real3 roc, int step_num, real dt)
+{
+  return real3( rk1_intermediate(w.x,roc.x,step_num,dt),
+                rk1_intermediate(w.y,roc.y,step_num,dt),
+                rk1_intermediate(w.z,roc.z,step_num,dt)
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_intermediate(Field field, real roc, int step_num, real dt)
+rk1_final(Field f,int step_num) {
+    return previous(f) + rk1_beta[step_num] * value(f)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk1_final(Field3 f, int step_num){
+  return real3( rk1_final(f.x,step_num),
+                rk1_final(f.y,step_num),
+                rk1_final(f.z,step_num)
+              )
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk2_intermediate(Field w, real roc, int step_num, real dt) {
+    return rk2_alpha[step_num] * previous(f) + roc * dt
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk2_intermediate(Field3 w, real3 roc, int step_num, real dt)
 {
-	return rk3_intermediate(previous(field), roc, step_num, dt)
+  return real3( rk2_intermediate(w.x,roc.x,step_num,dt),
+                rk2_intermediate(w.y,roc.y,step_num,dt),
+                rk2_intermediate(w.z,roc.z,step_num,dt)
+              )
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk2_final(Field f,int step_num) {
+    return previous(f) + rk2_beta[step_num] * value(f)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk2_final(Field3 f, int step_num){
+  return real3( rk2_final(f.x,step_num),
+                rk2_final(f.y,step_num),
+                rk2_final(f.z,step_num)
+              )
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_intermediate(Field w, real roc, int step_num, real dt) {
+    return rk3_alpha[step_num] * previous(f) + roc * dt
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_intermediate(Field3 w, real3 roc, int step_num, real dt)
@@ -74,34 +88,16 @@ rk3_intermediate(Field3 w, real3 roc, int step_num, real dt)
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_final(real f, real w, int step_num) {
-    return f + rk_beta[step_num] * w
+rk3_final(Field f,int step_num) {
+    return previous(f) + rk3_beta[step_num] * value(f)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_final(real3 f,real3 w,int step_num){
-  return real3( rk3_final(f.x,w.x,step_num),
-                rk3_final(f.y,w.y,step_num),
-                rk3_final(f.z,w.z,step_num)
+rk3_final(Field3 f, int step_num){
+  return real3( rk3_final(f.x,step_num),
+                rk3_final(f.y,step_num),
+                rk3_final(f.z,step_num)
               )
 }
-/*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_final(Field field, int step_num) {
-    return previous(field) + rk_beta[step_num] * value(field)
-}
-/*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_final(Field3 field, int step_num) {
-  return real3( rk3_final(field.x,step_num),
-                rk3_final(field.y,step_num),
-                rk3_final(field.z,step_num)
-              )
-}
-#endif
-/*--------------------------------------------------------------------------------------------------------------------------*/
-euler(real f, real update, real dt_in)
-{
-	return f + update*dt_in
-}
-/*--------------------------------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 const real rk4f_beta= [1153189308089./22510343858157.,
