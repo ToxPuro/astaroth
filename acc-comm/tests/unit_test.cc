@@ -9,6 +9,7 @@
 #include "acm/detail/pack.h"
 #include "acm/detail/partition.h"
 #include "acm/detail/pointer.h"
+#include "acm/detail/transform.h"
 #include "acm/detail/type_conversion.h"
 #include "acm/detail/vector.h"
 
@@ -28,6 +29,7 @@ main(void)
     test_memory_resource();
     test_pointer();
     test_mpi_utils();
+    test_transform();
 
     return EXIT_SUCCESS;
 }
