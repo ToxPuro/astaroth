@@ -15,7 +15,7 @@ template <typename T, typename MemoryResource> class buffer {
     explicit buffer(const size_t count)
         : m_count{count},
           m_resource{static_cast<T*>(MemoryResource::alloc(count * sizeof(T))),
-                   MemoryResource::dealloc}
+                     MemoryResource::dealloc}
     {
     }
 
@@ -111,7 +111,7 @@ template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
 migrate(const ac::buffer<T, MemoryResourceA>& in, ac::buffer<T, MemoryResourceB>& out)
 {
-    PRINT_LOG("non-cuda htoh");
+    PRINT_LOG_DEBUG("non-cuda htoh");
     ERRCHK(in.size() == out.size());
     std::copy(in.data(), in.data() + in.size(), out.data());
 }
@@ -120,7 +120,7 @@ void
 migrate_async(const void* stream, const ac::buffer<T, MemoryResourceA>& in,
               ac::buffer<T, MemoryResourceB>& out)
 {
-    PRINT_LOG("non-cuda htoh async (note: blocking, stream ignored)");
+    PRINT_LOG_DEBUG("non-cuda htoh async (note: blocking, stream ignored)");
     (void)stream; // Unused
     migrate(in, out);
 }

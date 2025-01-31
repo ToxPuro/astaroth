@@ -15,7 +15,7 @@ namespace ac::mr {
 struct host_memory_resource {
     static void* alloc(const size_t bytes)
     {
-        PRINT_LOG("host");
+        PRINT_LOG_TRACE("host");
         void* ptr = malloc(bytes);
         ERRCHK(ptr);
         return ptr;
@@ -23,7 +23,7 @@ struct host_memory_resource {
 
     static void dealloc(void* ptr) noexcept
     {
-        PRINT_LOG("host");
+        PRINT_LOG_TRACE("host");
         WARNCHK(ptr);
         free(ptr);
     }
@@ -34,7 +34,7 @@ struct host_memory_resource {
 struct pinned_host_memory_resource : public host_memory_resource {
     static void* alloc(const size_t bytes)
     {
-        PRINT_LOG("host pinned");
+        PRINT_LOG_TRACE("host pinned");
         void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaHostAlloc(&ptr, bytes, cudaHostAllocDefault));
         return ptr;
@@ -42,7 +42,7 @@ struct pinned_host_memory_resource : public host_memory_resource {
 
     static void dealloc(void* ptr) noexcept
     {
-        PRINT_LOG("host pinned");
+        PRINT_LOG_TRACE("host pinned");
         WARNCHK(ptr);
         WARNCHK_CUDA_API(cudaFreeHost(ptr));
     }
@@ -51,7 +51,7 @@ struct pinned_host_memory_resource : public host_memory_resource {
 struct pinned_write_combined_host_memory_resource : public host_memory_resource {
     static void* alloc(const size_t bytes)
     {
-        PRINT_LOG("host pinned write-combined");
+        PRINT_LOG_TRACE("host pinned write-combined");
         void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaHostAlloc(&ptr, bytes, cudaHostAllocWriteCombined));
         return ptr;
@@ -59,7 +59,7 @@ struct pinned_write_combined_host_memory_resource : public host_memory_resource 
 
     static void dealloc(void* ptr) noexcept
     {
-        PRINT_LOG("host pinned write-combined");
+        PRINT_LOG_TRACE("host pinned write-combined");
         WARNCHK(ptr);
         WARNCHK_CUDA_API(cudaFreeHost(ptr));
     }
@@ -68,7 +68,7 @@ struct pinned_write_combined_host_memory_resource : public host_memory_resource 
 struct device_memory_resource {
     static void* alloc(const size_t bytes)
     {
-        PRINT_LOG("device");
+        PRINT_LOG_TRACE("device");
         void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaMalloc(&ptr, bytes));
         return ptr;
@@ -76,7 +76,7 @@ struct device_memory_resource {
 
     static void dealloc(void* ptr) noexcept
     {
-        PRINT_LOG("device");
+        PRINT_LOG_TRACE("device");
         WARNCHK(ptr);
         WARNCHK_CUDA_API(cudaFree(ptr));
     }

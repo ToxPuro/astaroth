@@ -219,7 +219,7 @@ main()
         }
     }
     catch (const std::exception& e) {
-        PRINT_LOG("Exception caught");
+        PRINT_LOG_ERROR("Exception caught");
         ac::mpi::abort();
         return EXIT_FAILURE;
     }

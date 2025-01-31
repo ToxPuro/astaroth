@@ -289,7 +289,7 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
 static int
 init_tfm_profiles(const Device& device)
 {
-    PRINT_LOG("Enter");
+    PRINT_LOG_DEBUG("Enter");
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
@@ -341,7 +341,7 @@ init_tfm_profiles(const Device& device)
 static int
 write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const size_t step)
 {
-    PRINT_LOG("Enter");
+    PRINT_LOG_DEBUG("Enter");
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
@@ -356,7 +356,7 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
-        PRINT_LOG("Writing %s", filepath);
+        PRINT_LOG_TRACE("Writing %s", filepath);
         ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
                      staging_buffer.get());
         ac::mpi::write_collective_simple(parent_comm,
@@ -366,7 +366,7 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
                                          staging_buffer.data(),
                                          std::string(filepath));
     }
-    PRINT_LOG("Exit");
+    PRINT_LOG_TRACE("Exit");
     return 0;
 }
 
@@ -378,7 +378,7 @@ static int
 write_distributed_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device,
                                     const size_t step)
 {
-    PRINT_LOG("Enter");
+    PRINT_LOG_DEBUG("Enter");
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
@@ -397,7 +397,7 @@ write_distributed_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& d
                 ac::mpi::get_rank(parent_comm),
                 step,
                 vtxbuf_names[i]);
-        PRINT_LOG("Writing %s", filepath);
+        PRINT_LOG_TRACE("Writing %s", filepath);
         ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
                      staging_buffer.get());
         ac::mpi::write_distributed(parent_comm,
@@ -406,14 +406,14 @@ write_distributed_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& d
                                    staging_buffer.data(),
                                    std::string(filepath));
     }
-    PRINT_LOG("Exit");
+    PRINT_LOG_TRACE("Exit");
     return 0;
 }
 
 static int
 write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const size_t step)
 {
-    PRINT_LOG("Enter");
+    PRINT_LOG_DEBUG("Enter");
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
@@ -427,7 +427,7 @@ write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const 
     for (int i = 0; i < NUM_PROFILES; ++i) {
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.profile", step, profile_names[i]);
-        PRINT_LOG("Writing %s", filepath);
+        PRINT_LOG_TRACE("Writing %s", filepath);
         const Shape profile_global_nz{as<uint64_t>(acr::get(local_info, AC_global_nz))};
         const Shape profile_local_mz{as<uint64_t>(acr::get(local_info, AC_mz))};
         const Shape profile_local_nz{as<uint64_t>(acr::get(local_info, AC_nz))};
@@ -459,7 +459,7 @@ write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const 
         }
     }
 
-    PRINT_LOG("Exit");
+    PRINT_LOG_TRACE("Exit");
     return 0;
 }
 
@@ -467,11 +467,11 @@ write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const 
 static int
 write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const size_t step)
 {
-    PRINT_LOG("Enter");
+    PRINT_LOG_DEBUG("Enter");
     write_snapshots_to_disk(parent_comm, device, step);
     // write_distributed_snapshots_to_disk(parent_comm, device, step);
     write_profiles_to_disk(parent_comm, device, step);
-    PRINT_LOG("Exit");
+    PRINT_LOG_TRACE("Exit");
     return 0;
 }
 
@@ -479,7 +479,7 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
 static AcReal
 calc_and_distribute_timestep(const MPI_Comm& parent_comm, const Device& device)
 {
-    PRINT_LOG("Enter");
+    PRINT_LOG_DEBUG("Enter");
     // VertexBufferArray vba{};
     // ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
@@ -530,7 +530,7 @@ static std::vector<ac::segment>
 partition(const Shape& local_mm, const Shape& local_nn, const Shape& local_rr,
           const SegmentGroup& group)
 {
-    PRINT_LOG("Enter");
+    PRINT_LOG_TRACE("Enter");
     switch (group) {
     case SegmentGroup::Halo: {
         const Shape mm{local_mm};
@@ -717,7 +717,7 @@ class Grid {
 
     void test()
     {
-        PRINT_LOG("Enter");
+        PRINT_LOG_DEBUG("Enter");
         reset_init_cond();
 
         // Test: Zeros
@@ -1293,7 +1293,7 @@ class Grid {
 
     void reset_init_cond()
     {
-        PRINT_LOG("Enter");
+        PRINT_LOG_DEBUG("Enter");
         // Stencil coefficients
         AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
         ERRCHK(get_stencil_coeffs(local_info, stencils) == 0);
@@ -1317,7 +1317,7 @@ class Grid {
 
     void reduce_xy_averages(const Stream stream)
     {
-        PRINT_LOG("Enter");
+        PRINT_LOG_DEBUG("Enter");
         ERRCHK_MPI(cart_comm != MPI_COMM_NULL);
 
         // Strategy:
@@ -1343,7 +1343,7 @@ class Grid {
                                                            data)};
         acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
 
-        PRINT_LOG("Exit");
+        PRINT_LOG_TRACE("Exit");
     }
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
@@ -1388,6 +1388,7 @@ class Grid {
 
     void tfm_pipeline(const size_t niters)
     {
+        PRINT_LOG_INFO("Launching TFM pipeline");
 // Write the initial step
 #if defined(AC_ENABLE_IO)
         write_diagnostic_step(cart_comm, device, 0);
@@ -1415,6 +1416,7 @@ class Grid {
 #endif
 
         for (uint64_t iter{1}; iter < niters; ++iter) {
+            PRINT_LOG_INFO("New integration step");
 
             // Current time
             acr::set(AC_current_time, current_time, local_info);
@@ -1430,6 +1432,7 @@ class Grid {
             ERRCHK_AC(acLoadMeshInfo(local_info, STREAM_DEFAULT));
 
             for (int step{0}; step < 3; ++step) {
+                PRINT_LOG_DEBUG("Integration substep");
 
                 // Outer segments
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
@@ -1537,7 +1540,7 @@ main(int argc, char* argv[])
         }
         else {
             const std::string default_config{AC_DEFAULT_TFM_CONFIG};
-            PRINT_LOG("No config path supplied, using %s", default_config.c_str());
+            PRINT_LOG_WARNING("No config path supplied, using %s", default_config.c_str());
             ERRCHK(acParseINI(default_config.c_str(), &raw_info) == 0);
         }
 

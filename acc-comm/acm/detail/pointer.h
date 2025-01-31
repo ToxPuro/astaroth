@@ -44,21 +44,21 @@ get_kind()
 {
     if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceA>) {
         if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
-            PRINT_LOG("dtod");
+            PRINT_LOG_TRACE("dtod");
             return cudaMemcpyDeviceToDevice;
         }
         else {
-            PRINT_LOG("dtoh");
+            PRINT_LOG_TRACE("dtoh");
             return cudaMemcpyDeviceToHost;
         }
     }
     else {
         if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
-            PRINT_LOG("htod");
+            PRINT_LOG_TRACE("htod");
             return cudaMemcpyHostToDevice;
         }
         else {
-            PRINT_LOG("htoh");
+            PRINT_LOG_TRACE("htoh");
             return cudaMemcpyHostToHost;
         }
     }

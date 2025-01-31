@@ -51,16 +51,16 @@ class BufferExchangeTask {
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 
-        PRINT_LOG("migrating to first-stage buffer");
+        PRINT_LOG_DEBUG("migrating to first-stage buffer");
         migrate(in, m_first_stage_buffer);
 
 #if defined(ACM_DEVICE_ENABLED)
-        PRINT_LOG("stream create");
+        PRINT_LOG_TRACE("stream create");
         ERRCHK(m_stream == nullptr);
         ERRCHK_CUDA_API(cudaStreamCreateWithFlags(&m_stream, cudaStreamDefault));
 #endif
 
-        PRINT_LOG("async migrate to second-stage buffer");
+        PRINT_LOG_DEBUG("async migrate to second-stage buffer");
         migrate_async(m_stream, m_first_stage_buffer, m_second_stage_buffer);
     }
 

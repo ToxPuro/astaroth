@@ -132,7 +132,7 @@ main()
         ac::ndbuffer<UserType, ac::mr::device_memory_resource> din(local_mm);
         ac::ndbuffer<UserType, ac::mr::device_memory_resource> dout(local_mm);
 
-        PRINT_LOG("Testing migration"); //-----------------------------------------
+        PRINT_LOG_INFO("Testing migration"); //-----------------------------------------
         std::iota(hin.begin(),
                   hin.end(),
                   static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
@@ -147,12 +147,12 @@ main()
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Should be arange");
+        PRINT_LOG_INFO("Should be arange");
         hout.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
 #if true
-        PRINT_LOG("Testing basic halo exchange"); //-------------------------------
+        PRINT_LOG_INFO("Testing basic halo exchange"); //-------------------------------
         if (nprocs == 1) {
             std::iota(hin.begin(),
                       hin.end(),
@@ -178,13 +178,13 @@ main()
         migrate(din.buffer(), hin.buffer());
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Should be properly exchanged");
+        PRINT_LOG_INFO("Should be properly exchanged");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 #endif
 
 #if true
-        PRINT_LOG("Testing packed halo exchange"); //-------------------------------
+        PRINT_LOG_INFO("Testing packed halo exchange"); //-------------------------------
         if (nprocs == 1) {
             std::iota(hin.begin(),
                       hin.end(),
@@ -198,7 +198,7 @@ main()
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Hin before exhange");
+        PRINT_LOG_INFO("Hin before exhange");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
@@ -214,13 +214,13 @@ main()
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Should be properly exchanged");
+        PRINT_LOG_INFO("Should be properly exchanged");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 #endif
 
 #if true
-        PRINT_LOG("Testing IO"); //-------------------------------
+        PRINT_LOG_INFO("Testing IO"); //-------------------------------
         std::iota(hin.begin(),
                   hin.end(),
                   static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
@@ -255,7 +255,7 @@ main()
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Should be arange");
+        PRINT_LOG_INFO("Should be arange");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
@@ -266,7 +266,7 @@ main()
         std::fill(buf.begin(), buf.end(), ac::mpi::get_rank(cart_comm));
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Reduce result before");
+        PRINT_LOG_INFO("Reduce result before");
         std::cout << ac::mpi::get_coords(cart_comm) << "{ ";
         for (const auto& elem : buf)
             std::cout << elem << " ";
@@ -281,7 +281,7 @@ main()
                              buf.data());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Reduce result after");
+        PRINT_LOG_INFO("Reduce result after");
         std::cout << "{ ";
         for (const auto& elem : buf)
             std::cout << elem << " ";
@@ -292,7 +292,7 @@ main()
         ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     }
     catch (std::exception& e) {
-        PRINT_LOG("Exception caught");
+        PRINT_LOG_INFO("Exception caught");
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
     ERRCHK_MPI_API(MPI_Finalize());
