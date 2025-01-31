@@ -284,10 +284,10 @@ cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn,
 }
 
 void
-cart_comm_destroy(MPI_Comm& cart_comm)
+cart_comm_destroy(MPI_Comm* cart_comm)
 {
-    ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
-    cart_comm = MPI_COMM_NULL;
+    ERRCHK_MPI_API(MPI_Comm_free(cart_comm));
+    *cart_comm = MPI_COMM_NULL;
 }
 
 void
@@ -328,16 +328,33 @@ subarray_create(const Shape& dims, const Shape& subdims, const Index& offset,
     return subarray;
 }
 
-void
-subarray_destroy(MPI_Datatype& subarray)
+MPI_Datatype
+subarray_create_resized(const Shape& dims, const Shape& subdims, const Index& offset,
+                        const MPI_Datatype& dtype, const MPI_Aint lower_bound,
+                        const MPI_Aint extent)
 {
-    ERRCHK_MPI_API(MPI_Type_free(&subarray));
-    subarray = MPI_DATATYPE_NULL;
+    ERRCHK_MPI(dims.size() == subdims.size());
+    ERRCHK_MPI(dims.size() == offset.size());
+    MPI_Datatype subarray{subarray_create(dims, subdims, offset, dtype)};
+
+    MPI_Datatype resized_subarray{MPI_DATATYPE_NULL};
+    ERRCHK_MPI_API(MPI_Type_create_resized(subarray, lower_bound, extent, &resized_subarray));
+    ERRCHK_MPI_API(MPI_Type_commit(&resized_subarray));
+
+    subarray_destroy(&subarray);
+    return resized_subarray;
+}
+
+void
+subarray_destroy(MPI_Datatype* subarray)
+{
+    ERRCHK_MPI_API(MPI_Type_free(subarray));
+    *subarray = MPI_DATATYPE_NULL;
 }
 
 /** Creates an MPI_Info structure with IO tuning parameters.
  * The resource must be freed after use to avoid memory leaks with
- * info_destroy(info)
+ * info_destroy(&info)
  * or
  * ERRCHK_MPI_API(MPI_Info_free(&info));
  */
@@ -359,22 +376,22 @@ info_create(void)
 }
 
 void
-info_destroy(MPI_Info& info)
+info_destroy(MPI_Info* info)
 {
-    ERRCHK_MPI_API(MPI_Info_free(&info));
-    info = MPI_INFO_NULL;
+    ERRCHK_MPI_API(MPI_Info_free(info));
+    *info = MPI_INFO_NULL;
 }
 
 void
-request_wait_and_destroy(MPI_Request& req)
+request_wait_and_destroy(MPI_Request* req)
 {
     MPI_Status status;
     status.MPI_ERROR = MPI_SUCCESS;
-    ERRCHK_MPI_API(MPI_Wait(&req, &status));
+    ERRCHK_MPI_API(MPI_Wait(req, &status));
     ERRCHK_MPI_API(status.MPI_ERROR);
-    if (req != MPI_REQUEST_NULL)
-        ERRCHK_MPI_API(MPI_Request_free(&req));
-    ERRCHK_MPI(req == MPI_REQUEST_NULL);
+    if (*req != MPI_REQUEST_NULL)
+        ERRCHK_MPI_API(MPI_Request_free(req));
+    ERRCHK_MPI(*req == MPI_REQUEST_NULL);
 }
 
 // int
@@ -548,6 +565,83 @@ get_global_mm(const Shape& global_nn, const Index& rr)
 }
 
 void
+scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
+                 const Shape& global_mm, const Index& subdomain_offset,
+                 const void* send_buffer, //
+                 const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
+                 void* recv_buffer)
+{
+    constexpr int root{0};
+    const size_t nprocs{as<size_t>(get_size(parent_comm))};
+
+    constexpr int lb{0}; // Lower bound
+    int extent{-1};
+    ERRCHK_MPI_API(MPI_Type_size(etype, &extent)); // Use element size as extent
+
+    MPI_Datatype monolithic_subarray{
+        subarray_create_resized(global_mm, local_nn, subdomain_offset, etype, lb, extent)};
+    MPI_Datatype distributed_subarray{subarray_create(local_mm, local_nn, local_nn_offset, etype)};
+
+    std::vector<int> counts(nprocs, 1);
+    std::vector<int> displs(nprocs);
+    for (size_t i{0}; i < nprocs; ++i) {
+        const Index coords{get_coords(parent_comm, as<int>(i))};
+        displs[i] = as<int>(to_linear(mul(coords, local_nn), global_mm));
+    }
+
+    ERRCHK_MPI_API(MPI_Scatterv(send_buffer,
+                                counts.data(),
+                                displs.data(),
+                                monolithic_subarray,
+                                recv_buffer,
+                                1,
+                                distributed_subarray,
+                                root,
+                                parent_comm));
+
+    subarray_destroy(&monolithic_subarray);
+    subarray_destroy(&distributed_subarray);
+}
+
+void
+gather_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
+                const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
+                const void* send_buffer, //
+                const Shape& global_mm, const Index& subdomain_offset, void* recv_buffer)
+{
+    constexpr int root{0};
+    const size_t nprocs{as<size_t>(get_size(parent_comm))};
+
+    constexpr int lb{0}; // Lower bound
+    int extent{-1};
+    ERRCHK_MPI_API(MPI_Type_size(etype, &extent)); // Use element size as extent
+
+    MPI_Datatype monolithic_subarray{
+        subarray_create_resized(global_mm, local_nn, subdomain_offset, etype, lb, extent)};
+    MPI_Datatype distributed_subarray{subarray_create(local_mm, local_nn, local_nn_offset, etype)};
+
+    std::vector<int> counts(nprocs, 1);
+    std::vector<int> displs(nprocs);
+    for (size_t i{0}; i < nprocs; ++i) {
+        const Index coords{get_coords(parent_comm, as<int>(i))};
+        displs[i] = as<int>(to_linear(mul(coords, local_nn), global_mm));
+    }
+
+    ERRCHK_MPI_API(MPI_Gatherv(send_buffer,
+                               1,
+                               distributed_subarray,
+                               recv_buffer,
+                               counts.data(),
+                               displs.data(),
+                               monolithic_subarray,
+                               root,
+                               parent_comm));
+
+    subarray_destroy(&monolithic_subarray);
+    subarray_destroy(&distributed_subarray);
+}
+
+void
 scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& global_nn,
         const Shape& local_rr, const void* send_buffer, void* recv_buffer)
 {
@@ -601,9 +695,9 @@ scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glo
                                 root_proc,
                                 parent_comm));
 
-    subarray_destroy(monolithic_subarray);
-    subarray_destroy(monolithic_subarray_prototype);
-    subarray_destroy(distributed_subarray);
+    subarray_destroy(&monolithic_subarray);
+    subarray_destroy(&monolithic_subarray_prototype);
+    subarray_destroy(&distributed_subarray);
 }
 
 void
@@ -647,16 +741,15 @@ gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glob
                                root_proc,
                                parent_comm));
 
-    subarray_destroy(monolithic_subarray);
-    subarray_destroy(monolithic_subarray_prototype);
-    subarray_destroy(distributed_subarray);
+    subarray_destroy(&monolithic_subarray);
+    subarray_destroy(&monolithic_subarray_prototype);
+    subarray_destroy(&distributed_subarray);
 }
 
 void
-read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
-                const Index& in_file_offset, const Shape& in_mesh_dims,
-                const Shape& in_mesh_subdims, const Index& in_mesh_offset, const std::string& path,
-                void* data)
+read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& file_dims,
+                const Index& file_offset, const Shape& mesh_dims, const Shape& mesh_subdims,
+                const Index& mesh_offset, const std::string& path, void* data)
 {
     // Communicator
     MPI_Comm comm{MPI_COMM_NULL};
@@ -666,13 +759,13 @@ read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Sh
     MPI_Info info = ac::mpi::info_create();
 
     // Subarrays
-    MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims,
-                                                            in_mesh_subdims,
-                                                            in_file_offset,
+    MPI_Datatype global_subarray = ac::mpi::subarray_create(file_dims,
+                                                            mesh_subdims,
+                                                            file_offset,
                                                             etype);
-    MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims,
-                                                           in_mesh_subdims,
-                                                           in_mesh_offset,
+    MPI_Datatype local_subarray  = ac::mpi::subarray_create(mesh_dims,
+                                                           mesh_subdims,
+                                                           mesh_offset,
                                                            etype);
 
     // File
@@ -686,7 +779,7 @@ read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Sh
 
     MPI_Offset bytes{0};
     ERRCHK_MPI_API(MPI_File_get_size(file, &bytes));
-    ERRCHK_MPI_EXPR_DESC(as<uint64_t>(bytes) == prod(in_file_dims) * as<uint64_t>(etype_bytes),
+    ERRCHK_MPI_EXPR_DESC(as<uint64_t>(bytes) == prod(file_dims) * as<uint64_t>(etype_bytes),
                          "Tried to read a file that had unexpected file size. Ensure that "
                          "the file read/written using the same grid dimensions.");
 
@@ -700,10 +793,9 @@ read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Sh
 }
 
 void
-write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& in_file_dims,
-                 const Index& in_file_offset, const Shape& in_mesh_dims,
-                 const Shape& in_mesh_subdims, const Index& in_mesh_offset, const void* data,
-                 const std::string& path)
+write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& file_dims,
+                 const Index& file_offset, const Shape& mesh_dims, const Shape& mesh_subdims,
+                 const Index& mesh_offset, const void* data, const std::string& path)
 {
     // Communicator
     MPI_Comm comm{MPI_COMM_NULL};
@@ -713,13 +805,13 @@ write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const S
     MPI_Info info = ac::mpi::info_create();
 
     // Subarrays
-    MPI_Datatype global_subarray = ac::mpi::subarray_create(in_file_dims,
-                                                            in_mesh_subdims,
-                                                            in_file_offset,
+    MPI_Datatype global_subarray = ac::mpi::subarray_create(file_dims,
+                                                            mesh_subdims,
+                                                            file_offset,
                                                             etype);
-    MPI_Datatype local_subarray  = ac::mpi::subarray_create(in_mesh_dims,
-                                                           in_mesh_subdims,
-                                                           in_mesh_offset,
+    MPI_Datatype local_subarray  = ac::mpi::subarray_create(mesh_dims,
+                                                           mesh_subdims,
+                                                           mesh_offset,
                                                            etype);
 
     // File
@@ -840,18 +932,42 @@ read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const S
     // fclose(fp);
 }
 
-void
-reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op, const size_t& axis,
-       const size_t& count, void* data)
+int
+reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op, const size_t count,
+       void* data)
+{
+    int comm_size{-1};
+    ERRCHK_MPI_API(MPI_Comm_size(parent_comm, &comm_size));
+    ERRCHK_MPI(comm_size > 0);
+
+    ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, data, as<int>(count), etype, op, parent_comm));
+
+    return comm_size;
+}
+
+int
+reduce_axis(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
+            const size_t& axis, const size_t count, void* data)
 {
     const auto coords{get_coords(parent_comm)};
     const auto color{as<int>(coords[axis])};
     const auto key{get_rank(parent_comm)};
 
+    // Split the communicator
     MPI_Comm neighbors{MPI_COMM_NULL};
     ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, key, &neighbors));
+    ERRCHK_MPI(neighbors != MPI_COMM_NULL);
+
+    // Allreduce
     ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, data, as<int>(count), etype, op, neighbors));
+
+    // Get the size of the communicator and release resources
+    int comm_size{-1};
+    ERRCHK_MPI_API(MPI_Comm_size(neighbors, &comm_size));
+    ERRCHK_MPI(comm_size > 0);
+
     ERRCHK_MPI_API(MPI_Comm_free(&neighbors));
+    return comm_size;
 }
 
 } // namespace ac::mpi
@@ -948,7 +1064,7 @@ test_mpi_utils()
     // ac::mpi::init_funneled();
     // const Shape global_nn{256, 128, 64};
     // MPI_Comm cart_comm{ac::mpi::cart_comm_hierarchical_create(MPI_COMM_WORLD, global_nn)};
-    // ac::mpi::cart_comm_destroy(cart_comm);
+    // ac::mpi::cart_comm_destroy(&cart_comm);
     // ac::mpi::finalize();
 
     // std::cout << "-----" << std::endl;

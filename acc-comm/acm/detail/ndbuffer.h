@@ -43,38 +43,46 @@ ndbuffer_print(const char* label, const size_t ndims, const uint64_t* dims, cons
 
 namespace ac {
 template <typename T, typename MemoryResource> struct ndbuffer {
-    ac::vector<uint64_t> shape;
-    ac::buffer<T, MemoryResource> buffer;
+    private:
+        ac::vector<uint64_t> m_shape;
+        ac::buffer<T, MemoryResource> m_buffer;
 
-    explicit ndbuffer(const ac::vector<uint64_t>& in_shape)
-        : shape{in_shape}, buffer(prod(in_shape))
+    public:
+    
+    explicit ndbuffer(const ac::vector<uint64_t>& shape)
+        : m_shape{shape}, m_buffer(prod(shape))
     {
     }
 
-    explicit ndbuffer(const ac::vector<uint64_t>& in_shape, const T& fill_value)
-        : shape{in_shape}, buffer(prod(in_shape), fill_value)
+    explicit ndbuffer(const ac::vector<uint64_t>& shape, const T& fill_value)
+        : m_shape{shape}, m_buffer(prod(shape), fill_value)
     {
     }
 
-    size_t size() const { return buffer.size(); }
-    T* data() { return buffer.data(); }
-    const T* data() const { return buffer.data(); }
+    size_t size() const { return m_buffer.size(); }
+    T* data() { return m_buffer.data(); }
+    const T* data() const { return m_buffer.data(); }
 
-    T* begin() { return buffer.data(); }
-    const T* begin() const { return buffer.data(); }
-    T* end() { return buffer.data() + buffer.size(); }
-    const T* end() const { return buffer.data() + buffer.size(); }
+    T* begin() { return m_buffer.data(); }
+    const T* begin() const { return m_buffer.data(); }
+    T* end() { return m_buffer.data() + m_buffer.size(); }
+    const T* end() const { return m_buffer.data() + m_buffer.size(); }
 
     auto get() { return ac::mr::base_ptr<T, MemoryResource>{size(), data()}; }
     auto get() const { return ac::mr::base_ptr<T, MemoryResource>{size(), data()}; }
 
+    auto& shape() { return m_shape; }
+    auto& shape() const { return m_shape; }
+    auto& buffer() { return m_buffer; }
+    auto& buffer() const { return m_buffer; }
+
     template <typename OtherMemoryResource>
     void migrate(ac::ndbuffer<T, OtherMemoryResource>& other)
     {
-        migrate(buffer, other.buffer);
+        migrate(m_buffer, other.m_buffer);
     }
 
-    void display() { ndbuffer_print_recursive(shape.size(), shape.data(), buffer.data()); }
+    void display() { ndbuffer_print_recursive(m_shape.size(), m_shape.data(), m_buffer.data()); }
 };
 } // namespace ac
 
@@ -103,13 +111,13 @@ void
 fill(const T& fill_value, const ac::vector<uint64_t>& subdims, const ac::vector<uint64_t>& offset,
      ac::ndbuffer<T, ac::mr::host_memory_resource>& ndbuf)
 {
-    ERRCHK(offset + subdims <= ndbuf.shape);
+    ERRCHK(offset + subdims <= ndbuf.shape());
     ndbuffer_fill<T>(fill_value,
-                     ndbuf.shape.size(),
-                     ndbuf.shape.data(),
+                     ndbuf.shape().size(),
+                     ndbuf.shape().data(),
                      subdims.data(),
                      offset.data(),
-                     ndbuf.buffer.data());
+                     ndbuf.buffer().data());
 }
 } // namespace ac
 

@@ -142,8 +142,8 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        migrate(hin.buffer, din.buffer);
-        migrate(din.buffer, hout.buffer);
+        migrate(hin.buffer(), din.buffer());
+        migrate(din.buffer(), hout.buffer());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -162,20 +162,20 @@ main()
         else {
             std::fill(hin.begin(), hin.end(), static_cast<UserType>(ac::mpi::get_rank(cart_comm)));
         }
-        migrate(hin.buffer, din.buffer);
+        migrate(hin.buffer(), din.buffer());
 
         // Basic MPI halo exchange task
         auto recv_reqs = launch_halo_exchange<UserType>(cart_comm,
                                                         local_mm,
                                                         local_nn,
                                                         rr,
-                                                        din.buffer.data(),
-                                                        din.buffer.data());
+                                                        din.buffer().data(),
+                                                        din.buffer().data());
         while (!recv_reqs.empty()) {
-            ac::mpi::request_wait_and_destroy(recv_reqs.back());
+            ac::mpi::request_wait_and_destroy(&recv_reqs.back());
             recv_reqs.pop_back();
         }
-        migrate(din.buffer, hin.buffer);
+        migrate(din.buffer(), hin.buffer());
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         PRINT_LOG("Should be properly exchanged");
@@ -194,7 +194,7 @@ main()
         else {
             std::fill(hin.begin(), hin.end(), static_cast<UserType>(ac::mpi::get_rank(cart_comm)));
         }
-        migrate(hin.buffer, din.buffer);
+        migrate(hin.buffer(), din.buffer());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -210,7 +210,7 @@ main()
         // Pipelined
         halo_exchange.launch(cart_comm, inputs);
         halo_exchange.wait(inputs);
-        migrate(din.buffer, hin.buffer);
+        migrate(din.buffer(), hin.buffer());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -240,7 +240,7 @@ main()
                                   local_mm,
                                   local_nn,
                                   rr,
-                                  hin.buffer.data(),
+                                  hin.buffer().data(),
                                   "test.dat");
         std::fill(hin.begin(), hin.end(), 0);
         ac::mpi::read_collective(cart_comm,
@@ -251,7 +251,7 @@ main()
                                  local_nn,
                                  rr,
                                  "test.dat",
-                                 hin.buffer.data());
+                                 hin.buffer().data());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
@@ -273,7 +273,12 @@ main()
         std::cout << "}" << std::endl;
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        ac::mpi::reduce(cart_comm, ac::mpi::get_dtype<int>(), MPI_SUM, 0, buf.size(), buf.data());
+        ac::mpi::reduce_axis(cart_comm,
+                             ac::mpi::get_dtype<int>(),
+                             MPI_SUM,
+                             0,
+                             buf.size(),
+                             buf.data());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         PRINT_LOG("Reduce result after");

@@ -59,7 +59,7 @@ ACM_Errorcode
 ACM_MPI_Cart_comm_destroy(MPI_Comm* cart_comm)
 {
     try {
-        ac::mpi::cart_comm_destroy(*cart_comm);
+        ac::mpi::cart_comm_destroy(cart_comm);
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {
@@ -148,19 +148,19 @@ ACM_Get_global_nn_offset(const MPI_Comm cart_comm, const size_t ndims, const uin
 }
 
 ACM_Errorcode
-ACM_IO_Read_collective(const MPI_Comm cart_comm, const size_t ndims, const uint64_t* in_file_dims,
-                       const uint64_t* in_file_offset, const uint64_t* in_mesh_dims,
-                       const uint64_t* in_mesh_subdims, const uint64_t* in_mesh_offset,
+ACM_IO_Read_collective(const MPI_Comm cart_comm, const size_t ndims, const uint64_t* file_dims,
+                       const uint64_t* file_offset, const uint64_t* mesh_dims,
+                       const uint64_t* mesh_subdims, const uint64_t* mesh_offset,
                        const char* path, double* data)
 {
     try {
         ac::mpi::read_collective(cart_comm,
                                  ac::mpi::get_dtype<double>(),
-                                 Shape(ndims, in_file_dims),
-                                 Shape(ndims, in_file_offset),
-                                 Shape(ndims, in_mesh_dims),
-                                 Shape(ndims, in_mesh_subdims),
-                                 Shape(ndims, in_mesh_offset),
+                                 Shape(ndims, file_dims),
+                                 Shape(ndims, file_offset),
+                                 Shape(ndims, mesh_dims),
+                                 Shape(ndims, mesh_subdims),
+                                 Shape(ndims, mesh_offset),
                                  std::string(path),
                                  data);
         return ACM_ERRORCODE_SUCCESS;
@@ -173,18 +173,18 @@ ACM_IO_Read_collective(const MPI_Comm cart_comm, const size_t ndims, const uint6
 
 ACM_Errorcode
 ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t ndims,
-                        const uint64_t* in_file_dims, const uint64_t* in_file_offset,
-                        const uint64_t* in_mesh_dims, const uint64_t* in_mesh_subdims,
-                        const uint64_t* in_mesh_offset, const double* data, const char* path)
+                        const uint64_t* file_dims, const uint64_t* file_offset,
+                        const uint64_t* mesh_dims, const uint64_t* mesh_subdims,
+                        const uint64_t* mesh_offset, const double* data, const char* path)
 {
     try {
         ac::mpi::write_collective(parent_comm,
                                   ac::mpi::get_dtype<double>(),
-                                  Shape(ndims, in_file_dims),
-                                  Shape(ndims, in_file_offset),
-                                  Shape(ndims, in_mesh_dims),
-                                  Shape(ndims, in_mesh_subdims),
-                                  Shape(ndims, in_mesh_offset),
+                                  Shape(ndims, file_dims),
+                                  Shape(ndims, file_offset),
+                                  Shape(ndims, mesh_dims),
+                                  Shape(ndims, mesh_subdims),
+                                  Shape(ndims, mesh_offset),
                                   data,
                                   std::string(path));
         return ACM_ERRORCODE_SUCCESS;
@@ -196,10 +196,10 @@ ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t ndims,
 }
 
 // ACM_Errorcode
-// ACM_IO_Task_create(const size_t ndims, const uint64_t* in_file_dims, const uint64_t*
-// in_file_offset,
-//                    const uint64_t* in_mesh_dims, const uint64_t* in_mesh_subdims,
-//                    const uint64_t* in_mesh_offset, ACM_IO_Task* task)
+// ACM_IO_Task_create(const size_t ndims, const uint64_t* file_dims, const uint64_t*
+// file_offset,
+//                    const uint64_t* mesh_dims, const uint64_t* mesh_subdims,
+//                    const uint64_t* mesh_offset, ACM_IO_Task* task)
 // {
 //     return ACM_ERRORCODE_NOT_IMPLEMENTED;
 // }

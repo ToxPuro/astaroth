@@ -6,32 +6,32 @@ namespace ac::mr {
 
 template <typename T, typename MemoryResource> class base_ptr {
   private:
-    const size_t _size;
-    T* _data;
+    const size_t m_count;
+    T* m_data;
 
   public:
-    explicit base_ptr(const size_t size, T* data)
-        : _size{size}, _data{data}
+    explicit base_ptr(const size_t count, T* data)
+        : m_count{count}, m_data{data}
     {
     }
 
-    size_t size() const { return _size; }
-    T* data() { return _data; }
-    T* data() const { return _data; }
+    size_t size() const { return m_count; }
+    T* data() { return m_data; }
+    T* data() const { return m_data; }
     T* get() { return data(); }
     T* get() const { return data(); }
 
     // Enable the subscript[] operator
     T& operator[](const size_t i)
     {
-        ERRCHK(i < _size);
-        return _data[i];
+        ERRCHK(i < size());
+        return m_data[i];
     }
 
     const T& operator[](const size_t i) const
     {
-        ERRCHK(i < _size);
-        return _data[i];
+        ERRCHK(i < size());
+        return m_data[i];
     }
 };
 template <typename T> using host_ptr = base_ptr<T, ac::mr::host_memory_resource>;

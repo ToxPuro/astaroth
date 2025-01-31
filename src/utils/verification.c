@@ -188,6 +188,51 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
     return errors_found ? AC_FAILURE : AC_SUCCESS;
 }
 
+static Error
+get_max_abs_error_comp_domain(const AcReal* model, const AcReal* candidate, const AcMeshInfo info)
+{
+    Error error = {.abs_error = -1};
+
+    const AcMeshDims dims = acGetMeshDims(info);
+    for (size_t k = dims.n0.z; k < as_size_t(dims.n1.z); ++k) {
+        for (size_t j = dims.n0.y; j < as_size_t(dims.n1.y); ++j) {
+            for (size_t i = dims.n0.x; i < as_size_t(dims.n1.x); ++i) {
+                const size_t idx = i + j * as_size_t(dims.m1.x) +
+                                   k * as_size_t(dims.m1.x) * as_size_t(dims.m1.y);
+                Error curr_error = acGetError(model[idx], candidate[idx]);
+                if (curr_error.abs_error > error.abs_error)
+                    error = curr_error;
+            }
+        }
+    }
+    error.maximum_magnitude = get_maximum_magnitude(model, info);
+    error.minimum_magnitude = get_minimum_magnitude(model, info);
+
+    return error;
+}
+
+AcResult
+acVerifyMeshCompDomain(const char* label, const AcMesh model, const AcMesh candidate)
+{
+    printf("---Test: %s---\n", label);
+    fflush(stdout);
+    printf("Errors at the point of the maximum absolute error:\n");
+
+    int errors_found = 0;
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        const Error error     = get_max_abs_error_comp_domain(model.vertex_buffer[i],
+                                                              candidate.vertex_buffer[i], model.info);
+        const bool acceptable = acEvalError(vtxbuf_names[i], error);
+        if (!acceptable)
+            ++errors_found;
+    }
+
+    if (errors_found > 0)
+        printf("Failure. Found %d errors\n", errors_found);
+
+    return errors_found ? AC_FAILURE : AC_SUCCESS;
+}
+
 /** Writes an error slice in the z direction */
 AcResult
 acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candidate, const size_t z)

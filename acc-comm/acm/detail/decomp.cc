@@ -104,29 +104,29 @@ decompose_hierarchical(const Shape& nn, const std::vector<uint64_t>& nprocs_per_
 }
 
 Index
-hierarchical_to_spatial(const uint64_t in_index, const std::vector<Shape>& in_decompositions)
+hierarchical_to_spatial(const uint64_t index, const std::vector<Shape>& decompositions)
 {
-    ERRCHK(in_decompositions.size() > 0);
-    const size_t ndims = in_decompositions[0].size();
+    ERRCHK(decompositions.size() > 0);
+    const size_t ndims = decompositions[0].size();
     Index coords(ndims);
     Index scale(ndims, 1);
     ERRCHK(coords[0] == 0);
     ERRCHK(scale[0] == 1);
-    for (const auto& dims : in_decompositions) {
-        coords = coords + scale * to_spatial(in_index / prod(scale), dims);
+    for (const auto& dims : decompositions) {
+        coords = coords + scale * to_spatial(index / prod(scale), dims);
         scale  = scale * dims;
     }
     return coords;
 }
 
 uint64_t
-hierarchical_to_linear(const Index& in_coords, const std::vector<Shape>& in_decompositions)
+hierarchical_to_linear(const Index& coords, const std::vector<Shape>& decompositions)
 {
-    Index scale(in_coords.size(), 1);
+    Index scale(coords.size(), 1);
     ERRCHK(scale[0] == 1);
     uint64_t index{0};
-    for (const auto& dims : in_decompositions) {
-        index = index + prod(scale) * to_linear((in_coords / scale) % dims, dims);
+    for (const auto& dims : decompositions) {
+        index = index + prod(scale) * to_linear((coords / scale) % dims, dims);
         scale = scale * dims;
     }
     return index;

@@ -76,7 +76,7 @@ MPI_Comm
 cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn,
                  const RankReorderMethod& reorder_method = RankReorderMethod::Hierarchical);
 
-void cart_comm_destroy(MPI_Comm& cart_comm);
+void cart_comm_destroy(MPI_Comm* cart_comm);
 
 /** Print information about the Cartesian communicator */
 void print_mpi_comm(const MPI_Comm& comm);
@@ -91,7 +91,7 @@ void print_mpi_comm(const MPI_Comm& comm);
 MPI_Datatype subarray_create(const Shape& dims, const Shape& subdims, const Index& offset,
                              const MPI_Datatype& dtype);
 
-void subarray_destroy(MPI_Datatype& subarray);
+void subarray_destroy(MPI_Datatype* subarray);
 
 /** Creates an MPI_Info structure with IO tuning parameters.
  * The resource must be freed after use to avoid memory leaks with
@@ -99,12 +99,12 @@ void subarray_destroy(MPI_Datatype& subarray);
  */
 MPI_Info info_create(void);
 
-void info_destroy(MPI_Info& info);
+void info_destroy(MPI_Info* info);
 
 /** Block until the request has completed and deallocate it.
  * The MPI_Request is set to MPI_REQUEST_NULL after deallocation.
  */
-void request_wait_and_destroy(MPI_Request& req);
+void request_wait_and_destroy(MPI_Request* req);
 
 /** Getters */
 
@@ -171,6 +171,17 @@ get_dtype()
 }
 
 /** Communication */
+void scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
+                      const Shape& global_mm, const Index& subdomain_offset,
+                      const void* send_buffer, //
+                      const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
+                      void* recv_buffer);
+
+void gather_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
+                     const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
+                     const void* send_buffer, //
+                     const Shape& global_mm, const Index& subdomain_offset, void* recv_buffer);
+
 void scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& global_nn,
              const Shape& local_rr, const void* send_buffer, void* recv_buffer);
 
@@ -183,19 +194,18 @@ void gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape&
  * Synchronous collective read.
  * The elementary type of the underlying data is passed as the etype arameter.
  */
-void read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
-                     const Shape& in_file_dims, const Index& in_file_offset,
-                     const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
-                     const Index& in_mesh_offset, const std::string& path, void* data);
+void read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& file_dims,
+                     const Index& file_offset, const Shape& mesh_dims, const Shape& mesh_subdims,
+                     const Index& mesh_offset, const std::string& path, void* data);
 
 /**
  * Synchronous collective write.
  * The elementary type of the underlying data is passed as the etype parameter.
  */
 void write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
-                      const Shape& in_file_dims, const Index& in_file_offset,
-                      const Shape& in_mesh_dims, const Shape& in_mesh_subdims,
-                      const Index& in_mesh_offset, const void* data, const std::string& path);
+                      const Shape& file_dims, const Index& file_offset, const Shape& mesh_dims,
+                      const Shape& mesh_subdims, const Index& mesh_offset, const void* data,
+                      const std::string& path);
 
 /** A simplified routine for reading a a domain of shape `global_nn` from disk to memory address
  * specified by `data` based on the arrangement defined by the communicator.
@@ -226,7 +236,18 @@ void read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, co
 /**
  * Collective synchronous reduction.
  * Operates in-place on the input data.
+ * Operates on all axes.
+ * Returns the number of processes that contribute to the result.
+ */
+int reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
+           const size_t count, void* data);
+
+/**
+ * Collective synchronous reduction.
+ * Operates in-place on the input data.
  * The axis parameter is used to group the processes based on their spatial coordinates
+ * Returns the number of processes that contributed to the result
+ * (this can be used for, e.g., averaging)
  *
  * For example, reducing along axis=0 (the fastest varying) in a 2D decomposition with
  * processes
@@ -244,8 +265,8 @@ void read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, co
  * axis = 1 => reduced along the xz plane
  * axis = 2 => reduced along the xy plane
  */
-void reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
-            const size_t& axis, const size_t& count, void* data);
+int reduce_axis(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
+                const size_t& axis, const size_t count, void* data);
 
 } // namespace ac::mpi
 

@@ -16,15 +16,15 @@ const unsigned int cudaStreamDefault{0};
 template <typename T, typename FirstStageResource, typename SecondStageResource>
 class BufferExchangeTask {
   private:
-    ac::buffer<T, FirstStageResource> first_stage_buffer;
-    ac::buffer<T, SecondStageResource> second_stage_buffer;
+    ac::buffer<T, FirstStageResource> m_first_stage_buffer;
+    ac::buffer<T, SecondStageResource> m_second_stage_buffer;
 
-    cudaStream_t stream{nullptr};
-    bool in_progress{false};
+    cudaStream_t m_stream{nullptr};
+    bool m_in_progress{false};
 
   public:
     explicit BufferExchangeTask(const size_t max_count)
-        : first_stage_buffer{max_count}, second_stage_buffer{max_count}
+        : m_first_stage_buffer{max_count}, m_second_stage_buffer{max_count}
     {
     }
 
@@ -35,14 +35,14 @@ class BufferExchangeTask {
 
     ~BufferExchangeTask()
     {
-        WARNCHK(!in_progress);
-        WARNCHK(!stream);
+        WARNCHK(!m_in_progress);
+        WARNCHK(!m_stream);
     }
 
     template <typename MemoryResource> void launch(const ac::buffer<T, MemoryResource>& in)
     {
-        ERRCHK(!in_progress);
-        in_progress = true;
+        ERRCHK(!m_in_progress);
+        m_in_progress = true;
 
         // Ensure that the input resource and the first-stage buffer is in the same memory space
         static_assert((std::is_base_of_v<ac::mr::device_memory_resource, FirstStageResource> &&
@@ -52,21 +52,21 @@ class BufferExchangeTask {
                       "buffer");
 
         PRINT_LOG("migrating to first-stage buffer");
-        migrate(in, first_stage_buffer);
+        migrate(in, m_first_stage_buffer);
 
 #if defined(ACM_DEVICE_ENABLED)
         PRINT_LOG("stream create");
-        ERRCHK(stream == nullptr);
-        ERRCHK_CUDA_API(cudaStreamCreateWithFlags(&stream, cudaStreamDefault));
+        ERRCHK(m_stream == nullptr);
+        ERRCHK_CUDA_API(cudaStreamCreateWithFlags(&m_stream, cudaStreamDefault));
 #endif
 
         PRINT_LOG("async migrate to second-stage buffer");
-        migrate_async(stream, first_stage_buffer, second_stage_buffer);
+        migrate_async(m_stream, m_first_stage_buffer, m_second_stage_buffer);
     }
 
     template <typename MemoryResource> void wait(ac::buffer<T, MemoryResource>& out)
     {
-        ERRCHK(in_progress);
+        ERRCHK(m_in_progress);
 
         // Ensure that the output resource and the second-stage buffer is in the same memory space
         static_assert((std::is_base_of_v<ac::mr::device_memory_resource, SecondStageResource> &&
@@ -75,19 +75,19 @@ class BufferExchangeTask {
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 
-// Synchronize stream
+// Synchronize m_stream
 #if defined(ACM_DEVICE_ENABLED)
-        ERRCHK(stream != nullptr);
-        ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
-        ERRCHK_CUDA_API(cudaStreamDestroy(stream));
-        stream = nullptr;
+        ERRCHK(m_stream != nullptr);
+        ERRCHK_CUDA_API(cudaStreamSynchronize(m_stream));
+        ERRCHK_CUDA_API(cudaStreamDestroy(m_stream));
+        m_stream = nullptr;
 #endif
 
         // Migrate to output buffer
-        migrate(second_stage_buffer, out);
+        migrate(m_second_stage_buffer, out);
 
         // Complete
-        in_progress = false;
+        m_in_progress = false;
     }
 };
 

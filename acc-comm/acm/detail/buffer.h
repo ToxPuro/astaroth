@@ -8,19 +8,19 @@
 namespace ac {
 template <typename T, typename MemoryResource> class buffer {
   private:
-    const size_t count;
-    std::unique_ptr<T, decltype(&MemoryResource::dealloc)> resource;
+    const size_t m_count;
+    std::unique_ptr<T, decltype(&MemoryResource::dealloc)> m_resource;
 
   public:
-    explicit buffer(const size_t in_count)
-        : count{in_count},
-          resource{static_cast<T*>(MemoryResource::alloc(in_count * sizeof(T))),
+    explicit buffer(const size_t count)
+        : m_count{count},
+          m_resource{static_cast<T*>(MemoryResource::alloc(count * sizeof(T))),
                    MemoryResource::dealloc}
     {
     }
 
-    explicit buffer(const size_t in_count, const T& fill_value)
-        : buffer(in_count)
+    explicit buffer(const size_t count, const T& fill_value)
+        : buffer(count)
     {
         static_assert(std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Only supported for host memory types");
@@ -30,18 +30,18 @@ template <typename T, typename MemoryResource> class buffer {
     // Enable subscript notation
     T& operator[](const size_t i)
     {
-        ERRCHK(i < count);
+        ERRCHK(i < size());
         return data()[i];
     }
     const T& operator[](const size_t i) const
     {
-        ERRCHK(i < count);
+        ERRCHK(i < size());
         return data()[i];
     }
 
-    T* data() { return resource.get(); }
-    const T* data() const { return resource.get(); }
-    size_t size() const { return count; }
+    T* data() { return m_resource.get(); }
+    const T* data() const { return m_resource.get(); }
+    size_t size() const { return m_count; }
 
     T* begin() { return data(); }
     const T* begin() const { return data(); }
@@ -65,8 +65,8 @@ template <typename T, typename MemoryResource> class buffer {
     {
         static_assert(std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
                       "Only enabled for host buffer");
-        for (size_t i{0}; i < count; ++i)
-            std::cout << i << ": " << resource.get()[i] << std::endl;
+        for (size_t i{0}; i < size(); ++i)
+            std::cout << i << ": " << m_resource.get()[i] << std::endl;
     }
 
     // friend std::ostream& operator<<(std::ostream& os, const ac::buffer<T, MemoryResource>& obj)

@@ -12,7 +12,7 @@ namespace ac::comm {
 template <typename T, typename MemoryResource = ac::mr::device_memory_resource>
 class AsyncHaloExchangeTask {
   private:
-    std::vector<std::unique_ptr<Packet<T, MemoryResource>>> packets{};
+    std::vector<std::unique_ptr<Packet<T, MemoryResource>>> m_packets{};
 
   public:
     AsyncHaloExchangeTask() = default;
@@ -36,7 +36,7 @@ class AsyncHaloExchangeTask {
 
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
-            packets.push_back(std::make_unique<Packet<T, MemoryResource>>(local_mm,
+            m_packets.push_back(std::make_unique<Packet<T, MemoryResource>>(local_mm,
                                                                           local_nn,
                                                                           local_rr,
                                                                           segment,
@@ -47,7 +47,7 @@ class AsyncHaloExchangeTask {
     void launch(const MPI_Comm& parent_comm,
                 const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
     {
-        for (auto& packet : packets)
+        for (auto& packet : m_packets)
             packet->launch(parent_comm, inputs);
     }
 
@@ -55,23 +55,23 @@ class AsyncHaloExchangeTask {
     {
         // Round-robin busy-wait to choose packet to unpack
         while (!complete()) {
-            for (auto& packet : packets)
+            for (auto& packet : m_packets)
                 if (!packet->complete() && packet->ready())
                     packet->wait(outputs);
         }
         // Simple loop over the packets
-        // for (auto& packet : packets)
+        // for (auto& packet : m_packets)
         //     packet->wait(outputs);
     }
 
     bool complete() const
     {
-        const bool cc_allof_result{std::all_of(packets.begin(),
-                                               packets.end(),
+        const bool cc_allof_result{std::all_of(m_packets.begin(),
+                                               m_packets.end(),
                                                std::mem_fn(&Packet<T, MemoryResource>::complete))};
 
         // TODO remove and return the cc_allof_result after testing
-        for (const auto& packet : packets) {
+        for (const auto& packet : m_packets) {
             if (!packet->complete()) {
                 ERRCHK_MPI(cc_allof_result == false);
                 return false;
