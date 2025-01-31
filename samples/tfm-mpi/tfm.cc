@@ -370,6 +370,46 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
     return 0;
 }
 
+/**
+ * Synchronous distributed write snapshots to disk.
+ * Each process writes out their own, full mesh, to separate files
+ */
+static int
+write_distributed_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device,
+                                    const size_t step)
+{
+    PRINT_LOG("Enter");
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    AcMeshInfo local_info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &local_info));
+
+    const auto local_mm{acr::get_local_mm(local_info)};
+    const auto local_mm_count{prod(local_mm)};
+    ac::buffer<AcReal, ac::mr::host_memory_resource> staging_buffer{local_mm_count};
+
+    // Local mesh incl. ghost zones
+    for (int i{0}; i < NUM_VTXBUF_HANDLES; ++i) {
+        char filepath[4096];
+        sprintf(filepath,
+                "proc-%d-debug-step-%012zu-tfm-%s.mesh-distributed",
+                ac::mpi::get_rank(parent_comm),
+                step,
+                vtxbuf_names[i]);
+        PRINT_LOG("Writing %s", filepath);
+        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
+                     staging_buffer.get());
+        ac::mpi::write_distributed(parent_comm,
+                                   ac::mpi::get_dtype<AcReal>(),
+                                   acr::get_local_mm(local_info),
+                                   staging_buffer.data(),
+                                   std::string(filepath));
+    }
+    PRINT_LOG("Exit");
+    return 0;
+}
+
 static int
 write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const size_t step)
 {
@@ -428,85 +468,9 @@ static int
 write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const size_t step)
 {
     PRINT_LOG("Enter");
-    VertexBufferArray vba{};
-    ERRCHK_AC(acDeviceGetVBA(device, &vba));
-
-    AcMeshInfo local_info{};
-    ERRCHK_AC(acDeviceGetLocalConfig(device, &local_info));
-
-    const auto local_mm{acr::get_local_mm(local_info)};
-    const auto local_mm_count{prod(local_mm)};
-    ac::buffer<AcReal, ac::mr::host_memory_resource> staging_buffer{local_mm_count};
-
-    // Global mesh (collective)
-    PRINT_LOG("Global mesh");
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char filepath[4096];
-        sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
-        PRINT_LOG("Writing %s", filepath);
-        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
-                     staging_buffer.get());
-        ac::mpi::write_collective_simple(parent_comm,
-                                         ac::mpi::get_dtype<AcReal>(),
-                                         acr::get_global_nn(local_info),
-                                         acr::get_local_nn_offset(),
-                                         staging_buffer.data(),
-                                         std::string(filepath));
-    }
-    // Local mesh incl. ghost zones
-    PRINT_LOG("Local mesh");
-    for (int i{0}; i < NUM_VTXBUF_HANDLES; ++i) {
-        char filepath[4096];
-        sprintf(filepath,
-                "proc-%d-debug-step-%012zu-tfm-%s.mesh-distributed",
-                ac::mpi::get_rank(parent_comm),
-                step,
-                vtxbuf_names[i]);
-        PRINT_LOG("Writing %s", filepath);
-        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
-                     staging_buffer.get());
-        ac::mpi::write_distributed(parent_comm,
-                                   ac::mpi::get_dtype<AcReal>(),
-                                   acr::get_local_mm(local_info),
-                                   staging_buffer.data(),
-                                   std::string(filepath));
-    }
-    // Global profile (collective)
-    PRINT_LOG("Global profile");
-    for (int i = 0; i < NUM_PROFILES; ++i) {
-        char filepath[4096];
-        sprintf(filepath, "debug-step-%012zu-tfm-%s.profile", step, profile_names[i]);
-        PRINT_LOG("Writing %s", filepath);
-        const Shape profile_global_nz{as<uint64_t>(acr::get(local_info, AC_global_nz))};
-        const Shape profile_local_mz{as<uint64_t>(acr::get(local_info, AC_mz))};
-        const Shape profile_local_nz{as<uint64_t>(acr::get(local_info, AC_nz))};
-        const Shape profile_local_nz_offset{as<uint64_t>(acr::get(local_info, AC_nz_min))};
-        const Index coords{ac::mpi::get_coords(parent_comm)[2]};
-        const Shape profile_global_nz_offset{coords * profile_local_nz};
-
-        const int rank{ac::mpi::get_rank(parent_comm)};
-        const Index coords_3d{ac::mpi::get_coords(parent_comm)};
-        const Shape decomp_3d{ac::mpi::get_decomposition(parent_comm)};
-        const int color = (coords_3d[0] + coords_3d[1] * decomp_3d[0]) == 0 ? 0 : MPI_UNDEFINED;
-
-        MPI_Comm profile_comm{MPI_COMM_NULL};
-        ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, rank, &profile_comm));
-
-        if (profile_comm != MPI_COMM_NULL) {
-            ac::mr::copy(make_ptr(vba, static_cast<Profile>(i), BufferGroup::Input),
-                         staging_buffer.get());
-            ac::mpi::write_collective(profile_comm,
-                                      ac::mpi::get_dtype<AcReal>(),
-                                      profile_global_nz,
-                                      profile_global_nz_offset,
-                                      profile_local_mz,
-                                      profile_local_nz,
-                                      profile_local_nz_offset,
-                                      staging_buffer.data(),
-                                      std::string(filepath));
-            ERRCHK_MPI_API(MPI_Comm_free(&profile_comm));
-        }
-    }
+    write_snapshots_to_disk(parent_comm, device, step);
+    // write_distributed_snapshots_to_disk(parent_comm, device, step);
+    write_profiles_to_disk(parent_comm, device, step);
     PRINT_LOG("Exit");
     return 0;
 }
