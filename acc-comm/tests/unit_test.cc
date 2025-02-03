@@ -9,6 +9,7 @@
 #include "acm/detail/pack.h"
 #include "acm/detail/partition.h"
 #include "acm/detail/pointer.h"
+#include "acm/detail/static_array.h"
 #include "acm/detail/transform.h"
 #include "acm/detail/type_conversion.h"
 #include "acm/detail/vector.h"
@@ -16,20 +17,26 @@
 int
 main(void)
 {
+    // Operations
     test_type_conversion();
-    test_array();
     test_math_utils();
     test_partition();
     test_decomp();
     test_pack();
     test_buffer_exchange();
+    test_transform();
+
+    // Data types
+    test_array();
     test_buffer();
     test_ndbuffer();
     test_vector();
+    test_static_array();
     test_memory_resource();
     test_pointer();
+
+    // APIs
     test_mpi_utils();
-    test_transform();
 
     return EXIT_SUCCESS;
 }
