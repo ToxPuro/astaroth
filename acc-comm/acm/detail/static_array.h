@@ -95,7 +95,16 @@ template <typename T, size_t N> class static_array {
     //         m_data[i] = vec[i];
     // }
 
-    __host__ __device__ size_t size() const { return m_count; }
+    __host__ __device__ auto size() const { return m_count; }
+
+    __host__ __device__ auto data() const { return m_data; }
+    __host__ __device__ auto data() { return m_data; }
+
+    __host__ __device__ auto begin() const { return data(); }
+    __host__ __device__ auto begin() { return data(); }
+
+    __host__ __device__ auto end() const { data() + size(); }
+    __host__ __device__ auto end() { data() + size(); }
 
     // Common operations
     template <typename U> T __host__ __device__ dot(const static_array<U, N> other) const

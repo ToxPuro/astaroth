@@ -22,14 +22,14 @@ template <typename T = uint64_t> class ntuple {
 
     auto size() const { return m_resource.size(); }
 
+    auto data() const { return m_resource.data(); }
+    auto data() { return m_resource.data(); }
+
     auto begin() const { return m_resource.begin(); }
     auto begin() { return m_resource.begin(); }
 
     auto end() const { return m_resource.end(); }
     auto end() { return m_resource.end(); }
-
-    auto data() const { return m_resource.data(); }
-    auto data() { return m_resource.data(); }
 
     auto& operator[](const size_t i)
     {

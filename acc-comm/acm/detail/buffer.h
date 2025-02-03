@@ -39,17 +39,19 @@ template <typename T, typename MemoryResource> class buffer {
         return data()[i];
     }
 
-    T* data() { return m_resource.get(); }
-    const T* data() const { return m_resource.get(); }
-    size_t size() const { return m_count; }
+    auto size() const { return m_count; }
 
-    T* begin() { return data(); }
-    const T* begin() const { return data(); }
-    T* end() { return data() + size(); }
-    const T* end() const { return data() + size(); }
+    auto data() const { return m_resource.get(); }
+    auto data() { return m_resource.get(); }
 
-    auto get() { return ac::mr::pointer<T, MemoryResource>{size(), data()}; }
+    auto begin() const { return data(); }
+    auto begin() { return data(); }
+
+    auto end() const { return data() + size(); }
+    auto end() { return data() + size(); }
+
     auto get() const { return ac::mr::pointer<T, MemoryResource>{size(), data()}; }
+    auto get() { return ac::mr::pointer<T, MemoryResource>{size(), data()}; }
 
     // // Initializer list constructor
     // // ac::buffer<int, 3> a{1,2,3}

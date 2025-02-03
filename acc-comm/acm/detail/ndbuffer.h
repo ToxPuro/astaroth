@@ -58,22 +58,25 @@ template <typename T, typename MemoryResource> struct ndbuffer {
     {
     }
 
-    size_t size() const { return m_buffer.size(); }
-    T* data() { return m_buffer.data(); }
-    const T* data() const { return m_buffer.data(); }
+    auto size() const { return m_buffer.size(); }
 
-    T* begin() { return m_buffer.data(); }
-    const T* begin() const { return m_buffer.data(); }
-    T* end() { return m_buffer.data() + m_buffer.size(); }
-    const T* end() const { return m_buffer.data() + m_buffer.size(); }
+    auto data() const { return m_buffer.data(); }
+    auto data() { return m_buffer.data(); }
 
-    auto get() { return ac::mr::pointer<T, MemoryResource>{size(), data()}; }
+    auto begin() const { return m_buffer.data(); }
+    auto begin() { return m_buffer.data(); }
+
+    auto end() const { return m_buffer.data() + m_buffer.size(); }
+    auto end() { return m_buffer.data() + m_buffer.size(); }
+
     auto get() const { return ac::mr::pointer<T, MemoryResource>{size(), data()}; }
+    auto get() { return ac::mr::pointer<T, MemoryResource>{size(), data()}; }
 
-    auto& shape() { return m_shape; }
     auto& shape() const { return m_shape; }
-    auto& buffer() { return m_buffer; }
+    auto& shape() { return m_shape; }
+
     auto& buffer() const { return m_buffer; }
+    auto& buffer() { return m_buffer; }
 
     template <typename OtherMemoryResource>
     void migrate(ac::ndbuffer<T, OtherMemoryResource>& other)

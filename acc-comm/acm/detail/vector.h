@@ -67,13 +67,14 @@ template <typename T> class vector {
 
     size_t size() const { return m_resource.size(); }
 
-    auto data() { return m_resource.data(); }
     auto data() const { return m_resource.data(); }
+    auto data() { return m_resource.data(); }
 
-    auto begin() { return m_resource.begin(); }
     auto begin() const { return m_resource.begin(); }
-    auto end() { return m_resource.end(); }
+    auto begin() { return m_resource.begin(); }
+
     auto end() const { return m_resource.end(); }
+    auto end() { return m_resource.end(); }
 
     // auto get() { return m_resource; }
     // auto get() const { return m_resource; }
