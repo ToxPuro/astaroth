@@ -21,12 +21,15 @@ template <typename T = uint64_t> class ntuple {
     }
 
     auto size() const { return m_resource.size(); }
-    auto begin() { return m_resource.begin(); }
+
     auto begin() const { return m_resource.begin(); }
-    auto end() { return m_resource.end(); }
+    auto begin() { return m_resource.begin(); }
+
     auto end() const { return m_resource.end(); }
-    auto data() { return m_resource.data(); }
+    auto end() { return m_resource.end(); }
+
     auto data() const { return m_resource.data(); }
+    auto data() { return m_resource.data(); }
 
     auto& operator[](const size_t i)
     {
@@ -356,17 +359,17 @@ prod(const ac::ntuple<T>& in)
     return out;
 }
 
-/** Element-wise multiplication of vectors a and b */
+/** Element-wise multiplication of ntuples a and b */
 template <typename T, typename U>
-[[nodiscard]] ac::vector<T>
-mul(const ac::vector<T>& a, const ac::vector<U>& b)
+[[nodiscard]] ac::ntuple<T>
+mul(const ac::ntuple<T>& a, const ac::ntuple<U>& b)
 {
     ERRCHK(a.size() == b.size());
     static_assert(std::is_same_v<T, U>,
                   "Operator not enabled for parameters of different types. Perform an "
                   "explicit cast such that both operands are of the same type");
 
-    ac::vector<T> c{a};
+    ac::ntuple<T> c{a};
 
     for (size_t i{0}; i < a.size(); ++i)
         c[i] = a[i] * b[i];
@@ -376,7 +379,7 @@ mul(const ac::vector<T>& a, const ac::vector<U>& b)
 
 template <typename T, typename U>
 [[nodiscard]] T
-dot(const ac::vector<T>& a, const ac::vector<U>& b)
+dot(const ac::ntuple<T>& a, const ac::ntuple<U>& b)
 {
     ERRCHK(a.size() == b.size());
     static_assert(std::is_same_v<T, U>,
