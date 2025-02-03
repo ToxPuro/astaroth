@@ -5,13 +5,13 @@
 #include "acm/detail/memory_resource.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
+#include "acm/detail/ntuple.h"
 #include "acm/detail/pack.h"
 #include "acm/detail/partition.h"
 #include "acm/detail/pointer.h"
 #include "acm/detail/static_array.h"
 #include "acm/detail/transform.h"
 #include "acm/detail/type_conversion.h"
-#include "acm/detail/vector.h"
 
 int
 main(void)
@@ -28,8 +28,8 @@ main(void)
     // Data types
     test_memory_resource();
     test_pointer();
+    test_ntuple();
     test_static_array();
-    test_vector();
     test_buffer();
     test_ndbuffer();
 

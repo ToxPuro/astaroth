@@ -1,16 +1,16 @@
-#include "datatypes.h"
+#include "ntuple.h"
 
-#include "print_debug.h"
+#include "errchk.h"
 #include "type_conversion.h"
 
 static void
-test_fn(ac::ntuple<uint64_t> arr)
+test_fn(const ac::ntuple<uint64_t>& arr)
 {
     ERRCHK((arr == ac::ntuple<uint64_t>{1, 2, 3}));
 }
 
 void
-test_datatypes(void)
+test_ntuple(void)
 {
 
     {
@@ -51,6 +51,18 @@ test_datatypes(void)
     }
     {
         test_fn(ac::ntuple<uint64_t>{1, 2, 3});
+    }
+    {
+        const size_t    count       = 10;
+        int             data[count] = {1};
+        ac::ntuple<int> a{ac::make_ntuple_from_ptr(count, data)};
+        ERRCHK(a[0] == 1);
+        ERRCHK(a[9] == 0);
+    }
+    {
+        ac::ntuple<int> a{ac::make_ntuple(100, 1)};
+        ERRCHK(a[0] == 1);
+        ERRCHK(a[99] == 1);
     }
     PRINT_LOG_INFO("OK");
 }

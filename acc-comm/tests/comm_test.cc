@@ -123,7 +123,7 @@ main()
         const Index coords{ac::mpi::get_coords(cart_comm)};
         const Index global_nn_offset{coords * local_nn};
 
-        const Shape rr{ac::make_vector<uint64_t>(global_nn.size(), 1)}; // Symmetric halo
+        const Shape rr{ac::make_ntuple<uint64_t>(global_nn.size(), 1)}; // Symmetric halo
         const Shape local_mm{as<uint64_t>(2) * rr + local_nn};
 
         ac::ndbuffer<UserType, ac::mr::host_memory_resource> hin(local_mm);

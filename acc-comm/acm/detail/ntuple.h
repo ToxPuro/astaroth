@@ -436,3 +436,5 @@ to_spatial(const T index, const ac::ntuple<T>& shape)
 }
 
 } // namespace ac
+
+void test_ntuple();

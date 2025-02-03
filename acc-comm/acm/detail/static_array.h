@@ -81,7 +81,7 @@ template <typename T, size_t N> class static_array {
 
     // Construct from a vector
     // template<typename VectorType>
-    // __host__ __device__ static_array(const ac::vector<T>& vec)
+    // __host__ __device__ static_array(const ac::ntuple<T>& vec)
     //     : static_array(vec.size())
     // {
     //     for (size_t i{0}; i < vec.size(); ++i)

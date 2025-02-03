@@ -14,7 +14,7 @@ namespace device {
 
 template <typename T, size_t N>
 static ac::static_array<T, N>
-make_static_array(const ac::vector<T>& in)
+make_static_array(const ac::ntuple<T>& in)
 {
     ac::static_array<T, N> out(in.size());
     for (size_t i{0}; i < in.size(); ++i)
@@ -88,7 +88,7 @@ kernel_pack(const ac::static_array<uint64_t, MAX_NDIMS> mm,
 
             // Input coords
             const ac::static_array<uint64_t, MAX_NDIMS> in_coords{block_offset + block_coords};
-            const uint64_t in_idx{device::to_linear(in_coords, mm)};
+            const uint64_t                              in_idx{device::to_linear(in_coords, mm)};
 
             output[i + j * block_nelems] = inputs[j][in_idx];
         }
@@ -100,7 +100,7 @@ __global__ void
 kernel_unpack(const T* input, const ac::static_array<uint64_t, MAX_NDIMS> mm,
               const ac::static_array<uint64_t, MAX_NDIMS> block_shape,
               const ac::static_array<uint64_t, MAX_NDIMS> block_offset,
-              ac::static_array<T*, MAX_N_AGGR_BUFS> outputs)
+              ac::static_array<T*, MAX_N_AGGR_BUFS>       outputs)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{prod(block_shape)};
@@ -113,7 +113,7 @@ kernel_unpack(const T* input, const ac::static_array<uint64_t, MAX_NDIMS> mm,
 
             // Input coords
             const ac::static_array<uint64_t, MAX_NDIMS> in_coords{block_offset + block_coords};
-            const uint64_t in_idx{device::to_linear(in_coords, mm)};
+            const uint64_t                              in_idx{device::to_linear(in_coords, mm)};
 
             outputs[j][in_idx] = input[i + j * block_nelems];
         }
@@ -207,7 +207,7 @@ unpack(const ac::mr::device_pointer<T>& in_input, const Shape& in_mm, const Shap
 
     // switch (outputs.size()) {
     // case 1: {
-    //     ac::vector<T*> output_array{outputs[0]->data()};
+    //     ac::ntuple<T*> output_array{outputs[0]->data()};
     //     device::kernel_unpack<T, N, 1>
     //         <<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input.data(), mm, block_shape,
     //         block_offset,
@@ -233,7 +233,7 @@ void unpack(const ac::mr::device_pointer<T>& input, const Shape& mm, const Shape
 #define PACK_DTYPE double
 template void pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const Index& block_offset,
                                const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                               ac::mr::device_pointer<PACK_DTYPE>&& output);
+                               ac::mr::device_pointer<PACK_DTYPE>&&                   output);
 
 template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input, const Shape& mm,
                                  const Shape& block_shape, const Index& block_offset,
@@ -243,7 +243,7 @@ template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input
 #define PACK_DTYPE uint64_t
 template void pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const Index& block_offset,
                                const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                               ac::mr::device_pointer<PACK_DTYPE>&& output);
+                               ac::mr::device_pointer<PACK_DTYPE>&&                   output);
 
 template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input, const Shape& mm,
                                  const Shape& block_shape, const Index& block_offset,

@@ -2,7 +2,7 @@
 
 #include <exception>
 
-#include "acm/detail/vector.h"
+#include "acm/detail/ntuple.h"
 #include "mpi_utils.h"
 
 #include "halo_exchange_packed.h"
@@ -48,7 +48,7 @@ ACM_MPI_Cart_comm_create(const MPI_Comm parent_comm, const size_t ndims, const u
 {
     try {
         *cart_comm = ac::mpi::cart_comm_create(parent_comm,
-                                               ac::make_vector_from_ptr(ndims, global_nn));
+                                               ac::make_ntuple_from_ptr(ndims, global_nn));
         return ACM_ERRORCODE_SUCCESS;
     }
     catch (const std::exception& e) {
@@ -118,7 +118,7 @@ ACM_Get_local_nn(const MPI_Comm cart_comm, const size_t ndims, const uint64_t* g
                  uint64_t* local_nn_out)
 {
     try {
-        const auto global_nn{ac::make_vector_from_ptr(ndims, global_nn_in)};
+        const auto global_nn{ac::make_ntuple_from_ptr(ndims, global_nn_in)};
         const auto decomp   = ac::mpi::get_decomposition(cart_comm);
         const auto local_nn = global_nn / decomp;
         std::copy(local_nn.begin(), local_nn.end(), local_nn_out);
@@ -135,7 +135,7 @@ ACM_Get_global_nn_offset(const MPI_Comm cart_comm, const size_t ndims, const uin
                          uint64_t* global_nn_offset_out)
 {
     try {
-        const auto global_nn{ac::make_vector_from_ptr(ndims, global_nn_in)};
+        const auto global_nn{ac::make_ntuple_from_ptr(ndims, global_nn_in)};
         const auto decomp{ac::mpi::get_decomposition(cart_comm)};
         const auto local_nn{global_nn / decomp};
         const auto coords{ac::mpi::get_coords(cart_comm)};
@@ -158,11 +158,11 @@ ACM_IO_Read_collective(const MPI_Comm cart_comm, const size_t ndims, const uint6
     try {
         ac::mpi::read_collective(cart_comm,
                                  ac::mpi::get_dtype<double>(),
-                                 ac::make_vector_from_ptr(ndims, file_dims),
-                                 ac::make_vector_from_ptr(ndims, file_offset),
-                                 ac::make_vector_from_ptr(ndims, mesh_dims),
-                                 ac::make_vector_from_ptr(ndims, mesh_subdims),
-                                 ac::make_vector_from_ptr(ndims, mesh_offset),
+                                 ac::make_ntuple_from_ptr(ndims, file_dims),
+                                 ac::make_ntuple_from_ptr(ndims, file_offset),
+                                 ac::make_ntuple_from_ptr(ndims, mesh_dims),
+                                 ac::make_ntuple_from_ptr(ndims, mesh_subdims),
+                                 ac::make_ntuple_from_ptr(ndims, mesh_offset),
                                  std::string(path),
                                  data);
         return ACM_ERRORCODE_SUCCESS;
@@ -182,11 +182,11 @@ ACM_IO_Write_collective(const MPI_Comm parent_comm, const size_t ndims, const ui
     try {
         ac::mpi::write_collective(parent_comm,
                                   ac::mpi::get_dtype<double>(),
-                                  ac::make_vector_from_ptr(ndims, file_dims),
-                                  ac::make_vector_from_ptr(ndims, file_offset),
-                                  ac::make_vector_from_ptr(ndims, mesh_dims),
-                                  ac::make_vector_from_ptr(ndims, mesh_subdims),
-                                  ac::make_vector_from_ptr(ndims, mesh_offset),
+                                  ac::make_ntuple_from_ptr(ndims, file_dims),
+                                  ac::make_ntuple_from_ptr(ndims, file_offset),
+                                  ac::make_ntuple_from_ptr(ndims, mesh_dims),
+                                  ac::make_ntuple_from_ptr(ndims, mesh_subdims),
+                                  ac::make_ntuple_from_ptr(ndims, mesh_offset),
                                   data,
                                   std::string(path));
         return ACM_ERRORCODE_SUCCESS;

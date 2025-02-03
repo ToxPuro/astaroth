@@ -42,7 +42,7 @@ Index get_local_rr();
 } // namespace acr
 
 inline int3
-convert_to_int3(const ac::vector<uint64_t>& in)
+convert_to_int3(const ac::ntuple<uint64_t>& in)
 {
     ERRCHK(in.size() == 3);
     return int3{as<int>(in[0]), as<int>(in[1]), as<int>(in[2])};

@@ -44,16 +44,16 @@ ndbuffer_print(const char* label, const size_t ndims, const uint64_t* dims, cons
 namespace ac {
 template <typename T, typename MemoryResource> struct ndbuffer {
   private:
-    ac::vector<uint64_t>          m_shape;
+    ac::ntuple<uint64_t>          m_shape;
     ac::buffer<T, MemoryResource> m_buffer;
 
   public:
-    explicit ndbuffer(const ac::vector<uint64_t>& shape)
+    explicit ndbuffer(const ac::ntuple<uint64_t>& shape)
         : m_shape{shape}, m_buffer(prod(shape))
     {
     }
 
-    explicit ndbuffer(const ac::vector<uint64_t>& shape, const T& fill_value)
+    explicit ndbuffer(const ac::ntuple<uint64_t>& shape, const T& fill_value)
         : m_shape{shape}, m_buffer(prod(shape), fill_value)
     {
     }
@@ -110,7 +110,7 @@ ndbuffer_fill(const T& value, const size_t ndims, const uint64_t* dims, const ui
 namespace ac {
 template <typename T>
 void
-fill(const T& fill_value, const ac::vector<uint64_t>& subdims, const ac::vector<uint64_t>& offset,
+fill(const T& fill_value, const ac::ntuple<uint64_t>& subdims, const ac::ntuple<uint64_t>& offset,
      ac::ndbuffer<T, ac::mr::host_memory_resource>& ndbuf)
 {
     ERRCHK(offset + subdims <= ndbuf.shape());
