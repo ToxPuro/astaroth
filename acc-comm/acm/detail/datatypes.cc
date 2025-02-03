@@ -21,6 +21,12 @@ make_direction(const size_t count, const int64_t& fill_value)
     return ac::make_ntuple(count, fill_value);
 }
 
+Dims
+make_direction(const size_t count, const UserDatatype& fill_value)
+{
+    return ac::make_ntuple(count, fill_value);
+}
+
 static void
 test_fn(ac::ntuple<uint64_t> arr)
 {
