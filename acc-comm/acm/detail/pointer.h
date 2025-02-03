@@ -7,7 +7,7 @@ namespace ac::mr {
 template <typename T, typename MemoryResource> class pointer {
   private:
     size_t m_count{0};
-    T* m_data{nullptr};
+    T*     m_data{nullptr};
 
   public:
     pointer(const size_t count, T* data)

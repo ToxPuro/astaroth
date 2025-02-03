@@ -8,7 +8,7 @@
 namespace ac {
 template <typename T, typename MemoryResource> class buffer {
   private:
-    const size_t m_count;
+    const size_t                                           m_count;
     std::unique_ptr<T, decltype(&MemoryResource::dealloc)> m_resource;
 
   public:

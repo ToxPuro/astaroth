@@ -44,7 +44,7 @@ ndbuffer_print(const char* label, const size_t ndims, const uint64_t* dims, cons
 namespace ac {
 template <typename T, typename MemoryResource> struct ndbuffer {
   private:
-    ac::vector<uint64_t> m_shape;
+    ac::vector<uint64_t>          m_shape;
     ac::buffer<T, MemoryResource> m_buffer;
 
   public:

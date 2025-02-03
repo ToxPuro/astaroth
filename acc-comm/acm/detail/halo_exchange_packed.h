@@ -44,7 +44,7 @@ class AsyncHaloExchangeTask {
         }
     }
 
-    void launch(const MPI_Comm& parent_comm,
+    void launch(const MPI_Comm&                                        parent_comm,
                 const std::vector<ac::mr::pointer<T, MemoryResource>>& inputs)
     {
         for (auto& packet : m_packets)

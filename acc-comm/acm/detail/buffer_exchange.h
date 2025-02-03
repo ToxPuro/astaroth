@@ -16,11 +16,11 @@ const unsigned int cudaStreamDefault{0};
 template <typename T, typename FirstStageResource, typename SecondStageResource>
 class BufferExchangeTask {
   private:
-    ac::buffer<T, FirstStageResource> m_first_stage_buffer;
+    ac::buffer<T, FirstStageResource>  m_first_stage_buffer;
     ac::buffer<T, SecondStageResource> m_second_stage_buffer;
 
     cudaStream_t m_stream{nullptr};
-    bool m_in_progress{false};
+    bool         m_in_progress{false};
 
   public:
     explicit BufferExchangeTask(const size_t max_count)

@@ -13,7 +13,7 @@ namespace ac {
 template <typename T, size_t N> class static_array {
   private:
     size_t m_count;
-    T m_data[N]{};
+    T      m_data[N]{};
 
   public:
     // Record the number of elements

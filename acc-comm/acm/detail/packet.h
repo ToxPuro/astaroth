@@ -25,7 +25,7 @@ template <typename T, typename MemoryResource> class Packet {
     ac::buffer<T, MemoryResource> m_send_buffer;
     ac::buffer<T, MemoryResource> m_recv_buffer;
 
-    MPI_Comm m_comm{MPI_COMM_NULL};
+    MPI_Comm    m_comm{MPI_COMM_NULL};
     MPI_Request m_send_req{MPI_REQUEST_NULL};
     MPI_Request m_recv_req{MPI_REQUEST_NULL};
 
@@ -72,7 +72,7 @@ template <typename T, typename MemoryResource> class Packet {
         // Find the direction and neighbors of the segment
         Index send_offset{((m_local_nn + m_segment.offset - m_local_rr) % m_local_nn) + m_local_rr};
 
-        auto recv_direction{ac::mpi::get_direction(m_segment.offset, m_local_nn, m_local_rr)};
+        auto      recv_direction{ac::mpi::get_direction(m_segment.offset, m_local_nn, m_local_rr)};
         const int recv_neighbor{ac::mpi::get_neighbor(m_comm, recv_direction)};
         const int send_neighbor{ac::mpi::get_neighbor(m_comm, -recv_direction)};
 

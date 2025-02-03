@@ -111,8 +111,8 @@ test_transform()
     const ac::ntuple<uint64_t> dims{3, 3, 3, 3};
     const ac::ntuple<uint64_t> subdims{1, 2, 1, 1};
     const ac::ntuple<uint64_t> offset{1, 1, 1, 1};
-    auto in{std::make_unique<int[]>(prod(dims))};
-    auto out{std::make_unique<int[]>(prod(subdims))};
+    auto                       in{std::make_unique<int[]>(prod(dims))};
+    auto                       out{std::make_unique<int[]>(prod(subdims))};
     std::iota(in.get(), in.get() + prod(dims), 1);
     ac::transform(dims, subdims, offset, in.get(), out.get());
     ac::print("reference", dims, in.get());
@@ -125,7 +125,7 @@ test_transform()
     PRINT_DEBUG_VECTOR(tt.m_m_resource);
     PRINT_DEBUG_VECTOR(ttt.m_m_resource);
     std::vector<int> something(10, 1);
-    ttuple tttt{something};
+    ttuple           tttt{something};
     PRINT_DEBUG_VECTOR(tttt.m_m_resource);
     // ttuple ttttt(10); // Not allowed
 
