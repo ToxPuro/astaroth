@@ -24,14 +24,13 @@ class AsyncWriteTask {
     bool m_in_progress{false};
 
   public:
-    AsyncWriteTask(const Shape& file_dims, const Index& file_offset,
-                   const Shape& mesh_dims, const Shape& mesh_subdims,
-                   const Index& mesh_offset)
+    AsyncWriteTask(const Shape& file_dims, const Index& file_offset, const Shape& mesh_dims,
+                   const Shape& mesh_subdims, const Index& mesh_offset)
         : m_info{ac::mpi::info_create()},
           m_global_subarray{ac::mpi::subarray_create(file_dims, mesh_subdims, file_offset,
-                                                   ac::mpi::get_dtype<T>())},
+                                                     ac::mpi::get_dtype<T>())},
           m_local_subarray{ac::mpi::subarray_create(mesh_dims, mesh_subdims, mesh_offset,
-                                                  ac::mpi::get_dtype<T>())},
+                                                    ac::mpi::get_dtype<T>())},
           m_staging_buffer{prod(mesh_dims)}
     {
     }
@@ -59,7 +58,7 @@ class AsyncWriteTask {
 
     template <typename MemoryResource>
     void launch_write_collective(const MPI_Comm& parent_m_comm,
-                                 const ac::mr::base_ptr<T, MemoryResource>& input,
+                                 const ac::mr::pointer<T, MemoryResource>& input,
                                  const std::string& path)
     {
         ERRCHK_MPI(!m_in_progress);
@@ -76,14 +75,22 @@ class AsyncWriteTask {
         ac::mr::copy<T>(input, m_staging_buffer.get());
 
         ERRCHK_MPI(m_file == MPI_FILE_NULL);
-        ERRCHK_MPI_API(
-            MPI_File_open(m_comm, path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, m_info, &m_file));
-        ERRCHK_MPI_API(
-            MPI_File_set_view(m_file, 0, ac::mpi::get_dtype<T>(), m_global_subarray, "native", m_info));
+        ERRCHK_MPI_API(MPI_File_open(m_comm,
+                                     path.c_str(),
+                                     MPI_MODE_CREATE | MPI_MODE_WRONLY,
+                                     m_info,
+                                     &m_file));
+        ERRCHK_MPI_API(MPI_File_set_view(m_file,
+                                         0,
+                                         ac::mpi::get_dtype<T>(),
+                                         m_global_subarray,
+                                         "native",
+                                         m_info));
 
         ERRCHK_MPI(m_file != MPI_FILE_NULL);
         ERRCHK_MPI(m_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_File_iwrite_all(m_file, m_staging_buffer.data(), 1, m_local_subarray, &m_req));
+        ERRCHK_MPI_API(
+            MPI_File_iwrite_all(m_file, m_staging_buffer.data(), 1, m_local_subarray, &m_req));
     }
 
     void wait_write_collective()
@@ -125,9 +132,9 @@ class BatchedAsyncWriteTask {
   public:
     BatchedAsyncWriteTask() = default;
 
-    BatchedAsyncWriteTask(const Shape& file_dims, const Index& file_offset,
-                          const Shape& mesh_dims, const Shape& mesh_subdims,
-                          const Index& mesh_offset, const size_t n_aggregate_buffers)
+    BatchedAsyncWriteTask(const Shape& file_dims, const Index& file_offset, const Shape& mesh_dims,
+                          const Shape& mesh_subdims, const Index& mesh_offset,
+                          const size_t n_aggregate_buffers)
     {
         for (size_t i = 0; i < n_aggregate_buffers; ++i)
             write_tasks.push_back(
@@ -140,7 +147,7 @@ class BatchedAsyncWriteTask {
 
     template <typename MemoryResource>
     void launch(const MPI_Comm& parent_m_comm,
-                const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs,
+                const std::vector<ac::mr::pointer<T, MemoryResource>>& inputs,
                 const std::vector<std::string>& paths)
     {
         for (size_t i = 0; i < inputs.size(); ++i)

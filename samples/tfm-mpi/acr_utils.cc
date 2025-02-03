@@ -26,20 +26,20 @@ get(const AcMeshInfo& info, const AcReal3Param& param)
     return info.real3_params[param];
 }
 
-// std::vector<ac::mr::device_ptr<AcReal>>
+// std::vector<ac::mr::device_pointer<AcReal>>
 // get(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& group)
 // {
 //     const auto count{vba.mx * vba.my * vba.mz};
 
-//     std::vector<ac::mr::device_ptr<AcReal>> output;
+//     std::vector<ac::mr::device_pointer<AcReal>> output;
 
 //     for (const auto& field : fields) {
 //         switch (group) {
 //         case BufferGroup::Input:
-//             output.push_back(ac::mr::device_ptr<AcReal>{count, vba.in[field]});
+//             output.push_back(ac::mr::device_pointer<AcReal>{count, vba.in[field]});
 //             break;
 //         case BufferGroup::Output:
-//             output.push_back(ac::mr::device_ptr<AcReal>{count, vba.out[field]});
+//             output.push_back(ac::mr::device_pointer<AcReal>{count, vba.out[field]});
 //             break;
 //         default:
 //             ERRCHK(false);

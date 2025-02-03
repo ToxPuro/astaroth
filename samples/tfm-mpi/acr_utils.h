@@ -20,7 +20,7 @@ int3 get(const AcMeshInfo& info, const AcInt3Param& param);
 AcReal get(const AcMeshInfo& info, const AcRealParam& param);
 AcReal3 get(const AcMeshInfo& info, const AcReal3Param& param);
 
-// std::vector<ac::mr::device_ptr<AcReal>>
+// std::vector<ac::mr::device_pointer<AcReal>>
 // get(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& group);
 
 void set(const AcIntParam& param, const int value, AcMeshInfo& info);

@@ -124,20 +124,20 @@ kernel_unpack(const T* input, const ac::static_array<uint64_t, MAX_NDIMS> mm,
 
 template <typename T>
 static std::vector<T*>
-unwrap(const std::vector<ac::mr::device_ptr<T>>& buffers)
+unwrap(const std::vector<ac::mr::device_pointer<T>>& buffers)
 {
     std::vector<T*> output;
-    for (ac::mr::device_ptr<T> ptr : buffers)
+    for (ac::mr::device_pointer<T> ptr : buffers)
         output.push_back(ptr.data());
     return output;
 }
 
 template <typename T>
 static std::vector<T*>
-unwrap(std::vector<ac::mr::device_ptr<T>>& buffers)
+unwrap(std::vector<ac::mr::device_pointer<T>>& buffers)
 {
     std::vector<T*> output;
-    for (ac::mr::device_ptr<T> ptr : buffers)
+    for (ac::mr::device_pointer<T> ptr : buffers)
         output.push_back(ptr.data());
     return output;
 }
@@ -145,7 +145,7 @@ unwrap(std::vector<ac::mr::device_ptr<T>>& buffers)
 template <typename T>
 void
 pack(const Shape& in_mm, const Shape& in_block_shape, const Index& in_block_offset,
-     const std::vector<ac::mr::device_ptr<T>>& in_inputs, ac::mr::device_ptr<T>&& in_output)
+     const std::vector<ac::mr::device_pointer<T>>& in_inputs, ac::mr::device_pointer<T>&& in_output)
 {
     ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS,
                      "Max ndims of pack is %zu (got %zu)\n",
@@ -176,8 +176,8 @@ pack(const Shape& in_mm, const Shape& in_block_shape, const Index& in_block_offs
 
 template <typename T>
 void
-unpack(const ac::mr::device_ptr<T>& in_input, const Shape& in_mm, const Shape& in_block_shape,
-       const Index& in_block_offset, std::vector<ac::mr::device_ptr<T>>& in_outputs)
+unpack(const ac::mr::device_pointer<T>& in_input, const Shape& in_mm, const Shape& in_block_shape,
+       const Index& in_block_offset, std::vector<ac::mr::device_pointer<T>>& in_outputs)
 {
     ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS,
                      "Max ndims of pack is %zu (got %zu)\n",
@@ -224,30 +224,30 @@ unpack(const ac::mr::device_ptr<T>& in_input, const Shape& in_mm, const Shape& i
 // Specialization
 template <typename T>
 void pack(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-          const std::vector<ac::mr::device_ptr<T>>& inputs, ac::mr::device_ptr<T>&& output);
+          const std::vector<ac::mr::device_pointer<T>>& inputs, ac::mr::device_pointer<T>&& output);
 
 template <typename T>
-void unpack(const ac::mr::device_ptr<T>& input, const Shape& mm, const Shape& block_shape,
-            const Index& block_offset, std::vector<ac::mr::device_ptr<T>>& outputs);
+void unpack(const ac::mr::device_pointer<T>& input, const Shape& mm, const Shape& block_shape,
+            const Index& block_offset, std::vector<ac::mr::device_pointer<T>>& outputs);
 
 #define PACK_DTYPE double
 template void pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-                               const std::vector<ac::mr::device_ptr<PACK_DTYPE>>& inputs,
-                               ac::mr::device_ptr<PACK_DTYPE>&& output);
+                               const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
+                               ac::mr::device_pointer<PACK_DTYPE>&& output);
 
-template void unpack<PACK_DTYPE>(const ac::mr::device_ptr<PACK_DTYPE>& input, const Shape& mm,
+template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input, const Shape& mm,
                                  const Shape& block_shape, const Index& block_offset,
-                                 std::vector<ac::mr::device_ptr<PACK_DTYPE>>& outputs);
+                                 std::vector<ac::mr::device_pointer<PACK_DTYPE>>& outputs);
 #undef PACK_DTYPE
 
 #define PACK_DTYPE uint64_t
 template void pack<PACK_DTYPE>(const Shape& mm, const Shape& block_shape, const Index& block_offset,
-                               const std::vector<ac::mr::device_ptr<PACK_DTYPE>>& inputs,
-                               ac::mr::device_ptr<PACK_DTYPE>&& output);
+                               const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
+                               ac::mr::device_pointer<PACK_DTYPE>&& output);
 
-template void unpack<PACK_DTYPE>(const ac::mr::device_ptr<PACK_DTYPE>& input, const Shape& mm,
+template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input, const Shape& mm,
                                  const Shape& block_shape, const Index& block_offset,
-                                 std::vector<ac::mr::device_ptr<PACK_DTYPE>>& outputs);
+                                 std::vector<ac::mr::device_pointer<PACK_DTYPE>>& outputs);
 #undef PACK_DTYPE
 
 #endif

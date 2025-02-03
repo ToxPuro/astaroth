@@ -60,7 +60,7 @@ template <typename T, typename MemoryResource> class Packet {
             ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
     }
 
-    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
+    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_pointer<T>>& inputs)
     {
         ERRCHK_MPI(!m_in_progress);
         m_in_progress = true;
@@ -97,7 +97,7 @@ template <typename T, typename MemoryResource> class Packet {
              m_segment.dims,
              send_offset,
              inputs,
-             ac::mr::device_ptr<T>{m_send_buffer.size(), m_send_buffer.data()});
+             ac::mr::device_pointer<T>{m_send_buffer.size(), m_send_buffer.data()});
 
         ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
         ERRCHK_MPI_API(MPI_Isend(m_send_buffer.data(),
@@ -121,11 +121,11 @@ template <typename T, typename MemoryResource> class Packet {
         return m_in_progress && send_flag && recv_flag;
     };
 
-    void wait(std::vector<ac::mr::device_ptr<T>>& outputs)
+    void wait(std::vector<ac::mr::device_pointer<T>>& outputs)
     {
         ERRCHK_MPI(m_in_progress);
         ERRCHK_MPI_API(MPI_Wait(&m_recv_req, MPI_STATUS_IGNORE));
-        unpack(ac::mr::device_ptr<T>{m_recv_buffer.size(), m_recv_buffer.data()},
+        unpack(ac::mr::device_pointer<T>{m_recv_buffer.size(), m_recv_buffer.data()},
                m_local_mm,
                m_segment.dims,
                m_segment.offset,

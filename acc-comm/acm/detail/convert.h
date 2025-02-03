@@ -25,14 +25,14 @@ template <typename T, typename MemoryResource>
 auto
 ptr_cast(const ac::ndbuffer<T, MemoryResource>& in)
 {
-    return ac::mr::base_ptr<T, MemoryResource>{in.size(), in.data()};
+    return ac::mr::pointer<T, MemoryResource>{in.size(), in.data()};
 }
 
 template <typename T, typename MemoryResource>
 auto
 ptr_cast(const std::vector<ac::ndbuffer<T, MemoryResource>>& in)
 {
-    std::vector<ac::mr::base_ptr<T, MemoryResource>> out;
+    std::vector<ac::mr::pointer<T, MemoryResource>> out;
     for (const auto& elem : in)
         out.push_back(ptr_cast(elem));
     return out;
@@ -42,14 +42,14 @@ template <typename T, typename MemoryResource>
 auto
 ptr_cast(ac::ndbuffer<T, MemoryResource>& in)
 {
-    return ac::mr::base_ptr<T, MemoryResource>{in.size(), in.data()};
+    return ac::mr::pointer<T, MemoryResource>{in.size(), in.data()};
 }
 
 template <typename T, typename MemoryResource>
 auto
 ptr_cast(std::vector<ac::ndbuffer<T, MemoryResource>>& in)
 {
-    std::vector<ac::mr::base_ptr<T, MemoryResource>> out;
+    std::vector<ac::mr::pointer<T, MemoryResource>> out;
     for (const auto& elem : in)
         out.push_back(ptr_cast(elem));
     return out;
@@ -59,14 +59,14 @@ template <typename T, typename MemoryResource>
 auto
 ptr_cast(const ac::buffer<T, MemoryResource>& in)
 {
-    return ac::mr::base_ptr<T, MemoryResource>{in.size(), in.data()};
+    return ac::mr::pointer<T, MemoryResource>{in.size(), in.data()};
 }
 
 template <typename T, typename MemoryResource>
 auto
 ptr_cast(const std::vector<ac::buffer<T, MemoryResource>>& in)
 {
-    std::vector<ac::mr::base_ptr<T, MemoryResource>> out;
+    std::vector<ac::mr::pointer<T, MemoryResource>> out;
     for (const auto& elem : in)
         out.push_back(ptr_cast(elem));
     return out;
@@ -76,14 +76,14 @@ template <typename T, typename MemoryResource>
 auto
 ptr_cast(ac::buffer<T, MemoryResource>& in)
 {
-    return ac::mr::base_ptr<T, MemoryResource>{in.size(), in.data()};
+    return ac::mr::pointer<T, MemoryResource>{in.size(), in.data()};
 }
 
 template <typename T, typename MemoryResource>
 auto
 ptr_cast(std::vector<ac::buffer<T, MemoryResource>>& in)
 {
-    std::vector<ac::mr::base_ptr<T, MemoryResource>> out;
+    std::vector<ac::mr::pointer<T, MemoryResource>> out;
     for (const auto& elem : in)
         out.push_back(ptr_cast(elem));
     return out;

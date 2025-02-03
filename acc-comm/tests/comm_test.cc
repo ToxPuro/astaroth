@@ -204,8 +204,8 @@ main()
 
         ac::comm::AsyncHaloExchangeTask<UserType, ac::mr::device_memory_resource>
             halo_exchange{local_mm, local_nn, rr, 1};
-        std::vector<ac::mr::device_ptr<UserType>> inputs{
-            ac::mr::device_ptr<UserType>{din.size(), din.data()}};
+        std::vector<ac::mr::device_pointer<UserType>> inputs{
+            ac::mr::device_pointer<UserType>{din.size(), din.data()}};
 
         // Pipelined
         halo_exchange.launch(cart_comm, inputs);

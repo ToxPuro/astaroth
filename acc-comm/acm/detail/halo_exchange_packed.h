@@ -37,21 +37,21 @@ class AsyncHaloExchangeTask {
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
             m_packets.push_back(std::make_unique<Packet<T, MemoryResource>>(local_mm,
-                                                                          local_nn,
-                                                                          local_rr,
-                                                                          segment,
-                                                                          n_aggregate_buffers));
+                                                                            local_nn,
+                                                                            local_rr,
+                                                                            segment,
+                                                                            n_aggregate_buffers));
         }
     }
 
     void launch(const MPI_Comm& parent_comm,
-                const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
+                const std::vector<ac::mr::pointer<T, MemoryResource>>& inputs)
     {
         for (auto& packet : m_packets)
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs)
+    void wait(std::vector<ac::mr::pointer<T, MemoryResource>> outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         while (!complete()) {

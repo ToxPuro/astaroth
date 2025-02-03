@@ -25,13 +25,13 @@ test_pack(void)
         Shape mm{count};
         Shape block_shape{count - 2 * rr};
         Shape block_offset{rr};
-        std::vector<ac::mr::device_ptr<uint64_t>> inputs{
-            ac::mr::device_ptr<uint64_t>{din.size(), din.data()}};
+        std::vector<ac::mr::device_pointer<uint64_t>> inputs{
+            ac::mr::device_pointer<uint64_t>{din.size(), din.data()}};
         pack(mm,
              block_shape,
              block_offset,
              inputs,
-             ac::mr::device_ptr<uint64_t>{dout.size(), dout.data()});
+             ac::mr::device_pointer<uint64_t>{dout.size(), dout.data()});
         migrate(dout, hout);
         // ac::copy(dout.begin(), dout.end(), hout.begin());
 
@@ -50,9 +50,11 @@ test_pack(void)
         // ac::buffer<double, ac::mr::host_memory_resource> a(10, 0);
         // ac::buffer<double, ac::mr::host_memory_resource> b(10, 1);
         // ac::buffer<double, ac::mr::host_memory_resource> c(10, 2);
-        // std::vector<ac::mr::host_ptr<double>> d{ac::mr::host_ptr<double>{a.size(), a.data()},
-        //                                         ac::mr::host_ptr<double>{b.size(), b.data()},
-        //                                         ac::mr::host_ptr<double>{c.size(), c.data()}};
+        // std::vector<ac::mr::host_pointer<double>> d{ac::mr::host_pointer<double>{a.size(),
+        // a.data()},
+        //                                         ac::mr::host_pointer<double>{b.size(), b.data()},
+        //                                         ac::mr::host_pointer<double>{c.size(),
+        //                                         c.data()}};
         // std::cout << a << std::endl;
         // std::cout << *d[1] << std::endl;
         // std::cout << "-----------------" << std::endl;

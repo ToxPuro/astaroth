@@ -119,19 +119,19 @@ make_ptr(const VertexBufferArray& vba, const Field& field, const BufferGroup& ty
 
     switch (type) {
     case BufferGroup::Input:
-        return ac::mr::device_ptr<AcReal>{count, vba.in[field]};
+        return ac::mr::device_pointer<AcReal>{count, vba.in[field]};
     case BufferGroup::Output:
-        return ac::mr::device_ptr<AcReal>{count, vba.out[field]};
+        return ac::mr::device_pointer<AcReal>{count, vba.out[field]};
     default:
         ERRCHK(false);
-        return ac::mr::device_ptr<AcReal>{0, nullptr};
+        return ac::mr::device_pointer<AcReal>{0, nullptr};
     }
 }
 
 static auto
 get_ptrs(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& type)
 {
-    std::vector<ac::mr::device_ptr<AcReal>> ptrs;
+    std::vector<ac::mr::device_pointer<AcReal>> ptrs;
 
     for (const auto& field : fields)
         ptrs.push_back(make_ptr(vba, field, type));
@@ -155,12 +155,12 @@ make_ptr(const VertexBufferArray& vba, const Profile& profile, const BufferGroup
 
     switch (type) {
     case BufferGroup::Input:
-        return ac::mr::device_ptr<AcReal>{count, vba.profiles.in[profile]};
+        return ac::mr::device_pointer<AcReal>{count, vba.profiles.in[profile]};
     case BufferGroup::Output:
-        return ac::mr::device_ptr<AcReal>{count, vba.profiles.out[profile]};
+        return ac::mr::device_pointer<AcReal>{count, vba.profiles.out[profile]};
     default:
         ERRCHK(false);
-        return ac::mr::device_ptr<AcReal>{0, nullptr};
+        return ac::mr::device_pointer<AcReal>{0, nullptr};
     }
 }
 
@@ -168,7 +168,7 @@ static auto
 get_ptrs(const VertexBufferArray& vba, const std::vector<Profile>& profiles,
          const BufferGroup& type)
 {
-    std::vector<ac::mr::device_ptr<AcReal>> ptrs;
+    std::vector<ac::mr::device_pointer<AcReal>> ptrs;
 
     for (const auto& profile : profiles)
         ptrs.push_back(make_ptr(vba, profile, type));
@@ -871,7 +871,7 @@ class Grid {
         // const auto count{prod(local_mm)};
         // ac::ndbuffer<AcReal, ac::mr::host_memory_resource> buf{local_mm};
         // std::iota(buf.begin(), buf.end(), count * ac::mpi::get_rank(cart_comm));
-        // ac::mr::copy(buf.get(), ac::mr::device_ptr<AcReal>{count, vba.in[0]});
+        // ac::mr::copy(buf.get(), ac::mr::device_pointer<AcReal>{count, vba.in[0]});
 
         // mpi::write_collective_simple(cart_comm,
         //                              ac::mpi::get_dtype<AcReal>(),

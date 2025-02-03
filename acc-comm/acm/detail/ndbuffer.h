@@ -43,12 +43,11 @@ ndbuffer_print(const char* label, const size_t ndims, const uint64_t* dims, cons
 
 namespace ac {
 template <typename T, typename MemoryResource> struct ndbuffer {
-    private:
-        ac::vector<uint64_t> m_shape;
-        ac::buffer<T, MemoryResource> m_buffer;
+  private:
+    ac::vector<uint64_t> m_shape;
+    ac::buffer<T, MemoryResource> m_buffer;
 
-    public:
-    
+  public:
     explicit ndbuffer(const ac::vector<uint64_t>& shape)
         : m_shape{shape}, m_buffer(prod(shape))
     {
@@ -68,8 +67,8 @@ template <typename T, typename MemoryResource> struct ndbuffer {
     T* end() { return m_buffer.data() + m_buffer.size(); }
     const T* end() const { return m_buffer.data() + m_buffer.size(); }
 
-    auto get() { return ac::mr::base_ptr<T, MemoryResource>{size(), data()}; }
-    auto get() const { return ac::mr::base_ptr<T, MemoryResource>{size(), data()}; }
+    auto get() { return ac::mr::pointer<T, MemoryResource>{size(), data()}; }
+    auto get() const { return ac::mr::pointer<T, MemoryResource>{size(), data()}; }
 
     auto& shape() { return m_shape; }
     auto& shape() const { return m_shape; }

@@ -4,22 +4,27 @@
 
 namespace ac::mr {
 
-template <typename T, typename MemoryResource> class base_ptr {
+template <typename T, typename MemoryResource> class pointer {
   private:
-    const size_t m_count;
-    T* m_data;
+    size_t m_count{0};
+    T* m_data{nullptr};
 
   public:
-    explicit base_ptr(const size_t count, T* data)
+    pointer(const size_t count, T* data)
         : m_count{count}, m_data{data}
     {
     }
 
-    size_t size() const { return m_count; }
-    T* data() { return m_data; }
-    T* data() const { return m_data; }
-    T* get() { return data(); }
-    T* get() const { return data(); }
+    auto size() const { return m_count; }
+
+    auto data() const { return m_data; }
+    auto data() { return m_data; }
+
+    auto begin() const { return data(); }
+    auto begin() { return data(); }
+
+    auto end() const { return data() + size(); }
+    auto end() { return data() + size(); }
 
     // Enable the subscript[] operator
     T& operator[](const size_t i)
@@ -34,7 +39,6 @@ template <typename T, typename MemoryResource> class base_ptr {
         return m_data[i];
     }
 };
-template <typename T> using host_ptr = base_ptr<T, ac::mr::host_memory_resource>;
 
 #if defined(ACM_DEVICE_ENABLED)
 
@@ -66,7 +70,7 @@ get_kind()
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-copy(const base_ptr<T, MemoryResourceA> in, base_ptr<T, MemoryResourceB> out)
+copy(const pointer<T, MemoryResourceA> in, pointer<T, MemoryResourceB> out)
 {
     ERRCHK(in.size() <= out.size());
     ERRCHK_CUDA_API(cudaMemcpy(out.data(),
@@ -75,15 +79,17 @@ copy(const base_ptr<T, MemoryResourceA> in, base_ptr<T, MemoryResourceB> out)
                                get_kind<MemoryResourceA, MemoryResourceB>()));
 }
 
-template <typename T> using device_ptr = base_ptr<T, ac::mr::device_memory_resource>;
+template <typename T> using host_pointer   = pointer<T, ac::mr::host_memory_resource>;
+template <typename T> using device_pointer = pointer<T, ac::mr::device_memory_resource>;
 
 #else
 
-template <typename T> using device_ptr = host_ptr<T>;
+template <typename T> using host_pointer   = pointer<T, ac::mr::host_memory_resource>;
+template <typename T> using device_pointer = host_pointer<T>;
 
 template <typename T>
 void
-copy(const host_ptr<T>& in, host_ptr<T>& out)
+copy(const host_pointer<T>& in, host_pointer<T>& out)
 {
     ERRCHK(in.size() <= out.size());
     std::copy(in.data(), in.data() + in.size(), out.data());
