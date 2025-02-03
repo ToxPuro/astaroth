@@ -42,7 +42,7 @@ factorize(uint64_t n)
 static double
 surface_area_to_volume(const Shape& nn)
 {
-    const Index rr{ac::make_ntuple<uint64_t>(nn.size(), 1)};
+    const Index rr{make_index(nn.size(), 1)};
     return static_cast<double>((prod(as<uint64_t>(2) * rr + nn))) / static_cast<double>(prod(nn));
 }
 
@@ -50,7 +50,7 @@ Shape
 decompose(const Shape& nn, uint64_t nprocs)
 {
     Shape local_nn{nn};
-    Shape decomp{ac::make_ntuple<uint64_t>(nn.size(), 1)};
+    Shape decomp{make_shape(nn.size(), 1)};
 
     // More flexible dims (inspired by W.D. Gropp https://doi.org/10.1145/3236367.3236377)
     // Adapted to try out all factors to work with a wider range of dims
@@ -108,8 +108,8 @@ hierarchical_to_spatial(const uint64_t index, const std::vector<Shape>& decompos
 {
     ERRCHK(decompositions.size() > 0);
     const size_t ndims = decompositions[0].size();
-    Index        coords{ac::make_ntuple<uint64_t>(ndims, 0)};
-    Index        scale{ac::make_ntuple<uint64_t>(ndims, 1)};
+    Index        coords{make_index(ndims, 0)};
+    Index        scale{make_index(ndims, 1)};
     ERRCHK(coords[0] == 0);
     ERRCHK(scale[0] == 1);
     for (const auto& dims : decompositions) {
@@ -122,7 +122,7 @@ hierarchical_to_spatial(const uint64_t index, const std::vector<Shape>& decompos
 uint64_t
 hierarchical_to_linear(const Index& coords, const std::vector<Shape>& decompositions)
 {
-    Index scale{ac::make_ntuple<uint64_t>(coords.size(), 1)};
+    Index scale{make_index(coords.size(), 1)};
     ERRCHK(scale[0] == 1);
     uint64_t index{0};
     for (const auto& dims : decompositions) {
@@ -136,7 +136,7 @@ Shape
 hierarchical_decomposition_to_global(const std::vector<Shape>& decomposition)
 {
     ERRCHK(decomposition.size() > 0);
-    Shape global_decomp{ac::make_ntuple<uint64_t>(decomposition[0].size(), 1)};
+    Shape global_decomp{make_shape(decomposition[0].size(), 1)};
     for (const auto& vec : decomposition)
         global_decomp = mul(global_decomp, vec);
     return global_decomp;

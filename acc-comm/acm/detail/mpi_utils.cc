@@ -648,7 +648,7 @@ scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glo
     const Shape local_mm{ac::mpi::get_local_mm(parent_comm, global_nn, local_rr)};
     const Shape local_nn{ac::mpi::get_local_nn(parent_comm, global_nn)};
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(parent_comm, global_nn)};
-    const Index zero_offset{ac::make_ntuple<uint64_t>(global_nn.size(), 0)};
+    const Index zero_offset{make_index(global_nn.size(), 0)};
 
     int etype_bytes{-1};
     ERRCHK_MPI_API(MPI_Type_size(etype, &etype_bytes));
@@ -707,7 +707,7 @@ gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glob
     const Shape local_mm{ac::mpi::get_local_mm(parent_comm, global_nn, local_rr)};
     const Shape local_nn{ac::mpi::get_local_nn(parent_comm, global_nn)};
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(parent_comm, global_nn)};
-    const Index zero_offset{ac::make_ntuple<uint64_t>(global_nn.size(), 0)};
+    const Index zero_offset{make_index(global_nn.size(), 0)};
 
     int etype_bytes{-1};
     ERRCHK_MPI_API(MPI_Type_size(etype, &etype_bytes));

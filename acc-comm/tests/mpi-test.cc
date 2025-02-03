@@ -55,10 +55,10 @@ test_scatter_gather(const MPI_Comm& cart_comm, const Shape& global_nn)
     using Buffer = ac::ndbuffer<T, ac::mr::host_memory_resource>;
 
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
-    // const Index zero_offset{ac::make_ntuple<uint64_t>(global_nn.size(), 0)};
+    // const Index zero_offset{make_index(global_nn.size(), 0)};
     const Shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
 
-    const Index rr{ac::make_ntuple<uint64_t>(global_nn.size(), 2)};
+    const Index rr{make_index(global_nn.size(), 2)};
     const Shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
 
     Buffer monolithic{global_nn};
@@ -110,7 +110,7 @@ test_scatter_gather_advanced(const MPI_Comm& cart_comm, const Shape& global_nn)
     // const Index zero_offset(global_nn.size(), static_cast<int>(0));
     const Shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
 
-    const Index rr{ac::make_ntuple<uint64_t>(global_nn.size(), 2)};
+    const Index rr{make_index(global_nn.size(), 2)};
     const Shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
 
     const Shape global_mm{global_nn + static_cast<uint64_t>(2) * rr};

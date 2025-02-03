@@ -3,6 +3,24 @@
 #include "print_debug.h"
 #include "type_conversion.h"
 
+Index
+make_index(const size_t count, const uint64_t& fill_value)
+{
+    return ac::make_ntuple(count, fill_value);
+}
+
+Shape
+make_shape(const size_t count, const uint64_t& fill_value)
+{
+    return ac::make_ntuple(count, fill_value);
+}
+
+Direction
+make_direction(const size_t count, const int64_t& fill_value)
+{
+    return ac::make_ntuple(count, fill_value);
+}
+
 static void
 test_fn(ac::ntuple<uint64_t> arr)
 {
