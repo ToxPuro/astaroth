@@ -39,7 +39,7 @@ template <typename T, size_t N> class static_array {
 
     // Vector-like constructor
     // static_array<int, N> a(10, 1)
-    __host__ __device__ static_array(const size_t count, const T& fill_value = 0)
+    [[deprecated]] __host__ __device__ static_array(const size_t count, const T& fill_value = 0)
         : m_count(count)
     {
         ERRCHK(m_count > 0);
@@ -69,7 +69,7 @@ template <typename T, size_t N> class static_array {
     // }
 
     // Construct from a pointer
-    __host__ __device__ explicit static_array(const size_t count, const T* arr)
+    [[deprecated]] __host__ __device__ explicit static_array(const size_t count, const T* arr)
         : m_count(count)
     {
         ERRCHK(m_count > 0);
