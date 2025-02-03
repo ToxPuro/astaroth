@@ -9,4 +9,5 @@ test_ndbuffer(void)
     ERRCHK(mesh.buffer()[5] == 1);
     ERRCHK(mesh.buffer()[10] == 1);
     ERRCHK(mesh.buffer()[15] == 0);
+    PRINT_LOG_INFO("OK");
 }

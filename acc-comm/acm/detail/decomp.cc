@@ -276,4 +276,5 @@ test_decomp(void)
         std::vector<Shape> decompositions{Shape{2, 2}, Shape{4, 1}, Shape{1, 4}};
         ERRCHK((hierarchical_decomposition_to_global(decompositions) == Shape{8, 8}));
     }
+    PRINT_LOG_INFO("OK");
 }

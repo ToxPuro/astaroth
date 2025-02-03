@@ -1098,4 +1098,5 @@ test_mpi_utils()
 
     indent after each endl
     */
+    PRINT_LOG_INFO("OK");
 }

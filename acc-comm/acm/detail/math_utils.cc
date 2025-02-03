@@ -136,4 +136,5 @@ test_math_utils(void)
     test_to_linear();
     test_to_spatial();
     test_within_box();
+    PRINT_LOG_INFO("OK");
 }

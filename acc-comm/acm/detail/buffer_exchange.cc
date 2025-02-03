@@ -23,4 +23,5 @@ test_buffer_exchange(void)
     dtoh.launch(b);
     dtoh.wait(c);
     ERRCHK(std::equal(a.data(), a.data() + a.size(), c.data()));
+    PRINT_LOG_INFO("OK");
 }

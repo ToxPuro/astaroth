@@ -64,4 +64,5 @@ test_vector(void)
         ERRCHK(a[0] == 1);
         ERRCHK(a[99] == 1);
     }
+    PRINT_LOG_INFO("OK");
 }

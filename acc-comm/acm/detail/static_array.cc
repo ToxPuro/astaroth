@@ -52,4 +52,5 @@ test_static_array(void)
     {
         test_fn(ac::static_array<uint64_t, 3>{1, 2, 3});
     }
+    PRINT_LOG_INFO("OK");
 }

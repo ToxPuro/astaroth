@@ -92,4 +92,5 @@ test_partition(void)
         const ac::vector<uint64_t> nn_offset{1, 1};
         ERRCHK(partition(mm, nn, nn_offset).size() == 4);
     }
+    PRINT_LOG_INFO("OK");
 }

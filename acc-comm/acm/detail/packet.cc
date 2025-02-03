@@ -10,4 +10,5 @@ test_packet(void)
     // ac::segment segment(dims, offset);
     // Packet<double> packet(segment, 2);
     // PRINT_DEBUG(packet);
+    PRINT_LOG_WARNING("Not implemented");
 }

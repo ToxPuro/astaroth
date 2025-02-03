@@ -19,4 +19,5 @@ test_buffer(void)
     // ERRCHK(vec2[1] == 2);
     // ERRCHK(vec2[2] == 3);
     // ERRCHK(vec2[3] == 4);
+    PRINT_LOG_INFO("OK");
 }

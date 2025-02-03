@@ -59,4 +59,5 @@ test_pack(void)
         // std::cout << *d[1] << std::endl;
         // std::cout << "-----------------" << std::endl;
     }
+    PRINT_LOG_INFO("OK");
 }

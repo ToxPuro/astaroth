@@ -52,4 +52,5 @@ test_datatypes(void)
     {
         test_fn(ac::vector<uint64_t>{1, 2, 3});
     }
+    PRINT_LOG_INFO("OK");
 }

@@ -29,4 +29,5 @@ test_memory_resource()
                                                   pinned_write_combined_host_memory_resource::alloc(
                                                       10 * sizeof(double))),
                                               pinned_write_combined_host_memory_resource::dealloc}};
+    PRINT_LOG_INFO("OK");
 }
