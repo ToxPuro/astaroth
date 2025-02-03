@@ -26,12 +26,12 @@ main(void)
     test_transform();
 
     // Data types
-    test_buffer();
-    test_ndbuffer();
-    test_vector();
-    test_static_array();
     test_memory_resource();
     test_pointer();
+    test_static_array();
+    test_vector();
+    test_buffer();
+    test_ndbuffer();
 
     // APIs
     test_mpi_utils();
