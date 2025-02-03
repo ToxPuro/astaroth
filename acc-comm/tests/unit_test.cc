@@ -1,4 +1,3 @@
-#include "acm/detail/array.h"
 #include "acm/detail/buffer.h"
 #include "acm/detail/buffer_exchange.h"
 #include "acm/detail/decomp.h"
@@ -27,7 +26,6 @@ main(void)
     test_transform();
 
     // Data types
-    test_array();
     test_buffer();
     test_ndbuffer();
     test_vector();
@@ -38,5 +36,6 @@ main(void)
     // APIs
     test_mpi_utils();
 
+    PRINT_LOG_INFO("OK");
     return EXIT_SUCCESS;
 }
