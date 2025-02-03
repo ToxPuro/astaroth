@@ -33,3 +33,8 @@ benchmark-data/
 compile_commands.json
 .DS_Store
 .vscode
+acc-comm/acm/detail/accruntime_wrapper_test.cc
+acc-comm/acm/detail/drafting-remove.cc
+acc-comm/acm/detail/vector-non-class.h
+acc-comm/acm/thrust-test.cc
+acc-comm/acm/detail/tensor.h

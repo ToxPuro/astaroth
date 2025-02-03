@@ -75,8 +75,8 @@ template <typename T> class vector {
     auto end() { return m_resource.end(); }
     auto end() const { return m_resource.end(); }
 
-    auto get() { return m_resource; }
-    auto get() const { return m_resource; }
+    // auto get() { return m_resource; }
+    // auto get() const { return m_resource; }
 
     template <typename U>
     friend ac::vector<T> operator+(const ac::vector<T>& a, const ac::vector<U>& b)
