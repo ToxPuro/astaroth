@@ -70,12 +70,14 @@ get_kind()
 
 template <typename T, typename MemoryResourceA, typename MemoryResourceB>
 void
-copy(const pointer<T, MemoryResourceA> in, pointer<T, MemoryResourceB> out)
+copy(const size_t count, const size_t in_offset, const pointer<T, MemoryResourceA>& in,
+     const size_t out_offset, pointer<T, MemoryResourceB>& out)
 {
-    ERRCHK(in.size() <= out.size());
-    ERRCHK_CUDA_API(cudaMemcpy(out.data(),
-                               in.data(),
-                               in.size() * sizeof(T),
+    ERRCHK(in_offset + count <= in.size());
+    ERRCHK(out_offset + count <= out.size());
+    ERRCHK_CUDA_API(cudaMemcpy(&out[out_offset],
+                               &in[in_offset],
+                               count * sizeof(T),
                                get_kind<MemoryResourceA, MemoryResourceB>()));
 }
 
@@ -89,13 +91,22 @@ template <typename T> using device_pointer = host_pointer<T>;
 
 template <typename T>
 void
-copy(const host_pointer<T>& in, host_pointer<T>& out)
+copy(const size_t count, const size_t in_offset, const host_pointer<T>& in, const size_t out_offset,
+     host_pointer<T>& out)
 {
-    ERRCHK(in.size() <= out.size());
-    std::copy(in.data(), in.data() + in.size(), out.data());
+    ERRCHK(in_offset + count <= in.size());
+    ERRCHK(out_offset + count <= out.size());
+    std::copy_n(&in[in_offset], count, &out[out_offset]);
 }
 
 #endif
+
+template <typename T, typename MemoryResourceA, typename MemoryResourceB>
+void
+copy(const pointer<T, MemoryResourceA>& in, pointer<T, MemoryResourceB>& out)
+{
+    copy(in.size(), 0, in, 0, out);
+}
 
 } // namespace ac::mr
 
