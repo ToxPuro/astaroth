@@ -1270,18 +1270,28 @@ stencil_accesses_x_ghost_zone(const size_t stencil)
     return res;
 }
 
-static void
-get_stencils_valid_for_profiles(bool stencil_valid_for_profiles[NUM_STENCILS])
+static bool
+stencil_valid_for_profile(const int stencil, const AcProfileType type)
 {
-	for(size_t stencil = 0; stencil < NUM_STENCILS; ++stencil)
-		stencil_valid_for_profiles[stencil] = !(stencil_accesses_y_ghost_zone(stencil) || stencil_accesses_x_ghost_zone(stencil));
+	if(type == PROFILE_X) 
+		 return !(stencil_accesses_y_ghost_zone(stencil) || stencil_accesses_z_ghost_zone(stencil));
+	if(type == PROFILE_Y) 
+		 return !(stencil_accesses_x_ghost_zone(stencil) || stencil_accesses_z_ghost_zone(stencil));
+	if(type == PROFILE_Z) 
+		 return !(stencil_accesses_y_ghost_zone(stencil) || stencil_accesses_x_ghost_zone(stencil));
+	//TP: the formulas below are valid but for now derivatives on 2d profiles are not supported
+	//if(type == PROFILE_XY || type == PROFILE_YX) 
+	//	 return !(stencil_accesses_z_ghost_zone(stencil));
+	//if(type == PROFILE_XZ || type == PROFILE_ZX) 
+	//	 return !(stencil_accesses_y_ghost_zone(stencil));
+	//if(type == PROFILE_YZ || type == PROFILE_ZY) 
+	//	 return !(stencil_accesses_x_ghost_zone(stencil));
+	return false;
 }
 
 static void
 gen_stencil_functions(const int curr_kernel)
 {
-  bool stencil_valid_for_profiles[NUM_STENCILS];
-  get_stencils_valid_for_profiles(stencil_valid_for_profiles);
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     //TP: don't gen stencil function at all if no fields use it. Done to declutter the resulting code and to speedup compilation
     bool gen_stencil = false;
@@ -1307,28 +1317,31 @@ gen_stencil_functions(const int curr_kernel)
     printf("}");
     printf("};");
   }
-  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-    if (!stencil_valid_for_profiles[stencil]) continue;
-    //TP: don't gen stencil function at all if no fields use it. Done to declutter the resulting code and to speedup compilation
-    bool gen_stencil = false;
-    for (int profile = 0; profile < NUM_PROFILES; ++profile) gen_stencil |= stencils_accessed[curr_kernel][profile + NUM_ALL_FIELDS][stencil];
-    if(!gen_stencil)
-    {
-	    printf("const auto %s_profile __attribute__((unused)) = [&](const Profile& profile) { (void) profile; return (AcReal)NAN;};",stencil_names[stencil]);
-	    continue;
-    }
-    printf("const auto %s_profile __attribute__((unused)) = [&](const Profile& profile){",
-           stencil_names[stencil]);
-    printf("switch (profile) {");
-    for (int profile = 0; profile < NUM_PROFILES; ++profile) {
-      if (stencils_accessed[curr_kernel][NUM_ALL_FIELDS + profile][stencil])
-        printf("case %s: return p%d_s%d;", profile_names[profile], profile,
-               stencil);
-    }
+  {
+  	for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+  	  //TP: don't gen stencil function at all if no fields use it. Done to declutter the resulting code and to speedup compilation
+  	  bool gen_stencil = false;
+  	  for (int profile = 0; profile < NUM_PROFILES; ++profile) gen_stencil |= stencils_accessed[curr_kernel][profile + NUM_ALL_FIELDS][stencil];
+  	  if(!gen_stencil)
+  	  {
+  	          printf("const auto %s_profile __attribute__((unused)) = [&](const Profile& profile) { (void) profile; return (AcReal)NAN;};",stencil_names[stencil]);
+  	          continue;
+  	  }
+  	  printf("const auto %s_profile __attribute__((unused)) = [&](const Profile& profile){",
+  	         stencil_names[stencil]);
+  	  printf("switch (profile) {");
+  	  for (int profile = 0; profile < NUM_PROFILES; ++profile) {
+  	    if (stencils_accessed[curr_kernel][NUM_ALL_FIELDS + profile][stencil] && stencil_valid_for_profile(stencil,prof_types[profile]))
+	    {
+  	      printf("case %s: return p%d_s%d;", profile_names[profile], profile,
+  	             stencil);
+	    }
+  	  }
 
-    printf("default: return (AcReal)NAN;");
-    printf("}");
-    printf("};");
+  	  printf("default: return (AcReal)NAN;");
+  	  printf("}");
+  	  printf("};");
+  	}
   }
 }
 
@@ -1527,9 +1540,6 @@ gen_kernel_body(const int curr_kernel)
         }
       }
 
-    bool stencil_valid_for_profiles[NUM_STENCILS];
-    get_stencils_valid_for_profiles(stencil_valid_for_profiles);
-
     // Uncomment to print valid stencils
     // for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     //   fprintf(stderr, "Stencil %s (%du): %d\n", stencil_names[stencil],
@@ -1565,8 +1575,17 @@ gen_kernel_body(const int curr_kernel)
                   continue;
 
                 // Skip if the stencil is invalid for profiles
-                if (!stencil_valid_for_profiles[stencil])
+                if (!stencil_valid_for_profile(stencil,prof_types[profile]))
                   continue;
+
+		const char* vertex_idx = prof_types[profile] == PROFILE_X ? "vertexIdx.x" :
+					 prof_types[profile] == PROFILE_Y ? "vertexIdx.y" :
+					 prof_types[profile] == PROFILE_Z ? "vertexIdx.z" :
+					 NULL;
+		const int   offset     = prof_types[profile] == PROFILE_X ? -STENCIL_ORDER/2 + width :
+					 prof_types[profile] == PROFILE_Y ? -STENCIL_ORDER/2 + height:
+					 prof_types[profile] == PROFILE_Z ? -STENCIL_ORDER/2 + depth :
+					 0;
 
                 if (stencils[stencil][depth][height][width]) {
                   if (!stencil_initialized[NUM_FIELDS + profile][stencil]) {
@@ -1575,8 +1594,8 @@ gen_kernel_body(const int curr_kernel)
                     printf("%s(", stencil_unary_ops[stencil]);
                     printf("__ldg(&");
                     printf("vba.profiles.in[%d]"
-                           "[vertexIdx.z+(%d)])",
-                           profile, -STENCIL_ORDER / 2 + depth);
+                           "[%s+(%d)])",
+                           profile, vertex_idx, offset);
                     printf(")");
                     printf(";");
 
@@ -1590,8 +1609,8 @@ gen_kernel_body(const int curr_kernel)
                     printf("%s(", stencil_unary_ops[stencil]);
                     printf("__ldg(&");
                     printf("vba.profiles.in[%d]"
-                           "[vertexIdx.z+(%d)])",
-                           profile, -STENCIL_ORDER / 2 + depth);
+                           "[%s+(%d)])",
+                           profile, vertex_idx,offset);
                     printf(")");
                     printf(");");
                   }

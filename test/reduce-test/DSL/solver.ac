@@ -16,6 +16,16 @@ Stencil derx {
     [0][0][3]  = AC_inv_ds.x * DER1_3
 }
 
+
+Stencil dery {
+    [0][-3][0] = -AC_inv_ds.y * DER1_3,
+    [0][-2][0] = -AC_inv_ds.y * DER1_2,
+    [0][-1][0] = -AC_inv_ds.y * DER1_1,
+    [0][1][0]  = AC_inv_ds.y * DER1_1,
+    [0][2][0]  = AC_inv_ds.y * DER1_2,
+    [0][3][0]  = AC_inv_ds.y * DER1_3
+}
+
 Stencil derz {
     [-3][0][0] = -AC_inv_ds.z * DER1_3,
     [-2][0][0] = -AC_inv_ds.z * DER1_2,
@@ -44,6 +54,8 @@ ALL_PROFILES PROF
 
 Profile<XY> DX_PROF_XY
 
+Profile<X> PROF_X_DER
+Profile<Y> PROF_Y_DER
 Profile<Z> PROF_Z_DER
 
 ALL_PROFILES PROF_SCALED
@@ -73,9 +85,6 @@ Kernel test_reduce()
     reduce_sum((int)value(FIELD),AC_int_sum_val)
     reduce_sum((float)value(FIELD),AC_float_sum_val)
 
-    reduce_sum(FIELD,PROF_X)
-    reduce_sum(FIELD,PROF_Y)
-
     reduce_sum(FIELD,PROF_XZ)
     reduce_sum(FIELD,PROF_XY)
 
@@ -95,6 +104,16 @@ Kernel reduce_z()
     reduce_sum(FIELD,PROF_Z)
 }
 
+Kernel reduce_y()
+{
+    reduce_sum(FIELD,PROF_Y)
+}
+
+Kernel reduce_x()
+{
+    reduce_sum(FIELD,PROF_X)
+}
+
 Kernel remove_means()
 {
 	res = value(FIELD)
@@ -108,6 +127,8 @@ Kernel remove_means()
 	res -= PROF_ZX
 	res -= PROF_ZY
 	write(FIELD, res)
+	write(PROF_X_DER,derx(PROF_X))
+	write(PROF_Y_DER,dery(PROF_Y))
 	write(PROF_Z_DER,derz(PROF_Z))
 	const scaling_factor = 2.0
 
@@ -139,6 +160,8 @@ BoundConds bcs
 ComputeSteps rhs(bcs)
 {
 	test_reduce()
+	reduce_x()
+	reduce_y()
 	reduce_z()
 	remove_means()
 	//derx_kernel()

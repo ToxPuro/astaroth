@@ -158,6 +158,9 @@ main(int argc, char* argv[])
     	acDeviceStoreProfile(acGridGetDevice(), VEC_Z_PROFILE_X,  &model);
     	acDeviceStoreProfile(acGridGetDevice(), VEC_Z_PROFILE_Y,  &model);
     	acDeviceStoreProfile(acGridGetDevice(), VEC_Z_PROFILE_Z,  &model);
+
+    	acDeviceStoreProfile(acGridGetDevice(), PROF_X_DER,  &model);
+    	acDeviceStoreProfile(acGridGetDevice(), PROF_Y_DER,  &model);
     	acDeviceStoreProfile(acGridGetDevice(), PROF_Z_DER,  &model);
 
     	acGridSynchronizeStream(STREAM_ALL);
@@ -307,20 +310,22 @@ main(int argc, char* argv[])
     	AcReal* zy_sum_scaled      = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].yz);
 
 
+    	AcReal* x_sum_der   = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].x);
+    	AcReal* y_sum_der   = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].y);
     	AcReal* z_sum_der   = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].z);
     	AcReal* dx_xy_sum   = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal_products].xy);
 
     	AcReal* vec_z_x_sum      = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].z);
     	AcReal* vec_z_y_sum      = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].z);
     	AcReal* vec_z_z_sum      = (AcReal*)malloc(sizeof(AcReal)*model.info[AC_mlocal].z);
-    	for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    	for(size_t i = 0; i < dims.m1.x; ++i)
     	{
     	    x_sum[i] = 0.0;
     		for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
     			for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
     	    		x_sum[i] += model.vertex_buffer[FIELD][IDX(i,j,k)];
     	}
-    	for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
+    	for(size_t j = 0; j < dims.m1.y; ++j)
     	{
     	    y_sum[j] = 0.0;
     		for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
@@ -378,6 +383,32 @@ main(int argc, char* argv[])
     	    	    arr[IDX(i+3,j,k)]*(inv_dsx*DER1_3);
 
     	};
+    	auto calc_derx_prof = [&](const int i, const AcReal* arr)
+    	{
+    	        const AcReal inv_dsx = (1.0/model.info[AC_ds].x);
+    	        return
+    	    	    arr[i-3]*(-inv_dsx*DER1_3) +
+    	    	    arr[i-2]*(-inv_dsx*DER1_2) +
+    	    	    arr[i-1]*(-inv_dsx*DER1_1) +
+    	    	    arr[i+1]*(inv_dsx*DER1_1) +
+    	    	    arr[i+2]*(inv_dsx*DER1_2) +
+    	    	    arr[i+3]*(inv_dsx*DER1_3);
+
+    	};
+
+    	auto calc_dery_prof = [&](const int i, const AcReal* arr)
+    	{
+    	        const AcReal inv_dsy = (1.0/model.info[AC_ds].y);
+    	        return
+    	    	    arr[i-3]*(-inv_dsy*DER1_3) +
+    	    	    arr[i-2]*(-inv_dsy*DER1_2) +
+    	    	    arr[i-1]*(-inv_dsy*DER1_1) +
+    	    	    arr[i+1]*(inv_dsy*DER1_1) +
+    	    	    arr[i+2]*(inv_dsy*DER1_2) +
+    	    	    arr[i+3]*(inv_dsy*DER1_3);
+
+    	};
+
     	auto calc_derz_prof = [&](const int i, const AcReal* arr)
     	{
     	        const AcReal inv_dsz = (1.0/model.info[AC_ds].z);
@@ -497,6 +528,11 @@ main(int argc, char* argv[])
 		z_sum_scaled[k] = z_sum[k]*2.0;
 	}
 
+	for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+		x_sum_der[i] = calc_derx_prof(i,x_sum);
+	for(size_t i = dims.n0.y; i < dims.n1.y; ++i)
+		y_sum_der[i] = calc_dery_prof(i,y_sum);
+
     	AcReal cpu_sum_val = (AcReal)long_cpu_sum_val;
     	AcReal epsilon  = 3*pow(10.0,-11.0);
     	auto relative_diff = [](const auto a, const auto b)
@@ -528,6 +564,7 @@ main(int argc, char* argv[])
     	{
     	    bool correct =  in_eps_threshold(x_sum_scaled[i],model.profile[PROF_SCALED_X][i]);
     	    x_scaled_correct &= correct;
+    	    if(!correct) fprintf(stderr,"X SCALED WRONG: %ld, %14e, %14e\n",i,x_sum_scaled[i],model.profile[PROF_SCALED_X][i]);
 	}
 	bool y_scaled_correct = true;
     	for(size_t i = dims.n0.y; i < dims.n1.y; ++i)
@@ -579,6 +616,30 @@ main(int argc, char* argv[])
     	    if(!correct) fprintf(stderr,"WRONG: %14e, %14e\n",vec_z_x_sum[i],model.profile[VEC_Z_PROFILE_X][i]);
     	    //if(!correct) fprintf(stderr,"Z SUM WRONG: %14e, %14e\n",z_sum[i],z_sum_gpu[i]);
     	}
+	bool x_sum_der_correct = true;
+    	for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    	{
+
+		//TP: done this way since the for all ones the derivative is supposed to be exactly zero and thus numerical noise is quite pronounced
+		bool correct = 
+				all_ones_test ? fabs(x_sum_der[i]-model.profile[PROF_X_DER][i]) < 5e-12
+					      : in_eps_threshold(x_sum_der[i],model.profile[PROF_X_DER][i]);
+		if(!correct) printf("X DER WRONG: %ld, %14e, %14e, %14e\n",i,fabs(x_sum_der[i]-model.profile[PROF_X_DER][i]),x_sum_der[i],model.profile[PROF_X_DER][i]);
+		x_sum_der_correct &= correct;
+    	}
+
+	bool y_sum_der_correct = true;
+    	for(size_t i = dims.n0.y; i < dims.n1.y; ++i)
+    	{
+
+		//TP: done this way since the for all ones the derivative is supposed to be exactly zero and thus numerical noise is quite pronounced
+		bool correct = 
+				all_ones_test ? fabs(y_sum_der[i]-model.profile[PROF_Y_DER][i]) < 5e-12
+					      : in_eps_threshold(y_sum_der[i],model.profile[PROF_Y_DER][i]);
+		if(!correct) printf("Y DER WRONG: %ld, %14e, %14e, %14e\n",i,fabs(y_sum_der[i]-model.profile[PROF_Y_DER][i]),y_sum_der[i],model.profile[PROF_Y_DER][i]);
+		y_sum_der_correct &= correct;
+    	}
+
 	bool z_sum_der_correct = true;
     	for(size_t i = dims.n0.z; i < dims.n1.z; ++i)
     	{
@@ -591,11 +652,10 @@ main(int argc, char* argv[])
 		z_sum_der_correct &= correct;
     	}
     	bool x_sum_correct = true;
-    	for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    	for(size_t i = 0; i < dims.m1.x; ++i)
     	{
-    		bool correct =  in_eps_threshold(x_sum[i],x_sum_gpu[i]);
+    	    bool correct =  in_eps_threshold(x_sum[i],x_sum_gpu[i]);
     	    x_sum_correct &= correct;
-    	    //if(!correct) fprintf(stderr,"X SUM WRONG: %14e, %14e\n",x_sum[i],x_sum_gpu[i]);
     	}
     	bool y_sum_correct = true;
     	for(size_t i = dims.n0.y; i < dims.n1.y; ++i)
@@ -727,6 +787,8 @@ main(int argc, char* argv[])
     	fprintf(stderr,"Y SUM REDUCTION... %s\n", y_sum_correct   ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     	fprintf(stderr,"Z SUM REDUCTION... %s\n", sums_correct    ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     	fprintf(stderr,"VEC Z SUM REDUCTION... %s\n", vec_sums_correct    ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    	fprintf(stderr,"X SUM DER ... %s\n", x_sum_der_correct    ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    	fprintf(stderr,"Y SUM DER ... %s\n", y_sum_der_correct    ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     	fprintf(stderr,"Z SUM DER ... %s\n", z_sum_der_correct    ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     	fprintf(stderr,"X SCALED ... %s\n", x_scaled_correct  ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     	fprintf(stderr,"Y SCALED ... %s\n", y_scaled_correct  ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
@@ -767,6 +829,8 @@ main(int argc, char* argv[])
     	correct &= x_sum_correct;
     	correct &= y_sum_correct;
     	correct &= vec_sums_correct;
+    	correct &= x_sum_der_correct;
+    	correct &= y_sum_der_correct;
     	correct &= z_sum_der_correct;
     	correct &= x_scaled_correct;
     	correct &= y_scaled_correct;

@@ -1934,6 +1934,12 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    ops[i].computes_on_halos = BOUNDARY_NONE;
 	    for(size_t profile = 0; profile < NUM_PROFILES; ++profile)
 	    	ops[i].computes_on_halos = (AcBoundary)((int)ops[i].computes_on_halos | kernel_computes_profile_on_halos[i][profile]);
+	    const auto& boundary = ops[i].computes_on_halos;
+	    int num_boundaries_included = 0;
+	    if(boundary & BOUNDARY_X) ++num_boundaries_included;
+	    if(boundary & BOUNDARY_Y) ++num_boundaries_included;
+	    if(boundary & BOUNDARY_Z) ++num_boundaries_included;
+	    if(num_boundaries_included > 1) fatal("%s","For now kernels can include only a single halo region in their input\n");
     }
     for(size_t i = 0; i < ops.size(); ++i)
     {

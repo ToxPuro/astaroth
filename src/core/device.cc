@@ -491,10 +491,7 @@ acDeviceStencilAccessesBoundaries(const Device device, const Stencil stencil)
 	};
 	int res = BOUNDARY_NONE;
 	if(stencil_accesses_x_ghost_zone())
-	{
-		printf("Stencil %s accesses X boundary\n",stencil_names[stencil]);
 		res |= BOUNDARY_X;
-	}
 	if(stencil_accesses_y_ghost_zone())
 		res |= BOUNDARY_Y;
 	if(stencil_accesses_z_ghost_zone())
