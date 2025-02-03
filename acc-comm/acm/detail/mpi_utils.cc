@@ -24,7 +24,7 @@ using MPIShape = ac::vector<int>;
 static auto
 astaroth_to_mpi_format(const ac::vector<uint64_t>& in)
 {
-    ac::vector<int> out(in.size());
+    auto out{ac::make_vector<int>(in.size())};
     for (size_t i{0}; i < in.size(); ++i)
         out[i] = as<int>(in[i]);
     std::reverse(out.begin(), out.end());
@@ -34,7 +34,7 @@ astaroth_to_mpi_format(const ac::vector<uint64_t>& in)
 static auto
 astaroth_to_mpi_format(const Direction& in)
 {
-    ac::vector<int> out(in.size());
+    auto out{ac::make_vector<int>(in.size())};
     for (size_t i{0}; i < in.size(); ++i)
         out[i] = as<int>(in[i]);
     std::reverse(out.begin(), out.end());
@@ -44,7 +44,7 @@ astaroth_to_mpi_format(const Direction& in)
 static auto
 mpi_to_astaroth_format(const ac::vector<int>& in)
 {
-    ac::vector<uint64_t> out(in.size());
+    auto out{ac::make_vector<uint64_t>(in.size())};
     for (size_t i{0}; i < in.size(); ++i)
         out[i] = as<uint64_t>(in[i]);
     std::reverse(out.begin(), out.end());
@@ -64,7 +64,7 @@ template <typename T>
 static auto
 mul(const ac::vector<T>& a, const ac::vector<T>& b)
 {
-    ac::vector<T> c(a.size());
+    ac::vector<T> c{ac::make_vector<T>(a.size())};
     std::transform(a.begin(), a.end(), b.begin(), c.begin(), std::multiplies<T>());
     return c;
 }
@@ -107,7 +107,7 @@ cart_comm_mpi_create(const MPI_Comm& parent_comm, const Shape& global_nn, const 
     const size_t ndims{global_nn.size()};
 
     // Decompose all dimensions
-    MPIShape mpi_decomp(ndims, 0);
+    MPIShape mpi_decomp{ac::make_vector<int>(ndims, 0)};
     ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(ndims), mpi_decomp.data()));
 
     // Decompose only the slowest moving dimension (last dimension in Astaroth, first in MPI)
@@ -117,7 +117,7 @@ cart_comm_mpi_create(const MPI_Comm& parent_comm, const Shape& global_nn, const 
 
     // Create the Cartesian communicator
     MPI_Comm cart_comm{MPI_COMM_NULL};
-    MPIShape mpi_periods(ndims, 1); // Periodic in all dimensions
+    MPIShape mpi_periods{ac::make_vector<int>(ndims, 1)}; // Periodic in all dimensions
     // int reorder{1}; // Enable reordering (but likely inop with most MPI implementations)
     ERRCHK_MPI_API(MPI_Cart_create(parent_comm,
                                    as<int>(ndims),
@@ -135,7 +135,7 @@ cart_comm_mpi_create(const MPI_Comm& parent_comm, const Shape& global_nn, const 
 static std::vector<uint64_t>
 get_nprocs_per_layer(const uint64_t& nprocs, const std::vector<uint64_t>& max_per_layer)
 {
-    uint64_t curr_nprocs{nprocs};
+    uint64_t              curr_nprocs{nprocs};
     std::vector<uint64_t> nprocs_per_layer;
     for (const auto& elem : max_per_layer) {
         nprocs_per_layer.push_back(std::min(curr_nprocs, elem));
@@ -150,46 +150,46 @@ static void
 test_get_nprocs_per_layer()
 {
     {
-        constexpr uint64_t nprocs{64};
+        constexpr uint64_t    nprocs{64};
         std::vector<uint64_t> max_per_layer{2, 4};
-        const auto nprocs_per_layer{get_nprocs_per_layer(nprocs, max_per_layer)};
+        const auto            nprocs_per_layer{get_nprocs_per_layer(nprocs, max_per_layer)};
         ERRCHK(ac::mpi::prodd(nprocs_per_layer) == nprocs);
         PRINT_DEBUG_VECTOR(nprocs_per_layer);
     }
     {
-        constexpr uint64_t nprocs{64};
+        constexpr uint64_t    nprocs{64};
         std::vector<uint64_t> max_per_layer{2, 4, 4};
-        const auto nprocs_per_layer{get_nprocs_per_layer(nprocs, max_per_layer)};
+        const auto            nprocs_per_layer{get_nprocs_per_layer(nprocs, max_per_layer)};
         ERRCHK(ac::mpi::prodd(nprocs_per_layer) == nprocs);
         PRINT_DEBUG_VECTOR(nprocs_per_layer);
     }
     {
-        constexpr uint64_t nprocs{2};
+        constexpr uint64_t    nprocs{2};
         std::vector<uint64_t> max_per_layer{8, 4};
-        const auto nprocs_per_layer{get_nprocs_per_layer(nprocs, max_per_layer)};
+        const auto            nprocs_per_layer{get_nprocs_per_layer(nprocs, max_per_layer)};
         ERRCHK(ac::mpi::prodd(nprocs_per_layer) == nprocs);
         PRINT_DEBUG_VECTOR(nprocs_per_layer);
     }
     {
-        constexpr uint64_t nprocs{8};
+        constexpr uint64_t    nprocs{8};
         std::vector<uint64_t> max_per_layer{4, 4};
-        const auto nprocs_per_layer{get_nprocs_per_layer(nprocs, max_per_layer)};
+        const auto            nprocs_per_layer{get_nprocs_per_layer(nprocs, max_per_layer)};
         ERRCHK(ac::mpi::prodd(nprocs_per_layer) == nprocs);
         PRINT_DEBUG_VECTOR(nprocs_per_layer);
     }
     {
-        constexpr uint64_t nprocs{64};
+        constexpr uint64_t    nprocs{64};
         std::vector<uint64_t> max_per_layer{2, 2, 2, 4, 4};
-        const auto nprocs_per_layer{get_nprocs_per_layer(nprocs, max_per_layer)};
+        const auto            nprocs_per_layer{get_nprocs_per_layer(nprocs, max_per_layer)};
         ERRCHK(ac::mpi::prodd(nprocs_per_layer) == nprocs);
         PRINT_DEBUG_VECTOR(nprocs_per_layer);
     }
     {
-        constexpr uint64_t nprocs{64};
+        constexpr uint64_t    nprocs{64};
         std::vector<uint64_t> max_nprocs_per_layer{2, 4};
-        const auto nprocs_per_layer{get_nprocs_per_layer(nprocs, max_nprocs_per_layer)};
-        const Shape global_nn{128, 128, 128};
-        auto decomp{decompose_hierarchical(global_nn, nprocs_per_layer)};
+        const auto            nprocs_per_layer{get_nprocs_per_layer(nprocs, max_nprocs_per_layer)};
+        const Shape           global_nn{128, 128, 128};
+        auto                  decomp{decompose_hierarchical(global_nn, nprocs_per_layer)};
 
         const auto global_decomp{hierarchical_decomposition_to_global(decomp)};
         PRINT_DEBUG(global_decomp);
@@ -211,7 +211,7 @@ cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const Shape& global_n
 
     // Get node hierarchy
     const std::vector<uint64_t> max_nprocs_per_layer{2, 4};
-    const auto nprocs_per_layer{
+    const auto                  nprocs_per_layer{
         get_nprocs_per_layer(as<uint64_t>(ac::mpi::get_size(parent_comm)), max_nprocs_per_layer)};
 
     // Decompose
@@ -221,9 +221,9 @@ cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const Shape& global_n
     const auto mpi_decomp{astaroth_to_mpi_format(global_decomposition)};
 
     // Create the Cartesian communicator
-    MPI_Comm initial_cart_comm{MPI_COMM_NULL};
-    MPIShape mpi_periods(ndims, 1); // Periodic in all dimensions
-    const int reorder{0};           // Disable reordering
+    MPI_Comm  initial_cart_comm{MPI_COMM_NULL};
+    MPIShape  mpi_periods{ac::make_vector<int>(ndims, 1)}; // Periodic in all dimensions
+    const int reorder{0};                                  // Disable reordering
     ERRCHK_MPI_API(MPI_Cart_create(parent_comm,
                                    as<int>(ndims),
                                    mpi_decomp.data(),
@@ -295,9 +295,9 @@ print_mpi_comm(const MPI_Comm& comm)
 {
     const int ndims = get_ndims(comm);
 
-    MPIShape mpi_decomp(as<size_t>(ndims));
-    MPIShape mpi_periods(as<size_t>(ndims));
-    MPIIndex mpi_coords(as<size_t>(ndims));
+    MPIShape mpi_decomp{ac::make_vector<int>(as<size_t>(ndims))};
+    MPIShape mpi_periods{ac::make_vector<int>(as<size_t>(ndims))};
+    MPIIndex mpi_coords{ac::make_vector<int>(as<size_t>(ndims))};
     ERRCHK_MPI_API(
         MPI_Cart_get(comm, ndims, mpi_decomp.data(), mpi_periods.data(), mpi_coords.data()));
 
@@ -460,7 +460,7 @@ get_coords(const MPI_Comm& cart_comm, const int rank)
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
     // Get coordinates of the process
-    MPIIndex mpi_coords(as<size_t>(mpi_ndims), -1);
+    MPIIndex mpi_coords{ac::make_vector<int>(as<size_t>(mpi_ndims), -1)};
     ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data()));
     return mpi_to_astaroth_format(mpi_coords);
 }
@@ -477,7 +477,7 @@ get_coords(const MPI_Comm& cart_comm)
     // ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
     // // Get the coordinates of the current process
-    // MPIIndex mpi_coords(as<size_t>(mpi_ndims), -1);
+    // MPIIndex mpi_coords{ac::make_vector<int>(as<size_t>(mpi_ndims), -1)};
     // ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data()));
     // return mpi_to_astaroth_format(mpi_coords);
     return get_coords(cart_comm, rank);
@@ -489,9 +489,9 @@ get_decomposition(const MPI_Comm& cart_comm)
     int mpi_ndims{-1};
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
-    MPIShape mpi_decomp(as<size_t>(mpi_ndims));
-    MPIShape mpi_periods(as<size_t>(mpi_ndims));
-    MPIIndex mpi_coords(as<size_t>(mpi_ndims));
+    MPIShape mpi_decomp{ac::make_vector<int>(as<size_t>(mpi_ndims))};
+    MPIShape mpi_periods{ac::make_vector<int>(as<size_t>(mpi_ndims))};
+    MPIIndex mpi_coords{ac::make_vector<int>(as<size_t>(mpi_ndims))};
     ERRCHK_MPI_API(MPI_Cart_get(cart_comm,
                                 mpi_ndims,
                                 mpi_decomp.data(),
@@ -512,7 +512,7 @@ get_neighbor(const MPI_Comm& cart_comm, const Direction& dir)
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
     // Get the coordinates of the current process
-    MPIIndex mpi_coords(as<size_t>(mpi_ndims), -1);
+    MPIIndex mpi_coords{ac::make_vector<int>(as<size_t>(mpi_ndims), -1)};
     ERRCHK_MPI_API(MPI_Cart_coords(cart_comm, rank, mpi_ndims, mpi_coords.data()));
 
     // Get the direction of the neighboring process
@@ -530,7 +530,7 @@ get_neighbor(const MPI_Comm& cart_comm, const Direction& dir)
 Direction
 get_direction(const Index& offset, const Shape& nn, const Index& rr)
 {
-    Direction dir(offset.size());
+    Direction dir{ac::make_vector<int64_t>(offset.size())};
     for (size_t i{0}; i < offset.size(); ++i)
         dir[i] = offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
     return dir;
@@ -567,15 +567,15 @@ get_global_mm(const Shape& global_nn, const Index& rr)
 void
 scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
                  const Shape& global_mm, const Index& subdomain_offset,
-                 const void* send_buffer, //
+                 const void*  send_buffer, //
                  const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
                  void* recv_buffer)
 {
     constexpr int root{0};
-    const size_t nprocs{as<size_t>(get_size(parent_comm))};
+    const size_t  nprocs{as<size_t>(get_size(parent_comm))};
 
     constexpr int lb{0}; // Lower bound
-    int extent{-1};
+    int           extent{-1};
     ERRCHK_MPI_API(MPI_Type_size(etype, &extent)); // Use element size as extent
 
     MPI_Datatype monolithic_subarray{
@@ -606,14 +606,14 @@ scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
 void
 gather_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
                 const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
-                const void* send_buffer, //
+                const void*  send_buffer, //
                 const Shape& global_mm, const Index& subdomain_offset, void* recv_buffer)
 {
     constexpr int root{0};
-    const size_t nprocs{as<size_t>(get_size(parent_comm))};
+    const size_t  nprocs{as<size_t>(get_size(parent_comm))};
 
     constexpr int lb{0}; // Lower bound
-    int extent{-1};
+    int           extent{-1};
     ERRCHK_MPI_API(MPI_Type_size(etype, &extent)); // Use element size as extent
 
     MPI_Datatype monolithic_subarray{
@@ -648,7 +648,7 @@ scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glo
     const Shape local_mm{ac::mpi::get_local_mm(parent_comm, global_nn, local_rr)};
     const Shape local_nn{ac::mpi::get_local_nn(parent_comm, global_nn)};
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(parent_comm, global_nn)};
-    const Index zero_offset(global_nn.size(), static_cast<uint64_t>(0));
+    const Index zero_offset{ac::make_vector<uint64_t>(global_nn.size())};
 
     int etype_bytes{-1};
     ERRCHK_MPI_API(MPI_Type_size(etype, &etype_bytes));
@@ -677,7 +677,7 @@ scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glo
 
     // Scatterv: can set offsets for noncontiguous blocks of data
     // with the resize extent
-    const size_t nprocs{as<size_t>(get_size(parent_comm))};
+    const size_t     nprocs{as<size_t>(get_size(parent_comm))};
     std::vector<int> counts(nprocs, 1);
     std::vector<int> displs(nprocs);
     for (size_t i{0}; i < nprocs; ++i) {
@@ -707,7 +707,7 @@ gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glob
     const Shape local_mm{ac::mpi::get_local_mm(parent_comm, global_nn, local_rr)};
     const Shape local_nn{ac::mpi::get_local_nn(parent_comm, global_nn)};
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(parent_comm, global_nn)};
-    const Index zero_offset(global_nn.size(), static_cast<uint64_t>(0));
+    const Index zero_offset{ac::make_vector<uint64_t>(global_nn.size())};
 
     int etype_bytes{-1};
     ERRCHK_MPI_API(MPI_Type_size(etype, &etype_bytes));
@@ -722,8 +722,8 @@ gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glob
     ERRCHK_MPI_API(MPI_Type_commit(&monolithic_subarray));
     MPI_Datatype distributed_subarray{subarray_create(local_mm, local_nn, local_rr, etype)};
 
-    const int root_proc{0};
-    const size_t nprocs{as<size_t>(get_size(parent_comm))};
+    const int        root_proc{0};
+    const size_t     nprocs{as<size_t>(get_size(parent_comm))};
     std::vector<int> counts(nprocs, 1);
     std::vector<int> displs(nprocs);
     for (size_t i{0}; i < nprocs; ++i) {

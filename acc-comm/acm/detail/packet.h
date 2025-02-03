@@ -11,7 +11,7 @@
 
 #include <mpi.h>
 
-#include "convert.h" // Experimental
+#include "type_conversion.h"
 
 template <typename T, typename MemoryResource> class Packet {
 

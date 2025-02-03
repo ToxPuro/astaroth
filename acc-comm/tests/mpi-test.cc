@@ -7,21 +7,22 @@
 #include <numeric> // std::iota
 
 #include "acm/detail/mpi_utils.h"
+#include "acm/detail/type_conversion.h"
 
 template <typename MemoryResource>
 void
 test_reduce_axis(const MPI_Comm& cart_comm, const Shape& global_nn)
 {
-    Shape decomp{ac::mpi::get_decomposition(cart_comm)};
-    Index coords{ac::mpi::get_coords(cart_comm)};
+    Shape        decomp{ac::mpi::get_decomposition(cart_comm)};
+    Index        coords{ac::mpi::get_coords(cart_comm)};
     const size_t nprocs{prod(decomp)};
 
     // Checks that the reduce sum is the sum of all processes along a specific axis
     for (size_t axis{0}; axis < global_nn.size(); ++axis) {
-        constexpr size_t count{10};
-        const int value{as<int>((coords[axis] + 1) * nprocs)};
+        constexpr size_t                              count{10};
+        const int                                     value{as<int>((coords[axis] + 1) * nprocs)};
         ac::buffer<int, ac::mr::host_memory_resource> tmp{count, value};
-        ac::buffer<int, MemoryResource> buf{count};
+        ac::buffer<int, MemoryResource>               buf{count};
         migrate(tmp, buf);
 
         ac::mpi::reduce_axis(cart_comm,
@@ -54,10 +55,10 @@ test_scatter_gather(const MPI_Comm& cart_comm, const Shape& global_nn)
     using Buffer = ac::ndbuffer<T, ac::mr::host_memory_resource>;
 
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
-    const Index zero_offset(global_nn.size(), static_cast<int>(0));
+    // const Index zero_offset{ac::make_vector<uint64_t>(global_nn.size(), 0)};
     const Shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
 
-    const Index rr(global_nn.size(), static_cast<uint64_t>(2));
+    const Index rr{ac::make_vector<uint64_t>(global_nn.size(), static_cast<uint64_t>(2))};
     const Shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
 
     Buffer monolithic{global_nn};
@@ -106,10 +107,10 @@ test_scatter_gather_advanced(const MPI_Comm& cart_comm, const Shape& global_nn)
     using Buffer = ac::ndbuffer<T, ac::mr::host_memory_resource>;
 
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
-    const Index zero_offset(global_nn.size(), static_cast<int>(0));
+    // const Index zero_offset(global_nn.size(), static_cast<int>(0));
     const Shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
 
-    const Index rr(global_nn.size(), static_cast<uint64_t>(2));
+    const Index rr{ac::make_vector<uint64_t>(global_nn.size(), 2)};
     const Shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
 
     const Shape global_mm{global_nn + static_cast<uint64_t>(2) * rr};
@@ -178,7 +179,7 @@ main()
     try {
         {
             const Shape global_nn{128, 128, 128};
-            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            MPI_Comm    cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
             test_reduce_axis<ac::mr::host_memory_resource>(cart_comm, global_nn);
             test_reduce_axis<ac::mr::pinned_host_memory_resource>(cart_comm, global_nn);
@@ -189,7 +190,7 @@ main()
         }
         {
             const Shape global_nn{16};
-            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            MPI_Comm    cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
             test_scatter_gather(cart_comm, global_nn);
 
@@ -197,7 +198,7 @@ main()
         }
         {
             const Shape global_nn{8, 8};
-            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            MPI_Comm    cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
             test_scatter_gather(cart_comm, global_nn);
 
@@ -205,7 +206,7 @@ main()
         }
         {
             const Shape global_nn{8, 4, 2};
-            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            MPI_Comm    cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
             test_scatter_gather(cart_comm, global_nn);
 
@@ -213,7 +214,7 @@ main()
         }
         {
             const Shape global_nn{8, 8};
-            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            MPI_Comm    cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
             test_scatter_gather_advanced(cart_comm, global_nn);
             ac::mpi::cart_comm_destroy(&cart_comm);
         }

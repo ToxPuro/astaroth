@@ -53,14 +53,14 @@ test_vector(void)
         test_fn(ac::vector<uint64_t>{1, 2, 3});
     }
     {
-        const size_t count = 10;
-        int data[count]    = {1};
-        ac::vector<int> a(count, data);
+        const size_t    count       = 10;
+        int             data[count] = {1};
+        ac::vector<int> a{ac::make_vector_from_ptr(count, data)};
         ERRCHK(a[0] == 1);
         ERRCHK(a[9] == 0);
     }
     {
-        ac::vector<int> a(100, 1);
+        ac::vector<int> a{ac::make_vector(100, 1)};
         ERRCHK(a[0] == 1);
         ERRCHK(a[99] == 1);
     }

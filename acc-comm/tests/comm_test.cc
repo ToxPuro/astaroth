@@ -54,8 +54,8 @@ benchmark(void)
     }
 
     // ac::buffers
-    const size_t count{(1000 * 1024 * 1024) / sizeof(double)};
-    ac::buffer<double, ac::mr::host_memory_resource> hbuf(count);
+    const size_t                                       count{(1000 * 1024 * 1024) / sizeof(double)};
+    ac::buffer<double, ac::mr::host_memory_resource>   hbuf(count);
     ac::buffer<double, ac::mr::device_memory_resource> dbuf(count);
 
     // C++ standard library
@@ -117,13 +117,13 @@ main()
         // benchmark();
 
         const Shape global_nn{4, 4, 4};
-        MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+        MPI_Comm    cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
         const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
         const Shape local_nn{global_nn / decomp};
         const Index coords{ac::mpi::get_coords(cart_comm)};
         const Index global_nn_offset{coords * local_nn};
 
-        const Shape rr(global_nn.size(), 1); // Symmetric halo
+        const Shape rr{ac::make_vector<uint64_t>(global_nn.size(), 1)}; // Symmetric halo
         const Shape local_mm{as<uint64_t>(2) * rr + local_nn};
 
         ac::ndbuffer<UserType, ac::mr::host_memory_resource> hin(local_mm);
@@ -203,7 +203,7 @@ main()
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         ac::comm::AsyncHaloExchangeTask<UserType, ac::mr::device_memory_resource>
-            halo_exchange{local_mm, local_nn, rr, 1};
+                                                      halo_exchange{local_mm, local_nn, rr, 1};
         std::vector<ac::mr::device_pointer<UserType>> inputs{
             ac::mr::device_pointer<UserType>{din.size(), din.data()}};
 

@@ -1,17 +1,9 @@
-/**
- * A vector class with support for arithmetic operations and additional error checking.
- * Extends std::vector.
- */
 #pragma once
 
-#include <algorithm>
-#include <cmath>
 #include <iostream>
-#include <type_traits>
 #include <vector>
 
 #include "errchk.h"
-#include "type_conversion.h"
 
 namespace ac {
 
@@ -20,52 +12,17 @@ template <typename T> class vector {
     std::vector<T> m_resource;
 
   public:
-    // Vector-like constructor
-    // ac::vector<int> a(10, 1)
-    explicit vector(const size_t count, const T& fill_value = 0)
-        : m_resource(count, fill_value)
-    {
-    }
-
-    // Construct from C-style count and pointer
-    // ac::vector(count, ptr)
-    explicit vector(const size_t count, const T* arr)
-        : vector(count)
-    {
-        ERRCHK(count > 0);
-        ERRCHK(arr);
-        std::copy_n(arr, count, m_resource.begin());
-    }
-
-    // Construct from std::vector
-    // ac::vector(std::vector{1,2,3})
-    // ac::vector{{1,2,3}}
-    explicit vector(const std::vector<T>& vec)
-        : m_resource{vec}
-    {
-    }
-
-    // Initializer list constructor
-    // ac::vector<int> a{1,2,3}
-    explicit vector(const std::initializer_list<T>& init_list)
+    vector(const std::initializer_list<T>& init_list)
         : m_resource{init_list}
     {
     }
 
-    // Enable the subscript[] operator
-    T& operator[](const size_t i)
+    vector(const std::vector<T>& vec)
+        : m_resource{vec}
     {
-        ERRCHK(i < m_resource.size());
-        return m_resource[i];
     }
 
-    const T& operator[](const size_t i) const
-    {
-        ERRCHK(i < m_resource.size());
-        return m_resource[i];
-    }
-
-    size_t size() const { return m_resource.size(); }
+    auto size() const { return m_resource.size(); }
 
     auto data() const { return m_resource.data(); }
     auto data() { return m_resource.data(); }
@@ -76,8 +33,26 @@ template <typename T> class vector {
     auto end() const { return m_resource.end(); }
     auto end() { return m_resource.end(); }
 
-    // auto get() { return m_resource; }
-    // auto get() const { return m_resource; }
+    auto& operator[](const size_t i)
+    {
+        ERRCHK(i < size());
+        return m_resource[i];
+    }
+
+    const auto& operator[](const size_t i) const
+    {
+        ERRCHK(i < size());
+        return m_resource[i];
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const vector& obj)
+    {
+        os << "{ ";
+        for (const auto& elem : obj)
+            os << elem << " ";
+        os << "}";
+        return os;
+    }
 
     template <typename U>
     friend ac::vector<T> operator+(const ac::vector<T>& a, const ac::vector<U>& b)
@@ -87,7 +62,7 @@ template <typename T> class vector {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
 
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i)
             c[i] = a[i] + b[i];
         return c;
@@ -98,7 +73,7 @@ template <typename T> class vector {
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ac::vector<T> c(b.size());
+        ac::vector<T> c{b};
         for (size_t i{0}; i < b.size(); ++i)
             c[i] = a + b[i];
         return c;
@@ -109,7 +84,7 @@ template <typename T> class vector {
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i)
             c[i] = a[i] + b;
         return c;
@@ -123,7 +98,7 @@ template <typename T> class vector {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
 
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i)
             c[i] = a[i] - b[i];
         return c;
@@ -134,7 +109,7 @@ template <typename T> class vector {
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ac::vector<T> c(b.size());
+        ac::vector<T> c{b};
         for (size_t i{0}; i < b.size(); ++i)
             c[i] = a - b[i];
         return c;
@@ -145,7 +120,7 @@ template <typename T> class vector {
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i)
             c[i] = a[i] - b;
         return c;
@@ -159,7 +134,7 @@ template <typename T> class vector {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
 
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i)
             c[i] = a[i] * b[i];
         return c;
@@ -170,7 +145,7 @@ template <typename T> class vector {
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ac::vector<T> c(b.size());
+        ac::vector<T> c{b};
         for (size_t i{0}; i < b.size(); ++i)
             c[i] = a * b[i];
         return c;
@@ -181,7 +156,7 @@ template <typename T> class vector {
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i)
             c[i] = a[i] * b;
         return c;
@@ -195,7 +170,7 @@ template <typename T> class vector {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
 
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i) {
             if constexpr (std::is_integral_v<U>)
                 ERRCHK(b[i] != 0);
@@ -211,7 +186,7 @@ template <typename T> class vector {
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i) {
             if constexpr (std::is_integral_v<U>)
                 ERRCHK(b[i] != 0);
@@ -229,7 +204,7 @@ template <typename T> class vector {
                       "explicit cast such that both operands are of the same type");
         if constexpr (std::is_integral_v<U>)
             ERRCHK(b != 0);
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i) {
             c[i] = a[i] / b;
             if constexpr (std::is_floating_point_v<T>)
@@ -247,7 +222,7 @@ template <typename T> class vector {
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
 
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i)
             c[i] = a[i] % b[i];
         return c;
@@ -259,7 +234,7 @@ template <typename T> class vector {
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ac::vector<T> c(b.size());
+        ac::vector<T> c{b};
         for (size_t i{0}; i < b.size(); ++i)
             c[i] = a % b[i];
         return c;
@@ -271,7 +246,7 @@ template <typename T> class vector {
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i)
             c[i] = a[i] % b;
         return c;
@@ -319,45 +294,96 @@ template <typename T> class vector {
         return true;
     }
 
+    template <typename U> friend bool operator<(const ac::vector<T>& a, const ac::vector<U>& b)
+    {
+        ERRCHK(a.size() == b.size());
+        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
+        static_assert(std::is_same_v<T, U>,
+                      "Operator not enabled for parameters of different types. Perform an "
+                      "explicit cast such that both operands are of the same type");
+
+        for (size_t i{0}; i < a.size(); ++i)
+            if (a[i] >= b[i])
+                return false;
+        return true;
+    }
+
+    template <typename U> friend bool operator>(const ac::vector<T>& a, const ac::vector<U>& b)
+    {
+        ERRCHK(a.size() == b.size());
+        static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
+        static_assert(std::is_same_v<T, U>,
+                      "Operator not enabled for parameters of different types. Perform an "
+                      "explicit cast such that both operands are of the same type");
+
+        for (size_t i{0}; i < a.size(); ++i)
+            if (a[i] <= b[i])
+                return false;
+        return true;
+    }
+
     friend ac::vector<T> operator-(const ac::vector<T>& a)
     {
         static_assert(std::is_signed_v<T>, "Operator enabled only for signed types");
-        ac::vector<T> c(a.size());
+        ac::vector<T> c{a};
         for (size_t i{0}; i < a.size(); ++i)
             c[i] = -a[i];
         return c;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const ac::vector<T>& obj)
-    {
-        os << "{ ";
-        for (const auto& elem : obj)
-            os << elem << " ";
-        os << "}";
-        return os;
-    }
+    auto back() const { return m_resource[size() - 1]; }
 };
 
-} // namespace ac
+template <typename T>
+[[nodiscard]] auto
+make_vector(const size_t count, const T& fill_value = 0)
+{
+    return ac::vector<T>{std::vector<T>(count, fill_value)};
+}
 
 template <typename T>
-[[nodiscard]] T
-prod(const ac::vector<T>& arr)
+[[nodiscard]] auto
+make_vector_from_ptr(const size_t count, const T* data)
 {
-    T result{1};
-    for (size_t i{0}; i < arr.size(); ++i)
-        result *= arr[i];
-    return result;
+    ERRCHK(count > 0);
+    ERRCHK(data);
+    ac::vector<T> retval{make_vector<T>(count)};
+    std::copy_n(data, count, retval.begin());
+    return retval;
+}
+
+template <typename T>
+[[nodiscard]] auto
+slice(const ac::vector<T>& vector, const size_t lb, const size_t ub)
+{
+    ERRCHK(lb < ub);
+    ac::vector<T> out{ac::make_vector<T>(ub - lb)};
+    for (size_t i{lb}; i < ub; ++i)
+        out[i - lb] = vector[i];
+    return out;
+}
+
+template <typename T>
+[[nodiscard]] auto
+prod(const ac::vector<T>& in)
+{
+    T out{1};
+    for (size_t i{0}; i < in.size(); ++i)
+        out *= in[i];
+    return out;
 }
 
 /** Element-wise multiplication of vectors a and b */
-template <typename T>
+template <typename T, typename U>
 [[nodiscard]] ac::vector<T>
-mul(const ac::vector<T>& a, const ac::vector<T>& b)
+mul(const ac::vector<T>& a, const ac::vector<U>& b)
 {
     ERRCHK(a.size() == b.size());
+    static_assert(std::is_same_v<T, U>,
+                  "Operator not enabled for parameters of different types. Perform an "
+                  "explicit cast such that both operands are of the same type");
 
-    ac::vector<T> c(a.size());
+    ac::vector<T> c{a};
 
     for (size_t i{0}; i < a.size(); ++i)
         c[i] = a[i] * b[i];
@@ -379,42 +405,34 @@ dot(const ac::vector<T>& a, const ac::vector<U>& b)
     return result;
 }
 
-template <typename T, typename U>
-[[nodiscard]] ac::vector<T>
-concat(const ac::vector<T>& a, const ac::vector<U>& b)
+template <typename T>
+[[nodiscard]] auto
+to_linear(const ac::vector<T>& coords, const ac::vector<T>& shape)
 {
-    static_assert(std::is_same_v<T, U>,
-                  "Operator not enabled for parameters of different types. Perform an "
-                  "explicit cast such that both operands are of the same type");
-    std::vector<T> c{a};
-    c.insert(c.end(), b.begin(), b.end());
-    return c;
-}
-
-template <typename T, typename U>
-[[nodiscard]] ac::vector<T>
-concat(const ac::vector<T>& a, const U& b)
-{
-    static_assert(std::is_same_v<T, U>,
-                  "Operator not enabled for parameters of different types. Perform an "
-                  "explicit cast such that both operands are of the same type");
-    return concat(a, ac::vector<U>{b});
-}
-template <typename T, typename U>
-[[nodiscard]] ac::vector<T>
-concat(const T& a, const ac::vector<U>& b)
-{
-    static_assert(std::is_same_v<T, U>,
-                  "Operator not enabled for parameters of different types. Perform an "
-                  "explicit cast such that both operands are of the same type");
-    return concat(ac::vector<T>{a}, b);
+    T result{0};
+    for (size_t j{0}; j < shape.size(); ++j) {
+        T factor{1};
+        for (size_t i{0}; i < j; ++i)
+            factor *= shape[i];
+        result += coords[j] * factor;
+    }
+    return result;
 }
 
 template <typename T>
-[[nodiscard]] ac::vector<T>
-make_vector(const size_t count, const T* arr)
+[[nodiscard]] auto
+to_spatial(const T index, const ac::vector<T>& shape)
 {
-    return ac::vector<T>(count, arr);
+    ac::vector<T> coords{shape};
+    for (size_t j{0}; j < shape.size(); ++j) {
+        T divisor{1};
+        for (size_t i{0}; i < j; ++i)
+            divisor *= shape[i];
+        coords[j] = (index / divisor) % shape[j];
+    }
+    return coords;
 }
 
-void test_vector(void);
+} // namespace ac
+
+void test_vector();

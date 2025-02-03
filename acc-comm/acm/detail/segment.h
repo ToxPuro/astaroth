@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 
 #include "datatypes.h"
 
@@ -9,7 +10,7 @@ struct segment {
 
     // Constructors
     explicit segment(const Shape& in_dims)
-        : dims{in_dims}, offset(in_dims.size())
+        : dims{in_dims}, offset{ac::make_vector<uint64_t>(in_dims.size(), 0)}
     {
     }
     segment(const Shape& in_dims, const Index& in_offset)

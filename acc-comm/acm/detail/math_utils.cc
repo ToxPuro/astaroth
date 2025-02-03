@@ -1,5 +1,6 @@
 #include "math_utils.h"
 
+#include "acm/detail/vector.h"
 #include "errchk.h"
 
 uint64_t
@@ -53,7 +54,7 @@ test_to_linear(void)
 Index
 to_spatial(const uint64_t index, const ac::vector<uint64_t>& shape)
 {
-    ac::vector<uint64_t> coords(shape.size());
+    ac::vector<uint64_t> coords{ac::make_vector<uint64_t>(shape.size())};
     for (size_t j{0}; j < shape.size(); ++j) {
         uint64_t divisor{1};
         for (size_t i{0}; i < j; ++i)
@@ -68,8 +69,8 @@ test_to_spatial(void)
 {
     {
         const uint64_t i{0};
-        const Shape shape{4, 5, 6};
-        const Shape coords{0, 0, 0};
+        const Shape    shape{4, 5, 6};
+        const Shape    coords{0, 0, 0};
         ERRCHK(to_spatial(i, shape) == coords);
     }
     // {

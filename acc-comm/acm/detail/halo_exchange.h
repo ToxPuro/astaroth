@@ -4,6 +4,7 @@
 
 #include "math_utils.h"
 #include "partition.h"
+#include "type_conversion.h"
 
 #include "errchk_mpi.h"
 #include "mpi_utils.h"

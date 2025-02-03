@@ -3,9 +3,11 @@
 #include <iostream>
 #include <vector>
 
+#include "errchk.h"
+
 namespace ac {
 
-template <typename T = uint64_t> class ntuple {
+template <typename T> class ntuple {
   private:
     std::vector<T> m_resource;
 
@@ -337,6 +339,17 @@ template <typename T>
 make_ntuple(const size_t count, const T& fill_value = 0)
 {
     return ac::ntuple<T>{std::vector<T>(count, fill_value)};
+}
+
+template <typename T>
+[[nodiscard]] auto
+make_ntuple_from_ptr(const size_t count, const T* data)
+{
+    ERRCHK(count > 0);
+    ERRCHK(data);
+    ac::ntuple<T> retval{make_ntuple<T>(count)};
+    std::copy_n(data, count, retval.begin());
+    return retval;
 }
 
 template <typename T>
