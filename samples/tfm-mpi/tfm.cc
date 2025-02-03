@@ -1168,7 +1168,7 @@ class Grid {
 
         // Allocate and initialize host buffers
         const auto global_nn{acr::get_global_nn(local_info)};
-        const Index zeros{ac::make_ntuple<uint64_t>(global_nn.size(), 0)};
+        const Index zeros{make_index(global_nn.size(), 0)};
         const auto local_mm{acr::get_local_mm(local_info)};
         const auto local_nn{acr::get_local_nn(local_info)};
         const auto rr{acr::get_local_rr()};
