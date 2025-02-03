@@ -24,7 +24,7 @@ using MPIShape = ac::ntuple<int>;
 static auto
 astaroth_to_mpi_format(const ac::ntuple<uint64_t>& in)
 {
-    auto out{ac::make_ntuple<int>(in.size())};
+    auto out{ac::make_ntuple<int>(in.size(), 0)};
     for (size_t i{0}; i < in.size(); ++i)
         out[i] = as<int>(in[i]);
     std::reverse(out.begin(), out.end());
@@ -34,7 +34,7 @@ astaroth_to_mpi_format(const ac::ntuple<uint64_t>& in)
 static auto
 astaroth_to_mpi_format(const Direction& in)
 {
-    auto out{ac::make_ntuple<int>(in.size())};
+    auto out{ac::make_ntuple<int>(in.size(), 0)};
     for (size_t i{0}; i < in.size(); ++i)
         out[i] = as<int>(in[i]);
     std::reverse(out.begin(), out.end());
@@ -44,7 +44,7 @@ astaroth_to_mpi_format(const Direction& in)
 static auto
 mpi_to_astaroth_format(const ac::ntuple<int>& in)
 {
-    auto out{ac::make_ntuple<uint64_t>(in.size())};
+    auto out{ac::make_ntuple<uint64_t>(in.size(), 0)};
     for (size_t i{0}; i < in.size(); ++i)
         out[i] = as<uint64_t>(in[i]);
     std::reverse(out.begin(), out.end());
@@ -64,7 +64,7 @@ template <typename T>
 static auto
 mul(const ac::ntuple<T>& a, const ac::ntuple<T>& b)
 {
-    ac::ntuple<T> c{ac::make_ntuple<T>(a.size())};
+    ac::ntuple<T> c{ac::make_ntuple<T>(a.size(), 0)};
     std::transform(a.begin(), a.end(), b.begin(), c.begin(), std::multiplies<T>());
     return c;
 }
@@ -295,9 +295,9 @@ print_mpi_comm(const MPI_Comm& comm)
 {
     const int ndims = get_ndims(comm);
 
-    MPIShape mpi_decomp{ac::make_ntuple<int>(as<size_t>(ndims))};
-    MPIShape mpi_periods{ac::make_ntuple<int>(as<size_t>(ndims))};
-    MPIIndex mpi_coords{ac::make_ntuple<int>(as<size_t>(ndims))};
+    MPIShape mpi_decomp{ac::make_ntuple<int>(as<size_t>(ndims), 0)};
+    MPIShape mpi_periods{ac::make_ntuple<int>(as<size_t>(ndims), 0)};
+    MPIIndex mpi_coords{ac::make_ntuple<int>(as<size_t>(ndims), 0)};
     ERRCHK_MPI_API(
         MPI_Cart_get(comm, ndims, mpi_decomp.data(), mpi_periods.data(), mpi_coords.data()));
 
@@ -489,9 +489,9 @@ get_decomposition(const MPI_Comm& cart_comm)
     int mpi_ndims{-1};
     ERRCHK_MPI_API(MPI_Cartdim_get(cart_comm, &mpi_ndims));
 
-    MPIShape mpi_decomp{ac::make_ntuple<int>(as<size_t>(mpi_ndims))};
-    MPIShape mpi_periods{ac::make_ntuple<int>(as<size_t>(mpi_ndims))};
-    MPIIndex mpi_coords{ac::make_ntuple<int>(as<size_t>(mpi_ndims))};
+    MPIShape mpi_decomp{ac::make_ntuple<int>(as<size_t>(mpi_ndims), 0)};
+    MPIShape mpi_periods{ac::make_ntuple<int>(as<size_t>(mpi_ndims), 0)};
+    MPIIndex mpi_coords{ac::make_ntuple<int>(as<size_t>(mpi_ndims), 0)};
     ERRCHK_MPI_API(MPI_Cart_get(cart_comm,
                                 mpi_ndims,
                                 mpi_decomp.data(),
@@ -530,7 +530,7 @@ get_neighbor(const MPI_Comm& cart_comm, const Direction& dir)
 Direction
 get_direction(const Index& offset, const Shape& nn, const Index& rr)
 {
-    Direction dir{ac::make_ntuple<int64_t>(offset.size())};
+    Direction dir{ac::make_ntuple<int64_t>(offset.size(), 0)};
     for (size_t i{0}; i < offset.size(); ++i)
         dir[i] = offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
     return dir;
@@ -648,7 +648,7 @@ scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glo
     const Shape local_mm{ac::mpi::get_local_mm(parent_comm, global_nn, local_rr)};
     const Shape local_nn{ac::mpi::get_local_nn(parent_comm, global_nn)};
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(parent_comm, global_nn)};
-    const Index zero_offset{ac::make_ntuple<uint64_t>(global_nn.size())};
+    const Index zero_offset{ac::make_ntuple<uint64_t>(global_nn.size(), 0)};
 
     int etype_bytes{-1};
     ERRCHK_MPI_API(MPI_Type_size(etype, &etype_bytes));
@@ -707,7 +707,7 @@ gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& glob
     const Shape local_mm{ac::mpi::get_local_mm(parent_comm, global_nn, local_rr)};
     const Shape local_nn{ac::mpi::get_local_nn(parent_comm, global_nn)};
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(parent_comm, global_nn)};
-    const Index zero_offset{ac::make_ntuple<uint64_t>(global_nn.size())};
+    const Index zero_offset{ac::make_ntuple<uint64_t>(global_nn.size(), 0)};
 
     int etype_bytes{-1};
     ERRCHK_MPI_API(MPI_Type_size(etype, &etype_bytes));

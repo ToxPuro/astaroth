@@ -359,7 +359,7 @@ template <typename T>
 slice(const ac::ntuple<T>& ntuple, const size_t lb, const size_t ub)
 {
     ERRCHK(lb < ub);
-    ac::ntuple<T> out{ac::make_ntuple<T>(ub - lb)};
+    ac::ntuple<T> out{ac::make_ntuple<T>(ub - lb, 0)};
     for (size_t i{lb}; i < ub; ++i)
         out[i - lb] = ntuple[i];
     return out;

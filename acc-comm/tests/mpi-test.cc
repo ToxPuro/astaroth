@@ -58,7 +58,7 @@ test_scatter_gather(const MPI_Comm& cart_comm, const Shape& global_nn)
     // const Index zero_offset{ac::make_ntuple<uint64_t>(global_nn.size(), 0)};
     const Shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
 
-    const Index rr{ac::make_ntuple<uint64_t>(global_nn.size(), static_cast<uint64_t>(2))};
+    const Index rr{ac::make_ntuple<uint64_t>(global_nn.size(), 2)};
     const Shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
 
     Buffer monolithic{global_nn};

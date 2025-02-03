@@ -54,7 +54,7 @@ test_to_linear(void)
 Index
 to_spatial(const uint64_t index, const ac::ntuple<uint64_t>& shape)
 {
-    ac::ntuple<uint64_t> coords{ac::make_ntuple<uint64_t>(shape.size())};
+    ac::ntuple<uint64_t> coords{ac::make_ntuple<uint64_t>(shape.size(), 0)};
     for (size_t j{0}; j < shape.size(); ++j) {
         uint64_t divisor{1};
         for (size_t i{0}; i < j; ++i)

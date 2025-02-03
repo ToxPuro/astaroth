@@ -108,7 +108,7 @@ hierarchical_to_spatial(const uint64_t index, const std::vector<Shape>& decompos
 {
     ERRCHK(decompositions.size() > 0);
     const size_t ndims = decompositions[0].size();
-    Index        coords{ac::make_ntuple<uint64_t>(ndims)};
+    Index        coords{ac::make_ntuple<uint64_t>(ndims, 0)};
     Index        scale{ac::make_ntuple<uint64_t>(ndims, 1)};
     ERRCHK(coords[0] == 0);
     ERRCHK(scale[0] == 1);
