@@ -343,6 +343,7 @@ template <typename T>
 [[nodiscard]] auto
 slice(const ac::ntuple<T>& ntuple, const size_t lb, const size_t ub)
 {
+    ERRCHK(lb < ub);
     ac::ntuple<T> out{ac::make_ntuple<T>(ub - lb)};
     for (size_t i{lb}; i < ub; ++i)
         out[i - lb] = ntuple[i];
