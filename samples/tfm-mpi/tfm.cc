@@ -215,7 +215,7 @@ template <typename T, typename U>
 ac::ntuple<T>
 static_cast_vec(const ac::ntuple<U>& in)
 {
-    ac::ntuple<T> out{ac::make_ntuple<T>(in.size())};
+    ac::ntuple<T> out{ac::make_ntuple<T>(in.size(), 0)};
     for (size_t i{0}; i < in.size(); ++i)
         out[i] = static_cast<T>(in[i]);
     return out;
