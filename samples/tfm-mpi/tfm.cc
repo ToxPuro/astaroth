@@ -215,7 +215,7 @@ template <typename T, typename U>
 ac::vector<T>
 static_cast_vec(const ac::vector<U>& in)
 {
-    ac::vector<T> out(in.size());
+    ac::vector<T> out{ac::make_vector<T>(in.size())};
     for (size_t i{0}; i < in.size(); ++i)
         out[i] = static_cast<T>(in[i]);
     return out;
@@ -1168,7 +1168,7 @@ class Grid {
 
         // Allocate and initialize host buffers
         const auto global_nn{acr::get_global_nn(local_info)};
-        const Index zeros(global_nn.size(), static_cast<uint64_t>(0));
+        const Index zeros{ac::make_vector<uint64_t>(global_nn.size(), 0)};
         const auto local_mm{acr::get_local_mm(local_info)};
         const auto local_nn{acr::get_local_nn(local_info)};
         const auto rr{acr::get_local_rr()};

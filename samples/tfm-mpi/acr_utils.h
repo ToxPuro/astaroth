@@ -2,6 +2,7 @@
 
 #include "acc_runtime.h"
 #include "acm/detail/datatypes.h"
+#include "acm/detail/type_conversion.h"
 
 #define ERRCHK_AC(errcode)                                                                         \
     do {                                                                                           \

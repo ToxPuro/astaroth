@@ -108,6 +108,13 @@ copy(const pointer<T, MemoryResourceA>& in, pointer<T, MemoryResourceB>& out)
     copy(in.size(), 0, in, 0, out);
 }
 
+template <typename T, typename MemoryResourceA, typename MemoryResourceB>
+void
+copy(const pointer<T, MemoryResourceA>& in, pointer<T, MemoryResourceB>&& out)
+{
+    copy(in.size(), 0, in, 0, out);
+}
+
 } // namespace ac::mr
 
 void test_pointer(void);
