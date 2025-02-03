@@ -37,4 +37,22 @@ acc-comm/acm/detail/accruntime_wrapper_test.cc
 acc-comm/acm/detail/drafting-remove.cc
 acc-comm/acm/detail/vector-non-class.h
 acc-comm/acm/thrust-test.cc
+samples/tfm-comm/tmp/buffer.h
+samples/tfm-comm/tmp/dalloc.cu
+samples/tfm-comm/tmp/dalloc.h
+samples/tfm-comm/tmp/device_buffer copy.h
+samples/tfm-comm/tmp/device_buffer.cc
+samples/tfm-comm/tmp/device_buffer.h
+samples/tfm-comm/tmp/gpu copy 2.cu
+samples/tfm-comm/tmp/gpu copy 3.cu
+samples/tfm-comm/tmp/gpu copy 4.cu
+samples/tfm-comm/tmp/gpu copy 5.cu
+samples/tfm-comm/tmp/gpu copy 6.cu
+samples/tfm-comm/tmp/gpu copy.cu
+samples/tfm-comm/tmp/io copy-unique-ptr-attempit.h
+samples/tfm-comm/tmp/io copy.h
+samples/tfm-comm/thrust-test copy.cc
+samples/tfm-mpi/tfm copy 2.cc
+samples/tfm-mpi/tfm copy.cc
+src/core/grid-debug-tests-tmp.cc
 acc-comm/acm/detail/tensor.h
