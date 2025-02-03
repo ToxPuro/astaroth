@@ -1,5 +1,6 @@
 #pragma once
 
+#include "acm/detail/errchk_print.h"
 #include "pointer.h"
 
 #include "errchk.h"
@@ -67,47 +68,21 @@ print(const std::string& label, const ac::ntuple<uint64_t>& shape, const T* data
     print_recursive(shape, data);
 }
 
+// template <typename T>
+// void
+// fill(const T& fill_value, const ac::ntuple<uint64_t>& dims, const ac::ntuple<uint64_t>& subdims,
+//      const ac::ntuple<uint64_t>& offset, ac::mr::host_pointer<T>& data)
+// {
+//     WARNING_DESC("Not implemented");
+//     // Should also consider movng this to pointer instead:
+//     // need to define separate functions for host and device versions
+// }
+
 } // namespace ac
 
-template <typename T> class ttuple {
-  private:
-  public:
-    std::vector<T> m_m_resource;
-    ttuple(const std::initializer_list<T>& init_list)
-        : m_m_resource{init_list}
-    {
-    }
-};
-
-template <typename T>
-auto
-make_ttuple(const size_t count, const T& fill_value = 0)
-{
-    return ttuple{std::vector<T>(count, fill_value)};
-}
-
-template <typename T = int> class tttuple {
-  private:
-  public:
-    std::vector<T> m_m_resource;
-    tttuple(const std::initializer_list<T>& init_list)
-        : m_m_resource{init_list}
-    {
-    }
-};
-
-template <typename T = int>
-auto
-make_tttuple(const size_t count, const int& fill_value = 0)
-{
-    return ttuple{std::vector<T>(count, fill_value)};
-}
-
-#include <iostream>
 void
 test_transform()
 {
-    std::cout << "Transform begin" << std::endl;
     const ac::ntuple<uint64_t> dims{3, 3, 3, 3};
     const ac::ntuple<uint64_t> subdims{1, 2, 1, 1};
     const ac::ntuple<uint64_t> offset{1, 1, 1, 1};
@@ -117,19 +92,5 @@ test_transform()
     ac::transform(dims, subdims, offset, in.get(), out.get());
     ac::print("reference", dims, in.get());
     ac::print("candidate", subdims, out.get());
-    std::cout << "Transform end" << std::endl;
-
-    ttuple t{1, 2, 3};
-    ttuple tt{make_ttuple<int>(2)};
-    ttuple ttt{static_cast<size_t>(10)};
-    PRINT_DEBUG_VECTOR(tt.m_m_resource);
-    PRINT_DEBUG_VECTOR(ttt.m_m_resource);
-    std::vector<int> something(10, 1);
-    ttuple           tttt{something};
-    PRINT_DEBUG_VECTOR(tttt.m_m_resource);
-    // ttuple ttttt(10); // Not allowed
-
-    tttuple a{make_tttuple(10)};
-
-    ac::ntuple abc{1, 2, 3};
+    PRINT_LOG_INFO("OK");
 }

@@ -33,7 +33,7 @@ ndbuffer_print_recursive(const size_t ndims, const uint64_t* dims, const T* arra
 }
 
 template <typename T>
-void
+[[deprecated("Use transform::print instead.")]] void
 ndbuffer_print(const char* label, const size_t ndims, const uint64_t* dims, const T* array)
 {
     ERRCHK(array != NULL);
