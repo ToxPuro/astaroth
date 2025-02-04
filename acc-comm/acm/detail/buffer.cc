@@ -3,10 +3,10 @@
 void
 test_buffer(void)
 {
-    const ac::buffer<double, ac::mr::host_memory_resource> vec(10);
+    const ac::buffer<double, ac::mr::host_allocator> vec(10);
     ERRCHK(vec.size() == 10);
 
-    const auto vec1 = ac::buffer<int, ac::mr::pinned_host_memory_resource>(20, -1);
+    const auto vec1 = ac::buffer<int, ac::mr::pinned_host_allocator>(20, -1);
     ERRCHK(vec1.size() == 20);
     ERRCHK(vec1[0] == -1);
     ERRCHK(vec1[vec1.size() - 1] == -1);

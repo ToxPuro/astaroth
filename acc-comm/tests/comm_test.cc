@@ -54,9 +54,9 @@ benchmark(void)
     }
 
     // ac::buffers
-    const size_t                                       count{(1000 * 1024 * 1024) / sizeof(double)};
-    ac::buffer<double, ac::mr::host_memory_resource>   hbuf(count);
-    ac::buffer<double, ac::mr::device_memory_resource> dbuf(count);
+    const size_t                                 count{(1000 * 1024 * 1024) / sizeof(double)};
+    ac::buffer<double, ac::mr::host_allocator>   hbuf(count);
+    ac::buffer<double, ac::mr::device_allocator> dbuf(count);
 
     // C++ standard library
     for (size_t i{0}; i < num_samples; ++i)
@@ -77,7 +77,7 @@ benchmark(void)
         BENCHMARK(migrate(dbuf, hbuf));
 
     // Pinned
-    ac::buffer<double, ac::mr::pinned_host_memory_resource> phbuf(count);
+    ac::buffer<double, ac::mr::pinned_host_allocator> phbuf(count);
     for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(phbuf, dbuf));
 
@@ -85,7 +85,7 @@ benchmark(void)
         BENCHMARK(migrate(dbuf, phbuf));
 
     // Pinned write-combined
-    ac::buffer<double, ac::mr::pinned_write_combined_host_memory_resource> pwchbuf(count);
+    ac::buffer<double, ac::mr::pinned_write_combined_host_allocator> pwchbuf(count);
     for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(pwchbuf, dbuf));
 
@@ -126,11 +126,11 @@ main()
         const Shape rr{make_shape(global_nn.size(), 1)}; // Symmetric halo
         const Shape local_mm{as<uint64_t>(2) * rr + local_nn};
 
-        ac::ndbuffer<UserType, ac::mr::host_memory_resource> hin(local_mm);
-        ac::ndbuffer<UserType, ac::mr::host_memory_resource> hout(local_mm);
+        ac::ndbuffer<UserType, ac::mr::host_allocator> hin(local_mm);
+        ac::ndbuffer<UserType, ac::mr::host_allocator> hout(local_mm);
 
-        ac::ndbuffer<UserType, ac::mr::device_memory_resource> din(local_mm);
-        ac::ndbuffer<UserType, ac::mr::device_memory_resource> dout(local_mm);
+        ac::ndbuffer<UserType, ac::mr::device_allocator> din(local_mm);
+        ac::ndbuffer<UserType, ac::mr::device_allocator> dout(local_mm);
 
         PRINT_LOG_INFO("Testing migration"); //-----------------------------------------
         std::iota(hin.begin(),
@@ -202,9 +202,11 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        ac::comm::AsyncHaloExchangeTask<UserType, ac::mr::device_memory_resource>
-                                                      halo_exchange{local_mm, local_nn, rr, 1};
-        std::vector<ac::mr::device_pointer<UserType>> inputs{
+        ac::comm::AsyncHaloExchangeTask<UserType, ac::mr::device_allocator> halo_exchange{local_mm,
+                                                                                          local_nn,
+                                                                                          rr,
+                                                                                          1};
+        std::vector<ac::mr::device_pointer<UserType>>                       inputs{
             ac::mr::device_pointer<UserType>{din.size(), din.data()}};
 
         // Pipelined

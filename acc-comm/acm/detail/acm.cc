@@ -5,9 +5,9 @@
 #include "acm/detail/ntuple.h"
 #include "mpi_utils.h"
 
+#include "allocator.h"
 #include "halo_exchange_packed.h"
 #include "io.h"
-#include "memory_resource.h"
 
 ACM_Errorcode
 ACM_MPI_Init_funneled(void)

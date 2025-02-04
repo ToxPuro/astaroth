@@ -13,7 +13,7 @@
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/type_conversion.h"
 
-#include "acm/detail/memory_resource.h"
+#include "acm/detail/allocator.h"
 
 #include "acm/detail/halo_exchange_packed.h"
 #include "acm/detail/io.h"
@@ -44,8 +44,8 @@
         std::cout << "[" << ms_elapsed__.count() << " ms] " << #cmd << std::endl;                  \
     } while (0)
 
-using HaloExchangeTask = ac::comm::AsyncHaloExchangeTask<AcReal, ac::mr::device_memory_resource>;
-using IOTask           = ac::io::BatchedAsyncWriteTask<AcReal, ac::mr::pinned_host_memory_resource>;
+using HaloExchangeTask = ac::comm::AsyncHaloExchangeTask<AcReal, ac::mr::device_allocator>;
+using IOTask           = ac::io::BatchedAsyncWriteTask<AcReal, ac::mr::pinned_host_allocator>;
 
 static std::vector<Field> hydro_fields{VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
 static std::vector<Field> tfm_fields{TF_a11_x,
@@ -350,7 +350,7 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
 
     const auto local_mm{acr::get_local_mm(local_info)};
     const auto local_mm_count{prod(local_mm)};
-    ac::buffer<AcReal, ac::mr::host_memory_resource> staging_buffer{local_mm_count};
+    ac::buffer<AcReal, ac::mr::host_allocator> staging_buffer{local_mm_count};
 
     // Global mesh (collective)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -387,7 +387,7 @@ write_distributed_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& d
 
     const auto local_mm{acr::get_local_mm(local_info)};
     const auto local_mm_count{prod(local_mm)};
-    ac::buffer<AcReal, ac::mr::host_memory_resource> staging_buffer{local_mm_count};
+    ac::buffer<AcReal, ac::mr::host_allocator> staging_buffer{local_mm_count};
 
     // Local mesh incl. ghost zones
     for (int i{0}; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -422,7 +422,7 @@ write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const 
 
     const auto local_mm{acr::get_local_mm(local_info)};
     const auto local_mm_count{prod(local_mm)};
-    ac::buffer<AcReal, ac::mr::host_memory_resource> staging_buffer{local_mm_count};
+    ac::buffer<AcReal, ac::mr::host_allocator> staging_buffer{local_mm_count};
 
     for (int i = 0; i < NUM_PROFILES; ++i) {
         char filepath[4096];
@@ -727,9 +727,9 @@ class Grid {
 
         // Test: Rank
         const auto local_mm{acr::get_local_mm(local_info)};
-        ac::ndbuffer<AcReal, ac::mr::host_memory_resource> buf{local_mm,
-                                                               static_cast<double>(
-                                                                   ac::mpi::get_rank(cart_comm))};
+        ac::ndbuffer<AcReal, ac::mr::host_allocator> buf{local_mm,
+                                                         static_cast<double>(
+                                                             ac::mpi::get_rank(cart_comm))};
 
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
@@ -793,7 +793,7 @@ class Grid {
         reset_init_cond();
 
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        ac::buffer<AcReal, ac::mr::host_memory_resource> hprof{vba.profiles.count};
+        ac::buffer<AcReal, ac::mr::host_allocator> hprof{vba.profiles.count};
         // const auto dprof{make_ptr(vba, PROFILE_B21mean_z, BufferGroup::Input)};
         // ac::mr::copy(dprof, hprof.get());
 
@@ -856,7 +856,7 @@ class Grid {
         std::default_random_engine generator;
         std::uniform_real_distribution<AcReal> distribution{0, 1};
         for (size_t i{0}; i < NUM_FIELDS; ++i) {
-            ac::buffer<AcReal, ac::mr::host_memory_resource> tmp{prod(local_mm)};
+            ac::buffer<AcReal, ac::mr::host_allocator> tmp{prod(local_mm)};
             std::generate(tmp.begin(), tmp.end(), [&]() { return distribution(generator); });
             ac::mr::copy(tmp.get(), make_ptr(vba, static_cast<Field>(i), BufferGroup::Input));
         }
@@ -869,7 +869,7 @@ class Grid {
 
         // const auto local_mm{acr::get_local_mm(local_info)};
         // const auto count{prod(local_mm)};
-        // ac::ndbuffer<AcReal, ac::mr::host_memory_resource> buf{local_mm};
+        // ac::ndbuffer<AcReal, ac::mr::host_allocator> buf{local_mm};
         // std::iota(buf.begin(), buf.end(), count * ac::mpi::get_rank(cart_comm));
         // ac::mr::copy(buf.get(), ac::mr::device_pointer<AcReal>{count, vba.in[0]});
 
@@ -887,7 +887,7 @@ class Grid {
         // const auto global_nn_offset{acr::get_global_nn_offset(local_info)};
 
         // // Buffer
-        // ac::ndbuffer<AcReal, ac::mr::host_memory_resource> hbuf{mm, NAN};
+        // ac::ndbuffer<AcReal, ac::mr::host_allocator> hbuf{mm, NAN};
         // for (size_t k{rr[2]}; k < rr[2] + nn[2]; ++k) {
         //     const Shape slice{nn[0], nn[1], 1};
         //     const Index offset{rr[0], rr[1], k};
@@ -901,7 +901,7 @@ class Grid {
         // exit(0);
         /////////////////
 
-        // ac::buffer<AcReal, ac::mr::host_memory_resource> buf{prod(mm)};
+        // ac::buffer<AcReal, ac::mr::host_allocator> buf{prod(mm)};
         // std::iota(buf.begin(), buf.end(), prod(global_nn_offset) - prod(rr));
         // buf.display();
         // std::cout << "Global nn offset " << global_nn_offset << std::endl;
@@ -916,7 +916,7 @@ class Grid {
         // segments.erase(it, segments.end());
 
         // // Setup buffers
-        // ac::ndbuffer<AcReal, ac::mr::host_memory_resource> hux{mm, NAN}, huy{mm};
+        // ac::ndbuffer<AcReal, ac::mr::host_allocator> hux{mm, NAN}, huy{mm};
         // for (size_t k{rr[2]}; k < rr[2] + nn[2]; ++k) {
         //     const Shape slice{nn[0], nn[1], 1};
         //     const Index offset{rr[0], rr[1], k};
@@ -931,7 +931,7 @@ class Grid {
         //              huy);
         // }
 
-        // ac::ndbuffer<AcReal, ac::mr::device_memory_resource> dux{mm}, duy{mm};
+        // ac::ndbuffer<AcReal, ac::mr::device_allocator> dux{mm}, duy{mm};
         // ac::mr::copy(hux.get(), dux.get());
         // ac::mr::copy(huy.get(), duy.get());
 
@@ -952,7 +952,7 @@ class Grid {
     // label)
     // {
     //     // Allocate buffers
-    //     ac::buffer<AcReal, ac::mr::host_memory_resource>
+    //     ac::buffer<AcReal, ac::mr::host_allocator>
     //     buf{prod(acr::get_local_nn(local_info))};
 
     //     // Setup random number generator
@@ -989,7 +989,7 @@ class Grid {
     //     VertexBufferArray vba{};
     //     ERRCHK_AC(acDeviceGetVBA(device, &vba));
     //     const auto local_mm{acr::get_local_mm(local_info)};
-    //     ac::buffer<AcReal, ac::mr::host_memory_resource> staging_buffer{prod(local_mm)};
+    //     ac::buffer<AcReal, ac::mr::host_allocator> staging_buffer{prod(local_mm)};
     //     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
 
     //         std::ostringstream oss;
@@ -1084,7 +1084,7 @@ class Grid {
 
     void test_hydro_old2()
     {
-        using Buffer = ac::buffer<AcReal, ac::mr::host_memory_resource>;
+        using Buffer = ac::buffer<AcReal, ac::mr::host_allocator>;
 
         // Setup RNG
         const auto rank{ac::mpi::get_rank(cart_comm)};
@@ -1158,7 +1158,7 @@ class Grid {
 
     void test_scatter_gather()
     {
-        using Buffer = ac::buffer<AcReal, ac::mr::host_memory_resource>;
+        using Buffer = ac::buffer<AcReal, ac::mr::host_allocator>;
 
         // Setup RNG
         const auto rank{ac::mpi::get_rank(cart_comm)};
@@ -1217,7 +1217,7 @@ class Grid {
 
     void test_hydro()
     {
-        using Buffer = ac::buffer<AcReal, ac::mr::host_memory_resource>;
+        using Buffer = ac::buffer<AcReal, ac::mr::host_allocator>;
 
         // Setup RNG
         const auto rank{ac::mpi::get_rank(cart_comm)};

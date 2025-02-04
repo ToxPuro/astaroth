@@ -12,7 +12,7 @@
 
 namespace ac::mr {
 
-struct host_memory_resource {
+struct host_allocator {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG_TRACE("host");
@@ -31,7 +31,7 @@ struct host_memory_resource {
 
 #if defined(ACM_DEVICE_ENABLED)
 
-struct pinned_host_memory_resource : public host_memory_resource {
+struct pinned_host_allocator : public host_allocator {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG_TRACE("host pinned");
@@ -48,7 +48,7 @@ struct pinned_host_memory_resource : public host_memory_resource {
     }
 };
 
-struct pinned_write_combined_host_memory_resource : public host_memory_resource {
+struct pinned_write_combined_host_allocator : public host_allocator {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG_TRACE("host pinned write-combined");
@@ -65,7 +65,7 @@ struct pinned_write_combined_host_memory_resource : public host_memory_resource 
     }
 };
 
-struct device_memory_resource {
+struct device_allocator {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG_TRACE("device");
@@ -88,12 +88,12 @@ struct device_memory_resource {
 #pragma message("Device code was not enabled. Falling back to host-only memory allocations")
 #endif
 
-using pinned_host_memory_resource                = host_memory_resource;
-using pinned_write_combined_host_memory_resource = host_memory_resource;
-using device_memory_resource                     = host_memory_resource;
+using pinned_host_allocator                = host_allocator;
+using pinned_write_combined_host_allocator = host_allocator;
+using device_allocator                     = host_allocator;
 
 #endif
 
 } // namespace ac::mr
 
-void test_memory_resource();
+void test_allocator();

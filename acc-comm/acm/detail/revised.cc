@@ -2,15 +2,15 @@
 
 #include <iostream>
 
+#include "allocator.h"
 #include "errchk.h"
-#include "memory_resource.h"
 
 namespace ac {
 
-template <typename T, typename MemoryResource> class pointer {
+template <typename T, typename Allocator> class pointer {
   private:
     size_t m_count{0};
-    T* m_data{nullptr};
+    T*     m_data{nullptr};
 
   public:
     pointer(const size_t count, const T* data)
@@ -41,8 +41,8 @@ template <typename T, typename MemoryResource> class pointer {
     }
 };
 
-template <typename T> using host_pointer   = pointer<T, ac::mr::host_memory_resource>;
-template <typename T> using device_pointer = pointer<T, ac::mr::device_memory_resource>;
+template <typename T> using host_pointer   = pointer<T, ac::mr::host_allocator>;
+template <typename T> using device_pointer = pointer<T, ac::mr::device_allocator>;
 
 } // namespace ac
 

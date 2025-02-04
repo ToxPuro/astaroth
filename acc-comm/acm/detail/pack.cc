@@ -11,20 +11,20 @@ void
 test_pack(void)
 {
     {
-        const size_t count{10};
-        const size_t rr{1};
-        ac::buffer<uint64_t, ac::mr::host_memory_resource> hin(count);
-        ac::buffer<uint64_t, ac::mr::device_memory_resource> din(count);
-        ac::buffer<uint64_t, ac::mr::device_memory_resource> dout(count - 2 * rr);
-        ac::buffer<uint64_t, ac::mr::host_memory_resource> hout(count - 2 * rr);
+        const size_t                                   count{10};
+        const size_t                                   rr{1};
+        ac::buffer<uint64_t, ac::mr::host_allocator>   hin(count);
+        ac::buffer<uint64_t, ac::mr::device_allocator> din(count);
+        ac::buffer<uint64_t, ac::mr::device_allocator> dout(count - 2 * rr);
+        ac::buffer<uint64_t, ac::mr::host_allocator>   hout(count - 2 * rr);
         std::iota(hin.begin(), hin.end(), 0);
         std::fill(hout.begin(), hout.end(), 0);
         // ac::copy(hin.begin(), hin.end(), din.begin());
         migrate(hin, din);
 
-        Shape mm{count};
-        Shape block_shape{count - 2 * rr};
-        Shape block_offset{rr};
+        Shape                                         mm{count};
+        Shape                                         block_shape{count - 2 * rr};
+        Shape                                         block_offset{rr};
         std::vector<ac::mr::device_pointer<uint64_t>> inputs{
             ac::mr::device_pointer<uint64_t>{din.size(), din.data()}};
         pack(mm,
@@ -47,9 +47,9 @@ test_pack(void)
 
         // std::cout << "-------PACK------" << std::endl;
         // std::cout << hout << std::endl;
-        // ac::buffer<double, ac::mr::host_memory_resource> a(10, 0);
-        // ac::buffer<double, ac::mr::host_memory_resource> b(10, 1);
-        // ac::buffer<double, ac::mr::host_memory_resource> c(10, 2);
+        // ac::buffer<double, ac::mr::host_allocator> a(10, 0);
+        // ac::buffer<double, ac::mr::host_allocator> b(10, 1);
+        // ac::buffer<double, ac::mr::host_allocator> c(10, 2);
         // std::vector<ac::mr::host_pointer<double>> d{ac::mr::host_pointer<double>{a.size(),
         // a.data()},
         //                                         ac::mr::host_pointer<double>{b.size(), b.data()},

@@ -39,15 +39,15 @@ class BufferExchangeTask {
         WARNCHK(!m_stream);
     }
 
-    template <typename MemoryResource> void launch(const ac::buffer<T, MemoryResource>& in)
+    template <typename Allocator> void launch(const ac::buffer<T, Allocator>& in)
     {
         ERRCHK(!m_in_progress);
         m_in_progress = true;
 
         // Ensure that the input resource and the first-stage buffer is in the same memory space
-        static_assert((std::is_base_of_v<ac::mr::device_memory_resource, FirstStageResource> &&
-                       std::is_base_of_v<ac::mr::device_memory_resource, MemoryResource>) ||
-                          std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
+        static_assert((std::is_base_of_v<ac::mr::device_allocator, FirstStageResource> &&
+                       std::is_base_of_v<ac::mr::device_allocator, Allocator>) ||
+                          std::is_base_of_v<ac::mr::host_allocator, Allocator>,
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 
@@ -64,14 +64,14 @@ class BufferExchangeTask {
         migrate_async(m_stream, m_first_stage_buffer, m_second_stage_buffer);
     }
 
-    template <typename MemoryResource> void wait(ac::buffer<T, MemoryResource>& out)
+    template <typename Allocator> void wait(ac::buffer<T, Allocator>& out)
     {
         ERRCHK(m_in_progress);
 
         // Ensure that the output resource and the second-stage buffer is in the same memory space
-        static_assert((std::is_base_of_v<ac::mr::device_memory_resource, SecondStageResource> &&
-                       std::is_base_of_v<ac::mr::device_memory_resource, MemoryResource>) ||
-                          std::is_base_of_v<ac::mr::host_memory_resource, MemoryResource>,
+        static_assert((std::is_base_of_v<ac::mr::device_allocator, SecondStageResource> &&
+                       std::is_base_of_v<ac::mr::device_allocator, Allocator>) ||
+                          std::is_base_of_v<ac::mr::host_allocator, Allocator>,
                       "Input resource must be in the same memory space as the first staging "
                       "buffer");
 
@@ -93,9 +93,9 @@ class BufferExchangeTask {
 
 template <typename T>
 using HostToDeviceBufferExchangeTask = BufferExchangeTask<
-    T, ac::mr::pinned_write_combined_host_memory_resource, ac::mr::device_memory_resource>;
+    T, ac::mr::pinned_write_combined_host_allocator, ac::mr::device_allocator>;
 template <typename T>
-using DeviceToHostBufferExchangeTask = BufferExchangeTask<T, ac::mr::device_memory_resource,
-                                                          ac::mr::pinned_host_memory_resource>;
+using DeviceToHostBufferExchangeTask = BufferExchangeTask<T, ac::mr::device_allocator,
+                                                          ac::mr::pinned_host_allocator>;
 
 void test_buffer_exchange(void);

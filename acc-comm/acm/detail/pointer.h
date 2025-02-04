@@ -1,11 +1,11 @@
 #pragma once
 #include <algorithm>
 
-#include "memory_resource.h"
+#include "allocator.h"
 
 namespace ac::mr {
 
-template <typename T, typename MemoryResource> class pointer {
+template <typename T, typename Allocator> class pointer {
   private:
     size_t m_count{0};
     T*     m_data{nullptr};
@@ -43,12 +43,12 @@ template <typename T, typename MemoryResource> class pointer {
 
 #if defined(ACM_DEVICE_ENABLED)
 
-template <typename MemoryResourceA, typename MemoryResourceB>
+template <typename AllocatorA, typename AllocatorB>
 constexpr cudaMemcpyKind
 get_kind()
 {
-    if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceA>) {
-        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
+    if constexpr (std::is_base_of_v<ac::mr::device_allocator, AllocatorA>) {
+        if constexpr (std::is_base_of_v<ac::mr::device_allocator, AllocatorB>) {
             PRINT_LOG_TRACE("dtod");
             return cudaMemcpyDeviceToDevice;
         }
@@ -58,7 +58,7 @@ get_kind()
         }
     }
     else {
-        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
+        if constexpr (std::is_base_of_v<ac::mr::device_allocator, AllocatorB>) {
             PRINT_LOG_TRACE("htod");
             return cudaMemcpyHostToDevice;
         }
@@ -69,25 +69,25 @@ get_kind()
     }
 }
 
-template <typename T, typename MemoryResourceA, typename MemoryResourceB>
+template <typename T, typename AllocatorA, typename AllocatorB>
 void
-copy(const size_t count, const size_t in_offset, const pointer<T, MemoryResourceA>& in,
-     const size_t out_offset, pointer<T, MemoryResourceB>& out)
+copy(const size_t count, const size_t in_offset, const pointer<T, AllocatorA>& in,
+     const size_t out_offset, pointer<T, AllocatorB>& out)
 {
     ERRCHK(in_offset + count <= in.size());
     ERRCHK(out_offset + count <= out.size());
     ERRCHK_CUDA_API(cudaMemcpy(&out[out_offset],
                                &in[in_offset],
                                count * sizeof(T),
-                               get_kind<MemoryResourceA, MemoryResourceB>()));
+                               get_kind<AllocatorA, AllocatorB>()));
 }
 
-template <typename T> using host_pointer   = pointer<T, ac::mr::host_memory_resource>;
-template <typename T> using device_pointer = pointer<T, ac::mr::device_memory_resource>;
+template <typename T> using host_pointer   = pointer<T, ac::mr::host_allocator>;
+template <typename T> using device_pointer = pointer<T, ac::mr::device_allocator>;
 
 #else
 
-template <typename T> using host_pointer   = pointer<T, ac::mr::host_memory_resource>;
+template <typename T> using host_pointer   = pointer<T, ac::mr::host_allocator>;
 template <typename T> using device_pointer = host_pointer<T>;
 
 template <typename T>
@@ -102,16 +102,16 @@ copy(const size_t count, const size_t in_offset, const host_pointer<T>& in, cons
 
 #endif
 
-template <typename T, typename MemoryResourceA, typename MemoryResourceB>
+template <typename T, typename AllocatorA, typename AllocatorB>
 void
-copy(const pointer<T, MemoryResourceA>& in, pointer<T, MemoryResourceB>& out)
+copy(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB>& out)
 {
     copy(in.size(), 0, in, 0, out);
 }
 
-template <typename T, typename MemoryResourceA, typename MemoryResourceB>
+template <typename T, typename AllocatorA, typename AllocatorB>
 void
-copy(const pointer<T, MemoryResourceA>& in, pointer<T, MemoryResourceB>&& out)
+copy(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB>&& out)
 {
     copy(in.size(), 0, in, 0, out);
 }

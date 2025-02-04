@@ -42,10 +42,10 @@ ndbuffer_print(const char* label, const size_t ndims, const uint64_t* dims, cons
 }
 
 namespace ac {
-template <typename T, typename MemoryResource> struct ndbuffer {
+template <typename T, typename Allocator> struct ndbuffer {
   private:
-    ac::ntuple<uint64_t>          m_shape;
-    ac::buffer<T, MemoryResource> m_buffer;
+    ac::ntuple<uint64_t>     m_shape;
+    ac::buffer<T, Allocator> m_buffer;
 
   public:
     explicit ndbuffer(const ac::ntuple<uint64_t>& shape)
@@ -69,8 +69,8 @@ template <typename T, typename MemoryResource> struct ndbuffer {
     auto end() const { return m_buffer.data() + m_buffer.size(); }
     auto end() { return m_buffer.data() + m_buffer.size(); }
 
-    auto get() const { return ac::mr::pointer<T, MemoryResource>{size(), data()}; }
-    auto get() { return ac::mr::pointer<T, MemoryResource>{size(), data()}; }
+    auto get() const { return ac::mr::pointer<T, Allocator>{size(), data()}; }
+    auto get() { return ac::mr::pointer<T, Allocator>{size(), data()}; }
 
     auto& shape() const { return m_shape; }
     auto& shape() { return m_shape; }
@@ -78,8 +78,7 @@ template <typename T, typename MemoryResource> struct ndbuffer {
     auto& buffer() const { return m_buffer; }
     auto& buffer() { return m_buffer; }
 
-    template <typename OtherMemoryResource>
-    void migrate(ac::ndbuffer<T, OtherMemoryResource>& other)
+    template <typename OtherAllocator> void migrate(ac::ndbuffer<T, OtherAllocator>& other)
     {
         migrate(m_buffer, other.m_buffer);
     }
@@ -111,7 +110,7 @@ namespace ac {
 template <typename T>
 void
 fill(const T& fill_value, const ac::ntuple<uint64_t>& subdims, const ac::ntuple<uint64_t>& offset,
-     ac::ndbuffer<T, ac::mr::host_memory_resource>& ndbuf)
+     ac::ndbuffer<T, ac::mr::host_allocator>& ndbuf)
 {
     ERRCHK(offset + subdims <= ndbuf.shape());
     ndbuffer_fill<T>(fill_value,

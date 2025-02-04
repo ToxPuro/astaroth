@@ -9,10 +9,9 @@
 
 namespace ac::comm {
 
-template <typename T, typename MemoryResource = ac::mr::device_memory_resource>
-class AsyncHaloExchangeTask {
+template <typename T, typename Allocator = ac::mr::device_allocator> class AsyncHaloExchangeTask {
   private:
-    std::vector<std::unique_ptr<Packet<T, MemoryResource>>> m_packets{};
+    std::vector<std::unique_ptr<Packet<T, Allocator>>> m_packets{};
 
   public:
     AsyncHaloExchangeTask() = default;
@@ -36,22 +35,22 @@ class AsyncHaloExchangeTask {
 
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
-            m_packets.push_back(std::make_unique<Packet<T, MemoryResource>>(local_mm,
-                                                                            local_nn,
-                                                                            local_rr,
-                                                                            segment,
-                                                                            n_aggregate_buffers));
+            m_packets.push_back(std::make_unique<Packet<T, Allocator>>(local_mm,
+                                                                       local_nn,
+                                                                       local_rr,
+                                                                       segment,
+                                                                       n_aggregate_buffers));
         }
     }
 
-    void launch(const MPI_Comm&                                        parent_comm,
-                const std::vector<ac::mr::pointer<T, MemoryResource>>& inputs)
+    void launch(const MPI_Comm&                                   parent_comm,
+                const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
     {
         for (auto& packet : m_packets)
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(std::vector<ac::mr::pointer<T, MemoryResource>> outputs)
+    void wait(std::vector<ac::mr::pointer<T, Allocator>> outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         while (!complete()) {
@@ -68,7 +67,7 @@ class AsyncHaloExchangeTask {
     {
         const bool cc_allof_result{std::all_of(m_packets.begin(),
                                                m_packets.end(),
-                                               std::mem_fn(&Packet<T, MemoryResource>::complete))};
+                                               std::mem_fn(&Packet<T, Allocator>::complete))};
 
         // TODO remove and return the cc_allof_result after testing
         for (const auto& packet : m_packets) {

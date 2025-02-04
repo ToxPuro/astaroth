@@ -1,8 +1,8 @@
+#include "acm/detail/allocator.h"
 #include "acm/detail/buffer.h"
 #include "acm/detail/buffer_exchange.h"
 #include "acm/detail/decomp.h"
 #include "acm/detail/math_utils.h"
-#include "acm/detail/memory_resource.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
 #include "acm/detail/ntuple.h"
@@ -25,7 +25,7 @@ main(void)
     test_transform();
 
     // Data types
-    test_memory_resource();
+    test_allocator();
     test_pointer();
     test_ntuple();
     test_buffer();

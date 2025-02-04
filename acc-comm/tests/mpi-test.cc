@@ -9,7 +9,7 @@
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/type_conversion.h"
 
-template <typename MemoryResource>
+template <typename Allocator>
 void
 test_reduce_axis(const MPI_Comm& cart_comm, const Shape& global_nn)
 {
@@ -19,10 +19,10 @@ test_reduce_axis(const MPI_Comm& cart_comm, const Shape& global_nn)
 
     // Checks that the reduce sum is the sum of all processes along a specific axis
     for (size_t axis{0}; axis < global_nn.size(); ++axis) {
-        constexpr size_t                              count{10};
-        const int                                     value{as<int>((coords[axis] + 1) * nprocs)};
-        ac::buffer<int, ac::mr::host_memory_resource> tmp{count, value};
-        ac::buffer<int, MemoryResource>               buf{count};
+        constexpr size_t                        count{10};
+        const int                               value{as<int>((coords[axis] + 1) * nprocs)};
+        ac::buffer<int, ac::mr::host_allocator> tmp{count, value};
+        ac::buffer<int, Allocator>              buf{count};
         migrate(tmp, buf);
 
         ac::mpi::reduce_axis(cart_comm,
@@ -52,7 +52,7 @@ void
 test_scatter_gather(const MPI_Comm& cart_comm, const Shape& global_nn)
 {
     using T      = int;
-    using Buffer = ac::ndbuffer<T, ac::mr::host_memory_resource>;
+    using Buffer = ac::ndbuffer<T, ac::mr::host_allocator>;
 
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
     // const Index zero_offset{make_index(global_nn.size(), 0)};
@@ -104,7 +104,7 @@ void
 test_scatter_gather_advanced(const MPI_Comm& cart_comm, const Shape& global_nn)
 {
     using T      = int;
-    using Buffer = ac::ndbuffer<T, ac::mr::host_memory_resource>;
+    using Buffer = ac::ndbuffer<T, ac::mr::host_allocator>;
 
     const Index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
     // const Index zero_offset(global_nn.size(), static_cast<int>(0));
@@ -181,11 +181,10 @@ main()
             const Shape global_nn{128, 128, 128};
             MPI_Comm    cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
-            test_reduce_axis<ac::mr::host_memory_resource>(cart_comm, global_nn);
-            test_reduce_axis<ac::mr::pinned_host_memory_resource>(cart_comm, global_nn);
-            test_reduce_axis<ac::mr::pinned_write_combined_host_memory_resource>(cart_comm,
-                                                                                 global_nn);
-            test_reduce_axis<ac::mr::device_memory_resource>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::host_allocator>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::pinned_host_allocator>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::pinned_write_combined_host_allocator>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::device_allocator>(cart_comm, global_nn);
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {

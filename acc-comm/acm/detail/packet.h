@@ -13,7 +13,7 @@
 
 #include "type_conversion.h"
 
-template <typename T, typename MemoryResource> class Packet {
+template <typename T, typename Allocator> class Packet {
 
   private:
     Shape m_local_mm;
@@ -22,8 +22,8 @@ template <typename T, typename MemoryResource> class Packet {
 
     ac::segment m_segment;
 
-    ac::buffer<T, MemoryResource> m_send_buffer;
-    ac::buffer<T, MemoryResource> m_recv_buffer;
+    ac::buffer<T, Allocator> m_send_buffer;
+    ac::buffer<T, Allocator> m_recv_buffer;
 
     MPI_Comm    m_comm{MPI_COMM_NULL};
     MPI_Request m_send_req{MPI_REQUEST_NULL};
@@ -145,7 +145,7 @@ template <typename T, typename MemoryResource> class Packet {
 
     bool complete() const { return !m_in_progress; };
 
-    friend std::ostream& operator<<(std::ostream& os, const Packet<T, MemoryResource>& obj)
+    friend std::ostream& operator<<(std::ostream& os, const Packet<T, Allocator>& obj)
     {
         os << "{";
         os << "segment: " << obj.m_segment << ", ";
