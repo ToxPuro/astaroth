@@ -3,6 +3,8 @@
 #include "print_debug.h"
 #include "type_conversion.h"
 
+#include "ntuple.h"
+
 Index
 make_index(const size_t count, const uint64_t& fill_value)
 {
@@ -31,6 +33,28 @@ static void
 test_fn(ac::ntuple<uint64_t> arr)
 {
     ERRCHK((arr == ac::ntuple<uint64_t>{1, 2, 3}));
+}
+
+static void
+test_ntuple_static_and_non_static()
+{
+    ac::ntuple<int>           a{1, 2, 3};
+    ac::static_ntuple<int, 4> b{a};
+    ac::static_ntuple<int, 5> c{1, 2, 3, 4, 5};
+    ac::ntuple<int>           d{b};
+    ERRCHK(a == d);
+    std::cout << a << std::endl;
+    std::cout << b << std::endl;
+    std::cout << c << std::endl;
+    std::cout << 2 * c + c << std::endl;
+    // ac::static_array<int, 3> b{a};
+    // ac::static_ntuple<int, 3> b{1, 2, 3};
+    // ac::static_ntuple<int, 4> c{a};
+
+    // const auto mm = device::make_static_array<uint64_t, MAX_NDIMS>(in_mm);
+    // const ac::static_ntuple<uint64_t, MAX_NDIMS> mm{in_mm};
+    // using static_shape = ac::static_ntuple<uint64_t, MAX_NDIMS>;
+    // const ac::static_shape mm{in_mm};
 }
 
 void
@@ -75,6 +99,9 @@ test_datatypes(void)
     }
     {
         test_fn(ac::ntuple<uint64_t>{1, 2, 3});
+    }
+    {
+        test_ntuple_static_and_non_static();
     }
     PRINT_LOG_INFO("OK");
 }

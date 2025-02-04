@@ -18,3 +18,5 @@ Index     make_index(const size_t count, const uint64_t& fill_value);
 Shape     make_shape(const size_t count, const uint64_t& fill_value);
 Direction make_direction(const size_t count, const int64_t& fill_value);
 Dims      make_dims(const size_t count, const int64_t& fill_value);
+
+void test_datatypes();

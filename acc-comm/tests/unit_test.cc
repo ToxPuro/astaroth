@@ -32,6 +32,7 @@ main(void)
     test_static_array();
     test_buffer();
     test_ndbuffer();
+    test_datatypes();
 
     // APIs
     test_mpi_utils();

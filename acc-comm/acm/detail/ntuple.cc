@@ -10,6 +10,12 @@ test_fn(const ac::ntuple<uint64_t>& arr)
 }
 
 void
+test_static_ntuple()
+{
+    PRINT_LOG_WARNING("Not implemented");
+}
+
+void
 test_ntuple(void)
 {
 
@@ -63,6 +69,9 @@ test_ntuple(void)
         ac::ntuple<int> a{ac::make_ntuple(100, 1)};
         ERRCHK(a[0] == 1);
         ERRCHK(a[99] == 1);
+    }
+    {
+        test_static_ntuple();
     }
     PRINT_LOG_INFO("OK");
 }
