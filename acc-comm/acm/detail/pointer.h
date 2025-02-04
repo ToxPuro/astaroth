@@ -11,7 +11,7 @@ template <typename T, typename Allocator> class pointer {
     T*     m_data{nullptr};
 
   public:
-    pointer(const size_t count, T* data)
+    explicit pointer(const size_t count, T* data)
         : m_count{count}, m_data{data}
     {
     }
@@ -82,6 +82,22 @@ copy(const size_t count, const size_t in_offset, const pointer<T, AllocatorA>& i
                                get_kind<AllocatorA, AllocatorB>()));
 }
 
+// TODO: Draft
+// template <typename T, typename AllocatorA, typename AllocatorB>
+// void
+// copy_async(const cudaStream_t stream, const size_t count, const size_t in_offset,
+//            const pointer<T, AllocatorA>& in, const size_t out_offset, pointer<T, AllocatorB>&
+//            out)
+// {
+//     ERRCHK(in_offset + count <= in.size());
+//     ERRCHK(out_offset + count <= out.size());
+//     ERRCHK_CUDA_API(cudaMemcpyAsync(&out[out_offset],
+//                                     &in[in_offset],
+//                                     count * sizeof(T),
+//                                     get_kind<AllocatorA, AllocatorB>(),
+//                                     stream));
+// }
+
 template <typename T> using host_pointer   = pointer<T, ac::mr::host_allocator>;
 template <typename T> using device_pointer = pointer<T, ac::mr::device_allocator>;
 
@@ -100,6 +116,17 @@ copy(const size_t count, const size_t in_offset, const host_pointer<T>& in, cons
     std::copy_n(&in[in_offset], count, &out[out_offset]);
 }
 
+// TODO: Draft
+// template <typename T, typename AllocatorA, typename AllocatorB>
+// void
+// copy_async(const cudaStream_t stream, const size_t count, const size_t in_offset,
+//            const pointer<T, AllocatorA>& in, const size_t out_offset, pointer<T, AllocatorB>&
+//            out)
+// {
+//     PRINT_INFO("Device code not enabled, using synchronous host-to-host copy instead");
+//     copy(count, in_offset, in, out_offset, out);
+// }
+
 #endif
 
 template <typename T, typename AllocatorA, typename AllocatorB>
@@ -115,6 +142,14 @@ copy(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB>&& out)
 {
     copy(in.size(), 0, in, 0, out);
 }
+
+// TODO: Draft
+// template <typename T, typename AllocatorA, typename AllocatorB>
+// void
+// copy_async(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB>&& out)
+// {
+//     copy_async(in.size(), 0, in, 0, out);
+// }
 
 } // namespace ac::mr
 

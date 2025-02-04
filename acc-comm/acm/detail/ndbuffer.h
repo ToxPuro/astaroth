@@ -44,17 +44,17 @@ ndbuffer_print(const char* label, const size_t ndims, const uint64_t* dims, cons
 namespace ac {
 template <typename T, typename Allocator> struct ndbuffer {
   private:
-    ac::ntuple<uint64_t>     m_shape;
+    Shape                    m_shape;
     ac::buffer<T, Allocator> m_buffer;
 
   public:
-    explicit ndbuffer(const ac::ntuple<uint64_t>& shape)
-        : m_shape{shape}, m_buffer(prod(shape))
+    explicit ndbuffer(const Shape& shape)
+        : m_shape{shape}, m_buffer{prod(shape)}
     {
     }
 
-    explicit ndbuffer(const ac::ntuple<uint64_t>& shape, const T& fill_value)
-        : m_shape{shape}, m_buffer(prod(shape), fill_value)
+    explicit ndbuffer(const Shape& shape, const T& fill_value)
+        : m_shape{shape}, m_buffer{prod(shape), fill_value}
     {
     }
 
@@ -63,29 +63,46 @@ template <typename T, typename Allocator> struct ndbuffer {
     auto data() const { return m_buffer.data(); }
     auto data() { return m_buffer.data(); }
 
-    auto begin() const { return m_buffer.data(); }
-    auto begin() { return m_buffer.data(); }
+    auto begin() const { return m_buffer.begin(); }
+    auto begin() { return m_buffer.begin(); }
 
-    auto end() const { return m_buffer.data() + m_buffer.size(); }
-    auto end() { return m_buffer.data() + m_buffer.size(); }
+    auto end() const { return m_buffer.end(); }
+    auto end() { return m_buffer.end(); }
 
-    auto get() const { return ac::mr::pointer<T, Allocator>{size(), data()}; }
-    auto get() { return ac::mr::pointer<T, Allocator>{size(), data()}; }
+    const ac::mr::pointer<T, Allocator> get() const { return m_buffer.get(); }
+    ac::mr::pointer<T, Allocator>       get() { return m_buffer.get(); }
 
-    auto& shape() const { return m_shape; }
-    auto& shape() { return m_shape; }
+    Shape shape() const { return m_shape; }
 
-    auto& buffer() const { return m_buffer; }
-    auto& buffer() { return m_buffer; }
-
-    template <typename OtherAllocator> void migrate(ac::ndbuffer<T, OtherAllocator>& other)
+    void reshape(const Shape& shape)
     {
-        migrate(m_buffer, other.m_buffer);
+        ERRCHK(prod(shape) == m_buffer.size());
+        ERRCHK(prod(shape) == prod(m_shape));
+        m_shape = shape;
+    }
+
+    T& operator[](const size_t i)
+    {
+        ERRCHK(i < size());
+        return data()[i];
+    }
+
+    const T& operator[](const size_t i) const
+    {
+        ERRCHK(i < size());
+        return data()[i];
     }
 
     void display() { ndbuffer_print_recursive(m_shape.size(), m_shape.data(), m_buffer.data()); }
 };
 } // namespace ac
+
+template <typename T, typename AllocatorA, typename AllocatorB>
+void
+migrate(const ac::ndbuffer<T, AllocatorA>& a, ac::ndbuffer<T, AllocatorB>& b)
+{
+    ac::mr::copy(a.get(), b.get());
+}
 
 template <typename T>
 void
@@ -109,7 +126,7 @@ ndbuffer_fill(const T& value, const size_t ndims, const uint64_t* dims, const ui
 namespace ac {
 template <typename T>
 void
-fill(const T& fill_value, const ac::ntuple<uint64_t>& subdims, const ac::ntuple<uint64_t>& offset,
+fill(const T& fill_value, const Shape& subdims, const Shape& offset,
      ac::ndbuffer<T, ac::mr::host_allocator>& ndbuf)
 {
     ERRCHK(offset + subdims <= ndbuf.shape());
@@ -118,7 +135,7 @@ fill(const T& fill_value, const ac::ntuple<uint64_t>& subdims, const ac::ntuple<
                      ndbuf.shape().data(),
                      subdims.data(),
                      offset.data(),
-                     ndbuf.buffer().data());
+                     ndbuf.data());
 }
 } // namespace ac
 
