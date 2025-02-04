@@ -76,7 +76,10 @@ template <typename T, typename Allocator> class buffer {
     }
 };
 
-template <typename T> using host_buffer   = buffer<T, ac::mr::host_allocator>;
+template <typename T> using host_buffer        = buffer<T, ac::mr::host_allocator>;
+template <typename T> using pinned_host_buffer = buffer<T, ac::mr::pinned_host_allocator>;
+template <typename T>
+using pinned_write_combined_host_buffer   = buffer<T, ac::mr::pinned_write_combined_host_allocator>;
 template <typename T> using device_buffer = buffer<T, ac::mr::device_allocator>;
 
 } // namespace ac

@@ -11,12 +11,13 @@ using Shape     = ac::ntuple<uint64_t>;
 using Direction = ac::ntuple<int64_t>;
 using Dims      = ac::ntuple<UserDatatype>;
 
-using HostPointer   = ac::mr::pointer<UserDatatype, ac::mr::host_allocator>;
-using DevicePointer = ac::mr::pointer<UserDatatype, ac::mr::device_allocator>;
+using HostPointer   = ac::mr::host_pointer<UserDatatype>;
+using DevicePointer = ac::mr::device_pointer<UserDatatype>;
 
-using DeviceBuffer     = ac::buffer<UserDatatype, ac::mr::device_allocator>;
-using HostBuffer       = ac::buffer<UserDatatype, ac::mr::host_allocator>;
-using PinnedHostBuffer = ac::buffer<UserDatatype, ac::mr::pinned_host_allocator>;
+using DeviceBuffer                  = ac::device_buffer<UserDatatype>;
+using HostBuffer                    = ac::host_buffer<UserDatatype>;
+using PinnedHostBuffer              = ac::pinned_host_buffer<UserDatatype>;
+using PinnedWriteCombinedHostBuffer = ac::pinned_write_combined_host_buffer<UserDatatype>;
 
 // using DeviceNdBuffer = ac::ndbuffer<UserDatatype, ac::mr::device_allocator>;
 // using HostNdBuffer   = ac::ndbuffer<UserDatatype, ac::mr::host_allocator>;

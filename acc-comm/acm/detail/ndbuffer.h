@@ -96,7 +96,11 @@ template <typename T, typename Allocator> struct ndbuffer {
     void display() { ndbuffer_print_recursive(m_shape.size(), m_shape.data(), m_buffer.data()); }
 };
 
-template <typename T> using host_ndbuffer   = ndbuffer<T, ac::mr::host_allocator>;
+template <typename T> using host_ndbuffer        = ndbuffer<T, ac::mr::host_allocator>;
+template <typename T> using pinned_host_ndbuffer = ndbuffer<T, ac::mr::pinned_host_allocator>;
+template <typename T>
+using pinned_write_combined_host_ndbuffer   = ndbuffer<T,
+                                                       ac::mr::pinned_write_combined_host_allocator>;
 template <typename T> using device_ndbuffer = ndbuffer<T, ac::mr::device_allocator>;
 
 } // namespace ac
