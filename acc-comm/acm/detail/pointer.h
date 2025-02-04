@@ -132,14 +132,7 @@ copy(const size_t count, const size_t in_offset, const host_pointer<T>& in, cons
 
 template <typename T, typename AllocatorA, typename AllocatorB>
 void
-copy(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB>& out)
-{
-    copy(in.size(), 0, in, 0, out);
-}
-
-template <typename T, typename AllocatorA, typename AllocatorB>
-void
-copy(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB>&& out)
+copy(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB> out)
 {
     copy(in.size(), 0, in, 0, out);
 }
