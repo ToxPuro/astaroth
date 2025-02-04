@@ -56,3 +56,5 @@ samples/tfm-mpi/tfm copy 2.cc
 samples/tfm-mpi/tfm copy.cc
 src/core/grid-debug-tests-tmp.cc
 acc-comm/acm/detail/tensor.h
+acc-comm/acm/detail/static_ntuple.cc
+acc-comm/acm/detail/static_ntuple.h
