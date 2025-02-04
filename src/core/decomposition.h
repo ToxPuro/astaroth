@@ -22,6 +22,7 @@
 #include "datatypes.h"
 #include "errchk.h"
 #include "astaroth.h"
+//#include "../../include/astaroth.h"
 
 typedef struct {
     size_t ndims;
