@@ -46,15 +46,12 @@ test_ntuple_static_and_non_static()
     std::cout << a << std::endl;
     std::cout << b << std::endl;
     std::cout << c << std::endl;
-    std::cout << 2 * c + c << std::endl;
-    // ac::static_array<int, 3> b{a};
-    // ac::static_ntuple<int, 3> b{1, 2, 3};
-    // ac::static_ntuple<int, 4> c{a};
-
-    // const auto mm = device::make_static_array<uint64_t, MAX_NDIMS>(in_mm);
-    // const ac::static_ntuple<uint64_t, MAX_NDIMS> mm{in_mm};
-    // using static_shape = ac::static_ntuple<uint64_t, MAX_NDIMS>;
-    // const ac::static_shape mm{in_mm};
+    std::cout << 2 * c + c / 3 << std::endl;
+    ERRCHK((2 * c + c / 3 == ac::static_ntuple<int, 5>{2 * 1 + 1 / 3,
+                                                       2 * 2 + 2 / 3,
+                                                       2 * 3 + 3 / 3,
+                                                       2 * 4 + 4 / 3,
+                                                       2 * 5 + 5 / 3}));
 }
 
 void
