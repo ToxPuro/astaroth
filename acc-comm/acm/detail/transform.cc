@@ -3,9 +3,6 @@
 #include "datatypes.h"
 #include "ndbuffer.h"
 
-using DeviceNdBuffer = ac::ndbuffer<UserDatatype, ac::mr::device_allocator>;
-using HostNdBuffer   = ac::ndbuffer<UserDatatype, ac::mr::host_allocator>;
-
 void
 test_transform()
 {
@@ -21,6 +18,8 @@ test_transform()
         ac::print("candidate", subdims, out.get());
     }
     {
+        using DeviceNdBuffer = ac::ndbuffer<UserDatatype, ac::mr::device_allocator>;
+        using HostNdBuffer   = ac::ndbuffer<UserDatatype, ac::mr::host_allocator>;
         const Shape    mm{8, 8};
         const Shape    nn{6, 6};
         const Index    rr{1, 1};

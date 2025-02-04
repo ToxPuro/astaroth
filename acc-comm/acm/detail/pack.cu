@@ -7,16 +7,16 @@
 constexpr size_t MAX_NDIMS{4};
 constexpr size_t MAX_N_AGGR_BUFS{12};
 
-using StaticShape                       = ac::static_ntuple<uint64_t, MAX_NDIMS>;
-using StaticIndex                       = ac::static_ntuple<uint64_t, MAX_NDIMS>;
-template <typename T> using StaticArray = ac::static_ntuple<T, MAX_N_AGGR_BUFS>;
+using shape_t                       = ac::static_ntuple<uint64_t, MAX_NDIMS>;
+using index_t                       = ac::static_ntuple<uint64_t, MAX_NDIMS>;
+template <typename T> using array_t = ac::static_ntuple<T, MAX_N_AGGR_BUFS>;
 
 namespace device {
 
 template <typename T>
 __global__ void
-pack(const StaticShape mm, const StaticShape block_shape, const StaticIndex block_offset,
-     const StaticArray<T*> inputs, T* output)
+pack(const shape_t mm, const shape_t block_shape, const index_t block_offset,
+     const array_t<T*> inputs, T* output)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{prod(block_shape)};
@@ -24,11 +24,11 @@ pack(const StaticShape mm, const StaticShape block_shape, const StaticIndex bloc
         for (size_t j{0}; j < inputs.size(); ++j) {
 
             // Block coords
-            const StaticIndex block_coords{to_spatial(i, block_shape)};
+            const index_t block_coords{to_spatial(i, block_shape)};
 
             // Input coords
-            const StaticIndex in_coords{block_offset + block_coords};
-            const uint64_t    in_idx{to_linear(in_coords, mm)};
+            const index_t  in_coords{block_offset + block_coords};
+            const uint64_t in_idx{to_linear(in_coords, mm)};
 
             output[i + j * block_nelems] = inputs[j][in_idx];
         }
@@ -37,8 +37,8 @@ pack(const StaticShape mm, const StaticShape block_shape, const StaticIndex bloc
 
 template <typename T>
 __global__ void
-unpack(const T* input, const StaticShape mm, const StaticShape block_shape,
-       const StaticIndex block_offset, StaticArray<T*> outputs)
+unpack(const T* input, const shape_t mm, const shape_t block_shape, const index_t block_offset,
+       array_t<T*> outputs)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{prod(block_shape)};
@@ -46,11 +46,11 @@ unpack(const T* input, const StaticShape mm, const StaticShape block_shape,
         for (size_t j{0}; j < outputs.size(); ++j) {
 
             // Block coords
-            const StaticIndex block_coords{to_spatial(i, block_shape)};
+            const index_t block_coords{to_spatial(i, block_shape)};
 
             // Input coords
-            const StaticIndex in_coords{block_offset + block_coords};
-            const uint64_t    in_idx{to_linear(in_coords, mm)};
+            const index_t  in_coords{block_offset + block_coords};
+            const uint64_t in_idx{to_linear(in_coords, mm)};
 
             outputs[j][in_idx] = input[i + j * block_nelems];
         }
@@ -87,11 +87,11 @@ pack(const Shape& in_mm, const Shape& in_block_shape, const Index& in_block_offs
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
 
-    const StaticShape     mm{in_mm};
-    const StaticShape     block_shape{in_block_shape};
-    const StaticShape     block_offset{in_block_offset};
-    const StaticArray<T*> inputs{unwrap(in_inputs)};
-    const auto            output{in_output.data()};
+    const shape_t     mm{in_mm};
+    const shape_t     block_shape{in_block_shape};
+    const shape_t     block_offset{in_block_offset};
+    const array_t<T*> inputs{unwrap(in_inputs)};
+    const auto        output{in_output.data()};
 
     device::pack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm,
                                                            block_shape,
@@ -120,11 +120,11 @@ unpack(const ac::mr::device_pointer<T>& in_input, const Shape& in_mm, const Shap
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
 
-    const auto            input{in_input.data()};
-    const StaticShape     mm{in_mm};
-    const StaticShape     block_shape{in_block_shape};
-    const StaticShape     block_offset{in_block_offset};
-    const StaticArray<T*> outputs{unwrap(in_outputs)};
+    const auto        input{in_input.data()};
+    const shape_t     mm{in_mm};
+    const shape_t     block_shape{in_block_shape};
+    const shape_t     block_offset{in_block_offset};
+    const array_t<T*> outputs{unwrap(in_outputs)};
 
     device::unpack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input,
                                                              mm,

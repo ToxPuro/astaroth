@@ -4,15 +4,14 @@
 #include "type_conversion.h"
 
 constexpr size_t MAX_NDIMS{4};
-
-using StaticShape = ac::static_ntuple<uint64_t, MAX_NDIMS>;
-using StaticIndex = ac::static_ntuple<uint64_t, MAX_NDIMS>;
+using shape_t = ac::static_ntuple<uint64_t, MAX_NDIMS>;
+using index_t = ac::static_ntuple<uint64_t, MAX_NDIMS>;
 
 namespace device {
 
+template <typename T>
 __global__ void
-transform(const StaticShape dims, const StaticShape subdims, const StaticIndex offset,
-          const DevicePointer in, DevicePointer out)
+transform(const shape_t dims, const shape_t subdims, const index_t offset, const T* in, T* out)
 {
     const uint64_t out_idx{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     if (out_idx >= prod(subdims))
@@ -35,11 +34,15 @@ transform(const Shape in_dims, const Shape in_subdims, const Index in_offset,
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
 
-    const StaticShape dims{in_dims};
-    const StaticShape subdims{in_subdims};
-    const StaticIndex offset{in_offset};
+    const shape_t dims{in_dims};
+    const shape_t subdims{in_subdims};
+    const index_t offset{in_offset};
 
-    device::transform<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(dims, subdims, offset, in, out);
+    device::transform<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(dims,
+                                                                subdims,
+                                                                offset,
+                                                                in.data(),
+                                                                out.data());
 
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
