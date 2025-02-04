@@ -16,7 +16,7 @@ template <typename T, typename Allocator> class pointer {
     {
     }
 
-    auto size() const { return m_count; }
+    __host__ __device__ auto size() const { return m_count; }
 
     auto data() const { return m_data; }
     auto data() { return m_data; }
@@ -28,13 +28,13 @@ template <typename T, typename Allocator> class pointer {
     auto end() { return data() + size(); }
 
     // Enable the subscript[] operator
-    T& operator[](const size_t i)
+    __host__ __device__ T& operator[](const size_t i)
     {
         ERRCHK(i < size());
         return m_data[i];
     }
 
-    const T& operator[](const size_t i) const
+    __host__ __device__ const T& operator[](const size_t i) const
     {
         ERRCHK(i < size());
         return m_data[i];
@@ -152,5 +152,18 @@ copy(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB>&& out)
 // }
 
 } // namespace ac::mr
+
+template <typename T>
+bool
+equals(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b)
+{
+    if (a.size() != b.size())
+        return false;
+
+    for (size_t i{0}; i < a.size(); ++i)
+        if (a[i] != b[i])
+            return false;
+    return true;
+}
 
 void test_pointer(void);

@@ -11,12 +11,14 @@
 #include <numeric>
 #include <vector>
 
+#include "datatypes.h"
+
 namespace ac {
 
 template <typename T>
 void
-transform(const ac::ntuple<uint64_t>& dims, const ac::ntuple<uint64_t>& subdims,
-          const ac::ntuple<uint64_t>& offset, const T* in, T* out)
+transform(const ac::ntuple<uint64_t> dims, const ac::ntuple<uint64_t> subdims,
+          const ac::ntuple<uint64_t> offset, const T* in, T* out)
 {
     for (uint64_t out_idx{0}; out_idx < prod(subdims); ++out_idx) {
         const ac::ntuple<uint64_t> out_coords{to_spatial(out_idx, subdims)};
@@ -29,6 +31,9 @@ transform(const ac::ntuple<uint64_t>& dims, const ac::ntuple<uint64_t>& subdims,
         out[out_idx] = in[in_idx];
     }
 }
+
+void transform(const Shape in_dims, const Shape in_subdims, const Index in_offset,
+               const DevicePointer in, DevicePointer out);
 
 // template <typename T> print_recursive(const size_t depth, const ac::ntuple<uint64_t>& ntuple) {
 // ERRCHK() }
