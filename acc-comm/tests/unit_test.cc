@@ -9,7 +9,6 @@
 #include "acm/detail/pack.h"
 #include "acm/detail/partition.h"
 #include "acm/detail/pointer.h"
-#include "acm/detail/static_array.h"
 #include "acm/detail/transform.h"
 #include "acm/detail/type_conversion.h"
 
@@ -29,7 +28,6 @@ main(void)
     test_memory_resource();
     test_pointer();
     test_ntuple();
-    test_static_array();
     test_buffer();
     test_ndbuffer();
     test_datatypes();
