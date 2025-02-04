@@ -8,17 +8,17 @@
 
 namespace ac::io {
 
-template <typename T, typename StagingMemoryResource = ac::mr::pinned_host_memory_resource>
+template <typename T, typename StagingAllocator = ac::mr::pinned_host_allocator>
 class AsyncWriteTask {
   private:
-    MPI_Info m_info{MPI_INFO_NULL};
+    MPI_Info     m_info{MPI_INFO_NULL};
     MPI_Datatype m_global_subarray{MPI_DATATYPE_NULL};
     MPI_Datatype m_local_subarray{MPI_DATATYPE_NULL};
 
-    ac::buffer<T, StagingMemoryResource> m_staging_buffer;
+    ac::buffer<T, StagingAllocator> m_staging_buffer;
 
-    MPI_Comm m_comm{MPI_COMM_NULL};
-    MPI_File m_file{MPI_FILE_NULL};
+    MPI_Comm    m_comm{MPI_COMM_NULL};
+    MPI_File    m_file{MPI_FILE_NULL};
     MPI_Request m_req{MPI_REQUEST_NULL};
 
     bool m_in_progress{false};
@@ -56,10 +56,10 @@ class AsyncWriteTask {
         ERRCHK_MPI_API(MPI_Info_free(&m_info));
     }
 
-    template <typename MemoryResource>
-    void launch_write_collective(const MPI_Comm& parent_m_comm,
-                                 const ac::mr::pointer<T, MemoryResource>& input,
-                                 const std::string& path)
+    template <typename Allocator>
+    void launch_write_collective(const MPI_Comm&                      parent_m_comm,
+                                 const ac::mr::pointer<T, Allocator>& input,
+                                 const std::string&                   path)
     {
         ERRCHK_MPI(!m_in_progress);
         m_in_progress = true;
@@ -124,10 +124,10 @@ class AsyncWriteTask {
     AsyncWriteTask& operator=(AsyncWriteTask&&)      = delete; // Move assignment operator
 };
 
-template <typename T, typename StagingMemoryResource = ac::mr::pinned_host_memory_resource>
+template <typename T, typename StagingAllocator = ac::mr::pinned_host_allocator>
 class BatchedAsyncWriteTask {
   private:
-    std::vector<std::unique_ptr<AsyncWriteTask<T, StagingMemoryResource>>> write_tasks{};
+    std::vector<std::unique_ptr<AsyncWriteTask<T, StagingAllocator>>> write_tasks{};
 
   public:
     BatchedAsyncWriteTask() = default;
@@ -138,17 +138,17 @@ class BatchedAsyncWriteTask {
     {
         for (size_t i = 0; i < n_aggregate_buffers; ++i)
             write_tasks.push_back(
-                std::make_unique<AsyncWriteTask<T, StagingMemoryResource>>(file_dims,
-                                                                           file_offset,
-                                                                           mesh_dims,
-                                                                           mesh_subdims,
-                                                                           mesh_offset));
+                std::make_unique<AsyncWriteTask<T, StagingAllocator>>(file_dims,
+                                                                      file_offset,
+                                                                      mesh_dims,
+                                                                      mesh_subdims,
+                                                                      mesh_offset));
     }
 
-    template <typename MemoryResource>
-    void launch(const MPI_Comm& parent_m_comm,
-                const std::vector<ac::mr::pointer<T, MemoryResource>>& inputs,
-                const std::vector<std::string>& paths)
+    template <typename Allocator>
+    void launch(const MPI_Comm&                                   parent_m_comm,
+                const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
+                const std::vector<std::string>&                   paths)
     {
         for (size_t i = 0; i < inputs.size(); ++i)
             write_tasks[i]->launch_write_collective(parent_m_comm, inputs[i], paths[i]);
@@ -164,7 +164,7 @@ class BatchedAsyncWriteTask {
     {
         return std::all_of(write_tasks.begin(),
                            write_tasks.end(),
-                           std::mem_fn(&AsyncWriteTask<T, StagingMemoryResource>::complete));
+                           std::mem_fn(&AsyncWriteTask<T, StagingAllocator>::complete));
     }
 };
 

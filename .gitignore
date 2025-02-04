@@ -58,3 +58,9 @@ src/core/grid-debug-tests-tmp.cc
 acc-comm/acm/detail/tensor.h
 acc-comm/acm/detail/static_ntuple.cc
 acc-comm/acm/detail/static_ntuple.h
+acc-comm/acm/detail/pack copy.cu
+samples/thrusttest/build-cuda.sh
+samples/thrusttest/build-hip.sh
+samples/thrusttest/build-host.sh
+samples/thrusttest/thrust.cu
+samples/tfm-mpi/visualize-simple.py

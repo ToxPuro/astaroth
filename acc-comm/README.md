@@ -53,16 +53,16 @@ namespace ac{
 
     template<size_t N> using shape = ac::array<uint64_t, N>;
 
-    template<typename T, typename MemoryResource>
+    template<typename T, typename Allocator>
     class buffer {
         std::size_t capacity;
         std::unique_ptr<T> resource;
     };
 
-    template <typename T, size_t N, typename MemoryResource>
+    template <typename T, size_t N, typename Allocator>
     struct ndbuffer {
         ac::shape<N> shape;
-        ac::buffer<T, MemoryResource> resource;
+        ac::buffer<T, Allocator> resource;
     }
 }
 ```
@@ -70,4 +70,4 @@ namespace ac{
 
 # Naming conventions
 - Internal structures: Lower-case in namespace `ac`, e.g., `ac::shape`.
-- Outward-facing structures and template parameters: CamelCase, e.g., `template<typename T, typename MemoryResource> BufferExchangeTask`.
+- Outward-facing structures and template parameters: CamelCase, e.g., `template<typename T, typename Allocator> BufferExchangeTask`.

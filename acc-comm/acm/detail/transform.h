@@ -1,4 +1,5 @@
 #pragma once
+#include <iomanip>
 
 #include "acm/detail/errchk_print.h"
 #include "pointer.h"
@@ -10,12 +11,14 @@
 #include <numeric>
 #include <vector>
 
+#include "datatypes.h"
+
 namespace ac {
 
 template <typename T>
 void
-transform(const ac::ntuple<uint64_t>& dims, const ac::ntuple<uint64_t>& subdims,
-          const ac::ntuple<uint64_t>& offset, const T* in, T* out)
+transform(const ac::ntuple<uint64_t> dims, const ac::ntuple<uint64_t> subdims,
+          const ac::ntuple<uint64_t> offset, const T* in, T* out)
 {
     for (uint64_t out_idx{0}; out_idx < prod(subdims); ++out_idx) {
         const ac::ntuple<uint64_t> out_coords{to_spatial(out_idx, subdims)};
@@ -28,6 +31,9 @@ transform(const ac::ntuple<uint64_t>& dims, const ac::ntuple<uint64_t>& subdims,
         out[out_idx] = in[in_idx];
     }
 }
+
+void transform(const Shape in_dims, const Shape in_subdims, const Index in_offset,
+               const DevicePointer in, DevicePointer out);
 
 // template <typename T> print_recursive(const size_t depth, const ac::ntuple<uint64_t>& ntuple) {
 // ERRCHK() }
@@ -80,17 +86,4 @@ print(const std::string& label, const ac::ntuple<uint64_t>& shape, const T* data
 
 } // namespace ac
 
-void
-test_transform()
-{
-    const ac::ntuple<uint64_t> dims{3, 3, 3, 3};
-    const ac::ntuple<uint64_t> subdims{1, 2, 1, 1};
-    const ac::ntuple<uint64_t> offset{1, 1, 1, 1};
-    auto                       in{std::make_unique<int[]>(prod(dims))};
-    auto                       out{std::make_unique<int[]>(prod(subdims))};
-    std::iota(in.get(), in.get() + prod(dims), 1);
-    ac::transform(dims, subdims, offset, in.get(), out.get());
-    ac::print("reference", dims, in.get());
-    ac::print("candidate", subdims, out.get());
-    PRINT_LOG_INFO("OK");
-}
+void test_transform();
