@@ -14,7 +14,7 @@ struct host_allocator {
     static void* alloc(const size_t bytes)
     {
         PRINT_LOG_TRACE("host");
-        void* ptr = malloc(bytes);
+        void* ptr{malloc(bytes)};
         ERRCHK(ptr);
         return ptr;
     }
