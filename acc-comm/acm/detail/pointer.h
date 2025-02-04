@@ -2,6 +2,7 @@
 #include <algorithm>
 
 #include "allocator.h"
+#include "cuda_utils.h"
 
 namespace ac::mr {
 

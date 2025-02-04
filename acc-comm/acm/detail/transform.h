@@ -32,8 +32,29 @@ transform(const ac::ntuple<uint64_t> dims, const ac::ntuple<uint64_t> subdims,
     }
 }
 
+void
+transform(const Shape dims, const Shape subdims, const Index offset, const HostPointer in,
+          HostPointer out)
+{
+    for (uint64_t out_idx{0}; out_idx < prod(subdims); ++out_idx) {
+        const ac::ntuple<uint64_t> out_coords{to_spatial(out_idx, subdims)};
+        ERRCHK(out_coords < subdims);
+
+        const ac::ntuple<uint64_t> in_coords{offset + out_coords};
+        ERRCHK(in_coords < dims);
+
+        const uint64_t in_idx{to_linear(in_coords, dims)};
+
+        ERRCHK(in_idx < in.size());
+        ERRCHK(out_idx < out.size());
+        out[out_idx] = in[in_idx];
+    }
+}
+
+#if defined(ACM_DEVICE_ENABLED)
 void transform(const Shape in_dims, const Shape in_subdims, const Index in_offset,
                const DevicePointer in, DevicePointer out);
+#endif
 
 // template <typename T> print_recursive(const size_t depth, const ac::ntuple<uint64_t>& ntuple) {
 // ERRCHK() }
