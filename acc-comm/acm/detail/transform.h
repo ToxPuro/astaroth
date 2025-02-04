@@ -32,9 +32,10 @@ transform(const ac::ntuple<uint64_t> dims, const ac::ntuple<uint64_t> subdims,
     }
 }
 
+template <typename T>
 void
-transform(const Shape dims, const Shape subdims, const Index offset, const HostPointer in,
-          HostPointer out)
+transform(const Shape dims, const Shape subdims, const Index offset,
+          const ac::mr::host_pointer<T> in, ac::mr::host_pointer<T> out)
 {
     for (uint64_t out_idx{0}; out_idx < prod(subdims); ++out_idx) {
         const ac::ntuple<uint64_t> out_coords{to_spatial(out_idx, subdims)};
