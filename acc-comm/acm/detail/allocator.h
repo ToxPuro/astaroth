@@ -1,9 +1,7 @@
 #pragma once
 #include <cstddef>
-#include <memory>
 
 #include "errchk.h"
-#include "print_debug.h"
 
 #if defined(ACM_DEVICE_ENABLED)
 #include "cuda_utils.h"

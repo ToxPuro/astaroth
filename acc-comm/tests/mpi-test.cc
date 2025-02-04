@@ -1,12 +1,11 @@
 #include <cstdlib>
-#include <iostream>
-
-#include "acm/detail/errchk_mpi.h"
-#include "acm/detail/ndbuffer.h"
-#include "acm/detail/partition.h"
 #include <numeric> // std::iota
 
+#include "acm/detail/errchk_mpi.h"
 #include "acm/detail/mpi_utils.h"
+#include "acm/detail/ndbuffer.h"
+#include "acm/detail/partition.h"
+#include "acm/detail/print_debug.h"
 #include "acm/detail/type_conversion.h"
 
 template <typename Allocator>

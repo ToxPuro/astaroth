@@ -25,9 +25,9 @@ main(void)
     test_transform();
 
     // Data types
+    test_ntuple();
     test_allocator();
     test_pointer();
-    test_ntuple();
     test_buffer();
     test_ndbuffer();
     test_datatypes();

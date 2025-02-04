@@ -4,10 +4,10 @@
 #include <limits>
 #include <numeric>
 
-#include "errchk_mpi.h"
-#include "type_conversion.h"
-
 #include "decomp.h"
+#include "errchk_mpi.h"
+#include "print_debug.h"
+#include "type_conversion.h"
 
 namespace ac::mpi {
 
