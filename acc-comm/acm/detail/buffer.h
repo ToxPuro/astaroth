@@ -75,6 +75,10 @@ template <typename T, typename Allocator> class buffer {
         return os;
     }
 };
+
+template <typename T> using host_buffer   = buffer<T, ac::mr::host_allocator>;
+template <typename T> using device_buffer = buffer<T, ac::mr::device_allocator>;
+
 } // namespace ac
 
 template <typename T, typename AllocatorA, typename AllocatorB>
