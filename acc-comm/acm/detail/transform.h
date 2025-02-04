@@ -1,4 +1,5 @@
 #pragma once
+#include <iomanip>
 
 #include "acm/detail/errchk_print.h"
 #include "pointer.h"
@@ -80,17 +81,4 @@ print(const std::string& label, const ac::ntuple<uint64_t>& shape, const T* data
 
 } // namespace ac
 
-void
-test_transform()
-{
-    const ac::ntuple<uint64_t> dims{3, 3, 3, 3};
-    const ac::ntuple<uint64_t> subdims{1, 2, 1, 1};
-    const ac::ntuple<uint64_t> offset{1, 1, 1, 1};
-    auto                       in{std::make_unique<int[]>(prod(dims))};
-    auto                       out{std::make_unique<int[]>(prod(subdims))};
-    std::iota(in.get(), in.get() + prod(dims), 1);
-    ac::transform(dims, subdims, offset, in.get(), out.get());
-    ac::print("reference", dims, in.get());
-    ac::print("candidate", subdims, out.get());
-    PRINT_LOG_INFO("OK");
-}
+void test_transform();
