@@ -56,3 +56,9 @@ samples/tfm-mpi/tfm copy 2.cc
 samples/tfm-mpi/tfm copy.cc
 src/core/grid-debug-tests-tmp.cc
 acc-comm/acm/detail/tensor.h
+acc-comm/acm/detail/pack copy.cu
+samples/thrusttest/build-cuda.sh
+samples/thrusttest/build-hip.sh
+samples/thrusttest/build-host.sh
+samples/thrusttest/thrust.cu
+samples/tfm-mpi/visualize-simple.py
