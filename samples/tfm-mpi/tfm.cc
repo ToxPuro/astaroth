@@ -499,15 +499,16 @@ reduce_vec(const MPI_Comm& parent_comm, const Device& device, const ReductionTyp
     ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
     ERRCHK_MPI(comm != MPI_COMM_NULL);
 
-    AcReal result{-1};
-    ERRCHK_AC(acDeviceReduceVecNotAveraged(device, STREAM_DEFAULT, rtype, a, b, c, &result));
+    AcReal local_result{-1};
+    ERRCHK_AC(acDeviceReduceVecNotAveraged(device, STREAM_DEFAULT, rtype, a, b, c, &local_result));
 
+    AcReal global_result{-1};
     const int root{0};
     const MPI_Op op{get_mpi_op(rtype)};
-    ERRCHK_MPI_API(MPI_Reduce(MPI_IN_PLACE, &result, 1, AC_REAL_MPI_TYPE, op, root, comm));
+    ERRCHK_MPI_API(MPI_Reduce(&local_result, &global_result, 1, AC_REAL_MPI_TYPE, op, root, comm));
 
     ERRCHK_MPI_API(MPI_Comm_free(&comm));
-    return result;
+    return global_result;
 }
 
 static AcReal
@@ -518,15 +519,16 @@ reduce_scal(const MPI_Comm& parent_comm, const Device& device, const ReductionTy
     ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
     ERRCHK_MPI(comm != MPI_COMM_NULL);
 
-    AcReal result{-1};
-    ERRCHK_AC(acDeviceReduceScalNotAveraged(device, STREAM_DEFAULT, rtype, field, &result));
+    AcReal local_result{-1};
+    ERRCHK_AC(acDeviceReduceScalNotAveraged(device, STREAM_DEFAULT, rtype, field, &local_result));
 
+    AcReal global_result{-1};
     const int root{0};
     const MPI_Op op{get_mpi_op(rtype)};
-    ERRCHK_MPI_API(MPI_Reduce(MPI_IN_PLACE, &result, 1, AC_REAL_MPI_TYPE, op, root, comm));
+    ERRCHK_MPI_API(MPI_Reduce(&local_result, &global_result, 1, AC_REAL_MPI_TYPE, op, root, comm));
 
     ERRCHK_MPI_API(MPI_Comm_free(&comm));
-    return result;
+    return global_result;
 }
 
 #include "acm/detail/print_debug.h"
@@ -1592,7 +1594,7 @@ class Grid {
         // Clear the time series
         FILE* fp{fopen("timeseries.csv", "w")};
         ERRCHK_MPI(fp != NULL);
-        std::fprintf(fp, "label, step, t_step, dt, min, rms, max\n");
+        std::fprintf(fp, "label,step,t_step,dt,min,rms,max\n");
         ERRCHK_MPI(fclose(fp) == 0);
 
         // Write time series

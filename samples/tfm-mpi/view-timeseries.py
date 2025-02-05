@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # %%
 # Load timeseries
-filepath = 'timeseries.csv' # Set this to where the timeseries is located (uses current working directory by default)
+filepath = 'timeseries.csv' # Path to the timeseries (current working directory by default)
 df = pd.read_csv(filepath)
 df
 
