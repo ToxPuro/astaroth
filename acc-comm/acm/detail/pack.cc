@@ -22,9 +22,9 @@ test_pack(void)
         // ac::copy(hin.begin(), hin.end(), din.begin());
         migrate(hin, din);
 
-        ac::Shape                                     mm{count};
-        ac::Shape                                     block_shape{count - 2 * rr};
-        ac::Shape                                     block_offset{rr};
+        ac::shape                                     mm{count};
+        ac::shape                                     block_shape{count - 2 * rr};
+        ac::shape                                     block_offset{rr};
         std::vector<ac::mr::device_pointer<uint64_t>> inputs{
             ac::mr::device_pointer<uint64_t>{din.size(), din.data()}};
         pack(mm,

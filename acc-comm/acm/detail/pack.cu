@@ -71,7 +71,7 @@ unwrap(const std::vector<ac::mr::device_pointer<T>>& buffers)
 
 template <typename T>
 void
-pack(const ac::Shape& in_mm, const ac::Shape& in_block_shape, const ac::Index& in_block_offset,
+pack(const ac::shape& in_mm, const ac::shape& in_block_shape, const ac::index& in_block_offset,
      const std::vector<ac::mr::device_pointer<T>>& in_inputs, ac::mr::device_pointer<T> in_output)
 {
     ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS,
@@ -104,8 +104,8 @@ pack(const ac::Shape& in_mm, const ac::Shape& in_block_shape, const ac::Index& i
 
 template <typename T>
 void
-unpack(const ac::mr::device_pointer<T>& in_input, const ac::Shape& in_mm,
-       const ac::Shape& in_block_shape, const ac::Index& in_block_offset,
+unpack(const ac::mr::device_pointer<T>& in_input, const ac::shape& in_mm,
+       const ac::shape& in_block_shape, const ac::index& in_block_offset,
        std::vector<ac::mr::device_pointer<T>>& in_outputs)
 {
     ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS,
@@ -138,35 +138,35 @@ unpack(const ac::mr::device_pointer<T>& in_input, const ac::Shape& in_mm,
 
 // Specialization
 template <typename T>
-void pack(const ac::Shape& mm, const ac::Shape& block_shape, const ac::Index& block_offset,
+void pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
           const std::vector<ac::mr::device_pointer<T>>& inputs, ac::mr::device_pointer<T> output);
 
 template <typename T>
-void unpack(const ac::mr::device_pointer<T>& input, const ac::Shape& mm,
-            const ac::Shape& block_shape, const ac::Index& block_offset,
+void unpack(const ac::mr::device_pointer<T>& input, const ac::shape& mm,
+            const ac::shape& block_shape, const ac::index& block_offset,
             std::vector<ac::mr::device_pointer<T>>& outputs);
 
 #define PACK_DTYPE double
-template void pack<PACK_DTYPE>(const ac::Shape& mm, const ac::Shape& block_shape,
-                               const ac::Index&                                       block_offset,
+template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape,
+                               const ac::index&                                       block_offset,
                                const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
                                ac::mr::device_pointer<PACK_DTYPE>                     output);
 
 template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input,
-                                 const ac::Shape& mm, const ac::Shape& block_shape,
-                                 const ac::Index&                                 block_offset,
+                                 const ac::shape& mm, const ac::shape& block_shape,
+                                 const ac::index&                                 block_offset,
                                  std::vector<ac::mr::device_pointer<PACK_DTYPE>>& outputs);
 #undef PACK_DTYPE
 
 #define PACK_DTYPE uint64_t
-template void pack<PACK_DTYPE>(const ac::Shape& mm, const ac::Shape& block_shape,
-                               const ac::Index&                                       block_offset,
+template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape,
+                               const ac::index&                                       block_offset,
                                const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
                                ac::mr::device_pointer<PACK_DTYPE>                     output);
 
 template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input,
-                                 const ac::Shape& mm, const ac::Shape& block_shape,
-                                 const ac::Index&                                 block_offset,
+                                 const ac::shape& mm, const ac::shape& block_shape,
+                                 const ac::index&                                 block_offset,
                                  std::vector<ac::mr::device_pointer<PACK_DTYPE>>& outputs);
 #undef PACK_DTYPE
 

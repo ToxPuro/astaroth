@@ -116,15 +116,15 @@ main()
 
         // benchmark();
 
-        const ac::Shape global_nn{4, 4, 4};
+        const ac::shape global_nn{4, 4, 4};
         MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
-        const ac::Shape decomp{ac::mpi::get_decomposition(cart_comm)};
-        const ac::Shape local_nn{global_nn / decomp};
-        const ac::Index coords{ac::mpi::get_coords(cart_comm)};
-        const ac::Index global_nn_offset{coords * local_nn};
+        const ac::shape decomp{ac::mpi::get_decomposition(cart_comm)};
+        const ac::shape local_nn{global_nn / decomp};
+        const ac::index coords{ac::mpi::get_coords(cart_comm)};
+        const ac::index global_nn_offset{coords * local_nn};
 
-        const ac::Shape rr{ac::make_shape(global_nn.size(), 1)}; // Symmetric halo
-        const ac::Shape local_mm{as<uint64_t>(2) * rr + local_nn};
+        const ac::shape rr{ac::make_shape(global_nn.size(), 1)}; // Symmetric halo
+        const ac::shape local_mm{as<uint64_t>(2) * rr + local_nn};
 
         ac::ndbuffer<UserType, ac::mr::host_allocator> hin(local_mm);
         ac::ndbuffer<UserType, ac::mr::host_allocator> hout(local_mm);
@@ -202,11 +202,9 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        ac::comm::AsyncHaloExchangeTask<UserType, ac::mr::device_allocator> halo_exchange{local_mm,
-                                                                                          local_nn,
-                                                                                          rr,
-                                                                                          1};
-        std::vector<ac::mr::device_pointer<UserType>>                       inputs{
+        ac::comm::async_halo_exchange_task<UserType, ac::mr::device_allocator>
+                                                      halo_exchange{local_mm, local_nn, rr, 1};
+        std::vector<ac::mr::device_pointer<UserType>> inputs{
             ac::mr::device_pointer<UserType>{din.size(), din.data()}};
 
         // Pipelined
@@ -228,11 +226,11 @@ main()
                   static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                       static_cast<UserType>(prod(local_mm)));
 
-        ac::io::AsyncWriteTask<UserType> iotask{global_nn,
-                                                global_nn_offset,
-                                                local_mm,
-                                                local_nn,
-                                                rr};
+        ac::io::async_write_task<UserType> iotask{global_nn,
+                                                  global_nn_offset,
+                                                  local_mm,
+                                                  local_nn,
+                                                  rr};
         // iotask.launch_write_collective(cart_comm, hin.buffer, "test.dat");
         // iotask.wait_write_collective();
         ac::mpi::write_collective(cart_comm,

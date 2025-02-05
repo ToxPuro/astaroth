@@ -9,15 +9,16 @@
 
 namespace ac::comm {
 
-template <typename T, typename Allocator = ac::mr::device_allocator> class AsyncHaloExchangeTask {
+template <typename T, typename Allocator = ac::mr::device_allocator>
+class async_halo_exchange_task {
   private:
-    std::vector<std::unique_ptr<Packet<T, Allocator>>> m_packets{};
+    std::vector<std::unique_ptr<ac::comm::packet<T, Allocator>>> m_packets{};
 
   public:
-    AsyncHaloExchangeTask() = default;
+    async_halo_exchange_task() = default;
 
-    AsyncHaloExchangeTask(const ac::Shape& local_mm, const ac::Shape& local_nn,
-                          const ac::Index& local_rr, const size_t n_aggregate_buffers)
+    async_halo_exchange_task(const ac::shape& local_mm, const ac::shape& local_nn,
+                             const ac::index& local_rr, const size_t n_aggregate_buffers)
     {
         // Must be larger than the boundary area to avoid boundary artifacts
         ERRCHK_MPI(local_nn >= local_rr);
@@ -28,18 +29,19 @@ template <typename T, typename Allocator = ac::mr::device_allocator> class Async
         // Prune the segment containing the computational domain
         auto it{std::remove_if(segments.begin(),
                                segments.end(),
-                               [local_nn, local_rr](const ac::Segment& segment) {
+                               [local_nn, local_rr](const ac::segment& segment) {
                                    return within_box(segment.offset, local_nn, local_rr);
                                })};
         segments.erase(it, segments.end());
 
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
-            m_packets.push_back(std::make_unique<Packet<T, Allocator>>(local_mm,
-                                                                       local_nn,
-                                                                       local_rr,
-                                                                       segment,
-                                                                       n_aggregate_buffers));
+            m_packets.push_back(
+                std::make_unique<ac::comm::packet<T, Allocator>>(local_mm,
+                                                                 local_nn,
+                                                                 local_rr,
+                                                                 segment,
+                                                                 n_aggregate_buffers));
         }
     }
 
@@ -65,9 +67,10 @@ template <typename T, typename Allocator = ac::mr::device_allocator> class Async
 
     bool complete() const
     {
-        const bool cc_allof_result{std::all_of(m_packets.begin(),
-                                               m_packets.end(),
-                                               std::mem_fn(&Packet<T, Allocator>::complete))};
+        const bool cc_allof_result{
+            std::all_of(m_packets.begin(),
+                        m_packets.end(),
+                        std::mem_fn(&ac::comm::packet<T, Allocator>::complete))};
 
         // TODO remove and return the cc_allof_result after testing
         for (const auto& packet : m_packets) {

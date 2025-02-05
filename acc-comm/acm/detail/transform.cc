@@ -20,9 +20,9 @@ test_transform()
     {
         using DeviceNdBuffer = ac::ndbuffer<UserDatatype, ac::mr::device_allocator>;
         using HostNdBuffer   = ac::ndbuffer<UserDatatype, ac::mr::host_allocator>;
-        const ac::Shape mm{8, 8};
-        const ac::Shape nn{6, 6};
-        const ac::Index rr{1, 1};
+        const ac::shape mm{8, 8};
+        const ac::shape nn{6, 6};
+        const ac::index rr{1, 1};
         HostNdBuffer    hin{mm};
         HostNdBuffer    houtref{nn};
         HostNdBuffer    hout{nn};

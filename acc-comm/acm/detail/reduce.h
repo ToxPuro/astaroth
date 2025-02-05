@@ -1,6 +1,6 @@
 #pragma once
 
-enum class ReduceType { Sum, Max, Min };
+enum class ReduceType { sum, max, min };
 
 template <typename T> class ReduceTask {
   private:

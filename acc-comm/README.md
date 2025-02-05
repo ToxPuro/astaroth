@@ -17,6 +17,7 @@
 - Structs should be kept as simple as possible and close to C to avoid C++ pitfalls when developers with varying level of experience work with the code. For example, the drawbacks of using i.e. inheritance often outweigh the benefits and make the code harder to maintain, especially when composition is almost always a better option.
 - The classic C-style/procedural approach should always be considered first, i.e., if functionality can be implemented using simple structs and composition, prefer that over complex templated classes that have private/protected/public members that inherit and overload many functions. Generic/abstract programming should only be used in cases where it makes the system easier to understand and reduces the amount of code.
 - Nevertheless, strive to write idiomatic C++ (RAII, returning values, throwing exceptions, passing function parameters by reference&, avoiding raw pointers where possible, etc)
+- Keep naming simple and consistent. Use the naming conventions of C++ STL and Boost: macros in `UPPERCASE_`, traits, template arguments, and enums in `PascalCase`, everything else `snake_case`. Always use namespaces in `acm`. Use Astaroth main library conventions for the C interface and non-namespaced functions and structures.
 
 
 # Concurrency

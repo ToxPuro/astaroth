@@ -9,7 +9,7 @@
 namespace ac::io {
 
 template <typename T, typename StagingAllocator = ac::mr::pinned_host_allocator>
-class AsyncWriteTask {
+class async_write_task {
   private:
     MPI_Info     m_info{MPI_INFO_NULL};
     MPI_Datatype m_global_subarray{MPI_DATATYPE_NULL};
@@ -24,9 +24,9 @@ class AsyncWriteTask {
     bool m_in_progress{false};
 
   public:
-    AsyncWriteTask(const ac::Shape& file_dims, const ac::Index& file_offset,
-                   const ac::Shape& mesh_dims, const ac::Shape& mesh_subdims,
-                   const ac::Index& mesh_offset)
+    async_write_task(const ac::shape& file_dims, const ac::index& file_offset,
+                     const ac::shape& mesh_dims, const ac::shape& mesh_subdims,
+                     const ac::index& mesh_offset)
         : m_info{ac::mpi::info_create()},
           m_global_subarray{ac::mpi::subarray_create(file_dims, mesh_subdims, file_offset,
                                                      ac::mpi::get_dtype<T>())},
@@ -36,7 +36,7 @@ class AsyncWriteTask {
     {
     }
 
-    ~AsyncWriteTask()
+    ~async_write_task()
     {
         ERRCHK_MPI(!m_in_progress);
 
@@ -119,31 +119,31 @@ class AsyncWriteTask {
 
     bool complete() const { return !m_in_progress; };
 
-    AsyncWriteTask(const AsyncWriteTask&)            = delete; // Copy constructor
-    AsyncWriteTask& operator=(const AsyncWriteTask&) = delete; // Copy assignment operator
-    AsyncWriteTask(AsyncWriteTask&&)                 = delete; // Move constructor
-    AsyncWriteTask& operator=(AsyncWriteTask&&)      = delete; // Move assignment operator
+    async_write_task(const async_write_task&)            = delete; // Copy constructor
+    async_write_task& operator=(const async_write_task&) = delete; // Copy assignment operator
+    async_write_task(async_write_task&&)                 = delete; // Move constructor
+    async_write_task& operator=(async_write_task&&)      = delete; // Move assignment operator
 };
 
 template <typename T, typename StagingAllocator = ac::mr::pinned_host_allocator>
-class BatchedAsyncWriteTask {
+class batched_async_write_task {
   private:
-    std::vector<std::unique_ptr<AsyncWriteTask<T, StagingAllocator>>> write_tasks{};
+    std::vector<std::unique_ptr<async_write_task<T, StagingAllocator>>> write_tasks{};
 
   public:
-    BatchedAsyncWriteTask() = default;
+    batched_async_write_task() = default;
 
-    BatchedAsyncWriteTask(const ac::Shape& file_dims, const ac::Index& file_offset,
-                          const ac::Shape& mesh_dims, const ac::Shape& mesh_subdims,
-                          const ac::Index& mesh_offset, const size_t n_aggregate_buffers)
+    batched_async_write_task(const ac::shape& file_dims, const ac::index& file_offset,
+                             const ac::shape& mesh_dims, const ac::shape& mesh_subdims,
+                             const ac::index& mesh_offset, const size_t n_aggregate_buffers)
     {
         for (size_t i = 0; i < n_aggregate_buffers; ++i)
             write_tasks.push_back(
-                std::make_unique<AsyncWriteTask<T, StagingAllocator>>(file_dims,
-                                                                      file_offset,
-                                                                      mesh_dims,
-                                                                      mesh_subdims,
-                                                                      mesh_offset));
+                std::make_unique<async_write_task<T, StagingAllocator>>(file_dims,
+                                                                        file_offset,
+                                                                        mesh_dims,
+                                                                        mesh_subdims,
+                                                                        mesh_offset));
     }
 
     template <typename Allocator>
@@ -165,7 +165,7 @@ class BatchedAsyncWriteTask {
     {
         return std::all_of(write_tasks.begin(),
                            write_tasks.end(),
-                           std::mem_fn(&AsyncWriteTask<T, StagingAllocator>::complete));
+                           std::mem_fn(&async_write_task<T, StagingAllocator>::complete));
     }
 };
 

@@ -13,14 +13,16 @@
 
 #include "type_conversion.h"
 
-template <typename T, typename Allocator> class Packet {
+namespace ac::comm {
+
+template <typename T, typename Allocator> class packet {
 
   private:
-    ac::Shape m_local_mm;
-    ac::Shape m_local_nn;
-    ac::Index m_local_rr;
+    ac::shape m_local_mm;
+    ac::shape m_local_nn;
+    ac::index m_local_rr;
 
-    ac::Segment m_segment;
+    ac::segment m_segment;
 
     ac::buffer<T, Allocator> m_send_buffer;
     ac::buffer<T, Allocator> m_recv_buffer;
@@ -32,8 +34,8 @@ template <typename T, typename Allocator> class Packet {
     bool m_in_progress = false;
 
   public:
-    Packet(const ac::Shape& local_mm, const ac::Shape& local_nn, const ac::Index& local_rr,
-           const ac::Segment& segment, const size_t n_aggregate_buffers)
+    packet(const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
+           const ac::segment& segment, const size_t n_aggregate_buffers)
         : m_local_mm{local_mm},
           m_local_nn{local_nn},
           m_local_rr{local_rr},
@@ -43,7 +45,7 @@ template <typename T, typename Allocator> class Packet {
     {
     }
 
-    ~Packet()
+    ~packet()
     {
         ERRCHK_MPI(!m_in_progress);
 
@@ -70,7 +72,7 @@ template <typename T, typename Allocator> class Packet {
         ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &m_comm));
 
         // Find the direction and neighbors of the segment
-        ac::Index send_offset{((m_local_nn + m_segment.offset - m_local_rr) % m_local_nn) +
+        ac::index send_offset{((m_local_nn + m_segment.offset - m_local_rr) % m_local_nn) +
                               m_local_rr};
 
         auto      recv_direction{ac::mpi::get_direction(m_segment.offset, m_local_nn, m_local_rr)};
@@ -138,7 +140,7 @@ template <typename T, typename Allocator> class Packet {
 
     bool complete() const { return !m_in_progress; };
 
-    friend std::ostream& operator<<(std::ostream& os, const Packet<T, Allocator>& obj)
+    friend std::ostream& operator<<(std::ostream& os, const packet<T, Allocator>& obj)
     {
         os << "{";
         os << "segment: " << obj.m_segment << ", ";
@@ -148,10 +150,12 @@ template <typename T, typename Allocator> class Packet {
         return os;
     }
 
-    Packet(const Packet&)            = delete; // Copy constructor
-    Packet& operator=(const Packet&) = delete; // Copy assignment operator
-    Packet(Packet&&)                 = delete; // Move constructor
-    Packet& operator=(Packet&&)      = delete; // Move assignment operator
+    packet(const packet&)            = delete; // Copy constructor
+    packet& operator=(const packet&) = delete; // Copy assignment operator
+    packet(packet&&)                 = delete; // Move constructor
+    packet& operator=(packet&&)      = delete; // Move assignment operator
 };
+
+} // namespace ac::comm
 
 void test_packet();

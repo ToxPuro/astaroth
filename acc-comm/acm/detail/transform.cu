@@ -27,7 +27,7 @@ transform(const shape_t dims, const shape_t subdims, const index_t offset, const
 
 namespace ac {
 void
-transform(const ac::Shape in_dims, const ac::Shape in_subdims, const ac::Index in_offset,
+transform(const ac::shape in_dims, const ac::shape in_subdims, const ac::index in_offset,
           const DevicePointer in, DevicePointer out)
 {
     const uint64_t block_nelems{prod(in_subdims)};

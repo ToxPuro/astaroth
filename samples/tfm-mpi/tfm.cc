@@ -44,8 +44,8 @@
         std::cout << "[" << ms_elapsed__.count() << " ms] " << #cmd << std::endl;                  \
     } while (0)
 
-using HaloExchangeTask = ac::comm::AsyncHaloExchangeTask<AcReal, ac::mr::device_allocator>;
-using IOTask           = ac::io::BatchedAsyncWriteTask<AcReal, ac::mr::pinned_host_allocator>;
+using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal, ac::mr::device_allocator>;
+using IOTask           = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
 
 static std::vector<Field> hydro_fields{VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
 static std::vector<Field> tfm_fields{TF_a11_x,
@@ -110,7 +110,7 @@ static std::vector<Field> all_fields{VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBU
                                      TF_uxb12_y,   TF_uxb12_z, TF_uxb21_x, TF_uxb21_y, TF_uxb21_z,
                                      TF_uxb22_x,   TF_uxb22_y, TF_uxb22_z};
 
-enum class BufferGroup { Input, Output };
+enum class BufferGroup { input, output };
 
 static auto
 make_ptr(const VertexBufferArray& vba, const Field& field, const BufferGroup& type)
@@ -118,9 +118,9 @@ make_ptr(const VertexBufferArray& vba, const Field& field, const BufferGroup& ty
     const size_t count{vba.mx * vba.my * vba.mz};
 
     switch (type) {
-    case BufferGroup::Input:
+    case BufferGroup::input:
         return ac::mr::device_pointer<AcReal>{count, vba.in[field]};
-    case BufferGroup::Output:
+    case BufferGroup::output:
         return ac::mr::device_pointer<AcReal>{count, vba.out[field]};
     default:
         ERRCHK(false);
@@ -154,9 +154,9 @@ make_ptr(const VertexBufferArray& vba, const Profile& profile, const BufferGroup
     const size_t count{vba.profiles.count};
 
     switch (type) {
-    case BufferGroup::Input:
+    case BufferGroup::input:
         return ac::mr::device_pointer<AcReal>{count, vba.profiles.in[profile]};
-    case BufferGroup::Output:
+    case BufferGroup::output:
         return ac::mr::device_pointer<AcReal>{count, vba.profiles.out[profile]};
     default:
         ERRCHK(false);
@@ -239,15 +239,15 @@ static AcMeshInfo
 get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
 {
     // Calculate local dimensions
-    ac::Shape global_nn{acr::get_global_nn(info)};
+    ac::shape global_nn{acr::get_global_nn(info)};
     Dims global_ss{acr::get_global_ss(info)};
 
-    const ac::Shape decomp{ac::mpi::get_decomposition(cart_comm)};
-    const ac::Shape local_nn{global_nn / decomp};
+    const ac::shape decomp{ac::mpi::get_decomposition(cart_comm)};
+    const ac::shape local_nn{global_nn / decomp};
     const Dims local_ss{global_ss / static_cast_vec<AcReal>(decomp)};
 
-    const ac::Index coords{ac::mpi::get_coords(cart_comm)};
-    const ac::Index global_nn_offset{coords * local_nn};
+    const ac::index coords{ac::mpi::get_coords(cart_comm)};
+    const ac::index global_nn_offset{coords * local_nn};
 
     // Fill AcMeshInfo
     AcMeshInfo local_info{info};
@@ -357,7 +357,7 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
-        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
+        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
                      staging_buffer.get());
         ac::mpi::write_collective_simple(parent_comm,
                                          ac::mpi::get_dtype<AcReal>(),
@@ -398,7 +398,7 @@ write_distributed_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& d
                 step,
                 vtxbuf_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
-        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
+        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
                      staging_buffer.get());
         ac::mpi::write_distributed(parent_comm,
                                    ac::mpi::get_dtype<AcReal>(),
@@ -428,23 +428,23 @@ write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const 
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.profile", step, profile_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
-        const ac::Shape profile_global_nz{as<uint64_t>(acr::get(local_info, AC_global_nz))};
-        const ac::Shape profile_local_mz{as<uint64_t>(acr::get(local_info, AC_mz))};
-        const ac::Shape profile_local_nz{as<uint64_t>(acr::get(local_info, AC_nz))};
-        const ac::Shape profile_local_nz_offset{as<uint64_t>(acr::get(local_info, AC_nz_min))};
-        const ac::Index coords{ac::mpi::get_coords(parent_comm)[2]};
-        const ac::Shape profile_global_nz_offset{coords * profile_local_nz};
+        const ac::shape profile_global_nz{as<uint64_t>(acr::get(local_info, AC_global_nz))};
+        const ac::shape profile_local_mz{as<uint64_t>(acr::get(local_info, AC_mz))};
+        const ac::shape profile_local_nz{as<uint64_t>(acr::get(local_info, AC_nz))};
+        const ac::shape profile_local_nz_offset{as<uint64_t>(acr::get(local_info, AC_nz_min))};
+        const ac::index coords{ac::mpi::get_coords(parent_comm)[2]};
+        const ac::shape profile_global_nz_offset{coords * profile_local_nz};
 
         const int rank{ac::mpi::get_rank(parent_comm)};
-        const ac::Index coords_3d{ac::mpi::get_coords(parent_comm)};
-        const ac::Shape decomp_3d{ac::mpi::get_decomposition(parent_comm)};
+        const ac::index coords_3d{ac::mpi::get_coords(parent_comm)};
+        const ac::shape decomp_3d{ac::mpi::get_decomposition(parent_comm)};
         const int color = (coords_3d[0] + coords_3d[1] * decomp_3d[0]) == 0 ? 0 : MPI_UNDEFINED;
 
         MPI_Comm profile_comm{MPI_COMM_NULL};
         ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, rank, &profile_comm));
 
         if (profile_comm != MPI_COMM_NULL) {
-            ac::mr::copy(make_ptr(vba, static_cast<Profile>(i), BufferGroup::Input),
+            ac::mr::copy(make_ptr(vba, static_cast<Profile>(i), BufferGroup::input),
                          staging_buffer.get());
             ac::mpi::write_collective(profile_comm,
                                       ac::mpi::get_dtype<AcReal>(),
@@ -519,40 +519,40 @@ calc_and_distribute_timestep(const MPI_Comm& parent_comm, const Device& device)
  * hard-coded segmentation levels (ComputeInner, etc.)
  */
 enum class SegmentGroup {
-    Halo,
-    ComputeOuter,
-    ComputeInner,
-    ComputeFull,
-    Full,
+    halo,
+    compute_outer,
+    compute_inner,
+    compute_full,
+    full,
 };
 
-static std::vector<ac::Segment>
-partition(const ac::Shape& local_mm, const ac::Shape& local_nn, const ac::Shape& local_rr,
+static std::vector<ac::segment>
+partition(const ac::shape& local_mm, const ac::shape& local_nn, const ac::shape& local_rr,
           const SegmentGroup& group)
 {
     PRINT_LOG_TRACE("Enter");
     switch (group) {
-    case SegmentGroup::Halo: {
-        const ac::Shape mm{local_mm};
-        const ac::Shape nn{local_nn};
-        const ac::Shape rr{local_rr};
+    case SegmentGroup::halo: {
+        const ac::shape mm{local_mm};
+        const ac::shape nn{local_nn};
+        const ac::shape rr{local_rr};
 
         auto segments{partition(mm, nn, rr)};
         auto it{
-            std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::Segment& segment) {
+            std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::segment& segment) {
                 return within_box(segment.offset, nn, rr);
             })};
         segments.erase(it, segments.end());
         return segments;
     }
-    case SegmentGroup::ComputeOuter: {
-        const ac::Shape mm{local_nn};
-        const ac::Shape nn{local_nn - 2 * local_rr};
-        const ac::Shape rr{local_rr};
+    case SegmentGroup::compute_outer: {
+        const ac::shape mm{local_nn};
+        const ac::shape nn{local_nn - 2 * local_rr};
+        const ac::shape rr{local_rr};
 
         auto segments{partition(mm, nn, rr)};
         auto it{
-            std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::Segment& segment) {
+            std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::segment& segment) {
                 return within_box(segment.offset, nn, rr);
             })};
         segments.erase(it, segments.end());
@@ -563,28 +563,28 @@ partition(const ac::Shape& local_mm, const ac::Shape& local_nn, const ac::Shape&
 
         return segments;
     }
-    case SegmentGroup::ComputeInner: {
-        return std::vector<ac::Segment>{ac::Segment{local_nn - 2 * local_rr, 2 * local_rr}};
+    case SegmentGroup::compute_inner: {
+        return std::vector<ac::segment>{ac::segment{local_nn - 2 * local_rr, 2 * local_rr}};
     }
-    case SegmentGroup::ComputeFull: {
-        return std::vector<ac::Segment>{ac::Segment{local_nn, local_rr}};
+    case SegmentGroup::compute_full: {
+        return std::vector<ac::segment>{ac::segment{local_nn, local_rr}};
     }
-    case SegmentGroup::Full: {
-        return std::vector<ac::Segment>{ac::Segment{local_mm}};
+    case SegmentGroup::full: {
+        return std::vector<ac::segment>{ac::segment{local_mm}};
     }
     default:
         ERRCHK(false);
-        return std::vector<ac::Segment>{};
+        return std::vector<ac::segment>{};
     }
 }
 
-static std::vector<ac::Segment>
+static std::vector<ac::segment>
 partition(const AcMeshInfo& info, const SegmentGroup& group)
 {
     return partition(acr::get_local_mm(info), acr::get_local_nn(info), acr::get_local_rr(), group);
 }
 
-static std::vector<ac::Segment>
+static std::vector<ac::segment>
 partition(const Device& device, const SegmentGroup& group)
 {
     AcMeshInfo info{};
@@ -595,11 +595,11 @@ partition(const Device& device, const SegmentGroup& group)
 static void
 test_experimental_partition()
 {
-    const ac::Shape nn{128, 128};
-    const ac::Index rr{3, 3};
-    const ac::Shape mm{nn + 2 * rr};
-    auto segments{partition(mm, nn, rr, SegmentGroup::Halo)};
-    // auto segments{get_segments(mm, nn, rr, SegmentGroup::ComputeOuter)};
+    const ac::shape nn{128, 128};
+    const ac::index rr{3, 3};
+    const ac::shape mm{nn + 2 * rr};
+    auto segments{partition(mm, nn, rr, SegmentGroup::halo)};
+    // auto segments{get_segments(mm, nn, rr, SegmentGroup::compute_outer)};
     for (const auto& segment : segments)
         std::cout << segment << std::endl;
 }
@@ -611,7 +611,7 @@ test_experimental_partition()
  */
 static void
 compute(const Device& device, const std::vector<Kernel>& compute_kernels,
-        const std::vector<ac::Segment>& segments)
+        const std::vector<ac::segment>& segments)
 {
     ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
     for (const auto& segment : segments) {
@@ -734,7 +734,7 @@ class Grid {
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
         // const auto count{prod(local_mm)};
-        for (auto& ptr : get_ptrs(vba, all_fields, BufferGroup::Input))
+        for (auto& ptr : get_ptrs(vba, all_fields, BufferGroup::input))
             ac::mr::copy(buf.get(), ptr);
 
         // Should be rank
@@ -744,11 +744,11 @@ class Grid {
         // OK
 
         // Test: halo exchange
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::Input));
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::Input));
+        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
+        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
 
-        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::Input));
-        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::Input));
+        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::input));
+        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
 
         // Should be rank
         // local should show different processes in halos
@@ -758,35 +758,35 @@ class Grid {
 
         // Test: full hydro integration
         reset_init_cond();
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::Input));
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::Input));
-        compute(device, hydro_kernels[0], SegmentGroup::ComputeFull);
+        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
+        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
+        compute(device, hydro_kernels[0], SegmentGroup::compute_full);
         ac::device::swap_buffers(device, hydro_fields);
 
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::Input));
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::Input));
-        compute(device, hydro_kernels[1], SegmentGroup::ComputeFull);
+        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
+        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
+        compute(device, hydro_kernels[1], SegmentGroup::compute_full);
         ac::device::swap_buffers(device, hydro_fields);
 
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::Input));
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::Input));
-        compute(device, hydro_kernels[2], SegmentGroup::ComputeFull);
+        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
+        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
+        compute(device, hydro_kernels[2], SegmentGroup::compute_full);
         ac::device::swap_buffers(device, hydro_fields);
 
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::Input));
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::Input));
+        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
+        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
         write_diagnostic_step(cart_comm, device, 3);
         // OK
 
         // Test: full tfm step
         reduce_xy_averages(STREAM_DEFAULT);
-        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::Input));
-        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::Input));
-        compute(device, tfm_kernels[0], SegmentGroup::ComputeFull);
+        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::input));
+        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
+        compute(device, tfm_kernels[0], SegmentGroup::compute_full);
         ac::device::swap_buffers(device, appended(tfm_fields, uxb_fields));
 
-        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::Input));
-        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::Input));
+        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::input));
+        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
         write_diagnostic_step(cart_comm, device, 4);
 
         // Test: profiles
@@ -794,12 +794,12 @@ class Grid {
 
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
         ac::buffer<AcReal, ac::mr::host_allocator> hprof{vba.profiles.count};
-        // const auto dprof{make_ptr(vba, PROFILE_B21mean_z, BufferGroup::Input)};
+        // const auto dprof{make_ptr(vba, PROFILE_B21mean_z, BufferGroup::input)};
         // ac::mr::copy(dprof, hprof.get());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         for (size_t i{0}; i < NUM_PROFILES; ++i) {
-            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::Input)};
+            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
             ac::mr::copy(dprof, hprof.get());
             std::cout << "Before profile " << profile_names[i] << std::endl;
             for (const auto& elem : hprof)
@@ -814,7 +814,7 @@ class Grid {
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         for (size_t i{0}; i < NUM_PROFILES; ++i) {
-            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::Input)};
+            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
             ac::mr::copy(dprof, hprof.get());
             std::cout << "After local Profile " << profile_names[i] << std::endl;
             for (const auto& elem : hprof)
@@ -837,7 +837,7 @@ class Grid {
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         for (size_t i{0}; i < NUM_PROFILES; ++i) {
-            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::Input)};
+            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
             ac::mr::copy(dprof, hprof.get());
             std::cout << "After reduce Profile " << profile_names[i] << std::endl;
             for (const auto& elem : hprof)
@@ -858,7 +858,7 @@ class Grid {
         for (size_t i{0}; i < NUM_FIELDS; ++i) {
             ac::buffer<AcReal, ac::mr::host_allocator> tmp{prod(local_mm)};
             std::generate(tmp.begin(), tmp.end(), [&]() { return distribution(generator); });
-            ac::mr::copy(tmp.get(), make_ptr(vba, static_cast<Field>(i), BufferGroup::Input));
+            ac::mr::copy(tmp.get(), make_ptr(vba, static_cast<Field>(i), BufferGroup::input));
         }
         reduce_xy_averages(STREAM_DEFAULT);
         // Constant profiles (B) should be constant
@@ -889,8 +889,8 @@ class Grid {
         // // Buffer
         // ac::ndbuffer<AcReal, ac::mr::host_allocator> hbuf{mm, NAN};
         // for (size_t k{rr[2]}; k < rr[2] + nn[2]; ++k) {
-        //     const ac::Shape slice{nn[0], nn[1], 1};
-        //     const ac::Index offset{rr[0], rr[1], k};
+        //     const ac::shape slice{nn[0], nn[1], 1};
+        //     const ac::index offset{rr[0], rr[1], k};
 
         //     ac::fill(static_cast<AcReal>(k + acr::get_global_nn_offset(local_info)[2]),
         //              slice,
@@ -918,8 +918,8 @@ class Grid {
         // // Setup buffers
         // ac::ndbuffer<AcReal, ac::mr::host_allocator> hux{mm, NAN}, huy{mm};
         // for (size_t k{rr[2]}; k < rr[2] + nn[2]; ++k) {
-        //     const ac::Shape slice{nn[0], nn[1], 1};
-        //     const ac::Index offset{rr[0], rr[1], k};
+        //     const ac::shape slice{nn[0], nn[1], 1};
+        //     const ac::index offset{rr[0], rr[1], k};
 
         //     ac::fill(static_cast<AcReal>(k + acr::get_global_nn_offset(local_info)[2]),
         //              slice,
@@ -979,7 +979,7 @@ class Grid {
     //                                   acr::get_global_nn_offset(local_info),
     //                                   acr::get_local_nn(local_info),
     //                                   acr::get_local_nn(local_info),
-    //                                   ac::Index(acr::get_local_rr().size(),
+    //                                   ac::index(acr::get_local_rr().size(),
     //                                   static_cast<uint64_t>(0)), buf.data(), path);
     //     }
     // }
@@ -1004,7 +1004,7 @@ class Grid {
     //                                         path);
 
     //         ac::mr::copy(staging_buffer.get(),
-    //                      make_ptr(vba, static_cast<Field>(i), BufferGroup::Input));
+    //                      make_ptr(vba, static_cast<Field>(i), BufferGroup::input));
     //     }
     // }
 
@@ -1016,7 +1016,7 @@ class Grid {
     //         oss << label << "-vtxbuf-" << field_names[i] << ".mesh";
     //         const auto path{oss.str()};
 
-    //         ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::Input),
+    //         ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
     //                      staging_buffer.get());
     //         ac::mpi::write_collective_simple(cart_comm,
     //                                          ac::mpi::get_dtype<AcReal>(),
@@ -1036,14 +1036,14 @@ class Grid {
 
     //     // Apply BCs
     //     auto halo_exchange{make_halo_exchange_task(local_info, all_fields.size())};
-    //     halo_exchange.launch(cart_comm, get_ptrs(device, all_fields, BufferGroup::Input));
-    //     halo_exchange.wait(get_ptrs(device, all_fields, BufferGroup::Input));
+    //     halo_exchange.launch(cart_comm, get_ptrs(device, all_fields, BufferGroup::input));
+    //     halo_exchange.wait(get_ptrs(device, all_fields, BufferGroup::input));
 
     //     // Write
     //     write_snapshots_from_device_to_disk(cart_comm, "candidate");
 
     //     // Setup CPU mesh info
-    //     const ac::Shape global_nn{acr::get_global_nn(local_info)};
+    //     const ac::shape global_nn{acr::get_global_nn(local_info)};
     //     AcMeshInfo host_info{local_info};
     //     acr::set(AC_nx, as<int>(global_nn[0]), host_info);
     //     acr::set(AC_ny, as<int>(global_nn[1]), host_info);
@@ -1067,10 +1067,10 @@ class Grid {
     //             ac::mpi::read_collective(leader,
     //                                      ac::mpi::get_dtype<AcReal>(),
     //                                      acr::get_global_nn(host_info),
-    //                                      ac::Index(global_nn.size, 0),
-    //                                      const ac::Shape& in_mesh_dims,
-    //                                      const ac::Shape& in_mesh_subdims,
-    //                                      const ac::Index& in_mesh_offset,
+    //                                      ac::index(global_nn.size, 0),
+    //                                      const ac::shape& in_mesh_dims,
+    //                                      const ac::shape& in_mesh_subdims,
+    //                                      const ac::index& in_mesh_offset,
     //                                      const std::string& path,
     //                                      void* data);
     //         }
@@ -1098,7 +1098,7 @@ class Grid {
         const auto global_mm{global_nn + static_cast<uint64_t>(2) * rr};
         const auto local_mm{acr::get_local_mm(local_info)};
         const auto local_nn{acr::get_local_nn(local_info)};
-        const ac::Index zeros{global_nn.size(), static_cast<uint64_t>(0)};
+        const ac::index zeros{global_nn.size(), static_cast<uint64_t>(0)};
 
         const auto stride{prod(global_mm)};
         const auto count{static_cast<uint64_t>(NUM_FIELDS) * stride};
@@ -1168,7 +1168,7 @@ class Grid {
 
         // Allocate and initialize host buffers
         const auto global_nn{acr::get_global_nn(local_info)};
-        const ac::Index zeros{ac::make_index(global_nn.size(), 0)};
+        const ac::index zeros{ac::make_index(global_nn.size(), 0)};
         const auto local_mm{acr::get_local_mm(local_info)};
         const auto local_nn{acr::get_local_nn(local_info)};
         const auto rr{acr::get_local_rr()};
@@ -1354,7 +1354,7 @@ class Grid {
         ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
 
         // 2) Create communicator that encompasses neighbors in the xy direction
-        const ac::Index coords{ac::mpi::get_coords(cart_comm)};
+        const ac::index coords{ac::mpi::get_coords(cart_comm)};
         // Key used to order the ranks in the new communicator: let MPI_Comm_split
         // decide (should the same ordering as in the parent communicator by default)
         const int color{as<int>(coords[2])};
@@ -1395,8 +1395,8 @@ class Grid {
 #endif
 
         // Ensure halos are up-to-date before starting integration
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::Input));
-        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::Input));
+        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
+        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::input));
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
         MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)}; // Averaging
@@ -1408,10 +1408,10 @@ class Grid {
 // #define AC_ASYNC_IO_ENABLED
 #if defined(AC_ASYNC_IO_ENABLED)
         hydro_io.launch(cart_comm,
-                        get_ptrs(device, hydro_fields, BufferGroup::Input),
+                        get_ptrs(device, hydro_fields, BufferGroup::input),
                         get_field_paths(hydro_fields));
         bfield_io.launch(cart_comm,
-                         get_fields(device, FieldGroup::Bfield, BufferGroup::Input),
+                         get_fields(device, FieldGroup::Bfield, BufferGroup::input),
                          get_field_paths(get_field_handles(FieldGroup::Bfield)));
 #endif
 
@@ -1438,14 +1438,14 @@ class Grid {
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
 
                 // Hydro dependencies: hydro
-                hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::Input));
+                hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
 
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
                 // TODO note: end index is not properly used, exits early
-                // compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::ComputeFull);
-                compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::ComputeOuter);
-                hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::Output));
+                // compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::compute_full);
+                compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::compute_outer);
+                hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::output));
 
 // TFM dependencies: hydro, tfm, profiles
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
@@ -1453,18 +1453,18 @@ class Grid {
                 ac::mpi::request_wait_and_destroy(&xy_average_req); // Averaging
 #endif
                 // TFM dependencies: tfm
-                tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::Input));
+                tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
 
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
-                // compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::ComputeFull);
-                compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::ComputeOuter);
-                tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::Output));
+                // compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::compute_full);
+                compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::compute_outer);
+                tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::output));
 
                 // Inner segments
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
-                compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::ComputeInner);
-                compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::ComputeInner);
+                compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::compute_inner);
+                compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::compute_inner);
                 ERRCHK_AC(acDeviceSwapBuffers(device));
 
 // Profile dependencies: local tfm (uxb)
@@ -1481,11 +1481,11 @@ class Grid {
 #if defined(AC_ASYNC_IO_ENABLED)
             hydro_io.wait();
             hydro_io.launch(cart_comm,
-                            get_ptrs(device, hydro_fields, BufferGroup::Input),
+                            get_ptrs(device, hydro_fields, BufferGroup::input),
                             get_field_paths(hydro_fields));
             bfield_io.wait();
             bfield_io.launch(cart_comm,
-                             get_fields(device, FieldGroup::Bfield, BufferGroup::Input),
+                             get_fields(device, FieldGroup::Bfield, BufferGroup::input),
                              get_field_paths(get_field_handles(FieldGroup::Bfield)));
 #endif
 
@@ -1501,8 +1501,8 @@ class Grid {
                 write_profiles_to_disk(cart_comm, device, iter);
 #endif
         }
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::Input));
-        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::Input));
+        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
+        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
 
 #if defined(AC_ASYNC_IO_ENABLED)
         hydro_io.wait();

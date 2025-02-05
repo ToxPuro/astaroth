@@ -40,17 +40,17 @@ factorize(uint64_t n)
  */
 
 static double
-surface_area_to_volume(const ac::Shape& nn)
+surface_area_to_volume(const ac::shape& nn)
 {
-    const ac::Index rr{ac::make_index(nn.size(), 1)};
+    const ac::index rr{ac::make_index(nn.size(), 1)};
     return static_cast<double>((prod(as<uint64_t>(2) * rr + nn))) / static_cast<double>(prod(nn));
 }
 
-ac::Shape
-decompose(const ac::Shape& nn, uint64_t nprocs)
+ac::shape
+decompose(const ac::shape& nn, uint64_t nprocs)
 {
-    ac::Shape local_nn{nn};
-    ac::Shape decomp{ac::make_shape(nn.size(), 1)};
+    ac::shape local_nn{nn};
+    ac::shape decomp{ac::make_shape(nn.size(), 1)};
 
     // More flexible dims (inspired by W.D. Gropp https://doi.org/10.1145/3236367.3236377)
     // Adapted to try out all factors to work with a wider range of dims
@@ -88,14 +88,14 @@ decompose(const ac::Shape& nn, uint64_t nprocs)
     return decomp;
 }
 
-std::vector<ac::Shape>
-decompose_hierarchical(const ac::Shape& nn, const std::vector<uint64_t>& nprocs_per_layer)
+std::vector<ac::shape>
+decompose_hierarchical(const ac::shape& nn, const std::vector<uint64_t>& nprocs_per_layer)
 {
-    std::vector<ac::Shape> decompositions;
+    std::vector<ac::shape> decompositions;
 
-    ac::Shape curr_nn{nn};
+    ac::shape curr_nn{nn};
     for (const auto& nprocs : nprocs_per_layer) {
-        const ac::Shape decomp{decompose(curr_nn, nprocs)};
+        const ac::shape decomp{decompose(curr_nn, nprocs)};
         decompositions.push_back(decomp);
         curr_nn = curr_nn / decomp;
     }
@@ -103,13 +103,13 @@ decompose_hierarchical(const ac::Shape& nn, const std::vector<uint64_t>& nprocs_
     return decompositions;
 }
 
-ac::Index
-hierarchical_to_spatial(const uint64_t index, const std::vector<ac::Shape>& decompositions)
+ac::index
+hierarchical_to_spatial(const uint64_t index, const std::vector<ac::shape>& decompositions)
 {
     ERRCHK(decompositions.size() > 0);
     const size_t ndims = decompositions[0].size();
-    ac::Index    coords{ac::make_index(ndims, 0)};
-    ac::Index    scale{ac::make_index(ndims, 1)};
+    ac::index    coords{ac::make_index(ndims, 0)};
+    ac::index    scale{ac::make_index(ndims, 1)};
     ERRCHK(coords[0] == 0);
     ERRCHK(scale[0] == 1);
     for (const auto& dims : decompositions) {
@@ -120,9 +120,9 @@ hierarchical_to_spatial(const uint64_t index, const std::vector<ac::Shape>& deco
 }
 
 uint64_t
-hierarchical_to_linear(const ac::Index& coords, const std::vector<ac::Shape>& decompositions)
+hierarchical_to_linear(const ac::index& coords, const std::vector<ac::shape>& decompositions)
 {
-    ac::Index scale{ac::make_index(coords.size(), 1)};
+    ac::index scale{ac::make_index(coords.size(), 1)};
     ERRCHK(scale[0] == 1);
     uint64_t index{0};
     for (const auto& dims : decompositions) {
@@ -132,11 +132,11 @@ hierarchical_to_linear(const ac::Index& coords, const std::vector<ac::Shape>& de
     return index;
 }
 
-ac::Shape
-hierarchical_decomposition_to_global(const std::vector<ac::Shape>& decomposition)
+ac::shape
+hierarchical_decomposition_to_global(const std::vector<ac::shape>& decomposition)
 {
     ERRCHK(decomposition.size() > 0);
-    ac::Shape global_decomp{ac::make_shape(decomposition[0].size(), 1)};
+    ac::shape global_decomp{ac::make_shape(decomposition[0].size(), 1)};
     for (const auto& vec : decomposition)
         global_decomp = mul(global_decomp, vec);
     return global_decomp;
@@ -156,54 +156,54 @@ test_decomp(void)
 {
     {
         const uint64_t  nprocs{32};
-        const ac::Shape nn{512, 128, 128};
+        const ac::shape nn{512, 128, 128};
         const auto      decomp{decompose(nn, nprocs)};
         const auto      local_nn{nn / decomp};
         ERRCHK(nn == decomp * local_nn);
     }
     {
         const uint64_t  nprocs{7};
-        const ac::Shape nn{7 * 20, 128, 128};
+        const ac::shape nn{7 * 20, 128, 128};
         const auto      decomp{decompose(nn, nprocs)};
         const auto      local_nn{nn / decomp};
         ERRCHK(nn == decomp * local_nn);
     }
     {
         const uint64_t  nprocs{11};
-        const ac::Shape nn{9, 10, 11};
+        const ac::shape nn{9, 10, 11};
         const auto      decomp{decompose(nn, nprocs)};
         const auto      local_nn{nn / decomp};
         ERRCHK(nn == decomp * local_nn);
     }
     {
         const uint64_t  nprocs{50};
-        const ac::Shape nn{20, 30, 40};
-        const ac::Shape decomp{decompose(nn, nprocs)};
-        const ac::Shape local_nn = nn / decomp;
+        const ac::shape nn{20, 30, 40};
+        const ac::shape decomp{decompose(nn, nprocs)};
+        const ac::shape local_nn = nn / decomp;
         ERRCHK(nn == decomp * local_nn);
     }
     {
-        ac::Shape             nn{256, 128, 128};
+        ac::shape             nn{256, 128, 128};
         std::vector<uint64_t> nprocs_per_layer{16, 4, 2};
         const auto            decompositions{decompose_hierarchical(nn, nprocs_per_layer)};
 
-        std::vector<ac::Index> offsets;
+        std::vector<ac::index> offsets;
         for (const auto& decomp : decompositions) {
             nn = nn / decomp;
             offsets.push_back(nn);
         }
-        // ac::Index is then
+        // ac::index is then
         // offset[0] * decompositions[0] + offset[1] * decompositions[1] + ...
         ERRCHK(prod(decompositions[0]) == 2);
         ERRCHK(prod(decompositions[1]) == 4);
         ERRCHK(prod(decompositions[2]) == 16);
     }
     {
-        ac::Shape             nn{32, 32, 32};
+        ac::shape             nn{32, 32, 32};
         std::vector<uint64_t> nprocs_per_layer{16, 8, 4};
         const auto            decompositions{decompose_hierarchical(nn, nprocs_per_layer)};
 
-        std::vector<ac::Index> offsets;
+        std::vector<ac::index> offsets;
         for (const auto& decomp : decompositions) {
             nn = nn / decomp;
             offsets.push_back(nn);
@@ -212,8 +212,8 @@ test_decomp(void)
 
         for (size_t i{0}; i < vecprod(nprocs_per_layer); ++i) {
             // Forward
-            ac::Index coords{0, 0, 0};
-            ac::Index scale{1, 1, 1};
+            ac::index coords{0, 0, 0};
+            ac::index scale{1, 1, 1};
             for (size_t j{decompositions.size() - 1}; j < decompositions.size(); --j) {
                 coords = coords + scale * to_spatial(i / prod(scale), decompositions[j]);
                 scale  = scale * decompositions[j];
@@ -222,7 +222,7 @@ test_decomp(void)
             // PRINDIMST_DEBUG(coords);
 
             // Backward
-            scale = ac::Index{1, 1, 1};
+            scale = ac::index{1, 1, 1};
             size_t index{0};
             for (size_t j{decompositions.size() - 1}; j < decompositions.size(); --j) {
                 index = index + prod(scale) * to_linear((coords / scale) % decompositions[j],
@@ -233,7 +233,7 @@ test_decomp(void)
         }
     }
     {
-        ac::Shape             nn{32, 16};
+        ac::shape             nn{32, 16};
         std::vector<uint64_t> nprocs_per_layer{16, 4};
         const auto            decompositions{decompose_hierarchical(nn, nprocs_per_layer)};
         for (size_t i{0}; i < vecprod(nprocs_per_layer); ++i) {
@@ -242,7 +242,7 @@ test_decomp(void)
         }
     }
     {
-        ac::Shape             nn{130, 111, 64, 250 * 7};
+        ac::shape             nn{130, 111, 64, 250 * 7};
         std::vector<uint64_t> nprocs_per_layer{7, 5};
         const auto            decompositions{decompose_hierarchical(nn, nprocs_per_layer)};
         for (size_t i{0}; i < vecprod(nprocs_per_layer); ++i) {
@@ -251,7 +251,7 @@ test_decomp(void)
         }
     }
     {
-        ac::Shape             nn{32, 8, 128, 64};
+        ac::shape             nn{32, 8, 128, 64};
         std::vector<uint64_t> nprocs_per_layer{32, 64, 2, 8};
         const auto            decompositions{decompose_hierarchical(nn, nprocs_per_layer)};
         for (size_t i{0}; i < vecprod(nprocs_per_layer); ++i) {
@@ -260,21 +260,21 @@ test_decomp(void)
         }
     }
     {
-        std::vector<ac::Shape> decompositions{ac::Shape{2, 2}, ac::Shape{4, 1}, ac::Shape{1, 4}};
-        const ac::Shape        gdecomp{8, 8};
+        std::vector<ac::shape> decompositions{ac::shape{2, 2}, ac::shape{4, 1}, ac::shape{1, 4}};
+        const ac::shape        gdecomp{8, 8};
         const size_t           count{prod(gdecomp)};
 
         auto buf{std::make_unique<uint64_t[]>(count)};
 
         for (size_t i{0}; i < count; ++i) {
-            ac::Index coords                        = hierarchical_to_spatial(i, decompositions);
+            ac::index coords                        = hierarchical_to_spatial(i, decompositions);
             buf[coords[0] + coords[1] * gdecomp[0]] = i;
         }
         // ndarray_print("buf", gdecomp.size(), gdecomp.data, buf.get());
     }
     {
-        std::vector<ac::Shape> decompositions{ac::Shape{2, 2}, ac::Shape{4, 1}, ac::Shape{1, 4}};
-        ERRCHK((hierarchical_decomposition_to_global(decompositions) == ac::Shape{8, 8}));
+        std::vector<ac::shape> decompositions{ac::shape{2, 2}, ac::shape{4, 1}, ac::shape{1, 4}};
+        ERRCHK((hierarchical_decomposition_to_global(decompositions) == ac::shape{8, 8}));
     }
     PRINT_LOG_INFO("OK");
 }

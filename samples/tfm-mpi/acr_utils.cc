@@ -35,10 +35,10 @@ get(const AcMeshInfo& info, const AcReal3Param& param)
 
 //     for (const auto& field : fields) {
 //         switch (group) {
-//         case BufferGroup::Input:
+//         case BufferGroup::input:
 //             output.push_back(ac::mr::device_pointer<AcReal>{count, vba.in[field]});
 //             break;
-//         case BufferGroup::Output:
+//         case BufferGroup::output:
 //             output.push_back(ac::mr::device_pointer<AcReal>{count, vba.out[field]});
 //             break;
 //         default:
@@ -73,31 +73,31 @@ set(const AcReal3Param& param, const AcReal3& value, AcMeshInfo& info)
     info.real3_params[param] = value;
 }
 
-ac::Shape
+ac::shape
 get_global_nn(const AcMeshInfo& info)
 {
     ERRCHK(acr::get(info, AC_global_nx) > 0);
     ERRCHK(acr::get(info, AC_global_ny) > 0);
     ERRCHK(acr::get(info, AC_global_nz) > 0);
-    return ac::Shape{as<uint64_t>(acr::get(info, AC_global_nx)),
+    return ac::shape{as<uint64_t>(acr::get(info, AC_global_nx)),
                      as<uint64_t>(acr::get(info, AC_global_ny)),
                      as<uint64_t>(acr::get(info, AC_global_nz))};
 }
 
-ac::Shape
+ac::shape
 get_local_nn(const AcMeshInfo& info)
 {
     ERRCHK(acVerifyMeshInfo(info) == 0);
-    return ac::Shape{as<uint64_t>(acr::get(info, AC_nx)),
+    return ac::shape{as<uint64_t>(acr::get(info, AC_nx)),
                      as<uint64_t>(acr::get(info, AC_ny)),
                      as<uint64_t>(acr::get(info, AC_nz))};
 }
 
-ac::Shape
+ac::shape
 get_local_mm(const AcMeshInfo& info)
 {
     ERRCHK(acVerifyMeshInfo(info) == 0);
-    return ac::Shape{as<uint64_t>(acr::get(info, AC_mx)),
+    return ac::shape{as<uint64_t>(acr::get(info, AC_mx)),
                      as<uint64_t>(acr::get(info, AC_my)),
                      as<uint64_t>(acr::get(info, AC_mz))};
 }
@@ -113,22 +113,22 @@ get_global_ss(const AcMeshInfo& info)
                 static_cast<AcReal>(acr::get(info, AC_global_sz))};
 }
 
-ac::Index
+ac::index
 get_global_nn_offset(const AcMeshInfo& info)
 {
     ERRCHK(acVerifyMeshInfo(info) == 0);
-    return ac::Index{as<uint64_t>(acr::get(info, AC_multigpu_offset).x),
+    return ac::index{as<uint64_t>(acr::get(info, AC_multigpu_offset).x),
                      as<uint64_t>(acr::get(info, AC_multigpu_offset).y),
                      as<uint64_t>(acr::get(info, AC_multigpu_offset).z)};
 }
 
-ac::Index
+ac::index
 get_local_nn_offset()
 {
-    return ac::Index{(STENCIL_WIDTH - 1) / 2, (STENCIL_HEIGHT - 1) / 2, (STENCIL_DEPTH - 1) / 2};
+    return ac::index{(STENCIL_WIDTH - 1) / 2, (STENCIL_HEIGHT - 1) / 2, (STENCIL_DEPTH - 1) / 2};
 }
 
-ac::Index
+ac::index
 get_local_rr()
 {
     return get_local_nn_offset();
