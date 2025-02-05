@@ -54,6 +54,21 @@ template <typename T, typename Allocator> class buffer {
     {
         return ac::mr::pointer<T, Allocator>{size(), data()};
     }
+
+    buffer<T, ac::mr::device_allocator> to_device()
+    {
+        buffer<T, ac::mr::device_allocator> dbuf{size()};
+        ac::mr::copy(get(), dbuf.get());
+        return dbuf;
+    }
+
+    buffer<T, ac::mr::host_allocator> to_host()
+    {
+        buffer<T, ac::mr::host_allocator> hbuf{size()};
+        ac::mr::copy(get(), hbuf.get());
+        return hbuf;
+    }
+
     ac::mr::pointer<T, Allocator> get() { return ac::mr::pointer<T, Allocator>{size(), data()}; }
 
     void display() const

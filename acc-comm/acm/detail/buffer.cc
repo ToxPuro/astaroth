@@ -19,5 +19,12 @@ test_buffer(void)
     // ERRCHK(vec2[1] == 2);
     // ERRCHK(vec2[2] == 3);
     // ERRCHK(vec2[3] == 4);
+
+    // TODO check for memory leaks
+    PRINT_LOG_WARNING("TODO: check for memory leaks");
+    ac::host_buffer<int> in{10};
+    auto                 dbuf{in.to_device()};
+    auto                 out{dbuf.to_host()};
+
     PRINT_LOG_INFO("OK");
 }
