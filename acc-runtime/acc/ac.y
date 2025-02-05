@@ -172,7 +172,8 @@ get_preprocessed_file(const char* filename, char* file_buf)
 	  fprintf(out,"%s",line);
 	}
 	fclose(in);
-	return out;
+        fclose(out);
+        return fmemopen(file_buf,strlen(file_buf),"r");
 }
 
 void
