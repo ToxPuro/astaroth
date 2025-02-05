@@ -619,7 +619,7 @@ acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t cou
   }
   return AC_SUCCESS;
 }
-int
+size_t
 get_amount_of_device_memory_free()
 {
 	size_t free_mem, total_mem;
@@ -631,7 +631,7 @@ device_malloc(void** dst, const size_t bytes)
 {
   if(get_amount_of_device_memory_free() < bytes)
   {
-	fprintf(stderr,"Tried to allocate %d bytes but have only %d bytes of memory left on the device\n", bytes, get_amount_of_device_memory_free());
+	fprintf(stderr,"Tried to allocate %ld bytes but have only %ld bytes of memory left on the device\n", bytes, get_amount_of_device_memory_free());
   	ERRCHK_ALWAYS(get_amount_of_device_memory_free() >= bytes);
   }
  #if USE_COMPRESSIBLE_MEMORY 
@@ -1284,7 +1284,7 @@ AcResult
 acLoadRealReduceRes(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value)
 {
   	const size_t offset =   (size_t)(&d_reduce_real_res_symbol[param]) - (size_t)&d_reduce_real_res_symbol;
-	cudaMemcpyToSymbolAsync(d_reduce_real_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream);
+	ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_reduce_real_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
 	return AC_SUCCESS;
 }
 
@@ -1292,7 +1292,7 @@ AcResult
 acLoadIntReduceRes(cudaStream_t stream, const AcIntOutputParam param, const int* value)
 {
   	const size_t offset =   (size_t)(&d_reduce_int_res_symbol[param]) - (size_t)&d_reduce_int_res_symbol;
-	cudaMemcpyToSymbolAsync(d_reduce_int_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream);
+	ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_reduce_int_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
 	return AC_SUCCESS;
 }
 
@@ -1300,7 +1300,7 @@ AcResult
 acLoadFloatReduceRes(cudaStream_t stream, const AcFloatOutputParam param, const float* value)
 {
   	const size_t offset =   (size_t)&d_reduce_float_res_symbol[param]- (size_t)&d_reduce_float_res_symbol;
-	cudaMemcpyToSymbolAsync(d_reduce_float_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream);
+	ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_reduce_float_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
 	return AC_SUCCESS;
 }
 

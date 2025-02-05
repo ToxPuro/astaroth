@@ -40,7 +40,7 @@ acHostMeshSet(const AcReal value, AcMesh* mesh)
 
     return AC_SUCCESS;
 }
-static inline __device__ AcReal
+static inline __device__ AcReal UNUSED
 lagrangian_correction(const Field j, const Field2 coords, const Volume indexes, const AcReal3 lengths, const Volume nn_min, const Volume nn_max)
 {
 	const AcReal x_coeff = (j == coords.x)*lengths.x;
@@ -49,7 +49,7 @@ lagrangian_correction(const Field j, const Field2 coords, const Volume indexes, 
               + y_coeff*((indexes.y >= nn_max.y) - (indexes.y < nn_min.y));
 }
 
-static inline __device__ AcReal
+static inline __device__ AcReal UNUSED
 lagrangian_correction(const Field j, const Field3 coords, const Volume indexes, const AcReal3 lengths, const Volume nn_min, const Volume nn_max)
 {
 	const AcReal x_coeff = (j == coords.x)*lengths.x;
