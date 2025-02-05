@@ -444,9 +444,20 @@ to_spatial(const T index, const ac::ntuple<T>& shape)
     return coords;
 }
 
-} // namespace ac
+template <typename T>
+[[nodiscard]] bool
+within_box(const ac::ntuple<T>& coords, const ac::ntuple<T>& box_dims,
+           const ac::ntuple<T>& box_offset)
+{
+    ERRCHK(coords.size() == box_dims.size());
+    ERRCHK(coords.size() == box_offset.size());
+    for (size_t i{0}; i < coords.size(); ++i)
+        if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
+            return false;
+    return true;
+}
 
-void test_ntuple();
+} // namespace ac
 
 namespace ac {
 
@@ -907,4 +918,32 @@ template <typename T, size_t N>
     return coords;
 }
 
+template <typename T, size_t N>
+[[nodiscard]] bool
+within_box(const ac::static_ntuple<T, N>& coords, const ac::static_ntuple<T, N>& box_dims,
+           const ac::static_ntuple<T, N>& box_offset)
+{
+    ERRCHK(coords.size() == box_dims.size());
+    ERRCHK(coords.size() == box_offset.size());
+    for (size_t i{0}; i < coords.size(); ++i)
+        if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
+            return false;
+    return true;
+}
+
 } // namespace ac
+
+// Derived datatypes
+// NOTE: temporarily outside namespace
+using Index     = ac::ntuple<uint64_t>;
+using Shape     = ac::ntuple<uint64_t>;
+using Direction = ac::ntuple<int64_t>;
+
+Index     make_index(const size_t count, const uint64_t& fill_value);
+Shape     make_shape(const size_t count, const uint64_t& fill_value);
+Direction make_direction(const size_t count, const int64_t& fill_value);
+namespace ac {
+} // namespace ac
+
+// Testing functions
+void test_ntuple();
