@@ -3,7 +3,7 @@
 #include "print_debug.h"
 
 static void
-partition_recursive(const Shape& mm, const Shape& nn, const Index& nn_offset,
+partition_recursive(const ac::Shape& mm, const ac::Shape& nn, const ac::Index& nn_offset,
                     const ac::Segment& current_segment, const size_t axis,
                     std::vector<ac::Segment>& segments)
 {
@@ -45,7 +45,7 @@ partition_recursive(const Shape& mm, const Shape& nn, const Index& nn_offset,
 }
 
 std::vector<ac::Segment>
-partition(const Shape& mm, const Shape& nn, const Index& nn_offset)
+partition(const ac::Shape& mm, const ac::Shape& nn, const ac::Index& nn_offset)
 {
     std::vector<ac::Segment> segments;
     ac::Segment              initial_segment{mm};

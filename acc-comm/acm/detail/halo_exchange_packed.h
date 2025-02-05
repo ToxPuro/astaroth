@@ -16,8 +16,8 @@ template <typename T, typename Allocator = ac::mr::device_allocator> class Async
   public:
     AsyncHaloExchangeTask() = default;
 
-    AsyncHaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
-                          const size_t n_aggregate_buffers)
+    AsyncHaloExchangeTask(const ac::Shape& local_mm, const ac::Shape& local_nn,
+                          const ac::Index& local_rr, const size_t n_aggregate_buffers)
     {
         // Must be larger than the boundary area to avoid boundary artifacts
         ERRCHK_MPI(local_nn >= local_rr);

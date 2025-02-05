@@ -24,8 +24,9 @@ class AsyncWriteTask {
     bool m_in_progress{false};
 
   public:
-    AsyncWriteTask(const Shape& file_dims, const Index& file_offset, const Shape& mesh_dims,
-                   const Shape& mesh_subdims, const Index& mesh_offset)
+    AsyncWriteTask(const ac::Shape& file_dims, const ac::Index& file_offset,
+                   const ac::Shape& mesh_dims, const ac::Shape& mesh_subdims,
+                   const ac::Index& mesh_offset)
         : m_info{ac::mpi::info_create()},
           m_global_subarray{ac::mpi::subarray_create(file_dims, mesh_subdims, file_offset,
                                                      ac::mpi::get_dtype<T>())},
@@ -132,9 +133,9 @@ class BatchedAsyncWriteTask {
   public:
     BatchedAsyncWriteTask() = default;
 
-    BatchedAsyncWriteTask(const Shape& file_dims, const Index& file_offset, const Shape& mesh_dims,
-                          const Shape& mesh_subdims, const Index& mesh_offset,
-                          const size_t n_aggregate_buffers)
+    BatchedAsyncWriteTask(const ac::Shape& file_dims, const ac::Index& file_offset,
+                          const ac::Shape& mesh_dims, const ac::Shape& mesh_subdims,
+                          const ac::Index& mesh_offset, const size_t n_aggregate_buffers)
     {
         for (size_t i = 0; i < n_aggregate_buffers; ++i)
             write_tasks.push_back(

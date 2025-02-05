@@ -239,15 +239,15 @@ static AcMeshInfo
 get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
 {
     // Calculate local dimensions
-    Shape global_nn{acr::get_global_nn(info)};
+    ac::Shape global_nn{acr::get_global_nn(info)};
     Dims global_ss{acr::get_global_ss(info)};
 
-    const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
-    const Shape local_nn{global_nn / decomp};
+    const ac::Shape decomp{ac::mpi::get_decomposition(cart_comm)};
+    const ac::Shape local_nn{global_nn / decomp};
     const Dims local_ss{global_ss / static_cast_vec<AcReal>(decomp)};
 
-    const Index coords{ac::mpi::get_coords(cart_comm)};
-    const Index global_nn_offset{coords * local_nn};
+    const ac::Index coords{ac::mpi::get_coords(cart_comm)};
+    const ac::Index global_nn_offset{coords * local_nn};
 
     // Fill AcMeshInfo
     AcMeshInfo local_info{info};
@@ -428,16 +428,16 @@ write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const 
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.profile", step, profile_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
-        const Shape profile_global_nz{as<uint64_t>(acr::get(local_info, AC_global_nz))};
-        const Shape profile_local_mz{as<uint64_t>(acr::get(local_info, AC_mz))};
-        const Shape profile_local_nz{as<uint64_t>(acr::get(local_info, AC_nz))};
-        const Shape profile_local_nz_offset{as<uint64_t>(acr::get(local_info, AC_nz_min))};
-        const Index coords{ac::mpi::get_coords(parent_comm)[2]};
-        const Shape profile_global_nz_offset{coords * profile_local_nz};
+        const ac::Shape profile_global_nz{as<uint64_t>(acr::get(local_info, AC_global_nz))};
+        const ac::Shape profile_local_mz{as<uint64_t>(acr::get(local_info, AC_mz))};
+        const ac::Shape profile_local_nz{as<uint64_t>(acr::get(local_info, AC_nz))};
+        const ac::Shape profile_local_nz_offset{as<uint64_t>(acr::get(local_info, AC_nz_min))};
+        const ac::Index coords{ac::mpi::get_coords(parent_comm)[2]};
+        const ac::Shape profile_global_nz_offset{coords * profile_local_nz};
 
         const int rank{ac::mpi::get_rank(parent_comm)};
-        const Index coords_3d{ac::mpi::get_coords(parent_comm)};
-        const Shape decomp_3d{ac::mpi::get_decomposition(parent_comm)};
+        const ac::Index coords_3d{ac::mpi::get_coords(parent_comm)};
+        const ac::Shape decomp_3d{ac::mpi::get_decomposition(parent_comm)};
         const int color = (coords_3d[0] + coords_3d[1] * decomp_3d[0]) == 0 ? 0 : MPI_UNDEFINED;
 
         MPI_Comm profile_comm{MPI_COMM_NULL};
@@ -527,15 +527,15 @@ enum class SegmentGroup {
 };
 
 static std::vector<ac::Segment>
-partition(const Shape& local_mm, const Shape& local_nn, const Shape& local_rr,
+partition(const ac::Shape& local_mm, const ac::Shape& local_nn, const ac::Shape& local_rr,
           const SegmentGroup& group)
 {
     PRINT_LOG_TRACE("Enter");
     switch (group) {
     case SegmentGroup::Halo: {
-        const Shape mm{local_mm};
-        const Shape nn{local_nn};
-        const Shape rr{local_rr};
+        const ac::Shape mm{local_mm};
+        const ac::Shape nn{local_nn};
+        const ac::Shape rr{local_rr};
 
         auto segments{partition(mm, nn, rr)};
         auto it{
@@ -546,9 +546,9 @@ partition(const Shape& local_mm, const Shape& local_nn, const Shape& local_rr,
         return segments;
     }
     case SegmentGroup::ComputeOuter: {
-        const Shape mm{local_nn};
-        const Shape nn{local_nn - 2 * local_rr};
-        const Shape rr{local_rr};
+        const ac::Shape mm{local_nn};
+        const ac::Shape nn{local_nn - 2 * local_rr};
+        const ac::Shape rr{local_rr};
 
         auto segments{partition(mm, nn, rr)};
         auto it{
@@ -595,9 +595,9 @@ partition(const Device& device, const SegmentGroup& group)
 static void
 test_experimental_partition()
 {
-    const Shape nn{128, 128};
-    const Index rr{3, 3};
-    const Shape mm{nn + 2 * rr};
+    const ac::Shape nn{128, 128};
+    const ac::Index rr{3, 3};
+    const ac::Shape mm{nn + 2 * rr};
     auto segments{partition(mm, nn, rr, SegmentGroup::Halo)};
     // auto segments{get_segments(mm, nn, rr, SegmentGroup::ComputeOuter)};
     for (const auto& segment : segments)
@@ -889,8 +889,8 @@ class Grid {
         // // Buffer
         // ac::ndbuffer<AcReal, ac::mr::host_allocator> hbuf{mm, NAN};
         // for (size_t k{rr[2]}; k < rr[2] + nn[2]; ++k) {
-        //     const Shape slice{nn[0], nn[1], 1};
-        //     const Index offset{rr[0], rr[1], k};
+        //     const ac::Shape slice{nn[0], nn[1], 1};
+        //     const ac::Index offset{rr[0], rr[1], k};
 
         //     ac::fill(static_cast<AcReal>(k + acr::get_global_nn_offset(local_info)[2]),
         //              slice,
@@ -918,8 +918,8 @@ class Grid {
         // // Setup buffers
         // ac::ndbuffer<AcReal, ac::mr::host_allocator> hux{mm, NAN}, huy{mm};
         // for (size_t k{rr[2]}; k < rr[2] + nn[2]; ++k) {
-        //     const Shape slice{nn[0], nn[1], 1};
-        //     const Index offset{rr[0], rr[1], k};
+        //     const ac::Shape slice{nn[0], nn[1], 1};
+        //     const ac::Index offset{rr[0], rr[1], k};
 
         //     ac::fill(static_cast<AcReal>(k + acr::get_global_nn_offset(local_info)[2]),
         //              slice,
@@ -979,7 +979,7 @@ class Grid {
     //                                   acr::get_global_nn_offset(local_info),
     //                                   acr::get_local_nn(local_info),
     //                                   acr::get_local_nn(local_info),
-    //                                   Index(acr::get_local_rr().size(),
+    //                                   ac::Index(acr::get_local_rr().size(),
     //                                   static_cast<uint64_t>(0)), buf.data(), path);
     //     }
     // }
@@ -1043,7 +1043,7 @@ class Grid {
     //     write_snapshots_from_device_to_disk(cart_comm, "candidate");
 
     //     // Setup CPU mesh info
-    //     const Shape global_nn{acr::get_global_nn(local_info)};
+    //     const ac::Shape global_nn{acr::get_global_nn(local_info)};
     //     AcMeshInfo host_info{local_info};
     //     acr::set(AC_nx, as<int>(global_nn[0]), host_info);
     //     acr::set(AC_ny, as<int>(global_nn[1]), host_info);
@@ -1067,10 +1067,10 @@ class Grid {
     //             ac::mpi::read_collective(leader,
     //                                      ac::mpi::get_dtype<AcReal>(),
     //                                      acr::get_global_nn(host_info),
-    //                                      Index(global_nn.size, 0),
-    //                                      const Shape& in_mesh_dims,
-    //                                      const Shape& in_mesh_subdims,
-    //                                      const Index& in_mesh_offset,
+    //                                      ac::Index(global_nn.size, 0),
+    //                                      const ac::Shape& in_mesh_dims,
+    //                                      const ac::Shape& in_mesh_subdims,
+    //                                      const ac::Index& in_mesh_offset,
     //                                      const std::string& path,
     //                                      void* data);
     //         }
@@ -1098,7 +1098,7 @@ class Grid {
         const auto global_mm{global_nn + static_cast<uint64_t>(2) * rr};
         const auto local_mm{acr::get_local_mm(local_info)};
         const auto local_nn{acr::get_local_nn(local_info)};
-        const Index zeros{global_nn.size(), static_cast<uint64_t>(0)};
+        const ac::Index zeros{global_nn.size(), static_cast<uint64_t>(0)};
 
         const auto stride{prod(global_mm)};
         const auto count{static_cast<uint64_t>(NUM_FIELDS) * stride};
@@ -1168,7 +1168,7 @@ class Grid {
 
         // Allocate and initialize host buffers
         const auto global_nn{acr::get_global_nn(local_info)};
-        const Index zeros{make_index(global_nn.size(), 0)};
+        const ac::Index zeros{ac::make_index(global_nn.size(), 0)};
         const auto local_mm{acr::get_local_mm(local_info)};
         const auto local_nn{acr::get_local_nn(local_info)};
         const auto rr{acr::get_local_rr()};
@@ -1354,7 +1354,7 @@ class Grid {
         ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
 
         // 2) Create communicator that encompasses neighbors in the xy direction
-        const Index coords{ac::mpi::get_coords(cart_comm)};
+        const ac::Index coords{ac::mpi::get_coords(cart_comm)};
         // Key used to order the ranks in the new communicator: let MPI_Comm_split
         // decide (should the same ordering as in the parent communicator by default)
         const int color{as<int>(coords[2])};

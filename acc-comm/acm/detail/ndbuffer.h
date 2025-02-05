@@ -43,16 +43,16 @@ ndbuffer_print(const char* label, const size_t ndims, const uint64_t* dims, cons
 namespace ac {
 template <typename T, typename Allocator> struct ndbuffer {
   private:
-    Shape                    m_shape;
+    ac::Shape                m_shape;
     ac::buffer<T, Allocator> m_buffer;
 
   public:
-    explicit ndbuffer(const Shape& shape)
+    explicit ndbuffer(const ac::Shape& shape)
         : m_shape{shape}, m_buffer{prod(shape)}
     {
     }
 
-    explicit ndbuffer(const Shape& shape, const T& fill_value)
+    explicit ndbuffer(const ac::Shape& shape, const T& fill_value)
         : m_shape{shape}, m_buffer{prod(shape), fill_value}
     {
     }
@@ -71,9 +71,9 @@ template <typename T, typename Allocator> struct ndbuffer {
     const ac::mr::pointer<T, Allocator> get() const { return m_buffer.get(); }
     ac::mr::pointer<T, Allocator>       get() { return m_buffer.get(); }
 
-    Shape shape() const { return m_shape; }
+    ac::Shape shape() const { return m_shape; }
 
-    void reshape(const Shape& shape)
+    void reshape(const ac::Shape& shape)
     {
         ERRCHK(prod(shape) == m_buffer.size());
         ERRCHK(prod(shape) == prod(m_shape));
@@ -133,7 +133,7 @@ ndbuffer_fill(const T& value, const size_t ndims, const uint64_t* dims, const ui
 namespace ac {
 template <typename T>
 void
-fill(const T& fill_value, const Shape& subdims, const Shape& offset,
+fill(const T& fill_value, const ac::Shape& subdims, const ac::Shape& offset,
      ac::ndbuffer<T, ac::mr::host_allocator>& ndbuf)
 {
     ERRCHK(offset + subdims <= ndbuf.shape());

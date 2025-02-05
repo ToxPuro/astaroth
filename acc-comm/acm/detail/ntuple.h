@@ -935,6 +935,7 @@ within_box(const ac::static_ntuple<T, N>& coords, const ac::static_ntuple<T, N>&
 
 // Derived datatypes
 // NOTE: temporarily outside namespace
+namespace ac {
 using Index     = ac::ntuple<uint64_t>;
 using Shape     = ac::ntuple<uint64_t>;
 using Direction = ac::ntuple<int64_t>;
@@ -942,7 +943,6 @@ using Direction = ac::ntuple<int64_t>;
 Index     make_index(const size_t count, const uint64_t& fill_value);
 Shape     make_shape(const size_t count, const uint64_t& fill_value);
 Direction make_direction(const size_t count, const int64_t& fill_value);
-namespace ac {
 } // namespace ac
 
 // Testing functions

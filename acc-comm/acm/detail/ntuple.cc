@@ -3,6 +3,8 @@
 #include "errchk.h"
 #include "type_conversion.h"
 
+namespace ac {
+
 Index
 make_index(const size_t count, const uint64_t& fill_value)
 {
@@ -20,6 +22,8 @@ make_direction(const size_t count, const int64_t& fill_value)
 {
     return ac::make_ntuple(count, fill_value);
 }
+
+} // namespace ac
 
 static void
 test_fn(const ac::ntuple<uint64_t>& arr)

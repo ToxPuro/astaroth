@@ -34,7 +34,7 @@ transform(const ac::ntuple<uint64_t> dims, const ac::ntuple<uint64_t> subdims,
 
 template <typename T>
 void
-transform(const Shape dims, const Shape subdims, const Index offset,
+transform(const ac::Shape dims, const ac::Shape subdims, const ac::Index offset,
           const ac::mr::host_pointer<T> in, ac::mr::host_pointer<T> out)
 {
     for (uint64_t out_idx{0}; out_idx < prod(subdims); ++out_idx) {
@@ -53,7 +53,7 @@ transform(const Shape dims, const Shape subdims, const Index offset,
 }
 
 #if defined(ACM_DEVICE_ENABLED)
-void transform(const Shape in_dims, const Shape in_subdims, const Index in_offset,
+void transform(const ac::Shape in_dims, const ac::Shape in_subdims, const ac::Index in_offset,
                const DevicePointer in, DevicePointer out);
 #endif
 

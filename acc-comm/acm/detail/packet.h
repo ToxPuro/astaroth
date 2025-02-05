@@ -16,9 +16,9 @@
 template <typename T, typename Allocator> class Packet {
 
   private:
-    Shape m_local_mm;
-    Shape m_local_nn;
-    Index m_local_rr;
+    ac::Shape m_local_mm;
+    ac::Shape m_local_nn;
+    ac::Index m_local_rr;
 
     ac::Segment m_segment;
 
@@ -32,7 +32,7 @@ template <typename T, typename Allocator> class Packet {
     bool m_in_progress = false;
 
   public:
-    Packet(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
+    Packet(const ac::Shape& local_mm, const ac::Shape& local_nn, const ac::Index& local_rr,
            const ac::Segment& segment, const size_t n_aggregate_buffers)
         : m_local_mm{local_mm},
           m_local_nn{local_nn},
@@ -70,7 +70,8 @@ template <typename T, typename Allocator> class Packet {
         ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &m_comm));
 
         // Find the direction and neighbors of the segment
-        Index send_offset{((m_local_nn + m_segment.offset - m_local_rr) % m_local_nn) + m_local_rr};
+        ac::Index send_offset{((m_local_nn + m_segment.offset - m_local_rr) % m_local_nn) +
+                              m_local_rr};
 
         auto      recv_direction{ac::mpi::get_direction(m_segment.offset, m_local_nn, m_local_rr)};
         const int recv_neighbor{ac::mpi::get_neighbor(m_comm, recv_direction)};

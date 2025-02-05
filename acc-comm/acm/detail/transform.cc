@@ -20,14 +20,14 @@ test_transform()
     {
         using DeviceNdBuffer = ac::ndbuffer<UserDatatype, ac::mr::device_allocator>;
         using HostNdBuffer   = ac::ndbuffer<UserDatatype, ac::mr::host_allocator>;
-        const Shape    mm{8, 8};
-        const Shape    nn{6, 6};
-        const Index    rr{1, 1};
-        HostNdBuffer   hin{mm};
-        HostNdBuffer   houtref{nn};
-        HostNdBuffer   hout{nn};
-        DeviceNdBuffer din{mm};
-        DeviceNdBuffer dout{nn};
+        const ac::Shape mm{8, 8};
+        const ac::Shape nn{6, 6};
+        const ac::Index rr{1, 1};
+        HostNdBuffer    hin{mm};
+        HostNdBuffer    houtref{nn};
+        HostNdBuffer    hout{nn};
+        DeviceNdBuffer  din{mm};
+        DeviceNdBuffer  dout{nn};
 
         std::iota(hin.begin(), hin.end(), 1);
         ac::transform(mm, nn, rr, hin.get(), houtref.get());

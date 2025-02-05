@@ -29,15 +29,15 @@ void set(const AcInt3Param& param, const int3& value, AcMeshInfo& info);
 void set(const AcRealParam& param, const AcReal value, AcMeshInfo& info);
 void set(const AcReal3Param& param, const AcReal3& value, AcMeshInfo& info);
 
-Shape get_global_nn(const AcMeshInfo& info);
-Shape get_local_nn(const AcMeshInfo& info);
-Shape get_local_mm(const AcMeshInfo& info);
+ac::Shape get_global_nn(const AcMeshInfo& info);
+ac::Shape get_local_nn(const AcMeshInfo& info);
+ac::Shape get_local_mm(const AcMeshInfo& info);
 
 Dims get_global_ss(const AcMeshInfo& info);
 
-Index get_global_nn_offset(const AcMeshInfo& info);
-Index get_local_nn_offset();
-Index get_local_rr();
+ac::Index get_global_nn_offset(const AcMeshInfo& info);
+ac::Index get_local_nn_offset();
+ac::Index get_local_rr();
 
 } // namespace acr
 

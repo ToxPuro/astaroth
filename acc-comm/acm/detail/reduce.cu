@@ -21,9 +21,9 @@
 void
 test_reduce()
 {
-    const size_t num_segments{5};
-    const Shape  mm{8, 8, num_segments};
-    const size_t stride{prod(slice(mm, 0, mm.size() - 1))};
+    const size_t    num_segments{5};
+    const ac::Shape mm{8, 8, num_segments};
+    const size_t    stride{prod(slice(mm, 0, mm.size() - 1))};
 
     std::vector<size_t> offsets;
     for (size_t i{0}; i <= num_segments; ++i)
