@@ -526,7 +526,7 @@ enum class SegmentGroup {
     Full,
 };
 
-static std::vector<ac::segment>
+static std::vector<ac::Segment>
 partition(const Shape& local_mm, const Shape& local_nn, const Shape& local_rr,
           const SegmentGroup& group)
 {
@@ -539,7 +539,7 @@ partition(const Shape& local_mm, const Shape& local_nn, const Shape& local_rr,
 
         auto segments{partition(mm, nn, rr)};
         auto it{
-            std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::segment& segment) {
+            std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::Segment& segment) {
                 return within_box(segment.offset, nn, rr);
             })};
         segments.erase(it, segments.end());
@@ -552,7 +552,7 @@ partition(const Shape& local_mm, const Shape& local_nn, const Shape& local_rr,
 
         auto segments{partition(mm, nn, rr)};
         auto it{
-            std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::segment& segment) {
+            std::remove_if(segments.begin(), segments.end(), [nn, rr](const ac::Segment& segment) {
                 return within_box(segment.offset, nn, rr);
             })};
         segments.erase(it, segments.end());
@@ -564,27 +564,27 @@ partition(const Shape& local_mm, const Shape& local_nn, const Shape& local_rr,
         return segments;
     }
     case SegmentGroup::ComputeInner: {
-        return std::vector<ac::segment>{ac::segment{local_nn - 2 * local_rr, 2 * local_rr}};
+        return std::vector<ac::Segment>{ac::Segment{local_nn - 2 * local_rr, 2 * local_rr}};
     }
     case SegmentGroup::ComputeFull: {
-        return std::vector<ac::segment>{ac::segment{local_nn, local_rr}};
+        return std::vector<ac::Segment>{ac::Segment{local_nn, local_rr}};
     }
     case SegmentGroup::Full: {
-        return std::vector<ac::segment>{ac::segment{local_mm}};
+        return std::vector<ac::Segment>{ac::Segment{local_mm}};
     }
     default:
         ERRCHK(false);
-        return std::vector<ac::segment>{};
+        return std::vector<ac::Segment>{};
     }
 }
 
-static std::vector<ac::segment>
+static std::vector<ac::Segment>
 partition(const AcMeshInfo& info, const SegmentGroup& group)
 {
     return partition(acr::get_local_mm(info), acr::get_local_nn(info), acr::get_local_rr(), group);
 }
 
-static std::vector<ac::segment>
+static std::vector<ac::Segment>
 partition(const Device& device, const SegmentGroup& group)
 {
     AcMeshInfo info{};
@@ -611,7 +611,7 @@ test_experimental_partition()
  */
 static void
 compute(const Device& device, const std::vector<Kernel>& compute_kernels,
-        const std::vector<ac::segment>& segments)
+        const std::vector<ac::Segment>& segments)
 {
     ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
     for (const auto& segment : segments) {
