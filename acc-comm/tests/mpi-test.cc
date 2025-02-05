@@ -152,7 +152,7 @@ test_scatter_gather_advanced(const MPI_Comm& cart_comm, const Shape& global_nn)
     auto segments{partition(global_mm, global_nn, rr)};
     auto it{std::remove_if(segments.begin(),
                            segments.end(),
-                           [global_nn, rr](const ac::segment& segment) {
+                           [global_nn, rr](const ac::Segment& segment) {
                                return within_box(segment.offset, global_nn, rr);
                            })};
     segments.erase(it, segments.end());

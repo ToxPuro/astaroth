@@ -39,7 +39,7 @@ launch_halo_exchange(const MPI_Comm& parent_comm, const Shape& local_mm, const S
     std::vector<MPI_Request> send_reqs;
     std::vector<MPI_Request> recv_reqs;
     int16_t                  tag{0};
-    for (const ac::segment& segment : segments) {
+    for (const ac::Segment& segment : segments) {
         const Index  recv_offset{segment.offset};
         const Index  send_offset{((local_nn + recv_offset - rr) % local_nn) + rr};
         MPI_Datatype recv_subarray{

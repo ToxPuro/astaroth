@@ -28,7 +28,7 @@ template <typename T, typename Allocator = ac::mr::device_allocator> class Async
         // Prune the segment containing the computational domain
         auto it{std::remove_if(segments.begin(),
                                segments.end(),
-                               [local_nn, local_rr](const ac::segment& segment) {
+                               [local_nn, local_rr](const ac::Segment& segment) {
                                    return within_box(segment.offset, local_nn, local_rr);
                                })};
         segments.erase(it, segments.end());

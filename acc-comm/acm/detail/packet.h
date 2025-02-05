@@ -20,7 +20,7 @@ template <typename T, typename Allocator> class Packet {
     Shape m_local_nn;
     Index m_local_rr;
 
-    ac::segment m_segment;
+    ac::Segment m_segment;
 
     ac::buffer<T, Allocator> m_send_buffer;
     ac::buffer<T, Allocator> m_recv_buffer;
@@ -33,7 +33,7 @@ template <typename T, typename Allocator> class Packet {
 
   public:
     Packet(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
-           const ac::segment& segment, const size_t n_aggregate_buffers)
+           const ac::Segment& segment, const size_t n_aggregate_buffers)
         : m_local_mm{local_mm},
           m_local_nn{local_nn},
           m_local_rr{local_rr},

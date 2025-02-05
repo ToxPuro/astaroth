@@ -4,8 +4,8 @@
 
 static void
 partition_recursive(const Shape& mm, const Shape& nn, const Index& nn_offset,
-                    const ac::segment& current_segment, const size_t axis,
-                    std::vector<ac::segment>& segments)
+                    const ac::Segment& current_segment, const size_t axis,
+                    std::vector<ac::Segment>& segments)
 {
     if (prod(current_segment.dims) == 0) { // Empty segment
         return;
@@ -22,21 +22,21 @@ partition_recursive(const Shape& mm, const Shape& nn, const Index& nn_offset,
         const size_t x3{current_segment.offset[axis] + current_segment.dims[axis]};
 
         { // Left
-            ac::segment new_segment{current_segment};
+            ac::Segment new_segment{current_segment};
             new_segment.offset[axis] = x0;
             new_segment.dims[axis]   = x1 - x0;
             partition_recursive(mm, nn, nn_offset, new_segment, axis + 1, segments);
         }
 
         { // Center
-            ac::segment new_segment{current_segment};
+            ac::Segment new_segment{current_segment};
             new_segment.offset[axis] = x1;
             new_segment.dims[axis]   = x2 - x1;
             partition_recursive(mm, nn, nn_offset, new_segment, axis + 1, segments);
         }
 
         { // Right
-            ac::segment new_segment{current_segment};
+            ac::Segment new_segment{current_segment};
             new_segment.offset[axis] = x2;
             new_segment.dims[axis]   = x3 - x2;
             partition_recursive(mm, nn, nn_offset, new_segment, axis + 1, segments);
@@ -44,11 +44,11 @@ partition_recursive(const Shape& mm, const Shape& nn, const Index& nn_offset,
     }
 }
 
-std::vector<ac::segment>
+std::vector<ac::Segment>
 partition(const Shape& mm, const Shape& nn, const Index& nn_offset)
 {
-    std::vector<ac::segment> segments;
-    ac::segment              initial_segment{mm};
+    std::vector<ac::Segment> segments;
+    ac::Segment              initial_segment{mm};
     partition_recursive(mm, nn, nn_offset, initial_segment, 0, segments);
     return segments;
 }

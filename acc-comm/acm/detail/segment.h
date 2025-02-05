@@ -1,24 +1,24 @@
 #pragma once
 #include <iostream>
 
-#include "datatypes.h"
+#include "ntuple.h"
 
 namespace ac {
-struct segment {
+struct Segment {
     Shape dims;   // Dimensions of the segment
     Index offset; // Offset of the segment
 
     // Constructors
-    explicit segment(const Shape& in_dims)
+    explicit Segment(const Shape& in_dims)
         : dims{in_dims}, offset{ac::make_ntuple<uint64_t>(in_dims.size(), 0)}
     {
     }
-    segment(const Shape& in_dims, const Index& in_offset)
+    Segment(const Shape& in_dims, const Index& in_offset)
         : dims{in_dims}, offset{in_offset}
     {
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const segment& obj)
+    friend std::ostream& operator<<(std::ostream& os, const Segment& obj)
     {
         os << "{";
         os << "dims: " << obj.dims << ", ";
