@@ -10,7 +10,7 @@ struct Segment {
 
     // Constructors
     explicit Segment(const Shape& in_dims)
-        : dims{in_dims}, offset{ac::make_ntuple<uint64_t>(in_dims.size(), 0)}
+        : dims{in_dims}, offset{make_index(in_dims.size(), 0)}
     {
     }
     Segment(const Shape& in_dims, const Index& in_offset)
