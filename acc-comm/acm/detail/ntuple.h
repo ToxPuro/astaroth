@@ -17,18 +17,18 @@ template <typename T> class ntuple {
     std::vector<T> m_resource;
 
   public:
-    ntuple(const std::initializer_list<T>& init_list)
+    explicit ntuple(const std::initializer_list<T>& init_list)
         : m_resource{init_list}
     {
     }
 
-    ntuple(const std::vector<T>& vec)
+    explicit ntuple(const std::vector<T>& vec)
         : m_resource{vec}
     {
     }
 
     template <size_t N>
-    ntuple(const ac::static_ntuple<T, N>& in)
+    explicit ntuple(const ac::static_ntuple<T, N>& in)
         : m_resource(in.begin(), in.end())
     {
     }
@@ -467,14 +467,14 @@ template <typename T, size_t N> class static_ntuple {
     T      m_resource[N];
 
   public:
-    __host__ __device__ static_ntuple(const std::initializer_list<T>& init_list)
+    __host__ __device__ explicit static_ntuple(const std::initializer_list<T>& init_list)
         : m_count{init_list.size()}
     {
         ERRCHK(init_list.size() <= N);
         std::copy(init_list.begin(), init_list.end(), m_resource);
     }
 
-    __host__ __device__ static_ntuple(const ac::ntuple<T>& in)
+    __host__ __device__ explicit static_ntuple(const ac::ntuple<T>& in)
         : m_count{in.size()}
     {
         ERRCHK(in.size() <= N);
