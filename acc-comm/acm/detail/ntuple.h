@@ -933,8 +933,7 @@ within_box(const ac::static_ntuple<T, N>& coords, const ac::static_ntuple<T, N>&
 
 } // namespace ac
 
-// Derived datatypes
-// NOTE: temporarily outside namespace
+// Type aliases
 namespace ac {
 using Index     = ac::ntuple<uint64_t>;
 using Shape     = ac::ntuple<uint64_t>;
