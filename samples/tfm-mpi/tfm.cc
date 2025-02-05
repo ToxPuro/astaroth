@@ -475,6 +475,201 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
     return 0;
 }
 
+static MPI_Op
+get_mpi_op(const ReductionType& rtype)
+{
+    switch (rtype) {
+    case RTYPE_MAX:
+        return MPI_MAX;
+    case RTYPE_MIN:
+        return MPI_MIN;
+    case RTYPE_SUM: /* Fallthrough */
+    case RTYPE_RMS:
+        return MPI_SUM;
+    default:
+        return MPI_OP_NULL;
+    }
+}
+
+static AcReal
+reduce_vec(const MPI_Comm& parent_comm, const Device& device, const ReductionType& rtype,
+           const Field& a, const Field& b, const Field& c)
+{
+    MPI_Comm comm{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+    ERRCHK_MPI(comm != MPI_COMM_NULL);
+
+    AcReal result{-1};
+    ERRCHK_AC(acDeviceReduceVecNotAveraged(device, STREAM_DEFAULT, rtype, a, b, c, &result));
+
+    const int root{0};
+    const MPI_Op op{get_mpi_op(rtype)};
+    ERRCHK_MPI_API(MPI_Reduce(MPI_IN_PLACE, &result, 1, AC_REAL_MPI_TYPE, op, root, comm));
+
+    ERRCHK_MPI_API(MPI_Comm_free(&comm));
+    return result;
+}
+
+static AcReal
+reduce_scal(const MPI_Comm& parent_comm, const Device& device, const ReductionType& rtype,
+            const Field& field)
+{
+    MPI_Comm comm{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+    ERRCHK_MPI(comm != MPI_COMM_NULL);
+
+    AcReal result{-1};
+    ERRCHK_AC(acDeviceReduceScalNotAveraged(device, STREAM_DEFAULT, rtype, field, &result));
+
+    const int root{0};
+    const MPI_Op op{get_mpi_op(rtype)};
+    ERRCHK_MPI_API(MPI_Reduce(MPI_IN_PLACE, &result, 1, AC_REAL_MPI_TYPE, op, root, comm));
+
+    ERRCHK_MPI_API(MPI_Comm_free(&comm));
+    return result;
+}
+
+#include "acm/detail/print_debug.h"
+
+// Format std::printf("label, step, t_step, dt, min, rms, max\n");
+static int
+write_vec_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_t step,
+                      const AcReal simulation_time, const AcReal dt, const Field& a, const Field& b,
+                      const Field& c, const std::string& label)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+    const auto global_nn{acr::get_global_nn(info)};
+    const auto count{prod(global_nn)};
+    const AcReal inv_count{static_cast<AcReal>(1) / static_cast<AcReal>(prod(global_nn))};
+
+    const AcReal vmax{reduce_vec(parent_comm, device, RTYPE_MAX, a, b, c)};
+    const AcReal vmin{reduce_vec(parent_comm, device, RTYPE_MIN, a, b, c)};
+    const AcReal vsqsum{reduce_vec(parent_comm, device, RTYPE_RMS, a, b, c)};
+    const AcReal vrms{std::sqrt(inv_count * vsqsum)};
+
+    const auto rank{ac::mpi::get_rank(parent_comm)};
+    if (rank == 0) {
+        std::printf("%-6s %5zu, %.3g, %.3g, %.3g, %.3g, %.3g\n",
+                    label.c_str(),
+                    step,
+                    static_cast<double>(simulation_time),
+                    static_cast<double>(dt),
+                    static_cast<double>(vmin),
+                    static_cast<double>(vrms),
+                    static_cast<double>(vmax));
+
+        FILE* fp{fopen("timeseries.csv", "a")};
+        ERRCHK_MPI(fp != NULL);
+        std::fprintf(fp,
+                     "%s,%zu,%e,%e,%e,%e,%e\n",
+                     label.c_str(),
+                     step,
+                     static_cast<double>(simulation_time),
+                     static_cast<double>(dt),
+                     static_cast<double>(vmin),
+                     static_cast<double>(vrms),
+                     static_cast<double>(vmax));
+        ERRCHK_MPI(fclose(fp) == 0);
+    }
+
+    return 0;
+}
+
+// Format std::printf("label, step, t_step, dt, min, rms, max\n");
+static int
+write_scal_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_t step,
+                       const AcReal simulation_time, const AcReal dt, const Field& field)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+    const auto global_nn{acr::get_global_nn(info)};
+    const AcReal inv_count{static_cast<AcReal>(1) / static_cast<AcReal>(prod(global_nn))};
+
+    const AcReal vmax{reduce_scal(parent_comm, device, RTYPE_MAX, field)};
+    const AcReal vmin{reduce_scal(parent_comm, device, RTYPE_MIN, field)};
+    const AcReal vsqsum{reduce_scal(parent_comm, device, RTYPE_RMS, field)};
+    const AcReal vrms{std::sqrt(inv_count * vsqsum)};
+
+    const auto rank{ac::mpi::get_rank(parent_comm)};
+    if (rank == 0) {
+        std::printf("%-6s %5zu, %.3g, %.3g, %.3g, %.3g, %.3g\n",
+                    field_names[field],
+                    step,
+                    static_cast<double>(simulation_time),
+                    static_cast<double>(dt),
+                    static_cast<double>(vmin),
+                    static_cast<double>(vrms),
+                    static_cast<double>(vmax));
+
+        FILE* fp{fopen("timeseries.csv", "a")};
+        ERRCHK_MPI(fp != NULL);
+        std::fprintf(fp,
+                     "%s,%zu,%e,%e,%e,%e,%e\n",
+                     field_names[field],
+                     step,
+                     static_cast<double>(simulation_time),
+                     static_cast<double>(dt),
+                     static_cast<double>(vmin),
+                     static_cast<double>(vrms),
+                     static_cast<double>(vmax));
+        ERRCHK_MPI(fclose(fp) == 0);
+    }
+
+    return 0;
+}
+
+static int
+write_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_t step,
+                  const AcReal simulation_time, const AcReal dt)
+{
+    PRINT_LOG_DEBUG("Enter");
+
+    std::printf("label,step,t_step,dt,min,rms,max\n");
+
+    std::vector<std::vector<Field>> vecfields{
+        {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ},
+        {TF_a11_x, TF_a11_y, TF_a11_z},
+        {TF_a12_x, TF_a12_y, TF_a12_z},
+        {TF_a21_x, TF_a21_y, TF_a21_z},
+        {TF_a22_x, TF_a22_y, TF_a22_z},
+        {TF_uxb11_x, TF_uxb11_y, TF_uxb11_z},
+        {TF_uxb12_x, TF_uxb12_y, TF_uxb12_z},
+        {TF_uxb21_x, TF_uxb21_y, TF_uxb21_z},
+        {TF_uxb22_x, TF_uxb22_y, TF_uxb22_z},
+    };
+    std::vector<std::string> vecfield_names{"uu",
+                                            "TF_a11",
+                                            "TF_a12",
+                                            "TF_a21",
+                                            "TF_a22",
+                                            "TF_uxb11",
+                                            "TF_uxb12",
+                                            "TF_uxb21",
+                                            "TF_uxb22"};
+    ERRCHK(vecfields.size() == vecfield_names.size());
+    for (size_t i{0}; i < vecfields.size(); ++i)
+        write_vec_diagnostics(parent_comm,
+                              device,
+                              step,
+                              simulation_time,
+                              dt,
+                              vecfields[i][0],
+                              vecfields[i][1],
+                              vecfields[i][2],
+                              vecfield_names[i]);
+
+    for (size_t i{0}; i < NUM_FIELDS; ++i)
+        write_scal_diagnostics(parent_comm,
+                               device,
+                               step,
+                               simulation_time,
+                               dt,
+                               static_cast<Field>(i));
+
+    return 0;
+}
+
 /** Calculate the timestep length and distribute it to all devices in the grid */
 static AcReal
 calc_and_distribute_timestep(const MPI_Comm& parent_comm, const Device& device)
@@ -1386,13 +1581,22 @@ class Grid {
     }
 #endif
 
-    void tfm_pipeline(const size_t niters)
+    void tfm_pipeline(const size_t nsteps)
     {
         PRINT_LOG_INFO("Launching TFM pipeline");
 // Write the initial step
 #if defined(AC_ENABLE_IO)
         write_diagnostic_step(cart_comm, device, 0);
 #endif
+
+        // Clear the time series
+        FILE* fp{fopen("timeseries.csv", "w")};
+        ERRCHK_MPI(fp != NULL);
+        std::fprintf(fp, "label, step, t_step, dt, min, rms, max\n");
+        ERRCHK_MPI(fclose(fp) == 0);
+
+        // Write time series
+        write_diagnostics(cart_comm, device, 0, 0, 0);
 
         // Ensure halos are up-to-date before starting integration
         hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
@@ -1415,7 +1619,7 @@ class Grid {
                          get_field_paths(get_field_handles(FieldGroup::Bfield)));
 #endif
 
-        for (uint64_t iter{1}; iter < niters; ++iter) {
+        for (uint64_t step{1}; step < nsteps; ++step) {
             PRINT_LOG_INFO("New integration step");
 
             // Current time
@@ -1431,7 +1635,7 @@ class Grid {
             // Load the updated mesh info
             ERRCHK_AC(acLoadMeshInfo(local_info, STREAM_DEFAULT));
 
-            for (int step{0}; step < 3; ++step) {
+            for (int substep{0}; substep < 3; ++substep) {
                 PRINT_LOG_DEBUG("Integration substep");
 
                 // Outer segments
@@ -1443,8 +1647,8 @@ class Grid {
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
                 // TODO note: end index is not properly used, exits early
-                // compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::compute_full);
-                compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::compute_outer);
+                // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
+                compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
                 hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::output));
 
 // TFM dependencies: hydro, tfm, profiles
@@ -1457,14 +1661,14 @@ class Grid {
 
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
-                // compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::compute_full);
-                compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::compute_outer);
+                // compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
+                compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
                 tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::output));
 
                 // Inner segments
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
-                compute(device, hydro_kernels[as<size_t>(step)], SegmentGroup::compute_inner);
-                compute(device, tfm_kernels[as<size_t>(step)], SegmentGroup::compute_inner);
+                compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_inner);
+                compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_inner);
                 ERRCHK_AC(acDeviceSwapBuffers(device));
 
 // Profile dependencies: local tfm (uxb)
@@ -1489,16 +1693,19 @@ class Grid {
                              get_field_paths(get_field_handles(FieldGroup::Bfield)));
 #endif
 
+            // Write time series
+            write_diagnostics(cart_comm, device, step, current_time, dt);
+
 // Write mesh and profiles
 // TODO: this is synchronous. Consider async.
 #if defined(AC_ENABLE_IO)
             // Note: ghost zones not up-to-date with this (working as intended)
-            if ((iter %
+            if ((step %
                  as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0)
-                write_snapshots_to_disk(cart_comm, device, iter);
-            if ((iter %
+                write_snapshots_to_disk(cart_comm, device, step);
+            if ((step %
                  as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
-                write_profiles_to_disk(cart_comm, device, iter);
+                write_profiles_to_disk(cart_comm, device, step);
 #endif
         }
         hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
