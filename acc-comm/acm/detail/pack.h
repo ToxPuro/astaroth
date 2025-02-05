@@ -3,6 +3,7 @@
 #include "buffer.h"
 
 #include "math_utils.h"
+#include "ntuple.h"
 
 template <typename T>
 void

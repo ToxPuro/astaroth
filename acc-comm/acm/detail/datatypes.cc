@@ -5,26 +5,8 @@
 
 #include "ntuple.h"
 
-Index
-make_index(const size_t count, const uint64_t& fill_value)
-{
-    return ac::make_ntuple(count, fill_value);
-}
-
-Shape
-make_shape(const size_t count, const uint64_t& fill_value)
-{
-    return ac::make_ntuple(count, fill_value);
-}
-
-Direction
-make_direction(const size_t count, const int64_t& fill_value)
-{
-    return ac::make_ntuple(count, fill_value);
-}
-
 Dims
-make_direction(const size_t count, const UserDatatype& fill_value)
+make_dims(const size_t count, const UserDatatype& fill_value)
 {
     return ac::make_ntuple(count, fill_value);
 }
