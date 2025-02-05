@@ -474,6 +474,13 @@ template <typename T, size_t N> class static_ntuple {
         std::copy(init_list.begin(), init_list.end(), m_resource);
     }
 
+    __host__ __device__ explicit static_ntuple(const std::vector<T>& vec)
+        : m_count{vec.size()}
+    {
+        ERRCHK(vec.size() <= N);
+        std::copy(vec.begin(), vec.end(), m_resource);
+    }
+
     __host__ __device__ explicit static_ntuple(const ac::ntuple<T>& in)
         : m_count{in.size()}
     {
