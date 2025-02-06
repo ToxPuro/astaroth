@@ -338,6 +338,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
           assert(out);
 	  fprintf(out,"#define AC_LAGRANGIAN_GRID (%d)\n",AC_LAGRANGIAN_GRID);
 	  fprintf(out,"#define TWO_D (%d)\n",TWO_D);
+	  fprintf(out,"#define AC_DOUBLE_PRECISION (%d)\n",AC_DOUBLE_PRECISION);
        	  process_includes(1, dir, ACC_BUILTIN_TYPEDEFS, out,log);
 	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION && READ_OVERRIDES)
        	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out,log);

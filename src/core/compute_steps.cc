@@ -1000,8 +1000,10 @@ gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
 			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcRealOutputParam)e.variable));	
 		if(e.type == AC_INT_TYPE)
 			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcIntOutputParam)e.variable));	
+#if AC_DOUBLE_PRECISION
 		if(e.type == AC_FLOAT_TYPE)
 			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcFloatOutputParam)e.variable));	
+#endif
 	}
 	if(!ac_pid()) fprintf(stream,"}");
 
@@ -1014,8 +1016,10 @@ gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
 			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcRealOutputParam)e.variable));	
 		if(e.type == AC_INT_TYPE)
 			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcIntOutputParam)e.variable));	
+#if AC_DOUBLE_PRECISION
 		if(e.type == AC_FLOAT_TYPE)
 			if(!ac_pid()) fprintf(stream, "%s,",get_name((AcFloatOutputParam)e.variable));	
+#endif
 	}
 	if(!ac_pid()) fprintf(stream,"}");
 

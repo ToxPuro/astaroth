@@ -212,6 +212,7 @@ gen_kernel_block_loops(const int curr_kernel)
 			if(reduced_ints[curr_kernel][i] == REDUCE_MAX)
 				printf("int %s_reduce_output = -INT_MAX;",int_output_names[i]);
 		}
+#if AC_DOUBLE_PRECISION
 		for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
 		{
 			if(reduced_floats[curr_kernel][i] == REDUCE_SUM)
@@ -221,6 +222,7 @@ gen_kernel_block_loops(const int curr_kernel)
 			if(reduced_floats[curr_kernel][i] == REDUCE_MAX)
 				printf("float %s_reduce_output = -FLT_MAX;",float_output_names[i]);
 		}
+#endif
 	#if AC_USE_HIP
         	printf("const size_t warp_id = rocprim__warpId();");
 	#else
@@ -787,10 +789,11 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 	printf("else {");
 	print_butterfly_warp_reduce(stdout, 32,op_instruction);
 	printf("}");
+	printf("}");
 
 #if AC_USE_HIP
 //TP: if we use CUDA we get compiler warnings about too large shifts since active threads is unsigned long instead of unsigned long long
-	printf("} else if constexpr (warp_size == 64) {");
+	printf("else if constexpr (warp_size == 64) {");
 	printf("if (AC_INTERNAL_all_threads_active) {");
 	print_warp_reduction(stdout,64,op_instruction,false);
 	printf("}");
@@ -896,10 +899,10 @@ gen_kernel_reduce_funcs(const int curr_kernel)
 	printf_reduce_funcs("AcReal","real","AcReal",curr_kernel,real_output_names,reduced_reals[curr_kernel],NUM_REAL_OUTPUTS);
     if(NUM_INT_OUTPUTS)
 	printf_reduce_funcs("int","int","AcInt",curr_kernel,int_output_names,reduced_ints[curr_kernel],NUM_INT_OUTPUTS);
+#if AC_DOUBLE_PRECISION
     if(NUM_FLOAT_OUTPUTS)
 	printf_reduce_funcs("float","float","AcFloat",curr_kernel,float_output_names,reduced_floats[curr_kernel],NUM_FLOAT_OUTPUTS);
-
-
+#endif
   }
 }
 static void

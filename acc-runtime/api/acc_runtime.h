@@ -229,7 +229,9 @@ typedef struct {
   {
   	AcReduceOp reals[NUM_REAL_SCRATCHPADS+1];	
   	AcReduceOp ints[NUM_INT_OUTPUTS+1];	
+#if AC_DOUBLE_PRECISION
   	AcReduceOp floats[NUM_FLOAT_OUTPUTS+1];	
+#endif
   } AcScratchpadStates;
 
   typedef struct {
@@ -505,11 +507,16 @@ FUNC_DEFINE(AcResult, acReduceReal,(const cudaStream_t stream, const AcReduceOp,
 
 FUNC_DEFINE(AcResult, acReduceInt,(const cudaStream_t stream, const AcReduceOp, AcIntScalarReduceBuffer, const size_t count));
 
+#if AC_DOUBLE_PRECISION
 FUNC_DEFINE(AcResult, acReduceFloat,(const cudaStream_t stream, const AcReduceOp, AcFloatScalarReduceBuffer, const size_t count));
+#endif
 
 FUNC_DEFINE(AcResult, acLoadRealReduceRes,(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value));
 FUNC_DEFINE(AcResult, acLoadIntReduceRes,(cudaStream_t stream, const AcIntOutputParam param, const int* value));
+
+#if AC_DOUBLE_PRECISION
 FUNC_DEFINE(AcResult, acLoadFloatReduceRes,(cudaStream_t stream, const AcFloatOutputParam param, const float* value));
+#endif
 
 
 static UNUSED AcResult
@@ -524,11 +531,13 @@ acReduce(const cudaStream_t stream, const AcReduceOp op, AcIntScalarReduceBuffer
 	return acReduceInt(stream,op,buffer,count);
 }
 
+#if AC_DOUBLE_PRECISION
 static UNUSED AcResult
 acReduce(const cudaStream_t stream, const AcReduceOp op, AcFloatScalarReduceBuffer buffer, const size_t count)
 {
 	return acReduceFloat(stream,op,buffer,count);
 }
+#endif
 
 
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
@@ -568,12 +577,14 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 	  if constexpr(NUM_INT_OUTPUTS == 0) return "NO INT OUTPUTS";
 	  else return int_output_names[param];
   }
+#if AC_DOUBLE_PRECISION
   static UNUSED const char* 
   get_name(const AcFloatOutputParam& param)
   {
 	  if constexpr(NUM_FLOAT_OUTPUTS == 0) return "NO FLOAT OUTPUTS";
 	  else return float_output_names[param];
   }
+#endif
   
   static UNUSED const char* 
   get_name(const Profile& param)

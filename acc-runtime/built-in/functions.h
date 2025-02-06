@@ -179,6 +179,7 @@ reduce_max(int val, param)
 {
 	reduce_max_int(val,param)
 }
+#if AC_DOUBLE_PRECISION
 reduce_min(float val, param)
 {
 	reduce_min_float(val,param)
@@ -191,6 +192,7 @@ reduce_max(float val, param)
 {
 	reduce_max_float(val,param)
 }
+#endif
 
 
 reduce_sum(real val, Profile<X> prof)

@@ -57,7 +57,7 @@ std::string
 to_str(const AcReal value)
 {
 	char* tmp;
-	asprintf(&tmp,"%.17g",value);
+	asprintf(&tmp,"%.17g",(double)value);
 	std::string res = tmp;
 	free(tmp);
 	return res;
@@ -67,6 +67,16 @@ std::string
 to_str(const float value)
 {
 	return to_str((AcReal)value);
+}
+#else
+std::string
+to_str(const double value)
+{
+	char* tmp;
+	asprintf(&tmp,"%.17g",value);
+	std::string res = tmp;
+	free(tmp);
+	return res;
 }
 #endif
 

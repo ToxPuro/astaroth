@@ -1110,7 +1110,7 @@ acDeviceReduceXY(const Device device, const Stream stream, const Field field,
         const Volume start    = {dims.n0.x, dims.n0.y, k};
         const Volume end      = {dims.n1.x, dims.n1.y, k + 1};
         const size_t nxy    = (end.x - start.x) * (end.y - start.y);
-        const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], reduction,
+        const AcReal result = (AcReal)(1. / nxy) * acKernelReduceScal(device->streams[stream], reduction,
                                                               field, start, end,
 							      AC_default_real_output,
                                                               device->vba);
@@ -1193,7 +1193,7 @@ acDevicePrintProfiles(const Device device)
                    cudaMemcpyDeviceToHost);
         printf("Profile %s (%zu)-----------------\n", profile_names[i], i);
         for (size_t j = 0; j < count; ++j) {
-            printf("%g (%zu), ", host_profile[j], j);
+            printf("%g (%zu), ", (double)host_profile[j], j);
         }
         printf("\n");
 	free(host_profile);

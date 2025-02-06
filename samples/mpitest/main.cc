@@ -279,7 +279,7 @@ main(int argc, char* argv[])
             error.minimum_magnitude = acHostReduceScal(model, RTYPE_MIN, v0);
 
             if (!acEvalError(reduction.name, error)) {
-                fprintf(stderr, "Scalar %s: cand %g model %g\n", reduction.name, candval, modelval);
+                fprintf(stderr, "Scalar %s: cand %g model %g\n", reduction.name, (double)candval, (double)modelval);
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }
@@ -311,7 +311,7 @@ main(int argc, char* argv[])
             error.minimum_magnitude = acHostReduceVec(model, RTYPE_MIN, v0, v1, v1);
 
             if (!acEvalError(reduction.name, error)) {
-                fprintf(stderr, "Vector %s: cand %g model %g\n", reduction.name, candval, modelval);
+                fprintf(stderr, "Vector %s: cand %g model %g\n", reduction.name, (double)candval, (double)modelval);
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }
@@ -342,7 +342,7 @@ main(int argc, char* argv[])
             error.minimum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MIN, v0, v1, v1, v3);
 
             if (!acEvalError(reduction.name, error)) {
-                fprintf(stderr, "Alfven %s: cand %g model %g\n", reduction.name, candval, modelval);
+                fprintf(stderr, "Alfven %s: cand %g model %g\n", reduction.name, (double)candval, (double)modelval);
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
             }

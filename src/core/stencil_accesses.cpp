@@ -197,7 +197,9 @@ static int reduced_profiles[NUM_PROFILES]{};
 static int written_profiles[NUM_PROFILES]{};
 static int reduced_reals[NUM_REAL_OUTPUTS+1]{};
 static int reduced_ints[NUM_INT_OUTPUTS+1]{};
+#if AC_DOUBLE_PRECISION
 static int reduced_floats[NUM_FLOAT_OUTPUTS+1]{};
+#endif
 
 AcKernel current_kernel{};
 #define reduce_sum_real_x  reduce_prof
@@ -227,12 +229,14 @@ value(const AcIntOutputParam& param)
 	return (int){};
 }
 
+#if AC_DOUBLE_PRECISION
 float
 value(const AcFloatOutputParam& param)
 {
 	reduce_inputs.push_back({(int)param,AC_FLOAT_TYPE,REDUCE_SUM,current_kernel});
 	return (float){};
 }
+#endif
 
 void
 reduce_sum_real(const AcReal, const AcRealOutputParam dst)
@@ -372,6 +376,7 @@ reduce_min_int(const int, const AcIntOutputParam dst)
 	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MIN,current_kernel});
 }
 
+#if AC_DOUBLE_PRECISION
 void
 reduce_sum_float(const float, const AcFloatOutputParam dst)
 {
@@ -440,6 +445,7 @@ reduce_min_float(const float, const AcFloatOutputParam dst)
 	reduced_floats[dst] = REDUCE_MIN;
 	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_MIN,current_kernel});
 }
+#endif
 
 
 void
@@ -702,8 +708,10 @@ reset_info_arrays()
 	    reduced_reals[i] = 0;
     for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
 	    reduced_ints[i] = 0;
+#if AC_DOUBLE_PRECISION
     for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
 	    reduced_floats[i] = 0;
+#endif
 }
 
 void
@@ -920,7 +928,9 @@ main(int argc, char* argv[])
   int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES]{};
   int  output_reduced_reals[NUM_KERNELS][NUM_REAL_OUTPUTS+1]{};
   int  output_reduced_ints[NUM_KERNELS][NUM_INT_OUTPUTS+1]{};
+#if AC_DOUBLE_PRECISION
   int  output_reduced_floats[NUM_KERNELS][NUM_FLOAT_OUTPUTS+1]{};
+#endif
   int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     fprintf(fp,"{");
@@ -951,8 +961,10 @@ main(int argc, char* argv[])
 		output_reduced_reals[k][j] = reduced_reals[j];
 	for(int j = 0; j < NUM_INT_OUTPUTS; ++j)
 		output_reduced_ints[k][j] = reduced_ints[j];
+#if AC_DOUBLE_PRECISION
 	for(int j = 0; j < NUM_FLOAT_OUTPUTS; ++j)
 		output_reduced_floats[k][j] = reduced_floats[j];
+#endif
     } 
 
     for (size_t j = 0; j < NUM_ALL_FIELDS+NUM_PROFILES; ++j)
@@ -974,7 +986,9 @@ main(int argc, char* argv[])
     fwrite(reduced_profiles,sizeof(int),NUM_PROFILES,fp_profiles_reduced);
     fwrite(reduced_reals,sizeof(int),NUM_REAL_OUTPUTS,fp_reals_reduced);
     fwrite(reduced_ints,sizeof(int),NUM_INT_OUTPUTS,fp_ints_reduced);
+#if AC_DOUBLE_PRECISION
     fwrite(reduced_floats,sizeof(int),NUM_FLOAT_OUTPUTS,fp_floats_reduced);
+#endif
   }
 
 
@@ -993,7 +1007,9 @@ main(int argc, char* argv[])
   print_info_array(fp,"read_profiles",output_read_profiles);
   print_info_array(fp,"reduced_reals",output_reduced_reals);
   print_info_array(fp,"reduced_ints",output_reduced_ints);
+#if AC_DOUBLE_PRECISION
   print_info_array(fp,"reduced_floats",output_reduced_floats);
+#endif
   fprintf(fp,"const bool has_mem_access_info __attribute__((unused)) = true;\n");
 
   fclose(fp);

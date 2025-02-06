@@ -2280,7 +2280,9 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     if constexpr(NUM_OUTPUTS == 0) return AC_SUCCESS;
     AcReal local_res_real[NUM_OUTPUTS]{};
     int    local_res_int[NUM_OUTPUTS]{};
+#if AC_DOUBLE_PRECISION
     float  local_res_float[NUM_OUTPUTS]{};
+#endif
     const auto reduce_outputs = get_reduce_outputs(graph);
     for(size_t i = 0; i < reduce_outputs.size(); ++i)
     {
@@ -2291,8 +2293,10 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
 	    	acDeviceFinishReduce(grid.device,(Stream)(int)i,&local_res_real[i],kernel,op,(AcRealOutputParam)var);
 	    else if(reduce_outputs[i].type == AC_INT_TYPE)
 	    	acDeviceFinishReduce(grid.device,(Stream)(int)i,&local_res_int[i],kernel,op,(AcIntOutputParam)var);
+#if AC_DOUBLE_PRECISION
 	    else if(reduce_outputs[i].type == AC_FLOAT_TYPE)
 	    	acDeviceFinishReduce(grid.device,(Stream)(float)i,&local_res_float[i],kernel,op,(AcFloatOutputParam)var);
+#endif
 	    else if(reduce_outputs[i].type == AC_PROF_TYPE)
 		;//acDeviceReduceAverages(grid.device, reduce_outputs[i].variable, (Profile)reduce_outputs[i].variable);
 	    else
@@ -2306,8 +2310,10 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
 			acDeviceSetOutput(grid.device,(AcRealOutputParam)reduce_outputs[i].variable,local_res_real[i]);
 		else if(reduce_outputs[i].type == AC_INT_TYPE)
 			acDeviceSetOutput(grid.device,(AcIntOutputParam)reduce_outputs[i].variable,local_res_int[i]);
+#if AC_DOUBLE_PRECISION
 		else if(reduce_outputs[i].type == AC_FLOAT_TYPE)
 			acDeviceSetOutput(grid.device,(AcFloatOutputParam)reduce_outputs[i].variable,local_res_float[i]);
+#endif
 		else if(reduce_outputs[i].type == AC_PROF_TYPE)
 			;
 		else
@@ -2518,7 +2524,7 @@ distributedScalarReduction(const AcReal local_result, const AcReduction reductio
         //          know what GPU is doing. 
 	const AcReal cell_volume = get_cell_volume(); 
 	const AcReal window_radius = acGridGetLocalMeshInfo()[AC_window_radius];
-        const AcReal sphere_volume = (4.0 / 3.0) * M_PI * window_radius*window_radius*window_radius;
+        const AcReal sphere_volume = (AcReal)(4.0 / 3.0) * (AcReal)M_PI * window_radius*window_radius*window_radius;
         // only include whole cells
         const AcReal cell_number = AcReal(int(sphere_volume / cell_volume));
 

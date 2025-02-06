@@ -1309,14 +1309,18 @@ FUNC_DEFINE(AcResult, acDeviceStoreProfile,(const Device device, const Profile p
 
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduceReal,(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output));
+#if AC_DOUBLE_PRECISION
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduceFloat,(Device device, const Stream stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output));
+#endif
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduceInt,(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output));
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduceRealStream,(Device device, const cudaStream_t stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output));
+#if AC_DOUBLE_PRECISION
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduceFloatStream,(Device device, const cudaStream_t stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output));
+#endif
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduceIntStream,(Device device, const cudaStream_t stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output));
 /** */
@@ -1720,11 +1724,13 @@ acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const Ac
 	return acDeviceFinishReduceReal(device,stream,result,kernel,reduce_op,output);
 }
 
+#if AC_DOUBLE_PRECISION
 static UNUSED AcResult
 acDeviceFinishReduce(Device device, const Stream stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output)
 {
 	return acDeviceFinishReduceFloat(device,stream,result,kernel,reduce_op,output);
 }
+#endif
 
 static UNUSED AcResult
 acDeviceFinishReduce(Device device, const cudaStream_t stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
@@ -1738,11 +1744,13 @@ acDeviceFinishReduce(Device device, const cudaStream_t stream, AcReal* result,co
 	return acDeviceFinishReduceRealStream(device,stream,result,kernel,reduce_op,output);
 }
 
+#if AC_DOUBLE_PRECISION
 static UNUSED AcResult
 acDeviceFinishReduce(Device device, const cudaStream_t stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output)
 {
 	return acDeviceFinishReduceFloatStream(device,stream,result,kernel,reduce_op,output);
 }
+#endif
 
 #if AC_MPI_ENABLED
 static UNUSED AcResult

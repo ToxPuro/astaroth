@@ -451,12 +451,14 @@ acKernelFlush(const cudaStream_t stream, int* arr, const size_t n,
 	return acKernelFlushInt(stream,arr,n,value);
 }
 
+#if AC_DOUBLE_PRECISION
 AcResult
 acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
               const float value)
 {
 	return acKernelFlushFloat(stream,arr,n,value);
 }
+#endif
 
 __device__ __constant__ AcReal* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
 static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
@@ -474,7 +476,9 @@ resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcK
 {
 	resize_reals_to_fit(n_elems,vba,kernel);
 	resize_ints_to_fit(n_elems,vba,kernel);
+#if AC_DOUBLE_PRECISION
 	resize_floats_to_fit(n_elems,vba,kernel);
+#endif
 }
 
 size_t
@@ -927,6 +931,7 @@ init_scratchpads(VertexBufferArray* vba)
     	    device_malloc((void**) &vba->reduce_buffer_int[i].res,sizeof(int));
     	}
 
+#if AC_DOUBLE_PRECISION
     	for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i) {
 	    const size_t bytes = 0;
 	    allocate_scratchpad_float(i,bytes,vba->scratchpad_states->floats[i]);
@@ -939,6 +944,7 @@ init_scratchpads(VertexBufferArray* vba)
 	    vba->reduce_buffer_float[i].buffer_size    = &d_reduce_scratchpads_size_float[i];
     	    device_malloc((void**) &vba->reduce_buffer_float[i].res,sizeof(float));
     	}
+#endif
     }
 }
 static inline AcMeshDims
@@ -1112,6 +1118,7 @@ destroy_scratchpads(VertexBufferArray* vba)
 	free(vba->reduce_buffer_int[j].cub_tmp);
 	free(vba->reduce_buffer_int[j].cub_tmp_size);
     }
+#if AC_DOUBLE_PRECISION
     for(int j = 0; j < NUM_FLOAT_OUTPUTS; ++j)
     {
 	free_scratchpad_float(j);
@@ -1123,6 +1130,7 @@ destroy_scratchpads(VertexBufferArray* vba)
 	free(vba->reduce_buffer_float[j].cub_tmp);
 	free(vba->reduce_buffer_float[j].cub_tmp_size);
     }
+#endif
 }
 
 void
@@ -1296,6 +1304,7 @@ acLoadIntReduceRes(cudaStream_t stream, const AcIntOutputParam param, const int*
 	return AC_SUCCESS;
 }
 
+#if AC_DOUBLE_PRECISION
 AcResult
 acLoadFloatReduceRes(cudaStream_t stream, const AcFloatOutputParam param, const float* value)
 {
@@ -1303,6 +1312,7 @@ acLoadFloatReduceRes(cudaStream_t stream, const AcFloatOutputParam param, const 
 	ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_reduce_float_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
 	return AC_SUCCESS;
 }
+#endif
 
 template <typename P, typename V>
 static AcResult
@@ -2165,11 +2175,13 @@ acReduceReal(const cudaStream_t stream, const AcReduceOp op, const AcRealScalarR
 	return acReduceBase(stream,op,buffer,count);
 }
 
+#if AC_DOUBLE_PRECISION
 AcResult
 acReduceFloat(const cudaStream_t stream, const AcReduceOp op, const AcFloatScalarReduceBuffer buffer, const size_t count)
 {
 	return acReduceBase(stream,op,buffer,count);
 }
+#endif
 
 AcResult
 acReduceInt(const cudaStream_t stream, const AcReduceOp op, const AcIntScalarReduceBuffer buffer, const size_t count)
@@ -2440,12 +2452,16 @@ ac_flush_scratchpad(VertexBufferArray vba, const int variable, const AcType type
 				type == AC_REAL_TYPE ?  NUM_REAL_OUTPUTS :
 				type == AC_PROF_TYPE ?  NUM_PROFILES     :
 				type == AC_INT_TYPE  ?  NUM_INT_OUTPUTS  :
+#if AC_DOUBLE_PRECISION
 				type == AC_FLOAT_TYPE  ?  NUM_FLOAT_OUTPUTS  :
+#endif
 				0;
 	ERRCHK_ALWAYS(variable < n_elems);
 	const size_t counts = 
 			type == AC_INT_TYPE  ? (*vba.reduce_buffer_int[variable].buffer_size)/sizeof(int) :
+#if AC_DOUBLE_PRECISION
 			type == AC_FLOAT_TYPE  ? (*vba.reduce_buffer_float[variable].buffer_size)/sizeof(float) :
+#endif
 			type == AC_REAL_TYPE ? (*vba.reduce_buffer_real[variable].buffer_size)/sizeof(AcReal) :
 			type == AC_PROF_TYPE ? (get_count(vba.profile_reduce_buffers[variable].src.shape)) :
 			0;
@@ -2462,12 +2478,14 @@ ac_flush_scratchpad(VertexBufferArray vba, const int variable, const AcType type
 		AcReal* dst = vba.profile_reduce_buffers[variable].src.data;
 		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_real(op));
 	}
+#if AC_DOUBLE_PRECISION
 	else if(type == AC_FLOAT_TYPE)
 	{
 		if constexpr(NUM_FLOAT_OUTPUTS  == 0) return AC_FAILURE;
 		float* dst = *(vba.reduce_buffer_float[variable].src);
 		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_float(op));
 	}
+#endif
 	else
 	{
 		if constexpr (NUM_INT_OUTPUTS == 0) return AC_FAILURE;
@@ -2481,7 +2499,9 @@ static AcReduceOp*
 get_reduce_buffer_states(const VertexBufferArray vba, const AcType type)
 {
 	return
+#if AC_DOUBLE_PRECISION
 			type == AC_FLOAT_TYPE  ? vba.scratchpad_states->floats :
+#endif
 			type == AC_INT_TYPE    ? vba.scratchpad_states->ints  :
 			type == AC_REAL_TYPE   ? vba.scratchpad_states->reals :
 			type == AC_PROF_TYPE   ? &vba.scratchpad_states->reals[NUM_REAL_OUTPUTS] :

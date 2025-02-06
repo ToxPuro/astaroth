@@ -340,7 +340,9 @@ typedef class ReduceTask : public Task {
   private:
     AcReal local_res_real[NUM_OUTPUTS]{};
     int    local_res_int[NUM_OUTPUTS]{};
+#if AC_DOUBLE_PRECISION
     float  local_res_float[NUM_OUTPUTS]{};
+#endif
   public:
     ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);

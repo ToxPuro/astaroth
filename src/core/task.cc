@@ -1267,8 +1267,10 @@ ReduceTask::reduce()
 	    	acDeviceFinishReduceRealStream(device,stream,&local_res_real[i],kernel,op,(AcRealOutputParam)var);
 	    else if(reduce_outputs[i].type == AC_INT_TYPE)
 	    	acDeviceFinishReduceIntStream(device,stream,&local_res_int[i],kernel,op,(AcIntOutputParam)var);
+#if AC_DOUBLE_PRECISION
 	    else if(reduce_outputs[i].type == AC_FLOAT_TYPE)
 	    	acDeviceFinishReduceFloatStream(device,stream,&local_res_float[i],kernel,op,(AcFloatOutputParam)var);
+#endif
 	    else if(reduce_outputs[i].type == AC_PROF_TYPE) {}
 	    else
 	    {
@@ -1295,8 +1297,10 @@ ReduceTask::advance(const TraceFile* trace_file)
 	    	acDeviceSetOutput(device,(AcRealOutputParam)reduce_outputs[i].variable,local_res_real[i]);
 	    else if(reduce_outputs[i].type == AC_INT_TYPE)
 	    	acDeviceSetOutput(device,(AcIntOutputParam)reduce_outputs[i].variable,local_res_int[i]);
+#if AC_DOUBLE_PRECISION
 	    else if(reduce_outputs[i].type == AC_FLOAT_TYPE)
 	    	acDeviceSetOutput(device,(AcFloatOutputParam)reduce_outputs[i].variable,local_res_float[i]);
+#endif
 	    else if(reduce_outputs[i].type == AC_PROF_TYPE)
 	    	;
 	    else

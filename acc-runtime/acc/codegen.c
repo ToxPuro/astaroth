@@ -1428,7 +1428,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		free(func_name);
 	}
 
-	if(datatype_scalar == REAL_STR || datatype_scalar == INT_STR || datatype_scalar == FLOAT_STR)
+	if(datatype_scalar == REAL_STR || datatype_scalar == INT_STR || (datatype_scalar == FLOAT_STR && AC_DOUBLE_PRECISION))
 	{
 		fprintf_filename("device_finalize_reduce.h",
 				"AcResult\n"
@@ -1544,7 +1544,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			,datatype_scalar, enum_name, define_name);
 
 	//TP: TODO: compare the performance of having this one level of indirection vs. simply loading the value to dconst and using it from there
-	if(datatype_scalar == REAL_STR || datatype_scalar == INT_STR || datatype_scalar == FLOAT_STR)
+	if(datatype_scalar == REAL_STR || datatype_scalar == INT_STR || (datatype_scalar == FLOAT_STR && AC_DOUBLE_PRECISION))
 	{
 		fprintf_filename("output_value_decl.h","%s DEVICE_INLINE  value(const %sOutputParam& param){return d_reduce_%s_res_symbol[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
@@ -3425,7 +3425,10 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 
 		gen_final_reductions(REAL_STR,kernel_index,compound_statement,reduced_reals);
 		gen_final_reductions(INT_STR,kernel_index,compound_statement,reduced_ints);
-		gen_final_reductions(FLOAT_STR,kernel_index,compound_statement,reduced_floats);
+		if(AC_DOUBLE_PRECISION)
+		{
+			gen_final_reductions(FLOAT_STR,kernel_index,compound_statement,reduced_floats);
+		}
 	}
 	astnode_sprintf_postfix(compound_statement,"%s"
 			"}"
@@ -5569,7 +5572,12 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   }
 
   const size_t num_real_outputs = count_variables(REAL_STR,OUTPUT_STR);
+
+#if AC_DOUBLE_PRECISION
   fprintf(fp,"\n#define  NUM_OUTPUTS (NUM_REAL_OUTPUTS+NUM_INT_OUTPUTS+NUM_FLOAT_OUTPUTS+NUM_PROFILES)\n");
+#else
+  fprintf(fp,"\n#define  NUM_OUTPUTS (NUM_REAL_OUTPUTS+NUM_INT_OUTPUTS+NUM_PROFILES)\n");
+#endif
   fprintf(fp,"\n#define  PROF_SCRATCHPAD_INDEX(PROF) (NUM_REAL_OUTPUTS+PROF)\n");
   const size_t num_real_scratchpads = num_profiles+num_real_outputs;
   fprintf(fp,"\n#define  NUM_REAL_SCRATCHPADS (%zu)\n",num_real_scratchpads);
@@ -8471,12 +8479,14 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
 	    "reduced_ints [NUM_KERNELS][NUM_INT_OUTPUTS+1] __attribute__((unused)) = {");
     print_nested_ones(tmp,1,num_kernels,count_variables(INT_STR,OUTPUT_STR)+1,2);
     fprintf(tmp, "};\n");
-
-    fprintf(tmp,
-	    "static int "
-	    "reduced_floats[NUM_KERNELS][NUM_FLOAT_OUTPUTS+1] __attribute__((unused)) = {");
-    print_nested_ones(tmp,1,num_kernels,count_variables(FLOAT_STR,OUTPUT_STR)+1,2);
-    fprintf(tmp, "};\n");
+    if(AC_DOUBLE_PRECISION)
+    {
+    	fprintf(tmp,
+    	        "static int "
+    	        "reduced_floats[NUM_KERNELS][NUM_FLOAT_OUTPUTS+1] __attribute__((unused)) = {");
+    	print_nested_ones(tmp,1,num_kernels,count_variables(FLOAT_STR,OUTPUT_STR)+1,2);
+    	fprintf(tmp, "};\n");
+    }
 
     fprintf(tmp, "const bool has_mem_access_info __attribute__((unused)) = false;\n");
     fclose(tmp);
@@ -8507,8 +8517,9 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
            "-DMAX_THREADS_PER_BLOCK=%d "
            "-Wfloat-conversion -Wshadow -I. %s -lm "
 	   "-DAC_USE_HIP=%d "
+	   "-DAC_DOUBLE_PRECISION=%d "
            "-o %s",
-           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,HIP_ON,
+           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,HIP_ON,AC_DOUBLE_PRECISION,
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);

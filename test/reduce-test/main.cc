@@ -555,7 +555,7 @@ main(int argc, char* argv[])
     	    		bool correct =  in_eps_threshold(xz_sum_scaled[i+dims.m1.x*j],model.profile[PROF_SCALED_XZ][i+dims.m1.x*j]);
     	    		xz_scaled_correct &= correct;
 
-    	    		correct =  in_eps_threshold(yx_sum_scaled[j+dims.m1.z*i],model.profile[PROF_SCALED_ZX][j+dims.m1.z*i]);
+    	    		correct =  in_eps_threshold(zx_sum_scaled[j+dims.m1.z*i],model.profile[PROF_SCALED_ZX][j+dims.m1.z*i]);
     	    		zx_scaled_correct &= correct;
 		}
     	bool vec_sums_correct = true;
