@@ -24,7 +24,7 @@ main(void)
     test_pack();
     test_buffer_exchange();
     test_transform();
-    // test_reduce();
+    test_reduce();
 
     // Data types
     test_ntuple();

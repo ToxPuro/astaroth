@@ -17,6 +17,7 @@
 
 #include "ndbuffer.h"
 
+#include "errchk_cuda.h"
 #include "ntuple.h"
 #include "pack.h"
 #include "pointer.h"
@@ -39,6 +40,7 @@ template <typename T> class ReduceTask {
     {
         // Check that the output memory resource can hold all segments
         ERRCHK(inputs.size() == output.size());
+        ERRCHK(prod(subdims) <= pack_buffer.size())
 
         // Pack
         pack(dims, subdims, offset, inputs, pack_buffer.get());
@@ -54,25 +56,25 @@ template <typename T> class ReduceTask {
         const cudaStream_t stream{nullptr};
 
         size_t bytes{0};
-        cub::DeviceSegmentedReduce::Sum(nullptr,
-                                        bytes,
-                                        pack_buffer.data(),
-                                        output.data(),
-                                        as<int>(num_segments),
-                                        device_offsets.data(),
-                                        device_offsets.data() + 1,
-                                        stream);
+        ERRCHK_CUDA_API(cub::DeviceSegmentedReduce::Sum(nullptr,
+                                                        bytes,
+                                                        pack_buffer.data(),
+                                                        output.data(),
+                                                        as<int>(num_segments),
+                                                        device_offsets.data(),
+                                                        device_offsets.data() + 1,
+                                                        stream));
         PRINT_DEBUG(bytes);
 
         ac::device_buffer<T> tmp{bytes};
-        cub::DeviceSegmentedReduce::Sum(tmp.data(),
-                                        bytes,
-                                        pack_buffer.data(),
-                                        output.data(),
-                                        as<int>(num_segments),
-                                        device_offsets.data(),
-                                        device_offsets.data() + 1,
-                                        stream);
+        ERRCHK_CUDA_API(cub::DeviceSegmentedReduce::Sum(tmp.data(),
+                                                        bytes,
+                                                        pack_buffer.data(),
+                                                        output.data(),
+                                                        as<int>(num_segments),
+                                                        device_offsets.data(),
+                                                        device_offsets.data() + 1,
+                                                        stream));
         ERRCHK_CUDA_API(cudaStreamSynchronize(stream));
 
         // Global reduce
