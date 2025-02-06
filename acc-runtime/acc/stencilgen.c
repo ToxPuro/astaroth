@@ -761,51 +761,62 @@ print_butterfly_warp_reduce(FILE* stream, const int warp_size, const char* op_in
 	for(int iteration= 2; (1 << iteration) < warp_size; ++iteration)
 		print_butterfly_iteration(stream,iteration,op_instruction,"","","","");
 }
-
 void
 print_reduce_ops(const ReduceOp op, const char* define_name)
 {
-	const char* op_instruction = get_op_instruction(op);
-	if(op == NO_REDUCE || op_instruction == NULL) 
-		printf("Incorrect reduction for %s\n",define_name);
+        const char* op_instruction = get_op_instruction(op);
+        if(op == NO_REDUCE || op_instruction == NULL)
+                printf("Incorrect reduction for %s\n",define_name);
 
-	//TP: the idea behind the algorithm is that if the target tid is inactive 
-	//we access the value the target tid was responsible for reducing
-	//
-	//The target tid should be the smallest **active** thread index between the normal target (lane_id + offset) 
-	//and those that the target tid is responsible for reducing.
-	//since the tid we access is active it has reduced all values it was responsible for
-	
-	//The smallest active thread index can be efficiently calculated with bit operations and ctz (Count Trailing Zeroes)
-	//Unfortunately CUDA does not support ctz so we calculate ctz with ffs-1 (Find First Set)
-	//Could use ctz on HIP but for not use ffs on both
-	printf("if constexpr (warp_size == 32) {");
-	printf("if (AC_INTERNAL_all_threads_active) {");
-	print_warp_reduction(stdout,32,op_instruction,false);
-	printf("}");
-	printf("else if (AC_INTERNAL_active_threads_are_contiguos ) {");
-	print_warp_reduction(stdout,32,op_instruction,true);
-	printf("}");
-	printf("else {");
-	print_butterfly_warp_reduce(stdout, 32,op_instruction);
-	printf("}");
-	printf("}");
+        //TP: the idea behind the algorithm is that if the target tid is inactive
+        //we access the value the target tid was responsible for reducing
+        //
+        //The target tid should be the smallest **active** thread index between the normal target (lane_id + offset)
+        //and those that the target tid is responsible for reducing.
+        //since the tid we access is active it has reduced all values it was responsible for
+
+        //The smallest active thread index can be efficiently calculated with bit operations and ctz (Count Trailing Zeroes)
+        //Unfortunately CUDA does not support ctz so we calculate ctz with ffs-1 (Find First Set)
+        //Could use ctz on HIP but for not use ffs on both
 
 #if AC_USE_HIP
+        printf("if constexpr (warp_size == 32) {");
+        printf("if (AC_INTERNAL_all_threads_active) {");
+        print_warp_reduction(stdout,32,op_instruction,false);
+        printf("}");
+        printf("else if (AC_INTERNAL_active_threads_are_contiguos ) {");
+        print_warp_reduction(stdout,32,op_instruction,true);
+        printf("}");
+        printf("else {");
+        print_butterfly_warp_reduce(stdout, 32,op_instruction);
+        printf("}");
+        printf("}");
 //TP: if we use CUDA we get compiler warnings about too large shifts since active threads is unsigned long instead of unsigned long long
-	printf("else if constexpr (warp_size == 64) {");
-	printf("if (AC_INTERNAL_all_threads_active) {");
-	print_warp_reduction(stdout,64,op_instruction,false);
-	printf("}");
-	printf("else if (AC_INTERNAL_active_threads_are_contiguos) {");
-	print_warp_reduction(stdout,64,op_instruction,true);
-	printf("}");
-	printf("else {");
-	print_butterfly_warp_reduce(stdout,64,op_instruction);
-	printf("}");
+        printf("else if constexpr (warp_size == 64) {");
+        printf("if (AC_INTERNAL_all_threads_active) {");
+        print_warp_reduction(stdout,64,op_instruction,false);
+        printf("}");
+        printf("else if (AC_INTERNAL_active_threads_are_contiguos) {");
+        print_warp_reduction(stdout,64,op_instruction,true);
+        printf("}");
+        printf("else {");
+        print_butterfly_warp_reduce(stdout,64,op_instruction);
+        printf("}");
+        printf("}");
+#else
+        printf("if (AC_INTERNAL_all_threads_active) {");
+        print_warp_reduction(stdout,32,op_instruction,false);
+        printf("}");
+        printf("else if (AC_INTERNAL_active_threads_are_contiguos ) {");
+        print_warp_reduction(stdout,32,op_instruction,true);
+        printf("}");
+        printf("else {");
+        print_butterfly_warp_reduce(stdout, 32,op_instruction);
+        printf("}");
 #endif
-	printf("}");
 }
+
+
 void
 print_output_reduce_res(const char* define_name, const ReduceOp op, const int curr_kernel)
 {
