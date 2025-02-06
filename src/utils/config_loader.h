@@ -148,7 +148,7 @@ parse_bool3param(const char* value)
 static AcReal
 parse_realparam(const char* value)
 {
-	return atof(value);
+	return (AcReal)atof(value);
 }
 static int
 parse_intparam(const char* value)
@@ -249,7 +249,7 @@ parse_config(const char* path, AcMeshInfo* config)
 	    acPushToConfig(*config,static_cast<AcRealParam>(idx),real_val);
         }
         else if ((idx = find_str(keyword, real_comp_param_names, NUM_REAL_COMP_PARAMS)) >= 0) 	      {
-            AcReal real_val = atof(value);
+            AcReal real_val = (AcReal)atof(value);
             if (isnan(real_val)) {
                 fprintf(stderr,
                         "ERROR PARSING CONFIG: parameter \"%s\" value \"%s\" parsed as NAN\n",
