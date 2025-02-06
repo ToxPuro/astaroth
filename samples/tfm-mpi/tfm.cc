@@ -1616,9 +1616,9 @@ class Grid {
         hydro_io.launch(cart_comm,
                         get_ptrs(device, hydro_fields, BufferGroup::input),
                         get_field_paths(hydro_fields));
-        bfield_io.launch(cart_comm,
-                         get_fields(device, FieldGroup::Bfield, BufferGroup::input),
-                         get_field_paths(get_field_handles(FieldGroup::Bfield)));
+        uxb_io.launch(cart_comm,
+                      get_ptrs(device, uxb_fields, BufferGroup::input),
+                      get_field_paths(uxb_fields));
 #endif
 
         for (uint64_t step{1}; step < nsteps; ++step) {
@@ -1685,22 +1685,25 @@ class Grid {
 
 // Write snapshot
 #if defined(AC_ASYNC_IO_ENABLED)
-            hydro_io.wait();
-            hydro_io.launch(cart_comm,
-                            get_ptrs(device, hydro_fields, BufferGroup::input),
-                            get_field_paths(hydro_fields));
-            bfield_io.wait();
-            bfield_io.launch(cart_comm,
-                             get_fields(device, FieldGroup::Bfield, BufferGroup::input),
-                             get_field_paths(get_field_handles(FieldGroup::Bfield)));
+            if ((step %
+                 as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0) {
+                hydro_io.wait();
+                hydro_io.launch(cart_comm,
+                                get_ptrs(device, hydro_fields, BufferGroup::input),
+                                get_field_paths(hydro_fields));
+                uxb_io.wait();
+                uxb_io.launch(cart_comm,
+                              get_ptrs(device, uxb_fields, BufferGroup::input),
+                              get_field_paths(uxb_fields));
+            }
 #endif
 
+// TODO: this is synchronous. Consider async.
+#if defined(AC_ENABLE_IO)
             // Write time series
             write_diagnostics(cart_comm, device, step, current_time, dt);
 
-// Write mesh and profiles
-// TODO: this is synchronous. Consider async.
-#if defined(AC_ENABLE_IO)
+            // Write mesh and profiles
             // Note: ghost zones not up-to-date with this (working as intended)
             if ((step %
                  as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0)
@@ -1715,7 +1718,7 @@ class Grid {
 
 #if defined(AC_ASYNC_IO_ENABLED)
         hydro_io.wait();
-        bfield_io.wait();
+        uxb_io.wait();
 #endif
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
