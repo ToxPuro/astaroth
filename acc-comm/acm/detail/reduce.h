@@ -1,8 +1,8 @@
 #pragma once
+#include <algorithm>
 
 #include "ntuple.h"
 #include "pointer.h"
-#include <algorithm>
 
 namespace ac {
 
