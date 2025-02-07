@@ -1702,10 +1702,37 @@ check_ops(const std::vector<AcTaskDefinition> ops)
 //	int3 dims = last_position - position;
 //        return Region(position,dims,0,fields,RegionFamily::Compute_output);
 //}
-Region
-FullRegion(Volume nn, const RegionMemory mem)
+Volume
+get_position(const AcBoundary boundaries_included)
 {
-        return Region(get_ghost_zone_sizes(),nn,0,mem,RegionFamily::Compute_output);
+	const auto& ghost = get_ghost_zone_sizes();
+	size_t position_x = (boundaries_included & BOUNDARY_X)
+		 	    ? 0 : ghost.x;
+	size_t position_y = (boundaries_included & BOUNDARY_Y)
+		 	    ? 0 : ghost.y;
+	size_t position_z = (boundaries_included & BOUNDARY_Z)
+		 	    ? 0 : ghost.z;
+	return (Volume){position_x,position_y,position_z};
+}
+Volume
+get_addition(const AcBoundary boundaries_included)
+{
+	const auto& ghost = get_ghost_zone_sizes();
+	size_t add_x = (boundaries_included & BOUNDARY_X)
+		 	    ? 2*ghost.x : 0;
+	size_t add_y = (boundaries_included & BOUNDARY_Y)
+		 	    ? 2*ghost.y : 0;
+	size_t add_z = (boundaries_included & BOUNDARY_Z)
+		 	    ? 2*ghost.z : 0;
+	return (Volume){add_x,add_y,add_z};
+}
+Region
+FullRegion(const Volume nn, const RegionMemory mem, const AcBoundary boundaries_included)
+{
+
+	const auto& position = get_position(boundaries_included);
+	const auto& add      = get_addition(boundaries_included);
+        return Region(position,nn+add,0,mem,RegionFamily::Compute_output);
 }
 //Region
 //LeftCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
@@ -1760,11 +1787,10 @@ FullRegion(Volume nn, const RegionMemory mem)
 //        return Region(position,dims,0,fields,RegionFamily::Compute_output);
 //}
 Region
-GetInputRegion(Region region, const RegionMemory mem)
+GetInputRegion(Region region, const RegionMemory mem, const AcBoundary boundaries_included)
 {
-	const auto nghost3 = get_ghost_zone_sizes();
-	auto res = Region{region.position-nghost3,region.dims+2*nghost3,0,mem,RegionFamily::Compute_input};
-	return res;
+	const auto& output_position     = get_position(boundaries_included);
+	return Region{region.position-output_position,region.dims+2*output_position,0,mem,RegionFamily::Compute_input};
 }
 //
 ////test that the compute regions cover what they should cover without overlap
@@ -1840,11 +1866,11 @@ GetInputRegion(Region region, const RegionMemory mem)
 //	return regions;
 //}
 std::vector<Region>
-getinputregions(std::vector<Region> output_regions, const RegionMemory memory)
+getinputregions(std::vector<Region> output_regions, const RegionMemory memory, const AcBoundary boundaries_included)
 {
 	std::vector<Region> input_regions{};
 	for (auto& region : output_regions)
-		input_regions.push_back(GetInputRegion(region,memory));
+		input_regions.push_back(GetInputRegion(region,memory,boundaries_included));
 	return input_regions;
 }
 //void
@@ -1860,6 +1886,8 @@ get_spacings()
 {
 	return acGridGetLocalMeshInfo()[AC_ds];
 }
+
+#include "analysis_grid_helpers.h"
 
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
@@ -1889,6 +1917,33 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 
 			ops.push_back(reduce_op);
 	    }
+    }
+    std::vector<AcKernel> kernels{};
+    for(size_t i = 0; i < ops.size(); ++i) kernels.push_back(AC_NULL_KERNEL);
+    for(size_t i = 0; i < ops.size(); ++i)
+    {
+	    const auto& op = ops[i];
+	    if(op.task_type == TASKTYPE_COMPUTE)
+	    {
+		    kernels[i] = op.kernel_enum;
+	    }
+    }
+    const auto& kernel_computes_profile_on_halos = compute_kernel_call_computes_profile_across_halos(kernels);
+    for(size_t i = 0; i < ops.size(); ++i)
+    {
+	    ops[i].computes_on_halos = BOUNDARY_NONE;
+	    for(size_t profile = 0; profile < NUM_PROFILES; ++profile)
+	    	ops[i].computes_on_halos = (AcBoundary)((int)ops[i].computes_on_halos | kernel_computes_profile_on_halos[i][profile]);
+    }
+    for(size_t i = 0; i < ops.size(); ++i)
+    {
+	    const auto& op = ops[i];
+	    const AcKernel kernel = op.kernel_enum;
+	    bool calls_stencil = false;
+	    for(size_t field = 0; field < NUM_VTXBUF_HANDLES; ++field)
+		    calls_stencil |= grid.kernel_analysis_info.field_has_stencil_op[kernel][field];
+	    if(calls_stencil && op.computes_on_halos != BOUNDARY_NONE)
+		    fatal("Kernel %s should be computed on halos but also uses Stencils!!\n",kernel_names[kernel]);
     }
 
     int rank;
@@ -1986,8 +2041,12 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    std::vector<KernelReduceOutput> reduce_output_in(op.outputs_in,  op.outputs_in +op.num_outputs_in);
 	    std::vector<KernelReduceOutput> reduce_output_out(op.outputs_out,op.outputs_out+op.num_outputs_out);
 
-	    Region full_region = FullRegion(grid.nn,{fields_out,profiles_out,reduce_output_out});
-	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in})[0];
+	    //Region full_region = FullRegion(grid.nn,{fields_out,profiles_out,reduce_output_out},false);
+	    //Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},false)[0];
+
+	    Region full_region = FullRegion(grid.nn,{fields_out,profiles_out,reduce_output_out},op.computes_on_halos);
+	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},op.computes_on_halos)[0];
+	    //
             //for (int tag = Region::min_comp_tag; tag < 1; tag++) {
 	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
 	    if(((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim])

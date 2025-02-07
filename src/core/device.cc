@@ -437,6 +437,72 @@ acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 	}
 	return acDeviceLoadStencils(device, stream, stencils);
 }
+AcBoundary
+acDeviceStencilAccessesBoundaries(const Device device, const Stencil stencil)
+{
+	[[maybe_unused]] auto DCONST = [&](const auto& param)
+	{
+		return device->local_config[param];
+	};
+        #include "coeffs.h"
+	auto stencil_accesses_z_ghost_zone = [&]()
+	{
+	    bool res = false;
+	    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+	      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+	        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+		  const bool dmid = (depth == (STENCIL_DEPTH-1)/2);
+	          res |= !dmid && (stencils[stencil][depth][height][width] != 0.0);
+	        }
+	      }
+	    }
+	    return res;
+	};
+	auto stencil_accesses_y_ghost_zone = [&]()
+	{
+	  // Check which stencils are invalid for profiles
+	  // (computed in a new array to avoid side effects).
+	    bool res = false;
+	    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+	      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+	        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+		  const bool hmid = (height == (STENCIL_HEIGHT-1)/2);
+	          res |= !hmid && (stencils[stencil][depth][height][width] != 0.0);
+	        }
+	      }
+	    }
+	    return res;
+	};
+	
+	auto stencil_accesses_x_ghost_zone = [&]()
+	{
+	  // Check which stencils are invalid for profiles
+	  // (computed in a new array to avoid side effects).
+	    bool res = false;
+	    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+	      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+	        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+		  const bool wmid = (width == (STENCIL_WIDTH-1)/2);
+	          res |= !wmid && (stencils[stencil][depth][height][width] != 0.0);
+	        }
+	      }
+	    }
+	    return res;
+	};
+	int res = BOUNDARY_NONE;
+	if(stencil_accesses_x_ghost_zone())
+	{
+		printf("Stencil %s accesses X boundary\n",stencil_names[stencil]);
+		res |= BOUNDARY_X;
+	}
+	if(stencil_accesses_y_ghost_zone())
+		res |= BOUNDARY_Y;
+	if(stencil_accesses_z_ghost_zone())
+		res |= BOUNDARY_Z;
+	return (AcBoundary)res;
+}
+
+
 void
 acCopyFromInfo(const AcMeshInfo src, AcMeshInfo dst, AcInt3Param param)
 {

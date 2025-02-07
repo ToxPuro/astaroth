@@ -284,6 +284,7 @@ typedef struct {
 	int read_profiles[NUM_KERNELS][NUM_PROFILES];
 	int reduced_profiles[NUM_KERNELS][NUM_PROFILES];
 	int written_profiles[NUM_KERNELS][NUM_PROFILES];
+  	int profile_has_stencil_op[NUM_KERNELS][NUM_PROFILES];
 	KernelReduceOutput reduce_inputs[NUM_KERNELS][NUM_OUTPUTS+1];
 	KernelReduceOutput reduce_outputs[NUM_KERNELS][NUM_OUTPUTS+1];
 	size_t n_reduce_inputs[NUM_KERNELS];

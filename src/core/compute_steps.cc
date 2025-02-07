@@ -23,13 +23,9 @@ get_info()
 	return acDeviceGetLocalConfig(acGridGetDevice());
 }
 
-KernelAnalysisInfo
-get_kernel_analysis_info()
-{
-	KernelAnalysisInfo res;
-	acAnalysisGetKernelInfo(get_info().params,&res);
-	return res;
-}
+
+
+#include "analysis_grid_helpers.h"
 #include "taskgraph_kernels.h"
 #include "taskgraph_bc_handles.h"
 #include "taskgraph_kernel_bcs.h"
@@ -590,7 +586,7 @@ compute_next_level_set(T1& dst, const T2& kernel_calls, T3& field_written_to,con
 		  for(int j = 0; j < NUM_PROFILES; ++j)
 		  {
 			const bool profile_accessed = info.read_profiles[kernel_index][j] || info.reduced_profiles[kernel_index][j];
-			can_compute &= !profile_consumed[j] || !profile_accessed;
+			can_compute &= !(profile_consumed[j] && profile_accessed);
 			profile_consumed[j] |= info.reduced_profiles[kernel_index][j];
 		  }
 		  for(size_t j = 0; j < NUM_ALL_FIELDS; ++j)
@@ -652,6 +648,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 	auto kernel_calls = optimized ?
 				get_optimized_kernels(graph,true) :
 				DSLTaskGraphKernels[graph];
+	auto kernel_call_computes_profile_across_halos = compute_kernel_call_computes_profile_across_halos(kernel_calls);
 	const KernelAnalysisInfo info = get_kernel_analysis_info();
 	constexpr int MAX_TASKS = 100;
 	int n_level_sets = 0;
@@ -666,12 +663,12 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 	std::array<bool, NUM_ALL_FIELDS> field_halo_in_sync{};
 	std::array<bool, NUM_ALL_FIELDS> field_out_from_last_level_set{};
 	std::array<bool, NUM_ALL_FIELDS> field_out_from_level_set{};
-	std::array<bool, NUM_ALL_FIELDS> field_stencil_ops_at_next_level_set{};
+	std::array<bool, NUM_ALL_FIELDS> field_need_halo_to_be_in_sync{};
 	std::array<bool, NUM_KERNELS> next_level_set{};
 
 	while(!all_processed)
 	{
-		std::fill(field_stencil_ops_at_next_level_set.begin(),field_stencil_ops_at_next_level_set.end(), false);
+		std::fill(field_need_halo_to_be_in_sync.begin(),field_need_halo_to_be_in_sync.end(), false);
 		std::fill(field_need_to_communicate.begin(),field_need_to_communicate.end(), false);
 		std::fill(next_level_set.begin(),next_level_set.end(), 0);
 		compute_next_level_set(next_level_set, kernel_calls,field_out_from_level_set,call_level_set,info);
@@ -684,16 +681,23 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 		{
 			if(next_level_set[i])
 			{
+				bool computes_across_halos = false;
+				for(size_t j = 0; j< NUM_PROFILES; ++j)
+					computes_across_halos  |= (kernel_call_computes_profile_across_halos[i][j] != BOUNDARY_NONE);
+
 				call_level_set[i] = n_level_sets;
 				const int k = (int)kernel_calls[i];
 				for(size_t j = 0; j < NUM_ALL_FIELDS ; ++j)
-					field_stencil_ops_at_next_level_set[j] |= info.field_has_stencil_op[k][j];
+				{
+					field_need_halo_to_be_in_sync[j] |= info.field_has_stencil_op[k][j];
+					field_need_halo_to_be_in_sync[j] |= info.read_fields[k][j] && computes_across_halos;
+				}
 			}
 		}
 		for(size_t j = 0; j < NUM_ALL_FIELDS; ++j)
 		    field_halo_in_sync[j] &= !field_out_from_last_level_set[j];
 		for(size_t j = 0; j < NUM_ALL_FIELDS; ++j)
-		    field_need_to_communicate[j] |= (!field_halo_in_sync[j] && field_stencil_ops_at_next_level_set[j]);
+		    field_need_to_communicate[j] |= (!field_halo_in_sync[j] && field_need_halo_to_be_in_sync[j]);
 		for(size_t j = 0; j < NUM_ALL_FIELDS; ++j)
 		{
 			field_halo_in_sync[j] |= field_need_to_communicate[j];

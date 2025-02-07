@@ -75,7 +75,6 @@ Kernel test_reduce()
 
     reduce_sum(FIELD,PROF_X)
     reduce_sum(FIELD,PROF_Y)
-    reduce_sum(FIELD,PROF_Z)
 
     reduce_sum(FIELD,PROF_XZ)
     reduce_sum(FIELD,PROF_XY)
@@ -90,6 +89,10 @@ Kernel test_reduce()
 
     vec = real3(1.0,2.0,3.0)
     reduce_sum(vec,VEC_Z_PROFILE)
+}
+Kernel reduce_z()
+{
+    reduce_sum(FIELD,PROF_Z)
 }
 
 Kernel remove_means()
@@ -136,6 +139,7 @@ BoundConds bcs
 ComputeSteps rhs(bcs)
 {
 	test_reduce()
+	reduce_z()
 	remove_means()
 	//derx_kernel()
 }

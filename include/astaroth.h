@@ -828,6 +828,7 @@ typedef struct AcTaskDefinition {
 
     KernelReduceOutput* outputs_out;
     size_t num_outputs_out;
+    AcBoundary computes_on_halos;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -1340,9 +1341,11 @@ FUNC_DEFINE(AcResult, acDeviceLaunchKernel,(const Device device, const Stream st
 /** */
 FUNC_DEFINE(AcResult, acDeviceBenchmarkKernel,(const Device device, const AcKernel kernel, const int3 start,
                                  const int3 end));
-
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadStencilsFromConfig,(const Device device, const Stream stream));
+
+/** */
+FUNC_DEFINE(AcBoundary, acDeviceStencilAccessesBoundaries,(const Device device, const Stencil stencil));
 
 FUNC_DEFINE(AcResult, acDeviceLoadStencil,(const Device device, const Stream stream, const Stencil stencil,const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 /** */
@@ -1623,6 +1626,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	LOAD_DSYM(acDeviceLoadStencil)
 	LOAD_DSYM(acDeviceLoadStencils)
 	LOAD_DSYM(acDeviceLoadStencilsFromConfig)
+	LOAD_DSYM(acDeviceStencilAccessesBoundaries)
 	LOAD_DSYM(acDeviceStoreStencil)
 	LOAD_DSYM(acDeviceVolumeCopy)
 	LOAD_DSYM(acDeviceLoadPlateBuffer)

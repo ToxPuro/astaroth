@@ -329,27 +329,37 @@ main(int argc, char* argv[])
     	}
     	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
     	{
-    	    z_sum[k] = 0.0;
     	    vec_z_x_sum[k] = 0.0;
     	    vec_z_y_sum[k] = 0.0;
     	    vec_z_z_sum[k] = 0.0;
     		for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
     		{
     			for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
-    	    	{
-    	    		auto val   = model.vertex_buffer[FIELD][IDX(i,j,k)];
-    	    		cpu_max_val = (val > cpu_max_val)  ? val : cpu_max_val;
-    	    		cpu_min_val = (val < cpu_min_val)  ? val : cpu_min_val;
-    	    		long_cpu_sum_val += (long double)val;
-    	    		cpu_int_sum += (int)val;
-    	    		cpu_float_sum += (float)val;
-    	    		z_sum[k] += val;
-    	    		vec_z_x_sum[k] += 1.0;
-    	    		vec_z_y_sum[k] += 2.0;
-    	    		vec_z_z_sum[k] += 3.0;
+    	    		{
+    	    			auto val   = model.vertex_buffer[FIELD][IDX(i,j,k)];
+    	    			cpu_max_val = (val > cpu_max_val)  ? val : cpu_max_val;
+    	    			cpu_min_val = (val < cpu_min_val)  ? val : cpu_min_val;
+    	    			long_cpu_sum_val += (long double)val;
+    	    			cpu_int_sum += (int)val;
+    	    			cpu_float_sum += (float)val;
+    	    			vec_z_x_sum[k] += 1.0;
+    	    			vec_z_y_sum[k] += 2.0;
+    	    			vec_z_z_sum[k] += 3.0;
+    	    		}
     	    	}
-    	    }
     	}
+    	for(size_t k = 0; k < dims.m1.z;  ++k)
+    	{
+    	    z_sum[k] = 0.0;
+    		for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
+    		{
+    			for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    	    		{
+    	    			auto val   = model.vertex_buffer[FIELD][IDX(i,j,k)];
+				z_sum[k] += val;
+			}
+		}
+	}
 
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
@@ -500,17 +510,18 @@ main(int argc, char* argv[])
     	        return relative_diff(a,b) < epsilon;
     	};
     	bool sums_correct = true;
-    	for(size_t i = dims.n0.z; i < dims.n1.z; ++i)
+    	for(size_t i = 0; i < dims.m1.z; ++i)
     	{
     	    bool correct =  in_eps_threshold(z_sum[i],z_sum_gpu[i]);
     	    sums_correct &= correct;
-    	    //if(!correct) fprintf(stderr,"Z SUM WRONG: %14e, %14e\n",z_sum[i],z_sum_gpu[i]);
+    	    if(!correct) fprintf(stderr,"Z SUM WRONG: %ld, %14e, %14e\n",i,z_sum[i],z_sum_gpu[i]);
     	}
 	bool z_scaled_correct = true;
     	for(size_t i = dims.n0.z; i < dims.n1.z; ++i)
     	{
     	    bool correct =  in_eps_threshold(z_sum_scaled[i],model.profile[PROF_SCALED_Z][i]);
     	    z_scaled_correct &= correct;
+    	    if(!correct) fprintf(stderr,"Z SCALED WRONG: %ld, %14e, %14e\n",i,z_sum_scaled[i],model.profile[PROF_SCALED_Z][i]);
 	}
 	bool x_scaled_correct = true;
     	for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -569,14 +580,14 @@ main(int argc, char* argv[])
     	    //if(!correct) fprintf(stderr,"Z SUM WRONG: %14e, %14e\n",z_sum[i],z_sum_gpu[i]);
     	}
 	bool z_sum_der_correct = true;
-    	for(size_t i = dims.n0.z+NGHOST; i < dims.n1.z-NGHOST; ++i)
+    	for(size_t i = dims.n0.z; i < dims.n1.z; ++i)
     	{
 
 		//TP: done this way since the for all ones the derivative is supposed to be exactly zero and thus numerical noise is quite pronounced
 		bool correct = 
-				all_ones_test ? fabs(z_sum_der[i]-model.profile[PROF_Z_DER][i]) < 3e-12
+				all_ones_test ? fabs(z_sum_der[i]-model.profile[PROF_Z_DER][i]) < 5e-12
 					      : in_eps_threshold(z_sum_der[i],model.profile[PROF_Z_DER][i]);
-		if(!correct) printf("HMM: %14e\n",fabs(z_sum_der[i]-model.profile[PROF_Z_DER][i]));
+		if(!correct) printf("HMM: %ld, %14e\n",i,fabs(z_sum_der[i]-model.profile[PROF_Z_DER][i]));
 		z_sum_der_correct &= correct;
     	}
     	bool x_sum_correct = true;

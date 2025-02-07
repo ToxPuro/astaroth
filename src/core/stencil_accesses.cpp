@@ -816,7 +816,7 @@ AcResult
 acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
 {
 	d_mesh_info = info.scalars;
-	memset(dst->stencils_accessed,false,sizeof(dst->stencils_accessed));
+	memset(dst,0,sizeof(*dst));
 	for(size_t k = 0; k <NUM_KERNELS; ++k)
 	{
     		if (!skip_kernel_in_analysis[k])
@@ -835,6 +835,9 @@ acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
     			    read_fields[j] |= previous_accessed[j];
     			  }
     			}
+    			for (size_t j = 0; j < NUM_PROFILES; ++j)
+    			  for (size_t i = 0; i < NUM_STENCILS; ++i)
+			    dst->stencils_accessed[k][j+NUM_ALL_FIELDS][i] |= stencils_accessed[j+NUM_ALL_FIELDS][i];
     		}
 		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
 		{
@@ -847,6 +850,9 @@ acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
 			dst->read_profiles[k][i]    = read_profiles[i];
 			dst->reduced_profiles[k][i] = reduced_profiles[i];
 			dst->written_profiles[k][i] = written_profiles[i];
+			//TP: skip value stencil
+			for(size_t j = 1; j < NUM_STENCILS; ++j)
+				dst->profile_has_stencil_op[k][i] |= stencils_accessed[NUM_ALL_FIELDS+i][j];
 		}
 		dst->n_reduce_outputs[k] = reduce_outputs.size();
 		for(size_t i = 0; i < reduce_outputs.size(); ++i)
