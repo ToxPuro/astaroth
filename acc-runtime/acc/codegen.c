@@ -61,6 +61,7 @@ get_prof_types()
 static const char* REAL_ARR_STR = NULL;
 
 static const char* REAL_PTR_STR = NULL;
+static const char* BOOL_PTR_STR = NULL;
 static const char* REAL3_PTR_STR = NULL;
 static const char* FIELD3_PTR_STR = NULL;
 static const char* VTXBUF_PTR_STR = NULL;
@@ -807,6 +808,9 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR,  intern("BOUNDARY_XYZ"));
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("periodic"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_PTR_STR, intern("AC_INTERNAL_run_const_AcReal_array_here"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, BOOL_PTR_STR, intern("AC_INTERNAL_run_const_bool_array_here"));
+
 
 }
 
@@ -1959,7 +1963,13 @@ gen_matrix_reads(ASTNode* node)
   if(!(node->type & NODE_ARRAY_ACCESS)) return;
   const char* base_type = get_expr_type(node->lhs);
   if(base_type != MATRIX_STR && base_type != TENSOR_STR) return;
-  astnode_sprintf_postfix(node->lhs,".data");
+  const char* lhs = combine_all_new(node->lhs);
+  //TP: stupid hack!!
+  if(lhs && strstr(lhs,".data")) return;
+  if(node->lhs->postfix == intern("]"))
+       astnode_sprintf_postfix(node->lhs,"].data");
+  else
+       astnode_sprintf_postfix(node->lhs,".data");
 }
 #define max(a,b) (a > b ? a : b)
 #define min(a,b) (a < b ? a : b)
@@ -3897,8 +3907,9 @@ n_occurances(const char* str, const char test)
 	return res;
 }
 const char*
-get_array_elem_type(char* arr_type)
+get_array_elem_type(const char* arr_type_in)
 {
+	char* arr_type = strdup(arr_type_in);
 	if(!strstr(arr_type,"AcArray")) return NULL;
 	if(n_occurances(arr_type,'<') == 1)
 	{
@@ -3914,27 +3925,45 @@ get_array_elem_type(char* arr_type)
 	}
 	return intern(arr_type);
 }
-const char*
-get_array_elem_size(char* arr_type)
+string_vec
+get_array_elem_size(const char* arr_type_in)
 {
-	if(n_occurances(arr_type,'<') == 1)
-	{
-		int start = 0;
-		while(arr_type[++start] != '<');
-		int end = start;
-		++start;
-		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
-		arr_type[end] = '\0';
-		++end;
-		start = end;
-		while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
-		arr_type[end] = '\0';
-		char* tmp = malloc(sizeof(char)*1000);
-		strcpy(tmp, &arr_type[start]);
-		return intern(tmp);
-	}
-	return intern(arr_type);
+        string_vec res = VEC_INITIALIZER;
+        char* arr_type = strdup(arr_type_in);
+        if(n_occurances(arr_type,'<') == 1)
+        {
+                int start = 0;
+                while(arr_type[++start] != '<');
+                int end = start;
+                ++start;
+                while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
+                arr_type[end] = '\0';
+                ++end;
+
+                start = end;
+                while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
+                const bool two_dimensional = arr_type[end] == ',';
+                arr_type[end] = '\0';
+                char* tmp = malloc(sizeof(char)*1000);
+                strcpy(tmp, &arr_type[start]);
+                push(&res,intern(tmp));
+
+                if(two_dimensional)
+                {
+                        ++end;
+                        start = end;
+                        while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
+                        arr_type[end] = '\0';
+                        strcpy(tmp, &arr_type[start]);
+                        push(&res,intern(tmp));
+                }
+
+                return res;
+        }
+        push(&res,intern(arr_type));
+        return res;
 }
+
 
 const char*
 output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
@@ -3972,8 +4001,18 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 		  }
 		  else
 		  {
-		  	fprintf(stream, "%s ", get_array_elem_type(strdup(tspecifier_out)));
-		  	res = get_array_elem_size(strdup(tspecifier_out));
+		       fprintf(stream, "%s ", get_array_elem_type(tspecifier_out));
+                       string_vec sizes = get_array_elem_size(tspecifier_out);
+                       if(sizes.size == 1)
+                               res = sprintf_intern("[%s]",sizes.data[0]);
+                       else if(sizes.size == 2)
+                               //TP: even though it is not intended rest of the dims come from traversing
+                               //TP: works for now but a bit hacky
+                               res = sprintf_intern("[%s]",sizes.data[0]);
+                       else
+                               fatal("Add missing dimensionality initialization!\n");
+                       free_str_vec(&sizes);
+
 		  }
 	  }
 	  else if(tspecifier_out != KERNEL_STR)
@@ -4415,7 +4454,7 @@ get_array_access_type(const ASTNode* node)
 		counter == 2 && base_type == MATRIX_STR ? REAL_STR :
 		base_type == MATRIX_STR ? REAL_PTR_STR:
 		strstr(base_type,MULT_STR) ? intern(remove_substring(strdup(base_type),MULT_STR)) :
-		strstr(base_type,"AcArray") ? get_array_elem_type(strdup(base_type)) :
+		strstr(base_type,"AcArray") ? get_array_elem_type(base_type) :
 		base_type == FIELD_STR  ? REAL_STR :
 		NULL;
 }
@@ -4454,6 +4493,10 @@ get_binary_expr_type(const ASTNode* node)
 		op && !strcmps(op,MULT_STR,DIV_STR,PLUS_STR,MINUS_STR)     && lhs_real && !rhs_int  ?  rhs_res   :
 		op && !strcmps(op,MULT_STR,DIV_STR,PLUS_STR,MINUS_STR)  && rhs_real && !lhs_int  ?  lhs_res   :
 		!strcmp(lhs_res,rhs_res) ? lhs_res :
+		//TP: we lose size information but it's not that crucial for now
+                strstr(lhs_res,"AcArray") && strstr(rhs_res,"*") ? rhs_res :
+                strstr(rhs_res,"AcArray") && strstr(lhs_res,"*") ? lhs_res:
+
 		NULL;
 }
 const char*
@@ -4694,7 +4737,7 @@ get_in_range_expr_type(ASTNode* node)
 	const char* base_type = get_expr_type(node->rhs);
 	const char* res = (!base_type)   ? NULL : 
 		strstr(base_type,MULT_STR) ? intern(remove_substring(strdup(base_type),MULT_STR)) :
-		strstr(base_type,"AcArray") ? get_array_elem_type(strdup(base_type)) :
+		strstr(base_type,"AcArray") ? get_array_elem_type(base_type) :
 		NULL;
 	if(!node->lhs->expr_type)
 		node->lhs->expr_type = res;
@@ -6101,32 +6144,44 @@ inline_dfuncs(ASTNode* node)
 void
 transform_arrays_to_std_arrays_in_func(ASTNode* node)
 {
-	TRAVERSE_PREAMBLE(transform_arrays_to_std_arrays_in_func)
-	if(!(node->type & NODE_DECLARATION))
-		return;
-	if(!node->rhs)
-		return;
-	if(!node->rhs->lhs)
-		return;
-	if(!node->rhs->lhs->rhs)
-		return;
-	const ASTNode* tspec = get_node(NODE_TSPEC,node->lhs);
-	if(!tspec)
-		return;
-	const char* dim = combine_all_new(node->rhs->lhs->rhs);
-	//TP: at least some CUDA compilers do not allow zero-sized objects in device code so have to pad the array length
-	if(!strcmp(dim,"(0)"))
-	{
-		dim = "(1)";
-	}
-	astnode_sprintf(tspec->lhs,"AcArray<%s,%s>",tspec->lhs->buffer,dim);
-	node->rhs->lhs->infix = NULL;
-	node->rhs->lhs->postfix= NULL;
-	node->rhs->lhs->rhs = NULL;
-	//remove unneeded braces if assignment
-	if(node->parent->type & NODE_ASSIGNMENT && node->parent->rhs)
-		node->parent->rhs->prefix = NULL;
+        TRAVERSE_PREAMBLE(transform_arrays_to_std_arrays_in_func)
+        if(!(node->type & NODE_DECLARATION))
+                return;
+        if(!node->rhs)
+                return;
+        if(!node->rhs->lhs)
+                return;
+        if(!node->rhs->lhs->rhs)
+                return;
+        const ASTNode* tspec = get_node(NODE_TSPEC,node->lhs);
+        if(!tspec)
+                return;
+        const ASTNode* access_start = get_node(NODE_ARRAY_ACCESS,node);
+        node_vec dims = get_array_accesses(access_start);
+        const char* dim = combine_all_new(node->rhs->lhs->rhs);
+        //TP: at least some CUDA compilers do not allow zero-sized objects in device code so have to pad the array length
+        if(!strcmp(dim,"(0)"))
+        {
+                dim = "(1)";
+                astnode_sprintf(tspec->lhs,"AcArray<%s,%s>",tspec->lhs->buffer,dim);
+        }
+        else if(dims.size == 1)
+        {
+                astnode_sprintf(tspec->lhs,"AcArray<%s,%s>",tspec->lhs->buffer,combine_all_new(dims.data[0]));
+        }
+        else if(dims.size == 2)
+        {
+                astnode_sprintf(tspec->lhs,"AcArray<%s,%s,%s>",tspec->lhs->buffer,strdup(combine_all_new(dims.data[0])),strdup(combine_all_new(dims.data[1])));
+        }
+        free_node_vec(&dims);
+        node->rhs->lhs->infix = NULL;
+        node->rhs->lhs->postfix= NULL;
+        node->rhs->lhs->rhs = NULL;
+        //remove unneeded braces if assignment
+        if(node->parent->type & NODE_ASSIGNMENT && node->parent->rhs)
+                node->parent->rhs->prefix = NULL;
 }
+
 void
 transform_arrays_to_std_arrays(ASTNode* node)
 {
@@ -6724,11 +6779,11 @@ compatible_types(const char* a, const char* b)
 		;
 	if(!res)
 	{
-		if(a == REAL_PTR_STR && get_array_elem_type(strdup(b)) == REAL_STR)
+		if(a == REAL_PTR_STR && get_array_elem_type(b) == REAL_STR)
 		{
 			return true;
 		}
-		if(a == REAL3_PTR_STR && get_array_elem_type(strdup(b)) == REAL3_STR)
+		if(a == REAL3_PTR_STR && get_array_elem_type(b) == REAL3_STR)
 		{
 			return true;
 		}
@@ -6871,72 +6926,93 @@ transform_array_unary_ops(ASTNode* node)
 void
 transform_array_binary_ops(ASTNode* node)
 {
-	if(node->lhs)
-		transform_array_binary_ops(node->lhs);
-	if(node->rhs)
-		transform_array_binary_ops(node->rhs);
-	if(!node_is_binary_expr(node)) return;
+        if(node->lhs)
+                transform_array_binary_ops(node->lhs);
+        if(node->rhs)
+                transform_array_binary_ops(node->rhs);
+        if(!node_is_binary_expr(node)) return;
 
-	const char* lhs_expr = get_expr_type(node->lhs);
-	const char* rhs_expr = get_expr_type(node->rhs);
-	if(!lhs_expr || !rhs_expr) return;
-	const char* op = node->rhs->lhs->buffer;
+        const char* lhs_expr = get_expr_type(node->lhs);
+        const char* rhs_expr = get_expr_type(node->rhs);
+        if(!lhs_expr || !rhs_expr) return;
+        const char* op = node->rhs->lhs->buffer;
         if(!op) return;
         if(strcmps(op,PLUS_STR,MINUS_STR,DIV_STR,MULT_STR)) return;
 
-	const bool lhs_is_array = strstr(lhs_expr,"*") || strstr(lhs_expr,"AcArray");
-	const bool rhs_is_array = strstr(rhs_expr,"*") || strstr(rhs_expr,"AcArray");
-	const bool rhs_is_vec   = rhs_expr == REAL3_STR;
-	if(lhs_is_array && rhs_is_array)
-	{
-		node_vec params = VEC_INITIALIZER;
-		push_node(&params,node->lhs);
-		push_node(&params,node->rhs->rhs);
-		const char* func_name = 
-			op == PLUS_STR  ? intern("add_arr") :
-			op == MINUS_STR ? intern("sub_arr") :
-			op == MULT_STR  ? intern("mult_arr") :
-			op == DIV_STR   ? intern("div_arr") :
-			NULL;
-		replace_node(node, create_func_call_expr_variadic(func_name,params));
-		free_node_vec(&params);
-	}
-	if(lhs_is_array && rhs_expr == REAL_STR)
-	{
-		node_vec params = VEC_INITIALIZER;
-		push_node(&params,node->lhs);
-		push_node(&params,node->rhs->rhs);
-		const char* func_name = 
-			op == PLUS_STR  ? intern("add_arr") :
-			op == MINUS_STR ? intern("sub_arr") :
-			op == MULT_STR  ? intern("mult_arr") :
-			op == DIV_STR   ? intern("div_arr") :
-			NULL;
-		replace_node(node, create_func_call_expr_variadic(func_name,params));
-		free_node_vec(&params);
-	}
-	ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
-	if(!identifier) return;
-	if(lhs_is_array && rhs_is_vec)
-	{
-		if(op != MULT_STR)
-			fatal("Only mat mul supported for array*vec!!\n");
-		if(check_symbol(NODE_VARIABLE_ID,identifier->buffer,0,DCONST_STR))
-		{
-			astnode_sprintf(identifier,"AC_INTERNAL_d_real_arrays_%s",identifier->buffer);
-		}
-		else if(check_symbol(NODE_VARIABLE_ID,identifier->buffer,0,RUN_CONST_STR))
-		{
-			astnode_sprintf(identifier,"AC_INTERNAL_run_const_array_here",identifier->buffer);
-		}
-		node_vec params = VEC_INITIALIZER;
-		push_node(&params,node->lhs);
-		push_node(&params,node->rhs->rhs);
-		const char* func_name = intern("matmul_arr");
-		replace_node(node, create_func_call_expr_variadic(func_name,params));
-		free_node_vec(&params);
-	}
+        const bool lhs_is_array = strstr(lhs_expr,"*") || strstr(lhs_expr,"AcArray");
+        //const bool rhs_is_array = strstr(rhs_expr,"*") || strstr(rhs_expr,"AcArray");
+        const bool rhs_is_vec   = rhs_expr == REAL3_STR;
+
+        //TP: these work but generate CUDA code that is quite hard to read
+        //instead prefer to add indexes to assignments i.e.
+        //arr_c = arr_a + arr_b --> for(i = 0; i < arr_c_dims; ++i) arr_c[i] = arr_a[i] + arr_b[i]
+        //Since that is more readable and also generates quite straightforward code that the CUDA/HIP compiler should have an easier time to handle
+        //if(lhs_is_array && rhs_is_array)
+        //{
+        //      node_vec params = VEC_INITIALIZER;
+        //      push_node(&params,node->lhs);
+        //      push_node(&params,node->rhs->rhs);
+        //      const char* func_name =
+        //              op == PLUS_STR  ? intern("add_arr") :
+        //              op == MINUS_STR ? intern("sub_arr") :
+        //              op == MULT_STR  ? intern("mult_arr") :
+        //              op == DIV_STR   ? intern("div_arr") :
+        //              NULL;
+        //      replace_node(node, create_func_call_expr_variadic(func_name,params));
+        //      free_node_vec(&params);
+        //}
+        //if(lhs_is_array && rhs_expr == REAL_STR)
+        //{
+        //      node_vec params = VEC_INITIALIZER;
+        //      push_node(&params,node->lhs);
+        //      push_node(&params,node->rhs->rhs);
+        //      const char* func_name =
+        //              op == PLUS_STR  ? intern("add_arr") :
+        //              op == MINUS_STR ? intern("sub_arr") :
+        //              op == MULT_STR  ? intern("mult_arr") :
+        //              op == DIV_STR   ? intern("div_arr") :
+        //              NULL;
+        //      replace_node(node, create_func_call_expr_variadic(func_name,params));
+        //      free_node_vec(&params);
+        //}
+        //if(rhs_is_array && lhs_expr == REAL_STR)
+        //{
+        //      node_vec params = VEC_INITIALIZER;
+        //      push_node(&params,node->rhs->rhs);
+        //      push_node(&params,node->lhs);
+        //      const char* func_name =
+        //              op == PLUS_STR  ? intern("add_arr") :
+        //              op == MINUS_STR ? intern("sub_arr") :
+        //              op == MULT_STR  ? intern("mult_arr") :
+        //              op == DIV_STR   ? intern("div_arr") :
+        //              NULL;
+        //      replace_node(node, create_func_call_expr_variadic(func_name,params));
+        //      free_node_vec(&params);
+        //}
+
+        ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
+        if(!identifier) return;
+        if(lhs_is_array && rhs_is_vec)
+        {
+                if(op != MULT_STR)
+                        fatal("Only mat mul supported for array*vec!!\n");
+                if(check_symbol(NODE_VARIABLE_ID,identifier->buffer,0,DCONST_STR))
+                {
+                        astnode_sprintf(identifier,"AC_INTERNAL_d_real_arrays_%s",identifier->buffer);
+                }
+                else if(check_symbol(NODE_VARIABLE_ID,identifier->buffer,0,RUN_CONST_STR))
+                {
+                        astnode_sprintf(identifier,"AC_INTERNAL_run_const_array_here",identifier->buffer);
+                }
+                node_vec params = VEC_INITIALIZER;
+                push_node(&params,node->lhs);
+                push_node(&params,node->rhs->rhs);
+                const char* func_name = intern("matmul_arr");
+                replace_node(node, create_func_call_expr_variadic(func_name,params));
+                free_node_vec(&params);
+        }
 }
+
 void
 make_into_reference(ASTNode* node)
 {
@@ -6950,55 +7026,111 @@ is_defining_expression(const ASTNode* node)
 	if(!node) return false;
 	return is_first_decl(node) || is_defining_expression(node->lhs) || is_defining_expression(node->rhs);
 }
+void
+add_index_to_arrays(ASTNode* node, const size_t rank)
+{
+        TRAVERSE_PREAMBLE_PARAMS(add_index_to_arrays,rank);
+        const char* type = get_expr_type(node);
+        if(!type) return;
+        const bool is_arr = (strstr(type,"*") || strstr(type,"AcArray"));
+        if(is_arr && node->token == IDENTIFIER)
+        {
+                if(rank == 1)
+                        astnode_sprintf_postfix(node,"[AC_INTERNAL_ARRAY_LOOP_INDEX]");
+                else if(rank == 2)
+                        astnode_sprintf_postfix(node,"[AC_INTERNAL_ARRAY_LOOP_INDEX_1][AC_INTERNAL_ARRAY_LOOP_INDEX_2]");
+        }
+}
 
 void
 transform_array_assignments(ASTNode* node)
 {
-	TRAVERSE_PREAMBLE(transform_array_assignments);
-	if(!(node->type & NODE_ASSIGNMENT)) return;
-	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
-	if(!function) return;
-	const char* op = node->rhs->lhs->buffer;
-	if(op != EQ_STR) return;
-	const char* rhs_type = get_expr_type(node->rhs);
-	if(!rhs_type) return;
-	const bool rhs_is_arr = (strstr(rhs_type,"*") || strstr(rhs_type,"AcArray"));
-	if(rhs_is_arr && !get_node(NODE_ARRAY_INITIALIZER,node->rhs->rhs))
-	{
-		if(is_defining_expression(node->lhs))
-		{
-		      replace_node(
-		      		node->rhs->rhs,
-		      		create_func_call_expr(intern("dup_arr"),node->rhs->rhs)
-		      	);
-		      make_into_reference(node->lhs);
-		}
-		else
-		{
-			node_vec params = VEC_INITIALIZER;
-			push_node(&params,node->lhs);
-			push_node(&params,node->rhs->rhs);
-			replace_node(
-					node,
-					create_func_call_expr_variadic(intern("copy_arr"),params)
-				);
-		}
-	}
-	const char* lhs_type = get_expr_type(node->lhs);
-	if(!lhs_type) return;
-	const bool lhs_is_arr = (strstr(lhs_type,"*") || strstr(lhs_type,"AcArray"));
-	if(lhs_is_arr && (rhs_type == REAL_STR || rhs_type == INT_STR))
-	{
-		node_vec params = VEC_INITIALIZER;
-		push_node(&params,node->lhs);
-		push_node(&params,node->rhs->rhs);
-		replace_node(
-				node,
-				create_func_call_expr_variadic(intern("broadcast_scalar"),params)
-			);
-		//make_into_reference(node->lhs);
-	}
+        TRAVERSE_PREAMBLE(transform_array_assignments);
+        if(!(node->type & NODE_ASSIGNMENT)) return;
+        const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
+        if(!function) return;
+        const char* op = node->rhs->lhs->buffer;
+        if(op != EQ_STR) return;
+        const char* rhs_type = get_expr_type(node->rhs);
+        if(!rhs_type) return;
+        const bool rhs_is_arr = (strstr(rhs_type,"*") || strstr(rhs_type,"AcArray"));
+        const char* lhs_type = get_expr_type(node->lhs);
+        if(!lhs_type) return;
+        if(rhs_is_arr && !get_node(NODE_ARRAY_INITIALIZER,node->rhs->rhs))
+        {
+                if(is_defining_expression(node->lhs))
+                {
+                      fatal("NOT ALLOWED!\n");
+                      replace_node(
+                                node->rhs->rhs,
+                                create_func_call_expr(intern("dup_arr"),node->rhs->rhs)
+                        );
+                      make_into_reference(node->lhs);
+                }
+                else
+                {
+                        if(strstr(lhs_type,"AcArray"))
+                        {
+                                string_vec sizes = get_array_elem_size(lhs_type);
+                                if(sizes.size == 1)
+                                {
+                                        astnode_sprintf_prefix(node,"for (int AC_INTERNAL_ARRAY_LOOP_INDEX = 0; AC_INTERNAL_ARRAY_LOOP_INDEX < %s; ++AC_INTERNAL_ARRAY_LOOP_INDEX){",sizes.data[0]);
+                                        astnode_sprintf_postfix(node,";}");
+                                        add_index_to_arrays(node,sizes.size);
+                                }
+                                else if(sizes.size == 2)
+                                {
+                                        astnode_sprintf_prefix(node,
+                                                                "for (int AC_INTERNAL_ARRAY_LOOP_INDEX_1 = 0; AC_INTERNAL_ARRAY_LOOP_INDEX_1 < %s; ++AC_INTERNAL_ARRAY_LOOP_INDEX_1){\n"
+                                                                "for (int AC_INTERNAL_ARRAY_LOOP_INDEX_2 = 0; AC_INTERNAL_ARRAY_LOOP_INDEX_2 < %s; ++AC_INTERNAL_ARRAY_LOOP_INDEX_2){\n"
+                                                                ,sizes.data[0],sizes.data[1]);
+                                        astnode_sprintf_postfix(node,";}\n;}");
+                                        add_index_to_arrays(node,sizes.size);
+                                }
+                        }
+                        else
+                        {
+                                node_vec params = VEC_INITIALIZER;
+                                push_node(&params,node->lhs);
+                                push_node(&params,node->rhs->rhs);
+                                replace_node(
+                                                node,
+                                                create_func_call_expr_variadic(intern("copy_arr"),params)
+                                        );
+                        }
+                }
+        }
+        const bool lhs_is_arr = (strstr(lhs_type,"*") || strstr(lhs_type,"AcArray"));
+        if(lhs_is_arr && (rhs_type == REAL_STR || rhs_type == INT_STR))
+        {
+                node_vec params = VEC_INITIALIZER;
+                push_node(&params,node->lhs);
+                push_node(&params,node->rhs->rhs);
+                const char* array_elem_type = get_array_elem_type(lhs_type);
+                if(array_elem_type && array_elem_type == REAL3_STR && rhs_type == REAL_STR)
+                {
+                        replace_node(
+                                        node,
+                                        create_func_call_expr_variadic(intern("broadcast_scalar_to_vec"),params)
+                                );
+                }
+                else
+                {
+                        string_vec sizes = get_array_elem_size(lhs_type);
+                        const char* func_name =
+                                sizes.size == 1 ? "broadcast_scalar" :
+                                sizes.size == 2 ? "broadcast_scalar_2d" :
+                                sizes.size == 3 ? "broadcast_scalar_3d" :
+                               "broadcast_scalar_4d";
+                        replace_node(
+                                        node,
+                                        create_func_call_expr_variadic(intern(func_name),params)
+                                );
+                }
+        }
 }
+
+
 void
 transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* root)
 {
@@ -7115,10 +7247,7 @@ gen_overloads(ASTNode* root)
 	overloaded_something = false;
   	transform_field_intrinsic_func_calls_and_ops(root);
   	gen_type_info(root);
-	if(overload_counter == 0)
-	{
-  		transform_array_assignments(root);
-	}
+  	transform_array_assignments(root);
   	transform_array_binary_ops(root);
 	overloaded_something |= resolve_overloaded_calls(root,overload_possibilities);
 	overload_counter++;
@@ -7235,6 +7364,7 @@ gen_global_strings()
 	REAL_ARR_STR = intern("AcRealArray");
 
 	REAL_PTR_STR = intern("AcReal*");
+	BOOL_PTR_STR = intern("bool*");
 	REAL3_PTR_STR = intern("AcReal3*");
 	FIELD3_PTR_STR = intern("Field3*");
 	VTXBUF_PTR_STR = intern("VertexBufferHandle*");
