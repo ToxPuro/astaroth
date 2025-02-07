@@ -994,12 +994,32 @@ gen_kernel_reduce_funcs(const int curr_kernel)
     	printf("const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
     }
     if(get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel]))
+    {
 	printf_reduce_funcs("AcReal","real","AcReal",curr_kernel,real_output_names,reduced_reals[curr_kernel],NUM_REAL_OUTPUTS);
+    }
+    else
+    {
+	    printf("auto reduce_sum_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
+	    printf("auto reduce_max_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
+	    printf("auto reduce_min_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
+    }
     if(get_num_reduced_vars(NUM_INT_OUTPUTS,reduced_ints[curr_kernel]))
 	printf_reduce_funcs("int","int","AcInt",curr_kernel,int_output_names,reduced_ints[curr_kernel],NUM_INT_OUTPUTS);
+    else
+    {
+	    printf("auto reduce_sum_int = [&](const int& val, const AcIntOutputParam& param){};");
+	    printf("auto reduce_max_int = [&](const int& val, const AcIntOutputParam& param){};");
+	    printf("auto reduce_min_int = [&](const int& val, const AcIntOutputParam& param){};");
+    }
 #if AC_DOUBLE_PRECISION
     if(get_num_reduced_vars(NUM_FLOAT_OUTPUTS,reduced_floats[curr_kernel]))
 	printf_reduce_funcs("float","float","AcFloat",curr_kernel,float_output_names,reduced_floats[curr_kernel],NUM_FLOAT_OUTPUTS);
+    else
+    {
+	    printf("auto reduce_sum_float = [&](const float& val, const AcFloatOutputParam& param){};");
+	    printf("auto reduce_max_float = [&](const float& val, const AcFloatOutputParam& param){};");
+	    printf("auto reduce_min_float = [&](const float& val, const AcFloatOutputParam& param){};");
+    }
 #endif
   }
 }
