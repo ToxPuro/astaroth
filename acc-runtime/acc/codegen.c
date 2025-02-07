@@ -8954,8 +8954,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 	  fflush(stream);
 	  //This is used to eliminate known constexpr conditionals
 	  //TP: for now set code elimination off
-	  bool eliminated_something = true;
-	  //bool eliminated_something = false;
+	  //bool eliminated_something = true;
+	  bool eliminated_something = false;
 
 	  int round = 0;
   	  gen_constexpr_info(root,gen_mem_accesses);
