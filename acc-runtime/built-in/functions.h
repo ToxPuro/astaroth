@@ -232,6 +232,16 @@ reduce_sum(real val, Profile<ZY> prof)
 	reduce_sum_real_zy(val, prof);
 }
 
+inline add_arr(real[] a, real b)
+{
+	real res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] + b
+	}
+	return res;
+}
+
 inline add_arr(real[] a, real[] b)
 {
 	real res[size(a)]
@@ -248,6 +258,16 @@ inline add_arr(real3[] a, real3[] b)
 	for i in 0:size(a)
 	{
 		res[i] = a[i] + b[i]
+	}
+	return res;
+}
+
+inline div_arr(real[] a, real b)
+{
+	real res[size(a)]
+	for i in 0:size(a)
+	{
+		res[i] = a[i] / b
 	}
 	return res;
 }
@@ -362,6 +382,26 @@ sum(real2 a)
 	return a.x + a.y
 }
 
+sum(real[] a)
+{
+	real res = 0.0
+        for i in 0:size(a)
+	{
+		res += a[i]
+	}
+	return res
+}
+
+sum(real3[] a)
+{
+	real res = 0.0
+        for i in 0:size(a)
+	{
+		res += a[i].x+a[i].y+a[i].z
+	}
+	return res
+}
+
 any_AC(bool[] arr, int arr_len)
 {
 	bool res = false
@@ -372,9 +412,11 @@ any_AC(bool[] arr, int arr_len)
 	return res
 }
 
-
 //inline any(b) {return b.x || b.y || b.z}
-//inline all(b) {b.x && b.y && b.z}
+//inline all(b) {return b.x && b.y && b.z}
+
+//any(bool3 b) {return b.x || b.y || b.z}
+//all(bool3 b) {return b.x && b.y && b.z}
 
 #define any(b) (b.x || b.y || b.z)
 #define all(b) (b.x && b.y && b.z)

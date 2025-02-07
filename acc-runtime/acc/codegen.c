@@ -812,6 +812,9 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, BOOL_PTR_STR, intern("AC_INTERNAL_run_const_bool_array_here"));
 
 
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_PTR_STR, intern("AC_INTERNAL_run_const_AcReal_array_here"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, BOOL_PTR_STR, intern("AC_INTERNAL_run_const_bool_array_here"));
+
 }
 
 void
@@ -1971,6 +1974,7 @@ gen_matrix_reads(ASTNode* node)
   else
        astnode_sprintf_postfix(node->lhs,".data");
 }
+
 #define max(a,b) (a > b ? a : b)
 #define min(a,b) (a < b ? a : b)
 static int
@@ -3928,40 +3932,40 @@ get_array_elem_type(const char* arr_type_in)
 string_vec
 get_array_elem_size(const char* arr_type_in)
 {
-        string_vec res = VEC_INITIALIZER;
-        char* arr_type = strdup(arr_type_in);
-        if(n_occurances(arr_type,'<') == 1)
-        {
-                int start = 0;
-                while(arr_type[++start] != '<');
-                int end = start;
-                ++start;
-                while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
-                arr_type[end] = '\0';
-                ++end;
+	string_vec res = VEC_INITIALIZER;
+	char* arr_type = strdup(arr_type_in);
+	if(n_occurances(arr_type,'<') == 1)
+	{
+		int start = 0;
+		while(arr_type[++start] != '<');
+		int end = start;
+		++start;
+		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
+		arr_type[end] = '\0';
+		++end;
 
-                start = end;
-                while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
-                const bool two_dimensional = arr_type[end] == ',';
-                arr_type[end] = '\0';
-                char* tmp = malloc(sizeof(char)*1000);
-                strcpy(tmp, &arr_type[start]);
-                push(&res,intern(tmp));
+		start = end;
+		while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
+		const bool two_dimensional = arr_type[end] == ',';
+		arr_type[end] = '\0';
+		char* tmp = malloc(sizeof(char)*1000);
+		strcpy(tmp, &arr_type[start]);
+		push(&res,intern(tmp));
 
-                if(two_dimensional)
-                {
-                        ++end;
-                        start = end;
-                        while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
-                        arr_type[end] = '\0';
-                        strcpy(tmp, &arr_type[start]);
-                        push(&res,intern(tmp));
-                }
-
-                return res;
-        }
-        push(&res,intern(arr_type));
-        return res;
+		if(two_dimensional)
+		{
+			++end;
+			start = end;
+			while(arr_type[end] != ',' && arr_type[end] != '>' && arr_type[end] != ' ') ++end;
+			arr_type[end] = '\0';
+			strcpy(tmp, &arr_type[start]);
+			push(&res,intern(tmp));
+		}
+		
+		return res;
+	}
+	push(&res,intern(arr_type));
+	return res;
 }
 
 
@@ -4001,18 +4005,17 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 		  }
 		  else
 		  {
-		       fprintf(stream, "%s ", get_array_elem_type(tspecifier_out));
-                       string_vec sizes = get_array_elem_size(tspecifier_out);
-                       if(sizes.size == 1)
-                               res = sprintf_intern("[%s]",sizes.data[0]);
-                       else if(sizes.size == 2)
-                               //TP: even though it is not intended rest of the dims come from traversing
-                               //TP: works for now but a bit hacky
-                               res = sprintf_intern("[%s]",sizes.data[0]);
-                       else
-                               fatal("Add missing dimensionality initialization!\n");
-                       free_str_vec(&sizes);
-
+		  	fprintf(stream, "%s ", get_array_elem_type(tspecifier_out));
+		  	string_vec sizes = get_array_elem_size(tspecifier_out);
+			if(sizes.size == 1)
+				res = sprintf_intern("[%s]",sizes.data[0]);
+			else if(sizes.size == 2)
+				//TP: even though it is not intended rest of the dims come from traversing
+				//TP: works for now but a bit hacky
+				res = sprintf_intern("[%s]",sizes.data[0]);
+			else
+				fatal("Add missing dimensionality initialization!\n");
+			free_str_vec(&sizes);
 		  }
 	  }
 	  else if(tspecifier_out != KERNEL_STR)
@@ -4241,7 +4244,7 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
     fprintf(stream, "%s", node->infix);
   translate_buffer_body(stream, node);
   if(size)
-	  fprintf(stream, "[%s] ",size);
+	  fprintf(stream, "%s ",size);
 
   // Traverse RHS
   if (node->rhs)
@@ -4259,7 +4262,9 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
 
   // Postfix translation
   if (stream && node->postfix) 
+  {
     fprintf(stream, "%s", node->postfix);
+  }
 }
 static inline void
 traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
@@ -4483,7 +4488,7 @@ get_binary_expr_type(const ASTNode* node)
 	const bool rhs_real = rhs_res == REAL_STR;
 	const bool lhs_int   = lhs_res == INT_STR;
 	const bool rhs_int   = rhs_res == INT_STR;
-	return
+	const char* res = 	
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,FIELD_STR) || !strcmp(rhs_res,FIELD_STR))   ? REAL_STR  :
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,FIELD3_STR) || !strcmp(rhs_res,FIELD3_STR)) ? REAL3_STR :
                 (lhs_real || rhs_real) && (lhs_int || rhs_int) ? REAL_STR :
@@ -4494,10 +4499,10 @@ get_binary_expr_type(const ASTNode* node)
 		op && !strcmps(op,MULT_STR,DIV_STR,PLUS_STR,MINUS_STR)  && rhs_real && !lhs_int  ?  lhs_res   :
 		!strcmp(lhs_res,rhs_res) ? lhs_res :
 		//TP: we lose size information but it's not that crucial for now
-                strstr(lhs_res,"AcArray") && strstr(rhs_res,"*") ? rhs_res :
-                strstr(rhs_res,"AcArray") && strstr(lhs_res,"*") ? lhs_res:
-
+		strstr(lhs_res,"AcArray") && strstr(rhs_res,"*") ? rhs_res :
+		strstr(rhs_res,"AcArray") && strstr(lhs_res,"*") ? lhs_res:
 		NULL;
+	return res;
 }
 const char*
 get_ternary_expr_type(const ASTNode* node)
@@ -8949,8 +8954,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 	  fflush(stream);
 	  //This is used to eliminate known constexpr conditionals
 	  //TP: for now set code elimination off
-	  //bool eliminated_something = true;
-	  bool eliminated_something = false;
+	  bool eliminated_something = true;
+	  //bool eliminated_something = false;
 
 	  int round = 0;
   	  gen_constexpr_info(root,gen_mem_accesses);

@@ -44,3 +44,9 @@ nint(real x)
 {
 	return round(x)
 }
+//TP: placeholder. Please port from general.f90 to DSL :)
+inline spline_integral(real[] a,b)
+{
+	print("NOT IMPLEMENTED spline_integral!\n")
+	return a
+}

@@ -938,9 +938,25 @@ broadcast_scalar(T& arr, const AcReal& val)
 	for(size_t i = 0; i < arr_len; ++i)
 		arr[i] = val;
 }
+template <const size_t N1, const size_t N2>
+HOST_DEVICE_INLINE void
+broadcast_scalar_2d(AcReal (&arr)[N1][N2], const AcReal& val)
+{
+	for(size_t i = 0; i < N1; ++i)
+		for(size_t j= 0; j < N2; ++j)
+			arr[i][j] = val;
+}
 template <typename T>
 HOST_DEVICE_INLINE void
-copy_arr(T& a, const T& b)
+broadcast_scalar_to_vec(T& arr, const AcReal& val)
+{
+	const size_t arr_len = sizeof(arr)/sizeof(arr[0]);
+	for(size_t i = 0; i < arr_len; ++i)
+		arr[i] = (AcReal3){val,val,val};
+}
+template <typename T1,typename T2>
+HOST_DEVICE_INLINE void
+copy_arr(T1& a, const T2& b)
 {
 	const size_t arr_len = sizeof(a)/sizeof(a[0]);
 	for(size_t i = 0; i < arr_len; ++i)

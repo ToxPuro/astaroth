@@ -105,7 +105,6 @@ elemental ugrad_upw(Field3 field, Field3 velo){
 		      dot(velo,gradient(field.z)) - dot(abs(velo),gradient_upwd(field.z)))
 }
 
-
 del6_upwd(real3 velo,Field field)
 {
 
