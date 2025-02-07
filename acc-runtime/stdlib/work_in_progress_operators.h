@@ -212,12 +212,12 @@ del6_masked(Field s, int mask)
 	return x + y + z
 }
 
-del6_upwd_masked(Field s, int mask)
+del6_upwd_masked(real3 velo, Field s, int mask)
 {
-	x = mask == 1 ? 0.0 : der6x_upwd(s)
-	y = mask == 2 ? 0.0 : der6y_upwd(s)
-	z = mask == 3 ? 0.0 : der6z_upwd(s)
-	return x + y + z
+        x = mask == 1 ? 0.0 : abs(velo.x*der6x_upwd(s))
+        y = mask == 2 ? 0.0 : abs(velo.y*der6y_upwd(s))
+        z = mask == 3 ? 0.0 : abs(velo.z*der6z_upwd(s))
+        return x + y + z
 }
 
 elemental del6_strict(Field s) {
