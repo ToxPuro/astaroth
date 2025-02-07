@@ -105,9 +105,19 @@ elemental ugrad_upw(Field3 field, Field3 velo){
 		      dot(velo,gradient(field.z)) - dot(abs(velo),gradient_upwd(field.z)))
 }
 
-elemental del6_upwd(Field s) {
-  return der6x_upwd(s) + der6y_upwd(s) + der6z_upwd(s)
+
+del6_upwd(real3 velo,Field field)
+{
+
+        return dot(abs(velo),gradient_upwd(field))
 }
+
+del6_upwd(real3 velo, Field3 field) {
+        return real3( dot(abs(velo),gradient_upwd(field.x)),
+                      dot(abs(velo),gradient_upwd(field.y)),
+                      dot(abs(velo),gradient_upwd(field.z)))
+}
+
 
 elemental laplace(Field s) {
     return derxx(s) + deryy(s) + derzz(s)

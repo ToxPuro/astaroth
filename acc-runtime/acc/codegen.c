@@ -1048,11 +1048,25 @@ all_identifiers_are_constexpr(const ASTNode* node)
 	if(!strcmp(node->buffer,"size")) return true;
 	//TP: this should not happend but for now simply set the constexpr value to the correct value
 	//TODO: fix
-	if(!node->is_constexpr &&  check_symbol(NODE_ANY,node->buffer,0,CONST_STR))
-	{
+	if(!node->is_constexpr &&  check_symbol(NODE_ANY,node->buffer,0,CONST_STR)) {
 		ASTNode* hack = (ASTNode*)node;
 		hack->is_constexpr = true;
 	}
+	if(!node->is_constexpr)
+	{
+		for(size_t i = 0; i < e_info.names.size; ++i)
+		{
+			for(size_t option = 0; option < e_info.options[i].size; ++option)
+			{
+				if(node->buffer == e_info.options[i].data[option])
+				{
+					ASTNode* hack = (ASTNode*)node;
+					hack->is_constexpr = true;
+				}
+			}
+		}
+	}
+			
 	res &= node->is_constexpr;
 	return res;
 }
