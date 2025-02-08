@@ -447,8 +447,8 @@ gen_halo_exchange_and_boundconds(
 		std::vector<AcTaskDefinition> res{};
 		const auto info = get_info();
 		const std::vector<AcBoundary> boundaries = get_boundaries();
-		std::array<std::vector<bool>,NUM_ALL_FIELDS>  field_boundconds_processed{};
-		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
+		std::array<std::vector<bool>,NUM_FIELDS>  field_boundconds_processed{};
+		for(size_t i = 0; i < NUM_FIELDS; ++i)
 		{
 			field_boundconds_processed[i].push_back(false);
 		}
@@ -566,7 +566,7 @@ template<typename T1, typename T2, typename T3, typename T4, typename T5>
 void
 compute_next_level_set(T1& dst, const T2& kernel_calls, T3& field_written_to,const T4& call_level_set, const T5& info)
 {
-	std::array<bool,NUM_ALL_FIELDS> field_consumed{};
+	std::array<bool,NUM_FIELDS> field_consumed{};
 	std::fill(field_consumed.begin(), field_consumed.end(),false);
 	std::fill(field_written_to.begin(), field_written_to.end(),false);
 	std::array<bool,NUM_PROFILES> profile_consumed{};
@@ -577,7 +577,7 @@ compute_next_level_set(T1& dst, const T2& kernel_calls, T3& field_written_to,con
 		{
 		  const int kernel_index = (int)kernel_calls[i];
 		  bool can_compute = true;
-		  for(size_t j = 0; j < NUM_ALL_FIELDS; ++j)
+		  for(size_t j = 0; j < NUM_FIELDS; ++j)
 		  {
 			const bool field_accessed = info.read_fields[kernel_index][j] || info.field_has_stencil_op[kernel_index][j];
 		  	can_compute &= !(field_consumed[j] && field_accessed);
@@ -589,7 +589,7 @@ compute_next_level_set(T1& dst, const T2& kernel_calls, T3& field_written_to,con
 			can_compute &= !(profile_consumed[j] && profile_accessed);
 			profile_consumed[j] |= info.reduced_profiles[kernel_index][j];
 		  }
-		  for(size_t j = 0; j < NUM_ALL_FIELDS; ++j)
+		  for(size_t j = 0; j < NUM_FIELDS; ++j)
 		  	field_written_to[j] |= (can_compute && info.written_fields[kernel_index][j]);
 		  if(can_compute) dst[i] = true;
 		}
@@ -660,10 +660,10 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
         std::array<bool, NUM_VTXBUF_HANDLES> field_need_to_communicate{};
 	bool all_processed = false;
 
-	std::array<bool, NUM_ALL_FIELDS> field_halo_in_sync{};
-	std::array<bool, NUM_ALL_FIELDS> field_out_from_last_level_set{};
-	std::array<bool, NUM_ALL_FIELDS> field_out_from_level_set{};
-	std::array<bool, NUM_ALL_FIELDS> field_need_halo_to_be_in_sync{};
+	std::array<bool, NUM_FIELDS> field_halo_in_sync{};
+	std::array<bool, NUM_FIELDS> field_out_from_last_level_set{};
+	std::array<bool, NUM_FIELDS> field_out_from_level_set{};
+	std::array<bool, NUM_FIELDS> field_need_halo_to_be_in_sync{};
 	std::array<bool, NUM_KERNELS> next_level_set{};
 
 	while(!all_processed)
@@ -687,18 +687,18 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 
 				call_level_set[i] = n_level_sets;
 				const int k = (int)kernel_calls[i];
-				for(size_t j = 0; j < NUM_ALL_FIELDS ; ++j)
+				for(size_t j = 0; j < NUM_FIELDS ; ++j)
 				{
 					field_need_halo_to_be_in_sync[j] |= info.field_has_stencil_op[k][j];
 					field_need_halo_to_be_in_sync[j] |= info.read_fields[k][j] && computes_across_halos;
 				}
 			}
 		}
-		for(size_t j = 0; j < NUM_ALL_FIELDS; ++j)
+		for(size_t j = 0; j < NUM_FIELDS; ++j)
 		    field_halo_in_sync[j] &= !field_out_from_last_level_set[j];
-		for(size_t j = 0; j < NUM_ALL_FIELDS; ++j)
+		for(size_t j = 0; j < NUM_FIELDS; ++j)
 		    field_need_to_communicate[j] |= (!field_halo_in_sync[j] && field_need_halo_to_be_in_sync[j]);
-		for(size_t j = 0; j < NUM_ALL_FIELDS; ++j)
+		for(size_t j = 0; j < NUM_FIELDS; ++j)
 		{
 			field_halo_in_sync[j] |= field_need_to_communicate[j];
 			field_needs_to_be_communicated_before_level_set[j][n_level_sets] = field_need_to_communicate[j];
@@ -729,7 +729,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 		}
 
 		std::vector<Field> tmp{};
-		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
+		for(size_t i = 0; i < NUM_FIELDS; ++i)
 		{
 			Field field = static_cast<Field>(i);
 			if(field_needs_to_be_communicated_before_level_set[i][level_set_index])
@@ -873,12 +873,12 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[graph]);
-	std::array<bool,NUM_ALL_FIELDS> field_written_out_before{};
+	std::array<bool,NUM_FIELDS> field_written_out_before{};
 	for(const auto& current_level_set : level_sets)
 	{
 		std::vector<Field> fields_not_written_to{};
 		std::vector<Field> fields_written_to{};
-		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
+		for(size_t i = 0; i < NUM_FIELDS; ++i)
 		{
 			Field field = static_cast<Field>(i);
 			if(field_written_out_before[i])
@@ -941,7 +941,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 		{
 			if(call.kernel == AC_NULL_KERNEL) continue;
 			res.push_back(gen_taskgraph_kernel_entry(call,stream));
-			for(size_t field = 0; field < NUM_ALL_FIELDS; ++field)
+			for(size_t field = 0; field < NUM_FIELDS; ++field)
 				field_written_out_before[field] |= info.written_fields[call.kernel][field];
 
 		}
@@ -962,7 +962,9 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs);
 	if(task_graphs.find(key) != task_graphs.end())
 		return task_graphs[key];
-	auto res = acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,true));
+
+	auto ops = acGetDSLTaskGraphOps(graph,true);
+	auto res = acGridBuildTaskGraph(ops);
 	task_graphs[key] = res;
 	return res;
 }

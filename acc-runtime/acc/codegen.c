@@ -254,6 +254,8 @@ is_called(const ASTNode* node)
 
 
 #define MAX_KERNELS (100)
+
+bool skip_kernel_in_analysis[MAX_KERNELS] = {};
 #define MAX_FUNCS (1100)
 #define MAX_COMBINATIONS (1000)
 #define MAX_DFUNCS (1000)
@@ -563,6 +565,7 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
    //For now it means that the field is not read, no stencils called on it and not written out
    for(size_t k = 0; k < num_kernels; ++k)
    {
+	   if(skip_kernel_in_analysis[k]) continue;
 	   const int written        = written_fields[field_index + num_fields*k];
 	   const int input_accessed = (read_fields[field_index + num_fields*k] || field_has_stencil_op[field_index + num_fields*k]);
 	   is_auxiliary    &=  OPTIMIZE_FIELDS && (!written  || !field_has_stencil_op[field_index + num_fields*k]);
@@ -578,7 +581,9 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
    if(is_auxiliary)
 	push(&symbol_table[num_symbols[current_nest]-1].tqualifiers, AUXILIARY_STR);
    if(is_dead)
+   {
 	push(&symbol_table[num_symbols[current_nest]-1].tqualifiers, DEAD_STR);
+   }
 
 
   //return the index of the lastly added symbol
@@ -5560,13 +5565,21 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
 
   fprintf(fp, "static const bool skip_kernel_in_analysis[NUM_KERNELS] = {");
+  int k_counter = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
     {
       if (str_vec_contains(symbol_table[i].tqualifiers,UTILITY_STR))
+      {
+	      skip_kernel_in_analysis[k_counter] = 1;
 	      fprintf(fp,"true,");
+      }
       else
+      {
+	      skip_kernel_in_analysis[k_counter] = 0;
 	      fprintf(fp,"false,");
+      }
+      k_counter++;
     }
   fprintf(fp, "};");
 
@@ -8435,8 +8448,7 @@ eliminate_conditionals_base(ASTNode* node)
 				ASTNode* else_node = node->rhs->rhs;
 				ASTNode* statement = node->parent->parent;
 				//TP: take out potential else ifs
-	                        statement->rhs = NULL;
-
+				statement->rhs = NULL;
 				statement->lhs = else_node->rhs;
 				else_node->rhs->parent = statement;
 			}
