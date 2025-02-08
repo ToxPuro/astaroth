@@ -10,6 +10,7 @@ void
 pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
      const std::vector<ac::mr::host_pointer<T>>& inputs, ac::mr::host_pointer<T> output)
 {
+    ERRCHK(inputs.size() * prod(block_shape) <= output.size());
     const uint64_t block_nelems{prod(block_shape)};
     for (uint64_t i{0}; i < block_nelems; ++i) {
         for (size_t j{0}; j < inputs.size(); ++j) {
@@ -33,6 +34,7 @@ void
 unpack(const ac::mr::host_pointer<T>& input, const ac::shape& mm, const ac::shape& block_shape,
        const ac::index& block_offset, std::vector<ac::mr::host_pointer<T>>& outputs)
 {
+    ERRCHK(outputs.size() * prod(block_shape) <= input.size());
     const uint64_t block_nelems{prod(block_shape)};
     for (uint64_t i{0}; i < block_nelems; ++i) {
         for (size_t j{0}; j < outputs.size(); ++j) {
