@@ -1,8 +1,17 @@
 #include "tinyexpr.h"
 static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
 {
-	if(node->lhs && !(node->type & (NODE_DECLARATION | NODE_ASSIGNMENT)))
+	//TP: do not replace const int on lhs of assignment to avoid replacing the initial assignment
+	//if there is an array assignment on the lhs then cannot be the initial assignment
+	if(node->lhs && 
+			(
+				!(node->type & (NODE_DECLARATION | NODE_ASSIGNMENT))
+				|| get_node(NODE_ARRAY_ACCESS,node->lhs)
+			)
+	  )
+	{
 		replace_const_ints(node->lhs,values,names);
+	}
 	if(node->rhs)
 		replace_const_ints(node->rhs,values,names);
 	if(node->token != IDENTIFIER || !node->buffer) return;

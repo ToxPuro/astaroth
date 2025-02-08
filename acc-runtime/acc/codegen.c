@@ -8434,13 +8434,11 @@ eliminate_conditionals_base(ASTNode* node)
 			{
 				ASTNode* else_node = node->rhs->rhs;
 				ASTNode* statement = node->parent->parent;
-				//printf("HI BEFORE: %s\n",combine_all_new(statement));
+				//TP: take out potential else ifs
+	                        statement->rhs = NULL;
+
 				statement->lhs = else_node->rhs;
 				else_node->rhs->parent = statement;
-				//printf("HI AFTER: %s\n",combine_all_new(statement));
-				//printf("HI NODE: %s\n",combine_all_new(node));
-				//printf("HI RHS: %s\n",combine_all_new(node->rhs->rhs));
-				//fatal("HMM\n");
 			}
 			//Conditional with only a single case that is not taken, simple remove the whole conditional
 			else
