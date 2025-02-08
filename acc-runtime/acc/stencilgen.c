@@ -272,15 +272,14 @@ gen_kernel_block_loops(const int curr_kernel)
   			print_warp_reduce_func("int", "int", REDUCE_MIN);
   			print_warp_reduce_func("int", "int", REDUCE_MAX);
 		}
+#if AC_DOUBLE_PRECISION
 		if(get_num_reduced_vars(NUM_FLOAT_OUTPUTS,reduced_floats[curr_kernel]))
 		{
   			print_warp_reduce_func("float", "float", REDUCE_SUM);
   			print_warp_reduce_func("float", "float", REDUCE_MIN);
   			print_warp_reduce_func("float", "float", REDUCE_MAX);
 		}
-
-
-
+#endif
 	}
 
 
