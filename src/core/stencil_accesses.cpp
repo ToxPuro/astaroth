@@ -662,7 +662,7 @@ vbaCreate(const size_t count)
   memset(&vba, 0, sizeof(vba));
 
   const size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+  for (size_t i = 0; i < NUM_ALL_FIELDS; ++i) {
     vba.on_device.in[i]  = (AcReal*)malloc(bytes);
     vba.on_device.out[i] = (AcReal*)malloc(bytes);
   }
@@ -678,7 +678,7 @@ vbaCreate(const size_t count)
 void
 vbaDestroy(VertexBufferArray* vba)
 {
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+  for (size_t i = 0; i < NUM_ALL_FIELDS; ++i) {
     free(vba->on_device.in[i]);
     free(vba->on_device.out[i]);
     vba->on_device.in[i]  = NULL;
@@ -827,26 +827,23 @@ acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
 	memset(dst,0,sizeof(*dst));
 	for(size_t k = 0; k <NUM_KERNELS; ++k)
 	{
-    		if (!skip_kernel_in_analysis[k])
+    		execute_kernel(k);
+    		for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
     		{
-    			execute_kernel(k);
-    			for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
-    			{
-    			  for (size_t i = 0; i < NUM_STENCILS; ++i)
-    			  {
-    			    if (stencils_accessed[j][i])
-    			    {
-    		              if(i == 0) read_fields[j] |= stencils_accessed[j][i];
-    			      field_has_stencil_op[j] |= (i != 0);
-    			    }
-			    dst->stencils_accessed[k][j][i] |= stencils_accessed[j][i];
-    			    read_fields[j] |= previous_accessed[j];
-    			  }
-    			}
-    			for (size_t j = 0; j < NUM_PROFILES; ++j)
-    			  for (size_t i = 0; i < NUM_STENCILS; ++i)
-			    dst->stencils_accessed[k][j+NUM_ALL_FIELDS][i] |= stencils_accessed[j+NUM_ALL_FIELDS][i];
+    		  for (size_t i = 0; i < NUM_STENCILS; ++i)
+    		  {
+    		    if (stencils_accessed[j][i])
+    		    {
+    		      if(i == 0) read_fields[j] |= stencils_accessed[j][i];
+    		      field_has_stencil_op[j] |= (i != 0);
+    		    }
+		    dst->stencils_accessed[k][j][i] |= stencils_accessed[j][i];
+    		    read_fields[j] |= previous_accessed[j];
+    		  }
     		}
+    		for (size_t j = 0; j < NUM_PROFILES; ++j)
+    		  for (size_t i = 0; i < NUM_STENCILS; ++i)
+		    dst->stencils_accessed[k][j+NUM_ALL_FIELDS][i] |= stencils_accessed[j+NUM_ALL_FIELDS][i];
 		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
 		{
 			dst->read_fields[k][i]    = read_fields[i];
@@ -948,38 +945,35 @@ main(int argc, char* argv[])
   int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     fprintf(fp,"{");
-    if (!skip_kernel_in_analysis[k])
+    execute_kernel(k);
+    for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
+    { 
+      for (size_t i = 0; i < NUM_STENCILS; ++i)
+      {
+        if (stencils_accessed[j][i])
+        {
+          if(i == 0) read_fields[j] |= stencils_accessed[j][i];
+          field_has_stencil_op[j] |= (i != 0);
+        }
+        read_fields[j] |= previous_accessed[j];
+      }
+      output_previous_accessed[k][j] = previous_accessed[j];
+      write_output[k][j] = written_fields[j];
+    }
+    for(size_t j = 0; j < NUM_PROFILES; ++j)
     {
-    	execute_kernel(k);
-    	for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
-    	{ 
-    	  for (size_t i = 0; i < NUM_STENCILS; ++i)
-    	  {
-    	    if (stencils_accessed[j][i])
-    	    {
-	      if(i == 0) read_fields[j] |= stencils_accessed[j][i];
-    	      field_has_stencil_op[j] |= (i != 0);
-    	    }
-    	    read_fields[j] |= previous_accessed[j];
-    	  }
-    	  output_previous_accessed[k][j] = previous_accessed[j];
-	  write_output[k][j] = written_fields[j];
-    	}
-	for(size_t j = 0; j < NUM_PROFILES; ++j)
-	{
-	  output_reduced_profiles[k][j] = reduced_profiles[j];
-	  output_read_profiles[k][j]    = read_profiles[j];
-	  write_profile_output[k][j] = written_profiles[j];
-	}
-	for(int j = 0; j < NUM_REAL_OUTPUTS; ++j)
-		output_reduced_reals[k][j] = reduced_reals[j];
-	for(int j = 0; j < NUM_INT_OUTPUTS; ++j)
-		output_reduced_ints[k][j] = reduced_ints[j];
+      output_reduced_profiles[k][j] = reduced_profiles[j];
+      output_read_profiles[k][j]    = read_profiles[j];
+      write_profile_output[k][j] = written_profiles[j];
+    }
+    for(int j = 0; j < NUM_REAL_OUTPUTS; ++j)
+    	output_reduced_reals[k][j] = reduced_reals[j];
+    for(int j = 0; j < NUM_INT_OUTPUTS; ++j)
+    	output_reduced_ints[k][j] = reduced_ints[j];
 #if AC_DOUBLE_PRECISION
-	for(int j = 0; j < NUM_FLOAT_OUTPUTS; ++j)
-		output_reduced_floats[k][j] = reduced_floats[j];
+    for(int j = 0; j < NUM_FLOAT_OUTPUTS; ++j)
+	output_reduced_floats[k][j] = reduced_floats[j];
 #endif
-    } 
 
     for (size_t j = 0; j < NUM_ALL_FIELDS+NUM_PROFILES; ++j)
     { 
