@@ -742,7 +742,11 @@ gen_kernel_write_funcs(const int curr_kernel)
     bool written_something = false;
     for(int field = 0; field < NUM_ALL_FIELDS; ++field)
 	    written_something |= write_called[curr_kernel][field];
-    if(!written_something) return;
+    if(!written_something) 
+    {
+    	printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {};");
+	return;
+    }
     if(has_buffered_writes(kernel_names[curr_kernel]))
     {
   	    for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)

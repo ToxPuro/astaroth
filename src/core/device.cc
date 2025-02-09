@@ -452,7 +452,7 @@ acDeviceStencilAccessesBoundaries(const Device device, const Stencil stencil)
 	      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
 	        for (int width = 0; width < STENCIL_WIDTH; ++width) {
 		  const bool dmid = (depth == (STENCIL_DEPTH-1)/2);
-	          res |= !dmid && (stencils[stencil][depth][height][width] != 0.0);
+	          res |= !dmid && (stencils[stencil][depth][height][width] != (AcReal)0.0);
 	        }
 	      }
 	    }
@@ -467,7 +467,7 @@ acDeviceStencilAccessesBoundaries(const Device device, const Stencil stencil)
 	      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
 	        for (int width = 0; width < STENCIL_WIDTH; ++width) {
 		  const bool hmid = (height == (STENCIL_HEIGHT-1)/2);
-	          res |= !hmid && (stencils[stencil][depth][height][width] != 0.0);
+	          res |= !hmid && (stencils[stencil][depth][height][width] != (AcReal)0.0);
 	        }
 	      }
 	    }
@@ -483,7 +483,7 @@ acDeviceStencilAccessesBoundaries(const Device device, const Stencil stencil)
 	      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
 	        for (int width = 0; width < STENCIL_WIDTH; ++width) {
 		  const bool wmid = (width == (STENCIL_WIDTH-1)/2);
-	          res |= !wmid && (stencils[stencil][depth][height][width] != 0.0);
+	          res |= !wmid && (stencils[stencil][depth][height][width] != (AcReal)0.0);
 	        }
 	      }
 	    }
