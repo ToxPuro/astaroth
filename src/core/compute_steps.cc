@@ -277,16 +277,16 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 		VertexBufferArray vba{};
 		auto loader = get_loader(graph,call_index);
     		loader({&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}});
+		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
 		if(filter_unnecessary_ones)
 		{
-			auto outputs = get_kernel_outputs(kernel_calls[call_index]);
+			auto outputs = get_kernel_outputs(optimized_kernel);
 			if(outputs.fields.out.size() == 0 && outputs.profiles.write_out.size() == 0 && outputs.profiles.reduce_out.size() == 0 && outputs.reduce_outputs.out.size() == 0) 
 			{
 				res.push_back(AC_NULL_KERNEL);
 				continue;
 			}
 		}
-		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
 		res.push_back(optimized_kernel);
 	}
 	return res;

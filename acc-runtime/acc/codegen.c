@@ -8474,13 +8474,11 @@ eliminate_conditionals(ASTNode* node)
 {
 	bool process = true;
 	bool eliminated_something = false;
-	int round_num = 0;
 	while(process)
 	{
 		const bool eliminated_something_this_round = eliminate_conditionals_base(node);
 		process = eliminated_something_this_round;
 		eliminated_something = eliminated_something || eliminated_something_this_round;
-		printf("ELIMINATED SOMETHING THIS ROUND: %d,%d\n",eliminated_something_this_round,round_num++);
 	}
 	return eliminated_something;
 }
@@ -8942,11 +8940,19 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   gen_matrix_reads(root);
   gen_constexpr_info(root,gen_mem_accesses);
 
+  if(!gen_mem_accesses && executed_nodes.size > 0 && OPTIMIZE_MEM_ACCESSES)
+  {
+	  bool eliminated_something = true;
+	  while(eliminated_something)
+	  {
+	  	eliminated_something = eliminate_conditionals(root);
+		gen_constexpr_info(root,gen_mem_accesses);
+	  }
+  }
   // Device functions
   symboltable_reset();
   traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
   char** dfunc_strs = get_dfunc_strs(root);
-	
   // Kernels
   symboltable_reset();
   gen_kernels(root, dfunc_strs, gen_mem_accesses);
@@ -8966,14 +8972,13 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 	  fflush(stream);
 	  //This is used to eliminate known constexpr conditionals
 	  //TP: for now set code elimination off
-	  //bool eliminated_something = true;
-	  bool eliminated_something = false;
+	  //bool eliminated_something = false;
+	  bool eliminated_something = true;
 
 	  int round = 0;
   	  gen_constexpr_info(root,gen_mem_accesses);
 	  while(eliminated_something)
 	  {
-		printf("ELIMINATION ROUND: %d\n",round++);
 	  	clean_stream(stream);
 
 		symboltable_reset();
@@ -8989,7 +8994,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 
 
 	  clean_stream(stream);
-
 	  symboltable_reset();
   	  traverse(root,
            NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
