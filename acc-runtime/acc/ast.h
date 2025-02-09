@@ -141,13 +141,22 @@ astnode_dup(const ASTNode* node, ASTNode* parent)
 		res->rhs= astnode_dup(node->rhs,res);
 	return res;
 }
+static int id_counter = 0;
+
+
+static inline void
+make_ids_unique(ASTNode* node)
+{
+	node->id = id_counter++;
+	if(node->lhs) make_ids_unique(node->lhs);
+	if(node->rhs) make_ids_unique(node->rhs);
+}
 
 
 
 static inline ASTNode*
 astnode_create(const NodeType type, ASTNode* lhs, ASTNode* rhs)
 {
-  static int id_counter = 0;
   ASTNode* node = (ASTNode*)calloc(1, sizeof(node[0]));
 
   node->id              = id_counter++;

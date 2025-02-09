@@ -3600,6 +3600,7 @@ gen_optimized_kernel_decls(ASTNode* node, const param_combinations combinations,
 	for(int i = 0; i < combinations.nums[kernel_index]; ++i)
 	{
 		ASTNode* new_node = astnode_dup(node,NULL);
+		make_ids_unique(new_node);
 		ASTNode* function_id = (ASTNode*) get_node(NODE_FUNCTION_ID,new_node->lhs);
 		astnode_sprintf(function_id,"%s_optimized_%d",get_node(NODE_FUNCTION_ID,node)->buffer,i);
 		push_node(&optimized_decls,new_node);
@@ -7935,6 +7936,7 @@ gen_monomorphized_kernel(const char* func_name, const string_vec input_params, A
 	if(params_info.expr_nodes.size == 0) return -1;
 
 	ASTNode* new_node = astnode_dup(node,NULL);
+	make_ids_unique(new_node);
 	ASTNode* function_id = (ASTNode*) get_node(NODE_FUNCTION_ID,new_node->lhs);
 	astnode_sprintf(function_id,get_monomorphized_name(function_id->buffer,monomorphization_index));
 
