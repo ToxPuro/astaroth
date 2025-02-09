@@ -9,16 +9,16 @@
 
 namespace ac::comm {
 
-template <typename T, typename MemoryResource = ac::mr::device_memory_resource>
-class AsyncHaloExchangeTask {
+template <typename T, typename Allocator = ac::mr::device_allocator>
+class async_halo_exchange_task {
   private:
-    std::vector<std::unique_ptr<Packet<T, MemoryResource>>> m_packets{};
+    std::vector<std::unique_ptr<ac::comm::packet<T, Allocator>>> m_packets{};
 
   public:
-    AsyncHaloExchangeTask() = default;
+    async_halo_exchange_task() = default;
 
-    AsyncHaloExchangeTask(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
-                          const size_t n_aggregate_buffers)
+    async_halo_exchange_task(const ac::shape& local_mm, const ac::shape& local_nn,
+                             const ac::index& local_rr, const size_t n_aggregate_buffers)
     {
         // Must be larger than the boundary area to avoid boundary artifacts
         ERRCHK_MPI(local_nn >= local_rr);
@@ -36,22 +36,23 @@ class AsyncHaloExchangeTask {
 
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
-            m_packets.push_back(std::make_unique<Packet<T, MemoryResource>>(local_mm,
-                                                                          local_nn,
-                                                                          local_rr,
-                                                                          segment,
-                                                                          n_aggregate_buffers));
+            m_packets.push_back(
+                std::make_unique<ac::comm::packet<T, Allocator>>(local_mm,
+                                                                 local_nn,
+                                                                 local_rr,
+                                                                 segment,
+                                                                 n_aggregate_buffers));
         }
     }
 
-    void launch(const MPI_Comm& parent_comm,
-                const std::vector<ac::mr::base_ptr<T, MemoryResource>>& inputs)
+    void launch(const MPI_Comm&                                   parent_comm,
+                const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
     {
         for (auto& packet : m_packets)
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(std::vector<ac::mr::base_ptr<T, MemoryResource>> outputs)
+    void wait(std::vector<ac::mr::pointer<T, Allocator>> outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         while (!complete()) {
@@ -66,9 +67,10 @@ class AsyncHaloExchangeTask {
 
     bool complete() const
     {
-        const bool cc_allof_result{std::all_of(m_packets.begin(),
-                                               m_packets.end(),
-                                               std::mem_fn(&Packet<T, MemoryResource>::complete))};
+        const bool cc_allof_result{
+            std::all_of(m_packets.begin(),
+                        m_packets.end(),
+                        std::mem_fn(&ac::comm::packet<T, Allocator>::complete))};
 
         // TODO remove and return the cc_allof_result after testing
         for (const auto& packet : m_packets) {

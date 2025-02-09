@@ -1,27 +1,27 @@
 #include <cstdlib>
-#include <iostream>
-
-#include "acm/detail/errchk_mpi.h"
-#include "acm/detail/ndbuffer.h"
-#include "acm/detail/partition.h"
 #include <numeric> // std::iota
 
+#include "acm/detail/errchk_mpi.h"
 #include "acm/detail/mpi_utils.h"
+#include "acm/detail/ndbuffer.h"
+#include "acm/detail/partition.h"
+#include "acm/detail/print_debug.h"
+#include "acm/detail/type_conversion.h"
 
-template <typename MemoryResource>
+template <typename Allocator>
 void
-test_reduce_axis(const MPI_Comm& cart_comm, const Shape& global_nn)
+test_reduce_axis(const MPI_Comm& cart_comm, const ac::shape& global_nn)
 {
-    Shape decomp{ac::mpi::get_decomposition(cart_comm)};
-    Index coords{ac::mpi::get_coords(cart_comm)};
+    ac::shape    decomp{ac::mpi::get_decomposition(cart_comm)};
+    ac::index    coords{ac::mpi::get_coords(cart_comm)};
     const size_t nprocs{prod(decomp)};
 
     // Checks that the reduce sum is the sum of all processes along a specific axis
     for (size_t axis{0}; axis < global_nn.size(); ++axis) {
-        constexpr size_t count{10};
-        const int value{as<int>((coords[axis] + 1) * nprocs)};
-        ac::buffer<int, ac::mr::host_memory_resource> tmp{count, value};
-        ac::buffer<int, MemoryResource> buf{count};
+        constexpr size_t                        count{10};
+        const int                               value{as<int>((coords[axis] + 1) * nprocs)};
+        ac::buffer<int, ac::mr::host_allocator> tmp{count, value};
+        ac::buffer<int, Allocator>              buf{count};
         migrate(tmp, buf);
 
         ac::mpi::reduce_axis(cart_comm,
@@ -48,17 +48,17 @@ test_reduce_axis(const MPI_Comm& cart_comm, const Shape& global_nn)
 }
 
 void
-test_scatter_gather(const MPI_Comm& cart_comm, const Shape& global_nn)
+test_scatter_gather(const MPI_Comm& cart_comm, const ac::shape& global_nn)
 {
     using T      = int;
-    using Buffer = ac::ndbuffer<T, ac::mr::host_memory_resource>;
+    using Buffer = ac::ndbuffer<T, ac::mr::host_allocator>;
 
-    const Index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
-    const Index zero_offset(global_nn.size(), static_cast<int>(0));
-    const Shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+    const ac::index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
+    // const ac::index zero_offset{ac::make_index(global_nn.size(), 0)};
+    const ac::shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
 
-    const Index rr(global_nn.size(), static_cast<uint64_t>(2));
-    const Shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const ac::index rr{ac::make_index(global_nn.size(), 2)};
+    const ac::shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
 
     Buffer monolithic{global_nn};
     std::iota(monolithic.begin(), monolithic.end(), 1);
@@ -100,19 +100,19 @@ test_scatter_gather(const MPI_Comm& cart_comm, const Shape& global_nn)
 }
 
 void
-test_scatter_gather_advanced(const MPI_Comm& cart_comm, const Shape& global_nn)
+test_scatter_gather_advanced(const MPI_Comm& cart_comm, const ac::shape& global_nn)
 {
     using T      = int;
-    using Buffer = ac::ndbuffer<T, ac::mr::host_memory_resource>;
+    using Buffer = ac::ndbuffer<T, ac::mr::host_allocator>;
 
-    const Index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
-    const Index zero_offset(global_nn.size(), static_cast<int>(0));
-    const Shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+    const ac::index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
+    // const ac::index zero_offset(global_nn.size(), static_cast<int>(0));
+    const ac::shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
 
-    const Index rr(global_nn.size(), static_cast<uint64_t>(2));
-    const Shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const ac::index rr{ac::make_index(global_nn.size(), 2)};
+    const ac::shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
 
-    const Shape global_mm{global_nn + static_cast<uint64_t>(2) * rr};
+    const ac::shape global_mm{global_nn + static_cast<uint64_t>(2) * rr};
 
     Buffer monolithic{global_mm};
     std::iota(monolithic.begin(), monolithic.end(), 1);
@@ -177,49 +177,48 @@ main()
     ac::mpi::init_funneled();
     try {
         {
-            const Shape global_nn{128, 128, 128};
-            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            const ac::shape global_nn{128, 128, 128};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
-            test_reduce_axis<ac::mr::host_memory_resource>(cart_comm, global_nn);
-            test_reduce_axis<ac::mr::pinned_host_memory_resource>(cart_comm, global_nn);
-            test_reduce_axis<ac::mr::pinned_write_combined_host_memory_resource>(cart_comm,
-                                                                                 global_nn);
-            test_reduce_axis<ac::mr::device_memory_resource>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::host_allocator>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::pinned_host_allocator>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::pinned_write_combined_host_allocator>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::device_allocator>(cart_comm, global_nn);
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
-            const Shape global_nn{16};
-            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            const ac::shape global_nn{16};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
             test_scatter_gather(cart_comm, global_nn);
 
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
-            const Shape global_nn{8, 8};
-            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            const ac::shape global_nn{8, 8};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
             test_scatter_gather(cart_comm, global_nn);
 
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
-            const Shape global_nn{8, 4, 2};
-            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            const ac::shape global_nn{8, 4, 2};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
             test_scatter_gather(cart_comm, global_nn);
 
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
-            const Shape global_nn{8, 8};
-            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            const ac::shape global_nn{8, 8};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
             test_scatter_gather_advanced(cart_comm, global_nn);
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
     }
     catch (const std::exception& e) {
-        PRINT_LOG("Exception caught");
+        PRINT_LOG_ERROR("Exception caught");
         ac::mpi::abort();
         return EXIT_FAILURE;
     }

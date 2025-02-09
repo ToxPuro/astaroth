@@ -1,20 +1,21 @@
 #pragma once
 
 #include "buffer.h"
-#include "vector.h"
+#include "ntuple.h"
+#include "pointer.h"
 
 using UserDatatype = double;
 
-using Index     = ac::vector<uint64_t>;
-using Shape     = ac::vector<uint64_t>;
-using Direction = ac::vector<int64_t>;
-using Dims      = ac::vector<UserDatatype>;
+using Dims = ac::ntuple<UserDatatype>;
 
-using DeviceBuffer     = ac::buffer<UserDatatype, ac::mr::device_memory_resource>;
-using HostBuffer       = ac::buffer<UserDatatype, ac::mr::host_memory_resource>;
-using PinnedHostBuffer = ac::buffer<UserDatatype, ac::mr::pinned_host_memory_resource>;
+using HostPointer   = ac::mr::host_pointer<UserDatatype>;
+using DevicePointer = ac::mr::device_pointer<UserDatatype>;
 
-// #include "ndbuffer.h"
-// using DeviceNdBuffer = ac::ndbuffer<UserDatatype, ac::mr::device_memory_resource>;
-// using HostNdBuffer = ac::ndbuffer<UserDatatype, ac::mr::host_memory_resource>;
-// using PinnedHostNdBuffer = ac::ndbuffer<UserDatatype, ac::mr::pinned_host_memory_resource>;
+using DeviceBuffer                  = ac::device_buffer<UserDatatype>;
+using HostBuffer                    = ac::host_buffer<UserDatatype>;
+using PinnedHostBuffer              = ac::pinned_host_buffer<UserDatatype>;
+using PinnedWriteCombinedHostBuffer = ac::pinned_write_combined_host_buffer<UserDatatype>;
+
+Dims make_dims(const size_t count, const int64_t& fill_value);
+
+void test_datatypes();

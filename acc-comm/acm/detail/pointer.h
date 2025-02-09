@@ -1,96 +1,163 @@
 #pragma once
+#include <algorithm>
 
-#include "memory_resource.h"
+#include "allocator.h"
+#include "cuda_utils.h"
 
 namespace ac::mr {
 
-template <typename T, typename MemoryResource> class base_ptr {
+template <typename T, typename Allocator> class pointer {
   private:
-    const size_t m_count;
-    T* m_data;
+    size_t m_count{0};
+    T*     m_data{nullptr};
 
   public:
-    explicit base_ptr(const size_t count, T* data)
+    explicit pointer(const size_t count, T* data)
         : m_count{count}, m_data{data}
     {
     }
 
-    size_t size() const { return m_count; }
-    T* data() { return m_data; }
-    T* data() const { return m_data; }
-    T* get() { return data(); }
-    T* get() const { return data(); }
+    __host__ __device__ auto size() const { return m_count; }
+
+    auto data() const { return m_data; }
+    auto data() { return m_data; }
+
+    auto begin() const { return data(); }
+    auto begin() { return data(); }
+
+    auto end() const { return data() + size(); }
+    auto end() { return data() + size(); }
 
     // Enable the subscript[] operator
-    T& operator[](const size_t i)
+    __host__ __device__ T& operator[](const size_t i)
     {
         ERRCHK(i < size());
         return m_data[i];
     }
 
-    const T& operator[](const size_t i) const
+    __host__ __device__ const T& operator[](const size_t i) const
     {
         ERRCHK(i < size());
         return m_data[i];
     }
 };
-template <typename T> using host_ptr = base_ptr<T, ac::mr::host_memory_resource>;
 
 #if defined(ACM_DEVICE_ENABLED)
 
-template <typename MemoryResourceA, typename MemoryResourceB>
+template <typename AllocatorA, typename AllocatorB>
 constexpr cudaMemcpyKind
 get_kind()
 {
-    if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceA>) {
-        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
-            PRINT_LOG("dtod");
+    if constexpr (std::is_base_of_v<ac::mr::device_allocator, AllocatorA>) {
+        if constexpr (std::is_base_of_v<ac::mr::device_allocator, AllocatorB>) {
+            PRINT_LOG_TRACE("dtod");
             return cudaMemcpyDeviceToDevice;
         }
         else {
-            PRINT_LOG("dtoh");
+            PRINT_LOG_TRACE("dtoh");
             return cudaMemcpyDeviceToHost;
         }
     }
     else {
-        if constexpr (std::is_base_of_v<ac::mr::device_memory_resource, MemoryResourceB>) {
-            PRINT_LOG("htod");
+        if constexpr (std::is_base_of_v<ac::mr::device_allocator, AllocatorB>) {
+            PRINT_LOG_TRACE("htod");
             return cudaMemcpyHostToDevice;
         }
         else {
-            PRINT_LOG("htoh");
+            PRINT_LOG_TRACE("htoh");
             return cudaMemcpyHostToHost;
         }
     }
 }
 
-template <typename T, typename MemoryResourceA, typename MemoryResourceB>
+template <typename T, typename AllocatorA, typename AllocatorB>
 void
-copy(const base_ptr<T, MemoryResourceA> in, base_ptr<T, MemoryResourceB> out)
+copy(const size_t count, const size_t in_offset, const pointer<T, AllocatorA>& in,
+     const size_t out_offset, pointer<T, AllocatorB>& out)
 {
-    ERRCHK(in.size() <= out.size());
-    ERRCHK_CUDA_API(cudaMemcpy(out.data(),
-                               in.data(),
-                               in.size() * sizeof(T),
-                               get_kind<MemoryResourceA, MemoryResourceB>()));
+    ERRCHK(in_offset + count <= in.size());
+    ERRCHK(out_offset + count <= out.size());
+    ERRCHK_CUDA_API(cudaMemcpy(&out[out_offset],
+                               &in[in_offset],
+                               count * sizeof(T),
+                               get_kind<AllocatorA, AllocatorB>()));
 }
 
-template <typename T> using device_ptr = base_ptr<T, ac::mr::device_memory_resource>;
+// TODO: Draft
+// template <typename T, typename AllocatorA, typename AllocatorB>
+// void
+// copy_async(const cudaStream_t stream, const size_t count, const size_t in_offset,
+//            const pointer<T, AllocatorA>& in, const size_t out_offset, pointer<T, AllocatorB>&
+//            out)
+// {
+//     ERRCHK(in_offset + count <= in.size());
+//     ERRCHK(out_offset + count <= out.size());
+//     ERRCHK_CUDA_API(cudaMemcpyAsync(&out[out_offset],
+//                                     &in[in_offset],
+//                                     count * sizeof(T),
+//                                     get_kind<AllocatorA, AllocatorB>(),
+//                                     stream));
+// }
+
+template <typename T> using host_pointer   = pointer<T, ac::mr::host_allocator>;
+template <typename T> using device_pointer = pointer<T, ac::mr::device_allocator>;
 
 #else
 
-template <typename T> using device_ptr = host_ptr<T>;
+template <typename T> using host_pointer   = pointer<T, ac::mr::host_allocator>;
+template <typename T> using device_pointer = host_pointer<T>;
 
 template <typename T>
 void
-copy(const host_ptr<T>& in, host_ptr<T>& out)
+copy(const size_t count, const size_t in_offset, const host_pointer<T>& in, const size_t out_offset,
+     host_pointer<T>& out)
 {
-    ERRCHK(in.size() <= out.size());
-    std::copy(in.data(), in.data() + in.size(), out.data());
+    ERRCHK(in_offset + count <= in.size());
+    ERRCHK(out_offset + count <= out.size());
+    std::copy_n(&in[in_offset], count, &out[out_offset]);
 }
+
+// TODO: Draft
+// template <typename T, typename AllocatorA, typename AllocatorB>
+// void
+// copy_async(const cudaStream_t stream, const size_t count, const size_t in_offset,
+//            const pointer<T, AllocatorA>& in, const size_t out_offset, pointer<T, AllocatorB>&
+//            out)
+// {
+//     PRINT_INFO("Device code not enabled, using synchronous host-to-host copy instead");
+//     copy(count, in_offset, in, out_offset, out);
+// }
 
 #endif
 
+template <typename T, typename AllocatorA, typename AllocatorB>
+void
+copy(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB> out)
+{
+    copy(in.size(), 0, in, 0, out);
+}
+
+// TODO: Draft
+// template <typename T, typename AllocatorA, typename AllocatorB>
+// void
+// copy_async(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB>&& out)
+// {
+//     copy_async(in.size(), 0, in, 0, out);
+// }
+
 } // namespace ac::mr
+
+template <typename T>
+bool
+equals(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b)
+{
+    if (a.size() != b.size())
+        return false;
+
+    for (size_t i{0}; i < a.size(); ++i)
+        if (a[i] != b[i])
+            return false;
+    return true;
+}
 
 void test_pointer(void);

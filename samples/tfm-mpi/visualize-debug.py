@@ -140,7 +140,7 @@ fig.set_figheight(15)
 fig.set_figwidth(20)
 
 # for step in range(0, 10+1):
-step = 6
+step = 90
 files = glob.glob(f"../../build/debug-step-{str(step).zfill(12)}-tfm-*.profile")
 files.sort()
 print(files)

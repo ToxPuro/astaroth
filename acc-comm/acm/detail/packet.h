@@ -11,28 +11,30 @@
 
 #include <mpi.h>
 
-#include "convert.h" // Experimental
+#include "type_conversion.h"
 
-template <typename T, typename MemoryResource> class Packet {
+namespace ac::comm {
+
+template <typename T, typename Allocator> class packet {
 
   private:
-    Shape m_local_mm;
-    Shape m_local_nn;
-    Index m_local_rr;
+    ac::shape m_local_mm;
+    ac::shape m_local_nn;
+    ac::index m_local_rr;
 
     ac::segment m_segment;
 
-    ac::buffer<T, MemoryResource> m_send_buffer;
-    ac::buffer<T, MemoryResource> m_recv_buffer;
+    ac::buffer<T, Allocator> m_send_buffer;
+    ac::buffer<T, Allocator> m_recv_buffer;
 
-    MPI_Comm m_comm{MPI_COMM_NULL};
+    MPI_Comm    m_comm{MPI_COMM_NULL};
     MPI_Request m_send_req{MPI_REQUEST_NULL};
     MPI_Request m_recv_req{MPI_REQUEST_NULL};
 
     bool m_in_progress = false;
 
   public:
-    Packet(const Shape& local_mm, const Shape& local_nn, const Index& local_rr,
+    packet(const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
            const ac::segment& segment, const size_t n_aggregate_buffers)
         : m_local_mm{local_mm},
           m_local_nn{local_nn},
@@ -43,7 +45,7 @@ template <typename T, typename MemoryResource> class Packet {
     {
     }
 
-    ~Packet()
+    ~packet()
     {
         ERRCHK_MPI(!m_in_progress);
 
@@ -60,7 +62,7 @@ template <typename T, typename MemoryResource> class Packet {
             ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
     }
 
-    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_ptr<T>>& inputs)
+    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_pointer<T>>& inputs)
     {
         ERRCHK_MPI(!m_in_progress);
         m_in_progress = true;
@@ -70,9 +72,10 @@ template <typename T, typename MemoryResource> class Packet {
         ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &m_comm));
 
         // Find the direction and neighbors of the segment
-        Index send_offset{((m_local_nn + m_segment.offset - m_local_rr) % m_local_nn) + m_local_rr};
+        ac::index send_offset{((m_local_nn + m_segment.offset - m_local_rr) % m_local_nn) +
+                              m_local_rr};
 
-        auto recv_direction{ac::mpi::get_direction(m_segment.offset, m_local_nn, m_local_rr)};
+        auto      recv_direction{ac::mpi::get_direction(m_segment.offset, m_local_nn, m_local_rr)};
         const int recv_neighbor{ac::mpi::get_neighbor(m_comm, recv_direction)};
         const int send_neighbor{ac::mpi::get_neighbor(m_comm, -recv_direction)};
 
@@ -93,11 +96,7 @@ template <typename T, typename MemoryResource> class Packet {
                                  &m_recv_req));
 
         // Pack and post send
-        pack(m_local_mm,
-             m_segment.dims,
-             send_offset,
-             inputs,
-             ac::mr::device_ptr<T>{m_send_buffer.size(), m_send_buffer.data()});
+        pack(m_local_mm, m_segment.dims, send_offset, inputs, m_send_buffer.get());
 
         ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
         ERRCHK_MPI_API(MPI_Isend(m_send_buffer.data(),
@@ -121,15 +120,11 @@ template <typename T, typename MemoryResource> class Packet {
         return m_in_progress && send_flag && recv_flag;
     };
 
-    void wait(std::vector<ac::mr::device_ptr<T>>& outputs)
+    void wait(std::vector<ac::mr::device_pointer<T>>& outputs)
     {
         ERRCHK_MPI(m_in_progress);
         ERRCHK_MPI_API(MPI_Wait(&m_recv_req, MPI_STATUS_IGNORE));
-        unpack(ac::mr::device_ptr<T>{m_recv_buffer.size(), m_recv_buffer.data()},
-               m_local_mm,
-               m_segment.dims,
-               m_segment.offset,
-               outputs);
+        unpack(m_recv_buffer.get(), m_local_mm, m_segment.dims, m_segment.offset, outputs);
 
         ERRCHK_MPI_API(MPI_Wait(&m_send_req, MPI_STATUS_IGNORE));
         ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
@@ -145,7 +140,7 @@ template <typename T, typename MemoryResource> class Packet {
 
     bool complete() const { return !m_in_progress; };
 
-    friend std::ostream& operator<<(std::ostream& os, const Packet<T, MemoryResource>& obj)
+    friend std::ostream& operator<<(std::ostream& os, const packet<T, Allocator>& obj)
     {
         os << "{";
         os << "segment: " << obj.m_segment << ", ";
@@ -155,10 +150,12 @@ template <typename T, typename MemoryResource> class Packet {
         return os;
     }
 
-    Packet(const Packet&)            = delete; // Copy constructor
-    Packet& operator=(const Packet&) = delete; // Copy assignment operator
-    Packet(Packet&&)                 = delete; // Move constructor
-    Packet& operator=(Packet&&)      = delete; // Move assignment operator
+    packet(const packet&)            = delete; // Copy constructor
+    packet& operator=(const packet&) = delete; // Copy assignment operator
+    packet(packet&&)                 = delete; // Move constructor
+    packet& operator=(packet&&)      = delete; // Move assignment operator
 };
+
+} // namespace ac::comm
 
 void test_packet();

@@ -1,9 +1,7 @@
 #pragma once
 #include <cstddef>
-#include <memory>
 
 #include "errchk.h"
-#include "print_debug.h"
 
 #if defined(ACM_DEVICE_ENABLED)
 #include "cuda_utils.h"
@@ -12,18 +10,18 @@
 
 namespace ac::mr {
 
-struct host_memory_resource {
+struct host_allocator {
     static void* alloc(const size_t bytes)
     {
-        PRINT_LOG("host");
-        void* ptr = malloc(bytes);
+        PRINT_LOG_TRACE("host");
+        void* ptr{malloc(bytes)};
         ERRCHK(ptr);
         return ptr;
     }
 
     static void dealloc(void* ptr) noexcept
     {
-        PRINT_LOG("host");
+        PRINT_LOG_TRACE("host");
         WARNCHK(ptr);
         free(ptr);
     }
@@ -31,10 +29,10 @@ struct host_memory_resource {
 
 #if defined(ACM_DEVICE_ENABLED)
 
-struct pinned_host_memory_resource : public host_memory_resource {
+struct pinned_host_allocator : public host_allocator {
     static void* alloc(const size_t bytes)
     {
-        PRINT_LOG("host pinned");
+        PRINT_LOG_TRACE("host pinned");
         void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaHostAlloc(&ptr, bytes, cudaHostAllocDefault));
         return ptr;
@@ -42,16 +40,16 @@ struct pinned_host_memory_resource : public host_memory_resource {
 
     static void dealloc(void* ptr) noexcept
     {
-        PRINT_LOG("host pinned");
+        PRINT_LOG_TRACE("host pinned");
         WARNCHK(ptr);
         WARNCHK_CUDA_API(cudaFreeHost(ptr));
     }
 };
 
-struct pinned_write_combined_host_memory_resource : public host_memory_resource {
+struct pinned_write_combined_host_allocator : public host_allocator {
     static void* alloc(const size_t bytes)
     {
-        PRINT_LOG("host pinned write-combined");
+        PRINT_LOG_TRACE("host pinned write-combined");
         void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaHostAlloc(&ptr, bytes, cudaHostAllocWriteCombined));
         return ptr;
@@ -59,16 +57,16 @@ struct pinned_write_combined_host_memory_resource : public host_memory_resource 
 
     static void dealloc(void* ptr) noexcept
     {
-        PRINT_LOG("host pinned write-combined");
+        PRINT_LOG_TRACE("host pinned write-combined");
         WARNCHK(ptr);
         WARNCHK_CUDA_API(cudaFreeHost(ptr));
     }
 };
 
-struct device_memory_resource {
+struct device_allocator {
     static void* alloc(const size_t bytes)
     {
-        PRINT_LOG("device");
+        PRINT_LOG_TRACE("device");
         void* ptr{nullptr};
         ERRCHK_CUDA_API(cudaMalloc(&ptr, bytes));
         return ptr;
@@ -76,7 +74,7 @@ struct device_memory_resource {
 
     static void dealloc(void* ptr) noexcept
     {
-        PRINT_LOG("device");
+        PRINT_LOG_TRACE("device");
         WARNCHK(ptr);
         WARNCHK_CUDA_API(cudaFree(ptr));
     }
@@ -88,12 +86,12 @@ struct device_memory_resource {
 #pragma message("Device code was not enabled. Falling back to host-only memory allocations")
 #endif
 
-using pinned_host_memory_resource                = host_memory_resource;
-using pinned_write_combined_host_memory_resource = host_memory_resource;
-using device_memory_resource                     = host_memory_resource;
+using pinned_host_allocator                = host_allocator;
+using pinned_write_combined_host_allocator = host_allocator;
+using device_allocator                     = host_allocator;
 
 #endif
 
 } // namespace ac::mr
 
-void test_memory_resource();
+void test_allocator();

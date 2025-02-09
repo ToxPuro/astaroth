@@ -71,10 +71,10 @@ void finalize();
  * or
  *  ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
  */
-enum class RankReorderMethod { No, MPI_Default, Hierarchical };
+enum class RankReorderMethod { no, default_mpi, hierarchical };
 MPI_Comm
-cart_comm_create(const MPI_Comm& parent_comm, const Shape& global_nn,
-                 const RankReorderMethod& reorder_method = RankReorderMethod::Hierarchical);
+cart_comm_create(const MPI_Comm& parent_comm, const ac::shape& global_nn,
+                 const RankReorderMethod& reorder_method = RankReorderMethod::hierarchical);
 
 void cart_comm_destroy(MPI_Comm* cart_comm);
 
@@ -88,8 +88,8 @@ void print_mpi_comm(const MPI_Comm& comm);
  * or
  *  ERRCHK_MPI_API(MPI_Type_free(&subarray))
  * */
-MPI_Datatype subarray_create(const Shape& dims, const Shape& subdims, const Index& offset,
-                             const MPI_Datatype& dtype);
+MPI_Datatype subarray_create(const ac::shape& dims, const ac::shape& subdims,
+                             const ac::index& offset, const MPI_Datatype& dtype);
 
 void subarray_destroy(MPI_Datatype* subarray);
 
@@ -123,27 +123,27 @@ int get_size(const MPI_Comm& cart_comm);
 int get_ndims(const MPI_Comm& comm);
 
 /** Return coordinates of process rank */
-Index get_coords(const MPI_Comm& cart_comm, const int rank);
+ac::index get_coords(const MPI_Comm& cart_comm, const int rank);
 
 /** Return coordinates of the current process */
-Index get_coords(const MPI_Comm& cart_comm);
+ac::index get_coords(const MPI_Comm& cart_comm);
 
-Shape get_decomposition(const MPI_Comm& cart_comm);
+ac::shape get_decomposition(const MPI_Comm& cart_comm);
 
 /** Returns the neighbor rank at the offset from current coordinates.  */
-int get_neighbor(const MPI_Comm& cart_comm, const Direction& dir);
+int get_neighbor(const MPI_Comm& cart_comm, const ac::direction& dir);
 
 /** Returns the integer direction of the immediate neighbor (at Chebyshev distance 1) that has
  * ownership of the data at offset w.r.t. the local computational domain of the current process */
-Direction get_direction(const Index& offset, const Shape& nn, const Index& rr);
+ac::direction get_direction(const ac::index& offset, const ac::shape& nn, const ac::index& rr);
 
-Shape get_local_nn(const MPI_Comm& cart_comm, const Shape& global_nn);
+ac::shape get_local_nn(const MPI_Comm& cart_comm, const ac::shape& global_nn);
 
-Index get_global_nn_offset(const MPI_Comm& cart_comm, const Shape& global_nn);
+ac::index get_global_nn_offset(const MPI_Comm& cart_comm, const ac::shape& global_nn);
 
-Shape get_local_mm(const MPI_Comm& cart_comm, const Shape& global_nn, const Index& rr);
+ac::shape get_local_mm(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr);
 
-Shape get_global_mm(const Shape& global_nn, const Index& rr);
+ac::shape get_global_mm(const ac::shape& global_nn, const ac::index& rr);
 
 /** Map type to MPI enum representing the type
  * Usage: MPIType<double>::value // returns MPI_DOUBLE
@@ -172,21 +172,23 @@ get_dtype()
 
 /** Communication */
 void scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
-                      const Shape& global_mm, const Index& subdomain_offset,
-                      const void* send_buffer, //
-                      const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
-                      void* recv_buffer);
+                      const ac::shape& global_mm, const ac::index& subdomain_offset,
+                      const void*      send_buffer, //
+                      const ac::shape& local_mm, const ac::shape& local_nn,
+                      const ac::index& local_nn_offset, void* recv_buffer);
 
 void gather_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
-                     const Shape& local_mm, const Shape& local_nn, const Index& local_nn_offset,
-                     const void* send_buffer, //
-                     const Shape& global_mm, const Index& subdomain_offset, void* recv_buffer);
+                     const ac::shape& local_mm, const ac::shape& local_nn,
+                     const ac::index& local_nn_offset,
+                     const void*      send_buffer, //
+                     const ac::shape& global_mm, const ac::index& subdomain_offset,
+                     void* recv_buffer);
 
-void scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& global_nn,
-             const Shape& local_rr, const void* send_buffer, void* recv_buffer);
+void scatter(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const ac::shape& global_nn,
+             const ac::shape& local_rr, const void* send_buffer, void* recv_buffer);
 
-void gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& global_nn,
-            const Shape& local_rr, const void* send_buffer, void* recv_buffer);
+void gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const ac::shape& global_nn,
+            const ac::shape& local_rr, const void* send_buffer, void* recv_buffer);
 
 /** IO */
 
@@ -194,18 +196,19 @@ void gather(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape&
  * Synchronous collective read.
  * The elementary type of the underlying data is passed as the etype arameter.
  */
-void read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& file_dims,
-                     const Index& file_offset, const Shape& mesh_dims, const Shape& mesh_subdims,
-                     const Index& mesh_offset, const std::string& path, void* data);
+void read_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
+                     const ac::shape& file_dims, const ac::index& file_offset,
+                     const ac::shape& mesh_dims, const ac::shape& mesh_subdims,
+                     const ac::index& mesh_offset, const std::string& path, void* data);
 
 /**
  * Synchronous collective write.
  * The elementary type of the underlying data is passed as the etype parameter.
  */
 void write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
-                      const Shape& file_dims, const Index& file_offset, const Shape& mesh_dims,
-                      const Shape& mesh_subdims, const Index& mesh_offset, const void* data,
-                      const std::string& path);
+                      const ac::shape& file_dims, const ac::index& file_offset,
+                      const ac::shape& mesh_dims, const ac::shape& mesh_subdims,
+                      const ac::index& mesh_offset, const void* data, const std::string& path);
 
 /** A simplified routine for reading a a domain of shape `global_nn` from disk to memory address
  * specified by `data` based on the arrangement defined by the communicator.
@@ -213,7 +216,7 @@ void write_collective(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
  * TODO: consider renaming local_nn_offset to rr.
  */
 void read_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
-                            const Shape& global_nn, const Index& local_nn_offset,
+                            const ac::shape& global_nn, const ac::index& local_nn_offset,
                             const std::string& path, void* data);
 
 /** A simplified routine for writing a domain of shape `global_nn` starting at `data` on disk based
@@ -222,16 +225,16 @@ void read_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& ety
  * TODO: consider renaming local_nn_offset to rr.
  */
 void write_collective_simple(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
-                             const Shape& global_nn, const Index& local_nn_offset, const void* data,
-                             const std::string& path);
+                             const ac::shape& global_nn, const ac::index& local_nn_offset,
+                             const void* data, const std::string& path);
 
 /** Writes a distributed snapshot. Each process should write to their own file. */
-void write_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& mm,
+void write_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const ac::shape& mm,
                        const void* data, const std::string& path);
 
 /** Read a distributed snapshot. */
-void read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const Shape& local_mm,
-                      const std::string& path, void* data);
+void read_distributed(const MPI_Comm& parent_comm, const MPI_Datatype& etype,
+                      const ac::shape& local_mm, const std::string& path, void* data);
 
 /**
  * Collective synchronous reduction.

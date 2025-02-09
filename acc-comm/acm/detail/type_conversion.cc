@@ -25,4 +25,5 @@ test_type_conversion(void)
     ERRCHK(can_convert<int64_t>(std::numeric_limits<uint32_t>::min()) == true);
     ERRCHK(can_convert<int32_t>(std::numeric_limits<uint64_t>::max()) == false);
     ERRCHK(can_convert<int32_t>(std::numeric_limits<uint64_t>::min()) == true);
+    PRINT_LOG_INFO("OK");
 }

@@ -54,9 +54,9 @@ benchmark(void)
     }
 
     // ac::buffers
-    const size_t count{(1000 * 1024 * 1024) / sizeof(double)};
-    ac::buffer<double, ac::mr::host_memory_resource> hbuf(count);
-    ac::buffer<double, ac::mr::device_memory_resource> dbuf(count);
+    const size_t                                 count{(1000 * 1024 * 1024) / sizeof(double)};
+    ac::buffer<double, ac::mr::host_allocator>   hbuf(count);
+    ac::buffer<double, ac::mr::device_allocator> dbuf(count);
 
     // C++ standard library
     for (size_t i{0}; i < num_samples; ++i)
@@ -77,7 +77,7 @@ benchmark(void)
         BENCHMARK(migrate(dbuf, hbuf));
 
     // Pinned
-    ac::buffer<double, ac::mr::pinned_host_memory_resource> phbuf(count);
+    ac::buffer<double, ac::mr::pinned_host_allocator> phbuf(count);
     for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(phbuf, dbuf));
 
@@ -85,7 +85,7 @@ benchmark(void)
         BENCHMARK(migrate(dbuf, phbuf));
 
     // Pinned write-combined
-    ac::buffer<double, ac::mr::pinned_write_combined_host_memory_resource> pwchbuf(count);
+    ac::buffer<double, ac::mr::pinned_write_combined_host_allocator> pwchbuf(count);
     for (size_t i{0}; i < num_samples; ++i)
         BENCHMARK(migrate(pwchbuf, dbuf));
 
@@ -116,23 +116,23 @@ main()
 
         // benchmark();
 
-        const Shape global_nn{4, 4, 4};
-        MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
-        const Shape decomp{ac::mpi::get_decomposition(cart_comm)};
-        const Shape local_nn{global_nn / decomp};
-        const Index coords{ac::mpi::get_coords(cart_comm)};
-        const Index global_nn_offset{coords * local_nn};
+        const ac::shape global_nn{4, 4, 4};
+        MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+        const ac::shape decomp{ac::mpi::get_decomposition(cart_comm)};
+        const ac::shape local_nn{global_nn / decomp};
+        const ac::index coords{ac::mpi::get_coords(cart_comm)};
+        const ac::index global_nn_offset{coords * local_nn};
 
-        const Shape rr(global_nn.size(), 1); // Symmetric halo
-        const Shape local_mm{as<uint64_t>(2) * rr + local_nn};
+        const ac::shape rr{ac::make_shape(global_nn.size(), 1)}; // Symmetric halo
+        const ac::shape local_mm{as<uint64_t>(2) * rr + local_nn};
 
-        ac::ndbuffer<UserType, ac::mr::host_memory_resource> hin(local_mm);
-        ac::ndbuffer<UserType, ac::mr::host_memory_resource> hout(local_mm);
+        ac::ndbuffer<UserType, ac::mr::host_allocator> hin(local_mm);
+        ac::ndbuffer<UserType, ac::mr::host_allocator> hout(local_mm);
 
-        ac::ndbuffer<UserType, ac::mr::device_memory_resource> din(local_mm);
-        ac::ndbuffer<UserType, ac::mr::device_memory_resource> dout(local_mm);
+        ac::ndbuffer<UserType, ac::mr::device_allocator> din(local_mm);
+        ac::ndbuffer<UserType, ac::mr::device_allocator> dout(local_mm);
 
-        PRINT_LOG("Testing migration"); //-----------------------------------------
+        PRINT_LOG_INFO("Testing migration"); //-----------------------------------------
         std::iota(hin.begin(),
                   hin.end(),
                   static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
@@ -142,17 +142,17 @@ main()
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        migrate(hin.buffer(), din.buffer());
-        migrate(din.buffer(), hout.buffer());
+        migrate(hin, din);
+        migrate(din, hout);
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Should be arange");
+        PRINT_LOG_INFO("Should be arange");
         hout.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
 #if true
-        PRINT_LOG("Testing basic halo exchange"); //-------------------------------
+        PRINT_LOG_INFO("Testing basic halo exchange"); //-------------------------------
         if (nprocs == 1) {
             std::iota(hin.begin(),
                       hin.end(),
@@ -162,29 +162,29 @@ main()
         else {
             std::fill(hin.begin(), hin.end(), static_cast<UserType>(ac::mpi::get_rank(cart_comm)));
         }
-        migrate(hin.buffer(), din.buffer());
+        migrate(hin, din);
 
         // Basic MPI halo exchange task
         auto recv_reqs = launch_halo_exchange<UserType>(cart_comm,
                                                         local_mm,
                                                         local_nn,
                                                         rr,
-                                                        din.buffer().data(),
-                                                        din.buffer().data());
+                                                        din.data(),
+                                                        din.data());
         while (!recv_reqs.empty()) {
             ac::mpi::request_wait_and_destroy(&recv_reqs.back());
             recv_reqs.pop_back();
         }
-        migrate(din.buffer(), hin.buffer());
+        migrate(din, hin);
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Should be properly exchanged");
+        PRINT_LOG_INFO("Should be properly exchanged");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 #endif
 
 #if true
-        PRINT_LOG("Testing packed halo exchange"); //-------------------------------
+        PRINT_LOG_INFO("Testing packed halo exchange"); //-------------------------------
         if (nprocs == 1) {
             std::iota(hin.begin(),
                       hin.end(),
@@ -194,43 +194,43 @@ main()
         else {
             std::fill(hin.begin(), hin.end(), static_cast<UserType>(ac::mpi::get_rank(cart_comm)));
         }
-        migrate(hin.buffer(), din.buffer());
+        migrate(hin, din);
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Hin before exhange");
+        PRINT_LOG_INFO("Hin before exhange");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
-        ac::comm::AsyncHaloExchangeTask<UserType, ac::mr::device_memory_resource>
-            halo_exchange{local_mm, local_nn, rr, 1};
-        std::vector<ac::mr::device_ptr<UserType>> inputs{
-            ac::mr::device_ptr<UserType>{din.size(), din.data()}};
+        ac::comm::async_halo_exchange_task<UserType, ac::mr::device_allocator>
+                                                      halo_exchange{local_mm, local_nn, rr, 1};
+        std::vector<ac::mr::device_pointer<UserType>> inputs{
+            ac::mr::device_pointer<UserType>{din.size(), din.data()}};
 
         // Pipelined
         halo_exchange.launch(cart_comm, inputs);
         halo_exchange.wait(inputs);
-        migrate(din.buffer(), hin.buffer());
+        migrate(din, hin);
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Should be properly exchanged");
+        PRINT_LOG_INFO("Should be properly exchanged");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 #endif
 
 #if true
-        PRINT_LOG("Testing IO"); //-------------------------------
+        PRINT_LOG_INFO("Testing IO"); //-------------------------------
         std::iota(hin.begin(),
                   hin.end(),
                   static_cast<UserType>(ac::mpi::get_rank(cart_comm)) *
                       static_cast<UserType>(prod(local_mm)));
 
-        ac::io::AsyncWriteTask<UserType> iotask{global_nn,
-                                                global_nn_offset,
-                                                local_mm,
-                                                local_nn,
-                                                rr};
+        ac::io::async_write_task<UserType> iotask{global_nn,
+                                                  global_nn_offset,
+                                                  local_mm,
+                                                  local_nn,
+                                                  rr};
         // iotask.launch_write_collective(cart_comm, hin.buffer, "test.dat");
         // iotask.wait_write_collective();
         ac::mpi::write_collective(cart_comm,
@@ -240,7 +240,7 @@ main()
                                   local_mm,
                                   local_nn,
                                   rr,
-                                  hin.buffer().data(),
+                                  hin.data(),
                                   "test.dat");
         std::fill(hin.begin(), hin.end(), 0);
         ac::mpi::read_collective(cart_comm,
@@ -251,11 +251,11 @@ main()
                                  local_nn,
                                  rr,
                                  "test.dat",
-                                 hin.buffer().data());
+                                 hin.data());
 
         // Print mesh
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Should be arange");
+        PRINT_LOG_INFO("Should be arange");
         hin.display();
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
@@ -266,7 +266,7 @@ main()
         std::fill(buf.begin(), buf.end(), ac::mpi::get_rank(cart_comm));
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Reduce result before");
+        PRINT_LOG_INFO("Reduce result before");
         std::cout << ac::mpi::get_coords(cart_comm) << "{ ";
         for (const auto& elem : buf)
             std::cout << elem << " ";
@@ -281,7 +281,7 @@ main()
                              buf.data());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        PRINT_LOG("Reduce result after");
+        PRINT_LOG_INFO("Reduce result after");
         std::cout << "{ ";
         for (const auto& elem : buf)
             std::cout << elem << " ";
@@ -292,7 +292,7 @@ main()
         ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     }
     catch (std::exception& e) {
-        PRINT_LOG("Exception caught");
+        PRINT_LOG_INFO("Exception caught");
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
     ERRCHK_MPI_API(MPI_Finalize());

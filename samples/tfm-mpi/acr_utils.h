@@ -2,6 +2,7 @@
 
 #include "acc_runtime.h"
 #include "acm/detail/datatypes.h"
+#include "acm/detail/type_conversion.h"
 
 #define ERRCHK_AC(errcode)                                                                         \
     do {                                                                                           \
@@ -20,7 +21,7 @@ int3 get(const AcMeshInfo& info, const AcInt3Param& param);
 AcReal get(const AcMeshInfo& info, const AcRealParam& param);
 AcReal3 get(const AcMeshInfo& info, const AcReal3Param& param);
 
-// std::vector<ac::mr::device_ptr<AcReal>>
+// std::vector<ac::mr::device_pointer<AcReal>>
 // get(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& group);
 
 void set(const AcIntParam& param, const int value, AcMeshInfo& info);
@@ -28,20 +29,20 @@ void set(const AcInt3Param& param, const int3& value, AcMeshInfo& info);
 void set(const AcRealParam& param, const AcReal value, AcMeshInfo& info);
 void set(const AcReal3Param& param, const AcReal3& value, AcMeshInfo& info);
 
-Shape get_global_nn(const AcMeshInfo& info);
-Shape get_local_nn(const AcMeshInfo& info);
-Shape get_local_mm(const AcMeshInfo& info);
+ac::shape get_global_nn(const AcMeshInfo& info);
+ac::shape get_local_nn(const AcMeshInfo& info);
+ac::shape get_local_mm(const AcMeshInfo& info);
 
 Dims get_global_ss(const AcMeshInfo& info);
 
-Index get_global_nn_offset(const AcMeshInfo& info);
-Index get_local_nn_offset();
-Index get_local_rr();
+ac::index get_global_nn_offset(const AcMeshInfo& info);
+ac::index get_local_nn_offset();
+ac::index get_local_rr();
 
 } // namespace acr
 
 inline int3
-convert_to_int3(const ac::vector<uint64_t>& in)
+convert_to_int3(const ac::ntuple<uint64_t>& in)
 {
     ERRCHK(in.size() == 3);
     return int3{as<int>(in[0]), as<int>(in[1]), as<int>(in[2])};
