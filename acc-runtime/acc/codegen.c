@@ -8961,7 +8961,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   gen_user_taskgraphs(root);
   combinatorial_params_info info = get_combinatorial_params_info(root);
   gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
-  replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
+  //replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
   free_combinatorial_params_info(&info);
   gen_kernel_postfixes(root,gen_mem_accesses);
   gen_kernel_reduce_outputs();
