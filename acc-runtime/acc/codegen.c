@@ -3756,9 +3756,9 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 	remove_suffix(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,intern(kernel_name));
 	const char* type = get_expr_type(node);
-	if(type == INT_STR && gen_mem_accesses)
+	if(type && gen_mem_accesses && !strstr(type,"*"))
 	{
-		astnode_sprintf(node,"(%d)",0);
+		astnode_sprintf(node,"(%s){}",type);
 		return;
 	}
 	if(combinations_index == -1)
