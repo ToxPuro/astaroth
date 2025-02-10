@@ -67,17 +67,24 @@ profiles.sort()
 #            if (leta_rank2) then
 #              if (idiag_eta12/=0) call sum_mn_name(-(-sz(n)*Eipq(:,:,1,i1)+cz(n)*Eipq(:,:,1,i2))*ktestfield1,idiag_eta12)
 #              if (idiag_eta22/=0) call sum_mn_name(-(-sz(n)*Eipq(:,:,2,i1)+cz(n)*Eipq(:,:,2,i2))*ktestfield1,idiag_eta22)
-emf11 = []
-emf12 = []
-emf21 = []
-emf22 = []
+emf11x = []
+emf12x = []
+emf21x = []
+emf22x = []
+emf11y = []
+emf12y = []
+emf21y = []
+emf22y = []
+
 # Now hardcoded!!!!
 kz=1.0
 Bampl=1.0
+
 # Defining z and trigonometric arrays
 z=np.arange(args.dims[2])/(args.dims[2]-1)
 sinz=np.sin(2.*np.pi*kz*z)
 cosz=np.cos(2.*np.pi*kz*z)
+
 
 for profile in profiles:
     data = np.fromfile(
@@ -86,40 +93,72 @@ for profile in profiles:
     )
     
     name = Path(profile).stem
-    if "ucrossb11" in name:
-        emf11.append(data)
+    if "ucrossb11mean_x" in name:
+        emf11x.append(data)
     
-    if "ucrossb12" in name:
-        emf12.append(data)
+    if "ucrossb12mean_x" in name:
+        emf12x.append(data)
     
-    if "ucrossb21" in name:
-        emf21.append(data)
+    if "ucrossb21mean_x" in name:
+        emf21x.append(data)
 
-    if "ucrossb22" in name:
-        emf22.append(data)
+    if "ucrossb22mean_x" in name:
+        emf22x.append(data)
+
+    if "ucrossb11mean_y" in name:
+        emf11y.append(data)
+
+    if "ucrossb12mean_y" in name:
+        emf12y.append(data)
+
+    if "ucrossb21mean_y" in name:
+        emf21y.append(data)
+
+    if "ucrossb22mean_y" in name:
+        emf22y.append(data)
+
 
 # Reform to numpy
-emf11 = np.asarray(emf11)
-emf12 = np.asarray(emf12)
-emf21 = np.asarray(emf21)
-emf22 = np.asarray(emf22)
+emf11x = np.asarray(emf11x)
+emf12x = np.asarray(emf12x)
+emf21x = np.asarray(emf21x)
+emf22x = np.asarray(emf22x)
+
+emf11y = np.asarray(emf11y)
+emf12y = np.asarray(emf12y)
+emf21y = np.asarray(emf21y)
+emf22y = np.asarray(emf22y)
 
 # Alpha and eta profiles per each saved data
-alp11zt = (cosz*emf11+sinz*emf12)/Bampl
-alp21zt = (cosz*emf21+sinz*emf22)/Bampl
-eta12zt = -1.0*(-1.0*sinz*emf11+cosz*emf12)/(kz*Bampl)
-eta22zt = -1.0*(-1.0*sinz*emf21+cosz*emf22)/(kz*Bampl)
+alp11zt = (cosz*emf11x+sinz*emf12x)/Bampl
+alp21zt = (cosz*emf11y+sinz*emf12y)/Bampl
+alp12zt = (cosz*emf21x+sinz*emf22x)/Bampl
+alp22zt = (cosz*emf21y+sinz*emf22y)/Bampl
+eta11zt = -1.0*(-1.0*sinz*emf11x+cosz*emf12x)/(kz*Bampl)
+eta12zt = -1.0*(-1.0*sinz*emf21x+cosz*emf22x)/(kz*Bampl)
+eta21zt = -1.0*(-1.0*sinz*emf11y+cosz*emf12y)/(kz*Bampl)
+eta22zt = -1.0*(-1.0*sinz*emf21y+cosz*emf22y)/(kz*Bampl)
 
 # Average z-profiles over time
 alp11z=np.sum(alp11zt,axis=0)
+alp12z=np.sum(alp12zt,axis=0)
 alp21z=np.sum(alp21zt,axis=0)
+alp22z=np.sum(alp22zt,axis=0)
+eta11z=np.sum(eta11zt,axis=0)
 eta12z=np.sum(eta12zt,axis=0)
+eta21z=np.sum(eta21zt,axis=0)
 eta22z=np.sum(eta22zt,axis=0)
 
 plt.plot(z,alp11z,label="alp11zt")
 plt.plot(z,alp21z,label="alp21zt")
-plt.plot(z,eta12z,label="eta12zt")
-plt.plot(z,eta22z,label="eta22zt")
+plt.plot(z,alp12z,label="alp12zt")
+plt.plot(z,alp22z,label="alp12zt")
+#
+#plt.plot(z,eta11z,label="eta11zt")
+#plt.plot(z,eta12z,label="eta12zt")
+#plt.plot(z,eta21z,label="eta21zt")
+#plt.plot(z,eta22z,label="eta22zt")
+
 plt.legend()
 plt.show()
 
