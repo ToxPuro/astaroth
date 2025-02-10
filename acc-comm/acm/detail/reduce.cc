@@ -28,10 +28,10 @@ test_reduce()
         auto d1{h1.to_device()};
         auto d2{h2.to_device()};
 
-        const auto                  count{h0.size() + h1.size() + h2.size()};
-        std::vector                 inputs{d0.get(), d1.get(), d2.get()};
-        ac::device_buffer<uint64_t> output{inputs.size()};
-        ac::segmented_reduce(mm, nn, rr, std::vector{d0.get(), d1.get(), d2.get()}, output.get());
+        const auto                                    count{h0.size() + h1.size() + h2.size()};
+        std::vector<ac::mr::device_pointer<uint64_t>> inputs{d0.get(), d1.get(), d2.get()};
+        ac::device_buffer<uint64_t>                   output{inputs.size()};
+        ac::segmented_reduce(mm, nn, rr, inputs, output.get());
 
         auto host_output{output.to_host()};
         ERRCHK(host_output.size() == inputs.size());

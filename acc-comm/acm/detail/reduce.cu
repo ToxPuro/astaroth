@@ -40,7 +40,7 @@ template <typename T> class ReduceTask {
     {
         // Check that the output memory resource can hold all segments
         ERRCHK(inputs.size() == output.size());
-        ERRCHK(prod(subdims) <= pack_buffer.size())
+        ERRCHK(prod(subdims) <= pack_buffer.size());
 
         // Pack
         pack(dims, subdims, offset, inputs, pack_buffer.get());
@@ -99,7 +99,7 @@ expected_sum(const size_t i, const size_t stride)
 }
 
 void
-test_reduce()
+test_reduce_device()
 {
     {
         const size_t    num_segments{5};
