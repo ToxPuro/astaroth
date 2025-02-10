@@ -1,8 +1,5 @@
 #include "reduce.h"
-
-#include "errchk.h"
-
-#include "print_debug.h"
+#include <numeric>
 
 #if defined(ACM_DEVICE_ENABLED)
 #if defined(ACM_CUDA_ENABLED)
@@ -13,14 +10,9 @@
 #endif
 #endif
 
-#include <numeric>
-
 #include "ndbuffer.h"
-
-#include "errchk_cuda.h"
-#include "ntuple.h"
 #include "pack.h"
-#include "pointer.h"
+#include "print_debug.h"
 #include "type_conversion.h"
 
 enum class ReduceType { sum, max, min };
