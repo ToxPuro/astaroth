@@ -35,6 +35,7 @@
 #define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
 #define AC_WRITE_SYNCHRONOUS_PROFILES
 #define AC_WRITE_SYNCHRONOUS_DIAGNOSTICS
+#define AC_WRITE_SYNCHRONOUS_TIMESERIES
 
 #define BENCHMARK(cmd)                                                                             \
     do {                                                                                           \
