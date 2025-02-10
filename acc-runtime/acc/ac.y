@@ -500,7 +500,7 @@ main(int argc, char** argv)
 
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT DOUBLE 
 %token NON_RETURNING_FUNC_CALL
-%token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
+%token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
 %token INT UINT REAL MATRIX TENSOR FIELD STENCIL WORK_BUFFER PROFILE
 %token BOOL INTRINSIC LONG_LONG LONG 
@@ -929,7 +929,7 @@ expression_list_trailing_allowed: expression                     { $$ = astnode_
  * Definitions and Declarations
  * =============================================================================
 */
-variable_definition: declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
+variable_definition: declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); $$->token = VARIABLE_DECLARATION;}
                    | assignment  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
                    ;
 
@@ -1118,9 +1118,23 @@ selection_statement: if if_statement        { $$ = astnode_create(NODE_UNKNOWN, 
 if_statement: expression if_root  {$$ = astnode_create(NODE_IF, $1, $2); astnode_set_prefix("(",$$); astnode_set_infix(")",$$); }
 	    
 if_root: compound_statement else_statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2);}
-       | non_selection_statement else_statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2);}
+       | non_selection_statement else_statement { 
+						        ASTNode* statement = astnode_create(NODE_UNKNOWN,$1,NULL);
+							statement->token = STATEMENT;
+							ASTNode* statement_list = astnode_create(NODE_STATEMENT_LIST_HEAD, statement, NULL);
+							ASTNode* compound_statement = astnode_create(NODE_BEGIN_SCOPE,statement_list,NULL); 
+							astnode_set_prefix("{",compound_statement); astnode_set_postfix("}",compound_statement);  
+							$$ = astnode_create(NODE_UNKNOWN, compound_statement, $2);
+						}
        | compound_statement elif_statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2);}
-       | non_selection_statement elif_statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2);}       
+       | non_selection_statement elif_statement { 
+						        ASTNode* statement = astnode_create(NODE_UNKNOWN,$1,NULL);
+							statement->token = STATEMENT;
+							ASTNode* statement_list = astnode_create(NODE_STATEMENT_LIST_HEAD, statement, NULL);
+							ASTNode* compound_statement = astnode_create(NODE_BEGIN_SCOPE,statement_list,NULL); 
+							astnode_set_prefix("{",compound_statement); astnode_set_postfix("}",compound_statement);  
+							$$ = astnode_create(NODE_UNKNOWN, compound_statement, $2);
+						}       
        | compound_statement { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); 
 				if($$->lhs->lhs)
 				{
@@ -1131,14 +1145,25 @@ if_root: compound_statement else_statement { $$ = astnode_create(NODE_UNKNOWN, $
 					}
 				}
 			    }
-       | statement 	    { ASTNode* compound_statement = astnode_create(NODE_BEGIN_SCOPE,$1,NULL); astnode_set_prefix("{",compound_statement); astnode_set_postfix("}",compound_statement);  $$ = astnode_create(NODE_UNKNOWN, compound_statement, NULL);}
+
+       | statement 	    {  
+				ASTNode* statement_list = astnode_create(NODE_STATEMENT_LIST_HEAD, $1, NULL);
+				ASTNode* compound_statement = astnode_create(NODE_BEGIN_SCOPE,statement_list,NULL); astnode_set_prefix("{",compound_statement); astnode_set_postfix("}",compound_statement);  
+				$$ = astnode_create(NODE_UNKNOWN, compound_statement, NULL);
+			    }
          ;
 
 elif_statement: elif if_statement                 { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
               ;
 
 else_statement: else compound_statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-	      | else statement          { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+	      | else statement          {  
+
+						ASTNode* statement_list = astnode_create(NODE_STATEMENT_LIST_HEAD, $2, NULL);
+						ASTNode* compound_statement = astnode_create(NODE_BEGIN_SCOPE,statement_list,NULL); 
+						astnode_set_prefix("{",compound_statement); astnode_set_postfix("}",compound_statement);  
+						$$ = astnode_create(NODE_UNKNOWN, $1, compound_statement);
+					}
               ;
 
 iteration_statement: while_statement compound_statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }

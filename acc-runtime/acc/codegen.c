@@ -883,11 +883,27 @@ get_array_accesses(const ASTNode* base)
 node_vec
 get_array_var_dims(const char* var, const ASTNode* root)
 {
+
+	    static string_vec cache_keys = VEC_INITIALIZER;
+	    static node_vec   cache[10000];
+
+	    int cache_index = str_vec_get_index(cache_keys,var);
+	    if(cache_index != -1)
+	    {
+	    	return cache[cache_index];
+	    }
+
 	    const ASTNode* var_identifier = get_node_by_buffer_and_type(var,NODE_VARIABLE_ID,root);
 	    const ASTNode* decl = get_parent_node(NODE_DECLARATION,var_identifier);
 
 	    const ASTNode* access_start = get_node(NODE_ARRAY_ACCESS,decl);
-	    return get_array_accesses(access_start);
+	    node_vec res = get_array_accesses(access_start);
+
+	    push(&cache_keys,var);
+	    cache_index = str_vec_get_index(cache_keys,var);
+	    cache[cache_index] = res;
+
+	    return res;
 }
 const ASTNode*
 get_var_val(const char* var, const ASTNode* node)
@@ -960,7 +976,6 @@ get_array_var_length(const char* var, const ASTNode* root, char* dst)
 			val = all;
 		strcatprintf(dst,"%s%s",(i) ? MULT_STR : "",val);
 	    }
-	    free_node_vec(&tmp);
 }
 
 int default_accesses[10000] = { [0 ... 10000-1] = 1};
@@ -1141,7 +1156,6 @@ output_array_info(FILE* fp, array_info info, const ASTNode* root)
         fprintf(fp, "\"%s\",", info.name);
         fprintf(fp, "%s,",info.accessed ? "true" : "false");
 	fprintf(fp,"%s","},");
-	free_node_vec(&info.dims);
 }
 void
 gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
@@ -2024,8 +2038,22 @@ get_const_array_var_dims_recursive(const char* name, const ASTNode* node, node_v
 node_vec
 get_const_array_var_dims(const char* name, const ASTNode* node)
 {
+	static string_vec cache_keys = VEC_INITIALIZER;
+	static node_vec   cache[10000];
+
+	int cache_index = str_vec_get_index(cache_keys,name);
+	if(cache_index != -1)
+	{
+		return cache[cache_index];
+	}
+
 	node_vec res = VEC_INITIALIZER;
 	get_const_array_var_dims_recursive(name,node,&res);
+
+	push(&cache_keys,name);
+	cache_index = str_vec_get_index(cache_keys,name);
+	cache[cache_index] = res;
+
 	return res;
 
 }
@@ -2121,7 +2149,6 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
 	    fprintf(stderr,"Fatal error: no case for array read: %s\n",combine_all_new(node));
 	    exit(EXIT_FAILURE);
     }
-    free_node_vec(&var_dims);
   }
 }
 
@@ -3729,6 +3756,11 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 	remove_suffix(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,intern(kernel_name));
 	const char* type = get_expr_type(node);
+	if(type == INT_STR && gen_mem_accesses)
+	{
+		astnode_sprintf(node,"(%d)",0);
+		return;
+	}
 	if(combinations_index == -1)
 	{
 
@@ -7641,42 +7673,77 @@ canonalize_if_assignments(ASTNode* node)
 		convert_to_ternary(node);
 
 }
-bool
-is_used_in_statements(const ASTNode* head, const char* var)
+void
+get_used_vars_base(const ASTNode* node, string_vec* dst, bool skip)
 {
-	while(head->type == NODE_STATEMENT_LIST_HEAD)
+	if(node->token == VARIABLE_DECLARATION) return;
+	if(node->lhs) 
 	{
-		if (get_node_by_buffer(var,head->rhs)) return true;
-		head = head->parent;
+		get_used_vars_base(node->lhs,dst,skip | (node->type & NODE_ASSIGNMENT));
 	}
-	return false;
+	if(node->rhs) 
+	{
+		get_used_vars_base(node->rhs,dst,skip && !(node->type & NODE_ARRAY_ACCESS));
+	}
+	if(skip) return;
+	if(node->token != IDENTIFIER) return;
+	push(dst,node->buffer);
+}
+void
+get_used_vars(const ASTNode* node, string_vec* dst)
+{
+	get_used_vars_base(node,dst,false);
+}
+void
+remove_dead_assignments(ASTNode* node, const string_vec vars_used)
+{
+	TRAVERSE_PREAMBLE_PARAMS(remove_dead_assignments,vars_used);
+	if(!(node->type & NODE_ASSIGNMENT)) return;
+	const char* expr_type = get_expr_type(node);
+	if(!expr_type) return;
+	if(expr_type == FIELD_STR) return;
+	const char* var = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	if(check_symbol(NODE_ANY,var,0,DYNAMIC_STR)) return;
+	if(strstr(expr_type,"*")) return;
+	if(!str_vec_contains(vars_used,var))
+	{
+		node->lhs = NULL;
+		node->rhs = NULL;
+		node->parent->postfix = NULL;
+	}
+}
+void
+remove_dead_declarations(ASTNode* node, const string_vec vars_used)
+{
+	TRAVERSE_PREAMBLE_PARAMS(remove_dead_declarations,vars_used);
+	if(!(node->type & NODE_DECLARATION)) return;
+	if(node->parent->token != VARIABLE_DECLARATION) return;
+	const char* var = get_node_by_token(IDENTIFIER,node)->buffer;
+	if(!str_vec_contains(vars_used,var))
+	{
+		node->lhs = NULL;
+		node->rhs = NULL;
+		node->parent->postfix = NULL;
+	}
 }
 void
 remove_dead_writes(ASTNode* node)
 {
 	TRAVERSE_PREAMBLE(remove_dead_writes);
-	const ASTNode* func = get_parent_node(NODE_FUNCTION,node);
-	if(!func) return;
-	if(!(node->type & NODE_ASSIGNMENT)) return;
-	const char* var_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-	const ASTNode* begin_scope = get_parent_node(NODE_BEGIN_SCOPE,node);
-	//TP: only consider writes in the first nest
-	if(begin_scope -> id != func->rhs->rhs->id) return;
-	const ASTNode* head = get_parent_node(NODE_STATEMENT_LIST_HEAD,node);
-	const bool final_node = is_left_child(NODE_STATEMENT_LIST_HEAD,node);
-	const bool is_used_in_rest = is_used_in_statements(final_node ? head : head->parent,var_name);
-	ASTNode* primary_expr = get_node_by_token(IDENTIFIER,node->lhs)->parent;
-	const char* expr_type = get_expr_type(primary_expr);
-	const char* primary_identifier = primary_expr->lhs->buffer;
-	if(!is_used_in_rest && expr_type && 
-	   //exclude written fields since they write to the vertex buffer
-	   expr_type == FIELD_STR && 
-	   //exclude writes to dynamic global arrays since they persist after the kernel
-	   !check_symbol(NODE_VARIABLE_ID,primary_identifier,0,DYNAMIC_STR)
-	)
+	if(!(node->type & NODE_FUNCTION)) return;
+	if((node->type & NODE_DFUNCTION)) return;
+	const ASTNode* statements_node = node->rhs->rhs->lhs;
+	if(!statements_node) return;
+	node_vec statements = get_nodes_in_list(statements_node);
+	string_vec vars_used = VEC_INITIALIZER;
+	for(int i = (int)statements.size-1; i >= 0; --i)
 	{
-		node->parent->lhs = NULL;
+		get_used_vars(statements.data[i],&vars_used);
+		remove_dead_assignments((ASTNode*)statements.data[i],vars_used);
 	}
+	remove_dead_declarations(node,vars_used);
+	free_str_vec(&vars_used);
+	free_node_vec(&statements);
 }
 void
 gen_ssa_in_basic_blocks(ASTNode* node)
@@ -8410,11 +8477,11 @@ gen_output_files(ASTNode* root)
 
 }
 bool
-eliminate_conditionals_base(ASTNode* node)
+eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 {
 	bool res = false;
 	if(node->lhs)
-		res |= eliminate_conditionals_base(node->lhs);
+		res |= eliminate_conditionals_base(node->lhs,gen_mem_accesses);
 	if((node->type & NODE_IF && node->is_constexpr))
 	{
 		const bool is_executed = int_vec_contains(executed_nodes,node->id);
@@ -8432,6 +8499,13 @@ eliminate_conditionals_base(ASTNode* node)
 				node->parent->parent->lhs = node->rhs->lhs;
 			}
 			node->type ^= NODE_IF;
+			if(!gen_mem_accesses)
+			{
+				ASTNode* if_scope = (ASTNode*)get_node(NODE_BEGIN_SCOPE,node);
+				if_scope->prefix = NULL;
+				if_scope->postfix= NULL;
+				if_scope->type = NODE_UNKNOWN;
+			}
 			return true;
 		}
 		else
@@ -8453,6 +8527,16 @@ eliminate_conditionals_base(ASTNode* node)
 				statement->rhs = NULL;
 				statement->lhs = else_node->rhs;
 				else_node->rhs->parent = statement;
+				if(!gen_mem_accesses)
+				{
+					ASTNode* else_scope = (ASTNode*)get_node(NODE_BEGIN_SCOPE,else_node->rhs);
+					if(else_scope)
+					{
+						else_scope->prefix= NULL;
+						else_scope->postfix = NULL;
+						else_scope->type = NODE_UNKNOWN;
+					}
+				}
 			}
 			//Conditional with only a single case that is not taken, simple remove the whole conditional
 			else
@@ -8465,18 +8549,18 @@ eliminate_conditionals_base(ASTNode* node)
 		}
 	}
 	if(node->rhs)
-		res |= eliminate_conditionals_base(node->rhs);
+		res |= eliminate_conditionals_base(node->rhs,gen_mem_accesses);
 	return res;
 
 }
 bool
-eliminate_conditionals(ASTNode* node)
+eliminate_conditionals(ASTNode* node, const bool gen_mem_accesses)
 {
 	bool process = true;
 	bool eliminated_something = false;
 	while(process)
 	{
-		const bool eliminated_something_this_round = eliminate_conditionals_base(node);
+		const bool eliminated_something_this_round = eliminate_conditionals_base(node,gen_mem_accesses);
 		process = eliminated_something_this_round;
 		eliminated_something = eliminated_something || eliminated_something_this_round;
 	}
@@ -8945,9 +9029,10 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 	  bool eliminated_something = true;
 	  while(eliminated_something)
 	  {
-	  	eliminated_something = eliminate_conditionals(root);
+	  	eliminated_something = eliminate_conditionals(root,gen_mem_accesses);
 		gen_constexpr_info(root,gen_mem_accesses);
 	  }
+	  remove_dead_writes(root);
   }
   // Device functions
   symboltable_reset();
@@ -8988,10 +9073,10 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
            	stream);
 	  	fflush(stream);
 	  	get_executed_nodes(round-1);
-	  	eliminated_something = eliminate_conditionals(root);
+	  	eliminated_something = eliminate_conditionals(root,gen_mem_accesses);
 		gen_constexpr_info(root,gen_mem_accesses);
 	  }
-
+	  remove_dead_writes(root);
 
 	  clean_stream(stream);
 	  symboltable_reset();

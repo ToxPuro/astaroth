@@ -391,6 +391,21 @@ get_node_by_token(const int token, const ASTNode* node)
   return NULL;
 }
 static inline ASTNode*
+get_node_by_buffer_exclude_node(const char* test, const ASTNode* node, const ASTNode* exclude)
+{
+  assert(node);
+  ASTNode* res = NULL;
+  if(node->id == exclude->id) return res;
+  if (node->buffer && !strcmp(test,node->buffer))
+    res = (ASTNode*) node;
+  if (node->lhs && !res)
+    res = get_node_by_buffer_exclude_node(test, node->lhs,exclude);
+  if (node->rhs && !res)
+    res = get_node_by_buffer_exclude_node(test, node->rhs,exclude);
+  return res;
+}
+
+static inline ASTNode*
 get_node_by_buffer(const char* test, const ASTNode* node)
 {
   assert(node);
@@ -481,6 +496,14 @@ static inline bool
 is_left_child(const NodeType type, const ASTNode* node)
 {
 	const ASTNode* parent = get_parent_node(type,node);
+	if(!parent) return false;
+	return get_node_by_id(node->id,parent->lhs) != NULL;
+}
+
+static inline bool
+is_left_child_token(const int token, const ASTNode* node)
+{
+	const ASTNode* parent = get_parent_node_by_token(token,node);
 	if(!parent) return false;
 	return get_node_by_id(node->id,parent->lhs) != NULL;
 }
