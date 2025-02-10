@@ -535,9 +535,9 @@ reduce_scal(const MPI_Comm& parent_comm, const Device& device, const ReductionTy
 
 // Format std::printf("label, step, t_step, dt, min, rms, max\n");
 static int
-write_vec_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_t step,
-                      const AcReal simulation_time, const AcReal dt, const Field& a, const Field& b,
-                      const Field& c, const std::string& label)
+write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
+                     const AcReal simulation_time, const AcReal dt, const Field& a, const Field& b,
+                     const Field& c, const std::string& label)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -580,8 +580,8 @@ write_vec_diagnostics(const MPI_Comm& parent_comm, const Device& device, const s
 
 // Format std::printf("label, step, t_step, dt, min, rms, max\n");
 static int
-write_scal_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_t step,
-                       const AcReal simulation_time, const AcReal dt, const Field& field)
+write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
+                      const AcReal simulation_time, const AcReal dt, const Field& field)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -622,8 +622,8 @@ write_scal_diagnostics(const MPI_Comm& parent_comm, const Device& device, const 
 }
 
 static int
-write_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_t step,
-                  const AcReal simulation_time, const AcReal dt)
+write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
+                 const AcReal simulation_time, const AcReal dt)
 {
     PRINT_LOG_DEBUG("Enter");
 
@@ -651,23 +651,23 @@ write_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_
                                             "TF_uxb22"};
     ERRCHK(vecfields.size() == vecfield_names.size());
     for (size_t i{0}; i < vecfields.size(); ++i)
-        write_vec_diagnostics(parent_comm,
+        write_vec_timeseries(parent_comm,
+                             device,
+                             step,
+                             simulation_time,
+                             dt,
+                             vecfields[i][0],
+                             vecfields[i][1],
+                             vecfields[i][2],
+                             vecfield_names[i]);
+
+    for (size_t i{0}; i < NUM_FIELDS; ++i)
+        write_scal_timeseries(parent_comm,
                               device,
                               step,
                               simulation_time,
                               dt,
-                              vecfields[i][0],
-                              vecfields[i][1],
-                              vecfields[i][2],
-                              vecfield_names[i]);
-
-    for (size_t i{0}; i < NUM_FIELDS; ++i)
-        write_scal_diagnostics(parent_comm,
-                               device,
-                               step,
-                               simulation_time,
-                               dt,
-                               static_cast<Field>(i));
+                              static_cast<Field>(i));
 
     return 0;
 }
@@ -1598,7 +1598,7 @@ class Grid {
         ERRCHK_MPI(fclose(fp) == 0);
 
         // Write time series
-        write_diagnostics(cart_comm, device, 0, 0, 0);
+        write_timeseries(cart_comm, device, 0, 0, 0);
 
         // Ensure halos are up-to-date before starting integration
         hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
@@ -1701,7 +1701,7 @@ class Grid {
 // TODO: this is synchronous. Consider async.
 #if defined(AC_ENABLE_IO)
             // Write time series
-            write_diagnostics(cart_comm, device, step, current_time, dt);
+            write_timeseries(cart_comm, device, step, current_time, dt);
 
             // Write mesh and profiles
             // Note: ghost zones not up-to-date with this (working as intended)
