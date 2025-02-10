@@ -209,7 +209,8 @@ get_field_paths(const std::vector<Field>& fields, const size_t step)
     std::vector<std::string> paths;
     for (const auto& field : fields) {
         std::ostringstream oss;
-        oss << field_names[static_cast<size_t>(field)] << "-step-" << step << ".mesh";
+        oss << field_names[static_cast<size_t>(field)] << "-step-" << std::setfill('0')
+            << std::setw(12) << step << ".mesh";
         paths.push_back(oss.str());
     }
     return paths;
