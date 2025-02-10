@@ -1651,6 +1651,7 @@ class Grid {
                 // TODO note: end index is not properly used, exits early
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 1));
                 compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
+                // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
 
                 // ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
                 // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
