@@ -58,7 +58,7 @@ files
 
 # %%
 # Visualize individual profiles
-profiles = [file for file in files if file.endswith("_z.profile")] # Filter profiles
+profiles = [file for file in files if file.endswith(".profile")] # Filter profiles
 profiles.sort()
 
 # if (idiag_alp11/=0) call sum_mn_name(+cz(n)*Eipq(:,:,1,1)+sz(n)*Eipq(:,:,1,i2),idiag_alp11)
@@ -134,10 +134,17 @@ alp11zt = (cosz*emf11x+sinz*emf12x)/Bampl
 alp21zt = (cosz*emf11y+sinz*emf12y)/Bampl
 alp12zt = (cosz*emf21x+sinz*emf22x)/Bampl
 alp22zt = (cosz*emf21y+sinz*emf22y)/Bampl
-eta11zt = -1.0*(-1.0*sinz*emf11x+cosz*emf12x)/(kz*Bampl)
-eta12zt = -1.0*(-1.0*sinz*emf21x+cosz*emf22x)/(kz*Bampl)
-eta21zt = -1.0*(-1.0*sinz*emf11y+cosz*emf12y)/(kz*Bampl)
-eta22zt = -1.0*(-1.0*sinz*emf21y+cosz*emf22y)/(kz*Bampl)
+#MJKL Before produced the correct profiles; for a longer run produces negative diagonals
+#eta12zt = -1.0*(sinz*emf11x-cosz*emf12x)/(kz*Bampl)
+#eta11zt = -1.0*(sinz*emf21x-cosz*emf22x)/(kz*Bampl)
+#eta22zt =  (sinz*emf11y-cosz*emf12y)/(kz*Bampl)
+#eta21zt = -1.0*(sinz*emf21y-cosz*emf22y)/(kz*Bampl)
+#MJKL With this change the diagonals are again positive.
+eta12zt = -1.0*(sinz*emf11x-cosz*emf12x)/(kz*Bampl)
+eta11zt = -1.0*(sinz*emf21x-cosz*emf22x)/(kz*Bampl)
+eta22zt =  (sinz*emf11y-cosz*emf12y)/(kz*Bampl)
+eta21zt = -1.0*(sinz*emf21y-cosz*emf22y)/(kz*Bampl)
+
 
 # Average z-profiles over time
 alp11z=np.sum(alp11zt,axis=0)
