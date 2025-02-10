@@ -30,7 +30,7 @@ See Unix globbing for passing files/directories to the script more easily.
 
 parser.add_argument('--dims', type=int, default=[32, 32, 32], nargs=3, help='The dimensions of the computational domain in the order [z y x] (note z first). Should be the same as global_nn defined in mhd.ini')
 parser.add_argument('--slice-nz', type=int, default=-1, nargs=1, help='Position on the nz axis to slice on. If set to -1, chooses the middle slice.')
-parser.add_argument('--nsteps', type=int, default=100, nargs=1, help='Maximum steps to visualize (defined as AC_simulation_nsteps in mhd.ini)')
+parser.add_argument('--nsteps', type=int, default=1000000, nargs=1, help='Maximum steps to visualize (defined as AC_simulation_nsteps in mhd.ini)')
 parser.add_argument('--inputs', type=str, nargs='+', default=["*.mesh", "*.profile"], help='Input files to visualize (supports globbing)')
 parser.add_argument('--output-dir', type=str, nargs='+', default="output", help='The output directory')
 #parser.add_argument('--show-individual', action='store_true', help='Controls whether to write individual plots')
@@ -57,24 +57,24 @@ files
 
 # %%
 # Visualize individual snapshots
-snapshots = [file for file in files if file.endswith(".mesh")] # Filter snapshots
-snapshots.sort()
+# snapshots = [file for file in files if file.endswith(".mesh")] # Filter snapshots
+# snapshots.sort()
 
-for snapshot in snapshots:
-    data = np.fromfile(
-        snapshot,
-        dtype=np.double,
-    )
-    data = data.reshape(args.dims)
+# for snapshot in snapshots:
+#     data = np.fromfile(
+#         snapshot,
+#         dtype=np.double,
+#     )
+#     data = data.reshape(args.dims)
     
-    name = Path(snapshot).stem
-    path = os.path.join(args.output_dir, f'{name}.png')
+#     name = Path(snapshot).stem
+#     path = os.path.join(args.output_dir, f'{name}.png')
     
-    print(f"Writing {path}")
-    plt.imshow(data[args.slice_nz, :, :])
-    plt.title(name)
-    plt.savefig(path)
-    plt.close()
+#     print(f"Writing {path}")
+#     plt.imshow(data[args.slice_nz, :, :])
+#     plt.title(name)
+#     plt.savefig(path)
+#     plt.close()
 
 # %%
 # Visualize snapshots (grouped)
@@ -113,23 +113,23 @@ for step in range(args.nsteps):
 
 # %%
 # Visualize individual profiles
-profiles = [file for file in files if file.endswith(".profile")] # Filter profiles
-profiles.sort()
+# profiles = [file for file in files if file.endswith(".profile")] # Filter profiles
+# profiles.sort()
 
-for profile in profiles:
-    data = np.fromfile(
-        profile,
-        dtype=np.double,
-    )
+# for profile in profiles:
+#     data = np.fromfile(
+#         profile,
+#         dtype=np.double,
+#     )
     
-    name = Path(profile).stem
-    path = os.path.join(args.output_dir, f'{name}.png')
+#     name = Path(profile).stem
+#     path = os.path.join(args.output_dir, f'{name}.png')
     
-    print(f"Writing {path}")
-    plt.plot(data)
-    plt.title(name)
-    plt.savefig(path)
-    plt.close()
+#     print(f"Writing {path}")
+#     plt.plot(data)
+#     plt.title(name)
+#     plt.savefig(path)
+#     plt.close()
 
 # %%
 # Visualize profiles (grouped)
