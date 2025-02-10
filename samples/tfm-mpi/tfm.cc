@@ -32,10 +32,6 @@
 #include <random>
 
 // #define AC_ENABLE_ASYNC_AVERAGES
-// #define AC_ENABLE_IO
-// #define AC_ASYNC_IO_ENABLED
-// #define AC_SYNCHRONOUS_IO_ENABLED
-// #define AC_WRITE_ASYNC_SNAPSHOTS
 #define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
 #define AC_WRITE_SYNCHRONOUS_PROFILES
 #define AC_WRITE_SYNCHRONOUS_DIAGNOSTICS
@@ -1606,8 +1602,8 @@ class Grid {
         write_profiles_to_disk(cart_comm, device, 0);
 
 // Write snapshots
-#if defined(AC_SYNCHRONOUS_SNAPSHOTS)
-        write_snapshots_to_disk(cart_comm, device, step);
+#if defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
+        write_snapshots_to_disk(cart_comm, device, 0);
 #else
         hydro_io.launch(cart_comm,
                         get_ptrs(device, hydro_fields, BufferGroup::input),
@@ -1691,7 +1687,7 @@ class Grid {
             current_time += dt;
 
 // Write snapshot
-#if defined(AC_SYNCHRONOUS_SNAPSHOTS)
+#if defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
             if ((step %
                  as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0)
                 write_snapshots_to_disk(cart_comm, device, step);
@@ -1709,20 +1705,22 @@ class Grid {
             }
 
 #endif
-#if defined(AC_SYNCHRONOUS_PROFILES)
+#if defined(AC_WRITE_SYNCHRONOUS_PROFILES)
             if ((step %
                  as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
                 write_profiles_to_disk(cart_comm, device, step);
 #endif
 
-#if defined(AC_SYNCHRONOUS_TIMESERIES)
-            write_timeseries(cart_comm, device, step, current_time, dt);
+#if defined(AC_WRITE_SYNCHRONOUS_TIMESERIES)
+            if ((step %
+                 as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
+                write_timeseries(cart_comm, device, step, current_time, dt);
 #endif
         }
         hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
         tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
 
-#if !defined(AC_SYNCHRONOUS_SNAPSHOTS)
+#if !defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
         hydro_io.wait();
         uxb_io.wait();
 #endif
