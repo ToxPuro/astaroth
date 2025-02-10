@@ -1,4 +1,4 @@
-#include "../../include/astaroth.h"
+#include "astaroth.h"
 #include "math_utils.h"
 #include "../helpers/ceil_div.h"
 #include "user_builtin_non_scalar_constants.h"
