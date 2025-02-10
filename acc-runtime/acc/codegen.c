@@ -8940,7 +8940,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   gen_matrix_reads(root);
   gen_constexpr_info(root,gen_mem_accesses);
 
-  if(!gen_mem_accesses && executed_nodes.size > 0 && OPTIMIZE_MEM_ACCESSES)
+  if(!gen_mem_accesses && executed_nodes.size > 0 && OPTIMIZE_MEM_ACCESSES && ELIMINATE_CONDITIONALS)
   {
 	  bool eliminated_something = true;
 	  while(eliminated_something)
@@ -8967,7 +8967,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
            NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
                NODE_HOSTDEFINE | NODE_NO_OUT,
            stream);
-  if(gen_mem_accesses)
+  if(gen_mem_accesses && ELIMINATE_CONDITIONALS)
   {
 	  fflush(stream);
 	  //This is used to eliminate known constexpr conditionals
