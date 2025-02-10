@@ -9,8 +9,8 @@
 #include "acm/detail/pack.h"
 #include "acm/detail/partition.h"
 #include "acm/detail/pointer.h"
-#include "acm/detail/reduce.h"
-#include "acm/detail/transform.h"
+// #include "acm/detail/reduce.h"
+// #include "acm/detail/transform.h"
 #include "acm/detail/type_conversion.h"
 
 int
@@ -23,8 +23,8 @@ main(void)
     test_decomp();
     test_pack();
     test_buffer_exchange();
-    test_transform();
-    test_reduce();
+    // test_transform();
+    // test_reduce();
 
     // Data types
     test_ntuple();

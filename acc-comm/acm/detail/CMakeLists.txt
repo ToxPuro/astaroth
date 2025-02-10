@@ -7,22 +7,22 @@ find_package(MPI REQUIRED COMPONENTS C)
 set(ACM_FILES   acm.cc 
                 acm_error.c
                 datatypes.cc
-                halo_exchange.cc
-                packet.cc
                 mpi_utils.cc
                 buffer_exchange.cc
-                reduce.cu
-                reduce.cc
-                transform.cu
+                halo_exchange.cc
+                packet.cc
+                #reduce.cu
+                #reduce.cc
+                #transform.cu
+                #transform.cc
                 pack.cu
                 pack.cc
-                transform.cc
                 ndbuffer.cc
                 buffer.cc
                 decomp.cc
                 partition.cc
-                segment.cc
                 math_utils.cc
+                segment.cc
                 ntuple.cc
                 pointer.cc
                 allocator.cc
