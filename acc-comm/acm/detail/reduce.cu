@@ -1,8 +1,5 @@
 #include "reduce.h"
-
-#include "errchk.h"
-
-#include "print_debug.h"
+#include <numeric>
 
 #if defined(ACM_DEVICE_ENABLED)
 #if defined(ACM_CUDA_ENABLED)
@@ -13,14 +10,9 @@
 #endif
 #endif
 
-#include <numeric>
-
 #include "ndbuffer.h"
-
-#include "errchk_cuda.h"
-#include "ntuple.h"
 #include "pack.h"
-#include "pointer.h"
+#include "print_debug.h"
 #include "type_conversion.h"
 
 enum class ReduceType { sum, max, min };
@@ -40,7 +32,7 @@ template <typename T> class ReduceTask {
     {
         // Check that the output memory resource can hold all segments
         ERRCHK(inputs.size() == output.size());
-        ERRCHK(prod(subdims) <= pack_buffer.size())
+        ERRCHK(prod(subdims) <= pack_buffer.size());
 
         // Pack
         pack(dims, subdims, offset, inputs, pack_buffer.get());
@@ -99,7 +91,7 @@ expected_sum(const size_t i, const size_t stride)
 }
 
 void
-test_reduce()
+test_reduce_device()
 {
     {
         const size_t    num_segments{5};

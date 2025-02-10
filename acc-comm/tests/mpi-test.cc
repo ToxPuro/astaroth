@@ -8,6 +8,8 @@
 #include "acm/detail/print_debug.h"
 #include "acm/detail/type_conversion.h"
 
+constexpr bool verbose{true};
+
 template <typename Allocator>
 void
 test_reduce_axis(const MPI_Comm& cart_comm, const ac::shape& global_nn)
@@ -24,19 +26,21 @@ test_reduce_axis(const MPI_Comm& cart_comm, const ac::shape& global_nn)
         ac::buffer<int, Allocator>              buf{count};
         migrate(tmp, buf);
 
-        ac::mpi::reduce_axis(cart_comm,
-                             ac::mpi::get_dtype<int>(),
-                             MPI_SUM,
-                             axis,
-                             buf.size(),
-                             buf.data());
+        BENCHMARK(ac::mpi::reduce_axis(cart_comm,
+                                       ac::mpi::get_dtype<int>(),
+                                       MPI_SUM,
+                                       axis,
+                                       buf.size(),
+                                       buf.data()));
 
         migrate(buf, tmp);
 
-        PRINT_DEBUG(decomp);
-        PRINT_DEBUG(coords);
-        PRINT_DEBUG(nprocs);
-        PRINT_DEBUG_ARRAY(tmp.size(), tmp.data());
+        if (verbose) {
+            PRINT_DEBUG(decomp);
+            PRINT_DEBUG(coords);
+            PRINT_DEBUG(nprocs);
+            PRINT_DEBUG_ARRAY(tmp.size(), tmp.data());
+        }
 
         // E.g. 4 procs on axis, the value in the buffer of each proc corresponds to its
         // coordinates on that axis
@@ -64,35 +68,39 @@ test_scatter_gather(const MPI_Comm& cart_comm, const ac::shape& global_nn)
     std::iota(monolithic.begin(), monolithic.end(), 1);
     Buffer distributed{local_mm};
 
-    ac::mpi::scatter(cart_comm,
-                     ac::mpi::get_dtype<T>(),
-                     global_nn,
-                     rr,
-                     monolithic.data(),
-                     distributed.data());
+    BENCHMARK(ac::mpi::scatter(cart_comm,
+                               ac::mpi::get_dtype<T>(),
+                               global_nn,
+                               rr,
+                               monolithic.data(),
+                               distributed.data()));
 
-    MPI_SYNCHRONOUS_BLOCK_START(cart_comm);
-    PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
-    PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
-    monolithic.display();
-    distributed.display();
-    MPI_SYNCHRONOUS_BLOCK_END(cart_comm);
-
-    // Check
-    Buffer monolithic_test{global_nn, 0};
-    ac::mpi::gather(cart_comm,
-                    ac::mpi::get_dtype<T>(),
-                    global_nn,
-                    rr,
-                    distributed.data(),
-                    monolithic_test.data());
-
-    const auto rank{ac::mpi::get_rank(cart_comm)};
-    if (rank == 0) {
+    if (verbose) {
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm);
         PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
         PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
         monolithic.display();
-        monolithic_test.display();
+        distributed.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm);
+    }
+
+    // Check
+    Buffer monolithic_test{global_nn, 0};
+    BENCHMARK(ac::mpi::gather(cart_comm,
+                              ac::mpi::get_dtype<T>(),
+                              global_nn,
+                              rr,
+                              distributed.data(),
+                              monolithic_test.data()));
+
+    const auto rank{ac::mpi::get_rank(cart_comm)};
+    if (rank == 0) {
+        if (verbose) {
+            PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+            PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
+            monolithic.display();
+            monolithic_test.display();
+        }
 
         for (size_t i{0}; i < monolithic_test.size(); ++i)
             ERRCHK_MPI(monolithic.get()[i] == monolithic_test.get()[i]);
@@ -119,34 +127,36 @@ test_scatter_gather_advanced(const MPI_Comm& cart_comm, const ac::shape& global_
     Buffer distributed{local_mm};
 
     // Scatter
-    ac::mpi::scatter_advanced(cart_comm,
-                              ac::mpi::get_dtype<T>(),
-                              global_mm,
-                              rr,
-                              monolithic.data(),
-                              local_mm,
-                              local_nn,
-                              rr,
-                              distributed.data());
+    BENCHMARK(ac::mpi::scatter_advanced(cart_comm,
+                                        ac::mpi::get_dtype<T>(),
+                                        global_mm,
+                                        rr,
+                                        monolithic.data(),
+                                        local_mm,
+                                        local_nn,
+                                        rr,
+                                        distributed.data()));
 
-    MPI_SYNCHRONOUS_BLOCK_START(cart_comm);
-    PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
-    PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
-    monolithic.display();
-    distributed.display();
-    MPI_SYNCHRONOUS_BLOCK_END(cart_comm);
+    if (verbose) {
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm);
+        PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+        PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
+        monolithic.display();
+        distributed.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm);
+    }
 
     // Gather
     Buffer monolithic_test{global_mm, 0}; // Initialize to zero
-    ac::mpi::gather_advanced(cart_comm,
-                             ac::mpi::get_dtype<T>(),
-                             local_mm,
-                             local_nn,
-                             rr,
-                             distributed.data(),
-                             global_mm,
-                             rr,
-                             monolithic_test.data());
+    BENCHMARK(ac::mpi::gather_advanced(cart_comm,
+                                       ac::mpi::get_dtype<T>(),
+                                       local_mm,
+                                       local_nn,
+                                       rr,
+                                       distributed.data(),
+                                       global_mm,
+                                       rr,
+                                       monolithic_test.data()));
 
     // Set boundaries to zero in the model solution
     auto segments{partition(global_mm, global_nn, rr)};
@@ -161,10 +171,12 @@ test_scatter_gather_advanced(const MPI_Comm& cart_comm, const ac::shape& global_
 
     const auto rank{ac::mpi::get_rank(cart_comm)};
     if (rank == 0) {
-        PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
-        PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
-        monolithic.display();
-        monolithic_test.display();
+        if (verbose) {
+            PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+            PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
+            monolithic.display();
+            monolithic_test.display();
+        }
 
         for (size_t i{0}; i < monolithic_test.size(); ++i)
             ERRCHK_MPI(monolithic.get()[i] == monolithic_test.get()[i]);
@@ -211,7 +223,7 @@ main()
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
-            const ac::shape global_nn{8, 8};
+            const ac::shape global_nn{7, 9};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
             test_scatter_gather_advanced(cart_comm, global_nn);
             ac::mpi::cart_comm_destroy(&cart_comm);

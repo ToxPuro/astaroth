@@ -470,21 +470,27 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ explicit static_ntuple(const std::initializer_list<T>& init_list)
         : m_count{init_list.size()}
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(init_list.size() <= N);
+#endif
         std::copy(init_list.begin(), init_list.end(), m_resource);
     }
 
     __host__ __device__ explicit static_ntuple(const std::vector<T>& vec)
         : m_count{vec.size()}
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(vec.size() <= N);
+#endif
         std::copy(vec.begin(), vec.end(), m_resource);
     }
 
     __host__ __device__ explicit static_ntuple(const ac::ntuple<T>& in)
         : m_count{in.size()}
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(in.size() <= N);
+#endif
         std::copy(in.begin(), in.end(), m_resource);
     }
 
@@ -501,13 +507,17 @@ template <typename T, size_t N> class static_ntuple {
 
     __host__ __device__ T& operator[](const size_t i)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(i < size());
+#endif
         return m_resource[i];
     }
 
     __host__ __device__ const T& operator[](const size_t i) const
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(i < size());
+#endif
         return m_resource[i];
     }
 
@@ -524,7 +534,9 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ friend ac::static_ntuple<T, N> operator+(const ac::static_ntuple<T, N>& a,
                                                                  const ac::static_ntuple<U, N>& b)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(a.size() == b.size());
+#endif
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -565,7 +577,9 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ friend ac::static_ntuple<T, N> operator-(const ac::static_ntuple<T, N>& a,
                                                                  const ac::static_ntuple<U, N>& b)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(a.size() == b.size());
+#endif
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -606,7 +620,9 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ friend ac::static_ntuple<T, N> operator*(const ac::static_ntuple<T, N>& a,
                                                                  const ac::static_ntuple<U, N>& b)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(a.size() == b.size());
+#endif
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
@@ -647,18 +663,27 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ friend ac::static_ntuple<T, N> operator/(const ac::static_ntuple<T, N>& a,
                                                                  const ac::static_ntuple<U, N>& b)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(a.size() == b.size());
+#endif
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
 
         ac::static_ntuple<T, N> c{a};
         for (size_t i{0}; i < a.size(); ++i) {
+
+#if !defined(ACM_DEVICE_ENABLED)
             if constexpr (std::is_integral_v<U>)
                 ERRCHK(b[i] != 0);
+#endif
+
             c[i] = a[i] / b[i];
+
+#if !defined(ACM_DEVICE_ENABLED)
             if constexpr (std::is_floating_point_v<T>)
                 ERRCHK(std::isnormal(c[i]));
+#endif
         }
         return c;
     }
@@ -672,11 +697,18 @@ template <typename T, size_t N> class static_ntuple {
                       "explicit cast such that both operands are of the same type");
         ac::static_ntuple<T, N> c{a};
         for (size_t i{0}; i < a.size(); ++i) {
+
+#if !defined(ACM_DEVICE_ENABLED)
             if constexpr (std::is_integral_v<U>)
                 ERRCHK(b[i] != 0);
+#endif
+
             c[i] = a / b[i];
+
+#if !defined(ACM_DEVICE_ENABLED)
             if constexpr (std::is_floating_point_v<T>)
                 ERRCHK(std::isnormal(c[i]));
+#endif
         }
         return c;
     }
@@ -688,13 +720,19 @@ template <typename T, size_t N> class static_ntuple {
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
                       "explicit cast such that both operands are of the same type");
+#if !defined(ACM_DEVICE_ENABLED)
         if constexpr (std::is_integral_v<U>)
             ERRCHK(b != 0);
+#endif
+
         ac::static_ntuple<T, N> c{a};
         for (size_t i{0}; i < a.size(); ++i) {
             c[i] = a[i] / b;
+
+#if !defined(ACM_DEVICE_ENABLED)
             if constexpr (std::is_floating_point_v<T>)
                 ERRCHK(!std::isnormal(c[i]));
+#endif
         }
         return c;
     }
@@ -703,7 +741,10 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ friend ac::static_ntuple<T, N> operator%(const ac::static_ntuple<T, N>& a,
                                                                  const ac::static_ntuple<U, N>& b)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(a.size() == b.size());
+#endif
+
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
@@ -747,7 +788,10 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ friend bool operator==(const ac::static_ntuple<T, N>& a,
                                                const ac::static_ntuple<U, N>& b)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(a.size() == b.size());
+#endif
+
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
@@ -763,7 +807,10 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ friend bool operator>=(const ac::static_ntuple<T, N>& a,
                                                const ac::static_ntuple<U, N>& b)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(a.size() == b.size());
+#endif
+
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
@@ -779,7 +826,10 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ friend bool operator<=(const ac::static_ntuple<T, N>& a,
                                                const ac::static_ntuple<U, N>& b)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(a.size() == b.size());
+#endif
+
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
@@ -795,7 +845,10 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ friend bool operator<(const ac::static_ntuple<T, N>& a,
                                               const ac::static_ntuple<U, N>& b)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(a.size() == b.size());
+#endif
+
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
@@ -811,7 +864,10 @@ template <typename T, size_t N> class static_ntuple {
     __host__ __device__ friend bool operator>(const ac::static_ntuple<T, N>& a,
                                               const ac::static_ntuple<U, N>& b)
     {
+#if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(a.size() == b.size());
+#endif
+
         static_assert(std::is_integral_v<T>, "Operator enabled only for integral types");
         static_assert(std::is_same_v<T, U>,
                       "Operator not enabled for parameters of different types. Perform an "
@@ -869,7 +925,10 @@ template <typename T, typename U, size_t N>
 [[nodiscard]] __host__ __device__ ac::static_ntuple<T, N>
 mul(const ac::static_ntuple<T, N>& a, const ac::static_ntuple<U, N>& b)
 {
+#if !defined(ACM_DEVICE_ENABLED)
     ERRCHK(a.size() == b.size());
+#endif
+
     static_assert(std::is_same_v<T, U>,
                   "Operator not enabled for parameters of different types. Perform an "
                   "explicit cast such that both operands are of the same type");
@@ -886,7 +945,10 @@ template <typename T, typename U, size_t N>
 [[nodiscard]] __host__ __device__ T
 dot(const ac::static_ntuple<T, N>& a, const ac::static_ntuple<U, N>& b)
 {
+#if !defined(ACM_DEVICE_ENABLED)
     ERRCHK(a.size() == b.size());
+#endif
+
     static_assert(std::is_same_v<T, U>,
                   "Operator not enabled for parameters of different types. Perform an "
                   "explicit cast such that both operands are of the same type");
@@ -900,7 +962,10 @@ template <typename T, size_t N>
 [[nodiscard]] __host__ __device__ T
 to_linear(const ac::static_ntuple<T, N>& coords, const ac::static_ntuple<T, N>& shape)
 {
+#if !defined(ACM_DEVICE_ENABLED)
     ERRCHK(coords.size() == shape.size());
+#endif
+
     T result{0};
     for (size_t j{0}; j < shape.size(); ++j) {
         T factor{1};
@@ -930,8 +995,11 @@ template <typename T, size_t N>
 within_box(const ac::static_ntuple<T, N>& coords, const ac::static_ntuple<T, N>& box_dims,
            const ac::static_ntuple<T, N>& box_offset)
 {
+#if !defined(ACM_DEVICE_ENABLED)
     ERRCHK(coords.size() == box_dims.size());
     ERRCHK(coords.size() == box_offset.size());
+#endif
+
     for (size_t i{0}; i < coords.size(); ++i)
         if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
             return false;

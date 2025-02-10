@@ -181,12 +181,18 @@ gen_return_if_oob(void)
   // Enable excluding some internal domain
   printf("\n#if defined(AC_ENABLE_EXCLUDE_INNER)\n");
   printf("if (DCONST(AC_exclude_inner)) {");
-  printf("const int nix_min = (DCONST(AC_nx_min) + (STENCIL_WIDTH-1)/2);");
-  printf("const int nix_max = (DCONST(AC_nx_max) - (STENCIL_WIDTH-1)/2);");
-  printf("const int niy_min = (DCONST(AC_ny_min) + (STENCIL_HEIGHT-1)/2);");
-  printf("const int niy_max = (DCONST(AC_ny_max) - (STENCIL_HEIGHT-1)/2);");
-  printf("const int niz_min = (DCONST(AC_nz_min) + (STENCIL_DEPTH-1)/2);");
-  printf("const int niz_max = (DCONST(AC_nz_max) - (STENCIL_DEPTH-1)/2);");
+  // printf("const int nix_min = (DCONST(AC_nx_min) + (STENCIL_WIDTH-1)/2);");
+  // printf("const int nix_max = (DCONST(AC_nx_max) - (STENCIL_WIDTH-1)/2);");
+  // printf("const int niy_min = (DCONST(AC_ny_min) + (STENCIL_HEIGHT-1)/2);");
+  // printf("const int niy_max = (DCONST(AC_ny_max) - (STENCIL_HEIGHT-1)/2);");
+  // printf("const int niz_min = (DCONST(AC_nz_min) + (STENCIL_DEPTH-1)/2);");
+  // printf("const int niz_max = (DCONST(AC_nz_max) - (STENCIL_DEPTH-1)/2);");
+  printf("const int nix_min = (start.x + (STENCIL_WIDTH-1)/2);");
+  printf("const int nix_max = (end.x - (STENCIL_WIDTH-1)/2);");
+  printf("const int niy_min = (start.y + (STENCIL_HEIGHT-1)/2);");
+  printf("const int niy_max = (end.y - (STENCIL_HEIGHT-1)/2);");
+  printf("const int niz_min = (start.z + (STENCIL_DEPTH-1)/2);");
+  printf("const int niz_max = (end.z - (STENCIL_DEPTH-1)/2);");
   printf("if (vertexIdx.x >= nix_min && vertexIdx.x < nix_max && ");
   printf("    vertexIdx.y >= niy_min && vertexIdx.y < niy_max && ");
   printf("    vertexIdx.z >= niz_min && vertexIdx.z < niz_max) { return; }");
