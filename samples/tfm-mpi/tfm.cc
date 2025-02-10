@@ -32,8 +32,13 @@
 #include <random>
 
 // #define AC_ENABLE_ASYNC_AVERAGES
-#define AC_ENABLE_IO
+// #define AC_ENABLE_IO
 // #define AC_ASYNC_IO_ENABLED
+// #define AC_SYNCHRONOUS_IO_ENABLED
+// #define AC_WRITE_ASYNC_SNAPSHOTS
+#define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
+#define AC_WRITE_SYNCHRONOUS_PROFILES
+#define AC_WRITE_SYNCHRONOUS_DIAGNOSTICS
 
 #define BENCHMARK(cmd)                                                                             \
     do {                                                                                           \
@@ -199,14 +204,14 @@ get_strs(const std::vector<Field>& fields)
 
 /** Concatenates the field name and ".mesh" of a vector of handles */
 static auto
-get_field_paths(const std::vector<Field>& fields)
+get_field_paths(const std::vector<Field>& fields, const size_t step)
 {
-    const auto strs{get_strs(fields)};
     std::vector<std::string> paths;
-
-    for (const auto& str : strs)
-        paths.push_back(str + ".mesh");
-
+    for (const auto& field : fields) {
+        std::ostringstream oss;
+        oss << field_names[static_cast<size_t>(field)] << "-step-" << step << ".mesh";
+        paths.push_back(oss.str());
+    }
     return paths;
 }
 
@@ -535,9 +540,9 @@ reduce_scal(const MPI_Comm& parent_comm, const Device& device, const ReductionTy
 
 // Format std::printf("label, step, t_step, dt, min, rms, max\n");
 static int
-write_vec_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_t step,
-                      const AcReal simulation_time, const AcReal dt, const Field& a, const Field& b,
-                      const Field& c, const std::string& label)
+write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
+                     const AcReal simulation_time, const AcReal dt, const Field& a, const Field& b,
+                     const Field& c, const std::string& label)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -580,8 +585,8 @@ write_vec_diagnostics(const MPI_Comm& parent_comm, const Device& device, const s
 
 // Format std::printf("label, step, t_step, dt, min, rms, max\n");
 static int
-write_scal_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_t step,
-                       const AcReal simulation_time, const AcReal dt, const Field& field)
+write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
+                      const AcReal simulation_time, const AcReal dt, const Field& field)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -622,8 +627,8 @@ write_scal_diagnostics(const MPI_Comm& parent_comm, const Device& device, const 
 }
 
 static int
-write_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_t step,
-                  const AcReal simulation_time, const AcReal dt)
+write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
+                 const AcReal simulation_time, const AcReal dt)
 {
     PRINT_LOG_DEBUG("Enter");
 
@@ -651,23 +656,23 @@ write_diagnostics(const MPI_Comm& parent_comm, const Device& device, const size_
                                             "TF_uxb22"};
     ERRCHK(vecfields.size() == vecfield_names.size());
     for (size_t i{0}; i < vecfields.size(); ++i)
-        write_vec_diagnostics(parent_comm,
+        write_vec_timeseries(parent_comm,
+                             device,
+                             step,
+                             simulation_time,
+                             dt,
+                             vecfields[i][0],
+                             vecfields[i][1],
+                             vecfields[i][2],
+                             vecfield_names[i]);
+
+    for (size_t i{0}; i < NUM_FIELDS; ++i)
+        write_scal_timeseries(parent_comm,
                               device,
                               step,
                               simulation_time,
                               dt,
-                              vecfields[i][0],
-                              vecfields[i][1],
-                              vecfields[i][2],
-                              vecfield_names[i]);
-
-    for (size_t i{0}; i < NUM_FIELDS; ++i)
-        write_scal_diagnostics(parent_comm,
-                               device,
-                               step,
-                               simulation_time,
-                               dt,
-                               static_cast<Field>(i));
+                              static_cast<Field>(i));
 
     return 0;
 }
@@ -1586,10 +1591,6 @@ class Grid {
     void tfm_pipeline(const size_t nsteps)
     {
         PRINT_LOG_INFO("Launching TFM pipeline");
-// Write the initial step
-#if defined(AC_ENABLE_IO)
-        write_diagnostic_step(cart_comm, device, 0);
-#endif
 
         // Clear the time series
         FILE* fp{fopen("timeseries.csv", "w")};
@@ -1598,7 +1599,22 @@ class Grid {
         ERRCHK_MPI(fclose(fp) == 0);
 
         // Write time series
-        write_diagnostics(cart_comm, device, 0, 0, 0);
+        write_timeseries(cart_comm, device, 0, 0, 0);
+
+        // Write profiles
+        write_profiles_to_disk(cart_comm, device, 0);
+
+// Write snapshots
+#if defined(AC_SYNCHRONOUS_SNAPSHOTS)
+        write_snapshots_to_disk(cart_comm, device, step);
+#else
+        hydro_io.launch(cart_comm,
+                        get_ptrs(device, hydro_fields, BufferGroup::input),
+                        get_field_paths(hydro_fields, 0));
+        uxb_io.launch(cart_comm,
+                      get_ptrs(device, uxb_fields, BufferGroup::input),
+                      get_field_paths(uxb_fields, 0));
+#endif
 
         // Ensure halos are up-to-date before starting integration
         hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
@@ -1608,17 +1624,6 @@ class Grid {
         MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)}; // Averaging
 #else
         reduce_xy_averages(STREAM_DEFAULT);
-#endif
-
-// Write the initial step
-// #define AC_ASYNC_IO_ENABLED
-#if defined(AC_ASYNC_IO_ENABLED)
-        hydro_io.launch(cart_comm,
-                        get_ptrs(device, hydro_fields, BufferGroup::input),
-                        get_field_paths(hydro_fields));
-        uxb_io.launch(cart_comm,
-                      get_ptrs(device, uxb_fields, BufferGroup::input),
-                      get_field_paths(uxb_fields));
 #endif
 
         for (uint64_t step{1}; step < nsteps; ++step) {
@@ -1640,17 +1645,18 @@ class Grid {
             for (int substep{0}; substep < 3; ++substep) {
                 PRINT_LOG_DEBUG("Integration substep");
 
-                // Outer segments
-                ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
-
                 // Hydro dependencies: hydro
                 hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
 
+                // Outer segments
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
                 // TODO note: end index is not properly used, exits early
-                // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
-                compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
+                ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 1));
+                compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
+
+                // ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
+                // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
                 hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::output));
 
 // TFM dependencies: hydro, tfm, profiles
@@ -1663,8 +1669,8 @@ class Grid {
 
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
-                // compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
-                compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
+                compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
+                // compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
                 tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::output));
 
                 // Inner segments
@@ -1684,39 +1690,38 @@ class Grid {
             current_time += dt;
 
 // Write snapshot
-#if defined(AC_ASYNC_IO_ENABLED)
+#if defined(AC_SYNCHRONOUS_SNAPSHOTS)
+            if ((step %
+                 as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0)
+                write_snapshots_to_disk(cart_comm, device, step);
+#else
             if ((step %
                  as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0) {
                 hydro_io.wait();
                 hydro_io.launch(cart_comm,
                                 get_ptrs(device, hydro_fields, BufferGroup::input),
-                                get_field_paths(hydro_fields));
+                                get_field_paths(hydro_fields, step));
                 uxb_io.wait();
                 uxb_io.launch(cart_comm,
                               get_ptrs(device, uxb_fields, BufferGroup::input),
-                              get_field_paths(uxb_fields));
+                              get_field_paths(uxb_fields, step));
             }
+
 #endif
-
-// TODO: this is synchronous. Consider async.
-#if defined(AC_ENABLE_IO)
-            // Write time series
-            write_diagnostics(cart_comm, device, step, current_time, dt);
-
-            // Write mesh and profiles
-            // Note: ghost zones not up-to-date with this (working as intended)
-            if ((step %
-                 as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0)
-                write_snapshots_to_disk(cart_comm, device, step);
+#if defined(AC_SYNCHRONOUS_PROFILES)
             if ((step %
                  as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
                 write_profiles_to_disk(cart_comm, device, step);
+#endif
+
+#if defined(AC_SYNCHRONOUS_TIMESERIES)
+            write_timeseries(cart_comm, device, step, current_time, dt);
 #endif
         }
         hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
         tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
 
-#if defined(AC_ASYNC_IO_ENABLED)
+#if !defined(AC_SYNCHRONOUS_SNAPSHOTS)
         hydro_io.wait();
         uxb_io.wait();
 #endif

@@ -21,18 +21,3 @@ static_assert(false,
 #define __host__
 #define __device__
 #endif
-
-// Disable errchecks in device code (not supported as of 2024-11-11)
-#if defined(__CUDA_ARCH__) || (defined(__HIP_DEVICE_COMPILE__) && __HIP_DEVICE_COMPILE__ == 1)
-
-#if defined(ERRCHK)
-#undef ERRCHK
-#define ERRCHK(expr)
-#endif
-
-#if defined(ERRCHK_EXPR_DESC)
-#undef ERRCHK_EXPR_DESC
-#define ERRCHK_EXPR_DESC(expr, ...)
-#endif
-
-#endif
