@@ -5,8 +5,9 @@
 #include <ostream>
 #include <vector>
 
-#include "cuda_utils.h"
 #include "errchk.h"
+
+#include "cuda_utils.h"
 
 namespace ac {
 
