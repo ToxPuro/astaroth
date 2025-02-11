@@ -224,7 +224,7 @@ main()
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
-            const ac::shape global_nn{7, 9 * nprocs};
+            const ac::shape global_nn{7, 3 * nprocs};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
             test_scatter_gather_advanced(cart_comm, global_nn);
             ac::mpi::cart_comm_destroy(&cart_comm);
