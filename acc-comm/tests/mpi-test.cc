@@ -188,6 +188,7 @@ main()
 {
     ac::mpi::init_funneled();
     try {
+        const uint64_t nprocs{as<uint64_t>(ac::mpi::get_size(MPI_COMM_WORLD))};
         {
             const ac::shape global_nn{128, 128, 128};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
@@ -199,7 +200,7 @@ main()
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
-            const ac::shape global_nn{16};
+            const ac::shape global_nn{4 * nprocs};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
             test_scatter_gather(cart_comm, global_nn);
@@ -207,7 +208,7 @@ main()
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
-            const ac::shape global_nn{8, 8};
+            const ac::shape global_nn{8, 4 * nprocs};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
             test_scatter_gather(cart_comm, global_nn);
@@ -215,7 +216,7 @@ main()
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
-            const ac::shape global_nn{8, 4, 2};
+            const ac::shape global_nn{8, 4, 2 * nprocs};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
 
             test_scatter_gather(cart_comm, global_nn);
@@ -223,7 +224,7 @@ main()
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
-            const ac::shape global_nn{7, 9};
+            const ac::shape global_nn{7, 3 * nprocs};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
             test_scatter_gather_advanced(cart_comm, global_nn);
             ac::mpi::cart_comm_destroy(&cart_comm);
