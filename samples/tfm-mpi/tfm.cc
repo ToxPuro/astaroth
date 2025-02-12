@@ -36,14 +36,7 @@
 #define AC_WRITE_SYNCHRONOUS_PROFILES
 #define AC_WRITE_SYNCHRONOUS_TIMESERIES
 
-#define BENCHMARK(cmd)                                                                             \
-    do {                                                                                           \
-        const auto start__{std::chrono::system_clock::now()};                                      \
-        (cmd);                                                                                     \
-        const auto ms_elapsed__ = std::chrono::duration_cast<std::chrono::milliseconds>(           \
-            std::chrono::system_clock::now() - start__);                                           \
-        std::cout << "[" << ms_elapsed__.count() << " ms] " << #cmd << std::endl;                  \
-    } while (0)
+// #define AC_DISABLE_IO
 
 using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal, ac::mr::device_allocator>;
 using IOTask           = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
