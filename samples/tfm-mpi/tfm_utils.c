@@ -15,16 +15,19 @@ acParseArguments(const int argc, char* argv[], Arguments* args)
 {
     // Default arguments
     args->config_path = NULL; // AC_DEFAULT_CONFIG;
+    memset(args->global_nn_override, 0, sizeof(args->global_nn_override));
 
     // Options
     const char short_options[]         = {"c:"};
     const struct option long_options[] = {
         {"config", required_argument, 0, 'c'},
+        {"global-nn-override", required_argument, 0, 0},
         {"help", required_argument, 0, 'h'},
         {0, 0, 0, 0},
     };
     const char* explanations[] = {
         "Path to the config INI file",
+        "Override global_nn set in the config file"
         "Print this message",
     };
 
@@ -36,9 +39,30 @@ acParseArguments(const int argc, char* argv[], Arguments* args)
         case 'c':
             args->config_path = optarg;
             break;
-        // case 0:
-        //     printf("Option with no short options\n");
-        //     break;
+        case 0: {
+            printf("Option with no short options\n");
+            if (strcmp(long_options[option_index].name, "global-nn-override") == 0) {
+                fprintf(stderr, "'%s'\n", optarg);
+                if ((sscanf(optarg,
+                            "%d,%d,%d",
+                            &args->global_nn_override[0],
+                            &args->global_nn_override[1],
+                            &args->global_nn_override[2]) == 3)) {
+                    break;
+                }
+                else {
+                    fprintf(stderr,
+                            "Invalid number or format of arguments for --global-nn-override. "
+                            "Expects three (3) values.\n"
+                            "Example: --global-nn-override 32,32,32\n");
+                    return -1;
+                }
+            }
+            else {
+                fprintf(stderr, "Unrecognized long option\n");
+                return -1;
+            }
+        }
         case 'h': /* Fallthrough */
         default:
             fprintf(stderr, "Usage: %s <options>\n", argv[0]);
@@ -90,7 +114,7 @@ acParseINI(const char* filepath, AcMeshInfo* info)
     for (size_t i = 0; i < NUM_REAL_PARAMS; ++i)
         info->real_params[i] = (AcReal)NAN;
     for (size_t i = 0; i < NUM_REAL3_PARAMS; ++i)
-        info->real3_params[i] = (AcReal3){(AcReal)NAN,(AcReal) NAN, (AcReal)NAN};
+        info->real3_params[i] = (AcReal3){(AcReal)NAN, (AcReal)NAN, (AcReal)NAN};
 
     // Parse
     int retval = ini_parse(filepath, config_handler, info);

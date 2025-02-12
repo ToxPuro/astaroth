@@ -36,14 +36,7 @@
 #define AC_WRITE_SYNCHRONOUS_PROFILES
 #define AC_WRITE_SYNCHRONOUS_TIMESERIES
 
-#define BENCHMARK(cmd)                                                                             \
-    do {                                                                                           \
-        const auto start__{std::chrono::system_clock::now()};                                      \
-        (cmd);                                                                                     \
-        const auto ms_elapsed__ = std::chrono::duration_cast<std::chrono::milliseconds>(           \
-            std::chrono::system_clock::now() - start__);                                           \
-        std::cout << "[" << ms_elapsed__.count() << " ms] " << #cmd << std::endl;                  \
-    } while (0)
+// #define AC_DISABLE_IO
 
 using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal, ac::mr::device_allocator>;
 using IOTask           = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
@@ -1441,7 +1434,7 @@ class Grid {
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
         const auto etype{ac::mpi::get_dtype<AcReal>()};
 
-        // Distribute
+        // Scatter
         std::generate(ref.begin(), ref.end(), rng); // Randomize
         for (size_t i{0}; i < NUM_FIELDS; ++i)
             ac::mpi::scatter_advanced(cart_comm,
@@ -1484,10 +1477,94 @@ class Grid {
         for (size_t i{0}; i < NUM_FIELDS; ++i)
             tstm.vertex_buffer[i] = &tst[i * stride];
 
-        // Check
+        // Check scatter/gather
         if (rank == 0) { // Only root proc has the correct data
             ERRCHK_AC(acVerifyMeshCompDomain("Scatter/Gather", refm, tstm));
         }
+
+        // Check halo exchange
+        // std::generate(ref.begin(), ref.end(), rng); // Randomize
+        std::iota(ref.begin(), ref.end(), 1);
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::scatter_advanced(cart_comm,
+                                      etype,
+                                      global_mm,
+                                      rr,
+                                      &ref[i * stride],
+                                      local_mm,
+                                      local_nn,
+                                      rr,
+                                      vba.in[i]);
+
+        using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal,
+                                                                    ac::mr::device_allocator>;
+        HaloExchangeTask he0{local_mm, local_nn, rr, hydro_fields.size()};
+        HaloExchangeTask he1{local_mm, local_nn, rr, tfm_fields.size()};
+        HaloExchangeTask he2{local_mm, local_nn, rr, uxb_fields.size()};
+
+        he0.launch(cart_comm, get_ptrs(vba, hydro_fields, BufferGroup::input));
+        he1.launch(cart_comm, get_ptrs(vba, tfm_fields, BufferGroup::input));
+        he2.launch(cart_comm, get_ptrs(vba, uxb_fields, BufferGroup::input));
+
+        he0.wait(get_ptrs(vba, hydro_fields, BufferGroup::input));
+        he1.wait(get_ptrs(vba, tfm_fields, BufferGroup::input));
+        he2.wait(get_ptrs(vba, uxb_fields, BufferGroup::input));
+
+        std::generate(tst.begin(), tst.end(), rng); // Randomize
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::gather_advanced(cart_comm,
+                                     etype,
+                                     local_mm,
+                                     local_nn,
+                                     rr,
+                                     vba.in[i],
+                                     global_mm,
+                                     rr,
+                                     &tst[i * stride]);
+
+        ERRCHK_AC(acHostMeshApplyPeriodicBounds(&refm));
+        if (rank == 0) { // Only root proc has the correct data
+            // printt("ref", global_mm, ref.data());
+            // printt("tst", global_mm, tst.data());
+            // Note: does not actually check the boundaries, just the computational domain
+            // Catches only obvious errors where halo exchange writes to the computational domain,
+            // not incorrect segment ordering etc
+            ERRCHK_AC(acVerifyMeshCompDomain("Boundconds", refm, tstm));
+        }
+
+        // // Check integration
+        // std::generate(ref.begin(), ref.end(), rng); // Randomize
+        // for (size_t i{0}; i < NUM_FIELDS; ++i)
+        //     ac::mpi::scatter_advanced(cart_comm,
+        //                               etype,
+        //                               global_mm,
+        //                               rr,
+        //                               &ref[i * stride],
+        //                               local_mm,
+        //                               local_nn,
+        //                               rr,
+        //                               vba.in[i]);
+
+        // tfm_pipeline(1);
+        // std::generate(tst.begin(), tst.end(), rng); // Randomize
+        // for (size_t i{0}; i < NUM_FIELDS; ++i)
+        //     ac::mpi::gather_advanced(cart_comm,
+        //                              etype,
+        //                              local_mm,
+        //                              local_nn,
+        //                              rr,
+        //                              vba.in[i],
+        //                              global_mm,
+        //                              rr,
+        //                              &tst[i * stride]);
+
+        // ERRCHK_AC(acHostMeshApplyPeriodicBounds(&refm));
+        // const AcReal dt{acr::get(local_info, AC_dt)};
+        // ERRCHK_AC(acHostIntegrateStep(refm, dt));
+
+        // if (rank == 0) { // Only root proc has the correct data
+        //     ERRCHK_AC(acVerifyMeshCompDomain("Integration", refm, tstm));
+        // }
     }
 
     void reset_init_cond()
@@ -1595,6 +1672,7 @@ class Grid {
         std::fprintf(fp, "label,step,t_step,dt,min,rms,max\n");
         ERRCHK_MPI(fclose(fp) == 0);
 
+#if !defined(AC_DISABLE_IO)
         // Write time series
         write_timeseries(cart_comm, device, 0, 0, 0);
 
@@ -1611,6 +1689,7 @@ class Grid {
         uxb_io.launch(cart_comm,
                       get_ptrs(device, uxb_fields, BufferGroup::input),
                       get_field_paths(uxb_fields, 0));
+#endif
 #endif
 
         // Ensure halos are up-to-date before starting integration
@@ -1687,6 +1766,7 @@ class Grid {
             }
             current_time += dt;
 
+#if !defined(AC_DISABLE_IO)
 // Write snapshot
 #if defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
             if ((step %
@@ -1717,13 +1797,16 @@ class Grid {
                  as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
                 write_timeseries(cart_comm, device, step, current_time, dt);
 #endif
+#endif
         }
         hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
         tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
 
+#if !defined(AC_DISABLE_IO)
 #if !defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
         hydro_io.wait();
         uxb_io.wait();
+#endif
 #endif
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
@@ -1759,6 +1842,16 @@ main(int argc, char* argv[])
             const std::string default_config{AC_DEFAULT_TFM_CONFIG};
             PRINT_LOG_WARNING("No config path supplied, using %s", default_config.c_str());
             ERRCHK(acParseINI(default_config.c_str(), &raw_info) == 0);
+        }
+
+        // Override global_nn if instructed by the user
+        if (args.global_nn_override[0] > 0) {
+            ERRCHK_MPI(std::all_of(args.global_nn_override,
+                                   args.global_nn_override + 3,
+                                   [](const auto& val) { return val > 0; }));
+            acr::set(AC_global_nx, args.global_nn_override[0], raw_info);
+            acr::set(AC_global_ny, args.global_nn_override[1], raw_info);
+            acr::set(AC_global_nz, args.global_nn_override[2], raw_info);
         }
 
         // Disable MPI_Abort on error and do manual error handling instead
