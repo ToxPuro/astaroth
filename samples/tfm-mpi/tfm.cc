@@ -1672,6 +1672,7 @@ class Grid {
         std::fprintf(fp, "label,step,t_step,dt,min,rms,max\n");
         ERRCHK_MPI(fclose(fp) == 0);
 
+#if !defined(AC_DISABLE_IO)
         // Write time series
         write_timeseries(cart_comm, device, 0, 0, 0);
 
@@ -1688,6 +1689,7 @@ class Grid {
         uxb_io.launch(cart_comm,
                       get_ptrs(device, uxb_fields, BufferGroup::input),
                       get_field_paths(uxb_fields, 0));
+#endif
 #endif
 
         // Ensure halos are up-to-date before starting integration
@@ -1764,6 +1766,7 @@ class Grid {
             }
             current_time += dt;
 
+#if !defined(AC_DISABLE_IO)
 // Write snapshot
 #if defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
             if ((step %
@@ -1794,13 +1797,16 @@ class Grid {
                  as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
                 write_timeseries(cart_comm, device, step, current_time, dt);
 #endif
+#endif
         }
         hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
         tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
 
+#if !defined(AC_DISABLE_IO)
 #if !defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
         hydro_io.wait();
         uxb_io.wait();
+#endif
 #endif
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
