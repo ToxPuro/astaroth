@@ -76,6 +76,7 @@ enable_testing()
 ## Subdirectories
 add_subdirectory(acm/detail)
 add_subdirectory(tests)
+add_subdirectory(benchmarks)
 
 ## Check whether device code is available on the system
 # find_package(CUDAToolkit QUIET)
