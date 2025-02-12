@@ -106,7 +106,7 @@ template <typename T>
 void
 unpack(const ac::mr::device_pointer<T>& in_input, const ac::shape& in_mm,
        const ac::shape& in_block_shape, const ac::index& in_block_offset,
-       std::vector<ac::mr::device_pointer<T>>& in_outputs)
+       std::vector<ac::mr::device_pointer<T>> in_outputs)
 {
     ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS,
                      "Max ndims of pack is %zu (got %zu)\n",
@@ -144,7 +144,7 @@ void pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& bl
 template <typename T>
 void unpack(const ac::mr::device_pointer<T>& input, const ac::shape& mm,
             const ac::shape& block_shape, const ac::index& block_offset,
-            std::vector<ac::mr::device_pointer<T>>& outputs);
+            std::vector<ac::mr::device_pointer<T>> outputs);
 
 #define PACK_DTYPE double
 template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape,
@@ -154,8 +154,8 @@ template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape
 
 template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input,
                                  const ac::shape& mm, const ac::shape& block_shape,
-                                 const ac::index&                                 block_offset,
-                                 std::vector<ac::mr::device_pointer<PACK_DTYPE>>& outputs);
+                                 const ac::index&                                block_offset,
+                                 std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
 #undef PACK_DTYPE
 
 #define PACK_DTYPE uint64_t
@@ -166,8 +166,8 @@ template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape
 
 template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input,
                                  const ac::shape& mm, const ac::shape& block_shape,
-                                 const ac::index&                                 block_offset,
-                                 std::vector<ac::mr::device_pointer<PACK_DTYPE>>& outputs);
+                                 const ac::index&                                block_offset,
+                                 std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
 #undef PACK_DTYPE
 
 #endif

@@ -170,6 +170,20 @@ get_dtype()
     }
 }
 
+/** Utilities */
+
+// Input must be capable of holding prod(local_mm) elems of type etype
+// Output must be capable of holding count == prod(local_nn) elems of type etype
+void pack(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const ac::shape& local_mm,
+          const ac::shape& local_nn, const ac::index& local_nn_offset, const void* input,
+          const size_t count, void* output);
+
+// Input must be capable of holding count == prod(local_nn) elems of type etype
+// Output must be capable of holding prod(local_mm) elems of type etype
+void unpack(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const uint64_t count,
+            const void* input, const ac::shape& local_mm, const ac::shape& local_nn,
+            const ac::index& local_nn_offset, void* output);
+
 /** Communication */
 void scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
                       const ac::shape& global_mm, const ac::index& subdomain_offset,

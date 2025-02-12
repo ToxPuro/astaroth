@@ -32,7 +32,7 @@ pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_o
 template <typename T>
 void
 unpack(const ac::mr::host_pointer<T>& input, const ac::shape& mm, const ac::shape& block_shape,
-       const ac::index& block_offset, std::vector<ac::mr::host_pointer<T>>& outputs)
+       const ac::index& block_offset, std::vector<ac::mr::host_pointer<T>> outputs)
 {
     ERRCHK(outputs.size() * prod(block_shape) <= input.size());
     const uint64_t block_nelems{prod(block_shape)};
@@ -62,7 +62,7 @@ void pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& bl
 template <typename T>
 void unpack(const ac::mr::device_pointer<T>& input, const ac::shape& mm,
             const ac::shape& block_shape, const ac::index& block_offset,
-            std::vector<ac::mr::device_pointer<T>>& outputs);
+            std::vector<ac::mr::device_pointer<T>> outputs);
 
 #define PACK_DTYPE double
 extern template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape,
@@ -73,7 +73,7 @@ extern template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& bloc
 extern template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input,
                                         const ac::shape& mm, const ac::shape& block_shape,
                                         const ac::index& block_offset,
-                                        std::vector<ac::mr::device_pointer<PACK_DTYPE>>& outputs);
+                                        std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
 #undef PACK_DTYPE
 
 #define PACK_DTYPE uint64_t
@@ -85,7 +85,7 @@ extern template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& bloc
 extern template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input,
                                         const ac::shape& mm, const ac::shape& block_shape,
                                         const ac::index& block_offset,
-                                        std::vector<ac::mr::device_pointer<PACK_DTYPE>>& outputs);
+                                        std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
 #undef PACK_DTYPE
 
 #endif

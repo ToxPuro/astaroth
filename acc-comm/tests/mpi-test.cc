@@ -183,6 +183,58 @@ test_scatter_gather_advanced(const MPI_Comm& cart_comm, const ac::shape& global_
     }
 }
 
+static void
+test_mpi_pack(const MPI_Comm& cart_comm, const ac::shape& global_nn)
+{
+    using T = int;
+
+    const auto rr{ac::make_index(global_nn.size(), 1)};
+    const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+
+    ac::host_ndbuffer<T> href{local_mm};
+    std::iota(href.begin(), href.end(), 1);
+
+    auto                   dref{href.to_device()};
+    ac::device_ndbuffer<T> dpack{local_nn};
+    ac::mpi::pack(cart_comm,
+                  ac::mpi::get_dtype<T>(),
+                  local_mm,
+                  local_nn,
+                  rr,
+                  dref.data(),
+                  dpack.size(),
+                  dpack.data());
+
+    ac::device_ndbuffer<T> dtst{local_mm};
+    ac::mpi::unpack(cart_comm,
+                    ac::mpi::get_dtype<T>(),
+                    dpack.size(),
+                    dpack.data(),
+                    local_mm,
+                    local_nn,
+                    rr,
+                    dtst.data());
+
+    auto hpack{dpack.to_host()};
+    auto htst{dtst.to_host()};
+    href.display();
+    hpack.display();
+    htst.display();
+
+    // Check that the averages match.
+    // Not sure if this holds for all inputs: if this fails, it's possible
+    // that packing/unpacking are still correct and only this error check is wrong.
+    // Must reconsider how to check for errors if this happens.
+    const auto href_avg{as<uint64_t>(std::reduce(href.begin(), href.end())) / prod(local_mm)};
+    const auto htst_avg{as<uint64_t>(std::reduce(htst.begin(), htst.end())) / prod(local_nn)};
+    PRINT_LOG_INFO("Checking averages of packed and unpacked buffers. Note that the error check "
+                   "may itself be correct, and need to reconsider the approach if the next check "
+                   "fails even with correct pack/unpack functions.");
+    ERRCHK(href_avg == htst_avg);
+    PRINT_LOG_INFO("OK");
+}
+
 int
 main()
 {
@@ -227,6 +279,12 @@ main()
             const ac::shape global_nn{7, 3 * nprocs};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
             test_scatter_gather_advanced(cart_comm, global_nn);
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{4, 5};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            test_mpi_pack(cart_comm, global_nn);
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
     }

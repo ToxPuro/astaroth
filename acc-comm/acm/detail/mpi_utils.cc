@@ -567,6 +567,52 @@ get_global_mm(const ac::shape& global_nn, const ac::index& rr)
 }
 
 void
+pack(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const ac::shape& local_mm,
+     const ac::shape& local_nn, const ac::index& local_nn_offset, const void* input,
+     const size_t count, void* output)
+{
+    ERRCHK_MPI(count == prod(local_nn));
+
+    int etype_bytes{-1};
+    ERRCHK_MPI_API(MPI_Type_size(etype, &etype_bytes));
+    const size_t total_bytes{count * as<size_t>(etype_bytes)};
+
+    MPI_Comm comm{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+    MPI_Datatype subarray = ac::mpi::subarray_create(local_mm, local_nn, local_nn_offset, etype);
+
+    int position{0};
+    ERRCHK_MPI_API(MPI_Pack(input, 1, subarray, output, as<int>(total_bytes), &position, comm));
+    ERRCHK_MPI(as<size_t>(position) == total_bytes);
+
+    ac::mpi::subarray_destroy(&subarray);
+    ERRCHK_MPI_API(MPI_Comm_free(&comm));
+}
+
+void
+unpack(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const uint64_t count,
+       const void* input, const ac::shape& local_mm, const ac::shape& local_nn,
+       const ac::index& local_nn_offset, void* output)
+{
+    ERRCHK_MPI(count == prod(local_nn));
+
+    int etype_bytes{-1};
+    ERRCHK_MPI_API(MPI_Type_size(etype, &etype_bytes));
+    const size_t total_bytes{count * as<size_t>(etype_bytes)};
+
+    MPI_Comm comm{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+    MPI_Datatype subarray = ac::mpi::subarray_create(local_mm, local_nn, local_nn_offset, etype);
+
+    int position{0};
+    ERRCHK_MPI_API(MPI_Unpack(input, as<int>(total_bytes), &position, output, 1, subarray, comm));
+    ERRCHK_MPI(as<size_t>(position) == total_bytes);
+
+    ac::mpi::subarray_destroy(&subarray);
+    ERRCHK_MPI_API(MPI_Comm_free(&comm));
+}
+
+void
 scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
                  const ac::shape& global_mm, const ac::index& subdomain_offset,
                  const void*      send_buffer, //
