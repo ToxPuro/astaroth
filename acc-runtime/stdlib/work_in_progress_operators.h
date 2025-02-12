@@ -436,11 +436,6 @@ del6fj(Field f, real3 vec)
 {
 	return vec.x*der6x(f) + vec.y*der6y(f) + vec.z*der6z(f)
 }
-gaussian_smooth(Field f)
-{
-	print("NOT IMPLEMENTED del6_strict\n")
-	return 0.
-}
 curlcurl(Field3 v)
 {
 	return gradient_of_divergence(v) - laplace(v)
