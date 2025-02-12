@@ -1081,6 +1081,11 @@ all_identifiers_are_constexpr(const ASTNode* node)
 	}
 	if(!node->is_constexpr)
 	{
+		if(node->buffer == intern("any_AC"))
+		{
+			ASTNode* hack = (ASTNode*)node;
+			hack->is_constexpr = true;
+		}
 		for(size_t i = 0; i < e_info.names.size; ++i)
 		{
 			for(size_t option = 0; option < e_info.options[i].size; ++option)
@@ -7674,26 +7679,33 @@ canonalize_if_assignments(ASTNode* node)
 
 }
 void
-get_used_vars_base(const ASTNode* node, string_vec* dst, bool skip)
+get_used_vars_base(const ASTNode* node, string_vec* dst, bool skip, const char* assigned_var)
 {
-	if(node->token == VARIABLE_DECLARATION) return;
-	if(node->lhs) 
-	{
-		get_used_vars_base(node->lhs,dst,skip | (node->type & NODE_ASSIGNMENT));
-	}
-	if(node->rhs) 
-	{
-		get_used_vars_base(node->rhs,dst,skip && !(node->type & NODE_ARRAY_ACCESS));
-	}
-	if(skip) return;
-	if(node->token != IDENTIFIER) return;
-	push(dst,node->buffer);
+        if(node->token == VARIABLE_DECLARATION) return;
+        if(node->type & NODE_ASSIGNMENT)
+        {
+                const char* var = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+                assigned_var = var;
+        }
+        if(node->lhs)
+        {
+                get_used_vars_base(node->lhs,dst,skip | (node->type & NODE_ASSIGNMENT),assigned_var);
+        }
+        if(node->rhs)
+        {
+                get_used_vars_base(node->rhs,dst,skip && !(node->type & NODE_ARRAY_ACCESS),assigned_var);
+        }
+        if(skip) return;
+        if(node->token != IDENTIFIER) return;
+        if(node->buffer == assigned_var) return;
+        push(dst,node->buffer);
 }
 void
 get_used_vars(const ASTNode* node, string_vec* dst)
 {
-	get_used_vars_base(node,dst,false);
+        get_used_vars_base(node,dst,false,NULL);
 }
+
 void
 remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 {
@@ -8251,6 +8263,7 @@ gen_fused_kernels(ASTNode* root)
 void
 preprocess(ASTNode* root, const bool optimize_input_params)
 {
+  replace_const_ints(root,const_int_values,const_ints);
   memset(&kfunc_nodes,0,sizeof(kfunc_nodes));
   memset(&kfunc_names,0,sizeof(kfunc_names));
   get_nodes(root,&kfunc_nodes,&kfunc_names,NODE_KFUNCTION);
@@ -8451,7 +8464,6 @@ gen_output_files(ASTNode* root)
   }
   gen_user_enums();
   gen_user_structs();
-  replace_const_ints(root,const_int_values,const_ints);
   gen_user_defines(root, "user_defines.h");
   gen_kernel_structs(root);
   FILE* fp = fopen("user_kernel_declarations.h","w");
@@ -8931,7 +8943,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   ASTNode* root = astnode_dup(root_in,NULL);
   check_uniquenes(root,NODE_DFUNCTION,"function");
   check_uniquenes(root,NODE_STENCIL,"stencil");
-  replace_const_ints(root,const_int_values,const_ints);
   gen_reduce_info(root);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
