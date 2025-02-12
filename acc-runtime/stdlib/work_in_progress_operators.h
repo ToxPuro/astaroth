@@ -1,6 +1,6 @@
 u_dot_grad_vec(Matrix m,real3 v){
   //!!!return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
-  if(AC_coordinate_system != AC_CARTEESIAN_COORDINATES)
+  if(AC_coordinate_system != AC_CARTESIAN_COORDINATES)
   {
 	  print("NOT IMPLEMENTED u_dot_grad_vec for non-carteesian\n")
   }

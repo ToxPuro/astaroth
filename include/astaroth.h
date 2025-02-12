@@ -1983,22 +1983,27 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
   static AcCompInfo UNUSED acInitCompInfo()
   {
 	  AcCompInfo res;
-	  memset(&res.is_loaded,0,sizeof(res.is_loaded));
-	  memset(&res.config.bool_params,0,sizeof(res.config.bool_params));
-	  memset(&res.config.bool3_params,0,sizeof(res.config.bool3_params));
+	  //TP: initially nothing is loaded and if they are not loaded their values 
+	  //might as well be zero since then a default value is used for them
+	  memset(&res,0,sizeof(res));
 	  return res;
   }
   static AcMeshInfo UNUSED acInitInfo()
   {
 	  AcMeshInfo res;
+	  //TP: this is useful for the following reasons:
+	  //All enums are initialized by default to the first enum value
+	  //All array ptrs are initialized to nulls
+	  //All booleans are initialized to false
+	  memset(&res,0,sizeof(res));
     	  // memset reads the second parameter as a byte even though it says int in
           // the function declaration
-    	  memset(&res, (uint8_t)0xFF, sizeof(res));
-	  memset(&res.params.scalars.bool_params,0, sizeof(res.params.scalars.bool_params));
-	  memset(&res.params.scalars.bool3_params,0,sizeof(res.params.scalars.bool3_params));
-    	  //these are set to nullpointers for the users convenience that the user doesn't have to set them to null elsewhere
-    	  //if they are present in the config then they are initialized correctly
-	  memset(&res.params.arrays, 0, sizeof(res.params.arrays));
+	  //TP: for backwards compatibility set original datatypes to all ones as before
+    	  memset(&res.params.scalars.int_params,     (uint8_t)0xFF, sizeof(res.params.scalars.int_params));
+    	  memset(&res.params.scalars.real_params,    (uint8_t)0xFF, sizeof(res.params.scalars.real_params));
+    	  memset(&res.params.scalars.int3_params,    (uint8_t)0xFF, sizeof(res.params.scalars.int3_params));
+    	  memset(&res.params.scalars.real3_params,   (uint8_t)0xFF, sizeof(res.params.scalars.real3_params));
+    	  memset(&res.params.scalars.complex_params, (uint8_t)0xFF, sizeof(res.params.scalars.complex_params));
 
 #if AC_MPI_ENABLED
 	  res.comm = MPI_COMM_NULL;
