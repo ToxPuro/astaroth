@@ -1844,6 +1844,16 @@ main(int argc, char* argv[])
             ERRCHK(acParseINI(default_config.c_str(), &raw_info) == 0);
         }
 
+        // Override global_nn if instructed by the user
+        if (args.global_nn_override[0] > 0) {
+            ERRCHK_MPI(std::all_of(args.global_nn_override,
+                                   args.global_nn_override + 3,
+                                   [](const auto& val) { return val > 0; }));
+            acr::set(AC_global_nx, args.global_nn_override[0], raw_info);
+            acr::set(AC_global_ny, args.global_nn_override[1], raw_info);
+            acr::set(AC_global_nz, args.global_nn_override[2], raw_info);
+        }
+
         // Disable MPI_Abort on error and do manual error handling instead
         ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
 

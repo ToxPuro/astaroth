@@ -4,6 +4,7 @@
 
 typedef struct {
     char* config_path;
+    int global_nn_override[3];
 } Arguments;
 
 #ifdef __cplusplus
