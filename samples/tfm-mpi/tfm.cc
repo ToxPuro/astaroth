@@ -1434,7 +1434,7 @@ class Grid {
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
         const auto etype{ac::mpi::get_dtype<AcReal>()};
 
-        // Distribute
+        // Scatter
         std::generate(ref.begin(), ref.end(), rng); // Randomize
         for (size_t i{0}; i < NUM_FIELDS; ++i)
             ac::mpi::scatter_advanced(cart_comm,
@@ -1477,10 +1477,94 @@ class Grid {
         for (size_t i{0}; i < NUM_FIELDS; ++i)
             tstm.vertex_buffer[i] = &tst[i * stride];
 
-        // Check
+        // Check scatter/gather
         if (rank == 0) { // Only root proc has the correct data
             ERRCHK_AC(acVerifyMeshCompDomain("Scatter/Gather", refm, tstm));
         }
+
+        // Check halo exchange
+        // std::generate(ref.begin(), ref.end(), rng); // Randomize
+        std::iota(ref.begin(), ref.end(), 1);
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::scatter_advanced(cart_comm,
+                                      etype,
+                                      global_mm,
+                                      rr,
+                                      &ref[i * stride],
+                                      local_mm,
+                                      local_nn,
+                                      rr,
+                                      vba.in[i]);
+
+        using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal,
+                                                                    ac::mr::device_allocator>;
+        HaloExchangeTask he0{local_mm, local_nn, rr, hydro_fields.size()};
+        HaloExchangeTask he1{local_mm, local_nn, rr, tfm_fields.size()};
+        HaloExchangeTask he2{local_mm, local_nn, rr, uxb_fields.size()};
+
+        he0.launch(cart_comm, get_ptrs(vba, hydro_fields, BufferGroup::input));
+        he1.launch(cart_comm, get_ptrs(vba, tfm_fields, BufferGroup::input));
+        he2.launch(cart_comm, get_ptrs(vba, uxb_fields, BufferGroup::input));
+
+        he0.wait(get_ptrs(vba, hydro_fields, BufferGroup::input));
+        he1.wait(get_ptrs(vba, tfm_fields, BufferGroup::input));
+        he2.wait(get_ptrs(vba, uxb_fields, BufferGroup::input));
+
+        std::generate(tst.begin(), tst.end(), rng); // Randomize
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::gather_advanced(cart_comm,
+                                     etype,
+                                     local_mm,
+                                     local_nn,
+                                     rr,
+                                     vba.in[i],
+                                     global_mm,
+                                     rr,
+                                     &tst[i * stride]);
+
+        ERRCHK_AC(acHostMeshApplyPeriodicBounds(&refm));
+        if (rank == 0) { // Only root proc has the correct data
+            // printt("ref", global_mm, ref.data());
+            // printt("tst", global_mm, tst.data());
+            // Note: does not actually check the boundaries, just the computational domain
+            // Catches only obvious errors where halo exchange writes to the computational domain,
+            // not incorrect segment ordering etc
+            ERRCHK_AC(acVerifyMeshCompDomain("Boundconds", refm, tstm));
+        }
+
+        // // Check integration
+        // std::generate(ref.begin(), ref.end(), rng); // Randomize
+        // for (size_t i{0}; i < NUM_FIELDS; ++i)
+        //     ac::mpi::scatter_advanced(cart_comm,
+        //                               etype,
+        //                               global_mm,
+        //                               rr,
+        //                               &ref[i * stride],
+        //                               local_mm,
+        //                               local_nn,
+        //                               rr,
+        //                               vba.in[i]);
+
+        // tfm_pipeline(1);
+        // std::generate(tst.begin(), tst.end(), rng); // Randomize
+        // for (size_t i{0}; i < NUM_FIELDS; ++i)
+        //     ac::mpi::gather_advanced(cart_comm,
+        //                              etype,
+        //                              local_mm,
+        //                              local_nn,
+        //                              rr,
+        //                              vba.in[i],
+        //                              global_mm,
+        //                              rr,
+        //                              &tst[i * stride]);
+
+        // ERRCHK_AC(acHostMeshApplyPeriodicBounds(&refm));
+        // const AcReal dt{acr::get(local_info, AC_dt)};
+        // ERRCHK_AC(acHostIntegrateStep(refm, dt));
+
+        // if (rank == 0) { // Only root proc has the correct data
+        //     ERRCHK_AC(acVerifyMeshCompDomain("Integration", refm, tstm));
+        // }
     }
 
     void reset_init_cond()
