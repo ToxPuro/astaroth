@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import glob
 import os
+import pandas as pd
 import argparse
 from pathlib import Path
 
@@ -80,7 +81,7 @@ emf22y = []
 kz=1.0
 Bampl=1.0
 kf=5.0
-eta=1.0e-2
+eta=5.0e-3
 
 
 # Defining z and trigonometric arrays
@@ -143,32 +144,62 @@ eta11zt =      (sinz*emf21x-cosz*emf22x)/(kz*Bampl) #etanew11=-eta12
 eta22zt = -1.0*(sinz*emf11y-cosz*emf12y)/(kz*Bampl) #etanew22=eta21
 eta21zt =      (sinz*emf21y-cosz*emf22y)/(kz*Bampl) #etanew21=-eta22
 
+#plt.contour(emf11x.T)
+#plt.show()
+#
+#plt.contour(emf11y.T)
+#plt.show()
+
 # Average z-profiles over time
 nzz=alp11zt.shape[0]
+nz=args.dims[2]
 
 alp11z=np.sum(alp11zt,axis=0)/nzz
+alp11t=np.sqrt(np.sum(alp11zt**2,axis=1))/nz
 alp12z=np.sum(alp12zt,axis=0)/nzz
 alp21z=np.sum(alp21zt,axis=0)/nzz
 alp22z=np.sum(alp22zt,axis=0)/nzz
+alp22t=np.sqrt(np.sum(alp22zt**2,axis=1))/nz
 eta11z=np.sum(eta11zt,axis=0)/nzz
+eta11t=np.sqrt(np.sum(eta11zt**2,axis=1))/nz
 eta12z=np.sum(eta12zt,axis=0)/nzz
 eta21z=np.sum(eta21zt,axis=0)/nzz
 eta22z=np.sum(eta22zt,axis=0)/nzz
+eta22t=np.sqrt(np.sum(eta22zt**2,axis=1))/nz
 
 #Read timeseries
 filepath = 'timeseries.csv' # Path to the timeseries (current working directory by default)
 df = pd.read_csv(filepath)
 #df
-df0 = df[df['label'] == 'uu']
-urms=df0['rms']
+dfuu= df[df['label'] == 'uu']
+dfaa= df[df['label'] == 'TF_a12_z']
+#tt=df[df['label'] == 't_step']
+tt=np.asarray(df['t_step'])
+urms=dfuu['rms']
 avurms=np.sum(urms,axis=0)/nzz
 
 alp0=-1.0/3.0*avurms
 eta0=1.0/3.0*avurms/kf
 rm=avurms/eta/kf
-print("alp0,eta0,rm",alp0,eta0,rm)
+print("alp0,eta0,rm,t,nzz",alp0,eta0,rm,np.max(tt),nzz)
 
-lt.plot(z,alp11z/alp0,label="alp11/alp0")
+ttt=max(tt)*np.arange(nzz)/(1.0*nzz)
+
+plt.yscale('log')
+plt.plot(ttt,dfaa['rms'],label='AA rms')
+plt.plot(ttt,dfaa['max'],label='AA max')
+#plt.legend()
+#plt.show()
+
+plt.yscale('log')
+plt.plot(ttt,alp11t,label='alp11')
+plt.plot(ttt,alp22t,label='alp22')
+plt.plot(ttt,eta11t,label='eta11')
+plt.plot(ttt,eta22t,label='eta22')
+plt.legend()
+plt.show()
+
+plt.plot(z,alp11z/alp0,label="alp11/alp0")
 plt.plot(z,alp21z/alp0,label="alp21/alp0")
 plt.plot(z,alp12z/alp0,label="alp12/alp0")
 plt.plot(z,alp22z/alp0,label="alp22/alp0")
