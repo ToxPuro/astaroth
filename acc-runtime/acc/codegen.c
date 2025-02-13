@@ -7060,6 +7060,10 @@ transform_array_binary_ops(ASTNode* node)
                 {
                         astnode_sprintf(identifier,"AC_INTERNAL_run_const_array_here",identifier->buffer);
                 }
+		else
+		{
+                        astnode_sprintf(identifier,"AC_INTERNAL_gmem_real_arrays_%s",identifier->buffer);
+		}
                 node_vec params = VEC_INITIALIZER;
                 push_node(&params,node->lhs);
                 push_node(&params,node->rhs->rhs);
