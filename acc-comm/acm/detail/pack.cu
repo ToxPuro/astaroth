@@ -74,6 +74,7 @@ void
 pack(const ac::shape& in_mm, const ac::shape& in_block_shape, const ac::index& in_block_offset,
      const std::vector<ac::mr::device_pointer<T>>& in_inputs, ac::mr::device_pointer<T> in_output)
 {
+    ERRCHK(in_inputs.size() * prod(in_block_shape) <= in_output.size());
     ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS,
                      "Max ndims of pack is %zu (got %zu)\n",
                      MAX_NDIMS,
@@ -108,6 +109,7 @@ unpack(const ac::mr::device_pointer<T>& in_input, const ac::shape& in_mm,
        const ac::shape& in_block_shape, const ac::index& in_block_offset,
        std::vector<ac::mr::device_pointer<T>> in_outputs)
 {
+    ERRCHK(in_outputs.size() * prod(in_block_shape) <= in_input.size());
     ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS,
                      "Max ndims of pack is %zu (got %zu)\n",
                      MAX_NDIMS,
