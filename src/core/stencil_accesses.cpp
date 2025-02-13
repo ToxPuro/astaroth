@@ -651,6 +651,18 @@ static std::vector<int> executed_nodes{};
 #define size(arr) (int)(sizeof(arr)/sizeof(arr[0]))
 #define min(a,b) a < b ? a : b
 
+template <typename T1,typename T2>
+AcReal3
+matmul_arr(T1, T2)
+{
+	return (AcReal3)
+	{
+			(AcReal)0.0,
+			(AcReal)0.0,
+			(AcReal)0.0
+	};
+}
+
 #include "user_cpu_kernels.h"
 #undef  constexpr
 #undef size
