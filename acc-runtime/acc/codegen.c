@@ -166,6 +166,8 @@ static int monomorphization_index = 0;
 #include <ctype.h>
 extern string_vec const_ints;
 extern string_vec const_int_values;
+extern string_vec run_const_ints;
+extern string_vec run_const_int_values;
 #include "expr.h"
 
 
@@ -1810,6 +1812,7 @@ gen_comp_declarations(const char* datatype_scalar)
 }
 
 
+
 void
 gen_datatype_enums(FILE* fp, const char* datatype_scalar)
 {
@@ -1865,7 +1868,9 @@ gen_datatype_enums(FILE* fp, const char* datatype_scalar)
   fprintf(fp,"\n");
   int counter = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  {
      counter  += (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,CONST_STR));
+  }
   fprintf(fp, "#define NUM_%s_CONSTS (%d)\n",strupr(convert_to_define_name(datatype_scalar)),counter);
 
 
@@ -3195,6 +3200,7 @@ is_enum_type(const char* type)
 	return str_vec_contains(e_info.names,type);
 }
 
+
 void
 add_param_combinations(const variable var, const int kernel_index,const char* prefix, combinatorial_params combinatorials)
 {
@@ -4123,6 +4129,15 @@ check_for_shadowing(const ASTNode* node)
       assert(0);
     }
 }
+
+bool
+is_enum_option(const char* var)
+{
+	for(size_t i = 0; i < e_info.names.size; ++i)
+		if (str_vec_contains(e_info.options[i],var)) return true;
+	return false;
+}
+
 void
 refresh_current_hashmap()
 {
@@ -4148,7 +4163,8 @@ add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, b
       }
       if (!(node->type & NODE_MEMBER_ID))
       {
-        add_symbol_base(node->type, tqualifiers, n_tqualifiers, tspec.id,  node->buffer, postfix);
+	if(!is_enum_option(node->buffer))
+        	add_symbol_base(node->type, tqualifiers, n_tqualifiers, tspec.id,  node->buffer, postfix);
         if(do_checks && !tspec.id) check_for_undeclared(node);
       }
     }

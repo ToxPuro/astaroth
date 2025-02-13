@@ -25,6 +25,7 @@ static void eval_ternaries(ASTNode* node, const string_vec values, const string_
 static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_code)
 {
 	replace_const_ints(node,const_int_values,const_ints);
+	replace_const_ints(node,run_const_int_values,run_const_ints);
 	eval_ternaries(node,const_int_values,const_ints);
 	const char* copy = combine_all_new(node);
 	if(!strcmp(copy,"INT_MAX"))

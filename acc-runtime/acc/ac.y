@@ -41,6 +41,9 @@ const char* dir_backup;
 string_vec const_ints;
 string_vec const_int_values;
 
+string_vec run_const_ints;
+string_vec run_const_int_values;
+
 
 void
 cleanup(void)
@@ -329,6 +332,9 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 {
 	init_str_vec(&const_ints);
 	init_str_vec(&const_int_values);
+
+	init_str_vec(&run_const_ints);
+	init_str_vec(&run_const_int_values);
 	if(!file_exists(ACC_GEN_PATH))
 	  make_dir(ACC_GEN_PATH);
         // Stage 1: Preprocess includes
@@ -580,6 +586,25 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 
 	    else if(has_qualifier($$->rhs,"run_const") || has_qualifier($$->rhs,"output"))
 	    {
+		//TP: we do this to enable array dimensions with run_const ints
+                if(has_qualifier($$->rhs,"run_const"))
+                {
+                        const char* spec = get_node(NODE_TSPEC,$$->rhs)->lhs->buffer;
+                        if(!strcmp(spec,"int"))
+                        {       
+                                ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,$$->rhs)->rhs;
+                                node_vec vars = get_nodes_in_list(def_list_head);
+                                for(size_t i = 0; i < vars.size; ++i)
+                                {       
+                                        ASTNode* elem = (ASTNode*) vars.data[i];
+                                        const char* name = get_node_by_token(IDENTIFIER,elem)->buffer;
+                                        push(&run_const_ints,name);
+                                        push(&run_const_int_values,intern("10"));
+                                }
+                                free_node_vec(&vars);
+                        }
+                }
+
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 	    }
@@ -1421,6 +1446,7 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			{
 				ASTNode* elem = (ASTNode*) dims.data[i];
 				replace_const_ints(elem,const_int_values,const_ints);
+				replace_const_ints(elem,run_const_int_values,run_const_ints);
 				//Try to eval int, such that later we can assume all const int expressions are only a single numerical value
 				//TP: for some reason does not work, for now can do without
 				/**
@@ -1451,7 +1477,6 @@ static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNod
 		if(!strcmp(spec,"int"))
 		{	
 
-			char* assignment_val = malloc(4098*sizeof(char));
 			ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,node->rhs)->rhs;
 			node_vec vars = get_nodes_in_list(def_list_head);
 			for(size_t i = 0; i < vars.size; ++i)
@@ -1463,7 +1488,6 @@ static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNod
 				push(&const_int_values,intern(itoa(val)));
 			}
 			free_node_vec(&vars);
-			free(assignment_val);
 		}
 	
 	    }
