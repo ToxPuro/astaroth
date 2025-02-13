@@ -1731,6 +1731,18 @@ class Grid {
         for (uint64_t step{1}; step < nsteps; ++step) {
             PRINT_LOG_INFO("New integration step");
 
+            // Check whether to reset the test fields
+            if ((as<int>(step) % acr::get(local_info, AC_simulation_reset_test_field_interval)) ==
+                0) {
+                PRINT_LOG_INFO("Resetting test fields");
+
+                // Test fields: Discard previous halo exchange, reset, and update halos
+                tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
+                reset(device, tfm_fields, BufferGroup::input);
+                reset(device, tfm_fields, BufferGroup::output);
+                tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::output));
+            }
+
             // Current time
             acr::set(AC_current_time, current_time, local_info);
 

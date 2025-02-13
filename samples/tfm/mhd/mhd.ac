@@ -18,6 +18,7 @@ int AC_exclude_inner // Exclude the inner domain if this parameter is set (fuse 
 int AC_simulation_nsteps
 int AC_simulation_snapshot_output_interval
 int AC_simulation_profile_output_interval
+int AC_simulation_reset_test_field_interval
 
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
