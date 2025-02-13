@@ -825,6 +825,34 @@ compute(const Device& device, const std::vector<Kernel>& compute_kernels, const 
     compute(device, compute_kernels, segments);
 }
 
+static void
+reset(const Device& device, const std::vector<Field>& fields, const BufferGroup& group)
+{
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+    auto ptrs{get_ptrs(device, fields, group)};
+
+    for (auto& ptr : ptrs)
+        ERRCHK_CUDA_API(cudaMemset(ptr.data(), 0, sizeof(ptr[0]) * ptr.size()));
+}
+
+static void
+randomize(const MPI_Comm& comm, const Device& device, const std::vector<Field>& fields,
+          const BufferGroup& group, const unsigned long seed = 6789)
+{
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+    auto ptrs{get_ptrs(device, fields, group)};
+
+    std::default_random_engine gen{as<unsigned long>(ac::mpi::get_rank(comm)) * 12345 + seed};
+    std::uniform_real_distribution<AcReal> dist{0, 1};
+    for (auto& ptr : ptrs) {
+        ac::host_buffer<AcReal> tmp{ptr.size()};
+        std::generate(tmp.begin(), tmp.end(), [&dist, &gen]() { return dist(gen); });
+        ac::mr::copy(tmp.get(), ptr);
+    }
+}
+
 static auto
 make_halo_exchange_task(const AcMeshInfo& info, const size_t max_nbuffers)
 {
@@ -900,11 +928,6 @@ class Grid {
     {
         ERRCHK_AC(acDeviceDestroy(device));
         ac::mpi::cart_comm_destroy(&cart_comm);
-    }
-
-    void randomize()
-    {
-        // TODO
     }
 
     void test()
@@ -1589,6 +1612,9 @@ class Grid {
         ERRCHK(init_tfm_profiles(device) == 0);
         // Note: all fields and profiles are initialized to 0 except
         // the test profiles (PROFILE_B11 to PROFILE_B22)
+
+        // Debug: randomize
+        // randomize(cart_comm, device, all_fields, BufferGroup::input);
     }
 
     void reduce_xy_averages(const Stream stream)
