@@ -538,35 +538,37 @@ write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const si
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
     const auto global_nn{acr::get_global_nn(info)};
     const auto count{prod(global_nn)};
-    const AcReal inv_count{static_cast<AcReal>(1) / static_cast<AcReal>(prod(global_nn))};
 
     const AcReal vmax{reduce_vec(parent_comm, device, RTYPE_MAX, a, b, c)};
     const AcReal vmin{reduce_vec(parent_comm, device, RTYPE_MIN, a, b, c)};
     const AcReal vsqsum{reduce_vec(parent_comm, device, RTYPE_RMS, a, b, c)};
-    const AcReal vrms{std::sqrt(inv_count * vsqsum)};
+    const AcReal vrms{std::sqrt(vsqsum / count)};
+    const AcReal vavg{reduce_vec(parent_comm, device, RTYPE_SUM, a, b, c) / count};
 
     const auto rank{ac::mpi::get_rank(parent_comm)};
     if (rank == 0) {
-        std::printf("%-6s %5zu, %.3g, %.3g, %.3g, %.3g, %.3g\n",
+        std::printf("%-6s %5zu, %.3g, %.3g, %.3g, %.3g, %.3g, %.3g\n",
                     label.c_str(),
                     step,
                     static_cast<double>(simulation_time),
                     static_cast<double>(dt),
                     static_cast<double>(vmin),
                     static_cast<double>(vrms),
-                    static_cast<double>(vmax));
+                    static_cast<double>(vmax),
+                    static_cast<double>(vavg));
 
         FILE* fp{fopen("timeseries.csv", "a")};
         ERRCHK_MPI(fp != NULL);
         std::fprintf(fp,
-                     "%s,%zu,%e,%e,%e,%e,%e\n",
+                     "%s,%zu,%e,%e,%e,%e,%e,%e\n",
                      label.c_str(),
                      step,
                      static_cast<double>(simulation_time),
                      static_cast<double>(dt),
                      static_cast<double>(vmin),
                      static_cast<double>(vrms),
-                     static_cast<double>(vmax));
+                     static_cast<double>(vmax),
+                     static_cast<double>(vavg));
         ERRCHK_MPI(fclose(fp) == 0);
     }
 
@@ -581,35 +583,38 @@ write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const s
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
     const auto global_nn{acr::get_global_nn(info)};
-    const AcReal inv_count{static_cast<AcReal>(1) / static_cast<AcReal>(prod(global_nn))};
+    const auto count{prod(global_nn)};
 
     const AcReal vmax{reduce_scal(parent_comm, device, RTYPE_MAX, field)};
     const AcReal vmin{reduce_scal(parent_comm, device, RTYPE_MIN, field)};
     const AcReal vsqsum{reduce_scal(parent_comm, device, RTYPE_RMS, field)};
-    const AcReal vrms{std::sqrt(inv_count * vsqsum)};
+    const AcReal vrms{std::sqrt(vsqsum / count)};
+    const AcReal vavg{reduce_scal(parent_comm, device, RTYPE_SUM, field) / count};
 
     const auto rank{ac::mpi::get_rank(parent_comm)};
     if (rank == 0) {
-        std::printf("%-6s %5zu, %.3g, %.3g, %.3g, %.3g, %.3g\n",
+        std::printf("%-6s %5zu, %.3g, %.3g, %.3g, %.3g, %.3g, %.3g\n",
                     field_names[field],
                     step,
                     static_cast<double>(simulation_time),
                     static_cast<double>(dt),
                     static_cast<double>(vmin),
                     static_cast<double>(vrms),
-                    static_cast<double>(vmax));
+                    static_cast<double>(vmax),
+                    static_cast<double>(vavg));
 
         FILE* fp{fopen("timeseries.csv", "a")};
         ERRCHK_MPI(fp != NULL);
         std::fprintf(fp,
-                     "%s,%zu,%e,%e,%e,%e,%e\n",
+                     "%s,%zu,%e,%e,%e,%e,%e,%e\n",
                      field_names[field],
                      step,
                      static_cast<double>(simulation_time),
                      static_cast<double>(dt),
                      static_cast<double>(vmin),
                      static_cast<double>(vrms),
-                     static_cast<double>(vmax));
+                     static_cast<double>(vmax),
+                     static_cast<double>(vavg));
         ERRCHK_MPI(fclose(fp) == 0);
     }
 
@@ -622,7 +627,7 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
 {
     PRINT_LOG_DEBUG("Enter");
 
-    std::printf("label,step,t_step,dt,min,rms,max\n");
+    std::printf("label,step,t_step,dt,min,rms,max,avg\n");
 
     std::vector<std::vector<Field>> vecfields{
         {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ},
@@ -1695,7 +1700,7 @@ class Grid {
         // Clear the time series
         FILE* fp{fopen("timeseries.csv", "w")};
         ERRCHK_MPI(fp != NULL);
-        std::fprintf(fp, "label,step,t_step,dt,min,rms,max\n");
+        std::fprintf(fp, "label,step,t_step,dt,min,rms,max,avg\n");
         ERRCHK_MPI(fclose(fp) == 0);
 
 #if !defined(AC_DISABLE_IO)
