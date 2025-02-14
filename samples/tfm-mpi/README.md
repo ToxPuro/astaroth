@@ -77,6 +77,7 @@ See
 AC_simulation_nsteps                   = 100 ; The number of simulation steps
 AC_simulation_snapshot_output_interval = 50  ; The step interval for writing the mesh to disk
 AC_simulation_profile_output_interval  = 1   ; The step interval for writing the profiles to disk
+AC_simulation_reset_test_field_interval = 40 ; The interval for resetting the test fields zero
 ```
 in `astaroth/samples/tfm/mhd/mhd.ini`.
 
