@@ -44,6 +44,8 @@ template <typename T> class ntuple {
     auto end() const { return m_resource.end(); }
     auto end() { return m_resource.end(); }
 
+    auto push_back(const T& elem) { m_resource.push_back(elem); }
+
     T& operator[](const size_t i)
     {
         ERRCHK(i < size());
@@ -455,6 +457,30 @@ within_box(const ac::ntuple<T>& coords, const ac::ntuple<T>& box_dims,
         if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
             return false;
     return true;
+}
+
+template <typename T>
+[[nodiscard]] ac::ntuple<T>
+concat(const ac::ntuple<T>& a, const ac::ntuple<T>& b)
+{
+    auto c{a};
+    for (const auto& elem : b)
+        c.push_back(elem);
+    return c;
+}
+
+template <typename T>
+[[nodiscard]] ac::ntuple<T>
+concat(const ac::ntuple<T>& a, const T& b)
+{
+    return concat(a, ac::ntuple<T>{b});
+}
+
+template <typename T>
+[[nodiscard]] ac::ntuple<T>
+concat(const T& a, const ac::ntuple<T>& b)
+{
+    return concat(ac::ntuple<T>{a}, b);
 }
 
 } // namespace ac
