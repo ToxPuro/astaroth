@@ -150,3 +150,7 @@ Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
 
 Profiles are named in format `Profile PROFILE_B12mean_x`, which corresponds to the $x$ component of the $\overline{B}^{12}$-field.
 These correspond to "Eq. 15 in "Scale dependence of alpha effect and turbulent diffusivity", Brandenburg, Rädler, and Schrinner, 2018, https://arxiv.org/pdf/0801.1320. Here $B^{1c}$ (Brandenburg) corresponds to $B^{11}$ (Astaroth).
+
+## Debugging
+
+- Setting `hostdefine LOO (1)` in `astaroth/samples/tfm/mhd/mhd.ac` enables writing out `curl(UU)` to fields `VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ`. The timeseries and snapshots for these fields are written out automatically. `LOO` is currently enabled by default.

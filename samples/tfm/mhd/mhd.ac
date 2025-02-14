@@ -8,6 +8,7 @@ hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LTFM (1)
+hostdefine LOO (1)
 
 hostdefine R_PI (AC_REAL_PI)
 
@@ -23,6 +24,10 @@ int AC_simulation_reset_test_field_interval
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
+
+#if LOO
+Field VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ
+#endif
 
 #if LMAGNETIC
 Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
@@ -750,6 +755,13 @@ Kernel singlepass_solve_step2() {
     write(VTXBUF_AX, rk3_step2(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
     write(VTXBUF_AY, rk3_step2(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
     write(VTXBUF_AZ, rk3_step2(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
+#endif
+
+#if LOO
+    oofield = curl(UU) 
+    write(VTXBUF_OOX, oofield.x)
+    write(VTXBUF_OOY, oofield.y)
+    write(VTXBUF_OOZ, oofield.z)
 #endif
 }
 //////////////////////////////////////////

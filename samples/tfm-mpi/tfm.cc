@@ -639,16 +639,24 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
         {TF_uxb12_x, TF_uxb12_y, TF_uxb12_z},
         {TF_uxb21_x, TF_uxb21_y, TF_uxb21_z},
         {TF_uxb22_x, TF_uxb22_y, TF_uxb22_z},
+#if LOO
+        {VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ},
+#endif
     };
-    std::vector<std::string> vecfield_names{"uu",
-                                            "TF_a11",
-                                            "TF_a12",
-                                            "TF_a21",
-                                            "TF_a22",
-                                            "TF_uxb11",
-                                            "TF_uxb12",
-                                            "TF_uxb21",
-                                            "TF_uxb22"};
+    std::vector<std::string> vecfield_names{
+        "uu",
+        "TF_a11",
+        "TF_a12",
+        "TF_a21",
+        "TF_a22",
+        "TF_uxb11",
+        "TF_uxb12",
+        "TF_uxb21",
+        "TF_uxb22",
+#if LOO
+        "curl(uu)",
+#endif
+    };
     ERRCHK(vecfields.size() == vecfield_names.size());
     for (size_t i{0}; i < vecfields.size(); ++i)
         write_vec_timeseries(parent_comm,
