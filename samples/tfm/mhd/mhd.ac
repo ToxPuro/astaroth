@@ -27,6 +27,7 @@ Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 
 #if LOO
 Field VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ
+Field VTXBUF_UU_DOT_OO
 #endif
 
 #if LMAGNETIC
@@ -758,10 +759,13 @@ Kernel singlepass_solve_step2() {
 #endif
 
 #if LOO
-    oofield = curl(UU) 
-    write(VTXBUF_OOX, oofield.x)
-    write(VTXBUF_OOY, oofield.y)
-    write(VTXBUF_OOZ, oofield.z)
+    oo = curl(UU) 
+    write(VTXBUF_OOX, oo.x)
+    write(VTXBUF_OOY, oo.y)
+    write(VTXBUF_OOZ, oo.z)
+
+    uu = vecvalue(UU)
+    write(VTXBUF_UU_DOT_OO, dot(uu, oo))
 #endif
 }
 //////////////////////////////////////////

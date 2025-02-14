@@ -154,3 +154,4 @@ These correspond to "Eq. 15 in "Scale dependence of alpha effect and turbulent d
 ## Debugging
 
 - Setting `hostdefine LOO (1)` in `astaroth/samples/tfm/mhd/mhd.ac` enables writing out `curl(UU)` to fields `VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ`. The timeseries and snapshots for these fields are written out automatically. `LOO` is currently enabled by default.
+- Setting `hostdefine LOO (1)` also enables writing out `dot(uu, curl(uu))`. The result is stored in `VTXBUF_UU_DOT_OO`.
