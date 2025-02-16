@@ -859,39 +859,39 @@ typedef struct AcTensor {
                        const AcMatrix& m2)
   {
     data[0][0][0] = m0.data[0][0];
-    data[0][0][1] = m0.data[0][1];
-    data[0][0][2] = m0.data[0][2];
+    data[0][1][0] = m0.data[0][1];
+    data[0][2][0] = m0.data[0][2];
 
-    data[0][1][0] = m0.data[1][0];
-    data[0][1][1] = m0.data[1][1];
-    data[0][1][2] = m0.data[1][2];
+    data[1][0][0] = m0.data[1][0];
+    data[1][1][0] = m0.data[1][1];
+    data[1][2][0] = m0.data[1][2];
 
-    data[0][2][0] = m0.data[2][0];
-    data[0][2][1] = m0.data[2][1];
-    data[0][2][2] = m0.data[2][2];
-
-    data[1][0][0] = m1.data[0][0];
-    data[1][0][1] = m1.data[0][1];
-    data[1][0][2] = m1.data[0][2];
-
-    data[1][1][0] = m1.data[1][0];
+    data[2][0][0] = m0.data[2][0];
+    data[2][1][0] = m0.data[2][1];
+    data[2][2][0] = m0.data[2][2];
+                 
+    data[0][0][1] = m1.data[0][0];
+    data[0][1][1] = m1.data[0][1];
+    data[0][2][1] = m1.data[0][2];
+                 
+    data[1][0][1] = m1.data[1][0];
     data[1][1][1] = m1.data[1][1];
-    data[1][1][2] = m1.data[1][2];
-
-    data[1][2][0] = m1.data[2][0];
-    data[1][2][1] = m1.data[2][1];
-    data[1][2][2] = m1.data[2][2];
-
-    data[2][0][0] = m2.data[0][0];
-    data[2][0][1] = m2.data[0][1];
-    data[2][0][2] = m2.data[0][2];
-
-    data[2][1][0] = m2.data[1][0];
-    data[2][1][1] = m2.data[1][1];
-    data[2][1][2] = m2.data[1][2];
-
-    data[2][2][0] = m2.data[2][0];
-    data[2][2][1] = m2.data[2][1];
+    data[1][2][1] = m1.data[1][2];
+                 
+    data[2][0][1] = m1.data[2][0];
+    data[2][1][1] = m1.data[2][1];
+    data[2][2][1] = m1.data[2][2];
+                 
+    data[0][0][2] = m2.data[0][0];
+    data[0][1][2] = m2.data[0][1];
+    data[0][2][2] = m2.data[0][2];
+                 
+    data[1][0][2] = m2.data[1][0];
+    data[1][1][2] = m2.data[1][1];
+    data[1][2][2] = m2.data[1][2];
+                 
+    data[2][0][2] = m2.data[2][0];
+    data[2][1][2] = m2.data[2][1];
     data[2][2][2] = m2.data[2][2];
 
 

@@ -1,10 +1,17 @@
-u_dot_grad_vec(Matrix m,real3 v){
-  //!!!return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
-  if(AC_coordinate_system != AC_CARTESIAN_COORDINATES)
-  {
-	  print("NOT IMPLEMENTED u_dot_grad_vec for non-carteesian\n")
-  }
-  return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
+u_dot_grad(Field3 f, Matrix m,real3 v){
+	real3 res = m*v
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		res.x = res.x - AC_INV_R*(v.y*f.y+v.z*f.z)
+		res.y = res.y + AC_INV_R*(v.y*f.x-v.z*f.z*AC_COT)
+		res.z = res.z + AC_INV_R*(v.z*f.x+v.z*f.y*AC_COT)
+	}
+	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		res.x = res.x - AC_INV_CYL_R*(v.y*f.y)
+		res.y = res.y + AC_INV_CYL_R*(v.y*f.x)
+	}
+	return res;
 }
 
 
@@ -51,13 +58,15 @@ elemental gradient6_upwd(s) {
 
 divergence(Field3 v) {
     g = derx(v.x) + dery(v.y) + derz(v.z)
+
+
     if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
     {
-	   return g + AC_INV_R*(v.x*2 + AC_COT*v.y);
+	   g += AC_INV_R*(v.x*2.0 + AC_COT*v.y);
     }
-    else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
     {
-	    return g+AC_INV_CYL_R*v.x
+	    g +=AC_INV_CYL_R*v.x
     }
     return g
 }
@@ -71,11 +80,11 @@ divergence(Matrix m, real3 a)
 	b = m[0][0] + m[1][1] + m[2][2];
 	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
-		return b +2*AC_INV_R*(a.x + AC_COT*a.y)
+		b += AC_INV_R*(a.x*2.0 + AC_COT*a.y)
 	}
-	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
 	{
-	    return b+AC_INV_CYL_R*a.x
+	    b += AC_INV_CYL_R*a.x
 	}
 		
 	return b;
@@ -89,7 +98,7 @@ curl(Field3 v) {
 	    g.y -= v.z*AC_INV_R
 	    g.z += v.y*AC_INV_R
     }
-    else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
     {
 	    g.z += v.y*AC_INV_CYL_R
     }
@@ -97,6 +106,10 @@ curl(Field3 v) {
 }
 
 curl(Matrix m) {
+  if(AC_coordinate_system != AC_CARTESIAN_COORDINATES)
+  {
+	  print("curl with Matrix only is incorrect for non-cartesian coordinates!\n")
+  }
   return real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
 }
 
@@ -108,7 +121,7 @@ curl(Matrix m, real3 v) {
           g.y -= v.z*AC_INV_R
           g.z += v.y*AC_INV_R
   }
-  else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+  if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
   {
           g.z += v.y*AC_INV_CYL_R
   }
@@ -132,39 +145,45 @@ del2fi_dxjk(Field3 v)
 			hessian(v.z)
 		     )
 }
+get_d2A(Field3 v)
+{
+	Tensor res = del2fi_dxjk(v)
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		res[2-1][1-1][0] -= dery(v.x)*AC_INV_R
+		res[2-1][1-1][1] -= dery(v.y)*AC_INV_R
+		res[2-1][1-1][2] -= dery(v.z)*AC_INV_R
+
+		res[3-1][1-1][0] -= derz(v.x)*AC_INV_R
+		res[3-1][1-1][1] -= derz(v.y)*AC_INV_R
+		res[3-1][1-1][2] -= derz(v.z)*AC_INV_R
+
+		res[3-1][2-1][0] -= derz(v.x)*AC_INV_R*AC_COT
+		res[3-1][2-1][1] -= derz(v.y)*AC_INV_R*AC_COT
+		res[3-1][2-1][2] -= derz(v.z)*AC_INV_R*AC_COT
+	}
+	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		res[2-1][1-1][0] -= dery(v.x)*AC_INV_CYL_R
+		res[2-1][1-1][1] -= dery(v.y)*AC_INV_CYL_R
+		res[2-1][1-1][2] -= dery(v.z)*AC_INV_CYL_R
+	}
+
+	return res
+}
 
 bij(Field3 v)
 {
-    	d2A = del2fi_dxjk(v)
-    	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
-    	{
-    		d2A[0][0][0] -= AC_INV_R*dery(v.x)
-    		d2A[0][0][1] -= AC_INV_R*dery(v.y)
-    		d2A[0][0][2] -= AC_INV_R*dery(v.z)
-
-    		d2A[1][0][0] -= AC_INV_R*derz(v.x)
-    		d2A[1][0][1] -= AC_INV_R*derz(v.y)
-    		d2A[1][0][2] -= AC_INV_R*derz(v.z)
-
-    		d2A[2][1][0] -= AC_INV_R*derz(v.x)*AC_COT
-    		d2A[2][1][1] -= AC_INV_R*derz(v.y)*AC_COT
-    		d2A[2][1][2] -= AC_INV_R*derz(v.z)*AC_COT
-    	}
-    	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
-    	{
-    	        d2A[1][0][0] -= dery(v.x)*AC_INV_CYL_R
-    	        d2A[1][0][1] -= dery(v.y)*AC_INV_CYL_R
-    	        d2A[1][0][2] -= dery(v.z)*AC_INV_CYL_R
-    	}
+    	d2A = get_d2A(v)
 
 	Matrix res;
 	res[0][0] = d2A[1][0][2] - d2A[2][0][1] 
 	res[0][1] = d2A[1][1][2] - d2A[2][1][1] 
 	res[0][2] = d2A[1][2][2] - d2A[2][2][1] 
 
-	res[1][0] = d2A[2][0][1] - d2A[1][0][2] 
-	res[1][1] = d2A[2][1][1] - d2A[1][1][2] 
-	res[1][2] = d2A[2][2][1] - d2A[1][2][2] 
+	res[1][0] = d2A[2][0][0] - d2A[0][0][2] 
+	res[1][1] = d2A[2][1][0] - d2A[0][1][2] 
+	res[1][2] = d2A[2][2][0] - d2A[0][2][2] 
 
 	res[2][0] = d2A[0][0][1] - d2A[1][0][0] 
 	res[2][1] = d2A[0][1][1] - d2A[1][1][0] 
@@ -172,19 +191,17 @@ bij(Field3 v)
 
 	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
-          res[3-1][2-1]+=dery(v.x)*AC_INV_R
-          res[2-1][3-1]+=-derz(v.z)*AC_INV_R
-          res[1-1][3-1]+=derz(v.z)*AC_INV_R*AC_COT
-          res[3-1][1-1]+=dery(v.x)*AC_INV_R           -v.y*(AC_INV_R*AC_INV_R)
-          res[2-1][1-1]+=-derz(v.x)*AC_INV_R           +v.z*(AC_INV_R*AC_INV_R)
-          res[1-1][2-1]+=derz(v.y)*AC_INV_R*AC_COT -v.z*(AC_INV_R*AC_INV_R)*(AC_INV_SIN_THETA*AC_INV_SIN_THETA)
-
+ 	  res[3-1][2-1]=res[3-1][2-1]+dery(v.y)*AC_INV_R
+          res[2-1][3-1]=res[2-1][3-1]-derz(v.z)*AC_INV_R
+          res[1-1][3-1]=res[1-1][3-1]+derz(v.z)*AC_INV_R*AC_COT
+          res[3-1][1-1]=res[3-1][1-1]+derx(v.y)*AC_INV_R-v.y*(AC_INV_R*AC_INV_R)
+          res[2-1][1-1]=res[2-1][1-1]-derx(v.z)*AC_INV_R+v.z*(AC_INV_R*AC_INV_R)
+          res[1-1][2-1]=res[1-1][2-1]+dery(v.z)*AC_INV_R*AC_COT-v.z*(AC_INV_R*AC_INV_R)*(AC_INV_SIN_THETA*AC_INV_SIN_THETA)
 	}
 	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
 	{
-	  
-          res[3-1][2-1]=res[3-1][2-1] + dery(v.y)*AC_INV_CYL_R
-          res[3-1][1-1]=res[3-1][1-1] + dery(v.x)*AC_INV_CYL_R-v.y*AC_INV_CYL_R*AC_INV_CYL_R
+		res[3-1][2-1]=res[3-1][2-1]+ dery(v.y)*AC_INV_CYL_R
+          	res[3-1][1-1]=res[3-1][1-1]+ derx(v.y)*AC_INV_CYL_R-v.y*(AC_INV_CYL_R*AC_INV_CYL_R)
 	}
 
 
@@ -261,39 +278,46 @@ laplace(Field s) {
     {
 	    del2f += derx(s)*AC_INV_CYL_R
     }
-    else if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
     {
 	    del2f += 2*derx(s)*AC_INV_R
-	    del2f += 2*dery(s)*AC_INV_R*AC_COT
+	    del2f += dery(s)*AC_INV_R*AC_COT
     }
     return del2f
 }
 
 laplace(Field3 s) {
+	d2A = get_d2A(s)
 	del2f = real3(
-			laplace(s.x),
-			laplace(s.y),
-			laplace(s.z)
+			d2A[0][0][0] + d2A[1][1][0] + d2A[2][2][0],
+			d2A[0][0][1] + d2A[1][1][1] + d2A[2][2][1],
+			d2A[0][0][2] + d2A[1][1][2] + d2A[2][2][2]
 		     )
 	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
 	{
 		del2f.x -= (2*dery(s.y)+s.x)*AC_INV_CYL_R*AC_INV_CYL_R
 		del2f.y += (2*dery(s.x)-s.y)*AC_INV_CYL_R*AC_INV_CYL_R
 	}
-	else if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
-		del2f.x += del2f.x + AC_INV_R*(
+		del2f.x += AC_INV_R*(
 				2*(
-					derx(s.x)-dery(s.y)-dery(s.z)
+					derx(s.x)-dery(s.y)-derz(s.z)
 					-AC_INV_R*(s.x+AC_COT*s.y)
 				)
 				+AC_COT*dery(s.x)
 				)	
 		del2f.y += AC_INV_R*(
 				2*(
-					derx(s.y)-AC_COT+derz(s.z)+dery(s.x)
+					derx(s.y)-AC_COT*derz(s.z)+dery(s.x)
 				)
-				+AC_COT*dery(s.y)-AC_INV_R*AC_INV_SIN_THETA*AC_INV_SIN_THETA*s.y
+				+AC_COT*dery(s.y)-AC_INV_R*(AC_INV_SIN_THETA*AC_INV_SIN_THETA)*s.y
+				)
+		del2f.z += AC_INV_R*(
+				2*(
+					derx(s.z)+derz(s.x)+AC_COT*derz(s.y)
+				  )
+				+AC_COT*dery(s.z)-AC_INV_R*(AC_INV_SIN_THETA*AC_INV_SIN_THETA)*s.z
 				)
 	}
 	return del2f
@@ -339,7 +363,7 @@ traceless_strain(Matrix uij,divu,uu)
       sij[3-1][3-1]=sij[3-1][3-1]+AC_INV_R*uu.x+AC_COT*AC_INV_R*uu.y
 
   }
-  else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+  if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
   {
       sij[1-1][2-1]=sij[1-1][2-1]-0.5*AC_INV_CYL_R*uu.y
       sij[2-1][2-1]=sij[2-1][2-1]+0.5*AC_INV_CYL_R*uu.x
@@ -368,28 +392,8 @@ traceless_rateof_strain(v) {
 }
 
 gradient_of_divergence(Field3 v) {
-    d2A = del2fi_dxjk(v)
-    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
-    {
-        d2A[0][0][0] -= AC_INV_R*dery(v.x)
-        d2A[0][0][1] -= AC_INV_R*dery(v.y)
-        d2A[0][0][2] -= AC_INV_R*dery(v.z)
 
-        d2A[1][0][0] -= AC_INV_R*derz(v.x)
-        d2A[1][0][1] -= AC_INV_R*derz(v.y)
-        d2A[1][0][2] -= AC_INV_R*derz(v.z)
-
-        d2A[2][1][0] -= AC_INV_R*derz(v.x)*AC_COT
-        d2A[2][1][1] -= AC_INV_R*derz(v.y)*AC_COT
-        d2A[2][1][2] -= AC_INV_R*derz(v.z)*AC_COT
-    }
-    else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
-    {
-            d2A[1][0][0] -= dery(v.x)*AC_INV_CYL_R
-            d2A[1][0][1] -= dery(v.y)*AC_INV_CYL_R
-            d2A[1][0][2] -= dery(v.z)*AC_INV_CYL_R
-    }
-
+    d2A = get_d2A(v)
     graddiv =
     real3(
         d2A[0][0][0] + d2A[1][0][1] + d2A[2][0][2],
@@ -398,9 +402,9 @@ gradient_of_divergence(Field3 v) {
     )
     if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
     {
-        graddiv.x += derx(v.x)*AC_INV_R*2+dery(v.x)*AC_INV_R*AC_COT-v.y*(AC_INV_R*AC_INV_R)*AC_COT-v.x*(AC_INV_R*AC_INV_R)*2
-        graddiv.y += derx(v.y)*AC_INV_R*2+dery(v.y)*AC_INV_R*AC_COT-v.y*(AC_INV_R)*AC_COT-v.y*(AC_INV_R*AC_INV_R)*(AC_INV_SIN_THETA*AC_INV_SIN_THETA)
-        graddiv.z += derx(v.z)*AC_INV_R*2+dery(v.z)*AC_INV_R*AC_COT
+        graddiv.x += derx(v.x)*AC_INV_R*2+derx(v.y)*AC_INV_R*AC_COT-v.y*(AC_INV_R*AC_INV_R)*AC_COT-v.x*(AC_INV_R*AC_INV_R)*2
+        graddiv.y += dery(v.x)*AC_INV_R*2+dery(v.y)*AC_INV_R*AC_COT-v.y*(AC_INV_R*AC_INV_R)*(AC_INV_SIN_THETA*AC_INV_SIN_THETA)
+        graddiv.z += derz(v.x)*AC_INV_R*2+derz(v.y)*AC_INV_R*AC_COT
     }
     return graddiv
 }

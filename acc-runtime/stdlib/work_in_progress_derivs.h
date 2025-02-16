@@ -64,6 +64,7 @@ gmem real AC_cot_theta[AC_mlocal.y]
 gmem real AC_inv_mapping_func_derivative_x[AC_mlocal.x]
 gmem real AC_inv_mapping_func_derivative_y[AC_mlocal.y]
 gmem real AC_inv_mapping_func_derivative_z[AC_mlocal.z]
+
 gmem real AC_mapping_func_tilde_x[AC_mlocal.x]
 gmem real AC_mapping_func_tilde_y[AC_mlocal.y]
 gmem real AC_mapping_func_tilde_z[AC_mlocal.z]
@@ -211,7 +212,6 @@ deryy(Field f)
 	if(AC_nonequidistant_grid.y)
 	{
 		grid_factor = AC_INV_MAPPING_FUNC_DER_Y*AC_INV_MAPPING_FUNC_DER_Y
-		return deryy_stencil(f)
 	}
 	else
 	{
@@ -426,7 +426,7 @@ der4y(Field f)
 		factor *= factor
 		return der4y_stencil(f)*(factor)
 	}
-	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
 	{
 		factor = AC_INV_CYL_R
 		factor *= factor
@@ -519,7 +519,7 @@ der5y(Field f)
 		factor *= AC_INV_R
 		return der5y_stencil(f)*(factor)
 	}
-	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
 	{
 		factor = AC_INV_CYL_R
 		factor *= factor
@@ -837,7 +837,7 @@ der6y(Field f)
 		factor_4 = factor_2*factor_2
 		coordinate_factor = factor_4*factor_2
 	}
-	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
 	{
 		factor_1 = AC_INV_CYL_R
 		factor_2 = factor_1*factor_1
@@ -879,18 +879,12 @@ der6y_upwd(Field f)
 	coordinate_factor = 1.0
 	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
-		factor_1 = AC_INV_R
-		factor_2 = factor_1*factor_1
-		factor_4 = factor_2*factor_2
-		coordinate_factor = factor_4*factor_2
+		coordinate_factor = AC_INV_R
 
 	}
-	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
 	{
-		factor_1 = AC_INV_CYL_R
-		factor_2 = factor_1*factor_1
-		factor_4 = factor_2*factor_2
-		coordinate_factor = factor_4*factor_2
+		coordinate_factor = AC_INV_CYL_R
 
 	}
 	grid_factor = (1.0/60.0)
@@ -910,10 +904,7 @@ der6z_upwd(Field f)
 	coordinate_factor = 1.0
 	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
-		factor_1 = AC_INV_R*AC_INV_SIN_THETA
-		factor_2 = factor_1*factor_1
-		factor_4 = factor_2*factor_2
-		coordinate_factor = factor_4*factor_2
+		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
 	}
 	grid_factor = (1.0/60.0)
 	if(AC_nonequidistant_grid.z)
