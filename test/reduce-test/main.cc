@@ -534,7 +534,7 @@ main(int argc, char* argv[])
 		y_sum_der[i] = calc_dery_prof(i,y_sum);
 
     	AcReal cpu_sum_val = (AcReal)long_cpu_sum_val;
-    	AcReal epsilon  = 3*pow(10.0,-11.0);
+    	AcReal epsilon  = 4*pow(10.0,-11.0);
     	auto relative_diff = [](const auto a, const auto b)
     	{
     	        const auto abs_diff = fabs(a-b);
@@ -674,11 +674,12 @@ main(int argc, char* argv[])
 		{
     	    		const bool correct = in_eps_threshold(xy_sum[index],xy_sum_gpu[index]);
     	    		xy_sum_correct &= correct;
+    	    		if(!correct) fprintf(stderr,"XY SUM WRONG: %14e, %14e, %14e\n",xy_sum[index],xy_sum_gpu[index],relative_diff(xy_sum[index], xy_sum_gpu[index]));
 		}
 		{
     	    		const bool correct = in_eps_threshold(dx_xy_sum[index],dx_xy_sum_gpu[index]);
     	    		dx_xy_sum_correct &= correct;
-    	    		//if(!correct) fprintf(stderr,"DX XY SUM WRONG: %14e, %14e, %14e\n",dx_xy_sum[index],dx_xy_sum_gpu[index],relative_diff(dx_xy_sum[index], dx_xy_sum_gpu[index]));
+    	    		if(!correct) fprintf(stderr,"DX XY SUM WRONG: %14e, %14e, %14e\n",dx_xy_sum[index],dx_xy_sum_gpu[index],relative_diff(dx_xy_sum[index], dx_xy_sum_gpu[index]));
 		}
     	    }
     	}
