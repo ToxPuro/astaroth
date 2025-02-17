@@ -57,7 +57,7 @@ test_algorithm()
         const auto             rr{ac::make_index(nn.size(), 1)};
         const auto             mm{nn + 2 * rr};
         ac::host_ndbuffer<int> ref{mm};
-        std::vector            pack_inputs{ref.get()};
+        std::vector            pack_inputs{ref.get(), ref.get()};
         ac::host_ndbuffer<int> tst{ac::concat(nn, as<uint64_t>(pack_inputs.size()))};
         std::iota(ref.begin(), ref.end(), 1);
 

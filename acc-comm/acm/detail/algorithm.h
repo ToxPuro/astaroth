@@ -10,22 +10,6 @@
 
 namespace ac {
 
-// template <typename T>
-// void
-// pack(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
-//      const std::vector<ac::mr::host_pointer<T>>& inputs, ac::mr::host_pointer<T> output)
-// {
-//     pack(dims, subdims, offset, inputs, output);
-// }
-
-// template <typename T>
-// void
-// transform(const ac::mr::host_pointer<T>& input, const std::function<T(const T&)>& fn,
-//           ac::mr::host_pointer<T> output)
-// {
-//     std::transform(input.begin(), input.end(), output.begin(), fn);
-// }
-
 template <typename... Inputs>
 bool
 same_size(const Inputs&... inputs)
@@ -38,6 +22,7 @@ template <typename T, typename Function>
 void
 transform(const ac::mr::host_pointer<T>& input, const Function& fn, ac::mr::host_pointer<T> output)
 {
+    ERRCHK(same_size(input, output));
     std::transform(input.begin(), input.end(), output.begin(), fn);
 }
 
@@ -46,6 +31,7 @@ void
 transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b, const Function& fn,
           ac::mr::host_pointer<T> output)
 {
+    ERRCHK(same_size(a, b, output));
     for (size_t i{0}; i < output.size(); ++i)
         output[i] = fn(a[i], b[i]);
 }
@@ -55,6 +41,7 @@ void
 transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b,
           const ac::mr::host_pointer<T>& c, const Function& fn, ac::mr::host_pointer<T> output)
 {
+    ERRCHK(same_size(a, b, c, output));
     for (size_t i{0}; i < output.size(); ++i)
         output[i] = fn(a[i], b[i], c[i]);
 }
@@ -65,6 +52,7 @@ transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b,
           const ac::mr::host_pointer<T>& c, const ac::mr::host_pointer<T>& d, const Function& fn,
           ac::mr::host_pointer<T> output)
 {
+    ERRCHK(same_size(a, b, c, d, output));
     for (size_t i{0}; i < output.size(); ++i)
         output[i] = fn(a[i], b[i], c[i], d[i]);
 }
