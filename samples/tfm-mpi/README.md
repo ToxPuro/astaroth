@@ -77,12 +77,18 @@ See
 AC_simulation_nsteps                   = 100 ; The number of simulation steps
 AC_simulation_snapshot_output_interval = 50  ; The step interval for writing the mesh to disk
 AC_simulation_profile_output_interval  = 1   ; The step interval for writing the profiles to disk
+AC_simulation_reset_test_field_interval = 40 ; The interval for resetting the test fields zero
 ```
 in `astaroth/samples/tfm/mhd/mhd.ini`.
 
 ### Forcing
 
 Forcing is currently always on and a new forcing vector generated at the start of each iteration. 
+
+The forcing generator function is defined in `generateForcingParams` in `src/utils/astaroth_forcing.cc`.
+
+Forcing is otherwise the same as in base Astaroth, **except** magnitude is set to zero if both the $x$ and $y$ components of `k_force` are close to zero. The epsilon used for this is defined in `is_close_to_zero` in `src/utils/astaroth_forcing.cc`.
+
 
 ## Running
 
@@ -106,6 +112,7 @@ $SRUNMPI8 ./tfm-mpi
 - Outputs are monolithic files holding the computational domain
 - Halos are not included in the monolithic snapshots
 - `astaroth/samples/tfm-mpi/visualize.py` can be used as a starting point for visualizing the snapshots and profiles. To see an example how to visualize distributed slices, see `astaroth/samples/tfm-mpi/visualize-debug.py` (NOTE: works only when running individual jupyter cells and setting the dimensions manually).
+- Timeseries can be visualized with `astaroth/samples/tfm-mpi/view-timeseries.py`
 - All files are written out as double-precision numbers in the ordering $x$-$y$-$z$ ($x$ fastest varying dimension). For example, the first 8 bytes correspond to the first double-precision value at index $(0, 0, 0)$ in the computational domain, the second corresponds to index $(1, 0, 0)$, etc.
 
 Debug output is in the format
@@ -143,3 +150,8 @@ Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
 
 Profiles are named in format `Profile PROFILE_B12mean_x`, which corresponds to the $x$ component of the $\overline{B}^{12}$-field.
 These correspond to "Eq. 15 in "Scale dependence of alpha effect and turbulent diffusivity", Brandenburg, Rädler, and Schrinner, 2018, https://arxiv.org/pdf/0801.1320. Here $B^{1c}$ (Brandenburg) corresponds to $B^{11}$ (Astaroth).
+
+## Debugging
+
+- Setting `hostdefine LOO (1)` in `astaroth/samples/tfm/mhd/mhd.ac` enables writing out `curl(UU)` to fields `VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ`. The timeseries and snapshots for these fields are written out automatically. `LOO` is currently enabled by default.
+- Setting `hostdefine LOO (1)` also enables writing out `dot(uu, curl(uu))`. The result is stored in `VTXBUF_UU_DOT_OO`.
