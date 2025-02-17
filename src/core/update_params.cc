@@ -61,6 +61,9 @@ acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
     	push_val(AC_nlocal, (int3){config[AC_nlocal].x, config[AC_nlocal].y, 1});
     }
 
+    const size_t nxygrid = ((size_t)config[AC_ngrid].x)*((size_t)config[AC_ngrid].y);
+    push_val(AC_inv_nxygrid,1.0/nxygrid);
+
     push_val(AC_mlocal,config[AC_nlocal] + 2*config[AC_nmin]);
     push_val(AC_mgrid ,config[AC_ngrid]  + 2*config[AC_nmin]);
 

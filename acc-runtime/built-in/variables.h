@@ -25,6 +25,7 @@ int AC_nlocal_max_dim
 int3 AC_ngrid_max
 
 
+run_const real AC_inv_nxygrid
 AcDimProducts AC_nlocal_products
 AcDimProducts AC_ngrid_products
 AcDimProducts AC_mlocal_products
