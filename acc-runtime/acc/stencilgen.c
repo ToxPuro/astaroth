@@ -253,13 +253,13 @@ gen_kernel_block_loops(const int curr_kernel)
 	    	printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
 	    	printf("[[maybe_unused]] const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
        #if AC_USE_HIP
-	        printf("auto AC_INTERNAL_active_threads = __ballot(1);");
+	        printf("[[maybe_unused]] auto AC_INTERNAL_active_threads = __ballot(1);");
        #else
-	        printf("auto AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,1);");
+	        printf("[[maybe_unused]] auto AC_INTERNAL_active_threads = __ballot_sync(0xffffffff,1);");
        #endif
-    		printf("bool AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));");
+    		printf("[[maybe_unused]] bool AC_INTERNAL_active_threads_are_contiguos = !(AC_INTERNAL_active_threads & (AC_INTERNAL_active_threads+1));");
     		//TP: if all threads are active can skip checks checking if target tid is active in reductions
-    		printf("bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
+    		printf("[[maybe_unused]] bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
   		print_warp_reduce_func("AcReal", "real", REDUCE_SUM);
 		if(get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel]))
 		{
@@ -1027,15 +1027,15 @@ gen_kernel_reduce_funcs(const int curr_kernel)
     if(!kernel_has_block_loops(curr_kernel))
     {
 #if AC_USE_HIP
-        printf("const size_t warp_id = rocprim__warpId();");
+        printf("[[maybe_unused]] const size_t warp_id = rocprim__warpId();");
 #else
-	printf("const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
+	printf("[[maybe_unused]] const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
 #endif
-    	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
-    	printf("const size_t warp_leader_id  = %s(AC_INTERNAL_active_threads)-1;",ffs_string);
-    	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
-    	printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
-    	printf("const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+    	printf("[[maybe_unused]] const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
+    	printf("[[maybe_unused]] const size_t warp_leader_id  = %s(AC_INTERNAL_active_threads)-1;",ffs_string);
+    	printf("[[maybe_unused]] const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
+    	printf("[[maybe_unused]] const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
+    	printf("[[maybe_unused]] const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
     }
     if(get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel]))
     {
@@ -1074,7 +1074,7 @@ gen_return_if_oob(const int curr_kernel)
        printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
        if(kernel_calls_reduce[curr_kernel] )
        {
-		const char* type = kernel_has_block_loops(curr_kernel) ? "" : "const auto";
+		const char* type = kernel_has_block_loops(curr_kernel) ? "" : "[[maybe_unused]] const auto";
 #if AC_USE_HIP
 	       printf("%s AC_INTERNAL_active_threads = __ballot(!out_of_bounds);",type);
 #else
