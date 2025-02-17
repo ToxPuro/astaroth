@@ -644,7 +644,7 @@ AC_INTERNAL_read_profile(const Profile& profile, const int, const int)
 		read_profiles[profile] |= 1;
 	return AcReal(1.0);
 }
-AcReal
+AcReal3
 AC_INTERNAL_read_profile(const VecZProfile& profile, const int)
 {
 	if constexpr(NUM_PROFILES > 0)
@@ -653,7 +653,7 @@ AC_INTERNAL_read_profile(const VecZProfile& profile, const int)
 		read_profiles[profile.y] |= 1;
 		read_profiles[profile.z] |= 1;
 	}
-	return AcReal(1.0);
+	return (AcReal3){1.0,1.0,1.0};
 }
 #define suppress_unused_warning(X) (void)X
 
