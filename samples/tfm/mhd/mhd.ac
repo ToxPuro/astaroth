@@ -419,6 +419,7 @@ continuity() {
 #endif
 }
 
+#if LHYDRO
 momentum() {
     S = stress_tensor(UU)
     cs2_sound = AC_cs_sound * AC_cs_sound
@@ -452,6 +453,25 @@ momentum() {
 
     return mom
 }
+#else 
+    // Roberts flow
+roberts_flow() {
+    pos = real3(AC_dsx * globalVertexIdx.x, 
+                AC_dsy * globalVertexIdx.y, 
+                AC_dsz * globalVertexIdx.z)
+    e = real3(0, 0, 1)
+    a = 8
+    fac = R_PI / a
+    px = sin(pos.x * fac)
+    py = sin(pos.y * fac)
+    chi = px * py
+    // Note analytical, numerical diff. would require a new DSL field
+    grad_chi = real3(py * fac * cos(pos.x * fac),
+                     px * fac * cos(pos.y * fac),
+                     0)
+    return cross(e, grad_chi) + chi * e
+}
+#endif
 
 #if LMAGNETIC
 induction() {
@@ -593,6 +613,8 @@ Kernel singlepass_solve_step0() {
 #if LENTROPY 
     write(VTXBUF_ENTROPY, rk3_step0(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
 #endif 
+
+#if LHYDRO
     mom = momentum()
 
 #if LFORCING
@@ -611,6 +633,14 @@ Kernel singlepass_solve_step0() {
     write(VTXBUF_UUX, rk3_step0(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
     write(VTXBUF_UUY, rk3_step0(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
     write(VTXBUF_UUZ, rk3_step0(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+#endif
+
+#else 
+    // Roberts flow
+    mom = roberts_flow()
+    write(VTXBUF_UUX, mom.x)
+    write(VTXBUF_UUY, mom.y)
+    write(VTXBUF_UUZ, mom.z)
 #endif
 
 #if LMAGNETIC
@@ -662,6 +692,8 @@ Kernel singlepass_solve_step1() {
 #if LENTROPY 
     write(VTXBUF_ENTROPY, rk3_step1(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
 #endif 
+
+#if LHYDRO
     mom = momentum()
 
 #if LFORCING
@@ -680,6 +712,14 @@ Kernel singlepass_solve_step1() {
     write(VTXBUF_UUX, rk3_step1(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
     write(VTXBUF_UUY, rk3_step1(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
     write(VTXBUF_UUZ, rk3_step1(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+#endif
+
+#else 
+    // Roberts flow
+    mom = roberts_flow()
+    write(VTXBUF_UUX, mom.x)
+    write(VTXBUF_UUY, mom.y)
+    write(VTXBUF_UUZ, mom.z)
 #endif
 
 #if LMAGNETIC
@@ -731,6 +771,8 @@ Kernel singlepass_solve_step2() {
 #if LENTROPY 
     write(VTXBUF_ENTROPY, rk3_step2(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
 #endif 
+
+#if LHYDRO
     mom = momentum()
 
 #if LFORCING
@@ -749,6 +791,14 @@ Kernel singlepass_solve_step2() {
     write(VTXBUF_UUX, rk3_step2(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
     write(VTXBUF_UUY, rk3_step2(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
     write(VTXBUF_UUZ, rk3_step2(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+#endif
+
+#else 
+    // Roberts flow
+    mom = roberts_flow()
+    write(VTXBUF_UUX, mom.x)
+    write(VTXBUF_UUY, mom.y)
+    write(VTXBUF_UUZ, mom.z)
 #endif
 
 #if LMAGNETIC

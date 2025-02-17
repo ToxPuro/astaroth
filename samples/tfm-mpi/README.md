@@ -150,3 +150,16 @@ These correspond to "Eq. 15 in "Scale dependence of alpha effect and turbulent d
 
 - Setting `hostdefine LOO (1)` in `astaroth/samples/tfm/mhd/mhd.ac` enables writing out `curl(UU)` to fields `VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ`. The timeseries and snapshots for these fields are written out automatically. `LOO` is currently enabled by default.
 - Setting `hostdefine LOO (1)` also enables writing out `dot(uu, curl(uu))`. The result is stored in `VTXBUF_UU_DOT_OO`.
+
+### Roberts flow
+- Set `hostdefine LHYDRO (0)` in `samples/tfm/mhd/mhd.ac`.
+- A preliminary function is implemented in `roberts_flow` (not time-dependent as of 2025-02-17). Used https://arxiv.org/pdf/0801.0602 as reference.
+- Hardcoded `a=8` as of 2025-02-17
+- Computed as by setting the velocity at every substep to the value given by this function.
+```
+mom = roberts_flow()
+write(VTXBUF_UUX, mom.x)
+write(VTXBUF_UUY, mom.y)
+write(VTXBUF_UUZ, mom.z)
+```
+- Not checked for correctness
