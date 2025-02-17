@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <functional>
+#include <numeric>
 
 #include "errchk.h"
 #include "ntuple.h"

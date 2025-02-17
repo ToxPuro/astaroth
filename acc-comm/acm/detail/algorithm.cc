@@ -16,7 +16,7 @@ test_algorithm()
         const auto             rr{ac::make_index(nn.size(), 1)};
         const auto             mm{nn + 2 * rr};
         ac::host_ndbuffer<int> ref{mm};
-        ac::host_ndbuffer<int> tst{ac::concat(nn, 2ull)};
+        ac::host_ndbuffer<int> tst{ac::concat(nn, static_cast<uint64_t>(2))};
         std::iota(ref.begin(), ref.end(), 1);
 
         // Pack
@@ -26,8 +26,7 @@ test_algorithm()
         tst.display();
 
         // Transform (square)
-        ac::transform(
-            tst.get(), [](const int& a) { return a * a; }, tst.get());
+        ac::transform(tst.get(), [](const int& a) { return a * a; }, tst.get());
         tst.display();
 
         // Reduce
