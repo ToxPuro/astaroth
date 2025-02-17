@@ -14,5 +14,5 @@ reduce_sum(real3 vec, VecZProfile prof)
 
 reduce_average(real val, Profile<Z> prof)
 {
-	reduce_sum(val,prof*AC_inv_nxygrid);
+	reduce_sum(AC_inv_nxygrid*val,prof);
 }
