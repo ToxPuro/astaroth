@@ -4920,11 +4920,15 @@ gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 	get_array_access_nodes(array_access,&nodes);
 	if(!strcmps(type,"Profile<X>","Profile<Y>","Profile<Z>") && nodes.size != 1)	
 	{
-		fatal("Fatal error: only 1-dimensional reads are allowed for 1d Profiles\n");
+		fatal("Fatal error: only 1-dimensional reads are allowed for 1d Profiles: %s\n",combine_all_new(array_access));
 	}
-	if(strcmps(type,"Profile<X>","Profile<Y>","Profile<Z>") && nodes.size != 2)	
+	if(!strcmps(type,"Profile<XY>","Profile<YX>",
+			"Profile<YZ>","Profile<ZY>",
+			"Profile<XZ>","Profile<ZX>"
+			) 
+			&& nodes.size != 2)	
 	{
-		fatal("Fatal error: only 2-dimensional reads are allowed for 2d Profiles\n");
+		fatal("Fatal error: only 2-dimensional reads are allowed for 2d Profiles: %s\n",combine_all_new(array_access));
 	}
 	if(is_left_child(NODE_ASSIGNMENT,node))
 	{

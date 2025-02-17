@@ -72,3 +72,10 @@ enum AC_COORDINATE_SYSTEM
 	AC_SPHERICAL_COORDINATES,
 	AC_CYLINDRICAL_COORDINATES
 }
+
+struct VecZProfile
+{
+	Profile<Z> x
+	Profile<Z> y
+	Profile<Z> z
+}

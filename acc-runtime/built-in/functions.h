@@ -231,6 +231,17 @@ reduce_sum(real val, Profile<ZY> prof)
 {
 	reduce_sum_real_zy(val, prof);
 }
+reduce_sum(real3 vec, VecZProfile prof)
+{
+	reduce_sum(vec.x,prof.x)
+	reduce_sum(vec.y,prof.y)
+	reduce_sum(vec.z,prof.z)
+}
+
+reduce_average(real val, Profile<Z> prof)
+{
+	reduce_sum(AC_inv_nxygrid*val,prof);
+}
 
 inline add_arr(real[] a, real b)
 {
