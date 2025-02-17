@@ -6,34 +6,7 @@ output real AC_min_val
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
 #include "../../../acc-runtime/stdlib/profiles.h"
-
-Stencil derx {
-    [0][0][-3] = -AC_inv_ds.x * DER1_3,
-    [0][0][-2] = -AC_inv_ds.x * DER1_2,
-    [0][0][-1] = -AC_inv_ds.x * DER1_1,
-    [0][0][1]  = AC_inv_ds.x * DER1_1,
-    [0][0][2]  = AC_inv_ds.x * DER1_2,
-    [0][0][3]  = AC_inv_ds.x * DER1_3
-}
-
-
-Stencil dery {
-    [0][-3][0] = -AC_inv_ds.y * DER1_3,
-    [0][-2][0] = -AC_inv_ds.y * DER1_2,
-    [0][-1][0] = -AC_inv_ds.y * DER1_1,
-    [0][1][0]  = AC_inv_ds.y * DER1_1,
-    [0][2][0]  = AC_inv_ds.y * DER1_2,
-    [0][3][0]  = AC_inv_ds.y * DER1_3
-}
-
-Stencil derz {
-    [-3][0][0] = -AC_inv_ds.z * DER1_3,
-    [-2][0][0] = -AC_inv_ds.z * DER1_2,
-    [-1][0][0] = -AC_inv_ds.z * DER1_1,
-    [1][0][0]  = AC_inv_ds.z * DER1_1,
-    [2][0][0]  = AC_inv_ds.z * DER1_2,
-    [3][0][0]  = AC_inv_ds.z * DER1_3
-}
+#include "../../../acc-runtime/stdlib/work_in_progress_derivs.h"
 
 
 //Profile<Z> PROF_Z_DER
