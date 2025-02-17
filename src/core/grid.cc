@@ -1165,7 +1165,8 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
         int distributed_mm[3], distributed_nn[3], distributed_offset[3];
-        get_subarray(pid, monolithic_mm, monolithic_nn, monolithic_offset, //
+        get_subarray(pid, monolithic_mm, monolithic_nn,
+                     monolithic_offset, //
                      distributed_mm, distributed_nn, distributed_offset);
 
         MPI_Datatype distributed_subarray;
@@ -1184,7 +1185,8 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
             for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
                 int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
                 int distributed_mm[3], distributed_nn[3], distributed_offset[3];
-                get_subarray(tgt, monolithic_mm, monolithic_nn, monolithic_offset, //
+                get_subarray(tgt, monolithic_mm, monolithic_nn,
+                             monolithic_offset, //
                              distributed_mm, distributed_nn, distributed_offset);
 
                 MPI_Datatype monolithic_subarray;
@@ -1231,7 +1233,8 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
         int distributed_mm[3], distributed_nn[3], distributed_offset[3];
-        get_subarray(pid, monolithic_mm, monolithic_nn, monolithic_offset, //
+        get_subarray(pid, monolithic_mm, monolithic_nn,
+                     monolithic_offset, //
                      distributed_mm, distributed_nn, distributed_offset);
 
         MPI_Datatype distributed_subarray;
@@ -1250,7 +1253,8 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
             for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
                 int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
                 int distributed_mm[3], distributed_nn[3], distributed_offset[3];
-                get_subarray(src, monolithic_mm, monolithic_nn, monolithic_offset, //
+                get_subarray(src, monolithic_mm, monolithic_nn,
+                             monolithic_offset, //
                              distributed_mm, distributed_nn, distributed_offset);
 
                 MPI_Datatype monolithic_subarray;
@@ -2654,72 +2658,91 @@ acGridReduceVecScal(const Stream stream, const AcReduction reduction,
 AcResult
 acGridReduceXY(const Stream stream, const Field field, const Profile profile, const AcReduction reduction)
 {
-    ERRCHK(grid.initialized);
-    const Device device = grid.device;
-    acGridSynchronizeStream(STREAM_ALL);
+    if (profile >= 0 && profile < NUM_PROFILES) {
+        ERRCHK(grid.initialized);
+        const Device device = grid.device;
+        acGridSynchronizeStream(STREAM_ALL);
 
-    // Strategy:
-    // 1) Reduce the local result to device->vba.profiles.in
-    acDeviceReduceXY(device, stream, field, profile,reduction);
+        // Strategy:
+        // 1) Reduce the local result to device->vba.profiles.in
+        acDeviceReduceXY(device, stream, field, profile,reduction);
 
-    // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
-    int nprocs, pid;
-    MPI_Comm_size(astaroth_comm, &nprocs);
-    MPI_Comm_rank(astaroth_comm, &pid);
+        // 2) Create communicator that encompasses the processes that are neighbors in the xy
+        // direction
+        int nprocs, pid;
+        MPI_Comm_size(astaroth_comm, &nprocs);
+        MPI_Comm_rank(astaroth_comm, &pid);
 
-    const uint3_64 decomp = decompose(nprocs,ac_decomp_strategy());
-    const int3 pid3d      = getPid3D(pid, decomp);
-    MPI_Comm xy_neighbors;
-    MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
+        const uint3_64 decomp = decompose(nprocs,ac_decomp_strategy());
+        const int3 pid3d      = getPid3D(pid, decomp);
+        MPI_Comm xy_neighbors;
+        MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
 
-    // 3) Allreduce
-    //MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in[profile], device->vba.profiles.count,
-                  //AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
+        // 3) Allreduce
+	//
+	const size3_t m = (size3_t){
+		   		    static_cast<size_t>(grid.submesh.info[AC_mlocal].x),
+				    static_cast<size_t>(grid.submesh.info[AC_mlocal].y),
+				    static_cast<size_t>(grid.submesh.info[AC_mlocal].z)
+			           };
+        MPI_Allreduce(MPI_IN_PLACE, acDeviceGetProfileBuffer(device,profile), prof_size(profile,m),
+                      AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
 
-    // 4) Optional: Test
-    // AcReal arr[device->vba.profiles.count];
-    // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
-    //            cudaMemcpyDeviceToHost);
-    // for (size_t i = 0; i < device->vba.profiles.count; ++i)
-    //     printf("%i: %g\n", i, arr[i]);
+        // 4) Optional: Test
+        // AcReal arr[device->vba.profiles.count];
+        // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
+        //            cudaMemcpyDeviceToHost);
+        // for (size_t i = 0; i < device->vba.profiles.count; ++i)
+        //     printf("%i: %g\n", i, arr[i]);
 
-    return AC_SUCCESS;
+        return AC_SUCCESS;
+    }
+    else {
+        return AC_FAILURE;
+    }
 }
 
 AcResult
-acGridReduceXYAverages(const Stream )
+acGridReduceXYAverages(const Stream stream)
 {
-    ERRCHK(grid.initialized);
-    const Device device = grid.device;
-    acGridSynchronizeStream(STREAM_ALL);
+    if (NUM_PROFILES > 0) {
+        ERRCHK(grid.initialized);
+        const Device device = grid.device;
+        acGridSynchronizeStream(STREAM_ALL);
 
-    // Strategy:
-    // 1) Reduce the local result to device->vba.profiles.in
-    //acDeviceReduceAverages(device, stream, PROFILE_Z);
+        // Strategy:
+        // 1) Reduce the local result to device->vba.profiles.in
+        acDeviceReduceXYAverages(device, stream);
 
-    // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
-    int nprocs, pid;
-    MPI_Comm_size(astaroth_comm, &nprocs);
-    MPI_Comm_rank(astaroth_comm, &pid);
+        // 2) Create communicator that encompasses the processes that are neighbors in the xy
+        // direction
+        int nprocs, pid;
+        MPI_Comm_size(astaroth_comm, &nprocs);
+        MPI_Comm_rank(astaroth_comm, &pid);
 
-    const uint3_64 decomp = decompose(nprocs,ac_decomp_strategy());
-    const int3 pid3d      = getPid3D(pid, decomp);
-    MPI_Comm xy_neighbors;
-    MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
+        const uint3_64 decomp = decompose(nprocs,ac_decomp_strategy());
+        const int3 pid3d      = getPid3D(pid, decomp);
+        MPI_Comm xy_neighbors;
+        MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
 
-    // 3) Allreduce
-    const auto vba = acDeviceGetVBA(device);
-    MPI_Allreduce(MPI_IN_PLACE, acDeviceGetStartOfProfiles(device), NUM_PROFILES * vba.profile_count,
-                  AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
+        // 3) Allreduce
+	const size_t count = static_cast<size_t>(grid.submesh.info[AC_mlocal].x*grid.submesh.info[AC_mlocal].y);
+        MPI_Allreduce(MPI_IN_PLACE, acDeviceGetStartOfProfiles(grid.device),
+                      NUM_PROFILES * count, AC_REAL_MPI_TYPE, MPI_SUM,
+                      xy_neighbors);
 
-    // 4) Optional: Test
-    // AcReal arr[device->vba.profiles.count];
-    // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
-    //            cudaMemcpyDeviceToHost);
-    // for (size_t i = 0; i < device->vba.profiles.count; ++i)
-    //     printf("%i: %g\n", i, arr[i]);
+        // 4) Optional: Test
+        // AcReal arr[device->vba.profiles.count];
+        // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
+        //            cudaMemcpyDeviceToHost);
+        // for (size_t i = 0; i < device->vba.profiles.count; ++i)
+        //     printf("%i: %g\n", i, arr[i]);
 
-    return AC_SUCCESS;
+        return AC_SUCCESS;
+    }
+    else {
+        return AC_FAILURE;
+    }
 }
 
 /** */

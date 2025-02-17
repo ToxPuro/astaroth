@@ -18,6 +18,7 @@
 */
 #include "decomposition.h"
 
+#include <limits.h> // INT_MAX
 #include <string.h> // memcpy
 #include <memory>   // unique_ptr
 
@@ -666,14 +667,18 @@ void
 acVerifyDecomposition(const uint3_64 decomp, const int proc_mapping_strategy)
 {
     const size_t n = decomp.x * decomp.y * decomp.z; // prod(info.ndims, info.global_decomposition);
+    ERRCHK_ALWAYS(n <= INT_MAX);
     for (size_t i = 0; i < n; ++i)
-        ERRCHK_ALWAYS(getPid(getPid3D(i, decomp,proc_mapping_strategy), decomp,proc_mapping_strategy) == (int)i);
+        ERRCHK_ALWAYS(getPid(getPid3D(i, decomp,proc_mapping_strategy), decomp,proc_mapping_strategy) == static_cast<int>(i));
 
-    for (size_t k = 0; k < decomp.z; ++k) {
-        for (size_t j = 0; j < decomp.y; ++j) {
-            for (size_t i = 0; i < decomp.x; ++i) {
+    ERRCHK_ALWAYS(decomp.x <= INT_MAX);
+    ERRCHK_ALWAYS(decomp.y <= INT_MAX);
+    ERRCHK_ALWAYS(decomp.z <= INT_MAX);
+    for (int k = 0; k < static_cast<int>(decomp.z); ++k) {
+        for (int j = 0; j < static_cast<int>(decomp.y); ++j) {
+            for (int i = 0; i < static_cast<int>(decomp.x); ++i) {
 
-                const size3_t center = {i, j, k};
+                const size3_t center = {static_cast<size_t>(i), static_cast<size_t>(j), static_cast<size_t>(k)};
 
                 for (int k0 = -1; k0 <= 1; ++k0) {
                     for (int j0 = -1; j0 <= 1; ++j0) {

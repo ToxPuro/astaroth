@@ -93,6 +93,9 @@ FUNC_DEFINE(AcResult, acVerifyMesh,(const char* label, const AcMesh model, const
 FUNC_DEFINE(AcResult, acMeshDiffWriteSliceZ,(const char* path, const AcMesh model, const AcMesh candidate, const size_t z));
 
 FUNC_DEFINE(AcResult, acMeshDiffWrite,(const char* path, const AcMesh model, const AcMesh candidate));
+FUNC_DEFINE(AcResult acVerifyMeshCompDomain,(const char* label, const AcMesh model, const AcMesh candidate));
+
+FUNC_DEFINE(AcResult, acMeshDiffWriteSliceZ,(const char* path, const AcMesh model, const AcMesh candidate, const size_t z));
 
 FUNC_DEFINE(AcResult, acHostMeshWriteToFile,(const AcMesh mesh, const size_t id));
 

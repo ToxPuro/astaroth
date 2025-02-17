@@ -1,0 +1,298 @@
+#include <cstdlib>
+#include <numeric> // std::iota
+
+#include "acm/detail/errchk_mpi.h"
+#include "acm/detail/mpi_utils.h"
+#include "acm/detail/ndbuffer.h"
+#include "acm/detail/partition.h"
+#include "acm/detail/print_debug.h"
+#include "acm/detail/type_conversion.h"
+
+constexpr bool verbose{true};
+
+template <typename Allocator>
+void
+test_reduce_axis(const MPI_Comm& cart_comm, const ac::shape& global_nn)
+{
+    ac::shape    decomp{ac::mpi::get_decomposition(cart_comm)};
+    ac::index    coords{ac::mpi::get_coords(cart_comm)};
+    const size_t nprocs{prod(decomp)};
+
+    // Checks that the reduce sum is the sum of all processes along a specific axis
+    for (size_t axis{0}; axis < global_nn.size(); ++axis) {
+        constexpr size_t                        count{10};
+        const int                               value{as<int>((coords[axis] + 1) * nprocs)};
+        ac::buffer<int, ac::mr::host_allocator> tmp{count, value};
+        ac::buffer<int, Allocator>              buf{count};
+        migrate(tmp, buf);
+
+        BENCHMARK(ac::mpi::reduce_axis(cart_comm,
+                                       ac::mpi::get_dtype<int>(),
+                                       MPI_SUM,
+                                       axis,
+                                       buf.size(),
+                                       buf.data()));
+
+        migrate(buf, tmp);
+
+        if (verbose) {
+            PRINT_DEBUG(decomp);
+            PRINT_DEBUG(coords);
+            PRINT_DEBUG(nprocs);
+            PRINT_DEBUG_ARRAY(tmp.size(), tmp.data());
+        }
+
+        // E.g. 4 procs on axis, the value in the buffer of each proc corresponds to its
+        // coordinates on that axis
+        for (size_t i{0}; i < count; ++i) {
+            const size_t nprocs_on_axis{nprocs / decomp[axis]};
+            ERRCHK(tmp[i] == value * as<int>(nprocs_on_axis));
+        }
+    }
+}
+
+void
+test_scatter_gather(const MPI_Comm& cart_comm, const ac::shape& global_nn)
+{
+    using T      = int;
+    using Buffer = ac::ndbuffer<T, ac::mr::host_allocator>;
+
+    const ac::index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
+    // const ac::index zero_offset{ac::make_index(global_nn.size(), 0)};
+    const ac::shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+
+    const ac::index rr{ac::make_index(global_nn.size(), 2)};
+    const ac::shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+
+    Buffer monolithic{global_nn};
+    std::iota(monolithic.begin(), monolithic.end(), 1);
+    Buffer distributed{local_mm};
+
+    BENCHMARK(ac::mpi::scatter(cart_comm,
+                               ac::mpi::get_dtype<T>(),
+                               global_nn,
+                               rr,
+                               monolithic.data(),
+                               distributed.data()));
+
+    if (verbose) {
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm);
+        PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+        PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
+        monolithic.display();
+        distributed.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm);
+    }
+
+    // Check
+    Buffer monolithic_test{global_nn, 0};
+    BENCHMARK(ac::mpi::gather(cart_comm,
+                              ac::mpi::get_dtype<T>(),
+                              global_nn,
+                              rr,
+                              distributed.data(),
+                              monolithic_test.data()));
+
+    const auto rank{ac::mpi::get_rank(cart_comm)};
+    if (rank == 0) {
+        if (verbose) {
+            PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+            PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
+            monolithic.display();
+            monolithic_test.display();
+        }
+
+        for (size_t i{0}; i < monolithic_test.size(); ++i)
+            ERRCHK_MPI(monolithic.get()[i] == monolithic_test.get()[i]);
+    }
+}
+
+void
+test_scatter_gather_advanced(const MPI_Comm& cart_comm, const ac::shape& global_nn)
+{
+    using T      = int;
+    using Buffer = ac::ndbuffer<T, ac::mr::host_allocator>;
+
+    const ac::index global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
+    // const ac::index zero_offset(global_nn.size(), static_cast<int>(0));
+    const ac::shape local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+
+    const ac::index rr{ac::make_index(global_nn.size(), 2)};
+    const ac::shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+
+    const ac::shape global_mm{global_nn + static_cast<uint64_t>(2) * rr};
+
+    Buffer monolithic{global_mm};
+    std::iota(monolithic.begin(), monolithic.end(), 1);
+    Buffer distributed{local_mm};
+
+    // Scatter
+    BENCHMARK(ac::mpi::scatter_advanced(cart_comm,
+                                        ac::mpi::get_dtype<T>(),
+                                        global_mm,
+                                        rr,
+                                        monolithic.data(),
+                                        local_mm,
+                                        local_nn,
+                                        rr,
+                                        distributed.data()));
+
+    if (verbose) {
+        MPI_SYNCHRONOUS_BLOCK_START(cart_comm);
+        PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+        PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
+        monolithic.display();
+        distributed.display();
+        MPI_SYNCHRONOUS_BLOCK_END(cart_comm);
+    }
+
+    // Gather
+    Buffer monolithic_test{global_mm, 0}; // Initialize to zero
+    BENCHMARK(ac::mpi::gather_advanced(cart_comm,
+                                       ac::mpi::get_dtype<T>(),
+                                       local_mm,
+                                       local_nn,
+                                       rr,
+                                       distributed.data(),
+                                       global_mm,
+                                       rr,
+                                       monolithic_test.data()));
+
+    // Set boundaries to zero in the model solution
+    auto segments{partition(global_mm, global_nn, rr)};
+    auto it{std::remove_if(segments.begin(),
+                           segments.end(),
+                           [global_nn, rr](const ac::segment& segment) {
+                               return within_box(segment.offset, global_nn, rr);
+                           })};
+    segments.erase(it, segments.end());
+    for (const auto& segment : segments)
+        fill(0, segment.dims, segment.offset, monolithic);
+
+    const auto rank{ac::mpi::get_rank(cart_comm)};
+    if (rank == 0) {
+        if (verbose) {
+            PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+            PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
+            monolithic.display();
+            monolithic_test.display();
+        }
+
+        for (size_t i{0}; i < monolithic_test.size(); ++i)
+            ERRCHK_MPI(monolithic.get()[i] == monolithic_test.get()[i]);
+    }
+}
+
+static void
+test_mpi_pack(const MPI_Comm& cart_comm, const ac::shape& global_nn)
+{
+    using T = int;
+
+    const auto rr{ac::make_index(global_nn.size(), 1)};
+    const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+
+    ac::host_ndbuffer<T> href{local_mm};
+    std::iota(href.begin(), href.end(), 1);
+
+    auto                   dref{href.to_device()};
+    ac::device_ndbuffer<T> dpack{local_nn};
+    ac::mpi::pack(cart_comm,
+                  ac::mpi::get_dtype<T>(),
+                  local_mm,
+                  local_nn,
+                  rr,
+                  dref.data(),
+                  dpack.size(),
+                  dpack.data());
+
+    ac::device_ndbuffer<T> dtst{local_mm};
+    ac::mpi::unpack(cart_comm,
+                    ac::mpi::get_dtype<T>(),
+                    dpack.size(),
+                    dpack.data(),
+                    local_mm,
+                    local_nn,
+                    rr,
+                    dtst.data());
+
+    auto hpack{dpack.to_host()};
+    auto htst{dtst.to_host()};
+    href.display();
+    hpack.display();
+    htst.display();
+
+    // Check that the averages match.
+    // Not sure if this holds for all inputs: if this fails, it's possible
+    // that packing/unpacking are still correct and only this error check is wrong.
+    // Must reconsider how to check for errors if this happens.
+    const auto href_avg{as<uint64_t>(std::reduce(href.begin(), href.end())) / prod(local_mm)};
+    const auto htst_avg{as<uint64_t>(std::reduce(htst.begin(), htst.end())) / prod(local_nn)};
+    PRINT_LOG_INFO("Checking averages of packed and unpacked buffers. Note that the error check "
+                   "may itself be correct, and need to reconsider the approach if the next check "
+                   "fails even with correct pack/unpack functions.");
+    ERRCHK(href_avg == htst_avg);
+    PRINT_LOG_INFO("OK");
+}
+
+int
+main()
+{
+    ac::mpi::init_funneled();
+    try {
+        const uint64_t nprocs{as<uint64_t>(ac::mpi::get_size(MPI_COMM_WORLD))};
+        {
+            const ac::shape global_nn{128, 128, 128};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+
+            test_reduce_axis<ac::mr::host_allocator>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::pinned_host_allocator>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::pinned_write_combined_host_allocator>(cart_comm, global_nn);
+            test_reduce_axis<ac::mr::device_allocator>(cart_comm, global_nn);
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{4 * nprocs};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+
+            test_scatter_gather(cart_comm, global_nn);
+
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{8, 4 * nprocs};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+
+            test_scatter_gather(cart_comm, global_nn);
+
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{8, 4, 2 * nprocs};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+
+            test_scatter_gather(cart_comm, global_nn);
+
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{7, 3 * nprocs};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            test_scatter_gather_advanced(cart_comm, global_nn);
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{4, 5};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            test_mpi_pack(cart_comm, global_nn);
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+    }
+    catch (const std::exception& e) {
+        PRINT_LOG_ERROR("Exception caught");
+        ac::mpi::abort();
+        return EXIT_FAILURE;
+    }
+    ac::mpi::finalize();
+    return EXIT_SUCCESS;
+}

@@ -139,13 +139,6 @@ acDeviceGetLocalConfig(const Device device)
 }
 
 AcResult
-acDeviceGetLocalConfig(const Device device, AcMeshInfo* info)
-{
-    *info = device->local_config;
-    return AC_SUCCESS;
-}
-
-AcResult
 acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcRealParam param,
                           const AcReal value)
 {
@@ -1163,27 +1156,32 @@ AcResult
 acDeviceReduceXY(const Device device, const Stream stream, const Field field,
                         const Profile profile, const AcReduction reduction)
 {
-    if constexpr(NUM_PROFILES == 0) return AC_FAILURE;
-    cudaSetDevice(device->id);
-    acDeviceSynchronizeStream(device, stream);
+    if (profile >= 0 && profile < NUM_PROFILES) {
+        cudaSetDevice(device->id);
+        acDeviceSynchronizeStream(device, stream);
 
-    const AcMeshDims dims = acGetMeshDims(device->local_config);
+        const AcMeshDims dims = acGetMeshDims(device->local_config);
+        for (size_t k = 0; k < dims.m1.z; ++k) {
+            const Volume start    = (Volume){dims.n0.x, dims.n0.y, k};
+            const Volume end      = (Volume){dims.n1.x, dims.n1.y, k + 1};
+            const size_t nxy    = (end.x - start.x) * (end.y - start.y);
+            const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream],
+                                                                  reduction, field,
+                                                                  start, end,
+								  AC_default_real_output,
+                                                                  device->vba);
 
-    for (size_t k = 0; k < dims.m1.z; ++k) {
-        const Volume start    = {dims.n0.x, dims.n0.y, k};
-        const Volume end      = {dims.n1.x, dims.n1.y, k + 1};
-        const size_t nxy    = (end.x - start.x) * (end.y - start.y);
-        const AcReal result = (AcReal)(1. / nxy) * acKernelReduceScal(device->streams[stream], reduction,
-                                                              field, start, end,
-							      AC_default_real_output,
-                                                              device->vba);
-        // printf("%zu Profile: %g\n", k, result);
-        // Could be optimized by performing the reduction completely in
-        // device memory without the redundant device-host-device transfer
-        cudaMemcpy(&device->vba.on_device.profiles.in[profile][k], &result, sizeof(result),
-                   cudaMemcpyHostToDevice);
+            // printf("%zu Profile: %g\n", k, result);
+            // Could be optimized by performing the reduction completely in
+            // device memory without the redundant device-host-device transfer
+            cudaMemcpy(&device->vba.on_device.profiles.in[profile][k], &result, sizeof(result),
+                       cudaMemcpyHostToDevice);
+        }
+        return AC_SUCCESS;
     }
-    return AC_SUCCESS;
+    else {
+        return AC_FAILURE;
+    }
 }
 
 AcResult
@@ -1230,6 +1228,8 @@ acDeviceLoadProfile(const Device device, const AcReal* hostprofile, const size_t
                            cudaMemcpyHostToDevice));
     return AC_SUCCESS;
 }
+
+
 
 AcResult
 acDeviceStoreProfile(const Device device, const Profile profile, AcMesh* host_mesh)
@@ -1615,11 +1615,16 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
 
     // Reindex
     VertexBufferHandle reindex_fields[] = {
-        VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, //
-        TF_uxb11_x, TF_uxb11_y, TF_uxb11_z, //
-        TF_uxb12_x, TF_uxb12_y, TF_uxb12_z, //
-        TF_uxb21_x, TF_uxb21_y, TF_uxb21_z, //
-        TF_uxb22_x, TF_uxb22_y, TF_uxb22_z, //
+        VTXBUF_UUX, VTXBUF_UUY,
+        VTXBUF_UUZ, //
+        TF_uxb11_x, TF_uxb11_y,
+        TF_uxb11_z, //
+        TF_uxb12_x, TF_uxb12_y,
+        TF_uxb12_z, //
+        TF_uxb21_x, TF_uxb21_y,
+        TF_uxb21_z, //
+        TF_uxb22_x, TF_uxb22_y,
+        TF_uxb22_z, //
     };
     for (size_t w = 0; w < ARRAY_SIZE(reindex_fields); ++w) {
         const AcIndex buffer_offset = {
@@ -1628,8 +1633,9 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
             .z = 0,
             .w = w,
         };
-        acReindex(device->streams[STREAM_DEFAULT],                        //
-                  device->vba.on_device.in[reindex_fields[w]], in_offset, in_shape, //
+        acReindex(device->streams[STREAM_DEFAULT], //
+                  device->vba.in[reindex_fields[w]], in_offset,
+                  in_shape, //
                   buffer.data, buffer_offset, buffer_shape, block_shape);
     }
     // // Note no offset here: is applied in acMapCross instead due to how it works with SOA
@@ -1659,14 +1665,18 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
                       device->vba.on_device.profiles.in[0]);
 
     acBufferDestroy(&buffer);
-    return AC_FAILURE;
+    return AC_SUCCESS;
 }
+
 #else
 AcResult
 acDeviceReduceXYAverages(const Device , const Stream)
 {
+        ERROR("acDeviceReduceXYAverages called but AC_TFM_ENABLED was false");
 	return AC_FAILURE;
 }
+
+#endif
 AcBuffer
 acDeviceTransposeVertexBuffer(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
 {
@@ -1690,7 +1700,6 @@ acDeviceReduceAverages(const Device device, const Stream stream, const Profile p
 			   device->streams[stream]
 		    );
 }
-#endif
 
 /** Note: very inefficient. Should only be used for testing. */
 AcResult

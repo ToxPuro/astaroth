@@ -238,6 +238,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
            const Array in, Array out)
 {
+    (void)domain_length; // Unused. Note: correctness guaranteed by tpb*bpg*ept=domain_length in autotuning. Refer to notes on 2025-01-20 for proof (JP).
     extern __shared__ real smem[];
 
     const int base_idx = blockIdx.x * blockDim.x * ELEMS_PER_THREAD + pad - radius;
@@ -275,9 +276,8 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
            const Array in, Array out)
 {
-    //used to silence warning about unused param
-    (void) domain_length;
-    const size_t tid              = (int)(threadIdx.x + blockIdx.x * blockDim.x * ELEMS_PER_THREAD);
+    (void)domain_length; // Unused. Note: correctness guaranteed by tpb*bpg*ept=domain_length in autotuning. Refer to notes on 2025-01-20 for proof (JP).
+    const int tid              = (int)(threadIdx.x + blockIdx.x * blockDim.x * ELEMS_PER_THREAD);
     real tmp[ELEMS_PER_THREAD] = {0};
 
     for (int i = -radius; i <= radius; i += stride) {
@@ -312,7 +312,7 @@ model_kernel(const size_t domain_length, const size_t pad, const int radius, con
              const Array in, Array out)
 {
     ERRCHK_ALWAYS(domain_length < INT_MAX)
-    for (size_t tid = 0; tid < domain_length; ++tid) {
+    for (int tid = 0; tid < static_cast<int>(domain_length); ++tid) {
         real tmp = 0.0;
         for (int i = -radius; i <= radius; i += stride)
             tmp += in.data[tid + pad + i];
@@ -649,7 +649,7 @@ main(int argc, char* argv[])
     fprintf(stderr, "Usage: ./benchmark <computational domain length> <radius> <stride> <jobid> "
                     "<num_samples> <salt>\n");
     const size_t domain_length = (argc > 1) ? (size_t)atol(argv[1])
-                                            : ((size_t) 128 * (size_t) pow(1024, 2)) / sizeof(real);
+                                            : 128 * 1024*1024 / sizeof(real);
     const size_t radius        = (argc > 2) ? (size_t)atol(argv[2]) : 1;
     const int stride           = (argc > 3) ? (size_t)atol(argv[3]) : 1;
     const size_t jobid         = (argc > 4) ? (size_t)atol(argv[4]) : 0;

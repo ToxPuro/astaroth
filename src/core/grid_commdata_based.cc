@@ -304,12 +304,14 @@ acTransferCommData(const Device device, //
 
         PackedData* dst = &data->dsts[b0_idx];
         if (onTheSameNode(pid, npid) || !MPI_USE_PINNED) {
-            MPI_Irecv(dst->data, count, datatype, npid, b0_idx, //
+            MPI_Irecv(dst->data, count, datatype, npid,
+                      b0_idx, //
                       MPI_COMM_WORLD, &data->recv_reqs[b0_idx]);
             dst->pinned = false;
         }
         else {
-            MPI_Irecv(dst->data_pinned, count, datatype, npid, b0_idx, //
+            MPI_Irecv(dst->data_pinned, count, datatype, npid,
+                      b0_idx, //
                       MPI_COMM_WORLD, &data->recv_reqs[b0_idx]);
             dst->pinned = true;
         }
@@ -333,13 +335,15 @@ acTransferCommData(const Device device, //
         PackedData* src = &data->srcs[b0_idx];
         if (onTheSameNode(pid, npid) || !MPI_USE_PINNED) {
             cudaStreamSynchronize(data->streams[b0_idx]);
-            MPI_Isend(src->data, count, datatype, npid, b0_idx, //
+            MPI_Isend(src->data, count, datatype, npid,
+                      b0_idx, //
                       MPI_COMM_WORLD, &data->send_reqs[b0_idx]);
         }
         else {
             acPinPackedData(device, data->streams[b0_idx], src);
             cudaStreamSynchronize(data->streams[b0_idx]);
-            MPI_Isend(src->data_pinned, count, datatype, npid, b0_idx, //
+            MPI_Isend(src->data_pinned, count, datatype, npid,
+                      b0_idx, //
                       MPI_COMM_WORLD, &data->send_reqs[b0_idx]);
         }
     }

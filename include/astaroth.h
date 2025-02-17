@@ -454,45 +454,19 @@ acPrintMeshInfo(const AcMeshInfo config)
 
 
 /** Prints a list of initial condition condition types */
-static inline void
-acQueryInitcondtypes(void)
-{
-    for (int i = 0; i < NUM_INIT_TYPES; ++i)
-        printf("%s (%d)\n", initcondtype_names[i], i);
-}
-
+void acQueryInitcondtypes(void);
 
 /** Prints a list of int parameters */
-static inline void
-acQueryIntparams(void)
-{
-    for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        printf("%s (%d)\n", intparam_names[i], i);
-}
+void acQueryIntparams(void);
 
 /** Prints a list of int3 parameters */
-static inline void
-acQueryInt3params(void)
-{
-    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        printf("%s (%d)\n", int3param_names[i], i);
-}
+void acQueryInt3params(void);
 
 /** Prints a list of real parameters */
-static inline void
-acQueryRealparams(void)
-{
-    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        printf("%s (%d)\n", realparam_names[i], i);
-}
+void acQueryRealparams(void);
 
 /** Prints a list of real3 parameters */
-static inline void
-acQueryReal3params(void)
-{
-    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-        printf("%s (%d)\n", real3param_names[i], i);
-}
+void acQueryReal3params(void);
 
 /** Prints a list of Scalar array handles */
 /*
@@ -513,12 +487,7 @@ acQueryVtxbufs(void)
 }
 
 /** Prints a list of kernels */
-static inline void
-acQueryKernels(void)
-{
-    for (int i = 0; i < NUM_KERNELS; ++i)
-        printf("%s (%d)\n", kernel_names[i], i);
-}
+void acQueryKernels(void);
 
 static inline void
 acPrintIntParam(const AcIntParam a, const AcMeshInfo info)
@@ -526,13 +495,8 @@ acPrintIntParam(const AcIntParam a, const AcMeshInfo info)
     printf("%s: %d\n", intparam_names[a], info.params.scalars.int_params[a]);
 }
 
-static inline void
-acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info)
-{
-    acPrintIntParam(a, info);
-    acPrintIntParam(b, info);
-    acPrintIntParam(c, info);
-}
+void acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c,
+                      const AcMeshInfo info);
 
 static inline void
 acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
@@ -1278,6 +1242,7 @@ FUNC_DEFINE(AcResult, acDeviceReduceVecScal,(const Device device, const Stream s
 /** */
 FUNC_DEFINE(AcResult, acDeviceReduceXY,(const Device device, const Stream stream, const Field field,
                                  const Profile profile, const AcReduction reduction));
+FUNC_DEFINE(AcResult, acDeviceReduceXYAverages(const Device , const Stream));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffer,(const Device device, const Profile handle));

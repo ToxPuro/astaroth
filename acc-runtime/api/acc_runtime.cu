@@ -170,7 +170,7 @@ bool
 is_large_launch(const T dims)
 {
   const int3 ghosts = get_ghosts();
-  return (dims.x > ghosts.x && dims.y > ghosts.y && dims.z > ghosts.z);
+  return ((int)dims.x > ghosts.x && (int)dims.y > ghosts.y && (int)dims.z > ghosts.z);
 }
 
 
@@ -188,8 +188,8 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
   //if(dims.x >= warp_size && tpb.x % warp_size != 0) return false;
   if(kernel_reduces_profile(kernel))
   {
-	  if(tpb.y > max_tpb_for_reduce_kernels.y) return false;
-	  if(tpb.z > max_tpb_for_reduce_kernels.z) return false;
+	  if(tpb.y > (size_t)max_tpb_for_reduce_kernels.y) return false;
+	  if(tpb.z > (size_t)max_tpb_for_reduce_kernels.z) return false;
 	  //TP: if we enforce that tpb.x is a multiple of the warp size then 
 	  //can easily do warp reduce while doing a reduction whose result is not x-dependent --> major saving in memory and performance increase
 	  if(dims.x >= warp_size && tpb.x % warp_size != 0) return false;
@@ -1225,8 +1225,11 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
   ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
   ERRCHK_CUDA(cudaEventSynchronize(tstop));
   float milliseconds = 0;
-  ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
-  printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel],(double)milliseconds);
+  cudaEventElapsedTime(&milliseconds, tstart, tstop);
+
+  ERRCHK_ALWAYS(kernel < NUM_KERNELS);
+  printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel],
+         static_cast<double>(milliseconds));
 
   // Timer destroy
   ERRCHK_CUDA(cudaEventDestroy(tstart));
@@ -1772,6 +1775,7 @@ acPBASwapBuffers(VertexBufferArray* vba)
 AcResult
 acLoadMeshInfo(const AcMeshInfoScalars info, const cudaStream_t stream)
 {
+  /*
   for (int i = 0; i < NUM_INT_PARAMS; ++i)
     ERRCHK_ALWAYS(acLoadIntUniform(stream, (AcIntParam)i, info.int_params[i]) ==
                   AC_SUCCESS);
@@ -1787,8 +1791,13 @@ acLoadMeshInfo(const AcMeshInfoScalars info, const cudaStream_t stream)
   for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
     ERRCHK_ALWAYS(acLoadReal3Uniform(stream, (AcReal3Param)i,
                                      info.real3_params[i]) == AC_SUCCESS);
+  */
 
-  return AC_SUCCESS;
+  /* See note in acLoadStencil */
+  ERRCHK(cudaDeviceSynchronize() == CUDA_SUCCESS);
+  const cudaError_t retval = cudaMemcpyToSymbol(
+      d_mesh_info, &info, sizeof(info), 0, cudaMemcpyHostToDevice);
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
 //---------------
@@ -1800,7 +1809,7 @@ acShapeSize(const AcShape shape)
   return shape.x * shape.y * shape.z * shape.w;
 }
 
-static __host__ __device__ constexpr bool
+__host__ __device__ constexpr bool
 acOutOfBounds(const AcIndex& index, const AcShape& shape)
 {
   return (index.x >= shape.x) || //
@@ -1820,7 +1829,7 @@ min(const AcIndex& a, const AcIndex& b)
   };
 }
 
-static __host__ __device__ constexpr AcIndex
+__host__ __device__ constexpr AcIndex
 operator+(const AcIndex& a, const AcIndex& b)
 {
   return (AcIndex){
@@ -1842,7 +1851,7 @@ operator-(const AcIndex& a, const AcIndex& b)
   };
 }
 
-static __host__ __device__ constexpr AcIndex
+__host__ __device__ constexpr AcIndex
 to_spatial(const size_t i, const AcShape& shape)
 {
   return (AcIndex){
@@ -1853,7 +1862,7 @@ to_spatial(const size_t i, const AcShape& shape)
   };
 }
 
-static __host__ __device__ constexpr size_t
+__host__ __device__ constexpr size_t
 to_linear(const AcIndex& index, const AcShape& shape)
 {
   return index.x +           //
@@ -1922,8 +1931,8 @@ reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
               const AcShape in_shape, const AcIndex out_offset,
               const AcShape out_shape, const AcShape block_shape)
 {
-  const AcIndex idx = to_spatial((size_t)threadIdx.x + blockIdx.x * blockDim.x
-		  , block_shape);
+  const AcIndex idx = to_spatial(
+      static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x, block_shape);
 
   const AcIndex in_pos  = idx + in_offset;
   const AcIndex out_pos = idx + out_offset;
@@ -2204,6 +2213,7 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
   const size_t bpg = (count + tpb - 1) / tpb;
   KERNEL_LAUNCH(multiply_inplace,bpg, tpb,0,0)(value, count, array);
   ERRCHK_CUDA_KERNEL();
+  ERRCHK_CUDA(cudaDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
 }
 #define TILE_DIM (32)
@@ -2231,8 +2241,8 @@ transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims)
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.x
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= dims.x    ||  (int)vertexIdx.y >= dims.y     || (int)vertexIdx.z >= dims.z;
-	const bool out_oob =  (int)out_vertexIdx.x >= dims.z ||  (int)out_vertexIdx.y >= dims.y || (int)out_vertexIdx.z >= dims.x;
+	const bool in_oob  =  vertexIdx.x  >= dims.x    ||  vertexIdx.y >= dims.y     || vertexIdx.z >= dims.z;
+	const bool out_oob =  out_vertexIdx.x >= dims.z ||  out_vertexIdx.y >= dims.y || out_vertexIdx.z >= dims.x;
 
 
 
@@ -2264,8 +2274,8 @@ transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims)
 		threadIdx.y + block_offset.y,
 		threadIdx.z + block_offset.x
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= dims.x    ||  (int)vertexIdx.y >= dims.y     || (int)vertexIdx.z >= dims.z;
-	const bool out_oob =  (int)out_vertexIdx.x >= dims.z ||  (int)out_vertexIdx.y >= dims.y || (int)out_vertexIdx.z >= dims.x;
+	const bool in_oob  =  vertexIdx.x  >= dims.x    ||  vertexIdx.y >= dims.y     || vertexIdx.z >= dims.z;
+	const bool out_oob =  out_vertexIdx.x >= dims.z ||  out_vertexIdx.y >= dims.y || out_vertexIdx.z >= dims.x;
 
 
 
@@ -2297,8 +2307,8 @@ transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims)
 		threadIdx.y + block_offset.x,
 		threadIdx.z + block_offset.z
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= dims.x    ||  (int)vertexIdx.y >= dims.y     || (int)vertexIdx.z >= dims.z;
-	const bool out_oob =  (int)out_vertexIdx.x >= dims.y ||  (int)out_vertexIdx.y >= dims.x || (int)out_vertexIdx.z >= dims.z;
+	const bool in_oob  =  vertexIdx.x  >= dims.x    ||  vertexIdx.y >= dims.y     || vertexIdx.z >= dims.z;
+	const bool out_oob =  out_vertexIdx.x >= dims.y ||  out_vertexIdx.y >= dims.x || out_vertexIdx.z >= dims.z;
 
 
 
@@ -2330,8 +2340,8 @@ transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims)
 		threadIdx.y + block_offset.x,
 		threadIdx.z + block_offset.z
 	};
-	const bool in_oob  =  (int)vertexIdx.x  >= dims.x    ||  (int)vertexIdx.y >= dims.y     || (int)vertexIdx.z >= dims.z;
-	const bool out_oob =  (int)out_vertexIdx.x >= dims.y ||  (int)out_vertexIdx.y >= dims.x || (int)out_vertexIdx.z >= dims.z;
+	const bool in_oob  =  vertexIdx.x  >= dims.x    ||  vertexIdx.y >= dims.y     || vertexIdx.z >= dims.z;
+	const bool out_oob =  out_vertexIdx.x >= dims.y ||  out_vertexIdx.y >= dims.x || out_vertexIdx.z >= dims.z;
 
 
 
@@ -2357,7 +2367,7 @@ transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const Volume dims)
 		threadIdx.z + in_block_offset.z
 	};
 
-	const bool oob  =  (int)vertexIdx.x  >= dims.x    ||  (int)vertexIdx.y >= dims.y     || (int)vertexIdx.z >= dims.z;
+	const bool oob  =  vertexIdx.x  >= dims.x    ||  vertexIdx.y >= dims.y     || vertexIdx.z >= dims.z;
 	if(oob) return;
 	dst[vertexIdx.x + dims.x*vertexIdx.z + dims.x*dims.z*vertexIdx.y] 
 		= src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)];
@@ -2550,3 +2560,40 @@ acGetMeshOrderForProfile(const AcProfileType type)
 };
 
 #include "load_ac_kernel_params.h"
+
+int
+acVerifyMeshInfo(const AcMeshInfoScalars info)
+{
+  int retval = 0;
+  for (size_t i = 0; i < NUM_INT_PARAMS; ++i) {
+    if (info.int_params[i] == INT_MIN) {
+      retval = -1;
+      fprintf(stderr, "--- Warning: [%s] uninitialized ---\n",
+              intparam_names[i]);
+    }
+  }
+  for (size_t i = 0; i < NUM_INT3_PARAMS; ++i) {
+    if (info.int3_params[i].x == INT_MIN || info.int3_params[i].y == INT_MIN ||
+        info.int3_params[i].z == INT_MIN) {
+      retval = -1;
+      fprintf(stderr, "--- Warning: [%s] uninitialized ---\n",
+              int3param_names[i]);
+    }
+  }
+  for (size_t i = 0; i < NUM_REAL_PARAMS; ++i) {
+    if (isnan(info.real_params[i])) {
+      retval = -1;
+      fprintf(stderr, "--- Warning: [%s] uninitialized ---\n",
+              realparam_names[i]);
+    }
+  }
+  for (int i = 0; i < NUM_REAL3_PARAMS; ++i) {
+    if (isnan(info.real3_params[i].x) || isnan(info.real3_params[i].y) ||
+        isnan(info.real3_params[i].z)) {
+      retval = -1;
+      fprintf(stderr, "--- Warning: [%s] uninitialized ---\n",
+              real3param_names[i]);
+    }
+  }
+  return retval;
+}

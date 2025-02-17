@@ -27,6 +27,8 @@
 #include "astaroth_forcing.h"
 #include "astaroth_random.h"
 
+#include "errchk.h"
+
 #include <cmath>
 #include <map>
 #include <vector>
@@ -252,4 +254,57 @@ generateForcingParams(const AcReal relhel, const AcReal magnitude, const AcReal 
         .phase     = phase,
         .kaver     = kaver,
     };
+}
+
+int
+loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* info)
+{
+#if defined(LFORCING) && LFORCING
+    info->real_params[AC_forcing_magnitude] = forcing_params.magnitude;
+    info->real_params[AC_forcing_phase]     = forcing_params.phase;
+
+    info->real_params[AC_k_forcex] = forcing_params.k_force.x;
+    info->real_params[AC_k_forcey] = forcing_params.k_force.y;
+    info->real_params[AC_k_forcez] = forcing_params.k_force.z;
+
+    info->real_params[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
+    info->real_params[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
+    info->real_params[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
+
+    info->real_params[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
+    info->real_params[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
+    info->real_params[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
+
+    info->real_params[AC_kaver] = forcing_params.kaver;
+
+    return 0;
+#else
+    WARNING("Called loadForcingParamsToMeshInfo but LFORCING was false");
+    (void)forcing_params; // Unused
+    (void)info;           // Unused
+    return -1;
+#endif
+}
+
+void
+printForcingParams(const ForcingParams forcing_params)
+{
+    printf("Forcing parameters:\n"
+           " magnitude: %lf\n"
+           " phase: %lf\n"
+           " k force: %lf\n"
+           "          %lf\n"
+           "          %lf\n"
+           " ff hel real: %lf\n"
+           "            : %lf\n"
+           "            : %lf\n"
+           " ff hel imag: %lf\n"
+           "            : %lf\n"
+           "            : %lf\n"
+           " k aver: %lf\n"
+           "\n",
+           forcing_params.magnitude, forcing_params.phase, forcing_params.k_force.x,
+           forcing_params.k_force.y, forcing_params.k_force.z, forcing_params.ff_hel_re.x,
+           forcing_params.ff_hel_re.y, forcing_params.ff_hel_re.z, forcing_params.ff_hel_im.x,
+           forcing_params.ff_hel_im.y, forcing_params.ff_hel_im.z, forcing_params.kaver);
 }

@@ -247,7 +247,7 @@ gen_kernel_block_loops(const int curr_kernel)
 	#endif
 	}
 	{
-	    	printf("constexpr size_t warp_leader_id  = 0;");
+	    	printf("[[maybe_unused]] constexpr size_t warp_leader_id  = 0;");
 	    	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
 	    	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
 	    	printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
@@ -283,6 +283,8 @@ gen_kernel_block_loops(const int curr_kernel)
 	}
 
 
+
+
 	printf("const dim3 step_size = {"
 			"gridDim.x*blockDim.x,"
 			"gridDim.y*blockDim.y,"
@@ -290,9 +292,12 @@ gen_kernel_block_loops(const int curr_kernel)
 	       "};");
 	printf("const int should_not_be_more_y = end.y-start.y-threadIdx.y-(blockIdx.y*blockDim.y);");
 	printf("const int should_not_be_more_z = end.z-start.z-threadIdx.z-(blockIdx.z*blockDim.z);");
-	printf("const int last_block_idx_y = min(vba.block_factor.y,((should_not_be_more_y + step_size.y - 1)/(step_size.y))) -1;");
-	printf("const int last_block_idx_z = min(vba.block_factor.z,((should_not_be_more_z + step_size.z - 1)/(step_size.z))) -1;");
 
+	printf("const int calculated_end_y = ((should_not_be_more_y + step_size.y - 1)/(step_size.y));");
+	printf("const int calculated_end_z = ((should_not_be_more_z + step_size.z - 1)/(step_size.z));");
+
+	printf("[[maybe_unused]] const int last_block_idx_y = (vba.block_factor.y < calculated_end_y ? vba.block_factor.y : calculated_end_y) -1;");
+	printf("[[maybe_unused]] const int last_block_idx_z = (vba.block_factor.z < calculated_end_z ? vba.block_factor.z : calculated_end_z) -1;");
 
   	printf("for(int current_block_idx_x = 0; current_block_idx_x < vba.block_factor.x; ++current_block_idx_x) {");
 	for(int i = 0; i < NUM_PROFILES; ++i)
@@ -357,7 +362,7 @@ gen_kernel_common_prefix()
          "tid.y + start.y,"
          "tid.z + start.z,"
          "};");
-  printf("const int3 globalVertexIdx = (int3){"
+  printf("const int3 globalVertexIdx __attribute__((unused)) = (int3){"
          "d_multigpu_offset.x + vertexIdx.x,"
          "d_multigpu_offset.y + vertexIdx.y,"
          "d_multigpu_offset.z + vertexIdx.z,"
@@ -944,7 +949,7 @@ print_warp_reduce_func(const char* datatype, const char* define_name, const Redu
 void
 print_reduce_func(const char* datatype, const char* define_name, const char* enum_name, const int curr_kernel, const char** names, const int* is_reduced, const size_t n_elems, const ReduceOp op)
 {
-        printf("const auto reduce_%s_%s __attribute__((unused)) = [&](%s val, const %sOutputParam& output) {",reduce_op_to_name(op),define_name,datatype,enum_name);
+        printf("[[maybe_unused]] const auto reduce_%s_%s __attribute__((unused)) = [&](%s val, const %sOutputParam& output) {",reduce_op_to_name(op),define_name,datatype,enum_name);
 	if(kernel_has_block_loops(curr_kernel))
 	{
 		printf("switch(output) {");
@@ -1002,26 +1007,26 @@ gen_kernel_reduce_funcs(const int curr_kernel)
     }
     else
     {
-	    printf("auto reduce_sum_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
-	    printf("auto reduce_max_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
-	    printf("auto reduce_min_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_sum_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_max_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_min_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
     }
     if(get_num_reduced_vars(NUM_INT_OUTPUTS,reduced_ints[curr_kernel]))
 	printf_reduce_funcs("int","int","AcInt",curr_kernel,int_output_names,reduced_ints[curr_kernel],NUM_INT_OUTPUTS);
     else
     {
-	    printf("auto reduce_sum_int = [&](const int& val, const AcIntOutputParam& param){};");
-	    printf("auto reduce_max_int = [&](const int& val, const AcIntOutputParam& param){};");
-	    printf("auto reduce_min_int = [&](const int& val, const AcIntOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_sum_int = [&](const int& val, const AcIntOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_max_int = [&](const int& val, const AcIntOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_min_int = [&](const int& val, const AcIntOutputParam& param){};");
     }
 #if AC_DOUBLE_PRECISION
     if(get_num_reduced_vars(NUM_FLOAT_OUTPUTS,reduced_floats[curr_kernel]))
 	printf_reduce_funcs("float","float","AcFloat",curr_kernel,float_output_names,reduced_floats[curr_kernel],NUM_FLOAT_OUTPUTS);
     else
     {
-	    printf("auto reduce_sum_float = [&](const float& val, const AcFloatOutputParam& param){};");
-	    printf("auto reduce_max_float = [&](const float& val, const AcFloatOutputParam& param){};");
-	    printf("auto reduce_min_float = [&](const float& val, const AcFloatOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_sum_float = [&](const float& val, const AcFloatOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_max_float = [&](const float& val, const AcFloatOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_min_float = [&](const float& val, const AcFloatOutputParam& param){};");
     }
 #endif
   }
@@ -1047,6 +1052,29 @@ gen_return_if_oob(const int curr_kernel)
        }
        printf("if(out_of_bounds) %s;",kernel_has_block_loops(curr_kernel) ? "continue" : "return");
        printf("{\n");
+  printf("if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
+         "vertexIdx.z >= end.z) { return; }");
+
+  // Enable excluding some internal domain
+  printf("\n#if defined(AC_ENABLE_EXCLUDE_INNER)\n");
+  printf("if (DCONST(AC_exclude_inner)) {");
+  // printf("const int nix_min = (DCONST(AC_nx_min) + (STENCIL_WIDTH-1)/2);");
+  // printf("const int nix_max = (DCONST(AC_nx_max) - (STENCIL_WIDTH-1)/2);");
+  // printf("const int niy_min = (DCONST(AC_ny_min) + (STENCIL_HEIGHT-1)/2);");
+  // printf("const int niy_max = (DCONST(AC_ny_max) - (STENCIL_HEIGHT-1)/2);");
+  // printf("const int niz_min = (DCONST(AC_nz_min) + (STENCIL_DEPTH-1)/2);");
+  // printf("const int niz_max = (DCONST(AC_nz_max) - (STENCIL_DEPTH-1)/2);");
+  printf("const int nix_min = (start.x + (STENCIL_WIDTH-1)/2);");
+  printf("const int nix_max = (end.x - (STENCIL_WIDTH-1)/2);");
+  printf("const int niy_min = (start.y + (STENCIL_HEIGHT-1)/2);");
+  printf("const int niy_max = (end.y - (STENCIL_HEIGHT-1)/2);");
+  printf("const int niz_min = (start.z + (STENCIL_DEPTH-1)/2);");
+  printf("const int niz_max = (end.z - (STENCIL_DEPTH-1)/2);");
+  printf("if (vertexIdx.x >= nix_min && vertexIdx.x < nix_max && ");
+  printf("    vertexIdx.y >= niy_min && vertexIdx.y < niy_max && ");
+  printf("    vertexIdx.z >= niz_min && vertexIdx.z < niz_max) { return; }");
+  printf("}");
+  printf("\n#endif\n");
 }
 
 static void

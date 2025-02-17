@@ -68,6 +68,7 @@ typedef enum {
   #include "user_built-in_constants.h"
   //#include "user_builtin_non_scalar_constants.h"
   #include "func_attributes.h"
+#include "device_headers.h"
 
 #ifdef __cplusplus
 
@@ -549,6 +550,11 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
   FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size3_t count));
 
   FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
+/**
+ * Checks the mesh info for uninitialized values.
+ * Returns 0 on succes and -1 on failure.
+ */
+FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfoParams info));
 
 #ifdef __cplusplus
 

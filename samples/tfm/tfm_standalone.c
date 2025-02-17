@@ -16,33 +16,33 @@ static AcReal current_time = 0;
 static int
 acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info)
 {
-    info->real_params[AC_dsx] = info->real_params[AC_box_size_x] / (info->int_params[AC_nx] - 1);
-    info->real_params[AC_dsy] = info->real_params[AC_box_size_y] / (info->int_params[AC_ny] - 1);
-    info->real_params[AC_dsz] = info->real_params[AC_box_size_z] / (info->int_params[AC_nz] - 1);
+    info->real_params[AC_dsx] = info->real_params[AC_sx] / (info->int_params[AC_nx] - 1);
+    info->real_params[AC_dsy] = info->real_params[AC_sy] / (info->int_params[AC_ny] - 1);
+    info->real_params[AC_dsz] = info->real_params[AC_sz] / (info->int_params[AC_nz] - 1);
 
     return EXIT_SUCCESS;
 }
 
-static void
-loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* info)
-{
-    info->real_params[AC_forcing_magnitude] = forcing_params.magnitude;
-    info->real_params[AC_forcing_phase]     = forcing_params.phase;
+// static void
+// loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* info)
+// {
+//     info->real_params[AC_forcing_magnitude] = forcing_params.magnitude;
+//     info->real_params[AC_forcing_phase]     = forcing_params.phase;
 
-    info->real_params[AC_k_forcex] = forcing_params.k_force.x;
-    info->real_params[AC_k_forcey] = forcing_params.k_force.y;
-    info->real_params[AC_k_forcez] = forcing_params.k_force.z;
+//     info->real_params[AC_k_forcex] = forcing_params.k_force.x;
+//     info->real_params[AC_k_forcey] = forcing_params.k_force.y;
+//     info->real_params[AC_k_forcez] = forcing_params.k_force.z;
 
-    info->real_params[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
-    info->real_params[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
-    info->real_params[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
+//     info->real_params[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
+//     info->real_params[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
+//     info->real_params[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
 
-    info->real_params[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
-    info->real_params[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
-    info->real_params[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
+//     info->real_params[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
+//     info->real_params[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
+//     info->real_params[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
 
-    info->real_params[AC_kaver] = forcing_params.kaver;
-}
+//     info->real_params[AC_kaver] = forcing_params.kaver;
+// }
 
 static void
 loadForcingParamsToDevice(const Device device, const ForcingParams forcing_params)
@@ -67,28 +67,28 @@ loadForcingParamsToDevice(const Device device, const ForcingParams forcing_param
     acDeviceSynchronizeStream(device, STREAM_ALL);
 }
 
-static void
-printForcingParams(const ForcingParams forcing_params)
-{
-    printf("Forcing parameters:\n"
-           " magnitude: %lf\n"
-           " phase: %lf\n"
-           " k force: %lf\n"
-           "          %lf\n"
-           "          %lf\n"
-           " ff hel real: %lf\n"
-           "            : %lf\n"
-           "            : %lf\n"
-           " ff hel imag: %lf\n"
-           "            : %lf\n"
-           "            : %lf\n"
-           " k aver: %lf\n"
-           "\n",
-           forcing_params.magnitude, forcing_params.phase, forcing_params.k_force.x,
-           forcing_params.k_force.y, forcing_params.k_force.z, forcing_params.ff_hel_re.x,
-           forcing_params.ff_hel_re.y, forcing_params.ff_hel_re.z, forcing_params.ff_hel_im.x,
-           forcing_params.ff_hel_im.y, forcing_params.ff_hel_im.z, forcing_params.kaver);
-}
+// static void
+// printForcingParams(const ForcingParams forcing_params)
+// {
+//     printf("Forcing parameters:\n"
+//            " magnitude: %lf\n"
+//            " phase: %lf\n"
+//            " k force: %lf\n"
+//            "          %lf\n"
+//            "          %lf\n"
+//            " ff hel real: %lf\n"
+//            "            : %lf\n"
+//            "            : %lf\n"
+//            " ff hel imag: %lf\n"
+//            "            : %lf\n"
+//            "            : %lf\n"
+//            " k aver: %lf\n"
+//            "\n",
+//            forcing_params.magnitude, forcing_params.phase, forcing_params.k_force.x,
+//            forcing_params.k_force.y, forcing_params.k_force.z, forcing_params.ff_hel_re.x,
+//            forcing_params.ff_hel_re.y, forcing_params.ff_hel_re.z, forcing_params.ff_hel_im.x,
+//            forcing_params.ff_hel_im.y, forcing_params.ff_hel_im.z, forcing_params.kaver);
+// }
 
 static int
 acHostUpdateMHDSpecificParams(AcMeshInfo* info)
@@ -105,9 +105,9 @@ acHostUpdateMHDSpecificParams(AcMeshInfo* info)
                                       info->real_params[AC_cs_sound];
 
     // Other
-    info->real_params[AC_center_x] = info->real_params[AC_box_size_x] / 2;
-    info->real_params[AC_center_y] = info->real_params[AC_box_size_y] / 2;
-    info->real_params[AC_center_z] = info->real_params[AC_box_size_z] / 2;
+    info->real_params[AC_center_x] = info->real_params[AC_sx] / 2;
+    info->real_params[AC_center_y] = info->real_params[AC_sy] / 2;
+    info->real_params[AC_center_z] = info->real_params[AC_sz] / 2;
 
     return EXIT_SUCCESS;
 }
@@ -126,7 +126,7 @@ static int
 acParseArguments(const int argc, char* argv[], Arguments* args)
 {
     // Default arguments
-    args->config_path = AC_DEFAULT_CONFIG;
+    args->config_path = AC_DEFAULT_TFM_CONFIG;
 
     // Options
     const char short_options[]         = {"c:"};
@@ -221,16 +221,46 @@ acParseINI(const char* filepath, AcMeshInfo* info)
         return EXIT_FAILURE;
 
     // Update the rest of the parameters
-    acHostUpdateBuiltinParams(info);
+    // acHostUpdateBuiltinParams(info);
 
-    // Check for uninitialized values
-    for (size_t i = 0; i < NUM_INT_PARAMS; ++i)
-        if (info->int_params[i] == INT_MIN)
+    // // Check for uninitialized values
+    // for (size_t i = 0; i < NUM_INT_PARAMS; ++i)
+    //     if (info->int_params[i] == INT_MIN)
+    //         fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", intparam_names[i]);
+    // for (size_t i = 0; i < NUM_REAL_PARAMS; ++i)
+    //     if (info->real_params[i] == (AcReal)NAN)
+    //         fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", realparam_names[i]);
+    // return EXIT_SUCCESS;
+}
+
+int acVerifyMeshInfo(const AcMeshInfo info)
+{
+    int retval = 0;
+    for (size_t i = 0; i < NUM_INT_PARAMS; ++i) {
+        if (info.int_params[i] == INT_MIN) {
+            retval = -1;
             fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", intparam_names[i]);
-    for (size_t i = 0; i < NUM_REAL_PARAMS; ++i)
-        if (info->real_params[i] == (AcReal)NAN)
+        }
+    }
+    for (size_t i = 0; i < NUM_INT3_PARAMS; ++i) {
+        if (info.int3_params[i].x == INT_MIN || info.int3_params[i].y == INT_MIN || info.int3_params[i].z == INT_MIN) {
+            retval = -1;
+            fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", int3param_names[i]);
+        }
+    }
+    for (size_t i = 0; i < NUM_REAL_PARAMS; ++i) {
+        if (info.real_params[i] == (AcReal)NAN){
+            retval = -1;
             fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", realparam_names[i]);
-    return EXIT_SUCCESS;
+        }
+    }
+    for (size_t i = 0; i < NUM_REAL3_PARAMS; ++i) {
+        if (info.real3_params[i].x == (AcReal)NAN || info.real3_params[i].y == (AcReal)NAN || info.real3_params[i].z == (AcReal)NAN) {
+            retval = -1;
+            fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", real3param_names[i]);
+        }
+    }
+    return retval;
 }
 
 static int
@@ -251,7 +281,7 @@ static int
 tfm_init_profiles(const Device device)
 {
     const AcMeshInfo info  = acDeviceGetLocalConfig(device);
-    const AcReal global_lz = info.real_params[AC_box_size_z];
+    const AcReal global_lz = info.real_params[AC_sz];
     const size_t global_nz = as_size_t(info.int3_params[AC_global_grid_n].z);
     const long offset      = -info.int_params[AC_nz_min]; // TODO take multigpu into account
     const size_t local_mz  = as_size_t(info.int_params[AC_mz]);
@@ -553,8 +583,31 @@ main(int argc, char* argv[])
     // Mesh configuration
     AcMeshInfo info;
     acParseINI(args.config_path, &info);
+    ERRCHK_ALWAYS(info.int_params[AC_global_nx] > 0);
+    ERRCHK_ALWAYS(info.int_params[AC_global_ny] > 0);
+    ERRCHK_ALWAYS(info.int_params[AC_global_nz] > 0);
+    ERRCHK_ALWAYS(info.real_params[AC_global_sx] > 0);
+    ERRCHK_ALWAYS(info.real_params[AC_global_sy] > 0);
+    ERRCHK_ALWAYS(info.real_params[AC_global_sz] > 0);
+    info.int_params[AC_nx] = info.int_params[AC_global_nx];
+    info.int_params[AC_ny] = info.int_params[AC_global_ny];
+    info.int_params[AC_nz] = info.int_params[AC_global_nz];
+    info.real_params[AC_sx] = info.real_params[AC_global_sx];
+    info.real_params[AC_sy] = info.real_params[AC_global_sy];
+    info.real_params[AC_sz] = info.real_params[AC_global_sz];
+    info.real_params[AC_dsx] = ((double)info.real_params[AC_global_sx]) / info.int_params[AC_global_nx];
+    info.real_params[AC_dsy] = ((double)info.real_params[AC_global_sy]) / info.int_params[AC_global_ny];
+    info.real_params[AC_dsz] = ((double)info.real_params[AC_global_sz]) / info.int_params[AC_global_nz];
+    ERRCHK_ALWAYS(info.real_params[AC_sx] > 0);
+    ERRCHK_ALWAYS(info.real_params[AC_sy] > 0);
+    ERRCHK_ALWAYS(info.real_params[AC_sz] > 0);
+    ERRCHK_ALWAYS(info.real_params[AC_dsx] > 0);
+    ERRCHK_ALWAYS(info.real_params[AC_dsy] > 0);
+    ERRCHK_ALWAYS(info.real_params[AC_dsz] > 0);
+    acHostUpdateBuiltinParams(&info);
     acHostUpdateTFMSpecificGlobalParams(&info);
     acHostUpdateMHDSpecificParams(&info);
+    acVerifyMeshInfo(info);
 
     printf("MeshInfo:\n");
     acPrintMeshInfo(info);

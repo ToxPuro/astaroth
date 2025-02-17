@@ -1,5 +1,5 @@
 // Defines
-hostdefine AC_INTEGRATION_ENABLED (1) // Enables acIntegrate() and other non-generic library functions
+//hostdefine AC_INTEGRATION_ENABLED (0) // Enables acIntegrate() and other non-generic library functions
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (0)
@@ -8,16 +8,27 @@ hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LTFM (1)
+hostdefine LOO (1)
 
 hostdefine R_PI (AC_REAL_PI)
 
+hostdefine AC_ENABLE_EXCLUDE_INNER
+int AC_exclude_inner // Exclude the inner domain if this parameter is set (fuse outer integration)
+
 // Simulation control
 int AC_simulation_nsteps
-int AC_simulation_output_interval
+int AC_simulation_snapshot_output_interval
+int AC_simulation_profile_output_interval
+int AC_simulation_reset_test_field_interval
 
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
+
+#if LOO
+Field VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ
+Field VTXBUF_UU_DOT_OO
+#endif
 
 #if LMAGNETIC
 Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
@@ -33,6 +44,7 @@ hostdefine AC_TFM_ENABLED (1)
 
 real AC_eta_tfm
 real AC_profile_amplitude, AC_profile_wavenumber
+real3 AC_dummy_real3
 
 
 // Aliases for VTXBUF_UU to avoid confusion with the notation convention
@@ -80,8 +92,17 @@ Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
 // Device constants
 real AC_dsx, AC_dsy, AC_dsz
 real AC_dt
-int AC_step_number
-real AC_box_size_x, AC_box_size_y, AC_box_size_z
+// int AC_step_number
+
+// User configuration parameters
+int AC_global_nx, AC_global_ny, AC_global_nz
+real AC_global_sx, AC_global_sy, AC_global_sz
+
+// Local mesh information derived from the configuration
+int AC_nx, AC_ny, AC_nz
+real AC_sx, AC_sy, AC_sz
+real AC_dsx, AC_dsy, AC_dsz
+
 
 // Run parameters
 real AC_cdt
@@ -398,6 +419,7 @@ continuity() {
 #endif
 }
 
+#if LHYDRO
 momentum() {
     S = stress_tensor(UU)
     cs2_sound = AC_cs_sound * AC_cs_sound
@@ -431,6 +453,25 @@ momentum() {
 
     return mom
 }
+#else 
+    // Roberts flow
+roberts_flow() {
+    pos = real3(AC_dsx * globalVertexIdx.x, 
+                AC_dsy * globalVertexIdx.y, 
+                AC_dsz * globalVertexIdx.z)
+    e = real3(0, 0, 1)
+    a = 8
+    fac = R_PI / a
+    px = sin(pos.x * fac)
+    py = sin(pos.y * fac)
+    chi = px * py
+    // Note analytical, numerical diff. would require a new DSL field
+    grad_chi = real3(py * fac * cos(pos.x * fac),
+                     px * fac * cos(pos.y * fac),
+                     0)
+    return cross(e, grad_chi) + chi * e
+}
+#endif
 
 #if LMAGNETIC
 induction() {
@@ -476,51 +517,23 @@ entropy() {
 #endif
 
 // Integration: single-pass
-rk3(s0, s1, roc) {
-    /*
-    real alpha = 0., -5./9., -153. / 128.
-    real beta = 1. / 3., 15./ 16., 8. / 15.
-
-    // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
-    if AC_step_number > 0 {
-        return s1 + beta[AC_step_number] * ((alpha[AC_step_number] / beta[AC_step_number - 1]) * (s1 - s0) + roc * AC_dt)
-    } else {
-        return s1 + beta[AC_step_number] * roc * AC_dt
-    }
-    */
-    // Workaround
+rk3_step0(s0, s1, roc) {
     real alpha = 0., -5./9., -153. / 128.
     real beta  = 1., 1. / 3., 15./ 16., 8. / 15.
 
-    return s1 + beta[AC_step_number + 1] * ((alpha[AC_step_number] / beta[AC_step_number]) * (s1 - s0) + roc * AC_dt)
+    return s1 + beta[0 + 1] * ((alpha[0] / beta[0]) * (s1 - s0) + roc * AC_dt)
 }
-
-// Integration: two-pass
-rk3_intermediate(w, roc) {
+rk3_step1(s0, s1, roc) {
     real alpha = 0., -5./9., -153. / 128.
-    return alpha[AC_step_number] * w + roc * AC_dt
-    /*
-    // TODO NOTE abysmal performance on AMD, needs a workaround like in rk3() 
-    if AC_step_number > 0 {
-        return alpha[AC_step_number] * w + roc * AC_dt
-    } else {
-        return roc * AC_dt
-    }
-    */
+    real beta  = 1., 1. / 3., 15./ 16., 8. / 15.
+
+    return s1 + beta[1 + 1] * ((alpha[1] / beta[1]) * (s1 - s0) + roc * AC_dt)
 }
+rk3_step2(s0, s1, roc) {
+    real alpha = 0., -5./9., -153. / 128.
+    real beta  = 1., 1. / 3., 15./ 16., 8. / 15.
 
-rk3_final(f, w) {
-    real beta = 1. / 3., 15./ 16., 8. / 15.
-
-    /*
-    #ifndef NDEBUG
-    if (AC_step_number >= len(beta)) {
-        print("AC_step_number invalid: '%d'\n", AC_step_number)
-    }
-    #endif
-    */
-
-    return f + beta[AC_step_number] * w
+    return s1 + beta[2 + 1] * ((alpha[2] / beta[2]) * (s1 - s0) + roc * AC_dt)
 }
 
 #if LTFM
@@ -560,127 +573,253 @@ roc_TF_a11_y() {
 roc_TF_a11_z() {
     return AC_eta_tfm*derxx(TF_a11_z) + AC_eta_tfm*deryy(TF_a11_z) - AC_eta_tfm*derxz(TF_a11_x) - AC_eta_tfm*deryz(TF_a11_y) + value(FIELD_u_x)*value(PROFILE_B11mean_y) + value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) - value(FIELD_u_y)*value(PROFILE_B11mean_x) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z) + value(PROFILE_Umean_x)*derz(TF_a11_x) - value(PROFILE_Umean_x)*derx(TF_a11_z) + value(PROFILE_Umean_y)*derz(TF_a11_y) - value(PROFILE_Umean_y)*dery(TF_a11_z) - value(PROFILE_ucrossb11mean_z)
 }
-Kernel singlepass_solve_tfm_b22(){
-    write(TF_a22_x, rk3(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
-    write(TF_a22_y, rk3(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
-    write(TF_a22_z, rk3(previous(TF_a22_z), value(TF_a22_z), roc_TF_a22_z()))
+Kernel singlepass_solve_step0_tfm_b22(){
+    write(TF_a22_x, rk3_step0(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
+    write(TF_a22_y, rk3_step0(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
+    write(TF_a22_z, rk3_step0(previous(TF_a22_z), value(TF_a22_z), roc_TF_a22_z()))
     write(TF_uxb22_x, -value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z))
     write(TF_uxb22_y, value(FIELD_u_x)*dery(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_y) + value(FIELD_u_z)*dery(TF_a22_z))
     write(TF_uxb22_z, value(FIELD_u_x)*derz(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_z) + value(FIELD_u_y)*derz(TF_a22_y) - value(FIELD_u_y)*dery(TF_a22_z))
 }
-Kernel singlepass_solve_tfm_b12(){
-    write(TF_a12_x, rk3(previous(TF_a12_x), value(TF_a12_x), roc_TF_a12_x()))
-    write(TF_a12_y, rk3(previous(TF_a12_y), value(TF_a12_y), roc_TF_a12_y()))
-    write(TF_a12_z, rk3(previous(TF_a12_z), value(TF_a12_z), roc_TF_a12_z()))
+Kernel singlepass_solve_step0_tfm_b12(){
+    write(TF_a12_x, rk3_step0(previous(TF_a12_x), value(TF_a12_x), roc_TF_a12_x()))
+    write(TF_a12_y, rk3_step0(previous(TF_a12_y), value(TF_a12_y), roc_TF_a12_y()))
+    write(TF_a12_z, rk3_step0(previous(TF_a12_z), value(TF_a12_z), roc_TF_a12_z()))
     write(TF_uxb12_x, -value(FIELD_u_y)*dery(TF_a12_x) + value(FIELD_u_y)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_x) + value(FIELD_u_z)*derx(TF_a12_z))
     write(TF_uxb12_y, value(FIELD_u_x)*dery(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_y) + value(FIELD_u_z)*dery(TF_a12_z))
     write(TF_uxb12_z, value(FIELD_u_x)*derz(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_z) + value(FIELD_u_y)*derz(TF_a12_y) - value(FIELD_u_y)*dery(TF_a12_z))
 }
-Kernel singlepass_solve_tfm_b11(){
-    write(TF_a11_x, rk3(previous(TF_a11_x), value(TF_a11_x), roc_TF_a11_x()))
-    write(TF_a11_y, rk3(previous(TF_a11_y), value(TF_a11_y), roc_TF_a11_y()))
-    write(TF_a11_z, rk3(previous(TF_a11_z), value(TF_a11_z), roc_TF_a11_z()))
+Kernel singlepass_solve_step0_tfm_b11(){
+    write(TF_a11_x, rk3_step0(previous(TF_a11_x), value(TF_a11_x), roc_TF_a11_x()))
+    write(TF_a11_y, rk3_step0(previous(TF_a11_y), value(TF_a11_y), roc_TF_a11_y()))
+    write(TF_a11_z, rk3_step0(previous(TF_a11_z), value(TF_a11_z), roc_TF_a11_z()))
     write(TF_uxb11_x, -value(FIELD_u_y)*dery(TF_a11_x) + value(FIELD_u_y)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_x) + value(FIELD_u_z)*derx(TF_a11_z))
     write(TF_uxb11_y, value(FIELD_u_x)*dery(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_y) + value(FIELD_u_z)*dery(TF_a11_z))
     write(TF_uxb11_z, value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z))
 }
-Kernel singlepass_solve_tfm_b21(){
-    write(TF_a21_x, rk3(previous(TF_a21_x), value(TF_a21_x), roc_TF_a21_x()))
-    write(TF_a21_y, rk3(previous(TF_a21_y), value(TF_a21_y), roc_TF_a21_y()))
-    write(TF_a21_z, rk3(previous(TF_a21_z), value(TF_a21_z), roc_TF_a21_z()))
+Kernel singlepass_solve_step0_tfm_b21(){
+    write(TF_a21_x, rk3_step0(previous(TF_a21_x), value(TF_a21_x), roc_TF_a21_x()))
+    write(TF_a21_y, rk3_step0(previous(TF_a21_y), value(TF_a21_y), roc_TF_a21_y()))
+    write(TF_a21_z, rk3_step0(previous(TF_a21_z), value(TF_a21_z), roc_TF_a21_z()))
     write(TF_uxb21_x, -value(FIELD_u_y)*dery(TF_a21_x) + value(FIELD_u_y)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_x) + value(FIELD_u_z)*derx(TF_a21_z))
     write(TF_uxb21_y, value(FIELD_u_x)*dery(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_y) + value(FIELD_u_z)*dery(TF_a21_z))
     write(TF_uxb21_z, value(FIELD_u_x)*derz(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_z) + value(FIELD_u_y)*derz(TF_a21_y) - value(FIELD_u_y)*dery(TF_a21_z))
 }
 #endif
 
-Kernel singlepass_solve() {
-    write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
+Kernel singlepass_solve_step0() {
+    write(VTXBUF_LNRHO, rk3_step0(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
 
 #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
+    write(VTXBUF_ENTROPY, rk3_step0(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
 #endif 
+
+#if LHYDRO
     mom = momentum()
 
 #if LFORCING
     //Add the forcing component to the velocity field at the last integration step.
     //Important to init to zero here: ohterwise will produce numerical garbage! 
     forcing_step = real3(0.0, 0.0, 0.0)
-    if AC_step_number == 2 {
+    if 0 == 2 {
         if AC_current_time > AC_switch_forcing {
             forcing_step = forcing()
         }
     }
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
+    write(VTXBUF_UUX, rk3_step0(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
+    write(VTXBUF_UUY, rk3_step0(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3_step0(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
 #else 
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+    write(VTXBUF_UUX, rk3_step0(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3_step0(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3_step0(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+#endif
+
+#else 
+    // Roberts flow
+    mom = roberts_flow()
+    write(VTXBUF_UUX, mom.x)
+    write(VTXBUF_UUY, mom.y)
+    write(VTXBUF_UUZ, mom.z)
 #endif
 
 #if LMAGNETIC
     ind = induction()
-    write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
-    write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
-    write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
+    write(VTXBUF_AX, rk3_step0(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
+    write(VTXBUF_AY, rk3_step0(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
+    write(VTXBUF_AZ, rk3_step0(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
 #endif
 }
-
-Kernel twopass_solve_intermediate() {
-    write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity()))
-
-    #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_intermediate(previous(VTXBUF_ENTROPY), entropy()))
-    #endif
-
-    mom = momentum()
-    write(VTXBUF_UUX, rk3_intermediate(previous(VTXBUF_UUX), mom.x))
-    write(VTXBUF_UUY, rk3_intermediate(previous(VTXBUF_UUY), mom.y))
-    write(VTXBUF_UUZ, rk3_intermediate(previous(VTXBUF_UUZ), mom.z))
-
-    #if LMAGNETIC
-    ind = induction()
-    write(VTXBUF_AX, rk3_intermediate(previous(VTXBUF_AX), ind.x))
-    write(VTXBUF_AY, rk3_intermediate(previous(VTXBUF_AY), ind.y))
-    write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z))
-    #endif
-
-    #if LTFM
-        tfm_twopass_intermediate()
-    #endif
+//////////////////////
+#if LTFM
+Kernel singlepass_solve_step1_tfm_b22(){
+    write(TF_a22_x, rk3_step1(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
+    write(TF_a22_y, rk3_step1(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
+    write(TF_a22_z, rk3_step1(previous(TF_a22_z), value(TF_a22_z), roc_TF_a22_z()))
+    write(TF_uxb22_x, -value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z))
+    write(TF_uxb22_y, value(FIELD_u_x)*dery(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_y) + value(FIELD_u_z)*dery(TF_a22_z))
+    write(TF_uxb22_z, value(FIELD_u_x)*derz(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_z) + value(FIELD_u_y)*derz(TF_a22_y) - value(FIELD_u_y)*dery(TF_a22_z))
 }
+Kernel singlepass_solve_step1_tfm_b12(){
+    write(TF_a12_x, rk3_step1(previous(TF_a12_x), value(TF_a12_x), roc_TF_a12_x()))
+    write(TF_a12_y, rk3_step1(previous(TF_a12_y), value(TF_a12_y), roc_TF_a12_y()))
+    write(TF_a12_z, rk3_step1(previous(TF_a12_z), value(TF_a12_z), roc_TF_a12_z()))
+    write(TF_uxb12_x, -value(FIELD_u_y)*dery(TF_a12_x) + value(FIELD_u_y)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_x) + value(FIELD_u_z)*derx(TF_a12_z))
+    write(TF_uxb12_y, value(FIELD_u_x)*dery(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_y) + value(FIELD_u_z)*dery(TF_a12_z))
+    write(TF_uxb12_z, value(FIELD_u_x)*derz(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_z) + value(FIELD_u_y)*derz(TF_a12_y) - value(FIELD_u_y)*dery(TF_a12_z))
+}
+Kernel singlepass_solve_step1_tfm_b11(){
+    write(TF_a11_x, rk3_step1(previous(TF_a11_x), value(TF_a11_x), roc_TF_a11_x()))
+    write(TF_a11_y, rk3_step1(previous(TF_a11_y), value(TF_a11_y), roc_TF_a11_y()))
+    write(TF_a11_z, rk3_step1(previous(TF_a11_z), value(TF_a11_z), roc_TF_a11_z()))
+    write(TF_uxb11_x, -value(FIELD_u_y)*dery(TF_a11_x) + value(FIELD_u_y)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_x) + value(FIELD_u_z)*derx(TF_a11_z))
+    write(TF_uxb11_y, value(FIELD_u_x)*dery(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_y) + value(FIELD_u_z)*dery(TF_a11_z))
+    write(TF_uxb11_z, value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z))
+}
+Kernel singlepass_solve_step1_tfm_b21(){
+    write(TF_a21_x, rk3_step1(previous(TF_a21_x), value(TF_a21_x), roc_TF_a21_x()))
+    write(TF_a21_y, rk3_step1(previous(TF_a21_y), value(TF_a21_y), roc_TF_a21_y()))
+    write(TF_a21_z, rk3_step1(previous(TF_a21_z), value(TF_a21_z), roc_TF_a21_z()))
+    write(TF_uxb21_x, -value(FIELD_u_y)*dery(TF_a21_x) + value(FIELD_u_y)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_x) + value(FIELD_u_z)*derx(TF_a21_z))
+    write(TF_uxb21_y, value(FIELD_u_x)*dery(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_y) + value(FIELD_u_z)*dery(TF_a21_z))
+    write(TF_uxb21_z, value(FIELD_u_x)*derz(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_z) + value(FIELD_u_y)*derz(TF_a21_y) - value(FIELD_u_y)*dery(TF_a21_z))
+}
+#endif
 
-Kernel twopass_solve_final() {
-    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO)))
+Kernel singlepass_solve_step1() {
+    write(VTXBUF_LNRHO, rk3_step1(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
 
-    #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY)))
-    #endif
+#if LENTROPY 
+    write(VTXBUF_ENTROPY, rk3_step1(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
+#endif 
 
+#if LHYDRO
+    mom = momentum()
+
+#if LFORCING
+    //Add the forcing component to the velocity field at the last integration step.
+    //Important to init to zero here: ohterwise will produce numerical garbage! 
     forcing_step = real3(0.0, 0.0, 0.0)
-    #if LFORCING
-    if AC_step_number == 2 {
+    if 1 == 2 {
         if AC_current_time > AC_switch_forcing {
             forcing_step = forcing()
         }
     }
-    #endif
-    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX)) + forcing_step.x)
-    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY)) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ)) + forcing_step.z)
+    write(VTXBUF_UUX, rk3_step1(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
+    write(VTXBUF_UUY, rk3_step1(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3_step1(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
+#else 
+    write(VTXBUF_UUX, rk3_step1(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3_step1(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3_step1(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+#endif
 
-    #if LMAGNETIC
-    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX)))
-    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
-    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
-    #endif
+#else 
+    // Roberts flow
+    mom = roberts_flow()
+    write(VTXBUF_UUX, mom.x)
+    write(VTXBUF_UUY, mom.y)
+    write(VTXBUF_UUZ, mom.z)
+#endif
 
-    #if LTFM
-        tfm_twopass_final()
-    #endif
+#if LMAGNETIC
+    ind = induction()
+    write(VTXBUF_AX, rk3_step1(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
+    write(VTXBUF_AY, rk3_step1(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
+    write(VTXBUF_AZ, rk3_step1(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
+#endif
 }
+//////////////////////////////////////////
+#if LTFM
+Kernel singlepass_solve_step2_tfm_b22(){
+    write(TF_a22_x, rk3_step2(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
+    write(TF_a22_y, rk3_step2(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
+    write(TF_a22_z, rk3_step2(previous(TF_a22_z), value(TF_a22_z), roc_TF_a22_z()))
+    write(TF_uxb22_x, -value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z))
+    write(TF_uxb22_y, value(FIELD_u_x)*dery(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_y) + value(FIELD_u_z)*dery(TF_a22_z))
+    write(TF_uxb22_z, value(FIELD_u_x)*derz(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_z) + value(FIELD_u_y)*derz(TF_a22_y) - value(FIELD_u_y)*dery(TF_a22_z))
+}
+Kernel singlepass_solve_step2_tfm_b12(){
+    write(TF_a12_x, rk3_step2(previous(TF_a12_x), value(TF_a12_x), roc_TF_a12_x()))
+    write(TF_a12_y, rk3_step2(previous(TF_a12_y), value(TF_a12_y), roc_TF_a12_y()))
+    write(TF_a12_z, rk3_step2(previous(TF_a12_z), value(TF_a12_z), roc_TF_a12_z()))
+    write(TF_uxb12_x, -value(FIELD_u_y)*dery(TF_a12_x) + value(FIELD_u_y)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_x) + value(FIELD_u_z)*derx(TF_a12_z))
+    write(TF_uxb12_y, value(FIELD_u_x)*dery(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_y) + value(FIELD_u_z)*dery(TF_a12_z))
+    write(TF_uxb12_z, value(FIELD_u_x)*derz(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_z) + value(FIELD_u_y)*derz(TF_a12_y) - value(FIELD_u_y)*dery(TF_a12_z))
+}
+Kernel singlepass_solve_step2_tfm_b11(){
+    write(TF_a11_x, rk3_step2(previous(TF_a11_x), value(TF_a11_x), roc_TF_a11_x()))
+    write(TF_a11_y, rk3_step2(previous(TF_a11_y), value(TF_a11_y), roc_TF_a11_y()))
+    write(TF_a11_z, rk3_step2(previous(TF_a11_z), value(TF_a11_z), roc_TF_a11_z()))
+    write(TF_uxb11_x, -value(FIELD_u_y)*dery(TF_a11_x) + value(FIELD_u_y)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_x) + value(FIELD_u_z)*derx(TF_a11_z))
+    write(TF_uxb11_y, value(FIELD_u_x)*dery(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_y) + value(FIELD_u_z)*dery(TF_a11_z))
+    write(TF_uxb11_z, value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z))
+}
+Kernel singlepass_solve_step2_tfm_b21(){
+    write(TF_a21_x, rk3_step2(previous(TF_a21_x), value(TF_a21_x), roc_TF_a21_x()))
+    write(TF_a21_y, rk3_step2(previous(TF_a21_y), value(TF_a21_y), roc_TF_a21_y()))
+    write(TF_a21_z, rk3_step2(previous(TF_a21_z), value(TF_a21_z), roc_TF_a21_z()))
+    write(TF_uxb21_x, -value(FIELD_u_y)*dery(TF_a21_x) + value(FIELD_u_y)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_x) + value(FIELD_u_z)*derx(TF_a21_z))
+    write(TF_uxb21_y, value(FIELD_u_x)*dery(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_y) + value(FIELD_u_z)*dery(TF_a21_z))
+    write(TF_uxb21_z, value(FIELD_u_x)*derz(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_z) + value(FIELD_u_y)*derz(TF_a21_y) - value(FIELD_u_y)*dery(TF_a21_z))
+}
+#endif
+
+Kernel singlepass_solve_step2() {
+    write(VTXBUF_LNRHO, rk3_step2(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
+
+#if LENTROPY 
+    write(VTXBUF_ENTROPY, rk3_step2(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
+#endif 
+
+#if LHYDRO
+    mom = momentum()
+
+#if LFORCING
+    //Add the forcing component to the velocity field at the last integration step.
+    //Important to init to zero here: ohterwise will produce numerical garbage! 
+    forcing_step = real3(0.0, 0.0, 0.0)
+    if 2 == 2 {
+        if AC_current_time > AC_switch_forcing {
+            forcing_step = forcing()
+        }
+    }
+    write(VTXBUF_UUX, rk3_step2(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
+    write(VTXBUF_UUY, rk3_step2(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3_step2(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
+#else 
+    write(VTXBUF_UUX, rk3_step2(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3_step2(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3_step2(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+#endif
+
+#else 
+    // Roberts flow
+    mom = roberts_flow()
+    write(VTXBUF_UUX, mom.x)
+    write(VTXBUF_UUY, mom.y)
+    write(VTXBUF_UUZ, mom.z)
+#endif
+
+#if LMAGNETIC
+    ind = induction()
+    write(VTXBUF_AX, rk3_step2(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
+    write(VTXBUF_AY, rk3_step2(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
+    write(VTXBUF_AZ, rk3_step2(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
+#endif
+
+#if LOO
+    oo = curl(UU) 
+    write(VTXBUF_OOX, oo.x)
+    write(VTXBUF_OOY, oo.y)
+    write(VTXBUF_OOZ, oo.z)
+
+    uu = vecvalue(UU)
+    write(VTXBUF_UU_DOT_OO, dot(uu, oo))
+#endif
+}
+//////////////////////////////////////////
+
 
 #if LTFM
 Kernel init_profiles() {

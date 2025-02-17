@@ -5517,7 +5517,6 @@ gen_field_info(FILE* fp)
   for(size_t i=0;i<num_of_fields;++i)
 	  fprintf(fp,"\"%s\",",field_names.data[i]);
   fprintf(fp,"};\n");
-  fprintf(fp, "static const char** vtxbuf_names __attribute__((unused)) = field_names;\n");
   fclose(fp);
 
   fp = fopen("get_vtxbufs_funcs.h","w");
@@ -5728,6 +5727,8 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   	"#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n"
   	"typedef Field VertexBufferHandle;\n"
 	 );
+  fprintf(fp, "static const char** vtxbuf_names __attribute__((unused)) = "
+              "field_names;\n");
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   // END-----------------------------
 
@@ -5842,6 +5843,7 @@ gen_user_kernels(const char* out)
 
   // Astaroth 2.0 backwards compatibility END
 
+  fprintf(fp, "\n"); // Add newline at EOF
   fclose(fp);
 }
 

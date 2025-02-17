@@ -27,6 +27,8 @@
 #include "astaroth.h"
 #include "errchk.h"
 
+#include <math.h>
+
 typedef long double Scalar;
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
 
@@ -51,15 +53,14 @@ AcResult
 acHostProfileDerz(const AcReal* in, const size_t count, const AcReal grid_spacing, AcReal* out)
 {
 #if STENCIL_ORDER == 6
-    const Scalar grid_spacing_inv = (Scalar)(1 / grid_spacing);
     const Scalar filter[] = {
-        (grid_spacing_inv) * (Scalar)(-1) / 60, //
-        (grid_spacing_inv) * (Scalar)(3) / 20,  //
-        (grid_spacing_inv) * (Scalar)(-3) / 4,  //
-        (grid_spacing_inv) * 0,                 //
-        (grid_spacing_inv) * (Scalar)(3) / 4,   //
-        (grid_spacing_inv) * (Scalar)(-3) / 20, //
-        (grid_spacing_inv) * (Scalar)(1) / 60,
+        (1 / (Scalar)grid_spacing) * (Scalar)(-1) / 60, //
+        (1 / (Scalar)grid_spacing) * (Scalar)(3) / 20,  //
+        (1 / (Scalar)grid_spacing) * (Scalar)(-3) / 4,  //
+        (1 / (Scalar)grid_spacing) * 0,                 //
+        (1 / (Scalar)grid_spacing) * (Scalar)(3) / 4,   //
+        (1 / (Scalar)grid_spacing) * (Scalar)(-3) / 20, //
+        (1 / (Scalar)grid_spacing) * (Scalar)(1) / 60,
     };
 #else
     const Scalar filter[] = {};
@@ -73,15 +74,14 @@ AcResult
 acHostProfileDerzz(const AcReal* in, const size_t count, const AcReal grid_spacing, AcReal* out)
 {
 #if STENCIL_ORDER == 6
-    const Scalar grid_spacing_inv_2= (Scalar)(1 / (grid_spacing*grid_spacing));
     const Scalar filter[] = {
-        (grid_spacing_inv_2) * (Scalar)(1) / 90,   //
-        (grid_spacing_inv_2) * (Scalar)(-3) / 20,  //
-        (grid_spacing_inv_2) * (Scalar)(3) / 2,    //
-        (grid_spacing_inv_2) * (Scalar)(-49) / 18, //
-        (grid_spacing_inv_2) * (Scalar)(3) / 2,    //
-        (grid_spacing_inv_2) * (Scalar)(-3) / 20,  //
-        (grid_spacing_inv_2) * (Scalar)(1) / 90,
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(1) / 90,   //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(-3) / 20,  //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(3) / 2,    //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(-49) / 18, //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(3) / 2,    //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(-3) / 20,  //
+        (1 / ((Scalar)grid_spacing * (Scalar)grid_spacing)) * (Scalar)(1) / 90,
     };
 #else
     const Scalar filter[] = {};
@@ -121,7 +121,8 @@ acHostInitProfileToCosineWave(const long double box_size, const size_t nz, const
 {
     const long double spacing = box_size / (nz - 1);
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = static_cast<AcReal>(static_cast<long double>(amplitude) * cos(static_cast<long double>(wavenumber) * spacing * ((long)i + offset)));
+        profile[i] = (AcReal)((long double)amplitude *
+                              cosl((long double)wavenumber * spacing * ((long)i + offset)));
     }
     return AC_SUCCESS;
 }
@@ -134,7 +135,8 @@ acHostInitProfileToSineWave(const long double box_size, const size_t nz, const l
 {
     const long double spacing = box_size / (nz - 1);
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = static_cast<AcReal>(static_cast<long double>(amplitude) * sin((long double)wavenumber * spacing * ((long)i + offset)));
+        profile[i] = (AcReal)((long double)amplitude *
+                              sinl((long double)wavenumber * spacing * ((long)i + offset)));
     }
     return AC_SUCCESS;
 }
@@ -143,7 +145,7 @@ AcResult
 acHostInitProfileToValue(const long double value, const size_t profile_count, AcReal* profile)
 {
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = static_cast<AcReal>(value);
+        profile[i] = (AcReal)value;
     }
     return AC_SUCCESS;
 }

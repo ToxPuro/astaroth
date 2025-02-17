@@ -32,6 +32,15 @@
 #include <stdlib.h>
 #include <time.h>
 
+#if defined(AC_USE_HIP) && AC_USE_HIP
+#pragma GCC system_header // NOTE: Silences errors originating from HIP and CUDA
+                          // headers
+#include "hip.h"
+#include <hip/hip_runtime_api.h>
+#else
+#include <cuda_runtime_api.h> // cuda_assert
+#endif
+
 /*
  * =============================================================================
  * General error checking

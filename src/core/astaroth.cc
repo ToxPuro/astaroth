@@ -364,7 +364,6 @@ acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cu
     return AC_SUCCESS;
 }
 
-
 #include "../config_helpers.h"
 void
 acStoreConfig(const AcMeshInfo info, const char* filename)
@@ -376,5 +375,52 @@ acStoreConfig(const AcMeshInfo info, const char* filename)
 	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
 	AcArrayCompTypes::run<load_comp_arrays>(info.run_consts,    fp, "", false);
 	fclose(fp);
+}
+
+
+
+void
+acQueryIntparams(void)
+{
+    for (int i = 0; i < NUM_INT_PARAMS; ++i)
+        printf("%s (%d)\n", intparam_names[i], i);
+}
+
+void
+acQueryInt3params(void)
+{
+    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+        printf("%s (%d)\n", int3param_names[i], i);
+}
+
+void
+acQueryRealparams(void)
+{
+    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+        printf("%s (%d)\n", realparam_names[i], i);
+}
+
+void
+acQueryReal3params(void)
+{
+    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+        printf("%s (%d)\n", real3param_names[i], i);
+}
+
+
+void
+acQueryKernels(void)
+{
+    for (int i = 0; i < NUM_KERNELS; ++i)
+        printf("%s (%d)\n", kernel_names[i], i);
+}
+
+
+void
+acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info)
+{
+    acPrintIntParam(a, info);
+    acPrintIntParam(b, info);
+    acPrintIntParam(c, info);
 }
 

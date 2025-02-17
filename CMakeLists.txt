@@ -13,8 +13,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_HIP_STANDARD 17)
+
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_HIP_STANDARD_REQUIRED ON)
 
 ## Build type
@@ -68,6 +71,20 @@ if(LAGRANGIAN_GRID)
 else()
 	add_definitions(-DAC_LAGRANGIAN_GRID=0)
 endif()
+add_compile_options(# C/CXX/CUDA/HIP
+                    # $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Werror>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfatal-errors>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wall>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wextra>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wdouble-promotion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfloat-conversion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wshadow>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-result>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-parameter>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-function>
+                    # Workaround: MPI_CXX_SKIP_MPICXX not applied properly for some reason
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-DOMPI_SKIP_MPICXX>
+)
 
 ## CUDA and HIP
 find_package(CUDAToolkit QUIET)
@@ -238,6 +255,10 @@ if (BUILD_SAMPLES AND BUILD_MHD_SAMPLES)
     add_subdirectory(samples/mpitest)
     add_subdirectory(samples/devicetest)
     add_subdirectory(samples/stencil-loader)
+endif()
+
+if(MPI_ENABLED)
+    add_subdirectory(acc-comm)
 endif()
 
 # User-specified program modules
