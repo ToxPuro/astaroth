@@ -388,60 +388,96 @@ gen_profile_funcs(const int kernel)
 {
   //TP: for now profile reads are not cached since they are usually read in only once and anyways since they are smaller can fit more easily to cache.
   //TP: if in the future a use case uses profiles a lot reconsider this
-  if(!NUM_PROFILES) return;
   if(kernel_reads_profile(kernel))
   {
-  	printf("const auto value_profile_x __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("[[maybe_unused]] const auto value_profile_x __attribute__((unused)) = [&](const Profile& handle) {");
   	printf("return vba.profiles.in[handle][vertexIdx.x];");
   	printf("};");
 
-  	printf("const auto value_profile_y __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("[[maybe_unused]] const auto value_profile_y __attribute__((unused)) = [&](const Profile& handle) {");
   	printf("return vba.profiles.in[handle][vertexIdx.y];");
   	printf("};");
 
-  	printf("const auto value_profile_z __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("[[maybe_unused]] const auto value_profile_z __attribute__((unused)) = [&](const Profile& handle) {");
   	printf("return vba.profiles.in[handle][vertexIdx.z];");
   	printf("};");
 
-  	printf("const auto value_profile_xy __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("[[maybe_unused]] const auto value_profile_xy __attribute__((unused)) = [&](const Profile& handle) {");
   	printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.y];");
   	printf("};");
 
-  	printf("const auto value_profile_xz __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("[[maybe_unused]] const auto value_profile_xz __attribute__((unused)) = [&](const Profile& handle) {");
   	printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z];");
   	printf("};");
 
-  	printf("const auto value_profile_yx __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("[[maybe_unused]] const auto value_profile_yx __attribute__((unused)) = [&](const Profile& handle) {");
   	printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.x];");
   	printf("};");
 
-  	printf("const auto value_profile_yz __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("[[maybe_unused]] const auto value_profile_yz __attribute__((unused)) = [&](const Profile& handle) {");
   	printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z];");
   	printf("};");
 
-  	printf("const auto value_profile_zx __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("[[maybe_unused]] const auto value_profile_zx __attribute__((unused)) = [&](const Profile& handle) {");
   	printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.x];");
   	printf("};");
 
-  	printf("const auto value_profile_zy __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("[[maybe_unused]] const auto value_profile_zy __attribute__((unused)) = [&](const Profile& handle) {");
   	printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.y];");
   	printf("};");
   }
-  if(kernel_reduces_profile(kernel))
+  else
+  {
+  	printf("[[maybe_unused]] const auto value_profile_x __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.x];");
+  	printf("};");
+
+  	printf("[[maybe_unused]] const auto value_profile_y __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.y];");
+  	printf("};");
+
+  	printf("[[maybe_unused]] const auto value_profile_z __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.z];");
+  	printf("};");
+
+  	printf("[[maybe_unused]] const auto value_profile_xy __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.y];");
+  	printf("};");
+
+  	printf("[[maybe_unused]] const auto value_profile_xz __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z];");
+  	printf("};");
+
+  	printf("[[maybe_unused]] const auto value_profile_yx __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.x];");
+  	printf("};");
+
+  	printf("[[maybe_unused]] const auto value_profile_yz __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z];");
+  	printf("};");
+
+  	printf("[[maybe_unused]] const auto value_profile_zx __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.x];");
+  	printf("};");
+
+  	printf("[[maybe_unused]] const auto value_profile_zy __attribute__((unused)) = [&](const Profile& handle) {");
+  	printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.y];");
+  	printf("};");
+  }
   {
     if(kernel_has_block_loops(kernel))
-    	printf("const int3 profileReduceOutputVertexIdx= (int3){"
+    	printf("[[maybe_unused]] const int3 profileReduceOutputVertexIdx= (int3){"
     	       "threadIdx.x + blockIdx.x * blockDim.x,"
     	       "threadIdx.y + blockIdx.y * blockDim.y,"
     	       "threadIdx.z + blockIdx.z * blockDim.z,"
     	       "};");    
     else
-    	printf("const int3& profileReduceOutputVertexIdx = vertexIdx;");
+    	printf("[[maybe_unused]] const int3& profileReduceOutputVertexIdx = vertexIdx;");
 
 
     if(!get_num_reduced_profiles(PROFILE_X,kernel))
     {
-    	printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_x __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
     }
     else
     {
@@ -463,7 +499,7 @@ gen_profile_funcs(const int kernel)
     //!!TP: NOTE this only works as long as blockfactor.x == 1!!
     if(!get_num_reduced_profiles(PROFILE_Y,kernel))
     {
-    	printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_y __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
     }
     else
     {
@@ -497,7 +533,7 @@ gen_profile_funcs(const int kernel)
     
     if(!get_num_reduced_profiles(PROFILE_Z,kernel))
     {
-    	printf("const auto reduce_sum_real_z __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_z __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
     }
     else
     {
@@ -532,7 +568,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_XY,kernel))
     {
-    	printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
     }
     else
     {
@@ -557,7 +593,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_YX,kernel))
     {
-    	printf("const auto reduce_sum_real_yx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_yx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
     }
     else
     {
@@ -582,7 +618,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_XZ,kernel))
     {
-    	printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
     }
     else
     {
@@ -607,7 +643,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_ZX,kernel))
     {
-    	printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
     }
     else
     {
@@ -631,7 +667,7 @@ gen_profile_funcs(const int kernel)
     }
     if(!get_num_reduced_profiles(PROFILE_YZ,kernel))
     {
-    	printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
     }
     else
     {
@@ -647,7 +683,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_ZY,kernel))
     {
-    	printf("const auto reduce_sum_real_zy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_zy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
     }
     else
     {

@@ -464,11 +464,14 @@ generate_error_messages()
 		updates_something |= (reduce_infos[index].size != 0);
 		if(!updates_something)
 		{
-			printf("\n\n");
-			printf("AC WARNING: Kernel %s does not update anything!!!\n",kernel_name);
-			printf("AC WARNING: Kernel %s does not update anything!!!\n",kernel_name);
-			printf("AC WARNING: Kernel %s does not update anything!!!\n",kernel_name);
-			printf("\n\n");
+			//TP: suppress not updating warning since not updating might be totally intentional
+			//as an example with PC-A you can have some kernels be dummy kernels based on the input flags
+			//
+			//printf("\n\n");
+			//printf("AC WARNING: Kernel %s does not update anything!!!\n",kernel_name);
+			//printf("AC WARNING: Kernel %s does not update anything!!!\n",kernel_name);
+			//printf("AC WARNING: Kernel %s does not update anything!!!\n",kernel_name);
+			//printf("\n\n");
 		}
 	}
 }
