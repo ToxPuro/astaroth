@@ -85,11 +85,6 @@ in `astaroth/samples/tfm/mhd/mhd.ini`.
 
 Forcing is currently always on and a new forcing vector generated at the start of each iteration. 
 
-The forcing generator function is defined in `generateForcingParams` in `src/utils/astaroth_forcing.cc`.
-
-Forcing is otherwise the same as in base Astaroth, **except** magnitude is set to zero if both the $x$ and $y$ components of `k_force` are close to zero. The epsilon used for this is defined in `is_close_to_zero` in `src/utils/astaroth_forcing.cc`.
-
-
 ## Running
 
 - The executable name is `tfm-mpi`.

@@ -220,13 +220,6 @@ printForcingParams(const ForcingParams& forcing_params)
            forcing_params.ff_hel_im.y, forcing_params.ff_hel_im.z, forcing_params.kaver);
 }
 
-static bool
-is_close_to_zero(const AcReal value)
-{
-    const AcReal epsilon = 1e-8;
-    return (-epsilon < value) && (value < epsilon);
-}
-
 ForcingParams
 generateForcingParams(const AcReal relhel, const AcReal magnitude, const AcReal kmin,
                       const AcReal kmax)
@@ -254,7 +247,7 @@ generateForcingParams(const AcReal relhel, const AcReal magnitude, const AcReal 
     helical_forcing_special_vector(&ff_hel_re, &ff_hel_im, k_force, e_force, relhel);
 
     return (ForcingParams){
-        .magnitude = (is_close_to_zero(k_force.x) && is_close_to_zero(k_force.y)) ? 0 : magnitude,
+        .magnitude = magnitude,
         .k_force   = k_force,
         .ff_hel_re = ff_hel_re,
         .ff_hel_im = ff_hel_im,
