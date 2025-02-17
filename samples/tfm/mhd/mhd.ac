@@ -459,17 +459,10 @@ roberts_flow() {
     pos = real3(AC_dsx * globalVertexIdx.x, 
                 AC_dsy * globalVertexIdx.y, 
                 AC_dsz * globalVertexIdx.z)
-    e = real3(0, 0, 1)
-    a = 8
-    fac = R_PI / a
-    px = sin(pos.x * fac)
-    py = sin(pos.y * fac)
-    chi = px * py
-    // Note analytical, numerical diff. would require a new DSL field
-    grad_chi = real3(py * fac * cos(pos.x * fac),
-                     px * fac * cos(pos.y * fac),
-                     0)
-    return cross(e, grad_chi) + chi * e
+    k0 = 1    // MR: this could be an input parameter
+    cx = cos(k0 * pos.x)
+    cy = cos(k0 * pos.y)
+    return AC_forcing_magnitude*real3( -cx*sin(k0 * pos.y), sin(k0 * pos.x)*cy, sqrt(2.)*cx*cy )
 }
 #endif
 
