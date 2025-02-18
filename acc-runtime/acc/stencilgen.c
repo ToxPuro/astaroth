@@ -1657,7 +1657,7 @@ gen_kernel_body(const int curr_kernel)
                   break;
 
                 // Skip if the stencil is not used
-                if (!stencils_accessed[curr_kernel][NUM_FIELDS + profile]
+                if (!stencils_accessed[curr_kernel][NUM_ALL_FIELDS + profile]
                                       [stencil])
                   continue;
 
@@ -1675,7 +1675,7 @@ gen_kernel_body(const int curr_kernel)
 					 0;
 
                 if (stencils[stencil][depth][height][width]) {
-                  if (!stencil_initialized[NUM_FIELDS + profile][stencil]) {
+                  if (!stencil_initialized[NUM_ALL_FIELDS + profile][stencil]) {
                     printf("auto p%d_s%d = ", profile, stencil);
 		    printf_stencil_point(stencil,depth,height,width);
                     printf("%s(", stencil_unary_ops[stencil]);
@@ -1686,7 +1686,7 @@ gen_kernel_body(const int curr_kernel)
                     printf(")");
                     printf(";");
 
-                    stencil_initialized[NUM_FIELDS + profile][stencil] = 1;
+                    stencil_initialized[NUM_ALL_FIELDS + profile][stencil] = 1;
                   }
                   else {
                     printf("p%d_s%d = ", profile, stencil);

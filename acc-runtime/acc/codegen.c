@@ -4898,32 +4898,19 @@ test_type(ASTNode* node, const char* type)
 void
 gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 {
-	TRAVERSE_PREAMBLE_PARAMS(gen_profile_reads,gen_mem_accesses)
-	if(node->token != IDENTIFIER)
-		return;
-	if(!node->buffer)
-		return;
-	if(!node->parent)
-		return;
-	//discard global const declarations
-	if(get_parent_node(NODE_GLOBAL,node))
-		return;
-	const char* type = get_expr_type(node->parent);
+	if(!(node->type & NODE_ARRAY_ACCESS))
+	{
+		TRAVERSE_PREAMBLE_PARAMS(gen_profile_reads,gen_mem_accesses)
+	}
+	if(!(node->type & NODE_ARRAY_ACCESS)) return;
+	const char* type = get_expr_type(node->lhs);
 	if(!type || !strstr(type,"Profile"))
 		return;
-	ASTNode* array_access = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,node);
-	if(!array_access || !is_left_child(NODE_ARRAY_ACCESS,node))	return;
-	while(get_parent_node(NODE_ARRAY_ACCESS,array_access)) array_access = (ASTNode*) get_parent_node(NODE_ARRAY_ACCESS,array_access);
-	if(node->type & NODE_MEMBER_ID)
-	{
-		node = (ASTNode*)get_parent_node(NODE_STRUCT_EXPRESSION,node);
-		while(node->parent->type & NODE_STRUCT_EXPRESSION) node = node->parent;
-	}
 	node_vec nodes = VEC_INITIALIZER;
-	get_array_access_nodes(array_access,&nodes);
+	get_array_access_nodes(node,&nodes);
 	if(!strcmps(type,"Profile<X>","Profile<Y>","Profile<Z>") && nodes.size != 1)	
 	{
-		fatal("Fatal error: only 1-dimensional reads are allowed for 1d Profiles: %s\n",combine_all_new(array_access));
+		fatal("Fatal error: only 1-dimensional reads are allowed for 1d Profiles: %s\n",combine_all_new(node));
 	}
 	if(!strcmps(type,"Profile<XY>","Profile<YX>",
 			"Profile<YZ>","Profile<ZY>",
@@ -4931,7 +4918,7 @@ gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 			) 
 			&& nodes.size != 2)	
 	{
-		fatal("Fatal error: only 2-dimensional reads are allowed for 2d Profiles: %s\n",combine_all_new(array_access));
+		fatal("Fatal error: only 2-dimensional reads are allowed for 2d Profiles: %s\n",combine_all_new(node));
 	}
 	if(is_left_child(NODE_ASSIGNMENT,node))
 	{
@@ -4963,12 +4950,12 @@ gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 	indexes->parent = idx_node;
 
 	free_node_vec(&nodes);
-	astnode_free(array_access);
-
-        array_access->rhs = rhs;
 	ASTNode* before_lhs = NULL;
-	ASTNode* lhs = astnode_create(NODE_UNKNOWN, before_lhs, astnode_dup(node,NULL));
-	array_access->lhs = lhs;
+	ASTNode* lhs = astnode_create(NODE_UNKNOWN, before_lhs, astnode_dup(node->lhs,NULL));
+	astnode_free(node);
+
+        node->rhs = rhs;
+	node->lhs = lhs;
 	if(gen_mem_accesses && !is_left_child(NODE_ASSIGNMENT,node))
 	{
 		astnode_set_postfix(")",rhs);
@@ -4984,7 +4971,7 @@ gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 		astnode_set_infix("vba.profiles.in[",lhs);
 		astnode_set_postfix("]",lhs);
 	}
-	lhs->parent = array_access;
+	lhs->parent = node;
 }
 
 void

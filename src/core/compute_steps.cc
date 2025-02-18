@@ -109,7 +109,7 @@ get_kernel_profiles(const AcKernel kernel)
 		KernelProfiles res{};
 		for(int i = 0; i < NUM_PROFILES; ++i)
 		{
-			if(info.read_profiles[kernel][i])       res.in.push_back((Profile)i);
+			if(info.read_profiles[kernel][i] || info.profile_has_stencil_op[kernel][i])       res.in.push_back((Profile)i);
 			if(info.reduced_profiles[kernel][i])    res.reduce_out.push_back((Profile)i);
 			if(info.written_profiles[kernel][i])    res.write_out.push_back((Profile)i);
 		}
