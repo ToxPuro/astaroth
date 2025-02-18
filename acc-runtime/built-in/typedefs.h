@@ -66,6 +66,14 @@ struct AcDimProducts
 	long xyz;
 };
 
+struct AcDimProductsInv
+{
+	real xy;
+	real xz;
+	real yz;
+	real xyz;
+};
+
 enum AC_COORDINATE_SYSTEM
 {
 	AC_CARTESIAN_COORDINATES,

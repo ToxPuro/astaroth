@@ -24,12 +24,21 @@ int3 AC_nlocal_max
 int AC_nlocal_max_dim
 int3 AC_ngrid_max
 
+run_const real3 AC_nlocal_inv
+run_const real3 AC_ngrid_inv
 
-run_const real AC_inv_nxygrid
+
 AcDimProducts AC_nlocal_products
+run_const AcDimProductsInv AC_nlocal_products_inv
+
 AcDimProducts AC_ngrid_products
+run_const AcDimProductsInv AC_ngrid_products_inv
+
 AcDimProducts AC_mlocal_products
+run_const AcDimProductsInv AC_mlocal_products_inv
+
 AcDimProducts AC_mgrid_products
+run_const AcDimProductsInv AC_mgrid_products_inv
 
 
 run_const real3 AC_len

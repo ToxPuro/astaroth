@@ -238,10 +238,56 @@ reduce_sum(real3 vec, VecZProfile prof)
 	reduce_sum(vec.z,prof.z)
 }
 
+reduce_average(real val, param)
+{
+	reduce_sum_real(AC_ngrid_products_inv.xyz*val,param)
+}
+
+reduce_average(real val, Profile<X> prof)
+{
+	reduce_sum(AC_ngrid_products_inv.yz*val,prof);
+}
+
+reduce_average(real val, Profile<Y> prof)
+{
+	reduce_sum(AC_ngrid_products_inv.xz*val,prof);
+}
+
 reduce_average(real val, Profile<Z> prof)
 {
-	reduce_sum(AC_inv_nxygrid*val,prof);
+	reduce_sum(AC_ngrid_products_inv.xy*val,prof);
 }
+
+reduce_average(real val, Profile<XY> prof)
+{
+	reduce_sum(AC_ngrid_inv.z*val,prof);
+}
+
+reduce_average(real val, Profile<YX> prof)
+{
+	reduce_sum(AC_ngrid_inv.z*val,prof);
+}
+
+reduce_average(real val, Profile<XZ> prof)
+{
+	reduce_sum(AC_ngrid_inv.y*val,prof);
+}
+
+reduce_average(real val, Profile<ZX> prof)
+{
+	reduce_sum(AC_ngrid_inv.y*val,prof);
+}
+
+reduce_average(real val, Profile<YZ> prof)
+{
+	reduce_sum(AC_ngrid_inv.x*val,prof);
+}
+
+reduce_average(real val, Profile<ZY> prof)
+{
+	reduce_sum(AC_ngrid_inv.x*val,prof);
+}
+
 
 inline add_arr(real[] a, real b)
 {

@@ -43,7 +43,6 @@ decompose_info(const MPI_Comm comm, AcCompInfo& info)
   //config[AC_nlocal].z = config[AC_nlocal].z/int3_decomp.z;
 
   acLoadCompInfo(AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z},&info);
-  acHostUpdateBuiltinCompParams(&info);
 }
 
 #endif
@@ -87,9 +86,9 @@ file_exists(const char* filename)
 void
 acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_info)
 {
+	check_that_built_ins_loaded(mesh_info.run_consts);
+	acHostUpdateBuiltinParams(&mesh_info);
 	AcCompInfo info = mesh_info.run_consts;
-	check_that_built_ins_loaded(info);
-	acHostUpdateBuiltinCompParams(&info);
 #if AC_MPI_ENABLED
 	ERRCHK_ALWAYS(mesh_info.comm != MPI_COMM_NULL);
 	int pid;
@@ -98,6 +97,7 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 #else
 	const int pid = 0;
 #endif
+	acHostUpdateBuiltinParams(&mesh_info);
 	mesh_info.run_consts = info;
 	if(pid == 0)
 	{

@@ -2228,6 +2228,10 @@ get_structs_info()
 static inline void
 process_declaration(const ASTNode* field,int struct_index,structs_info* params)
 {
+	if(!get_node(NODE_TSPEC,field))
+	{
+		fatal("Was not able to get the type of the struct member: %s\n",combine_all_new(field));
+	}
 	push(&(params->user_struct_field_types[struct_index]), get_node(NODE_TSPEC,field)->lhs->buffer);
 	push(&(params->user_struct_field_names[struct_index]), get_node_by_token(IDENTIFIER,field->rhs)->buffer);
 }
@@ -8723,7 +8727,7 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
 
     fprintf(tmp,
             "static int "
-            "write_profile_called [NUM_KERNELS][NUM_PROFILES] __attribute__((unused)) = {");
+            "write_called_profile [NUM_KERNELS][NUM_PROFILES] __attribute__((unused)) = {");
     print_nested_ones(tmp,1,num_kernels,num_profiles,2);
     fprintf(tmp, "};");
 

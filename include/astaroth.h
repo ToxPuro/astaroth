@@ -1350,8 +1350,9 @@ AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle v
  */
 AcResult 
 acHostUpdateBuiltinParams(AcMeshInfo* config);
+
 AcResult 
-acHostUpdateBuiltinCompParams(AcCompInfo* comp_config);
+acHostUpdateBuiltinCompParams(AcMeshInfo* config);
 
 
 

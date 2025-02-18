@@ -721,7 +721,7 @@ gen_kernel_write_funcs(const int curr_kernel)
     // Original
     bool written_profile = false;
     for(int profile = 0; profile < NUM_PROFILES; ++profile)
-	    written_profile |= write_called[curr_kernel][profile + NUM_ALL_FIELDS];
+	    written_profile |= write_called_profile[curr_kernel][profile];
     if(written_profile)
     {
     	printf("const auto write_profile_x __attribute__((unused)) = [&](const Profile& handle, const AcReal& value) {");

@@ -61,9 +61,6 @@ acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
     	push_val(AC_nlocal, (int3){config[AC_nlocal].x, config[AC_nlocal].y, 1});
     }
 
-    const size_t nxygrid = ((size_t)config[AC_ngrid].x)*((size_t)config[AC_ngrid].y);
-    push_val(AC_inv_nxygrid,1.0/nxygrid);
-
     push_val(AC_mlocal,config[AC_nlocal] + 2*config[AC_nmin]);
     push_val(AC_mgrid ,config[AC_ngrid]  + 2*config[AC_nmin]);
 
@@ -79,10 +76,38 @@ acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
 		    };
     };
 
+    auto get_products_inv = [&](const auto& param)
+    {
+		   return (AcDimProductsInv){
+		    	(1.0)/config[param].xy,
+		    	(1.0)/config[param].xz,
+		    	(1.0)/config[param].yz,
+		    	(1.0)/config[param].xyz
+		    };
+    };
+
     push_val(AC_nlocal_products,get_products(AC_nlocal));
     push_val(AC_mlocal_products,get_products(AC_mlocal));
-    push_val(AC_ngrid_products,get_products(AC_ngrid));
-    push_val(AC_mgrid_products,get_products(AC_mgrid));
+    push_val(AC_ngrid_products ,get_products(AC_ngrid));
+    push_val(AC_mgrid_products ,get_products(AC_mgrid));
+
+    push_val(AC_nlocal_products_inv,get_products_inv(AC_nlocal_products));
+    push_val(AC_mlocal_products_inv,get_products_inv(AC_mlocal_products));
+    push_val(AC_ngrid_products_inv ,get_products_inv(AC_ngrid_products));
+    push_val(AC_mgrid_products_inv ,get_products_inv(AC_mgrid_products));
+
+    push_val(AC_nlocal_inv, (AcReal3){
+		    			1.0/config[AC_nlocal].x,
+		    			1.0/config[AC_nlocal].y,
+		    			1.0/config[AC_nlocal].z
+				     });
+
+    push_val(AC_ngrid_inv, (AcReal3){
+		    			1.0/config[AC_ngrid].x,
+		    			1.0/config[AC_ngrid].y,
+		    			1.0/config[AC_ngrid].z
+				     });
+
     push_val(AC_len,
     	(AcReal3)
     	{
@@ -132,13 +157,13 @@ acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
 }
 
 AcResult 
-acHostUpdateBuiltinCompParams(AcCompInfo* comp_config)
+acHostUpdateBuiltinCompParams(AcMeshInfo* config)
 {
 
-	AcMeshInfo config = acInitInfo();
-	config.run_consts = *comp_config;
-	auto res = acHostUpdateBuiltinParams(&config);
-	*comp_config = config.run_consts;
+	AcMeshInfo tmp = acInitInfo();
+	tmp.run_consts = config->run_consts;
+	auto res = acHostUpdateBuiltinParams(&tmp);
+	config->run_consts = tmp.run_consts;
 	return res;
 }
 
