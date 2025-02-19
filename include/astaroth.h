@@ -586,7 +586,7 @@ int ac_MPI_Comm_rank();
 /** If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD */
 FUNC_DEFINE(MPI_Comm, acGridMPIComm,());
 
-FUNC_DEFINE(AcSubCommunicators,acGridMPISubComms());
+FUNC_DEFINE(AcSubCommunicators,acGridMPISubComms,());
 /** Returns the size of the Astaroth communicator */
 FUNC_DEFINE(int, ac_MPI_Comm_size,());
 
