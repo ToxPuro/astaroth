@@ -368,7 +368,7 @@ get_field_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
 	const std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
 
 	FieldBCs res{};
-	BoundCond empty_bc = {NUM_KERNELS,BOUNDARY_NONE,{}, {}, {},0};
+	BoundCond empty_bc = {AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0};
 	for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
 		for(int j = 0; j < 6; ++j)
 			res[i][j] = empty_bc;
@@ -414,7 +414,7 @@ check_field_boundconds(const FieldBCs field_boundconds)
 	{
 		if(!vtxbuf_is_communicated[field]) continue;
 		for(size_t bc = 0; bc < boundaries_to_check.size(); ++bc)
-			if(field_boundconds[field][bc].kernel  == NUM_KERNELS)
+			if(field_boundconds[field][bc].kernel  == AC_NULL_KERNEL)
 				fatal("FATAL AC ERROR: Missing boundcond for field %s at boundary %s\n",field_names[field], boundary_str(boundaries_to_check[bc]))
 	}
 }
@@ -515,49 +515,75 @@ gen_halo_exchange_and_boundconds(
 					bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end();
                                         field_boundconds_processed[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
 				}
-                        bool all_are_processed = false;
-                        while(!all_are_processed)
-                        {
-                                for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
-                                {
-					BoundCond processed_boundcond{NUM_KERNELS,BOUNDARY_NONE,{}, {}, {},0};
-                                	for(const auto& field : fields)
-                                        {
-						if(!vtxbuf_is_communicated[field]) continue;
-						//TP: always insert boundary conditions with the smaller topological order first
-						if(processed_boundcond.kernel != NUM_KERNELS && processed_boundcond.topological_order < field_boundconds[field][boundcond].topological_order) continue;
-                                                processed_boundcond = !field_boundconds_processed[field][boundcond] ?  field_boundconds[field][boundcond] : processed_boundcond;
-                                        }
-                                        if(processed_boundcond.kernel == NUM_KERNELS) continue;
+			//TP: it can be that for the next compute steps only A needs to be updated on the boundaries but to update A on the boundaries
+			//One has to first update B on the boundary even though B is not actually used in the domain
+			std::array<std::vector<Field>,6> field_bcs_called{};
 
-					log_boundcond(stream,processed_boundcond,boundaries[boundcond]);
-					res.push_back(acBoundaryCondition(boundaries[boundcond],processed_boundcond.kernel,processed_boundcond.in,processed_boundcond.out));
-					for(const auto& field : processed_boundcond.out)
-						field_boundconds_processed[field][boundcond] = true;
-					bool has_dependency = false;
-					const char* dependent_bc = NULL;
-					const char* preq_field   = NULL;
-					for(const auto& field : processed_boundcond.in)
+			field_bcs_called[0] = communicated_fields;
+			field_bcs_called[1] = communicated_fields;
+			field_bcs_called[2] = communicated_fields;
+
+			field_bcs_called[3] = communicated_fields;
+			field_bcs_called[4] = communicated_fields;
+			field_bcs_called[5] = communicated_fields;
+			std::array<std::vector<bool>,NUM_FIELDS>  field_boundconds_dependencies_included = field_boundconds_processed;
+			{
+                        	bool all_are_processed = false;
+				while(!all_are_processed)
+				{
+					for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
 					{
-						if(std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end()) continue;
-						const bool depend = processed_boundcond.info.larger_input;
-						if(depend)
+						BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0};
+                        		        for(const auto& field : fields)
+                        		                processed_boundcond = !field_boundconds_dependencies_included[field][boundcond] ?  field_boundconds[field][boundcond] : processed_boundcond;
+                        		        if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
+
+						for(const auto& field : processed_boundcond.in)
 						{
-							has_dependency = true;
-							dependent_bc = kernel_names[processed_boundcond.kernel];
-							preq_field   = field_names[field];
+							if(!processed_boundcond.info.larger_input) continue;
+							if(std::find(field_bcs_called[boundcond].begin(), field_bcs_called[boundcond].end(), field) != field_bcs_called[boundcond].end()) continue;
+							field_bcs_called[boundcond].push_back(field);
+							field_boundconds_dependencies_included[field][boundcond] = false;
+							field_boundconds_processed[field][boundcond] = false;
 						}
+						for(const auto& field : processed_boundcond.out)
+							field_boundconds_dependencies_included[field][boundcond] = true;
 					}
+                        		all_are_processed = true;
+                        		for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
+                        			for(const auto& field : fields)
+                        				all_are_processed &= field_boundconds_dependencies_included[field][boundcond];
+				}
+			}
 
-					if(has_dependency)
-						fatal("BC of %s needs to be called since %s depends on it\nTODO implement this --- now easier with an actual example use case ---",preq_field,dependent_bc)
+			{
+                        	bool all_are_processed = false;
+                        	while(!all_are_processed)
+                        	{
+                        	        for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
+                        	        {
+						BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0};
+                        	        	for(const auto& field : fields)
+                        	                {
+							if(!vtxbuf_is_communicated[field]) continue;
+							//TP: always insert boundary conditions with the smaller topological order first
+							if(processed_boundcond.kernel != AC_NULL_KERNEL && processed_boundcond.topological_order < field_boundconds[field][boundcond].topological_order) continue;
+                        	                        processed_boundcond = !field_boundconds_processed[field][boundcond] ?  field_boundconds[field][boundcond] : processed_boundcond;
+                        	                }
+                        	                if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
 
-                                }
-                                all_are_processed = true;
-                                for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
-                                	for(const auto& field : fields)
-                                                all_are_processed &= field_boundconds_processed[field][boundcond];
-                        }
+						log_boundcond(stream,processed_boundcond,boundaries[boundcond]);
+						res.push_back(acBoundaryCondition(boundaries[boundcond],processed_boundcond.kernel,processed_boundcond.in,processed_boundcond.out));
+						for(const auto& field : processed_boundcond.out)
+							field_boundconds_processed[field][boundcond] = true;
+
+                        	        }
+                        	        all_are_processed = true;
+                        	        for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
+                        	        	for(const auto& field : fields)
+                        	                        all_are_processed &= field_boundconds_processed[field][boundcond];
+                        	}
+			}
 		}
 		return res;
 }
