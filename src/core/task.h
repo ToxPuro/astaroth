@@ -335,7 +335,7 @@ typedef class BoundaryConditionTask : public Task {
     bool test();
 } BoundaryConditionTask;
 
-enum class ReduceState { Waiting = Task::wait_state, Reducing, Loading };
+enum class ReduceState { Waiting = Task::wait_state, Reducing, Communicating, Loading };
 typedef class ReduceTask : public Task {
   private:
     AcReal local_res_real[NUM_OUTPUTS]{};

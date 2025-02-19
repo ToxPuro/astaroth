@@ -4908,6 +4908,14 @@ gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 	}
 	if(!(node->type & NODE_ARRAY_ACCESS)) return;
 	const char* type = get_expr_type(node->lhs);
+	if(!type)
+	{
+		ASTNode* id = get_node_by_token(IDENTIFIER, node);
+		if(id)
+		{
+			type = get_expr_type(id);
+		}
+	}
 	if(!type || !strstr(type,"Profile"))
 		return;
 	node_vec nodes = VEC_INITIALIZER;
@@ -4966,6 +4974,14 @@ gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 
 		astnode_set_infix("AC_INTERNAL_read_profile(",lhs);
 		astnode_set_postfix(",",lhs);
+		ASTNode* lhs_arr_access = (ASTNode*) get_node(NODE_ARRAY_ACCESS,lhs);
+		if(lhs_arr_access)
+		{
+			lhs_arr_access->rhs = NULL;
+			lhs_arr_access->prefix  = NULL;
+			lhs_arr_access->postfix = NULL;
+			lhs_arr_access->infix   = NULL;
+		}
 	}
 	else
 	{
@@ -4974,6 +4990,15 @@ gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 
 		astnode_set_infix("vba.profiles.in[",lhs);
 		astnode_set_postfix("]",lhs);
+
+		ASTNode* lhs_arr_access = (ASTNode*) get_node(NODE_ARRAY_ACCESS,lhs);
+		if(lhs_arr_access)
+		{
+			lhs_arr_access->rhs = NULL;
+			lhs_arr_access->prefix  = NULL;
+			lhs_arr_access->postfix = NULL;
+			lhs_arr_access->infix   = NULL;
+		}
 	}
 	lhs->parent = node;
 }

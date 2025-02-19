@@ -1239,6 +1239,10 @@ ReduceTask::test()
     case ReduceState::Reducing: {
         return poll_stream();
     }
+    //TP: dummy for now
+    case ReduceState::Communicating: {
+        return true;
+    }
     default: {
         ERROR("ReduceTask in an invalid state.");
         return false;
@@ -1310,6 +1314,11 @@ ReduceTask::advance(const TraceFile* trace_file)
 	    }
     	}
         trace_file->trace(this, "reducing", "waiting");
+        state = static_cast<int>(ReduceState::Communicating);
+        break;
+    }
+    case ReduceState::Communicating:
+    {
         state = static_cast<int>(ReduceState::Waiting);
         break;
     }

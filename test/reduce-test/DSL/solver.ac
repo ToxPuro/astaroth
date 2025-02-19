@@ -118,7 +118,7 @@ Kernel remove_means()
 	write(PROF_SCALED_YZ,PROF_YZ*scaling_factor)
 
 
-	write(FIELD_2,VEC_Z_PROFILE.x + VEC_Z_PROFILE.y + VEC_Z_PROFILE.z)
+	write(FIELD_2,VEC_Z_PROFILE.x[vertexIdx.z] + VEC_Z_PROFILE.y + VEC_Z_PROFILE.z)
 }
 Kernel derx_kernel()
 {
