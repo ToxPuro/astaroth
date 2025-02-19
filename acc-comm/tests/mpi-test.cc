@@ -1,7 +1,11 @@
 #include <cstdlib>
+#include <limits>
 #include <numeric> // std::iota
 
+#include "acm/detail/algorithm.h"
+#include "acm/detail/allocator.h"
 #include "acm/detail/errchk_mpi.h"
+#include "acm/detail/errchk_print.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
 #include "acm/detail/partition.h"
@@ -235,6 +239,178 @@ test_mpi_pack(const MPI_Comm& cart_comm, const ac::shape& global_nn)
     PRINT_LOG_INFO("OK");
 }
 
+static void
+test_collective_io(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr)
+{
+    const auto             global_mm{ac::mpi::get_global_mm(global_nn, rr)};
+    const auto             global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
+    const auto             local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto             local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+    ac::host_ndbuffer<int> ref{local_mm};
+
+    std::iota(ref.begin(), ref.end(), ac::mpi::get_rank(cart_comm) * as<int>(ref.size()));
+
+    ac::mpi::write_collective(cart_comm,
+                              ac::mpi::get_dtype<int>(),
+                              global_mm,
+                              global_nn_offset,
+                              local_mm,
+                              local_nn,
+                              rr,
+                              ref.data(),
+                              std::string("tmp-collective-io-test.debug"));
+
+    ac::host_ndbuffer<int> tst{global_mm};
+    ac::mpi::read_collective(cart_comm,
+                             ac::mpi::get_dtype<int>(),
+                             global_nn,
+                             ac::make_index(global_nn.size(), 0),
+                             global_mm,
+                             global_nn,
+                             rr,
+                             std::string("tmp-collective-io-test.debug"),
+                             tst.data());
+
+    MPI_SYNCHRONOUS_BLOCK_START(cart_comm);
+    ref.display();
+    tst.display();
+    MPI_SYNCHRONOUS_BLOCK_END(cart_comm);
+}
+
+static void
+test_pack_transform_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn,
+                           const ac::index& rr)
+{
+    using T = uint64_t;
+    // const auto global_mm{ac::mpi::get_global_mm(global_nn, rr)};
+    const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+    const auto local_nn_offset{rr};
+
+    ac::host_ndbuffer<T> href{global_nn};
+    std::iota(href.begin(), href.end(), 1);
+
+    ac::host_ndbuffer<T> distr_href{local_mm};
+    ac::mpi::scatter_advanced(cart_comm,
+                              ac::mpi::get_dtype<T>(),
+                              global_nn,
+                              ac::make_index(global_nn.size(), 0),
+                              href.data(),
+                              local_mm,
+                              local_nn,
+                              local_nn_offset,
+                              distr_href.data());
+
+    MPI_SYNCHRONOUS_BLOCK_START(cart_comm);
+    distr_href.display();
+    MPI_SYNCHRONOUS_BLOCK_END(cart_comm);
+}
+
+#include "acm/detail/halo_exchange_packed.h"
+static void
+test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr)
+{
+    using T = double;
+
+    const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+    const auto local_nn_offset{rr};
+
+    ac::host_ndbuffer<T> href{global_nn};
+    std::iota(href.begin(), href.end(), 1);
+
+    ac::host_ndbuffer<T> distr_dref{local_mm};
+    ac::mpi::scatter_advanced(cart_comm,
+                              ac::mpi::get_dtype<T>(),
+                              global_nn,
+                              ac::make_index(global_nn.size(), 0),
+                              href.data(),
+                              local_mm,
+                              local_nn,
+                              local_nn_offset,
+                              distr_dref.data());
+
+    std::fill(href.begin(), href.end(), -1);
+    ac::mpi::gather_advanced(cart_comm,
+                             ac::mpi::get_dtype<T>(),
+                             local_mm,
+                             local_nn,
+                             local_nn_offset,
+                             distr_dref.data(),
+                             global_nn,
+                             ac::make_index(global_nn.size(), 0),
+                             href.data());
+
+    const auto rank{ac::mpi::get_rank(cart_comm)};
+    if (rank == 0) {
+        href.display();
+
+        for (size_t i{0}; i < href.size(); ++i)
+            ERRCHK(href[i] == static_cast<T>(i + 1));
+    }
+
+    ac::comm::async_halo_exchange_task<T, ac::mr::host_allocator> he{local_mm,
+                                                                     local_nn,
+                                                                     local_nn_offset,
+                                                                     1};
+
+    he.launch(cart_comm, {distr_dref.get()});
+
+    const size_t nsteps{1000};
+    if (rank == 0)
+        PRINT_LOG_INFO("Running %zu steps to reach a stable state. Reduce problems size if the "
+                       "test "
+                       "takes too long. Increase nsteps if stability has not been reached but the "
+                       "implementation is correct.",
+                       nsteps);
+
+    for (size_t i{0}; i < nsteps; ++i) {
+        const ac::shape      nk{2 * rr + as<uint64_t>(1)};
+        ac::host_ndbuffer<T> kernel{nk, 1};
+
+        ac::host_ndbuffer<T> distr_dref_tmp{local_mm};
+        he.wait({distr_dref.get()});
+        ac::xcorr(local_mm,
+                  local_nn,
+                  local_nn_offset,
+                  distr_dref.get(),
+                  nk,
+                  kernel.get(),
+                  distr_dref_tmp.get());
+        ac::transform(
+            distr_dref_tmp.get(),
+            [&nk](const auto& elem) { return elem / prod(nk); },
+            distr_dref.get());
+        he.launch(cart_comm, {distr_dref.get()});
+    }
+    he.wait({distr_dref.get()});
+
+    std::fill(href.begin(), href.end(), -1);
+    ac::mpi::gather_advanced(cart_comm,
+                             ac::mpi::get_dtype<T>(),
+                             local_mm,
+                             local_nn,
+                             local_nn_offset,
+                             distr_dref.data(),
+                             global_nn,
+                             ac::make_index(global_nn.size(), 0),
+                             href.data());
+
+    if (rank == 0) {
+        const double expected_value{(prod(global_nn) + 1) / 2.};
+        std::cout << "Expected: " << expected_value << std::endl;
+        std::cout << "Measured: " << href[0] << std::endl;
+        const auto epsilon{std::numeric_limits<double>::epsilon()};
+        for (size_t i{0}; i < prod(global_nn); ++i) {
+            ERRCHK(href[i] >= expected_value - epsilon);
+            ERRCHK(href[i] <= expected_value + epsilon);
+        }
+
+        href.display();
+        PRINT_LOG_WARNING("Device buffer pipeline not yet tested");
+    }
+}
+
 int
 main()
 {
@@ -285,6 +461,27 @@ main()
             const ac::shape global_nn{4, 5};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
             test_mpi_pack(cart_comm, global_nn);
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{8};
+            const ac::index rr{1};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            test_collective_io(cart_comm, global_nn, rr);
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{8};
+            const ac::index rr{1};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            test_pack_transform_reduce(cart_comm, global_nn, rr);
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{6, 4, 8};
+            const ac::index rr{2, 1, 3};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            test_pipeline(cart_comm, global_nn, rr);
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
     }

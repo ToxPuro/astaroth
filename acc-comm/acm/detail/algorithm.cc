@@ -12,6 +12,40 @@ void
 test_algorithm()
 {
     {
+        const ac::shape        nn{4, 3};
+        const auto             rr{ac::make_index(nn.size(), 1)};
+        const auto             mm{nn + 2 * rr};
+        ac::host_ndbuffer<int> ref{mm};
+        ac::host_ndbuffer<int> pack_buffer{nn};
+        ac::host_ndbuffer<int> tst{nn};
+
+        // Test pack
+        std::iota(pack_buffer.begin(), pack_buffer.end(), 1);
+        unpack(pack_buffer.get(), mm, nn, rr, {ref.get()});
+
+        std::fill(pack_buffer.begin(), pack_buffer.end(), -1);
+        pack(mm, nn, rr, {ref.get()}, pack_buffer.get());
+        for (size_t i{0}; i < pack_buffer.size(); ++i)
+            ERRCHK(pack_buffer[i] == as<int>(i) + 1);
+
+        // Test transform
+        ac::transform(
+            pack_buffer.get(), [](const auto& elem) { return elem * elem; }, tst.get());
+        for (size_t i{0}; i < tst.size(); ++i)
+            ERRCHK(tst[i] == as<int>((i + 1) * (i + 1)));
+
+        // Test reduce
+        ac::segmented_reduce(
+            1,
+            prod(nn),
+            pack_buffer.get(),
+            [](const auto& a, const auto& b) { return a + b; },
+            0,
+            tst.get());
+        ERRCHK(tst[0] == (prod(nn) * (prod(nn) + 1)) / 2);
+    }
+
+    {
         const ac::shape        nn{4, 4};
         const auto             rr{ac::make_index(nn.size(), 1)};
         const auto             mm{nn + 2 * rr};
@@ -26,7 +60,8 @@ test_algorithm()
         tst.display();
 
         // Transform (square)
-        ac::transform(tst.get(), [](const int& a) { return a * a; }, tst.get());
+        ac::transform(
+            tst.get(), [](const int& a) { return a * a; }, tst.get());
         tst.display();
 
         // Reduce
