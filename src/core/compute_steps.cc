@@ -585,9 +585,9 @@ compute_next_level_set(T1& dst, const T2& kernel_calls, T3& field_written_to,con
 		  }
 		  for(int j = 0; j < NUM_PROFILES; ++j)
 		  {
-			const bool profile_accessed = info.read_profiles[kernel_index][j] || info.reduced_profiles[kernel_index][j];
+			const bool profile_accessed = info.read_profiles[kernel_index][j] || info.profile_has_stencil_op[kernel_index][j];
 			can_compute &= !(profile_consumed[j] && profile_accessed);
-			profile_consumed[j] |= info.reduced_profiles[kernel_index][j];
+			profile_consumed[j] |= (info.reduced_profiles[kernel_index][j] || info.written_profiles[kernel_index][j]);
 		  }
 		  for(size_t j = 0; j < NUM_FIELDS; ++j)
 		  	field_written_to[j] |= (can_compute && info.written_fields[kernel_index][j]);

@@ -31,6 +31,15 @@
 
 #if AC_MPI_ENABLED
 #include <mpi.h>
+typedef struct AcSubCommunicators {
+	MPI_Comm x;
+	MPI_Comm y;
+	MPI_Comm z;
+
+	MPI_Comm xy;
+	MPI_Comm xz;
+	MPI_Comm yz;
+} AcSubCommunicators;
 #endif
 
 
@@ -576,6 +585,8 @@ int ac_MPI_Comm_rank();
 
 /** If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD */
 FUNC_DEFINE(MPI_Comm, acGridMPIComm,());
+
+FUNC_DEFINE(AcSubCommunicators,acGridMPISubComms());
 /** Returns the size of the Astaroth communicator */
 FUNC_DEFINE(int, ac_MPI_Comm_size,());
 
@@ -1438,6 +1449,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	LOAD_DSYM(ac_MPI_Init_thread)
 	LOAD_DSYM(ac_MPI_Finalize);
 	LOAD_DSYM(acGridMPIComm);
+	LOAD_DSYM(acGridMPISubComms);
 	LOAD_DSYM(acGridDecomposeMeshInfo);
 	LOAD_DSYM(acGridGetLocalMeshInfo);
 	LOAD_DSYM(acGridQuit);

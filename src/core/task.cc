@@ -1230,6 +1230,8 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume n
 
     name   = "Reduce " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
+    for(int i = 0; i < NUM_OUTPUTS+NUM_PROFILES; ++i)
+	    requests[i] = MPI_REQUEST_NULL;
     task_type = TASKTYPE_REDUCE;
 }
 bool
@@ -1239,9 +1241,10 @@ ReduceTask::test()
     case ReduceState::Reducing: {
         return poll_stream();
     }
-    //TP: dummy for now
     case ReduceState::Communicating: {
-        return true;
+        int requests_completed;
+	ERRCHK_ALWAYS(MPI_Testall(NUM_OUTPUTS+NUM_PROFILES,requests,&requests_completed, MPI_STATUS_IGNORE) == MPI_SUCCESS);
+        return requests_completed ? true : false;
     }
     default: {
         ERROR("ReduceTask in an invalid state.");
@@ -1284,16 +1287,32 @@ ReduceTask::reduce()
     	}
 }
 void
-ReduceTask::advance(const TraceFile* trace_file)
+ReduceTask::communicate()
 {
-    switch (static_cast<ReduceState>(state)) {
-    case ReduceState::Waiting:
-        trace_file->trace(this, "waiting", "reducing");
-        reduce();
-        state = static_cast<int>(ReduceState::Reducing);
-        break;
-    case ReduceState::Reducing:
-    {
+   for(const auto& prof: input_region.memory.profiles)
+   {
+	   const auto sub_comms = acGridMPISubComms();
+	   const MPI_Comm comm =
+		   	prof_types[prof] == PROFILE_X ? sub_comms.yz :
+		   	prof_types[prof] == PROFILE_Y ? sub_comms.xz :
+		   	prof_types[prof] == PROFILE_Z ? sub_comms.xy :
+
+		   	(prof_types[prof] == PROFILE_XY || prof_types[prof] == PROFILE_YX) ? sub_comms.z :
+		   	(prof_types[prof] == PROFILE_XZ || prof_types[prof] == PROFILE_ZX) ? sub_comms.y :
+		   	(prof_types[prof] == PROFILE_YZ || prof_types[prof] == PROFILE_ZY) ? sub_comms.x :
+			MPI_COMM_NULL;
+	   MPI_Iallreduce(MPI_IN_PLACE,
+			   acDeviceGetProfileBuffer(device,prof),
+                           prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])),
+			   AC_REAL_MPI_TYPE,
+			   MPI_SUM,
+			   comm,
+			   &requests[NUM_OUTPUTS + prof]);
+   }
+}
+void
+ReduceTask::load_outputs()
+{
 	const auto& reduce_outputs = input_region.memory.reduce_outputs;
     	for(size_t i = 0; i < reduce_outputs.size(); ++i)
     	{
@@ -1313,13 +1332,39 @@ ReduceTask::advance(const TraceFile* trace_file)
 		exit(EXIT_FAILURE);
 	    }
     	}
-        trace_file->trace(this, "reducing", "waiting");
-        state = static_cast<int>(ReduceState::Communicating);
+}
+
+void
+ReduceTask::advance(const TraceFile* trace_file)
+{
+    switch (static_cast<ReduceState>(state)) {
+    case ReduceState::Waiting:
+        trace_file->trace(this, "waiting", "reducing");
+        reduce();
+        state = static_cast<int>(ReduceState::Reducing);
         break;
+    case ReduceState::Reducing:
+    {
+	if(input_region.memory.profiles.size() == 0)
+	{
+        	trace_file->trace(this, "reducing", "waiting");
+        	state = static_cast<int>(ReduceState::Waiting);
+        	break;
+	}
+	else
+	{
+        	trace_file->trace(this, "reducing", "communicating");
+        	state = static_cast<int>(ReduceState::Communicating);
+		communicate();
+        	break;
+	}
     }
     case ReduceState::Communicating:
     {
+
+        trace_file->trace(this, "communicating", "waiting");
         state = static_cast<int>(ReduceState::Waiting);
+	load_outputs();
         break;
     }
     default:

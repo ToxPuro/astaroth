@@ -94,6 +94,7 @@ typedef struct Grid {
     KernelAnalysisInfo kernel_analysis_info{};
 } Grid;
 
+
 #include "internal_device_funcs.h"
 
 static Grid grid = {};
@@ -102,6 +103,7 @@ static constexpr int astaroth_comm_split_key = 666;
 
 // In case some old programs still  use MPI_Init or MPI_Init_thread, we don't want to break them
 static MPI_Comm astaroth_comm;
+static AcSubCommunicators astaroth_sub_comms;
 
 
 static int
@@ -237,6 +239,11 @@ MPI_Comm
 acGridMPIComm()
 {
     return astaroth_comm;
+}
+AcSubCommunicators
+acGridMPISubComms()
+{
+	return astaroth_sub_comms;
 }
 
 int
@@ -432,6 +439,60 @@ log_grid_debug_info(const AcMeshInfo info)
     MPI_Barrier(astaroth_comm);
 }
 
+static int
+ac_x_color()
+{
+    const int3 my_coordinates = grid.submesh.info[AC_domain_coordinates];
+    return my_coordinates.y + my_coordinates.z*grid.decomposition.y;
+}
+
+static int
+ac_y_color()
+{
+    const int3 my_coordinates = grid.submesh.info[AC_domain_coordinates];
+    return my_coordinates.x + my_coordinates.z*grid.decomposition.x;
+}
+
+static int
+ac_z_color()
+{
+    const int3 my_coordinates = grid.submesh.info[AC_domain_coordinates];
+    return my_coordinates.x + my_coordinates.y*grid.decomposition.x;
+}
+
+static int
+ac_xy_color()
+{
+    const int3 my_coordinates = grid.submesh.info[AC_domain_coordinates];
+    return my_coordinates.z;
+}
+
+static int
+ac_xz_color()
+{
+    const int3 my_coordinates = grid.submesh.info[AC_domain_coordinates];
+    return my_coordinates.y;
+}
+
+static int
+ac_yz_color()
+{
+    const int3 my_coordinates = grid.submesh.info[AC_domain_coordinates];
+    return my_coordinates.x;
+}
+
+static void
+create_astaroth_sub_communicators()
+{
+	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_x_color(),ac_pid(),&astaroth_sub_comms.x) == MPI_SUCCESS);
+	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_y_color(),ac_pid(),&astaroth_sub_comms.y) == MPI_SUCCESS);
+	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_z_color(),ac_pid(),&astaroth_sub_comms.z) == MPI_SUCCESS);
+
+	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_xy_color(),ac_pid(),&astaroth_sub_comms.xy) == MPI_SUCCESS);
+	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_xz_color(),ac_pid(),&astaroth_sub_comms.xz) == MPI_SUCCESS);
+	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_yz_color(),ac_pid(),&astaroth_sub_comms.yz) == MPI_SUCCESS);
+}
+
 void
 create_astaroth_comm(const AcMeshInfo info)
 {
@@ -447,6 +508,8 @@ create_astaroth_comm(const AcMeshInfo info)
 		fatal("%s","Unknown MPICommStrategy\n");
       }
       MPI_Barrier(astaroth_comm);
+      
+
       grid.mpi_initialized = true;
 }
 
@@ -669,6 +732,8 @@ acGridInitBase(const AcMesh user_mesh)
     acDeviceUpdate(device,acDeviceGetLocalConfig(device));
 
     initialize_random_number_generation(submesh_info);
+
+    create_astaroth_sub_communicators();
     grid.initialized   = true;
 
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Synchronizing streams\n");

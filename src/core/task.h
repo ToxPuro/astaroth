@@ -343,10 +343,13 @@ typedef class ReduceTask : public Task {
 #if AC_DOUBLE_PRECISION
     float  local_res_float[NUM_OUTPUTS]{};
 #endif
+    MPI_Request requests[NUM_OUTPUTS+NUM_PROFILES]{};
   public:
     ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     void reduce();
+    void communicate();
+    void load_outputs();
     void advance(const TraceFile* trace_file);
     bool test();
 } ReduceTask;
