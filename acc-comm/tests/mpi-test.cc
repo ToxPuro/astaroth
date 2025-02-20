@@ -319,7 +319,7 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
     ac::host_ndbuffer<T> href{global_nn};
     std::iota(href.begin(), href.end(), 1);
 
-    ac::host_ndbuffer<T> distr_dref{local_mm};
+    ac::device_ndbuffer<T> distr_dref{local_mm};
     ac::mpi::scatter_advanced(cart_comm,
                               ac::mpi::get_dtype<T>(),
                               global_nn,
@@ -349,10 +349,10 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
             ERRCHK(href[i] == static_cast<T>(i + 1));
     }
 
-    ac::comm::async_halo_exchange_task<T, ac::mr::host_allocator> he{local_mm,
-                                                                     local_nn,
-                                                                     local_nn_offset,
-                                                                     1};
+    ac::comm::async_halo_exchange_task<T, ac::mr::device_allocator> he{local_mm,
+                                                                       local_nn,
+                                                                       local_nn_offset,
+                                                                       1};
 
     he.launch(cart_comm, {distr_dref.get()});
 
@@ -370,6 +370,9 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
 
         ac::host_ndbuffer<T> distr_dref_tmp{local_mm};
         he.wait({distr_dref.get()});
+#if defined(ACM_DEVICE_ENABLED)
+        PRINT_LOG_WARNING("Device xcorr and transform not yet implemented");
+#else
         ac::xcorr(local_mm,
                   local_nn,
                   local_nn_offset,
@@ -381,6 +384,7 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
             distr_dref_tmp.get(),
             [&nk](const auto& elem) { return elem / prod(nk); },
             distr_dref.get());
+#endif
         he.launch(cart_comm, {distr_dref.get()});
     }
     he.wait({distr_dref.get()});
