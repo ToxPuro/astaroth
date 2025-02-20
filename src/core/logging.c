@@ -1,6 +1,6 @@
-#include "astaroth_utils.h"
 #include <stdarg.h>
 #include <string.h>
+#include <stdio.h>
 #include <time.h>
 
 // Logging utils
