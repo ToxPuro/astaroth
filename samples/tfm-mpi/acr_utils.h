@@ -14,6 +14,8 @@
         }                                                                                          \
     } while (0)
 
+enum class BufferGroup { input, output };
+
 namespace acr {
 
 int get(const AcMeshInfo& info, const AcIntParam& param);
@@ -38,6 +40,22 @@ Dims get_global_ss(const AcMeshInfo& info);
 ac::index get_global_nn_offset(const AcMeshInfo& info);
 ac::index get_local_nn_offset();
 ac::index get_local_rr();
+
+ac::mr::device_pointer<AcReal> make_ptr(const VertexBufferArray& vba, const Field& field,
+                                        const BufferGroup& type);
+
+ac::mr::device_pointer<AcReal> make_ptr(const VertexBufferArray& vba, const Profile& profile,
+                                        const BufferGroup& type);
+
+std::vector<ac::mr::device_pointer<AcReal>>
+get_ptrs(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& type);
+
+std::vector<ac::mr::device_pointer<AcReal>> get_ptrs(const VertexBufferArray& vba,
+                                                     const std::vector<Profile>& profiles,
+                                                     const BufferGroup& type);
+
+/** Returns a vector of field names corresponding to the input fields */
+std::vector<std::string> get_strs(const std::vector<Field>& fields);
 
 } // namespace acr
 

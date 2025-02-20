@@ -104,70 +104,13 @@ static std::vector<Field> all_fields{VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBU
                                      TF_uxb12_y,   TF_uxb12_z, TF_uxb21_x, TF_uxb21_y, TF_uxb21_z,
                                      TF_uxb22_x,   TF_uxb22_y, TF_uxb22_z};
 
-enum class BufferGroup { input, output };
-
-static auto
-make_ptr(const VertexBufferArray& vba, const Field& field, const BufferGroup& type)
-{
-    const size_t count{vba.mx * vba.my * vba.mz};
-
-    switch (type) {
-    case BufferGroup::input:
-        return ac::mr::device_pointer<AcReal>{count, vba.in[field]};
-    case BufferGroup::output:
-        return ac::mr::device_pointer<AcReal>{count, vba.out[field]};
-    default:
-        ERRCHK(false);
-        return ac::mr::device_pointer<AcReal>{0, nullptr};
-    }
-}
-
-static auto
-get_ptrs(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& type)
-{
-    std::vector<ac::mr::device_pointer<AcReal>> ptrs;
-
-    for (const auto& field : fields)
-        ptrs.push_back(make_ptr(vba, field, type));
-
-    return ptrs;
-}
-
 static auto
 get_ptrs(const Device& device, const std::vector<Field>& fields, const BufferGroup& type)
 {
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
-    return get_ptrs(vba, fields, type);
-}
-
-static auto
-make_ptr(const VertexBufferArray& vba, const Profile& profile, const BufferGroup& type)
-{
-    const size_t count{vba.profiles.count};
-
-    switch (type) {
-    case BufferGroup::input:
-        return ac::mr::device_pointer<AcReal>{count, vba.profiles.in[profile]};
-    case BufferGroup::output:
-        return ac::mr::device_pointer<AcReal>{count, vba.profiles.out[profile]};
-    default:
-        ERRCHK(false);
-        return ac::mr::device_pointer<AcReal>{0, nullptr};
-    }
-}
-
-static auto
-get_ptrs(const VertexBufferArray& vba, const std::vector<Profile>& profiles,
-         const BufferGroup& type)
-{
-    std::vector<ac::mr::device_pointer<AcReal>> ptrs;
-
-    for (const auto& profile : profiles)
-        ptrs.push_back(make_ptr(vba, profile, type));
-
-    return ptrs;
+    return acr::get_ptrs(vba, fields, type);
 }
 
 static auto
@@ -176,19 +119,7 @@ get_ptrs(const Device& device, const std::vector<Profile>& profiles, const Buffe
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
-    return get_ptrs(vba, profiles, type);
-}
-
-/** Returns a vector of field names corresponding to the input fields */
-static auto
-get_strs(const std::vector<Field>& fields)
-{
-    std::vector<std::string> paths;
-
-    for (const auto& field : fields)
-        paths.push_back(std::string(field_names[field]));
-
-    return paths;
+    return acr::get_ptrs(vba, profiles, type);
 }
 
 /** Concatenates the field name and ".mesh" of a vector of handles */
@@ -352,7 +283,7 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
-        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
+        ac::mr::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
                      staging_buffer.get());
         ac::mpi::write_collective_simple(parent_comm,
                                          ac::mpi::get_dtype<AcReal>(),
@@ -393,7 +324,7 @@ write_distributed_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& d
                 step,
                 vtxbuf_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
-        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
+        ac::mr::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
                      staging_buffer.get());
         ac::mpi::write_distributed(parent_comm,
                                    ac::mpi::get_dtype<AcReal>(),
@@ -439,7 +370,7 @@ write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const 
         ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, rank, &profile_comm));
 
         if (profile_comm != MPI_COMM_NULL) {
-            ac::mr::copy(make_ptr(vba, static_cast<Profile>(i), BufferGroup::input),
+            ac::mr::copy(acr::make_ptr(vba, static_cast<Profile>(i), BufferGroup::input),
                          staging_buffer.get());
             ac::mpi::write_collective(profile_comm,
                                       ac::mpi::get_dtype<AcReal>(),
@@ -962,7 +893,7 @@ class Grid {
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
         // const auto count{prod(local_mm)};
-        for (auto& ptr : get_ptrs(vba, all_fields, BufferGroup::input))
+        for (auto& ptr : acr::get_ptrs(vba, all_fields, BufferGroup::input))
             ac::mr::copy(buf.get(), ptr);
 
         // Should be rank
@@ -1022,12 +953,12 @@ class Grid {
 
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
         ac::buffer<AcReal, ac::mr::host_allocator> hprof{vba.profiles.count};
-        // const auto dprof{make_ptr(vba, PROFILE_B21mean_z, BufferGroup::input)};
+        // const auto dprof{acr::make_ptr(vba, PROFILE_B21mean_z, BufferGroup::input)};
         // ac::mr::copy(dprof, hprof.get());
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         for (size_t i{0}; i < NUM_PROFILES; ++i) {
-            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
+            const auto dprof{acr::make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
             ac::mr::copy(dprof, hprof.get());
             std::cout << "Before profile " << profile_names[i] << std::endl;
             for (const auto& elem : hprof)
@@ -1042,7 +973,7 @@ class Grid {
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         for (size_t i{0}; i < NUM_PROFILES; ++i) {
-            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
+            const auto dprof{acr::make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
             ac::mr::copy(dprof, hprof.get());
             std::cout << "After local Profile " << profile_names[i] << std::endl;
             for (const auto& elem : hprof)
@@ -1065,7 +996,7 @@ class Grid {
 
         MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
         for (size_t i{0}; i < NUM_PROFILES; ++i) {
-            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
+            const auto dprof{acr::make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
             ac::mr::copy(dprof, hprof.get());
             std::cout << "After reduce Profile " << profile_names[i] << std::endl;
             for (const auto& elem : hprof)
@@ -1086,7 +1017,7 @@ class Grid {
         for (size_t i{0}; i < NUM_FIELDS; ++i) {
             ac::buffer<AcReal, ac::mr::host_allocator> tmp{prod(local_mm)};
             std::generate(tmp.begin(), tmp.end(), [&]() { return distribution(generator); });
-            ac::mr::copy(tmp.get(), make_ptr(vba, static_cast<Field>(i), BufferGroup::input));
+            ac::mr::copy(tmp.get(), acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input));
         }
         reduce_xy_averages(STREAM_DEFAULT);
         // Constant profiles (B) should be constant
@@ -1232,7 +1163,7 @@ class Grid {
     //                                         path);
 
     //         ac::mr::copy(staging_buffer.get(),
-    //                      make_ptr(vba, static_cast<Field>(i), BufferGroup::input));
+    //                      acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input));
     //     }
     // }
 
@@ -1244,7 +1175,7 @@ class Grid {
     //         oss << label << "-vtxbuf-" << field_names[i] << ".mesh";
     //         const auto path{oss.str()};
 
-    //         ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
+    //         ac::mr::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
     //                      staging_buffer.get());
     //         ac::mpi::write_collective_simple(cart_comm,
     //                                          ac::mpi::get_dtype<AcReal>(),
@@ -1538,13 +1469,13 @@ class Grid {
         HaloExchangeTask he1{local_mm, local_nn, rr, tfm_fields.size()};
         HaloExchangeTask he2{local_mm, local_nn, rr, uxb_fields.size()};
 
-        he0.launch(cart_comm, get_ptrs(vba, hydro_fields, BufferGroup::input));
-        he1.launch(cart_comm, get_ptrs(vba, tfm_fields, BufferGroup::input));
-        he2.launch(cart_comm, get_ptrs(vba, uxb_fields, BufferGroup::input));
+        he0.launch(cart_comm, acr::get_ptrs(vba, hydro_fields, BufferGroup::input));
+        he1.launch(cart_comm, acr::get_ptrs(vba, tfm_fields, BufferGroup::input));
+        he2.launch(cart_comm, acr::get_ptrs(vba, uxb_fields, BufferGroup::input));
 
-        he0.wait(get_ptrs(vba, hydro_fields, BufferGroup::input));
-        he1.wait(get_ptrs(vba, tfm_fields, BufferGroup::input));
-        he2.wait(get_ptrs(vba, uxb_fields, BufferGroup::input));
+        he0.wait(acr::get_ptrs(vba, hydro_fields, BufferGroup::input));
+        he1.wait(acr::get_ptrs(vba, tfm_fields, BufferGroup::input));
+        he2.wait(acr::get_ptrs(vba, uxb_fields, BufferGroup::input));
 
         std::generate(tst.begin(), tst.end(), rng); // Randomize
         for (size_t i{0}; i < NUM_FIELDS; ++i)
