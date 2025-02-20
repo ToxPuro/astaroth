@@ -22,7 +22,10 @@
 #include "datatypes.h"
 #include "errchk.h"
 #include "astaroth_base.h"
-#include "astaroth_grid.h"
+extern "C"
+{
+	#include "astaroth_grid.h"
+}
 
 typedef struct {
     size_t ndims;
