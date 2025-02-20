@@ -554,7 +554,7 @@ acAnalysisLoadMeshInfo(const AcMeshInfoParams info)
 #define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, DIMS) static DATATYPE ARR_NAME##return_var{}; \
 							    struct tmp_struct_##ARR_NAME {DATATYPE& operator[](const int) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
-#include "gmem_arrays_decl.h"
+#include "cpu_gmem_arrays_decl.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
                               // least the max smem size of the device

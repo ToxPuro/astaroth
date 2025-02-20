@@ -312,7 +312,7 @@ __device__ __constant__ AcMeshInfoScalars d_mesh_info;
 #include "dconst_arrays_decl.h"
 //TP: We do this ugly macro because I want to keep the generated headers the same if we are compiling cpu analysis and for the actual gpu comp
 #define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME 
-#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
+#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) static __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
 #include "gmem_arrays_decl.h"
 
 AcReal
@@ -743,7 +743,7 @@ struct allocate_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if (config[array] != nullptr && !is_dconst(array) && is_alive(array) && !has_const_dims(array))
+			if (config[array] != nullptr && !is_dconst(array) && is_alive(array))
 			{
 
 #if AC_VERBOSE
@@ -1039,7 +1039,7 @@ struct update_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if (is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
+			if (is_dconst(array) || !is_alive(array)) continue;
 			auto config_array = config[array];
 			auto gmem_array   = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
@@ -1066,7 +1066,7 @@ struct free_arrays
 		for(P array: get_params<P>())
 		{
 			auto config_array = config[array];
-			if (config_array == nullptr || is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
+			if (config_array == nullptr || is_dconst(array) || !is_alive(array)) continue;
 			auto gmem_array = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
 			device_free(&gmem_array, get_array_length(array,config.scalars));
@@ -1366,11 +1366,6 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 	if (!is_dconst(array))
 	{
 		if (!is_alive(array)) return AC_NOT_ALLOCATED;
-		if (has_const_dims(array))
-		{
-			memcpy_to_const_dims_gmem_array(array,values);
-			return AC_SUCCESS;
-		}
 		auto dst_ptr = get_empty_pointer(array);
 		memcpy_from_gmem_array(array,dst_ptr);
 		ERRCHK_ALWAYS(dst_ptr != nullptr);
@@ -1414,11 +1409,6 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 	if (!is_dconst(array))
 	{
 		if (!is_alive(array)) return AC_NOT_ALLOCATED;
-		if (has_const_dims(array))
-		{
-			memcpy_from_gmem_array(array,values);
-			return AC_SUCCESS;
-		}
 		auto src_ptr = get_empty_pointer(array);
 		memcpy_from_gmem_array(array,src_ptr);
 		ERRCHK_ALWAYS(src_ptr != nullptr);
