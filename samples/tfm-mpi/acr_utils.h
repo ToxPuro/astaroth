@@ -58,10 +58,3 @@ std::vector<ac::mr::device_pointer<AcReal>> get_ptrs(const VertexBufferArray& vb
 std::vector<std::string> get_strs(const std::vector<Field>& fields);
 
 } // namespace acr
-
-inline int3
-convert_to_int3(const ac::ntuple<uint64_t>& in)
-{
-    ERRCHK(in.size() == 3);
-    return int3{as<int>(in[0]), as<int>(in[1]), as<int>(in[2])};
-}

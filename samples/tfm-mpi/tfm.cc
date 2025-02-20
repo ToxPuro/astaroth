@@ -76,6 +76,13 @@ appended(const std::vector<T>& a, const std::vector<T>& b)
     return c;
 }
 
+static int3
+convert_to_int3(const ac::ntuple<uint64_t>& in)
+{
+    ERRCHK(in.size() == 3);
+    return int3{as<int>(in[0]), as<int>(in[1]), as<int>(in[2])};
+}
+
 /**
  * Decompose the domain set in the input info and returns a complete local mesh info with all
  * parameters set (incl. multi-device offsets, and others)
