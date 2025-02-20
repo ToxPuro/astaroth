@@ -104,6 +104,18 @@ $SRUNMPI8 ./tfm-mpi
 
 ## Visualizing output
 
+### Short overview
+- `*.snapshot` files hold the whole computational domain. Controlled by `AC_simulation_snapshot_output_interval`.
+- `*.slice` files hold a two-dimensional slice of the computational domain. Controlled by `AC_simulation_profile_output_interval`.
+- `*.profile` files hold one-dimensional profiles of the fields. Controlled by `AC_simulation_profile_output_interval`.
+- `timeseries.csv` holds the timeseries w.r.t. all fields. Controlled by `AC_simulation_profile_output_interval`.
+
+#### Visualization scripts
+- `../samples/tfm-mpi/visualize.py --dims 128 128 128`: Visualize snapshots and profiles
+- `../samples/tfm-mpi/animate-slices.py --dims 128 128 --inputs *VTXBUF_UUX*.slice`: Creates an animation of the uux slices
+- `../samples/tfm-mpi/view-timeseries.py`: Plots the timeseries
+
+### More detailed
 - Outputs are monolithic files holding the computational domain
 - Halos are not included in the monolithic snapshots
 - `astaroth/samples/tfm-mpi/visualize.py` can be used as a starting point for visualizing the snapshots and profiles. To see an example how to visualize distributed slices, see `astaroth/samples/tfm-mpi/visualize-debug.py` (NOTE: works only when running individual jupyter cells and setting the dimensions manually).

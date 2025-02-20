@@ -35,6 +35,7 @@
 #define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
 #define AC_WRITE_SYNCHRONOUS_PROFILES
 #define AC_WRITE_SYNCHRONOUS_TIMESERIES
+#define AC_WRITE_SYNCHRONOUS_SLICES
 
 // #define AC_DISABLE_IO
 
@@ -219,6 +220,70 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
                                          std::string(filepath));
     }
     PRINT_LOG_TRACE("Exit");
+    return 0;
+}
+
+static int
+write_slices_to_disk(const MPI_Comm& parent_comm, const Device& device, const size_t step)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    const auto global_nn{acr::get_global_nn(info)};
+    const auto global_nn_offset{acr::get_global_nn_offset(info)};
+
+    const auto local_mm{acr::get_local_mm(info)};
+    const auto local_nn{acr::get_local_nn(info)};
+    const auto local_rr{acr::get_local_rr()};
+
+    const uint64_t global_pos{global_nn[2] / 2}; // Midpoint in the z axis
+    const uint64_t global_pos_min{global_nn_offset[2]};
+    const uint64_t global_pos_max{global_pos_min + local_nn[2]};
+
+    const auto key{ac::mpi::get_rank(parent_comm)};
+    int color{MPI_UNDEFINED};
+    if (global_pos_min <= global_pos && global_pos < global_pos_max)
+        color = 0;
+
+    MPI_Comm neighbors{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, key, &neighbors));
+    if (neighbors == MPI_COMM_NULL)
+        return 0; // Not contributing, return early
+
+    const auto coords{ac::mpi::get_coords(parent_comm)};
+    const ac::index slice_coords{coords[0], coords[1], 0};
+
+    const uint64_t local_pos{global_pos - global_nn_offset[2]};
+    const ac::shape local_slice_nn{local_nn[0], local_nn[1], 1};
+    const ac::index local_slice_nn_offset{local_rr[0], local_rr[1], local_pos};
+    const ac::shape global_slice_nn{global_nn[0], global_nn[1], 1};
+    const ac::index global_slice_nn_offset{slice_coords * local_slice_nn};
+
+    static ac::device_ndbuffer<AcReal> pack_buffer{local_slice_nn};
+    static ac::host_ndbuffer<AcReal> staging_buffer{local_slice_nn};
+    for (size_t i{0}; i < NUM_VTXBUF_HANDLES; ++i) {
+        const auto input{acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input)};
+        pack(local_mm, local_slice_nn, local_slice_nn_offset, {input}, pack_buffer.get());
+        ac::mr::copy(pack_buffer.get(), staging_buffer.get());
+
+        char filepath[4096];
+        sprintf(filepath, "%s-%012zu.slice", vtxbuf_names[i], step);
+        PRINT_LOG_TRACE("Writing %s", filepath);
+        ac::mpi::write_collective(neighbors,
+                                  ac::mpi::get_dtype<AcReal>(),
+                                  global_slice_nn,
+                                  global_slice_nn_offset,
+                                  local_slice_nn,
+                                  local_slice_nn,
+                                  ac::make_index(local_slice_nn.size(), 0),
+                                  staging_buffer.data(),
+                                  std::string(filepath));
+    }
+
+    ERRCHK_MPI_API(MPI_Comm_free(&neighbors));
     return 0;
 }
 
@@ -914,6 +979,9 @@ class Grid {
         // Write profiles
         write_profiles_to_disk(cart_comm, device, 0);
 
+        // Write slices
+        write_slices_to_disk(cart_comm, device, 0);
+
 // Write snapshots
 #if defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
         write_snapshots_to_disk(cart_comm, device, 0);
@@ -1043,6 +1111,11 @@ class Grid {
             if ((step %
                  as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
                 write_timeseries(cart_comm, device, step, current_time, dt);
+#endif
+#if defined(AC_WRITE_SYNCHRONOUS_SLICES)
+            if ((step %
+                 as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
+                write_slices_to_disk(cart_comm, device, step);
 #endif
 #endif
         }
