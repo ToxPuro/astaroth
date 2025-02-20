@@ -356,7 +356,7 @@ typedef struct {
 static std::vector<TBConfig> tbconfigs;
 
 
-static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 dims, VertexBufferArray vba);
+static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba);
 
 static __global__ void
 flush_kernel(AcReal* arr, const size_t n, const AcReal value)
@@ -1170,9 +1170,8 @@ acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_vo
 {
   const int3 start = to_int3(start_volume);
   const int3 end   = to_int3(end_volume);
-  const int3 n     = to_int3(end_volume - start_volume);
 
-  const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
+  const TBConfig tbconf = getOptimalTBConfig(kernel, start, end, vba);
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
@@ -1198,9 +1197,7 @@ AcResult
 acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
                   VertexBufferArray vba)
 {
-  const int3 n = end - start;
-
-  const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
+  const TBConfig tbconf = getOptimalTBConfig(kernel, start, end, vba);
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
@@ -1475,8 +1472,9 @@ make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel kernel)
 }
 
 static TBConfig
-autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
+autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
 {
+  const int3 dims = end-start;
   make_vtxbuf_input_params_safe(vba,kernel);
   // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
   //        "(%d):\n",
@@ -1496,10 +1494,6 @@ autotune(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
       .dims   = dims,
       .tpb    = (dim3){0, 0, 0},
   };
-
-  const int3 ghosts = get_ghosts();
-  const int3 start = ghosts;
-  const int3 end = start + dims;
 
 
   //TP: since autotuning should be quite fast when the dim is not NGHOST only log for actually 3d portions
@@ -1709,8 +1703,9 @@ read_optim_tpb(const AcKernel kernel, const int3 dims, const int3 block_factors)
 
 
 static TBConfig
-getOptimalTBConfig(const AcKernel kernel, const int3 dims, VertexBufferArray vba)
+getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
 {
+  const int3 dims = end-start;
   for (auto c : tbconfigs)
     if (c.kernel == kernel && c.dims == dims)
       return c;
@@ -1718,7 +1713,7 @@ getOptimalTBConfig(const AcKernel kernel, const int3 dims, VertexBufferArray vba
   const int3 read_tpb = read_optim_tpb(kernel,dims,vba.on_device.block_factor);
   TBConfig c  = (read_tpb != (int3){-1,-1,-1})
           ? (TBConfig){kernel,dims,(dim3){(uint32_t)read_tpb.x, (uint32_t)read_tpb.y, (uint32_t)read_tpb.z}}
-          : autotune(kernel,dims,vba);
+          : autotune(kernel,start,end,vba);
   tbconfigs.push_back(c);
   return c;
 }
