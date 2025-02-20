@@ -2,7 +2,9 @@
 
 #include "acm/detail/errchk.h"
 
-namespace ac::device {
+#include "device_detail.h"
+
+namespace ac {
 
 void
 swap_buffers(const Device& device)
@@ -22,4 +24,22 @@ swap_buffers(const Device& device, const std::vector<VertexBufferHandle>& handle
         ERRCHK(acDeviceSwapBuffer(device, handle) == AC_SUCCESS);
 }
 
-} // namespace ac::device
+std::vector<ac::mr::device_pointer<AcReal>>
+get_ptrs(const Device& device, const std::vector<Field>& fields, const BufferGroup& type)
+{
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    return acr::get_ptrs(vba, fields, type);
+}
+
+std::vector<ac::mr::device_pointer<AcReal>>
+get_ptrs(const Device& device, const std::vector<Profile>& profiles, const BufferGroup& type)
+{
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    return acr::get_ptrs(vba, profiles, type);
+}
+
+} // namespace ac

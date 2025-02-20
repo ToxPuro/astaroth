@@ -10,7 +10,7 @@
         if (_tmp_ac_api_errcode_ != AC_SUCCESS) {                                                  \
             errchk_print_error(__func__, __FILE__, __LINE__, #errcode, "Astaroth error");          \
             errchk_print_stacktrace();                                                             \
-            MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
+            throw std::runtime_error("Assertion " #errcode " failed");                             \
         }                                                                                          \
     } while (0)
 
