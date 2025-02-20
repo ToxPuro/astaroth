@@ -1121,7 +1121,9 @@ get_array_info(Symbol* sym, const bool accessed, const ASTNode* root)
 	if (!accessed) push(&sym->tqualifiers,DEAD_STR);
 	bool const_dims = true;
 	for(size_t dim = 0; dim < MAX_ARRAY_RANK; ++dim) const_dims &= (dim >= res.dims.size || all_identifiers_are_constexpr(res.dims.data[dim]));
-	if (const_dims) push(&sym->tqualifiers,CONST_DIMS_STR);
+	const bool is_gmem = str_vec_contains(sym->tqualifiers,GLOBAL_MEM_STR);
+	//TP: for now suppress the knowledge that some gmems are of known sizes since can run of out memory otherwise
+	if (const_dims && !is_gmem) push(&sym->tqualifiers,CONST_DIMS_STR);
 
 	return res;
 }
