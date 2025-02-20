@@ -21,8 +21,8 @@
 #include "math_utils.h" //uint64_t, uint3_64
 #include "datatypes.h"
 #include "errchk.h"
-#include "astaroth.h"
-//#include "../../include/astaroth.h"
+#include "astaroth_base.h"
+#include "astaroth_grid.h"
 
 typedef struct {
     size_t ndims;
