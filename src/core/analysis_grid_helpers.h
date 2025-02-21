@@ -46,12 +46,20 @@ get_kernel_depends_on_boundaries()
 	return res;
 }
 static bool
+kernel_reduces_scalar(const AcKernel kernel)
+{
+	const auto info = get_kernel_analysis_info();
+	for(size_t i = 0; i < info.n_reduce_outputs[kernel]; ++i)
+		if(info.reduce_outputs[kernel][i].type != AC_PROF_TYPE) return true;
+	return false;
+}
+static bool
 kernel_reduces_something(const AcKernel kernel)
 {
 	const auto info = get_kernel_analysis_info();
 	for(int i = 0; i < NUM_PROFILES; ++i)
 		if(info.reduced_profiles[kernel][i]) return true;
-	if(info.n_reduce_outputs[kernel] > 0) return true;
+	if(kernel_reduces_scalar(kernel)) return true;
 	return false;
 }
 
@@ -63,6 +71,16 @@ kernel_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
 	for(int i = 0; i < NUM_PROFILES; ++i)
 		if(info.written_profiles[kernel][i] && prof_types[i] == prof_type) return true;
 	return false;
+}
+
+static bool
+kernel_only_reduces_profile(const AcKernel kernel, const AcProfileType prof_type)
+{
+	if(kernel_reduces_scalar(kernel)) return false;
+	const auto info = get_kernel_analysis_info();
+	for(int i = 0; i < NUM_PROFILES; ++i)
+		if(info.reduced_profiles[kernel][i] && prof_types[i] != prof_type) return false;
+	return true;
 }
 
 static bool

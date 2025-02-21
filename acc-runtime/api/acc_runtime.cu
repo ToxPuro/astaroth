@@ -2204,7 +2204,7 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 #define TILE_DIM (32)
 
 void __global__ 
-transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims)
+transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2216,18 +2216,18 @@ transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims)
 
 	const dim3 vertexIdx = 
 	{
-		threadIdx.x + block_offset.x,
-		threadIdx.y + block_offset.y,
-		threadIdx.z + block_offset.z
+		(int)start.x + threadIdx.x + block_offset.x,
+		(int)start.y + threadIdx.y + block_offset.y,
+		(int)start.z + threadIdx.z + block_offset.z
 	};
 	const dim3 out_vertexIdx = 
 	{
-		threadIdx.x + block_offset.z,
-		threadIdx.y + block_offset.y,
-		threadIdx.z + block_offset.x
+		(int)start.z + threadIdx.x + block_offset.z,
+		(int)start.y + threadIdx.y + block_offset.y,
+		(int)start.x + threadIdx.z + block_offset.x
 	};
-	const bool in_oob  =  vertexIdx.x  >= dims.x    ||  vertexIdx.y >= dims.y     || vertexIdx.z >= dims.z;
-	const bool out_oob =  out_vertexIdx.x >= dims.z ||  out_vertexIdx.y >= dims.y || out_vertexIdx.z >= dims.x;
+	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
+	const bool out_oob =  out_vertexIdx.x >= end.z ||  out_vertexIdx.y >= end.y || out_vertexIdx.z >= end.x;
 
 
 
@@ -2237,7 +2237,7 @@ transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims)
 		dst[out_vertexIdx.x +dims.z*out_vertexIdx.y + dims.z*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
 }
 void __global__ 
-transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims)
+transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2249,18 +2249,18 @@ transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims)
 
 	const dim3 vertexIdx = 
 	{
-		threadIdx.x + block_offset.x,
-		threadIdx.y + block_offset.y,
-		threadIdx.z + block_offset.z
+		(int) start.x + threadIdx.x + block_offset.x,
+		(int) start.y + threadIdx.y + block_offset.y,
+		(int) start.z + threadIdx.z + block_offset.z
 	};
 	const dim3 out_vertexIdx = 
 	{
-		threadIdx.x + block_offset.z,
-		threadIdx.y + block_offset.y,
-		threadIdx.z + block_offset.x
+		(int)start.z + threadIdx.x + block_offset.z,
+		(int)start.y + threadIdx.y + block_offset.y,
+		(int)start.x + threadIdx.z + block_offset.x
 	};
-	const bool in_oob  =  vertexIdx.x  >= dims.x    ||  vertexIdx.y >= dims.y     || vertexIdx.z >= dims.z;
-	const bool out_oob =  out_vertexIdx.x >= dims.z ||  out_vertexIdx.y >= dims.y || out_vertexIdx.z >= dims.x;
+	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
+	const bool out_oob =  out_vertexIdx.x >= end.z ||  out_vertexIdx.y >= end.y || out_vertexIdx.z >= end.x;
 
 
 
@@ -2270,7 +2270,7 @@ transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims)
 		dst[out_vertexIdx.x +dims.z*out_vertexIdx.z + dims.z*dims.x*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
 }
 void __global__ 
-transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims)
+transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2282,18 +2282,18 @@ transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims)
 
 	const dim3 vertexIdx = 
 	{
-		threadIdx.x + block_offset.x,
-		threadIdx.y + block_offset.y,
-		threadIdx.z + block_offset.z
+		(int) start.x + threadIdx.x + block_offset.x,
+		(int) start.y + threadIdx.y + block_offset.y,
+		(int) start.z + threadIdx.z + block_offset.z
 	};
 	const dim3 out_vertexIdx = 
 	{
-		threadIdx.x + block_offset.y,
-		threadIdx.y + block_offset.x,
-		threadIdx.z + block_offset.z
+		(int)start.y + threadIdx.x + block_offset.y,
+		(int)start.x + threadIdx.y + block_offset.x,
+		(int)start.z + threadIdx.z + block_offset.z
 	};
-	const bool in_oob  =  vertexIdx.x  >= dims.x    ||  vertexIdx.y >= dims.y     || vertexIdx.z >= dims.z;
-	const bool out_oob =  out_vertexIdx.x >= dims.y ||  out_vertexIdx.y >= dims.x || out_vertexIdx.z >= dims.z;
+	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
+	const bool out_oob =  out_vertexIdx.x >= end.y ||  out_vertexIdx.y >= end.x || out_vertexIdx.z >= end.z;
 
 
 
@@ -2303,7 +2303,7 @@ transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims)
 		dst[out_vertexIdx.x +dims.y*out_vertexIdx.y + dims.x*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
 }
 void __global__ 
-transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims)
+transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
@@ -2315,18 +2315,18 @@ transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims)
 
 	const dim3 vertexIdx = 
 	{
-		threadIdx.x + block_offset.x,
-		threadIdx.y + block_offset.y,
-		threadIdx.z + block_offset.z
+		(int)start.x +threadIdx.x + block_offset.x,
+		(int)start.y +threadIdx.y + block_offset.y,
+		(int)start.z +threadIdx.z + block_offset.z
 	};
 	const dim3 out_vertexIdx = 
 	{
-		threadIdx.x + block_offset.y,
-		threadIdx.y + block_offset.x,
-		threadIdx.z + block_offset.z
+		(int)start.y + threadIdx.x + block_offset.y,
+		(int)start.x + threadIdx.y + block_offset.x,
+		(int)start.z + threadIdx.z + block_offset.z
 	};
-	const bool in_oob  =  vertexIdx.x  >= dims.x    ||  vertexIdx.y >= dims.y     || vertexIdx.z >= dims.z;
-	const bool out_oob =  out_vertexIdx.x >= dims.y ||  out_vertexIdx.y >= dims.x || out_vertexIdx.z >= dims.z;
+	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
+	const bool out_oob =  out_vertexIdx.x >= end.y ||  out_vertexIdx.y >= end.x || out_vertexIdx.z >= end.z;
 
 
 
@@ -2336,7 +2336,7 @@ transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims)
 		dst[out_vertexIdx.x +dims.y*out_vertexIdx.z + dims.y*dims.z*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];
 }
 void __global__ 
-transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const Volume dims)
+transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
 	const dim3 in_block_offset =
 	{
@@ -2347,89 +2347,96 @@ transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const Volume dims)
 
 	const dim3 vertexIdx = 
 	{
-		threadIdx.x + in_block_offset.x,
-		threadIdx.y + in_block_offset.y,
-		threadIdx.z + in_block_offset.z
+		(int)start.x + threadIdx.x + in_block_offset.x,
+		(int)start.y + threadIdx.y + in_block_offset.y,
+		(int)start.z + threadIdx.z + in_block_offset.z
 	};
 
-	const bool oob  =  vertexIdx.x  >= dims.x    ||  vertexIdx.y >= dims.y     || vertexIdx.z >= dims.z;
+	const bool oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
 	if(oob) return;
 	dst[vertexIdx.x + dims.x*vertexIdx.z + dims.x*dims.z*vertexIdx.y] 
 		= src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)];
 }
 static AcResult
-acTransposeXYZ_ZYX(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
+acTransposeXYZ_ZYX(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
+{
+	const dim3 tpb = {32,1,32};
+	const Volume sub_dims = end-start;
+	const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
+  	KERNEL_LAUNCH(transpose_xyz_to_zyx,bpg, tpb, 0, stream)(src,dst,dims,start,end);
+	ERRCHK_CUDA_KERNEL();
+	return AC_SUCCESS;
+}
+static AcResult
+acTransposeXYZ_ZXY(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,1,32};
 
-	const dim3 bpg = to_dim3(get_bpg(dims,to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_zyx,bpg, tpb, 0, stream)(src,dst,dims);
+	const Volume sub_dims = end-start;
+	const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
+  	KERNEL_LAUNCH(transpose_xyz_to_zxy,bpg, tpb, 0, stream)(src,dst,dims,start,end);
 	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_ZXY(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
-{
-	const dim3 tpb = {32,1,32};
-
-	const dim3 bpg = to_dim3(get_bpg(dims,to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_zxy,bpg, tpb, 0, stream)(src,dst,dims);
-	ERRCHK_CUDA_KERNEL();
-	return AC_SUCCESS;
-}
-static AcResult
-acTransposeXYZ_YXZ(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
+acTransposeXYZ_YXZ(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,32,1};
 
-	const dim3 bpg = to_dim3(get_bpg(dims,to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_yxz,bpg, tpb, 0, stream)(src,dst,dims);
+	const Volume sub_dims = end-start;
+	const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
+  	KERNEL_LAUNCH(transpose_xyz_to_yxz,bpg, tpb, 0, stream)(src,dst,dims,start,end);
 	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_YZX(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
+acTransposeXYZ_YZX(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,32,1};
 
-	const dim3 bpg = to_dim3(get_bpg(dims,to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_yzx,bpg, tpb, 0, stream)(src,dst,dims);
+	const Volume sub_dims = end-start;
+	const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
+  	KERNEL_LAUNCH(transpose_xyz_to_yzx,bpg, tpb, 0, stream)(src,dst,dims,start,end);
 	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_XZY(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
+acTransposeXYZ_XZY(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
 {
 	const dim3 tpb = {32,32,1};
-	const dim3 bpg = to_dim3(get_bpg(dims,to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_xzy,bpg, tpb, 0, stream)(src,dst,dims);
+	const Volume sub_dims = end-start;
+	const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
+  	KERNEL_LAUNCH(transpose_xyz_to_xzy,bpg, tpb, 0, stream)(src,dst,dims,start,end);
 	ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
 static AcResult
-acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
+acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
 {
-	const size_t bytes = dims.x*dims.y*dims.z*sizeof(AcReal);
+	const Volume sub_dims = end-start;
+	const size_t bytes = sub_dims.x*sub_dims.y*sub_dims.z*sizeof(AcReal);
+	src = &src[start.x + dims.x*start.y + dims.x*dims.y*start.z];
+	dst = &dst[start.x + dims.x*start.y + dims.x*dims.y*start.z];
 	ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(dst,src,bytes,cudaMemcpyDeviceToDevice,stream));
 	return AC_SUCCESS;
 }
 AcResult
-acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
+acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
 {
 	switch(order)
 	{
 		case(XYZ):
-			return acTransposeXYZ_XYZ(src,dst,dims,stream);
+			return acTransposeXYZ_XYZ(src,dst,dims,start,end,stream);
 		case (XZY):
-			return acTransposeXYZ_XZY(src,dst,dims,stream);
+			return acTransposeXYZ_XZY(src,dst,dims,start,end,stream);
 		case (YXZ):
-			return acTransposeXYZ_YXZ(src,dst,dims,stream);
+			return acTransposeXYZ_YXZ(src,dst,dims,start,end,stream);
 		case (YZX):
-			return acTransposeXYZ_YZX(src,dst,dims,stream);
+			return acTransposeXYZ_YZX(src,dst,dims,start,end,stream);
 		case(ZXY):
-			return acTransposeXYZ_ZXY(src,dst,dims,stream);
+			return acTransposeXYZ_ZXY(src,dst,dims,start,end,stream);
 		case(ZYX):
-			return acTransposeXYZ_ZYX(src,dst,dims,stream);
+			return acTransposeXYZ_ZYX(src,dst,dims,start,end,stream);
 	}
         ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
@@ -2540,8 +2547,9 @@ acGetMeshOrderForProfile(const AcProfileType type)
 			return YZX;
     	        case(PROFILE_ZY):
 			return XZY;
+		case(PROFILE_NONE):
+			return XYZ;
     	}
-	return XYZ;
 };
 
 #include "load_ac_kernel_params.h"

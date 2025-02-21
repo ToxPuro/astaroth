@@ -313,55 +313,36 @@ acGetLengths(const AcMeshInfo info)
 #include "get_vtxbufs_funcs.h"
 #include "stencil_accesses.h"
 
-AcResult
-acReduceProfileX(const Profile prof, const AcMeshDims dims, const AcReal* src, AcReal** tmp, size_t* tmp_size, AcReal* dst, const cudaStream_t stream)
-{
-    if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
-    const AcProfileType type = prof_types[prof];
-    const AcMeshOrder order    = acGetMeshOrderForProfile(type);
-    dst += NGHOST;
-
-    const AcBuffer buffer_in =
-    {
-	    (AcReal*)src,
-	    as_size_t(dims.nn.x*dims.nn.y*dims.nn.z),
-	    true,
-	    (AcShape){
-		    as_size_t(dims.nn.x),
-		    as_size_t(dims.nn.y),
-		    as_size_t(dims.nn.z),
-		    1
-	    },
-    };
-
-    AcBuffer buffer = acTransposeBuffer(buffer_in, order, stream);
-    cudaDeviceSynchronize();
-
-    const size_t num_segments = (type & ONE_DIMENSIONAL_PROFILE) ? buffer.shape.z*buffer.shape.w
-	                                                         : buffer.shape.y*buffer.shape.z*buffer.shape.w;
-    fprintf(stderr,"PROFILE X n segments: %zu\n",num_segments);
-    fprintf(stderr,"PROFILE X elems: %zu\n",buffer.count);
-    acSegmentedReduce(stream, buffer.data, buffer.count, num_segments, dst,tmp,tmp_size);
-
-    acBufferDestroy(&buffer);
-    return AC_SUCCESS;
-
-}
-
 
 AcResult
-acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream)
+acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream, const Volume start, const Volume end, const Volume start_after_transpose, const Volume end_after_transpose)
 {
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     if(!reduced_profiles[prof])      return AC_NOT_ALLOCATED;
     const AcProfileType type = prof_types[prof];
     const AcMeshOrder order    = acGetMeshOrderForProfile(type);
-    acTranspose(order,buffer.src.data,buffer.transposed.data,get_volume_from_shape(buffer.src.shape),stream);
 
-    const size_t num_segments = (type & ONE_DIMENSIONAL_PROFILE) ? buffer.transposed.shape.z*buffer.transposed.shape.w
-	                                                         : buffer.transposed.shape.y*buffer.transposed.shape.z*buffer.transposed.shape.w;
-    acSegmentedReduce(stream, buffer.transposed.data, buffer.transposed.count, num_segments, dst,buffer.cub_tmp,buffer.cub_tmp_size);
+
+    acTranspose(order,buffer.src.data,buffer.transposed.data,get_volume_from_shape(buffer.src.shape),start,end,stream);
+
+    const Volume dims = end_after_transpose-start_after_transpose;
+
+    const size_t num_segments = (type & ONE_DIMENSIONAL_PROFILE) ? dims.z*buffer.transposed.shape.w
+	                                                         : dims.y*dims.z*buffer.transposed.shape.w;
+
+    const size_t count = buffer.transposed.shape.w*dims.x*dims.y*dims.z;
+
+    const AcReal* reduce_src = buffer.transposed.data
+	    		      + start_after_transpose.x + start_after_transpose.y*buffer.transposed.shape.x + start_after_transpose.z*buffer.transposed.shape.x*buffer.transposed.shape.y;
+
+    acSegmentedReduce(stream, reduce_src, count, num_segments, dst,buffer.cub_tmp,buffer.cub_tmp_size);
     return AC_SUCCESS;
+}
+
+AcResult
+acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream)
+{
+	return acReduceProfileWithBounds(prof,buffer,dst,stream,(Volume){0,0,0},get_volume_from_shape(buffer.src.shape),(Volume){0,0,0},get_volume_from_shape(buffer.transposed.shape));
 }
 
 #include "../config_helpers.h"

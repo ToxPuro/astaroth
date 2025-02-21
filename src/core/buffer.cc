@@ -1,12 +1,5 @@
 #include "acc_runtime.h"
-static size_t
-get_size_from_dim(const int dim, const Volume dims)
-{
-    	const auto size   = dim == X_ORDER_INT ? dims.x :
-        		    dim == Y_ORDER_INT ? dims.y :
-        		    dims.z;
-        return size;
-}
+#include "util_funcs.h"
 AcShape
 acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims)
 {
@@ -46,11 +39,6 @@ acGetReductionShape(const AcProfileType type, const AcMeshDims dims)
 			order_size.w
 		};
 	return order_size;
-}
-static Volume
-get_volume_from_shape(const AcShape shape)
-{
-	return {shape.x,shape.y,shape.z};
 }
 
 AcBuffer

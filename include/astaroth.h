@@ -661,6 +661,7 @@ AcBuffer acTransposeBuffer(const AcBuffer src, const AcMeshOrder order, const cu
 AcShape  acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims);
 AcShape  acGetReductionShape(const AcProfileType type, const AcMeshDims dims);
 AcResult acReduceProfile(const Profile prof, const AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream);
+AcResult acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream, const Volume start, const Volume end, const Volume start_after_transpose, const Volume end_after_transpose);
 
 AcBuffer
 acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaStream_t stream);

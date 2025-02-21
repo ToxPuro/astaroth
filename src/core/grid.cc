@@ -1983,7 +1983,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 			reduce_op.num_outputs_out = op.num_outputs_out;
 			reduce_op.outputs_in      = op.outputs_out;
 			reduce_op.outputs_out     = op.outputs_out;
-
 			ops.push_back(reduce_op);
 	    }
     }
@@ -2249,8 +2248,35 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
             break;
         }
 	case TASKTYPE_REDUCE:  {
-	  auto task = std::make_shared<ReduceTask>(op, i, 0, grid_info.nn, device, swap_offset);
-	  graph->all_tasks.push_back(task);
+	  if(kernel_only_reduces_profile(op.kernel_enum,PROFILE_X))
+	  {
+		for(int id = -1; id <= 1; ++id)
+		{
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({id,0,0}), grid_info.nn, device, swap_offset);
+	  		graph->all_tasks.push_back(task);
+		}
+	  }
+	  else if(kernel_only_reduces_profile(op.kernel_enum,PROFILE_Y))
+	  {
+		for(int id = -1; id <= 1; ++id)
+		{
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,id,0}), grid_info.nn, device, swap_offset);
+	  		graph->all_tasks.push_back(task);
+		}
+	  }
+	  else if(kernel_only_reduces_profile(op.kernel_enum,PROFILE_Z))
+	  {
+		for(int id = -1; id <= 1; ++id)
+		{
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,0,id}), grid_info.nn, device, swap_offset);
+	  		graph->all_tasks.push_back(task);
+		}
+	  }
+	  else
+	  {
+	  	auto task = std::make_shared<ReduceTask>(op, i, 0, grid_info.nn, device, swap_offset);
+	  	graph->all_tasks.push_back(task);
+	  }
 	  break;
 	}
         }
