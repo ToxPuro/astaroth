@@ -210,29 +210,32 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     return task_def;
 }
 size_t
-get_compute_output_position(const int id, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
+get_compute_output_position(const int id, const size_t ghost, const size_t nn, const bool boundary_included)
 {
 	return id == -1  ? (boundary_included ? 0 : ghost) : 
-		id == 1  ? nn : 
-		ghost * 2;
+		id == 1  ? (boundary_included ? nn+ghost : nn) : 
+		(boundary_included ? ghost : ghost*2);
 }
 
 size_t
-get_compute_output_dim(const int id, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
+get_compute_output_dim(const int id, const size_t ghost, const size_t nn, const bool boundary_included)
 {
-	return id == 0 ? nn - ghost*2 : ghost*(1+boundary_included);
+
+	return id == 0 ? 
+		 (boundary_included ? nn : nn - ghost*2) : 
+		 ghost;
 }
 size_t
 get_compute_input_position(const int id, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
 {
-	const auto output_position = get_compute_output_position(id,ghost,nn,boundary_included,depends_on_boundary);
+	const auto output_position = get_compute_output_position(id,ghost,nn,boundary_included);
 	if(depends_on_boundary) return output_position - ghost;
 	else return output_position;
 }
 size_t
 get_compute_input_dim(const int id, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
 {
-	const auto output_dims = get_compute_output_dim(id,ghost,nn,boundary_included,depends_on_boundary);
+	const auto output_dims = get_compute_output_dim(id,ghost,nn,boundary_included);
 	if(depends_on_boundary) return output_dims + 2*ghost;
 	else return output_dims;
 }
@@ -269,15 +272,15 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       case RegionFamily::Compute_output: {
       // clang-format off
       position = {
-	    get_compute_output_position(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
-	    get_compute_output_position(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y,depends_on_boundary & BOUNDARY_Y),
-	    get_compute_output_position(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z,depends_on_boundary & BOUNDARY_Z)
+	    get_compute_output_position(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
+	    get_compute_output_position(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
+	    get_compute_output_position(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z)
       };
       // clang-format on
       dims = {
-	      get_compute_output_dim(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
-	      get_compute_output_dim(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y,depends_on_boundary & BOUNDARY_Y),
-	      get_compute_output_dim(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z,depends_on_boundary & BOUNDARY_Z),
+	      get_compute_output_dim(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
+	      get_compute_output_dim(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
+	      get_compute_output_dim(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z),
       };
       if(dims.x == 0 || dims.y == 0 || dims.z == 0)
       {
