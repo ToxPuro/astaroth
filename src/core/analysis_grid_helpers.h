@@ -6,6 +6,83 @@ get_kernel_analysis_info()
 	acAnalysisGetKernelInfo(info.params,&res);
 	return res;
 }
+static AcBoundary
+get_kernel_depends_on_boundaries(const AcKernel kernel)
+{
+	const auto info = get_kernel_analysis_info();
+	int res = 0;
+	for(int j = 0; j < NUM_FIELDS; ++j)
+		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+			if(info.stencils_accessed[kernel][j][stencil])
+				res |= acDeviceStencilAccessesBoundaries(acGridGetDevice(), Stencil(stencil));
+	for(int j = 0; j < NUM_PROFILES; ++j)
+		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+			if(info.stencils_accessed[kernel][j+NUM_ALL_FIELDS][stencil])
+				res |= acDeviceStencilAccessesBoundaries(acGridGetDevice(), Stencil(stencil));
+	return AcBoundary(res);
+
+}
+
+static std::vector<AcBoundary>
+get_kernel_depends_on_boundaries()
+{
+	std::vector<AcBoundary> res{};
+	for(size_t i = 0; i < NUM_KERNELS; ++i)
+		res.push_back(get_kernel_depends_on_boundaries(AcKernel(i)));
+	return res;
+}
+static bool
+kernel_reduces_something(const AcKernel kernel)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int i = 0; i < NUM_PROFILES; ++i)
+		if(info.reduced_profiles[kernel][i]) return true;
+	if(info.n_reduce_outputs[kernel] > 0) return true;
+	return false;
+}
+
+static bool
+kernel_updates_vtxbuf(const AcKernel kernel)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int i = 0; i < NUM_FIELDS; ++i)
+		if(info.written_fields[kernel][i]) return true;
+	return false;
+}
+
+static bool
+kernel_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int i = 0; i < NUM_PROFILES; ++i)
+		if(info.written_profiles[kernel][i] && prof_types[i] == prof_type) return true;
+	return false;
+}
+
+static bool
+kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
+{
+	if(kernel_reduces_something(kernel)) return false;
+	if(kernel_updates_vtxbuf(kernel))    return false;
+	const std::array<AcProfileType,9> profile_types =
+	{
+		PROFILE_X,
+		PROFILE_Y,
+		PROFILE_Z,
+
+		PROFILE_XY,
+		PROFILE_XZ,
+
+		PROFILE_YX,
+		PROFILE_YZ,
+
+		PROFILE_ZX,
+		PROFILE_ZY,
+	};
+	for(const auto& type : profile_types)
+		if(prof_type != type && kernel_writes_profile(kernel,type)) return false;
+	return true;
+}
 
 static std::vector<std::array<AcBoundary,NUM_PROFILES>>
 compute_kernel_call_computes_profile_across_halos(const std::vector<AcKernel>& calls)

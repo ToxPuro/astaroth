@@ -2139,6 +2139,24 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y  && Region::tag_to_id(tag).y != 0) continue;
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
+
+		    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_X))
+		    {
+			if(Region::tag_to_id(tag).y != -1)  continue;
+			if(Region::tag_to_id(tag).z != -1)  continue;
+		    }
+
+		    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Y))
+		    {
+			if(Region::tag_to_id(tag).x != -1)  continue;
+			if(Region::tag_to_id(tag).z != -1)  continue;
+		    }
+
+		    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Z))
+		    {
+			if(Region::tag_to_id(tag).x != -1)  continue;
+			if(Region::tag_to_id(tag).y != -1)  continue;
+		    }
 	    	    //auto task = std::make_shared<ComputeTask>(op,tag,full_input_region,full_region,device,swap_offset);
             	    //graph->all_tasks.push_back(task);
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, grid_info.nn, device, swap_offset);

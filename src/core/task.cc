@@ -48,6 +48,7 @@ AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 
 #include "astaroth_utils.h"
 #include "grid_detail.h"
+#include "analysis_grid_helpers.h"
 
 #include <cassert>
 #include <memory>
@@ -208,8 +209,36 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     	task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
     return task_def;
 }
+size_t
+get_compute_output_position(const int id, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
+{
+	return id == -1  ? (boundary_included ? 0 : ghost) : 
+		id == 1  ? nn : 
+		ghost * 2;
+}
 
-Region::Region(RegionFamily family_, int tag_, Volume nn, const RegionMemoryInputParams mem_)
+size_t
+get_compute_output_dim(const int id, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
+{
+	return id == 0 ? nn - ghost*2 : ghost*(1+boundary_included);
+}
+size_t
+get_compute_input_position(const int id, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
+{
+	const auto output_position = get_compute_output_position(id,ghost,nn,boundary_included,depends_on_boundary);
+	if(depends_on_boundary) return output_position - ghost;
+	else return output_position;
+}
+size_t
+get_compute_input_dim(const int id, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
+{
+	const auto output_dims = get_compute_output_dim(id,ghost,nn,boundary_included,depends_on_boundary);
+	if(depends_on_boundary) return output_dims + 2*ghost;
+	else return output_dims;
+}
+
+
+Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary computes_on_boundary, Volume nn, const RegionMemoryInputParams mem_)
     : family(family_), tag(tag_) 
 {
     const Volume ghosts = to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
@@ -240,13 +269,16 @@ Region::Region(RegionFamily family_, int tag_, Volume nn, const RegionMemoryInpu
       case RegionFamily::Compute_output: {
       // clang-format off
       position = {
-      	    id.x == -1  ? ghosts.x : id.x == 1 ? nn.x : ghosts.x * 2,
-      	    id.y == -1  ? ghosts.y : id.y == 1 ? nn.y : ghosts.y * 2,
-      	    id.z == -1  ? ghosts.z : id.z == 1 ? nn.z : ghosts.z * 2};
+	    get_compute_output_position(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
+	    get_compute_output_position(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y,depends_on_boundary & BOUNDARY_Y),
+	    get_compute_output_position(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z,depends_on_boundary & BOUNDARY_Z)
+      };
       // clang-format on
-      dims = {id.x == 0 ? nn.x - ghosts.x * 2 : ghosts.x,
-      	      id.y == 0 ? nn.y - ghosts.y * 2 : ghosts.y,
-      	      id.z == 0 ? nn.z - ghosts.z * 2 : ghosts.z};
+      dims = {
+	      get_compute_output_dim(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
+	      get_compute_output_dim(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y,depends_on_boundary & BOUNDARY_Y),
+	      get_compute_output_dim(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z,depends_on_boundary & BOUNDARY_Z),
+      };
       if(dims.x == 0 || dims.y == 0 || dims.z == 0)
       {
 	      fprintf(stderr,"Incorrect region dims: %zu,%zu,%zu\n",dims.x,dims.y,dims.z);
@@ -257,14 +289,17 @@ Region::Region(RegionFamily family_, int tag_, Volume nn, const RegionMemoryInpu
       case RegionFamily::Compute_input: {
       // clang-format off
       position = {
-      	    id.x == -1  ? 0 : id.x == 1 ? nn.x - ghosts.x : ghosts.x ,
-      	    id.y == -1  ? 0 : id.y == 1 ? nn.y - ghosts.y : ghosts.y ,
-      	    id.z == -1  ? 0 : id.z == 1 ? nn.z - ghosts.z : ghosts.z };
+	    get_compute_input_position(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
+	    get_compute_input_position(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y,depends_on_boundary & BOUNDARY_Y),
+	    get_compute_input_position(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z,depends_on_boundary & BOUNDARY_Z)
+      };
       // clang-format on
       dims = {
-	      		id.x == 0 ? nn.x : ghosts.x * 3, 
-			id.y == 0 ? nn.y : ghosts.y * 3,
-      	      	        id.z == 0 ? nn.z : ghosts.z * 3};
+	    get_compute_input_dim(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
+	    get_compute_input_dim(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y,depends_on_boundary & BOUNDARY_Y),
+	    get_compute_input_dim(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z,depends_on_boundary & BOUNDARY_Z)
+      };
+
       if(dims.x == 0 || dims.y == 0 || dims.z == 0)
       {
 	      fprintf(stderr,"Incorrect region dims: %zu,%zu,%zu\n",dims.x,dims.y,dims.z);
@@ -300,7 +335,7 @@ Region::Region(RegionFamily family_, int tag_, Volume nn, const RegionMemoryInpu
       }
       
       Region::Region(RegionFamily family_, int3 id_, Volume nn, const RegionMemoryInputParams mem_)
-      : Region{family_, id_to_tag(id_), nn, mem_}
+      : Region{family_, id_to_tag(id_), BOUNDARY_XYZ, BOUNDARY_NONE, nn, mem_}
       {
       ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
       }
@@ -341,15 +376,29 @@ Region::translate(int3 translation)
 return Region(to_volume(this->position + translation), this->dims, this->tag, this->memory);
 }
 
+
 bool
 Region::overlaps(const Region* other) const
 {
-	const bool vtxbuffers_overlap = this->geometry_overlaps(other) && this->fields_overlap(other);
+
+	const AcBool3 gem_overlaps = this->geometry_overlaps(other);
+	const bool vtxbuffers_overlap = (gem_overlaps.x && gem_overlaps.y && gem_overlaps.z) && this->fields_overlap(other);
 
 	bool profiles_overlap = false;
 	for(auto profile_1 : this->memory.profiles)
 		for(auto profile_2 : other->memory.profiles)
-			profiles_overlap |= profile_1 == profile_2;
+		{
+			if(profile_1 == profile_2)
+			{
+				profiles_overlap |= (prof_types[profile_1] == PROFILE_X && gem_overlaps.x);
+				profiles_overlap |= (prof_types[profile_1] == PROFILE_Y && gem_overlaps.y);
+				profiles_overlap |= (prof_types[profile_1] == PROFILE_Z && gem_overlaps.z);
+
+				profiles_overlap |= ((prof_types[profile_1] == PROFILE_XY || prof_types[profile_1] == PROFILE_YX) && (gem_overlaps.x || gem_overlaps.y));
+				profiles_overlap |= ((prof_types[profile_1] == PROFILE_XZ || prof_types[profile_1] == PROFILE_ZX) && (gem_overlaps.x || gem_overlaps.z));
+				profiles_overlap |= ((prof_types[profile_1] == PROFILE_YZ || prof_types[profile_1] == PROFILE_ZY) && (gem_overlaps.y || gem_overlaps.z));
+			}
+		}
 
 	bool reduce_outputs_overlap = false;
 	for(auto output_1: this->memory.reduce_outputs)
@@ -357,15 +406,20 @@ Region::overlaps(const Region* other) const
 			reduce_outputs_overlap |= output_1.variable == output_2.variable;
 	return vtxbuffers_overlap || profiles_overlap  || reduce_outputs_overlap;
 }
-bool
+AcBool3
 Region::geometry_overlaps(const Region* other) const
 {
-    return (this->position.x < other->position.x + other->dims.x) &&
-           (other->position.x < this->position.x + this->dims.x) &&
+    return 
+    (AcBool3){
+	   (this->position.x < other->position.x + other->dims.x) &&
+           (other->position.x < this->position.x + this->dims.x),
+
            (this->position.y < other->position.y + other->dims.y) &&
-           (other->position.y < this->position.y + this->dims.y) &&
+           (other->position.y < this->position.y + this->dims.y),
+
            (this->position.z < other->position.z + other->dims.z) &&
-           (other->position.z < this->position.z + this->dims.z);
+           (other->position.z < this->position.z + this->dims.z)
+    };
 }
 bool
 Task::swaps_overlap(const Task* other)
@@ -654,8 +708,8 @@ Task::poll_stream()
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Compute_input, region_tag, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
-           Region(RegionFamily::Compute_output, region_tag, nn,{op.fields_out, op.num_fields_out,
+           Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
+           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, nn,{op.fields_out, op.num_fields_out,
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
 		   op.outputs_out, op.num_outputs_out}),
@@ -668,6 +722,24 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
         int low_prio, high_prio;
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+    }
+
+    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_X))
+    {
+	output_region.dims.y = 1;	
+	output_region.dims.z = 1;	
+    }
+
+    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Y))
+    {
+	output_region.dims.x = 1;	
+	output_region.dims.z = 1;	
+    }
+
+    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Z))
+    {
+	output_region.dims.x = 1;	
+	output_region.dims.y = 1;	
     }
 
     syncVBA();
@@ -844,8 +916,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
                                    AcGridInfo grid_info, uint3_64 decomp, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, halo_region_tag, grid_info.nn,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
-           Region(RegionFamily::Exchange_output, halo_region_tag, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
+           Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
       recv_buffers(output_region.dims, op.num_fields_in),
       send_buffers(input_region.dims, op.num_fields_out)
@@ -1210,8 +1282,8 @@ SyncTask::advance(const TraceFile* trace_file)
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Compute_input, region_tag, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in}),
-           Region(RegionFamily::Compute_output, region_tag, nn,{op.fields_out, op.num_fields_out,op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in}),
+           Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, nn,{op.fields_out, op.num_fields_out,op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -1225,6 +1297,14 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume n
     ERRCHK_ALWAYS(!(op.num_profiles_reduce_out == 0 && op.num_outputs_out == 0));
     ERRCHK_ALWAYS(op.num_profiles_reduce_out == op.num_profiles_in);
     ERRCHK_ALWAYS(op.num_outputs_out  == op.num_outputs_in);
+
+    const Volume ghosts = to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
+
+    input_region.position = {0,0,0};
+    input_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
+
+    output_region.position = {0,0,0};
+    output_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
 
     syncVBA();
 
@@ -1378,8 +1458,8 @@ BoundaryConditionTask::BoundaryConditionTask(
     AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, Volume nn, Device device_,
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, region_tag, nn,  {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in}),
-           Region(RegionFamily::Exchange_output, region_tag, nn, {op.fields_out, op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, nn,  {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in}),
+           Region(RegionFamily::Exchange_output, region_tag, BOUNDARY_NONE, BOUNDARY_NONE, nn, {op.fields_out, op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
        boundary_normal(boundary_normal_),
        fieldwise(op.fieldwise)

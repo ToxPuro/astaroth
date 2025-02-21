@@ -86,6 +86,20 @@ Kernel reduce_x()
     reduce_sum(FIELD,PROF_X)
 }
 
+Kernel der_x()
+{
+	write(PROF_X_DER,derx(PROF_X))
+}
+
+Kernel der_y()
+{
+	write(PROF_Y_DER,dery(PROF_Y))
+}
+Kernel der_z()
+{
+	write(PROF_Z_DER,derz(PROF_Z))
+}
+
 Kernel remove_means()
 {
 	res = value(FIELD)
@@ -99,9 +113,6 @@ Kernel remove_means()
 	res -= PROF_ZX
 	res -= PROF_ZY
 	write(FIELD, res)
-	write(PROF_X_DER,derx(PROF_X))
-	write(PROF_Y_DER,dery(PROF_Y))
-	write(PROF_Z_DER,derz(PROF_Z))
 	const scaling_factor = 2.0
 
 	write(PROF_SCALED_X,PROF_X*scaling_factor)
@@ -135,7 +146,9 @@ ComputeSteps rhs(bcs)
 	reduce_x()
 	reduce_y()
 	reduce_z()
+	der_x()
+	der_y()
+	der_z()
 	remove_means()
-	//derx_kernel()
 }
 
