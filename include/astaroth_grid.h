@@ -205,6 +205,31 @@ typedef enum AcBoundary {
 } AcBoundary;
 
 
+static const char*
+ac_boundary_to_str(const AcBoundary boundary)
+{
+	if(boundary == BOUNDARY_NONE)  return  "BOUNDARY_NONE";
+
+	if(boundary == BOUNDARY_X_BOT) return "BOUNDARY_X_BOT";
+	if(boundary == BOUNDARY_X_TOP) return "BOUNDARY_X_TOP";
+	if(boundary == BOUNDARY_X)     return "BOUNDARY_X";
+
+	if(boundary == BOUNDARY_Y_BOT) return "BOUNDARY_Y_BOT";
+	if(boundary == BOUNDARY_Y_TOP) return "BOUNDARY_Y_TOP";
+	if(boundary == BOUNDARY_Y)     return "BOUNDARY_Y";
+
+	if(boundary == BOUNDARY_Z_BOT) return "BOUNDARY_Z_BOT";
+	if(boundary == BOUNDARY_Z_TOP) return "BOUNDARY_Z_TOP";
+	if(boundary == BOUNDARY_Z)     return "BOUNDARY_Z";
+
+	if(boundary == BOUNDARY_XY)    return "BOUNDARY_XY";
+	if(boundary == BOUNDARY_XZ)    return "BOUNDARY_XZ";
+	if(boundary == BOUNDARY_YZ)    return "BOUNDARY_YZ";
+	if(boundary == BOUNDARY_XYZ)   return "BOUNDARY_XYZ";
+	return "UNKNOWN_BOUNDARY";
+}
+
+
 
 
 FUNC_DEFINE(acAnalysisBCInfo, acAnalysisGetBCInfo,(const AcMeshInfoParams info, const AcKernel bc, const AcBoundary boundary));

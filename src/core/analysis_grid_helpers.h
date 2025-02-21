@@ -6,9 +6,23 @@ get_kernel_analysis_info()
 	acAnalysisGetKernelInfo(info.params,&res);
 	return res;
 }
+
+static bool
+kernel_updates_vtxbuf(const AcKernel kernel)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int i = 0; i < NUM_FIELDS; ++i)
+		if(info.written_fields[kernel][i]) return true;
+	return false;
+}
+
 static AcBoundary
 get_kernel_depends_on_boundaries(const AcKernel kernel)
 {
+	//TP: this is because if kernel A uses stencils kernel B has to wait for A to finish on neighbours to avoid overwriting A's input
+	//TP: this is somewhat conservative since if A does not use stencils B has more dependency then needed
+	//TP: but I guess if A and B do not have stencils they are anyways so fast that it does not matter that much
+	if(kernel_updates_vtxbuf(kernel)) return BOUNDARY_XYZ;
 	const auto info = get_kernel_analysis_info();
 	int res = 0;
 	for(int j = 0; j < NUM_FIELDS; ++j)
@@ -41,14 +55,6 @@ kernel_reduces_something(const AcKernel kernel)
 	return false;
 }
 
-static bool
-kernel_updates_vtxbuf(const AcKernel kernel)
-{
-	const auto info = get_kernel_analysis_info();
-	for(int i = 0; i < NUM_FIELDS; ++i)
-		if(info.written_fields[kernel][i]) return true;
-	return false;
-}
 
 static bool
 kernel_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
