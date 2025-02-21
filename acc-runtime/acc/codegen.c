@@ -4690,6 +4690,7 @@ get_assignment_expr_type(ASTNode* node)
 		{
 			string_vec types = get_struct_field_types(rhs_type);
 			node_vec decls = get_nodes_in_list(node->lhs->rhs);
+			if(decls.size != types.size) fatal("Cannot destructure %ld elements to %ld elements in %s\n",types.size,decls.size,combine_all_new(node));
 			for(size_t i = 0; i < decls.size; ++i)
 				set_primary_expression_types(func_base, types.data[i], get_node_by_token(IDENTIFIER,decls.data[i])->buffer);
 			free_str_vec(&types);
