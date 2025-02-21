@@ -286,7 +286,7 @@ cart_comm_create(const MPI_Comm& parent_comm, const ac::shape& global_nn,
 }
 
 void
-cart_comm_destroy(MPI_Comm* cart_comm)
+cart_comm_destroy(MPI_Comm* cart_comm) noexcept
 {
     ERRCHK_MPI_API(MPI_Comm_free(cart_comm));
     *cart_comm = MPI_COMM_NULL;

@@ -10,9 +10,11 @@
         if (_tmp_ac_api_errcode_ != AC_SUCCESS) {                                                  \
             errchk_print_error(__func__, __FILE__, __LINE__, #errcode, "Astaroth error");          \
             errchk_print_stacktrace();                                                             \
-            MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
+            throw std::runtime_error("Assertion " #errcode " failed");                             \
         }                                                                                          \
     } while (0)
+
+enum class BufferGroup { input, output };
 
 namespace acr {
 
@@ -39,11 +41,20 @@ ac::index get_global_nn_offset(const AcMeshInfo& info);
 ac::index get_local_nn_offset();
 ac::index get_local_rr();
 
-} // namespace acr
+ac::mr::device_pointer<AcReal> make_ptr(const VertexBufferArray& vba, const Field& field,
+                                        const BufferGroup& type);
 
-inline int3
-convert_to_int3(const ac::ntuple<uint64_t>& in)
-{
-    ERRCHK(in.size() == 3);
-    return int3{as<int>(in[0]), as<int>(in[1]), as<int>(in[2])};
-}
+ac::mr::device_pointer<AcReal> make_ptr(const VertexBufferArray& vba, const Profile& profile,
+                                        const BufferGroup& type);
+
+std::vector<ac::mr::device_pointer<AcReal>>
+get_ptrs(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& type);
+
+std::vector<ac::mr::device_pointer<AcReal>> get_ptrs(const VertexBufferArray& vba,
+                                                     const std::vector<Profile>& profiles,
+                                                     const BufferGroup& type);
+
+/** Returns a vector of field names corresponding to the input fields */
+std::vector<std::string> get_strs(const std::vector<Field>& fields);
+
+} // namespace acr

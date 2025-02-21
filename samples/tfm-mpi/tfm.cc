@@ -35,161 +35,12 @@
 #define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
 #define AC_WRITE_SYNCHRONOUS_PROFILES
 #define AC_WRITE_SYNCHRONOUS_TIMESERIES
+#define AC_WRITE_SYNCHRONOUS_SLICES
 
 // #define AC_DISABLE_IO
 
 using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal, ac::mr::device_allocator>;
 using IOTask           = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
-
-static std::vector<Field> hydro_fields{VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
-static std::vector<Field> tfm_fields{TF_a11_x,
-                                     TF_a11_y,
-                                     TF_a11_z,
-                                     TF_a12_x,
-                                     TF_a12_y,
-                                     TF_a12_z,
-                                     TF_a21_x,
-                                     TF_a21_y,
-                                     TF_a21_z,
-                                     TF_a22_x,
-                                     TF_a22_y,
-                                     TF_a22_z};
-static std::vector<Field> uxb_fields{TF_uxb11_x,
-                                     TF_uxb11_y,
-                                     TF_uxb11_z,
-                                     TF_uxb12_x,
-                                     TF_uxb12_y,
-                                     TF_uxb12_z,
-                                     TF_uxb21_x,
-                                     TF_uxb21_y,
-                                     TF_uxb21_z,
-                                     TF_uxb22_x,
-                                     TF_uxb22_y,
-                                     TF_uxb22_z};
-static std::vector<Profile> nonlocal_tfm_profiles{PROFILE_Umean_x,
-                                                  PROFILE_Umean_y,
-                                                  PROFILE_Umean_z,
-                                                  PROFILE_ucrossb11mean_x,
-                                                  PROFILE_ucrossb11mean_y,
-                                                  PROFILE_ucrossb11mean_z,
-                                                  PROFILE_ucrossb12mean_x,
-                                                  PROFILE_ucrossb12mean_y,
-                                                  PROFILE_ucrossb12mean_z,
-                                                  PROFILE_ucrossb21mean_x,
-                                                  PROFILE_ucrossb21mean_y,
-                                                  PROFILE_ucrossb21mean_z,
-                                                  PROFILE_ucrossb22mean_x,
-                                                  PROFILE_ucrossb22mean_y,
-                                                  PROFILE_ucrossb22mean_z};
-std::vector<std::vector<Kernel>> hydro_kernels{std::vector<Kernel>{singlepass_solve_step0},
-                                               std::vector<Kernel>{singlepass_solve_step1},
-                                               std::vector<Kernel>{singlepass_solve_step2}};
-std::vector<std::vector<Kernel>> tfm_kernels{std::vector<Kernel>{singlepass_solve_step0_tfm_b11,
-                                                                 singlepass_solve_step0_tfm_b12,
-                                                                 singlepass_solve_step0_tfm_b21,
-                                                                 singlepass_solve_step0_tfm_b22},
-                                             std::vector<Kernel>{singlepass_solve_step1_tfm_b11,
-                                                                 singlepass_solve_step1_tfm_b12,
-                                                                 singlepass_solve_step1_tfm_b21,
-                                                                 singlepass_solve_step1_tfm_b22},
-                                             std::vector<Kernel>{singlepass_solve_step2_tfm_b11,
-                                                                 singlepass_solve_step2_tfm_b12,
-                                                                 singlepass_solve_step2_tfm_b21,
-                                                                 singlepass_solve_step2_tfm_b22}};
-
-static std::vector<Field> all_fields{VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, TF_a11_x,
-                                     TF_a11_y,     TF_a11_z,   TF_a12_x,   TF_a12_y,   TF_a12_z,
-                                     TF_a21_x,     TF_a21_y,   TF_a21_z,   TF_a22_x,   TF_a22_y,
-                                     TF_a22_z,     TF_uxb11_x, TF_uxb11_y, TF_uxb11_z, TF_uxb12_x,
-                                     TF_uxb12_y,   TF_uxb12_z, TF_uxb21_x, TF_uxb21_y, TF_uxb21_z,
-                                     TF_uxb22_x,   TF_uxb22_y, TF_uxb22_z};
-
-enum class BufferGroup { input, output };
-
-static auto
-make_ptr(const VertexBufferArray& vba, const Field& field, const BufferGroup& type)
-{
-    const size_t count{vba.mx * vba.my * vba.mz};
-
-    switch (type) {
-    case BufferGroup::input:
-        return ac::mr::device_pointer<AcReal>{count, vba.in[field]};
-    case BufferGroup::output:
-        return ac::mr::device_pointer<AcReal>{count, vba.out[field]};
-    default:
-        ERRCHK(false);
-        return ac::mr::device_pointer<AcReal>{0, nullptr};
-    }
-}
-
-static auto
-get_ptrs(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& type)
-{
-    std::vector<ac::mr::device_pointer<AcReal>> ptrs;
-
-    for (const auto& field : fields)
-        ptrs.push_back(make_ptr(vba, field, type));
-
-    return ptrs;
-}
-
-static auto
-get_ptrs(const Device& device, const std::vector<Field>& fields, const BufferGroup& type)
-{
-    VertexBufferArray vba{};
-    ERRCHK_AC(acDeviceGetVBA(device, &vba));
-
-    return get_ptrs(vba, fields, type);
-}
-
-static auto
-make_ptr(const VertexBufferArray& vba, const Profile& profile, const BufferGroup& type)
-{
-    const size_t count{vba.profiles.count};
-
-    switch (type) {
-    case BufferGroup::input:
-        return ac::mr::device_pointer<AcReal>{count, vba.profiles.in[profile]};
-    case BufferGroup::output:
-        return ac::mr::device_pointer<AcReal>{count, vba.profiles.out[profile]};
-    default:
-        ERRCHK(false);
-        return ac::mr::device_pointer<AcReal>{0, nullptr};
-    }
-}
-
-static auto
-get_ptrs(const VertexBufferArray& vba, const std::vector<Profile>& profiles,
-         const BufferGroup& type)
-{
-    std::vector<ac::mr::device_pointer<AcReal>> ptrs;
-
-    for (const auto& profile : profiles)
-        ptrs.push_back(make_ptr(vba, profile, type));
-
-    return ptrs;
-}
-
-static auto
-get_ptrs(const Device& device, const std::vector<Profile>& profiles, const BufferGroup& type)
-{
-    VertexBufferArray vba{};
-    ERRCHK_AC(acDeviceGetVBA(device, &vba));
-
-    return get_ptrs(vba, profiles, type);
-}
-
-/** Returns a vector of field names corresponding to the input fields */
-static auto
-get_strs(const std::vector<Field>& fields)
-{
-    std::vector<std::string> paths;
-
-    for (const auto& field : fields)
-        paths.push_back(std::string(field_names[field]));
-
-    return paths;
-}
 
 /** Concatenates the field name and ".mesh" of a vector of handles */
 static auto
@@ -224,6 +75,13 @@ appended(const std::vector<T>& a, const std::vector<T>& b)
     std::vector<T> c{a};
     c.insert(c.end(), b.begin(), b.end());
     return c;
+}
+
+static int3
+convert_to_int3(const ac::ntuple<uint64_t>& in)
+{
+    ERRCHK(in.size() == 3);
+    return int3{as<int>(in[0]), as<int>(in[1]), as<int>(in[2])};
 }
 
 /**
@@ -352,7 +210,7 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
-        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
+        ac::mr::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
                      staging_buffer.get());
         ac::mpi::write_collective_simple(parent_comm,
                                          ac::mpi::get_dtype<AcReal>(),
@@ -362,6 +220,70 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
                                          std::string(filepath));
     }
     PRINT_LOG_TRACE("Exit");
+    return 0;
+}
+
+static int
+write_slices_to_disk(const MPI_Comm& parent_comm, const Device& device, const size_t step)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    const auto global_nn{acr::get_global_nn(info)};
+    const auto global_nn_offset{acr::get_global_nn_offset(info)};
+
+    const auto local_mm{acr::get_local_mm(info)};
+    const auto local_nn{acr::get_local_nn(info)};
+    const auto local_rr{acr::get_local_rr()};
+
+    const uint64_t global_pos{global_nn[2] / 2}; // Midpoint in the z axis
+    const uint64_t global_pos_min{global_nn_offset[2]};
+    const uint64_t global_pos_max{global_pos_min + local_nn[2]};
+
+    const auto key{ac::mpi::get_rank(parent_comm)};
+    int color{MPI_UNDEFINED};
+    if (global_pos_min <= global_pos && global_pos < global_pos_max)
+        color = 0;
+
+    MPI_Comm neighbors{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, key, &neighbors));
+    if (neighbors == MPI_COMM_NULL)
+        return 0; // Not contributing, return early
+
+    const auto coords{ac::mpi::get_coords(parent_comm)};
+    const ac::index slice_coords{coords[0], coords[1], 0};
+
+    const uint64_t local_pos{global_pos - global_nn_offset[2]};
+    const ac::shape local_slice_nn{local_nn[0], local_nn[1], 1};
+    const ac::index local_slice_nn_offset{local_rr[0], local_rr[1], local_pos};
+    const ac::shape global_slice_nn{global_nn[0], global_nn[1], 1};
+    const ac::index global_slice_nn_offset{slice_coords * local_slice_nn};
+
+    static ac::device_ndbuffer<AcReal> pack_buffer{local_slice_nn};
+    static ac::host_ndbuffer<AcReal> staging_buffer{local_slice_nn};
+    for (size_t i{0}; i < NUM_VTXBUF_HANDLES; ++i) {
+        const auto input{acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input)};
+        pack(local_mm, local_slice_nn, local_slice_nn_offset, {input}, pack_buffer.get());
+        ac::mr::copy(pack_buffer.get(), staging_buffer.get());
+
+        char filepath[4096];
+        sprintf(filepath, "%s-%012zu.slice", vtxbuf_names[i], step);
+        PRINT_LOG_TRACE("Writing %s", filepath);
+        ac::mpi::write_collective(neighbors,
+                                  ac::mpi::get_dtype<AcReal>(),
+                                  global_slice_nn,
+                                  global_slice_nn_offset,
+                                  local_slice_nn,
+                                  local_slice_nn,
+                                  ac::make_index(local_slice_nn.size(), 0),
+                                  staging_buffer.data(),
+                                  std::string(filepath));
+    }
+
+    ERRCHK_MPI_API(MPI_Comm_free(&neighbors));
     return 0;
 }
 
@@ -393,7 +315,7 @@ write_distributed_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& d
                 step,
                 vtxbuf_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
-        ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
+        ac::mr::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
                      staging_buffer.get());
         ac::mpi::write_distributed(parent_comm,
                                    ac::mpi::get_dtype<AcReal>(),
@@ -439,7 +361,7 @@ write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const 
         ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, rank, &profile_comm));
 
         if (profile_comm != MPI_COMM_NULL) {
-            ac::mr::copy(make_ptr(vba, static_cast<Profile>(i), BufferGroup::input),
+            ac::mr::copy(acr::make_ptr(vba, static_cast<Profile>(i), BufferGroup::input),
                          staging_buffer.get());
             ac::mpi::write_collective(profile_comm,
                                       ac::mpi::get_dtype<AcReal>(),
@@ -812,7 +734,6 @@ test_experimental_partition()
 /**
  * Launches a vector of compute kernels, each applied on a group of Segments specified by the group
  * parameter.
- * TODO: deprecated
  */
 static void
 compute(const Device& device, const std::vector<Kernel>& compute_kernels,
@@ -843,7 +764,7 @@ reset(const Device& device, const std::vector<Field>& fields, const BufferGroup&
 {
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
-    auto ptrs{get_ptrs(device, fields, group)};
+    auto ptrs{ac::get_ptrs(device, fields, group)};
 
     for (auto& ptr : ptrs)
         ERRCHK_CUDA_API(cudaMemset(ptr.data(), 0, sizeof(ptr[0]) * ptr.size()));
@@ -855,7 +776,7 @@ randomize(const MPI_Comm& comm, const Device& device, const std::vector<Field>& 
 {
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
-    auto ptrs{get_ptrs(device, fields, group)};
+    auto ptrs{ac::get_ptrs(device, fields, group)};
 
     std::default_random_engine gen{as<unsigned long>(ac::mpi::get_rank(comm)) * 12345 + seed};
     std::uniform_real_distribution<AcReal> dist{0, 1};
@@ -937,670 +858,10 @@ class Grid {
         reset_init_cond();
     }
 
-    ~Grid()
+    ~Grid() noexcept
     {
-        ERRCHK_AC(acDeviceDestroy(device));
+        ERRCHK_MPI(acDeviceDestroy(device) == AC_SUCCESS);
         ac::mpi::cart_comm_destroy(&cart_comm);
-    }
-
-    void test()
-    {
-        PRINT_LOG_DEBUG("Enter");
-        reset_init_cond();
-
-        // Test: Zeros
-        // Should be zero
-        write_diagnostic_step(cart_comm, device, 0);
-        // OK
-
-        // Test: Rank
-        const auto local_mm{acr::get_local_mm(local_info)};
-        ac::ndbuffer<AcReal, ac::mr::host_allocator> buf{local_mm,
-                                                         static_cast<double>(
-                                                             ac::mpi::get_rank(cart_comm))};
-
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        // const auto count{prod(local_mm)};
-        for (auto& ptr : get_ptrs(vba, all_fields, BufferGroup::input))
-            ac::mr::copy(buf.get(), ptr);
-
-        // Should be rank
-        // local should be flat
-        // global, should show different processes
-        write_diagnostic_step(cart_comm, device, 1);
-        // OK
-
-        // Test: halo exchange
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
-
-        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::input));
-        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
-
-        // Should be rank
-        // local should show different processes in halos
-        // global, should show different processes
-        write_diagnostic_step(cart_comm, device, 2);
-        // OK
-
-        // Test: full hydro integration
-        reset_init_cond();
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
-        compute(device, hydro_kernels[0], SegmentGroup::compute_full);
-        ac::device::swap_buffers(device, hydro_fields);
-
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
-        compute(device, hydro_kernels[1], SegmentGroup::compute_full);
-        ac::device::swap_buffers(device, hydro_fields);
-
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
-        compute(device, hydro_kernels[2], SegmentGroup::compute_full);
-        ac::device::swap_buffers(device, hydro_fields);
-
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
-        write_diagnostic_step(cart_comm, device, 3);
-        // OK
-
-        // Test: full tfm step
-        reduce_xy_averages(STREAM_DEFAULT);
-        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::input));
-        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
-        compute(device, tfm_kernels[0], SegmentGroup::compute_full);
-        ac::device::swap_buffers(device, appended(tfm_fields, uxb_fields));
-
-        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::input));
-        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
-        write_diagnostic_step(cart_comm, device, 4);
-
-        // Test: profiles
-        reset_init_cond();
-
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        ac::buffer<AcReal, ac::mr::host_allocator> hprof{vba.profiles.count};
-        // const auto dprof{make_ptr(vba, PROFILE_B21mean_z, BufferGroup::input)};
-        // ac::mr::copy(dprof, hprof.get());
-
-        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        for (size_t i{0}; i < NUM_PROFILES; ++i) {
-            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
-            ac::mr::copy(dprof, hprof.get());
-            std::cout << "Before profile " << profile_names[i] << std::endl;
-            for (const auto& elem : hprof)
-                std::cout << elem << " ";
-            std::cout << std::endl;
-        }
-        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
-
-        // reduce_xy_averages(STREAM_DEFAULT);
-        ERRCHK_AC(acDeviceReduceXYAverages(device, STREAM_DEFAULT));
-        ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
-
-        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        for (size_t i{0}; i < NUM_PROFILES; ++i) {
-            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
-            ac::mr::copy(dprof, hprof.get());
-            std::cout << "After local Profile " << profile_names[i] << std::endl;
-            for (const auto& elem : hprof)
-                std::cout << elem << " ";
-            std::cout << std::endl;
-        }
-        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
-
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        const size_t reduce_count{NUM_PROFILES * vba.profiles.count};
-        AcReal* data{vba.profiles.in[0]};
-        const size_t axis{2};
-        ac::mpi::reduce_axis(cart_comm,
-                             ac::mpi::get_dtype<AcReal>(),
-                             MPI_SUM,
-                             axis,
-                             reduce_count,
-                             data);
-        // ac::mr::copy(dprof, hprof.get());
-
-        MPI_SYNCHRONOUS_BLOCK_START(cart_comm)
-        for (size_t i{0}; i < NUM_PROFILES; ++i) {
-            const auto dprof{make_ptr(vba, static_cast<Profile>(i), BufferGroup::input)};
-            ac::mr::copy(dprof, hprof.get());
-            std::cout << "After reduce Profile " << profile_names[i] << std::endl;
-            for (const auto& elem : hprof)
-                std::cout << elem << " ";
-            std::cout << std::endl;
-        }
-        MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
-        std::cout << "Reduce result: " << std::reduce(hprof.begin(), hprof.end()) << std::endl;
-        // WARNCHK(std::reduce(hprof.begin(), hprof.end()) == 0);
-        write_diagnostic_step(cart_comm, device, 5);
-
-        // Test randomized reduce
-        reset_init_cond();
-        // Randomize all fields
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        std::default_random_engine generator;
-        std::uniform_real_distribution<AcReal> distribution{0, 1};
-        for (size_t i{0}; i < NUM_FIELDS; ++i) {
-            ac::buffer<AcReal, ac::mr::host_allocator> tmp{prod(local_mm)};
-            std::generate(tmp.begin(), tmp.end(), [&]() { return distribution(generator); });
-            ac::mr::copy(tmp.get(), make_ptr(vba, static_cast<Field>(i), BufferGroup::input));
-        }
-        reduce_xy_averages(STREAM_DEFAULT);
-        // Constant profiles (B) should be constant
-        // Other profiles should have distinct random distributions between [0, 1),
-        // where the average is near 0.5
-        write_diagnostic_step(cart_comm, device, 6);
-        ///////////////////////////////////
-
-        // const auto local_mm{acr::get_local_mm(local_info)};
-        // const auto count{prod(local_mm)};
-        // ac::ndbuffer<AcReal, ac::mr::host_allocator> buf{local_mm};
-        // std::iota(buf.begin(), buf.end(), count * ac::mpi::get_rank(cart_comm));
-        // ac::mr::copy(buf.get(), ac::mr::device_pointer<AcReal>{count, vba.in[0]});
-
-        // mpi::write_collective_simple(cart_comm,
-        //                              ac::mpi::get_dtype<AcReal>(),
-        //                              acr::get_global_nn(local_info),
-        //                              acr::get_local_nn_offset(),
-        //                              vba.in[0],
-        //                              "test.mesh");
-        /////////////////
-        // // Domain
-        // const auto mm{acr::get_local_mm(local_info)};
-        // const auto nn{acr::get_local_nn(local_info)};
-        // const auto rr{acr::get_local_rr()};
-        // const auto global_nn_offset{acr::get_global_nn_offset(local_info)};
-
-        // // Buffer
-        // ac::ndbuffer<AcReal, ac::mr::host_allocator> hbuf{mm, NAN};
-        // for (size_t k{rr[2]}; k < rr[2] + nn[2]; ++k) {
-        //     const ac::shape slice{nn[0], nn[1], 1};
-        //     const ac::index offset{rr[0], rr[1], k};
-
-        //     ac::fill(static_cast<AcReal>(k + acr::get_global_nn_offset(local_info)[2]),
-        //              slice,
-        //              offset,
-        //              hbuf);
-        // }
-        // hbuf.display();
-        // exit(0);
-        /////////////////
-
-        // ac::buffer<AcReal, ac::mr::host_allocator> buf{prod(mm)};
-        // std::iota(buf.begin(), buf.end(), prod(global_nn_offset) - prod(rr));
-        // buf.display();
-        // std::cout << "Global nn offset " << global_nn_offset << std::endl;
-
-        // std::vector<Field> fields{VTXBUF_UUX, VTXBUF_UUY};
-
-        // // Partition
-        // auto segments{partition(mm, nn, rr)};
-        // auto it{std::remove_if(segments.begin(), segments.end(), [nn, rr](const auto& segment) {
-        //     return within_box(segment.offset, nn, rr);
-        // })};
-        // segments.erase(it, segments.end());
-
-        // // Setup buffers
-        // ac::ndbuffer<AcReal, ac::mr::host_allocator> hux{mm, NAN}, huy{mm};
-        // for (size_t k{rr[2]}; k < rr[2] + nn[2]; ++k) {
-        //     const ac::shape slice{nn[0], nn[1], 1};
-        //     const ac::index offset{rr[0], rr[1], k};
-
-        //     ac::fill(static_cast<AcReal>(k + acr::get_global_nn_offset(local_info)[2]),
-        //              slice,
-        //              offset,
-        //              hux);
-        //     ac::fill(static_cast<AcReal>(k + acr::get_global_nn_offset(local_info)[2]),
-        //              slice,
-        //              offset,
-        //              huy);
-        // }
-
-        // ac::ndbuffer<AcReal, ac::mr::device_allocator> dux{mm}, duy{mm};
-        // ac::mr::copy(hux.get(), dux.get());
-        // ac::mr::copy(huy.get(), duy.get());
-
-        // ac::mr::copy(dux.get(), hux.get());
-        // ac::mr::copy(duy.get(), huy.get());
-
-        // hux.display();
-
-        reset_init_cond();
-    }
-
-    /**
-     *  Write uniformly random fields to disk.
-     *  The shape of each field is global_nn.
-     *  The range of values is [0, 1)
-     */
-    // void write_random_initial_condition_to_disk(const MPI_Comm& cart_comm, const std::string&
-    // label)
-    // {
-    //     // Allocate buffers
-    //     ac::buffer<AcReal, ac::mr::host_allocator>
-    //     buf{prod(acr::get_local_nn(local_info))};
-
-    //     // Setup random number generator
-    //     const auto rank{ac::mpi::get_rank(cart_comm)};
-    //     std::default_random_engine gen{as<unsigned>(12345 + rank * 1234)}; // use rank as seed
-    //     std::uniform_real_distribution<AcReal> dist{0, 1};
-    //     auto rng = [&]() { return dist(gen); };
-
-    //     // Write random initial condition to disk
-    //     for (size_t i{0}; i < NUM_FIELDS; ++i) {
-
-    //         // Fill buffer with random data
-    //         std::generate(buf.begin(), buf.end(), rng);
-
-    //         // Format the file path
-    //         std::ostringstream oss;
-    //         oss << label << "-vtxbuf-" << field_names[i] << ".mesh";
-    //         const auto path{oss.str()};
-
-    //         // Write collective
-    //         ac::mpi::write_collective(cart_comm,
-    //                                   ac::mpi::get_dtype<AcReal>(),
-    //                                   acr::get_global_nn(local_info),
-    //                                   acr::get_global_nn_offset(local_info),
-    //                                   acr::get_local_nn(local_info),
-    //                                   acr::get_local_nn(local_info),
-    //                                   ac::index(acr::get_local_rr().size(),
-    //                                   static_cast<uint64_t>(0)), buf.data(), path);
-    //     }
-    // }
-
-    // void read_snapshots_from_disk_to_device(const MPI_Comm& cart_comm, const std::string& label)
-    // {
-    //     VertexBufferArray vba{};
-    //     ERRCHK_AC(acDeviceGetVBA(device, &vba));
-    //     const auto local_mm{acr::get_local_mm(local_info)};
-    //     ac::buffer<AcReal, ac::mr::host_allocator> staging_buffer{prod(local_mm)};
-    //     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-
-    //         std::ostringstream oss;
-    //         oss << label << "-vtxbuf-" << field_names[i] << ".mesh";
-    //         const auto path{oss.str()};
-
-    //         ac::mpi::read_collective_simple(cart_comm,
-    //                                         ac::mpi::get_dtype<AcReal>(),
-    //                                         acr::get_global_nn(local_info),
-    //                                         acr::get_local_rr(),
-    //                                         staging_buffer,
-    //                                         path);
-
-    //         ac::mr::copy(staging_buffer.get(),
-    //                      make_ptr(vba, static_cast<Field>(i), BufferGroup::input));
-    //     }
-    // }
-
-    // void write_snapshots_from_device_to_disk(const MPI_Comm& cart_comm, const std::string& label)
-    // {
-    //     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-
-    //         std::ostringstream oss;
-    //         oss << label << "-vtxbuf-" << field_names[i] << ".mesh";
-    //         const auto path{oss.str()};
-
-    //         ac::mr::copy(make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
-    //                      staging_buffer.get());
-    //         ac::mpi::write_collective_simple(cart_comm,
-    //                                          ac::mpi::get_dtype<AcReal>(),
-    //                                          acr::get_global_nn(local_info),
-    //                                          acr::get_local_rr(),
-    //                                          staging_buffer.data(),
-    //                                          std::string(filepath));
-    //     }
-    // }
-
-    // void test_hydro_old()
-    // {
-    //     write_random_initial_condition_to_disk("initial");
-
-    //     // Read
-    //     read_snapshots_from_disk_to_device(cart_comm, "initial");
-
-    //     // Apply BCs
-    //     auto halo_exchange{make_halo_exchange_task(local_info, all_fields.size())};
-    //     halo_exchange.launch(cart_comm, get_ptrs(device, all_fields, BufferGroup::input));
-    //     halo_exchange.wait(get_ptrs(device, all_fields, BufferGroup::input));
-
-    //     // Write
-    //     write_snapshots_from_device_to_disk(cart_comm, "candidate");
-
-    //     // Setup CPU mesh info
-    //     const ac::shape global_nn{acr::get_global_nn(local_info)};
-    //     AcMeshInfo host_info{local_info};
-    //     acr::set(AC_nx, as<int>(global_nn[0]), host_info);
-    //     acr::set(AC_ny, as<int>(global_nn[1]), host_info);
-    //     acr::set(AC_nz, as<int>(global_nn[2]), host_info);
-    //     acHostUpdateBuiltinParams(&host_info);
-
-    //     // Setup CPU mesh
-    //     MPI_Comm leader{MPI_COMM_NULL};
-    //     if (rank == 0) {
-    //         ERRCHK_MPI_API(MPI_Comm_split(cart_comm, 0, 0, &leader));
-
-    //         AcMesh host_mesh{};
-    //         ERRCHK_AC(acHostMeshCreate(host_info, &host_mesh));
-    //         for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    //             const std::string label{"initial"};
-
-    //             std::ostringstream oss;
-    //             oss << label << "-vtxbuf-" << field_names[i] << ".mesh";
-    //             const auto path{oss.str()};
-
-    //             ac::mpi::read_collective(leader,
-    //                                      ac::mpi::get_dtype<AcReal>(),
-    //                                      acr::get_global_nn(host_info),
-    //                                      ac::index(global_nn.size, 0),
-    //                                      const ac::shape& in_mesh_dims,
-    //                                      const ac::shape& in_mesh_subdims,
-    //                                      const ac::index& in_mesh_offset,
-    //                                      const std::string& path,
-    //                                      void* data);
-    //         }
-
-    //         ERRCHK_AC(acHostMeshDestroy(&host_mesh));
-    //     }
-    //     else {
-    //         ERRCHK_MPI_API(MPI_Comm_split(cart_comm, MPI_UNDEFINED, 0, &leader));
-    //     }
-    // }
-
-    void test_hydro_old2()
-    {
-        using Buffer = ac::buffer<AcReal, ac::mr::host_allocator>;
-
-        // Setup RNG
-        const auto rank{ac::mpi::get_rank(cart_comm)};
-        std::default_random_engine gen{as<unsigned>(12345 + rank * 1234)}; // use rank as seed
-        std::uniform_real_distribution<AcReal> dist{0, 1};
-        auto rng = [&]() { return dist(gen); };
-
-        // Allocate and initialize host buffers
-        const auto global_nn{acr::get_global_nn(local_info)};
-        const auto rr{acr::get_local_rr()};
-        const auto global_mm{global_nn + static_cast<uint64_t>(2) * rr};
-        const auto local_mm{acr::get_local_mm(local_info)};
-        const auto local_nn{acr::get_local_nn(local_info)};
-        const ac::index zeros{global_nn.size(), static_cast<uint64_t>(0)};
-
-        const auto stride{prod(global_mm)};
-        const auto count{static_cast<uint64_t>(NUM_FIELDS) * stride};
-        Buffer ref{count}; // Reference
-        Buffer tst{count}; // Test
-
-        // Setup the host mesh
-        AcMeshInfo host_info{local_info};
-        acr::set(AC_nx, as<int>(global_nn[0]), host_info);
-        acr::set(AC_ny, as<int>(global_nn[1]), host_info);
-        acr::set(AC_nz, as<int>(global_nn[2]), host_info);
-        acHostUpdateBuiltinParams(&host_info);
-
-        AcMesh refm{};
-        refm.info = host_info;
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            refm.vertex_buffer[i] = &ref[i * stride];
-
-        AcMesh tstm{};
-        tstm.info = host_info;
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            tstm.vertex_buffer[i] = &tst[i * stride];
-
-        // Setup VBA
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        const auto etype{ac::mpi::get_dtype<AcReal>()};
-
-        // Distribute mesh
-        std::generate(ref.begin(), ref.end(), rng); // Randomize
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            ac::mpi::scatter_advanced(cart_comm,
-                                      etype,
-                                      global_mm,
-                                      rr,
-                                      refm.vertex_buffer[i],
-                                      local_mm,
-                                      local_nn,
-                                      rr,
-                                      vba.in[i]);
-
-        // Gather mesh
-        std::generate(tst.begin(), tst.end(), rng); // Randomize
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            ac::mpi::gather_advanced(cart_comm,
-                                     etype,
-                                     local_mm,
-                                     local_nn,
-                                     rr,
-                                     vba.in[i],
-                                     global_mm,
-                                     rr,
-                                     refm.vertex_buffer[i]);
-
-        // ERRCHK_AC(acVerifyMeshCompDomain("Scatter/Gather", refm, tstm)); // TODO sort out
-    }
-
-    void test_scatter_gather()
-    {
-        using Buffer = ac::buffer<AcReal, ac::mr::host_allocator>;
-
-        // Setup RNG
-        const auto rank{ac::mpi::get_rank(cart_comm)};
-        std::default_random_engine gen{as<unsigned>(12345 + rank * 1234)}; // use rank as seed
-        std::uniform_real_distribution<AcReal> dist{0, 1};
-        auto rng = [&]() { return dist(gen); };
-
-        // Allocate and initialize host buffers
-        const auto global_nn{acr::get_global_nn(local_info)};
-        const ac::index zeros{ac::make_index(global_nn.size(), 0)};
-        const auto local_mm{acr::get_local_mm(local_info)};
-        const auto local_nn{acr::get_local_nn(local_info)};
-        const auto rr{acr::get_local_rr()};
-
-        const auto stride{prod(global_nn)};
-        const auto count{static_cast<uint64_t>(NUM_FIELDS) * stride};
-        Buffer ref{count}; // Reference
-        Buffer tst{count}; // Test
-
-        // Setup VBA
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        const auto etype{ac::mpi::get_dtype<AcReal>()};
-
-        // Distribute
-        std::generate(ref.begin(), ref.end(), rng); // Randomize
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            ac::mpi::scatter_advanced(cart_comm,
-                                      etype,
-                                      global_nn,
-                                      zeros,
-                                      &ref[i * stride],
-                                      local_mm,
-                                      local_nn,
-                                      rr,
-                                      vba.in[i]);
-
-        // Gather
-        std::generate(tst.begin(), tst.end(), rng); // Randomize
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            ac::mpi::gather_advanced(cart_comm,
-                                     etype,
-                                     local_mm,
-                                     local_nn,
-                                     rr,
-                                     vba.in[i],
-                                     global_nn,
-                                     zeros,
-                                     &tst[i * stride]);
-        // Check
-        if (rank == 0) { // Only root proc has the correct data
-            for (size_t i{0}; i < count; ++i)
-                ERRCHK(ref[i] == tst[i]); // Should be exact: FP comparison justified here
-        }
-    }
-
-    void test_hydro()
-    {
-        using Buffer = ac::buffer<AcReal, ac::mr::host_allocator>;
-
-        // Setup RNG
-        const auto rank{ac::mpi::get_rank(cart_comm)};
-        std::default_random_engine gen{as<unsigned>(12345 + rank * 1234)}; // use rank as seed
-        std::uniform_real_distribution<AcReal> dist{0, 1};
-        auto rng = [&]() { return dist(gen); };
-
-        // Allocate and initialize host buffers
-        const auto local_mm{acr::get_local_mm(local_info)};
-        const auto local_nn{acr::get_local_nn(local_info)};
-        const auto rr{acr::get_local_rr()};
-        const auto global_nn{acr::get_global_nn(local_info)};
-        const auto global_mm{global_nn + static_cast<uint64_t>(2) * rr};
-
-        const auto stride{prod(global_mm)};
-        const auto count{static_cast<uint64_t>(NUM_FIELDS) * stride};
-        Buffer ref{count}; // Reference
-        Buffer tst{count}; // Test
-
-        // Setup VBA
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        const auto etype{ac::mpi::get_dtype<AcReal>()};
-
-        // Scatter
-        std::generate(ref.begin(), ref.end(), rng); // Randomize
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            ac::mpi::scatter_advanced(cart_comm,
-                                      etype,
-                                      global_mm,
-                                      rr,
-                                      &ref[i * stride],
-                                      local_mm,
-                                      local_nn,
-                                      rr,
-                                      vba.in[i]);
-
-        // Gather
-        std::generate(tst.begin(), tst.end(), rng); // Randomize
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            ac::mpi::gather_advanced(cart_comm,
-                                     etype,
-                                     local_mm,
-                                     local_nn,
-                                     rr,
-                                     vba.in[i],
-                                     global_mm,
-                                     rr,
-                                     &tst[i * stride]);
-
-        // Setup the host mesh
-        AcMeshInfo host_info{local_info};
-        acr::set(AC_nx, as<int>(global_nn[0]), host_info);
-        acr::set(AC_ny, as<int>(global_nn[1]), host_info);
-        acr::set(AC_nz, as<int>(global_nn[2]), host_info);
-        acHostUpdateBuiltinParams(&host_info);
-
-        AcMesh refm{};
-        refm.info = host_info;
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            refm.vertex_buffer[i] = &ref[i * stride];
-
-        AcMesh tstm{};
-        tstm.info = host_info;
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            tstm.vertex_buffer[i] = &tst[i * stride];
-
-        // Check scatter/gather
-        if (rank == 0) { // Only root proc has the correct data
-            ERRCHK_AC(acVerifyMeshCompDomain("Scatter/Gather", refm, tstm));
-        }
-
-        // Check halo exchange
-        // std::generate(ref.begin(), ref.end(), rng); // Randomize
-        std::iota(ref.begin(), ref.end(), 1);
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            ac::mpi::scatter_advanced(cart_comm,
-                                      etype,
-                                      global_mm,
-                                      rr,
-                                      &ref[i * stride],
-                                      local_mm,
-                                      local_nn,
-                                      rr,
-                                      vba.in[i]);
-
-        using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal,
-                                                                    ac::mr::device_allocator>;
-        HaloExchangeTask he0{local_mm, local_nn, rr, hydro_fields.size()};
-        HaloExchangeTask he1{local_mm, local_nn, rr, tfm_fields.size()};
-        HaloExchangeTask he2{local_mm, local_nn, rr, uxb_fields.size()};
-
-        he0.launch(cart_comm, get_ptrs(vba, hydro_fields, BufferGroup::input));
-        he1.launch(cart_comm, get_ptrs(vba, tfm_fields, BufferGroup::input));
-        he2.launch(cart_comm, get_ptrs(vba, uxb_fields, BufferGroup::input));
-
-        he0.wait(get_ptrs(vba, hydro_fields, BufferGroup::input));
-        he1.wait(get_ptrs(vba, tfm_fields, BufferGroup::input));
-        he2.wait(get_ptrs(vba, uxb_fields, BufferGroup::input));
-
-        std::generate(tst.begin(), tst.end(), rng); // Randomize
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
-            ac::mpi::gather_advanced(cart_comm,
-                                     etype,
-                                     local_mm,
-                                     local_nn,
-                                     rr,
-                                     vba.in[i],
-                                     global_mm,
-                                     rr,
-                                     &tst[i * stride]);
-
-        ERRCHK_AC(acHostMeshApplyPeriodicBounds(&refm));
-        if (rank == 0) { // Only root proc has the correct data
-            // printt("ref", global_mm, ref.data());
-            // printt("tst", global_mm, tst.data());
-            // Note: does not actually check the boundaries, just the computational domain
-            // Catches only obvious errors where halo exchange writes to the computational domain,
-            // not incorrect segment ordering etc
-            ERRCHK_AC(acVerifyMeshCompDomain("Boundconds", refm, tstm));
-        }
-
-        // // Check integration
-        // std::generate(ref.begin(), ref.end(), rng); // Randomize
-        // for (size_t i{0}; i < NUM_FIELDS; ++i)
-        //     ac::mpi::scatter_advanced(cart_comm,
-        //                               etype,
-        //                               global_mm,
-        //                               rr,
-        //                               &ref[i * stride],
-        //                               local_mm,
-        //                               local_nn,
-        //                               rr,
-        //                               vba.in[i]);
-
-        // tfm_pipeline(1);
-        // std::generate(tst.begin(), tst.end(), rng); // Randomize
-        // for (size_t i{0}; i < NUM_FIELDS; ++i)
-        //     ac::mpi::gather_advanced(cart_comm,
-        //                              etype,
-        //                              local_mm,
-        //                              local_nn,
-        //                              rr,
-        //                              vba.in[i],
-        //                              global_mm,
-        //                              rr,
-        //                              &tst[i * stride]);
-
-        // ERRCHK_AC(acHostMeshApplyPeriodicBounds(&refm));
-        // const AcReal dt{acr::get(local_info, AC_dt)};
-        // ERRCHK_AC(acHostIntegrateStep(refm, dt));
-
-        // if (rank == 0) { // Only root proc has the correct data
-        //     ERRCHK_AC(acVerifyMeshCompDomain("Integration", refm, tstm));
-        // }
     }
 
     void reset_init_cond()
@@ -1718,22 +979,25 @@ class Grid {
         // Write profiles
         write_profiles_to_disk(cart_comm, device, 0);
 
+        // Write slices
+        write_slices_to_disk(cart_comm, device, 0);
+
 // Write snapshots
 #if defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
         write_snapshots_to_disk(cart_comm, device, 0);
 #else
         hydro_io.launch(cart_comm,
-                        get_ptrs(device, hydro_fields, BufferGroup::input),
+                        ac::get_ptrs(device, hydro_fields, BufferGroup::input),
                         get_field_paths(hydro_fields, 0));
         uxb_io.launch(cart_comm,
-                      get_ptrs(device, uxb_fields, BufferGroup::input),
+                      ac::get_ptrs(device, uxb_fields, BufferGroup::input),
                       get_field_paths(uxb_fields, 0));
 #endif
 #endif
 
         // Ensure halos are up-to-date before starting integration
-        hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::input));
-        tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::input));
+        hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::input));
+        tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::input));
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
         MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)}; // Averaging
@@ -1750,10 +1014,10 @@ class Grid {
                 PRINT_LOG_INFO("Resetting test fields");
 
                 // Test fields: Discard previous halo exchange, reset, and update halos
-                tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
+                tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
                 reset(device, tfm_fields, BufferGroup::input);
                 reset(device, tfm_fields, BufferGroup::output);
-                tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::output));
+                tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::output));
             }
 
             // Current time
@@ -1773,7 +1037,7 @@ class Grid {
                 PRINT_LOG_DEBUG("Integration substep");
 
                 // Hydro dependencies: hydro
-                hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
+                hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
 
                 // Outer segments
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
@@ -1785,7 +1049,7 @@ class Grid {
 
                 // ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
                 // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
-                hydro_he.launch(cart_comm, get_ptrs(device, hydro_fields, BufferGroup::output));
+                hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::output));
 
 // TFM dependencies: hydro, tfm, profiles
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
@@ -1793,13 +1057,13 @@ class Grid {
                 ac::mpi::request_wait_and_destroy(&xy_average_req); // Averaging
 #endif
                 // TFM dependencies: tfm
-                tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
+                tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
 
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
                 compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
                 // compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
-                tfm_he.launch(cart_comm, get_ptrs(device, tfm_fields, BufferGroup::output));
+                tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::output));
 
                 // Inner segments
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
@@ -1828,11 +1092,11 @@ class Grid {
                  as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0) {
                 hydro_io.wait();
                 hydro_io.launch(cart_comm,
-                                get_ptrs(device, hydro_fields, BufferGroup::input),
+                                ac::get_ptrs(device, hydro_fields, BufferGroup::input),
                                 get_field_paths(hydro_fields, step));
                 uxb_io.wait();
                 uxb_io.launch(cart_comm,
-                              get_ptrs(device, uxb_fields, BufferGroup::input),
+                              ac::get_ptrs(device, uxb_fields, BufferGroup::input),
                               get_field_paths(uxb_fields, step));
             }
 
@@ -1848,10 +1112,15 @@ class Grid {
                  as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
                 write_timeseries(cart_comm, device, step, current_time, dt);
 #endif
+#if defined(AC_WRITE_SYNCHRONOUS_SLICES)
+            if ((step %
+                 as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
+                write_slices_to_disk(cart_comm, device, step);
+#endif
 #endif
         }
-        hydro_he.wait(get_ptrs(device, hydro_fields, BufferGroup::input));
-        tfm_he.wait(get_ptrs(device, tfm_fields, BufferGroup::input));
+        hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
+        tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
 
 #if !defined(AC_DISABLE_IO)
 #if !defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
@@ -1909,8 +1178,6 @@ main(int argc, char* argv[])
         ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
 
         Grid grid{raw_info};
-        // grid.test();
-        // grid.test_hydro();
 
         cudaProfilerStart();
         grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));

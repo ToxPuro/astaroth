@@ -84,6 +84,31 @@ segmented_reduce(const size_t num_segments, const size_t stride,
     }
 }
 
+template <typename T>
+void
+xcorr(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
+      const ac::mr::host_pointer<T>& input, const ac::shape& nk,
+      const ac::mr::host_pointer<T>& kernel, ac::mr::host_pointer<T> output)
+{
+    ERRCHK(input.data() != output.data());
+    ERRCHK(same_size(mm, nn, nn_offset, nk));
+    ERRCHK(input.size() == output.size());
+    for (uint64_t block_idx{0}; block_idx < prod(nn); ++block_idx) {
+        const auto block_coords{ac::to_spatial(block_idx, nn)};
+        const auto out_coords{nn_offset + block_coords};
+        const auto out_idx{ac::to_linear(out_coords, mm)};
+
+        output[out_idx] = 0;
+        for (uint64_t kernel_idx{0}; kernel_idx < prod(nk); ++kernel_idx) {
+            const auto kernel_coords{ac::to_spatial(kernel_idx, nk)};
+            const auto diff{(nk - static_cast<uint64_t>(1)) / static_cast<uint64_t>(2)};
+            const auto in_coords{out_coords - diff + kernel_coords};
+            const auto in_idx{ac::to_linear(in_coords, mm)};
+            output[out_idx] += input[in_idx] * kernel[kernel_idx];
+        }
+    }
+}
+
 } // namespace ac
 
 void test_algorithm();

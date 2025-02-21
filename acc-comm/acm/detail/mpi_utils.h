@@ -76,7 +76,7 @@ MPI_Comm
 cart_comm_create(const MPI_Comm& parent_comm, const ac::shape& global_nn,
                  const RankReorderMethod& reorder_method = RankReorderMethod::hierarchical);
 
-void cart_comm_destroy(MPI_Comm* cart_comm);
+void cart_comm_destroy(MPI_Comm* cart_comm) noexcept;
 
 /** Print information about the Cartesian communicator */
 void print_mpi_comm(const MPI_Comm& comm);

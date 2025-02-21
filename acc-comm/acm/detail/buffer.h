@@ -9,7 +9,7 @@
 namespace ac {
 template <typename T, typename Allocator> class buffer {
   private:
-    const size_t                                      m_count;
+    size_t                                            m_count;
     std::unique_ptr<T, decltype(&Allocator::dealloc)> m_resource;
 
   public:
