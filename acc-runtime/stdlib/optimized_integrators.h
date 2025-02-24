@@ -56,7 +56,8 @@ rk1_final(Field3 f, int step_num){
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk2_intermediate(Field f, real roc, int step_num, real dt) {
-    return rk2_alpha[step_num] * previous(f) + roc * dt
+    previous_value = step_num > 0 ? previous(f) : 0.0;
+    return rk2_alpha[step_num] * previous_value + roc * dt
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk2_intermediate(Field3 f, real3 roc, int step_num, real dt)
@@ -79,7 +80,8 @@ rk2_final(Field3 f, int step_num){
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_intermediate(Field f, real roc, int step_num, real dt) {
-    return rk3_alpha[step_num] * previous(f) + roc * dt
+    previous_value = step_num > 0 ? previous(f) : 0.0;
+    return rk3_alpha[step_num] * previous_value + roc * dt
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_intermediate(Field3 f, real3 roc, int step_num, real dt)
