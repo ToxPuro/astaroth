@@ -3507,7 +3507,7 @@ count_variables(const char* datatype, const char* qual)
 	return res;
 }
 void
-gen_final_reductions(const char* datatype, const int kernel_index, ASTNode* compound_statement, const int* reduced)
+gen_final_reductions(const char* datatype, const int kernel_index, ASTNode* compound_statement, const int* reduced, const bool prefix)
 {
 		const size_t n_elems = count_variables(datatype,OUTPUT_STR);
 		const char* define_name = convert_to_define_name(datatype);
@@ -3516,18 +3516,37 @@ gen_final_reductions(const char* datatype, const int kernel_index, ASTNode* comp
 			if(!reduced[i + n_elems*kernel_index]) continue;
 			const Symbol* sym = get_symbol_by_index_and_qualifier(NODE_VARIABLE_ID, i, datatype ,OUTPUT_STR);
 			const ReduceOp op = (ReduceOp)reduced[i + n_elems*kernel_index];
-			astnode_sprintf_postfix(compound_statement,"%s"
-					"{"
-					"const auto val = warp_reduce_%s_%s(%s_reduce_output);"
-				        "if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_%s[%s][warp_out_index] = val;"
-					"}"
-			,compound_statement->postfix
-			,reduce_op_to_name(op)
-			,define_name
-			,sym->identifier
-			,define_name
-			,sym->identifier
-			);
+			if(prefix)
+			{
+				astnode_sprintf_postfix(compound_statement,
+						"{"
+						"const auto val = warp_reduce_%s_%s(%s_reduce_output);"
+					        "if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_%s[%s][warp_out_index] = val;"
+						"}"
+						"%s"
+				,reduce_op_to_name(op)
+				,define_name
+				,sym->identifier
+				,define_name
+				,sym->identifier
+				,compound_statement->postfix
+				);
+			}
+			else
+			{
+				astnode_sprintf_postfix(compound_statement,"%s"
+						"{"
+						"const auto val = warp_reduce_%s_%s(%s_reduce_output);"
+					        "if(lane_id == warp_leader_id) d_symbol_reduce_scratchpads_%s[%s][warp_out_index] = val;"
+						"}"
+				,compound_statement->postfix
+				,reduce_op_to_name(op)
+				,define_name
+				,sym->identifier
+				,define_name
+				,sym->identifier
+				);
+			}
 		}
 
 }
@@ -3557,6 +3576,17 @@ gen_kernel_reduce_outputs()
   fprintf(fp, "};\n");
   fclose(fp);
 }
+void
+gen_all_final_reductions(ASTNode* compound_statement, const int kernel_index, const bool prefix)
+{
+
+		gen_final_reductions(REAL_STR,kernel_index,compound_statement,reduced_reals,prefix);
+		gen_final_reductions(INT_STR,kernel_index,compound_statement,reduced_ints,prefix);
+		if(AC_DOUBLE_PRECISION)
+		{
+			gen_final_reductions(FLOAT_STR,kernel_index,compound_statement,reduced_floats,prefix);
+		}
+}
 
 void
 gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
@@ -3582,8 +3612,12 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 			astnode_sprintf_postfix(compound_statement,"vba.out[%s][idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
 		}
 	}
+	if(kernel_calls_reduce(fn_name) && BUFFERED_REDUCTIONS && !has_block_loops(kernel_index))
+	{
+		gen_all_final_reductions(compound_statement,kernel_index,true);
+	}
 	astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
-	if((has_block_loops(kernel_index) || BUFFERED_REDUCTIONS) && kernel_calls_reduce(fn_name))
+	if(has_block_loops(kernel_index)  && kernel_calls_reduce(fn_name))
 	{
 #if AC_USE_HIP
 	       astnode_sprintf_postfix(compound_statement,"%s AC_INTERNAL_active_threads = __ballot(1);",compound_statement->postfix);
@@ -3594,12 +3628,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
     		//TP: if all threads are active can skip checks checking if target tid is active in reductions
     		astnode_sprintf_postfix(compound_statement,"%s AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;",compound_statement->postfix);
 
-		gen_final_reductions(REAL_STR,kernel_index,compound_statement,reduced_reals);
-		gen_final_reductions(INT_STR,kernel_index,compound_statement,reduced_ints);
-		if(AC_DOUBLE_PRECISION)
-		{
-			gen_final_reductions(FLOAT_STR,kernel_index,compound_statement,reduced_floats);
-		}
+		gen_all_final_reductions(compound_statement,kernel_index,false);
 	}
 	astnode_sprintf_postfix(compound_statement,"%s"
 			"}"

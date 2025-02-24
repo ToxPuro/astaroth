@@ -52,7 +52,6 @@ VecZProfile VEC_Z_PROFILE
 Kernel test_reduce()
 {
     reduce_min(FIELD, AC_min_val)
-    reduce_sum(FIELD, AC_sum_val)
     reduce_sum((int)value(FIELD),AC_int_sum_val)
     reduce_sum((float)value(FIELD),AC_float_sum_val)
 
@@ -73,6 +72,7 @@ Kernel test_reduce()
 Kernel only_scalar_reduction()
 {
     reduce_max(FIELD, AC_max_val)
+    reduce_sum(FIELD, AC_sum_val)
 }
 Kernel reduce_z()
 {

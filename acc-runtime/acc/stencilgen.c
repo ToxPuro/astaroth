@@ -243,7 +243,8 @@ gen_kernel_block_loops(const int curr_kernel)
 	#endif
 
 	{
-	    	printf("[[maybe_unused]] constexpr size_t warp_leader_id  = 0;");
+		if(kernel_has_block_loops(curr_kernel))
+	    		printf("[[maybe_unused]] constexpr size_t warp_leader_id  = 0;");
 	    	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
 	    	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
 	    	printf("const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
@@ -882,6 +883,7 @@ print_butterfly_iteration(FILE* stream, const int iteration, const char* op_inst
 	fprintf(stream,"%s tid_shift  = (lane_id & (~%d));",tid_shift_type,tid_shift_num);
 	fprintf(stream,"%s mask       = AC_INTERNAL_active_threads & (%lldULL << (tid_shift + base_shift));",mask_type,mask_num);
 	fprintf(stream,"%s smallest_active = %s(mask);",smallest_active_type,ffs_string);
+	fprintf(stream,"target_tid = smallest_active-1;");
 	fprintf(stream,"shuffle_tmp = %s;",shuffle_instruction);
 	fprintf(stream,"if(smallest_active) %s;",op_instruction);
 }
@@ -1025,18 +1027,24 @@ gen_kernel_reduce_funcs(const int curr_kernel)
 {
   if(kernel_calls_reduce[curr_kernel] )
   {
-    if(!kernel_has_block_loops(curr_kernel) && !BUFFERED_REDUCTIONS)
+    if(!kernel_has_block_loops(curr_kernel))
     {
+	if(!BUFFERED_REDUCTIONS)
+	{
 #if AC_USE_HIP
-        printf("[[maybe_unused]] const size_t warp_id = rocprim__warpId();");
+        	printf("[[maybe_unused]] const size_t warp_id = rocprim__warpId();");
 #else
-	printf("[[maybe_unused]] const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
+		printf("[[maybe_unused]] const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
 #endif
-    	printf("[[maybe_unused]] const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
-    	printf("[[maybe_unused]] const size_t warp_leader_id  = %s(AC_INTERNAL_active_threads)-1;",ffs_string);
-    	printf("[[maybe_unused]] const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
-    	printf("[[maybe_unused]] const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
-    	printf("[[maybe_unused]] const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+    		printf("[[maybe_unused]] const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
+
+    		printf("[[maybe_unused]] const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
+
+    		printf("[[maybe_unused]] const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;");
+
+    		printf("[[maybe_unused]] const int warp_out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;");
+	}
+    	printf("%s warp_leader_id  = %s(AC_INTERNAL_active_threads)-1;",false ? "" : "[[maybe_unused]] const size_t" ,ffs_string);
     }
     if(get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel]))
     {
