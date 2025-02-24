@@ -61,13 +61,13 @@ add_definitions(-DAC_OVERRIDES_PATH="${CMAKE_SOURCE_DIR}/acc-runtime/overrides.h
 add_definitions(-DAC_BASE_PATH="${CMAKE_SOURCE_DIR}")
 set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}")
 
-if(RUNTIME_COMPILATION)
+if (RUNTIME_COMPILATION)
 	add_definitions(-DAC_RUNTIME_COMPILATION=1)
 else()
 	add_definitions(-DAC_RUNTIME_COMPILATION=0)
 endif()
 
-if(LAGRANGIAN_GRID)
+if (LAGRANGIAN_GRID)
 	add_definitions(-DAC_LAGRANGIAN_GRID=1)
 else()
 	add_definitions(-DAC_LAGRANGIAN_GRID=0)
@@ -90,7 +90,7 @@ add_compile_options(# C/CXX/CUDA/HIP
 ## CUDA and HIP
 find_package(CUDAToolkit QUIET)
 find_package(HIP QUIET)
-if(NOT USE_HIP AND CUDAToolkit_FOUND)
+if (NOT USE_HIP AND CUDAToolkit_FOUND)
     message(STATUS "CUDA found")
     enable_language(CUDA)
     add_compile_options(-DDEVICE_ENABLED)
@@ -98,12 +98,12 @@ if(NOT USE_HIP AND CUDAToolkit_FOUND)
     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
 
     ##TP: do not set GPU architectures to speedup debug compilations
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     else()
     	set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
     endif()
     message(STATUS "Enabled CUDA architectures (Astaroth): " ${CMAKE_CUDA_ARCHITECTURES})
-elseif(USE_HIP OR HIP_FOUND)
+elseif (USE_HIP OR HIP_FOUND)
     set(USE_HIP ON)
     message(STATUS "HIP found")
     enable_language(HIP)
@@ -112,7 +112,7 @@ elseif(USE_HIP OR HIP_FOUND)
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
     ##TP: do not set GPU architectures to speedup debug compilations
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     else()
     	set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
     endif()
@@ -174,7 +174,7 @@ add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 ## Subdirectories
 
 # 3rd party
-if(INCLUDE_3RD_PARTIES)
+if (INCLUDE_3RD_PARTIES)
 	add_subdirectory(3rdparty/inih)
 endif()
 
@@ -183,7 +183,7 @@ add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
 
-if(BUILD_TESTS)
+if (BUILD_TESTS)
 	add_subdirectory(test)
 	add_definitions(-DINCLUDE_MODEL_SOLVER=0)
 else()
@@ -258,7 +258,7 @@ if (BUILD_SAMPLES AND BUILD_MHD_SAMPLES)
     add_subdirectory(samples/stencil-loader)
 endif()
 
-if(MPI_ENABLED AND BUILD_ACM)
+if (MPI_ENABLED AND BUILD_ACM)
     add_subdirectory(acc-comm)
 endif()
 
