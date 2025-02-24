@@ -1572,6 +1572,7 @@ ReduceTask::reduce()
 			    );
 	    }
 	}
+
     	for(size_t i = 0; i < reduce_outputs.size(); ++i)
     	{
 	    const auto var    = reduce_outputs[i].variable;
@@ -1707,6 +1708,7 @@ ReduceTask::advance(const TraceFile* trace_file)
 	{
         	trace_file->trace(this, "reducing", "waiting");
         	state = static_cast<int>(ReduceState::Waiting);
+		load_outputs();
         	break;
 	}
 	else

@@ -52,7 +52,6 @@ VecZProfile VEC_Z_PROFILE
 Kernel test_reduce()
 {
     reduce_min(FIELD, AC_min_val)
-    reduce_max(FIELD, AC_max_val)
     reduce_sum(FIELD, AC_sum_val)
     reduce_sum((int)value(FIELD),AC_int_sum_val)
     reduce_sum((float)value(FIELD),AC_float_sum_val)
@@ -70,6 +69,10 @@ Kernel test_reduce()
 
     vec = real3(1.0,2.0,3.0)
     reduce_sum(vec,VEC_Z_PROFILE)
+}
+Kernel only_scalar_reduction()
+{
+    reduce_max(FIELD, AC_max_val)
 }
 Kernel reduce_z()
 {
@@ -142,6 +145,7 @@ BoundConds bcs
 
 ComputeSteps rhs(bcs)
 {
+	only_scalar_reduction()
 	test_reduce()
 	reduce_x()
 	reduce_y()

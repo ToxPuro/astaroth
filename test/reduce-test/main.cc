@@ -89,7 +89,7 @@ main(int argc, char* argv[])
     acGridInit(info);
 
 
-    auto graph = acGetDSLTaskGraph(rhs);
+    auto graph = acGetOptimizedDSLTaskGraph(rhs);
     acGridExecuteTaskGraph(graph,1);
 
 
