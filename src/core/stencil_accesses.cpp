@@ -26,7 +26,7 @@ bool should_reduce_int[1000] = {false};
 #define rocprim__warpSize() (64)
 #define rocprim__warpId()   (0)
 #define rocprim__warp_shuffle(mask,val)  (val)
-#define rocprim__warp_shuffle_down(mask,val)  (val)
+#define rocprim__warp_shuffle_down(val,offset)  (val)
 
 #include <algorithm>
 

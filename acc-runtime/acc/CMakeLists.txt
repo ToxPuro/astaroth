@@ -13,6 +13,7 @@ option(OPTIMIZE_FIELDS       "Optimizes fields to be auxiliary,(non-)communicate
 option(OPTIMIZE_ARRAYS       "Does not allocate arrays that are not used based on DSL. Runtime compilation and optimize conditionals help to prevent unnoticed accesses in conditionals" OFF)
 option(FUSE_KERNELS          "Whether to fuse kernels or not" OFF)
 option(INLINING "Whether to inline all functions or not" OFF)
+option(BUFFERED_REDUCTIONS "Whether reduction values are written out immediately or at the end of a kernel. By default on since gives better performance on AMD." ON)
 
 set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
 #TP: if defined the user already has the executable and has exported a path to it
@@ -58,6 +59,13 @@ else()
 	else()
 		set(OPTIMIZE_MEM_ACCESSES_VAL 0)
 	endif()
+
+	if (BUFFERED_REDUCTIONS)
+		set(BUFFERED_REDUCTIONS_VAL 1)
+	else()
+		set(BUFFERED_REDUCTIONS_VAL 0)
+	endif()
+
 	if(INLINING)
 		set(INLINING_VAL 1)
 	else()
@@ -95,5 +103,5 @@ else()
 	endif()
 	
 	
-	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_INPUT_PARAMS=${OPTIMIZE_INPUT_PARAMS_VAL} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL} -DOPTIMIZE_ARRAYS=${OPTIMIZE_ARRAYS_VAL} -DINLINING=${INLINING_VAL} -DFUSE_KERNELS=${FUSE_KERNELS_VAL} -DELIMINATE_CONDITIONALS=${ELIMINATE_CONDITIONALS_VAL})
+	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_INPUT_PARAMS=${OPTIMIZE_INPUT_PARAMS_VAL} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL} -DOPTIMIZE_ARRAYS=${OPTIMIZE_ARRAYS_VAL} -DINLINING=${INLINING_VAL} -DFUSE_KERNELS=${FUSE_KERNELS_VAL} -DELIMINATE_CONDITIONALS=${ELIMINATE_CONDITIONALS_VAL} -DBUFFERED_REDUCTIONS=${BUFFERED_REDUCTIONS_VAL})
 endif()

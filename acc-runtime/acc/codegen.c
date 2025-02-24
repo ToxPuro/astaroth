@@ -3531,6 +3531,32 @@ gen_final_reductions(const char* datatype, const int kernel_index, ASTNode* comp
 		}
 
 }
+bool
+kernel_calls_reduce(const char* kernel)
+{
+      const int index = str_vec_get_index(calling_info.names,kernel);
+      if(index == -1) fatal("Could not find %s in calling info\n",kernel);
+      return reduce_infos[index].size != 0;
+}
+
+void
+gen_kernel_reduce_outputs()
+{
+  //extra padding to help some compilers
+  FILE* fp = fopen("kernel_reduce_info.h","w");
+  fprintf(fp, "\nstatic const int kernel_calls_reduce[] = {");
+
+  for (size_t i = 0; i < num_symbols[0]; ++i)
+    if (symbol_table[i].tspecifier == KERNEL_STR)
+    {
+      const size_t index = str_vec_get_index(calling_info.names,symbol_table[i].identifier);
+      const char* val = (reduce_infos[index].size == 0) ? "0" : "1";
+      fprintf(fp,"%s,",val);
+    }
+
+  fprintf(fp, "};\n");
+  fclose(fp);
+}
 
 void
 gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
@@ -3557,7 +3583,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 		}
 	}
 	astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
-	if(has_block_loops(kernel_index))
+	if((has_block_loops(kernel_index) || BUFFERED_REDUCTIONS) && kernel_calls_reduce(fn_name))
 	{
 #if AC_USE_HIP
 	       astnode_sprintf_postfix(compound_statement,"%s AC_INTERNAL_active_threads = __ballot(1);",compound_statement->postfix);
@@ -3658,24 +3684,6 @@ void
 gen_kernel_postfixes(ASTNode* root, const bool gen_mem_accesses)
 {
 	gen_kernel_postfixes_recursive(root,gen_mem_accesses);
-}
-void
-gen_kernel_reduce_outputs()
-{
-  //extra padding to help some compilers
-  FILE* fp = fopen("kernel_reduce_info.h","w");
-  fprintf(fp, "\nstatic const int kernel_calls_reduce[] = {");
-
-  for (size_t i = 0; i < num_symbols[0]; ++i)
-    if (symbol_table[i].tspecifier == KERNEL_STR)
-    {
-      const size_t index = str_vec_get_index(calling_info.names,symbol_table[i].identifier);
-      const char* val = (reduce_infos[index].size == 0) ? "0" : "1";
-      fprintf(fp,"%s,",val);
-    }
-
-  fprintf(fp, "};\n");
-  fclose(fp);
 }
 void
 append_to_tail_node(ASTNode* tail_node, ASTNode* new_node)
@@ -8886,8 +8894,10 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
            "-Wfloat-conversion -Wshadow -I. %s -lm "
 	   "-DAC_USE_HIP=%d "
 	   "-DAC_DOUBLE_PRECISION=%d "
+	   "-DBUFFERED_REDUCTIONS=%d "
            "-o %s",
            IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,HIP_ON,AC_DOUBLE_PRECISION,
+	   BUFFERED_REDUCTIONS,
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);

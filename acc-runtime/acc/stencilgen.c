@@ -205,12 +205,8 @@ gen_kernel_block_loops(const int curr_kernel)
 #else
    printf("[[maybe_unused]] constexpr size_t warp_size = 32;");
 #endif
-  if(kernel_has_block_loops(curr_kernel))
+  if(kernel_calls_reduce[curr_kernel] && (kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS))
   {
-
-	const bool z_before = z_block_loop_before_y(curr_kernel);
-	if(kernel_has_block_loops(curr_kernel))
-	{
 		for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
 		{
 			if(reduced_reals[curr_kernel][i] == REDUCE_SUM)
@@ -245,7 +241,7 @@ gen_kernel_block_loops(const int curr_kernel)
 	#else
 		printf("const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size;");
 	#endif
-	}
+
 	{
 	    	printf("[[maybe_unused]] constexpr size_t warp_leader_id  = 0;");
 	    	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
@@ -281,6 +277,11 @@ gen_kernel_block_loops(const int curr_kernel)
 		}
 #endif
 	}
+  }
+  if(kernel_has_block_loops(curr_kernel))
+  {
+
+	const bool z_before = z_block_loop_before_y(curr_kernel);
 
 
 
@@ -986,7 +987,7 @@ void
 print_reduce_func(const char* datatype, const char* define_name, const char* enum_name, const int curr_kernel, const char** names, const int* is_reduced, const size_t n_elems, const ReduceOp op)
 {
         printf("[[maybe_unused]] const auto reduce_%s_%s __attribute__((unused)) = [&](%s val, const %sOutputParam& output) {",reduce_op_to_name(op),define_name,datatype,enum_name);
-	if(kernel_has_block_loops(curr_kernel))
+	if(kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS)
 	{
 		printf("switch(output) {");
 		for(size_t i = 0; i < n_elems; ++i)
@@ -1024,7 +1025,7 @@ gen_kernel_reduce_funcs(const int curr_kernel)
 {
   if(kernel_calls_reduce[curr_kernel] )
   {
-    if(!kernel_has_block_loops(curr_kernel))
+    if(!kernel_has_block_loops(curr_kernel) && !BUFFERED_REDUCTIONS)
     {
 #if AC_USE_HIP
         printf("[[maybe_unused]] const size_t warp_id = rocprim__warpId();");
@@ -1074,7 +1075,7 @@ gen_return_if_oob(const int curr_kernel)
        printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
        if(kernel_calls_reduce[curr_kernel] )
        {
-		const char* type = kernel_has_block_loops(curr_kernel) ? "" : "[[maybe_unused]] const auto";
+		const char* type = kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS ? "" : "[[maybe_unused]] const auto";
 #if AC_USE_HIP
 	       printf("%s AC_INTERNAL_active_threads = __ballot(!out_of_bounds);",type);
 #else
@@ -1088,9 +1089,6 @@ gen_return_if_oob(const int curr_kernel)
        }
        printf("if(out_of_bounds) %s;",kernel_has_block_loops(curr_kernel) ? "continue" : "return");
        printf("{\n");
-  printf("if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
-         "vertexIdx.z >= end.z) { return; }");
-
   // Enable excluding some internal domain
   printf("\n#if defined(AC_ENABLE_EXCLUDE_INNER)\n");
   printf("if (DCONST(AC_exclude_inner)) {");
