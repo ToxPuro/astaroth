@@ -54,6 +54,17 @@ rk1_final(Field3 f, int step_num){
                 rk1_final(f.z,step_num)
               )
 }
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk1_final(real f, real w, int step_num) {
+    return f + rk1_beta[step_num] * w
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk1_final(real3 f,real3 w,int step_num){
+  return real3( rk1_final(f.x,w.x,step_num),
+                rk1_final(f.y,w.y,step_num),
+                rk1_final(f.z,w.z,step_num)
+              )
+}
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk2_intermediate(Field f, real roc, int step_num, real dt) {
     previous_value = step_num > 0 ? previous(f) : 0.0;
@@ -76,6 +87,17 @@ rk2_final(Field3 f, int step_num){
   return real3( rk2_final(f.x,step_num),
                 rk2_final(f.y,step_num),
                 rk2_final(f.z,step_num)
+              )
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk2_final(real f, real w, int step_num) {
+    return f + rk3_beta[step_num] * w
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk2_final(real3 f,real3 w,int step_num){
+  return real3( rk3_final(f.x,w.x,step_num),
+                rk3_final(f.y,w.y,step_num),
+                rk3_final(f.z,w.z,step_num)
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
@@ -222,12 +244,90 @@ rk_final(Field f, int step_num)
 		return 0.0;
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
+rk_final(real f, real w, int step_num)
+{
+	if(AC_rk_order == 1)
+		return rk1_final(f,w,step_num)
+	else if(AC_rk_order == 2)
+		return rk2_final(f,w,step_num)
+	else if(AC_rk_order == 3)
+		return rk3_final(f,w,step_num)
+	else 
+		return 0.0;
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
 rk_final(Field3 f, int step_num)
 {
-	return real3(
-			rk_final(f.x,step_num),
-			rk_final(f.y,step_num),
-			rk_final(f.z,step_num)
-		    )
+	if(AC_rk_order == 1)
+		return rk1_final(f,step_num)
+	else if(AC_rk_order == 2)
+		return rk2_final(f,step_num)
+	else if(AC_rk_order == 3)
+		return rk3_final(f,step_num)
+	else 
+		return real3(0.0,0.0,0.0);
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk_final(real3 f, real3 w, int step_num)
+{
+	if(AC_rk_order == 1)
+		return rk1_final(f,w,step_num)
+	else if(AC_rk_order == 2)
+		return rk2_final(f,w,step_num)
+	else if(AC_rk_order == 3)
+		return rk3_final(f,w,step_num)
+	else 
+		return real3(0.0,0.0,0.0);
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk_number_of_substeps()
+{
+	if(AC_rk_order == 4)
+	{
+		return 5;
+	}
+	return AC_rk_order;
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk_intermediate_update(Field f, real df, int step_num, real dt)
+{
+	if(step_num != rk_number_of_substeps()-1)
+	{
+		write(f,rk_intermediate(f,df,step_num,dt))
+	}
+	else
+	{
+		alpha_f = rk_intermediate(f,df,step_num,dt)
+		write(f,rk_final(f, alpha_f, step_num))
+	}
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk_intermediate_update(Field3 f, real3 df, int step_num, real dt)
+{
+	if(step_num != rk_number_of_substeps()-1)
+	{
+		write(f,rk_intermediate(f,df,step_num,dt))
+	}
+	else
+	{
+		alpha_f = rk_intermediate(f,df,step_num,dt)
+		write(f,rk_final(f, alpha_f, step_num))
+	}
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk_final_update(Field f, int step_num)
+{
+	if(step_num != rk_number_of_substeps()-1)
+	{
+		write(f,rk_final(f,step_num))
+	}
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rk_final_update(Field3 f, int step_num)
+{
+	if(step_num != rk_number_of_substeps()-1)
+	{
+		write(f,rk_final(f,step_num))
+	}
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
