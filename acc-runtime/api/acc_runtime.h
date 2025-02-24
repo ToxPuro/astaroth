@@ -349,7 +349,8 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
    FUNC_DEFINE(AcResult, acInitializeRuntimeMPI,(const int grid_pid, const int nprocs, AcMeasurementGatherFunc));
 #endif
 
-  FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream));
+  FUNC_DEFINE(AcResult, acTransposeWithBounds,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream));
+  FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream));
   FUNC_DEFINE(const AcKernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
   FUNC_DEFINE(AcResult, acKernelFlushInt,(const cudaStream_t stream, int* arr, const size_t n, const int value));
@@ -558,11 +559,6 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfoParams info));
 
 #ifdef __cplusplus
-  static AcResult
-  acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
-  {
-	  return acTranspose(order,src,dst,dims,(Volume){0,0,0},dims,stream);
-  }
 
 #define GEN_LOAD_COMP_INFO(PARAM_TYPE,VAL_TYPE,TYPE) \
   static AcResult __attribute__((unused)) acLoadCompInfo(const PARAM_TYPE param, const VAL_TYPE val, AcCompInfo* info) {return acLoad##TYPE##CompInfo(param,val,info);};

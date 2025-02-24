@@ -323,7 +323,7 @@ acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst
     const AcMeshOrder order    = acGetMeshOrderForProfile(type);
 
 
-    acTranspose(order,buffer.src.data,buffer.transposed.data,get_volume_from_shape(buffer.src.shape),start,end,stream);
+    acTransposeWithBounds(order,buffer.src.data,buffer.transposed.data,get_volume_from_shape(buffer.src.shape),start,end,stream);
 
     const Volume dims = end_after_transpose-start_after_transpose;
 

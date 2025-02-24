@@ -2145,16 +2145,25 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 			if(Region::tag_to_id(tag).z != -1)  continue;
 		    }
 
-		    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Y))
+		    else if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Y))
 		    {
 			if(Region::tag_to_id(tag).x != -1)  continue;
 			if(Region::tag_to_id(tag).z != -1)  continue;
 		    }
 
-		    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Z))
+		    else if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Z))
 		    {
 			if(Region::tag_to_id(tag).x != -1)  continue;
 			if(Region::tag_to_id(tag).y != -1)  continue;
+		    }
+		    else
+		    {
+			if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
+				if(Region::tag_to_id(tag).x != 0) continue;
+			if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y))
+				if(Region::tag_to_id(tag).y != 0) continue;
+			if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_Z) && !(op.computes_on_halos & BOUNDARY_Z))
+				if(Region::tag_to_id(tag).z != 0) continue;
 		    }
 	    	    //auto task = std::make_shared<ComputeTask>(op,tag,full_input_region,full_region,device,swap_offset);
             	    //graph->all_tasks.push_back(task);
@@ -2248,7 +2257,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
             break;
         }
 	case TASKTYPE_REDUCE:  {
-	  if(kernel_only_reduces_profile(op.kernel_enum,PROFILE_X))
+
+	  if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_X))
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
@@ -2256,7 +2266,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
-	  else if(kernel_only_reduces_profile(op.kernel_enum,PROFILE_Y))
+	  else if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_Y))
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
@@ -2264,7 +2274,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
-	  else if(kernel_only_reduces_profile(op.kernel_enum,PROFILE_Z))
+	  else if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_Z))
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
@@ -2336,6 +2346,63 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
         return false;
     };
 
+    const auto profile_overlap_in_regions = [&](const auto gem_overlaps, const auto profiles_1, const auto profiles_2)
+    {
+	bool profiles_overlap = false;
+	for(auto profile_1 : profiles_1)
+	{
+		for(auto profile_2 : profiles_2)
+		{
+			if(profile_1 == profile_2)
+			{
+				profiles_overlap |= (prof_types[profile_1] == PROFILE_X && gem_overlaps.x);
+				profiles_overlap |= (prof_types[profile_1] == PROFILE_Y && gem_overlaps.y);
+				profiles_overlap |= (prof_types[profile_1] == PROFILE_Z && gem_overlaps.z);
+
+				profiles_overlap |= ((prof_types[profile_1] == PROFILE_XY || prof_types[profile_1] == PROFILE_YX) && (gem_overlaps.x || gem_overlaps.y));
+				profiles_overlap |= ((prof_types[profile_1] == PROFILE_XZ || prof_types[profile_1] == PROFILE_ZX) && (gem_overlaps.x || gem_overlaps.z));
+				profiles_overlap |= ((prof_types[profile_1] == PROFILE_YZ || prof_types[profile_1] == PROFILE_ZY) && (gem_overlaps.y || gem_overlaps.z));
+			}
+		}
+	}
+	return profiles_overlap;
+    };
+
+    //TP: we do profile overlaps in this convoluted manner since we want to skip stencil dependencies on profile updates
+    //whenever possible.
+    //I.e. if kernel A writes profile P and B reads it B should not use the stencil dependency geometry but the pointwise (with profile corrections) dependencies
+    //
+    //TP: In theory doing the vertex buffer dependencies in this manner would be also more precise but there is not really a an actual use case where it would help
+    //so postponed until it would actually help
+    const auto profile_overlap = [&](const auto preq_task, const auto dept_task)
+    {
+	if(dept_task->isComputeTask() && preq_task->isComputeTask())
+	{
+		if(kernel_has_profile_stencil_ops(std::dynamic_pointer_cast<ComputeTask>(dept_task)->getKernel()))
+		{
+			if(profile_overlap_in_regions(
+					preq_task->output_region.geometry_overlaps(&dept_task->input_region),
+					preq_task->output_region.memory.profiles,
+					dept_task->input_region.memory.profiles
+					))
+				return true;
+		}
+		
+		if(kernel_has_profile_stencil_ops(std::dynamic_pointer_cast<ComputeTask>(preq_task)->getKernel()))
+		{
+			if(profile_overlap_in_regions(
+					preq_task->output_region.geometry_overlaps(&dept_task->output_region),
+					preq_task->output_region.memory.profiles,
+					dept_task->output_region.memory.profiles
+					))
+				return true;
+		}
+
+	}
+	const AcBool3 gem_overlaps = preq_task->output_region.geometry_overlaps(&dept_task->output_region);
+	return profile_overlap_in_regions(gem_overlaps,preq_task->output_region.memory.profiles,dept_task->input_region.memory.profiles);
+    };
+
     // We walk through all tasks, and compare tasks from pairs of operations at
     // a time. Pairs are considered in order of increasing distance between the
     // operations in the pair. The final set of pairs that are considered are
@@ -2348,12 +2415,17 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
                 if (preq_task->active) {
                     for (auto j = op_indices[dept_op]; j != op_indices[dept_op + 1]; j++) {
                         auto dept_task = graph->all_tasks[j];
-                        // Task A depends on task B if the output region of A overlaps with the
-                        // input region of B.
+                        // Task A depends on task B if the input or output region of A overlaps with the
+                        // output region of B.
+			// Or for profiles if the A has profile P in and the output region of A overlaps
+			// with the output region of B and B writes/reduces profile P
                         if (dept_task->active &&
-                            (preq_task->output_region.overlaps(&dept_task->input_region)  ||
-                             preq_task->output_region.overlaps(&dept_task->output_region))) {
-                            // iteration offset of 0 -> dependency in the same iteration
+                            (
+			     preq_task->output_region.overlaps(&dept_task->input_region)  ||
+                             preq_task->output_region.overlaps(&dept_task->output_region) ||
+			     profile_overlap(preq_task,dept_task)
+			    )
+			    ) {
                             // iteration offset of 1 -> dependency from preq_task in iteration k to
                             // dept_task in iteration k+1
 			    //

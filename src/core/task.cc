@@ -387,27 +387,12 @@ Region::overlaps(const Region* other) const
 	const AcBool3 gem_overlaps = this->geometry_overlaps(other);
 	const bool vtxbuffers_overlap = (gem_overlaps.x && gem_overlaps.y && gem_overlaps.z) && this->fields_overlap(other);
 
-	bool profiles_overlap = false;
-	for(auto profile_1 : this->memory.profiles)
-		for(auto profile_2 : other->memory.profiles)
-		{
-			if(profile_1 == profile_2)
-			{
-				profiles_overlap |= (prof_types[profile_1] == PROFILE_X && gem_overlaps.x);
-				profiles_overlap |= (prof_types[profile_1] == PROFILE_Y && gem_overlaps.y);
-				profiles_overlap |= (prof_types[profile_1] == PROFILE_Z && gem_overlaps.z);
-
-				profiles_overlap |= ((prof_types[profile_1] == PROFILE_XY || prof_types[profile_1] == PROFILE_YX) && (gem_overlaps.x || gem_overlaps.y));
-				profiles_overlap |= ((prof_types[profile_1] == PROFILE_XZ || prof_types[profile_1] == PROFILE_ZX) && (gem_overlaps.x || gem_overlaps.z));
-				profiles_overlap |= ((prof_types[profile_1] == PROFILE_YZ || prof_types[profile_1] == PROFILE_ZY) && (gem_overlaps.y || gem_overlaps.z));
-			}
-		}
 
 	bool reduce_outputs_overlap = false;
 	for(auto output_1: this->memory.reduce_outputs)
 		for(auto output_2: other->memory.reduce_outputs)
 			reduce_outputs_overlap |= output_1.variable == output_2.variable;
-	return vtxbuffers_overlap || profiles_overlap  || reduce_outputs_overlap;
+	return vtxbuffers_overlap || reduce_outputs_overlap;
 }
 AcBool3
 Region::geometry_overlaps(const Region* other) const
@@ -733,17 +718,46 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 	output_region.dims.z = 1;	
     }
 
-    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Y))
+    else if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Y))
     {
 	output_region.dims.x = 1;	
 	output_region.dims.z = 1;	
     }
 
-    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Z))
+    else if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Z))
     {
 	output_region.dims.x = 1;	
 	output_region.dims.y = 1;	
     }
+    else
+    {
+	if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
+	{
+            output_region.dims.x += 2*NGHOST;
+            input_region.dims.x  += 2*NGHOST;
+
+            output_region.position.x -= NGHOST;
+            input_region.position.x  -= NGHOST;
+	}
+	if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y))
+	{
+            output_region.dims.y += 2*NGHOST;
+            input_region.dims.y  += 2*NGHOST;
+
+            output_region.position.y -= NGHOST;
+            input_region.position.y  -= NGHOST;
+	}
+
+	if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_Z) && !(op.computes_on_halos & BOUNDARY_Z))
+	{
+            output_region.dims.z += 2*NGHOST;
+            input_region.dims.z  += 2*NGHOST;
+
+            output_region.position.z -= NGHOST;
+            input_region.position.z  -= NGHOST;
+	}
+    }
+
 
     syncVBA();
 
@@ -1309,11 +1323,11 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume n
     output_region.position = {0,0,0};
     output_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
 
-    if(kernel_only_reduces_profile(op.kernel_enum,PROFILE_X))
+    if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_X))
 	    reduces_only_prof = PROFILE_X;
-    else if(kernel_only_reduces_profile(op.kernel_enum,PROFILE_Y))
+    else if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_Y))
 	    reduces_only_prof = PROFILE_Y;
-    else if(kernel_only_reduces_profile(op.kernel_enum,PROFILE_Z))
+    else if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_Z))
 	    reduces_only_prof = PROFILE_Z;
 
     syncVBA();

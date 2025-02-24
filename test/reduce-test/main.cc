@@ -656,6 +656,7 @@ main(int argc, char* argv[])
     	{
     	    bool correct =  in_eps_threshold(x_sum[i],x_sum_gpu[i]);
     	    x_sum_correct &= correct;
+    	    if(!correct) fprintf(stderr,"X SUM WRONG: %14e, %14e\n",x_sum[i],x_sum_gpu[i]);
     	}
     	bool y_sum_correct = true;
     	for(size_t i = dims.n0.y; i < dims.n1.y; ++i)

@@ -8,6 +8,25 @@ get_kernel_analysis_info()
 }
 
 static bool
+kernel_has_profile_stencil_ops(const AcKernel kernel)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int i = 0; i  < NUM_PROFILES; ++i)
+		if(info.profile_has_stencil_op[kernel][i]) return true;
+	return false;
+}
+
+static bool
+kernel_has_stencil_ops(const AcKernel kernel)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int i = 0; i  < NUM_FIELDS; ++i)
+		if(info.field_has_stencil_op[kernel][i]) return true;
+	for(int i = 0; i  < NUM_PROFILES; ++i)
+		if(info.profile_has_stencil_op[kernel][i]) return true;
+	return false;
+}
+static bool
 kernel_updates_vtxbuf(const AcKernel kernel)
 {
 	const auto info = get_kernel_analysis_info();
@@ -74,7 +93,7 @@ kernel_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
 }
 
 static bool
-kernel_only_reduces_profile(const AcKernel kernel, const AcProfileType prof_type)
+kernel_reduces_only_profiles(const AcKernel kernel, const AcProfileType prof_type)
 {
 	if(kernel_reduces_scalar(kernel)) return false;
 	const auto info = get_kernel_analysis_info();
@@ -82,6 +101,15 @@ kernel_only_reduces_profile(const AcKernel kernel, const AcProfileType prof_type
 		if(info.reduced_profiles[kernel][i] && prof_types[i] != prof_type) return false;
 	return true;
 }
+
+static bool
+kernel_does_only_profile_reductions(const AcKernel kernel, const AcProfileType prof_type)
+{
+	if(kernel_updates_vtxbuf(kernel)) return false;
+	if(kernel_has_stencil_ops(kernel)) return false;
+	return kernel_reduces_only_profiles(kernel,prof_type);
+}
+
 
 static bool
 kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type)

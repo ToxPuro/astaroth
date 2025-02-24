@@ -2421,7 +2421,7 @@ acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const Volume dims, const Volu
 	return AC_SUCCESS;
 }
 AcResult
-acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
+acTransposeWithBounds(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
 {
 	switch(order)
 	{
@@ -2441,6 +2441,13 @@ acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volum
         ERRCHK_CUDA_KERNEL();
 	return AC_SUCCESS;
 }
+
+AcResult
+acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
+{
+	return acTransposeWithBounds(order,src,dst,dims,(Volume){0,0,0},dims,stream);
+}
+
 size_t
 get_count(const AcShape shape)
 {
