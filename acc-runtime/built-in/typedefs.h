@@ -58,12 +58,14 @@ struct Field4
 	Field w;
 } 
 
+//TP: do not make xy,xz and yz into long long since that 
+//will degrade performance (at least on AMD)
 struct AcDimProducts
 {
 	int xy;
 	int xz;
 	int yz;
-	long xyz;
+	long long xyz;
 };
 
 struct AcDimProductsInv

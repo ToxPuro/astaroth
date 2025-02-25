@@ -632,7 +632,14 @@ struct_name : STRUCT_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astno
 enum_name: ENUM_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken;};
 number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
-      | REALNUMBER     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_prefix("AcReal(", $$); astnode_set_postfix(")", $$); }
+      | REALNUMBER     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); 
+			      if(!strcmp(yytext,"inf"))
+			      	astnode_set_buffer("INFINITY", $$); 
+			      else
+			      	astnode_set_buffer(yytext, $$); 
+			      $$->token = 255 + yytoken; 
+			      astnode_set_prefix("AcReal(", $$); 
+			      astnode_set_postfix(")", $$); }
       | DOUBLENUMBER   {
             $$ = astnode_create(NODE_UNKNOWN, NULL, NULL);  $$->token = 255 + yytoken;
             astnode_set_prefix("double(", $$); astnode_set_postfix(")", $$);

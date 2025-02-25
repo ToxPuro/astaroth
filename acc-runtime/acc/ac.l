@@ -49,6 +49,7 @@ void strip_whitespace(char *str) {
 %%
 
 "nan"                   { return REALNUMBER; } /* nan */
+"inf"                   { return REALNUMBER; } /* inf */
 "NaN"                   { return REALNUMBER; } /* nan */
 "NAN"                   { return REALNUMBER; } /* nan */
 "int"                   { return INT; } /* Type specifiers */
