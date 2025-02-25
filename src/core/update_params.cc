@@ -185,7 +185,32 @@ acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* con
 	    (int)ny,
 	    (int)nz
     };
+#if AC_MPI_ENABLED
     push_val(AC_ngrid,ngrid);
+#else
     push_val(AC_nlocal,ngrid);
+#endif
+    return acHostUpdateBuiltinParams(&config);
+}
+
+
+AcResult
+acSetSubMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* config_ptr)
+{
+
+    AcMeshInfo& config = *config_ptr;
+    auto push_val = [&](auto param, auto val)
+    {
+	    if constexpr(std::is_same<decltype(param), int>::value || std::is_same<decltype(param), AcReal>::value);
+	    else
+	    	return acPushToConfig(config,param,val);
+    };
+    const int3 nlocal= 
+    {
+	    (int)nx,
+	    (int)ny,
+	    (int)nz
+    };
+    push_val(AC_nlocal,nlocal);
     return acHostUpdateBuiltinParams(&config);
 }

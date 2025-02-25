@@ -31,9 +31,9 @@ rk3(Field3 field, real3 roc, int step_num, real dt) {
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk1_intermediate(Field f, real roc, int step_num, real dt) {
-    //TP: rk1_alpha is always zero
-    //return rk1_alpha[step_num] * previous(f) + roc * dt
-    return roc*dt;
+    //TP: rk1_alpha is always zero but if not using runtime compilation unsafe to not call previous
+    //return roc*dt;
+    return rk1_alpha[step_num] * previous(f) + roc * dt
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk1_intermediate(Field3 f, real3 roc, int step_num, real dt)

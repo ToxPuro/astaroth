@@ -9,40 +9,42 @@
 
 #if AC_MPI_ENABLED
 static uint3_64
-get_decomp(const MPI_Comm comm, const AcCompInfo info)
+get_decomp(const MPI_Comm comm, const AcMeshInfo config)
 {
 
-    const auto global_config = info.config;
     int nprocs;
     MPI_Comm_size(comm, &nprocs);
-    switch((AcDecomposeStrategy)global_config.int_params[AC_decompose_strategy])
+    switch((AcDecomposeStrategy)config[AC_decompose_strategy])
     {
 	    case AcDecomposeStrategy::External:
-		return static_cast<uint3_64>(global_config.int3_params[AC_domain_decomposition]);
+		return static_cast<uint3_64>(config[AC_domain_decomposition]);
 	    default:
-		return decompose(nprocs,(AcDecomposeStrategy)global_config.int_params[AC_decompose_strategy]);
+		return decompose(nprocs,(AcDecomposeStrategy)config[AC_decompose_strategy]);
 
     }
     return (uint3_64){0,0,0};
 }
 
 void
-decompose_info(const MPI_Comm comm, AcCompInfo& info)
+decompose_info(const MPI_Comm comm, AcMeshInfo& config)
 {
-  const auto decomp = get_decomp(comm,info);
+  const auto decomp = get_decomp(comm,config);
   //TP: is not run_const anymore since for some reason gives bad performance
   //TODO: find out why!
-  //const int3 int3_decomp = (int3){(int)decomp.x,(int)decomp.y,(int)decomp.z};
-  //auto& config = info.config;
-  //ERRCHK_ALWAYS(config[AC_nlocal].x % decomp.x == 0);
-  //ERRCHK_ALWAYS(config[AC_nlocal].y % decomp.y == 0);
-  //ERRCHK_ALWAYS(config[AC_nlocal].z % decomp.z == 0);
+  const int3 int3_decomp = (int3){(int)decomp.x,(int)decomp.y,(int)decomp.z};
+  ERRCHK_ALWAYS(config[AC_ngrid].x % decomp.x == 0);
+  ERRCHK_ALWAYS(config[AC_ngrid].y % decomp.y == 0);
+  ERRCHK_ALWAYS(config[AC_ngrid].z % decomp.z == 0);
 
-  //config[AC_nlocal].x = config[AC_nlocal].x/int3_decomp.x;
-  //config[AC_nlocal].y = config[AC_nlocal].y/int3_decomp.y;
-  //config[AC_nlocal].z = config[AC_nlocal].z/int3_decomp.z;
-
-  acLoadCompInfo(AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z},&info);
+  acPushToConfig(config,AC_nlocal,
+		  	(int3)
+			{
+				config[AC_ngrid].x/int3_decomp.x,
+				config[AC_ngrid].y/int3_decomp.y,
+				config[AC_ngrid].z/int3_decomp.z
+			}
+		  );
+  acLoadCompInfo(AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z},&config.run_consts);
 }
 
 #endif
@@ -88,17 +90,15 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 {
 	check_that_built_ins_loaded(mesh_info.run_consts);
 	acHostUpdateBuiltinParams(&mesh_info);
-	AcCompInfo info = mesh_info.run_consts;
 #if AC_MPI_ENABLED
 	ERRCHK_ALWAYS(mesh_info.comm != MPI_COMM_NULL);
 	int pid;
 	MPI_Comm_rank(mesh_info.comm,&pid);
-	decompose_info(mesh_info.comm,info);
+	decompose_info(mesh_info.comm,mesh_info);
 #else
 	const int pid = 0;
 #endif
 	acHostUpdateBuiltinParams(&mesh_info);
-	mesh_info.run_consts = info;
 	if(pid == 0)
 	{
 		acLoadRunConstsBase("tmp_astaroth_run_consts.h",mesh_info);

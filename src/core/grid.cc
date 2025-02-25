@@ -322,11 +322,11 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 
     const uint3_64 decomp = get_decomp(global_config);
 
-    ERRCHK_ALWAYS(submesh_config[AC_nlocal].x % decomp.x == 0);
-    ERRCHK_ALWAYS(submesh_config[AC_nlocal].y % decomp.y == 0);
-    ERRCHK_ALWAYS(submesh_config[AC_nlocal].z % decomp.z == 0);
+    ERRCHK_ALWAYS(submesh_config[AC_ngrid].x % decomp.x == 0);
+    ERRCHK_ALWAYS(submesh_config[AC_ngrid].y % decomp.y == 0);
+    ERRCHK_ALWAYS(submesh_config[AC_ngrid].z % decomp.z == 0);
 
-    const Volume nn = acGetLocalNN(submesh_config);
+    const Volume nn = acGetGridNN(submesh_config);
     const auto submesh_n_size_t = nn / decomp;
     int3 submesh_n = (int3){(int)submesh_n_size_t.x,(int)submesh_n_size_t.y,(int)submesh_n_size_t.z};
 
@@ -350,7 +350,7 @@ void
 check_that_decomp_valid(const AcMeshInfo info)
 {
     const uint3_64 decomp = get_decomp(info);
-    const Volume nn = acGetLocalNN(info);
+    const Volume nn = acGetGridNN(info);
     const bool nx_valid = nn.x % decomp.x == 0;
     const bool ny_valid = nn.y % decomp.y == 0;
     const bool nz_valid = nn.z % decomp.z == 0;
@@ -527,10 +527,24 @@ check_that_device_allocation_valid()
     }
     MPI_Barrier(acGridMPIComm());
 }
+
+void 
+check_that_submesh_large_enough(const AcMeshInfo info)
+{
+    const Volume nn = acGetLocalNN(info);
+    if (nn.x < STENCIL_WIDTH && !info[AC_dimension_inactive].x)
+        fprintf(stderr, "nn.x %ld too small, must be >= %d (stencil width)\n", nn.x, STENCIL_WIDTH);
+    if (nn.y < STENCIL_HEIGHT && !info[AC_dimension_inactive].y)
+        fprintf(stderr, "nn.y %ld too small, must be >= %d (stencil height)\n", nn.y,
+                STENCIL_HEIGHT);
+    if (nn.z < STENCIL_DEPTH && !info[AC_dimension_inactive].z)
+        fprintf(stderr, "nn.z %ld too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
+}
+
 void 
 check_that_mesh_large_enough(const AcMeshInfo info)
 {
-    const Volume nn = acGetLocalNN(info);
+    const Volume nn = acGetGridNN(info);
     if (nn.x < STENCIL_WIDTH && !info[AC_dimension_inactive].x)
         fprintf(stderr, "nn.x %ld too small, must be >= %d (stencil width)\n", nn.x, STENCIL_WIDTH);
     if (nn.y < STENCIL_HEIGHT && !info[AC_dimension_inactive].y)
@@ -649,10 +663,23 @@ grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
 AcResult
 acGridInitBase(const AcMesh user_mesh)
 {
-    AcMeshInfo info = user_mesh.info;
+    const AcMeshInfo info = user_mesh.info;
     ERRCHK(!grid.initialized);
     if (!grid.mpi_initialized)
       create_astaroth_comm(info);
+
+    if(
+	info[AC_ngrid].x < 0 ||
+	info[AC_ngrid].y < 0 ||
+	info[AC_ngrid].z < 0
+      )
+    	{
+    	        fatal("acGridInit: Incorrect AC_ngrid: (%d,%d,%d)!\n",
+    	    			info[AC_ngrid].x,
+    	    			info[AC_ngrid].y,
+    	    			info[AC_ngrid].z
+    	    		    );
+    	}
 
     acInitializeRuntimeMPI(ac_pid(), ac_nprocs() ,grid_gather_best_measurement);
     // Check that MPI is initialized
@@ -690,9 +717,6 @@ acGridInitBase(const AcMesh user_mesh)
     // nlayers,partitions_per_layer);
     check_that_decomp_valid(info);
 
-    //TP:  Done in order to copy AC_nxgrid -> AC_nx that will be decomposed
-    //     This way you can use AC_nxgrid to get the global dimensions in the DSL and device layer
-    acHostUpdateBuiltinParams(&info);
     check_that_mesh_large_enough(info);
     MPI_Barrier(astaroth_comm);
 
@@ -708,12 +732,16 @@ acGridInitBase(const AcMesh user_mesh)
 
     // Decompose config (divide dimensions by decomposition)
     AcMeshInfo submesh_info = acGridDecomposeMeshInfo(info);
-    check_that_mesh_large_enough(submesh_info);
+    check_that_submesh_large_enough(submesh_info);
 
     // GPU alloc
     int devices_per_node = -1;
     cudaGetDeviceCount(&devices_per_node);
 
+    acLogFromRootProc(ac_pid(), "acGridInit: n[xyz]grid: (%d,%d,%d) n[xyz]local (%d,%d,%d)\n",
+		    submesh_info[AC_ngrid].x,submesh_info[AC_ngrid].y,submesh_info[AC_ngrid].z,
+		    submesh_info[AC_nlocal].x,submesh_info[AC_nlocal].y,submesh_info[AC_nlocal].z
+		    );
     acLogFromRootProc(ac_pid(), "acGridInit: Calling acDeviceCreate\n");
     Device device;
     acDeviceCreate(ac_pid() % devices_per_node, submesh_info, &device);

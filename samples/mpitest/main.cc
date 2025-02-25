@@ -59,7 +59,10 @@ main(int argc, char* argv[])
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     info.comm = MPI_COMM_WORLD;
+
     acSetMeshDims(nx, ny, nz, &info);
+    acSetSubMeshDims(nx, ny, nz, &info);
+
     acPushToConfig(info,AC_proc_mapping_strategy, (int)AcProcMappingStrategy::Linear);
     acPushToConfig(info,AC_decompose_strategy,    (int)AcDecomposeStrategy::Morton);
     acPushToConfig(info,AC_MPI_comm_strategy,    (int)AcMPICommStrategy::DuplicateMPICommWorld);

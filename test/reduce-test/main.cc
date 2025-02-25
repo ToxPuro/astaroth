@@ -76,6 +76,7 @@ main(int argc, char* argv[])
     const int ny = argc > 2 ? atoi(argv[2]) : 2*11;
     const int nz = argc > 3 ? atoi(argv[3]) : 4*7;
     acSetMeshDims(nx, ny, nz, &info);
+    acSetSubMeshDims(nx, ny, nz, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {

@@ -291,43 +291,21 @@ rk_number_of_substeps()
 /*--------------------------------------------------------------------------------------------------------------------*/
 rk_intermediate_update(Field f, real df, int step_num, real dt)
 {
-	if(step_num != rk_number_of_substeps()-1)
-	{
 		write(f,rk_intermediate(f,df,step_num,dt))
-	}
-	else
-	{
-		alpha_f = rk_intermediate(f,df,step_num,dt)
-		write(f,rk_final(f, alpha_f, step_num))
-	}
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rk_intermediate_update(Field3 f, real3 df, int step_num, real dt)
 {
-	if(step_num != rk_number_of_substeps()-1)
-	{
 		write(f,rk_intermediate(f,df,step_num,dt))
-	}
-	else
-	{
-		alpha_f = rk_intermediate(f,df,step_num,dt)
-		write(f,rk_final(f, alpha_f, step_num))
-	}
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rk_final_update(Field f, int step_num)
 {
-	if(step_num != rk_number_of_substeps()-1)
-	{
-		write(f,rk_final(f,step_num))
-	}
+	write(f,rk_final(f,step_num))
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rk_final_update(Field3 f, int step_num)
 {
-	if(step_num != rk_number_of_substeps()-1)
-	{
-		write(f,rk_final(f,step_num))
-	}
+	write(f,rk_final(f,step_num))
 }
 /*--------------------------------------------------------------------------------------------------------------------*/

@@ -375,9 +375,14 @@ FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
 
 FUNC_DEFINE(void, acStoreConfig,(const AcMeshInfo info, const char* filename));
 
-/** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
+/** Sets the dimensions of the computational grid to (nx, ny, nz) and recalculates the built-in
  * parameters derived from them (mx, my, mz, nx_min, and others) */
-AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
+FUNC_DEFINE(AcResult, acSetMeshDims,(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info));
+
+/** Sets the dimensions of the computational subdomain to (nx, ny, nz) and recalculates the built-in
+ * parameters derived from them (mx, my, mz, nx_min, and others) */
+
+FUNC_DEFINE(AcResult, acSetSubMeshDims,(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info));
 
 /*
  * =============================================================================
@@ -420,6 +425,8 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 		fprintf(stderr,"Error message: %s\n",dlerror());
 		exit(EXIT_FAILURE);
 	}
+	LOAD_DSYM(acSetMeshDims)
+	LOAD_DSYM(acSetSubMeshDims)
 	LOAD_DSYM(acDeviceGetVertexBufferPtrs)
 	LOAD_DSYM(acDeviceGetLocalConfig)
         LOAD_DSYM(acDeviceFinishReduceInt)

@@ -197,7 +197,6 @@ as_int(const T i)
     fprintf(stderr, "\n└──────────────────────── ERROR "                       \
                     "───────────────────────────┘\n\n\n\n");                   \
     fflush(stderr);                                                            \
-    exit(EXIT_FAILURE);                                                        \
     abort();                                                                   \
   }
 #define INDIRECT_ERRCHK_ALWAYS(retval, file, line)                             \

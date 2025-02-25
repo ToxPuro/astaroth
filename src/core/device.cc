@@ -529,17 +529,22 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // Check that AC_global_grid_n and AC_multigpu_offset are valid
     // Replace if not and give a warning otherwise
     if (
-        device->local_config[AC_ngrid].x <= 0 ||
-        device->local_config[AC_ngrid].y <= 0 ||
-        device->local_config[AC_ngrid].z <= 0 ||
         device->local_config[AC_multigpu_offset].x < 0 ||
         device->local_config[AC_multigpu_offset].y < 0 ||
         device->local_config[AC_multigpu_offset].z < 0) {
-        WARNING("Invalid AC_global_grid_n or AC_multigpu_offset passed in device_config to "
-                "acDeviceCreate. Replacing with AC_global_grid_n = local grid size and "
-                "AC_multigpu_offset = (int3){0,0,0}.");
+	WARNING("Invalid AC_multigpu_offset passed in device_config to acDeviceCreate. Replacting with AC_multigpu_offset = (int3){0,0,0}.");
         device->local_config[AC_multigpu_offset] = (int3){0, 0, 0};
-	acCopyFromInfo(device_config,device->local_config,AC_ngrid);
+    }
+    if(
+        device->local_config[AC_nlocal].x <= 0 ||
+        device->local_config[AC_nlocal].y <= 0 ||
+        device->local_config[AC_nlocal].z <= 0
+      )
+    {
+        WARNING("Invalid AC_nlocal passed in device_config to "
+                "acDeviceCreate. Replacing with AC_nlocal = AC_ngrid"
+                );
+	device->local_config[AC_nlocal] = device->local_config[AC_ngrid];
     }
 
 #if AC_VERBOSE
