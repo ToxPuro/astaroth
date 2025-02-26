@@ -1,13 +1,5 @@
 # Astaroth standalone - Getting started
 
-## Building (LUMI, 2025-02-26)
-```bash
-cd astaroth
-mkdir build && cd build
-cmake -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DMAX_THREADS_PER_BLOCK=512 ..
-cmake --build . --parallel
-```
-
 ## Modules (LUMI, 2025-02-26)
 
 ```bash
@@ -35,6 +27,13 @@ Currently Loaded Modules:
   6) craype/2.7.31.11            12) cray-python/3.11.7   18) partition/L                          (S)
 ```
 
+## Building (LUMI, 2025-02-26)
+```bash
+cd astaroth
+mkdir build && cd build
+cmake -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DMAX_THREADS_PER_BLOCK=512 ..
+cmake --build . --parallel
+```
 
 ## Running (LUMI, 2025-02-26)
 
