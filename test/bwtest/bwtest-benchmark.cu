@@ -426,7 +426,7 @@ main(int argc, char* argv[])
         count = size of the computational domain
         pad = size of the padding in the beginning (incl. halo)
     */
-    ERRCHK_CUDA(cudaProfilerStop());
+    cudaProfilerStop();
     if (argc != 3) {
         fprintf(stderr, "Usage: ./benchmark <problem size> <working set size>\n");
         fprintf(stderr, "       ./benchmark 0 0 # To use the defaults\n");

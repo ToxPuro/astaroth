@@ -25,6 +25,7 @@
 #if AC_MPI_ENABLED
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "../../stdlib/reduction.h"
 
 #include "timer_hires.h"
 
@@ -101,19 +102,19 @@ write_info(const AcMeshInfo* config)
     // MV: Now adapted into working condition. E.g. removed useless / harmful formatting.
 
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        fprintf(infotxt, "int %s %d\n", intparam_names[i], config->int_params[i]);
+        fprintf(infotxt, "int %s %d\n", intparam_names[i], config->params.scalars.int_params[i]);
 
     for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        fprintf(infotxt, "int3 %s  %d %d %d\n", int3param_names[i], config->int3_params[i].x,
-                config->int3_params[i].y, config->int3_params[i].z);
+        fprintf(infotxt, "int3 %s  %d %d %d\n", int3param_names[i], config->params.scalars.int3_params[i].x,
+                config->params.scalars.int3_params[i].y, config->params.scalars.int3_params[i].z);
 
     for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        fprintf(infotxt, "real %s %g\n", realparam_names[i], double(config->real_params[i]));
+        fprintf(infotxt, "real %s %g\n", realparam_names[i], double(config->params.scalars.real_params[i]));
 
     for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
         fprintf(infotxt, "real3 %s  %g %g %g\n", real3param_names[i],
-                double(config->real3_params[i].x), double(config->real3_params[i].y),
-                double(config->real3_params[i].z));
+                double(config->params.scalars.real3_params[i].x), double(config->params.scalars.real3_params[i].y),
+                double(config->params.scalars.real3_params[i].z));
 
     fclose(infotxt);
 }
@@ -133,14 +134,14 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
 
     // If num_snapshots > 0 use modstep calculation.
     // Else use numbering based on time interval.
-    const int num_snapshots = info.int_params[AC_num_snapshots];
+    const int num_snapshots = info[AC_num_snapshots];
     int modstep;
     if (num_snapshots > 0) {
-        modstep = (step / info.int_params[AC_bin_steps]) % num_snapshots;
+        modstep = (step / info[AC_bin_steps]) % num_snapshots;
     }
     else {
         // NOTE: assumes that AC_bin_save_t will not be changed during the simulation run.
-        modstep = int(round(simulation_time / info.real_params[AC_bin_save_t]));
+        modstep = int(round(simulation_time / info[AC_bin_save_t]));
         // log_from_root_proc_with_sim_progress(pid,
         //                                      "save_mesh_mpi_async: simulation_time = %e,
         //                                      AC_bin_save_t = %e \n", simulation_time,
@@ -163,7 +164,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
         }
 
         fprintf(header_file, "%d, %d, %d, %d, %d, %d, %g, %la\n", sizeof(AcReal) == 8,
-                info.int_params[AC_mx], info.int_params[AC_my], info.int_params[AC_mz], step,
+                info[AC_mlocal].x, info[AC_mlocal].y, info[AC_mlocal].z, step,
                 modstep, simulation_time, simulation_time);
 
         // Writes the header info. Make it into an
@@ -393,16 +394,16 @@ calc_timestep(const AcMeshInfo info)
                                 // now does MPI_Allreduce which includes the broadcast
 #endif
 
-    const long double cdt  = (long double)info.real_params[AC_cdt];
-    const long double cdtv = (long double)info.real_params[AC_cdtv];
+    const long double cdt  = (long double)info[AC_cdt];
+    const long double cdtv = (long double)info[AC_cdtv];
     // const long double cdts     = (long double)info.real_params[AC_cdts];
-    const long double cs2_sound = (long double)info.real_params[AC_cs2_sound];
-    const long double nu_visc   = (long double)info.real_params[AC_nu_visc];
-    const long double eta       = (long double)info.real_params[AC_eta];
+    const long double cs2_sound = (long double)info[AC_cs2_sound];
+    const long double nu_visc   = (long double)info[AC_nu_visc];
+    const long double eta       = (long double)info[AC_eta];
     const long double chi      = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
-    const long double gamma    = (long double)info.real_params[AC_gamma];
-    const long double dsmin    = (long double)info.real_params[AC_dsmin];
-    const long double nu_shock = (long double)info.real_params[AC_nu_shock];
+    const long double gamma    = (long double)info[AC_gamma];
+    const long double dsmin    = (long double)info[AC_dsmin];
+    const long double nu_shock = (long double)info[AC_nu_shock];
 
     // Old ones from legacy Astaroth
     // const long double uu_dt   = cdt * (dsmin / (uumax + cs_sound));
@@ -473,7 +474,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
 {
     // Read PC varfile to Astaroth
 
-    const int3 nn = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
+    const int3 nn = info[AC_ngrid];
     const int3 rr = (int3){3, 3, 3};
 
     int pid;
@@ -500,7 +501,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     acGridReadVarfileToMesh(file_path, io_fields, num_io_fields, nn, rr);
 
     // Scale the magnetic field
-    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info.real_params[AC_scaling_factor]);
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info[AC_scaling_factor]);
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
@@ -596,7 +597,7 @@ read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
 
 #if LMAGNETIC
     // Scale the magnetic field
-    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info.real_params[AC_scaling_factor]);
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info[AC_scaling_factor]);
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
@@ -752,10 +753,11 @@ enum class InitialMeshProcedure {
 
 // Enums for taskgraph choise
 enum class PhysicsConfiguration {
-    Default,
+    MHD,
     ShockSinglepass,
     HydroHeatduct,
     BoundTest,
+    Default = MHD
 };
 
 // Enums for actions taken in the simulation loop
@@ -805,8 +807,12 @@ GetSimulation(const int pid, PhysicsConfiguration simulation_physics)
         acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
         return Simulation::Hydro_Heatduct_Solve;
     }
+    case PhysicsConfiguration::MHD: {
+        acLogFromRootProc(pid, "PhysicsConfiguration MHD !\n");
+        return Simulation::Default;
+    }
     default:
-	return Simulation::Default;
+        ERROR("Unhandled PhysicsConfiguration");
     }
 }
 int
@@ -1002,7 +1008,7 @@ main(int argc, char** argv)
     bool log_progress = 1;
 
     AcReal simulation_time = 0.0;
-    int start_step         = info.int_params[AC_start_step];
+    int start_step         = info[AC_start_step];
 
     // Additional physics variables
     // ----------------------------
@@ -1011,7 +1017,7 @@ main(int argc, char** argv)
     // TODO: hide these in some structure
 
 #if LSINK
-    sink_mass     = info.real_params[AC_M_sink_init];
+    sink_mass     = info[AC_M_sink_init];
     accreted_mass = 0.0;
 #endif
 
@@ -1026,8 +1032,8 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Initializing Astaroth (acGridInit)\n");
     //these are the defaults but better to state them explicitly
-    info.int_params[AC_proc_mapping_strategy] = (int)AcProcMappingStrategy::Morton;
-    info.int_params[AC_decompose_strategy]    = (int)AcDecomposeStrategy::Default;
+    info[AC_proc_mapping_strategy] = (int)AcProcMappingStrategy::Morton;
+    info[AC_decompose_strategy]    = (int)AcDecomposeStrategy::Morton;
     acGridInit(info);
 
     ///////////////////////////////////////////////////
@@ -1165,7 +1171,9 @@ main(int argc, char** argv)
         break;
     }
     default:
-        ERROR("Unhandled PhysicsConfiguration");
+        sim = Simulation::Default;
+        acLogFromRootProc(pid, "PhysicsConfiguration Default !\n");
+        break;
     }
 
     acLogFromRootProc(pid, "sim = %i \n", sim);
@@ -1386,8 +1394,8 @@ main(int argc, char** argv)
         // calls
 
 	//Generic parameters
-	acGridLoadScalarUniform(STREAM_DEFAULT,AC_dt,dt);
-	acGridLoadScalarUniform(STREAM_DEFAULT,AC_current_time,simulation_time);
+	acDeviceSetInput(acGridGetDevice(),AC_dt,dt);
+	acDeviceSetInput(acGridGetDevice(),AC_current_time,simulation_time);
 	
         // Case-specific parameters
 #if LSINK
@@ -1405,7 +1413,7 @@ main(int argc, char** argv)
         // Execute the active task graph for 3 iterations (default graph has three subtasks)
         // in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent
         // to acGridIntegrate(STREAM_DEFAULT, dt)
-        acGridExecuteTaskGraph(simulation_graph, 1);
+        acGridExecuteTaskGraph(simulation_graph, 3);
         simulation_time += dt;
         set_simulation_timestamp(i, simulation_time);
 
@@ -1554,20 +1562,21 @@ main(int argc, char** argv)
                     bool changed_run_constants = false;
 
                     std::set<size_t> int_run_constants;
-                    int_run_constants.insert(AC_nxgrid);
-                    int_run_constants.insert(AC_nygrid);
-                    int_run_constants.insert(AC_nzgrid);
+		    //TP: deprecated for now since they are not ints
+                    //int_run_constants.insert(AC_nxgrid);
+                    //int_run_constants.insert(AC_nygrid);
+                    //int_run_constants.insert(AC_nzgrid);
 
-                    int_run_constants.insert(AC_dsx);
-                    int_run_constants.insert(AC_dsy);
-                    int_run_constants.insert(AC_dsz);
+                    //int_run_constants.insert(AC_dsx);
+                    //int_run_constants.insert(AC_dsy);
+                    //int_run_constants.insert(AC_dsz);
 
                     int_run_constants.insert(AC_start_step);
                     int_run_constants.insert(AC_init_type);
 
-                    for (size_t int_param = 0; int_param < NUM_INT_PARAMS; int_param++) {
-                        int old_value = info.int_params[int_param];
-                        int new_value = new_info.int_params[int_param];
+                    for (const AcIntParam int_param : get_params<AcIntParam>()) {
+                        int old_value = info[int_param];
+                        int new_value = new_info[int_param];
                         if (old_value != new_value) {
                             configs_differ         = true;
                             const char* param_name = intparam_names[int_param];
@@ -1580,9 +1589,9 @@ main(int argc, char** argv)
                             }
                         }
                     }
-                    for (size_t int3_param = 0; int3_param < NUM_INT3_PARAMS; int3_param++) {
-                        int3 old_value = info.int3_params[int3_param];
-                        int3 new_value = new_info.int3_params[int3_param];
+                    for (const AcInt3Param int3_param : get_params<AcInt3Param>()) {
+                        int3 old_value = info[int3_param];
+                        int3 new_value = new_info[int3_param];
                         if (old_value != new_value) {
                             configs_differ         = true;
                             const char* param_name = int3param_names[int3_param];
@@ -1593,9 +1602,9 @@ main(int argc, char** argv)
                                               new_value.x, new_value.y, new_value.z);
                         }
                     }
-                    for (size_t real_param = 0; real_param < NUM_REAL_PARAMS; real_param++) {
-                        AcReal old_value = info.real_params[real_param];
-                        AcReal new_value = new_info.real_params[real_param];
+                    for (const AcRealParam real_param : get_params<AcRealParam>()) {
+                        AcReal old_value = info[real_param];
+                        AcReal new_value = new_info[real_param];
                         if (old_value != new_value && !(isnan(old_value) && isnan(new_value))) {
                             configs_differ         = true;
                             const char* param_name = realparam_names[real_param];
@@ -1610,9 +1619,9 @@ main(int argc, char** argv)
                             }
                         }
                     }
-                    for (size_t real3_param = 0; real3_param < NUM_REAL3_PARAMS; real3_param++) {
-                        AcReal3 old_value = info.real3_params[real3_param];
-                        AcReal3 new_value = new_info.real3_params[real3_param];
+                    for (const AcReal3Param real3_param : get_params<AcReal3Param>()) {
+                        AcReal3 old_value = info[real3_param];
+                        AcReal3 new_value = new_info[real3_param];
                         if ((old_value.x != new_value.x &&
                              !(isnan(old_value.x) && isnan(new_value.x))) ||
                             (old_value.y != new_value.y &&

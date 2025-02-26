@@ -518,23 +518,7 @@ bc_sym_z(sgn,topbot,VtxBuffer j,rel)
 bool bool_param
 
 
-Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums) {
-	if bool_param
-	{
-		print("HI\n")
-	}
-    if enums.heatcond == NOTHING 
-    {
-	print("HI\n")
-    }
-    else if enums.heatcond == K_const
-    {
-	print("Kobra\n")
-    }
-	if bool_param
-	{
-		print("BYE\n")
-	}
+Kernel singlepass_solve(int step_num, TimeParams time_params) {
     write(VTXBUF_LNRHO, rk3(VTXBUF_LNRHO, continuity(), step_num, time_params.dt))
 
 #if LENTROPY 

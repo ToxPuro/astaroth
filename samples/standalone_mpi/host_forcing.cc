@@ -295,43 +295,44 @@ loadForcingParamsToHost(const ForcingParams& forcing_params, AcMesh* mesh)
     // %JP: Left some regex magic here in case we need to modify the ForcingParams struct
     // acLoadDeviceConstant\(([A-Za-z_]*), ([a-z_.]*)\);
     // mesh->info.real_params[$1] = $2;
-    mesh->info.real_params[AC_forcing_magnitude] = forcing_params.magnitude;
-    mesh->info.real_params[AC_forcing_phase]     = forcing_params.phase;
+    mesh->info[AC_forcing_magnitude] = forcing_params.magnitude;
+    mesh->info[AC_forcing_phase]     = forcing_params.phase;
 
-    mesh->info.real_params[AC_k_forcex] = forcing_params.k_force.x;
-    mesh->info.real_params[AC_k_forcey] = forcing_params.k_force.y;
-    mesh->info.real_params[AC_k_forcez] = forcing_params.k_force.z;
+    mesh->info[AC_k_forcex] = forcing_params.k_force.x;
+    mesh->info[AC_k_forcey] = forcing_params.k_force.y;
+    mesh->info[AC_k_forcez] = forcing_params.k_force.z;
 
-    mesh->info.real_params[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
-    mesh->info.real_params[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
-    mesh->info.real_params[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
+    mesh->info[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
+    mesh->info[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
+    mesh->info[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
 
-    mesh->info.real_params[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
-    mesh->info.real_params[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
-    mesh->info.real_params[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
+    mesh->info[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
+    mesh->info[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
+    mesh->info[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
 
-    mesh->info.real_params[AC_kaver] = forcing_params.kaver;
+    mesh->info[AC_kaver] = forcing_params.kaver;
 }
 
 void
-loadForcingParamsToMeshInfo(const ForcingParams& forcing_params, AcMeshInfo* info)
+loadForcingParamsToMeshInfo(const ForcingParams& forcing_params, AcMeshInfo* info_ptr)
 {
-    info->real_params[AC_forcing_magnitude] = forcing_params.magnitude;
-    info->real_params[AC_forcing_phase]     = forcing_params.phase;
+    AcMeshInfo& info = *info_ptr;
+    info[AC_forcing_magnitude] = forcing_params.magnitude;
+    info[AC_forcing_phase]     = forcing_params.phase;
 
-    info->real_params[AC_k_forcex] = forcing_params.k_force.x;
-    info->real_params[AC_k_forcey] = forcing_params.k_force.y;
-    info->real_params[AC_k_forcez] = forcing_params.k_force.z;
+    info[AC_k_forcex] = forcing_params.k_force.x;
+    info[AC_k_forcey] = forcing_params.k_force.y;
+    info[AC_k_forcez] = forcing_params.k_force.z;
 
-    info->real_params[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
-    info->real_params[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
-    info->real_params[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
+    info[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
+    info[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
+    info[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
 
-    info->real_params[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
-    info->real_params[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
-    info->real_params[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
+    info[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
+    info[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
+    info[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
 
-    info->real_params[AC_kaver] = forcing_params.kaver;
+    info[AC_kaver] = forcing_params.kaver;
 }
 
 ForcingParams
@@ -340,10 +341,10 @@ generateForcingParams(const AcMeshInfo& mesh_info)
     ForcingParams params = {};
 
     // Forcing properties
-    AcReal relhel    = mesh_info.real_params[AC_relhel];
-    params.magnitude = mesh_info.real_params[AC_forcing_magnitude];
-    AcReal kmin      = mesh_info.real_params[AC_kmin];
-    AcReal kmax      = mesh_info.real_params[AC_kmax];
+    AcReal relhel    = mesh_info[AC_relhel];
+    params.magnitude = mesh_info[AC_forcing_magnitude];
+    AcReal kmin      = mesh_info[AC_kmin];
+    AcReal kmax      = mesh_info[AC_kmax];
 
     params.kaver = (kmax - kmin) / AcReal(2.0);
 
