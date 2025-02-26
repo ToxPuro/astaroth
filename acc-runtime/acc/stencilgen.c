@@ -1080,6 +1080,15 @@ static void
 gen_return_if_oob(const int curr_kernel)
 {
 
+       if(is_boundcond_kernel[curr_kernel])
+       {
+	       printf("const bool inside_computational_domain = "
+			       "vertexIdx.x >= VAL(AC_nmin).x && vertexIdx.x < VAL(AC_nlocal_max).x\n"
+			       "&& vertexIdx.y >= VAL(AC_nmin).y && vertexIdx.y < VAL(AC_nlocal_max).y\n"
+			       "&& vertexIdx.z >= VAL(AC_nmin).z && vertexIdx.z < VAL(AC_nlocal_max).z;\n"
+		     );
+	       printf("if(inside_computational_domain) return;");
+       }
        printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
        if(kernel_calls_reduce[curr_kernel] )
        {

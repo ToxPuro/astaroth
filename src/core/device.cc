@@ -974,14 +974,14 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 }
 
 AcResult
-acDevicePeriodicBoundcondStep(const Device device, const Stream ,
-                              const VertexBufferHandle vtxbuf_handle, const Volume,
-                              const Volume)
+acDevicePeriodicBoundcondStep(const Device device, const Stream stream,
+                              const VertexBufferHandle vtxbuf_handle, const Volume start,
+                              const Volume end)
 {
     cudaSetDevice(device->id);
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
-    fprintf(stderr,"NOT ANYMORE SUPPORTED\n");
-    exit(EXIT_FAILURE);
+    acLoadKernelParams(device->vba.on_device.kernel_input_params,BOUNDCOND_PERIODIC_DEVICE,vtxbuf_handle); 
+    return acDeviceLaunchKernel(device, stream, BOUNDCOND_PERIODIC_DEVICE,start,end);
 }
 
 AcResult
@@ -1001,7 +1001,7 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream ,
 {
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
-    fprintf(stderr,"NOT ANYMORE SUPPORTED\n");
+    fprintf(stderr,"acDeviceGenerelBoundCondStep NOT ANYMORE SUPPORTED\n");
     exit(EXIT_FAILURE);
 }
 

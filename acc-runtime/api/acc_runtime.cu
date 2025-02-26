@@ -77,9 +77,12 @@ struct Int3Hash {
 std::array<std::unordered_map<int3,int,Int3Hash>,NUM_KERNELS> reduce_offsets;
 int kernel_running_reduce_offsets[NUM_KERNELS];
 
+AcAutotuneMeasurement
+return_own_measurement(const AcAutotuneMeasurement local_measurement) {return local_measurement;}
+
 static int grid_pid = 0;
 [[maybe_unused]] static int nprocs   = 0;
-static AcMeasurementGatherFunc gather_func  = NULL;
+static AcMeasurementGatherFunc gather_func  = return_own_measurement;
 #if AC_MPI_ENABLED
 AcResult
 acInitializeRuntimeMPI(const int _grid_pid,const int _nprocs, const AcMeasurementGatherFunc mpi_gather_func)
@@ -1456,11 +1459,7 @@ logAutotuningStatus(const size_t counter, const size_t num_samples, const AcKern
 static AcAutotuneMeasurement
 gather_best_measurement(const AcAutotuneMeasurement local_best)
 {
-#if AC_MPI_ENABLED
 	return gather_func(local_best);
-#else
-        return local_best;
-#endif
 }
 
 void

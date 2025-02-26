@@ -531,6 +531,8 @@ get_d_mesh_info()
 	AcMeshInfoParams res{};
   	for(int i = 0; i < NUM_INT_PARAMS; ++i)
 	  res.scalars.int_params[i] = 1;
+  	for(int i = 0; i < NUM_INT3_PARAMS; ++i)
+	  res.scalars.int3_params[i] = (int3){1,1,1};
   	for(int i = 0; i < NUM_BOOL_PARAMS; ++i)
 	  res.scalars.bool_params[i] = true;
 	return res.scalars;

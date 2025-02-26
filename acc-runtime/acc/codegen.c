@@ -89,6 +89,7 @@ static const char* LEQ_STR = NULL;
 static const char* GEQ_STR = NULL;
 static const char* MEQ_STR= NULL;
 static const char* AEQ_STR= NULL;
+static const char* MODEQ_STR= NULL;
 static const char* MINUSEQ_STR= NULL;
 static const char* DEQ_STR= NULL;
 static const char* PERIODIC = NULL;
@@ -5745,24 +5746,39 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   }
 
 
-  fprintf(fp, "static const bool skip_kernel_in_analysis[NUM_KERNELS] = {");
-  int k_counter = 0;
+  {
+  	fprintf(fp, "static const bool skip_kernel_in_analysis[NUM_KERNELS] = {");
+  	int k_counter = 0;
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  	  if (symbol_table[i].tspecifier == KERNEL_STR)
+  	  {
+  	    if (str_vec_contains(symbol_table[i].tqualifiers,UTILITY_STR))
+  	    {
+  	            skip_kernel_in_analysis[k_counter] = 1;
+  	            fprintf(fp,"true,");
+  	    }
+  	    else
+  	    {
+  	            skip_kernel_in_analysis[k_counter] = 0;
+  	            fprintf(fp,"false,");
+  	    }
+  	    k_counter++;
+  	  }
+  	fprintf(fp, "};");
+  }
+
+
+  fprintf(fp, "static const bool is_boundcond_kernel[NUM_KERNELS] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == KERNEL_STR)
     {
-      if (str_vec_contains(symbol_table[i].tqualifiers,UTILITY_STR))
-      {
-	      skip_kernel_in_analysis[k_counter] = 1;
-	      fprintf(fp,"true,");
-      }
+      if (str_vec_contains(symbol_table[i].tqualifiers,BOUNDCOND_STR))
+              fprintf(fp,"true,");
       else
-      {
-	      skip_kernel_in_analysis[k_counter] = 0;
-	      fprintf(fp,"false,");
-      }
-      k_counter++;
+              fprintf(fp,"false,");
     }
   fprintf(fp, "};");
+
 
   fprintf(fp, "static const bool kernel_has_fixed_boundary[NUM_KERNELS] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -7590,6 +7606,7 @@ gen_global_strings()
 
 	MEQ_STR= intern("*=");
 	AEQ_STR= intern("+=");
+	MODEQ_STR = intern("%=");
 	MINUSEQ_STR= intern("-=");
 	DEQ_STR= intern("/=");
 	PERIODIC = intern("periodic");
@@ -7599,7 +7616,7 @@ gen_global_strings()
 	DEAD_STR = intern("dead");
 	INLINE_STR = intern("inline");
 	UTILITY_STR = intern("utility");
-	BOUNDCOND_STR = intern("boundcond");
+	BOUNDCOND_STR = intern("boundary_condition");
 	FIXED_BOUNDARY_STR = intern("fixed_boundary");
 	ELEMENTAL_STR = intern("elemental");
 	AUXILIARY_STR = intern("auxiliary");
@@ -7667,7 +7684,7 @@ canonalize_assignments(ASTNode* node)
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
 	if(!function) return;
 	char* op = strdup(node->rhs->lhs->buffer);
-	if(strcmps(op,MEQ_STR,MINUSEQ_STR,AEQ_STR,DEQ_STR))   return;
+	if(strcmps(op,MEQ_STR,MINUSEQ_STR,AEQ_STR,DEQ_STR,MODEQ_STR))   return;
 	if(count_num_of_nodes_in_list(node->rhs->rhs) != 1)   return;
 	ASTNode* assign_expression = node->rhs->rhs->lhs;
 	remove_substring(op,EQ_STR);
@@ -9358,8 +9375,17 @@ generate_mem_accesses(void)
   // Generate stencil accesses
   FILE* proc = popen("./" STENCILACC_EXEC " stencil_accesses.h", "r");
   assert(proc);
-  if(pclose(proc) != 0)
-	fatal("Something went wrong during analysis\n");
+  const int status = pclose(proc);
+  if(status != 0)
+  {
+	if (WIFEXITED(status)) {
+    		printf("Stencil accesses exited with status: %d\n", WEXITSTATUS(status));
+	}
+	else if (WIFSIGNALED(status)) {
+    		printf("Stencil accesses killed by signal: %s\n", strsignal(WTERMSIG(status)));
+	}
+	fatal("Something went wrong during analysis: %d\n",status);
+  }
 
   FILE* fp = fopen("user_written_fields.bin", "rb");
   written_fields = (int*)malloc(num_kernels*num_fields*sizeof(int));
