@@ -1148,7 +1148,7 @@ main(int argc, char** argv)
         break;
     }
     default:
-        ERROR("Unhandled PhysicsConfiguration");
+        WARNING("Developer information: Unhandled PhysicsConfiguration, no changes made to Simulation type, using the default. Should consider setting 'Simulation sim' in the switch-case statement instead of outside (good practice to have all logic in the same place).");
     }
 
     acLogFromRootProc(pid, "sim = %i \n", sim);
