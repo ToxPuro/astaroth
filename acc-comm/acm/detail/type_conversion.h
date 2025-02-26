@@ -34,5 +34,3 @@ as(T_source value)
     ERRCHK((can_convert<T_target, T_source>(value)));
     return static_cast<T_target>(value);
 }
-
-void test_type_conversion(void);

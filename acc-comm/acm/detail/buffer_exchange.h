@@ -97,5 +97,3 @@ using HostToDeviceBufferExchangeTask = BufferExchangeTask<
 template <typename T>
 using DeviceToHostBufferExchangeTask = BufferExchangeTask<T, ac::mr::device_allocator,
                                                           ac::mr::pinned_host_allocator>;
-
-void test_buffer_exchange(void);

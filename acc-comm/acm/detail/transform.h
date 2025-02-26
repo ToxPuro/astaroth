@@ -107,5 +107,3 @@ print(const std::string& label, const ac::ntuple<uint64_t>& shape, const T* data
 // }
 
 } // namespace ac
-
-void test_transform();

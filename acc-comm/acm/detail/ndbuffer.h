@@ -166,5 +166,3 @@ fill(const T& fill_value, const ac::shape& subdims, const ac::shape& offset,
                      ndbuf.data());
 }
 } // namespace ac
-
-void test_ndbuffer(void);

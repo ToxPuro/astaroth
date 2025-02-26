@@ -12,5 +12,3 @@ within_machine_epsilon(const T& a, const T& b)
     const auto epsilon{std::numeric_limits<T>::epsilon()};
     return (a >= b - epsilon) && (a <= b + epsilon);
 }
-
-void test_math_utils(void);

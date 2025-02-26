@@ -110,5 +110,3 @@ xcorr(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
 }
 
 } // namespace ac
-
-void test_algorithm();

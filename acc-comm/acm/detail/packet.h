@@ -157,5 +157,3 @@ template <typename T, typename Allocator> class packet {
 };
 
 } // namespace ac::comm
-
-void test_packet();

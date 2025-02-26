@@ -89,5 +89,3 @@ extern template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>
 #undef PACK_DTYPE
 
 #endif
-
-void test_pack(void);

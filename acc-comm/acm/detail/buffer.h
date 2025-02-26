@@ -191,5 +191,3 @@ migrate_async(const void* stream, const ac::buffer<T, AllocatorA>& in,
 //     migrate(in, out);
 // }
 // #endif
-
-void test_buffer();

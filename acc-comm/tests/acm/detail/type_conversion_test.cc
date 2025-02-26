@@ -1,9 +1,9 @@
-#include "type_conversion.h"
+#include <cstdlib>
 
-#include "errchk.h"
+#include "acm/detail/type_conversion.h"
 
-void
-test_type_conversion(void)
+int
+main()
 {
     ERRCHK(can_convert<int32_t>(std::numeric_limits<int32_t>::max()) == true);
     ERRCHK(can_convert<int32_t>(std::numeric_limits<int32_t>::min()) == true);
@@ -26,4 +26,5 @@ test_type_conversion(void)
     ERRCHK(can_convert<int32_t>(std::numeric_limits<uint64_t>::max()) == false);
     ERRCHK(can_convert<int32_t>(std::numeric_limits<uint64_t>::min()) == true);
     PRINT_LOG_INFO("OK");
+    return EXIT_SUCCESS;
 }

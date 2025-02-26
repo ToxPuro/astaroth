@@ -1,10 +1,10 @@
-#include "transform.h"
+#include <cstdlib>
 
-#include "datatypes.h"
-#include "ndbuffer.h"
+#include "acm/detail/ndbuffer.h"
+#include "acm/detail/transform.h"
 
-void
-test_transform()
+int
+main()
 {
     {
         const ac::ntuple<uint64_t> dims{3, 3, 3, 3};
@@ -43,4 +43,5 @@ test_transform()
         ERRCHK(equals(houtref.get(), hout.get()));
     }
     PRINT_LOG_INFO("OK");
+    return EXIT_SUCCESS;
 }

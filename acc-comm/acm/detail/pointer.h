@@ -159,5 +159,3 @@ equals(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b)
             return false;
     return true;
 }
-
-void test_pointer(void);

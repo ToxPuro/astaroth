@@ -43,5 +43,3 @@ uint64_t hierarchical_to_linear(const ac::index&              coords,
  * ERRCHK((hierarchical_decomposition_to_global(decompositions) == ac::shape{8, 8}));
  */
 ac::shape hierarchical_decomposition_to_global(const std::vector<ac::shape>& decomposition);
-
-void test_decomp(void);

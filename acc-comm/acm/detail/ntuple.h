@@ -1044,6 +1044,3 @@ index     make_index(const size_t count, const uint64_t& fill_value);
 shape     make_shape(const size_t count, const uint64_t& fill_value);
 direction make_direction(const size_t count, const int64_t& fill_value);
 } // namespace ac
-
-// Testing functions
-void test_ntuple();

@@ -116,4 +116,4 @@ void segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac:
 
 // } // namespace ac
 
-void test_reduce();
+void test_reduce_device();

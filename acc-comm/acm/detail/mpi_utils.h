@@ -285,6 +285,15 @@ int reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op&
 int reduce_axis(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
                 const size_t& axis, const size_t count, void* data);
 
-} // namespace ac::mpi
+// TODO better way
+template <typename T>
+static auto
+prodd(const std::vector<T>& vec)
+{
+    return std::reduce(vec.begin(), vec.end(), static_cast<T>(1), std::multiplies<T>());
+}
 
-void test_mpi_utils();
+std::vector<uint64_t> get_nprocs_per_layer(const uint64_t&              nprocs,
+                                           const std::vector<uint64_t>& max_per_layer);
+
+} // namespace ac::mpi

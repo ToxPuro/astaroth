@@ -1,11 +1,10 @@
-#include "buffer_exchange.h"
-
+#include <cstdlib>
 #include <numeric>
 
-#include "errchk.h"
+#include "acm/detail/buffer_exchange.h"
 
-void
-test_buffer_exchange(void)
+int
+main()
 {
     const size_t                                      count{10};
     ac::buffer<double, ac::mr::host_allocator>        a(count);
@@ -22,4 +21,5 @@ test_buffer_exchange(void)
     dtoh.wait(c);
     ERRCHK(std::equal(a.data(), a.data() + a.size(), c.data()));
     PRINT_LOG_INFO("OK");
+    return EXIT_SUCCESS;
 }
