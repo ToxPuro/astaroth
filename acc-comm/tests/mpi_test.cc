@@ -6,6 +6,7 @@
 #include "acm/detail/allocator.h"
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/errchk_print.h"
+#include "acm/detail/math_utils.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
 #include "acm/detail/partition.h"
@@ -346,7 +347,7 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
         href.display();
 
         for (size_t i{0}; i < href.size(); ++i)
-            ERRCHK(href[i] == static_cast<T>(i + 1));
+            ERRCHK(within_machine_epsilon(href[i], static_cast<T>(i + 1)));
     }
 
     ac::comm::async_halo_exchange_task<T, ac::mr::device_allocator> he{local_mm,
@@ -404,11 +405,8 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
         const double expected_value{(prod(global_nn) + 1) / 2.};
         std::cout << "Expected: " << expected_value << std::endl;
         std::cout << "Measured: " << href[0] << std::endl;
-        const auto epsilon{std::numeric_limits<double>::epsilon()};
-        for (size_t i{0}; i < prod(global_nn); ++i) {
-            ERRCHK(href[i] >= expected_value - epsilon);
-            ERRCHK(href[i] <= expected_value + epsilon);
-        }
+        for (size_t i{0}; i < prod(global_nn); ++i)
+            ERRCHK(within_machine_epsilon(href[i], expected_value));
 
         href.display();
         PRINT_LOG_WARNING("Device buffer pipeline not yet tested");
