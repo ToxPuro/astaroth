@@ -93,9 +93,7 @@ FUNC_DEFINE(AcResult, acVerifyMesh,(const char* label, const AcMesh model, const
 FUNC_DEFINE(AcResult, acMeshDiffWriteSliceZ,(const char* path, const AcMesh model, const AcMesh candidate, const size_t z));
 
 FUNC_DEFINE(AcResult, acMeshDiffWrite,(const char* path, const AcMesh model, const AcMesh candidate));
-FUNC_DEFINE(AcResult acVerifyMeshCompDomain,(const char* label, const AcMesh model, const AcMesh candidate));
-
-FUNC_DEFINE(AcResult, acMeshDiffWriteSliceZ,(const char* path, const AcMesh model, const AcMesh candidate, const size_t z));
+FUNC_DEFINE(AcResult, acVerifyMeshCompDomain,(const char* label, const AcMesh model, const AcMesh candidate));
 
 FUNC_DEFINE(AcResult, acHostMeshWriteToFile,(const AcMesh mesh, const size_t id));
 
@@ -146,6 +144,10 @@ static AcLibHandle __attribute__((unused)) acLoadUtils()
 	return handle;
 }
 #endif
+
+AcResult UNUSED
+acLoadConfig(const char* config_path, AcMeshInfo* config);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
@@ -159,6 +161,4 @@ static AcLibHandle __attribute__((unused)) acLoadUtils()
 #define AC_WHT   "\x1B[37m"
 #define AC_COL_RESET "\x1B[0m"
 
-#ifdef __cplusplus
-#include "../src/utils/config_loader.h"
-#endif
+

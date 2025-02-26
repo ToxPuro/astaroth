@@ -272,9 +272,7 @@ parse_config(const char* path, AcMeshInfo* config)
 \return AC_SUCCESS on success, AC_FAILURE if there are potentially uninitialized values.
 */
 
-#define _UNUSED __attribute__((unused)) // Does not give a warning if unused
-
-static AcResult UNUSED
+AcResult
 acLoadConfig(const char* config_path, AcMeshInfo* config)
 {
     ERRCHK_ALWAYS(config_path);

@@ -377,12 +377,12 @@ FUNC_DEFINE(void, acStoreConfig,(const AcMeshInfo info, const char* filename));
 
 /** Sets the dimensions of the computational grid to (nx, ny, nz) and recalculates the built-in
  * parameters derived from them (mx, my, mz, nx_min, and others) */
-AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
+AcResult acSetGridMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 
 /** Sets the dimensions of the computational subdomain to (nx, ny, nz) and recalculates the built-in
  * parameters derived from them (mx, my, mz, nx_min, and others) */
 
-AcResult acSetSubMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
+AcResult acSetLocalMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 
 /*
  * =============================================================================

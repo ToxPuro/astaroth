@@ -60,8 +60,9 @@ main(int argc, char* argv[])
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     info.comm = MPI_COMM_WORLD;
 
-    acSetMeshDims(nx, ny, nz, &info);
-    acSetSubMeshDims(nx, ny, nz, &info);
+    acSetGridMeshDims(nx, ny, nz, &info);
+    //TP: this is because of backwards compatibility
+    acSetLocalMeshDims(nx, ny, nz, &info);
 
     acPushToConfig(info,AC_proc_mapping_strategy, (int)AcProcMappingStrategy::Linear);
     acPushToConfig(info,AC_decompose_strategy,    (int)AcDecomposeStrategy::Morton);

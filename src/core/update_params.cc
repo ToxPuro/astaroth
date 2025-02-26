@@ -169,7 +169,7 @@ acHostUpdateBuiltinCompParams(AcMeshInfo* config)
 
 
 AcResult
-acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* config_ptr)
+acSetGridMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* config_ptr)
 {
 
     AcMeshInfo& config = *config_ptr;
@@ -195,7 +195,7 @@ acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* con
 
 
 AcResult
-acSetSubMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* config_ptr)
+acSetLocalMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* config_ptr)
 {
 
     AcMeshInfo& config = *config_ptr;
