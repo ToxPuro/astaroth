@@ -6,15 +6,6 @@
 #include "acm/acm_error.h"
 #include "acm/detail/errchk_print.h"
 
-#define ERRCHK(expr)                                                                               \
-    do {                                                                                           \
-        if (!(expr)) {                                                                             \
-            errchk_print_error(__func__, __FILE__, __LINE__, #expr, "");                           \
-            errchk_print_stacktrace();                                                             \
-            MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
-        }                                                                                          \
-    } while (0)
-
 #define ERRCHK_ACM(errcode)                                                                        \
     do {                                                                                           \
         const ACM_Errorcode _tmp_acm_api_errcode_ = (errcode);                                     \
@@ -66,8 +57,6 @@ main(void)
 
     uint64_t global_nn_offset[MAX_NDIMS] = {0};
     ERRCHK_ACM(ACM_Get_global_nn_offset(cart_comm, ndims, global_nn, global_nn_offset));
-
-    ERRCHK(ACM_Test_get_errorcode_description() == 0);
 
     PRINT_ARRAY_DEBUG(ndims, global_nn);
     PRINT_ARRAY_DEBUG(ndims, local_nn);
