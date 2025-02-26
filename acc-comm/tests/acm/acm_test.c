@@ -3,7 +3,17 @@
 #include <stdlib.h>
 
 #include "acm/acm.h"
+#include "acm/acm_error.h"
 #include "acm/detail/errchk_print.h"
+
+#define ERRCHK(expr)                                                                               \
+    do {                                                                                           \
+        if (!(expr)) {                                                                             \
+            errchk_print_error(__func__, __FILE__, __LINE__, #expr, "");                           \
+            errchk_print_stacktrace();                                                             \
+            MPI_Abort(MPI_COMM_WORLD, -1);                                                         \
+        }                                                                                          \
+    } while (0)
 
 #define ERRCHK_ACM(errcode)                                                                        \
     do {                                                                                           \
@@ -39,7 +49,7 @@ main(void)
     ERRCHK_ACM(ACM_MPI_Init_funneled());
 
     const uint64_t global_nn[] = {128, 128, 128};
-    const size_t ndims         = ARRAY_SIZE(global_nn);
+    const size_t   ndims       = ARRAY_SIZE(global_nn);
     if (ndims > MAX_NDIMS) {
         fprintf(stderr, "ndims %zu larger than MAX_NDIMS %zu\n", ndims, MAX_NDIMS);
         return EXIT_FAILURE;
@@ -56,6 +66,8 @@ main(void)
 
     uint64_t global_nn_offset[MAX_NDIMS] = {0};
     ERRCHK_ACM(ACM_Get_global_nn_offset(cart_comm, ndims, global_nn, global_nn_offset));
+
+    ERRCHK(ACM_Test_get_errorcode_description() == 0);
 
     PRINT_ARRAY_DEBUG(ndims, global_nn);
     PRINT_ARRAY_DEBUG(ndims, local_nn);
