@@ -118,7 +118,7 @@ inflow_vedge(AcMesh* mesh)
     const double AMPL_UU = (double)mesh->info[AC_ampl_uu];
     const double ANGL_UU = (double)mesh->info[AC_angl_uu];
 
-    const double zorig = (double)mesh->info[AC_zorig];
+    const double zorig = (double)mesh->info[AC_origin].z;
     double zz;
     double trans = (double)mesh->info[AC_trans];
 
@@ -167,9 +167,9 @@ simple_uniform_core(AcMesh* mesh)
 
     const double ampl_lnrho = (double)mesh->info[AC_ampl_lnrho];
 
-    const double xorig = (double)mesh->info[AC_xorig];
-    const double yorig = (double)mesh->info[AC_yorig];
-    const double zorig = (double)mesh->info[AC_zorig];
+    const double xorig = (double)mesh->info[AC_origin].x;
+    const double yorig = (double)mesh->info[AC_origin].y;
+    const double zorig = (double)mesh->info[AC_origin].z;
 
     const double G_const     = (double)mesh->info[AC_G_const];
     const double M_sink_init = (double)mesh->info[AC_M_sink_init];
@@ -255,9 +255,9 @@ inflow_vedge_freefall(AcMesh* mesh)
     // const double unit_density  = mesh->info.real_params[AC_unit_density];
     // const double unit_velocity = mesh->info.real_params[AC_unit_velocity];
 
-    const double xorig = (double)mesh->info[AC_xorig];
+    const double xorig = (double)mesh->info[AC_origin].x;
     // const double yorig = mesh->info.real_params[AC_yorig];
-    const double zorig = (double)mesh->info[AC_zorig];
+    const double zorig = (double)mesh->info[AC_origin].z;
     // const double trans = mesh->info.real_params[AC_trans];
     //  double xx, yy, zz, RR;
     double xx, zz, RR;
@@ -330,7 +330,7 @@ inflow_freefall_x(AcMesh* mesh)
     const double SQ2GM = (double)mesh->info[AC_sq2GM_star];
     // const double G_CONST = mesh->info.real_params[AC_G_CONST];
 
-    const double xorig = (double)mesh->info[AC_xorig];
+    const double xorig = (double)mesh->info[AC_origin].x;
     double xx, RR;
     double delx;
     double /*u_x,*/ veltot;

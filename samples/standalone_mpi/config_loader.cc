@@ -41,6 +41,7 @@ set_extra_config_params(AcMeshInfo* config_ptr)
     // Spacing
     /*
     // %JP: AC_inv_ds[xyz] now calculated inside the mhd kernel
+    // TP:  AC_inv_ds      now calculated when updating built-in variables
     config->real_params[AC_inv_dsx] = AcReal(1.) / config->real_params[AC_dsx];
     config->real_params[AC_inv_dsy] = AcReal(1.) / config->real_params[AC_dsy];
     config->real_params[AC_inv_dsz] = AcReal(1.) / config->real_params[AC_dsz];
@@ -52,10 +53,7 @@ set_extra_config_params(AcMeshInfo* config_ptr)
 
     // Real grid coordanates (DEFINE FOR GRID WITH THE GHOST ZONES)
     config[AC_len]  = config[AC_ds]*config[AC_mgrid];
-
-    config[AC_xorig] = AcReal(.5) * config[AC_len].x;
-    config[AC_yorig] = AcReal(.5) * config[AC_len].y;
-    config[AC_zorig] = AcReal(.5) * config[AC_len].z;
+    config[AC_origin] = AcReal(.5) * config[AC_len];
 
     // Real helpers
     config[AC_cs2_sound] = config[AC_cs_sound] *
