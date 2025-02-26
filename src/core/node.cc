@@ -185,8 +185,8 @@ createGridDims(const AcMeshInfo config)
 {
     GridDims grid;
 
-    grid.m = to_int3(acGetLocalMM(config));
-    grid.n = to_int3(acGetLocalNN(config));
+    grid.m = acGetLocalMM(config);
+    grid.n = acGetLocalNN(config);
 
     return grid;
 }
@@ -614,23 +614,23 @@ acNodeStoreMesh(const Node node, const Stream stream, AcMesh* host_mesh)
 }
 
 AcResult
-acNodeIntegrateSubstep(const Node node, const Stream stream, const int isubstep, const int3 start,
-                       const int3 end, const AcReal dt)
+acNodeIntegrateSubstep(const Node node, const Stream stream, const int isubstep, const Volume start,
+                       const Volume end, const AcReal dt)
 {
     acNodeSynchronizeStream(node, stream);
 
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
         // DECOMPOSITION OFFSET HERE
-        const int3 d0 = (int3){NGHOST, NGHOST, NGHOST + i * node->subgrid.n.z};
-        const int3 d1 = d0 + (int3){node->subgrid.n.x, node->subgrid.n.y, node->subgrid.n.z};
+        const Volume d0 = (Volume){NGHOST, NGHOST, NGHOST + i * node->subgrid.n.z};
+        const Volume d1 = d0 + (Volume){as_size_t(node->subgrid.n.x), as_size_t(node->subgrid.n.y), as_size_t(node->subgrid.n.z)};
 
-        const int3 da = max(start, d0);
-        const int3 db = min(end, d1);
+        const Volume da = max(start, d0);
+        const Volume db = min(end, d1);
 
         if (db.z >= da.z) {
-            const int3 da_local = da - (int3){0, 0, i * node->subgrid.n.z};
-            const int3 db_local = db - (int3){0, 0, i * node->subgrid.n.z};
+            const Volume da_local = da - (Volume){0, 0, as_size_t(i * node->subgrid.n.z)};
+            const Volume db_local = db - (Volume){0, 0, as_size_t(i * node->subgrid.n.z)};
             acDeviceIntegrateSubstep(node->devices[i], stream, isubstep, to_volume(da_local), to_volume(db_local), dt);
         }
     }
@@ -646,13 +646,13 @@ local_boundcondstep(const Node node, const Stream stream, const VertexBufferHand
         // Local boundary conditions
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) {
-            const int3 d0 = (int3){0, 0, NGHOST}; // DECOMPOSITION OFFSET HERE
-            const int3 d1 = (int3){node->subgrid.m.x, node->subgrid.m.y, d0.z + node->subgrid.n.z};
+            const Volume d0 = (Volume){0, 0, NGHOST}; // DECOMPOSITION OFFSET HERE
+            const Volume d1 = (Volume){as_size_t(node->subgrid.m.x), as_size_t(node->subgrid.m.y), as_size_t(d0.z + node->subgrid.n.z)};
             acDevicePeriodicBoundcondStep(node->devices[i], stream, vtxbuf, d0, d1);
         }
     }
     else {
-        acDevicePeriodicBoundcondStep(node->devices[0], stream, vtxbuf, (int3){0, 0, 0},
+        acDevicePeriodicBoundcondStep(node->devices[0], stream, vtxbuf, (Volume){0, 0, 0},
                                       node->subgrid.m);
     }
     return AC_SUCCESS;
@@ -670,13 +670,13 @@ local_boundcondstep_GBC(const Node node, const Stream stream, const VertexBuffer
         // Local boundary conditions
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) {
-            const int3 d0 = (int3){0, 0, NGHOST}; // DECOMPOSITION OFFSET HERE
-            const int3 d1 = (int3){node->subgrid.m.x, node->subgrid.m.y, d0.z + node->subgrid.n.z};
+            const Volume d0 = (Volume){0, 0, NGHOST}; // DECOMPOSITION OFFSET HERE
+            const Volume d1 = (Volume){as_size_t(node->subgrid.m.x), as_size_t(node->subgrid.m.y), as_size_t(d0.z + node->subgrid.n.z)};
             acDeviceGeneralBoundcondStep(node->devices[i], stream, vtxbuf, d0, d1, config, bindex);
         }
     }
     else {
-        acDeviceGeneralBoundcondStep(node->devices[0], stream, vtxbuf, (int3){0, 0, 0},
+        acDeviceGeneralBoundcondStep(node->devices[0], stream, vtxbuf, (Volume){0, 0, 0},
                                      node->subgrid.m, config, bindex);
     }
     return AC_SUCCESS;

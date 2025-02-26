@@ -49,7 +49,7 @@ main(int argc, char** argv)
     // Mesh configuration
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    acSetMeshDims(nx, ny, nz, &info);
+    acSetLocalMeshDims(nx, ny, nz, &info);
     acPrintMeshInfo(info);
 
     // Mesh dimensions
@@ -188,7 +188,7 @@ main(int argc, char** argv)
 
     // Free
     fclose(fp);
-    acDeviceDestroy(device);
+    acDeviceDestroy(&device);
     acHostMeshDestroy(&model);
     acHostMeshDestroy(&candidate);
 

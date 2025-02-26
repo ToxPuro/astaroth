@@ -171,8 +171,8 @@ typedef struct device_s* Device;
 
 
 typedef struct {
-    int3 m;
-    int3 n;
+    Volume m;
+    Volume n;
 } GridDims;
 
 typedef struct {

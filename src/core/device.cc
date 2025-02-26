@@ -975,8 +975,8 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 
 AcResult
 acDevicePeriodicBoundcondStep(const Device device, const Stream ,
-                              const VertexBufferHandle vtxbuf_handle, const int3 ,
-                              const int3 )
+                              const VertexBufferHandle vtxbuf_handle, const Volume,
+                              const Volume)
 {
     cudaSetDevice(device->id);
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
@@ -985,8 +985,8 @@ acDevicePeriodicBoundcondStep(const Device device, const Stream ,
 }
 
 AcResult
-acDevicePeriodicBoundconds(const Device device, const Stream stream, const int3 start,
-                           const int3 end)
+acDevicePeriodicBoundconds(const Device device, const Stream stream, const Volume start,
+                           const Volume end)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         acDevicePeriodicBoundcondStep(device, stream, (VertexBufferHandle)i, start, end);
@@ -996,8 +996,8 @@ acDevicePeriodicBoundconds(const Device device, const Stream stream, const int3 
 
 AcResult
 acDeviceGeneralBoundcondStep(const Device device, const Stream ,
-                             const VertexBufferHandle vtxbuf_handle, const int3 ,
-                             const int3 , const AcMeshInfo , const int3 )
+                             const VertexBufferHandle vtxbuf_handle, const Volume ,
+                             const Volume , const AcMeshInfo , const int3 )
 {
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
@@ -1006,8 +1006,8 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream ,
 }
 
 AcResult
-acDeviceGeneralBoundconds(const Device device, const Stream stream, const int3 start,
-                          const int3 end, const AcMeshInfo config, const int3 bindex)
+acDeviceGeneralBoundconds(const Device device, const Stream stream, const Volume start,
+                          const Volume end, const AcMeshInfo config, const int3 bindex)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         acDeviceGeneralBoundcondStep(device, stream, (VertexBufferHandle)i, start, end, config,

@@ -159,10 +159,23 @@ max(const int3& a, const int3& b)
   return (int3){max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)};
 }
 
+static inline const Volume
+max(const Volume& a, const Volume& b)
+{
+  return (Volume){max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)};
+}
+
+
 static inline const int3
 min(const int3& a, const int3& b)
 {
   return (int3){min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)};
+}
+
+static inline const Volume
+min(const Volume& a, const Volume& b)
+{
+  return (Volume){min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)};
 }
 
 template <class T>

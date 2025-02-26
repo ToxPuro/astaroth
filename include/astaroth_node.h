@@ -109,7 +109,7 @@ FUNC_DEFINE(AcResult, acNodeStoreMesh,(const Node node, const Stream stream, AcM
 
 /** */
 FUNC_DEFINE(AcResult, acNodeIntegrateSubstep,(const Node node, const Stream stream, const int step_number,
-                                const int3 start, const int3 end, const AcReal dt));
+                                const Volume start, const Volume end, const AcReal dt));
 
 /** */
 FUNC_DEFINE(AcResult, acNodeIntegrate,(const Node node, const AcReal dt));

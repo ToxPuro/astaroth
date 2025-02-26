@@ -5,6 +5,7 @@
 #include "astaroth_utils.h"
 #include "errchk.h"
 #include "user_defines.h"
+#include "../../stdlib/reduction.h"
 
 #if !AC_MPI_ENABLED
 int
@@ -152,9 +153,7 @@ main(void)
 
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    info.int_params[AC_nx] = nn.x;
-    info.int_params[AC_ny] = nn.y;
-    info.int_params[AC_nz] = nn.z;
+    info.params.scalars.int3_params[AC_ngrid] = nn;
     acHostUpdateBuiltinParams(&info);
 
     // Init
@@ -191,7 +190,7 @@ main(void)
     acGridDiskAccessSync();
 
     // Merge slices
-    merge_slices(job_dir, 0, info.int_params[AC_nx], info.int_params[AC_ny], fields, num_fields);
+    merge_slices(job_dir, 0, info.params.scalars.int3_params[AC_ngrid].x, info.params.scalars.int3_params[AC_ngrid].y, fields, num_fields);
 
     // Quit
     acGridQuit();

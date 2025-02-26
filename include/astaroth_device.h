@@ -143,21 +143,21 @@ FUNC_DEFINE(AcResult, acDeviceIntegrateSubstep,(const Device device, const Strea
                                   const Volume start, const Volume end, const AcReal dt));
 /** */
 FUNC_DEFINE(AcResult, acDevicePeriodicBoundcondStep,(const Device device, const Stream stream,
-                                       const VertexBufferHandle vtxbuf_handle, const int3 start,
-                                       const int3 end));
+                                       const VertexBufferHandle vtxbuf_handle, const Volume start,
+                                       const Volume end));
 
 /** */
-FUNC_DEFINE(AcResult, acDevicePeriodicBoundconds,(const Device device, const Stream stream, const int3 start,
-                                    const int3 end));
+FUNC_DEFINE(AcResult, acDevicePeriodicBoundconds,(const Device device, const Stream stream, const Volume start,
+                                    const Volume end));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceGeneralBoundcondStep,(const Device device, const Stream stream,
-                                      const VertexBufferHandle vtxbuf_handle, const int3 start,
-                                      const int3 end, const AcMeshInfo config, const int3 bindex));
+                                      const VertexBufferHandle vtxbuf_handle, const Volume start,
+                                      const Volume end, const AcMeshInfo config, const int3 bindex));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceGeneralBoundconds,(const Device device, const Stream stream, const int3 start,
-                                   const int3 end, const AcMeshInfo config, const int3 bindex));
+FUNC_DEFINE(AcResult, acDeviceGeneralBoundconds,(const Device device, const Stream stream, const Volume start,
+                                   const Volume end, const AcMeshInfo config, const int3 bindex));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceReduceScalNoPostProcessing,(const Device device, const Stream stream,

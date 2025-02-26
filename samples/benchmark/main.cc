@@ -21,6 +21,7 @@
 */
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "../../stdlib/reduction.h"
 
 #include "errchk.h"
 #include "timer_hires.h"
@@ -182,9 +183,7 @@ main(int argc, char** argv)
             const int nx           = atoi(argv[optind]);
             const int ny           = atoi(argv[optind + 1]);
             const int nz           = atoi(argv[optind + 2]);
-            info.int_params[AC_nx] = nx;
-            info.int_params[AC_ny] = ny;
-            info.int_params[AC_nz] = nz;
+	    info[AC_ngrid] = (int3){nx,ny,nz};
             acHostUpdateBuiltinParams(&info);
             printf("Benchmark mesh dimensions: (%d, %d, %d)\n", nx, ny, nz);
         }
@@ -197,9 +196,11 @@ main(int argc, char** argv)
     if (test == TEST_WEAK_SCALING) {
         fprintf(stdout, "Running weak scaling benchmarks.\n");
         uint3_64 decomp = decompose(nprocs);
-        info.int_params[AC_nx] *= decomp.x;
-        info.int_params[AC_ny] *= decomp.y;
-        info.int_params[AC_nz] *= decomp.z;
+	info[AC_ngrid] = (int3){
+				decomp.x*info[AC_ngrid].x,
+				decomp.y*info[AC_ngrid].y,
+				decomp.z*info[AC_ngrid].z
+			  };
     }
     else {
         fprintf(stdout, "Running strong scaling benchmarks.\n");
@@ -309,8 +310,8 @@ main(int argc, char** argv)
 #endif
         fprintf(fp, "%d,%g,%g,%g,%g,%d,%d,%d,%d,%d\n", nprocs, results[0],
                 results[(size_t)(0.5 * num_iters)], results[(size_t)(nth_percentile * num_iters)],
-                results[num_iters - 1], use_distributed_io, info.int_params[AC_nx],
-                info.int_params[AC_ny], info.int_params[AC_nz], test == TEST_STRONG_SCALING);
+                results[num_iters - 1], use_distributed_io, info[AC_ngrid].x,
+                info[AC_ngrid].y, info[AC_ngrid].z, test == TEST_STRONG_SCALING);
         // fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0],
         //         results[(size_t)(0.5 * num_iters)],
         //         results[(size_t)(nth_percentile * num_iters)], results[num_iters - 1]);
@@ -341,12 +342,12 @@ main(int argc, char** argv)
 
     timer_event_launch();
     AcReal candval;
-    acGridReduceScal(STREAM_DEFAULT, (ReductionType)0, (Field)0, &candval);
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (Field)0, &candval);
     timer_event_stop("acGridReduceScal");
 
     ERRCHK_ALWAYS(NUM_FIELDS >= 3);
     timer_event_launch();
-    acGridReduceVec(STREAM_DEFAULT, (ReductionType)0, (Field)0, (Field)1, (Field)2, &candval);
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_SUM, (Field)0, (Field)1, (Field)2, &candval);
     timer_event_stop("acGridReduceVec");
     // Sanity check end
 
