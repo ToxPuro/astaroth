@@ -1,6 +1,6 @@
 ## Packages
 set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
-set(MPI_ASSUME_NO_BUILTIN_MPI ON) #  Skip the MPI wrapper and link instead
+#set(MPI_ASSUME_NO_BUILTIN_MPI ON) #  Skip the MPI wrapper and link instead
 find_package(MPI REQUIRED COMPONENTS C)
 
 ## Library
@@ -33,7 +33,6 @@ if(NOT HOST_ONLY_MODE AND CUDAToolkit_FOUND)
     set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
     message(STATUS "Enabled CUDA architectures (ACM): " ${CMAKE_CUDA_ARCHITECTURES})
     set_source_files_properties(${ACM_DEVICE_FILES} PROPERTIES LANGUAGE CUDA)
-    set_source_files_properties(${ACM_HOST_FILES} PROPERTIES LANGUAGE CUDA)
     set_property(TARGET acm PROPERTY CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
     message(STATUS "HIP found")
@@ -42,12 +41,11 @@ elseif(NOT HOST_ONLY_MODE AND HIP_FOUND)
     target_compile_definitions(acm PUBLIC ACM_HIP_ENABLED)
     set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
-    target_link_libraries(acm PUBLIC hip::host hip::device)
+    target_link_libraries(acm PUBLIC hip::host)
 
     set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
     message(STATUS "Enabled HIP architectures (ACM): " ${CMAKE_HIP_ARCHITECTURES})
     set_source_files_properties(${ACM_DEVICE_FILES} PROPERTIES LANGUAGE HIP)
-    set_source_files_properties(${ACM_HOST_FILES} PROPERTIES LANGUAGE HIP)
     set_property(TARGET acm PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
 elseif(HOST_ONLY_MODE)
     target_compile_definitions(acm PUBLIC ACM_HOST_ONLY_MODE_ENABLED)
