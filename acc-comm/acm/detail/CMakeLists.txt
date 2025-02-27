@@ -13,7 +13,7 @@ set(ACM_HOST_FILES
     math_utils.cc
     ntuple.cc
 )
-set(ACM_DEVICE_FILES algorithm.cu transform.cu reduce.cu pack.cu)
+set(ACM_DEVICE_FILES pack.cu)
 add_library(acm SHARED ${ACM_DEVICE_FILES} ${ACM_HOST_FILES} acm_error.c errchk_print.c)
 target_link_libraries(acm PUBLIC MPI::MPI_C)
 target_include_directories(acm PUBLIC ${PROJECT_SOURCE_DIR})

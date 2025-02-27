@@ -121,10 +121,10 @@ xcorr(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
 
 #if defined(ACM_DEVICE_ENABLED)
 
-template <typename T>
-void xcorr(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
-           const ac::mr::device_pointer<T>& input, const ac::shape& nk,
-           const ac::mr::device_pointer<T>& kernel, ac::mr::device_pointer<T> output);
+// template <typename T>
+// void xcorr(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
+//            const ac::mr::device_pointer<T>& input, const ac::shape& nk,
+//            const ac::mr::device_pointer<T>& kernel, ac::mr::device_pointer<T> output);
 
 #endif
 
