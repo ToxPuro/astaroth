@@ -375,6 +375,10 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
 
         ac::device_ndbuffer<T> distr_dref_tmp{local_mm};
         he.wait({distr_dref.get()});
+#if defined(ACM_DEVICE_ENABLED)
+        PRINT_LOG_WARNING("xcorr and transform not yet implemented for device");
+        return;
+#else
         ac::xcorr(local_mm,
                   local_nn,
                   local_nn_offset,
@@ -386,6 +390,7 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
             distr_dref_tmp.get(),
             [&nk](const T& elem) { return elem / static_cast<T>(prod(nk)); },
             distr_dref.get());
+#endif
         he.launch(cart_comm, {distr_dref.get()});
     }
     he.wait({distr_dref.get()});
