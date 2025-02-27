@@ -1,17 +1,9 @@
 #pragma once
 #include <iomanip>
 
-#include "acm/detail/errchk_print.h"
-#include "pointer.h"
-
 #include "errchk.h"
 #include "ntuple.h"
-#include "print_debug.h"
-
-#include <numeric>
-#include <vector>
-
-#include "datatypes.h"
+#include "pointer.h"
 
 namespace ac {
 

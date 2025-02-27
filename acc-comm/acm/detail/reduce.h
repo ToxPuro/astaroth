@@ -1,6 +1,5 @@
 #pragma once
 #include <algorithm>
-#include <numeric>
 
 #include "ntuple.h"
 #include "pointer.h"

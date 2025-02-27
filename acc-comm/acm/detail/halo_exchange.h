@@ -1,14 +1,13 @@
 #pragma once
 
+#include <mpi.h>
 #include <vector>
 
-#include "math_utils.h"
 #include "partition.h"
 #include "type_conversion.h"
 
 #include "errchk_mpi.h"
 #include "mpi_utils.h"
-#include <mpi.h>
 
 /** Launches the halo exchange and returns recv requests that must
  * be waited on to confirm that the exchange is complete.

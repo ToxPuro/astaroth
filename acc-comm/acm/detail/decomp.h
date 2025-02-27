@@ -1,11 +1,6 @@
 #pragma once
 
-#include <algorithm>
-#include <vector>
-
-#include "datatypes.h"
-#include "math_utils.h"
-#include "type_conversion.h"
+#include "ntuple.h"
 
 /**
  * Perform a simple decomposition of domain nn to nprocs partitions.

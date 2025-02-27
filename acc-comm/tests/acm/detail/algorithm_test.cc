@@ -2,6 +2,7 @@
 
 #include "acm/detail/algorithm.h"
 #include "acm/detail/ndbuffer.h"
+#include "acm/detail/pack.h"
 #include "acm/detail/type_conversion.h"
 
 int

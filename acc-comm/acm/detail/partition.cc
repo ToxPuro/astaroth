@@ -1,7 +1,5 @@
 #include "partition.h"
 
-#include "print_debug.h"
-
 static void
 partition_recursive(const ac::shape& mm, const ac::shape& nn, const ac::index& nn_offset,
                     const ac::segment& current_segment, const size_t axis,

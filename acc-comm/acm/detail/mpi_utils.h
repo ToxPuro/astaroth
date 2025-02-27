@@ -1,7 +1,7 @@
 #pragma once
 #include <mpi.h>
 
-#include "datatypes.h"
+#include "ntuple.h"
 
 /**
  * Helper macros for printing

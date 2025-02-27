@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <limits>
-#include <numeric>
 
 #include "decomp.h"
 #include "errchk_mpi.h"

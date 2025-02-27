@@ -1,10 +1,10 @@
 #include "decomp.h"
 
-#include "errchk.h"
-
 #include <algorithm>
-#include <memory.h>
 #include <vector>
+
+#include "errchk.h"
+#include "type_conversion.h"
 
 /** Return the non-trivial unique factors of n in increasing order */
 static std::vector<uint64_t>

@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <numeric>
 
+#include "acm/detail/buffer.h"
 #include "acm/detail/pack.h"
 
 int

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "segment.h"
-
 #include <vector>
+
+#include "segment.h"
 
 /**
  * Partition the domain mm into segments that surround the halo-less domain nn offset by nn_offset

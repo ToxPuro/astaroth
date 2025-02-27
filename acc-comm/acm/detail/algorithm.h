@@ -1,13 +1,10 @@
 #pragma once
 #include <algorithm>
-#include <functional>
 #include <numeric>
 
 #include "errchk.h"
 #include "ntuple.h"
 #include "pointer.h"
-
-#include "pack.h"
 
 namespace ac {
 

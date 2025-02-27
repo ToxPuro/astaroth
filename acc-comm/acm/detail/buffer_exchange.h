@@ -1,8 +1,5 @@
 #pragma once
 
-#include <memory>
-
-// #include "buffer.h"
 #include "buffer.h"
 
 #if defined(ACM_DEVICE_ENABLED)

@@ -1,9 +1,7 @@
 #pragma once
 
-#include "buffer.h"
-
-#include "math_utils.h"
 #include "ntuple.h"
+#include "pointer.h"
 
 template <typename T>
 void
