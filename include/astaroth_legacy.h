@@ -11,10 +11,6 @@ FUNC_DEFINE(AcResult, acInit,(const AcMeshInfo mesh_info));
  * called at exit. */
 FUNC_DEFINE(AcResult, acQuit,(void));
 
-/** Checks whether there are any CUDA devices available. Returns AC_SUCCESS if there is 1 or more,
- * AC_FAILURE otherwise. */
-FUNC_DEFINE(AcResult, acCheckDeviceAvailability,(void));
-
 /** Synchronizes a specific stream. All streams are synchronized if STREAM_ALL is passed as a
  * parameter*/
 FUNC_DEFINE(AcResult, acSynchronizeStream,(const Stream stream));
