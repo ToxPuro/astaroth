@@ -127,7 +127,8 @@ acGridGetLocalMeshInfo(void)
 Device
 acGridGetDevice(void)
 {
-	return grid.device;
+    ERRCHK_ALWAYS(grid.initialized);
+    return grid.device;
 }
 
 static AcDecomposeStrategy
