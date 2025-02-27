@@ -186,7 +186,7 @@ enum Characters
 
 ### Type qualifiers
 
-* `const` Effectively the same as C++ const.
+* `const` Effectively the same as C++ constexpr i.e. a compile-time constant.
 
 * `dconst` The implicit qualifier if no qualifiers are defined, for global variables, stored in the device constant memory of the GPU, which makes accesses fast.
 Their values are loaded through the Astaroth config.
@@ -198,7 +198,7 @@ Additionally too large arrays on the device constant memory can degrade performa
 
 * `run_const`
 Variables that are constant during the execution context of Astaroth (e.g. during a timeloop in a simulation).
-By default the same as dconst, but with RUNTIME_COMPILATION=ON they will be effectively replaced by their value (C++ `constexpr`).
+By default the same as dconst, but with RUNTIME_COMPILATION=ON they will be effectively const in the compiled kernels.
 
 
 ### Advanced
@@ -225,6 +225,8 @@ Tells the compiler that the `Kernel` should be skiped when inferring which `Fiel
 * `fixed_boundary`
 Tells the compiler that in `ComputeSteps` before the kernel boundary values inside the local subdomain should not be updated via boundary conditions. Rather the values on the boundaries should be carried over from before, i.e. the boundary values stay fixed from previous `Kernel` calls.
 
+* `boundary_condition`
+Tells the compiler that this kernel is supposed to be used as a boundary condition. As of now the only effect for boundary condition kernels is that all vertices in the computational subdomain (i.e. not halo regions) are skipped. So for example you can calculate periodic boundary conditions in all directions on a single device by launching BOUNDCOND_PERIODIC_DEVICE on the whole subdomain with halos included.
 
 
 ## Variables
@@ -239,8 +241,8 @@ arr1 = [1.0, 2.0, 3.0] //type real is inferred
 int arr2 = [[1,2,3], [3,4,5]] //Multidimensional arrays can be initialized (dimensions inferred)
 size(arr1) // Size of the array
 real arr[3] (at global scope)         //equivalent to dconst arr[3]. Dimensions need to be known at compile time
-gmem real arr[AC_nx] //declaration for global array stored on the GPU global memory. Dimensions need to be known at compile time or be dconst int variables [not expressions involving dconsts].
-gmem arr[AC_mx][AC_my]           //Multidimensional global array.
+gmem real arr[AC_nlocal.x] //declaration for global array stored on the GPU global memory. Dimensions need to be known at compile time or be dconst int variables [not expressions involving dconsts].
+gmem arr[AC_mlocal.x][AC_mlocal.y]           //Multidimensional global array.
 ```
 > Note: Arrays are stored in column-major format, if you want to pass arrays in row-major set AC_host_has_row_memory_order=1. Arrays are still internally stored as column-major but the arrays are converted correctly between the two data formats. If you have a use case where having Astaroth store data in row-major format would be important make a pull request describing the use case and we can consider supporting it.  
 In branch `reference-row-major-implementation` one can find a version of Astaroth that internally supports also row-major.
@@ -378,7 +380,7 @@ Kernel func3(input param) {
 
 ### Stencils
 Stencils are functions that take in a `Field` input parameter and have an unique syntax and semantics. 
-**Importantly**, they are the only way to access other vertexes than the local of a `Field`.
+**Importantly**, they are the only way to access values of a `Field` on other vertexes than at the current one.
 A stencil operation multiplies all points of the stencil by their corresponding coefficients and performs a binary reduction operation (`Sum` or `Max`) over these values.
 Because Stencils act uniformly on the input parameter it is not declared.
 ```
@@ -514,33 +516,22 @@ real AC_REAL_EPSILON // Either DBL_EPSILON or FLT_EPSILON base on precision of `
 
 ```
 uniform spacings of the grid:
-real AC_dsx
-real AC_dsy
-real AC_dsz
+real3 AC_ds
 and their inverses:
-real AC_inv_dsx
-real AC_inv_dsy
-real AC_inv_dsz
-ubdomain size (not incl. halos)
-int AC_nx
-int AC_ny
-int AC_nz
+real3 AC_inv_ds
+Subdomain size (not incl. halos)
+int3 AC_nlocal
 Subdomain size (incl. halos)
-int AC_mx
-int AC_my
-int AC_mz
+int3 AC_mlocal
 Domain size (not incl. halos)
-int AC_nxgrid
-int AC_nygrid
-int AC_nzgrid
-Derivatives of subdomain sizes
-int AC_mxy  //AC_mx*AC_my
-int AC_nxy  //AC_nx*AC_ny
-int AC_nxyz //AC_nx*AC_ny*AC_nz
-Physical domain extents
-real AC_xlen
-real AC_ylen
-real AC_zlen
+int3 AC_ngrid
+Domain size (incl. halos)
+int3 AC_mgrid
+Products of the domain sizes (xy, xz, yz, xyz)
+AcDimProducts AC_nlocal_products
+AcDimProducts AC_mlocal_products
+AcDimProducts AC_ngrid_products
+AcDimProducts AC_mgrid_products
 Multi-GPU parameters
 int3 AC_domain_decomposition //How the domain is decomposed to multiple GPUs
 int3 AC_domain_coordinates   //Local coordinate of the current device in the grid of GPUs
