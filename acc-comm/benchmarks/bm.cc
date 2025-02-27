@@ -6,10 +6,10 @@ static double
 median(const std::vector<T>& vec)
 {
     if (vec.size() % 2 == 0) {
-        return 0.5 * (vec[(vec.size() - 1) / 2] + vec[vec.size() / 2]);
+        return 0.5 * static_cast<double>(vec[(vec.size() - 1) / 2] + vec[vec.size() / 2]);
     }
     else {
-        return vec[vec.size() / 2];
+        return static_cast<double>(vec[vec.size() / 2]);
     }
 }
 
