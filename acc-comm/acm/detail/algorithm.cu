@@ -33,19 +33,22 @@ xcorr(const shape_t& mm, const shape_t& nn, const shape_t& nn_offset, const T* i
       const shape_t& nk, const T* kernel, T* output)
 {
     const uint64_t block_idx{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
-    const auto     block_coords{to_spatial(block_idx, nn)};
-    const auto     out_coords{nn_offset + block_coords};
-    const auto     out_idx{to_linear(out_coords, mm)};
 
-    T result{0};
-    for (uint64_t kernel_idx{0}; kernel_idx < prod(nk); ++kernel_idx) {
-        const auto kernel_coords{ac::to_spatial(kernel_idx, nk)};
-        const auto diff{(nk - static_cast<uint64_t>(1)) / static_cast<uint64_t>(2)};
-        const auto in_coords{out_coords - diff + kernel_coords};
-        const auto in_idx{ac::to_linear(in_coords, mm)};
-        result += input[in_idx] * kernel[kernel_idx];
+    if (block_idx < prod(nn)) {
+        const auto block_coords{to_spatial(block_idx, nn)};
+        const auto out_coords{nn_offset + block_coords};
+        const auto out_idx{to_linear(out_coords, mm)};
+
+        T result{0};
+        for (uint64_t kernel_idx{0}; kernel_idx < prod(nk); ++kernel_idx) {
+            const auto kernel_coords{ac::to_spatial(kernel_idx, nk)};
+            const auto diff{(nk - static_cast<uint64_t>(1)) / static_cast<uint64_t>(2)};
+            const auto in_coords{out_coords - diff + kernel_coords};
+            const auto in_idx{ac::to_linear(in_coords, mm)};
+            result += input[in_idx] * kernel[kernel_idx];
+        }
+        output[out_idx] = result;
     }
-    output[out_idx] = result;
 }
 
 } // namespace device
@@ -56,6 +59,11 @@ xcorr(const ac::shape& in_mm, const ac::shape& in_nn, const ac::shape& in_nn_off
       const ac::mr::device_pointer<T>& in_input, const ac::shape& in_nk,
       const ac::mr::device_pointer<T>& in_kernel, ac::mr::device_pointer<T> in_output)
 {
+    ERRCHK(in_input.data() != in_output.data());
+    ERRCHK(same_size(in_mm, in_nn, in_nn_offset, in_nk));
+    ERRCHK(in_input.size() == in_output.size());
+    ERRCHK(in_nn_offset + in_nn <= in_mm);
+
     const shape_t mm{in_mm};
     const shape_t nn{in_nn};
     const index_t nn_offset{in_nn_offset};
