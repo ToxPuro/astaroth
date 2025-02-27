@@ -840,7 +840,7 @@ acAnalysisGetBCInfo(const AcMeshInfoParams info, const AcKernel bc, const AcBoun
     	  }
     	}
 
-	for(size_t i = 0; i < NUM_ALL_FIELDS+NUM_PROFILES; ++i)
+	for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
 	{
 		larger_input  |= (read_fields[i]    & AC_IN_BOUNDS_READ);
 		larger_output |= (written_fields[i] & AC_OUT_OF_BOUNDS_WRITE);

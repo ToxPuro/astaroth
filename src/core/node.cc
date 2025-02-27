@@ -691,7 +691,7 @@ global_boundcondstep(const Node node, const Stream stream, const VertexBufferHan
         const size_t num_vertices = node->subgrid.m.x * node->subgrid.m.y * NGHOST;
         {
             // ...|ooooxxx|... -> xxx|ooooooo|...
-            const int3 src = (int3){0, 0, node->subgrid.n.z};
+            const int3 src = (int3){0, 0, (int)node->subgrid.n.z};
             const int3 dst = (int3){0, 0, 0};
 
             const Device src_device = node->devices[node->num_devices - 1];
@@ -703,7 +703,7 @@ global_boundcondstep(const Node node, const Stream stream, const VertexBufferHan
         {
             // ...|ooooooo|xxx <- ...|xxxoooo|...
             const int3 src = (int3){0, 0, NGHOST};
-            const int3 dst = (int3){0, 0, NGHOST + node->subgrid.n.z};
+            const int3 dst = (int3){0, 0, (int)(NGHOST + node->subgrid.n.z)};
 
             const Device src_device = node->devices[0];
             Device dst_device       = node->devices[node->num_devices - 1];

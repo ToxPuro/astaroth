@@ -246,7 +246,8 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
 static Error
 get_max_abs_error_comp_domain(const AcReal* model, const AcReal* candidate, const AcMeshInfo info)
 {
-    Error error = {.abs_error = -1};
+    Error error{};
+    error.abs_error = -1;
 
     const AcMeshDims dims = acGetMeshDims(info);
     for (size_t k = dims.n0.z; k < as_size_t(dims.n1.z); ++k) {

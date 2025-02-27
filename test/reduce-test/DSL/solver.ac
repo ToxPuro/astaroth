@@ -5,7 +5,7 @@ output real AC_min_val
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
-#include "../../../acc-runtime/stdlib/work_in_progress_derivs.h"
+#include "../../../acc-runtime/stdlib/general_derivs.h"
 
 
 //Profile<Z> PROF_Z_DER

@@ -674,7 +674,7 @@ utility Kernel randomize() {
     // N.B. scale: result in (-AC_rng_scale, AC_rng_scale] range
     AC_rng_scale = 1e-5
 
-    for field in 1:NUM_FIELDS {
+    for field in 0:NUM_FIELDS {
         r = 2.0 * rand_uniform() - 1.0
         write(Field(field), AC_rng_scale * r)
     }
@@ -689,7 +689,7 @@ Kernel haatouken() {
     // AC_init_shell_radius
     // AC_init_shell_width
 
-    xx = grid_position()  -  grid_centre()
+    xx = grid_position()  -  grid_center()
 
     rr = norm(xx) 
 
@@ -761,7 +761,7 @@ Kernel beltrami_initcond() {
 }
 
 radial_vector_field(ampl) {
-    xx = grid_position() - grid_centre()
+    xx = grid_position() - grid_center()
     rr = sqrt(xx.x*xx.x + xx.y*xx.y + xx.z*xx.z)
     rr_xy = sqrt(xx.x*xx.x + xx.y*xx.y )
     field = real3(0.0,

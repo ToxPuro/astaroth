@@ -14,7 +14,7 @@ grid_position() {
     return (globalVertexIdx - AC_nmin)*AC_ds
 }
 
-grid_centre() {
+grid_center() {
 //MR: generalize, using x,y,z?
 //TP: implicitly assumes [0,AC_len] domain
     return ((AC_ngrid-1)*AC_ds)*0.5;

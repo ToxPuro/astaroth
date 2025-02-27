@@ -1363,214 +1363,217 @@ ReduceTask::reduce()
 	const auto& reduce_outputs = input_region.memory.reduce_outputs;
      	const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
 
-	for(const auto& prof : input_region.memory.profiles)
+	if constexpr (NUM_PROFILES != 0)
 	{
-	    auto reduce_buf = acDeviceGetProfileReduceBuffer(device,prof);
-	    auto dst        = acDeviceGetProfileBuffer(device,prof);
-	    if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == -1)
-	    {
-	    		acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst,
-				   stream,
-				   (Volume){0,0,0},
-				   (Volume){
-					NGHOST,
-				   	reduce_buf.src.shape.y,
-				   	reduce_buf.src.shape.z,
-					},
-				   (Volume){0,0,0},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					NGHOST
-				   }
-			    );
-	    }
-	    else if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == 0)
-	    {
-	    		acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst+NGHOST,
-				   stream,
-				   (Volume){NGHOST,0,0},
-				   (Volume){
-					nn.x+NGHOST,
-				   	reduce_buf.src.shape.y,
-				   	reduce_buf.src.shape.z
-					},
-				   (Volume){0,0,NGHOST},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					nn.x+NGHOST
-				   }
-			    );
-	    }
-	    else if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == 1)
-	    {
-	    		acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst+NGHOST+nn.x,
-				   stream,
-				   (Volume){NGHOST+nn.x,0,0},
-				   (Volume){
-					nn.x+2*NGHOST,
-				   	reduce_buf.src.shape.y,
-				   	reduce_buf.src.shape.z
-					},
-				   (Volume){0,0,NGHOST+nn.x},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					nn.x+2*NGHOST
-				   }
-			    );
-	    }
-	    else if(prof_types[prof] == PROFILE_Y && reduces_only_prof == PROFILE_Y && output_region.id.y == -1)
-	    {
-	    		acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst,
-				   stream,
-				   (Volume){0,0,0},
-				   (Volume){
-				   	reduce_buf.src.shape.x,
-					NGHOST,
-				   	reduce_buf.src.shape.z,
-					},
-				   (Volume){0,0,0},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					NGHOST
-				   }
-			    );
-	    }
-	    else if(prof_types[prof] == PROFILE_Y && reduces_only_prof == PROFILE_Y && output_region.id.y == 0)
-	    {
-	    		acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst+NGHOST,
-				   stream,
-				   (Volume){0,NGHOST,0},
-				   (Volume){
-				   	reduce_buf.src.shape.x,
-					nn.y+NGHOST,
-				   	reduce_buf.src.shape.z
-					},
-				   (Volume){0,0,NGHOST},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					nn.y+NGHOST
-				   }
-			    );
-	    }
-	    else if(prof_types[prof] == PROFILE_Y && reduces_only_prof == PROFILE_Y && output_region.id.y == 1)
-	    {
-	    		acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst+NGHOST+nn.y,
-				   stream,
-				   (Volume){0,NGHOST+nn.y,0},
-				   (Volume){
-				   	reduce_buf.src.shape.x,
-					nn.y+2*NGHOST,
-				   	reduce_buf.src.shape.z
-					},
-				   (Volume){0,0,NGHOST+nn.y},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					nn.y+2*NGHOST
-				   }
-			    );
-	    }
+		for(const auto& prof : input_region.memory.profiles)
+		{
+		    auto reduce_buf = acDeviceGetProfileReduceBuffer(device,prof);
+		    auto dst        = acDeviceGetProfileBuffer(device,prof);
+		    if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == -1)
+		    {
+		    		acReduceProfileWithBounds(prof,
+					   reduce_buf,
+					   dst,
+					   stream,
+					   (Volume){0,0,0},
+					   (Volume){
+						NGHOST,
+					   	reduce_buf.src.shape.y,
+					   	reduce_buf.src.shape.z,
+						},
+					   (Volume){0,0,0},
+					   (Volume)
+					   {
+					   	reduce_buf.transposed.shape.x,
+					   	reduce_buf.transposed.shape.y,
+						NGHOST
+					   }
+				    );
+		    }
+		    else if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == 0)
+		    {
+		    		acReduceProfileWithBounds(prof,
+					   reduce_buf,
+					   dst+NGHOST,
+					   stream,
+					   (Volume){NGHOST,0,0},
+					   (Volume){
+						nn.x+NGHOST,
+					   	reduce_buf.src.shape.y,
+					   	reduce_buf.src.shape.z
+						},
+					   (Volume){0,0,NGHOST},
+					   (Volume)
+					   {
+					   	reduce_buf.transposed.shape.x,
+					   	reduce_buf.transposed.shape.y,
+						nn.x+NGHOST
+					   }
+				    );
+		    }
+		    else if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == 1)
+		    {
+		    		acReduceProfileWithBounds(prof,
+					   reduce_buf,
+					   dst+NGHOST+nn.x,
+					   stream,
+					   (Volume){NGHOST+nn.x,0,0},
+					   (Volume){
+						nn.x+2*NGHOST,
+					   	reduce_buf.src.shape.y,
+					   	reduce_buf.src.shape.z
+						},
+					   (Volume){0,0,NGHOST+nn.x},
+					   (Volume)
+					   {
+					   	reduce_buf.transposed.shape.x,
+					   	reduce_buf.transposed.shape.y,
+						nn.x+2*NGHOST
+					   }
+				    );
+		    }
+		    else if(prof_types[prof] == PROFILE_Y && reduces_only_prof == PROFILE_Y && output_region.id.y == -1)
+		    {
+		    		acReduceProfileWithBounds(prof,
+					   reduce_buf,
+					   dst,
+					   stream,
+					   (Volume){0,0,0},
+					   (Volume){
+					   	reduce_buf.src.shape.x,
+						NGHOST,
+					   	reduce_buf.src.shape.z,
+						},
+					   (Volume){0,0,0},
+					   (Volume)
+					   {
+					   	reduce_buf.transposed.shape.x,
+					   	reduce_buf.transposed.shape.y,
+						NGHOST
+					   }
+				    );
+		    }
+		    else if(prof_types[prof] == PROFILE_Y && reduces_only_prof == PROFILE_Y && output_region.id.y == 0)
+		    {
+		    		acReduceProfileWithBounds(prof,
+					   reduce_buf,
+					   dst+NGHOST,
+					   stream,
+					   (Volume){0,NGHOST,0},
+					   (Volume){
+					   	reduce_buf.src.shape.x,
+						nn.y+NGHOST,
+					   	reduce_buf.src.shape.z
+						},
+					   (Volume){0,0,NGHOST},
+					   (Volume)
+					   {
+					   	reduce_buf.transposed.shape.x,
+					   	reduce_buf.transposed.shape.y,
+						nn.y+NGHOST
+					   }
+				    );
+		    }
+		    else if(prof_types[prof] == PROFILE_Y && reduces_only_prof == PROFILE_Y && output_region.id.y == 1)
+		    {
+		    		acReduceProfileWithBounds(prof,
+					   reduce_buf,
+					   dst+NGHOST+nn.y,
+					   stream,
+					   (Volume){0,NGHOST+nn.y,0},
+					   (Volume){
+					   	reduce_buf.src.shape.x,
+						nn.y+2*NGHOST,
+					   	reduce_buf.src.shape.z
+						},
+					   (Volume){0,0,NGHOST+nn.y},
+					   (Volume)
+					   {
+					   	reduce_buf.transposed.shape.x,
+					   	reduce_buf.transposed.shape.y,
+						nn.y+2*NGHOST
+					   }
+				    );
+		    }
 
 
-	    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == -1)
-	    {
-	    		acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst,
-				   stream,
-				   (Volume){0,0,0},
-				   (Volume){
-				   	reduce_buf.src.shape.x,
-				   	reduce_buf.src.shape.y,
-					NGHOST
-					},
-				   (Volume){0,0,0},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					NGHOST
-				   }
-			    );
-	    }
-	    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == 0)
-	    {
-	    		acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst+3,
-				   stream,
-				   (Volume){0,0,NGHOST},
-				   (Volume){
-				   	reduce_buf.src.shape.x,
-				   	reduce_buf.src.shape.y,
-					nn.z+NGHOST
-					},
-				   (Volume){0,0,NGHOST},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					nn.z+NGHOST
-				   }
-			    );
-	    }
-	    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == 1)
-	    {
-	    		acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst+NGHOST+nn.z,
-				   stream,
-				   (Volume){0,0,NGHOST+nn.z},
-				   (Volume){
-				   	reduce_buf.src.shape.x,
-				   	reduce_buf.src.shape.y,
-					nn.z+2*NGHOST
-					},
-				   (Volume){0,0,NGHOST+nn.z},
-				   (Volume)
-				   {
-				   	reduce_buf.transposed.shape.x,
-				   	reduce_buf.transposed.shape.y,
-					nn.z+2*NGHOST
-				   }
-			    );
-			
-	    }
-	    else
-	    {
-	    		acReduceProfileWithBounds(prof,
-				   reduce_buf,
-				   dst,
-				   stream,
-				   (Volume){0,0,0},
-				   get_volume_from_shape(reduce_buf.src.shape),
-				   (Volume){0,0,0},
-				   get_volume_from_shape(reduce_buf.transposed.shape)
-			    );
-	    }
+		    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == -1)
+		    {
+		    		acReduceProfileWithBounds(prof,
+					   reduce_buf,
+					   dst,
+					   stream,
+					   (Volume){0,0,0},
+					   (Volume){
+					   	reduce_buf.src.shape.x,
+					   	reduce_buf.src.shape.y,
+						NGHOST
+						},
+					   (Volume){0,0,0},
+					   (Volume)
+					   {
+					   	reduce_buf.transposed.shape.x,
+					   	reduce_buf.transposed.shape.y,
+						NGHOST
+					   }
+				    );
+		    }
+		    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == 0)
+		    {
+		    		acReduceProfileWithBounds(prof,
+					   reduce_buf,
+					   dst+3,
+					   stream,
+					   (Volume){0,0,NGHOST},
+					   (Volume){
+					   	reduce_buf.src.shape.x,
+					   	reduce_buf.src.shape.y,
+						nn.z+NGHOST
+						},
+					   (Volume){0,0,NGHOST},
+					   (Volume)
+					   {
+					   	reduce_buf.transposed.shape.x,
+					   	reduce_buf.transposed.shape.y,
+						nn.z+NGHOST
+					   }
+				    );
+		    }
+		    else if(prof_types[prof] == PROFILE_Z && reduces_only_prof == PROFILE_Z && output_region.id.z == 1)
+		    {
+		    		acReduceProfileWithBounds(prof,
+					   reduce_buf,
+					   dst+NGHOST+nn.z,
+					   stream,
+					   (Volume){0,0,NGHOST+nn.z},
+					   (Volume){
+					   	reduce_buf.src.shape.x,
+					   	reduce_buf.src.shape.y,
+						nn.z+2*NGHOST
+						},
+					   (Volume){0,0,NGHOST+nn.z},
+					   (Volume)
+					   {
+					   	reduce_buf.transposed.shape.x,
+					   	reduce_buf.transposed.shape.y,
+						nn.z+2*NGHOST
+					   }
+				    );
+				
+		    }
+		    else
+		    {
+		    		acReduceProfileWithBounds(prof,
+					   reduce_buf,
+					   dst,
+					   stream,
+					   (Volume){0,0,0},
+					   get_volume_from_shape(reduce_buf.src.shape),
+					   (Volume){0,0,0},
+					   get_volume_from_shape(reduce_buf.transposed.shape)
+				    );
+		    }
+		}
 	}
 
     	for(size_t i = 0; i < reduce_outputs.size(); ++i)
@@ -1598,75 +1601,78 @@ void
 ReduceTask::communicate()
 {
    const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
-   for(const auto& prof: input_region.memory.profiles)
+   if constexpr(NUM_PROFILES != 0)
    {
-	   const auto sub_comms = acGridMPISubComms();
-	   const MPI_Comm comm =
-		   	prof_types[prof] == PROFILE_X ? sub_comms.yz :
-		   	prof_types[prof] == PROFILE_Y ? sub_comms.xz :
-		   	prof_types[prof] == PROFILE_Z ? sub_comms.xy :
+   	for(const auto& prof: input_region.memory.profiles)
+   	{
+   	        const auto sub_comms = acGridMPISubComms();
+   	        const MPI_Comm comm =
+   	     	   	prof_types[prof] == PROFILE_X ? sub_comms.yz :
+   	     	   	prof_types[prof] == PROFILE_Y ? sub_comms.xz :
+   	     	   	prof_types[prof] == PROFILE_Z ? sub_comms.xy :
 
-		   	(prof_types[prof] == PROFILE_XY || prof_types[prof] == PROFILE_YX) ? sub_comms.z :
-		   	(prof_types[prof] == PROFILE_XZ || prof_types[prof] == PROFILE_ZX) ? sub_comms.y :
-		   	(prof_types[prof] == PROFILE_YZ || prof_types[prof] == PROFILE_ZY) ? sub_comms.x :
-			MPI_COMM_NULL;
+   	     	   	(prof_types[prof] == PROFILE_XY || prof_types[prof] == PROFILE_YX) ? sub_comms.z :
+   	     	   	(prof_types[prof] == PROFILE_XZ || prof_types[prof] == PROFILE_ZX) ? sub_comms.y :
+   	     	   	(prof_types[prof] == PROFILE_YZ || prof_types[prof] == PROFILE_ZY) ? sub_comms.x :
+   	     		MPI_COMM_NULL;
 
-	   if(reduces_only_prof != PROFILE_NONE)
-	   {
-		   const auto n_size = 
-			   reduces_only_prof == PROFILE_X ? nn.x :
-			   reduces_only_prof == PROFILE_Y ? nn.y :
-			   reduces_only_prof == PROFILE_Z ? nn.z :
-			   0;
+   	        if(reduces_only_prof != PROFILE_NONE)
+   	        {
+   	     	   const auto n_size = 
+   	     		   reduces_only_prof == PROFILE_X ? nn.x :
+   	     		   reduces_only_prof == PROFILE_Y ? nn.y :
+   	     		   reduces_only_prof == PROFILE_Z ? nn.z :
+   	     		   0;
 
-		   const auto id = 
-			   reduces_only_prof == PROFILE_X ? output_region.id.x :
-			   reduces_only_prof == PROFILE_Y ? output_region.id.y :
-			   reduces_only_prof == PROFILE_Z ? output_region.id.z :
-			   0;
+   	     	   const auto id = 
+   	     		   reduces_only_prof == PROFILE_X ? output_region.id.x :
+   	     		   reduces_only_prof == PROFILE_Y ? output_region.id.y :
+   	     		   reduces_only_prof == PROFILE_Z ? output_region.id.z :
+   	     		   0;
 
-		   if(id == -1)
-		   {
-	   		MPI_Iallreduce(MPI_IN_PLACE,
-			   acDeviceGetProfileBuffer(device,prof),
-			   NGHOST,
-			   AC_REAL_MPI_TYPE,
-			   MPI_SUM,
-			   comm,
-			   &requests[NUM_OUTPUTS + prof]);
-		   }
-		   else if(id == 0)
-		   {
-	   		MPI_Iallreduce(MPI_IN_PLACE,
-			   acDeviceGetProfileBuffer(device,prof)+NGHOST,
-			   n_size,
-			   AC_REAL_MPI_TYPE,
-			   MPI_SUM,
-			   comm,
-			   &requests[NUM_OUTPUTS + prof]);
-		   }
-		   else if(id == 1)
-		   {
-	   		MPI_Iallreduce(MPI_IN_PLACE,
-			   acDeviceGetProfileBuffer(device,prof)+NGHOST+n_size,
-			   NGHOST,
-			   AC_REAL_MPI_TYPE,
-			   MPI_SUM,
-			   comm,
-			   &requests[NUM_OUTPUTS + prof]);
+   	     	   if(id == -1)
+   	     	   {
+   	        		MPI_Iallreduce(MPI_IN_PLACE,
+   	     		   acDeviceGetProfileBuffer(device,prof),
+   	     		   NGHOST,
+   	     		   AC_REAL_MPI_TYPE,
+   	     		   MPI_SUM,
+   	     		   comm,
+   	     		   &requests[NUM_OUTPUTS + prof]);
+   	     	   }
+   	     	   else if(id == 0)
+   	     	   {
+   	        		MPI_Iallreduce(MPI_IN_PLACE,
+   	     		   acDeviceGetProfileBuffer(device,prof)+NGHOST,
+   	     		   n_size,
+   	     		   AC_REAL_MPI_TYPE,
+   	     		   MPI_SUM,
+   	     		   comm,
+   	     		   &requests[NUM_OUTPUTS + prof]);
+   	     	   }
+   	     	   else if(id == 1)
+   	     	   {
+   	        		MPI_Iallreduce(MPI_IN_PLACE,
+   	     		   acDeviceGetProfileBuffer(device,prof)+NGHOST+n_size,
+   	     		   NGHOST,
+   	     		   AC_REAL_MPI_TYPE,
+   	     		   MPI_SUM,
+   	     		   comm,
+   	     		   &requests[NUM_OUTPUTS + prof]);
 
-		   }
-	   }
-	   else
-	   {
-	   	MPI_Iallreduce(MPI_IN_PLACE,
-			   acDeviceGetProfileBuffer(device,prof),
-                           prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])),
-			   AC_REAL_MPI_TYPE,
-			   MPI_SUM,
-			   comm,
-			   &requests[NUM_OUTPUTS + prof]);
-	   }
+   	     	   }
+   	        }
+   	        else
+   	        {
+   	        	MPI_Iallreduce(MPI_IN_PLACE,
+   	     		   acDeviceGetProfileBuffer(device,prof),
+   	                        prof_size(prof,as_size_t(acDeviceGetLocalConfig(acGridGetDevice())[AC_mlocal])),
+   	     		   AC_REAL_MPI_TYPE,
+   	     		   MPI_SUM,
+   	     		   comm,
+   	     		   &requests[NUM_OUTPUTS + prof]);
+   	        }
+   	}
    }
 }
 void

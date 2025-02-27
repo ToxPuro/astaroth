@@ -1778,7 +1778,7 @@ acLoadMeshInfo(const AcMeshInfoScalars info, const cudaStream_t stream)
   */
 
   /* See note in acLoadStencil */
-  ERRCHK(cudaDeviceSynchronize() == CUDA_SUCCESS);
+  ERRCHK_CUDA(cudaDeviceSynchronize());
   const cudaError_t retval = cudaMemcpyToSymbol(
       d_mesh_info, &info, sizeof(info), 0, cudaMemcpyHostToDevice);
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
@@ -2556,6 +2556,7 @@ acGetMeshOrderForProfile(const AcProfileType type)
 		case(PROFILE_NONE):
 			return XYZ;
     	}
+	return XYZ;
 };
 
 #include "load_ac_kernel_params.h"
