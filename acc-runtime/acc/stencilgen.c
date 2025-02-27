@@ -1002,6 +1002,7 @@ print_reduce_func(const char* datatype, const char* define_name, const char* enu
 				printf("%s_reduce_output = min(%s_reduce_output,val);",names[i],names[i]);
 			if(op == REDUCE_MAX)
 				printf("%s_reduce_output = max(%s_reduce_output,val);",names[i],names[i]);
+			printf("break;");
 			printf("}");
 		}
 		printf("default: {}");
