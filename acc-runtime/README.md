@@ -184,6 +184,14 @@ enum Characters
 ```
 > Note: Whenever possible one should prefer using enums compared e.g. named integers, since using enums gives the DSL compile more information which it can use to perform optimizations.
 
+##### Built-in enums
+The following enums are built-in to Astaroth
+enum AC_COORDINATE_SYSTEM
+{
+	AC_CARTESIAN_COORDINATES,
+	AC_SPHERICAL_COORDINATES,
+	AC_CYLINDRICAL_COORDINATES
+}
 ### Type qualifiers
 
 * `const` Effectively the same as C++ constexpr i.e. a compile-time constant.
@@ -429,28 +437,26 @@ Max Stencil largest_neighbor {
     [0][0][-1] = 1
 }
 
-real AC_dsx 
-real AC_dsy 
-real AC_dsz 
+real3 AC_ds
 
 //dconst variables can be used in stencil coefficients (their values are looked up from the config during loading).
 
 Stencil derx {
-    [0][0][-3] = -AC_dsx*DER1_3,
-    [0][0][-2] = -AC_dsx*DER1_2,
-    [0][0][-1] = -AC_dsx*DER1_1,
-    [0][0][1]  = AC_dsx*DER1_1,
-    [0][0][2]  = AC_dsx*DER1_2,
-    [0][0][3]  = AC_dsx*DER1_3
+    [0][0][-3] = -AC_ds.x*DER1_3,
+    [0][0][-2] = -AC_ds.x*DER1_2,
+    [0][0][-1] = -AC_ds.x*DER1_1,
+    [0][0][1]  = AC_ds.x*DER1_1,
+    [0][0][2]  = AC_ds.x*DER1_2,
+    [0][0][3]  = AC_ds.x*DER1_3
 }
 
 Stencil dery {
-    [0][-3][0] = -AC_dsy*DER1_3,
+    [0][-3][0] = -AC_ds.y*DER1_3,
     [0][-2][0] = ...
 }
 
 Stencil derz {
-    [-3][0][0] = -AC_dsz*DER1_3,
+    [-3][0][0] = -AC_ds.z*DER1_3,
     [-2][0][0] = ...
 }
 
@@ -519,6 +525,18 @@ uniform spacings of the grid:
 real3 AC_ds
 and their inverses:
 real3 AC_inv_ds
+and powers of these:
+real3 AC_ds_2
+real3 AC_ds_3
+real3 AC_ds_4
+real3 AC_ds_5
+real3 AC_ds_6
+
+real3 AC_inv_ds_2
+real3 AC_inv_ds_3
+real3 AC_inv_ds_4
+real3 AC_inv_ds_5
+real3 AC_inv_ds_6
 Subdomain size (not incl. halos)
 int3 AC_nlocal
 Subdomain size (incl. halos)
@@ -532,6 +550,14 @@ AcDimProducts AC_nlocal_products
 AcDimProducts AC_mlocal_products
 AcDimProducts AC_ngrid_products
 AcDimProducts AC_mgrid_products
+First point in the computational subdomain/domain (also the ghost zone sizes)
+int3 AC_nmin
+Last point in the computational subdomain
+int3 AC_nlocal_max
+Last point in the computational domain
+int3 AC_ngrid_max
+The coordinate system used (default cartesian)
+AC_COORDINATE_SYSTEM  AC_coordinate_system
 Multi-GPU parameters
 int3 AC_domain_decomposition //How the domain is decomposed to multiple GPUs
 int3 AC_domain_coordinates   //Local coordinate of the current device in the grid of GPUs
