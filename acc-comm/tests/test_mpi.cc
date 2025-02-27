@@ -371,24 +371,21 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
     for (size_t i{0}; i < nsteps; ++i) {
         const ac::shape      nk{2 * rr + as<uint64_t>(1)};
         ac::host_ndbuffer<T> kernel{nk, 1};
+        const auto           dkernel{kernel.to_device()};
 
-        ac::host_ndbuffer<T> distr_dref_tmp{local_mm};
+        ac::device_ndbuffer<T> distr_dref_tmp{local_mm};
         he.wait({distr_dref.get()});
-#if defined(ACM_DEVICE_ENABLED)
-        PRINT_LOG_WARNING("Device xcorr and transform not yet implemented");
-#else
         ac::xcorr(local_mm,
                   local_nn,
                   local_nn_offset,
                   distr_dref.get(),
                   nk,
-                  kernel.get(),
+                  dkernel.get(),
                   distr_dref_tmp.get());
         ac::transform(
             distr_dref_tmp.get(),
             [&nk](const auto& elem) { return elem / prod(nk); },
             distr_dref.get());
-#endif
         he.launch(cart_comm, {distr_dref.get()});
     }
     he.wait({distr_dref.get()});
@@ -408,11 +405,9 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
         const double expected_value{(prod(global_nn) + 1) / 2.};
         std::cout << "Expected: " << expected_value << std::endl;
         std::cout << "Measured: " << href[0] << std::endl;
+        href.display();
         for (size_t i{0}; i < prod(global_nn); ++i)
             ERRCHK(within_machine_epsilon(href[i], expected_value));
-
-        href.display();
-        PRINT_LOG_WARNING("Device buffer pipeline not yet tested");
     }
 }
 
