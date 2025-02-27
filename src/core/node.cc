@@ -153,15 +153,15 @@ struct node_s {
 };
 
 static int
-gridIdx(const GridDims grid, const int3 idx)
+gridIdx(const GridDims grid, const Volume idx)
 {
     return idx.x + idx.y * grid.m.x + idx.z * grid.m.x * grid.m.y;
 }
 
-static int3
+static Volume
 gridIdx3d(const GridDims grid, const int idx)
 {
-    return (int3){idx % grid.m.x, (idx % (grid.m.x * grid.m.y)) / grid.m.x,
+    return (Volume){idx % grid.m.x, (idx % (grid.m.x * grid.m.y)) / grid.m.x,
                   idx / (grid.m.x * grid.m.y)};
 }
 
@@ -256,7 +256,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
         const int3 multinode_offset                    = (int3){0, 0, 0}; // Placeholder
-        const int3 multigpu_offset                     = (int3){0, 0, i * node->subgrid.n.z};
+        const int3 multigpu_offset                     = (int3){0, 0, (int)(i * node->subgrid.n.z)};
         subgrid_config[AC_multigpu_offset] = multinode_offset + multigpu_offset;
 
         acDeviceCreate(i, subgrid_config, &node->devices[i]);
@@ -392,7 +392,7 @@ acNodeSynchronizeVertexBuffer(const Node node, const Stream stream,
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices - 1; ++i) {
         // ...|ooooxxx|... -> xxx|ooooooo|...
-        const int3 src = (int3){0, 0, node->subgrid.n.z};
+        const int3 src = (int3){0, 0, (int)(node->subgrid.n.z)};
         const int3 dst = (int3){0, 0, 0};
 
         const Device src_device = node->devices[i];
@@ -405,7 +405,7 @@ acNodeSynchronizeVertexBuffer(const Node node, const Stream stream,
     for (int i = 1; i < node->num_devices; ++i) {
         // ...|ooooooo|xxx <- ...|xxxoooo|...
         const int3 src = (int3){0, 0, NGHOST};
-        const int3 dst = (int3){0, 0, NGHOST + node->subgrid.n.z};
+        const int3 dst = (int3){0, 0, (int)(NGHOST + node->subgrid.n.z)};
 
         const Device src_device = node->devices[i];
         Device dst_device       = node->devices[i - 1];
@@ -458,15 +458,15 @@ acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcM
     // // #pragma omp parallel for
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        const int3 d0 = (int3){0, 0, i * node->subgrid.n.z}; // DECOMPOSITION OFFSET HERE
-        const int3 d1 = (int3){node->subgrid.m.x, node->subgrid.m.y, d0.z + node->subgrid.m.z};
+        const Volume d0 = (Volume){0, 0, as_size_t(i * node->subgrid.n.z)}; // DECOMPOSITION OFFSET HERE
+        const Volume d1 = (Volume){node->subgrid.m.x, node->subgrid.m.y, as_size_t(d0.z + node->subgrid.m.z)};
 
-        const int3 s0 = src; // dst; // TODO fix
+        const Volume s0 = as_size_t(src); // dst; // TODO fix
         (void)dst;           // TODO fix
-        const int3 s1 = gridIdx3d(node->grid, gridIdx(node->grid, s0) + num_vertices);
+        const Volume s1 = gridIdx3d(node->grid, gridIdx(node->grid, s0) + num_vertices);
 
-        const int3 da = max(s0, d0);
-        const int3 db = min(s1, d1);
+        const Volume da = max(s0, d0);
+        const Volume db = min(s1, d1);
         /*
         printf("Device %d\n", i);
         printf("\ts0: "); printInt3(s0); printf("\n");
@@ -480,12 +480,12 @@ acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcM
         if (db.z >= da.z) {
             const int copy_cells = gridIdx(node->subgrid, db) - gridIdx(node->subgrid, da);
             // DECOMPOSITION OFFSET HERE
-            const int3 da_global = da; // src + da - dst; // TODO fix
-            const int3 da_local = (int3){da.x, da.y, da.z - i * node->grid.n.z / node->num_devices};
+            const Volume da_global = da; // src + da - dst; // TODO fix
+            const Volume da_local = (Volume){da.x, da.y, as_size_t(da.z - i * node->grid.n.z / node->num_devices)};
             // printf("\t\tcopy %d cells to local index ", copy_cells); printInt3(da_local);
             // printf("\n");
             acDeviceLoadVertexBufferWithOffset(node->devices[i], stream, host_mesh, vtxbuf_handle,
-                                               da_global, da_local, copy_cells);
+                                               to_int3(da_global), to_int3(da_local), copy_cells);
         }
         // printf("\n");
     }
@@ -553,25 +553,25 @@ acNodeStoreVertexBufferWithOffset(const Node node, const Stream stream,
 
         // New: Transfer ghost zones, but do not transfer overlapping halos.
         // DECOMPOSITION OFFSET HERE (d0 & d1)
-        int3 d0 = (int3){0, 0, NGHOST + i * node->subgrid.n.z};
-        int3 d1 = (int3){node->subgrid.m.x, node->subgrid.m.y,
-                         NGHOST + (i + 1) * node->subgrid.n.z};
+        Volume d0 = (Volume){0, 0, as_size_t(NGHOST + i * node->subgrid.n.z)};
+        Volume d1 = (Volume){node->subgrid.m.x, node->subgrid.m.y,
+                         as_size_t(NGHOST + (i + 1) * node->subgrid.n.z)};
         if (i == 0)
             d0.z = 0;
         if (i == node->num_devices - 1)
             d1.z = NGHOST + (i + 1) * node->subgrid.n.z + NGHOST;
 
-        const int3 s0 = src; // TODO fix
+        const Volume s0 = as_size_t(src); // TODO fix
         (void)dst;           // TODO fix
-        const int3 s1 = gridIdx3d(node->grid, gridIdx(node->grid, s0) + num_vertices);
+        const Volume s1 = gridIdx3d(node->grid, gridIdx(node->grid, s0) + num_vertices);
 
-        const int3 da = max(s0, d0);
-        const int3 db = min(s1, d1);
+        const Volume da = max(s0, d0);
+        const Volume db = min(s1, d1);
         if (db.z >= da.z) {
             const int copy_cells = gridIdx(node->subgrid, db) - gridIdx(node->subgrid, da);
             // DECOMPOSITION OFFSET HERE
-            const int3 da_local = (int3){da.x, da.y, da.z - i * node->grid.n.z / node->num_devices};
-            const int3 da_global = da; // dst + da - src; // TODO fix
+            const int3 da_local = (int3){(int)da.x, (int)da.y, (int)(da.z - i * node->grid.n.z / node->num_devices)};
+            const int3 da_global = to_int3(da); // dst + da - src; // TODO fix
             acDeviceStoreVertexBufferWithOffset(node->devices[i], stream, vtxbuf_handle, da_local,
                                                 da_global, copy_cells, host_mesh);
         }
