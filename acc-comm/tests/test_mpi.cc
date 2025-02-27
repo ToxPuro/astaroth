@@ -384,7 +384,7 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
                   distr_dref_tmp.get());
         ac::transform(
             distr_dref_tmp.get(),
-            [&nk](const auto& elem) { return elem / prod(nk); },
+            [&nk](const T& elem) { return elem / static_cast<T>(prod(nk)); },
             distr_dref.get());
         he.launch(cart_comm, {distr_dref.get()});
     }

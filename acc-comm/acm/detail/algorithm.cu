@@ -23,6 +23,8 @@ using index_t = ac::static_ntuple<uint64_t, MAX_NDIMS>;
 //                                                       const std::function<void(const double&)>&
 //                                                       fn, ac::mr::device_pointer<double> output);
 
+namespace ac {
+
 namespace device {
 
 template <typename T>
@@ -80,3 +82,10 @@ template void xcorr<double>(const ac::shape& mm, const ac::shape& nn, const ac::
                             const ac::mr::device_pointer<double>& input, const ac::shape& nk,
                             const ac::mr::device_pointer<double>& kernel,
                             ac::mr::device_pointer<double>        output);
+
+template void xcorr<uint64_t>(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
+                              const ac::mr::device_pointer<uint64_t>& input, const ac::shape& nk,
+                              const ac::mr::device_pointer<uint64_t>& kernel,
+                              ac::mr::device_pointer<uint64_t>        output);
+
+} // namespace ac
