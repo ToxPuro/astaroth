@@ -3,6 +3,7 @@
 
 #include "allocator.h"
 #include "cuda_utils.h"
+// #include "type_conversion.h"
 
 namespace ac::mr {
 
@@ -102,6 +103,13 @@ copy(const size_t count, const size_t in_offset, const pointer<T, AllocatorA>& i
 template <typename T> using host_pointer   = pointer<T, ac::mr::host_allocator>;
 template <typename T> using device_pointer = pointer<T, ac::mr::device_allocator>;
 
+// Does not work with MPI: why?
+// template <typename T>
+// void
+// fill(const uint8_t fill_value, device_pointer<T> ptr)
+// {
+//     ERRCHK_CUDA_API(cudaMemset(ptr.data(), as<int>(fill_value), sizeof(ptr[0]) * ptr.size()));
+// }
 #else
 
 template <typename T> using host_pointer   = pointer<T, ac::mr::host_allocator>;
@@ -136,6 +144,16 @@ copy(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB> out)
 {
     copy(in.size(), 0, in, 0, out);
 }
+
+// Does not work with MPI: why?
+// template <typename T, typename Allocator>
+// void
+// fill(const uint8_t fill_value, pointer<T, Allocator> ptr)
+// {
+//     static_assert(std::is_base_of_v<ac::mr::host_allocator, Allocator>,
+//                   "Only supported for host memory types");
+//     memset(ptr.data(), as<int>(fill_value), sizeof(ptr[0]) * ptr.size());
+// }
 
 // TODO: Draft
 // template <typename T, typename AllocatorA, typename AllocatorB>

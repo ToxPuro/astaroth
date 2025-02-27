@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <random>
 
 #include "acm/detail/buffer.h"

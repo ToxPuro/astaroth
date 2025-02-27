@@ -5,6 +5,7 @@
 
 #include "decomp.h"
 #include "errchk_mpi.h"
+#include "math_utils.h"
 #include "print_debug.h"
 #include "type_conversion.h"
 
@@ -125,7 +126,7 @@ cart_comm_mpi_create(const MPI_Comm& parent_comm, const ac::shape& global_nn, co
     return cart_comm;
 }
 
-std::vector<uint64_t>
+static std::vector<uint64_t>
 get_nprocs_per_layer(const uint64_t& nprocs, const std::vector<uint64_t>& max_per_layer)
 {
     uint64_t              curr_nprocs{nprocs};
@@ -135,13 +136,69 @@ get_nprocs_per_layer(const uint64_t& nprocs, const std::vector<uint64_t>& max_pe
         curr_nprocs /= nprocs_per_layer.back();
     }
     nprocs_per_layer.push_back(curr_nprocs); // Push remainder
-    ERRCHK_MPI(ac::mpi::prodd(nprocs_per_layer) == nprocs);
+    ERRCHK_MPI(vecprod(nprocs_per_layer) == nprocs);
     return nprocs_per_layer;
+}
+
+static int
+test_get_nprocs_per_layer()
+{
+    {
+        constexpr uint64_t    nprocs{64};
+        std::vector<uint64_t> max_per_layer{2, 4};
+        const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_per_layer)};
+        ERRCHK(vecprod(nprocs_per_layer) == nprocs);
+        PRINT_DEBUG_VECTOR(nprocs_per_layer);
+    }
+    {
+        constexpr uint64_t    nprocs{64};
+        std::vector<uint64_t> max_per_layer{2, 4, 4};
+        const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_per_layer)};
+        ERRCHK(vecprod(nprocs_per_layer) == nprocs);
+        PRINT_DEBUG_VECTOR(nprocs_per_layer);
+    }
+    {
+        constexpr uint64_t    nprocs{2};
+        std::vector<uint64_t> max_per_layer{8, 4};
+        const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_per_layer)};
+        ERRCHK(vecprod(nprocs_per_layer) == nprocs);
+        PRINT_DEBUG_VECTOR(nprocs_per_layer);
+    }
+    {
+        constexpr uint64_t    nprocs{8};
+        std::vector<uint64_t> max_per_layer{4, 4};
+        const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_per_layer)};
+        ERRCHK(vecprod(nprocs_per_layer) == nprocs);
+        PRINT_DEBUG_VECTOR(nprocs_per_layer);
+    }
+    {
+        constexpr uint64_t    nprocs{64};
+        std::vector<uint64_t> max_per_layer{2, 2, 2, 4, 4};
+        const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_per_layer)};
+        ERRCHK(vecprod(nprocs_per_layer) == nprocs);
+        PRINT_DEBUG_VECTOR(nprocs_per_layer);
+    }
+    {
+        constexpr uint64_t    nprocs{64};
+        std::vector<uint64_t> max_nprocs_per_layer{2, 4};
+        const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_nprocs_per_layer)};
+        const ac::shape global_nn{128, 128, 128};
+        auto            decomp{decompose_hierarchical(global_nn, nprocs_per_layer)};
+
+        const auto global_decomp{hierarchical_decomposition_to_global(decomp)};
+        PRINT_DEBUG(global_decomp);
+        PRINT_DEBUG(decomp);
+        ERRCHK((global_decomp == ac::shape{4, 4, 4}));
+        ERRCHK(prod(global_decomp) == nprocs);
+    }
+    return 0;
 }
 
 static MPI_Comm
 cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const ac::shape& global_nn)
 {
+    ERRCHK(test_get_nprocs_per_layer() == 0);
+
     // Get the number of processes
     int mpi_nprocs{-1};
     ERRCHK_MPI_API(MPI_Comm_size(parent_comm, &mpi_nprocs));

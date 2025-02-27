@@ -212,6 +212,9 @@ test_mpi_pack(const MPI_Comm& cart_comm, const ac::shape& global_nn)
                   dpack.data());
 
     ac::device_ndbuffer<T> dtst{local_mm};
+    ac::host_ndbuffer<T>   tmp{local_mm, 0};
+    ac::mr::copy(tmp.get(), dtst.get());
+    // ac::mr::fill(0, dtst.get());
     ac::mpi::unpack(cart_comm,
                     ac::mpi::get_dtype<T>(),
                     dpack.size(),
