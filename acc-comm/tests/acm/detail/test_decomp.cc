@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <numeric>
+#include <memory>
 
 #include "acm/detail/decomp.h"
 
