@@ -6,10 +6,10 @@
 
 namespace ac {
 
-template <typename T, typename Allocator>
-void segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
-                      const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
-                      ac::mr::pointer<T, Allocator>                     output);
+// template <typename T, typename Allocator>
+// void segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
+//                       const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
+//                       ac::mr::pointer<T, Allocator>                     output);
 
 template <typename T>
 void
@@ -35,15 +35,24 @@ segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac::inde
     }
 }
 
-} // namespace ac
+#if defined(ACM_DEVICE_ENABLED)
 
-#include "datatypes.h"
-namespace ac {
-template <>
+template <typename T>
 void segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
-                      const std::vector<DevicePointer>& inputs, DevicePointer output);
+                      const std::vector<ac::mr::device_pointer<T>>& inputs,
+                      ac::mr::device_pointer<T>                     output);
+
+#endif
 
 } // namespace ac
+
+// #include "datatypes.h"
+// namespace ac {
+// template <>
+// void segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
+//                       const std::vector<DevicePointer>& inputs, DevicePointer output);
+
+// } // namespace ac
 
 // #include "mpi_utils.h"
 
