@@ -4,6 +4,7 @@
 #include <random>
 
 #include "acm/detail/errchk.h"
+#include "acm/detail/math_utils.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
 #include "acm/detail/pack.h"
@@ -53,6 +54,45 @@ randomize(ac::mr::pointer<double, Allocator> ptr)
     ac::mr::copy(ref.get(), ptr);
 }
 
+/** Verifies the packing function used for benchmarking.
+ * Strategy:
+ *     1) Setup a full ndbuffer
+ *     2) Unpack iota to the position which should be packed
+ *     3) Call the pack function
+ *     4) Confirm that the result matches iota
+ */
+template <typename T, typename Allocator>
+static int
+verify_pack(const ac::shape& mm, const ac::shape& nn, const ac::index& rr,
+            ac::mr::pointer<T, Allocator> input, const std::function<void()>& fn,
+            ac::mr::pointer<T, Allocator> output)
+{
+    // Scramble inputs
+    randomize(input);
+    randomize(output);
+
+    // Test
+    ac::host_ndbuffer<T> full{mm, 0};
+
+    ac::host_ndbuffer<T> packed{nn};
+    std::iota(packed.begin(), packed.end(), 1);
+
+    unpack(packed.get(), mm, nn, rr, {full.get()});
+    std::fill(packed.begin(), packed.end(), 0);
+    // full.display();
+    // packed.display();
+
+    ac::mr::copy(full.get(), input);
+    fn();
+    ac::mr::copy(output, packed.get());
+
+    // packed.display();
+    for (size_t i{0}; i < packed.size(); ++i)
+        ERRCHK(within_machine_epsilon(packed[i], static_cast<T>(i + 1)));
+
+    return 0;
+}
+
 int
 main()
 {
@@ -60,9 +100,9 @@ main()
     try {
 
         // Setup domain and communicator
-        const ac::shape global_nn{256, 256, 256};
+        const ac::shape global_nn{8, 8};
         MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
-        const auto      rr{ac::make_index(global_nn.size(), 3)};
+        const auto      rr{ac::make_index(global_nn.size(), 1)};
 
         // Setup the buffers
         const ac::shape local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
@@ -76,9 +116,26 @@ main()
         ac::ndbuffer<T, ac::mr::device_allocator> dtst{local_mm};
         ac::ndbuffer<T, ac::mr::device_allocator> dpack{local_nn};
 
+        // verify_pack(
+        //     local_mm,
+        //     local_nn,
+        //     rr,
+        //     href.get(),
+        //     [&]() {
+        //         ac::mpi::pack(cart_comm,
+        //                       ac::mpi::get_dtype<T>(),
+        //                       local_mm,
+        //                       local_nn,
+        //                       rr,
+        //                       href.data(),
+        //                       hpack.size(),
+        //                       hpack.data());
+        //     },
+        //     hpack.get());
+        // return EXIT_SUCCESS;
+
         // MPI
-        randomize(href.get());
-        benchmark("MPI htoh pack", [&]() {
+        auto mpi_htoh_pack{[&]() {
             ac::mpi::pack(cart_comm,
                           ac::mpi::get_dtype<T>(),
                           local_mm,
@@ -87,10 +144,12 @@ main()
                           href.data(),
                           hpack.size(),
                           hpack.data());
-        });
-
+        }};
+        verify_pack(local_mm, local_nn, rr, href.get(), mpi_htoh_pack, hpack.get());
         randomize(href.get());
-        benchmark("MPI htod pack", [&]() {
+        benchmark("MPI htoh pack", mpi_htoh_pack);
+
+        auto mpi_htod_pack{[&]() {
             ac::mpi::pack(cart_comm,
                           ac::mpi::get_dtype<T>(),
                           local_mm,
@@ -99,10 +158,12 @@ main()
                           href.data(),
                           dpack.size(),
                           dpack.data());
-        });
+        }};
+        verify_pack(local_mm, local_nn, rr, href.get(), mpi_htod_pack, dpack.get());
+        randomize(href.get());
+        benchmark("MPI htod pack", mpi_htod_pack);
 
-        randomize(dref.get());
-        benchmark("MPI dtoh pack", [&]() {
+        auto mpi_dtoh_pack{[&]() {
             ac::mpi::pack(cart_comm,
                           ac::mpi::get_dtype<T>(),
                           local_mm,
@@ -111,10 +172,12 @@ main()
                           dref.data(),
                           hpack.size(),
                           hpack.data());
-        });
-
+        }};
+        verify_pack(local_mm, local_nn, rr, dref.get(), mpi_dtoh_pack, hpack.get());
         randomize(dref.get());
-        benchmark("MPI dtod pack", [&]() {
+        benchmark("MPI dtoh pack", mpi_dtoh_pack);
+
+        auto mpi_dtod_pack{[&]() {
             ac::mpi::pack(cart_comm,
                           ac::mpi::get_dtype<T>(),
                           local_mm,
@@ -123,10 +186,13 @@ main()
                           dref.data(),
                           dpack.size(),
                           dpack.data());
-        });
+        }};
+        verify_pack(local_mm, local_nn, rr, dref.get(), mpi_dtod_pack, dpack.get());
+        randomize(dref.get());
+        benchmark("MPI dtod pack", mpi_dtod_pack);
 
         randomize(dref.get());
-        benchmark("MPI dtod unpack", [&]() {
+        benchmark("MPI dtod unpack (note: not verified)", [&]() {
             ac::mpi::unpack(cart_comm,
                             ac::mpi::get_dtype<T>(),
                             dpack.size(),
@@ -137,12 +203,14 @@ main()
                             dref.data());
         });
 
+        auto acm_dtod_pack{
+            [&]() { pack(local_mm, local_nn, rr, std::vector{dref.get()}, dpack.get()); }};
+        verify_pack(local_mm, local_nn, rr, dref.get(), acm_dtod_pack, dpack.get());
         randomize(dref.get());
-        benchmark("ACM dtod pack",
-                  [&]() { pack(local_mm, local_nn, rr, std::vector{dref.get()}, dpack.get()); });
+        benchmark("ACM dtod pack", acm_dtod_pack);
 
         randomize(dpack.get());
-        benchmark("ACM dtod unpack",
+        benchmark("ACM dtod unpack (note: not verified)",
                   [&]() { unpack(dpack.get(), local_mm, local_nn, rr, std::vector{dref.get()}); });
 
         ac::mpi::cart_comm_destroy(&cart_comm);
