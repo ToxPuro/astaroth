@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <limits>
+#include <mpi.h>
 #include <numeric> // std::iota
 
 #include "acm/detail/algorithm.h"
@@ -9,6 +10,7 @@
 #include "acm/detail/math_utils.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
+#include "acm/detail/ntuple.h"
 #include "acm/detail/partition.h"
 #include "acm/detail/print_debug.h"
 #include "acm/detail/type_conversion.h"
@@ -416,6 +418,69 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
     }
 }
 
+template <typename T>
+static void
+test_xy_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr)
+{
+    const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+
+    ac::host_ndbuffer<T> gbuf{global_nn};
+    std::iota(gbuf.begin(), gbuf.end(), 1);
+
+    ac::device_ndbuffer<T> lbuf{local_mm};
+    ac::mpi::scatter_advanced(cart_comm,
+                              ac::mpi::get_dtype<T>(),
+                              global_nn,
+                              ac::make_index(global_nn.size(), 0),
+                              gbuf.data(),
+                              local_mm,
+                              local_nn,
+                              rr,
+                              lbuf.data());
+
+    // Pack
+    ac::device_ndbuffer<T> lpbuf{local_nn};
+    pack(local_mm, local_nn, rr, {lbuf.get()}, lpbuf.get());
+
+    const auto                 axis{local_nn.size() - 1};
+    const auto                 count{local_nn[axis]};
+    const uint64_t             stride{prod(slice(local_nn, 0, local_nn.size() - 1))};
+    const ac::device_buffer<T> lreducebuf{count, -1};
+    ac::segmented_reduce(
+        count,
+        stride,
+        lpbuf.get(),
+        [](const auto& a, const auto& b) { return a + b; },
+        static_cast<T>(0),
+        lreducebuf.get());
+    ac::mpi::reduce_axis(cart_comm,
+                         ac::mpi::get_dtype<T>(),
+                         MPI_SUM,
+                         axis,
+                         count,
+                         lreducebuf.data());
+
+    /** Return the expected sum of the `i`th block, where each block contains `stride` elements and
+     * the blocks have been initialized in an increasing order from 1.
+     *
+     * For example:
+     *  Block 0: [1, 100], where subsequent values are 1, 2, 3, ...
+     *  Block 1: [101, 201]
+     *  ...
+     *
+     * Expression: sum_{i}^{n} = n(n+1) / 2
+     */
+    auto expected_sum = [](const uint64_t i, const uint64_t stride) {
+        return (i + 1) * stride * ((i + 1) * stride + 1) / 2 - i * stride * (i * stride + 1) / 2;
+    };
+
+    const auto host_lreducebuf{lreducebuf.to_host()};
+    for (size_t i{0}; i < count; ++i)
+        ERRCHK_MPI(within_machine_epsilon(static_cast<double>(host_lreducebuf[i]),
+                                          static_cast<double>(expected_sum(i, stride))));
+}
+
 int
 main()
 {
@@ -487,6 +552,13 @@ main()
             const ac::index rr{2, 1, 3};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
             test_pipeline(cart_comm, global_nn, rr);
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{6, 4, 8};
+            const ac::index rr{2, 1, 3};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            test_xy_reduce<double>(cart_comm, global_nn, rr);
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
     }
