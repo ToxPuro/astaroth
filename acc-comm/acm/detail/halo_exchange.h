@@ -15,7 +15,7 @@
  * returns, the send buffer can be freely modified.
  */
 template <typename T>
-std::vector<MPI_Request>
+[[nodiscard]] std::vector<MPI_Request>
 launch_halo_exchange(const MPI_Comm& parent_comm, const ac::shape& local_mm,
                      const ac::shape& local_nn, const ac::shape& rr, const T* send_data,
                      T* recv_data)
