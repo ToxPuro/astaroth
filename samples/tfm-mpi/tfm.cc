@@ -884,11 +884,36 @@ class Grid {
 
         // Profiles
         ERRCHK(init_tfm_profiles(device) == 0);
-        // Note: all fields and profiles are initialized to 0 except
-        // the test profiles (PROFILE_B11 to PROFILE_B22)
+// Note: all fields and profiles are initialized to 0 except
+// the test profiles (PROFILE_B11 to PROFILE_B22)
 
-        // Debug: randomize
+// Debug:
+#if defined(TFM_DEBUG_AVG_KERNEL)
         // randomize(cart_comm, device, all_fields, BufferGroup::input);
+        AcMeshInfo info{};
+        ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+        const auto global_nn{acr::get_global_nn(info)};
+        const auto rr{acr::get_local_rr()};
+        const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+        const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+
+        ac::host_ndbuffer<double> tmp{global_nn};
+        ac::host_ndbuffer<double> ltmp{local_mm};
+        std::iota(tmp.begin(), tmp.end(), 1);
+
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        for (size_t i{0}; i < NUM_FIELDS; ++i)
+            ac::mpi::scatter_advanced(cart_comm,
+                                      ac::mpi::get_dtype<double>(),
+                                      global_nn,
+                                      ac::make_index(global_nn.size(), 0),
+                                      tmp.data(),
+                                      local_mm,
+                                      local_nn,
+                                      rr,
+                                      vba.in[static_cast<Field>(i)]);
+#endif
     }
 
     void reduce_xy_averages(const Stream stream)

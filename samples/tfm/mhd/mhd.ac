@@ -25,11 +25,6 @@ int AC_simulation_reset_test_field_interval
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 
-#if LOO
-Field VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ
-Field VTXBUF_UU_DOT_OO
-#endif
-
 #if LMAGNETIC
 Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 #define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
@@ -37,6 +32,11 @@ Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 
 #if LENTROPY 
 Field VTXBUF_ENTROPY
+#endif
+
+#if LOO
+Field VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ
+Field VTXBUF_UU_DOT_OO
 #endif
 
 #if LTFM
@@ -842,5 +842,33 @@ Kernel randomize() {
     for field in 0:NUM_FIELDS+NUM_PROFILES {
         r = 2.0 * rand_uniform() - 1.0
         write(field, AC_rng_scale * r)
+    }
+}
+
+Kernel average_hydro() {
+    for field in 0+VTXBUF_LNRHO:VTXBUF_LNRHO+8 {
+        result = 0.0
+        for k in -3:4 {
+            for j in -3:4 {
+                for i in -3:4 {
+                    result = result + (1. / 343.) * FIELD_IN[field][IDX(vertexIdx.x + i, vertexIdx.y + j, vertexIdx.z + k)]
+                }
+            }
+        }
+        write(field, result)
+    }
+}
+
+Kernel average_tfm() {
+    for field in 0+TF_a11_x:TF_a11_x+12 {
+        result = 0.0
+        for k in -3:4 {
+            for j in -3:4 {
+                for i in -3:4 {
+                    result = result + (1. / 343.) * FIELD_IN[field][IDX(vertexIdx.x + i, vertexIdx.y + j, vertexIdx.z + k)]
+                }
+            }
+        }
+        write(field, result)
     }
 }
