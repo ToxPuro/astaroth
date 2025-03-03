@@ -64,3 +64,4 @@ samples/thrusttest/build-hip.sh
 samples/thrusttest/build-host.sh
 samples/thrusttest/thrust.cu
 samples/tfm-mpi/visualize-simple.py
+acc-comm/acm/detail/test-merged-mpi-cuda/
