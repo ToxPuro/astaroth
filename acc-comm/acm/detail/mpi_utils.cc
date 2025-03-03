@@ -325,7 +325,7 @@ subarray_create(const ac::shape& dims, const ac::shape& subdims, const ac::index
     return subarray;
 }
 
-MPI_Datatype
+static MPI_Datatype
 subarray_create_resized(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
                         const MPI_Datatype& dtype, const MPI_Aint lower_bound,
                         const MPI_Aint extent)
