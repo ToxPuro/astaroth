@@ -446,7 +446,7 @@ test_xy_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::
     const auto                 axis{local_nn.size() - 1};
     const auto                 count{local_nn[axis]};
     const uint64_t             stride{prod(slice(local_nn, 0, local_nn.size() - 1))};
-    const ac::device_buffer<T> lreducebuf{count, -1};
+    const auto lreducebuf{ac::host_buffer<T>{count, -1}.to_device()};
     ac::segmented_reduce(
         count,
         stride,
