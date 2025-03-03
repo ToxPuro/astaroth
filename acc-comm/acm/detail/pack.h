@@ -86,4 +86,16 @@ extern template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>
                                         std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
 #undef PACK_DTYPE
 
+#define PACK_DTYPE int
+extern template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape,
+                                      const ac::index& block_offset,
+                                      const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
+                                      ac::mr::device_pointer<PACK_DTYPE> output);
+
+extern template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input,
+                                        const ac::shape& mm, const ac::shape& block_shape,
+                                        const ac::index& block_offset,
+                                        std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
+#undef PACK_DTYPE
+
 #endif
