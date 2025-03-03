@@ -78,15 +78,27 @@ Field TF_uxb22_x, TF_uxb22_y, TF_uxb22_z
 // Mean-field profiles
 Profile PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
 
+#define PROFILE_Umean Profile3(PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z)
+
 Profile PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z
 Profile PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z
 Profile PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z
 Profile PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z
 
+#define PROFILE_ucrossb11mean Profile3(PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z)
+#define PROFILE_ucrossb12mean Profile3(PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z)
+#define PROFILE_ucrossb21mean Profile3(PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z)
+#define PROFILE_ucrossb22mean Profile3(PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z)
+
 Profile PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z
 Profile PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z
 Profile PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z
 Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
+
+#define PROFILE_B11mean Profile3(PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z)
+#define PROFILE_B12mean Profile3(PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z)
+#define PROFILE_B21mean Profile3(PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z)
+#define PROFILE_B22mean Profile3(PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z)
 #endif
 
 // Device constants
@@ -530,6 +542,66 @@ rk3_step2(s0, s1, roc) {
 }
 
 #if LTFM
+roc_tf(aa_handle, bmean_handle, uxb_handle) {
+    jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
+    bb = curl(aa_handle)
+    Umean = vecvalue(umean_handle)
+    Bmean = vecvalue(bmean_handle)
+    uu = vecvalue(uu_handle)
+    uxbmean = vecvalue(uxbmean_handle)
+    return cross(Umean, bb) + cross(uu, Bmean) + cross(uu, bb) + uxb - AC_eta_tfm * jj
+}
+
+singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle) {
+    uu_handle = UU
+    aa_roc = roc_tf(aa_handle, bmean_hadle, uxb_handle)
+
+    write(aa_handle.x, rk3_step0(previous(aa_handle.x), value(aa_handle.x), aa_roc.x))
+    write(aa_handle.y, rk3_step0(previous(aa_handle.y), value(aa_handle.y), aa_roc.y))
+    write(aa_handle.z, rk3_step0(previous(aa_handle.z), value(aa_handle.z), aa_roc.z))
+
+    uu = vecvalue(uu_handle)
+    bb = curl(aa_handle)
+    uxb = cross(uu, bb)
+    write(uxb_handle.x, uxb.x)
+    write(uxb_handle.y, uxb.y)
+    write(uxb_handle.z, uxb.z)
+}
+
+Kernel singlepass_solve_step0_tfm_b11() {
+    aa_handle = TF_a11
+    bmean_handle = B11_mean
+    uxb_handle = TF_uxb11
+
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle)
+}
+
+Kernel singlepass_solve_step0_tfm_b12() {
+    aa_handle = TF_a12
+    bmean_handle = B12_mean
+    uxb_handle = TF_uxb12
+
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle)
+}
+
+Kernel singlepass_solve_step0_tfm_b21() {
+    aa_handle = TF_a21
+    bmean_handle = B21_mean
+    uxb_handle = TF_uxb21
+
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle)
+}
+
+Kernel singlepass_solve_step0_tfm_b22() {
+    aa_handle = TF_a22
+    bmean_handle = B22_mean
+    uxb_handle = TF_uxb22
+
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle)
+}
+#endif
+
+#if LTFMM_DISABLED
 roc_TF_a22_x() {
     return AC_eta_tfm*deryy(TF_a22_x) + AC_eta_tfm*derzz(TF_a22_x) - AC_eta_tfm*derxy(TF_a22_y) - AC_eta_tfm*derxz(TF_a22_z) + value(FIELD_u_y)*value(PROFILE_B22mean_z) - value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*value(PROFILE_B22mean_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z) - value(PROFILE_Umean_y)*dery(TF_a22_x) + value(PROFILE_Umean_y)*derx(TF_a22_y) - value(PROFILE_Umean_z)*derz(TF_a22_x) + value(PROFILE_Umean_z)*derx(TF_a22_z) - value(PROFILE_ucrossb22mean_x)
 }
