@@ -68,6 +68,9 @@ add_compile_options(# C/CXX/CUDA/HIP
                     #$<$<COMPILE_LANGUAGE:HIP>:-Wno-implicit-int-float-conversion>
                     # CUDA
                     #$<$<COMPILE_LANGUAGE:CUDA>:--restrict>
+                    # MPI
+                    # Workaround: MPI_CXX_SKIP_MPICXX not applied properly for some reason
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-DOMPI_SKIP_MPICXX>
 )
 
 ## Testing
