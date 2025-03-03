@@ -447,13 +447,21 @@ test_xy_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::
     const auto                 count{local_nn[axis]};
     const uint64_t             stride{prod(slice(local_nn, 0, local_nn.size() - 1))};
     const auto lreducebuf{ac::host_buffer<T>{count, -1}.to_device()};
+
+    // TMP workaround start (until device implementation done)
+    auto tmp_lpbuf{lpbuf.to_host()};
+    auto tmp_lreducebuf{lreducebuf.to_host()};
     ac::segmented_reduce(
         count,
         stride,
-        lpbuf.get(),
+        tmp_lpbuf.get(),
         [](const auto& a, const auto& b) { return a + b; },
         static_cast<T>(0),
-        lreducebuf.get());
+        tmp_lreducebuf.get());
+    ac::mr::copy(tmp_lreducebuf.get(), lreducebuf.get());
+    // TMP workaround end
+
+
     ac::mpi::reduce_axis(cart_comm,
                          ac::mpi::get_dtype<T>(),
                          MPI_SUM,
