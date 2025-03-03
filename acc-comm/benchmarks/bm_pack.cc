@@ -61,11 +61,11 @@ randomize(ac::mr::pointer<double, Allocator> ptr)
  *     3) Call the pack function
  *     4) Confirm that the result matches iota
  */
-template <typename T, typename Allocator>
+template <typename T, typename AllocatorA, typename AllocatorB>
 static int
 verify_pack(const ac::shape& mm, const ac::shape& nn, const ac::index& rr,
-            ac::mr::pointer<T, Allocator> input, const std::function<void()>& fn,
-            ac::mr::pointer<T, Allocator> output)
+            ac::mr::pointer<T, AllocatorA> input, const std::function<void()>& fn,
+            ac::mr::pointer<T, AllocatorB> output)
 {
     // Scramble inputs
     randomize(input);
