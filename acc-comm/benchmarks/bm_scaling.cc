@@ -77,11 +77,11 @@ verify_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
 
     const auto                          local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
     const auto                          local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
-    std::array<ac::host_ndbuffer<T>, 4> lbufs{
-        ac::device_ndbuffer<T>{local_mm, -1},
-        ac::device_ndbuffer<T>{local_mm, -1},
-        ac::device_ndbuffer<T>{local_mm, -1},
-        ac::device_ndbuffer<T>{local_mm, -1},
+    std::array<ac::device_ndbuffer<T>, 4> lbufs{
+        ac::host_ndbuffer<T>{local_mm, -1}.to_device(),
+        ac::host_ndbuffer<T>{local_mm, -1}.to_device(),
+        ac::host_ndbuffer<T>{local_mm, -1}.to_device(),
+        ac::host_ndbuffer<T>{local_mm, -1}.to_device(),
     };
 
     for (size_t i{0}; i < gbufs.size(); ++i)
@@ -95,7 +95,7 @@ verify_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
                                   rr,
                                   lbufs[i].data());
 
-    std::vector<ac::mr::host_pointer<T>> lptrs;
+    std::vector<ac::mr::device_pointer<T>> lptrs;
     for (auto& lbuf : lbufs)
         lptrs.push_back(lbuf.get());
 
