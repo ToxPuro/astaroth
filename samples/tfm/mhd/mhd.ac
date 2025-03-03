@@ -85,10 +85,10 @@ Profile PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_
 Profile PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z
 Profile PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z
 
-#define PROFILE_ucrossb11mean Profile3(PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z)
-#define PROFILE_ucrossb12mean Profile3(PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z)
-#define PROFILE_ucrossb21mean Profile3(PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z)
-#define PROFILE_ucrossb22mean Profile3(PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z)
+#define PROFILE_uxb11mean Profile3(PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z)
+#define PROFILE_uxb12mean Profile3(PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z)
+#define PROFILE_uxb21mean Profile3(PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z)
+#define PROFILE_uxb22mean Profile3(PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z)
 
 Profile PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z
 Profile PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z
@@ -542,25 +542,25 @@ rk3_step2(s0, s1, roc) {
 }
 
 #if LTFM
-roc_tf(aa_handle, bmean_handle, uxb_handle) {
+roc_tf(aa_handle, bmean_handle, uxbmean_handle) {
     jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
     bb = curl(aa_handle)
-    Umean = vecvalue(umean_handle)
+    Umean = vecvalue(PROFILE_Umean)
     Bmean = vecvalue(bmean_handle)
-    uu = vecvalue(uu_handle)
+    uu = vecvalue(UU)
     uxbmean = vecvalue(uxbmean_handle)
-    return cross(Umean, bb) + cross(uu, Bmean) + cross(uu, bb) + uxb - AC_eta_tfm * jj
+    return cross(Umean, bb) + cross(uu, Bmean) + cross(uu, bb) + uxbmean - AC_eta_tfm * jj
 }
 
-singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle) {
-    uu_handle = UU
-    aa_roc = roc_tf(aa_handle, bmean_hadle, uxb_handle)
+singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle) {
 
-    write(aa_handle.x, rk3_step0(previous(aa_handle.x), value(aa_handle.x), aa_roc.x))
-    write(aa_handle.y, rk3_step0(previous(aa_handle.y), value(aa_handle.y), aa_roc.y))
-    write(aa_handle.z, rk3_step0(previous(aa_handle.z), value(aa_handle.z), aa_roc.z))
+    aa_roc = roc_tf(aa_handle, bmean_handle, uxbmean_handle)
 
-    uu = vecvalue(uu_handle)
+    write(aa_handle.x, rk3_step0(previous(Field(aa_handle.x)), value(Field(aa_handle.x)), aa_roc.x))
+    write(aa_handle.y, rk3_step0(previous(Field(aa_handle.y)), value(Field(aa_handle.y)), aa_roc.y))
+    write(aa_handle.z, rk3_step0(previous(Field(aa_handle.z)), value(Field(aa_handle.z)), aa_roc.z))
+
+    uu = vecvalue(UU)
     bb = curl(aa_handle)
     uxb = cross(uu, bb)
     write(uxb_handle.x, uxb.x)
@@ -570,34 +570,142 @@ singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle) {
 
 Kernel singlepass_solve_step0_tfm_b11() {
     aa_handle = TF_a11
-    bmean_handle = B11_mean
+    bmean_handle = PROFILE_B11mean
     uxb_handle = TF_uxb11
+    uxbmean_handle = PROFILE_uxb11mean
 
-    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle)
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
 }
 
 Kernel singlepass_solve_step0_tfm_b12() {
     aa_handle = TF_a12
-    bmean_handle = B12_mean
+    bmean_handle = PROFILE_B12mean
     uxb_handle = TF_uxb12
+    uxbmean_handle = PROFILE_uxb12mean
 
-    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle)
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
 }
 
 Kernel singlepass_solve_step0_tfm_b21() {
     aa_handle = TF_a21
-    bmean_handle = B21_mean
+    bmean_handle = PROFILE_B21mean
     uxb_handle = TF_uxb21
+    uxbmean_handle = PROFILE_uxb21mean
 
-    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle)
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
 }
 
 Kernel singlepass_solve_step0_tfm_b22() {
     aa_handle = TF_a22
-    bmean_handle = B22_mean
+    bmean_handle = PROFILE_B22mean
     uxb_handle = TF_uxb22
+    uxbmean_handle = PROFILE_uxb22mean
 
-    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle)
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle) {
+
+    aa_roc = roc_tf(aa_handle, bmean_handle, uxbmean_handle)
+
+    write(aa_handle.x, rk3_step1(previous(Field(aa_handle.x)), value(Field(aa_handle.x)), aa_roc.x))
+    write(aa_handle.y, rk3_step1(previous(Field(aa_handle.y)), value(Field(aa_handle.y)), aa_roc.y))
+    write(aa_handle.z, rk3_step1(previous(Field(aa_handle.z)), value(Field(aa_handle.z)), aa_roc.z))
+
+    uu = vecvalue(UU)
+    bb = curl(aa_handle)
+    uxb = cross(uu, bb)
+    write(uxb_handle.x, uxb.x)
+    write(uxb_handle.y, uxb.y)
+    write(uxb_handle.z, uxb.z)
+}
+
+Kernel singlepass_solve_step1_tfm_b11() {
+    aa_handle = TF_a11
+    bmean_handle = PROFILE_B11mean
+    uxb_handle = TF_uxb11
+    uxbmean_handle = PROFILE_uxb11mean
+
+    singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step1_tfm_b12() {
+    aa_handle = TF_a12
+    bmean_handle = PROFILE_B12mean
+    uxb_handle = TF_uxb12
+    uxbmean_handle = PROFILE_uxb12mean
+
+    singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step1_tfm_b21() {
+    aa_handle = TF_a21
+    bmean_handle = PROFILE_B21mean
+    uxb_handle = TF_uxb21
+    uxbmean_handle = PROFILE_uxb21mean
+
+    singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step1_tfm_b22() {
+    aa_handle = TF_a22
+    bmean_handle = PROFILE_B22mean
+    uxb_handle = TF_uxb22
+    uxbmean_handle = PROFILE_uxb22mean
+
+    singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+singlepass_solve_step2_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle) {
+
+    aa_roc = roc_tf(aa_handle, bmean_handle, uxbmean_handle)
+
+    write(aa_handle.x, rk3_step2(previous(Field(aa_handle.x)), value(Field(aa_handle.x)), aa_roc.x))
+    write(aa_handle.y, rk3_step2(previous(Field(aa_handle.y)), value(Field(aa_handle.y)), aa_roc.y))
+    write(aa_handle.z, rk3_step2(previous(Field(aa_handle.z)), value(Field(aa_handle.z)), aa_roc.z))
+
+    uu = vecvalue(UU)
+    bb = curl(aa_handle)
+    uxb = cross(uu, bb)
+    write(uxb_handle.x, uxb.x)
+    write(uxb_handle.y, uxb.y)
+    write(uxb_handle.z, uxb.z)
+}
+
+Kernel singlepass_solve_step2_tfm_b11() {
+    aa_handle = TF_a11
+    bmean_handle = PROFILE_B11mean
+    uxb_handle = TF_uxb11
+    uxbmean_handle = PROFILE_uxb11mean
+
+    singlepass_solve_step2_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step2_tfm_b12() {
+    aa_handle = TF_a12
+    bmean_handle = PROFILE_B12mean
+    uxb_handle = TF_uxb12
+    uxbmean_handle = PROFILE_uxb12mean
+
+    singlepass_solve_step2_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step2_tfm_b21() {
+    aa_handle = TF_a21
+    bmean_handle = PROFILE_B21mean
+    uxb_handle = TF_uxb21
+    uxbmean_handle = PROFILE_uxb21mean
+
+    singlepass_solve_step2_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step2_tfm_b22() {
+    aa_handle = TF_a22
+    bmean_handle = PROFILE_B22mean
+    uxb_handle = TF_uxb22
+    uxbmean_handle = PROFILE_uxb22mean
+
+    singlepass_solve_step2_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
 }
 #endif
 
@@ -716,7 +824,7 @@ Kernel singlepass_solve_step0() {
 #endif
 }
 //////////////////////
-#if LTFM
+#if LTFMM_DISABLED
 Kernel singlepass_solve_step1_tfm_b22(){
     write(TF_a22_x, rk3_step1(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
     write(TF_a22_y, rk3_step1(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
@@ -795,7 +903,7 @@ Kernel singlepass_solve_step1() {
 #endif
 }
 //////////////////////////////////////////
-#if LTFM
+#if LTFMM_DISABLED
 Kernel singlepass_solve_step2_tfm_b22(){
     write(TF_a22_x, rk3_step2(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
     write(TF_a22_y, rk3_step2(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
