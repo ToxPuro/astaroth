@@ -33,6 +33,8 @@
 #define print printf
 #define len(arr) (sizeof(arr) / sizeof(arr[0]))
 #define rand_uniform() (0.5065983774206012) // Chosen by a fair dice roll.
+#define FIELD_IN (vba.in)
+#define FIELD_OUT (vba.out)
 // Guaranteed to be random.
 // ref. xkcd :)
 

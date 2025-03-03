@@ -266,6 +266,8 @@ IDX(const int3 idx)
 #define Field3(x, y, z) make_int3((x), (y), (z))
 #define print printf                          // TODO is this a good idea?
 #define len(arr) sizeof(arr) / sizeof(arr[0]) // Leads to bugs if the user
+#define FIELD_IN (vba.in)
+#define FIELD_OUT (vba.out)
 // passes an array into a device function and then calls len (need to modify
 // the compiler to always pass arrays to functions as references before
 // re-enabling)
@@ -631,8 +633,9 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See note in acLoadStencil */                     \
                                                                                \
-  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
-                        (size_t)&d_mesh_info;                                  \
+  const size_t offset = (size_t) &                                             \
+                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
+                        d_mesh_info;                                           \
                                                                                \
   const cudaError_t retval = cudaMemcpyToSymbol(                               \
       d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);     \
@@ -685,8 +688,9 @@ acLoadInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See notes in GEN_LOAD_UNIFORM */                 \
                                                                                \
-  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
-                        (size_t)&d_mesh_info;                                  \
+  const size_t offset = (size_t) &                                             \
+                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
+                        d_mesh_info;                                           \
                                                                                \
   const cudaError_t retval = cudaMemcpyFromSymbol(                             \
       value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost);     \
