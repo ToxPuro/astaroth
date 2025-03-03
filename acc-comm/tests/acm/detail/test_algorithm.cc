@@ -39,7 +39,7 @@ main()
             [](const auto& a, const auto& b) { return a + b; },
             0,
             tst.get());
-        ERRCHK(tst[0] == (prod(nn) * (prod(nn) + 1)) / 2);
+        ERRCHK(tst[0] == as<int>((prod(nn) * (prod(nn) + 1)) / 2));
     }
 
     {

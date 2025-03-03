@@ -9,7 +9,7 @@ test_fn(const ac::ntuple<uint64_t>& arr)
     ERRCHK((arr == ac::ntuple<uint64_t>{1, 2, 3}));
 }
 
-void
+static void
 test_static_ntuple()
 {
     PRINT_LOG_WARNING("Not implemented");
