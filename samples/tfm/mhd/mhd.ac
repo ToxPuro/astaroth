@@ -21,6 +21,9 @@ int AC_simulation_snapshot_output_interval
 int AC_simulation_profile_output_interval
 int AC_simulation_reset_test_field_interval
 
+// TFM
+int AC_TFM_SOCA_enabled
+
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
@@ -40,6 +43,9 @@ Field VTXBUF_UU_DOT_OO
 #endif
 
 #if LTFM
+
+#define LTFM_HANDWRITTEN (1) // Note: SOCA not supported if this is off
+
 hostdefine AC_TFM_ENABLED (1)
 
 real AC_eta_tfm
@@ -541,7 +547,7 @@ rk3_step2(s0, s1, roc) {
     return s1 + beta[2 + 1] * ((alpha[2] / beta[2]) * (s1 - s0) + roc * AC_dt)
 }
 
-#if LTFM
+#if LTFM && LTFM_HANDWRITTEN
 roc_tf(aa_handle, bmean_handle, uxbmean_handle) {
     jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
     bb = curl(aa_handle)
@@ -549,7 +555,12 @@ roc_tf(aa_handle, bmean_handle, uxbmean_handle) {
     Bmean = vecvalue(bmean_handle)
     uu = vecvalue(UU)
     uxbmean = vecvalue(uxbmean_handle)
-    return cross(Umean, bb) + cross(uu, Bmean) + cross(uu, bb) + uxbmean - AC_eta_tfm * jj
+
+    result = cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj
+    if (!AC_TFM_SOCA_enabled) {
+        result = result + cross(uu, bb) + uxbmean
+    }
+    return result
 }
 
 singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle) {
@@ -709,7 +720,7 @@ Kernel singlepass_solve_step2_tfm_b22() {
 }
 #endif
 
-#if LTFMM_DISABLED
+#if LTFM && !LTFM_HANDWRITTEN
 roc_TF_a22_x() {
     return AC_eta_tfm*deryy(TF_a22_x) + AC_eta_tfm*derzz(TF_a22_x) - AC_eta_tfm*derxy(TF_a22_y) - AC_eta_tfm*derxz(TF_a22_z) + value(FIELD_u_y)*value(PROFILE_B22mean_z) - value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*value(PROFILE_B22mean_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z) - value(PROFILE_Umean_y)*dery(TF_a22_x) + value(PROFILE_Umean_y)*derx(TF_a22_y) - value(PROFILE_Umean_z)*derz(TF_a22_x) + value(PROFILE_Umean_z)*derx(TF_a22_z) - value(PROFILE_ucrossb22mean_x)
 }
@@ -824,7 +835,7 @@ Kernel singlepass_solve_step0() {
 #endif
 }
 //////////////////////
-#if LTFMM_DISABLED
+#if LTFM && !LTFM_HANDWRITTEN
 Kernel singlepass_solve_step1_tfm_b22(){
     write(TF_a22_x, rk3_step1(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
     write(TF_a22_y, rk3_step1(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
@@ -903,7 +914,7 @@ Kernel singlepass_solve_step1() {
 #endif
 }
 //////////////////////////////////////////
-#if LTFMM_DISABLED
+#if LTFM && !LTFM_HANDWRITTEN
 Kernel singlepass_solve_step2_tfm_b22(){
     write(TF_a22_x, rk3_step2(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
     write(TF_a22_y, rk3_step2(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))

@@ -175,3 +175,7 @@ write(VTXBUF_UUY, mom.y)
 write(VTXBUF_UUZ, mom.z)
 ```
 - Not checked for correctness
+
+### SOCA
+
+To compute TFM with SOCA, set `AC_TFM_SOCA_enabled = 1` in the configuration file (`mhd.ini` by default). Otherwise, the full TFM equations are computed.
