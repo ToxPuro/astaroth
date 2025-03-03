@@ -379,7 +379,6 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
         he.wait({distr_dref.get()});
 #if defined(ACM_DEVICE_ENABLED)
         PRINT_LOG_WARNING("xcorr and transform not yet implemented for device");
-        return;
 #else
         ac::xcorr(local_mm,
                   local_nn,
@@ -408,6 +407,7 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
                              ac::make_index(global_nn.size(), 0),
                              href.data());
 
+#if !defined(ACM_DEVICE_ENABLED)
     if (rank == 0) {
         const double expected_value{static_cast<double>(prod(global_nn) + 1) / 2.};
         std::cout << "Expected: " << expected_value << std::endl;
@@ -416,6 +416,9 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
         for (size_t i{0}; i < prod(global_nn); ++i)
             ERRCHK(within_machine_epsilon(href[i], expected_value));
     }
+#else
+    PRINT_LOG_WARNING("returning without checking results");
+#endif
 }
 
 template <typename T>
