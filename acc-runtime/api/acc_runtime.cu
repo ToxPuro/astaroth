@@ -264,6 +264,7 @@ IDX(const int3 idx)
 }
 
 #define Field3(x, y, z) make_int3((x), (y), (z))
+#define Profile3(x, y, z) make_int3((x), (y), (z))
 #define print printf                          // TODO is this a good idea?
 #define len(arr) sizeof(arr) / sizeof(arr[0]) // Leads to bugs if the user
 #define FIELD_IN (vba.in)

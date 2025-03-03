@@ -28,6 +28,7 @@
 #define blockDim ((int3){0, 0, 0})
 #define make_int3(x, y, z) ((int3){static_cast<int>(x), static_cast<int>(y), static_cast<int>(z)})
 #define Field3(x, y, z) make_int3(static_cast<int>(x), static_cast<int>(y), static_cast<int>(z))
+#define Profile3(x, y, z) make_int3(static_cast<int>(x), static_cast<int>(y), static_cast<int>(z))
 #define make_float3(x, y, z) ((float3){static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)})
 #define make_double3(x, y, z) ((double3){static_cast<double>(x), static_cast<double>(y), static_cast<double>(z)})
 #define print printf
