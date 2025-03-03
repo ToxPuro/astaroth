@@ -58,7 +58,7 @@ test_reduce_axis(const MPI_Comm& cart_comm, const ac::shape& global_nn)
     }
 }
 
-void
+static void
 test_scatter_gather(const MPI_Comm& cart_comm, const ac::shape& global_nn)
 {
     using T      = int;
@@ -114,7 +114,7 @@ test_scatter_gather(const MPI_Comm& cart_comm, const ac::shape& global_nn)
     }
 }
 
-void
+static void
 test_scatter_gather_advanced(const MPI_Comm& cart_comm, const ac::shape& global_nn)
 {
     using T      = int;
@@ -409,7 +409,7 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
                              href.data());
 
     if (rank == 0) {
-        const double expected_value{(prod(global_nn) + 1) / 2.};
+        const double expected_value{static_cast<double>(prod(global_nn) + 1) / 2.};
         std::cout << "Expected: " << expected_value << std::endl;
         std::cout << "Measured: " << href[0] << std::endl;
         href.display();
@@ -445,7 +445,7 @@ test_xy_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::
 
     const auto                 axis{local_nn.size() - 1};
     const auto                 count{local_nn[axis]};
-    const uint64_t             stride{prod(slice(local_nn, 0, local_nn.size() - 1))};
+    const uint64_t             lstride{prod(slice(local_nn, 0, local_nn.size() - 1))};
     const auto lreducebuf{ac::host_buffer<T>{count, -1}.to_device()};
 
     // TMP workaround start (until device implementation done)
@@ -453,7 +453,7 @@ test_xy_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::
     auto tmp_lreducebuf{lreducebuf.to_host()};
     ac::segmented_reduce(
         count,
-        stride,
+        lstride,
         tmp_lpbuf.get(),
         [](const auto& a, const auto& b) { return a + b; },
         static_cast<T>(0),
@@ -486,7 +486,7 @@ test_xy_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::
     const auto host_lreducebuf{lreducebuf.to_host()};
     for (size_t i{0}; i < count; ++i)
         ERRCHK_MPI(within_machine_epsilon(static_cast<double>(host_lreducebuf[i]),
-                                          static_cast<double>(expected_sum(i, stride))));
+                                          static_cast<double>(expected_sum(i, lstride))));
 }
 
 int
