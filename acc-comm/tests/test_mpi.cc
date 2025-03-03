@@ -446,10 +446,10 @@ test_xy_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::
     ac::device_ndbuffer<T> lpbuf{local_nn};
     pack(local_mm, local_nn, rr, {lbuf.get()}, lpbuf.get());
 
-    const auto                 axis{local_nn.size() - 1};
-    const auto                 count{local_nn[axis]};
-    const uint64_t             lstride{prod(slice(local_nn, 0, local_nn.size() - 1))};
-    const auto lreducebuf{ac::host_buffer<T>{count, -1}.to_device()};
+    const auto     axis{local_nn.size() - 1};
+    const auto     count{local_nn[axis]};
+    const uint64_t lstride{prod(slice(local_nn, 0, local_nn.size() - 1))};
+    const auto     lreducebuf{ac::host_buffer<T>{count, -1}.to_device()};
 
     // TMP workaround start (until device implementation done)
     auto tmp_lpbuf{lpbuf.to_host()};
@@ -463,7 +463,6 @@ test_xy_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::
         tmp_lreducebuf.get());
     ac::mr::copy(tmp_lreducebuf.get(), lreducebuf.get());
     // TMP workaround end
-
 
     ac::mpi::reduce_axis(cart_comm,
                          ac::mpi::get_dtype<T>(),
