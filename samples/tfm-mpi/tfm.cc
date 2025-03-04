@@ -903,7 +903,8 @@ class Grid {
 
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        for (size_t i{0}; i < NUM_FIELDS; ++i)
+        for (size_t i{0}; i < NUM_FIELDS; ++i) {
+            std::iota(tmp.begin(), tmp.end(), 1 + i * prod(global_nn));
             ac::mpi::scatter_advanced(cart_comm,
                                       ac::mpi::get_dtype<double>(),
                                       global_nn,
@@ -913,6 +914,7 @@ class Grid {
                                       local_nn,
                                       rr,
                                       vba.in[static_cast<Field>(i)]);
+        }
 #endif
     }
 
