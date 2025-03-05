@@ -146,8 +146,7 @@ init_tfm_profiles(const Device& device)
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
-    const AcReal global_sz{acr::get(info, AC_global_sz)};
-    const size_t global_nz{as<size_t>(acr::get(info, AC_global_grid_n).z)};
+    const auto dsz{acr::get(info, AC_dsz)};
     const long offset{-acr::get(info, AC_nz_min) + acr::get(info, AC_multigpu_offset).z};
     const size_t local_mz{as<size_t>(acr::get(info, AC_mz))};
 
@@ -166,8 +165,7 @@ init_tfm_profiles(const Device& device)
     }
 
     // B1c (here B11) and B2c (here B21) to cosine
-    acHostInitProfileToCosineWave(static_cast<long double>(global_sz),
-                                  global_nz,
+    acHostInitProfileToCosineWave(dsz,
                                   offset,
                                   amplitude,
                                   wavenumber,
@@ -177,8 +175,7 @@ init_tfm_profiles(const Device& device)
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y));
 
     // B1s (here B12) and B2s (here B22)
-    acHostInitProfileToSineWave(static_cast<long double>(global_sz),
-                                global_nz,
+    acHostInitProfileToSineWave(dsz,
                                 offset,
                                 amplitude,
                                 wavenumber,

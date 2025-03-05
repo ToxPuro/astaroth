@@ -1083,13 +1083,12 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 
 /** Inits the profile to cosine wave */
-AcResult acHostInitProfileToCosineWave(const long double box_size, const size_t nz,
-                                       const long offset, const AcReal amplitude,
-                                       const AcReal wavenumber, const size_t profile_count,
-                                       AcReal* profile);
+AcResult acHostInitProfileToCosineWave(const AcReal spacing, const long offset,
+                                       const AcReal amplitude, const AcReal wavenumber,
+                                       const size_t profile_count, AcReal* profile);
 
 /** Inits the profile to sine wave */
-AcResult acHostInitProfileToSineWave(const long double box_size, const size_t nz, const long offset,
+AcResult acHostInitProfileToSineWave(const AcReal spacing, const long offset,
                                      const AcReal amplitude, const AcReal wavenumber,
                                      const size_t profile_count, AcReal* profile);
 
