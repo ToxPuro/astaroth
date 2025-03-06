@@ -3931,42 +3931,6 @@ check_for_undeclared_use_in_range(const ASTNode* node)
 				,combine_all_new(range_node),node->buffer);
 }	
 static void
-check_for_undeclared_function(const ASTNode* node)
-{
-	  const ASTNode* func_call_node = get_parent_node(NODE_FUNCTION_CALL,node);
-	  if(func_call_node)
-	  {
-		if(get_node_by_token(IDENTIFIER,func_call_node->lhs)->id == node->id)
-		{
-			const char* tmp = combine_all_new(func_call_node);
-			const char* func_name = get_node_by_token(IDENTIFIER,func_call_node->lhs)->buffer;
-			const ASTNode* surrounding_func = get_parent_node(NODE_FUNCTION,node);
-			if(surrounding_func && strstr(get_node_by_token(IDENTIFIER,surrounding_func)->buffer,"AC_INTERNAL_COPY"))
-				return;
-			if(func_name == PERIODIC) return;
-			if(strstr(func_name,"AC_MANGLED_NAME")) return;
-			fprintf(stderr,FATAL_ERROR_MESSAGE);
-                        if(str_vec_contains(duplicate_dfuncs.names,func_name))
-			{
-                                fprintf(stderr,"Unable to resolve overloaded function: %s\nIn:\t%s\n",func_name,tmp);
-
-				func_params_info info = get_func_call_params_info(func_call_node);
-				fprintf(stderr,"Types: ");
-				for(size_t i = 0; i < info.types.size; ++i)
-					fprintf(stderr,"%s%s",info.types.data[i],i < info.types.size-1 ? "," : "");
-				fprintf(stderr,"\n");
-			}
-                        else
-                                fprintf(stderr,"Undeclared function used: %s\nIn:\t%s\n",func_name,tmp);
-			if(surrounding_func)
-                                fprintf(stderr,"Inside %s",get_node_by_token(IDENTIFIER,surrounding_func->lhs)->buffer);
-			fprintf(stderr,"\n");
-			exit(EXIT_FAILURE);
-		}
-
-	  }
-}
-static void
 check_for_undeclared_use_in_assignment(const ASTNode* node)
 {
 	
@@ -4013,7 +3977,6 @@ check_for_undeclared(const ASTNode* node)
 	if(add_auto(node))
 	{
 	 check_for_undeclared_use_in_range(node);
-	 check_for_undeclared_function(node);
 	 check_for_undeclared_use_in_assignment(node);
 	 check_for_undeclared_conditional(node);
 	}
@@ -9148,6 +9111,50 @@ check_uniquenes(const ASTNode* root, const NodeType type, const char* message_na
 
 }
 void
+check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
+{
+	TRAVERSE_PREAMBLE_PARAMS(check_for_undeclared_functions,root);
+	if(get_node(NODE_MEMBER_ID,node)) return;
+	if(!(node->type & NODE_FUNCTION_CALL)) return;
+	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	if(check_symbol(NODE_FUNCTION_ID,func_name,NULL,NULL)) return;
+	if(str_vec_contains(duplicate_dfuncs.names,func_name)) 
+	{
+		fprintf(stderr,FATAL_ERROR_MESSAGE);
+		fprintf(stderr,"Was not able to resolve overloaded function in call:\n%s\n",combine_all_new(node));
+		{
+			func_params_info info = get_func_call_params_info(node);
+                	fprintf(stderr,"Types: ");
+                	for(size_t i = 0; i < info.types.size; ++i)
+                	  fprintf(stderr,"%s%s",info.types.data[i] ? info.types.data[i] : "unknown"
+					  ,i < info.types.size-1 ? "," : "");
+		}
+                fprintf(stderr,"\n");
+                fprintf(stderr,"\n");
+		fprintf(stderr,"Possibilities:\n");
+		for(size_t i = 0; i < num_symbols[0]; ++i)
+		{
+			if(!symbol_table[i].identifier || 
+			   !strstr(symbol_table[i].identifier,func_name)) continue;
+
+			func_params_info info = get_function_params_info(root, symbol_table[i].identifier);
+			fprintf(stderr,"%s(",func_name);
+			for(size_t type = 0; type < info.types.size; ++type)
+			{
+                  		fprintf(stderr,"%s%s",info.types.data[type] ? info.types.data[type] : "auto"
+					  ,type < info.types.size-1 ? "," : "");
+			}
+			fprintf(stderr,")\n");
+		}
+                fprintf(stderr,"\n");
+                fprintf(stderr,"\n");
+		exit(EXIT_FAILURE);
+
+
+	}
+	fatal("Undeclared function in call: %s\n",combine_all_new(node));
+}
+void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 { 
   symboltable_reset();
@@ -9245,7 +9252,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 
   // Compile
   gen_stencils(gen_mem_accesses,stream);
-
+  check_for_undeclared_functions(root,root);
 
   traverse(root,NODE_NO_OUT,NULL);
   gen_type_info(root);
