@@ -9116,7 +9116,11 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 	TRAVERSE_PREAMBLE_PARAMS(check_for_undeclared_functions,root);
 	if(get_node(NODE_MEMBER_ID,node)) return;
 	if(!(node->type & NODE_FUNCTION_CALL)) return;
-	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+
+	char* tmp = strdup(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+        remove_suffix(tmp,"____");
+        const char* func_name = intern(tmp);
+
 	if(check_symbol(NODE_FUNCTION_ID,func_name,NULL,NULL)) return;
 	if(str_vec_contains(duplicate_dfuncs.names,func_name)) 
 	{
