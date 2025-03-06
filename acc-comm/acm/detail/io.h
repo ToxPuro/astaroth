@@ -2,6 +2,7 @@
 
 #include <mpi.h>
 
+#include "acm/detail/errchk_mpi.h"
 #include "mpi_utils.h"
 
 #include "buffer.h"
