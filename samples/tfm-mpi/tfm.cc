@@ -165,22 +165,12 @@ init_tfm_profiles(const Device& device)
     }
 
     // B1c (here B11) and B2c (here B21) to cosine
-    acHostInitProfileToCosineWave(dsz,
-                                  offset,
-                                  amplitude,
-                                  wavenumber,
-                                  local_mz,
-                                  host_profile.get());
+    acHostInitProfileToCosineWave(dsz, offset, amplitude, wavenumber, local_mz, host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y));
 
     // B1s (here B12) and B2s (here B22)
-    acHostInitProfileToSineWave(dsz,
-                                offset,
-                                amplitude,
-                                wavenumber,
-                                local_mz,
-                                host_profile.get());
+    acHostInitProfileToSineWave(dsz, offset, amplitude, wavenumber, local_mz, host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y));
 
