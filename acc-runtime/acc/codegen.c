@@ -4027,9 +4027,13 @@ translate_buffer_body(FILE* stream, const ASTNode* node)
     if (symbol && symbol->type & NODE_VARIABLE_ID && str_vec_contains(symbol->tqualifiers,DCONST_STR))
     {
       if(!strstr(symbol->tspecifier,"*") && !strstr(symbol->tspecifier,"AcArray"))
+      {
       	fprintf(stream, "DCONST(%s)", node->buffer);
+      }
       else
+      {
       	fprintf(stream, "(%s)", node->buffer);
+      }
     }
     else if (symbol && symbol->type & NODE_VARIABLE_ID && str_vec_contains(symbol->tqualifiers,RUN_CONST_STR))
       fprintf(stream, "RCONST(%s)", node->buffer);
@@ -4372,6 +4376,7 @@ typedef struct
 	bool skip_global_dup_check;
 	bool skip_shadowing_check;
 	const ASTNode* func_call;
+	bool do_not_add_to_symbol_table;
 } traverse_base_params;
 void
 traverse_base(const ASTNode* node, const NodeType return_on, const NodeType exclude, FILE* stream, traverse_base_params params)
@@ -4407,7 +4412,7 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
   if (node->lhs)
     traverse_base(node->lhs, return_on, exclude, stream, params);
 
-  const char* size = !params.func_call ?
+  const char* size = !params.func_call && !params.do_not_add_to_symbol_table ?
 		  add_to_symbol_table(node,exclude,stream,params.do_checks,params.decl,NULL,params.skip_global_dup_check,params.skip_shadowing_check)
 		: NULL;
   // Infix translation
@@ -4422,6 +4427,7 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
   {
     params.skip_global_dup_check |= (node->type & NODE_ASSIGNMENT);
     params.skip_global_dup_check |= (node->type & NODE_ARRAY_ACCESS);
+    params.do_not_add_to_symbol_table |= (node->type & NODE_ASSIGNMENT);
     traverse_base(node->rhs, return_on, exclude, stream,params);
   }
 
@@ -5307,14 +5313,46 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 			}
 		}
 }
+void
+gen_var_loader(const ASTNode* assignment, FILE* fp)
+{
+	const char* id = get_node_by_token(IDENTIFIER, assignment->lhs)->buffer;
+        if(!check_symbol(NODE_VARIABLE_ID,id,0,DCONST_STR)  && !check_symbol(NODE_VARIABLE_ID,id,0,RUN_CONST_STR)) return;
+	size_t size = 0;
+	char* rhs = NULL;
+	FILE* stream = open_memstream(&rhs,&size);
+
+  	traverse_base_params params;
+  	memset(&params,0,sizeof(params));
+  	params.do_checks = true;
+	params.skip_global_dup_check = true;
+	params.skip_shadowing_check = true;
+  	traverse_base(assignment->rhs, 0, 0, stream, params);
+	fclose(stream);
+	fprintf(fp,"push_val(%s,%s);\n",id,rhs);
+	free(rhs);
+}
+void
+gen_config_loaders(const ASTNode* node, FILE* fp)
+{
+	if(node->type & NODE_FUNCTION) return;
+	TRAVERSE_PREAMBLE_PARAMS(gen_config_loaders,fp);
+	if(!(node->type & NODE_ASSIGN_LIST)) return;
+	const ASTNode* tspec = get_node(NODE_TSPEC,node);
+	if(!tspec) return;
+	node_vec assignments = get_nodes_in_list(node->rhs);
+	for(size_t i = 0; i < assignments.size; ++i)
+	{
+		const ASTNode* assignment = get_node(NODE_ASSIGNMENT,assignments.data[i]);
+		if(assignment) gen_var_loader(assignment,fp);
+	}
+	free_node_vec(&assignments);
+}
 
 void
 gen_const_variables(const ASTNode* node, FILE* fp, FILE* fp_bi,FILE* fp_non_scalars,FILE* fp_bi_non_scalars)
 {
-	if(node->lhs)
-		gen_const_variables(node->lhs,fp,fp_bi,fp_non_scalars,fp_bi_non_scalars);
-	if(node->rhs)
-		gen_const_variables(node->rhs,fp,fp_bi,fp_non_scalars,fp_bi_non_scalars);
+	TRAVERSE_PREAMBLE_PARAMS(gen_const_variables,fp,fp_bi,fp_non_scalars,fp_bi_non_scalars);
 	if(!(node->type & NODE_ASSIGN_LIST)) return;
 	if(!has_qualifier(node,"const")) return;
 	const ASTNode* tspec = get_node(NODE_TSPEC,node);
@@ -5945,11 +5983,14 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   gen_const_variables(root,fp,fp_built_in,fp_non_scalar_constants,fp_bi_non_scalar_constants);
 
-
   fclose(fp);
   fclose(fp_built_in);
   fclose(fp_non_scalar_constants);
   fclose(fp_bi_non_scalar_constants);
+
+  fp = fopen("user_config_loader.h","w");
+  gen_config_loaders(root,fp);
+  fclose(fp);
 }
 
 
@@ -8462,6 +8503,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   transform_broadcast_assignments(root);
   free_structs_info(&s_info);
   symboltable_reset();
+
   traverse_base_params params;
   memset(&params,0,sizeof(params));
   params.do_checks = true;

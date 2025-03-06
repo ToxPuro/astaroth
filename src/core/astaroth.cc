@@ -262,7 +262,7 @@ AcResult
 acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 {
     mesh->info = info;
-    acHostUpdateBuiltinParams(&mesh->info);
+    acHostUpdateParams(&mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) 
 	mesh->vertex_buffer[w] = acHostCreateVertexBuffer(mesh->info);
     return acHostMeshCreateProfiles(mesh);

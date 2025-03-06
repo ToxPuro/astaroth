@@ -440,7 +440,7 @@ acGridInit(const AcMeshInfo info)
     submesh_info.int_params[AC_nz]             = submesh_nz;
     submesh_info.int3_params[AC_multigpu_offset] = pid3d *
                                                    (int3){submesh_nx, submesh_ny, submesh_nz};
-    acHostUpdateBuiltinParams(&submesh_info);
+    acHostUpdateParams(&submesh_info);
 
     // GPU alloc
     int devices_per_node = -1;

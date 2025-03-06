@@ -357,7 +357,7 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
     cudaSetDevice(device->id);
 
     AcMeshInfo device_config = config;
-    acHostUpdateBuiltinParams(&device_config);
+    acHostUpdateParams(&device_config);
 
     ERRCHK_ALWAYS(device_config[AC_nlocal] == device->local_config[AC_nlocal]);
     ERRCHK_ALWAYS(device_config[AC_multigpu_offset] == device->local_config[AC_multigpu_offset]);
@@ -422,7 +422,7 @@ acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 	                        {
 	                                if(isnan(stencils[stencil][x][y][z]))
 	                                {
-	                                        printf("loading a nan to stencil: %d, at %d,%d,%d!!\n", stencil,x,y,z);
+	                                        printf("loading a nan to stencil: %s, at %d,%d,%d!!\n", stencil_names[stencil],x,y,z);
 	                                }
 	                        }
 	                }

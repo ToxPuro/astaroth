@@ -196,7 +196,7 @@ FUNC_DEFINE(AcResult, acDeviceReduceVecScal,(const Device device, const Stream s
 /** */
 FUNC_DEFINE(AcResult, acDeviceReduceXY,(const Device device, const Stream stream, const Field field,
                                  const Profile profile, const AcReduction reduction));
-FUNC_DEFINE(AcResult, acDeviceReduceXYAverages(const Device , const Stream));
+FUNC_DEFINE(AcResult, acDeviceReduceXYAverages,(const Device , const Stream));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffer,(const Device device, const Profile handle));

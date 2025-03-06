@@ -1,47 +1,48 @@
 run_const real3 AC_ds
 run_const real AC_dsmin
 
-run_const real3 AC_inv_ds
-run_const real3 AC_inv_ds_2
-run_const real3 AC_inv_ds_3
-run_const real3 AC_inv_ds_4
-run_const real3 AC_inv_ds_5
-run_const real3 AC_inv_ds_6
+run_const real3 AC_inv_ds = 1.0/AC_ds
+run_const real3 AC_inv_ds_2 = AC_inv_ds*AC_inv_ds
+run_const real3 AC_inv_ds_3 = AC_inv_ds_2*AC_inv_ds
+run_const real3 AC_inv_ds_4 = AC_inv_ds_2*AC_inv_ds_2
+run_const real3 AC_inv_ds_5 = AC_inv_ds_3*AC_inv_ds_2
+run_const real3 AC_inv_ds_6 = AC_inv_ds_3*AC_inv_ds_3
 
-run_const real3 AC_ds_2
-run_const real3 AC_ds_3
-run_const real3 AC_ds_4
-run_const real3 AC_ds_5
-run_const real3 AC_ds_6
+run_const real3 AC_ds_2 = AC_ds*AC_ds
+run_const real3 AC_ds_3 = AC_ds_2*AC_ds
+run_const real3 AC_ds_4 = AC_ds_2*AC_ds_2
+run_const real3 AC_ds_5 = AC_ds_3*AC_ds_2
+run_const real3 AC_ds_6 = AC_ds_3*AC_ds_3
 
 //TP: these could be run_const but gives really bad performance otherwise
-int3 AC_nlocal
-int3 AC_mlocal
-int3 AC_ngrid
-int3 AC_mgrid
 int3 AC_nmin
-int3 AC_nlocal_max
-int AC_nlocal_max_dim
-int3 AC_ngrid_max
 
-run_const real3 AC_nlocal_inv
-run_const real3 AC_ngrid_inv
+int3 AC_nlocal
+int3 AC_mlocal = AC_nlocal + 2*AC_nmin
+int3 AC_ngrid 
+int3 AC_mgrid  = AC_ngrid + 2*AC_nmin
+int3 AC_nlocal_max = AC_nlocal + AC_nmin
+int AC_nlocal_max_dim = max(AC_nlocal)
+int3 AC_ngrid_max = AC_ngrid + AC_nmin
 
-
-AcDimProducts AC_nlocal_products
-run_const AcDimProductsInv AC_nlocal_products_inv
-
-AcDimProducts AC_ngrid_products
-run_const AcDimProductsInv AC_ngrid_products_inv
-
-AcDimProducts AC_mlocal_products
-run_const AcDimProductsInv AC_mlocal_products_inv
-
-AcDimProducts AC_mgrid_products
-run_const AcDimProductsInv AC_mgrid_products_inv
+run_const real3 AC_nlocal_inv = (real3) {1.0/AC_nlocal.x, 1.0/AC_nlocal.y, 1.0/AC_nlocal.z}
+run_const real3 AC_ngrid_inv = (real3){1.0/AC_ngrid.x, 1.0/AC_ngrid.y, 1.0/AC_ngrid.z}
 
 
-run_const real3 AC_len
+AcDimProducts AC_nlocal_products = ac_get_dim_products(AC_nlocal)
+run_const AcDimProductsInv AC_nlocal_products_inv = ac_get_dim_products_inv(AC_nlocal_products)
+
+AcDimProducts AC_ngrid_products = ac_get_dim_products(AC_ngrid)
+run_const AcDimProductsInv AC_ngrid_products_inv = ac_get_dim_products_inv(AC_ngrid_products)
+
+AcDimProducts AC_mlocal_products = ac_get_dim_products(AC_mlocal)
+run_const AcDimProductsInv AC_mlocal_products_inv = ac_get_dim_products_inv(AC_mgrid_products)
+
+AcDimProducts AC_mgrid_products = ac_get_dim_products(AC_mgrid)
+run_const AcDimProductsInv AC_mgrid_products_inv = ac_get_dim_products_inv(AC_mgrid_products)
+
+
+run_const real3 AC_len = AC_mgrid*AC_ds
 
 run_const int AC_proc_mapping_strategy
 run_const int AC_decompose_strategy
@@ -57,7 +58,7 @@ Field2 AC_COORDS
 run_const int3  AC_domain_decomposition
 run_const bool  AC_host_has_row_memory_order
 run_const bool3 AC_dimension_inactive
-run_const bool  AC_lagrangian_grid
+run_const bool  AC_lagrangian_grid = AC_LAGRANGIAN_GRID
 int3 AC_thread_block_loop_factors
 int3 AC_max_tpb_for_reduce_kernels
 int3 AC_reduction_tile_dimensions

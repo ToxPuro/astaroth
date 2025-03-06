@@ -72,7 +72,7 @@ main(int argc, char** argv)
 		atoi(argv[2]),
 		atoi(argv[3]),
 	};
-        acHostUpdateBuiltinParams(&info);
+        acHostUpdateParams(&info);
 
         if (argc == 5)
             job_id = atoi(argv[4]);

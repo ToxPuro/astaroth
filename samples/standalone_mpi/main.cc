@@ -925,11 +925,11 @@ main(int argc, char** argv)
     acLoadConfig(config_path, &info);
 
     // OL: We are calling both acLoadConfig AND set_extra_config_params (defined in config_loader.c)
-    // even though acLoadConfig calls acHostUpdateBuiltinParams
+    // even though acLoadConfig calls acHostUpdateParams
     // set_extra_config_params will set some extra config parameters, namely:
     //  - AC_xlen, AC_ylen, AC_zlen
     //  - AC_xorig, AC_yorig, AC_zorig
-    //  ^ these could be set in acHostUpdateBuiltinParams
+    //  ^ these could be set in acHostUpdateParams
     //  - AC_cs2_sound
     //  - AC_cv_sound
     //  - AC_unit_mass
@@ -1688,7 +1688,7 @@ main(int argc, char** argv)
                     }
 
                     // Decompose the config
-		    acHostUpdateBuiltinParams(&new_info);
+		    acHostUpdateParams(&new_info);
                     AcMeshInfo submesh_info = acGridDecomposeMeshInfo(new_info);
                     acDeviceLoadMeshInfo(acGridGetDevice(), submesh_info);
                     info = new_info;

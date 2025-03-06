@@ -154,7 +154,7 @@ main(void)
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     info.params.scalars.int3_params[AC_ngrid] = nn;
-    acHostUpdateBuiltinParams(&info);
+    acHostUpdateParams(&info);
 
     // Init
     acGridInit(info);

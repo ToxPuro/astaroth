@@ -32,7 +32,7 @@ main(int argc, char** argv)
         info.int_params[AC_nx] = atoi(argv[1]);
         info.int_params[AC_ny] = atoi(argv[2]);
         info.int_params[AC_nz] = 1;
-        acHostUpdateBuiltinParams(&info);
+        acHostUpdateParams(&info);
     }
 
     AcMesh mesh;

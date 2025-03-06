@@ -12,7 +12,7 @@ get_device_prop()
 }
 
 AcResult
-acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
+acHostUpdateParams(AcMeshInfo* config_ptr)
 {
     
     AcMeshInfo& config = *config_ptr; 
@@ -48,89 +48,44 @@ acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
     	        config[AC_dimension_inactive].z ? 0 : NGHOST
     	}
     );
-#if AC_LAGRANGIAN_GRID
-    push_val(AC_lagrangian_grid,true);
-#endif
 
     if(!config[AC_dimension_inactive].z)
     	push_val(AC_dsmin,std::min(std::min(config[AC_ds].x,config[AC_ds].y),config[AC_ds].z));
     else
-    {
-    	push_val(AC_ds,(AcReal3){config[AC_ds].x, config[AC_ds].y, 1.0});
-    	push_val(AC_ngrid, (int3){config[AC_ngrid].x, config[AC_ngrid].y, 1});
-    	push_val(AC_nlocal, (int3){config[AC_nlocal].x, config[AC_nlocal].y, 1});
-    }
+    	push_val(AC_dsmin,std::min(config[AC_ds].x,config[AC_ds].y));
 
-    push_val(AC_mlocal,config[AC_nlocal] + 2*config[AC_nmin]);
-    push_val(AC_mgrid ,config[AC_ngrid]  + 2*config[AC_nmin]);
 
-    push_val(AC_nlocal_max,config[AC_nlocal] + config[AC_nmin]);
-    push_val(AC_ngrid_max,config[AC_ngrid]   + config[AC_nmin]);
-    auto get_products = [&](const auto& param)
+    [[maybe_unused]] auto ac_get_dim_products = [&](const auto& dims)
     {
 		   return (AcDimProducts){
-		    	config[param].x*config[param].y,	
-		    	config[param].x*config[param].z,	
-		    	config[param].y*config[param].z,	
-		    	config[param].x*config[param].y*config[param].z,	
+		    	dims.x*dims.y,	
+		    	dims.x*dims.z,	
+		    	dims.y*dims.z,	
+		    	dims.x*dims.y*dims.z,	
 		    };
     };
 
-    auto get_products_inv = [&](const auto& param)
+    [[maybe_unused]] auto ac_get_dim_products_inv = [&](const auto& products)
     {
 		   return (AcDimProductsInv){
-		    	(1.0)/config[param].xy,
-		    	(1.0)/config[param].xz,
-		    	(1.0)/config[param].yz,
-		    	(1.0)/config[param].xyz
+		    	AcReal(1.0)/products.xy,
+		    	AcReal(1.0)/products.xz,
+		    	AcReal(1.0)/products.yz,
+		    	AcReal(1.0)/products.xyz
 		    };
     };
 
-    push_val(AC_nlocal_products,get_products(AC_nlocal));
-    push_val(AC_mlocal_products,get_products(AC_mlocal));
-    push_val(AC_ngrid_products ,get_products(AC_ngrid));
-    push_val(AC_mgrid_products ,get_products(AC_mgrid));
+    [[maybe_unused]] auto DCONST = [&](const auto& param)
+    {
+    	return config[param];
+    };
 
-    push_val(AC_nlocal_products_inv,get_products_inv(AC_nlocal_products));
-    push_val(AC_mlocal_products_inv,get_products_inv(AC_mlocal_products));
-    push_val(AC_ngrid_products_inv ,get_products_inv(AC_ngrid_products));
-    push_val(AC_mgrid_products_inv ,get_products_inv(AC_mgrid_products));
+    [[maybe_unused]] auto RCONST = [&](const auto& param)
+    {
+    	return config[param];
+    };
 
-    push_val(AC_nlocal_inv, (AcReal3){
-		    			1.0/config[AC_nlocal].x,
-		    			1.0/config[AC_nlocal].y,
-		    			1.0/config[AC_nlocal].z
-				     });
-
-    push_val(AC_ngrid_inv, (AcReal3){
-		    			1.0/config[AC_ngrid].x,
-		    			1.0/config[AC_ngrid].y,
-		    			1.0/config[AC_ngrid].z
-				     });
-
-    push_val(AC_len,
-    	(AcReal3)
-    	{
-    		config[AC_ngrid].x*config[AC_ds].x,
-    		config[AC_ngrid].y*config[AC_ds].y,
-    		config[AC_ngrid].z*config[AC_ds].z
-    	}
-    );
-
-
-    const AcReal3 unit = {1.0,1.0,1.0};
-    push_val(AC_inv_ds,unit/config[AC_ds]);
-    push_val(AC_inv_ds_2,config[AC_inv_ds]*config[AC_inv_ds]);
-    push_val(AC_inv_ds_3,config[AC_inv_ds_2]*config[AC_inv_ds]);
-    push_val(AC_inv_ds_4,config[AC_inv_ds_2]*config[AC_inv_ds_2]);
-    push_val(AC_inv_ds_5,config[AC_inv_ds_3]*config[AC_inv_ds_2]);
-    push_val(AC_inv_ds_6,config[AC_inv_ds_3]*config[AC_inv_ds_3]);
-
-    push_val(AC_ds_2,config[AC_ds]*config[AC_ds]);
-    push_val(AC_ds_3,config[AC_ds_2]*config[AC_ds]);
-    push_val(AC_ds_4,config[AC_ds_2]*config[AC_ds_2]);
-    push_val(AC_ds_5,config[AC_ds_3]*config[AC_ds_2]);
-    push_val(AC_ds_6,config[AC_ds_3]*config[AC_ds_3]);
+    #include "user_config_loader.h"
 
     //TP: for safety have to add the maximum possible tpb dims for the reduce scratchpads
     //If block_factor_z is say 2 can be that some of threads reduce something in the first iteration but not in the second
@@ -150,19 +105,19 @@ acHostUpdateBuiltinParams(AcMeshInfo* config_ptr)
 	config[AC_nlocal].x < get_device_prop().warpSize ? config[AC_nlocal].x 
 						    : ceil_div(config[AC_nlocal].x,get_device_prop().warpSize);
     push_val(AC_reduction_tile_dimensions,tile_dims);
-    push_val(AC_nlocal_max_dim,max(config[AC_nlocal]));
+
     
 
     return AC_SUCCESS;
 }
 
 AcResult 
-acHostUpdateBuiltinCompParams(AcMeshInfo* config)
+acHostUpdateCompParams(AcMeshInfo* config)
 {
 
 	AcMeshInfo tmp = acInitInfo();
 	tmp.run_consts = config->run_consts;
-	auto res = acHostUpdateBuiltinParams(&tmp);
+	auto res = acHostUpdateParams(&tmp);
 	config->run_consts = tmp.run_consts;
 	return res;
 }
@@ -190,7 +145,7 @@ acSetGridMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo*
 #else
     push_val(AC_nlocal,ngrid);
 #endif
-    return acHostUpdateBuiltinParams(&config);
+    return acHostUpdateParams(&config);
 }
 
 
@@ -212,5 +167,5 @@ acSetLocalMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo
 	    (int)nz
     };
     push_val(AC_nlocal,nlocal);
-    return acHostUpdateBuiltinParams(&config);
+    return acHostUpdateParams(&config);
 }

@@ -184,7 +184,7 @@ main(int argc, char** argv)
             const int ny           = atoi(argv[optind + 1]);
             const int nz           = atoi(argv[optind + 2]);
 	    info[AC_ngrid] = (int3){nx,ny,nz};
-            acHostUpdateBuiltinParams(&info);
+            acHostUpdateParams(&info);
             printf("Benchmark mesh dimensions: (%d, %d, %d)\n", nx, ny, nz);
         }
         else {

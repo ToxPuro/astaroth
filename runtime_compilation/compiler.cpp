@@ -89,7 +89,7 @@ void
 acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_info)
 {
 	check_that_built_ins_loaded(mesh_info.run_consts);
-	acHostUpdateBuiltinParams(&mesh_info);
+	acHostUpdateParams(&mesh_info);
 #if AC_MPI_ENABLED
 	ERRCHK_ALWAYS(mesh_info.comm != MPI_COMM_NULL);
 	int pid;
@@ -98,7 +98,7 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 #else
 	const int pid = 0;
 #endif
-	acHostUpdateBuiltinParams(&mesh_info);
+	acHostUpdateParams(&mesh_info);
 	if(pid == 0)
 	{
 		acLoadRunConstsBase("tmp_astaroth_run_consts.h",mesh_info);

@@ -349,10 +349,10 @@ FUNC_DEFINE(Node, acGetNode,(void));
  * =============================================================================
  */
 AcResult 
-acHostUpdateBuiltinParams(AcMeshInfo* config);
+acHostUpdateParams(AcMeshInfo* config);
 
 AcResult 
-acHostUpdateBuiltinCompParams(AcMeshInfo* config);
+acHostUpdateCompParams(AcMeshInfo* config);
 
 
 

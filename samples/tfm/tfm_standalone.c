@@ -221,7 +221,7 @@ acParseINI(const char* filepath, AcMeshInfo* info)
         return EXIT_FAILURE;
 
     // Update the rest of the parameters
-    // acHostUpdateBuiltinParams(info);
+    // acHostUpdateParams(info);
 
     // // Check for uninitialized values
     // for (size_t i = 0; i < NUM_INT_PARAMS; ++i)
@@ -604,7 +604,7 @@ main(int argc, char* argv[])
     ERRCHK_ALWAYS(info.real_params[AC_dsx] > 0);
     ERRCHK_ALWAYS(info.real_params[AC_dsy] > 0);
     ERRCHK_ALWAYS(info.real_params[AC_dsz] > 0);
-    acHostUpdateBuiltinParams(&info);
+    acHostUpdateParams(&info);
     acHostUpdateTFMSpecificGlobalParams(&info);
     acHostUpdateMHDSpecificParams(&info);
     acVerifyMeshInfo(info);

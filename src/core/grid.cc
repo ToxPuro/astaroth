@@ -335,7 +335,7 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     submesh_config[AC_multigpu_offset] = getPid3D(global_config)*submesh_n;
     set_info_val(submesh_config,AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z});
     submesh_config[AC_domain_coordinates] = getPid3D(global_config);
-    acHostUpdateBuiltinParams(&submesh_config);
+    acHostUpdateParams(&submesh_config);
     return submesh_config;
 }
 Volume
@@ -2377,6 +2377,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 
     const auto profile_overlap_in_regions = [&](const auto gem_overlaps, const auto profiles_1, const auto profiles_2)
     {
+	if constexpr (NUM_PROFILES == 0) return false;
 	bool profiles_overlap = false;
 	for(auto profile_1 : profiles_1)
 	{

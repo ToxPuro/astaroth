@@ -229,7 +229,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
 		    			 node->config[AC_nlocal].z / node->num_devices
 					 }
 		);
-    acHostUpdateBuiltinParams(&subgrid_config);
+    acHostUpdateParams(&subgrid_config);
 #if AC_VERBOSE
     printf("###############################################################\n");
     printf("Config dimensions recalculated:\n");

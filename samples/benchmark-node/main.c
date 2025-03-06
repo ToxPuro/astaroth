@@ -66,7 +66,7 @@ main(int argc, char** argv)
 		atoi(argv[2]),
 		atoi(argv[3]),
 	};
-        acHostUpdateBuiltinParams(&info);
+        acHostUpdateParams(&info);
     }
 
     // Alloc

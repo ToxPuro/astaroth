@@ -1471,6 +1471,10 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 }
 static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNode* variable_definition, ASTNode* declaration_list)
 	    {
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+
+		if(!has_qualifier(node->rhs,"const")) return;
 		if(!has_qualifier(node->rhs,"const"))
 		{
                   fprintf(stderr, FATAL_ERROR_MESSAGE"assignment to a global variable only allowed for constant values\n");
@@ -1478,8 +1482,7 @@ static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNod
                   assert(!has_qualifier(node->rhs,"const"));
 		  exit(EXIT_FAILURE);
 		}
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+
 		const char* spec = get_node(NODE_TSPEC,node->rhs)->lhs->buffer;
 		if(!strcmp(spec,"int"))
 		{	
