@@ -434,9 +434,9 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	}
 	LOAD_DSYM(acDeviceGetVertexBufferPtrs,stream)
 	LOAD_DSYM(acDeviceGetLocalConfig,stream)
-        LOAD_DSYM(acDeviceFinishReduceInt,stream)
-        LOAD_DSYM(acKernelFlushInt,stream)
-        LOAD_DSYM(acAnalysisGetKernelInfo,stream)
+        LOAD_DSYM(acDeviceFinishReduceInt,stream) 
+	LOAD_DSYM(acKernelFlushInt,stream) 
+	LOAD_DSYM(acAnalysisGetKernelInfo,stream)
         LOAD_DSYM(acDeviceSwapAllProfileBuffers,stream)
 #if AC_MPI_ENABLED
 	LOAD_DSYM(BASE_FUNC_NAME(acBoundaryCondition),stream)
@@ -985,6 +985,7 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
 	  res.run_consts = acInitCompInfo();
 	  res.params.scalars.int3_params[AC_thread_block_loop_factors] = (int3){1,1,1};
 	  res.params.scalars.int3_params[AC_max_tpb_for_reduce_kernels] = (int3){-1,8,8};
+  	  res.runtime_compilation_log_dst = "/dev/stderr";
 	  return res;
   }
   static AcMesh UNUSED acInitMesh()

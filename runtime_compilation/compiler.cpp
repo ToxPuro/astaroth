@@ -6,6 +6,7 @@
 #endif
 #include <sys/stat.h>
 #include "../src/config_helpers.h"
+#include <unistd.h>
 
 #if AC_MPI_ENABLED
 static uint3_64
@@ -102,13 +103,29 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 	if(pid == 0)
 	{
 		acLoadRunConstsBase("tmp_astaroth_run_consts.h",mesh_info);
-		char cmd[10000];
+		char cmd[2*10000];
+		char cwd[5024];
+		if (getcwd(cwd, sizeof(cwd)) == NULL) {
+			fprintf(stderr,"Failed to get current working directory!\n");
+			exit(EXIT_FAILURE);
+    		}
+		char log_dst[10024];
+
+    		if(mesh_info.runtime_compilation_log_dst == NULL)
+			sprintf(log_dst,"/dev/stderr");
+		else if (mesh_info.runtime_compilation_log_dst[0] == '/')
+			sprintf(log_dst,mesh_info.runtime_compilation_log_dst);
+		else
+			sprintf(log_dst,"%s/%s",cwd,mesh_info.runtime_compilation_log_dst);
+
 		sprintf(cmd,"diff tmp_astaroth_run_consts.h %s",AC_OVERRIDES_PATH);
 		const bool overrides_exists = file_exists(AC_OVERRIDES_PATH);
 		const bool loaded_different = 
 				        overrides_exists	
 					? system(cmd) : true;
 		acLoadRunConstsBase(AC_OVERRIDES_PATH,mesh_info);
+		if(!overrides_exists)
+			fprintf(stderr,"Compiling Astaroth\n");
 		if(loaded_different)
 		{
 			if(loaded_different && overrides_exists)
@@ -152,8 +169,8 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 			fflush(stderr);
 			exit(EXIT_FAILURE);
 		}
-		sprintf(cmd,"cd %s && cmake -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s %s",
-		       runtime_astaroth_build_path, acc_compiler_path, compilation_string,astaroth_base_path);
+		sprintf(cmd,"cd %s && cmake -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s %s &> %s",
+		       runtime_astaroth_build_path, acc_compiler_path, compilation_string,astaroth_base_path,log_dst);
 		retval = system(cmd);
 		if(retval)
 		{
@@ -163,11 +180,12 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 			fflush(stderr);
 			exit(EXIT_FAILURE);
 		}
-		sprintf(cmd,"cd %s && make %s -j",runtime_astaroth_build_path,target);
+		sprintf(cmd,"cd %s && make %s -j &>> %s",runtime_astaroth_build_path,target,log_dst);
 		retval = system(cmd);
 		if(retval)
 		{
 			fprintf(stderr,"%s","Fatal was not able to compile\n");
+			fprintf(stderr,"Check %s for the compilation log!\n",log_dst);
 			fflush(stdout);
 			fflush(stderr);
 			exit(EXIT_FAILURE);

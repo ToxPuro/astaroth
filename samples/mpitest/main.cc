@@ -56,7 +56,7 @@ main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
-    AcMeshInfo info;
+    AcMeshInfo info = acInitInfo();
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     info.comm = MPI_COMM_WORLD;
 
@@ -89,6 +89,7 @@ main(int argc, char* argv[])
 #else
     const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_MODEL=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #endif
+    info.runtime_compilation_log_dst = "ac_compilation_log";
     acCompile(build_str,info);
     acLoadLibrary(stdout);
     acLoadUtils(stdout);

@@ -47,6 +47,7 @@ typedef struct AcSubCommunicators {
 
   typedef struct AcMeshInfo{
   AcMeshInfoParams params;
+  const char* runtime_compilation_log_dst;
 #if AC_MPI_ENABLED
     MPI_Comm comm;
 #endif
