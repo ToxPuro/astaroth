@@ -397,9 +397,9 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(size_t,  acGetSmallestRealReduceScratchPadSizeBytes,());
 
 #if AC_RUNTIME_COMPILATION
-#define LOAD_DSYM(FUNC_NAME) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
-			     if(!FUNC_NAME) fprintf(stderr,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
-  static AcResult __attribute__((unused)) acLoadRunTime()
+#define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
+			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
+  static AcResult __attribute__((unused)) acLoadRunTime(FILE* stream)
   {
  	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_LAZY | RTLD_GLOBAL);
 	if(!handle)
@@ -408,61 +408,36 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 		fprintf(stderr,"Error message: %s\n",dlerror());
 		exit(EXIT_FAILURE);
 	}
-	*(void**)(&acKernelFlush) = dlsym(handle,"acKernelFlush");
-	if(!acKernelFlush) fprintf(stderr,"Astaroth error: was not able to load %s\n","acKernelFlush");
-	*(void**)(&acVBAReset) = dlsym(handle,"acVBAReset");
-	if(!acVBAReset) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBAReset");
-	*(void**)(&acVBACreate) = dlsym(handle,"acVBACreate");
-	if(!acVBACreate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBACreate");
-	*(void**)(&acUpdateArrays) = dlsym(handle,"acUpdateArrays");
-	if(!acUpdateArrays) fprintf(stderr,"Astaroth error: was not able to load %s\n","acUpdateArrays");
-	*(void**)(&acVBADestroy) = dlsym(handle,"acVBADestroy");
-	if(!acVBADestroy) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBADestroy");
-	*(void**)(&acRandInitAlt) = dlsym(handle,"acRandInitAlt");
-	if(!acRandInitAlt) fprintf(stderr,"Astaroth error: was not able to load %s\n","acRandInitAlt");
-	*(void**)(&acRandQuit) = dlsym(handle,"acRandQuit");
-	if(!acRandQuit) fprintf(stderr,"Astaroth error: was not able to load %s\n","acRandQuit");
-	*(void**)(&acLaunchKernel) = dlsym(handle,"acLaunchKernel");
-	if(!acLaunchKernel) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLaunchKernel");
-	*(void**)(&acBenchmarkKernel) = dlsym(handle,"acBenchmarkKernel");
-	if(!acBenchmarkKernel) fprintf(stderr,"Astaroth error: was not able to load %s\n","acBenchmarkKernel");
-	*(void**)(&acLoadStencil) = dlsym(handle,"acLoadStencil");
-	if(!acLoadStencil) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadStencil");
-	*(void**)(&acStoreStencil) = dlsym(handle,"acStoreStencil");
-	if(!acStoreStencil) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreStencil");
-	*(void**)(&acLoadRealUniform) = dlsym(handle,"acLoadRealUniform");
-	if(!acLoadRealUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadRealUniform");
-	*(void**)(&acLoadRealArrayUniform) = dlsym(handle,"acLoadRealArrayUniform");
-	if(!acLoadRealArrayUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadRealArrayUniform");
-	*(void**)(&acLoadReal3Uniform) = dlsym(handle,"acLoadReal3Uniform");
-	if(!acLoadReal3Uniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadReal3Uniform");
-	*(void**)(&acLoadIntUniform) = dlsym(handle,"acLoadIntUniform");
-	if(!acLoadIntUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadIntUniform");
-	*(void**)(&acLoadBoolUniform) = dlsym(handle,"acLoadBoolUniform");
-	if(!acLoadBoolUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadBoolUniform");
-	*(void**)(&acLoadIntArrayUniform) = dlsym(handle,"acLoadIntArrayUniform");
-	if(!acLoadIntArrayUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadIntArrayUniform");
-	*(void**)(&acLoadInt3Uniform) = dlsym(handle,"acLoadInt3Uniform");
-	if(!acLoadInt3Uniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadInt3Uniform");
-	*(void**)(&acStoreRealUniform) = dlsym(handle,"acStoreRealUniform");
-	if(!acStoreRealUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreRealUniform");
-	*(void**)(&acStoreReal3Uniform) = dlsym(handle,"acStoreReal3Uniform");
-	if(!acStoreReal3Uniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreReal3Uniform");
-	*(void**)(&acStoreIntUniform) = dlsym(handle,"acStoreIntUniform");
-	if(!acStoreIntUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreIntUniform");
-	*(void**)(&acStoreBoolUniform) = dlsym(handle,"acStoreBoolUniform");
-	if(!acStoreBoolUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreBoolUniform");
-	*(void**)(&acStoreInt3Uniform) = dlsym(handle,"acStoreInt3Uniform");
-	if(!acStoreInt3Uniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreInt3Uniform");
-	*(void**)(&acKernelLaunchGetLastTPB) = dlsym(handle,"acKernelLaunchGetLastTPB");
-	if(!acKernelLaunchGetLastTPB) fprintf(stderr,"Astaroth error: was not able to load %s\n","acKernelLaunchGetLastTPB");
-	LOAD_DSYM(acGetOptimizedKernel)
-	*(void**)(&acGetKernelReduceScratchPadSize) = dlsym(handle,"acGetKernelReduceScratchPadSize");
-	if(!acGetKernelReduceScratchPadSize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelReduceScratchPadSize");
-	*(void**)(&acGetKernelReduceScratchPadMinSize) = dlsym(handle,"acGetKernelReduceScratchPadMinSize");
-	if(!acGetKernelReduceScratchPadMinSize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelReduceScratchPadMinSize");
-	*(void**)(&acGetKernels) = dlsym(handle,"acGetKernels");
-	if(!acGetKernels) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernels");
+	LOAD_DSYM(acKernelFlush,stream);
+	LOAD_DSYM(acVBAReset,stream);
+	LOAD_DSYM(acVBACreate,stream);
+	LOAD_DSYM(acUpdateArrays,stream);
+	LOAD_DSYM(acVBADestroy,stream);
+	LOAD_DSYM(acRandInitAlt,stream);
+	LOAD_DSYM(acRandQuit,stream);
+	LOAD_DSYM(acLaunchKernel,stream);
+	LOAD_DSYM(acBenchmarkKernel,stream);
+	LOAD_DSYM(acLoadStencil,stream);
+	LOAD_DSYM(acStoreStencil,stream);
+	LOAD_DSYM(acLoadRealUniform,stream);
+	LOAD_DSYM(acLoadRealArrayUniform,stream);
+	LOAD_DSYM(acLoadReal3Uniform,stream);
+	LOAD_DSYM(acLoadIntUniform,stream)
+	LOAD_DSYM(acLoadIntUniform,stream)
+	LOAD_DSYM(acLoadIntArrayUniform,stream)
+	LOAD_DSYM(acLoadBoolUniform,stream)
+	LOAD_DSYM(acLoadIntArrayUniform,stream)
+	LOAD_DSYM(acLoadInt3Uniform,stream)
+	LOAD_DSYM(acStoreRealUniform,stream)
+	LOAD_DSYM(acStoreReal3Uniform,stream)
+	LOAD_DSYM(acStoreIntUniform,stream)
+	LOAD_DSYM(acStoreBoolUniform,stream)
+	LOAD_DSYM(acStoreInt3Uniform,stream)
+	LOAD_DSYM(acKernelLaunchGetLastTPB,stream)
+	LOAD_DSYM(acGetOptimizedKernel,stream)
+	LOAD_DSYM(acGetKernelReduceScratchPadSize,stream)
+	LOAD_DSYM(acGetKernelReduceScratchPadMinSize,stream)
+	LOAD_DSYM(acGetKernels,stream)
 	return AC_SUCCESS;
   }
 #endif

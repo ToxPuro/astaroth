@@ -151,8 +151,7 @@ type_output(const char* type)
 void
 gen_dlsym(FILE* fp, const char* func_name)
 {
-	fprintf(fp,"*(void**)(&%s) = dlsym(handle,\"%s\");\n",func_name,func_name);
-	fprintf(fp,"if(!%s) fprintf(stderr,\"Astaroth error was not able to load %s\\n\");\n",func_name,func_name);
+	fprintf(fp,"LOAD_DSYM(%s,stream)\n",func_name);
 }
 
 
@@ -1469,7 +1468,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
         	fprintf_filename("device_load_uniform.h","GEN_DEVICE_LOAD_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);
 		fprintf_filename("device_load_uniform_decl.h","DEVICE_LOAD_ARRAY_DECL(%sArrayParam, %s)\n",enum_name,upper_case_name);
 		fprintf_filename("device_load_uniform_overloads.h","OVERLOAD_DEVICE_LOAD_ARRAY(%sArrayParam, %s)\n",enum_name,upper_case_name);
-		fprintf_filename("device_load_uniform_loads.h","LOAD_DSYM(acDeviceLoad%sArray)\n",upper_case_name);
+		fprintf_filename("device_load_uniform_loads.h","LOAD_DSYM(acDeviceLoad%sArray,stream)\n",upper_case_name);
 
 
 		fprintf_filename("device_store_uniform.h","GEN_DEVICE_STORE_ARRAY(%sArrayParam, %s, %s)\n",enum_name,datatype_scalar,upper_case_name);

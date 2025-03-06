@@ -90,8 +90,8 @@ main(int argc, char* argv[])
     const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_MODEL=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #endif
     acCompile(build_str,info);
-    acLoadLibrary();
-    acLoadUtils();
+    acLoadLibrary(stdout);
+    acLoadUtils(stdout);
 #endif
     atexit(acAbort);
     int retval = 0;

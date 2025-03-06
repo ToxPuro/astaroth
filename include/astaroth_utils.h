@@ -111,7 +111,7 @@ FUNC_DEFINE(AcResult, acHostReduceXYAverage,(const AcReal* in, const AcMeshDims 
 
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_lib.h"
-static AcLibHandle __attribute__((unused)) acLoadUtils()
+static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream)
 {
  	void* handle = dlopen(runtime_astaroth_utils_path,RTLD_NOW);
 	if(!handle)
@@ -119,22 +119,22 @@ static AcLibHandle __attribute__((unused)) acLoadUtils()
     		fprintf(stderr,"%s","Fatal error was not able to load Astaroth utils\n"); 
 		exit(EXIT_FAILURE);
 	}
-	LOAD_DSYM(acHostVertexBufferSet);
-	LOAD_DSYM(acHostMeshSet);
-	LOAD_DSYM(acHostMeshApplyPeriodicBounds);
-	LOAD_DSYM(acHostMeshApplyConstantBounds);
-	LOAD_DSYM(acHostMeshClear);
-	LOAD_DSYM(acHostReduceScal);
-	LOAD_DSYM(acHostReduceVec);
-	LOAD_DSYM(acHostReduceVecScal);
-	LOAD_DSYM(acEvalError);
-	LOAD_DSYM(acVerifyMesh);
-	LOAD_DSYM(acMeshDiffWriteSliceZ);
-	LOAD_DSYM(acMeshDiffWrite);
-	LOAD_DSYM(acHostMeshWriteToFile);
-	LOAD_DSYM(acHostMeshReadFromFile);
-	LOAD_DSYM(acGetError);
-	LOAD_DSYM(acHostIntegrateStep);
+	LOAD_DSYM(acHostVertexBufferSet,stream);
+	LOAD_DSYM(acHostMeshSet,stream);
+	LOAD_DSYM(acHostMeshApplyPeriodicBounds,stream);
+	LOAD_DSYM(acHostMeshApplyConstantBounds,stream);
+	LOAD_DSYM(acHostMeshClear,stream);
+	LOAD_DSYM(acHostReduceScal,stream);
+	LOAD_DSYM(acHostReduceVec,stream);
+	LOAD_DSYM(acHostReduceVecScal,stream);
+	LOAD_DSYM(acEvalError,stream);
+	LOAD_DSYM(acVerifyMesh,stream);
+	LOAD_DSYM(acMeshDiffWriteSliceZ,stream);
+	LOAD_DSYM(acMeshDiffWrite,stream);
+	LOAD_DSYM(acHostMeshWriteToFile,stream);
+	LOAD_DSYM(acHostMeshReadFromFile,stream);
+	LOAD_DSYM(acGetError,stream);
+	LOAD_DSYM(acHostIntegrateStep,stream);
 
 //#ifdef __cplusplus
 //	return AcLibHandle(handle);
