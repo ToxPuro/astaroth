@@ -1259,7 +1259,7 @@ acDevicePrintProfiles(const Device device)
         AcReal* host_profile = (AcReal*)malloc(sizeof(AcReal)*count);
         cudaMemcpy(host_profile, device->vba.on_device.profiles.in[i], sizeof(AcReal) * count,
                    cudaMemcpyDeviceToHost);
-        printf("Profile %s (%zu)-----------------\n", profile_names[i], i);
+        printf("Profile %s (%d)-----------------\n", profile_names[i], i);
         for (size_t j = 0; j < count; ++j) {
             printf("%g (%zu), ", (double)host_profile[j], j);
         }
