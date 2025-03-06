@@ -819,6 +819,9 @@ class Grid {
     IOTask hydro_io;
     IOTask uxb_io;
 
+    ac::io::batched_async_write_task<AcReal, ac::mr::device_allocator> uxbmean_io;
+    MPI_Comm profile_comm{MPI_COMM_NULL};
+
   public:
     explicit Grid(const AcMeshInfo& raw_info)
     {
@@ -849,8 +852,19 @@ class Grid {
         tfm_he   = make_halo_exchange_task(local_info, tfm_fields.size());
 
         // Setup write tasks
-        hydro_io = make_io_task(local_info, hydro_fields.size());
-        uxb_io   = make_io_task(local_info, uxb_fields.size());
+        hydro_io   = make_io_task(local_info, hydro_fields.size());
+        uxb_io     = make_io_task(local_info, uxb_fields.size());
+        uxbmean_io = ac::io::batched_async_write_task<AcReal, ac::mr::device_allocator>{
+            ac::shape{global_nn[2]},
+            ac::index{ac::mpi::get_global_nn_offset(cart_comm, global_nn)[2]},
+            ac::shape{ac::mpi::get_local_mm(cart_comm, global_nn, acr::get_local_rr())[2]},
+            ac::shape{ac::mpi::get_local_nn(cart_comm, global_nn)[2]},
+            ac::index{acr::get_local_rr()[2]},
+            uxbmean_profiles.size(),
+        };
+        const auto coords{ac::mpi::get_coords(cart_comm)};
+        const auto color{(coords[0] == 0 && coords[1] == 0) ? 0 : MPI_UNDEFINED};
+        ERRCHK_MPI_API(MPI_Comm_split(cart_comm, color, 0, &profile_comm));
 
         // Dryrun
         reset_init_cond();
@@ -860,6 +874,9 @@ class Grid {
 
     ~Grid() noexcept
     {
+        if (profile_comm != MPI_COMM_NULL)
+            ac::mpi::cart_comm_destroy(&profile_comm);
+
         ERRCHK_MPI(acDeviceDestroy(device) == AC_SUCCESS);
         ac::mpi::cart_comm_destroy(&cart_comm);
     }
@@ -1022,6 +1039,12 @@ class Grid {
 #endif
 #endif
 
+        // Write uxbmean
+        if (profile_comm != MPI_COMM_NULL)
+            uxbmean_io.launch(profile_comm,
+                              ac::get_ptrs(device, uxbmean_profiles, BufferGroup::input),
+                              get_profile_paths(uxbmean_profiles, 0));
+
         // Ensure halos are up-to-date before starting integration
         hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::input));
         tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::input));
@@ -1105,6 +1128,13 @@ class Grid {
 #else
                 reduce_xy_averages(STREAM_DEFAULT);
 #endif
+                // Write uxbmean
+                if (profile_comm != MPI_COMM_NULL) {
+                    uxbmean_io.wait();
+                    uxbmean_io.launch(profile_comm,
+                                      ac::get_ptrs(device, uxbmean_profiles, BufferGroup::input),
+                                      get_profile_paths(uxbmean_profiles, step));
+                }
             }
             current_time += dt;
 
@@ -1155,6 +1185,9 @@ class Grid {
         uxb_io.wait();
 #endif
 #endif
+
+        if (profile_comm != MPI_COMM_NULL)
+            uxbmean_io.wait();
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
         ERRCHK(xy_average_req != MPI_REQUEST_NULL);
