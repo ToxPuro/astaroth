@@ -1215,7 +1215,7 @@ AcResult
 acDeviceSwapAllProfileBuffers(const Device device)
 {
     int retval = AC_SUCCESS;
-    for (size_t i = 0; i < NUM_PROFILES; ++i)
+    for (int i = 0; i < NUM_PROFILES; ++i)
         retval |= acDeviceSwapProfileBuffer(device, (Profile)i);
 
     return (AcResult)retval;
@@ -1254,7 +1254,7 @@ acDevicePrintProfiles(const Device device)
     // acStoreInt3Uniform(device->streams[STREAM_DEFAULT], AC_multigpu_offset, &multigpu_offset);
     // printf("%d, %d, %d\n", multigpu_offset.x, multigpu_offset.y, multigpu_offset.z);
     // printf("Num profiles: %zu\n", NUM_PROFILES);
-    for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    for (int i = 0; i < NUM_PROFILES; ++i) {
         const size_t count = device->vba.profile_count;
         AcReal* host_profile = (AcReal*)malloc(sizeof(AcReal)*count);
         cudaMemcpy(host_profile, device->vba.on_device.profiles.in[i], sizeof(AcReal) * count,

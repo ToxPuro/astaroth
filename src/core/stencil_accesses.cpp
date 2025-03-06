@@ -695,7 +695,7 @@ vbaCreate(const size_t count)
     vba.on_device.in[i]  = (AcReal*)malloc(bytes);
     vba.on_device.out[i] = (AcReal*)malloc(bytes);
   }
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  for (int i = 0; i < NUM_PROFILES; ++i) {
     vba.on_device.profiles.in[i]  = (AcReal*)malloc(bytes);
     vba.on_device.profiles.out[i] = (AcReal*)malloc(bytes);
   }
@@ -713,7 +713,7 @@ vbaDestroy(VertexBufferArray* vba)
     vba->on_device.in[i]  = NULL;
     vba->on_device.out[i] = NULL;
   }
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  for (int i = 0; i < NUM_PROFILES; ++i) {
     free(vba->on_device.profiles.in[i]);
     free(vba->on_device.profiles.out[i]);
     vba->on_device.profiles.in[i]  = NULL;
@@ -870,7 +870,7 @@ acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
     		    read_fields[j] |= previous_accessed[j];
     		  }
     		}
-    		for (size_t j = 0; j < NUM_PROFILES; ++j)
+    		for (int j = 0; j < NUM_PROFILES; ++j)
     		  for (size_t i = 0; i < NUM_STENCILS; ++i)
 		    dst->stencils_accessed[k][j+NUM_ALL_FIELDS][i] |= stencils_accessed[j+NUM_ALL_FIELDS][i];
 		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
@@ -879,7 +879,7 @@ acAnalysisGetKernelInfo(const AcMeshInfoParams info, KernelAnalysisInfo* dst)
 			dst->field_has_stencil_op[k][i] = field_has_stencil_op[i];
 			dst->written_fields[k][i] = written_fields[i];
 		}
-		for(size_t i = 0; i < NUM_PROFILES; ++i)
+		for(int i = 0; i < NUM_PROFILES; ++i)
 		{
 			dst->read_profiles[k][i]    = read_profiles[i];
 			dst->reduced_profiles[k][i] = reduced_profiles[i];

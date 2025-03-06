@@ -2029,7 +2029,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
     for(size_t i = 0; i < ops.size(); ++i)
     {
 	    ops[i].computes_on_halos = BOUNDARY_NONE;
-	    for(size_t profile = 0; profile < NUM_PROFILES; ++profile)
+	    for(int profile = 0; profile < NUM_PROFILES; ++profile)
 	    	ops[i].computes_on_halos = (AcBoundary)((int)ops[i].computes_on_halos | kernel_computes_profile_on_halos[i][profile]);
 	    const auto& boundary = ops[i].computes_on_halos;
 	    int num_boundaries_included = 0;
@@ -2534,7 +2534,7 @@ get_reduced_profiles(const AcTaskGraph* graph)
 	if(task->output_region.id != (int3){0,0,0}) continue;
     	auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
     	auto kernel       = compute_task -> getKernel();
-    	for(size_t i = 0; i < NUM_PROFILES; ++i)
+    	for(int i = 0; i < NUM_PROFILES; ++i)
 	{
 	    if(grid.kernel_analysis_info.reduced_profiles[kernel][i])
     	    	reduced_profiles.push_back(Profile(i));
@@ -2683,7 +2683,7 @@ acGridExecuteTaskGraphBase(AcTaskGraph* graph, size_t n_iterations, const bool i
                 acDeviceSwapBuffer(grid.device, (VertexBufferHandle)i);
             }
         }
-        for (size_t i = 0; i < NUM_PROFILES; i++) {
+        for (int i = 0; i < NUM_PROFILES; i++) {
             if (graph->device_swaps[i+NUM_VTXBUF_HANDLES]) {
                 acDeviceSwapProfileBuffer(grid.device, (Profile)i);
             }

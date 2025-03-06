@@ -250,7 +250,7 @@ acHostMeshCreateProfiles(AcMesh* mesh)
 {
     const auto mm = acGetLocalMM(mesh->info);
     const size3_t counts = (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
-    for(size_t p = 0; p < NUM_PROFILES; ++p)
+    for(int p = 0; p < NUM_PROFILES; ++p)
     {
 	    mesh->profile[p] = (AcReal*)calloc(prof_size(Profile(p),counts), sizeof(AcReal));
             ERRCHK_ALWAYS(mesh->profile[p]);

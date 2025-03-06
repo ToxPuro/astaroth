@@ -706,7 +706,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 			if(next_level_set[i])
 			{
 				bool computes_across_halos = false;
-				for(size_t j = 0; j< NUM_PROFILES; ++j)
+				for(int j = 0; j< NUM_PROFILES; ++j)
 					computes_across_halos  |= (kernel_call_computes_profile_across_halos[i][j] != BOUNDARY_NONE);
 
 				call_level_set[i] = n_level_sets;

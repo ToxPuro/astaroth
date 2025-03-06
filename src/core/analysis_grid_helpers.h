@@ -151,7 +151,7 @@ compute_kernel_call_computes_profile_across_halos(const std::vector<AcKernel>& c
 	for(size_t i = 0; i  < calls.size(); ++i)
 	{
 		const auto k = calls[i];
-		for(size_t prof = 0; prof < NUM_PROFILES; ++prof)
+		for(int prof = 0; prof < NUM_PROFILES; ++prof)
 		{
 			for(size_t stencil = 0; stencil < NUM_STENCILS; ++stencil)
 			{
