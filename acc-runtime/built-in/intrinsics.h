@@ -13,6 +13,8 @@ real intrinsic log(real)
 real intrinsic sqrt(real) 
 real intrinsic pow(real) 
 real intrinsic fabs(real)
+real intrinsic floor(real)
+real intrinsic round(real)
 
 
 intrinsic min
@@ -22,3 +24,5 @@ intrinsic ceil
 real intrinsic random_uniform
 real intrinsic atomicAdd
 
+AcDimProducts intrinsic ac_get_dim_products(int3)
+AcDimProductsInv intrinsic ac_get_dim_products_inv(AcDimProducts)
