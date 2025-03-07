@@ -7,11 +7,13 @@
 
 #include <future>
 
+#include "acm/detail/allocator.h"
 #include "acm/detail/buffer.h"
 #include "acm/detail/errchk.h"
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
+#include "acm/detail/pointer.h"
 #include "acm/detail/type_conversion.h"
 
 template <typename T>
@@ -61,6 +63,14 @@ write_async(const MPI_Comm& parent_comm, const size_t count, const T* data,
     return std::future<int>{std::async(std::launch::async, write<T>, count, data, outfile, offset)};
 }
 
+static int
+wait(const MPI_Comm& comm, std::future<int>& task)
+{
+    ERRCHK(task.get() == 0);
+    ERRCHK_MPI_API(MPI_Barrier(comm));
+    return 0;
+}
+
 int
 main()
 {
@@ -79,7 +89,7 @@ main()
         const std::string outfile{"test.out"};
         const uint64_t    offset{as<uint64_t>(rank) * prod(local_nn)};
         auto              task{write_async(cart_comm, buf.size(), buf.data(), outfile, offset)};
-        ERRCHK(task.get() == 0);
+        ERRCHK_MPI(wait(cart_comm, task) == 0);
 
         if (ac::mpi::get_rank(cart_comm) == 0) {
             FILE* fp{fopen(outfile.c_str(), "r")};
