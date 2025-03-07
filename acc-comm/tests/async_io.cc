@@ -15,36 +15,32 @@
 #include "acm/detail/type_conversion.h"
 
 template <typename T>
-static std::future<int>
-write_async(const size_t count, const T* data, const std::string& outfile, const uint64_t offset)
+static int
+write(const size_t count, const T* data, const std::string& outfile, const uint64_t offset)
 {
-    auto write =
-        [](const size_t count, const T* data, const std::string outfile, const uint64_t offset) {
-            FILE* fp{fopen(outfile.c_str(), "r+")};
-            if (!fp)
-                return -1;
+    FILE* fp{fopen(outfile.c_str(), "r+")};
+    if (!fp)
+        return -1;
 
-            const long offset_bytes{as<long>(offset * sizeof(T))};
-            if (fseek(fp, offset_bytes, SEEK_SET) != 0) {
-                fclose(fp);
-                return -1;
-            }
+    const long offset_bytes{as<long>(offset * sizeof(T))};
+    if (fseek(fp, offset_bytes, SEEK_SET) != 0) {
+        fclose(fp);
+        return -1;
+    }
 
-            if (fwrite(data, sizeof(T), count, fp) != count) {
-                fclose(fp);
-                return -1;
-            }
+    if (fwrite(data, sizeof(T), count, fp) != count) {
+        fclose(fp);
+        return -1;
+    }
 
-            fclose(fp);
-            return 0;
-        };
-    return std::future<int>{std::async(std::launch::async, write, count, data, outfile, offset)};
+    fclose(fp);
+    return 0;
 }
 
 template <typename T>
 static std::future<int>
-write_async_mpi(const MPI_Comm& parent_comm, const size_t count, const T* data,
-                const std::string& outfile, const uint64_t offset)
+write_async(const MPI_Comm& parent_comm, const size_t count, const T* data,
+            const std::string& outfile, const uint64_t offset)
 {
     MPI_Comm comm{MPI_COMM_NULL};
     ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
@@ -62,7 +58,7 @@ write_async_mpi(const MPI_Comm& parent_comm, const size_t count, const T* data,
     ERRCHK_MPI_API(MPI_Barrier(comm));
     ERRCHK_MPI_API(MPI_Comm_free(&comm));
 
-    return write_async(count, data, outfile, offset);
+    return std::future<int>{std::async(std::launch::async, write<T>, count, data, outfile, offset)};
 }
 
 int
@@ -82,7 +78,7 @@ main()
 
         const std::string outfile{"test.out"};
         const uint64_t    offset{as<uint64_t>(rank) * prod(local_nn)};
-        auto              task{write_async_mpi(cart_comm, buf.size(), buf.data(), outfile, offset)};
+        auto              task{write_async(cart_comm, buf.size(), buf.data(), outfile, offset)};
         ERRCHK(task.get() == 0);
 
         if (ac::mpi::get_rank(cart_comm) == 0) {
