@@ -147,6 +147,7 @@ cross(real3 a, real3 b)
 {
 	return AC_cross(a,b)
 }
+
 dot(real3 a, real3 b)
 {
 	return AC_dot(a, b)

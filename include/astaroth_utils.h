@@ -119,6 +119,7 @@ static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream)
     		fprintf(stderr,"%s","Fatal error was not able to load Astaroth utils\n"); 
 		exit(EXIT_FAILURE);
 	}
+	utilsLibHandle=handle;
 	LOAD_DSYM(acHostVertexBufferSet,stream);
 	LOAD_DSYM(acHostMeshSet,stream);
 	LOAD_DSYM(acHostMeshApplyPeriodicBounds,stream);

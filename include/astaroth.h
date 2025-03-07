@@ -421,17 +421,18 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
 			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
 
-
   static AcLibHandle __attribute__((unused)) acLoadLibrary(FILE* stream)
   {
-	acLoadRunTime(stream);
+	kernelsLibHandle=acLoadRunTime(stream);
  	void* handle = dlopen(runtime_astaroth_path,RTLD_NOW);
-	if(!handle)
+	if (!handle)
 	{
     		fprintf(stderr,"%s","Fatal error was not able to load Astaroth\n"); 
 		fprintf(stderr,"Error message: %s\n",dlerror());
 		exit(EXIT_FAILURE);
 	}
+	astarothLibHandle=handle;
+
 	LOAD_DSYM(acDeviceGetVertexBufferPtrs,stream)
 	LOAD_DSYM(acDeviceGetLocalConfig,stream)
         LOAD_DSYM(acDeviceFinishReduceInt,stream) 
@@ -543,10 +544,6 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	LOAD_DSYM(acNodeReduceScal,stream)
 	LOAD_DSYM(acNodeReduceVec,stream)
 	LOAD_DSYM(acNodeReduceVecScal,stream)
-	LOAD_DSYM(acNodeLoadPlate,stream)
-	LOAD_DSYM(acNodeStorePlate,stream)
-	LOAD_DSYM(acNodeStoreIXYPlate,stream)
-	LOAD_DSYM(acNodeLoadPlateXcomp,stream)
 	LOAD_DSYM(acDeviceCreate,stream)
 	LOAD_DSYM(acDeviceDestroy,stream)
 	LOAD_DSYM(acDeviceResetMesh,stream)
@@ -602,9 +599,6 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	LOAD_DSYM(acDeviceStencilAccessesBoundaries,stream)
 	LOAD_DSYM(acDeviceStoreStencil,stream)
 	LOAD_DSYM(acDeviceVolumeCopy,stream)
-	LOAD_DSYM(acDeviceLoadPlateBuffer,stream)
-	LOAD_DSYM(acDeviceStorePlateBuffer,stream)
-	LOAD_DSYM(acDeviceStoreIXYPlate,stream)
 #include "device_set_input_loads.h"
 #include "device_get_input_loads.h"
 #include "device_get_output_loads.h"
@@ -633,12 +627,17 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 //	return handle;
 //#endif
 	const AcResult is_compatible = acVerifyCompatibility(sizeof(AcMesh), sizeof(AcMeshInfo), sizeof(AcMeshInfoParams), sizeof(AcCompInfo), NUM_REAL_PARAMS, NUM_INT_PARAMS, NUM_BOOL_PARAMS, NUM_REAL_ARRAYS, NUM_INT_ARRAYS, NUM_BOOL_ARRAYS);
-	if(is_compatible == AC_FAILURE)
+	if (is_compatible == AC_FAILURE)
 	{
 		fprintf(stderr,"Library is not compatible\n");
 		exit(EXIT_FAILURE);
 	}
-	return handle;
+	return AC_SUCCESS;
+  }
+  static int __attribute__((unused)) acCloseLibrary()
+  {
+        return (!astarothLibHandle ? dlclose(astarothLibHandle) : 0) || (!kernelsLibHandle ? dlclose(kernelsLibHandle) : 0); //|| (!utilsLibHandle ? dlclose(utilsLibHandle) : 0);
+        //return dlclose(astarothLibHandle) || dlclose(kernelsLibHandle);
   }
 #endif
 

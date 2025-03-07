@@ -25,7 +25,7 @@
 #include "../../acc-runtime/api/math_utils.h"
 #include "kernels/kernels.h"
 #include "user_builtin_non_scalar_constants.h"
-
+#include "util_funcs.h"
 
 struct device_s {
     int id;
@@ -501,7 +501,6 @@ acCopyFromInfo(const AcMeshInfo src, AcMeshInfo dst, AcInt3Param param)
 void
 acCopyFromInfo(const AcMeshInfo, AcMeshInfo, const int3){}
 
-
 AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
 {
@@ -565,9 +564,12 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 #endif
 
     // Concurrency
+    int rank=ac_MPI_Comm_rank();
+if (rank==0) printf("memusage bef create streams= %f MBytes\n", memusage()/1024.);
     for (int i = 0; i < NUM_STREAMS; ++i) {
         cudaStreamCreateWithPriority(&device->streams[i], cudaStreamNonBlocking, i);
     }
+if (rank==0) printf("memusage after create streams= %f MBytes\n", memusage()/1024.);
 
     // Memory
     // VBA in/out

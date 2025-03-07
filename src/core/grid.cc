@@ -51,6 +51,7 @@
 #include "user_builtin_non_scalar_constants.h"
 #include "astaroth_utils.h"
 #include "task.h"
+#include "util_funcs.h"
 
 #include <algorithm>
 #include <cstring> //memcpy
@@ -79,7 +80,6 @@ AcResult acAnalysisLoadMeshInfo(const AcMeshInfoParams info);
 	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
 	ERRCHK_ALWAYS(false); \
 	} 
-
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;
@@ -746,9 +746,11 @@ acGridInitBase(const AcMesh user_mesh)
 		    );
     acLogFromRootProc(ac_pid(), "acGridInit: Calling acDeviceCreate\n");
     Device device;
+    int rank=ac_MPI_Comm_rank();
+if (rank==0) printf("memusage bef Dev create= %f MBytes\n", memusage()/1024.);
     acDeviceCreate(ac_pid() % devices_per_node, submesh_info, &device);
+if (rank==0) printf("memusage after Dev create= %f MBytes\n", memusage()/1024.);
     acLogFromRootProc(ac_pid() , "acGridInit: Returned from acDeviceCreate\n");
-
 
     // Setup the global grid structure
     grid.device        = device;
@@ -759,6 +761,7 @@ acGridInitBase(const AcMesh user_mesh)
     grid.nn = acGetLocalNN(acDeviceGetLocalConfig(device));
     grid.mpi_tag_space_count = 0;
 
+//if (rank==0) printf("memusage bef Dev update= %f MBytes\n", memusage()/1024.);
     acDeviceUpdate(device,acDeviceGetLocalConfig(device));
 
     initialize_random_number_generation(submesh_info);
@@ -767,7 +770,9 @@ acGridInitBase(const AcMesh user_mesh)
     grid.initialized   = true;
 
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Synchronizing streams\n");
+if (rank==0) printf("memusage bef synchronize stream= %f MBytes\n", memusage()/1024.);
     acGridSynchronizeStream(STREAM_ALL);
+if (rank==0) printf("memusage after synchronize stream= %f MBytes\n", memusage()/1024.);
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Done synchronizing streams\n");
 
 #ifdef AC_INTEGRATION_ENABLED

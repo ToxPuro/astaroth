@@ -1,3 +1,5 @@
+#include <sys/resource.h>
+
 static size_t
 get_size_from_dim(const int dim, const Volume dims)
 {
@@ -11,4 +13,11 @@ static Volume
 get_volume_from_shape(const AcShape shape)
 {
 	return {shape.x,shape.y,shape.z};
+}
+static int memusage()
+{
+  	struct rusage usage;
+  	int res=getrusage(RUSAGE_SELF,&usage);
+
+  	return usage.ru_maxrss;
 }
