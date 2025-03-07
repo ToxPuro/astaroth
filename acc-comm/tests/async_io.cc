@@ -13,54 +13,96 @@
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
+#include "acm/detail/pack.h"
 #include "acm/detail/pointer.h"
 #include "acm/detail/type_conversion.h"
 
 template <typename T>
 static int
-write(const size_t count, const T* data, const std::string& outfile, const uint64_t offset)
+write(const ac::host_ndbuffer<T>&& input, const ac::shape& file_dims, const ac::index& file_offset,
+      const std::string& outfile)
 {
     FILE* fp{fopen(outfile.c_str(), "r+")};
     if (!fp)
         return -1;
 
-    const long offset_bytes{as<long>(offset * sizeof(T))};
-    if (fseek(fp, offset_bytes, SEEK_SET) != 0) {
-        fclose(fp);
-        return -1;
-    }
+    for (uint64_t i{0}; i < input.size(); ++i) {
 
-    if (fwrite(data, sizeof(T), count, fp) != count) {
-        fclose(fp);
-        return -1;
+        const auto in_coords{to_spatial(i, input.shape())};
+        const auto out_coords{file_offset + in_coords};
+        const auto out_idx{to_linear(out_coords, file_dims)};
+
+        const long offset_bytes{as<long>(out_idx * sizeof(T))};
+        if (fseek(fp, offset_bytes, SEEK_SET) != 0) {
+            fclose(fp);
+            return -1;
+        }
+
+        if (fwrite(&input[i], sizeof(T), 1, fp) != 1) {
+            fclose(fp);
+            return -1;
+        }
     }
 
     fclose(fp);
     return 0;
 }
 
-template <typename T>
-static std::future<int>
-write_async(const MPI_Comm& parent_comm, const size_t count, const T* data,
-            const std::string& outfile, const uint64_t offset)
+template <typename T, typename Allocator>
+static int
+async_write_pipeline(const int device_id, const ac::ndbuffer<T, Allocator>&& staging_buffer, //
+                     const ac::shape file_dims, const ac::index file_offset,
+                     const std::string outfile)
 {
-    MPI_Comm comm{MPI_COMM_NULL};
-    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+#if defined(ACM_DEVICE_ENABLED)
+    ERRCHK_CUDA(cudaSetDevice(device_id)); // TODO
+#else
+    (void)device_id; // Unused
+#endif
 
-    // Create the file for concurrent writing
-    ERRCHK_MPI_API(MPI_Barrier(comm));
+    ac::host_ndbuffer<T> hbuf{staging_buffer.to_host()};
+    write(std::move(hbuf), file_dims, file_offset, outfile);
+    return 0;
+}
 
-    const int root{0};
-    if (ac::mpi::get_rank(comm) == root) {
-        FILE* fp{fopen(outfile.c_str(), "w")};
-        ERRCHK_MPI(fp);
-        ERRCHK_MPI(fclose(fp) == 0);
+/** Note: data must remain valid until the future has completed. */
+template <typename T, typename Allocator>
+static std::future<int>
+write_async(const MPI_Comm& parent_comm, const int device_id, const ac::shape mm,
+            const ac::shape nn, const ac::index nn_offset,
+            const ac::mr::pointer<T, Allocator>&& input, //
+            const ac::shape file_dims, const ac::index file_offset, const std::string outfile)
+{
+    if (parent_comm != MPI_COMM_NULL) {
+        MPI_Comm comm{MPI_COMM_NULL};
+        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
+
+        // Create the file for concurrent writing
+        ERRCHK_MPI_API(MPI_Barrier(comm));
+
+        const int root{0};
+        if (ac::mpi::get_rank(comm) == root) {
+            FILE* fp{fopen(outfile.c_str(), "w")};
+            ERRCHK_MPI(fp);
+            ERRCHK_MPI(fclose(fp) == 0);
+        }
+
+        ERRCHK_MPI_API(MPI_Barrier(comm));
+        ERRCHK_MPI_API(MPI_Comm_free(&comm));
+
+        ac::ndbuffer<T, Allocator> staging_buffer{nn};
+        pack(mm, nn, nn_offset, {input}, staging_buffer.get());
+        return std::future<int>{std::async(std::launch::async,
+                                           async_write_pipeline<T, Allocator>,
+                                           device_id,
+                                           std::move(staging_buffer),
+                                           file_dims,
+                                           file_offset,
+                                           outfile)};
     }
-
-    ERRCHK_MPI_API(MPI_Barrier(comm));
-    ERRCHK_MPI_API(MPI_Comm_free(&comm));
-
-    return std::future<int>{std::async(std::launch::async, write<T>, count, data, outfile, offset)};
+    else {
+        return std::future<int>{std::async(std::launch::async, []() { return 0; })};
+    }
 }
 
 static int
@@ -87,8 +129,15 @@ main()
         // buf.display();
 
         const std::string outfile{"test.out"};
-        const uint64_t    offset{as<uint64_t>(rank) * prod(local_nn)};
-        auto              task{write_async(cart_comm, buf.size(), buf.data(), outfile, offset)};
+        auto              task{write_async(cart_comm,
+                              0,
+                              local_nn,
+                              local_nn,
+                              ac::make_index(local_nn.size(), 0),
+                              buf.get(),
+                              global_nn,
+                              ac::mpi::get_coords(cart_comm) * local_nn,
+                              outfile)};
         ERRCHK_MPI(wait(cart_comm, task) == 0);
 
         if (ac::mpi::get_rank(cart_comm) == 0) {
