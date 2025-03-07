@@ -3943,6 +3943,35 @@ acGridDiskAccessLaunch(const AccessType type)
 }
 #endif
 
+static UNUSED size_t
+measure_file_size(const char* filepath)
+{
+    
+    FILE* fp_in                   = fopen(filepath, "r");
+    ERRCHK_ALWAYS(fp_in);
+    fseek(fp_in, 0L, SEEK_END);
+    const size_t measured_size = ftell(fp_in);
+    fclose(fp_in);
+    return measured_size;
+};
+void
+check_file_size(const char* filepath)
+{
+        const Volume nn = get_global_nn();
+        const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
+	const size_t measured_size = measure_file_size(filepath);
+        if (expected_size != measured_size) {
+            fprintf(stderr,
+                    "Expected size did not match measured size (%lu vs %lu), factor of %g "
+                    "difference\n",
+                    expected_size, measured_size, (double)expected_size / measured_size);
+            fprintf(stderr, "Note that old data files must be removed when switching to a smaller "
+                            "mesh size, otherwise the file on disk will be too large (the above "
+                            "factor < 1)\n");
+            ERRCHK_ALWAYS(expected_size == measured_size);
+        }
+}
+
 AcResult
 acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* dir,
                                   const char* label, const AccessType type)
@@ -4038,10 +4067,16 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     ERRCHK_ALWAYS(fp);
 
     if (type == ACCESS_READ)
+    {
         fread(arr, sizeof(AcReal), nelems, fp);
+    }
     else
+    {
         fwrite(arr, sizeof(AcReal), nelems, fp);
+    }
     fclose(fp);
+
+
 #else // Collective IO
     MPI_Datatype subarray;
     const int3 nn = get_global_nn(); // TODO recheck whether this is correct
@@ -4088,28 +4123,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     MPI_Type_free(&subarray);
 #endif
 
-#ifndef NDEBUG
-    if (type == ACCESS_WRITE) {
-        const Volume nn = get_global_nn();
-        const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
-        FILE* fp_in                   = fopen(filepath, "r");
-        ERRCHK_ALWAYS(fp_in);
-        fseek(fp, 0L, SEEK_END);
-        const size_t measured_size = ftell(fp_in);
-        fclose(fp_in);
-        if (expected_size != measured_size) {
-            fprintf(stderr,
-                    "Expected size did not match measured size (%lu vs %lu), factor of %g "
-                    "difference\n",
-                    expected_size, measured_size, (double)expected_size / measured_size);
-            fprintf(stderr, "Note that old data files must be removed when switching to a smaller "
-                            "mesh size, otherwise the file on disk will be too large (the above "
-                            "factor < 1)\n");
-            ERRCHK_ALWAYS(expected_size == measured_size);
-        }
-    }
-#endif // NDEBUG
-
+    check_file_size(filepath);
     if (type == ACCESS_READ) {
 	auto vba = acDeviceGetVBA(device);
         AcReal* in           = vba.on_device.out[vtxbuf];
@@ -4119,7 +4133,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
         AcReal* out           = vba.on_device.in[vtxbuf];
 
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
-	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
+	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 
 #if BUFFER_DISK_WRITE_THROUGH_CPU
         // ---------------------------------------

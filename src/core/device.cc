@@ -821,7 +821,13 @@ acDeviceStoreVertexBuffer(const Device device, const Stream stream,
     int3 dst                  = src;
     const size_t device_num_vertices = acVertexBufferSize(device->local_config);
     const size_t host_num_vertices = acVertexBufferSize(host_mesh->info);
-    ERRCHK_ALWAYS(device_num_vertices == host_num_vertices);
+    if(device_num_vertices != host_num_vertices)
+    {
+	fprintf(stderr,"Host dims: %d,%d,%d\n",host_mesh->info[AC_mlocal].x,host_mesh->info[AC_mlocal].y,host_mesh->info[AC_mlocal].z);
+	fprintf(stderr,"Device dims: %d,%d,%d\n",device->local_config[AC_mlocal].x,device->local_config[AC_mlocal].y,device->local_config[AC_mlocal].z);
+	fflush(stderr);
+    	ERRCHK_ALWAYS(device_num_vertices == host_num_vertices);
+    }
 
     return acDeviceStoreVertexBufferWithOffset(device, stream, vtxbuf_handle, src, dst, host_num_vertices,
                                         host_mesh);
