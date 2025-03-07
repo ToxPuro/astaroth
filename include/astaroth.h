@@ -1061,6 +1061,9 @@ AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle v
 /** */
 AcResult acDeviceGetLocalConfig(const Device device, AcMeshInfo* info);
 
+/**  */
+AcResult acDeviceGetId(const Device device, int* id);
+
 /*
  * =============================================================================
  * Helper functions
