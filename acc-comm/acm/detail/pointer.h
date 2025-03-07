@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <type_traits>
 
 #include "allocator.h"
 #include "cuda_utils.h"
@@ -71,11 +72,14 @@ get_kind()
     }
 }
 
-template <typename T, typename AllocatorA, typename AllocatorB>
+template <typename T, typename U, typename AllocatorA, typename AllocatorB>
 void
 copy(const size_t count, const size_t in_offset, const pointer<T, AllocatorA>& in,
-     const size_t out_offset, pointer<T, AllocatorB>& out)
+     const size_t out_offset, pointer<U, AllocatorB>& out)
 {
+    // Check that T is the same type as U apart from constness
+    static_assert(std::is_same_v<std::remove_const_t<T>, U>);
+
     ERRCHK(in_offset + count <= in.size());
     ERRCHK(out_offset + count <= out.size());
     ERRCHK_CUDA_API(cudaMemcpy(&out[out_offset],
@@ -115,11 +119,14 @@ template <typename T> using device_pointer = pointer<T, ac::mr::device_allocator
 template <typename T> using host_pointer   = pointer<T, ac::mr::host_allocator>;
 template <typename T> using device_pointer = host_pointer<T>;
 
-template <typename T>
+template <typename T, typename U>
 void
 copy(const size_t count, const size_t in_offset, const host_pointer<T>& in, const size_t out_offset,
-     host_pointer<T>& out)
+     host_pointer<U>& out)
 {
+    // Check that T is the same type as U apart from constness
+    static_assert(std::is_same_v<std::remove_const_t<T>, U>);
+
     ERRCHK(in_offset + count <= in.size());
     ERRCHK(out_offset + count <= out.size());
     std::copy_n(&in[in_offset], count, &out[out_offset]);
@@ -138,10 +145,12 @@ copy(const size_t count, const size_t in_offset, const host_pointer<T>& in, cons
 
 #endif
 
-template <typename T, typename AllocatorA, typename AllocatorB>
+template <typename T, typename U, typename AllocatorA, typename AllocatorB>
 void
-copy(const pointer<T, AllocatorA>& in, pointer<T, AllocatorB> out)
+copy(const pointer<T, AllocatorA>& in, pointer<U, AllocatorB> out)
 {
+    // Check that T is the same type as U apart from constness
+    static_assert(std::is_same_v<std::remove_const_t<T>, U>);
     copy(in.size(), 0, in, 0, out);
 }
 
