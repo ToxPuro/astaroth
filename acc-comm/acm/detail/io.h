@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 
 #include <mpi.h>
 
@@ -59,7 +60,7 @@ class async_write_task {
     }
 
     template <typename Allocator>
-    void launch_write_collective(const MPI_Comm&                      parent_m_comm,
+    void launch_write_collective(const MPI_Comm&                      parent_comm,
                                  const ac::mr::pointer<T, Allocator>& input,
                                  const std::string&                   path)
     {
@@ -68,7 +69,7 @@ class async_write_task {
 
         // Communicator
         ERRCHK_MPI(m_comm == MPI_COMM_NULL);
-        ERRCHK_MPI_API(MPI_Comm_dup(parent_m_comm, &m_comm));
+        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &m_comm));
 
         // TODO: transfers the whole buffer at the moment, would be
         // better to migrate only mesh_subdims instead (but need
@@ -148,12 +149,12 @@ class batched_async_write_task {
     }
 
     template <typename Allocator>
-    void launch(const MPI_Comm&                                   parent_m_comm,
+    void launch(const MPI_Comm&                                   parent_comm,
                 const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
                 const std::vector<std::string>&                   paths)
     {
         for (size_t i = 0; i < inputs.size(); ++i)
-            write_tasks[i]->launch_write_collective(parent_m_comm, inputs[i], paths[i]);
+            write_tasks[i]->launch_write_collective(parent_comm, inputs[i], paths[i]);
     }
 
     void wait()

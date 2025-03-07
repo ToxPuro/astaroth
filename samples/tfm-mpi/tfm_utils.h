@@ -80,6 +80,19 @@ static const std::vector<Profile> nonlocal_tfm_profiles{PROFILE_Umean_x,
                                                         PROFILE_ucrossb22mean_y,
                                                         PROFILE_ucrossb22mean_z};
 
+static const std::vector<Profile> uxbmean_profiles{PROFILE_ucrossb11mean_x,
+                                                   PROFILE_ucrossb11mean_y,
+                                                   PROFILE_ucrossb11mean_z,
+                                                   PROFILE_ucrossb12mean_x,
+                                                   PROFILE_ucrossb12mean_y,
+                                                   PROFILE_ucrossb12mean_z,
+                                                   PROFILE_ucrossb21mean_x,
+                                                   PROFILE_ucrossb21mean_y,
+                                                   PROFILE_ucrossb21mean_z,
+                                                   PROFILE_ucrossb22mean_x,
+                                                   PROFILE_ucrossb22mean_y,
+                                                   PROFILE_ucrossb22mean_z};
+
 // #define TFM_DEBUG_AVG_KERNEL
 #if defined(TFM_DEBUG_AVG_KERNEL)
 static const std::vector<std::vector<Kernel>> hydro_kernels{std::vector<Kernel>{average_hydro},

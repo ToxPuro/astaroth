@@ -15,6 +15,8 @@ set(ACM_HOST_FILES
 )
 set(ACM_DEVICE_FILES pack.cu)
 add_library(acm SHARED ${ACM_DEVICE_FILES} ${ACM_HOST_FILES} acm_error.c errchk_print.c)
+
+## Link libraries and includes
 target_link_libraries(acm PUBLIC MPI::MPI_C)
 target_include_directories(acm PUBLIC ${PROJECT_SOURCE_DIR})
 

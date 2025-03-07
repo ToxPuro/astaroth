@@ -56,6 +56,19 @@ get_field_paths(const std::vector<Field>& fields, const size_t step)
     return paths;
 }
 
+static auto
+get_profile_paths(const std::vector<Profile>& profiles, const size_t step)
+{
+    std::vector<std::string> paths;
+    for (const auto& profile : profiles) {
+        std::ostringstream oss;
+        oss << profile_names[static_cast<size_t>(profile)] << "-step-" << std::setfill('0')
+            << std::setw(12) << step << ".profile";
+        paths.push_back(oss.str());
+    }
+    return paths;
+}
+
 /** Apply a static cast to all elements of the input vector from type U to T */
 template <typename T, typename U>
 ac::ntuple<T>
@@ -165,22 +178,12 @@ init_tfm_profiles(const Device& device)
     }
 
     // B1c (here B11) and B2c (here B21) to cosine
-    acHostInitProfileToCosineWave(dsz,
-                                  offset,
-                                  amplitude,
-                                  wavenumber,
-                                  local_mz,
-                                  host_profile.get());
+    acHostInitProfileToCosineWave(dsz, offset, amplitude, wavenumber, local_mz, host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y));
 
     // B1s (here B12) and B2s (here B22)
-    acHostInitProfileToSineWave(dsz,
-                                offset,
-                                amplitude,
-                                wavenumber,
-                                local_mz,
-                                host_profile.get());
+    acHostInitProfileToSineWave(dsz, offset, amplitude, wavenumber, local_mz, host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y));
 
