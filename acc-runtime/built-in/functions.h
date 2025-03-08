@@ -138,6 +138,10 @@ vecwrite(Field3 dst, real3 src)
 real3 intrinsic AC_cross
 real intrinsic AC_dot
 
+cross(real[] a, real3 b)
+{
+	return AC_cross((real3){a[0],a[1],a[2]},b)
+}
 
 cross(real3 a, real3 b)
 {
