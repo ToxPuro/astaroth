@@ -38,6 +38,7 @@
 #define AC_INSIDE_AC_LIBRARY 
 #endif
 
+
 #include "task.h"
 #include "astaroth.h"
 #include "user_builtin_non_scalar_constants.h"
@@ -60,6 +61,20 @@ AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 #include "decomposition.h" //getPid and friends
 #include "errchk.h"
 #include "kernels/kernels.h" //AcRealPacked, ComputeKernel
+
+int
+static ac_pid()
+{
+    int pid;
+    MPI_Comm_rank(acGridMPIComm(), &pid);
+    return pid;
+}
+
+#define fatal(MESSAGE, ...) \
+        { \
+	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
+	ERRCHK_ALWAYS(false); \
+	} 
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 
@@ -183,14 +198,12 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
 {
     if((boundary & BOUNDARY_Z) && TWO_D)
     {
-	    fprintf(stderr,"Can't have Z boundary conditions in 2d simulation\n");
-	    MPI_Finalize();
-	    exit(EXIT_FAILURE);
+	    fatal("%s","Can't have Z boundary conditions in 2d simulation\n");
     }
     AcTaskDefinition task_def{};
     task_def.task_type              = TASKTYPE_BOUNDCOND;
     task_def.boundary               = boundary;
-    task_def.kernel_enum         = kernel;
+    task_def.kernel_enum            = kernel;
 
     task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
@@ -199,14 +212,38 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     task_def.fieldwise = strstr(kernel_input_param_strs[kernel],"Field");
     if (!strcmp(kernel_input_param_strs[kernel],"Field"))
     {
-    	auto default_loader = [&](ParamLoadingInfo p)
+    	auto default_loader = [](ParamLoadingInfo p)
     	{
-    	        acLoadKernelParams(*p.params,kernel,p.vtxbuf);
+    	        acLoadKernelParams(*p.params,p.kernel,p.vtxbuf);
     	};
 	task_def.load_kernel_params_func = new LoadKernelParamsFunc({default_loader});
     }
     else
     	task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
+    if(kernel == BOUNDCOND_PERIODIC && !acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].x && boundary & BOUNDARY_X)
+    {
+	    fatal("%s","Periodic boundary condition in X even though AC_periodic_grid.x is false!!\n");
+    }
+    if(kernel != BOUNDCOND_PERIODIC && acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].x && boundary & BOUNDARY_X)
+    {
+	    fatal("%s","Non-periodic boundary condition in X even though AC_periodic_grid.x is true!!\n");
+    }
+    if(kernel == BOUNDCOND_PERIODIC && !acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].y && boundary & BOUNDARY_Y)
+    {
+	    fatal("%s","Periodic boundary condition in Y even though AC_periodic_grid.y is false!!\n");
+    }
+    if(kernel != BOUNDCOND_PERIODIC && acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].y && boundary & BOUNDARY_Y)
+    {
+	    fatal("%s","Non-periodic boundary condition in Y even though AC_periodic_grid.y is true!!\n");
+    }
+    if(kernel == BOUNDCOND_PERIODIC && !acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].z && boundary & BOUNDARY_Z)
+    {
+	    fatal("%s","Periodic boundary condition in Z even though AC_periodic_grid.z is false!!\n");
+    }
+    if(kernel != BOUNDCOND_PERIODIC && acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].z && boundary & BOUNDARY_Z)
+    {
+	    fatal("%s","Non-periodic boundary condition in Z even though AC_periodic_grid.z is true!!\n");
+    }
     return task_def;
 }
 size_t
@@ -808,7 +845,7 @@ ComputeTask::getKernel()
 void
 ComputeTask::compute()
 {
-    params.load_func->loader({&vba.on_device.kernel_input_params, device, (int)loop_cntr.i, {}, {}});
+    params.load_func->loader({&vba.on_device.kernel_input_params, device, (int)loop_cntr.i, {}, {}, params.kernel_enum});
     acLaunchKernel(params.kernel_enum, params.stream, params.start, params.end, vba);
 }
 
@@ -1847,7 +1884,7 @@ BoundaryConditionTask::populate_boundary_region()
      if(fieldwise)
      {
      	for (auto variable : output_region.memory.fields) {
-     		params.load_func->loader({&vba.on_device.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
+     		params.load_func->loader({&vba.on_device.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable, params.kernel_enum});
      		const int3 region_id = output_region.id;
      		const Volume start = {(region_id.x == 1 ? ghosts.x+ nn.x
      		                                           : region_id.x == -1 ? 0 : ghosts.x),

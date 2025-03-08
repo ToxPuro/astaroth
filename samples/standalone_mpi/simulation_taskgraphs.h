@@ -37,6 +37,18 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
 
     auto make_graph = [pid, &info](Simulation sim_in) -> AcTaskGraph* {
         acLogFromRootProc(pid, "Creating task graph for simulation\n");
+
+        auto intermediate_loader = [](ParamLoadingInfo l){
+                l.params -> twopass_solve_intermediate.step_num = l.step_number;
+                l.params -> twopass_solve_intermediate.dt= 
+                acDeviceGetInput(l.device,AC_dt);
+        };
+        auto final_loader = [](ParamLoadingInfo l){
+                l.params -> twopass_solve_final.step_num = l.step_number;
+                l.params -> twopass_solve_final.current_time= 
+            	   acDeviceGetInput(l.device,AC_current_time);
+        };
+
         switch (sim_in) {
         case Simulation::Shock_Singlepass_Solve: {
 #if LSHOCK
@@ -73,6 +85,7 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
             return acGridBuildTaskGraph(shock_ops);
 #endif
         }
+
         case Simulation::Hydro_Heatduct_Solve: {
 #if LENTROPY
 	    //TP: deprecated for now because of the special boundary condition
@@ -131,54 +144,55 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
         }
 #if LBFIELD
         case Simulation::Bound_Test_Solve: {
-		std::vector<VertexBufferHandle> all_fields
-                {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
-                 VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, //VTXBUF_ENTROPY,
-                 BFIELDX,    BFIELDY,    BFIELDZ};
-
-		std::vector<VertexBufferHandle> scalar_fields{VTXBUF_LNRHO};//, VTXBUF_ENTROPY};
-            	std::vector<VertexBufferHandle> uux_field{VTXBUF_UUX};
-            	std::vector<VertexBufferHandle> uuy_field{VTXBUF_UUY};
-            	std::vector<VertexBufferHandle> uuz_field{VTXBUF_UUZ};
-            	std::vector<VertexBufferHandle> aax_field{VTXBUF_AX};
-            	std::vector<VertexBufferHandle> aay_field{VTXBUF_AY};
-            	std::vector<VertexBufferHandle> aaz_field{VTXBUF_AZ};
+    		std::vector<Field> all_fields{};
+    		for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+        		all_fields.push_back(Field(i));
+    		}
+		std::vector<VertexBufferHandle> scalar_fields{VTXBUF_LNRHO};
+#if LENTROPY
+		scalar_fields.push_back(VTXBUF_ENTROPY);
+#endif
 
             AcTaskDefinition boundtest_ops[] =
                 {acHaloExchange(all_fields),
                  //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
                  //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, all_fields),
                  //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_ANTISYMMETRIC, all_fields),
-                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_A2, all_fields),
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_A2, all_fields),
                  //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_OUTFLOW, all_fields),
                  //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_INFLOW, all_fields),
                  
-                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, scalar_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, scalar_fields),
 
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_OUTFLOW,   uux_field),
+		 /**
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_OUTFLOW,   {VTXBUF_UUX}),
                  //acBoundaryCondition(BOUNDARY_X, BOUNDCOND_INFLOW,   uux_field),
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, uuy_field),
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, uuz_field),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, {VTXBUF_UUY}),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, {VTXBUF_UUZ}),
 
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, uux_field),
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_OUTFLOW,   uuy_field),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, {VTXBUF_UUX}),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_OUTFLOW,   {VTXBUF_UUY}),
                  //acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_INFLOW,   uuy_field),
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, uuz_field),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, {VTXBUF_UUZ}),
 
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uux_field),
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uuy_field),
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_OUTFLOW,   uuz_field),
-                 //acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_INFLOW,   uuz_field),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, {VTXBUF_UUX}),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, {VTXBUF_UUY}),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_OUTFLOW,   {VTXBUF_UUZ}),
+                 ////acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_INFLOW,   uuz_field),
+		 **/
 
-                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, aax_field),
-                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, aay_field),
-                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, aaz_field),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, {VTXBUF_AX}),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, {VTXBUF_AY}),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, {VTXBUF_AZ}),
 
-                 acCompute(twopass_solve_intermediate, all_fields),
-                 acCompute(twopass_solve_final, all_fields)};
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, {VTXBUF_UUX}),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, {VTXBUF_UUY}),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, {VTXBUF_UUZ}),
+
+                 acCompute(twopass_solve_intermediate, all_fields,intermediate_loader),
+                 acCompute(twopass_solve_final, all_fields,final_loader)};
             acLogFromRootProc(pid, "Creating Boundary test task graph\n");
             AcTaskGraph* my_taskgraph = acGridBuildTaskGraph(boundtest_ops);
-            acGraphPrintDependencies(my_taskgraph);
             return my_taskgraph;
         }
 #endif

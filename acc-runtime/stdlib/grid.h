@@ -17,5 +17,5 @@ grid_position() {
 grid_center() {
 //MR: generalize, using x,y,z?
 //TP: implicitly assumes [0,AC_len] domain
-    return ((AC_ngrid-1)*AC_ds)*0.5;
+    return 0.5*AC_len;
 }

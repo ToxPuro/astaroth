@@ -112,9 +112,9 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 		char log_dst[10024];
 
     		if(mesh_info.runtime_compilation_log_dst == NULL)
-			sprintf(log_dst,"/dev/stderr");
+			sprintf(log_dst,"%s","/dev/stderr");
 		else if (mesh_info.runtime_compilation_log_dst[0] == '/')
-			sprintf(log_dst,mesh_info.runtime_compilation_log_dst);
+			sprintf(log_dst,"%s",mesh_info.runtime_compilation_log_dst);
 		else
 			sprintf(log_dst,"%s/%s",cwd,mesh_info.runtime_compilation_log_dst);
 

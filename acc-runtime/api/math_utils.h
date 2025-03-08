@@ -243,6 +243,18 @@ operator+(const int3& a, const int& b)
 }
 
 static HOST_DEVICE_INLINE int3
+operator+(const int3& a, const AcBool3& b)
+{
+    return (int3){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+static HOST_DEVICE_INLINE int3
+operator+(const AcBool3& a, const int3& b)
+{
+    return (int3){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+static HOST_DEVICE_INLINE int3
 operator+(const int& a, const int3& b)
 {
     return (int3){a + b.x, a + b.y, a + b.z};

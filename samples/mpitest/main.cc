@@ -84,11 +84,7 @@ main(int argc, char* argv[])
     acLoadCompInfo(AC_runtime_real_arr,real_arr,&info.run_consts);
     acLoadCompInfo(AC_runtime_int_arr,int_arr,&info.run_consts);
     acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&info.run_consts);
-#if AC_USE_HIP
-    const char* build_str = "-DUSE_HIP=ON  -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_MODEL=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
-#else
-    const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_MODEL=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
-#endif
+    const char* build_str = "-DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_MODEL=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF";
     info.runtime_compilation_log_dst = "ac_compilation_log";
     acCompile(build_str,info);
     acLoadLibrary(stdout);

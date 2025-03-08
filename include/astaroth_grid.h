@@ -240,6 +240,7 @@ typedef struct ParamLoadingInfo {
         const int step_number;
         const int3 boundary_normal;
         const Field vtxbuf;
+	const AcKernel kernel;
 } ParamLoadingInfo;
 
 //opaque for C to enable C++ lambdas

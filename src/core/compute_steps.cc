@@ -274,7 +274,7 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 	{
 		VertexBufferArray vba{};
 		auto loader = get_loader(graph,call_index);
-    		loader({&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}});
+    		loader({&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]});
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
 		if(filter_unnecessary_ones)
 		{

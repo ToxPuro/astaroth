@@ -77,7 +77,7 @@ AcResult acAnalysisLoadMeshInfo(const AcMeshInfoParams info);
 #define fatal(MESSAGE, ...) \
         { \
 	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
-	exit(EXIT_FAILURE); \
+	ERRCHK_ALWAYS(false); \
 	} 
 
 /* Internal interface to grid (a global variable)  */
@@ -292,7 +292,7 @@ acGridRandomize(void)
     acDeviceSynchronizeStream(grid.device, stream);
     acHostMeshDestroy(&host);
 
-    acGridPeriodicBoundconds(stream);
+    if(grid.submesh.info[AC_fully_periodic_grid]) acGridPeriodicBoundconds(stream);
     acGridSynchronizeStream(stream);
 
     return AC_SUCCESS;
@@ -401,9 +401,10 @@ gen_default_taskgraph()
     AcTaskDefinition default_ops[] = {
 	    acHaloExchange(all_comm_fields_vec),
             acBoundaryCondition(get_full_boundary(), BOUNDCOND_PERIODIC,all_fields_vec),
-	    acComputeWithParams(twopass_solve_intermediate, all_comm_fields_vec,all_fields_vec,intermediate_loader),
-	    acComputeWithParams(twopass_solve_final, all_comm_fields_vec,all_comm_fields_vec,final_loader)
+	    acCompute(twopass_solve_intermediate, all_comm_fields_vec,all_fields_vec,intermediate_loader),
+	    acCompute(twopass_solve_final, all_comm_fields_vec,all_comm_fields_vec,final_loader)
     };
+    
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
     acLogFromRootProc(ac_pid(), "acGridInit: Done creating default task graph\n");
 }
@@ -770,7 +771,8 @@ acGridInitBase(const AcMesh user_mesh)
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Done synchronizing streams\n");
 
 #ifdef AC_INTEGRATION_ENABLED
-    gen_default_taskgraph();
+    if(grid.submesh.info[AC_fully_periodic_grid])
+    	gen_default_taskgraph();
 #endif
     acAnalysisLoadMeshInfo(acGridGetLocalMeshInfo().params);
     //Refresh log files
@@ -1666,6 +1668,8 @@ AcTaskGraph*
 acGridGetDefaultTaskGraph()
 {
     ERRCHK(grid.initialized);
+    if(!grid.submesh.info[AC_fully_periodic_grid])
+	    fatal("%s","Default taskgraph assumes fully periodic grid!\n");
     return grid.default_tasks.get();
 }
 
@@ -2158,7 +2162,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
               graph->all_tasks.push_back(task);
               //done here since we want to write only to out not to in what launching the taskgraph would do
 	      //always remember to call the loader since otherwise might not be safe to execute taskgraph
-    	      op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}});
+    	      op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}, op.kernel_enum});
               acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
 	    }
 	    else
@@ -2200,7 +2204,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
             	    graph->all_tasks.push_back(task);
             	    //done here since we want to write only to out not to in what launching the taskgraph would do
 	      	    //always remember to call the loader since otherwise might not be safe to execute taskgraph
-    	      	    op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}});
+    	      	    op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}, op.kernel_enum});
             	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
             	}
 	    }
@@ -2703,6 +2707,10 @@ acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
 AcResult
 acGridIntegrate(const Stream stream, const AcReal dt)
 {
+    if(!grid.submesh.info[AC_fully_periodic_grid])
+    {
+	    fatal("%s","acGridIntegrate assumes fully periodic grid!\n");
+    }
     (void)stream;
     ERRCHK(grid.initialized);
     acDeviceSetInput(grid.device,AC_dt,dt);
@@ -2714,6 +2722,10 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 AcResult
 acGridPeriodicBoundconds(const Stream stream)
 {
+    if(!grid.submesh.info[AC_fully_periodic_grid])
+    {
+	    fatal("%s","acGridPeriodicBoundconds assumes fully periodic grid!\n");
+    }
 #ifndef AC_INTEGRATION_ENABLED
     return AC_FAILURE;
 #endif
@@ -4152,7 +4164,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
         // Apply boundconds and sync
-        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        if(grid.submesh.info[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
         // acDeviceSynchronizeStream(device, STREAM_ALL);
 
         // DEBUG hotfix START
@@ -4260,7 +4272,7 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
         // Apply boundconds and sync
-        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        if(grid.submesh.info[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
         // acDeviceSynchronizeStream(device, STREAM_ALL);
 
         // DEBUG hotfix START
@@ -4395,7 +4407,7 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
         // Apply boundconds and sync
-        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        if(grid.submesh.info[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
         // acDeviceSynchronizeStream(device, STREAM_ALL);
 
         // DEBUG hotfix START
@@ -4494,7 +4506,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
         ERRCHK_ALWAYS(retval == AC_SUCCESS);
     }
     acGridSynchronizeStream(STREAM_ALL);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    if(grid.submesh.info[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridSynchronizeStream(STREAM_ALL);
 
     return AC_SUCCESS;

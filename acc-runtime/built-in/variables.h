@@ -36,13 +36,15 @@ AcDimProducts AC_ngrid_products = ac_get_dim_products(AC_ngrid)
 run_const AcDimProductsInv AC_ngrid_products_inv = ac_get_dim_products_inv(AC_ngrid_products)
 
 AcDimProducts AC_mlocal_products = ac_get_dim_products(AC_mlocal)
-run_const AcDimProductsInv AC_mlocal_products_inv = ac_get_dim_products_inv(AC_mgrid_products)
+run_const AcDimProductsInv AC_mlocal_products_inv = ac_get_dim_products_inv(AC_mlocal_products)
 
 AcDimProducts AC_mgrid_products = ac_get_dim_products(AC_mgrid)
 run_const AcDimProductsInv AC_mgrid_products_inv = ac_get_dim_products_inv(AC_mgrid_products)
 
+run_const bool3 AC_periodic_grid
+run_const bool AC_fully_periodic_grid = AC_periodic_grid.x && AC_periodic_grid.y && AC_periodic_grid.z
 
-run_const real3 AC_len = AC_mgrid*AC_ds
+run_const real3 AC_len = (AC_ngrid + AC_periodic_grid - 1)*AC_ds
 
 run_const int AC_proc_mapping_strategy
 run_const int AC_decompose_strategy

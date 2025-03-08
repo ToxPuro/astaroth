@@ -128,7 +128,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     debug_log_from_root_proc_with_sim_progress(pid,
                                                "save_mesh_mpi_async: Syncing mesh disk access\n");
     acGridDiskAccessSync();                   // NOTE: important sync
-    acGridPeriodicBoundconds(STREAM_DEFAULT); // Debug, may be unneeded
+    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT); // Debug, may be unneeded
     acGridSynchronizeStream(STREAM_DEFAULT);  // Debug, may be unneeded
     MPI_Barrier(acGridMPIComm());             // Debug may be unneeded
 
@@ -441,7 +441,7 @@ dryrun(void)
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
 
     MPI_Barrier(acGridMPIComm());
 
@@ -449,7 +449,7 @@ dryrun(void)
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)0, &sum);
     const AcReal dt = 0.0;
-    acGridIntegrate(STREAM_DEFAULT, dt);
+    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridIntegrate(STREAM_DEFAULT, dt);
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
 
@@ -458,13 +458,13 @@ dryrun(void)
     // Reset the fields
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridSwapBuffers();
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
 
     MPI_Barrier(acGridMPIComm());
 
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridSwapBuffers();
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
 
     MPI_Barrier(acGridMPIComm());
 }
@@ -507,7 +507,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     acGridSwapBuffers();
 
     acGridSynchronizeStream(STREAM_ALL);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridSynchronizeStream(STREAM_ALL);
 }
 
@@ -603,7 +603,7 @@ read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
     acGridSwapBuffers();
 
     acGridSynchronizeStream(STREAM_ALL);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridSynchronizeStream(STREAM_ALL);
 #endif
 }
@@ -811,6 +811,10 @@ GetSimulation(const int pid, PhysicsConfiguration simulation_physics)
         acLogFromRootProc(pid, "PhysicsConfiguration MHD !\n");
         return Simulation::Default;
     }
+    case PhysicsConfiguration::BoundTest : {
+        acLogFromRootProc(pid, "PhysicsConfiguration BoundTest !\n");
+        return Simulation::Bound_Test_Solve;
+    }
     default:
         ERROR("Unhandled PhysicsConfiguration");
     }
@@ -888,7 +892,8 @@ main(int argc, char** argv)
             else if (strcmp(optarg, "BoundTest") == 0) {
                 acLogFromRootProc(pid, "Initial condition: BoundTest\n"); // This here just for the
                                                                           // sake of diagnosis.
-                initial_mesh_procedure = InitialMeshProcedure::InitBoundTest;
+		if(initial_mesh_procedure != InitialMeshProcedure::LoadSnapshot)
+                	initial_mesh_procedure = InitialMeshProcedure::InitBoundTest;
                 simulation_physics     = PhysicsConfiguration::BoundTest;
                 acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
             }
@@ -1044,106 +1049,6 @@ main(int argc, char** argv)
     acLogFromRootProc(pid, "Calling dryrun to test kernels on non-initialized mesh\n");
     dryrun();
 
-    // Load input data
-
-    /////////////////////////////////////////////
-    // Mesh initialization from file or kernel //
-    /////////////////////////////////////////////
-
-    acLogFromRootProc(pid, "Initializing mesh\n");
-    switch (initial_mesh_procedure) {
-    case InitialMeshProcedure::InitKernel: {
-        // Randomize
-        acLogFromRootProc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
-        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-        acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-        acGridSwapBuffers();
-        acLogFromRootProc(pid, "Communicating halos\n");
-        acGridPeriodicBoundconds(STREAM_DEFAULT);
-        // MV: What if the boundary conditions are not periodic?
-
-        {
-            // Should some labels be printed here?
-            AcReal max, min, sum;
-            for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
-                acLogFromRootProc(pid, "max %g, min %g, sum %g\n", (double)max, (double)min,
-                                  (double)sum);
-            }
-        }
-        break;
-    }
-    // Creeates a kinetic kick as a system initial condition. Creatd as a demo
-    // case for invoking an alternative initial conditions via a DSL kernel.
-    case InitialMeshProcedure::InitHaatouken: {
-        // add a push in terms of a velocity
-        // field into the code creating a cone-like shock. Essentially
-        // "punching the air" to create a kinetic explosion.
-        acLogFromRootProc(pid, "HAATOUKEN!\n");
-        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-        // Randomize the other vertex buffers for variety's sake.
-        acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-        // Ad haatouken!
-        acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
-        acGridSwapBuffers();
-        acLogFromRootProc(pid, "Communicating halos\n");
-        acGridPeriodicBoundconds(STREAM_DEFAULT);
-        // MV: What if the boundary conditions are not periodic?
-        break;
-    }
-    case InitialMeshProcedure::InitBoundTest: {
-        acLogFromRootProc(pid, "Boundary test \n");
-        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-        acGridLaunchKernel(STREAM_DEFAULT, constant, dims.n0, dims.n1);
-        //acGridLaunchKernel(STREAM_DEFAULT, beltrami_initcond, dims.n0, dims.n1);
-        acGridLaunchKernel(STREAM_DEFAULT, radial_vec_initcond, dims.n0, dims.n1);
-        acGridSwapBuffers();
-        acLogFromRootProc(pid, "Communicating halos\n");
-        acGridPeriodicBoundconds(STREAM_DEFAULT);
-        break;
-    }
-    case InitialMeshProcedure::LoadPC_Varfile: {
-        acLogFromRootProc(pid, "Reading mesh state from Pencil Code var file %s\n",
-                          initial_mesh_procedure_param);
-        if (initial_mesh_procedure_param == nullptr) {
-            acLogFromRootProc(pid, "Error: no file path given");
-            return EXIT_FAILURE;
-        }
-        read_varfile_to_mesh_and_setup(info, initial_mesh_procedure_param);
-        acLogFromRootProc(pid, "Done reading Pencil Code var file\n");
-        break;
-    }
-    /*
-    case InitialMeshProcedure::LoadDistributedSnapshot: {
-        acLogFromRootProc(pid, "Reading mesh state from distributed snapshot\n");
-        read_distributed_to_mesh_and_setup();
-        acLogFromRootProc(pid, "Done reading distributed snapshot\n");
-        break;
-    }
-    case InitialMeshProcedure::LoadMonolithicSnapshot: {
-        acLogFromRootProc(pid, "Reading mesh state monolithic snapshot\n");
-        read_collective_to_mesh_and_setup();
-        acLogFromRootProc(pid, "Done reading monolithic snapshot\n");
-        break;
-    }
-    */
-    case InitialMeshProcedure::LoadSnapshot: {
-        acLogFromRootProc(pid, "Reading mesh file\n");
-        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time,
-                                    info);
-        acLogFromRootProc(pid, "Done reading mesh file\n");
-        break;
-    }
-    default:
-        fprintf(stderr, "Invalid initial_mesh_procedure %d passed to ac_run_mpi\n",
-                (int)initial_mesh_procedure);
-        ERROR("Invalid initial_mesh_procedure");
-    }
-
-    acLogFromRootProc(pid, "Mesh initialization done\n");
-
     ////////////////////////////////////////////////////
     // Building the task graph (or using the default) //
     ////////////////////////////////////////////////////
@@ -1194,6 +1099,107 @@ main(int argc, char** argv)
 
     log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim, acGridGetLocalMeshInfo());
+
+    // Load input data
+
+    /////////////////////////////////////////////
+    // Mesh initialization from file or kernel //
+    /////////////////////////////////////////////
+
+    acLogFromRootProc(pid, "Initializing mesh\n");
+    switch (initial_mesh_procedure) {
+    case InitialMeshProcedure::InitKernel: {
+        // Randomize
+        acLogFromRootProc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+        acGridSwapBuffers();
+        acLogFromRootProc(pid, "Communicating halos\n");
+        if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
+        // MV: What if the boundary conditions are not periodic?
+
+        {
+            // Should some labels be printed here?
+            AcReal max, min, sum;
+            for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+                acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
+                acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
+                acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
+                acLogFromRootProc(pid, "max %g, min %g, sum %g\n", (double)max, (double)min,
+                                  (double)sum);
+            }
+        }
+        break;
+    }
+    // Creeates a kinetic kick as a system initial condition. Creatd as a demo
+    // case for invoking an alternative initial conditions via a DSL kernel.
+    case InitialMeshProcedure::InitHaatouken: {
+        // add a push in terms of a velocity
+        // field into the code creating a cone-like shock. Essentially
+        // "punching the air" to create a kinetic explosion.
+        acLogFromRootProc(pid, "HAATOUKEN!\n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        // Randomize the other vertex buffers for variety's sake.
+        acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+        // Ad haatouken!
+        acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
+        acGridSwapBuffers();
+        acLogFromRootProc(pid, "Communicating halos\n");
+        if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
+        // MV: What if the boundary conditions are not periodic?
+        break;
+    }
+    case InitialMeshProcedure::InitBoundTest: {
+        acLogFromRootProc(pid, "Boundary test \n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        acGridLaunchKernel(STREAM_DEFAULT, constant, dims.n0, dims.n1);
+        //acGridLaunchKernel(STREAM_DEFAULT, beltrami_initcond, dims.n0, dims.n1);
+        acGridLaunchKernel(STREAM_DEFAULT, radial_vec_initcond, dims.n0, dims.n1);
+        acGridSwapBuffers();
+        acLogFromRootProc(pid, "Communicating halos\n");
+        if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
+        break;
+    }
+    case InitialMeshProcedure::LoadPC_Varfile: {
+        acLogFromRootProc(pid, "Reading mesh state from Pencil Code var file %s\n",
+                          initial_mesh_procedure_param);
+        if (initial_mesh_procedure_param == nullptr) {
+            acLogFromRootProc(pid, "Error: no file path given");
+            return EXIT_FAILURE;
+        }
+        read_varfile_to_mesh_and_setup(info, initial_mesh_procedure_param);
+        acLogFromRootProc(pid, "Done reading Pencil Code var file\n");
+        break;
+    }
+    /*
+    case InitialMeshProcedure::LoadDistributedSnapshot: {
+        acLogFromRootProc(pid, "Reading mesh state from distributed snapshot\n");
+        read_distributed_to_mesh_and_setup();
+        acLogFromRootProc(pid, "Done reading distributed snapshot\n");
+        break;
+    }
+    case InitialMeshProcedure::LoadMonolithicSnapshot: {
+        acLogFromRootProc(pid, "Reading mesh state monolithic snapshot\n");
+        read_collective_to_mesh_and_setup();
+        acLogFromRootProc(pid, "Done reading monolithic snapshot\n");
+        break;
+    }
+    */
+    case InitialMeshProcedure::LoadSnapshot: {
+        acLogFromRootProc(pid, "Reading mesh file\n");
+        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time,
+                                    info);
+        acLogFromRootProc(pid, "Done reading mesh file\n");
+        break;
+    }
+    default:
+        fprintf(stderr, "Invalid initial_mesh_procedure %d passed to ac_run_mpi\n",
+                (int)initial_mesh_procedure);
+        ERROR("Invalid initial_mesh_procedure");
+    }
+
+    acLogFromRootProc(pid, "Mesh initialization done\n");
+
 
     ////////////////////////////////////////////////////////
     // Simulation loop setup: defining events and actions //
@@ -1467,7 +1473,7 @@ main(int argc, char** argv)
                 case PeriodicAction::WriteSlices: {
                     log_from_root_proc_with_sim_progress(pid,
                                                          "Periodic action: writing mesh slices\n");
-                    acGridPeriodicBoundconds(STREAM_DEFAULT);
+                    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
                     write_slices(pid, i);
                     break;
                 }
