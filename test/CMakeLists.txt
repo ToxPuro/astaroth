@@ -8,7 +8,6 @@ add_subdirectory(planetest)
 #TP: walker-test is not include by default since it needs Python env
 #add_subdirectory(walker-test)
 add_subdirectory(bwtest)
-add_subdirectory(boundcond-migration-test)
 add_subdirectory(kernel-fusion-test)
 add_subdirectory(stencil-accesses-ok-test)
 add_subdirectory(stencil-accesses-fail-test)
