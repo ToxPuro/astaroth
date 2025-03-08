@@ -1,7 +1,7 @@
 #pragma once
 #include <mpi.h>
 
-#include "datatypes.h"
+#include "ntuple.h"
 
 /**
  * Helper macros for printing
@@ -286,5 +286,3 @@ int reduce_axis(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MP
                 const size_t& axis, const size_t count, void* data);
 
 } // namespace ac::mpi
-
-void test_mpi_utils();

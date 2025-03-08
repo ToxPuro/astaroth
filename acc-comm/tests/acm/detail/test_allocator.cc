@@ -1,10 +1,10 @@
 #include <cstdlib>
 #include <memory>
 
-#include "allocator.h"
+#include "acm/detail/allocator.h"
 
-void
-test_allocator()
+int
+main()
 {
     using namespace ac::mr;
     using host_unique_ptr = std::unique_ptr<double, decltype(&host_allocator::dealloc)>;
@@ -28,4 +28,5 @@ test_allocator()
                                                          10 * sizeof(double))),
                                                  pinned_write_combined_host_allocator::dealloc}};
     PRINT_LOG_INFO("OK");
+    return EXIT_SUCCESS;
 }

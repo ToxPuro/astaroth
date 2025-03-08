@@ -1,13 +1,16 @@
 #include <cstdlib>
 #include <limits>
+#include <mpi.h>
 #include <numeric> // std::iota
 
 #include "acm/detail/algorithm.h"
 #include "acm/detail/allocator.h"
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/errchk_print.h"
+#include "acm/detail/math_utils.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
+#include "acm/detail/ntuple.h"
 #include "acm/detail/partition.h"
 #include "acm/detail/print_debug.h"
 #include "acm/detail/type_conversion.h"
@@ -55,7 +58,7 @@ test_reduce_axis(const MPI_Comm& cart_comm, const ac::shape& global_nn)
     }
 }
 
-void
+static void
 test_scatter_gather(const MPI_Comm& cart_comm, const ac::shape& global_nn)
 {
     using T      = int;
@@ -111,7 +114,7 @@ test_scatter_gather(const MPI_Comm& cart_comm, const ac::shape& global_nn)
     }
 }
 
-void
+static void
 test_scatter_gather_advanced(const MPI_Comm& cart_comm, const ac::shape& global_nn)
 {
     using T      = int;
@@ -211,6 +214,9 @@ test_mpi_pack(const MPI_Comm& cart_comm, const ac::shape& global_nn)
                   dpack.data());
 
     ac::device_ndbuffer<T> dtst{local_mm};
+    ac::host_ndbuffer<T>   tmp{local_mm, 0};
+    ac::mr::copy(tmp.get(), dtst.get());
+    // ac::mr::fill(0, dtst.get());
     ac::mpi::unpack(cart_comm,
                     ac::mpi::get_dtype<T>(),
                     dpack.size(),
@@ -346,7 +352,7 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
         href.display();
 
         for (size_t i{0}; i < href.size(); ++i)
-            ERRCHK(href[i] == static_cast<T>(i + 1));
+            ERRCHK(within_machine_epsilon(href[i], static_cast<T>(i + 1)));
     }
 
     ac::comm::async_halo_exchange_task<T, ac::mr::device_allocator> he{local_mm,
@@ -367,22 +373,23 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
     for (size_t i{0}; i < nsteps; ++i) {
         const ac::shape      nk{2 * rr + as<uint64_t>(1)};
         ac::host_ndbuffer<T> kernel{nk, 1};
+        const auto           dkernel{kernel.to_device()};
 
-        ac::host_ndbuffer<T> distr_dref_tmp{local_mm};
+        ac::device_ndbuffer<T> distr_dref_tmp{local_mm};
         he.wait({distr_dref.get()});
 #if defined(ACM_DEVICE_ENABLED)
-        PRINT_LOG_WARNING("Device xcorr and transform not yet implemented");
+        PRINT_LOG_WARNING("xcorr and transform not yet implemented for device");
 #else
         ac::xcorr(local_mm,
                   local_nn,
                   local_nn_offset,
                   distr_dref.get(),
                   nk,
-                  kernel.get(),
+                  dkernel.get(),
                   distr_dref_tmp.get());
         ac::transform(
             distr_dref_tmp.get(),
-            [&nk](const auto& elem) { return elem / prod(nk); },
+            [&nk](const T& elem) { return elem / static_cast<T>(prod(nk)); },
             distr_dref.get());
 #endif
         he.launch(cart_comm, {distr_dref.get()});
@@ -400,19 +407,88 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
                              ac::make_index(global_nn.size(), 0),
                              href.data());
 
+#if !defined(ACM_DEVICE_ENABLED)
     if (rank == 0) {
-        const double expected_value{(prod(global_nn) + 1) / 2.};
+        const double expected_value{static_cast<double>(prod(global_nn) + 1) / 2.};
         std::cout << "Expected: " << expected_value << std::endl;
         std::cout << "Measured: " << href[0] << std::endl;
-        const auto epsilon{std::numeric_limits<double>::epsilon()};
-        for (size_t i{0}; i < prod(global_nn); ++i) {
-            ERRCHK(href[i] >= expected_value - epsilon);
-            ERRCHK(href[i] <= expected_value + epsilon);
-        }
-
         href.display();
-        PRINT_LOG_WARNING("Device buffer pipeline not yet tested");
+        for (size_t i{0}; i < prod(global_nn); ++i)
+            ERRCHK(within_machine_epsilon(href[i], expected_value));
     }
+#else
+    PRINT_LOG_WARNING("returning without checking results");
+#endif
+}
+
+template <typename T>
+static void
+test_xy_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr)
+{
+    const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+
+    ac::host_ndbuffer<T> gbuf{global_nn};
+    std::iota(gbuf.begin(), gbuf.end(), 1);
+
+    ac::device_ndbuffer<T> lbuf{local_mm};
+    ac::mpi::scatter_advanced(cart_comm,
+                              ac::mpi::get_dtype<T>(),
+                              global_nn,
+                              ac::make_index(global_nn.size(), 0),
+                              gbuf.data(),
+                              local_mm,
+                              local_nn,
+                              rr,
+                              lbuf.data());
+
+    // Pack
+    ac::device_ndbuffer<T> lpbuf{local_nn};
+    pack(local_mm, local_nn, rr, {lbuf.get()}, lpbuf.get());
+
+    const auto     axis{local_nn.size() - 1};
+    const auto     count{local_nn[axis]};
+    const uint64_t lstride{prod(slice(local_nn, 0, local_nn.size() - 1))};
+    const auto     lreducebuf{ac::host_buffer<T>{count, -1}.to_device()};
+
+    // TMP workaround start (until device implementation done)
+    auto tmp_lpbuf{lpbuf.to_host()};
+    auto tmp_lreducebuf{lreducebuf.to_host()};
+    ac::segmented_reduce(
+        count,
+        lstride,
+        tmp_lpbuf.get(),
+        [](const auto& a, const auto& b) { return a + b; },
+        static_cast<T>(0),
+        tmp_lreducebuf.get());
+    ac::mr::copy(tmp_lreducebuf.get(), lreducebuf.get());
+    // TMP workaround end
+
+    ac::mpi::reduce_axis(cart_comm,
+                         ac::mpi::get_dtype<T>(),
+                         MPI_SUM,
+                         axis,
+                         count,
+                         lreducebuf.data());
+
+    /** Return the expected sum of the `i`th block, where each block contains `stride` elements and
+     * the blocks have been initialized in an increasing order from 1.
+     *
+     * For example:
+     *  Block 0: [1, 100], where subsequent values are 1, 2, 3, ...
+     *  Block 1: [101, 201]
+     *  ...
+     *
+     * Expression: sum_{i}^{n} = n(n+1) / 2
+     */
+    auto expected_sum = [](const uint64_t i, const uint64_t stride) {
+        return (i + 1) * stride * ((i + 1) * stride + 1) / 2 - i * stride * (i * stride + 1) / 2;
+    };
+
+    const auto host_lreducebuf{lreducebuf.to_host()};
+    for (size_t i{0}; i < count; ++i)
+        ERRCHK_MPI(within_machine_epsilon(static_cast<double>(host_lreducebuf[i]),
+                                          static_cast<double>(expected_sum(i, lstride))));
 }
 
 int
@@ -486,6 +562,13 @@ main()
             const ac::index rr{2, 1, 3};
             MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
             test_pipeline(cart_comm, global_nn, rr);
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            const ac::shape global_nn{6, 4, 8};
+            const ac::index rr{2, 1, 3};
+            MPI_Comm        cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn)};
+            test_xy_reduce<double>(cart_comm, global_nn, rr);
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
     }

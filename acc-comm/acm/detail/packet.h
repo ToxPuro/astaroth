@@ -1,16 +1,12 @@
 #pragma once
 
-#include <memory>
-
-#include "buffer.h"
-#include "pack.h"
-#include "segment.h"
-
-#include "errchk_mpi.h"
-#include "mpi_utils.h"
-
 #include <mpi.h>
 
+#include "buffer.h"
+#include "errchk_mpi.h"
+#include "mpi_utils.h"
+#include "pack.h"
+#include "segment.h"
 #include "type_conversion.h"
 
 namespace ac::comm {
@@ -157,5 +153,3 @@ template <typename T, typename Allocator> class packet {
 };
 
 } // namespace ac::comm
-
-void test_packet();

@@ -1,10 +1,11 @@
-#include "transform.h"
+#include <cstdlib>
+#include <numeric>
 
-#include "datatypes.h"
-#include "ndbuffer.h"
+#include "acm/detail/ndbuffer.h"
+#include "acm/detail/transform.h"
 
-void
-test_transform()
+int
+main()
 {
     {
         const ac::ntuple<uint64_t> dims{3, 3, 3, 3};
@@ -18,8 +19,8 @@ test_transform()
         ac::print("candidate", subdims, out.get());
     }
     {
-        using DeviceNdBuffer = ac::ndbuffer<UserDatatype, ac::mr::device_allocator>;
-        using HostNdBuffer   = ac::ndbuffer<UserDatatype, ac::mr::host_allocator>;
+        using DeviceNdBuffer = ac::ndbuffer<double, ac::mr::device_allocator>;
+        using HostNdBuffer   = ac::ndbuffer<double, ac::mr::host_allocator>;
         const ac::shape mm{8, 8};
         const ac::shape nn{6, 6};
         const ac::index rr{1, 1};
@@ -43,4 +44,5 @@ test_transform()
         ERRCHK(equals(houtref.get(), hout.get()));
     }
     PRINT_LOG_INFO("OK");
+    return EXIT_SUCCESS;
 }

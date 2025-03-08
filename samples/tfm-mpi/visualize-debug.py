@@ -161,3 +161,13 @@ for i, file in enumerate(files):
 plt.show()
 
 # ani = animation.FuncAnimation(fig, update)
+
+
+# %%
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df = pd.read_csv("../../build/scaling.csv")
+df
+plt.plot(df)

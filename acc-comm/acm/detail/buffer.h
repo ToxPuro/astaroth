@@ -127,7 +127,8 @@ migrate(const ac::buffer<T, AllocatorA>& a, ac::buffer<T, AllocatorB>& b)
 #include "errchk_cuda.h"
 
 template <typename T, typename AllocatorA, typename AllocatorB>
-[[deprecated("Use ac::mr::copy_async instead")]] void
+//[[deprecated("Use ac::mr::copy_async instead")]]
+void
 migrate_async(const cudaStream_t stream, const ac::buffer<T, AllocatorA>& in,
               ac::buffer<T, AllocatorB>& out)
 {
@@ -191,5 +192,3 @@ migrate_async(const void* stream, const ac::buffer<T, AllocatorA>& in,
 //     migrate(in, out);
 // }
 // #endif
-
-void test_buffer();

@@ -1,10 +1,9 @@
 #include <cstdlib>
 
-#include "errchk.h"
-#include "pointer.h"
+#include "acm/detail/pointer.h"
 
-void
-test_pointer()
+int
+main()
 {
     ac::mr::host_pointer<int>   a{0, nullptr};
     ac::mr::device_pointer<int> b{0, nullptr};
@@ -21,4 +20,5 @@ test_pointer()
     delete[] in_data;
     delete[] out_data;
     PRINT_LOG_INFO("OK");
+    return EXIT_SUCCESS;
 }

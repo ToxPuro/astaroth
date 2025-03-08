@@ -1291,6 +1291,21 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
 
+<<<<<<< HEAD
+=======
+#define GEN_LOAD_UNIFORM(LABEL_UPPER, LABEL_LOWER)                             \
+  ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
+  cudaDeviceSynchronize(); /* See note in acLoadStencil */                     \
+                                                                               \
+  const size_t offset = (size_t) &                                             \
+                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
+                        d_mesh_info;                                           \
+                                                                               \
+  const cudaError_t retval = cudaMemcpyToSymbol(                               \
+      d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);     \
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+
+>>>>>>> origin/2024-09-02-tfm-standalone-dev
 AcResult
 acLoadRealReduceRes(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value)
 {
@@ -1389,7 +1404,22 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 	return AC_SUCCESS;
 }
 
+<<<<<<< HEAD
 template <typename P, typename V>
+=======
+#define GEN_STORE_UNIFORM(LABEL_UPPER, LABEL_LOWER)                            \
+  ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
+  cudaDeviceSynchronize(); /* See notes in GEN_LOAD_UNIFORM */                 \
+                                                                               \
+  const size_t offset = (size_t) &                                             \
+                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
+                        d_mesh_info;                                           \
+                                                                               \
+  const cudaError_t retval = cudaMemcpyFromSymbol(                             \
+      value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost);     \
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+
+>>>>>>> origin/2024-09-02-tfm-standalone-dev
 AcResult
 acStoreUniform(const P param, V* value)
 {

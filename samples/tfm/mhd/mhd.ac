@@ -21,14 +21,12 @@ int AC_simulation_snapshot_output_interval
 int AC_simulation_profile_output_interval
 int AC_simulation_reset_test_field_interval
 
+// TFM
+int AC_TFM_SOCA_enabled
+
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
-
-#if LOO
-Field VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ
-Field VTXBUF_UU_DOT_OO
-#endif
 
 #if LMAGNETIC
 Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
@@ -39,7 +37,15 @@ Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 Field VTXBUF_ENTROPY
 #endif
 
+#if LOO
+Field VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ
+Field VTXBUF_UU_DOT_OO
+#endif
+
 #if LTFM
+
+#define LTFM_HANDWRITTEN (1) // Note: SOCA not supported if this is off
+
 hostdefine AC_TFM_ENABLED (1)
 
 real AC_eta_tfm
@@ -78,15 +84,27 @@ Field TF_uxb22_x, TF_uxb22_y, TF_uxb22_z
 // Mean-field profiles
 Profile PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
 
+#define PROFILE_Umean Profile3(PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z)
+
 Profile PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z
 Profile PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z
 Profile PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z
 Profile PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z
 
+#define PROFILE_uxb11mean Profile3(PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z)
+#define PROFILE_uxb12mean Profile3(PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z)
+#define PROFILE_uxb21mean Profile3(PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z)
+#define PROFILE_uxb22mean Profile3(PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z)
+
 Profile PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z
 Profile PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z
 Profile PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z
 Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
+
+#define PROFILE_B11mean Profile3(PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z)
+#define PROFILE_B12mean Profile3(PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z)
+#define PROFILE_B21mean Profile3(PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z)
+#define PROFILE_B22mean Profile3(PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z)
 #endif
 
 // Device constants
@@ -529,7 +547,180 @@ rk3_step2(s0, s1, roc) {
     return s1 + beta[2 + 1] * ((alpha[2] / beta[2]) * (s1 - s0) + roc * AC_dt)
 }
 
-#if LTFM
+#if LTFM && LTFM_HANDWRITTEN
+roc_tf(aa_handle, bmean_handle, uxbmean_handle) {
+    jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
+    bb = curl(aa_handle)
+    Umean = vecvalue(PROFILE_Umean)
+    Bmean = vecvalue(bmean_handle)
+    uu = vecvalue(UU)
+    uxbmean = vecvalue(uxbmean_handle)
+
+    result = cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj
+    if (!AC_TFM_SOCA_enabled) {
+        result = result + cross(uu, bb) + uxbmean
+    }
+    return result
+}
+
+singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle) {
+
+    aa_roc = roc_tf(aa_handle, bmean_handle, uxbmean_handle)
+
+    write(aa_handle.x, rk3_step0(previous(Field(aa_handle.x)), value(Field(aa_handle.x)), aa_roc.x))
+    write(aa_handle.y, rk3_step0(previous(Field(aa_handle.y)), value(Field(aa_handle.y)), aa_roc.y))
+    write(aa_handle.z, rk3_step0(previous(Field(aa_handle.z)), value(Field(aa_handle.z)), aa_roc.z))
+
+    uu = vecvalue(UU)
+    bb = curl(aa_handle)
+    uxb = cross(uu, bb)
+    write(uxb_handle.x, uxb.x)
+    write(uxb_handle.y, uxb.y)
+    write(uxb_handle.z, uxb.z)
+}
+
+Kernel singlepass_solve_step0_tfm_b11() {
+    aa_handle = TF_a11
+    bmean_handle = PROFILE_B11mean
+    uxb_handle = TF_uxb11
+    uxbmean_handle = PROFILE_uxb11mean
+
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step0_tfm_b12() {
+    aa_handle = TF_a12
+    bmean_handle = PROFILE_B12mean
+    uxb_handle = TF_uxb12
+    uxbmean_handle = PROFILE_uxb12mean
+
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step0_tfm_b21() {
+    aa_handle = TF_a21
+    bmean_handle = PROFILE_B21mean
+    uxb_handle = TF_uxb21
+    uxbmean_handle = PROFILE_uxb21mean
+
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step0_tfm_b22() {
+    aa_handle = TF_a22
+    bmean_handle = PROFILE_B22mean
+    uxb_handle = TF_uxb22
+    uxbmean_handle = PROFILE_uxb22mean
+
+    singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle) {
+
+    aa_roc = roc_tf(aa_handle, bmean_handle, uxbmean_handle)
+
+    write(aa_handle.x, rk3_step1(previous(Field(aa_handle.x)), value(Field(aa_handle.x)), aa_roc.x))
+    write(aa_handle.y, rk3_step1(previous(Field(aa_handle.y)), value(Field(aa_handle.y)), aa_roc.y))
+    write(aa_handle.z, rk3_step1(previous(Field(aa_handle.z)), value(Field(aa_handle.z)), aa_roc.z))
+
+    uu = vecvalue(UU)
+    bb = curl(aa_handle)
+    uxb = cross(uu, bb)
+    write(uxb_handle.x, uxb.x)
+    write(uxb_handle.y, uxb.y)
+    write(uxb_handle.z, uxb.z)
+}
+
+Kernel singlepass_solve_step1_tfm_b11() {
+    aa_handle = TF_a11
+    bmean_handle = PROFILE_B11mean
+    uxb_handle = TF_uxb11
+    uxbmean_handle = PROFILE_uxb11mean
+
+    singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step1_tfm_b12() {
+    aa_handle = TF_a12
+    bmean_handle = PROFILE_B12mean
+    uxb_handle = TF_uxb12
+    uxbmean_handle = PROFILE_uxb12mean
+
+    singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step1_tfm_b21() {
+    aa_handle = TF_a21
+    bmean_handle = PROFILE_B21mean
+    uxb_handle = TF_uxb21
+    uxbmean_handle = PROFILE_uxb21mean
+
+    singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step1_tfm_b22() {
+    aa_handle = TF_a22
+    bmean_handle = PROFILE_B22mean
+    uxb_handle = TF_uxb22
+    uxbmean_handle = PROFILE_uxb22mean
+
+    singlepass_solve_step1_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+singlepass_solve_step2_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle) {
+
+    aa_roc = roc_tf(aa_handle, bmean_handle, uxbmean_handle)
+
+    write(aa_handle.x, rk3_step2(previous(Field(aa_handle.x)), value(Field(aa_handle.x)), aa_roc.x))
+    write(aa_handle.y, rk3_step2(previous(Field(aa_handle.y)), value(Field(aa_handle.y)), aa_roc.y))
+    write(aa_handle.z, rk3_step2(previous(Field(aa_handle.z)), value(Field(aa_handle.z)), aa_roc.z))
+
+    uu = vecvalue(UU)
+    bb = curl(aa_handle)
+    uxb = cross(uu, bb)
+    write(uxb_handle.x, uxb.x)
+    write(uxb_handle.y, uxb.y)
+    write(uxb_handle.z, uxb.z)
+}
+
+Kernel singlepass_solve_step2_tfm_b11() {
+    aa_handle = TF_a11
+    bmean_handle = PROFILE_B11mean
+    uxb_handle = TF_uxb11
+    uxbmean_handle = PROFILE_uxb11mean
+
+    singlepass_solve_step2_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step2_tfm_b12() {
+    aa_handle = TF_a12
+    bmean_handle = PROFILE_B12mean
+    uxb_handle = TF_uxb12
+    uxbmean_handle = PROFILE_uxb12mean
+
+    singlepass_solve_step2_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step2_tfm_b21() {
+    aa_handle = TF_a21
+    bmean_handle = PROFILE_B21mean
+    uxb_handle = TF_uxb21
+    uxbmean_handle = PROFILE_uxb21mean
+
+    singlepass_solve_step2_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+
+Kernel singlepass_solve_step2_tfm_b22() {
+    aa_handle = TF_a22
+    bmean_handle = PROFILE_B22mean
+    uxb_handle = TF_uxb22
+    uxbmean_handle = PROFILE_uxb22mean
+
+    singlepass_solve_step2_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle)
+}
+#endif
+
+#if LTFM && !LTFM_HANDWRITTEN
 roc_TF_a22_x() {
     return AC_eta_tfm*deryy(TF_a22_x) + AC_eta_tfm*derzz(TF_a22_x) - AC_eta_tfm*derxy(TF_a22_y) - AC_eta_tfm*derxz(TF_a22_z) + value(FIELD_u_y)*value(PROFILE_B22mean_z) - value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*value(PROFILE_B22mean_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z) - value(PROFILE_Umean_y)*dery(TF_a22_x) + value(PROFILE_Umean_y)*derx(TF_a22_y) - value(PROFILE_Umean_z)*derz(TF_a22_x) + value(PROFILE_Umean_z)*derx(TF_a22_z) - value(PROFILE_ucrossb22mean_x)
 }
@@ -644,7 +835,7 @@ Kernel singlepass_solve_step0() {
 #endif
 }
 //////////////////////
-#if LTFM
+#if LTFM && !LTFM_HANDWRITTEN
 Kernel singlepass_solve_step1_tfm_b22(){
     write(TF_a22_x, rk3_step1(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
     write(TF_a22_y, rk3_step1(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
@@ -723,7 +914,7 @@ Kernel singlepass_solve_step1() {
 #endif
 }
 //////////////////////////////////////////
-#if LTFM
+#if LTFM && !LTFM_HANDWRITTEN
 Kernel singlepass_solve_step2_tfm_b22(){
     write(TF_a22_x, rk3_step2(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
     write(TF_a22_y, rk3_step2(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
@@ -842,5 +1033,33 @@ Kernel randomize() {
     for field in 0:NUM_FIELDS+NUM_PROFILES {
         r = 2.0 * rand_uniform() - 1.0
         write(field, AC_rng_scale * r)
+    }
+}
+
+Kernel average_hydro() {
+    for field in 0+VTXBUF_LNRHO:VTXBUF_LNRHO+8 {
+        result = 0.0
+        for k in -3:4 {
+            for j in -3:4 {
+                for i in -3:4 {
+                    result = result + (1. / 343.) * FIELD_IN[field][IDX(vertexIdx.x + i, vertexIdx.y + j, vertexIdx.z + k)]
+                }
+            }
+        }
+        write(field, result)
+    }
+}
+
+Kernel average_tfm() {
+    for field in 0+TF_a11_x:TF_a11_x+12 {
+        result = 0.0
+        for k in -3:4 {
+            for j in -3:4 {
+                for i in -3:4 {
+                    result = result + (1. / 343.) * FIELD_IN[field][IDX(vertexIdx.x + i, vertexIdx.y + j, vertexIdx.z + k)]
+                }
+            }
+        }
+        write(field, result)
     }
 }

@@ -1,14 +1,13 @@
 #pragma once
 
+#include <mpi.h>
 #include <vector>
 
-#include "math_utils.h"
 #include "partition.h"
 #include "type_conversion.h"
 
 #include "errchk_mpi.h"
 #include "mpi_utils.h"
-#include <mpi.h>
 
 /** Launches the halo exchange and returns recv requests that must
  * be waited on to confirm that the exchange is complete.
@@ -16,7 +15,7 @@
  * returns, the send buffer can be freely modified.
  */
 template <typename T>
-std::vector<MPI_Request>
+[[nodiscard]] std::vector<MPI_Request>
 launch_halo_exchange(const MPI_Comm& parent_comm, const ac::shape& local_mm,
                      const ac::shape& local_nn, const ac::shape& rr, const T* send_data,
                      T* recv_data)
@@ -74,5 +73,3 @@ launch_halo_exchange(const MPI_Comm& parent_comm, const ac::shape& local_mm,
     ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     return recv_reqs;
 }
-
-void test_halo_exchange(void);

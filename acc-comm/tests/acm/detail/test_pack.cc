@@ -1,14 +1,11 @@
-#include "pack.h"
-
+#include <cstdlib>
 #include <numeric>
 
-#include "convert.h"
-#include "ndbuffer.h"
-#include <algorithm>
-#include <memory>
+#include "acm/detail/buffer.h"
+#include "acm/detail/pack.h"
 
-void
-test_pack(void)
+int
+main()
 {
     {
         const size_t                                   count{10};
@@ -60,4 +57,5 @@ test_pack(void)
         // std::cout << "-----------------" << std::endl;
     }
     PRINT_LOG_INFO("OK");
+    return EXIT_SUCCESS;
 }

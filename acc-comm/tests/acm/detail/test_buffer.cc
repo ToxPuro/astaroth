@@ -1,9 +1,10 @@
-#include "buffer.h"
-
+#include <cstdlib>
 #include <numeric>
 
-void
-test_buffer(void)
+#include "acm/detail/buffer.h"
+
+int
+main()
 {
     const ac::host_buffer<double> vec(10);
     ERRCHK(vec.size() == 10);
@@ -21,4 +22,5 @@ test_buffer(void)
     ERRCHK(std::equal(in.begin(), in.end(), ref.begin()));
 
     PRINT_LOG_INFO("OK");
+    return EXIT_SUCCESS;
 }

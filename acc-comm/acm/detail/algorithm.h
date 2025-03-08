@@ -1,13 +1,11 @@
 #pragma once
 #include <algorithm>
-#include <functional>
 #include <numeric>
 
 #include "errchk.h"
 #include "ntuple.h"
 #include "pointer.h"
-
-#include "pack.h"
+#include "type_conversion.h"
 
 namespace ac {
 
@@ -70,6 +68,18 @@ transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b,
 //         output[i] = fn(inputs[i]...);
 // }
 
+#if defined(ACM_DEVICE_ENABLED)
+
+template <typename T, typename Function>
+void
+transform(const ac::mr::device_pointer<T>& input, const Function& fn,
+          ac::mr::device_pointer<T> output)
+{
+    PRINT_LOG_WARNING("not implemented");
+}
+
+#endif
+
 template <typename T, typename Function>
 void
 segmented_reduce(const size_t num_segments, const size_t stride,
@@ -109,6 +119,13 @@ xcorr(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
     }
 }
 
-} // namespace ac
+#if defined(ACM_DEVICE_ENABLED)
 
-void test_algorithm();
+// template <typename T>
+// void xcorr(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
+//            const ac::mr::device_pointer<T>& input, const ac::shape& nk,
+//            const ac::mr::device_pointer<T>& kernel, ac::mr::device_pointer<T> output);
+
+#endif
+
+} // namespace ac

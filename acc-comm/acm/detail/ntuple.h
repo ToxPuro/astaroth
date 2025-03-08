@@ -502,7 +502,7 @@ template <typename T, size_t N> class static_ntuple {
         std::copy(init_list.begin(), init_list.end(), m_resource);
     }
 
-    __host__ __device__ explicit static_ntuple(const std::vector<T>& vec)
+    explicit static_ntuple(const std::vector<T>& vec)
         : m_count{vec.size()}
     {
 #if !defined(ACM_DEVICE_ENABLED)
@@ -511,7 +511,7 @@ template <typename T, size_t N> class static_ntuple {
         std::copy(vec.begin(), vec.end(), m_resource);
     }
 
-    __host__ __device__ explicit static_ntuple(const ac::ntuple<T>& in)
+    explicit static_ntuple(const ac::ntuple<T>& in)
         : m_count{in.size()}
     {
 #if !defined(ACM_DEVICE_ENABLED)
@@ -1044,6 +1044,3 @@ index     make_index(const size_t count, const uint64_t& fill_value);
 shape     make_shape(const size_t count, const uint64_t& fill_value);
 direction make_direction(const size_t count, const int64_t& fill_value);
 } // namespace ac
-
-// Testing functions
-void test_ntuple();

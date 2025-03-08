@@ -1,11 +1,11 @@
-#include "reduce.h"
+#include <cstdlib>
 #include <numeric>
 
-#include "buffer.h"
-#include "ndbuffer.h"
+#include "acm/detail/ndbuffer.h"
+#include "acm/detail/reduce.h"
 
-void
-test_reduce()
+int
+main()
 {
     {
         ac::shape mm{4, 4};
@@ -28,7 +28,7 @@ test_reduce()
         auto d1{h1.to_device()};
         auto d2{h2.to_device()};
 
-        const auto                                    count{h0.size() + h1.size() + h2.size()};
+        // const auto                                    count{h0.size() + h1.size() + h2.size()};
         std::vector<ac::mr::device_pointer<uint64_t>> inputs{d0.get(), d1.get(), d2.get()};
         ac::device_buffer<uint64_t>                   output{inputs.size()};
         ac::segmented_reduce(mm, nn, rr, inputs, output.get());
@@ -43,4 +43,5 @@ test_reduce()
     }
 
     PRINT_LOG_INFO("OK");
+    return EXIT_SUCCESS;
 }

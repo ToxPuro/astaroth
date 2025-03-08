@@ -1,17 +1,10 @@
 #pragma once
 #include <iomanip>
-
-#include "acm/detail/errchk_print.h"
-#include "pointer.h"
+#include <iostream>
 
 #include "errchk.h"
 #include "ntuple.h"
-#include "print_debug.h"
-
-#include <numeric>
-#include <vector>
-
-#include "datatypes.h"
+#include "pointer.h"
 
 namespace ac {
 
@@ -52,13 +45,24 @@ transform(const ac::shape dims, const ac::shape subdims, const ac::index offset,
     }
 }
 
-#if defined(ACM_DEVICE_ENABLED)
-void transform(const ac::shape in_dims, const ac::shape in_subdims, const ac::index in_offset,
-               const DevicePointer in, DevicePointer out);
-#endif
+// #if defined(ACM_DEVICE_ENABLED)
+// #include "datatypes.h"
+// void
+// transform(const ac::shape dims, const ac::shape subdims, const ac::index offset,
+//           const ac::mr::device_pointer<UserDatatype> in, ac::mr::device_pointer<UserDatatype>
+//           out)
+// #endif
 
-// template <typename T> print_recursive(const size_t depth, const ac::ntuple<uint64_t>& ntuple) {
-// ERRCHK() }
+// template <typename T> print_recursive(const size_t depth, const ac::ntuple<uint64_t>& ntuple)
+// { ERRCHK() }
+
+#if defined(ACM_DEVICE_ENABLED)
+
+template <typename T>
+void transform(const ac::shape dims, const ac::shape subdims, const ac::index offset,
+               const ac::mr::device_pointer<T> in, ac::mr::device_pointer<T> out);
+
+#endif
 
 template <typename T>
 void
@@ -107,5 +111,3 @@ print(const std::string& label, const ac::ntuple<uint64_t>& shape, const T* data
 // }
 
 } // namespace ac
-
-void test_transform();

@@ -1,15 +1,12 @@
-#include "algorithm.h"
-#include <numeric>
+#include <cstdlib>
 
-#include "errchk_print.h"
+#include "acm/detail/algorithm.h"
+#include "acm/detail/ndbuffer.h"
+#include "acm/detail/pack.h"
+#include "acm/detail/type_conversion.h"
 
-#include "ndbuffer.h"
-
-#include "pack.h"
-#include "type_conversion.h"
-
-void
-test_algorithm()
+int
+main()
 {
     {
         const ac::shape        nn{4, 3};
@@ -42,7 +39,7 @@ test_algorithm()
             [](const auto& a, const auto& b) { return a + b; },
             0,
             tst.get());
-        ERRCHK(tst[0] == (prod(nn) * (prod(nn) + 1)) / 2);
+        ERRCHK(tst[0] == as<int>((prod(nn) * (prod(nn) + 1)) / 2));
     }
 
     {
@@ -137,4 +134,5 @@ test_algorithm()
     // ERRCHK(std::equal(ref.begin(), ref.end(), tst.begin()));
 
     PRINT_LOG_WARNING("Not implemented");
+    return EXIT_SUCCESS;
 }

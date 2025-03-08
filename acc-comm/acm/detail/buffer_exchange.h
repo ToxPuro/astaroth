@@ -1,8 +1,5 @@
 #pragma once
 
-#include <memory>
-
-// #include "buffer.h"
 #include "buffer.h"
 
 #if defined(ACM_DEVICE_ENABLED)
@@ -97,5 +94,3 @@ using HostToDeviceBufferExchangeTask = BufferExchangeTask<
 template <typename T>
 using DeviceToHostBufferExchangeTask = BufferExchangeTask<T, ac::mr::device_allocator,
                                                           ac::mr::pinned_host_allocator>;
-
-void test_buffer_exchange(void);

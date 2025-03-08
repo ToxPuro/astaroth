@@ -1,13 +1,12 @@
 #include "acm/acm.h"
 
 #include <exception>
+#include <iostream>
 
-#include "acm/detail/ntuple.h"
+#include "errchk_mpi.h"
 #include "mpi_utils.h"
-
-#include "allocator.h"
-#include "halo_exchange_packed.h"
-#include "io.h"
+#include "ntuple.h"
+#include "type_conversion.h"
 
 ACM_Errorcode
 ACM_MPI_Init_funneled(void)

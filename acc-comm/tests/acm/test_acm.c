@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "acm/acm.h"
+#include "acm/acm_error.h"
 #include "acm/detail/errchk_print.h"
 
 #define ERRCHK_ACM(errcode)                                                                        \
@@ -39,7 +40,7 @@ main(void)
     ERRCHK_ACM(ACM_MPI_Init_funneled());
 
     const uint64_t global_nn[] = {128, 128, 128};
-    const size_t ndims         = ARRAY_SIZE(global_nn);
+    const size_t   ndims       = ARRAY_SIZE(global_nn);
     if (ndims > MAX_NDIMS) {
         fprintf(stderr, "ndims %zu larger than MAX_NDIMS %zu\n", ndims, MAX_NDIMS);
         return EXIT_FAILURE;

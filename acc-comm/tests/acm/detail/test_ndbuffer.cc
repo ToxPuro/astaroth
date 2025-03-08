@@ -1,9 +1,10 @@
-#include "ndbuffer.h"
-
+#include <cstdlib>
 #include <numeric>
 
-void
-test_ndbuffer(void)
+#include "acm/detail/ndbuffer.h"
+
+int
+main()
 {
     {
         ac::ndbuffer<uint64_t, ac::mr::host_allocator> mesh(ac::shape{4, 4}, 0);
@@ -33,4 +34,5 @@ test_ndbuffer(void)
     }
 
     PRINT_LOG_INFO("OK");
+    return EXIT_SUCCESS;
 }

@@ -93,5 +93,3 @@ using device_allocator                     = host_allocator;
 #endif
 
 } // namespace ac::mr
-
-void test_allocator();

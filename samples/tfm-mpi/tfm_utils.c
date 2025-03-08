@@ -246,12 +246,19 @@ acHostUpdateMHDSpecificParams(AcMeshInfo* info)
 int
 acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info)
 {
-    info->real_params[AC_dsx] = info->real_params[AC_global_sx] /
-                                (info->int_params[AC_global_nx] - 1);
-    info->real_params[AC_dsy] = info->real_params[AC_global_sy] /
-                                (info->int_params[AC_global_ny] - 1);
-    info->real_params[AC_dsz] = info->real_params[AC_global_sz] /
-                                (info->int_params[AC_global_nz] - 1);
+    // With non-periodic boundary conditions, would have to subtract 1 from global_nxyz
+    // and this should be checked again
+    ERRCHK_ALWAYS(info->int_params[AC_bc_type_top_x] == 0);
+    ERRCHK_ALWAYS(info->int_params[AC_bc_type_top_y] == 0);
+    ERRCHK_ALWAYS(info->int_params[AC_bc_type_top_z] == 0);
+
+    ERRCHK_ALWAYS(info->int_params[AC_bc_type_bot_x] == 0);
+    ERRCHK_ALWAYS(info->int_params[AC_bc_type_bot_y] == 0);
+    ERRCHK_ALWAYS(info->int_params[AC_bc_type_bot_z] == 0);
+
+    info->real_params[AC_dsx] = info->real_params[AC_global_sx] / info->int_params[AC_global_nx];
+    info->real_params[AC_dsy] = info->real_params[AC_global_sy] / info->int_params[AC_global_ny];
+    info->real_params[AC_dsz] = info->real_params[AC_global_sz] / info->int_params[AC_global_nz];
 
     return 0;
 }

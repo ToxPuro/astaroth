@@ -4,26 +4,19 @@ set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
 find_package(MPI REQUIRED COMPONENTS C)
 
 ## Library
-set(ACM_HOST_FILES   acm.cc               
-                datatypes.cc
-                mpi_utils.cc
-                buffer_exchange.cc
-                halo_exchange.cc
-                packet.cc
-                algorithm.cc
-                pack.cc
-                ndbuffer.cc
-                buffer.cc
-                decomp.cc
-                partition.cc
-                math_utils.cc
-                segment.cc
-                ntuple.cc
-                pointer.cc
-                allocator.cc
-                type_conversion.cc)
+set(ACM_HOST_FILES
+    acm.cc               
+    datatypes.cc
+    mpi_utils.cc
+    decomp.cc
+    partition.cc
+    math_utils.cc
+    ntuple.cc
+)
 set(ACM_DEVICE_FILES pack.cu)
 add_library(acm SHARED ${ACM_DEVICE_FILES} ${ACM_HOST_FILES} acm_error.c errchk_print.c)
+
+## Link libraries and includes
 target_link_libraries(acm PUBLIC MPI::MPI_C)
 target_include_directories(acm PUBLIC ${PROJECT_SOURCE_DIR})
 
