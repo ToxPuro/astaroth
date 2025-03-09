@@ -1,4 +1,4 @@
-run_const real3 AC_ds =(real3) {AC_dx,AC_dy,AC_dz}
+run_const real3 AC_ds
 run_const real AC_dsmin
 
 run_const real3 AC_inv_ds = 1.0/AC_ds
