@@ -14,10 +14,11 @@ get_volume_from_shape(const AcShape shape)
 {
 	return {shape.x,shape.y,shape.z};
 }
+
 static int memusage()
 {
-  	struct rusage usage;
-  	int res=getrusage(RUSAGE_SELF,&usage);
+	struct rusage usage;
+	int res=getrusage(RUSAGE_SELF,&usage);
 
-  	return usage.ru_maxrss;
+	return usage.ru_maxrss;
 }
