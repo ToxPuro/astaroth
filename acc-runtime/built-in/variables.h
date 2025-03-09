@@ -1,4 +1,4 @@
-run_const real3 AC_ds
+run_const real3 AC_ds =(real3) {AC_dx,AC_dy,AC_dz}
 run_const real AC_dsmin
 
 run_const real3 AC_inv_ds = 1.0/AC_ds
@@ -16,7 +16,6 @@ run_const real3 AC_ds_6 = AC_ds_3*AC_ds_3
 
 //TP: these could be run_const but gives really bad performance otherwise
 int3 AC_nmin
-
 int3 AC_nlocal
 int3 AC_mlocal = AC_nlocal + 2*AC_nmin
 int3 AC_ngrid 
@@ -27,7 +26,6 @@ int3 AC_ngrid_max = AC_ngrid + AC_nmin
 
 run_const real3 AC_nlocal_inv = (real3) {1.0/AC_nlocal.x, 1.0/AC_nlocal.y, 1.0/AC_nlocal.z}
 run_const real3 AC_ngrid_inv = (real3){1.0/AC_ngrid.x, 1.0/AC_ngrid.y, 1.0/AC_ngrid.z}
-
 
 AcDimProducts AC_nlocal_products = ac_get_dim_products(AC_nlocal)
 run_const AcDimProductsInv AC_nlocal_products_inv = ac_get_dim_products_inv(AC_nlocal_products)

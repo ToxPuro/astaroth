@@ -421,7 +421,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
 			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
 
-  static AcLibHandle __attribute__((unused)) acLoadLibrary(FILE* stream)
+  static AcResult __attribute__((unused)) acLoadLibrary(FILE* stream)
   {
 	kernelsLibHandle=acLoadRunTime(stream);
  	void* handle = dlopen(runtime_astaroth_path,RTLD_NOW);
