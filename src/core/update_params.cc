@@ -29,30 +29,7 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
 	    else
 	    	return acPushToConfig(config,param,val);
     };
-//TP: for now TWO_D means XY setup
-#if TWO_D
-    push_val(AC_dimension_inactive,
-		    (AcBool3)
-		    {
-		    	false,
-			false,
-			true	
-		    }
-	    );
-#endif
 
-    push_val(AC_nmin,
-    	(int3){
-    	        config[AC_dimension_inactive].x ? 0 : NGHOST,
-    	        config[AC_dimension_inactive].y ? 0 : NGHOST,
-    	        config[AC_dimension_inactive].z ? 0 : NGHOST
-    	}
-    );
-
-    if(!config[AC_dimension_inactive].z)
-    	push_val(AC_dsmin,std::min(std::min(config[AC_ds].x,config[AC_ds].y),config[AC_ds].z));
-    else
-    	push_val(AC_dsmin,std::min(config[AC_ds].x,config[AC_ds].y));
 
 
     [[maybe_unused]] auto ac_get_dim_products = [&](const auto& dims)

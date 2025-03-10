@@ -1,5 +1,8 @@
+//TP: for now TWO_D means XY setup
+run_const bool3 AC_dimension_inactive (bool3){false,false,TWO_D};
+
 run_const real3 AC_ds
-run_const real AC_dsmin
+run_const real AC_dsmin = AC_dimension_inactive.z ? min(AC_ds.x,AC_ds.y) : min(AC_ds)
 
 run_const real3 AC_inv_ds = 1.0/AC_ds
 run_const real3 AC_inv_ds_2 = AC_inv_ds*AC_inv_ds
@@ -15,7 +18,13 @@ run_const real3 AC_ds_5 = AC_ds_3*AC_ds_2
 run_const real3 AC_ds_6 = AC_ds_3*AC_ds_3
 
 //TP: these could be run_const but gives really bad performance otherwise
-int3 AC_nmin
+int3 AC_nmin = (int3)
+		{
+			AC_dimension_inactive.x ? 0 : NGHOST,
+			AC_dimension_inactive.y ? 0 : NGHOST,
+			AC_dimension_inactive.z ? 0 : NGHOST
+		}
+
 int3 AC_nlocal
 int3 AC_mlocal = AC_nlocal + 2*AC_nmin
 int3 AC_ngrid 
@@ -57,7 +66,9 @@ Field2 AC_COORDS
 
 run_const int3  AC_domain_decomposition
 run_const bool  AC_host_has_row_memory_order
-run_const bool3 AC_dimension_inactive
+
+			
+
 run_const bool  AC_lagrangian_grid = AC_LAGRANGIAN_GRID
 int3 AC_thread_block_loop_factors
 int3 AC_max_tpb_for_reduce_kernels
