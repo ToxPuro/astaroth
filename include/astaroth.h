@@ -475,10 +475,9 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	*(void**)(&BASE_FUNC_NAME(acCompute)) = dlsym(handle,"acCompute");
 	*(void**)(&BASE_FUNC_NAME(acHaloExchange)) = dlsym(handle,"acHaloExchange");
 	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraph)) = dlsym(handle,"acGridBuildTaskGraph");
-	*(void**)(&acGridDestroyTaskGraph) = dlsym(handle,"acGridDestroyTaskGraph");
-	*(void**)(&(acGetDSLTaskGraph)) = dlsym(handle,"acGetDSLTaskGraph");
-	if(!acGetDSLTaskGraph) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetDSLTaskGraph");
-	if(!acGridDestroyTaskGraph) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridDestroyTaskGraph");
+	LOAD_DSYM(acGridDestroyTaskGraph,stream);
+	LOAD_DSYM(acGridClearTaskGraphCache,stream);
+	LOAD_DSYM(acGetDSLTaskGraph,stream);
 	LOAD_DSYM(acGetOptimizedDSLTaskGraph,stream);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousDistributed,stream);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousCollective,stream);

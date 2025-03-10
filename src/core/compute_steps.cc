@@ -976,7 +976,15 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 }
 
 using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>>;
-std::unordered_map<KeyType, AcTaskGraph*, TupleHash, TupleEqual> task_graphs{};
+static std::unordered_map<KeyType, AcTaskGraph*, TupleHash, TupleEqual> task_graphs{};
+
+AcResult
+acGridClearTaskGraphCache()
+{
+	const std::unordered_map<KeyType, AcTaskGraph*, TupleHash, TupleEqual> empty_graphs{};
+	task_graphs = empty_graphs;
+	return AC_SUCCESS;
+}
 
 AcTaskGraph*
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)

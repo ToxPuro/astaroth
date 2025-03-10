@@ -797,6 +797,7 @@ acGridQuit(void)
     ERRCHK_ALWAYS(grid.initialized);
     acGridSynchronizeStream(STREAM_ALL);
 
+    acGridClearTaskGraphCache();
     // Random number generator
     acRandQuit();
 

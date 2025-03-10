@@ -337,6 +337,9 @@ FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
 FUNC_DEFINE(AcResult, acGridDestroyTaskGraph,(AcTaskGraph* graph));
 
 /** */
+FUNC_DEFINE(AcResult, acGridClearTaskGraphCache,());
+
+/** */
 FUNC_DEFINE(AcResult, acGridExecuteTaskGraph,(AcTaskGraph* graph, const size_t n_iterations));
 /** */
 FUNC_DEFINE(AcResult, acGridExecuteTaskGraphBase,(AcTaskGraph* graph, const size_t n_iterations, const bool include_all));
