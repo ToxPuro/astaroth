@@ -13,7 +13,7 @@
 #endif
 
 typedef curandStateXORWOW_t acRandState;
-static __managed__ acRandState* rand_states;
+static __device__ __constant__ acRandState* rand_states;
 
 __global__ void
 rand_init(const uint64_t seed, const size_t count, const size_t rank)
@@ -29,7 +29,10 @@ rand_init(const uint64_t seed, const size_t count, const size_t rank)
 AcResult
 acRandInitAlt(const uint64_t seed, const size_t count, const size_t rank)
 {
-  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&rand_states, count * sizeof(rand_states[0])));
+  acRandState* h_rand_states = NULL;
+  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&h_rand_states, count * sizeof(acRandState)));
+  ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(rand_states,&h_rand_states, sizeof(h_rand_states), 0, cudaMemcpyHostToDevice));
+
 
   const size_t tpb = 256;
   const size_t bpg = as_size_t(ceil(1. * count / tpb));
@@ -37,6 +40,18 @@ acRandInitAlt(const uint64_t seed, const size_t count, const size_t rank)
   ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
   return AC_SUCCESS;
+}
+
+void
+acRandQuit(void)
+{
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+  acRandState* h_rand_states = NULL;
+  ERRCHK_CUDA_ALWAYS(cudaMemcpyFromSymbol(&h_rand_states, rand_states, sizeof(h_rand_states), 0, cudaMemcpyDeviceToHost));
+  ERRCHK_CUDA_ALWAYS(cudaFree(h_rand_states));
+  h_rand_states = NULL;
+  ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(rand_states,&h_rand_states, sizeof(h_rand_states), 0, cudaMemcpyHostToDevice));
+
 }
 
 /*
@@ -164,13 +179,6 @@ acRandInit(const uint64_t seed, const Volume m_local, const Volume m_global,
 }
 #endif
 
-void
-acRandQuit(void)
-{
-  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
-  ERRCHK_CUDA_ALWAYS(cudaFree(rand_states));
-  rand_states = NULL;
-}
 
 #if AC_DOUBLE_PRECISION
 #define rand_uniform() curand_uniform_double(&rand_states[local_compdomain_idx])
