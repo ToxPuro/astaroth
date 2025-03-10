@@ -634,10 +634,18 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	}
 	return AC_SUCCESS;
   }
-  static int __attribute__((unused)) acCloseLibrary()
+  static AcResult __attribute__((unused)) acCloseLibrary()
   {
-        return ((astarothLibHandle != NULL) ? dlclose(astarothLibHandle) : 0) || ((kernelsLibHandle != NULL)? dlclose(kernelsLibHandle) : 0) || ( (utilsLibHandle != NULL) ? dlclose(utilsLibHandle) : 0);
-        //return dlclose(astarothLibHandle) || dlclose(kernelsLibHandle);
+	const int success_closing_ac_lib = (astarothLibHandle != NULL) ? dlclose(astarothLibHandle) : 0;
+	if(success_closing_ac_lib) astarothLibHandle = NULL;
+
+	const int success_closing_kernels_lib = (kernelsLibHandle != NULL) ? dlclose(kernelsLibHandle) : 0;
+	if(success_closing_kernels_lib) kernelsLibHandle = NULL;
+
+	const int success_closing_utils_lib = (utilsLibHandle != NULL) ? dlclose(utilsLibHandle) : 0;
+	if(success_closing_utils_lib) utilsLibHandle = NULL;
+
+	return  (success_closing_ac_lib || success_closing_kernels_lib || success_closing_utils_lib) == 0 ? AC_SUCCESS : AC_FAILURE;
   }
 #endif
 

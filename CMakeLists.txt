@@ -57,9 +57,12 @@ option(RUNTIME_COMPILATION "Compile version of Astaroth compiled at runtime" OFF
 set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -Wno-cast-function-type") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
-add_definitions(-DAC_OVERRIDES_PATH="${CMAKE_SOURCE_DIR}/acc-runtime/overrides.h")
+add_definitions(-DAC_OVERRIDES_PATH="${CMAKE_BINARY_DIR}/overrides.h")
 add_definitions(-DAC_BASE_PATH="${CMAKE_SOURCE_DIR}")
 set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}")
+
+add_definitions(-DAC_BINARY_PATH="${CMAKE_BINARY_DIR}")
+set(AC_BINARY_PATH "${CMAKE_BINARY_DIR}")
 
 if (RUNTIME_COMPILATION)
 	add_definitions(-DAC_RUNTIME_COMPILATION=1)

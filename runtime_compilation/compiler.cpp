@@ -140,7 +140,7 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 				exit(EXIT_FAILURE);
 			}
 
-			sprintf(cmd,"mkdir %s",runtime_astaroth_build_path);
+			sprintf(cmd,"mkdir -p %s",runtime_astaroth_build_path);
 			retval = system(cmd);
 			if(retval)
 			{
