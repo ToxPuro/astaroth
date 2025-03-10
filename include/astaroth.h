@@ -636,7 +636,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
   }
   static int __attribute__((unused)) acCloseLibrary()
   {
-        return (!astarothLibHandle ? dlclose(astarothLibHandle) : 0) || (!kernelsLibHandle ? dlclose(kernelsLibHandle) : 0); //|| (!utilsLibHandle ? dlclose(utilsLibHandle) : 0);
+        return ((astarothLibHandle != NULL) ? dlclose(astarothLibHandle) : 0) || ((kernelsLibHandle != NULL)? dlclose(kernelsLibHandle) : 0) || ( (utilsLibHandle != NULL) ? dlclose(utilsLibHandle) : 0);
         //return dlclose(astarothLibHandle) || dlclose(kernelsLibHandle);
   }
 #endif

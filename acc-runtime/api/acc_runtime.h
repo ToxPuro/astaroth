@@ -165,6 +165,13 @@ typedef struct
 #endif
   } AcCompInfoLoaded;
 
+  typedef struct AcCompInfoHasDefaultValue {
+#include "comp_loaded_decl.h"
+#ifdef __cplusplus
+#include "loaded_info_access_operators.h"
+#endif
+  } AcCompInfoHasDefaultValue;
+
   typedef struct AcCompInfoConfig{
 #include "comp_decl.h"
 #ifdef __cplusplus
@@ -175,6 +182,7 @@ typedef struct
   typedef struct {
 	  AcCompInfoConfig config;
 	  AcCompInfoLoaded is_loaded;
+	  AcCompInfoHasDefaultValue has_default_value;
   } AcCompInfo;
 
   #ifdef __cplusplus

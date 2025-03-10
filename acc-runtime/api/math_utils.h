@@ -32,6 +32,9 @@
 #include "datatypes.h"
 #include "errchk.h"
 
+#define __ac__max(a,b) (a > b ? a : b)
+#define __ac__min(a,b) (a < b ? a : b)
+
 #if AC_DOUBLE_PRECISION != 1
 #ifndef __cplusplus
 #define exp(x) expf(x)

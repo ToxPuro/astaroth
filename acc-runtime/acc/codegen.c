@@ -2679,7 +2679,7 @@ static void
 create_comp_ops(FILE* fp, const string_vec elems, const size_t index, const char* op)
 {
 	if(index == elems.size) return;
-	if(index < elems.size-1) fprintf(fp,"%s(a.%s,",op,elems.data[index]);
+	if(index < elems.size-1) fprintf(fp,"__ac__%s(a.%s,",op,elems.data[index]);
 	else fprintf(fp,"a.%s",elems.data[index]);
 	create_comp_ops(fp,elems,index+1,op);
 	if(index < elems.size-1) fprintf(fp,")");

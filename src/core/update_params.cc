@@ -37,7 +37,19 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
 	    {
 		    if(config.params.is_loaded[param]) return;
 	    }
-	    return acPushToConfig(config,param,val);
+	    acPushToConfig(config,param,val);
+	    //TP: variables loaded through the DSL default value loaders should not be counted as loaded
+	    //TP: but for generating the overrides the runtime compiler should know that they have taken the default values coming from the DSL loaders
+	    if constexpr(IsCompParam(param))
+	    {
+		    config.run_consts.is_loaded[param] = false;
+		    config.run_consts.has_default_value[param] = true;
+	    }
+	    else
+	    {
+		    config.params.is_loaded[param] = false;
+	    }
+	    return;
     };
 
 
@@ -95,10 +107,6 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
 	config[AC_nlocal].x < get_device_prop().warpSize ? config[AC_nlocal].x 
 						    : ceil_div(config[AC_nlocal].x,get_device_prop().warpSize);
     push_val(AC_reduction_tile_dimensions,tile_dims);
-    printf("HMM reduction tile dimensions: %d,%d,%d\n",tile_dims.x,tile_dims.y,tile_dims.z);
-
-    
-
     return AC_SUCCESS;
 }
 

@@ -123,7 +123,7 @@ struct load_comp_arrays
 		{
 			const int n_dims = get_array_n_dims(array);
 			const char* name = get_array_name(array);
-			const bool is_loaded = info.is_loaded[array];
+			const bool has_value = info.is_loaded[array] || info.has_default_value[array];
 			auto* loaded_val = info.config[array];
 			const auto dims = get_array_dim_sizes(array,{});
 			if(n_dims == 1)
@@ -131,7 +131,7 @@ struct load_comp_arrays
 				fprintf(fp,"%s %s %s = [",prefix,type.c_str(),name);
 				for(size_t j = 0; j < dims[0]; ++j)
 				{
-					auto val = is_loaded ? loaded_val[j] : default_value;
+					auto val = has_value ? loaded_val[j] : default_value;
 					std::string val_string = to_str(val);
 					fprintf(fp,"%s",val_string.c_str());
 					if(j < dims[0]-1) fprintf(fp,"%s",",");
@@ -146,7 +146,7 @@ struct load_comp_arrays
 					fprintf(fp,"%s","[");
 					for(size_t x = 0; x < dims[0]; ++x)
 					{
-						auto val = is_loaded ? loaded_val[x + y*dims[0]] : default_value;
+						auto val = has_value ? loaded_val[x + y*dims[0]] : default_value;
 						std::string val_string = to_str(val);
 						fprintf(fp,"%s",val_string.c_str());
 						if(x < dims[0]-1) fprintf(fp,"%s",",");
@@ -167,7 +167,7 @@ struct load_comp_scalars
 	{
 		for(P var : get_params<P>())
 		{
-			auto val =  info.is_loaded[var] ? info.config[var] : get_default_value<P>();
+			auto val =  (info.is_loaded[var] || info.has_default_value[var]) ? info.config[var] : get_default_value<P>();
 			std::string res = to_str(val,get_param_name(var),prefix,output_datatype);
 			fprintf(fp,"%s",res.c_str());
 		}
