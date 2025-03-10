@@ -946,7 +946,10 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
 	  	  config.run_consts.is_loaded[param] = true;
 	  }
 	  else
+	  {
 		  config[param] = val;
+		  config.params.is_loaded[param] = true;
+	  }
   }
 
 #endif
@@ -967,6 +970,7 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
 	  //All enums are initialized by default to the first enum value
 	  //All array ptrs are initialized to nulls
 	  //All booleans are initialized to false
+	  //All booleans about whether values are loaded are false
 	  memset(&res,0,sizeof(res));
     	  // memset reads the second parameter as a byte even though it says int in
           // the function declaration

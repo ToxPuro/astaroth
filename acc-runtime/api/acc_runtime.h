@@ -197,9 +197,19 @@ typedef struct
 #endif
   } AcMeshInfoScalars;
 
+  typedef struct AcMeshInfoLoaded {
+#include "info_loaded_decl.h"
+
+#ifdef __cplusplus
+#include "info_loaded_operator_decl.h"
+#endif
+  } AcMeshInfoLoadedInfo;
+
+
   typedef struct AcMeshInfoParams {
 	  AcMeshInfoArrays arrays;
 	  AcMeshInfoScalars scalars;
+	  AcMeshInfoLoadedInfo is_loaded;
 #ifdef __cplusplus
 #include "param_info_access_operators.h"
 #endif

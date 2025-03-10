@@ -2,6 +2,7 @@
 #include "math_utils.h"
 #include "../helpers/ceil_div.h"
 #include "user_builtin_non_scalar_constants.h"
+#include "is_comptime_param.h"
 
 static cudaDeviceProp
 get_device_prop()
@@ -25,9 +26,18 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
 			    std::is_same<decltype(param), AcReal3>::value ||
 			    std::is_same<decltype(param), int3>::value    ||
 			    std::is_same<decltype(param), AcBool3>::value
-			);
-	    else
-	    	return acPushToConfig(config,param,val);
+			) return;
+
+    	    //the loaders defined in DSL are supposed to be overwritable i.e. if the user loads some value say for AC_len then that value should be preferred over the default value defined in the DSL
+	    if constexpr(IsCompParam(param))
+	    {
+		    if(config.run_consts.is_loaded[param]) return;
+	    }
+            else
+	    {
+		    if(config.params.is_loaded[param]) return;
+	    }
+	    return acPushToConfig(config,param,val);
     };
 
 
@@ -62,7 +72,10 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
     	return config[param];
     };
 
-    #include "user_config_loader.h"
+    {
+	#include "user_constants.h"
+    	#include "user_config_loader.h"
+    }
 
     //TP: for safety have to add the maximum possible tpb dims for the reduce scratchpads
     //If block_factor_z is say 2 can be that some of threads reduce something in the first iteration but not in the second
@@ -82,6 +95,7 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
 	config[AC_nlocal].x < get_device_prop().warpSize ? config[AC_nlocal].x 
 						    : ceil_div(config[AC_nlocal].x,get_device_prop().warpSize);
     push_val(AC_reduction_tile_dimensions,tile_dims);
+    printf("HMM reduction tile dimensions: %d,%d,%d\n",tile_dims.x,tile_dims.y,tile_dims.z);
 
     
 

@@ -183,9 +183,13 @@ real AC_M_star
 real AC_sink_pos_x
 real AC_sink_pos_y
 real AC_sink_pos_z
-real AC_M_sink
 real AC_M_sink_init
 real AC_M_sink_Msun
+
+
+
+const real M_sun = 1.989e33 // g solar mass
+real AC_M_sink = (AC_M_sink_Msun*M_sun)/AC_unit_mass
 real AC_soft
 real AC_accretion_range
 real AC_switch_accretion
@@ -201,7 +205,7 @@ run_const real AC_cp_sound
 run_const real AC_cp
 run_const real AC_cv
 run_const real AC_gamma
-run_const real AC_cv_sound
+run_const real AC_cv_sound = AC_cp_sound/AC_gamma
 run_const real AC_lnT0
 run_const real AC_lnrho0
 run_const real AC_zeta
@@ -252,12 +256,12 @@ real AC_ff_hel_rez
 real AC_ff_hel_imx
 real AC_ff_hel_imy
 real AC_ff_hel_imz
-//  Additional helper params  //  (deduced from other params do not set these directly!)
-real AC_G_const
+const real G_CONST_CGS = 6.674e-8
+run_const real AC_G_const = G_CONST_CGS / ((AC_unit_velocity*AC_unit_velocity) / (AC_unit_density*AC_unit_length*AC_unit_length))
 real AC_GM_star
-real AC_unit_mass
-real AC_sq2GM_star
-real AC_cs2_sound
+run_const real AC_sq2GM_star = sqrt(2.0*AC_GM_star)
+
+real AC_cs2_sound = AC_cs_sound*AC_cs_sound
 //
 
 

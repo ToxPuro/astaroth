@@ -1420,6 +1420,15 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %sArrayParam ) const {return false;}\n",enum_name);
 	fprintf_filename("loaded_info_access_operators.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
 
+
+	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sParam param) const {return %s_params[param];}\n",enum_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","const bool& operator[](const %sArrayParam param) const {return %s_arrays[param];}\n",enum_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sParam param) {return %s_params[param];}\n",enum_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool& operator[](const %sArrayParam param) {return %s_arrays[param];}\n",enum_name,define_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompParam ) const {return false;}\n",enum_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %sCompArrayParam ) const {return false;}\n",enum_name);
+	fprintf_filename("info_loaded_operator_decl.h","bool operator[](const %s) const {return false;}\n",datatype_scalar);
+
 	fprintf_filename("array_decl.h","%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,define_name,uppr_name);
 
 	fprintf_filename("get_default_value.h","if constexpr(std::is_same<P,%sParam>::value) return (%s){};\n",enum_name,datatype_scalar);
@@ -1871,6 +1880,14 @@ gen_comp_declarations(const char* datatype_scalar)
 	fprintf(fp,"bool %s_params[MAX_NUM_%s_COMP_PARAMS];\n",define_name,upper);
 	fprintf(fp,"bool  %s_arrays[MAX_NUM_%s_COMP_ARRAYS];\n",define_name,upper);
 	fclose(fp);
+
+	//Based on naming these should not be here
+	//TODO: move them to an appropriately named function
+	fp = fopen("info_loaded_decl.h","a");
+	fprintf(fp,"bool  %s_params[NUM_%s_PARAMS];\n",define_name,upper);
+	fprintf(fp,"bool  %s_arrays[NUM_%s_ARRAYS];\n",define_name,upper);
+	fclose(fp);
+
 
 	fopen("input_decl.h","a");
 	fprintf(fp,"%s %s_params[NUM_%s_INPUT_PARAMS+1];\n",datatype_scalar,define_name,strupr(define_name));
@@ -5864,6 +5881,8 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   string_vec datatypes = get_all_datatypes();
 
+
+  fprintf_filename("is_comptime_param.h","%s","#pragma once\n");
   for (size_t i = 0; i < datatypes.size; ++i)
   {
 	  const char* datatype = datatypes.data[i];

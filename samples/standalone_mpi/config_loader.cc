@@ -52,37 +52,9 @@ set_extra_config_params(AcMeshInfo* config_ptr)
     //                                        config[AC_dsz]));
 
     // Real grid coordanates (DEFINE FOR GRID WITH THE GHOST ZONES)
-    config[AC_len]  = config[AC_ds]*config[AC_mgrid];
-    config[AC_origin] = AcReal(.5) * config[AC_len];
+    acPushToConfig(config,AC_len,config[AC_ds]*config[AC_mgrid]);
+    acPushToConfig(config,AC_origin,AcReal(.5) * config[AC_len]);
 
-    // Real helpers
-    config[AC_cs2_sound] = config[AC_cs_sound] *
-                                        config[AC_cs_sound];
-
-    config[AC_cv_sound] = config[AC_cp_sound] /
-                                       config[AC_gamma];
-
-    AcReal G_CONST_CGS = AcReal(
-        6.674e-8); // cm^3/(g*s^2) GGS definition //TODO define in a separate module
-    AcReal M_sun = AcReal(1.989e33); // g solar mass
-
-    config[AC_unit_mass] = (config[AC_unit_length] *
-                                         config[AC_unit_length] *
-                                         config[AC_unit_length]) *
-                                        config[AC_unit_density];
-
-    config[AC_M_sink] = config[AC_M_sink_Msun] * M_sun /
-                                     config[AC_unit_mass];
-    config[AC_M_sink_init] = config[AC_M_sink_Msun] * M_sun /
-                                          config[AC_unit_mass];
-
-    config[AC_G_const] = G_CONST_CGS / ((config[AC_unit_velocity] *
-                                                      config[AC_unit_velocity]) /
-                                                     (config[AC_unit_density] *
-                                                      config[AC_unit_length] *
-                                                      config[AC_unit_length]));
-
-    config[AC_sq2GM_star] = AcReal(sqrt(AcReal(2) * config[AC_GM_star]));
 
 #if VERBOSE_PRINTING // Defined in astaroth.h
     printf("###############################################################\n");
