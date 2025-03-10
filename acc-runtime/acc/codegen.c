@@ -2658,6 +2658,29 @@ create_unary_op(const structs_info info, const int i, const char* op, FILE* fp)
 			fprintf(fp,"\t\t-a.%s,\n",info.user_struct_field_names[i].data[j]);
 		fprintf(fp,"\t};\n}\n");
 }
+static void
+create_comp_ops(FILE* fp, const string_vec elems, const size_t index, const char* op)
+{
+	if(index == elems.size) return;
+	if(index < elems.size-1) fprintf(fp,"%s(a.%s,",op,elems.data[index]);
+	else fprintf(fp,"a.%s",elems.data[index]);
+	create_comp_ops(fp,elems,index+1,op);
+	if(index < elems.size-1) fprintf(fp,")");
+}
+
+static void
+create_comp_operator(const structs_info info, const int i, const char* op, FILE* fp)
+{
+		if(info.user_struct_field_names[i].size < 2) return;
+		const char* struct_name = info.user_structs.data[i];
+		fprintf(fp,"static HOST_DEVICE_INLINE %s\n"
+			   "%s(const %s& a)\n"
+			   "{\n"
+			,info.user_struct_field_types[i].data[0],op,struct_name);
+		fprintf(fp,"return ");
+		create_comp_ops(fp,info.user_struct_field_names[i],0,op);
+		fprintf(fp,";\n}\n");
+}
 
 void
 gen_user_enums()
@@ -2690,6 +2713,7 @@ void
 gen_user_structs()
 {
 	FILE* fp = fopen("user_typedefs.h","a");
+	FILE* fp_comp = fopen("generated_comp_funcs.h","w");
 	for(size_t i = 0; i < s_info.user_structs.size; ++i)
 	{
 		const char* struct_name = s_info.user_structs.data[i];
@@ -2707,10 +2731,12 @@ gen_user_structs()
 		}
 
 		bool all_reals = true;
+		bool all_ints  = true;
 		bool all_scalar_types = true;
 		for(size_t j = 0; j < s_info.user_struct_field_types[i].size; ++j)
 		{
 			all_reals        &=  s_info.user_struct_field_types[i].data[j] == REAL_STR;
+			all_ints         &=  s_info.user_struct_field_types[i].data[j] == INT_STR;
 			all_scalar_types &= s_info.user_struct_field_types[i].data[j] == REAL_STR || s_info.user_struct_field_types[i].data[j] == INT_STR;
 		}
 		if(!all_scalar_types) continue;
@@ -2724,6 +2750,11 @@ gen_user_structs()
 			create_binary_op(s_info,i,PLUS_STR,fp);
 			create_unary_op (s_info,i,MINUS_STR,fp);
 			create_unary_op (s_info,i,PLUS_STR,fp);
+		}
+		if(all_reals || all_ints)
+		{
+			create_comp_operator(s_info,i,"max",fp_comp);
+			create_comp_operator(s_info,i,"min",fp_comp);
 		}
 
 		
@@ -2746,6 +2777,7 @@ gen_user_structs()
 		fprintf(fp,"#endif\n");
 	}
 	fclose(fp);
+	fclose(fp_comp);
 }
 
 static bool

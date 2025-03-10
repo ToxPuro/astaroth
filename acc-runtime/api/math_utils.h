@@ -130,6 +130,7 @@ max(const T& a, const T& b)
   return a > b ? a : b;
 }
 
+
 template <class T>
 static HOST_DEVICE_INLINE const T
 max(const T& a, const T& b, const T& c)
@@ -992,10 +993,5 @@ max(const uint64_t& a, const int& b)
 {
 	return a > (uint64_t)b ? a : (uint64_t)b;
 }
-HOST_DEVICE_INLINE int
-max(const int3& v)
-{
-	int res = v.y > v.x ? v.y : v.x;
-	return    v.z > res ? v.z : res;
-}
 
+#include "generated_comp_funcs.h"

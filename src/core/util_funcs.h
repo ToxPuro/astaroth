@@ -19,6 +19,7 @@ static int memusage()
 {
 	struct rusage usage;
 	int res=getrusage(RUSAGE_SELF,&usage);
+	ERRCHK_ALWAYS(res == 0);
 
 	return usage.ru_maxrss;
 }
