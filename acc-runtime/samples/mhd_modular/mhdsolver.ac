@@ -265,7 +265,8 @@ run_const real AC_sq2GM_star = sqrt(2.0*AC_GM_star)
 real AC_cs2_sound = AC_cs_sound*AC_cs_sound
 //
 
-
+// Sink and collapse parameters 
+real AC_lnrho_ohmic_reference
 
 
 
@@ -281,7 +282,15 @@ const Field3 AA  = {VTXBUF_AX,VTXBUF_AY,VTXBUF_AZ}
 #endif 
 #if LMAGNETIC
 induction() {
-    return cross(UU, curl(AA)) + AC_eta * laplace(AA)
+
+    #if LRESOHMIC
+    //MV: This is density dependent model for ohmic resistivity. 
+    eta_coeff = exp(0.5*(VTXBUF_LNRHO-AC_lnrho_ohmic_reference))
+    #else
+    eta_coeff = 1.0
+    #endif 
+    #
+    return cross(UU, curl(AA)) + AC_eta * eta_coeff * laplace(AA)
 }
 #endif
 
