@@ -458,7 +458,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 	LOAD_DSYM(acGetKernelReduceScratchPadSize,stream)
 	LOAD_DSYM(acGetKernelReduceScratchPadMinSize,stream)
 	LOAD_DSYM(acGetKernels,stream)
-	LOAD_DSYM(acReadOptimTBConfig);
+	LOAD_DSYM(acReadOptimTBConfig,stream);
 
 	return handle;
   }
