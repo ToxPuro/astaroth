@@ -395,6 +395,8 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(AcResult, acBenchmarkKernel,(AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba));
 
+  FUNC_DEFINE(int3, acReadOptimTBConfig,(const AcKernel, const int3 dims, const int3 block_factors));
+
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
   FUNC_DEFINE(AcResult, acLoadStencil,(const Stencil stencil, const cudaStream_t stream, const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
@@ -456,6 +458,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 	LOAD_DSYM(acGetKernelReduceScratchPadSize,stream)
 	LOAD_DSYM(acGetKernelReduceScratchPadMinSize,stream)
 	LOAD_DSYM(acGetKernels,stream)
+	LOAD_DSYM(acReadOptimTBConfig);
 
 	return handle;
   }

@@ -1665,8 +1665,9 @@ file_exists(const char* filename)
   struct stat   buffer;
   return (stat (filename, &buffer) == 0);
 }
-static int3
-read_optim_tpb(const AcKernel kernel, const int3 dims, const int3 block_factors)
+
+int3
+acReadOptimTBConfig(const AcKernel kernel, const int3 dims, const int3 block_factors)
 {
   if(!file_exists(autotune_csv_path)) return {-1,-1,-1};
   const char* filename = autotune_csv_path;
@@ -1709,7 +1710,7 @@ getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, Vert
     if (c.kernel == kernel && c.dims == dims)
       return c;
 
-  const int3 read_tpb = read_optim_tpb(kernel,dims,vba.on_device.block_factor);
+  const int3 read_tpb = acReadOptimTBConfig(kernel,dims,vba.on_device.block_factor);
   TBConfig c  = (read_tpb != (int3){-1,-1,-1})
           ? (TBConfig){kernel,dims,(dim3){(uint32_t)read_tpb.x, (uint32_t)read_tpb.y, (uint32_t)read_tpb.z}}
           : autotune(kernel,start,end,vba);
