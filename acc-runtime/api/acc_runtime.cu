@@ -2598,3 +2598,9 @@ acVerifyMeshInfo(const AcMeshInfoScalars info)
   }
   return retval;
 }
+
+const AcKernel*
+acGetKernels()
+{
+	return kernel_enums;
+}

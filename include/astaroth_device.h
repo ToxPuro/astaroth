@@ -129,7 +129,7 @@ FUNC_DEFINE(AcResult, acDeviceTransferVertexBufferWithOffset,(const Device src_d
 /** Deprecated */
 FUNC_DEFINE(AcResult, acDeviceTransferMeshWithOffset,(const Device src_device, const Stream stream,
                                         const int3 src, const int3 dst, const int num_vertices,
-                                        Device* dst_device));
+                                        Device dst_device));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceTransferVertexBuffer,(const Device src_device, const Stream stream,

@@ -745,11 +745,12 @@ acGridInitBase(const AcMesh user_mesh)
 		    submesh_info[AC_nlocal].x,submesh_info[AC_nlocal].y,submesh_info[AC_nlocal].z
 		    );
     acLogFromRootProc(ac_pid(), "acGridInit: Calling acDeviceCreate\n");
+    acVerboseLogFromRootProc(ac_pid(),"memusage before acDeviceCreate = %f MBytes\n",memusage()/1024.0);
+
     Device device;
-    int rank=ac_MPI_Comm_rank();
-if (rank==0) printf("memusage bef Dev create= %f MBytes\n", memusage()/1024.);
     acDeviceCreate(ac_pid() % devices_per_node, submesh_info, &device);
-if (rank==0) printf("memusage after Dev create= %f MBytes\n", memusage()/1024.);
+
+    acVerboseLogFromRootProc(ac_pid(),"memusage after acDeviceCreate = %f MBytes\n", memusage()/1024.0);
     acLogFromRootProc(ac_pid() , "acGridInit: Returned from acDeviceCreate\n");
 
     // Setup the global grid structure
@@ -761,7 +762,6 @@ if (rank==0) printf("memusage after Dev create= %f MBytes\n", memusage()/1024.);
     grid.nn = acGetLocalNN(acDeviceGetLocalConfig(device));
     grid.mpi_tag_space_count = 0;
 
-//if (rank==0) printf("memusage bef Dev update= %f MBytes\n", memusage()/1024.);
     acDeviceUpdate(device,acDeviceGetLocalConfig(device));
 
     initialize_random_number_generation(submesh_info);
@@ -770,9 +770,9 @@ if (rank==0) printf("memusage after Dev create= %f MBytes\n", memusage()/1024.);
     grid.initialized   = true;
 
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Synchronizing streams\n");
-if (rank==0) printf("memusage bef synchronize stream= %f MBytes\n", memusage()/1024.);
+    acVerboseLogFromRootProc(ac_pid(), "memusage before synchronize stream= %f MBytes\n", memusage()/1024.0);
     acGridSynchronizeStream(STREAM_ALL);
-if (rank==0) printf("memusage after synchronize stream= %f MBytes\n", memusage()/1024.);
+    acVerboseLogFromRootProc(ac_pid(), "memusage after synchronize stream= %f MBytes\n", memusage()/1024.0);
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Done synchronizing streams\n");
 
 #ifdef AC_INTEGRATION_ENABLED
