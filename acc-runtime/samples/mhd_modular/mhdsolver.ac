@@ -369,15 +369,10 @@ sink_gravity()
         
     direction = real3(0.0, 0.0, 0.0)
     if distance >= AC_soft {
-    //TODO Adapt to stdlib . 
-        direction = real3((sink_pos.x - grid_pos.x) / distance,
-                          (sink_pos.y - grid_pos.y) / distance,
-                          (sink_pos.z - grid_pos.z) / distance)
+        direction = directional_vector(grid_pos, sink_pos)
     }
 
-    force_gravity = real3(gravity_magnitude * direction.x,
-                          gravity_magnitude * direction.y,
-                          gravity_magnitude * direction.z)
+    force_gravity = gravity_magnitude*direction
 
     return force_gravity
 }

@@ -190,6 +190,10 @@ distance_between_points(v1,v2) {
     return sqrt( norm2(v2-v1) )
 }
 
+directional_vector(v1,v2) {
+    return (v2-v1)/distance_between_points(v1,v2) 
+}
+
 d2fi_dxj(Field3 v)
 {
 	return Matrix(
