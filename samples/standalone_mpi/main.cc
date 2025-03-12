@@ -349,6 +349,7 @@ calc_timestep(const AcMeshInfo info)
     AcReal uumax     = 0.0;
     AcReal vAmax     = 0.0;
     AcReal shock_max = 0.0;
+    AcReal eta_coeff = 1.0;
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
     // TODO ERROR: uumax is currently only seen by the rank 0 process which will
     // lead to asyncronizity in the timestep leading to deadlocks! The resulting
@@ -394,6 +395,14 @@ calc_timestep(const AcMeshInfo info)
                                 // now does MPI_Allreduce which includes the broadcast
 #endif
 
+#if LRESOHMIC
+
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_LNRHO, &lnrho_max);
+
+    // MPI_Bcast to share vAmax with all ranks
+    MPI_Bcast(&lnrho_max, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
+#endif
+
     const long double cdt  = (long double)info[AC_cdt];
     const long double cdtv = (long double)info[AC_cdtv];
     // const long double cdts     = (long double)info.real_params[AC_cdts];
@@ -405,6 +414,12 @@ calc_timestep(const AcMeshInfo info)
     const long double dsmin    = (long double)info[AC_dsmin];
     const long double nu_shock = (long double)info[AC_nu_shock];
 
+#if LRESOHMIC
+    //THis seems to lead into too short timesteps.
+    //const AcReal  lnrho0  = info.real_params[AC_lnrho0];
+    //eta_coeff = exp(0.5*(lnrho_max-lnrho0));
+#endif
+
     // Old ones from legacy Astaroth
     // const long double uu_dt   = cdt * (dsmin / (uumax + cs_sound));
     // const long double visc_dt = cdtv * dsmin * dsmin / nu_visc;
@@ -414,10 +429,16 @@ calc_timestep(const AcMeshInfo info)
     const long double uu_dt = cdt * dsmin /
                               (fabsl((long double)uumax) +
                                sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
+#if LRESOHMIC
+    //Sum up viscous coefficient instead
+    const long double visc_dt = cdtv * dsmin * dsmin / 
+                                  (nu_visc + eta*eta_coeff + gamma*chi 
+                                  + nu_shock * (long double)shock_max);
+#else
     const long double visc_dt = cdtv * dsmin * dsmin /
                                 (max(max(nu_visc, eta), gamma * chi) +
                                  nu_shock * (long double)shock_max);
-
+#endif
     const long double dt = min(uu_dt, visc_dt);
     ERRCHK_ALWAYS(is_valid((AcReal)dt));
     return AcReal(dt);
@@ -748,6 +769,7 @@ enum class InitialMeshProcedure {
     LoadMonolithicSnapshot,
     LoadSnapshot,
     InitHaatouken,
+    InitCollapse,
     InitBoundTest,
 };
 
@@ -756,6 +778,7 @@ enum class PhysicsConfiguration {
     MHD,
     ShockSinglepass,
     HydroHeatduct,
+    CollapseSinglepass,
     BoundTest,
     Default = MHD
 };
@@ -800,6 +823,13 @@ GetSimulation(const int pid, PhysicsConfiguration simulation_physics)
 #if LSHOCK
         acLogFromRootProc(pid, "PhysicsConfiguration ShockSinglepass !\n");
         return Simulation::Shock_Singlepass_Solve;
+#endif
+	ERRCHK_ALWAYS(false); //Only usable with shock
+    }
+    case PhysicsConfiguration::CollapseSinglepass: {
+#if LSHOCK
+        acLogFromRootProc(pid, "PhysicsConfiguration CollapseSinglepass !\n");
+        return Simulation::Collapse_Singlepass_Solve;
 #endif
 	ERRCHK_ALWAYS(false); //Only usable with shock
     }

@@ -3,7 +3,7 @@
 #include <astaroth_debug.h>
 
 // TODO: allow selecting single our doublepass here?
-enum class Simulation { MHD , Shock_Singlepass_Solve, Hydro_Heatduct_Solve, Bound_Test_Solve, Default = MHD};
+enum class Simulation { MHD , Shock_Singlepass_Solve, Hydro_Heatduct_Solve, Collapse_Singlepass_Solve, Bound_Test_Solve, Default = MHD};
 
 void
 log_simulation_choice(int pid, Simulation sim)
@@ -15,6 +15,9 @@ log_simulation_choice(int pid, Simulation sim)
         break;
     case Simulation::Shock_Singlepass_Solve:
         sim_label = "Shock with singlepass solve";
+        break;
+    case Simulation::Collapse_Singlepass_Solve:
+        sim_label = "Collapse model with singlepass solve and shock viscosity";
         break;
     case Simulation::Hydro_Heatduct_Solve:
         sim_label = "Heat duct with doublepass solve";
