@@ -352,34 +352,29 @@ forcing(dt)
 #if LSINK
 sink_gravity()
 {
-//TODO ADAPT TO NEW STANDARD 
-    //grid_pos = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
-    //                 (globalVertexIdx.y - AC_ny_min) * AC_dsy,
-    //                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
     grid_pos = grid_position()
     sink_pos = real3(AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z)
 
+    //TODO length() here needs redefinition. stdlib version does a different thing. 
     distance  = length(grid_pos, sink_pos)
     real  gravity_magnitude
     real3 direction
+    gravity_magnitude = 0.0
     if distance > AC_soft {
         if distance <= AC_grav_R_max {
             gravity_magnitude = (AC_G_const * AC_M_sink) /
                                 (distance * distance)
         }
-    } else {
-        gravity_magnitude = 0.0
-    }
-    // Division with distance causes div by zero deal with it!
-    // NOTE: Now assuming that AC_dsx, AC_dsy and AC_dsz are not significantly different
-    // TODO better
-    if distance >= AC_dsx {
+    } 
+        
+    direction = real3(0.0, 0.0, 0.0)
+    if distance >= AC_soft {
+    //TODO Adapt to stdlib . 
         direction = real3((sink_pos.x - grid_pos.x) / distance,
                           (sink_pos.y - grid_pos.y) / distance,
                           (sink_pos.z - grid_pos.z) / distance)
-    } else {
-        direction = real3(0.0, 0.0, 0.0)
     }
+
     force_gravity = real3(gravity_magnitude * direction.x,
                           gravity_magnitude * direction.y,
                           gravity_magnitude * direction.z)
