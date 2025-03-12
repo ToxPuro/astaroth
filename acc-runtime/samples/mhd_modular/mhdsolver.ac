@@ -384,29 +384,24 @@ sink_gravity()
 
 sink_accretion()
 {
-//TODO ADAPT TO NEW STANDARD 
-    //grid_pos = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
-    //                 (globalVertexIdx.y - AC_ny_min) * AC_dsy,
-    //                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
     grid_pos = grid_position()
     sink_pos = real3(AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z)
+    //TODO length() here needs redefinition. stdlib version does a different thing. 
     distance = length(grid_pos, sink_pos)
 
     real weight
     real rate
+    weight = 0.0
     if distance <= AC_accretion_range {
         weight = 1.0
-    } else {
-        weight = 0.0
-    }
+    } 
 
-    rho = exp(value(VTXBUF_LNRHO))
+    rho = exp(VTXBUF_LNRHO)
 
     // Using an arbitrary density floor.
+    rate = 0.0
     if rho > AC_rhomax_sink {
         rate = (rho - AC_rhomax_sink) / AC_dt
-    } else {
-        rate = 0.0
     }
     accretion_density = weight * rate
 
@@ -416,12 +411,9 @@ sink_accretion()
 // This controls accretion of velocity to the sink particle.
 sink_accretion_velocity()
 {
-//TODO ADAPT TO NEW STANDARD 
-    //grid_pos = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
-    //                 (globalVertexIdx.y - AC_ny_min) * AC_dsy,
-    //                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
     grid_pos = grid_position()
     sink_pos = real3(AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z)
+    //TODO length() here needs redefinition. stdlib version does a different thing. 
     distance = length(grid_pos, sink_pos)
 
     int accretion_switch = AC_switch_accretion
@@ -430,21 +422,18 @@ sink_accretion_velocity()
     real weight
     real rhorate
 
-
+    weight = 0.0
     if distance <= AC_accretion_range {
-        weight = 1.0 //Trying without window.
-    } else {
-        weight = 0.0
+        weight = 1.0 
     }
 
-    rho = exp(value(VTXBUF_LNRHO))
+    rho = exp(VTXBUF_LNRHO)
 
+    rhorate = 0.0
     if rho > AC_rhomax_sink {
         rhorate = (rho - AC_rhomax_sink) / AC_dt
-    } else {
-        rhorate = 0.0
     }
-    rate = rhorate*vecvalue(UU) * (1.0 / rho)
+    rate = rhorate*UU * (1.0 / rho)
     accretion_velocity = weight * rate
 
     return accretion_velocity
