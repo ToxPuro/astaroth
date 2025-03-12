@@ -354,11 +354,11 @@ sink_gravity()
 {
     grid_pos = grid_position()
     sink_pos = real3(AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z)
+    distance = distance_between_points(grid_pos, sink_pos)
 
-    //TODO length() here needs redefinition. stdlib version does a different thing. 
-    distance  = length(grid_pos, sink_pos)
     real  gravity_magnitude
     real3 direction
+
     gravity_magnitude = 0.0
     if distance > AC_soft {
         if distance <= AC_grav_R_max {
@@ -386,11 +386,11 @@ sink_accretion()
 {
     grid_pos = grid_position()
     sink_pos = real3(AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z)
-    //TODO length() here needs redefinition. stdlib version does a different thing. 
-    distance = length(grid_pos, sink_pos)
+    distance = distance_between_points(grid_pos, sink_pos)
 
     real weight
     real rate
+
     weight = 0.0
     if distance <= AC_accretion_range {
         weight = 1.0
@@ -413,8 +413,7 @@ sink_accretion_velocity()
 {
     grid_pos = grid_position()
     sink_pos = real3(AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z)
-    //TODO length() here needs redefinition. stdlib version does a different thing. 
-    distance = length(grid_pos, sink_pos)
+    distance = distance_between_points(grid_pos, sink_pos)
 
     int accretion_switch = AC_switch_accretion
     real3 accretion_velocity

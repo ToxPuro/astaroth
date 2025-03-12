@@ -185,6 +185,11 @@ norm2(real3 v) {
 length(v) {
     return sqrt( norm2(v) )
 }
+
+distance_between_points(v1,v2) {
+    return sqrt( norm2(v2-v1) )
+}
+
 d2fi_dxj(Field3 v)
 {
 	return Matrix(
