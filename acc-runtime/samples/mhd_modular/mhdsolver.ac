@@ -859,6 +859,44 @@ Kernel haatouken() {
     write(UU, UU + uu_addition)
 }
 
+//Uniform magnetic field in the z-direction
+Kernel uniform_Bz_field() {
+    grid_pos = grid_position()
+    xx_coord = grid_pos.x - AC_sink_pos_x
+
+    BZ = AC_B0_selfsim / AC_unit_magnetic
+
+    aa = real3(0.0,   
+               BZ * xx_coord,   
+               0.0)
+
+    write(AA, aa)
+
+}
+
+//SIS style r^-2 density profile
+Kernel rminus2_density_profile() {
+    inner_radius = 2.0 * AC_accretion_range
+    cs2_sound = AC_cs_sound * AC_cs_sound
+    selfsim_coeff = cs2_sound / (2.0 * R_PI * AC_G_const)
+
+    grid_pos    = grid_position()
+    sink_pos    = real3(AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z)
+    radius    = length(grid_pos,    sink_pos)
+
+    lnrho = 0.0
+
+    if radius <= inner_radius {
+        lnrho = log(selfsim_coeff / (inner_radius * inner_radius))
+    } else {
+        lnrho = log(selfsim_coeff / (radius * radius))
+    }
+
+    write(VTXBUF_LNRHO, lnrho)
+
+}
+
+
 
 
 beltrami(real ampl, ex, ey, ez, kx, ky, kz, phase) {
