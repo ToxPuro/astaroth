@@ -912,6 +912,11 @@ main(int argc, char** argv)
                 simulation_physics     = PhysicsConfiguration::HydroHeatduct;
                 acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
             }
+            else if (strcmp(optarg, "Pseudodisk") == 0) {
+                acLogFromRootProc(pid, "Initial condition: Pseudodisk\n"); 
+                initial_mesh_procedure = InitialMeshProcedure::InitCollapse; 
+                simulation_physics     = PhysicsConfiguration::CollapseSinglepass;
+            }
             else if (strcmp(optarg, "ShockTurb") == 0) {
                 acLogFromRootProc(pid, "Initial condition: ShockTurb\n"); // This here just for the
                                                                           // sake of diagnosis.
@@ -1031,6 +1036,13 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "Forcing is: %s\n", forcing_flag);
         acLogFromRootProc(pid, "Sink is: %s\n", sink_flag);
         acLogFromRootProc(pid, "Shock is: %s\n", shock_flag);
+
+        // Writes a file to show that the said directory run has been launched
+        FILE* markertxt;
+        markertxt = fopen("STATUS_RUN", "w");
+        fprintf(markertxt, "STATUS_RUN\n");
+        fclose(markertxt);
+
     }
     // MPI_Barrier(acGridMPIComm()); // Ensure output directories are created before continuing
 
@@ -1082,7 +1094,7 @@ main(int argc, char** argv)
     ////////////////////////////////////////////////////
     // Building the task graph (or using the default) //
     ////////////////////////////////////////////////////
-
+//TODO PAIKKA
     acLogFromRootProc(pid, "Setting simulation program\n");
     Simulation sim = GetSimulation(pid,simulation_physics);
     acLogFromRootProc(pid, "simulation_physics = %i \n", simulation_physics);
@@ -1369,7 +1381,7 @@ main(int argc, char** argv)
         AcReal sum_mass;
         acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, VTXBUF_ACCRETION, &sum_mass);
         accreted_mass = accreted_mass + sum_mass;
-        sink_mass     = info.real_params[AC_M_sink_init] + accreted_mass;
+        sink_mass     = info[AC_M_sink_init] + accreted_mass;
 
         int switch_accretion = (i < 1) ? 0 : 1;
 #endif
