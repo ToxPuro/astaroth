@@ -1124,7 +1124,7 @@ void
 propagate_array_info(Symbol* sym, const bool accessed, const ASTNode* root)
 {
 	const array_info info = get_array_info(sym,accessed,root);
-	if (!accessed) push(&sym->tqualifiers,DEAD_STR);
+	if (!accessed && ALLOW_DEAD_VARIABLES) push(&sym->tqualifiers,DEAD_STR);
 	bool const_dims = true;
 	for(size_t dim = 0; dim < MAX_ARRAY_RANK; ++dim) const_dims &= (dim >= info.dims.size || all_identifiers_are_constexpr(info.dims.data[dim]));
 	const bool is_gmem = str_vec_contains(sym->tqualifiers,GLOBAL_MEM_STR);
