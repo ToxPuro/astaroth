@@ -132,6 +132,10 @@ const Field3 BFIELD = {BFIELDX,BFIELDY,BFIELDZ}
 Field VTXBUF_SHOCK
 #endif
 
+#if LSINK
+Field VTXBUF_ACCRETION
+#endif
+
 // Additional params needed by standalone & standalone_mpi
 // diagnostics period
 int AC_save_steps
@@ -345,11 +349,124 @@ forcing(dt)
 }
 #endif // LFORCING
 
+#if LSINK
+sink_gravity()
+{
+//TODO ADAPT TO NEW STANDARD 
+    //grid_pos = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
+    //                 (globalVertexIdx.y - AC_ny_min) * AC_dsy,
+    //                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+    grid_pos = grid_position()
+    sink_pos = real3(AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z)
+
+    distance  = length(grid_pos, sink_pos)
+    real  gravity_magnitude
+    real3 direction
+    if distance > AC_soft {
+        if distance <= AC_grav_R_max {
+            gravity_magnitude = (AC_G_const * AC_M_sink) /
+                                (distance * distance)
+        }
+    } else {
+        gravity_magnitude = 0.0
+    }
+    // Division with distance causes div by zero deal with it!
+    // NOTE: Now assuming that AC_dsx, AC_dsy and AC_dsz are not significantly different
+    // TODO better
+    if distance >= AC_dsx {
+        direction = real3((sink_pos.x - grid_pos.x) / distance,
+                          (sink_pos.y - grid_pos.y) / distance,
+                          (sink_pos.z - grid_pos.z) / distance)
+    } else {
+        direction = real3(0.0, 0.0, 0.0)
+    }
+    force_gravity = real3(gravity_magnitude * direction.x,
+                          gravity_magnitude * direction.y,
+                          gravity_magnitude * direction.z)
+
+    return force_gravity
+}
+
+sink_accretion()
+{
+//TODO ADAPT TO NEW STANDARD 
+    //grid_pos = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
+    //                 (globalVertexIdx.y - AC_ny_min) * AC_dsy,
+    //                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+    grid_pos = grid_position()
+    sink_pos = real3(AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z)
+    distance = length(grid_pos, sink_pos)
+
+    real weight
+    real rate
+    if distance <= AC_accretion_range {
+        weight = 1.0
+    } else {
+        weight = 0.0
+    }
+
+    rho = exp(value(VTXBUF_LNRHO))
+
+    // Using an arbitrary density floor.
+    if rho > AC_rhomax_sink {
+        rate = (rho - AC_rhomax_sink) / AC_dt
+    } else {
+        rate = 0.0
+    }
+    accretion_density = weight * rate
+
+    return accretion_density
+}
+
+// This controls accretion of velocity to the sink particle.
+sink_accretion_velocity()
+{
+//TODO ADAPT TO NEW STANDARD 
+    //grid_pos = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
+    //                 (globalVertexIdx.y - AC_ny_min) * AC_dsy,
+    //                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+    grid_pos = grid_position()
+    sink_pos = real3(AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z)
+    distance = length(grid_pos, sink_pos)
+
+    int accretion_switch = AC_switch_accretion
+    real3 accretion_velocity
+    real3 rate
+    real weight
+    real rhorate
+
+
+    if distance <= AC_accretion_range {
+        weight = 1.0 //Trying without window.
+    } else {
+        weight = 0.0
+    }
+
+    rho = exp(value(VTXBUF_LNRHO))
+
+    if rho > AC_rhomax_sink {
+        rhorate = (rho - AC_rhomax_sink) / AC_dt
+    } else {
+        rhorate = 0.0
+    }
+    rate = rhorate*vecvalue(UU) * (1.0 / rho)
+    accretion_velocity = weight * rate
+
+    return accretion_velocity
+}
+
+
+#endif // LSINK
+
+
 
 continuity() {
     return -dot(UU, gradient(VTXBUF_LNRHO)) - divergence(UU)
 #if LUPWD
            + dot(abs(UU), gradient_upwd(VTXBUF_LNRHO))
+#endif
+#if LSINK
+           - sink_accretion() / exp(VTXBUF_LNRHO)
 #endif
 
 }
@@ -387,6 +504,12 @@ momentum() {
           + AC_nu_shock * (VTXBUF_SHOCK * (divergence(UU) * gradient(VTXBUF_LNRHO) +
                                            gradient_of_divergence(UU)) +
                            divergence(UU) * gradient(VTXBUF_SHOCK))
+#endif
+#if LSINK
+          // Gravity term
+          + sink_gravity()
+          // Correction factor by unit mass
+          - sink_accretion_velocity() // As in Lee et al.(2014)
 #endif
 
     return mom
@@ -564,6 +687,26 @@ Kernel singlepass_solve(int step_num, TimeParams time_params) {
     // Required for buffers to match correctly. 
     write(VTXBUF_SHOCK, VTXBUF_SHOCK)
 #endif
+
+#if LSINK
+//TODO ADAPT TO NEW STANDARD 
+    if AC_step_number == 0 {
+        // Start from 0 at the beginning of an integration step
+        write(VTXBUF_ACCRETION, rk3(                       0.0, value(VTXBUF_ACCRETION), sink_accretion())) // unit now is rho!
+    }
+    else if AC_step_number == 2 {
+        // Convert density into cell mass after the last RK step.
+        result = rk3(previous(VTXBUF_ACCRETION), value(VTXBUF_ACCRETION), sink_accretion()) * AC_cell_volume
+        write(VTXBUF_ACCRETION, result) // unit is now mass!
+        //if result > 0.0 {
+        //     print("result = %e, value(VTXBUF_ACCRETION) = %e \n", result, value(VTXBUF_ACCRETION))
+        //}
+    } else {
+        write(VTXBUF_ACCRETION, rk3(previous(VTXBUF_ACCRETION), value(VTXBUF_ACCRETION), sink_accretion()) ) // unit now is rho!
+    }
+
+#endif
+
 }
 
 
