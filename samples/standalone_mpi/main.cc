@@ -346,6 +346,12 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
 AcReal
 calc_timestep(const AcMeshInfo info)
 {
+    //TP: for backwards compatible scheme where timestep is calculated independently of the time integration
+    //TP: otherwise calculated alongside the time integration
+    //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
+    return acDeviceGetOutput(acGridGetDevice(),AC_dt_min);
+    //TP: old way to do it: requires considerably more reads and reductions than doing it in the DSL
+    /*
     AcReal uumax     = 0.0;
     AcReal vAmax     = 0.0;
     AcReal shock_max = 0.0;
@@ -421,6 +427,7 @@ calc_timestep(const AcMeshInfo info)
     const long double dt = min(uu_dt, visc_dt);
     ERRCHK_ALWAYS(is_valid((AcReal)dt));
     return AcReal(dt);
+    */
 }
 
 void
@@ -448,8 +455,11 @@ dryrun(void)
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)0, &max);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)0, &sum);
-    const AcReal dt = 0.0;
-    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridIntegrate(STREAM_DEFAULT, dt);
+
+    acDeviceSetInput(acGridGetDevice(), AC_dt,0.0);
+    acDeviceSetInput(acGridGetDevice(), AC_current_time,0.0);
+
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
 
@@ -1098,7 +1108,6 @@ main(int argc, char** argv)
                       PhysicsConfiguration::BoundTest);
 
     log_simulation_choice(pid, sim);
-    AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim, acGridGetLocalMeshInfo());
 
     // Load input data
 
@@ -1319,7 +1328,6 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Starting simulation\n");
     set_simulation_timestamp(start_step, simulation_time);
-
     for (int i = start_step + 1;; ++i) {
 
         /////////////////////////////////////////////////////////////////////
@@ -1330,7 +1338,10 @@ main(int argc, char** argv)
 
         // Generic parameters
         debug_log_from_root_proc_with_sim_progress(pid, "Calculating time delta\n");
-        const AcReal dt = calc_timestep(info);
+        //TP: start the simulation with a small timestep.
+        //The real timestep is calculated in the first step
+        const AcReal dt = (i == start_step +1) ? 1e-12 : calc_timestep(info);
+        //const AcReal dt = calc_timestep(info);
         debug_log_from_root_proc_with_sim_progress(pid, "Done calculating time delta, dt = %e\n",
                                                    dt);
 
@@ -1419,7 +1430,7 @@ main(int argc, char** argv)
         // Execute the active task graph for 3 iterations (default graph has three subtasks)
         // in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent
         // to acGridIntegrate(STREAM_DEFAULT, dt)
-        acGridExecuteTaskGraph(simulation_graph, 3);
+        acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
         simulation_time += dt;
         set_simulation_timestamp(i, simulation_time);
 
@@ -1745,7 +1756,7 @@ main(int argc, char** argv)
     // Simulation over, exit cleanly//
     // Deallocate resources and log //
     //////////////////////////////////
-    free_simulation_graphs(pid);
+    //free_simulation_graphs(pid);
 
     acLogFromRootProc(pid, "Calling acGridQuit\n");
     acGridQuit();

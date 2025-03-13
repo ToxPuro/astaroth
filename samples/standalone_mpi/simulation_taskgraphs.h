@@ -39,12 +39,12 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
         acLogFromRootProc(pid, "Creating task graph for simulation\n");
 
         auto intermediate_loader = [](ParamLoadingInfo l){
-                l.params -> twopass_solve_intermediate.step_num = l.step_number;
+                l.params -> twopass_solve_intermediate.step_num = AC_SUBSTEP_NUMBER(l.step_number);
                 l.params -> twopass_solve_intermediate.dt= 
                 acDeviceGetInput(l.device,AC_dt);
         };
         auto final_loader = [](ParamLoadingInfo l){
-                l.params -> twopass_solve_final.step_num = l.step_number;
+                l.params -> twopass_solve_final.step_num = AC_SUBSTEP_NUMBER(l.step_number);
                 l.params -> twopass_solve_final.current_time= 
             	   acDeviceGetInput(l.device,AC_current_time);
         };

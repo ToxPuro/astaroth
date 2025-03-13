@@ -184,7 +184,7 @@ main(int argc, char* argv[])
     acGridIntegrate(STREAM_DEFAULT, dt);
     acGridSynchronizeStream(STREAM_DEFAULT);
 
-    AcTaskGraph* dsl_graph = acGetDSLTaskGraph(AC_rhs);
+    AcTaskGraph* dsl_graph = acGetDSLTaskGraph(AC_test_rhs);
     acGridExecuteTaskGraph(dsl_graph,1);
     acGridSynchronizeStream(STREAM_DEFAULT);
 
