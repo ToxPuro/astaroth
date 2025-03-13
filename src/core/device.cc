@@ -965,7 +965,7 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     ERRCHK_ALWAYS(end.y == dims.n1.y);
     ERRCHK_ALWAYS(end.z == dims.n1.z);
 
-    device->vba.on_device.kernel_input_params.twopass_solve_intermediate.step_num = step_number;
+    device->vba.on_device.kernel_input_params.twopass_solve_intermediate.step_num = AC_SUBSTEP_NUMBER(step_number);
     device->vba.on_device.kernel_input_params.twopass_solve_intermediate.dt = dt;
     const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
                                         end, device->vba);

@@ -3,6 +3,7 @@ run_const bool3 AC_dimension_inactive = (bool3){false,false,TWO_D};
 
 run_const real3 AC_ds
 run_const real AC_dsmin = AC_dimension_inactive.z ? min(AC_ds.x,AC_ds.y) : min(AC_ds)
+run_const real AC_dsmin_2 = AC_dsmin*AC_dsmin
 
 run_const real3 AC_inv_ds = 1.0/AC_ds
 run_const real3 AC_inv_ds_2 = AC_inv_ds*AC_inv_ds

@@ -388,12 +388,12 @@ gen_default_taskgraph()
 	if(vtxbuf_is_communicated[i]) all_comm_fields_vec.push_back(Field(i));
     }
     auto intermediate_loader = [](ParamLoadingInfo l){
-	    l.params -> twopass_solve_intermediate.step_num = l.step_number;
+	    l.params -> twopass_solve_intermediate.step_num = AC_SUBSTEP_NUMBER(l.step_number);
 	    l.params -> twopass_solve_intermediate.dt= 
 	    acDeviceGetInput(l.device,AC_dt);
     };
     auto final_loader = [](ParamLoadingInfo l){
-	    l.params -> twopass_solve_final.step_num = l.step_number;
+	    l.params -> twopass_solve_final.step_num = AC_SUBSTEP_NUMBER(l.step_number);
 	    l.params -> twopass_solve_final.current_time= 
 		   acDeviceGetInput(l.device,AC_current_time);
     };

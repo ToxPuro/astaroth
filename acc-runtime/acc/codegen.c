@@ -1078,6 +1078,7 @@ all_identifiers_are_constexpr(const ASTNode* node)
 		return res;
 	//size of an AcArray that needs to be known at compile time
 	if(!strcmp(node->buffer,"size")) return true;
+	if(!strcmp(node->buffer,"AC_ITERATION_NUMBER")) return true;
 	//TP: this should not happend but for now simply set the constexpr value to the correct value
 	//TODO: fix
 	if(!node->is_constexpr &&  check_symbol(NODE_ANY,node->buffer,0,CONST_STR)) {
@@ -4801,6 +4802,14 @@ bool
 gen_local_type_info(ASTNode* node);
 bool
 gen_declared_type_info(ASTNode* node);
+
+bool
+know_all_types(const string_vec types)
+{
+	for(size_t i = 0; i < types.size; ++i)
+		if(types.data[i] == NULL) return false;
+	return true;
+}
 const char*
 get_func_call_expr_type(ASTNode* node)
 {
@@ -4828,13 +4837,15 @@ get_func_call_expr_type(ASTNode* node)
 			return func->expr_type;
 		if(!node->expr_type)
 		{
-			if(func)
+			func_params_info call_info = get_func_call_params_info(node);
+			//TP: this does not scale: TODO think about how to generalize
+			if((func_name == intern("min") || func_name == intern("max")) && know_all_types(call_info.types))
 			{
-				func_params_info call_info = get_func_call_params_info(node);
-				bool know_all_types = true;
-				for(size_t i = 0; i < call_info.types.size; ++i)
-					know_all_types &= call_info.types.data[i] != NULL;
-				if(know_all_types)
+				node->expr_type = call_info.types.data[0];
+			}
+			else if(func)
+			{
+				if(know_all_types(call_info.types))
 				{
 					func_params_info info = get_function_params_info(func,func_name);
 					if(!str_vec_contains(duplicate_dfuncs.names,func_name) && call_info.types.size == info.expr.size)
@@ -4849,8 +4860,8 @@ get_func_call_expr_type(ASTNode* node)
 					}
 					free_func_params_info(&info);
 				}
-				free_func_params_info(&call_info);
 			}
+			free_func_params_info(&call_info);
 		}
 
 	}

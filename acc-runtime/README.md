@@ -543,6 +543,11 @@ real3 AC_inv_ds_3
 real3 AC_inv_ds_4
 real3 AC_inv_ds_5
 real3 AC_inv_ds_6
+
+The smallest of the three spacings and its powers
+real AC_dsmin
+real AC_dsmin_2
+
 Subdomain size (not incl. halos)
 int3 AC_nlocal
 Subdomain size (incl. halos)
@@ -690,6 +695,26 @@ BoundConds boundconds
 It contains function calls that are used to calculate the values of the outermost halo regions.
 `periodic` is a unique construct to tell that the domain is periodic in the specified directions.
 Otherwise normal functions are called with an additional mandatory first parameter specifying the boundary.
+The used example boundary condition `bc_sym_z` which sets the input `Field` symmetric on the boundary could look like te following:
+```
+bc_sym_z(Field field, bool bottom)
+{
+	if(bottom)
+	{
+		for i in 0:NGHOST {
+        		field[vertexIdx.x][vertexIdx.y][NGHOST-i]=field[vertexIdx.x][vertexIdx.y][NGHOST+i];
+      		}
+
+	}
+	else
+	{
+		for i in 0:NGHOST {
+        		field[vertexIdx.x][vertexIdx.y][AC_nz_max+i]=field[vertexIdx.x][vertexIdx.y][AC_nz_max-i];
+      		}
+	}
+}
+```
+
 
 The `ComputeSteps` construct is used to declare a sequence of (possibly dependent) kernel invocations in the DSL,
 from which a `TaskGraph` is produced. 
@@ -713,24 +738,6 @@ ComputeSteps rhs(boundconds)
 In case required boundary conditions are not declared, the compilation will fail.
 You can access the generated `TaskGraph` with `acGetDSLTaskGraph`.
 
-```
-bc_sym_z(Field field, bool bottom)
-{
-	if(bottom)
-	{
-		for i in 0:NGHOST {
-        		field[vertexIdx.x][vertexIdx.y][NGHOST-i]=field[vertexIdx.x][vertexIdx.y][NGHOST+i];
-      		}
-
-	}
-	else
-	{
-		for i in 0:NGHOST {
-        		field[vertexIdx.x][vertexIdx.y][AC_nz_max+i]=field[vertexIdx.x][vertexIdx.y][AC_nz_max-i];
-      		}
-	}
-}
-```
 ### 2D-setups
 This is still an experimental feature and not all other features like reductions have been tested with this.
 By setting `2D=ON` one can build Astaroth specifically for a two-dimensional setup.
