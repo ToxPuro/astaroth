@@ -1094,7 +1094,7 @@ main(int argc, char** argv)
     ////////////////////////////////////////////////////
     // Building the task graph (or using the default) //
     ////////////////////////////////////////////////////
-//TODO PAIKKA
+
     acLogFromRootProc(pid, "Setting simulation program\n");
     Simulation sim = GetSimulation(pid,simulation_physics);
     acLogFromRootProc(pid, "simulation_physics = %i \n", simulation_physics);
@@ -1104,6 +1104,13 @@ main(int argc, char** argv)
 #if LSHOCK
         sim = Simulation::Shock_Singlepass_Solve;
         acLogFromRootProc(pid, "PhysicsConfiguration ShockSinglepass !\n");
+#endif
+        break;
+    }
+    case PhysicsConfiguration::CollapseSinglepass: {
+#if (LSHOCK && LSINK)
+        sim = Simulation::Collapse_Singlepass_Solve;
+        acLogFromRootProc(pid, "PhysicsConfiguration CollapseSinglepass !\n");
 #endif
         break;
     }
@@ -1127,6 +1134,8 @@ main(int argc, char** argv)
     acLogFromRootProc(pid, "Simulation::Default = %i\n", Simulation::Default);
     acLogFromRootProc(pid, "Simulation::Shock_Singlepass_Solve = %i\n",
                       Simulation::Shock_Singlepass_Solve);
+    acLogFromRootProc(pid, "Simulation::Collapse_Singlepass_Solve = %i\n",
+                      Simulation::Collapse_Singlepass_Solve);
     acLogFromRootProc(pid, "Simulation::Hydro_Heatduct_Solve = %i\n",
                       Simulation::Hydro_Heatduct_Solve);
     acLogFromRootProc(pid, "Simulation::Bound_Test_Solve = %i\n",
@@ -1134,6 +1143,8 @@ main(int argc, char** argv)
     acLogFromRootProc(pid, "PhysicsConfiguration::Default = %i\n", PhysicsConfiguration::Default);
     acLogFromRootProc(pid, "PhysicsConfiguration::ShockSinglepass = %i\n",
                       PhysicsConfiguration::ShockSinglepass);
+    acLogFromRootProc(pid, "PhysicsConfiguration::CollapseSinglepass = %i\n",
+                      PhysicsConfiguration::CollapseSinglepass);
     acLogFromRootProc(pid, "PhysicsConfiguration::HydroHeatduct = %i\n",
                       PhysicsConfiguration::HydroHeatduct);
     acLogFromRootProc(pid, "PhysicsConfiguration::BoundTest = %i\n",
@@ -1189,6 +1200,19 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "Communicating halos\n");
         if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
         // MV: What if the boundary conditions are not periodic?
+        break;
+    }
+    case InitialMeshProcedure::InitCollapse: {
+        // Set density profiled with uniform magnetic field
+        acLogFromRootProc(pid, "Setting up collapse initial condition\n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        acGridLaunchKernel(STREAM_DEFAULT, rminus2_density_profile, dims.n0, dims.n1);
+#if LMAGNETIC
+        acGridLaunchKernel(STREAM_DEFAULT, uniform_Bz_field, dims.n0, dims.n1);
+#endif
+        acGridSwapBuffers();
+        acLogFromRootProc(pid, "Communicating halos\n");
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
         break;
     }
     case InitialMeshProcedure::InitBoundTest: {
@@ -1775,6 +1799,16 @@ main(int argc, char** argv)
             }*/
 
             log_from_root_proc_with_sim_progress(pid, "Exiting simulation loop\n");
+
+            // Write exit marker
+            
+            if (pid == 0) {
+                FILE* markertxt;
+                markertxt = fopen("STATUS_END", "w");
+                fprintf(markertxt, "STATUS_END\n");
+                fclose(markertxt);
+            }
+
             break;
         }
         events = 0;
