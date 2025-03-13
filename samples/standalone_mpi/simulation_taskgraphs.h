@@ -88,6 +88,51 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
             return acGridBuildTaskGraph(shock_ops);
 #endif
         }
+        case Simulation::Collapse_Singlepass_Solve: {
+#if (LSHOCK && LSINK)
+            // This still has to be behind a preprocessor feature, because e.g., VTXBUF_SHOCK is not
+            // defined in general
+            VertexBufferHandle all_fields[] =
+                {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+                 VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, // VTXBUF_ENTROPY,
+                 VTXBUF_SHOCK, BFIELDX,    BFIELDY,    BFIELDZ, VTXBUF_ACCRETION};
+
+            VertexBufferHandle shock_field[]   = {VTXBUF_SHOCK};
+            VertexBufferHandle density_field[] = {VTXBUF_LNRHO};
+            VertexBufferHandle   aa_fields[]   = {VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ};
+            VertexBufferHandle   uu_fields[]   = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
+            VertexBufferHandle    ux_field[]   = {VTXBUF_UUX};
+            VertexBufferHandle    uy_field[]   = {VTXBUF_UUY};
+            VertexBufferHandle    uz_field[]   = {VTXBUF_UUZ};
+
+            //AcRealParam bbz_bound[1] = {AC_B0_selfsim_numerical_unit};
+
+            AcTaskDefinition shock_ops[] =
+                {acHaloExchange(all_fields),
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, uu_fields), //Set default condition
+                 //Use a2 boundary condition for density
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_A2,        density_field),
+                 //Set specific AY vectorpotential field component derivative to a magnetic field value 
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_A2, aa_fields),
+                 acBoundaryCondition(BOUNDARY_X,   BOUNDCOND_OUTFLOW,   ux_field),    //Set special condition 
+                 acBoundaryCondition(BOUNDARY_Y,   BOUNDCOND_OUTFLOW,   uy_field),    //Set special condition
+                 acBoundaryCondition(BOUNDARY_Z,   BOUNDCOND_OUTFLOW,   uz_field),    //Set special condition
+                 acHaloExchange(all_fields),
+                 acCompute(KERNEL_shock_1_divu, shock_field),
+                 acHaloExchange(shock_field),
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, shock_field),
+                 acCompute(KERNEL_shock_2_max, shock_field),
+                 acHaloExchange(shock_field),
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, shock_field),
+                 acCompute(KERNEL_shock_3_smooth, shock_field),
+                 acHaloExchange(shock_field),
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, shock_field),
+                 acCompute(KERNEL_singlepass_solve, all_fields)};
+            acLogFromRootProc(pid, "Creating shock singlepass solve task graph\n");
+            return acGridBuildTaskGraph(shock_ops);
+#endif
+        }
+
 
         case Simulation::Hydro_Heatduct_Solve: {
 #if LENTROPY
