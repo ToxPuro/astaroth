@@ -5987,6 +5987,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   	"__attribute__((unused)) static const char* runtime_astaroth_runtime_path = \"%s\";\n"
   	"__attribute__((unused)) static const char* runtime_astaroth_utils_path = \"%s\";\n"
   	"__attribute__((unused)) static const char* runtime_astaroth_build_path = \"%s\";\n"
+  	"__attribute__((unused)) static const char* previous_cmake_options_path = \"%s\";\n"
   	"__attribute__((unused)) static const char* acc_compiler_path  = \"%s\";\n"
   	"__attribute__((unused)) static const char* astaroth_base_path = \"%s\";\n"
 	,autotune_path
@@ -5994,6 +5995,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 	,AC_BINARY_PATH"/runtime_build/src/core/kernels/libkernels.so"
 	,AC_BINARY_PATH"/runtime_build/src/utils/libastaroth_utils.so"
 	,AC_BINARY_PATH"/runtime_build"
+	,AC_BINARY_PATH"/runtime_build/previous_cmake_options"
 	,ACC_COMPILER_PATH
 	,AC_BASE_PATH
 	);
