@@ -190,11 +190,9 @@ real AC_sink_pos_y
 real AC_sink_pos_z
 real AC_M_sink_init
 real AC_M_sink_Msun
-
-
-
-const real M_sun = 1.989e33 // g solar mass
-real AC_M_sink = (AC_M_sink_Msun*M_sun)/AC_unit_mass
+// M_sun now defined in stdlib
+real AC_M_sink_init = (AC_M_sink_Msun*M_sun)/AC_unit_mass
+real AC_M_sink      = (AC_M_sink_Msun*M_sun)/AC_unit_mass
 real AC_soft
 real AC_accretion_range
 real AC_switch_accretion
@@ -261,8 +259,8 @@ real AC_ff_hel_rez
 real AC_ff_hel_imx
 real AC_ff_hel_imy
 real AC_ff_hel_imz
-const real G_CONST_CGS = 6.674e-8
-run_const real AC_G_const = G_CONST_CGS / ((AC_unit_velocity*AC_unit_velocity) / (AC_unit_density*AC_unit_length*AC_unit_length))
+//const real G_CONST_CGS = 6.674e-8
+//run_const real AC_G_const = G_CONST_CGS / ((AC_unit_velocity*AC_unit_velocity) / (AC_unit_density*AC_unit_length*AC_unit_length))
 real AC_GM_star
 run_const real AC_sq2GM_star = sqrt(2.0*AC_GM_star)
 
