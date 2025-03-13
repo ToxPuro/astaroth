@@ -397,17 +397,17 @@ AcResult acSetLocalMeshDims(const size_t nx, const size_t ny, const size_t nz, A
  */
 
 /* Log a message with a timestamp from the root proc (if pid == 0) */
-FUNC_DEFINE(void, acLogFromRootProc,(const int pid, const char* msg, ...));
-FUNC_DEFINE(void, acVA_LogFromRootProc,(const int pid, const char* msg, va_list args));
+void acLogFromRootProc(const int pid, const char* msg, ...);
+void acVA_LogFromRootProc(const int pid, const char* msg, va_list args);
 
 /* Log a message with a timestamp from the root proc (if pid == 0) if the build flag VERBOSE is on
  */
-FUNC_DEFINE(void, acVerboseLogFromRootProc,(const int pid, const char* msg, ...));
-FUNC_DEFINE(void, acVA_VerboseLogFromRootProc,(const int pid, const char* msg, va_list args));
+void acVerboseLogFromRootProc(const int pid, const char* msg, ...);
+void acVA_VerboseLogFromRootProc(const int pid, const char* msg, va_list args);
 
 /* Log a message with a timestamp from the root proc (if pid == 0) in a debug build */
-FUNC_DEFINE(void, acDebugFromRootProc,(const int pid, const char* msg, ...));
-FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_list arg));
+void acDebugFromRootProc(const int pid, const char* msg, ...);
+void acVA_DebugFromRootProc(const int pid, const char* msg, va_list arg);
 
 
 #include "device_set_input_decls.h"
@@ -612,12 +612,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	LOAD_DSYM(acHostMeshRandomize,stream);
 	LOAD_DSYM(acHostGridMeshRandomize,stream);
 	LOAD_DSYM(acHostMeshDestroy,stream);
-	LOAD_DSYM(acLogFromRootProc,stream);
-	LOAD_DSYM(acVA_LogFromRootProc,stream);
-	LOAD_DSYM(acVerboseLogFromRootProc,stream);
-	LOAD_DSYM(acVA_VerboseLogFromRootProc,stream);
-	LOAD_DSYM(acDebugFromRootProc,stream);
-	LOAD_DSYM(acVA_DebugFromRootProc,stream);
+
 	LOAD_DSYM(acVerifyCompatibility,stream);
 	LOAD_DSYM(acStoreConfig,stream);
 //#ifdef __cplusplus

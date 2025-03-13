@@ -60,7 +60,7 @@ static const char* slice_output_dir    = "output-slices";
 #define fprintf(...)                                                                               \
     {                                                                                              \
         int tmppid;                                                                                \
-        MPI_Comm_rank(acGridMPIComm(), &tmppid);                                                   \
+        MPI_Comm_rank(MPI_COMM_WORLD, &tmppid);                                                   \
         if (!tmppid) {                                                                             \
             fprintf(__VA_ARGS__);                                                                  \
         }                                                                                          \
@@ -833,14 +833,19 @@ int
 main(int argc, char** argv)
 {
     // Use multi-threaded MPI
-    if (ac_MPI_Init_thread(MPI_THREAD_MULTIPLE) != AC_SUCCESS) {
-        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
-        return EXIT_FAILURE;
-    }
+    {
 
+	int thread_support_level{};
+    	int result   = MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &thread_support_level);
+        if (thread_support_level < MPI_THREAD_MULTIPLE || result != MPI_SUCCESS)
+	{
+        	MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        	return EXIT_FAILURE;
+	}
+    }
     int nprocs, pid;
-    MPI_Comm_size(acGridMPIComm(), &nprocs);
-    MPI_Comm_rank(acGridMPIComm(), &pid);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     /////////////////////////////////
     // Read command line arguments //
@@ -936,8 +941,14 @@ main(int argc, char** argv)
     //////////////////////
 
     AcMeshInfo info;
-    acLogFromRootProc(pid, "Loading config file %s\n", config_path);
+    acLogFromRootProc(pid,"Loading config file %s\n", config_path);
     acLoadConfig(config_path, &info);
+
+    acPushToConfig(info,AC_MPI_comm_strategy,(int)AcMPICommStrategy::DuplicateMPICommWorld);
+    acPushToConfig(info,AC_proc_mapping_strategy,(int)AcProcMappingStrategy::Morton);
+    acPushToConfig(info,AC_decompose_strategy,(int)AcDecomposeStrategy::Morton);
+
+    info.comm = MPI_COMM_WORLD;
 
     // OL: We are calling both acLoadConfig AND set_extra_config_params (defined in config_loader.c)
     // even though acLoadConfig calls acHostUpdateParams
@@ -958,6 +969,13 @@ main(int argc, char** argv)
     //   -> acHostUpdateAstrophysicsBuiltinParams
     set_extra_config_params(&info);
     acLogFromRootProc(pid, "Done loading config file\n");
+#if AC_RUNTIME_COMPILATION
+    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
+    info.runtime_compilation_log_dst = "ac_compilation_log";
+    acCompile(build_str,info);
+    acLoadLibrary(stdout);
+    acLoadUtils(stdout);
+#endif
     // TODO: to reduce verbosity, only print uninitialized value warnings for rank == 0
     // we could e.g. define a function acCheckConfig and call it:
     // if (pid == 0){
@@ -1047,8 +1065,6 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Initializing Astaroth (acGridInit)\n");
     //these are the defaults but better to state them explicitly
-    info[AC_proc_mapping_strategy] = (int)AcProcMappingStrategy::Morton;
-    info[AC_decompose_strategy]    = (int)AcDecomposeStrategy::Morton;
     acGridInit(info);
 
     ///////////////////////////////////////////////////
@@ -1328,6 +1344,8 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Starting simulation\n");
     set_simulation_timestamp(start_step, simulation_time);
+    //TP: calc initial timestep
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
     for (int i = start_step + 1;; ++i) {
 
         /////////////////////////////////////////////////////////////////////
@@ -1338,10 +1356,7 @@ main(int argc, char** argv)
 
         // Generic parameters
         debug_log_from_root_proc_with_sim_progress(pid, "Calculating time delta\n");
-        //TP: start the simulation with a small timestep.
-        //The real timestep is calculated in the first step
-        const AcReal dt = (i == start_step +1) ? 1e-12 : calc_timestep(info);
-        //const AcReal dt = calc_timestep(info);
+        const AcReal dt = calc_timestep(info);
         debug_log_from_root_proc_with_sim_progress(pid, "Done calculating time delta, dt = %e\n",
                                                    dt);
 
