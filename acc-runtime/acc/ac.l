@@ -100,6 +100,7 @@ void strip_whitespace(char *str) {
 "run_const"          { return RUN_CONST; }
 "gmem"          { return GLOBAL_MEMORY_QL; }
 "auxiliary"             { return AUXILIARY; }
+"dead"             { return DEAD; }
 
 "if"        { return IF; } /* Keywords */
 "if constexpr"        { return IF; } /* Keywords */

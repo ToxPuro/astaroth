@@ -86,6 +86,7 @@ By default we use C++ type inference rules (`auto`) with extensions where they w
 ### Fields
 
 A `Field` is a scalar array that can be used in conjuction with `Stencil` operations and for operations involving only the current vertex point. 
+The array containing the values of a `Field` is size of the local subdomain with the halos included so in other terms the array is of size `[AC_mlocal.x][AC_mlocal.y][AC_mlocal.z]`
 A vector field can be constructed either by combining three scalar `Fields` into a `Field3` structure or one declaring a `Field3` structure on its own.
 
 To get the value of a `Field` at the current vertex use the built-in function `value`.
@@ -217,8 +218,13 @@ The implicit qualifier for `Fields` if no qualifiers are defined, their halos ar
 
 > Note: one can combine these to have communicated auxiliary `Fields`, without `communicated`, `auxiliary` `Fields` are not communicated.
 
+* `dead`
+Tells the variable is not used and thus should not be allocated. Works for arrays and `Fields`. Passing a dead `Field` to API functions is a no-op with an appropriate error code. Intented for memory optimization where the compiler infers which `Fields` or arrays do not need to be allocated based on the computation.
+
+
 The DSL compiler can also infer these qualifiers if OPTIMIZE_FIELDS=ON from `write`, `value` and `Stencil` calls.
-**Important** requires that all conditionals are known at compile-time.
+Additionally the DSL compiler can infer which `Fields` can be `dead` if you also have ALLOW_DEAD_FIELDS=ON
+**Important** requires that all conditionals are known at compile-time (or when loading Astaroth if using runtime compilation).
 
 * `input`
 Designed for variables that are inputs to Kernels, but should not be allocated/loaded to the GPU.
@@ -481,7 +487,7 @@ int3 threadIdx       // Current thread index within a thread block (see CUDA doc
 int3 blockIdx        // Current thread block index (see CUDA docs)
 
 // Built-in Functions
-void write(Field, real)  // Writes a real value to the output field at 'vertexIdx'
+void write(Field dst, real src)  // Writes the real value 'src' to the output field 'dst' at current 'vertexIdx'
 elemental dot(real3, real3)   // Dot product
 real3 cross(real3 a, real3 b) // Right-hand-side cross product a x b
 size_t size(arr) // Returns the length of an array `arr`

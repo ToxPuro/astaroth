@@ -27,6 +27,18 @@
 #include "user_builtin_non_scalar_constants.h"
 #include "util_funcs.h"
 
+#if AC_MPI_ENABLED
+static int ac_pid()
+{
+	return ac_MPI_Comm_rank();
+}
+#else
+static int ac_pid()
+{
+	return 0;
+}
+#endif
+
 struct device_s {
     int id;
     AcMeshInfo local_config;
@@ -563,13 +575,11 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     fflush(stdout);
 #endif
 
-    // Concurrency
-    int rank=ac_MPI_Comm_rank();
-if (rank==0) printf("memusage bef create streams= %f MBytes\n", memusage()/1024.);
+    acVerboseLogFromRootProc(ac_pid(), "memusage before create streams= %f MBytes\n", memusage()/1024.0);
     for (int i = 0; i < NUM_STREAMS; ++i) {
         cudaStreamCreateWithPriority(&device->streams[i], cudaStreamNonBlocking, i);
     }
-if (rank==0) printf("memusage after create streams= %f MBytes\n", memusage()/1024.);
+    acVerboseLogFromRootProc(ac_pid(),  "memusage after create streams= %f MBytes\n", memusage()/1024.0);
 
     // Memory
     // VBA in/out

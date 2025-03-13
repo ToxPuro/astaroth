@@ -585,7 +585,7 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
    }
    if(is_auxiliary)
 	push(&symbol_table[num_symbols[current_nest]-1].tqualifiers, AUXILIARY_STR);
-   if(is_dead)
+   if(is_dead && ALLOW_DEAD_VARIABLES)
    {
 	push(&symbol_table[num_symbols[current_nest]-1].tqualifiers, DEAD_STR);
    }
@@ -1124,7 +1124,7 @@ void
 propagate_array_info(Symbol* sym, const bool accessed, const ASTNode* root)
 {
 	const array_info info = get_array_info(sym,accessed,root);
-	if (!accessed) push(&sym->tqualifiers,DEAD_STR);
+	if (!accessed && ALLOW_DEAD_VARIABLES) push(&sym->tqualifiers,DEAD_STR);
 	bool const_dims = true;
 	for(size_t dim = 0; dim < MAX_ARRAY_RANK; ++dim) const_dims &= (dim >= info.dims.size || all_identifiers_are_constexpr(info.dims.data[dim]));
 	const bool is_gmem = str_vec_contains(sym->tqualifiers,GLOBAL_MEM_STR);
@@ -5812,6 +5812,16 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   	            fprintf(fp,"false,");
   	    }
   	    k_counter++;
+  	  }
+  	fprintf(fp, "};");
+  }
+
+  {
+  	fprintf(fp, "static const AcKernel kernel_enums[NUM_KERNELS] = {");
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  	  if (symbol_table[i].tspecifier == KERNEL_STR)
+  	  {
+	    fprintf(fp,"%s,",symbol_table[i].identifier);
   	  }
   	fprintf(fp, "};");
   }
