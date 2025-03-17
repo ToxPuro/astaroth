@@ -669,13 +669,14 @@ Kernel reduce_kernel()
 }
 ```
 
-* The reduce function parameters take three parameters:
-	* Whether to reduce or not during this call
+* The reduce functions  take two parameters:
 	* The value to reduce at this vertex
 	* The output value to which to store the reduced value
 
-After executing the kernels scalar reductions have to be finalized with calling either `acGridFinalizeReduceLocal(graph)`, which reduces the values only on the local subdomain, or `acGridFinalize` which will reduce the value across processes.
-The reduced scalar values can be accessed with `acDeviceGetOutput` with `Profiles` with the corresponding API functions.
+After executing the kernels reductions are finalized by the taskgraph behind the scenes.
+One can access the reduced value on the DSL similar to other varibles. 
+
+The reduced scalar values can be accessed with `acDeviceGetOutput` or for `Profiles` with the corresponding API functions.
 
 When the result of the reduction is a `Profile` finalization is automatically included in the execution of the `TaskGraph`.
 
