@@ -558,7 +558,7 @@ roc_tf(aa_handle, bmean_handle, uxbmean_handle) {
 
     result = cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj
     if (!AC_TFM_SOCA_enabled) {
-        result = result + cross(uu, bb) + uxbmean
+        result = result + cross(uu, bb) - uxbmean
     }
     return result
 }
