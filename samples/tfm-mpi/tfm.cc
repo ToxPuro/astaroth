@@ -165,22 +165,12 @@ init_tfm_profiles(const Device& device)
     }
 
     // B1c (here B11) and B2c (here B21) to cosine
-    acHostInitProfileToCosineWave(dsz,
-                                  offset,
-                                  amplitude,
-                                  wavenumber,
-                                  local_mz,
-                                  host_profile.get());
+    acHostInitProfileToCosineWave(dsz, offset, amplitude, wavenumber, local_mz, host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y));
 
     // B1s (here B12) and B2s (here B22)
-    acHostInitProfileToSineWave(dsz,
-                                offset,
-                                amplitude,
-                                wavenumber,
-                                local_mz,
-                                host_profile.get());
+    acHostInitProfileToSineWave(dsz, offset, amplitude, wavenumber, local_mz, host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y));
 
@@ -548,6 +538,7 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
 
     std::printf("label,step,t_step,dt,min,rms,max,avg\n");
 
+    // clang-format off
     std::vector<std::vector<Field>> vecfields{
         {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ},
         {TF_a11_x, TF_a11_y, TF_a11_z},
@@ -576,6 +567,7 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
         "curl(uu)",
 #endif
     };
+    // clang-format on
     ERRCHK(vecfields.size() == vecfield_names.size());
     for (size_t i{0}; i < vecfields.size(); ++i)
         write_vec_timeseries(parent_comm,
