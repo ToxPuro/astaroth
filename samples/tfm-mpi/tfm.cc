@@ -551,6 +551,7 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
 
     std::printf("label,step,t_step,dt,min,rms,max,avg\n");
 
+    // clang-format off
     std::vector<std::vector<Field>> vecfields{
         {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ},
         {TF_a11_x, TF_a11_y, TF_a11_z},
@@ -579,6 +580,7 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
         "curl(uu)",
 #endif
     };
+    // clang-format on
     ERRCHK(vecfields.size() == vecfield_names.size());
     for (size_t i{0}; i < vecfields.size(); ++i)
         write_vec_timeseries(parent_comm,

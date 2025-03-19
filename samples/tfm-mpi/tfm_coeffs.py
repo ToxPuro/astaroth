@@ -139,10 +139,11 @@ alp21zt = (cosz*emf11y+sinz*emf12y)/Bampl
 alp12zt = (cosz*emf21x+sinz*emf22x)/Bampl
 alp22zt = (cosz*emf21y+sinz*emf22y)/Bampl
 #
-eta12zt = -1.0*(sinz*emf11x-cosz*emf12x)/(kz*Bampl) #etanew12=eta11
-eta11zt =      (sinz*emf21x-cosz*emf22x)/(kz*Bampl) #etanew11=-eta12
-eta22zt = -1.0*(sinz*emf11y-cosz*emf12y)/(kz*Bampl) #etanew22=eta21
-eta21zt =      (sinz*emf21y-cosz*emf22y)/(kz*Bampl) #etanew21=-eta22
+#12-mar-25/MR: inverted signs
+eta12zt =  (sinz*emf11x-cosz*emf12x)/(kz*Bampl) #etanew12=eta11
+eta11zt = -(sinz*emf21x-cosz*emf22x)/(kz*Bampl) #etanew11=-eta12
+eta22zt =  (sinz*emf11y-cosz*emf12y)/(kz*Bampl) #etanew22=eta21
+eta21zt = -(sinz*emf21y-cosz*emf22y)/(kz*Bampl) #etanew21=-eta22
 
 #plt.contour(emf11x.T)
 #plt.show()
