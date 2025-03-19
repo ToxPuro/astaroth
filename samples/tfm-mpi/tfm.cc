@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <exception>
+#include <future>
 #include <iostream>
 #include <numeric>
 
@@ -26,16 +27,26 @@
 #include "acr_utils.h"
 #include "device_utils.h"
 
+#include "acm/detail/print_debug.h"
+
 #include <mpi.h>
 
 #include <algorithm>
 #include <random>
 
 // #define AC_ENABLE_ASYNC_AVERAGES
+
+// Debug runs: enable defines below for writing diagnostics synchronously
+// Production runs:
+//  - Should either completely disabled or
+//  - Set IO interval to large enough s.t. synchronous IO does not dominate running time
 #define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
 #define AC_WRITE_SYNCHRONOUS_PROFILES
 #define AC_WRITE_SYNCHRONOUS_TIMESERIES
 #define AC_WRITE_SYNCHRONOUS_SLICES
+
+// Production run: enable define below for fast, async profile IO
+#define AC_WRITE_ASYNC_PROFILES
 
 // #define AC_DISABLE_IO
 
@@ -392,6 +403,106 @@ write_diagnostic_step(const MPI_Comm& parent_comm, const Device& device, const s
     return 0;
 }
 
+#if defined(AC_WRITE_ASYNC_PROFILES)
+static std::future<int>
+write_profile_to_disk_async(const MPI_Comm& cart_comm, const Device& device, const Profile& profile,
+                            const size_t step)
+{
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+
+    const auto global_nn{acr::get_global_nn(info)};
+    const auto coords{ac::mpi::get_coords(cart_comm)};
+
+    // Delegate one of the processes as the file creator
+    ERRCHK_MPI_API(MPI_Barrier(cart_comm));
+    char outfile[4096];
+    sprintf(outfile, "%s-%012zu.profile", profile_names[profile], step);
+    FILE* fp{fopen(outfile, "w")};
+    ERRCHK_MPI(fp);
+    fclose(fp);
+    ERRCHK_MPI_API(MPI_Barrier(cart_comm));
+
+    if ((coords[0] == 0) && (coords[1] == 0)) {
+
+        const auto global_nn_offset{acr::get_global_nn_offset(info)};
+        const auto local_mm{acr::get_local_mm(info)};
+        const auto local_nn{acr::get_local_nn(info)};
+        const auto rr{acr::get_local_rr()};
+        ERRCHK(global_nn_offset == ac::mpi::get_global_nn_offset(cart_comm, global_nn));
+
+        PRINT_LOG_DEBUG(ac::mpi::get_coords(cart_comm));
+        PRINT_LOG_DEBUG(global_nn_offset);
+        PRINT_LOG_DEBUG(ac::mpi::get_decomposition(cart_comm));
+
+        ac::device_buffer<double> staging_buffer{local_nn[2]};
+        pack(ac::shape{local_mm[2]},
+             ac::shape{local_nn[2]},
+             ac::index{rr[2]},
+             {acr::make_ptr(vba, profile, BufferGroup::input)},
+             staging_buffer.get());
+
+        auto write_to_file = [](const int device_id,
+                                const ac::device_buffer<double>&& dbuf,
+                                const uint64_t file_offset,
+                                const std::string outfile) {
+            ERRCHK_CUDA_API(cudaSetDevice(device_id));
+            const auto buf{dbuf.to_host()};
+
+            FILE* fp{fopen(outfile.c_str(), "r+")};
+            ERRCHK_MPI(fp);
+
+            const long offset_bytes{as<long>(file_offset * sizeof(buf[0]))};
+            ERRCHK_MPI(fseek(fp, offset_bytes, SEEK_SET) == 0);
+
+            const size_t count{buf.size()};
+            const size_t res{fwrite(buf.data(), sizeof(buf[0]), buf.size(), fp)};
+            ERRCHK_MPI(res == count);
+
+            fclose(fp);
+            return 0;
+        };
+
+        int id{-1};
+        ERRCHK_AC(acDeviceGetId(device, &id));
+        std::future<int> task{std::async(std::launch::async,
+                                         write_to_file,
+                                         id,
+                                         std::move(staging_buffer),
+                                         global_nn_offset[2],
+                                         std::string(outfile))};
+        return task;
+    }
+    else {
+        return std::future<int>{std::async(std::launch::async, []() { return 0; })};
+    }
+}
+
+static std::vector<std::future<int>>
+write_profiles_to_disk_async(const MPI_Comm& cart_comm, const Device& device,
+                             const std::vector<Profile>& profiles, const size_t step)
+{
+    std::vector<std::future<int>> tasks;
+
+    for (const auto& profile : profiles)
+        tasks.push_back(write_profile_to_disk_async(cart_comm, device, profile, step));
+
+    return tasks;
+}
+
+static void
+wait(std::vector<std::future<int>>& tasks)
+{
+    while (tasks.size() > 0) {
+        tasks.back().wait();
+        tasks.pop_back();
+    }
+}
+#endif
+
 static MPI_Op
 get_mpi_op(const ReductionType& rtype)
 {
@@ -551,6 +662,7 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
 
     std::printf("label,step,t_step,dt,min,rms,max,avg\n");
 
+    // clang-format off
     std::vector<std::vector<Field>> vecfields{
         {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ},
         {TF_a11_x, TF_a11_y, TF_a11_z},
@@ -579,6 +691,7 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
         "curl(uu)",
 #endif
     };
+    // clang-format on
     ERRCHK(vecfields.size() == vecfield_names.size());
     for (size_t i{0}; i < vecfields.size(); ++i)
         write_vec_timeseries(parent_comm,
@@ -1022,6 +1135,11 @@ class Grid {
 #endif
 #endif
 
+#if defined(AC_WRITE_ASYNC_PROFILES)
+        // Write mean uxb
+        auto uxbmean_io{write_profiles_to_disk_async(cart_comm, device, uxbmean_profiles, 0)};
+#endif
+
         // Ensure halos are up-to-date before starting integration
         hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::input));
         tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::input));
@@ -1105,6 +1223,20 @@ class Grid {
 #else
                 reduce_xy_averages(STREAM_DEFAULT);
 #endif
+
+#if defined(AC_WRITE_ASYNC_PROFILES)
+                // Async profiles
+                if ((step % as<uint64_t>(acr::get(local_info,
+                                                  AC_simulation_async_profile_output_interval))) ==
+                    0) {
+                    wait(uxbmean_io);
+                    ERRCHK_MPI(uxbmean_io.size() == 0);
+                    uxbmean_io = write_profiles_to_disk_async(cart_comm,
+                                                              device,
+                                                              uxbmean_profiles,
+                                                              step);
+                }
+#endif
             }
             current_time += dt;
 
@@ -1154,6 +1286,12 @@ class Grid {
         hydro_io.wait();
         uxb_io.wait();
 #endif
+#endif
+
+#if defined(AC_WRITE_ASYNC_PROFILES)
+        // Async profiles
+        wait(uxbmean_io);
+        ERRCHK_MPI(uxbmean_io.size() == 0);
 #endif
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)

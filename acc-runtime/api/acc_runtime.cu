@@ -713,7 +713,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
     ERRCHK_ALWAYS(vba->on_device.in[i]);
     ERRCHK_ALWAYS(vba->on_device.out[i]);
     acKernelFlush(stream, vba->on_device.in[i], count, (AcReal)NAN);
-    acKernelFlush(stream, vba->on_device.out[i], count, (AcReal)0);
+    acKernelFlush(stream, vba->on_device.out[i], count, (AcReal)0.0);
   }
   memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray

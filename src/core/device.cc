@@ -147,6 +147,13 @@ acDeviceGetLocalConfig(const Device device)
 }
 
 AcResult
+acDeviceGetId(const Device device, int* id)
+{
+    *id = device->id;
+    return AC_SUCCESS;
+}
+
+AcResult
 acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcRealParam param,
                           const AcReal value)
 {

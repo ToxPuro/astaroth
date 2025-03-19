@@ -179,3 +179,13 @@ write(VTXBUF_UUZ, mom.z)
 ### SOCA
 
 To compute TFM with SOCA, set `AC_TFM_SOCA_enabled = 1` in the configuration file (`mhd.ini` by default). Otherwise, the full TFM equations are computed.
+
+
+# Production runs
+
+- Set `AC_simulation_snapshot_output_interval` and `AC_simulation_profile_output_interval` to as large values as possible: these control the interval of **synchronous** IO operations
+- Set `AC_simulation_async_profile_output_interval` as low as needed. This writes profiles out asynchronously and should be the primary way of getting the results.
+- Set `#define ACM_LOG_LEVEL (ACM_LOG_LEVEL_ERROR)` in `acc-comm/acm/detail/errchk_print.h` to reduce overhead from printing to standard output.
+
+## Additional verification
+- You can verify that synchronous profiles match the asynchronous profiles, e.g., checking that `md5sum debug-step-000000001000-tfm-PROFILE_ucrossb11mean_x.profile` and `md5sum PROFILE_ucrossb11mean_x-000000001000.profile` match.

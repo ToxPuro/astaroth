@@ -950,7 +950,6 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 #endif
 }
 
-
 void
 print_output_reduce_res(const char* define_name, const ReduceOp op, const int curr_kernel)
 {
