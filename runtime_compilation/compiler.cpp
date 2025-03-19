@@ -134,10 +134,10 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 	check_that_built_ins_loaded(mesh_info.run_consts);
 	acHostUpdateParams(&mesh_info);
 #if AC_MPI_ENABLED
-	ERRCHK_ALWAYS(mesh_info.comm != MPI_COMM_NULL);
+	ERRCHK_ALWAYS(mesh_info.comm != NULL && mesh_info.comm->handle != MPI_COMM_NULL);
 	int pid;
-	MPI_Comm_rank(mesh_info.comm,&pid);
-	decompose_info(mesh_info.comm,mesh_info);
+	MPI_Comm_rank(mesh_info.comm->handle,&pid);
+	decompose_info(mesh_info.comm->handle,mesh_info);
 #else
 	const int pid = 0;
 #endif
@@ -220,6 +220,6 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 		}
 	}
 #if AC_MPI_ENABLED
-	MPI_Barrier(mesh_info.comm);
+	MPI_Barrier(mesh_info.comm->handle);
 #endif
 }
