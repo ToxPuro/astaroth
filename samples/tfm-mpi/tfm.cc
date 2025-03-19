@@ -1133,11 +1133,10 @@ class Grid {
                       ac::get_ptrs(device, uxb_fields, BufferGroup::input),
                       get_field_paths(uxb_fields, 0));
 #endif
-#endif
-
 #if defined(AC_WRITE_ASYNC_PROFILES)
         // Write mean uxb
         auto uxbmean_io{write_profiles_to_disk_async(cart_comm, device, uxbmean_profiles, 0)};
+#endif
 #endif
 
         // Ensure halos are up-to-date before starting integration
@@ -1223,20 +1222,6 @@ class Grid {
 #else
                 reduce_xy_averages(STREAM_DEFAULT);
 #endif
-
-#if defined(AC_WRITE_ASYNC_PROFILES)
-                // Async profiles
-                if ((step % as<uint64_t>(acr::get(local_info,
-                                                  AC_simulation_async_profile_output_interval))) ==
-                    0) {
-                    wait(uxbmean_io);
-                    ERRCHK_MPI(uxbmean_io.size() == 0);
-                    uxbmean_io = write_profiles_to_disk_async(cart_comm,
-                                                              device,
-                                                              uxbmean_profiles,
-                                                              step);
-                }
-#endif
             }
             current_time += dt;
 
@@ -1276,6 +1261,18 @@ class Grid {
                  as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
                 write_slices_to_disk(cart_comm, device, step);
 #endif
+#if defined(AC_WRITE_ASYNC_PROFILES)
+            // Async profiles
+            if ((step % as<uint64_t>(acr::get(local_info,
+                                              AC_simulation_async_profile_output_interval))) == 0) {
+                wait(uxbmean_io);
+                ERRCHK_MPI(uxbmean_io.size() == 0);
+                uxbmean_io = write_profiles_to_disk_async(cart_comm,
+                                                          device,
+                                                          uxbmean_profiles,
+                                                          step);
+            }
+#endif
 #endif
         }
         hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
@@ -1286,12 +1283,11 @@ class Grid {
         hydro_io.wait();
         uxb_io.wait();
 #endif
-#endif
-
 #if defined(AC_WRITE_ASYNC_PROFILES)
         // Async profiles
         wait(uxbmean_io);
         ERRCHK_MPI(uxbmean_io.size() == 0);
+#endif
 #endif
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
