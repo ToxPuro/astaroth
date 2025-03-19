@@ -621,7 +621,7 @@ acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t cou
 {
   // Set pba.in data to all-nan and pba.out to 0
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),counts), (AcReal)0);
+    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),counts), (AcReal)NAN);
     acKernelFlush(stream, pba->out[i], prof_count(Profile(i),counts), (AcReal)0);
   }
   return AC_SUCCESS;
@@ -714,7 +714,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
     ERRCHK_ALWAYS(vba->on_device.in[i]);
     ERRCHK_ALWAYS(vba->on_device.out[i]);
-    acKernelFlush(stream, vba->on_device.in[i], count, (AcReal)0);
+    acKernelFlush(stream, vba->on_device.in[i], count, (AcReal)NAN);
     acKernelFlush(stream, vba->on_device.out[i], count, (AcReal)0);
   }
   memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
