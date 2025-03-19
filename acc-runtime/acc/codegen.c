@@ -120,6 +120,7 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "log");   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "abs");   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "atan2"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "tanh"); // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "AC_REAL_PI");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_FIELDS");
