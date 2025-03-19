@@ -434,9 +434,9 @@ write_profile_to_disk_async(const MPI_Comm& cart_comm, const Device& device, con
         const auto rr{acr::get_local_rr()};
         ERRCHK(global_nn_offset == ac::mpi::get_global_nn_offset(cart_comm, global_nn));
 
-        PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
-        PRINT_DEBUG(global_nn_offset);
-        PRINT_DEBUG(ac::mpi::get_decomposition(cart_comm));
+        PRINT_LOG_DEBUG(ac::mpi::get_coords(cart_comm));
+        PRINT_LOG_DEBUG(global_nn_offset);
+        PRINT_LOG_DEBUG(ac::mpi::get_decomposition(cart_comm));
 
         ac::device_buffer<double> staging_buffer{local_nn[2]};
         pack(ac::shape{local_mm[2]},
