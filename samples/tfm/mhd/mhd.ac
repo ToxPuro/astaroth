@@ -20,6 +20,7 @@ int AC_simulation_nsteps
 int AC_simulation_snapshot_output_interval
 int AC_simulation_profile_output_interval
 int AC_simulation_reset_test_field_interval
+int AC_simulation_async_profile_output_interval
 
 // TFM
 int AC_TFM_SOCA_enabled

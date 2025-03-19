@@ -46,7 +46,7 @@
 #define AC_WRITE_SYNCHRONOUS_SLICES
 
 // Production run: enable define below for fast, async profile IO
-// #define AC_WRITE_ASYNC_PROFILES
+#define AC_WRITE_ASYNC_PROFILES
 
 // #define AC_DISABLE_IO
 
@@ -1226,12 +1226,16 @@ class Grid {
 
 #if defined(AC_WRITE_ASYNC_PROFILES)
                 // Async profiles
-                wait(uxbmean_io);
-                ERRCHK_MPI(uxbmean_io.size() == 0);
-                uxbmean_io = write_profiles_to_disk_async(cart_comm,
-                                                          device,
-                                                          uxbmean_profiles,
-                                                          step);
+                if ((step % as<uint64_t>(acr::get(local_info,
+                                                  AC_simulation_async_profile_output_interval))) ==
+                    0) {
+                    wait(uxbmean_io);
+                    ERRCHK_MPI(uxbmean_io.size() == 0);
+                    uxbmean_io = write_profiles_to_disk_async(cart_comm,
+                                                              device,
+                                                              uxbmean_profiles,
+                                                              step);
+                }
 #endif
             }
             current_time += dt;
