@@ -153,7 +153,7 @@ main(void)
 
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    info.params.scalars.int3_params[AC_ngrid] = nn;
+    info.int3_params[AC_ngrid] = nn;
     acHostUpdateParams(&info);
 
     // Init
@@ -190,7 +190,7 @@ main(void)
     acGridDiskAccessSync();
 
     // Merge slices
-    merge_slices(job_dir, 0, info.params.scalars.int3_params[AC_ngrid].x, info.params.scalars.int3_params[AC_ngrid].y, fields, num_fields);
+    merge_slices(job_dir, 0, info.int3_params[AC_ngrid].x, info.int3_params[AC_ngrid].y, fields, num_fields);
 
     // Quit
     acGridQuit();

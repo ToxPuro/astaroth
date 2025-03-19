@@ -60,7 +60,7 @@ main(int argc, char** argv)
         return EXIT_FAILURE;
     }
     else {
-	info.params.scalars.int3_params[AC_nlocal] = (int3)
+	info.int3_params[AC_nlocal] = (int3)
 	{
 		atoi(argv[1]),
 		atoi(argv[2]),
@@ -90,9 +90,9 @@ main(int argc, char** argv)
     // Verify that boundconds work correctly
     const Volume n_min = (Volume){STENCIL_ORDER / 2, STENCIL_ORDER / 2, STENCIL_ORDER / 2};
     const Volume n_max = (Volume){
-        as_size_t(n_min.x + info.params.scalars.int3_params[AC_nlocal].x),
-        as_size_t(n_min.y + info.params.scalars.int3_params[AC_nlocal].y),
-        as_size_t(n_min.z + info.params.scalars.int3_params[AC_nlocal].z),
+        as_size_t(n_min.x + info.int3_params[AC_nlocal].x),
+        as_size_t(n_min.y + info.int3_params[AC_nlocal].y),
+        as_size_t(n_min.z + info.int3_params[AC_nlocal].z),
     };
     acNodePeriodicBoundconds(node, STREAM_DEFAULT);
     acNodeStoreMesh(node, STREAM_DEFAULT, &candidate);
@@ -198,9 +198,9 @@ main(int argc, char** argv)
     // 'implementation, maxthreadsperblock, milliseconds, nx, ny, nz, devices'
     const int num_devices = acGetNumDevicesPerNode();
     fprintf(fp, "%d,%d,%g,%d,%d,%d,%d\n", IMPLEMENTATION, MAX_THREADS_PER_BLOCK, percentile90th,
-            info.params.scalars.int3_params[AC_nlocal].x, 
-            info.params.scalars.int3_params[AC_nlocal].y, 
-            info.params.scalars.int3_params[AC_nlocal].z, 
+            info.int3_params[AC_nlocal].x, 
+            info.int3_params[AC_nlocal].y, 
+            info.int3_params[AC_nlocal].z, 
 	    num_devices);
     fclose(fp);
 

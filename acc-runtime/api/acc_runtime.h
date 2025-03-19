@@ -56,6 +56,7 @@ typedef enum {
 } AcProfileType;
 
 
+
   //copied from the sample setup
 #ifdef __cplusplus
 #define CONSTEXPR constexpr
@@ -191,20 +192,6 @@ typedef struct
 #include "is_output_param.h"
 #endif
 
-  typedef struct AcMeshInfoArrays {
-#include "array_decl.h"
-#ifdef __cplusplus
-#include "array_info_access_operators.h"
-#endif
-  } AcMeshInfoArrays;
-
-  typedef struct AcMeshInfoScalars {
-#include "device_mesh_info_decl.h"
-#ifdef __cplusplus
-#include "scalar_info_access_operators.h"
-#endif
-  } AcMeshInfoScalars;
-
   typedef struct AcMeshInfoLoaded {
 #include "info_loaded_decl.h"
 
@@ -214,14 +201,28 @@ typedef struct
   } AcMeshInfoLoadedInfo;
 
 
-  typedef struct AcMeshInfoParams {
-	  AcMeshInfoArrays arrays;
-	  AcMeshInfoScalars scalars;
-	  AcMeshInfoLoadedInfo is_loaded;
+  typedef struct AcMeshInfoScalars
+  {
+#include "device_mesh_info_decl.h"
+  } AcMeshInfoScalars;
+
+//TP: opaque pointer for the MPI comm to enable having the opaque type in modules which do not about MPI_Comm
+typedef struct AcCommunicator AcCommunicator;
+
+  typedef struct AcMeshInfo{
+
+#include "device_mesh_info_decl.h"
+#include "array_decl.h"
+
+  AcMeshInfoLoadedInfo is_loaded;
+  const char* runtime_compilation_log_dst;
+  AcCommunicator* comm;
 #ifdef __cplusplus
-#include "param_info_access_operators.h"
+#include "info_access_operators.h"
 #endif
-  } AcMeshInfoParams;
+
+    AcCompInfo run_consts;
+  } AcMeshInfo;
 
 
   typedef struct {
@@ -381,11 +382,11 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(AcResult,acPreprocessScratchPad,(VertexBufferArray, const int variable, const AcType type,const AcReduceOp op));
 
-  FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfoParams config));
+  FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfo config));
 
-  FUNC_DEFINE(void, acUpdateArrays ,(const AcMeshInfoParams config));
+  FUNC_DEFINE(void, acUpdateArrays ,(const AcMeshInfo config));
 
-  FUNC_DEFINE(void, acVBADestroy,(VertexBufferArray* vba, const AcMeshInfoParams config));
+  FUNC_DEFINE(void, acVBADestroy,(VertexBufferArray* vba, const AcMeshInfo config));
 
   FUNC_DEFINE(AcResult, acRandInitAlt,(const uint64_t seed, const size_t count, const size_t rank));
 
@@ -482,7 +483,7 @@ void acPBASwapBuffer(const Profile profile, VertexBufferArray* vba);
 
 void acPBASwapBuffers(VertexBufferArray* vba);
 
-AcResult acLoadMeshInfo(const AcMeshInfoParams info, const cudaStream_t stream);
+AcResult acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
 
 
 // Returns the number of elements contained within shape
@@ -553,7 +554,7 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
  * Checks the mesh info for uninitialized values.
  * Returns 0 on succes and -1 on failure.
  */
-FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfoParams info));
+FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
 
 #ifdef __cplusplus
 
@@ -680,7 +681,7 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfoParams info));
 
   template <typename P>
   constexpr static auto
-  get_array_dim_sizes(const P array, const AcMeshInfoScalars info)
+  get_array_dim_sizes(const P array, const AcMeshInfo info)
   {
 	  auto dims            = get_array_info(array).dims;
 	  int num_dims         = get_array_info(array).num_dims;
@@ -717,11 +718,11 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfoParams info));
   }
 
   template <typename P>
-  constexpr static int
-  get_array_length(const P array, const AcMeshInfoScalars info)
+  constexpr static size_t
+  get_array_length(const P array, const AcMeshInfo info)
   {
 	  auto sizes = get_array_dim_sizes(array,info);
-	  int res = 1;
+	  size_t res = 1;
 	  int num_dims         = get_array_info(array).num_dims;
 	  for(int i = 0; i < num_dims; ++i)
 		  res *= sizes[i];

@@ -35,7 +35,7 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
 	    }
             else
 	    {
-		    if(config.params.is_loaded[param]) return;
+		    if(config.is_loaded[param]) return;
 	    }
 	    acPushToConfig(config,param,val);
 	    //TP: variables loaded through the DSL default value loaders should not be counted as loaded
@@ -47,7 +47,7 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
 	    }
 	    else
 	    {
-		    config.params.is_loaded[param] = false;
+		    config.is_loaded[param] = false;
 	    }
 	    return;
     };

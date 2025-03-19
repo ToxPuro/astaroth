@@ -163,14 +163,14 @@ parse_intparam(const char* value)
 		const bool is_comp = (idx >= NUM_##UPPER_CASE##_ARRAYS); \
 		idx -= NUM_##UPPER_CASE##_ARRAYS*is_comp; \
 		const auto size = (is_comp) ? \
-				get_array_length((Ac##UP_NAME##CompArrayParam)idx,config->params.scalars) :\
-				get_array_length((Ac##UP_NAME##ArrayParam)idx,config->params.scalars); \
+				get_array_length((Ac##UP_NAME##CompArrayParam)idx,*config) :\
+				get_array_length((Ac##UP_NAME##ArrayParam)idx,*config); \
 		if(array_vals.size() != (size_t)size) \
-			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %d: SKIPPING\n",array_vals.size(),keyword,size); \
+			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %zu: SKIPPING\n",array_vals.size(),keyword,size); \
 		else \
 		{ \
 			DATATYPE* dst = (DATATYPE*)malloc(sizeof(DATATYPE)*size);\
-			for(int i = 0; i < size; ++i) \
+			for(size_t i = 0; i < size; ++i) \
 			{ \
 				dst[i] = parse_##LOWER_CASE##param(array_vals[i].c_str()); \
 			} \
@@ -185,7 +185,7 @@ parse_intparam(const char* value)
 			else \
 			{ \
 				if constexpr (NUM_##UPPER_CASE##_ARRAYS > 0) \
-					config->params.arrays.LOWER_CASE##_arrays[idx] = dst; \
+					config->LOWER_CASE##_arrays[idx] = dst; \
 			} \
 		} \
 	}

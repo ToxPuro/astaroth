@@ -304,7 +304,7 @@ get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
 	std::vector<acAnalysisBCInfo> bc_infos{};
 	for(size_t i = 0; i < kernels.size(); ++i)
 	{
-		auto bc_info = acAnalysisGetBCInfo(get_info().params,kernels[i],boundaries[i]);
+		auto bc_info = acAnalysisGetBCInfo(get_info(),kernels[i],boundaries[i]);
 		auto fields = get_kernel_fields(kernels[i]);
 		res.push_back((BoundCond){kernels[i],boundaries[i],fields.in,fields.out,bc_info,0});
 	}

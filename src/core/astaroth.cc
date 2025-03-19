@@ -298,7 +298,7 @@ acHostGridMeshCreate(const AcMeshInfo info, AcMesh* mesh)
     return AC_SUCCESS;
 }
 AcResult
-acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const size_t params_size, const size_t comp_info, const int num_reals, 
+acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const size_t comp_info, const int num_reals, 
 		      const int num_ints, const int num_bools, const int num_real_arrays,
 		      const int num_int_arrays, const int num_bool_arrays)
 {
@@ -311,11 +311,6 @@ acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const
 	if(mesh_info_size != sizeof(AcMeshInfo))
 	{
 		fprintf(stderr,"Astaroth warning: mismatch in AcMeshInfo size: %zu|%zu\n",mesh_info_size,sizeof(AcMeshInfo));
-		res = AC_FAILURE;
-	}
-	if(params_size != sizeof(AcMeshInfoParams))
-	{
-		fprintf(stderr,"Astaroth warning: mismatch in AcMeshInfoParams size: %zu|%zu\n",mesh_info_size,sizeof(AcMeshInfoParams));
 		res = AC_FAILURE;
 	}
 	if(comp_info != sizeof(AcCompInfo))
@@ -509,8 +504,8 @@ void
 acStoreConfig(const AcMeshInfo info, const char* filename)
 {
 	FILE* fp = fopen(filename,"w");
-	AcScalarTypes::run<load_scalars>(info.params.scalars, fp, "", false);
-	AcArrayTypes::run<load_arrays>(info.params.arrays,info.params.scalars,    fp, "", false);
+	AcScalarTypes::run<load_scalars>(info, fp, "", false);
+	AcArrayTypes::run<load_arrays>(info,fp, "", false);
 
 	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
 	AcArrayCompTypes::run<load_comp_arrays>(info.run_consts,    fp, "", false);

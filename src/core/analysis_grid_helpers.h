@@ -3,7 +3,7 @@ get_kernel_analysis_info()
 {
 	KernelAnalysisInfo res;
 	const auto& info = acDeviceGetLocalConfig(acGridGetDevice());
-	acAnalysisGetKernelInfo(info.params,&res);
+	acAnalysisGetKernelInfo(info,&res);
 	return res;
 }
 

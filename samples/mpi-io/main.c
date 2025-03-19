@@ -66,7 +66,7 @@ main(int argc, char** argv)
         return EXIT_FAILURE;
     }
     else {
-	info.params.scalars.int3_params[AC_ngrid] = (int3)
+	info.int3_params[AC_ngrid] = (int3)
 	{
 		atoi(argv[1]),
 		atoi(argv[2]),
@@ -189,8 +189,8 @@ main(int argc, char** argv)
     const bool use_distributed_io = false;
 #endif
     fprintf(fp, "%d,%d,%g,%g,%g,%g,%d,%d,%d,%d\n", pid, nprocs, write_milliseconds, write_bandwidth,
-            read_milliseconds, read_bandwidth, use_distributed_io, info.params.scalars.int3_params[AC_ngrid].x,
-            info.params.scalars.int3_params[AC_ngrid].y, info.params.scalars.int3_params[AC_ngrid].z);
+            read_milliseconds, read_bandwidth, use_distributed_io, info.int3_params[AC_ngrid].x,
+            info.int3_params[AC_ngrid].y, info.int3_params[AC_ngrid].z);
     fclose(fp);
     // }
 

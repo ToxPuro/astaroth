@@ -175,9 +175,9 @@ __attribute__((unused)) static inline void
 print(const AcMeshInfo config)
 {
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        printf("[%s]: %d\n", intparam_names[i], config.params.scalars.int_params[i]);
+        printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
     for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        printf("[%s]: %g\n", realparam_names[i], double(config.params.scalars.real_params[i]));
+        printf("[%s]: %g\n", realparam_names[i], double(config.real_params[i]));
 }
 
 static GridDims

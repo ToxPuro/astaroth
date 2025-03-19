@@ -31,6 +31,11 @@
 
 #if AC_MPI_ENABLED
 #include <mpi.h>
+struct AcCommunicator
+{
+	MPI_Comm handle;
+};
+
 typedef struct AcSubCommunicators {
 	MPI_Comm x;
 	MPI_Comm y;
@@ -45,18 +50,6 @@ typedef struct AcSubCommunicators {
 
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused
 
-  typedef struct AcMeshInfo{
-  AcMeshInfoParams params;
-  const char* runtime_compilation_log_dst;
-#if AC_MPI_ENABLED
-    MPI_Comm comm;
-#endif
-
-#ifdef __cplusplus
-#include "info_access_operators.h"
-#endif
-    AcCompInfo run_consts;
-  } AcMeshInfo;
 
 
 typedef struct {

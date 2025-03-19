@@ -58,7 +58,7 @@ main(int argc, char* argv[])
 
     AcMeshInfo info = acInitInfo();
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    info.comm = MPI_COMM_WORLD;
+    info.comm->handle = MPI_COMM_WORLD;
 
     acSetGridMeshDims(nx, ny, nz, &info);
     //TP: this is because of backwards compatibility

@@ -32,9 +32,9 @@ acConstructReal3Param(const AcRealParam a, const AcRealParam b, const AcRealPara
                      const AcMeshInfo info)
 {
     return (AcReal3){
-        info.params.scalars.real_params[a],
-        info.params.scalars.real_params[b],
-        info.params.scalars.real_params[c],
+        info.real_params[a],
+        info.real_params[b],
+        info.real_params[c],
     };
 }
 
@@ -103,9 +103,9 @@ acGetMeshDims(const AcMeshInfo info)
    const Volume nn = acGetLocalNN(info);
    const Volume reduction_tile = (Volume)
    {
-	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].x),
-	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].y),
-	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].z)
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
    };
 
    return (AcMeshDims){
@@ -128,9 +128,9 @@ acGetGridMeshDims(const AcMeshInfo info)
    const Volume nn = acGetGridNN(info);
    const Volume reduction_tile = (Volume)
    {
-	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].x),
-	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].y),
-	   as_size_t(info.params.scalars.int3_params[AC_reduction_tile_dimensions].z)
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
    };
 
    return (AcMeshDims){
@@ -146,7 +146,7 @@ acGetGridMeshDims(const AcMeshInfo info)
 FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
 
 
-FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfoParams info, KernelAnalysisInfo* dst));
+FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfo info, KernelAnalysisInfo* dst));
 	
 
 
@@ -212,21 +212,21 @@ acPrintMeshInfo(const AcMeshInfo config)
 {
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
     {
-        printf("[%s]: %d\n", intparam_names[i], config.params.scalars.int_params[i]);
+        printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
     }
     for (int i = 0; i < NUM_INT3_PARAMS; ++i)
     {
-        printf("[%s]: (%d, %d, %d)\n", int3param_names[i],config.params.scalars.int3_params[i].x, config.params.scalars.int3_params[i].y, config.params.scalars.int3_params[i].z);
+        printf("[%s]: (%d, %d, %d)\n", int3param_names[i],config.int3_params[i].x, config.int3_params[i].y, config.int3_params[i].z);
     }
     for (int i = 0; i < NUM_REAL_PARAMS; ++i)
     {
-        printf("[%s]: %g\n", realparam_names[i], (double)(config.params.scalars.real_params[i]));
+        printf("[%s]: %g\n", realparam_names[i], (double)(config.real_params[i]));
     }
     for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
     {
-        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.params.scalars.real3_params[i].x),
-							    (double)(config.params.scalars.real3_params[i].y),
-							    (double)(config.params.scalars.real3_params[i].z)
+        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.real3_params[i].x),
+							    (double)(config.real3_params[i].y),
+							    (double)(config.real3_params[i].z)
 	      );
     }
 }
@@ -271,7 +271,7 @@ void acQueryKernels(void);
 static inline void
 acPrintIntParam(const AcIntParam a, const AcMeshInfo info)
 {
-    printf("%s: %d\n", intparam_names[a], info.params.scalars.int_params[a]);
+    printf("%s: %d\n", intparam_names[a], info.int_params[a]);
 }
 
 void acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c,
@@ -280,7 +280,7 @@ void acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c
 static inline void
 acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
 {
-    const int3 vec = info.params.scalars.int3_params[a];
+    const int3 vec = info.int3_params[a];
     printf("{%s: (%d, %d, %d)}\n", int3param_names[a], vec.x, vec.y, vec.z);
 }
 
@@ -620,7 +620,7 @@ void acVA_DebugFromRootProc(const int pid, const char* msg, va_list arg);
 //#else
 //	return handle;
 //#endif
-	const AcResult is_compatible = acVerifyCompatibility(sizeof(AcMesh), sizeof(AcMeshInfo), sizeof(AcMeshInfoParams), sizeof(AcCompInfo), NUM_REAL_PARAMS, NUM_INT_PARAMS, NUM_BOOL_PARAMS, NUM_REAL_ARRAYS, NUM_INT_ARRAYS, NUM_BOOL_ARRAYS);
+	const AcResult is_compatible = acVerifyCompatibility(sizeof(AcMesh), sizeof(AcMeshInfo), sizeof(AcCompInfo), NUM_REAL_PARAMS, NUM_INT_PARAMS, NUM_BOOL_PARAMS, NUM_REAL_ARRAYS, NUM_INT_ARRAYS, NUM_BOOL_ARRAYS);
 	if (is_compatible == AC_FAILURE)
 	{
 		fprintf(stderr,"Library is not compatible\n");
@@ -950,7 +950,7 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
 	  else
 	  {
 		  config[param] = val;
-		  config.params.is_loaded[param] = true;
+		  config.is_loaded[param] = true;
 	  }
   }
 
@@ -977,18 +977,19 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
     	  // memset reads the second parameter as a byte even though it says int in
           // the function declaration
 	  //TP: for backwards compatibility set original datatypes to all ones as before
-    	  memset(&res.params.scalars.int_params,     (uint8_t)0xFF, sizeof(res.params.scalars.int_params));
-    	  memset(&res.params.scalars.real_params,    (uint8_t)0xFF, sizeof(res.params.scalars.real_params));
-    	  memset(&res.params.scalars.int3_params,    (uint8_t)0xFF, sizeof(res.params.scalars.int3_params));
-    	  memset(&res.params.scalars.real3_params,   (uint8_t)0xFF, sizeof(res.params.scalars.real3_params));
-    	  memset(&res.params.scalars.complex_params, (uint8_t)0xFF, sizeof(res.params.scalars.complex_params));
+    	  memset(&res.int_params,     (uint8_t)0xFF, sizeof(res.int_params));
+    	  memset(&res.real_params,    (uint8_t)0xFF, sizeof(res.real_params));
+    	  memset(&res.int3_params,    (uint8_t)0xFF, sizeof(res.int3_params));
+    	  memset(&res.real3_params,   (uint8_t)0xFF, sizeof(res.real3_params));
+    	  memset(&res.complex_params, (uint8_t)0xFF, sizeof(res.complex_params));
 
 #if AC_MPI_ENABLED
-	  res.comm = MPI_COMM_NULL;
+	  res.comm = (AcCommunicator*)malloc(sizeof(AcCommunicator));
+	  res.comm->handle = MPI_COMM_NULL;
 #endif
 	  res.run_consts = acInitCompInfo();
-	  res.params.scalars.int3_params[AC_thread_block_loop_factors] = (int3){1,1,1};
-	  res.params.scalars.int3_params[AC_max_tpb_for_reduce_kernels] = (int3){-1,8,8};
+	  res.int3_params[AC_thread_block_loop_factors] = (int3){1,1,1};
+	  res.int3_params[AC_max_tpb_for_reduce_kernels] = (int3){-1,8,8};
   	  res.runtime_compilation_log_dst = "/dev/stderr";
 	  return res;
   }

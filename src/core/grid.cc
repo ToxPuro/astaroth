@@ -68,7 +68,7 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
-AcResult acAnalysisLoadMeshInfo(const AcMeshInfoParams info);
+AcResult acAnalysisLoadMeshInfo(const AcMeshInfo info);
 
 #ifdef USE_PERFSTUBS
 #define PERFSTUBS_USE_TIMER
@@ -504,8 +504,11 @@ create_astaroth_comm(const AcMeshInfo info)
       		ERRCHK_ALWAYS(MPI_Comm_dup(MPI_COMM_WORLD,&astaroth_comm) == MPI_SUCCESS);
 		break;
 	case AcMPICommStrategy::DuplicateUserComm:
-      		ERRCHK_ALWAYS(MPI_Comm_dup(info.comm,&astaroth_comm) == MPI_SUCCESS);
+	{
+		if(info.comm == NULL || info.comm->handle == MPI_COMM_NULL) fatal("%s","Cannot duplicate communicator since it is not loaded!\n");
+      		ERRCHK_ALWAYS(MPI_Comm_dup(info.comm->handle,&astaroth_comm) == MPI_SUCCESS);
 		break;
+	}
 	default:
 		fatal("%s","Unknown MPICommStrategy\n");
       }
@@ -779,14 +782,14 @@ acGridInitBase(const AcMesh user_mesh)
     if(grid.submesh.info[AC_fully_periodic_grid])
     	gen_default_taskgraph();
 #endif
-    acAnalysisLoadMeshInfo(acGridGetLocalMeshInfo().params);
+    acAnalysisLoadMeshInfo(acGridGetLocalMeshInfo());
     //Refresh log files
     if(!ac_pid())
     {
     	FILE* fp = fopen("taskgraph_log.txt","w");
     	fclose(fp);
     }
-    acAnalysisGetKernelInfo(acGridGetLocalMeshInfo().params,&grid.kernel_analysis_info);	
+    acAnalysisGetKernelInfo(acGridGetLocalMeshInfo(),&grid.kernel_analysis_info);	
     check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
     return AC_SUCCESS;
 }

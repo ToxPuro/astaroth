@@ -681,7 +681,7 @@ The reduced scalar values can be accessed with `acDeviceGetOutput` or for `Profi
 When the result of the reduction is a `Profile` finalization is automatically included in the execution of the `TaskGraph`.
 
 ### ComputeSteps
-This is still a experimental feature that only works if MPI is enabled and which still possibly changes in the future.
+This feature that only works if MPI is enabled
 
 The `BoundConds` construct is used to declare how to calculate the values of `Field`s when the boundary conditions are to be imposed.
 ```
@@ -720,6 +720,7 @@ bc_sym_z(Field field, bool bottom)
 The `ComputeSteps` construct is used to declare a sequence of (possibly dependent) kernel invocations in the DSL,
 from which a `TaskGraph` is produced. 
 The kernels are analysed to infer when halo exchanges and evaluations of boundary conditions are needed.
+So in other words: you specify the boundary conditions and Astaroth makes sure that they are applied as needed in order to evaluate the stencils.
 
 Dependencies between invocations are based on the needed `Fields` for the kernel and the `Fields` updated inside it.
 E.g. if kernel_call_1 would update `A` and kernel_call_2 would read `A`, kernel_call_2 is only called after kernel_call_1 has updated `A`.

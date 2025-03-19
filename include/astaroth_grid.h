@@ -232,7 +232,7 @@ ac_boundary_to_str(const AcBoundary boundary)
 
 
 
-FUNC_DEFINE(acAnalysisBCInfo, acAnalysisGetBCInfo,(const AcMeshInfoParams info, const AcKernel bc, const AcBoundary boundary));
+FUNC_DEFINE(acAnalysisBCInfo, acAnalysisGetBCInfo,(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary));
 
 typedef struct ParamLoadingInfo {
         acKernelInputParams* params;

@@ -742,7 +742,7 @@ device_malloc(T** dst, const int bytes)
 template <typename P>
 struct allocate_arrays
 {
-	void operator()(const AcMeshInfoParams& config) 
+	void operator()(const AcMeshInfo& config) 
 	{
 		for(P array : get_params<P>())
 		{
@@ -750,11 +750,11 @@ struct allocate_arrays
 			{
 
 #if AC_VERBOSE
-				fprintf(stderr,"Allocating %s|%d\n",get_name(array),get_array_length(array,config.scalars));
+				fprintf(stderr,"Allocating %s|%d\n",get_name(array),get_array_length(array,config));
 				fflush(stderr);
 #endif
 				auto d_mem_ptr = get_empty_pointer(array);
-			        device_malloc(((void**)&d_mem_ptr), sizeof(config[array][0])*get_array_length(array,config.scalars));
+			        device_malloc(((void**)&d_mem_ptr), sizeof(config[array][0])*get_array_length(array,config));
 				memcpy_to_gmem_array(array,d_mem_ptr);
 			}
 		}
@@ -763,14 +763,14 @@ struct allocate_arrays
 
 
 size3_t
-buffer_dims(const AcMeshInfoParams config)
+buffer_dims(const AcMeshInfo config)
 {
 	#include "user_builtin_non_scalar_constants.h"
 	auto mm = config[AC_mlocal];
 	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
 }
 size3_t
-subdomain_size(const AcMeshInfoParams config)
+subdomain_size(const AcMeshInfo config)
 {
 	#include "user_builtin_non_scalar_constants.h"
 	auto mm = config[AC_nlocal];
@@ -951,7 +951,7 @@ init_scratchpads(VertexBufferArray* vba)
     }
 }
 static inline AcMeshDims
-acGetMeshDims(const AcMeshInfoParams info)
+acGetMeshDims(const AcMeshInfo info)
 {
    #include "user_builtin_non_scalar_constants.h"
    const Volume n0 = to_volume(info[AC_nmin]);
@@ -961,9 +961,9 @@ acGetMeshDims(const AcMeshInfoParams info)
    const Volume nn = to_volume(info[AC_nlocal]);
    const Volume reduction_tile = (Volume)
    {
-	   as_size_t(info.scalars.int3_params[AC_reduction_tile_dimensions].x),
-	   as_size_t(info.scalars.int3_params[AC_reduction_tile_dimensions].y),
-	   as_size_t(info.scalars.int3_params[AC_reduction_tile_dimensions].z)
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
    };
 
    return (AcMeshDims){
@@ -980,7 +980,7 @@ AcReal* vba_in_buff = NULL;
 AcReal* vba_out_buff = NULL;
 
 VertexBufferArray
-acVBACreate(const AcMeshInfoParams config)
+acVBACreate(const AcMeshInfo config)
 {
   //TP: !HACK!
   //TP: Get active dimensions at the time VBA is created, works for now but should be moved somewhere else
@@ -1038,7 +1038,7 @@ acVBACreate(const AcMeshInfoParams config)
 template <typename P>
 struct update_arrays
 {
-	void operator()(const AcMeshInfoParams& config)
+	void operator()(const AcMeshInfo& config)
 	{
 		for(P array : get_params<P>())
 		{
@@ -1046,7 +1046,7 @@ struct update_arrays
 			auto config_array = config[array];
 			auto gmem_array   = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
-			size_t bytes = sizeof(config_array[0])*get_array_length(array,config.scalars);
+			size_t bytes = sizeof(config_array[0])*get_array_length(array,config);
 			if (config_array == nullptr && gmem_array != nullptr) 
 				device_free(&gmem_array,bytes);
 			else if (config_array != nullptr && gmem_array  == nullptr) 
@@ -1056,7 +1056,7 @@ struct update_arrays
 	}
 };
 void
-acUpdateArrays(const AcMeshInfoParams config)
+acUpdateArrays(const AcMeshInfo config)
 {
   AcArrayTypes::run<update_arrays>(config);
 }
@@ -1064,7 +1064,7 @@ acUpdateArrays(const AcMeshInfoParams config)
 template <typename P>
 struct free_arrays
 {
-	void operator()(const AcMeshInfoParams& config)
+	void operator()(const AcMeshInfo& config)
 	{
 		for(P array: get_params<P>())
 		{
@@ -1072,7 +1072,7 @@ struct free_arrays
 			if (config_array == nullptr || is_dconst(array) || !is_alive(array)) continue;
 			auto gmem_array = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
-			device_free(&gmem_array, get_array_length(array,config.scalars));
+			device_free(&gmem_array, get_array_length(array,config));
 			memcpy_to_gmem_array(array,gmem_array);
 		}
 	}
@@ -1137,7 +1137,7 @@ destroy_scratchpads(VertexBufferArray* vba)
 }
 
 void
-acVBADestroy(VertexBufferArray* vba, const AcMeshInfoParams config)
+acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
   destroy_scratchpads(vba);
   //TP: does not work for compressible memory TODO: fix it if needed
@@ -1757,32 +1757,39 @@ acPBASwapBuffers(VertexBufferArray* vba)
     acPBASwapBuffer((Profile)i, vba);
 }
 
-AcResult
-acLoadMeshInfo(const AcMeshInfoScalars info, const cudaStream_t stream)
+template <typename P>
+struct load_all_scalars_uniform
 {
-  /*
-  for (int i = 0; i < NUM_INT_PARAMS; ++i)
-    ERRCHK_ALWAYS(acLoadIntUniform(stream, (AcIntParam)i, info.int_params[i]) ==
-                  AC_SUCCESS);
+	void operator()(const AcMeshInfo& config)
+	{
+		for(P i : get_params<P>())
+			acLoadUniform(0,  i, config[i]);
+	}
+};
 
-  for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-    ERRCHK_ALWAYS(acLoadInt3Uniform(stream, (AcInt3Param)i,
-                                    info.int3_params[i]) == AC_SUCCESS);
+template <typename P>
+struct load_all_arrays_uniform
+{
+	void operator()(const AcMeshInfo& config)
+	{
+		for(const P array : get_params<P>())
+		{
+			auto config_array = config[array];
+      			if (config_array != nullptr)
+				acLoadArrayUniform(array,config_array, get_array_length(array,config));
+		}
+	}
+};
 
-  for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-    ERRCHK_ALWAYS(acLoadRealUniform(stream, (AcRealParam)i,
-                                    info.real_params[i]) == AC_SUCCESS);
-
-  for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-    ERRCHK_ALWAYS(acLoadReal3Uniform(stream, (AcReal3Param)i,
-                                     info.real3_params[i]) == AC_SUCCESS);
-  */
-
+AcResult
+acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
+{
   /* See note in acLoadStencil */
   ERRCHK_CUDA(cudaDeviceSynchronize());
-  const cudaError_t retval = cudaMemcpyToSymbol(
-      d_mesh_info, &info, sizeof(info), 0, cudaMemcpyHostToDevice);
-  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+  AcResult retval = AC_SUCCESS;
+  AcScalarTypes::run<load_all_scalars_uniform>(info);
+  AcArrayTypes::run<load_all_arrays_uniform>(info);
+  return retval;
 }
 
 //---------------
@@ -2563,7 +2570,7 @@ acGetMeshOrderForProfile(const AcProfileType type)
 #include "load_ac_kernel_params.h"
 
 int
-acVerifyMeshInfo(const AcMeshInfoScalars info)
+acVerifyMeshInfo(const AcMeshInfo info)
 {
   int retval = 0;
   for (size_t i = 0; i < NUM_INT_PARAMS; ++i) {

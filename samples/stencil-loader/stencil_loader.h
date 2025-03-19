@@ -40,9 +40,9 @@ load_stencil_from_config(const AcMeshInfo info)
     AcReal der6upwd[] = {DER6UPWD_3, DER6UPWD_2, DER6UPWD_1, DER6UPWD_0,
                          DER6UPWD_1, DER6UPWD_2, DER6UPWD_3};
 
-    const AcReal inv_dsx = AcReal(1.0) / info.params.scalars.real3_params[AC_ds].x;
-    const AcReal inv_dsy = AcReal(1.0) / info.params.scalars.real3_params[AC_ds].y;
-    const AcReal inv_dsz = AcReal(1.0) / info.params.scalars.real3_params[AC_ds].z;
+    const AcReal inv_dsx = AcReal(1.0) / info.real3_params[AC_ds].x;
+    const AcReal inv_dsy = AcReal(1.0) / info.real3_params[AC_ds].y;
+    const AcReal inv_dsz = AcReal(1.0) / info.real3_params[AC_ds].z;
 
     // 1st and 2nd order derivatives
     for (size_t i = 0; i < STENCIL_ORDER + 1; ++i) {

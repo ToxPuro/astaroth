@@ -1383,29 +1383,16 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	sprintf(tmp,"%s*",datatype_scalar);
 	const char* datatype = intern(tmp);
 	fprintf_filename("info_access_operators.h","%s operator[](const %s param) const {return param;}\n",datatype_scalar,datatype_scalar);
-	fprintf_filename("scalar_info_access_operators.h","const %s& operator[](const %sParam param) const {return %s_params[param];}\n"
+	fprintf_filename("info_access_operators.h","const %s& operator[](const %sParam param) const {return %s_params[param];}\n"
 		,datatype_scalar,enum_name,define_name);
-
-	fprintf_filename("info_access_operators.h","const %s& operator[](const %sParam param) const {return params.scalars.%s_params[param];}\n"
-		,datatype_scalar,enum_name,define_name);
-	fprintf_filename("param_info_access_operators.h","const %s& operator[](const %sParam param) const {return scalars.%s_params[param];}\n"
-		,datatype_scalar,enum_name,define_name);
-	fprintf_filename("param_info_access_operators.h","%s operator[](const %s val) const {return val;}\n"
-		,datatype_scalar,datatype_scalar);
 
 	fprintf_filename("info_access_operators.h","const %s& operator[](const %sCompParam param) const {return run_consts.config.%s_params[param];}\n"
 		,datatype_scalar,enum_name,define_name);
-	fprintf_filename("info_access_operators.h","%s* const& operator[](const %sArrayParam param) const {return params.arrays.%s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
-	fprintf_filename("param_info_access_operators.h","%s* const& operator[](const %sArrayParam param) const {return arrays.%s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("info_access_operators.h","%s* const& operator[](const %sArrayParam param) const {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
 
-	fprintf_filename("array_info_access_operators.h","%s* const& operator[](const %sArrayParam param) const {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("info_access_operators.h","%s& operator[](const %sParam param) {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
 
-	fprintf_filename("scalar_info_access_operators.h","%s& operator[](const %sParam param) {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
-
-	fprintf_filename("info_access_operators.h","%s& operator[](const %sParam param) {return params.scalars.%s_params[param];}\n",datatype_scalar,enum_name,define_name);
-
-	fprintf_filename("info_access_operators.h","%s* & operator[](const %sArrayParam param) {return params.arrays.%s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
-	fprintf_filename("array_info_access_operators.h","%s* & operator[](const %sArrayParam param) {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
+	fprintf_filename("info_access_operators.h","%s* & operator[](const %sArrayParam param) {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
 
 	fprintf_filename("comp_info_access_operators.h","const %s& operator[](const %sCompParam param) const {return %s_params[param];}\n",datatype_scalar,enum_name,define_name);
 	fprintf_filename("comp_info_access_operators.h","const %s* const& operator[](const %sCompArrayParam param) const {return %s_arrays[param];}\n",datatype_scalar,enum_name,define_name);
