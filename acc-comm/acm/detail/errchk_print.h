@@ -19,7 +19,7 @@
 #define ACM_LOG_LEVEL_INFO (2)
 #define ACM_LOG_LEVEL_DEBUG (3)
 #define ACM_LOG_LEVEL_TRACE (4)
-#define ACM_LOG_LEVEL (ACM_LOG_LEVEL_DEBUG)
+#define ACM_LOG_LEVEL (ACM_LOG_LEVEL_INFO)
 
 #define PRINT_LOG_ERROR(...) (errchk_print_log(__func__, __LINE__, __VA_ARGS__))
 
