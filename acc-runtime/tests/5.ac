@@ -22,11 +22,7 @@ Field lnrho, ux, uy, uz
 #define DERX_1 (INV_DS * INV_DS * 270. / 720.)
 #define DERX_0 (0)
 
-Profile mean_ux, mean_uy
-
-Stencil value {
-    [0][0][0] = 1
-}
+Profile<Z> mean_ux, mean_uy
 
 Stencil derx {
     [-3][0][0] = -DER1_3,
@@ -133,7 +129,7 @@ Stencil deryz {
     [0][3][-3] = -DERX_3
 }
 
-vecvalue(v)
+vecvalue(Field3 v)
 {
     return real3(value(v.x), value(v.y), value(v.z))
 }

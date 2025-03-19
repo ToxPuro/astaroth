@@ -180,7 +180,7 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 {D}+[.]{D}*               { return REALNUMBER; }
 {D}+[.]?{D}*([eE][-+]?{D}+)   { return REALNUMBER; }
 {D}+[.]?{D}*([eE][-+]?{D}+)?[d]  { return DOUBLENUMBER; } /* Numbers */
-{D}+[.]?{D}*([eE][-+]?{D}+)[f]? { return REALNUMBER; }      /* Numbers */
+{D}+[.]?{D}*([eE][-+]?{D}+)?[f] { return REALNUMBER; }      /* Numbers */
 {D}+[.]?{D}*  		      { return NUMBER; }      /* Numbers */
 0[xX][0-9a-fA-F]+[ulUL]*      { return NUMBER; }      /* Hex */
 

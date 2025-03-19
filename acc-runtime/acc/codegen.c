@@ -60,6 +60,7 @@ get_prof_types()
 
 static const char* REAL_ARR_STR = NULL;
 
+static const char* CHAR_PTR_STR = NULL;
 static const char* REAL_PTR_STR = NULL;
 static const char* BOOL_PTR_STR = NULL;
 static const char* REAL3_PTR_STR = NULL;
@@ -4616,7 +4617,7 @@ get_primary_expr_type(const ASTNode* node)
 		(get_node_by_token(REALNUMBER,node)) ? REAL_STR:
 		(get_node_by_token(DOUBLENUMBER,node)) ? REAL_STR:
 		(get_node_by_token(NUMBER,node)) ? INT_STR :
-		(get_node_by_token(STRING,node)) ? "char*" :
+		(get_node_by_token(STRING,node)) ? CHAR_PTR_STR :
 	  (!sym) ? NULL :
 	  sym->tspecifier;
 }
@@ -6777,6 +6778,14 @@ gen_local_type_info(ASTNode* node)
 		{
 			node->expr_type = expr_type;
 			ASTNode* dfunc_start = (ASTNode*) get_parent_node(NODE_DFUNCTION,node);
+			if(!dfunc_start)
+			{
+				ASTNode* kernel_start = (ASTNode*) get_parent_node(NODE_FUNCTION,node);
+				if(kernel_start)
+				{
+					fatal("Can not have return statements inside Kernels; In %s: %s\n",get_node_by_token(IDENTIFIER,kernel_start)->buffer,combine_all_new(node));
+				}
+			}
 			const char* func_name = get_node(NODE_DFUNCTION_ID,dfunc_start)->buffer;
 			Symbol* func_sym = (Symbol*)get_symbol(NODE_DFUNCTION_ID,func_name,NULL);
 			if(func_sym && !str_vec_contains(func_sym->tqualifiers,expr_type))
@@ -7339,14 +7348,14 @@ transform_array_assignments(ASTNode* node)
         if(op != EQ_STR) return;
         const char* rhs_type = get_expr_type(node->rhs);
         if(!rhs_type) return;
-        const bool rhs_is_arr = (strstr(rhs_type,"*") || strstr(rhs_type,"AcArray"));
+        const bool rhs_is_arr = rhs_type && rhs_type != intern("char*") && (strstr(rhs_type,"*") || strstr(rhs_type,"AcArray"));
         const char* lhs_type = get_expr_type(node->lhs);
         if(!lhs_type) return;
         if(rhs_is_arr && !get_node(NODE_ARRAY_INITIALIZER,node->rhs->rhs))
         {
                 if(is_defining_expression(node->lhs))
                 {
-                      fatal("NOT ALLOWED!\n");
+                      fatal("NOT ALLOWED! %s,%s\n",combine_all_new(node),rhs_type);
                       replace_node(
                                 node->rhs->rhs,
                                 create_func_call_expr(intern("dup_arr"),node->rhs->rhs)
@@ -7674,7 +7683,8 @@ gen_global_strings()
 	MINUSEQ_STR= intern("-=");
 	DEQ_STR= intern("/=");
 	PERIODIC = intern("periodic");
-
+	
+	CHAR_PTR_STR = intern("char*");
 
 	EMPTY_STR = intern("\0");
 	DEAD_STR = intern("dead");
@@ -8065,6 +8075,25 @@ check_for_illegal_writes(const ASTNode* node)
 	TRAVERSE_PREAMBLE(check_for_illegal_writes);
 	if(!(node->type & NODE_FUNCTION)) return;
 	check_for_illegal_writes_in_func(node);
+}
+void
+check_for_illegal_func_calls_in_func(const ASTNode* node, const char* name)
+{
+	TRAVERSE_PREAMBLE_PARAMS(check_for_illegal_func_calls_in_func,name);
+	if(!(node->type & NODE_FUNCTION_CALL)) return;
+	const char* func_name = get_node_by_token(IDENTIFIER,node)->buffer;
+        if(check_symbol(NODE_FUNCTION_ID,func_name,KERNEL_STR,0))
+	{
+		fatal("Can not call Kernel in DSL; Incorrect call in %s: %s\n",name,combine_all_new(node));
+	}
+}
+void
+check_for_illegal_func_calls(const ASTNode* node)
+{
+	if(node->type & NODE_TASKGRAPH_DEF) return;
+	TRAVERSE_PREAMBLE(check_for_illegal_func_calls);
+	if(!(node->type & NODE_FUNCTION)) return;
+	check_for_illegal_func_calls_in_func(node,get_node_by_token(IDENTIFIER,node)->buffer);
 }
 void
 process_overrides_recursive(ASTNode* node, const string_vec overrided_vars)
@@ -8519,6 +8548,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
 
   traverse(root, 0, NULL);
   check_for_illegal_writes(root);
+  check_for_illegal_func_calls(root);
   process_overrides(root);
   //We use duplicate dfuncs from gen_boundcond_kernels
   //duplicate_dfuncs = get_duplicate_dfuncs(root);
@@ -9185,6 +9215,11 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
         const char* func_name = intern(tmp);
 
 	if(check_symbol(NODE_FUNCTION_ID,func_name,NULL,NULL)) return;
+	{
+		remove_suffix(tmp,"_profile");
+		const char* possible_stencil_name = intern(tmp);
+		if(check_symbol(NODE_FUNCTION_ID,possible_stencil_name,STENCIL_STR,NULL)) return;
+	}
 	if(str_vec_contains(duplicate_dfuncs.names,func_name)) 
 	{
 		fprintf(stderr,FATAL_ERROR_MESSAGE);

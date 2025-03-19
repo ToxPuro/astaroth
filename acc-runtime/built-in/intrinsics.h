@@ -20,6 +20,12 @@ real intrinsic round(real)
 intrinsic min
 intrinsic max
 
+intrinsic broadcast_scalar
+intrinsic broadcast_scalar_2d
+intrinsic broadcast_scalar_3d
+intrinsic broadcast_scalar_4d
+intrinsic broadcast_scalar_to_vec
+
 intrinsic ceil
 real intrinsic random_uniform
 real intrinsic atomicAdd

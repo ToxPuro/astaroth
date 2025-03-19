@@ -26,10 +26,6 @@ Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_AX, VTXBUF_AY, VT
 #define DERX_1 (INV_DS * INV_DS * 270. / 720.)
 #define DERX_0 (0)
 
-Stencil value {
-    [0][0][0] = 1
-}
-
 Stencil derx {
     [-3][0][0] = -DER1_3,
     [-2][0][0] = -DER1_2,
@@ -135,7 +131,7 @@ Stencil deryz {
     [0][3][-3] = -DERX_3
 }
 
-vecvalue(v) {
+vecvalue(Field3 v) {
     return real3(value(v.x), value(v.y), value(v.z))
 }
 
