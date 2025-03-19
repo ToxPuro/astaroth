@@ -915,14 +915,15 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
 								 $$->expr_type = intern(combine_all_new($$->lhs)); 
 								 astnode_set_postfix(")", $$);  
 								 astnode_set_infix("(", $$); 
-								 //TP: do special transformation from Field3(a,b,c) --> (Field3){a,b,c} to ensure backwards compatibility
-								 if($$->lhs->type & NODE_TSPEC && $$->lhs->lhs->buffer == intern("Field3"))
+								 //TP: do special transformation from struct(a,b,c) --> (struct){a,b,c} to ensure backwards compatibility
+								 if(get_node_by_token(STRUCT_TYPE,$$->lhs))
 								 {
 								 	astnode_set_postfix("}", $$);  
 								 	astnode_set_infix("{", $$); 
 
-								 	astnode_set_postfix(")", $$->lhs);  
-								 	astnode_set_prefix("(", $$->lhs); 
+								 	astnode_set_prefix("(", $$); 
+								 	astnode_set_infix("){", $$);  
+								 	astnode_set_postfix("}", $$);  
 								 }
 								 $$->lhs->type ^= NODE_TSPEC; $$->token = CAST; /* Unset NODE_TSPEC flag, casts are handled as functions */ 
 							       }

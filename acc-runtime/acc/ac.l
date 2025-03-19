@@ -154,11 +154,21 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 "hostdefine".*        { return HOSTDEFINE; }
 
 {L}({L}|{D})*             {  /* Literals */
-				const int struct_index = str_vec_get_index(struct_names,intern(yytext));
-				if(struct_index >= 0)
 				{
-					yytext =  strdup(struct_datatype_names.data[struct_index]);
-					return STRUCT_TYPE;
+					const int struct_index = str_vec_get_index(struct_names,intern(yytext));
+					if(struct_index >= 0)
+					{
+						yytext =  strdup(struct_datatype_names.data[struct_index]);
+						return STRUCT_TYPE;
+					}
+				}
+				{
+					const int struct_index = str_vec_get_index(struct_datatype_names,intern(yytext));
+					if(struct_index >= 0)
+					{
+						yytext =  strdup(struct_datatype_names.data[struct_index]);
+						return STRUCT_TYPE;
+					}
 				}
 				if(str_vec_contains(enum_names,intern(yytext)))
 					return ENUM_TYPE;
