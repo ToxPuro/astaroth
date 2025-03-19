@@ -55,7 +55,7 @@ async_write_pipeline(const int device_id, const ac::ndbuffer<T, Allocator>&& sta
                      const std::string outfile)
 {
 #if defined(ACM_DEVICE_ENABLED)
-    ERRCHK_CUDA(cudaSetDevice(device_id)); // TODO
+    ERRCHK_CUDA_API(cudaSetDevice(device_id));
 #else
     (void)device_id; // Unused
 #endif
