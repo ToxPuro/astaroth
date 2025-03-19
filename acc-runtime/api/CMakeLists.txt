@@ -92,8 +92,9 @@ message("project source dir ${PROJECT_SOURCE_DIR}")
 
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
-    add_library(acc-runtime STATIC acc_runtime.cu)
+    add_library(acc-runtime STATIC acc_runtime.cu ${CMAKE_CURRENT_SOURCE_DIR}/../../src/core/buffer.cc)
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(acc-runtime acc-runtime-headers)
 
     if (USE_HIP)

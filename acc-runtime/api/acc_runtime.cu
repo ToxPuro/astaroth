@@ -22,6 +22,8 @@
 #define rocprim__warp_shuffle rocprim::warp_shuffle
 
 #include "acc_runtime.h"
+#include "ac_buffer.h"
+
 #include "../acc/string_vec.h"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}

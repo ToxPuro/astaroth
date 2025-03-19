@@ -420,7 +420,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 #if AC_RUNTIME_COMPILATION
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
 			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
-  static void* __attribute__((unused)) acLoadRunTime(FILE* stream)
+  static UNUSED void* acLoadRunTime(FILE* stream)
   {
  	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_LAZY | RTLD_GLOBAL);
 	if(!handle)

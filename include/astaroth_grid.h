@@ -1,4 +1,8 @@
 #pragma once
+#ifndef UNUSED
+#define UNUSED __attribute__((unused)) // Does not give a warning if unused
+#endif
+
 #if AC_MPI_ENABLED
 
 /**
@@ -205,7 +209,7 @@ typedef enum AcBoundary {
 } AcBoundary;
 
 
-static const char*
+static UNUSED const char*
 ac_boundary_to_str(const AcBoundary boundary)
 {
 	if(boundary == BOUNDARY_NONE)  return  "BOUNDARY_NONE";

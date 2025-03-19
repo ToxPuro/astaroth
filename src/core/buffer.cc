@@ -133,7 +133,6 @@ acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaS
     	acReindex(stream,buffer_in.data, in_offset, in_shape, dst.data, out_offset , dst.shape, block_shape);
 	return dst;
 }
-static
 AcBuffer
 acBufferCreateTransposed(const AcBuffer src, const AcMeshOrder order)
 {

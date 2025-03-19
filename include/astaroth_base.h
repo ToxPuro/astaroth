@@ -48,7 +48,7 @@ typedef struct AcSubCommunicators {
 #endif
 
 
-#define _UNUSED __attribute__((unused)) // Does not give a warning if unused
+#define UNUSED __attribute__((unused)) // Does not give a warning if unused
 
 
 
@@ -154,11 +154,10 @@ enum class AcMPICommStrategy:int{
 #undef AC_GEN_ID
 
 #define AC_GEN_STR(X) #X,
-static const char* initcondtype_names[] _UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
+static const char* initcondtype_names[] UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
 
 
 #undef AC_GEN_STR
-#undef _UNUSED
 
 typedef struct node_s* Node;
 typedef struct device_s* Device;

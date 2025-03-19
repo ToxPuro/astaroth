@@ -7,7 +7,7 @@ get_kernel_analysis_info()
 	return res;
 }
 
-static bool
+static UNUSED bool
 kernel_has_profile_stencil_ops(const AcKernel kernel)
 {
 	const auto info = get_kernel_analysis_info();
@@ -35,7 +35,7 @@ kernel_updates_vtxbuf(const AcKernel kernel)
 	return false;
 }
 
-static AcBoundary
+static UNUSED AcBoundary
 get_kernel_depends_on_boundaries(const AcKernel kernel)
 {
 	//TP: this is because if kernel A uses stencils kernel B has to wait for A to finish on neighbours to avoid overwriting A's input
@@ -56,7 +56,7 @@ get_kernel_depends_on_boundaries(const AcKernel kernel)
 
 }
 
-static std::vector<AcBoundary>
+static UNUSED std::vector<AcBoundary>
 get_kernel_depends_on_boundaries()
 {
 	std::vector<AcBoundary> res{};
@@ -102,7 +102,7 @@ kernel_reduces_only_profiles(const AcKernel kernel, const AcProfileType prof_typ
 	return true;
 }
 
-static bool
+static UNUSED bool
 kernel_does_only_profile_reductions(const AcKernel kernel, const AcProfileType prof_type)
 {
 	if(kernel_updates_vtxbuf(kernel)) return false;
@@ -111,7 +111,7 @@ kernel_does_only_profile_reductions(const AcKernel kernel, const AcProfileType p
 }
 
 
-static bool
+static UNUSED bool
 kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
 {
 	if(kernel_reduces_something(kernel)) return false;
@@ -136,7 +136,7 @@ kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
 	return true;
 }
 
-static std::vector<std::array<AcBoundary,NUM_PROFILES>>
+static UNUSED std::vector<std::array<AcBoundary,NUM_PROFILES>>
 compute_kernel_call_computes_profile_across_halos(const std::vector<AcKernel>& calls)
 {
 	std::vector<std::array<AcBoundary,NUM_PROFILES>> res{};
