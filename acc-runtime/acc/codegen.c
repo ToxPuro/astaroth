@@ -8056,9 +8056,9 @@ get_overrided_vars(ASTNode* node, string_vec* overrided_vars)
 
 }
 void
-check_for_writes_to_const_variables_in_func(const ASTNode* node)
+check_for_illegal_writes_in_func(const ASTNode* node)
 {
-	TRAVERSE_PREAMBLE(check_for_writes_to_const_variables_in_func);
+	TRAVERSE_PREAMBLE(check_for_illegal_writes_in_func);
 	if(!(node->type & NODE_ASSIGNMENT)) return;
 	const ASTNode* id = get_node_by_token(IDENTIFIER,node);
 	if(!id) return;
@@ -8068,13 +8068,16 @@ check_for_writes_to_const_variables_in_func(const ASTNode* node)
 		fatal("Write to const variable: %s\n",combine_all_new(node));
 	if(check_symbol(NODE_ANY,id->buffer,0,RUN_CONST_STR))
 		fatal("Write to run_const variable: %s\n",combine_all_new(node));
+	if(check_symbol(NODE_FUNCTION_ID,id->buffer,0,NULL))
+		fatal("Write to function: %s\n",combine_all_new(node));
 }
+
 void
-check_for_writes_to_const_variables(const ASTNode* node)
+check_for_illegal_writes(const ASTNode* node)
 {
-	TRAVERSE_PREAMBLE(check_for_writes_to_const_variables);
+	TRAVERSE_PREAMBLE(check_for_illegal_writes);
 	if(!(node->type & NODE_FUNCTION)) return;
-	check_for_writes_to_const_variables_in_func(node);
+	check_for_illegal_writes_in_func(node);
 }
 void
 process_overrides_recursive(ASTNode* node, const string_vec overrided_vars)
@@ -8528,7 +8531,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   mark_kernel_inputs(root);
 
   traverse(root, 0, NULL);
-  check_for_writes_to_const_variables(root);
+  check_for_illegal_writes(root);
   process_overrides(root);
   //We use duplicate dfuncs from gen_boundcond_kernels
   //duplicate_dfuncs = get_duplicate_dfuncs(root);
@@ -9231,6 +9234,7 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 	}
 	fatal("Undeclared function in call: %s\n",combine_all_new(node));
 }
+
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 { 
