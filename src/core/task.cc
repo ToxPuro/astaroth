@@ -34,9 +34,6 @@
  * This all happens in grid.cc:GridIntegrate
  */
 
-#ifndef AC_INSIDE_AC_LIBRARY 
-#define AC_INSIDE_AC_LIBRARY 
-#endif
 
 
 #include "task.h"

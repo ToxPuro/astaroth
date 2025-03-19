@@ -17,10 +17,6 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef AC_INSIDE_AC_LIBRARY 
-#define AC_INSIDE_AC_LIBRARY 
-#endif
-
 #include "astaroth.h"
 #include "../../acc-runtime/api/math_utils.h"
 #include "kernels/kernels.h"

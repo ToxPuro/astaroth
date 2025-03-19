@@ -43,9 +43,6 @@
  * This file contains the grid interface, with algorithms and high level functionality
  * The nitty gritty of the MPI communication and the Task interface is defined in task.h/task.cc
  */
-#ifndef AC_INSIDE_AC_LIBRARY 
-#define AC_INSIDE_AC_LIBRARY 
-#endif
 
 #include "astaroth.h"
 #include "user_builtin_non_scalar_constants.h"
@@ -1805,14 +1802,6 @@ check_ops(const std::vector<AcTaskDefinition> ops)
 #endif
 }
 
-//Region
-//InnerMostCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
-//{
-//	int3 position = {(2+decomp_level)*NGHOST_X,(2+decomp_level)*NGHOST_Y,(2+decomp_level)*NGHOST_Z};
-//	int3 last_position = {mm.x-(2+decomp_level)*NGHOST_X, mm.y-(2+decomp_level)*NGHOST_Y,mm.z-(2+decomp_level)*NGHOST_Z};
-//	int3 dims = last_position - position;
-//        return Region(position,dims,0,fields,RegionFamily::Compute_output);
-//}
 Volume
 get_position(const AcBoundary boundaries_included)
 {
@@ -1845,137 +1834,13 @@ FullRegion(const Volume nn, const RegionMemory mem, const AcBoundary boundaries_
 	const auto& add      = get_addition(boundaries_included);
         return Region(position,nn+add,0,mem,RegionFamily::Compute_output);
 }
-//Region
-//LeftCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
-//{
-//	int3 position = {2*NGHOST_X, 2*NGHOST_Y, 2*NGHOST_Z};
-//	int3 last_position = {(decomp_level+2)*NGHOST_X, mm.y - 2*NGHOST_Y,mm.z-2*NGHOST_Z};
-//	int3 dims = last_position - position;
-//        return Region(position,dims,0,fields,RegionFamily::Compute_output);
-//}
-//
-//Region
-//RightCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
-//{
-//	int3 position = {mm.x-(decomp_level+2)*NGHOST_X, 2*NGHOST_Y, 2*NGHOST_Z};
-//	int3 last_position = {mm.x-2*NGHOST_X, mm.y - 2*NGHOST_Y,mm.z-2*NGHOST_Z};
-//	int3 dims = last_position - position;
-//        return Region(position,dims,0,fields,RegionFamily::Compute_output);
-//}
-//Region
-//BackCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
-//{
-//	int3 position = {(decomp_level+2)*NGHOST_X, 2*NGHOST_Y, 2*NGHOST_Z};
-//	int3 last_position = {mm.x - (decomp_level+2)*NGHOST_X, (decomp_level+2)*NGHOST_Y,mm.z-2*NGHOST_Z};
-//	int3 dims = last_position - position;
-//        return Region(position,dims,0,fields,RegionFamily::Compute_output);
-//}
-//
-//Region
-//FrontCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
-//{
-//	int3 position = {(2+decomp_level)*NGHOST_X, mm.y-(decomp_level+2)*NGHOST_Y, 2*NGHOST_Z};
-//	int3 last_position = {mm.x-(2+decomp_level)*NGHOST_X, mm.y-2*NGHOST_Y,mm.z-2*NGHOST_Z};
-//	int3 dims = last_position - position;
-//        return Region(position,dims,0,fields,RegionFamily::Compute_output);
-//}
-//
-//Region
-//LowerCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
-//{
-//	int3 position = {(decomp_level+2)*NGHOST_X, (decomp_level+2)*NGHOST_Y, 2*NGHOST_Z};
-//	int3 last_position = {mm.x - (decomp_level+2)*NGHOST_X, mm.y - (decomp_level+2)*NGHOST_Y,(2+decomp_level)*NGHOST_Z};
-//	int3 dims = last_position - position;
-//        return Region(position,dims,0,fields,RegionFamily::Compute_output);
-//}
-//
-//Region
-//UpperCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
-//{
-//	int3 position = {(2+decomp_level)*NGHOST_X, (2+decomp_level)*NGHOST_Y, mm.z-(2+decomp_level)*NGHOST_Z};
-//	int3 last_position = {mm.x-(2+decomp_level)*NGHOST_X, mm.y-(2+decomp_level)*NGHOST_Y, mm.z-2*NGHOST_Z};
-//	int3 dims = last_position - position;
-//        return Region(position,dims,0,fields,RegionFamily::Compute_output);
-//}
+
 Region
 GetInputRegion(Region region, const RegionMemory mem, const AcBoundary boundaries_included)
 {
 	const auto& output_position     = get_position(boundaries_included);
 	return Region{region.position-output_position,region.dims+2*output_position,0,mem,RegionFamily::Compute_input};
 }
-//
-////test that the compute regions cover what they should cover without overlap
-//bool
-//TestRegions(std::vector<Region> regions, int target_volume)
-//{
-//	bool passed = true;
-//	for (auto& region_1: regions)
-//	{
-//		for (auto& region_2:regions)
-//		{
-//			if (region_1.overlaps(&region_2) && !((region_1.position == region_2.position) && (region_1.dims == region_2.dims)))
-//			{
-//				passed=false;
-//				printf("Region_1 position: %d,%d,%d\tdims %d,%d,%d\n",region_1.position.x,region_1.position.y,region_1.position.z,region_1.dims.x,region_1.dims.y,region_1.dims.z);
-//				printf("Region_2 position: %d,%d,%d\tdims %d,%d,%d\n",region_2.position.x,region_2.position.y,region_2.position.z,region_2.dims.x,region_2.dims.y,region_2.dims.z);
-//			}
-//
-//		}
-//	}
-//	if (!passed)
-//		printf("RegionTest: overlapping\n");
-//
-//	int covered_volume = 0;
-//	for (auto& region: regions)
-//	{
-//		covered_volume += region.volume;
-//	}
-//	passed &= covered_volume == target_volume;
-//	if (!passed)
-//	{
-//		printf("Doesn't cover the volume\n");
-//		printf("Target: %d\n",target_volume);
-//		printf("Covered: %d\n",covered_volume);
-//	}
-//	if (!passed)
-//		printf("RegionTest: not passed\n");
-//	return passed;
-//}
-//std::vector<Region>
-//getmyregions(int3 nn, int decomp_level, std::vector<Field> fields_out)
-//{
-//	std::vector<Region> regions{};
-//	int3 mm = nn + (int3){2*NGHOST_X,2*NGHOST_Y,2*NGHOST_Z};
-//	regions.push_back(InnerMostCompRegion(mm,decomp_level,fields_out));
-//	/***
-//
-//		regions.push_back(LeftCommRegion(nn,fields_out));
-//		regions.push_back(RightCommRegion(nn,fields_out));
-//		regions.push_back(BackCommRegion(nn,fields_out));
-//		regions.push_back(FrontCommRegion(nn,fields_out));
-//		regions.push_back(LowerCommRegion(nn,fields_out));
-//		regions.push_back(UpperCommRegion(nn,fields_out));
-//		**/
-//		for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-//				if (Region::tag_to_id(tag) != (int3){0,0,0})
-//					regions.push_back(Region(RegionFamily::Compute_output,tag,nn,fields_out.data(),fields_out.size()));
-//            }
-//	if (decomp_level > 0) 
-//	{
-//	regions.push_back(LeftCompRegion(mm,decomp_level,fields_out));
-//	regions.push_back(RightCompRegion(mm,decomp_level,fields_out));
-//
-//	regions.push_back(BackCompRegion(mm,decomp_level,fields_out));
-//	regions.push_back(FrontCompRegion(mm,decomp_level,fields_out));
-//
-//	regions.push_back(LowerCompRegion(mm,decomp_level,fields_out));
-//	regions.push_back(UpperCompRegion(mm,decomp_level,fields_out));
-//	}
-//	int target_volume = (nn.x)*(nn.y)*(nn.z);
-//	bool passed = TestRegions(regions,target_volume);
-//	if (!passed) exit(0);
-//	return regions;
-//}
 std::vector<Region>
 getinputregions(std::vector<Region> output_regions, const RegionMemory memory, const AcBoundary boundaries_included)
 {
@@ -1984,14 +1849,6 @@ getinputregions(std::vector<Region> output_regions, const RegionMemory memory, c
 		input_regions.push_back(GetInputRegion(region,memory,boundaries_included));
 	return input_regions;
 }
-//void
-//testmydecomp(int3 nn, int decomp_level, std::vector<Field> fields_out)
-//{
-//	std::vector<Region> regions = getmyregions(nn,decomp_level,fields_out);
-//	int target_volume = (nn.x)*(nn.y)*(nn.z);
-//	bool passed = TestRegions(regions,target_volume);
-//	if (!passed) exit(0);
-//}
 static AcReal3 
 get_spacings()
 {
@@ -2133,21 +1990,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 
         case TASKTYPE_COMPUTE: {
             acVerboseLogFromRootProc(rank, "Creating compute tasks\n");
-	    //This would be the better decomp strategy for now use the old on
-	    /**
-	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
-	    //std::vector<Region> comp_out_regions = getmyregions(nn,num_comp_tasks,fields_out);
-	    std::vector<Region> comp_out_regions = getmyregions(nn,0,fields_out);
-	    std::vector<Field> fields_in(op.fields_in,op.fields_in+op.num_fields_in);
-	    std::vector<Region> comp_input_regions = getinputregions(comp_out_regions,fields_in);
-	    for (size_t region_index=0; region_index< comp_out_regions.size(); ++region_index)
-	    {
-		    auto task = std::make_shared<ComputeTask>(op,region_index,comp_input_regions[region_index],comp_out_regions[region_index],device,swap_offset);
-                    graph->all_tasks.push_back(task);
-                    //autotune compute
-	    }
-	    **/
-            //for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
 	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
 	    std::vector<Field> fields_in(op.fields_in,op.fields_in+op.num_fields_in);
 
@@ -2157,13 +1999,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    std::vector<KernelReduceOutput> reduce_output_in(op.outputs_in,  op.outputs_in +op.num_outputs_in);
 	    std::vector<KernelReduceOutput> reduce_output_out(op.outputs_out,op.outputs_out+op.num_outputs_out);
 
-	    //Region full_region = FullRegion(grid.nn,{fields_out,profiles_out,reduce_output_out},false);
-	    //Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},false)[0];
 
 	    Region full_region = FullRegion(grid.nn,{fields_out,profiles_out,reduce_output_out},op.computes_on_halos);
 	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},op.computes_on_halos)[0];
-	    //
-            //for (int tag = Region::min_comp_tag; tag < 1; tag++) {
 	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
 	    if(((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim])
 	    {

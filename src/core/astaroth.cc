@@ -16,9 +16,6 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef AC_INSIDE_AC_LIBRARY 
-#define AC_INSIDE_AC_LIBRARY 
-#endif
 #include "astaroth.h"
 #include "buffer.cc"
 #include "user_builtin_non_scalar_constants.h"

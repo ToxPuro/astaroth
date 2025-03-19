@@ -16,8 +16,6 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#define AC_INSIDE_AC_LIBRARY 
-
 #define rocprim__warpSize() rocprim::warp_size()
 #define rocprim__warpId()   rocprim::warp_id()
 #define rocprim__warp_shuffle_down rocprim::warp_shuffle_down
