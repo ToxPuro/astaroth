@@ -118,7 +118,7 @@ verify_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
     return 0;
 }
 
-/** Benchmark async MPI halo exhange in a Cartesian grid*/
+/** Benchmark collective async MPI halo exchange in a Cartesian grid */
 static void
 bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr)
 {
@@ -143,7 +143,7 @@ bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac
         ERRCHK(fp != NULL);
 
         const auto nprocs{ac::mpi::get_size(cart_comm)};
-        ERRCHK(fprintf(fp, "%d,%g\n", nprocs, median) > 0);
+        ERRCHK(fprintf(fp, "\"%s\"%d,%g\n", "cart", nprocs, median) > 0);
 
         fclose(fp);
     }
@@ -154,7 +154,7 @@ main()
 {
     ac::mpi::init_funneled();
     try {
-        const ac::shape global_nn{8, 8, 8};
+        const ac::shape global_nn{32, 32, 32};
         const ac::index rr{3, 3, 3};
 
         MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
