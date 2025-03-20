@@ -7,13 +7,13 @@ df = pd.read_csv('../build/scaling.csv', names=['case','nprocs', 'us', 'jobid'])
 df = df.sort_values(by='nprocs')
 df
 
-df_cart = df[df['case']=='cart']
-df_pack = df[df['case']=='pack']
-plt.scatter(df_cart['nprocs'], df_cart['us'], label='cart')
-plt.scatter(df_pack['nprocs'], df_pack['us'], label='pack')
+for case in df['case'].unique():
+    df0 = df[df['case'] == case]
+    plt.scatter(df0['nprocs'], df0['us'], label=case)
+
 plt.xscale('log')
 plt.yscale('log')
 plt.legend()
 plt.show()
 
-df
+# df
