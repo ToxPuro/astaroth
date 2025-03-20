@@ -75,8 +75,8 @@ verify_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
     for (size_t i{0}; i < gbufs.size(); ++i)
         std::iota(gbufs[i].begin(), gbufs[i].end(), i * prod(global_nn));
 
-    const auto                          local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
-    const auto                          local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+    const auto                            local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto                            local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
     std::array<ac::device_ndbuffer<T>, 4> lbufs{
         ac::host_ndbuffer<T>{local_mm, -1}.to_device(),
         ac::host_ndbuffer<T>{local_mm, -1}.to_device(),
@@ -119,13 +119,15 @@ verify_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
 }
 
 /** Benchmark collective async MPI halo exchange in a Cartesian grid */
+template <typename T>
 static void
-bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr)
+bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr,
+                 const size_t jobid)
 {
-    const auto                  local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
-    const auto                  local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
-    ac::device_ndbuffer<double> din{local_mm};
-    ac::device_ndbuffer<double> dout{local_mm};
+    const auto             local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto             local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+    ac::device_ndbuffer<T> din{local_mm};
+    ac::device_ndbuffer<T> dout{local_mm};
 
     auto init_fn = [&din]() { randomize(din.get()); };
     auto bm_fn   = [&]() {
@@ -143,7 +145,37 @@ bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac
         ERRCHK(fp != NULL);
 
         const auto nprocs{ac::mpi::get_size(cart_comm)};
-        ERRCHK(fprintf(fp, "\"%s\"%d,%g\n", "cart", nprocs, median) > 0);
+        ERRCHK(fprintf(fp, "\"%s\",%d,%g,%zu\n", "cart", nprocs, median, jobid) > 0);
+
+        fclose(fp);
+    }
+}
+
+/** Benchmark packed async MPI halo exchange in a Cartesian grid */
+template <typename T>
+static void
+bm_halo_exchange_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr,
+                        const size_t jobid)
+{
+    const auto             local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto             local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+    ac::device_ndbuffer<T> din{local_mm};
+    ac::device_ndbuffer<T> dout{local_mm};
+
+    ac::comm::async_halo_exchange_task<T> he{local_mm, local_nn, rr, 1};
+    auto                                  init_fn = [&din]() { randomize(din.get()); };
+    auto                                  bm_fn   = [&]() {
+        he.launch(cart_comm, {din.get()});
+        he.wait({dout.get()});
+    };
+
+    const auto median{benchmark("halo exchange", init_fn, bm_fn)};
+    if (ac::mpi::get_rank(cart_comm) == 0) {
+        FILE* fp{fopen("scaling.csv", "a")};
+        ERRCHK(fp != NULL);
+
+        const auto nprocs{ac::mpi::get_size(cart_comm)};
+        ERRCHK(fprintf(fp, "\"%s\",%d,%g,%zu\n", "pack", nprocs, median, jobid) > 0);
 
         fclose(fp);
     }
@@ -154,8 +186,9 @@ main()
 {
     ac::mpi::init_funneled();
     try {
-        const ac::shape global_nn{32, 32, 32};
-        const ac::index rr{3, 3, 3};
+        const ac::shape global_nn{ac::make_shape(6, 4)};
+        const auto      rr{ac::make_index(global_nn.size(), 2)};
+        const size_t    jobid{0};
 
         MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
                                                      global_nn,
@@ -163,7 +196,8 @@ main()
 
         verify<int>(cart_comm, global_nn, rr);
         verify_packed<int>(cart_comm, global_nn, rr);
-        bm_halo_exchange(cart_comm, global_nn, rr);
+        bm_halo_exchange<double>(cart_comm, global_nn, rr, jobid);
+        bm_halo_exchange_packed<double>(cart_comm, global_nn, rr, jobid);
         ac::mpi::cart_comm_destroy(&cart_comm);
     }
     catch (const std::exception& e) {
