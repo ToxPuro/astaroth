@@ -750,7 +750,7 @@ struct allocate_arrays
 			{
 
 #if AC_VERBOSE
-				fprintf(stderr,"Allocating %s|%d\n",get_name(array),get_array_length(array,config));
+				fprintf(stderr,"Allocating %s|%zu\n",get_name(array),get_array_length(array,config));
 				fflush(stderr);
 #endif
 				auto d_mem_ptr = get_empty_pointer(array);
