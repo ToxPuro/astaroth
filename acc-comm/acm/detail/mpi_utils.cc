@@ -614,6 +614,8 @@ scatter_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
                  const ac::shape& local_mm, const ac::shape& local_nn,
                  const ac::index& local_nn_offset, void* recv_buffer)
 {
+    ERRCHK_MPI(local_nn_offset + local_nn <= local_mm);
+
     constexpr int root{0};
     const size_t  nprocs{as<size_t>(get_size(parent_comm))};
 
@@ -653,6 +655,8 @@ gather_advanced(const MPI_Comm& parent_comm, const MPI_Datatype& etype, //
                 const void*      send_buffer, //
                 const ac::shape& global_mm, const ac::index& subdomain_offset, void* recv_buffer)
 {
+    ERRCHK_MPI(local_nn_offset + local_nn <= local_mm);
+
     constexpr int root{0};
     const size_t  nprocs{as<size_t>(get_size(parent_comm))};
 
