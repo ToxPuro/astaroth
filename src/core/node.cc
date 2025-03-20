@@ -172,6 +172,12 @@ printInt3(const int3 vec)
 }
 
 __attribute__((unused)) static inline void
+printVolume(const Volume vec)
+{
+    printf("(%zu, %zu, %zu)", vec.x, vec.y, vec.z);
+}
+
+__attribute__((unused)) static inline void
 print(const AcMeshInfo config)
 {
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
@@ -245,10 +251,10 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
 
 #if AC_VERBOSE
     // clang-format off
-    printf("GridDims m ");   printInt3(node->grid.m);    printf("\n");
-    printf("GridDims n ");   printInt3(node->grid.n);    printf("\n");
-    printf("Subrid m "); printInt3(node->subgrid.m); printf("\n");
-    printf("Subrid n "); printInt3(node->subgrid.n); printf("\n");
+    printf("GridDims m ");   printVolume(node->grid.m);    printf("\n");
+    printf("GridDims n ");   printVolume(node->grid.n);    printf("\n");
+    printf("Subrid m "); printVolume(node->subgrid.m); printf("\n");
+    printf("Subrid n "); printVolume(node->subgrid.n); printf("\n");
     // clang-format on
 #endif
 

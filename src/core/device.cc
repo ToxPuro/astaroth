@@ -1191,7 +1191,7 @@ acDeviceReduceXY(const Device device, const Stream stream, const Field field,
             const Volume start    = (Volume){dims.n0.x, dims.n0.y, k};
             const Volume end      = (Volume){dims.n1.x, dims.n1.y, k + 1};
             const size_t nxy    = (end.x - start.x) * (end.y - start.y);
-            const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream],
+            const AcReal result = AcReal(1. / nxy) * acKernelReduceScal(device->streams[stream],
                                                                   reduction, field,
                                                                   start, end,
 								  AC_default_real_output,

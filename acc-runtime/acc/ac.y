@@ -422,6 +422,13 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         assert(fp_cpu);
         generate(new_root, fp_cpu, true);
 	fclose(fp_cpu);
+	
+	//TP: do this here for safety in case OPTIMIZE_MEM_ACCESSES=OFF
+	{
+  		format_source("user_kernels.h.raw","user_kernels.h");
+  		system("cp user_kernels.h user_kernels_backup.h");
+  		system("cp user_kernels.h user_cpu_kernels.h");
+	}
 
 	if(OPTIMIZE_MEM_ACCESSES)
 	{

@@ -8705,6 +8705,22 @@ stencilgen(ASTNode* root)
   fclose(stencilgen);
 }
 
+void
+gen_analysis_stencils(FILE* stream)
+{
+  string_vec stencil_names = get_names(STENCIL_STR);
+  for (size_t i = 0; i < stencil_names.size; ++i)
+  {
+    fprintf(stream,"AcReal %s(const Field& field_in)"
+           "{stencils_accessed[field_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
+           stencil_names.data[i], stencil_names.data[i]);
+    fprintf(stream,"AcReal %s_profile(const Profile& profile_in)"
+           "{stencils_accessed[NUM_ALL_FIELDS+profile_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
+           stencil_names.data[i], stencil_names.data[i]);
+  }
+  free_str_vec(&stencil_names);
+}
+
 //These are the same for mem_accesses pass and normal pass
 void
 gen_output_files(ASTNode* root)
@@ -8750,6 +8766,10 @@ gen_output_files(ASTNode* root)
   fprintf(fp,"  AC_PROF_TYPE\n");
   fprintf(fp,"} AcType;\n\n");
   fclose(fp);
+
+  FILE* analysis_stencils = fopen("analysis_stencils.h", "w");
+  gen_analysis_stencils(analysis_stencils);
+  fclose(analysis_stencils);
 
 
 }
@@ -8852,21 +8872,6 @@ clean_stream(FILE* stream)
 }
 
 
-void
-gen_analysis_stencils(FILE* stream)
-{
-  string_vec stencil_names = get_names(STENCIL_STR);
-  for (size_t i = 0; i < stencil_names.size; ++i)
-  {
-    fprintf(stream,"AcReal %s(const Field& field_in)"
-           "{stencils_accessed[field_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
-           stencil_names.data[i], stencil_names.data[i]);
-    fprintf(stream,"AcReal %s_profile(const Profile& profile_in)"
-           "{stencils_accessed[NUM_ALL_FIELDS+profile_in][stencil_%s] |= (1 | AC_STENCIL_CALL);return AcReal(1.0);};\n",
-           stencil_names.data[i], stencil_names.data[i]);
-  }
-  free_str_vec(&stencil_names);
-}
 
 void
 check_array_dim_identifiers(const char* id, const ASTNode* node)
@@ -8940,9 +8945,9 @@ print_nested_ones(FILE* fp, size_t x, size_t y, size_t z, size_t dims)
         if(dims >= 2) fprintf(fp,"{");
         for (size_t k = 0; k < z; ++k)
           fprintf(fp, "1,");
-      	if(dims >= 2) fprintf(fp,"},");
+      	if(dims >= 2) fprintf(fp,"}%s",j+1 != y ? "," : "");
       }
-      if(dims >= 3) fprintf(fp,"},");
+      if(dims >= 3) fprintf(fp,"}%s",i+1 != x ? "," : "");
     }
 }
 void
@@ -8952,29 +8957,30 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
   if (gen_mem_accesses || !OPTIMIZE_MEM_ACCESSES) {
     FILE* tmp = fopen("stencil_accesses.h", "w+");
     assert(tmp);
-    fprintf(tmp,
-            "static int "
-            "stencils_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] __attribute__((unused)) = {");
-    print_nested_ones(tmp,num_kernels,num_fields+num_profiles,num_stencils,3);
-    fprintf(tmp, "};");
 
     fprintf(tmp,
             "static int "
             "previous_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
     print_nested_ones(tmp,1,num_kernels,num_fields+num_profiles,2);
-    fprintf(tmp, "};");
+    fprintf(tmp, "};\n");
+
+    fprintf(tmp,
+            "static int "
+            "stencils_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] __attribute__((unused)) = {");
+    print_nested_ones(tmp,num_kernels,num_fields+num_profiles,num_stencils,3);
+    fprintf(tmp, "};\n");
 
     fprintf(tmp,
             "static int "
             "write_called [NUM_KERNELS][NUM_ALL_FIELDS] __attribute__((unused)) = {");
     print_nested_ones(tmp,1,num_kernels,num_fields,2);
-    fprintf(tmp, "};");
+    fprintf(tmp, "};\n");
 
     fprintf(tmp,
             "static int "
-            "write_called_profile [NUM_KERNELS][NUM_PROFILES] __attribute__((unused)) = {");
-    print_nested_ones(tmp,1,num_kernels,num_profiles,2);
-    fprintf(tmp, "};");
+            "write_called_profile [NUM_KERNELS][NUM_PROFILES+1] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_profiles+1,2);
+    fprintf(tmp, "};\n");
 
     fprintf(tmp,
             "static int "
@@ -9441,6 +9447,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   //fuse_kernels(intern("reduce_aa_x"),intern("reduce_aa_y"),root);
   //fuse_kernels(intern("remove_aa_x"),intern("remove_aa_y"),root);
   memset(reduce_infos,0,sizeof(node_vec)*MAX_FUNCS);
+
 }
 
 
@@ -9450,9 +9457,6 @@ compile_helper(const bool log)
   format_source("user_kernels.h.raw","user_kernels.h");
   system("cp user_kernels.h user_kernels_backup.h");
   system("cp user_kernels.h user_cpu_kernels.h");
-  FILE* analysis_stencils = fopen("analysis_stencils.h", "w");
-  gen_analysis_stencils(analysis_stencils);
-  fclose(analysis_stencils);
   if(log)
   {
   	printf("Compiling %s...\n", STENCILACC_SRC);

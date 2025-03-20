@@ -19,9 +19,9 @@ endif()
 
 ## Project options
 option(USE_HIP "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
-option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" OFF)
 
-if (BUILD_ACC_RUNTIME_LIBRARY)
+#TP: enables building of acc-runtime lib without rest of the lib
+if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 	add_definitions(-DBUILD_ACC_RUNTIME_LIBRARY=1)
         add_definitions(-DTWO_D=0)
         add_definitions(-DAC_DOUBLE_PRECISION=1)

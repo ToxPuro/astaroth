@@ -100,6 +100,7 @@ get_inv_n(AcMeshInfo info)
         return (long double)1.0l / n_grid_points;
 }
 
+#ifdef AC_INTEGRATION_ENABLED
 AcReal
 acHostReduceScal(const AcMesh mesh, const AcReduction reduction, const VertexBufferHandle a)
 {
@@ -333,3 +334,16 @@ acHostReduceVecScal(const AcMesh mesh, const AcReduction reduction, const Vertex
         return (AcReal) res;
     }
 }
+#else
+AcReal
+acHostReduceScal(const AcMesh , const AcReduction , const VertexBufferHandle
+                    ){printf("acHostReduceScal requires AC_INTEGRATION_ENABLED\n"); return 0.0;}
+AcReal
+acHostReduceVec(const AcMesh , const AcReduction , const VertexBufferHandle ,
+			        const VertexBufferHandle , const VertexBufferHandle
+                    ){printf("acHostReduceVec requires AC_INTEGRATION_ENABLED\n"); return 0.0;}
+AcReal
+acHostReduceVecScal(const AcMesh , const AcReduction , const VertexBufferHandle ,
+                    const VertexBufferHandle , const VertexBufferHandle ,
+                    const VertexBufferHandle ){printf("acHostReduceVecScal requires AC_INTEGRATION_ENABLED\n"); return 0.0;}
+#endif

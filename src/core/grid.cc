@@ -723,7 +723,7 @@ acGridInitBase(const AcMesh user_mesh)
     MPI_Barrier(astaroth_comm);
 
 #if AC_VERBOSE
-    log_grid_debug_info();
+    log_grid_debug_info(info);
 #endif
 
     // Check that mixed precision is correctly configured, AcRealPacked == AC_REAL_MPI_TYPE
