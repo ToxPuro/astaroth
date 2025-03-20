@@ -2,8 +2,6 @@
 #include <mpi.h>
 
 #include "ntuple.h"
-#include "type_conversion.h"
-#include "errchk_mpi.h"
 
 /**
  * Helper macros for printing
@@ -287,33 +285,4 @@ int reduce(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op&
 int reduce_axis(const MPI_Comm& parent_comm, const MPI_Datatype& etype, const MPI_Op& op,
                 const size_t& axis, const size_t count, void* data);
 
-                
-template<typename T>
-MPI_Datatype
-struct_create(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
-                const std::vector<T*>& displacements)
-{
-    const auto etype{ac::mpi::get_dtype<T>()};
-    const int block_count{as<int>(displacements.size())};
-    const auto block_lengths{ac::make_ntuple<int>(displacements.size(), 1)};
-
-    std::vector<MPI_Aint> mpi_displacements;
-    for (const T* ptr : displacements)
-        mpi_displacements.push_back(reinterpret_cast<MPI_Aint>(ptr));
-
-    std::vector<MPI_Datatype> block_types;
-    for (size_t i{0}; i < displacements.size(); ++i)
-        block_types.push_back(subarray_create(dims, subdims, offset, etype));
-
-    MPI_Datatype mpi_struct{MPI_DATATYPE_NULL};
-    ERRCHK_MPI_API(MPI_Type_create_struct(block_count, block_lengths.data(), mpi_displacements.data(), block_types.data(), &mpi_struct));
-    ERRCHK_MPI_API(MPI_Type_commit(&mpi_struct));
-
-    for (auto& block : block_types)
-        subarray_destroy(&block);
-    block_types.clear();
-
-    return mpi_struct;
-}
-                
 } // namespace ac::mpi
