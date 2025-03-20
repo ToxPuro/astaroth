@@ -141,9 +141,9 @@ main(int argc, char** argv)
     for (size_t j = 0; j < num_samples; ++j) {
         // Dryrun and randomize
 	acKernelInputParams* params= acDeviceGetKernelInputParamsObject(device);
-	params->twopass_solve_intermediate.step_num= step_number;
+	params->twopass_solve_intermediate.step_num= AC_SUBSTEP_NUMBER(step_number);
 	params->twopass_solve_intermediate.dt= dt;
-	params->twopass_solve_final.step_num= step_number;
+	params->twopass_solve_final.step_num= AC_SUBSTEP_NUMBER(step_number);
 	params->twopass_solve_final.current_time = 0.0;
         //acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
         acDeviceLaunchKernel(device, STREAM_DEFAULT, twopass_solve_intermediate, dims.n0, dims.n1);

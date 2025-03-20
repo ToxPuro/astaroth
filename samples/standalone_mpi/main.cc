@@ -102,19 +102,19 @@ write_info(const AcMeshInfo* config)
     // MV: Now adapted into working condition. E.g. removed useless / harmful formatting.
 
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        fprintf(infotxt, "int %s %d\n", intparam_names[i], config->params.scalars.int_params[i]);
+        fprintf(infotxt, "int %s %d\n", intparam_names[i], config->int_params[i]);
 
     for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        fprintf(infotxt, "int3 %s  %d %d %d\n", int3param_names[i], config->params.scalars.int3_params[i].x,
-                config->params.scalars.int3_params[i].y, config->params.scalars.int3_params[i].z);
+        fprintf(infotxt, "int3 %s  %d %d %d\n", int3param_names[i], config->int3_params[i].x,
+                config->int3_params[i].y, config->int3_params[i].z);
 
     for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        fprintf(infotxt, "real %s %g\n", realparam_names[i], double(config->params.scalars.real_params[i]));
+        fprintf(infotxt, "real %s %g\n", realparam_names[i], double(config->real_params[i]));
 
     for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
         fprintf(infotxt, "real3 %s  %g %g %g\n", real3param_names[i],
-                double(config->params.scalars.real3_params[i].x), double(config->params.scalars.real3_params[i].y),
-                double(config->params.scalars.real3_params[i].z));
+                double(config->real3_params[i].x), double(config->real3_params[i].y),
+                double(config->real3_params[i].z));
 
     fclose(infotxt);
 }
@@ -349,6 +349,7 @@ calc_timestep(const AcMeshInfo info)
     //TP: for backwards compatible scheme where timestep is calculated independently of the time integration
     //TP: otherwise calculated alongside the time integration
     //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
+    (void)info;
     return acDeviceGetOutput(acGridGetDevice(),AC_dt_min);
     //TP: old way to do it: requires considerably more reads and reductions than doing it in the DSL
     /*
@@ -948,7 +949,7 @@ main(int argc, char** argv)
     acPushToConfig(info,AC_proc_mapping_strategy,(int)AcProcMappingStrategy::Morton);
     acPushToConfig(info,AC_decompose_strategy,(int)AcDecomposeStrategy::Morton);
 
-    info.comm = MPI_COMM_WORLD;
+    info.comm->handle = MPI_COMM_WORLD;
 
     // OL: We are calling both acLoadConfig AND set_extra_config_params (defined in config_loader.c)
     // even though acLoadConfig calls acHostUpdateParams

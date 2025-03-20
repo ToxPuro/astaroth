@@ -195,9 +195,9 @@ main(int argc, char** argv)
         fprintf(stdout, "Running weak scaling benchmarks.\n");
         uint3_64 decomp = decompose(nprocs);
 	info[AC_ngrid] = (int3){
-				decomp.x*info[AC_ngrid].x,
-				decomp.y*info[AC_ngrid].y,
-				decomp.z*info[AC_ngrid].z
+				(int)decomp.x*info[AC_ngrid].x,
+				(int)decomp.y*info[AC_ngrid].y,
+				(int)decomp.z*info[AC_ngrid].z
 			  };
     }
     else {
