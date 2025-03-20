@@ -25,4 +25,4 @@ randomize(ac::mr::pointer<double, Allocator> ptr)
  * bench: function to benchmark
  */
 double benchmark(const std::string label, const std::function<void()>& init,
-                 const std::function<void()>& bench);
+                 const std::function<void()>& bench, const std::function<void()>& sync);

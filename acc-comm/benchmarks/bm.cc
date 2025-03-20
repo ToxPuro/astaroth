@@ -26,7 +26,7 @@ test_median()
 
 double
 benchmark(const std::string label, const std::function<void()>& init,
-          const std::function<void()>& bench)
+          const std::function<void()>& bench, const std::function<void()>& sync)
 {
     test_median();
 
@@ -41,8 +41,10 @@ benchmark(const std::string label, const std::function<void()>& init,
     std::vector<long> samples;
     for (size_t i{0}; i < nsamples; ++i) {
         init();
+        sync();
         const auto start{std::chrono::system_clock::now()};
         bench();
+        sync();
         const auto elapsed{std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::system_clock::now() - start)};
         samples.push_back(elapsed.count());

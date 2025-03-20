@@ -122,7 +122,7 @@ verify_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
 template <typename T>
 static void
 bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr,
-                 const size_t jobid)
+                 const size_t jobid, const std::string& label)
 {
     const auto             local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
     const auto             local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
@@ -138,14 +138,18 @@ bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac
             reqs.pop_back();
         }
     };
+    auto sync_fn = [&]() {
+        ERRCHK_CUDA_API(cudaDeviceSynchronize());
+        ERRCHK_MPI_API(MPI_Barrier(cart_comm));
+    };
 
-    const auto median{benchmark("halo exchange", init_fn, bm_fn)};
+    const auto median{benchmark(label, init_fn, bm_fn, sync_fn)};
     if (ac::mpi::get_rank(cart_comm) == 0) {
         FILE* fp{fopen("scaling.csv", "a")};
         ERRCHK(fp != NULL);
 
         const auto nprocs{ac::mpi::get_size(cart_comm)};
-        ERRCHK(fprintf(fp, "\"%s\",%d,%g,%zu\n", "cart", nprocs, median, jobid) > 0);
+        ERRCHK(fprintf(fp, "\"%s\",%d,%g,%zu\n", label.c_str(), nprocs, median, jobid) > 0);
 
         fclose(fp);
     }
@@ -155,7 +159,7 @@ bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac
 template <typename T>
 static void
 bm_halo_exchange_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr,
-                        const size_t jobid)
+                        const size_t jobid, const std::string& label)
 {
     const auto             local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
     const auto             local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
@@ -163,19 +167,24 @@ bm_halo_exchange_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, c
     ac::device_ndbuffer<T> dout{local_mm};
 
     ac::comm::async_halo_exchange_task<T> he{local_mm, local_nn, rr, 1};
+
     auto                                  init_fn = [&din]() { randomize(din.get()); };
     auto                                  bm_fn   = [&]() {
         he.launch(cart_comm, {din.get()});
         he.wait({dout.get()});
     };
+    auto sync_fn = [&]() {
+        ERRCHK_CUDA_API(cudaDeviceSynchronize());
+        ERRCHK_MPI_API(MPI_Barrier(cart_comm));
+    };
 
-    const auto median{benchmark("halo exchange", init_fn, bm_fn)};
+    const auto median{benchmark(label, init_fn, bm_fn, sync_fn)};
     if (ac::mpi::get_rank(cart_comm) == 0) {
         FILE* fp{fopen("scaling.csv", "a")};
         ERRCHK(fp != NULL);
 
         const auto nprocs{ac::mpi::get_size(cart_comm)};
-        ERRCHK(fprintf(fp, "\"%s\",%d,%g,%zu\n", "pack", nprocs, median, jobid) > 0);
+        ERRCHK(fprintf(fp, "\"%s\",%d,%g,%zu\n", label.c_str(), nprocs, median, jobid) > 0);
 
         fclose(fp);
     }
@@ -186,19 +195,43 @@ main()
 {
     ac::mpi::init_funneled();
     try {
-        const ac::shape global_nn{ac::make_shape(6, 4)};
-        const auto      rr{ac::make_index(global_nn.size(), 2)};
+        const ac::shape global_nn{ac::make_shape(3, 128)};
+        const auto      rr{ac::make_index(global_nn.size(), 3)};
         const size_t    jobid{0};
 
-        MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
-                                                     global_nn,
-                                                     ac::mpi::RankReorderMethod::hierarchical)};
+        {
+            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
+                                                        global_nn,
+                                                        ac::mpi::RankReorderMethod::hierarchical)};
 
-        verify<int>(cart_comm, global_nn, rr);
-        verify_packed<int>(cart_comm, global_nn, rr);
-        bm_halo_exchange<double>(cart_comm, global_nn, rr, jobid);
-        bm_halo_exchange_packed<double>(cart_comm, global_nn, rr, jobid);
-        ac::mpi::cart_comm_destroy(&cart_comm);
+            // verify<int>(cart_comm, global_nn, rr);
+            // verify_packed<int>(cart_comm, global_nn, rr);
+            bm_halo_exchange<double>(cart_comm, global_nn, rr, jobid, "collective-hierarchical");
+            bm_halo_exchange_packed<double>(cart_comm, global_nn, rr, jobid, "packed-hierarchical");
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
+                global_nn,
+                ac::mpi::RankReorderMethod::no)};
+
+            // verify<int>(cart_comm, global_nn, rr);
+            // verify_packed<int>(cart_comm, global_nn, rr);
+            bm_halo_exchange<double>(cart_comm, global_nn, rr, jobid, "collective-no");
+            bm_halo_exchange_packed<double>(cart_comm, global_nn, rr, jobid, "packed-no");
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+        {
+            MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
+                global_nn,
+                ac::mpi::RankReorderMethod::default_mpi)};
+
+            // verify<int>(cart_comm, global_nn, rr);
+            // verify_packed<int>(cart_comm, global_nn, rr);
+            bm_halo_exchange<double>(cart_comm, global_nn, rr, jobid, "collective-default");
+            bm_halo_exchange_packed<double>(cart_comm, global_nn, rr, jobid, "packed-default");
+            ac::mpi::cart_comm_destroy(&cart_comm);
+        }
     }
     catch (const std::exception& e) {
         ERROR_DESC("Exception caught");
