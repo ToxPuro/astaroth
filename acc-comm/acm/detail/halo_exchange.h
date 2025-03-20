@@ -77,3 +77,66 @@ launch_halo_exchange(const MPI_Comm& parent_comm, const ac::shape& local_mm,
     ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
     return recv_reqs;
 }
+
+template <typename T>
+[[nodiscard]] std::vector<MPI_Request>
+launch_halo_exchange_struct(const MPI_Comm& parent_comm, const ac::shape& local_mm,
+    const ac::shape& local_nn, const ac::shape& rr, const std::vector<T*>& send_data,
+    std::vector<T*> recv_data)
+{
+    // Must be larger than the boundary area to avoid boundary artifacts
+    // Also: results in undefined behavior if send and recv destinations are the same
+    ERRCHK_MPI(local_nn >= rr);
+
+    // Duplicate the communicator to ensure the operation does not interfere
+    // with other operations on the parent communicator
+    MPI_Comm cart_comm;
+    ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &cart_comm));
+
+    // Partition the domain
+    auto segments{partition(local_mm, local_nn, rr)};
+
+    // Prune the segment containing the computational domain
+    for (size_t i{0}; i < segments.size(); ++i) {
+        if (within_box(segments[i].offset, local_nn, rr)) {
+            segments.erase(segments.begin() + as<long>(i));
+            --i;
+        }
+    }
+
+    std::vector<MPI_Request> send_reqs;
+    std::vector<MPI_Request> recv_reqs;
+    int16_t                  tag{0};
+    for (const ac::segment& segment : segments) {
+        const ac::index recv_offset{segment.offset};
+        const ac::index send_offset{((local_nn + recv_offset - rr) % local_nn) + rr};
+
+        MPI_Datatype recv_subarray{ac::mpi::struct_create(local_mm, segment.dims, recv_offset, recv_data)};
+        MPI_Datatype send_subarray{ac::mpi::struct_create(local_mm, segment.dims, send_offset, send_data)};
+
+        const ac::direction recv_direction{ac::mpi::get_direction(segment.offset, local_nn, rr)};
+        const int           recv_neighbor{ac::mpi::get_neighbor(cart_comm, recv_direction)};
+        const int           send_neighbor{ac::mpi::get_neighbor(cart_comm, -recv_direction)};
+
+        MPI_Request recv_req;
+        ERRCHK_MPI_API(
+            MPI_Irecv(MPI_BOTTOM, 1, recv_subarray, recv_neighbor, tag, cart_comm, &recv_req));
+        recv_reqs.push_back(recv_req);
+
+        MPI_Request send_req;
+        ERRCHK_MPI_API(
+            MPI_Isend(MPI_BOTTOM, 1, send_subarray, send_neighbor, tag, cart_comm, &send_req));
+        send_reqs.push_back(send_req);
+
+        ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
+        ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
+        ac::mpi::increment_tag(tag);
+    }
+    while (!send_reqs.empty()) {
+        ac::mpi::request_wait_and_destroy(&send_reqs.back());
+        send_reqs.pop_back();
+    }
+
+    ERRCHK_MPI_API(MPI_Comm_free(&cart_comm));
+    return recv_reqs;
+}
