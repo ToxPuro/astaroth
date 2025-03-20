@@ -20,6 +20,10 @@ launch_halo_exchange(const MPI_Comm& parent_comm, const ac::shape& local_mm,
                      const ac::shape& local_nn, const ac::shape& rr, const T* send_data,
                      T* recv_data)
 {
+    // Must be larger than the boundary area to avoid boundary artifacts
+    // Also: results in undefined behavior if send and recv destinations are the same
+    ERRCHK_MPI(local_nn >= rr);
+
     // Duplicate the communicator to ensure the operation does not interfere
     // with other operations on the parent communicator
     MPI_Comm cart_comm;
