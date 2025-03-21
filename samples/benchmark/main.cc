@@ -36,7 +36,6 @@ main(void)
 {
     printf("The library was built without MPI support, cannot run. Rebuild Astaroth with "
            "cmake -DMPI_ENABLED=ON .. to enable.\n");
-    (void)verify; // Unused
     return EXIT_FAILURE;
 }
 #elif !defined(AC_INTEGRATION_ENABLED)
@@ -46,7 +45,6 @@ main(void)
     printf("The library was built without AC_INTEGRATION_ENABLED, cannot run. Rebuild "
            "Astaroth with a DSL source with ´hostdefine AC_INTEGRATION_ENABLED´ and ensure the "
            "missing fields ('VTXBUF_UUX', etc) are defined.\n");
-    (void)verify; // Unused
     return EXIT_FAILURE;
 }
 #else
@@ -197,9 +195,9 @@ main(int argc, char** argv)
         fprintf(stdout, "Running weak scaling benchmarks.\n");
         uint3_64 decomp = decompose(nprocs);
 	info[AC_ngrid] = (int3){
-				decomp.x*info[AC_ngrid].x,
-				decomp.y*info[AC_ngrid].y,
-				decomp.z*info[AC_ngrid].z
+				(int)decomp.x*info[AC_ngrid].x,
+				(int)decomp.y*info[AC_ngrid].y,
+				(int)decomp.z*info[AC_ngrid].z
 			  };
     }
     else {

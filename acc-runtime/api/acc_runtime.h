@@ -302,10 +302,10 @@ typedef struct {
   	int field_has_stencil_op[NUM_KERNELS][NUM_ALL_FIELDS];
   	int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS];
   	int written_fields[NUM_KERNELS][NUM_ALL_FIELDS];
-	int read_profiles[NUM_KERNELS][NUM_PROFILES];
-	int reduced_profiles[NUM_KERNELS][NUM_PROFILES];
-	int written_profiles[NUM_KERNELS][NUM_PROFILES];
-  	int profile_has_stencil_op[NUM_KERNELS][NUM_PROFILES];
+	int read_profiles[NUM_KERNELS][NUM_PROFILES+1];
+	int reduced_profiles[NUM_KERNELS][NUM_PROFILES+1];
+	int written_profiles[NUM_KERNELS][NUM_PROFILES+1];
+  	int profile_has_stencil_op[NUM_KERNELS][NUM_PROFILES+1];
 	KernelReduceOutput reduce_inputs[NUM_KERNELS][NUM_OUTPUTS+1];
 	KernelReduceOutput reduce_outputs[NUM_KERNELS][NUM_OUTPUTS+1];
 	size_t n_reduce_inputs[NUM_KERNELS];
@@ -420,7 +420,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 #if AC_RUNTIME_COMPILATION
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
 			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
-  static void* __attribute__((unused)) acLoadRunTime(FILE* stream)
+  static UNUSED void* acLoadRunTime(FILE* stream)
   {
  	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_LAZY | RTLD_GLOBAL);
 	if(!handle)

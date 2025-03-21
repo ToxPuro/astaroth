@@ -5,8 +5,8 @@
 /*
     Block comment test
 */
-Field a
-Stencil b {
+Field f_a
+Stencil s_b {
 	[0][0][0] = 1
 }
 

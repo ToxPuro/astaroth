@@ -422,6 +422,13 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         assert(fp_cpu);
         generate(new_root, fp_cpu, true);
 	fclose(fp_cpu);
+	
+	//TP: do this here for safety in case OPTIMIZE_MEM_ACCESSES=OFF
+	{
+  		format_source("user_kernels.h.raw","user_kernels.h");
+  		system("cp user_kernels.h user_kernels_backup.h");
+  		system("cp user_kernels.h user_cpu_kernels.h");
+	}
 
 	if(OPTIMIZE_MEM_ACCESSES)
 	{
@@ -465,15 +472,18 @@ main(int argc, char** argv)
     string_vec filenames;
     init_str_vec(&filenames);
     char* file = NULL;
-    RUNTIME_COMPILATION = !strcmp(argv[argc-1],"1"); 
-    READ_OVERRIDES      = !strcmp(argv[argc-2],"1"); 
-    if(argc > 4)
+    RUNTIME_COMPILATION = argc == 2 ? false : !strcmp(argv[argc-1],"1"); 
+    READ_OVERRIDES      = argc == 2 ? false : !strcmp(argv[argc-2],"1"); 
+
+    if(argc == 2 || argc == 4)
+    {
+	file = argv[1];
+    }
+    else if(argc > 4)
     {
 	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[2])));
 	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[2]);
     }
-    else if (argc == 4)
-	file = argv[1];
     else {
         puts("Usage: ./acc [source file]");
         return EXIT_FAILURE;
@@ -912,6 +922,16 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
 								 $$->expr_type = intern(combine_all_new($$->lhs)); 
 								 astnode_set_postfix(")", $$);  
 								 astnode_set_infix("(", $$); 
+								 //TP: do special transformation from struct(a,b,c) --> (struct){a,b,c} to ensure backwards compatibility
+								 if(get_node_by_token(STRUCT_TYPE,$$->lhs))
+								 {
+								 	astnode_set_postfix("}", $$);  
+								 	astnode_set_infix("{", $$); 
+
+								 	astnode_set_prefix("(", $$); 
+								 	astnode_set_infix("){", $$);  
+								 	astnode_set_postfix("}", $$);  
+								 }
 								 $$->lhs->type ^= NODE_TSPEC; $$->token = CAST; /* Unset NODE_TSPEC flag, casts are handled as functions */ 
 							       }
                   | '(' type_specifier ')' struct_initializer { 
@@ -1051,7 +1071,7 @@ declaration: type_declaration  declaration_list { $$ = astnode_create(NODE_DECLA
 
 
 declaration_list: base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-                | declaration_list ',' base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); /* Note ';' infix */ }
+                | declaration_list ',' base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(";", $$); /* Note ';' infix */ }
                 ;
 
 declaration_list_trailing_allowed: base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
@@ -1108,10 +1128,13 @@ assignment: declaration assignment_body {
 assignment_body: assignment_op expression_list
 	       {
                     $$ = astnode_create(NODE_UNKNOWN, $1, $2);
-                    if ($$->rhs && $$->rhs->rhs) {
-                        astnode_set_prefix("[]", $$);
-                        astnode_set_infix("{", $$);
-                        astnode_set_postfix("}", $$);
+
+		    const int n_vars = count_num_of_nodes_in_list($$->rhs);
+                    if (n_vars > 1) {
+			ASTNode* rhs = astnode_create(NODE_ARRAY_INITIALIZER,$$->rhs,NULL);
+			astnode_set_prefix("{",rhs);
+			astnode_set_postfix("}",rhs);
+			$$->rhs = rhs;
                     }
 
                 }

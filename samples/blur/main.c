@@ -29,9 +29,7 @@ main(int argc, char** argv)
         return EXIT_FAILURE;
     }
     else {
-        info.int_params[AC_nx] = atoi(argv[1]);
-        info.int_params[AC_ny] = atoi(argv[2]);
-        info.int_params[AC_nz] = 1;
+        info.int3_params[AC_nlocal] = (int3){atoi(argv[1]),atoi(argv[2]),1};
         acHostUpdateParams(&info);
     }
 
@@ -49,14 +47,17 @@ main(int argc, char** argv)
     Timer t;
     timer_reset(&t);
 
-    const int3 nn_min = (int3){info.int_params[AC_nx_min], info.int_params[AC_ny_min],
-                               info.int_params[AC_nz_min]};
-    const int3 nn_max = (int3){info.int_params[AC_nx_max], info.int_params[AC_ny_max],
-                               info.int_params[AC_nz_max]};
+    const int3 nn_min = (int3){info.int3_params[AC_nmin].x, info.int3_params[AC_nmin].y,
+                               info.int3_params[AC_nmin].z};
+    const int3 nn_max = (int3){info.int3_params[AC_nlocal_max].x, info.int3_params[AC_nlocal_max].y,
+                               info.int3_params[AC_nlocal_max].z};
     const int3 start  = nn_min;
     const int3 end    = nn_max;
 
-    acDeviceLaunchKernel(device, STREAM_DEFAULT, blur_kernel, start, end);
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, blur_kernel, 
+		    (Volume){(size_t)start.x,(size_t)start.y,(size_t)start.z}, 
+		    (Volume){(size_t)end.x,(size_t)end.y,(size_t)end.z}
+		    );
     acDeviceSwapBuffers(device);
 
     acDeviceStoreMesh(device, STREAM_DEFAULT, &mesh);
@@ -67,8 +68,8 @@ main(int argc, char** argv)
         for (int k = nn_min.z; k < nn_max.z; ++k) {
             printf("==== DEPTH %d ====\n", k);
             if (print_bounds) {
-                for (int j = 0; j < info.int_params[AC_my]; ++j) {
-                    for (int i = 0; i < info.int_params[AC_mx]; ++i) {
+                for (int j = 0; j < info.int3_params[AC_mlocal].y; ++j) {
+                    for (int i = 0; i < info.int3_params[AC_mlocal].x; ++i) {
                         printf("%.3g ",
                                (double)mesh.vertex_buffer[w][acVertexBufferIdx(i, j, k, info)]);
                     }
@@ -87,7 +88,7 @@ main(int argc, char** argv)
         }
     }
 
-    acDeviceDestroy(device);
+    acDeviceDestroy(&device);
     acHostMeshDestroy(&mesh);
 
     return EXIT_SUCCESS;

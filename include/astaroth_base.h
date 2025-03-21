@@ -47,8 +47,25 @@ typedef struct AcSubCommunicators {
 } AcSubCommunicators;
 #endif
 
+typedef enum AcBoundary {
+    BOUNDARY_NONE  = 0,
+    BOUNDARY_X_TOP = 0x01,
+    BOUNDARY_X_BOT = 0x02,
+    BOUNDARY_X     = BOUNDARY_X_TOP | BOUNDARY_X_BOT,
+    BOUNDARY_Y_TOP = 0x04,
+    BOUNDARY_Y_BOT = 0x08,
+    BOUNDARY_Y     = BOUNDARY_Y_TOP | BOUNDARY_Y_BOT,
+    BOUNDARY_Z_TOP = 0x10,
+    BOUNDARY_Z_BOT = 0x20,
+    BOUNDARY_Z     = BOUNDARY_Z_TOP | BOUNDARY_Z_BOT,
+    BOUNDARY_XY    = BOUNDARY_X | BOUNDARY_Y,
+    BOUNDARY_XZ    = BOUNDARY_X | BOUNDARY_Z,
+    BOUNDARY_YZ    = BOUNDARY_Y | BOUNDARY_Z,
+    BOUNDARY_XYZ   = BOUNDARY_X | BOUNDARY_Y | BOUNDARY_Z
+} AcBoundary;
 
-#define _UNUSED __attribute__((unused)) // Does not give a warning if unused
+
+#define UNUSED __attribute__((unused)) // Does not give a warning if unused
 
 
 
@@ -154,11 +171,10 @@ enum class AcMPICommStrategy:int{
 #undef AC_GEN_ID
 
 #define AC_GEN_STR(X) #X,
-static const char* initcondtype_names[] _UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
+static const char* initcondtype_names[] UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
 
 
 #undef AC_GEN_STR
-#undef _UNUSED
 
 typedef struct node_s* Node;
 typedef struct device_s* Device;
