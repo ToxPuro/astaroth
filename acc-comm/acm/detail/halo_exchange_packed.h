@@ -45,11 +45,19 @@ class async_halo_exchange_task {
         }
     }
 
-    void launch(const MPI_Comm&                                   parent_comm,
+    void launch(const MPI_Comm&                                   comm,
                 const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
     {
-        for (auto& packet : m_packets)
-            packet->launch(parent_comm, inputs);
+        static int16_t tag{0};
+        for (auto& packet : m_packets){
+            
+            constexpr int MPI_TAG_UB_MIN_VALUE{32767}; // Note duplicated code: also set in mpi_utils. TODO fix
+            ERRCHK_MPI(m_packets.size() < MPI_TAG_UB_MIN_VALUE);
+            
+            packet->launch(comm, tag, inputs);
+            
+            ac::mpi::increment_tag(&tag);
+        }
     }
 
     void wait(std::vector<ac::mr::pointer<T, Allocator>> outputs)

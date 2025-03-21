@@ -407,18 +407,18 @@ request_wait_and_destroy(MPI_Request* req)
 // }
 
 void
-increment_tag(int16_t& tag)
+increment_tag(int16_t* tag)
 {
     // MPI_TAG_UB is required to be at least this large by the MPI 4.1 standard
     // However, not all implementations seem to define it (note int*) and
     // MPI_Comm_get_attr fails, so must be hardcoded here
     constexpr int MPI_TAG_UB_MIN_VALUE{32767};
     static_assert(std::numeric_limits<int16_t>::max() == MPI_TAG_UB_MIN_VALUE);
-    ERRCHK_MPI(tag >= 0);
+    ERRCHK_MPI((*tag) >= 0);
 
-    ++tag;
-    if (tag < 0)
-        tag = 0;
+    ++(*tag);
+    if ((*tag) < 0)
+        (*tag) = 0;
 }
 
 int

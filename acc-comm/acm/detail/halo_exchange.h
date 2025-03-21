@@ -63,7 +63,7 @@ launch_halo_exchange(const MPI_Comm& parent_comm, const ac::shape& local_mm,
 
         ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
         ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
-        ac::mpi::increment_tag(tag);
+        ac::mpi::increment_tag(&tag);
     }
     while (!send_reqs.empty()) {
         ac::mpi::request_wait_and_destroy(&send_reqs.back());

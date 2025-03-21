@@ -114,7 +114,7 @@ void request_wait_and_destroy(MPI_Request* req);
 // int get_next_tag(void);
 
 /** Increments the tag. The tag will be within the interval [0, 32767] afterwards. */
-void increment_tag(int16_t& tag);
+void increment_tag(int16_t* tag);
 
 int get_rank(const MPI_Comm& cart_comm);
 

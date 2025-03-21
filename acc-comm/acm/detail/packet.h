@@ -23,7 +23,7 @@ template <typename T, typename Allocator> class packet {
     ac::buffer<T, Allocator> m_send_buffer;
     ac::buffer<T, Allocator> m_recv_buffer;
 
-    MPI_Comm    m_comm{MPI_COMM_NULL};
+    // MPI_Comm    m_comm{MPI_COMM_NULL};
     MPI_Request m_send_req{MPI_REQUEST_NULL};
     MPI_Request m_recv_req{MPI_REQUEST_NULL};
 
@@ -53,19 +53,19 @@ template <typename T, typename Allocator> class packet {
         if (m_send_req != MPI_REQUEST_NULL)
             ERRCHK_MPI_API(MPI_Request_free(&m_send_req));
 
-        ERRCHK_MPI(m_comm == MPI_COMM_NULL);
-        if (m_comm != MPI_COMM_NULL)
-            ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
+        // ERRCHK_MPI(m_comm == MPI_COMM_NULL);
+        // if (m_comm != MPI_COMM_NULL)
+        //     ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
     }
 
-    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_pointer<T>>& inputs)
+    void launch(const MPI_Comm& m_comm, const int tag, const std::vector<ac::mr::device_pointer<T>>& inputs)
     {
         ERRCHK_MPI(!m_in_progress);
         m_in_progress = true;
 
         // Communicator
-        ERRCHK_MPI(m_comm == MPI_COMM_NULL);
-        ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &m_comm));
+        // ERRCHK_MPI(m_comm == MPI_COMM_NULL);
+        // ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &m_comm));
 
         // Find the direction and neighbors of the segment
         ac::index send_offset{((m_local_nn + m_segment.offset - m_local_rr) % m_local_nn) +
@@ -81,7 +81,7 @@ template <typename T, typename Allocator> class packet {
         ERRCHK_MPI(count <= m_recv_buffer.size());
 
         // Post recv
-        const int tag{0};
+        // const int tag{0};
         ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
         ERRCHK_MPI_API(MPI_Irecv(m_recv_buffer.data(),
                                  as<int>(count),
@@ -123,12 +123,12 @@ template <typename T, typename Allocator> class packet {
         unpack(m_recv_buffer.get(), m_local_mm, m_segment.dims, m_segment.offset, outputs);
 
         ERRCHK_MPI_API(MPI_Wait(&m_send_req, MPI_STATUS_IGNORE));
-        ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
+        // ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
 
         // Check that the MPI implementation reset the resources
         ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
         ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
-        ERRCHK_MPI(m_comm == MPI_COMM_NULL);
+        // ERRCHK_MPI(m_comm == MPI_COMM_NULL);
 
         // Complete
         m_in_progress = false;
