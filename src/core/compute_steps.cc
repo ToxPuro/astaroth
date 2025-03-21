@@ -365,7 +365,7 @@ get_field_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
 	const auto bcs = get_boundconds(bc_graph,optimized);
 	const std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
 
-	FieldBCs res{};
+	FieldBCs res;
 	BoundCond empty_bc = {AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0};
 	for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
 		for(int j = 0; j < 6; ++j)

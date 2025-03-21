@@ -302,10 +302,10 @@ typedef struct {
   	int field_has_stencil_op[NUM_KERNELS][NUM_ALL_FIELDS];
   	int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS];
   	int written_fields[NUM_KERNELS][NUM_ALL_FIELDS];
-	int read_profiles[NUM_KERNELS][NUM_PROFILES];
-	int reduced_profiles[NUM_KERNELS][NUM_PROFILES];
-	int written_profiles[NUM_KERNELS][NUM_PROFILES];
-  	int profile_has_stencil_op[NUM_KERNELS][NUM_PROFILES];
+	int read_profiles[NUM_KERNELS][NUM_PROFILES+1];
+	int reduced_profiles[NUM_KERNELS][NUM_PROFILES+1];
+	int written_profiles[NUM_KERNELS][NUM_PROFILES+1];
+  	int profile_has_stencil_op[NUM_KERNELS][NUM_PROFILES+1];
 	KernelReduceOutput reduce_inputs[NUM_KERNELS][NUM_OUTPUTS+1];
 	KernelReduceOutput reduce_outputs[NUM_KERNELS][NUM_OUTPUTS+1];
 	size_t n_reduce_inputs[NUM_KERNELS];
