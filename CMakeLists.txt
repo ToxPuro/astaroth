@@ -51,12 +51,16 @@ option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
 option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
 option(RUNTIME_COMPILATION "Compile version of Astaroth compiled at runtime" OFF)
+option(SUPPRESS_COMPILER_WARNINGS "Suppress default compiler warnings of Astaroth" OFF)
 
 ## Project-wide compilation flags
 # -Werror TODO read
+if(NOT SUPPRESS_COMPILER_WARNINGS)
 set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -Wno-cast-function-type") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
+endif()
+
 add_definitions(-DAC_OVERRIDES_PATH="${CMAKE_BINARY_DIR}/overrides.h")
 add_definitions(-DAC_BASE_PATH="${CMAKE_SOURCE_DIR}")
 set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}")
@@ -75,6 +79,8 @@ if (LAGRANGIAN_GRID)
 else()
 	add_definitions(-DAC_LAGRANGIAN_GRID=0)
 endif()
+
+if(NOT SUPPRESS_COMPILER_WARNINGS)
 add_compile_options(# C/CXX/CUDA/HIP
                     # $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Werror>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfatal-errors>
@@ -87,6 +93,7 @@ add_compile_options(# C/CXX/CUDA/HIP
                     # Workaround: MPI_CXX_SKIP_MPICXX not applied properly for some reason
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-DOMPI_SKIP_MPICXX>
 )
+endif()
 
 ## CUDA and HIP
 find_package(CUDAToolkit QUIET)
