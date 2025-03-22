@@ -479,7 +479,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_X,kernel))
     {
-    	printf("[[maybe_unused]] const auto reduce_sum_real_x __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_x __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
     else
     {
@@ -501,7 +501,7 @@ gen_profile_funcs(const int kernel)
     //!!TP: NOTE this only works as long as blockfactor.x == 1!!
     if(!get_num_reduced_profiles(PROFILE_Y,kernel))
     {
-    	printf("[[maybe_unused]] const auto reduce_sum_real_y __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_y __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
     else
     {
@@ -535,7 +535,7 @@ gen_profile_funcs(const int kernel)
     
     if(!get_num_reduced_profiles(PROFILE_Z,kernel))
     {
-    	printf("[[maybe_unused]] const auto reduce_sum_real_z __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_z __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
     else
     {
@@ -570,7 +570,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_XY,kernel))
     {
-    	printf("[[maybe_unused]] const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
     else
     {
@@ -595,7 +595,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_YX,kernel))
     {
-    	printf("[[maybe_unused]] const auto reduce_sum_real_yx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_yx __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
     else
     {
@@ -620,7 +620,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_XZ,kernel))
     {
-    	printf("[[maybe_unused]] const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
     else
     {
@@ -645,7 +645,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_ZX,kernel))
     {
-    	printf("[[maybe_unused]] const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
     else
     {
@@ -669,7 +669,7 @@ gen_profile_funcs(const int kernel)
     }
     if(!get_num_reduced_profiles(PROFILE_YZ,kernel))
     {
-    	printf("[[maybe_unused]] const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
     else
     {
@@ -685,7 +685,7 @@ gen_profile_funcs(const int kernel)
 
     if(!get_num_reduced_profiles(PROFILE_ZY,kernel))
     {
-    	printf("[[maybe_unused]] const auto reduce_sum_real_zy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {};");
+    	printf("[[maybe_unused]] const auto reduce_sum_real_zy __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
     else
     {
@@ -1052,26 +1052,26 @@ gen_kernel_reduce_funcs(const int curr_kernel)
     }
     else
     {
-	    printf("[[maybe_unused]] const auto reduce_sum_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
-	    printf("[[maybe_unused]] const auto reduce_max_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
-	    printf("[[maybe_unused]] const auto reduce_min_real = [&](const AcReal& val, const AcRealOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_sum_real = [&](const AcReal&, const AcRealOutputParam&){};");
+	    printf("[[maybe_unused]] const auto reduce_max_real = [&](const AcReal&, const AcRealOutputParam&){};");
+	    printf("[[maybe_unused]] const auto reduce_min_real = [&](const AcReal&, const AcRealOutputParam&){};");
     }
     if(get_num_reduced_vars(NUM_INT_OUTPUTS,reduced_ints[curr_kernel]))
 	printf_reduce_funcs("int","int","AcInt",curr_kernel,int_output_names,reduced_ints[curr_kernel],NUM_INT_OUTPUTS);
     else
     {
-	    printf("[[maybe_unused]] const auto reduce_sum_int = [&](const int& val, const AcIntOutputParam& param){};");
-	    printf("[[maybe_unused]] const auto reduce_max_int = [&](const int& val, const AcIntOutputParam& param){};");
-	    printf("[[maybe_unused]] const auto reduce_min_int = [&](const int& val, const AcIntOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_sum_int = [&](const int&, const AcIntOutputParam&){};");
+	    printf("[[maybe_unused]] const auto reduce_max_int = [&](const int&, const AcIntOutputParam&){};");
+	    printf("[[maybe_unused]] const auto reduce_min_int = [&](const int&, const AcIntOutputParam&){};");
     }
 #if AC_DOUBLE_PRECISION
     if(get_num_reduced_vars(NUM_FLOAT_OUTPUTS,reduced_floats[curr_kernel]))
 	printf_reduce_funcs("float","float","AcFloat",curr_kernel,float_output_names,reduced_floats[curr_kernel],NUM_FLOAT_OUTPUTS);
     else
     {
-	    printf("[[maybe_unused]] const auto reduce_sum_float = [&](const float& val, const AcFloatOutputParam& param){};");
-	    printf("[[maybe_unused]] const auto reduce_max_float = [&](const float& val, const AcFloatOutputParam& param){};");
-	    printf("[[maybe_unused]] const auto reduce_min_float = [&](const float& val, const AcFloatOutputParam& param){};");
+	    printf("[[maybe_unused]] const auto reduce_sum_float = [&](const float&, const AcFloatOutputParam&){};");
+	    printf("[[maybe_unused]] const auto reduce_max_float = [&](const float&, const AcFloatOutputParam&){};");
+	    printf("[[maybe_unused]] const auto reduce_min_float = [&](const float&, const AcFloatOutputParam&){};");
     }
 #endif
   }
