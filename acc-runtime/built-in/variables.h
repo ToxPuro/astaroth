@@ -83,6 +83,8 @@ run_const bool AC_skip_single_gpu_optim
 run_const AC_COORDINATE_SYSTEM AC_coordinate_system
 run_const bool3 AC_nonequidistant_grid
 
+run_const bool AC_sparse_autotuning=false
+
 output real AC_default_real_output
 //TP: these belong here but at the moment are deprecated
 /**

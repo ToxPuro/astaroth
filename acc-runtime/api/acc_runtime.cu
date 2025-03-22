@@ -30,6 +30,7 @@ typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define AcComplex(x,y)   (AcComplex){x,y}
 
 static AcBool3 dimension_inactive{};
+static bool sparse_autotuning=false;
 static int3    max_tpb_for_reduce_kernels{100,100,100};
 #include <math.h> 
 #include <vector> // tbconfig
@@ -188,7 +189,10 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
   const size_t zmax         = (size_t)(warp_size * ceil_div(dims.z,warp_size));
   const bool too_large      = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
   const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
-  //if(dims.x >= warp_size && tpb.x % warp_size != 0) return false;
+  //TP: in most cases this a reasonable limitation but at least theoretically the shape of the threadblock might be more important
+  //    than warp considerations. So impose this limitation only if the user allows it
+  if (sparse_autotuning && (dims.x >= warp_size && tpb.x % warp_size != 0)) return false;
+
   if(kernel_reduces_profile(kernel))
   {
 	  if(tpb.y > (size_t)max_tpb_for_reduce_kernels.y) return false;
@@ -986,6 +990,8 @@ acVBACreate(const AcMeshInfo config)
   //TP: Get active dimensions at the time VBA is created, works for now but should be moved somewhere else
   #include "user_builtin_non_scalar_constants.h"
   dimension_inactive = config[AC_dimension_inactive];
+  sparse_autotuning  = config[AC_sparse_autotuning];
+
   max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
   VertexBufferArray vba;
   vba.on_device.block_factor = config[AC_thread_block_loop_factors];
