@@ -1782,7 +1782,7 @@ struct load_all_arrays_uniform
 };
 
 AcResult
-acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
+acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t)
 {
   /* See note in acLoadStencil */
   ERRCHK_CUDA(cudaDeviceSynchronize());
@@ -2523,11 +2523,10 @@ get_reduce_buffer_states(const VertexBufferArray vba, const AcType type)
 			type == AC_PROF_TYPE   ? &vba.scratchpad_states->reals[NUM_REAL_OUTPUTS] :
 			NULL;
 }
-static AcReduceOp
+static UNUSED AcReduceOp
 get_reduce_buffer_state(const VertexBufferArray vba, const int variable, const AcType type)
 {
 	return get_reduce_buffer_states(vba,type)[variable];
-
 }
 AcResult
 acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType type,const AcReduceOp op)

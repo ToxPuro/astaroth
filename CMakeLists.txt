@@ -88,6 +88,7 @@ add_compile_options(# C/CXX/CUDA/HIP
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wextra>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wdouble-promotion>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfloat-conversion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-parentheses-equality>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wshadow>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-result>
                     # Workaround: MPI_CXX_SKIP_MPICXX not applied properly for some reason

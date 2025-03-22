@@ -186,10 +186,10 @@ get_num_reduced_profiles(const AcProfileType prof_type, const int kernel)
 }
 
 int
-get_num_reduced_vars(const int N, int* arr)
+get_num_reduced_vars(const int N, const int* arr, const ReduceOp op)
 {
 	int res = 0;
-	for(int i = 0; i < N; ++i) res += arr[i];
+	for(int i = 0; i < N; ++i) res += ((ReduceOp)arr[i] == op);
 	return res;
 }
 
@@ -258,24 +258,16 @@ gen_kernel_block_loops(const int curr_kernel)
     		//TP: if all threads are active can skip checks checking if target tid is active in reductions
     		printf("[[maybe_unused]] bool AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;");
   		print_warp_reduce_func("AcReal", "real", REDUCE_SUM);
-		if(get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel]))
-		{
-  			print_warp_reduce_func("AcReal", "real", REDUCE_MIN);
-  			print_warp_reduce_func("AcReal", "real", REDUCE_MAX);
-		}
-		if(get_num_reduced_vars(NUM_INT_OUTPUTS,reduced_ints[curr_kernel]))
-		{
-  			print_warp_reduce_func("int", "int", REDUCE_SUM);
-  			print_warp_reduce_func("int", "int", REDUCE_MIN);
-  			print_warp_reduce_func("int", "int", REDUCE_MAX);
-		}
+		if(get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel],REDUCE_MIN)) print_warp_reduce_func("AcReal", "real", REDUCE_MIN);
+		if(get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel],REDUCE_MAX)) print_warp_reduce_func("AcReal", "real", REDUCE_MAX);
+
+		if(get_num_reduced_vars(NUM_INT_OUTPUTS,reduced_ints[curr_kernel],REDUCE_SUM))   print_warp_reduce_func("int", "int", REDUCE_SUM);
+		if(get_num_reduced_vars(NUM_INT_OUTPUTS,reduced_ints[curr_kernel],REDUCE_MIN))   print_warp_reduce_func("int", "int", REDUCE_MIN);
+		if(get_num_reduced_vars(NUM_INT_OUTPUTS,reduced_ints[curr_kernel],REDUCE_MAX))   print_warp_reduce_func("int", "int", REDUCE_MAX);
 #if AC_DOUBLE_PRECISION
-		if(get_num_reduced_vars(NUM_FLOAT_OUTPUTS,reduced_floats[curr_kernel]))
-		{
-  			print_warp_reduce_func("float", "float", REDUCE_SUM);
-  			print_warp_reduce_func("float", "float", REDUCE_MIN);
-  			print_warp_reduce_func("float", "float", REDUCE_MAX);
-		}
+		if(get_num_reduced_vars(NUM_FLOAT_OUTPUTS,reduced_floats[curr_kernel], REDUCE_SUM)) print_warp_reduce_func("float", "float", REDUCE_SUM);
+		if(get_num_reduced_vars(NUM_FLOAT_OUTPUTS,reduced_floats[curr_kernel], REDUCE_MIN)) print_warp_reduce_func("float", "float", REDUCE_MIN);
+		if(get_num_reduced_vars(NUM_FLOAT_OUTPUTS,reduced_floats[curr_kernel], REDUCE_MAX)) print_warp_reduce_func("float", "float", REDUCE_MAX);
 #endif
 	}
   }
@@ -787,7 +779,7 @@ gen_kernel_write_funcs(const int curr_kernel)
 	    written_something |= write_called[curr_kernel][field];
     if(!written_something) 
     {
-    	printf("const auto write_base __attribute__((unused)) = [&](const Field& handle, const AcReal& value) {};");
+    	printf("const auto write_base __attribute__((unused)) = [&](const Field&, const AcReal&) {};");
 	return;
     }
     if(has_buffered_writes(kernel_names[curr_kernel]))
@@ -987,6 +979,11 @@ print_warp_reduce_func(const char* datatype, const char* define_name, const Redu
 void
 print_reduce_func(const char* datatype, const char* define_name, const char* enum_name, const int curr_kernel, const char** names, const int* is_reduced, const size_t n_elems, const ReduceOp op)
 {
+    	if(!get_num_reduced_vars(n_elems,is_reduced,op))
+	{
+        	printf("[[maybe_unused]] const auto reduce_%s_%s __attribute__((unused)) = [&](%s, const %sOutputParam&) {};",reduce_op_to_name(op), define_name, datatype,enum_name);
+		return;
+	}
         printf("[[maybe_unused]] const auto reduce_%s_%s __attribute__((unused)) = [&](%s val, const %sOutputParam& output) {",reduce_op_to_name(op),define_name,datatype,enum_name);
 	if(kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS)
 	{
@@ -1046,33 +1043,10 @@ gen_kernel_reduce_funcs(const int curr_kernel)
 	}
     	printf("%s warp_leader_id  = %s(AC_INTERNAL_active_threads)-1;",false ? "" : "[[maybe_unused]] const size_t" ,ffs_string);
     }
-    if(get_num_reduced_vars(NUM_REAL_OUTPUTS,reduced_reals[curr_kernel]))
-    {
-	printf_reduce_funcs("AcReal","real","AcReal",curr_kernel,real_output_names,reduced_reals[curr_kernel],NUM_REAL_OUTPUTS);
-    }
-    else
-    {
-	    printf("[[maybe_unused]] const auto reduce_sum_real = [&](const AcReal&, const AcRealOutputParam&){};");
-	    printf("[[maybe_unused]] const auto reduce_max_real = [&](const AcReal&, const AcRealOutputParam&){};");
-	    printf("[[maybe_unused]] const auto reduce_min_real = [&](const AcReal&, const AcRealOutputParam&){};");
-    }
-    if(get_num_reduced_vars(NUM_INT_OUTPUTS,reduced_ints[curr_kernel]))
-	printf_reduce_funcs("int","int","AcInt",curr_kernel,int_output_names,reduced_ints[curr_kernel],NUM_INT_OUTPUTS);
-    else
-    {
-	    printf("[[maybe_unused]] const auto reduce_sum_int = [&](const int&, const AcIntOutputParam&){};");
-	    printf("[[maybe_unused]] const auto reduce_max_int = [&](const int&, const AcIntOutputParam&){};");
-	    printf("[[maybe_unused]] const auto reduce_min_int = [&](const int&, const AcIntOutputParam&){};");
-    }
+    printf_reduce_funcs("AcReal","real","AcReal",curr_kernel,real_output_names,reduced_reals[curr_kernel],NUM_REAL_OUTPUTS);
+    printf_reduce_funcs("int","int","AcInt",curr_kernel,int_output_names,reduced_ints[curr_kernel],NUM_INT_OUTPUTS);
 #if AC_DOUBLE_PRECISION
-    if(get_num_reduced_vars(NUM_FLOAT_OUTPUTS,reduced_floats[curr_kernel]))
-	printf_reduce_funcs("float","float","AcFloat",curr_kernel,float_output_names,reduced_floats[curr_kernel],NUM_FLOAT_OUTPUTS);
-    else
-    {
-	    printf("[[maybe_unused]] const auto reduce_sum_float = [&](const float&, const AcFloatOutputParam&){};");
-	    printf("[[maybe_unused]] const auto reduce_max_float = [&](const float&, const AcFloatOutputParam&){};");
-	    printf("[[maybe_unused]] const auto reduce_min_float = [&](const float&, const AcFloatOutputParam&){};");
-    }
+    printf_reduce_funcs("float","float","AcFloat",curr_kernel,float_output_names,reduced_floats[curr_kernel],NUM_FLOAT_OUTPUTS);
 #endif
   }
 }
