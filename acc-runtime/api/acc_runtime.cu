@@ -1555,7 +1555,17 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   size_t counter  = 0;
   size_t start_samples{};
   size_t end_samples{};
-  if(large_launch && AC_MPI_ENABLED)
+
+  const bool on_halos =
+	  (start.x < (int)vba.dims.n0.x) ||
+	  (start.y < (int)vba.dims.n0.y) ||
+	  (start.z < (int)vba.dims.n0.z) ||
+                          
+	  (end.x >=  (int)vba.dims.n1.x) ||
+	  (end.y >=  (int)vba.dims.n1.y) ||
+	  (end.z >=  (int)vba.dims.n1.z);
+
+  if(!on_halos && AC_MPI_ENABLED)
   {
   	const size_t portion = ceil_div(samples.size(),nprocs);
   	start_samples = portion*grid_pid;
