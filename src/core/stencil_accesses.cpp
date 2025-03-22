@@ -685,8 +685,6 @@ matmul_arr(T1, T2)
 VertexBufferArray
 vbaCreate(const size_t count)
 {
-  //TP: suppress unused warning about stencils
-  (void)stencils;
   VertexBufferArray vba{};
   memset(&vba, 0, sizeof(vba));
 
