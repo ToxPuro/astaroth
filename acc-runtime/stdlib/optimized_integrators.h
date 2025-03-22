@@ -33,6 +33,7 @@ rk3(Field3 field, real3 roc, int step_num, real dt) {
 rk1_intermediate(Field f, real roc, int step_num, real dt) {
     //TP: rk1_alpha is always zero
     //return rk1_alpha[step_num] * previous(f) + roc * dt
+    suppress_unused_warning(step_num)
     return roc*dt;
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
