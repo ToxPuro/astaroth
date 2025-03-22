@@ -6662,16 +6662,6 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const string_v
 		{
 			node->is_constexpr = true;
 			res = true;
-			//TP: require further translations for this for example we can have:
-			//bool param;
-			//param = true;
-			//if(param)
-			//the conditional can not be constexpr since param is not constexpr
-			//astnode_set_prefix(" constexpr (",node);
-			if(node->rhs->lhs->type & NODE_BEGIN_SCOPE && gen_mem_accesses)
-			{
-				astnode_sprintf_prefix(node->rhs->lhs,"{executed_nodes.push_back(%d);",node->id);
-			}
 		}
 	}
 	//TP: below sets the constexpr value of lhs the same as rhs for: lhs = rhs
@@ -8838,6 +8828,7 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 			//Conditional with only a single case that is not taken, simple remove the whole conditional
 			else
 			{
+				printf("Eliminating: %s\n",combine_all_new(node));
 				ASTNode* statement = node->parent->parent;
 				statement->lhs = NULL;
 			}
@@ -9264,6 +9255,17 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 }
 
 void
+add_tracing_to_conditionals(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(add_tracing_to_conditionals);
+	if(!(node->type & NODE_IF)) return;
+	if(!node->rhs) return;
+	if(!node->rhs->lhs) return;
+	if(node->rhs->lhs->type & NODE_BEGIN_SCOPE)
+		astnode_sprintf_prefix(node->rhs->lhs,"{executed_nodes.push_back(%d);",node->id);
+}
+
+void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 { 
   symboltable_reset();
@@ -9274,6 +9276,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
   gen_type_info(root);
+
+  if(gen_mem_accesses) add_tracing_to_conditionals(root);
   gen_constexpr_info(root,gen_mem_accesses);
   if(gen_mem_accesses)
   {
@@ -9411,6 +9415,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   	  gen_constexpr_info(root,gen_mem_accesses);
 	  while(eliminated_something)
 	  {
+		++round;
 	  	clean_stream(stream);
 
 		symboltable_reset();
