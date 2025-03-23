@@ -116,9 +116,16 @@ ac_proc_mapping_strategy()
 	return (AcProcMappingStrategy)grid.submesh.info[AC_proc_mapping_strategy];
 }
 
+bool
+acGridInitialized()
+{
+	return grid.initialized;
+}
+
 AcMeshInfo
 acGridGetLocalMeshInfo(void)
 {
+    ERRCHK_ALWAYS(grid.initialized);
     return acDeviceGetLocalConfig(grid.device);
 }
 Device
@@ -226,6 +233,7 @@ ac_MPI_Init_thread(int thread_level)
 void
 ac_MPI_Finalize()
 {
+    ERRCHK_ALWAYS(grid.initialized);
     if (astaroth_comm != MPI_COMM_WORLD) {
         MPI_Comm_free(&astaroth_comm);
         astaroth_comm = MPI_COMM_NULL;
@@ -236,17 +244,20 @@ ac_MPI_Finalize()
 MPI_Comm
 acGridMPIComm()
 {
+    ERRCHK_ALWAYS(grid.initialized);
     return astaroth_comm;
 }
 AcSubCommunicators
 acGridMPISubComms()
 {
+    	ERRCHK_ALWAYS(grid.initialized);
 	return astaroth_sub_comms;
 }
 
 int
 ac_MPI_Comm_rank()
 {
+    ERRCHK_ALWAYS(grid.initialized);
     int rank;
     MPI_Comm_rank(acGridMPIComm(), &rank);
     return rank;
@@ -255,6 +266,7 @@ ac_MPI_Comm_rank()
 int
 ac_MPI_Comm_size()
 {
+    ERRCHK_ALWAYS(grid.initialized);
     int nprocs;
     MPI_Comm_size(acGridMPIComm(), &nprocs);
     return nprocs;
@@ -263,6 +275,7 @@ ac_MPI_Comm_size()
 void
 ac_MPI_Barrier()
 {
+    ERRCHK_ALWAYS(grid.initialized);
     MPI_Barrier(acGridMPIComm());
 }
 

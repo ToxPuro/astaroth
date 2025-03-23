@@ -500,13 +500,13 @@ acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cu
 void
 acStoreConfig(const AcMeshInfo info, const char* filename)
 {
-	FILE* fp = fopen(filename,"w");
+	FILE* fp =  filename == NULL ? stdout : fopen(filename,"w");
 	AcScalarTypes::run<load_scalars>(info, fp, "", false);
 	AcArrayTypes::run<load_arrays>(info,fp, "", false);
 
 	AcScalarCompTypes::run<load_comp_scalars>(info.run_consts, fp, "", false);
 	AcArrayCompTypes::run<load_comp_arrays>(info.run_consts,    fp, "", false);
-	fclose(fp);
+	if(filename != NULL) fclose(fp);
 }
 
 

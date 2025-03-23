@@ -206,30 +206,6 @@ acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
     };
 }
 
-/** Prints all parameters inside AcMeshInfo */
-static inline void
-acPrintMeshInfo(const AcMeshInfo config)
-{
-    for (int i = 0; i < NUM_INT_PARAMS; ++i)
-    {
-        printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
-    }
-    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-    {
-        printf("[%s]: (%d, %d, %d)\n", int3param_names[i],config.int3_params[i].x, config.int3_params[i].y, config.int3_params[i].z);
-    }
-    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-    {
-        printf("[%s]: %g\n", realparam_names[i], (double)(config.real_params[i]));
-    }
-    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-    {
-        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.real3_params[i].x),
-							    (double)(config.real3_params[i].y),
-							    (double)(config.real3_params[i].z)
-	      );
-    }
-}
 
 
 /** Prints a list of initial condition condition types */
@@ -381,6 +357,13 @@ FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
 
 FUNC_DEFINE(void, acStoreConfig,(const AcMeshInfo info, const char* filename));
 
+/** Prints all parameters inside AcMeshInfo */
+static inline void
+acPrintMeshInfo(const AcMeshInfo config)
+{
+    acStoreConfig(config,NULL);
+}
+
 /** Sets the dimensions of the computational grid to (nx, ny, nz) and recalculates the built-in
  * parameters derived from them (mx, my, mz, nx_min, and others) */
 AcResult acSetGridMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
@@ -444,6 +427,7 @@ void acVA_DebugFromRootProc(const int pid, const char* msg, va_list arg);
 	LOAD_DSYM(ac_MPI_Init,stream)
 	LOAD_DSYM(ac_MPI_Init_thread,stream)
 	LOAD_DSYM(ac_MPI_Finalize,stream);
+	LOAD_DSYM(acGridInitialized,stream);
 	LOAD_DSYM(acGridMPIComm,stream);
 	LOAD_DSYM(acGridMPISubComms,stream);
 	LOAD_DSYM(acGridDecomposeMeshInfo,stream);

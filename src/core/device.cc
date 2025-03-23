@@ -26,6 +26,7 @@
 #if AC_MPI_ENABLED
 static int ac_pid()
 {
+	if(!acGridInitialized()) return 0;
 	return ac_MPI_Comm_rank();
 }
 #else

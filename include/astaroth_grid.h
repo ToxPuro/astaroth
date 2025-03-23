@@ -357,4 +357,6 @@ FUNC_DEFINE(AcResult, acGridLoadStencils,(const Stream stream,
 FUNC_DEFINE(AcResult, acGridStoreStencils,(const Stream stream,
                     AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
+FUNC_DEFINE(bool, acGridInitialized,());
+
 #endif // AC_MPI_ENABLED
