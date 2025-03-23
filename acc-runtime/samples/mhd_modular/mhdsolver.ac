@@ -572,16 +572,16 @@ calc_timestep()
 
 Kernel twopass_solve_intermediate(AC_SUBSTEP_NUMBER step_num, real dt) {
 
-    write(VTXBUF_LNRHO, rk3_intermediate(VTXBUF_LNRHO, continuity(), step_num, dt))
+    write(VTXBUF_LNRHO, rk3_intermediate(VTXBUF_LNRHO, continuity(), int(step_num), dt))
 
     #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_intermediate(VTXBUF_ENTROPY, entropy(), step_num, dt))
+    write(VTXBUF_ENTROPY, rk3_intermediate(VTXBUF_ENTROPY, entropy(), int(step_num), dt))
     #endif
 
-    write(UU, rk3_intermediate(UU, momentum(), step_num, dt))
+    write(UU, rk3_intermediate(UU, momentum(), int(step_num), dt))
 
     #if LMAGNETIC
-    write(AA, rk3_intermediate(AA, induction(), step_num, dt))
+    write(AA, rk3_intermediate(AA, induction(), int(step_num), dt))
     #endif
 
 

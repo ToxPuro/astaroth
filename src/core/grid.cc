@@ -233,8 +233,7 @@ ac_MPI_Init_thread(int thread_level)
 void
 ac_MPI_Finalize()
 {
-    ERRCHK_ALWAYS(grid.initialized);
-    if (astaroth_comm != MPI_COMM_WORLD) {
+    if (astaroth_comm != MPI_COMM_WORLD && astaroth_comm != MPI_COMM_NULL) {
         MPI_Comm_free(&astaroth_comm);
         astaroth_comm = MPI_COMM_NULL;
     }
@@ -397,6 +396,7 @@ gen_default_taskgraph()
         all_fields_vec.push_back(Field(i));
 	if(vtxbuf_is_communicated[i]) all_comm_fields_vec.push_back(Field(i));
     }
+#if AC_SINGLEPASS_INTEGRATION
     auto single_loader = [](ParamLoadingInfo l){
 	    l.params -> singlepass_solve.step_num = AC_SUBSTEP_NUMBER(l.step_number);
 	    l.params -> singlepass_solve.time_params.dt= 
@@ -404,16 +404,18 @@ gen_default_taskgraph()
 	    l.params -> singlepass_solve.time_params.current_time= 
 		   acDeviceGetInput(l.device,AC_current_time);
     };
-    [[maybe_unused]] auto intermediate_loader = [](ParamLoadingInfo l){
+#else
+    auto intermediate_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_intermediate.step_num = AC_SUBSTEP_NUMBER(l.step_number);
 	    l.params -> twopass_solve_intermediate.dt= 
 	    acDeviceGetInput(l.device,AC_dt);
     };
-    [[maybe_unused]] auto final_loader = [](ParamLoadingInfo l){
+    auto final_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_final.step_num = AC_SUBSTEP_NUMBER(l.step_number);
 	    l.params -> twopass_solve_final.current_time= 
 		   acDeviceGetInput(l.device,AC_current_time);
     };
+#endif
 
     AcTaskDefinition default_ops[] = {
 	    acHaloExchange(all_comm_fields_vec),
