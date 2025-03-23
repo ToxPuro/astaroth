@@ -572,16 +572,16 @@ calc_timestep()
 
 Kernel twopass_solve_intermediate(AC_SUBSTEP_NUMBER step_num, real dt) {
 
-    write(VTXBUF_LNRHO, rk_intermediate(VTXBUF_LNRHO, continuity(), step_num, dt))
+    write(VTXBUF_LNRHO, rk3_intermediate(VTXBUF_LNRHO, continuity(), step_num, dt))
 
     #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk_intermediate(VTXBUF_ENTROPY, entropy(), step_num, dt))
+    write(VTXBUF_ENTROPY, rk3_intermediate(VTXBUF_ENTROPY, entropy(), step_num, dt))
     #endif
 
-    write(UU, rk_intermediate(UU, momentum(), step_num, dt))
+    write(UU, rk3_intermediate(UU, momentum(), step_num, dt))
 
     #if LMAGNETIC
-    write(AA, rk_intermediate(AA, induction(), step_num, dt))
+    write(AA, rk3_intermediate(AA, induction(), step_num, dt))
     #endif
 
 
@@ -606,10 +606,10 @@ Kernel twopass_solve_intermediate(AC_SUBSTEP_NUMBER step_num, real dt) {
 }
 
 fixed_boundary Kernel twopass_solve_final(int step_num, real current_time) {
-    write(VTXBUF_LNRHO, rk_final(VTXBUF_LNRHO, step_num))
+    write(VTXBUF_LNRHO, rk3_final(VTXBUF_LNRHO, step_num))
 
     #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk_final(VTXBUF_ENTROPY, step_num))
+    write(VTXBUF_ENTROPY, rk3_final(VTXBUF_ENTROPY, step_num))
     #endif
 
     forcing_step = real3(0.0, 0.0, 0.0)
@@ -620,10 +620,10 @@ fixed_boundary Kernel twopass_solve_final(int step_num, real current_time) {
         }
     }
     #endif
-    write(UU, rk_final(UU, step_num) + forcing_step)
+    write(UU, rk3_final(UU, step_num) + forcing_step)
 
     #if LMAGNETIC
-    write(AA, rk_final(AA, step_num))
+    write(AA, rk3_final(AA, step_num))
     #endif
 }
 

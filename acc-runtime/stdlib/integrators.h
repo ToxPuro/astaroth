@@ -78,11 +78,11 @@ rk2_final(Field3 f, int step_num){
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_intermediate(Field f, real roc, int step_num, real dt) {
+rk3_intermediate(Field f, real roc,step_num, real dt) {
     return rk3_alpha[step_num] * previous(f) + roc * dt
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_intermediate(Field3 f, real3 roc, int step_num, real dt)
+rk3_intermediate(Field3 f, real3 roc, step_num, real dt)
 {
   return real3( rk3_intermediate(f.x,roc.x,step_num,dt),
                 rk3_intermediate(f.y,roc.y,step_num,dt),

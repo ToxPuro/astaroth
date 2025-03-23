@@ -55,8 +55,8 @@ kernel_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const 
     for (int j = 0; j < NUM_VTXBUF_HANDLES; ++j)
     {
       const int dst_idx = packed_idx + i * vtxbuf_offset;
-      packed[dst_idx] = vba.in[j][unpacked_idx];
       i += is_communicated(static_cast<Field>(j));
+      if(is_communicated(static_cast<Field>(j))) packed[dst_idx] = vba.in[j][unpacked_idx];
     }
 }
 
@@ -125,10 +125,13 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
     int i = 0;
     for (int j = 0; j < NUM_VTXBUF_HANDLES; ++j)
     {
-      vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
+      if(is_communicated(static_cast<Field>(j)))
+      {
+        vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
 #if AC_LAGRANGIAN_GRID
       	vba.in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked,j_unpacked,k_unpacked});
 #endif
+      }
       i += is_communicated(static_cast<Field>(j));
     }
 }

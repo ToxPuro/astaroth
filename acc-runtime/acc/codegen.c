@@ -7057,6 +7057,7 @@ compatible_types(const char* a, const char* b)
 		  || (a == REAL3_PTR_STR && b == FIELD3_PTR_STR)
 		  || (a == INT_STR && is_enum_type(b))
 		  || (is_enum_type(a) && b == INT_STR)
+		  || (is_enum_type(b) && a == INT_STR)
 		;
 	if(!res)
 	{

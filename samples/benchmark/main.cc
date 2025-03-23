@@ -148,7 +148,8 @@ main(int argc, char** argv)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-
+    info[AC_proc_mapping_strategy] = (int)AcProcMappingStrategy::Morton;
+    info[AC_MPI_comm_strategy]     = (int)AcMPICommStrategy::DuplicateMPICommWorld;
     TestType test = TEST_STRONG_SCALING;
 
     int opt;
@@ -229,6 +230,7 @@ main(int argc, char** argv)
     const AcReal dt = (AcReal)FLT_EPSILON;
 
     // Dryrun
+    acDeviceSetInput(acGridGetDevice(), AC_current_time,0.0);
     acGridIntegrate(STREAM_DEFAULT, dt);
 
     if (verify) {
@@ -279,7 +281,6 @@ main(int argc, char** argv)
 
     // Percentiles
     const size_t num_iters      = 100;
-    const double nth_percentile = 0.50;
     std::vector<double> results; // ms
     results.reserve(num_iters);
 
@@ -302,10 +303,20 @@ main(int argc, char** argv)
     if (!pid) {
         std::sort(results.begin(), results.end(),
                   [](const double& a, const double& b) { return a < b; });
-        fprintf(stdout,
-                "Integration step time %g ms (%gth "
-                "percentile)--------------------------------------\n",
-                results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
+	{
+    		const double nth_percentile = 0.50;
+        	fprintf(stdout,
+                	"Integration step time %g ms (%gth "
+                	"percentile)--------------------------------------\n",
+                	results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
+	}
+	{
+    		const double nth_percentile = 0.90;
+        	fprintf(stdout,
+                	"Integration step time %g ms (%gth "
+                	"percentile)--------------------------------------\n",
+                	results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
+	}
 
         // char path[4096] = "";
         // sprintf(path, "%s_%d.csv", test == TEST_STRONG_SCALING ? "strong" : "weak", nprocs);
@@ -324,7 +335,7 @@ main(int argc, char** argv)
         const bool use_distributed_io = false;
 #endif
         fprintf(fp, "%d,%g,%g,%g,%g,%d,%d,%d,%d,%d\n", nprocs, results[0],
-                results[(size_t)(0.5 * num_iters)], results[(size_t)(nth_percentile * num_iters)],
+                results[(size_t)(0.5 * num_iters)], results[(size_t)(0.9* num_iters)],
                 results[num_iters - 1], use_distributed_io, info[AC_ngrid].x,
                 info[AC_ngrid].y, info[AC_ngrid].z, test == TEST_STRONG_SCALING);
         // fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0],

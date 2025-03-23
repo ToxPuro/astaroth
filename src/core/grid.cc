@@ -397,12 +397,19 @@ gen_default_taskgraph()
         all_fields_vec.push_back(Field(i));
 	if(vtxbuf_is_communicated[i]) all_comm_fields_vec.push_back(Field(i));
     }
-    auto intermediate_loader = [](ParamLoadingInfo l){
+    auto single_loader = [](ParamLoadingInfo l){
+	    l.params -> singlepass_solve.step_num = AC_SUBSTEP_NUMBER(l.step_number);
+	    l.params -> singlepass_solve.time_params.dt= 
+	    acDeviceGetInput(l.device,AC_dt);
+	    l.params -> singlepass_solve.time_params.current_time= 
+		   acDeviceGetInput(l.device,AC_current_time);
+    };
+    [[maybe_unused]] auto intermediate_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_intermediate.step_num = AC_SUBSTEP_NUMBER(l.step_number);
 	    l.params -> twopass_solve_intermediate.dt= 
 	    acDeviceGetInput(l.device,AC_dt);
     };
-    auto final_loader = [](ParamLoadingInfo l){
+    [[maybe_unused]] auto final_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_final.step_num = AC_SUBSTEP_NUMBER(l.step_number);
 	    l.params -> twopass_solve_final.current_time= 
 		   acDeviceGetInput(l.device,AC_current_time);
@@ -411,8 +418,12 @@ gen_default_taskgraph()
     AcTaskDefinition default_ops[] = {
 	    acHaloExchange(all_comm_fields_vec),
             acBoundaryCondition(get_full_boundary(), BOUNDCOND_PERIODIC,all_fields_vec),
+#if AC_SINGLEPASS_INTEGRATION
+	    acCompute(singlepass_solve, all_comm_fields_vec,all_fields_vec,single_loader),
+#else
 	    acCompute(twopass_solve_intermediate, all_comm_fields_vec,all_fields_vec,intermediate_loader),
 	    acCompute(twopass_solve_final, all_comm_fields_vec,all_comm_fields_vec,final_loader)
+#endif
     };
     
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
@@ -573,6 +584,7 @@ AcMesh
 create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 {
     AcMesh submesh;
+    size_t n_allocated_vtxbufs = 0;
     for(int i = 0; i < NUM_FIELDS; ++i)
     {
 	    if(user_mesh.vertex_buffer[i] != NULL)
@@ -582,11 +594,12 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 	    }
 	    else
 	    {
-    			acLogFromRootProc(ac_pid(), "acGridInit: Allocating CPU VertexBuffer\n");
+		        ++n_allocated_vtxbufs;
 			submesh.vertex_buffer[i] = acHostCreateVertexBuffer(submesh_info);
-    			acLogFromRootProc(ac_pid(), "acGridInit: Done allocating CPU VertexBuffer\n");
 	    }
     }
+
+    if(n_allocated_vtxbufs) acLogFromRootProc(ac_pid(), "acGridInit: Allocated %ld VertexBuffers on the host\n",n_allocated_vtxbufs);
     submesh.info = submesh_info;
     acHostMeshCreateProfiles(&submesh);
     return submesh;
@@ -770,6 +783,11 @@ acGridInitBase(const AcMesh user_mesh)
     grid.device        = device;
     grid.submesh       = create_grid_submesh(submesh_info, user_mesh);
     grid.decomposition = get_decomp(info);
+    acLogFromRootProc(ac_pid(), "acGridInit: decomp: (%ld,%ld,%ld)\n",
+		    grid.decomposition.x,
+		    grid.decomposition.y,
+		    grid.decomposition.z
+		    );
 
     // Configure
     grid.nn = acGetLocalNN(acDeviceGetLocalConfig(device));
@@ -801,6 +819,10 @@ acGridInitBase(const AcMesh user_mesh)
     }
     acAnalysisGetKernelInfo(acGridGetLocalMeshInfo(),&grid.kernel_analysis_info);	
     check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
+
+    fflush(stdout);
+    fflush(stderr);
+
     return AC_SUCCESS;
 }
 
