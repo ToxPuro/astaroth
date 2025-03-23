@@ -181,9 +181,38 @@ main(int argc, char** argv)
             const int nx           = atoi(argv[optind]);
             const int ny           = atoi(argv[optind + 1]);
             const int nz           = atoi(argv[optind + 2]);
-	    info[AC_ngrid] = (int3){nx,ny,nz};
-            acHostUpdateParams(&info);
+
             printf("Benchmark mesh dimensions: (%d, %d, %d)\n", nx, ny, nz);
+
+    	    if (test == TEST_WEAK_SCALING) {
+    	        fprintf(stdout, "Running weak scaling benchmarks.\n");
+    	        uint3_64 decomp = decompose(nprocs);
+    	        info[AC_ngrid] = (int3){
+    	        			(int)decomp.x*nx,
+    	        			(int)decomp.y*ny,
+    	        			(int)decomp.z*nz
+    	        		  };
+    	        info[AC_nlocal] = (int3){
+    	        			nx,
+    	        			ny,
+    	        			nz
+    	        		  };
+    	    }
+    	    else {
+    	        fprintf(stdout, "Running strong scaling benchmarks.\n");
+    	        uint3_64 decomp = decompose(nprocs);
+    	        info[AC_ngrid] = (int3){
+    	        			nx,
+    	        			ny,
+    	        			nz
+    	        		  };
+    	        info[AC_nlocal] = (int3){
+    	        			nx/decomp.x,
+    	        			ny/decomp.y,
+    	        			nz/decomp.z
+    	        		  };
+    	    }
+            acHostUpdateParams(&info);
         }
         else {
             fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz>.\n");
@@ -191,18 +220,6 @@ main(int argc, char** argv)
         }
     }
 
-    if (test == TEST_WEAK_SCALING) {
-        fprintf(stdout, "Running weak scaling benchmarks.\n");
-        uint3_64 decomp = decompose(nprocs);
-	info[AC_ngrid] = (int3){
-				(int)decomp.x*info[AC_ngrid].x,
-				(int)decomp.y*info[AC_ngrid].y,
-				(int)decomp.z*info[AC_ngrid].z
-			  };
-    }
-    else {
-        fprintf(stdout, "Running strong scaling benchmarks.\n");
-    }
 
     // Device init
     acGridInit(info);

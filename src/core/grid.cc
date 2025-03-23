@@ -540,7 +540,7 @@ check_that_device_allocation_valid()
                 device_count, ac_nprocs());
         ERRCHK_ALWAYS(device_count <= ac_nprocs());
     }
-    MPI_Barrier(acGridMPIComm());
+    MPI_Barrier(astaroth_comm);
 }
 
 void 
