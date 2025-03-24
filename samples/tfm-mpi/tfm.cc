@@ -40,18 +40,18 @@
 // Production runs:
 //  - Should either completely disabled or
 //  - Set IO interval to large enough s.t. synchronous IO does not dominate running time
-#define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
-#define AC_WRITE_SYNCHRONOUS_PROFILES
-#define AC_WRITE_SYNCHRONOUS_TIMESERIES
-#define AC_WRITE_SYNCHRONOUS_SLICES
+// #define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
+// #define AC_WRITE_SYNCHRONOUS_PROFILES
+// #define AC_WRITE_SYNCHRONOUS_TIMESERIES
+// #define AC_WRITE_SYNCHRONOUS_SLICES
 #define AC_DISABLE_IO
 
 // Production run: enable define below for fast, async profile IO
-#define AC_WRITE_ASYNC_PROFILES
+// #define AC_WRITE_ASYNC_PROFILES
 
-// #define AC_DISABLE_COMPUTE
+#define AC_DISABLE_COMPUTE
 // #define AC_DISABLE_COMM
-// #define AC_DISABLE_AVERAGES
+#define AC_DISABLE_AVERAGES
 
 using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal, ac::mr::device_allocator>;
 using IOTask           = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
@@ -1122,7 +1122,25 @@ class Grid {
     }
 #endif
 
-    void tfm_pipeline(const size_t nsteps)
+    void tfm_pipeline(const size_t nsteps) {
+        // for (size_t i{0}; i < nsteps; ++i){
+        //     tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::input));
+        //     tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::output));
+        // }
+        const auto                  local_mm{acr::get_local_mm(local_info)};
+        const auto                  local_nn{acr::get_local_nn(local_info)};
+        const auto rr{acr::get_local_rr()};
+        ac::device_ndbuffer<double> din{local_mm};
+        ac::device_ndbuffer<double> dout{local_mm};
+
+        static ac::comm::async_halo_exchange_task<double> he{local_mm, local_nn, rr, 8};
+        for (size_t i{0}; i < nsteps; ++i){
+            he.launch(cart_comm, {din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
+            he.wait({din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
+        }
+    }
+
+    void tfm_pipeline_full(const size_t nsteps)
     {
         PRINT_LOG_INFO("Launching TFM pipeline");
 
@@ -1155,7 +1173,7 @@ class Grid {
 
 #if !defined(AC_DISABLE_COMM)
         // Ensure halos are up-to-date before starting integration
-        hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::input));
+        // hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::input));
         tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::input));
 #endif
 
@@ -1200,7 +1218,7 @@ class Grid {
 
                 // Hydro dependencies: hydro
                 #if !defined(AC_DISABLE_COMM)
-                hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
+                // hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
                 #endif
 
                 // Outer segments
@@ -1216,7 +1234,7 @@ class Grid {
                 // ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
                 // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
                 #if !defined(AC_DISABLE_COMM)
-                hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::output));
+                // hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::output));
                 #endif
 
 // TFM dependencies: hydro, tfm, profiles
@@ -1310,7 +1328,7 @@ class Grid {
 #endif
         }
         #if !defined(AC_DISABLE_COMM)
-        hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
+        // hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
         tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
         #endif
 
@@ -1387,15 +1405,18 @@ main(int argc, char* argv[])
         Grid grid{raw_info};
 
         // Profiler start
+        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         cudaProfilerStart();
         
         // Timer start
         const auto start{std::chrono::system_clock::now()};
+        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
 
         // Compute
         grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
 
         // Timer stop
+        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         const auto ms_elapsed{std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now() - start)};
         

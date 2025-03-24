@@ -149,12 +149,75 @@ bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac
     }
 }
 
+static void
+bm_halo_exchange_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr)
+{
+    const auto                  local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto                  local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+    ac::device_ndbuffer<double> din{local_mm};
+    ac::device_ndbuffer<double> dout{local_mm};
+
+    auto init_fn = [&din]() { randomize(din.get()); };
+    
+
+    ac::comm::async_halo_exchange_task<double> he{local_mm, local_nn, rr, 1};
+    he.launch(cart_comm, {din.get()});
+    he.wait({dout.get()});
+    auto bm_fn   = [&]() {
+        he.launch(cart_comm, {din.get()});
+        he.wait({dout.get()});
+    };
+
+    const auto median{benchmark("halo exchange", init_fn, bm_fn)};
+    if (ac::mpi::get_rank(cart_comm) == 0) {
+        FILE* fp{fopen("scaling.csv", "a")};
+        ERRCHK(fp != NULL);
+
+        const auto nprocs{ac::mpi::get_size(cart_comm)};
+        ERRCHK(fprintf(fp, "%d,%g\n", nprocs, median) > 0);
+
+        fclose(fp);
+    }
+}
+
+static void
+bm_halo_exchange_packed_multiple(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr)
+{
+    const auto                  local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto                  local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+    ac::device_ndbuffer<double> din{local_mm};
+    ac::device_ndbuffer<double> dout{local_mm};
+
+    auto init_fn = [&din]() { randomize(din.get()); };
+    
+
+    ac::comm::async_halo_exchange_task<double> he{local_mm, local_nn, rr, 8};
+    he.launch(cart_comm, {din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
+    he.wait({din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
+    auto bm_fn   = [&]() {
+        he.launch(cart_comm, {din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
+        he.wait({din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
+    };
+
+    const auto median{benchmark("halo exchange", init_fn, bm_fn)};
+    if (ac::mpi::get_rank(cart_comm) == 0) {
+        FILE* fp{fopen("scaling.csv", "a")};
+        ERRCHK(fp != NULL);
+
+        const auto nprocs{ac::mpi::get_size(cart_comm)};
+        ERRCHK(fprintf(fp, "%d,%g\n", nprocs, median) > 0);
+
+        fclose(fp);
+    }
+}
+
 int
 main()
 {
     ac::mpi::init_funneled();
     try {
-        const ac::shape global_nn{8, 8, 8};
+        const ac::shape global_nn{128, 128, 128};
+        // const ac::shape global_nn{256,256,256};
         const ac::index rr{3, 3, 3};
 
         MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
@@ -163,7 +226,9 @@ main()
 
         verify<int>(cart_comm, global_nn, rr);
         verify_packed<int>(cart_comm, global_nn, rr);
-        bm_halo_exchange(cart_comm, global_nn, rr);
+        // bm_halo_exchange(cart_comm, global_nn, rr);
+        // bm_halo_exchange_packed(cart_comm, global_nn, rr);
+        bm_halo_exchange_packed_multiple(cart_comm, global_nn, rr);
         ac::mpi::cart_comm_destroy(&cart_comm);
     }
     catch (const std::exception& e) {
