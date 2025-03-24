@@ -8,8 +8,7 @@ set(CMAKE_HIP_STANDARD 17)
 set(CMAKE_HIP_STANDARD_REQUIRED ON)
 
 ## Build type
-#set(CMAKE_BUILD_TYPE RelWithDebInfo)
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 ## Project settings
 project(astaroth-tfm)
