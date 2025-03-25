@@ -73,16 +73,16 @@ run_const bool  AC_host_has_row_memory_order
 
 run_const bool  AC_lagrangian_grid = AC_LAGRANGIAN_GRID
 int3 AC_thread_block_loop_factors
-int3 AC_max_tpb_for_reduce_kernels
-int3 AC_reduction_tile_dimensions
+int3 AC_max_tpb_for_reduce_kernels = (int3){-1,8,8}
+int3 AC_reduction_tile_dimensions  = (int3){1,1,1}
 int3 AC_multigpu_offset
 int3 AC_domain_coordinates
 
-run_const bool AC_include_3d_halo_corners
-run_const bool AC_skip_single_gpu_optim
+run_const bool AC_include_3d_halo_corners = false
+run_const bool AC_skip_single_gpu_optim = false
 
 run_const AcCoordinateSystem AC_coordinate_system = AC_CARTESIAN_COORDINATES
-run_const bool3 AC_nonequidistant_grid
+run_const bool3 AC_nonequidistant_grid = (bool3){false,false,false}
 
 run_const bool AC_sparse_autotuning=false
 

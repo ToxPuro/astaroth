@@ -46,6 +46,9 @@ typedef long double (*ReduceInitialVecFunc)(const long double, const long double
 typedef long double (*ReduceInitialVecScalFunc)(const long double, const long double,
                                                 const long double, const long double);
 
+
+#ifdef AC_INTEGRATION_ENABLED
+
 // clang-format off
 /* Comparison funcs */
 static inline long double
@@ -99,8 +102,6 @@ get_inv_n(AcMeshInfo info)
 	const int n_grid_points = info[AC_ngrid_products].xyz;
         return (long double)1.0l / n_grid_points;
 }
-
-#ifdef AC_INTEGRATION_ENABLED
 AcReal
 acHostReduceScal(const AcMesh mesh, const AcReduction reduction, const VertexBufferHandle a)
 {

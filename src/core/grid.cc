@@ -243,7 +243,7 @@ ac_MPI_Finalize()
 MPI_Comm
 acGridMPIComm()
 {
-    ERRCHK_ALWAYS(grid.initialized);
+    ERRCHK_ALWAYS(grid.mpi_initialized);
     return astaroth_comm;
 }
 AcSubCommunicators
