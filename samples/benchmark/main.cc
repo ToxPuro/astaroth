@@ -63,42 +63,6 @@ typedef enum {
 
 #include <stdint.h>
 
-typedef struct {
-    uint64_t x, y, z;
-} uint3_64;
-
-static uint3_64
-operator+(const uint3_64& a, const uint3_64& b)
-{
-    return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
-}
-
-static uint3_64
-morton3D(const uint64_t pid)
-{
-    uint64_t i, j, k;
-    i = j = k = 0;
-
-    for (int bit = 0; bit <= 21; ++bit) {
-        const uint64_t mask = 0x1l << 3 * bit;
-        k |= ((pid & (mask << 0)) >> 2 * bit) >> 0;
-        j |= ((pid & (mask << 1)) >> 2 * bit) >> 1;
-        i |= ((pid & (mask << 2)) >> 2 * bit) >> 2;
-    }
-
-    return (uint3_64){i, j, k};
-}
-
-static uint3_64
-decompose(const uint64_t target)
-{
-    // This is just so beautifully elegant. Complex and efficient decomposition
-    // in just one line of code.
-    uint3_64 p = morton3D(target - 1) + (uint3_64){1, 1, 1};
-
-    ERRCHK_ALWAYS(p.x * p.y * p.z == target);
-    return p;
-}
 
 #include "timer_hires.h"
 
@@ -148,8 +112,8 @@ main(int argc, char** argv)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    info[AC_proc_mapping_strategy] = AC_PROC_MAPPING_STRATEGY_MORTON;
-    info[AC_MPI_comm_strategy]     = AC_MPI_COMM_STRATEGY_DUP_WORLD;
+    acHostUpdateParams(&info);
+
     TestType test = TEST_STRONG_SCALING;
 
     int opt;
@@ -187,11 +151,11 @@ main(int argc, char** argv)
 
     	    if (test == TEST_WEAK_SCALING) {
     	        fprintf(stdout, "Running weak scaling benchmarks.\n");
-    	        uint3_64 decomp = decompose(nprocs);
+    	        const auto decomp = acDecompose(nprocs,info[AC_decompose_strategy]);
     	        info[AC_ngrid] = (int3){
-    	        			(int)decomp.x*nx,
-    	        			(int)decomp.y*ny,
-    	        			(int)decomp.z*nz
+    	        			decomp.x*nx,
+    	        			decomp.y*ny,
+    	        			decomp.z*nz
     	        		  };
     	        info[AC_nlocal] = (int3){
     	        			nx,
@@ -201,7 +165,7 @@ main(int argc, char** argv)
     	    }
     	    else {
     	        fprintf(stdout, "Running strong scaling benchmarks.\n");
-    	        uint3_64 decomp = decompose(nprocs);
+    	        const auto decomp = acDecompose(nprocs,info[AC_decompose_strategy]);
     	        info[AC_ngrid] = (int3){
     	        			nx,
     	        			ny,

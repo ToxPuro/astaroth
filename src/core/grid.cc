@@ -113,7 +113,7 @@ ac_pid()
 static AcProcMappingStrategy
 ac_proc_mapping_strategy()
 {
-	return (AcProcMappingStrategy)grid.submesh.info[AC_proc_mapping_strategy];
+	return grid.submesh.info[AC_proc_mapping_strategy];
 }
 
 bool
@@ -172,13 +172,13 @@ getPid3D(const AcMeshInfo config)
 int3
 getPid3D(const int pid, const uint3_64 decomp)
 {
-    return getPid3D(pid, decomp,(int)ac_proc_mapping_strategy()); 
+    return getPid3D(pid, decomp,ac_proc_mapping_strategy()); 
 }
 
 int3
 getPid3D(const int pid)
 {
-    return getPid3D(pid, grid.decomposition,(int)ac_proc_mapping_strategy()); 
+    return getPid3D(pid, grid.decomposition,ac_proc_mapping_strategy()); 
 }
 
 AcResult
@@ -740,7 +740,7 @@ acGridInitBase(const AcMesh user_mesh)
     	compat_acDecompositionInit(ndims, global_dims, nlayers, partitions_per_layer);
     	// grid.decomposition_info = acDecompositionInit(ndims, global_dims,
     	// nlayers,partitions_per_layer);
-    	acVerifyDecomposition(decompose(ac_nprocs(),AC_DECOMPOSE_STRATEGY_HIERARCHICAL),(int)ac_proc_mapping_strategy());
+    	acVerifyDecomposition(decompose(ac_nprocs(),AC_DECOMPOSE_STRATEGY_HIERARCHICAL),ac_proc_mapping_strategy());
     }
 
     // grid.decomposition_info = acDecompositionInit(ndims, global_dims,

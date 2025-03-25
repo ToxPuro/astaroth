@@ -47,9 +47,6 @@ main(int argc, char* argv[])
 {
 
 
-    const size_t nx = argc >  1 ? (size_t)atoi(argv[1]) : 2*9;
-    const size_t ny = argc >  2 ? (size_t)atoi(argv[2]) : 2*11;
-    const size_t nz = argc >  3 ? (size_t)atoi(argv[3]) : 4*7;
     const size_t NUM_INTEGRATION_STEPS = argc >  4 ? (size_t)atoi(argv[4]) : 100;
     MPI_Init(NULL,NULL);
     int nprocs, pid;
@@ -60,13 +57,18 @@ main(int argc, char* argv[])
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     info.comm->handle = MPI_COMM_WORLD;
 
+    acPushToConfig(info,AC_proc_mapping_strategy, AC_PROC_MAPPING_STRATEGY_LINEAR);
+    acPushToConfig(info,AC_decompose_strategy,    AC_DECOMPOSE_STRATEGY_MORTON);
+    acPushToConfig(info,AC_MPI_comm_strategy,     AC_MPI_COMM_STRATEGY_DUP_WORLD);
+
+    const size_t nx = argc >  1 ? (size_t)atoi(argv[1]) : 2*9;
+    const size_t ny = argc >  2 ? (size_t)atoi(argv[2]) : 2*11;
+    const size_t nz = argc >  3 ? (size_t)atoi(argv[3]) : 4*7;
+
     acSetGridMeshDims(nx, ny, nz, &info);
     //TP: this is because of backwards compatibility
     acSetLocalMeshDims(nx, ny, nz, &info);
 
-    acPushToConfig(info,AC_proc_mapping_strategy, AC_PROC_MAPPING_STRATEGY_LINEAR);
-    acPushToConfig(info,AC_decompose_strategy,    AC_DECOMPOSE_STRATEGY_MORTON);
-    acPushToConfig(info,AC_MPI_comm_strategy,     AC_MPI_COMM_STRATEGY_DUP_WORLD);
 
 #if AC_RUNTIME_COMPILATION
     AcReal real_arr[4];

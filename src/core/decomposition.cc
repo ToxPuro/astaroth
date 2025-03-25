@@ -625,9 +625,9 @@ decompose(const uint64_t target, const AcDecomposeStrategy strategy)
 }
 
 int
-getPid(int3 pid, const uint3_64 decomp, const int proc_mapping_strategy)
+getPid(int3 pid, const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy)
 {
-	switch((AcProcMappingStrategy)proc_mapping_strategy)
+	switch(proc_mapping_strategy)
 	{
 		case AC_PROC_MAPPING_STRATEGY_LINEAR:
 			return linear_getPid(pid,decomp);
@@ -649,9 +649,9 @@ to_int3(const uint3_64 val)
 	};
 }
 int3
-getPid3D(const uint64_t pid, const uint3_64 decomp, const int proc_mapping_strategy)
+getPid3D(const uint64_t pid, const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy)
 {
-	switch((AcProcMappingStrategy)proc_mapping_strategy)
+	switch(proc_mapping_strategy)
 	{
 		case AC_PROC_MAPPING_STRATEGY_LINEAR:
 			return to_int3(linear_getPid3D(pid,decomp));
@@ -664,7 +664,7 @@ getPid3D(const uint64_t pid, const uint3_64 decomp, const int proc_mapping_strat
 }
 
 void
-acVerifyDecomposition(const uint3_64 decomp, const int proc_mapping_strategy)
+acVerifyDecomposition(const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy)
 {
     const size_t n = decomp.x * decomp.y * decomp.z; // prod(info.ndims, info.global_decomposition);
     ERRCHK_ALWAYS(n <= INT_MAX);
@@ -696,4 +696,10 @@ acVerifyDecomposition(const uint3_64 decomp, const int proc_mapping_strategy)
             }
         }
     }
+}
+
+extern "C" int3
+acDecompose(const uint64_t target, const AcDecomposeStrategy strategy)
+{
+	return (int3)decompose(target,strategy);
 }

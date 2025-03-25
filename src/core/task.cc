@@ -465,14 +465,14 @@ Region::fields_overlap(const Region* other) const
 AcBoundary
 Region::boundary(uint3_64 decomp, int pid, AcProcMappingStrategy proc_mapping_strategy)
 {
-    int3 pid3d = getPid3D(pid, decomp, (int)proc_mapping_strategy);
+    int3 pid3d = getPid3D(pid, decomp, proc_mapping_strategy);
     return boundary(decomp, pid3d, id);
 }
 
 bool
 Region::is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy)
 {
-    int3 pid3d = getPid3D(pid, decomp, (int)proc_mapping_strategy);
+    int3 pid3d = getPid3D(pid, decomp, proc_mapping_strategy);
     return is_on_boundary(decomp, pid3d, id, boundary);
 }
 // Static functions
@@ -495,7 +495,7 @@ Region::tag_to_id(int _tag)
 AcBoundary
 Region::boundary(uint3_64 decomp, int pid, int tag, AcProcMappingStrategy proc_mapping_strategy)
 {
-    int3 pid3d = getPid3D(pid, decomp, (int)proc_mapping_strategy);
+    int3 pid3d = getPid3D(pid, decomp, proc_mapping_strategy);
     int3 id    = tag_to_id(tag);
     return boundary(decomp, pid3d, id);
 }
@@ -515,7 +515,7 @@ Region::boundary(uint3_64 decomp, int3 pid3d, int3 id)
 bool
 Region::is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy)
 {
-    int3 pid3d     = getPid3D(pid, decomp, (int)proc_mapping_strategy);
+    int3 pid3d     = getPid3D(pid, decomp, proc_mapping_strategy);
     int3 region_id = tag_to_id(tag);
     return is_on_boundary(decomp, pid3d, region_id, boundary);
 }
