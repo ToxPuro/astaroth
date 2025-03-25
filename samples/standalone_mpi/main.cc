@@ -945,9 +945,9 @@ main(int argc, char** argv)
     acLogFromRootProc(pid,"Loading config file %s\n", config_path);
     acLoadConfig(config_path, &info);
 
-    acPushToConfig(info,AC_MPI_comm_strategy,(int)AcMPICommStrategy::DuplicateMPICommWorld);
-    acPushToConfig(info,AC_proc_mapping_strategy,(int)AcProcMappingStrategy::Morton);
-    acPushToConfig(info,AC_decompose_strategy,(int)AcDecomposeStrategy::Morton);
+    acPushToConfig(info,AC_MPI_comm_strategy,AC_MPI_COMM_STRATEGY_DUP_WORLD);
+    acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_MORTON);
+    acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_MORTON);
 
     info.comm->handle = MPI_COMM_WORLD;
 

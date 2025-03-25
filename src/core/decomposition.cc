@@ -617,9 +617,9 @@ morton_decompose(const uint64_t target)
 uint3_64
 decompose(const uint64_t target, const AcDecomposeStrategy strategy)
 {
-	if(strategy == AcDecomposeStrategy::Morton)
+	if(strategy == AC_DECOMPOSE_STRATEGY_MORTON)
 		return morton_decompose(target);
-	else if(strategy == AcDecomposeStrategy::Hierarchical)
+	else if(strategy == AC_DECOMPOSE_STRATEGY_HIERARCHICAL)
 		return hierarchical_decompose(target);
 	return (uint3_64){0,0,0};
 }
@@ -629,11 +629,11 @@ getPid(int3 pid, const uint3_64 decomp, const int proc_mapping_strategy)
 {
 	switch((AcProcMappingStrategy)proc_mapping_strategy)
 	{
-		case AcProcMappingStrategy::Linear:
+		case AC_PROC_MAPPING_STRATEGY_LINEAR:
 			return linear_getPid(pid,decomp);
-		case AcProcMappingStrategy::Morton:
+		case AC_PROC_MAPPING_STRATEGY_MORTON:
 			return morton_getPid(pid,decomp);
-		case AcProcMappingStrategy::Hierarchical:
+		case AC_PROC_MAPPING_STRATEGY_HIERARCHICAL:
 			return hierarchical_getPid(pid,decomp);
 	}
 	return -1;
@@ -653,11 +653,11 @@ getPid3D(const uint64_t pid, const uint3_64 decomp, const int proc_mapping_strat
 {
 	switch((AcProcMappingStrategy)proc_mapping_strategy)
 	{
-		case AcProcMappingStrategy::Linear:
+		case AC_PROC_MAPPING_STRATEGY_LINEAR:
 			return to_int3(linear_getPid3D(pid,decomp));
-		case AcProcMappingStrategy::Morton:
+		case AC_PROC_MAPPING_STRATEGY_MORTON:
 			return to_int3(morton_getPid3D(pid,decomp));
-		case AcProcMappingStrategy::Hierarchical:
+		case AC_PROC_MAPPING_STRATEGY_HIERARCHICAL:
 			return hierarchical_getPid3D(pid,decomp);
 	}
 	return (int3){-1,-1,-1};

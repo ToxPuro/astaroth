@@ -153,9 +153,9 @@ ac_nprocs()
 static uint3_64
 get_decomp(const AcMeshInfo global_config)
 {
-    switch((AcDecomposeStrategy)global_config[AC_decompose_strategy])
+    switch(global_config[AC_decompose_strategy])
     {
-	    case AcDecomposeStrategy::External:
+	    case AC_DECOMPOSE_STRATEGY_EXTERNAL:
 		return static_cast<uint3_64>(global_config[AC_domain_decomposition]);
 	    default:
 		return decompose(ac_nprocs(),(AcDecomposeStrategy)global_config[AC_decompose_strategy]);
@@ -521,12 +521,12 @@ create_astaroth_sub_communicators()
 void
 create_astaroth_comm(const AcMeshInfo info)
 {
-      switch((AcMPICommStrategy)info[AC_MPI_comm_strategy])
+      switch(info[AC_MPI_comm_strategy])
       {
-	case AcMPICommStrategy::DuplicateMPICommWorld:
+	case AC_MPI_COMM_STRATEGY_DUP_WORLD:
       		ERRCHK_ALWAYS(MPI_Comm_dup(MPI_COMM_WORLD,&astaroth_comm) == MPI_SUCCESS);
 		break;
-	case AcMPICommStrategy::DuplicateUserComm:
+	case AC_MPI_COMM_STRATEGY_DUP_USER:
 	{
 		if(info.comm == NULL || info.comm->handle == MPI_COMM_NULL) fatal("%s","Cannot duplicate communicator since it is not loaded!\n");
       		ERRCHK_ALWAYS(MPI_Comm_dup(info.comm->handle,&astaroth_comm) == MPI_SUCCESS);
@@ -722,7 +722,7 @@ acGridInitBase(const AcMesh user_mesh)
 
     const int n_active_dimensions = !info[AC_dimension_inactive].x + !info[AC_dimension_inactive].y + !info[AC_dimension_inactive].z;
     acInitDecomposition(n_active_dimensions == 2);
-    if(info[AC_decompose_strategy] == (int)AcDecomposeStrategy::Hierarchical)
+    if(info[AC_decompose_strategy] == AC_DECOMPOSE_STRATEGY_HIERARCHICAL)
     {
         int device_count = -1;
         cudaGetDeviceCount(&device_count);
@@ -740,7 +740,7 @@ acGridInitBase(const AcMesh user_mesh)
     	compat_acDecompositionInit(ndims, global_dims, nlayers, partitions_per_layer);
     	// grid.decomposition_info = acDecompositionInit(ndims, global_dims,
     	// nlayers,partitions_per_layer);
-    	acVerifyDecomposition(decompose(ac_nprocs(),AcDecomposeStrategy::Hierarchical),(int)ac_proc_mapping_strategy());
+    	acVerifyDecomposition(decompose(ac_nprocs(),AC_DECOMPOSE_STRATEGY_HIERARCHICAL),(int)ac_proc_mapping_strategy());
     }
 
     // grid.decomposition_info = acDecompositionInit(ndims, global_dims,

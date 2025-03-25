@@ -148,8 +148,8 @@ main(int argc, char** argv)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    info[AC_proc_mapping_strategy] = (int)AcProcMappingStrategy::Morton;
-    info[AC_MPI_comm_strategy]     = (int)AcMPICommStrategy::DuplicateMPICommWorld;
+    info[AC_proc_mapping_strategy] = AC_PROC_MAPPING_STRATEGY_MORTON;
+    info[AC_MPI_comm_strategy]     = AC_MPI_COMM_STRATEGY_DUP_WORLD;
     TestType test = TEST_STRONG_SCALING;
 
     int opt;

@@ -64,9 +64,9 @@ main(int argc, char* argv[])
     //TP: this is because of backwards compatibility
     acSetLocalMeshDims(nx, ny, nz, &info);
 
-    acPushToConfig(info,AC_proc_mapping_strategy, (int)AcProcMappingStrategy::Linear);
-    acPushToConfig(info,AC_decompose_strategy,    (int)AcDecomposeStrategy::Morton);
-    acPushToConfig(info,AC_MPI_comm_strategy,    (int)AcMPICommStrategy::DuplicateMPICommWorld);
+    acPushToConfig(info,AC_proc_mapping_strategy, AC_PROC_MAPPING_STRATEGY_LINEAR);
+    acPushToConfig(info,AC_decompose_strategy,    AC_DECOMPOSE_STRATEGY_MORTON);
+    acPushToConfig(info,AC_MPI_comm_strategy,     AC_MPI_COMM_STRATEGY_DUP_WORLD);
 
 #if AC_RUNTIME_COMPILATION
     AcReal real_arr[4];

@@ -54,9 +54,10 @@ run_const bool AC_fully_periodic_grid = AC_periodic_grid.x && AC_periodic_grid.y
 
 run_const real3 AC_len = (AC_ngrid + AC_periodic_grid - 1)*AC_ds
 
-run_const int AC_proc_mapping_strategy
-run_const int AC_decompose_strategy
-run_const int AC_MPI_comm_strategy
+
+run_const AcProcMappingStrategy AC_proc_mapping_strategy = AC_PROC_MAPPING_STRATEGY_MORTON
+run_const AcDecomposeStrategy   AC_decompose_strategy    = AC_DECOMPOSE_STRATEGY_MORTON
+run_const AcMPICommStrategy     AC_MPI_comm_strategy     = AC_MPI_COMM_STRATEGY_DUP_WORLD
 #if AC_LAGRANGIAN_GRID 
 #if TWO_D == 0
 Field3 AC_COORDS
@@ -80,7 +81,7 @@ int3 AC_domain_coordinates
 run_const bool AC_include_3d_halo_corners
 run_const bool AC_skip_single_gpu_optim
 
-run_const AC_COORDINATE_SYSTEM AC_coordinate_system
+run_const AcCoordinateSystem AC_coordinate_system = AC_CARTESIAN_COORDINATES
 run_const bool3 AC_nonequidistant_grid
 
 run_const bool AC_sparse_autotuning=false
