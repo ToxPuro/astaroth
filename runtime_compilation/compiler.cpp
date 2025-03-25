@@ -15,9 +15,9 @@ get_decomp(const MPI_Comm comm, const AcMeshInfo config)
 
     int nprocs;
     MPI_Comm_size(comm, &nprocs);
-    switch((AcDecomposeStrategy)config[AC_decompose_strategy])
+    switch(config[AC_decompose_strategy])
     {
-	    case AcDecomposeStrategy::External:
+	    case AC_DECOMPOSE_STRATEGY_EXTERNAL:
 		return static_cast<uint3_64>(config[AC_domain_decomposition]);
 	    default:
 		return decompose(nprocs,(AcDecomposeStrategy)config[AC_decompose_strategy]);
