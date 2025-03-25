@@ -72,9 +72,9 @@ run_const bool  AC_host_has_row_memory_order
 			
 
 run_const bool  AC_lagrangian_grid = AC_LAGRANGIAN_GRID
-int3 AC_thread_block_loop_factors
+int3 AC_thread_block_loop_factors = (int3){1,1,1}
 int3 AC_max_tpb_for_reduce_kernels = (int3){-1,8,8}
-int3 AC_reduction_tile_dimensions  = (int3){1,1,1}
+int3 AC_reduction_tile_dimensions
 int3 AC_multigpu_offset
 int3 AC_domain_coordinates
 
