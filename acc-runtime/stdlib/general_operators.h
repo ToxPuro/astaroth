@@ -127,6 +127,26 @@ curl(Matrix m, real3 v) {
   }
   return g
 }
+curl(Matrix m, real3 v) {
+  g = real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
+  if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+  {
+          g.x += v.z*AC_INV_R*AC_COT
+          g.y -= v.z*AC_INV_R
+          g.z += v.y*AC_INV_R
+  }
+  if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+  {
+          g.z += v.y*AC_INV_CYL_R
+  }
+  return g
+}
+
+covariant_curl(Matrix m, real3 v)
+{
+  return real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
+}
+
 
 hessian(Field v)
 {

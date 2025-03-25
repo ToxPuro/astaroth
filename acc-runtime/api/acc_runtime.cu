@@ -1506,8 +1506,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   const bool large_launch   = is_large_launch(dims);
   const bool log = !builtin_kernel && large_launch;
 
-  dim3 best_tpb(0, 0, 0);
-  float best_time     = INFINITY;
+  AcAutotuneMeasurement best_measurement = {INFINITY,(dim3){0,0,0}};
   const int num_iters = 2;
 
   // Get device hardware information
@@ -1634,31 +1633,29 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
           ERRCHK_ALWAYS(err == cudaSuccess);
         }
 
-        if (milliseconds < best_time) {
-          best_time = milliseconds;
-          best_tpb  = tpb;
+        if (milliseconds < best_measurement.time) {
+          best_measurement.time = milliseconds;
+          best_measurement.tpb = tpb;
         }
 
         // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
         //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         // fflush(stdout);
   }
-  const AcAutotuneMeasurement best_measurement = 
-	  large_launch ? gather_best_measurement({best_time,best_tpb}) : (AcAutotuneMeasurement){best_time,best_tpb};
+  best_measurement =  large_launch ? gather_best_measurement(best_measurement) : best_measurement;
   c.tpb = best_measurement.tpb;
-  best_time = best_measurement.time;
   if(grid_pid == 0)
   {
         FILE* fp = fopen(autotune_csv_path, "a");
         ERRCHK_ALWAYS(fp);
 #if IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
         fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g\n", IMPLEMENTATION, nx, ny,
-                nz, best_tpb.x, best_tpb.y, best_tpb.z,
-                (double)best_time / num_iters);
+                nz, best_measurement.tpb.x, best_measurement.tpb.y, best_measurement.tpb.z,
+                (double)best_measurement.time / num_iters);
 #else
         fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g, %s, %d, %d, %d\n", IMPLEMENTATION, kernel, dims.x,
-                dims.y, dims.z, best_tpb.x, best_tpb.y, best_tpb.z,
-                (double)best_time / num_iters, kernel_names[kernel],
+                dims.y, dims.z, best_measurement.tpb.x, best_measurement.tpb.y, best_measurement.tpb.z,
+                (double)best_measurement.time / num_iters, kernel_names[kernel],
 		vba.on_device.block_factor.x,vba.on_device.block_factor.y,vba.on_device.block_factor.z
 		);
 #endif
