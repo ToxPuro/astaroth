@@ -61,7 +61,7 @@ check_that_built_ins_loaded(const AcCompInfo info)
 	ERRCHK_ALWAYS(info.is_loaded[AC_proc_mapping_strategy]);
 	ERRCHK_ALWAYS(info.is_loaded[AC_decompose_strategy]);
 	ERRCHK_ALWAYS(info.is_loaded[AC_MPI_comm_strategy]);
-	if(info.config[AC_decompose_strategy]  ==  (int)AcDecomposeStrategy::External)
+	if(info.config[AC_decompose_strategy]  ==  AC_DECOMPOSE_STRATEGY_EXTERNAL)
 		ERRCHK_ALWAYS(info.is_loaded.int3_params[AC_domain_decomposition]);
 #endif
 }
