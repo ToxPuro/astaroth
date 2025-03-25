@@ -241,8 +241,9 @@ typedef struct HaloMessage {
     bool pinned = false; // Set if data was received to pinned memory
 #endif
     MPI_Request request;
+    int tag;
 
-    HaloMessage(Volume dims, size_t num_vars);
+    HaloMessage(Volume dims, size_t num_vars, const int tag);
     ~HaloMessage();
 #if !(USE_CUDA_AWARE_MPI)
     void pin(const Device device, const cudaStream_t stream);
@@ -255,7 +256,7 @@ typedef struct HaloMessageSwapChain {
     std::vector<HaloMessage> buffers;
 
     HaloMessageSwapChain();
-    HaloMessageSwapChain(Volume dims, size_t num_vars);
+    HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag);
 
     HaloMessage* get_current_buffer();
     HaloMessage* get_fresh_buffer();
@@ -266,8 +267,6 @@ enum class HaloExchangeState { Waiting = Task::wait_state, Packing, Exchanging, 
 typedef class HaloExchangeTask : public Task {
   private:
     int counterpart_rank;
-    int send_tag;
-    int recv_tag;
 
     HaloMessageSwapChain recv_buffers;
     HaloMessageSwapChain send_buffers;

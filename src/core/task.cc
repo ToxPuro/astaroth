@@ -883,9 +883,10 @@ ComputeTask::advance(const TraceFile* trace_file)
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-HaloMessage::HaloMessage(Volume dims, size_t num_vars)
+HaloMessage::HaloMessage(Volume dims, size_t num_vars, const int tag_)
 {
     length       = dims.x * dims.y * dims.z * num_vars;
+    tag = tag_;
     size_t bytes = length * sizeof(AcRealPacked);
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data, bytes));
 #if !(USE_CUDA_AWARE_MPI)
@@ -934,12 +935,12 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 // HaloMessageSwapChain
 HaloMessageSwapChain::HaloMessageSwapChain() {}
 
-HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t num_vars)
+HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        buffers.emplace_back(dims, num_vars);
+        buffers.emplace_back(dims, num_vars,tag);
     }
 }
 
@@ -960,6 +961,12 @@ HaloMessageSwapChain::get_fresh_buffer()
     return &buffers[buf_idx];
 }
 
+int
+get_counterpart_rank(const Device device, const int rank, const uint3_64 decomp, const int3 output_region_id)
+{
+    const auto proc_strategy = acDeviceGetLocalConfig(device)[AC_proc_mapping_strategy];
+    return getPid(getPid3D(rank, decomp, proc_strategy) + output_region_id, decomp, proc_strategy);
+}
 
 
 // HaloExchangeTask
@@ -970,8 +977,11 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
            Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
            Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
-      recv_buffers(output_region.dims, op.num_fields_in),
-      send_buffers(input_region.dims, op.num_fields_out)
+      counterpart_rank(get_counterpart_rank(device_,rank,decomp,output_region.id)),
+
+      // MPI tags are namespaced to avoid collisions with other MPI tasks
+      recv_buffers(output_region.dims, op.num_fields_in,  tag_0 + input_region.tag),
+      send_buffers(input_region.dims,  op.num_fields_out, tag_0 + Region::id_to_tag(-output_region.id))
 {
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
@@ -987,12 +997,6 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: syncing VBA\n");
     syncVBA();
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done syncing VBA\n");
-
-    const auto proc_strategy = acDeviceGetLocalConfig(device)[AC_proc_mapping_strategy];
-    counterpart_rank = getPid(getPid3D(rank, decomp, proc_strategy) + output_region.id, decomp, proc_strategy);
-    // MPI tags are namespaced to avoid collisions with other MPI tasks
-    send_tag = tag_0 + input_region.tag;
-    recv_tag = tag_0 + Region::id_to_tag(-output_region.id);
 
     // Post receive immediately, this avoids unexpected messages
     active = ((acDeviceGetLocalConfig(device)[AC_include_3d_halo_corners]) || output_region.facet_class != 3) ? true : false;
@@ -1105,7 +1109,7 @@ HaloExchangeTask::receiveDevice()
     }
 
     ERRCHK_ALWAYS(MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              recv_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request) == MPI_SUCCESS);
+              msg->tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request) == MPI_SUCCESS);
     if (rank == 0) {
         // fprintf(stderr, "Returned from MPI_Irecv\n");
     }
@@ -1117,7 +1121,7 @@ HaloExchangeTask::sendDevice()
     auto msg = send_buffers.get_current_buffer();
     sync();
     ERRCHK_ALWAYS(MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              send_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request) == MPI_SUCCESS);
+              msg->tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request) == MPI_SUCCESS);
 }
 
 void
@@ -1142,7 +1146,7 @@ HaloExchangeTask::receiveHost()
         // fprintf("Called MPI_Irecv\n");
     }
     MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              recv_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+              msg->tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
     if (rank == 0) {
         // fprintf("Returned from MPI_Irecv\n");
     }
@@ -1156,7 +1160,7 @@ HaloExchangeTask::sendHost()
     msg->pin(device, stream);
     sync();
     MPI_Isend(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              send_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+              msg->tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
 }
 void
 HaloExchangeTask::exchangeHost()
