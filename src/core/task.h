@@ -242,8 +242,9 @@ typedef struct HaloMessage {
 #endif
     MPI_Request request;
     int tag;
+    int non_namespaced_tag;
 
-    HaloMessage(Volume dims, size_t num_vars, const int tag);
+    HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag);
     ~HaloMessage();
 #if !(USE_CUDA_AWARE_MPI)
     void pin(const Device device, const cudaStream_t stream);
@@ -256,7 +257,7 @@ typedef struct HaloMessageSwapChain {
     std::vector<HaloMessage> buffers;
 
     HaloMessageSwapChain();
-    HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag);
+    HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag);
 
     HaloMessage* get_current_buffer();
     HaloMessage* get_fresh_buffer();

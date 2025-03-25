@@ -883,10 +883,13 @@ ComputeTask::advance(const TraceFile* trace_file)
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-HaloMessage::HaloMessage(Volume dims, size_t num_vars, const int tag_)
+HaloMessage::HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag_)
 {
     length       = dims.x * dims.y * dims.z * num_vars;
-    tag = tag_;
+
+    tag = tag0 + tag_;
+    non_namespaced_tag = tag_;
+
     size_t bytes = length * sizeof(AcRealPacked);
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data, bytes));
 #if !(USE_CUDA_AWARE_MPI)
@@ -935,12 +938,12 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 // HaloMessageSwapChain
 HaloMessageSwapChain::HaloMessageSwapChain() {}
 
-HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag)
+HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        buffers.emplace_back(dims, num_vars,tag);
+        buffers.emplace_back(dims, num_vars,tag0, tag);
     }
 }
 
@@ -980,8 +983,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
       counterpart_rank(get_counterpart_rank(device_,rank,decomp,output_region.id)),
 
       // MPI tags are namespaced to avoid collisions with other MPI tasks
-      recv_buffers(output_region.dims, op.num_fields_in,  tag_0 + input_region.tag),
-      send_buffers(input_region.dims,  op.num_fields_out, tag_0 + Region::id_to_tag(-output_region.id))
+      recv_buffers(output_region.dims, op.num_fields_in,  tag_0, input_region.tag),
+      send_buffers(input_region.dims,  op.num_fields_out, tag_0, Region::id_to_tag(-output_region.id))
 {
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
