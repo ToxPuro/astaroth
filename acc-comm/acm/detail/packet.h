@@ -58,16 +58,10 @@ template <typename T, typename Allocator> class packet {
         //     ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
     }
 
-    void launch(const MPI_Comm& m_comm, const int tag,
-                const std::vector<ac::mr::device_pointer<T>>& inputs, const bool do_recv = true)
+    void launch(const MPI_Comm& m_comm, const int tag, const std::vector<ac::mr::device_pointer<T>>& inputs)
     {
-        if (do_recv) {
-            ERRCHK_MPI(!m_in_progress);
-            m_in_progress = true;
-        }
-        else {
-            ERRCHK_MPI(m_in_progress);
-        }
+        ERRCHK_MPI(!m_in_progress);
+        m_in_progress = true;
 
         // Communicator
         // ERRCHK_MPI(m_comm == MPI_COMM_NULL);
@@ -88,29 +82,26 @@ template <typename T, typename Allocator> class packet {
 
         // Post recv
         // const int tag{0};
-        if (do_recv) {
-            ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
-            ERRCHK_MPI_API(MPI_Irecv(m_recv_buffer.data(),
-                                     as<int>(count),
-                                     ac::mpi::get_dtype<T>(),
-                                     recv_neighbor,
-                                     tag,
-                                     m_comm,
-                                     &m_recv_req));
-        }
-        else {
-            // Pack and post send
-            pack(m_local_mm, m_segment.dims, send_offset, inputs, m_send_buffer.get());
+        ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_Irecv(m_recv_buffer.data(),
+                                 as<int>(count),
+                                 ac::mpi::get_dtype<T>(),
+                                 recv_neighbor,
+                                 tag,
+                                 m_comm,
+                                 &m_recv_req));
 
-            ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
-            ERRCHK_MPI_API(MPI_Isend(m_send_buffer.data(),
-                                     as<int>(count),
-                                     ac::mpi::get_dtype<T>(),
-                                     send_neighbor,
-                                     tag,
-                                     m_comm,
-                                     &m_send_req));
-        }
+        // Pack and post send
+        pack(m_local_mm, m_segment.dims, send_offset, inputs, m_send_buffer.get());
+
+        ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_Isend(m_send_buffer.data(),
+                                 as<int>(count),
+                                 ac::mpi::get_dtype<T>(),
+                                 send_neighbor,
+                                 tag,
+                                 m_comm,
+                                 &m_send_req));
     }
 
     bool ready() const

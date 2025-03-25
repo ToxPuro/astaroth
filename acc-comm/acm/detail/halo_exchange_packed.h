@@ -49,26 +49,12 @@ class async_halo_exchange_task {
                 const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
     {
         static int16_t tag{0};
-
-        auto initial_tag{tag};
         for (auto& packet : m_packets){
             
             constexpr int MPI_TAG_UB_MIN_VALUE{32767}; // Note duplicated code: also set in mpi_utils. TODO fix
             ERRCHK_MPI(m_packets.size() < MPI_TAG_UB_MIN_VALUE);
             
-            packet->launch(comm, tag, inputs, true); // Recv
-            
-            ac::mpi::increment_tag(&tag);
-        }
-        ERRCHK_MPI_API(MPI_Barrier(comm));
-
-        tag = initial_tag;
-        for (auto& packet : m_packets){
-            
-            constexpr int MPI_TAG_UB_MIN_VALUE{32767}; // Note duplicated code: also set in mpi_utils. TODO fix
-            ERRCHK_MPI(m_packets.size() < MPI_TAG_UB_MIN_VALUE);
-            
-            packet->launch(comm, tag, inputs, false); // Send
+            packet->launch(comm, tag, inputs);
             
             ac::mpi::increment_tag(&tag);
         }
