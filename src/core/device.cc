@@ -1757,6 +1757,14 @@ acDevicePreprocessScratchPad(Device device, const int variable, const AcType typ
 	return acPreprocessScratchPad(device->vba,variable,type,op);
 }
 
+AcResult
+acDeviceMemGetInfo(const Device device, size_t* free_mem, size_t* total_mem)
+{
+	ERRCHK_ALWAYS(device != NULL);
+	cudaSetDevice(device->id);
+	return cudaMemGetInfo(free_mem,total_mem) == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+}
+
 //TP: these are internal not user-facing device-layer functions
 //These exists since other modules should not modify the device structure directly but do it through API functions
 //Because they are internal it is okay for them not to return an error code: any errors are fatal!!

@@ -291,6 +291,7 @@ FUNC_DEFINE(AcResult, acDeviceStoreIXYPlate,(const Device device, int3 start, in
 FUNC_DEFINE(AcMeshInfo,acDeviceGetLocalConfig,(const Device device));
 
 FUNC_DEFINE(AcResult, acDeviceGetVertexBufferPtrs,(Device device, const VertexBufferHandle vtxbuf, AcReal** in, AcReal** out));
+FUNC_DEFINE(AcResult, acDeviceMemGetInfo,(const Device device, size_t* free_mem, size_t* total_mem));
 
 /** */
 AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,

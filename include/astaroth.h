@@ -421,6 +421,7 @@ acDecompose(const uint64_t target, const AcDecomposeStrategy strategy);
 	LOAD_DSYM(acDeviceGetVertexBufferPtrs,stream)
 	LOAD_DSYM(acDeviceGetLocalConfig,stream)
         LOAD_DSYM(acDeviceFinishReduceInt,stream) 
+	LOAD_DSYM(acDeviceMemGetInfo)
 	LOAD_DSYM(acKernelFlushInt,stream) 
 	LOAD_DSYM(acAnalysisGetKernelInfo,stream)
         LOAD_DSYM(acDeviceSwapAllProfileBuffers,stream)
