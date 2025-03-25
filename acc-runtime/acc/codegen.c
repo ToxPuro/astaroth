@@ -8829,7 +8829,6 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 			//Conditional with only a single case that is not taken, simple remove the whole conditional
 			else
 			{
-				printf("Eliminating: %s\n",combine_all_new(node));
 				ASTNode* statement = node->parent->parent;
 				statement->lhs = NULL;
 			}
