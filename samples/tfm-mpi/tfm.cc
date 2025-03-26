@@ -49,9 +49,9 @@
 // Production run: enable define below for fast, async profile IO
 // #define AC_WRITE_ASYNC_PROFILES
 
-#define AC_DISABLE_COMPUTE
+// #define AC_DISABLE_COMPUTE
 // #define AC_DISABLE_COMM
-#define AC_DISABLE_AVERAGES
+// #define AC_DISABLE_AVERAGES
 
 using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal, ac::mr::device_allocator>;
 using IOTask           = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
@@ -1122,7 +1122,7 @@ class Grid {
     }
 #endif
 
-    void tfm_pipeline(const size_t nsteps) {
+    void tfm_pipeline_simple_comm(const size_t nsteps) {
         // for (size_t i{0}; i < nsteps; ++i){
         //     tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::input));
         //     tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::output));
@@ -1134,13 +1134,23 @@ class Grid {
         ac::device_ndbuffer<double> dout{local_mm};
 
         static ac::comm::async_halo_exchange_task<double> he{local_mm, local_nn, rr, 8};
+
+        const size_t nsamples{10};
+        for (size_t j{0}; j < nsamples; ++j) {
+        const auto start{std::chrono::system_clock::now()};
         for (size_t i{0}; i < nsteps; ++i){
             he.launch(cart_comm, {din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
             he.wait({din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
         }
+
+        const auto ms_elapsed{std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now() - start)};
+
+        std::cout << "Sample " << j <<" Rank " << ac::mpi::get_rank(cart_comm) << "/" << ac::mpi::get_size(cart_comm) <<" local ms elapsed " << ms_elapsed.count() << std::endl;
+        }
     }
 
-    void tfm_pipeline_full(const size_t nsteps)
+    void tfm_pipeline(const size_t nsteps)
     {
         PRINT_LOG_INFO("Launching TFM pipeline");
 
