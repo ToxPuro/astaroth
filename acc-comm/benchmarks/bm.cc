@@ -55,3 +55,35 @@ benchmark(const std::string label, const std::function<void()>& init,
     std::cout << "\tMax: " << samples[samples.size() - 1] << " us" << std::endl;
     return median(samples);
 }
+
+double
+benchmark_ns(const std::string label, const std::function<void()>& init,
+             const std::function<void()>& bench)
+{
+    test_median();
+
+    constexpr size_t nsamples{100};
+    ERRCHK(nsamples > 0);
+
+    // Warmup
+    init();
+    bench();
+
+    // Benchmark
+    std::vector<long> samples;
+    for (size_t i{0}; i < nsamples; ++i) {
+        init();
+        const auto start{std::chrono::system_clock::now()};
+        bench();
+        const auto elapsed{std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::system_clock::now() - start)};
+        samples.push_back(elapsed.count());
+    }
+
+    std::sort(samples.begin(), samples.end());
+    std::cout << label << ":" << std::endl;
+    std::cout << "\tMin: " << samples[0] << " ns" << std::endl;
+    std::cout << "\tMedian: " << median(samples) << " ns" << std::endl;
+    std::cout << "\tMax: " << samples[samples.size() - 1] << " ns" << std::endl;
+    return median(samples);
+}

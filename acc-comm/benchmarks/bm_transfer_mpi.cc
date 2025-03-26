@@ -411,11 +411,11 @@ main(void)
         uint8_t* src = allocHost(BLOCK_SIZE);
         uint8_t* dst = allocHost(BLOCK_SIZE);
 
-        measurebw("Unidirectional bandwidth, blocking (Host)", //
-                  2 * BLOCK_SIZE,
-                  sendrecv_blocking,
-                  src,
-                  dst);
+        // measurebw("Unidirectional bandwidth, blocking (Host)", //
+        //           2 * BLOCK_SIZE,
+        //           sendrecv_blocking,
+        //           src,
+        //           dst);
         measurebw("Bidirectional bandwidth, async (Host)", //
                   2 * BLOCK_SIZE,
                   sendrecv_nonblocking,
