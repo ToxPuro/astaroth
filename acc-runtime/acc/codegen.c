@@ -9414,8 +9414,29 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 		gen_constexpr_info(root,gen_mem_accesses);
 	  }
 	  remove_dead_writes(root);
+
+	  FILE* fp = fopen("ac_minimized_code.ac.raw","w");
+          symboltable_reset();
+          traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
+          char** dfunc_strs = get_dfunc_strs(root);
+          for(size_t i = 0; i < num_dfuncs; ++i)
+          {
+                fprintf(fp,"%s\n",dfunc_strs[i]);
+                free(dfunc_strs[i]);
+          }
+           free(dfunc_strs);
+
+          // Kernels
+           symboltable_reset();
+          traverse(root,
+            NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
+                NODE_HOSTDEFINE | NODE_NO_OUT,
+            fp);
+          fclose(fp);
+          format_source("ac_minimized_code.ac.raw","ac_minimized_code.ac");
+          printf("Wrote minimized code in ac_minimized_code.ac\n");
   }
-  // Device functions
+
   symboltable_reset();
   traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
   char** dfunc_strs = get_dfunc_strs(root);
