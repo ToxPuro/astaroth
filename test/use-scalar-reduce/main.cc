@@ -50,7 +50,6 @@ int
 main(int argc, char* argv[])
 {
     atexit(acAbort);
-    int retval = 0;
 
     ac_MPI_Init();
 
@@ -76,7 +75,8 @@ main(int argc, char* argv[])
     const int nx = argc > 1 ? atoi(argv[1]) : 2*9;
     const int ny = argc > 2 ? atoi(argv[2]) : 2*11;
     const int nz = argc > 3 ? atoi(argv[3]) : 4*7;
-    acSetMeshDims(nx, ny, nz, &info);
+    acSetGridMeshDims(nx, ny, nz, &info);
+    acSetLocalMeshDims(nx, ny, nz, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {
@@ -107,9 +107,6 @@ main(int argc, char* argv[])
     acGridSynchronizeStream(STREAM_ALL);
 
     acGridStoreMesh(STREAM_DEFAULT,&candidate);
-    acGridSynchronizeStream(STREAM_ALL);
-    acGridFinalizeReduceLocal(graph);
-    acGridSynchronizeStream(STREAM_ALL);
     //AcReal epsilon  = pow(10.0,-12.0);
     //auto relative_diff = [](const auto a, const auto b)
     //{
@@ -160,13 +157,15 @@ main(int argc, char* argv[])
 	}
       }
     }
-    fprintf(stderr,"MAX: %14e,%14e,%d\n",cpu_max,acDeviceGetOutput(acGridGetDevice(), F_MAX),cpu_max == acDeviceGetOutput(acGridGetDevice(), F_MAX));
-    retval = !(f_correct);
+    const bool max_correct = cpu_max == acDeviceGetOutput(acGridGetDevice(), F_MAX);
+    fprintf(stderr,"MAX: %14e,%14e,%d\n",cpu_max,acDeviceGetOutput(acGridGetDevice(), F_MAX),max_correct);
     fprintf(stderr,"F ... %s\n", f_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
 
+
+    const bool success = f_correct && max_correct;
     if (pid == 0)
-        fprintf(stderr, "KERNEL_FUSION_TEST complete: %s\n",
-                retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
+        fprintf(stderr, "USE_SCALAR_REDUCE_TEST complete: %s\n",
+                success ? "No errors found" : "One or more errors found");
     
     if (pid == 0) {
         acHostMeshDestroy(&model);

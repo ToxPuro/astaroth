@@ -1,6 +1,7 @@
 real intrinsic sin(real) 
 real intrinsic cos(real) 
 real intrinsic tan(real) 
+real intrinsic atan(real)
 real intrinsic atan2(real)
 
 real intrinsic sinh(real) 
@@ -29,6 +30,7 @@ intrinsic broadcast_scalar_to_vec
 intrinsic ceil
 real intrinsic random_uniform
 real intrinsic atomicAdd
+intrinsic output_value
 
 AcDimProducts intrinsic ac_get_dim_products(int3)
 AcDimProductsInv intrinsic ac_get_dim_products_inv(AcDimProducts)

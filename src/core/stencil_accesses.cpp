@@ -230,14 +230,14 @@ std::vector<KernelReduceOutput> reduce_inputs{};
 std::vector<KernelReduceOutput> reduce_outputs{};
 
 AcReal
-value(const AcRealOutputParam& param)
+output_value(const AcRealOutputParam& param)
 {
 	reduce_inputs.push_back({(int)param,AC_REAL_TYPE,REDUCE_SUM,current_kernel});
 	return (AcReal){};
 }
 
 int
-value(const AcIntOutputParam& param)
+output_value(const AcIntOutputParam& param)
 {
 	reduce_inputs.push_back({(int)param,AC_REAL_TYPE,REDUCE_SUM,current_kernel});
 	return (int){};
@@ -245,7 +245,7 @@ value(const AcIntOutputParam& param)
 
 #if AC_DOUBLE_PRECISION
 float
-value(const AcFloatOutputParam& param)
+output_value(const AcFloatOutputParam& param)
 {
 	reduce_inputs.push_back({(int)param,AC_FLOAT_TYPE,REDUCE_SUM,current_kernel});
 	return (float){};

@@ -97,6 +97,7 @@ static const char* PERIODIC = NULL;
 
 
 static const char* VALUE_STR      = NULL;
+static const char* OUTPUT_VALUE_STR      = NULL;
 
 static const char* DEAD_STR      = NULL;
 static const char* AUXILIARY_STR      = NULL;
@@ -1661,7 +1662,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	//TP: TODO: compare the performance of having this one level of indirection vs. simply loading the value to dconst and using it from there
 	if(datatype_scalar == REAL_STR || datatype_scalar == INT_STR || (datatype_scalar == FLOAT_STR && AC_DOUBLE_PRECISION))
 	{
-		fprintf_filename("output_value_decl.h","%s DEVICE_INLINE  value(const %sOutputParam& param){return d_reduce_%s_res_symbol[(int)param];}\n"
+		fprintf_filename("output_value_decl.h","%s DEVICE_INLINE  output_value(const %sOutputParam& param){return d_reduce_%s_res_symbol[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
 	}
 
@@ -2808,6 +2809,12 @@ bool
 is_value_applicable_type(const char* expr)
 {
 	return is_field_expr(expr) || is_subtype(PROFILE_STR,expr);
+}
+
+bool
+is_output_type(const char* var)
+{
+	return check_symbol(NODE_VARIABLE_ID,intern(var),0,OUTPUT_STR);
 }
 
 
@@ -6936,7 +6943,6 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 		fatal("number of parameters does not match, expected %zu but got %zu in %s\n",params_info.types.size, call_info.types.size, combine_all_new(node));
 	for(size_t i = offset; i < call_info.types.size; ++i)
 	{
-		const bool is_output_type = check_symbol(NODE_VARIABLE_ID,intern(call_info.expr.data[i]),0,OUTPUT_STR);
 		if(!call_info.types.data[i]) continue;
 		if(!params_info.types.data[i-offset]) continue;
 		if(
@@ -6946,14 +6952,16 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 		   || (params_info.types.data[i-offset] == REAL_PTR_STR  && call_info.types.data[i] == FIELD_PTR_STR)
 		   || (params_info.types.data[i-offset] == REAL3_PTR_STR && call_info.types.data[i] == FIELD3_PTR_STR)
 		   || (params_info.types.data[i-offset] == REAL_STR      && strstr(call_info.types.data[i],"Profile"))
-		   || (params_info.types.data[i-offset] == call_info.types.data[i] && is_output_type)
+		   || (params_info.types.data[i-offset] == call_info.types.data[i] && is_output_type(call_info.expr.data[i]))
 		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
 			//expr->expr_type = params_info.types.data[i-offset];
 			replace_node(
 					expr,
-					create_func_call_expr(VALUE_STR,expr)
+					create_func_call_expr(
+						is_output_type(call_info.expr.data[i]) ? OUTPUT_VALUE_STR : VALUE_STR
+						,expr)
 				     );
 		}
 		//TP: This translates e.g. any_AC(arr,3) --> any_AC(AC_INTERNAL_d_bool_arrays_arr,3)
@@ -7441,6 +7449,19 @@ transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* roo
 	free_func_params_info(&param_info);
 }
 
+void
+apply_value_to_output_types(ASTNode* node)
+{
+	if(node->type & NODE_FUNCTION_CALL)
+	{
+		const char* func_name = get_node_by_token(IDENTIFIER,node)->buffer;
+		if(func_name == OUTPUT_VALUE_STR) return;
+	}
+	TRAVERSE_PREAMBLE(apply_value_to_output_types);
+	if(node->token != IDENTIFIER || !node->buffer) return;
+	if(!is_output_type(node->buffer)) return;
+	replace_node(node,create_func_call_expr(OUTPUT_VALUE_STR,node));
+}
 
 void
 transform_field_unary_ops(ASTNode* node)
@@ -7450,10 +7471,12 @@ transform_field_unary_ops(ASTNode* node)
 	const char* base_type= get_expr_type(node->rhs);
 	const char* unary_op = get_node_by_token(UNARY_OP,node->lhs)->buffer;
 	if(strcmps(unary_op,PLUS_STR,MINUS_STR)) return;
-	if(!base_type) return;
-	if(!is_value_applicable_type(base_type)) return;
+	if(base_type && is_value_applicable_type(base_type))
+	{
+		node->rhs = create_func_call_expr(VALUE_STR,node->rhs);
+	}
+	apply_value_to_output_types(node);
 
-	node->rhs = create_func_call_expr(VALUE_STR,node->rhs);
 }
 void
 transform_field_binary_ops(ASTNode* node)
@@ -7470,11 +7493,16 @@ transform_field_binary_ops(ASTNode* node)
         if(!op) return;
         if(strcmps(op,PLUS_STR,MINUS_STR,DIV_STR,MULT_STR)) return;
 
-
 	if(is_value_applicable_type(lhs_expr))
+	{
 		node->lhs = create_func_call_expr(VALUE_STR,node->lhs);
+	}
 	if(is_value_applicable_type(rhs_expr))
+	{
 		node->rhs->rhs = create_func_call_expr(VALUE_STR,node->rhs->rhs);
+	}
+
+	apply_value_to_output_types(node);
 }
 
 void
@@ -7644,6 +7672,7 @@ gen_global_strings()
 		push(&primitive_datatypes,intern("double"));
 
 	VALUE_STR = intern("value");
+	OUTPUT_VALUE_STR = intern("output_value");
 
 	COMPLEX_STR= intern("AcComplex");
 	REAL3_STR= intern("AcReal3");
