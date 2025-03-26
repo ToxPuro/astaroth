@@ -3697,6 +3697,7 @@ init_populate_in_func(const ASTNode* node, int_vec* src)
 void
 init_populate(const ASTNode* node, funcs_calling_info* info, const NodeType func_type)
 {
+	if(node->type == NODE_TASKGRAPH_DEF) return;
 	TRAVERSE_PREAMBLE_PARAMS(init_populate,info,func_type);
 	if(!(node->type & func_type)) return;
 	push(&info->names,get_node_by_token(IDENTIFIER,node->lhs)->buffer);
