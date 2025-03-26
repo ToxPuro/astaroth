@@ -9335,7 +9335,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
   //replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
   free_combinatorial_params_info(&info);
-  gen_kernel_postfixes(root,gen_mem_accesses);
   gen_kernel_reduce_outputs();
   generate_error_messages();
 
@@ -9435,7 +9434,12 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
           fclose(fp);
           format_source("ac_minimized_code.ac.raw","ac_minimized_code.ac");
           printf("Wrote minimized code in ac_minimized_code.ac\n");
+	  astnode_destroy(out_root);
   }
+
+  //TP: done after code elimination for the code written to ac_minimized to be valid DSL
+  traverse(root, NODE_NO_OUT, NULL);
+  gen_kernel_postfixes(root,gen_mem_accesses);
 
   symboltable_reset();
   traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
