@@ -168,8 +168,8 @@ bm_halo_exchange_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, c
 
     ac::comm::async_halo_exchange_task<T> he{local_mm, local_nn, rr, 1};
 
-    auto                                  init_fn = [&din]() { randomize(din.get()); };
-    auto                                  bm_fn   = [&]() {
+    auto init_fn = [&din]() { randomize(din.get()); };
+    auto bm_fn   = [&]() {
         he.launch(cart_comm, {din.get()});
         he.wait({dout.get()});
     };
@@ -193,8 +193,8 @@ bm_halo_exchange_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, c
 /** Benchmark packed async MPI halo exchange in a Cartesian grid */
 template <typename T>
 static void
-bm_halo_exchange_packed_multiple(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::index& rr,
-                        const size_t jobid, const std::string& label)
+bm_halo_exchange_packed_multiple(const MPI_Comm& cart_comm, const ac::shape& global_nn,
+                                 const ac::index& rr, const size_t jobid, const std::string& label)
 {
     const auto             local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
     const auto             local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
@@ -203,10 +203,33 @@ bm_halo_exchange_packed_multiple(const MPI_Comm& cart_comm, const ac::shape& glo
 
     ac::comm::async_halo_exchange_task<T> he{local_mm, local_nn, rr, 12};
 
-    auto                                  init_fn = [&din]() { randomize(din.get()); };
-    auto                                  bm_fn   = [&]() {
-        he.launch(cart_comm, {din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
-        he.wait({dout.get(),dout.get(),dout.get(),dout.get(),dout.get(),dout.get(),dout.get(),dout.get(),dout.get(),dout.get(),dout.get(),dout.get()});
+    auto init_fn = [&din]() { randomize(din.get()); };
+    auto bm_fn   = [&]() {
+        he.launch(cart_comm,
+                    {din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get()});
+        he.wait({dout.get(),
+                 dout.get(),
+                 dout.get(),
+                 dout.get(),
+                 dout.get(),
+                 dout.get(),
+                 dout.get(),
+                 dout.get(),
+                 dout.get(),
+                 dout.get(),
+                 dout.get(),
+                 dout.get()});
     };
     auto sync_fn = [&]() {
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
@@ -236,8 +259,8 @@ main()
 
         {
             MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
-                                                        global_nn,
-                                                        ac::mpi::RankReorderMethod::hierarchical)};
+                                                         global_nn,
+                                                         ac::mpi::RankReorderMethod::hierarchical)};
 
             // verify<int>(cart_comm, global_nn, rr);
             // verify_packed<int>(cart_comm, global_nn, rr);
@@ -247,18 +270,22 @@ main()
         }
         {
             MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
-                                                        global_nn,
-                                                        ac::mpi::RankReorderMethod::hierarchical)};
+                                                         global_nn,
+                                                         ac::mpi::RankReorderMethod::hierarchical)};
 
             // verify<int>(cart_comm, global_nn, rr);
             // verify_packed<int>(cart_comm, global_nn, rr);
-            bm_halo_exchange_packed_multiple<double>(cart_comm, global_nn, rr, jobid, "packed-12-hierarchical");
+            bm_halo_exchange_packed_multiple<double>(cart_comm,
+                                                     global_nn,
+                                                     rr,
+                                                     jobid,
+                                                     "packed-12-hierarchical");
             ac::mpi::cart_comm_destroy(&cart_comm);
         }
         {
             MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
-                global_nn,
-                ac::mpi::RankReorderMethod::no)};
+                                                         global_nn,
+                                                         ac::mpi::RankReorderMethod::no)};
 
             // verify<int>(cart_comm, global_nn, rr);
             // verify_packed<int>(cart_comm, global_nn, rr);
@@ -268,8 +295,8 @@ main()
         }
         {
             MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
-                global_nn,
-                ac::mpi::RankReorderMethod::default_mpi)};
+                                                         global_nn,
+                                                         ac::mpi::RankReorderMethod::default_mpi)};
 
             // verify<int>(cart_comm, global_nn, rr);
             // verify_packed<int>(cart_comm, global_nn, rr);
