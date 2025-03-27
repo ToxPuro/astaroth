@@ -86,7 +86,7 @@ template <typename T, typename Allocator> class packet {
             pack(m_local_mm, m_segment.dims, send_offset, inputs, m_recv_buffer.get());
 
             // Dummy request
-            int dummy{-1};
+            static int dummy{-1};
             ERRCHK_MPI_API(MPI_Isend(&dummy, 0, MPI_INT, rank, 0, m_comm, &m_send_req));
             ERRCHK_MPI_API(MPI_Irecv(&dummy, 0, MPI_INT, rank, 0, m_comm, &m_recv_req));
         }
