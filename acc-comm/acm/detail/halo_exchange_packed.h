@@ -73,32 +73,6 @@ class async_halo_exchange_task {
         //     packet->wait(outputs);
     }
 
-    void launchwait(const MPI_Comm& comm, const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
-                    std::vector<ac::mr::pointer<T, Allocator>> outputs)
-    {
-        static int16_t tag{0};
-        if (ac::mpi::get_rank(comm) == 0)
-            std::cerr << "-----------------" << std::endl;
-        for (auto& packet : m_packets) {
-            constexpr int MPI_TAG_UB_MIN_VALUE{
-                32767}; // Note duplicated code: also set in mpi_utils. TODO fix
-            ERRCHK_MPI(m_packets.size() < MPI_TAG_UB_MIN_VALUE);
-
-            const auto start{std::chrono::system_clock::now()};
-            packet->launch(comm, tag, inputs);
-            packet->wait(outputs);
-            const auto elapsed{std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::system_clock::now() - start)};
-            if (ac::mpi::get_rank(comm) == 0 && ac::prod(packet->segment().dims) >= 64 * 64 * 32)
-                std::cerr << "Rank " << ac::mpi::get_rank(comm) << ", " << packet->segment() << ", "
-                          << elapsed.count() << std::endl;
-
-            ac::mpi::increment_tag(&tag);
-        }
-        if (ac::mpi::get_rank(comm) == 0)
-            std::cerr << "-----------------" << std::endl;
-    }
-
     bool complete() const
     {
         const bool cc_allof_result{

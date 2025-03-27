@@ -116,8 +116,6 @@ template <typename T, typename Allocator> class packet {
         }
     }
 
-    auto segment() const { return m_segment; }
-
     bool ready() const
     {
         ERRCHK_MPI(m_in_progress);
