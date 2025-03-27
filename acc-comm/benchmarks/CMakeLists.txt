@@ -12,5 +12,8 @@ target_link_libraries(bm_scaling PRIVATE MPI::MPI_C roctracer64 acm)
 add_executable(bm_transfer_mpi bm_transfer_mpi.cc bm.cc)
 target_link_libraries(bm_transfer_mpi PRIVATE MPI::MPI_C acm)
 
+add_executable(bm_transfer_mpi_v2 bm_transfer_mpi_v2.cc bm.cc)
+target_link_libraries(bm_transfer_mpi_v2 PRIVATE MPI::MPI_C acm)
+
 add_executable(bm_transfer_p2p bm_transfer_p2p.cc bm.cc)
 target_link_libraries(bm_transfer_p2p PRIVATE acm)

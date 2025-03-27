@@ -81,9 +81,9 @@ benchmark_ns(const std::string label, const std::function<void()>& init,
     }
 
     std::sort(samples.begin(), samples.end());
-    std::cout << label << ":" << std::endl;
-    std::cout << "\tMin: " << samples[0] << " ns" << std::endl;
-    std::cout << "\tMedian: " << median(samples) << " ns" << std::endl;
-    std::cout << "\tMax: " << samples[samples.size() - 1] << " ns" << std::endl;
+    // std::cout << label << ":" << std::endl;
+    // std::cout << "\tMin: " << samples[0] << " ns" << std::endl;
+    // std::cout << "\tMedian: " << median(samples) << " ns" << std::endl;
+    // std::cout << "\tMax: " << samples[samples.size() - 1] << " ns" << std::endl;
     return median(samples);
 }
