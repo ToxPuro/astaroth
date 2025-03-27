@@ -1134,6 +1134,8 @@ class Grid {
         ac::device_ndbuffer<double> dout{local_mm};
 
         static ac::comm::async_halo_exchange_task<double> he{local_mm, local_nn, rr, 8};
+        he.launch(cart_comm, {din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
+        he.wait({din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
 
         const size_t nsamples{10};
         for (size_t j{0}; j < nsamples; ++j) {
