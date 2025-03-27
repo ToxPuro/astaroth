@@ -139,7 +139,9 @@ bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac
         }
     };
     auto sync_fn = [&]() {
+#if defined(ACM_DEVICE_ENABLED)
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
+#endif
         ERRCHK_MPI_API(MPI_Barrier(cart_comm));
     };
 
@@ -174,7 +176,9 @@ bm_halo_exchange_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, c
         he.wait({dout.get()});
     };
     auto sync_fn = [&]() {
+#if defined(ACM_DEVICE_ENABLED)
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
+#endif
         ERRCHK_MPI_API(MPI_Barrier(cart_comm));
     };
 
@@ -232,7 +236,9 @@ bm_halo_exchange_packed_multiple(const MPI_Comm& cart_comm, const ac::shape& glo
                  dout.get()});
     };
     auto sync_fn = [&]() {
+#if defined(ACM_DEVICE_ENABLED)
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
+#endif
         ERRCHK_MPI_API(MPI_Barrier(cart_comm));
     };
 
