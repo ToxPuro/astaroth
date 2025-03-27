@@ -2,14 +2,52 @@
 #include <cstdio>
 #include <iostream>
 
+#include "bm.h"
+
 #include "acm/detail/errchk_cuda.h"
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/type_conversion.h"
 
-#include "bm.h"
+#include "acm/detail/halo_exchange_packed.h"
+#include "acm/detail/ndbuffer.h"
+#include "acm/detail/packet.h"
 
 constexpr size_t problem_size{128 * 1024 * 1024}; // Bytes
+
+static void
+test_halo_exchange(void)
+{
+    const auto global_nn{ac::make_shape(3, 128)};
+    const auto rr{ac::make_index(global_nn.size(), 32)};
+
+    MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
+                                                 global_nn,
+                                                 ac::mpi::RankReorderMethod::hierarchical)};
+
+    const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
+    const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
+
+    ac::device_ndbuffer<double> din{local_mm};
+    ac::device_ndbuffer<double> dout{local_mm};
+
+    auto init_fn = [&din]() { randomize(din.get()); };
+
+    ac::comm::async_halo_exchange_task<double> he{local_mm, local_nn, rr, 1};
+    he.launchwait(cart_comm, {din.get()}, {dout.get()});
+
+    auto bm_fn = [&]() { he.launchwait(cart_comm, {din.get()}, {dout.get()}); };
+
+    const auto ns_elapsed{benchmark_ns("halo exchange", init_fn, bm_fn)};
+
+    MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
+    std::cout << ns_elapsed << std::endl;
+    MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
+
+    ac::mpi::cart_comm_destroy(&cart_comm);
+    ac::mpi::finalize();
+    exit(EXIT_SUCCESS);
+}
 
 int
 main(void)
@@ -35,6 +73,8 @@ main(void)
         const int       device_id{device_ids[as<size_t>(rank)]};
         ERRCHK_CUDA_API(cudaSetDevice(device_id));
 #endif
+
+        test_halo_exchange();
 
         ac::device_buffer<uint8_t> din{problem_size};
         ac::device_buffer<uint8_t> dout{problem_size};
