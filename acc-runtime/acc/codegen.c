@@ -4028,7 +4028,7 @@ check_for_undeclared(const ASTNode* node)
 
 }
 static void
-translate_buffer_body(FILE* stream, const ASTNode* node)
+translate_buffer_body(FILE* stream, const ASTNode* node, const bool to_DSL)
 {
   if (stream && node->buffer) {
     const Symbol* symbol = symboltable_lookup(node->buffer);
@@ -4036,22 +4036,38 @@ translate_buffer_body(FILE* stream, const ASTNode* node)
     {
       if(!strstr(symbol->tspecifier,"*") && !strstr(symbol->tspecifier,"AcArray"))
       {
-      	fprintf(stream, "DCONST(%s)", node->buffer);
+	if(to_DSL) fprintf(stream, "%s", node->buffer);
+	else       fprintf(stream, "DCONST(%s)", node->buffer);
       }
       else
       {
-      	fprintf(stream, "(%s)", node->buffer);
+	if(to_DSL) fprintf(stream, "%s", node->buffer);
+	else       fprintf(stream, "(%s)", node->buffer);
       }
     }
     else if (symbol && symbol->type & NODE_VARIABLE_ID && str_vec_contains(symbol->tqualifiers,RUN_CONST_STR))
-      fprintf(stream, "RCONST(%s)", node->buffer);
-    else if (symbol && symbol->type & NODE_VARIABLE_ID && symbol->tspecifier == PROFILE_STR)
-      fprintf(stream, "(NUM_FIELDS+%s)", node->buffer);
+    {
+      if(to_DSL) fprintf(stream, "%s", node->buffer);
+      else       fprintf(stream, "RCONST(%s)", node->buffer);
+    }
     else if(symbol && symbol->tspecifier == KERNEL_STR)
-	    fprintf(stream,"KERNEL_%s",node->buffer);
+    {
+	   if(to_DSL) fprintf(stream,"%s",node->buffer);
+	   else       fprintf(stream,"KERNEL_%s",node->buffer);
+    }
     else
     {
-      fprintf(stream, "%s", node->buffer);
+      if(to_DSL) 
+      {
+	char* out = strdup(node->buffer);
+	remove_suffix(out,"_AC_MANGLED");
+      	fprintf(stream, "%s", out);
+	free(out);
+      }
+      else
+      {
+      	fprintf(stream, "%s", node->buffer);
+      }
     }
   }
 }
@@ -4385,9 +4401,11 @@ typedef struct
 	bool skip_shadowing_check;
 	const ASTNode* func_call;
 	bool do_not_add_to_symbol_table;
+	bool to_DSL;
+	NodeType return_on;
 } traverse_base_params;
 void
-traverse_base(const ASTNode* node, const NodeType return_on, const NodeType exclude, FILE* stream, traverse_base_params params)
+traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, traverse_base_params params)
 {
   if(node->type == NODE_ENUM_DEF)   return;
   if(node->type == NODE_STRUCT_DEF) return;
@@ -4395,7 +4413,7 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
   if(node->type & NODE_FUNCTION_CALL) params.func_call = node;
   if (node->type & exclude)
 	  stream = NULL;
-  if(return_on != NODE_UNKNOWN && (node->type == return_on))
+  if(params.return_on != NODE_UNKNOWN && (node->type == params.return_on))
 	  return;
   // Do not translate tqualifiers or tspecifiers immediately
   if (node->parent &&
@@ -4418,7 +4436,7 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
 
   // Traverse LHS
   if (node->lhs)
-    traverse_base(node->lhs, return_on, exclude, stream, params);
+    traverse_base(node->lhs, exclude, stream, params);
 
   const char* size = !params.func_call && !params.do_not_add_to_symbol_table ?
 		  add_to_symbol_table(node,exclude,stream,params.do_checks,params.decl,NULL,params.skip_global_dup_check,params.skip_shadowing_check)
@@ -4426,7 +4444,7 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
   // Infix translation
   if (stream && node->infix) 
     fprintf(stream, "%s", node->infix);
-  translate_buffer_body(stream, node);
+  translate_buffer_body(stream, node, params.to_DSL);
   if(size)
 	  fprintf(stream, "%s ",size);
 
@@ -4436,7 +4454,7 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
     params.skip_global_dup_check |= (node->type & NODE_ASSIGNMENT);
     params.skip_global_dup_check |= (node->type & NODE_ARRAY_ACCESS);
     params.do_not_add_to_symbol_table |= (node->type & NODE_ASSIGNMENT);
-    traverse_base(node->rhs, return_on, exclude, stream,params);
+    traverse_base(node->rhs, exclude, stream,params);
   }
 
   // Postfix logic
@@ -4454,7 +4472,7 @@ traverse_base(const ASTNode* node, const NodeType return_on, const NodeType excl
 static inline void
 traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 {
-	traverse_base(node,NODE_UNKNOWN,exclude,stream,(traverse_base_params){});
+	traverse_base(node,exclude,stream,(traverse_base_params){});
 }
 
 func_params_info
@@ -5345,7 +5363,7 @@ gen_var_loader(const ASTNode* assignment, FILE* fp)
   	params.do_checks = true;
 	params.skip_global_dup_check = true;
 	params.skip_shadowing_check = true;
-  	traverse_base(assignment->rhs, 0, 0, stream, params);
+  	traverse_base(assignment->rhs, 0, stream, params);
 	fclose(stream);
 	fprintf(fp,"push_val(%s,%s);\n",id,rhs);
 	free(rhs);
@@ -8584,7 +8602,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   traverse_base_params params;
   memset(&params,0,sizeof(params));
   params.do_checks = true;
-  traverse_base(root, 0, 0, NULL, params);
+  traverse_base(root, 0, NULL, params);
 
   gen_kernel_ifs(root,optimize_input_params);
   if(monomorphization_index == 0)
@@ -8640,7 +8658,7 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
   		traverse_base_params params;
   		memset(&params,0,sizeof(params));
   		params.do_checks = true;
-  		traverse_base(root, 0, 0, NULL, params);
+  		traverse_base(root, 0, NULL, params);
 	}
         duplicate_dfuncs = get_duplicate_dfuncs(root);
 
@@ -8749,7 +8767,12 @@ gen_output_files(ASTNode* root)
 
 
   //TP: Get number of run_const variable by skipping overrides
-  traverse_base(root, NODE_ASSIGN_LIST, NODE_ASSIGN_LIST, NULL, (traverse_base_params){});
+  {
+  	traverse_base_params params;
+  	memset(&params,0,sizeof(traverse_base_params));
+  	params.return_on  = NODE_ASSIGN_LIST;
+  	traverse_base(root, NODE_ASSIGN_LIST, NULL, params);
+  }
   num_profiles = count_profiles();
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
@@ -9093,7 +9116,7 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
 }
 
 char**
-get_dfunc_strs(const ASTNode* root)
+get_dfunc_strs(const ASTNode* root, const traverse_base_params params)
 {
   char** dfunc_strs = malloc(sizeof(char*)*num_dfuncs);
   FILE* dfunc_fps[num_dfuncs];
@@ -9111,10 +9134,10 @@ get_dfunc_strs(const ASTNode* root)
   {
   	dfunc_fps[i] =  open_memstream(&dfunc_strs[i], &sizeloc);
 	if(dfunc_heads[i])
-  		traverse(dfunc_heads[i],
+  		traverse_base(dfunc_heads[i],
   	           NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_KFUNCTION |
   	               NODE_HOSTDEFINE | NODE_NO_OUT,
-  	           dfunc_fps[i]);
+  	           dfunc_fps[i],params);
 	else
 		fprintf(dfunc_fps[i],"%s","");
   	fflush(dfunc_fps[i]);
@@ -9319,7 +9342,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   	traverse_base_params params;
   	memset(&params,0,sizeof(params));
   	params.do_checks = true;
-  	traverse_base(root, 0, 0, NULL, params);
+  	traverse_base(root, 0, NULL, params);
   }
   num_profiles = count_profiles();
   check_global_array_dimensions(root);
@@ -9416,8 +9439,11 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 
 	  FILE* fp = fopen("ac_minimized_code.ac.raw","w");
           symboltable_reset();
-          traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
-          char** dfunc_strs = get_dfunc_strs(root);
+	  traverse_base_params traverse_params;
+	  memset(&traverse_params,0,sizeof(traverse_base_params));
+	  traverse_params.to_DSL= true;
+          traverse_base(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL, traverse_params);
+          char** dfunc_strs = get_dfunc_strs(root,traverse_params);
           for(size_t i = 0; i < num_dfuncs; ++i)
           {
                 fprintf(fp,"%s\n",dfunc_strs[i]);
@@ -9427,14 +9453,13 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 
           // Kernels
            symboltable_reset();
-          traverse(root,
+          traverse_base(root,
             NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
                 NODE_HOSTDEFINE | NODE_NO_OUT,
-            fp);
+            fp,traverse_params);
           fclose(fp);
           format_source("ac_minimized_code.ac.raw","ac_minimized_code.ac");
           printf("Wrote minimized code in ac_minimized_code.ac\n");
-	  astnode_destroy(out_root);
   }
 
   //TP: done after code elimination for the code written to ac_minimized to be valid DSL
@@ -9443,7 +9468,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 
   symboltable_reset();
   traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
-  char** dfunc_strs = get_dfunc_strs(root);
+  char** dfunc_strs = get_dfunc_strs(root,(traverse_base_params){});
   // Kernels
   symboltable_reset();
   gen_kernels(root, dfunc_strs, gen_mem_accesses);

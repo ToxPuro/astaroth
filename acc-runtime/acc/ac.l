@@ -57,11 +57,14 @@ void strip_whitespace(char *str) {
 "long long"             { return LONG_LONG; } /* Type specifiers */
 "uint"                  { return UINT; }
 "real"                  { return REAL; }
+"AcReal"                { return REAL; }
 "float"                 { return FLOAT; }
 "double"                { return DOUBLE; }
 "bool"                  { return BOOL; }
 "Tensor"                { return TENSOR; }
+"AcTensor"              { return TENSOR; }
 "Matrix"                { return MATRIX; }
+"AcMatrix"              { return MATRIX; }
 "Field"                 { return FIELD; }
 "VtxBuffer"                 { return VTXBUFFER; }
 "WorkBuffer"            {return WORK_BUFFER; }
