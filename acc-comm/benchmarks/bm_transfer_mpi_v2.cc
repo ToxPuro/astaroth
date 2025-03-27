@@ -21,10 +21,21 @@ main(void)
         const int nprocs{ac::mpi::get_size(MPI_COMM_WORLD)};
 
         // Set device id
-        int ndevices_per_node{-1};
-        ERRCHK_CUDA_API(cudaGetDeviceCount(&ndevices_per_node));
-        const int device_id{rank % ndevices_per_node};
-        ERRCHK_CUDA_API(cudaSetDevice(device_id));
+        if (true) {
+            int ndevices_per_node{-1};
+            ERRCHK_CUDA_API(cudaGetDeviceCount(&ndevices_per_node));
+            const int device_id{rank % ndevices_per_node};
+            ERRCHK_CUDA_API(cudaSetDevice(device_id));
+        }
+        else {
+            // Run with
+            // `srun --cpu-bind=map_cpu:33,41,49,57,17,25,1,9 --account=<project> -t 00:05:00 -p
+            // dev-g --gpus-per-node=8 --ntasks-per-node=8 --nodes=1 benchmarks/bm_transfer_mpi_v2`
+            // to get a mapping where close-by GPUs have subsequent ranks
+            ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
+            const int       device_id{device_ids[rank]};
+            ERRCHK_CUDA_API(cudaSetDevice(device_id));
+        }
 
         ac::device_buffer<uint8_t> din{problem_size};
         ac::device_buffer<uint8_t> dout{problem_size};
@@ -73,7 +84,7 @@ main(void)
 
                 constexpr size_t len{128};
                 char             label[len];
-                snprintf(label, len, "memory transfer (device %d)", i);
+                snprintf(label, len, "memory transfer (to rank %d, device %d)", i, device_id);
 
                 const auto ns_elapsed{benchmark_ns(label, []() {}, bm_fn)};
                 const auto bw{(2 * problem_size) / (1e-9 * ns_elapsed) / (1024ul * 1024 * 1024)};
