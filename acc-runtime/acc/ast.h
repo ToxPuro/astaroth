@@ -45,6 +45,7 @@ static unsigned long
 
 #define BUFFER_SIZE (4096)
 #define FATAL_ERROR_MESSAGE "\nFATAL AC ERROR: "
+#define KERNEL_PREFIX "__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n"
 static const char*
 fatal(const char* format, ...)
 {

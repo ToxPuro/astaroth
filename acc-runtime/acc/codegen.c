@@ -3944,19 +3944,24 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 				fatal("How to handle non-real input pointer?\n");
 			}
 		}
-		astnode_sprintf(node,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
+		{
+			if(node->prefix != NULL) fatal("Need prefix to be NULL!\n");
+			astnode_sprintf_prefix(node,"vba.kernel_input_params.%s.",kernel_name);
+		}
 		return;
 	}
 	if(kernel_index == -1)
 	{
-		astnode_sprintf(node,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
+		if(node->prefix != NULL) fatal("Need prefix to be NULL!\n");
+		astnode_sprintf(node,"vba.kernel_input_params.%s.",kernel_name);
 		return;
 	}
 	const string_vec combinations = vals[kernel_index + MAX_KERNELS*combinations_index];
 	const int param_index = str_vec_get_index(user_kernel_combinatorial_params[kernel_index],node->buffer);
 	if(param_index < 0)
 	{
-		astnode_sprintf(node,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
+		if(node->prefix != NULL) fatal("Need prefix to be NULL!\n");
+		astnode_sprintf_prefix(node,"vba.kernel_input_params.%s.",kernel_name);
 		return;
 	}
 	astnode_sprintf(node->parent->parent->parent,"%s",combinations.data[param_index]);
@@ -4423,7 +4428,19 @@ traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, travers
   params.skip_shadowing_check |= (node->type & NODE_ARRAY_ACCESS);
   // Prefix translation
   if (stream && node->prefix)
-      fprintf(stream, "%s", node->prefix);
+  {
+	if(!params.to_DSL || !strstr(node->prefix,"vba.kernel_input_params"))
+	{
+		if(params.to_DSL && !strcmp(node->prefix,KERNEL_PREFIX))
+		{
+      			fprintf(stream, "\nKernel ");
+		}
+		else
+		{
+      			fprintf(stream, "%s", node->prefix);
+		}
+	}
+  }
 
   // Prefix logic
   if (node->type & NODE_BEGIN_SCOPE) {

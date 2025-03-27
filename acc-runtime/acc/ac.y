@@ -515,7 +515,7 @@ main(int argc, char** argv)
 }
 %}
 
-%token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT DOUBLE 
+%token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT DOUBLE DEFAULT_INITIALIZER
 %token NON_RETURNING_FUNC_CALL
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
@@ -642,6 +642,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 struct_name : STRUCT_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; $$->token = IDENTIFIER;};
 enum_name: ENUM_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken;};
+default_initializer: '{' '}' { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("{}", $$); $$->token = DEFAULT_INITIALIZER;};
 number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
       | REALNUMBER     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); 
 			      if(!strcmp(yytext,"inf"))
@@ -893,6 +894,7 @@ assignment_op: ASSIGNOP    { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astn
 primary_expression: identifier         { $$ = astnode_create(NODE_PRIMARY_EXPRESSION, $1, NULL); }
                   | number             { $$ = astnode_create(NODE_PRIMARY_EXPRESSION, $1, NULL); }
                   | string             { $$ = astnode_create(NODE_PRIMARY_EXPRESSION, $1, NULL); }
+	          | default_initializer { $$ = astnode_create(NODE_PRIMARY_EXPRESSION, $1, NULL); }
                   ;
 
 struct_initializer: 
@@ -1302,7 +1304,7 @@ function_definition: declaration function_body {
                         set_identifier_type(NODE_FUNCTION_ID, fn_identifier);
 
                         if (get_node_by_token(KERNEL, $$)) {
-			    astnode_set_prefix("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n",$$);
+			    astnode_set_prefix(KERNEL_PREFIX,$$);
                             $$->type |= NODE_KFUNCTION;
 			    if($$->rhs->lhs) $$->rhs->lhs->type |= NODE_NO_OUT;
                             // Set kernel built-in variables
