@@ -422,7 +422,7 @@ write_profile_to_disk_async(const MPI_Comm& cart_comm, const Device& device, con
 
     char outfile[4096];
     sprintf(outfile, "%s-%012zu.profile", profile_names[profile], step);
-    
+
     // Delegate one of the processes as the file creator
     if (ac::mpi::get_rank(cart_comm) == 0) {
         FILE* fp{fopen(outfile, "w")};
@@ -525,8 +525,8 @@ get_mpi_op(const ReductionType& rtype)
 }
 
 static AcReal
-reduce_vec(const MPI_Comm& comm, const Device& device, const ReductionType& rtype,
-           const Field& a, const Field& b, const Field& c)
+reduce_vec(const MPI_Comm& comm, const Device& device, const ReductionType& rtype, const Field& a,
+           const Field& b, const Field& c)
 {
     // MPI_Comm comm{MPI_COMM_NULL};
     // ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, &comm));
@@ -958,7 +958,11 @@ class Grid {
         int device_count{0};
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
 
-        const int device_id{original_rank % device_count};
+        int device_id{original_rank % device_count};
+        if (device_count == 8) { // Do manual GPU mapping for LUMI
+            ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
+            device_id = device_ids[as<size_t>(device_id)];
+        }
         ERRCHK_CUDA_API(cudaSetDevice(device_id));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
@@ -1074,7 +1078,12 @@ class Grid {
         //                                                    axis,
         //                                                    count,
         //                                                    data)};
-        ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, data, as<int>(count), ac::mpi::get_dtype<AcReal>(), MPI_SUM, xy_neighbors));
+        ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE,
+                                     data,
+                                     as<int>(count),
+                                     ac::mpi::get_dtype<AcReal>(),
+                                     MPI_SUM,
+                                     xy_neighbors));
         int collaborated_procs{-1};
         ERRCHK_MPI_API(MPI_Comm_size(xy_neighbors, &collaborated_procs));
         acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
@@ -1109,7 +1118,7 @@ class Grid {
             MPI_Iallreduce(MPI_IN_PLACE,
                            vba.profiles.in[0],
                            as<int>(nonlocal_tfm_profiles.size() *
-                               vba.profiles.count), // Note possible MPI BUG here (see above)
+                                   vba.profiles.count), // Note possible MPI BUG here (see above)
                            AC_REAL_MPI_TYPE,
                            MPI_SUM,
                            xy_neighbors,
@@ -1122,33 +1131,66 @@ class Grid {
     }
 #endif
 
-    void tfm_pipeline_simple_comm(const size_t nsteps) {
+    void tfm_pipeline_simple_comm(const size_t nsteps)
+    {
         // for (size_t i{0}; i < nsteps; ++i){
         //     tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::input));
         //     tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::output));
         // }
-        const auto                  local_mm{acr::get_local_mm(local_info)};
-        const auto                  local_nn{acr::get_local_nn(local_info)};
+        const auto local_mm{acr::get_local_mm(local_info)};
+        const auto local_nn{acr::get_local_nn(local_info)};
         const auto rr{acr::get_local_rr()};
         ac::device_ndbuffer<double> din{local_mm};
         ac::device_ndbuffer<double> dout{local_mm};
 
         static ac::comm::async_halo_exchange_task<double> he{local_mm, local_nn, rr, 8};
-        he.launch(cart_comm, {din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
-        he.wait({din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
+        he.launch(cart_comm,
+                  {din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get(),
+                   din.get()});
+        he.wait({din.get(),
+                 din.get(),
+                 din.get(),
+                 din.get(),
+                 din.get(),
+                 din.get(),
+                 din.get(),
+                 din.get()});
 
         const size_t nsamples{10};
         for (size_t j{0}; j < nsamples; ++j) {
-        const auto start{std::chrono::system_clock::now()};
-        for (size_t i{0}; i < nsteps; ++i){
-            he.launch(cart_comm, {din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
-            he.wait({din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get(),din.get()});
-        }
+            const auto start{std::chrono::system_clock::now()};
+            for (size_t i{0}; i < nsteps; ++i) {
+                he.launch(cart_comm,
+                          {din.get(),
+                           din.get(),
+                           din.get(),
+                           din.get(),
+                           din.get(),
+                           din.get(),
+                           din.get(),
+                           din.get()});
+                he.wait({din.get(),
+                         din.get(),
+                         din.get(),
+                         din.get(),
+                         din.get(),
+                         din.get(),
+                         din.get(),
+                         din.get()});
+            }
 
-        const auto ms_elapsed{std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now() - start)};
+            const auto ms_elapsed{std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now() - start)};
 
-        std::cout << "Sample " << j <<" Rank " << ac::mpi::get_rank(cart_comm) << "/" << ac::mpi::get_size(cart_comm) <<" local ms elapsed " << ms_elapsed.count() << std::endl;
+            std::cout << "Sample " << j << " Rank " << ac::mpi::get_rank(cart_comm) << "/"
+                      << ac::mpi::get_size(cart_comm) << " local ms elapsed " << ms_elapsed.count()
+                      << std::endl;
         }
     }
 
@@ -1198,8 +1240,8 @@ class Grid {
         for (uint64_t step{1}; step < nsteps; ++step) {
             PRINT_LOG_INFO("New integration step");
 
-            // Check whether to reset the test fields
-            #if !defined(AC_DISABLE_COMM)
+// Check whether to reset the test fields
+#if !defined(AC_DISABLE_COMM)
             if ((as<int>(step) % acr::get(local_info, AC_simulation_reset_test_field_interval)) ==
                 0) {
                 PRINT_LOG_INFO("Resetting test fields");
@@ -1210,7 +1252,7 @@ class Grid {
                 reset(device, tfm_fields, BufferGroup::output);
                 tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::output));
             }
-            #endif
+#endif
 
             // Current time
             acr::set(AC_current_time, current_time, local_info);
@@ -1228,26 +1270,26 @@ class Grid {
             for (int substep{0}; substep < 3; ++substep) {
                 PRINT_LOG_DEBUG("Integration substep");
 
-                // Hydro dependencies: hydro
-                #if !defined(AC_DISABLE_COMM)
-                // hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
-                #endif
+// Hydro dependencies: hydro
+#if !defined(AC_DISABLE_COMM)
+// hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
+#endif
 
                 // Outer segments
                 // Note: outer integration kernels fused here and AC_exclude_inner set:
                 // Operates only on the outer domain even though SegmentGroup:Full passed
                 // TODO note: end index is not properly used, exits early
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 1));
-                #if !defined(AC_DISABLE_COMP)
+#if !defined(AC_DISABLE_COMP)
                 compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
-                #endif
-                // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
+#endif
+// compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
 
-                // ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
-                // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
-                #if !defined(AC_DISABLE_COMM)
-                // hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::output));
-                #endif
+// ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
+// compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
+#if !defined(AC_DISABLE_COMM)
+// hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::output));
+#endif
 
 // TFM dependencies: hydro, tfm, profiles
 #if !defined(AC_DISABLE_COMM)
@@ -1259,22 +1301,22 @@ class Grid {
                 tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
 #endif
 
-                // Note: outer integration kernels fused here and AC_exclude_inner set:
-                // Operates only on the outer domain even though SegmentGroup:Full passed
-                #if !defined(AC_DISABLE_COMP)
+// Note: outer integration kernels fused here and AC_exclude_inner set:
+// Operates only on the outer domain even though SegmentGroup:Full passed
+#if !defined(AC_DISABLE_COMP)
                 compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
-                #endif
-                // compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
-                #if !defined(AC_DISABLE_COMM)
+#endif
+// compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
+#if !defined(AC_DISABLE_COMM)
                 tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::output));
-                #endif
+#endif
 
-                // Inner segments
-                #if !defined(AC_DISABLE_COMP)
+// Inner segments
+#if !defined(AC_DISABLE_COMP)
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
                 compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_inner);
                 compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_inner);
-                #endif
+#endif
                 ERRCHK_AC(acDeviceSwapBuffers(device));
 
 // Profile dependencies: local tfm (uxb)
@@ -1339,10 +1381,10 @@ class Grid {
 #endif
 #endif
         }
-        #if !defined(AC_DISABLE_COMM)
+#if !defined(AC_DISABLE_COMM)
         // hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
         tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
-        #endif
+#endif
 
 #if !defined(AC_DISABLE_IO)
 #if !defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
@@ -1412,14 +1454,14 @@ main(int argc, char* argv[])
             ERRCHK_MPI(fclose(fp) == 0);
         }
         ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
-            
+
         // Init Grid
         Grid grid{raw_info};
 
         // Profiler start
         ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         cudaProfilerStart();
-        
+
         // Timer start
         const auto start{std::chrono::system_clock::now()};
         ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
@@ -1431,7 +1473,7 @@ main(int argc, char* argv[])
         ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         const auto ms_elapsed{std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now() - start)};
-        
+
         // Profiler stop
         cudaProfilerStop();
 
@@ -1442,10 +1484,14 @@ main(int argc, char* argv[])
 
             // File write
             // Format: nprocs, nx, ny, nz, nsteps, time (ms)
-            fprintf(fp, "%d,%d,%d,%d,%d,%ld\n", ac::mpi::get_size(MPI_COMM_WORLD), 
-                                                acr::get(raw_info, AC_global_nx), acr::get(raw_info, AC_global_ny),acr::get(raw_info, AC_global_nz),
-                                                acr::get(raw_info, AC_simulation_nsteps),
-                                                ms_elapsed.count());
+            fprintf(fp,
+                    "%d,%d,%d,%d,%d,%ld\n",
+                    ac::mpi::get_size(MPI_COMM_WORLD),
+                    acr::get(raw_info, AC_global_nx),
+                    acr::get(raw_info, AC_global_ny),
+                    acr::get(raw_info, AC_global_nz),
+                    acr::get(raw_info, AC_simulation_nsteps),
+                    ms_elapsed.count());
 
             // File close
             ERRCHK_MPI(fclose(fp) == 0);
