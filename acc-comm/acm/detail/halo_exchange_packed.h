@@ -34,6 +34,11 @@ class async_halo_exchange_task {
                                })};
         segments.erase(it, segments.end());
 
+        // Sort the packets from largest to smallest
+        std::sort(segments.begin(), segments.end(), [](const auto& a, const auto& b) {
+            return ac::prod(a.dims) >= ac::prod(b.dims);
+        });
+
         // Create packed send/recv buffers
         for (const auto& segment : segments) {
             m_packets.push_back(
