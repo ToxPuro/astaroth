@@ -207,7 +207,7 @@ cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const ac::shape& glob
     const size_t ndims{global_nn.size()};
 
     // Get node hierarchy
-    const std::vector<uint64_t> max_nprocs_per_layer{2, 4};
+    const std::vector<uint64_t> max_nprocs_per_layer{2, 2, 2};
     const auto                  nprocs_per_layer{
         get_nprocs_per_layer(as<uint64_t>(ac::mpi::get_size(parent_comm)), max_nprocs_per_layer)};
 
