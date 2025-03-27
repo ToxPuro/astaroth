@@ -20,22 +20,21 @@ main(void)
         const int rank{ac::mpi::get_rank(MPI_COMM_WORLD)};
         const int nprocs{ac::mpi::get_size(MPI_COMM_WORLD)};
 
-        // Set device id
-        if (true) {
+// Set device id
+#if 0
             int ndevices_per_node{-1};
             ERRCHK_CUDA_API(cudaGetDeviceCount(&ndevices_per_node));
             const int device_id{rank % ndevices_per_node};
             ERRCHK_CUDA_API(cudaSetDevice(device_id));
-        }
-        else {
-            // Run with
-            // `srun --cpu-bind=map_cpu:33,41,49,57,17,25,1,9 --account=<project> -t 00:05:00 -p
-            // dev-g --gpus-per-node=8 --ntasks-per-node=8 --nodes=1 benchmarks/bm_transfer_mpi_v2`
-            // to get a mapping where close-by GPUs have subsequent ranks
-            ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
-            const int       device_id{device_ids[rank]};
-            ERRCHK_CUDA_API(cudaSetDevice(device_id));
-        }
+#else
+        // Run with
+        // `srun --cpu-bind=map_cpu:33,41,49,57,17,25,1,9 --account=<project> -t 00:05:00 -p
+        // dev-g --gpus-per-node=8 --ntasks-per-node=8 --nodes=1 benchmarks/bm_transfer_mpi_v2`
+        // to get a mapping where close-by GPUs have subsequent ranks
+        ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
+        const int       device_id{device_ids[as<size_t>(rank)]};
+        ERRCHK_CUDA_API(cudaSetDevice(device_id));
+#endif
 
         ac::device_buffer<uint8_t> din{problem_size};
         ac::device_buffer<uint8_t> dout{problem_size};
