@@ -417,13 +417,15 @@ write_profile_to_disk_async(const MPI_Comm& cart_comm, const Device& device, con
     const auto global_nn{acr::get_global_nn(info)};
     const auto coords{ac::mpi::get_coords(cart_comm)};
 
-    // Delegate one of the processes as the file creator
-    ERRCHK_MPI_API(MPI_Barrier(cart_comm));
     char outfile[4096];
     sprintf(outfile, "%s-%012zu.profile", profile_names[profile], step);
-    FILE* fp{fopen(outfile, "w")};
-    ERRCHK_MPI(fp);
-    fclose(fp);
+    
+    // Delegate one of the processes as the file creator
+    if (ac::mpi::get_rank(cart_comm) == 0) {
+        FILE* fp{fopen(outfile, "w")};
+        ERRCHK_MPI(fp);
+        fclose(fp);
+    }
     ERRCHK_MPI_API(MPI_Barrier(cart_comm));
 
     if ((coords[0] == 0) && (coords[1] == 0)) {
@@ -1106,12 +1108,6 @@ class Grid {
     {
         PRINT_LOG_INFO("Launching TFM pipeline");
 
-        // Clear the time series
-        FILE* fp{fopen("timeseries.csv", "w")};
-        ERRCHK_MPI(fp != NULL);
-        std::fprintf(fp, "label,step,t_step,dt,min,rms,max,avg\n");
-        ERRCHK_MPI(fclose(fp) == 0);
-
 #if !defined(AC_DISABLE_IO)
         // Write time series
         write_timeseries(cart_comm, device, 0, 0, 0);
@@ -1338,6 +1334,16 @@ main(int argc, char* argv[])
         // Disable MPI_Abort on error and do manual error handling instead
         ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
 
+        // Reset timeseries
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+            FILE* fp{fopen("timeseries.csv", "w")};
+            ERRCHK_MPI(fp != NULL);
+            std::fprintf(fp, "label,step,t_step,dt,min,rms,max,avg\n");
+            ERRCHK_MPI(fclose(fp) == 0);
+        }
+        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+            
+        // Init Grid
         Grid grid{raw_info};
 
         cudaProfilerStart();
