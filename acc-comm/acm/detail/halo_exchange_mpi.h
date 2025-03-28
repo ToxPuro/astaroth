@@ -197,6 +197,8 @@ template <typename T, typename Allocator> class halo_exchange {
 
     void launch(const ac::mr::pointer<T, Allocator>& input, ac::mr::pointer<T, Allocator> output)
     {
+        ERRCHK_MPI(complete());
+
         for (auto& packet : m_packets)
             packet->launch(input, output);
     }
@@ -214,6 +216,8 @@ template <typename T, typename Allocator> class halo_exchange {
     /** Waits all message and returns */
     void wait_all()
     {
+        ERRCHK_MPI(!complete());
+
         while (!complete())
             wait_one();
     }
@@ -221,6 +225,8 @@ template <typename T, typename Allocator> class halo_exchange {
     /** Returns true if there is at least one message that can be waited on */
     bool ready() const
     {
+        ERRCHK_MPI(!complete());
+
         for (const auto& packet : m_packets)
             if (!packet->complete() && packet->ready())
                 return true;
