@@ -40,15 +40,14 @@
 // Production runs:
 //  - Should either completely disabled or
 //  - Set IO interval to large enough s.t. synchronous IO does not dominate running time
-#define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
-#define AC_WRITE_SYNCHRONOUS_PROFILES
-#define AC_WRITE_SYNCHRONOUS_TIMESERIES
-#define AC_WRITE_SYNCHRONOUS_SLICES
+// #define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
+// #define AC_WRITE_SYNCHRONOUS_PROFILES
+// #define AC_WRITE_SYNCHRONOUS_TIMESERIES
+// #define AC_WRITE_SYNCHRONOUS_SLICES
+#define AC_DISABLE_IO
 
 // Production run: enable define below for fast, async profile IO
-#define AC_WRITE_ASYNC_PROFILES
-
-// #define AC_DISABLE_IO
+// #define AC_WRITE_ASYNC_PROFILES
 
 using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal, ac::mr::device_allocator>;
 using IOTask           = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
@@ -419,7 +418,7 @@ write_profile_to_disk_async(const MPI_Comm& cart_comm, const Device& device, con
 
     char outfile[4096];
     sprintf(outfile, "%s-%012zu.profile", profile_names[profile], step);
-    
+
     // Delegate one of the processes as the file creator
     if (ac::mpi::get_rank(cart_comm) == 0) {
         FILE* fp{fopen(outfile, "w")};
@@ -1342,7 +1341,7 @@ main(int argc, char* argv[])
             ERRCHK_MPI(fclose(fp) == 0);
         }
         ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
-            
+
         // Init Grid
         Grid grid{raw_info};
 
