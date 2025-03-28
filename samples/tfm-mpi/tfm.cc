@@ -968,6 +968,15 @@ class Grid {
         reset_init_cond();
         tfm_pipeline(3);
         reset_init_cond();
+
+        // Reset timeseries
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+            FILE* fp{fopen("timeseries.csv", "w")};
+            ERRCHK_MPI(fp != NULL);
+            std::fprintf(fp, "label,step,t_step,dt,min,rms,max,avg\n");
+            ERRCHK_MPI(fclose(fp) == 0);
+        }
+        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
     }
 
     ~Grid() noexcept
