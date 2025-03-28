@@ -17,7 +17,6 @@
 #include "acm/detail/allocator.h"
 
 #include "acm/detail/halo_exchange_custom.h"
-#include "acm/detail/halo_exchange_packed.h"
 #include "acm/detail/io.h"
 
 #include "acm/detail/ndbuffer.h"
@@ -41,16 +40,15 @@
 // Production runs:
 //  - Should either completely disabled or
 //  - Set IO interval to large enough s.t. synchronous IO does not dominate running time
-// #define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
-// #define AC_WRITE_SYNCHRONOUS_PROFILES
-// #define AC_WRITE_SYNCHRONOUS_TIMESERIES
-// #define AC_WRITE_SYNCHRONOUS_SLICES
-#define AC_DISABLE_IO
+#define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
+#define AC_WRITE_SYNCHRONOUS_PROFILES
+#define AC_WRITE_SYNCHRONOUS_TIMESERIES
+#define AC_WRITE_SYNCHRONOUS_SLICES
+// #define AC_DISABLE_IO
 
 // Production run: enable define below for fast, async profile IO
-// #define AC_WRITE_ASYNC_PROFILES
+#define AC_WRITE_ASYNC_PROFILES
 
-// using HaloExchange = acm::halo_exchange<AcReal, ac::mr::device_allocator>;
 using IOTask = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
 
 /** Concatenates the field name and ".mesh" of a vector of handles */
@@ -886,15 +884,6 @@ randomize(const MPI_Comm& comm, const Device& device, const std::vector<Field>& 
         ac::mr::copy(tmp.get(), ptr);
     }
 }
-
-// static auto
-// make_halo_exchange_task(const AcMeshInfo& info, const size_t max_nbuffers)
-// {
-//     return HaloExchange{acr::get_local_mm(info),
-//                         acr::get_local_nn(info),
-//                         acr::get_local_rr(),
-//                         max_nbuffers};
-// }
 
 static auto
 make_io_task(const AcMeshInfo& info, const size_t max_nbuffers)
