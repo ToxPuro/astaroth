@@ -16,6 +16,7 @@
 
 #include "acm/detail/allocator.h"
 
+#include "acm/detail/halo_exchange_custom.h"
 #include "acm/detail/halo_exchange_packed.h"
 #include "acm/detail/io.h"
 
@@ -49,8 +50,8 @@
 // Production run: enable define below for fast, async profile IO
 // #define AC_WRITE_ASYNC_PROFILES
 
-using HaloExchangeTask = ac::comm::async_halo_exchange_task<AcReal, ac::mr::device_allocator>;
-using IOTask           = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
+// using HaloExchange = acm::halo_exchange<AcReal, ac::mr::device_allocator>;
+using IOTask = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
 
 /** Concatenates the field name and ".mesh" of a vector of handles */
 static auto
@@ -886,14 +887,14 @@ randomize(const MPI_Comm& comm, const Device& device, const std::vector<Field>& 
     }
 }
 
-static auto
-make_halo_exchange_task(const AcMeshInfo& info, const size_t max_nbuffers)
-{
-    return HaloExchangeTask{acr::get_local_mm(info),
-                            acr::get_local_nn(info),
-                            acr::get_local_rr(),
-                            max_nbuffers};
-}
+// static auto
+// make_halo_exchange_task(const AcMeshInfo& info, const size_t max_nbuffers)
+// {
+//     return HaloExchange{acr::get_local_mm(info),
+//                         acr::get_local_nn(info),
+//                         acr::get_local_rr(),
+//                         max_nbuffers};
+// }
 
 static auto
 make_io_task(const AcMeshInfo& info, const size_t max_nbuffers)
@@ -913,8 +914,8 @@ class Grid {
     Device device{nullptr};
     AcReal current_time{0};
 
-    HaloExchangeTask hydro_he;
-    HaloExchangeTask tfm_he;
+    acm::halo_exchange<double, ac::mr::device_allocator> hydro_he;
+    acm::halo_exchange<double, ac::mr::device_allocator> tfm_he;
     IOTask hydro_io;
     IOTask uxb_io;
 
@@ -946,8 +947,16 @@ class Grid {
         ERRCHK_AC(acDeviceCreate(device_id, local_info, &device));
 
         // Setup halo exchange buffers
-        hydro_he = make_halo_exchange_task(local_info, hydro_fields.size());
-        tfm_he   = make_halo_exchange_task(local_info, tfm_fields.size());
+        // hydro_he = make_halo_exchange_task(local_info, hydro_fields.size());
+        // tfm_he   = make_halo_exchange_task(local_info, tfm_fields.size());
+        hydro_he = acm::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
+                                                                        global_nn,
+                                                                        acr::get_local_rr(),
+                                                                        hydro_fields.size()};
+        tfm_he   = acm::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
+                                                                        global_nn,
+                                                                        acr::get_local_rr(),
+                                                                        tfm_fields.size()};
 
         // Setup write tasks
         hydro_io = make_io_task(local_info, hydro_fields.size());
@@ -1132,8 +1141,8 @@ class Grid {
 #endif
 
         // Ensure halos are up-to-date before starting integration
-        hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::input));
-        tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::input));
+        hydro_he.launch(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
+        tfm_he.launch(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
         MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)}; // Averaging
@@ -1153,7 +1162,7 @@ class Grid {
                 tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
                 reset(device, tfm_fields, BufferGroup::input);
                 reset(device, tfm_fields, BufferGroup::output);
-                tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::output));
+                tfm_he.launch(ac::get_ptrs(device, tfm_fields, BufferGroup::output));
             }
 
             // Current time
@@ -1185,7 +1194,7 @@ class Grid {
 
                 // ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
                 // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
-                hydro_he.launch(cart_comm, ac::get_ptrs(device, hydro_fields, BufferGroup::output));
+                hydro_he.launch(ac::get_ptrs(device, hydro_fields, BufferGroup::output));
 
 // TFM dependencies: hydro, tfm, profiles
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
@@ -1199,7 +1208,7 @@ class Grid {
                 // Operates only on the outer domain even though SegmentGroup:Full passed
                 compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
                 // compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
-                tfm_he.launch(cart_comm, ac::get_ptrs(device, tfm_fields, BufferGroup::output));
+                tfm_he.launch(ac::get_ptrs(device, tfm_fields, BufferGroup::output));
 
                 // Inner segments
                 ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
