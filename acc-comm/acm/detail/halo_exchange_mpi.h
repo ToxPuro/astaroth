@@ -82,29 +82,27 @@ template <typename T, typename Allocator> class packet {
         //
         // const auto rank{ac::mpi::get_rank(m_comm)};
         // if (rank == m_recv_neighbor && rank == m_send_neighbor) {
-        //     // int recv_pack_bytes{-1};
-        //     // int send_pack_bytes{-1};
-        //     // ERRCHK_MPI_API(MPI_Pack_size(1, m_recv_subarray, m_comm, &recv_pack_bytes));
-        //     // ERRCHK_MPI_API(MPI_Pack_size(1, m_send_subarray, m_comm, &send_pack_bytes));
-        //     // ERRCHK_MPI(recv_pack_bytes == send_pack_bytes);
+        //     int send_bytes{-1};
+        //     ERRCHK_MPI_API(MPI_Pack_size(1, m_send_subarray, m_comm, &send_bytes));
 
-        //     // int                             position{0};
-        //     // const size_t                    count{as<size_t>(recv_pack_bytes) / sizeof(T)};
-        //     // static ac::buffer<T, Allocator> tmp{count};
-        //     // ERRCHK_MPI_API(MPI_Pack(input.data(),
-        //     //                         1,
-        //     //                         m_send_subarray,
-        //     //                         tmp.data(),
-        //     //                         as<int>(recv_pack_bytes),
-        //     //                         &position,
-        //     //                         m_comm));
-        //     // ERRCHK_MPI_API(MPI_Unpack(tmp.data(),
-        //     //                           as<int>(recv_pack_bytes),
-        //     //                           &position,
-        //     //                           output.data(),
-        //     //                           1,
-        //     //                           m_recv_subarray,
-        //     //                           m_comm));
+        //     int recv_bytes{-1};
+        //     ERRCHK_MPI_API(MPI_Pack_size(1, m_recv_subarray, m_comm, &recv_bytes));
+
+        //     ERRCHK_MPI(send_bytes == recv_bytes);
+        //     const auto                      count{as<size_t>(send_bytes) / sizeof(T)};
+        //     static ac::buffer<T, Allocator> tmp{count};
+
+        //     int pos{0};
+        //     ERRCHK_MPI_API(
+        //         MPI_Pack(input.data(), 1, m_send_subarray, tmp.data(), send_bytes, &pos,
+        //         m_comm));
+        //     ERRCHK_MPI_API(MPI_Unpack(tmp.data(),
+        //                               recv_bytes,
+        //                               &pos,
+        //                               output.data(),
+        //                               1,
+        //                               m_recv_subarray,
+        //                               m_comm));
 
         //     // Dummy request
         //     static int dummy{-1};
@@ -250,6 +248,8 @@ template <typename T, typename Allocator> class halo_exchange_batched {
     std::vector<halo_exchange<T, Allocator>> m_tasks;
 
   public:
+    halo_exchange_batched() = default;
+
     halo_exchange_batched(const MPI_Comm& parent_comm, const ac::shape& global_nn,
                           const ac::index& rr, const size_t nbatches)
     {
