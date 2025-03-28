@@ -79,25 +79,46 @@ template <typename T, typename Allocator> class packet {
         ERRCHK_MPI(count <= m_send_buffer.size());
         ERRCHK_MPI(count <= m_recv_buffer.size());
 
-        // Post recv
-        ERRCHK_MPI_API(MPI_Irecv(m_recv_buffer.data(),
-                                 as<int>(count),
-                                 ac::mpi::get_dtype<T>(),
-                                 m_recv_neighbor,
-                                 m_tag,
-                                 m_comm,
-                                 &m_recv_req));
+        // Pack directly to the recv buffer if the destination is on the same device
+        const auto rank{ac::mpi::get_rank(m_comm)};
+        if (rank == m_recv_neighbor && rank == m_send_neighbor) {
+            pack(m_local_mm,
+                 m_send_segment.dims,
+                 m_send_segment.offset,
+                 inputs,
+                 m_recv_buffer.get());
 
-        // Pack and post send
-        pack(m_local_mm, m_send_segment.dims, m_send_segment.offset, inputs, m_send_buffer.get());
+            // Create a dummy request to simplify asynchronous management
+            static int dummy{-1};
+            ERRCHK_MPI_API(MPI_Irecv(&dummy, 0, MPI_INT, rank, m_tag, m_comm, &m_recv_req));
+            ERRCHK_MPI_API(MPI_Isend(&dummy, 0, MPI_INT, rank, m_tag, m_comm, &m_send_req));
+        }
+        else { // Use MPI communication
 
-        ERRCHK_MPI_API(MPI_Isend(m_send_buffer.data(),
-                                 as<int>(count),
-                                 ac::mpi::get_dtype<T>(),
-                                 m_send_neighbor,
-                                 m_tag,
-                                 m_comm,
-                                 &m_send_req));
+            // Post recv
+            ERRCHK_MPI_API(MPI_Irecv(m_recv_buffer.data(),
+                                     as<int>(count),
+                                     ac::mpi::get_dtype<T>(),
+                                     m_recv_neighbor,
+                                     m_tag,
+                                     m_comm,
+                                     &m_recv_req));
+
+            // Pack and post send
+            pack(m_local_mm,
+                 m_send_segment.dims,
+                 m_send_segment.offset,
+                 inputs,
+                 m_send_buffer.get());
+
+            ERRCHK_MPI_API(MPI_Isend(m_send_buffer.data(),
+                                     as<int>(count),
+                                     ac::mpi::get_dtype<T>(),
+                                     m_send_neighbor,
+                                     m_tag,
+                                     m_comm,
+                                     &m_send_req));
+        }
 
         ac::mpi::increment_tag(m_tag);
     }
