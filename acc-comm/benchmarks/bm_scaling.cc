@@ -268,8 +268,8 @@ main()
                                                          global_nn,
                                                          ac::mpi::RankReorderMethod::hierarchical)};
 
-            // verify<int>(cart_comm, global_nn, rr);
-            // verify_packed<int>(cart_comm, global_nn, rr);
+            verify<int>(cart_comm, global_nn, rr);
+            verify_packed<int>(cart_comm, global_nn, rr);
             bm_halo_exchange<double>(cart_comm, global_nn, rr, jobid, "collective-hierarchical");
             bm_halo_exchange_packed<double>(cart_comm, global_nn, rr, jobid, "packed-hierarchical");
             ac::mpi::cart_comm_destroy(&cart_comm);
