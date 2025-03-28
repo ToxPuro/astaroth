@@ -1342,9 +1342,44 @@ main(int argc, char* argv[])
         // Init Grid
         Grid grid{raw_info};
 
+        // Profiler start
+        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         cudaProfilerStart();
+
+        // Timer start
+        const auto start{std::chrono::system_clock::now()};
+        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+
+        // Compute
         grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
+
+        // Timer stop
+        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+        const auto ms_elapsed{std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now() - start)};
+
+        // Profiler stop
         cudaProfilerStop();
+
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+            // File open
+            FILE* fp{fopen("scaling.csv", "a")};
+            ERRCHK_MPI(fp);
+
+            // File write
+            // Format: nprocs, nx, ny, nz, nsteps, time (ms)
+            fprintf(fp,
+                    "%d,%d,%d,%d,%d,%ld\n",
+                    ac::mpi::get_size(MPI_COMM_WORLD),
+                    acr::get(raw_info, AC_global_nx),
+                    acr::get(raw_info, AC_global_ny),
+                    acr::get(raw_info, AC_global_nz),
+                    acr::get(raw_info, AC_simulation_nsteps),
+                    ms_elapsed.count());
+
+            // File close
+            ERRCHK_MPI(fclose(fp) == 0);
+        }
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
