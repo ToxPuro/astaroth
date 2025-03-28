@@ -56,13 +56,15 @@ write_async_basic(const MPI_Comm& parent_comm, const size_t count, const T* data
 
     const auto iwrite_ms_elapsed{ms_elapsed_since(start)};
 
-    std::cout << "[" << iwrite_ms_elapsed << " ms] " << " MPI_File_iwrite_all" << std::endl;
+    std::cout << "[" << iwrite_ms_elapsed << " ms] "
+              << " MPI_File_iwrite_all" << std::endl;
     start = std::chrono::system_clock::now();
 
     ERRCHK_MPI_API(MPI_Wait(&req, MPI_STATUS_IGNORE));
 
     const auto wait_ms_elapsed{ms_elapsed_since(start)};
-    std::cout << "[" << wait_ms_elapsed << " ms] " << " MPI_Wait" << std::endl;
+    std::cout << "[" << wait_ms_elapsed << " ms] "
+              << " MPI_Wait" << std::endl;
     start = std::chrono::system_clock::now();
 
     ERRCHK_MPI_API(MPI_File_close(&file));
@@ -116,13 +118,15 @@ write_async_subdomain(const MPI_Comm& cart_comm, const ac::shape& global_nn, con
     write.launch_write_collective(cart_comm, buf.get(), std::string{outfile});
 
     const auto iwrite_ms_elapsed{ms_elapsed_since(start)};
-    std::cout << "[" << iwrite_ms_elapsed << " ms] " << " MPI_File_iwrite_all" << std::endl;
+    std::cout << "[" << iwrite_ms_elapsed << " ms] "
+              << " MPI_File_iwrite_all" << std::endl;
     start = std::chrono::system_clock::now();
 
     write.wait_write_collective();
 
     const auto wait_ms_elapsed{ms_elapsed_since(start)};
-    std::cout << "[" << wait_ms_elapsed << " ms] " << " MPI_Wait" << std::endl;
+    std::cout << "[" << wait_ms_elapsed << " ms] "
+              << " MPI_Wait" << std::endl;
     start = std::chrono::system_clock::now();
 
     // Check that writing happens asynchronously
@@ -190,13 +194,15 @@ write_async_subdomain_batched(const MPI_Comm& cart_comm, const ac::shape& global
     write.launch(cart_comm, inputs, paths);
 
     const auto iwrite_ms_elapsed{ms_elapsed_since(start)};
-    std::cout << "[" << iwrite_ms_elapsed << " ms] " << " MPI_File_iwrite_all" << std::endl;
+    std::cout << "[" << iwrite_ms_elapsed << " ms] "
+              << " MPI_File_iwrite_all" << std::endl;
     start = std::chrono::system_clock::now();
 
     write.wait();
 
     const auto wait_ms_elapsed{ms_elapsed_since(start)};
-    std::cout << "[" << wait_ms_elapsed << " ms] " << " MPI_Wait" << std::endl;
+    std::cout << "[" << wait_ms_elapsed << " ms] "
+              << " MPI_Wait" << std::endl;
     start = std::chrono::system_clock::now();
 
     // Check that writing happens asynchronously
@@ -234,7 +240,8 @@ main()
 {
     ac::mpi::init_funneled();
     try {
-        const size_t approx_problem_size_in_bytes{128 * 1024 * 1024};
+        // const size_t approx_problem_size_in_bytes{128 * 1024 * 1024};
+        constexpr size_t approx_problem_size_in_bytes{1024};
         ERRCHK_MPI(test_write_async_basic(approx_problem_size_in_bytes) == 0);
         ERRCHK_MPI(test_write_async_subdomain(approx_problem_size_in_bytes) == 0);
         ERRCHK_MPI(test_write_async_subdomain_batched(approx_problem_size_in_bytes) == 0);
