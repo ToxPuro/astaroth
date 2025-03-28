@@ -941,6 +941,11 @@ class Grid {
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
 
         const int device_id{original_rank % device_count};
+        // int device_id{original_rank % device_count};
+        // if (device_count == 8) { // Do manual GPU mapping for LUMI
+        //     ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
+        //     device_id = device_ids[as<size_t>(device_id)];
+        // }
         ERRCHK_CUDA_API(cudaSetDevice(device_id));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
