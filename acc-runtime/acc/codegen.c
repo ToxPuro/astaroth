@@ -3562,6 +3562,7 @@ gen_final_reductions(const char* datatype, const int kernel_index, ASTNode* comp
 {
 		const size_t n_elems = count_variables(datatype,OUTPUT_STR);
 		const char* define_name = convert_to_define_name(datatype);
+		if(reduced == NULL) fatal("BUFFERED_REDUCTIONS requires OPTIMIZE_MEM_ACCESSES=ON!\n");
 		for(size_t i = 0; i < n_elems; ++i)
 		{
 			if(!reduced[i + n_elems*kernel_index]) continue;
@@ -3630,13 +3631,12 @@ gen_kernel_reduce_outputs()
 void
 gen_all_final_reductions(ASTNode* compound_statement, const int kernel_index, const bool prefix)
 {
-
-		gen_final_reductions(REAL_STR,kernel_index,compound_statement,reduced_reals,prefix);
-		gen_final_reductions(INT_STR,kernel_index,compound_statement,reduced_ints,prefix);
-		if(AC_DOUBLE_PRECISION)
-		{
-			gen_final_reductions(FLOAT_STR,kernel_index,compound_statement,reduced_floats,prefix);
-		}
+	gen_final_reductions(REAL_STR,kernel_index,compound_statement,reduced_reals,prefix);
+	gen_final_reductions(INT_STR,kernel_index,compound_statement,reduced_ints,prefix);
+	if(AC_DOUBLE_PRECISION)
+	{
+		gen_final_reductions(FLOAT_STR,kernel_index,compound_statement,reduced_floats,prefix);
+	}
 }
 
 void
