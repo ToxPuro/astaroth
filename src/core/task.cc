@@ -1372,6 +1372,16 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume n
 	    reduces_only_prof = PROFILE_Z;
 
     syncVBA();
+    nothing_to_communicate = input_region.memory.profiles.size() == 0;
+    const auto& reduce_outputs = input_region.memory.reduce_outputs;
+    for(size_t i = 0; i < reduce_outputs.size(); ++i)
+    {
+	    if(reduce_outputs[i].type == AC_REAL_TYPE)   nothing_to_communicate &= !real_output_is_global[reduce_outputs[i].variable];
+	    if(reduce_outputs[i].type == AC_INT_TYPE)    nothing_to_communicate &= !int_output_is_global[reduce_outputs[i].variable];
+#if AC_DOUBLE_PRECISION
+	    if(reduce_outputs[i].type == AC_FLOAT_TYPE)  nothing_to_communicate &= !float_output_is_global[reduce_outputs[i].variable];
+#endif
+    }
 
     name   = "Reduce " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
@@ -1384,6 +1394,9 @@ ReduceTask::test()
 {
     switch (static_cast<ReduceState>(state)) {
     case ReduceState::Reducing: {
+        return poll_stream();
+    }
+    case ReduceState::Loading: {
         return poll_stream();
     }
     case ReduceState::Communicating: {
@@ -1638,15 +1651,34 @@ ReduceTask::reduce()
 	    }
     	}
 }
+
+static MPI_Op
+to_mpi_op(const AcReduceOp op)
+{
+	switch(op)
+	{
+		case(REDUCE_SUM):
+			return MPI_SUM;
+		case(REDUCE_MIN):
+			return MPI_MIN;
+		case(REDUCE_MAX):
+			return MPI_MAX;
+		case(NO_REDUCE):
+			fatal("%s","Should not call to_mpi_op for NO_REDUCE\n");
+	}
+	fatal("%s","No mapping from AcReduceOp to MPI_Op\n");
+}
+
 void
 ReduceTask::communicate()
 {
    const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
+   const auto sub_comms = acGridMPISubComms();
+   const auto grid_comm = acGridMPIComm();
    if constexpr(NUM_PROFILES != 0)
    {
    	for(const auto& prof: input_region.memory.profiles)
    	{
-   	        const auto sub_comms = acGridMPISubComms();
    	        const MPI_Comm comm =
    	     	   	prof_types[prof] == PROFILE_X ? sub_comms.yz :
    	     	   	prof_types[prof] == PROFILE_Y ? sub_comms.xz :
@@ -1715,6 +1747,16 @@ ReduceTask::communicate()
    	        }
    	}
    }
+  const auto& reduce_outputs = input_region.memory.reduce_outputs;
+  for(size_t i = 0; i < reduce_outputs.size(); ++i)
+  {
+	  const int var = reduce_outputs[i].variable;
+	  if(real_output_is_global[var]  && reduce_outputs[i].type == AC_REAL_TYPE)   MPI_Allreduce(MPI_IN_PLACE, &local_res_real[i],1,AC_REAL_MPI_TYPE,to_mpi_op(reduce_outputs[i].op),grid_comm);
+	  if(int_output_is_global[var]   && reduce_outputs[i].type == AC_INT_TYPE)    MPI_Iallreduce(MPI_IN_PLACE, &local_res_int[i],1,MPI_INT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
+#if AC_DOUBLE_PRECISION
+	  if(float_output_is_global[var] && reduce_outputs[i].type == AC_FLOAT_TYPE)  MPI_Iallreduce(MPI_IN_PLACE, &local_res_float[i],1,MPI_FLOAT,to_mpi_op(reduce_outputs[i].op),grid_comm, &requests[i]);
+#endif
+    }
 }
 void
 ReduceTask::load_outputs()
@@ -1722,13 +1764,27 @@ ReduceTask::load_outputs()
 	const auto& reduce_outputs = input_region.memory.reduce_outputs;
     	for(size_t i = 0; i < reduce_outputs.size(); ++i)
     	{
+	    const int var = reduce_outputs[i].variable;
+	    //TP: local reduce variables have been already loaded to the device after the local reduction
 	    if(reduce_outputs[i].type == AC_REAL_TYPE)
-	    	acDeviceSetOutput(device,(AcRealOutputParam)reduce_outputs[i].variable,local_res_real[i]);
+	    {
+	    	acDeviceSetOutput(device,(AcRealOutputParam)var,local_res_real[i]);
+	    	if(real_output_is_global[var]) 
+		{
+			acLoadRealReduceRes(stream,(AcRealOutputParam)var,&local_res_real[i]);
+		}
+	    }
 	    else if(reduce_outputs[i].type == AC_INT_TYPE)
-	    	acDeviceSetOutput(device,(AcIntOutputParam)reduce_outputs[i].variable,local_res_int[i]);
+	    {
+	    	acDeviceSetOutput(device,(AcIntOutputParam)var,local_res_int[i]);
+	    	if(int_output_is_global[var]) acLoadIntReduceRes(stream,(AcIntOutputParam)var,&local_res_int[i]);
+	    }
 #if AC_DOUBLE_PRECISION
 	    else if(reduce_outputs[i].type == AC_FLOAT_TYPE)
-	    	acDeviceSetOutput(device,(AcFloatOutputParam)reduce_outputs[i].variable,local_res_float[i]);
+	    {
+	    	acDeviceSetOutput(device,(AcFloatOutputParam)var,local_res_float[i]);
+	    	if(float_output_is_global[var]) acLoadFloatReduceRes(stream,(AcFloatOutputParam)var,&local_res_float[i]);
+	    }
 #endif
 	    else if(reduce_outputs[i].type == AC_PROF_TYPE)
 	    	;
@@ -1751,7 +1807,7 @@ ReduceTask::advance(const TraceFile* trace_file)
         break;
     case ReduceState::Reducing:
     {
-	if(input_region.memory.profiles.size() == 0)
+	if(nothing_to_communicate)
 	{
         	trace_file->trace(this, "reducing", "waiting");
         	state = static_cast<int>(ReduceState::Waiting);
@@ -1769,11 +1825,19 @@ ReduceTask::advance(const TraceFile* trace_file)
     case ReduceState::Communicating:
     {
 
-        trace_file->trace(this, "communicating", "waiting");
-        state = static_cast<int>(ReduceState::Waiting);
+        trace_file->trace(this, "communicating", "loading");
+        state = static_cast<int>(ReduceState::Loading);
 	load_outputs();
         break;
     }
+
+    case ReduceState::Loading:
+    {
+        trace_file->trace(this, "loading", "waiting");
+        state = static_cast<int>(ReduceState::Waiting);
+        break;
+    }
+
     default:
         ERROR("ReduceTask in an invalid state.");
     }

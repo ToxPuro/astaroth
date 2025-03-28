@@ -100,6 +100,7 @@ void strip_whitespace(char *str) {
 "input"          { return INPUT; }
 "constexpr"      { return CONSTEXPR; }
 "output"          { return OUTPUT; }
+"global"          { return GLOBAL; }
 "run_const"          { return RUN_CONST; }
 "gmem"          { return GLOBAL_MEMORY_QL; }
 "auxiliary"             { return AUXILIARY; }

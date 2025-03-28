@@ -469,7 +469,7 @@ AcResult
 acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream, const Volume start, const Volume end, const Volume start_after_transpose, const Volume end_after_transpose)
 {
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
-    if(!reduced_profiles[prof])      return AC_NOT_ALLOCATED;
+    if(buffer.src.data == NULL)      return AC_NOT_ALLOCATED;
     const AcProfileType type = prof_types[prof];
     const AcMeshOrder order    = acGetMeshOrderForProfile(type);
 

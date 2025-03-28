@@ -364,26 +364,26 @@ acGetPid(const int3 pid_input, const AcDecompositionInfo info)
         pid_input.y,
         pid_input.z,
     };
-    std::unique_ptr<int64_t> global_decomposition = std::make_unique<int64_t>(ndims);
-    as_int64_t_array(ndims, info.global_decomposition, global_decomposition.get());
+    std::vector<int64_t> global_decomposition(ndims);
+    as_int64_t_array(ndims, info.global_decomposition, global_decomposition.data());
 
-    std::unique_ptr<int64_t> pid_wrapped = std::make_unique<int64_t>(ndims);
-    mod_pointwise(ndims, pid_unwrapped, global_decomposition.get(), pid_wrapped.get());
+    std::vector<int64_t> pid_wrapped(ndims);
+    mod_pointwise(ndims, pid_unwrapped, global_decomposition.data(), pid_wrapped.data());
 
-    std::unique_ptr<size_t> pid = std::make_unique<size_t>(ndims);
-    as_size_t_array(ndims, pid_wrapped.get(), pid.get());
+    std::vector<size_t> pid(ndims);
+    as_size_t_array(ndims, pid_wrapped.data(), pid.data());
 
-    size_t gi = to_linear(pid.get(), ndims, info.global_decomposition);
+    size_t gi = to_linear(pid.data(), ndims, info.global_decomposition);
 
-    std::unique_ptr<size_t> decomposition_transposed = std::make_unique<size_t>(ndims * nlayers);
-    transpose(info.decomposition, nlayers, ndims, decomposition_transposed.get());
+    std::vector<size_t> decomposition_transposed(ndims*nlayers);
+    transpose(info.decomposition, nlayers, ndims, decomposition_transposed.data());
 
-    std::unique_ptr<size_t> spatial_index_transposed = std::make_unique<size_t>(ndims * nlayers);
-    to_spatial(gi, ndims * nlayers, decomposition_transposed.get(), spatial_index_transposed.get());
-    std::unique_ptr<size_t> spatial_index            = std::make_unique<size_t>(ndims * nlayers);
-    transpose(spatial_index_transposed.get(), ndims, nlayers, spatial_index.get());
+    std::vector<size_t> spatial_index_transposed(ndims*nlayers);
+    to_spatial(gi, ndims * nlayers, decomposition_transposed.data(), spatial_index_transposed.data());
+    std::vector<size_t> spatial_index(ndims*nlayers);
+    transpose(spatial_index_transposed.data(), ndims, nlayers, spatial_index.data());
 
-    const size_t j = to_linear(spatial_index.get(), ndims * nlayers, info.decomposition);
+    const size_t j = to_linear(spatial_index.data(), ndims * nlayers, info.decomposition);
 
     return as_int(j);
 }
@@ -416,13 +416,14 @@ acGetPid3D(const int i, const AcDecompositionInfo info)
     free(decompositions_transposed);
 
     free(global_decomposition);
-    free(global_index);
-
-    return (int3){
+    const int3 res = (int3){
         as_int(global_index[0]),
         as_int(global_index[1]),
         as_int(global_index[2]),
     };
+
+    free(global_index);
+    return res;
 }
 
 

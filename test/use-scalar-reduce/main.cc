@@ -64,60 +64,28 @@ main(int argc, char* argv[])
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
-    const int max_devices = 1;
-    if (nprocs > max_devices) {
-        fprintf(stderr,
-                "Cannot run autotest, nprocs (%d) > max_devices (%d) this test works only with a single device\n",
-                nprocs, max_devices);
-        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
-        return EXIT_FAILURE;
-    }
     const int nx = argc > 1 ? atoi(argv[1]) : 2*9;
     const int ny = argc > 2 ? atoi(argv[2]) : 2*11;
     const int nz = argc > 3 ? atoi(argv[3]) : 4*7;
+
+    acPushToConfig(info,AC_proc_mapping_strategy, AC_PROC_MAPPING_STRATEGY_LINEAR);
+    acPushToConfig(info,AC_decompose_strategy,    AC_DECOMPOSE_STRATEGY_MORTON);
+    acPushToConfig(info,AC_MPI_comm_strategy,     AC_MPI_COMM_STRATEGY_DUP_WORLD);
+    const int3 decomp = acDecompose(nprocs,info[AC_decompose_strategy]);
+
     acSetGridMeshDims(nx, ny, nz, &info);
-    acSetLocalMeshDims(nx, ny, nz, &info);
+    acSetLocalMeshDims(nx/decomp.x, ny/decomp.y, nz/decomp.z, &info);
 
     AcMesh model, candidate;
-    if (pid == 0) {
-        acHostMeshCreate(info, &model);
-        acHostMeshCreate(info, &candidate);
-        acHostMeshRandomize(&model);
-        acHostMeshRandomize(&candidate);
-    }
+    acHostMeshCreate(info, &model);
+    acHostMeshCreate(info, &candidate);
+    acHostMeshRandomize(&model);
+    acHostMeshRandomize(&candidate);
+
 
     // GPU alloc & compute
     acGridInit(info);
     auto graph = acGetOptimizedDSLTaskGraph(rhs);
-    //auto graph_1 = acGetOptimizedDSLTaskGraph(rhs_1);
-    //auto graph_2 = acGetOptimizedDSLTaskGraph(rhs_2);
-    acGridSynchronizeStream(STREAM_ALL);
-    acGridLoadMesh(STREAM_DEFAULT,model);
-
-    //acGridSynchronizeStream(STREAM_ALL);
-    //acGridExecuteTaskGraph(graph_1,1);
-    //acGridSynchronizeStream(STREAM_ALL);
-
-    //acGridSynchronizeStream(STREAM_ALL);
-    //acGridExecuteTaskGraph(graph_2,1);
-    //acGridSynchronizeStream(STREAM_ALL);
-    //
-    acGridSynchronizeStream(STREAM_ALL);
-    acGridExecuteTaskGraph(graph,1);
-    acGridSynchronizeStream(STREAM_ALL);
-
-    acGridStoreMesh(STREAM_DEFAULT,&candidate);
-    //AcReal epsilon  = pow(10.0,-12.0);
-    //auto relative_diff = [](const auto a, const auto b)
-    //{
-    //        const auto abs_diff = fabs(a-b);
-    //        return  abs_diff/a;
-    //};
-    //auto in_eps_threshold = [&](const auto a, const auto b)
-    //{
-    //        if(a != 0.0 && b == 0.0) return false;
-    //        return relative_diff(a,b) < epsilon;
-    //};
 
     auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     auto IDX = [](const int x, const int y, const int z)
@@ -125,52 +93,52 @@ main(int argc, char* argv[])
 	return acVertexBufferIdx(x,y,z,acGridGetLocalMeshInfo());
     };
 
-    AcReal cpu_max = -AC_REAL_MAX;
-    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
-    {
-      for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
-      {
-    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
-	{
-		cpu_max = std::max(cpu_max,model.vertex_buffer[F][IDX(i,j,k)]);
-	}
-      }
-    }
-    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
-    {
-      for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
-      {
-    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
-	{
-		model.vertex_buffer[F][IDX(i,j,k)] = cpu_max;
-	}
-      }
-    }
-    bool f_correct = true;
-    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
-    {
-      for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
-      {
-    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
-	{
-		f_correct &= model.vertex_buffer[F][IDX(i,j,k)] == candidate.vertex_buffer[F][IDX(i,j,k)];
-	}
-      }
-    }
-    const bool max_correct = cpu_max == acDeviceGetOutput(acGridGetDevice(), F_MAX);
-    fprintf(stderr,"MAX: %14e,%14e,%d\n",cpu_max,acDeviceGetOutput(acGridGetDevice(), F_MAX),max_correct);
-    fprintf(stderr,"F ... %s\n", f_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    const  AcReal local_max = (pid+1)*2.0;
+    const  AcReal max_val   = (nprocs)*2.0;
+    model.vertex_buffer[F][IDX(info[AC_nlocal].x/2, info[AC_nlocal].y/2, info[AC_nlocal].z/2)] = local_max;
+
+    acGridSynchronizeStream(STREAM_ALL);
+    acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT,model);
+    acGridSynchronizeStream(STREAM_ALL);
+
+    acGridExecuteTaskGraph(graph,1);
+    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
 
 
-    const bool success = f_correct && max_correct;
+    int f_correct = 1;
+    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+      for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
+      {
+    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
+	{
+		f_correct &= candidate.vertex_buffer[F][IDX(i,j,k)] == max_val;
+	}
+      }
+    }
+
+    int local_max_correct  = local_max == acDeviceGetOutput(acGridGetDevice(),  F_LOCAL_MAX);
+    int global_max_correct = max_val   == acDeviceGetOutput(acGridGetDevice(), F_GLOBAL_MAX);
+
+    fprintf(stderr,"LOCAL  MAX %d: %14e,%14e ... %s\n",pid,local_max,acDeviceGetOutput(acGridGetDevice(), F_LOCAL_MAX),local_max_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL!" AC_COL_RESET);
+    fprintf(stderr,"GLOBAL MAX %d: %14e,%14e ... %s\n",pid,max_val,acDeviceGetOutput(acGridGetDevice(), F_GLOBAL_MAX),global_max_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL!" AC_COL_RESET);
+    fprintf(stderr,"F %d: ... %s\n",pid,f_correct ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+
+    MPI_Allreduce(MPI_IN_PLACE, &f_correct,   1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &local_max_correct, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &global_max_correct, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+
+
+
+    const bool success = f_correct && local_max_correct && global_max_correct;
     if (pid == 0)
+    {
         fprintf(stderr, "USE_SCALAR_REDUCE_TEST complete: %s\n",
                 success ? "No errors found" : "One or more errors found");
-    
-    if (pid == 0) {
-        acHostMeshDestroy(&model);
-        acHostMeshDestroy(&candidate);
     }
+    
+    acHostMeshDestroy(&model);
+    acHostMeshDestroy(&candidate);
     finalized = true;
 
     acGridQuit();

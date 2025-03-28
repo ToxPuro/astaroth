@@ -107,6 +107,7 @@ static const char* CONST_STR = NULL;
 static const char* CONSTEXPR_STR = NULL;
 static const char* OUTPUT_STR = NULL;
 static const char* INPUT_STR = NULL;
+static const char* GLOBAL_STR = NULL;
 static const char* GLOBAL_MEM_STR = NULL;
 static const char* DYNAMIC_STR = NULL;
 static const char* INLINE_STR = NULL;
@@ -1566,10 +1567,14 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				"if constexpr (NUM_%s_OUTPUTS == 0) return AC_FAILURE;\n"
 				"acReduce(stream,reduce_op,device->vba.reduce_buffer_%s[output],acGetKernelReduceScratchPadSize(kernel));\n"
 				"cudaMemcpyAsync(result,device->vba.reduce_buffer_%s[output].res,sizeof(result[0]),cudaMemcpyDeviceToHost,stream);\n"
+				"if(!%s_output_is_global[output])\n"
+				"{\n"
 				"acLoad%sReduceRes(stream,output,result);\n"
+				"}\n"
 				"return AC_SUCCESS;\n"
 				"}\n"
 				,upper_case_name,datatype_scalar,enum_name,uppr_name,define_name,define_name
+				,define_name
 				,upper_case_name
 				);
 
@@ -1886,6 +1891,7 @@ gen_comp_declarations(const char* datatype_scalar)
 	fp = fopen("output_decl.h","a");
 	fprintf(fp,"%s %s_outputs[NUM_%s_OUTPUTS+1];\n",datatype_scalar,define_name,strupr(define_name));
 	fclose(fp);
+
 }
 
 
@@ -5944,6 +5950,14 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 	  fprintf_filename("device_mesh_info_decl.h","%s %s_params[NUM_%s_PARAMS+1];\n",datatype,convert_to_define_name(datatype),strupr(convert_to_define_name(datatype)));
 	  gen_array_declarations(datatype,root);
 	  gen_comp_declarations(datatype);
+
+	  fprintf(fp,"static bool %s_output_is_global [NUM_%s_OUTPUTS+1] __attribute__((unused)) = {",convert_to_define_name(datatype), strupr(convert_to_define_name(datatype)));
+	  for(size_t symbol  = 0; symbol < num_symbols[0]; ++symbol)
+	  {
+	  	if(symbol_table[symbol].tspecifier == datatype && str_vec_contains(symbol_table[symbol].tqualifiers,OUTPUT_STR))
+	  		fprintf(fp,"%s,\n",str_vec_contains(symbol_table[symbol].tqualifiers,GLOBAL_STR) ? "true" : "false");
+	  }
+	  fprintf(fp,"false};");
   }
 
   const size_t num_real_outputs = count_variables(REAL_STR,OUTPUT_STR);
@@ -7757,6 +7771,7 @@ gen_global_strings()
 	GLOBAL_MEM_STR  = intern("gmem");
 	DYNAMIC_STR  = intern("dynamic");
 	OUTPUT_STR  = intern("output");
+	GLOBAL_STR  = intern("global");
 	INPUT_STR  = intern("input");
 	RUN_CONST_STR = intern("run_const");
 	CONST_DIMS_STR= intern("const_dims");

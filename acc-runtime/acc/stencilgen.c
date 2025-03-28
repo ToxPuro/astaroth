@@ -112,7 +112,7 @@ gen_stencil_definitions(void)
   }
 
     printf(
-        "static __device__ /*const*/ AcReal /*__restrict__*/ "
+        "static __device__ __attribute__((unused)) /*const*/ AcReal /*__restrict__*/ "
         "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={");
     for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
       printf("{");
