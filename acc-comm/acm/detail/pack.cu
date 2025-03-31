@@ -61,7 +61,7 @@ unpack(const T* input, const shape_t mm, const shape_t block_shape, const index_
 
 template <typename T>
 static std::vector<T*>
-unwrap(const std::vector<ac::mr::device_pointer<T>>& buffers)
+unwrap_data(const std::vector<ac::mr::device_pointer<T>>& buffers)
 {
     std::vector<T*> output;
     for (ac::mr::device_pointer<T> ptr : buffers)
@@ -91,7 +91,7 @@ pack(const ac::shape& in_mm, const ac::shape& in_block_shape, const ac::index& i
     const shape_t     mm{in_mm};
     const shape_t     block_shape{in_block_shape};
     const shape_t     block_offset{in_block_offset};
-    const array_t<T*> inputs{unwrap(in_inputs)};
+    const array_t<T*> inputs{unwrap_data(in_inputs)};
     const auto        output{in_output.data()};
 
     device::pack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm,
@@ -127,7 +127,7 @@ unpack(const ac::mr::device_pointer<T>& in_input, const ac::shape& in_mm,
     const shape_t     mm{in_mm};
     const shape_t     block_shape{in_block_shape};
     const shape_t     block_offset{in_block_offset};
-    const array_t<T*> outputs{unwrap(in_outputs)};
+    const array_t<T*> outputs{unwrap_data(in_outputs)};
 
     device::unpack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input,
                                                              mm,
