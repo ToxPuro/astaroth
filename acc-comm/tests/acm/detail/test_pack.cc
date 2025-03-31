@@ -4,6 +4,86 @@
 #include "acm/detail/buffer.h"
 #include "acm/detail/pack.h"
 
+#include "acm/detail/ndbuffer.h"
+#include "acm/detail/partition.h"
+#include "acm/detail/print_debug.h"
+#include "acm/detail/timer.h"
+
+#include "acm/detail/convert.h"
+
+static void
+test_pack(const ac::shape& nn, const ac::index& rr)
+{
+    const auto mm{nn + 2 * rr};
+
+    // Partition and prune the domain
+    // const auto segments{prune(partition(mm, nn, rr), nn, rr)};
+    const auto segments{partition(mm, nn, rr)};
+
+    // Allocate
+    ac::host_ndbuffer<uint64_t>   hin{mm};
+    ac::host_ndbuffer<uint64_t>   hout{mm};
+    ac::device_ndbuffer<uint64_t> din{mm};
+    ac::device_ndbuffer<uint64_t> dout{mm};
+
+    std::vector<ac::device_buffer<uint64_t>> pack_buffers;
+    for (const auto& segment : segments)
+        pack_buffers.push_back(ac::host_buffer<uint64_t>{prod(segment.dims)});
+
+    // Init
+    std::iota(hin.begin(), hin.end(), 1);
+    ac::mr::copy(hin.get(), din.get());
+
+    // Pack and unpack
+    ac::timer t;
+    for (size_t i{0}; i < segments.size(); ++i)
+        pack(mm, segments[i].dims, segments[i].offset, {din.get()}, pack_buffers[i].get());
+
+    t.lap("Pack");
+
+    for (size_t i{0}; i < segments.size(); ++i)
+        unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset, {dout.get()});
+
+    t.lap("Unpack");
+
+    ac::mr::copy(dout.get(), hout.get());
+    ERRCHK(equals(hin.get(), hout.get()));
+}
+
+static void
+test_pack_batched(const ac::shape& nn, const ac::index& rr)
+{
+    const auto mm{nn + 2 * rr};
+
+    // Partition and prune the domain
+    // const auto segments{prune(partition(mm, nn, rr), nn, rr)};
+    const auto segments{partition(mm, nn, rr)};
+
+    // Allocate
+    ac::host_ndbuffer<uint64_t>   hin{mm};
+    ac::host_ndbuffer<uint64_t>   hout{mm};
+    ac::device_ndbuffer<uint64_t> din{mm};
+    ac::device_ndbuffer<uint64_t> dout{mm};
+
+    std::vector<ac::device_buffer<uint64_t>> pack_buffers;
+    for (const auto& segment : segments)
+        pack_buffers.push_back(ac::host_buffer<uint64_t>{prod(segment.dims)});
+
+    // Init
+    std::iota(hin.begin(), hin.end(), 1);
+    ac::mr::copy(hin.get(), din.get());
+
+    // Pack and unpack
+    ac::timer t;
+    pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
+    t.lap("Batched pack");
+    unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
+    t.lap("Batched unpack");
+
+    ac::mr::copy(dout.get(), hout.get());
+    ERRCHK(equals(hin.get(), hout.get()));
+}
+
 int
 main()
 {
@@ -55,6 +135,23 @@ main()
         // std::cout << a << std::endl;
         // std::cout << *d[1] << std::endl;
         // std::cout << "-----------------" << std::endl;
+    }
+    {
+        std::vector<std::tuple<ac::shape, ac::index>> inputs{
+            std::tuple<ac::shape, ac::index>{ac::shape{8}, ac::index{3}},
+            std::tuple<ac::shape, ac::index>{ac::shape{4, 4}, ac::index{2, 2}},
+            std::tuple<ac::shape, ac::index>{ac::shape{4, 8}, ac::index{2, 2}},
+            std::tuple<ac::shape, ac::index>{ac::shape{8, 6, 4}, ac::index{2, 2, 2}},
+            std::tuple<ac::shape, ac::index>{ac::shape{8, 6, 4, 4}, ac::index{2, 2, 2, 2}},
+            std::tuple<ac::shape, ac::index>{ac::shape{4, 5, 6, 7, 8}, ac::index{2, 2, 3, 3, 3}},
+            std::tuple<ac::shape, ac::index>{ac::shape{2, 4, 6, 8, 6, 4, 2},
+                                             ac::index{1, 2, 3, 4, 3, 2, 1}},
+        };
+        for (const auto& input : inputs)
+            test_pack(std::get<0>(input), std::get<1>(input));
+
+        for (const auto& input : inputs)
+            test_pack_batched(std::get<0>(input), std::get<1>(input));
     }
     PRINT_LOG_INFO("OK");
     return EXIT_SUCCESS;

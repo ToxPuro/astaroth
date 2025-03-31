@@ -1,7 +1,9 @@
 #pragma once
 
+#include "acm/detail/math_utils.h"
 #include "ntuple.h"
 #include "pointer.h"
+#include "segment.h"
 
 template <typename T>
 void
@@ -49,6 +51,27 @@ unpack(const ac::mr::host_pointer<T>& input, const ac::shape& mm, const ac::shap
             outputs[j][in_idx] = input[i + j * block_nelems];
         }
     }
+}
+
+template <typename T>
+void
+pack_batched(const ac::shape& mm, const std::vector<ac::mr::host_pointer<T>>& inputs,
+             const std::vector<ac::segment>& segments, std::vector<ac::mr::host_pointer<T>> outputs)
+{
+    ERRCHK(same_size(segments, outputs));
+
+    for (size_t i{0}; i < segments.size(); ++i)
+        pack(mm, segments[i].dims, segments[i].offset, inputs, outputs[i]);
+}
+
+template <typename T>
+void
+unpack_batched(const std::vector<ac::segment>&             segments,
+               const std::vector<ac::mr::host_pointer<T>>& inputs, const ac::shape& mm,
+               std::vector<ac::mr::host_pointer<T>> outputs)
+{
+    for (size_t i{0}; i < segments.size(); ++i)
+        unpack(inputs[i], mm, segments[i].dims, segments[i].offset, outputs);
 }
 
 #if defined(ACM_DEVICE_ENABLED)
