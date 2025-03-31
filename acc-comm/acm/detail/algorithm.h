@@ -9,14 +9,6 @@
 
 namespace ac {
 
-template <typename... Inputs>
-bool
-same_size(const Inputs&... inputs)
-{
-    const size_t count{std::get<0>(std::tuple(inputs...)).size()};
-    return ((inputs.size() == count) && ...);
-}
-
 template <typename T, typename Function>
 void
 transform(const ac::mr::host_pointer<T>& input, const Function& fn, ac::mr::host_pointer<T> output)
