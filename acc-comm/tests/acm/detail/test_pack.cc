@@ -35,6 +35,16 @@ test_pack(const ac::shape& nn, const ac::index& rr)
     ac::mr::copy(hin.get(), din.get());
 
     // Pack and unpack
+    for (size_t i{0}; i < segments.size(); ++i)
+        pack(mm, segments[i].dims, segments[i].offset, {din.get()}, pack_buffers[i].get());
+
+    for (size_t i{0}; i < segments.size(); ++i)
+        unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset, {dout.get()});
+
+    ac::mr::copy(dout.get(), hout.get());
+    ERRCHK(equals(hin.get(), hout.get()));
+
+    // Benchmark
     ac::timer t;
     for (size_t i{0}; i < segments.size(); ++i)
         pack(mm, segments[i].dims, segments[i].offset, {din.get()}, pack_buffers[i].get());
@@ -45,9 +55,6 @@ test_pack(const ac::shape& nn, const ac::index& rr)
         unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset, {dout.get()});
 
     t.lap("Unpack");
-
-    ac::mr::copy(dout.get(), hout.get());
-    ERRCHK(equals(hin.get(), hout.get()));
 }
 
 static void
@@ -74,14 +81,18 @@ test_pack_batched(const ac::shape& nn, const ac::index& rr)
     ac::mr::copy(hin.get(), din.get());
 
     // Pack and unpack
+    pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
+    unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
+
+    ac::mr::copy(dout.get(), hout.get());
+    ERRCHK(equals(hin.get(), hout.get()));
+
+    // Benchmmark
     ac::timer t;
     pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
     t.lap("Batched pack");
     unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
     t.lap("Batched unpack");
-
-    ac::mr::copy(dout.get(), hout.get());
-    ERRCHK(equals(hin.get(), hout.get()));
 }
 
 int
