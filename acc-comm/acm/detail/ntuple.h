@@ -5,6 +5,7 @@
 #include <ostream>
 #include <vector>
 
+#include "acm/detail/math_utils.h"
 #include "cuda_utils.h"
 #include "errchk.h"
 
@@ -446,6 +447,7 @@ to_spatial(const T index, const ac::ntuple<T>& shape)
     return coords;
 }
 
+/** Return true if coords are in range [box_offset, box_offset + box_dims) */
 template <typename T>
 [[nodiscard]] bool
 within_box(const ac::ntuple<T>& coords, const ac::ntuple<T>& box_dims,
@@ -456,6 +458,23 @@ within_box(const ac::ntuple<T>& coords, const ac::ntuple<T>& box_dims,
     for (size_t i{0}; i < coords.size(); ++i)
         if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
             return false;
+    return true;
+}
+
+template <typename T>
+[[nodiscard]] bool
+intersect_box(const ac::ntuple<T>& box_dims_a, const ac::ntuple<T>& box_offset_a,
+              const ac::ntuple<T>& box_dims_b, const ac::ntuple<T>& box_offset_b)
+{
+    ERRCHK(same_size(box_dims_a, box_offset_a, box_dims_b, box_offset_b));
+
+    for (size_t i{0}; i < box_dims_a.size(); ++i)
+        if (!intersect_lines(box_offset_a[i],
+                             box_offset_a[i] + box_dims_a[i],
+                             box_offset_b[i],
+                             box_offset_b[i] + box_dims_b[i]))
+            return false;
+
     return true;
 }
 
