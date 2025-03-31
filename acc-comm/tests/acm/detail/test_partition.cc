@@ -41,6 +41,29 @@ main()
         const ac::ntuple<uint64_t> nn_offset{1, 1};
         ERRCHK(partition(mm, nn, nn_offset).size() == 4);
     }
+    {
+        const ac::shape mm{4, 4};
+        const ac::shape nn{2, 2};
+        const ac::index rr{1, 1};
+
+        std::cout << "Segments" << std::endl;
+        const auto segments{partition(mm, nn, rr)};
+        for (const auto& segment : segments)
+            std::cout << segment << std::endl;
+
+        std::cout << "Pruned segments" << std::endl;
+        const auto pruned_segments{prune(segments, nn, rr)};
+        for (const auto& segment : pruned_segments)
+            std::cout << segment << std::endl;
+
+        std::cout << "Pruned segments (inverted selection)" << std::endl;
+        const auto inv_pruned_segments{prune(segments, nn, rr, true)};
+        for (const auto& segment : inv_pruned_segments)
+            std::cout << segment << std::endl;
+
+        ERRCHK(prune(segments, nn, rr).size() == segments.size() - 1);
+        ERRCHK(prune(segments, nn, rr, true).size() == 1);
+    }
     PRINT_LOG_INFO("OK");
 
     return EXIT_SUCCESS;

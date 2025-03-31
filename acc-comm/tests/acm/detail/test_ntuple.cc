@@ -111,6 +111,91 @@ test_within_box(void)
     }
 }
 
+static void
+test_intersect_box()
+{
+    {
+        const ac::ntuple<uint64_t> a{0, 0, 0};
+        const ac::ntuple<uint64_t> a_dims{1, 1, 1};
+        const ac::ntuple<uint64_t> b{0, 0, 0};
+        const ac::ntuple<uint64_t> b_dims{1, 1, 1};
+
+        ERRCHK(ac::intersect_box(a_dims, a, b_dims, b) == true);
+    }
+    {
+        const ac::ntuple<uint64_t> a{0, 0};
+        const ac::ntuple<uint64_t> a_dims{1, 1};
+        const ac::ntuple<uint64_t> b{1, 0};
+        const ac::ntuple<uint64_t> b_dims{1, 1};
+
+        ERRCHK(ac::intersect_box(a_dims, a, b_dims, b) == false);
+        ERRCHK(ac::intersect_box(b_dims, b, a_dims, a) == false);
+    }
+    {
+        const ac::ntuple<uint64_t> a{0, 0};
+        const ac::ntuple<uint64_t> a_dims{2, 2};
+        const ac::ntuple<uint64_t> b{1, 2};
+        const ac::ntuple<uint64_t> b_dims{1, 1};
+
+        ERRCHK(ac::intersect_box(a_dims, a, b_dims, b) == false);
+        ERRCHK(ac::intersect_box(b_dims, b, a_dims, a) == false);
+    }
+    {
+        const ac::ntuple<uint64_t> a{0, 0};
+        const ac::ntuple<uint64_t> a_dims{2, 2};
+        const ac::ntuple<uint64_t> b{1, 1};
+        const ac::ntuple<uint64_t> b_dims{1, 1};
+
+        ERRCHK(ac::intersect_box(a_dims, a, b_dims, b) == true);
+        ERRCHK(ac::intersect_box(b_dims, b, a_dims, a) == true);
+    }
+    {
+        const ac::ntuple<uint64_t> a{0, 0, 0, 0, 0};
+        const ac::ntuple<uint64_t> a_dims{2, 2, 2, 2, 2};
+        const ac::ntuple<uint64_t> b{1, 1, 1, 1, 1};
+        const ac::ntuple<uint64_t> b_dims{1, 1, 1, 1, 1};
+
+        ERRCHK(ac::intersect_box(a_dims, a, b_dims, b) == true);
+        ERRCHK(ac::intersect_box(b_dims, b, a_dims, a) == true);
+    }
+    {
+        const ac::ntuple<uint64_t> a{0, 0, 0, 0, 0};
+        const ac::ntuple<uint64_t> a_dims{2, 2, 2, 2, 2};
+        const ac::ntuple<uint64_t> b{1, 1, 2, 1, 1};
+        const ac::ntuple<uint64_t> b_dims{1, 1, 1, 1, 1};
+
+        ERRCHK(ac::intersect_box(a_dims, a, b_dims, b) == false);
+        ERRCHK(ac::intersect_box(b_dims, b, a_dims, a) == false);
+    }
+    {
+        const ac::ntuple<uint64_t> a{1, 0};
+        const ac::ntuple<uint64_t> a_dims{1, 3};
+        const ac::ntuple<uint64_t> b{0, 1};
+        const ac::ntuple<uint64_t> b_dims{3, 1};
+
+        ERRCHK(ac::intersect_box(a_dims, a, b_dims, b) == true);
+        ERRCHK(ac::intersect_box(b_dims, b, a_dims, a) == true);
+    }
+    {
+        const ac::ntuple<uint64_t> a{5, 0};
+        const ac::ntuple<uint64_t> a_dims{5, 10};
+        const ac::ntuple<uint64_t> b{0, 5};
+        const ac::ntuple<uint64_t> b_dims{10, 5};
+
+        ERRCHK(ac::intersect_box(a_dims, a, b_dims, b) == true);
+        ERRCHK(ac::intersect_box(b_dims, b, a_dims, a) == true);
+    }
+    {
+        const ac::ntuple<uint64_t> a{0, 0};
+        const ac::ntuple<uint64_t> a_dims{10, 10};
+        const ac::ntuple<uint64_t> b{1, 1};
+        const ac::ntuple<uint64_t> b_dims{8, 8};
+
+        ERRCHK(ac::intersect_box(a_dims, a, b_dims, b) == true);
+        ERRCHK(ac::intersect_box(b_dims, b, a_dims, a) == true);
+    }
+}
+
 int
 main()
 {
@@ -176,6 +261,9 @@ main()
         test_to_linear<ac::static_ntuple<uint64_t, 10>>();
         test_to_spatial<ac::static_ntuple<uint64_t, 10>>();
         test_within_box<ac::static_ntuple<uint64_t, 10>>();
+    }
+    {
+        test_intersect_box();
     }
     PRINT_LOG_INFO("OK");
     return EXIT_SUCCESS;
