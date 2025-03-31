@@ -138,16 +138,23 @@ unpack(const ac::mr::device_pointer<T>& in_input, const ac::shape& in_mm,
     cudaDeviceSynchronize();
 }
 
+template <typename T>
+void
+pack_batched(const ac::shape& mm, const std::vector<ac::mr::device_pointer<T>>& inputs,
+             const std::vector<ac::segment>&        segments,
+             std::vector<ac::mr::device_pointer<T>> outputs)
+{
+}
+
+template <typename T>
+void
+unpack_batched(const std::vector<ac::segment>&               segments,
+               const std::vector<ac::mr::device_pointer<T>>& inputs, const ac::shape& mm,
+               std::vector<ac::mr::device_pointer<T>> outputs)
+{
+}
+
 // Specialization
-template <typename T>
-void pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
-          const std::vector<ac::mr::device_pointer<T>>& inputs, ac::mr::device_pointer<T> output);
-
-template <typename T>
-void unpack(const ac::mr::device_pointer<T>& input, const ac::shape& mm,
-            const ac::shape& block_shape, const ac::index& block_offset,
-            std::vector<ac::mr::device_pointer<T>> outputs);
-
 #define PACK_DTYPE double
 template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape,
                                const ac::index&                                       block_offset,
@@ -158,6 +165,18 @@ template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input
                                  const ac::shape& mm, const ac::shape& block_shape,
                                  const ac::index&                                block_offset,
                                  std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
+
+template void
+pack_batched<PACK_DTYPE>(const ac::shape&                                       mm,
+                         const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
+                         const std::vector<ac::segment>&                        segments,
+                         std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
+
+template void
+unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                        segments,
+                           const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
+                           const ac::shape&                                       mm,
+                           std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
 #undef PACK_DTYPE
 
 #define PACK_DTYPE uint64_t
@@ -170,6 +189,18 @@ template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input
                                  const ac::shape& mm, const ac::shape& block_shape,
                                  const ac::index&                                block_offset,
                                  std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
+
+template void
+pack_batched<PACK_DTYPE>(const ac::shape&                                       mm,
+                         const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
+                         const std::vector<ac::segment>&                        segments,
+                         std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
+
+template void
+unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                        segments,
+                           const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
+                           const ac::shape&                                       mm,
+                           std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
 #undef PACK_DTYPE
 
 #define PACK_DTYPE int
@@ -182,6 +213,17 @@ template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input
                                  const ac::shape& mm, const ac::shape& block_shape,
                                  const ac::index&                                block_offset,
                                  std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
-#undef PACK_DTYPE
 
+template void
+pack_batched<PACK_DTYPE>(const ac::shape&                                       mm,
+                         const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
+                         const std::vector<ac::segment>&                        segments,
+                         std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
+
+template void
+unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                        segments,
+                           const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
+                           const ac::shape&                                       mm,
+                           std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
+#undef PACK_DTYPE
 #endif
