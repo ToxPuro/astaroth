@@ -512,6 +512,8 @@ template <typename T, size_t N> class static_ntuple {
     T      m_resource[N];
 
   public:
+    static_ntuple() = default; // TODO remove
+
     __host__ __device__ explicit static_ntuple(const std::initializer_list<T>& init_list)
         : m_count{init_list.size()}
     {
