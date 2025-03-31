@@ -20,10 +20,10 @@ pack_batched(const shape_t<NDIMS> mm, const array_t<T*, NINPUTS> unpacked,
     const uint64_t curr_input{static_cast<uint64_t>(threadIdx.y) + blockIdx.y * blockDim.y};
     const uint64_t curr_segment{static_cast<uint64_t>(threadIdx.z) + blockIdx.z * blockDim.z};
 
-    if (curr_segment < NSEGMENTS) {
+    if (curr_segment < NSEGMENTS && curr_input < NINPUTS) {
         const auto block_shape{dims[curr_segment]};
         const auto block_nelems{prod(block_shape)};
-        if (i < block_nelems && curr_input < NINPUTS) {
+        if (i < block_nelems) {
 
             // Block coords
             const auto block_offset{offsets[curr_segment]};
@@ -75,7 +75,7 @@ pack_batched_prototype(const ac::shape&                              in_mm,
 
     const shape_t<NDIMS>          mm{in_mm};
     const array_t<T*, N_UNPACKED> unpacked{unwrap_data(in_unpacked)};
-    // const array_t<ac::device::segment<NDIMS>, n_segments> segments{convert<NDIMS>(in_segments};
+    // const array_t<ac::device::segment<NDIMS>, n_segments> segments{convert<NDIMS>(in_segments)};
     const array_t<shape_t<NDIMS>, N_SEGMENTS> dims{in_dims};
     const array_t<index_t<NDIMS>, N_SEGMENTS> offsets{in_offsets};
     const array_t<T*, N_SEGMENTS>             packed{unwrap_data(in_packed)};
