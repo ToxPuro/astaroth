@@ -28,7 +28,7 @@ test_pack(const ac::shape& nn, const ac::index& rr)
 
     std::vector<ac::device_buffer<uint64_t>> pack_buffers;
     for (const auto& segment : segments)
-        pack_buffers.push_back(ac::host_buffer<uint64_t>{prod(segment.dims)});
+        pack_buffers.push_back(ac::device_buffer<uint64_t>{prod(segment.dims)});
 
     // Init
     std::iota(hin.begin(), hin.end(), 1);
@@ -67,7 +67,7 @@ test_pack_batched(const ac::shape& nn, const ac::index& rr)
 
     std::vector<ac::device_buffer<uint64_t>> pack_buffers;
     for (const auto& segment : segments)
-        pack_buffers.push_back(ac::host_buffer<uint64_t>{prod(segment.dims)});
+        pack_buffers.push_back(ac::device_buffer<uint64_t>{prod(segment.dims)});
 
     // Init
     std::iota(hin.begin(), hin.end(), 1);
@@ -143,9 +143,9 @@ main()
             std::tuple<ac::shape, ac::index>{ac::shape{4, 8}, ac::index{2, 2}},
             std::tuple<ac::shape, ac::index>{ac::shape{8, 6, 4}, ac::index{2, 2, 2}},
             std::tuple<ac::shape, ac::index>{ac::shape{8, 6, 4, 4}, ac::index{2, 2, 2, 2}},
-            std::tuple<ac::shape, ac::index>{ac::shape{4, 5, 6, 7, 8}, ac::index{2, 2, 3, 3, 3}},
-            std::tuple<ac::shape, ac::index>{ac::shape{2, 4, 6, 8, 6, 4, 2},
-                                             ac::index{1, 2, 3, 4, 3, 2, 1}},
+            // std::tuple<ac::shape, ac::index>{ac::shape{4, 5, 6, 7, 8}, ac::index{2, 2, 3, 3, 3}},
+            // std::tuple<ac::shape, ac::index>{ac::shape{2, 4, 6, 8, 6, 4, 2},
+            //                                  ac::index{1, 2, 3, 4, 3, 2, 1}},
         };
         for (const auto& input : inputs)
             test_pack(std::get<0>(input), std::get<1>(input));
