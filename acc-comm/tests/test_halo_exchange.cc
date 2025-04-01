@@ -13,6 +13,8 @@
 
 #include <array>
 
+// constexpr size_t NSAMPLES{10};
+
 /** Verify halo exchange
  * Strategy:
  *     1) Set global mesh to iota
@@ -63,14 +65,19 @@ verify_mpi_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, 
     }
 
     // Benchmark
-    ac::timer t;
-    reqs = launch_halo_exchange(cart_comm, local_mm, local_nn, rr, lmesh.data(), lmesh.data());
-    t.lap("mpi Launch");
-    while (!reqs.empty()) {
-        ac::mpi::request_wait_and_destroy(&reqs.back());
-        reqs.pop_back();
-    }
-    t.lap("mpi Wait");
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // ac::timer t;
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // for (size_t i{0}; i < NSAMPLES; ++i) {
+    //     reqs = launch_halo_exchange(cart_comm, local_mm, local_nn, rr, lmesh.data(),
+    //     lmesh.data()); while (!reqs.empty()) {
+    //         ac::mpi::request_wait_and_destroy(&reqs.back());
+    //         reqs.pop_back();
+    //     }
+    // }
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // if (ac::mpi::get_rank(cart_comm) == 0)
+    //     t.lap("mpi NSAMPLES TOTAL");
 
     return 0;
 }
@@ -130,11 +137,16 @@ verify_custom_packed_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& g
     }
 
     // Benchmark
-    ac::timer t;
-    he.launch(cart_comm, lptrs);
-    t.lap("custom Launch");
-    he.wait(lptrs);
-    t.lap("custom Wait");
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // ac::timer t;
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // for (size_t i{0}; i < NSAMPLES; ++i) {
+    //     he.launch(cart_comm, lptrs);
+    //     he.wait(lptrs);
+    // }
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // if (ac::mpi::get_rank(cart_comm) == 0)
+    //     t.lap("custom NSAMPLES TOTAL");
 
     return 0;
 }
@@ -194,11 +206,16 @@ verify_revised_mpi_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& glo
     }
 
     // Benchmark
-    ac::timer t;
-    he.launch(lptrs, lptrs);
-    t.lap("revised mpi Launch");
-    he.wait();
-    t.lap("revised mpi Wait");
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // ac::timer t;
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // for (size_t i{0}; i < NSAMPLES; ++i) {
+    //     he.launch(lptrs, lptrs);
+    //     he.wait();
+    // }
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // if (ac::mpi::get_rank(cart_comm) == 0)
+    //     t.lap("revised mpi NSAMPLES TOTAL");
 
     return 0;
 }
@@ -258,11 +275,16 @@ verify_custom_revised_packed_halo_exchange(const MPI_Comm& cart_comm, const ac::
     }
 
     // Benchmark
-    ac::timer t;
-    he.launch(lptrs);
-    t.lap("custom revised Launch");
-    he.wait(lptrs);
-    t.lap("custom revised Wait");
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // ac::timer t;
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // for (size_t i{0}; i < NSAMPLES; ++i) {
+    //     he.launch(lptrs);
+    //     he.wait(lptrs);
+    // }
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // if (ac::mpi::get_rank(cart_comm) == 0)
+    //     t.lap("custom revised NSAMPLES TOTAL");
 
     return 0;
 }
@@ -322,11 +344,16 @@ verify_custom_revised_packed_halo_exchange_v2(const MPI_Comm& cart_comm, const a
     }
 
     // Benchmark
-    ac::timer t;
-    he.launch(lptrs);
-    t.lap("custom revised v2 Launch");
-    he.wait(lptrs);
-    t.lap("custom revised v2 Wait");
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // ac::timer t;
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // for (size_t i{0}; i < NSAMPLES; ++i) {
+    //     he.launch(lptrs);
+    //     he.wait(lptrs);
+    // }
+    // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    // if (ac::mpi::get_rank(cart_comm) == 0)
+    //     t.lap("custom revised v2 NSAMPLES TOTAL");
 
     return 0;
 }
