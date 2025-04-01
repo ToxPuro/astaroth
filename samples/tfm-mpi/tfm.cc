@@ -1078,15 +1078,7 @@ class Grid {
         // Strategy:
         // 1) Reduce the local result to device->vba.profiles.in
         ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
-
-        // 2) Create communicator that encompasses neighbors in the xy direction
-        const ac::index coords{ac::mpi::get_coords(cart_comm)};
-        // Key used to order the ranks in the new communicator: let MPI_Comm_split
-        // decide (should the same ordering as in the parent communicator by default)
-        const int color{as<int>(coords[2])};
-        const int key{ac::mpi::get_rank(cart_comm)};
-        MPI_Comm xy_neighbors{MPI_COMM_NULL};
-        ERRCHK_MPI_API(MPI_Comm_split(cart_comm, color, key, &xy_neighbors));
+        ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
 
         // 3) Allreduce
         VertexBufferArray vba{};
@@ -1094,21 +1086,35 @@ class Grid {
 
         // Note: assumes that all profiles are contiguous and in correct order
         // Error-prone: should be improved when time
+        const size_t count{NUM_PROFILES * vba.profiles.count};
+        AcReal* data{vba.profiles.in[0]};
         MPI_Request req{MPI_REQUEST_NULL};
-        ERRCHK_MPI_API(
-            MPI_Iallreduce(MPI_IN_PLACE,
-                           vba.profiles.in[0],
-                           nonlocal_tfm_profiles.size() *
-                               vba.profiles.count, // Note possible MPI BUG here (see above)
-                           AC_REAL_MPI_TYPE,
-                           MPI_SUM,
-                           xy_neighbors,
-                           &req));
-
-        // 5) Free resources
-        ERRCHK_MPI_API(MPI_Comm_free(&xy_neighbors));
-
+        ERRCHK_MPI_API(MPI_Iallreduce(MPI_IN_PLACE,
+                                      data,
+                                      as<int>(count), // Note possible MPI BUG here (see above)
+                                      AC_REAL_MPI_TYPE,
+                                      MPI_SUM,
+                                      xy_neighbors,
+                                      &req));
         return req;
+    }
+
+    void wait_reduce_xy_averages(MPI_Request& xy_average_req)
+    {
+        ERRCHK(xy_average_req != MPI_REQUEST_NULL);
+        ac::mpi::request_wait_and_destroy(&xy_average_req);
+
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+        // Note: assumes that all profiles are contiguous and in correct order
+        // Error-prone: should be improved when time
+        const size_t count{NUM_PROFILES * vba.profiles.count};
+        AcReal* data{vba.profiles.in[0]};
+
+        int collaborated_procs{-1};
+        ERRCHK_MPI_API(MPI_Comm_size(xy_neighbors, &collaborated_procs));
+        acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
     }
 #endif
 
@@ -1201,8 +1207,7 @@ class Grid {
 
 // TFM dependencies: hydro, tfm, profiles
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
-                ERRCHK_MPI(xy_average_req != MPI_REQUEST_NULL);
-                ac::mpi::request_wait_and_destroy(&xy_average_req); // Averaging
+                wait_reduce_xy_averages(xy_average_req);
 #endif
                 // TFM dependencies: tfm
                 tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
@@ -1295,8 +1300,7 @@ class Grid {
 #endif
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
-        ERRCHK(xy_average_req != MPI_REQUEST_NULL);
-        ac::mpi::request_wait_and_destroy(&xy_average_req);
+        wait_reduce_xy_averages(xy_average_req);
 #endif
     }
 
