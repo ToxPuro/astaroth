@@ -81,6 +81,9 @@ pack_batched_prototype(const ac::shape&                              in_mm,
     const array_t<T*, N_SEGMENTS>             packed{unwrap_data(in_packed)};
 
     device::pack_batched<<<bpg, tpb>>>(mm, unpacked, dims, offsets, packed, do_pack);
+
+    ERRCHK_CUDA_KERNEL();
+    cudaDeviceSynchronize();
 }
 } // namespace ac
 
@@ -141,6 +144,8 @@ pack_batched(const ac::shape& mm, const std::vector<ac::mr::device_pointer<T>>& 
         return pack_batched<T, NDIMS, 3>(mm, unpacked, segments, packed, do_pack);
     case 4:
         return pack_batched<T, NDIMS, 4>(mm, unpacked, segments, packed, do_pack);
+    case 12:
+        return pack_batched<T, NDIMS, 12>(mm, unpacked, segments, packed, do_pack);
     default:
         ERROR(false, "Unhandled");
     }
