@@ -5,9 +5,10 @@
 #include <ostream>
 #include <vector>
 
-#include "acm/detail/math_utils.h"
 #include "cuda_utils.h"
 #include "errchk.h"
+#include "math_utils.h"
+#include "type_conversion.h"
 
 namespace ac {
 
@@ -18,6 +19,8 @@ template <typename T> class ntuple {
     std::vector<T> m_resource;
 
   public:
+    ntuple() = default;
+
     explicit ntuple(const std::initializer_list<T>& init_list)
         : m_resource{init_list}
     {
@@ -532,13 +535,16 @@ template <typename T, size_t N> class static_ntuple {
         std::copy(vec.begin(), vec.end(), m_resource);
     }
 
-    explicit static_ntuple(const ac::ntuple<T>& in)
+    template <typename U>
+    explicit static_ntuple(const ac::ntuple<U>& in)
         : m_count{in.size()}
     {
 #if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(in.size() <= N);
 #endif
-        std::copy(in.begin(), in.end(), m_resource);
+        for (size_t i{0}; i < m_count; ++i)
+            m_resource[i] = as<T>(in[i]);
+        // std::copy(in.begin(), in.end(), m_resource);
     }
 
     __host__ __device__ auto size() const { return m_count; }
