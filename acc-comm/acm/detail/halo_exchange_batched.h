@@ -110,6 +110,8 @@ template <typename T, typename Allocator> class halo_exchange {
     std::vector<std::unique_ptr<packet<T, Allocator>>> m_packets;
 
   public:
+    halo_exchange() = default;
+
     halo_exchange(const MPI_Comm& parent_comm, const ac::shape& global_nn, const ac::index& rr,
                   const size_t n_max_aggregate_buffers)
         : m_local_mm{ac::mpi::get_local_mm(parent_comm, global_nn, rr)}
