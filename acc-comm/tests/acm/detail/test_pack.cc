@@ -149,11 +149,16 @@ main()
     }
     {
         std::vector<std::tuple<ac::shape, ac::index>> inputs{
+            // std::tuple<ac::shape, ac::index>{ac::shape{128, 128, 128}, ac::index{3, 3, 3}},
+            // std::tuple<ac::shape, ac::index>{ac::shape{256, 256, 256}, ac::index{3, 3, 3}},
+            // std::tuple<ac::shape, ac::index>{ac::shape{256, 256, 256}, ac::index{6, 6, 6}},
+            //
             std::tuple<ac::shape, ac::index>{ac::shape{8}, ac::index{3}},
             std::tuple<ac::shape, ac::index>{ac::shape{4, 4}, ac::index{2, 2}},
             std::tuple<ac::shape, ac::index>{ac::shape{4, 8}, ac::index{2, 2}},
             std::tuple<ac::shape, ac::index>{ac::shape{8, 6, 4}, ac::index{2, 2, 2}},
             std::tuple<ac::shape, ac::index>{ac::shape{8, 6, 4, 4}, ac::index{2, 2, 2, 2}},
+            //
             // std::tuple<ac::shape, ac::index>{ac::shape{4, 5, 6, 7, 8}, ac::index{2, 2, 3, 3, 3}},
             // std::tuple<ac::shape, ac::index>{ac::shape{2, 4, 6, 8, 6, 4, 2},
             //                                  ac::index{1, 2, 3, 4, 3, 2, 1}},
