@@ -49,7 +49,7 @@
 // clang-format off
 #define ERROR(str)                                                             \
   {                                                                            \
-    time_t terr;                                                               \
+    time_t terr = 0;                                                           \
     time(&terr);                                                               \
     fprintf(stderr, "\n\n\n\n┌──────────────────────── ERROR ───────────────────────────┐\n\n"); \
     fprintf(stderr, "%s", ctime(&terr));                                       \
@@ -62,7 +62,7 @@
 
 #define WARNING(str)                                                           \
   {                                                                            \
-    time_t terr;                                                               \
+    time_t terr = 0;                                                           \
     time(&terr);                                                               \
     fprintf(stderr, "%s", ctime(&terr));                                       \
     fprintf(stderr, "\tWarning in file %s line %d: %s\n", __FILE__, __LINE__,  \
