@@ -989,6 +989,12 @@ get_array_var_length(const char* var, const ASTNode* root, char* dst)
 int default_accesses[10000] = { [0 ... 10000-1] = 1};
 int read_accesses[10000] = { [0 ... 10000-1] = 0};
 
+bool
+fread_errchk(int* dst, const size_t bytes, const size_t count, FILE* stream)
+{
+	return fread(dst,bytes,count,stream) == count;
+}
+
 const  int*
 get_arr_accesses(const char* datatype_scalar)
 {
@@ -1001,9 +1007,10 @@ get_arr_accesses(const char* datatype_scalar)
 
 	FILE* fp = fopen(filename,"rb");
 	int size = 1;
-	fread(&size, sizeof(int), 1, fp);
-	fread(read_accesses, sizeof(int), size, fp);
+	bool reading_successful =  fread_errchk(&size, sizeof(int), 1, fp);
+	reading_successful      &= fread_errchk(read_accesses, sizeof(int), size, fp);
 	fclose(fp);
+	if(!reading_successful) fatal("Was not able to read array accesses!\n");
 	return read_accesses;
 }
 
@@ -9737,12 +9744,13 @@ get_executed_nodes(const int round)
   	FILE* fp = fopen("executed_nodes.bin","rb");
   	int size;
   	int tmp;
-  	fread(&size, sizeof(int), 1, fp);
+  	bool reading_successful = fread_errchk(&size, sizeof(int), 1, fp) == 1;
   	for(int i = 0; i < size; ++i)
   	{
-  		fread(&tmp, sizeof(int), 1, fp);
+  	      reading_successful &= fread_errchk(&tmp, sizeof(int), 1, fp);
   	      push_int(&executed_nodes,tmp);
   	}
+	if(!reading_successful) fatal("Was not able to read executed nodes!\n");
   	fclose(fp);
 }
 void
@@ -9765,52 +9773,53 @@ generate_mem_accesses(void)
 	fatal("Something went wrong during analysis: %d\n",status);
   }
 
+  bool reading_successful = true;
   FILE* fp = fopen("user_written_fields.bin", "rb");
   written_fields = (int*)malloc(num_kernels*num_fields*sizeof(int));
-  fread(written_fields, sizeof(int), num_kernels*num_fields, fp);
+  reading_successful &= fread_errchk(written_fields, sizeof(int), num_kernels*num_fields, fp);
   fclose(fp);
 
   fp = fopen("user_read_fields.bin", "rb");
   read_fields = (int*)malloc(num_kernels*num_fields*sizeof(int));
-  fread(read_fields, sizeof(int), num_kernels*num_fields, fp);
+  reading_successful &= fread_errchk(read_fields, sizeof(int), num_kernels*num_fields, fp);
   fclose(fp);
 
   fp = fopen("user_field_has_stencil_op.bin", "rb");
   field_has_stencil_op = (int*)malloc(num_kernels*num_fields*sizeof(int));
-  fread(field_has_stencil_op, sizeof(int), num_kernels*num_fields, fp);
+  reading_successful &= fread_errchk(field_has_stencil_op, sizeof(int), num_kernels*num_fields, fp);
   fclose(fp);
 
   fp = fopen("user_field_has_previous_call.bin", "rb");
   field_has_previous_call= (int*)malloc(num_kernels*num_fields*sizeof(int));
-  fread(field_has_previous_call, sizeof(int), num_kernels*num_fields, fp);
+  reading_successful &= fread_errchk(field_has_previous_call, sizeof(int), num_kernels*num_fields, fp);
   fclose(fp);
 
   fp = fopen("user_read_profiles.bin","rb");
   read_profiles     = (int*)malloc(num_kernels*num_profiles*sizeof(int));
-  fread(read_profiles, sizeof(int), num_kernels*num_profiles, fp);
+  reading_successful &= fread_errchk(read_profiles, sizeof(int), num_kernels*num_profiles, fp);
   fclose(fp);
 
   fp = fopen("user_reduced_profiles.bin","rb");
   reduced_profiles  = (int*)malloc(num_kernels*num_profiles*sizeof(int));
-  fread(reduced_profiles, sizeof(int), num_kernels*num_profiles, fp);
+  reading_successful &= fread_errchk(reduced_profiles, sizeof(int), num_kernels*num_profiles, fp);
   fclose(fp);
 
   fp = fopen("user_reduced_reals.bin","rb");
   reduced_reals = (int*)malloc(num_kernels*count_variables(REAL_STR, OUTPUT_STR)*sizeof(int));
-  fread(reduced_reals, sizeof(int), num_kernels*count_variables(REAL_STR, OUTPUT_STR), fp);
+  reading_successful &= fread_errchk(reduced_reals, sizeof(int), num_kernels*count_variables(REAL_STR, OUTPUT_STR), fp);
   fclose(fp);
 
   fp = fopen("user_reduced_ints.bin","rb");
   reduced_ints = (int*)malloc(num_kernels*count_variables(INT_STR, OUTPUT_STR)*sizeof(int));
-  fread(reduced_ints, sizeof(int), num_kernels*count_variables(INT_STR, OUTPUT_STR), fp);
+  reading_successful &= fread_errchk(reduced_ints, sizeof(int), num_kernels*count_variables(INT_STR, OUTPUT_STR), fp);
   fclose(fp);
 
   fp = fopen("user_reduced_floats.bin","rb");
   reduced_floats = (int*)malloc(num_kernels*count_variables(FLOAT_STR, OUTPUT_STR)*sizeof(int));
-  fread(reduced_floats , sizeof(int), num_kernels*count_variables(FLOAT_STR, OUTPUT_STR), fp);
+  reading_successful &= fread_errchk(reduced_floats , sizeof(int), num_kernels*count_variables(FLOAT_STR, OUTPUT_STR), fp);
   fclose(fp);
 
-
+  if(!reading_successful) fatal("Was not able to read mem accesses output!\n");
 }
 
 

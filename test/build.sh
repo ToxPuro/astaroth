@@ -17,7 +17,9 @@ for dir in "$TEST_DIR"/*/; do
         exit_code=$?  # Capture exit code of build.sh
 
         if [ $exit_code -ne 0 ]; then
-            echo "[ERROR] Build failed for $test_name with exit code $exit_code. Check compilation_log.txt for the reason of failure"
+            echo "[ERROR] Build failed for $test_name with exit code $exit_code"
+	    cat $LOG
+	    echo "" > $LOG
             overall_success=false  # Mark failure but continue with other directories
         else
             echo "[SUCCESS] Build succeeded for $test_name"
