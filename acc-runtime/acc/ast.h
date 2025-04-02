@@ -900,3 +900,11 @@ node_vec_contains(const node_vec vec, const char* str)
 		if(!strcmp(combine_all_new(vec.data[i]), str)) return true;
 	return false;
 }
+
+static inline void
+copy_file(const char* src, const char* dst)
+{
+	char cmd[10000];
+	sprintf(cmd,"cp %s %s",src,dst);
+	if(system(cmd) != 0) fatal("Was not able to copy a file: %s!\n",cmd);
+}

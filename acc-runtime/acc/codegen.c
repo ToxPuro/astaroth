@@ -9455,13 +9455,6 @@ add_tracing_to_conditionals(ASTNode* node)
 	if(node->rhs->lhs->type & NODE_BEGIN_SCOPE)
 		astnode_sprintf_prefix(node->rhs->lhs,"{executed_nodes.push_back(%d);",node->id);
 }
-void
-copy_file(const char* src, const char* dst)
-{
-	char cmd[10000];
-	sprintf(cmd,"cp %s %s",src,dst);
-	if(system(cmd) != 0) fatal("Was not able to copy a file: %s!\n",cmd);
-}
 
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)

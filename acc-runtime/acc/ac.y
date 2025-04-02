@@ -426,8 +426,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	//TP: do this here for safety in case OPTIMIZE_MEM_ACCESSES=OFF
 	{
   		format_source("user_kernels.h.raw","user_kernels.h");
-  		system("cp user_kernels.h user_kernels_backup.h");
-  		system("cp user_kernels.h user_cpu_kernels.h");
+		copy_file("user_kernels.h","user_kernels_backup.h");
+		copy_file("user_kernels.h","user_cpu_kernels.h");
 	}
 
 	if(OPTIMIZE_MEM_ACCESSES)
@@ -1397,9 +1397,11 @@ yyerror(const char* str)
     int line_num = yyget_lineno();
     fprintf(stderr, "\n%s on line %d when processing char %d: [%s]\n", str, line_num, *yytext, yytext);
     char* line;
-    size_t len = 0;
+    size_t size = 0;
+    ssize_t len = 0;
     for(int i=0;i<line_num;++i)
-	getline(&line,&len,yyin_backup);
+	len = getline(&line,&size,yyin_backup);
+    if(len == -1) fatal("Was not able to get erronous line!\n");
     fprintf(stderr, "erroneous line: %s", line);
     fprintf(stderr, "in file: %s/%s\n\n",ACC_OUTPUT_DIR"/../api",stage4_name_backup);
     exit(EXIT_FAILURE);
