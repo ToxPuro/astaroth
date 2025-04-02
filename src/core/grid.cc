@@ -2607,6 +2607,7 @@ acGridPeriodicBoundconds(const Stream stream)
 	    fatal("%s","acGridPeriodicBoundconds assumes fully periodic grid!\n");
     }
 #ifndef AC_INTEGRATION_ENABLED
+    (void)stream;
     return AC_FAILURE;
 #else
     ERRCHK(grid.initialized);
