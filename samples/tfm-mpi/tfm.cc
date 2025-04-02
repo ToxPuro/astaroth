@@ -16,6 +16,7 @@
 
 #include "acm/detail/allocator.h"
 
+#include "acm/detail/halo_exchange_batched.h"
 #include "acm/detail/halo_exchange_custom.h"
 #include "acm/detail/io.h"
 
@@ -34,20 +35,22 @@
 #include <algorithm>
 #include <random>
 
-// #define AC_ENABLE_ASYNC_AVERAGES
+#include "acm/detail/cubreduce.h"
+
+#define AC_ENABLE_ASYNC_AVERAGES
 
 // Debug runs: enable defines below for writing diagnostics synchronously
 // Production runs:
 //  - Should either completely disabled or
 //  - Set IO interval to large enough s.t. synchronous IO does not dominate running time
-#define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
-#define AC_WRITE_SYNCHRONOUS_PROFILES
-#define AC_WRITE_SYNCHRONOUS_TIMESERIES
-#define AC_WRITE_SYNCHRONOUS_SLICES
-// #define AC_DISABLE_IO
+// #define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
+// #define AC_WRITE_SYNCHRONOUS_PROFILES
+// #define AC_WRITE_SYNCHRONOUS_TIMESERIES
+// #define AC_WRITE_SYNCHRONOUS_SLICES
+#define AC_DISABLE_IO
 
 // Production run: enable define below for fast, async profile IO
-#define AC_WRITE_ASYNC_PROFILES
+// #define AC_WRITE_ASYNC_PROFILES
 
 using IOTask = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
 
@@ -896,6 +899,104 @@ make_io_task(const AcMeshInfo& info, const size_t max_nbuffers)
                   max_nbuffers};
 }
 
+template <typename T> class async_xy_averages {
+  private:
+    MPI_Comm m_xy_neighbors{MPI_COMM_NULL};
+    MPI_Request m_req{MPI_REQUEST_NULL};
+
+    ac::shape m_global_nn;
+    ac::shape m_local_mm;
+    ac::shape m_local_nn;
+    ac::index m_rr;
+    size_t m_nfields;
+    ac::device_buffer<T> m_staging_buffer;
+    ac::device_buffer<T> m_profiles;
+    ac::host_buffer<T> m_profiles_host;
+    ac::device_buffer<size_t> m_offsets;
+    ac::device_buffer<uint8_t> m_tmp_storage{1};
+
+  public:
+    async_xy_averages(const MPI_Comm& parent_comm, const ac::shape& global_nn, const ac::index& rr,
+                      const size_t nfields)
+
+        : m_global_nn{global_nn},
+          m_local_mm{ac::mpi::get_local_mm(parent_comm, global_nn, rr)},
+          m_local_nn{ac::mpi::get_local_nn(parent_comm, global_nn)},
+          m_rr{rr},
+          m_nfields{nfields},
+          m_staging_buffer{nfields * prod(m_local_nn)},
+          m_profiles{nfields * m_local_nn[2]},
+          m_profiles_host{nfields * m_local_nn[2]},
+          m_offsets{nfields * m_local_nn[2] + 1}
+    {
+        const auto coords{ac::mpi::get_coords(parent_comm)};
+        const auto color{as<int>(coords[2])};
+        const auto key{ac::mpi::get_rank(parent_comm)};
+        ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, key, &m_xy_neighbors));
+
+        ac::host_buffer<size_t> host_offsets{m_offsets.size()};
+        for (size_t i{0}; i < host_offsets.size(); ++i)
+            host_offsets[i] = i * (m_local_mm[0] * m_local_nn[1]);
+        m_offsets = host_offsets.to_device();
+
+        size_t tmp_storage_bytes{0};
+        segmented_reduce_sum(nullptr,
+                             tmp_storage_bytes,
+                             m_staging_buffer.data(),
+                             m_profiles.data(),
+                             m_offsets.size(),
+                             m_offsets.data(),
+                             m_offsets.data() + 1);
+        ERRCHK_MPI(tmp_storage_bytes != 0);
+        m_tmp_storage = ac::device_buffer<uint8_t>{tmp_storage_bytes};
+    }
+    ~async_xy_averages() noexcept
+    {
+        ERRCHK_MPI(m_req == MPI_REQUEST_NULL);
+        MPI_Comm_free(&m_xy_neighbors);
+    }
+
+    void launch(const std::vector<ac::mr::device_pointer<T>>& inputs)
+    {
+        ERRCHK_MPI(m_req == MPI_REQUEST_NULL);
+        pack(m_local_mm, m_local_nn, m_rr, inputs, m_staging_buffer.get());
+
+        // size_t tmp_storage_bytes{m_tmp_storage.size()};
+        // segmented_reduce_sum(m_tmp_storage.data(),
+        //                      tmp_storage_bytes,
+        //                      m_staging_buffer.data(),
+        //                      m_profiles.data(),
+        //                      m_offsets.size(),
+        //                      m_offsets.data(),
+        //                      m_offsets.data() + 1);
+
+        ac::mr::copy(m_profiles.get(), m_profiles_host.get());
+        ERRCHK_MPI_API(MPI_Iallreduce(MPI_IN_PLACE,
+                                      m_profiles_host.data(),
+                                      as<int>(m_profiles.size()),
+                                      ac::mpi::get_dtype<T>(),
+                                      MPI_SUM,
+                                      m_xy_neighbors,
+                                      &m_req));
+    }
+
+    void wait(std::vector<ac::mr::device_pointer<T>> outputs)
+    {
+        ERRCHK_MPI(m_req != MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_Wait(&m_req, MPI_STATUS_IGNORE));
+        ac::mr::copy(m_profiles_host.get(), m_profiles.get());
+
+        acMultiplyInplace(1 / static_cast<AcReal>(m_global_nn[0] * m_global_nn[1]),
+                          m_profiles.size(),
+                          m_profiles.data());
+        unpack(m_profiles.get(),
+               ac::shape{m_local_mm[2]},
+               ac::shape{m_local_nn[2]},
+               ac::index{m_rr[2]},
+               outputs);
+    }
+};
+
 class Grid {
   private:
     MPI_Comm cart_comm{MPI_COMM_NULL};
@@ -903,12 +1004,14 @@ class Grid {
     Device device{nullptr};
     AcReal current_time{0};
 
-    acm::halo_exchange<double, ac::mr::device_allocator> hydro_he;
-    acm::halo_exchange<double, ac::mr::device_allocator> tfm_he;
+    acm::rev::halo_exchange<AcReal, ac::mr::device_allocator> hydro_he;
+    acm::rev::halo_exchange<AcReal, ac::mr::device_allocator> tfm_he;
     IOTask hydro_io;
     IOTask uxb_io;
 
-    MPI_Comm xy_neighbors{MPI_COMM_NULL};
+#if defined(AC_ENABLE_ASYNC_AVERAGES)
+    std::unique_ptr<async_xy_averages<AcReal>> xy_averages;
+#endif
 
   public:
     explicit Grid(const AcMeshInfo& raw_info)
@@ -929,12 +1032,12 @@ class Grid {
         int device_count{0};
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
 
-        const int device_id{original_rank % device_count};
-        // int device_id{original_rank % device_count};
-        // if (device_count == 8) { // Do manual GPU mapping for LUMI
-        //     ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
-        //     device_id = device_ids[as<size_t>(device_id)];
-        // }
+        // const int device_id{original_rank % device_count};
+        int device_id{original_rank % device_count};
+        if (device_count == 8) { // Do manual GPU mapping for LUMI
+            ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
+            device_id = device_ids[as<size_t>(device_id)];
+        }
         ERRCHK_CUDA_API(cudaSetDevice(device_id));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
@@ -943,26 +1046,25 @@ class Grid {
         // Setup halo exchange buffers
         // hydro_he = make_halo_exchange_task(local_info, hydro_fields.size());
         // tfm_he   = make_halo_exchange_task(local_info, tfm_fields.size());
-        hydro_he = acm::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
-                                                                        global_nn,
-                                                                        acr::get_local_rr(),
-                                                                        hydro_fields.size()};
-        tfm_he   = acm::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
-                                                                        global_nn,
-                                                                        acr::get_local_rr(),
-                                                                        tfm_fields.size()};
+        hydro_he = acm::rev::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
+                                                                             global_nn,
+                                                                             acr::get_local_rr(),
+                                                                             hydro_fields.size()};
+        tfm_he   = acm::rev::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
+                                                                             global_nn,
+                                                                             acr::get_local_rr(),
+                                                                             tfm_fields.size()};
 
         // Setup write tasks
         hydro_io = make_io_task(local_info, hydro_fields.size());
         uxb_io   = make_io_task(local_info, uxb_fields.size());
 
-        // Create the communicator that encompasses neighbors in the xy direction
-        const ac::index coords{ac::mpi::get_coords(cart_comm)};
-        // Key used to order the ranks in the new communicator: let MPI_Comm_split
-        // decide (should the same ordering as in the parent communicator by default)
-        const int color{as<int>(coords[2])};
-        const int key{ac::mpi::get_rank(cart_comm)};
-        ERRCHK_MPI_API(MPI_Comm_split(cart_comm, color, key, &xy_neighbors));
+#if defined(AC_ENABLE_ASYNC_AVERAGES)
+        xy_averages = std::make_unique<async_xy_averages<AcReal>>(cart_comm,
+                                                                  global_nn,
+                                                                  acr::get_local_rr(),
+                                                                  xy_average_fields.size());
+#endif
 
         // Dryrun
         reset_init_cond();
@@ -981,7 +1083,6 @@ class Grid {
 
     ~Grid() noexcept
     {
-        ac::mpi::cart_comm_destroy(&xy_neighbors);
         ERRCHK_MPI(acDeviceDestroy(device) == AC_SUCCESS);
         ac::mpi::cart_comm_destroy(&cart_comm);
     }
@@ -1040,6 +1141,7 @@ class Grid {
 #endif
     }
 
+#if !defined(AC_ENABLE_ASYNC_AVERAGES)
     void reduce_xy_averages(const Stream stream)
     {
         PRINT_LOG_DEBUG("Enter");
@@ -1071,51 +1173,52 @@ class Grid {
 
         PRINT_LOG_TRACE("Exit");
     }
+#endif
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
-    MPI_Request launch_reduce_xy_averages(const Stream stream)
-    {
-        // Strategy:
-        // 1) Reduce the local result to device->vba.profiles.in
-        ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
-        ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
+    // MPI_Request launch_reduce_xy_averages(const Stream stream)
+    // {
+    //     // Strategy:
+    //     // 1) Reduce the local result to device->vba.profiles.in
+    //     ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
+    //     ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
 
-        // 3) Allreduce
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+    //     // 3) Allreduce
+    //     VertexBufferArray vba{};
+    //     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
-        // Note: assumes that all profiles are contiguous and in correct order
-        // Error-prone: should be improved when time
-        const size_t count{NUM_PROFILES * vba.profiles.count};
-        AcReal* data{vba.profiles.in[0]};
-        MPI_Request req{MPI_REQUEST_NULL};
-        ERRCHK_MPI_API(MPI_Iallreduce(MPI_IN_PLACE,
-                                      data,
-                                      as<int>(count), // Note possible MPI BUG here (see above)
-                                      AC_REAL_MPI_TYPE,
-                                      MPI_SUM,
-                                      xy_neighbors,
-                                      &req));
-        return req;
-    }
+    //     // Note: assumes that all profiles are contiguous and in correct order
+    //     // Error-prone: should be improved when time
+    //     const size_t count{NUM_PROFILES * vba.profiles.count};
+    //     AcReal* data{vba.profiles.in[0]};
+    //     MPI_Request req{MPI_REQUEST_NULL};
+    //     ERRCHK_MPI_API(MPI_Iallreduce(MPI_IN_PLACE,
+    //                                   data,
+    //                                   as<int>(count), // Note possible MPI BUG here (see above)
+    //                                   AC_REAL_MPI_TYPE,
+    //                                   MPI_SUM,
+    //                                   xy_neighbors,
+    //                                   &req));
+    //     return req;
+    // }
 
-    void wait_reduce_xy_averages(MPI_Request& xy_average_req)
-    {
-        ERRCHK(xy_average_req != MPI_REQUEST_NULL);
-        ac::mpi::request_wait_and_destroy(&xy_average_req);
+    // void wait_reduce_xy_averages(MPI_Request& xy_average_req)
+    // {
+    //     ERRCHK(xy_average_req != MPI_REQUEST_NULL);
+    //     ac::mpi::request_wait_and_destroy(&xy_average_req);
 
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+    //     VertexBufferArray vba{};
+    //     ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
-        // Note: assumes that all profiles are contiguous and in correct order
-        // Error-prone: should be improved when time
-        const size_t count{NUM_PROFILES * vba.profiles.count};
-        AcReal* data{vba.profiles.in[0]};
+    //     // Note: assumes that all profiles are contiguous and in correct order
+    //     // Error-prone: should be improved when time
+    //     const size_t count{NUM_PROFILES * vba.profiles.count};
+    //     AcReal* data{vba.profiles.in[0]};
 
-        int collaborated_procs{-1};
-        ERRCHK_MPI_API(MPI_Comm_size(xy_neighbors, &collaborated_procs));
-        acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
-    }
+    //     int collaborated_procs{-1};
+    //     ERRCHK_MPI_API(MPI_Comm_size(xy_neighbors, &collaborated_procs));
+    //     acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
+    // }
 #endif
 
     void tfm_pipeline(const size_t nsteps)
@@ -1154,7 +1257,10 @@ class Grid {
         tfm_he.launch(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
-        MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)}; // Averaging
+        // MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)}; // Averaging
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        xy_averages->launch(acr::get_ptrs(vba, xy_average_fields, BufferGroup::input));
 #else
         reduce_xy_averages(STREAM_DEFAULT);
 #endif
@@ -1207,7 +1313,9 @@ class Grid {
 
 // TFM dependencies: hydro, tfm, profiles
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
-                wait_reduce_xy_averages(xy_average_req);
+                // wait_reduce_xy_averages(xy_average_req);
+                ERRCHK_AC(acDeviceGetVBA(device, &vba));
+                xy_averages->wait(acr::get_ptrs(vba, xy_average_profiles, BufferGroup::input));
 #endif
                 // TFM dependencies: tfm
                 tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
@@ -1226,8 +1334,10 @@ class Grid {
 
 // Profile dependencies: local tfm (uxb)
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
-                ERRCHK_MPI(xy_average_req == MPI_REQUEST_NULL);
-                xy_average_req = launch_reduce_xy_averages(STREAM_DEFAULT); // Averaging
+                ERRCHK_AC(acDeviceGetVBA(device, &vba));
+                xy_averages->launch(acr::get_ptrs(vba, xy_average_fields, BufferGroup::output));
+                // ERRCHK_MPI(xy_average_req == MPI_REQUEST_NULL);
+                // xy_average_req = launch_reduce_xy_averages(STREAM_DEFAULT); // Averaging
 #else
                 reduce_xy_averages(STREAM_DEFAULT);
 #endif
@@ -1300,7 +1410,9 @@ class Grid {
 #endif
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
-        wait_reduce_xy_averages(xy_average_req);
+        // wait_reduce_xy_averages(xy_average_req);
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+        xy_averages->wait(acr::get_ptrs(vba, xy_average_profiles, BufferGroup::input));
 #endif
     }
 

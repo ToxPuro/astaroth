@@ -13,7 +13,7 @@ set(ACM_HOST_FILES
     math_utils.cc
     ntuple.cc
 )
-set(ACM_DEVICE_FILES pack_batched.cu pack.cu)
+set(ACM_DEVICE_FILES cubreduce.cu pack_batched.cu pack.cu)
 add_library(acm SHARED ${ACM_DEVICE_FILES} ${ACM_HOST_FILES} acm_error.c errchk_print.c)
 
 ## Link libraries and includes

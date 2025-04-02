@@ -5,7 +5,7 @@
 #include "type_conversion.h"
 
 constexpr size_t MAX_NDIMS{4};
-constexpr size_t MAX_N_AGGR_BUFS{12};
+constexpr size_t MAX_N_AGGR_BUFS{12 + 4};
 
 using shape_t                       = ac::static_ntuple<uint64_t, MAX_NDIMS>;
 using index_t                       = ac::static_ntuple<uint64_t, MAX_NDIMS>;
