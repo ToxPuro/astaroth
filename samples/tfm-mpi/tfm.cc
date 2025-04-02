@@ -16,6 +16,7 @@
 
 #include "acm/detail/allocator.h"
 
+#include "acm/detail/halo_exchange_batched.h"
 #include "acm/detail/halo_exchange_custom.h"
 #include "acm/detail/io.h"
 
@@ -903,8 +904,8 @@ class Grid {
     Device device{nullptr};
     AcReal current_time{0};
 
-    acm::halo_exchange<double, ac::mr::device_allocator> hydro_he;
-    acm::halo_exchange<double, ac::mr::device_allocator> tfm_he;
+    acm::rev::halo_exchange<double, ac::mr::device_allocator> hydro_he;
+    acm::rev::halo_exchange<double, ac::mr::device_allocator> tfm_he;
     IOTask hydro_io;
     IOTask uxb_io;
 
@@ -943,14 +944,14 @@ class Grid {
         // Setup halo exchange buffers
         // hydro_he = make_halo_exchange_task(local_info, hydro_fields.size());
         // tfm_he   = make_halo_exchange_task(local_info, tfm_fields.size());
-        hydro_he = acm::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
-                                                                        global_nn,
-                                                                        acr::get_local_rr(),
-                                                                        hydro_fields.size()};
-        tfm_he   = acm::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
-                                                                        global_nn,
-                                                                        acr::get_local_rr(),
-                                                                        tfm_fields.size()};
+        hydro_he = acm::rev::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
+                                                                             global_nn,
+                                                                             acr::get_local_rr(),
+                                                                             hydro_fields.size()};
+        tfm_he   = acm::rev::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
+                                                                             global_nn,
+                                                                             acr::get_local_rr(),
+                                                                             tfm_fields.size()};
 
         // Setup write tasks
         hydro_io = make_io_task(local_info, hydro_fields.size());
