@@ -229,7 +229,8 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
 	exit(EXIT_FAILURE);
       }
 
-      char path[len];
+      //TP: use the literal instead of len to suppress some compiler warnings with NVHPC compiler
+      char path[4096];
       sprintf(path, "%s/%s", dir, incl);
 
       fprintf(out, "// Include file %s start\n", path);
@@ -371,8 +372,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
  	  while (fgets(line, sizeof(line), f_check) != NULL) {
           	if (!strncmp(line, "AC_FATAL_ERROR", strlen("AC_FATAL_ERROR")))
 		{
-			const size_t len = 4098;
-      			char message[len];
+      			char message[4098];
       			sscanf(line, "AC_FATAL_ERROR: %[^\"]\n", message);
 		        printf("%s %s\n",FATAL_ERROR_MESSAGE,message);	
 			exit(EXIT_FAILURE);

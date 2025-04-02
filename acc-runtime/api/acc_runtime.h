@@ -570,6 +570,8 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   get_array_info(const P array)
   {
 #include "get_array_info.h"
+	  ERRCHK_ALWAYS(false); //did not find array info
+	  return (array_info){};
   }
 
   static UNUSED const char* 
@@ -659,6 +661,8 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   get_param_name(const P param)
   {
 #include "get_param_name.h"
+	  ERRCHK_ALWAYS(false); //did not find name
+	  return "NOT FOUND!";
   }
   template <typename P>
   constexpr const char*

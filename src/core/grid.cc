@@ -160,7 +160,6 @@ get_decomp(const AcMeshInfo global_config)
 	    default:
 		return decompose(ac_nprocs(),(AcDecomposeStrategy)global_config[AC_decompose_strategy]);
     }
-    return (uint3_64){0,0,0};
 }
 int3
 getPid3D(const AcMeshInfo config)
@@ -1732,8 +1731,8 @@ check_ops(const std::vector<AcTaskDefinition> ops)
     bool compute_before_halo_exchange            = false;
     bool compute_before_boundary_condition       = false;
 
-    bool error   = false;
-    bool warning = false;
+    [[maybe_unused]] bool error   = false;
+    [[maybe_unused]] bool warning = false;
 
     std::string task_graph_repr = "{";
     const auto inactive = acGridGetLocalMeshInfo()[AC_dimension_inactive];
@@ -1833,9 +1832,6 @@ check_ops(const std::vector<AcTaskDefinition> ops)
     if (warning && NGHOST>0) {
         WARNING(("\nUnusual task graph " + task_graph_repr + ":\n" + msg).c_str())
     }
-#else
-    (void)error;
-    (void)warning;
 #endif
 }
 
@@ -2612,7 +2608,7 @@ acGridPeriodicBoundconds(const Stream stream)
     }
 #ifndef AC_INTEGRATION_ENABLED
     return AC_FAILURE;
-#endif
+#else
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
 
@@ -2656,6 +2652,7 @@ acGridPeriodicBoundconds(const Stream stream)
     }
     
     return AC_SUCCESS;
+#endif
 }
 size_t
 get_n_global_points()
