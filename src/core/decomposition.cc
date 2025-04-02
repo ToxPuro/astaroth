@@ -700,7 +700,8 @@ acVerifyDecomposition(const uint3_64 decomp, const AcProcMappingStrategy proc_ma
 }
 
 extern "C" int3
-acDecompose(const uint64_t target, const AcDecomposeStrategy strategy)
+acDecompose(const uint64_t target, const AcMeshInfo info)
 {
-	return (int3)decompose(target,strategy);
+	if(info[AC_decompose_strategy] == AC_DECOMPOSE_STRATEGY_EXTERNAL) return info[AC_domain_decomposition];
+	return (int3)decompose(target,info[AC_decompose_strategy]);
 }

@@ -64,7 +64,7 @@ main(int argc, char* argv[])
     const size_t nx = argc >  1 ? (size_t)atoi(argv[1]) : 2*9;
     const size_t ny = argc >  2 ? (size_t)atoi(argv[2]) : 2*11;
     const size_t nz = argc >  3 ? (size_t)atoi(argv[3]) : 4*7;
-    const int3 decomp = acDecompose(nprocs,info[AC_decompose_strategy]);
+    const int3 decomp = acDecompose(nprocs,info);
 
     acSetGridMeshDims(nx, ny, nz, &info);
     acSetLocalMeshDims(nx/decomp.x, ny/decomp.y, nz/decomp.z, &info);

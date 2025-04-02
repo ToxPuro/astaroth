@@ -393,7 +393,7 @@ void acDebugFromRootProc(const int pid, const char* msg, ...);
 void acVA_DebugFromRootProc(const int pid, const char* msg, va_list arg);
 
 int3
-acDecompose(const uint64_t target, const AcDecomposeStrategy strategy);
+acDecompose(const uint64_t target, const AcMeshInfo info);
 
 #include "device_set_input_decls.h"
 #include "device_get_output_decls.h"

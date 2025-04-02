@@ -64,54 +64,44 @@ main(int argc, char* argv[])
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
-    const int max_devices = 1;
-    if (nprocs > max_devices) {
-        fprintf(stderr,
-                "Cannot run autotest, nprocs (%d) > max_devices (%d) this test works only with a single device\n",
-                nprocs, max_devices);
-        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
-        return EXIT_FAILURE;
-    }
-    const int nx = argc > 1 ? atoi(argv[1]) : 2*9;
-    const int ny = argc > 2 ? atoi(argv[2]) : 2*11;
-    const int nz = argc > 3 ? atoi(argv[3]) : 4*7;
+    const int nx = argc > 1 ? atoi(argv[1]) : 8;
+    const int ny = argc > 2 ? atoi(argv[2]) : 16;
+    const int nz = argc > 3 ? atoi(argv[3]) : 8;
     acSetGridMeshDims(nx, ny, nz, &info);
-    acSetLocalMeshDims(nx, ny, nz, &info);
-
-    AcMesh model, candidate;
-    if (pid == 0) {
-        acHostMeshCreate(info, &model);
-        acHostMeshCreate(info, &candidate);
-        acHostMeshRandomize(&model);
-        acHostMeshRandomize(&candidate);
-    }
-
+    acPushToConfig(info,AC_decompose_strategy,AC_DECOMPOSE_STRATEGY_EXTERNAL);
+    acPushToConfig(info,AC_proc_mapping_strategy,AC_PROC_MAPPING_STRATEGY_LINEAR);
+    acPushToConfig(info,AC_domain_decomposition,(int3){1,nprocs,1});
+    const int3 decomp = acDecompose(nprocs,info);
+    acSetLocalMeshDims(nx/decomp.x, ny/decomp.y, nz/decomp.z, &info);
     // GPU alloc & compute
     acGridInit(info);
 
+    AcMesh model, candidate;
+    acHostMeshCreate(info, &model);
+    acHostMeshCreate(info, &candidate);
+    acHostMeshRandomize(&model);
+    acHostMeshRandomize(&candidate);
 
     auto graph = acGetOptimizedDSLTaskGraph(rhs);
     acGridExecuteTaskGraph(graph,1);
 
 
-    if (pid == 0)
-        acHostMeshRandomize(&model);
+    acHostMeshRandomize(&model);
     auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     auto IDX = [](const int x, const int y, const int z)
     {
 	return acVertexBufferIdx(x,y,z,acGridGetLocalMeshInfo());
     };
-    auto test = [&](const bool all_ones_test)
+    auto test = [&](const bool)
     {
-        acHostMeshApplyPeriodicBounds(&model);
-    	acGridLoadMesh(STREAM_DEFAULT, model);
+    	acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT, model);
     	acGridSynchronizeStream(STREAM_ALL);
 
 
 
     	acGridExecuteTaskGraph(graph,1);
     	acGridSynchronizeStream(STREAM_ALL);
-    	acGridStoreMesh(STREAM_DEFAULT,&candidate);
+    	acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     	acGridSynchronizeStream(STREAM_ALL);
 
     	acDeviceStoreProfile(acGridGetDevice(), PROF_Z,  &model);
@@ -131,6 +121,7 @@ main(int argc, char* argv[])
 			}
 		}
 	}
+	MPI_Allreduce(MPI_IN_PLACE,z_sum,model.info[AC_mlocal].z,AC_REAL_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD);
 
     	AcReal epsilon  = 4*pow(10.0,-11.0);
     	auto relative_diff = [](const auto a, const auto b)
@@ -145,17 +136,18 @@ main(int argc, char* argv[])
         };
 
     	bool sums_correct = true;
-    	for(size_t i = 0; i < dims.m1.z; ++i)
+    	for(size_t i = dims.n0.z; i < dims.n1.z; ++i)
     	{
     	    bool correct =  in_eps_threshold(z_sum[i],z_sum_gpu[i]);
     	    sums_correct &= correct;
-    	    if(!correct) fprintf(stderr,"Z SUM WRONG: %ld, %14e, %14e\n",i,z_sum[i],z_sum_gpu[i]);
+    	    if(!correct) fprintf(stderr,"Z SUM WRONG %d: %ld, %14e, %14e\n",pid,i,z_sum[i],z_sum_gpu[i]);
     	}
 
     	fprintf(stderr,"Z SUM REDUCTION... %s\n", sums_correct    ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     	bool correct = sums_correct;
 
     	free(z_sum);
+        MPI_Allreduce(MPI_IN_PLACE, &correct,   1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
     	return !correct;
     };
@@ -188,18 +180,19 @@ main(int argc, char* argv[])
 
     	retval |= test(false);
     }
-    if (pid == 0) {
-        acHostMeshDestroy(&model);
-        acHostMeshDestroy(&candidate);
-    }
+    acHostMeshDestroy(&model);
+    acHostMeshDestroy(&candidate);
+
     finalized = true;
     acGridQuit();
     ac_MPI_Finalize();
     fflush(stdout);
 
     if (pid == 0)
+    {
         fprintf(stderr, "MPI-PROFILE-REDUCE-TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
+    }
 
     return EXIT_SUCCESS;
 }

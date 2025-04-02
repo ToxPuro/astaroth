@@ -71,7 +71,7 @@ main(int argc, char* argv[])
     acPushToConfig(info,AC_proc_mapping_strategy, AC_PROC_MAPPING_STRATEGY_LINEAR);
     acPushToConfig(info,AC_decompose_strategy,    AC_DECOMPOSE_STRATEGY_MORTON);
     acPushToConfig(info,AC_MPI_comm_strategy,     AC_MPI_COMM_STRATEGY_DUP_WORLD);
-    const int3 decomp = acDecompose(nprocs,info[AC_decompose_strategy]);
+    const int3 decomp = acDecompose(nprocs,info);
 
     acSetGridMeshDims(nx, ny, nz, &info);
     acSetLocalMeshDims(nx/decomp.x, ny/decomp.y, nz/decomp.z, &info);
