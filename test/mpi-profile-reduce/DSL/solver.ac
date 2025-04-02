@@ -1,0 +1,28 @@
+hostdefine STENCIL_ORDER (6)
+Field FIELD
+output real AC_min_val
+
+#define DER1_3 (1. / 60.)
+#define DER1_2 (-3. / 20.)
+#define DER1_1 (3. / 4.)
+#include "../../../acc-runtime/stdlib/general_derivs.h"
+
+
+Profile<Z> PROF_Z
+
+Kernel reduce_z()
+{
+    reduce_sum(FIELD,PROF_Z)
+}
+
+
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps rhs(bcs)
+{
+	reduce_z()
+}
+

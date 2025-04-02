@@ -1891,7 +1891,7 @@ gen_comp_declarations(const char* datatype_scalar)
 	fclose(fp);
 
 
-	fopen("input_decl.h","a");
+	fp = fopen("input_decl.h","a");
 	fprintf(fp,"%s %s_params[NUM_%s_INPUT_PARAMS+1];\n",datatype_scalar,define_name,strupr(define_name));
 	fclose(fp);
 
@@ -9050,7 +9050,7 @@ eliminate_conditionals(ASTNode* node, const bool gen_mem_accesses)
 void
 clean_stream(FILE* stream)
 {
-	freopen(NULL,"w",stream);
+	if(freopen(NULL,"w",stream) == NULL) fatal("Was not able to clean stream!\n");
 }
 
 
@@ -9455,6 +9455,13 @@ add_tracing_to_conditionals(ASTNode* node)
 	if(node->rhs->lhs->type & NODE_BEGIN_SCOPE)
 		astnode_sprintf_prefix(node->rhs->lhs,"{executed_nodes.push_back(%d);",node->id);
 }
+void
+copy_file(const char* src, const char* dst)
+{
+	char cmd[10000];
+	sprintf(cmd,"cp %s %s",src,dst);
+	if(system(cmd) != 0) fatal("Was not able to copy a file: %s!\n",cmd);
+}
 
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
@@ -9541,7 +9548,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 	  if(gen_mem_accesses)
 	  {
 
-		system("cp gmem_arrays_decl.h cpu_gmem_arrays_decl.h");
+		copy_file("gmem_arrays_decl.h","cpu_gmem_arrays_decl.h");
 	  }
   }
   //TP: currently only support scalar arrays
@@ -9684,8 +9691,8 @@ void
 compile_helper(const bool log)
 {
   format_source("user_kernels.h.raw","user_kernels.h");
-  system("cp user_kernels.h user_kernels_backup.h");
-  system("cp user_kernels.h user_cpu_kernels.h");
+  copy_file("user_kernels.h","user_kernels_backup.h");
+  copy_file("user_kernels.h","user_cpu_kernels.h");
   if(log)
   {
   	printf("Compiling %s...\n", STENCILACC_SRC);
