@@ -210,30 +210,30 @@ gen_kernel_block_loops(const int curr_kernel)
 		for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
 		{
 			if(reduced_reals[curr_kernel][i] == REDUCE_SUM)
-				printf("AcReal %s_reduce_output = 0.0;",real_output_names[i]);
+				printf("[[maybe_unused]] AcReal %s_reduce_output = 0.0;",real_output_names[i]);
 			if(reduced_reals[curr_kernel][i] == REDUCE_MIN)
-				printf("AcReal %s_reduce_output = AC_REAL_MAX;",real_output_names[i]);
+				printf("[[maybe_unused]] AcReal %s_reduce_output = AC_REAL_MAX;",real_output_names[i]);
 			if(reduced_reals[curr_kernel][i] == REDUCE_MAX)
-				printf("AcReal %s_reduce_output = -AC_REAL_MAX;",real_output_names[i]);
+				printf("[[maybe_unused]] AcReal %s_reduce_output = -AC_REAL_MAX;",real_output_names[i]);
 		}
 		for(int i = 0; i < NUM_INT_OUTPUTS; ++i)
 		{
 			if(reduced_ints[curr_kernel][i] == REDUCE_SUM)
-				printf("int %s_reduce_output = 0.0;",int_output_names[i]);
+				printf("[[maybe_unused]] int %s_reduce_output = 0.0;",int_output_names[i]);
 			if(reduced_ints[curr_kernel][i] == REDUCE_MIN)
-				printf("int %s_reduce_output = INT_MAX;",int_output_names[i]);
+				printf("[[maybe_unused]] int %s_reduce_output = INT_MAX;",int_output_names[i]);
 			if(reduced_ints[curr_kernel][i] == REDUCE_MAX)
-				printf("int %s_reduce_output = -INT_MAX;",int_output_names[i]);
+				printf("[[maybe_unused]] int %s_reduce_output = -INT_MAX;",int_output_names[i]);
 		}
 #if AC_DOUBLE_PRECISION
 		for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i)
 		{
 			if(reduced_floats[curr_kernel][i] == REDUCE_SUM)
-				printf("float %s_reduce_output = 0.0;",float_output_names[i]);
+				printf("[[maybe_unused]] float %s_reduce_output = 0.0;",float_output_names[i]);
 			if(reduced_floats[curr_kernel][i] == REDUCE_MIN)
-				printf("float %s_reduce_output = FLT_MAX;",float_output_names[i]);
+				printf("[[maybe_unused]] float %s_reduce_output = FLT_MAX;",float_output_names[i]);
 			if(reduced_floats[curr_kernel][i] == REDUCE_MAX)
-				printf("float %s_reduce_output = -FLT_MAX;",float_output_names[i]);
+				printf("[[maybe_unused]] float %s_reduce_output = -FLT_MAX;",float_output_names[i]);
 		}
 #endif
 	#if AC_USE_HIP
