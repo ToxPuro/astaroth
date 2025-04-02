@@ -4727,7 +4727,17 @@ get_binary_expr_type(const ASTNode* node)
 		//TP: we lose size information but it's not that crucial for now
 		strstr(lhs_res,"AcArray") && strstr(rhs_res,"*") ? rhs_res :
 		strstr(rhs_res,"AcArray") && strstr(lhs_res,"*") ? lhs_res:
+		strstr(lhs_res,"AcArray") && strstr(rhs_res,"AcArray") ? rhs_res :
 		NULL;
+
+	//TP: prints for debugging
+	//if(strstr(combine_all_new_with_whitespace(node),"value_AC_MANGLED"))
+	//{
+	//	printf("HI: %s\n",combine_all_new_with_whitespace(node));
+	//	printf("LHS: %s\n",lhs_res);
+	//	printf("RHS: %s\n",rhs_res);
+	//	printf("RES: %s\n",res);
+	//}
 	return res;
 }
 const char*
@@ -4868,6 +4878,7 @@ get_func_call_expr_type(ASTNode* node)
 		const ASTNode* func = NULL;
 		for(size_t i = 0; i < dfunc_nodes.size; ++i)
 			if(dfunc_names.data[i] == func_name) func = dfunc_nodes.data[i];
+
 		if(strlen(sym->tspecifier))
 			return sym->tspecifier;
 		else if(func && func->expr_type)
@@ -4942,7 +4953,7 @@ get_struct_initializer_type(ASTNode* node)
 		const char* res = (n_structs_having_types== 1 && index >= 0) ? info.user_structs.data[index] : NULL;
 		free_str_vec(&types);
 		free_node_vec(&nodes);
-		astnode_sprintf_prefix(node->parent,"(%s)",res);
+		if(res) astnode_sprintf_prefix(node->parent,"(%s)",res);
 		return res;
 	}
 	return node->expr_type;
@@ -6833,10 +6844,7 @@ gen_local_type_info(ASTNode* node)
 					fatal("Can not have return statements inside Kernels; In %s: %s\n",get_node_by_token(IDENTIFIER,kernel_start)->buffer,combine_all_new(node));
 				}
 			}
-			const char* func_name = get_node(NODE_DFUNCTION_ID,dfunc_start)->buffer;
-			Symbol* func_sym = (Symbol*)get_symbol(NODE_DFUNCTION_ID,func_name,NULL);
-			if(func_sym && !str_vec_contains(func_sym->tqualifiers,expr_type))
-				dfunc_start -> expr_type = expr_type;
+			dfunc_start -> expr_type = expr_type;
 		}
 	}
 	if(node->type & (NODE_PRIMARY_EXPRESSION | NODE_FUNCTION_CALL) ||
@@ -6851,11 +6859,11 @@ gen_local_type_info(ASTNode* node)
 	return res;
 }
 bool
-flow_type_info_in_func(ASTNode* node,string_vec* names, string_vec* types)
+flow_type_info_in_func(ASTNode* node,string_vec* names, string_vec* types, const string_vec func_names, const string_vec func_return_types)
 {
 	bool res = false;
 	if(node->lhs)
-		res |= flow_type_info_in_func(node->lhs,names,types);
+		res |= flow_type_info_in_func(node->lhs,names,types,func_names,func_return_types);
 	if(node->type & NODE_DECLARATION)
 	{
 
@@ -6914,26 +6922,62 @@ flow_type_info_in_func(ASTNode* node,string_vec* names, string_vec* types)
 			}
 		}
 	}
+	if(node->type & NODE_FUNCTION_CALL && !node->expr_type)
+	{
+		const char* func_name = get_node_by_token(IDENTIFIER,node)->buffer;
+		const int index = str_vec_get_index(func_names,func_name);
+		if(index >= 0)
+			node->expr_type = func_return_types.data[index];
+	}
 	if(node->rhs)
-		res |= flow_type_info_in_func(node->rhs,names,types);
+		res |= flow_type_info_in_func(node->rhs,names,types,func_names,func_return_types);
 	return res;
 }
 bool
-flow_type_info(ASTNode* node)
+flow_type_info_base(ASTNode* node, const string_vec func_names, const string_vec func_return_types)
 {
 	bool res = false;
 	if(node->lhs)
-		res |= flow_type_info(node->lhs);
+		res |= flow_type_info_base(node->lhs,func_names,func_return_types);
 	if(node->rhs)
-		res |= flow_type_info(node->rhs);
+		res |= flow_type_info_base(node->rhs,func_names,func_return_types);
 	if(node->type & NODE_FUNCTION)
 	{
 		string_vec names = VEC_INITIALIZER;
 		string_vec types = VEC_INITIALIZER;
-		res |= flow_type_info_in_func(node,&names,&types);
+		res |= flow_type_info_in_func(node,&names,&types,func_names,func_return_types);
 		free_str_vec(&names);
 		free_str_vec(&types);
 	}
+	return res;
+}
+void
+gather_dfunc_return_types(ASTNode* node, string_vec* func_names, string_vec* func_return_types)
+{
+	if(node->type & NODE_FUNCTION)
+	{
+		if(node->type & NODE_DFUNCTION)
+		{
+			if(node->expr_type == NULL) return;
+			const char* name = get_node_by_token(IDENTIFIER,node)->buffer;
+			if(str_vec_contains(*func_names,name)) return;
+			push(func_names,name);
+			push(func_return_types,node->expr_type);
+		}
+		return;
+	}
+	TRAVERSE_PREAMBLE_PARAMS(gather_dfunc_return_types,func_names,func_return_types);
+}
+
+bool
+flow_type_info(ASTNode* node)
+{
+	string_vec func_names =        VEC_INITIALIZER;
+	string_vec func_return_types = VEC_INITIALIZER;
+	gather_dfunc_return_types(node,&func_names,&func_return_types);
+	const bool res = flow_type_info_base(node,func_names,func_return_types);
+	free_str_vec(&func_names);
+	free_str_vec(&func_return_types);
 	return res;
 }
 
@@ -7335,7 +7379,9 @@ transform_array_binary_ops(ASTNode* node)
         if(lhs_is_array && rhs_is_vec)
         {
                 if(op != MULT_STR)
-                        fatal("Only mat mul supported for array*vec!!\n");
+		{
+                        fatal("Only mat mul supported for array*vec!: %s\n",combine_all_new_with_whitespace(node));
+		}
                 if(check_symbol(NODE_VARIABLE_ID,identifier->buffer,0,DCONST_STR))
                 {
                         astnode_sprintf(identifier,"AC_INTERNAL_d_real_arrays_%s",identifier->buffer);
@@ -7371,8 +7417,53 @@ is_defining_expression(const ASTNode* node)
 	return is_first_decl(node) || is_defining_expression(node->lhs) || is_defining_expression(node->rhs);
 }
 void
+turn_array_type_to_scalar_type(ASTNode* node)
+{
+        const char* type = get_expr_type(node);
+	if(strstr(type,"AcArray"))
+		 type = get_array_elem_type(type);
+	else
+	{
+		char* new_type = strdup(type);
+		remove_suffix(new_type,"*");
+		type = intern(new_type);
+	}
+	node->expr_type = type;
+}
+
+void
+transform_array_calls_to_scalar_calls(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(transform_array_calls_to_scalar_calls);
+	if(!(node->type & NODE_FUNCTION_CALL)) return;
+	ASTNode* id = (ASTNode*)get_node_by_token(IDENTIFIER,node);
+	if(id->buffer == intern("value_AC_MANGLED_NAME__FieldARRAY"))
+	{
+		astnode_set_buffer("value_AC_MANGLED_NAME__Field",id);
+		turn_array_type_to_scalar_type(node);
+	}
+	if(id->buffer == intern("value_AC_MANGLED_NAME__Field3ARRAY"))
+	{
+		astnode_set_buffer("value_AC_MANGLED_NAME__Field3",id);
+		turn_array_type_to_scalar_type(node);
+	}
+}
+void
 add_index_to_arrays(ASTNode* node, const size_t rank)
 {
+	if(node->type & NODE_FUNCTION_CALL)
+	{
+		if(node->expr_type != NULL)
+		{
+			//TP: if on the rhs one has a function call that returns an array but the loop iterator after the function call and do not add
+			//    it to potential parameters of the function call
+			if(strstr(node->expr_type,"AcArray") || node->expr_type[strlen(node->expr_type)-1] == '*')
+			{
+				astnode_sprintf_postfix(node,"%s[AC_INTERNAL_ARRAY_LOOP_INDEX]",node->postfix);
+				return;
+			}
+		}
+	}
         TRAVERSE_PREAMBLE_PARAMS(add_index_to_arrays,rank);
         const char* type = get_expr_type(node);
         if(!type) return;
@@ -7383,6 +7474,7 @@ add_index_to_arrays(ASTNode* node, const size_t rank)
                         astnode_sprintf_postfix(node,"[AC_INTERNAL_ARRAY_LOOP_INDEX]");
                 else if(rank == 2)
                         astnode_sprintf_postfix(node,"[AC_INTERNAL_ARRAY_LOOP_INDEX_1][AC_INTERNAL_ARRAY_LOOP_INDEX_2]");
+		turn_array_type_to_scalar_type(node);
         }
 }
 
@@ -7413,7 +7505,11 @@ transform_array_assignments(ASTNode* node)
                 }
                 else
                 {
-                        if(strstr(lhs_type,"AcArray"))
+	  		const bool is_reference = lhs_type[strlen(lhs_type)-1] == '&';
+			if(is_reference) 
+			{
+			}
+			else if(strstr(lhs_type,"AcArray"))
                         {
                                 string_vec sizes = get_array_elem_size(lhs_type);
                                 if(sizes.size == 1)
@@ -7421,6 +7517,7 @@ transform_array_assignments(ASTNode* node)
                                         astnode_sprintf_prefix(node,"for (int AC_INTERNAL_ARRAY_LOOP_INDEX = 0; AC_INTERNAL_ARRAY_LOOP_INDEX < %s; ++AC_INTERNAL_ARRAY_LOOP_INDEX){",sizes.data[0]);
                                         astnode_sprintf_postfix(node,";}");
                                         add_index_to_arrays(node,sizes.size);
+					//transform_array_calls_to_scalar_calls(node);
                                 }
                                 else if(sizes.size == 2)
                                 {
@@ -7611,8 +7708,10 @@ gen_overloads(ASTNode* root)
 	overloaded_something = false;
   	transform_field_intrinsic_func_calls_and_ops(root);
   	gen_type_info(root);
+
   	transform_array_assignments(root);
   	transform_array_binary_ops(root);
+
 	overloaded_something |= resolve_overloaded_calls(root,overload_possibilities);
 	overload_counter++;
   	//for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
@@ -9456,6 +9555,12 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   cache_func_calls(root);
   inline_dfuncs(root);
   gen_type_info(root);
+
+  //TP: redo this after inlining and caching
+  transform_array_assignments(root);
+  transform_array_binary_ops(root);
+
+
   gen_matrix_reads(root);
   gen_constexpr_info(root,gen_mem_accesses);
 

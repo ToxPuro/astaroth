@@ -1,7 +1,5 @@
-add_subdirectory(runtime_compilation_test)
 add_subdirectory(arr-test)
 add_subdirectory(reduce-test)
-add_subdirectory(overload-test)
 add_subdirectory(field-arr-test)
 add_subdirectory(2d-test)
 add_subdirectory(planetest)

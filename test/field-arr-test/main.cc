@@ -73,7 +73,8 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
+    acSetGridMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
+    acSetLocalMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {

@@ -98,12 +98,12 @@ main(void)
     //constexpr int nx = 2*9;
     //constexpr int ny = nx;
     //[[maybe_unused]] constexpr int nz = nx;
-    acSetMeshDims(nx, ny, nz, &info);
+    acSetGridMeshDims(nx, ny, nz, &info);
+    acSetLocalMeshDims(nx, ny, nz, &info);
 
     constexpr int mx = nx + 2*NGHOST;
     constexpr int my = ny + 2*NGHOST;
     constexpr int mz = nz + 2*NGHOST;
-    //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {

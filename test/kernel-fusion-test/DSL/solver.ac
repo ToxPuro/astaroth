@@ -35,16 +35,16 @@ empty_kernel()
 
 Kernel reduce_vec_x(VectorFieldObject v)
 {
-    	reduce_sum(true, v.x.field, v.x.profiles.x)
-    	reduce_sum(true, v.y.field, v.y.profiles.x)
-    	reduce_sum(true, v.z.field, v.z.profiles.x)
+    	reduce_sum(v.x.field, v.x.profiles.x)
+    	reduce_sum(v.y.field, v.y.profiles.x)
+    	reduce_sum(v.z.field, v.z.profiles.x)
 
 }
 Kernel reduce_vec_y(VectorFieldObject v)
 { 
-    reduce_sum(true, v.x.field, v.x.profiles.y)
-    reduce_sum(true, v.y.field, v.y.profiles.y)
-    reduce_sum(true, v.z.field, v.z.profiles.y)
+    reduce_sum(v.x.field, v.x.profiles.y)
+    reduce_sum(v.y.field, v.y.profiles.y)
+    reduce_sum(v.z.field, v.z.profiles.y)
 }
 Kernel remove_vec_x(VectorFieldObject v)
 {

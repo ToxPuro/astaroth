@@ -1,3 +1,4 @@
+#if STENCIL_ORDER == 6
 Stencil gaussian_smooth
 {
 	[-3][-3][-3] = 0.0011708796207911742,
@@ -344,3 +345,4 @@ Stencil gaussian_smooth
 	[3][3][2] = 0.004086771438464067,
 	[3][3][3] = 0.0011708796207911742,
 }
+#endif

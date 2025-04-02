@@ -81,7 +81,8 @@ main(int argc, char* argv[])
     const int nx = argc > 1 ? atoi(argv[1]) : 2*9;
     const int ny = argc > 2 ? atoi(argv[2]) : 2*11;
     const int nz = argc > 3 ? atoi(argv[3]) : 4*7;
-    acSetMeshDims(nx, ny, nz, &info);
+    acSetGridMeshDims(nx, ny, nz, &info);
+    acSetLocalMeshDims(nx, ny, nz, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {

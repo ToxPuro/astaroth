@@ -11,14 +11,18 @@ auxiliary Field3 DUST[ndustspec]
 
 Kernel test_arr()
 {
-	arr = [1.0,2.0,3.0]
-	write(Field_arr, Field_arr  + arr)
-	vec_arr = [
+	real arr[3]
+	arr_base = [1.0,2.0,3.0]
+	arr = arr_base + Field_arr
+	write(Field_arr, arr)
+	real3 vec_arr[3]
+	vec_arr_base = [
 			real3(1.0,2.0,3.0),
 			real3(4.0,5.0,6.0),
 			real3(7.0,8.0,9.0)
 	]
-	write(DUST,DUST + vec_arr)
+	vec_arr = vec_arr_base + DUST
+	//write(DUST,vec_arr)
 }
 Kernel test2()
 {

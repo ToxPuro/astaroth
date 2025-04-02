@@ -845,6 +845,14 @@ get_node(const NodeType type, const ASTNode* node)
   }
   return NULL;
 }
+static inline void
+astnode_change_infixes(ASTNode* node, const char* old_infix, const char* new_infix)
+{
+	if(node == NULL) return;
+	astnode_change_infixes(node->lhs,old_infix,new_infix);
+	astnode_change_infixes(node->rhs,old_infix,new_infix);
+	if(node->infix != NULL && !strcmp(node->infix,old_infix)) astnode_set_infix(new_infix,node);
+}
 
 
 static inline node_vec

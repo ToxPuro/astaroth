@@ -78,7 +78,9 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(64, 64, 1, &info);
+    acSetGridMeshDims(64, 64, 1, &info);
+    //TP: backwards compatibility
+    acSetLocalMeshDims(64, 64, 1, &info);
     //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
@@ -144,15 +146,15 @@ main(void)
     //acDeviceSwapBuffer(acGridGetDevice(), UU);
     //acDeviceStoreMesh(acGridGetDevice(),STREAM_DEFAULT,&candidate);
 
-    const int3 nn_min = acGetMinNN(model.info);
-    const int nx_min = nn_min.x;
-    const int ny_min = nn_min.y;
-    const int nz_min = nn_min.z;
+    const auto nn_min = acGetMinNN(model.info);
+    const auto nx_min = nn_min.x;
+    const auto ny_min = nn_min.y;
+    const auto nz_min = nn_min.z;
 
-    const int3 nn_max = acGetMaxNN(model.info);
-    const int nx_max = nn_max.x;
-    const int ny_max = nn_max.y;
-    const int nz_max = nn_max.z;
+    const auto nn_max = acGetMaxNN(model.info);
+    const auto  nx_max = nn_max.x;
+    const auto  ny_max = nn_max.y;
+    const auto  nz_max = nn_max.z;
     auto IDX = [&](const int i, const int j, const int k)
     {
 	    return acVertexBufferIdx(i,j,k,model.info);
@@ -186,7 +188,7 @@ main(void)
 
     };
 
-    const int3 mm = acGetLocalMM(model.info);
+    const auto mm = acGetLocalMM(model.info);
     if(pid == 0)
     {
       AcReal* derxx = (AcReal*)malloc(sizeof(AcReal)*mm.x*mm.y);
@@ -195,9 +197,9 @@ main(void)
 
       for (int step_number = 0; step_number < NUM_INTEGRATION_STEPS; ++step_number) {
           acHostMeshApplyPeriodicBounds(&model);
-          for (int k = nz_min; k < nz_max; ++k) {
-              for (int j = ny_min; j < ny_max; ++j) {
-                  for (int i = nx_min; i < nx_max; ++i) {
+          for (size_t k = nz_min; k < nz_max; ++k) {
+              for (size_t j = ny_min; j < ny_max; ++j) {
+                  for (size_t i = nx_min; i < nx_max; ++i) {
           		const int index = IDX(i,j,k);
           		derxx[index] = calc_derxx(i,j,k,model.vertex_buffer[UU],model.info[AC_ds].x);
           		deryy[index] = calc_deryy(i,j,k,model.vertex_buffer[UU],model.info[AC_ds].y);
@@ -205,9 +207,9 @@ main(void)
                   }
               }
           }
-          for (int k = nz_min; k < nz_max; ++k) {
-              for (int j = ny_min; j < ny_max; ++j) {
-                  for (int i = nx_min; i < nx_max; ++i) {
+          for (size_t k = nz_min; k < nz_max; ++k) {
+              for (size_t j = ny_min; j < ny_max; ++j) {
+                  for (size_t i = nx_min; i < nx_max; ++i) {
           		const int index = IDX(i,j,k);
           		//model.vertex_buffer[UU][index] = model.vertex_buffer[UU][index] + dt*(temp[index]);
           		model.vertex_buffer[UU][index] = model.vertex_buffer[UU][index] + dt*(derxx[index] + deryy[index]);
@@ -223,9 +225,9 @@ main(void)
           retval = res;
           WARNCHK_ALWAYS(retval);
       }
-      for (int k = nz_min; k < nz_max; ++k) {
-             for (int j = ny_min; j < ny_max; ++j) {
-                 for (int i = nx_min; i < nx_max; ++i) {
+      for (size_t k = nz_min; k < nz_max; ++k) {
+             for (size_t j = ny_min; j < ny_max; ++j) {
+                 for (size_t i = nx_min; i < nx_max; ++i) {
           		const int index = IDX(i,j,k);
 			auto val = model.vertex_buffer[UU][index]; 
 			if(!std::isfinite(val))

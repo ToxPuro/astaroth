@@ -153,9 +153,9 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(npointsx_grid, npointsy_grid, npointsz_grid, &info);
-    //acSetMeshDims(44, 44, 44, &info);
-    //
+    acSetGridMeshDims(npointsx_grid, npointsy_grid, npointsz_grid, &info);
+    //TP: for backwards compatibility
+    acSetLocalMeshDims(npointsx_grid, npointsy_grid, npointsz_grid, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {

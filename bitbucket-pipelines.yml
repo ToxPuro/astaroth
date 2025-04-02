@@ -13,7 +13,7 @@ image: nvidia/cuda:11.6.0-devel-ubuntu20.04
 # ===> Which might not even work since I don't know what kind of hardware we're running on (lspci was not available)
 
 options:
-  max-time: 20 # Max time allowed for building (minutes) 
+  max-time: 30 # Max time allowed for building (minutes) 
 pipelines:
   # default: # Default is run at every push but we have only 500 build minutes / month so that probably wouldn't work out
   custom: # Manual/scheduled building only
@@ -29,6 +29,7 @@ pipelines:
           - apt-get update
           - apt-get install -y cmake flex bison openmpi-bin libopenmpi-dev gfortran
           # Test ACC
+          - . ./sourceme.sh
           - mkdir -p acc-runtime/build
           - cd acc-runtime/build
           - cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j && cd acc
@@ -46,3 +47,6 @@ pipelines:
           - rm -rf *
           - cmake -DOPTIMIZE_MEM_ACCESSES=OFF -DMPI_ENABLED=ON -DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DPROGRAM_MODULE_DIR=${PWD}/../samples/blur -DDSL_MODULE_DIR=../acc-runtime/samples/blur .. # Non-MHD sample
           - make -j
+          # Test that all end-to-end tests compile fine
+          - cd $AC_HOME/test && ./build.sh
+

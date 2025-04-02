@@ -1124,6 +1124,7 @@ assignment: declaration assignment_body {
 				astnode_set_prefix("auto [",$1);
 				astnode_set_postfix("]",$1);
 				add_no_auto($1, NULL);
+                                astnode_change_infixes($1,";",",");
 			}
 		}
           ;
