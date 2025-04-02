@@ -95,6 +95,24 @@ template <typename T, typename Allocator> class packet {
         ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
         ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
     }
+
+    /** Returns true if the task is ready to be waited on */
+    bool ready() const
+    {
+        ERRCHK_MPI(m_send_req != MPI_REQUEST_NULL);
+        ERRCHK_MPI(m_recv_req != MPI_REQUEST_NULL);
+
+        int send_flag, recv_flag;
+        ERRCHK_MPI_API(MPI_Request_get_status(m_send_req, &send_flag, MPI_STATUS_IGNORE));
+        ERRCHK_MPI_API(MPI_Request_get_status(m_recv_req, &recv_flag, MPI_STATUS_IGNORE));
+        return send_flag && recv_flag;
+    };
+
+    /** Returns true if there is no task in flight */
+    bool complete() const
+    {
+        return (m_send_req == MPI_REQUEST_NULL) && (m_recv_req == MPI_REQUEST_NULL);
+    }
 };
 
 template <typename T, typename Allocator> class halo_exchange {
@@ -156,18 +174,9 @@ template <typename T, typename Allocator> class halo_exchange {
 
     void launch(const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
     {
-        // ERRCHK_MPI(
-        //     same_size(m_recv_segments, m_send_segments, m_recv_buffers, m_send_buffers,
-        //     m_packets));
+        ERRCHK_MPI(complete());
 
-        auto unwrap = [](const std::vector<std::unique_ptr<ac::buffer<T, Allocator>>>& vec) {
-            std::vector<ac::mr::pointer<T, Allocator>> ptrs;
-            for (const auto& elem : vec)
-                ptrs.push_back(elem->get());
-            return ptrs;
-        };
-
-        pack_batched(m_local_mm, inputs, m_send_segments, unwrap(m_send_buffers));
+        pack_batched(m_local_mm, inputs, m_send_segments, unwrap_ptr_get(m_send_buffers));
 
         for (size_t i{0}; i < m_packets.size(); ++i)
             m_packets[i]->launch(m_send_buffers[i]->get(), m_recv_buffers[i]->get());
@@ -175,17 +184,22 @@ template <typename T, typename Allocator> class halo_exchange {
 
     void wait(std::vector<ac::mr::pointer<T, Allocator>> outputs)
     {
+        ERRCHK_MPI(!complete());
+
         for (auto& packet : m_packets)
             packet->wait();
 
-        auto unwrap = [](const std::vector<std::unique_ptr<ac::buffer<T, Allocator>>>& vec) {
-            std::vector<ac::mr::pointer<T, Allocator>> ptrs;
-            for (const auto& elem : vec)
-                ptrs.push_back(elem->get());
-            return ptrs;
-        };
+        unpack_batched(m_recv_segments, unwrap_ptr_get(m_recv_buffers), m_local_mm, outputs);
+    }
 
-        unpack_batched(m_recv_segments, unwrap(m_recv_buffers), m_local_mm, outputs);
+    /** Returns true if all messages have been completed */
+    bool complete() const
+    {
+        for (const auto& packet : m_packets)
+            if (!packet->complete())
+                return false;
+
+        return true;
     }
 };
 

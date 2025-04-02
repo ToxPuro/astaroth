@@ -45,6 +45,30 @@ unwrap_get(std::vector<T>& in)
     return out;
 }
 
+template <typename T>
+auto
+unwrap_ptr_get(const std::vector<T>& in)
+{
+    std::vector<decltype(in.front()->get())> out;
+
+    for (const auto& elem : in)
+        out.push_back(elem->get());
+
+    return out;
+}
+
+template <typename T>
+auto
+unwrap_ptr_get(std::vector<T>& in)
+{
+    std::vector<decltype(in.front()->get())> out;
+
+    for (const auto& elem : in)
+        out.push_back(elem->get());
+
+    return out;
+}
+
 #if 0
 template <typename T, typename Allocator>
 auto
