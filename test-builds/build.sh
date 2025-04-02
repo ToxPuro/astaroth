@@ -1,7 +1,6 @@
 #!/bin/bash
 
-TEST_DIR="$AC_HOME/test"
-
+TEST_DIR="$AC_HOME/test-builds"
 build_project() {
     local dir="$1"
     local log="$dir/compilation_log.txt"
@@ -26,7 +25,7 @@ build_project() {
             echo "[SUCCESS] Build succeeded for $test_name"
         fi
     else
-        echo "[WARNING] No build.sh found for $test_name"
+        echo "[WARNING] No build.sh found for $dir"
     fi
 
     cd - >/dev/null  # Return to previous directory silently

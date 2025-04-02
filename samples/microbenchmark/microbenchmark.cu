@@ -37,9 +37,9 @@ gpu: 0 1 2 3
 #include <stdlib.h>
 
 #if AC_USE_HIP
-#include "hip.h"
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #include <roctracer/roctracer_ext.h>   // Profiling
+#include "hip.h"
 #else
 #include <cuda_profiler_api.h> // Profiling
 #include <cuda_runtime_api.h>  // cudaStream_t
@@ -529,7 +529,11 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
     unrolled_kernel(c.bpg, c.tpb, c.smem, c.domain_length, c.pad, c.radius, c.stride, a, b);
 
     // Benchmark
+#if AC_USE_HIP
+    cudaProfilerStart();
+#else
     ERRCHK_CUDA(cudaProfilerStart());
+#endif
     Timer t;
     //cudaEvent_t tstart, tstop;
     //cudaEventCreate(&tstart);
@@ -569,7 +573,11 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
     }
     //cudaEventDestroy(tstart);
     //cudaEventDestroy(tstop);
+#if AC_USE_HIP
+    cudaProfilerStop();
+#else
     ERRCHK_CUDA(cudaProfilerStop());
+#endif
 
     // Free
     fclose(fp);
@@ -643,7 +651,11 @@ get_pad(const size_t radius)
 int
 main(int argc, char* argv[])
 {
+#if AC_USE_HIP
+    cudaProfilerStop();
+#else
     ERRCHK_CUDA(cudaProfilerStop());
+#endif
 
     // Input parameters
     fprintf(stderr, "Usage: ./benchmark <computational domain length> <radius> <stride> <jobid> "

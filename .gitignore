@@ -32,5 +32,7 @@ acc-runtime/overrides.h
 
 # Other
 compile_commands.json
+compilation_log.txt
+FAIL
 .DS_Store
 .vscode
