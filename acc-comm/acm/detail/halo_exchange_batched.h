@@ -56,7 +56,8 @@ template <typename T, typename Allocator> class packet {
 
         const auto rank{ac::mpi::get_rank(m_comm)};
         if (rank == m_recv_neighbor && rank == m_send_neighbor) {
-            ac::mr::copy(input, output);
+            // Pack directly to the output buffer if the destination is on the same device
+            ac::mr::copy(input, output); // Can be improved by using async memcpy
 
             // Create a dummy request to simplify asynchronous management
             static int dummy{-1};
