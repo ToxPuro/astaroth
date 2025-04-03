@@ -26,3 +26,16 @@ randomize(ac::mr::pointer<double, Allocator> ptr)
  */
 double benchmark(const std::string label, const std::function<void()>& init,
                  const std::function<void()>& bench, const std::function<void()>& sync);
+
+namespace bm {
+
+/**
+ * Benchmark and return a list of samples in ns
+ * init:  function that initializes the inputs (e.g. randomize)
+ * bench: function that runs the operations to benchmark
+ * sync:  function that synchronizes init and bench between iterations
+ */
+std::vector<long> benchmark(const std::function<void()>& init, const std::function<void()>& bench,
+                            const std::function<void()>& sync, const size_t nsamples = 100);
+
+} // namespace bm
