@@ -276,7 +276,7 @@ write_slices_to_disk(const MPI_Comm& parent_comm, const Device& device, const si
     static ac::host_ndbuffer<AcReal> staging_buffer{local_slice_nn};
     for (size_t i{0}; i < NUM_VTXBUF_HANDLES; ++i) {
         const auto input{acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input)};
-        pack(local_mm, local_slice_nn, local_slice_nn_offset, {input}, pack_buffer.get());
+        acm::pack(local_mm, local_slice_nn, local_slice_nn_offset, {input}, pack_buffer.get());
         ac::mr::copy(pack_buffer.get(), staging_buffer.get());
 
         char filepath[4096];
@@ -440,11 +440,11 @@ write_profile_to_disk_async(const MPI_Comm& cart_comm, const Device& device, con
         PRINT_LOG_DEBUG(ac::mpi::get_decomposition(cart_comm));
 
         ac::device_buffer<double> staging_buffer{local_nn[2]};
-        pack(ac::shape{local_mm[2]},
-             ac::shape{local_nn[2]},
-             ac::index{rr[2]},
-             {acr::make_ptr(vba, profile, BufferGroup::input)},
-             staging_buffer.get());
+        acm::pack(ac::shape{local_mm[2]},
+                  ac::shape{local_nn[2]},
+                  ac::index{rr[2]},
+                  {acr::make_ptr(vba, profile, BufferGroup::input)},
+                  staging_buffer.get());
 
         auto write_to_file = [](const int device_id,
                                 const ac::device_buffer<double>&& dbuf,

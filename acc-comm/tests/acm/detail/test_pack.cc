@@ -36,10 +36,10 @@ test_pack(const ac::shape& nn, const ac::index& rr)
 
     // Pack and unpack
     for (size_t i{0}; i < segments.size(); ++i)
-        pack(mm, segments[i].dims, segments[i].offset, {din.get()}, pack_buffers[i].get());
+        acm::pack(mm, segments[i].dims, segments[i].offset, {din.get()}, pack_buffers[i].get());
 
     for (size_t i{0}; i < segments.size(); ++i)
-        unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset, {dout.get()});
+        acm::unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset, {dout.get()});
 
     ac::mr::copy(dout.get(), hout.get());
     ERRCHK(equals(hin.get(), hout.get()));
@@ -47,12 +47,12 @@ test_pack(const ac::shape& nn, const ac::index& rr)
     // Benchmark
     ac::timer t;
     for (size_t i{0}; i < segments.size(); ++i)
-        pack(mm, segments[i].dims, segments[i].offset, {din.get()}, pack_buffers[i].get());
+        acm::pack(mm, segments[i].dims, segments[i].offset, {din.get()}, pack_buffers[i].get());
 
     t.lap("Pack");
 
     for (size_t i{0}; i < segments.size(); ++i)
-        unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset, {dout.get()});
+        acm::unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset, {dout.get()});
 
     t.lap("Unpack");
 }
@@ -81,17 +81,17 @@ test_pack_batched(const ac::shape& nn, const ac::index& rr)
     ac::mr::copy(hin.get(), din.get());
 
     // Pack and unpack
-    pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
-    unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
+    acm::pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
+    acm::unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
 
     ac::mr::copy(dout.get(), hout.get());
     ERRCHK(equals(hin.get(), hout.get()));
 
     // Benchmmark
     ac::timer t;
-    pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
+    acm::pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
     t.lap("Batched pack");
-    unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
+    acm::unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
     t.lap("Batched unpack");
 }
 
@@ -115,11 +115,11 @@ main()
         ac::shape                                     block_offset{rr};
         std::vector<ac::mr::device_pointer<uint64_t>> inputs{
             ac::mr::device_pointer<uint64_t>{din.size(), din.data()}};
-        pack(mm,
-             block_shape,
-             block_offset,
-             inputs,
-             ac::mr::device_pointer<uint64_t>{dout.size(), dout.data()});
+        acm::pack(mm,
+                  block_shape,
+                  block_offset,
+                  inputs,
+                  ac::mr::device_pointer<uint64_t>{dout.size(), dout.data()});
         migrate(dout, hout);
         // ac::copy(dout.begin(), dout.end(), hout.begin());
 

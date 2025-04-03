@@ -5,6 +5,8 @@
 #include "pointer.h"
 #include "segment.h"
 
+namespace acm {
+
 template <typename T>
 void
 pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
@@ -168,3 +170,5 @@ unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                      
 #undef PACK_DTYPE
 
 #endif
+
+} // namespace acm

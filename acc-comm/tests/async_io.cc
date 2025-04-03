@@ -91,7 +91,7 @@ write_async(const MPI_Comm& parent_comm, const int device_id, const ac::shape mm
         ERRCHK_MPI_API(MPI_Comm_free(&comm));
 
         ac::ndbuffer<T, Allocator> staging_buffer{nn};
-        pack(mm, nn, nn_offset, {input}, staging_buffer.get());
+        acm::pack(mm, nn, nn_offset, {input}, staging_buffer.get());
         return std::future<int>{std::async(std::launch::async,
                                            async_write_pipeline<T, Allocator>,
                                            device_id,
@@ -201,7 +201,7 @@ write_profile_to_disk_async(const MPI_Comm& cart_comm, const Device& device, con
         PRINT_DEBUG(ac::mpi::get_decomposition(cart_comm));
 
         ac::device_buffer<double> staging_buffer{local_nn[2]};
-        pack(ac::shape{local_mm[2]},
+        acm::pack(ac::shape{local_mm[2]},
              ac::shape{local_nn[2]},
              ac::index{rr[2]},
              {acr::make_ptr(vba, profile, BufferGroup::input)},

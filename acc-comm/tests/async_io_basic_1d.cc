@@ -153,7 +153,7 @@ write_profile_to_disk_async(const MPI_Comm& cart_comm, const Device& device, con
         PRINT_DEBUG(ac::mpi::get_decomposition(cart_comm));
 
         ac::device_buffer<double> staging_buffer{local_nn[2]};
-        pack(ac::shape{local_mm[2]},
+        acm::pack(ac::shape{local_mm[2]},
              ac::shape{local_nn[2]},
              ac::index{rr[2]},
              {acr::make_ptr(vba, profile, BufferGroup::input)},

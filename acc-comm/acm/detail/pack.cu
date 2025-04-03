@@ -4,6 +4,8 @@
 
 #include "type_conversion.h"
 
+namespace acm {
+
 constexpr size_t MAX_NDIMS{4};
 constexpr size_t MAX_N_AGGR_BUFS{12};
 
@@ -174,4 +176,7 @@ template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input
                                  const ac::index&                                block_offset,
                                  std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
 #undef PACK_DTYPE
+
+} // namespace acm
+
 #endif

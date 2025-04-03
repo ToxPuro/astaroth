@@ -77,7 +77,7 @@ verify_pack(const ac::shape& mm, const ac::shape& nn, const ac::index& rr,
     ac::host_ndbuffer<T> packed{nn};
     std::iota(packed.begin(), packed.end(), 1);
 
-    unpack(packed.get(), mm, nn, rr, {full.get()});
+    acm::unpack(packed.get(), mm, nn, rr, {full.get()});
     std::fill(packed.begin(), packed.end(), 0);
     // full.display();
     // packed.display();
@@ -204,14 +204,15 @@ main()
         });
 
         auto acm_dtod_pack{
-            [&]() { pack(local_mm, local_nn, rr, std::vector{dref.get()}, dpack.get()); }};
+            [&]() { acm::pack(local_mm, local_nn, rr, std::vector{dref.get()}, dpack.get()); }};
         verify_pack(local_mm, local_nn, rr, dref.get(), acm_dtod_pack, dpack.get());
         randomize(dref.get());
         benchmark("ACM dtod pack", acm_dtod_pack);
 
         randomize(dpack.get());
-        benchmark("ACM dtod unpack (note: not verified)",
-                  [&]() { unpack(dpack.get(), local_mm, local_nn, rr, std::vector{dref.get()}); });
+        benchmark("ACM dtod unpack (note: not verified)", [&]() {
+            acm::unpack(dpack.get(), local_mm, local_nn, rr, std::vector{dref.get()});
+        });
 
         ac::mpi::cart_comm_destroy(&cart_comm);
     }

@@ -82,11 +82,11 @@ template <typename T, typename Allocator> class packet {
         // Pack directly to the recv buffer if the destination is on the same device
         const auto rank{ac::mpi::get_rank(m_comm)};
         if (rank == m_recv_neighbor && rank == m_send_neighbor) {
-            pack(m_local_mm,
-                 m_send_segment.dims,
-                 m_send_segment.offset,
-                 inputs,
-                 m_recv_buffer.get());
+            acm::pack(m_local_mm,
+                      m_send_segment.dims,
+                      m_send_segment.offset,
+                      inputs,
+                      m_recv_buffer.get());
 
             // Create a dummy request to simplify asynchronous management
             static int dummy{-1};
@@ -105,11 +105,11 @@ template <typename T, typename Allocator> class packet {
                                      &m_recv_req));
 
             // Pack and post send
-            pack(m_local_mm,
-                 m_send_segment.dims,
-                 m_send_segment.offset,
-                 inputs,
-                 m_send_buffer.get());
+            acm::pack(m_local_mm,
+                      m_send_segment.dims,
+                      m_send_segment.offset,
+                      inputs,
+                      m_send_buffer.get());
 
             ERRCHK_MPI_API(MPI_Isend(m_send_buffer.data(),
                                      as<int>(count),
@@ -131,11 +131,11 @@ template <typename T, typename Allocator> class packet {
 
         ERRCHK_MPI_API(MPI_Wait(&m_recv_req, MPI_STATUS_IGNORE));
         ERRCHK_MPI_API(MPI_Wait(&m_send_req, MPI_STATUS_IGNORE));
-        unpack(m_recv_buffer.get(),
-               m_local_mm,
-               m_recv_segment.dims,
-               m_recv_segment.offset,
-               outputs);
+        acm::unpack(m_recv_buffer.get(),
+                    m_local_mm,
+                    m_recv_segment.dims,
+                    m_recv_segment.offset,
+                    outputs);
 
         ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
         ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);

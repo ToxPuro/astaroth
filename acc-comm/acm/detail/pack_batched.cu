@@ -3,11 +3,13 @@
 #include "acm/detail/convert.h"
 #include "acm/detail/type_conversion.h"
 
+namespace acm {
+
 template <size_t N> using shape_t             = ac::static_ntuple<uint64_t, N>;
 template <size_t N> using index_t             = ac::static_ntuple<uint64_t, N>;
 template <typename T, size_t N> using array_t = ac::static_ntuple<T, N>;
 
-namespace ac::device {
+namespace device {
 
 template <typename T, size_t NDIMS, size_t NINPUTS, size_t NSEGMENTS>
 __global__ void
@@ -41,9 +43,7 @@ pack_batched(const shape_t<NDIMS> mm, const array_t<T*, NINPUTS> unpacked,
     }
 }
 
-} // namespace ac::device
-
-namespace ac {
+} // namespace device
 
 template <typename T, size_t NDIMS, size_t N_UNPACKED, size_t N_SEGMENTS>
 void
@@ -74,18 +74,17 @@ pack_batched_prototype(const ac::shape&                              in_mm,
         in_offsets.push_back(index_t<NDIMS>{segment.offset});
 
     const shape_t<NDIMS>          mm{in_mm};
-    const array_t<T*, N_UNPACKED> unpacked{unwrap_data(in_unpacked)};
+    const array_t<T*, N_UNPACKED> unpacked{ac::unwrap_data(in_unpacked)};
     // const array_t<ac::device::segment<NDIMS>, n_segments> segments{convert<NDIMS>(in_segments)};
     const array_t<shape_t<NDIMS>, N_SEGMENTS> dims{in_dims};
     const array_t<index_t<NDIMS>, N_SEGMENTS> offsets{in_offsets};
-    const array_t<T*, N_SEGMENTS>             packed{unwrap_data(in_packed)};
+    const array_t<T*, N_SEGMENTS>             packed{ac::unwrap_data(in_packed)};
 
     device::pack_batched<<<bpg, tpb>>>(mm, unpacked, dims, offsets, packed, do_pack);
 
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
-} // namespace ac
 
 template <typename T, size_t NDIMS, size_t N_UNPACKED>
 void
@@ -95,35 +94,35 @@ pack_batched(const ac::shape& mm, const std::vector<ac::mr::device_pointer<T>>& 
 {
     switch (segments.size()) {
     case 3:
-        return ac::pack_batched_prototype<T, NDIMS, N_UNPACKED, 3>(mm,
-                                                                   unpacked,
-                                                                   segments,
-                                                                   packed,
-                                                                   do_pack);
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 3>(mm,
+                                                               unpacked,
+                                                               segments,
+                                                               packed,
+                                                               do_pack);
     case 9:
-        return ac::pack_batched_prototype<T, NDIMS, N_UNPACKED, 9>(mm,
-                                                                   unpacked,
-                                                                   segments,
-                                                                   packed,
-                                                                   do_pack);
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 9>(mm,
+                                                               unpacked,
+                                                               segments,
+                                                               packed,
+                                                               do_pack);
     case 26:
-        return ac::pack_batched_prototype<T, NDIMS, N_UNPACKED, 26>(mm,
-                                                                    unpacked,
-                                                                    segments,
-                                                                    packed,
-                                                                    do_pack);
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 26>(mm,
+                                                                unpacked,
+                                                                segments,
+                                                                packed,
+                                                                do_pack);
     case 27:
-        return ac::pack_batched_prototype<T, NDIMS, N_UNPACKED, 27>(mm,
-                                                                    unpacked,
-                                                                    segments,
-                                                                    packed,
-                                                                    do_pack);
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 27>(mm,
+                                                                unpacked,
+                                                                segments,
+                                                                packed,
+                                                                do_pack);
     case 81:
-        return ac::pack_batched_prototype<T, NDIMS, N_UNPACKED, 81>(mm,
-                                                                    unpacked,
-                                                                    segments,
-                                                                    packed,
-                                                                    do_pack);
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 81>(mm,
+                                                                unpacked,
+                                                                segments,
+                                                                packed,
+                                                                do_pack);
     default:
         ERROR_DESC("Unhandled %zu", segments.size());
     }
@@ -231,3 +230,5 @@ unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                      
                            const ac::shape&                                       mm,
                            std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
 #undef PACK_DTYPE
+
+} // namespace acm
