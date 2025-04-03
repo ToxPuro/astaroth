@@ -8,11 +8,30 @@ output real AC_min_val
 #include "../../../acc-runtime/stdlib/general_derivs.h"
 
 
+Profile<X> PROF_X
+Profile<Y> PROF_Y
 Profile<Z> PROF_Z
 
-Kernel reduce_z()
+Profile<XY> PROF_XY
+Profile<XZ> PROF_XZ
+
+Profile<YX> PROF_YX
+Profile<YZ> PROF_YZ
+
+Profile<ZX> PROF_ZX
+Profile<ZY> PROF_ZY
+
+Kernel reduce_profiles()
 {
+    reduce_sum(FIELD,PROF_X)
+    reduce_sum(FIELD,PROF_Y)
     reduce_sum(FIELD,PROF_Z)
+    reduce_sum(FIELD,PROF_XY)
+    reduce_sum(FIELD,PROF_XZ)
+    reduce_sum(FIELD,PROF_YX)
+    reduce_sum(FIELD,PROF_YZ)
+    reduce_sum(FIELD,PROF_ZX)
+    reduce_sum(FIELD,PROF_ZY)
 }
 
 
@@ -23,6 +42,6 @@ BoundConds bcs
 
 ComputeSteps rhs(bcs)
 {
-	reduce_z()
+	reduce_profiles()
 }
 
