@@ -77,7 +77,7 @@ verify_mpi_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, 
     // }
     // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
     // if (ac::mpi::get_rank(cart_comm) == 0)
-    //     t.lap("mpi NSAMPLES TOTAL");
+    //     t.print_lap("mpi NSAMPLES TOTAL");
 
     return 0;
 }
@@ -146,7 +146,7 @@ verify_custom_packed_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& g
     // }
     // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
     // if (ac::mpi::get_rank(cart_comm) == 0)
-    //     t.lap("custom NSAMPLES TOTAL");
+    //     t.print_lap("custom NSAMPLES TOTAL");
 
     return 0;
 }
@@ -215,7 +215,7 @@ verify_revised_mpi_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& glo
     // }
     // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
     // if (ac::mpi::get_rank(cart_comm) == 0)
-    //     t.lap("revised mpi NSAMPLES TOTAL");
+    //     t.print_lap("revised mpi NSAMPLES TOTAL");
 
     return 0;
 }
@@ -284,7 +284,7 @@ verify_custom_revised_packed_halo_exchange(const MPI_Comm& cart_comm, const ac::
     // }
     // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
     // if (ac::mpi::get_rank(cart_comm) == 0)
-    //     t.lap("custom revised NSAMPLES TOTAL");
+    //     t.print_lap("custom revised NSAMPLES TOTAL");
 
     return 0;
 }
@@ -353,7 +353,7 @@ verify_custom_revised_packed_halo_exchange_v2(const MPI_Comm& cart_comm, const a
     // }
     // ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
     // if (ac::mpi::get_rank(cart_comm) == 0)
-    //     t.lap("custom revised v2 NSAMPLES TOTAL");
+    //     t.print_lap("custom revised v2 NSAMPLES TOTAL");
 
     return 0;
 }

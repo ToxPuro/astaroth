@@ -49,12 +49,12 @@ test_pack(const ac::shape& nn, const ac::index& rr)
     for (size_t i{0}; i < segments.size(); ++i)
         acm::pack(mm, segments[i].dims, segments[i].offset, {din.get()}, pack_buffers[i].get());
 
-    t.lap("Pack");
+    t.print_lap("Pack");
 
     for (size_t i{0}; i < segments.size(); ++i)
         acm::unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset, {dout.get()});
 
-    t.lap("Unpack");
+    t.print_lap("Unpack");
 }
 
 static void
@@ -90,9 +90,9 @@ test_pack_batched(const ac::shape& nn, const ac::index& rr)
     // Benchmmark
     ac::timer t;
     acm::pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
-    t.lap("Batched pack");
+    t.print_lap("Batched pack");
     acm::unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
-    t.lap("Batched unpack");
+    t.print_lap("Batched unpack");
 }
 
 int
