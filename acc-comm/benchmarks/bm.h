@@ -8,7 +8,7 @@ template <typename Allocator>
 static void
 randomize(ac::mr::pointer<double, Allocator> ptr)
 {
-    static ac::host_buffer<double> ref{ptr.size()};
+    ac::host_buffer<double> ref{ptr.size()};
 
     std::generate(ref.begin(), ref.end(), []() {
         static std::default_random_engine       gen{12345};
