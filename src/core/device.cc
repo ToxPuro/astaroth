@@ -20,7 +20,6 @@
 #include "astaroth.h"
 #include "../../acc-runtime/api/math_utils.h"
 #include "kernels/kernels.h"
-#include "user_builtin_non_scalar_constants.h"
 #include "util_funcs.h"
 
 #if AC_MPI_ENABLED

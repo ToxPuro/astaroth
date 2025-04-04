@@ -38,7 +38,6 @@
 
 #include "task.h"
 #include "astaroth.h"
-#include "user_builtin_non_scalar_constants.h"
 
 AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 
@@ -883,9 +882,10 @@ ComputeTask::advance(const TraceFile* trace_file)
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-HaloMessage::HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag_)
+HaloMessage::HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag_, const bool shear_periodic)
 {
     length       = dims.x * dims.y * dims.z * num_vars;
+    if(shear_periodic) length *= 4;
 
     tag = tag0 + tag_;
     non_namespaced_tag = tag_;
@@ -938,12 +938,12 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 // HaloMessageSwapChain
 HaloMessageSwapChain::HaloMessageSwapChain() {}
 
-HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag)
+HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag, const bool shear_periodic)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        buffers.emplace_back(dims, num_vars,tag0, tag);
+        buffers.emplace_back(dims, num_vars,tag0, tag, shear_periodic);
     }
 }
 
@@ -972,19 +972,31 @@ get_counterpart_rank(const Device device, const int rank, const uint3_64 decomp,
 }
 
 
+int
+shear_periodic_displacement(const AcMeshInfo info)
+{
+	return int(info[AC_shear_delta_y]/info[AC_ds.y]);
+}
+
+int
+shear_periodic_ystep(const AcMeshInfo info)
+{
+	return shear_periodic_displacement(info)/info[AC_nlocal].y;
+}
 // HaloExchangeTask
 HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag,
                                    AcGridInfo grid_info, uint3_64 decomp, Device device_,
-                                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
+                                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_)
     : Task(order_,
            Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
            Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
       counterpart_rank(get_counterpart_rank(device_,rank,decomp,output_region.id)),
+      shear_periodic(shear_periodic_),
 
       // MPI tags are namespaced to avoid collisions with other MPI tasks
-      recv_buffers(output_region.dims, op.num_fields_in,  tag_0, input_region.tag),
-      send_buffers(input_region.dims,  op.num_fields_out, tag_0, Region::id_to_tag(-output_region.id))
+      recv_buffers(output_region.dims, op.num_fields_in,  tag_0, input_region.tag, shear_periodic),
+      send_buffers(input_region.dims,  op.num_fields_out, tag_0, Region::id_to_tag(-output_region.id),shear_periodic)
 {
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");

@@ -45,7 +45,6 @@
  */
 
 #include "astaroth.h"
-#include "user_builtin_non_scalar_constants.h"
 #include "astaroth_utils.h"
 #include "task.h"
 #include "util_funcs.h"
@@ -2110,7 +2109,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 
                 if (!Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp,
-                                                                   device, swap_offset);
+                                                                   device, swap_offset,false);
                     graph->halo_tasks.push_back(task);
                     graph->all_tasks.push_back(task);
                 }
@@ -2146,7 +2145,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
                     if (op.kernel_enum == BOUNDCOND_PERIODIC) {
                         acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
                                                  tag);
-                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp, device, swap_offset);
+                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp, device, swap_offset,false);
                         graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);
                         acVerboseLogFromRootProc(rank,

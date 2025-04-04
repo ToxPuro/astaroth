@@ -124,7 +124,6 @@
  *
  */
 #include "astaroth.h"
-#include "user_builtin_non_scalar_constants.h"
 #include "math_utils.h"
 
 static const int MAX_NUM_DEVICES = 32;

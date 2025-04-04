@@ -244,7 +244,7 @@ typedef struct HaloMessage {
     int tag;
     int non_namespaced_tag;
 
-    HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag);
+    HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag, const bool shear_periodic);
     ~HaloMessage();
 #if !(USE_CUDA_AWARE_MPI)
     void pin(const Device device, const cudaStream_t stream);
@@ -257,7 +257,7 @@ typedef struct HaloMessageSwapChain {
     std::vector<HaloMessage> buffers;
 
     HaloMessageSwapChain();
-    HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag);
+    HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag, const bool shear_periodic);
 
     HaloMessage* get_current_buffer();
     HaloMessage* get_fresh_buffer();
@@ -268,14 +268,14 @@ enum class HaloExchangeState { Waiting = Task::wait_state, Packing, Exchanging, 
 typedef class HaloExchangeTask : public Task {
   private:
     int counterpart_rank;
-
+    bool shear_periodic;
     HaloMessageSwapChain recv_buffers;
     HaloMessageSwapChain send_buffers;
 
   public:
     HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag, AcGridInfo grid_info,
                      uint3_64 decomp, Device device_,
-                     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
+                     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_);
     ~HaloExchangeTask();
     HaloExchangeTask(const HaloExchangeTask& other)            = delete;
     HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
