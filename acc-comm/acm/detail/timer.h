@@ -18,9 +18,9 @@ class timer {
 
     void reset() { m_start = clock::now(); }
     auto diff() { return clock::now() - m_start; }
-    long diff_ns() { return std::chrono::duration_cast<std::chrono::nanoseconds>(diff()).count(); }
+    auto diff_ns() { return std::chrono::duration_cast<std::chrono::nanoseconds>(diff()).count(); }
 
-    long lap_ns()
+    auto lap_ns()
     {
         const auto ns_elapsed{diff_ns()};
         reset();
