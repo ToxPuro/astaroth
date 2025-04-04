@@ -283,17 +283,7 @@ operator-(const int3& a, const int& b)
     return (int3){a.x - b, a.y - b, a.z - b};
 }
 
-static HOST_DEVICE_INLINE bool
-operator==(const int3& a, const int3& b)
-{
-  return a.x == b.x && a.y == b.y && a.z == b.z;
-}
 
-static HOST_DEVICE_INLINE bool
-operator!=(const int3& a, const int3& b)
-{
-  return !(a == b);
-}
 
 static HOST_DEVICE_INLINE bool
 operator>=(const int3& a, const int3& b)

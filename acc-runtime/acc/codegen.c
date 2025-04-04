@@ -2610,6 +2610,28 @@ gen_kernel_structs(ASTNode* root)
 }
 
 
+static void
+create_comp_op(const structs_info info, const int i, FILE* fp)
+{
+		const char* struct_name = info.user_structs.data[i];
+		fprintf(fp,"static HOST_DEVICE_INLINE bool\n"
+			   "operator==(const %s& a, const %s& b)\n"
+			   "{\n"
+			   "return\n"
+			,struct_name,struct_name);
+		for(size_t j = 0; j < info.user_struct_field_names[i].size; ++j)
+			fprintf(fp,"\ta.%s == b.%s %s\n",info.user_struct_field_names[i].data[j],info.user_struct_field_names[i].data[j], j < info.user_struct_field_names[i].size-1 ? "&&" : "");
+		fprintf(fp,";}\n");
+
+		fprintf(fp,"static HOST_DEVICE_INLINE bool\n"
+			   "operator!=(const %s& a, const %s& b)\n"
+			   "{\n"
+			   "return\n"
+			,struct_name,struct_name);
+		for(size_t j = 0; j < info.user_struct_field_names[i].size; ++j)
+			fprintf(fp,"\ta.%s != b.%s %s\n",info.user_struct_field_names[i].data[j],info.user_struct_field_names[i].data[j], j < info.user_struct_field_names[i].size-1 ? "||" : "");
+		fprintf(fp,";}\n");
+}
 
 static void
 create_binary_op(const structs_info info, const int i, const char* op, FILE* fp)
@@ -2764,6 +2786,7 @@ gen_user_structs()
 
 
 
+		create_comp_op(s_info,i,fp);
 		if(struct_name != INT3_STR)
 		{
 			create_binary_op(s_info,i,MINUS_STR,fp);
