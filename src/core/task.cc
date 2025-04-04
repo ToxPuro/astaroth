@@ -1001,13 +1001,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     syncVBA();
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done syncing VBA\n");
 
-    // Post receive immediately, this avoids unexpected messages
     active = ((acDeviceGetLocalConfig(device)[AC_include_3d_halo_corners]) || output_region.facet_class != 3) ? true : false;
-    if (active) {
-        acVerboseLogFromRootProc(rank, "Halo exchange task ctor: posting early receive\n");
-        receive();
-        acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done posting early receive\n");
-    }
     name = "Halo exchange " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) +
            "," + std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) +
            ")";
@@ -1031,6 +1025,7 @@ HaloExchangeTask::isHaloExchangeTask(){ return true; }
 HaloExchangeTask::~HaloExchangeTask()
 {
     // Cancel last eager request
+    // TP: this should not be needed anymore but since we are checking anyways checking for NULL does not harm
     auto msg = recv_buffers.get_current_buffer();
     if (msg->request != MPI_REQUEST_NULL) {
         MPI_Cancel(&msg->request);
@@ -1272,6 +1267,14 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
     switch (static_cast<HaloExchangeState>(state)) {
     case HaloExchangeState::Waiting:
         trace_file->trace(this, "waiting", "packing");
+    	// Post receive before send, this avoids unexpected messages
+	//
+	//4-apr-2025: TP: moved eager receives here from initialization for two reasons:
+	//	1. If using multiple taskgraphs this way we have less active MPI communications which seem to cause stability issues
+	//	2. The src processes can change dynamically and not be known at init (shearing periodic bcs)
+	//    If the important point is that no message is not expected than this should handle that easily
+	//    And also now we do not have to cleanup the leftover receive
+        receive();
         pack();
         state = static_cast<int>(HaloExchangeState::Packing);
         break;
@@ -1289,7 +1292,6 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
         break;
     case HaloExchangeState::Unpacking:
         trace_file->trace(this, "unpacking", "waiting");
-        receive();
         sync();
         state = static_cast<int>(HaloExchangeState::Waiting);
         break;
