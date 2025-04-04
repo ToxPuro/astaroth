@@ -62,17 +62,18 @@ benchmark(const std::string label, const std::function<void()>& init,
 
 namespace bm {
 
-std::vector<long>
+std::vector<std::chrono::nanoseconds::rep>
 benchmark(const std::function<void()>& init, const std::function<void()>& bench,
           const std::function<void()>& sync, const size_t nsamples)
 {
     // Warmup
     init();
     bench();
+    sync();
 
     // Benchmark
-    ac::timer         timer;
-    std::vector<long> samples;
+    ac::timer                                  timer;
+    std::vector<std::chrono::nanoseconds::rep> samples;
     for (size_t i{0}; i < nsamples; ++i) {
         init();
         sync();
