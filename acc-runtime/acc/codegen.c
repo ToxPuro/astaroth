@@ -7992,6 +7992,8 @@ transform_broadcast_assignments(ASTNode* node)
 	const char* lhs_type = get_expr_type(node->lhs);
 	const char* rhs_type = get_expr_type(node->rhs);
 	if(!lhs_type || !rhs_type) return;
+	//TP: expression like complex c = 1.0 means the real component is 1.0 and the imaginary component is 0.0
+	if(lhs_type == COMPLEX_STR) return;
 	if(all_real_struct(lhs_type) && rhs_type == REAL_STR)
 	{
 		const ASTNode* expr = node->rhs->rhs->lhs;
