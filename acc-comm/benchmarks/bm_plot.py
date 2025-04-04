@@ -17,3 +17,17 @@ plt.legend()
 plt.show()
 
 # df
+
+
+# %%
+# Pack
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+
+print(f'cwd: {os.getcwd()}')
+
+df = pd.read_csv('../build/bm-pack.csv')
+df
+
+df.groupby('impl')['ns'].describe()
