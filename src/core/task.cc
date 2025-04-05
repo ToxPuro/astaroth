@@ -975,7 +975,7 @@ get_counterpart_rank(const Device device, const int rank, const uint3_64 decomp,
 int
 shear_periodic_displacement(const AcMeshInfo info)
 {
-	return int(info[AC_shear_delta_y]/info[AC_ds.y]);
+	return int(info[AC_shear_delta_y]/info[AC_ds].y);
 }
 
 int

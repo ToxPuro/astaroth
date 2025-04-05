@@ -2611,10 +2611,6 @@ acGridPeriodicBoundconds(const Stream stream)
 #else
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
-
-    acGridSynchronizeStream(stream);
-    // Active halo exchange tasks use send() instead of exchange() because there is an active eager
-    // receive that needs to be used. A new eager receive is posted after the exchange.
     for (auto& halo_task : grid.default_tasks->halo_tasks) {
         halo_task->syncVBA();
     	if(halo_task->sendingToItself())
@@ -2623,12 +2619,7 @@ acGridPeriodicBoundconds(const Stream stream)
     for (auto& halo_task : grid.default_tasks->halo_tasks) {
     	if(halo_task->sendingToItself()) continue;
         halo_task->pack();
-        if (halo_task->active) {
-            halo_task->send();
-        }
-        else {
-            halo_task->exchange();
-        }
+        halo_task->exchange();
     }
 
     for (auto& halo_task : grid.default_tasks->halo_tasks) {
@@ -2636,9 +2627,6 @@ acGridPeriodicBoundconds(const Stream stream)
         halo_task->wait_recv();
         halo_task->unpack();
         halo_task->sync();
-        if (halo_task->active) {
-            halo_task->receive();
-        }
     }
 
     for (auto& halo_task : grid.default_tasks->halo_tasks) {
