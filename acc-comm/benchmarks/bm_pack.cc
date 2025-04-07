@@ -1,9 +1,10 @@
 #include <cstdlib>
 #include <iostream>
-#include <type_traits>
+#include <mpi.h>
 
 #include "acm/detail/convert.h"
 #include "acm/detail/errchk_mpi.h"
+#include "acm/detail/math_utils.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
 #include "acm/detail/pack.h"
@@ -17,87 +18,376 @@
 
 #include "bm.h"
 
-template <typename T, typename Allocator> class mpi_pack_s {
-  private:
-    MPI_Comm m_comm{MPI_COMM_NULL};
+namespace ac::mpi {
 
-    std::vector<ac::segment>                m_segments;
-    std::vector<MPI_Datatype>               m_subarrays;
-    std::vector<ac::ndbuffer<T, Allocator>> m_pack_buffers;
+class comm {
+  private:
+    std::unique_ptr<MPI_Comm, std::function<void(MPI_Comm*)>> m_comm;
 
   public:
-    mpi_pack_s(const MPI_Comm& parent_comm, const ac::shape& nn, const ac::index& rr,
-               const std::vector<ac::segment>& segments)
-        : m_segments{segments}
+    comm()
+        : m_comm{new MPI_Comm{MPI_COMM_NULL}, [](MPI_Comm* ptr) {
+                     if (*ptr != MPI_COMM_NULL)
+                         ERRCHK_MPI_API(MPI_Comm_free(ptr));
+                     delete ptr;
+                 }}
     {
-        m_comm = ac::mpi::cart_comm_create(parent_comm, nn);
-
-        const auto mm{ac::mpi::get_local_mm(m_comm, nn, rr)};
-        for (const auto& segment : m_segments) {
-            m_subarrays.push_back(ac::mpi::subarray_create(mm,
-                                                           segment.dims,
-                                                           segment.offset,
-                                                           ac::mpi::get_dtype<T>()));
-            m_pack_buffers.push_back(ac::ndbuffer<T, Allocator>{segment.dims});
-        }
-    }
-    ~mpi_pack_s()
-    {
-        for (auto& subarray : m_subarrays)
-            ac::mpi::subarray_destroy(&subarray);
-        ac::mpi::cart_comm_destroy(&m_comm);
     }
 
-    mpi_pack_s(const mpi_pack_s&)            = delete; // Copy constructor
-    mpi_pack_s& operator=(const mpi_pack_s&) = delete; // Copy assignment operator
-    mpi_pack_s(mpi_pack_s&&)                 = delete; // Move constructor
-    mpi_pack_s& operator=(mpi_pack_s&&)      = delete; // Move assignment operator
-
-    void pack(const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    explicit comm(const MPI_Comm& parent_comm, const bool take_ownership = false)
+        : comm{}
     {
-        for (size_t j{0}; j < inputs.size(); ++j) {
-            for (size_t i{0}; i < m_pack_buffers.size(); ++i) {
-                int          position{0};
-                const size_t total_bytes{sizeof(T) * prod(m_segments[i].dims)};
-
-                ERRCHK_MPI_API(MPI_Pack(inputs[j].data(),
-                                        1,
-                                        m_subarrays[i],
-                                        m_pack_buffers[i].data(),
-                                        as<int>(total_bytes),
-                                        &position,
-                                        m_comm));
-                ERRCHK_MPI(as<size_t>(position) == total_bytes);
-            }
-        }
+        if (take_ownership)
+            *m_comm = parent_comm;
+        else
+            ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, m_comm.get()));
     }
-    void unpack(const ac::shape& mm, std::vector<ac::mr::pointer<T, Allocator>>& outputs)
-    {
-        for (size_t j{0}; j < outputs.size(); ++j) {
-            for (size_t i{0}; i < m_pack_buffers.size(); ++i) {
-                int          position{0};
-                const size_t total_bytes{sizeof(T) * prod(m_segments[i].dims)};
 
-                ERRCHK_MPI_API(MPI_Unpack(m_pack_buffers[i].data(),
-                                          as<int>(total_bytes),
-                                          &position,
-                                          outputs[j].data(),
-                                          1,
-                                          m_subarrays[i],
-                                          m_comm));
-                ERRCHK_MPI(as<size_t>(position) == total_bytes);
-            }
-        }
+    const MPI_Comm& get() const { return *m_comm; }
+};
+
+class cart_comm {
+  private:
+    comm      m_comm;
+    ac::shape m_global_nn;
+
+  public:
+    cart_comm(const MPI_Comm& parent_comm, const ac::shape& global_nn)
+        : m_comm{ac::mpi::cart_comm_create(parent_comm, global_nn), true}, m_global_nn{global_nn}
+    {
+    }
+
+    const MPI_Comm& get() const { return m_comm.get(); }
+    ac::shape       global_nn() const { return m_global_nn; }
+};
+
+class datatype {
+  private:
+    std::unique_ptr<MPI_Datatype, std::function<void(MPI_Datatype*)>> m_datatype;
+
+  public:
+    datatype()
+        : m_datatype{new MPI_Datatype{MPI_DATATYPE_NULL}, [](MPI_Datatype* ptr) {
+                         ERRCHK_MPI(ptr != nullptr);
+                         if (*ptr != MPI_DATATYPE_NULL)
+                             ERRCHK_MPI_API(MPI_Type_free(ptr));
+                         delete ptr;
+                     }}
+    {
+    }
+
+    explicit datatype(const MPI_Datatype& parent_datatype, const bool take_ownership = false)
+        : datatype{}
+    {
+        if (take_ownership)
+            *m_datatype = parent_datatype;
+        else
+            ERRCHK_MPI_API(MPI_Type_dup(parent_datatype, m_datatype.get()));
+    }
+
+    const MPI_Datatype& get() const { return *m_datatype; }
+};
+
+template <typename T> class subarray {
+  private:
+    datatype m_datatype;
+
+  public:
+    subarray(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset)
+        : m_datatype{ac::mpi::subarray_create(dims, subdims, offset, ac::mpi::get_dtype<T>()), true}
+    {
+    }
+
+    const MPI_Datatype& get() const { return m_datatype.get(); }
+};
+
+class request {
+  private:
+    std::unique_ptr<MPI_Request, std::function<void(MPI_Request*)>> m_req;
+
+  public:
+    /**
+     * Wrap an MPI_Request.
+     * Does not take ownership, starts only to track the resource and raises an error
+     * if request goes out of scope without being released/waited upon.
+     */
+    explicit request(const MPI_Request& req = MPI_REQUEST_NULL)
+        : m_req{new MPI_Request{req}, [](MPI_Request* ptr) {
+                    ERRCHK_MPI(*ptr == MPI_REQUEST_NULL);
+                    delete ptr;
+                }}
+    {
+    }
+
+    void wait() noexcept
+    {
+        ERRCHK_MPI(*m_req != MPI_REQUEST_NULL);
+        ERRCHK_MPI_API(MPI_Wait(m_req.get(), MPI_STATUS_IGNORE));
+        ERRCHK_MPI(*m_req == MPI_REQUEST_NULL);
     }
 };
 
-template <typename T, typename Allocator> class acm_pack_s {
+} // namespace ac::mpi
+
+template <typename T, typename Allocator> class mpi_pack_strategy {
+  private:
+    ac::mpi::comm              m_comm;
+    ac::mpi::subarray<T>       m_subarray;
+    ac::ndbuffer<T, Allocator> m_pack_buffer;
+
+  public:
+    mpi_pack_strategy(const MPI_Comm& parent_comm, const ac::shape& dims, const ac::shape subdims,
+                      const ac::index& offset)
+        : m_comm{parent_comm}, m_subarray{dims, subdims, offset}, m_pack_buffer{subdims}
+    {
+    }
+
+    void pack(const ac::mr::pointer<T, Allocator>& input)
+    {
+        int bytes{-1};
+        ERRCHK_MPI_API(MPI_Type_size(m_subarray.get(), &bytes));
+        ERRCHK_MPI(as<size_t>(bytes) == sizeof(T) * m_pack_buffer.size());
+
+        int position{0};
+        ERRCHK_MPI_API(MPI_Pack(input.data(),
+                                1,
+                                m_subarray.get(),
+                                m_pack_buffer.data(),
+                                bytes,
+                                &position,
+                                m_comm.get()));
+        ERRCHK_MPI(position == bytes);
+    }
+
+    void unpack(ac::mr::pointer<T, Allocator> output)
+    {
+        int bytes{-1};
+        ERRCHK_MPI_API(MPI_Type_size(m_subarray.get(), &bytes));
+        ERRCHK_MPI(as<size_t>(bytes) == sizeof(T) * m_pack_buffer.size());
+
+        int position{0};
+        ERRCHK_MPI_API(MPI_Unpack(m_pack_buffer.data(),
+                                  bytes,
+                                  &position,
+                                  output.data(),
+                                  1,
+                                  m_subarray.get(),
+                                  m_comm.get()));
+        ERRCHK_MPI(position == bytes);
+    }
+};
+
+template <typename T, typename Allocator> class mpi_pack_strategy_packed {
+  private:
+    std::vector<mpi_pack_strategy<T, Allocator>> m_tasks;
+
+  public:
+    mpi_pack_strategy_packed(const MPI_Comm& parent_comm, const ac::shape& dims,
+                             const std::vector<ac::segment>& segments)
+    {
+        for (const auto& segment : segments)
+            m_tasks.push_back({parent_comm, dims, segment.dims, segment.offset});
+    }
+
+    void pack(const ac::mr::pointer<T, Allocator>& input)
+    {
+        for (auto& task : m_tasks)
+            task.pack(input);
+    }
+
+    void unpack(ac::mr::pointer<T, Allocator> output)
+    {
+        for (auto& task : m_tasks)
+            task.unpack(output);
+    }
+};
+
+template <typename T, typename Allocator> class mpi_pack_strategy_batched {
+  private:
+    std::vector<mpi_pack_strategy_packed<T, Allocator>> m_tasks;
+
+  public:
+    mpi_pack_strategy_batched(const MPI_Comm& parent_comm, const ac::shape& dims,
+                              const std::vector<ac::segment>& segments, const size_t ninputs)
+    {
+        for (size_t i{0}; i < ninputs; ++i)
+            m_tasks.push_back({parent_comm, dims, segments});
+    }
+
+    void pack(const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    {
+        ERRCHK_MPI(inputs.size() == m_tasks.size());
+
+        for (size_t i{0}; i < inputs.size(); ++i)
+            m_tasks[i].pack(inputs[i]);
+    }
+
+    void unpack(std::vector<ac::mr::pointer<T, Allocator>> outputs)
+    {
+        ERRCHK_MPI(outputs.size() == m_tasks.size());
+
+        for (size_t i{0}; i < outputs.size(); ++i)
+            m_tasks[i].unpack(outputs[i]);
+    }
+};
+
+template <typename T, typename Allocator> class acm_pack_strategy {
+  private:
+    ac::segment              m_segment;
+    ac::buffer<T, Allocator> m_pack_buffer;
+
+  public:
+    acm_pack_strategy(const ac::segment& segment)
+        : m_segment{segment}, m_pack_buffer{prod(segment.dims)}
+    {
+    }
+
+    void pack(const ac::shape& dims, const ac::mr::pointer<T, Allocator>& input)
+    {
+        acm::pack(dims, m_segment.dims, m_segment.offset, {input}, m_pack_buffer.get());
+    }
+
+    void unpack(const ac::shape& dims, ac::mr::pointer<T, Allocator>& output)
+    {
+        acm::unpack(m_pack_buffer.get(), dims, m_segment.dims, m_segment.offset, {output});
+    }
+};
+
+template <typename T, typename Allocator> class acm_pack_strategy_grouped {
+  private:
+    std::vector<acm_pack_strategy<T, Allocator>> m_packets;
+
+  public:
+    acm_pack_strategy_grouped(const std::vector<ac::segment>& segments)
+    {
+        for (const auto& segment : segments)
+            m_packets.push_back(segment);
+    }
+
+    void pack(const ac::shape& dims, const ac::mr::pointer<T, Allocator>& input)
+    {
+        for (auto& packet : m_packets)
+            packet.pack(dims, input);
+    }
+
+    void unpack(const ac::shape& dims, ac::mr::pointer<T, Allocator> output)
+    {
+        for (auto& packet : m_packets)
+            packet.unpack(dims, output);
+    }
+};
+
+template <typename T, typename Allocator> class acm_pack_strategy_grouped_batched {
+  private:
+    std::vector<acm_pack_strategy_grouped<T, Allocator>> m_packets;
+
+  public:
+    acm_pack_strategy_grouped_batched(const size_t                    nfields,
+                                      const std::vector<ac::segment>& segments)
+    {
+        for (size_t i{0}; i < nfields; ++i)
+            m_packets.push_back(segments);
+    }
+
+    void pack(const ac::shape& dims, const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    {
+        ERRCHK(inputs.size() == m_packets.size());
+
+        for (size_t i{0}; i < inputs.size(); ++i)
+            m_packets[i].pack(dims, inputs[i]);
+    }
+
+    void unpack(const ac::shape& dims, std::vector<ac::mr::pointer<T, Allocator>> outputs)
+    {
+        ERRCHK(outputs.size() == m_packets.size());
+
+        for (size_t i{0}; i < outputs.size(); ++i)
+            m_packets[i].unpack(dims, outputs[i]);
+    }
+};
+
+template <typename T, typename Allocator> class acm_pack_strategy_packed {
+  private:
+    size_t                   m_npacked;
+    ac::segment              m_segment;
+    ac::buffer<T, Allocator> m_pack_buffer;
+
+  public:
+    acm_pack_strategy_packed(const size_t npacked, const ac::segment& segment)
+        : m_npacked{npacked}, m_segment{segment}, m_pack_buffer{npacked * prod(segment.dims)}
+    {
+    }
+
+    void pack(const ac::shape& dims, const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    {
+        ERRCHK(inputs.size() == m_npacked);
+        acm::pack(dims, m_segment.dims, m_segment.offset, inputs, m_pack_buffer.get());
+    }
+
+    void unpack(const ac::shape& dims, std::vector<ac::mr::pointer<T, Allocator>>& outputs)
+    {
+        ERRCHK(outputs.size() == m_npacked);
+        acm::unpack(m_pack_buffer.get(), dims, m_segment.dims, m_segment.offset, outputs);
+    }
+};
+
+template <typename T, typename Allocator> class acm_pack_strategy_packed_batched {
+  private:
+    std::vector<acm_pack_strategy_packed<T, Allocator>> m_packets;
+
+  public:
+    acm_pack_strategy_packed_batched(const size_t npacked, const std::vector<ac::segment>& segments)
+    {
+        for (const auto& segment : segments)
+            m_packets.push_back({npacked, segment});
+    }
+
+    void pack(const ac::shape& mm, const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    {
+        for (auto& packet : m_packets)
+            packet.pack(mm, inputs);
+    }
+    void unpack(const ac::shape& mm, std::vector<ac::mr::pointer<T, Allocator>> outputs)
+    {
+        for (auto& packet : m_packets)
+            packet.unpack(mm, outputs);
+    }
+};
+
+template <typename T, typename Allocator> class acm_pack_strategy_batched {
+  private:
+    size_t                                m_npacked;
+    std::vector<ac::segment>              m_segments;
+    std::vector<ac::buffer<T, Allocator>> m_pack_buffers;
+
+  public:
+    acm_pack_strategy_batched(const size_t npacked, const std::vector<ac::segment>& segments)
+        : m_npacked{npacked}, m_segments{segments}
+    {
+        for (const auto& segment : m_segments)
+            m_pack_buffers.push_back(ac::buffer<T, Allocator>{npacked * prod(segment.dims)});
+    }
+
+    void pack(const ac::shape& mm, const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    {
+        ERRCHK(inputs.size() == m_npacked);
+        acm::pack_batched(mm, inputs, m_segments, ac::unwrap_get(m_pack_buffers));
+    }
+    void unpack(const ac::shape& mm, std::vector<ac::mr::pointer<T, Allocator>> outputs)
+    {
+        ERRCHK(outputs.size() == m_npacked);
+        for (size_t i{0}; i < m_pack_buffers.size(); ++i)
+            acm::unpack_batched(m_segments, ac::unwrap_get(m_pack_buffers), mm, outputs);
+    }
+};
+
+template <typename T, typename Allocator> class old_acm_pack_strategy {
   private:
     std::vector<ac::segment>                m_segments;
     std::vector<ac::ndbuffer<T, Allocator>> m_pack_buffers;
 
   public:
-    acm_pack_s(const std::vector<ac::segment>& segments)
+    old_acm_pack_strategy(const std::vector<ac::segment>& segments)
         : m_segments{segments}
     {
         for (const auto& segment : m_segments)
@@ -126,13 +416,13 @@ template <typename T, typename Allocator> class acm_pack_s {
     }
 };
 
-template <typename T, typename Allocator> class acm_pack_packed_s {
+template <typename T, typename Allocator> class old_acm_pack_strategy_packed {
   private:
     std::vector<ac::segment>                m_segments;
     std::vector<ac::ndbuffer<T, Allocator>> m_pack_buffers;
 
   public:
-    acm_pack_packed_s(const size_t ninputs, const std::vector<ac::segment>& segments)
+    old_acm_pack_strategy_packed(const size_t ninputs, const std::vector<ac::segment>& segments)
         : m_segments{segments}
     {
         for (const auto& segment : m_segments)
@@ -159,13 +449,13 @@ template <typename T, typename Allocator> class acm_pack_packed_s {
     }
 };
 
-template <typename T, typename Allocator> class acm_pack_batched_s {
+template <typename T, typename Allocator> class old_acm_pack_strategy_batched {
   private:
     std::vector<ac::segment>                m_segments;
     std::vector<ac::ndbuffer<T, Allocator>> m_pack_buffers;
 
   public:
-    acm_pack_batched_s(const size_t ninputs, const std::vector<ac::segment>& segments)
+    old_acm_pack_strategy_batched(const size_t ninputs, const std::vector<ac::segment>& segments)
         : m_segments{segments}
     {
         for (const auto& segment : m_segments)
@@ -188,12 +478,14 @@ main(int argc, char* argv[])
 {
     ac::mpi::init_funneled();
     try {
-        std::cerr << "Usage: ./bm_pack <dim> <radius> <ndims> <nsamples> <jobid>" << std::endl;
+        std::cerr << "Usage: ./bm_pack <dim> <radius> <ndims> <ninputs> <nsamples> <jobid>"
+                  << std::endl;
         const size_t dim{(argc > 1) ? std::stoull(argv[1]) : 32};
         const size_t radius{(argc > 2) ? std::stoull(argv[2]) : 3};
         const size_t ndims{(argc > 3) ? std::stoull(argv[3]) : 3};
-        const size_t nsamples{(argc > 4) ? std::stoull(argv[4]) : 10};
-        const size_t jobid{(argc > 5) ? std::stoull(argv[5]) : 0};
+        const size_t ninputs{(argc > 4) ? std::stoull(argv[4]) : 4};
+        const size_t nsamples{(argc > 5) ? std::stoull(argv[5]) : 10};
+        const size_t jobid{(argc > 6) ? std::stoull(argv[6]) : 0};
 
         const auto nn{ac::make_shape(ndims, dim)};
         const auto rr{ac::make_index(ndims, radius)};
@@ -202,6 +494,7 @@ main(int argc, char* argv[])
         PRINT_DEBUG(dim);
         PRINT_DEBUG(radius);
         PRINT_DEBUG(ndims);
+        PRINT_DEBUG(ninputs);
         PRINT_DEBUG(nsamples);
         PRINT_DEBUG(jobid);
         PRINT_DEBUG(mm);
@@ -211,7 +504,7 @@ main(int argc, char* argv[])
         const auto output_file{"bm-pack.csv"};
         FILE*      fp{fopen(output_file, "w")};
         ERRCHK(fp);
-        fprintf(fp, "impl,dim,radius,ndims,sample,nsamples,jobid,ns\n");
+        fprintf(fp, "impl,dim,radius,ndims,ninputs,sample,nsamples,jobid,ns\n");
         ERRCHK(fclose(fp) == 0);
 
         auto print = [&](const std::string&                                label,
@@ -224,6 +517,7 @@ main(int argc, char* argv[])
                 fprintf(fp, ",%zu", dim);
                 fprintf(fp, ",%zu", radius);
                 fprintf(fp, ",%zu", ndims);
+                fprintf(fp, ",%zu", ninputs);
                 fprintf(fp, ",%zu", i);
                 fprintf(fp, ",%zu", nsamples);
                 fprintf(fp, ",%zu", jobid);
@@ -236,35 +530,55 @@ main(int argc, char* argv[])
         // Setup the benchmark
         using T         = double;
         using Allocator = ac::mr::device_allocator;
-        constexpr size_t ninputs{3};
 
-        // Inputs
-        std::vector<ac::ndbuffer<T, Allocator>> input_buffers;
-        for (size_t i{0}; i < ninputs; ++i)
-            input_buffers.push_back(ac::ndbuffer<T, Allocator>{mm});
-        auto inputs{ac::unwrap_get(input_buffers)};
+        // Buffers
+        std::vector<ac::ndbuffer<T, Allocator>> inputs;
+        std::vector<ac::ndbuffer<T, Allocator>> outputs;
+        std::vector<ac::ndbuffer<T, Allocator>> refs;
+        for (size_t i{0}; i < ninputs; ++i) {
+            inputs.push_back(ac::ndbuffer<T, Allocator>{mm});
+            outputs.push_back(ac::ndbuffer<T, Allocator>{mm});
+            refs.push_back(ac::ndbuffer<T, Allocator>{mm});
+        }
+        ERRCHK_MPI(inputs.size() == refs.size());
 
-        // Segments and outputs
-        const auto                              segments{prune(partition(mm, nn, rr), nn, rr)};
-        std::vector<ac::ndbuffer<T, Allocator>> output_buffers;
-        for (const auto& segment : segments)
-            output_buffers.push_back(ac::ndbuffer<T, Allocator>{segment.dims});
-        auto outputs{ac::unwrap_get(output_buffers)};
-        ERRCHK_MPI(segments.size() == outputs.size());
+        // Segments
+        const auto segments{prune(partition(mm, nn, rr), nn, rr)};
 
-        // MPI subarrays
-        MPI_Comm                  cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD, nn)};
-        std::vector<MPI_Datatype> subarrays(segments.size(), MPI_DATATYPE_NULL);
-        for (size_t i{0}; i < segments.size(); ++i)
-            subarrays[i] = ac::mpi::subarray_create(mm,
-                                                    segments[i].dims,
-                                                    segments[i].offset,
-                                                    ac::mpi::get_dtype<T>());
+        // Initialize inputs and refs
+        auto init = [](std::vector<ac::ndbuffer<T, Allocator>>& inputs,
+                       std::vector<ac::ndbuffer<T, Allocator>>& refs) {
+            // Initialize inputs
+            for (size_t i{0}; i < inputs.size(); ++i)
+                std::iota(inputs[i].begin(), inputs[i].end(), i * inputs[i].size());
 
-        // Functions
-        auto init = [&inputs]() {
+            // Initialize refs
+            for (size_t i{0}; i < inputs.size(); ++i)
+                migrate(inputs[i], refs[i]);
+        };
+
+        // Helper functions
+        auto reset_outputs = [](const std::vector<ac::ndbuffer<T, Allocator>>& inputs,
+                                const std::vector<ac::segment>&                segments,
+                                std::vector<ac::ndbuffer<T, Allocator>>&       outputs) {
+            ERRCHK_MPI(inputs.size() == outputs.size());
+            for (size_t i{0}; i < inputs.size(); ++i) {
+                migrate(inputs[i], outputs[i]);
+                for (const auto& segment : segments)
+                    ac::fill<T>(-1, segment.dims, segment.offset, outputs[i]);
+            }
+        };
+        auto verify = [](const std::vector<ac::ndbuffer<T, Allocator>>& outputs,
+                         const std::vector<ac::ndbuffer<T, Allocator>>& refs) {
+            ERRCHK_MPI(outputs.size() == refs.size());
+
+            for (size_t j{0}; j < outputs.size(); ++j)
+                for (size_t i{0}; i < outputs[j].size(); ++i)
+                    ERRCHK_MPI(within_machine_epsilon(outputs[j][i], refs[j][i]));
+        };
+        auto init_random = [&]() {
             for (auto& input : inputs)
-                bm::randomize(input);
+                bm::randomize(input.get());
         };
         auto sync = []() {
 #if defined(ACM_DEVICE_ENABLED)
@@ -272,90 +586,82 @@ main(int argc, char* argv[])
 #endif
             ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         };
-
-        auto bench_mpi = [&inputs, &segments, &subarrays, &outputs, &cart_comm]() {
-            for (size_t j{0}; j < inputs.size(); ++j) {
-                for (size_t i{0}; i < outputs.size(); ++i) {
-                    int          position{0};
-                    const size_t total_bytes{sizeof(T) * prod(segments[i].dims)};
-
-                    ERRCHK_MPI_API(MPI_Pack(inputs[j].data(),
-                                            1,
-                                            subarrays[i],
-                                            outputs[i].data(),
-                                            as<int>(total_bytes),
-                                            &position,
-                                            cart_comm));
-                }
-            }
-        };
-        auto bench_acm = [&segments, &mm, &inputs, &outputs]() {
-            for (size_t j{0}; j < inputs.size(); ++j)
-                for (size_t i{0}; i < outputs.size(); ++i)
-                    acm::pack(mm, segments[i].dims, segments[i].offset, {inputs[j]}, outputs[i]);
-        };
-        auto bench_acm_packed = [&segments, &mm, &inputs, &outputs]() {
-            for (size_t i{0}; i < segments.size(); ++i)
-                acm::pack(mm, segments[i].dims, segments[i].offset, inputs, outputs[i]);
-        };
-        auto bench_acm_packed_batched = [&segments, &mm, &inputs, &outputs]() {
-            acm::pack_batched(mm, inputs, segments, outputs);
+        auto display = [](const std::vector<ac::ndbuffer<T, Allocator>>& bufs) {
+            for (const auto& buf : bufs)
+                buf.display();
         };
 
-        // Verify
-        std::vector<ac::host_ndbuffer<T>> ref_buffers;
-        for (const auto& input_buffer : input_buffers)
-            ref_buffers.push_back(input_buffer.to_host());
-        auto refs{ac::unwrap_get(ref_buffers)};
+        // Verify and benchmark
+        const auto input_ptrs{ac::unwrap_get(inputs)};
 
-        T initial_value{1};
-        for (auto& ref : ref_buffers) {
-            std::iota(ref.begin(), ref.end(), initial_value);
-            initial_value += ref.size();
+        // MPI packer
+        {
+            mpi_pack_strategy_batched<T, Allocator> mpi_packer{MPI_COMM_WORLD,
+                                                               mm,
+                                                               segments,
+                                                               inputs.size()};
+
+            auto bench_mpi = [&mpi_packer, &input_ptrs]() { mpi_packer.pack(input_ptrs); };
+
+            // Verify that the benchmarked function works correctly
+            init(inputs, refs);                       // Init inputs and refs
+            bench_mpi();                              // Pack inputs
+            reset_outputs(inputs, segments, outputs); // Reset outputs
+            mpi_packer.unpack(ac::unwrap_get(outputs));
+            verify(outputs, refs);
+            // Run the benchmark if verification succeeded
+            print("mpi-pack", bm::benchmark(init_random, bench_mpi, sync, nsamples));
         }
 
-        auto reset_inputs = [&]() {
-            for (size_t i{0}; i < ref_buffers.size(); ++i)
-                ac::mr::copy(refs[i], inputs[i]);
-        };
-        auto verify = [&]() {
-            for (size_t i{0}; i < inputs.size(); ++i)
-                for (size_t j{0}; j < inputs[i].size(); ++j)
-                    ERRCHK(within_machine_epsilon(inputs[i][j], refs[i][j]));
-        };
+        // ACM
+        {
+            acm_pack_strategy_grouped_batched<T, Allocator> acm_packer{inputs.size(), segments};
+            auto bench_acm = [&acm_packer, &mm, &input_ptrs]() { acm_packer.pack(mm, input_ptrs); };
 
-        acm_pack_s<T, Allocator>         acm_pack{segments};
-        acm_pack_packed_s<T, Allocator>  acm_pack_packed{inputs.size(), segments};
-        acm_pack_batched_s<T, Allocator> acm_pack_batched{inputs.size(), segments};
-        mpi_pack_s<T, Allocator>         mpi_pack{MPI_COMM_WORLD, nn, rr, segments};
+            // Verify that the benchmarked function works correctly
+            init(inputs, refs);                       // Init inputs and refs
+            bench_acm();                              // Pack inputs
+            reset_outputs(inputs, segments, outputs); // Reset outputs
+            acm_packer.unpack(mm, ac::unwrap_get(outputs));
+            verify(outputs, refs);
+            // Run the benchmark if verification succeeded
+            print("acm-pack", bm::benchmark(init_random, bench_acm, sync, nsamples));
+        }
 
-        auto bm_acm         = [&]() { acm_pack.pack(mm, inputs); };
-        auto bm_acm_packed  = [&]() { acm_pack_packed.pack(mm, inputs); };
-        auto bm_acm_batched = [&]() { acm_pack_batched.pack(mm, inputs); };
-        auto bm_mpi         = [&]() { mpi_pack.pack(inputs); };
+        // ACM packed
+        {
+            acm_pack_strategy_packed_batched<T, Allocator> acm_packer_packed{inputs.size(),
+                                                                             segments};
+            auto bench_acm_packed = [&acm_packer_packed, &mm, &input_ptrs]() {
+                acm_packer_packed.pack(mm, input_ptrs);
+            };
 
-        print("acm", bm::benchmark(init, bm_acm, sync, nsamples));
-        print("acm_packed", bm::benchmark(init, bm_acm_packed, sync, nsamples));
-        print("acm_batched", bm::benchmark(init, bm_acm_batched, sync, nsamples));
-        print("mpi", bm::benchmark(init, bm_mpi, sync, nsamples));
+            // Verify that the benchmarked function works correctly
+            init(inputs, refs);                       // Init inputs and refs
+            bench_acm_packed();                       // Pack inputs
+            reset_outputs(inputs, segments, outputs); // Reset outputs
+            acm_packer_packed.unpack(mm, ac::unwrap_get(outputs));
+            verify(outputs, refs);
+            // Run the benchmark if verification succeeded
+            print("acm-pack-packed", bm::benchmark(init_random, bench_acm_packed, sync, nsamples));
+        }
 
-        acm_pack.pack(mm, inputs);
-        const auto results{bm::benchmark(
-            init, [&]() { acm_pack.pack(mm, inputs); }, sync, 10)};
-        print("test", results);
-
-        reset_inputs();
-        acm_pack.pack(mm, inputs);
-        acm_pack.unpack(mm, inputs);
-        input_buffers[0].display();
-        // verify(); // TODO scramble
-
-        // Cleanup
-        for (auto& subarray : subarrays)
-            ac::mpi::subarray_destroy(&subarray);
-        subarrays.clear();
-
-        ac::mpi::cart_comm_destroy(&cart_comm);
+        // ACM packer batched
+        {
+            acm_pack_strategy_batched<T, Allocator> acm_packer_batched{inputs.size(), segments};
+            auto bench_acm_batched = [&acm_packer_batched, &mm, &input_ptrs]() {
+                acm_packer_batched.pack(mm, input_ptrs);
+            };
+            // Verify that the benchmarked function works correctly
+            init(inputs, refs);                       // Init inputs and refs
+            bench_acm_batched();                      // Pack inputs
+            reset_outputs(inputs, segments, outputs); // Reset outputs
+            acm_packer_batched.unpack(mm, ac::unwrap_get(outputs));
+            verify(outputs, refs);
+            // Run the benchmark if verification succeeded
+            print("acm-pack-batched",
+                  bm::benchmark(init_random, bench_acm_batched, sync, nsamples));
+        }
     }
     catch (const std::exception& e) {
         ac::mpi::abort();
