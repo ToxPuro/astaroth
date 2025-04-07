@@ -430,7 +430,7 @@ main(int argc, char* argv[])
                 fprintf(fp, ",%zu", i);
                 fprintf(fp, ",%zu", nsamples);
                 fprintf(fp, ",%zu", jobid);
-                fprintf(fp, ",%lld", results[i]);
+                fprintf(fp, ",%lld", as<long long>(results[i]));
                 fprintf(fp, "\n");
             }
             ERRCHK(fclose(fp) == 0);
