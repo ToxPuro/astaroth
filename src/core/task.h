@@ -233,18 +233,22 @@ typedef class ComputeTask : public Task {
 } ComputeTask;
 
 // Communication
+enum class HaloMessageType { Send, Receive};
 typedef struct HaloMessage {
+    HaloMessageType type;
     int length;
     AcRealPacked* data;
+    size_t bytes;
 #if !(USE_CUDA_AWARE_MPI)
     AcRealPacked* data_pinned;
     bool pinned = false; // Set if data was received to pinned memory
 #endif
-    MPI_Request request;
+    std::vector<MPI_Request> requests;
     int tag;
     int non_namespaced_tag;
+    std::vector<int> counterpart_ranks;
 
-    HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag, const bool shear_periodic);
+    HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     ~HaloMessage();
 #if !(USE_CUDA_AWARE_MPI)
     void pin(const Device device, const cudaStream_t stream);
@@ -252,12 +256,14 @@ typedef struct HaloMessage {
 #endif
 } HaloMessage;
 
+
 typedef struct HaloMessageSwapChain {
     int buf_idx;
     std::vector<HaloMessage> buffers;
 
     HaloMessageSwapChain();
-    HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag, const bool shear_periodic);
+    HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
+    void update_counterpart_ranks(const std::vector<int> counterpart_ranks);
 
     HaloMessage* get_current_buffer();
     HaloMessage* get_fresh_buffer();
@@ -267,14 +273,13 @@ enum class HaloExchangeState { Waiting = Task::wait_state, Packing, Exchanging, 
 
 typedef class HaloExchangeTask : public Task {
   private:
-    int counterpart_rank;
     bool shear_periodic;
     HaloMessageSwapChain recv_buffers;
     HaloMessageSwapChain send_buffers;
 
   public:
     HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag, AcGridInfo grid_info,
-                     uint3_64 decomp, Device device_,
+                     Device device_,
                      std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_);
     ~HaloExchangeTask();
     HaloExchangeTask(const HaloExchangeTask& other)            = delete;

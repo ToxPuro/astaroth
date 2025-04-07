@@ -151,7 +151,7 @@ main(int argc, char** argv)
 
     	    if (test == TEST_WEAK_SCALING) {
     	        fprintf(stdout, "Running weak scaling benchmarks.\n");
-    	        const auto decomp = acDecompose(nprocs,info[AC_decompose_strategy]);
+    	        const auto decomp = acDecompose(nprocs,info);
     	        info[AC_ngrid] = (int3){
     	        			decomp.x*nx,
     	        			decomp.y*ny,
@@ -165,7 +165,7 @@ main(int argc, char** argv)
     	    }
     	    else {
     	        fprintf(stdout, "Running strong scaling benchmarks.\n");
-    	        const auto decomp = acDecompose(nprocs,info[AC_decompose_strategy]);
+    	        const auto decomp = acDecompose(nprocs,info);
     	        info[AC_ngrid] = (int3){
     	        			nx,
     	        			ny,

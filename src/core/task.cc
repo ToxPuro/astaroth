@@ -66,6 +66,12 @@ static ac_pid()
     return pid;
 }
 
+AcMeshInfo
+ac_get_info()
+{
+        return acDeviceGetLocalConfig(acGridGetDevice());
+}
+
 #define fatal(MESSAGE, ...) \
         { \
 	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
@@ -73,6 +79,7 @@ static ac_pid()
 	} 
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
+#define MAX_HALO_TAG (1000) //"Namespacing" the MPI tag space to avoid collisions in case of multiple messages
 
 #if AC_USE_HIP
 template <typename T, typename... Args>
@@ -882,28 +889,34 @@ ComputeTask::advance(const TraceFile* trace_file)
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-HaloMessage::HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag_, const bool shear_periodic)
+HaloMessage::HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag_, const std::vector<int> counterpart_ranks_, const HaloMessageType type_)
 {
+    type         = type_;
     length       = dims.x * dims.y * dims.z * num_vars;
-    if(shear_periodic) length *= 4;
+    counterpart_ranks = counterpart_ranks_;
 
     tag = tag0 + tag_;
+    ERRCHK_ALWAYS(tag < MAX_HALO_TAG);
     non_namespaced_tag = tag_;
 
-    size_t bytes = length * sizeof(AcRealPacked);
+    bytes = length * sizeof(AcRealPacked);
+    if(type == HaloMessageType::Receive) 
+    {
+	    bytes *= counterpart_ranks.size();
+    }
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data, bytes));
 #if !(USE_CUDA_AWARE_MPI)
     ERRCHK_CUDA_ALWAYS(cudaMallocHost((void**)&data_pinned, bytes));
 #endif
-    request = MPI_REQUEST_NULL;
+    std::vector<MPI_Request>empty{};
+    requests = empty;
+    for(size_t i = 0; i < counterpart_ranks.size() ; ++i)
+	requests.push_back(MPI_REQUEST_NULL);
 }
 
 HaloMessage::~HaloMessage()
 {
-    if (request != MPI_REQUEST_NULL) {
-        MPI_Wait(&request, MPI_STATUS_IGNORE);
-    }
-
+    MPI_Waitall(requests.size(),requests.data(), MPI_STATUSES_IGNORE);
     length = -1;
     cudaFree(data);
 #if !(USE_CUDA_AWARE_MPI)
@@ -918,7 +931,6 @@ HaloMessage::pin(const Device device, const cudaStream_t stream)
 {
     set_device(device);
     pinned       = true;
-    size_t bytes = length * sizeof(AcRealPacked);
     ERRCHK_CUDA(cudaMemcpyAsync(data_pinned, data, bytes, cudaMemcpyDefault, stream));
 }
 
@@ -930,7 +942,6 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 
     set_device(device);
     pinned       = false;
-    size_t bytes = length * sizeof(AcRealPacked);
     ERRCHK_CUDA(cudaMemcpyAsync(data, data_pinned, bytes, cudaMemcpyDefault, stream));
 }
 #endif
@@ -938,13 +949,22 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 // HaloMessageSwapChain
 HaloMessageSwapChain::HaloMessageSwapChain() {}
 
-HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag, const bool shear_periodic)
+HaloMessageSwapChain::HaloMessageSwapChain(Volume dims, size_t num_vars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type)
     : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        buffers.emplace_back(dims, num_vars,tag0, tag, shear_periodic);
+        buffers.emplace_back(dims, num_vars,tag0, tag, counterpart_ranks,type);
     }
+}
+
+void
+HaloMessageSwapChain::update_counterpart_ranks(const std::vector<int> counterpart_ranks)
+{
+    for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
+	    buffers[i].counterpart_ranks = counterpart_ranks;
+    }
+
 }
 
 HaloMessage*
@@ -957,46 +977,131 @@ HaloMessage*
 HaloMessageSwapChain::get_fresh_buffer()
 {
     buf_idx         = (buf_idx + 1) % SWAP_CHAIN_LENGTH;
-    MPI_Request req = buffers[buf_idx].request;
-    if (req != MPI_REQUEST_NULL) {
-        MPI_Wait(&req, MPI_STATUS_IGNORE);
-    }
+    MPI_Waitall(buffers[buf_idx].requests.size(), buffers[buf_idx].requests.data(), MPI_STATUSES_IGNORE);
     return &buffers[buf_idx];
 }
 
+AcReal
+shear_periodic_displacement_in_grid_cells()
+{
+        const auto info = ac_get_info();
+        return info[AC_shear_delta_y]/info[AC_ds].y;
+}
+
 int
-get_counterpart_rank(const Device device, const int rank, const uint3_64 decomp, const int3 output_region_id)
+shear_periodic_displacement_in_processes()
+{
+        const auto info = ac_get_info();
+	return int(shear_periodic_displacement_in_grid_cells())/info[AC_nlocal].y;
+}
+
+AcReal
+shear_periodic_leftover_fraction()
+{
+        return shear_periodic_displacement_in_grid_cells() - int(shear_periodic_displacement_in_grid_cells());
+}
+
+AcShearInterpolationCoeffs
+shear_periodic_interpolation_coeffs()
+{
+        const AcReal frac = shear_periodic_leftover_fraction();
+        return
+        {
+                -          (frac+1.)*frac*(frac-1.)*(frac-2.)*(frac-3.)/120.,
+                +(frac+2.)          *frac*(frac-1.)*(frac-2.)*(frac-3.)/24. ,
+                -(frac+2.)*(frac+1.)     *(frac-1.)*(frac-2.)*(frac-3.)/12. ,
+                +(frac+2.)*(frac+1.)*frac          *(frac-2.)*(frac-3.)/12. ,
+                -(frac+2.)*(frac+1.)*frac*(frac-1.)          *(frac-3.)/24. ,
+                +(frac+2.)*(frac+1.)*frac*(frac-1.)*(frac-2.)          /120.
+        };
+}
+
+std::vector<int>
+shear_periodic_get_rhs_recv_offsets()
+{
+	    const int y = shear_periodic_displacement_in_processes();
+	    return {y-1,y,y+1,y+2};
+}
+
+std::vector<int>
+shear_periodic_get_lhs_recv_offsets()
+{
+	    const int y = shear_periodic_displacement_in_processes();
+	    return {-y-2,-y-1,-y,-y+1};
+}
+
+std::vector<int>
+get_recv_counterpart_ranks(const Device device, const int rank, const int3 output_region_id, const bool shear_periodic)
 {
     const auto proc_strategy = acDeviceGetLocalConfig(device)[AC_proc_mapping_strategy];
-    return getPid(getPid3D(rank, decomp, proc_strategy) + output_region_id, decomp, proc_strategy);
+    const auto decomp = uint3_64(acDeviceGetLocalConfig(device)[AC_domain_decomposition]);
+    const auto my_pid = getPid3D(rank, decomp, proc_strategy);
+    const auto target_pid = my_pid + output_region_id;
+    const auto get_pid = [&](const int3 pid3d)
+    {
+	    return getPid(pid3d,decomp,proc_strategy);
+    };
+    if(shear_periodic)
+    {
+	    const std::vector<int> offsets = 
+	        		output_region_id.x == -1
+	        		? shear_periodic_get_lhs_recv_offsets()
+	        		: shear_periodic_get_rhs_recv_offsets();
+	    std::vector<int> res{};
+	    for(const int offset : offsets)
+	    {
+	            res.push_back(get_pid({target_pid.x, target_pid.y + offset, target_pid.z}));
+	    }
+	    return res;
+
+    }
+    return {get_pid(target_pid)};
 }
 
-
-int
-shear_periodic_displacement(const AcMeshInfo info)
+std::vector<int>
+get_send_counterpart_ranks(const Device device, const int rank, const int3 output_region_id, const bool shear_periodic)
 {
-	return int(info[AC_shear_delta_y]/info[AC_ds].y);
+    const auto proc_strategy = acDeviceGetLocalConfig(device)[AC_proc_mapping_strategy];
+    const auto decomp = uint3_64(acDeviceGetLocalConfig(device)[AC_domain_decomposition]);
+    const auto my_pid = getPid3D(rank, decomp, proc_strategy);
+    const auto target_pid = my_pid + output_region_id;
+    const auto get_pid = [&](const int3 pid3d)
+    {
+	    return getPid(pid3d,decomp,proc_strategy);
+    };
+    if(shear_periodic)
+    {
+
+	//We do the inverse of the shift the receiver does on the other boundary
+	const std::vector<int> offsets = 
+	    		output_region_id.x == -1
+	    		? shear_periodic_get_rhs_recv_offsets()
+	    		: shear_periodic_get_lhs_recv_offsets();
+	std::vector<int> res{};
+	for(const int offset : offsets)
+	{
+	        res.push_back(get_pid({target_pid.x, target_pid.y - offset, target_pid.z}));
+	}
+	return res;
+
+    }
+    return {get_pid(target_pid)};
 }
 
-int
-shear_periodic_ystep(const AcMeshInfo info)
-{
-	return shear_periodic_displacement(info)/info[AC_nlocal].y;
-}
+
 // HaloExchangeTask
 HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag,
-                                   AcGridInfo grid_info, uint3_64 decomp, Device device_,
+                                   AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_)
     : Task(order_,
            Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
            Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
-      counterpart_rank(get_counterpart_rank(device_,rank,decomp,output_region.id)),
       shear_periodic(shear_periodic_),
 
       // MPI tags are namespaced to avoid collisions with other MPI tasks
-      recv_buffers(output_region.dims, op.num_fields_in,  tag_0, input_region.tag, shear_periodic),
-      send_buffers(input_region.dims,  op.num_fields_out, tag_0, Region::id_to_tag(-output_region.id),shear_periodic)
+      recv_buffers(output_region.dims, output_region.memory.fields.size(),  tag_0, input_region.tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Receive),
+      send_buffers(input_region.dims,  input_region.memory.fields.size(),   tag_0, Region::id_to_tag(-output_region.id),get_send_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Send)
 {
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
@@ -1037,10 +1142,13 @@ HaloExchangeTask::isHaloExchangeTask(){ return true; }
 HaloExchangeTask::~HaloExchangeTask()
 {
     // Cancel last eager request
-    // TP: this should not be needed anymore but since we are checking anyways checking for NULL does not harm
+    // TP: this should not be needed anymore (no ongoing eager receive outside halo exchange) but also does not harm
     auto msg = recv_buffers.get_current_buffer();
-    if (msg->request != MPI_REQUEST_NULL) {
-        MPI_Cancel(&msg->request);
+    for(auto& request : msg->requests)
+    {
+    	if (request != MPI_REQUEST_NULL) {
+    	    MPI_Cancel(&request);
+    	}
     }
 
     set_device(device);
@@ -1071,9 +1179,33 @@ HaloExchangeTask::unpack()
 #if !(USE_CUDA_AWARE_MPI)
     msg->unpin(device, stream);
 #endif
-    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
-                               vba, output_region.memory.fields.data(),
-		    		output_region.memory.fields.size());
+    if(shear_periodic)
+    {
+
+	    const int local_displacement = int(shear_periodic_displacement_in_grid_cells()) % ac_get_info()[AC_nlocal].y;
+	    
+	    const int ny = ac_get_info()[AC_nlocal].y;
+	    const int base_offset  = output_region.id.x == -1
+		    			? ny*2
+					: ny*1
+					;
+	    const int offset = output_region.id.x == -1
+	    				? base_offset - local_displacement
+					: base_offset + local_displacement
+					;
+	    acShearKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
+	                               vba, output_region.memory.fields.data(),
+			    		output_region.memory.fields.size(),
+					shear_periodic_interpolation_coeffs(),
+					offset
+					);
+    }
+    else
+    {
+	    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
+	                               vba, output_region.memory.fields.data(),
+			    		output_region.memory.fields.size());
+    }
 }
 
 void
@@ -1081,6 +1213,7 @@ HaloExchangeTask::sync()
 {
     cudaStreamSynchronize(stream);
 }
+
 bool
 HaloExchangeTask::sendingToItself()
 {
@@ -1088,21 +1221,21 @@ HaloExchangeTask::sendingToItself()
 	MPI_Comm_size(acGridMPIComm(), &n_procs);
 	//For now enable optim only if there is only a single proc
 	//Because reasoning about kernel moves is too difficult for the async tasks in TaskGraph
-	return rank == counterpart_rank && n_procs == 1 && !acDeviceGetLocalConfig(device)[AC_skip_single_gpu_optim];
+	return !shear_periodic && rank == send_buffers.get_current_buffer()->counterpart_ranks[0] && n_procs == 1 && !acDeviceGetLocalConfig(device)[AC_skip_single_gpu_optim];
 }
 
 void
 HaloExchangeTask::wait_recv()
 {
     auto msg = recv_buffers.get_current_buffer();
-    MPI_Wait(&msg->request, MPI_STATUS_IGNORE);
+    MPI_Waitall(msg->requests.size(), msg->requests.data(), MPI_STATUSES_IGNORE);
 }
 
 void
 HaloExchangeTask::wait_send()
 {
     auto msg = send_buffers.get_current_buffer();
-    MPI_Wait(&msg->request, MPI_STATUS_IGNORE);
+    MPI_Waitall(msg->requests.size(), msg->requests.data(), MPI_STATUSES_IGNORE);
 }
 
 void
@@ -1118,8 +1251,11 @@ HaloExchangeTask::receiveDevice()
         // fprintf(stderr, "calling MPI_Irecv\n");
     }
 
-    ERRCHK_ALWAYS(MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              msg->tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request) == MPI_SUCCESS);
+    for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
+    {
+    	ERRCHK_ALWAYS(MPI_Irecv(msg->data + i*msg->length, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
+    	          msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
+    }
     if (rank == 0) {
         // fprintf(stderr, "Returned from MPI_Irecv\n");
     }
@@ -1130,8 +1266,12 @@ HaloExchangeTask::sendDevice()
 {
     auto msg = send_buffers.get_current_buffer();
     sync();
-    ERRCHK_ALWAYS(MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              msg->tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request) == MPI_SUCCESS);
+
+    for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
+    {
+    	ERRCHK_ALWAYS(MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
+              msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
+    }
 }
 
 void
@@ -1155,7 +1295,7 @@ HaloExchangeTask::receiveHost()
     if (rank == 0) {
         // fprintf("Called MPI_Irecv\n");
     }
-    MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
+    MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[0],
               msg->tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
     if (rank == 0) {
         // fprintf("Returned from MPI_Irecv\n");
@@ -1169,7 +1309,7 @@ HaloExchangeTask::sendHost()
     auto msg = send_buffers.get_current_buffer();
     msg->pin(device, stream);
     sync();
-    MPI_Isend(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
+    MPI_Isend(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[0],
               msg->tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
 }
 void
@@ -1241,7 +1381,7 @@ HaloExchangeTask::test()
     case HaloExchangeState::Exchanging: {
         auto msg = recv_buffers.get_current_buffer();
         int request_complete;
-        ERRCHK_ALWAYS(MPI_Test(&msg->request, &request_complete, MPI_STATUS_IGNORE) == MPI_SUCCESS);
+        ERRCHK_ALWAYS(MPI_Testall(msg->requests.size(), msg->requests.data(), &request_complete, MPI_STATUS_IGNORE) == MPI_SUCCESS);
         return request_complete ? true : false;
     }
     default: {
@@ -1254,7 +1394,11 @@ HaloExchangeTask::test()
 void
 HaloExchangeTask::advance(const TraceFile* trace_file)
 {
-
+    if (shear_periodic) 
+    {
+	    recv_buffers.update_counterpart_ranks(get_recv_counterpart_ranks(device,ac_pid(), output_region.id, shear_periodic));
+	    send_buffers.update_counterpart_ranks(get_send_counterpart_ranks(device,ac_pid(), output_region.id, shear_periodic));
+    }
     //move directly inside cuda kernels
     if (sendingToItself())
     {

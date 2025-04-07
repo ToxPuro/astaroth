@@ -2108,7 +2108,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
 
                 if (!Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
-                    auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp,
+                    auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info,
                                                                    device, swap_offset,false);
                     graph->halo_tasks.push_back(task);
                     graph->all_tasks.push_back(task);
@@ -2129,9 +2129,10 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
 
-		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
-		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y  && Region::tag_to_id(tag).y != 0) continue;
-		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
+		const auto id = Region::tag_to_id(tag);
+		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && id.x != 0) continue;
+		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y  && id.y != 0) continue;
+		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && id.z != 0) continue;
 
                 acVerboseLogFromRootProc(rank,
                                          "tag %d, decomp %i %i %i, rank %i, op.boundary  %i \n ",
@@ -2145,7 +2146,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
                     if (op.kernel_enum == BOUNDCOND_PERIODIC) {
                         acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
                                                  tag);
-                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp, device, swap_offset,false);
+			const bool shear_periodic = acGridGetLocalMeshInfo()[AC_shear] && id.x != 0 && id.y == 0 && id.z == 0;
+                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, device, swap_offset,shear_periodic);
                         graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);
                         acVerboseLogFromRootProc(rank,

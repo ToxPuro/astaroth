@@ -50,6 +50,10 @@ AcResult acKernelDummy(void);
 // VertexBufferArray vba);
 
 /** */
+typedef struct AcShearInterpolationCoeffs
+{
+	AcReal c1,c2,c3,c4,c5,c6;
+} AcShearInterpolationCoeffs;
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                           const Volume vba_start, const Volume dims, AcRealPacked* packed,
 			  const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
@@ -57,6 +61,13 @@ AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba
 AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                             const Volume vba_start, const Volume dims, VertexBufferArray vba,
 			    const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
+
+AcResult
+acShearKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+                          const Volume vba_start, const Volume dims, VertexBufferArray vba,
+                          const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs,
+                          const AcShearInterpolationCoeffs coeffs, const int offset
+                          );
 
 AcResult
 acKernelMoveData(const cudaStream_t stream, const Volume src_start, const Volume dst_start, const Volume src_dims, const Volume dst_dims, VertexBufferArray vba,

@@ -60,6 +60,18 @@ kernel_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const 
     }
 }
 
+static inline __device__ bool
+is_on_left_boundary()
+{
+	return VAL(AC_domain_coordinates).x == 0;
+}
+
+static inline __device__ bool
+is_on_right_boundary()
+{
+	return VAL(AC_domain_coordinates).x == VAL(AC_domain_decomposition).x-1;
+}
+
 static inline __device__ int3
 is_on_boundary()
 {
@@ -136,6 +148,7 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
     }
 }
 
+
 static __global__ void
 kernel_partial_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const int3 dims,
                          AcRealPacked* packed, GpuVtxBufHandles vtxbufs, size_t num_vtxbufs)
@@ -207,6 +220,70 @@ kernel_partial_move_data(const DeviceVertexBufferArray vba, const int3 src_start
 #if AC_LAGRANGIAN_GRID
         	vba.in[vtxbufs.data[i]][dst_idx] += lagrangian_correction(vtxbufs.data[i], AC_COORDS, (int3){i_dst, j_dst, k_dst});
 #endif
+    }
+}
+
+static __global__ void
+kernel_shear_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
+                           DeviceVertexBufferArray vba, GpuVtxBufHandles vtxbufs , size_t num_vtxbufs
+			   , const AcShearInterpolationCoeffs coeffs, const int offset
+			   )
+{
+    const int i = threadIdx.x + blockIdx.x * blockDim.x;
+    const int j = threadIdx.y + blockIdx.y * blockDim.y;
+    const int k = threadIdx.z + blockIdx.z * blockDim.z;
+
+    // If within the start-end range (this allows threadblock dims that are not
+    // divisible by end - start)
+    if (i >= dims.x || //
+        j >= dims.y || //
+        k >= dims.z) {
+        return;
+    }
+
+    const int i_unpacked = i + vba_start.x;
+    const int j_unpacked = j + vba_start.y;
+    const int k_unpacked = k + vba_start.z;
+
+    const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
+
+    //TP: the wonky indexing is because we get 3d halos from multiple processes and these are contiguous in y,
+    //    with each process halo coming after another
+    const auto get_index = [&](const int x, const int y, const int z, const int vtxbuf_index)
+    {
+	    return 
+		    x +
+		    (y % dims.y) * dims.x +
+		    z * dims.x * dims.y   +
+		    vtxbuf_index * dims.x*dims.y*dims.z +
+		    (y / dims.y) * dims.x*dims.y*dims.z*num_vtxbufs;
+    };
+    
+    const int x = i;
+    const int y = j + offset;
+    const int z = k;
+    for(size_t vtxbuf_index = 0; vtxbuf_index < num_vtxbufs; ++vtxbuf_index)
+    {
+    	if(is_on_left_boundary())
+    	{
+    	    AcReal res  = coeffs.c1*packed[get_index(x,y+2,z,vtxbuf_index)];
+    	    res        += coeffs.c2*packed[get_index(x,y+1,z,vtxbuf_index)];
+    	    res        += coeffs.c3*packed[get_index(x,y+0,z,vtxbuf_index)];
+    	    res        += coeffs.c4*packed[get_index(x,y-1,z,vtxbuf_index)];
+    	    res        += coeffs.c5*packed[get_index(x,y-2,z,vtxbuf_index)];
+    	    res        += coeffs.c6*packed[get_index(x,y-3,z,vtxbuf_index)];
+	    vba.in[vtxbufs.data[vtxbuf_index]][unpacked_idx] = res;
+    	}
+    	else
+    	{
+    	    AcReal res  = coeffs.c1*packed[get_index(x,y-2,z,vtxbuf_index)];
+    	    res        += coeffs.c2*packed[get_index(x,y-1,z,vtxbuf_index)];
+    	    res        += coeffs.c3*packed[get_index(x,y-0,z,vtxbuf_index)];
+    	    res        += coeffs.c4*packed[get_index(x,y+1,z,vtxbuf_index)];
+    	    res        += coeffs.c5*packed[get_index(x,y+2,z,vtxbuf_index)];
+    	    res        += coeffs.c6*packed[get_index(x,y+3,z,vtxbuf_index)];
+	    vba.in[vtxbufs.data[vtxbuf_index]][unpacked_idx] = res;
+    	}
     }
 }
 
@@ -301,6 +378,7 @@ acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
     return AC_SUCCESS;
 }
 
+
 AcResult
 acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                         const Volume vba_start, const Volume dims, AcRealPacked* packed)
@@ -325,6 +403,27 @@ acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
 	    gpu_handles.data[i] = vtxbufs[i];
     kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, to_int3(vba_start), to_int3(dims), vba.on_device, gpu_handles,
                                                         num_vtxbufs);
+    ERRCHK_CUDA_KERNEL();
+    return AC_SUCCESS;
+}
+
+AcResult
+acShearKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+                          const Volume vba_start, const Volume dims, VertexBufferArray vba,
+                          const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs,
+			  const AcShearInterpolationCoeffs coeffs, const int offset
+			  )
+{
+    //done to ensure performance backwards compatibility
+    const dim3 tpb(32, 8, 1);
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
+    GpuVtxBufHandles gpu_handles;
+    for(size_t i=0; i<num_vtxbufs; ++i)
+	    gpu_handles.data[i] = vtxbufs[i];
+    kernel_shear_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, to_int3(vba_start), to_int3(dims), vba.on_device, gpu_handles,
+                                                        num_vtxbufs, coeffs, offset);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
 }

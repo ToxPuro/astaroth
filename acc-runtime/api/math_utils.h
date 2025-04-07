@@ -192,7 +192,7 @@ clamp(const T& val, const T& min, const T& max)
 static HOST_DEVICE_INLINE uint64_t
 mod(const int a, const int b)
 {
-  return (a+b) % b;
+  return ((a%b) + b) % b;
 }
 
 static inline AcReal
