@@ -113,7 +113,10 @@ template <typename T, typename Allocator> struct ndbuffer {
         return hbuf;
     }
 
-    void display() { ndbuffer_print_recursive(m_shape.size(), m_shape.data(), m_buffer.data()); }
+    void display() const
+    {
+        ndbuffer_print_recursive(m_shape.size(), m_shape.data(), m_buffer.data());
+    }
 };
 
 template <typename T> using host_ndbuffer        = ndbuffer<T, ac::mr::host_allocator>;
