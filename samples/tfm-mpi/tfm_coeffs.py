@@ -179,6 +179,8 @@ eta12z=np.sum(eta12zt,axis=0)/nzz
 eta21z=np.sum(eta21zt,axis=0)/nzz
 eta22z=np.sum(eta22zt,axis=0)/nzz
 eta22t=np.sqrt(np.sum(eta22zt**2,axis=1))/nz
+print("nz,nzz=",nz,nzz)
+print("alp11,alp22,ate11,ate22=",np.sum(alp11z,axis=0)/nz,np.sum(alp22z,axis=0)/nz,np.sum(eta11z,axis=0)/nz,np.sum(eta22z,axis=0)/nz)
 
 #Read timeseries
 filepath = 'timeseries.csv' # Path to the timeseries (current working directory by default)
@@ -190,10 +192,19 @@ dfaa= df[df['label'] == 'TF_a12_z']
 tt=np.asarray(df['t_step'])
 urms=dfuu['rms']
 avurms=np.sum(urms,axis=0)/nzz
+print("avurms=",avurms)
 
-alp0=-1.0/3.0*avurms
-eta0=1.0/3.0*avurms/kf
-rm=avurms/eta/kf
+roberts_flow=1
+if roberts_flow :
+    u0=1.0
+    alp0=-1.0/2.0*u0
+    eta0=1./2.*u0/kf
+    rm=u0/eta/kf
+else:
+    alp0=-1.0/3.0*avurms
+    eta0=1.0/3.0*avurms/kf
+    rm=avurms/eta/kf
+
 print("alp0,eta0,rm,t,nzz",alp0,eta0,rm,np.max(tt),nzz)
 
 ttt=max(tt)*np.arange(nzz)/(1.0*nzz)
