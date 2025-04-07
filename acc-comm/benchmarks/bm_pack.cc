@@ -472,9 +472,10 @@ main(int argc, char* argv[])
                                 std::vector<ac::ndbuffer<T, Allocator>>&       outputs) {
             ERRCHK_MPI(inputs.size() == outputs.size());
             for (size_t i{0}; i < inputs.size(); ++i) {
-                migrate(inputs[i], outputs[i]);
+                auto tmp{inputs[i].to_host()};
                 for (const auto& segment : segments)
-                    ac::fill<T>(-1, segment.dims, segment.offset, outputs[i]);
+                    ac::fill<T>(-1, segment.dims, segment.offset, tmp);
+                migrate(tmp, outputs[i]);
             }
         };
 
