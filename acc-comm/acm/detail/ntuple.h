@@ -511,7 +511,7 @@ namespace ac {
 
 template <typename T, size_t N> class static_ntuple {
   private:
-    size_t m_count;
+    size_t m_count{0};
     T      m_resource[N];
 
   public:
