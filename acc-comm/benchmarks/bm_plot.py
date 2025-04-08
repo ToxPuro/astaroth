@@ -30,4 +30,11 @@ print(f'cwd: {os.getcwd()}')
 df = pd.read_csv('../build/bm-pack.csv')
 df
 
-df.groupby('impl')['ns'].describe()
+stats = df.groupby('impl')['ns'].describe()
+
+
+stats_median = stats['50%'].sort_values()
+plt.barh(stats_median.index, stats_median)
+
+
+# %%
