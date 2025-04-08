@@ -9479,7 +9479,7 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 
 
 	}
-	fatal("Undeclared function in call: %s\n",combine_all_new(node));
+	fatal("Undeclared function %s in call: %s\n",func_name,combine_all_new(node));
 }
 
 void
