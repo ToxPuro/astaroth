@@ -93,8 +93,27 @@ pack_batched(const ac::shape& mm, const std::vector<ac::mr::device_pointer<T>>& 
              std::vector<ac::mr::device_pointer<T>> packed, const bool do_pack)
 {
     switch (segments.size()) {
+    case 1:
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 1>(mm,
+                                                               unpacked,
+                                                               segments,
+                                                               packed,
+                                                               do_pack);
     case 3:
         return pack_batched_prototype<T, NDIMS, N_UNPACKED, 3>(mm,
+                                                               unpacked,
+                                                               segments,
+                                                               packed,
+                                                               do_pack);
+    case 6:
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 6>(mm,
+                                                               unpacked,
+                                                               segments,
+                                                               packed,
+                                                               do_pack);
+                                                               
+    case 8:
+        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 8>(mm,
                                                                unpacked,
                                                                segments,
                                                                packed,
