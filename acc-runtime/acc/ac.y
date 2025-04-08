@@ -1401,7 +1401,7 @@ yyerror(const char* str)
     ssize_t len = 0;
     for(int i=0;i<line_num;++i)
 	len = getline(&line,&size,yyin_backup);
-    if(len == -1) fatal("Was not able to get erronous line!\n");
+    //if(len == -1) fatal("Was not able to get erronous line!\n");
     fprintf(stderr, "erroneous line: %s", line);
     fprintf(stderr, "in file: %s/%s\n\n",ACC_OUTPUT_DIR"/../api",stage4_name_backup);
     exit(EXIT_FAILURE);

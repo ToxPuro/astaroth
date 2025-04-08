@@ -427,16 +427,19 @@ bool is_primitive_datatype(const char* type)
 {
 	return str_vec_contains(primitive_datatypes,type);
 }
+
+
 bool
-all_real_struct(const char* struct_name)
+all_same_struct(const char* struct_name, const char* type)
 {
 	if(is_primitive_datatype(struct_name)) return false;
 	string_vec target_types = VEC_INITIALIZER;
-	push(&target_types,REAL_STR);
+	push(&target_types,type);
 	const bool res = consists_of_types(target_types,struct_name);
 	free_str_vec(&target_types);
 	return res;
 }
+
 typedef struct
 {
 	string_vec names;
@@ -7783,32 +7786,58 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 	const char* dfunc_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	func_params_info info = get_function_params_info(node,dfunc_name);
 	if(!has_qualifier(node,"elemental")) return;
-	if(info.expr.size == 1 && info.types.data[0] == REAL_STR && !strstr(dfunc_name,"AC_INTERNAL_COPY"))
+	if(info.expr.size == 1 && info.types.data[0] == REAL_STR)
 	{
-		const char* func_body = combine_all_new_with_whitespace(node->rhs->rhs->lhs);
-
-		fprintf(stream,"%s_AC_INTERNAL_COPY (real %s){%s}\n",dfunc_name,info.expr.data[0],func_body);
-		fprintf(stream,"%s (real3 v){return real3(%s_AC_INTERNAL_COPY(v.x), %s_AC_INTERNAL_COPY(v.y), %s_AC_INTERNAL_COPY(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
-		fprintf(stream,"inline %s(real[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s_AC_INTERNAL_COPY(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
+		for(size_t j = 0; j < s_info.user_structs.size; ++j)
+		{
+			const char* name  = s_info.user_structs.data[j];
+			const size_t num_members = s_info.user_struct_field_names[j].size;
+			if(all_same_struct(name,REAL_STR) && strstr(name,"AcReal"))
+			{
+				fprintf(stream, "%s (%s s){ return real%zu(\n",dfunc_name,name,num_members);
+				for(size_t f = 0; f < num_members; ++f)
+				{
+					fprintf(stream,"  %s(s.%s)%s\n",dfunc_name,s_info.user_struct_field_names[j].data[f],f < num_members-1 ? "," : "");
+				}
+				fprintf(stream,")\n}\n");
+			}
+		}
+		fprintf(stream,"inline %s(real[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
 		fprintf(stream,"inline %s(real3[] arr){\nreal3 res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
 	}
 
-	else if(info.expr.size == 1 && info.types.data[0] == FIELD_STR && !strstr(dfunc_name,"AC_INTERNAL_COPY"))
+	else if(info.expr.size == 1 && info.types.data[0] == FIELD_STR)
 	{
 		if(intern(node->expr_type) == REAL_STR)
 		{
-			const char* func_body = combine_all_new_with_whitespace(node->rhs->rhs->lhs);
-			fprintf(stream,"%s_AC_INTERNAL_COPY (Field %s){%s}\n",dfunc_name,info.expr.data[0],func_body);
-			fprintf(stream,"%s (Field3 v){return real3(%s_AC_INTERNAL_COPY(v.x), %s_AC_INTERNAL_COPY(v.y), %s_AC_INTERNAL_COPY(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
-			fprintf(stream,"inline %s(Field[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n   res[i] = %s_AC_INTERNAL_COPY(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
+			fprintf(stream,"inline %s(Field[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n   res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
+			for(size_t j = 0; j < s_info.user_structs.size; ++j)
+			{
+				const char* name  = s_info.user_structs.data[j];
+				if(all_same_struct(name,FIELD_STR))
+				{
+					const size_t num_members = s_info.user_struct_field_names[j].size;
+					//TP: do not force the user to qualify the real struct name for elemental purposes
+					const char* qualified_real_name = sprintf_intern("AcReal%zu",num_members);
+					const char* base_real_name = sprintf_intern("real%zu",num_members);
+					if(    str_vec_contains(s_info.user_structs,qualified_real_name) 
+				            || str_vec_contains(s_info.user_structs,base_real_name)
+					  )
+					{
+						fprintf(stream, "%s (%s s){ return real%zu(\n",dfunc_name,name,num_members);
+						for(size_t f = 0; f < num_members; ++f)
+						{
+							fprintf(stream,"  %s(s.%s)%s\n",dfunc_name,s_info.user_struct_field_names[j].data[f],f < num_members-1 ? "," : "");
+						}
+						fprintf(stream,")\n}\n");
+					}
+				}
+			}
 			fprintf(stream,"inline %s(Field3[] arr){\nreal3 res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
 		}
 		else if(intern(node->expr_type) == REAL3_STR)
 		{
-			const char* func_body = combine_all_new_with_whitespace(node->rhs->rhs->lhs);
-
-			fprintf(stream,"%s_AC_INTERNAL_COPY (Field %s){%s}\n",dfunc_name,info.expr.data[0],func_body);
-			fprintf(stream,"%s (Field3 v){return Matrix(%s_AC_INTERNAL_COPY(v.x), %s_AC_INTERNAL_COPY(v.y), %s_AC_INTERNAL_COPY(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
+			fprintf(stream,"%s (Field3 v){return Matrix(%s(v.x), %s(v.y), %s(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
 		}
 		else
 			fatal("Missing elemental case for func: %s\nReturn type: %s\n",dfunc_name,node->expr_type);
@@ -8027,7 +8056,7 @@ transform_broadcast_assignments(ASTNode* node)
 	if(!lhs_type || !rhs_type) return;
 	//TP: expression like complex c = 1.0 means the real component is 1.0 and the imaginary component is 0.0
 	if(lhs_type == COMPLEX_STR) return;
-	if(all_real_struct(lhs_type) && rhs_type == REAL_STR)
+	if(all_same_struct(lhs_type,REAL_STR) && rhs_type == REAL_STR)
 	{
 		const ASTNode* expr = node->rhs->rhs->lhs;
 		node->rhs->rhs->lhs = create_broadcast_initializer(expr,lhs_type);
