@@ -453,6 +453,9 @@ main(int argc, char* argv[])
 
         // Segments
         const auto segments{prune(partition(mm, nn, rr), nn, rr)};
+        // const std::vector<ac::segment> segments{8, ac::segment{ac::shape{3,3,3}, ac::index{0,0,0}}};
+        // const auto segments{ac::segment{128,3,3}};
+        // const auto segments{ac::segment{128,128,3}};
 
         // Initialize inputs and refs
         auto init = [](std::vector<ac::ndbuffer<T, Allocator>>& inputs,
