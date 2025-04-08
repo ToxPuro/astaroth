@@ -76,6 +76,8 @@ emf11y = []
 emf12y = []
 emf21y = []
 emf22y = []
+B11_x = []
+B22_y = []
 
 # Now hardcoded!!!!
 kz=1.0
@@ -85,7 +87,8 @@ eta=5.0e-3
 
 
 # Defining z and trigonometric arrays
-z=np.arange(args.dims[2])/(args.dims[2]-1)
+dz=1./args.dims[2]
+z=(1.-dz)*np.arange(args.dims[2])/(args.dims[2]-1)+dz/2.
 sinz=np.sin(2.*np.pi*kz*z)
 cosz=np.cos(2.*np.pi*kz*z)
 
@@ -121,6 +124,12 @@ for profile in profiles:
     if "ucrossb22mean_y" in name:
         emf22y.append(data)
 
+    if "B11mean_x" in name:
+        B11_x.append(data)
+
+    if "B22mean_y" in name:
+        B22_y.append(data)
+
 
 # Reform to numpy
 emf11x = np.asarray(emf11x)
@@ -132,6 +141,9 @@ emf11y = np.asarray(emf11y)
 emf12y = np.asarray(emf12y)
 emf21y = np.asarray(emf21y)
 emf22y = np.asarray(emf22y)
+
+B11_x = np.asarray(B11_x)
+B22_y = np.asarray(B22_y)
 
 # Alpha and eta profiles per each saved data
 alp11zt = (cosz*emf11x+sinz*emf12x)/Bampl
@@ -186,11 +198,14 @@ print("alp0,eta0,rm,t,nzz",alp0,eta0,rm,np.max(tt),nzz)
 
 ttt=max(tt)*np.arange(nzz)/(1.0*nzz)
 
-plt.yscale('log')
-plt.plot(ttt,dfaa['rms'],label='AA rms')
-plt.plot(ttt,dfaa['max'],label='AA max')
+#plt.yscale('log')
+#plt.plot(ttt,dfaa['rms'],label='AA rms')
+#plt.plot(ttt,dfaa['max'],label='AA max')
 #plt.legend()
 #plt.show()
+plt.plot(dfaa['rms'])
+plt.plot(dfaa['max'])
+plt.show()
 
 plt.yscale('log')
 plt.plot(ttt,alp11t,label='alp11')
