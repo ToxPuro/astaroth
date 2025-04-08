@@ -1,0 +1,27 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "lumi-tfm",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "OPTIMIZE_MEM_ACCESSES": "ON",
+                "MPI_ENABLED": "ON",
+                "SINGLEPASS_INTEGRATION": "ON",
+                "BUILD_STANDALONE": "OFF",
+                "BUILD_MHD_SAMPLES": "OFF",
+                "BUILD_SAMPLES": "OFF",
+                "DSL_MODULE_DIR": "${sourceDir}/samples/tfm/mhd",
+                "PROGRAM_MODULE_DIR": "${sourceDir}/samples/tfm-mpi",
+                "BUILD_ACC_RUNTIME_LIBRARY": "ON",
+                "MAX_THREADS_PER_BLOCK": "512"
+            }
+        },
+        {
+            "name": "lumi-mhd",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        }
+    ]
+}

@@ -1318,16 +1318,12 @@ main(int argc, char* argv[])
         ERRCHK(acParseArguments(argc, argv, &args) == 0);
         ERRCHK(acPrintArguments(args) == 0);
 
+        // Enforce that the config path is given explicitly
+        ERRCHK_MPI_EXPR_DESC(args.config_path, "No config path passed. Must pass the config path explicitly with ./tfm-mpi --config <path>. For example: './tfm-mpi --config ../samples/tfm/mhd/mhd.ini'");
+
         // Load configuration
         AcMeshInfo raw_info{};
-        if (args.config_path) {
-            ERRCHK(acParseINI(args.config_path, &raw_info) == 0);
-        }
-        else {
-            const std::string default_config{AC_DEFAULT_TFM_CONFIG};
-            PRINT_LOG_WARNING("No config path supplied, using %s", default_config.c_str());
-            ERRCHK(acParseINI(default_config.c_str(), &raw_info) == 0);
-        }
+        ERRCHK(acParseINI(args.config_path, &raw_info) == 0);
 
         // Override global_nn if instructed by the user
         if (args.global_nn_override[0] > 0) {
