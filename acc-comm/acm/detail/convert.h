@@ -1,11 +1,12 @@
 #pragma once
+#include <algorithm>
 #include <vector>
 
 namespace ac {
 
 template <typename Container, typename T = typename Container::value_type>
 auto
-unwrap(const Container& in)
+unwrap_data(const Container& in)
 {
     std::vector<decltype(std::declval<T>().data())> out(in.size());
     std::transform(in.begin(), in.end(), out.begin(), [](const T& obj) { return obj.data(); });
@@ -14,10 +15,58 @@ unwrap(const Container& in)
 
 template <typename Container, typename T = typename Container::value_type>
 auto
-unwrap(Container& in)
+unwrap_data(Container& in)
 {
     std::vector<decltype(std::declval<T>().data())> out(in.size());
     std::transform(in.begin(), in.end(), out.begin(), [](T& obj) { return obj.data(); });
+    return out;
+}
+
+template <typename T>
+auto
+unwrap_get(const std::vector<T>& in)
+{
+    std::vector<decltype(in.front().get())> out;
+
+    for (const auto& elem : in)
+        out.push_back(elem.get());
+
+    return out;
+}
+
+template <typename T>
+auto
+unwrap_get(std::vector<T>& in)
+{
+    std::vector<decltype(in.front().get())> out;
+
+    for (const auto& elem : in)
+        out.push_back(elem.get());
+
+    return out;
+}
+
+template <typename T>
+auto
+unwrap_ptr_get(const std::vector<T>& in)
+{
+    std::vector<decltype(in.front()->get())> out;
+
+    for (const auto& elem : in)
+        out.push_back(elem->get());
+
+    return out;
+}
+
+template <typename T>
+auto
+unwrap_ptr_get(std::vector<T>& in)
+{
+    std::vector<decltype(in.front()->get())> out;
+
+    for (const auto& elem : in)
+        out.push_back(elem->get());
+
     return out;
 }
 

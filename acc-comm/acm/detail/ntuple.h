@@ -7,6 +7,8 @@
 
 #include "cuda_utils.h"
 #include "errchk.h"
+#include "math_utils.h"
+#include "type_conversion.h"
 
 namespace ac {
 
@@ -17,6 +19,8 @@ template <typename T> class ntuple {
     std::vector<T> m_resource;
 
   public:
+    ntuple() = default;
+
     explicit ntuple(const std::initializer_list<T>& init_list)
         : m_resource{init_list}
     {
@@ -446,6 +450,7 @@ to_spatial(const T index, const ac::ntuple<T>& shape)
     return coords;
 }
 
+/** Return true if coords are in range [box_offset, box_offset + box_dims) */
 template <typename T>
 [[nodiscard]] bool
 within_box(const ac::ntuple<T>& coords, const ac::ntuple<T>& box_dims,
@@ -456,6 +461,23 @@ within_box(const ac::ntuple<T>& coords, const ac::ntuple<T>& box_dims,
     for (size_t i{0}; i < coords.size(); ++i)
         if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
             return false;
+    return true;
+}
+
+template <typename T>
+[[nodiscard]] bool
+intersect_box(const ac::ntuple<T>& box_dims_a, const ac::ntuple<T>& box_offset_a,
+              const ac::ntuple<T>& box_dims_b, const ac::ntuple<T>& box_offset_b)
+{
+    ERRCHK(same_size(box_dims_a, box_offset_a, box_dims_b, box_offset_b));
+
+    for (size_t i{0}; i < box_dims_a.size(); ++i)
+        if (!intersect_lines(box_offset_a[i],
+                             box_offset_a[i] + box_dims_a[i],
+                             box_offset_b[i],
+                             box_offset_b[i] + box_dims_b[i]))
+            return false;
+
     return true;
 }
 
@@ -489,10 +511,12 @@ namespace ac {
 
 template <typename T, size_t N> class static_ntuple {
   private:
-    size_t m_count;
+    size_t m_count{0};
     T      m_resource[N];
 
   public:
+    static_ntuple() = default;
+
     __host__ __device__ explicit static_ntuple(const std::initializer_list<T>& init_list)
         : m_count{init_list.size()}
     {
@@ -511,13 +535,15 @@ template <typename T, size_t N> class static_ntuple {
         std::copy(vec.begin(), vec.end(), m_resource);
     }
 
-    explicit static_ntuple(const ac::ntuple<T>& in)
+    template <typename U>
+    explicit static_ntuple(const ac::ntuple<U>& in)
         : m_count{in.size()}
     {
 #if !defined(ACM_DEVICE_ENABLED)
         ERRCHK(in.size() <= N);
 #endif
-        std::copy(in.begin(), in.end(), m_resource);
+        for (size_t i{0}; i < m_count; ++i)
+            m_resource[i] = as<T>(in[i]);
     }
 
     __host__ __device__ auto size() const { return m_count; }

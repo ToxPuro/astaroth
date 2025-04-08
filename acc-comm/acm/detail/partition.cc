@@ -50,3 +50,32 @@ partition(const ac::shape& mm, const ac::shape& nn, const ac::index& nn_offset)
     partition_recursive(mm, nn, nn_offset, initial_segment, 0, segments);
     return segments;
 }
+
+std::vector<ac::segment>
+prune(const std::vector<ac::segment>& segments, const ac::shape& nn, const ac::index& rr,
+      const bool invert_selection)
+{
+    // Check that all segments are valid, i.e., intersecting segments do not extend beyond the
+    // bounding box
+    for (const auto& segment : segments) {
+        if (ac::intersect_box(segment.dims, segment.offset, nn, rr)) {
+            ERRCHK(ac::within_box(segment.offset, nn, rr));
+            ERRCHK(ac::within_box(segment.offset + segment.dims - (uint64_t)1, nn, rr));
+        }
+    }
+
+    // Prune the segments intersecting the bounding box
+    auto       pruned_segments{segments};
+    const auto it{
+        std::remove_if(pruned_segments.begin(),
+                       pruned_segments.end(),
+                       [nn, rr, invert_selection](const auto& segment) {
+                           if (invert_selection)
+                               return !ac::intersect_box(segment.dims, segment.offset, nn, rr);
+                           else
+                               return ac::intersect_box(segment.dims, segment.offset, nn, rr);
+                       })};
+    pruned_segments.erase(it, pruned_segments.end());
+
+    return pruned_segments;
+}

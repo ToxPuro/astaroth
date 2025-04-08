@@ -17,3 +17,24 @@ plt.legend()
 plt.show()
 
 # df
+
+
+# %%
+# Pack
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+
+print(f'cwd: {os.getcwd()}')
+
+df = pd.read_csv('../build/bm-pack.csv')
+df
+
+stats = df.groupby('impl')['ns'].describe()
+
+
+stats_median = stats['50%'].sort_values()
+plt.barh(stats_median.index, stats_median)
+
+
+# %%

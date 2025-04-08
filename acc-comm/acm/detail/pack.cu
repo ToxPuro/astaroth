@@ -4,6 +4,8 @@
 
 #include "type_conversion.h"
 
+namespace acm {
+
 constexpr size_t MAX_NDIMS{4};
 constexpr size_t MAX_N_AGGR_BUFS{12};
 
@@ -61,7 +63,7 @@ unpack(const T* input, const shape_t mm, const shape_t block_shape, const index_
 
 template <typename T>
 static std::vector<T*>
-unwrap(const std::vector<ac::mr::device_pointer<T>>& buffers)
+unwrap_data(const std::vector<ac::mr::device_pointer<T>>& buffers)
 {
     std::vector<T*> output;
     for (ac::mr::device_pointer<T> ptr : buffers)
@@ -91,7 +93,7 @@ pack(const ac::shape& in_mm, const ac::shape& in_block_shape, const ac::index& i
     const shape_t     mm{in_mm};
     const shape_t     block_shape{in_block_shape};
     const shape_t     block_offset{in_block_offset};
-    const array_t<T*> inputs{unwrap(in_inputs)};
+    const array_t<T*> inputs{unwrap_data(in_inputs)};
     const auto        output{in_output.data()};
 
     device::pack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm,
@@ -127,7 +129,7 @@ unpack(const ac::mr::device_pointer<T>& in_input, const ac::shape& in_mm,
     const shape_t     mm{in_mm};
     const shape_t     block_shape{in_block_shape};
     const shape_t     block_offset{in_block_offset};
-    const array_t<T*> outputs{unwrap(in_outputs)};
+    const array_t<T*> outputs{unwrap_data(in_outputs)};
 
     device::unpack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input,
                                                              mm,
@@ -139,15 +141,6 @@ unpack(const ac::mr::device_pointer<T>& in_input, const ac::shape& in_mm,
 }
 
 // Specialization
-template <typename T>
-void pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
-          const std::vector<ac::mr::device_pointer<T>>& inputs, ac::mr::device_pointer<T> output);
-
-template <typename T>
-void unpack(const ac::mr::device_pointer<T>& input, const ac::shape& mm,
-            const ac::shape& block_shape, const ac::index& block_offset,
-            std::vector<ac::mr::device_pointer<T>> outputs);
-
 #define PACK_DTYPE double
 template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape,
                                const ac::index&                                       block_offset,
@@ -183,5 +176,7 @@ template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input
                                  const ac::index&                                block_offset,
                                  std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
 #undef PACK_DTYPE
+
+} // namespace acm
 
 #endif

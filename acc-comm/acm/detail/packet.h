@@ -92,7 +92,7 @@ template <typename T, typename Allocator> class packet {
                                  &m_recv_req));
 
         // Pack and post send
-        pack(m_local_mm, m_segment.dims, send_offset, inputs, m_send_buffer.get());
+        acm::pack(m_local_mm, m_segment.dims, send_offset, inputs, m_send_buffer.get());
 
         ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
         ERRCHK_MPI_API(MPI_Isend(m_send_buffer.data(),
@@ -120,7 +120,7 @@ template <typename T, typename Allocator> class packet {
     {
         ERRCHK_MPI(m_in_progress);
         ERRCHK_MPI_API(MPI_Wait(&m_recv_req, MPI_STATUS_IGNORE));
-        unpack(m_recv_buffer.get(), m_local_mm, m_segment.dims, m_segment.offset, outputs);
+        acm::unpack(m_recv_buffer.get(), m_local_mm, m_segment.dims, m_segment.offset, outputs);
 
         ERRCHK_MPI_API(MPI_Wait(&m_send_req, MPI_STATUS_IGNORE));
         ERRCHK_MPI_API(MPI_Comm_free(&m_comm));

@@ -18,16 +18,15 @@ main()
 
         // Test pack
         std::iota(pack_buffer.begin(), pack_buffer.end(), 1);
-        unpack(pack_buffer.get(), mm, nn, rr, {ref.get()});
+        acm::unpack(pack_buffer.get(), mm, nn, rr, {ref.get()});
 
         std::fill(pack_buffer.begin(), pack_buffer.end(), -1);
-        pack(mm, nn, rr, {ref.get()}, pack_buffer.get());
+        acm::pack(mm, nn, rr, {ref.get()}, pack_buffer.get());
         for (size_t i{0}; i < pack_buffer.size(); ++i)
             ERRCHK(pack_buffer[i] == as<int>(i) + 1);
 
         // Test transform
-        ac::transform(
-            pack_buffer.get(), [](const auto& elem) { return elem * elem; }, tst.get());
+        ac::transform(pack_buffer.get(), [](const auto& elem) { return elem * elem; }, tst.get());
         for (size_t i{0}; i < tst.size(); ++i)
             ERRCHK(tst[i] == as<int>((i + 1) * (i + 1)));
 
@@ -52,13 +51,12 @@ main()
 
         // Pack
         std::vector pack_inputs{ref.get(), ref.get()};
-        pack(mm, nn, rr, pack_inputs, tst.get());
+        acm::pack(mm, nn, rr, pack_inputs, tst.get());
         ref.display();
         tst.display();
 
         // Transform (square)
-        ac::transform(
-            tst.get(), [](const int& a) { return a * a; }, tst.get());
+        ac::transform(tst.get(), [](const int& a) { return a * a; }, tst.get());
         tst.display();
 
         // Reduce
@@ -93,7 +91,7 @@ main()
         std::iota(ref.begin(), ref.end(), 1);
 
         // Pack
-        pack(mm, nn, rr, pack_inputs, tst.get());
+        acm::pack(mm, nn, rr, pack_inputs, tst.get());
         ref.display();
         tst.display();
 
