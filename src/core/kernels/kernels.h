@@ -63,7 +63,7 @@ AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packe
 			    const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
 AcResult
-acShearKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+acKernelShearUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                           const Volume vba_start, const Volume dims, VertexBufferArray vba,
                           const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs,
                           const AcShearInterpolationCoeffs coeffs, const int offset

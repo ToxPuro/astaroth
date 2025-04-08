@@ -109,6 +109,8 @@ ac_pid()
     MPI_Comm_rank(astaroth_comm, &pid);
     return pid;
 }
+
+
 static AcProcMappingStrategy
 ac_proc_mapping_strategy()
 {
@@ -166,6 +168,7 @@ getPid3D(const AcMeshInfo config)
     return getPid3D(ac_pid(), get_decomp(config), 
                    config[AC_proc_mapping_strategy]);
 }
+
 
 int3
 getPid3D(const int pid, const uint3_64 decomp)
@@ -2146,7 +2149,12 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
                     if (op.kernel_enum == BOUNDCOND_PERIODIC) {
                         acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
                                                  tag);
-			const bool shear_periodic = acGridGetLocalMeshInfo()[AC_shear] && id.x != 0 && id.y == 0 && id.z == 0;
+			const bool shear_periodic = acGridGetLocalMeshInfo()[AC_shear] && (
+							   (id.x == -1 && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == 0)
+							|| (id.x == 1  && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == int(decomp.x-1))
+							);
+			//TP: because of the need to interpolate from multiple processes the whole stretch from 0 to AC_mlocal.y is done in a single task
+			if(shear_periodic && id.y != 0) continue;
                         auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, device, swap_offset,shear_periodic);
                         graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);

@@ -156,30 +156,26 @@ main(int argc, char* argv[])
     }
     fflush(stdout);
 
-    // DSL Boundconds
-    // TP: Works only for a single proc but that is sufficient for now
-    if(nprocs == 1)
-    {
-    	if (pid == 0)
-    	    acHostGridMeshRandomize(&model);
+    if (pid == 0)
+        acHostGridMeshRandomize(&model);
 
-    	const auto periodic = acGetDSLTaskGraph(boundconds);
-    	acGridLoadMesh(STREAM_DEFAULT, model);
-    	acGridSynchronizeStream(STREAM_DEFAULT);
-    	acGridExecuteTaskGraphBase(periodic,1,true);
-    	acGridSynchronizeStream(STREAM_DEFAULT);
-    	acGridStoreMesh(STREAM_DEFAULT, &candidate);
-    	acGridSynchronizeStream(STREAM_DEFAULT);
-    	if (pid == 0) {
-    	    acHostMeshApplyPeriodicBounds(&model);
-    	    const AcResult res = acVerifyMesh("DSL Periodic boundconds", model, candidate);
-    	    if (res != AC_SUCCESS) {
-    	        retval = res;
-    	        WARNCHK_ALWAYS(retval);
-    	    }
-    	}
-    	fflush(stdout);
+    const auto periodic = acGetDSLTaskGraph(boundconds);
+    acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridSynchronizeStream(STREAM_DEFAULT);
+    acGridExecuteTaskGraphBase(periodic,1,true);
+    acGridSynchronizeStream(STREAM_DEFAULT);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    acGridSynchronizeStream(STREAM_DEFAULT);
+    if (pid == 0) {
+        acHostMeshApplyPeriodicBounds(&model);
+        const AcResult res = acVerifyMesh("DSL Periodic boundconds", model, candidate);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
     }
+    fflush(stdout);
+
     //// Dryrun
     const AcReal dt = (AcReal)FLT_EPSILON;
 

@@ -247,16 +247,24 @@ kernel_shear_partial_unpack_data(const AcRealPacked* packed, const int3 vba_star
 
     const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
 
+   
+    //TP: message dimensions do not line up with kernel dims since we get volumes with ny but want to populate whole my
+    const int3 message_dims = 
+    {
+	    dims.x,
+	    VAL(AC_nlocal).y,
+	    dims.z
+    };
     //TP: the wonky indexing is because we get 3d halos from multiple processes and these are contiguous in y,
     //    with each process halo coming after another
     const auto get_index = [&](const int x, const int y, const int z, const int vtxbuf_index)
     {
 	    return 
 		    x +
-		    (y % dims.y) * dims.x +
-		    z * dims.x * dims.y   +
-		    vtxbuf_index * dims.x*dims.y*dims.z +
-		    (y / dims.y) * dims.x*dims.y*dims.z*num_vtxbufs;
+		    (y % message_dims.y) * message_dims.x +
+		    z * message_dims.x * message_dims.y   +
+		    vtxbuf_index * message_dims.x*message_dims.y*message_dims.z +
+		    (y / message_dims.y) * message_dims.x*message_dims.y*message_dims.z*num_vtxbufs;
     };
     
     const int x = i;
@@ -408,7 +416,7 @@ acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
 }
 
 AcResult
-acShearKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+acKernelShearUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                           const Volume vba_start, const Volume dims, VertexBufferArray vba,
                           const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs,
 			  const AcShearInterpolationCoeffs coeffs, const int offset

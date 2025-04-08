@@ -279,9 +279,26 @@ get_compute_input_dim(const int id, const size_t ghost, const size_t nn, const b
 	if(depends_on_boundary) return output_dims + 2*ghost;
 	else return output_dims;
 }
+size_t
+get_exchange_output_pos(const int id, const size_t ghost, const size_t nn, const bool bottom_included)
+{
+	    if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
+	    if(bottom_included) return 0;
+      	    return  id == -1  ? 0 : id == 1 ? ghost+ nn :  ghost;
+}
+size_t
+get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const bool bottom_included, const bool top_included)
+{
+	if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
+	if(top_included && id != 0) fatal("Top included but id was: %d\n",id);
+	size_t res = id == 0 ? nn : ghost;
+	if(bottom_included) res += ghost;
+	if(top_included)    res += ghost;
+	return res;
+}
 
 
-Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary computes_on_boundary, Volume nn, const RegionMemoryInputParams mem_)
+Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary boundary_included, Volume nn, const RegionMemoryInputParams mem_)
     : family(family_), tag(tag_) 
 {
     const Volume ghosts = to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
@@ -310,6 +327,7 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       
       switch (family) {
       case RegionFamily::Compute_output: {
+      const AcBoundary computes_on_boundary = boundary_included;
       // clang-format off
       position = {
 	    get_compute_output_position(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
@@ -330,6 +348,7 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       break;
       }
       case RegionFamily::Compute_input: {
+      const AcBoundary computes_on_boundary = boundary_included;
       // clang-format off
       position = {
 	    get_compute_input_position(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
@@ -355,12 +374,16 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       case RegionFamily::Exchange_output: {
       // clang-format off
       position = {
-      	    id.x == -1  ? 0 : id.x == 1 ? ghosts.x+ nn.x :  ghosts.x,
-      	    id.y == -1  ? 0 : id.y == 1 ? ghosts.y + nn.y : ghosts.y,
-      	    id.z == -1  ? 0 : id.z == 1 ? ghosts.z + nn.z : ghosts.z};
+	    get_exchange_output_pos(id.x,ghosts.x,nn.x,boundary_included & BOUNDARY_X_BOT),
+	    get_exchange_output_pos(id.y,ghosts.y,nn.y,boundary_included & BOUNDARY_Y_BOT),
+	    get_exchange_output_pos(id.z,ghosts.z,nn.z,boundary_included & BOUNDARY_Z_BOT),
+      };
       // clang-format on
-      dims = {id.x == 0 ? nn.x : ghosts.x , id.y == 0 ? nn.y : ghosts.y,
-      	      id.z == 0 ? nn.z : ghosts.z};
+      dims = {
+	      get_exchange_output_dim(id.x,ghosts.x,nn.x, boundary_included & BOUNDARY_X_BOT,boundary_included & BOUNDARY_X_TOP),
+	      get_exchange_output_dim(id.y,ghosts.y,nn.y, boundary_included & BOUNDARY_Y_BOT,boundary_included & BOUNDARY_Y_TOP),
+	      get_exchange_output_dim(id.z,ghosts.z,nn.z, boundary_included & BOUNDARY_Z_BOT,boundary_included & BOUNDARY_Z_TOP),
+      	    };
       break;
       }
       case RegionFamily::Exchange_input: {
@@ -1016,6 +1039,7 @@ shear_periodic_interpolation_coeffs()
         };
 }
 
+
 std::vector<int>
 shear_periodic_get_rhs_recv_offsets()
 {
@@ -1095,13 +1119,15 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_)
     : Task(order_,
            Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
-           Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
       shear_periodic(shear_periodic_),
 
       // MPI tags are namespaced to avoid collisions with other MPI tasks
-      recv_buffers(output_region.dims, output_region.memory.fields.size(),  tag_0, input_region.tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Receive),
-      send_buffers(input_region.dims,  input_region.memory.fields.size(),   tag_0, Region::id_to_tag(-output_region.id),get_send_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Send)
+      //TP: in recv_buffers the dims of input is used instead of output since normally they are the same
+      //    and in case of shear periodic then output_dims is larger than the message dims
+      recv_buffers(input_region.dims,  input_region.memory.fields.size(),   tag_0, input_region.tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Receive),
+      send_buffers(input_region.dims,  output_region.memory.fields.size(),   tag_0, Region::id_to_tag(-output_region.id),get_send_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Send)
 {
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
@@ -1193,11 +1219,13 @@ HaloExchangeTask::unpack()
 	    				? base_offset - local_displacement
 					: base_offset + local_displacement
 					;
-	    acShearKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
+	    //We shift by NGHOST since we update the whole side from 0 to AC_mlocal.y
+	    const int final_offset = offset-NGHOST;
+	    acKernelShearUnpackData(stream, msg->data, output_region.position, output_region.dims,
 	                               vba, output_region.memory.fields.data(),
 			    		output_region.memory.fields.size(),
 					shear_periodic_interpolation_coeffs(),
-					offset
+					final_offset
 					);
     }
     else
