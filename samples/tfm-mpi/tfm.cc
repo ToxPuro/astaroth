@@ -48,7 +48,7 @@
 // #define AC_DISABLE_IO
 
 // Production run: enable define below for fast, async profile IO
-#define AC_WRITE_ASYNC_PROFILES
+// #define AC_WRITE_ASYNC_PROFILES
 
 using IOTask = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
 
