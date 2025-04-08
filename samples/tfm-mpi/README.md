@@ -53,10 +53,10 @@ There's a build script in `astaroth/samples/tfm-mpi/build.sh`.
 
 For example:
 ```bash
-cd astaroth
-export ASTAROTH=$(pwd) # Note here (can add also to .bashrc)
-mkdir build && cd build
-../samples/tfm-mpi/build.sh
+cd astaroth && mkdir build && cd build
+cmake .. --preset lumi-tfm
+cmake --build . --parallel
+./tfm-mpi --config <path to mhd.ini> # Run
 ```
 
 The build system determines automatically whether it should compile for AMD or Nvidia.
@@ -87,7 +87,7 @@ Forcing is currently always on and a new forcing vector generated at the start o
 
 ## Running
 
-- The executable name is `tfm-mpi`.
+- The executable name is `tfm-mpi`. **Passing the config directory is mandatory with** `./tfm-mpi --config <path to config .ini>`
 - The program expects one (1) MPI process per GPU.
 - There are eight (8) GPUs per node on LUMI.
 
