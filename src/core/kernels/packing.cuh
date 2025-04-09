@@ -60,18 +60,6 @@ kernel_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const 
     }
 }
 
-static inline __device__ bool
-is_on_left_boundary()
-{
-	return VAL(AC_domain_coordinates).x == 0;
-}
-
-static inline __device__ bool
-is_on_right_boundary()
-{
-	return VAL(AC_domain_coordinates).x == VAL(AC_domain_decomposition).x-1;
-}
-
 static inline __device__ int3
 is_on_boundary()
 {
@@ -245,6 +233,8 @@ kernel_shear_partial_unpack_data(const AcRealPacked* packed, const int3 vba_star
     const int j_unpacked = j + vba_start.y;
     const int k_unpacked = k + vba_start.z;
 
+    const bool on_left_boundary = i_unpacked < NGHOST;
+
     const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
 
    
@@ -272,7 +262,7 @@ kernel_shear_partial_unpack_data(const AcRealPacked* packed, const int3 vba_star
     const int z = k;
     for(size_t vtxbuf_index = 0; vtxbuf_index < num_vtxbufs; ++vtxbuf_index)
     {
-    	if(is_on_left_boundary())
+    	if(on_left_boundary)
     	{
     	    AcReal res  = coeffs.c1*packed[get_index(x,y+2,z,vtxbuf_index)];
     	    res        += coeffs.c2*packed[get_index(x,y+1,z,vtxbuf_index)];
