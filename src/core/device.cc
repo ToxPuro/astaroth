@@ -539,6 +539,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     device->id           = id;
     device->local_config = device_config;
+    memset(&device->input,0,sizeof(device->input));
+    memset(&device->output,0,sizeof(device->output));
 
     // Check that AC_global_grid_n and AC_multigpu_offset are valid
     // Replace if not and give a warning otherwise

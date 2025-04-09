@@ -1008,7 +1008,7 @@ AcReal
 shear_periodic_displacement_in_grid_cells()
 {
         const auto info = ac_get_info();
-        return info[AC_shear_delta_y]/info[AC_ds].y;
+        return acDeviceGetInput(acGridGetDevice(),AC_shear_delta_y)/info[AC_ds].y;
 }
 
 int

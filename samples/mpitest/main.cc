@@ -126,6 +126,7 @@ main(int argc, char* argv[])
     memset(gmem_arr,0,sizeof(AcReal)*100);
     info[AC_real_gmem_arr] = gmem_arr;
     acGridInit(info);
+    if(pid == 0) acStoreConfig(acDeviceGetLocalConfig(acGridGetDevice()), "mpitest.conf");
 
     // Load/Store
     acGridLoadMesh(STREAM_DEFAULT, model);

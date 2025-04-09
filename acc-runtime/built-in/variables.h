@@ -89,7 +89,7 @@ run_const bool AC_sparse_autotuning=false
 output real AC_default_real_output
 
 run_const bool AC_shear = false
-real AC_shear_delta_y = 0.0
+input real AC_shear_delta_y
 //TP: these belong here but at the moment are deprecated
 /**
 run_const AC_xy_plate_bufsize
