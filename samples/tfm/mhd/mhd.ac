@@ -823,9 +823,9 @@ Kernel singlepass_solve_step0() {
 #else 
     // Roberts flow
     mom = roberts_flow()
-    write(VTXBUF_UUX, mom.x)
-    write(VTXBUF_UUY, mom.y)
-    write(VTXBUF_UUZ, mom.z)
+    write(VTXBUF_UUX, rk3_step0(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3_step0(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3_step0(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
 #endif
 
 #if LMAGNETIC
@@ -902,9 +902,9 @@ Kernel singlepass_solve_step1() {
 #else 
     // Roberts flow
     mom = roberts_flow()
-    write(VTXBUF_UUX, mom.x)
-    write(VTXBUF_UUY, mom.y)
-    write(VTXBUF_UUZ, mom.z)
+    write(VTXBUF_UUX, rk3_step0(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3_step0(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3_step0(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
 #endif
 
 #if LMAGNETIC
@@ -981,9 +981,9 @@ Kernel singlepass_solve_step2() {
 #else 
     // Roberts flow
     mom = roberts_flow()
-    write(VTXBUF_UUX, mom.x)
-    write(VTXBUF_UUY, mom.y)
-    write(VTXBUF_UUZ, mom.z)
+    write(VTXBUF_UUX, rk3_step0(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3_step0(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3_step0(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
 #endif
 
 #if LMAGNETIC
