@@ -434,6 +434,10 @@ gen_halo_exchange_and_boundconds(
 		)
 {
  
+		for(const auto& field : fields)
+		{
+			if(!vtxbuf_is_communicated[field]) fatal("%s","Internal AC bug: gen_halo_exchange_and_boundconds takes in only communicated fields!\n");
+		}
 		auto log_fields = [&](const auto& input_fields)
 		{
 			if(!ac_pid()) fprintf(stream,"{");
@@ -899,25 +903,26 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 	std::array<bool,NUM_FIELDS> field_written_out_before{};
 	for(const auto& current_level_set : level_sets)
 	{
-		std::vector<Field> fields_not_written_to{};
-		std::vector<Field> fields_written_to{};
+		std::vector<Field> communicated_fields_not_written_to{};
+		std::vector<Field> communicated_fields_written_to{};
 		for(size_t i = 0; i < NUM_FIELDS; ++i)
 		{
+			if(!vtxbuf_is_communicated[i]) continue;
 			Field field = static_cast<Field>(i);
 			if(field_written_out_before[i])
-				fields_written_to.push_back(field);
+				communicated_fields_written_to.push_back(field);
 			else
-				fields_not_written_to.push_back(field);
+				communicated_fields_not_written_to.push_back(field);
 		}
 		auto ops = gen_halo_exchange_and_boundconds(
-		  fields_written_to,
+		  communicated_fields_written_to,
 		  current_level_set.fields_communicated_before,
 		  field_boundconds,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
 		ops = gen_halo_exchange_and_boundconds(
-		  fields_not_written_to,
+		  communicated_fields_not_written_to,
 		  current_level_set.fields_communicated_before,
 		  field_boundconds,
 		  stream
