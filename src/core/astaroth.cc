@@ -267,7 +267,7 @@ AcResult
 acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst)
 {
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-	ERRCHK_ALWAYS(src.vertex_buffer[w]);
+        if(src.vertex_buffer[w] == NULL) continue;
 	memcpy(dst.vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info));
     }
     return AC_SUCCESS;
