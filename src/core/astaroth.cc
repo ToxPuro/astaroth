@@ -354,6 +354,7 @@ acHostMeshRandomize(AcMesh* mesh)
 {
     const size_t n = acVertexBufferSize(mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+	if(mesh->vertex_buffer[w] == NULL) continue;
         for (size_t i = 0; i < n; ++i) {
             mesh->vertex_buffer[w][i] = randf();
         }
