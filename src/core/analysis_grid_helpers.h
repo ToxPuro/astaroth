@@ -143,7 +143,7 @@ compute_kernel_call_computes_profile_across_halos(const std::vector<AcKernel>& c
 	for(size_t i = 0; i  < calls.size(); ++i)
 	{
 		std::array<AcBoundary,NUM_PROFILES> computes_profile_across_halos{};
-		for(int prof = 0; prof < NUM_PROFILES; ++prof) computes_profile_across_halos[i] = BOUNDARY_NONE;
+		for(int prof = 0; prof < NUM_PROFILES; ++prof) computes_profile_across_halos[prof] = BOUNDARY_NONE;
 		res.push_back(computes_profile_across_halos);
 	}
 

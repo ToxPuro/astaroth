@@ -1894,7 +1894,7 @@ get_spacings()
 
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
-{
+{ 
     // ERRCHK(grid.initialized);
     std::vector<AcTaskDefinition> ops{};
     //TP: insert reduce tasks in between of tasks
@@ -2040,7 +2040,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
 	    if(((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim])
 	    {
-	      auto task = std::make_shared<ComputeTask>(op,0,full_input_region,full_region,device,swap_offset);
+	      auto task = std::make_shared<ComputeTask>(op,i,full_input_region,full_region,device,swap_offset);
               graph->all_tasks.push_back(task);
               //done here since we want to write only to out not to in what launching the taskgraph would do
 	      //always remember to call the loader since otherwise might not be safe to execute taskgraph
@@ -2371,11 +2371,23 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 
         auto vol1 = t1->output_region.volume;
         auto vol2 = t2->output_region.volume;
+
+        auto order1 = t1->order;
+        auto order2 = t2->order;
+
+        auto tag1 = t1->output_region.tag;
+        auto tag2 = t2->output_region.tag;
+
         auto dim1 = t1->output_region.dims;
         auto dim2 = t2->output_region.dims;
 
-        return vol1 > vol2 ||
-               (vol1 == vol2 && ((!comp1 && comp2) || dim1.x < dim2.x || dim1.z > dim2.z));
+	if(vol1 > vol2) return true;
+        if(vol1 == vol2 && ((!comp1 && comp2) || dim1.x < dim2.x || dim1.z > dim2.z)) return true;
+	//TP: these are somewhat arbitrary but the sorting function requires a well-defined order: otherwise seg faults
+	if(vol1 == vol2 && dim1 == dim2 && order1 < order2) return true;
+	if(vol1 == vol2 && dim1 == dim2 && order1 == order2 && tag1 < tag2) return true;
+	return false;
+
     };
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Sorting tasks by priority\n");
 
