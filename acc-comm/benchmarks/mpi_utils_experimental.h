@@ -89,6 +89,37 @@ template <typename T> class subarray {
     const MPI_Datatype& get() const { return m_datatype.get(); }
 };
 
+template <typename T> class hindexed_block {
+  private:
+    datatype m_datatype;
+
+  public:
+    // Must use MPI_BOTTOM for the addresses to be treated as absolute.
+    // Otherwise, the data would have to come from a single, contiguous allocation
+    hindexed_block(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
+                   const std::vector<T*>& pointers)
+    {
+        const int nblocks{as<int>(pointers.size())};
+        const int block_length{1};
+        auto      displacements{ac::make_ntuple<MPI_Aint>(pointers.size(), 0)};
+        for (size_t i{0}; i < pointers.size(); ++i)
+            ERRCHK_MPI_API(MPI_Get_address(pointers[i], &displacements[i]));
+
+        const mpi::subarray<T> block{dims, subdims, offset};
+
+        MPI_Datatype hindexed_block{MPI_DATATYPE_NULL};
+        ERRCHK_MPI_API(MPI_Type_create_hindexed_block(nblocks,
+                                                      block_length,
+                                                      displacements.data(),
+                                                      block.get(),
+                                                      &hindexed_block));
+        ERRCHK_MPI_API(MPI_Type_commit(&hindexed_block));
+        m_datatype = datatype{hindexed_block, true};
+    }
+
+    const MPI_Datatype& get() const { return m_datatype.get(); }
+};
+
 class request {
   private:
     std::unique_ptr<MPI_Request, std::function<void(MPI_Request*)>> m_req;
