@@ -7085,7 +7085,7 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 				if(identifier)
 				{
 
-					astnode_sprintf(identifier,"%s",get_internal_array_name(sym));
+					astnode_sprintf(identifier,"%s",get_internal_array_name(var_sym));
 				}
 			}
 		}
