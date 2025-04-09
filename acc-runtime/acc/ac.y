@@ -1008,16 +1008,18 @@ intrinsic_definition:
 		    		$$ = astnode_create(NODE_DECLARATION, $1, $2);
 				$$ -> type |= NODE_NO_OUT;
                 		set_identifier_type(NODE_FUNCTION_ID, $2);
+				node_vec qualifiers = VEC_INITIALIZER;
+				push_node(&qualifiers,create_type_qualifier("intrinsic"));
  				if($$->lhs->lhs)
                                 {
                                         if(count_num_of_nodes_in_list($$->lhs->lhs) == 1 && !strcmp(get_node(NODE_TSPEC,$$->lhs->lhs)->lhs->buffer,"AcReal"))
-                                        {
-                                                ASTNode* base = astnode_create(NODE_UNKNOWN,create_type_qualifier("intrinsic"),NULL);
-                                                ASTNode* tqualifiers = astnode_create(NODE_UNKNOWN,base,create_type_qualifier("AcReal"));
-                                                $$->rhs->lhs->rhs = tqualifiers;
-                                                tqualifiers->parent = $$->rhs->lhs->rhs;
-                                        }
+					      push_node(&qualifiers,create_type_qualifier("AcReal"));
                                 }
+				ASTNode* tqualifiers = build_list_node(qualifiers,"");
+				free_node_vec(&qualifiers);
+				ASTNode* types = astnode_create(NODE_UNKNOWN,tqualifiers,NULL);
+                                $$->rhs->lhs->rhs = types;
+                                types->parent = $$->rhs->lhs->rhs;
 
 		    }
 		     ;

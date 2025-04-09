@@ -59,7 +59,7 @@ get_prof_types()
 
 
 static const char* REAL_ARR_STR = NULL;
-
+static const char* INTRINSIC_STR = NULL;
 static const char* CHAR_PTR_STR = NULL;
 static const char* REAL_PTR_STR = NULL;
 static const char* BOOL_PTR_STR = NULL;
@@ -706,9 +706,6 @@ symboltable_reset(void)
 
   // Add built-in variables (TODO consider NODE_BUILTIN)
   add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL,  intern("stderr"));           // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("print"));           // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("fprintf"));           // TODO REMOVE
-
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("threadIdx"));       // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("blockIdx"));        // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("vertexIdx"));       // TODO REMOVE
@@ -719,74 +716,16 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR,  intern("break"));       // TODO REMOVE
   add_symbol(NODE_VARIABLE_ID, dynamic_tq, 1, INT3_STR, intern("globalVertexIdx")); // TODO REMOVE
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_base"));  // TODO RECHECK
-
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_x"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_y"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_z"));  // TODO RECHECK
-                                                           
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_xy"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_xz"));  // TODO RECHECK
-                                                           
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_yx"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_yz"));  // TODO RECHECK
-                                                           
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_zx"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("write_profile_zy"));  // TODO RECHECK
-					      	 //
-
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_x"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_y"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_z"));  // TODO RECHECK
-
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_xy"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_xz"));  // TODO RECHECK
-
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_yx"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_yz"));  // TODO RECHECK
-
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_zx"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("value_profile_zy"));  // TODO RECHECK
-					      	 //
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_min_real"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_max_real"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_real"));  // TODO RECHECK
-					      			      //
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_real_x"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_real_y"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_real_z"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_real_xy"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_real_xz"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_real_yx"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_real_yz"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_real_zx"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_real_zy"));  // TODO RECHECK
-					      			      //
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_min_int"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_max_int"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_int"));  // TODO RECHECK
-
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_min_float"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_max_float"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("reduce_sum_float"));  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("matmul_arr"));  // TODO RECHECK
-									      //
-  add_symbol(NODE_FUNCTION_ID, NULL, 0,INT_STR, intern("size"));  // TODO RECHECK
   //In develop
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, INT_STR,   intern("len"));    // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, FIELD3_STR,intern("MakeField3")); // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("uint64_t"));   // TODO RECHECK
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, intern("UINT64_MAX")); // TODO RECHECK
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, REAL_STR, intern("rand_uniform"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, REAL_STR, REAL_STR);
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, REAL_STR, intern("previous_base"));  // TODO RECHECK
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("multm2_sym"));   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("diagonal"));   // TODO RECHECK
 
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_PI"));
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_EPSILON"));
@@ -4310,21 +4249,16 @@ get_qualifiers(const ASTNode* decl, const char** tqualifiers)
       if(!decl) return 0;
       const ASTNode* tqual_node = get_node(NODE_TQUAL, decl);
       if(!tqual_node || !tqual_node->lhs) return 0;
+      const ASTNode* tqual_list_node = tqual_node->parent;
+      while(tqual_list_node->parent->rhs && tqual_list_node->parent->rhs->type & NODE_TQUAL) tqual_list_node = tqual_list_node->parent;
+      node_vec tquals = get_nodes_in_list(tqual_list_node);
       size_t n_tqualifiers = 0;
-
-	  const ASTNode* tqual_list_node = tqual_node->parent;
-	  //backtrack to the start of the list
-	  while(tqual_list_node->parent && tqual_list_node->parent->rhs && tqual_list_node->parent->rhs->type & NODE_TQUAL)
-		  tqual_list_node = tqual_list_node->parent;
-	  while(tqual_list_node->rhs)
-	  {
-		  tqualifiers[n_tqualifiers] = tqual_list_node->rhs->lhs->buffer;
-		  ++n_tqualifiers;
-		  tqual_list_node = tqual_list_node->lhs;
-	  }
-	  tqualifiers[n_tqualifiers] = tqual_list_node->lhs->lhs->buffer;
-	  ++n_tqualifiers;
-
+      for(size_t i = 0; i < tquals.size; ++i)
+      {
+              tqualifiers[n_tqualifiers] = tquals.data[i]->lhs->buffer;
+              ++n_tqualifiers;
+      }
+      free_node_vec(&tquals);
       return n_tqualifiers;
 }
 static void
@@ -4954,7 +4888,14 @@ get_func_call_expr_type(ASTNode* node)
 			//TP: this does not scale: TODO think about how to generalize
 			if((func_name == intern("min") || func_name == intern("max")) && know_all_types(call_info.types))
 			{
-				node->expr_type = call_info.types.data[0];
+				if(call_info.types.data[0] == FIELD_STR)
+				{
+					node->expr_type = REAL_STR;
+				}
+				else
+				{
+					node->expr_type = call_info.types.data[0];
+				}
 			}
 			else if(func)
 			{
@@ -7094,27 +7035,33 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 		res |= func_params_conversion(node->rhs,root);
 	if(!(node->type & NODE_FUNCTION_CALL)) return res;
 	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-	if(!check_symbol(NODE_DFUNCTION_ID,func_name,0,0)) return res;
+	if(!check_symbol(NODE_FUNCTION_ID,func_name,0,0)) return res;
 	if(str_vec_contains(duplicate_dfuncs.names,func_name)) return res;
+	const Symbol* sym = get_symbol(NODE_FUNCTION_ID, func_name, NULL);
+	if(!sym) return res;
+        if(sym->tspecifier == STENCIL_STR) return res;
+	const bool is_intrinsic = str_vec_contains(sym->tqualifiers,INTRINSIC_STR);
+	if(!is_intrinsic && !(sym->type & NODE_DFUNCTION_ID)) return res;
+	if(is_intrinsic && func_name != intern("min") && func_name != intern("max")) return res;
 
 	func_params_info params_info = get_function_params_info(root,func_name);
 	func_params_info call_info = get_func_call_params_info(node);
 	if(call_info.types.size == 0) return res;
 	const int offset = is_boundary_param(call_info.expr.data[0]) ? 1 : 0;
-	if(params_info.types.size != call_info.types.size-offset)
+	if(!is_intrinsic && params_info.types.size != call_info.types.size-offset)
 		fatal("number of parameters does not match, expected %zu but got %zu in %s\n",params_info.types.size, call_info.types.size, combine_all_new(node));
 	for(size_t i = offset; i < call_info.types.size; ++i)
 	{
 		if(!call_info.types.data[i]) continue;
-		if(!params_info.types.data[i-offset]) continue;
+		if(!is_intrinsic && !params_info.types.data[i-offset]) continue;
 		if(
-		      (params_info.types.data[i-offset] == REAL3_STR     && call_info.types.data[i] == FIELD3_STR)
-		   || (params_info.types.data[i-offset] == REAL_STR      && call_info.types.data[i] == FIELD_STR)
-		   || (params_info.types.data[i-offset] == REAL_PTR_STR  && call_info.types.data[i] == VTXBUF_PTR_STR)
-		   || (params_info.types.data[i-offset] == REAL_PTR_STR  && call_info.types.data[i] == FIELD_PTR_STR)
-		   || (params_info.types.data[i-offset] == REAL3_PTR_STR && call_info.types.data[i] == FIELD3_PTR_STR)
-		   || (params_info.types.data[i-offset] == REAL_STR      && strstr(call_info.types.data[i],"Profile"))
-		   || (params_info.types.data[i-offset] == call_info.types.data[i] && is_output_type(call_info.expr.data[i]))
+		      ((is_intrinsic || params_info.types.data[i-offset] == REAL3_STR     ) && call_info.types.data[i] == FIELD3_STR)
+		   || ((is_intrinsic || params_info.types.data[i-offset] == REAL_STR      ) && call_info.types.data[i] == FIELD_STR)
+		   || ((is_intrinsic || params_info.types.data[i-offset] == REAL_PTR_STR  ) && call_info.types.data[i] == VTXBUF_PTR_STR)
+		   || ((is_intrinsic || params_info.types.data[i-offset] == REAL_PTR_STR  ) && call_info.types.data[i] == FIELD_PTR_STR)
+		   || ((is_intrinsic || params_info.types.data[i-offset] == REAL3_PTR_STR ) && call_info.types.data[i] == FIELD3_PTR_STR)
+		   || ((is_intrinsic || params_info.types.data[i-offset] == REAL_STR      ) && strstr(call_info.types.data[i],"Profile"))
+		   || ((is_intrinsic || params_info.types.data[i-offset] == call_info.types.data[i]) && is_output_type(call_info.expr.data[i]))
 		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
@@ -7129,10 +7076,10 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 		//TP: This translates e.g. any_AC(arr,3) --> any_AC(AC_INTERNAL_d_bool_arrays_arr,3)
 		//TP: i.e. translates enums to the appropriate pointers when the function expects to take a pointer
 		//TP: This is probably not the best place to place this but works for now
-		if(strstr(params_info.types.data[i-offset],"*") && strstr(call_info.types.data[i],"*"))
+		if((is_intrinsic || strstr(params_info.types.data[i-offset],"*")) && strstr(call_info.types.data[i],"*"))
 		{
-  			const Symbol* sym = get_symbol(NODE_VARIABLE_ID,intern(call_info.expr.data[i]),NULL);
-			if(sym)
+  			const Symbol* var_sym = get_symbol(NODE_VARIABLE_ID,intern(call_info.expr.data[i]),NULL);
+			if(var_sym)
 			{
 				ASTNode* identifier = get_node_by_token(IDENTIFIER,call_info.expr_nodes.data[i]);
 				if(identifier)
@@ -7639,30 +7586,32 @@ transform_array_assignments(ASTNode* node)
         }
 }
 
-
 void
 transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* root)
-{
-	if(node->lhs)
-		transform_field_intrinsic_func_calls_recursive(node->lhs,root);
-	if(node->rhs)
-		transform_field_intrinsic_func_calls_recursive(node->rhs,root);
-	if(node->type != NODE_FUNCTION_CALL) return;
-	const ASTNode* identifier_node = get_node_by_token(IDENTIFIER,node->lhs);
-	if(!identifier_node) return;
-	const char* func_name = identifier_node->buffer;
-	const Symbol* sym = get_symbol(NODE_FUNCTION_ID, func_name, NULL);
-	if(!sym) return;
-	if(!str_vec_contains(sym -> tqualifiers,REAL_STR)) return;
-	func_params_info param_info = get_func_call_params_info(node);
-	if(param_info.types.data[0] == FIELD_STR && param_info.expr.size == 1)
-	{
-		ASTNode* expression         = create_func_call_expr(VALUE_STR,node->rhs);
-		ASTNode* expression_list = astnode_create(NODE_UNKNOWN,expression,NULL);
-		node->rhs = expression_list;
-	}
-	free_func_params_info(&param_info);
-}
+{ 
+        if(node->lhs)
+                transform_field_intrinsic_func_calls_recursive(node->lhs,root);
+        if(node->rhs)
+                transform_field_intrinsic_func_calls_recursive(node->rhs,root);
+        if(node->type != NODE_FUNCTION_CALL) return;
+        const ASTNode* identifier_node = get_node_by_token(IDENTIFIER,node->lhs);
+        if(!identifier_node) return;
+        const char* func_name = identifier_node->buffer;
+        const Symbol* sym = get_symbol(NODE_FUNCTION_ID, func_name, NULL);
+        if(!sym) return;
+        if(!str_vec_contains(sym -> tqualifiers,REAL_STR)) return;
+	if(!str_vec_contains(sym -> tqualifiers,intern("intrinsic"))) return;
+	if(func_name == intern("previous_base")) return;
+        func_params_info param_info = get_func_call_params_info(node);
+        if(param_info.expr.size == 1 && param_info.types.data[0] == FIELD_STR)
+        {
+                ASTNode* expression         = create_func_call_expr(VALUE_STR,node->rhs);
+                ASTNode* expression_list = astnode_create(NODE_UNKNOWN,expression,NULL);
+                node->rhs = expression_list;
+        }
+        free_func_params_info(&param_info);
+} 
+
 
 void
 apply_value_to_output_types(ASTNode* node)
@@ -7787,7 +7736,6 @@ gen_overloads(ASTNode* root)
   }
   for(size_t i = 0; i < MAX_DFUNCS*duplicate_dfuncs.names.size; ++i)
 	  free_str_vec(&dfunc_possible_types[i]);
-  resolve_profile_stencils(root);
 }
 
 void
@@ -7997,6 +7945,7 @@ gen_global_strings()
 	COMPLEX_STR= intern("AcComplex");
 	REAL3_STR= intern("AcReal3");
 	REAL_ARR_STR = intern("AcRealArray");
+	INTRINSIC_STR = intern("intrinsic");
 
 	REAL_PTR_STR = intern("AcReal*");
 	BOOL_PTR_STR = intern("bool*");
@@ -9569,11 +9518,11 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
         const char* func_name = intern(tmp);
 
 	if(check_symbol(NODE_FUNCTION_ID,func_name,NULL,NULL)) return;
-	{
-		remove_suffix(tmp,"_profile");
-		const char* possible_stencil_name = intern(tmp);
-		if(check_symbol(NODE_FUNCTION_ID,possible_stencil_name,STENCIL_STR,NULL)) return;
-	}
+
+	const Symbol* sym = get_symbol(NODE_FUNCTION_ID, func_name, NULL);
+	if(sym && str_vec_contains(sym->tqualifiers,intern("intrinsic"))) return;
+	if(sym && sym->tspecifier == STENCIL_STR) return;
+
 	if(str_vec_contains(duplicate_dfuncs.names,func_name)) 
 	{
 		fprintf(stderr,FATAL_ERROR_MESSAGE);
@@ -9736,6 +9685,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 
   gen_matrix_reads(root);
   gen_constexpr_info(root,gen_mem_accesses);
+
+  //TP: do this at the very end to not mess with other passes
+  resolve_profile_stencils(root);
 
   if(!gen_mem_accesses && executed_nodes.size > 0 && OPTIMIZE_MEM_ACCESSES && ELIMINATE_CONDITIONALS)
   {
