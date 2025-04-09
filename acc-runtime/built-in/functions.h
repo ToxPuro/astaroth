@@ -58,7 +58,7 @@ elemental previous(Field s)
 }
 
 
-write(Field dst, real src)
+elemental write(Field dst, real src)
 {
 	write_base(dst,src)
 }
@@ -108,12 +108,6 @@ write(Profile<ZY> dst, real src)
 	write_profile_zy(dst,src)
 }
 
-write(Field3 dst, real3 src)
-{
-	write_base(dst.x, src.x)
-	write_base(dst.y, src.y)
-	write_base(dst.z, src.z)
-}
 inline write(Field[] dst, real[] src)
 {
 	for i in 0:size(dst)

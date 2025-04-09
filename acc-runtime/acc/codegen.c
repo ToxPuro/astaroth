@@ -2384,6 +2384,28 @@ free_func_params_info(func_params_info* info)
 	free_node_vec(&info -> expr_nodes);
 }
 
+bool
+is_returning_function(const ASTNode* node, const char* func)
+{
+	bool res = false;
+	if(node->lhs) 
+	{
+		res = is_returning_function(node->lhs,func);
+	}
+	if(node->rhs) 
+	{
+		res = is_returning_function(node->rhs,func);
+	}
+	if(!(node->type & NODE_FUNCTION)) return res;
+	{
+
+		const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,node);
+		if(!fn_identifier || !fn_identifier->buffer) return res;
+		if(fn_identifier->buffer != func) return res;
+		return get_node_by_token(RETURN,node) != NULL;
+	}
+}
+
 void
 get_function_params_info_recursive(const ASTNode* node, const char* func_name, func_params_info* dst)
 {
@@ -6334,6 +6356,7 @@ bool is_return_node(const ASTNode* node)
 	return res;
 }
 
+
 void replace_return_nodes(ASTNode* node, const ASTNode* decl_node)
 {
 	TRAVERSE_PREAMBLE_PARAMS(replace_return_nodes,decl_node);
@@ -7775,6 +7798,60 @@ reset_expr_types(ASTNode* node)
 }
 
 
+int_vec
+get_all_acreal_structs()
+{
+	int_vec res = VEC_INITIALIZER;
+	for(size_t j = 0; j < s_info.user_structs.size; ++j)
+	{
+		const char* name  = s_info.user_structs.data[j];
+		if(all_same_struct(name,REAL_STR) && strstr(name,"AcReal"))
+		{
+			push_int(&res,j);
+		}
+	}
+	return res;
+}
+
+int_vec
+get_all_field_structs()
+{
+	int_vec res = VEC_INITIALIZER;
+	for(int j = 0; j < (int)s_info.user_structs.size; ++j)
+	{
+ 		const char* name  = s_info.user_structs.data[j];
+ 		if(all_same_struct(name,FIELD_STR))
+ 		{
+ 			const size_t num_members = s_info.user_struct_field_names[j].size;
+ 			//TP: do not force the user to qualify the real struct name for elemental purposes
+ 			const char* qualified_real_name = sprintf_intern("AcReal%zu",num_members);
+ 			const char* base_real_name = sprintf_intern("real%zu",num_members);
+ 			if(    str_vec_contains(s_info.user_structs,qualified_real_name) 
+ 		            || str_vec_contains(s_info.user_structs,base_real_name)
+ 			  )
+			{
+				push_int(&res,j);
+			}
+		}
+	}
+	return res;
+}
+
+int_vec
+get_all_real_structs()
+{
+	int_vec res = VEC_INITIALIZER;
+	for(size_t j = 0; j < s_info.user_structs.size; ++j)
+	{
+		const char* name  = s_info.user_structs.data[j];
+		if(all_same_struct(name,REAL_STR))
+		{
+			push_int(&res,j);
+		}
+	}
+	return res;
+}
+
 void
 gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, FILE* stream)
 {
@@ -7786,54 +7863,49 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 	const char* dfunc_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	func_params_info info = get_function_params_info(node,dfunc_name);
 	if(!has_qualifier(node,"elemental")) return;
+	const bool is_returning = is_returning_function(node,dfunc_name);
 	if(info.expr.size == 1 && info.types.data[0] == REAL_STR)
 	{
-		for(size_t j = 0; j < s_info.user_structs.size; ++j)
+		if(!is_returning) fatal("Only returning real functions covered!\n");
+	        int_vec all_real_structs = get_all_acreal_structs();
+		for(size_t l = 0; l < all_real_structs.size; ++l)
 		{
+			const int j = all_real_structs.data[l];
 			const char* name  = s_info.user_structs.data[j];
 			const size_t num_members = s_info.user_struct_field_names[j].size;
-			if(all_same_struct(name,REAL_STR) && strstr(name,"AcReal"))
+			fprintf(stream, "%s(%s s){ return real%zu(\n",dfunc_name,name,num_members);
+			for(size_t f = 0; f < num_members; ++f)
 			{
-				fprintf(stream, "%s (%s s){ return real%zu(\n",dfunc_name,name,num_members);
-				for(size_t f = 0; f < num_members; ++f)
-				{
-					fprintf(stream,"  %s(s.%s)%s\n",dfunc_name,s_info.user_struct_field_names[j].data[f],f < num_members-1 ? "," : "");
-				}
-				fprintf(stream,")\n}\n");
+				fprintf(stream,"  %s(s.%s)%s\n",dfunc_name,s_info.user_struct_field_names[j].data[f],f < num_members-1 ? "," : "");
 			}
+			fprintf(stream,"  )\n}\n");
 		}
 		fprintf(stream,"inline %s(real[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
 		fprintf(stream,"inline %s(real3[] arr){\nreal3 res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
+		free_int_vec(&all_real_structs);
 	}
 
 	else if(info.expr.size == 1 && info.types.data[0] == FIELD_STR)
 	{
 		if(intern(node->expr_type) == REAL_STR)
 		{
+			if(!is_returning) fatal("Only returning Field functions covered!\n");
 			fprintf(stream,"inline %s(Field[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n   res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
-			for(size_t j = 0; j < s_info.user_structs.size; ++j)
+			int_vec all_field_structs = get_all_field_structs();
+			for(size_t l = 0; l < all_field_structs.size; ++l)
 			{
-				const char* name  = s_info.user_structs.data[j];
-				if(all_same_struct(name,FIELD_STR))
+				const int j = all_field_structs.data[l];
+				const char* name = s_info.user_structs.data[j];
+				const size_t num_members = s_info.user_struct_field_names[j].size;
+				fprintf(stream, "%s(%s s){ return real%zu(\n",dfunc_name,name,num_members);
+				for(size_t f = 0; f < num_members; ++f)
 				{
-					const size_t num_members = s_info.user_struct_field_names[j].size;
-					//TP: do not force the user to qualify the real struct name for elemental purposes
-					const char* qualified_real_name = sprintf_intern("AcReal%zu",num_members);
-					const char* base_real_name = sprintf_intern("real%zu",num_members);
-					if(    str_vec_contains(s_info.user_structs,qualified_real_name) 
-				            || str_vec_contains(s_info.user_structs,base_real_name)
-					  )
-					{
-						fprintf(stream, "%s (%s s){ return real%zu(\n",dfunc_name,name,num_members);
-						for(size_t f = 0; f < num_members; ++f)
-						{
-							fprintf(stream,"  %s(s.%s)%s\n",dfunc_name,s_info.user_struct_field_names[j].data[f],f < num_members-1 ? "," : "");
-						}
-						fprintf(stream,")\n}\n");
-					}
+					fprintf(stream,"  %s(s.%s)%s\n",dfunc_name,s_info.user_struct_field_names[j].data[f],f < num_members-1 ? "," : "");
 				}
+				fprintf(stream,"  )\n}\n");
 			}
 			fprintf(stream,"inline %s(Field3[] arr){\nreal3 res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
+			free_int_vec(&all_field_structs);
 		}
 		else if(intern(node->expr_type) == REAL3_STR)
 		{
@@ -7841,6 +7913,34 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 		}
 		else
 			fatal("Missing elemental case for func: %s\nReturn type: %s\n",dfunc_name,node->expr_type);
+	}
+	else if(info.expr.size == 2 && info.types.data[0] == FIELD_STR && info.types.data[1] == REAL_STR)
+	{
+		if(is_returning) fatal("Only non-returning (Field,real) functions covered!\n");
+		int_vec all_field_structs = get_all_field_structs();
+		int_vec all_real_structs  = get_all_real_structs();
+		for(size_t field_index = 0; field_index < all_field_structs.size; ++field_index)
+		{
+			for(size_t real_index = 0; real_index < all_real_structs.size; ++real_index)
+			{
+				const int f = all_field_structs.data[field_index];
+				const int r = all_real_structs.data[real_index];
+				const char* field_name = s_info.user_structs.data[f];
+				const char* real_name = s_info.user_structs.data[r];
+				const string_vec field_members = s_info.user_struct_field_names[f];
+				const string_vec real_members = s_info.user_struct_field_names[r];
+				if(field_members.size != real_members.size) continue;
+				fprintf(stream, "%s(%s f_s, %s r_s){ \n",dfunc_name,field_name,real_name);
+				for(size_t j = 0; j < field_members.size; ++j)
+				{
+					fprintf(stream,"  %s(f_s.%s,r_s.%s)\n",dfunc_name,field_members.data[j],real_members.data[j]);
+				}
+				fprintf(stream,"}\n");
+			}
+		}
+		free_int_vec(&all_field_structs);
+		free_int_vec(&all_real_structs);
+
 	}
 	free_func_params_info(&info);
 }
