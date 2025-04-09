@@ -268,7 +268,7 @@ acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst)
 {
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         if(src.vertex_buffer[w] == NULL) continue;
-	ERRCHK_ALWAYS(dst.vertex_buffer[w]);
+	if(dst.vertex_buffer[w] == NULL) continue;
 	memcpy(dst.vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info));
     }
     return AC_SUCCESS;
@@ -377,6 +377,7 @@ acHostGridMeshRandomize(AcMesh* mesh)
 AcResult
 acHostMeshDestroyVertexBuffer(AcReal** vtxbuf)
 {
+	if(*vtxbuf == NULL) return AC_SUCCESS;
 	free(*vtxbuf);
 	(*vtxbuf) = NULL;
 	return AC_SUCCESS;

@@ -685,6 +685,7 @@ acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, con
 {
     //TP: to still allow loading the whole mesh even though some VertexBuffers are dead, loading dead VertexBuffers is a no-op
     if (!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
+    if (host_mesh.vertex_buffer[vtxbuf_handle] == NULL) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, host_mesh.info);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, device->local_config);
@@ -745,12 +746,12 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
 AcResult
 acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh)
 {
+    int res = 0;
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
 	if (!vtxbuf_is_alive[i]) continue;
-        acDeviceLoadVertexBuffer(device, stream, host_mesh, (VertexBufferHandle)i);
+        res |= acDeviceLoadVertexBuffer(device, stream, host_mesh, (VertexBufferHandle)i);
     }
-
-    return AC_SUCCESS;
+    return AcResult(res);
 }
 
 AcResult
@@ -801,6 +802,7 @@ acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
 {
     //TP: to still allow storing the whole mesh back from the Device storing dead VertexBuffers is a no-op
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
+    if (host_mesh->vertex_buffer[vtxbuf_handle] == NULL) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, device->local_config);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, host_mesh->info);
@@ -853,11 +855,12 @@ acDeviceStoreVertexBuffer(const Device device, const Stream stream,
 AcResult
 acDeviceStoreMesh(const Device device, const Stream stream, AcMesh* host_mesh)
 {
+    int res = 0;
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        acDeviceStoreVertexBuffer(device, stream, (VertexBufferHandle)i, host_mesh);
+        res |= acDeviceStoreVertexBuffer(device, stream, (VertexBufferHandle)i, host_mesh);
     }
 
-    return AC_SUCCESS;
+    return AcResult(res);
 }
 
 AcResult
