@@ -15,9 +15,8 @@
 #include "acm/detail/errchk_cuda.h"
 #endif
 
-#include "mpi_utils_experimental.h"
 #include "bm.h"
-
+#include "mpi_utils_experimental.h"
 
 template <typename T, typename Allocator> class mpi_pack_strategy {
   private:
@@ -118,6 +117,84 @@ template <typename T, typename Allocator> class mpi_pack_strategy_batched {
     {
         for (const auto& task : m_tasks)
             task.unpack(outputs);
+    }
+};
+
+template <typename T, typename Allocator> class mpi_pack_strategy_hindexed {
+  private:
+    ac::mpi::comm                  m_comm;
+    ac::mpi::hindexed_block<T>     m_input_block;
+    ac::mpi::hindexed_block<T>     m_output_block;
+    ac::buffer<uint8_t, Allocator> m_pack_buffer;
+
+  public:
+    mpi_pack_strategy_hindexed(const MPI_Comm& parent_comm, const ac::shape& dims,
+                               const ac::segment&                                segment,
+                               const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
+                               const std::vector<ac::mr::pointer<T, Allocator>>& outputs)
+        : m_comm{parent_comm},
+          m_input_block(dims, segment.dims, segment.offset, ac::unwrap_data(inputs)),
+          m_output_block(dims, segment.dims, segment.offset, ac::unwrap_data(outputs)),
+          m_pack_buffer{sizeof(T) * inputs.size() * prod(segment.dims)}
+    {
+        ERRCHK_MPI(inputs.size() == outputs.size());
+
+        int pack_size{-1};
+        ERRCHK_MPI_API(MPI_Pack_size(1, m_input_block.get(), m_comm.get(), &pack_size));
+        ERRCHK_MPI(m_pack_buffer.size() == as<size_t>(pack_size));
+    }
+
+    void pack()
+    {
+        int position{0};
+        ERRCHK_MPI_API(MPI_Pack(MPI_BOTTOM,
+                                1,
+                                m_input_block.get(),
+                                m_pack_buffer.data(),
+                                as<int>(m_pack_buffer.size()),
+                                &position,
+                                m_comm.get()));
+        ERRCHK_MPI(as<size_t>(position) == m_pack_buffer.size());
+    }
+
+    void unpack() const
+    {
+        int position{0};
+        ERRCHK_MPI_API(MPI_Unpack(m_pack_buffer.data(),
+                                  as<int>(m_pack_buffer.size()),
+                                  &position,
+                                  MPI_BOTTOM,
+                                  1,
+                                  m_output_block.get(),
+                                  m_comm.get()));
+        ERRCHK_MPI(as<size_t>(position) == m_pack_buffer.size());
+    }
+};
+
+template <typename T, typename Allocator> class mpi_pack_strategy_hindexed_batched {
+  private:
+    std::vector<mpi_pack_strategy_hindexed<T, Allocator>> m_tasks;
+
+  public:
+    mpi_pack_strategy_hindexed_batched(const MPI_Comm& parent_comm, const ac::shape& dims,
+                                       const std::vector<ac::segment>&                   segments,
+                                       const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
+                                       const std::vector<ac::mr::pointer<T, Allocator>>& outputs)
+    {
+        for (const auto& segment : segments)
+            m_tasks.push_back({parent_comm, dims, segment, inputs, outputs});
+    }
+
+    void pack()
+    {
+        for (auto& task : m_tasks)
+            task.pack();
+    }
+
+    void unpack() const
+    {
+        for (const auto& task : m_tasks)
+            task.unpack();
     }
 };
 
@@ -343,9 +420,9 @@ main(int argc, char* argv[])
 
         // Segments
         const auto segments{prune(partition(mm, nn, rr), nn, rr)};
-        // const std::vector<ac::segment> segments{8, ac::segment{ac::shape{3,3,3}, ac::index{0,0,0}}};
-        // const auto segments{ac::segment{128,3,3}};
-        // const auto segments{ac::segment{128,128,3}};
+        // const std::vector<ac::segment> segments{8, ac::segment{ac::shape{3,3,3},
+        // ac::index{0,0,0}}}; const auto segments{ac::segment{128,3,3}}; const auto
+        // segments{ac::segment{128,128,3}};
 
         // Initialize inputs and refs
         auto init = [](std::vector<ac::ndbuffer<T, Allocator>>& inputs,
@@ -420,6 +497,27 @@ main(int argc, char* argv[])
             verify(outputs, refs);
             // Run the benchmark if verification succeeded
             print("mpi-pack", bm::benchmark(init_random, pack, sync, nsamples));
+        }
+
+        // MPI indexed packer
+        {
+            mpi_pack_strategy_hindexed_batched<T, Allocator> packer{MPI_COMM_WORLD,
+                                                                    mm,
+                                                                    segments,
+                                                                    input_ptrs,
+                                                                    output_ptrs};
+
+            auto pack   = [&packer]() { packer.pack(); };
+            auto unpack = [&packer]() { packer.unpack(); };
+
+            // Verify that the benchmarked function works correctly
+            init(inputs, refs);                       // Init inputs and refs
+            pack();                                   // Pack inputs
+            reset_outputs(inputs, segments, outputs); // Reset outputs
+            unpack();
+            verify(outputs, refs);
+            // Run the benchmark if verification succeeded
+            print("mpi-pack-indexed", bm::benchmark(init_random, pack, sync, nsamples));
         }
 
         // ACM
