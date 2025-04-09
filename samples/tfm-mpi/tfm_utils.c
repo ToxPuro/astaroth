@@ -313,6 +313,7 @@ calc_timestep(const AcReal uumax, const AcReal vAmax, const AcReal shock_max, co
     const long double cs2_sound = (long double)info.real_params[AC_cs2_sound];
     const long double nu_visc   = (long double)info.real_params[AC_nu_visc];
     const long double eta       = (long double)info.real_params[AC_eta];
+    const long double eta_tfm   = (long double)info.real_params[AC_eta_tfm];
     const long double chi   = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
     const long double gamma = (long double)info.real_params[AC_gamma];
     const long double dsmin = (long double)min((long double)info.real_params[AC_dsx],
@@ -329,7 +330,7 @@ calc_timestep(const AcReal uumax, const AcReal vAmax, const AcReal shock_max, co
     const long double uu_dt = cdt * dsmin /
                               (fabsl((long double)uumax) +
                                sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
-    const long double visc_dt = cdtv * dsmin * dsmin / (max(max(nu_visc, eta), gamma * chi));
+    const long double visc_dt = cdtv * dsmin * dsmin / (max(max(nu_visc, max(eta, eta_tfm)), gamma * chi));
     //+ nu_shock * (long double)shock_max);
 
     const long double dt = min(uu_dt, visc_dt);
