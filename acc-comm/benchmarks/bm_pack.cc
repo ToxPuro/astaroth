@@ -1,10 +1,11 @@
 #include <cstdlib>
 #include <iostream>
-#include <mpi.h>
+#include <sstream>
 
 #include "acm/detail/convert.h"
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/math_utils.h"
+#include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
 #include "acm/detail/pack.h"
 #include "acm/detail/partition.h"
@@ -377,15 +378,17 @@ main(int argc, char* argv[])
         PRINT_DEBUG(nn);
         PRINT_DEBUG(rr);
 
-        const auto output_file{"bm-pack.csv"};
-        FILE*      fp{fopen(output_file, "w")};
+        std::ostringstream oss;
+        oss << "bm-pack-" << jobid << "-" << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+        const auto output_file{oss.str()};
+        FILE*      fp{fopen(output_file.c_str(), "w")};
         ERRCHK(fp);
         fprintf(fp, "impl,dim,radius,ndims,ninputs,sample,nsamples,jobid,ns\n");
         ERRCHK(fclose(fp) == 0);
 
         auto print = [&](const std::string&                                label,
                          const std::vector<std::chrono::nanoseconds::rep>& results) {
-            FILE* fp{fopen(output_file, "a")};
+            FILE* fp{fopen(output_file.c_str(), "a")};
             ERRCHK(fp);
 
             for (size_t i{0}; i < results.size(); ++i) {
