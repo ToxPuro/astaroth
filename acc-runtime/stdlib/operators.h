@@ -141,7 +141,7 @@ gij5(v) {
 		  real3( der5x(v.z), der5y(v.z), der5z(v.z) ))
 }
 
-traceless_rateof_strain(v) {
+traceless_rateof_strain(Field3 v) {
     Matrix S
 
     S[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))

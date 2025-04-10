@@ -34,6 +34,13 @@
 #define DER4_2 (12.0/6.0)
 #define DER4_3 (-1.0)
 
+
+#define DER3_0 (0)
+#define DER3_1 (-13.0/8.0)
+#define DER3_2 (1)
+#define DER3_3 (-1.0/8.0)
+
+
 #define DER4i2j_scaling_factor 1/(6.0*180.0)
 #define DER4i2j_first 56.0
 #define DER4i2j_second -39.0
@@ -514,6 +521,59 @@ deryz(Field f)
 }
 
 #define derzy deryz
+
+Stencil der3x {
+    [0][0][-3] = - AC_inv_ds_3.x * DER3_3,
+    [0][0][-2] = - AC_inv_ds_3.x * DER3_2,
+    [0][0][-1] = - AC_inv_ds_3.x * DER3_1,
+    [0][0][1]  = AC_inv_ds_3.x * DER3_1,
+    [0][0][2]  = AC_inv_ds_3.x * DER3_2,
+    [0][0][3]  = AC_inv_ds_3.x * DER3_3
+}
+
+Stencil der3y_stencil {
+    [0][0][-3] = - AC_inv_ds_3.y * DER3_3,
+    [0][0][-2] = - AC_inv_ds_3.y * DER3_2,
+    [0][0][-1] = - AC_inv_ds_3.y * DER3_1,
+    [0][0][1]  = AC_inv_ds_3.y * DER3_1,
+    [0][0][2]  = AC_inv_ds_3.y * DER3_2,
+    [0][0][3]  = AC_inv_ds_3.y * DER3_3
+}
+
+der3y(Field f)
+{
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		factor = AC_INV_R*AC_INV_R*AC_INV_R
+		return der3y_stencil(f)*(factor)
+	}
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		factor = AC_INV_CYL_R*AC_INV_CYL_R*AC_INV_CYL_R
+		return der3y_stencil(f)*(factor)
+	}
+	return der3y_stencil(f)
+}
+
+Stencil der3z_stencil {
+    [0][0][-3] = - AC_inv_ds_3.z * DER3_3,
+    [0][0][-2] = - AC_inv_ds_3.z * DER3_2,
+    [0][0][-1] = - AC_inv_ds_3.z * DER3_1,
+    [0][0][1]  = AC_inv_ds_3.z * DER3_1,
+    [0][0][2]  = AC_inv_ds_3.z * DER3_2,
+    [0][0][3]  = AC_inv_ds_3.z * DER3_3
+}
+
+der3z(Field f)
+{
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		factor = AC_INV_R*AC_INV_SIN_THETA
+		factor = factor*factor*factor
+		return der3z_stencil(f)*(factor)
+	}
+	return der3z_stencil(f)
+}
 
 Stencil der4x {
     [0][0][-3] = AC_inv_ds_4.x * DER4_3,

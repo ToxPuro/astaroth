@@ -44,6 +44,10 @@
 #define DER4i2j_2 -27.0
 #define DER4i2j_3 2.0
 
+#define DER3_0 (0)
+#define DER3_1 (-13.0/8.0)
+#define DER3_2 (1)
+#define DER3_3 (-1.0/8.0)
 
 #define DERX_3 (2. / 720.)
 #define DERX_2 (-27. / 720.)
@@ -321,6 +325,33 @@ Stencil deryz {
     [1][-1][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_1,
     [2][-2][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_2,
     [3][-3][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_3
+}
+
+Stencil der3x {
+    [0][0][-3] = - AC_inv_ds_3.x * DER3_3,
+    [0][0][-2] = - AC_inv_ds_3.x * DER3_2,
+    [0][0][-1] = - AC_inv_ds_3.x * DER3_1,
+    [0][0][1]  = AC_inv_ds_3.x * DER3_1,
+    [0][0][2]  = AC_inv_ds_3.x * DER3_2,
+    [0][0][3]  = AC_inv_ds_3.x * DER3_3
+}
+
+Stencil der3y {
+    [0][0][-3] = - AC_inv_ds_3.y * DER3_3,
+    [0][0][-2] = - AC_inv_ds_3.y * DER3_2,
+    [0][0][-1] = - AC_inv_ds_3.y * DER3_1,
+    [0][0][1]  = AC_inv_ds_3.y * DER3_1,
+    [0][0][2]  = AC_inv_ds_3.y * DER3_2,
+    [0][0][3]  = AC_inv_ds_3.y * DER3_3
+}
+
+Stencil der3z {
+    [0][0][-3] = - AC_inv_ds_3.z * DER3_3,
+    [0][0][-2] = - AC_inv_ds_3.z * DER3_2,
+    [0][0][-1] = - AC_inv_ds_3.z * DER3_1,
+    [0][0][1]  = AC_inv_ds_3.z * DER3_1,
+    [0][0][2]  = AC_inv_ds_3.z * DER3_2,
+    [0][0][3]  = AC_inv_ds_3.z * DER3_3
 }
 
 Stencil der6x_upwd {
