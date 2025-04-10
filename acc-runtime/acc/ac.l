@@ -202,6 +202,7 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 
 "#".*               { /* Skip regular comments */ }
 [ \t\n\v\r]+        { /* Ignore whitespace, tabs and newlines */ }
+[^\x20-\x7E]+       { /* Ignore non-printable characters (anything outside of ASCII printable range) */ }
 .                   { fprintf(stderr, "unrecognized char %d: [%c]\n", *yytext, *yytext); }
 
 %%
