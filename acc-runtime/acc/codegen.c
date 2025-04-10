@@ -3727,17 +3727,23 @@ gen_calling_info(const ASTNode* root)
 	}
 	init_populate(root,&calling_info,NODE_DFUNCTION);
 	init_populate(root,&calling_info,NODE_KFUNCTION);
-	//TP: we depend on the fact that dfuncs have to be declared before used
-	for(size_t i = 0; i < calling_info.names.size; ++i)
-		for(int j = i-1; j >= 0; --j)
-		{
-			if(!int_vec_contains(calling_info.called_funcs[i], j)) continue;
-			for(size_t k = 0; k < calling_info.called_funcs[j].size; ++k)
-			{
-				if(int_vec_contains(calling_info.called_funcs[i], calling_info.called_funcs[j].data[k])) continue;
-				push_int(&calling_info.called_funcs[i],calling_info.called_funcs[j].data[k]);
-			}
-		}
+	
+        bool updated_calling_info = true;
+        while(updated_calling_info)
+        {
+                updated_calling_info = false;
+                for(size_t i = 0; i < calling_info.names.size; ++i)
+                        for(size_t j = 0; j < calling_info.names.size; ++j)
+                        {
+                                if(!int_vec_contains(calling_info.called_funcs[i], j)) continue;
+                                for(size_t k = 0; k < calling_info.called_funcs[j].size; ++k)
+                                {
+                                        if(int_vec_contains(calling_info.called_funcs[i], calling_info.called_funcs[j].data[k])) continue;
+                                        push_int(&calling_info.called_funcs[i],calling_info.called_funcs[j].data[k]);
+                                        updated_calling_info = true;
+                                }
+                        }
+        }
 	calling_info.topological_index = (int*)malloc(sizeof(int)*calling_info.names.size);
 	memset(calling_info.topological_index,-1,sizeof(int)*calling_info.names.size);
 	int topological_index = 0;	
