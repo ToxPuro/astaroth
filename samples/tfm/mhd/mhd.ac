@@ -380,6 +380,18 @@ contract(mat) {
            dot(mat.row(2), mat.row(2))
 }
 
+grid_position() {
+    return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx, 
+                 (globalVertexIdx.y - AC_ny_min) * AC_dsy, 
+                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+}
+
+grid_centre() {
+    return real3(((globalGridN.x) * AC_dsx)/2.0, 
+                 ((globalGridN.y) * AC_dsy)/2.0, 
+                 ((globalGridN.z) * AC_dsz)/2.0)
+}
+
 // Simulation functions
 #if LFORCING
 // The Pencil Code forcing_hel_noshear(), manual Eq. 222, inspired forcing function with adjustable
@@ -475,9 +487,7 @@ momentum() {
 #else 
     // Roberts flow
 roberts_flow() {
-    pos = real3(AC_dsx * globalVertexIdx.x, 
-                AC_dsy * globalVertexIdx.y, 
-                AC_dsz * globalVertexIdx.z)
+    pos = grid_position() - grid_centre()
     k0 = 1    // MR: this could be an input parameter
     cx = cos(k0 * pos.x)
     cy = cos(k0 * pos.y)
