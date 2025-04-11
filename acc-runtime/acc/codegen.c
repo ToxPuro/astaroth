@@ -8868,6 +8868,8 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   memset(&kfunc_names,0,sizeof(kfunc_names));
   get_nodes(root,&kfunc_nodes,&kfunc_names,NODE_KFUNCTION);
 
+  process_overrides(root);
+
   remove_extra_braces_in_arr_initializers(root);
   symboltable_reset();
   rename_scoped_variables(root,NULL,NULL);
@@ -8890,7 +8892,6 @@ preprocess(ASTNode* root, const bool optimize_input_params)
 
   check_for_illegal_writes(root);
   check_for_illegal_func_calls(root);
-  process_overrides(root);
   //We use duplicate dfuncs from gen_boundcond_kernels
   //duplicate_dfuncs = get_duplicate_dfuncs(root);
   mark_first_declarations(root);
@@ -8948,11 +8949,10 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	e_info = read_user_enums(root);
 	expand_allocating_types(root);
 
+  	process_overrides(root);
 	symboltable_reset();
 	rename_scoped_variables(root,NULL,NULL);
 	symboltable_reset();
-
-  	process_overrides(root);
 	{
   		traverse_base_params params;
   		memset(&params,0,sizeof(params));
