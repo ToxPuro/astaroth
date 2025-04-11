@@ -7657,6 +7657,13 @@ transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* roo
         free_func_params_info(&param_info);
 } 
 
+void
+reset_expr_types(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(reset_expr_types);
+	node->expr_type = NULL;
+}
+
 
 void
 apply_value_to_output_types(ASTNode* node)
@@ -7708,6 +7715,7 @@ transform_field_binary_ops(ASTNode* node)
 	}
 	if(is_value_applicable_type(rhs_expr))
 	{
+
 		node->rhs->rhs = create_func_call_expr(VALUE_STR,node->rhs->rhs);
 	}
 
@@ -7783,12 +7791,6 @@ gen_overloads(ASTNode* root)
 	  free_str_vec(&dfunc_possible_types[i]);
 }
 
-void
-reset_expr_types(ASTNode* node)
-{
-	TRAVERSE_PREAMBLE(reset_expr_types);
-	node->expr_type = NULL;
-}
 
 
 int_vec
@@ -8869,6 +8871,9 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   get_nodes(root,&kfunc_nodes,&kfunc_names,NODE_KFUNCTION);
 
   process_overrides(root);
+  s_info = read_user_structs(root);
+  e_info = read_user_enums(root);
+  expand_allocating_types(root);
 
   remove_extra_braces_in_arr_initializers(root);
   symboltable_reset();
@@ -8876,11 +8881,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   symboltable_reset();
   free_node_vec(&dfunc_nodes);
   free_str_vec(&dfunc_names);
-  s_info = read_user_structs(root);
-  e_info = read_user_enums(root);
-  expand_allocating_types(root);
   canonalize(root);
-
 
 
   mark_kernel_inputs(root);
@@ -9648,7 +9649,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 
   gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses);
   gen_profile_reads(root,gen_mem_accesses);
-
 
 
   // Fill the symbol table

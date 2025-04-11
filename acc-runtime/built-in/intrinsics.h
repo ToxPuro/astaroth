@@ -49,15 +49,15 @@ intrinsic write_profile_yz
 intrinsic write_profile_zx
 intrinsic write_profile_zy
 
-intrinsic value_profile_x(Profile<X>)
-intrinsic value_profile_y(Profile<Y>)
-intrinsic value_profile_z(Profile<Z>)
-intrinsic value_profile_xy(Profile<XY>)
-intrinsic value_profile_xz(Profile<XZ>)
-intrinsic value_profile_yx(Profile<YZ>)
-intrinsic value_profile_yz(Profile<YZ>)
-intrinsic value_profile_zx(Profile<ZX>)
-intrinsic value_profile_zy(Profile<ZY>)
+real intrinsic value_profile_x(Profile<X>)
+real intrinsic value_profile_y(Profile<Y>)
+real intrinsic value_profile_z(Profile<Z>)
+real intrinsic value_profile_xy(Profile<XY>)
+real intrinsic value_profile_xz(Profile<XZ>)
+real intrinsic value_profile_yx(Profile<YZ>)
+real intrinsic value_profile_yz(Profile<YZ>)
+real intrinsic value_profile_zx(Profile<ZX>)
+real intrinsic value_profile_zy(Profile<ZY>)
 
 intrinsic reduce_min_real
 intrinsic reduce_max_real
