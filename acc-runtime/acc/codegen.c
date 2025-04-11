@@ -3990,11 +3990,27 @@ check_for_undeclared_use_in_range(const ASTNode* node)
 {
 	  const ASTNode* range_node = get_parent_node_by_token(RANGE,node);
 	  if(range_node)
-		fatal("Undeclared variable or function used on a range expression\n"
-				"Range: %s\n"
-				"Var: %s\n"
-				"\n"
-				,combine_all_new(range_node),node->buffer);
+	  {
+		const ASTNode* func = get_parent_node(NODE_FUNCTION,node);
+		if(func)
+		{
+			fatal("Undeclared variable or function used on a range expression\n"
+					"Range: %s\n"
+					"Var: %s\n"
+					"In function: %s\n"
+					"\n"
+					,combine_all_new(range_node),node->buffer
+					,get_node_by_token(IDENTIFIER,func)->buffer);
+		}
+		else
+		{
+			fatal("Undeclared variable or function used on a range expression\n"
+					"Range: %s\n"
+					"Var: %s\n"
+					"\n"
+					,combine_all_new(range_node),node->buffer);
+		}
+	  }
 }	
 static void
 check_for_undeclared_use_in_assignment(const ASTNode* node)
@@ -4003,13 +4019,32 @@ check_for_undeclared_use_in_assignment(const ASTNode* node)
 	  const bool used_in_assignment = is_right_child(NODE_ASSIGNMENT,node);
 	  if(used_in_assignment)
 	  {
-		  fatal(
-			"Undeclared variable or function used on the right hand side of an assignment\n"
-			"Assignment: %s\n"
-			"Var: %s\n"
-			"\n"
-				  ,combine_all_new(get_parent_node(NODE_ASSIGNMENT,node)),node->buffer
-			);
+		  const ASTNode* func = get_parent_node(NODE_FUNCTION,node);
+		  const char* assignment = combine_all_new(get_parent_node(NODE_ASSIGNMENT,node));
+		  if(true)
+		  {
+		  	fatal(
+				"Undeclared variable or function used on the right hand side of an assignment\n"
+				"Assignment: %s\n"
+				"Var: %s\n"
+				"In function: %s\n"
+				"\n"
+					  ,assignment
+					  ,node->buffer
+					  ,get_node_by_token(IDENTIFIER,func)->buffer
+				);
+		  }
+		  else
+		  {
+		  	fatal(
+				"Undeclared variable or function used on the right hand side of an assignment\n"
+				"Assignment: %s\n"
+				"Var: %s\n"
+				"\n"
+					  ,assignment
+					  ,node->buffer
+				);
+		  }
 	  }
 }
 bool
@@ -4270,7 +4305,7 @@ get_qualifiers(const ASTNode* decl, const char** tqualifiers)
 static void
 check_for_shadowing(const ASTNode* node)
 {
-    if(symboltable_lookup_surrounding_scope(node->buffer) && is_right_child(NODE_DECLARATION,node) && get_node(NODE_TSPEC,get_parent_node(NODE_DECLARATION,node)->lhs))
+    if(symboltable_lookup_surrounding_scope(node->buffer)  && is_right_child(NODE_DECLARATION,node) && get_node(NODE_TSPEC,get_parent_node(NODE_DECLARATION,node)->lhs))
     {
       // Do not allow shadowing.
       //
@@ -4321,7 +4356,7 @@ add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, b
       {
 	if(!is_enum_option(node->buffer))
         	add_symbol_base(node->type, tqualifiers, n_tqualifiers, tspec.id,  node->buffer, postfix);
-        if(do_checks && !tspec.id) check_for_undeclared(node);
+        if(!tspec.id && do_checks) check_for_undeclared(node);
       }
     }
    else if(do_checks && !skip_global_dup_check && current_nest == 0)
@@ -4351,13 +4386,13 @@ void
 rename_scoped_variables_base(ASTNode* node, const ASTNode* decl, const ASTNode* func_body, const bool lhs_of_func_body, const bool lhs_of_func_call, bool child_of_enum, bool skip_shadowing_check)
 {
   FILE* stream = NULL;
-  const bool do_checks = false;
+  const bool do_checks = true;
   const NodeType exclude = 0;
   if(node->type == NODE_STRUCT_DEF) return;
   if(node->type & NODE_DECLARATION) decl = node;
   if(node->parent && node->parent->type & NODE_FUNCTION && node->parent->rhs->id == node->id) func_body = node;
   child_of_enum |= (node->type & NODE_ENUM_DEF);
-  skip_shadowing_check |= (node->type & NODE_ARRAY_ACCESS);
+  if(node->type & NODE_ARRAY_ACCESS) skip_shadowing_check = true;
   // Do not translate tqualifiers or tspecifiers immediately
   if (node->parent &&
       (node->parent->type & NODE_TQUAL || node->parent->type & NODE_TSPEC))
@@ -4381,11 +4416,12 @@ rename_scoped_variables_base(ASTNode* node, const ASTNode* decl, const ASTNode* 
   }
 
   //TP: do not rename func params since it is not really needed and does not gel well together with kernel params
-  //TP: also skip func calls since they should anways always be in the symbol table except because of hacks
+  //TP: also skip func calls since they should anyways always be in the symbol table except because of hacks
   //TP: skip also enums since they are anyways unique
-  char* postfix = (lhs_of_func_call || lhs_of_func_call || child_of_enum) ? NULL : itoa(nest_ids[current_nest]);
+  char* postfix = (lhs_of_func_call || child_of_enum) ? NULL : itoa(nest_ids[current_nest]);
 
-  add_to_symbol_table(node,exclude,stream,do_checks,decl,postfix,true,false);
+  if(!lhs_of_func_call)
+  	add_to_symbol_table(node,exclude,stream,do_checks,decl,postfix,true,skip_shadowing_check);
   free(postfix);
   if(node->buffer) 
   {
@@ -8844,7 +8880,11 @@ preprocess(ASTNode* root, const bool optimize_input_params)
 
   mark_kernel_inputs(root);
 
-  traverse(root, 0, NULL);
+  traverse_base_params params;
+  memset(&params,0,sizeof(params));
+  params.do_checks = true;
+  traverse_base(root, 0, NULL, params);
+
   check_for_illegal_writes(root);
   check_for_illegal_func_calls(root);
   process_overrides(root);
@@ -8858,9 +8898,6 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   free_structs_info(&s_info);
   symboltable_reset();
 
-  traverse_base_params params;
-  memset(&params,0,sizeof(params));
-  params.do_checks = true;
   traverse_base(root, 0, NULL, params);
 
   gen_kernel_ifs(root,optimize_input_params);
