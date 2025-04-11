@@ -19,6 +19,7 @@
 #include "acm/detail/halo_exchange_batched.h"
 #include "acm/detail/halo_exchange_custom.h"
 #include "acm/detail/io.h"
+#include "acm/detail/math_utils.h"
 
 #include "acm/detail/ndbuffer.h"
 
@@ -1059,19 +1060,121 @@ class Grid {
         // Reducing only a subset of profiles by using `nonlocal_tfm_profiles.size()`
         // as the profile count causes garbage values to appear at the end (constant B profiles)
         // This issue does not appear on Triton or Puhti.
-        const size_t count{NUM_PROFILES * vba.profiles.count};
-        AcReal* data{vba.profiles.in[0]};
-        ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE,
-                                     data,
+        const size_t count{nonlocal_tfm_profiles.size() * vba.profiles.count};
+        AcReal* data{vba.profiles.in[nonlocal_tfm_profiles[0]]};
+        
+        ac::device_buffer<AcReal> tmp{count};
+        ERRCHK_MPI_API(MPI_Allreduce(data,
+                                     tmp.data(),
                                      as<int>(count),
                                      ac::mpi::get_dtype<AcReal>(),
                                      MPI_SUM,
                                      xy_neighbors));
+
+        for (size_t i{0}; i < nonlocal_tfm_profiles.size(); ++i)
+            ac::mr::copy(ac::mr::pointer<AcReal, ac::mr::device_allocator>{vba.profiles.count, &tmp.get()[i * vba.profiles.count]}, acr::make_ptr(vba, static_cast<Profile>(nonlocal_tfm_profiles[i]), BufferGroup::input));
+
         int collaborated_procs{-1};
         ERRCHK_MPI_API(MPI_Comm_size(xy_neighbors, &collaborated_procs));
         acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
 
         PRINT_LOG_TRACE("Exit");
+    }
+
+    void test_reduce_xy_averages() {
+        const auto global_nn{acr::get_global_nn(local_info)};
+        const auto local_mm{acr::get_local_mm(local_info)};
+        const auto local_nn{acr::get_local_nn(local_info)};
+        const auto rr{acr::get_local_rr()};
+
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(device, &vba));
+
+        ac::host_ndbuffer<double> tmp{global_nn};
+
+        // Init buffers
+        for (size_t i{0}; i < NUM_FIELDS; ++i) {
+            std::iota(tmp.begin(), tmp.end(), 1 + i * prod(global_nn));
+
+            ac::mpi::scatter_advanced(cart_comm,
+                ac::mpi::get_dtype<double>(),
+                global_nn,
+                ac::make_index(global_nn.size(), 0),
+                tmp.data(),
+                local_mm,
+                local_nn,
+                rr,
+                vba.in[static_cast<Field>(i)]);
+        }
+
+        // Init profiles
+        init_tfm_profiles(device);
+
+        reduce_xy_averages(STREAM_DEFAULT);
+
+        /** Return the expected sum of the `i`th block, where each block contains `stride` elements and
+        * the blocks have been initialized in an increasing order from 1.
+        *
+        * For example:
+        *  Block 0: [1, 100], where subsequent values are 1, 2, 3, ...
+        *  Block 1: [101, 201]
+        *  ...
+        *
+        * Expression: sum_{i}^{n} = n(n+1) / 2
+        */
+        auto expected_sum = [](const uint64_t i, const uint64_t stride) {
+            return (i + 1) * stride * ((i + 1) * stride + 1) / 2 - i * stride * (i * stride + 1) / 2;
+        };
+        for (const auto& profile : nonlocal_tfm_profiles) {
+            for (size_t i{0}; i < local_nn[2]; ++i) {
+                const auto measured_value{vba.profiles.in[profile][i + rr[2]]};
+                const auto expected_value{expected_sum(i + profile * local_nn[2], global_nn[0] * global_nn[1]) / 2.0};
+                PRINT_DEBUG(measured_value);
+                PRINT_DEBUG(expected_value);
+                ERRCHK_MPI(within_machine_epsilon(measured_value, expected_value));
+            }
+        }
+
+        // std::vector<AcReal> expected_results;
+        // for (size_t i{0}; i < NUM_FIELDS; ++i) {
+        //     for (size_t j{0}; j < local_nn[2]; ++j) {
+        //         const auto n{local_nn[0] * local_nn[1]};
+        //         expected_results.push_back(n * (n + 1) / 2.);
+        //     }
+        // }
+        // for (size_t i{1}; i < expected_results.size(); ++i)
+        //     expected_results[i] += expected_results[i-1];
+
+        // for (auto& result : expected_results)
+        //     result /= 2.0;
+
+        // for (size_t i{0}; i < expected_results.size(); ++i) {
+
+        // }
+
+        // if (ac::mpi::get_rank(cart_comm) == 0){
+        //     for (size_t i{0}; i < NUM_PROFILES; ++i) {
+        //         std::cout << profile_names[i] << std::endl;
+        //         for (size_t j{0}; j < vba.profiles.count; ++j){
+        //         std::cout << j <<": " << vba.profiles.in[i][j] << std::endl;
+        //         }
+        //     }
+        // }
+        // for (const auto& id : nonlocal_tfm_profiles) {
+        //     std::cout << profile_names[id] << std::endl;
+        //     for (size_t i{0}; i < local_nn[2]; ++i) {
+        //         const auto n{global_nn[0] * global_nn[1]};
+        //         const auto n0{n * (i + id + 0)};
+        //         const auto n1{n * (i + id + 1)};
+        //         // const auto expected_result{n * (n + 1) / 2.};
+        //         const auto expected_result{(n1*(n1+1)/ 2. - n0*(n0+1)/2.) / 2.};
+        //         const auto measured_result{vba.profiles.in[id][i + rr[2]]};
+        //         PRINT_DEBUG(expected_result);
+        //         PRINT_DEBUG(measured_result);
+        //         ERRCHK_MPI(within_machine_epsilon(measured_result, expected_result));
+        //     }
+        // }
+
     }
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
@@ -1355,7 +1458,9 @@ main(int argc, char* argv[])
 
         // Init Grid
         Grid grid{raw_info};
+        grid.test_reduce_xy_averages();
 
+        /*
         // Profiler start
         ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         cudaProfilerStart();
@@ -1394,6 +1499,7 @@ main(int argc, char* argv[])
             // File close
             ERRCHK_MPI(fclose(fp) == 0);
         }
+        */
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
