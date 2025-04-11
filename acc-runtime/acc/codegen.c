@@ -4383,7 +4383,7 @@ add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, b
 //	return get_node_by_id(node_to_search->id,parent->lhs) != NULL;
 //}
 void
-rename_scoped_variables_base(ASTNode* node, const ASTNode* decl, const ASTNode* func_body, const bool lhs_of_func_body, const bool lhs_of_func_call, bool child_of_enum, bool skip_shadowing_check)
+rename_scoped_variables_base(ASTNode* node, const ASTNode* decl, const ASTNode* func_body, const bool lhs_of_func_body, const bool lhs_of_func_call, bool child_of_enum, bool skip_shadowing_check, bool skip_dup_check)
 {
   FILE* stream = NULL;
   const bool do_checks = true;
@@ -4412,7 +4412,7 @@ rename_scoped_variables_base(ASTNode* node, const ASTNode* decl, const ASTNode* 
   //TP: skip the lhs of func_body since that is input params
   if (node->lhs)
   {  
-    rename_scoped_variables_base(node->lhs, decl, func_body, lhs_of_func_body || func_body != NULL, lhs_of_func_call || node->type & NODE_FUNCTION_CALL, child_of_enum,skip_shadowing_check);
+    rename_scoped_variables_base(node->lhs, decl, func_body, lhs_of_func_body || func_body != NULL, lhs_of_func_call || node->type & NODE_FUNCTION_CALL, child_of_enum,skip_shadowing_check,skip_dup_check);
   }
 
   //TP: do not rename func params since it is not really needed and does not gel well together with kernel params
@@ -4432,7 +4432,10 @@ rename_scoped_variables_base(ASTNode* node, const ASTNode* decl, const ASTNode* 
 
   // Traverse RHS
   if (node->rhs)
-    rename_scoped_variables_base(node->rhs, decl, func_body,lhs_of_func_body,lhs_of_func_call,child_of_enum,skip_shadowing_check);
+  {
+    if(node->type & NODE_ASSIGNMENT) skip_dup_check = true;
+    rename_scoped_variables_base(node->rhs, decl, func_body,lhs_of_func_body,lhs_of_func_call,child_of_enum,skip_shadowing_check,skip_dup_check);
+  }
 
   // Postfix logic
   if (node->type & NODE_BEGIN_SCOPE) {
@@ -4443,7 +4446,7 @@ rename_scoped_variables_base(ASTNode* node, const ASTNode* decl, const ASTNode* 
 void
 rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_body)
 {
-	rename_scoped_variables_base(node,decl,func_body,false,false,false,false);
+	rename_scoped_variables_base(node,decl,func_body,false,false,false,false,false);
 }
 typedef struct
 {
