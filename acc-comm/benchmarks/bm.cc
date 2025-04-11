@@ -68,7 +68,8 @@ benchmark(const std::function<void()>& init, const std::function<void()>& bench,
 {
     // Warmup
     init();
-    bench();
+    for (size_t i{0}; i < 3; ++i)
+        bench();
     sync();
 
     // Benchmark
