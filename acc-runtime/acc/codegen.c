@@ -6039,8 +6039,6 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   fprintf(fp,"\n#include \"array_info.h\"\n");
   fprintf(fp,"\n#include \"taskgraph_enums.h\"\n");
-  fprintf(fp,"\n#include \"user_built-in_constants.h\"\n");
-  fprintf(fp,"\n#include \"user_builtin_non_scalar_constants.h\"\n");
 
   free_str_vec(&datatypes);
   free_structs_info(&s_info);

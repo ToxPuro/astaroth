@@ -66,6 +66,8 @@ typedef enum {
 #define MAYBE_UNUSED
 #endif
   #include "user_defines.h"
+  #include "user_built-in_constants.h"
+  #include "user_builtin_non_scalar_constants.h"
   #include "profiles_info.h"
   #include "user_built-in_constants.h"
   //#include "user_builtin_non_scalar_constants.h"

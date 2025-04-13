@@ -47,6 +47,8 @@ bool should_reduce_int[1000] = {false};
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
 #include "user_defines.h"
+#include "user_built-in_constants.h"
+#include "user_builtin_non_scalar_constants.h"
 #include <array>
 AcReal AC_INTERNAL_run_const_AcReal_array_here[2000]{};
 AcReal AC_INTERNAL_run_const_array_here[2000]{};
