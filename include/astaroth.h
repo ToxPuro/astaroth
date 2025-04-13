@@ -959,7 +959,6 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
 	  res.comm->handle = MPI_COMM_NULL;
 #endif
 	  res.run_consts = acInitCompInfo();
-  	  res.runtime_compilation_log_dst = "/dev/stderr";
 	  return res;
   }
   static AcMesh UNUSED acInitMesh()
