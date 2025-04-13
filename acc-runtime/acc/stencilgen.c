@@ -197,8 +197,8 @@ void
 gen_kernel_block_loops(const int curr_kernel)
 {
   printf(
-	"#include \"user_non_scalar_constants.h\"\n"
-	"#include \"user_builtin_non_scalar_constants.h\"\n"
+	"#include \"kernel_user_non_scalar_constants.h\"\n"
+	"#include \"kernel_user_builtin_non_scalar_constants.h\"\n"
 	 );
 #if AC_USE_HIP
    printf("[[maybe_unused]] constexpr size_t warp_size = rocprim__warpSize();");
