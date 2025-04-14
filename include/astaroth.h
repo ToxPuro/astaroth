@@ -964,6 +964,10 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
   static AcMesh UNUSED acInitMesh()
   {
 	  AcMesh res;
+	  for(size_t j = 0; j < NUM_VTXBUF_HANDLES; ++j)
+	  {
+		  res.vertex_buffer[j] = NULL;
+	  }
 	  res.info = acInitInfo();
 	  return res;
   }
