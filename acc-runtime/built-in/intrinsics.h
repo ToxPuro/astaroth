@@ -87,3 +87,6 @@ intrinsic print
 intrinsic fprintf
 intrinsic len
 intrinsic size
+
+intrinsic error_message
+intrinsic fatal_error_message

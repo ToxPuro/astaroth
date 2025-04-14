@@ -536,6 +536,10 @@ acGetRealScratchpadSize(const size_t i)
 #define suppress_unused_warning(X) (void)X
 #define longlong long long
 #define size(arr) (int)(sizeof(arr) / sizeof(arr[0])) // Leads to bugs if the user
+#define error_message(error,message) 
+#define fatal_error_message(error,message) 
+
+
 #include "user_kernels.h"
 #undef size
 #undef longlong

@@ -147,6 +147,7 @@ FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
 
 
 FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfo info, KernelAnalysisInfo* dst));
+FUNC_DEFINE(AcResult, acAnalysisCheckForDSLErrors,(const AcMeshInfo info));
 	
 
 
@@ -422,6 +423,7 @@ acDecompose(const uint64_t target, const AcMeshInfo info);
 	LOAD_DSYM(acDeviceMemGetInfo,stream)
 	LOAD_DSYM(acKernelFlushInt,stream) 
 	LOAD_DSYM(acAnalysisGetKernelInfo,stream)
+	LOAD_DSYM(acAnalysisCheckForDSLErrors,stream)
         LOAD_DSYM(acDeviceSwapAllProfileBuffers,stream)
 #if AC_MPI_ENABLED
 	LOAD_DSYM(BASE_FUNC_NAME(acBoundaryCondition),stream)

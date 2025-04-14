@@ -516,6 +516,7 @@ get_name(const Profile& param)
 
 extern "C" 
 {
+	void acAnalysisCheckForDSLErrors(const AcMeshInfo info);
 	AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src);
 	acAnalysisBCInfo acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary);
 }
@@ -674,6 +675,15 @@ matmul_arr(T1, T2)
 			(AcReal)0.0
 	};
 }
+static bool check_for_errors = false;
+void
+error_message(const bool error, const char* message)
+{
+	if(error && check_for_errors)
+	{
+		fprintf(stderr,"\nAstaroth DSL error message: %s\n\n",message);
+	}
+}
 
 #include "user_cpu_kernels.h"
 #undef  constexpr
@@ -681,6 +691,7 @@ matmul_arr(T1, T2)
 
 #include "user_built-in_constants.h"
 #include "user_builtin_non_scalar_constants.h"
+
 
 
 
@@ -819,6 +830,18 @@ get_executed_nodes()
   fclose(fp_executed_nodes);
   return EXIT_SUCCESS;
 }	
+
+void
+acAnalysisCheckForDSLErrors(const AcMeshInfo info)
+{
+	d_mesh_info = info;
+	check_for_errors = true;
+	for(size_t k = 0; k <NUM_KERNELS; ++k)
+	{
+    		execute_kernel(k);
+	}
+	check_for_errors = false;
+}
 
 
 acAnalysisBCInfo 

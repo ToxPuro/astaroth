@@ -7,6 +7,7 @@ const real rk2_beta  = [1.0/2.0,   1.0]
 const real rk3_alpha =[ 0.,   -5./9.,   -153./128. ]
 const real rk3_beta  =[ 1./3., 15./ 16., 8./15.    ]
 
+run_const int AC_rk_order
 rk3(Field f, real roc, int step_num, real dt) {
     /*
     // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
@@ -149,11 +150,13 @@ const real rk4f_alpha=[ 970286171893./4311952581923.,
 
 rk4_alpha(Field f_alpha, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
+    error_message(AC_rk_order != 4, "Used rk4_alpha but AC_rk_order is not 4!\n");
     return f_alpha + rk4f_alpha[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rk4_beta(Field f_beta, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
+    error_message(AC_rk_order != 4, "Used rk4_beta but AC_rk_order is not 4!\n");
     return f_beta + rk4f_beta[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -174,6 +177,7 @@ rk4_beta(Field3 f_beta, real3 roc, int step_num, real dt) {
 }
 rk4_error(real df, int step_num,real dt)
 {
+    	error_message(AC_rk_order != 4, "Used rk4_error but AC_rk_order is not 4!\n");
 	return dt*(rk4f_beta[step_num] - rk4f_bhat[step_num])*df
 }
 rk4_error(real3 df, int step_num, real dt)
@@ -185,7 +189,6 @@ rk4_error(real3 df, int step_num, real dt)
 				rk4_error(df.z,step_num,dt)
 		     )
 }
-run_const int AC_rk_order
 /*--------------------------------------------------------------------------------------------------------------------*/
 rk_intermediate(Field f, real df, int step_num, real dt)
 {
