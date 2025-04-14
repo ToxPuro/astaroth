@@ -28,6 +28,8 @@
 #endif
 
 #include "acc_runtime.h"
+#include "user_built-in_constants.h"
+#include "user_builtin_non_scalar_constants.h"
 
 #if AC_MPI_ENABLED
 #include <mpi.h>

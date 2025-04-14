@@ -540,6 +540,9 @@ acGetRealScratchpadSize(const size_t i)
 #undef size
 #undef longlong
 
+#include "user_built-in_constants.h"
+#include "user_builtin_non_scalar_constants.h"
+
 
 
 #if USE_COMPRESSIBLE_MEMORY
