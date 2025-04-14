@@ -20,6 +20,7 @@ extern struct hashmap_s string_intern_hashmap;
 
 bool RUNTIME_COMPILATION = false;
 bool READ_OVERRIDES      = false;
+const char* ACC_OVERRIDES_PATH = NULL;
 ASTNode* root = NULL;
 
 extern FILE* yyin;
@@ -348,7 +349,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	  fprintf(out,"#define TWO_D %d\n",TWO_D);
 	  fprintf(out,"#define AC_DOUBLE_PRECISION %d\n",AC_DOUBLE_PRECISION);
        	  process_includes(1, dir, ACC_BUILTIN_TYPEDEFS, out,log);
-	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION && READ_OVERRIDES)
+	  if(ACC_OVERRIDES_PATH && file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION && READ_OVERRIDES)
        	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out,log);
        	  process_includes(1, dir, ACC_BUILTIN_INTRINSICS, out,log);
        	  process_includes(1, dir, ACC_BUILTIN_VARIABLES, out,log);
@@ -472,14 +473,15 @@ main(int argc, char** argv)
     string_vec filenames;
     init_str_vec(&filenames);
     char* file = NULL;
-    RUNTIME_COMPILATION = argc == 2 ? false : !strcmp(argv[argc-1],"1"); 
-    READ_OVERRIDES      = argc == 2 ? false : !strcmp(argv[argc-2],"1"); 
+    ACC_OVERRIDES_PATH  = argc == 2 ? NULL  : argv[argc-1];
+    RUNTIME_COMPILATION = argc == 2 ? false : !strcmp(argv[argc-2],"1"); 
+    READ_OVERRIDES      = argc == 2 ? false : !strcmp(argv[argc-3],"1"); 
 
-    if(argc == 2 || argc == 4)
+    if(argc == 2 || argc == 5)
     {
 	file = argv[1];
     }
-    else if(argc > 4)
+    else if(argc > 5)
     {
 	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[2])));
 	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[2]);

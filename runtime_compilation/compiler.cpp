@@ -73,11 +73,48 @@ acLoadRunConstsBase(const char* filename, AcMeshInfo info)
 	AcArrayCompTypes::run<load_comp_arrays>(info.run_consts, fp,"override const", true);
 	fclose(fp);
 }
+const char* dynamic_base_path   = astaroth_base_path;
+const char* dynamic_binary_path = astaroth_binary_path;
+
+static std::string
+get_astaroth_base_path()
+{
+	return std::string(dynamic_base_path);
+}
+
+static std::string
+get_astaroth_binary_path()
+{
+	return std::string(dynamic_binary_path);
+}
+static std::string
+runtime_astaroth_build_path()
+{
+	return get_astaroth_binary_path() + std::string("/runtime_build");
+}
+static std::string
+acc_compiler_path()
+{
+	return get_astaroth_binary_path() + std::string("/acc-runtime/acc/acc");
+}
+
+static std::string
+previous_cmake_options_path()
+{
+	return get_astaroth_binary_path() + std::string("/runtime_build/previous_cmake_options");
+}
+
+static std::string
+ac_overrides_path()
+{
+	return runtime_astaroth_build_path() + std::string("/overrides.h");
+}
+
 
 void
 acLoadRunConsts(AcMeshInfo info)
 {
-	acLoadRunConstsBase(AC_OVERRIDES_PATH,info);
+	acLoadRunConstsBase(ac_overrides_path().c_str(),info);
 }
 
 static bool
@@ -100,6 +137,7 @@ check_for_cmake()
    	exit(EXIT_FAILURE);
    }
 }
+
 void
 run_cmake(const char* compilation_string, const char* log_dst)
 {
@@ -107,10 +145,10 @@ run_cmake(const char* compilation_string, const char* log_dst)
   char cmd[2*10000];
   if(log_dst)
   	sprintf(cmd,"cd %s && cmake -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s %s &> %s",
-         runtime_astaroth_build_path, acc_compiler_path, compilation_string,astaroth_base_path,log_dst);
+         runtime_astaroth_build_path().c_str(), acc_compiler_path().c_str(), compilation_string,get_astaroth_base_path().c_str(),log_dst);
   else
   	sprintf(cmd,"cd %s && cmake -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s %s",
-         runtime_astaroth_build_path, acc_compiler_path, compilation_string,astaroth_base_path);
+         runtime_astaroth_build_path().c_str(), acc_compiler_path().c_str(), compilation_string,get_astaroth_base_path().c_str());
   const int retval = system(cmd);
   if(retval)
   {
@@ -120,7 +158,7 @@ run_cmake(const char* compilation_string, const char* log_dst)
   	fflush(stderr);
   	exit(EXIT_FAILURE);
   }
-  sprintf(cmd,"echo %s > %s", compilation_string, previous_cmake_options_path);
+  sprintf(cmd,"echo %s > %s", compilation_string, previous_cmake_options_path().c_str());
   const int echo_retval = system(cmd);
   if(echo_retval)
   {
@@ -135,6 +173,8 @@ run_cmake(const char* compilation_string, const char* log_dst)
 void
 acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_info)
 {
+	if(mesh_info.runtime_compilation_build_path) dynamic_binary_path = mesh_info.runtime_compilation_build_path;
+	if(mesh_info.runtime_compilation_base_path)  dynamic_base_path  = mesh_info.runtime_compilation_base_path;
 	check_that_built_ins_loaded(mesh_info.run_consts);
 	acHostUpdateParams(&mesh_info);
 #if AC_MPI_ENABLED
@@ -165,17 +205,17 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 			sprintf(log_buffer,"%s/%s",cwd,mesh_info.runtime_compilation_log_dst);
 		const char* log_dst =  (mesh_info.runtime_compilation_log_dst == NULL) ? NULL : log_buffer;
 		check_for_cmake();
-		sprintf(cmd,"diff tmp_astaroth_run_consts.h %s",AC_OVERRIDES_PATH);
-		const bool overrides_exists = file_exists(AC_OVERRIDES_PATH);
+		sprintf(cmd,"diff tmp_astaroth_run_consts.h %s",ac_overrides_path().c_str());
+		const bool runtime_build_existed = file_exists(runtime_astaroth_build_path().c_str());
+		const bool previous_build_exists = file_exists(ac_overrides_path().c_str()) && runtime_build_existed;
 		const bool loaded_different = 
-				        overrides_exists	
+				       previous_build_exists 
 					? system(cmd) : true;
-		const bool stored_cmake = file_exists(previous_cmake_options_path);
-		sprintf(cmd,"echo %s | diff - %s",compilation_string,previous_cmake_options_path);
+		const bool stored_cmake = file_exists(previous_cmake_options_path().c_str());
+		sprintf(cmd,"echo %s | diff - %s",compilation_string,previous_cmake_options_path().c_str());
 		const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
-		const bool compile = !overrides_exists || loaded_different || different_cmake_string;
-		acLoadRunConstsBase(AC_OVERRIDES_PATH,mesh_info);
-		if(!overrides_exists)
+		const bool compile = !previous_build_exists || loaded_different || different_cmake_string;
+		if(!previous_build_exists)
 		{
 			if(log_dst)
 			{
@@ -188,7 +228,7 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 		}
 		if(compile)
 		{
-			if(loaded_different && overrides_exists)  
+			if(loaded_different && previous_build_exists)  
 			{
 				if(log_dst)
 				{
@@ -199,7 +239,7 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 					fprintf(stderr,"Loaded different run_const values; recompiling;\n");
 				}
 			}
-			else if(overrides_exists && different_cmake_string && stored_cmake) 
+			else if(previous_build_exists && different_cmake_string && stored_cmake) 
 			{
 				if(log_dst)
 				{
@@ -210,17 +250,17 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 					fprintf(stderr,"Gave different cmake options; recompiling;\n");
 				}
 			}
-			sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path);
+			sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path().c_str());
 			int retval = system(cmd);
 			if(retval)
 			{
 				fflush(stdout);
 				fflush(stderr);
-				fprintf(stderr,"Fatal error was not able to remove build directory: %s\n",runtime_astaroth_build_path);
+				fprintf(stderr,"Fatal error was not able to remove build directory: %s\n",runtime_astaroth_build_path().c_str());
 				exit(EXIT_FAILURE);
 			}
 
-			sprintf(cmd,"mkdir -p %s",runtime_astaroth_build_path);
+			sprintf(cmd,"mkdir -p %s",runtime_astaroth_build_path().c_str());
 			retval = system(cmd);
 			if(retval)
 			{
@@ -229,10 +269,11 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 				fprintf(stderr,"%s","Fatal error was not able to make build directory\n");
 				exit(EXIT_FAILURE);
 			}
+			acLoadRunConstsBase(ac_overrides_path().c_str(),mesh_info);
 			run_cmake(compilation_string,log_dst);
 		}
 		sprintf(cmd,"cd %s",
-		       runtime_astaroth_build_path);
+		       runtime_astaroth_build_path().c_str());
 		int retval = system(cmd);
 		if(retval)
 		{
@@ -243,11 +284,11 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 		}
 		if(log_dst)
 		{
-			sprintf(cmd,"cd %s && make %s -j &>> %s",runtime_astaroth_build_path,target,log_dst);
+			sprintf(cmd,"cd %s && make %s -j &>> %s",runtime_astaroth_build_path().c_str(),target,log_dst);
 		}
 		else
 		{
-			sprintf(cmd,"cd %s && make %s -j",runtime_astaroth_build_path,target);
+			sprintf(cmd,"cd %s && make %s -j",runtime_astaroth_build_path().c_str(),target);
 		}
 		retval = system(cmd);
 		if(retval)

@@ -61,12 +61,11 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 endif()
 
-add_definitions(-DAC_OVERRIDES_PATH="${CMAKE_BINARY_DIR}/overrides.h")
-add_definitions(-DAC_BASE_PATH="${CMAKE_SOURCE_DIR}")
 set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}")
+add_definitions(-DAC_BASE_PATH="${AC_BASE_PATH}")
 
-add_definitions(-DAC_BINARY_PATH="${CMAKE_BINARY_DIR}")
 set(AC_BINARY_PATH "${CMAKE_BINARY_DIR}")
+add_definitions(-DAC_BINARY_PATH="${AC_BINARY_PATH}")
 
 if (RUNTIME_COMPILATION)
 	add_definitions(-DAC_RUNTIME_COMPILATION=1)

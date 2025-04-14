@@ -47,6 +47,7 @@ else()
 endif()
 
 
+
 ## Generate acc-runtime-headers
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
                 "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
@@ -67,9 +68,9 @@ set(DSL_HEADERS "user_kernels.h"
 
 set(DSL_MODULE_FILE $ENV{DSL_MODULE_FILE})
 if (NOT DEFINED DSL_MODULE_FILE)
-	set(ACC_COMPILER_ARGS "${DSL_MODULE_DIR}/*.ac" "${READ_OVERRIDES_VAL}" "${RUNTIME_COMPILATION_VAL}")
+	set(ACC_COMPILER_ARGS "${DSL_MODULE_DIR}/*.ac" "${READ_OVERRIDES_VAL}" "${RUNTIME_COMPILATION_VAL}" "${AC_BINARY_PATH}/overrides.h")
 else()
-	set(ACC_COMPILER_ARGS "${DSL_MODULE_DIR}/*.ac " "${DSL_MODULE_FILE}" "${READ_OVERRIDES_VAL}" "${RUNTIME_COMPILATION_VAL}")
+	set(ACC_COMPILER_ARGS "${DSL_MODULE_DIR}/*.ac " "${DSL_MODULE_FILE}" "${READ_OVERRIDES_VAL}" "${RUNTIME_COMPILATION_VAL}" "${AC_BINARY_PATH}/overrides.h")
 endif()
   add_custom_command (
       COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"

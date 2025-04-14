@@ -216,6 +216,8 @@ typedef struct AcCommunicator AcCommunicator;
 
   AcMeshInfoLoadedInfo is_loaded;
   const char* runtime_compilation_log_dst;
+  const char* runtime_compilation_build_path;
+  const char* runtime_compilation_base_path;
   AcCommunicator* comm;
 #ifdef __cplusplus
 #include "info_access_operators.h"
@@ -420,8 +422,10 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 #if AC_RUNTIME_COMPILATION
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
 			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
-  static UNUSED void* acLoadRunTime(FILE* stream)
+  static UNUSED void* acLoadRunTime(FILE* stream, const AcMeshInfo info)
   {
+	char runtime_astaroth_runtime_path[40000];
+	sprintf(runtime_astaroth_runtime_path,"%s/runtime_build/src/core/kernels/libkernels.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
  	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_LAZY | RTLD_GLOBAL);
 	if(!handle)
 	{

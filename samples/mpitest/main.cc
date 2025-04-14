@@ -89,8 +89,8 @@ main(int argc, char* argv[])
     const char* build_str = "-DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF";
     info.runtime_compilation_log_dst = "ac_compilation_log";
     acCompile(build_str,info);
-    acLoadLibrary(stdout);
-    acLoadUtils(stdout);
+    acLoadLibrary(stdout,info);
+    acLoadUtils(stdout,info);
 #endif
     atexit(acAbort);
     int retval = 0;

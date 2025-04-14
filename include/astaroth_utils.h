@@ -111,8 +111,10 @@ FUNC_DEFINE(AcResult, acHostReduceXYAverage,(const AcReal* in, const AcMeshDims 
 
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_lib.h"
-static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream)
+static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMeshInfo info)
 {
+	char runtime_astaroth_utils_path[40000];
+	sprintf(runtime_astaroth_utils_path,"%s/runtime_build/src/utils/libastaroth_utils.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
  	void* handle = dlopen(runtime_astaroth_utils_path,RTLD_NOW);
 	if(!handle)
 	{

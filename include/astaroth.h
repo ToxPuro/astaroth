@@ -405,9 +405,11 @@ acDecompose(const uint64_t target, const AcMeshInfo info);
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
 			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
 
-  static AcResult __attribute__((unused)) acLoadLibrary(FILE* stream)
+  static AcResult __attribute__((unused)) acLoadLibrary(FILE* stream, const AcMeshInfo info)
   {
-	kernelsLibHandle=acLoadRunTime(stream);
+	char runtime_astaroth_path[40000];
+	sprintf(runtime_astaroth_path,"%s/runtime_build/src/core/libastaroth_core.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
+	kernelsLibHandle=acLoadRunTime(stream,info);
  	void* handle = dlopen(runtime_astaroth_path,RTLD_NOW);
 	if (!handle)
 	{
