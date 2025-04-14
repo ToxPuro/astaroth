@@ -681,7 +681,17 @@ error_message(const bool error, const char* message)
 {
 	if(error && check_for_errors)
 	{
-		fprintf(stderr,"\nAstaroth DSL error message: %s\n\n",message);
+		fprintf(stderr,"\nAstaroth DSL error: %s\n\n",message);
+	}
+}
+
+void
+fatal_error_message(const bool error, const char* message)
+{
+	if(error && check_for_errors)
+	{
+		fprintf(stderr,"\nAstaroth DSL fatal error: %s\n\n",message);
+		exit(EXIT_FAILURE);
 	}
 }
 

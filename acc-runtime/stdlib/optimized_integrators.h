@@ -160,60 +160,60 @@ rk3_intermediate(real3 w,real3 roc,int step_num,real dt){
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 
-const real rk4f_beta= [1153189308089./22510343858157.,
+const real rkf4_beta_coeffs = [1153189308089./22510343858157.,
                 1772645290293./4653164025191.,
                -1672844663538./4480602732383.,
                 2114624349019./3568978502595.,
                 5198255086312./14908931495163.]
-const real rk4f_bhat= [   1016888040809./7410784769900.,
+const real rkf4_bhat_coeffs = [   1016888040809./7410784769900.,
                11231460423587./58533540763752.,
                -1563879915014./6823010717585.,
                  606302364029./971179775848.,
                 1097981568119./3980877426909.]
-const real rk4f_alpha=[ 970286171893./4311952581923.,
+const real rkf4_alpha_coeffs =[ 970286171893./4311952581923.,
                 6584761158862./12103376702013.,
                 2251764453980./15575788980749.,
                26877169314380./34165994151039., 0.0]
 
-rk4_alpha(Field f_alpha, real roc, int step_num, real dt) {
+rkf4_alpha(Field f_alpha, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
-    error_message(AC_rk_order != 4, "Used rk4_alpha but AC_rk_order is not 4!\n");
-    return f_alpha + rk4f_alpha[step_num]*roc*dt
+    error_message(AC_rk_order != 4, "Used rkf4_alpha but AC_rk_order is not 4!\n");
+    return f_alpha + rkf4_alpha_coeffs[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk4_beta(Field f_beta, real roc, int step_num, real dt) {
+rkf4_beta(Field f_beta, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
-    error_message(AC_rk_order != 4, "Used rk4_beta but AC_rk_order is not 4!\n");
-    return f_beta + rk4f_beta[step_num]*roc*dt
+    error_message(AC_rk_order != 4, "Used rkf4_beta but AC_rk_order is not 4!\n");
+    return f_beta + rkf4_beta_coeffs[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk4_alpha(Field3 f_alpha, real3 roc, int step_num, real dt) {
+rkf4_alpha(Field3 f_alpha, real3 roc, int step_num, real dt) {
 	return real3(
-			rk4_alpha(f_alpha.x,roc.x,step_num,dt),
-			rk4_alpha(f_alpha.y,roc.y,step_num,dt),
-			rk4_alpha(f_alpha.z,roc.z,step_num,dt)
+			rkf4_alpha(f_alpha.x,roc.x,step_num,dt),
+			rkf4_alpha(f_alpha.y,roc.y,step_num,dt),
+			rkf4_alpha(f_alpha.z,roc.z,step_num,dt)
 		    )
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk4_beta(Field3 f_beta, real3 roc, int step_num, real dt) {
+rkf4_beta(Field3 f_beta, real3 roc, int step_num, real dt) {
 	return real3(
-			rk4_beta(f_beta.x,roc.x,step_num,dt),
-			rk4_beta(f_beta.y,roc.y,step_num,dt),
-			rk4_beta(f_beta.z,roc.z,step_num,dt)
+			rkf4_beta(f_beta.x,roc.x,step_num,dt),
+			rkf4_beta(f_beta.y,roc.y,step_num,dt),
+			rkf4_beta(f_beta.z,roc.z,step_num,dt)
 		    )
 }
-rk4_error(real df, int step_num,real dt)
+rkf4_error(real df, int step_num,real dt)
 {
-    	error_message(AC_rk_order != 4, "Used rk4_error but AC_rk_order is not 4!\n");
-	return dt*(rk4f_beta[step_num] - rk4f_bhat[step_num])*df
+    	error_message(AC_rk_order != 4, "Used rkf4_error but AC_rk_order is not 4!\n");
+	return dt*(rkf4_beta_coeffs[step_num] - rkf4_bhat_coeffs[step_num])*df
 }
-rk4_error(real3 df, int step_num, real dt)
+rkf4_error(real3 df, int step_num, real dt)
 {
 	return 
 		real3(
-				rk4_error(df.x,step_num,dt),
-				rk4_error(df.y,step_num,dt),
-				rk4_error(df.z,step_num,dt)
+				rkf4_error(df.x,step_num,dt),
+				rkf4_error(df.y,step_num,dt),
+				rkf4_error(df.z,step_num,dt)
 		     )
 }
 /*--------------------------------------------------------------------------------------------------------------------*/

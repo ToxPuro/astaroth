@@ -821,7 +821,7 @@ acGridInitBase(const AcMesh user_mesh)
     	fclose(fp);
     }
     acAnalysisGetKernelInfo(acGridGetLocalMeshInfo(),&grid.kernel_analysis_info);	
-    acAnalysisCheckForDSLErrors(acGridGetLocalMeshInfo());	
+    if(ac_pid() == 0) acAnalysisCheckForDSLErrors(acGridGetLocalMeshInfo());	
     check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
 
     fflush(stdout);
