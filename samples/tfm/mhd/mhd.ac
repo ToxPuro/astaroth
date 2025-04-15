@@ -560,8 +560,8 @@ rk3_step2(s0, s1, roc) {
 }
 
 #if LTFM && LTFM_HANDWRITTEN
-roc_tf(aa_handle, bmean_handle, uxbmean_handle) {
-    bb = curl(aa_handle)
+roc_tf(aa_handle_roc, bmean_handle_roc, uxbmean_handle_roc) {
+    bb = curl(aa_handle_roc)
     Umean = vecvalue(PROFILE_Umean)
     Bmean = vecvalue(bmean_handle)
     uu = vecvalue(UU)
@@ -571,14 +571,14 @@ roc_tf(aa_handle, bmean_handle, uxbmean_handle) {
         if (AC_TFM_magnetic_laplace_diff == 1) {
             return cross(Umean, bb) + cross(uu, Bmean) + AC_eta_tfm * veclaplace(aa_handle)
         } else {
-            jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
+            jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle_roc) - veclaplace(aa_handle_roc))
             return cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj
         }
     } else {
         if (AC_TFM_magnetic_laplace_diff == 1) {
             return cross(Umean, bb) + cross(uu, Bmean) + AC_eta_tfm * veclaplace(aa_handle) + cross(uu, bb) - uxbmean
         } else {
-            jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
+            jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle_roc) - veclaplace(aa_handle_roc))
             return cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj + cross(uu, bb) - uxbmean
         }
     }
