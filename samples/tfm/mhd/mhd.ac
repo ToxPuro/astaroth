@@ -563,9 +563,9 @@ rk3_step2(s0, s1, roc) {
 roc_tf(aa_handle_roc, bmean_handle_roc, uxbmean_handle_roc) {
     bb = curl(aa_handle_roc)
     Umean = vecvalue(PROFILE_Umean)
-    Bmean = vecvalue(bmean_handle)
+    Bmean = vecvalue(bmean_handle_roc)
     uu = vecvalue(UU)
-    uxbmean = vecvalue(uxbmean_handle)
+    uxbmean = vecvalue(uxbmean_handle_roc)
 
     if (AC_TFM_SOCA_enabled == 1) {
         if (AC_TFM_magnetic_laplace_diff == 1) {
