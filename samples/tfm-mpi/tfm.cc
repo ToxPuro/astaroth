@@ -1007,9 +1007,12 @@ class Grid {
         ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
 
         // Profiles
+        // Note: all fields and profiles are initialized to 0 except
+        // the test profiles (PROFILE_B11 to PROFILE_B22)
         ERRCHK(init_tfm_profiles(device) == 0);
-// Note: all fields and profiles are initialized to 0 except
-// the test profiles (PROFILE_B11 to PROFILE_B22)
+
+        // Current time
+        current_time = 0;
 
 // Debug:
 #if defined(TFM_DEBUG_AVG_KERNEL)
