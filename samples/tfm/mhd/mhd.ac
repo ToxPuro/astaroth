@@ -543,7 +543,7 @@ rk3_step0(s0, s1, roc) {
     real alpha = 0., -5./9., -153. / 128.
     real beta  = 1., 1. / 3., 15./ 16., 8. / 15.
 
-    return s1 + beta[0 + 1] * ((alpha[0] / beta[0]) * (s1 - s0) + roc * AC_dt)
+    return s1 + beta[0 + 1] * ((alpha[0] / beta[0]) * (s1) + roc * AC_dt)
 }
 rk3_step1(s0, s1, roc) {
     real alpha = 0., -5./9., -153. / 128.
