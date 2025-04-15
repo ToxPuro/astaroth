@@ -24,6 +24,7 @@ int AC_simulation_async_profile_output_interval
 
 // TFM
 int AC_TFM_SOCA_enabled
+int AC_TFM_magnetic_laplace_diff
 
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
@@ -560,18 +561,27 @@ rk3_step2(s0, s1, roc) {
 
 #if LTFM && LTFM_HANDWRITTEN
 roc_tf(aa_handle, bmean_handle, uxbmean_handle) {
-    jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
     bb = curl(aa_handle)
     Umean = vecvalue(PROFILE_Umean)
     Bmean = vecvalue(bmean_handle)
     uu = vecvalue(UU)
     uxbmean = vecvalue(uxbmean_handle)
 
-    result = cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj
-    if (!AC_TFM_SOCA_enabled) {
-        result = result + cross(uu, bb) - uxbmean
+    if (AC_TFM_SOCA_enabled == 1) {
+        if (AC_TFM_magnetic_laplace_diff == 1) {
+            return cross(Umean, bb) + cross(uu, Bmean) + AC_eta_tfm * veclaplace(aa_handle)
+        } else {
+            jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
+            return cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj
+        }
+    } else {
+        if (AC_TFM_magnetic_laplace_diff == 1) {
+            return cross(Umean, bb) + cross(uu, Bmean) + AC_eta_tfm * veclaplace(aa_handle) + cross(uu, bb) - uxbmean
+        } else {
+            jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
+            return cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj + cross(uu, bb) - uxbmean
+        }
     }
-    return result
 }
 
 singlepass_solve_step0_tfm(aa_handle, bmean_handle, uxb_handle, uxbmean_handle) {
