@@ -181,6 +181,11 @@ write(VTXBUF_UUZ, mom.z)
 To compute TFM with SOCA, set `AC_TFM_SOCA_enabled = 1` in the configuration file (`mhd.ini` by default). Otherwise, the full TFM equations are computed.
 
 
+### Switching to laplace diffusive term in $\mathbf{a}$ update
+
+Set `AC_TFM_magnetic_laplace_diff = 1`.
+Will use $+ \nabla^{2} \mathbf{a}^{pq}$ instead of $-\eta \mathbf{j}^{pq}$ as the diffusive term.
+
 # Production runs
 
 - Set `AC_simulation_snapshot_output_interval` and `AC_simulation_profile_output_interval` to as large values as possible: these control the interval of **synchronous** IO operations
