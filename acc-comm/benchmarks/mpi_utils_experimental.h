@@ -152,10 +152,26 @@ class request {
 
 namespace ac::mpi {
 
-  ac::shape global_mm(const cart_comm& comm, const ac::index& rr) {  return ac::mpi::get_global_mm(comm.global_nn(), rr);}
-  ac::shape global_nn(const cart_comm& comm) { return comm.global_nn(); }
-  
-  ac::shape local_mm(const cart_comm& comm, const ac::index& rr) {  return ac::mpi::get_local_mm(comm.get(), comm.global_nn(),  rr);}
-  ac::shape local_nn(const cart_comm& comm) { return ac::mpi::get_local_nn(comm.get(), comm.global_nn()); }
-
+ac::shape
+global_mm(const cart_comm& comm, const ac::index& rr)
+{
+    return ac::mpi::get_global_mm(comm.global_nn(), rr);
 }
+ac::shape
+global_nn(const cart_comm& comm)
+{
+    return comm.global_nn();
+}
+
+ac::shape
+local_mm(const cart_comm& comm, const ac::index& rr)
+{
+    return ac::mpi::get_local_mm(comm.get(), comm.global_nn(), rr);
+}
+ac::shape
+local_nn(const cart_comm& comm)
+{
+    return ac::mpi::get_local_nn(comm.get(), comm.global_nn());
+}
+
+} // namespace ac::mpi
