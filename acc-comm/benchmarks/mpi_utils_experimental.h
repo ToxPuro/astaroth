@@ -147,6 +147,8 @@ class request {
         ERRCHK_MPI_API(MPI_Wait(m_req.get(), MPI_STATUS_IGNORE));
         ERRCHK_MPI(*m_req == MPI_REQUEST_NULL);
     }
+
+    bool complete() const noexcept { return *m_req == MPI_REQUEST_NULL; }
 };
 
 } // namespace ac::mpi
