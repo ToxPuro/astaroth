@@ -40,8 +40,11 @@ class cart_comm {
     ac::shape m_global_nn;
 
   public:
-    cart_comm(const MPI_Comm& parent_comm, const ac::shape& global_nn)
-        : m_comm{ac::mpi::cart_comm_create(parent_comm, global_nn), true}, m_global_nn{global_nn}
+    cart_comm(
+        const MPI_Comm& parent_comm, const ac::shape& global_nn,
+        const ac::mpi::RankReorderMethod& reorder_method = ac::mpi::RankReorderMethod::hierarchical)
+        : m_comm{ac::mpi::cart_comm_create(parent_comm, global_nn, reorder_method), true},
+          m_global_nn{global_nn}
     {
     }
 
