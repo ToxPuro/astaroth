@@ -53,25 +53,32 @@ template <typename T, typename Allocator> class packet {
         ERRCHK_MPI(m_send_req.complete());
         ERRCHK_MPI(m_recv_req.complete());
 
-        MPI_Request recv_req{MPI_REQUEST_NULL};
+        const auto rank{ac::mpi::get_rank(m_comm.get())};
+        if (rank == m_recv_neighbor && rank == m_send_neighbor) {
+            migrate(m_send_buffer, m_recv_buffer);
+
+            // Create a dummy request to simplify asynchronous management
+            static int dummy{-1};
+            ERRCHK_MPI_API(MPI_Irecv(&dummy, 0, MPI_INT, rank, m_tag, m_comm.get(), m_recv_req.data()));
+            ERRCHK_MPI_API(MPI_Isend(&dummy, 0, MPI_INT, rank, m_tag, m_comm.get(), m_send_req.data()));
+        }
+        else { // Use MPI communication
         ERRCHK_MPI_API(MPI_Irecv(m_recv_buffer.data(),
                                  as<int>(m_recv_buffer.size()),
                                  ac::mpi::get_dtype<T>(),
                                  m_recv_neighbor,
                                  m_tag,
                                  m_comm.get(),
-                                 &recv_req));
-        m_recv_req = ac::mpi::request{recv_req};
+                                 m_recv_req.data()));
 
-        MPI_Request send_req{MPI_REQUEST_NULL};
         ERRCHK_MPI_API(MPI_Isend(m_send_buffer.data(),
                                  as<int>(m_send_buffer.size()),
                                  ac::mpi::get_dtype<T>(),
                                  m_send_neighbor,
                                  m_tag,
                                  m_comm.get(),
-                                 &send_req));
-        m_send_req = ac::mpi::request{send_req};
+                                 m_send_req.data()));
+        }
 
         ac::mpi::increment_tag(m_tag);
     }
