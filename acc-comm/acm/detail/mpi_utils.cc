@@ -197,7 +197,10 @@ test_get_nprocs_per_layer()
 static MPI_Comm
 cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const ac::shape& global_nn)
 {
-    ERRCHK(test_get_nprocs_per_layer() == 0);
+    // MPI_COMM_WORLD required for correct reordering (assumes sequential ranks are nearest in
+    // topology)
+    ERRCHK_MPI(parent_comm == MPI_COMM_WORLD);
+    ERRCHK_MPI(test_get_nprocs_per_layer() == 0);
 
     // Get the number of processes
     int mpi_nprocs{-1};
