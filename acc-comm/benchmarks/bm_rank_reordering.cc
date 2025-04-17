@@ -127,9 +127,11 @@ main(int argc, char* argv[])
         using T         = double;
         using Allocator = ac::mr::device_allocator;
 
-        const ac::shape    global_nn{128, 64, 8};
+        const ac::shape    global_nn{64, 64, 32};
         const auto         rr{ac::make_index(global_nn.size(), 3)};
-        ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD, global_nn, ac::mpi::RankReorderMethod::no};
+        ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD,
+                                     global_nn,
+                                     ac::mpi::RankReorderMethod::hierarchical};
 
         ac::mpi::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
 
