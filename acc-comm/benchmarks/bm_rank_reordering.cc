@@ -131,11 +131,65 @@ main(int argc, char* argv[])
 {
     ac::mpi::init_funneled();
     try {
+        #if defined(ACM_DEVICE_ENABLED)
+        int device_count{0};
+        ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
+        int device_id{ac::mpi::get_rank(MPI_COMM_WORLD) % device_count};
+        if (device_count == 8) { // Do manual GPU mapping for LUMI
+            ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
+            device_id = device_ids[as<size_t>(device_id)];
+        }
+        ERRCHK_CUDA_API(cudaSetDevice(device_id));
+        #endif
+
         using T         = double;
         using Allocator = ac::mr::device_allocator;
 
-        const ac::shape    global_nn{64, 64, 32};
+        const ac::shape    global_nn{256, 256, 128};
         const auto         rr{ac::make_index(global_nn.size(), 3)};
+
+        {
+            std::string label{"no"};
+        ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD,
+                                     global_nn,
+                                     ac::mpi::RankReorderMethod::no};
+
+        ac::mpi::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
+
+        auto init  = []() {};
+        auto bench = [&task]() {
+            task.launch();
+            task.wait();
+        };
+        auto sync = []() { ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD)); };
+
+        constexpr size_t nsamples{10};
+        const auto       results{bm::benchmark(init, bench, sync, nsamples)};
+
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0){
+            std::cerr << label <<"-----" << std::endl;
+        for (const auto& result : results)
+            std::cout << result << std::endl;
+        }
+
+        // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
+        // PRINT_DEBUG(ac::mpi::get_decomposition(cart_comm.get()));
+        // PRINT_DEBUG(ac::mpi::get_local_nn(cart_comm.get(), global_nn));
+        // PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+        // PRINT_DEBUG(ac::mpi::get_rank(cart_comm.get()));
+        // PRINT_DEBUG(ac::mpi::get_coords(cart_comm.get()));
+        // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
+
+        // auto coord_assign{ac::mpi::get_rank_ordering(cart_comm.get())};
+        // if (ac::mpi::get_rank(cart_comm.get()) == 0) {
+        //     std::cerr << "coords------------" << std::endl;
+        //     for (const auto& coords : coord_assign)
+        //         std::cerr << coords << std::endl;
+        // }
+        }
+        
+        {
+            std::string label{"hierarchical"};
         ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD,
                                      global_nn,
                                      ac::mpi::RankReorderMethod::hierarchical};
@@ -152,23 +206,14 @@ main(int argc, char* argv[])
         constexpr size_t nsamples{10};
         const auto       results{bm::benchmark(init, bench, sync, nsamples)};
 
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0){
+            std::cerr << label <<"-----" << std::endl;
         for (const auto& result : results)
             std::cout << result << std::endl;
-
-        MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
-        PRINT_DEBUG(ac::mpi::get_decomposition(cart_comm.get()));
-        PRINT_DEBUG(ac::mpi::get_local_nn(cart_comm.get(), global_nn));
-        PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
-        PRINT_DEBUG(ac::mpi::get_rank(cart_comm.get()));
-        PRINT_DEBUG(ac::mpi::get_coords(cart_comm.get()));
-        MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
-
-        auto coord_assign{ac::mpi::get_rank_ordering(cart_comm.get())};
-        if (ac::mpi::get_rank(cart_comm.get()) == 0) {
-            std::cerr << "coords------------" << std::endl;
-            for (const auto& coords : coord_assign)
-                std::cerr << coords << std::endl;
         }
+        }
+
+
     }
     catch (const std::exception& e) {
         ac::mpi::abort();
