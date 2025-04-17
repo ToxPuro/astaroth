@@ -100,6 +100,8 @@ decompose_hierarchical(const ac::shape& nn, const std::vector<uint64_t>& nprocs_
 }
 
 // Better (under testing)
+// Note: does not handle decompositions not divisible by two: should
+// incorporate factoring in the same way as with decompose
 std::vector<ac::shape>
 decompose_hierarchical_alt(const ac::shape& global_nn, const size_t nprocs)
 {
@@ -122,6 +124,7 @@ decompose_hierarchical_alt(const ac::shape& global_nn, const size_t nprocs)
                 best_count = count;
             }
         }
+        ERRCHK(best_count > 0);
         // PRINT_DEBUG(local_nn);
         // PRINT_DEBUG(best_axis);
         // PRINT_DEBUG(best_count);
