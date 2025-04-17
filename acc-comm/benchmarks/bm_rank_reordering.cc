@@ -145,6 +145,21 @@ main(int argc, char* argv[])
 
         for (const auto& result : results)
             std::cout << result << std::endl;
+
+        MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
+        PRINT_DEBUG(ac::mpi::get_decomposition(cart_comm.get()));
+        PRINT_DEBUG(ac::mpi::get_local_nn(cart_comm.get(), global_nn));
+        PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
+        PRINT_DEBUG(ac::mpi::get_rank(cart_comm.get()));
+        PRINT_DEBUG(ac::mpi::get_coords(cart_comm.get()));
+        MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
+
+        auto coord_assign{ac::mpi::get_rank_ordering(cart_comm.get())};
+        if (ac::mpi::get_rank(cart_comm.get()) == 0) {
+            std::cerr << "coords------------" << std::endl;
+            for (const auto& coords : coord_assign)
+                std::cerr << coords << std::endl;
+        }
     }
     catch (const std::exception& e) {
         ac::mpi::abort();
