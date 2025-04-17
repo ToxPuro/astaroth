@@ -83,6 +83,7 @@ decompose(const ac::shape& nn, uint64_t nprocs)
     return decomp;
 }
 
+// Initial version. Issues: does not produce a good mapping
 std::vector<ac::shape>
 decompose_hierarchical(const ac::shape& nn, const std::vector<uint64_t>& nprocs_per_layer)
 {
@@ -95,6 +96,42 @@ decompose_hierarchical(const ac::shape& nn, const std::vector<uint64_t>& nprocs_
         curr_nn = curr_nn / decomp;
     }
     std::reverse(decompositions.begin(), decompositions.end());
+    return decompositions;
+}
+
+// Better (under testing)
+std::vector<ac::shape>
+decompose_hierarchical_alt(const ac::shape& global_nn, const size_t nprocs)
+{
+    auto decomposition(decompose(global_nn, nprocs));
+    auto local_nn{global_nn / decomposition};
+
+    std::vector<ac::shape> decompositions{ac::make_shape(global_nn.size(), 1)};
+    while (!(local_nn == global_nn)) {
+        uint64_t best_axis{0};
+        uint64_t best_count{0};
+        for (size_t axis{0}; axis < global_nn.size(); ++axis) {
+            if (local_nn[axis] == global_nn[axis])
+                continue;
+
+            const auto count{prod(local_nn) / local_nn[axis]};
+            // PRINT_DEBUG(axis);
+            // PRINT_DEBUG(count);
+            if (count >= best_count) {
+                best_axis  = axis;
+                best_count = count;
+            }
+        }
+        // PRINT_DEBUG(local_nn);
+        // PRINT_DEBUG(best_axis);
+        // PRINT_DEBUG(best_count);
+        auto decomp{ac::make_index(local_nn.size(), 1)};
+        decomp[best_axis] *= 2;
+        local_nn[best_axis] *= 2;
+        // PRINT_DEBUG(decomp);
+        // PRINT_DEBUG(local_nn);
+        decompositions.push_back(decomp);
+    }
     return decompositions;
 }
 

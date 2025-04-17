@@ -25,6 +25,8 @@ ac::shape decompose(const ac::shape& nn, uint64_t nprocs);
 std::vector<ac::shape> decompose_hierarchical(const ac::shape&             nn,
                                               const std::vector<uint64_t>& nprocs_per_layer);
 
+std::vector<ac::shape> decompose_hierarchical_alt(const ac::shape& global_nn, const size_t nprocs);
+
 ac::index hierarchical_to_spatial(const uint64_t                index,
                                   const std::vector<ac::shape>& decompositions);
 
