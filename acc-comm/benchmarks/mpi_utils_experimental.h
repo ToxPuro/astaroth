@@ -142,6 +142,8 @@ class request {
     {
     }
 
+    MPI_Request* data() const noexcept { ERRCHK_MPI(complete()); return m_req.get(); }
+
     void wait() noexcept
     {
         ERRCHK_MPI(*m_req != MPI_REQUEST_NULL);
