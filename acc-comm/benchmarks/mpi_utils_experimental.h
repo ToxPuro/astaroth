@@ -3,6 +3,7 @@
 
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/mpi_utils.h"
+#include "acm/detail/ntuple.h"
 
 // These should be merged to mpi_utils.h eventually
 
@@ -162,6 +163,7 @@ global_mm(const cart_comm& comm, const ac::index& rr)
 {
     return ac::mpi::get_global_mm(comm.global_nn(), rr);
 }
+
 ac::shape
 global_nn(const cart_comm& comm)
 {
@@ -173,10 +175,75 @@ local_mm(const cart_comm& comm, const ac::index& rr)
 {
     return ac::mpi::get_local_mm(comm.get(), comm.global_nn(), rr);
 }
+
 ac::shape
 local_nn(const cart_comm& comm)
 {
     return ac::mpi::get_local_nn(comm.get(), comm.global_nn());
 }
+
+/** Returns the coordinates of processes w.r.t. their MPI_COMM_WORLD ranks */
+std::vector<ac::index>
+get_rank_ordering(const MPI_Comm& cart_comm)
+{
+    std::vector<ac::index> coords;
+
+    int nprocs{-1};
+    ERRCHK_MPI_API(MPI_Comm_size(cart_comm, &nprocs));
+
+    for (int i{0}; i < nprocs; ++i) {
+        int       translated_rank{MPI_PROC_NULL};
+        MPI_Group world_group{MPI_GROUP_NULL};
+        ERRCHK_MPI_API(MPI_Comm_group(MPI_COMM_WORLD, &world_group));
+
+        MPI_Group cart_group{MPI_GROUP_NULL};
+        ERRCHK_MPI_API(MPI_Comm_group(cart_comm, &cart_group));
+
+        ERRCHK_MPI_API(MPI_Group_translate_ranks(world_group, 1, &i, cart_group, &translated_rank));
+        coords.push_back(ac::mpi::get_coords(cart_comm, translated_rank));
+    }
+
+    return coords;
+}
+
+} // namespace ac::mpi
+
+namespace ac::mpi {
+
+// static ac::mpi::cart_comm
+// make_cart_comm(const MPI_Comm& parent_comm, const ac::shape& global_nn)
+// {
+//     // Get the number of processes
+//     int mpi_nprocs{-1};
+//     ERRCHK_MPI_API(MPI_Comm_size(parent_comm, &mpi_nprocs));
+
+//     // Get ndims
+//     const size_t ndims{global_nn.size()};
+
+//     // Decompose all dimensions
+//     ac::mpi::shape mpi_decomp{ac::make_ntuple<int>(ndims, 0)};
+//     ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(ndims), mpi_decomp.data()));
+
+//     // Decompose only the slowest moving dimension (last dimension in Astaroth, first in MPI)
+//     // mpi::shape mpi_decomp(ndims, 1);
+//     // mpi_decomp[0] = 0;
+//     // ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(ndims), mpi_decomp.data()));
+
+//     // Create the Cartesian communicator
+//     MPI_Comm   cart_comm{MPI_COMM_NULL};
+//     mpi::shape mpi_periods{ac::make_ntuple<int>(ndims, 1)}; // Periodic in all dimensions
+//     // int reorder{1}; // Enable reordering (but likely inop with most MPI implementations)
+//     ERRCHK_MPI_API(MPI_Cart_create(parent_comm,
+//                                    as<int>(ndims),
+//                                    mpi_decomp.data(),
+//                                    mpi_periods.data(),
+//                                    reorder,
+//                                    &cart_comm));
+
+//     // Can also add custom decomposition and rank reordering here instead:
+//     // int reorder{0};
+//     // ...
+//     return cart_comm;
+// }
 
 } // namespace ac::mpi
