@@ -209,13 +209,13 @@ cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const ac::shape& glob
     // Get ndims
     const size_t ndims{global_nn.size()};
 
-    // Get node hierarchy
+    // Get node hierarchy and decompose
     const std::vector<uint64_t> max_nprocs_per_layer{2, 2, 2};
     const auto                  nprocs_per_layer{
         get_nprocs_per_layer(as<uint64_t>(ac::mpi::get_size(parent_comm)), max_nprocs_per_layer)};
-
-    // Decompose
     const auto hierarchical_decomposition{decompose_hierarchical(global_nn, nprocs_per_layer)};
+
+    // Get derived decompositions
     const auto global_decomposition{
         hierarchical_decomposition_to_global(hierarchical_decomposition)};
     const auto mpi_decomp{astaroth_to_mpi_format(global_decomposition)};
