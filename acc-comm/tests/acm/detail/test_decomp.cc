@@ -1,6 +1,6 @@
 #include <cstdlib>
-#include <numeric>
 #include <memory>
+#include <numeric>
 
 #include "acm/detail/decomp.h"
 
@@ -137,6 +137,84 @@ main()
     {
         std::vector<ac::shape> decompositions{ac::shape{2, 2}, ac::shape{4, 1}, ac::shape{1, 4}};
         ERRCHK((hierarchical_decomposition_to_global(decompositions) == ac::shape{8, 8}));
+    }
+    {
+        ac::shape  nn{256, 128, 128};
+        uint64_t   nprocs{16 * 4 * 2};
+        const auto decompositions{decompose_hierarchical_alt(nn, nprocs)};
+
+        std::vector<ac::index> offsets;
+        for (const auto& decomp : decompositions) {
+            nn = nn / decomp;
+            offsets.push_back(nn);
+        }
+        // ac::index is then
+        // offset[0] * decompositions[0] + offset[1] * decompositions[1] + ...
+        ERRCHK(prod(decompositions[0]) == 1);
+        ERRCHK(prod(decompositions[1]) == 2);
+        ERRCHK(prod(decompositions[2]) == 2);
+        ERRCHK(prod(hierarchical_decomposition_to_global(decompositions)) == nprocs);
+    }
+    {
+        ac::shape  nn{32, 32, 32};
+        uint64_t   nprocs{16 * 8 * 4};
+        const auto decompositions{decompose_hierarchical_alt(nn, nprocs)};
+
+        std::vector<ac::index> offsets;
+        for (const auto& decomp : decompositions) {
+            nn = nn / decomp;
+            offsets.push_back(nn);
+            // PRINDIMST_DEBUG(decomp);
+        }
+
+        for (size_t i{0}; i < nprocs; ++i) {
+            // Forward
+            ac::index coords{0, 0, 0};
+            ac::index scale{1, 1, 1};
+            for (size_t j{decompositions.size() - 1}; j < decompositions.size(); --j) {
+                coords = coords + scale * to_spatial(i / prod(scale), decompositions[j]);
+                scale  = scale * decompositions[j];
+            }
+            // PRINDIMST_DEBUG(i);
+            // PRINDIMST_DEBUG(coords);
+
+            // Backward
+            scale = ac::index{1, 1, 1};
+            size_t index{0};
+            for (size_t j{decompositions.size() - 1}; j < decompositions.size(); --j) {
+                index = index + prod(scale) * to_linear((coords / scale) % decompositions[j],
+                                                        decompositions[j]);
+                scale = scale * decompositions[j];
+            }
+            ERRCHK(i == index);
+        }
+    }
+    {
+        ac::shape  nn{32, 16};
+        uint64_t   nprocs{16 * 4};
+        const auto decompositions{decompose_hierarchical_alt(nn, nprocs)};
+        for (size_t i{0}; i < nprocs; ++i) {
+            ERRCHK(i == hierarchical_to_linear(hierarchical_to_spatial(i, decompositions),
+                                               decompositions));
+        }
+    }
+    {
+        ac::shape  nn{130, 111, 64, 250 * 7};
+        uint64_t   nprocs{7 * 5};
+        const auto decompositions{decompose_hierarchical_alt(nn, nprocs)};
+        for (size_t i{0}; i < nprocs; ++i) {
+            ERRCHK(i == hierarchical_to_linear(hierarchical_to_spatial(i, decompositions),
+                                               decompositions));
+        }
+    }
+    {
+        ac::shape  nn{32, 8, 128, 64};
+        uint64_t   nprocs{32 * 64 * 2 * 8};
+        const auto decompositions{decompose_hierarchical_alt(nn, nprocs)};
+        for (size_t i{0}; i < nprocs; ++i) {
+            ERRCHK(i == hierarchical_to_linear(hierarchical_to_spatial(i, decompositions),
+                                               decompositions));
+        }
     }
     PRINT_LOG_INFO("OK");
     return EXIT_SUCCESS;
