@@ -4,6 +4,7 @@
 #include <sstream>
 
 #include "acm/detail/allocator.h"
+#include "acm/detail/buffer.h"
 #include "acm/detail/convert.h"
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/halo_exchange_custom.h"
@@ -46,6 +47,35 @@ template <typename T, typename Allocator> class packet {
         const ac::direction recv_direction{ac::mpi::get_direction(segment.offset, local_nn, rr)};
         m_recv_neighbor = ac::mpi::get_neighbor(parent_comm, recv_direction);
         m_send_neighbor = ac::mpi::get_neighbor(parent_comm, -recv_direction);
+    }
+
+    /** Initialize the buffers for verification */
+    void init()
+    {
+        const auto rank{ac::mpi::get_rank(m_comm.get())};
+        auto       tmp{m_send_buffer.to_host()};
+        std::iota(tmp.begin(), tmp.end(), as<size_t>(rank) * m_send_buffer.size());
+        migrate(tmp, m_send_buffer);
+
+        std::fill(tmp.begin(), tmp.end(), 0);
+        migrate(tmp, m_recv_buffer);
+    }
+
+    /** Verify that the contents of the recv buffer are as expected */
+    void verify() const
+    {
+        auto tmp{m_recv_buffer.to_host()};
+        for (size_t i{0}; i < m_recv_buffer.size(); ++i)
+            ERRCHK_MPI(
+                within_machine_epsilon(tmp[i], i + as<T>(m_recv_neighbor) * m_send_buffer.size()));
+    }
+
+    void display() const
+    {
+        MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
+        m_send_buffer.display();
+        m_recv_buffer.display();
+        MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
     }
 
     void launch()
@@ -113,6 +143,24 @@ template <typename T, typename Allocator> class halo_exchange {
             m_packets.push_back({parent_comm, global_nn, rr, segment});
     }
 
+    void init()
+    {
+        for (auto& packet : m_packets)
+            packet.init();
+    }
+
+    void verify() const
+    {
+        for (auto& packet : m_packets)
+            packet.verify();
+    }
+
+    void display() const
+    {
+        for (const auto& packet : m_packets)
+            packet.display();
+    }
+
     void launch()
     {
         for (auto& packet : m_packets)
@@ -144,11 +192,12 @@ main(int argc, char* argv[])
         ERRCHK_CUDA_API(cudaSetDevice(device_id));
 #endif
 
-        using T         = double;
+        using T         = uint64_t;
         using Allocator = ac::mr::device_allocator;
 
-        const ac::shape global_nn{256, 256, 128};
-        const auto      rr{ac::make_index(global_nn.size(), 3)};
+        // const ac::shape global_nn{256, 256, 128};
+        const ac::shape global_nn{4, 4};
+        const auto      rr{ac::make_index(global_nn.size(), 1)};
 
         {
             std::string        label{"no"};
@@ -161,16 +210,20 @@ main(int argc, char* argv[])
                 task.launch();
                 task.wait();
             };
+            task.init();
+            bench();
+            task.verify();
+            task.display();
             auto sync = []() { ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD)); };
 
             constexpr size_t nsamples{10};
             const auto       results{bm::benchmark(init, bench, sync, nsamples)};
 
-            if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-                std::cerr << label << "-----" << std::endl;
-                for (const auto& result : results)
-                    std::cout << result << std::endl;
-            }
+            // if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+            //     std::cerr << label << "-----" << std::endl;
+            //     for (const auto& result : results)
+            //         std::cout << result << std::endl;
+            // }
 
             // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
             // PRINT_DEBUG(ac::mpi::get_decomposition(cart_comm.get()));
@@ -188,30 +241,30 @@ main(int argc, char* argv[])
             // }
         }
 
-        {
-            std::string        label{"hierarchical"};
-            ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD,
-                                         global_nn,
-                                         ac::mpi::RankReorderMethod::hierarchical};
+        // {
+        //     std::string        label{"hierarchical"};
+        //     ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD,
+        //                                  global_nn,
+        //                                  ac::mpi::RankReorderMethod::hierarchical};
 
-            ac::mpi::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
+        //     ac::mpi::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
 
-            auto init  = []() {};
-            auto bench = [&task]() {
-                task.launch();
-                task.wait();
-            };
-            auto sync = []() { ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD)); };
+        //     auto init  = []() {};
+        //     auto bench = [&task]() {
+        //         task.launch();
+        //         task.wait();
+        //     };
+        //     auto sync = []() { ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD)); };
 
-            constexpr size_t nsamples{10};
-            const auto       results{bm::benchmark(init, bench, sync, nsamples)};
+        //     constexpr size_t nsamples{10};
+        //     const auto       results{bm::benchmark(init, bench, sync, nsamples)};
 
-            if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-                std::cerr << label << "-----" << std::endl;
-                for (const auto& result : results)
-                    std::cout << result << std::endl;
-            }
-        }
+        //     if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+        //         std::cerr << label << "-----" << std::endl;
+        //         for (const auto& result : results)
+        //             std::cout << result << std::endl;
+        //     }
+        // }
     }
     catch (const std::exception& e) {
         ac::mpi::abort();
