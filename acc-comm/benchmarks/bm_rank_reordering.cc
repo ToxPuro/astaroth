@@ -11,6 +11,7 @@
 #include "acm/detail/math_utils.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
+#include "acm/detail/ntuple.h"
 #include "acm/detail/pack.h"
 #include "acm/detail/partition.h"
 #include "acm/detail/print_debug.h"
@@ -30,6 +31,7 @@ template <typename T, typename Allocator> class packet {
     ac::mpi::comm            m_comm;
     ac::buffer<T, Allocator> m_send_buffer;
     ac::buffer<T, Allocator> m_recv_buffer;
+    ac::segment              m_recv_segment;
 
     ac::mpi::request m_send_req{MPI_REQUEST_NULL};
     ac::mpi::request m_recv_req{MPI_REQUEST_NULL};
@@ -41,7 +43,10 @@ template <typename T, typename Allocator> class packet {
   public:
     packet(const MPI_Comm& parent_comm, const ac::shape& global_nn, const ac::index& rr,
            const ac::segment& segment)
-        : m_comm{parent_comm}, m_send_buffer{prod(segment.dims)}, m_recv_buffer{prod(segment.dims)}
+        : m_comm{parent_comm},
+          m_send_buffer{prod(segment.dims)},
+          m_recv_buffer{prod(segment.dims)},
+          m_recv_segment{segment}
     {
         const auto          local_nn{ac::mpi::get_local_nn(parent_comm, global_nn)};
         const ac::direction recv_direction{ac::mpi::get_direction(segment.offset, local_nn, rr)};
@@ -68,6 +73,29 @@ template <typename T, typename Allocator> class packet {
         for (size_t i{0}; i < m_recv_buffer.size(); ++i)
             ERRCHK_MPI(
                 within_machine_epsilon(tmp[i], i + as<T>(m_recv_neighbor) * m_send_buffer.size()));
+    }
+
+    void pack(const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
+              const ac::mr::pointer<T, Allocator>& input)
+    {
+        const ac::segment m_send_segment{m_recv_segment.dims,
+                                         ((local_nn + m_recv_segment.offset - local_rr) %
+                                          local_nn) +
+                                             local_rr};
+        acm::pack(local_mm,
+                  m_send_segment.dims,
+                  m_send_segment.offset,
+                  {input},
+                  m_send_buffer.get());
+    }
+
+    void unpack(const ac::shape& local_mm, ac::mr::pointer<T, Allocator> output)
+    {
+        acm::unpack(m_recv_buffer.get(),
+                    local_mm,
+                    m_recv_segment.dims,
+                    m_recv_segment.offset,
+                    {output});
     }
 
     void display() const
@@ -155,6 +183,19 @@ template <typename T, typename Allocator> class halo_exchange {
             packet.verify();
     }
 
+    void pack(const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
+              const ac::mr::pointer<T, Allocator>& input)
+    {
+        for (auto& packet : m_packets)
+            packet.pack(local_mm, local_nn, local_rr, input);
+    }
+
+    void unpack(const ac::shape& local_mm, ac::mr::pointer<T, Allocator> output)
+    {
+        for (auto& packet : m_packets)
+            packet.unpack(local_mm, output);
+    }
+
     void display() const
     {
         for (const auto& packet : m_packets)
@@ -176,6 +217,58 @@ template <typename T, typename Allocator> class halo_exchange {
 
 } // namespace ac::mpi
 
+template <typename T, typename Allocator>
+static void
+set_to_global_iota(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
+                   ac::mr::pointer<T, Allocator> out)
+{
+    const auto           local_mm{ac::mpi::get_local_mm(comm, global_nn, rr)};
+    const auto           local_nn{ac::mpi::get_local_nn(comm, global_nn)};
+    ac::host_ndbuffer<T> tmp{local_nn};
+
+    for (uint64_t i{0}; i < tmp.size(); ++i) {
+        const auto local_coords{ac::to_spatial(i, local_nn)};
+        const auto global_coords{local_coords + ac::mpi::get_global_nn_offset(comm, global_nn)};
+        const auto global_index{ac::to_linear(global_coords, global_nn)};
+        tmp[i] = global_index + 1;
+    }
+    ac::mr::copy(tmp.get(), out);
+}
+
+/**
+ * Strategy
+ * 1. Set local mesh to global linear index
+ * 2. Pack
+ * 3. Reset local mesh to 0 (to detect overwrites during unpacking
+ * 4. Exchange data
+ * 5. Unpack
+ * 6. Check that inner domain is zero, boundaries correspond to global linear index
+ */
+template <typename T, typename Allocator>
+static void
+verify(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
+       const ac::ndbuffer<T, Allocator>& input)
+{
+    const auto ref{input.to_host()};
+
+    const auto local_mm{ac::mpi::get_local_mm(comm, global_nn, rr)};
+    const auto local_nn{ac::mpi::get_local_nn(comm, global_nn)};
+    const auto global_nn_offset{ac::mpi::get_global_nn_offset(comm, global_nn)};
+    for (uint64_t i{0}; i < prod(local_mm); ++i) {
+        const auto lcoords{ac::to_spatial(i, local_mm)};
+        const auto gcoords{(global_nn + global_nn_offset + ac::to_spatial(i, local_mm) - rr) %
+                           global_nn};
+
+        if (ac::within_box(lcoords, local_nn, rr)) {
+            ERRCHK(within_machine_epsilon(ref[i], static_cast<T>(0)));
+        }
+        else {
+            const auto linear_idx{to_linear(gcoords, global_nn)};
+            ERRCHK(within_machine_epsilon(ref[i], static_cast<T>(linear_idx + 1)));
+        }
+    }
+}
+
 int
 main(int argc, char* argv[])
 {
@@ -196,8 +289,8 @@ main(int argc, char* argv[])
         using Allocator = ac::mr::device_allocator;
 
         // const ac::shape global_nn{256, 256, 128};
-        const ac::shape global_nn{4, 4};
-        const auto      rr{ac::make_index(global_nn.size(), 1)};
+        const ac::shape global_nn{8, 8};
+        const auto      rr{ac::make_index(global_nn.size(), 2)};
 
         {
             std::string        label{"no"};
@@ -210,10 +303,39 @@ main(int argc, char* argv[])
                 task.launch();
                 task.wait();
             };
+
+            // Simple verification
             task.init();
             bench();
             task.verify();
             task.display();
+
+            // Exhaustive verification
+            const auto local_mm{ac::mpi::get_local_mm(cart_comm.get(), global_nn, rr)};
+            const auto local_nn{ac::mpi::get_local_nn(cart_comm.get(), global_nn)};
+            const ac::ndbuffer<T, Allocator> tmp{local_nn};
+            set_to_global_iota(cart_comm.get(), global_nn, rr, tmp.get());
+
+            const ac::ndbuffer<T, Allocator> din{ac::host_ndbuffer<T>{local_mm, 0}.to_device()};
+            acm::unpack(tmp.get(), local_mm, local_nn, rr, {din.get()});
+            MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
+            din.display();
+            MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
+            task.pack(local_mm, local_nn, rr, din.get());
+
+            ac::host_ndbuffer<T> tmp2{local_mm, 0};
+            ac::mr::copy(tmp2.get(), din.get());
+
+            bench();
+            task.unpack(local_mm, din.get());
+            MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
+            din.display();
+            MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
+            verify(cart_comm.get(), global_nn, rr, din);
+            // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
+            // din.display();
+            // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
+
             auto sync = []() { ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD)); };
 
             constexpr size_t nsamples{10};
