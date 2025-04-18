@@ -29,6 +29,18 @@ double benchmark(const std::string label, const std::function<void()>& init,
 
 namespace bm {
 
+template <typename T>
+double
+median(const std::vector<T>& vec)
+{
+    if (vec.size() % 2 == 0) {
+        return 0.5 * static_cast<double>(vec[(vec.size() - 1) / 2] + vec[vec.size() / 2]);
+    }
+    else {
+        return static_cast<double>(vec[vec.size() / 2]);
+    }
+}
+
 template <typename Allocator>
 static void
 randomize(ac::mr::pointer<double, Allocator> ptr)
