@@ -91,7 +91,7 @@ finalize()
 }
 
 static MPI_Comm
-cart_comm_mpi_create(const MPI_Comm& parent_comm, const ac::shape& global_nn, const int reorder)
+cart_comm_mpi_create(const MPI_Comm& parent_comm, const ac::shape& global_nn, const int reorder, const int custom_decomp)
 {
     // Get the number of processes
     int mpi_nprocs{-1};
@@ -102,7 +102,12 @@ cart_comm_mpi_create(const MPI_Comm& parent_comm, const ac::shape& global_nn, co
 
     // Decompose all dimensions
     mpi::shape mpi_decomp{ac::make_ntuple<int>(ndims, 0)};
-    ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(ndims), mpi_decomp.data()));
+    if (custom_decomp == 1) {
+        const auto decomp{decompose(global_nn, as<uint64_t>(mpi_nprocs))};
+        mpi_decomp = astaroth_to_mpi_format(decomp);
+    } else {
+        ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(ndims), mpi_decomp.data()));
+    }
 
     // Decompose only the slowest moving dimension (last dimension in Astaroth, first in MPI)
     // mpi::shape mpi_decomp(ndims, 1);
@@ -275,9 +280,13 @@ cart_comm_create(const MPI_Comm& parent_comm, const ac::shape& global_nn,
 {
     switch (reorder_method) {
     case RankReorderMethod::no:
-        return cart_comm_mpi_create(parent_comm, global_nn, 0);
+        return cart_comm_mpi_create(parent_comm, global_nn, 0, 0);
     case RankReorderMethod::default_mpi:
-        return cart_comm_mpi_create(parent_comm, global_nn, 1);
+        return cart_comm_mpi_create(parent_comm, global_nn, 1, 0);
+    case RankReorderMethod::no_custom_decomp:
+        return cart_comm_mpi_create(parent_comm, global_nn, 0, 1);
+    case RankReorderMethod::default_custom_decomp:
+        return cart_comm_mpi_create(parent_comm, global_nn, 1, 1);
     case RankReorderMethod::hierarchical:
         return cart_comm_hierarchical_create(parent_comm, global_nn);
     default:
