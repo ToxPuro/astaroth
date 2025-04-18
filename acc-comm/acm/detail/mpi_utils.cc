@@ -253,14 +253,14 @@ cart_comm_hierarchical_create(const MPI_Comm& parent_comm, const ac::shape& glob
                                    reorder,
                                    &cart_comm));
 
-    MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
-    PRINT_DEBUG(global_decomposition);
-    PRINT_DEBUG(hierarchical_decomposition);
-    PRINT_DEBUG(ac::mpi::get_rank(initial_cart_comm));
-    PRINT_DEBUG(ac::mpi::get_rank(cart_comm));
-    PRINT_DEBUG(ac::mpi::get_coords(initial_cart_comm));
-    PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
-    MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
+    // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
+    // PRINT_DEBUG(global_decomposition);
+    // PRINT_DEBUG(hierarchical_decomposition);
+    // PRINT_DEBUG(ac::mpi::get_rank(initial_cart_comm));
+    // PRINT_DEBUG(ac::mpi::get_rank(cart_comm));
+    // PRINT_DEBUG(ac::mpi::get_coords(initial_cart_comm));
+    // PRINT_DEBUG(ac::mpi::get_coords(cart_comm));
+    // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
 
     // Release resources
     ERRCHK_MPI_API(MPI_Comm_free(&initial_cart_comm));
