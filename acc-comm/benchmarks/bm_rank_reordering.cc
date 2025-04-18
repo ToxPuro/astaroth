@@ -331,8 +331,8 @@ main(int argc, char* argv[])
         const size_t ny{(argc > 2) ? std::stoull(argv[2]) : 32};
         const size_t nz{(argc > 3) ? std::stoull(argv[3]) : 32};
         const size_t radius{(argc > 4) ? std::stoull(argv[4]) : 3};
-        const size_t nsamples{(argc > 6) ? std::stoull(argv[6]) : 10};
-        const size_t jobid{(argc > 7) ? std::stoull(argv[7]) : 0};
+        const size_t nsamples{(argc > 5) ? std::stoull(argv[5]) : 10};
+        const size_t jobid{(argc > 6) ? std::stoull(argv[6]) : 0};
 
         const ac::shape global_nn{nx, ny, nz};
         const ac::index rr{ac::make_index(global_nn.size(), radius)};
@@ -384,13 +384,24 @@ main(int argc, char* argv[])
                 task.wait();
             };
 
+            // Print rank ordering
+            const auto rank_ordering{ac::mpi::get_rank_ordering(cart_comm.get())};
+            if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+                for (const auto& coords : rank_ordering)
+                    std::cout << label << ": " << coords << std::endl;
+                PRINT_DEBUG(ac::mpi::get_decomposition(cart_comm.get()));
+                PRINT_DEBUG(ac::mpi::get_local_nn(cart_comm.get(), global_nn));
+            }
+
             verify(cart_comm.get(), global_nn, rr, task, bench);
             print(label, bm::benchmark(init, bench, sync, nsamples));
         };
 
-        bm("mpi-no", ac::mpi::RankReorderMethod::no);
-        bm("mpi-default", ac::mpi::RankReorderMethod::default_mpi);
         bm("hierarchical", ac::mpi::RankReorderMethod::hierarchical);
+        bm("mpi-default", ac::mpi::RankReorderMethod::default_mpi);
+        bm("mpi-no", ac::mpi::RankReorderMethod::no);
+        bm("mpi-no-custom-decomp", ac::mpi::RankReorderMethod::no_custom_decomp);
+        bm("mpi-default-custom-decomp", ac::mpi::RankReorderMethod::no_custom_decomp);
     }
     catch (const std::exception& e) {
         ac::mpi::abort();
