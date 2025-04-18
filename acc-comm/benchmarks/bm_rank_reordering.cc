@@ -246,8 +246,8 @@ set_to_global_iota(const MPI_Comm& comm, const ac::shape& global_nn, const ac::i
  */
 template <typename T, typename Allocator>
 static void
-verify(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
-       const ac::ndbuffer<T, Allocator>& input)
+verify_results(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
+               const ac::ndbuffer<T, Allocator>& input)
 {
     const auto ref{input.to_host()};
 
@@ -269,11 +269,49 @@ verify(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
     }
 }
 
+template <typename T, typename Allocator>
+static void
+verify(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
+       ac::mpi::halo_exchange<T, Allocator>& task, const std::function<void()>& bench)
+{
+    // Simple verification
+    task.init();
+    bench();
+    task.verify();
+    // task.display();
+
+    // Exhaustive verification
+    const auto                       local_mm{ac::mpi::get_local_mm(comm, global_nn, rr)};
+    const auto                       local_nn{ac::mpi::get_local_nn(comm, global_nn)};
+    const ac::ndbuffer<T, Allocator> tmp{local_nn};
+    set_to_global_iota(comm, global_nn, rr, tmp.get());
+
+    const ac::ndbuffer<T, Allocator> din{ac::host_ndbuffer<T>{local_mm, 0}.to_device()};
+    acm::unpack(tmp.get(), local_mm, local_nn, rr, {din.get()});
+    // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
+    // din.display();
+    // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
+    task.pack(local_mm, local_nn, rr, din.get());
+
+    ac::host_ndbuffer<T> tmp2{local_mm, 0};
+    ac::mr::copy(tmp2.get(), din.get());
+
+    bench();
+    task.unpack(local_mm, din.get());
+    // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
+    // din.display();
+    // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
+    verify_results(comm, global_nn, rr, din);
+}
+
 int
 main(int argc, char* argv[])
 {
     ac::mpi::init_funneled();
     try {
+        using T         = uint64_t;
+        using Allocator = ac::mr::device_allocator;
+
 #if defined(ACM_DEVICE_ENABLED)
         int device_count{0};
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
@@ -285,108 +323,74 @@ main(int argc, char* argv[])
         ERRCHK_CUDA_API(cudaSetDevice(device_id));
 #endif
 
-        using T         = uint64_t;
-        using Allocator = ac::mr::device_allocator;
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0)
+            std::cerr << "Usage: ./bm_rank_reordering <nx> <ny> <nz> <radius> <nsamples> "
+                         "<jobid>"
+                      << std::endl;
+        const size_t nx{(argc > 1) ? std::stoull(argv[1]) : 32};
+        const size_t ny{(argc > 2) ? std::stoull(argv[2]) : 32};
+        const size_t nz{(argc > 3) ? std::stoull(argv[3]) : 32};
+        const size_t radius{(argc > 4) ? std::stoull(argv[4]) : 3};
+        const size_t nsamples{(argc > 6) ? std::stoull(argv[6]) : 10};
+        const size_t jobid{(argc > 7) ? std::stoull(argv[7]) : 0};
 
-        // const ac::shape global_nn{256, 256, 128};
-        const ac::shape global_nn{8, 8};
-        const auto      rr{ac::make_index(global_nn.size(), 2)};
+        const ac::shape global_nn{nx, ny, nz};
+        const ac::index rr{ac::make_index(global_nn.size(), radius)};
 
-        {
-            std::string        label{"no"};
-            ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD, global_nn, ac::mpi::RankReorderMethod::no};
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+            PRINT_DEBUG(nx);
+            PRINT_DEBUG(ny);
+            PRINT_DEBUG(nz);
+            PRINT_DEBUG(radius);
+            PRINT_DEBUG(nsamples);
+            PRINT_DEBUG(jobid);
+        }
 
+        std::ostringstream oss;
+        oss << "bm-rank-reordering-" << jobid << "-" << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+        const auto output_file{oss.str()};
+        FILE*      fp{fopen(output_file.c_str(), "w")};
+        ERRCHK(fp);
+        fprintf(fp, "impl,nx,ny,nz,radius,ninputs,sample,nsamples,jobid,ns\n");
+        ERRCHK(fclose(fp) == 0);
+
+        auto print = [&](const std::string&                                label,
+                         const std::vector<std::chrono::nanoseconds::rep>& results) {
+            FILE* fp{fopen(output_file.c_str(), "a")};
+            ERRCHK(fp);
+
+            for (size_t i{0}; i < results.size(); ++i) {
+                fprintf(fp, "%s", label.c_str());
+                fprintf(fp, ",%zu", nx);
+                fprintf(fp, ",%zu", ny);
+                fprintf(fp, ",%zu", nz);
+                fprintf(fp, ",%zu", radius);
+                fprintf(fp, ",%zu", i);
+                fprintf(fp, ",%zu", nsamples);
+                fprintf(fp, ",%zu", jobid);
+                fprintf(fp, ",%lld", as<long long>(results[i]));
+                fprintf(fp, "\n");
+            }
+            ERRCHK(fclose(fp) == 0);
+        };
+
+        auto init = []() {};
+        auto sync = []() { ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD)); };
+        auto bm   = [&](const std::string& label, const ac::mpi::RankReorderMethod reorder_method) {
+            ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD, global_nn, reorder_method};
             ac::mpi::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
-
-            auto init  = []() {};
-            auto bench = [&task]() {
+            auto                                 bench = [&task]() {
                 task.launch();
                 task.wait();
             };
 
-            // Simple verification
-            task.init();
-            bench();
-            task.verify();
-            task.display();
+            verify(cart_comm.get(), global_nn, rr, task, bench);
+            print(label, bm::benchmark(init, bench, sync, nsamples));
+        };
 
-            // Exhaustive verification
-            const auto local_mm{ac::mpi::get_local_mm(cart_comm.get(), global_nn, rr)};
-            const auto local_nn{ac::mpi::get_local_nn(cart_comm.get(), global_nn)};
-            const ac::ndbuffer<T, Allocator> tmp{local_nn};
-            set_to_global_iota(cart_comm.get(), global_nn, rr, tmp.get());
-
-            const ac::ndbuffer<T, Allocator> din{ac::host_ndbuffer<T>{local_mm, 0}.to_device()};
-            acm::unpack(tmp.get(), local_mm, local_nn, rr, {din.get()});
-            MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
-            din.display();
-            MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
-            task.pack(local_mm, local_nn, rr, din.get());
-
-            ac::host_ndbuffer<T> tmp2{local_mm, 0};
-            ac::mr::copy(tmp2.get(), din.get());
-
-            bench();
-            task.unpack(local_mm, din.get());
-            MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
-            din.display();
-            MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
-            verify(cart_comm.get(), global_nn, rr, din);
-            // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
-            // din.display();
-            // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
-
-            auto sync = []() { ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD)); };
-
-            constexpr size_t nsamples{10};
-            const auto       results{bm::benchmark(init, bench, sync, nsamples)};
-
-            // if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-            //     std::cerr << label << "-----" << std::endl;
-            //     for (const auto& result : results)
-            //         std::cout << result << std::endl;
-            // }
-
-            // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
-            // PRINT_DEBUG(ac::mpi::get_decomposition(cart_comm.get()));
-            // PRINT_DEBUG(ac::mpi::get_local_nn(cart_comm.get(), global_nn));
-            // PRINT_DEBUG(ac::mpi::get_rank(MPI_COMM_WORLD));
-            // PRINT_DEBUG(ac::mpi::get_rank(cart_comm.get()));
-            // PRINT_DEBUG(ac::mpi::get_coords(cart_comm.get()));
-            // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
-
-            // auto coord_assign{ac::mpi::get_rank_ordering(cart_comm.get())};
-            // if (ac::mpi::get_rank(cart_comm.get()) == 0) {
-            //     std::cerr << "coords------------" << std::endl;
-            //     for (const auto& coords : coord_assign)
-            //         std::cerr << coords << std::endl;
-            // }
-        }
-
-        // {
-        //     std::string        label{"hierarchical"};
-        //     ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD,
-        //                                  global_nn,
-        //                                  ac::mpi::RankReorderMethod::hierarchical};
-
-        //     ac::mpi::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
-
-        //     auto init  = []() {};
-        //     auto bench = [&task]() {
-        //         task.launch();
-        //         task.wait();
-        //     };
-        //     auto sync = []() { ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD)); };
-
-        //     constexpr size_t nsamples{10};
-        //     const auto       results{bm::benchmark(init, bench, sync, nsamples)};
-
-        //     if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-        //         std::cerr << label << "-----" << std::endl;
-        //         for (const auto& result : results)
-        //             std::cout << result << std::endl;
-        //     }
-        // }
+        bm("mpi-no", ac::mpi::RankReorderMethod::no);
+        bm("mpi-default", ac::mpi::RankReorderMethod::default_mpi);
+        bm("hierarchical", ac::mpi::RankReorderMethod::hierarchical);
     }
     catch (const std::exception& e) {
         ac::mpi::abort();
