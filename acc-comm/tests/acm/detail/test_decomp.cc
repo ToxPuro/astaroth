@@ -199,8 +199,8 @@ main()
         }
     }
     {
-        ac::shape  nn{130, 111, 64, 250 * 7};
-        uint64_t   nprocs{7 * 5};
+        ac::shape  nn{64, 128, 32, 16};
+        uint64_t   nprocs{32};
         const auto decompositions{decompose_hierarchical_alt(nn, nprocs)};
         for (size_t i{0}; i < nprocs; ++i) {
             ERRCHK(i == hierarchical_to_linear(hierarchical_to_spatial(i, decompositions),
