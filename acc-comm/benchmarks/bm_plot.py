@@ -59,7 +59,6 @@ df3.groupby(['impl', 'nx', 'ny', 'nz']).describe()['ns']['50%']
 # stats_normalized = stats['50%'] / stats['50%'].min()
 # stats_normalized
 
-# %%
 stats_median = stats['50%'].sort_values()
 plt.barh(stats_median.index, stats_median)
 plt.show()
