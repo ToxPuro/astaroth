@@ -560,12 +560,12 @@ rk3_step2(s0, s1, roc) {
 }
 
 #if LTFM && LTFM_HANDWRITTEN
-roc_tf(aa_handle_roc, bmean_handle_roc, uxbmean_handle_roc) {
-    bb = curl(aa_handle_roc)
+roc_tf(aa_handle, bmean_handle, uxbmean_handle) {
+    bb = curl(aa_handle)
     Umean = vecvalue(PROFILE_Umean)
-    Bmean = vecvalue(bmean_handle_roc)
+    Bmean = vecvalue(bmean_handle)
     uu = vecvalue(UU)
-    uxbmean = vecvalue(uxbmean_handle_roc)
+    uxbmean = vecvalue(uxbmean_handle)
 
     jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
     roc_soca_laplace = cross(Umean, bb) + cross(uu, Bmean) + AC_eta_tfm * veclaplace(aa_handle)
