@@ -153,35 +153,35 @@ test_get_nprocs_per_layer()
         std::vector<uint64_t> max_per_layer{2, 4};
         const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_per_layer)};
         ERRCHK(vecprod(nprocs_per_layer) == nprocs);
-        PRINT_DEBUG_VECTOR(nprocs_per_layer);
+        // PRINT_DEBUG_VECTOR(nprocs_per_layer);
     }
     {
         constexpr uint64_t    nprocs{64};
         std::vector<uint64_t> max_per_layer{2, 4, 4};
         const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_per_layer)};
         ERRCHK(vecprod(nprocs_per_layer) == nprocs);
-        PRINT_DEBUG_VECTOR(nprocs_per_layer);
+        // PRINT_DEBUG_VECTOR(nprocs_per_layer);
     }
     {
         constexpr uint64_t    nprocs{2};
         std::vector<uint64_t> max_per_layer{8, 4};
         const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_per_layer)};
         ERRCHK(vecprod(nprocs_per_layer) == nprocs);
-        PRINT_DEBUG_VECTOR(nprocs_per_layer);
+        // PRINT_DEBUG_VECTOR(nprocs_per_layer);
     }
     {
         constexpr uint64_t    nprocs{8};
         std::vector<uint64_t> max_per_layer{4, 4};
         const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_per_layer)};
         ERRCHK(vecprod(nprocs_per_layer) == nprocs);
-        PRINT_DEBUG_VECTOR(nprocs_per_layer);
+        // PRINT_DEBUG_VECTOR(nprocs_per_layer);
     }
     {
         constexpr uint64_t    nprocs{64};
         std::vector<uint64_t> max_per_layer{2, 2, 2, 4, 4};
         const auto nprocs_per_layer{ac::mpi::get_nprocs_per_layer(nprocs, max_per_layer)};
         ERRCHK(vecprod(nprocs_per_layer) == nprocs);
-        PRINT_DEBUG_VECTOR(nprocs_per_layer);
+        // PRINT_DEBUG_VECTOR(nprocs_per_layer);
     }
     {
         constexpr uint64_t    nprocs{64};
@@ -191,8 +191,8 @@ test_get_nprocs_per_layer()
         auto            decomp{decompose_hierarchical(global_nn, nprocs_per_layer)};
 
         const auto global_decomp{hierarchical_decomposition_to_global(decomp)};
-        PRINT_DEBUG(global_decomp);
-        PRINT_DEBUG(decomp);
+        // PRINT_DEBUG(global_decomp);
+        // PRINT_DEBUG(decomp);
         ERRCHK((global_decomp == ac::shape{4, 4, 4}));
         ERRCHK(prod(global_decomp) == nprocs);
     }
