@@ -91,7 +91,8 @@ finalize()
 }
 
 static MPI_Comm
-cart_comm_mpi_create(const MPI_Comm& parent_comm, const ac::shape& global_nn, const int reorder, const int custom_decomp)
+cart_comm_mpi_create(const MPI_Comm& parent_comm, const ac::shape& global_nn, const int reorder,
+                     const int custom_decomp)
 {
     // Get the number of processes
     int mpi_nprocs{-1};
@@ -105,7 +106,8 @@ cart_comm_mpi_create(const MPI_Comm& parent_comm, const ac::shape& global_nn, co
     if (custom_decomp == 1) {
         const auto decomp{decompose(global_nn, as<uint64_t>(mpi_nprocs))};
         mpi_decomp = astaroth_to_mpi_format(decomp);
-    } else {
+    }
+    else {
         ERRCHK_MPI_API(MPI_Dims_create(mpi_nprocs, as<int>(ndims), mpi_decomp.data()));
     }
 
