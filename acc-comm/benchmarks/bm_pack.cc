@@ -16,8 +16,8 @@
 #include "acm/detail/errchk_cuda.h"
 #endif
 
+#include "acm/detail/experimental/mpi_utils_experimental.h"
 #include "bm.h"
-#include "mpi_utils_experimental.h"
 
 template <typename T, typename Allocator> class mpi_pack_strategy {
   private:

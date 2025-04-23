@@ -12,6 +12,7 @@ set(ACM_HOST_FILES
     partition.cc
     math_utils.cc
     ntuple.cc
+    experimental/mpi_utils_experimental.cc
 )
 set(ACM_DEVICE_FILES pack_batched.cu pack.cu)
 add_library(acm SHARED ${ACM_DEVICE_FILES} ${ACM_HOST_FILES} acm_error.c errchk_print.c)
