@@ -91,4 +91,7 @@ df = pd.read_csv('../build/bm-pipelining-0-0.csv')
 df
 
 stats = df.groupby('impl')['ns'].describe()
+
+plt.barh(stats['50%'].index, stats['50%'])
+plt.show()
 stats
