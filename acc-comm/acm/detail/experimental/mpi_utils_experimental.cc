@@ -8,7 +8,7 @@
 
 namespace ac::mpi {
 
-void
+int
 select_device_lumi()
 {
 #if !defined(ACM_HOST_ONLY_MODE_ENABLED) && !defined(ACM_DEVICE_ENABLED)
@@ -24,8 +24,9 @@ select_device_lumi()
         device_id = device_ids[as<size_t>(device_id)];
     }
     ERRCHK_CUDA_API(cudaSetDevice(device_id));
+    return device_id;
 #else
-// Do nothing
+    return 0;
 #endif
 }
 

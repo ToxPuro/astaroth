@@ -256,6 +256,7 @@ namespace ac::mpi {
 
 namespace ac::mpi {
 
-void select_device_lumi();
+/** Select the device and return its id */
+int select_device_lumi();
 
 } // namespace ac::mpi
