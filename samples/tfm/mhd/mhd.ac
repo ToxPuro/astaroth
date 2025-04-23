@@ -567,19 +567,23 @@ roc_tf(aa_handle_roc, bmean_handle_roc, uxbmean_handle_roc) {
     uu = vecvalue(UU)
     uxbmean = vecvalue(uxbmean_handle_roc)
 
+    jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle) - veclaplace(aa_handle))
+    roc_soca_laplace = cross(Umean, bb) + cross(uu, Bmean) + AC_eta_tfm * veclaplace(aa_handle)
+    roc_soca_reference = cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj
+    roc_laplace = cross(Umean, bb) + cross(uu, Bmean) + AC_eta_tfm * veclaplace(aa_handle) + cross(uu, bb) - uxbmean
+    roc_reference = cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj + cross(uu, bb) - uxbmean
+
     if (AC_TFM_SOCA_enabled == 1) {
         if (AC_TFM_magnetic_laplace_diff == 1) {
-            return cross(Umean, bb) + cross(uu, Bmean) + AC_eta_tfm * veclaplace(aa_handle)
+            return roc_soca_laplace
         } else {
-            jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle_roc) - veclaplace(aa_handle_roc))
-            return cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj
+            return roc_soca_reference
         }
     } else {
         if (AC_TFM_magnetic_laplace_diff == 1) {
-            return cross(Umean, bb) + cross(uu, Bmean) + AC_eta_tfm * veclaplace(aa_handle) + cross(uu, bb) - uxbmean
+            return roc_laplace
         } else {
-            jj = (1. / AC_mu0) * (gradient_of_divergence(aa_handle_roc) - veclaplace(aa_handle_roc))
-            return cross(Umean, bb) + cross(uu, Bmean) - AC_eta_tfm * jj + cross(uu, bb) - uxbmean
+            return roc_reference
         }
     }
 }
