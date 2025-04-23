@@ -22,6 +22,7 @@ acParseArguments(const int argc, char* argv[], Arguments* args)
     const struct option long_options[] = {
         {"config", required_argument, 0, 'c'},
         {"global-nn-override", required_argument, 0, 0},
+        {"job-id", required_argument, 0, 0},
         {"help", required_argument, 0, 'h'},
         {0, 0, 0, 0},
     };
@@ -40,9 +41,9 @@ acParseArguments(const int argc, char* argv[], Arguments* args)
             args->config_path = optarg;
             break;
         case 0: {
-            printf("Option with no short options\n");
+            // printf("Option with no short options\n");
             if (strcmp(long_options[option_index].name, "global-nn-override") == 0) {
-                fprintf(stderr, "'%s'\n", optarg);
+                // fprintf(stderr, "'%s'\n", optarg);
                 if ((sscanf(optarg,
                             "%d,%d,%d",
                             &args->global_nn_override[0],
@@ -55,6 +56,16 @@ acParseArguments(const int argc, char* argv[], Arguments* args)
                             "Invalid number or format of arguments for --global-nn-override. "
                             "Expects three (3) values.\n"
                             "Example: --global-nn-override 32,32,32\n");
+                    return -1;
+                }
+            }
+            else if(strcmp(long_options[option_index].name, "job-id") == 0) {
+                if ((sscanf(optarg, "%d", &args->job_id) == 1)) {
+                    break;
+                }
+                else {
+                    fprintf(stderr,
+                            "Invalid number or format of arguments for --job-id.\n");
                     return -1;
                 }
             }

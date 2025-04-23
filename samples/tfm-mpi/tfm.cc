@@ -35,6 +35,8 @@
 #include <algorithm>
 #include <random>
 
+#include <unistd.h>
+
 // #define AC_ENABLE_ASYNC_AVERAGES
 
 // Debug runs: enable defines below for writing diagnostics synchronously
@@ -1380,7 +1382,10 @@ main(int argc, char* argv[])
 
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
             // File open
-            FILE* fp{fopen("scaling.csv", "a")};
+            std::ostringstream oss;
+            oss << "bm-tfm-scaling-" << args.job_id << "-" << getpid() << "-" << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+            const auto output_file{oss.str()};
+            FILE* fp{fopen(output_file.c_str(), "a")};
             ERRCHK_MPI(fp);
 
             // File write

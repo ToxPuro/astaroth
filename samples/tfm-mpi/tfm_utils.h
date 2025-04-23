@@ -5,6 +5,7 @@
 typedef struct {
     char* config_path;
     int global_nn_override[3];
+    int job_id;
 } Arguments;
 
 #ifdef __cplusplus
