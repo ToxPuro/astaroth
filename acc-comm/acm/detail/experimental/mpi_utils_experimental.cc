@@ -26,7 +26,7 @@ select_device_lumi()
     ERRCHK_CUDA_API(cudaSetDevice(device_id));
     return device_id;
 #else
-    return 0;
+    return -1;
 #endif
 }
 
