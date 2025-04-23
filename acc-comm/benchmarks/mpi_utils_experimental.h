@@ -142,7 +142,11 @@ class request {
     {
     }
 
-    MPI_Request* data() const noexcept { ERRCHK_MPI(complete()); return m_req.get(); }
+    MPI_Request* data() const noexcept
+    {
+        ERRCHK_MPI(complete());
+        return m_req.get();
+    }
 
     void wait() noexcept
     {
@@ -247,5 +251,11 @@ namespace ac::mpi {
 //     // ...
 //     return cart_comm;
 // }
+
+} // namespace ac::mpi
+
+namespace ac::mpi {
+
+void select_device_lumi();
 
 } // namespace ac::mpi
