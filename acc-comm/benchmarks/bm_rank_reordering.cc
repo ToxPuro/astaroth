@@ -2,6 +2,7 @@
 #include <iostream>
 #include <mpi.h>
 #include <sstream>
+#include <unistd.h>
 
 #include "acm/detail/allocator.h"
 #include "acm/detail/buffer.h"
@@ -347,7 +348,7 @@ main(int argc, char* argv[])
         }
 
         std::ostringstream oss;
-        oss << "bm-rank-reordering-" << jobid << "-" << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+        oss << "bm-rank-reordering-" << jobid << "-" << getpid() << "-" << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
         const auto output_file{oss.str()};
         FILE*      fp{fopen(output_file.c_str(), "w")};
         ERRCHK(fp);
