@@ -38,3 +38,15 @@ plt.barh(stats_median.index, stats_median)
 
 
 # %%
+# Pipeline
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+
+print(f'cwd: {os.getcwd()}')
+
+df = pd.read_csv('../build/bm-pipelining-0-0.csv')
+df
+
+stats = df.groupby('impl')['ns'].describe()
+stats
