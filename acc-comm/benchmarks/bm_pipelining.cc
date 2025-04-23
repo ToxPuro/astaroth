@@ -122,11 +122,15 @@ main(int argc, char* argv[])
         };
 
         std::string                          mpi_he_label{"mpi-he"};
-        ac::mpi::halo_exchange<T, Allocator> mpi_he{comm.get(), global_nn, rr};
-        auto                                 mpi_he_bench = [&inputs, &mpi_he]() {
-            for (auto& input : inputs)
-                mpi_he.launch(input.get(), input.get());
-            mpi_he.wait_all();
+        std::vector<ac::mpi::halo_exchange<T, Allocator>> mpi_hes;
+        for (const auto& input : inputs)
+            mpi_hes.push_back(ac::mpi::halo_exchange<T, Allocator>{comm.get(), global_nn, rr});
+
+        auto                                 mpi_he_bench = [&inputs, &mpi_hes]() {
+            for (size_t i{0}; i < inputs.size(); ++i)
+                mpi_hes[i].launch(inputs[i].get(), inputs[i].get());
+            for (size_t i{0}; i < inputs.size(); ++i)
+                mpi_hes[i].wait_all();
         };
 
         std::string                      acm_packed_he_label{"acm-packed-he"};
@@ -137,7 +141,7 @@ main(int argc, char* argv[])
         };
 
         std::string                      acm_batched_he_label{"acm-batched-he"};
-        acm::halo_exchange<T, Allocator> acm_batched_he{comm.get(), global_nn, rr, npack};
+        acm::rev::halo_exchange<T, Allocator> acm_batched_he{comm.get(), global_nn, rr, npack};
         auto                             acm_batched_he_bench = [&inputs, &acm_batched_he]() {
             acm_batched_he.launch(ac::unwrap_get(inputs));
             acm_batched_he.wait(ac::unwrap_get(inputs));
