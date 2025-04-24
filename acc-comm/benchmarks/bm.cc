@@ -10,11 +10,9 @@ benchmark(const std::function<void()>& init, const std::function<void()>& bench,
           const std::function<void()>& sync, const size_t nsamples)
 {
     // Warmup
-    init();
-    for (size_t i{0}; i < 3; ++i)
+    for (size_t i{0}; i < 10; ++i)
         bench();
-    sync();
-
+    
     // Benchmark
     ac::timer                                  timer;
     std::vector<std::chrono::nanoseconds::rep> samples;
