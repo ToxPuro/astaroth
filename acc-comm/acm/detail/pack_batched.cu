@@ -162,8 +162,12 @@ pack_batched(const ac::shape& mm, const std::vector<ac::mr::device_pointer<T>>& 
         return pack_batched<T, NDIMS, 3>(mm, unpacked, segments, packed, do_pack);
     case 4:
         return pack_batched<T, NDIMS, 4>(mm, unpacked, segments, packed, do_pack);
+    case 8:
+        return pack_batched<T, NDIMS, 8>(mm, unpacked, segments, packed, do_pack);
     case 12:
         return pack_batched<T, NDIMS, 12>(mm, unpacked, segments, packed, do_pack);
+    case 16:
+        return pack_batched<T, NDIMS, 16>(mm, unpacked, segments, packed, do_pack);
     default:
         ERROR(false, "Unhandled");
     }
