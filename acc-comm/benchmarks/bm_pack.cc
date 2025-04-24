@@ -18,6 +18,7 @@
 #endif
 
 #include "acm/detail/experimental/mpi_utils_experimental.h"
+#include "acm/detail/experimental/random_experimental.h"
 #include "bm.h"
 
 template <typename T, typename Allocator> class mpi_pack_strategy {
@@ -464,7 +465,7 @@ main(int argc, char* argv[])
 
         auto init_random = [&]() {
             for (auto& input : inputs)
-                bm::randomize(input.get());
+                acm::experimental::randomize(input.get());
         };
 
         auto sync = []() {

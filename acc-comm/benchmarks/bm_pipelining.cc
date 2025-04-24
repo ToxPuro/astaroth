@@ -24,6 +24,7 @@
 #endif
 
 #include "acm/detail/experimental/mpi_utils_experimental.h"
+#include "acm/detail/experimental/random_experimental.h"
 #include "bm.h"
 
 #include "acm/detail/halo_exchange_batched.h"
@@ -112,7 +113,7 @@ main(int argc, char* argv[])
 
         auto init = [&]() {
             for (auto& input : inputs)
-                bm::randomize(input.get());
+                acm::experimental::randomize(input.get());
         };
 
         auto sync = []() {

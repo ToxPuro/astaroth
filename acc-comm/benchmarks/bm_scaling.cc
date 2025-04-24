@@ -10,6 +10,8 @@
 
 #include <array>
 
+#include "acm/detail/experimental/random_experimental.h"
+
 /** Verify halo exchange
  * Strategy:
  *     1) Set global mesh to iota
@@ -129,7 +131,7 @@ bm_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac
     ac::device_ndbuffer<T> din{local_mm};
     ac::device_ndbuffer<T> dout{local_mm};
 
-    auto init_fn = [&din]() { randomize(din.get()); };
+    auto init_fn = [&din]() { acm::experimental::randomize(din.get()); };
     auto bm_fn   = [&]() {
         auto reqs{launch_halo_exchange(cart_comm, local_mm, local_nn, rr, din.data(), dout.data())};
 
@@ -170,7 +172,7 @@ bm_halo_exchange_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, c
 
     ac::comm::async_halo_exchange_task<T> he{local_mm, local_nn, rr, 1};
 
-    auto init_fn = [&din]() { randomize(din.get()); };
+    auto init_fn = [&din]() { acm::experimental::randomize(din.get()); };
     auto bm_fn   = [&]() {
         he.launch(cart_comm, {din.get()});
         he.wait({dout.get()});
@@ -207,7 +209,7 @@ bm_halo_exchange_packed_multiple(const MPI_Comm& cart_comm, const ac::shape& glo
 
     ac::comm::async_halo_exchange_task<T> he{local_mm, local_nn, rr, 12};
 
-    auto init_fn = [&din]() { randomize(din.get()); };
+    auto init_fn = [&din]() { acm::experimental::randomize(din.get()); };
     auto bm_fn   = [&]() {
         he.launch(cart_comm,
                     {din.get(),

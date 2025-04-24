@@ -13,8 +13,9 @@ set(ACM_HOST_FILES
     math_utils.cc
     ntuple.cc
     experimental/mpi_utils_experimental.cc
+    experimental/random_experimental.cc
 )
-set(ACM_DEVICE_FILES pack_batched.cu pack.cu)
+set(ACM_DEVICE_FILES experimental/random_experimental.cu pack_batched.cu pack.cu)
 add_library(acm SHARED ${ACM_DEVICE_FILES} ${ACM_HOST_FILES} acm_error.c errchk_print.c)
 
 ## Link libraries and includes
