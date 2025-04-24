@@ -15,6 +15,6 @@ target_link_libraries(bm_rank_reordering PRIVATE acm MPI::MPI_C)
 add_executable(bm_pipelining bm_pipelining.cc bm.cc)
 target_link_libraries(bm_pipelining PRIVATE acm MPI::MPI_C)
 
-add_executable(bm_scaling bm_scaling.cc bm.cc)
-target_link_libraries(bm_scaling PRIVATE acm MPI::MPI_C)
+# add_executable(bm_scaling bm_scaling.cc bm.cc)
+# target_link_libraries(bm_scaling PRIVATE acm MPI::MPI_C)
 
