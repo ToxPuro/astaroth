@@ -30,10 +30,19 @@ namespace device {
         arr[i] = x / n;
     }
 
+    __global__ void randomize(const uint64_t seed, const size_t count, uint64_t* arr) {
+        const size_t i{static_cast<size_t>(threadIdx.x) + blockIdx.x * blockDim.x};
+        if (i >= count)
+            return;
+
+        arr[i] = xorshift(seed + xorshift(static_cast<uint64_t>(i)));
+    }
+
 }
 
+    template<typename T>
     void
-    randomize(ac::mr::device_pointer<double> ptr)
+    randomize(ac::mr::device_pointer<T> ptr)
     {
         constexpr uint64_t initial_seed{123};
         static uint64_t seed{initial_seed};
@@ -52,6 +61,14 @@ namespace device {
             seed = initial_seed;
             PRINT_LOG_WARNING("Random seed sequence wrapped around");
         }
+    }
+
+    void randomize(ac::mr::device_pointer<double> ptr) {
+        randomize<double>(ptr);
+    }
+
+    void randomize(ac::mr::device_pointer<uint64_t> ptr) {
+        randomize<uint64_t>(ptr);
     }
 #endif
 
