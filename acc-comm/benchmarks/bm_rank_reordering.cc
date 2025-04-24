@@ -23,6 +23,7 @@
 #endif
 
 #include "acm/detail/experimental/mpi_utils_experimental.h"
+#include "acm/detail/experimental/random_experimental.h"
 #include "bm.h"
 
 namespace ac::mpi {
@@ -65,6 +66,10 @@ template <typename T, typename Allocator> class packet {
 
         std::fill(tmp.begin(), tmp.end(), 0);
         migrate(tmp, m_recv_buffer);
+    }
+
+    void reset() {
+        acm::experimental::randomize(m_send_buffer.get());
     }
 
     /** Verify that the contents of the recv buffer are as expected */
@@ -176,6 +181,11 @@ template <typename T, typename Allocator> class halo_exchange {
     {
         for (auto& packet : m_packets)
             packet.init();
+    }
+
+    void reset() {
+        for (auto& packet : m_packets)
+            packet.reset();
     }
 
     void verify() const
@@ -375,15 +385,15 @@ main(int argc, char* argv[])
             ERRCHK(fclose(fp) == 0);
         };
 
-        auto init = []() {};
-        auto sync = []() { ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD)); };
         auto bm   = [&](const std::string& label, const ac::mpi::RankReorderMethod reorder_method) {
             ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD, global_nn, reorder_method};
             ac::mpi::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
+            auto init = [&task]() { task.reset(); };
             auto                                 bench = [&task]() {
                 task.launch();
                 task.wait();
             };
+            auto sync = []() { ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD)); };
 
             // Print rank ordering
             const auto rank_ordering{ac::mpi::get_rank_ordering(cart_comm.get())};
