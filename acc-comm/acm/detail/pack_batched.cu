@@ -19,8 +19,9 @@ pack_batched(const shape_t<NDIMS> mm, const array_t<T*, NINPUTS> unpacked,
              const bool do_pack)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
+    const uint64_t k{static_cast<uint64_t>(threadIdx.y) + blockIdx.y * blockDim.y};
 
-    for (size_t k{0}; k < NSEGMENTS; ++k) {
+    if (k < NSEGMENTS) {
         const auto block_shape{dims[k]};
         const auto block_nelems{prod(block_shape)};
         if (i < block_nelems) {
@@ -58,8 +59,12 @@ pack_batched_prototype(const ac::shape&                              in_mm,
     for (const auto& segment : in_segments)
         max_block_nelems = std::max(max_block_nelems, prod(segment.dims));
 
-    const uint32_t tpb{256};
-    const uint32_t bpg{as<uint32_t>((max_block_nelems + tpb - 1) / tpb)};
+    const dim3 tpb{256, 1, 1};
+    const dim3 bpg{
+        as<uint32_t>((max_block_nelems + tpb.x - 1) / tpb.x),
+        as<uint32_t>((in_segments.size() + tpb.y - 1) / tpb.y),
+        1,
+    };
 
     std::vector<shape_t<NDIMS>> in_dims;
     for (const auto& segment : in_segments)
