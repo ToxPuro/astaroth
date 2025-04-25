@@ -64,7 +64,8 @@ main(int argc, char* argv[])
         }
 
         std::ostringstream oss;
-        oss << "bm-pipelining-" << jobid << "-" << getpid() << "-" << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+        oss << "bm-pipelining-" << jobid << "-" << getpid() << "-"
+            << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
         const auto output_file{oss.str()};
         FILE*      fp{fopen(output_file.c_str(), "w")};
         ERRCHK(fp);
@@ -123,12 +124,12 @@ main(int argc, char* argv[])
             ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         };
 
-        std::string                          mpi_he_label{"mpi-he"};
+        std::string                                       mpi_he_label{"mpi-he"};
         std::vector<ac::mpi::halo_exchange<T, Allocator>> mpi_hes;
         for (const auto& input : inputs)
             mpi_hes.push_back(ac::mpi::halo_exchange<T, Allocator>{comm.get(), global_nn, rr});
 
-        auto                                 mpi_he_bench = [&inputs, &mpi_hes]() {
+        auto mpi_he_bench = [&inputs, &mpi_hes]() {
             for (size_t i{0}; i < inputs.size(); ++i)
                 mpi_hes[i].launch(inputs[i].get(), inputs[i].get());
             for (size_t i{0}; i < inputs.size(); ++i)
@@ -142,9 +143,9 @@ main(int argc, char* argv[])
             acm_packed_he.wait(ac::unwrap_get(inputs));
         };
 
-        std::string                      acm_batched_he_label{"acm-batched-he"};
+        std::string                           acm_batched_he_label{"acm-batched-he"};
         acm::rev::halo_exchange<T, Allocator> acm_batched_he{comm.get(), global_nn, rr, npack};
-        auto                             acm_batched_he_bench = [&inputs, &acm_batched_he]() {
+        auto                                  acm_batched_he_bench = [&inputs, &acm_batched_he]() {
             acm_batched_he.launch(ac::unwrap_get(inputs));
             acm_batched_he.wait(ac::unwrap_get(inputs));
         };

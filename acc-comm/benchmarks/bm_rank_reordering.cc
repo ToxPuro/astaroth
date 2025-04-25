@@ -68,9 +68,7 @@ template <typename T, typename Allocator> class packet {
         migrate(tmp, m_recv_buffer);
     }
 
-    void reset() {
-        acm::experimental::randomize(m_send_buffer.get());
-    }
+    void reset() { acm::experimental::randomize(m_send_buffer.get()); }
 
     /** Verify that the contents of the recv buffer are as expected */
     void verify() const
@@ -183,7 +181,8 @@ template <typename T, typename Allocator> class halo_exchange {
             packet.init();
     }
 
-    void reset() {
+    void reset()
+    {
         for (auto& packet : m_packets)
             packet.reset();
     }
@@ -358,7 +357,8 @@ main(int argc, char* argv[])
         }
 
         std::ostringstream oss;
-        oss << "bm-rank-reordering-" << jobid << "-" << getpid() << "-" << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+        oss << "bm-rank-reordering-" << jobid << "-" << getpid() << "-"
+            << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
         const auto output_file{oss.str()};
         FILE*      fp{fopen(output_file.c_str(), "w")};
         ERRCHK(fp);
@@ -385,10 +385,10 @@ main(int argc, char* argv[])
             ERRCHK(fclose(fp) == 0);
         };
 
-        auto bm   = [&](const std::string& label, const ac::mpi::RankReorderMethod reorder_method) {
+        auto bm = [&](const std::string& label, const ac::mpi::RankReorderMethod reorder_method) {
             ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD, global_nn, reorder_method};
             ac::mpi::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
-            auto init = [&task]() { task.reset(); };
+            auto                                 init  = [&task]() { task.reset(); };
             auto                                 bench = [&task]() {
                 task.launch();
                 task.wait();

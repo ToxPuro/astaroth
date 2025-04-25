@@ -381,7 +381,8 @@ main(int argc, char* argv[])
         PRINT_DEBUG(rr);
 
         std::ostringstream oss;
-        oss << "bm-pack-" << jobid  << "-" << getpid() << "-" << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+        oss << "bm-pack-" << jobid << "-" << getpid() << "-" << ac::mpi::get_rank(MPI_COMM_WORLD)
+            << ".csv";
         const auto output_file{oss.str()};
         FILE*      fp{fopen(output_file.c_str(), "w")};
         ERRCHK(fp);
