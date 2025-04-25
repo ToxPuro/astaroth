@@ -6,55 +6,33 @@
 
 namespace acm {
 
-constexpr size_t MAX_NDIMS{4};
-constexpr size_t MAX_N_AGGR_BUFS{16};
-
-using shape_t                       = ac::static_ntuple<uint64_t, MAX_NDIMS>;
-using index_t                       = ac::static_ntuple<uint64_t, MAX_NDIMS>;
-template <typename T> using array_t = ac::static_ntuple<T, MAX_N_AGGR_BUFS>;
+template <size_t N> using shape_t             = ac::static_ntuple<uint64_t, N>;
+template <size_t N> using index_t             = ac::static_ntuple<uint64_t, N>;
+template <typename T, size_t N> using array_t = ac::static_ntuple<T, N>;
 
 namespace device {
 
-template <typename T>
+template <typename T, size_t NDIMS, size_t NINPUTS>
 __global__ void
-pack(const shape_t mm, const shape_t block_shape, const index_t block_offset,
-     const array_t<T*> inputs, T* output)
+pack(const shape_t<NDIMS> mm, const shape_t<NDIMS> block_shape, const index_t<NDIMS> block_offset,
+     const array_t<T*, NINPUTS> unpacked, T* packed, const bool do_pack)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{prod(block_shape)};
     if (i < block_nelems) {
-        for (size_t j{0}; j < inputs.size(); ++j) {
+        for (size_t j{0}; j < NINPUTS; ++j) {
 
             // Block coords
-            const index_t block_coords{to_spatial(i, block_shape)};
+            const auto block_coords{to_spatial(i, block_shape)};
 
             // Input coords
-            const index_t  in_coords{block_offset + block_coords};
-            const uint64_t in_idx{to_linear(in_coords, mm)};
+            const auto in_coords{block_offset + block_coords};
+            const auto in_idx{to_linear(in_coords, mm)};
 
-            output[i + j * block_nelems] = inputs[j][in_idx];
-        }
-    }
-}
-
-template <typename T>
-__global__ void
-unpack(const T* input, const shape_t mm, const shape_t block_shape, const index_t block_offset,
-       array_t<T*> outputs)
-{
-    const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
-    const uint64_t block_nelems{prod(block_shape)};
-    if (i < block_nelems) {
-        for (size_t j{0}; j < outputs.size(); ++j) {
-
-            // Block coords
-            const index_t block_coords{to_spatial(i, block_shape)};
-
-            // Input coords
-            const index_t  in_coords{block_offset + block_coords};
-            const uint64_t in_idx{to_linear(in_coords, mm)};
-
-            outputs[j][in_idx] = input[i + j * block_nelems];
+            if (do_pack)
+                packed[i + j * block_nelems] = unpacked[j][in_idx];
+            else
+                unpacked[j][in_idx] = packed[i + j * block_nelems];
         }
     }
 }
@@ -71,73 +49,94 @@ unwrap_data(const std::vector<ac::mr::device_pointer<T>>& buffers)
     return output;
 }
 
-template <typename T>
+template <typename T, size_t NDIMS, size_t NINPUTS>
 void
 pack(const ac::shape& in_mm, const ac::shape& in_block_shape, const ac::index& in_block_offset,
-     const std::vector<ac::mr::device_pointer<T>>& in_inputs, ac::mr::device_pointer<T> in_output)
+     const std::vector<ac::mr::device_pointer<T>>& in_inputs, ac::mr::device_pointer<T> in_output,
+     const bool do_pack)
 {
     ERRCHK(in_inputs.size() * prod(in_block_shape) <= in_output.size());
-    ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS,
-                     "Max ndims of pack is %zu (got %zu)\n",
-                     MAX_NDIMS,
-                     in_mm.shape());
-    ERRCHK_EXPR_DESC(in_inputs.size() <= MAX_N_AGGR_BUFS,
-                     "Gave %zu inputs but MAX_N_AGGR_BUFS is %zu\n",
-                     in_inputs.size(),
-                     MAX_N_AGGR_BUFS);
 
     const uint64_t block_nelems{prod(in_block_shape)};
     const uint64_t tpb{256};
     const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
 
-    const shape_t     mm{in_mm};
-    const shape_t     block_shape{in_block_shape};
-    const shape_t     block_offset{in_block_offset};
-    const array_t<T*> inputs{unwrap_data(in_inputs)};
-    const auto        output{in_output.data()};
+    const shape_t<NDIMS>       mm{in_mm};
+    const shape_t<NDIMS>       block_shape{in_block_shape};
+    const shape_t<NDIMS>       block_offset{in_block_offset};
+    const array_t<T*, NINPUTS> inputs{unwrap_data(in_inputs)};
+    const auto                 output{in_output.data()};
 
     device::pack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(mm,
                                                            block_shape,
                                                            block_offset,
                                                            inputs,
-                                                           output);
+                                                           output,
+                                                           do_pack);
     ERRCHK_CUDA_KERNEL();
     cudaDeviceSynchronize();
 }
 
+template <typename T, size_t NDIMS>
+void
+pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+     const std::vector<ac::mr::device_pointer<T>>& inputs, ac::mr::device_pointer<T> output,
+     const bool do_pack)
+{
+    switch (inputs.size()) {
+    case 1:
+        return pack<T, NDIMS, 1>(mm, block_shape, block_offset, inputs, output, do_pack);
+    case 2:
+        return pack<T, NDIMS, 2>(mm, block_shape, block_offset, inputs, output, do_pack);
+    case 3:
+        return pack<T, NDIMS, 3>(mm, block_shape, block_offset, inputs, output, do_pack);
+    case 4:
+        return pack<T, NDIMS, 4>(mm, block_shape, block_offset, inputs, output, do_pack);
+    case 8:
+        return pack<T, NDIMS, 8>(mm, block_shape, block_offset, inputs, output, do_pack);
+    case 12:
+        return pack<T, NDIMS, 12>(mm, block_shape, block_offset, inputs, output, do_pack);
+    case 16:
+        return pack<T, NDIMS, 16>(mm, block_shape, block_offset, inputs, output, do_pack);
+    default:
+        ERROR(false, "Unhandled");
+    }
+}
+
 template <typename T>
 void
-unpack(const ac::mr::device_pointer<T>& in_input, const ac::shape& in_mm,
-       const ac::shape& in_block_shape, const ac::index& in_block_offset,
-       std::vector<ac::mr::device_pointer<T>> in_outputs)
+pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+     const std::vector<ac::mr::device_pointer<T>>& inputs, ac::mr::device_pointer<T> output,
+     const bool do_pack)
 {
-    ERRCHK(in_outputs.size() * prod(in_block_shape) <= in_input.size());
-    ERRCHK_EXPR_DESC(in_mm.size() <= MAX_NDIMS,
-                     "Max ndims of pack is %zu (got %zu)\n",
-                     MAX_NDIMS,
-                     in_mm.shape());
-    ERRCHK_EXPR_DESC(in_outputs.size() <= MAX_N_AGGR_BUFS,
-                     "Gave %zu outputs but MAX_N_AGGR_BUFS is %zu\n",
-                     in_outputs.size(),
-                     MAX_N_AGGR_BUFS);
+    switch (mm.size()) {
+    case 1:
+        return pack<T, 1>(mm, block_shape, block_offset, inputs, output, do_pack);
+    case 2:
+        return pack<T, 2>(mm, block_shape, block_offset, inputs, output, do_pack);
+    case 3:
+        return pack<T, 3>(mm, block_shape, block_offset, inputs, output, do_pack);
+    case 4:
+        return pack<T, 4>(mm, block_shape, block_offset, inputs, output, do_pack);
+    default:
+        ERROR(false, "Unhandled");
+    }
+}
 
-    const uint64_t block_nelems{prod(in_block_shape)};
-    const uint64_t tpb{256};
-    const uint64_t bpg{(block_nelems + tpb - 1) / tpb};
+template <typename T>
+void
+pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
+     const std::vector<ac::mr::device_pointer<T>>& inputs, ac::mr::device_pointer<T> output)
+{
+    pack(mm, block_shape, block_offset, inputs, output, true);
+}
 
-    const auto        input{in_input.data()};
-    const shape_t     mm{in_mm};
-    const shape_t     block_shape{in_block_shape};
-    const shape_t     block_offset{in_block_offset};
-    const array_t<T*> outputs{unwrap_data(in_outputs)};
-
-    device::unpack<<<as<uint32_t>(bpg), as<uint32_t>(tpb)>>>(input,
-                                                             mm,
-                                                             block_shape,
-                                                             block_offset,
-                                                             outputs);
-    ERRCHK_CUDA_KERNEL();
-    cudaDeviceSynchronize();
+template <typename T>
+void
+unpack(const ac::mr::device_pointer<T>& input, const ac::shape& mm, const ac::shape& block_shape,
+       const ac::index& block_offset, std::vector<ac::mr::device_pointer<T>> outputs)
+{
+    pack(mm, block_shape, block_offset, outputs, input, false);
 }
 
 // Specialization
