@@ -20,15 +20,15 @@ pack(const shape_t<NDIMS> mm, const shape_t<NDIMS> block_shape, const index_t<ND
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
     const uint64_t block_nelems{prod(block_shape)};
     if (i < block_nelems) {
+
+        // Block coords
+        const auto block_coords{to_spatial(i, block_shape)};
+
+        // Input coords
+        const auto in_coords{block_offset + block_coords};
+        const auto in_idx{to_linear(in_coords, mm)};
+
         for (size_t j{0}; j < NINPUTS; ++j) {
-
-            // Block coords
-            const auto block_coords{to_spatial(i, block_shape)};
-
-            // Input coords
-            const auto in_coords{block_offset + block_coords};
-            const auto in_idx{to_linear(in_coords, mm)};
-
             if (do_pack)
                 packed[i + j * block_nelems] = unpacked[j][in_idx];
             else

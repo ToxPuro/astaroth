@@ -19,27 +19,25 @@ pack_batched(const shape_t<NDIMS> mm, const array_t<T*, NINPUTS> unpacked,
              const bool do_pack)
 {
     const uint64_t i{static_cast<uint64_t>(threadIdx.x) + blockIdx.x * blockDim.x};
-    // const uint64_t curr_input{static_cast<uint64_t>(threadIdx.y) + blockIdx.y * blockDim.y};
-    const uint64_t curr_segment{static_cast<uint64_t>(threadIdx.z) + blockIdx.z * blockDim.z};
 
-    if (curr_segment < NSEGMENTS) {
-        const auto block_shape{dims[curr_segment]};
+    for (size_t k{0}; k < NSEGMENTS; ++k) {
+        const auto block_shape{dims[k]};
         const auto block_nelems{prod(block_shape)};
         if (i < block_nelems) {
+
+            // Block coords
+            const auto block_offset{offsets[k]};
+            const auto block_coords{to_spatial(i, block_shape)};
+
+            // Input coords
+            const auto in_coords{block_offset + block_coords};
+            const auto in_idx{to_linear(in_coords, mm)};
+
             for (size_t j{0}; j < NINPUTS; ++j) {
-
-                // Block coords
-                const auto block_offset{offsets[curr_segment]};
-                const auto block_coords{to_spatial(i, block_shape)};
-
-                // Input coords
-                const auto in_coords{block_offset + block_coords};
-                const auto in_idx{to_linear(in_coords, mm)};
-
                 if (do_pack)
-                    packed[curr_segment][i + j * block_nelems] = unpacked[j][in_idx];
+                    packed[k][i + j * block_nelems] = unpacked[j][in_idx];
                 else
-                    unpacked[j][in_idx] = packed[curr_segment][i + j * block_nelems];
+                    unpacked[j][in_idx] = packed[k][i + j * block_nelems];
             }
         }
     }
@@ -60,12 +58,8 @@ pack_batched_prototype(const ac::shape&                              in_mm,
     for (const auto& segment : in_segments)
         max_block_nelems = std::max(max_block_nelems, prod(segment.dims));
 
-    const dim3 tpb{256, 1, 1};
-    const dim3 bpg{
-        as<uint32_t>((max_block_nelems + tpb.x - 1) / tpb.x),
-        1, // as<uint32_t>((in_unpacked.size() + tpb.y - 1) / tpb.y),
-        as<uint32_t>((in_segments.size() + tpb.z - 1) / tpb.z),
-    };
+    const uint32_t tpb{256};
+    const uint32_t bpg{as<uint32_t>((max_block_nelems + tpb - 1) / tpb)};
 
     std::vector<shape_t<NDIMS>> in_dims;
     for (const auto& segment : in_segments)
