@@ -1,6 +1,6 @@
 // physical grid
-run_const real3 AC_origin
-
+//TP: origin assumes [0,AC_len] box
+run_const real3 AC_origin =  0.5*AC_len
 run_const real3 AC_center
 
 gmem real AC_x[AC_mlocal.x]

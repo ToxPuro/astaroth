@@ -186,7 +186,11 @@ struct load_arrays
 			const int n_dims = get_array_n_dims(array);
 			const char* name = get_array_name(array);
 			auto* loaded_val = info[array];
-			if(loaded_val == NULL) continue;
+			if(loaded_val == NULL && !output_datatype)
+			{
+				printf("%s: NULL\n",name);
+				continue;
+			}
 			const auto dims = get_array_dim_sizes(array,info);
 			if(n_dims == 1)
 			{

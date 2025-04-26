@@ -157,14 +157,14 @@ def render_slice(full_slice, field_name, step, z):
     print(f"Rendering {MA}{field_name:>20}{CLR} slice at step {CY}{int(step):<8}{CLR}...", end="")
     vmin = field_headers[field_name]["vmin"]
     vmax = field_headers[field_name]["vmax"]
-    plt.imshow(full_slice, cmap='plasma', interpolation='nearest', vmin=vmin, vmax=vmax)
+    plt.imshow(full_slice, cmap='plasma', interpolation='nearest', vmin=vmin, vmax=vmax, aspect=full_slice.shape[1]/full_slice.shape[0])
     plt.colorbar()
     plt.ylabel('y')
     plt.xlabel('x')
     title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
     plt.title(f'{title_field_name}, step = {int(step)}')
     output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
-    print(f"writing to {GR}{output_file}{CLR}")
+    print(f"Writing to {GR}{output_file}{CLR}")
     plt.savefig(output_file, dpi=args.dpi)
     plt.clf()
 
@@ -174,12 +174,26 @@ def write_binary(full_slice, field_name, step, z):
     print(f"to {GR}{output_file}{CLR}")
     full_slice.tofile(output_file)
 
+def plot_line1d(full_slice, field_name, step, z):
+    print(f"Plotting {MA}{field_name:>20}{CLR} 1D cut at step {CY}{int(step):<8}{CLR}...", end="")
+    y = int((full_slice.shape[0])/2)
+    plt.plot(full_slice[y,:], '.')
+    title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
+    plt.xlabel('x')
+    plt.ylabel(title_field_name)
+    plt.title(f'{title_field_name}, step = {int(step)}')
+    output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.y_{y}.step_{step}.png'
+    print(f"Writing to {GR}{output_file}{CLR}")
+    plt.savefig(output_file, dpi=args.dpi)
+    plt.clf()
+
 #Render the vector fields
 for vector_field, components in vector_fields.items():
     #render each slice, but keep the frames
     for step in steps:
         vector_slice = None
         z = steps[step][components[0]]["z"]
+        y = 16
         vmax_l2_norm = 0
         for comp_field in components:
             slice_data = steps[step][comp_field]
@@ -188,6 +202,7 @@ for vector_field, components in vector_fields.items():
             # Render slice
             if args.write_png:
                 render_slice(**slice_data)
+                plot_line1d(**slice_data)
 
             # Write binary
             if args.write_bin:
@@ -220,6 +235,7 @@ for vector_field, components in vector_fields.items():
         # Render slice
         if args.write_png:
             render_slice(vector_slice, field_name, step, z)
+            plot_line1d(vector_slice, field_name, step, z)
 
         # Write binary
         #if args.write_bin:
@@ -236,9 +252,11 @@ for step, fields in steps.items():
         # Render slice
         if args.write_png:
             render_slice(**slice_data)
+            plot_line1d(**slice_data)
 
         # Write binary
         if args.write_bin:
             write_binary(**slice_data)
 
         del slice_data["full_slice"]
+

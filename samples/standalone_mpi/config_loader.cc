@@ -53,7 +53,6 @@ set_extra_config_params(AcMeshInfo* config_ptr)
 
     // Real grid coordanates (DEFINE FOR GRID WITH THE GHOST ZONES)
     acPushToConfig(config,AC_len,config[AC_ds]*config[AC_mgrid]);
-    acPushToConfig(config,AC_origin,AcReal(.5) * config[AC_len]);
 
 
 #if VERBOSE_PRINTING // Defined in astaroth.h

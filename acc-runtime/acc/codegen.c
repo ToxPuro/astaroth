@@ -730,6 +730,7 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_PI"));
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_EPSILON"));
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_MIN"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_MAX"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("NUM_FIELDS"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("NUM_PROFILES"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("NUM_VTXBUF_HANDLES"));
@@ -4761,6 +4762,7 @@ get_binary_expr_type(const ASTNode* node)
 	const char* res = 	
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,FIELD_STR) || !strcmp(rhs_res,FIELD_STR))   ? REAL_STR  :
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,FIELD3_STR) || !strcmp(rhs_res,FIELD3_STR)) ? REAL3_STR :
+		op && rhs_real && !strcmp(lhs_res,REAL3_STR) ? REAL3_STR :
                 (lhs_real || rhs_real) && (lhs_int || rhs_int) ? REAL_STR :
                 !strcmp_null_ok(op,MULT_STR) && !strcmp(lhs_res,MATRIX_STR) &&  !strcmp(rhs_res,REAL3_STR) ? REAL3_STR :
 		!strcmp(lhs_res,COMPLEX_STR) || !strcmp(rhs_res,COMPLEX_STR)   ? COMPLEX_STR  :
@@ -4775,11 +4777,11 @@ get_binary_expr_type(const ASTNode* node)
 		NULL;
 
 	//TP: prints for debugging
-	//if(strstr(combine_all_new_with_whitespace(node),"value_AC_MANGLED"))
+	//if(strstr(combine_all_new(node),"R-L"))
 	//{
 	//	printf("HI: %s\n",combine_all_new_with_whitespace(node));
-	//	printf("LHS: %s\n",lhs_res);
-	//	printf("RHS: %s\n",rhs_res);
+	//	printf("LHS: %s %s\n",lhs_res,combine_all_new(node->lhs));
+	//	printf("RHS: %s %s\n",rhs_res,combine_all_new(node->rhs));
 	//	printf("RES: %s\n",res);
 	//}
 	return res;

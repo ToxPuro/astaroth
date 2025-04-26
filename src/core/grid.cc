@@ -2226,44 +2226,30 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Calculating dependencies\n");
 
     const size_t n_tasks               = graph->all_tasks.size();
-    const size_t adjacancy_matrix_size = n_tasks * n_tasks;
+    std::vector<std::vector<size_t>> neighbours(n_tasks,std::vector<size_t>{});
 
-    std::vector<bool> adjacent(adjacancy_matrix_size,false);
-    for (size_t i = 0; i < adjacancy_matrix_size; ++i) { // Belt & suspenders safety
-        ERRCHK_ALWAYS(adjacent[i] == false);
-    }
-
+    std::vector<int> visited(n_tasks,0);
+    int generation = 0;
     //...and check if there is already a forward path that connects two tasks
-    auto forward_search = [&adjacent, &op_indices, n_tasks,
-                           &ops](size_t preq, size_t dept, size_t preq_op, size_t path_len) {
-	std::vector<bool> visited(n_tasks,false);
-        for (size_t i = 0; i < n_tasks; ++i) { // Belt & suspenders safety
-            ERRCHK_ALWAYS(visited[i] == false);
-        }
+    auto forward_search = [&neighbours, &op_indices, &visited, &generation, n_tasks,
+                           &ops](size_t preq, size_t dept) {
 
-        size_t start_op = (preq_op + 1) % ops.size();
-
-        struct walk_node {
-            size_t node;
-            size_t op_offset;
-        };
-        std::queue<walk_node> walk;
-        walk.push({preq, 0});
+	++generation;
+        std::queue<size_t> walk;
+        walk.push(preq);
 
         while (!walk.empty()) {
             auto curr = walk.front();
             walk.pop();
-            if (adjacent[curr.node * n_tasks + dept]) {
+            if (curr == dept) {
                 return true;
             }
-            for (size_t op_offset = curr.op_offset; op_offset < path_len; op_offset++) {
-                size_t op = (start_op + op_offset) % ops.size();
-                for (size_t neighbor = op_indices[op]; neighbor != op_indices[op + 1]; neighbor++) {
-                    if (!visited[neighbor] && adjacent[curr.node * n_tasks + neighbor]) {
-                        walk.push({neighbor, op_offset});
-                        visited[neighbor] = true;
-                    }
-                }
+	    for(const size_t& neighbor : neighbours[curr])
+	    {
+                if (visited[neighbor] != generation) {
+                        walk.push(neighbor);
+                        visited[neighbor] = generation;
+                 }
             }
         }
         return false;
@@ -2353,9 +2339,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
                             // iteration offset of 1 -> dependency from preq_task in iteration k to
                             // dept_task in iteration k+1
 			    //
-                            if (!forward_search(i, j, preq_op, op_offset)) {
+                            if (!forward_search(i, j)) {
                                 preq_task->registerDependent(dept_task, preq_op < dept_op ? 0 : 1);
-                                adjacent[i * n_tasks + j] = true;
+				neighbours[i].push_back(j);
                             }
                         }
                     }

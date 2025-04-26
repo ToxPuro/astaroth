@@ -7,6 +7,7 @@ hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic
 #include "../../standalone_params.h"
 #include "../../stdlib/units.h"
 #include "../../stdlib/map.h"
+#include "../../stdlib/utils/kernels.h"
 const int AC_2d_ints = [[1,2,3], [2,3,4]]
 const int AC_const_ints = [1,2,3]
 const int AC_const_ints_len = 3
@@ -688,16 +689,6 @@ utility Kernel randomize() {
 }
 */
 
-utility Kernel randomize() {
-    
-    // N.B. scale: result in (-AC_rng_scale, AC_rng_scale] range
-    AC_rng_scale = 1e-5
-
-    for field in 0:NUM_FIELDS {
-        r = 2.0 * rand_uniform() - 1.0
-        write(Field(field), AC_rng_scale * r)
-    }
-}
 
 
 
@@ -805,14 +796,6 @@ Kernel radial_vec_initcond() {
     write(UU, radial_vector_field(-1e-5))
 }
 
-utility Kernel constant() {
-    
-    AC_value = 1.0
-
-    for field in 0:NUM_FIELDS {
-        write(Field(field), AC_value)
-    }
-}
 real AC_density_scale_cgs
 real AC_impossible
 real AC_density_scale_factor

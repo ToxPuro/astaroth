@@ -9,3 +9,11 @@ utility Kernel randomize() {
         write(Field(field), rng_scale * r)
     }
 }
+utility Kernel constant() {
+    
+    AC_value = 1.0
+
+    for field in 0:NUM_FIELDS {
+        write(Field(field), AC_value)
+    }
+}
