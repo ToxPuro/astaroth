@@ -22,7 +22,7 @@ inline get_boundary(int3 normal)
 	return (int3){x,y,z}
 }
 
-ac_bc_sym(Field f, int bc_sign)
+elemental ac_bc_sym(Field f, int bc_sign)
 {
 	const int3 normal = get_normal()
 	const int3 boundary = get_boundary(normal)

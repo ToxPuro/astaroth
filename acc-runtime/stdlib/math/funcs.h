@@ -56,7 +56,7 @@ tanh_step_function(real position, real center, real steepness, real L, real R)
 }
 tanh_step_function(real position, real center, real steepness, real3 L, real3 R)
 {
-	return L+0.5*(1.0 + tanh(steepness*(position-center)))*(R-L)
+	return L+(R-L)*0.5*(1.0 + tanh(steepness*(position-center)))
 }
 
 
