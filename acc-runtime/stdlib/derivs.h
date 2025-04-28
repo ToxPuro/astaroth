@@ -1,3 +1,137 @@
+
+//Corresponds to der5 in Pencil Code
+//
+#if STENCIL_ORDER == 2
+#define DER1_1  0.5
+#define DER2_1  1.0
+#define DER2_0 -2.0
+Stencil derx {
+	[0][0][-1] = -AC_inv_ds.x*DER1_1,
+	[0][0][1 ]  =  AC_inv_ds.x*DER1_1
+}
+Stencil dery {
+	[0][-1][0]  = -AC_inv_ds.y*DER1_1,
+	[0][1 ][0]  =  AC_inv_ds.y*DER1_1
+}
+Stencil derz {
+	[-1][0][0]  = -AC_inv_ds.z*DER1_1,
+	[1 ][0][0]  =  AC_inv_ds.z*DER1_1
+}
+Stencil derxy {
+	[0][1][1 ]   =  AC_inv_ds.y*AC_inv_ds.x*DER2_1,
+	[0][-1][-1]  =  AC_inv_ds.y*AC_inv_ds.x*DER2_1,
+	[0][-1][1]   = -AC_inv_ds.y*AC_inv_ds.x*DER2_1,
+	[0][1][-1 ]  = -AC_inv_ds.y*AC_inv_ds.x*DER2_1
+}
+#define deryx derxy
+
+Stencil derxz {
+	[1 ][0][1 ]   =  AC_inv_ds.z*AC_inv_ds.x*DER2_1,
+	[-1][0][-1]   =  AC_inv_ds.z*AC_inv_ds.x*DER2_1,
+	[-1][0][1 ]   = -AC_inv_ds.z*AC_inv_ds.x*DER2_1,
+	[1 ][0][-1]   = -AC_inv_ds.z*AC_inv_ds.x*DER2_1
+}
+#define derzx derxz
+
+Stencil deryz {
+	[1 ][1 ][0]   =  AC_inv_ds.z*AC_inv_ds.y*DER2_1,
+	[-1][-1][0]   =  AC_inv_ds.z*AC_inv_ds.y*DER2_1,
+	[-1][1 ][0]   = -AC_inv_ds.z*AC_inv_ds.y*DER2_1,
+	[1 ][-1][0]   = -AC_inv_ds.z*AC_inv_ds.y*DER2_1
+}
+#define derzy deryz
+
+Stencil derxx {
+	[0][0][-1]  =  AC_inv_ds_2.x*DER2_1,
+	[0][0][0 ]  =  AC_inv_ds_2.x*DER2_0,
+	[0][0][1 ]  =  AC_inv_ds_2.x*DER2_1
+}
+Stencil deryy {
+	[0][-1][0]  =  AC_inv_ds_2.y*DER2_1,
+	[0][0 ][0]  =  AC_inv_ds_2.y*DER2_0,
+	[0][1 ][0]  =  AC_inv_ds_2.y*DER2_1
+}
+Stencil derzz {
+	[-1][0][0]  =  AC_inv_ds_2.z*DER2_1,
+	[0 ][0][0]  =  AC_inv_ds_2.z*DER2_0,
+	[1 ][0][0]  =  AC_inv_ds_2.z*DER2_1
+}
+der3x(Field f)
+{
+	fatal_error_message(true,"der3x not possible with radius of 2!\n");
+	return 0.0;
+}
+der3y(Field f)
+{
+	fatal_error_message(true,"der3y not possible with radius of 2!\n");
+	return 0.0;
+}
+der3z(Field f)
+{
+	fatal_error_message(true,"der3z not possible with radius of 2!\n");
+	return 0.0;
+}
+der4x(Field f)
+{
+	fatal_error_message(true,"der4x not possible with radius of 2!\n");
+	return 0.0;
+}
+der4y(Field f)
+{
+	fatal_error_message(true,"der4y not possible with radius of 2!\n");
+	return 0.0;
+}
+der4z(Field f)
+{
+	fatal_error_message(true,"der4z not possible with radius of 2!\n");
+	return 0.0;
+}
+der5x(Field f)
+{
+	fatal_error_message(true,"der5x not possible with radius of 2!\n");
+	return 0.0;
+}
+der5y(Field f)
+{
+	fatal_error_message(true,"der5y not possible with radius of 2!\n");
+	return 0.0;
+}
+der5z(Field f)
+{
+	fatal_error_message(true,"der5z not possible with radius of 2!\n");
+	return 0.0;
+}
+der6x(Field f)
+{
+	fatal_error_message(true,"der6x not possible with radius of 2!\n");
+	return 0.0;
+}
+der6y(Field f)
+{
+	fatal_error_message(true,"der6y not possible with radius of 2!\n");
+	return 0.0;
+}
+der6z(Field f)
+{
+	fatal_error_message(true,"der5z not possible with radius of 2!\n");
+	return 0.0;
+}
+der6x_upwd(Field f)
+{
+	fatal_error_message(true,"der6x_upwd not possible with radius of 2!\n");
+	return 0.0;
+}
+der6y_upwd(Field f)
+{
+	fatal_error_message(true,"der6y_upwd not possible with radius of 2!\n");
+	return 0.0;
+}
+der6z_upwd(Field f)
+{
+	fatal_error_message(true,"der6z_upwd not possible with radius of 2!\n");
+	return 0.0;
+}
+#else
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
@@ -58,8 +192,6 @@
 #define DER6UPWD_2 ( -6. / 60.)
 #define DER6UPWD_1 ( 15. / 60.)
 #define DER6UPWD_0 (-20. / 60.)
-
-//Corresponds to der5 in Pencil Code
 Stencil der5x {
     [0][0][-3] = -AC_inv_ds_5.x * DER5_3,
     [0][0][-2] = -AC_inv_ds_5.x * DER5_2,
@@ -383,8 +515,4 @@ Stencil der6z_upwd {
     [2][0][0]  =  AC_inv_ds.z * DER6UPWD_2,
     [3][0][0]  =  AC_inv_ds.z * DER6UPWD_3
 }
-
-
-
-
-
+#endif
