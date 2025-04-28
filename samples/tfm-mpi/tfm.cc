@@ -1328,7 +1328,10 @@ main(int argc, char* argv[])
         ERRCHK(acPrintArguments(args) == 0);
 
         // Enforce that the config path is given explicitly
-        ERRCHK_MPI_EXPR_DESC(args.config_path, "No config path passed. Must pass the config path explicitly with ./tfm-mpi --config <path>. For example: './tfm-mpi --config ../samples/tfm/mhd/mhd.ini'");
+        ERRCHK_MPI_EXPR_DESC(args.config_path,
+                             "No config path passed. Must pass the config path explicitly with "
+                             "./tfm-mpi --config <path>. For example: './tfm-mpi --config "
+                             "../samples/tfm/mhd/mhd.ini'");
 
         // Load configuration
         AcMeshInfo raw_info{};
