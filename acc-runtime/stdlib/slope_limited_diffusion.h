@@ -315,4 +315,8 @@ get_slope_limited_divergence(Field f,Field characteristic_speed, real fdiff_limi
 		+ (y_fluxes.y - y_fluxes.x)/AC_inv_ds.y
 		+ (z_fluxes.y - z_fluxes.x)/AC_inv_ds.z
 }
+calculate_velocity_characteristic_speed(Field3 uu, real w_uu, real sound_speed, real w_sound) 
+{
+	return w_uu*norm(uu) + w_sound*sound_speed
+}
 
