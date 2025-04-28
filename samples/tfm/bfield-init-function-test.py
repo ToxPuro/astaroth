@@ -5,22 +5,25 @@ import matplotlib.pyplot as plt
 
 # Input parameters
 box_size = 2 * np.pi
-nz = 32
+nz = 16
 radius = 3
 amplitude = 1
 wavenumber = 1
 
 # Derived parameters
 mz = nz + 2 * radius
-spacing = box_size / (nz - 1)
+spacing = box_size / nz
 
 x = np.arange(0, mz)
-y = amplitude * np.sin(wavenumber * spacing * (x - radius))
+y = amplitude * np.sin(wavenumber * spacing * (x - radius + 0.5))
 plt.plot(x, y)
+plt.grid(which='both')
+plt.xticks(np.arange(0, mz))
 
 
 plt.axhline(0, color="red", alpha=0.5)
 plt.axvline(radius, color="red", alpha=0.5)
+plt.axvline(radius + (nz-1)/2, color="red", alpha=0.5)
 plt.axvline(radius + nz - 1, color="red", alpha=0.5)
 
 print(f"len(x): {len(x)}")
