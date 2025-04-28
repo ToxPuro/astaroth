@@ -362,7 +362,7 @@ main(int argc, char* argv[])
         const auto output_file{oss.str()};
         FILE*      fp{fopen(output_file.c_str(), "w")};
         ERRCHK(fp);
-        fprintf(fp, "impl,nx,ny,nz,radius,sample,nsamples,jobid,ns\n");
+        fprintf(fp, "impl,nx,ny,nz,radius,sample,nsamples,rank,nprocs,jobid,ns\n");
         ERRCHK(fclose(fp) == 0);
 
         auto print = [&](const std::string&                                label,
@@ -378,6 +378,8 @@ main(int argc, char* argv[])
                 fprintf(fp, ",%zu", radius);
                 fprintf(fp, ",%zu", i);
                 fprintf(fp, ",%zu", nsamples);
+                fprintf(fp, ",%d", ac::mpi::get_rank(MPI_COMM_WORLD));
+                fprintf(fp, ",%d", ac::mpi::get_size(MPI_COMM_WORLD));
                 fprintf(fp, ",%zu", jobid);
                 fprintf(fp, ",%lld", as<long long>(results[i]));
                 fprintf(fp, "\n");
