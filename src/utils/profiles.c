@@ -109,26 +109,32 @@ acHostReduceXYAverage(const AcReal* in, const AcMeshDims dims, AcReal* out)
                        index in the z dimension
     profile_count: number of elements in the profile (local mz) */
 AcResult
-acHostInitProfileToCosineWave(const AcReal spacing, const long offset,
-                              const AcReal amplitude, const AcReal wavenumber,
-                              const size_t profile_count, AcReal* profile)
+acHostInitProfileToCosineWave(const AcReal spacing, const long offset, const AcReal amplitude,
+                              const AcReal wavenumber, const size_t profile_count, AcReal* profile)
 {
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = (AcReal)((long double)amplitude *
-                              cosl((long double)wavenumber * (long double)spacing * ((long)i + offset)));
+        const long double ampl = (long double)amplitude;
+        const long double wn   = (long double)wavenumber;
+        const long double ds   = (long double)spacing;
+        const long double x    = (long double)i;
+        const long double os   = (long double)offset;
+        profile[i]             = (AcReal)(ampl * cosl(wn * ds * (x + os + 0.5l)));
     }
     return AC_SUCCESS;
 }
 
 /** See acHostInitProfileToCosineWave */
 AcResult
-acHostInitProfileToSineWave(const AcReal spacing, const long offset,
-                            const AcReal amplitude, const AcReal wavenumber,
-                            const size_t profile_count, AcReal* profile)
+acHostInitProfileToSineWave(const AcReal spacing, const long offset, const AcReal amplitude,
+                            const AcReal wavenumber, const size_t profile_count, AcReal* profile)
 {
     for (size_t i = 0; i < profile_count; ++i) {
-        profile[i] = (AcReal)((long double)amplitude *
-                              sinl((long double)wavenumber * (long double)spacing * ((long)i + offset)));
+        const long double ampl = (long double)amplitude;
+        const long double wn   = (long double)wavenumber;
+        const long double ds   = (long double)spacing;
+        const long double x    = (long double)i;
+        const long double os   = (long double)offset;
+        profile[i]             = (AcReal)(ampl * sinl(wn * ds * (x + os + 0.5l)));
     }
     return AC_SUCCESS;
 }
