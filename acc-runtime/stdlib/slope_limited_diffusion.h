@@ -305,7 +305,7 @@ get_z_fluxes(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_
 	return real2(left_flux,right_flux)
 }
 //TP: works only for equidistant cartesian at the moment
-get_slope_limited_divergence(Field f,Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
+get_slope_limited_divergence(Field f, Field characteristic_speed, real fdiff_limit, real h_slope_limited, real nlf)
 {
 	x_fluxes = get_x_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
 	y_fluxes = get_y_fluxes(f,characteristic_speed,fdiff_limit,h_slope_limited,nlf)
@@ -315,8 +315,7 @@ get_slope_limited_divergence(Field f,Field characteristic_speed, real fdiff_limi
 		+ (y_fluxes.y - y_fluxes.x)/AC_inv_ds.y
 		+ (z_fluxes.y - z_fluxes.x)/AC_inv_ds.z
 }
-calculate_velocity_characteristic_speed(Field3 uu, real w_uu, real sound_speed, real w_sound) 
+calculate_characteristic_speed(Field3 uu, real w_uu, real sound_speed, real w_sound) 
 {
 	return w_uu*norm(uu) + w_sound*sound_speed
 }
-
