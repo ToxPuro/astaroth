@@ -58,5 +58,8 @@ tanh_step_function(real position, real center, real steepness, real3 L, real3 R)
 {
 	return L+(R-L)*0.5*(1.0 + tanh(steepness*(position-center)))
 }
-
+minmod_alt(real a, real b)
+{
+	return sign(0.5,a)*max(0.0,min(abs(a),sign(1.0,a)*b))
+}
 
