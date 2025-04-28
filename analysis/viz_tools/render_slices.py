@@ -232,6 +232,11 @@ def plot_line1d(full_slice, field_name, step, z):
     print(f"Plotting {MA}{field_name:>20}{CLR} 1D cut at step {CY}{int(step):<8}{CLR}...", end="")
     y = int((full_slice.shape[0])/2)
     plt.plot(full_slice[y,:], '.')
+    #TODO: read dx from Astaroth metadata to generate spacings instead of indexes
+    #n = len(full_slice[y,:])
+    #dx = 0.10
+    #x = np.array([i*dx for i in range(n)])
+    #plt.plot(x,full_slice[y,:], '.')
     title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
     plt.xlabel('x')
     plt.ylabel(title_field_name)
