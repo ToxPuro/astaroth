@@ -98,6 +98,8 @@ template <typename T> class hindexed_block {
     datatype m_datatype;
 
   public:
+    hindexed_block() = default;
+
     // Must use MPI_BOTTOM for the addresses to be treated as absolute.
     // Otherwise, the data would have to come from a single, contiguous allocation
     hindexed_block(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
