@@ -24,15 +24,24 @@ template <typename T, typename Allocator> class packet {
     packet(const MPI_Comm& parent_comm, const ac::shape& global_nn, const ac::index& rr,
            const ac::segment& segment, const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
            const std::vector<ac::mr::pointer<T, Allocator>>& outputs)
-        : m_comm{parent_comm},
-          m_send_block(ac::mpi::get_local_mm(m_comm.get(), global_nn, rr), segment.dims,
-                       segment.offset, ac::unwrap_data(inputs)),
-          m_recv_block(ac::mpi::get_local_mm(m_comm.get(), global_nn, rr), segment.dims,
-                       segment.offset, ac::unwrap_data(outputs))
+        : m_comm{parent_comm}
     {
         ERRCHK_MPI(inputs.size() == outputs.size());
 
-        const auto          local_nn{ac::mpi::get_local_nn(m_comm.get(), global_nn)};
+        const auto local_mm{ac::mpi::get_local_mm(m_comm.get(), global_nn, rr)};
+        const auto local_nn{ac::mpi::get_local_nn(m_comm.get(), global_nn)};
+        const auto recv_offset{segment.offset};
+        const auto send_offset{((local_nn + recv_offset - rr) % local_nn) + rr};
+
+        m_recv_block = ac::mpi::hindexed_block<T>{local_mm,
+                                                  segment.dims,
+                                                  recv_offset,
+                                                  ac::unwrap_data(outputs)};
+        m_send_block = ac::mpi::hindexed_block<T>{local_mm,
+                                                  segment.dims,
+                                                  send_offset,
+                                                  ac::unwrap_data(inputs)};
+
         const ac::direction recv_direction{ac::mpi::get_direction(segment.offset, local_nn, rr)};
         m_recv_neighbor = ac::mpi::get_neighbor(m_comm.get(), recv_direction);
         m_send_neighbor = ac::mpi::get_neighbor(m_comm.get(), -recv_direction);
