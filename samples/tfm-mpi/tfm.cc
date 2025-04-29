@@ -173,7 +173,7 @@ init_tfm_profiles(const Device& device)
 
     const auto dsz{acr::get(info, AC_dsz)};
     // const long offset{-acr::get(info, AC_nz_min) + acr::get(info, AC_multigpu_offset).z};
-    const long offset{-acr::get(info, AC_nz_min) + acr::get(info, AC_multigpu_offset).z - acr::get(info, AC_global_grid_n).z/2};
+    const long offset{-acr::get(info, AC_nz_min) + acr::get(info, AC_multigpu_offset).z};
     const size_t local_mz{as<size_t>(acr::get(info, AC_mz))};
 
     const AcReal amplitude{acr::get(info, AC_profile_amplitude)};
@@ -1330,7 +1330,10 @@ main(int argc, char* argv[])
         ERRCHK(acPrintArguments(args) == 0);
 
         // Enforce that the config path is given explicitly
-        ERRCHK_MPI_EXPR_DESC(args.config_path, "No config path passed. Must pass the config path explicitly with ./tfm-mpi --config <path>. For example: './tfm-mpi --config ../samples/tfm/mhd/mhd.ini'");
+        ERRCHK_MPI_EXPR_DESC(args.config_path,
+                             "No config path passed. Must pass the config path explicitly with "
+                             "./tfm-mpi --config <path>. For example: './tfm-mpi --config "
+                             "../samples/tfm/mhd/mhd.ini'");
 
         // Load configuration
         AcMeshInfo raw_info{};
