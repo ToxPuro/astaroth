@@ -10,6 +10,7 @@
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/halo_exchange_custom.h"
 #include "acm/detail/halo_exchange_mpi.h"
+#include "acm/detail/halo_exchange_mpi_hindexed.h"
 #include "acm/detail/math_utils.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
@@ -30,6 +31,81 @@
 #include "acm/detail/halo_exchange_batched.h"
 #include "acm/detail/halo_exchange_custom.h"
 #include "acm/detail/halo_exchange_mpi.h"
+
+template <typename T, typename Allocator>
+static void
+set_to_global_iota(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
+                   ac::mr::pointer<T, Allocator> out)
+{
+    const auto           local_mm{ac::mpi::get_local_mm(comm, global_nn, rr)};
+    const auto           local_nn{ac::mpi::get_local_nn(comm, global_nn)};
+    ac::host_ndbuffer<T> tmp{local_nn};
+
+    for (uint64_t i{0}; i < tmp.size(); ++i) {
+        const auto local_coords{ac::to_spatial(i, local_nn)};
+        const auto global_coords{local_coords + ac::mpi::get_global_nn_offset(comm, global_nn)};
+        const auto global_index{ac::to_linear(global_coords, global_nn)};
+        tmp[i] = global_index + 1;
+    }
+    ac::mr::copy(tmp.get(), out);
+}
+
+/**
+ * Strategy
+ * 1. Set local mesh to global linear index
+ * 2. Pack
+ * 3. Reset local mesh to 0 (to detect overwrites during unpacking
+ * 4. Exchange data
+ * 5. Unpack
+ * 6. Check that inner domain is zero, boundaries correspond to global linear index
+ */
+template <typename T, typename Allocator>
+static void
+verify_results(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
+               const ac::ndbuffer<T, Allocator>& input)
+{
+    const auto ref{input.to_host()};
+
+    const auto local_mm{ac::mpi::get_local_mm(comm, global_nn, rr)};
+    const auto local_nn{ac::mpi::get_local_nn(comm, global_nn)};
+    const auto global_nn_offset{ac::mpi::get_global_nn_offset(comm, global_nn)};
+    for (uint64_t i{0}; i < prod(local_mm); ++i) {
+        const auto lcoords{ac::to_spatial(i, local_mm)};
+        const auto gcoords{(global_nn + global_nn_offset + ac::to_spatial(i, local_mm) - rr) %
+                           global_nn};
+
+        if (ac::within_box(lcoords, local_nn, rr)) {
+            ERRCHK(within_machine_epsilon(ref[i], static_cast<T>(0)));
+        }
+        else {
+            const auto linear_idx{to_linear(gcoords, global_nn)};
+            ERRCHK(within_machine_epsilon(ref[i], static_cast<T>(linear_idx + 1)));
+        }
+    }
+}
+
+template <typename T, typename Allocator>
+static void
+verify(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
+       const std::function<void()>& bench)
+{
+    // Exhaustive verification
+    const auto                       local_mm{ac::mpi::get_local_mm(comm, global_nn, rr)};
+    const auto                       local_nn{ac::mpi::get_local_nn(comm, global_nn)};
+    const ac::ndbuffer<T, Allocator> tmp{local_nn};
+    set_to_global_iota(comm, global_nn, rr, tmp.get());
+
+    const ac::ndbuffer<T, Allocator> din{ac::host_ndbuffer<T>{local_mm, 0}.to_device()};
+    acm::unpack(tmp.get(), local_mm, local_nn, rr, {din.get()});
+    // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
+    // din.display();
+    // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
+    bench();
+    // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD);
+    // din.display();
+    // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD);
+    verify_results(comm, global_nn, rr, din);
+}
 
 int
 main(int argc, char* argv[])
@@ -126,35 +202,59 @@ main(int argc, char* argv[])
             ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         };
 
-        std::string                                       mpi_he_label{"mpi-he"};
-        std::vector<ac::mpi::halo_exchange<T, Allocator>> mpi_hes;
-        for (const auto& input : inputs)
-            mpi_hes.push_back(ac::mpi::halo_exchange<T, Allocator>{comm.get(), global_nn, rr});
+        {
+            std::string                                       label{"mpi-he"};
+            std::vector<ac::mpi::halo_exchange<T, Allocator>> he;
+            for (const auto& input : inputs)
+                he.push_back(ac::mpi::halo_exchange<T, Allocator>{comm.get(), global_nn, rr});
 
-        auto mpi_he_bench = [&inputs, &mpi_hes]() {
-            for (size_t i{0}; i < inputs.size(); ++i)
-                mpi_hes[i].launch(inputs[i].get(), inputs[i].get());
-            for (size_t i{0}; i < inputs.size(); ++i)
-                mpi_hes[i].wait_all();
-        };
+            auto bench = [&inputs, &he]() {
+                for (size_t i{0}; i < inputs.size(); ++i)
+                    he[i].launch(inputs[i].get(), inputs[i].get());
+                for (size_t i{0}; i < inputs.size(); ++i)
+                    he[i].wait_all();
+            };
+            // verify<T, Allocator>(comm.get(), global_nn, rr, bench);
+            print(label, bm::benchmark(init, bench, sync));
+        }
 
-        std::string                      acm_packed_he_label{"acm-packed-he"};
-        acm::halo_exchange<T, Allocator> acm_packed_he{comm.get(), global_nn, rr, npack};
-        auto                             acm_packed_he_bench = [&inputs, &acm_packed_he]() {
-            acm_packed_he.launch(ac::unwrap_get(inputs));
-            acm_packed_he.wait(ac::unwrap_get(inputs));
-        };
+        {
+            std::string                                       label{"mpi-he-hindexed"};
+            std::vector<ac::mpi::halo_exchange<T, Allocator>> he;
+            for (const auto& input : inputs)
+                he.push_back(ac::mpi::halo_exchange<T, Allocator>{comm.get(), global_nn, rr});
 
-        std::string                           acm_batched_he_label{"acm-batched-he"};
-        acm::rev::halo_exchange<T, Allocator> acm_batched_he{comm.get(), global_nn, rr, npack};
-        auto                                  acm_batched_he_bench = [&inputs, &acm_batched_he]() {
-            acm_batched_he.launch(ac::unwrap_get(inputs));
-            acm_batched_he.wait(ac::unwrap_get(inputs));
-        };
+            auto bench = [&inputs, &he]() {
+                for (size_t i{0}; i < inputs.size(); ++i)
+                    he[i].launch(inputs[i].get(), inputs[i].get());
+                for (size_t i{0}; i < inputs.size(); ++i)
+                    he[i].wait_all();
+            };
+            // verify<T, Allocator>(comm.get(), global_nn, rr, bench);
+            print(label, bm::benchmark(init, bench, sync));
+        }
 
-        print(mpi_he_label, bm::benchmark(init, mpi_he_bench, sync));
-        print(acm_packed_he_label, bm::benchmark(init, acm_packed_he_bench, sync));
-        print(acm_batched_he_label, bm::benchmark(init, acm_batched_he_bench, sync));
+        {
+            std::string                      label{"acm-packed-he"};
+            acm::halo_exchange<T, Allocator> he{comm.get(), global_nn, rr, npack};
+            auto                             bench = [&inputs, &he]() {
+                he.launch(ac::unwrap_get(inputs));
+                he.wait(ac::unwrap_get(inputs));
+            };
+            // verify<T, Allocator>(comm.get(), global_nn, rr, bench);
+            print(label, bm::benchmark(init, bench, sync));
+        }
+
+        {
+            std::string                           label{"acm-batched-he"};
+            acm::rev::halo_exchange<T, Allocator> he{comm.get(), global_nn, rr, npack};
+            auto                                  bench = [&inputs, &he]() {
+                he.launch(ac::unwrap_get(inputs));
+                he.wait(ac::unwrap_get(inputs));
+            };
+            // verify<T, Allocator>(comm.get(), global_nn, rr, bench);
+            print(label, bm::benchmark(init, bench, sync));
+        }
     }
     catch (const std::exception& e) {
         ac::mpi::abort();
