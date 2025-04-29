@@ -523,7 +523,7 @@ main(int argc, char** argv)
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
 %token INT UINT REAL MATRIX TENSOR FIELD STENCIL WORK_BUFFER PROFILE
 %token BOOL INTRINSIC LONG_LONG LONG 
-%token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION UTILITY SUM MAX COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
+%token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token FIXED_BOUNDARY
 %token PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
 %token HOSTDEFINE
@@ -729,6 +729,7 @@ utility: UTILITY { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_bu
 profile: PROFILE       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("sum", $$); $$->token = 255 + yytoken; };
 max: MAX               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("max", $$); $$->token = 255 + yytoken; };
+exp_sum: EXP_SUM { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("exp_sum", $$); $$->token = 255 + yytoken; };
 struct_type: STRUCT_TYPE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 enum_type: ENUM_TYPE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 hostdefine: HOSTDEFINE { $$ = astnode_hostdefine(yytext,yytoken);};
@@ -836,6 +837,7 @@ type_specifiers: type_specifiers ',' type_specifier {$$ = astnode_create(NODE_UN
 
 type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | max          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | exp_sum      { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dconst_ql    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | override     { $$ = astnode_create(NODE_TQUAL, $1, NULL); }

@@ -9085,7 +9085,6 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 void
 stencilgen(ASTNode* root)
 {
-  const size_t num_stencils = count_symbols(STENCIL_STR);
   //const size_t num_profiles = count_symbols(PROFILE);
 
   // Device constants
@@ -9098,11 +9097,21 @@ stencilgen(ASTNode* root)
   assert(stencilgen);
 
   // Stencil ops
-  { // Unary (non-functional, default string 'val')
-    fprintf(stencilgen,
-            "static const char* stencil_unary_ops[NUM_STENCILS] = {");
-    for (size_t i = 0; i < num_stencils; ++i)
-      fprintf(stencilgen, "\"val\",");
+
+  { // Unary 
+    fprintf(stencilgen, "static const char* "
+                        "stencil_unary_ops[NUM_STENCILS] = {");
+    for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+      const Symbol symbol = symbol_table[i];
+       if(symbol.tspecifier == STENCIL_STR) {
+	      if(symbol.tqualifiers.size == 1 && symbol.tqualifiers.data[0] == intern("exp_sum"))
+	      {
+        	fprintf(stencilgen, "\"exp\",");
+	      }
+	      else
+        	fprintf(stencilgen, "\"val\",");
+      }
+    }
     fprintf(stencilgen, "};");
   }
 
@@ -9119,7 +9128,14 @@ stencilgen(ASTNode* root)
 			fprintf(stderr,"Stencils are supported only with a single type qualifier\n");
 			exit(EXIT_FAILURE);
 		}
-        	fprintf(stencilgen, "\"%s\",",symbol.tqualifiers.data[0]);
+		if(symbol.tqualifiers.data[0] == intern("exp_sum"))
+		{
+        		fprintf(stencilgen, "\"sum\",");
+		}
+		else
+		{
+        		fprintf(stencilgen, "\"%s\",",symbol.tqualifiers.data[0]);
+		}
 	      }
 	      else
         	fprintf(stencilgen, "\"sum\",");

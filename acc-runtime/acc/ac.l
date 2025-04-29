@@ -92,6 +92,7 @@ void strip_whitespace(char *str) {
 "utility"               { return UTILITY; } /* Type qualifiers */
 "Sum"                   { return SUM; }
 "Max"                   { return MAX; }
+"ExpSum"                   { return EXP_SUM; }
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
 "const"          { return CONST_QL; }
