@@ -148,14 +148,22 @@ class request {
         return m_req.get();
     }
 
-    void wait() noexcept
+    bool complete() const noexcept { return *m_req == MPI_REQUEST_NULL; }
+
+    bool ready() const noexcept
     {
-        ERRCHK_MPI(*m_req != MPI_REQUEST_NULL);
-        ERRCHK_MPI_API(MPI_Wait(m_req.get(), MPI_STATUS_IGNORE));
-        ERRCHK_MPI(*m_req == MPI_REQUEST_NULL);
+        ERRCHK_MPI(!complete());
+        int flag;
+        ERRCHK_MPI_API(MPI_Request_get_status(*m_req, &flag, MPI_STATUS_IGNORE));
+        return flag;
     }
 
-    bool complete() const noexcept { return *m_req == MPI_REQUEST_NULL; }
+    void wait() noexcept
+    {
+        ERRCHK_MPI(!complete());
+        ERRCHK_MPI_API(MPI_Wait(m_req.get(), MPI_STATUS_IGNORE));
+        ERRCHK_MPI(complete());
+    }
 };
 
 } // namespace ac::mpi
