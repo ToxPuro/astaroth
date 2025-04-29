@@ -2231,8 +2231,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
     std::vector<int> visited(n_tasks,0);
     int generation = 0;
     //...and check if there is already a forward path that connects two tasks
-    auto forward_search = [&neighbours, &op_indices, &visited, &generation, n_tasks,
-                           &ops](size_t preq, size_t dept) {
+    auto forward_search = [&neighbours, &visited, &generation
+                  	  ](size_t preq, size_t dept) {
 
 	++generation;
         std::queue<size_t> walk;
