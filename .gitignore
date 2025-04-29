@@ -65,3 +65,8 @@ samples/thrusttest/build-host.sh
 samples/thrusttest/thrust.cu
 samples/tfm-mpi/visualize-simple.py
 acc-comm/acm/detail/test-merged-mpi-cuda/
+acc-comm/acm/detail/halo_exchange_batched_v1.h
+acc-comm/tests/async_io copy.cc.backup
+scripts/genavgstencil.py
+acc-comm/benchmarks/bm_pack_old_wip_backup.cc
+acc-comm/benchmarks/bm_rank_reordering_old.cc

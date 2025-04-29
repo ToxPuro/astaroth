@@ -1,83 +1,64 @@
 #!/usr/bin/env python3
 # %%
-import matplotlib.pyplot as plt
-import pandas as pd
-
-df = pd.read_csv('../build/scaling.csv', names=['case','nprocs', 'us', 'jobid'])
-df = df.sort_values(by='nprocs')
-df
-
-for case in df['case'].unique():
-    df0 = df[df['case'] == case]
-    plt.scatter(df0['nprocs'], df0['us'], label=case)
-
-plt.xscale('log')
-plt.yscale('log')
-plt.legend()
-plt.show()
-
-# df
-
-
-# %%
 # Pack
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+import glob
 
 print(f'cwd: {os.getcwd()}')
+outdir = "/Users/pekkilj1/Downloads/benchmark-data"
 
-df = pd.read_csv('../build/bm-pack.csv')
+# %%
+# Packing
+files = glob.glob(f"{outdir}/bm-pack-*")
+df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
+
+df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
+df = df.groupby(list(df.columns.difference(['ns']))).describe()
+df = df.xs(256, level='dim')
+df = df.xs(3, level='radius')
+df = df.xs(3, level='ndims')
+df = df['ns']['50%']
+
+df = df.unstack('impl')
 df
-
-stats = df.groupby('impl')['ns'].describe()
-
-
-stats_median = stats['50%'].sort_values()
-plt.barh(stats_median.index, stats_median)
-
 
 # %%
 # Rank reordering
-import matplotlib.pyplot as plt
-import pandas as pd
-import os
+# files = glob.glob(f"{outdir}/bm-rank-reordering-*")
+# files = glob.glob(f"{outdir}/../bm-test-rank-reordering.csv")
+files = glob.glob(f"{outdir}/../bm-reordering-test/bm-rank-reordering-*.csv")
+df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 
-print(f'cwd: {os.getcwd()}')
+df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
+df = df.groupby(list(df.columns.difference(['ns']))).describe()
+df = df.xs(0, level='rank')
+df = df.xs(64, level='nprocs')
+df = df.xs(3, level='radius')
+df = df['ns']['50%']
 
-df = pd.read_csv('acc-comm/build/bm-rank-reordering-3-0.csv')
-df1 = pd.read_csv('acc-comm/build/bm-rank-reordering-4-0.csv')
-df2 = pd.read_csv('acc-comm/build/bm-rank-reordering-5-0.csv')
-df3 = pd.concat((df, df1, df2))
+df = df.unstack('impl')
+# df = df.drop(['mpi-default-custom-decomp'], axis=1) # Debug
+# df = df.drop(['mpi-no-custom-decomp'], axis=1) # Debug
+# df['hierarchical-to-no'] = df['hierarchical'] / df['mpi-no']
+# df['hierarchical-to-default'] = df['hierarchical'] / df['mpi-default']
+df
 
-df3.groupby(['impl', 'nx', 'ny', 'nz']).describe()['ns']['50%']
+# %%
+# Pipelining
+files = glob.glob(f"{outdir}/bm-pipelining*")
+df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 
-# df
+df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
+df = df.groupby(list(df.columns.difference(['ns']))).describe()
+df = df.xs(3, level='radius')
 
-# stats = df.groupby('impl')['ns'].describe()
-# stats['50%']
-# stats_normalized = stats['50%'] / stats['50%'].min()
-# stats_normalized
+df = df.loc[:, :, 256, 256, 256]['ns']['50%']
 
-stats_median = stats['50%'].sort_values()
-plt.barh(stats_median.index, stats_median)
-plt.show()
-
-plt.plot(df[df['impl'] == 'mpi-no']['sample'], df[df['impl'] == 'mpi-no']['ns'], label='no')
-plt.plot(df[df['impl'] == 'mpi-default']['sample'], df[df['impl'] == 'mpi-default']['ns'], label='default')
-plt.plot(df[df['impl'] == 'hierarchical']['sample'], df[df['impl'] == 'hierarchical']['ns'], label='hierarchical')
-plt.legend()
-plt.show()
-
-df = df[['impl', 'sample', 'ns']]
-df['normalized'] = df['ns'] / df['ns'].min()
-plt.plot(df[df['impl'] == 'mpi-no']['sample'], df[df['impl'] == 'mpi-no']['normalized'], label='no')
-plt.plot(df[df['impl'] == 'mpi-default']['sample'], df[df['impl'] == 'mpi-default']['normalized'], label='default')
-plt.plot(df[df['impl'] == 'hierarchical']['sample'], df[df['impl'] == 'hierarchical']['normalized'], label='hierarchical')
-plt.legend()
-plt.show()
-
-stats
+df = df.unstack('impl')
+# plt.loglog(df)
+df
 
 # %%
 # Pipeline
