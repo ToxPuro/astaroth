@@ -1,7 +1,7 @@
 hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
 #include "../../stdlib/integrators.h"
 #include "../../stdlib/math"
-#include "../../stdlib/grid.h"
+#include "../../stdlib/grid"
 #include "../../stdlib/derivs.h"
 #include "../../stdlib/operators.h"
 #include "../../standalone_params.h"
