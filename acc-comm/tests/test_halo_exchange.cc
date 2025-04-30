@@ -12,7 +12,11 @@
 #include "acm/detail/ntuple.h"
 #include "acm/detail/timer.h"
 
+#include "acm/detail/experimental/mpi_utils_experimental.h"
+#include "acm/detail/experimental/verify_experimental.h"
+
 #include <array>
+#include <iterator>
 
 // constexpr size_t NSAMPLES{10};
 
@@ -404,8 +408,6 @@ verify_halo_exchange_mpi_hindexed(const MPI_Comm& cart_comm, const ac::shape& gl
                                                                      lptrs};
     he.launch();
     he.wait_all();
-    // acm::rev::halo_exchange<T, ac::mr::device_allocator> he{cart_comm, global_nn, rr,
-    // lbufs.size()}; he.launch(lptrs); he.wait(lptrs);
 
     const auto global_nn_offset{ac::mpi::get_global_nn_offset(cart_comm, global_nn)};
     for (uint64_t j{0}; j < lbufs.size(); ++j) {
@@ -450,8 +452,8 @@ main()
 {
     ac::mpi::init_funneled();
     try {
-        const ac::shape global_nn{ac::make_shape(3, 16)};
-        const auto      rr{ac::make_index(global_nn.size(), 3)};
+        const ac::shape global_nn{ac::make_shape(2, 8)};
+        const auto      rr{ac::make_index(global_nn.size(), 1)};
 
         {
             MPI_Comm cart_comm{ac::mpi::cart_comm_create(MPI_COMM_WORLD,
@@ -474,6 +476,57 @@ main()
                                                          ac::mpi::RankReorderMethod::default_mpi)};
             verify(cart_comm, global_nn, rr);
             ac::mpi::cart_comm_destroy(&cart_comm);
+        }
+
+        {
+            // This is redundant with the above but shows a clean proof-of-concept way
+            // to verify halo exchanges
+            using T         = double;
+            using Allocator = ac::mr::device_allocator;
+            using NDbuffer  = ac::ndbuffer<T, Allocator>;
+
+            ac::mpi::cart_comm comm{MPI_COMM_WORLD, global_nn};
+            const auto global_nn_offset{ac::mpi::get_global_nn_offset(comm.get(), global_nn)};
+            const auto local_mm{ac::mpi::get_local_mm(comm.get(), global_nn, rr)};
+            const auto local_nn{ac::mpi::get_local_nn(comm.get(), global_nn)};
+
+            constexpr size_t      count{4};
+            std::vector<NDbuffer> buffers;
+            std::generate_n(std::back_inserter(buffers), count, [&] { return NDbuffer{local_mm}; });
+
+            // Initialize to global iota
+            for (size_t i{0}; i < buffers.size(); ++i) {
+                ac::to_global_iota(global_nn,
+                                   global_nn_offset,
+                                   local_mm,
+                                   local_nn,
+                                   rr,
+                                   buffers[i].get(),
+                                   static_cast<T>(i));
+            }
+            // Reset halos
+            const auto segments{prune(partition(local_mm, local_nn, rr), local_nn, rr)};
+            for (auto& buffer : buffers)
+                for (auto& segment : segments)
+                    ac::fill_value(local_mm, segment, buffer.get(), -1);
+
+            ac::mpi::hindexed::halo_exchange<T, ac::mr::device_allocator>
+                he{comm.get(), global_nn, rr, ac::unwrap_get(buffers), ac::unwrap_get(buffers)};
+            he.launch();
+            he.wait_all();
+
+            for (const auto& buffer : buffers)
+                buffer.display();
+
+            for (size_t i{0}; i < buffers.size(); ++i) {
+                ac::verify_global_iota(global_nn,
+                                       global_nn_offset,
+                                       local_mm,
+                                       local_nn,
+                                       rr,
+                                       buffers[i].get(),
+                                       static_cast<T>(i));
+            }
         }
     }
     catch (const std::exception& e) {
