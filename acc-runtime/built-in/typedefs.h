@@ -26,6 +26,15 @@ typedef AcReal4 struct real4
 	real w;
 }
 
+typedef AcReal5 struct real5
+{
+	real x;
+	real y;
+	real z;
+	real w;
+	real v;
+}
+
 typedef AcComplex struct complex
 {
 	real x;
