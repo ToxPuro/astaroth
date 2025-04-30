@@ -1,28 +1,109 @@
 #pragma once
 
+#include "acm/detail/math_utils.h"
 #include "acm/detail/ndbuffer.h"
+#include "acm/detail/ntuple.h"
+#include "acm/detail/pack.h"
 #include "acm/detail/pointer.h"
+#include "acm/detail/segment.h"
 
-namespace ac::verify {
+namespace ac {
 
 /** Initializes the local mesh to global iota */
-template <typename T, typename Allocator>
-void to_global_iota(const ac::shape& global_nn, const ac::shape& global_nn_offset,
-                    const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
-                    ac::mr::pointer<T, Allocator> ptr);
+template <typename T>
+void
+to_global_iota(const ac::shape& global_nn, const ac::shape& global_nn_offset,
+               const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
+               ac::mr::host_pointer<T> ptr, const T& initial_value = 0)
+{
+    for (uint64_t i{0}; i < ptr.size(); ++i) {
+        const auto global_coords{
+            (global_nn + global_nn_offset + ac::to_spatial(i, local_mm) - local_rr) % global_nn};
+        const auto global_index{ac::to_linear(global_coords, global_nn)};
+        ptr[i] = global_index + initial_value;
+    }
+}
 
-/** Fills a region in the local mesh */
-template <typename T, typename Allocator>
-void fill(const T& fill_value, const ac::shape& dims, const ac::index& offset,
-          ac::mr::pointer<T, Allocator> ptr);
+#if defined(ACM_DEVICE_ENABLED)
+template <typename T>
+void
+to_global_iota(const ac::shape& global_nn, const ac::shape& global_nn_offset,
+               const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
+               ac::mr::device_pointer<T> ptr, const T& initial_value = 0)
+{
+    ac::host_buffer<T> tmp{ptr.size()};
+    ac::mr::copy(ptr, tmp);
+    to_global_iota(global_nn, global_nn_offset, local_mm, local_nn, local_rr, tmp, initial_value);
+    ac::mr::copy(tmp, ptr);
+}
+#endif
 
 /**
  * Verify that each cell in the local mesh corresponds to its global index.
  * Throws an exception in the case of a failure.
  */
-template <typename T, typename Allocator>
-void verify_global_iota(const ac::shape& global_nn, const ac::shape& global_nn_offset,
-                        const ac::shape& local_mm, const ac::shape& local_nn,
-                        const ac::index& local_rr, const ac::mr::pointer<T, Allocator>& ptr);
+template <typename T>
+void
+verify_global_iota(const ac::shape& global_nn, const ac::shape& global_nn_offset,
+                   const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
+                   const ac::mr::host_pointer<T>& ptr, const T& initial_value = 0)
+{
+    ERRCHK(ptr.size() == prod(local_mm));
+    for (uint64_t i{0}; i < ptr.size(); ++i) {
+        const auto global_coords{
+            (global_nn + global_nn_offset + ac::to_spatial(i, local_mm) - local_rr) % global_nn};
+        const auto global_index{ac::to_linear(global_coords, global_nn)};
+        ERRCHK(within_machine_epsilon(ptr[i], global_index + initial_value));
+    }
+}
 
-} // namespace ac::verify
+#if defined(ACM_DEVICE_ENABLED)
+template <typename T>
+void
+verify_global_iota(const ac::shape& global_nn, const ac::shape& global_nn_offset,
+                   const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
+                   const ac::mr::device_pointer<T>& ptr, const T& initial_value = 0)
+{
+    ac::host_buffer<T> tmp{ptr.size()};
+    ac::mr::copy(ptr, tmp);
+    verify_global_iota(global_nn,
+                       global_nn_offset,
+                       local_mm,
+                       local_nn,
+                       local_rr,
+                       tmp,
+                       initial_value);
+    ac::mr::copy(tmp, ptr);
+}
+#endif
+
+template <typename T, typename Allocator, typename U>
+void
+fill_value(const ac::shape& dims, const ac::segment& segment, ac::mr::pointer<T, Allocator> ptr,
+           const U& fill_value = 0)
+{
+    static_assert(std::is_convertible_v<T, U>);
+    ERRCHK(ptr.size() == prod(dims));
+
+    ac::host_ndbuffer<T>       init_buffer{segment.dims, fill_value};
+    ac::ndbuffer<T, Allocator> pack_buffer{segment.dims};
+    ac::mr::copy(init_buffer.get(), pack_buffer.get());
+    acm::unpack(pack_buffer.get(), dims, segment.dims, segment.offset, {ptr});
+}
+
+template <typename T, typename Allocator, typename U>
+void
+fill_iota(const ac::shape& dims, const ac::segment& segment, ac::mr::pointer<T, Allocator> ptr,
+          const U& initial_value = 0)
+{
+    static_assert(std::is_convertible_v<T, U>);
+    ERRCHK(ptr.size() == prod(dims));
+
+    ac::host_ndbuffer<T> init_buffer{segment.dims};
+    std::iota(init_buffer.begin(), init_buffer.end(), initial_value);
+    ac::ndbuffer<T, Allocator> pack_buffer{segment.dims};
+    ac::mr::copy(init_buffer.get(), pack_buffer.get());
+    acm::unpack(pack_buffer.get(), dims, segment.dims, segment.offset, {ptr});
+}
+
+} // namespace ac
