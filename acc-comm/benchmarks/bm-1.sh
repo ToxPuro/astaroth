@@ -28,11 +28,11 @@ export MPICH_GPU_SUPPORT_ENABLED=1
 #./bm_rank_reordering 128 256 256 3 100 $SLURM_JOB_ID
 #./bm_rank_reordering 512 512 32 3 100 $SLURM_JOB_ID
 
-./bm_pipelining 256 256 256 3 1 100
-./bm_pipelining 256 256 256 3 2 100
-./bm_pipelining 256 256 256 3 4 100
-./bm_pipelining 256 256 256 3 8 100
-./bm_pipelining 256 256 256 3 16 100
+# ./bm_pipelining 256 256 256 3 1 100
+# ./bm_pipelining 256 256 256 3 2 100
+# ./bm_pipelining 256 256 256 3 4 100
+# ./bm_pipelining 256 256 256 3 8 100
+# ./bm_pipelining 256 256 256 3 16 100
 # ./bm_pipelining 256 256 256 3 32 100
 
 # Strong and weak scaling
