@@ -614,11 +614,13 @@ check_compile_info_matches_runtime_info(const KernelAnalysisInfo info)
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
 #include "stencil_accesses.h"
 	for(int k = 0; k < NUM_KERNELS; ++k)
-		for(int j = 0; j < NUM_ALL_FIELDS; ++j)
+		for(int j= 0; j< NUM_ALL_FIELDS; ++j)
 			for(int i = 0; i < NUM_STENCILS; ++i)
 			{
+				//TP: in case some fields are dead and Fields are re-ordered because of that
+				const int j_old = field_remappings[j];
 				//TP: we are a little bit messy by storing info about array reads of vertexbuffers to stencils_accessed so have to check is the stencil call bit set to filter array reads
-				const bool comp_time = (stencils_accessed[k][j][i] & AC_STENCIL_CALL);
+				const bool comp_time = (stencils_accessed[k][j_old][i] & AC_STENCIL_CALL);
 				const bool run_time  = (info.stencils_accessed[k][j][i] & AC_STENCIL_CALL);
 				if(run_time && !comp_time)
 					fatal("In Kernel %s Stencil %s used for %s at runtime but not generated!\n"

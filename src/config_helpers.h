@@ -123,8 +123,8 @@ struct load_comp_arrays
 		{
 			const int n_dims = get_array_n_dims(array);
 			const char* name = get_array_name(array);
-			const bool has_value = info.is_loaded[array] || info.has_default_value[array];
 			auto* loaded_val = info.config[array];
+			const bool has_value = (loaded_val != NULL && info.is_loaded[array]) || info.has_default_value[array];
 			const auto dims = get_array_dim_sizes(array,{});
 			if(n_dims == 1)
 			{
