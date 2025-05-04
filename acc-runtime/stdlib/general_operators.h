@@ -348,6 +348,37 @@ laplace(Field s) {
     }
     return del2f
 }
+laplace_2nd(Field s) {
+    del2f = derxx_2nd(s) + deryy_2nd(s) + derzz_2nd(s)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+            del2f += derx_2nd(s)*AC_INV_CYL_R
+    }
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+            del2f += 2*derx_2nd(s)*AC_INV_R
+            del2f += dery_2nd(s)*AC_INV_R*AC_COT
+    }
+    return del2f
+}
+
+laplace_neighbours(Field s) {
+    del2f = derxx_neighbours(s) + deryy_neighbours(s) + derzz_neighbours(s)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    del2f += derx_2nd(s)*AC_INV_CYL_R
+    }
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	    del2f += 2*derx_2nd(s)*AC_INV_R
+	    del2f += dery_2nd(s)*AC_INV_R*AC_COT
+    }
+    return del2f
+}
+
+laplace_central_coeff() {
+    return derxx_central_coeff() + deryy_central_coeff() + derzz_central_coeff()
+}
 
 laplace(Field3 s) {
 	d2A = get_d2A(s)

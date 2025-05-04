@@ -49,9 +49,11 @@ run_const AcDimProductsInv AC_mlocal_products_inv = ac_get_dim_products_inv(AC_m
 AcDimProducts AC_mgrid_products = ac_get_dim_products(AC_mgrid)
 run_const AcDimProductsInv AC_mgrid_products_inv = ac_get_dim_products_inv(AC_mgrid_products)
 
+run_const bool  AC_allow_non_periodic_bcs_with_periodic_grid = false
 run_const bool3 AC_periodic_grid
 run_const bool AC_fully_periodic_grid = AC_periodic_grid.x && AC_periodic_grid.y && AC_periodic_grid.z
 
+run_const real3 AC_first_gridpoint =  (real3){0.0,0.0,0.0}
 run_const real3 AC_len = (AC_ngrid + AC_periodic_grid - 1)*AC_ds
 
 
@@ -75,7 +77,7 @@ run_const bool  AC_lagrangian_grid = AC_LAGRANGIAN_GRID
 int3 AC_thread_block_loop_factors = (int3){1,1,1}
 int3 AC_max_tpb_for_reduce_kernels = (int3){-1,8,8}
 int3 AC_reduction_tile_dimensions
-int3 AC_multigpu_offset
+int3 AC_multigpu_offset = (int3){0,0,0}
 int3 AC_domain_coordinates
 
 run_const bool AC_include_3d_halo_corners = false

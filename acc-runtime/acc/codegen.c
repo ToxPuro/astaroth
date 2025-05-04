@@ -3751,25 +3751,38 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 
 
 void
-init_populate_in_func(const ASTNode* node, int_vec* src)
+init_populate_in_func(const ASTNode* node, const string_vec names, int_vec* src)
 {
-	TRAVERSE_PREAMBLE_PARAMS(init_populate_in_func,src);
+	TRAVERSE_PREAMBLE_PARAMS(init_populate_in_func,names,src);
 	if(!(node->type & NODE_FUNCTION_CALL)) return;
 	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-	const int dfunc_index = get_symbol_index(NODE_DFUNCTION_ID,func_name,0);
+	const int dfunc_index = str_vec_get_index(names,func_name);
 	if(dfunc_index < 0) return;
 	if(int_vec_contains(*src,dfunc_index))  return;
 	push_int(src,dfunc_index);
 }
 void
-init_populate(const ASTNode* node, funcs_calling_info* info, const NodeType func_type)
+init_populate_names(const ASTNode* node, funcs_calling_info* info, const NodeType func_type)
 {
 	if(node->type == NODE_TASKGRAPH_DEF) return;
-	TRAVERSE_PREAMBLE_PARAMS(init_populate,info,func_type);
+	TRAVERSE_PREAMBLE_PARAMS(init_populate_names,info,func_type);
 	if(!(node->type & func_type)) return;
-	push(&info->names,get_node_by_token(IDENTIFIER,node->lhs)->buffer);
-	init_populate_in_func(node,&info->called_funcs[info->names.size-1]);
+	const char* name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	push(&info->names,name);
 }
+
+void
+init_populate_calls(const ASTNode* node, funcs_calling_info* info, const NodeType func_type)
+{
+	if(node->type == NODE_TASKGRAPH_DEF) return;
+	TRAVERSE_PREAMBLE_PARAMS(init_populate_calls,info,func_type);
+	if(!(node->type & func_type)) return;
+	const char* name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	const int index = str_vec_get_index(info->names,name);
+	init_populate_in_func(node,info->names,&info->called_funcs[index]);
+}
+
+
 
 void
 gen_calling_info(const ASTNode* root)
@@ -3782,8 +3795,11 @@ gen_calling_info(const ASTNode* root)
 		calling_info.called_funcs[i].size     = 0;
 		calling_info.called_funcs[i].capacity = 0;
 	}
-	init_populate(root,&calling_info,NODE_DFUNCTION);
-	init_populate(root,&calling_info,NODE_KFUNCTION);
+	init_populate_names(root,&calling_info,NODE_DFUNCTION);
+	init_populate_names(root,&calling_info,NODE_KFUNCTION);
+
+	init_populate_calls(root,&calling_info,NODE_DFUNCTION);
+	init_populate_calls(root,&calling_info,NODE_KFUNCTION);
 	
         bool updated_calling_info = true;
         while(updated_calling_info)
@@ -3795,8 +3811,9 @@ gen_calling_info(const ASTNode* root)
                                 if(!int_vec_contains(calling_info.called_funcs[i], j)) continue;
                                 for(size_t k = 0; k < calling_info.called_funcs[j].size; ++k)
                                 {
-                                        if(int_vec_contains(calling_info.called_funcs[i], calling_info.called_funcs[j].data[k])) continue;
-                                        push_int(&calling_info.called_funcs[i],calling_info.called_funcs[j].data[k]);
+					const int child_index = calling_info.called_funcs[j].data[k];
+                                        if(int_vec_contains(calling_info.called_funcs[i],child_index)) continue;
+                                        push_int(&calling_info.called_funcs[i],child_index);
                                         updated_calling_info = true;
                                 }
                         }
@@ -5550,16 +5567,16 @@ dfuncs_in_topological_order(void)
 	int_vec res = VEC_INITIALIZER;
 	for(size_t i = 0; i< calling_info.names.size; ++i)
 	{
-		int dfunc_index = 0;
 		for(size_t j = 0; j < calling_info.names.size; ++j)
 		{
 			const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,calling_info.names.data[j],NULL,NULL);
 			if(!is_dfunc) continue;
-			if(calling_info.topological_index[j] == (int)i) push_int(&res,dfunc_index);
-			dfunc_index += is_dfunc;
+			if(calling_info.topological_index[j] == (int)i) 
+			{
+				push_int(&res, get_symbol_index(NODE_DFUNCTION_ID,calling_info.names.data[j],0));
+			}
 		}
 	}
-	//if(res.size != calling_info.names.size) fatal("ERROR\n");
 	return res;
 }
 static void
@@ -5617,7 +5634,8 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
 	    const Symbol* dfunc_symbol = get_symbol_by_index(NODE_DFUNCTION_ID,i,0);
 	    if(!dfunc_symbol) continue;
 	    if(str_vec_contains(dfunc_symbol->tqualifiers,INLINE_STR)) continue;
-	    if(int_vec_contains(called_dfuncs,i)) strcat(prefix,dfunctions[i]);
+	    const int call_index = str_vec_get_index(calling_info.names,dfunc_symbol->identifier);
+	    if(int_vec_contains(called_dfuncs,call_index)) strcat(prefix,dfunctions[i]);
     }
     free_int_vec(&topological_order);
 
@@ -8678,6 +8696,7 @@ void
 check_for_illegal_func_calls(const ASTNode* node)
 {
 	if(node->type & NODE_TASKGRAPH_DEF) return;
+	if(node->type & NODE_BOUNDCONDS_DEF) return;
 	TRAVERSE_PREAMBLE(check_for_illegal_func_calls);
 	if(!(node->type & NODE_FUNCTION)) return;
 	check_for_illegal_func_calls_in_func(node,get_node_by_token(IDENTIFIER,node)->buffer);

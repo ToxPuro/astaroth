@@ -223,29 +223,38 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     }
     else
     	task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
-    if(kernel == BOUNDCOND_PERIODIC && !acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].x && boundary & BOUNDARY_X)
+    if(!acDeviceGetLocalConfig(acGridGetDevice())[AC_allow_non_periodic_bcs_with_periodic_grid])
     {
-	    fatal("%s","Periodic boundary condition in X even though AC_periodic_grid.x is false!!\n");
-    }
-    if(kernel != BOUNDCOND_PERIODIC && acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].x && boundary & BOUNDARY_X)
-    {
-	    fatal("%s","Non-periodic boundary condition in X even though AC_periodic_grid.x is true!!\n");
-    }
-    if(kernel == BOUNDCOND_PERIODIC && !acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].y && boundary & BOUNDARY_Y)
-    {
-	    fatal("%s","Periodic boundary condition in Y even though AC_periodic_grid.y is false!!\n");
-    }
-    if(kernel != BOUNDCOND_PERIODIC && acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].y && boundary & BOUNDARY_Y)
-    {
-	    fatal("%s","Non-periodic boundary condition in Y even though AC_periodic_grid.y is true!!\n");
-    }
-    if(kernel == BOUNDCOND_PERIODIC && !acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].z && boundary & BOUNDARY_Z)
-    {
-	    fatal("%s","Periodic boundary condition in Z even though AC_periodic_grid.z is false!!\n");
-    }
-    if(kernel != BOUNDCOND_PERIODIC && acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].z && boundary & BOUNDARY_Z)
-    {
-	    fatal("%s","Non-periodic boundary condition in Z even though AC_periodic_grid.z is true!!\n");
+    	if(kernel == BOUNDCOND_PERIODIC && !acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].x && boundary & BOUNDARY_X)
+    	{
+    	        fatal("%s","Periodic boundary condition in X even though AC_periodic_grid.x is false!!\n");
+    	}
+    	if(kernel != BOUNDCOND_PERIODIC && acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].x && boundary & BOUNDARY_X)
+    	{
+    	        fatal("%s","Non-periodic boundary condition in X even though AC_periodic_grid.x is true!!\n"
+			    "To skip this check set AC_allow_non_periodic_bcs_with_periodic_grid to true!\n"
+				);
+    	}
+    	if(kernel == BOUNDCOND_PERIODIC && !acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].y && boundary & BOUNDARY_Y)
+    	{
+    	        fatal("%s","Periodic boundary condition in Y even though AC_periodic_grid.y is false!!\n");
+    	}
+    	if(kernel != BOUNDCOND_PERIODIC && acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].y && boundary & BOUNDARY_Y)
+    	{
+    	        fatal("%s","Non-periodic boundary condition in Y even though AC_periodic_grid.y is true!!\n"
+			    "To skip this check set AC_allow_non_periodic_bcs_with_periodic_grid to true!\n"
+				);
+    	}
+    	if(kernel == BOUNDCOND_PERIODIC && !acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].z && boundary & BOUNDARY_Z)
+    	{
+    	        fatal("%s","Periodic boundary condition in Z even though AC_periodic_grid.z is false!!\n");
+    	}
+    	if(kernel != BOUNDCOND_PERIODIC && acDeviceGetLocalConfig(acGridGetDevice())[AC_periodic_grid].z && boundary & BOUNDARY_Z)
+    	{
+    	        fatal("%s","Non-periodic boundary condition in Z even though AC_periodic_grid.z is true!!\n"
+			    "To skip this check set AC_allow_non_periodic_bcs_with_periodic_grid to true!\n"
+				);
+    	}
     }
     return task_def;
 }

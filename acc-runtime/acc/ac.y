@@ -915,6 +915,7 @@ base_identifier:
 
 struct_access_expression:
                    base_identifier '.' identifier          { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
+		  | func_call '.' identifier               { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
 
 func_call:
                     primary_expression '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }

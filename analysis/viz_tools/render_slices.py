@@ -5,7 +5,6 @@ import pathlib
 import re
 
 import numpy as np
-
 parser = argparse.ArgumentParser(description='A tool for rendering slices from binary files')
 parser.add_argument('--input', type=pathlib.Path, nargs='+', required=True, help='List of slice binaries')
 parser.add_argument('--output', type=pathlib.Path, default='output-slices-postprocessed', help='Output dir to write the postprocessed slices to')
@@ -17,6 +16,7 @@ parser.add_argument('--dpi', type=int, default=150, help='Set DPI of the output 
 parser.add_argument('--vrange', type=float, nargs=2, required=False, help='Manually set the value range of the plots as --vrange {min} {max}')
 parser.add_argument('--write-png', action=argparse.BooleanOptionalAction, help='Write slices to png images')
 parser.add_argument('--write-bin', action=argparse.BooleanOptionalAction, help='Write slices to binary files')
+parser.add_argument('--spherical', action=argparse.BooleanOptionalAction, help='Plots spherical data')
 args = parser.parse_args()
 
 #Term colors
@@ -48,7 +48,9 @@ if args.write_bin:
     binary_dir.mkdir(parents=True, exist_ok=True)
 
 segmented_filename_regex = re.compile(r'([^-]*)-segment-at_(\d+)_(\d+)_(\d+)-dims_(\d+)_(\d+)-step_(\d+).slice')
+monolithic_filename_regex = re.compile(r'([^-]*)-dims_(\d+)_(\d+)-step_(\d+).slice')
 
+lspherical = args.spherical
 #Parse filenames, build up a tree structure
 steps = {}
 field_headers = {}
@@ -82,7 +84,34 @@ for file_path in args.input:
         steps[step][field]["columns"][pos[0]].setdefault(pos[1], {})
         steps[step][field]["columns"][pos[0]][pos[1]] = {"dims":dims, "file_path":file_path}
     else:
-        print(f"File {filename}, did not match filename regex, skipping it")
+        m = monolithic_filename_regex.match(filename)
+        if m:
+            field = m.group(1)
+            pos = [0,0,0]
+            dims = [int(m.group(2)), int(m.group(3))]
+            #step = int(m.group(7))
+            step = m.group(4)
+
+            field_headers.setdefault(field, {"vmin":math.inf, "vmax":-math.inf})
+
+            steps.setdefault(step, {})
+
+            z = pos[2]
+            #This is the slice data, this is what will be rendered
+            steps[step].setdefault(field, {"z":z, "columns":{}, "field_name":field, "step": step})
+
+            #Z should be the same across slice segments
+            #TODO: make z another hierarchy to allow rendering of multiple slice locations
+            old_z = steps[step][field]["z"]
+            if old_z != z:
+                print("f{RD}Error:{CLR} Slice segments for field {field} step {step} have multiple dissimilar z-values: {old_z} and {z}")
+                exit(1)
+
+            steps[step][field]["columns"].setdefault(pos[0], {})
+            steps[step][field]["columns"][pos[0]].setdefault(pos[1], {})
+            steps[step][field]["columns"][pos[0]][pos[1]] = {"dims":dims, "file_path":file_path}
+        else:
+            print(f"File {filename}, did not match filename regex, skipping it")
 
 vector_fields = {}
 if args.render_vectors == "on":
@@ -157,16 +186,41 @@ def render_slice(full_slice, field_name, step, z):
     print(f"Rendering {MA}{field_name:>20}{CLR} slice at step {CY}{int(step):<8}{CLR}...", end="")
     vmin = field_headers[field_name]["vmin"]
     vmax = field_headers[field_name]["vmax"]
-    plt.imshow(full_slice, cmap='plasma', interpolation='nearest', vmin=vmin, vmax=vmax, aspect=full_slice.shape[1]/full_slice.shape[0])
-    plt.colorbar()
-    plt.ylabel('y')
-    plt.xlabel('x')
-    title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
-    plt.title(f'{title_field_name}, step = {int(step)}')
-    output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
-    print(f"Writing to {GR}{output_file}{CLR}")
-    plt.savefig(output_file, dpi=args.dpi)
-    plt.clf()
+    #print(f"Writing to {GR}{output_file}{CLR}")
+
+
+    if(lspherical):
+      r = np.linspace(0.0,1.0, full_slice.shape[1]+1)
+      theta = np.linspace(0, np.pi, full_slice.shape[0]+1)
+
+      R, Theta = np.meshgrid(r, theta, indexing='ij')
+
+      # Convert to Cartesian for plotting
+      X = R[:-1, :-1] * np.sin(Theta[:-1, :-1])
+      Y = R[:-1, :-1] * np.cos(Theta[:-1, :-1])
+
+      plt.figure(figsize=(6, 6))
+      plt.pcolormesh(X, Y, full_slice.T, shading='auto', cmap='viridis')
+      plt.gca().set_aspect('equal')
+      plt.colorbar(label='Potential')
+      plt.title("Potential in polar (r, θ) view")
+      plt.xlabel('r')
+      plt.ylabel('θ')
+      title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
+      plt.title(f'{title_field_name}, step = {int(step)}')
+      output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
+      plt.savefig(output_file, dpi=args.dpi)
+      plt.clf()
+    else:
+      plt.imshow(full_slice, aspect='auto',cmap='plasma', interpolation='nearest', vmin=vmin, vmax=vmax)
+      plt.colorbar()
+      plt.ylabel('y')
+      plt.xlabel('x')
+      title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
+      plt.title(f'{title_field_name}, step = {int(step)}')
+      output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
+      plt.savefig(output_file, dpi=args.dpi)
+      plt.clf()
 
 def write_binary(full_slice, field_name, step, z):
     output_file = binary_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.slice'

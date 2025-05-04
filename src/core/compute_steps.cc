@@ -403,18 +403,6 @@ get_boundaries()
 		return boundaries;
 }
 
-void
-check_field_boundconds(const FieldBCs field_boundconds)
-{
-	const std::vector<AcBoundary> boundaries_to_check  = get_boundaries();
-	for(size_t field = 0; field < NUM_VTXBUF_HANDLES; ++field)
-	{
-		if(!vtxbuf_is_communicated[field]) continue;
-		for(size_t bc = 0; bc < boundaries_to_check.size(); ++bc)
-			if(field_boundconds[field][bc].kernel  == AC_NULL_KERNEL)
-				fatal("FATAL AC ERROR: Missing boundcond for field %s at boundary %s\n",field_names[field], boundary_str(boundaries_to_check[bc]))
-	}
-}
 
 typedef struct
 {
@@ -425,6 +413,18 @@ typedef struct
 static AcTaskDefinition
 gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream);
 
+void
+check_field_boundconds(const FieldBCs field_boundconds, const std::vector<Field> fields)
+{
+	const std::vector<AcBoundary> boundaries_to_check  = get_boundaries();
+	for(const auto& field : fields)
+	{
+		if(!vtxbuf_is_communicated[field]) continue;
+		for(size_t bc = 0; bc < boundaries_to_check.size(); ++bc)
+			if(field_boundconds[field][bc].kernel  == AC_NULL_KERNEL)
+				fatal("FATAL AC ERROR: Missing boundcond for field %s at boundary %s\n",field_names[field], boundary_str(boundaries_to_check[bc]))
+	}
+}
 std::vector<AcTaskDefinition>
 gen_halo_exchange_and_boundconds(
 		const std::vector<Field>& fields,
@@ -438,6 +438,7 @@ gen_halo_exchange_and_boundconds(
 		{
 			if(!vtxbuf_is_communicated[field]) fatal("%s","Internal AC bug: gen_halo_exchange_and_boundconds takes in only communicated fields!\n");
 		}
+		check_field_boundconds(field_boundconds,communicated_fields);
 		auto log_fields = [&](const auto& input_fields)
 		{
 			if(!ac_pid()) fprintf(stream,"{");
@@ -449,9 +450,11 @@ gen_halo_exchange_and_boundconds(
 		const auto info = get_info();
 		const std::vector<AcBoundary> boundaries = get_boundaries();
 		std::array<std::vector<bool>,NUM_FIELDS>  field_boundconds_processed{};
+		std::array<std::vector<bool>,NUM_FIELDS>  field_boundconds_dependencies_included{};
 		for(size_t i = 0; i < NUM_FIELDS; ++i)
 		{
 			field_boundconds_processed[i].push_back(false);
+			field_boundconds_dependencies_included[i].push_back(false);
 		}
 
 		std::vector<Field> output_fields{};
@@ -515,6 +518,7 @@ gen_halo_exchange_and_boundconds(
 				{
 					bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end();
                                         field_boundconds_processed[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
+                                        field_boundconds_dependencies_included[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
 				}
 			//TP: it can be that for the next compute steps only A needs to be updated on the boundaries but to update A on the boundaries
 			//One has to first update B on the boundary even though B is not actually used in the domain
@@ -527,11 +531,13 @@ gen_halo_exchange_and_boundconds(
 			field_bcs_called[3] = communicated_fields;
 			field_bcs_called[4] = communicated_fields;
 			field_bcs_called[5] = communicated_fields;
-			std::array<std::vector<bool>,NUM_FIELDS>  field_boundconds_dependencies_included = field_boundconds_processed;
 			{
                         	bool all_are_processed = false;
+				bool made_progress = true;
 				while(!all_are_processed)
 				{
+					if(!made_progress) fatal("%s","STUCK IN A INFINITE LOOP!\n");
+					made_progress = false;
 					for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
 					{
 						BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0};
@@ -546,14 +552,20 @@ gen_halo_exchange_and_boundconds(
 							field_bcs_called[boundcond].push_back(field);
 							field_boundconds_dependencies_included[field][boundcond] = false;
 							field_boundconds_processed[field][boundcond] = false;
+							made_progress = true;
 						}
 						for(const auto& field : processed_boundcond.out)
+						{
 							field_boundconds_dependencies_included[field][boundcond] = true;
+							made_progress = true;
+						}
 					}
                         		all_are_processed = true;
                         		for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
                         			for(const auto& field : fields)
+						{
                         				all_are_processed &= field_boundconds_dependencies_included[field][boundcond];
+						}
 				}
 			}
 
@@ -894,7 +906,6 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 		return acGetDSLBCTaskGraphOps(graph,optimized);
 	const KernelAnalysisInfo info = get_kernel_analysis_info();
 	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph],optimized);
-	check_field_boundconds(field_boundconds);
 	std::vector<AcTaskDefinition> res{};
 	auto level_sets = get_level_sets(graph,optimized);	
 
