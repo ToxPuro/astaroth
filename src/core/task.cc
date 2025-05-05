@@ -1329,13 +1329,10 @@ HaloExchangeTask::receiveHost()
         // fprintf("receiveHost, getting buffer\n");
     }
     auto msg = recv_buffers.get_fresh_buffer();
-    if (rank == 0) {
-        // fprintf("Called MPI_Irecv\n");
-    }
-    MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[0],
-              msg->tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
-    if (rank == 0) {
-        // fprintf("Returned from MPI_Irecv\n");
+    for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
+    {
+        ERRCHK_ALWAYS(MPI_Irecv(msg->data_pinned + i*msg->length, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
+                  msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
     }
     msg->pinned = true;
 }
@@ -1346,9 +1343,14 @@ HaloExchangeTask::sendHost()
     auto msg = send_buffers.get_current_buffer();
     msg->pin(device, stream);
     sync();
-    MPI_Isend(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[0],
-              msg->tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+
+    for(size_t i = 0; i < msg->counterpart_ranks.size(); ++i)
+    {
+        ERRCHK_ALWAYS(MPI_Isend(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, msg->counterpart_ranks[i],
+              msg->tag + HALO_TAG_OFFSET + i*MAX_HALO_TAG, acGridMPIComm(), &msg->requests[i]) == MPI_SUCCESS);
+    }
 }
+
 void
 HaloExchangeTask::exchangeHost()
 {
