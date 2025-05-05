@@ -2187,6 +2187,11 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
 	astnode_sprintf_prefix(a,",");
 	astnode_sprintf_prefix(b,",");
 	astnode_sprintf_infix(b,",");
+        if(str_vec_contains(sym->tqualifiers,DCONST_STR,CONST_STR))
+	{
+		 astnode_sprintf_prefix(b->rhs,"\"");
+		 astnode_sprintf_infix(b->rhs,"\"");
+	}
 	ASTNode* c = astnode_create(NODE_UNKNOWN,a,b);
 	base->rhs = astnode_create(NODE_UNKNOWN,astnode_dup(access_node,NULL),c);
     }
@@ -2200,6 +2205,13 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
     
     if(str_vec_contains(sym->tqualifiers,DCONST_STR,CONST_STR))
     {
+		if(check_access_bounds)
+		{
+			{
+				astnode_sprintf_prefix(base,"safe_access(");
+				astnode_sprintf_postfix(base,")");
+			}
+		}
     }
     else if(str_vec_contains(sym->tqualifiers,GLOBAL_MEM_STR))
     {
@@ -2208,7 +2220,6 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
 	{
 		if(check_access_bounds)
 		{
-			//TP: on cuda bool -> __nv_bool and there is no __ldg for __nv_bool for some reason
 			{
 				astnode_sprintf_prefix(base,"safe_access(");
 				astnode_sprintf_postfix(base,")");

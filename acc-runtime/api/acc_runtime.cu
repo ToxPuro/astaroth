@@ -542,7 +542,19 @@ acGetRealScratchpadSize(const size_t i)
 
 __device__
 AcReal
-safe_access(AcReal* arr, const int dims, const int index, const AcRealArrayParam param)
+safe_access(const AcReal* arr, const int dims, const int index, const char* name)
+{
+	if(index < 0 || index >= dims)
+	{
+		printf("Trying to access %s out of bounds!: %d\n",name,index);
+		return 0.0;
+	}
+	return arr[index];
+}
+
+__device__
+AcReal
+safe_access(const AcReal* arr, const int dims, const int index, const AcRealArrayParam param)
 {
 	if(arr == NULL)
 	{

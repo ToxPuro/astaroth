@@ -595,9 +595,9 @@ write_base (const Field& field, const AcReal&)
 {
 	written_fields[field] |= AC_IN_BOUNDS_WRITE;
 }
-template <typename T>
+template <typename T, typename T2>
 AcReal
-safe_access(T arr, const int dims, const int index, const AcRealArrayParam param)
+safe_access(T arr, const int dims, const int index, const T2 param)
 {
 	//TP: not sure do the analysis indeces always correspond that well to the actual indeces so skip this for now
 	//if(index < 0 || index >= dims)
