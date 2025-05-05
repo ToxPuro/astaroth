@@ -70,7 +70,8 @@ utility Kernel BOUNDCOND_CONST(Field f, real const_val)
 		f[ghost.x][ghost.y][ghost.z] = const_val;
 	}
 }
-utility Kernel BOUNDCOND_PRESCRIBED_DERIVATIVE(Field f, real prescribed_value)
+
+elemental ac_prescribed_derivative(Field f, real prescribed_value)
 {
 	const int3 normal = get_normal()
 	const int3 boundary = get_boundary(normal)
@@ -84,6 +85,10 @@ utility Kernel BOUNDCOND_PRESCRIBED_DERIVATIVE(Field f, real prescribed_value)
 		ghost  = ghost  + normal
 		f[ghost.x][ghost.y][ghost.z] = f[domain.x][domain.y][domain.z] + distance*prescribed_value;
 	}
+}
+utility Kernel BOUNDCOND_PRESCRIBED_DERIVATIVE(Field f, real prescribed_value)
+{
+	return ac_prescribed_derivative(f,prescribed_value)
 }
 inline get_normal_direction(normal)
 {

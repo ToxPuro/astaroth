@@ -10,7 +10,8 @@ Field RESIDUAL
 
 int AC_n_solving_steps = 1000
 AcReal AC_power_law_mapping_exponent = 1.0
-
+int AC_charge_radius_points = 10
+real AC_density_charge = 0.0
 poisson_laplacian_neighbours(Field f)
 {
 	return laplace_neighbours(f)
@@ -55,19 +56,33 @@ Kernel residual_kernel()
 	reduce_sum(r*r,AC_residual2)
 }
 
+
 Kernel write_residual()
 {
 	r = laplace_2nd(POTENTIAL)-DENSITY
 	write(RESIDUAL,r)
+	//Laplace
+	/** 
 	R_max = grid_position((int3){36,NGHOST,NGHOST}).x
 	R_min = grid_position((int3){NGHOST-1,NGHOST,NGHOST}).x
 	R = grid_position().x
 	B = 1.0/((1.0/R_min) - (1.0/R_max))
 	write(ANALYTICAL, -(B/R_max) + (B/R))
+	**/
+	R = AC_r[AC_charge_radius_points]
+	r = grid_position().x
+	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
+	if(vertexIdx.x <= AC_charge_radius_points)
+	{
+		write(ANALYTICAL,M*(r*r-3*R*R)/(2*R*R*R))
+	}
+	else
+	{
+		write(ANALYTICAL,-M/r)
+	}
 }
 
 real AC_k = 2.0
-real AC_density_charge = -1.0
 Kernel init()
 {
 	pos = grid_position()
@@ -75,6 +90,8 @@ Kernel init()
 	{
 		write(DENSITY,sin(AC_k*AC_REAL_PI*pos.x)*sin(AC_k*AC_REAL_PI*pos.y))
 	}
+        //Diract delta on the first shell
+	/**
 	else
 	{
 	  if(globalVertexIdx.x == NGHOST)
@@ -85,6 +102,16 @@ Kernel init()
 	  {
 	  	write(DENSITY,0.0)
 	  }
+	}
+	**/
+	//Constant density on the sphere of radius R where R = AC_r[AC_charge_radius_points]
+	if(globalVertexIdx.x <= AC_charge_radius_points)
+	{
+		write(DENSITY,4*AC_REAL_PI*AC_density_charge)
+	}
+	else
+	{
+		write(DENSITY,0.0)
 	}
 	write(POTENTIAL,0.0)
 }
@@ -106,14 +133,19 @@ analytic_potential_inside(Field f)
         const int3 boundary = get_boundary(normal)
         int3 domain = boundary
         int3 ghost  = boundary
+	R = AC_r[AC_charge_radius_points]
+	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
         for i in 0:NGHOST
         {
                 domain = domain - normal
                 ghost  = ghost  + normal
+		r = grid_position(ghost).x
 		//Laplace
-                f[ghost.x][ghost.y][ghost.z] = 1.0;
+                //f[ghost.x][ghost.y][ghost.z] = 1.0;
 		//Shell
                 //f[ghost.x][ghost.y][ghost.z] = 1.0/AC_first_gridpoint.x;
+		//Sphere
+		f[ghost.x][ghost.y][ghost.z] = M*(r*r-3*R*R)/(2*R*R*R)
         }
 }
 
@@ -123,16 +155,19 @@ analytic_potential_outside(Field f)
         const int3 boundary = get_boundary(normal)
         int3 domain = boundary
         int3 ghost  = boundary
+	R = AC_r[AC_charge_radius_points]
+	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
         for i in 0:NGHOST
         {
                 domain = domain - normal
                 ghost  = ghost  + normal
-		pos = grid_position(ghost)
+		r = grid_position(ghost).x
 		//Laplace
-                f[ghost.x][ghost.y][ghost.z] = 0.0;
+                //f[ghost.x][ghost.y][ghost.z] = 0.0;
 		//Shell
                 //f[ghost.x][ghost.y][ghost.z] = 1.0/grid_position().x
-	
+		//Sphere
+		f[ghost.x][ghost.y][ghost.z] = -M/r
         }
 }
 BoundConds jacobi_bcs
