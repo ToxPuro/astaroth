@@ -85,6 +85,9 @@ main(void)
     ac_compute_inv_sin_theta(&info);
     ac_compute_inv_r(&info);
     ac_compute_cot_theta(&info);
+    ac_compute_r(&info);
+    ac_compute_theta(&info);
+    ac_compute_phi(&info);
     acPushToConfig(info,AC_SOR_omega,1.8);
 
     #if AC_RUNTIME_COMPILATION
@@ -157,7 +160,7 @@ main(void)
     finalized = true;
 
     if (pid == 0)
-        fprintf(stderr, "FIELD_ARR_TEST complete: %s\n",
+        fprintf(stderr, "POISSON_TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     return EXIT_SUCCESS;

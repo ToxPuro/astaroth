@@ -595,6 +595,18 @@ write_base (const Field& field, const AcReal&)
 {
 	written_fields[field] |= AC_IN_BOUNDS_WRITE;
 }
+template <typename T>
+AcReal
+safe_access(T arr, const int dims, const int index, const AcRealArrayParam param)
+{
+	//TP: not sure do the analysis indeces always correspond that well to the actual indeces so skip this for now
+	//if(index < 0 || index >= dims)
+	//{
+	//	fprintf(stderr,"Trying to access %s out of bounds!: %d\n",real_array_names[param],index);
+	//	exit(EXIT_FAILURE);
+	//}
+	return arr[index];
+}
 
 #define write_profile_x  write_profile
 #define write_profile_y  write_profile

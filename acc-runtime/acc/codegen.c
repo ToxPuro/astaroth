@@ -1926,31 +1926,37 @@ gen_datatype_enums(FILE* fp, const char* datatype_scalar)
   fprintf(fp,"#define MAX_NUM_%s_COMP_ARRAYS (%d)\n",uppr,counter);
 }
 void
-gen_param_names(FILE* fp, const char* datatype_scalar)
+gen_param_names(FILE* fp, const char* datatype_scalar, const char* place_attribute)
 {
   char tmp[1000];
   sprintf(tmp,"%s*",datatype_scalar);
   const char* datatype_arr = intern(tmp);
 
-  fprintf(fp, "static const char* %sparam_names[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
+  fprintf(fp, "%s static const char* %sparam_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
-  fprintf(fp, "static const char* %s_output_names[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
+  fprintf(fp, "%s static const char* %s_output_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,OUTPUT_STR))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
-  fprintf(fp, "static const char* %s_array_output_names[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
+  fprintf(fp, "%s static const char* %s_array_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].tspecifier == datatype_arr && (str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR) ||str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR)))
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
+  fprintf(fp, "%s static const char* %s_array_output_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_arr && str_vec_contains(symbol_table[i].tqualifiers,OUTPUT_STR))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
-  fprintf(fp, "static const char* %s_comp_param_names[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
+  fprintf(fp, "%s static const char* %s_comp_param_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,RUN_CONST_STR))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
@@ -1971,6 +1977,11 @@ static ASTNode*
 create_primary_expression(const char* identifier)
 {
 	return astnode_create(NODE_PRIMARY_EXPRESSION,create_identifier_node(identifier),NULL);
+}
+ASTNode*
+build_product_node(const node_vec elems)
+{
+	return build_list_node(elems,MULT_STR);
 }
 
 ASTNode*
@@ -2157,18 +2168,36 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
     base->postfix=NULL;
     base->infix=NULL;
 
+    const bool check_access_bounds = datatype_scalar == REAL_STR && ACC_ARRAY_BOUND_CHECKS;
+
     ASTNode* identifier_node = create_primary_expression(get_internal_array_name(sym));
     identifier_node->parent = base;
-    base->lhs =  identifier_node;
     ASTNode* pointer_access = astnode_create(NODE_UNKNOWN,NULL,NULL);
     ASTNode* elem_access_offset = astnode_create(NODE_UNKNOWN,NULL,NULL);
     ASTNode* elem_access        = astnode_create(NODE_UNKNOWN,elem_access_offset,elem_index); 
-    ASTNode* access_node        = astnode_create(NODE_UNKNOWN,pointer_access,elem_access);
-    base->rhs = access_node;
-    access_node ->parent = base;
-
     astnode_set_prefix("[",elem_access);
     astnode_set_postfix("]",elem_access);
+    if(check_access_bounds) elem_access = NULL;
+    ASTNode* access_node        = astnode_create(NODE_UNKNOWN,pointer_access,elem_access);
+    if(check_access_bounds)
+    {
+    	base->lhs =  identifier_node;
+	ASTNode* a = build_product_node(var_dims);
+	ASTNode* b = astnode_create(NODE_UNKNOWN,astnode_dup(elem_index,NULL), astnode_dup(create_primary_expression(sym->identifier),NULL));
+	astnode_sprintf_prefix(a,",");
+	astnode_sprintf_prefix(b,",");
+	astnode_sprintf_infix(b,",");
+	ASTNode* c = astnode_create(NODE_UNKNOWN,a,b);
+	base->rhs = astnode_create(NODE_UNKNOWN,astnode_dup(access_node,NULL),c);
+    }
+    else
+    {
+    	base->lhs =  identifier_node;
+    	base->rhs = access_node;
+    }
+    access_node ->parent = base;
+
+    
     if(str_vec_contains(sym->tqualifiers,DCONST_STR,CONST_STR))
     {
     }
@@ -2177,13 +2206,26 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
 	
     	if(!str_vec_contains(sym->tqualifiers,DYNAMIC_STR) && !is_left_child(NODE_ASSIGNMENT,node))
 	{
-		//TP: on cuda bool -> __nv_bool and there is no __ldg for __nv_bool for some reason
-		astnode_sprintf_prefix(base,"%s%s",
-				 is_primitive_datatype(datatype_scalar) && datatype_scalar != BOOL_STR ? "__ldg(": "",
-				 is_primitive_datatype(datatype_scalar) && datatype_scalar != BOOL_STR ? "&": ""
-		       );
-		if(is_primitive_datatype(datatype_scalar) && datatype_scalar != BOOL_STR)
-			astnode_set_postfix(")",base);
+		if(check_access_bounds)
+		{
+			//TP: on cuda bool -> __nv_bool and there is no __ldg for __nv_bool for some reason
+			{
+				astnode_sprintf_prefix(base,"safe_access(");
+				astnode_sprintf_postfix(base,")");
+			}
+		}
+		else
+		{
+			//TP: on cuda bool -> __nv_bool and there is no __ldg for __nv_bool for some reason
+			{
+				astnode_sprintf_prefix(base,"%s%s",
+					 is_primitive_datatype(datatype_scalar) && datatype_scalar != BOOL_STR ? "__ldg(": "",
+					 is_primitive_datatype(datatype_scalar) && datatype_scalar != BOOL_STR ? "&": ""
+			       	);
+			}
+			if(is_primitive_datatype(datatype_scalar) && datatype_scalar != BOOL_STR)
+				astnode_set_postfix(")",base);
+		}
 
 	}
     }
@@ -6079,10 +6121,18 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
 
   fprintf_filename("is_comptime_param.h","%s","#pragma once\n");
+  {
+	FILE* fp_runtime = fopen("user_defines_runtime_lib.h","w");
+  	for (size_t i = 0; i < datatypes.size; ++i)
+	{
+		gen_param_names(fp_runtime,datatypes.data[i],"__device__");
+	}
+	fclose(fp_runtime);
+  }
   for (size_t i = 0; i < datatypes.size; ++i)
   {
 	  const char* datatype = datatypes.data[i];
-	  gen_param_names(fp,datatype);
+	  gen_param_names(fp,datatype,"");
 	  gen_datatype_enums(fp,datatype);
 
 	  fprintf_filename("device_mesh_info_decl.h","%s %s_params[NUM_%s_PARAMS+1];\n",datatype,convert_to_define_name(datatype),strupr(convert_to_define_name(datatype)));

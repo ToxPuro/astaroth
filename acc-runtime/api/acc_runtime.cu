@@ -24,11 +24,12 @@
 #include "acc_runtime.h"
 #include "ac_buffer.h"
 
+#include "user_defines_runtime_lib.h"
+
 #include "../acc/string_vec.h"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
-
 static AcBool3 dimension_inactive{};
 static bool sparse_autotuning=false;
 static int3    max_tpb_for_reduce_kernels{100,100,100};
@@ -539,6 +540,22 @@ acGetRealScratchpadSize(const size_t i)
 #define error_message(error,message) 
 #define fatal_error_message(error,message) 
 
+__device__
+AcReal
+safe_access(AcReal* arr, const int dims, const int index, const AcRealArrayParam param)
+{
+	if(arr == NULL)
+	{
+		printf("Trying to access %s which is NULL!\n",real_array_names__device__[param]);
+		return 0.0;
+	}
+	else if(index < 0 || index >= dims)
+	{
+		printf("Trying to access %s out of bounds!: %d\n",real_array_names__device__[param],index);
+		return 0.0;
+	}
+	return arr[index];
+}
 
 #include "user_kernels.h"
 #undef size

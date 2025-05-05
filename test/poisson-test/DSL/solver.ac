@@ -1,4 +1,4 @@
-#include "../../../acc-runtime/stdlib/grid/funcs.h"
+#include "../../../acc-runtime/stdlib/general_grid"
 #include "../../../acc-runtime/stdlib/general_derivs.h"
 #include "../../../acc-runtime/stdlib/math"
 #include "../../../acc-runtime/stdlib/bc.h"
@@ -59,12 +59,11 @@ Kernel write_residual()
 {
 	r = laplace_2nd(POTENTIAL)-DENSITY
 	write(RESIDUAL,r)
-	R_max = grid_position((int3){36,0,0}).x
-	R_min = grid_position((int3){NGHOST-1,0,0}).x
+	R_max = grid_position((int3){36,NGHOST,NGHOST}).x
+	R_min = grid_position((int3){NGHOST-1,NGHOST,NGHOST}).x
 	R = grid_position().x
 	B = 1.0/((1.0/R_min) - (1.0/R_max))
 	write(ANALYTICAL, -(B/R_max) + (B/R))
-
 }
 
 real AC_k = 2.0

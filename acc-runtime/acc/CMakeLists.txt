@@ -38,6 +38,12 @@ else()
 	## Executable
 	add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
 	
+
+	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+		target_compile_definitions(acc PRIVATE -DACC_ARRAY_BOUND_CHECKS=1)
+	else()
+		target_compile_definitions(acc PRIVATE -DACC_ARRAY_BOUND_CHECKS=0)
+	endif()
 	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_PATH="${AC_BASE_PATH}/acc-runtime/built-in")
 	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_FUNCS="${AC_BASE_PATH}/acc-runtime/built-in/functions.h")
 	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_TYPEDEFS="${AC_BASE_PATH}/acc-runtime/built-in/typedefs.h")
