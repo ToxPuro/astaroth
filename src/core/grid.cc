@@ -2343,7 +2343,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 			    //
                             if (!forward_search(i, j)) {
                                 preq_task->registerDependent(dept_task, preq_op < dept_op ? 0 : 1);
-				neighbours[i].push_back(j);
+				if(preq_op < dept_op) neighbours[i].push_back(j);
                             }
                         }
                     }
