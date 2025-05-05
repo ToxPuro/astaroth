@@ -1936,31 +1936,31 @@ gen_param_names(FILE* fp, const char* datatype_scalar, const char* place_attribu
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"padding\"};");
 
   fprintf(fp, "%s static const char* %s_output_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,OUTPUT_STR))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"padding\"};");
 
   fprintf(fp, "%s static const char* %s_array_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_arr && (str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR) ||str_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEM_STR)))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"padding\"};");
 
   fprintf(fp, "%s static const char* %s_array_output_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_arr && str_vec_contains(symbol_table[i].tqualifiers,OUTPUT_STR))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"padding\"};");
 
   fprintf(fp, "%s static const char* %s_comp_param_names%s[] __attribute__((unused)) = {",place_attribute,convert_to_define_name(datatype_scalar),place_attribute);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier == datatype_scalar && str_vec_contains(symbol_table[i].tqualifiers,RUN_CONST_STR))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  fprintf(fp, "\"padding\"};");
 
 
 }
