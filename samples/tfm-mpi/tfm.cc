@@ -665,6 +665,10 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
         {TF_uxb12_x, TF_uxb12_y, TF_uxb12_z},
         {TF_uxb21_x, TF_uxb21_y, TF_uxb21_z},
         {TF_uxb22_x, TF_uxb22_y, TF_uxb22_z},
+        {TF_bb11_x, TF_bb11_y, TF_bb11_z},
+        {TF_bb12_x, TF_bb12_y, TF_bb12_z},
+        {TF_bb21_x, TF_bb21_y, TF_bb21_z},
+        {TF_bb22_x, TF_bb22_y, TF_bb22_z},
 #if LOO
         {VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ},
 #endif
@@ -679,6 +683,10 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
         "TF_uxb12",
         "TF_uxb21",
         "TF_uxb22",
+        "TF_bb11",
+        "TF_bb12",
+        "TF_bb21",
+        "TF_bb22",
 #if LOO
         "curl(uu)",
 #endif
