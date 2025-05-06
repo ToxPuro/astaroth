@@ -392,17 +392,9 @@ contract(mat) {
 }
 
 grid_position() {
-    // TODO recheck
-    return real3((globalVertexIdx.x - AC_nx_min + 0.5) * AC_dsx, 
-                 (globalVertexIdx.y - AC_ny_min + 0.5) * AC_dsy, 
-                 (globalVertexIdx.z - AC_nz_min + 0.5) * AC_dsz)
-}
-
-grid_centre() {
-    // TODO recheck
-    return real3(((globalGridN.x - 1) * AC_dsx)/2.0, 
-                 ((globalGridN.y - 1) * AC_dsy)/2.0, 
-                 ((globalGridN.z - 1) * AC_dsz)/2.0)
+    return real3((globalVertexIdx.x - AC_nx_min + 0.5) * AC_dsx - AC_sx/2, 
+                 (globalVertexIdx.y - AC_ny_min + 0.5) * AC_dsy - AC_sy/2, 
+                 (globalVertexIdx.z - AC_nz_min + 0.5) * AC_dsz - AC_sz/2)
 }
 
 // Simulation functions
@@ -500,7 +492,7 @@ momentum() {
 #else 
     // Roberts flow
 roberts_flow() {
-    pos = grid_position() //- grid_centre()
+    pos = grid_position()
     k0 = 1    // MR: this could be an input parameter
     cx = cos(k0 * pos.x)
     cy = cos(k0 * pos.y)
