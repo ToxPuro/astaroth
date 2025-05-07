@@ -22,11 +22,11 @@ export SRUN="srun --cpu-bind="map_cpu:49,57,17,25,1,9,33,41""
 #$SRUN ./bm_rank_reordering 256 512 512 3 100 $SLURM_JOB_ID
 #$SRUN ./bm_rank_reordering 1024 1024 64 3 100 $SLURM_JOB_ID
 
-$SRUN ./bm_pipelining 512 512 512 3 1 100
-$SRUN ./bm_pipelining 512 512 512 3 2 100
-$SRUN ./bm_pipelining 512 512 512 3 4 100
-$SRUN ./bm_pipelining 512 512 512 3 8 100
-$SRUN ./bm_pipelining 512 512 512 3 16 100
+# $SRUN ./bm_pipelining 512 512 512 3 1 100
+# $SRUN ./bm_pipelining 512 512 512 3 2 100
+# $SRUN ./bm_pipelining 512 512 512 3 4 100
+# $SRUN ./bm_pipelining 512 512 512 3 8 100
+# $SRUN ./bm_pipelining 512 512 512 3 16 100
 #$SRUN ./bm_pipelining 512 512 512 3 32 100
 
 # Strong scaling

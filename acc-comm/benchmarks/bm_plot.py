@@ -7,7 +7,7 @@ import os
 import glob
 
 print(f'cwd: {os.getcwd()}')
-outdir = "/Users/pekkilj1/Downloads/benchmark-data"
+outdir = f"{os.getcwd()}/../build"
 
 # %%
 # Packing
@@ -28,7 +28,7 @@ df
 # Rank reordering
 # files = glob.glob(f"{outdir}/bm-rank-reordering-*")
 # files = glob.glob(f"{outdir}/../bm-test-rank-reordering.csv")
-files = glob.glob(f"{outdir}/../bm-reordering-test/bm-rank-reordering-*.csv")
+files = glob.glob(f"{outdir}/bm-rank-reordering-*.csv")
 df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 
 df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
@@ -52,12 +52,12 @@ df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 
 df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
 df = df.groupby(list(df.columns.difference(['ns']))).describe()
+df = df.xs(0, level='rank')
+df = df.xs(1, level='nprocs')
 df = df.xs(3, level='radius')
 
-df = df.loc[:, :, 256, 256, 256]['ns']['50%']
-
+df = df['ns']['50%']
 df = df.unstack('impl')
-# plt.loglog(df)
 df
 
 # %%

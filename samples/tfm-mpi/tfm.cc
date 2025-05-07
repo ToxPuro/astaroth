@@ -164,6 +164,14 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
  * Initialize and load test field profiles on the device based on AC_profile_amplitude and
  * AC_profile_wavenumber set in the info structure associated with the device.
  */
+static AcReal
+get_global_position(const int64_t global_index, const int64_t radius, const AcReal spacing,
+                    const AcReal box_size)
+{
+    return (static_cast<AcReal>(global_index) - static_cast<AcReal>(radius) + 0.5) * spacing -
+           box_size / 2;
+}
+
 static int
 init_tfm_profiles(const Device& device)
 {
@@ -172,8 +180,11 @@ init_tfm_profiles(const Device& device)
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
     const auto dsz{acr::get(info, AC_dsz)};
-    // const long offset{-acr::get(info, AC_nz_min) + acr::get(info, AC_multigpu_offset).z};
-    const long offset{-acr::get(info, AC_nz_min) + acr::get(info, AC_multigpu_offset).z};
+    const auto sz{acr::get(info, AC_sz)};
+    const auto initial_pos{get_global_position(as<int64_t>(acr::get(info, AC_multigpu_offset).z),
+                                               as<int64_t>(acr::get(info, AC_nz_min)),
+                                               dsz,
+                                               sz)};
     const size_t local_mz{as<size_t>(acr::get(info, AC_mz))};
 
     const AcReal amplitude{acr::get(info, AC_profile_amplitude)};
@@ -191,12 +202,22 @@ init_tfm_profiles(const Device& device)
     }
 
     // B1c (here B11) and B2c (here B21) to cosine
-    acHostInitProfileToCosineWave(dsz, offset, amplitude, wavenumber, local_mz, host_profile.get());
+    acHostInitProfileToCosineWave(dsz,
+                                  initial_pos,
+                                  amplitude,
+                                  wavenumber,
+                                  local_mz,
+                                  host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y));
 
     // B1s (here B12) and B2s (here B22)
-    acHostInitProfileToSineWave(dsz, offset, amplitude, wavenumber, local_mz, host_profile.get());
+    acHostInitProfileToSineWave(dsz,
+                                initial_pos,
+                                amplitude,
+                                wavenumber,
+                                local_mz,
+                                host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y));
 
@@ -667,6 +688,10 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
         {TF_uxb12_x, TF_uxb12_y, TF_uxb12_z},
         {TF_uxb21_x, TF_uxb21_y, TF_uxb21_z},
         {TF_uxb22_x, TF_uxb22_y, TF_uxb22_z},
+        {TF_bb11_x, TF_bb11_y, TF_bb11_z},
+        {TF_bb12_x, TF_bb12_y, TF_bb12_z},
+        {TF_bb21_x, TF_bb21_y, TF_bb21_z},
+        {TF_bb22_x, TF_bb22_y, TF_bb22_z},
 #if LOO
         {VTXBUF_OOX, VTXBUF_OOY, VTXBUF_OOZ},
 #endif
@@ -681,6 +706,10 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
         "TF_uxb12",
         "TF_uxb21",
         "TF_uxb22",
+        "TF_bb11",
+        "TF_bb12",
+        "TF_bb21",
+        "TF_bb22",
 #if LOO
         "curl(uu)",
 #endif
