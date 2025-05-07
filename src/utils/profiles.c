@@ -101,41 +101,31 @@ acHostReduceXYAverage(const AcReal* in, const AcMeshDims dims, AcReal* out)
     return AC_SUCCESS;
 }
 
-/** box_size: size of the simulation box in real physical units (usually 2*M_PI)
-    nz: number of indices in the global computational domain in the z direction
-    offset: offset for the first index off the computational domain
-            single GPU: (0 - stencil radius in the z dimension)
-            multi-GPU: (pz * local mz - stencil radius) where pz the process
-                       index in the z dimension
-    profile_count: number of elements in the profile (local mz) */
+/** spacing: spacing in real units
+ * initial_pos: real position of the profile at index 0.
+ * amplitude: amplitude of the profile
+ * wavenumber: wavenumber of the profile
+ * mz: length of the profile
+ */
 AcResult
-acHostInitProfileToCosineWave(const AcReal spacing, const long offset, const AcReal amplitude,
-                              const AcReal wavenumber, const size_t profile_count, AcReal* profile)
+acHostInitProfileToCosineWave(const AcReal spacing, const AcReal initial_pos,
+                              const AcReal amplitude, const AcReal wavenumber, const size_t mz,
+                              AcReal* profile)
 {
-    for (size_t i = 0; i < profile_count; ++i) {
-        const long double ampl = (long double)amplitude;
-        const long double wn   = (long double)wavenumber;
-        const long double ds   = (long double)spacing;
-        const long double x    = (long double)i;
-        const long double os   = (long double)offset;
-        profile[i]             = (AcReal)(ampl * cosl(wn * ds * (x + os + 0.5l)));
-    }
+    for (size_t i = 0; i < mz; ++i)
+        profile[i] = amplitude * cos(wavenumber * (initial_pos + (AcReal)(i)*spacing));
+
     return AC_SUCCESS;
 }
 
 /** See acHostInitProfileToCosineWave */
 AcResult
-acHostInitProfileToSineWave(const AcReal spacing, const long offset, const AcReal amplitude,
-                            const AcReal wavenumber, const size_t profile_count, AcReal* profile)
+acHostInitProfileToSineWave(const AcReal spacing, const AcReal initial_pos, const AcReal amplitude,
+                            const AcReal wavenumber, const size_t mz, AcReal* profile)
 {
-    for (size_t i = 0; i < profile_count; ++i) {
-        const long double ampl = (long double)amplitude;
-        const long double wn   = (long double)wavenumber;
-        const long double ds   = (long double)spacing;
-        const long double x    = (long double)i;
-        const long double os   = (long double)offset;
-        profile[i]             = (AcReal)(ampl * sinl(wn * ds * (x + os + 0.5l)));
-    }
+    for (size_t i = 0; i < mz; ++i)
+        profile[i] = amplitude * sin(wavenumber * (initial_pos + (AcReal)(i)*spacing));
+
     return AC_SUCCESS;
 }
 
