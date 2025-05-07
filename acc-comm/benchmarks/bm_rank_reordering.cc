@@ -22,9 +22,9 @@
 #include "acm/detail/errchk_cuda.h"
 #endif
 
+#include "acm/detail/experimental/bm.h"
 #include "acm/detail/experimental/mpi_utils_experimental.h"
 #include "acm/detail/experimental/random_experimental.h"
-#include "bm.h"
 
 namespace ac::mpi {
 

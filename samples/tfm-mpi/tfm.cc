@@ -20,7 +20,7 @@
 #include "acm/detail/halo_exchange_custom.h"
 #include "acm/detail/io.h"
 
-#include "benchmarks/bm.h"
+#include "acm/detail/experimental/bm.h"
 
 #include "acm/detail/ndbuffer.h"
 

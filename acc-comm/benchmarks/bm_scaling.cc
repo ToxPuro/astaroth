@@ -1,8 +1,8 @@
 #include <cstdlib>
 
+#include "acm/detail/experimental/bm.h"
 #include "acm/detail/halo_exchange_packed.h"
 #include "acm/detail/ntuple.h"
-#include "bm.h"
 
 #include "acm/detail/halo_exchange.h"
 #include "acm/detail/mpi_utils.h"

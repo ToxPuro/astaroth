@@ -7,7 +7,7 @@
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/type_conversion.h"
 
-#include "bm.h"
+#include "acm/detail/experimental/bm.h"
 
 constexpr size_t problem_size{128 * 1024 * 1024}; // Bytes
 
