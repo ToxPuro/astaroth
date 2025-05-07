@@ -20,6 +20,8 @@
 #include "acm/detail/halo_exchange_custom.h"
 #include "acm/detail/io.h"
 
+#include "benchmarks/bm.h"
+
 #include "acm/detail/ndbuffer.h"
 
 #include "stencil_loader.h"
@@ -1393,47 +1395,51 @@ main(int argc, char* argv[])
         // Init Grid
         Grid grid{raw_info};
 
-        // Profiler start
-        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
-        cudaProfilerStart();
+        constexpr size_t nsamples{100};
+        init      = [&grid] { grid.reset_init_cond(); };
+        bench     = [&grid, &nsamples] { grid.tfm_pipeline(nsamples); };
+        auto sync = []() {
+#if defined(ACM_DEVICE_ENABLED)
+            ERRCHK_CUDA_API(cudaDeviceSynchronize());
+#endif
+            ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+        };
 
-        // Timer start
-        const auto start{std::chrono::system_clock::now()};
-        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+        // Reset benchmarks
+        std::ostringstream oss;
+        oss << "bm-collective-comm-" << jobid << "-" << getpid() << "-"
+            << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+        const auto output_file{oss.str()};
+        FILE* fp{fopen(output_file.c_str(), "w")};
+        ERRCHK(fp);
+        fprintf(fp, "impl,nx,ny,nz,radius,sample,nsamples,rank,nprocs,jobid,ns\n");
+        ERRCHK(fclose(fp) == 0);
 
-        // Compute
-        grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
-
-        // Timer stop
-        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
-        const auto ms_elapsed{std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now() - start)};
-
-        // Profiler stop
-        cudaProfilerStop();
-
-        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-            // File open
-            std::ostringstream oss;
-            oss << "bm-tfm-scaling-" << args.job_id << "-" << getpid() << "-" << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
-            const auto output_file{oss.str()};
+        auto print = [&](const std::string& label,
+                         const std::vector<std::chrono::nanoseconds::rep>& results) {
             FILE* fp{fopen(output_file.c_str(), "a")};
-            ERRCHK_MPI(fp);
+            ERRCHK(fp);
 
-            // File write
-            // Format: nprocs, nx, ny, nz, nsteps, time (ms)
-            fprintf(fp,
-                    "%d,%d,%d,%d,%d,%ld\n",
-                    ac::mpi::get_size(MPI_COMM_WORLD),
-                    acr::get(raw_info, AC_global_nx),
-                    acr::get(raw_info, AC_global_ny),
-                    acr::get(raw_info, AC_global_nz),
-                    acr::get(raw_info, AC_simulation_nsteps),
-                    ms_elapsed.count());
+            for (size_t i{0}; i < results.size(); ++i) {
+                fprintf(fp, "%s", label.c_str());
+                fprintf(fp, ",%zu", nx);
+                fprintf(fp, ",%zu", ny);
+                fprintf(fp, ",%zu", nz);
+                fprintf(fp, ",%zu", radius);
+                fprintf(fp, ",%zu", i);
+                fprintf(fp, ",%zu", nsamples);
+                fprintf(fp, ",%d", ac::mpi::get_rank(MPI_COMM_WORLD));
+                fprintf(fp, ",%d", ac::mpi::get_size(MPI_COMM_WORLD));
+                fprintf(fp, ",%zu", jobid);
+                fprintf(fp, ",%lld", as<long long>(results[i]));
+                fprintf(fp, "\n");
+            }
+            ERRCHK(fclose(fp) == 0);
+        };
 
-            // File close
-            ERRCHK_MPI(fclose(fp) == 0);
-        }
+        ERRCHK_CUDA_API(cudaProfilerStart());
+        print("tfm-mpi", ac::benchmark(init, bench, sync, 1));
+        ERRCHK_CUDA_API(cudaProfilerStop());
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
