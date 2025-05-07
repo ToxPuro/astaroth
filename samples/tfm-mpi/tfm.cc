@@ -1342,6 +1342,8 @@ class Grid {
 #endif
     }
 
+    auto get_info() const { return local_info; }
+
     Grid(const Grid&)            = delete; // Copy constructor
     Grid& operator=(const Grid&) = delete; // Copy assignment operator
     Grid(Grid&&)                 = delete; // Move constructor
@@ -1396,9 +1398,9 @@ main(int argc, char* argv[])
         Grid grid{raw_info};
 
         constexpr size_t nsamples{100};
-        init      = [&grid] { grid.reset_init_cond(); };
-        bench     = [&grid, &nsamples] { grid.tfm_pipeline(nsamples); };
-        auto sync = []() {
+        auto init  = [&grid] { grid.reset_init_cond(); };
+        auto bench = [&grid] { grid.tfm_pipeline(nsamples); };
+        auto sync  = []() {
 #if defined(ACM_DEVICE_ENABLED)
             ERRCHK_CUDA_API(cudaDeviceSynchronize());
 #endif
@@ -1407,12 +1409,12 @@ main(int argc, char* argv[])
 
         // Reset benchmarks
         std::ostringstream oss;
-        oss << "bm-collective-comm-" << jobid << "-" << getpid() << "-"
+        oss << "bm-tfm-mpi-" << args.job_id << "-" << getpid() << "-"
             << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
         const auto output_file{oss.str()};
         FILE* fp{fopen(output_file.c_str(), "w")};
         ERRCHK(fp);
-        fprintf(fp, "impl,nx,ny,nz,radius,sample,nsamples,rank,nprocs,jobid,ns\n");
+        fprintf(fp, "impl,lnx,lny,lnz,gnx,gny,gnz,radius,sample,nsamples,rank,nprocs,jobid,ns\n");
         ERRCHK(fclose(fp) == 0);
 
         auto print = [&](const std::string& label,
@@ -1420,26 +1422,34 @@ main(int argc, char* argv[])
             FILE* fp{fopen(output_file.c_str(), "a")};
             ERRCHK(fp);
 
+            auto info{grid.get_info()};
+
+            ERRCHK_MPI(acr::get_local_rr()[0] == acr::get_local_rr()[1] &&
+                       acr::get_local_rr()[0] == acr::get_local_rr()[2]);
+
             for (size_t i{0}; i < results.size(); ++i) {
                 fprintf(fp, "%s", label.c_str());
-                fprintf(fp, ",%zu", nx);
-                fprintf(fp, ",%zu", ny);
-                fprintf(fp, ",%zu", nz);
-                fprintf(fp, ",%zu", radius);
+                fprintf(fp, ",%d", acr::get(info, AC_nx));
+                fprintf(fp, ",%d", acr::get(info, AC_ny));
+                fprintf(fp, ",%d", acr::get(info, AC_nz));
+                fprintf(fp, ",%d", acr::get(info, AC_global_nx));
+                fprintf(fp, ",%d", acr::get(info, AC_global_ny));
+                fprintf(fp, ",%d", acr::get(info, AC_global_nz));
+                fprintf(fp, ",%zu", acr::get_local_rr()[0]);
                 fprintf(fp, ",%zu", i);
                 fprintf(fp, ",%zu", nsamples);
                 fprintf(fp, ",%d", ac::mpi::get_rank(MPI_COMM_WORLD));
                 fprintf(fp, ",%d", ac::mpi::get_size(MPI_COMM_WORLD));
-                fprintf(fp, ",%zu", jobid);
+                fprintf(fp, ",%d", args.job_id);
                 fprintf(fp, ",%lld", as<long long>(results[i]));
                 fprintf(fp, "\n");
             }
             ERRCHK(fclose(fp) == 0);
         };
 
-        ERRCHK_CUDA_API(cudaProfilerStart());
-        print("tfm-mpi", ac::benchmark(init, bench, sync, 1));
-        ERRCHK_CUDA_API(cudaProfilerStop());
+        cudaProfilerStart();
+        print("tfm-mpi", bm::benchmark(init, bench, sync, 1));
+        cudaProfilerStop();
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
