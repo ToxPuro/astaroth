@@ -1,7 +1,7 @@
 #include <cstdlib>
 
+#include "acm/detail/experimental/bm.h"
 #include "acm/detail/math_utils.h"
-#include "benchmarks/bm.h"
 
 static int
 test_median()

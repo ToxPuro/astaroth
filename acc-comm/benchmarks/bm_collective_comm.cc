@@ -28,7 +28,7 @@
 #include "acm/detail/experimental/random_experimental.h"
 #include "acm/detail/experimental/verify_experimental.h"
 
-#include "bm.h"
+#include "acm/detail/experimental/bm.h"
 
 #include "acm/detail/halo_exchange_batched.h"
 #include "acm/detail/halo_exchange_custom.h"
