@@ -84,7 +84,7 @@ main(int argc, char* argv[])
         using Allocator = ac::mr::device_allocator;
 
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0)
-            std::cerr << "Usage: ./bm_pipelining <nx> <ny> <nz> <radius> <npack> <nsamples> "
+            std::cerr << "Usage: ./bm_collective_comm <nx> <ny> <nz> <radius> <npack> <nsamples> "
                          "<jobid>"
                       << std::endl;
         const size_t nx{(argc > 1) ? std::stoull(argv[1]) : 32};
@@ -108,7 +108,7 @@ main(int argc, char* argv[])
         }
 
         std::ostringstream oss;
-        oss << "bm-pipelining-" << jobid << "-" << getpid() << "-"
+        oss << "bm-collective-comm-" << jobid << "-" << getpid() << "-"
             << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
         const auto output_file{oss.str()};
         FILE*      fp{fopen(output_file.c_str(), "w")};

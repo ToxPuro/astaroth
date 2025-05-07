@@ -46,8 +46,8 @@ df = df.unstack('impl')
 df
 
 # %%
-# Pipelining
-files = glob.glob(f"{outdir}/bm-pipelining*")
+# Collective communication
+files = glob.glob(f"{outdir}/bm-collective-comm*.csv")
 df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 
 df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
@@ -61,18 +61,4 @@ df = df.unstack('impl')
 df
 
 # %%
-# Pipeline
-import matplotlib.pyplot as plt
-import pandas as pd
-import os
-
-print(f'cwd: {os.getcwd()}')
-
-df = pd.read_csv('../build/bm-pipelining-0-0.csv')
-df
-
-stats = df.groupby('impl')['ns'].describe()
-
-plt.barh(stats['50%'].index, stats['50%'])
-plt.show()
-stats
+# 

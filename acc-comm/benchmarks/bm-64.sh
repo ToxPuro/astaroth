@@ -23,12 +23,12 @@ $SRUN ./benchmarks/bm_rank_reordering 2048 1024 512 3 100 $SLURM_JOB_ID
 $SRUN ./benchmarks/bm_rank_reordering 512 1024 2048 3 100 $SLURM_JOB_ID
 $SRUN ./benchmarks/bm_rank_reordering 4096 2048 128 3 100 $SLURM_JOB_ID
 
-$SRUN ./bm_pipelining 1024 1024 1024 3 1 100
-$SRUN ./bm_pipelining 1024 1024 1024 3 2 100
-$SRUN ./bm_pipelining 1024 1024 1024 3 4 100
-$SRUN ./bm_pipelining 1024 1024 1024 3 8 100
-$SRUN ./bm_pipelining 1024 1024 1024 3 16 100
-$SRUN ./bm_pipelining 1024 1024 1024 3 32 100
+$SRUN ./bm_collective_comm 1024 1024 1024 3 1 100
+$SRUN ./bm_collective_comm 1024 1024 1024 3 2 100
+$SRUN ./bm_collective_comm 1024 1024 1024 3 4 100
+$SRUN ./bm_collective_comm 1024 1024 1024 3 8 100
+$SRUN ./bm_collective_comm 1024 1024 1024 3 16 100
+$SRUN ./bm_collective_comm 1024 1024 1024 3 32 100
 
 # Strong scaling
 # ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 256,256,256 --job-id $SLURM_JOB_ID
