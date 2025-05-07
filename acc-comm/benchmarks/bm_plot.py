@@ -61,4 +61,41 @@ df = df.unstack('impl')
 df
 
 # %%
-# 
+# Strong scaling
+files = glob.glob(f"/users/pekkila/astaroth/build/bm-tfm-mpi*.csv")
+df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
+
+df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
+df = df.groupby(list(df.columns.difference(['ns']))).describe()
+df = df.xs(0, level='rank')
+df = df.xs(3, level='radius')
+df = df.xs(256, level='gnx')
+df = df.xs(256, level='gny')
+df = df.xs(256, level='gnz')
+
+# Ensure the local dims make sense before dropping
+df = df.droplevel(['lnx', 'lny', 'lnz'])
+
+df = df['ns']['50%']
+df = df.unstack('impl')
+df
+
+# %%
+# Weak scaling
+files = glob.glob(f"/users/pekkila/astaroth/build/bm-tfm-mpi*.csv")
+df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
+
+df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
+df = df.groupby(list(df.columns.difference(['ns']))).describe()
+df = df.xs(0, level='rank')
+df = df.xs(3, level='radius')
+df = df.xs(256, level='lnx')
+df = df.xs(256, level='lny')
+df = df.xs(256, level='lnz')
+
+# Ensure the global dims make sense before dropping
+df = df.droplevel(['gnx', 'gny', 'gnz'])
+
+df = df['ns']['50%']
+df = df.unstack('impl')
+df

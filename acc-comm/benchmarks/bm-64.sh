@@ -31,7 +31,7 @@ $SRUN ./bm_collective_comm 1024 1024 1024 3 16 100
 $SRUN ./bm_collective_comm 1024 1024 1024 3 32 100
 
 # Strong scaling
-# ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 256,256,256 --job-id $SLURM_JOB_ID
+./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 256,256,256 --job-id $SLURM_JOB_ID
 
 # Weak scaling
-# ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 1024,1024,1024 --job-id $SLURM_JOB_ID
+./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 1024,1024,1024 --job-id $SLURM_JOB_ID
