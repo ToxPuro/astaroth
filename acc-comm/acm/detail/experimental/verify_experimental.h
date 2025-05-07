@@ -32,9 +32,15 @@ to_global_iota(const ac::shape& global_nn, const ac::shape& global_nn_offset,
                ac::mr::device_pointer<T> ptr, const T& initial_value = 0)
 {
     ac::host_buffer<T> tmp{ptr.size()};
-    ac::mr::copy(ptr, tmp);
-    to_global_iota(global_nn, global_nn_offset, local_mm, local_nn, local_rr, tmp, initial_value);
-    ac::mr::copy(tmp, ptr);
+    ac::mr::copy(ptr, tmp.get());
+    to_global_iota(global_nn,
+                   global_nn_offset,
+                   local_mm,
+                   local_nn,
+                   local_rr,
+                   tmp.get(),
+                   initial_value);
+    ac::mr::copy(tmp.get(), ptr);
 }
 #endif
 
@@ -65,15 +71,15 @@ verify_global_iota(const ac::shape& global_nn, const ac::shape& global_nn_offset
                    const ac::mr::device_pointer<T>& ptr, const T& initial_value = 0)
 {
     ac::host_buffer<T> tmp{ptr.size()};
-    ac::mr::copy(ptr, tmp);
+    ac::mr::copy(ptr, tmp.get());
     verify_global_iota(global_nn,
                        global_nn_offset,
                        local_mm,
                        local_nn,
                        local_rr,
-                       tmp,
+                       tmp.get(),
                        initial_value);
-    ac::mr::copy(tmp, ptr);
+    ac::mr::copy(tmp.get(), ptr);
 }
 #endif
 
