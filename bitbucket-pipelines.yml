@@ -13,7 +13,7 @@ image: nvidia/cuda:11.6.0-devel-ubuntu20.04
 # ===> Which might not even work since I don't know what kind of hardware we're running on (lspci was not available)
 
 options:
-  max-time: 30 # Max time allowed for building (minutes) 
+  max-time: 60 # Max time allowed for building (minutes) 
 pipelines:
   # default: # Default is run at every push but we have only 500 build minutes / month so that probably wouldn't work out
   custom: # Manual/scheduled building only

@@ -709,14 +709,28 @@ create_output_directories(void)
 }
 
 static void
-write_slices(int pid, int i)
+write_slices(int pid, int step, const AcReal simulation_time)
 {
+   if(pid == 0)
+   {
+
+         FILE* header_file = fopen("slices_info.csv", step == 0 ? "w" : "a");
+
+         // Header only at the step zero
+         if (step == 0) {
+             fprintf(header_file,
+                     "step,t\n");
+         }
+
+         fprintf(header_file, "%d,%g\n",step,simulation_time);
+         fclose(header_file);
+    }
     debug_log_from_root_proc_with_sim_progress(pid, "write_slices: Syncing slice disk access\n");
     acGridDiskAccessSync();
     debug_log_from_root_proc_with_sim_progress(pid, "write_slices: Slice disk access synced\n");
 
     char slice_frame_dir[2048];
-    sprintf(slice_frame_dir, "%s/step_%012d", slice_output_dir, i);
+    sprintf(slice_frame_dir, "%s/step_%012d", slice_output_dir, step);
 
     log_from_root_proc_with_sim_progress(pid, "write_slices: Creating directory %s\n",
                                          slice_frame_dir);
@@ -727,7 +741,7 @@ write_slices(int pid, int i)
     MPI_Barrier(acGridMPIComm()); // Ensure directory is created for all procs
 
     log_from_root_proc_with_sim_progress(pid, "write_slices: Writing slices to %s, timestep = %d\n",
-                                         slice_output_dir, i);
+                                         slice_output_dir, step);
     /*
     Timer t;
     timer_reset(&t);
@@ -739,7 +753,7 @@ write_slices(int pid, int i)
     // This label is redundant now that the step number is in the dirname
     //  JP: still useful for debugging and analysis if working in a flattened dir structure
     char label[80];
-    sprintf(label, "step_%012d", i);
+    sprintf(label, "step_%012d", step);
 
     acGridWriteSlicesToDiskLaunch(slice_frame_dir, label);
     log_from_root_proc_with_sim_progress(pid, "write_slices: Non-blocking slice write operation "
@@ -922,6 +936,7 @@ main(int argc, char** argv)
             break;
         case 'k':
             initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+            initial_mesh_procedure_param = optarg;
             break;
         case 'i':
             if (strcmp(optarg, "Haatouken") == 0) {
@@ -1182,6 +1197,18 @@ main(int argc, char** argv)
         // Randomize
         acLogFromRootProc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
         AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+	AcKernel initcond = !initial_mesh_procedure_param ? randomize : AC_NULL_KERNEL;
+	if(initial_mesh_procedure_param)
+	{
+		for(int kernel = 0; kernel < NUM_KERNELS; ++kernel)
+			if(!strcmp(initial_mesh_procedure_param,kernel_names[kernel]))
+				initcond = AcKernel(kernel);
+	}
+	if(initcond == AC_NULL_KERNEL)
+	{
+		acLogFromRootProc(pid,"Did find Kernel %s for initializing mesh!\n",initial_mesh_procedure_param);
+		exit(EXIT_FAILURE);
+	}
         acGridLaunchKernel(STREAM_DEFAULT, initcond, dims.n0, dims.n1);
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
@@ -1350,6 +1377,12 @@ main(int argc, char** argv)
     // Set up certain periodic actions and run them for i == 0 //
     /////////////////////////////////////////////////////////////
 
+    if (pid == 0) {
+        FILE* header_file = fopen("grid_info.csv", "w");
+	fprintf(header_file,"dsx,dsy,dsz\n");
+	fprintf(header_file,"%g,%g,%g\n",info[AC_ds].x,info[AC_ds].y,info[AC_ds].z);
+	fclose(header_file);
+    }
     FILE* diag_file = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
     // TODO: should probably always check for NaN's, not just at start_step = 0
@@ -1362,7 +1395,7 @@ main(int argc, char** argv)
                           &found_nan);
 
         acLogFromRootProc(pid, "Initial state: writing mesh slices\n");
-        write_slices(pid, start_step);
+        write_slices(pid, start_step, 0.0);
 
         acLogFromRootProc(pid, "Initial state: writing full mesh snapshot\n");
         save_mesh_mpi_async(info, snapshot_output_dir, pid, 0, 0.0);
@@ -1551,7 +1584,7 @@ main(int argc, char** argv)
                     log_from_root_proc_with_sim_progress(pid,
                                                          "Periodic action: writing mesh slices\n");
                     if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
-                    write_slices(pid, i);
+        	    write_slices(pid, start_step, simulation_time);
                     break;
                 }
                 case PeriodicAction::EndSimulation: {

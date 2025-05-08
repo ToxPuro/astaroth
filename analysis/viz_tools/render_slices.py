@@ -5,6 +5,8 @@ import pathlib
 import re
 
 import numpy as np
+import pandas as pd
+
 parser = argparse.ArgumentParser(description='A tool for rendering slices from binary files')
 parser.add_argument('--input', type=pathlib.Path, nargs='+', required=True, help='List of slice binaries')
 parser.add_argument('--output', type=pathlib.Path, default='output-slices-postprocessed', help='Output dir to write the postprocessed slices to')
@@ -48,9 +50,13 @@ if args.write_bin:
     binary_dir.mkdir(parents=True, exist_ok=True)
 
 segmented_filename_regex = re.compile(r'([^-]*)-segment-at_(\d+)_(\d+)_(\d+)-dims_(\d+)_(\d+)-step_(\d+).slice')
-monolithic_filename_regex = re.compile(r'([^-]*)-dims_(\d+)_(\d+)-step_(\d+).slice')
 
-lspherical = args.spherical
+info = pd.read_csv("slices_info.csv",sep=",")
+grid_info = pd.read_csv("grid_info.csv",sep=',')
+dsx = grid_info["dsx"].iloc[0]
+dsy = grid_info["dsy"].iloc[0]
+dsz = grid_info["dsz"].iloc[0]
+
 #Parse filenames, build up a tree structure
 steps = {}
 field_headers = {}
@@ -71,7 +77,10 @@ for file_path in args.input:
 
         z = pos[2]
         #This is the slice data, this is what will be rendered
-        steps[step].setdefault(field, {"z":z, "columns":{}, "field_name":field, "step": step})
+        info_row = info[info["step"] == int(step)]
+        time  = info_row["t"].iloc[0]
+
+        steps[step].setdefault(field, {"z":z, "columns":{}, "field_name":field, "time": time, "step": step})
 
         #Z should be the same across slice segments
         #TODO: make z another hierarchy to allow rendering of multiple slice locations
@@ -84,34 +93,8 @@ for file_path in args.input:
         steps[step][field]["columns"][pos[0]].setdefault(pos[1], {})
         steps[step][field]["columns"][pos[0]][pos[1]] = {"dims":dims, "file_path":file_path}
     else:
-        m = monolithic_filename_regex.match(filename)
-        if m:
-            field = m.group(1)
-            pos = [0,0,0]
-            dims = [int(m.group(2)), int(m.group(3))]
-            #step = int(m.group(7))
-            step = m.group(4)
+        print(f"File {filename}, did not match filename regex, skipping it")
 
-            field_headers.setdefault(field, {"vmin":math.inf, "vmax":-math.inf})
-
-            steps.setdefault(step, {})
-
-            z = pos[2]
-            #This is the slice data, this is what will be rendered
-            steps[step].setdefault(field, {"z":z, "columns":{}, "field_name":field, "step": step})
-
-            #Z should be the same across slice segments
-            #TODO: make z another hierarchy to allow rendering of multiple slice locations
-            old_z = steps[step][field]["z"]
-            if old_z != z:
-                print("f{RD}Error:{CLR} Slice segments for field {field} step {step} have multiple dissimilar z-values: {old_z} and {z}")
-                exit(1)
-
-            steps[step][field]["columns"].setdefault(pos[0], {})
-            steps[step][field]["columns"][pos[0]].setdefault(pos[1], {})
-            steps[step][field]["columns"][pos[0]][pos[1]] = {"dims":dims, "file_path":file_path}
-        else:
-            print(f"File {filename}, did not match filename regex, skipping it")
 
 vector_fields = {}
 if args.render_vectors == "on":
@@ -182,13 +165,12 @@ render_slice
 
 Render a slice (a full one)
 """
-def render_slice(full_slice, field_name, step, z):
+def render_slice(full_slice, field_name, time, step, z):
+    global dsx
+    global dsy
     print(f"Rendering {MA}{field_name:>20}{CLR} slice at step {CY}{int(step):<8}{CLR}...", end="")
     vmin = field_headers[field_name]["vmin"]
     vmax = field_headers[field_name]["vmax"]
-    #print(f"Writing to {GR}{output_file}{CLR}")
-
-
     if(lspherical):
       r = np.linspace(0.0,1.0, full_slice.shape[1]+1)
       theta = np.linspace(0, np.pi, full_slice.shape[0]+1)
@@ -212,13 +194,16 @@ def render_slice(full_slice, field_name, step, z):
       plt.savefig(output_file, dpi=args.dpi)
       plt.clf()
     else:
-      plt.imshow(full_slice, aspect='auto',cmap='plasma', interpolation='nearest', vmin=vmin, vmax=vmax)
+      x = np.array([i*dsx for i in range(full_slice.shape[1])])
+      y = np.array([i*dsy for i in range(full_slice.shape[0])])
+      plt.imshow(full_slice, cmap='plasma', interpolation='nearest', vmin=vmin, vmax=vmax, extent=[x[0],x[-1],y[0],y[-1]], aspect=x[-1]/y[-1]) #workingv2
       plt.colorbar()
       plt.ylabel('y')
       plt.xlabel('x')
       title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
-      plt.title(f'{title_field_name}, step = {int(step)}')
+      plt.title(f'{title_field_name}, t={time:e}, step={int(step)}')
       output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
+      print(f"Writing to {GR}{output_file}{CLR}")
       plt.savefig(output_file, dpi=args.dpi)
       plt.clf()
 
@@ -228,14 +213,17 @@ def write_binary(full_slice, field_name, step, z):
     print(f"to {GR}{output_file}{CLR}")
     full_slice.tofile(output_file)
 
-def plot_line1d(full_slice, field_name, step, z):
+def plot_line1d(full_slice, field_name, time, step, z):
+    global dsx
     print(f"Plotting {MA}{field_name:>20}{CLR} 1D cut at step {CY}{int(step):<8}{CLR}...", end="")
     y = int((full_slice.shape[0])/2)
-    plt.plot(full_slice[y,:], '.')
+    n = len(full_slice[y,:])
+    x = np.array([i*dsx for i in range(n)])
+    plt.plot(x,full_slice[y,:], '.')
     title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
     plt.xlabel('x')
     plt.ylabel(title_field_name)
-    plt.title(f'{title_field_name}, step = {int(step)}')
+    plt.title(f'{title_field_name}, t = {time:e}, step={int(step)}')
     output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.y_{y}.step_{step}.png'
     print(f"Writing to {GR}{output_file}{CLR}")
     plt.savefig(output_file, dpi=args.dpi)
@@ -247,6 +235,7 @@ for vector_field, components in vector_fields.items():
     for step in steps:
         vector_slice = None
         z = steps[step][components[0]]["z"]
+        time = steps[step][components[0]]["time"]
         y = 16
         vmax_l2_norm = 0
         for comp_field in components:
@@ -288,8 +277,8 @@ for vector_field, components in vector_fields.items():
 
         # Render slice
         if args.write_png:
-            render_slice(vector_slice, field_name, step, z)
-            plot_line1d(vector_slice, field_name, step, z)
+            render_slice(vector_slice, field_name,time, step, z)
+            plot_line1d(vector_slice, field_name, time, step, z)
 
         # Write binary
         #if args.write_bin:
@@ -313,4 +302,3 @@ for step, fields in steps.items():
             write_binary(**slice_data)
 
         del slice_data["full_slice"]
-

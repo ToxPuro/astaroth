@@ -35,6 +35,16 @@ typedef AcReal5 struct real5
 	real v;
 }
 
+typedef AcReal6 struct real_symmetric_tensor
+{
+	real xx;
+	real yy;
+	real zz;
+	real xy;
+	real xz;
+	real yz;
+}
+
 typedef AcComplex struct complex
 {
 	real x;
@@ -67,6 +77,15 @@ struct Field4
 	Field w;
 } 
 
+struct FieldSymmetricTensor
+{
+	Field xx;
+	Field yy;
+	Field zz;
+	Field xy;
+	Field xz;
+	Field yz;
+}
 //TP: do not make xy,xz and yz into long long since that 
 //will degrade performance (at least on AMD)
 struct AcDimProducts

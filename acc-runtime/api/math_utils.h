@@ -83,6 +83,11 @@ operator-(const int3& a, const uint3& b)
 {
   return (int3){(int)(a.x - b.x), (int)(a.y - b.y), (int)(a.z - b.z)};
 }
+static HOST_DEVICE_INLINE int3
+operator+(const int3& a, const uint3& b)
+{
+  return (int3){(int)(a.x + b.x), (int)(a.y + b.y), (int)(a.z + b.z)};
+}
 #endif
 static HOST_DEVICE_INLINE AcComplex
 exp(const AcComplex& val)

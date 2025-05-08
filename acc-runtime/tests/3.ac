@@ -34,6 +34,7 @@ nested(a, b, c) {
 }
 
 func(with, parameters, real test) {
+    real a,b,c
     if 0 == 0 && 1 == 1 {
         c = nested(a, b, c)
     }

@@ -23,7 +23,6 @@
 #include "astaroth_utils.h"
 #include "errchk.h"
 #include "user_constants.h"
-#include "../../stdlib/grid.h"
 
 #if AC_MPI_ENABLED
 
@@ -45,6 +44,8 @@ drand()
 {
 	return (double)(rand()) / (double)(rand());
 }
+
+#include "../../stdlib/grid.h"
 
 int
 main(void)
