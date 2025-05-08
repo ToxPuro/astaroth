@@ -34,7 +34,10 @@ build_project() {
 
 export -f build_project
 for dir in "$TEST_DIR"/*/; do
-    build_project "$dir" &
+    #TP: for multithreading suppressed for now since bitbucket pipelines runs out of memory
+    #build_project "$dir" &
+    build_project "$dir"
+    rm -rf "$dir/build"
 done
 
 wait

@@ -3582,6 +3582,22 @@ get_reduce_info_in_func(const ASTNode* node, node_vec* src)
 				)) return;
 	push_node(src,node);
 }
+
+void
+get_stencil_calling_info_in_func(const ASTNode* node, string_vec* src)
+{
+	TRAVERSE_PREAMBLE_PARAMS(get_stencil_calling_info_in_func,src);
+	if(!(node->type & NODE_FUNCTION_CALL))
+		return;
+	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	if(str_vec_contains(*src,func_name)) return;
+	Symbol* sym = (Symbol*)get_symbol(NODE_VARIABLE_ID | NODE_FUNCTION_ID ,func_name,NULL);
+	if(sym && sym->tspecifier == STENCIL_STR) 
+	{
+		push(src,func_name);
+	}
+}
+
 ReduceOp
 get_reduce_type(const ASTNode* node)
 {
@@ -3615,17 +3631,59 @@ get_reduce_info(const ASTNode* node)
 	if(node->type & NODE_FUNCTION)
 		get_reduce_info_in_func(node,&reduce_infos[str_vec_get_index(calling_info.names,get_node_by_token(IDENTIFIER,node->lhs)->buffer)]);
 }
+
+void
+get_stencil_calling_info(const ASTNode* node, string_vec* stencils_called)
+{
+	TRAVERSE_PREAMBLE_PARAMS(get_stencil_calling_info,stencils_called);
+	if(node->type & NODE_FUNCTION)
+		get_stencil_calling_info_in_func(node,&stencils_called[str_vec_get_index(calling_info.names,get_node_by_token(IDENTIFIER,node->lhs)->buffer)]);
+}
 void
 gen_reduce_info(const ASTNode* root)
 {
 	get_reduce_info(root);
-	for(size_t i = 0; i < calling_info.names.size; ++i)
-		for(int j = i-1; j >= 0; --j)
-		{
-			if(!int_vec_contains(calling_info.called_funcs[i], j)) continue;
-			for(size_t k = 0; k < reduce_infos[j].size; ++k)
-				push_node(&reduce_infos[i],reduce_infos[j].data[k]);
-		}
+	bool updated = true;
+	while(updated)
+	{
+		updated = false;
+		for(size_t i = 0; i < calling_info.names.size; ++i)
+			for(size_t j = 0; j  < calling_info.names.size; ++j)
+			{
+				if(!int_vec_contains(calling_info.called_funcs[i], j)) continue;
+				for(size_t k = 0; k < reduce_infos[j].size; ++k)
+				{
+					push_node(&reduce_infos[i],reduce_infos[j].data[k]);
+				}
+			}
+	}
+}
+
+string_vec*
+gen_stencil_calling_info(const ASTNode* root)
+{
+	string_vec* stencils_called = (string_vec*)malloc(sizeof(string_vec)*calling_info.names.size);
+	for(size_t i = 0; i < calling_info.names.size; ++i) memset(&stencils_called[i],0,sizeof(string_vec));
+	get_stencil_calling_info(root,stencils_called);
+	bool updated = true;
+	while(updated)
+	{
+		updated = false;
+		for(size_t i = 0; i < calling_info.names.size; ++i)
+			for(size_t j = 0; j  < calling_info.names.size; ++j)
+			{
+				if(!int_vec_contains(calling_info.called_funcs[i], j)) continue;
+				for(size_t k = 0; k < stencils_called[j].size; ++k)
+				{
+					if(!str_vec_contains(stencils_called[i],stencils_called[j].data[k]))
+					{
+						push(&stencils_called[i],stencils_called[j].data[k]);
+						updated = true;
+					}
+				}
+			}
+	}
+	return stencils_called;
 }
 
 bool
@@ -5612,7 +5670,6 @@ gen_const_variables(const ASTNode* node, FILE* fp, FILE* fp_bi,FILE* fp_non_scal
 	free_node_vec(&assignments);
 }
 
-static int curr_kernel = 0;
 
 int_vec
 dfuncs_in_topological_order(void)
@@ -5632,10 +5689,110 @@ dfuncs_in_topological_order(void)
 	}
 	return res;
 }
+
+static void
+write_calling_info(FILE* fp, const char* func, const char* arr_name)
+{
+    for(size_t index = 0; index < num_dfuncs; ++index)
+    {
+	    const Symbol* dfunc_symbol = get_symbol_by_index(NODE_DFUNCTION_ID,index,0);
+	    if(!dfunc_symbol) continue;
+	    const char* dfunc_name = dfunc_symbol->identifier;
+	    if(dfunc_name == func)
+	    {
+		    fprintf(fp,"const bool %s[] = {",arr_name);
+		    for(size_t kernel = 0; kernel < num_kernels; ++kernel)
+		    {
+			    	const char* name = get_symbol_by_index(NODE_FUNCTION_ID,kernel,KERNEL_STR)->identifier;
+    				const int_vec called_dfuncs = calling_info.called_funcs[str_vec_get_index(calling_info.names,name)];
+	    			const int call_index = str_vec_get_index(calling_info.names,dfunc_name);
+		            	fprintf(fp,"%d,",int_vec_contains(called_dfuncs,call_index));
+		    }
+		    fprintf(fp,"};\n");
+	    }
+    }
+}
+
+static size_t
+count_symbols(const char* type)
+{
+	size_t res = 0;
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    		if(symbol_table[i].tspecifier == type)
+      			++res;
+	return res;
+}
+static size_t
+count_symbols_type(const NodeType type)
+{
+	size_t res = 0;
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    		if(symbol_table[i].type & type)
+      			++res;
+	return res;
+}
+static size_t
+count_profiles()
+{
+
+  string_vec prof_types = get_prof_types();
+  size_t res = 0;
+  for(size_t i = 0; i < prof_types.size; ++i)
+	  res += count_symbols(prof_types.data[i]);
+  return res;
+}
+
+static void
+write_calling_info_for_stencilgen(const string_vec* stencils_called)
+{
+    FILE* fp = fopen("stencilgen_calling_info.h","w");
+    write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_X_"),"reduce_sum_real_x_called");
+    write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_Y_"),"reduce_sum_real_y_called");
+    write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_Z_"),"reduce_sum_real_z_called");
+
+    write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_XY_"),"reduce_sum_real_xy_called");
+    write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_XZ_"),"reduce_sum_real_xz_called");
+
+    write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_YX_"),"reduce_sum_real_yx_called");
+    write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_YZ_"),"reduce_sum_real_yz_called");
+
+    write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_ZX_"),"reduce_sum_real_zx_called");
+    write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_ZY_"),"reduce_sum_real_zy_called");
+
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__Profile_X_"),"value_profile_x_called");
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__Profile_Y_"),"value_profile_y_called");
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__Profile_Z_"),"value_profile_z_called");
+
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__Profile_XY_"),"value_profile_xy_called");
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__Profile_XZ_"),"value_profile_xz_called");
+
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__Profile_YX_"),"value_profile_yx_called");
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__Profile_YZ_"),"value_profile_yz_called");
+
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__Profile_ZX_"),"value_profile_zx_called");
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__Profile_ZY_"),"value_profile_zy_called");
+    fprintf(fp,"const bool stencils_called[NUM_KERNELS][NUM_STENCILS] = {");
+    for(size_t k = 0; k < num_kernels; ++k)
+    {
+	    fprintf(fp,"{");
+	    const char* name = get_symbol_by_index(NODE_FUNCTION_ID,k,KERNEL_STR)->identifier;
+	    const int call_index = str_vec_get_index(calling_info.names,name);
+  	    const size_t num_stencils = count_symbols(STENCIL_STR);
+	    for(size_t s = 0; s < num_stencils; ++s)
+	    {
+			const Symbol* sym = get_symbol_by_index(NODE_FUNCTION_ID, s, STENCIL_STR);
+			fprintf(fp,"%d,",str_vec_contains(stencils_called[call_index],sym->identifier));
+	    }
+	    fprintf(fp,"},");
+    }
+    fprintf(fp,"};\n");
+    fclose(fp);
+}
 static void
 gen_kernels_recursive(const ASTNode* node, char** dfunctions,
             const bool gen_mem_accesses)
 {
+  static int curr_kernel = 0;
   assert(node);
 
   if (node->lhs)
@@ -5688,7 +5845,10 @@ gen_kernels_recursive(const ASTNode* node, char** dfunctions,
 	    if(!dfunc_symbol) continue;
 	    if(str_vec_contains(dfunc_symbol->tqualifiers,INLINE_STR)) continue;
 	    const int call_index = str_vec_get_index(calling_info.names,dfunc_symbol->identifier);
-	    if(int_vec_contains(called_dfuncs,call_index)) strcat(prefix,dfunctions[i]);
+	    if(int_vec_contains(called_dfuncs,call_index)) 
+	    {
+		    strcat(prefix,dfunctions[i]);
+	    }
     }
     free_int_vec(&topological_order);
 
@@ -5751,34 +5911,6 @@ gen_names_variadic(const char* datatype, const string_vec types, FILE* fp)
   		fprintf(fp, "\"%s\",", names.data[i]);
 	fprintf(fp,"};\n");
 	free_str_vec(&names);
-}
-static size_t
-count_symbols(const char* type)
-{
-	size_t res = 0;
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    		if(symbol_table[i].tspecifier == type)
-      			++res;
-	return res;
-}
-static size_t
-count_symbols_type(const NodeType type)
-{
-	size_t res = 0;
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    		if(symbol_table[i].type & type)
-      			++res;
-	return res;
-}
-static size_t
-count_profiles()
-{
-
-  string_vec prof_types = get_prof_types();
-  size_t res = 0;
-  for(size_t i = 0; i < prof_types.size; ++i)
-	  res += count_symbols(prof_types.data[i]);
-  return res;
 }
 
 void
@@ -9861,6 +9993,10 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   gen_array_qualifiers(root);
   for(size_t i = 0; i  < primitive_datatypes.size; ++i)
   	gen_array_reads(root,root,primitive_datatypes.data[i]);
+
+  traverse(root,NODE_NO_OUT,NULL);
+  string_vec* stencils_called = gen_stencil_calling_info(root);
+  write_calling_info_for_stencilgen(stencils_called);
 
   // Stencils
 

@@ -33,7 +33,10 @@ build_project() {
 
 export -f build_project
 for dir in "$TEST_DIR"/*/; do
-    build_project "$dir" &
+    #TP: for parallel builds
+    #build_project "$dir" &
+    build_project "$dir"
+    rm -rf "$dir/build"
 done
 
 wait

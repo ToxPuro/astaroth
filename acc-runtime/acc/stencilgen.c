@@ -48,6 +48,9 @@
 #include "user_defines.h"
 
 #include "stencil_accesses.h"
+
+#include "stencilgen_calling_info.h"
+
 typedef enum ReduceOp
 {
 	NO_REDUCE,
@@ -422,41 +425,69 @@ gen_profile_funcs(const int kernel)
   }
   else
   {
-  	printf("[[maybe_unused]] const auto value_profile_x __attribute__((unused)) = [&](const Profile& handle) {");
-  	printf("return vba.profiles.in[handle][vertexIdx.x];");
-  	printf("};");
+	if(value_profile_x_called[kernel])
+	{
+  		printf("[[maybe_unused]] const auto value_profile_x __attribute__((unused)) = [&](const Profile& handle) {");
+  		printf("return vba.profiles.in[handle][vertexIdx.x];");
+  		printf("};");
+	}
 
-  	printf("[[maybe_unused]] const auto value_profile_y __attribute__((unused)) = [&](const Profile& handle) {");
-  	printf("return vba.profiles.in[handle][vertexIdx.y];");
-  	printf("};");
+	if(value_profile_y_called[kernel])
+	{
+  		printf("[[maybe_unused]] const auto value_profile_y __attribute__((unused)) = [&](const Profile& handle) {");
+  		printf("return vba.profiles.in[handle][vertexIdx.y];");
+  		printf("};");
+	}
 
-  	printf("[[maybe_unused]] const auto value_profile_z __attribute__((unused)) = [&](const Profile& handle) {");
-  	printf("return vba.profiles.in[handle][vertexIdx.z];");
-  	printf("};");
+	if(value_profile_z_called[kernel])
+	{
+  		printf("[[maybe_unused]] const auto value_profile_z __attribute__((unused)) = [&](const Profile& handle) {");
+  		printf("return vba.profiles.in[handle][vertexIdx.z];");
+  		printf("};");
+	}
 
-  	printf("[[maybe_unused]] const auto value_profile_xy __attribute__((unused)) = [&](const Profile& handle) {");
-  	printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.y];");
-  	printf("};");
+	if(value_profile_xy_called[kernel])
+	{
+  		printf("[[maybe_unused]] const auto value_profile_xy __attribute__((unused)) = [&](const Profile& handle) {");
+  		printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.y];");
+  		printf("};");
+	}
 
-  	printf("[[maybe_unused]] const auto value_profile_xz __attribute__((unused)) = [&](const Profile& handle) {");
-  	printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z];");
-  	printf("};");
+	if(value_profile_xz_called[kernel])
+	{
+  		printf("[[maybe_unused]] const auto value_profile_xz __attribute__((unused)) = [&](const Profile& handle) {");
+  		printf("return vba.profiles.in[handle][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z];");
+  		printf("};");
+	}
 
-  	printf("[[maybe_unused]] const auto value_profile_yx __attribute__((unused)) = [&](const Profile& handle) {");
-  	printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.x];");
-  	printf("};");
+	if(value_profile_yx_called[kernel])
+	{
+  		printf("[[maybe_unused]] const auto value_profile_yx __attribute__((unused)) = [&](const Profile& handle) {");
+  		printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.x];");
+  		printf("};");
+	}
 
-  	printf("[[maybe_unused]] const auto value_profile_yz __attribute__((unused)) = [&](const Profile& handle) {");
-  	printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z];");
-  	printf("};");
+	if(value_profile_yz_called[kernel])
+	{
+  		printf("[[maybe_unused]] const auto value_profile_yz __attribute__((unused)) = [&](const Profile& handle) {");
+  		printf("return vba.profiles.in[handle][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z];");
+  		printf("};");
+	}
 
-  	printf("[[maybe_unused]] const auto value_profile_zx __attribute__((unused)) = [&](const Profile& handle) {");
-  	printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.x];");
-  	printf("};");
+	if(value_profile_zx_called[kernel])
+	{
+  		printf("[[maybe_unused]] const auto value_profile_zx __attribute__((unused)) = [&](const Profile& handle) {");
+  		printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.x];");
+  		printf("};");
+	}
 
-  	printf("[[maybe_unused]] const auto value_profile_zy __attribute__((unused)) = [&](const Profile& handle) {");
-  	printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.y];");
-  	printf("};");
+	if(value_profile_zy_called[kernel])
+	{
+  		printf("[[maybe_unused]] const auto value_profile_zy __attribute__((unused)) = [&](const Profile& handle) {");
+  		printf("return vba.profiles.in[handle][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.y];");
+  		printf("};");
+	}
+
   }
   {
     if(kernel_has_block_loops(kernel))
@@ -469,7 +500,8 @@ gen_profile_funcs(const int kernel)
     	printf("[[maybe_unused]] const int3& profileReduceOutputVertexIdx = vertexIdx;");
 
 
-    if(!get_num_reduced_profiles(PROFILE_X,kernel))
+    if(!reduce_sum_real_x_called[kernel]){}
+    else if(!get_num_reduced_profiles(PROFILE_X,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_x __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
@@ -491,7 +523,8 @@ gen_profile_funcs(const int kernel)
     }
 
     //!!TP: NOTE this only works as long as blockfactor.x == 1!!
-    if(!get_num_reduced_profiles(PROFILE_Y,kernel))
+    if(!reduce_sum_real_y_called[kernel]){}
+    else if(!get_num_reduced_profiles(PROFILE_Y,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_y __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
@@ -525,7 +558,8 @@ gen_profile_funcs(const int kernel)
     }
 
     
-    if(!get_num_reduced_profiles(PROFILE_Z,kernel))
+    if(!reduce_sum_real_z_called[kernel]){}
+    else if(!get_num_reduced_profiles(PROFILE_Z,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_z __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
@@ -560,7 +594,8 @@ gen_profile_funcs(const int kernel)
     }
 
 
-    if(!get_num_reduced_profiles(PROFILE_XY,kernel))
+    if(!reduce_sum_real_xy_called[kernel]){}
+    else if(!get_num_reduced_profiles(PROFILE_XY,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
@@ -585,7 +620,8 @@ gen_profile_funcs(const int kernel)
     	printf("};");
     }
 
-    if(!get_num_reduced_profiles(PROFILE_YX,kernel))
+    if(!reduce_sum_real_yx_called[kernel]){}
+    else if(!get_num_reduced_profiles(PROFILE_YX,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_yx __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
@@ -610,7 +646,8 @@ gen_profile_funcs(const int kernel)
     	printf("};");
     }
 
-    if(!get_num_reduced_profiles(PROFILE_XZ,kernel))
+    if(!reduce_sum_real_xz_called[kernel]){}
+    else if(!get_num_reduced_profiles(PROFILE_XZ,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
@@ -635,7 +672,8 @@ gen_profile_funcs(const int kernel)
     	printf("};");
     }
 
-    if(!get_num_reduced_profiles(PROFILE_ZX,kernel))
+    if(!reduce_sum_real_zx_called[kernel]){}
+    else if(!get_num_reduced_profiles(PROFILE_ZX,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
@@ -659,7 +697,8 @@ gen_profile_funcs(const int kernel)
     	printf("}");
     	printf("};");
     }
-    if(!get_num_reduced_profiles(PROFILE_YZ,kernel))
+    if(!reduce_sum_real_yz_called[kernel]){}
+    else if(!get_num_reduced_profiles(PROFILE_YZ,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
@@ -675,7 +714,8 @@ gen_profile_funcs(const int kernel)
 			   "};");
     }
 
-    if(!get_num_reduced_profiles(PROFILE_ZY,kernel))
+    if(!reduce_sum_real_zy_called[kernel]){}
+    else if(!get_num_reduced_profiles(PROFILE_ZY,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_zy __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
@@ -1369,7 +1409,7 @@ static void
 gen_stencil_functions(const int curr_kernel)
 {
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-    //TP: don't gen stencil function at all if no fields use it. Done to declutter the resulting code and to speedup compilation
+    if(!stencils_called[curr_kernel][stencil]) continue;
     bool gen_stencil = false;
     for (int field = 0; field < NUM_ALL_FIELDS; ++field) gen_stencil |= stencils_accessed[curr_kernel][field][stencil];
     if(!gen_stencil)
@@ -1395,7 +1435,7 @@ gen_stencil_functions(const int curr_kernel)
   }
   {
   	for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-  	  //TP: don't gen stencil function at all if no fields use it. Done to declutter the resulting code and to speedup compilation
+    	  if(!stencils_called[curr_kernel][stencil]) continue;
   	  bool gen_stencil = false;
   	  for (int profile = 0; profile < NUM_PROFILES; ++profile) gen_stencil |= stencils_accessed[curr_kernel][profile + NUM_ALL_FIELDS][stencil];
   	  if(!gen_stencil)

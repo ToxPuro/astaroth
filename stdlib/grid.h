@@ -2,7 +2,12 @@
 int3
 ac_global_vertex_idx(const int3 localVertexIdx, const AcMeshInfo config)
 {
-	return localVertexIdx + config[AC_multigpu_offset];
+	return 
+		{
+			localVertexIdx.x + config[AC_multigpu_offset].x,
+			localVertexIdx.y + config[AC_multigpu_offset].y,
+			localVertexIdx.z + config[AC_multigpu_offset].z
+		};
 }
 AcReal3
 ac_grid_position(const int3 localVertexIdx, const AcMeshInfo config)
