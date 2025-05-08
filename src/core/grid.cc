@@ -1841,43 +1841,39 @@ check_ops(const std::vector<AcTaskDefinition> ops)
 }
 
 Volume
-get_position(const AcBoundary boundaries_included)
+get_output_shift(const AcBoundary boundaries_included)
 {
 	const auto& ghost = get_ghost_zone_sizes();
-	size_t position_x = (boundaries_included & BOUNDARY_X)
-		 	    ? 0 : ghost.x;
-	size_t position_y = (boundaries_included & BOUNDARY_Y)
-		 	    ? 0 : ghost.y;
-	size_t position_z = (boundaries_included & BOUNDARY_Z)
-		 	    ? 0 : ghost.z;
-	return (Volume){position_x,position_y,position_z};
+	return (Volume)
+	{
+		ghost.x*((boundaries_included & BOUNDARY_X) != 0),
+		ghost.y*((boundaries_included & BOUNDARY_Y) != 0),
+		ghost.z*((boundaries_included & BOUNDARY_Z) != 0)
+	};
 }
 Volume
-get_addition(const AcBoundary boundaries_included)
+get_input_shift(const AcBoundary boundaries_included)
 {
 	const auto& ghost = get_ghost_zone_sizes();
-	size_t add_x = (boundaries_included & BOUNDARY_X)
-		 	    ? 2*ghost.x : 0;
-	size_t add_y = (boundaries_included & BOUNDARY_Y)
-		 	    ? 2*ghost.y : 0;
-	size_t add_z = (boundaries_included & BOUNDARY_Z)
-		 	    ? 2*ghost.z : 0;
-	return (Volume){add_x,add_y,add_z};
+	return (Volume)
+	{
+		ghost.x*(!(boundaries_included & BOUNDARY_X)),
+		ghost.y*(!(boundaries_included & BOUNDARY_Y)),
+		ghost.z*(!(boundaries_included & BOUNDARY_Z))
+	};
 }
 Region
-FullRegion(const Volume nn, const RegionMemory mem, const AcBoundary boundaries_included)
+FullRegion(const Volume position, const Volume dims, const RegionMemory mem, const AcBoundary boundaries_included)
 {
-
-	const auto& position = get_position(boundaries_included);
-	const auto& add      = get_addition(boundaries_included);
-        return Region(position,nn+add,0,mem,RegionFamily::Compute_output);
+	const auto shift = get_output_shift(boundaries_included);
+        return Region(position-shift,dims+2*shift,0,mem,RegionFamily::Compute_output);
 }
 
 Region
 GetInputRegion(Region region, const RegionMemory mem, const AcBoundary boundaries_included)
 {
-	const auto& output_position     = get_position(boundaries_included);
-	return Region{region.position-output_position,region.dims+2*output_position,0,mem,RegionFamily::Compute_input};
+	const auto shift = get_input_shift(boundaries_included);
+	return Region{region.position-shift,region.dims+2*shift,0,mem,RegionFamily::Compute_input};
 }
 std::vector<Region>
 getinputregions(std::vector<Region> output_regions, const RegionMemory memory, const AcBoundary boundaries_included)
@@ -1895,8 +1891,9 @@ get_spacings()
 
 #include "analysis_grid_helpers.h"
 
+
 AcTaskGraph*
-acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
+acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_ops, const Volume start, const Volume end)
 { 
     // ERRCHK(grid.initialized);
     std::vector<AcTaskDefinition> ops{};
@@ -2015,6 +2012,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
     // this array of bools keep track of that state
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset{};
     //int num_comp_tasks = 0;
+    const Volume dims = end-start;
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", ops.size());
     for (size_t i = 0; i < ops.size(); i++) {
         acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
@@ -2038,7 +2036,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	    std::vector<KernelReduceOutput> reduce_output_out(op.outputs_out,op.outputs_out+op.num_outputs_out);
 
 
-	    Region full_region = FullRegion(grid.nn,{fields_out,profiles_out,reduce_output_out},op.computes_on_halos);
+	    Region full_region = FullRegion(start,dims,{fields_out,profiles_out,reduce_output_out},op.computes_on_halos);
 	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},op.computes_on_halos)[0];
 	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
 	    if(((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim])
@@ -2085,7 +2083,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 		    }
 	    	    //auto task = std::make_shared<ComputeTask>(op,tag,full_input_region,full_region,device,swap_offset);
             	    //graph->all_tasks.push_back(task);
-            	    auto task = std::make_shared<ComputeTask>(op, i, tag, grid_info.nn, device, swap_offset);
+            	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset);
             	    graph->all_tasks.push_back(task);
             	    //done here since we want to write only to out not to in what launching the taskgraph would do
 	      	    //always remember to call the loader since otherwise might not be safe to execute taskgraph
@@ -2114,7 +2112,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
 
                 if (!Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
-                    auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info,
+                    auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info,
                                                                    device, swap_offset,false);
                     graph->halo_tasks.push_back(task);
                     graph->all_tasks.push_back(task);
@@ -2158,7 +2156,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 							);
 			//TP: because of the need to interpolate from multiple processes the whole stretch from 0 to AC_mlocal.y is done in a single task
 			if(shear_periodic && id.y != 0) continue;
-                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, device, swap_offset,shear_periodic);
+                        auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info, device, swap_offset,shear_periodic);
                         graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);
                         acVerboseLogFromRootProc(rank,
@@ -2170,7 +2168,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 		    {
                     	auto task = std::make_shared<BoundaryConditionTask>(op,
                     	                                                       boundary_normal(tag),
-                    	                                                       i, tag, grid_info.nn,
+                    	                                                       i, tag, start, dims,
                     	                                                       device,
                     	                                                       swap_offset);
                     	graph->all_tasks.push_back(task);
@@ -2187,7 +2185,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
-	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({id,0,0}), grid_info.nn, device, swap_offset);
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({id,0,0}), start,dims, device, swap_offset);
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
@@ -2195,7 +2193,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
-	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,id,0}), grid_info.nn, device, swap_offset);
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,id,0}), start,dims, device, swap_offset);
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
@@ -2203,13 +2201,13 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
-	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,0,id}), grid_info.nn, device, swap_offset);
+	  		auto task   = std::make_shared<ReduceTask>(op, i, Region::id_to_tag({0,0,id}), start,dims, device, swap_offset);
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
 	  else
 	  {
-	  	auto task = std::make_shared<ReduceTask>(op, i, 0, grid_info.nn, device, swap_offset);
+	  	auto task = std::make_shared<ReduceTask>(op, i, 0, start,dims, device, swap_offset);
 	  	graph->all_tasks.push_back(task);
 	  }
 	  break;
@@ -2385,10 +2383,22 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Done sorting tasks by priority\n");
 
     //make sure after autotuning that out is 0
-    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-    acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
+    AcMeshDims comp_dims = acGetMeshDims(acGridGetLocalMeshInfo());
+    acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, comp_dims.n0,comp_dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
     return graph;
+}
+Volume
+int3_to_volume(const int3& a)
+{
+	return to_volume(a);
+}
+
+AcTaskGraph*
+acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
+{
+	const Volume ghost = to_volume(grid.submesh.info[AC_nmin]);
+	return acGridBuildTaskGraphWithBounds(ops_in,n_ops,ghost,grid.nn+ghost);
 }
 
 
@@ -3413,11 +3423,6 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
     }
 
     return AC_SUCCESS;
-}
-Volume
-int3_to_volume(const int3& a)
-{
-	return to_volume(a);
 }
 
 AcResult

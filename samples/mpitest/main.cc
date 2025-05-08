@@ -160,7 +160,7 @@ main(int argc, char* argv[])
     if (pid == 0)
         acHostGridMeshRandomize(&model);
 
-    const auto periodic = acGetDSLTaskGraph(boundconds);
+    const auto periodic = acGetOptimizedDSLTaskGraph(boundconds);
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridSynchronizeStream(STREAM_DEFAULT);
     acGridExecuteTaskGraphBase(periodic,1,true);
@@ -183,7 +183,7 @@ main(int argc, char* argv[])
     acGridIntegrate(STREAM_DEFAULT, dt);
     acGridSynchronizeStream(STREAM_DEFAULT);
 
-    AcTaskGraph* dsl_graph = acGetDSLTaskGraph(AC_test_rhs);
+    AcTaskGraph* dsl_graph = acGetOptimizedDSLTaskGraph(AC_test_rhs);
     acGridExecuteTaskGraph(dsl_graph,1);
     acGridSynchronizeStream(STREAM_DEFAULT);
 

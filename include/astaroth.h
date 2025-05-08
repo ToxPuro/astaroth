@@ -464,10 +464,13 @@ acDecompose(const uint64_t target, const AcMeshInfo info);
 	*(void**)(&BASE_FUNC_NAME(acCompute)) = dlsym(handle,"acCompute");
 	*(void**)(&BASE_FUNC_NAME(acHaloExchange)) = dlsym(handle,"acHaloExchange");
 	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraph)) = dlsym(handle,"acGridBuildTaskGraph");
+	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)) = dlsym(handle,"acGridBuildTaskGraphWithBounds");
 	LOAD_DSYM(acGridDestroyTaskGraph,stream);
 	LOAD_DSYM(acGridClearTaskGraphCache,stream);
 	LOAD_DSYM(acGetDSLTaskGraph,stream);
 	LOAD_DSYM(acGetOptimizedDSLTaskGraph,stream);
+	LOAD_DSYM(acGetDSLTaskGraphWithBounds,stream);
+	LOAD_DSYM(acGetOptimizedDSLTaskGraphWithBounds,stream);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousDistributed,stream);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousCollective,stream);
 	LOAD_DSYM(acGridGetDefaultTaskGraph,stream);
@@ -897,6 +900,17 @@ static UNUSED AcTaskGraph*
 acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
 {
     return BASE_FUNC_NAME(acGridBuildTaskGraph)(ops.data(), ops.size());
+}
+template <size_t n_ops>
+static AcTaskGraph*
+acGridBuildTaskGraphWithBounds(const AcTaskDefinition (&ops)[n_ops], const Volume start, const Volume end)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops, n_ops,start,end);
+}
+static UNUSED AcTaskGraph*
+acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start, const Volume end)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops.data(), ops.size(),start,end);
 }
 #endif
 #endif

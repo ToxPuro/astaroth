@@ -659,24 +659,28 @@ struct VectorHash {
         return seed;
     }
 };
-// Hash for the tuple of two vectors
-struct TupleHash {
-    template <typename T>
-    std::size_t operator()(const std::tuple<std::vector<T>, std::vector<T>> &key) const {
-        const auto &[vec1, vec2] = key;
+using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>,Volume,Volume>;
+struct KeyHash {
+    std::size_t operator()(const KeyType &key) const {
+        const auto &[vec1, vec2,start,end] = key;
         std::size_t seed = 0;
         hash_combine(seed, VectorHash{}(vec1));
         hash_combine(seed, VectorHash{}(vec2));
+        hash_combine(seed, start.x);
+        hash_combine(seed, start.y);
+        hash_combine(seed, start.z);
+        hash_combine(seed, end.x);
+        hash_combine(seed, end.y);
+        hash_combine(seed, end.z);
         return seed;
     }
 };
 
 // Equality comparator for the tuple of vectors
-struct TupleEqual {
-    template <typename T>
-    bool operator()(const std::tuple<std::vector<T>, std::vector<T>> &lhs,
-                    const std::tuple<std::vector<T>, std::vector<T>> &rhs) const {
-        return lhs == rhs; // Leverages operator== for vectors and tuple
+struct KeyEqual {
+    bool operator()(const KeyType &lhs,
+                    const KeyType &rhs) const {
+        return lhs == rhs; 
     }
 };
 
@@ -990,13 +994,12 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 	return res;
 }
 
-using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>>;
-static std::unordered_map<KeyType, AcTaskGraph*, TupleHash, TupleEqual> task_graphs{};
+static std::unordered_map<KeyType, AcTaskGraph*, KeyHash, KeyEqual> task_graphs{};
 
 AcResult
 acGridClearTaskGraphCache()
 {
-	const std::unordered_map<KeyType, AcTaskGraph*, TupleHash, TupleEqual> empty_graphs{};
+	const std::unordered_map<KeyType, AcTaskGraph*, KeyHash, KeyEqual> empty_graphs{};
 	for(auto [key,graph] : task_graphs)
 		acGridDestroyTaskGraph(graph);
 	task_graphs = empty_graphs;
@@ -1004,24 +1007,40 @@ acGridClearTaskGraphCache()
 }
 
 AcTaskGraph*
-acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
+acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end)
 {
 	auto optimized_kernels = get_optimized_kernels(graph,false);
 	auto optimized_bcs      = get_optimized_kernels(DSLTaskGraphBCs[graph],false);
-	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs);
+	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end);
 	if(task_graphs.find(key) != task_graphs.end())
 		return task_graphs[key];
 
 	auto ops = acGetDSLTaskGraphOps(graph,true);
-	auto res = acGridBuildTaskGraph(ops);
+	auto res = acGridBuildTaskGraph(ops,start,end);
 	task_graphs[key] = res;
 	return res;
 }
 
 AcTaskGraph*
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
+{
+	return acGetOptimizedDSLTaskGraphWithBounds(graph,
+			to_volume(get_info()[AC_nmin]),
+			to_volume(get_info()[AC_nlocal_max]));
+}
+
+AcTaskGraph*
+acGetDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end)
+{
+	return acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,false),start,end);
+}
+
+AcTaskGraph*
 acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 {
-	return acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,false));
+	return acGetDSLTaskGraphWithBounds(graph,
+			to_volume(get_info()[AC_nmin]),
+			to_volume(get_info()[AC_nlocal_max]));
 }
 
 #include "user_constants.h"

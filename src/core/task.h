@@ -122,8 +122,8 @@ struct Region {
     static bool is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy);
     static bool is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary);
 
-    Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary computes_on_boundary, Volume nn, const RegionMemoryInputParams);
-    Region(RegionFamily family_, int3 id_, Volume nn, const RegionMemoryInputParams);
+    Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary computes_on_boundary, Volume position_, Volume dims_, const RegionMemoryInputParams);
+    Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, const RegionMemoryInputParams);
     Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_);
     Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_, RegionFamily family_);
 
@@ -219,7 +219,7 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-    ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
+    ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
 
@@ -278,7 +278,7 @@ typedef class HaloExchangeTask : public Task {
     HaloMessageSwapChain send_buffers;
 
   public:
-    HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag, AcGridInfo grid_info,
+    HaloExchangeTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int halo_region_tag, AcGridInfo grid_info,
                      Device device_,
                      std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_);
     ~HaloExchangeTask();
@@ -333,7 +333,7 @@ typedef class BoundaryConditionTask : public Task {
 
   public:
     BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
-                                    int region_tag, Volume nn, Device device_,
+                                    int region_tag, const Volume start, const Volume nn, Device device_,
                                     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     void populate_boundary_region();
     void advance(const TraceFile* trace_file);
@@ -352,7 +352,7 @@ typedef class ReduceTask : public Task {
     AcProfileType reduces_only_prof{};
     bool nothing_to_communicate{};
   public:
-    ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
+    ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     void reduce();
     void communicate();

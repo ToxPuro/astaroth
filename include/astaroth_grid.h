@@ -315,10 +315,13 @@ FUNC_DEFINE(bool, acGridTaskGraphHasPeriodicBoundcondsZ,(AcTaskGraph* graph));
 
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraph,(const AcTaskDefinition ops[], const size_t n_ops));
+OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraphWithBounds,(const AcTaskDefinition ops[], const size_t n_ops, const Volume start, const Volume end));
 
 /** */
 FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraph,(const AcDSLTaskGraph));
+FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end));
 FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
+FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end));
 
 
 /** */

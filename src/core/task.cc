@@ -259,25 +259,24 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     return task_def;
 }
 size_t
-get_compute_output_position(const int id, const size_t ghost, const size_t nn, const bool boundary_included)
+get_compute_output_position(const int id, const size_t start, const size_t ghost, const size_t nn, const bool boundary_included)
 {
-	return id == -1  ? (boundary_included ? 0 : ghost) : 
-		id == 1  ? (boundary_included ? nn+ghost : nn) : 
-		(boundary_included ? ghost : ghost*2);
+	return id == -1  ? (boundary_included ? start-ghost : start) : 
+		id == 1  ? (boundary_included ? nn+start: nn+start-ghost) : 
+		(boundary_included ? start: start+ghost);
 }
 
 size_t
 get_compute_output_dim(const int id, const size_t ghost, const size_t nn, const bool boundary_included)
 {
-
 	return id == 0 ? 
 		 (boundary_included ? nn : nn - ghost*2) : 
 		 ghost;
 }
 size_t
-get_compute_input_position(const int id, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
+get_compute_input_position(const int id, const size_t start, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
 {
-	const auto output_position = get_compute_output_position(id,ghost,nn,boundary_included);
+	const auto output_position = get_compute_output_position(id,start,ghost,nn,boundary_included);
 	if(depends_on_boundary) return output_position - ghost;
 	else return output_position;
 }
@@ -289,11 +288,17 @@ get_compute_input_dim(const int id, const size_t ghost, const size_t nn, const b
 	else return output_dims;
 }
 size_t
-get_exchange_output_pos(const int id, const size_t ghost, const size_t nn, const bool bottom_included)
+get_exchange_output_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included)
 {
 	    if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
 	    if(bottom_included) return 0;
-      	    return  id == -1  ? 0 : id == 1 ? ghost+ nn :  ghost;
+      	    return  id == -1  ? start-ghost : id == 1 ? start+nn : start;
+}
+size_t
+get_exchange_input_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included)
+{
+	const auto output_pos = get_exchange_output_pos(id,start,ghost,nn,bottom_included);
+	return id == -1 ? output_pos + ghost : id == 1 ? output_pos - ghost : output_pos;
 }
 size_t
 get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const bool bottom_included, const bool top_included)
@@ -307,7 +312,7 @@ get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const
 }
 
 
-Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary boundary_included, Volume nn, const RegionMemoryInputParams mem_)
+Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary boundary_included, Volume start, Volume nn, const RegionMemoryInputParams mem_)
     : family(family_), tag(tag_) 
 {
     const Volume ghosts = to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
@@ -339,9 +344,9 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       const AcBoundary computes_on_boundary = boundary_included;
       // clang-format off
       position = {
-	    get_compute_output_position(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
-	    get_compute_output_position(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
-	    get_compute_output_position(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z)
+	    get_compute_output_position(id.x,start.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
+	    get_compute_output_position(id.y,start.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
+	    get_compute_output_position(id.z,start.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z)
       };
       // clang-format on
       dims = {
@@ -360,9 +365,9 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       const AcBoundary computes_on_boundary = boundary_included;
       // clang-format off
       position = {
-	    get_compute_input_position(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
-	    get_compute_input_position(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y,depends_on_boundary & BOUNDARY_Y),
-	    get_compute_input_position(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z,depends_on_boundary & BOUNDARY_Z)
+	    get_compute_input_position(id.x,start.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
+	    get_compute_input_position(id.y,start.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y,depends_on_boundary & BOUNDARY_Y),
+	    get_compute_input_position(id.z,start.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z,depends_on_boundary & BOUNDARY_Z)
       };
       // clang-format on
       dims = {
@@ -383,9 +388,9 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       case RegionFamily::Exchange_output: {
       // clang-format off
       position = {
-	    get_exchange_output_pos(id.x,ghosts.x,nn.x,boundary_included & BOUNDARY_X_BOT),
-	    get_exchange_output_pos(id.y,ghosts.y,nn.y,boundary_included & BOUNDARY_Y_BOT),
-	    get_exchange_output_pos(id.z,ghosts.z,nn.z,boundary_included & BOUNDARY_Z_BOT),
+	    get_exchange_output_pos(id.x,start.x,ghosts.x,nn.x,boundary_included & BOUNDARY_X_BOT),
+	    get_exchange_output_pos(id.y,start.y,ghosts.y,nn.y,boundary_included & BOUNDARY_Y_BOT),
+	    get_exchange_output_pos(id.z,start.z,ghosts.z,nn.z,boundary_included & BOUNDARY_Z_BOT),
       };
       // clang-format on
       dims = {
@@ -396,10 +401,17 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       break;
       }
       case RegionFamily::Exchange_input: {
-      position = {id.x == 1 ? nn.x : ghosts.x, id.y == 1 ? nn.y : ghosts.y,
-      		  id.z == 1 ? nn.z : ghosts.z};
-      dims = {id.x == 0 ? nn.x : ghosts.x, id.y == 0 ? nn.y : ghosts.y,
-      	      id.z == 0 ? nn.z : ghosts.z};
+      position = {
+	    get_exchange_input_pos(id.x,start.x,ghosts.x,nn.x,boundary_included & BOUNDARY_X_BOT),
+	    get_exchange_input_pos(id.y,start.y,ghosts.y,nn.y,boundary_included & BOUNDARY_Y_BOT),
+	    get_exchange_input_pos(id.z,start.z,ghosts.z,nn.z,boundary_included & BOUNDARY_Z_BOT),
+      };
+      //TP: input and output have same dims
+      dims = {
+	      get_exchange_output_dim(id.x,ghosts.x,nn.x, boundary_included & BOUNDARY_X_BOT,boundary_included & BOUNDARY_X_TOP),
+	      get_exchange_output_dim(id.y,ghosts.y,nn.y, boundary_included & BOUNDARY_Y_BOT,boundary_included & BOUNDARY_Y_TOP),
+	      get_exchange_output_dim(id.z,ghosts.z,nn.z, boundary_included & BOUNDARY_Z_BOT,boundary_included & BOUNDARY_Z_TOP),
+      	    };
       break;
       }
       default: {
@@ -409,8 +421,8 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       volume = dims.x * dims.y * dims.z;
       }
       
-      Region::Region(RegionFamily family_, int3 id_, Volume nn, const RegionMemoryInputParams mem_)
-      : Region{family_, id_to_tag(id_), BOUNDARY_XYZ, BOUNDARY_NONE, nn, mem_}
+      Region::Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, const RegionMemoryInputParams mem_)
+      : Region{family_, id_to_tag(id_), BOUNDARY_XYZ, BOUNDARY_NONE, position_, nn, mem_}
       {
       ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
       }
@@ -765,11 +777,11 @@ Task::poll_stream()
 }
 
 /* Computation */
-ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
+ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
-           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, nn,{op.fields_out, op.num_fields_out,
+           Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start, dims, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
+           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start,dims,{op.fields_out, op.num_fields_out,
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
 		   op.outputs_out, op.num_outputs_out}),
@@ -1123,12 +1135,12 @@ get_send_counterpart_ranks(const Device device, const int rank, const int3 outpu
 
 
 // HaloExchangeTask
-HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag,
+HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int halo_region_tag,
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, grid_info.nn,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
-           Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, grid_info.nn, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, dims,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
+           Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
       shear_periodic(shear_periodic_),
 
@@ -1534,11 +1546,11 @@ SyncTask::advance(const TraceFile* trace_file)
     acGridSynchronizeStream(STREAM_ALL);
 }
 
-ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume nn, Device device_,
+ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in}),
-           Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, nn,{op.fields_out, op.num_fields_out,op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, start, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in}),
+           Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn,{op.fields_out, op.num_fields_out,op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -1555,10 +1567,10 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, Volume n
 
     const Volume ghosts = to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
 
-    input_region.position = {0,0,0};
+    input_region.position = {start.x-ghosts.x,start.y-ghosts.y,start.z-ghosts.z};
     input_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
 
-    output_region.position = {0,0,0};
+    output_region.position = {start.x-ghosts.x,start.y-ghosts.y,start.z-ghosts.z};
     output_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
 
     if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_X))
@@ -2043,11 +2055,11 @@ ReduceTask::advance(const TraceFile* trace_file)
 
 
 BoundaryConditionTask::BoundaryConditionTask(
-    AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, Volume nn, Device device_,
+    AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, nn,  {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in}),
-           Region(RegionFamily::Exchange_output, region_tag, BOUNDARY_NONE, BOUNDARY_NONE, nn, {op.fields_out, op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, nn,  {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in}),
+           Region(RegionFamily::Exchange_output, region_tag, BOUNDARY_NONE, BOUNDARY_NONE, start, nn, {op.fields_out, op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
        boundary_normal(boundary_normal_),
        fieldwise(op.fieldwise)
