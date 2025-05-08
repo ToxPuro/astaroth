@@ -1377,6 +1377,12 @@ main(int argc, char** argv)
     // Set up certain periodic actions and run them for i == 0 //
     /////////////////////////////////////////////////////////////
 
+    if (pid == 0) {
+        FILE* header_file = fopen("grid_info.csv", "w");
+	fprintf(header_file,"dsx,dsy,dsz\n");
+	fprintf(header_file,"%g,%g,%g\n",info[AC_ds].x,info[AC_ds].y,info[AC_ds].z);
+	fclose(header_file);
+    }
     FILE* diag_file = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
     // TODO: should probably always check for NaN's, not just at start_step = 0
