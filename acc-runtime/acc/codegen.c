@@ -2876,9 +2876,22 @@ is_value_applicable_type(const char* expr)
 }
 
 bool
+is_arr_type(const char* var)
+{
+	const Symbol* sym = get_symbol(NODE_VARIABLE_ID, intern(var), NULL);
+	if(!sym) return false;
+	if(sym->tspecifier && strstr(sym->tspecifier,"*")) return true;
+	return false;
+}
+
+bool
 is_output_type(const char* var)
 {
-	return check_symbol(NODE_VARIABLE_ID,intern(var),0,OUTPUT_STR);
+	const Symbol* sym = get_symbol(NODE_VARIABLE_ID, intern(var), NULL);
+	if(!sym) return false;
+	if(str_vec_contains(sym->tqualifiers,OUTPUT_STR)) return true;
+	if(sym->tspecifier && strstr(sym->tspecifier,"OutputParam")) return true;
+	return false;
 }
 
 
@@ -7247,6 +7260,10 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
+			if(is_output_type(call_info.expr.data[i]) && is_arr_type(call_info.expr.data[i]))
+			{
+				expr = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,expr);
+			}
 			//expr->expr_type = params_info.types.data[i-offset];
 			replace_node(
 					expr,
@@ -7813,7 +7830,15 @@ apply_value_to_output_types(ASTNode* node)
 	TRAVERSE_PREAMBLE(apply_value_to_output_types);
 	if(node->token != IDENTIFIER || !node->buffer) return;
 	if(!is_output_type(node->buffer)) return;
-	replace_node(node,create_func_call_expr(OUTPUT_VALUE_STR,node));
+	if(is_arr_type(node->buffer))
+	{
+		ASTNode* base = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,node);
+		replace_node(base,create_func_call_expr(OUTPUT_VALUE_STR,base));
+	}
+	else
+	{
+		replace_node(node,create_func_call_expr(OUTPUT_VALUE_STR,node));
+	}
 }
 
 void
@@ -8289,7 +8314,22 @@ expand_allocating_types_base(ASTNode* node)
         //if(qualifier) return;
         const char* type = intern(combine_all_new(type_node));
         const ASTNode* tquals = node->lhs->rhs ? node->lhs->lhs : NULL;
-        if(!is_allocating_type(type)) return res;
+	bool is_output = false;
+	if(tquals)
+	{
+		node_vec tquals_vec = get_nodes_in_list(tquals);
+		for(size_t i = 0; i < tquals_vec.size; ++i)
+		{
+			const ASTNode* tqual = get_node(NODE_TQUAL,tquals_vec.data[i]);
+			if(tqual->lhs && tqual->lhs->buffer && tqual->lhs->buffer == intern("output"))
+				is_output = true;
+		}
+		free_node_vec(&tquals_vec);
+	}
+        if(!is_allocating_type(type) && !is_output) 
+	{
+		return res;
+	}
         const bool array_decl = get_node(NODE_ARRAY_ACCESS,node);
         ASTNode* declaration_list_head = node->rhs;
         if(array_decl)
@@ -8312,7 +8352,8 @@ expand_allocating_types_base(ASTNode* node)
                 for(int i=0; i<num_elems;++i)
                 {
                         ASTNode* decl = astnode_create((NODE_DECLARATION | NODE_GLOBAL),
-                                        create_type_declaration_with_qualifiers(tquals,type),
+                                        create_type_declaration_with_qualifiers(tquals,
+						is_output ? intern(remove_substring(strdup(type),"*")) : type),
                                         astnode_dup(id_nodes.data[i],NULL)
                                         );
                         ASTNode* res_node = astnode_create(NODE_UNKNOWN,decl,NULL);
@@ -8327,7 +8368,12 @@ expand_allocating_types_base(ASTNode* node)
 
                 //TP: create the equivalent of const Field CHEMISTRY = [CHEMISTRY_0, CHEMISTRY_1,...,CHEMISTRY_N]
                 ASTNode* arr_initializer = create_arr_initializer(elems);
-                ASTNode* type_declaration = create_type_declaration("const",sprintf_intern("%s*",type));
+
+
+                ASTNode* type_declaration = create_type_declaration("const",
+			is_output ? sprintf_intern("%sOutputParam*", intern(remove_substring(strdup(type),"*"))) : sprintf_intern("%s*",type)
+		);
+
                 ASTNode* const_declaration = create_const_declaration(arr_initializer,field_name_str,type_declaration);
 
                 //TP: replace the original field identifier e.g. CHEMISTRY with the generated list of handles

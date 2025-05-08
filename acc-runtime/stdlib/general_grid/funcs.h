@@ -75,3 +75,28 @@ grid_center() {
     }
     fatal_error_message(false,"grid_center only implemented in Cartesian!\n");
 }
+get_integration_weight()
+{
+	w = 1.0
+	if(AC_nonequidistant_grid.x) w *= AC_mapping_func_derivative_x[vertexIdx.x]
+	else w *= AC_ds.x
+
+	if(AC_nonequidistant_grid.y) w *= AC_mapping_func_derivative_y[vertexIdx.y]
+	else w *= AC_ds.y
+
+	if(AC_nonequidistant_grid.z) w *= AC_mapping_func_derivative_z[vertexIdx.z]
+	else w *= AC_ds.z
+
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		r = AC_r[vertexIdx.x]
+		w *= r*r
+		w *= AC_sin_theta[vertexIdx.y]
+	}
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		r = AC_r[vertexIdx.x]
+		w *= r
+	}
+	return w
+}
