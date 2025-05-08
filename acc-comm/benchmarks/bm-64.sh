@@ -28,7 +28,7 @@ $SRUN ./bm_collective_comm 1024 1024 1024 3 2 100
 $SRUN ./bm_collective_comm 1024 1024 1024 3 4 100
 $SRUN ./bm_collective_comm 1024 1024 1024 3 8 100
 $SRUN ./bm_collective_comm 1024 1024 1024 3 16 100
-$SRUN ./bm_collective_comm 1024 1024 1024 3 32 100
+## $SRUN ./bm_collective_comm 1024 1024 1024 3 32 100 # Do not use, too large
 
 # Strong scaling
 ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 256,256,256 --job-id $SLURM_JOB_ID
