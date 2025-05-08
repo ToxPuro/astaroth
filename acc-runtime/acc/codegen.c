@@ -263,7 +263,7 @@ is_called(const ASTNode* node)
 bool skip_kernel_in_analysis[MAX_KERNELS] = {};
 #define MAX_FUNCS (1100)
 #define MAX_COMBINATIONS (1000)
-#define MAX_DFUNCS (1000)
+static int MAX_DFUNCS = 0;
 // Symbols
 #define MAX_ID_LEN (256)
 typedef struct {
@@ -9326,6 +9326,7 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
   		params.do_checks = true;
   		traverse_base(root, 0, NULL, params);
 	}
+	MAX_DFUNCS = count_symbols_type(NODE_DFUNCTION_ID);
         duplicate_dfuncs = get_duplicate_dfuncs(root);
 
 	mark_first_declarations(root);
