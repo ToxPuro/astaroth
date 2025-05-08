@@ -936,6 +936,7 @@ main(int argc, char** argv)
             break;
         case 'k':
             initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+            initial_mesh_procedure_param = optarg;
             break;
         case 'i':
             if (strcmp(optarg, "Haatouken") == 0) {
@@ -1196,6 +1197,18 @@ main(int argc, char** argv)
         // Randomize
         acLogFromRootProc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
         AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+	AcKernel initcond = !initial_mesh_procedure_param ? randomize : AC_NULL_KERNEL;
+	if(initial_mesh_procedure_param)
+	{
+		for(int kernel = 0; kernel < NUM_KERNELS; ++kernel)
+			if(!strcmp(initial_mesh_procedure_param,kernel_names[kernel]))
+				initcond = AcKernel(kernel);
+	}
+	if(initcond == AC_NULL_KERNEL)
+	{
+		acLogFromRootProc(pid,"Did find Kernel %s for initializing mesh!\n",initial_mesh_procedure_param);
+		exit(EXIT_FAILURE);
+	}
         acGridLaunchKernel(STREAM_DEFAULT, initcond, dims.n0, dims.n1);
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
