@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <fstream>
 #include <iostream>
 
 namespace ac {
@@ -33,4 +34,29 @@ class timer {
         reset();
     }
 };
+
+class timewriter {
+  private:
+    ac::timer   m_timer;
+    std::string m_path;
+
+  public:
+    timewriter(const std::string& path)
+        : m_path{path}
+    {
+        std::ofstream file;
+        file.open(m_path);
+        file << "label,ns" << std::endl;
+        file.close();
+    }
+
+    void log(const std::string& label)
+    {
+        std::ofstream file;
+        file.open(m_path, std::ios_base::app);
+        file << label << "," << m_timer.lap_ns() << std::endl;
+        file.close();
+    }
+};
+
 } // namespace ac
