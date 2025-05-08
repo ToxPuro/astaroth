@@ -1,0 +1,211 @@
+#include "../../../acc-runtime/stdlib/general_grid"
+#include "../../../acc-runtime/stdlib/general_derivs.h"
+#include "../../../acc-runtime/stdlib/math"
+#include "../../../acc-runtime/stdlib/bc.h"
+#include "../../../acc-runtime/stdlib/general_operators.h"
+Field POTENTIAL
+Field DENSITY
+Field ANALYTICAL
+Field RESIDUAL
+
+int AC_n_solving_steps = 1000
+AcReal AC_power_law_mapping_exponent = 1.0
+int AC_charge_radius_points = 10
+real AC_density_charge = 0.0
+poisson_laplacian_neighbours(Field f)
+{
+	return laplace_neighbours(f)
+}
+
+jacobi_update()
+{
+	return (DENSITY-poisson_laplacian_neighbours(POTENTIAL))/laplace_central_coeff()
+}
+fixed_boundary Kernel jacobi_step_kernel()
+{
+	write(POTENTIAL,jacobi_update())
+}
+real AC_SOR_omega
+const int RED   = 0
+const int BLACK = 1
+
+sor_red_black(int color)
+{
+	res = (1-AC_SOR_omega)*POTENTIAL +AC_SOR_omega*jacobi_update()
+	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == color)
+        {
+		write(POTENTIAL,res)
+	}
+	else
+	{
+		write(POTENTIAL,POTENTIAL)
+	}
+}
+fixed_boundary Kernel sor_red()
+{
+	sor_red_black(RED)
+}
+fixed_boundary Kernel sor_black()
+{
+	sor_red_black(BLACK)
+}
+output real AC_residual2
+Kernel residual_kernel()
+{
+	r = laplace_2nd(POTENTIAL)-DENSITY
+	reduce_sum(r*r,AC_residual2)
+}
+
+
+Kernel write_residual()
+{
+	r = laplace_2nd(POTENTIAL)-DENSITY
+	write(RESIDUAL,r)
+	//Laplace
+	/** 
+	R_max = grid_position((int3){36,NGHOST,NGHOST}).x
+	R_min = grid_position((int3){NGHOST-1,NGHOST,NGHOST}).x
+	R = grid_position().x
+	B = 1.0/((1.0/R_min) - (1.0/R_max))
+	write(ANALYTICAL, -(B/R_max) + (B/R))
+	**/
+	R = AC_r[AC_charge_radius_points]
+	r = grid_position().x
+	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
+	if(vertexIdx.x <= AC_charge_radius_points)
+	{
+		write(ANALYTICAL,M*(r*r-3*R*R)/(2*R*R*R))
+	}
+	else
+	{
+		write(ANALYTICAL,-M/r)
+	}
+}
+
+real AC_k = 2.0
+Kernel init()
+{
+	pos = grid_position()
+	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
+	{
+		write(DENSITY,sin(AC_k*AC_REAL_PI*pos.x)*sin(AC_k*AC_REAL_PI*pos.y))
+	}
+        //Diract delta on the first shell
+	/**
+	else
+	{
+	  if(globalVertexIdx.x == NGHOST)
+	  {
+	  	write(DENSITY,AC_density_charge/(4.0*AC_REAL_PI*pos.x*pos.x*AC_ds.x))
+	  }
+	  else
+	  {
+	  	write(DENSITY,0.0)
+	  }
+	}
+	**/
+	//Constant density on the sphere of radius R where R = AC_r[AC_charge_radius_points]
+	if(globalVertexIdx.x <= AC_charge_radius_points)
+	{
+		write(DENSITY,4*AC_REAL_PI*AC_density_charge)
+	}
+	else
+	{
+		write(DENSITY,0.0)
+	}
+	write(POTENTIAL,0.0)
+}
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps
+initcond(bcs)
+{
+	init()
+}
+
+
+analytic_potential_inside(Field f)
+{
+        const int3 normal = get_normal()
+        const int3 boundary = get_boundary(normal)
+        int3 domain = boundary
+        int3 ghost  = boundary
+	R = AC_r[AC_charge_radius_points]
+	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
+        for i in 0:NGHOST
+        {
+                domain = domain - normal
+                ghost  = ghost  + normal
+		r = grid_position(ghost).x
+		//Laplace
+                //f[ghost.x][ghost.y][ghost.z] = 1.0;
+		//Shell
+                //f[ghost.x][ghost.y][ghost.z] = 1.0/AC_first_gridpoint.x;
+		//Sphere
+		f[ghost.x][ghost.y][ghost.z] = M*(r*r-3*R*R)/(2*R*R*R)
+        }
+}
+
+analytic_potential_outside(Field f)
+{
+        const int3 normal = get_normal()
+        const int3 boundary = get_boundary(normal)
+        int3 domain = boundary
+        int3 ghost  = boundary
+	R = AC_r[AC_charge_radius_points]
+	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
+        for i in 0:NGHOST
+        {
+                domain = domain - normal
+                ghost  = ghost  + normal
+		r = grid_position(ghost).x
+		//Laplace
+                //f[ghost.x][ghost.y][ghost.z] = 0.0;
+		//Shell
+                //f[ghost.x][ghost.y][ghost.z] = 1.0/grid_position().x
+		//Sphere
+		f[ghost.x][ghost.y][ghost.z] = -M/r
+        }
+}
+BoundConds jacobi_bcs
+{
+	analytic_potential_inside(BOUNDARY_X_BOT,POTENTIAL)
+	analytic_potential_outside(BOUNDARY_X_TOP,POTENTIAL)
+	ac_bc_sym(BOUNDARY_Y,POTENTIAL,1)
+	periodic(BOUNDARY_Z)
+	//Cartesian 
+	//periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps
+jacobi_step(jacobi_bcs)
+{
+	jacobi_step_kernel()
+}
+
+ComputeSteps
+sor_red_black_step(jacobi_bcs)
+{
+	sor_red()
+	sor_black()
+}
+ComputeSteps
+sor_red_step(jacobi_bcs)
+{
+	sor_red()
+}
+ComputeSteps
+sor_black_step(jacobi_bcs)
+{
+	sor_black()
+}
+ComputeSteps
+get_residual(jacobi_bcs)
+{
+	residual_kernel()
+	write_residual()
+}
+

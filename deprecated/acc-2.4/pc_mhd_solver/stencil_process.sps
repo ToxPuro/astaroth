@@ -231,48 +231,10 @@ helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vecto
     return force;
 }
 
-Vector
-forcing_OLD(int3 globalVertexIdx, Scalar dt)
-{
-    Vector a         = Scalar(.5) * (Vector){globalGridN.x * AC_dsx, globalGridN.y * AC_dsy,
-                                     globalGridN.z * AC_dsz}; // source (origin)
-    Vector xx        = (Vector){(globalVertexIdx.x - DCONST(AC_nx_min)) * AC_dsx,
-                         (globalVertexIdx.y - DCONST(AC_ny_min)) * AC_dsy,
-                         (globalVertexIdx.z - DCONST(AC_nz_min)) * AC_dsz}; // sink (current index)
-    const Scalar cs2 = AC_cs2_sound;
-    const Scalar cs  = sqrt(cs2);
-
-    // Placeholders until determined properly
-    Scalar magnitude = AC_forcing_magnitude;
-    Scalar phase     = AC_forcing_phase;
-    Vector k_force   = (Vector){AC_k_forcex, AC_k_forcey, AC_k_forcez};
-    Vector ff_re     = (Vector){AC_ff_hel_rex, AC_ff_hel_rey, AC_ff_hel_rez};
-    Vector ff_im     = (Vector){AC_ff_hel_imx, AC_ff_hel_imy, AC_ff_hel_imz};
-
-    // Determine that forcing funtion type at this point.
-    // Vector force = simple_vortex_forcing(a, xx, magnitude);
-    // Vector force = simple_outward_flow_forcing(a, xx, magnitude);
-    Vector force = helical_forcing(magnitude, k_force, xx, ff_re, ff_im, phase);
-
-    // Scaling N = magnitude*cs*sqrt(k*cs/dt)  * dt
-    const Scalar NN = cs * sqrt(AC_kaver * cs);
-    // MV: Like in the Pencil Code. I don't understandf the logic here.
-    force.x = sqrt(dt) * NN * force.x;
-    force.y = sqrt(dt) * NN * force.y;
-    force.z = sqrt(dt) * NN * force.z;
-
-    if (is_valid(force)) {
-        return force;
-    }
-    else {
-        return (Vector){0, 0, 0};
-    }
-}
-
 // PC-style helical forcing with support for profiles
 Vector
-forcing(int3 vertexIdx, int3 globalVertexIdx, Scalar dt, ScalarArray profx, ScalarArray profy,
-        ScalarArray profz, ScalarArray profx_hel, ScalarArray profy_hel, ScalarArray profz_hel)
+forcing(int3 vertexIdx, int3 globalVertexIdx, Scalar dt, ScalarArray profx_ampl, ScalarArray profy_ampl,
+        ScalarArray profz_ampl, ScalarArray profx_hel, ScalarArray profy_hel, ScalarArray profz_hel)
 {
     Vector pos = (Vector){(globalVertexIdx.x - DCONST(AC_nx_min)) * AC_dsx,
                           (globalVertexIdx.y - DCONST(AC_ny_min)) * AC_dsy,
@@ -298,7 +260,7 @@ forcing(int3 vertexIdx, int3 globalVertexIdx, Scalar dt, ScalarArray profx, Scal
     Complex fxyz = fx * fy * fz;
 
     // TODO recheck indices
-    Scalar force_ampl    = profx[vertexIdx.x - NGHOST] * profy[vertexIdx.y] * profz[vertexIdx.z];
+    Scalar force_ampl    = profx_ampl[vertexIdx.x - NGHOST] * profy_ampl[vertexIdx.y] * profz_ampl[vertexIdx.z];
     Scalar prof_hel_ampl = profx_hel[vertexIdx.x - NGHOST] * profy_hel[vertexIdx.y] *
                            profz_hel[vertexIdx.z];
 
@@ -351,7 +313,7 @@ solve()
 
 #if LFORCING
     if (step_number == 2) {
-        out_uu = out_uu + forcing(vertexIdx, globalVertexIdx, dt, AC_profx, AC_profy, AC_profz,
+        out_uu = out_uu + forcing(vertexIdx, globalVertexIdx, dt, AC_profx_ampl, AC_profy_ampl, AC_profz_ampl,
                                   AC_profx_hel, AC_profy_hel, AC_profz_hel);
     }
 #endif

@@ -699,12 +699,12 @@ momentum(const VectorData uu, const ScalarData lnrho
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
 #endif
     const Vector mom = -mul(gradients(uu), vecvalue(uu)) -
-                       cs2 * (((Scalar)(1.) / getReal(AC_cp_sound)) * gradient(ss) +
+                       cs2 * (((Scalar)(1.) / getReal(AC_cp)) * gradient(ss) +
                               gradient(lnrho)) +
 #if LMAGNETIC
                        inv_rho * cross(j, B) +
 #endif
-                       getReal(AC_nu_visc) *
+                       getReal(AC_nu) *
                            (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
                             (Scalar)(2.) * mul(S, gradient(lnrho))) +
                        getReal(AC_zeta) * gradient_of_divergence(uu);
@@ -722,7 +722,7 @@ momentum(const VectorData uu, const ScalarData lnrho
 #if LMAGNETIC
                        inv_rho * cross(j, B) +
 #endif
-                       getReal(AC_nu_visc) *
+                       getReal(AC_nu) *
                            (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
                             (Scalar)(2.) * mul(S, gradient(lnrho))) +
                        getReal(AC_zeta) * gradient_of_divergence(uu);
@@ -754,7 +754,7 @@ induction(const VectorData uu, const VectorData aa)
 static inline Scalar
 lnT(const ScalarData ss, const ScalarData lnrho)
 {
-    const Scalar lnT = getReal(AC_lnT0) + getReal(AC_gamma) * value(ss) / getReal(AC_cp_sound) +
+    const Scalar lnT = getReal(AC_lnTT0) + getReal(AC_gamma) * value(ss) / getReal(AC_cp) +
                        (getReal(AC_gamma) - (Scalar)(1.)) * (value(lnrho) - getReal(AC_lnrho0));
     return lnT;
 }
@@ -763,15 +763,15 @@ lnT(const ScalarData ss, const ScalarData lnrho)
 static inline Scalar
 heat_conduction(const ScalarData ss, const ScalarData lnrho)
 {
-    const Scalar inv_cp_sound = (Scalar)(1.) / getReal(AC_cp_sound);
+    const Scalar inv_cp = (Scalar)(1.) / getReal(AC_cp);
 
     const Vector grad_ln_chi = -gradient(lnrho);
 
-    const Scalar first_term = getReal(AC_gamma) * inv_cp_sound * laplace(ss) +
+    const Scalar first_term = getReal(AC_gamma) * inv_cp * laplace(ss) +
                               (getReal(AC_gamma) - (Scalar)(1.)) * laplace(lnrho);
-    const Vector second_term = getReal(AC_gamma) * inv_cp_sound * gradient(ss) +
+    const Vector second_term = getReal(AC_gamma) * inv_cp * gradient(ss) +
                                (getReal(AC_gamma) - (Scalar)(1.)) * gradient(lnrho);
-    const Vector third_term = getReal(AC_gamma) * (inv_cp_sound * gradient(ss) + gradient(lnrho)) +
+    const Vector third_term = getReal(AC_gamma) * (inv_cp * gradient(ss) + gradient(lnrho)) +
                               grad_ln_chi;
 
     const Scalar chi = (Scalar)(AC_THERMAL_CONDUCTIVITY) /
@@ -795,7 +795,7 @@ entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
     const Vector j = (Vector){0.0, 0.0, 0.0};
 #endif
     const Scalar RHS = H_CONST - C_CONST + getReal(AC_eta) * getReal(AC_mu0) * dot(j, j) +
-                       (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu_visc) * contract(S) +
+                       (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu) * contract(S) +
                        getReal(AC_zeta) * exp(value(lnrho)) * divergence(uu) * divergence(uu);
 
     return -dot(vecvalue(uu), gradient(ss)) + inv_pT * RHS + heat_conduction(ss, lnrho);
@@ -810,7 +810,7 @@ entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
     return - dot(vecvalue(uu), gradient(ss))
            + inv_pT * ( H_CONST - C_CONST
                 + getReal(AC_eta) * getReal(AC_mu0) * dot(j, j)
-                + (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu_visc) * contract(S)
+                + (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu) * contract(S)
                 + getReal(AC_zeta) * exp(value(lnrho)) * divergence(uu) * divergence(uu)
             )
             + heat_conduction(ss, lnrho);
@@ -882,7 +882,7 @@ forcing(int3 globalVertexIdx, Scalar dt)
         (globalVertexIdx.y - getInt(AC_ny_min)) * getReal(AC_dsy),
         (globalVertexIdx.z - getInt(AC_nz_min)) * getReal(AC_dsz),
     }; // sink (current index)
-    const Scalar cs2 = getReal(AC_cs2_sound);
+    const Scalar cs2 = getReal(AC_cs2);
     const Scalar cs  = sqrt(cs2);
 
     // Placeholders until determined properly
@@ -1046,10 +1046,17 @@ checkConfiguration(const AcMeshInfo info)
     }
 #endif
 
+<<<<<<< HEAD:src/utils/modelsolver.c
+    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsx]));
+    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsy]));
+    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsz]));
+    // ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2]));
+=======
     ERRCHK_ALWAYS(is_valid((Scalar)1. / info.real_params[AC_dsx]));
     ERRCHK_ALWAYS(is_valid((Scalar)1. / info.real_params[AC_dsy]));
     ERRCHK_ALWAYS(is_valid((Scalar)1. / info.real_params[AC_dsz]));
     // ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
+>>>>>>> origin/master:src/utils/modelsolver-legacy-do-not-modify.c
 }
 
 AcResult
@@ -1063,11 +1070,19 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
 #endif
 
     // Setup built-in parameters
+<<<<<<< HEAD:src/utils/modelsolver.c
+    // mesh_info->real_params[AC_inv_dsx] = (AcReal)(1.0) / mesh_info->real_params[AC_dsx];
+    // mesh_info->real_params[AC_inv_dsy] = (AcReal)(1.0) / mesh_info->real_params[AC_dsy];
+    // mesh_info->real_params[AC_inv_dsz] = (AcReal)(1.0) / mesh_info->real_params[AC_dsz];
+    // mesh_info->real_params[AC_cs2] = mesh_info->real_params[AC_cs] *
+    //                                       mesh_info->real_params[AC_cs];
+=======
     // mesh_info->real_params[AC_inv_dsx] = (Scalar)(1.0) / mesh_info->real_params[AC_dsx];
     // mesh_info->real_params[AC_inv_dsy] = (Scalar)(1.0) / mesh_info->real_params[AC_dsy];
     // mesh_info->real_params[AC_inv_dsz] = (Scalar)(1.0) / mesh_info->real_params[AC_dsz];
     // mesh_info->real_params[AC_cs2_sound] = mesh_info->real_params[AC_cs_sound] *
     //                                       mesh_info->real_params[AC_cs_sound];
+>>>>>>> origin/master:src/utils/modelsolver-legacy-do-not-modify.c
     checkConfiguration(*mesh_info);
 
     AcMesh intermediate_mesh;

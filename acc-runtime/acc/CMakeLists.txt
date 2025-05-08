@@ -1,32 +1,119 @@
 ## CMake settings
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.10)
 
 ## Project settings
 project(acc C)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Options
-option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time." OFF)
+option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time, runtime compilation lessens this" OFF)
+option(OPTIMIZE_INPUT_PARAMS "Generates optimized kernels for each possible combination of kernel input parameters (taking only those into account that can have a finite number of different values), works well with OPTIMIZE_MEM_ACCESSES since reduces the amount of conditional control-flow in kernels" OFF)
+option(ELIMINATE_CONDITIONALS "Eliminates conditionals which are know to be or not to be taken at compilation time. Requires OPTIMIZE_MEM_ACCESSES=ON" OFF)
+option(OPTIMIZE_FIELDS       "Optimizes fields to be auxiliary,(non-)communicated and if allowed dead based on writes, reads and stencil accesses in kernels. Pitfalls are conditional accesses and writes, which runtime compilation can lessen" OFF)
+option(ALLOW_DEAD_VARIABLES  "Must be on to allow the program to have dead i.e. not allocated fields or arrays" OFF)
+option(OPTIMIZE_ARRAYS       "Does not allocate arrays that are not used based on DSL. Runtime compilation and optimize conditionals help to prevent unnoticed accesses in conditionals" OFF)
+option(FUSE_KERNELS          "Whether to fuse kernels or not" OFF)
+option(INLINING "Whether to inline all functions or not" OFF)
+option(BUFFERED_REDUCTIONS "Whether reduction values are written out immediately or at the end of a kernel. By default on since gives better performance on AMD." ON)
 
-## Find dependencies
-find_package(BISON)
-find_package(FLEX)
-
-bison_target(parser ac.y ${PROJECT_BINARY_DIR}/tab.c VERBOSE) # COMPILE_FLAGS -Wcounterexamples) # Counterexamples need relatively new Bison (at least 3.7 works)
-flex_target(scanner ac.l ${PROJECT_BINARY_DIR}/yy.c)
-add_flex_bison_dependency(scanner parser)
-
-## Include directories
-include_directories(.)
-include_directories(${PROJECT_BINARY_DIR})
-
-## Executable
-add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
-target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-target_compile_options(acc PRIVATE "-Wno-sign-compare") # Skip sign-compare warning due to a false positive in flex/bison headers
-
-if (OPTIMIZE_MEM_ACCESSES)
-    target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=1)
+#TP: if defined the user already has the executable and has exported a path to it
+set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
+if(DEFINED ACC_COMPILER_PATH)
+	add_executable(acc empty.c)
 else()
-    target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=0)
+	## Find dependencies
+	find_package(BISON)
+	find_package(FLEX)
+	add_library(tinyexpr STATIC tinyexpr.c)
+	target_link_libraries(tinyexpr PUBLIC m)
+	
+	bison_target(parser ac.y ${PROJECT_BINARY_DIR}/tab.c VERBOSE)# COMPILE_FLAGS -Wcounterexamples) # Counterexamples need relatively new Bison (at least 3.7 works)
+	flex_target(scanner ac.l ${PROJECT_BINARY_DIR}/yy.c)
+	add_flex_bison_dependency(scanner parser)
+	
+	## Include directories
+	include_directories(.)
+	include_directories(${PROJECT_BINARY_DIR})
+	
+	## Executable
+	add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
+	
+
+	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+		target_compile_definitions(acc PRIVATE -DACC_ARRAY_BOUND_CHECKS=1)
+	else()
+		target_compile_definitions(acc PRIVATE -DACC_ARRAY_BOUND_CHECKS=0)
+	endif()
+	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_PATH="${AC_BASE_PATH}/acc-runtime/built-in")
+	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_FUNCS="${AC_BASE_PATH}/acc-runtime/built-in/functions.h")
+	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_TYPEDEFS="${AC_BASE_PATH}/acc-runtime/built-in/typedefs.h")
+	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_INTRINSICS="${AC_BASE_PATH}/acc-runtime/built-in/intrinsics.h")
+	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_KERNELS="${AC_BASE_PATH}/acc-runtime/built-in/kernels.h")
+	target_compile_definitions(acc PRIVATE -DACC_BUILTIN_VARIABLES="${AC_BASE_PATH}/acc-runtime/built-in/variables.h")
+	target_compile_definitions(acc PRIVATE -DACC_GEN_PATH="${AC_BINARY_PATH}/ac_dynamic")
+	target_compile_definitions(acc PRIVATE -DACC_MATH_DIR="${AC_BASE_PATH}/acc-runtime/stdlib/math")
+	target_compile_definitions(acc PRIVATE -DACC_UTILS_INTRINSICS="${AC_BASE_PATH}/acc-runtime/stdlib/utils/intrinsics.h")
+	target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+	target_compile_definitions(acc PRIVATE -DACC_OUTPUT_DIR="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+	target_compile_definitions(acc PRIVATE -DACC_COMPILER_PATH="${PROJECT_BINARY_DIR}/acc")
+	
+	#target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}" -DACC_MATH_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/math" -DACC_UTILS_INTRINSICS="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/utils/intrinsics.h")
+	target_link_libraries(acc PRIVATE tinyexpr)
+	
+	if (OPTIMIZE_MEM_ACCESSES)
+		set(OPTIMIZE_MEM_ACCESSES_VAL 1)
+	else()
+		set(OPTIMIZE_MEM_ACCESSES_VAL 0)
+	endif()
+
+	if (BUFFERED_REDUCTIONS)
+		set(BUFFERED_REDUCTIONS_VAL 1)
+	else()
+		set(BUFFERED_REDUCTIONS_VAL 0)
+	endif()
+
+	if(INLINING)
+		set(INLINING_VAL 1)
+	else()
+		set(INLINING_VAL 0)
+	endif()
+	
+	if (OPTIMIZE_INPUT_PARAMS)
+		set(OPTIMIZE_INPUT_PARAMS_VAL 1)
+	else()
+		set(OPTIMIZE_INPUT_PARAMS_VAL 0)
+	endif()
+
+	if (ELIMINATE_CONDITIONALS)
+		set(ELIMINATE_CONDITIONALS_VAL 1)
+	else()
+		set(ELIMINATE_CONDITIONALS_VAL 0)
+	endif()
+
+	if (OPTIMIZE_FIELDS)
+		set(OPTIMIZE_FIELDS_VAL 1)
+	else()
+		set(OPTIMIZE_FIELDS_VAL 0)
+	endif()
+
+	if (ALLOW_DEAD_VARIABLES)
+		set(ALLOW_DEAD_VARIABLES_VAL 1)
+	else()
+		set(ALLOW_DEAD_VARIABLES_VAL 0)
+	endif()
+
+	if (OPTIMIZE_ARRAYS)
+		set(OPTIMIZE_ARRAYS_VAL 1)
+	else()
+		set(OPTIMIZE_ARRAYS_VAL 0)
+	endif()
+
+	if (FUSE_KERNELS)
+		set(FUSE_KERNELS_VAL 1)
+	else()
+		set(FUSE_KERNELS_VAL 0)
+	endif()
+	
+	
+	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_INPUT_PARAMS=${OPTIMIZE_INPUT_PARAMS_VAL} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL} -DOPTIMIZE_ARRAYS=${OPTIMIZE_ARRAYS_VAL} -DINLINING=${INLINING_VAL} -DFUSE_KERNELS=${FUSE_KERNELS_VAL} -DELIMINATE_CONDITIONALS=${ELIMINATE_CONDITIONALS_VAL} -DBUFFERED_REDUCTIONS=${BUFFERED_REDUCTIONS_VAL} -DALLOW_DEAD_VARIABLES=${ALLOW_DEAD_VARIABLES_VAL})
 endif()

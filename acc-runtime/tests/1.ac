@@ -3,9 +3,12 @@
 Field ff
 Stencil stencil {[0][0][0]=0}
 
+
+fn(int x){return x}
+fn(int x, int y){return x}
+fn(int x, int y, int z){return x}
+fn(){return 1}
 Kernel kernel() {
-  a
-  b
   Field lnrho
 
   a = -1
@@ -15,22 +18,24 @@ Kernel kernel() {
   c = (-1 + 2)
   d = (2 - 1)
   e = -1 + 2 * (3 - 4) / 5.0 * (5 / 4 * 2)
+  f = 1
   f *= -1
+  g = 2
   g /= -1 * -1 / (-1 * -1)
   + 1
+  h=-1
   h -= (a + 1)
   y = fn(1, 2) * -fn(fn(1, 2, c)) * fn()
   yy = real(1)
 
   // Struct member access
-  z = a.x * a.y + c.z
+  real3 vec  = real3(1.0,2.0,3.0)
+  z = vec.x * vec.y + vec.z
 
-  z.z = 1
-  d = z.f
+  vec.z = 1
+  d = vec.y
 
+  hello = [1,2,3] 
   hello[0] = 1
-  hello[0][0] = 1
-  hello.data = 1
-  hello[0].data = 1
-  hello.data[0][1].x[1][1][1].x.y.z = test.dostuff(notlegalonthelhs)
+  //hello.data[0][1].x[1][1][1].x.y.z = test.dostuff(notlegalonthelhs)
 }

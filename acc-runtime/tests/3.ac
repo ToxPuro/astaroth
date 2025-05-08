@@ -30,14 +30,20 @@ fn2() {
     }
 }
 
-nested() {
+nested(a, b, c) {
 }
 
 func(with, parameters, real test) {
+    real a,b,c
     if 0 == 0 && 1 == 1 {
         c = nested(a, b, c)
     }
 }
+
+Field lnrho
+
+continuity(x){return 1.0}
+rk3(e,f,g){return 1.0}
 
 Kernel
 a() {

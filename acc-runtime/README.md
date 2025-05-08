@@ -1,13 +1,15 @@
+
 # Building ACC runtime (incl. DSL files)
 
-The DSL source files should have a postfix `*.ac` and there should be only one
-`.ac` file per directory.
+The DSL source files should have a postfix `*.ac` and by default there should be only one
+`*.ac` file per directory. Optionally you can give the `*.ac` file to be compiled.
 
     * `mkdir build`
 
     * `cd build`
 
-    * `cmake -DDSL_MODULE_DIR=<optional path to the dir containing DSL sources> ..`
+    * `cmake -DDSL_MODULE_DIR=<path (relative to the build directory) to the dir containing DSL sources> \
+             [-DSL_MODULE_FILE=<you can optionally give the file in DSL_MODULE_DIR to be compiled>] ..`
 
     * `make -j`
 
@@ -18,16 +20,16 @@ As ACC is in active development, compiler bugs and cryptic error messages are
 expected. In case of issues, please check the following files in
 `acc-runtime/api` in the build directory.
 
-Intermediate files:
+Intermediate files: 
 
 1. `user_kernels.ac.pp_stage*`. The DSL file after a specific preprocessing stage.
-1. `user_kernels.h.raw`. The raw generated CUDA kernels without formatting applied.
+2. `user_kernels.h.raw`. The generated CUDA kernels without formatting applied.
+3. `user_kernels_backup.h.`. The generated CUDA/CPU kernels with formatting applied. 
 
-Final files:
+Final files: 
 
 1. `user_defines.h`. The project-wide defines generated with the DSL.
-1. `user_declarations.h`. Forward declarations of user kernels.
-1. `user_kernels.h`. The generated CUDA kernels.
+2. `user_kernels.h`. The generated CUDA kernels.
 
 To make inspecting the code easier, we recommend using an
 autoformatting tool, for example, `clang-format` or GNU `indent`.
@@ -46,9 +48,9 @@ autoformatting tool, for example, `clang-format` or GNU `indent`.
 
 # The Astaroth Domain-Specific Language
 
-The Astaroth Domain-Specific Language (DSL) is a high-level GPGPU language
+The Astaroth Domain-Specific Language (DSL) is a high-level general-purpose(GP)GPU language
 designed for improved productivity and performance in stencil computations. The
-Astaroth DSL compiler (acc) is a source-to-source compiler, which converts
+Astaroth DSL compiler (< build dir >/acc-runtime/acc) is a source-to-source compiler, which converts
 DSL kernels into CUDA/HIP kernels. The generated kernels provide performance
 that is on-par with hand-tuned low-level GPGPU code in stencil computations.
 Special care has been taken to ensure efficient code generation in use cases
@@ -58,56 +60,230 @@ which makes manual caching notoriously difficult.
 The Astaroth DSL is based on the stream processing model, where an array of
 instructions is executed on streams of data in parallel. A kernel is a small
 GPU program, which defines the operations performed on a number of data streams.
-In our case, data streams correspond to a vertices in a grid, similar to how
+In our case, data streams correspond to vertices in a grid, similar to how
 vertex shaders operate in graphics shading languages.
 
-# Syntax
+Since the language is still an active development user recommendations/requests for new features are **highly desirable**.
+To make a recommendation/request for a new feature make pull request where you outline the new feature and the use case it would be needed in.
 
-#### Comments and preprocessor directives
+## Comments and preprocessor directives
+The Astaroth preprocessor works similar to the C preprocessor (gcc) with one exception: 
+
+By default include files are searched relative to DSL_MODULE_DIR. 
+
+With two extensions: 
 ```
-// This is a comment
-#define    ZERO (0)   // Visible only in device code
-hostdefine ONE  (1) // Visible in both device and host code
+hostdefine ONE  (1) // Macro definition visible in both device and host code
+#include ../stdlib/math //Includes all files and directories in ../stdlib/math
+```
+## Datatypes
+The Astaroth DSL language is statically typed.
+All global variables require an explicit datatype declaration.
+Otherwise explicit typing is allowed but not required, with the exception of the parameters of overloaded functions.
+Some advanced features also require an explicit type declaration.
+By default we use C++ type inference rules (`auto`) with extensions where they would be ambiguous.
+
+### Fields
+
+A `Field` is a scalar array that can be used in conjuction with `Stencil` operations and for operations involving only the current vertex point. 
+The array containing the values of a `Field` is size of the local subdomain with the halos included so in other terms the array is of size `[AC_mlocal.x][AC_mlocal.y][AC_mlocal.z]`
+A vector field can be constructed either by combining three scalar `Fields` into a `Field3` structure or one declaring a `Field3` structure on its own.
+
+To get the value of a `Field` at the current vertex use the built-in function `value`.
+A `Field` can be used directly in unary expressions and binary arithmetic expressions (`+`, `-`, `/`,`*`)
+which is equivalent to calling `value` on the `Field`.
+Also, calling a built-in math functions with `Field` is equivalent to first calling `value` on the `Field`.
+The same applies for `Field3` and for arrays of them (`Field[]` and `Field3[]`).
+
+> Note: Internally, Field is an enum handle (VertexBufferHandle) referring to the input and output buffers (data cubes).
+> Note: The numerical value of the handle is monotonically increasing in the order of the declarations of the `Fields`.
+
+```
+Field ux, uy, uz // Three scalar fields `ux`, `uy`, and `uz`
+const Field3 uu  = Field3(ux, uy, uz) // A vector field `uu` consisting of components `ux`, `uy`, and `uz`
+field_val   = value(ux)   // Gets the value of ux from the input buffer at the current vertex
+field3_val  = value(uu)   // Gets the value of ux,uy,uz from the input buffers at the current vertex
+```
+Arrays of `Field` variables can be declared with constant dimensions. The individual `Field` elements can be accessed by indexing the declared array.
+```
+const int n_species = ...
+Field chemistry[n_species]
+for i 0:n_species
+{
+    species_val = value(chemistry[i])
+    ...
+}
 ```
 
-#### Variables
-```
-real var    // Explicit type declaration
-real dconst // The type of device constants must be explicitly specified
+### Primitive types
+The following primitive C++ types are usable: 
+* `int`
 
-var0 = 1    // The type of local variables can be left out (implicit typing)
-var1 = 1.0  // Implicit precision (determined based on compilation flags)
-var2 = 1.   // Trailing zero can be left out
-var3 = 1e3  // E notation
-var4 = 1.f  // Explicit single-precision
-var5 = 0.1d // Explicit double-precision
-var6 = "Hello"
+* `bool`
+
+* `long`
+
+* `long long`
+
+* `real` (by default double, float if DOUBLE_PRECISION=OFF)
+
+* `float`
+
+* `double`
+    
+> Note: Whenever possible one should prefer using bools compared to e.g. integers which only have the values 0 and 1, since using bools gives the DSL compiler more information, which it can use to perform optimizations.
+
+### Additional built-in types
+* `complex`
+
+* `real2`
+
+* `real3`
+
+* `real4`
+
+* `int3`
+
+* `Matrix` (3x3 matrix of reals)
+    
+We support `Matrix*real3`,`real*Matrix` and `-Matrix`.
+
+### User-defined types
+#### Structures
+Structures can be defined similar to the C syntax:
+```
+struct your_struct
+{
+    real x
+    real y
+}
+
+struct your_struct_2
+{
+    your_struct x 
+    your_struct y
+}
+```
+They can be initialized as in C, except for type inference an explicit cast might be needed.
+
+> Note: Currently, declaring multiple members from a single type specifier is not allowed.
+
+##### Operators 
+If all of the members of the structure are `real` we provide member-wise arithmetic operators (`+`, `-`, `/`, `*`) with `real` scalars.
+Additionally `+` and `-` are supported between structures of the same type, all of the members of which are `real` or `int`.
+For all operators the corresponding compound assignment operator is also supported. 
+
+#### Enums
+Enums are declared in the C syntax
+```
+enum Characters
+{
+    A,
+    B,
+    C
+}
+```
+> Note: Whenever possible one should prefer using enums compared e.g. named integers, since using enums gives the DSL compile more information which it can use to perform optimizations.
+
+##### Built-in enums
+The following enums are built-in to Astaroth
+enum AC_COORDINATE_SYSTEM
+{
+	AC_CARTESIAN_COORDINATES,
+	AC_SPHERICAL_COORDINATES,
+	AC_CYLINDRICAL_COORDINATES
+}
+### Type qualifiers
+
+* `const` Effectively the same as C++ constexpr i.e. a compile-time constant.
+
+* `dconst` The implicit qualifier if no qualifiers are defined, for global variables, stored in the device constant memory of the GPU, which makes accesses fast.
+Their values are loaded through the Astaroth config.
+
+* `gmem` Used for arrays to be allocated on the global memory of GPU
+
+>Note: For performance reasons you should use gmem arrays when different indexes are used at different vertices at the same time. 
+Additionally too large arrays on the device constant memory can degrade performance by limiting the amount of available cache too much.
+
+* `run_const`
+Variables that are constant during the execution context of Astaroth (e.g. during a timeloop in a simulation).
+By default the same as dconst, but with RUNTIME_COMPILATION=ON they will be effectively const in the compiled kernels.
+
+
+### Advanced
+* `communicated`
+The implicit qualifier for `Fields` if no qualifiers are defined, their halos are updated. 
+* `auxiliary`
+`Fields` where the input and output buffers are the same (e.g. no stencil operations and writes in the same kernel).
+
+> Note: one can combine these to have communicated auxiliary `Fields`, without `communicated`, `auxiliary` `Fields` are not communicated.
+
+* `dead`
+Tells the variable is not used and thus should not be allocated. Works for arrays and `Fields`. Passing a dead `Field` to API functions is a no-op with an appropriate error code. Intented for memory optimization where the compiler infers which `Fields` or arrays do not need to be allocated based on the computation.
+
+
+The DSL compiler can also infer these qualifiers if OPTIMIZE_FIELDS=ON from `write`, `value` and `Stencil` calls.
+Additionally the DSL compiler can infer which `Fields` can be `dead` if you also have ALLOW_DEAD_FIELDS=ON
+**Important** requires that all conditionals are known at compile-time (or when loading Astaroth if using runtime compilation).
+
+* `input`
+Designed for variables that are inputs to Kernels, but should not be allocated/loaded to the GPU.
+> Note: At the moment, mostly useful for `ComputeSteps`
+* `output`
+At the moment, restricted to `real` and `int` scalar quantities resulting from reductions across the whole subdomain.
+> Note: implicitly allocates memory on the GPU to perform reductions.
+
+* `utility`
+Tells the compiler that the `Kernel` should be skiped when inferring which `Fields` are dead.
+
+* `fixed_boundary`
+Tells the compiler that in `ComputeSteps` before the kernel boundary values inside the local subdomain should not be updated via boundary conditions. Rather the values on the boundaries should be carried over from before, i.e. the boundary values stay fixed from previous `Kernel` calls.
+
+* `boundary_condition`
+Tells the compiler that this kernel is supposed to be used as a boundary condition. As of now the only effect for boundary condition kernels is that all vertices in the computational subdomain (i.e. not halo regions) are skipped. So for example you can calculate periodic boundary conditions in all directions on a single device by launching BOUNDCOND_PERIODIC_DEVICE on the whole subdomain with halos included.
+
+
+## Variables
+Variable declaration and naming conventions follow C, except
+shadowing is not allowed: all identifiers within a scope must be unique.
+
+### Arrays 
+Instead of `{` `}` initializer of C++ we use `[` `]` 
+```
+int arr0 = [1, 2, 3] 
+arr1 = [1.0, 2.0, 3.0] //type real is inferred
+int arr2 = [[1,2,3], [3,4,5]] //Multidimensional arrays can be initialized (dimensions inferred)
+size(arr1) // Size of the array
+real arr[3] (at global scope)         //equivalent to dconst arr[3]. Dimensions need to be known at compile time
+gmem real arr[AC_nlocal.x] //declaration for global array stored on the GPU global memory. Dimensions need to be known at compile time or be dconst int variables [not expressions involving dconsts].
+gmem arr[AC_mlocal.x][AC_mlocal.y]           //Multidimensional global array.
+```
+> Note: Arrays are stored in column-major format, if you want to pass arrays in row-major set AC_host_has_row_memory_order=1. Arrays are still internally stored as column-major but the arrays are converted correctly between the two data formats. If you have a use case where having Astaroth store data in row-major format would be important make a pull request describing the use case and we can consider supporting it.  
+In branch `reference-row-major-implementation` one can find a version of Astaroth that internally supports also row-major.
+If OPTIMIZE_ARRAYS=ON the DSL compiler will identify unused `gmem` arrays and will not allocate them on the GPU.
+
+```
+Kernel kernel() {
+    write(ux, derx(ux))       // Writes the x derivative of the field `ux` to the output buffer
+    
+    unary_expr  = -ux         // is equivalent to -value(ux)
+    binary_expr = -ux*2.0*uz  // is equivalent to -value(ux)*2.0*value(uz)
+    exp_val     = exp(uz)     // is equivalent to exp(value(uz))
+}
 ```
 
-> Note: Shadowing is not allowed, all identifiers within a scope must be unique
-
-#### Arrays
-```
-int arr0 = 1, 2, 3 // The type of arrays must be explicitly specified
-real arr1 = 1.0, 2.0, 3.0
-len(arr1) // Length of an array
-```
-
-#### Casting
+### Casting
+One can use C and C++ casting.
 ```
 var7 = real(1)        // Cast
 vec0 = real3(1, 2, 3) // Cast
+complex_val = (complex){real_val,imag_val} // Cast
 ```
 
-#### Printing
+## Looping
+Loops follow the Python style
 ```
-// print is the same as `printf` in the C programming language
-print("Hello from thread (%d, %d, %d)\n", vertexIdx.x, vertexIdx.y, vertexIdx.z)
-```
-
-#### Looping
-```
-int arr = 1, 2, 3
+int arr = [1, 2, 3]
 for var in arr {
     print("%d\n", var)
 }
@@ -122,7 +298,23 @@ for i in 0:10 { // Note: 10 is exclusive
 }
 ```
 
-#### Functions
+## Functions
+Functions follow the C declaration syntax.
+
+For functions which have take in a `real` parameter one can also provide a `Field` expression in the function call, with the expression being automatically converted to `real` by calling `value` with the value of the expression.
+The same is also true for `Field3,real3`,`Field[],real[]` and `Field3[],real3[]`.
+
+Overloading is supported.
+In case there are multiple possible functions that an overloaded call could be resolved to the functions are prioritized in the following order:  
+
+* Functions that have for all input parameters their types defined and do not require converting the parameters supplied in the call to the input types
+* Functions that have for all input parameters their types defined
+* Functions that do not require converting the parameters supplied in the call to the input types
+* Rest suitable functions
+
+After applying the overloading resolution rules each function call should have only a single unique prefered function.
+> Note: This is most likely broken when declaring overloaded functions, where for some input parameters types are defined and for some not.
+A general solution to this is to define the input type of all input parameters, or simply to consider the priority rules in more detail and see why uniqueness fails.
 ```
 func(param) {
     print("%s", param)
@@ -132,46 +324,115 @@ func2(val) {
     return val
 }
 
-# Note `Kernel` type qualifier
-Kernel func3() {
-    func("Hello!")
+func3(real x) {
+	return fabs(x)
+}
+
+
+func3(real3 v) {
+	return 
+		real3
+		(
+			fabs(v.x),
+			fabs(v.y),
+			fabs(v.z)
+		)
+}
+func3(v) {
+	return 0.0
+}
+func3(v1,v2) {
+	return 0.0
+}
+elemental abs(real x)
+{
+	return fabs(x)
+}
+
+```
+> Note: Function parameters are **passed by constant reference**. Therefore input parameters **cannot be modified** and one may need to allocate temporary storage for intermediate values when performing more complex calculations.
+
+The `elemental` type qualifier on a function means that it is a pure function that returns a value,
+for which the function's semantics is composable on structures and arrays containing the type of the return value.
+
+In the previous example functions we had some duplicate code since `func3` basically applies `func2` to all of its members. 
+Since the `abs` function that takes in a `real` value has been declared `elemental` it can also be called with a `real3` and will produce the same effect as if `abs` was called on all of the members of the parameter.
+
+* A `elemental` function taking a `real` parameter can be called with:
+	* `real`
+	* `real3`
+    * `real[]`
+    * `real3[]`
+    
+
+* A `elemental` function taking a`Field` parameter can be called with:
+	* `Field`
+    * `Field3`
+    * `Field[]`
+    * `Field3[]`
+
+### Printing
+```
+// print is the same as `printf` in the C programming language
+print("Hello from thread (%d, %d, %d)\n", vertexIdx.x, vertexIdx.y, vertexIdx.z)
+```
+
+### Kernels
+Kernels are functions visible outside of the DSL code, called by the host.
+Calling kernels is the only way to execute DSL code.
+
+> Note: Kernels can not be called from other kernels.
+> Note: Array input parameters are not supported
+> Note: The types of the input parameters have to be declared.
+> Note: There are different ways to pass input parameters to kernels through API functions.
+
+```
+Kernel func3(input param) {
+
 }
 ```
 
-> Note: Function parameters are **passed by constant reference**. Therefore input parameters **cannot be modified** and one may need to allocate temporary storage for intermediate values when performing more complex calculations.
-
-> Note: Overloading is not allowed, all function identifiers must be unique
-
-#### Stencils
+### Stencils
+Stencils are functions that take in a `Field` input parameter and have an unique syntax and semantics. 
+**Importantly**, they are the only way to access values of a `Field` on other vertexes than at the current one.
+A stencil operation multiplies all points of the stencil by their corresponding coefficients and performs a binary reduction operation (`Sum` or `Max`) over these values.
+Because Stencils act uniformly on the input parameter it is not declared.
 ```
 // Format
 <Optional reduction operation> Stencil <identifier> {
     [z][y][x] = coefficient,
     ...
 }
-// where [z][y][x] is the x/y/z offset from current position.
+```
+where [z][y][x] is the x/y/z offset from the current vertex position.
 
-// For example,
+For example
+```
 Stencil example {
     [0][0][-1] = a,
-    [0][0][0] = b
-    [0][0][1] = c,
+    [0][0][0] = b,
+    [0][0][1] = c
 }
-
-// Which is equivalent to
+```
+Which is equivalent to
+```
 Sum Stencil example {
     ...
 }
+```
 
-// and is calculated equivalently to
+And is calculated equivalently to
+```
 example(field) {
     return  a * field[IDX(vertexIdx.x - 1, vertexIdx.y, vertexIdx.z)] +
             b * field[IDX(vertexIdx.x,     vertexIdx.y, vertexIdx.z)] +
             c * field[IDX(vertexIdx.x + 1, vertexIdx.y, vertexIdx.z)]
 }
+```
 
-By default, the binary operation for reducing `Stencil` elements is `Sum` (as above). Currently supported operations are `Sum` and `Max`. See the up-to-date list of the supported operations in `acc-runtime/acc/ac.y` rule `type_qualifier`.
+By default, the binary operation for reducing `Stencil` elements is `Sum` (as above). Currently supported operations are `Sum` and `Max`.
 
+```
 // Real-world example
 Max Stencil largest_neighbor {
     [1][0][0]  = 1,
@@ -179,26 +440,29 @@ Max Stencil largest_neighbor {
     [0][1][0]  = 1,
     [0][-1][0] = 1,
     [0][0][1]  = 1,
-    [0][0][-1] = 1,
+    [0][0][-1] = 1
 }
 
+real3 AC_ds
+
+//dconst variables can be used in stencil coefficients (their values are looked up from the config during loading).
+
 Stencil derx {
-    [0][0][-3] = -DER1_3,
-    [0][0][-2] = -DER1_2,
-    [0][0][-1] = -DER1_1,
-    [0][0][1]  = DER1_1,
-    [0][0][2]  = DER1_2,
-    [0][0][3]  = DER1_3
+    [0][0][-3] = -AC_ds.x*DER1_3,
+    [0][0][-2] = -AC_ds.x*DER1_2,
+    [0][0][-1] = -AC_ds.x*DER1_1,
+    [0][0][1]  = AC_ds.x*DER1_1,
+    [0][0][2]  = AC_ds.x*DER1_2,
+    [0][0][3]  = AC_ds.x*DER1_3
 }
 
 Stencil dery {
-    [0][-3][0] = -DER1_3,
-    [0][-2][0] = -DER1_2,
-    [0][-1][0] = ...
+    [0][-3][0] = -AC_ds.y*DER1_3,
+    [0][-2][0] = ...
 }
 
 Stencil derz {
-    [-3][0][0] = -DER1_3,
+    [-3][0][0] = -AC_ds.z*DER1_3,
     [-2][0][0] = ...
 }
 
@@ -207,76 +471,293 @@ gradient(field) {
 }
 ```
 
-> Note: Stencil coefficients supplied in the DSL source must be compile-time constants. To set up coefficients at runtime, see [instructions below](#loading-and-storing-stencil-coefficients-at-runtime).
+> Note: Stencil coefficients supplied in the DSL source must either be compile-time constants or dconst. The coefficients can also be loaded at runtime with API calls, see [instructions below](#loading-and-storing-stencil-coefficients-at-runtime).
 
-> Note: To reduce redundant communication or to enable larger stencils, the stencil order can be changed by modifying `static const size_t stencil_order = ...` in `acc-runtime/acc/codegen.c`. Modifying the stencil order with the DSL is currently not supported.
+> Note: To reduce redundant communication or to enable larger stencils, the stencil order can be changed by declaring `#DEFINE STENCIL\_ORDER (YOUR VALUE)` in DSL. Modifying the stencil order with the DSL is currently not supported.
 
 
-#### Fields
 
-A `Field` is a scalar array that can be used in conjuction with `Stencil` operations. For convenience, a vector field can be constructed from three scalar fields by declaring them a `Field3` structure.
-```
-Field ux, uy, uz // Three scalar fields `ux`, `uy`, and `uz`
-#define uu Field3(ux, uy, uz) // A vector field `uu` consisting of components `ux`, `uy`, and `uz`
-
-Kernel kernel() {
-    write(ux, derx(ux)) // Writes the x derivative of the field `ux` to the output buffer
-}
-```
-
-#### Built-in variables and functions
+## Built-in variables, functions and constants
 ```
 // Variables
-dim3 threadIdx       // Current thread index within a thread block (see CUDA docs)
-dim3 blockIdx        // Current thread block index (see CUDA docs)
-dim3 vertexIdx       // The current vertex index within a single device
-dim3 globalVertexIdx // The current vertex index across multiple devices
-dim3 globalGridN     // The total size of the computational domain (incl. all subdomains of all processes)
+int3 vertexIdx       // The vertex index that is iterated over, within the subdomain of the current device
+int3 globalVertexIdx // The vertex index that is iterated over, within the global domain
+int3 globalGridN     // The total size of the computational domain (incl. all subdomains of all processes)
+int3 threadIdx       // Current thread index within a thread block (see CUDA docs)
+int3 blockIdx        // Current thread block index (see CUDA docs)
 
-// Functions
-void write(Field, real)  // Writes a real value to the output field at 'vertexIdx'
-void print("int: %d", 0) // Printing. Uses the same syntax as printf() in C
-real dot(real3, real3)   // Dot product
+// Built-in Functions
+void write(Field dst, real src)  // Writes the real value 'src' to the output field 'dst' at current 'vertexIdx'
+elemental dot(real3, real3)   // Dot product
 real3 cross(real3 a, real3 b) // Right-hand-side cross product a x b
-size_t len(arr) // Returns the length of an array `arr`
+size_t size(arr) // Returns the length of an array `arr`
+```
+Accessible from stdlib/math
+```
+real sin(real) 
+real cos(real) 
+real tan(real) 
+real atan2(real)
+real sinh(real)
+real cosh(real)
+real tanh(real)
+real/complex exp(real/complex)
+real log(real)
+real sqrt(real)
+real pow(real)
+real fabs(real)
+real min(real,real)
+real max(real,real)
+int  ceil(real)
+real random_uniform()
+```
+Advanced functions (should avoid, dangerous)
+```
+real previous(Field) // Returns the value in the output buffer. Call after write() results in undefined behaviour.
 
-// Trigonometric functions
-exp
-sin
-cos
-sqrt
-fabs
 
-// Advanced functions (should avoid, dangerous)
-real previous(Field) // Returns the value in the output buffer. Read after write() results in undefined behaviour.
-
-// Constants
+```
+### Built-in constants
+```
 real AC_REAL_PI // Value of pi using the same precision as `real`
+real AC_REAL_MAX // Either DBL_MAX or FLT_MAX base on precision of `real`
+real AC_REAL_MIN // Either DBL_MIN or FLT_MIN base on precision of `real`
+real AC_REAL_EPSILON // Either DBL_EPSILON or FLT_EPSILON base on precision of `real`
 ```
-
-> See astaroth/acc-runtime/acc/codegen.c, function `symboltable_reset` for an up-to-date list of all built-in symbols.
-
-# Advanced
-
-The input and output arrays can also be accessed without declaring a `Stencil` as follows.
+### Built-in dconsts
 
 ```
+uniform spacings of the grid:
+real3 AC_ds
+and their inverses:
+real3 AC_inv_ds
+and powers of these:
+real3 AC_ds_2
+real3 AC_ds_3
+real3 AC_ds_4
+real3 AC_ds_5
+real3 AC_ds_6
+
+real3 AC_inv_ds_2
+real3 AC_inv_ds_3
+real3 AC_inv_ds_4
+real3 AC_inv_ds_5
+real3 AC_inv_ds_6
+
+The smallest of the three spacings and its powers
+real AC_dsmin
+real AC_dsmin_2
+
+Subdomain size (not incl. halos)
+int3 AC_nlocal
+Subdomain size (incl. halos)
+int3 AC_mlocal
+Domain size (not incl. halos)
+int3 AC_ngrid
+Domain size (incl. halos)
+int3 AC_mgrid
+Products of the domain sizes (xy, xz, yz, xyz)
+AcDimProducts AC_nlocal_products
+AcDimProducts AC_mlocal_products
+AcDimProducts AC_ngrid_products
+AcDimProducts AC_mgrid_products
+First point in the computational subdomain/domain (also the ghost zone sizes)
+int3 AC_nmin
+Last point in the computational subdomain
+int3 AC_nlocal_max
+Last point in the computational domain
+int3 AC_ngrid_max
+The coordinate system used (default cartesian)
+AC_COORDINATE_SYSTEM  AC_coordinate_system
+Multi-GPU parameters
+int3 AC_domain_decomposition //How the domain is decomposed to multiple GPUs
+int3 AC_domain_coordinates   //Local coordinate of the current device in the grid of GPUs
+int3 AC_multigpu_offset      //AC_domain_coordinates*int3(AC_nx,AC_ny_AC_nz)
+Library config parameters (explained in the library documentation)
+Not meaningful for DSL
+int AC_proc_mapping_strategy
+int AC_decompose_strategy
+int AC_MPI_comm_strategy
+int AC_MPI_comm_strategy
+bool AC_host_has_row_memory_order
+Coordinate vectors of a Lagrangian grid (need LAGRANGIAN_GRID=ON)
+Field COORDS_X
+Field COORDS_Y
+Field COORDS_Z
+```
+
+## Advanced features
+If OPTIMIZE_FIELDS=ON, the DSL compiler will identify unused `Fields` and will not allocate them on the GPU.
+To still enable a loop across all allocated `Fields` non-allocated `Fields` are not counted in `NUM_FIELDS`
+and their numerical index is higher than `NUM_FIELDS`. 
+
+**Important** If you use runtime-compilation this can mean that the index value
+of the main application that calls Astaroth and the index value inside it might not match. 
+To get the correct indexes, use API functions acGet< Field name >.
+
+
+The input arrays can also be accessed without declaring a `Stencil` as follows.
+**Important!!** Do not use this if you do not know what you are doing.
+``` 
 Field field0
+Field field1
 
 Kernel kernel() {
-  // The example showcases two ways of accessing a field element without the Stencil structure
-  a = FIELD_IN[field0][IDX(vertexIdx)] // Note that IDX() here accepts the 3D spatial index
-  b = FIELD_OUT[field0][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] // And also individual index components
+  int3 coord = ...
+  //Writing to the input array is inherently unsafe so it really only be done inside boundary conditions
+  field0[coord.x][coord.y][coord.y] = field1[coord.x][coord.y][coord.z]
+}
+//Since the input parameter f has explicitly been given the type of Field one can access with it the input buffer,
+which would not be possible without the explicit type declaration.
+func(Field f)
+{
+    return field[vertexIdx.x][vertexIdx.y][vertexIdx.z]
 }
 ```
 
-> Note: Accessing field elements using `FIELD_IN` and `FIELD_OUT` does not cache the reads and is significantly less efficient than using a `Stencil`.
+> Note: Accessing field elements this way is suboptimal compared to accessing then using a `Stencil` or calling `value` since the reads are not cached. Only access field elements this way if otherwise not possible.
+
+### Profiles
+`Profiles` are either one- or two-dimensional arrays of `reals` that have extents equal to the side lengths of the local subdomain, with halos included.
+Thus there 9 different possible types of `Profiles`:
+
+* `Profile<X>`
+* `Profile<Y>`
+* `Profile<Z>`
+* `Profile<XY>`
+* `Profile<XZ>`
+* `Profile<YX>`
+* `Profile<YZ>`
+* `Profile<ZX>`
+* `Profile<ZY>`
+
+One can get the value of a `Profile` that corresponds to the local vertex by calling `value` on it. For example the value of a `Profile<X>` would depend only on the x-coordinate of the vertex where as for a `Profile<XY>` it would depend on both the x- and y-coordinates.
+The same rules about inserting automatic `value` calls hold for `Profiles` as for `Fields`.
+
+### Allocating declarations
+`Field` and `Profile` types are special types compared to other types because they imply allocations on the global memory, for which the sizes are inferable from the types.  
+Thus naturally aggregates, arrays and structures, that consist only of `Fields` and `Profiles` and other aggregates of them, also imply memory allocations.
+A perfect example is `Field3`. It is a structure that consists of three `Field` members and thus `Field3` declaration implies the same memory allocations that three separate `Field` declarations would imply. Another common example are `Field[]` variables.
+One can consider declarations of such aggregate varibles as syntactic sugar for recursively declaring the base `Fields` or `Profiles` and combining them together in the right structures.
+```
+Field3 field_vecs[3] \\This can be considered syntactic sugar for the following:
+
+Field field_vecs0_X,field_vecs_0_Y,field_vecs_0_Z
+const Field3 field_vecs_0 = {field_vecs_0_X,field_vecs_0_Y,field_vecs_0_Z}
+Field field_vecs1_X,field_vecs_1_Y,field_vecs_1_Z
+const Field3 field_vecs_1 = {field_vecs_1_X,field_vecs_1_Y,field_vecs_1_Z}
+Field field_vecs2_X,field_vecs_2_Y,field_vecs_2_Z
+const Field3 field_vecs_2 = {field_vecs_2_X,field_vecs_2_Y,field_vecs_2_Z}
+const Field3 field_vecs = {field_vecs_0,field_vecs_1,fields_vecs_2}
+```
+
+> Note: Here it helps to understand that `Fields` and `Profiles` are handles to memory, not memory themselves, and thus it is clear that the const assignments do not imply memory allocations but simple grouping of handles.
+
+
+### Reductions
+This is still an experimental feature that only works if MPI is enabled and which still possibly changes in the future.
+
+The reduction results make sense only if the kernel is called at each vertex point of the domain.
+```
+output real max_derux
+Field ux
+Profile<X> X_PROFILE
+Kernel reduce_kernel()
+{
+	reduce_max(true,derx(ux),max_derux) //scalar reduction
+    reduce_sum(true,ux,X_PROFILE) //Reduction along y and z resulting in array that is x-dependent.
+}
+```
+
+* The reduce functions  take two parameters:
+	* The value to reduce at this vertex
+	* The output value to which to store the reduced value
+
+After executing the kernels reductions are finalized by the taskgraph behind the scenes.
+One can access the reduced value on the DSL similar to other varibles. 
+
+The reduced scalar values can be accessed with `acDeviceGetOutput` or for `Profiles` with the corresponding API functions.
+
+When the result of the reduction is a `Profile` finalization is automatically included in the execution of the `TaskGraph`.
+
+### ComputeSteps
+This feature that only works if MPI is enabled
+
+The `BoundConds` construct is used to declare how to calculate the values of `Field`s when the boundary conditions are to be imposed.
+```
+BoundConds boundconds
+{
+	periodic(BOUNDARY_XY)
+	bc_sym_z(BOUNDARY_Z_TOP,FIELD_X,false)
+	bc_sym_z(BOUNDARY_Z_BOT,FIELD_Y,true)
+	set_y_z_bc(BOUNDARY_Z) //Calculated fields inferred from write calls inside set_y_z_bc
+}
+```
+It contains function calls that are used to calculate the values of the outermost halo regions.
+`periodic` is a unique construct to tell that the domain is periodic in the specified directions.
+Otherwise normal functions are called with an additional mandatory first parameter specifying the boundary.
+The used example boundary condition `bc_sym_z` which sets the input `Field` symmetric on the boundary could look like te following:
+```
+bc_sym_z(Field field, bool bottom)
+{
+	if(bottom)
+	{
+		for i in 0:NGHOST {
+        		field[vertexIdx.x][vertexIdx.y][NGHOST-i]=field[vertexIdx.x][vertexIdx.y][NGHOST+i];
+      		}
+
+	}
+	else
+	{
+		for i in 0:NGHOST {
+        		field[vertexIdx.x][vertexIdx.y][AC_nz_max+i]=field[vertexIdx.x][vertexIdx.y][AC_nz_max-i];
+      		}
+	}
+}
+```
+
+
+The `ComputeSteps` construct is used to declare a sequence of (possibly dependent) kernel invocations in the DSL,
+from which a `TaskGraph` is produced. 
+The kernels are analysed to infer when halo exchanges and evaluations of boundary conditions are needed.
+So in other words: you specify the boundary conditions and Astaroth makes sure that they are applied as needed in order to evaluate the stencils.
+
+Dependencies between invocations are based on the needed `Fields` for the kernel and the `Fields` updated inside it.
+E.g. if kernel_call_1 would update `A` and kernel_call_2 would read `A`, kernel_call_2 is only called after kernel_call_1 has updated `A`.
+```
+input real ac_input_val
+ComputeSteps rhs(boundconds)
+{
+	kernel_call_1(ac_input_val,2.0)
+	kernel_call_2()
+	...
+	...
+	...
+}
+```
+
+`ComputeSteps` take in a parameter of `BoundConds`, from which it knows which boundary conditions to impose.
+In case required boundary conditions are not declared, the compilation will fail.
+You can access the generated `TaskGraph` with `acGetDSLTaskGraph`.
+
+### 2D-setups
+This is still an experimental feature and not all other features like reductions have been tested with this.
+By setting `2D=ON` one can build Astaroth specifically for a two-dimensional setup.
+Currently the missing dimension is always the z-dimension. The main difference between setting `AC_nzgrid=1` and an explicit two-dimensional setup is that in the latter no halo regions are allocated in the z-dimension, which is an considerable memory saving.
+`Stencils` work the same as usual, expect when declaring them one uses only the x and y -offsets.
+Some API functions that previously took three-dimensional arrays or three parameters related to the spatial dimensions now take two-dimensional arrays and only two parameters.
+Additionally those built-in variables related to the z spatial dimension (e.g. `AC_nz`)  are suppressed.
+When using `BoundConds` one does not need to declare boundary conditions on the z-boundaries and if they are they will be skipped.
+One can find in `acc-runtime/samples/2d/2d-test.ac` and `test/2d-test/main.cc` a simple two-dimensional test setup.
+
+
 
 # Interaction with the Astaroth Core and Utils libraries
-
 ## Loading and storing stencil coefficients at runtime
-
-The stencil coefficients defined in the DSL syntax must be known at compile time for simplicity. However, the Astaroth Runtime API provides the functions `acLoadStencil` and `acStoreStencil` for loading/storing stencil coefficients at runtime. This is useful for, say, trying out different coefficients without the need for recompilation and for setting the coefficients programmatically if too cumbersome by hand.
+The Astaroth Runtime API provides the functions `acLoadStencil` and `acStoreStencil` for loading/storing stencil coefficients at runtime. 
+This is useful for, say, for setting the coefficients programmatically if too cumbersome by hand. 
+We however highly recommend to use device constant variables in the stencil coefficients instead of separately loading stencil coefficients at runtime
+, since it eliminates coding errors where the actual stencil coefficients are calculated separately from the stencil declarations.
 
 See also the functions `acDeviceLoadStencil`, `acDeviceStoreStencil`, `acGridLoadStencil`, and `acGridStoreStencil` provided by the Astaroth Core library.
 

@@ -25,11 +25,14 @@ makefile~
 build/
 build*/
 benchmark-data/
-
+acc-runtime/dynamic
+acc-runtime/overrides.h
 # Clangd files
 .cache/
 
 # Other
 compile_commands.json
+compilation_log.txt
+FAIL
 .DS_Store
 .vscode

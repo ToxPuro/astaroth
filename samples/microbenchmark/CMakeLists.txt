@@ -3,13 +3,15 @@ add_executable(microbenchmark microbenchmark.cu)
 # Include directories
 target_include_directories(microbenchmark PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtime/api)
 target_include_directories(microbenchmark PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(microbenchmark acc-runtime-headers)
 
 if (USE_HIP)
     set_source_files_properties(microbenchmark.cu PROPERTIES LANGUAGE HIP)
 
+    #ROC_TRACER_PATH comes from the first CMakeLists.txt
     # Roctracer
-    include_directories(/opt/rocm/roctracer/include)
-    link_directories(/opt/rocm/roctracer/lib)
+    include_directories(${ROC_TRACER_PATH})
+    link_directories(${ROC_TRACER_PATH})
     target_link_libraries(microbenchmark roctracer64)
 endif()
 

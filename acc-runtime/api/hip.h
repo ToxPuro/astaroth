@@ -60,6 +60,7 @@
 #define cudaMemcpyFromSymbol hipMemcpyFromSymbol
 #define cudaMemcpyToSymbolAsync hipMemcpyToSymbolAsync
 #define cudaMemcpyFromSymbolAsync hipMemcpyFromSymbolAsync
+#define cudaMemcpy2DAsync hipMemcpy2DAsync
 #define cudaMemcpyDefault hipMemcpyDefault
 #define cudaMemset hipMemset
 #define cudaMalloc hipMalloc
@@ -87,6 +88,10 @@
 #define cudaDeviceSetCacheConfig hipDeviceSetCacheConfig
 #define cudaFuncCachePreferShared hipFuncCachePreferShared
 #define cudaFuncCachePreferL1 hipFuncCachePreferL1
+#define cudaErrorInvalidConfiguration hipErrorInvalidConfiguration
+#define cudaErrorLaunchOutOfResources hipErrorLaunchOutOfResources
+#define cudaGetErrorName hipGetErrorName
+#define cudaMemGetInfo   hipMemGetInfo
 
 #define curandStateXORWOW_t hiprandStateXORWOW_t
 #define curandStateMRG32k3a_t hiprandStateMRG32k3a_t
@@ -94,3 +99,4 @@
 #define curand_init hiprand_init
 #define curand_uniform hiprand_uniform
 #define curand_uniform_double hiprand_uniform_double
+

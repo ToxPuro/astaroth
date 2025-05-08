@@ -17,7 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/**
+/**f
  * @file
  * \brief Multi-GPU implementation.
  *
@@ -124,10 +124,19 @@
  *
  */
 #include "astaroth.h"
-
 #include "math_utils.h"
 
 static const int MAX_NUM_DEVICES = 32;
+
+static inline void UNUSED
+set_info_val(AcMeshInfo& info, const AcInt3Param param, const int3 value)
+{
+	info[param] = value;
+}
+
+
+static inline void UNUSED
+set_info_val(AcMeshInfo& , const int3 , const int3 ){}
 
 struct node_s {
     int id;
@@ -142,15 +151,15 @@ struct node_s {
 };
 
 static int
-gridIdx(const GridDims grid, const int3 idx)
+gridIdx(const GridDims grid, const Volume idx)
 {
     return idx.x + idx.y * grid.m.x + idx.z * grid.m.x * grid.m.y;
 }
 
-static int3
+static Volume
 gridIdx3d(const GridDims grid, const int idx)
 {
-    return (int3){idx % grid.m.x, (idx % (grid.m.x * grid.m.y)) / grid.m.x,
+    return (Volume){idx % grid.m.x, (idx % (grid.m.x * grid.m.y)) / grid.m.x,
                   idx / (grid.m.x * grid.m.y)};
 }
 
@@ -158,6 +167,12 @@ __attribute__((unused)) static inline void
 printInt3(const int3 vec)
 {
     printf("(%d, %d, %d)", vec.x, vec.y, vec.z);
+}
+
+__attribute__((unused)) static inline void
+printVolume(const Volume vec)
+{
+    printf("(%zu, %zu, %zu)", vec.x, vec.y, vec.z);
 }
 
 __attribute__((unused)) static inline void
@@ -169,38 +184,13 @@ print(const AcMeshInfo config)
         printf("[%s]: %g\n", realparam_names[i], double(config.real_params[i]));
 }
 
-static void
-update_builtin_params(AcMeshInfo* config)
-{
-    config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER;
-    ///////////// PAD TEST
-    // config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER + PAD_SIZE;
-    ///////////// PAD TEST
-    config->int_params[AC_my] = config->int_params[AC_ny] + STENCIL_ORDER;
-    config->int_params[AC_mz] = config->int_params[AC_nz] + STENCIL_ORDER;
-
-    // Bounds for the computational domain, i.e. nx_min <= i < nx_max
-    config->int_params[AC_nx_min] = NGHOST;
-    config->int_params[AC_nx_max] = config->int_params[AC_nx_min] + config->int_params[AC_nx];
-    config->int_params[AC_ny_min] = NGHOST;
-    config->int_params[AC_ny_max] = config->int_params[AC_ny] + NGHOST;
-    config->int_params[AC_nz_min] = NGHOST;
-    config->int_params[AC_nz_max] = config->int_params[AC_nz] + NGHOST;
-
-    /* Additional helper params */
-    // Int helpers
-    config->int_params[AC_mxy]  = config->int_params[AC_mx] * config->int_params[AC_my];
-    config->int_params[AC_nxy]  = config->int_params[AC_nx] * config->int_params[AC_ny];
-    config->int_params[AC_nxyz] = config->int_params[AC_nxy] * config->int_params[AC_nz];
-}
-
 static GridDims
 createGridDims(const AcMeshInfo config)
 {
     GridDims grid;
 
-    grid.m = (int3){config.int_params[AC_mx], config.int_params[AC_my], config.int_params[AC_mz]};
-    grid.n = (int3){config.int_params[AC_nx], config.int_params[AC_ny], config.int_params[AC_nz]};
+    grid.m = acGetLocalMM(config);
+    grid.n = acGetLocalNN(config);
 
     return grid;
 }
@@ -229,7 +219,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     // Check that node->num_devices is divisible with AC_nz. This makes decomposing the
     // problem domain to multiple GPUs much easier since we do not have to worry
     // about remainders
-    ERRCHK_ALWAYS(node->config.int_params[AC_nz] % node->num_devices == 0);
+    ERRCHK_ALWAYS(node->config[AC_nlocal].z % node->num_devices == 0);
 
     // Decompose the problem domain
     // The main grid
@@ -237,8 +227,13 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
 
     // Subgrids
     AcMeshInfo subgrid_config = node->config;
-    subgrid_config.int_params[AC_nz] /= node->num_devices;
-    update_builtin_params(&subgrid_config);
+    set_info_val(subgrid_config,AC_nlocal,
+		    			{node->config[AC_nlocal].x,
+					 node->config[AC_nlocal].y,
+		    			 node->config[AC_nlocal].z / node->num_devices
+					 }
+		);
+    acHostUpdateParams(&subgrid_config);
 #if AC_VERBOSE
     printf("###############################################################\n");
     printf("Config dimensions recalculated:\n");
@@ -254,10 +249,10 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
 
 #if AC_VERBOSE
     // clang-format off
-    printf("GridDims m ");   printInt3(node->grid.m);    printf("\n");
-    printf("GridDims n ");   printInt3(node->grid.n);    printf("\n");
-    printf("Subrid m "); printInt3(node->subgrid.m); printf("\n");
-    printf("Subrid n "); printInt3(node->subgrid.n); printf("\n");
+    printf("GridDims m ");   printVolume(node->grid.m);    printf("\n");
+    printf("GridDims n ");   printVolume(node->grid.n);    printf("\n");
+    printf("Subrid m "); printVolume(node->subgrid.m); printf("\n");
+    printf("Subrid n "); printVolume(node->subgrid.n); printf("\n");
     // clang-format on
 #endif
 
@@ -265,9 +260,8 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
         const int3 multinode_offset                    = (int3){0, 0, 0}; // Placeholder
-        const int3 multigpu_offset                     = (int3){0, 0, i * node->subgrid.n.z};
-        subgrid_config.int3_params[AC_global_grid_n]   = node->grid.n;
-        subgrid_config.int3_params[AC_multigpu_offset] = multinode_offset + multigpu_offset;
+        const int3 multigpu_offset                     = (int3){0, 0, (int)(i * node->subgrid.n.z)};
+        subgrid_config[AC_multigpu_offset] = multinode_offset + multigpu_offset;
 
         acDeviceCreate(i, subgrid_config, &node->devices[i]);
         acDevicePrintInfo(node->devices[i]);
@@ -335,7 +329,7 @@ acNodeDestroy(Node node)
 
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceDestroy(node->devices[i]);
+        acDeviceDestroy(&node->devices[i]);
     }
     free(node);
 
@@ -402,7 +396,7 @@ acNodeSynchronizeVertexBuffer(const Node node, const Stream stream,
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices - 1; ++i) {
         // ...|ooooxxx|... -> xxx|ooooooo|...
-        const int3 src = (int3){0, 0, node->subgrid.n.z};
+        const int3 src = (int3){0, 0, (int)(node->subgrid.n.z)};
         const int3 dst = (int3){0, 0, 0};
 
         const Device src_device = node->devices[i];
@@ -415,7 +409,7 @@ acNodeSynchronizeVertexBuffer(const Node node, const Stream stream,
     for (int i = 1; i < node->num_devices; ++i) {
         // ...|ooooooo|xxx <- ...|xxxoooo|...
         const int3 src = (int3){0, 0, NGHOST};
-        const int3 dst = (int3){0, 0, NGHOST + node->subgrid.n.z};
+        const int3 dst = (int3){0, 0, (int)(NGHOST + node->subgrid.n.z)};
 
         const Device src_device = node->devices[i];
         Device dst_device       = node->devices[i - 1];
@@ -468,15 +462,15 @@ acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcM
     // // #pragma omp parallel for
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        const int3 d0 = (int3){0, 0, i * node->subgrid.n.z}; // DECOMPOSITION OFFSET HERE
-        const int3 d1 = (int3){node->subgrid.m.x, node->subgrid.m.y, d0.z + node->subgrid.m.z};
+        const Volume d0 = (Volume){0, 0, as_size_t(i * node->subgrid.n.z)}; // DECOMPOSITION OFFSET HERE
+        const Volume d1 = (Volume){node->subgrid.m.x, node->subgrid.m.y, as_size_t(d0.z + node->subgrid.m.z)};
 
-        const int3 s0 = src; // dst; // TODO fix
+        const Volume s0 = as_size_t(src); // dst; // TODO fix
         (void)dst;           // TODO fix
-        const int3 s1 = gridIdx3d(node->grid, gridIdx(node->grid, s0) + num_vertices);
+        const Volume s1 = gridIdx3d(node->grid, gridIdx(node->grid, s0) + num_vertices);
 
-        const int3 da = max(s0, d0);
-        const int3 db = min(s1, d1);
+        const Volume da = max(s0, d0);
+        const Volume db = min(s1, d1);
         /*
         printf("Device %d\n", i);
         printf("\ts0: "); printInt3(s0); printf("\n");
@@ -490,12 +484,12 @@ acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcM
         if (db.z >= da.z) {
             const int copy_cells = gridIdx(node->subgrid, db) - gridIdx(node->subgrid, da);
             // DECOMPOSITION OFFSET HERE
-            const int3 da_global = da; // src + da - dst; // TODO fix
-            const int3 da_local = (int3){da.x, da.y, da.z - i * node->grid.n.z / node->num_devices};
+            const Volume da_global = da; // src + da - dst; // TODO fix
+            const Volume da_local = (Volume){da.x, da.y, as_size_t(da.z - i * node->grid.n.z / node->num_devices)};
             // printf("\t\tcopy %d cells to local index ", copy_cells); printInt3(da_local);
             // printf("\n");
             acDeviceLoadVertexBufferWithOffset(node->devices[i], stream, host_mesh, vtxbuf_handle,
-                                               da_global, da_local, copy_cells);
+                                               to_int3(da_global), to_int3(da_local), copy_cells);
         }
         // printf("\n");
     }
@@ -563,25 +557,25 @@ acNodeStoreVertexBufferWithOffset(const Node node, const Stream stream,
 
         // New: Transfer ghost zones, but do not transfer overlapping halos.
         // DECOMPOSITION OFFSET HERE (d0 & d1)
-        int3 d0 = (int3){0, 0, NGHOST + i * node->subgrid.n.z};
-        int3 d1 = (int3){node->subgrid.m.x, node->subgrid.m.y,
-                         NGHOST + (i + 1) * node->subgrid.n.z};
+        Volume d0 = (Volume){0, 0, as_size_t(NGHOST + i * node->subgrid.n.z)};
+        Volume d1 = (Volume){node->subgrid.m.x, node->subgrid.m.y,
+                         as_size_t(NGHOST + (i + 1) * node->subgrid.n.z)};
         if (i == 0)
             d0.z = 0;
         if (i == node->num_devices - 1)
             d1.z = NGHOST + (i + 1) * node->subgrid.n.z + NGHOST;
 
-        const int3 s0 = src; // TODO fix
+        const Volume s0 = as_size_t(src); // TODO fix
         (void)dst;           // TODO fix
-        const int3 s1 = gridIdx3d(node->grid, gridIdx(node->grid, s0) + num_vertices);
+        const Volume s1 = gridIdx3d(node->grid, gridIdx(node->grid, s0) + num_vertices);
 
-        const int3 da = max(s0, d0);
-        const int3 db = min(s1, d1);
+        const Volume da = max(s0, d0);
+        const Volume db = min(s1, d1);
         if (db.z >= da.z) {
             const int copy_cells = gridIdx(node->subgrid, db) - gridIdx(node->subgrid, da);
             // DECOMPOSITION OFFSET HERE
-            const int3 da_local = (int3){da.x, da.y, da.z - i * node->grid.n.z / node->num_devices};
-            const int3 da_global = da; // dst + da - src; // TODO fix
+            const int3 da_local = (int3){(int)da.x, (int)da.y, (int)(da.z - i * node->grid.n.z / node->num_devices)};
+            const int3 da_global = to_int3(da); // dst + da - src; // TODO fix
             acDeviceStoreVertexBufferWithOffset(node->devices[i], stream, vtxbuf_handle, da_local,
                                                 da_global, copy_cells, host_mesh);
         }
@@ -624,24 +618,24 @@ acNodeStoreMesh(const Node node, const Stream stream, AcMesh* host_mesh)
 }
 
 AcResult
-acNodeIntegrateSubstep(const Node node, const Stream stream, const int isubstep, const int3 start,
-                       const int3 end, const AcReal dt)
+acNodeIntegrateSubstep(const Node node, const Stream stream, const int isubstep, const Volume start,
+                       const Volume end, const AcReal dt)
 {
     acNodeSynchronizeStream(node, stream);
 
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
         // DECOMPOSITION OFFSET HERE
-        const int3 d0 = (int3){NGHOST, NGHOST, NGHOST + i * node->subgrid.n.z};
-        const int3 d1 = d0 + (int3){node->subgrid.n.x, node->subgrid.n.y, node->subgrid.n.z};
+        const Volume d0 = (Volume){NGHOST, NGHOST, NGHOST + i * node->subgrid.n.z};
+        const Volume d1 = d0 + (Volume){as_size_t(node->subgrid.n.x), as_size_t(node->subgrid.n.y), as_size_t(node->subgrid.n.z)};
 
-        const int3 da = max(start, d0);
-        const int3 db = min(end, d1);
+        const Volume da = max(start, d0);
+        const Volume db = min(end, d1);
 
         if (db.z >= da.z) {
-            const int3 da_local = da - (int3){0, 0, i * node->subgrid.n.z};
-            const int3 db_local = db - (int3){0, 0, i * node->subgrid.n.z};
-            acDeviceIntegrateSubstep(node->devices[i], stream, isubstep, da_local, db_local, dt);
+            const Volume da_local = da - (Volume){0, 0, as_size_t(i * node->subgrid.n.z)};
+            const Volume db_local = db - (Volume){0, 0, as_size_t(i * node->subgrid.n.z)};
+            acDeviceIntegrateSubstep(node->devices[i], stream, isubstep, to_volume(da_local), to_volume(db_local), dt);
         }
     }
     return AC_SUCCESS;
@@ -656,13 +650,13 @@ local_boundcondstep(const Node node, const Stream stream, const VertexBufferHand
         // Local boundary conditions
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) {
-            const int3 d0 = (int3){0, 0, NGHOST}; // DECOMPOSITION OFFSET HERE
-            const int3 d1 = (int3){node->subgrid.m.x, node->subgrid.m.y, d0.z + node->subgrid.n.z};
+            const Volume d0 = (Volume){0, 0, NGHOST}; // DECOMPOSITION OFFSET HERE
+            const Volume d1 = (Volume){as_size_t(node->subgrid.m.x), as_size_t(node->subgrid.m.y), as_size_t(d0.z + node->subgrid.n.z)};
             acDevicePeriodicBoundcondStep(node->devices[i], stream, vtxbuf, d0, d1);
         }
     }
     else {
-        acDevicePeriodicBoundcondStep(node->devices[0], stream, vtxbuf, (int3){0, 0, 0},
+        acDevicePeriodicBoundcondStep(node->devices[0], stream, vtxbuf, (Volume){0, 0, 0},
                                       node->subgrid.m);
     }
     return AC_SUCCESS;
@@ -680,13 +674,13 @@ local_boundcondstep_GBC(const Node node, const Stream stream, const VertexBuffer
         // Local boundary conditions
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) {
-            const int3 d0 = (int3){0, 0, NGHOST}; // DECOMPOSITION OFFSET HERE
-            const int3 d1 = (int3){node->subgrid.m.x, node->subgrid.m.y, d0.z + node->subgrid.n.z};
+            const Volume d0 = (Volume){0, 0, NGHOST}; // DECOMPOSITION OFFSET HERE
+            const Volume d1 = (Volume){as_size_t(node->subgrid.m.x), as_size_t(node->subgrid.m.y), as_size_t(d0.z + node->subgrid.n.z)};
             acDeviceGeneralBoundcondStep(node->devices[i], stream, vtxbuf, d0, d1, config, bindex);
         }
     }
     else {
-        acDeviceGeneralBoundcondStep(node->devices[0], stream, vtxbuf, (int3){0, 0, 0},
+        acDeviceGeneralBoundcondStep(node->devices[0], stream, vtxbuf, (Volume){0, 0, 0},
                                      node->subgrid.m, config, bindex);
     }
     return AC_SUCCESS;
@@ -701,7 +695,7 @@ global_boundcondstep(const Node node, const Stream stream, const VertexBufferHan
         const size_t num_vertices = node->subgrid.m.x * node->subgrid.m.y * NGHOST;
         {
             // ...|ooooxxx|... -> xxx|ooooooo|...
-            const int3 src = (int3){0, 0, node->subgrid.n.z};
+            const int3 src = (int3){0, 0, (int)node->subgrid.n.z};
             const int3 dst = (int3){0, 0, 0};
 
             const Device src_device = node->devices[node->num_devices - 1];
@@ -713,7 +707,7 @@ global_boundcondstep(const Node node, const Stream stream, const VertexBufferHan
         {
             // ...|ooooooo|xxx <- ...|xxxoooo|...
             const int3 src = (int3){0, 0, NGHOST};
-            const int3 dst = (int3){0, 0, NGHOST + node->subgrid.n.z};
+            const int3 dst = (int3){0, 0, (int)(NGHOST + node->subgrid.n.z)};
 
             const Device src_device = node->devices[0];
             Device dst_device       = node->devices[node->num_devices - 1];
@@ -747,8 +741,8 @@ acNodeIntegrate(const Node node, const AcReal dt)
         // Inner inner
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) {
-            const int3 m1 = (int3){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = node->subgrid.n;
+            const Volume m1 = (Volume){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = to_volume(node->subgrid.n);
             acDeviceIntegrateSubstep(node->devices[i], STREAM_16, isubstep, m1, m2, dt);
         }
 
@@ -762,40 +756,40 @@ acNodeIntegrate(const Node node, const AcReal dt)
 
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Front
-            const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, node->subgrid.n.y, NGHOST};
+            const Volume m1 = {NGHOST, NGHOST, NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, (size_t)node->subgrid.n.y, NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_0, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Back
-            const int3 m1 = (int3){NGHOST, NGHOST, node->subgrid.n.z};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, node->subgrid.n.y, NGHOST};
+            const Volume m1 = {NGHOST, NGHOST, (size_t)node->subgrid.n.z};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, (size_t)node->subgrid.n.y, NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_1, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Bottom
-            const int3 m1 = (int3){NGHOST, NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, NGHOST, node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, NGHOST, (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_2, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Top
-            const int3 m1 = (int3){NGHOST, node->subgrid.n.y, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, NGHOST, node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, (size_t)node->subgrid.n.y, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, NGHOST, (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_3, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Left
-            const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
-                                        node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){NGHOST, (size_t)node->subgrid.n.y - 2 * NGHOST,
+                                        (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_4, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Right
-            const int3 m1 = (int3){node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
-                                        node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = (Volume){(size_t)node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){NGHOST, (size_t)node->subgrid.n.y - 2 * NGHOST,
+                                        (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_5, isubstep, m1, m2, dt);
         }
         acNodeSwapBuffers(node);
@@ -826,8 +820,8 @@ acNodeIntegrateGBC(const Node node, const AcMeshInfo config, const AcReal dt)
         // Inner inner
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) {
-            const int3 m1 = (int3){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = node->subgrid.n;
+            const Volume m1 = (Volume){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = to_volume(node->subgrid.n);
             acDeviceIntegrateSubstep(node->devices[i], STREAM_16, isubstep, m1, m2, dt);
         }
 
@@ -841,40 +835,40 @@ acNodeIntegrateGBC(const Node node, const AcMeshInfo config, const AcReal dt)
 
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Front
-            const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, node->subgrid.n.y, NGHOST};
+            const Volume m1 = (Volume){NGHOST, NGHOST, NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, (size_t)node->subgrid.n.y, NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_0, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Back
-            const int3 m1 = (int3){NGHOST, NGHOST, node->subgrid.n.z};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, node->subgrid.n.y, NGHOST};
+            const Volume m1 = (Volume){NGHOST, NGHOST, (size_t)node->subgrid.n.z};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, (size_t)node->subgrid.n.y, NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_1, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Bottom
-            const int3 m1 = (int3){NGHOST, NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, NGHOST, node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, NGHOST, (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_2, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Top
-            const int3 m1 = (int3){NGHOST, node->subgrid.n.y, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){node->subgrid.n.x, NGHOST, node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, (size_t)node->subgrid.n.y, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){(size_t)node->subgrid.n.x, NGHOST, (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_3, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Left
-            const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
-                                        node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {NGHOST, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){NGHOST, (size_t)node->subgrid.n.y - 2 * NGHOST,
+                                        (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_4, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Right
-            const int3 m1 = (int3){node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
-                                        node->subgrid.n.z - 2 * NGHOST};
+            const Volume m1 = {(size_t)node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
+            const Volume m2 = m1 + (Volume){NGHOST, (size_t)node->subgrid.n.y - 2 * NGHOST,
+                                        (size_t)node->subgrid.n.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(node->devices[i], STREAM_5, isubstep, m1, m2, dt);
         }
         acNodeSwapBuffers(node);
@@ -928,27 +922,23 @@ acNodeGeneralBoundconds(const Node node, const Stream stream, const AcMeshInfo c
 }
 
 static AcReal
-simple_final_reduce_scal(const Node node, const ReductionType& rtype, const AcReal* results,
+simple_final_reduce_scal(const Node node, const AcReduction& reduction, const AcReal* results,
                          const int& n)
 {
     AcReal res = results[0];
     for (int i = 1; i < n; ++i) {
-        if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX) {
+	if (reduction.reduce_op == REDUCE_MAX)
             res = max(res, results[i]);
-        }
-        else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN) {
+        else if (reduction.reduce_op == REDUCE_MIN)
             res = min(res, results[i]);
-        }
-        else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM ||
-                 rtype == RTYPE_ALFVEN_RMS) {
+        else if (reduction.reduce_op == REDUCE_SUM)
             res = sum(res, results[i]);
-        }
         else {
             ERROR("Invalid rtype");
         }
     }
 
-    if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
+    if (reduction.post_processing_op == AC_RMS) {
         const AcReal inv_n = AcReal(1.) / (node->grid.n.x * node->grid.n.y * node->grid.n.z);
         res                = sqrt(inv_n * res);
     }
@@ -956,51 +946,54 @@ simple_final_reduce_scal(const Node node, const ReductionType& rtype, const AcRe
 }
 
 AcResult
-acNodeReduceScal(const Node node, const Stream stream, const ReductionType rtype,
+acNodeReduceScal(const Node node, const Stream stream, const AcReduction reduction,
                  const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    AcReal results[node->num_devices];
+    AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceReduceScal(node->devices[i], stream, rtype, vtxbuf_handle, &results[i]);
+        acDeviceReduceScal(node->devices[i], stream, reduction, vtxbuf_handle, &results[i]);
     }
 
-    *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
+    *result = simple_final_reduce_scal(node, reduction, results, node->num_devices);
+    free(results);
     return AC_SUCCESS;
 }
 
 AcResult
-acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
+acNodeReduceVec(const Node node, const Stream stream, const AcReduction reduction,
                 const VertexBufferHandle a, const VertexBufferHandle b, const VertexBufferHandle c,
                 AcReal* result)
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    AcReal results[node->num_devices];
+    AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceReduceVec(node->devices[i], stream, rtype, a, b, c, &results[i]);
+        acDeviceReduceVec(node->devices[i], stream, reduction, a, b, c, &results[i]);
     }
 
-    *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
+    *result = simple_final_reduce_scal(node, reduction, results, node->num_devices);
+    free(results);
     return AC_SUCCESS;
 }
 
 AcResult
-acNodeReduceVecScal(const Node node, const Stream stream, const ReductionType rtype,
+acNodeReduceVecScal(const Node node, const Stream stream, const AcReduction reduction,
                     const VertexBufferHandle a, const VertexBufferHandle b,
                     const VertexBufferHandle c, const VertexBufferHandle d, AcReal* result)
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    AcReal results[node->num_devices];
+    AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceReduceVecScal(node->devices[i], stream, rtype, a, b, c, d, &results[i]);
+        acDeviceReduceVecScal(node->devices[i], stream, reduction, a, b, c, d, &results[i]);
     }
 
-    *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
+    *result = simple_final_reduce_scal(node, reduction, results, node->num_devices);
+    free(results);
     return AC_SUCCESS;
 }

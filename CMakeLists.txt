@@ -27,11 +27,14 @@ endif()
 
 ## Options
 option(DOUBLE_PRECISION   "Generates double precision code."                    ON)
+option(INCLUDE_3RD_PARTIES "Whether to include 3rd party dependencies"          OFF)
 option(BUILD_STANDALONE   "Build the standalone_mpi executable to run standard simulation." ON)
 option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
+option(BUILD_TESTS        "Builds tests in test subdirectory."            OFF)
 option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
 option(BUILD_MLLIB_SAMPLES "Builds samples that use cuDNN or MIOpen" OFF)
 option(MPI_ENABLED        "Enables additional functions for MPI communciation." OFF)
+option(BUILD_ACM          "Whether to build to the Astaroth Communication Module (ACM)." ON)
 option(USE_POSIX_IO       "Uses POSIX I/O less error prone, but increased overheads." ON)
 option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
 option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
@@ -40,13 +43,43 @@ option(BUILD_UTILS        "Builds the utility library"                          
 option(SINGLEPASS_INTEGRATION "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" OFF)
 option(USE_DISTRIBUTED_IO "Use distributed IO (one file per process) instead of collective" ON)
 option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
-# option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF) # Deprecated
-
+option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF)
+option(PACKED_DATA_TRANSFERS    "Enables kernel for packed data transfers"          OFF)
+option(LAGRANGIAN_GRID "Use Lagrangian grid instead of Eulerian" OFF)
+option(2D  "Compile Astaroth for 2D simulation" OFF)
 option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
 option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
+option(RUNTIME_COMPILATION "Compile version of Astaroth compiled at runtime" OFF)
+option(SUPPRESS_COMPILER_WARNINGS "Suppress default compiler warnings of Astaroth" OFF)
 
 ## Project-wide compilation flags
+# -Werror TODO read
+if(NOT SUPPRESS_COMPILER_WARNINGS)
+set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -Wno-cast-function-type") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
+endif()
+
+set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}")
+add_definitions(-DAC_BASE_PATH="${AC_BASE_PATH}")
+
+set(AC_BINARY_PATH "${CMAKE_BINARY_DIR}")
+add_definitions(-DAC_BINARY_PATH="${AC_BINARY_PATH}")
+
+if (RUNTIME_COMPILATION)
+	add_definitions(-DAC_RUNTIME_COMPILATION=1)
+else()
+	add_definitions(-DAC_RUNTIME_COMPILATION=0)
+endif()
+
+if (LAGRANGIAN_GRID)
+	add_definitions(-DAC_LAGRANGIAN_GRID=1)
+else()
+	add_definitions(-DAC_LAGRANGIAN_GRID=0)
+endif()
+
+if(NOT SUPPRESS_COMPILER_WARNINGS)
 add_compile_options(# C/CXX/CUDA/HIP
                     # $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Werror>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfatal-errors>
@@ -54,25 +87,31 @@ add_compile_options(# C/CXX/CUDA/HIP
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wextra>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wdouble-promotion>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wfloat-conversion>
+                    $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-parentheses-equality>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wshadow>
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-Wno-unused-result>
                     # Workaround: MPI_CXX_SKIP_MPICXX not applied properly for some reason
                     $<$<COMPILE_LANGUAGE:C,CXX,HIP>:-DOMPI_SKIP_MPICXX>
 )
+endif()
 
 ## CUDA and HIP
 find_package(CUDAToolkit QUIET)
 find_package(HIP QUIET)
-if(NOT USE_HIP AND CUDAToolkit_FOUND)
+if (NOT USE_HIP AND CUDAToolkit_FOUND)
     message(STATUS "CUDA found")
     enable_language(CUDA)
     add_compile_options(-DDEVICE_ENABLED)
     add_compile_options(-DCUDA_ENABLED)
     include_directories(SYSTEM ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # Silence warnings originating from CUDA headers
 
-    set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
+    ##TP: do not set GPU architectures to speedup debug compilations
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    else()
+    	set(CMAKE_CUDA_ARCHITECTURES "60;61;70;80")
+    endif()
     message(STATUS "Enabled CUDA architectures (Astaroth): " ${CMAKE_CUDA_ARCHITECTURES})
-elseif(USE_HIP OR HIP_FOUND)
+elseif (USE_HIP OR HIP_FOUND)
     set(USE_HIP ON)
     message(STATUS "HIP found")
     enable_language(HIP)
@@ -80,7 +119,11 @@ elseif(USE_HIP OR HIP_FOUND)
     add_compile_options(-DHIP_ENABLED)
     include_directories(SYSTEM ${HIP_INCLUDE_DIRS}) # Silence warnings originating from HIP headers
 
-    set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+    ##TP: do not set GPU architectures to speedup debug compilations
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    else()
+    	set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
+    endif()
     message(STATUS "Enabled HIP architectures (Astaroth): " ${CMAKE_HIP_ARCHITECTURES})
 else()
     message(ERROR "Did not find CUDA or HIP")
@@ -94,12 +137,16 @@ if (USE_HIP)
 endif()
 if (DOUBLE_PRECISION)
     add_definitions(-DAC_DOUBLE_PRECISION=1)
-endif ()
+else()
+    add_definitions(-DAC_DOUBLE_PRECISION=0)
+endif()
 if (VERBOSE)
     add_definitions(-DAC_VERBOSE=1)
 endif ()
 if (MPI_ENABLED)
     add_definitions(-DAC_MPI_ENABLED=1)
+else()
+    add_definitions(-DAC_MPI_ENABLED=0)
 endif ()
 if (USE_POSIX_IO)
     add_definitions(-DUSE_POSIX_IO=1)
@@ -124,44 +171,61 @@ if (DEBUG_SYNC)
     add_definitions(-DDEBUG_SYNC)
 endif()
 
+if (2D)
+     add_definitions(-DTWO_D=1)
+else () 
+     add_definitions(-DTWO_D=0)
+endif ()
+
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
 ## Subdirectories
 
 # 3rd party
-add_subdirectory(3rdparty/inih)
+if (INCLUDE_3RD_PARTIES)
+	add_subdirectory(3rdparty/inih)
+endif()
 
 # Astaroth modules
 add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
-# if (NOT BUILD_SHARED_LIBS)
-#     add_subdirectory(samples/ac-interpreter)
-# endif()
+
+if (BUILD_TESTS)
+	add_subdirectory(test)
+	add_definitions(-DINCLUDE_MODEL_SOLVER=0)
+else()
+	add_definitions(-DINCLUDE_MODEL_SOLVER=1)
+endif()
 
 if (BUILD_UTILS)
     add_subdirectory(src/utils)
 endif()
 
-# Other modules
+if (RUNTIME_COMPILATION)
+	add_subdirectory(runtime_compilation)
+endif()
 
 ## Have this as a separate option when no other "samples" aree needed.
-## Useful e.g. when compilation time is long e.g. with shock viscosity.
-if (BUILD_STANDALONE)
+## Useful e.g. when compilation time is long e.g. with shock viscosity. 
+if (BUILD_STANDALONE AND NOT BUILD_TESTS)
     add_subdirectory(samples/standalone_mpi)
 endif()
 
-if (BUILD_SAMPLES)
+if (BUILD_SAMPLES AND NOT BUILD_TESTS)
     add_subdirectory(samples/ctest)
     add_subdirectory(samples/cpptest)
-    add_subdirectory(samples/benchmark)
+    #TP: we should make a wrapper functions for the CUDA calls
     add_subdirectory(samples/benchmark-device)
+    if  (NOT RUNTIME_COMPILATION)
+    add_subdirectory(samples/benchmark)
     add_subdirectory(samples/benchmark-node)
+    endif()
     add_subdirectory(samples/mpi-io)
     add_subdirectory(samples/mpi-io-multithreaded)
     add_subdirectory(samples/pc-varfile-import)
-    add_subdirectory(samples/bwtest)
     add_subdirectory(samples/microbenchmark)
+    #add_subdirectory(samples/stress)
 
     
     # add_subdirectory(samples/standalone)
@@ -188,13 +252,13 @@ if (BUILD_SAMPLES)
     #endif()
 endif()
 
-if (BUILD_MLLIB_SAMPLES)
+if (BUILD_SAMPLES AND BUILD_MLLIB_SAMPLES)
 # Workaround for finding miopen on Triton
 link_directories(/opt/rocm/miopen/lib/)
     add_subdirectory(samples/microbenchmark-nn)
 endif ()
 
-if (BUILD_MHD_SAMPLES)
+if (BUILD_SAMPLES AND BUILD_MHD_SAMPLES)
     # add_subdirectory(samples/standalone)
     # add_subdirectory(samples/standalone_mpi)
     add_subdirectory(samples/mpitest)
@@ -202,7 +266,7 @@ if (BUILD_MHD_SAMPLES)
     add_subdirectory(samples/stencil-loader)
 endif()
 
-if(MPI_ENABLED)
+if (MPI_ENABLED AND BUILD_ACM)
     add_subdirectory(acc-comm)
 endif()
 

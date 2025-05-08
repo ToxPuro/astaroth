@@ -1,0 +1,27 @@
+Field FIELD
+bool my_boolean_param
+
+//TP: unit test to test Astaroth aborts if some stencil accesses are skipped at compiletime but used at runtime
+//TP: one possible idea would be for Astaroth to write the runtime accesses to a file that could be utilized for later compilation
+Kernel main_kernel()
+{
+	real field_value = 0
+	if(my_boolean_param)
+	{
+	}
+	else
+	{
+		field_value = value(FIELD)
+	}
+	write(FIELD, field_value)
+
+}
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps rhs(bcs)
+{
+	main_kernel()
+}

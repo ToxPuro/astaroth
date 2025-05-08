@@ -33,8 +33,6 @@ load_stencil_from_config(const AcMeshInfo info)
     // MV: viscosity to stop working.
     AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH] = {{{{0}}}};
 
-    // Midpoint
-    stencils[stencil_value][MID][MID][MID] = 1;
 
     AcReal der1[]     = {-DER1_3, -DER1_2, -DER1_1, DER1_0, DER1_1, DER1_2, DER1_3};
     AcReal der2[]     = {DER2_3, DER2_2, DER2_1, DER2_0, DER2_1, DER2_2, DER2_3};
@@ -100,12 +98,13 @@ load_stencil_from_config(const AcMeshInfo info)
     }
 
     AcReal weights[]   = {1.0, 9.0, 45.0, 70.0, 45.0, 9.0, 1.0};
-    AcReal smooth_norm = 5832000.0; // Based on separate calculation: sum of all weights
+
+    //AcReal smooth_norm = 5832000.0; // Based on separate calculation: sum of all weights
     for (size_t i = 0; i < STENCIL_ORDER + 1; ++i) {
         for (size_t j = 0; j < STENCIL_ORDER + 1; ++j) {
             for (size_t k = 0; k < STENCIL_ORDER + 1; ++k) {
                 stencils[stencil_smooth_kernel][k][j][i] = (weights[k] * weights[j] * weights[i]) /
-                                                           smooth_norm;
+                                                           (AcReal)smooth_norm;
             }
         }
     }

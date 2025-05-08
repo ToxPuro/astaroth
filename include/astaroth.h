@@ -17,215 +17,198 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#include <stdbool.h>
 
-#include "acc_runtime.h"
-
-#define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
-
-typedef struct {
-    AcReal* vertex_buffer[NUM_VTXBUF_HANDLES];
-    AcMeshInfo info;
-} AcMesh;
-
-#define STREAM_0 (0)
-#define STREAM_1 (1)
-#define STREAM_2 (2)
-#define STREAM_3 (3)
-#define STREAM_4 (4)
-#define STREAM_5 (5)
-#define STREAM_6 (6)
-#define STREAM_7 (7)
-#define STREAM_8 (8)
-#define STREAM_9 (9)
-#define STREAM_10 (10)
-#define STREAM_11 (11)
-#define STREAM_12 (12)
-#define STREAM_13 (13)
-#define STREAM_14 (14)
-#define STREAM_15 (15)
-#define STREAM_16 (16)
-#define STREAM_17 (17)
-#define STREAM_18 (18)
-#define STREAM_19 (19)
-#define STREAM_20 (20)
-#define STREAM_21 (21)
-#define STREAM_22 (22)
-#define STREAM_23 (23)
-#define STREAM_24 (24)
-#define STREAM_25 (25)
-#define STREAM_26 (26)
-#define STREAM_27 (27)
-#define STREAM_28 (28)
-#define STREAM_29 (29)
-#define STREAM_30 (30)
-#define STREAM_31 (31)
-#define NUM_STREAMS (32)
-#define STREAM_DEFAULT (STREAM_0)
-#define STREAM_ALL (NUM_STREAMS)
-typedef int Stream;
-
-#define AC_FOR_RTYPES(FUNC)                                                                        \
-    FUNC(RTYPE_MAX)                                                                                \
-    FUNC(RTYPE_MIN)                                                                                \
-    FUNC(RTYPE_SUM)                                                                                \
-    FUNC(RTYPE_RMS)                                                                                \
-    FUNC(RTYPE_RMS_EXP)                                                                            \
-    FUNC(RTYPE_ALFVEN_MAX)                                                                         \
-    FUNC(RTYPE_ALFVEN_MIN)                                                                         \
-    FUNC(RTYPE_ALFVEN_RMS)                                                                         \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_MAX)                                                           \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_MIN)                                                           \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_RMS)                                                           \
-    FUNC(RTYPE_RADIAL_WINDOW_MAX)                                                                  \
-    FUNC(RTYPE_RADIAL_WINDOW_MIN)                                                                  \
-    FUNC(RTYPE_RADIAL_WINDOW_SUM)                                                                  \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_MAX)                                                                \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_MIN)                                                                \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_SUM)
-
-#define RTYPE_ISNAN (RTYPE_SUM)
-
-#define AC_FOR_BCTYPES(FUNC)                                                                       \
-    FUNC(BOUNDCOND_PERIODIC)                                                                       \
-    FUNC(BOUNDCOND_SYMMETRIC)                                                                      \
-    FUNC(BOUNDCOND_ANTISYMMETRIC)                                                                  \
-    FUNC(BOUNDCOND_A2)                                                                             \
-    FUNC(BOUNDCOND_INFLOW)                                                                         \
-    FUNC(BOUNDCOND_OUTFLOW)                                                                        \
-    FUNC(BOUNDCOND_CONST)                                                                          \
-    FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
-
-#ifdef AC_INTEGRATION_ENABLED
-
-#define AC_FOR_SPECIAL_MHD_BCTYPES(FUNC)                                                           \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE)                                       \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION)                                        \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX)                                       \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX)
-
-#endif
-
-#define AC_FOR_INIT_TYPES(FUNC)                                                                    \
-    FUNC(INIT_TYPE_RANDOM)                                                                         \
-    FUNC(INIT_TYPE_AA_RANDOM)                                                                      \
-    FUNC(INIT_TYPE_XWAVE)                                                                          \
-    FUNC(INIT_TYPE_GAUSSIAN_RADIAL_EXPL)                                                           \
-    FUNC(INIT_TYPE_ABC_FLOW)                                                                       \
-    FUNC(INIT_TYPE_SIMPLE_CORE)                                                                    \
-    FUNC(INIT_TYPE_KICKBALL)                                                                       \
-    FUNC(INIT_TYPE_VEDGE)                                                                          \
-    FUNC(INIT_TYPE_VEDGEX)                                                                         \
-    FUNC(INIT_TYPE_RAYLEIGH_TAYLOR)                                                                \
-    FUNC(INIT_TYPE_RAYLEIGH_BENARD)
-
-#define AC_GEN_ID(X) X,
-// Naming the associated number of the boundary condition types
-typedef enum {
-    AC_FOR_BCTYPES(AC_GEN_ID) //
-    NUM_BCTYPES,
-} AcBoundcond;
-
-#ifdef AC_INTEGRATION_ENABLED
-typedef enum {
-    AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_ID) //
-    NUM_SPECIAL_MHD_BCTYPES,
-} AcSpecialMHDBoundcond;
-#endif
-
-typedef enum {
-    AC_FOR_RTYPES(AC_GEN_ID) //
-    NUM_RTYPES
-} ReductionType;
-
-typedef enum {
-    AC_FOR_INIT_TYPES(AC_GEN_ID) //
-    NUM_INIT_TYPES
-} InitType;
-
-#undef AC_GEN_ID
-
-#define _UNUSED __attribute__((unused)) // Does not give a warning if unused
-#define AC_GEN_STR(X) #X,
-static const char* bctype_names[] _UNUSED       = {AC_FOR_BCTYPES(AC_GEN_STR) "-end-"};
-static const char* rtype_names[] _UNUSED        = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
-static const char* initcondtype_names[] _UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
-
-#ifdef AC_INTEGRATION_ENABLED
-static const char* special_bctype_names[] _UNUSED = {
-    AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_STR) "-end-"};
-#endif
-
-#undef AC_GEN_STR
-#undef _UNUSED
-
-typedef struct node_s* Node;
-typedef struct device_s* Device;
-
-typedef struct {
-    int3 m;
-    int3 n;
-} GridDims;
-
-typedef struct {
-    int num_devices;
-    Device* devices;
-
-    GridDims grid;
-    GridDims subgrid;
-} DeviceConfiguration;
+#include "astaroth_base.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+int3 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
+                          const AcMeshInfo info);
+
+static inline AcReal3
+acConstructReal3Param(const AcRealParam a, const AcRealParam b, const AcRealParam c,
+                     const AcMeshInfo info)
+{
+    return (AcReal3){
+        info.real_params[a],
+        info.real_params[b],
+        info.real_params[c],
+    };
+}
 
 /*
  * =============================================================================
  * Helper functions
  * =============================================================================
  */
-size_t acVertexBufferSize(const AcMeshInfo info);
 
-size_t acVertexBufferSizeBytes(const AcMeshInfo info);
+FUNC_DEFINE(Volume, acGetLocalNN, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetLocalMM, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetGridNN, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetGridMM, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetMinNN, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetMaxNN, (const AcMeshInfo info));
+FUNC_DEFINE(Volume, acGetGridMaxNN, (const AcMeshInfo info));
+FUNC_DEFINE(AcReal3, acGetLengths, (const AcMeshInfo info));
 
-size_t acVertexBufferCompdomainSize(const AcMeshInfo info);
 
-size_t acVertexBufferCompdomainSizeBytes(const AcMeshInfo info);
+static inline size_t
+acVertexBufferSize(const AcMeshInfo info)
+{
+    const Volume mm = acGetLocalMM(info);
+    return mm.x*mm.y*mm.z;
+}
+static inline size_t
+acGridVertexBufferSize(const AcMeshInfo info)
+{
+    const Volume mm = acGetGridMM(info);
+    return mm.x*mm.y*mm.z;
+}
 
-int3 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
-                          const AcMeshInfo info);
+static inline Volume 
+acVertexBufferDims(const AcMeshInfo info)
+{
+    return acGetLocalMM(info);
+}
 
-typedef struct {
-    int3 n0, n1;
-    int3 m0, m1;
-    int3 nn;
-} AcMeshDims;
+static inline size_t
+acVertexBufferSizeBytes(const AcMeshInfo info)
+{
+    return sizeof(AcReal) * acVertexBufferSize(info);
+}
 
-AcMeshDims acGetMeshDims(const AcMeshInfo info);
 
-size_t acGetKernelId(const Kernel kernel);
+static inline size_t
+acVertexBufferCompdomainSize(const AcMeshInfo info)
+{
+    const Volume nn = acGetLocalNN(info);
+    return nn.x*nn.y*nn.z;
+}
 
-size_t acGetKernelIdByName(const char* name);
+static inline size_t
+acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
+{
+    return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
+}
 
-AcMeshInfo acGridDecomposeMeshInfo(const AcMeshInfo global_config);
+static inline AcMeshDims
+acGetMeshDims(const AcMeshInfo info)
+{
+   const Volume n0 = acGetMinNN(info);
+   const Volume n1 = acGetMaxNN(info);
+   const Volume m0 = (Volume){0, 0, 0};
+   const Volume m1 = acGetLocalMM(info);
+   const Volume nn = acGetLocalNN(info);
+   const Volume reduction_tile = (Volume)
+   {
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
+   };
 
-AcMeshInfo acGridGetLocalMeshInfo(void);
+   return (AcMeshDims){
+       .n0 = n0,
+       .n1 = n1,
+       .m0 = m0,
+       .m1 = m1,
+       .nn = nn,
+       .reduction_tile = reduction_tile,
+   };
+}
 
-size_t acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info);
+static inline AcMeshDims
+acGetGridMeshDims(const AcMeshInfo info)
+{
+   const Volume n0 = acGetMinNN(info);
+   const Volume n1 = acGetGridMaxNN(info);
+   const Volume m0 = (Volume){0, 0, 0};
+   const Volume m1 = acGetGridMM(info);
+   const Volume nn = acGetGridNN(info);
+   const Volume reduction_tile = (Volume)
+   {
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
+   };
 
-int3 acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info);
+   return (AcMeshDims){
+       .n0 = n0,
+       .n1 = n1,
+       .m0 = m0,
+       .m1 = m1,
+       .nn = nn,
+       .reduction_tile = reduction_tile,
+   };
+}
 
-/** Prints all parameters inside AcMeshInfo */
-void acPrintMeshInfo(const AcMeshInfo config);
+FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
 
-/** Prints a list of boundary condition types */
-void acQueryBCtypes(void);
+
+FUNC_DEFINE(AcResult, acAnalysisGetKernelInfo,(const AcMeshInfo info, KernelAnalysisInfo* dst));
+FUNC_DEFINE(AcResult, acAnalysisCheckForDSLErrors,(const AcMeshInfo info));
+	
+
+
+
+FUNC_DEFINE(size_t, acGetKernelIdByName,(const char* name));
+
+
+FUNC_DEFINE(AcMeshInfo, acGridDecomposeMeshInfo,(const AcMeshInfo global_config));
+
+#if AC_RUNTIME_COMPILATION == 0
+FUNC_DEFINE(VertexBufferArray, acGridGetVBA,(void));
+#endif
+
+FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
+
+#ifdef __cplusplus
+//TP: this is done for perf optim since if acVertexBufferIdx is called often
+//Making it an external function call is quite expensive
+static inline size_t
+acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    auto mm = info[AC_mgrid];
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
+}
+static inline size_t
+acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    auto mm = info[AC_mlocal];
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
+}
+#else
+static inline size_t
+acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    const Volume mm = acGetLocalMM(info);
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
+}
+static inline size_t
+acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    const Volume mm = acGetGridMM(info);
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
+}
+#endif
+
+static inline int3
+acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
+{
+    const Volume mm = acGetLocalMM(info);
+
+    return (int3){
+        (int)i % (int)mm.x,
+        ((int)i % (int)(mm.x * mm.y)) / (int)mm.x,
+        (int)i / (int)(mm.x * mm.y),
+    };
+}
+
+
 
 /** Prints a list of initial condition condition types */
 void acQueryInitcondtypes(void);
-
-/** Prints a list of reduction types */
-void acQueryRtypes(void);
 
 /** Prints a list of int parameters */
 void acQueryIntparams(void);
@@ -244,107 +227,49 @@ void acQueryReal3params(void);
 static inline void
 acQueryScalarrays(void)
 {
-    for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i)
-        printf("%s (%d)\n", scalarray_names[i], i);
+    for (int i = 0; i < NUM_REAL_ARRS_1D; ++i)
+        printf("%s (%d)\n", realarr1D_names[i], i);
 }
 */
 
 /** Prints a list of vertex buffer handles */
-void acQueryVtxbufs(void);
+static inline void
+acQueryVtxbufs(void)
+{
+    for (int i = 0; i < NUM_ALL_FIELDS; ++i)
+        printf("%s (%d)\n", vtxbuf_names[i], i);
+}
 
 /** Prints a list of kernels */
 void acQueryKernels(void);
 
-void acPrintIntParam(const AcIntParam a, const AcMeshInfo info);
+static inline void
+acPrintIntParam(const AcIntParam a, const AcMeshInfo info)
+{
+    printf("%s: %d\n", intparam_names[a], info.int_params[a]);
+}
 
 void acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c,
                       const AcMeshInfo info);
 
-void acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info);
+static inline void
+acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
+{
+    const int3 vec = info.int3_params[a];
+    printf("{%s: (%d, %d, %d)}\n", int3param_names[a], vec.x, vec.y, vec.z);
+}
 
 /*
  * =============================================================================
  * Legacy interface
  * =============================================================================
  */
-/** Allocates all memory and initializes the devices visible to the caller. Should be
- * called before any other function in this interface. */
-AcResult acInit(const AcMeshInfo mesh_info);
 
-/** Frees all GPU allocations and resets all devices in the node. Should be
- * called at exit. */
-AcResult acQuit(void);
-
-/** Checks whether there are any CUDA devices available. Returns AC_SUCCESS if there is 1 or more,
- * AC_FAILURE otherwise. */
-AcResult acCheckDeviceAvailability(void);
-
-/** Synchronizes a specific stream. All streams are synchronized if STREAM_ALL is passed as a
- * parameter*/
-AcResult acSynchronizeStream(const Stream stream);
-
-/** */
-AcResult acSynchronizeMesh(void);
-
-/** Loads a constant to the memories of the devices visible to the caller */
-AcResult acLoadDeviceConstant(const AcRealParam param, const AcReal value);
-
-/** Loads an AcMesh to the devices visible to the caller */
-AcResult acLoad(const AcMesh host_mesh);
-
-/** Sets the whole mesh to some value */
-AcResult acSetVertexBuffer(const VertexBufferHandle handle, const AcReal value);
-
-/** Stores the AcMesh distributed among the devices visible to the caller back to the host*/
-AcResult acStore(AcMesh* host_mesh);
-
-/** Performs Runge-Kutta 3 integration. Note: Boundary conditions are not applied after the final
- * substep and the user is responsible for calling acBoundcondStep before reading the data. */
-AcResult acIntegrate(const AcReal dt);
-
-/** Performs Runge-Kutta 3 integration. Note: Boundary conditions are not applied after the final
- * substep and the user is responsible for calling acBoundcondStep before reading the data.
- * Has customizable boundary conditions. */
-AcResult acIntegrateGBC(const AcMeshInfo config, const AcReal dt);
-
-/** Applies periodic boundary conditions for the Mesh distributed among the devices visible to
- * the caller*/
-AcResult acBoundcondStep(void);
-
-/** Applies general outer boundary conditions for the Mesh distributed among the devices visible to
- * the caller*/
-AcResult acBoundcondStepGBC(const AcMeshInfo config);
-
-/** Does a scalar reduction with the data stored in some vertex buffer */
-AcReal acReduceScal(const ReductionType rtype, const VertexBufferHandle vtxbuf_handle);
-
-/** Does a vector reduction with vertex buffers where the vector components are (a, b, c) */
-AcReal acReduceVec(const ReductionType rtype, const VertexBufferHandle a,
-                   const VertexBufferHandle b, const VertexBufferHandle c);
-
-/** Does a reduction for an operation which requires a vector and a scalar with vertex buffers
- *  * where the vector components are (a, b, c) and scalr is (d) */
-AcReal acReduceVecScal(const ReductionType rtype, const VertexBufferHandle a,
-                       const VertexBufferHandle b, const VertexBufferHandle c,
-                       const VertexBufferHandle d);
-
-/** Stores a subset of the mesh stored across the devices visible to the caller back to host memory.
- */
-AcResult acStoreWithOffset(const int3 dst, const size_t num_vertices, AcMesh* host_mesh);
-
-/** Will potentially be deprecated in later versions. Added only to fix backwards compatibility with
- * PC for now.*/
-AcResult acIntegrateStep(const int isubstep, const AcReal dt);
-AcResult acIntegrateStepWithOffset(const int isubstep, const AcReal dt, const int3 start,
-                                   const int3 end);
-AcResult acSynchronize(void);
-AcResult acLoadWithOffset(const AcMesh host_mesh, const int3 src, const int num_vertices);
-
-/** */
-int acGetNumDevicesPerNode(void);
+FUNC_DEFINE(AcResult, acCheckDeviceAvailability,(void));
+FUNC_DEFINE(int, acGetNumDevicesPerNode,(void));
 
 /** Returns the number of fields (vertexbuffer handles). */
-size_t acGetNumFields(void);
+FUNC_DEFINE(size_t, acGetNumFields,(void));
 
 /** Gets the field handle corresponding to a null-terminated `str` and stores the result in
  * `handle`.
@@ -360,730 +285,352 @@ size_t acGetNumFields(void);
  *  fprintf(stderr, "Handle not found\n");
  * ```
  *  */
-AcResult acGetFieldHandle(const char* field, size_t* handle);
+FUNC_DEFINE(AcResult, acGetFieldHandle,(const char* field, size_t* handle));
 
 /** */
-Node acGetNode(void);
+FUNC_DEFINE(Node, acGetNode,(void));
 
 /*
  * =============================================================================
  * Grid interface
  * =============================================================================
  */
-#if AC_MPI_ENABLED
-
-/**
-Calls MPI_Init and creates a separate communicator for Astaroth procs with MPI_Comm_split, color =
-666 Any program running in the same MPI process space must also call MPI_Comm_split with some color
-!= 666. OTHERWISE this call will hang.
-
-Returns AC_SUCCESS on successfullly initializing MPI and creating a communicator.
-
-Returns AC_FAILURE otherwise.
- */
-AcResult ac_MPI_Init();
-
-/**
-Calls MPI_Init_thread with the provided thread_level and creates a separate communicator for
-Astaroth procs with MPI_Comm_split, color = 666 Any program running in the same MPI process space
-must also call MPI_Comm_split with some color != 666. OTHERWISE this call will hang.
-
-Returns AC_SUCCESS on successfullly initializing MPI with the requested thread level and creating a
-communicator.
-
-Returns AC_FAILURE otherwise.
- */
-AcResult ac_MPI_Init_thread(int thread_level);
-
-/**
-Destroys the communicator and calls MPI_Finalize
-*/
-void ac_MPI_Finalize();
-
-/** Returns the rank of the Astaroth communicator */
-int ac_MPI_Comm_rank();
-
-/** Returns the size of the Astaroth communicator */
-int ac_MPI_Comm_size();
-
-/** Calls MPI_Barrier on the Astaroth communicator */
-void ac_MPI_Barrier();
-
-/**
-Initializes all available devices.
-
-Must compile and run the code with MPI.
-
-Must allocate exactly one process per GPU. And the same number of processes
-per node as there are GPUs on that node.
-
-Devices in the grid are configured based on the contents of AcMesh.
- */
-AcResult acGridInit(const AcMeshInfo info);
-
-/**
-Resets all devices on the current grid.
- */
-AcResult acGridQuit(void);
-
-/** Get the local device */
-Device acGridGetDevice(void);
-
-/** Randomizes the local mesh */
-AcResult acGridRandomize(void);
-
-/** */
-AcResult acGridSynchronizeStream(const Stream stream);
-
-/** */
-AcResult acGridLoadScalarUniform(const Stream stream, const AcRealParam param, const AcReal value);
-
-/** */
-AcResult acGridLoadVectorUniform(const Stream stream, const AcReal3Param param,
-                                 const AcReal3 value);
-
-/** */
-AcResult acGridLoadIntUniform(const Stream stream, const AcIntParam param, const int value);
-
-/** */
-AcResult acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 value);
-
-/** */
-AcResult acGridLoadMesh(const Stream stream, const AcMesh host_mesh);
-
-/** */
-AcResult acGridStoreMesh(const Stream stream, AcMesh* host_mesh);
-
-/** */
-AcResult acGridIntegrate(const Stream stream, const AcReal dt);
-
-AcResult acGridSwapBuffers(void);
-
-/** */
-/*   MV: Commented out for a while, but save for the future when standalone_MPI
-         works with periodic boundary conditions.
-AcResult
-acGridIntegrateNonperiodic(const Stream stream, const AcReal dt)
-
-AcResult acGridIntegrateNonperiodic(const Stream stream, const AcReal dt);
-*/
-
-/** */
-AcResult acGridPeriodicBoundconds(const Stream stream);
-
-/** */
-AcResult acGridGeneralBoundconds(const Device device, const Stream stream);
-
-/** */
-AcResult acGridReduceScal(const Stream stream, const ReductionType rtype,
-                          const VertexBufferHandle vtxbuf_handle, AcReal* result);
-
-/** */
-AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
-                         const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                         const VertexBufferHandle vtxbuf2, AcReal* result);
-
-/** */
-AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype,
-                             const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                             const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
-                             AcReal* result);
-
-/** */
-AcResult acGridReduceXYAverage(const Stream stream, const Field field, const Profile profile);
-
-typedef enum {
-    ACCESS_READ,
-    ACCESS_WRITE,
-} AccessType;
-
-AcResult acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle field, const char* dir,
-                                           const char* label, const AccessType type);
-
-AcResult acGridDiskAccessLaunch(const AccessType type);
-
-/* Asynchronous. Need to call acGridDiskAccessSync afterwards */
-AcResult acGridWriteSlicesToDiskLaunch(const char* dir, const char* label);
-
-/* Synchronous */
-AcResult acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label);
-
-/* Asynchronous. Need to call acGridDiskAccessSync afterwards */
-AcResult acGridWriteMeshToDiskLaunch(const char* dir, const char* label);
-
-AcResult acGridDiskAccessSync(void);
-
-AcResult acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
-                                 const int3 nn, const int3 rr);
-
-/* Quick hack for the hero run, will be removed in future builds */
-AcResult acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf,
-                                                      const char* dir, const char* label,
-                                                      const AccessType type);
-
-/* Quick hack for the hero run, will be removed in future builds */
-AcResult acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf,
-                                                     const char* dir, const char* label,
-                                                     const AccessType type);
-
-// Bugged
-// AcResult acGridLoadFieldFromFile(const char* path, const VertexBufferHandle field);
-
-// Bugged
-// AcResult acGridStoreFieldToFile(const char* path, const VertexBufferHandle field);
-
-/*
- * =============================================================================
- * Task interface (part of the grid interface)
- * =============================================================================
- */
-
-/** */
-typedef enum AcTaskType {
-    TASKTYPE_COMPUTE,
-    TASKTYPE_HALOEXCHANGE,
-    TASKTYPE_BOUNDCOND,
-    TASKTYPE_SPECIAL_MHD_BOUNDCOND,
-    TASKTYPE_SYNC
-} AcTaskType;
-
-typedef enum AcBoundary {
-    BOUNDARY_NONE  = 0,
-    BOUNDARY_X_TOP = 0x01,
-    BOUNDARY_X_BOT = 0x02,
-    BOUNDARY_X     = BOUNDARY_X_TOP | BOUNDARY_X_BOT,
-    BOUNDARY_Y_TOP = 0x04,
-    BOUNDARY_Y_BOT = 0x08,
-    BOUNDARY_Y     = BOUNDARY_Y_TOP | BOUNDARY_Y_BOT,
-    BOUNDARY_Z_TOP = 0x10,
-    BOUNDARY_Z_BOT = 0x20,
-    BOUNDARY_Z     = BOUNDARY_Z_TOP | BOUNDARY_Z_BOT,
-    BOUNDARY_XY    = BOUNDARY_X | BOUNDARY_Y,
-    BOUNDARY_XZ    = BOUNDARY_X | BOUNDARY_Z,
-    BOUNDARY_YZ    = BOUNDARY_Y | BOUNDARY_Z,
-    BOUNDARY_XYZ   = BOUNDARY_X | BOUNDARY_Y | BOUNDARY_Z
-} AcBoundary;
-
-/** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
- * some operation.*/
-typedef struct AcTaskDefinition {
-    AcTaskType task_type;
-    union {
-        AcKernel kernel;
-        AcBoundcond bound_cond;
-#ifdef AC_INTEGRATION_ENABLED
-        AcSpecialMHDBoundcond special_mhd_bound_cond;
-#endif
-    };
-    AcBoundary boundary;
-
-    Field* fields_in;
-    size_t num_fields_in;
-
-    Field* fields_out;
-    size_t num_fields_out;
-
-    AcRealParam* parameters;
-    size_t num_parameters;
-} AcTaskDefinition;
-
-/** TaskGraph is an opaque datatype containing information necessary to execute a set of
- * operations.*/
-typedef struct AcTaskGraph AcTaskGraph;
-
-/** */
-AcTaskDefinition acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out);
-
-/** */
-AcTaskDefinition acHaloExchange(Field fields[], const size_t num_fields);
-
-/** */
-AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                                     Field fields[], const size_t num_fields,
-                                     AcRealParam parameters[], const size_t num_parameters);
-
-AcTaskDefinition acSync();
-#ifdef AC_INTEGRATION_ENABLED
-/** SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the
-   MHD implementation). They launch specially written CUDA kernels that implement the specific
-   boundary condition procedure They are a stop-gap temporary solution. The sensible solution is to
-   replace them with a task type that runs a boundary condition procedure written in the Astaroth
-   DSL.
-*/
-AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary,
-                                               const AcSpecialMHDBoundcond bound_cond,
-                                               AcRealParam parameters[],
-                                               const size_t num_parameters);
-#endif
-
-/** */
-AcTaskGraph* acGridGetDefaultTaskGraph();
-
-/** */
-bool acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph* graph);
-
-/** */
-bool acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph* graph);
-
-/** */
-bool acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph* graph);
-
-/** */
-AcTaskGraph* acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops);
-
-/** */
-AcResult acGridDestroyTaskGraph(AcTaskGraph* graph);
-
-/** */
-AcResult acGridExecuteTaskGraph(AcTaskGraph* graph, const size_t n_iterations);
-
-/** */
-AcResult acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start,
-                            const int3 end);
-
-/** */
-AcResult acGridLoadStencil(const Stream stream, const Stencil stencil,
-                           const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
-
-/** */
-AcResult acGridStoreStencil(const Stream stream, const Stencil stencil,
-                            AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
-
-/** */
-AcResult
-acGridLoadStencils(const Stream stream,
-                   const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
-
-/** */
-AcResult
-acGridStoreStencils(const Stream stream,
-                    AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
-
-#endif // AC_MPI_ENABLED
-
+#include "astaroth_grid.h"
 /*
  * =============================================================================
  * Node interface
  * =============================================================================
  */
-/**
-Initializes all devices on the current node.
 
-Devices on the node are configured based on the contents of AcMesh.
-
-@return Exit status. Places the newly created handle in the output parameter.
-@see AcMeshInfo
-
-
-Usage example:
-@code
-AcMeshInfo info;
-acLoadConfig(AC_DEFAULT_CONFIG, &info);
-
-Node node;
-acNodeCreate(0, info, &node);
-acNodeDestroy(node);
-@endcode
- */
-AcResult acNodeCreate(const int id, const AcMeshInfo node_config, Node* node);
-
-/**
-Resets all devices on the current node.
-
-@see acNodeCreate()
- */
-AcResult acNodeDestroy(Node node);
-
-/**
-Prints information about the devices available on the current node.
-
-Requires that Node has been initialized with
-@See acNodeCreate().
-*/
-AcResult acNodePrintInfo(const Node node);
-
-/**
-
-
-
-@see DeviceConfiguration
-*/
-AcResult acNodeQueryDeviceConfiguration(const Node node, DeviceConfiguration* config);
-
-/** */
-AcResult acNodeAutoOptimize(const Node node);
-
-/** */
-AcResult acNodeSynchronizeStream(const Node node, const Stream stream);
-
-/** Deprecated ? */
-AcResult acNodeSynchronizeVertexBuffer(const Node node, const Stream stream,
-                                       const VertexBufferHandle vtxbuf_handle); // Not in Device
-
-/** */
-AcResult acNodeSynchronizeMesh(const Node node, const Stream stream); // Not in Device
-
-/** */
-AcResult acNodeSwapBuffers(const Node node);
-
-/** */
-AcResult acNodeLoadConstant(const Node node, const Stream stream, const AcRealParam param,
-                            const AcReal value);
-
-/** Deprecated ? Might be useful though if the user wants to load only one vtxbuf. But in this case
- * the user should supply a AcReal* instead of vtxbuf_handle */
-AcResult acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream,
-                                          const AcMesh host_mesh,
-                                          const VertexBufferHandle vtxbuf_handle, const int3 src,
-                                          const int3 dst, const int num_vertices);
-
-/** */
-AcResult acNodeLoadMeshWithOffset(const Node node, const Stream stream, const AcMesh host_mesh,
-                                  const int3 src, const int3 dst, const int num_vertices);
-
-/** Deprecated ? */
-AcResult acNodeLoadVertexBuffer(const Node node, const Stream stream, const AcMesh host_mesh,
-                                const VertexBufferHandle vtxbuf_handle);
-
-/** */
-AcResult acNodeLoadMesh(const Node node, const Stream stream, const AcMesh host_mesh);
-
-/** */
-AcResult acNodeSetVertexBuffer(const Node node, const Stream stream,
-                               const VertexBufferHandle handle, const AcReal value);
-
-/** Deprecated ? */
-AcResult acNodeStoreVertexBufferWithOffset(const Node node, const Stream stream,
-                                           const VertexBufferHandle vtxbuf_handle, const int3 src,
-                                           const int3 dst, const int num_vertices,
-                                           AcMesh* host_mesh);
-
-/** */
-AcResult acNodeStoreMeshWithOffset(const Node node, const Stream stream, const int3 src,
-                                   const int3 dst, const int num_vertices, AcMesh* host_mesh);
-
-/** Deprecated ? */
-AcResult acNodeStoreVertexBuffer(const Node node, const Stream stream,
-                                 const VertexBufferHandle vtxbuf_handle, AcMesh* host_mesh);
-
-/** */
-AcResult acNodeStoreMesh(const Node node, const Stream stream, AcMesh* host_mesh);
-
-/** */
-AcResult acNodeIntegrateSubstep(const Node node, const Stream stream, const int step_number,
-                                const int3 start, const int3 end, const AcReal dt);
-
-/** */
-AcResult acNodeIntegrate(const Node node, const AcReal dt);
-
-/** */
-AcResult acNodeIntegrateGBC(const Node node, const AcMeshInfo config, const AcReal dt);
-
-/** */
-AcResult acNodePeriodicBoundcondStep(const Node node, const Stream stream,
-                                     const VertexBufferHandle vtxbuf_handle);
-
-/** */
-AcResult acNodePeriodicBoundconds(const Node node, const Stream stream);
-
-/** */
-AcResult acNodeGeneralBoundcondStep(const Node node, const Stream stream,
-                                    const VertexBufferHandle vtxbuf_handle,
-                                    const AcMeshInfo config);
-
-/** */
-AcResult acNodeGeneralBoundconds(const Node node, const Stream stream, const AcMeshInfo config);
-
-/** */
-AcResult acNodeReduceScal(const Node node, const Stream stream, const ReductionType rtype,
-                          const VertexBufferHandle vtxbuf_handle, AcReal* result);
-/** */
-AcResult acNodeReduceVec(const Node node, const Stream stream_type, const ReductionType rtype,
-                         const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                         const VertexBufferHandle vtxbuf2, AcReal* result);
-/** */
-AcResult acNodeReduceVecScal(const Node node, const Stream stream_type, const ReductionType rtype,
-                             const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                             const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
-                             AcReal* result);
+#include "astaroth_node.h"
 
 /*
  * =============================================================================
  * Device interface
  * =============================================================================
  */
-/** */
-AcResult acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device);
 
-/** */
-AcResult acDeviceDestroy(Device device);
+#include "astaroth_device.h"
 
-/** Resets the mesh to default values defined in acc_runtime.cu:acVBAReset */
-AcResult acDeviceResetMesh(const Device device, const Stream stream);
-
-/** */
-AcResult acDevicePrintInfo(const Device device);
-
-/** */
-// AcResult acDeviceAutoOptimize(const Device device);
-
-/** */
-AcResult acDeviceSynchronizeStream(const Device device, const Stream stream);
-
-/** */
-AcResult acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle);
-
-/** */
-AcResult acDeviceSwapBuffers(const Device device);
-
-/** */
-AcResult acDevicePrintProfiles(const Device device);
-
-/** */
-AcResult acDeviceLoadScalarUniform(const Device device, const Stream stream,
-                                   const AcRealParam param, const AcReal value);
-
-/** */
-AcResult acDeviceLoadVectorUniform(const Device device, const Stream stream,
-                                   const AcReal3Param param, const AcReal3 value);
-
-/** */
-AcResult acDeviceLoadIntUniform(const Device device, const Stream stream, const AcIntParam param,
-                                const int value);
-
-/** */
-AcResult acDeviceLoadInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
-                                 const int3 value);
-
-/** */
-AcResult acDeviceStoreScalarUniform(const Device device, const Stream stream,
-                                    const AcRealParam param, AcReal* value);
-
-/** */
-AcResult acDeviceStoreVectorUniform(const Device device, const Stream stream,
-                                    const AcReal3Param param, AcReal3* value);
-
-/** */
-AcResult acDeviceStoreIntUniform(const Device device, const Stream stream, const AcIntParam param,
-                                 int* value);
-
-/** */
-AcResult acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
-                                  int3* value);
-
-/** */
 /*
-AcResult acDeviceLoadScalarArray(const Device device, const Stream stream,
-                                 const ScalarArrayHandle handle, const size_t start,
-                                 const AcReal* data, const size_t num);
-                                 */
-
-/** */
-AcResult acDeviceLoadMeshInfo(const Device device, const AcMeshInfo device_config);
-
-/** */
-AcResult acDeviceLoadDefaultUniforms(const Device device);
-
-/** */
-AcResult acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream,
-                                            const AcMesh host_mesh,
-                                            const VertexBufferHandle vtxbuf_handle, const int3 src,
-                                            const int3 dst, const int num_vertices);
-
-/** Deprecated */
-AcResult acDeviceLoadMeshWithOffset(const Device device, const Stream stream,
-                                    const AcMesh host_mesh, const int3 src, const int3 dst,
-                                    const int num_vertices);
-
-/** */
-AcResult acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh host_mesh,
-                                  const VertexBufferHandle vtxbuf_handle);
-
-/** */
-AcResult acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh);
-
-/** */
-AcResult acDeviceSetVertexBuffer(const Device device, const Stream stream,
-                                 const VertexBufferHandle handle, const AcReal value);
-
-/** */
-AcResult acDeviceFlushOutputBuffers(const Device device, const Stream stream);
-
-/** */
-AcResult acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
-                                             const VertexBufferHandle vtxbuf_handle, const int3 src,
-                                             const int3 dst, const int num_vertices,
-                                             AcMesh* host_mesh);
-
-/** Deprecated */
-AcResult acDeviceStoreMeshWithOffset(const Device device, const Stream stream, const int3 src,
-                                     const int3 dst, const int num_vertices, AcMesh* host_mesh);
-
-/** */
-AcResult acDeviceStoreVertexBuffer(const Device device, const Stream stream,
-                                   const VertexBufferHandle vtxbuf_handle, AcMesh* host_mesh);
-
-/** */
-AcResult acDeviceStoreMesh(const Device device, const Stream stream, AcMesh* host_mesh);
-
-/** */
-AcResult acDeviceTransferVertexBufferWithOffset(const Device src_device, const Stream stream,
-                                                const VertexBufferHandle vtxbuf_handle,
-                                                const int3 src, const int3 dst,
-                                                const int num_vertices, Device dst_device);
-
-/** Deprecated */
-AcResult acDeviceTransferMeshWithOffset(const Device src_device, const Stream stream,
-                                        const int3 src, const int3 dst, const int num_vertices,
-                                        Device* dst_device);
-
-/** */
-AcResult acDeviceTransferVertexBuffer(const Device src_device, const Stream stream,
-                                      const VertexBufferHandle vtxbuf_handle, Device dst_device);
-
-/** */
-AcResult acDeviceTransferMesh(const Device src_device, const Stream stream, Device dst_device);
-
-/** */
-AcResult acDeviceIntegrateSubstep(const Device device, const Stream stream, const int step_number,
-                                  const int3 start, const int3 end, const AcReal dt);
-/** */
-AcResult acDevicePeriodicBoundcondStep(const Device device, const Stream stream,
-                                       const VertexBufferHandle vtxbuf_handle, const int3 start,
-                                       const int3 end);
-
-/** */
-AcResult acDevicePeriodicBoundconds(const Device device, const Stream stream, const int3 start,
-                                    const int3 end);
-
-/** */
-AcResult acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
-                                      const VertexBufferHandle vtxbuf_handle, const int3 start,
-                                      const int3 end, const AcMeshInfo config, const int3 bindex);
-
-/** */
-AcResult acDeviceGeneralBoundconds(const Device device, const Stream stream, const int3 start,
-                                   const int3 end, const AcMeshInfo config, const int3 bindex);
-
-/** */
-AcResult acDeviceReduceScalNotAveraged(const Device device, const Stream stream,
-                                       const ReductionType rtype,
-                                       const VertexBufferHandle vtxbuf_handle, AcReal* result);
-
-/** */
-AcResult acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
-                            const VertexBufferHandle vtxbuf_handle, AcReal* result);
-
-/** */
-AcResult acDeviceReduceVecNotAveraged(const Device device, const Stream stream_type,
-                                      const ReductionType rtype, const VertexBufferHandle vtxbuf0,
-                                      const VertexBufferHandle vtxbuf1,
-                                      const VertexBufferHandle vtxbuf2, AcReal* result);
-
-/** */
-AcResult acDeviceReduceVec(const Device device, const Stream stream_type, const ReductionType rtype,
-                           const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                           const VertexBufferHandle vtxbuf2, AcReal* result);
-
-/** */
-AcResult acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream_type,
-                                          const ReductionType rtype,
-                                          const VertexBufferHandle vtxbuf0,
-                                          const VertexBufferHandle vtxbuf1,
-                                          const VertexBufferHandle vtxbuf2,
-                                          const VertexBufferHandle vtxbuf3, AcReal* result);
-
-/** */
-AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
-                               const ReductionType rtype, const VertexBufferHandle vtxbuf0,
-                               const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
-                               const VertexBufferHandle vtxbuf3, AcReal* result);
-
-/** */
-AcResult acDeviceReduceXYAverage(const Device device, const Stream stream, const Field field,
-                                 const Profile profile);
-
-/** */
-AcResult acDeviceReduceXYAverages(const Device device, const Stream stream);
-
-/** */
-AcResult acDeviceSwapProfileBuffer(const Device device, const Profile handle);
-
-/** */
-AcResult acDeviceSwapProfileBuffers(const Device device, const Profile* profiles,
-                                    const size_t num_profiles);
-
-/** */
-AcResult acDeviceSwapAllProfileBuffers(const Device device);
-
-/** */
-AcResult acDeviceLoadProfile(const Device device, const AcReal* hostprofile,
-                             const size_t hostprofile_count, const Profile profile);
-
-/** */
-AcResult acDeviceStoreProfile(const Device device, const Profile profile, AcReal* hostprofile,
-                              const size_t hostprofile_count);
-
-/** */
-AcResult acDeviceRunMPITest(void);
-
-/** */
-AcResult acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
-                              const int3 start, const int3 end);
-
-/** */
-AcResult acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start,
-                                 const int3 end);
-
-/** */
-AcResult acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
-                             const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
-
-/** */
-AcResult
-acDeviceLoadStencils(const Device device, const Stream stream,
-                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
-
-/** */
-AcResult acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
-                              AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
-
-/** */
-AcResult acDeviceVolumeCopy(const Device device, const Stream stream,                     //
-                            const AcReal* in, const int3 in_offset, const int3 in_volume, //
-                            AcReal* out, const int3 out_offset, const int3 out_volume);
-
-/** */
-AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
-                                 const char* filepath);
-
-/** */
-AcResult acDeviceGetLocalConfig(const Device device, AcMeshInfo* info);
-
-/**  */
-AcResult acDeviceGetId(const Device device, int* id);
-
+ * =============================================================================
+ * Legacy interface
+ * =============================================================================
+ */
+#include "astaroth_legacy.h"
 /*
  * =============================================================================
  * Helper functions
  * =============================================================================
  */
-/** Updates the built-in parameters based on nx, ny and nz */
-AcResult acHostUpdateBuiltinParams(AcMeshInfo* config);
+AcResult 
+acHostUpdateParams(AcMeshInfo* config);
 
+AcResult 
+acHostUpdateCompParams(AcMeshInfo* config);
+
+
+
+FUNC_DEFINE(AcReal*, acHostCreateVertexBuffer,(const AcMeshInfo info));
+FUNC_DEFINE(AcResult, acHostMeshCreateProfiles,(AcMesh* mesh));
+FUNC_DEFINE(AcResult, acHostMeshDestroyVertexBuffer,(AcReal** vtxbuf));
 /** Creates a mesh stored in host memory */
-AcResult acHostMeshCreate(const AcMeshInfo mesh_info, AcMesh* mesh);
+FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+/** Copies the VertexBuffers from src to dst*/
+FUNC_DEFINE(AcResult, acHostMeshCopyVertexBuffers,(const AcMesh src, AcMesh dst));
+/** Copies a host mesh to a new host mesh */
+FUNC_DEFINE(AcResult, acHostMeshCopy,(const AcMesh src, AcMesh* dst));
+/** Creates a mesh stored in host memory (size of the whole grid) */
+FUNC_DEFINE(AcResult, acHostGridMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+
+/** Checks that the loaded dynamic Astaroth is binary compatible with the loader */
+FUNC_DEFINE(AcResult, acVerifyCompatibility, (const size_t mesh_size, const size_t mesh_info_size, const size_t comp_info_size, const int num_reals, const int num_ints, const int num_bools, const int num_real_arrays, const int num_int_arrays, const int num_bool_arrays));
 
 /** Randomizes a host mesh */
-AcResult acHostMeshRandomize(AcMesh* mesh);
+FUNC_DEFINE(AcResult, acHostMeshRandomize,(AcMesh* mesh));
+/** Randomizes a host mesh (uses n[xyz]grid params)*/
+FUNC_DEFINE(AcResult, acHostGridMeshRandomize,(AcMesh* mesh));
 
 /** Destroys a mesh stored in host memory */
-AcResult acHostMeshDestroy(AcMesh* mesh);
+FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
 
-/** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
+FUNC_DEFINE(void, acStoreConfig,(const AcMeshInfo info, const char* filename));
+
+/** Prints all parameters inside AcMeshInfo */
+static inline void
+acPrintMeshInfo(const AcMeshInfo config)
+{
+    acStoreConfig(config,NULL);
+}
+
+/** Sets the dimensions of the computational grid to (nx, ny, nz) and recalculates the built-in
  * parameters derived from them (mx, my, mz, nx_min, and others) */
-AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
+AcResult acSetGridMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
+
+/** Sets the dimensions of the computational subdomain to (nx, ny, nz) and recalculates the built-in
+ * parameters derived from them (mx, my, mz, nx_min, and others) */
+
+AcResult acSetLocalMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
+
+/*
+ * =============================================================================
+ * Logging functions
+ * =============================================================================
+ */
+
+/* Log a message with a timestamp from the root proc (if pid == 0) */
+void acLogFromRootProc(const int pid, const char* msg, ...);
+void acVA_LogFromRootProc(const int pid, const char* msg, va_list args);
+
+/* Log a message with a timestamp from the root proc (if pid == 0) if the build flag VERBOSE is on
+ */
+void acVerboseLogFromRootProc(const int pid, const char* msg, ...);
+void acVA_VerboseLogFromRootProc(const int pid, const char* msg, va_list args);
+
+/* Log a message with a timestamp from the root proc (if pid == 0) in a debug build */
+void acDebugFromRootProc(const int pid, const char* msg, ...);
+void acVA_DebugFromRootProc(const int pid, const char* msg, va_list arg);
+
+int3
+acDecompose(const uint64_t target, const AcMeshInfo info);
+
+#include "device_set_input_decls.h"
+#include "device_get_output_decls.h"
+#include "device_get_input_decls.h"
+#include "get_vtxbufs_declares.h"
+
+#if AC_RUNTIME_COMPILATION
+#include "astaroth_lib.h"
+
+#define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
+			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
+
+  static AcResult __attribute__((unused)) acLoadLibrary(FILE* stream, const AcMeshInfo info)
+  {
+	char runtime_astaroth_path[40000];
+	sprintf(runtime_astaroth_path,"%s/runtime_build/src/core/libastaroth_core.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
+	kernelsLibHandle=acLoadRunTime(stream,info);
+ 	void* handle = dlopen(runtime_astaroth_path,RTLD_NOW);
+	if (!handle)
+	{
+    		fprintf(stderr,"%s","Fatal error was not able to load Astaroth\n"); 
+		fprintf(stderr,"Error message: %s\n",dlerror());
+		exit(EXIT_FAILURE);
+	}
+	astarothLibHandle=handle;
+
+	LOAD_DSYM(acDeviceGetVertexBufferPtrs,stream)
+	LOAD_DSYM(acDeviceGetLocalConfig,stream)
+        LOAD_DSYM(acDeviceFinishReduceInt,stream) 
+	LOAD_DSYM(acDeviceMemGetInfo,stream)
+	LOAD_DSYM(acKernelFlushInt,stream) 
+	LOAD_DSYM(acAnalysisGetKernelInfo,stream)
+	LOAD_DSYM(acAnalysisCheckForDSLErrors,stream)
+        LOAD_DSYM(acDeviceSwapAllProfileBuffers,stream)
+#if AC_MPI_ENABLED
+	LOAD_DSYM(BASE_FUNC_NAME(acBoundaryCondition),stream)
+	LOAD_DSYM(ac_MPI_Init,stream)
+	LOAD_DSYM(ac_MPI_Init_thread,stream)
+	LOAD_DSYM(ac_MPI_Finalize,stream);
+	LOAD_DSYM(acGridInitialized,stream);
+	LOAD_DSYM(acGridMPIComm,stream);
+	LOAD_DSYM(acGridMPISubComms,stream);
+	LOAD_DSYM(acGridDecomposeMeshInfo,stream);
+	LOAD_DSYM(acGridGetLocalMeshInfo,stream);
+	LOAD_DSYM(acGridQuit,stream);
+	LOAD_DSYM(acGridGetDevice,stream);
+	LOAD_DSYM(acGridRandomize,stream);
+	LOAD_DSYM(acGridSynchronizeStream,stream);
+	LOAD_DSYM(acGridLoadScalarUniform,stream);
+	LOAD_DSYM(acGridLoadVectorUniform,stream);
+	LOAD_DSYM(acGridLoadIntUniform,stream);
+	LOAD_DSYM(acGridLoadInt3Uniform,stream);
+	LOAD_DSYM(acGridLoadMesh,stream);
+	LOAD_DSYM(acGridStoreMesh,stream);
+	LOAD_DSYM(acGridIntegrate,stream);
+	LOAD_DSYM(acGridSwapBuffers,stream);
+	LOAD_DSYM(acGridPeriodicBoundconds,stream);
+	LOAD_DSYM(acGridReduceScal,stream);
+	LOAD_DSYM(acGridReduceVec,stream);
+	LOAD_DSYM(acGridReduceVecScal,stream);
+	LOAD_DSYM(acGridAccessMeshOnDiskSynchronous,stream);
+	LOAD_DSYM(acGridDiskAccessLaunch,stream);
+	LOAD_DSYM(acGridWriteSlicesToDiskLaunch,stream);
+	LOAD_DSYM(acGridWriteSlicesToDiskCollectiveSynchronous,stream);
+	LOAD_DSYM(acGridWriteMeshToDiskLaunch,stream);
+	LOAD_DSYM(acGridDiskAccessSync,stream);
+	LOAD_DSYM(acGridReadVarfileToMesh,stream);
+	*(void**)(&BASE_FUNC_NAME(acComputeWithParams)) = dlsym(handle,"acComputeWithParams");
+	*(void**)(&BASE_FUNC_NAME(acCompute)) = dlsym(handle,"acCompute");
+	*(void**)(&BASE_FUNC_NAME(acHaloExchange)) = dlsym(handle,"acHaloExchange");
+	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraph)) = dlsym(handle,"acGridBuildTaskGraph");
+	LOAD_DSYM(acGridDestroyTaskGraph,stream);
+	LOAD_DSYM(acGridClearTaskGraphCache,stream);
+	LOAD_DSYM(acGetDSLTaskGraph,stream);
+	LOAD_DSYM(acGetOptimizedDSLTaskGraph,stream);
+	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousDistributed,stream);
+	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousCollective,stream);
+	LOAD_DSYM(acGridGetDefaultTaskGraph,stream);
+	LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsX,stream);
+	LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsY,stream);
+	LOAD_DSYM(acGridTaskGraphHasPeriodicBoundcondsZ,stream);
+	LOAD_DSYM(acGridExecuteTaskGraph,stream);
+	LOAD_DSYM(acGridExecuteTaskGraphBase,stream);
+	LOAD_DSYM(acGridFinalizeReduceLocal,stream);
+	LOAD_DSYM(acGridFinalizeReduce,stream);
+	LOAD_DSYM(acGridLaunchKernel,stream);
+	LOAD_DSYM(acGridLoadStencil,stream);
+	LOAD_DSYM(acGridStoreStencil,stream);
+	LOAD_DSYM(acGridLoadStencils,stream);
+	LOAD_DSYM(acGridStoreStencils,stream);
+	LOAD_DSYM(acGridInitBase,stream);
+#endif
+	LOAD_DSYM(acGetLocalNN,stream)
+	LOAD_DSYM(acGetLocalMM,stream)
+	LOAD_DSYM(acGetGridNN,stream)
+	LOAD_DSYM(acGetGridMM,stream)
+	LOAD_DSYM(acGetMinNN,stream)
+	LOAD_DSYM(acGetMaxNN,stream)
+	LOAD_DSYM(acGetGridMaxNN,stream)
+	LOAD_DSYM(acGetLengths,stream)
+	LOAD_DSYM(acHostMeshCopyVertexBuffers,stream)
+#include "device_load_uniform_loads.h"
+	LOAD_DSYM(acHostMeshCopy,stream)
+	LOAD_DSYM(acGetKernelId,stream)
+	LOAD_DSYM(acGetKernelIdByName,stream)
+	LOAD_DSYM(acCheckDeviceAvailability,stream)
+	LOAD_DSYM(acGetNumDevicesPerNode,stream)
+	LOAD_DSYM(acGetNumFields,stream)
+	LOAD_DSYM(acGetFieldHandle,stream)
+	LOAD_DSYM(acGetNode,stream)
+	LOAD_DSYM(acNodeCreate,stream)
+	LOAD_DSYM(acNodeDestroy,stream)
+	LOAD_DSYM(acNodePrintInfo,stream)
+	LOAD_DSYM(acNodeQueryDeviceConfiguration,stream)
+	LOAD_DSYM(acNodeAutoOptimize,stream)
+	LOAD_DSYM(acNodeSynchronizeStream,stream)
+	LOAD_DSYM(acNodeSynchronizeVertexBuffer,stream)
+	LOAD_DSYM(acNodeSynchronizeMesh,stream)
+	LOAD_DSYM(acNodeSwapBuffers,stream)
+	LOAD_DSYM(acNodeLoadConstant,stream)
+	LOAD_DSYM(acNodeLoadVertexBufferWithOffset,stream)
+	LOAD_DSYM(acNodeLoadMeshWithOffset,stream)
+	LOAD_DSYM(acNodeLoadVertexBuffer,stream)
+	LOAD_DSYM(acNodeLoadMesh,stream)
+	LOAD_DSYM(acNodeSetVertexBuffer,stream)
+	LOAD_DSYM(acNodeStoreVertexBufferWithOffset,stream)
+	LOAD_DSYM(acNodeStoreMeshWithOffset,stream)
+	LOAD_DSYM(acNodeStoreVertexBuffer,stream)
+	LOAD_DSYM(acNodeStoreMesh,stream)
+	LOAD_DSYM(acNodeIntegrateSubstep,stream)
+	LOAD_DSYM(acNodeIntegrate,stream)
+	LOAD_DSYM(acNodeIntegrateGBC,stream)
+	LOAD_DSYM(acNodePeriodicBoundcondStep,stream)
+	LOAD_DSYM(acNodePeriodicBoundconds,stream)
+	LOAD_DSYM(acNodeGeneralBoundcondStep,stream)
+	LOAD_DSYM(acNodeGeneralBoundconds,stream)
+	LOAD_DSYM(acNodeReduceScal,stream)
+	LOAD_DSYM(acNodeReduceVec,stream)
+	LOAD_DSYM(acNodeReduceVecScal,stream)
+	LOAD_DSYM(acDeviceCreate,stream)
+	LOAD_DSYM(acDeviceDestroy,stream)
+	LOAD_DSYM(acDeviceResetMesh,stream)
+	LOAD_DSYM(acDevicePrintInfo,stream)
+	LOAD_DSYM(acDeviceSynchronizeStream,stream)
+	LOAD_DSYM(acDeviceSwapBuffer,stream)
+	LOAD_DSYM(acDeviceSwapBuffers,stream)
+	LOAD_DSYM(acDeviceLoadScalarUniform,stream)
+	LOAD_DSYM(acDeviceLoadVectorUniform,stream)
+	LOAD_DSYM(acDeviceLoadIntUniform,stream)
+	LOAD_DSYM(acDeviceLoadBoolUniform,stream)
+	LOAD_DSYM(acDeviceLoadInt3Uniform,stream)
+	LOAD_DSYM(acDeviceStoreScalarUniform,stream)
+	LOAD_DSYM(acDeviceStoreVectorUniform,stream)
+	LOAD_DSYM(acDeviceStoreIntUniform,stream)
+	LOAD_DSYM(acDeviceStoreBoolUniform,stream)
+	LOAD_DSYM(acDeviceStoreInt3Uniform,stream)
+	LOAD_DSYM(acDeviceLoadMeshInfo,stream)
+	LOAD_DSYM(acDeviceLoadVertexBufferWithOffset,stream)
+	LOAD_DSYM(acDeviceLoadMeshWithOffset,stream)
+	LOAD_DSYM(acDeviceLoadVertexBuffer,stream)
+	LOAD_DSYM(acDeviceLoadMesh,stream)
+	LOAD_DSYM(acDeviceSetVertexBuffer,stream)
+	LOAD_DSYM(acDeviceFlushOutputBuffers,stream)
+	LOAD_DSYM(acDeviceStoreVertexBufferWithOffset,stream)
+	LOAD_DSYM(acDeviceGetConfig,stream)
+	LOAD_DSYM(acDeviceGetKernelInputParamsObject,stream)
+	LOAD_DSYM(acDeviceStoreMeshWithOffset,stream)
+	LOAD_DSYM(acDeviceStoreVertexBuffer,stream)
+	LOAD_DSYM(acDeviceStoreMesh,stream)
+	LOAD_DSYM(acDeviceTransferVertexBufferWithOffset,stream)
+	LOAD_DSYM(acDeviceTransferMeshWithOffset,stream)
+	LOAD_DSYM(acDeviceTransferVertexBuffer,stream)
+	LOAD_DSYM(acDeviceTransferMesh,stream)
+	LOAD_DSYM(acDeviceIntegrateSubstep,stream)
+	LOAD_DSYM(acDevicePeriodicBoundcondStep,stream)
+	LOAD_DSYM(acDevicePeriodicBoundconds,stream)
+	LOAD_DSYM(acDeviceGeneralBoundcondStep,stream)
+	LOAD_DSYM(acDeviceGeneralBoundconds,stream)
+	LOAD_DSYM(acDeviceReduceScalNoPostProcessing,stream)
+	LOAD_DSYM(acDeviceReduceScal,stream)
+	LOAD_DSYM(acDeviceReduceVecNoPostProcessing,stream)
+	LOAD_DSYM(acDeviceReduceVec,stream)
+	LOAD_DSYM(acDeviceReduceVecScalNoPostProcessing,stream)
+	LOAD_DSYM(acDeviceReduceVecScal,stream)
+	LOAD_DSYM(acDeviceUpdate,stream)
+	LOAD_DSYM(acDeviceGetKernelOutput,stream)
+	LOAD_DSYM(acDeviceLaunchKernel,stream)
+	LOAD_DSYM(acDeviceBenchmarkKernel,stream)
+	LOAD_DSYM(acDeviceLoadStencil,stream)
+	LOAD_DSYM(acDeviceLoadStencils,stream)
+	LOAD_DSYM(acDeviceLoadStencilsFromConfig,stream)
+	LOAD_DSYM(acDeviceStencilAccessesBoundaries,stream)
+	LOAD_DSYM(acDeviceStoreStencil,stream)
+	LOAD_DSYM(acDeviceVolumeCopy,stream)
+#include "device_set_input_loads.h"
+#include "device_get_input_loads.h"
+#include "device_get_output_loads.h"
+#include "get_vtxbufs_loads.h"
+
+	*(void**)(&acDeviceGetIntOutput) = dlsym(handle,"acDeviceGetIntOutput");
+	*(void**)(&acDeviceGetRealInput) = dlsym(handle,"acDeviceGetRealInput");
+	*(void**)(&acDeviceGetIntInput) = dlsym(handle,"acDeviceGetIntInput");
+	*(void**)(&acDeviceGetRealOutput) = dlsym(handle,"acDeviceGetRealOutput");
+	LOAD_DSYM(acHostMeshCreate,stream)
+	LOAD_DSYM(acHostGridMeshCreate,stream)
+	LOAD_DSYM(acHostMeshRandomize,stream);
+	LOAD_DSYM(acHostGridMeshRandomize,stream);
+	LOAD_DSYM(acHostMeshDestroy,stream);
+
+	LOAD_DSYM(acVerifyCompatibility,stream);
+	LOAD_DSYM(acStoreConfig,stream);
+//#ifdef __cplusplus
+//	return AcLibHandle(handle);
+//#else
+//	return handle;
+//#endif
+	const AcResult is_compatible = acVerifyCompatibility(sizeof(AcMesh), sizeof(AcMeshInfo), sizeof(AcCompInfo), NUM_REAL_PARAMS, NUM_INT_PARAMS, NUM_BOOL_PARAMS, NUM_REAL_ARRAYS, NUM_INT_ARRAYS, NUM_BOOL_ARRAYS);
+	if (is_compatible == AC_FAILURE)
+	{
+		fprintf(stderr,"Library is not compatible\n");
+		exit(EXIT_FAILURE);
+	}
+	return AC_SUCCESS;
+  }
+  static AcResult __attribute__((unused)) acCloseLibrary()
+  {
+	const int success_closing_ac_lib = (astarothLibHandle != NULL) ? dlclose(astarothLibHandle) : 0;
+	if(success_closing_ac_lib) astarothLibHandle = NULL;
+
+	const int success_closing_kernels_lib = (kernelsLibHandle != NULL) ? dlclose(kernelsLibHandle) : 0;
+	if(success_closing_kernels_lib) kernelsLibHandle = NULL;
+
+	const int success_closing_utils_lib = (utilsLibHandle != NULL) ? dlclose(utilsLibHandle) : 0;
+	if(success_closing_utils_lib) utilsLibHandle = NULL;
+
+	return  (success_closing_ac_lib || success_closing_kernels_lib || success_closing_utils_lib) == 0 ? AC_SUCCESS : AC_FAILURE;
+  }
+#endif
 
 /** Inits the profile to cosine wave */
 AcResult acHostInitProfileToCosineWave(const AcReal spacing, const long offset,
@@ -1108,88 +655,323 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
  * AcBuffer
  * =============================================================================
  */
-typedef struct {
-    AcReal* data;
-    size_t count;
-    bool on_device;
-} AcBuffer;
 
-AcBuffer acBufferCreate(const size_t count, const bool on_device);
-
-void acBufferDestroy(AcBuffer* buffer);
-
-AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
+#include "ac_buffer.h"
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
+
 #ifdef __cplusplus
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
+{
+	return acDeviceFinishReduceInt(device,stream,result,kernel,reduce_op,output);
+}
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output)
+{
+	return acDeviceFinishReduceReal(device,stream,result,kernel,reduce_op,output);
+}
+
+#if AC_DOUBLE_PRECISION
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const Stream stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output)
+{
+	return acDeviceFinishReduceFloat(device,stream,result,kernel,reduce_op,output);
+}
+#endif
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const cudaStream_t stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
+{
+	return acDeviceFinishReduceIntStream(device,stream,result,kernel,reduce_op,output);
+}
+
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const cudaStream_t stream, AcReal* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcRealOutputParam output)
+{
+	return acDeviceFinishReduceRealStream(device,stream,result,kernel,reduce_op,output);
+}
+
+#if AC_DOUBLE_PRECISION
+static UNUSED AcResult
+acDeviceFinishReduce(Device device, const cudaStream_t stream, float* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcFloatOutputParam output)
+{
+	return acDeviceFinishReduceFloatStream(device,stream,result,kernel,reduce_op,output);
+}
+#endif
+
+#if AC_MPI_ENABLED
+static UNUSED AcResult
+acGridInit(const AcMesh mesh)
+{
+	return acGridInitBase(mesh);
+}
+static UNUSED AcBuffer
+acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
+{
+	return acDeviceTransposeVertexBuffer(device,stream,order,vtxbuf);
+}
+#endif
+
+
+#define OVERLOAD_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	static UNUSED AcResult acDeviceStore(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value) { return acDeviceStore##VAL_TYPE_UPPER_CASE##Uniform(device,stream,param,value); }
+#define OVERLOAD_DEVICE_STORE_ARRAY(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	static UNUSED AcResult acDeviceStore(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value) { return acDeviceStore##VAL_TYPE_UPPER_CASE##Array(device,stream,param,value); }
+#define OVERLOAD_DEVICE_LOAD_ARRAY(ENUM,DEF_NAME) \
+	static UNUSED AcResult acDeviceLoad(const Device device, const Stream stream, const AcMeshInfo host_info, const ENUM array) { return acDeviceLoad##DEF_NAME##Array(device,stream,host_info,array);}
+
+#include "device_store_overloads.h"
+#include "device_load_uniform_overloads.h"
+#include "device_set_input_overloads.h"
+#include "device_get_input_overloads.h"
+#include "device_get_output_overloads.h"
+
+
 #if AC_MPI_ENABLED
 /** Backwards compatible interface, input fields = output fields*/
 template <size_t num_fields>
-AcTaskDefinition
+static AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields)[num_fields])
 {
-    return acCompute(kernel, fields, num_fields, fields, num_fields);
+    return BASE_FUNC_NAME(acCompute)(kernel, fields, num_fields, fields, num_fields, NULL, 0, NULL, 0);
+}
+static __attribute__((unused)) AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields)
+{
+	return BASE_FUNC_NAME(acCompute)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), NULL, 0, NULL, 0);
+}
+
+/** */
+template <size_t num_fields>
+static AcTaskDefinition
+acComputeWithParams(AcKernel kernel, Field (&fields)[num_fields], std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields, num_fields, fields, num_fields, NULL, 0, NULL, 0, loader);
 }
 
 template <size_t num_fields_in, size_t num_fields_out>
-AcTaskDefinition
+static AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(aBoundaryCondition)(boundary, kernel, fields_in, num_fields_in, fields_out, num_fields_out, loader);
+}
+
+template <size_t num_fields>
+static AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field (&fields)[num_fields], std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields, num_fields, fields, num_fields, loader);
+}
+
+
+template <size_t num_fields_in, size_t num_fields_out>
+static AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out])
 {
-    return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out);
+    return BASE_FUNC_NAME(acCompute)(kernel, fields_in, num_fields_in, fields_out, num_fields_out);
+}
+
+template <size_t num_fields_in, size_t num_fields_out>
+static AcTaskDefinition
+acComputeWithParams(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in, num_fields_in, fields_out, num_fields_out, loader);
+}
+
+static inline AcTaskDefinition
+acComputeWithParams(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0 , NULL, 0, NULL, 0, NULL, 0, loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, 0, loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::vector<Profile> profile_in, std::vector<Profile> profile_out, std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), profile_in.data(), profile_in.size(), profile_out.data(), profile_out.size(), 
+		    			       NULL, 0,
+		    			       NULL, 0, NULL, 0,
+		                               loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::vector<Profile> profile_in, std::vector<Profile> profile_reduce_out, 
+		std::vector<Profile> profile_write_out,
+		std::vector<KernelReduceOutput> reduce_outputs_in, std::vector<KernelReduceOutput> reduce_outputs_out, std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), profile_in.data(), profile_in.size(), profile_reduce_out.data(), profile_reduce_out.size(), 
+		    			       profile_write_out.data(), profile_write_out.size(),
+		    			       reduce_outputs_in.data(), reduce_outputs_in.size(), reduce_outputs_out.data(), reduce_outputs_out.size(),
+		    	                       loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out)
+{
+    return BASE_FUNC_NAME(acCompute)(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), NULL, 0, NULL, 0);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), NULL, 0 , NULL, 0, NULL, 0, NULL, 0, NULL, 0, loader);
+}
+
+
+template <size_t num_fields_in, size_t num_fields_out>
+static AcTaskDefinition
+acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
+{
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields_in, num_fields_in, fields_out, num_fields_out, NULL, 0, NULL, 0, NULL, 0, NULL, 0, loader);
 }
 
 /** */
 template <size_t num_fields>
-AcTaskDefinition
+static AcTaskDefinition
 acHaloExchange(Field (&fields)[num_fields])
 {
-    return acHaloExchange(fields, num_fields);
+    return BASE_FUNC_NAME(acHaloExchange)(fields, num_fields);
 }
 
-/** */
-template <size_t num_fields>
 AcTaskDefinition
-acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                    Field (&fields)[num_fields])
+static inline acHaloExchange(std::vector<Field> fields)
 {
-    return acBoundaryCondition(boundary, bound_cond, fields, num_fields, nullptr, 0);
+    return BASE_FUNC_NAME(acHaloExchange)(fields.data(), fields.size());
 }
 
-/** */
-template <size_t num_fields, size_t num_parameters>
+static inline
 AcTaskDefinition
-acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                    Field (&fields)[num_fields], AcRealParam (&parameters)[num_parameters])
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
 {
-    return acBoundaryCondition(boundary, bound_cond, fields, num_fields, parameters,
-                               num_parameters);
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
-
-#ifdef AC_INTEGRATION_ENABLED
-/** */
-AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary,
-                                               const AcSpecialMHDBoundcond bound_cond);
-
-/** */
-template <size_t num_parameters>
+template <typename T>
+static inline
 AcTaskDefinition
-acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
-                              AcRealParam (&parameters)[num_parameters])
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields, const T param)
 {
-    return acSpecialMHDBoundaryCondition(boundary, bound_cond, parameters, num_parameters);
+   
+    auto loader = 
+    [&](ParamLoadingInfo p)
+    {
+            auto config = acDeviceGetLocalConfig(p.device);
+	    acLoadKernelParams(*p.params,kernel,p.vtxbuf,config[param]); 
+    };
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
 
-#endif
+static inline
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), loader);
+}
+static inline
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
+    return BASE_FUNC_NAME(acBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
+}
 
 /** */
 template <size_t n_ops>
-AcTaskGraph*
+static AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops])
 {
-    return acGridBuildTaskGraph(ops, n_ops);
+    return BASE_FUNC_NAME(acGridBuildTaskGraph)(ops, n_ops);
+}
+static UNUSED AcTaskGraph*
+acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraph)(ops.data(), ops.size());
 }
 #endif
 #endif
+#if AC_RUNTIME_COMPILATION
+#include "astaroth_runtime_compilation.h"
+#endif
+
+#ifdef __cplusplus
+#include <type_traits>
+
+
+  template <typename P, typename V>
+  void
+  acPushToConfig(AcMeshInfo& config, P param, V val)
+  {
+	  static_assert(!std::is_same<P,int>::value);
+	  static_assert(!std::is_same<P,AcReal>::value);
+	  static_assert(!std::is_same<P,AcReal3>::value);
+	  static_assert(!std::is_same<P,bool>::value);
+	  static_assert(!std::is_same<P,AcBool3>::value);
+	  if constexpr(IsCompParam(param))
+	  {
+	  	  config.run_consts.config[param] = val;
+	  	  config.run_consts.is_loaded[param] = true;
+	  }
+	  else
+	  {
+		  config[param] = val;
+		  config.is_loaded[param] = true;
+	  }
+  }
+
+#endif
+#include <string.h>
+
+  static AcCompInfo UNUSED acInitCompInfo()
+  {
+	  AcCompInfo res;
+	  //TP: initially nothing is loaded and if they are not loaded their values 
+	  //might as well be zero since then a default value is used for them
+	  memset(&res,0,sizeof(res));
+	  return res;
+  }
+  static AcMeshInfo UNUSED acInitInfo()
+  {
+	  AcMeshInfo res;
+	  //TP: this is useful for the following reasons:
+	  //All enums are initialized by default to the first enum value
+	  //All array ptrs are initialized to nulls
+	  //All booleans are initialized to false
+	  //All booleans about whether values are loaded are false
+	  memset(&res,0,sizeof(res));
+    	  // memset reads the second parameter as a byte even though it says int in
+          // the function declaration
+	  //TP: for backwards compatibility set original datatypes to all ones as before
+    	  memset(&res.int_params,     (uint8_t)0xFF, sizeof(res.int_params));
+    	  memset(&res.real_params,    (uint8_t)0xFF, sizeof(res.real_params));
+    	  memset(&res.int3_params,    (uint8_t)0xFF, sizeof(res.int3_params));
+    	  memset(&res.real3_params,   (uint8_t)0xFF, sizeof(res.real3_params));
+    	  memset(&res.complex_params, (uint8_t)0xFF, sizeof(res.complex_params));
+
+#if AC_MPI_ENABLED
+	  res.comm = (AcCommunicator*)malloc(sizeof(AcCommunicator));
+	  res.comm->handle = MPI_COMM_NULL;
+#endif
+	  res.run_consts = acInitCompInfo();
+	  return res;
+  }
+  static AcMesh UNUSED acInitMesh()
+  {
+	  AcMesh res;
+	  for(size_t j = 0; j < NUM_VTXBUF_HANDLES; ++j)
+	  {
+		  res.vertex_buffer[j] = NULL;
+	  }
+	  res.info = acInitInfo();
+	  return res;
+  }

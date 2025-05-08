@@ -94,10 +94,13 @@ main(int argc, char** argv)
         return EXIT_FAILURE;
     }
     else {
-        info.int_params[AC_nx] = atoi(argv[1]);
-        info.int_params[AC_ny] = atoi(argv[2]);
-        info.int_params[AC_nz] = atoi(argv[3]);
-        acHostUpdateBuiltinParams(&info);
+	info[AC_ngrid] = (int3)
+	{
+		atoi(argv[1]),
+		atoi(argv[2]),
+		atoi(argv[3]),
+	};
+        acHostUpdateParams(&info);
     }
 
     AcMesh model, candidate;

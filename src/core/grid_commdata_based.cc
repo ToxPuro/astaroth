@@ -213,10 +213,10 @@ acPackCommData(const Device device, const int3* b0s, CommData* data)
         device->local_config.int_params[AC_ny],
         device->local_config.int_params[AC_nz],
     };
-    const int3 nghost = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 nghost3 = (int3){NGHOST, NGHOST, NGHOST};
 
     for (size_t i = 0; i < data->count; ++i) {
-        const int3 a0 = mod(b0s[i] - nghost, nn) + nghost;
+        const int3 a0 = mod(b0s[i] - nghost3, nn) + nghost3;
         acKernelPackData(data->streams[i], device->vba, a0, data->srcs[i]);
     }
 }
@@ -281,7 +281,7 @@ acTransferCommData(const Device device, //
         device->local_config.int_params[AC_nz],
     };
 
-    const int3 pid3d        = getPid3D(pid, decomp);
+    const int3 pid3d        = getPid3D(pid, decomp, (AcProcMappingStrategy)local_config.int_params[AC_proc_mapping_strategy]);
     const int3 dims         = data->dims;
     const size_t blockcount = data->count;
     const size_t count      = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
@@ -419,7 +419,7 @@ acGridInit(const AcMeshInfo info)
     // Decompose
     AcMeshInfo submesh_info      = info;
     const uint3_64 decomposition = decompose(nprocs);
-    const int3 pid3d             = getPid3D(pid, decomposition);
+    const int3 pid3d             = getPid3D(pid, decomposition, (AcProcMappingStrategy)info.int_params[AC_proc_mapping_strategy]);
 
     MPI_Barrier(MPI_COMM_WORLD);
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
@@ -438,14 +438,9 @@ acGridInit(const AcMeshInfo info)
     submesh_info.int_params[AC_nx]             = submesh_nx;
     submesh_info.int_params[AC_ny]             = submesh_ny;
     submesh_info.int_params[AC_nz]             = submesh_nz;
-    submesh_info.int3_params[AC_global_grid_n] = (int3){
-        info.int_params[AC_nx],
-        info.int_params[AC_ny],
-        info.int_params[AC_nz],
-    };
     submesh_info.int3_params[AC_multigpu_offset] = pid3d *
                                                    (int3){submesh_nx, submesh_ny, submesh_nz};
-    acHostUpdateBuiltinParams(&submesh_info);
+    acHostUpdateParams(&submesh_info);
 
     // GPU alloc
     int devices_per_node = -1;
@@ -602,7 +597,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                 }
                 else {
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
-                        const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
+                        const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
                                                                  j + tgt_pid3d.y * nn.y, //
                                                                  k + tgt_pid3d.z * nn.z, //
@@ -690,7 +685,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                 }
                 else {
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
-                        const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
+                        const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info[AC_proc_mapping_strategy]);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
                                                                  j + tgt_pid3d.y * nn.y, //
                                                                  k + tgt_pid3d.z * nn.z, //

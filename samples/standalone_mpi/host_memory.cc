@@ -36,16 +36,16 @@
 const char* init_type_names[] = {AC_FOR_INIT_TYPES(AC_GEN_STR)};
 #undef AC_GEN_STR
 
-#define XORIG (AcReal(.5) * mesh->info.int_params[AC_nx] * mesh->info.real_params[AC_dsx])
-#define YORIG (AcReal(.5) * mesh->info.int_params[AC_ny] * mesh->info.real_params[AC_dsy])
-#define ZORIG (AcReal(.5) * mesh->info.int_params[AC_nz] * mesh->info.real_params[AC_dsz])
+#define XORIG (AcReal(.5) * mesh->info[AC_nlocal].x * mesh->info[AC_ds].x)
+#define YORIG (AcReal(.5) * mesh->info[AC_nlocal].y * mesh->info[AC_ds].y)
+#define ZORIG (AcReal(.5) * mesh->info[AC_nlocal].z * mesh->info[AC_ds].z)
 
 void
 lnrho_step(AcMesh* mesh)
 {
-    const int mx = mesh->info.int_params[AC_mx];
-    const int my = mesh->info.int_params[AC_my];
-    const int mz = mesh->info.int_params[AC_mz];
+    const int mx = mesh->info[AC_mlocal].x;
+    const int my = mesh->info[AC_mlocal].y;
+    const int mz = mesh->info[AC_mlocal].z;
 
     // const int    nx_min = mesh->info.int_params[AC_nx_min];
     // const int    nx_max = mesh->info.int_params[AC_nx_max];
@@ -100,9 +100,9 @@ lnrho_step(AcMesh* mesh)
 void
 inflow_vedge(AcMesh* mesh)
 {
-    const int mx = mesh->info.int_params[AC_mx];
-    const int my = mesh->info.int_params[AC_my];
-    const int mz = mesh->info.int_params[AC_mz];
+    const int mx = mesh->info[AC_mlocal].x;
+    const int my = mesh->info[AC_mlocal].y;
+    const int mz = mesh->info[AC_mlocal].z;
 
     // const int nx_min = mesh->info.int_params[AC_nx_min];
     // const int nx_max = mesh->info.int_params[AC_nx_max];
@@ -113,14 +113,14 @@ inflow_vedge(AcMesh* mesh)
 
     // const double DX    = mesh->info.real_params[AC_dsx];
     // const double DY    = mesh->info.real_params[AC_dsy];
-    const double DZ = (double)mesh->info.real_params[AC_dsz];
+    const double DZ = (double)mesh->info[AC_ds].z;
 
-    const double AMPL_UU = (double)mesh->info.real_params[AC_ampl_uu];
-    const double ANGL_UU = (double)mesh->info.real_params[AC_angl_uu];
+    const double AMPL_UU = (double)mesh->info[AC_ampl_uu];
+    const double ANGL_UU = (double)mesh->info[AC_angl_uu];
 
-    const double zorig = (double)mesh->info.real_params[AC_zorig];
+    const double zorig = (double)mesh->info[AC_origin].z;
     double zz;
-    double trans = (double)mesh->info.real_params[AC_trans];
+    double trans = (double)mesh->info[AC_trans];
 
     // const AcReal range = AcReal(.5);
 
@@ -157,25 +157,25 @@ inflow_vedge(AcMesh* mesh)
 void
 simple_uniform_core(AcMesh* mesh)
 {
-    const int mx = mesh->info.int_params[AC_mx];
-    const int my = mesh->info.int_params[AC_my];
-    const int mz = mesh->info.int_params[AC_mz];
+    const int mx = mesh->info[AC_mlocal].x;
+    const int my = mesh->info[AC_mlocal].y;
+    const int mz = mesh->info[AC_mlocal].z;
 
-    const double DX = (double)mesh->info.real_params[AC_dsx];
-    const double DY = (double)mesh->info.real_params[AC_dsy];
-    const double DZ = (double)mesh->info.real_params[AC_dsz];
+    const double DX = (double)mesh->info[AC_ds].x;
+    const double DY = (double)mesh->info[AC_ds].y;
+    const double DZ = (double)mesh->info[AC_ds].z;
 
-    const double ampl_lnrho = (double)mesh->info.real_params[AC_ampl_lnrho];
+    const double ampl_lnrho = (double)mesh->info[AC_ampl_lnrho];
 
-    const double xorig = (double)mesh->info.real_params[AC_xorig];
-    const double yorig = (double)mesh->info.real_params[AC_yorig];
-    const double zorig = (double)mesh->info.real_params[AC_zorig];
+    const double xorig = (double)mesh->info[AC_origin].x;
+    const double yorig = (double)mesh->info[AC_origin].y;
+    const double zorig = (double)mesh->info[AC_origin].z;
 
-    const double G_const     = (double)mesh->info.real_params[AC_G_const];
-    const double M_sink_init = (double)mesh->info.real_params[AC_M_sink_init];
-    const double cs2_sound   = (double)mesh->info.real_params[AC_cs2_sound];
+    const double G_const     = (double)mesh->info[AC_G_const];
+    const double M_sink_init = (double)mesh->info[AC_M_sink_init];
+    const double cs2_sound   = (double)mesh->info[AC_cs2_sound];
 
-    const double RR_inner_bound = (double)mesh->info.real_params[AC_soft] / 2.0;
+    const double RR_inner_bound = (double)mesh->info[AC_soft] / 2.0;
     const double core_coeff     = (exp(ampl_lnrho) * cs2_sound) / (double(4.0) * M_PI * G_const);
 
     double xx, yy, zz, RR;
@@ -185,7 +185,7 @@ simple_uniform_core(AcMesh* mesh)
     const double core_radius = DX * 32.0;
     const double trans       = DX * 12.0;
     // const double epsilon = DX*2.0;
-    const double vel_scale = (double)mesh->info.real_params[AC_ampl_uu];
+    const double vel_scale = (double)mesh->info[AC_ampl_uu];
     double abso_vel;
 
     RR = 1.0;
@@ -229,9 +229,9 @@ simple_uniform_core(AcMesh* mesh)
 void
 inflow_vedge_freefall(AcMesh* mesh)
 {
-    const int mx = mesh->info.int_params[AC_mx];
-    const int my = mesh->info.int_params[AC_my];
-    const int mz = mesh->info.int_params[AC_mz];
+    const int mx = mesh->info[AC_mlocal].x;
+    const int my = mesh->info[AC_mlocal].y;
+    const int mz = mesh->info[AC_mlocal].z;
 
     // const int nx_min = mesh->info.int_params[AC_nx_min];
     // const int nx_max = mesh->info.int_params[AC_nx_max];
@@ -240,13 +240,13 @@ inflow_vedge_freefall(AcMesh* mesh)
     // const int nz_min = mesh->info.int_params[AC_nz_min];
     // const int nz_max = mesh->info.int_params[AC_nz_max];
 
-    const double DX = (double)mesh->info.real_params[AC_dsx];
+    const double DX = (double)mesh->info[AC_ds].x;
     // const double DY    = mesh->info.real_params[AC_dsy];
-    const double DZ = (double)mesh->info.real_params[AC_dsz];
+    const double DZ = (double)mesh->info[AC_ds].z;
 
     // const double AMPL_UU = mesh->info.real_params[AC_ampl_uu];
-    const double ANGL_UU = (double)mesh->info.real_params[AC_angl_uu];
-    const double SQ2GM   = (double)mesh->info.real_params[AC_sq2GM_star];
+    const double ANGL_UU = (double)mesh->info[AC_angl_uu];
+    const double SQ2GM   = (double)mesh->info[AC_sq2GM_star];
     // const double GM = mesh->info.real_params[AC_GM_star];
     // const double M_star  = mesh->info.real_params[AC_M_star];
     // const double G_CONST = mesh->info.real_params[AC_G_CONST];
@@ -255,9 +255,9 @@ inflow_vedge_freefall(AcMesh* mesh)
     // const double unit_density  = mesh->info.real_params[AC_unit_density];
     // const double unit_velocity = mesh->info.real_params[AC_unit_velocity];
 
-    const double xorig = (double)mesh->info.real_params[AC_xorig];
+    const double xorig = (double)mesh->info[AC_origin].x;
     // const double yorig = mesh->info.real_params[AC_yorig];
-    const double zorig = (double)mesh->info.real_params[AC_zorig];
+    const double zorig = (double)mesh->info[AC_origin].z;
     // const double trans = mesh->info.real_params[AC_trans];
     //  double xx, yy, zz, RR;
     double xx, zz, RR;
@@ -266,8 +266,8 @@ inflow_vedge_freefall(AcMesh* mesh)
     // double u_x, u_y, u_z, veltot, tanhz;
     double u_x, u_z, veltot, tanhz;
 
-    const double star_pos_x = (double)mesh->info.real_params[AC_star_pos_x];
-    const double star_pos_z = (double)mesh->info.real_params[AC_star_pos_z];
+    const double star_pos_x = (double)mesh->info[AC_star_pos_x];
+    const double star_pos_z = (double)mesh->info[AC_star_pos_z];
 
     for (int k = 0; k < mz; k++) {
         for (int j = 0; j < my; j++) {
@@ -321,23 +321,23 @@ inflow_vedge_freefall(AcMesh* mesh)
 void
 inflow_freefall_x(AcMesh* mesh)
 {
-    const int mx = mesh->info.int_params[AC_mx];
-    const int my = mesh->info.int_params[AC_my];
-    const int mz = mesh->info.int_params[AC_mz];
+    const int mx = mesh->info[AC_mlocal].x;
+    const int my = mesh->info[AC_mlocal].y;
+    const int mz = mesh->info[AC_mlocal].z;
 
-    const double DX = (double)mesh->info.real_params[AC_dsx];
+    const double DX = (double)mesh->info[AC_ds].x;
 
-    const double SQ2GM = (double)mesh->info.real_params[AC_sq2GM_star];
+    const double SQ2GM = (double)mesh->info[AC_sq2GM_star];
     // const double G_CONST = mesh->info.real_params[AC_G_CONST];
 
-    const double xorig = (double)mesh->info.real_params[AC_xorig];
+    const double xorig = (double)mesh->info[AC_origin].x;
     double xx, RR;
     double delx;
     double /*u_x,*/ veltot;
 
-    const double star_pos_x = (double)mesh->info.real_params[AC_star_pos_x];
+    const double star_pos_x = (double)mesh->info[AC_star_pos_x];
 
-    const double ampl_lnrho = (double)mesh->info.real_params[AC_ampl_lnrho];
+    const double ampl_lnrho = (double)mesh->info[AC_ampl_lnrho];
 
     for (int k = 0; k < mz; k++) {
         for (int j = 0; j < my; j++) {
@@ -381,19 +381,19 @@ kickball(AcMesh* mesh)
     AcReal* uu_y = mesh->vertex_buffer[VTXBUF_UUY];
     AcReal* uu_z = mesh->vertex_buffer[VTXBUF_UUZ];
 
-    const int mx = mesh->info.int_params[AC_mx];
-    const int my = mesh->info.int_params[AC_my];
+    const int mx = mesh->info[AC_mlocal].x;
+    const int my = mesh->info[AC_mlocal].y;
 
-    const int nx_min = mesh->info.int_params[AC_nx_min];
-    const int nx_max = mesh->info.int_params[AC_nx_max];
-    const int ny_min = mesh->info.int_params[AC_ny_min];
-    const int ny_max = mesh->info.int_params[AC_ny_max];
-    const int nz_min = mesh->info.int_params[AC_nz_min];
-    const int nz_max = mesh->info.int_params[AC_nz_max];
+    const int nx_min = mesh->info[AC_nmin].x;
+    const int nx_max = mesh->info[AC_nlocal_max].x;
+    const int ny_min = mesh->info[AC_nmin].y;
+    const int ny_max = mesh->info[AC_nlocal_max].y;
+    const int nz_min = mesh->info[AC_nmin].z;
+    const int nz_max = mesh->info[AC_nlocal_max].z;
 
-    const double DX = mesh->info.real_params[AC_dsx];
-    const double DY = mesh->info.real_params[AC_dsy];
-    const double DZ = mesh->info.real_params[AC_dsz];
+    const double DX = mesh->info[AC_ds].x;
+    const double DY = mesh->info[AC_ds].y;
+    const double DZ = mesh->info[AC_ds].z;
 
     const double xorig = double(XORIG) - 0.000001;
     const double yorig = double(YORIG) - 0.000001;
@@ -403,7 +403,7 @@ kickball(AcMesh* mesh)
     const double INIT_LOC_UU_Y = 0.0;
     const double INIT_LOC_UU_Z = 0.0;
 
-    const double AMPL_UU    = mesh->info.real_params[AC_ampl_uu];
+    const double AMPL_UU    = mesh->info[AC_ampl_uu];
     const double UU_SHELL_R = 0.8;
     const double WIDTH_UU   = 0.2;
 
@@ -544,19 +544,19 @@ gaussian_radial_explosion(AcMesh* mesh)
     AcReal* uu_y = mesh->vertex_buffer[VTXBUF_UUY];
     AcReal* uu_z = mesh->vertex_buffer[VTXBUF_UUZ];
 
-    const int mx = mesh->info.int_params[AC_mx];
-    const int my = mesh->info.int_params[AC_my];
+    const int mx = mesh->info[AC_mlocal].x;
+    const int my = mesh->info[AC_mlocal].y;
 
-    const int nx_min = mesh->info.int_params[AC_nx_min];
-    const int nx_max = mesh->info.int_params[AC_nx_max];
-    const int ny_min = mesh->info.int_params[AC_ny_min];
-    const int ny_max = mesh->info.int_params[AC_ny_max];
-    const int nz_min = mesh->info.int_params[AC_nz_min];
-    const int nz_max = mesh->info.int_params[AC_nz_max];
+    const int nx_min = mesh->info[AC_nmin].x;
+    const int nx_max = mesh->info[AC_nlocal_max].x;
+    const int ny_min = mesh->info[AC_nmin].y;
+    const int ny_max = mesh->info[AC_nlocal_max].y;
+    const int nz_min = mesh->info[AC_nmin].z;
+    const int nz_max = mesh->info[AC_nlocal_max].z;
 
-    const double DX = (double)mesh->info.real_params[AC_dsx];
-    const double DY = (double)mesh->info.real_params[AC_dsy];
-    const double DZ = (double)mesh->info.real_params[AC_dsz];
+    const double DX = (double)mesh->info[AC_ds].x;
+    const double DY = (double)mesh->info[AC_ds].y;
+    const double DZ = (double)mesh->info[AC_ds].z;
 
     const double xorig = double(XORIG) - 0.000001;
     const double yorig = double(YORIG) - 0.000001;
@@ -566,7 +566,7 @@ gaussian_radial_explosion(AcMesh* mesh)
     const double INIT_LOC_UU_Y = 0.0;
     const double INIT_LOC_UU_Z = 0.0;
 
-    const double AMPL_UU    = (double)mesh->info.real_params[AC_ampl_uu];
+    const double AMPL_UU    = (double)mesh->info[AC_ampl_uu];
     const double UU_SHELL_R = 0.8;
     const double WIDTH_UU   = 0.2;
 
@@ -723,16 +723,16 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
 
     const int n = acVertexBufferSize(mesh->info);
 
-    const int mx = mesh->info.int_params[AC_mx];
-    const int my = mesh->info.int_params[AC_my];
-    const int mz = mesh->info.int_params[AC_mz];
+    const int mx = mesh->info[AC_mlocal].x;
+    const int my = mesh->info[AC_mlocal].y;
+    const int mz = mesh->info[AC_mlocal].z;
 
-    const int nx_min = mesh->info.int_params[AC_nx_min];
-    const int nx_max = mesh->info.int_params[AC_nx_max];
-    const int ny_min = mesh->info.int_params[AC_ny_min];
-    const int ny_max = mesh->info.int_params[AC_ny_max];
-    const int nz_min = mesh->info.int_params[AC_nz_min];
-    const int nz_max = mesh->info.int_params[AC_nz_max];
+    const int nx_min = mesh->info[AC_nmin].x;
+    const int nx_max = mesh->info[AC_nlocal_max].x;
+    const int ny_min = mesh->info[AC_nmin].y;
+    const int ny_max = mesh->info[AC_nlocal_max].y;
+    const int nz_min = mesh->info[AC_nmin].z;
+    const int nz_max = mesh->info[AC_nlocal_max].z;
 
     switch (init_type) {
     case INIT_TYPE_RANDOM: {
@@ -758,12 +758,12 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
 #endif
     case INIT_TYPE_KICKBALL:
         acHostMeshClear(mesh);
-        acHostVertexBufferSet(VTXBUF_LNRHO, mesh->info.real_params[AC_ampl_lnrho], mesh);
+        acHostVertexBufferSet(VTXBUF_LNRHO, mesh->info[AC_ampl_lnrho], mesh);
         kickball(mesh);
         break;
     case INIT_TYPE_GAUSSIAN_RADIAL_EXPL:
         acHostMeshClear(mesh);
-        acHostVertexBufferSet(VTXBUF_LNRHO, mesh->info.real_params[AC_ampl_lnrho], mesh);
+        acHostVertexBufferSet(VTXBUF_LNRHO, mesh->info[AC_ampl_lnrho], mesh);
         // acmesh_init_to(INIT_TYPE_RANDOM, mesh);
         gaussian_radial_explosion(mesh);
 
@@ -821,9 +821,9 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
                         ZORIG + AcReal(.5) * mesh->info.real_params[AC_dsz]);
                     */
 
-                    const AcReal xx = (i - nx_min) * mesh->info.real_params[AC_dsx] - XORIG;
-                    const AcReal yy = (j - ny_min) * mesh->info.real_params[AC_dsy] - YORIG;
-                    const AcReal zz = (k - nz_min) * mesh->info.real_params[AC_dsz] - ZORIG;
+                    const AcReal xx = (i - nx_min) * mesh->info[AC_ds].x - XORIG;
+                    const AcReal yy = (j - ny_min) * mesh->info[AC_ds].y - YORIG;
+                    const AcReal zz = (k - nz_min) * mesh->info[AC_ds].z - ZORIG;
 
                     const AcReal ampl_uu = 0.5;
                     const AcReal ABC_A   = 1.;

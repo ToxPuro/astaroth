@@ -1,4 +1,4 @@
-/*
+/*/
     Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
@@ -25,84 +25,92 @@
  *
  */
 #pragma once
-#include <math.h>   // isnan, isinf
 #include <stdint.h> // uint64_t
 #include <stdlib.h> // rand
+#include <math.h>   // isnan, isinf
 
 #include "datatypes.h"
 #include "errchk.h"
 
+#define __ac__max(a,b) (a > b ? a : b)
+#define __ac__min(a,b) (a < b ? a : b)
+
 #if AC_DOUBLE_PRECISION != 1
+#ifndef __cplusplus
 #define exp(x) expf(x)
 #define sin(x) sinf(x)
 #define cos(x) cosf(x)
 #define sqrt(x) sqrtf(x)
 #define fabs(x) fabsf(x)
 #endif
+#endif
 
-#define UNUSED __attribute__((unused))
+#include "func_attributes.h"
 
-#if defined(__CUDACC__) || defined(__HIPCC__)
-#define HOST_DEVICE __host__ __device__ UNUSED
-#define HOST_DEVICE_INLINE __host__ __device__ __forceinline__ UNUSED
-#else
-#define HOST_DEVICE UNUSED
-#define HOST_DEVICE_INLINE inline UNUSED
-#endif // __CUDACC__
-
-// Disabled for now, issues on lumi (exp, cos, sin ambiguous)
-#define ENABLE_COMPLEX_DATATYPE (0)
+#define ENABLE_COMPLEX_DATATYPE (1)
 #if ENABLE_COMPLEX_DATATYPE
-static __device__ AcReal
-cos(const AcReal& val)
+
+#if AC_USE_HIP
+#else
+static HOST_DEVICE_INLINE void
+operator -=(int3& lhs, const int3& rhs)
 {
-  return cos(val);
+	lhs.x -= rhs.x;
+	lhs.y -= rhs.y;
+	lhs.z -= rhs.z;
 }
 
-static __device__ AcReal
-sin(const AcReal& val)
+static HOST_DEVICE_INLINE int3
+operator*(const int3& a, const int3& b)
 {
-  return sin(val);
+  return (int3){a.x * b.x, a.y * b.y, a.z * b.z};
 }
 
-static __device__ AcReal
-exp(const AcReal& val)
+static HOST_DEVICE_INLINE dim3
+operator*(const dim3& a, const dim3& b)
 {
-  return exp(val);
+  return (dim3){a.x * b.x, a.y * b.y, a.z * b.z};
 }
 
-static __device__ inline acComplex
-expc(const acComplex& val)
+static HOST_DEVICE_INLINE int3
+operator*(const dim3& a, const int3& b)
 {
-  return acComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
+  return (int3){(int)(a.x * b.x),(int)(a.y * b.y),(int)(a.z * b.z)};
 }
 
-#if defined(__CUDACC__)
-// These are already overloaded in the HIP API
-/*
-static HOST_DEVICE_INLINE acComplex
-operator*(const AcReal& a, const acComplex& b)
+static HOST_DEVICE_INLINE int3
+operator-(const int3& a, const uint3& b)
 {
-  return (acComplex){a * b.x, a * b.y};
+  return (int3){(int)(a.x - b.x), (int)(a.y - b.y), (int)(a.z - b.z)};
 }
-
-static HOST_DEVICE_INLINE acComplex
-operator*(const acComplex& b, const AcReal& a)
+static HOST_DEVICE_INLINE int3
+operator+(const int3& a, const uint3& b)
 {
-  return (acComplex){a * b.x, a * b.y};
-}
-*/
-
-static HOST_DEVICE_INLINE acComplex
-operator*(const acComplex& a, const acComplex& b)
-{
-  return (acComplex){a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x};
+  return (int3){(int)(a.x + b.x), (int)(a.y + b.y), (int)(a.z + b.z)};
 }
 #endif
+static HOST_DEVICE_INLINE AcComplex
+exp(const AcComplex& val)
+{
+  return (AcComplex){exp(val.x) * cos(val.y), exp(val.x) * sin(val.y)};
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator*(const AcComplex& a, const AcComplex& b)
+{
+  return (AcComplex){a.x*b.x - a.y*b.y,a.x*b.y + b.x*a.y};
+}
+
 #endif // ENABLE_COMPLEX_DATATYPE
 
 typedef struct uint3_64 {
   uint64_t x, y, z;
+  uint3_64(const int3& a):
+    x(static_cast<uint64_t>(a.x)), y(static_cast<uint64_t>(a.y)), z(static_cast<uint64_t>(a.z)) {}
+  uint3_64(const uint64_t _x, const uint64_t _y, const uint64_t _z):
+    x(_x), y(_y), z(_z) {}
+  uint3_64(): 
+    x(), y(), z() {}
   explicit inline constexpr operator int3() const
   {
     return (int3){(int)x, (int)y, (int)z};
@@ -110,31 +118,48 @@ typedef struct uint3_64 {
 } uint3_64;
 
 template <class T>
-static HOST_DEVICE_INLINE constexpr const T
+static HOST_DEVICE_INLINE const T
 val(const T& a)
 {
   return a;
 }
 
 template <class T>
-static HOST_DEVICE_INLINE constexpr const T
+static HOST_DEVICE_INLINE const T
 sum(const T& a, const T& b)
 {
   return a + b;
 }
 
 template <class T>
-static HOST_DEVICE_INLINE constexpr const T
+static HOST_DEVICE_INLINE const T
 max(const T& a, const T& b)
 {
   return a > b ? a : b;
 }
 
+
 template <class T>
-static HOST_DEVICE_INLINE constexpr const T
+static HOST_DEVICE_INLINE const T
+max(const T& a, const T& b, const T& c)
+{
+	const auto tmp = a > b ? a : b;
+	return (tmp > c) ? tmp : c;
+}
+
+template <class T>
+static HOST_DEVICE_INLINE const T
 min(const T& a, const T& b)
 {
   return a < b ? a : b;
+}
+
+template <class T>
+static HOST_DEVICE_INLINE const T
+min(const T& a, const T& b, const T& c)
+{
+	const auto tmp = a < b ? a : b;
+	return (tmp < c) ? tmp : c;
 }
 
 static inline const int3
@@ -143,10 +168,23 @@ max(const int3& a, const int3& b)
   return (int3){max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)};
 }
 
+static inline const Volume
+max(const Volume& a, const Volume& b)
+{
+  return (Volume){max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)};
+}
+
+
 static inline const int3
 min(const int3& a, const int3& b)
 {
   return (int3){min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)};
+}
+
+static inline const Volume
+min(const Volume& a, const Volume& b)
+{
+  return (Volume){min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)};
 }
 
 template <class T>
@@ -156,11 +194,10 @@ clamp(const T& val, const T& min, const T& max)
   return val < min ? min : val > max ? max : val;
 }
 
-static inline uint64_t
+static HOST_DEVICE_INLINE uint64_t
 mod(const int a, const int b)
 {
-  const int r = a % b;
-  return r < 0 ? as_size_t(r + b) : as_size_t(r);
+  return ((a%b) + b) % b;
 }
 
 static inline AcReal
@@ -185,25 +222,22 @@ operator+(const int3& a, const int3& b)
 }
 
 static HOST_DEVICE_INLINE int3
-operator-(const int3& a, const int3& b)
-{
-  return (int3){a.x - b.x, a.y - b.y, a.z - b.z};
-}
-
-static HOST_DEVICE_INLINE int3
 operator-(const int3& a)
 {
   return (int3){-a.x, -a.y, -a.z};
 }
 
-#if !AC_USE_HIP
-// Defined in the HIP API
-static HOST_DEVICE_INLINE int3
-operator*(const int3& a, const int3& b)
+static HOST_DEVICE_INLINE AcReal3
+operator*(const int3& a, const AcReal3& b)
 {
-  return (int3){a.x * b.x, a.y * b.y, a.z * b.z};
+  return (AcReal3){a.x * b.x, a.y * b.y, a.z * b.z};
 }
-#endif
+
+static HOST_DEVICE_INLINE AcReal3
+operator*(const AcReal3& a, const int3& b)
+{
+  return (AcReal3){a.x * b.x, a.y * b.y, a.z * b.z};
+}
 
 static HOST_DEVICE_INLINE int3
 operator*(const int& a, const int3& b)
@@ -211,17 +245,50 @@ operator*(const int& a, const int3& b)
   return (int3){a * b.x, a * b.y, a * b.z};
 }
 
-static HOST_DEVICE_INLINE bool
-operator==(const int3& a, const int3& b)
+static HOST_DEVICE_INLINE int3
+operator+(const int3& a, const int& b)
 {
-  return a.x == b.x && a.y == b.y && a.z == b.z;
+    return (int3){a.x + b, a.y + b, a.z + b};
 }
 
-static HOST_DEVICE_INLINE bool
-operator!=(const int3& a, const int3& b)
+static HOST_DEVICE_INLINE int3
+operator+(const int3& a, const AcBool3& b)
 {
-  return !(a == b);
+    return (int3){a.x + b.x, a.y + b.y, a.z + b.z};
 }
+
+static HOST_DEVICE_INLINE int3
+operator+(const AcBool3& a, const int3& b)
+{
+    return (int3){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+static HOST_DEVICE_INLINE int3
+operator+(const int& a, const int3& b)
+{
+    return (int3){a + b.x, a + b.y, a + b.z};
+}
+
+static HOST_DEVICE_INLINE int3
+operator-(const int3& a, const int3& b)
+{
+    return (int3){a.x - b.x, a.y - b.y, a.z - b.z};
+}
+
+
+static HOST_DEVICE_INLINE int3
+operator-(const int& a, const int3& b)
+{
+    return (int3){a - b.x, a - b.y, a - b.z};
+}
+
+static HOST_DEVICE_INLINE int3
+operator-(const int3& a, const int& b)
+{
+    return (int3){a.x - b, a.y - b, a.z - b};
+}
+
+
 
 static HOST_DEVICE_INLINE bool
 operator>=(const int3& a, const int3& b)
@@ -235,22 +302,36 @@ operator<=(const int3& a, const int3& b)
   return a.x <= b.x && a.y <= b.y && a.z <= b.z;
 }
 
+static HOST_DEVICE_INLINE bool
+operator>=(const int3& a, const int& b)
+{
+  return a.x >= b && a.y >= b && a.z >= b;
+}
+
+static HOST_DEVICE_INLINE bool
+operator<=(const int3& a, const int& b)
+{
+  return a.x <= b && a.y <= b && a.z <= b;
+}
+
+
+
 /*
  * UINT3_64
  */
-static HOST_DEVICE_INLINE uint3_64
+static HOST_INLINE uint3_64
 operator+(const uint3_64& a, const uint3_64& b)
 {
   return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
-static HOST_DEVICE_INLINE uint3_64
+static HOST_INLINE uint3_64
 operator-(const uint3_64& a, const uint3_64& b)
 {
   return (uint3_64){a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
-static HOST_DEVICE_INLINE uint3_64
+static HOST_INLINE uint3_64
 operator*(const uint3_64& a, const uint3_64& b)
 {
   return (uint3_64){a.x * b.x, a.y * b.y, a.z * b.z};
@@ -262,26 +343,89 @@ operator*(const int& a, const uint3_64& b)
   return (uint3_64){as_size_t(a) * b.x, as_size_t(a) * b.y, as_size_t(a) * b.z};
 }
 
+static inline uint3_64
+operator/(const int3& a, const uint3_64& b)
+{
+  return (uint3_64){as_size_t(a.x) / b.x, as_size_t(a.y) / b.y, as_size_t(a.z) / b.z};
+}
+
+static inline uint3_64
+operator/(const uint3_64& a, const int3& b)
+{
+  return (uint3_64){a.x / as_size_t(b.x), a.y / as_size_t(b.y), a.z / as_size_t(b.z)};
+}
+
+static inline uint3_64
+operator/(const Volume& a, const uint3_64& b)
+{
+  return (uint3_64){a.x / b.x, a.y / b.y, a.z / b.z};
+}
+
+static inline uint3_64
+operator/(const uint3_64& a, const Volume& b)
+{
+  return (uint3_64){a.x / b.x, a.y / b.y, a.z / b.z};
+}
+
 static HOST_DEVICE_INLINE bool
 operator==(const uint3_64& a, const uint3_64& b)
 {
   return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
+
 /*
- * Volume
+ * lume
  */
 template <class T>
 static Volume
-to_volume(const T a)
+TO_VOLUME(const T a, const char* file, const int line)
 {
+  INDIRECT_ERRCHK_ALWAYS(a.x >= 0,file,line);
+  INDIRECT_ERRCHK_ALWAYS(a.y >= 0,file,line);
+  INDIRECT_ERRCHK_ALWAYS(a.z >= 0,file,line);
   return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
 }
+static Volume UNUSED
+TO_VOLUME(const dim3 a, const char* , const int)
+{
+  return (Volume){a.x, a.y, a.z};
+}
+
+static Volume UNUSED
+TO_VOLUME(const size3_t a, const char* , const int)
+{
+  return (Volume){a.x, a.y, a.z};
+}
+template <typename T>
+static HOST_DEVICE_INLINE Volume 
+operator*(const Volume& a, const T& b)
+{
+  return (Volume){a.x / b, a.y / b, a.z / b};
+}
+
+#define to_volume(a) TO_VOLUME(a, __FILE__, __LINE__)
 
 static inline dim3
 to_dim3(const Volume v)
 {
   return dim3(v.x, v.y, v.z);
+}
+
+static HOST_DEVICE_INLINE bool 
+operator==(const dim3& a, const dim3& b)
+{
+  return
+    a.x == b.x &&
+    a.y == b.y &&
+    a.z == b.z;
+  
+}
+template <class T>
+static int
+volume_size(const T a)
+{
+  return a.x*a.y*a.z; 
 }
 
 /*
@@ -293,64 +437,9 @@ is_valid(const AcReal a)
   return !isnan(a) && !isinf(a);
 }
 
-/*
- * AcReal2
- */
-#if defined(__CUDACC__)
-static HOST_DEVICE_INLINE AcReal2
-operator+(const AcReal2& a, const AcReal2& b)
-{
-  return (AcReal2){a.x + b.x, a.y + b.y};
-}
-
-static HOST_DEVICE_INLINE void
-operator+=(AcReal2& lhs, const AcReal2& rhs)
-{
-  lhs.x += rhs.x;
-  lhs.y += rhs.y;
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator-(const AcReal2& a, const AcReal2& b)
-{
-  return (AcReal2){a.x - b.x, a.y - b.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator-(const AcReal2& a)
-{
-  return (AcReal2){-a.x, -a.y};
-}
-
-static HOST_DEVICE_INLINE void
-operator-=(AcReal2& lhs, const AcReal2& rhs)
-{
-  lhs.x -= rhs.x;
-  lhs.y -= rhs.y;
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator*(const AcReal& a, const AcReal2& b)
-{
-  return (AcReal2){a * b.x, a * b.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator*(const AcReal2& b, const AcReal& a)
-{
-  return (AcReal2){a * b.x, a * b.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator/(const AcReal2& a, const AcReal& b)
-{
-  return (AcReal2){a.x / b, a.y / b};
-}
-
-#endif
 
 static HOST_DEVICE_INLINE AcReal
-dot(const AcReal2& a, const AcReal2& b)
+AC_dot(const AcReal2& a, const AcReal2& b)
 {
   return a.x * b.x + a.y * b.y;
 }
@@ -364,74 +453,64 @@ is_valid(const AcReal2& a)
 /*
  * AcReal3
  */
-static HOST_DEVICE_INLINE AcReal3
-operator+(const AcReal3& a, const AcReal3& b)
-{
-  return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
-}
 
-static HOST_DEVICE_INLINE void
-operator+=(AcReal3& lhs, const AcReal3& rhs)
-{
-  lhs.x += rhs.x;
-  lhs.y += rhs.y;
-  lhs.z += rhs.z;
-}
 
-static HOST_DEVICE_INLINE AcReal3
-operator-(const AcReal3& a, const AcReal3& b)
-{
-  return (AcReal3){a.x - b.x, a.y - b.y, a.z - b.z};
-}
+//static HOST_DEVICE_INLINE AcBool3 
+//operator!=(const AcReal3& a, const AcReal b)
+//{
+//  return (AcBool3){
+//      a.x != b,
+//      a.y != b,
+//      a.z != b
+//  };
+//}
+//
+//
+//static HOST_DEVICE_INLINE AcBool3 
+//operator==(const AcReal3& a, const AcReal b)
+//{
+//  return (AcBool3){
+//      a.x == b,
+//      a.y == b,
+//      a.z == b
+//  };
+//}
 
-static HOST_DEVICE_INLINE AcReal3
-operator-(const AcReal3& a)
-{
-  return (AcReal3){-a.x, -a.y, -a.z};
-}
 
-static HOST_DEVICE_INLINE void
-operator-=(AcReal3& lhs, const AcReal3& rhs)
-{
-  lhs.x -= rhs.x;
-  lhs.y -= rhs.y;
-  lhs.z -= rhs.z;
-}
 
-static HOST_DEVICE_INLINE AcReal3
-operator*(const AcReal& a, const AcReal3& b)
+static HOST_DEVICE_INLINE AcReal
+sum(const AcReal3& a)
 {
-  return (AcReal3){a * b.x, a * b.y, a * b.z};
-}
-
-static HOST_DEVICE_INLINE AcReal3
-operator*(const AcReal3& b, const AcReal& a)
-{
-  return (AcReal3){a * b.x, a * b.y, a * b.z};
-}
-
-static HOST_DEVICE_INLINE AcReal3
-operator/(const AcReal3& a, const AcReal& b)
-{
-  return (AcReal3){a.x / b, a.y / b, a.z / b};
+    return a.x+a.y+a.z;
 }
 
 static HOST_DEVICE_INLINE AcReal
-dot(const AcReal3& a, const AcReal3& b)
+AC_dot(const AcReal3& a, const AcReal3& b)
+{
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+static HOST_DEVICE_INLINE AcReal
+AC_dot(const int3& a, const AcReal3& b)
+{
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+static HOST_DEVICE_INLINE AcReal
+AC_dot(const AcReal3& a, const int3& b)
 {
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
 static HOST_DEVICE_INLINE AcReal3
-cross(const AcReal3& a, const AcReal3& b)
+AC_cross(const AcReal3& a, const AcReal3& b)
 {
-  AcReal3 c;
-
-  c.x = a.y * b.z - a.z * b.y;
-  c.y = a.z * b.x - a.x * b.z;
-  c.z = a.x * b.y - a.y * b.x;
-
-  return c;
+  return
+  {
+	a.y * b.z - a.z * b.y,
+	a.z * b.x - a.x * b.z,
+	a.x * b.y - a.y * b.x,  
+  };
 }
 
 static HOST_DEVICE_INLINE bool
@@ -443,13 +522,14 @@ is_valid(const AcReal3& a)
 /*
  * AcMatrix
  */
+
+
 typedef struct AcMatrix {
-  AcReal data[3][3] = {{0}};
+  AcReal data[3][3]{};
+  HOST_DEVICE_INLINE AcMatrix() {}
 
-  HOST_DEVICE AcMatrix() {}
-
-  HOST_DEVICE AcMatrix(const AcReal3 row0, const AcReal3 row1,
-                       const AcReal3 row2)
+  HOST_DEVICE_INLINE AcMatrix(const AcReal3& row0, const AcReal3& row1,
+                       const AcReal3& row2)
   {
     data[0][0] = row0.x;
     data[0][1] = row0.y;
@@ -464,28 +544,63 @@ typedef struct AcMatrix {
     data[2][2] = row2.z;
   }
 
-  HOST_DEVICE AcReal3 row(const int row) const
+  HOST_DEVICE_INLINE AcReal3 row(const int row) const
   {
     return (AcReal3){data[row][0], data[row][1], data[row][2]};
   }
+  HOST_DEVICE_INLINE AcReal3 col(const int col) const
+  {
+    return (AcReal3){data[0][col], data[1][col], data[2][col]};
+  }
 
-  HOST_DEVICE AcReal3 operator*(const AcReal3& v) const
+  HOST_DEVICE_INLINE AcReal3 operator*(const AcReal3& v) const
   {
     return (AcReal3){
-        dot(row(0), v),
-        dot(row(1), v),
-        dot(row(2), v),
+        AC_dot(row(0), v),
+        AC_dot(row(1), v),
+        AC_dot(row(2), v),
     };
   }
 
-  HOST_DEVICE AcMatrix operator-() const
+  HOST_DEVICE_INLINE AcMatrix operator-() const
   {
     return AcMatrix(-row(0), -row(1), -row(2));
   }
+  HOST_DEVICE_INLINE AcMatrix& operator=(const AcReal& s)
+  {
+	data[0][0] = s;
+	data[1][0] = s;
+	data[2][0] = s;
+
+	data[0][1] = s;
+	data[1][1] = s;
+	data[2][1] = s;
+
+	data[0][2] = s;
+	data[1][2] = s;
+	data[2][2] = s;
+
+	return *this;
+  }
 } AcMatrix;
 
-static HOST_DEVICE AcMatrix
-operator*(const AcReal v, const AcMatrix& m)
+static HOST_DEVICE_INLINE AcReal
+multm2_sym(const AcMatrix m)
+{
+	AcReal res = m.data[0][0]*m.data[0][0];
+	for(int i = 1; i < 3; ++i)
+	{
+		res += m.data[i][i]*m.data[i][i];
+		for(int j = 0; j < i; ++j)
+		{
+			res += 2*m.data[i][j]*m.data[i][j];
+		}
+	}
+	return res;
+}
+
+static HOST_DEVICE_INLINE AcMatrix
+operator*(const AcReal& v, const AcMatrix& m)
 {
   AcMatrix out;
 
@@ -504,10 +619,377 @@ operator*(const AcReal v, const AcMatrix& m)
   return out;
 }
 
-static HOST_DEVICE AcMatrix
-operator-(const AcMatrix& A, const AcMatrix& B)
+static HOST_DEVICE_INLINE AcMatrix
+operator+(const AcMatrix& a, const AcMatrix& b)
 {
-  return AcMatrix(A.row(0) - B.row(0), //
-                  A.row(1) - B.row(1), //
-                  A.row(2) - B.row(2));
+  AcMatrix out;
+
+  out.data[0][0] = a.data[0][0] + b.data[0][0];
+  out.data[0][1] = a.data[0][1] + b.data[0][1];
+  out.data[0][2] = a.data[0][2] + b.data[0][2];
+
+  out.data[1][0] = a.data[1][0] + b.data[1][0];
+  out.data[1][1] = a.data[1][1] + b.data[1][1];
+  out.data[1][2] = a.data[1][2] + b.data[1][2];
+
+  out.data[2][0] = a.data[2][0] + b.data[2][0];
+  out.data[2][1] = a.data[2][1] + b.data[2][1];
+  out.data[2][2] = a.data[2][2] + b.data[2][2];
+
+  return out;
 }
+
+static HOST_DEVICE_INLINE AcMatrix
+operator-(const AcMatrix& a, const AcMatrix& b)
+{
+  AcMatrix out;
+
+  out.data[0][0] = a.data[0][0] - b.data[0][0];
+  out.data[0][1] = a.data[0][1] - b.data[0][1];
+  out.data[0][2] = a.data[0][2] - b.data[0][2];
+
+  out.data[1][0] = a.data[1][0] - b.data[1][0];
+  out.data[1][1] = a.data[1][1] - b.data[1][1];
+  out.data[1][2] = a.data[1][2] - b.data[1][2];
+
+  out.data[2][0] = a.data[2][0] - b.data[2][0];
+  out.data[2][1] = a.data[2][1] - b.data[2][1];
+  out.data[2][2] = a.data[2][2] - b.data[2][2];
+
+  return out;
+}
+
+static HOST_DEVICE_INLINE AcReal3
+operator*(AcReal3 v, const AcMatrix& m)
+{
+    return (AcReal3){
+        AC_dot(m.col(0), v),
+        AC_dot(m.col(1), v),
+        AC_dot(m.col(2), v),
+    };
+}
+
+/**
+#define GEN_STD_ARRAY_OPERATOR(OPERATOR)  \
+template <typename T, const size_t N, typename F> \
+static constexpr  void \
+operator OPERATOR##=(AcArray<T, N>& lhs, const F& rhs) {\
+    for (std::size_t i = 0; i < N; ++i) \
+        lhs[i] OPERATOR##= rhs;\
+}\
+template <typename T, const size_t N, typename F> \
+static constexpr  AcArray<T, N>  \
+operator OPERATOR (const AcArray<T, N>& lhs, const F& rhs) {\
+    AcArray<T, N> result = {}; \
+    for (std::size_t i = 0; i < N; ++i) {\
+        result[i] = lhs[i] OPERATOR rhs;\
+    }\
+    return result; \
+}\
+template <typename T, const size_t N, typename F> \
+static constexpr  AcArray<T, N>  \
+operator OPERATOR (const F& rhs,const AcArray<T, N>& lhs) {\
+    AcArray<T, N> result = {}; \
+    for (std::size_t i = 0; i < N; ++i) {\
+        result[i] = lhs[i] OPERATOR rhs;\
+    }\
+    return result; \
+}\
+template <typename T, const size_t N> \
+static constexpr  AcArray<T, N>  \
+operator OPERATOR (const AcArray<T, N>& lhs, const AcArray<T, N>& rhs) {\
+    AcArray<T, N> result = {}; \
+    for (std::size_t i = 0; i < N; ++i) {\
+        result[i] = lhs[i] OPERATOR rhs[i];\
+    }\
+    return result; \
+}\
+template <typename T, const size_t N> \
+static constexpr  void \
+operator OPERATOR##=(AcArray<T, N>& lhs, const AcArray<T, N>& rhs) {\
+    for (std::size_t i = 0; i < N; ++i) \
+        lhs[i] OPERATOR##= rhs[i];\
+}\
+
+
+
+GEN_STD_ARRAY_OPERATOR(*)
+GEN_STD_ARRAY_OPERATOR(/)
+GEN_STD_ARRAY_OPERATOR(+)
+GEN_STD_ARRAY_OPERATOR(-)
+
+template <typename T, std::size_t N>
+static HOST_DEVICE AcArray<T, N>  
+operator -(const AcArray<T, N>& lhs) {
+    AcArray<T, N> result; 
+    for (std::size_t i = 0; i < N; ++i) {
+        result[i] = -lhs[i];
+    }
+    return result;
+}
+
+template <typename T, std::size_t N>
+static HOST_DEVICE AcArray<T, N>  
+operator +(const AcArray<T, N>& lhs) {
+    AcArray<T, N> result = lhs; 
+    return result;
+}
+
+template <typename T, std::size_t N>
+static HOST_DEVICE_INLINE T
+AC_dot(const AcArray<T,N>& a, const AcArray<T,N>& b)
+{
+        T res = 0;
+        for(size_t i = 0; i < N; ++i)
+                res += a[i]*b[i];
+        return res;
+}
+**/
+static HOST_INLINE Volume
+operator-(const Volume& a, const Volume& b)
+{
+	int3 res = 
+	{
+		(int)a.x - (int)b.x,
+		(int)a.y - (int)b.y,
+		(int)a.z - (int)b.z
+	};
+
+	return to_volume(res);
+}
+static HOST_INLINE Volume
+operator*(const Volume& a, const int& b)
+{
+	ERRCHK_ALWAYS(b >= 0);
+	return
+	{
+		a.x*(size_t)b,
+		a.y*(size_t)b,
+		a.z*(size_t)b
+	};
+
+}
+
+static HOST_INLINE Volume
+operator*(const int& a, const Volume& b)
+{
+	ERRCHK_ALWAYS(a >= 0);
+	return
+	{
+		b.x*(size_t)a,
+		b.y*(size_t)a,
+		b.z*(size_t)a
+	};
+
+}
+static HOST_INLINE Volume
+operator*(const int3& a, const Volume& b)
+{
+	ERRCHK_ALWAYS(a.x >= 0);
+	ERRCHK_ALWAYS(a.y >= 0);
+	ERRCHK_ALWAYS(a.z >= 0);
+	return
+	{
+		b.x*(size_t)a.x,
+		b.y*(size_t)a.y,
+		b.z*(size_t)a.z
+	};
+
+}
+static HOST_INLINE Volume
+operator+(const int3& a, const Volume& b)
+{
+	ERRCHK_ALWAYS((int)b.x >= -a.x);
+	ERRCHK_ALWAYS((int)b.y >= -a.y);
+	ERRCHK_ALWAYS((int)b.z >= -a.z); 
+	return
+	{
+		(size_t)(b.x+a.x),
+		(size_t)(b.y+a.y),
+		(size_t)(b.z+a.z)
+	};
+
+}
+static HOST_INLINE AcReal3
+operator*(const Volume& a, const AcReal3& b)
+{
+	return
+	{
+		a.x*b.x,
+		a.y*b.y,
+		a.z*b.z
+	};
+
+}
+static HOST_INLINE AcReal3
+operator*(const AcReal3& a, const Volume& b)
+{
+	return
+	{
+		a.x*b.x,
+		a.y*b.y,
+		a.z*b.z
+	};
+
+}
+
+static HOST_INLINE Volume&
+operator-=(Volume& a, const int3& b)
+{
+	ERRCHK_ALWAYS((int)a.x >= b.x);
+	ERRCHK_ALWAYS((int)a.y >= b.y);
+	ERRCHK_ALWAYS((int)a.z >= b.z);
+	a.x -= b.x;
+	a.y -= b.y;
+	a.z -= b.z;
+	return a;
+}
+static HOST_INLINE Volume&
+operator-=(Volume& a, const Volume& b)
+{
+	ERRCHK_ALWAYS(a.x >= b.x);
+	ERRCHK_ALWAYS(a.y >= b.y);
+	ERRCHK_ALWAYS(a.z >= b.z);
+	a.x -= b.x;
+	a.y -= b.y;
+	a.z -= b.z;
+	return a;
+}
+
+static HOST_INLINE bool
+operator==(const Volume& a, const Volume& b)
+{
+	return 
+		a.x == b.x &&
+		a.y == b.y &&
+		a.z == b.z;
+
+}
+static HOST_INLINE bool
+operator!=(const Volume& a, const Volume& b)
+{
+	return 
+		a.x != b.x ||
+		a.y != b.y ||
+		a.z != b.z;
+
+}
+typedef struct AcTensor {
+  AcReal data[3][3][3]{};
+
+  HOST_DEVICE_INLINE AcTensor() {}
+
+  HOST_DEVICE_INLINE AcTensor(const AcMatrix& m0, const AcMatrix& m1,
+                       const AcMatrix& m2)
+  {
+    data[0][0][0] = m0.data[0][0];
+    data[0][1][0] = m0.data[0][1];
+    data[0][2][0] = m0.data[0][2];
+
+    data[1][0][0] = m0.data[1][0];
+    data[1][1][0] = m0.data[1][1];
+    data[1][2][0] = m0.data[1][2];
+
+    data[2][0][0] = m0.data[2][0];
+    data[2][1][0] = m0.data[2][1];
+    data[2][2][0] = m0.data[2][2];
+                 
+    data[0][0][1] = m1.data[0][0];
+    data[0][1][1] = m1.data[0][1];
+    data[0][2][1] = m1.data[0][2];
+                 
+    data[1][0][1] = m1.data[1][0];
+    data[1][1][1] = m1.data[1][1];
+    data[1][2][1] = m1.data[1][2];
+                 
+    data[2][0][1] = m1.data[2][0];
+    data[2][1][1] = m1.data[2][1];
+    data[2][2][1] = m1.data[2][2];
+                 
+    data[0][0][2] = m2.data[0][0];
+    data[0][1][2] = m2.data[0][1];
+    data[0][2][2] = m2.data[0][2];
+                 
+    data[1][0][2] = m2.data[1][0];
+    data[1][1][2] = m2.data[1][1];
+    data[1][2][2] = m2.data[1][2];
+                 
+    data[2][0][2] = m2.data[2][0];
+    data[2][1][2] = m2.data[2][1];
+    data[2][2][2] = m2.data[2][2];
+
+
+  }
+} AcTensor;
+
+HOST_DEVICE_INLINE AcReal3
+matmul_arr(const AcReal* m, const AcReal3& v)
+{
+	AcReal x = m[0 + 3*0]*v.x;
+	x += m[0 + 3*1]*v.y;
+	x += m[0 + 3*2]*v.z;
+
+	AcReal y = m[1 + 3*0]*v.x;
+	y += m[1 + 3*1]*v.y;
+	y += m[1 + 3*2]*v.z;
+
+	AcReal z = m[2 + 3*0]*v.x;
+	z += m[2 + 3*1]*v.y;
+	z += m[2 + 3*2]*v.z;
+	return (AcReal3){x,y,z};
+}
+HOST_DEVICE_INLINE AcReal3
+matmul_arr(AcReal* m, const AcReal3& v)
+{
+	AcReal x = m[0 + 3*0]*v.x;
+	x += m[0 + 3*1]*v.y;
+	x += m[0 + 3*2]*v.z;
+
+	AcReal y = m[1 + 3*0]*v.x;
+	y += m[1 + 3*1]*v.y;
+	y += m[1 + 3*2]*v.z;
+
+	AcReal z = m[2 + 3*0]*v.x;
+	z += m[2 + 3*1]*v.y;
+	z += m[2 + 3*2]*v.z;
+	return (AcReal3){x,y,z};
+}
+template <typename T>
+HOST_DEVICE_INLINE void
+broadcast_scalar(T& arr, const AcReal& val)
+{
+	const size_t arr_len = sizeof(arr)/sizeof(arr[0]);
+	for(size_t i = 0; i < arr_len; ++i)
+		arr[i] = val;
+}
+template <const size_t N1, const size_t N2>
+HOST_DEVICE_INLINE void
+broadcast_scalar_2d(AcReal (&arr)[N1][N2], const AcReal& val)
+{
+	for(size_t i = 0; i < N1; ++i)
+		for(size_t j= 0; j < N2; ++j)
+			arr[i][j] = val;
+}
+template <typename T>
+HOST_DEVICE_INLINE void
+broadcast_scalar_to_vec(T& arr, const AcReal& val)
+{
+	const size_t arr_len = sizeof(arr)/sizeof(arr[0]);
+	for(size_t i = 0; i < arr_len; ++i)
+		arr[i] = (AcReal3){val,val,val};
+}
+template <typename T1,typename T2>
+HOST_DEVICE_INLINE void
+copy_arr(T1& a, const T2& b)
+{
+	const size_t arr_len = sizeof(a)/sizeof(a[0]);
+	for(size_t i = 0; i < arr_len; ++i)
+		a[i] = b[i];
+}
+HOST_DEVICE_INLINE uint64_t
+max(const uint64_t& a, const int& b)
+{
+	return a > (uint64_t)b ? a : (uint64_t)b;
+}
+
+#include "generated_comp_funcs.h"

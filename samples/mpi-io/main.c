@@ -66,10 +66,13 @@ main(int argc, char** argv)
         return EXIT_FAILURE;
     }
     else {
-        info.int_params[AC_nx] = atoi(argv[1]);
-        info.int_params[AC_ny] = atoi(argv[2]);
-        info.int_params[AC_nz] = atoi(argv[3]);
-        acHostUpdateBuiltinParams(&info);
+	info.int3_params[AC_ngrid] = (int3)
+	{
+		atoi(argv[1]),
+		atoi(argv[2]),
+		atoi(argv[3]),
+	};
+        acHostUpdateParams(&info);
 
         if (argc == 5)
             job_id = atoi(argv[4]);
@@ -100,8 +103,8 @@ main(int argc, char** argv)
     }
 
     // Make tmpdir for output
-    char cmd[4096];
-    snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+    char cmd[4096*2];
+    snprintf(cmd, 4096*2, "mkdir -p %s", job_dir);
     system(cmd);
 
     // Write
@@ -186,8 +189,8 @@ main(int argc, char** argv)
     const bool use_distributed_io = false;
 #endif
     fprintf(fp, "%d,%d,%g,%g,%g,%g,%d,%d,%d,%d\n", pid, nprocs, write_milliseconds, write_bandwidth,
-            read_milliseconds, read_bandwidth, use_distributed_io, info.int_params[AC_nx],
-            info.int_params[AC_ny], info.int_params[AC_nz]);
+            read_milliseconds, read_bandwidth, use_distributed_io, info.int3_params[AC_ngrid].x,
+            info.int3_params[AC_ngrid].y, info.int3_params[AC_ngrid].z);
     fclose(fp);
     // }
 

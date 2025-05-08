@@ -16,31 +16,108 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "acc_runtime.h"
+#define rocprim__warpSize() rocprim::warp_size()
+#define rocprim__warpId()   rocprim::warp_id()
+#define rocprim__warp_shuffle_down rocprim::warp_shuffle_down
+#define rocprim__warp_shuffle rocprim::warp_shuffle
 
+#include "acc_runtime.h"
+#include "ac_buffer.h"
+
+#include "user_defines_runtime_lib.h"
+
+#include "../acc/string_vec.h"
+typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
+#define AcReal3(x,y,z)   (AcReal3){x,y,z}
+#define AcComplex(x,y)   (AcComplex){x,y}
+static AcBool3 dimension_inactive{};
+static bool sparse_autotuning=false;
+static int3    max_tpb_for_reduce_kernels{100,100,100};
+#include <math.h> 
 #include <vector> // tbconfig
 
 #include "errchk.h"
 #include "math_utils.h"
+#include <unordered_map>
+#include <utility>
+#include <sys/stat.h>
 
 #if AC_USE_HIP
 #include <hip/hip_runtime.h> // Needed in files that include kernels
+#include <rocprim/rocprim.hpp>
 #endif
+
+#include "user_kernel_declarations.h"
+#include "kernel_reduce_info.h"
+
 
 #define USE_COMPRESSIBLE_MEMORY (0)
 
+//TP: unfortunately cannot use color output since it might not be supported in each env
+const bool useColor = false;
+
+#define GREEN "\033[1;32m"
+#define YELLOW "\033[1;33m"
+#define RESET "\033[0m"
+
+#define COLORIZE(symbol, color) (useColor ? color symbol RESET : symbol)
+
+
 #include "acc/implementation.h"
+typedef struct
+{
+	void* data;
+	size_t bytes;
+} AcDeviceTmpBuffer;
 
 static dim3 last_tpb = (dim3){0, 0, 0};
+struct Int3Hash {
+    std::size_t operator()(const int3& v) const {
+        return std::hash<int>()(v.x) ^ std::hash<int>()(v.y) << 1 ^ std::hash<int>()(v.z) << 2;
+    }
+};
+std::array<std::unordered_map<int3,int,Int3Hash>,NUM_KERNELS> reduce_offsets;
+int kernel_running_reduce_offsets[NUM_KERNELS];
+
+AcAutotuneMeasurement
+return_own_measurement(const AcAutotuneMeasurement local_measurement) {return local_measurement;}
+
+static int grid_pid = 0;
+[[maybe_unused]] static int nprocs   = 0;
+static AcMeasurementGatherFunc gather_func  = return_own_measurement;
+#if AC_MPI_ENABLED
+AcResult
+acInitializeRuntimeMPI(const int _grid_pid,const int _nprocs, const AcMeasurementGatherFunc mpi_gather_func)
+{
+	grid_pid = _grid_pid;
+	nprocs   = _nprocs;
+	gather_func = mpi_gather_func;
+	return AC_SUCCESS;
+}
+#endif
 
 Volume
 acKernelLaunchGetLastTPB(void)
 {
   return to_volume(last_tpb);
 }
+int
+acGetKernelReduceScratchPadSize(const AcKernel kernel)
+{
+	return kernel_running_reduce_offsets[(int)kernel];
+}
+int
+acGetKernelReduceScratchPadMinSize()
+{
+	int res = 0; 
+	for(int i = 0; i < NUM_KERNELS; ++i)
+		res = (res < kernel_running_reduce_offsets[i]) ? kernel_running_reduce_offsets[i] : res;
+	return res;
+}
+#include "../../src/helpers/ceil_div.h"
 
 Volume
-get_bpg(const Volume dims, const Volume tpb)
+get_bpg(Volume dims, const Volume tpb)
 {
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING:             // Fallthrough
@@ -53,9 +130,9 @@ get_bpg(const Volume dims, const Volume tpb)
   case EXPLICIT_PINGPONG_txyz:       // Fallthrough
   case EXPLICIT_ROLLING_PINGPONG: {
     return (Volume){
-        (size_t)ceil(1. * dims.x / tpb.x),
-        (size_t)ceil(1. * dims.y / tpb.y),
-        (size_t)ceil(1. * dims.z / tpb.z),
+        ceil_div(dims.x,tpb.x),
+        ceil_div(dims.y,tpb.y),
+        ceil_div(dims.z,tpb.z),
     };
   }
   default: {
@@ -64,60 +141,114 @@ get_bpg(const Volume dims, const Volume tpb)
   }
   }
 }
+#include "stencil_accesses.h"
+#include "../acc/mem_access_helper_funcs.h"
 
-bool
-is_valid_configuration(const Volume dims, const Volume tpb)
+
+Volume
+get_bpg(Volume dims, const AcKernel kernel, const int3 block_factors, const Volume tpb)
+{
+	if(block_factors == (int3){1,1,1}) return get_bpg(dims,tpb);
+	if(kernel_has_block_loops(kernel)) return get_bpg(ceil_div(dims,block_factors), tpb);
+	return get_bpg(dims,tpb);
+}
+
+static cudaDeviceProp
+get_device_prop()
 {
   cudaDeviceProp props;
-  cudaGetDeviceProperties(&props, 0);
-  const size_t warp_size = props.warpSize;
-  const size_t xmax      = (size_t)(warp_size * ceil(1. * dims.x / warp_size));
-  const size_t ymax      = (size_t)(warp_size * ceil(1. * dims.y / warp_size));
-  const size_t zmax      = (size_t)(warp_size * ceil(1. * dims.z / warp_size));
-  const bool too_large   = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
+  (void)cudaGetDeviceProperties(&props, 0);
+  return props;
+}
+
+int3
+get_ghosts()
+{
+  return (int3){
+	  dimension_inactive.x ? 0 : NGHOST,
+	  dimension_inactive.y ? 0 : NGHOST,
+	  dimension_inactive.z ? 0 : NGHOST
+  };
+}
+template <typename T>
+bool
+is_large_launch(const T dims)
+{
+  const int3 ghosts = get_ghosts();
+  return ((int)dims.x > ghosts.x && (int)dims.y > ghosts.y && (int)dims.z > ghosts.z);
+}
+
+
+bool
+is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kernel)
+{
+
+
+  const size_t warp_size    = get_device_prop().warpSize;
+  const size_t xmax         = (size_t)(warp_size * ceil_div(dims.x,warp_size));
+  const size_t ymax         = (size_t)(warp_size * ceil_div(dims.y,warp_size));
+  const size_t zmax         = (size_t)(warp_size * ceil_div(dims.z,warp_size));
+  const bool too_large      = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
+  const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
+  //TP: in most cases this a reasonable limitation but at least theoretically the shape of the threadblock might be more important
+  //    than warp considerations. So impose this limitation only if the user allows it
+  if (sparse_autotuning && (dims.x >= warp_size && tpb.x % warp_size != 0)) return false;
+
+  if(kernel_reduces_profile(kernel))
+  {
+	  if(tpb.y > (size_t)max_tpb_for_reduce_kernels.y) return false;
+	  if(tpb.z > (size_t)max_tpb_for_reduce_kernels.z) return false;
+	  //TP: if we enforce that tpb.x is a multiple of the warp size then 
+	  //can easily do warp reduce while doing a reduction whose result is not x-dependent --> major saving in memory and performance increase
+	  if(dims.x >= warp_size && tpb.x % warp_size != 0) return false;
+  }
+//  const bool single_tb      = (tpb.x >= dims.x) && (tpb.y >= dims.y) && (tpb.z >= dims.z);
+
+  //TP: if not utilizing the whole warp invalid, expect if dims are so small that could not utilize a whole warp 
+  if(not_full_warp && is_large_launch(dims)) return false;
 
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: {
 
-    if (too_large)
-      return false;
+	    if (too_large)
+	      return false;
 
-    return true;
-  }
-  case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
-    if (tpb.z > 1)
-      return false;
-  case EXPLICIT_CACHING: // Fallthrough
-  case EXPLICIT_CACHING_3D_BLOCKING: {
+	    return true;
+	  }
+	  case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
+	    if (tpb.z > 1) return false;
+	    [[fallthrough]];
+	  case EXPLICIT_CACHING: // Fallthrough
+	  case EXPLICIT_CACHING_3D_BLOCKING: {
 
-    // For some reason does not work without this
-    // Probably because of break vs continue when fetching (some threads
-    // quit too early if the dims are not divisible)
-    return !(dims.x % tpb.x) && !(dims.y % tpb.y) && !(dims.z % tpb.z);
-  }
-  case EXPLICIT_PINGPONG_txw: {
-    return (tpb.y == 1) && (tpb.z == 1);
-  }
-  case EXPLICIT_PINGPONG_txy: {
-    return (tpb.z == 1);
-  }
-  case EXPLICIT_PINGPONG_txyblocked: {
-    return (tpb.z == 1);
-  }
-  case EXPLICIT_PINGPONG_txyz: {
-    return true;
-  }
-  case EXPLICIT_ROLLING_PINGPONG: {
-    // OK for every other rolling pingpong implementation
-    // return true;
+	    // For some reason does not work without this
+	    // Probably because of break vs continue when fetching (some threads
+	    // quit too early if the dims are not divisible)
+	    return !(dims.x % tpb.x) && !(dims.y % tpb.y) && !(dims.z % tpb.z);
+	  }
+	  case EXPLICIT_PINGPONG_txw: {
+	    return (tpb.y == 1) && (tpb.z == 1);
+	  }
+	  case EXPLICIT_PINGPONG_txy: {
+	    return (tpb.z == 1);
+	  }
+	  case EXPLICIT_PINGPONG_txyblocked: {
+	    return (tpb.z == 1);
+	  }
+	  case EXPLICIT_PINGPONG_txyz: {
+	    return true;
+	  }
+	  case EXPLICIT_ROLLING_PINGPONG: {
+	    // OK for every other rolling pingpong implementation
+	    // return true;
 
-    // Required only when unrolling smem loads
-    // Ensures two unrolls is enough to fill the smem buffer
-    return (2 * tpb.x >= STENCIL_WIDTH - 1 + tpb.x) &&
-           (2 * tpb.y >= STENCIL_HEIGHT - 1 + tpb.y);
-  }
-  default: {
-    ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
+	    // Required only when unrolling smem loads
+	    // Ensures two unrolls is enough to fill the smem buffer
+	    return (2 * tpb.x >= STENCIL_WIDTH - 1 + tpb.x) &&
+		   (2 * tpb.y >= STENCIL_HEIGHT - 1 + tpb.y);
+	  }
+	  default: {
+	    ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
     return false;
   }
   }
@@ -185,108 +316,55 @@ get_smem(const Volume tpb, const size_t stencil_order,
 #endif
 */
 
-__device__ __constant__ AcMeshInfo d_mesh_info;
+__device__ __constant__ AcMeshInfoScalars d_mesh_info;
+#include "dconst_arrays_decl.h"
+//TP: We do this ugly macro because I want to keep the generated headers the same if we are compiling cpu analysis and for the actual gpu comp
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME 
+#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) static __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
+#include "gmem_arrays_decl.h"
 
-// Astaroth 2.0 backwards compatibility START
-#define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
-
-int __device__ __forceinline__
-DCONST(const AcIntParam param)
+AcReal
+get_reduce_state_flush_var_real(const AcReduceOp state)
 {
-  return d_mesh_info.int_params[param];
-}
-int3 __device__ __forceinline__
-DCONST(const AcInt3Param param)
-{
-  return d_mesh_info.int3_params[param];
-}
-AcReal __device__ __forceinline__
-DCONST(const AcRealParam param)
-{
-  return d_mesh_info.real_params[param];
-}
-AcReal3 __device__ __forceinline__
-DCONST(const AcReal3Param param)
-{
-  return d_mesh_info.real3_params[param];
+	return 
+		(state == NO_REDUCE || state == REDUCE_SUM) ? 0.0 :
+		(state == REDUCE_MIN) ? AC_REAL_MAX :
+		(state == REDUCE_MAX) ? -AC_REAL_MAX :
+		0.0;
 }
 
-#define DEVICE_VTXBUF_IDX(i, j, k)                                             \
-  ((i) + (j) * DCONST(AC_mx) + (k) * DCONST(AC_mxy))
-
-__device__ int
-LOCAL_COMPDOMAIN_IDX(const int3 coord)
+int
+get_reduce_state_flush_var_int(const AcReduceOp state)
 {
-  return (coord.x) + (coord.y) * DCONST(AC_nx) + (coord.z) * DCONST(AC_nxy);
+	return 
+		(state == NO_REDUCE || state == REDUCE_SUM) ? 0 :
+		(state == REDUCE_MIN) ? INT_MAX:
+		(state == REDUCE_MAX) ? -INT_MAX:
+		0;
 }
 
-__device__ constexpr int
-IDX(const int i)
+#if AC_DOUBLE_PRECISION
+float
+get_reduce_state_flush_var_float(const AcReduceOp state)
 {
-  return i;
-}
-
-#if 1
-__device__ __forceinline__ int
-IDX(const int i, const int j, const int k)
-{
-  return DEVICE_VTXBUF_IDX(i, j, k);
-}
-#else
-constexpr __device__ int
-IDX(const uint i, const uint j, const uint k)
-{
-  /*
-  const int precision   = 32; // Bits
-  const int dimensions  = 3;
-  const int bits = ceil(precision / dimensions);
-  */
-  const int dimensions = 3;
-  const int bits       = 11;
-
-  uint idx = 0;
-#pragma unroll
-  for (uint bit = 0; bit < bits; ++bit) {
-    const uint mask = 0b1 << bit;
-    idx |= ((i & mask) << 0) << (dimensions - 1) * bit;
-    idx |= ((j & mask) << 1) << (dimensions - 1) * bit;
-    idx |= ((k & mask) << 2) << (dimensions - 1) * bit;
-  }
-  return idx;
+	return 
+		(state == NO_REDUCE || state == REDUCE_SUM) ? 0.0 :
+		(state == REDUCE_MIN) ? FLT_MAX :
+		(state == REDUCE_MAX) ? -FLT_MAX :
+		0.0;
 }
 #endif
 
-// Only used in reductions
-__device__ __forceinline__ int
-IDX(const int3 idx)
-{
-  return DEVICE_VTXBUF_IDX(idx.x, idx.y, idx.z);
-}
-
-#define Field3(x, y, z) make_int3((x), (y), (z))
-#define Profile3(x, y, z) make_int3((x), (y), (z))
-#define print printf                          // TODO is this a good idea?
-#define len(arr) sizeof(arr) / sizeof(arr[0]) // Leads to bugs if the user
-#define FIELD_IN (vba.in)
-#define FIELD_OUT (vba.out)
-// passes an array into a device function and then calls len (need to modify
-// the compiler to always pass arrays to functions as references before
-// re-enabling)
-
-#include "random.cuh"
-
-#include "user_kernels.h"
-
 typedef struct {
-  Kernel kernel;
+  AcKernel kernel;
   int3 dims;
   dim3 tpb;
 } TBConfig;
 
 static std::vector<TBConfig> tbconfigs;
 
-static TBConfig getOptimalTBConfig(const Kernel kernel, const int3 dims,
-                                   VertexBufferArray vba);
+
+static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba);
 
 static __global__ void
 flush_kernel(AcReal* arr, const size_t n, const AcReal value)
@@ -295,17 +373,210 @@ flush_kernel(AcReal* arr, const size_t n, const AcReal value)
   if (idx < n)
     arr[idx] = value;
 }
+static __global__ void
+flush_kernel_int(int* arr, const size_t n, const int value)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < n)
+    arr[idx] = value;
+}
+
+static __global__ void
+flush_kernel_float(float* arr, const size_t n, const float value)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < n)
+    arr[idx] = value;
+}
+
+template <typename T>
+T TO_CORRECT_ORDER(const T vol)
+{
+	return vol;
+}
+size_t TO_CORRECT_ORDER(const size_t size)
+{
+	return size;
+}
+
+
+#define KERNEL_LAUNCH(func,bgp,tpb,...) \
+	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
+
+#define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \
+	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
+
+AcResult
+acKernelFlushReal(const cudaStream_t stream, AcReal* arr, const size_t n,
+              const AcReal value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
+AcResult
+acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
+              const int value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel_int,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
+AcResult
+acKernelFlushFloat(const cudaStream_t stream, float* arr, const size_t n,
+              const float value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel_float,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
 
 AcResult
 acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
               const AcReal value)
 {
-  const size_t tpb = 256;
-  const size_t bpg = (size_t)(ceil((double)n / tpb));
-  flush_kernel<<<bpg, tpb, 0, stream>>>(arr, n, value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
+	return acKernelFlushReal(stream,arr,n,value);
 }
+
+AcResult
+acKernelFlush(const cudaStream_t stream, int* arr, const size_t n,
+              const int value)
+{
+	return acKernelFlushInt(stream,arr,n,value);
+}
+
+#if AC_DOUBLE_PRECISION
+AcResult
+acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
+              const float value)
+{
+	return acKernelFlushFloat(stream,arr,n,value);
+}
+#endif
+
+__device__ __constant__ AcReal* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+static size_t d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
+__device__ __constant__ AcReal  d_reduce_real_res_symbol[NUM_REAL_SCRATCHPADS];
+
+
+
+
+#include "reduce_helpers.h"
+
+
+void
+resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)
+{
+	resize_reals_to_fit(n_elems,vba,kernel);
+	resize_ints_to_fit(n_elems,vba,kernel);
+#if AC_DOUBLE_PRECISION
+	resize_floats_to_fit(n_elems,vba,kernel);
+#endif
+}
+
+size_t
+acGetRealScratchpadSize(const size_t i)
+{
+	return d_reduce_scratchpads_size_real[i];
+}
+
+//The macros above generate d arrays like these:
+
+// Astaroth 2.0 backwards compatibility START
+#define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
+
+
+#define DEVICE_INLINE __device__ __forceinline__
+#include "dconst_decl.h"
+#include "output_value_decl.h"
+
+
+
+#include "get_address.h"
+#include "load_dconst_arrays.h"
+#include "store_dconst_arrays.h"
+
+#define PROFILE_X_Y_OR_Z_INDEX(i,j) \
+  ((i) + (j)*VAL(AC_mlocal).x)
+
+#define PROFILE_Y_X_OR_Z_INDEX(i,j) \
+  ((i) + (j)*VAL(AC_mlocal).y)
+
+#define PROFILE_Z_X_OR_Y_INDEX(i,j) \
+  ((i) + (j)*VAL(AC_mlocal).z)
+
+
+#define DEVICE_VTXBUF_IDX(i, j, k)                                             \
+  ((i) + (j)*VAL(AC_mlocal).x + (k)*VAL(AC_mlocal_products).xy)
+
+#define LOCAL_COMPDOMAIN_IDX(coord) \
+	((coord.x) + (coord.y) * VAL(AC_nlocal).x + (coord.z) * VAL(AC_nlocal_products).xy)
+
+#define print printf                          // TODO is this a good idea?
+// passes an array into a device function and then calls len (need to modify
+// the compiler to always pass arrays to functions as references before
+// re-enabling)
+
+#include "random.cuh"
+
+#define suppress_unused_warning(X) (void)X
+#define longlong long long
+#define size(arr) (int)(sizeof(arr) / sizeof(arr[0])) // Leads to bugs if the user
+#define error_message(error,message) 
+#define fatal_error_message(error,message) 
+
+__device__
+AcReal
+safe_access(const AcReal* arr, const int dims, const int index, const char* name)
+{
+	if(index < 0 || index >= dims)
+	{
+		printf("Trying to access %s out of bounds!: %d\n",name,index);
+		return 0.0;
+	}
+	return arr[index];
+}
+
+__device__
+AcReal
+safe_access(const AcReal* arr, const int dims, const int index, const AcRealArrayParam param)
+{
+	if(arr == NULL)
+	{
+		printf("Trying to access %s which is NULL!\n",real_array_names__device__[param]);
+		return 0.0;
+	}
+	else if(index < 0 || index >= dims)
+	{
+		printf("Trying to access %s out of bounds!: %d\n",real_array_names__device__[param],index);
+		return 0.0;
+	}
+	return arr[index];
+}
+
+#include "user_kernels.h"
+#undef size
+#undef longlong
+
+#include "user_built-in_constants.h"
+#include "user_builtin_non_scalar_constants.h"
+
+
 
 #if USE_COMPRESSIBLE_MEMORY
 #include <cuda.h>
@@ -386,142 +657,581 @@ freeCompressible(void* ptr, const size_t requested_bytes)
 #endif
 
 AcResult
-acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
+acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t counts)
 {
   // Set pba.in data to all-nan and pba.out to 0
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    acKernelFlush(stream, pba->in[i], pba->count, (AcReal)NAN);
-    acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0.0);
+    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),counts), (AcReal)NAN);
+    acKernelFlush(stream, pba->out[i], prof_count(Profile(i),counts), (AcReal)0);
   }
   return AC_SUCCESS;
 }
+size_t
+get_amount_of_device_memory_free()
+{
+	size_t free_mem, total_mem;
+	ERRCHK_CUDA_ALWAYS(cudaMemGetInfo(&free_mem,&total_mem));
+	return free_mem;
+}
+void
+device_malloc(void** dst, const size_t bytes)
+{
+  if(get_amount_of_device_memory_free() < bytes)
+  {
+	fprintf(stderr,"Tried to allocate %ld bytes but have only %ld bytes of memory left on the device\n", bytes, get_amount_of_device_memory_free());
+  	ERRCHK_ALWAYS(get_amount_of_device_memory_free() >= bytes);
+  }
+ #if USE_COMPRESSIBLE_MEMORY 
+    ERRCHK_CUDA_ALWAYS(mallocCompressible(dst, bytes));
+ #else
+    ERRCHK_CUDA_ALWAYS(cudaMalloc(dst, bytes));
+  #endif
+  ERRCHK_ALWAYS(dst != NULL);
+}
+void
+device_malloc(AcReal** dst, const size_t bytes)
+{
+	device_malloc((void**)dst,bytes);
+}
+
+template <typename T>
+void
+device_free(T** dst, const int bytes)
+{
+#if USE_COMPRESSIBLE_MEMORY
+  freeCompressible(*dst, bytes);
+#else
+  ERRCHK_CUDA_ALWAYS(cudaFree(*dst));
+  //used to silence unused warning
+  (void)bytes;
+#endif
+  *dst = NULL;
+}
+
+size_t
+device_resize(void** dst,const size_t old_bytes,const size_t new_bytes)
+{
+	if(old_bytes >= new_bytes) return old_bytes;
+	if(old_bytes) device_free(dst,old_bytes);
+	device_malloc(dst,new_bytes);
+	return new_bytes;
+}
+
 
 ProfileBufferArray
-acPBACreate(const size_t count)
+acPBACreate(const size3_t counts)
 {
-  ProfileBufferArray pba = {.count = count};
-
-  const size_t bytes = sizeof(pba.in[0][0]) * pba.count * NUM_PROFILES;
-  AcReal *in, *out;
-#if USE_COMPRESSIBLE_MEMORY
-  ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&in, bytes));
-  ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&out, bytes));
-#else
-  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&in, bytes));
-  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&out, bytes));
-#endif
+  ProfileBufferArray pba{};
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    pba.in[i]  = &in[i * pba.count];
-    pba.out[i] = &out[i * pba.count];
+    const size_t bytes = prof_size(Profile(i),counts)*sizeof(AcReal);
+    device_malloc(&pba.in[i],  bytes);
+    device_malloc(&pba.out[i], bytes);
+    //pba.out[i] = pba.in[i];
   }
 
-  acPBAReset(0, &pba);
-  cudaDeviceSynchronize();
+  acPBAReset(0, &pba, counts);
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
   return pba;
 }
 
 void
-acPBADestroy(ProfileBufferArray* pba)
+acPBADestroy(ProfileBufferArray* pba, const size3_t counts)
 {
-#if USE_COMPRESSIBLE_MEMORY
-  freeCompressible(pba->in[0],
-                   sizeof(pba.in[0][0]) * pba->count * NUM_PROFILES);
-  freeCompressible(pba->out[0],
-                   sizeof(pba.out[0][0]) * pba->count * NUM_PROFILES);
-#else
-  cudaFree(pba->in[0]);
-  cudaFree(pba->out[0]);
-#endif
   for (int i = 0; i < NUM_PROFILES; ++i) {
+    const size_t bytes = prof_size(Profile(i),counts)*sizeof(AcReal);
+    device_free(&pba->in[i],  bytes);
+    device_free(&pba->out[i], bytes);
     pba->in[i]  = NULL;
     pba->out[i] = NULL;
   }
-  pba->count = 0;
 }
 
 AcResult
 acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
-  const size_t count = vba->bytes / sizeof(vba->in[0][0]);
+  const size_t count = vba->bytes / sizeof(vba->on_device.in[0][0]);
 
-  // Set vba.in data to all-nan and vba.out to 0
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    acKernelFlush(stream, vba->in[i], count, (AcReal)NAN);
-    acKernelFlush(stream, vba->out[i], count, (AcReal)0.0);
+    ERRCHK_ALWAYS(vba->on_device.in[i]);
+    ERRCHK_ALWAYS(vba->on_device.out[i]);
+    acKernelFlush(stream, vba->on_device.in[i], count, (AcReal)NAN);
+    acKernelFlush(stream, vba->on_device.out[i], count, (AcReal)0.0);
   }
-
+  memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBAReset(stream, &vba->profiles);
+  acPBAReset(stream, &vba->on_device.profiles, vba->dims.m1);
   return AC_SUCCESS;
 }
 
-VertexBufferArray
-acVBACreate(const size_t mx, const size_t my, const size_t mz)
+
+template <typename T>
+void
+device_malloc(T** dst, const int bytes)
 {
-  VertexBufferArray vba;
+ #if USE_COMPRESSIBLE_MEMORY 
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)dst, bytes));
+ #else
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)dst, bytes));
+  #endif
+}
 
-  const size_t bytes = sizeof(vba.in[0][0]) * mx * my * mz;
-  vba.bytes          = bytes;
-  vba.mx             = mx;
-  vba.my             = my;
-  vba.mz             = mz;
+#include "memcpy_to_gmem_arrays.h"
 
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-#if USE_COMPRESSIBLE_MEMORY
-    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.in[i], bytes));
-    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.out[i], bytes));
-#else
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
+#include "memcpy_from_gmem_arrays.h"
+
+template <typename P>
+struct allocate_arrays
+{
+	void operator()(const AcMeshInfo& config) 
+	{
+		for(P array : get_params<P>())
+		{
+			if (config[array] != nullptr && !is_dconst(array) && is_alive(array))
+			{
+
+#if AC_VERBOSE
+				fprintf(stderr,"Allocating %s|%zu\n",get_name(array),get_array_length(array,config));
+				fflush(stderr);
 #endif
+				auto d_mem_ptr = get_empty_pointer(array);
+			        device_malloc(((void**)&d_mem_ptr), sizeof(config[array][0])*get_array_length(array,config));
+				memcpy_to_gmem_array(array,d_mem_ptr);
+			}
+		}
+	}
+};
+
+
+size3_t
+buffer_dims(const AcMeshInfo config)
+{
+	#include "user_builtin_non_scalar_constants.h"
+	auto mm = config[AC_mlocal];
+	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
+}
+size3_t
+subdomain_size(const AcMeshInfo config)
+{
+	#include "user_builtin_non_scalar_constants.h"
+	auto mm = config[AC_nlocal];
+	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
+}
+
+#if AC_USE_HIP
+#include <hipcub/hipcub.hpp>
+#define cub hipcub
+#else
+#include <cub/cub.cuh>
+#endif
+
+template <typename T>
+void
+cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* d_in, const size_t count, T* d_out,  AcReduceOp reduce_op)
+{
+  switch(reduce_op)
+  {
+	  case(REDUCE_SUM):
+	  	ERRCHK_CUDA(cub::DeviceReduce::Sum(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
+	  	break;
+	  case(REDUCE_MIN):
+	  	ERRCHK_CUDA(cub::DeviceReduce::Min(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
+	  	break;
+	  case(REDUCE_MAX):
+	  	ERRCHK_CUDA(cub::DeviceReduce::Max(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
+	  	break;
+	default:
+		ERRCHK_ALWAYS(reduce_op != NO_REDUCE);
+  }
+  if (cudaGetLastError() != cudaSuccess) {
+          ERRCHK_CUDA_KERNEL_ALWAYS();
+          ERRCHK_CUDA_ALWAYS(cudaGetLastError());
+  }
+}
+
+size3_t
+acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
+{
+	const auto type = prof_types[profile];
+    	if(type == PROFILE_YZ || type == PROFILE_ZY)
+    		return
+    		{
+    		    	    dims.reduction_tile.x,
+    		    	    dims.m1.y,
+    		    	    dims.m1.z
+    		};
+    	if(type == PROFILE_XZ || type == PROFILE_ZX)
+		return
+    		{
+    		    	    dims.m1.x,
+    		    	    dims.reduction_tile.y,
+    		    	    dims.m1.z
+    		};
+    	if(type == PROFILE_YX || type == PROFILE_XY)
+		return
+    		{
+    		    	    dims.m1.x,
+    		    	    dims.m1.y,
+    		    	    dims.reduction_tile.z
+    		};
+	if(type == PROFILE_X)
+	{
+		return
+		{
+			dims.m1.x,
+			dims.reduction_tile.y,
+			dims.reduction_tile.z
+		};
+	}
+	if(type == PROFILE_Y)
+	{
+		return
+		{
+			dims.reduction_tile.x,
+			dims.m1.y,
+			dims.reduction_tile.z
+		};
+	}
+	if(type == PROFILE_Z)
+	{
+		return
+		{
+			dims.reduction_tile.x,
+			dims.reduction_tile.y,
+			dims.m1.z
+		};
+	}
+	return dims.m1;
+}
+
+size_t
+get_profile_reduce_scratchpad_size(const int profile, const VertexBufferArray vba)
+{
+	if(!reduced_profiles[profile]) return 0;
+	const auto dims = acGetProfileReduceScratchPadDims(profile,vba.dims);
+	return dims.x*dims.y*dims.z*sizeof(AcReal);
+}
+
+
+void
+init_scratchpads(VertexBufferArray* vba)
+{
+    vba->scratchpad_states = (AcScratchpadStates*)malloc(sizeof(AcScratchpadStates));
+    memset(vba->scratchpad_states,0,sizeof(AcScratchpadStates));
+    // Reductions
+    {
+	//TP: this is dangerous since it is not always true for DSL reductions but for now keep it
+    	for(int i = 0; i < NUM_REAL_SCRATCHPADS; ++i) {
+	    const size_t bytes =  
+		    		  (i >= NUM_REAL_OUTPUTS) ? get_profile_reduce_scratchpad_size(i-NUM_REAL_OUTPUTS,*vba) :
+				  0;
+	    allocate_scratchpad_real(i,bytes,vba->scratchpad_states->reals[i]);
+	    if(i < NUM_REAL_OUTPUTS)
+	    {
+	    	vba->reduce_buffer_real[i].src = &d_reduce_scratchpads_real[i];
+	    	vba->reduce_buffer_real[i].cub_tmp = (AcReal**)malloc(sizeof(AcReal*));
+	    	*(vba->reduce_buffer_real[i].cub_tmp) = NULL;
+	    	vba->reduce_buffer_real[i].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
+	    	*(vba->reduce_buffer_real[i].cub_tmp_size) = 0;
+
+	    	vba->reduce_buffer_real[i].buffer_size    = &d_reduce_scratchpads_size_real[i];
+    		device_malloc((void**) &vba->reduce_buffer_real[i].res,sizeof(AcReal));
+	    }
+	    else
+	    {
+		    const Profile prof = (Profile)(i-NUM_REAL_OUTPUTS);
+		    const auto dims = acGetProfileReduceScratchPadDims(prof,vba->dims);
+		    vba->profile_reduce_buffers[prof].src = 
+		    {
+			    d_reduce_scratchpads_real[i],
+			    dims.x*dims.y*dims.z,
+			    true,
+			    (AcShape) { dims.x,dims.y,dims.z,1}
+		    };
+		    vba->profile_reduce_buffers[prof].transposed = acBufferCreateTransposed(
+				vba->profile_reduce_buffers[prof].src, 
+				acGetMeshOrderForProfile(prof_types[prof])
+				  );
+		    vba->profile_reduce_buffers[prof].mem_order = acGetMeshOrderForProfile(prof_types[prof]);
+
+	    	    vba->profile_reduce_buffers[prof].cub_tmp = (AcReal**)malloc(sizeof(AcReal*));
+	    	    *(vba->profile_reduce_buffers[prof].cub_tmp) = NULL;
+	    	    vba->profile_reduce_buffers[prof].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
+	    	    *(vba->profile_reduce_buffers[prof].cub_tmp_size) = 0;
+	    }
+    	}
+    }
+    {
+    	for(int i = 0; i < NUM_INT_OUTPUTS; ++i) {
+	    const size_t bytes = 0;
+	    allocate_scratchpad_int(i,bytes,vba->scratchpad_states->ints[i]);
+
+	    vba->reduce_buffer_int[i].src= &d_reduce_scratchpads_int[i];
+	    vba->reduce_buffer_int[i].cub_tmp = (int**)malloc(sizeof(int*));
+	    *(vba->reduce_buffer_int[i].cub_tmp) = NULL;
+	    vba->reduce_buffer_int[i].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
+	    *(vba->reduce_buffer_int[i].cub_tmp_size) = 0;
+	    vba->reduce_buffer_int[i].buffer_size    = &d_reduce_scratchpads_size_int[i];
+    	    device_malloc((void**) &vba->reduce_buffer_int[i].res,sizeof(int));
+    	}
+
+#if AC_DOUBLE_PRECISION
+    	for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i) {
+	    const size_t bytes = 0;
+	    allocate_scratchpad_float(i,bytes,vba->scratchpad_states->floats[i]);
+
+	    vba->reduce_buffer_float[i].src= &d_reduce_scratchpads_float[i];
+	    vba->reduce_buffer_float[i].cub_tmp = (float**)malloc(sizeof(float*));
+	    *(vba->reduce_buffer_float[i].cub_tmp) = NULL;
+	    vba->reduce_buffer_float[i].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
+	    *(vba->reduce_buffer_float[i].cub_tmp_size) = 0;
+	    vba->reduce_buffer_float[i].buffer_size    = &d_reduce_scratchpads_size_float[i];
+    	    device_malloc((void**) &vba->reduce_buffer_float[i].res,sizeof(float));
+    	}
+#endif
+    }
+}
+static inline AcMeshDims
+acGetMeshDims(const AcMeshInfo info)
+{
+   #include "user_builtin_non_scalar_constants.h"
+   const Volume n0 = to_volume(info[AC_nmin]);
+   const Volume n1 = to_volume(info[AC_nlocal_max]);
+   const Volume m0 = (Volume){0, 0, 0};
+   const Volume m1 = to_volume(info[AC_mlocal]);
+   const Volume nn = to_volume(info[AC_nlocal]);
+   const Volume reduction_tile = (Volume)
+   {
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
+   };
+
+   return (AcMeshDims){
+       .n0 = n0,
+       .n1 = n1,
+       .m0 = m0,
+       .m1 = m1,
+       .nn = nn,
+       .reduction_tile = reduction_tile,
+   };
+}
+
+AcReal* vba_in_buff = NULL;
+AcReal* vba_out_buff = NULL;
+
+VertexBufferArray
+acVBACreate(const AcMeshInfo config)
+{
+  //TP: !HACK!
+  //TP: Get active dimensions at the time VBA is created, works for now but should be moved somewhere else
+  #include "user_builtin_non_scalar_constants.h"
+  dimension_inactive = config[AC_dimension_inactive];
+  sparse_autotuning  = config[AC_sparse_autotuning];
+
+  max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
+  VertexBufferArray vba;
+  vba.on_device.block_factor = config[AC_thread_block_loop_factors];
+  vba.dims = acGetMeshDims(config);
+  vba.dims.nn = subdomain_size(config);
+  size_t count = vba.dims.m1.x*vba.dims.m1.y*vba.dims.m1.z;
+  size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
+  vba.bytes          = bytes;
+  int num_of_auxiliary_vtxbufs = 0;
+  for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+  	num_of_auxiliary_vtxbufs += vtxbuf_is_auxiliary[i];
+  
+  const size_t in_bytes =  bytes*NUM_VTXBUF_HANDLES;
+  const size_t out_bytes = bytes*(NUM_VTXBUF_HANDLES-num_of_auxiliary_vtxbufs);
+  ERRCHK_ALWAYS(vba_in_buff == NULL);
+  ERRCHK_ALWAYS(vba_out_buff == NULL);
+  device_malloc((void**)&vba_in_buff,in_bytes);
+  device_malloc((void**)&vba_out_buff,out_bytes);
+
+  size_t out_offset = 0;
+  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    vba.on_device.in[i] = vba_in_buff + count*i;
+    //device_malloc((void**) &vba.on_device.out[i],bytes);
+    if (vtxbuf_is_auxiliary[i])
+    {
+      vba.on_device.out[i] = vba.on_device.in[i];
+    }else{
+      vba.on_device.out[i] = (vba_out_buff + out_offset);
+      out_offset += count;
+    }
   }
 
+  //Allocate workbuffers
+  for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
+    device_malloc((void**)&vba.on_device.w[i],bytes);
+
+
+  AcArrayTypes::run<allocate_arrays>(config);
+
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  vba.profiles = acPBACreate(mz);
+  vba.on_device.profiles = acPBACreate(vba.dims.m1);
+  vba.profile_count = vba.dims.m1.z;
+  init_scratchpads(&vba);
 
   acVBAReset(0, &vba);
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
   return vba;
 }
 
-void
-acVBADestroy(VertexBufferArray* vba)
+template <typename P>
+struct update_arrays
 {
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-#if USE_COMPRESSIBLE_MEMORY
-    freeCompressible(vba->in[i], vba->bytes);
-    freeCompressible(vba->out[i], vba->bytes);
-#else
-    cudaFree(vba->in[i]);
-    cudaFree(vba->out[i]);
-#endif
-    vba->in[i]  = NULL;
-    vba->out[i] = NULL;
-  }
-  vba->bytes = 0;
-  vba->mx    = 0;
-  vba->my    = 0;
-  vba->mz    = 0;
+	void operator()(const AcMeshInfo& config)
+	{
+		for(P array : get_params<P>())
+		{
+			if (is_dconst(array) || !is_alive(array)) continue;
+			auto config_array = config[array];
+			auto gmem_array   = get_empty_pointer(array);
+			memcpy_from_gmem_array(array,gmem_array);
+			size_t bytes = sizeof(config_array[0])*get_array_length(array,config);
+			if (config_array == nullptr && gmem_array != nullptr) 
+				device_free(&gmem_array,bytes);
+			else if (config_array != nullptr && gmem_array  == nullptr) 
+				device_malloc(&gmem_array,bytes);
+			memcpy_to_gmem_array(array,gmem_array);
+		}
+	}
+};
+void
+acUpdateArrays(const AcMeshInfo config)
+{
+  AcArrayTypes::run<update_arrays>(config);
+}
 
+template <typename P>
+struct free_arrays
+{
+	void operator()(const AcMeshInfo& config)
+	{
+		for(P array: get_params<P>())
+		{
+			auto config_array = config[array];
+			if (config_array == nullptr || is_dconst(array) || !is_alive(array)) continue;
+			auto gmem_array = get_empty_pointer(array);
+			memcpy_from_gmem_array(array,gmem_array);
+			device_free(&gmem_array, get_array_length(array,config));
+			memcpy_to_gmem_array(array,gmem_array);
+		}
+	}
+};
+void
+destroy_profiles(VertexBufferArray* vba)
+{
+    for(int i = 0; i < NUM_PROFILES; ++i)
+    {
+        //TP: will break if allocated with compressed memory but too lazy to fix now: :(
+        device_free((void**)&(vba->profile_reduce_buffers[i].transposed),0);
+        free_scratchpad_real(i+NUM_REAL_OUTPUTS);
+    }
+}
+void
+destroy_real_scratchpads(VertexBufferArray* vba)
+{
+    for(int j = 0; j < NUM_REAL_OUTPUTS; ++j)
+    {
+	free_scratchpad_real(j);
+	vba->reduce_buffer_real[j].src = NULL;
+
+        ERRCHK_CUDA_ALWAYS(cudaFree(*vba->reduce_buffer_real[j].cub_tmp));
+        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_buffer_real[j].res));
+
+	free(vba->reduce_buffer_real[j].cub_tmp);
+	free(vba->reduce_buffer_real[j].cub_tmp_size);
+    }
+}
+
+void
+destroy_scratchpads(VertexBufferArray* vba)
+{
+    destroy_real_scratchpads(vba);
+
+    destroy_profiles(vba);
+
+    for(int j = 0; j < NUM_INT_OUTPUTS; ++j)
+    {
+	free_scratchpad_int(j);
+	vba->reduce_buffer_int[j].src = NULL;
+
+        ERRCHK_CUDA_ALWAYS(cudaFree(*vba->reduce_buffer_int[j].cub_tmp));
+        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_buffer_int[j].res));
+
+	free(vba->reduce_buffer_int[j].cub_tmp);
+	free(vba->reduce_buffer_int[j].cub_tmp_size);
+    }
+#if AC_DOUBLE_PRECISION
+    for(int j = 0; j < NUM_FLOAT_OUTPUTS; ++j)
+    {
+	free_scratchpad_float(j);
+	vba->reduce_buffer_float[j].src = NULL;
+
+        ERRCHK_CUDA_ALWAYS(cudaFree(*vba->reduce_buffer_float[j].cub_tmp));
+        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_buffer_float[j].res));
+
+	free(vba->reduce_buffer_float[j].cub_tmp);
+	free(vba->reduce_buffer_float[j].cub_tmp_size);
+    }
+#endif
+}
+
+void
+acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
+{
+  destroy_scratchpads(vba);
+  //TP: does not work for compressible memory TODO: fix it if needed
+  device_free(&(vba_in_buff), 0);
+  device_free(&(vba_out_buff), 0);
+  //Free workbuffers 
+  for (int i = 0; i < NUM_WORK_BUFFERS; ++i) 
+    device_free(&(vba->on_device.w[i]), vba->bytes);
+
+  //Free arrays
+  AcArrayTypes::run<free_arrays>(config);
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBADestroy(&vba->profiles);
+  acPBADestroy(&vba->on_device.profiles,(size3_t){vba->dims.m1.x,vba->dims.m1.y,vba->dims.m1.z});
+  vba->profile_count = 0;
+  vba->bytes = 0;
+  memset(&vba->dims,0,sizeof(vba->dims));
+}
+
+
+
+int
+get_num_of_warps(const dim3 bpg, const dim3 tpb)
+{
+	const size_t warp_size = get_device_prop().warpSize;
+	const int num_of_warps_per_block = (tpb.x*tpb.y*tpb.z + warp_size-1)/warp_size;
+	const int num_of_blocks = bpg.x*bpg.y*bpg.z;
+	return num_of_warps_per_block*num_of_blocks;
 }
 
 AcResult
-acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
-               const int3 end, VertexBufferArray vba)
+acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
+               const Volume end_volume, VertexBufferArray vba)
 {
-  const int3 n = end - start;
+  const int3 start = to_int3(start_volume);
+  const int3 end   = to_int3(end_volume);
 
-  const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
+  const TBConfig tbconf = getOptimalTBConfig(kernel, start, end, vba);
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
-  const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
+  const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
 
   const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
+  if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
+  {
+  	reduce_offsets[kernel][start] = kernel_running_reduce_offsets[kernel];
+  	kernel_running_reduce_offsets[kernel] += get_num_of_warps(bpg,tpb);
+	resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba,kernel);
+  }
 
+  if(kernel_calls_reduce[kernel]) vba.on_device.reduce_offset = reduce_offsets[kernel][start];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
-  kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
+  KERNEL_VBA_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device);
   ERRCHK_CUDA_KERNEL();
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
@@ -529,12 +1239,10 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
 }
 
 AcResult
-acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
                   VertexBufferArray vba)
 {
-  const int3 n = end - start;
-
-  const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
+  const TBConfig tbconf = getOptimalTBConfig(kernel, start, end, vba);
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
@@ -542,42 +1250,37 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
 
   // Timer create
   cudaEvent_t tstart, tstop;
-  cudaEventCreate(&tstart);
-  cudaEventCreate(&tstop);
+  ERRCHK_CUDA(cudaEventCreate(&tstart));
+  ERRCHK_CUDA(cudaEventCreate(&tstop));
 
   // Warmup
-  cudaEventRecord(tstart);
-  kernel<<<bpg, tpb, smem>>>(start, end, vba);
-  cudaEventRecord(tstop);
-  cudaEventSynchronize(tstop);
+  ERRCHK_CUDA(cudaEventRecord(tstart));
+  KERNEL_LAUNCH(kernels[kernel],bpg, tpb, smem)(start, end, vba.on_device);
+  ERRCHK_CUDA(cudaEventRecord(tstop));
+  ERRCHK_CUDA(cudaEventSynchronize(tstop));
   ERRCHK_CUDA_KERNEL();
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
   // Benchmark
-  cudaEventRecord(tstart); // Timing start
-  kernel<<<bpg, tpb, smem>>>(start, end, vba);
-  cudaEventRecord(tstop); // Timing stop
-  cudaEventSynchronize(tstop);
+  ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
+  KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem)(start, end, vba.on_device);
+  ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+  ERRCHK_CUDA(cudaEventSynchronize(tstop));
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, tstart, tstop);
 
-  size_t kernel_id = NUM_KERNELS;
-  for (size_t i = 0; i < NUM_KERNELS; ++i) {
-    if (kernels[i] == kernel) {
-      kernel_id = i;
-    }
-  }
-  ERRCHK_ALWAYS(kernel_id < NUM_KERNELS);
-  printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel_id],
+  ERRCHK_ALWAYS(kernel < NUM_KERNELS);
+  printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel],
          static_cast<double>(milliseconds));
 
   // Timer destroy
-  cudaEventDestroy(tstart);
-  cudaEventDestroy(tstop);
+  ERRCHK_CUDA(cudaEventDestroy(tstart));
+  ERRCHK_CUDA(cudaEventDestroy(tstop));
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
   return AC_SUCCESS;
 }
+
 
 AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
@@ -592,7 +1295,7 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
   // the coefficients. To avoid this, all kernels that can access
   // the coefficients must be completed before starting async copy to
   // constant memory
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
@@ -620,7 +1323,7 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   ERRCHK_ALWAYS(stencil < NUM_STENCILS);
 
   // Ensure all acLoadUniform calls have completed before continuing
-  cudaDeviceSynchronize();
+  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
 
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
@@ -630,110 +1333,190 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
 
-#define GEN_LOAD_UNIFORM(LABEL_UPPER, LABEL_LOWER)                             \
-  ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
-  cudaDeviceSynchronize(); /* See note in acLoadStencil */                     \
-                                                                               \
-  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
-                        (size_t)&d_mesh_info;                                  \
-                                                                               \
-  const cudaError_t retval = cudaMemcpyToSymbol(                               \
-      d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);     \
-  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
-
 AcResult
-acLoadRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
-                  const AcReal value)
+acLoadRealReduceRes(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value)
 {
-  if (isnan(value)) {
-    fprintf(stderr,
-            "WARNING: Passed an invalid value %g to device constant %s. "
-            "Skipping.\n",
-            (double)value, realparam_names[param]);
-    return AC_FAILURE;
-  }
-  GEN_LOAD_UNIFORM(REAL, real);
+  	const size_t offset =   (size_t)(&d_reduce_real_res_symbol[param]) - (size_t)&d_reduce_real_res_symbol;
+	ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_reduce_real_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
+	return AC_SUCCESS;
 }
 
 AcResult
-acLoadReal3Uniform(const cudaStream_t /* stream */, const AcReal3Param param,
-                   const AcReal3 value)
+acLoadIntReduceRes(cudaStream_t stream, const AcIntOutputParam param, const int* value)
 {
-  if (isnan(value.x) || isnan(value.y) || isnan(value.z)) {
-    fprintf(stderr,
-            "WARNING: Passed an invalid value (%g, %g, %g) to device constant "
-            "%s. Skipping.\n",
-            (double)value.x, (double)value.y, (double)value.z,
-            real3param_names[param]);
-    return AC_FAILURE;
-  }
-  GEN_LOAD_UNIFORM(REAL3, real3);
+  	const size_t offset =   (size_t)(&d_reduce_int_res_symbol[param]) - (size_t)&d_reduce_int_res_symbol;
+	ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_reduce_int_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
+	return AC_SUCCESS;
 }
 
+#if AC_DOUBLE_PRECISION
 AcResult
-acLoadIntUniform(const cudaStream_t /* stream */, const AcIntParam param,
-                 const int value)
+acLoadFloatReduceRes(cudaStream_t stream, const AcFloatOutputParam param, const float* value)
 {
-  GEN_LOAD_UNIFORM(INT, int);
+  	const size_t offset =   (size_t)&d_reduce_float_res_symbol[param]- (size_t)&d_reduce_float_res_symbol;
+	ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_reduce_float_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
+	return AC_SUCCESS;
+}
+#endif
+
+template <typename P, typename V>
+static AcResult
+acLoadUniform(const P param, const V value)
+{
+	if constexpr (std::is_same<P,AcReal>::value)
+	{
+  		if (isnan(value)) {
+  		  fprintf(stderr,
+  		          "WARNING: Passed an invalid value %g to device constant %s. "
+  		          "Skipping.\n",
+  		          (double)value, realparam_names[param]);
+  		  return AC_FAILURE;
+  		}
+	}
+	else if constexpr (std::is_same<P,AcReal3>::value)
+	{
+  		if (isnan(value.x) || isnan(value.y) || isnan(value.z)) {
+  		  fprintf(stderr,
+  		          "WARNING: Passed an invalid value (%g, %g, %g) to device constant "
+  		          "%s. Skipping.\n",
+  		          (double)value.x, (double)value.y, (double)value.z,
+  		          real3param_names[param]);
+  		  return AC_FAILURE;
+  		}
+	}
+  	ERRCHK_ALWAYS(param < get_num_params<P>());
+  	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize()); /* See note in acLoadStencil */
+
+  	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
+  	const cudaError_t retval = cudaMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);
+  	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
-AcResult
-acLoadInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
-                  const int3 value)
+
+
+template <typename P, typename V>
+static AcResult
+acLoadArrayUniform(const P array, const V* values, const size_t length)
 {
-  GEN_LOAD_UNIFORM(INT3, int3);
+#if AC_VERBOSE
+	fprintf(stderr,"Loading %s\n",get_name(array));
+	fflush(stderr);
+#endif
+	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+	ERRCHK_ALWAYS(values  != nullptr);
+	const size_t bytes = length*sizeof(values[0]);
+	if (!is_dconst(array))
+	{
+		if (!is_alive(array)) return AC_NOT_ALLOCATED;
+		auto dst_ptr = get_empty_pointer(array);
+		memcpy_from_gmem_array(array,dst_ptr);
+		ERRCHK_ALWAYS(dst_ptr != nullptr);
+		if (dst_ptr == nullptr)
+		{
+			fprintf(stderr,"FATAL AC ERROR from acLoadArrayUniform\n");
+			exit(EXIT_FAILURE);
+		}
+#if AC_VERBOSE
+		fprintf(stderr,"Calling (cuda/hip)memcpy %s|%ld\n",get_name(array),length);
+		fflush(stderr);
+#endif
+		ERRCHK_CUDA_ALWAYS(cudaMemcpy(dst_ptr,values,bytes,cudaMemcpyHostToDevice));
+	}
+	else 
+		ERRCHK_CUDA_ALWAYS(load_array(values, bytes, array));
+#if AC_VERBOSE
+	fprintf(stderr,"Loaded %s\n",get_name(array));
+	fflush(stderr);
+#endif
+	return AC_SUCCESS;
 }
 
-#define GEN_STORE_UNIFORM(LABEL_UPPER, LABEL_LOWER)                            \
-  ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
-  cudaDeviceSynchronize(); /* See notes in GEN_LOAD_UNIFORM */                 \
-                                                                               \
-  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
-                        (size_t)&d_mesh_info;                                  \
-                                                                               \
-  const cudaError_t retval = cudaMemcpyFromSymbol(                             \
-      value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost);     \
-  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
-
+template <typename P, typename V>
 AcResult
-acStoreRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
-                   AcReal* value)
+acStoreUniform(const P param, V* value)
 {
-  GEN_STORE_UNIFORM(REAL, real);
+	ERRCHK_ALWAYS(param < get_num_params<P>());
+	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+  	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
+	const cudaError_t retval = cudaMemcpyFromSymbol(value, d_mesh_info, sizeof(V), offset, cudaMemcpyDeviceToHost);
+	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
+template <typename P, typename V>
 AcResult
-acStoreReal3Uniform(const cudaStream_t /* stream */, const AcReal3Param param,
-                    AcReal3* value)
+acStoreArrayUniform(const P array, V* values, const size_t length)
 {
-  GEN_STORE_UNIFORM(REAL3, real3);
+	ERRCHK_ALWAYS(values  != nullptr);
+	const size_t bytes = length*sizeof(values[0]);
+	if (!is_dconst(array))
+	{
+		if (!is_alive(array)) return AC_NOT_ALLOCATED;
+		auto src_ptr = get_empty_pointer(array);
+		memcpy_from_gmem_array(array,src_ptr);
+		ERRCHK_ALWAYS(src_ptr != nullptr);
+		ERRCHK_CUDA_ALWAYS(cudaMemcpy(values, src_ptr, bytes, cudaMemcpyDeviceToHost));
+	}
+	else
+		ERRCHK_CUDA_ALWAYS(store_array(values, bytes, array));
+	return AC_SUCCESS;
 }
 
-AcResult
-acStoreIntUniform(const cudaStream_t /* stream */, const AcIntParam param,
-                  int* value)
+#include "load_and_store_uniform_funcs.h"
+
+
+//TP: best would be to use carriage return to have a single line that simple keeps growing but that seems not to be always supported in SLURM environments. 
+// Or at least requires actions from the user
+void printProgressBar(FILE* stream, const int progress) {
+    int barWidth = 50;
+    fprintf(stream,"[");  // Start a new line
+    int pos = barWidth * progress / 100;
+
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) {
+            fprintf(stream,COLORIZE("=",GREEN));  
+        } else if (i == pos) {
+            fprintf(stream,COLORIZE(">",YELLOW));  
+        } else {
+            fprintf(stream," ");
+        }
+    }
+    fprintf(stream,"] %d %%", progress);
+}
+void
+logAutotuningStatus(const size_t counter, const size_t num_samples, const AcKernel kernel)
 {
-  GEN_STORE_UNIFORM(INT, int);
+    const size_t percent_of_num_samples = num_samples/100;
+    for (size_t progress = 0; progress <= 100; ++progress)
+    {
+	      if (counter == percent_of_num_samples*progress  && grid_pid == 0 && (progress % 10 == 0))
+	      {
+    			fprintf(stderr,"\nAutotuning %s ",kernel_names[kernel]);
+    			printProgressBar(stderr,progress);
+			if (progress == 100) fprintf(stderr,"\n");
+			fflush(stderr);
+	      }
+    }
 }
 
-AcResult
-acStoreInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
-                   int3* value)
+static AcAutotuneMeasurement
+gather_best_measurement(const AcAutotuneMeasurement local_best)
 {
-  GEN_STORE_UNIFORM(INT3, int3);
+	return gather_func(local_best);
+}
+
+void
+make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel kernel)
+{
+  //TP: have to set reduce offset zero since it might not be
+  vba.on_device.reduce_offset = 0;
+#include "safe_vtxbuf_input_params.h"
 }
 
 static TBConfig
-autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
+autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
 {
-  size_t id = (size_t)-1;
-  for (size_t i = 0; i < NUM_KERNELS; ++i) {
-    if (kernels[i] == kernel) {
-      id = i;
-      break;
-    }
-  }
-  ERRCHK_ALWAYS(id < NUM_KERNELS);
+  const int3 dims = end-start;
+  make_vtxbuf_input_params_safe(vba,kernel);
   // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
   //        "(%d):\n",
   //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
@@ -753,20 +1536,17 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
       .tpb    = (dim3){0, 0, 0},
   };
 
-  const int3 start = (int3){
-      STENCIL_ORDER / 2,
-      STENCIL_ORDER / 2,
-      STENCIL_ORDER / 2,
-  };
-  const int3 end = start + dims;
 
-  dim3 best_tpb(0, 0, 0);
-  float best_time     = INFINITY;
+  //TP: since autotuning should be quite fast when the dim is not NGHOST only log for actually 3d portions
+  const bool builtin_kernel = strlen(kernel_names[kernel]) > 2 && kernel_names[kernel][0] == 'A' && kernel_names[kernel][1] == 'C';
+  const bool large_launch   = is_large_launch(dims);
+  const bool log = !builtin_kernel && large_launch;
+
+  AcAutotuneMeasurement best_measurement = {INFINITY,(dim3){0,0,0}};
   const int num_iters = 2;
 
   // Get device hardware information
-  cudaDeviceProp props;
-  cudaGetDeviceProperties(&props, 0);
+  const auto props = get_device_prop();
   const int max_threads_per_block = MAX_THREADS_PER_BLOCK
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
@@ -780,164 +1560,228 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
   // New: require that tpb.x is a multiple of the minimum transaction or L2
   // cache line size
-  for (int z = 1; z <= max_threads_per_block; ++z) {
-    for (int y = 1; y <= max_threads_per_block; ++y) {
-      // 64 bytes on NVIDIA but the minimum L1 cache transaction is 32
-      const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
-      for (int x = minimum_transaction_size_in_elems;
-           x <= max_threads_per_block; x += minimum_transaction_size_in_elems) {
+  const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
+  // New: restrict tpb.x to be at most dims.x since launching threads that are known to be oob feels simply wasteful
+  const int x_increment = min(
+		  			minimum_transaction_size_in_elems,
+		  			dims.x
+		            );
+
+  std::vector<int3> samples{};
+  for (int z = 1; z <= min(max_threads_per_block,dims.z); ++z) {
+    for (int y = 1; y <= min(max_threads_per_block,dims.y); ++y) {
+      for (int x = x_increment;
+           x <= min(max_threads_per_block,dims.x); x += x_increment) {
+
 
         if (x * y * z > max_threads_per_block)
           break;
-
-        // if (x * y * z * max_regs_per_thread > max_regs_per_block)
-        //  break;
-
-        // if (max_regs_per_block / (x * y * z) < min_regs_per_thread)
-        //   continue;
-
-        // if (x < y || x < z)
-        //   continue;
-
         const dim3 tpb(x, y, z);
-        const dim3 bpg    = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
         const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER,
                                      sizeof(AcReal));
 
         if (smem > max_smem)
           continue;
 
-        if ((x * y * z) % props.warpSize)
+        //if ((x * y * z) % props.warpSize && (x*y*z) >props.warpSize)
+        //  continue;
+
+        if (!is_valid_configuration(to_volume(dims), to_volume(tpb),kernel))
           continue;
+	//TP: should be emplace back but on my laptop the CUDA compiler gives a cryptic error message that I do not care to debug
+        samples.push_back((int3){x,y,z});
+      }
+    }
+  }
+  size_t counter  = 0;
+  size_t start_samples{};
+  size_t end_samples{};
 
-        if (!is_valid_configuration(to_volume(dims), to_volume(tpb)))
-          continue;
+  const bool on_halos =
+	  (start.x < (int)vba.dims.n0.x) ||
+	  (start.y < (int)vba.dims.n0.y) ||
+	  (start.z < (int)vba.dims.n0.z) ||
+                          
+	  (end.x >=  (int)vba.dims.n1.x) ||
+	  (end.y >=  (int)vba.dims.n1.y) ||
+	  (end.z >=  (int)vba.dims.n1.z);
 
-        // #if VECTORIZED_LOADS
-        //         const size_t window = tpb.x + STENCIL_ORDER;
-
-        //         // Vectorization criterion
-        //         if (window % veclen) // Window not divisible into vectorized
-        //         blocks
-        //           continue;
-
-        //         if (dims.x % tpb.x)
-        //           continue;
-
-        //           // May be too strict
-        //           // if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
-        //           //   continue;
-        // #endif
-        // #if 0 // Disabled for now (waiting for cleanup)
-        // #if USE_SMEM
-        //         const size_t max_smem = 128 * 1024;
-        //         if (smem > max_smem)
-        //           continue;
-
-        // #if VECTORIZED_LOADS
-        //         const size_t window = tpb.x + STENCIL_ORDER;
-
-        //         // Vectorization criterion
-        //         if (window % veclen) // Window not divisible into vectorized
-        //         blocks
-        //           continue;
-
-        //         if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
-        //           continue;
-        // #endif
-
-        //           //  Padding criterion
-        //           //  TODO (cannot be checked here)
-        // #else
-        //         if ((x * y * z) % warp_size)
-        //           continue;
-        // #endif
-        // #endif
-
-        // printf("%d, %d, %d: %lu\n", tpb.x, tpb.y, tpb.z, smem);
+  if(!on_halos && AC_MPI_ENABLED)
+  {
+  	const size_t portion = ceil_div(samples.size(),nprocs);
+  	start_samples = portion*grid_pid;
+  	end_samples   = min(samples.size(), portion*(grid_pid+1));
+  }
+  else
+  {
+  	start_samples = 0;
+  	end_samples   = samples.size();
+  }
+  const size_t n_samples = end_samples-start_samples;
+  const Kernel func = kernels[kernel];
+  for(size_t sample  = start_samples; sample < end_samples; ++sample)
+  {
+        if (log) logAutotuningStatus(counter,n_samples,kernel);
+        ++counter;
+        auto x = samples[sample].x;
+        auto y = samples[sample].y;
+        auto z = samples[sample].z;
+        const dim3 tpb(x, y, z);
+        const dim3 bpg    = to_dim3(
+                                get_bpg(to_volume(dims),kernel,vba.on_device.block_factor,
+                                to_volume(tpb)
+                                ));
+	const int n_warps = get_num_of_warps(bpg,tpb);
+	if(kernel_calls_reduce[kernel])
+		resize_scratchpads_to_fit(n_warps,vba,kernel);
+        const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER,
+                                     sizeof(AcReal));
 
         cudaEvent_t tstart, tstop;
-        cudaEventCreate(&tstart);
-        cudaEventCreate(&tstop);
+        ERRCHK_CUDA(cudaEventCreate(&tstart));
+        ERRCHK_CUDA(cudaEventCreate(&tstop));
 
-        kernel<<<bpg, tpb, smem>>>(start, end, vba); // Dryrun
-        cudaDeviceSynchronize();
-        cudaEventRecord(tstart); // Timing start
+        KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba.on_device); // Dryrun
+        ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+        ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
         for (int i = 0; i < num_iters; ++i)
-          kernel<<<bpg, tpb, smem>>>(start, end, vba);
-        cudaEventRecord(tstop); // Timing stop
-        cudaEventSynchronize(tstop);
+          KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba.on_device); // Dryrun
+        ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
+        ERRCHK_CUDA(cudaEventSynchronize(tstop));
 
         float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, tstart, tstop);
+        ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
 
-        cudaEventDestroy(tstart);
-        cudaEventDestroy(tstop);
+        ERRCHK_CUDA(cudaEventDestroy(tstart));
+        ERRCHK_CUDA(cudaEventDestroy(tstop));
 
         // Discard failed runs (attempt to clear the error to cudaSuccess)
-        if (cudaGetLastError() != cudaSuccess) {
-          // Exit in case of unrecoverable error that needs a device reset
-          ERRCHK_CUDA_KERNEL_ALWAYS();
-          ERRCHK_CUDA_ALWAYS(cudaGetLastError());
-          continue;
+        const auto err = cudaGetLastError();
+        //TP: it is fine to simply skip invalid configuration values since it can be because of too large tpb's
+        //We simply do not count them for finding the optim config
+        if(err == cudaErrorInvalidConfiguration) continue;
+        if(err == cudaErrorLaunchOutOfResources) continue;
+        if (err != cudaSuccess) {
+          //TP: reset autotune results
+          fprintf(stderr,"\nFailed while autotuning: %s\nReason: %s\n",kernel_names[kernel],cudaGetErrorName(err));
+          FILE* fp = fopen(autotune_csv_path,"w");
+          fclose(fp);
+          ERRCHK_ALWAYS(err == cudaSuccess);
         }
 
-        if (milliseconds < best_time) {
-          best_time = milliseconds;
-          best_tpb  = tpb;
+        if (milliseconds < best_measurement.time) {
+          best_measurement.time = milliseconds;
+          best_measurement.tpb = tpb;
         }
 
         // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
         //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         // fflush(stdout);
-      }
-    }
   }
-  c.tpb = best_tpb;
-
-  // printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x,
-  // best_tpb.y,
-  //        best_tpb.z, (double)best_time / num_iters);
-
-  FILE* fp = fopen("autotune.csv", "a");
-  ERRCHK_ALWAYS(fp);
+  best_measurement =  large_launch ? gather_best_measurement(best_measurement) : best_measurement;
+  c.tpb = best_measurement.tpb;
+  if(grid_pid == 0)
+  {
+        FILE* fp = fopen(autotune_csv_path, "a");
+        ERRCHK_ALWAYS(fp);
 #if IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
-  fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g\n", IMPLEMENTATION, nx, ny,
-          nz, best_tpb.x, best_tpb.y, best_tpb.z,
-          (double)best_time / num_iters);
+        fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g\n", IMPLEMENTATION, nx, ny,
+                nz, best_measurement.tpb.x, best_measurement.tpb.y, best_measurement.tpb.z,
+                (double)best_measurement.time / num_iters);
 #else
-  fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %g\n", IMPLEMENTATION, dims.x,
-          dims.y, dims.z, best_tpb.x, best_tpb.y, best_tpb.z,
-          (double)best_time / num_iters);
+        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g, %s, %d, %d, %d\n", IMPLEMENTATION, kernel, dims.x,
+                dims.y, dims.z, best_measurement.tpb.x, best_measurement.tpb.y, best_measurement.tpb.z,
+                (double)best_measurement.time / num_iters, kernel_names[kernel],
+		vba.on_device.block_factor.x,vba.on_device.block_factor.y,vba.on_device.block_factor.z
+		);
 #endif
-  fclose(fp);
-
+        fclose(fp);
+  }
   if (c.tpb.x * c.tpb.y * c.tpb.z <= 0) {
     fprintf(stderr,
-            "Fatal error: failed to find valid thread block dimensions.\n");
+            "Fatal error: failed to find valid thread block dimensions for (%d,%d,%d) launch.\n"
+            ,dims.x,dims.y,dims.z);
   }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
+  //TP: done to ensure scratchpads are reset after autotuning
+  memset(vba.scratchpad_states,0,sizeof(AcScratchpadStates));
   return c;
 }
 
-static TBConfig
-getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
+static bool
+file_exists(const char* filename)
 {
-  for (auto c : tbconfigs) {
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
+}
+
+int3
+acReadOptimTBConfig(const AcKernel kernel, const int3 dims, const int3 block_factors)
+{
+  if(!file_exists(autotune_csv_path)) return {-1,-1,-1};
+  const char* filename = autotune_csv_path;
+  FILE *file = fopen ( filename, "r" );
+  int3 res = {-1,-1,-1};
+  double best_time     = (double)INFINITY;
+  string_vec entries[1000];
+  memset(entries,0,sizeof(string_vec)*1000);
+  const int n_entries = get_csv_entries(entries,file);
+  for(int i = 0; i < n_entries; ++i)
+  {
+	  string_vec entry = entries[i];
+	  if(entry.size == 13)
+      	  {
+      	     int kernel_index  = atoi(entry.data[1]);
+      	     int3 read_dims = {atoi(entry.data[2]), atoi(entry.data[3]), atoi(entry.data[4])};
+      	     int3 tpb = {atoi(entry.data[5]), atoi(entry.data[6]), atoi(entry.data[7])};
+      	     double time = atof(entry.data[8]);
+      	     int3 read_block_factors = {atoi(entry.data[10]), atoi(entry.data[11]), atoi(entry.data[12])};
+      	     if(time < best_time && kernel_index == kernel && read_dims == dims && read_block_factors == block_factors)
+      	     {
+      	    	 best_time = time;
+      	    	 res       = tpb;
+      	     }
+      	  }
+      	  for(size_t elem = 0; elem < entry.size; ++elem)
+      	         free((char*)entry.data[elem]);
+      	  free_str_vec(&entry);
+  }
+  fclose(file);
+  return res;
+}
+
+
+static TBConfig
+getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
+{
+  const int3 dims = end-start;
+  for (auto c : tbconfigs)
     if (c.kernel == kernel && c.dims == dims)
       return c;
-  }
-  TBConfig c = autotune(kernel, dims, vba);
+
+  const int3 read_tpb = acReadOptimTBConfig(kernel,dims,vba.on_device.block_factor);
+  TBConfig c  = (read_tpb != (int3){-1,-1,-1})
+          ? (TBConfig){kernel,dims,(dim3){(uint32_t)read_tpb.x, (uint32_t)read_tpb.y, (uint32_t)read_tpb.z}}
+          : autotune(kernel,start,end,vba);
   tbconfigs.push_back(c);
   return c;
 }
 
+AcKernel
+acGetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
+{
+	#include "user_kernels_ifs.h"
+	//silence unused warnings
+	(void)vba;
+	return kernel_enum;
+	//return kernels[(int) kernel_enum];
+}
 void
 acVBASwapBuffer(const Field field, VertexBufferArray* vba)
 {
-  AcReal* tmp     = vba->in[field];
-  vba->in[field]  = vba->out[field];
-  vba->out[field] = tmp;
+  AcReal* tmp     = vba->on_device.in[field];
+  vba->on_device.in[field]  = vba->on_device.out[field];
+  vba->on_device.out[field] = tmp;
 }
 
 void
@@ -950,9 +1794,9 @@ acVBASwapBuffers(VertexBufferArray* vba)
 void
 acPBASwapBuffer(const Profile profile, VertexBufferArray* vba)
 {
-  AcReal* tmp                = vba->profiles.in[profile];
-  vba->profiles.in[profile]  = vba->profiles.out[profile];
-  vba->profiles.out[profile] = tmp;
+  AcReal* tmp                = vba->on_device.profiles.in[profile];
+  vba->on_device.profiles.in[profile]  = vba->on_device.profiles.out[profile];
+  vba->on_device.profiles.out[profile] = tmp;
 }
 
 void
@@ -962,26 +1806,39 @@ acPBASwapBuffers(VertexBufferArray* vba)
     acPBASwapBuffer((Profile)i, vba);
 }
 
-AcResult
-acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
+template <typename P>
+struct load_all_scalars_uniform
 {
-  for (int i = 0; i < NUM_INT_PARAMS; ++i)
-    ERRCHK_ALWAYS(acLoadIntUniform(stream, (AcIntParam)i, info.int_params[i]) ==
-                  AC_SUCCESS);
+	void operator()(const AcMeshInfo& config)
+	{
+		for(P i : get_params<P>())
+			acLoadUniform(0,  i, config[i]);
+	}
+};
 
-  for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-    ERRCHK_ALWAYS(acLoadInt3Uniform(stream, (AcInt3Param)i,
-                                    info.int3_params[i]) == AC_SUCCESS);
+template <typename P>
+struct load_all_arrays_uniform
+{
+	void operator()(const AcMeshInfo& config)
+	{
+		for(const P array : get_params<P>())
+		{
+			auto config_array = config[array];
+      			if (config_array != nullptr)
+				acLoadArrayUniform(array,config_array, get_array_length(array,config));
+		}
+	}
+};
 
-  for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-    ERRCHK_ALWAYS(acLoadRealUniform(stream, (AcRealParam)i,
-                                    info.real_params[i]) == AC_SUCCESS);
-
-  for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-    ERRCHK_ALWAYS(acLoadReal3Uniform(stream, (AcReal3Param)i,
-                                     info.real3_params[i]) == AC_SUCCESS);
-
-  return AC_SUCCESS;
+AcResult
+acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t)
+{
+  /* See note in acLoadStencil */
+  ERRCHK_CUDA(cudaDeviceSynchronize());
+  AcResult retval = AC_SUCCESS;
+  AcScalarTypes::run<load_all_scalars_uniform>(info);
+  AcArrayTypes::run<load_all_arrays_uniform>(info);
+  return retval;
 }
 
 //---------------
@@ -1002,7 +1859,7 @@ acOutOfBounds(const AcIndex& index, const AcShape& shape)
          (index.w >= shape.w);
 }
 
-__host__ __device__ constexpr AcIndex
+static __host__ __device__ constexpr AcIndex __attribute__((unused))
 min(const AcIndex& a, const AcIndex& b)
 {
   return (AcIndex){
@@ -1024,8 +1881,8 @@ operator+(const AcIndex& a, const AcIndex& b)
   };
 }
 
-__host__ __device__ constexpr AcIndex
-operator-(const AcIndex& a, const AcIndex& b)
+static __host__ __device__ constexpr AcIndex __attribute__((unused))
+operator-(const AcIndex& a, const AcIndex& b) 
 {
   return (AcIndex){
       a.x - b.x,
@@ -1086,7 +1943,7 @@ acReindex(const cudaStream_t stream, //
   const size_t tpb   = min(256ul, count);
   const size_t bpg   = (count + tpb - 1) / tpb;
 
-  reindex<<<bpg, tpb, 0, stream>>>(in, in_offset, in_shape, //
+  KERNEL_LAUNCH(reindex,bpg, tpb, 0, stream)(in, in_offset, in_shape, //
                                    out, out_offset, out_shape, block_shape);
   ERRCHK_CUDA_KERNEL();
 
@@ -1110,7 +1967,7 @@ typedef struct {
   // C count = A_count*B_count
 } CrossProductArrays;
 
-static __global__ void
+static __global__ void UNUSED
 reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
               const AcShape in_shape, const AcIndex out_offset,
               const AcShape out_shape, const AcShape block_shape)
@@ -1141,7 +1998,7 @@ reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
           arrays.B[i].y[in_idx],
           arrays.B[i].z[in_idx],
       };
-      const AcReal3 res                           = cross(a, b);
+      const AcReal3 res                           = AC_cross(a, b);
       arrays.C[i + j * arrays.B_count].x[out_idx] = res.x;
       arrays.C[i + j * arrays.B_count].y[out_idx] = res.y;
       arrays.C[i + j * arrays.B_count].z[out_idx] = res.z;
@@ -1193,6 +2050,7 @@ map_cross_product(const CrossProductInputs inputs, const AcIndex start,
 }
 #endif
 
+#ifdef AC_TFM_ENABLED
 AcResult
 acReindexCross(const cudaStream_t stream, //
                const VertexBufferArray vba, const AcIndex in_offset,
@@ -1200,7 +2058,6 @@ acReindexCross(const cudaStream_t stream, //
                AcReal* out, const AcIndex out_offset, const AcShape out_shape,
                const AcShape block_shape)
 {
-#if 0 // ifdef AC_TFM_ENABLED
   const SOAVector uu = {
       .x = vba.in[VTXBUF_UUX],
       .y = vba.in[VTXBUF_UUY],
@@ -1261,67 +2118,125 @@ acReindexCross(const cudaStream_t stream, //
   const size_t tpb   = min(256ul, count);
   const size_t bpg   = (count + tpb - 1) / tpb;
 
-  reindex_cross<<<bpg, tpb, 0, stream>>>(arrays, in_offset, in_shape,
+  KERNEL_LAUNCH(reindex_cross,bpg, tpb, 0, stream)(arrays, in_offset, in_shape,
                                          out_offset, out_shape, block_shape);
   return AC_SUCCESS;
+}
 #else
+AcResult
+acReindexCross(const cudaStream_t , //
+               const VertexBufferArray , const AcIndex ,
+               const AcShape , //
+               AcReal* , const AcIndex , const AcShape ,
+               const AcShape )
+{
   ERROR("acReindexCross called but AC_TFM_ENABLED was false");
-  (void)stream;        // Unused
-  (void)vba;           // Unused
-  (void)in_offset;     // Unused
-  (void)in_shape;      // Unused
-  (void)out;           // Unused
-  (void)out_offset;    // Unused
-  (void)out_shape;     // Unused
-  (void)block_shape;   // Unused
-  (void)reindex_cross; // Unused
   return AC_FAILURE;
+}
 #endif
+
+typedef struct
+{
+	size_t x;
+	size_t y;
+} size_t2;
+
+struct size_t2Hash {
+    std::size_t operator()(const size_t2& v) const {
+        return std::hash<size_t>()(v.x) ^ std::hash<size_t>()(v.y) << 1;
+    }
+};
+
+std::unordered_map<size_t2,size_t*,size_t2Hash> segmented_reduce_offsets{};
+
+static HOST_DEVICE_INLINE bool
+operator==(const size_t2& a, const size_t2& b)
+{
+  return a.x == b.x && a.y == b.y;
 }
 
-#if AC_USE_HIP
-#include <hipcub/hipcub.hpp>
-#define cub hipcub
-#else
-#include <cub/cub.cuh>
-#endif
+//TP: will return a cached allocation if one is found
+size_t*
+get_offsets(const size_t count, const size_t num_segments)
+{
+  const size_t2 key = {count,num_segments};
+  if(segmented_reduce_offsets.find(key) != segmented_reduce_offsets.end())
+	  return segmented_reduce_offsets[key];
+
+  size_t* offsets = (size_t*)malloc(sizeof(offsets[0]) * (num_segments + 1));
+  ERRCHK_ALWAYS(num_segments > 0);
+  ERRCHK_ALWAYS(offsets);
+  ERRCHK_ALWAYS(count % num_segments == 0);
+  for (size_t i = 0; i <= num_segments; ++i) {
+    offsets[i] = i * (count / num_segments);
+    ERRCHK_ALWAYS(offsets[i] <= count);
+  }
+  size_t* d_offsets = NULL;
+  ERRCHK_CUDA_ALWAYS(cudaMalloc(&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1)));
+  ERRCHK_ALWAYS(d_offsets);
+  ERRCHK_CUDA(cudaMemcpy(d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),cudaMemcpyHostToDevice));
+  free(offsets);
+  segmented_reduce_offsets[key] = d_offsets;
+  return d_offsets;
+}
+
 
 AcResult
 acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
-                  const size_t count, const size_t num_segments, AcReal* d_out)
+                  const size_t count, const size_t num_segments, AcReal* d_out, AcReal** tmp_buffer, size_t* tmp_size)
 {
-  size_t* offsets = (size_t*)malloc(sizeof(offsets[0]) * (num_segments + 1));
-  ERRCHK_ALWAYS(offsets);
-  for (size_t i = 0; i <= num_segments; ++i) {
-    offsets[i] = i * (count / num_segments);
-    // printf("Offset %zu: %zu\n", i, offsets[i]);
-  }
 
-  size_t* d_offsets = NULL;
-  cudaMalloc(&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1));
-  ERRCHK_ALWAYS(d_offsets);
-  cudaMemcpy(d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),
-             cudaMemcpyHostToDevice);
+  size_t* d_offsets = get_offsets(count,num_segments);
 
   void* d_temp_storage      = NULL;
   size_t temp_storage_bytes = 0;
-  cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+  ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
                                   d_out, num_segments, d_offsets, d_offsets + 1,
-                                  stream);
-  // printf("Temp storage: %zu bytes\n", temp_storage_bytes);
-  cudaMalloc(&d_temp_storage, temp_storage_bytes);
-  ERRCHK_ALWAYS(d_temp_storage);
+                                  stream));
 
-  cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-                                  d_out, num_segments, d_offsets, d_offsets + 1,
-                                  stream);
-
-  cudaStreamSynchronize(
-      stream); // Note, would not be needed if allocated at initialization
-  cudaFree(d_temp_storage);
-  cudaFree(d_offsets);
-  free(offsets);
+  *tmp_size = device_resize((void**)tmp_buffer,*tmp_size,temp_storage_bytes);
+  ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum((void*)(*tmp_buffer), temp_storage_bytes, d_in,
+                            d_out, num_segments, d_offsets, d_offsets + 1,
+                            stream));
+  ERRCHK_CUDA_KERNEL();
   return AC_SUCCESS;
+}
+
+template <typename T>
+AcResult
+acReduceBase(const cudaStream_t stream, const AcReduceOp reduce_op, T buffer, const size_t count)
+{
+  ERRCHK(*(buffer.buffer_size)/sizeof(*(buffer.src)[0]) >= count);
+  ERRCHK(buffer.src   != NULL);
+  ERRCHK(buffer.src   != NULL);
+
+  AcDeviceTmpBuffer temp_storage{NULL,0};
+  cub_reduce(temp_storage,stream,*(buffer.src),count,buffer.res,reduce_op);
+
+  *buffer.cub_tmp_size = device_resize((void**)buffer.cub_tmp,*buffer.cub_tmp_size,temp_storage.bytes);
+  temp_storage.data = (void*)(*buffer.cub_tmp);
+  cub_reduce(temp_storage,stream,*(buffer.src),count,buffer.res,reduce_op);
+  return AC_SUCCESS;
+}
+
+AcResult
+acReduceReal(const cudaStream_t stream, const AcReduceOp op, const AcRealScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceBase(stream,op,buffer,count);
+}
+
+#if AC_DOUBLE_PRECISION
+AcResult
+acReduceFloat(const cudaStream_t stream, const AcReduceOp op, const AcFloatScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceBase(stream,op,buffer,count);
+}
+#endif
+
+AcResult
+acReduceInt(const cudaStream_t stream, const AcReduceOp op, const AcIntScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceBase(stream,op,buffer,count);
 }
 
 static __global__ void
@@ -1337,11 +2252,370 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 {
   const size_t tpb = 256;
   const size_t bpg = (count + tpb - 1) / tpb;
-  multiply_inplace<<<bpg, tpb>>>(value, count, array);
+  KERNEL_LAUNCH(multiply_inplace,bpg, tpb,0,0)(value, count, array);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(cudaDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
 }
+#define TILE_DIM (32)
+
+void __global__ 
+transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
+{
+	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
+	const dim3 block_offset =
+	{
+		blockIdx.x*TILE_DIM,
+		blockIdx.y,
+		blockIdx.z*TILE_DIM
+	};
+
+	const dim3 vertexIdx = 
+	{
+		(int)start.x + threadIdx.x + block_offset.x,
+		(int)start.y + threadIdx.y + block_offset.y,
+		(int)start.z + threadIdx.z + block_offset.z
+	};
+	const dim3 out_vertexIdx = 
+	{
+		(int)start.z + threadIdx.x + block_offset.z,
+		(int)start.y + threadIdx.y + block_offset.y,
+		(int)start.x + threadIdx.z + block_offset.x
+	};
+	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
+	const bool out_oob =  out_vertexIdx.x >= end.z ||  out_vertexIdx.y >= end.y || out_vertexIdx.z >= end.x;
+
+
+
+	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
+	__syncthreads();
+	if(!out_oob)
+		dst[out_vertexIdx.x +dims.z*out_vertexIdx.y + dims.z*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
+}
+void __global__ 
+transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
+{
+	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
+	const dim3 block_offset =
+	{
+		blockIdx.x*TILE_DIM,
+		blockIdx.y,
+		blockIdx.z*TILE_DIM
+	};
+
+	const dim3 vertexIdx = 
+	{
+		(int) start.x + threadIdx.x + block_offset.x,
+		(int) start.y + threadIdx.y + block_offset.y,
+		(int) start.z + threadIdx.z + block_offset.z
+	};
+	const dim3 out_vertexIdx = 
+	{
+		(int)start.z + threadIdx.x + block_offset.z,
+		(int)start.y + threadIdx.y + block_offset.y,
+		(int)start.x + threadIdx.z + block_offset.x
+	};
+	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
+	const bool out_oob =  out_vertexIdx.x >= end.z ||  out_vertexIdx.y >= end.y || out_vertexIdx.z >= end.x;
+
+
+
+	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
+	__syncthreads();
+	if(!out_oob)
+		dst[out_vertexIdx.x +dims.z*out_vertexIdx.z + dims.z*dims.x*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
+}
+void __global__ 
+transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
+{
+	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
+	const dim3 block_offset =
+	{
+		blockIdx.x*TILE_DIM,
+		blockIdx.y*TILE_DIM,
+		blockIdx.z
+	};
+
+	const dim3 vertexIdx = 
+	{
+		(int) start.x + threadIdx.x + block_offset.x,
+		(int) start.y + threadIdx.y + block_offset.y,
+		(int) start.z + threadIdx.z + block_offset.z
+	};
+	const dim3 out_vertexIdx = 
+	{
+		(int)start.y + threadIdx.x + block_offset.y,
+		(int)start.x + threadIdx.y + block_offset.x,
+		(int)start.z + threadIdx.z + block_offset.z
+	};
+	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
+	const bool out_oob =  out_vertexIdx.x >= end.y ||  out_vertexIdx.y >= end.x || out_vertexIdx.z >= end.z;
+
+
+
+	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
+	__syncthreads();
+	if(!out_oob)
+		dst[out_vertexIdx.x +dims.y*out_vertexIdx.y + dims.x*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
+}
+void __global__ 
+transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
+{
+	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
+	const dim3 block_offset =
+	{
+		blockIdx.x*TILE_DIM,
+		blockIdx.y*TILE_DIM,
+		blockIdx.z
+	};
+
+	const dim3 vertexIdx = 
+	{
+		(int)start.x +threadIdx.x + block_offset.x,
+		(int)start.y +threadIdx.y + block_offset.y,
+		(int)start.z +threadIdx.z + block_offset.z
+	};
+	const dim3 out_vertexIdx = 
+	{
+		(int)start.y + threadIdx.x + block_offset.y,
+		(int)start.x + threadIdx.y + block_offset.x,
+		(int)start.z + threadIdx.z + block_offset.z
+	};
+	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
+	const bool out_oob =  out_vertexIdx.x >= end.y ||  out_vertexIdx.y >= end.x || out_vertexIdx.z >= end.z;
+
+
+
+	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
+	__syncthreads();
+	if(!out_oob)
+		dst[out_vertexIdx.x +dims.y*out_vertexIdx.z + dims.y*dims.z*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];
+}
+void __global__ 
+transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
+{
+	const dim3 in_block_offset =
+	{
+		blockIdx.x*blockDim.x,
+		blockIdx.y*blockDim.y,
+		blockIdx.z*blockDim.z
+	};
+
+	const dim3 vertexIdx = 
+	{
+		(int)start.x + threadIdx.x + in_block_offset.x,
+		(int)start.y + threadIdx.y + in_block_offset.y,
+		(int)start.z + threadIdx.z + in_block_offset.z
+	};
+
+	const bool oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
+	if(oob) return;
+	dst[vertexIdx.x + dims.x*vertexIdx.z + dims.x*dims.z*vertexIdx.y] 
+		= src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)];
+}
+static AcResult
+acTransposeXYZ_ZYX(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
+{
+	const dim3 tpb = {32,1,32};
+	const Volume sub_dims = end-start;
+	const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
+  	KERNEL_LAUNCH(transpose_xyz_to_zyx,bpg, tpb, 0, stream)(src,dst,dims,start,end);
+	ERRCHK_CUDA_KERNEL();
+	return AC_SUCCESS;
+}
+static AcResult
+acTransposeXYZ_ZXY(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
+{
+	const dim3 tpb = {32,1,32};
+
+	const Volume sub_dims = end-start;
+	const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
+  	KERNEL_LAUNCH(transpose_xyz_to_zxy,bpg, tpb, 0, stream)(src,dst,dims,start,end);
+	ERRCHK_CUDA_KERNEL();
+	return AC_SUCCESS;
+}
+static AcResult
+acTransposeXYZ_YXZ(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
+{
+	const dim3 tpb = {32,32,1};
+
+	const Volume sub_dims = end-start;
+	const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
+  	KERNEL_LAUNCH(transpose_xyz_to_yxz,bpg, tpb, 0, stream)(src,dst,dims,start,end);
+	ERRCHK_CUDA_KERNEL();
+	return AC_SUCCESS;
+}
+static AcResult
+acTransposeXYZ_YZX(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
+{
+	const dim3 tpb = {32,32,1};
+
+	const Volume sub_dims = end-start;
+	const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
+  	KERNEL_LAUNCH(transpose_xyz_to_yzx,bpg, tpb, 0, stream)(src,dst,dims,start,end);
+	ERRCHK_CUDA_KERNEL();
+	return AC_SUCCESS;
+}
+static AcResult
+acTransposeXYZ_XZY(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
+{
+	const dim3 tpb = {32,32,1};
+	const Volume sub_dims = end-start;
+	const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
+  	KERNEL_LAUNCH(transpose_xyz_to_xzy,bpg, tpb, 0, stream)(src,dst,dims,start,end);
+	ERRCHK_CUDA_KERNEL();
+	return AC_SUCCESS;
+}
+static AcResult
+acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
+{
+	const Volume sub_dims = end-start;
+	const size_t bytes = sub_dims.x*sub_dims.y*sub_dims.z*sizeof(AcReal);
+	src = &src[start.x + dims.x*start.y + dims.x*dims.y*start.z];
+	dst = &dst[start.x + dims.x*start.y + dims.x*dims.y*start.z];
+	ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(dst,src,bytes,cudaMemcpyDeviceToDevice,stream));
+	return AC_SUCCESS;
+}
+AcResult
+acTransposeWithBounds(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
+{
+	switch(order)
+	{
+		case(XYZ):
+			return acTransposeXYZ_XYZ(src,dst,dims,start,end,stream);
+		case (XZY):
+			return acTransposeXYZ_XZY(src,dst,dims,start,end,stream);
+		case (YXZ):
+			return acTransposeXYZ_YXZ(src,dst,dims,start,end,stream);
+		case (YZX):
+			return acTransposeXYZ_YZX(src,dst,dims,start,end,stream);
+		case(ZXY):
+			return acTransposeXYZ_ZXY(src,dst,dims,start,end,stream);
+		case(ZYX):
+			return acTransposeXYZ_ZYX(src,dst,dims,start,end,stream);
+	}
+        ERRCHK_CUDA_KERNEL();
+	return AC_SUCCESS;
+}
+
+AcResult
+acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
+{
+	return acTransposeWithBounds(order,src,dst,dims,(Volume){0,0,0},dims,stream);
+}
+
+size_t
+get_count(const AcShape shape)
+{
+	return shape.x*shape.y*shape.z*shape.w;
+}
+static AcResult
+ac_flush_scratchpad(VertexBufferArray vba, const int variable, const AcType type, const AcReduceOp op)
+{
+
+	const int n_elems = 
+				type == AC_REAL_TYPE ?  NUM_REAL_OUTPUTS :
+				type == AC_PROF_TYPE ?  NUM_PROFILES     :
+				type == AC_INT_TYPE  ?  NUM_INT_OUTPUTS  :
+#if AC_DOUBLE_PRECISION
+				type == AC_FLOAT_TYPE  ?  NUM_FLOAT_OUTPUTS  :
+#endif
+				0;
+	ERRCHK_ALWAYS(variable < n_elems);
+	const size_t counts = 
+			type == AC_INT_TYPE  ? (*vba.reduce_buffer_int[variable].buffer_size)/sizeof(int) :
+#if AC_DOUBLE_PRECISION
+			type == AC_FLOAT_TYPE  ? (*vba.reduce_buffer_float[variable].buffer_size)/sizeof(float) :
+#endif
+			type == AC_REAL_TYPE ? (*vba.reduce_buffer_real[variable].buffer_size)/sizeof(AcReal) :
+			type == AC_PROF_TYPE ? (get_count(vba.profile_reduce_buffers[variable].src.shape)) :
+			0;
+
+	if(type == AC_REAL_TYPE)
+	{
+		if constexpr (NUM_REAL_OUTPUTS == 0) return AC_FAILURE;
+		AcReal* dst = *(vba.reduce_buffer_real[variable].src);
+		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_real(op));
+	}
+	else if(type == AC_PROF_TYPE)
+	{
+		if constexpr(NUM_PROFILES == 0) return AC_FAILURE;
+		AcReal* dst = vba.profile_reduce_buffers[variable].src.data;
+		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_real(op));
+	}
+#if AC_DOUBLE_PRECISION
+	else if(type == AC_FLOAT_TYPE)
+	{
+		if constexpr(NUM_FLOAT_OUTPUTS  == 0) return AC_FAILURE;
+		float* dst = *(vba.reduce_buffer_float[variable].src);
+		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_float(op));
+	}
+#endif
+	else
+	{
+		if constexpr (NUM_INT_OUTPUTS == 0) return AC_FAILURE;
+		int* dst = *(vba.reduce_buffer_int[variable].src);
+		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_int(op));
+	}
+  	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+	return AC_SUCCESS;
+}
+static AcReduceOp*
+get_reduce_buffer_states(const VertexBufferArray vba, const AcType type)
+{
+	return
+#if AC_DOUBLE_PRECISION
+			type == AC_FLOAT_TYPE  ? vba.scratchpad_states->floats :
+#endif
+			type == AC_INT_TYPE    ? vba.scratchpad_states->ints  :
+			type == AC_REAL_TYPE   ? vba.scratchpad_states->reals :
+			type == AC_PROF_TYPE   ? &vba.scratchpad_states->reals[NUM_REAL_OUTPUTS] :
+			NULL;
+}
+static UNUSED AcReduceOp
+get_reduce_buffer_state(const VertexBufferArray vba, const int variable, const AcType type)
+{
+	return get_reduce_buffer_states(vba,type)[variable];
+}
+AcResult
+acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType type,const AcReduceOp op)
+{
+	AcReduceOp* states = get_reduce_buffer_states(vba,type);
+	if(states[variable] == op) return AC_SUCCESS;
+	states[variable] = op;
+	return ac_flush_scratchpad(vba,variable,type,op);
+}
+
+AcMeshOrder
+acGetMeshOrderForProfile(const AcProfileType type)
+{
+    	switch(type)
+    	{
+    	        case(PROFILE_X):
+    	    	    return ZYX;
+    	        case(PROFILE_Y):
+		    return XZY;
+    	        case(PROFILE_Z):
+			return XYZ;
+    	        case(PROFILE_XY):
+			return ZXY;
+    	        case(PROFILE_XZ):
+			return YXZ;
+    	        case(PROFILE_YX):
+			return ZYX;
+    	        case(PROFILE_YZ):
+			return XYZ;
+    	        case(PROFILE_ZX):
+			return YZX;
+    	        case(PROFILE_ZY):
+			return XZY;
+		case(PROFILE_NONE):
+			return XYZ;
+    	}
+	return XYZ;
+};
+
+#include "load_ac_kernel_params.h"
 
 int
 acVerifyMeshInfo(const AcMeshInfo info)
@@ -1378,4 +2652,10 @@ acVerifyMeshInfo(const AcMeshInfo info)
     }
   }
   return retval;
+}
+
+const AcKernel*
+acGetKernels()
+{
+	return kernel_enums;
 }

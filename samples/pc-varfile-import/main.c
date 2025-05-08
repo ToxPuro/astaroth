@@ -5,6 +5,7 @@
 #include "astaroth_utils.h"
 #include "errchk.h"
 #include "user_defines.h"
+#include "../../stdlib/reduction.h"
 
 #if !AC_MPI_ENABLED
 int
@@ -46,14 +47,14 @@ merge_slices(const char* job_dir, const int label, const size_t nx, const size_t
     AcReal* buf        = malloc(sizeof(AcReal) * count);
     ERRCHK_ALWAYS(buf);
 
-    char outfile[4096] = {0};
+    char outfile[4096*2] = {0};
     sprintf(outfile, "%s/%s.dat", job_dir, "slices");
     FILE* out = fopen(outfile, "w");
     ERRCHK_ALWAYS(out);
     for (size_t i = 0; i < num_fields; ++i) {
         const Field field = fields[i];
 
-        char infile[4096] = {0};
+        char infile[4096*2] = {0};
         sprintf(infile, "%s/%s-%012d.slice", job_dir, vtxbuf_names[field], label);
         FILE* in = fopen(infile, "r");
         ERRCHK_ALWAYS(in);
@@ -152,10 +153,8 @@ main(void)
 
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    info.int_params[AC_nx] = nn.x;
-    info.int_params[AC_ny] = nn.y;
-    info.int_params[AC_nz] = nn.z;
-    acHostUpdateBuiltinParams(&info);
+    info.int3_params[AC_ngrid] = nn;
+    acHostUpdateParams(&info);
 
     // Init
     acGridInit(info);
@@ -177,8 +176,8 @@ main(void)
     char job_dir[4096];
     snprintf(job_dir, 4096, "output-%d", job_id);
 
-    char cmd[4096];
-    snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+    char cmd[4096*2];
+    snprintf(cmd, 4096*2, "mkdir -p %s", job_dir);
     system(cmd);
 
     // Write snapshots
@@ -191,7 +190,7 @@ main(void)
     acGridDiskAccessSync();
 
     // Merge slices
-    merge_slices(job_dir, 0, info.int_params[AC_nx], info.int_params[AC_ny], fields, num_fields);
+    merge_slices(job_dir, 0, info.int3_params[AC_ngrid].x, info.int3_params[AC_ngrid].y, fields, num_fields);
 
     // Quit
     acGridQuit();

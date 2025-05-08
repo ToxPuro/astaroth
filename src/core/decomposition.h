@@ -18,9 +18,14 @@
 */
 #pragma once
 #include <stdint.h> //uint64_t
-
-#include "errchk.h"
 #include "math_utils.h" //uint64_t, uint3_64
+#include "datatypes.h"
+#include "errchk.h"
+#include "astaroth_base.h"
+extern "C"
+{
+	#include "astaroth_grid.h"
+}
 
 typedef struct {
     size_t ndims;
@@ -53,10 +58,10 @@ void compat_acDecompositionInit(const size_t ndims, const size_t* global_dims, c
                                 const size_t* partitions_per_layer);
 void compat_acDecompositionQuit(void);
 
-uint3_64 decompose(const uint64_t target);
+uint3_64 decompose(const uint64_t target, const AcDecomposeStrategy decompose_strategy);
 
-int getPid(const int3 pid_raw, const uint3_64 decomp);
+int getPid(const int3 pid_raw, const uint3_64 decomp,const AcProcMappingStrategy proc_mapping_strategy);
 
-int3 getPid3D(const uint64_t pid, const uint3_64 decomp);
-
-void acVerifyDecomposition(const uint3_64 decomp);
+int3 getPid3D(const uint64_t pid, const uint3_64 decomp,const AcProcMappingStrategy proc_mapping_strategy);
+void acVerifyDecomposition(const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy);
+void acInitDecomposition(const bool two_dimensional_setup);

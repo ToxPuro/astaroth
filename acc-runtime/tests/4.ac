@@ -10,9 +10,6 @@ Stencil stencil {[0][0][0]=0}
 
 hostdefine HOST_VISIBLE_DEFINE (1)
 
-Stencil value {
-    [0][0][0] = 1
-}
 
 Stencil derx {
     [-3][0][0] = -DER1_3,
@@ -24,13 +21,17 @@ Stencil derx {
 }
 
 // Arrays
+fn_2()
+{
+	return 2
+}
 Kernel
 fn() {
-    Matrix S = S[0][0]
+    Matrix S
 
-    S[0] = 1
-    S[0] = 1 * S[1]
     S[0][0] = 1
-    S[0][0] = S[1*0][fn() - 1]
+    S[1][1] = 1 * S[1][1]
+    S[0][0] = 1
+    S[0][0] = S[1*0][fn_2() - 1]
 
 }

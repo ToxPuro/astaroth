@@ -1,0 +1,518 @@
+
+//Corresponds to der5 in Pencil Code
+//
+#if STENCIL_ORDER == 2
+#define DER1_1  0.5
+#define DER2_1  1.0
+#define DER2_0 -2.0
+Stencil derx {
+	[0][0][-1] = -AC_inv_ds.x*DER1_1,
+	[0][0][1 ]  =  AC_inv_ds.x*DER1_1
+}
+Stencil dery {
+	[0][-1][0]  = -AC_inv_ds.y*DER1_1,
+	[0][1 ][0]  =  AC_inv_ds.y*DER1_1
+}
+Stencil derz {
+	[-1][0][0]  = -AC_inv_ds.z*DER1_1,
+	[1 ][0][0]  =  AC_inv_ds.z*DER1_1
+}
+Stencil derxy {
+	[0][1][1 ]   =  AC_inv_ds.y*AC_inv_ds.x*DER2_1,
+	[0][-1][-1]  =  AC_inv_ds.y*AC_inv_ds.x*DER2_1,
+	[0][-1][1]   = -AC_inv_ds.y*AC_inv_ds.x*DER2_1,
+	[0][1][-1 ]  = -AC_inv_ds.y*AC_inv_ds.x*DER2_1
+}
+#define deryx derxy
+
+Stencil derxz {
+	[1 ][0][1 ]   =  AC_inv_ds.z*AC_inv_ds.x*DER2_1,
+	[-1][0][-1]   =  AC_inv_ds.z*AC_inv_ds.x*DER2_1,
+	[-1][0][1 ]   = -AC_inv_ds.z*AC_inv_ds.x*DER2_1,
+	[1 ][0][-1]   = -AC_inv_ds.z*AC_inv_ds.x*DER2_1
+}
+#define derzx derxz
+
+Stencil deryz {
+	[1 ][1 ][0]   =  AC_inv_ds.z*AC_inv_ds.y*DER2_1,
+	[-1][-1][0]   =  AC_inv_ds.z*AC_inv_ds.y*DER2_1,
+	[-1][1 ][0]   = -AC_inv_ds.z*AC_inv_ds.y*DER2_1,
+	[1 ][-1][0]   = -AC_inv_ds.z*AC_inv_ds.y*DER2_1
+}
+#define derzy deryz
+
+Stencil derxx {
+	[0][0][-1]  =  AC_inv_ds_2.x*DER2_1,
+	[0][0][0 ]  =  AC_inv_ds_2.x*DER2_0,
+	[0][0][1 ]  =  AC_inv_ds_2.x*DER2_1
+}
+Stencil deryy {
+	[0][-1][0]  =  AC_inv_ds_2.y*DER2_1,
+	[0][0 ][0]  =  AC_inv_ds_2.y*DER2_0,
+	[0][1 ][0]  =  AC_inv_ds_2.y*DER2_1
+}
+Stencil derzz {
+	[-1][0][0]  =  AC_inv_ds_2.z*DER2_1,
+	[0 ][0][0]  =  AC_inv_ds_2.z*DER2_0,
+	[1 ][0][0]  =  AC_inv_ds_2.z*DER2_1
+}
+der3x(Field f)
+{
+	fatal_error_message(true,"der3x not possible with radius of 2!\n");
+	return 0.0;
+}
+der3y(Field f)
+{
+	fatal_error_message(true,"der3y not possible with radius of 2!\n");
+	return 0.0;
+}
+der3z(Field f)
+{
+	fatal_error_message(true,"der3z not possible with radius of 2!\n");
+	return 0.0;
+}
+der4x(Field f)
+{
+	fatal_error_message(true,"der4x not possible with radius of 2!\n");
+	return 0.0;
+}
+der4y(Field f)
+{
+	fatal_error_message(true,"der4y not possible with radius of 2!\n");
+	return 0.0;
+}
+der4z(Field f)
+{
+	fatal_error_message(true,"der4z not possible with radius of 2!\n");
+	return 0.0;
+}
+der5x(Field f)
+{
+	fatal_error_message(true,"der5x not possible with radius of 2!\n");
+	return 0.0;
+}
+der5y(Field f)
+{
+	fatal_error_message(true,"der5y not possible with radius of 2!\n");
+	return 0.0;
+}
+der5z(Field f)
+{
+	fatal_error_message(true,"der5z not possible with radius of 2!\n");
+	return 0.0;
+}
+der6x(Field f)
+{
+	fatal_error_message(true,"der6x not possible with radius of 2!\n");
+	return 0.0;
+}
+der6y(Field f)
+{
+	fatal_error_message(true,"der6y not possible with radius of 2!\n");
+	return 0.0;
+}
+der6z(Field f)
+{
+	fatal_error_message(true,"der5z not possible with radius of 2!\n");
+	return 0.0;
+}
+der6x_upwd(Field f)
+{
+	fatal_error_message(true,"der6x_upwd not possible with radius of 2!\n");
+	return 0.0;
+}
+der6y_upwd(Field f)
+{
+	fatal_error_message(true,"der6y_upwd not possible with radius of 2!\n");
+	return 0.0;
+}
+der6z_upwd(Field f)
+{
+	fatal_error_message(true,"der6z_upwd not possible with radius of 2!\n");
+	return 0.0;
+}
+#else
+#define DER1_3 (1. / 60.)
+#define DER1_2 (-3. / 20.)
+#define DER1_1 (3. / 4.)
+#define DER1_0 (0)
+
+#define DER2_3 (1. / 90.)
+#define DER2_2 (-3. / 20.)
+#define DER2_1 (3. / 2.)
+#define DER2_0 (-49. / 18.)
+
+
+#define DERX_3 (2. / 720.)
+#define DERX_2 (-27. / 720.)
+#define DERX_1 (270. / 720.)
+#define DERX_0 (0)
+
+#define DER6UPWD_3 (  1. / 60.)
+#define DER6UPWD_2 ( -6. / 60.)
+#define DER6UPWD_1 ( 15. / 60.)
+#define DER6UPWD_0 (-20. / 60.)
+
+#define DER6_0 -20.0
+#define DER6_1 15.0
+#define DER6_2 -6.0
+#define DER6_3 1.0
+
+#define DER5_1 2.5
+#define DER5_2 2.0
+#define DER5_3 0.5
+
+#define DER4_0 (56.0/6.0)
+#define DER4_1 (-39.0/6.0)
+#define DER4_2 (12.0/6.0)
+#define DER4_3 (-1.0)
+
+#define DER4i2j_scaling_factor 1/(6.0*180.0)
+#define DER4i2j_first 56.0
+#define DER4i2j_second -39.0
+#define DER4i2j_third 12.0
+#define DER4i2j_fourth -1.0
+
+#define DER4i2j_0 -490.0
+#define DER4i2j_1 270.0
+#define DER4i2j_2 -27.0
+#define DER4i2j_3 2.0
+
+#define DER3_0 (0)
+#define DER3_1 (-13.0/8.0)
+#define DER3_2 (1)
+#define DER3_3 (-1.0/8.0)
+
+#define DERX_3 (2. / 720.)
+#define DERX_2 (-27. / 720.)
+#define DERX_1 (270. / 720.)
+#define DERX_0 (0)
+
+#define DER6UPWD_3 (  1. / 60.)
+#define DER6UPWD_2 ( -6. / 60.)
+#define DER6UPWD_1 ( 15. / 60.)
+#define DER6UPWD_0 (-20. / 60.)
+Stencil der5x {
+    [0][0][-3] = -AC_inv_ds_5.x * DER5_3,
+    [0][0][-2] = -AC_inv_ds_5.x * DER5_2,
+    [0][0][-1] = -AC_inv_ds_5.x * DER5_1,
+    [0][0][1]  = AC_inv_ds_5.x * DER5_1,
+    [0][0][2]  = AC_inv_ds_5.x * DER5_2,
+    [0][0][3]  = AC_inv_ds_5.x * DER5_3
+}
+Stencil der5y {
+    [0][-3][0] = -AC_inv_ds_5.y * DER5_3,
+    [0][-2][0] = -AC_inv_ds_5.y * DER5_2,
+    [0][-1][0] = -AC_inv_ds_5.y * DER5_1,
+    [0][1][0]  = AC_inv_ds_5.y * DER5_1,
+    [0][2][0]  = AC_inv_ds_5.y * DER5_2,
+    [0][3][0]  = AC_inv_ds_5.y * DER5_3
+}
+Stencil der5z {
+    [-3][0][0] = -AC_inv_ds_5.z * DER5_3,
+    [-2][0][0] = -AC_inv_ds_5.z * DER5_2,
+    [-1][0][0] = -AC_inv_ds_5.z * DER5_1,
+    [1][0][0]  = AC_inv_ds_5.z * DER5_1,
+    [2][0][0]  = AC_inv_ds_5.z * DER5_2,
+    [3][0][0]  = AC_inv_ds_5.z * DER5_3
+}
+
+der5x1y(Field f)
+{
+	print("NOT implemented der5x1y\n")
+	return 0.0
+}
+der5x1z(Field f)
+{
+	print("NOT implemented der5x1z\n")
+	return 0.0
+}
+der5y1x(Field f)
+{
+	print("NOT implemented der5y1x\n")
+	return 0.0
+}
+der5y1z(Field f)
+{
+	print("NOT implemented der5y1z\n")
+	return 0.0
+}
+der5z1x(Field f)
+{
+	print("NOT implemented der5z1x\n")
+	return 0.0
+}
+der5z1y(Field f)
+{
+	print("NOT implemented der5z1y\n")
+	return 0.0
+}
+//TP: corresponds to der4 in Pencil Code
+Stencil der4x {
+    [0][0][-3] = AC_inv_ds_4.x * DER4_3,
+    [0][0][-2] = AC_inv_ds_4.x * DER4_2,
+    [0][0][-1] = AC_inv_ds_4.x * DER4_1,
+    [0][0][0]  = AC_inv_ds_4.x * DER4_0,
+    [0][0][1]  = AC_inv_ds_4.x * DER4_1,
+    [0][0][2]  = AC_inv_ds_4.x * DER4_2,
+    [0][0][3]  = AC_inv_ds_4.x * DER4_3
+}
+Stencil der4y {
+    [0][-3][0] = AC_inv_ds_4.y * DER4_3,
+    [0][-2][0] = AC_inv_ds_4.y * DER4_2,
+    [0][-1][0] = AC_inv_ds_4.y * DER4_1,
+    [0][0][0]  = AC_inv_ds_4.y * DER4_0,
+    [0][1][0]  = AC_inv_ds_4.y * DER4_1,
+    [0][2][0]  = AC_inv_ds_4.y * DER4_2,
+    [0][3][0]  = AC_inv_ds_4.y * DER4_3
+}
+Stencil der4z {
+    [-3][0][0] = AC_inv_ds_4.z * DER4_3,
+    [-2][0][0] = AC_inv_ds_4.z * DER4_2,
+    [-1][0][0] = AC_inv_ds_4.z * DER4_1,
+    [0][0][0]  = AC_inv_ds_4.z * DER4_0,
+    [1][0][0]  = AC_inv_ds_4.z * DER4_1,
+    [2][0][0]  = AC_inv_ds_4.z * DER4_2,
+    [3][0][0]  = AC_inv_ds_4.z * DER4_3
+}
+//TP: corresponds to der6_main
+Stencil der6x {
+    [0][0][-3] = AC_inv_ds_6.x * DER6_3,
+    [0][0][-2] = AC_inv_ds_6.x * DER6_2,
+    [0][0][-1] = AC_inv_ds_6.x * DER6_1,
+    [0][0][0]  = AC_inv_ds_6.x * DER6_0,
+    [0][0][1]  = AC_inv_ds_6.x * DER6_1,
+    [0][0][2]  = AC_inv_ds_6.x * DER6_2,
+    [0][0][3]  = AC_inv_ds_6.x * DER6_3
+}
+Stencil der6y {
+    [0][-3][0] = AC_inv_ds_6.y * DER6_3,
+    [0][-2][0] = AC_inv_ds_6.y * DER6_2,
+    [0][-1][0] = AC_inv_ds_6.y * DER6_1,
+    [0][0][0]  = AC_inv_ds_6.y * DER6_0,
+    [0][1][0]  = AC_inv_ds_6.y * DER6_1,
+    [0][2][0]  = AC_inv_ds_6.y * DER6_2,
+    [0][3][0]  = AC_inv_ds_6.y * DER6_3
+}
+Stencil der6z {
+    [-3][0][0] = AC_inv_ds_6.z * DER6_3,
+    [-2][0][0] = AC_inv_ds_6.z * DER6_2,
+    [-1][0][0] = AC_inv_ds_6.z * DER6_1,
+    [0][0][0]  = AC_inv_ds_6.z * DER6_0,
+    [1][0][0]  = AC_inv_ds_6.z * DER6_1,
+    [2][0][0]  = AC_inv_ds_6.z * DER6_2,
+    [3][0][0]  = AC_inv_ds_6.z * DER6_3
+}
+
+//TP: we do it this way since these most probably called less often
+//Thus these should be less performant then the normal versions
+der6x_ignore_spacing(Field f)
+{
+	return AC_ds_6.x*der6x(f)
+}
+der6y_ignore_spacing(Field f)
+{
+	return AC_ds_6.x*der6y(f)
+}
+der6z_ignore_spacing(Field f)
+{
+	return AC_ds_6.z*der6z(f)
+}
+
+der4x2y(Field f)
+{
+	print("NOT implemented der4x2y\n")
+	return 0.0
+}
+der4x2z(Field f)
+{
+	print("NOT implemented der4x2z\n")
+	return 0.0
+}
+der4y2x(Field f)
+{
+	print("NOT implemented der4y2x\n")
+	return 0.0
+}
+der4y2z(Field f)
+{
+	print("NOT implemented der4y2z\n")
+	return 0.0
+}
+der4z2x(Field f)
+{
+	print("NOT implemented der4z2x\n")
+	return 0.0
+}
+der4z2y(Field f)
+{
+	print("NOT implemented der4z2y\n")
+	return 0.0
+}
+der2i2j2k(Field f)
+{
+	print("NOT implemented der2i2j2k\n")
+	return 0.0
+}
+Stencil derx {
+    [0][0][-3] = -AC_inv_ds.x * DER1_3,
+    [0][0][-2] = -AC_inv_ds.x * DER1_2,
+    [0][0][-1] = -AC_inv_ds.x * DER1_1,
+    [0][0][1]  = AC_inv_ds.x * DER1_1,
+    [0][0][2]  = AC_inv_ds.x * DER1_2,
+    [0][0][3]  = AC_inv_ds.x * DER1_3
+}
+
+Stencil dery {
+    [0][-3][0] = -AC_inv_ds.y * DER1_3,
+    [0][-2][0] = -AC_inv_ds.y * DER1_2,
+    [0][-1][0] = -AC_inv_ds.y * DER1_1,
+    [0][1][0]  = AC_inv_ds.y * DER1_1,
+    [0][2][0]  = AC_inv_ds.y * DER1_2,
+    [0][3][0]  = AC_inv_ds.y * DER1_3
+}
+
+Stencil derz {
+    [-3][0][0] = -AC_inv_ds.z * DER1_3,
+    [-2][0][0] = -AC_inv_ds.z * DER1_2,
+    [-1][0][0] = -AC_inv_ds.z * DER1_1,
+    [1][0][0]  = AC_inv_ds.z * DER1_1,
+    [2][0][0]  = AC_inv_ds.z * DER1_2,
+    [3][0][0]  = AC_inv_ds.z * DER1_3
+}
+
+Stencil derxx {
+    [0][0][-3] = AC_inv_ds_2.x * DER2_3,
+    [0][0][-2] = AC_inv_ds_2.x * DER2_2,
+    [0][0][-1] = AC_inv_ds_2.x * DER2_1,
+    [0][0][0]  = AC_inv_ds_2.x * DER2_0,
+    [0][0][1]  = AC_inv_ds_2.x * DER2_1,
+    [0][0][2]  = AC_inv_ds_2.x * DER2_2,
+    [0][0][3]  = AC_inv_ds_2.x * DER2_3
+}
+
+Stencil deryy {
+    [0][-3][0] = AC_inv_ds_2.y * DER2_3,
+    [0][-2][0] = AC_inv_ds_2.y * DER2_2,
+    [0][-1][0] = AC_inv_ds_2.y * DER2_1,
+    [0][0][0]  = AC_inv_ds_2.y * DER2_0,
+    [0][1][0]  = AC_inv_ds_2.y * DER2_1,
+    [0][2][0]  = AC_inv_ds_2.y * DER2_2,
+    [0][3][0]  = AC_inv_ds_2.y * DER2_3
+}
+
+Stencil derzz {
+    [-3][0][0] = AC_inv_ds_2.z * DER2_3,
+    [-2][0][0] = AC_inv_ds_2.z * DER2_2,
+    [-1][0][0] = AC_inv_ds_2.z * DER2_1,
+    [0][0][0]  = AC_inv_ds_2.z * DER2_0,
+    [1][0][0]  = AC_inv_ds_2.z * DER2_1,
+    [2][0][0]  = AC_inv_ds_2.z * DER2_2,
+    [3][0][0]  = AC_inv_ds_2.z * DER2_3
+}
+
+Stencil derxy {
+    [0][-3][-3] = AC_inv_ds.x * AC_inv_ds.y * DERX_3,
+    [0][-2][-2] = AC_inv_ds.x * AC_inv_ds.y * DERX_2,
+    [0][-1][-1] = AC_inv_ds.x * AC_inv_ds.y * DERX_1,
+    [0][0][0]  = AC_inv_ds.x * AC_inv_ds.y * DERX_0,
+    [0][1][1]  = AC_inv_ds.x * AC_inv_ds.y * DERX_1,
+    [0][2][2]  = AC_inv_ds.x * AC_inv_ds.y * DERX_2,
+    [0][3][3]  = AC_inv_ds.x * AC_inv_ds.y * DERX_3,
+    [0][-3][3] = -AC_inv_ds.x * AC_inv_ds.y * DERX_3,
+    [0][-2][2] = -AC_inv_ds.x * AC_inv_ds.y * DERX_2,
+    [0][-1][1] = -AC_inv_ds.x * AC_inv_ds.y * DERX_1,
+    [0][1][-1] = -AC_inv_ds.x * AC_inv_ds.y * DERX_1,
+    [0][2][-2] = -AC_inv_ds.x * AC_inv_ds.y * DERX_2,
+    [0][3][-3] = -AC_inv_ds.x * AC_inv_ds.y * DERX_3
+}
+
+Stencil derxz {
+    [-3][0][-3] = AC_inv_ds.x * AC_inv_ds.z * DERX_3,
+    [-2][0][-2] = AC_inv_ds.x * AC_inv_ds.z * DERX_2,
+    [-1][0][-1] = AC_inv_ds.x * AC_inv_ds.z * DERX_1,
+    [0][0][0]  = AC_inv_ds.x * AC_inv_ds.z * DERX_0,
+    [1][0][1]  = AC_inv_ds.x * AC_inv_ds.z * DERX_1,
+    [2][0][2]  = AC_inv_ds.x * AC_inv_ds.z * DERX_2,
+    [3][0][3]  = AC_inv_ds.x * AC_inv_ds.z * DERX_3,
+    [-3][0][3] = -AC_inv_ds.x * AC_inv_ds.z * DERX_3,
+    [-2][0][2] = -AC_inv_ds.x * AC_inv_ds.z * DERX_2,
+    [-1][0][1] = -AC_inv_ds.x * AC_inv_ds.z * DERX_1,
+    [1][0][-1] = -AC_inv_ds.x * AC_inv_ds.z * DERX_1,
+    [2][0][-2] = -AC_inv_ds.x * AC_inv_ds.z * DERX_2,
+    [3][0][-3] = -AC_inv_ds.x * AC_inv_ds.z * DERX_3
+}
+
+Stencil deryz {
+    [-3][-3][0] = AC_inv_ds.y * AC_inv_ds.z * DERX_3,
+    [-2][-2][0] = AC_inv_ds.y * AC_inv_ds.z * DERX_2,
+    [-1][-1][0] = AC_inv_ds.y * AC_inv_ds.z * DERX_1,
+    [0][0][0]  = AC_inv_ds.y * AC_inv_ds.z * DERX_0,
+    [1][1][0]  = AC_inv_ds.y * AC_inv_ds.z * DERX_1,
+    [2][2][0]  = AC_inv_ds.y * AC_inv_ds.z * DERX_2,
+    [3][3][0]  = AC_inv_ds.y * AC_inv_ds.z * DERX_3,
+    [-3][3][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_3,
+    [-2][2][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_2,
+    [-1][1][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_1,
+    [1][-1][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_1,
+    [2][-2][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_2,
+    [3][-3][0] = -AC_inv_ds.y * AC_inv_ds.z * DERX_3
+}
+
+Stencil der3x {
+    [0][0][-3] = - AC_inv_ds_3.x * DER3_3,
+    [0][0][-2] = - AC_inv_ds_3.x * DER3_2,
+    [0][0][-1] = - AC_inv_ds_3.x * DER3_1,
+    [0][0][1]  = AC_inv_ds_3.x * DER3_1,
+    [0][0][2]  = AC_inv_ds_3.x * DER3_2,
+    [0][0][3]  = AC_inv_ds_3.x * DER3_3
+}
+
+Stencil der3y {
+    [0][0][-3] = - AC_inv_ds_3.y * DER3_3,
+    [0][0][-2] = - AC_inv_ds_3.y * DER3_2,
+    [0][0][-1] = - AC_inv_ds_3.y * DER3_1,
+    [0][0][1]  = AC_inv_ds_3.y * DER3_1,
+    [0][0][2]  = AC_inv_ds_3.y * DER3_2,
+    [0][0][3]  = AC_inv_ds_3.y * DER3_3
+}
+
+Stencil der3z {
+    [0][0][-3] = - AC_inv_ds_3.z * DER3_3,
+    [0][0][-2] = - AC_inv_ds_3.z * DER3_2,
+    [0][0][-1] = - AC_inv_ds_3.z * DER3_1,
+    [0][0][1]  = AC_inv_ds_3.z * DER3_1,
+    [0][0][2]  = AC_inv_ds_3.z * DER3_2,
+    [0][0][3]  = AC_inv_ds_3.z * DER3_3
+}
+
+Stencil der6x_upwd {
+    [0][0][-3] =  AC_inv_ds.x * DER6UPWD_3,
+    [0][0][-2] =  AC_inv_ds.x * DER6UPWD_2,
+    [0][0][-1] =  AC_inv_ds.x * DER6UPWD_1,
+    [0][0][0]  =  AC_inv_ds.x * DER6UPWD_0,
+    [0][0][1]  =  AC_inv_ds.x * DER6UPWD_1,
+    [0][0][2]  =  AC_inv_ds.x * DER6UPWD_2,
+    [0][0][3]  =  AC_inv_ds.x * DER6UPWD_3
+}
+
+Stencil der6y_upwd {
+    [0][-3][0] =  AC_inv_ds.y * DER6UPWD_3,
+    [0][-2][0] =  AC_inv_ds.y * DER6UPWD_2,
+    [0][-1][0] =  AC_inv_ds.y * DER6UPWD_1,
+    [0][0][0]  =  AC_inv_ds.y * DER6UPWD_0,
+    [0][1][0]  =  AC_inv_ds.y * DER6UPWD_1,
+    [0][2][0]  =  AC_inv_ds.y * DER6UPWD_2,
+    [0][3][0]  =  AC_inv_ds.y * DER6UPWD_3
+}
+
+Stencil der6z_upwd {
+    [-3][0][0] =  AC_inv_ds.z * DER6UPWD_3,
+    [-2][0][0] =  AC_inv_ds.z * DER6UPWD_2,
+    [-1][0][0] =  AC_inv_ds.z * DER6UPWD_1,
+    [0][0][0]  =  AC_inv_ds.z * DER6UPWD_0,
+    [1][0][0]  =  AC_inv_ds.z * DER6UPWD_1,
+    [2][0][0]  =  AC_inv_ds.z * DER6UPWD_2,
+    [3][0][0]  =  AC_inv_ds.z * DER6UPWD_3
+}
+#endif

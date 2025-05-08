@@ -22,40 +22,100 @@
 
 #include <float.h> // DBL/FLT_EPSILON
 
+#include <math.h>
 #if AC_USE_HIP
-#include "hip.h"
-#include <hip/hip_complex.h>
+  #include "hip.h"
+  #include <hip/hip_runtime_api.h>
 #else
-#include <cuComplex.h>    // CUDA complex types
-#include <vector_types.h> // CUDA vector types
+  #include <vector_types.h> // CUDA vector types
+  #include <cuda_runtime_api.h> // cuda_assert
 #endif
 
 #if AC_DOUBLE_PRECISION
 typedef double AcReal;
-typedef double2 AcReal2;
-typedef double3 AcReal3;
-typedef cuDoubleComplex acComplex;
-#define acComplex(x, y) make_cuDoubleComplex(x, y)
-#define AcReal3(x, y, z) make_double3(x, y, z)
+#define AC_REAL_MAX (DBL_MAX)
+#define AC_REAL_MIN (DBL_MIN)
 #define AC_REAL_EPSILON (DBL_EPSILON)
 #define AC_REAL_MPI_TYPE (MPI_DOUBLE)
 #define AC_REAL_INVALID_VALUE (DBL_MAX)
 #else
 typedef float AcReal;
-typedef float2 AcReal2;
-typedef float3 AcReal3;
-typedef cuFloatComplex acComplex;
-#define acComplex(x, y) make_cuFloatComplex(x, y)
-#define AcReal3(x, y, z) make_float3(x, y, z)
+#define AC_REAL_MAX (FLT_MAX)
+#define AC_REAL_MIN (FLT_MIN)
 #define AC_REAL_EPSILON (FLT_EPSILON)
 #define AC_REAL_MPI_TYPE (MPI_FLOAT)
 #define AC_REAL_INVALID_VALUE (FLT_MAX)
 #endif
 
+
 #define AC_REAL_PI ((AcReal)M_PI)
 
-typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
+// convert 3-array into vector
+#define TOVEC3(type,arr) ((type){arr[0],arr[1],arr[2]})
+#define TOACREAL3(arr) TOVEC3(AcReal3,arr)
+#define AcVector AcReal3
+
+
+typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
 
 typedef struct {
   size_t x, y, z;
 } Volume;
+
+typedef Volume size3_t;
+
+#include "builtin_enums.h"
+#include "user_typedefs.h"
+
+
+#ifdef __cplusplus
+static HOST_DEVICE_INLINE size3_t
+operator+(const size3_t& a, const size3_t& b)
+{
+	return (size3_t)
+	{
+		a.x + b.x,
+		a.y + b.y,
+		a.z + b.z
+	};
+}
+static HOST_DEVICE_INLINE int3
+operator+(const size3_t& a, const int3& b)
+{
+	return (int3)
+	{
+		(int)a.x + b.x,
+		(int)a.y + b.y,
+		(int)a.z + b.z
+	};
+}
+static HOST_DEVICE_INLINE bool
+operator==(const size3_t& a, const int3& b)
+{
+	return
+		(int)a.x == b.x &&
+		(int)a.y == b.y &&
+		(int)a.z == b.z;
+}
+
+static HOST_DEVICE_INLINE bool
+operator==(const int3& a, const size3_t& b)
+{
+	return
+		a.x == (int)b.x &&
+		a.y == (int)b.y &&
+		a.z == (int)b.z;
+}
+
+#endif
+static HOST_INLINE int3
+to_int3(Volume a)
+{
+	return 
+	(int3)
+	{
+		(int)a.x,
+		(int)a.y,
+		(int)a.z
+	};
+}

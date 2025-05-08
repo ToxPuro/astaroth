@@ -20,13 +20,26 @@
 
 #include <limits.h> // INT_MAX
 #include <string.h> // memcpy
+#include <memory>   // unique_ptr
 
 #define DECOMPOSITION_TYPE_ZORDER (1)
 #define DECOMPOSITION_TYPE_HIERARCHICAL (2)
+int MPI_DECOMPOSITION_AXES = 3;
+bool TWO_DIMENSIONAL_SETUP = false;
 
 #define DECOMPOSITION_TYPE (DECOMPOSITION_TYPE_ZORDER)
 // #define DECOMPOSITION_TYPE (DECOMPOSITION_TYPE_HIERARCHICAL)
 
+
+void
+acInitDecomposition(const bool two_dimensional_setup)
+{
+	if(two_dimensional_setup)
+	{
+		MPI_DECOMPOSITION_AXES = 2;
+		TWO_DIMENSIONAL_SETUP  = true;
+	}
+}
 static void
 acPrint_size_t(const char* label, const size_t value)
 {
@@ -214,14 +227,14 @@ acHierarchicalDomainDecomposition(const size_t ndims, const size_t* dims,       
     // print("Partitions per layer", nlayers, partitions_per_layer);
     // print("Dimensions", ndims, dims);
 
-    size_t global_dims[ndims];
-    memcpy(global_dims, dims, ndims * sizeof(dims[0]));
+    std::unique_ptr<size_t> global_dims = std::make_unique<size_t>(ndims);
+    memcpy(global_dims.get(), dims, ndims * sizeof(dims[0]));
 
     for (size_t j = nlayers - 1; j < nlayers; --j) {
         // size_t local_dims[ndims];
-        dims_create(partitions_per_layer[j], ndims, global_dims, local_dims,
+        dims_create(partitions_per_layer[j], ndims, global_dims.get(), local_dims,
                     &decompositions[j * ndims]);
-        memcpy(global_dims, local_dims, ndims * sizeof(dims[0]));
+        memcpy(global_dims.get(), local_dims, ndims * sizeof(dims[0]));
         // printf("\tLayer %zu\n", j);
         // print("\tGlobal dims", ndims, global_dims);
         // print("\tLocal dims", ndims, local_dims);
@@ -292,9 +305,10 @@ acDecompositionInfoCreate(const size_t ndims, const size_t* global_dims, //
     acHierarchicalDomainDecomposition(ndims, global_dims, nlayers, partitions_per_layer,
                                       info.local_dims, info.decomposition);
 
-    size_t decomposition_transposed[ndims * nlayers];
-    transpose(info.decomposition, nlayers, ndims, decomposition_transposed);
-    contract(decomposition_transposed, ndims * nlayers, nlayers, info.global_decomposition);
+    std::unique_ptr<size_t> decomposition_transposed = std::make_unique<size_t>(ndims * nlayers);
+
+    transpose(info.decomposition, nlayers, ndims, decomposition_transposed.get());
+    contract(decomposition_transposed.get(), ndims * nlayers, nlayers, info.global_decomposition);
 
     acDecompositionInfoPrint(info);
     return info;
@@ -350,26 +364,27 @@ acGetPid(const int3 pid_input, const AcDecompositionInfo info)
         pid_input.y,
         pid_input.z,
     };
-    int64_t global_decomposition[ndims];
-    as_int64_t_array(ndims, info.global_decomposition, global_decomposition);
+    std::vector<int64_t> global_decomposition(ndims);
+    as_int64_t_array(ndims, info.global_decomposition, global_decomposition.data());
 
-    int64_t pid_wrapped[ndims];
-    mod_pointwise(ndims, pid_unwrapped, global_decomposition, pid_wrapped);
+    std::vector<int64_t> pid_wrapped(ndims);
+    mod_pointwise(ndims, pid_unwrapped, global_decomposition.data(), pid_wrapped.data());
 
-    size_t pid[ndims];
-    as_size_t_array(ndims, pid_wrapped, pid);
+    std::vector<size_t> pid(ndims);
+    as_size_t_array(ndims, pid_wrapped.data(), pid.data());
 
-    size_t gi = to_linear(pid, ndims, info.global_decomposition);
+    size_t gi = to_linear(pid.data(), ndims, info.global_decomposition);
 
-    size_t decomposition_transposed[ndims * nlayers];
-    transpose(info.decomposition, nlayers, ndims, decomposition_transposed);
+    std::vector<size_t> decomposition_transposed(ndims*nlayers);
+    transpose(info.decomposition, nlayers, ndims, decomposition_transposed.data());
 
-    size_t spatial_index_transposed[ndims * nlayers];
-    size_t spatial_index[ndims * nlayers];
-    to_spatial(gi, ndims * nlayers, decomposition_transposed, spatial_index_transposed);
-    transpose(spatial_index_transposed, ndims, nlayers, spatial_index);
+    std::vector<size_t> spatial_index_transposed(ndims*nlayers);
+    to_spatial(gi, ndims * nlayers, decomposition_transposed.data(), spatial_index_transposed.data());
+    std::vector<size_t> spatial_index(ndims*nlayers);
+    transpose(spatial_index_transposed.data(), ndims, nlayers, spatial_index.data());
 
-    const size_t j = to_linear(spatial_index, ndims * nlayers, info.decomposition);
+    const size_t j = to_linear(spatial_index.data(), ndims * nlayers, info.decomposition);
+
     return as_int(j);
 }
 
@@ -380,11 +395,13 @@ acGetPid3D(const int i, const AcDecompositionInfo info)
     const size_t nlayers = info.nlayers;
     ERRCHK_ALWAYS(ndims == 3);
 
-    size_t spatial_index[ndims * nlayers];
-    size_t spatial_index_transposed[ndims * nlayers];
-    size_t decompositions_transposed[ndims * nlayers];
-    size_t global_decomposition[ndims];
-    size_t global_index[ndims];
+    size_t* spatial_index            = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
+    size_t* spatial_index_transposed = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
+    size_t* decompositions_transposed = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
+
+    size_t* global_decomposition = (size_t*) malloc(sizeof(int64_t)*ndims);
+    size_t* global_index         = (size_t*) malloc(sizeof(int64_t)*ndims);
+
 
     to_spatial(i, ndims * nlayers, info.decomposition, spatial_index);
     transpose(spatial_index, nlayers, ndims, spatial_index_transposed);
@@ -394,14 +411,21 @@ acGetPid3D(const int i, const AcDecompositionInfo info)
     contract(decompositions_transposed, ndims * nlayers, nlayers, global_decomposition);
     to_spatial(gi, ndims, global_decomposition, global_index);
 
-    return (int3){
+    free(spatial_index);
+    free(spatial_index_transposed);
+    free(decompositions_transposed);
+
+    free(global_decomposition);
+    const int3 res = (int3){
         as_int(global_index[0]),
         as_int(global_index[1]),
         as_int(global_index[2]),
     };
+
+    free(global_index);
+    return res;
 }
 
-#if DECOMPOSITION_TYPE == DECOMPOSITION_TYPE_HIERARCHICAL
 
 // --------------------
 // Backwards compatibility
@@ -421,58 +445,9 @@ compat_acDecompositionInit(const size_t ndims, const size_t* global_dims, //
 void
 compat_acDecompositionQuit(void)
 {
-    ERRCHK_ALWAYS(initialized == true);
-    acDecompositionInfoDestroy(&g_decomposition_info);
+    if(initialized)
+    	acDecompositionInfoDestroy(&g_decomposition_info);
     initialized = false;
-}
-
-int
-getPid(const int3 pid3D, const uint3_64 /* decomp */)
-{
-    ERRCHK_ALWAYS(initialized == true);
-    return acGetPid(pid3D, g_decomposition_info);
-}
-
-int3
-getPid3D(const uint64_t pid, const uint3_64 /* decomp*/)
-{
-    ERRCHK_ALWAYS(initialized == true);
-    return acGetPid3D(pid, g_decomposition_info);
-}
-
-uint3_64
-decompose(const uint64_t target)
-{
-    ERRCHK_ALWAYS(initialized == true);
-    const uint3_64 p = (uint3_64){
-        .x = g_decomposition_info.global_decomposition[0],
-        .y = g_decomposition_info.global_decomposition[1],
-        .z = g_decomposition_info.global_decomposition[2],
-    };
-    ERRCHK_ALWAYS(p.x * p.y * p.z == target);
-    return p;
-}
-
-#elif DECOMPOSITION_TYPE == DECOMPOSITION_TYPE_ZORDER
-#define MPI_DECOMPOSITION_AXES (3)
-
-void
-compat_acDecompositionInit(const size_t ndims, const size_t* global_dims, const size_t nlayers,
-                           const size_t* partitions_per_layer)
-{
-    WARNING("Called compat_acDecompositionInit but nothing done, using the legacy Z-order "
-            "decomposition implementation");
-    (void)ndims;                // Unused
-    (void)global_dims;          // Unused
-    (void)nlayers;              // Unused
-    (void)partitions_per_layer; // Unused
-    return;
-}
-
-void
-compat_acDecompositionQuit(void)
-{
-    return;
 }
 
 static inline uint3_64
@@ -493,8 +468,16 @@ morton3D(const uint64_t pid)
     else if (MPI_DECOMPOSITION_AXES == 2) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << 2 * bit;
-            j |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
-            k |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
+	    if(TWO_DIMENSIONAL_SETUP)
+	    {
+            	j |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
+            	k |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
+	    }
+	    else
+	    {
+            	i |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
+            	j |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
+	    }
         }
     }
     else if (MPI_DECOMPOSITION_AXES == 1) {
@@ -527,8 +510,16 @@ morton1D(const uint3_64 pid)
     else if (MPI_DECOMPOSITION_AXES == 2) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << bit;
-            i |= ((pid.y & mask) << 0) << 1 * bit;
-            i |= ((pid.z & mask) << 1) << 1 * bit;
+	    if(TWO_DIMENSIONAL_SETUP)
+	    {
+            	i |= ((pid.y & mask) << 0) << 1 * bit;
+            	i |= ((pid.z & mask) << 1) << 1 * bit;
+	    }
+	    else
+	    {
+            	i |= ((pid.x & mask) << 0) << 1 * bit;
+            	i |= ((pid.y & mask) << 1) << 1 * bit;
+	    }
         }
     }
     else if (MPI_DECOMPOSITION_AXES == 1) {
@@ -545,16 +536,6 @@ morton1D(const uint3_64 pid)
     return i;
 }
 
-uint3_64
-decompose(const uint64_t target)
-{
-    // This is just so beautifully elegant. Complex and efficient decomposition
-    // in just one line of code.
-    uint3_64 p = morton3D(target - 1) + (uint3_64){1, 1, 1};
-
-    ERRCHK_ALWAYS(p.x * p.y * p.z == target);
-    return p;
-}
 
 static inline uint3_64
 wrap(const int3 i, const uint3_64 n)
@@ -567,28 +548,129 @@ wrap(const int3 i, const uint3_64 n)
 }
 
 int
-getPid(const int3 pid_raw, const uint3_64 decomp)
+morton_getPid(const int3 pid_raw, const uint3_64 decomp)
 {
     const uint3_64 pid = wrap(pid_raw, decomp);
     return (int)morton1D(pid);
 }
 
-int3
-getPid3D(const uint64_t pid, const uint3_64 decomp)
+int
+linear_getPid(const int3 pid_raw, const uint3_64 decomp)
 {
-    const uint3_64 pid3D = morton3D(pid);
-    ERRCHK_ALWAYS(getPid(static_cast<int3>(pid3D), decomp) == (int)pid);
-    return (int3){(int)pid3D.x, (int)pid3D.y, (int)pid3D.z};
+    const uint3_64 pid = wrap(pid_raw, decomp);
+    return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.y;
 }
-#endif
+
+uint3_64
+morton_getPid3D(const uint64_t pid, const uint3_64 decomp)
+{
+    const uint3_64 res = morton3D(pid);
+    ERRCHK_ALWAYS(morton_getPid(static_cast<int3>(res), decomp) == (int)pid);
+    return res;
+}
+uint3_64
+linear_getPid3D(const uint64_t pid, const uint3_64 decomp)
+{
+	return {pid % decomp.x, (pid/decomp.x) % decomp.y, (pid/(decomp.x*decomp.y)) % decomp.z};
+}
+
+int
+hierarchical_getPid(const int3 pid3D, const uint3_64 /* decomp */)
+{
+    ERRCHK_ALWAYS(initialized == true);
+    return acGetPid(pid3D, g_decomposition_info);
+}
+
+
+int3
+hierarchical_getPid3D(const uint64_t pid, const uint3_64 /* decomp*/)
+{
+    ERRCHK_ALWAYS(initialized == true);
+    return acGetPid3D(pid, g_decomposition_info);
+}
+
+
+uint3_64
+hierarchical_decompose(const uint64_t target)
+{
+    ERRCHK_ALWAYS(initialized == true);
+    const uint3_64 p = (uint3_64){
+        g_decomposition_info.global_decomposition[0],
+        g_decomposition_info.global_decomposition[1],
+        g_decomposition_info.global_decomposition[2]
+    };
+    ERRCHK_ALWAYS(p.x * p.y * p.z == target);
+    return p;
+}
+
+uint3_64
+morton_decompose(const uint64_t target)
+{
+    // This is just so beautifully elegant. Complex and efficient decomposition
+    // in just one line of code.
+    uint3_64 p = morton3D(target - 1) + (uint3_64){1, 1, 1};
+
+    ERRCHK_ALWAYS(p.x * p.y * p.z == target);
+    return p;
+}
+
+
+uint3_64
+decompose(const uint64_t target, const AcDecomposeStrategy strategy)
+{
+	if(strategy == AC_DECOMPOSE_STRATEGY_MORTON)
+		return morton_decompose(target);
+	else if(strategy == AC_DECOMPOSE_STRATEGY_HIERARCHICAL)
+		return hierarchical_decompose(target);
+	return (uint3_64){0,0,0};
+}
+
+int
+getPid(int3 pid, const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy)
+{
+	switch(proc_mapping_strategy)
+	{
+		case AC_PROC_MAPPING_STRATEGY_LINEAR:
+			return linear_getPid(pid,decomp);
+		case AC_PROC_MAPPING_STRATEGY_MORTON:
+			return morton_getPid(pid,decomp);
+		case AC_PROC_MAPPING_STRATEGY_HIERARCHICAL:
+			return hierarchical_getPid(pid,decomp);
+	}
+	return -1;
+}
+int3
+to_int3(const uint3_64 val)
+{
+	return (int3)
+	{
+		(int)val.x,
+		(int)val.y,
+		(int)val.z
+	};
+}
+int3
+getPid3D(const uint64_t pid, const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy)
+{
+	switch(proc_mapping_strategy)
+	{
+		case AC_PROC_MAPPING_STRATEGY_LINEAR:
+			return to_int3(linear_getPid3D(pid,decomp));
+		case AC_PROC_MAPPING_STRATEGY_MORTON:
+			return to_int3(morton_getPid3D(pid,decomp));
+		case AC_PROC_MAPPING_STRATEGY_HIERARCHICAL:
+			return hierarchical_getPid3D(pid,decomp);
+	}
+	return (int3){-1,-1,-1};
+}
 
 void
-acVerifyDecomposition(const uint3_64 decomp)
+acVerifyDecomposition(const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy)
 {
     const size_t n = decomp.x * decomp.y * decomp.z; // prod(info.ndims, info.global_decomposition);
     ERRCHK_ALWAYS(n <= INT_MAX);
     for (size_t i = 0; i < n; ++i)
-        ERRCHK_ALWAYS(getPid(getPid3D(i, decomp), decomp) == static_cast<int>(i));
+        ERRCHK_ALWAYS(getPid(getPid3D(i, decomp,proc_mapping_strategy), decomp,proc_mapping_strategy) == static_cast<int>(i));
 
     ERRCHK_ALWAYS(decomp.x <= INT_MAX);
     ERRCHK_ALWAYS(decomp.y <= INT_MAX);
@@ -597,7 +679,7 @@ acVerifyDecomposition(const uint3_64 decomp)
         for (int j = 0; j < static_cast<int>(decomp.y); ++j) {
             for (int i = 0; i < static_cast<int>(decomp.x); ++i) {
 
-                const int3 center = {i, j, k};
+                const size3_t center = {static_cast<size_t>(i), static_cast<size_t>(j), static_cast<size_t>(k)};
 
                 for (int k0 = -1; k0 <= 1; ++k0) {
                     for (int j0 = -1; j0 <= 1; ++j0) {
@@ -606,8 +688,8 @@ acVerifyDecomposition(const uint3_64 decomp)
                                 continue;
                             int3 dir = (int3){i0, j0, k0};
 
-                            const int3 a = getPid3D(getPid(center + dir, decomp), decomp);
-                            const int3 b = getPid3D(getPid(a - dir, decomp), decomp);
+                            const int3 a = getPid3D(getPid(center + dir, decomp,proc_mapping_strategy), decomp,proc_mapping_strategy);
+                            const int3 b = getPid3D(getPid(a - dir, decomp,proc_mapping_strategy), decomp,proc_mapping_strategy);
                             ERRCHK_ALWAYS(b == center);
                         }
                     }
@@ -615,4 +697,11 @@ acVerifyDecomposition(const uint3_64 decomp)
             }
         }
     }
+}
+
+extern "C" int3
+acDecompose(const uint64_t target, const AcMeshInfo info)
+{
+	if(info[AC_decompose_strategy] == AC_DECOMPOSE_STRATEGY_EXTERNAL) return info[AC_domain_decomposition];
+	return (int3)decompose(target,info[AC_decompose_strategy]);
 }

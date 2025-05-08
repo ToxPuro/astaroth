@@ -1,0 +1,86 @@
+hostdefine STENCIL_ORDER (0)
+
+
+
+struct Profiles
+{
+	Profile<X> x;
+	Profile<Y> y;
+	Profile<Z> z;
+} 
+
+
+struct FieldObject
+{
+	Field field;
+	Profiles profiles;
+}
+struct VectorFieldObject
+{
+	FieldObject x;
+	FieldObject y;
+	FieldObject z;
+}
+
+
+VectorFieldObject AA
+
+
+
+
+Kernel
+empty_kernel()
+{
+}
+
+Kernel reduce_vec_x(VectorFieldObject v)
+{
+    	reduce_sum(v.x.field, v.x.profiles.x)
+    	reduce_sum(v.y.field, v.y.profiles.x)
+    	reduce_sum(v.z.field, v.z.profiles.x)
+
+}
+Kernel reduce_vec_y(VectorFieldObject v)
+{ 
+    reduce_sum(v.x.field, v.x.profiles.y)
+    reduce_sum(v.y.field, v.y.profiles.y)
+    reduce_sum(v.z.field, v.z.profiles.y)
+}
+Kernel remove_vec_x(VectorFieldObject v)
+{
+	write(v.x.field,v.x.field-v.x.profiles.x)
+	write(v.y.field,v.y.field-v.y.profiles.x)
+	write(v.z.field,v.z.field-v.z.profiles.x)
+}
+Kernel remove_vec_y(VectorFieldObject v)
+{
+	write(v.x.field,v.x.field-v.x.profiles.y)
+	write(v.y.field,v.y.field-v.y.profiles.y)
+	write(v.z.field,v.z.field-v.z.profiles.y)
+}
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps rhs(bcs)
+{
+	empty_kernel()
+	reduce_vec_x(AA)
+	reduce_vec_y(AA)
+	remove_vec_x(AA)
+	remove_vec_y((VectorFieldObject){
+		{
+			AA.x.field,
+			AA.x.profiles,
+		},
+		{
+			AA.y.field,
+			AA.y.profiles,
+		},
+		{
+			AA.z.field,
+			AA.z.profiles,
+		},
+	})	
+}

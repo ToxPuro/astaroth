@@ -1,0 +1,28 @@
+Field FIELD
+bool my_boolean_param
+
+//TP: this is to test that if vertexbuffers are accessed in non-caching manner (i.e. with array reads)
+//Astaroth should not abort even if the accesses are missed at compile-time
+//This is because it does not really matter if the accesses are missed and enables more laxed usage of some bcs with Pencil Code
+Kernel main_kernel()
+{
+	real field_value = 0
+	if(my_boolean_param)
+	{
+	}
+	else
+	{
+		field_value = FIELD[vertexIdx.x][vertexIdx.y][vertexIdx.z]
+	}
+	write(FIELD, field_value)
+
+}
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+ComputeSteps rhs(bcs)
+{
+	main_kernel()
+}

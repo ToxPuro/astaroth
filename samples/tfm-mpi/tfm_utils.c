@@ -135,7 +135,7 @@ acParseINI(const char* filepath, AcMeshInfo* info)
     return retval;
     // Update and verification should be handled elsewhere
     // Update the rest of the parameters
-    // acHostUpdateBuiltinParams(info);
+    // acHostUpdateParams(info);
 
     // Check for uninitialized values
     // for (size_t i = 0; i < NUM_INT_PARAMS; ++i)

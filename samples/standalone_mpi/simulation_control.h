@@ -48,14 +48,12 @@ struct SimulationPeriod {
 
     void update(AcMeshInfo config)
     {
-        size_t step_period_param_idx = static_cast<size_t>(step_period_param);
-        if (step_period_param_idx < NUM_INT_PARAMS) {
-            step_period = config.int_params[step_period_param_idx];
+        if (step_period_param < NUM_INT_PARAMS) {
+            step_period = config[step_period_param];
         }
 
-        size_t time_period_param_idx = static_cast<size_t>(time_period_param);
-        if (time_period_param_idx < NUM_REAL_PARAMS) {
-            time_period = config.real_params[time_period_param_idx];
+        if (time_period_param < NUM_REAL_PARAMS) {
+            time_period = config[time_period_param];
         }
     }
 
