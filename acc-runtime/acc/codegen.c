@@ -263,7 +263,7 @@ is_called(const ASTNode* node)
 bool skip_kernel_in_analysis[MAX_KERNELS] = {};
 #define MAX_FUNCS (1100)
 #define MAX_COMBINATIONS (1000)
-static int MAX_DFUNCS = 0
+static int MAX_DFUNCS = 0;
 // Symbols
 #define MAX_ID_LEN (256)
 typedef struct {
