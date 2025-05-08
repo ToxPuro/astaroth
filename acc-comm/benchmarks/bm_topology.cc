@@ -10,6 +10,7 @@
 #include "acm/detail/experimental/bm.h"
 
 constexpr size_t problem_size{128 * 1024 * 1024}; // Bytes
+constexpr size_t bench_nsamples{100};
 
 int
 main(void)
@@ -85,7 +86,7 @@ main(void)
                 char             label[len];
                 snprintf(label, len, "memory transfer (to rank %d, device %d)", i, device_id);
 
-                const auto results{bm::benchmark([]() {}, bm_fn, []() {})};
+                const auto results{bm::benchmark([]() {}, bm_fn, []() {}, bench_nsamples)};
                 const auto median_ns{bm::median(results)};
 
                 const auto bw{(2 * problem_size) / (1e-9 * median_ns) / (1024ul * 1024 * 1024)};

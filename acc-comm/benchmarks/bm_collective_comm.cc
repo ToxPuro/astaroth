@@ -103,6 +103,7 @@ main(int argc, char* argv[])
             PRINT_DEBUG(ny);
             PRINT_DEBUG(nz);
             PRINT_DEBUG(radius);
+            PRINT_DEBUG(npack);
             PRINT_DEBUG(nsamples);
             PRINT_DEBUG(jobid);
         }
@@ -210,7 +211,7 @@ main(int argc, char* argv[])
             verify_complete();
 
             // verify<T, Allocator>(comm.get(), global_nn, rr, bench);
-            print(label, bm::benchmark(init, bench, sync));
+            print(label, bm::benchmark(init, bench, sync, nsamples));
         }
 
         {
@@ -230,7 +231,7 @@ main(int argc, char* argv[])
             bench();
             verify_complete();
 
-            print(label, bm::benchmark(init, bench, sync));
+            print(label, bm::benchmark(init, bench, sync, nsamples));
         }
 
         {
@@ -245,7 +246,7 @@ main(int argc, char* argv[])
             bench();
             verify_complete();
 
-            print(label, bm::benchmark(init, bench, sync));
+            print(label, bm::benchmark(init, bench, sync, nsamples));
         }
 
         {
@@ -260,7 +261,7 @@ main(int argc, char* argv[])
             bench();
             verify_complete();
 
-            print(label, bm::benchmark(init, bench, sync));
+            print(label, bm::benchmark(init, bench, sync, nsamples));
         }
     }
     catch (const std::exception& e) {
