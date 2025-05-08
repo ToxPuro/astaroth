@@ -9662,7 +9662,7 @@ debug_prints(const ASTNode* node)
 	**/
 }
 void
-print_nested_ones(FILE* fp, size_t x, size_t y, size_t z, size_t dims)
+print_nested_ints(FILE* fp, size_t x, size_t y, size_t z, size_t dims, const int val)
 {
     for (size_t i = 0; i < x; ++i)
     {
@@ -9671,15 +9671,22 @@ print_nested_ones(FILE* fp, size_t x, size_t y, size_t z, size_t dims)
       {
         if(dims >= 2) fprintf(fp,"{");
         for (size_t k = 0; k < z; ++k)
-          fprintf(fp, "1,");
+          fprintf(fp, "%d,",val);
       	if(dims >= 2) fprintf(fp,"}%s",j+1 != y ? "," : "");
       }
       if(dims >= 3) fprintf(fp,"}%s",i+1 != x ? "," : "");
     }
 }
+
+void
+print_nested_ones(FILE* fp, size_t x, size_t y, size_t z, size_t dims)
+{
+	print_nested_ints(fp,x,y,z,dims,1);
+}
 void
 gen_stencils(const bool gen_mem_accesses, FILE* stream)
 {
+  const int AC_STENCIL_CALL = (1 << 2);
   const size_t num_stencils = count_symbols(STENCIL_STR);
   if (gen_mem_accesses || !OPTIMIZE_MEM_ACCESSES) {
     FILE* tmp = fopen("stencil_accesses.h", "w+");
@@ -9694,7 +9701,7 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
     fprintf(tmp,
             "static int "
             "stencils_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] __attribute__((unused)) = {");
-    print_nested_ones(tmp,num_kernels,num_fields+num_profiles,num_stencils,3);
+    print_nested_ints(tmp,num_kernels,num_fields+num_profiles,num_stencils,3,AC_STENCIL_CALL);
     fprintf(tmp, "};\n");
 
     fprintf(tmp,

@@ -51,6 +51,7 @@
 
 #include "stencilgen_calling_info.h"
 
+static const int AC_STENCIL_CALL = (1 << 2);
 typedef enum ReduceOp
 {
 	NO_REDUCE,
@@ -826,7 +827,7 @@ gen_kernel_write_funcs(const int curr_kernel)
     {
   	    for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
   	    {
-      	      if (stencils_accessed[curr_kernel][original_field][0]) continue;
+      	      if ((stencils_accessed[curr_kernel][original_field][0] & AC_STENCIL_CALL)) continue;
   	      if(!write_called[curr_kernel][original_field]) continue;
 	      //TP: field is buffered written but not read, for now simply set value to 0
   	      const int field = get_original_index(field_remappings,original_field);
@@ -1411,7 +1412,7 @@ gen_stencil_functions(const int curr_kernel)
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     if(!stencils_called[curr_kernel][stencil]) continue;
     bool gen_stencil = false;
-    for (int field = 0; field < NUM_ALL_FIELDS; ++field) gen_stencil |= stencils_accessed[curr_kernel][field][stencil];
+    for (int field = 0; field < NUM_ALL_FIELDS; ++field) gen_stencil |= (stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL);
     if(!gen_stencil)
     {
 	    printf("const auto %s __attribute__((unused)) = [&](const Field& field) { (void) field; return (AcReal)NAN;};",stencil_names[stencil]);
@@ -1422,7 +1423,7 @@ gen_stencil_functions(const int curr_kernel)
     printf("switch (field) {");
     for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
     {
-      if (stencils_accessed[curr_kernel][original_field][stencil])
+      if ((stencils_accessed[curr_kernel][original_field][stencil] & AC_STENCIL_CALL))
       {
         const int field = get_original_index(field_remappings,original_field);
         printf("case %s: return f%s_s%s;", field_names[field], field_names[field], stencil_names[stencil]);
@@ -1437,7 +1438,7 @@ gen_stencil_functions(const int curr_kernel)
   	for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     	  if(!stencils_called[curr_kernel][stencil]) continue;
   	  bool gen_stencil = false;
-  	  for (int profile = 0; profile < NUM_PROFILES; ++profile) gen_stencil |= stencils_accessed[curr_kernel][profile + NUM_ALL_FIELDS][stencil];
+  	  for (int profile = 0; profile < NUM_PROFILES; ++profile) gen_stencil |= (stencils_accessed[curr_kernel][profile + NUM_ALL_FIELDS][stencil] & AC_STENCIL_CALL);
   	  if(!gen_stencil)
   	  {
   	          printf("const auto %s_profile __attribute__((unused)) = [&](const Profile& profile) { (void) profile; return (AcReal)NAN;};",stencil_names[stencil]);
@@ -1447,7 +1448,7 @@ gen_stencil_functions(const int curr_kernel)
   	         stencil_names[stencil]);
   	  printf("switch (profile) {");
   	  for (int profile = 0; profile < NUM_PROFILES; ++profile) {
-  	    if (stencils_accessed[curr_kernel][NUM_ALL_FIELDS + profile][stencil] && stencil_valid_for_profile(stencil,prof_types[profile]))
+  	    if ((stencils_accessed[curr_kernel][NUM_ALL_FIELDS + profile][stencil] & AC_STENCIL_CALL) && stencil_valid_for_profile(stencil,prof_types[profile]))
 	    {
   	      printf("case %s: return p%d_s%d;", profile_names[profile], profile,
   	             stencil);
@@ -1612,7 +1613,7 @@ gen_kernel_body(const int curr_kernel)
                     break;
 
                   // Skip if the stencil is not used
-                  if (!stencils_accessed[curr_kernel][field][stencil])
+                  if (!(stencils_accessed[curr_kernel][field][stencil] & AC_STENCIL_CALL))
                     continue;
 
                   if (stencils[stencil][depth][height][width]) {
@@ -1686,8 +1687,8 @@ gen_kernel_body(const int curr_kernel)
                   break;
 
                 // Skip if the stencil is not used
-                if (!stencils_accessed[curr_kernel][NUM_ALL_FIELDS + profile]
-                                      [stencil])
+                if (!(stencils_accessed[curr_kernel][NUM_ALL_FIELDS + profile]
+                                      [stencil] & AC_STENCIL_CALL))
                   continue;
 
                 // Skip if the stencil is invalid for profiles
