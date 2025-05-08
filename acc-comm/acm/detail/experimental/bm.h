@@ -35,6 +35,6 @@ median(const std::vector<T>& vec)
 std::vector<std::chrono::nanoseconds::rep> benchmark(const std::function<void()>& init,
                                                      const std::function<void()>& bench,
                                                      const std::function<void()>& sync,
-                                                     const size_t                 nsamples = 100);
+                                                     const size_t                 nsamples);
 
 } // namespace bm
