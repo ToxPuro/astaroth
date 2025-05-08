@@ -7,7 +7,7 @@ import os
 import glob
 
 print(f'cwd: {os.getcwd()}')
-outdir = f"{os.getcwd()}/../build"
+outdir = "/users/pekkila/astaroth/build/2025-05-07-results-test-run"
 
 # %%
 # Packing
@@ -82,7 +82,7 @@ df
 
 # %%
 # Weak scaling
-files = glob.glob(f"/users/pekkila/astaroth/build/bm-tfm-mpi*.csv")
+files = glob.glob(f"/users/pekkila/astaroth/build/2025-05-07-results-test-run/bm-tfm-mpi*.csv")
 df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 
 df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
@@ -99,3 +99,17 @@ df = df.droplevel(['gnx', 'gny', 'gnz'])
 df = df['ns']['50%']
 df = df.unstack('impl')
 df
+
+
+# %%
+# TMP drafts for measuring times
+import matplotlib.pyplot as plt
+import pandas as pd
+df = pd.read_csv("/users/pekkila/astaroth/build/timeline.csv")
+df = pd.read_csv("/users/pekkila/astaroth/build/timeline_verify.csv")
+df
+plt.barh(df['label'], df['ns']/1e9)
+
+# %%
+ns = 2634484064
+ns / 1e6 / 100
