@@ -38,7 +38,7 @@ $SRUN ./bm_collective_comm 512 512 512 3 16 100 # Should be around 90 seconds
 ## $SRUN ./bm_collective_comm 1024 1024 1024 3 32 100 # Do not use, too large
 
 # Strong scaling
-./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID
+$SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID
 
 # Weak scaling
-./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 512,512,512 --job-id $SLURM_JOB_ID # More than 5 min, note: need also disable bfield
+$SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 512,512,512 --job-id $SLURM_JOB_ID # More than 5 min, note: need also disable bfield
