@@ -48,6 +48,7 @@ if args.write_png:
     import matplotlib.pyplot as plt
 if args.write_bin:
     binary_dir.mkdir(parents=True, exist_ok=True)
+lspherical = args.spherical
 
 segmented_filename_regex = re.compile(r'([^-]*)-segment-at_(\d+)_(\d+)_(\d+)-dims_(\d+)_(\d+)-step_(\d+).slice')
 
@@ -288,27 +289,6 @@ for vector_field, components in vector_fields.items():
            
 
 #Render remaining scalar fields
-fields = steps['0']
-analytical = fields["ANALYTICAL"]
-sph = fields["SPH_UPPER_POTENTIAL"]
-combine_slice(analytical)
-combine_slice(sph)
-plt.plot(analytical["full_slice"][160,300:], '.',label="analytical")
-plt.plot(sph["full_slice"][160,300:], '.',label="multipole expansion")
-plt.title("Analytical vs. Multipole expansion")
-plt.legend()
-plt.savefig("analytical_vs_multipole_expansion_upper.png")
-plt.clf()
-
-sph = fields["SPH_LOWER_POTENTIAL"]
-combine_slice(sph)
-plt.plot(analytical["full_slice"][160,:20], '.',label="analytical")
-plt.plot(sph["full_slice"][160,:20], '.',label="multipole expansion")
-plt.title("Analytical vs. Multipole expansion")
-plt.legend()
-plt.savefig("analytical_vs_multipole_expansion_lower.png")
-plt.clf()
-
 for step, fields in steps.items():
     for field, slice_data in fields.items():
         combine_slice(slice_data)
