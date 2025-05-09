@@ -7,7 +7,7 @@ import os
 import glob
 
 print(f'cwd: {os.getcwd()}')
-outdir = "/users/pekkila/astaroth/build/2025-05-07-results-test-run"
+outdir = "/users/pekkila/astaroth/build"
 
 # %%
 # Packing
@@ -53,7 +53,7 @@ df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
 df = df.groupby(list(df.columns.difference(['ns']))).describe()
 df = df.xs(0, level='rank')
-df = df.xs(1, level='nprocs')
+df = df.xs(64, level='nprocs')
 df = df.xs(3, level='radius')
 
 df = df['ns']['50%']
@@ -62,16 +62,16 @@ df
 
 # %%
 # Strong scaling
-files = glob.glob(f"/users/pekkila/astaroth/build/bm-tfm-mpi*.csv")
+files = glob.glob(f"{outdir}/bm-tfm-mpi*.csv")
 df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 
 df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
 df = df.groupby(list(df.columns.difference(['ns']))).describe()
 df = df.xs(0, level='rank')
 df = df.xs(3, level='radius')
-df = df.xs(256, level='gnx')
-df = df.xs(256, level='gny')
-df = df.xs(256, level='gnz')
+df = df.xs(128, level='gnx')
+df = df.xs(128, level='gny')
+df = df.xs(128, level='gnz')
 
 # Ensure the local dims make sense before dropping
 df = df.droplevel(['lnx', 'lny', 'lnz'])
@@ -82,16 +82,16 @@ df
 
 # %%
 # Weak scaling
-files = glob.glob(f"/users/pekkila/astaroth/build/2025-05-07-results-test-run/bm-tfm-mpi*.csv")
+files = glob.glob(f"{outdir}/bm-tfm-mpi*.csv")
 df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 
 df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
 df = df.groupby(list(df.columns.difference(['ns']))).describe()
 df = df.xs(0, level='rank')
 df = df.xs(3, level='radius')
-df = df.xs(256, level='lnx')
-df = df.xs(256, level='lny')
-df = df.xs(256, level='lnz')
+df = df.xs(128, level='lnx')
+df = df.xs(128, level='lny')
+df = df.xs(128, level='lnz')
 
 # Ensure the global dims make sense before dropping
 df = df.droplevel(['gnx', 'gny', 'gnz'])
@@ -105,8 +105,8 @@ df
 # TMP drafts for measuring times
 import matplotlib.pyplot as plt
 import pandas as pd
-df = pd.read_csv("/users/pekkila/astaroth/build/timeline.csv")
-df = pd.read_csv("/users/pekkila/astaroth/build/timeline_verify.csv")
+df = pd.read_csv(f"{outdir}/timeline.csv")
+df = pd.read_csv(f"{outdir}/timeline_verify.csv")
 df
 plt.barh(df['label'], df['ns']/1e9)
 
