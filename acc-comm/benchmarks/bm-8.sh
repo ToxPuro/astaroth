@@ -30,7 +30,7 @@ export SRUN="srun --cpu-bind="map_cpu:49,57,17,25,1,9,33,41""
 #$SRUN ./bm_pipelining 512 512 512 3 32 100
 
 # Strong scaling
-$SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 256,256,256 --job-id $SLURM_JOB_ID
+$SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID
 
 # Weak scaling
-$SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 512,512,512 --job-id $SLURM_JOB_ID
+$SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 256,256,256 --job-id $SLURM_JOB_ID

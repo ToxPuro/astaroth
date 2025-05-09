@@ -56,6 +56,10 @@ df = df.xs(0, level='rank')
 df = df.xs(64, level='nprocs')
 df = df.xs(3, level='radius')
 
+df = df.xs(512, level='nx')
+df = df.xs(512, level='ny')
+df = df.xs(512, level='nz')
+
 df = df['ns']['50%']
 df = df.unstack('impl')
 df
