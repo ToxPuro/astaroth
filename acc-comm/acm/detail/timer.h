@@ -7,7 +7,8 @@ namespace ac {
 class timer {
   private:
     using clock      = std::chrono::steady_clock;
-    using time_point = std::chrono::time_point<clock>;
+    using time_point = clock::time_point;
+    using duration   = clock::duration;
 
     time_point m_start;
 
@@ -17,21 +18,13 @@ class timer {
     {
     }
 
-    void reset() { m_start = clock::now(); }
-    auto diff() { return clock::now() - m_start; }
-    auto diff_ns() { return std::chrono::duration_cast<std::chrono::nanoseconds>(diff()).count(); }
-
-    auto lap_ns()
+    duration diff() const { return clock::now() - m_start; }
+    void     reset() { m_start = clock::now(); }
+    duration lap()
     {
-        const auto ns_elapsed{diff_ns()};
+        const auto elapsed{diff()};
         reset();
-        return ns_elapsed;
-    }
-
-    void print_lap(const std::string& label = "Elapsed")
-    {
-        std::cout << label << ":\t" << diff_ns() << " ns" << std::endl;
-        reset();
+        return elapsed;
     }
 };
 
@@ -54,7 +47,9 @@ class timewriter {
     {
         std::ofstream file;
         file.open(m_path, std::ios_base::app);
-        file << label << "," << m_timer.lap_ns() << std::endl;
+        file << label << ","
+             << std::chrono::duration_cast<std::chrono::nanoseconds>(m_timer.lap()).count()
+             << std::endl;
         file.close();
     }
 };
