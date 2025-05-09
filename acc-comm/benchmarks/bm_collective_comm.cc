@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <mpi.h>
 #include <sstream>
@@ -108,36 +109,37 @@ main(int argc, char* argv[])
             PRINT_DEBUG(jobid);
         }
 
-        std::ostringstream oss;
-        oss << "bm-collective-comm-" << jobid << "-" << getpid() << "-"
-            << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
-        const auto output_file{oss.str()};
-        FILE*      fp{fopen(output_file.c_str(), "w")};
-        ERRCHK(fp);
-        fprintf(fp, "impl,nx,ny,nz,radius,npack,sample,nsamples,rank,nprocs,jobid,ns\n");
-        ERRCHK(fclose(fp) == 0);
+        std::ostringstream filename_stream;
+        filename_stream << "bm-collective-comm-" << jobid << "-" << getpid() << "-"
+                        << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+        const auto filename{filename_stream.str()};
 
-        auto print = [&](const std::string&                                label,
-                         const std::vector<std::chrono::nanoseconds::rep>& results) {
-            FILE* fp{fopen(output_file.c_str(), "a")};
-            ERRCHK(fp);
+        std::ofstream file{filename};
+        file.exceptions(~std::ios::goodbit);
+        file << "impl,nx,ny,nz,radius,npack,sample,nsamples,rank,nprocs,jobid,ns" << std::endl;
+        file.close();
+
+        auto print = [&](const std::string&                                      label,
+                         const std::vector<std::chrono::steady_clock::duration>& results) {
+            std::ofstream file{filename, std::ios_base::app};
+            file.exceptions(~std::ios::goodbit);
 
             for (size_t i{0}; i < results.size(); ++i) {
-                fprintf(fp, "%s", label.c_str());
-                fprintf(fp, ",%zu", nx);
-                fprintf(fp, ",%zu", ny);
-                fprintf(fp, ",%zu", nz);
-                fprintf(fp, ",%zu", radius);
-                fprintf(fp, ",%zu", npack);
-                fprintf(fp, ",%zu", i);
-                fprintf(fp, ",%zu", nsamples);
-                fprintf(fp, ",%d", ac::mpi::get_rank(MPI_COMM_WORLD));
-                fprintf(fp, ",%d", ac::mpi::get_size(MPI_COMM_WORLD));
-                fprintf(fp, ",%zu", jobid);
-                fprintf(fp, ",%lld", as<long long>(results[i]));
-                fprintf(fp, "\n");
+                file << label << ",";
+                file << nx << ",";
+                file << ny << ",";
+                file << nz << ",";
+                file << radius << ",";
+                file << npack << ",";
+                file << i << ",";
+                file << nsamples << ",";
+                file << ac::mpi::get_rank(MPI_COMM_WORLD) << ",";
+                file << ac::mpi::get_size(MPI_COMM_WORLD) << ",";
+                file << jobid << ",";
+                file << std::chrono::duration_cast<std::chrono::nanoseconds>(results[i]).count()
+                     << std::endl;
             }
-            ERRCHK(fclose(fp) == 0);
+            file.close();
         };
 
         ac::mpi::cart_comm comm{MPI_COMM_WORLD, global_nn};

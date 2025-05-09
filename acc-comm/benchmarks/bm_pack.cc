@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <unistd.h>
@@ -380,33 +381,34 @@ main(int argc, char* argv[])
         PRINT_DEBUG(nn);
         PRINT_DEBUG(rr);
 
-        std::ostringstream oss;
-        oss << "bm-pack-" << jobid << "-" << getpid() << "-" << ac::mpi::get_rank(MPI_COMM_WORLD)
-            << ".csv";
-        const auto output_file{oss.str()};
-        FILE*      fp{fopen(output_file.c_str(), "w")};
-        ERRCHK(fp);
-        fprintf(fp, "impl,dim,radius,ndims,ninputs,sample,nsamples,jobid,ns\n");
-        ERRCHK(fclose(fp) == 0);
+        std::ostringstream filename_stream;
+        filename_stream << "bm-pack-" << jobid << "-" << getpid() << "-"
+                        << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+        const auto filename{filename_stream.str()};
 
-        auto print = [&](const std::string&                                label,
-                         const std::vector<std::chrono::nanoseconds::rep>& results) {
-            FILE* fp{fopen(output_file.c_str(), "a")};
-            ERRCHK(fp);
+        std::ofstream file{filename};
+        file.exceptions(~std::ios::goodbit);
+        file << "impl,dim,radius,ndims,ninputs,sample,nsamples,jobid,ns" << std::endl;
+        file.close();
+
+        auto print = [&](const std::string&                                      label,
+                         const std::vector<std::chrono::steady_clock::duration>& results) {
+            std::ofstream file{filename, std::ios_base::app};
+            file.exceptions(~std::ios::goodbit);
 
             for (size_t i{0}; i < results.size(); ++i) {
-                fprintf(fp, "%s", label.c_str());
-                fprintf(fp, ",%zu", dim);
-                fprintf(fp, ",%zu", radius);
-                fprintf(fp, ",%zu", ndims);
-                fprintf(fp, ",%zu", ninputs);
-                fprintf(fp, ",%zu", i);
-                fprintf(fp, ",%zu", nsamples);
-                fprintf(fp, ",%zu", jobid);
-                fprintf(fp, ",%lld", as<long long>(results[i]));
-                fprintf(fp, "\n");
+                file << label << ",";
+                file << dim << ",";
+                file << radius << ",";
+                file << ndims << ",";
+                file << ninputs << ",";
+                file << i << ",";
+                file << nsamples << ",";
+                file << jobid << ",";
+                file << std::chrono::duration_cast<std::chrono::nanoseconds>(results[i]).count()
+                     << std::endl;
             }
-            ERRCHK(fclose(fp) == 0);
+            file.close();
         };
 
         // Setup the benchmark

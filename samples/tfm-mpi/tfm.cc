@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <exception>
+#include <fstream>
 #include <future>
 #include <iostream>
 #include <numeric>
@@ -49,7 +50,7 @@
 #define AC_WRITE_SYNCHRONOUS_PROFILES
 #define AC_WRITE_SYNCHRONOUS_TIMESERIES
 #define AC_WRITE_SYNCHRONOUS_SLICES
-// #define AC_DISABLE_IO
+#define AC_DISABLE_IO
 
 // Production run: enable define below for fast, async profile IO
 // #define AC_WRITE_ASYNC_PROFILES
@@ -1408,19 +1409,21 @@ main(int argc, char* argv[])
         };
 
         // Reset benchmarks
-        std::ostringstream oss;
-        oss << "bm-tfm-mpi-" << args.job_id << "-" << getpid() << "-"
-            << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
-        const auto output_file{oss.str()};
-        FILE* fp{fopen(output_file.c_str(), "w")};
-        ERRCHK(fp);
-        fprintf(fp, "impl,lnx,lny,lnz,gnx,gny,gnz,radius,sample,nsamples,rank,nprocs,jobid,ns\n");
-        ERRCHK(fclose(fp) == 0);
+        std::ostringstream filename_stream;
+        filename_stream << "bm-tfm-mpi-" << args.job_id << "-" << getpid() << "-"
+                        << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+        const auto filename{filename_stream.str()};
+
+        std::ofstream file{filename};
+        file.exceptions(~std::ios::goodbit);
+        file << "impl,lnx,lny,lnz,gnx,gny,gnz,radius,sample,nsamples,rank,nprocs,jobid,ns"
+             << std::endl;
+        file.close();
 
         auto print = [&](const std::string& label,
-                         const std::vector<std::chrono::nanoseconds::rep>& results) {
-            FILE* fp{fopen(output_file.c_str(), "a")};
-            ERRCHK(fp);
+                         const std::vector<std::chrono::steady_clock::duration>& results) {
+            std::ofstream file{filename, std::ios_base::app};
+            file.exceptions(~std::ios::goodbit);
 
             auto info{grid.get_info()};
 
@@ -1428,23 +1431,23 @@ main(int argc, char* argv[])
                        acr::get_local_rr()[0] == acr::get_local_rr()[2]);
 
             for (size_t i{0}; i < results.size(); ++i) {
-                fprintf(fp, "%s", label.c_str());
-                fprintf(fp, ",%d", acr::get(info, AC_nx));
-                fprintf(fp, ",%d", acr::get(info, AC_ny));
-                fprintf(fp, ",%d", acr::get(info, AC_nz));
-                fprintf(fp, ",%d", acr::get(info, AC_global_nx));
-                fprintf(fp, ",%d", acr::get(info, AC_global_ny));
-                fprintf(fp, ",%d", acr::get(info, AC_global_nz));
-                fprintf(fp, ",%zu", acr::get_local_rr()[0]);
-                fprintf(fp, ",%zu", i);
-                fprintf(fp, ",%zu", nsamples);
-                fprintf(fp, ",%d", ac::mpi::get_rank(MPI_COMM_WORLD));
-                fprintf(fp, ",%d", ac::mpi::get_size(MPI_COMM_WORLD));
-                fprintf(fp, ",%d", args.job_id);
-                fprintf(fp, ",%lld", as<long long>(results[i]));
-                fprintf(fp, "\n");
+                file << label << ",";
+                file << acr::get(info, AC_nx) << ",";
+                file << acr::get(info, AC_ny) << ",";
+                file << acr::get(info, AC_nz) << ",";
+                file << acr::get(info, AC_global_nx) << ",";
+                file << acr::get(info, AC_global_ny) << ",";
+                file << acr::get(info, AC_global_nz) << ",";
+                file << acr::get_local_rr()[0] << ",";
+                file << i << ",";
+                file << nsamples << ",";
+                file << ac::mpi::get_rank(MPI_COMM_WORLD) << ",";
+                file << ac::mpi::get_size(MPI_COMM_WORLD) << ",";
+                file << args.job_id << ",";
+                file << std::chrono::duration_cast<std::chrono::nanoseconds>(results[i]).count()
+                     << std::endl;
             }
-            ERRCHK(fclose(fp) == 0);
+            file.close();
         };
 
         cudaProfilerStart();

@@ -1,7 +1,9 @@
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <iostream>
 
+#include "acm/detail/buffer.h"
 #include "acm/detail/errchk_cuda.h"
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/mpi_utils.h"
@@ -87,7 +89,7 @@ main(void)
                 snprintf(label, len, "memory transfer (to rank %d, device %d)", i, device_id);
 
                 const auto results{bm::benchmark([]() {}, bm_fn, []() {}, bench_nsamples)};
-                const auto median_ns{bm::median(results)};
+                const auto median_ns{bm::median<std::chrono::nanoseconds>(results)};
 
                 const auto bw{(2 * problem_size) / (1e-9 * median_ns) / (1024ul * 1024 * 1024)};
                 if (rank == root)

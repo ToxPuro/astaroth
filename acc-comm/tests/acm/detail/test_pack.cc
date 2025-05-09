@@ -45,16 +45,17 @@ test_pack(const ac::shape& nn, const ac::index& rr)
     ERRCHK(equals(hin.get(), hout.get()));
 
     // Benchmark
-    ac::timer t;
-    for (size_t i{0}; i < segments.size(); ++i)
-        acm::pack(mm, segments[i].dims, segments[i].offset, {din.get()}, pack_buffers[i].get());
+    // ac::timer t;
+    // for (size_t i{0}; i < segments.size(); ++i)
+    //     acm::pack(mm, segments[i].dims, segments[i].offset, {din.get()}, pack_buffers[i].get());
 
-    t.print_lap("Pack");
+    // t.print_lap("Pack");
 
-    for (size_t i{0}; i < segments.size(); ++i)
-        acm::unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset, {dout.get()});
+    // for (size_t i{0}; i < segments.size(); ++i)
+    //     acm::unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset,
+    //     {dout.get()});
 
-    t.print_lap("Unpack");
+    // t.print_lap("Unpack");
 }
 
 static void
@@ -88,11 +89,11 @@ test_pack_batched(const ac::shape& nn, const ac::index& rr)
     ERRCHK(equals(hin.get(), hout.get()));
 
     // Benchmmark
-    ac::timer t;
-    acm::pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
-    t.print_lap("Batched pack");
-    acm::unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
-    t.print_lap("Batched unpack");
+    // ac::timer t;
+    // acm::pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
+    // t.print_lap("Batched pack");
+    // acm::unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
+    // t.print_lap("Batched unpack");
 }
 
 int

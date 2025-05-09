@@ -1,5 +1,6 @@
 #include <cstdlib>
 
+#include "acm/detail/errchk.h"
 #include "acm/detail/experimental/bm.h"
 #include "acm/detail/math_utils.h"
 
