@@ -452,6 +452,8 @@ void acVA_DebugFromRootProc(const int pid, const char* msg, va_list arg);
 
 int3
 acDecompose(const uint64_t target, const AcMeshInfo info);
+int3
+acGetPid3D(const uint64_t pid, const int3 decomp, const AcMeshInfo info);
 
 #include "device_set_input_decls.h"
 #include "device_get_output_decls.h"

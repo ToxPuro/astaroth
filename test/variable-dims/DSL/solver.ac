@@ -89,16 +89,43 @@ ComputeSteps initcond_extended(bcs)
 	initcond_kernel(F_EXT,AC_F_EXT_INIT)
 }
 
-Kernel deriv(Field f)
+Kernel derivx(Field f)
 {
 	write(f,derx(f))
 }
 
-ComputeSteps deriv_extended(bcs)
+Kernel derivy(Field f)
 {
-	deriv(F_EXT)	
+	write(f,dery(f))
 }
-ComputeSteps deriv_normal(bcs)
+Kernel derivz(Field f)
 {
-	deriv(F)	
+	write(f,derz(f))
+}
+
+ComputeSteps derivx_extended(bcs)
+{
+	derivx(F_EXT)	
+}
+ComputeSteps derivx_normal(bcs)
+{
+	derivx(F)	
+}
+
+ComputeSteps derivy_extended(bcs)
+{
+	derivy(F_EXT)	
+}
+ComputeSteps derivy_normal(bcs)
+{
+	derivy(F)	
+}
+
+ComputeSteps derivz_extended(bcs)
+{
+	derivz(F_EXT)	
+}
+ComputeSteps derivz_normal(bcs)
+{
+	derivz(F)	
 }

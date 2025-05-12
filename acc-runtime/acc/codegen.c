@@ -10078,13 +10078,24 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 	  }
           fprintf(fp,"};");
 
+
           fprintf(fp,"static const char* vtxbuf_dims_str[NUM_ALL_FIELDS] __attribute__((unused)) = {");
 	  for(size_t i = 0; i < field_dims.size; ++i)
 		  fprintf(fp,"\"%s\",",field_dims.data[i]);
           fprintf(fp,"};");
-	  free_str_vec(&field_dims);
 
           fclose(fp);
+          fp = fopen("device_fields_info.h","w");
+          fprintf(fp,"static const __device__ AcInt3Param vtxbuf_device_dims[NUM_ALL_FIELDS] = {");
+	  for(size_t i = 0; i < field_dims.size; ++i)
+	  {
+		  fprintf(fp,"%s,",field_dims.data[i]);
+	  }
+          fprintf(fp,"};");
+	  fclose(fp);
+
+	  free_str_vec(&field_dims);
+
 
 	  symboltable_reset();
   	  traverse(root, NODE_NO_OUT, NULL);

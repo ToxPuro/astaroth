@@ -74,9 +74,10 @@ main(int argc, char* argv[])
     acPushToConfig(info,AC_decompose_strategy,    AC_DECOMPOSE_STRATEGY_MORTON);
     acPushToConfig(info,AC_MPI_comm_strategy,     AC_MPI_COMM_STRATEGY_DUP_WORLD);
     const int3 decomp = acDecompose(nprocs,info);
+    const int3 pid3d = acGetPid3D(pid,decomp,info);
 
-    acSetGridMeshDims(nx, ny, nz, &info);
-    acSetLocalMeshDims(nx/decomp.x, ny/decomp.y, nz/decomp.z, &info);
+    acSetGridMeshDims(nx*decomp.x, ny*decomp.y, nz*decomp.z, &info);
+    acSetLocalMeshDims(nx, ny, nz, &info);
     acHostUpdateParams(&info);
 
     AcMesh model, candidate;
@@ -177,7 +178,7 @@ main(int argc, char* argv[])
 		    );
 
     const Volume launch_start = to_volume(info[AC_nmin]);
-    const Volume launch_end = launch_dims - launch_start;
+    const Volume launch_end = launch_dims + launch_start;
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(add_field_normal , launch_start, launch_end),1);
     acGridSynchronizeStream(STREAM_ALL);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
@@ -223,7 +224,7 @@ main(int argc, char* argv[])
     }
 
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_normal),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(deriv_normal),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivx_normal),1);
     acGridSynchronizeStream(STREAM_ALL);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
@@ -233,9 +234,9 @@ main(int argc, char* argv[])
       {
     	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
 	{
-		const AcReal correct = (i == dims.n0.x || i == dims.n1.x-1) ? -1.0 :
- 				       (i == dims.n0.x+1 || i == dims.n1.x-2) ? 0.70/3.0 :
- 				       (i == dims.n0.x+2 || i == dims.n1.x-3) ? -0.10/3.0 :
+		const AcReal correct = ((pid3d.x == 0 && i == dims.n0.x) || (pid3d.x == decomp.x-1 && i == dims.n1.x-1)) ? -1.0 :
+ 				       ((pid3d.x == 0 && i == dims.n0.x+1) || (pid3d.x == decomp.x-1 && i == dims.n1.x-2)) ? 0.70/3.0 :
+ 				       ((pid3d.x == 0 && i == dims.n0.x+2) || (pid3d.x == decomp.x-1 && i == dims.n1.x-3)) ? -0.10/3.0 :
 			0.0;
 		const bool local_correct = std::abs(candidate.vertex_buffer[F][IDX(i,j,k,F)]-correct) < 1e-12;
 		if(!local_correct) fprintf(stderr,"F Wrong at %ld,%ld,%ld: %14e\n",i,j,k,candidate.vertex_buffer[F][IDX(i,j,k,F)]);
@@ -243,9 +244,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    dims = extended_dims;
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(initcond_extended,extended_dims.n0,extended_dims.n1),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(deriv_extended,extended_dims.n0,extended_dims.n1),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_normal),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivy_normal),1);
     acGridSynchronizeStream(STREAM_ALL);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
@@ -255,14 +255,116 @@ main(int argc, char* argv[])
       {
     	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
 	{
-		const AcReal correct = ((i == dims.n0.x || i == dims.n1.x-1) ? -1.0 :
- 				       (i == dims.n0.x+1 || i == dims.n1.x-2) ? 0.70/3.0 :
- 				       (i == dims.n0.x+2 || i == dims.n1.x-3) ? -0.10/3.0 :
-			0.0);
+		const AcReal correct = ((pid3d.y == 0 && j == dims.n0.y) || (pid3d.y == decomp.y-1 && j == dims.n1.y-1)) ? -1.0 :
+ 				       ((pid3d.y == 0 && j == dims.n0.y+1) || (pid3d.y == decomp.y-1 && j == dims.n1.y-2)) ? 0.70/3.0 :
+ 				       ((pid3d.y == 0 && j == dims.n0.y+2) || (pid3d.y == decomp.y-1 && j == dims.n1.y-3)) ? -0.10/3.0 :
+			0.0;
+		const bool local_correct = std::abs(candidate.vertex_buffer[F][IDX(i,j,k,F)]-correct) < 1e-12;
+		if(!local_correct) fprintf(stderr,"F Wrong at %ld,%ld,%ld: %14e\n",i,j,k,candidate.vertex_buffer[F][IDX(i,j,k,F)]);
+		f_correct &= local_correct;
+	}
+      }
+    }
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_normal),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivz_normal),1);
+    acGridSynchronizeStream(STREAM_ALL);
+    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
+    acGridSynchronizeStream(STREAM_ALL);
+    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+      for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
+      {
+    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
+	{
+		const AcReal correct = ((pid3d.z == 0 && k == dims.n0.z)   || (pid3d.z == decomp.z-1 && k == dims.n1.z-1)) ? -1.0 :
+ 				       ((pid3d.z == 0 && k == dims.n0.z+1) || (pid3d.z == decomp.z-1 && k == dims.n1.z-2)) ? 0.70/3.0 :
+ 				       ((pid3d.z == 0 && k == dims.n0.z+2) || (pid3d.z == decomp.z-1 && k == dims.n1.z-3)) ? -0.10/3.0 :
+			0.0;
+		const bool local_correct = std::abs(candidate.vertex_buffer[F][IDX(i,j,k,F)]-correct) < 1e-12;
+		if(!local_correct) fprintf(stderr,"F Wrong at %ld,%ld,%ld: %14e\n",i,j,k,candidate.vertex_buffer[F][IDX(i,j,k,F)]);
+		f_correct &= local_correct;
+	}
+      }
+    }
+
+    dims = extended_dims;
+
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(initcond_extended,extended_dims.n0,extended_dims.n1),1);
+    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(derivx_extended,extended_dims.n0,extended_dims.n1),1);
+    acGridSynchronizeStream(STREAM_ALL);
+    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
+    acGridSynchronizeStream(STREAM_ALL);
+    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+      for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
+      {
+    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
+	{
+		const AcReal correct = ((pid3d.x == 0 && i == dims.n0.x)   || (pid3d.x == decomp.x-1 && i == dims.n1.x-1)) ? -1.0 :
+ 				       ((pid3d.x == 0 && i == dims.n0.x+1) || (pid3d.x == decomp.x-1 && i == dims.n1.x-2)) ? 0.70/3.0 :
+ 				       ((pid3d.x == 0 && i == dims.n0.x+2) || (pid3d.x == decomp.x-1 && i == dims.n1.x-3)) ? -0.10/3.0 :
+			0.0;
 		const bool local_correct = std::abs(candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)]-correct) < 1e-12;
 		if(!local_correct) 
 		{
-			fprintf(stderr,"F_EXT Wrong at %ld,%ld,%ld: %14e\n",i,j,k,candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)]);
+			fprintf(stderr,"X DER F_EXT Wrong in %d at %ld,%ld,%ld: %14e\n",pid3d.x,i,j,k,candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)]);
+			fprintf(stderr,"DIMS %ld,%ld,%ld\n",dims.m1.x,dims.m1.y,dims.m1.z);
+			exit(EXIT_FAILURE);
+
+		}
+		f_correct &= local_correct;
+	}
+      }
+    }
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(initcond_extended,extended_dims.n0,extended_dims.n1),1);
+    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(derivy_extended,extended_dims.n0,extended_dims.n1),1);
+    acGridSynchronizeStream(STREAM_ALL);
+    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
+    acGridSynchronizeStream(STREAM_ALL);
+    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+      for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
+      {
+    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
+	{
+		const AcReal correct = ((pid3d.y == 0 && j == dims.n0.y)   || (pid3d.y == decomp.y-1 && j == dims.n1.y-1)) ? -1.0 :
+ 				       ((pid3d.y == 0 && j == dims.n0.y+1) || (pid3d.y == decomp.y-1 && j == dims.n1.y-2)) ? 0.70/3.0 :
+ 				       ((pid3d.y == 0 && j == dims.n0.y+2) || (pid3d.y == decomp.y-1 && j == dims.n1.y-3)) ? -0.10/3.0 :
+			0.0;
+		const bool local_correct = std::abs(candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)]-correct) < 1e-12;
+		if(!local_correct) 
+		{
+			fprintf(stderr,"Y DER F_EXT Wrong in %d at %ld,%ld,%ld: %14e\n",pid3d.x,i,j,k,candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)]);
+			fprintf(stderr,"DIMS %ld,%ld,%ld\n",dims.m1.x,dims.m1.y,dims.m1.z);
+			exit(EXIT_FAILURE);
+
+		}
+		f_correct &= local_correct;
+	}
+      }
+    }
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(initcond_extended,extended_dims.n0,extended_dims.n1),1);
+    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(derivz_extended,extended_dims.n0,extended_dims.n1),1);
+    acGridSynchronizeStream(STREAM_ALL);
+    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
+    acGridSynchronizeStream(STREAM_ALL);
+    for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    {
+      for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
+      {
+    	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
+	{
+		const AcReal correct = ((pid3d.z == 0 && k == dims.n0.z)   || (pid3d.z == decomp.z-1 && k == dims.n1.z-1)) ? -1.0 :
+ 				       ((pid3d.z == 0 && k == dims.n0.z+1) || (pid3d.z == decomp.z-1 && k == dims.n1.z-2)) ? 0.70/3.0 :
+ 				       ((pid3d.z == 0 && k == dims.n0.z+2) || (pid3d.z == decomp.z-1 && k == dims.n1.z-3)) ? -0.10/3.0 :
+			0.0;
+		const bool local_correct = std::abs(candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)]-correct) < 1e-12;
+		if(!local_correct) 
+		{
+			fprintf(stderr,"Z DER F_EXT Wrong in %d at %ld,%ld,%ld: %14e\n",pid3d.x,i,j,k,candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)]);
 			fprintf(stderr,"DIMS %ld,%ld,%ld\n",dims.m1.x,dims.m1.y,dims.m1.z);
 			exit(EXIT_FAILURE);
 

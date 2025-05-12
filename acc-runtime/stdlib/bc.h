@@ -1,22 +1,23 @@
 inline get_normal()
 {
-           const int z = (vertexIdx.z >= AC_nlocal_max.z)
-			-(vertexIdx.z < AC_nmin.z);
-           const int y = (z == 0)*((vertexIdx.y >= AC_nlocal_max.y)
-			-(vertexIdx.y < AC_nmin.y));
-           const int x = (z == 0 && y == 0)*((vertexIdx.x >= AC_nlocal_max.x)
-			-(vertexIdx.x < AC_nmin.x));
+           const int3 launch_dims = end-start;
+           const int z = (launch_dims.z  == 1)*((start.z > AC_nmin.z)
+			 -(start.z < AC_nmin.z));
+           const int y = (launch_dims.y == 1 && z == 0)*((start.y > AC_nmin.y)
+			-(start.y < AC_nmin.y));
+           const int x = (launch_dims.x == 1 && z == 0 && y == 0)*((start.x > AC_nmin.x)
+			-(start.x < AC_nmin.x));
 	   return (int3){x,y,z}
 }
 inline get_boundary(int3 normal)
 {
-	const int x =  normal.x == 1  ? AC_nlocal_max.x-1
+	const int x =  normal.x == 1  ? start.x-1
 		     : normal.x == -1 ? AC_nmin.x
 		     : vertexIdx.x;
-	const int y =  normal.y == 1  ? AC_nlocal_max.y-1
+	const int y =  normal.y == 1  ? start.y-1
 		     : normal.y == -1 ? AC_nmin.y
 		     : vertexIdx.y;
-	const int z =  normal.z == 1  ? AC_nlocal_max.z-1
+	const int z =  normal.z == 1  ? start.z-1
 		     : normal.z == -1 ? AC_nmin.z
 		     : vertexIdx.z;
 	return (int3){x,y,z}

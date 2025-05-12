@@ -16,6 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "device_fields_info.h"
 #include "vtxbuf_is_communicated_func.h"
 #pragma once
 struct GpuVtxBufHandles 
@@ -43,7 +44,6 @@ kernel_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const 
     const int j_unpacked = j_packed + vba_start.y;
     const int k_unpacked = k_packed + vba_start.z;
 
-    const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
     const int packed_idx   = i_packed +        //
                            j_packed * dims.x + //
                            k_packed * dims.x * dims.y;
@@ -54,6 +54,7 @@ kernel_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start, const 
     int i = 0;
     for (int j = 0; j < NUM_VTXBUF_HANDLES; ++j)
     {
+      const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
       const int dst_idx = packed_idx + i * vtxbuf_offset;
       i += is_communicated(static_cast<Field>(j));
       if(is_communicated(static_cast<Field>(j))) packed[dst_idx] = vba.in[j][unpacked_idx];
@@ -115,7 +116,6 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
     const int j_unpacked = j_packed + vba_start.y;
     const int k_unpacked = k_packed + vba_start.z;
 
-    const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
     const int packed_idx   = i_packed +        //
                            j_packed * dims.x + //
                            k_packed * dims.x * dims.y;
@@ -127,6 +127,7 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
     {
       if(is_communicated(static_cast<Field>(j)))
       {
+        const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
         vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
 #if AC_LAGRANGIAN_GRID
       	vba.in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked,j_unpacked,k_unpacked});
@@ -158,7 +159,6 @@ kernel_partial_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start
     const int j_unpacked = j_packed + vba_start.y;
     const int k_unpacked = k_packed + vba_start.z;
 
-    const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
     const int packed_idx   = i_packed +        //
                            j_packed * dims.x + //
                            k_packed * dims.x * dims.y;
@@ -168,8 +168,10 @@ kernel_partial_pack_data(const DeviceVertexBufferArray vba, const int3 vba_start
     //#pragma unroll
     for (size_t i = 0; i < num_vtxbufs; ++i)
     {
+	const int j = vtxbufs.data[i];
+        const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
 	const int dst_idx = packed_idx + i * vtxbuf_offset;
-        packed[dst_idx] = vba.in[vtxbufs.data[i]][unpacked_idx];
+        packed[dst_idx] = vba.in[j][unpacked_idx];
     }
 }
 
@@ -198,19 +200,21 @@ kernel_partial_move_data(const DeviceVertexBufferArray vba, const int3 src_start
     const int k_dst = k_packed + dst_start.z;
 
 
-    const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
-    const int dst_idx = DEVICE_VTXBUF_IDX(i_dst, j_dst, k_dst);
 
     //#pragma unroll
     for (size_t i = 0; i < num_vtxbufs; ++i)
     {
-        vba.in[vtxbufs.data[i]][dst_idx] = vba.in[vtxbufs.data[i]][unpacked_idx];
+	const int j = vtxbufs.data[i];
+        const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
+        const int dst_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_dst, j_dst, k_dst,VAL(vtxbuf_device_dims[j]));
+        vba.in[j][dst_idx] = vba.in[j][unpacked_idx];
 #if AC_LAGRANGIAN_GRID
-        	vba.in[vtxbufs.data[i]][dst_idx] += lagrangian_correction(vtxbufs.data[i], AC_COORDS, (int3){i_dst, j_dst, k_dst});
+        	vba.in[j][dst_idx] += lagrangian_correction(vtxbufs.data[i], AC_COORDS, (int3){i_dst, j_dst, k_dst});
 #endif
     }
 }
 
+//TP: does not work with variable dimensions for now!!
 static __global__ void
 kernel_shear_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
                            DeviceVertexBufferArray vba, GpuVtxBufHandles vtxbufs , size_t num_vtxbufs
@@ -305,7 +309,6 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
     const int j_unpacked = j_packed + vba_start.y;
     const int k_unpacked = k_packed + vba_start.z;
 
-    const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
     const int packed_idx   = i_packed +        //
                            j_packed * dims.x + //
                            k_packed * dims.x * dims.y;
@@ -316,6 +319,7 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
      for (size_t i = 0; i < num_vtxbufs; ++i)
      {
 	     const int j = vtxbufs.data[i];
+    	     const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_dims[j]));
 	     vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
 #if AC_LAGRANGIAN_GRID
              	vba.in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked, j_unpacked, k_unpacked});

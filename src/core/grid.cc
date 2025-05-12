@@ -812,6 +812,10 @@ acGridInitBase(const AcMesh user_mesh)
     acVerboseLogFromRootProc(ac_pid(), "memusage after synchronize stream= %f MBytes\n", memusage()/1024.0);
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Done synchronizing streams\n");
 
+    grid.kernel_analysis_info = get_kernel_analysis_info();
+    if(ac_pid() == 0) acAnalysisCheckForDSLErrors(acGridGetLocalMeshInfo());	
+    check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
+
 #ifdef AC_INTEGRATION_ENABLED
     if(grid.submesh.info[AC_fully_periodic_grid])
     	gen_default_taskgraph();
@@ -823,9 +827,6 @@ acGridInitBase(const AcMesh user_mesh)
     	FILE* fp = fopen("taskgraph_log.txt","w");
     	fclose(fp);
     }
-    grid.kernel_analysis_info = get_kernel_analysis_info();
-    if(ac_pid() == 0) acAnalysisCheckForDSLErrors(acGridGetLocalMeshInfo());	
-    check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
 
     fflush(stdout);
     fflush(stderr);
@@ -1899,6 +1900,7 @@ get_spacings()
 AcTaskGraph*
 acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_ops, const Volume start, const Volume end)
 { 
+
     // ERRCHK(grid.initialized);
     std::vector<AcTaskDefinition> ops{};
     //TP: insert reduce tasks in between of tasks
@@ -2017,6 +2019,8 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset{};
     //int num_comp_tasks = 0;
     const Volume dims = end-start;
+
+
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", ops.size());
     for (size_t i = 0; i < ops.size(); i++) {
         acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
@@ -2087,6 +2091,9 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    }
 	    	    //auto task = std::make_shared<ComputeTask>(op,tag,full_input_region,full_region,device,swap_offset);
             	    //graph->all_tasks.push_back(task);
+    	            ERRCHK_ALWAYS((int)dims.x > grid.submesh.info[AC_nmin].x*2);
+    	            ERRCHK_ALWAYS((int)dims.y > grid.submesh.info[AC_nmin].y*2);
+    	            ERRCHK_ALWAYS((int)dims.z > grid.submesh.info[AC_nmin].z*2);
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset);
             	    graph->all_tasks.push_back(task);
             	    //done here since we want to write only to out not to in what launching the taskgraph would do

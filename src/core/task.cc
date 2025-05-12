@@ -254,23 +254,25 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
 size_t
 get_compute_output_position(const int id, const size_t start, const size_t ghost, const size_t nn, const bool boundary_included)
 {
-	return id == -1  ? (boundary_included ? start-ghost : start) : 
+	int res = id == -1  ? (boundary_included ? start-ghost : start) : 
 		id == 1  ? (boundary_included ? nn+start: nn+start-ghost) : 
 		(boundary_included ? start: start+ghost);
+	return as_size_t(res);
 }
 
 size_t
 get_compute_output_dim(const int id, const size_t ghost, const size_t nn, const bool boundary_included)
 {
-	return id == 0 ? 
+	int res = id == 0 ? 
 		 (boundary_included ? nn : nn - ghost*2) : 
 		 ghost;
+	return as_size_t(res);
 }
 size_t
 get_compute_input_position(const int id, const size_t start, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
 {
 	const auto output_position = get_compute_output_position(id,start,ghost,nn,boundary_included);
-	if(depends_on_boundary) return output_position - ghost;
+	if(depends_on_boundary) return as_size_t((int)output_position - (int)ghost);
 	else return output_position;
 }
 size_t
@@ -285,7 +287,7 @@ get_exchange_output_pos(const int id, const size_t start, const size_t ghost, co
 {
 	    if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
 	    if(bottom_included) return 0;
-      	    return  id == -1  ? start-ghost : id == 1 ? start+nn : start;
+      	    return  id == -1  ? as_size_t((int)start-(int)ghost) : id == 1 ? start+nn : start;
 }
 size_t
 get_exchange_input_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included)
@@ -2113,6 +2115,7 @@ BoundaryConditionTask::populate_boundary_region()
 {
      const auto ghosts = acDeviceGetLocalConfig(device)[AC_nmin];
      const auto nn = output_region.comp_dims;
+
      if(fieldwise)
      {
      	for (auto variable : output_region.memory.fields) {
