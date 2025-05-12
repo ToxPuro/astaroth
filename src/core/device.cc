@@ -687,8 +687,8 @@ acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, con
     if (!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     if (host_mesh.vertex_buffer[vtxbuf_handle] == NULL) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
-    const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, host_mesh.info);
-    const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, device->local_config);
+    const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, host_mesh.info,vtxbuf_handle);
+    const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, device->local_config,vtxbuf_handle);
 
     const AcReal* src_ptr = &host_mesh.vertex_buffer[vtxbuf_handle][src_idx];
     AcReal* dst_ptr       = &device->vba.on_device.in[vtxbuf_handle][dst_idx];
@@ -719,8 +719,8 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
 {
     const int3 src            = (int3){0, 0, 0};
     const int3 dst            = src;
-    const size_t device_num_vertices = acVertexBufferSize(device->local_config);
-    const size_t host_num_vertices   = acVertexBufferSize(host_mesh.info);
+    const size_t device_num_vertices = acVertexBufferSize(device->local_config,vtxbuf_handle);
+    const size_t host_num_vertices   = acVertexBufferSize(host_mesh.info,vtxbuf_handle);
     ERRCHK_ALWAYS(device_num_vertices == host_num_vertices);
     return acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst,
                                        host_num_vertices);
@@ -761,7 +761,7 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
     if(!vtxbuf_is_alive[handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
 
-    const size_t count = acVertexBufferSize(device->local_config);
+    const size_t count = acVertexBufferSize(device->local_config,handle);
     AcReal* data       = (AcReal*)calloc(count, sizeof(AcReal));
     ERRCHK_ALWAYS(data);
 
@@ -783,12 +783,12 @@ AcResult
 acDeviceFlushOutputBuffers(const Device device, const Stream stream)
 {
     cudaSetDevice(device->id);
-    const size_t count = acVertexBufferSize(device->local_config);
 
     int retval = 0;
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
     {
     	if(!vtxbuf_is_alive[i]) continue;
+        const size_t count = acVertexBufferSize(device->local_config,Field(i));
         retval |= acKernelFlush(device->streams[stream], device->vba.on_device.out[i], count, (AcReal)0.0);
     }
 
@@ -804,8 +804,8 @@ acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     if (host_mesh->vertex_buffer[vtxbuf_handle] == NULL) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
-    const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, device->local_config);
-    const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, host_mesh->info);
+    const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, device->local_config,vtxbuf_handle);
+    const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, host_mesh->info,vtxbuf_handle);
 
 
     const AcReal* src_ptr = &device->vba.on_device.in[vtxbuf_handle][src_idx];
@@ -838,8 +838,8 @@ acDeviceStoreVertexBuffer(const Device device, const Stream stream,
 {
     int3 src                  = (int3){0, 0, 0};
     int3 dst                  = src;
-    const size_t device_num_vertices = acVertexBufferSize(device->local_config);
-    const size_t host_num_vertices = acVertexBufferSize(host_mesh->info);
+    const size_t device_num_vertices = acVertexBufferSize(device->local_config,vtxbuf_handle);
+    const size_t host_num_vertices = acVertexBufferSize(host_mesh->info,vtxbuf_handle);
     if(device_num_vertices != host_num_vertices)
     {
 	fprintf(stderr,"Host dims: %d,%d,%d\n",host_mesh->info[AC_mlocal].x,host_mesh->info[AC_mlocal].y,host_mesh->info[AC_mlocal].z);
@@ -871,8 +871,8 @@ acDeviceTransferVertexBufferWithOffset(const Device src_device, const Stream str
     //TP: to still allow transfering the whole mesh between devices transfering dead VertexBuffers is a no-op
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(src_device->id);
-    const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, src_device->local_config);
-    const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, dst_device->local_config);
+    const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, src_device->local_config,vtxbuf_handle);
+    const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, dst_device->local_config,vtxbuf_handle);
 
     const AcReal* src_ptr = &src_device->vba.on_device.in[vtxbuf_handle][src_idx];
     AcReal* dst_ptr       = &dst_device->vba.on_device.in[vtxbuf_handle][dst_idx];
@@ -901,7 +901,7 @@ acDeviceTransferVertexBuffer(const Device src_device, const Stream stream,
 {
     int3 src                  = (int3){0, 0, 0};
     int3 dst                  = src;
-    const size_t num_vertices = acVertexBufferSize(src_device->local_config);
+    const size_t num_vertices = acVertexBufferSize(src_device->local_config,vtxbuf_handle);
 
     return acDeviceTransferVertexBufferWithOffset(src_device, stream, vtxbuf_handle, src, dst,
                                            num_vertices, dst_device);
@@ -1268,7 +1268,7 @@ acDeviceStoreProfile(const Device device, const Profile profile, AcMesh* host_me
     if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
     cudaSetDevice(device->id);
     ERRCHK_CUDA(cudaMemcpy(host_mesh->profile[profile], device->vba.on_device.profiles.in[profile],
-                           prof_size(profile,device->vba.dims.m1),
+                           prof_size(profile,device->vba.profile_dims[profile].m1),
                            cudaMemcpyDeviceToHost));
     return AC_SUCCESS;
 }
@@ -1367,7 +1367,7 @@ acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int src_offset,
     for (int iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
       for (int k=start.z; k<end.z; k++){
 
-        start_idx = acVertexBufferIdx(start.x,start.y,k,host_mesh->info);
+        start_idx = acVertexBufferIdx(start.x,start.y,k,host_mesh->info,Field(iv));
         dest=&(host_mesh->vertex_buffer[iv][start_idx]);
         src=&device->vba.on_device.out[iv][start_idx+src_offset];
         cudaMemcpy2DAsync(dest, px, src, px, sx, host_mesh->info[AC_ny],
@@ -1745,7 +1745,7 @@ acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf, co
     FILE* fp = fopen(filepath, "w");
     ERRCHK_ALWAYS(fp);
 
-    const size_t count         = acVertexBufferSize(device->local_config);
+    const size_t count         = acVertexBufferSize(device->local_config,vtxbuf);
     const size_t count_written = fwrite(host_mesh.vertex_buffer[vtxbuf], sizeof(AcReal), count, fp);
     ERRCHK_ALWAYS(count_written == count);
 

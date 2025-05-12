@@ -56,6 +56,7 @@
 #include <vector>
 #include <stack>
 
+#include "analysis_grid_helpers.h"
 
 #include "decomposition.h" //getPid3D, morton3D
 #include "errchk.h"
@@ -87,7 +88,7 @@ typedef struct Grid {
     size_t mpi_tag_space_count;
     bool mpi_initialized;
     bool vertex_buffer_copied_from_user[NUM_VTXBUF_HANDLES]{};
-    KernelAnalysisInfo kernel_analysis_info{};
+    std::vector<KernelAnalysisInfo> kernel_analysis_info{};
 } Grid;
 
 
@@ -598,7 +599,7 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 	    else
 	    {
 		        ++n_allocated_vtxbufs;
-			submesh.vertex_buffer[i] = acHostCreateVertexBuffer(submesh_info);
+			submesh.vertex_buffer[i] = acHostCreateVertexBuffer(submesh_info,Field(i));
 	    }
     }
 
@@ -608,8 +609,8 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
     return submesh;
 }
 
-void
-check_compile_info_matches_runtime_info(const KernelAnalysisInfo info)
+static void
+check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> info)
 {
 [[maybe_unused]] constexpr int AC_STENCIL_CALL        = (1 << 2);
 #include "stencil_accesses.h"
@@ -621,7 +622,7 @@ check_compile_info_matches_runtime_info(const KernelAnalysisInfo info)
 				const int j_old = field_remappings[j];
 				//TP: we are a little bit messy by storing info about array reads of vertexbuffers to stencils_accessed so have to check is the stencil call bit set to filter array reads
 				const bool comp_time = (stencils_accessed[k][j_old][i] & AC_STENCIL_CALL);
-				const bool run_time  = (info.stencils_accessed[k][j][i] & AC_STENCIL_CALL);
+				const bool run_time  = (info[k].stencils_accessed[j][i] & AC_STENCIL_CALL);
 				if(run_time && !comp_time)
 					fatal("In Kernel %s Stencil %s used for %s at runtime but not generated!\n"
 					      "Most likely that stencill is executed in a control-flow path that was not taken.\n"
@@ -822,7 +823,7 @@ acGridInitBase(const AcMesh user_mesh)
     	FILE* fp = fopen("taskgraph_log.txt","w");
     	fclose(fp);
     }
-    acAnalysisGetKernelInfo(acGridGetLocalMeshInfo(),&grid.kernel_analysis_info);	
+    grid.kernel_analysis_info = get_kernel_analysis_info();
     if(ac_pid() == 0) acAnalysisCheckForDSLErrors(acGridGetLocalMeshInfo());	
     check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
 
@@ -964,7 +965,8 @@ acGridLoadMeshWorking(const Stream stream, const AcMesh host_mesh)
                 const size_t idx     = acVertexBufferIdx(tgt_pid3d.x * distributed_nn.x, //
                                                          tgt_pid3d.y * distributed_nn.y, //
                                                          tgt_pid3d.z * distributed_nn.z, //
-                                                         host_mesh.info);
+                                                         host_mesh.info,
+							 VertexBufferHandle(vtxbuf));
                 MPI_Send(&host_mesh.vertex_buffer[vtxbuf][idx], 1, monolithic_subarray, tgt, vtxbuf,
                          acGridMPIComm());
             }
@@ -1511,7 +1513,9 @@ acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
                 const size_t idx     = acVertexBufferIdx(tgt_pid3d.x * distributed_nn.x, //
                                                          tgt_pid3d.y * distributed_nn.y, //
                                                          tgt_pid3d.z * distributed_nn.z, //
-                                                         host_mesh->info);
+                                                         host_mesh->info,
+							 VertexBufferHandle(vtxbuf)
+							 );
                 MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][idx], 1, monolithic_subarray, tgt,
                          vtxbuf, acGridMPIComm(), MPI_STATUS_IGNORE);
             }
@@ -1588,8 +1592,9 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
                 for (size_t j = ghost_zone_sizes.y; j < ghost_zone_sizes.y + nn.y; ++j) {
                     const int i       = ghost_zone_sizes.x;
                     const int count   = nn.x;
-                    const int src_idx = acVertexBufferIdx(i, j, k, host_mesh.info);
-                    const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
+                    const int src_idx = acVertexBufferIdx(i, j, k, host_mesh.info,VertexBufferHandle(vtxbuf));
+							 
+                    const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info,VertexBufferHandle(vtxbuf));
                     memcpy(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], //
                            &host_mesh.vertex_buffer[vtxbuf][src_idx],    //
                            count * sizeof(host_mesh.vertex_buffer[i][0]));
@@ -1606,7 +1611,7 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
                 const int count = nn.x;
 
                 if (pid != 0) {
-                    const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
+                    const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info,VertexBufferHandle(vtxbuf));
                     // Recv
                     MPI_Status status;
                     MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE,
@@ -1618,7 +1623,9 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
                                                                  j + tgt_pid3d.y * nn.y, //
                                                                  k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh.info);
+                                                                 host_mesh.info,
+								 VertexBufferHandle(vtxbuf)
+								 );
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
@@ -1666,8 +1673,8 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
                 for (size_t j = 0; j < mm.y; ++j) {
                     const int i       = 0;
                     const int count   = mm.x;
-                    const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
-                    const int dst_idx = acVertexBufferIdx(i, j, k, host_mesh->info);
+                    const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info,VertexBufferHandle(vtxbuf));
+                    const int dst_idx = acVertexBufferIdx(i, j, k, host_mesh->info,VertexBufferHandle(vtxbuf));
                     memcpy(&host_mesh->vertex_buffer[vtxbuf][dst_idx],   //
                            &grid.submesh.vertex_buffer[vtxbuf][src_idx], //
                            count * sizeof(grid.submesh.vertex_buffer[i][0]));
@@ -1689,7 +1696,9 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
                                                                  j + tgt_pid3d.y * nn.y, //
                                                                  k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh->info);
+                                                                 host_mesh->info,
+								 VertexBufferHandle(vtxbuf)
+								 );
 
                         // Recv
                         MPI_Status status;
@@ -1699,7 +1708,7 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
                 }
                 else {
                     // Send
-                    const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
+                    const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info,VertexBufferHandle(vtxbuf));
                     MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
                              0, 0, astaroth_comm);
                 }
@@ -1769,9 +1778,6 @@ check_ops(const std::vector<AcTaskDefinition> ops)
             // found_compute = true;
             task_graph_repr += "Compute,";
             break;
-        case TASKTYPE_SYNC:
-          task_graph_repr += "Sync,";
-	  break;
         case TASKTYPE_REDUCE:
           task_graph_repr += "Reduce,";
 	  break;
@@ -1866,14 +1872,14 @@ Region
 FullRegion(const Volume position, const Volume dims, const RegionMemory mem, const AcBoundary boundaries_included)
 {
 	const auto shift = get_output_shift(boundaries_included);
-        return Region(position-shift,dims+2*shift,0,mem,RegionFamily::Compute_output);
+        return Region(position-shift,dims+2*shift,dims,0,mem,RegionFamily::Compute_output);
 }
 
 Region
 GetInputRegion(Region region, const RegionMemory mem, const AcBoundary boundaries_included)
 {
 	const auto shift = get_input_shift(boundaries_included);
-	return Region{region.position-shift,region.dims+2*shift,0,mem,RegionFamily::Compute_input};
+	return Region{region.position-shift,region.dims+2*shift,region.dims,0,mem,RegionFamily::Compute_input};
 }
 std::vector<Region>
 getinputregions(std::vector<Region> output_regions, const RegionMemory memory, const AcBoundary boundaries_included)
@@ -1888,8 +1894,6 @@ get_spacings()
 {
 	return acGridGetLocalMeshInfo()[AC_ds];
 }
-
-#include "analysis_grid_helpers.h"
 
 
 AcTaskGraph*
@@ -1949,7 +1953,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    const AcKernel kernel = op.kernel_enum;
 	    bool calls_stencil = false;
 	    for(size_t field = 0; field < NUM_VTXBUF_HANDLES; ++field)
-		    calls_stencil |= grid.kernel_analysis_info.field_has_stencil_op[kernel][field];
+		    calls_stencil |= grid.kernel_analysis_info[kernel].field_has_stencil_op[field];
 	    if(calls_stencil && op.computes_on_halos != BOUNDARY_NONE)
 		    fatal("Kernel %s should be computed on halos but also uses Stencils!!\n",kernel_names[kernel]);
     }
@@ -2123,11 +2127,6 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
             break;
         }
 
-        case TASKTYPE_SYNC: {
-            auto task = std::make_shared<SyncTask>(op, i, grid_info.nn, device, swap_offset);
-            graph->all_tasks.push_back(task);
-            break;
-        }
 
         case TASKTYPE_BOUNDCOND: {
 	    int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
@@ -2423,8 +2422,8 @@ get_reduce_outputs(const AcTaskGraph* graph)
 	if(task->output_region.id != (int3){0,0,0}) continue;
     	auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
     	auto kernel       = compute_task -> getKernel();
-    	for(size_t i = 0; i < grid.kernel_analysis_info.n_reduce_outputs[kernel]; ++i)
-    	    reduce_outputs.push_back(grid.kernel_analysis_info.reduce_outputs[kernel][i]);
+    	for(size_t i = 0; i < grid.kernel_analysis_info[kernel].n_reduce_outputs; ++i)
+    	    reduce_outputs.push_back(grid.kernel_analysis_info[kernel].reduce_outputs[i]);
     }
     return reduce_outputs;
 }
@@ -2440,7 +2439,7 @@ get_reduced_profiles(const AcTaskGraph* graph)
     	auto kernel       = compute_task -> getKernel();
     	for(int i = 0; i < NUM_PROFILES; ++i)
 	{
-	    if(grid.kernel_analysis_info.reduced_profiles[kernel][i])
+	    if(grid.kernel_analysis_info[kernel].reduced_profiles[i])
     	    	reduced_profiles.push_back(Profile(i));
 	}
     }
@@ -3328,7 +3327,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
                            out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
-        const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
+        const size_t bytes = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(i));
         cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
         const int3 offset = info[AC_multigpu_offset]; // Without halo
@@ -3340,7 +3339,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[i], label);
 #endif
 
-        const auto write_async = [filepath, offset](const AcMeshInfo info_in,
+        const auto write_async = [filepath, offset, i](const AcMeshInfo info_in,
                                                     const AcReal* host_buffer_in) {
 
 #if USE_PERFSTUBS
@@ -3354,7 +3353,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             FILE* fp = fopen(filepath, "w");
             ERRCHK_ALWAYS(fp);
 
-            const size_t count         = acVertexBufferCompdomainSize(info_in);
+            const size_t count         = acVertexBufferCompdomainSize(info_in,VertexBufferHandle(i));
             const size_t count_written = fwrite(host_buffer_in, sizeof(AcReal), count, fp);
             ERRCHK_ALWAYS(count_written == count);
 
@@ -3367,7 +3366,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
             MPI_Status status;
-            const size_t count = acVertexBufferCompdomainSize(info_in);
+            const size_t count = acVertexBufferCompdomainSize(info_in,VertexBufferHandle(i));
             retval = MPI_File_write(file, host_buffer_in, count, AC_REAL_MPI_TYPE, &status);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
@@ -3748,7 +3747,7 @@ acGridDiskAccessLaunch(const AccessType type)
                            out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
-        const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
+        const size_t bytes = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(i));
         cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
         char path[4096] = "";
@@ -3767,7 +3766,7 @@ acGridDiskAccessLaunch(const AccessType type)
         int retval = MPI_File_open(MPI_COMM_SELF, outfile, mode, MPI_INFO_NULL, &files[i]);
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
-        const size_t count = acVertexBufferCompdomainSize(info);
+        const size_t count = acVertexBufferCompdomainSize(info,VertexBufferHandle(i));
         retval = MPI_File_iwrite(files[i], host_buffer, count, AC_REAL_MPI_TYPE, &reqs[i]);
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
@@ -3915,7 +3914,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 // ---------------------------------------
 // Buffer through CPU
 #if BUFFER_DISK_WRITE_THROUGH_CPU
-        const size_t count = acVertexBufferCompdomainSizeBytes(info);
+        const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
         cudaMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost);
 #endif
         // ----------------------------------------
@@ -4035,7 +4034,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 #if BUFFER_DISK_WRITE_THROUGH_CPU
         // ---------------------------------------
         // Buffer through CPU
-        const size_t count = acVertexBufferCompdomainSizeBytes(info);
+        const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
         cudaMemcpy(in, arr, count, cudaMemcpyHostToDevice);
         //  ----------------------------------------
 #endif
@@ -4099,7 +4098,7 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 // ---------------------------------------
 // Buffer through CPU
 #if BUFFER_DISK_WRITE_THROUGH_CPU
-        const size_t count = acVertexBufferCompdomainSizeBytes(info);
+        const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
         cudaMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost);
 #endif
         // ----------------------------------------
@@ -4143,7 +4142,7 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 #if BUFFER_DISK_WRITE_THROUGH_CPU
         // ---------------------------------------
         // Buffer through CPU
-        const size_t count = acVertexBufferCompdomainSizeBytes(info);
+        const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
         cudaMemcpy(in, arr, count, cudaMemcpyHostToDevice);
         //  ----------------------------------------
 #endif
@@ -4206,7 +4205,7 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 // ---------------------------------------
 // Buffer through CPU
 #if BUFFER_DISK_WRITE_THROUGH_CPU
-        const size_t count = acVertexBufferCompdomainSizeBytes(info);
+        const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
         cudaMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost);
 #endif
         // ----------------------------------------
@@ -4278,7 +4277,7 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 #if BUFFER_DISK_WRITE_THROUGH_CPU
         // ---------------------------------------
         // Buffer through CPU
-        const size_t count = acVertexBufferCompdomainSizeBytes(info);
+        const size_t count = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(vtxbuf));
         cudaMemcpy(in, arr, count, cudaMemcpyHostToDevice);
         //  ----------------------------------------
 #endif
@@ -4358,7 +4357,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
         MPI_Status status;
-        const size_t count = acVertexBufferCompdomainSize(info);
+        const size_t count = acVertexBufferCompdomainSize(info,VertexBufferHandle(i));
         // retval             = MPI_File_read_all(fp, host_buffer, count, AC_REAL_MPI_TYPE,
         // &status);
         retval = MPI_File_read(fp, host_buffer, count, AC_REAL_MPI_TYPE, &status); // workaround
@@ -4384,7 +4383,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
         AcReal* out           = vba.on_device.in[field];
 	const Volume out_offset = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume out_volume = acGetLocalMM(acGridGetLocalMeshInfo());
-        const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
+        const size_t bytes = acVertexBufferCompdomainSizeBytes(info,VertexBufferHandle(field));
         cudaMemcpy(in, host_buffer, bytes, cudaMemcpyHostToDevice);
         retval = acDeviceVolumeCopy(device, (Stream)field, in, in_offset, in_volume, out, out_offset,
                                     out_volume);

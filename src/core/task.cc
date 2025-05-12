@@ -172,13 +172,6 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
 
 
 
-AcTaskDefinition
-acSync()
-{
-    AcTaskDefinition task_def{};
-    task_def.task_type = TASKTYPE_SYNC;
-    return task_def;
-}
 
 AcTaskDefinition
 acHaloExchange(Field fields[], const size_t num_fields)
@@ -316,6 +309,7 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
     : family(family_), tag(tag_) 
 {
     const Volume ghosts = to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
+    comp_dims = nn;
     memory.profiles = {mem_.profiles, mem_.profiles + mem_.num_profiles};
     memory.reduce_outputs  = {mem_.reduce_outputs , mem_.reduce_outputs  + mem_.num_reduce_outputs};
     memory.fields = {};
@@ -427,8 +421,8 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
       }
       
-      Region::Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_, RegionFamily family_)
-      : position(position_), dims(dims_), family(family_), tag(tag_)
+      Region::Region(Volume position_, Volume dims_, Volume comp_dims_, int tag_, const RegionMemory mem_, RegionFamily family_)
+      : position(position_), dims(dims_), comp_dims(comp_dims_), family(family_), tag(tag_)
       {
       std::vector<Field> fields{};
       switch (family) {
@@ -452,15 +446,12 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       memory.reduce_outputs  = mem_.reduce_outputs;
       }
 
-Region::Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_)
-: Region{position_, dims_, tag_, mem_, RegionFamily::None}{}
-
 
 
 Region
 Region::translate(int3 translation)
 {
-return Region(to_volume(this->position + translation), this->dims, this->tag, this->memory);
+return Region(to_volume(this->position + translation), this->dims, this->comp_dims, this->tag, this->memory,this->family);
 }
 
 
@@ -1510,42 +1501,6 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 
 
 
-SyncTask::SyncTask(AcTaskDefinition op, int order_, Volume nn, Device device_,
-                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
-	//TP: this will make tasks with larger than necessary regions in case of two dimensional setup
-	//but that does not really harm since the whole point of this task is to be a dummy that synchronizes
-    : Task(order_,
-           Region({0,0,0},(Volume){(size_t)2*NGHOST+nn.x,(size_t)2*NGHOST+nn.y,(size_t)2*NGHOST+nn.z}, 0, {}),
-           Region({0,0,0},(Volume){(size_t)2*NGHOST+nn.x,(size_t)2*NGHOST+nn.y,(size_t)2*NGHOST+nn.z}, 0, {}),
-           op, device_, swap_offset_)
-{
-
-    // Synctask is on default stream
-    {
-        stream = 0;
-    }
-    syncVBA();
-
-    name      = "SyncTask" + std::to_string(order_);
-    task_type = TASKTYPE_SYNC;
-}
-
-bool
-SyncTask::test()
-{
-    // always ready
-    return true;
-}
-
-void
-SyncTask::advance(const TraceFile* trace_file)
-{
-    //no tracing for now simply silence unused warning
-    (void)trace_file;
-    //Synchronize everything
-    acGridSynchronizeStream(STREAM_ALL);
-}
-
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
@@ -2156,8 +2111,8 @@ BoundaryConditionTask::BoundaryConditionTask(
 void
 BoundaryConditionTask::populate_boundary_region()
 {
-     const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
      const auto ghosts = acDeviceGetLocalConfig(device)[AC_nmin];
+     const auto nn = output_region.comp_dims;
      if(fieldwise)
      {
      	for (auto variable : output_region.memory.fields) {

@@ -39,6 +39,7 @@ AcDimProducts intrinsic ac_get_dim_products(int3)
 AcDimProductsInv intrinsic ac_get_dim_products_inv(AcDimProducts)
 
 intrinsic write_base
+intrinsic write_at_point
 intrinsic write_profile_x
 intrinsic write_profile_y
 intrinsic write_profile_z

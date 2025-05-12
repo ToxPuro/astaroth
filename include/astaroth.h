@@ -60,6 +60,20 @@ acVertexBufferSize(const AcMeshInfo info)
     const Volume mm = acGetLocalMM(info);
     return mm.x*mm.y*mm.z;
 }
+
+static inline size_t
+acVertexBufferVariableSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const Volume mm = 
+	    (Volume)
+	    {
+	    	(size_t)info[vtxbuf_dims[vtxbuf]].x,
+	    	(size_t)info[vtxbuf_dims[vtxbuf]].y,
+	    	(size_t)info[vtxbuf_dims[vtxbuf]].z
+	    };
+    return mm.x*mm.y*mm.z;
+}
+
 static inline size_t
 acGridVertexBufferSize(const AcMeshInfo info)
 {
@@ -73,10 +87,28 @@ acVertexBufferDims(const AcMeshInfo info)
     return acGetLocalMM(info);
 }
 
+static inline Volume 
+acVertexBufferDimsVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	return 
+		(Volume)
+		{
+			(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].x,
+			(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].x,
+			(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].z
+		};
+}
+
 static inline size_t
 acVertexBufferSizeBytes(const AcMeshInfo info)
 {
     return sizeof(AcReal) * acVertexBufferSize(info);
+}
+
+static inline size_t
+acVertexBufferSizeBytesVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return sizeof(AcReal) * acVertexBufferVariableSize(info,vtxbuf);
 }
 
 
@@ -88,9 +120,28 @@ acVertexBufferCompdomainSize(const AcMeshInfo info)
 }
 
 static inline size_t
+acVertexBufferCompdomainSizeVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const Volume nn = 
+	    (Volume)
+	    {
+		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].x -2*info.int3_params[AC_nmin].x,
+		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].y -2*info.int3_params[AC_nmin].y,
+		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].z -2*info.int3_params[AC_nmin].z
+	    };
+    return nn.x*nn.y*nn.z;
+}
+
+static inline size_t
 acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
 {
     return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
+}
+
+static inline size_t
+acVertexBufferCompdomainSizeBytesVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return sizeof(AcReal) * acVertexBufferCompdomainSizeVariable(info,vtxbuf);
 }
 
 static inline AcMeshDims
@@ -192,6 +243,13 @@ acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo in
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 #endif
+
+static inline size_t
+acVertexBufferIdxVariable(const int i, const int j, const int k, const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    auto mm = info[vtxbuf_dims[vtxbuf]];
+    return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
+}
 
 static inline int3
 acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
@@ -332,6 +390,7 @@ acHostUpdateCompParams(AcMeshInfo* config);
 
 
 FUNC_DEFINE(AcReal*, acHostCreateVertexBuffer,(const AcMeshInfo info));
+FUNC_DEFINE(AcReal*, acHostCreateVertexBufferVariable,(const AcMeshInfo info, const VertexBufferHandle vtxbuf));
 FUNC_DEFINE(AcResult, acHostMeshCreateProfiles,(AcMesh* mesh));
 FUNC_DEFINE(AcResult, acHostMeshDestroyVertexBuffer,(AcReal** vtxbuf));
 /** Creates a mesh stored in host memory */
@@ -667,6 +726,82 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 
 
 #ifdef __cplusplus
+static inline size_t
+acVertexBufferSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	return acVertexBufferVariableSize(info,vtxbuf);
+}
+static inline AcReal*
+acHostCreateVertexBuffer(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	return acHostCreateVertexBufferVariable(info,vtxbuf);
+}
+static inline AcMeshDims
+acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+   #include "user_builtin_non_scalar_constants.h"
+   const Volume n0 = acGetMinNN(info);
+   const Volume m1 = 
+	   (Volume){
+		as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].x),
+		as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].y),
+		as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].z)
+	   };
+   const Volume n1 = 
+	   (Volume)
+	   {
+	   	m1.x-n0.x,
+	   	m1.y-n0.y,
+	   	m1.z-n0.z,
+	   };
+   const Volume m0 = (Volume){0, 0, 0};
+   const Volume nn = 
+	   (Volume)
+	   {
+	   	m1.x-2*n0.x,
+	   	m1.y-2*n0.y,
+	   	m1.z-2*n0.z,
+	   };
+   const Volume reduction_tile = (Volume)
+   {
+           as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+           as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+           as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
+   };
+
+   return (AcMeshDims){
+       .n0 = n0,
+       .n1 = n1,
+       .m0 = m0,
+       .m1 = m1,
+       .nn = nn,
+       .reduction_tile = reduction_tile,
+   };
+}
+
+static inline size_t
+acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	return acVertexBufferIdxVariable(i,j,k,info,vtxbuf);
+}
+
+static inline Volume 
+acVertexBufferDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	return acVertexBufferDimsVariable(info,vtxbuf);
+}
+
+static inline size_t
+acVertexBufferSizeBytes(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    return acVertexBufferSizeBytesVariable(info,vtxbuf);
+}
+
+static inline size_t
+acVertexBufferCompdomainSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf) {return acVertexBufferCompdomainSizeVariable(info,vtxbuf);}
+
+static inline size_t
+acVertexBufferCompdomainSizeBytes(const AcMeshInfo info, const VertexBufferHandle vtxbuf) {return  acVertexBufferCompdomainSizeBytesVariable(info,vtxbuf); }
 
 static UNUSED AcResult
 acDeviceFinishReduce(Device device, const Stream stream, int* result,const AcKernel kernel, const AcReduceOp reduce_op, const AcIntOutputParam output)
@@ -720,6 +855,7 @@ acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder or
 	return acDeviceTransposeVertexBuffer(device,stream,order,vtxbuf);
 }
 #endif
+
 
 
 #define OVERLOAD_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \

@@ -518,6 +518,7 @@ extern "C"
 {
 	void acAnalysisCheckForDSLErrors(const AcMeshInfo info);
 	AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* src);
+	KernelAnalysisInfo acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel);
 	acAnalysisBCInfo acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary boundary);
 }
 //#include "user_constants.h"
@@ -590,10 +591,23 @@ mark_as_written(const Field& field, const int x, const int y, const int z)
 	written_fields[field] |= 
 			index_at_boundary(x,y,z) ? AC_IN_BOUNDS_WRITE : AC_OUT_OF_BOUNDS_WRITE;
 }
+AcReal&
+AC_INTERNAL_get_vtxbuf_dst(const Field& field, const int x, const int y, const int z)
+{
+	static AcReal dst = 0.0;
+	mark_as_written(field, x,y,z);
+	return dst;
+}
 void
 write_base (const Field& field, const AcReal&)
 {
 	written_fields[field] |= AC_IN_BOUNDS_WRITE;
+}
+
+void
+write_at_point (const Field& field, const AcReal&, const int x, const int y, const int z)
+{
+	mark_as_written(field,x,y,z);
 }
 template <typename T, typename T2>
 AcReal
@@ -636,7 +650,7 @@ previous_base(const Field& field)
 	return AcReal(1.0);
 }
 AcReal
-AC_INTERNAL_read_field(const Field& field, const int x, const int y, const int z)
+AC_INTERNAL_read_vtxbuf(const Field& field, const int x, const int y, const int z)
 {
 	//TP: this is possible in case of input fields for kernels and when array syntax is translated to a call of this
 	if(field > NUM_FIELDS) return AcReal(1.0);
@@ -893,14 +907,14 @@ acAnalysisGetBCInfo(const AcMeshInfo info, const AcKernel bc, const AcBoundary b
 	}
 	return (acAnalysisBCInfo){larger_input,larger_output};
 }
-AcResult
-acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
+
+KernelAnalysisInfo
+acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel)
 {
 	d_mesh_info = info;
-	memset(dst,0,sizeof(*dst));
-	for(size_t k = 0; k <NUM_KERNELS; ++k)
+	KernelAnalysisInfo res{};
 	{
-    		execute_kernel(k);
+    		execute_kernel(kernel);
     		for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
     		{
     		  for (size_t i = 0; i < NUM_STENCILS; ++i)
@@ -910,32 +924,32 @@ acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
     		      if(i == 0) read_fields[j] |= stencils_accessed[j][i];
     		      field_has_stencil_op[j] |= (i != 0);
     		    }
-		    dst->stencils_accessed[k][j][i] |= stencils_accessed[j][i];
+		    res.stencils_accessed[j][i] |= stencils_accessed[j][i];
     		    read_fields[j] |= previous_accessed[j];
     		  }
     		}
     		for (int j = 0; j < NUM_PROFILES; ++j)
     		  for (size_t i = 0; i < NUM_STENCILS; ++i)
-		    dst->stencils_accessed[k][j+NUM_ALL_FIELDS][i] |= stencils_accessed[j+NUM_ALL_FIELDS][i];
+		    res.stencils_accessed[j+NUM_ALL_FIELDS][i] |= stencils_accessed[j+NUM_ALL_FIELDS][i];
 		for(size_t i = 0; i < NUM_ALL_FIELDS; ++i)
 		{
-			dst->read_fields[k][i]    = read_fields[i];
-			dst->field_has_stencil_op[k][i] = field_has_stencil_op[i];
-			dst->written_fields[k][i] = written_fields[i];
+			res.read_fields[i]    = read_fields[i];
+			res.field_has_stencil_op[i] = field_has_stencil_op[i];
+			res.written_fields[i] = written_fields[i];
 		}
 		for(int i = 0; i < NUM_PROFILES; ++i)
 		{
-			dst->read_profiles[k][i]    = read_profiles[i];
-			dst->reduced_profiles[k][i] = reduced_profiles[i];
-			dst->written_profiles[k][i] = written_profiles[i];
+			res.read_profiles[i]    = read_profiles[i];
+			res.reduced_profiles[i] = reduced_profiles[i];
+			res.written_profiles[i] = written_profiles[i];
 			//TP: skip value stencil
 			for(size_t j = 1; j < NUM_STENCILS; ++j)
-				dst->profile_has_stencil_op[k][i] |= stencils_accessed[NUM_ALL_FIELDS+i][j];
+				res.profile_has_stencil_op[i] |= stencils_accessed[NUM_ALL_FIELDS+i][j];
 		}
-		dst->n_reduce_outputs[k] = reduce_outputs.size();
+		res.n_reduce_outputs = reduce_outputs.size();
 		for(size_t i = 0; i < reduce_outputs.size(); ++i)
-			dst->reduce_outputs[k][i] = reduce_outputs[i];
-		if(dst->n_reduce_outputs[k] > NUM_OUTPUTS)
+			res.reduce_outputs[i] = reduce_outputs[i];
+		if(res.n_reduce_outputs > NUM_OUTPUTS)
 		{
 			fprintf(stderr,"Can not reduce variables multiple times in a Kernel\n");
 			exit(EXIT_FAILURE);
@@ -947,9 +961,20 @@ acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
 			if(std::find(unique_inputs.begin(), unique_inputs.end(), entry) == unique_inputs.end())
 				unique_inputs.push_back(entry);
 		}
-		dst->n_reduce_inputs[k] = unique_inputs.size();
+		res.n_reduce_inputs = unique_inputs.size();
 		for(size_t i = 0; i < unique_inputs.size(); ++i)
-			dst->reduce_inputs[k][i] = unique_inputs[i];
+			res.reduce_inputs[i] = unique_inputs[i];
+	}
+	return res;
+}
+AcResult
+acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst)
+{
+	d_mesh_info = info;
+	memset(dst,0,sizeof(dst[0])*NUM_KERNELS);
+	for(size_t k = 0; k <NUM_KERNELS; ++k)
+	{
+		dst[k] = acAnalysisGetKernelInfoSingle(info,AcKernel(k));
 	}
 	return AC_SUCCESS;
 }
@@ -966,7 +991,7 @@ print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N])
         fprintf(fp, "%d,", arr[k][j]);
     fprintf(fp,"},");
   }
-  fprintf(fp, "};");
+  fprintf(fp, "};\n");
 }
 
 void
@@ -976,7 +1001,7 @@ print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][0])
   fprintf(fp,
           "static int %s[NUM_KERNELS][%d] "
           "__attribute__((unused)) =  {",name,0);
-  fprintf(fp, "};");
+  fprintf(fp, "};\n");
 }
 
 #if AC_STENCIL_ACCESSES_MAIN
@@ -1017,7 +1042,6 @@ main(int argc, char* argv[])
 #endif
   int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
-    fprintf(fp,"{");
     execute_kernel(k);
     for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
     { 
@@ -1048,6 +1072,7 @@ main(int argc, char* argv[])
 	output_reduced_floats[k][j] = reduced_floats[j];
 #endif
 
+    fprintf(fp,"{");
     for (size_t j = 0; j < NUM_ALL_FIELDS+NUM_PROFILES; ++j)
     { 
       fprintf(fp,"{");
@@ -1073,7 +1098,7 @@ main(int argc, char* argv[])
   }
 
 
-  fprintf(fp, "};");
+  fprintf(fp, "};\n");
 
   fclose(fp_written_fields);
   fclose(fp_fields_read);

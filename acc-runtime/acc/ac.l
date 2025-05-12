@@ -95,6 +95,7 @@ void strip_whitespace(char *str) {
 "ExpSum"                   { return EXP_SUM; }
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
+"dims"          { return DIMS; }
 "const"          { return CONST_QL; }
 "override"          { return OVERRIDE; }
 "dynamic"          { return DYNAMIC_QL; }

@@ -233,6 +233,15 @@ acGetNode(void)
 }
 
 AcReal*
+acHostCreateVertexBufferVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+    const size_t n_cells = acVertexBufferSize(info,vtxbuf);
+    AcReal* res = (AcReal*)calloc(n_cells, sizeof(AcReal));
+    ERRCHK_ALWAYS(res);
+    return res;
+}
+
+AcReal*
 acHostCreateVertexBuffer(const AcMeshInfo info)
 {
     const size_t n_cells = acVertexBufferSize(info);
@@ -260,7 +269,7 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
     mesh->info = info;
     acHostUpdateParams(&mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) 
-	mesh->vertex_buffer[w] = acHostCreateVertexBuffer(mesh->info);
+	mesh->vertex_buffer[w] = acHostCreateVertexBuffer(mesh->info,VertexBufferHandle(w));
     return acHostMeshCreateProfiles(mesh);
 }
 AcResult
@@ -269,7 +278,7 @@ acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst)
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         if(src.vertex_buffer[w] == NULL) continue;
 	if(dst.vertex_buffer[w] == NULL) continue;
-	memcpy(dst.vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info));
+	memcpy(dst.vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info,VertexBufferHandle(w)));
     }
     return AC_SUCCESS;
 }
@@ -352,9 +361,9 @@ randf(void)
 AcResult
 acHostMeshRandomize(AcMesh* mesh)
 {
-    const size_t n = acVertexBufferSize(mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
 	if(mesh->vertex_buffer[w] == NULL) continue;
+        const size_t n = acVertexBufferSize(mesh->info,VertexBufferHandle(w));
         for (size_t i = 0; i < n; ++i) {
             mesh->vertex_buffer[w][i] = randf();
         }

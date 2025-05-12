@@ -102,6 +102,7 @@ static const char* OUTPUT_VALUE_STR      = NULL;
 static const char* DEAD_STR      = NULL;
 static const char* AUXILIARY_STR      = NULL;
 static const char* COMMUNICATED_STR      = NULL;
+static const char* DIMS_STR = NULL;
 
 static const char* CONST_STR = NULL;
 static const char* CONSTEXPR_STR = NULL;
@@ -555,9 +556,13 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
 
 
 
-  const bool is_field_without_type_qualifiers = tspecifier && tspecifier == FIELD_STR && symbol_table[num_symbols[current_nest]].tqualifiers.size == 0;
+
   ++num_symbols[current_nest];
-  if(!is_field_without_type_qualifiers)
+  bool is_field_without_comm_and_aux_qualifiers = tspecifier && tspecifier == FIELD_STR;
+  for(size_t i = 0; i < symbol_table[num_symbols[current_nest]-1].tqualifiers.size; ++i)
+	  is_field_without_comm_and_aux_qualifiers &= (symbol_table[num_symbols[current_nest]-1].tqualifiers.data[i] != COMMUNICATED_STR) && (symbol_table[num_symbols[current_nest]-1].tqualifiers.data[i] != AUXILIARY_STR);
+
+  if(!is_field_without_comm_and_aux_qualifiers)
   	return num_symbols[current_nest]-1;
 	  
   if(!has_optimization_info())
@@ -5435,9 +5440,9 @@ gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 }
 
 void
-gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_accesses)
+gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_accesses, const string_vec field_dims)
 {
-	TRAVERSE_PREAMBLE_PARAMS(gen_multidimensional_field_accesses_recursive,gen_mem_accesses);
+	TRAVERSE_PREAMBLE_PARAMS(gen_multidimensional_field_accesses_recursive,gen_mem_accesses,field_dims);
 	if(node->token != IDENTIFIER)
 		return;
 	if(!node->buffer)
@@ -5460,6 +5465,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 		while(node->parent->type & NODE_STRUCT_EXPRESSION) node = node->parent;
 	}
 
+
 	node_vec nodes = VEC_INITIALIZER;
 	get_array_access_nodes(array_access,&nodes);
 	if(nodes.size != 1 && nodes.size != 3)	
@@ -5469,11 +5475,6 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 
 
 	ASTNode* idx_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
-	if(!gen_mem_accesses)
-	{
-		astnode_set_prefix("DEVICE_VTXBUF_IDX(",idx_node);
-		astnode_set_postfix(")",idx_node);
-	}
 	ASTNode* rhs = astnode_create(NODE_UNKNOWN, idx_node, NULL);
 	ASTNode* indexes = build_list_node(nodes,",");
 	idx_node->lhs = indexes;
@@ -5487,8 +5488,6 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 		astnode_set_infix(",",before_lhs);
 		astnode_set_postfix(");",before_lhs);
 
-		astnode_set_prefix("DEVICE_VTXBUF_IDX(",idx_node);
-		astnode_set_postfix(")",idx_node);
 	}
 
 	free_node_vec(&nodes);
@@ -5496,20 +5495,18 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
         array_access->rhs = rhs;
 	ASTNode* lhs = astnode_create(NODE_UNKNOWN, before_lhs, astnode_dup(node,NULL));
 	array_access->lhs = lhs;
-	if(gen_mem_accesses && !is_left_child(NODE_ASSIGNMENT,node))
 	{
 		astnode_set_postfix(")",rhs);
 
-		astnode_set_infix("AC_INTERNAL_read_field(",lhs);
+		if(is_left_child(NODE_ASSIGNMENT,node))
+		{
+			astnode_set_infix("AC_INTERNAL_get_vtxbuf_dst(",lhs);
+		}
+		else
+		{
+			astnode_set_infix("AC_INTERNAL_read_vtxbuf(",lhs);
+		}
 		astnode_set_postfix(",",lhs);
-	}
-	else
-	{
-		astnode_set_prefix("[",rhs);
-		astnode_set_postfix("]",rhs);
-
-		astnode_set_infix("vba.in[",lhs);
-		astnode_set_postfix("]",lhs);
 	}
 	lhs->parent = array_access;
 }
@@ -5947,6 +5944,46 @@ gen_enums_variadic(FILE* fp, const string_vec  types, const char* prefix, const 
   fprintf(fp, "%s} %s;",num_name,name);
 }
 static void
+get_field_dims_recursive(const ASTNode* node,string_vec* dst)
+{
+	TRAVERSE_PREAMBLE_PARAMS(get_field_dims_recursive,dst);
+        if(node->type  != (NODE_DECLARATION | NODE_GLOBAL)) return;
+        const ASTNode* type_node = get_node(NODE_TSPEC,node);
+        if(!type_node) return;
+        //const ASTNode* qualifier = get_node(NODE_TQUAL,node);
+        ////TP: do this only for no qualifier declarations
+        //if(qualifier) return;
+        const char* type = intern(combine_all_new(type_node));
+	if(type != FIELD_STR) return;
+	const int n_fields = count_num_of_nodes_in_list(node->rhs);
+        const ASTNode* tquals = node->lhs->rhs ? node->lhs->lhs : NULL;
+	bool variable_dims = false;
+	if(tquals)
+	{
+		node_vec tquals_vec = get_nodes_in_list(tquals);
+		for(size_t i = 0; i < tquals_vec.size; ++i)
+		{
+			const ASTNode* tqual = get_node(NODE_TQUAL,tquals_vec.data[i]);
+			if(tqual->lhs && tqual->lhs->buffer && tqual->lhs->buffer == DIMS_STR)
+			{
+				for(int j = 0; j < n_fields; ++j)
+					push(dst,intern(combine_all_new(tqual->rhs)));
+				variable_dims = true;
+			}
+		}
+		free_node_vec(&tquals_vec);
+	}
+	for(int j = 0; j < n_fields; ++j)
+		if(!variable_dims) push(dst,intern("AC_mlocal"));
+}
+static  string_vec
+get_field_dims(const ASTNode* node)
+{
+	string_vec res = VEC_INITIALIZER;
+	get_field_dims_recursive(node,&res);
+	return res;
+}
+static void
 gen_field_info(FILE* fp)
 {
   num_fields   = count_symbols(FIELD_STR);
@@ -5957,6 +5994,7 @@ gen_field_info(FILE* fp)
   bool field_is_auxiliary[256];
   bool field_is_communicated[256];
   bool field_is_dead[256];
+  bool field_has_variable_dims[256];
   size_t num_of_alive_fields=0;
   string_vec field_names = VEC_INITIALIZER;
   string_vec original_names = VEC_INITIALIZER;
@@ -5971,8 +6009,10 @@ gen_field_info(FILE* fp)
       push(&field_names, symbol_table[i].identifier);
       const bool is_aux  = str_vec_contains(symbol_table[i].tqualifiers,AUXILIARY_STR);
       const bool is_comm = str_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED_STR);
+      const bool has_variable_dims = str_vec_contains(symbol_table[i].tqualifiers,DIMS_STR);
       field_is_auxiliary[num_of_fields]    = is_aux;
       field_is_communicated[num_of_fields] = is_comm;
+      field_has_variable_dims[num_of_fields] = has_variable_dims;
       num_of_communicated_fields           += is_comm;
       num_of_alive_fields                  += (!is_dead);
       field_is_dead[num_of_fields]         = is_dead;
@@ -5987,8 +6027,10 @@ gen_field_info(FILE* fp)
       push(&field_names, symbol_table[i].identifier);
       const bool is_aux  = str_vec_contains(symbol_table[i].tqualifiers,AUXILIARY_STR);
       const bool is_comm = str_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED_STR);
+      const bool has_variable_dims = str_vec_contains(symbol_table[i].tqualifiers,DIMS_STR);
       field_is_auxiliary[num_of_fields]    = is_aux;
       field_is_communicated[num_of_fields] = is_comm;
+      field_has_variable_dims[num_of_fields] = has_variable_dims;
       num_of_communicated_fields           += is_comm;
       num_of_alive_fields                  += (!is_dead);
       field_is_dead[num_of_fields]         = is_dead;
@@ -6052,6 +6094,16 @@ gen_field_info(FILE* fp)
         fprintf(fp, "%s,", "false");
 
   fprintf(fp, "};");
+
+  fprintf(fp, "static const bool vtxbuf_has_variable_dims[] = {");
+  for(size_t i = 0; i < num_of_fields; ++i)
+    if(field_has_variable_dims[i])
+        fprintf(fp, "%s,", "true");
+    else
+        fprintf(fp, "%s,", "false");
+
+  fprintf(fp, "};");
+
 
   fprintf(fp, "static const bool vtxbuf_is_alive[] = {");
 
@@ -6139,7 +6191,6 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   //TP: fields info is generated separately since it is different between 
   //analysis generation and normal generation
-  fprintf(fp,"\n#include \"fields_info.h\"\n");
   // Enums
   //
   string_vec prof_types = get_prof_types();
@@ -6320,6 +6371,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   fprintf(fp,"\n#include \"array_info.h\"\n");
   fprintf(fp,"\n#include \"taskgraph_enums.h\"\n");
+  fprintf(fp,"\n#include \"fields_info.h\"\n");
 
   free_str_vec(&datatypes);
   free_structs_info(&s_info);
@@ -8374,6 +8426,7 @@ gen_global_strings()
 	ELEMENTAL_STR = intern("elemental");
 	AUXILIARY_STR = intern("auxiliary");
 	COMMUNICATED_STR = intern("communicated");
+	DIMS_STR = intern("dims");
 	CONST_STR  = intern("const");
 	DCONST_STR = intern("dconst");
 	CONSTEXPR_STR = intern("constexpr");
@@ -9016,11 +9069,13 @@ monomorphize_kernel_calls(ASTNode* node, ASTNode* tail_node)
 		ASTNode* func_call = (ASTNode*)kernel_call_nodes.data[i];
 		const char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
 		func_params_info params_info =  get_func_call_params_info(func_call);
-		bool all_are_constexpr = true;
+		bool can_monomorphize = true;
 		for(size_t j = 0; j < params_info.expr.size; ++j)
-			all_are_constexpr &= all_identifiers_are_constexpr(params_info.expr_nodes.data[j]);
-		//if(all_are_constexpr) printf("Can monomorphize: %s\n",func_name);
-		if(all_are_constexpr)
+		{
+			const char* type = get_expr_type((ASTNode*)params_info.expr_nodes.data[j]);
+			can_monomorphize &= all_identifiers_are_constexpr(params_info.expr_nodes.data[j]) || type == FIELD_STR;
+		}
+		if(can_monomorphize)
 		{
 			const int res_index = gen_monomorphized_kernel(func_name,params_info.expr,tail_node);
 			if(res_index == -1) continue;
@@ -9985,7 +10040,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   num_profiles = count_profiles();
   check_global_array_dimensions(root);
 
-  gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses);
+  gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses,get_field_dims(root));
   gen_profile_reads(root,gen_mem_accesses);
 
 
@@ -10014,6 +10069,21 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   {
           FILE* fp = fopen("fields_info.h","w");
           gen_field_info(fp);
+
+	  string_vec field_dims = get_field_dims(root);
+          fprintf(fp,"static const AcInt3Param vtxbuf_dims[NUM_ALL_FIELDS] = {");
+	  for(size_t i = 0; i < field_dims.size; ++i)
+	  {
+		  fprintf(fp,"%s,",field_dims.data[i]);
+	  }
+          fprintf(fp,"};");
+
+          fprintf(fp,"static const char* vtxbuf_dims_str[NUM_ALL_FIELDS] __attribute__((unused)) = {");
+	  for(size_t i = 0; i < field_dims.size; ++i)
+		  fprintf(fp,"\"%s\",",field_dims.data[i]);
+          fprintf(fp,"};");
+	  free_str_vec(&field_dims);
+
           fclose(fp);
 
 	  symboltable_reset();

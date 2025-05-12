@@ -63,6 +63,10 @@ elemental write(Field dst, real src)
 	write_base(dst,src)
 }
 
+elemental write(Field dst, real src, int x, int y, int z)
+{
+	write_at_point(dst,src,x,y,z)
+}
 write(Profile<X> dst, real src)
 {
 	write_profile_x(dst,src)

@@ -187,7 +187,6 @@ typedef enum AcTaskType {
     TASKTYPE_COMPUTE,
     TASKTYPE_HALOEXCHANGE,
     TASKTYPE_BOUNDCOND,
-    TASKTYPE_SYNC,
     TASKTYPE_REDUCE,
 } AcTaskType;
 
@@ -274,12 +273,13 @@ typedef struct AcTaskDefinition {
 typedef struct AcTaskGraph AcTaskGraph;
 
 #if __cplusplus
+using KernelParamsLoader = std::function<void(ParamLoadingInfo step_info)>;
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
                            Field fields_out[], const size_t num_fields_out,Profile profiles_in[],  const size_t num_profiles_in, 
 			   Profile profiles_reduce_out[], const size_t num_profiles_reduce_out, 
 			   Profile profiles_write_out[], const size_t num_profiles_write_out, 
 			   KernelReduceOutput reduce_outputs_in[], size_t num_outputs_in, KernelReduceOutput reduce_outputs_out[], size_t num_outputs_out,
-			   std::function<void(ParamLoadingInfo step_info)> loader));
+			   KernelParamsLoader loader));
 #else
 /** */
 FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
@@ -292,7 +292,7 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acCompute,(const AcKernel kernel, Field
 
 #if __cplusplus
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
-		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const std::function<void(ParamLoadingInfo step_info)>));
+		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const KernelParamsLoader));
 #else
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,void (*load_func)(ParamLoadingInfo step_info)));
@@ -300,8 +300,6 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const size_t num_fields));
 
-FUNC_DEFINE(AcTaskDefinition, acSync,());
-/** */
 FUNC_DEFINE(AcTaskGraph*, acGridGetDefaultTaskGraph,());
 
 /** */
