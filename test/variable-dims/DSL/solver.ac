@@ -1,0 +1,104 @@
+int3 AC_extended_halo = (int3){5,5,5}
+int3 AC_extended_dims = AC_mlocal + 2*AC_extended_halo
+
+dims(AC_extended_dims) Field F_EXT
+output real F_MAX
+Field F
+#include "../../../acc-runtime/stdlib/general_derivs.h"
+#include "../../../acc-runtime/stdlib/bc.h"
+Kernel
+empty_kernel()
+{
+}
+
+Kernel reduce_field(Field f)
+{
+	reduce_max(f,F_MAX)
+}
+
+BoundConds bcs
+{
+	ac_prescribed_derivative(BOUNDARY_XYZ,F,-1.0)
+	ac_prescribed_derivative(BOUNDARY_XYZ,F_EXT,-1.0)
+}
+
+Kernel add_kernel(Field f, real val)
+{
+	write(f,f+val)
+}
+
+const real AC_F_INIT = 10.0
+const real AC_F_EXT_INIT = 20.0
+
+ComputeSteps add_field_extended(bcs)
+{
+	add_kernel(F_EXT,1.0)
+}
+
+ComputeSteps add_field_normal(bcs)
+{
+	add_kernel(F,1.0)
+}
+Kernel initcond_kernel(Field f, real val)
+{
+	write(f,val)
+}
+
+Kernel kernel_copy_normal_to_extended()
+{
+	if(
+		    vertexIdx.x >= AC_extended_halo.x +NGHOST
+		&&  vertexIdx.y >= AC_extended_halo.y +NGHOST
+		&&  vertexIdx.z >= AC_extended_halo.z +NGHOST
+		&&  vertexIdx.x <  AC_nlocal_max.x + AC_extended_halo.x
+		&&  vertexIdx.y <  AC_nlocal_max.y + AC_extended_halo.y
+		&&  vertexIdx.z <  AC_nlocal_max.z + AC_extended_halo.z
+	
+	)
+	{
+		write(F_EXT,F[vertexIdx.x-AC_extended_halo.x][vertexIdx.y-AC_extended_halo.y][vertexIdx.z-AC_extended_halo.z])
+	}
+	else
+	{
+		write(F_EXT,F_EXT)
+	}
+
+}
+
+Kernel kernel_copy_extended_to_normal()
+{
+	write(F,F_EXT[vertexIdx.x+AC_extended_halo.x][vertexIdx.y+AC_extended_halo.y][vertexIdx.z+AC_extended_halo.z])
+
+}
+
+ComputeSteps copy_normal_to_extended(bcs)
+{
+	kernel_copy_normal_to_extended()
+}
+
+ComputeSteps copy_extended_to_normal(bcs)
+{
+	kernel_copy_extended_to_normal()
+}
+ComputeSteps initcond_normal(bcs)
+{
+	initcond_kernel(F,AC_F_INIT)
+}
+ComputeSteps initcond_extended(bcs)
+{
+	initcond_kernel(F_EXT,AC_F_EXT_INIT)
+}
+
+Kernel deriv(Field f)
+{
+	write(f,derx(f))
+}
+
+ComputeSteps deriv_extended(bcs)
+{
+	deriv(F_EXT)	
+}
+ComputeSteps deriv_normal(bcs)
+{
+	deriv(F)	
+}
