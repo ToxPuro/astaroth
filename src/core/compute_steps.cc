@@ -322,6 +322,47 @@ get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
 	}
 	return res;
 }
+
+std::tuple<Volume,Volume>
+get_launch_bounds_from_fields(const std::vector<Field> in_fields,  const std::vector<Field> out_fields)
+{
+	Volume start = (Volume){0,0,0};
+	Volume end   = (Volume){0,0,0};
+	const auto get_start_end = [&start,&end](const std::vector<Field> fields)
+	{
+		if(fields.size() > 0)
+		{
+			const int3 dims = get_info()[vtxbuf_dims[fields[0]]];
+			bool all_same = true;
+			for(size_t i = 1; i < fields.size(); ++i)
+			{
+				all_same &= get_info()[vtxbuf_dims[fields[i]]] == dims;
+			}
+			if(all_same && dims != get_info()[AC_mlocal])
+			{
+				start = to_volume(get_info()[AC_nmin]);
+				end   = to_volume(dims) - to_volume(get_info()[AC_nmin]);
+			}
+		}
+	};
+	if(out_fields.size() > 0) get_start_end(out_fields);
+	else if(in_fields.size() > 0) get_start_end(in_fields);
+	return {start,end};
+}
+
+void
+log_launch_bounds(FILE* stream, std::vector<Field> in_fields, std::vector<Field> out_fields)
+{
+	const auto [start,end] = get_launch_bounds_from_fields(in_fields,out_fields);
+	if(end.x > 0)
+	{
+		if(!ac_pid())
+		{
+			fprintf(stream,",{%ld,%ld,%ld}",start.x,start.y,start.z);
+			fprintf(stream,",{%ld,%ld,%ld}",end.x,end.y,end.z);
+		}
+	}
+}
 void
 log_boundcond(FILE* stream, const BoundCond bc, const AcBoundary boundary)
 {
@@ -336,6 +377,7 @@ log_boundcond(FILE* stream, const BoundCond bc, const AcBoundary boundary)
 	log_fields(bc.in);
 	if(!ac_pid()) fprintf(stream,",");
 	log_fields(bc.out);
+	log_launch_bounds(stream,bc.in,bc.out);
 	if(!ac_pid()) fprintf(stream,")\n");
 }
 std::vector<AcTaskDefinition>
@@ -351,7 +393,8 @@ acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph, const bool optimized)
 			if(bc.topological_order == i)
 			{
 				log_boundcond(stream,bc,bc.boundary);
-				res.push_back(acBoundaryCondition(bc.boundary,bc.kernel,bc.in,bc.out));
+				const auto [start,end] = get_launch_bounds_from_fields(bc.in,bc.out);
+				res.push_back(acBoundaryCondition(bc.boundary,bc.kernel,bc.in,bc.out,start,end));
 			}
 
 	if(!ac_pid()) fclose(stream);
@@ -469,8 +512,11 @@ gen_halo_exchange_and_boundconds(
 
 			if(!ac_pid()) fprintf(stream, "Halo(");
 			log_fields(output_fields);
+
+			log_launch_bounds(stream,output_fields,output_fields);
+			const auto [start,end] = get_launch_bounds_from_fields(output_fields,output_fields);
 			if(!ac_pid()) fprintf(stream, ")\n");
-			res.push_back(acHaloExchange(output_fields));
+			res.push_back(acHaloExchange(output_fields,start,end));
 			const Field one_communicated_field = output_fields[0];
 			const auto x_boundcond = !info[AC_dimension_inactive].x ? field_boundconds[one_communicated_field][0] : (BoundCond){};
 			const auto y_boundcond = !info[AC_dimension_inactive].y ? field_boundconds[one_communicated_field][2] : (BoundCond){};
@@ -484,32 +530,36 @@ gen_halo_exchange_and_boundconds(
 			const bool all_periodic = x_periodic && y_periodic && z_periodic;
 			if(all_periodic)
 			{
-					res.push_back(acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,output_fields));
+					res.push_back(acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,output_fields,start,end));
 					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XYZ,");
 					log_fields(output_fields);
+					log_launch_bounds(stream,output_fields,output_fields);
 					if(!ac_pid()) fprintf(stream,")\n");
 			}
 			else 
 			{
 				if(x_periodic)
 				{
-					res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields));
+					res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end));
 					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
 					log_fields(output_fields);
+					log_launch_bounds(stream,output_fields,output_fields);
 					if(!ac_pid()) fprintf(stream,")\n");
 				}
 				if(y_periodic)
 				{
-					res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields));
+					res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end));
 					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
 					log_fields(output_fields);
+					log_launch_bounds(stream,output_fields,output_fields);
 					if(!ac_pid()) fprintf(stream,")\n");
 				}
 				if(z_periodic)
 				{
-					res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields));
+					res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end));
 					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
 					log_fields(output_fields);
+					log_launch_bounds(stream,output_fields,output_fields);
 					if(!ac_pid()) fprintf(stream,")\n");
 				}
 		        }
@@ -587,7 +637,9 @@ gen_halo_exchange_and_boundconds(
                         	                if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
 
 						log_boundcond(stream,processed_boundcond,boundaries[boundcond]);
-						res.push_back(acBoundaryCondition(boundaries[boundcond],processed_boundcond.kernel,processed_boundcond.in,processed_boundcond.out));
+						log_launch_bounds(stream,processed_boundcond.in,processed_boundcond.out);
+						const auto [bc_start,bc_end] = get_launch_bounds_from_fields(processed_boundcond.in,processed_boundcond.out);
+						res.push_back(acBoundaryCondition(boundaries[boundcond],processed_boundcond.kernel,processed_boundcond.in,processed_boundcond.out,bc_start,bc_end));
 						for(const auto& field : processed_boundcond.out)
 							field_boundconds_processed[field][boundcond] = true;
 
@@ -1043,7 +1095,6 @@ acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 			to_volume(get_info()[AC_nmin]),
 			to_volume(get_info()[AC_nlocal_max]));
 }
-
 #include "user_constants.h"
 static AcTaskDefinition
 gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
@@ -1097,8 +1148,10 @@ gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
 #endif
 	}
 	if(!ac_pid()) fprintf(stream,"}");
+	log_launch_bounds(stream,fields.in,fields.out);
 
 	if(!ac_pid()) fprintf(stream,")\n");
-	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,call.loader);
+	const auto [start,end] = get_launch_bounds_from_fields(fields.in,fields.out);
+	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,start,end,call.loader);
 }
 #endif // AC_MPI_ENABLED

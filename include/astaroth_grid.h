@@ -266,6 +266,9 @@ typedef struct AcTaskDefinition {
     KernelReduceOutput* outputs_out;
     size_t num_outputs_out;
     AcBoundary computes_on_halos;
+    Volume start;
+    Volume end;
+    bool given_launch_bounds;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -278,12 +281,12 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel ker
                            Field fields_out[], const size_t num_fields_out,Profile profiles_in[],  const size_t num_profiles_in, 
 			   Profile profiles_reduce_out[], const size_t num_profiles_reduce_out, 
 			   Profile profiles_write_out[], const size_t num_profiles_write_out, 
-			   KernelReduceOutput reduce_outputs_in[], size_t num_outputs_in, KernelReduceOutput reduce_outputs_out[], size_t num_outputs_out,
+			   KernelReduceOutput reduce_outputs_in[], size_t num_outputs_in, KernelReduceOutput reduce_outputs_out[], size_t num_outputs_out, const Volume start, const Volume end,
 			   KernelParamsLoader loader));
 #else
 /** */
 FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out, void (*load_func)(ParamLoadingInfo step_info)));
+                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out, const Volume start, const Volume dims, void (*load_func)(ParamLoadingInfo step_info)));
 #endif
 
 /** */
@@ -293,12 +296,17 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acCompute,(const AcKernel kernel, Field
 #if __cplusplus
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const KernelParamsLoader));
+FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
+		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const KernelParamsLoader));
 #else
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,void (*load_func)(ParamLoadingInfo step_info)));
+FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
+		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,const Volume start, const Volume end, void (*load_func)(ParamLoadingInfo step_info)));
 #endif
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const size_t num_fields));
+FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const size_t num_fields, const Volume start, const Volume end));
 
 FUNC_DEFINE(AcTaskGraph*, acGridGetDefaultTaskGraph,());
 

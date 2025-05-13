@@ -140,12 +140,19 @@ AcTaskDefinition
 acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out, 
 		    Profile profiles_in[], const size_t num_profiles_in, Profile profiles_reduce_out[], const size_t num_profiles_reduce_out,
 		    Profile profiles_write_out[], const size_t num_profiles_write_out,
-                    KernelReduceOutput outputs_in[], const size_t num_outputs_in, KernelReduceOutput outputs_out[], const size_t num_outputs_out,
+                    KernelReduceOutput outputs_in[], const size_t num_outputs_in, KernelReduceOutput outputs_out[], const size_t num_outputs_out, 
+		    const Volume start, const Volume end,
 	            std::function<void(ParamLoadingInfo)> load_func)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
     task_def.kernel_enum         = kernel;
+
+    task_def.start = start;
+    task_def.end   = end;
+    task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
+	    			
+
 
     task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
@@ -182,6 +189,17 @@ acHaloExchange(Field fields[], const size_t num_fields)
     task_def.num_fields_in  = num_fields;
     task_def.fields_out = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
+
+    return task_def;
+}
+
+AcTaskDefinition
+acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end)
+{
+    AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
+    task_def.start = start;
+    task_def.end   = end;
+    task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
 
     return task_def;
 }
@@ -250,6 +268,16 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     	}
     }
     return task_def;
+}
+
+AcTaskDefinition
+acBoundaryConditionWithBounds(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const std::function<void(ParamLoadingInfo)> load_func)
+{
+	AcTaskDefinition task_def = acBoundaryCondition(boundary,kernel,fields_in,num_fields_in,fields_out,num_fields_out,load_func);
+        task_def.start = start;
+        task_def.end   = end;
+        task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
+	return task_def;
 }
 size_t
 get_compute_output_position(const int id, const size_t start, const size_t ghost, const size_t nn, const bool boundary_included)
@@ -1581,7 +1609,7 @@ void
 ReduceTask::reduce()
 {
 	const auto& reduce_outputs = input_region.memory.reduce_outputs;
-     	const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
+     	const auto nn = output_region.comp_dims;
 
 	if constexpr (NUM_PROFILES != 0)
 	{

@@ -2,7 +2,7 @@ int3 AC_extended_halo = (int3){5,5,5}
 int3 AC_extended_dims = AC_mlocal + 2*AC_extended_halo
 
 dims(AC_extended_dims) Field F_EXT
-output real F_MAX
+global output real F_EXT_SUM
 Field F
 #include "../../../acc-runtime/stdlib/general_derivs.h"
 #include "../../../acc-runtime/stdlib/bc.h"
@@ -11,10 +11,6 @@ empty_kernel()
 {
 }
 
-Kernel reduce_field(Field f)
-{
-	reduce_max(f,F_MAX)
-}
 
 BoundConds bcs
 {
@@ -128,4 +124,13 @@ ComputeSteps derivz_extended(bcs)
 ComputeSteps derivz_normal(bcs)
 {
 	derivz(F)	
+}
+Kernel reduce_field(Field f)
+{
+	reduce_sum(f,F_EXT_SUM)
+}
+ComputeSteps reduce_extended(bcs)
+{
+	reduce_field(F_EXT)	
+
 }

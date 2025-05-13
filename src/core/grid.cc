@@ -1898,7 +1898,7 @@ get_spacings()
 
 
 AcTaskGraph*
-acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_ops, const Volume start, const Volume end)
+acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_ops, const Volume start_in, const Volume end_in)
 { 
 
     // ERRCHK(grid.initialized);
@@ -1923,6 +1923,10 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 			reduce_op.num_outputs_out = op.num_outputs_out;
 			reduce_op.outputs_in      = op.outputs_out;
 			reduce_op.outputs_out     = op.outputs_out;
+
+			reduce_op.start = op.start;
+			reduce_op.end   = op.end;
+			reduce_op.given_launch_bounds = op.given_launch_bounds;
 			ops.push_back(reduce_op);
 	    }
     }
@@ -2018,13 +2022,21 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     // this array of bools keep track of that state
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset{};
     //int num_comp_tasks = 0;
-    const Volume dims = end-start;
 
 
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", ops.size());
     for (size_t i = 0; i < ops.size(); i++) {
         acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
         auto op = ops[i];
+
+        const Volume dims = 
+			    op.given_launch_bounds ?
+			    op.end-op.start :
+			    end_in-start_in;
+	const Volume start =
+				op.given_launch_bounds ?
+				op.start : start_in;
+
         op_indices.push_back(graph->all_tasks.size());
 
         if (op.task_type == TASKTYPE_BOUNDCOND && op.kernel_enum == BOUNDCOND_PERIODIC) {
