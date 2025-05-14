@@ -54,7 +54,7 @@ If you need a functioning and documented example of how to run Astaroth in stand
 
 1. Load the modules required for building: `module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda`
 1. Build with MPI support: `cmake -DMPI_ENABLED=ON ..` (see 'Building' above)
-1. Run the code interactively or with a batch job, f.ex. `srun --account=<project number> --gres=gpu:v100:4 --mem=24000 -t 00:14:59 -p gputest --ntasks-per-socket=2 -n 4 -N 1 <executable here, f.ex ./mpitest or ./benchmark 256 256 256 or ./ac_run -t>`
+1. Run the code interactively or with a batch job, f.ex. `srun --account=<project number> --gres=gpu:v100:4 --mem=24000 -t 00:14:59 -p gputest --ntasks-per-socket=2 -n 4 -N 1 <executable here, f.ex ./mpitest or ./benchmark 256 256 256 or ./ac_run --run-init-kernel randomize>`
 
 > **Note:** Assign one task per GPU when using MPI.
 

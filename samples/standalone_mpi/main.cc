@@ -781,7 +781,6 @@ print_usage(const char* name)
            " -k\n"
            " --run-init-kernel\n"
            "\tRun a kernel to initialize the mesh\n"
-           "\tThe kernel is currently hardcoded\n"
            "\n"
            " -i <initcond name>\n"
            " --init-condition <initcond name>\n"
@@ -909,7 +908,7 @@ main(int argc, char** argv)
     // parameter Just change no_argument below to required_argument or optional_argument and copy
     // the value of optarg to a filename variable in the switch
     static struct option long_options[] = {{"config", required_argument, 0, 'c'},
-                                           {"run-init-kernel", no_argument, 0, 'k'},
+                                           {"run-init-kernel", required_argument, 0, 'k'},
                                            {"init-condition", required_argument, 0, 'i'},
                                            {"from-pc-varfile", required_argument, 0, 'p'},
                                            {"from-distributed-snapshot", no_argument, 0, 'd'},
@@ -924,7 +923,7 @@ main(int argc, char** argv)
     const char* initial_mesh_procedure_param    = nullptr;
 
     int opt{};
-    while ((opt = getopt_long(argc, argv, "c:ki:pdmh", long_options, nullptr)) != -1) {
+    while ((opt = getopt_long(argc, argv, "c:k:i:pdmh", long_options, nullptr)) != -1) {
         switch (opt) {
         case 'h':
             if (pid == 0) {
@@ -1195,21 +1194,24 @@ main(int argc, char** argv)
     switch (initial_mesh_procedure) {
     case InitialMeshProcedure::InitKernel: {
         // Randomize
-        acLogFromRootProc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
         AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-	AcKernel initcond = !initial_mesh_procedure_param ? randomize : AC_NULL_KERNEL;
+	AcKernel standalone_initcond_kernel = AC_NULL_KERNEL;
 	if(initial_mesh_procedure_param)
 	{
 		for(int kernel = 0; kernel < NUM_KERNELS; ++kernel)
 			if(!strcmp(initial_mesh_procedure_param,kernel_names[kernel]))
-				initcond = AcKernel(kernel);
+				standalone_initcond_kernel = AcKernel(kernel);
 	}
-	if(initcond == AC_NULL_KERNEL)
+	if(standalone_initcond_kernel == AC_NULL_KERNEL)
 	{
 		acLogFromRootProc(pid,"Did find Kernel %s for initializing mesh!\n",initial_mesh_procedure_param);
 		exit(EXIT_FAILURE);
 	}
-        acGridLaunchKernel(STREAM_DEFAULT, initcond, dims.n0, dims.n1);
+	if(standalone_initcond_kernel == randomize)
+        	acLogFromRootProc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
+	else
+        	acLogFromRootProc(pid, "Initializing mesh with kernel %s\n",kernel_names[standalone_initcond_kernel]);
+        acGridLaunchKernel(STREAM_DEFAULT, standalone_initcond_kernel, dims.n0, dims.n1);
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
         if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
