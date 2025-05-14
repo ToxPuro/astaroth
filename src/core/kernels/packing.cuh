@@ -319,7 +319,7 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
      for (size_t i = 0; i < num_vtxbufs; ++i)
      {
 	     const int j = vtxbufs.data[i];
-    	     const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_dims[j]));
+    	     const int unpacked_idx = DEVICE_VARIABLE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked,VAL(vtxbuf_device_dims[j]));
 	     vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
 #if AC_LAGRANGIAN_GRID
              	vba.in[j][unpacked_idx] += lagrangian_correction(j, AC_COORDS, (int3){i_unpacked, j_unpacked, k_unpacked});

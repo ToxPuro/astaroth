@@ -149,34 +149,38 @@ main(int argc, char** argv)
 
             printf("Benchmark mesh dimensions: (%d, %d, %d)\n", nx, ny, nz);
 
-    	    if (test == TEST_WEAK_SCALING) {
-    	        fprintf(stdout, "Running weak scaling benchmarks.\n");
-    	        const auto decomp = acDecompose(nprocs,info);
-    	        info[AC_ngrid] = (int3){
-    	        			decomp.x*nx,
-    	        			decomp.y*ny,
-    	        			decomp.z*nz
-    	        		  };
-    	        info[AC_nlocal] = (int3){
-    	        			nx,
-    	        			ny,
-    	        			nz
-    	        		  };
-    	    }
-    	    else {
-    	        fprintf(stdout, "Running strong scaling benchmarks.\n");
-    	        const auto decomp = acDecompose(nprocs,info);
-    	        info[AC_ngrid] = (int3){
-    	        			nx,
-    	        			ny,
-    	        			nz
-    	        		  };
-    	        info[AC_nlocal] = (int3){
-    	        			nx/decomp.x,
-    	        			ny/decomp.y,
-    	        			nz/decomp.z
-    	        		  };
-    	    }
+	    if (test == TEST_WEAK_SCALING) {
+                fprintf(stdout, "Running weak scaling benchmarks.\n");
+		fflush(stdout);
+                const auto decomp = acDecompose(nprocs,info);
+                acPushToConfig(info,AC_ngrid,(int3)
+                                 {
+                                        decomp.x*nx,
+                                        decomp.y*ny,
+                                        decomp.z*nz
+                                  });
+                acPushToConfig(info,AC_nlocal,
+                                (int3){
+                                        nx,
+                                        ny,
+                                        nz
+                                  });
+            }
+            else {
+                fprintf(stdout, "Running strong scaling benchmarks.\n");
+		fflush(stdout);
+                const auto decomp = acDecompose(nprocs,info);
+                acPushToConfig(info,AC_ngrid,(int3){
+                                        nx,
+                                        ny,
+                                        nz
+                                  });
+                acPushToConfig(info,AC_nlocal, (int3){
+                                        nx/decomp.x,
+                                        ny/decomp.y,
+                                        nz/decomp.z
+                                  });
+            }
             acHostUpdateParams(&info);
         }
         else {
