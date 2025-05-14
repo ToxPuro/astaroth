@@ -26,11 +26,11 @@ Kernel add_kernel(Field f, real val)
 const real AC_F_INIT = 10.0
 const real AC_F_EXT_INIT = 20.0
 
-ComputeSteps add_field_extended(bcs)
+ComputeSteps add_field(bcs)
 {
 	add_kernel(F_EXT,1.0)
+	add_kernel(F,1.0)
 }
-
 ComputeSteps add_field_normal(bcs)
 {
 	add_kernel(F,1.0)
@@ -42,17 +42,30 @@ Kernel initcond_kernel(Field f, real val)
 
 Kernel kernel_copy_normal_to_extended()
 {
-	if(
-		    vertexIdx.x >= AC_extended_halo.x +NGHOST
-		&&  vertexIdx.y >= AC_extended_halo.y +NGHOST
-		&&  vertexIdx.z >= AC_extended_halo.z +NGHOST
-		&&  vertexIdx.x <  AC_nlocal_max.x + AC_extended_halo.x
-		&&  vertexIdx.y <  AC_nlocal_max.y + AC_extended_halo.y
-		&&  vertexIdx.z <  AC_nlocal_max.z + AC_extended_halo.z
-	
-	)
+
+	const bool inside_volume = vertexIdx.x >= AC_extended_halo.x +NGHOST &&
+	                           vertexIdx.y >= AC_extended_halo.y +NGHOST &&
+	                           vertexIdx.z >= AC_extended_halo.z +NGHOST &&
+	                           vertexIdx.x <  AC_nlocal_max.x + AC_extended_halo.x &&
+	                           vertexIdx.y <  AC_nlocal_max.y + AC_extended_halo.y &&
+	                           vertexIdx.z <  AC_nlocal_max.z + AC_extended_halo.z
+        const int3 f_indexes = inside_volume ?
+				(int3)
+				{
+					vertexIdx.x-AC_extended_halo.x,
+					vertexIdx.y-AC_extended_halo.y,
+					vertexIdx.z-AC_extended_halo.z
+				}
+				:
+				(int3)
+				{
+					NGHOST, NGHOST,NGHOST
+				}
+	//TP: The field is read with these weird indexes conditional reads based on vertex indexes do not play well with ComputeSteps
+	f_val = F[f_indexes.x][f_indexes.y][f_indexes.z]
+	if(inside_volume)
 	{
-		write(F_EXT,F[vertexIdx.x-AC_extended_halo.x][vertexIdx.y-AC_extended_halo.y][vertexIdx.z-AC_extended_halo.z])
+		write(F_EXT,f_val)
 	}
 	else
 	{
@@ -69,6 +82,9 @@ Kernel kernel_copy_extended_to_normal()
 
 ComputeSteps copy_normal_to_extended(bcs)
 {
+	initcond_kernel(F,AC_F_INIT)
+	initcond_kernel(F_EXT,AC_F_EXT_INIT)
+	add_kernel(F,10.0)
 	kernel_copy_normal_to_extended()
 }
 
@@ -76,54 +92,45 @@ ComputeSteps copy_extended_to_normal(bcs)
 {
 	kernel_copy_extended_to_normal()
 }
-ComputeSteps initcond_normal(bcs)
+ComputeSteps initcond(bcs)
 {
 	initcond_kernel(F,AC_F_INIT)
+	initcond_kernel(F_EXT,AC_F_EXT_INIT)
 }
 ComputeSteps initcond_extended(bcs)
 {
 	initcond_kernel(F_EXT,AC_F_EXT_INIT)
 }
-
-Kernel derivx(Field f)
+Kernel derivx_kernel(Field f)
 {
 	write(f,derx(f))
 }
 
-Kernel derivy(Field f)
+Kernel derivy_kernel(Field f)
 {
 	write(f,dery(f))
 }
-Kernel derivz(Field f)
+Kernel derivz_kernel(Field f)
 {
 	write(f,derz(f))
 }
 
-ComputeSteps derivx_extended(bcs)
+ComputeSteps derivx(bcs)
 {
-	derivx(F_EXT)	
-}
-ComputeSteps derivx_normal(bcs)
-{
-	derivx(F)	
+	derivx_kernel(F_EXT)	
+	derivx_kernel(F)	
 }
 
-ComputeSteps derivy_extended(bcs)
+ComputeSteps derivy(bcs)
 {
-	derivy(F_EXT)	
-}
-ComputeSteps derivy_normal(bcs)
-{
-	derivy(F)	
+	derivy_kernel(F)	
+	derivy_kernel(F_EXT)	
 }
 
-ComputeSteps derivz_extended(bcs)
+ComputeSteps derivz(bcs)
 {
-	derivz(F_EXT)	
-}
-ComputeSteps derivz_normal(bcs)
-{
-	derivz(F)	
+	derivz_kernel(F_EXT)	
+	derivz_kernel(F)	
 }
 Kernel reduce_field(Field f)
 {

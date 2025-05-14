@@ -1641,7 +1641,8 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
 	  (end.y >=  (int)vba.computational_dims.n1.y) ||
 	  (end.z >=  (int)vba.computational_dims.n1.z);
 
-  if(!on_halos && AC_MPI_ENABLED)
+  const bool parallel_autotuning = !on_halos && AC_MPI_ENABLED;
+  if(parallel_autotuning)
   {
   	const size_t portion = ceil_div(samples.size(),nprocs);
   	start_samples = portion*grid_pid;
@@ -1713,7 +1714,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         // fflush(stdout);
   }
-  best_measurement =  large_launch ? gather_best_measurement(best_measurement) : best_measurement;
+  best_measurement =  parallel_autotuning ? gather_best_measurement(best_measurement) : best_measurement;
   c.tpb = best_measurement.tpb;
   if(grid_pid == 0)
   {

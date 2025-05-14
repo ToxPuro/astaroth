@@ -470,6 +470,79 @@ check_field_boundconds(const FieldBCs field_boundconds, const std::vector<Field>
 	}
 }
 std::vector<AcTaskDefinition>
+gen_halo_exchange_and_periodic_bcs(
+		const std::vector<Field>& output_fields,
+		const FieldBCs field_boundconds,
+		FILE* stream
+		)
+{
+		const auto info = get_info();
+		std::vector<AcTaskDefinition> res{};
+		auto log_fields = [&](const auto& input_fields)
+		{
+			if(!ac_pid()) fprintf(stream,"{");
+			for(const auto& field : input_fields)
+				if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
+			if(!ac_pid()) fprintf(stream,"}");
+		};
+
+		if(!ac_pid()) fprintf(stream, "Halo(");
+		log_fields(output_fields);
+
+		log_launch_bounds(stream,output_fields,output_fields);
+		const auto [start,end] = get_launch_bounds_from_fields(output_fields,output_fields);
+		if(!ac_pid()) fprintf(stream, ")\n");
+		res.push_back(acHaloExchange(output_fields,start,end));
+		const Field one_communicated_field = output_fields[0];
+		const auto x_boundcond = !info[AC_dimension_inactive].x ? field_boundconds[one_communicated_field][0] : (BoundCond){};
+		const auto y_boundcond = !info[AC_dimension_inactive].y ? field_boundconds[one_communicated_field][2] : (BoundCond){};
+		const auto z_boundcond = !info[AC_dimension_inactive].z ? field_boundconds[one_communicated_field][4] : (BoundCond){};
+		
+		const bool x_periodic = !info[AC_dimension_inactive].x && x_boundcond.kernel == BOUNDCOND_PERIODIC;
+		const bool y_periodic = !info[AC_dimension_inactive].y && y_boundcond.kernel == BOUNDCOND_PERIODIC;
+		const bool z_periodic = !info[AC_dimension_inactive].z && z_boundcond.kernel == BOUNDCOND_PERIODIC;
+
+		//TP: for some reason specifying periodic bc as a single task gives better perf as of 8.1.2025
+		const bool all_periodic = x_periodic && y_periodic && z_periodic;
+
+		if(all_periodic)
+		{
+				res.push_back(acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XYZ,");
+				log_fields(output_fields);
+				log_launch_bounds(stream,output_fields,output_fields);
+				if(!ac_pid()) fprintf(stream,")\n");
+		}
+		else 
+		{
+			if(x_periodic)
+			{
+				res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
+				log_fields(output_fields);
+				log_launch_bounds(stream,output_fields,output_fields);
+				if(!ac_pid()) fprintf(stream,")\n");
+			}
+			if(y_periodic)
+			{
+				res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
+				log_fields(output_fields);
+				log_launch_bounds(stream,output_fields,output_fields);
+				if(!ac_pid()) fprintf(stream,")\n");
+			}
+			if(z_periodic)
+			{
+				res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
+				log_fields(output_fields);
+				log_launch_bounds(stream,output_fields,output_fields);
+				if(!ac_pid()) fprintf(stream,")\n");
+			}
+		}
+		return res;
+}
+std::vector<AcTaskDefinition>
 gen_halo_exchange_and_boundconds(
 		const std::vector<Field>& fields,
 		const std::vector<Field>& communicated_fields,
@@ -483,16 +556,9 @@ gen_halo_exchange_and_boundconds(
 			if(!vtxbuf_is_communicated[field]) fatal("%s","Internal AC bug: gen_halo_exchange_and_boundconds takes in only communicated fields!\n");
 		}
 		check_field_boundconds(field_boundconds,communicated_fields);
-		auto log_fields = [&](const auto& input_fields)
-		{
-			if(!ac_pid()) fprintf(stream,"{");
-			for(const auto& field : input_fields)
-				if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
-			if(!ac_pid()) fprintf(stream,"}");
-		};
 		std::vector<AcTaskDefinition> res{};
-		const auto info = get_info();
 		const std::vector<AcBoundary> boundaries = get_boundaries();
+	        const auto info = get_info();
 		std::array<std::vector<bool>,NUM_FIELDS>  field_boundconds_processed{};
 		std::array<std::vector<bool>,NUM_FIELDS>  field_boundconds_dependencies_included{};
 		for(size_t i = 0; i < NUM_FIELDS; ++i)
@@ -509,61 +575,29 @@ gen_halo_exchange_and_boundconds(
 		}
 		if(output_fields.size() > 0)
 		{
-
-			if(!ac_pid()) fprintf(stream, "Halo(");
-			log_fields(output_fields);
-
-			log_launch_bounds(stream,output_fields,output_fields);
-			const auto [start,end] = get_launch_bounds_from_fields(output_fields,output_fields);
-			if(!ac_pid()) fprintf(stream, ")\n");
-			res.push_back(acHaloExchange(output_fields,start,end));
-			const Field one_communicated_field = output_fields[0];
-			const auto x_boundcond = !info[AC_dimension_inactive].x ? field_boundconds[one_communicated_field][0] : (BoundCond){};
-			const auto y_boundcond = !info[AC_dimension_inactive].y ? field_boundconds[one_communicated_field][2] : (BoundCond){};
-			const auto z_boundcond = !info[AC_dimension_inactive].z ? field_boundconds[one_communicated_field][4] : (BoundCond){};
-			
-			const bool x_periodic = !info[AC_dimension_inactive].x && x_boundcond.kernel == BOUNDCOND_PERIODIC;
-			const bool y_periodic = !info[AC_dimension_inactive].y && y_boundcond.kernel == BOUNDCOND_PERIODIC;
-			const bool z_periodic = !info[AC_dimension_inactive].z && z_boundcond.kernel == BOUNDCOND_PERIODIC;
-
-			//TP: for some reason specifying periodic bc as a single task gives better perf as of 8.1.2025
-			const bool all_periodic = x_periodic && y_periodic && z_periodic;
-			if(all_periodic)
 			{
-					res.push_back(acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,output_fields,start,end));
-					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XYZ,");
-					log_fields(output_fields);
-					log_launch_bounds(stream,output_fields,output_fields);
-					if(!ac_pid()) fprintf(stream,")\n");
+				std::deque<Field> out_fields{};
+				for(auto& field : output_fields) out_fields.push_back(field);
+				while(!out_fields.empty())
+				{
+					std::vector<Field> same_dims_fields{}; 
+					same_dims_fields.push_back(out_fields.front());
+					const int3 dims = info[vtxbuf_dims[same_dims_fields[0]]];
+					out_fields.pop_front();
+					auto it = out_fields.begin();
+					while (it != out_fields.end()) {
+					    if (info[vtxbuf_dims[*it]] == dims) {
+					        same_dims_fields.push_back(std::move(*it));
+						//Erase returns the next iterator
+					        it = out_fields.erase(it);
+					    } else {
+					        ++it;
+					    }
+					}
+					const std::vector<AcTaskDefinition> halos_and_periodic = gen_halo_exchange_and_periodic_bcs(same_dims_fields,field_boundconds,stream);
+					for(auto& elem: halos_and_periodic) res.push_back(elem);
+				}
 			}
-			else 
-			{
-				if(x_periodic)
-				{
-					res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end));
-					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
-					log_fields(output_fields);
-					log_launch_bounds(stream,output_fields,output_fields);
-					if(!ac_pid()) fprintf(stream,")\n");
-				}
-				if(y_periodic)
-				{
-					res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end));
-					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
-					log_fields(output_fields);
-					log_launch_bounds(stream,output_fields,output_fields);
-					if(!ac_pid()) fprintf(stream,")\n");
-				}
-				if(z_periodic)
-				{
-					res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end));
-					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
-					log_fields(output_fields);
-					log_launch_bounds(stream,output_fields,output_fields);
-					if(!ac_pid()) fprintf(stream,")\n");
-				}
-		        }
-
 			for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
                                 for(const auto& field : fields)
 				{
@@ -571,6 +605,8 @@ gen_halo_exchange_and_boundconds(
                                         field_boundconds_processed[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
                                         field_boundconds_dependencies_included[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
 				}
+
+
 			//TP: it can be that for the next compute steps only A needs to be updated on the boundaries but to update A on the boundaries
 			//One has to first update B on the boundary even though B is not actually used in the domain
 			std::array<std::vector<Field>,6> field_bcs_called{};
@@ -637,7 +673,6 @@ gen_halo_exchange_and_boundconds(
                         	                if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
 
 						log_boundcond(stream,processed_boundcond,boundaries[boundcond]);
-						log_launch_bounds(stream,processed_boundcond.in,processed_boundcond.out);
 						const auto [bc_start,bc_end] = get_launch_bounds_from_fields(processed_boundcond.in,processed_boundcond.out);
 						res.push_back(acBoundaryCondition(boundaries[boundcond],processed_boundcond.kernel,processed_boundcond.in,processed_boundcond.out,bc_start,bc_end));
 						for(const auto& field : processed_boundcond.out)
@@ -661,7 +696,8 @@ compute_next_level_set(T1& dst, const T2& kernel_calls, T3& field_written_to,con
 	std::array<bool,NUM_FIELDS> field_consumed{};
 	std::fill(field_consumed.begin(), field_consumed.end(),false);
 	std::fill(field_written_to.begin(), field_written_to.end(),false);
-	std::array<bool,NUM_PROFILES> profile_consumed{};
+	//TP: padded since cray compiler does not like zero sized arrays when debug flags are on
+	std::array<bool,NUM_PROFILES+1> profile_consumed{};
 	std::fill(profile_consumed.begin(), profile_consumed.end(),false);
 	for(size_t i = 0; i < kernel_calls.size(); ++i)
 	{

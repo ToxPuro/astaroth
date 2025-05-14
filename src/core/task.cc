@@ -502,6 +502,9 @@ Region::overlaps(const Region* other) const
 AcBool3
 Region::geometry_overlaps(const Region* other) const
 {
+    //TP: We are conservative in cases where the computational dimensions differ since then normal geometry overlap rule do not really make sense.
+    //    So if the dims differ we say the geometry always overlaps
+    if(this->comp_dims != other->comp_dims) return (AcBool3){true,true,true};
     return 
     (AcBool3){
 	   (this->position.x < other->position.x + other->dims.x) &&

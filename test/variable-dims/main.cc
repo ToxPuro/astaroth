@@ -89,8 +89,7 @@ main(int argc, char* argv[])
 
     acGridInit(info);
     const auto extended_dims = acGetMeshDims(acGridGetLocalMeshInfo(),F_EXT);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_normal),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_extended),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
 
     auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     auto IDX = [](const int x, const int y, const int z, const Field f)
@@ -99,8 +98,7 @@ main(int argc, char* argv[])
     };
 
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(add_field_normal),1);
-    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(add_field),1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -119,11 +117,6 @@ main(int argc, char* argv[])
     }
 
     dims = acGetMeshDims(acGridGetLocalMeshInfo(),F_EXT);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(add_field_extended),1);
-    acGridSynchronizeStream(STREAM_ALL);
-    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
-    acGridSynchronizeStream(STREAM_ALL);
-
     int f_ext_correct = 1;
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
     {
@@ -138,8 +131,6 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_extended),1);
-    acGridSynchronizeStream(STREAM_ALL);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(copy_normal_to_extended),1);
     acGridSynchronizeStream(STREAM_ALL);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
@@ -153,8 +144,8 @@ main(int argc, char* argv[])
 	{
 		if(i >= info[AC_extended_halo].x+ dims.n0.x && j >= info[AC_extended_halo].y+ dims.n0.y && k >= info[AC_extended_halo].z + dims.n0.z && i < dims.n1.x-info[AC_extended_halo].x && j < dims.n1.y-info[AC_extended_halo].y && k < dims.n1.z-info[AC_extended_halo].z)
 		{
-			const bool local_correct = candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)] == AC_F_INIT+1.0;
-			if(!local_correct) fprintf(stderr,"Inside F --> F_EXT Wrong at %ld,%ld,%ld: %14e\n",i,j,k,candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)]);
+			const bool local_correct = candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)] == AC_F_INIT+10.0;
+			if(!local_correct) fprintf(stderr,"Inside F --> F_EXT Wrong at %ld,%ld,%ld: %14e,%14e\n",i,j,k,AC_F_INIT+10.0,candidate.vertex_buffer[F_EXT][IDX(i,j,k,F_EXT)]);
 			f_ext_correct &= local_correct;
 		}
 		else
@@ -179,8 +170,8 @@ main(int argc, char* argv[])
 
     const Volume launch_start = to_volume(info[AC_nmin]);
     const Volume launch_end = launch_dims + launch_start;
+
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(add_field_normal , launch_start, launch_end),1);
-    acGridSynchronizeStream(STREAM_ALL);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -192,22 +183,18 @@ main(int argc, char* argv[])
       {
     	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
 	{
-		bool local_correct = candidate.vertex_buffer[F][IDX(i,j,k,F)] == AC_F_INIT+2.0;
+		bool local_correct = candidate.vertex_buffer[F][IDX(i,j,k,F)] == AC_F_INIT+11.0;
 		if(i >= launch_end.x || j >= launch_end.y || k >= launch_end.z)
 		{
-			//TP: this is zero instead of 2 because of the buffer swapping
 			local_correct = candidate.vertex_buffer[F][IDX(i,j,k,F)] == 0.0;
 		}
-		if(!local_correct) fprintf(stderr,"F left side/rigth side Wrong at %ld,%ld,%ld: %14e\n",i,j,k,candidate.vertex_buffer[F][IDX(i,j,k,F)]);
+		if(!local_correct) fprintf(stderr,"F left side/right side Wrong at %ld,%ld,%ld: %14e\n",i,j,k,candidate.vertex_buffer[F][IDX(i,j,k,F)]);
 		f_correct &= local_correct;
 	}
       }
     }
 
-    //const auto extended_dims = acGetMeshDims(acGridGetLocalMeshInfo(),F_EXT);
-    acGridSynchronizeStream(STREAM_ALL);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(copy_extended_to_normal),1);
-    acGridSynchronizeStream(STREAM_ALL);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -216,16 +203,15 @@ main(int argc, char* argv[])
       {
     	for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
 	{
-		const bool local_correct = candidate.vertex_buffer[F][IDX(i,j,k,F)] == AC_F_INIT + 1.0;
+		const bool local_correct = candidate.vertex_buffer[F][IDX(i,j,k,F)] == AC_F_INIT + 10.0;
 		if(!local_correct) fprintf(stderr,"F Wrong at %ld,%ld,%ld: %14e\n",i,j,k,candidate.vertex_buffer[F][IDX(i,j,k,F)]);
 		f_correct &= local_correct;
 	}
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_normal),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivx_normal),1);
-    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivx),1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -244,9 +230,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_normal),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivy_normal),1);
-    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivy),1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -265,9 +250,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_normal),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivz_normal),1);
-    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivz),1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -289,10 +273,8 @@ main(int argc, char* argv[])
 
     dims = extended_dims;
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_extended),1);
-    acGridSynchronizeStream(STREAM_ALL);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivx_extended),1);
-    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivx),1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -317,10 +299,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_extended),1);
-    acGridSynchronizeStream(STREAM_ALL);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivy_extended),1);
-    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivy),1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -345,10 +325,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_extended),1);
-    acGridSynchronizeStream(STREAM_ALL);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivz_extended),1);
-    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivz),1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -373,10 +351,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond_extended),1);
-    acGridSynchronizeStream(STREAM_ALL);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(reduce_extended),1);
-    acGridSynchronizeStream(STREAM_ALL);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     const AcReal sum = acDeviceGetOutput(acGridGetDevice(),F_EXT_SUM);

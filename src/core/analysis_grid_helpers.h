@@ -135,13 +135,14 @@ kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
 	return true;
 }
 
-static UNUSED std::vector<std::array<AcBoundary,NUM_PROFILES>>
+//TP: padded since cray compiler does not like zero sized arrays when debug flags are on
+static UNUSED std::vector<std::array<AcBoundary,NUM_PROFILES+1>>
 compute_kernel_call_computes_profile_across_halos(const std::vector<AcKernel>& calls)
 {
-	std::vector<std::array<AcBoundary,NUM_PROFILES>> res{};
+	std::vector<std::array<AcBoundary,NUM_PROFILES+1>> res{};
 	for(size_t i = 0; i  < calls.size(); ++i)
 	{
-		std::array<AcBoundary,NUM_PROFILES> computes_profile_across_halos{};
+		std::array<AcBoundary,NUM_PROFILES+1> computes_profile_across_halos{};
 		for(int prof = 0; prof < NUM_PROFILES; ++prof) computes_profile_across_halos[prof] = BOUNDARY_NONE;
 		res.push_back(computes_profile_across_halos);
 	}
