@@ -8,7 +8,8 @@ Astaroth is licenced under the terms of the GNU General Public Licence, version 
 (see [LICENCE.txt](LICENCE.md)). For contributing guidelines,
 see [Contributing](CONTRIBUTING.md).
 
-
+## Getting started
+* For a hello world example for physical simulations see `samples/advection-example`
 ## System Requirements
 * An NVIDIA GPU with support for compute capability 3.0 or higher (Kepler architecture or newer)
 

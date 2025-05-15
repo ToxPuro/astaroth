@@ -1,15 +1,50 @@
 
-#include "../../../acc-runtime/stdlib/math"
-#include "../../../acc-runtime/stdlib/derivs.h"
-#include "../../../acc-runtime/stdlib/operators.h"
-#include "../../../acc-runtime/stdlib/grid"
+//  In general DSL development of Astaroth is designed around modular and general include files.
+//  When adding new DSL code the first thing to think about is the code general and modular enough to be added to the standard library.
+//  If so any addtions are the standard library are much appreciated!!
+//  Here we include the general math functions, Finite difference derivative operators, differential operators that use them and functions related to the grid
+#include "../../../acc-runtime/stdlib/math"  //Used by operators
+#include "../../../acc-runtime/stdlib/derivs.h" //Used by operators. By default sixth-order Finite difference discretization in space
+#include "../../../acc-runtime/stdlib/operators.h" //gradient,laplace,jacobian etc.
+#include "../../../acc-runtime/stdlib/grid" //grid_position
+
+//Field correspond to the discretized physical fields so the 3d subdomain grid points
+//The main operation you use them for is updating at the current grid point and in stencil operations (remember that reading at the current grid point is a stencil operation)
 Field C
-real3 velocity = (real3){1.0,0.0,0.0}
+
+//Variables: globaly declared variables can be given default values as here but one can also give the values at runtime via the configuration files for example.
+//global variables live both on the host and on the device
+//On the device they live in fast cache and on the host they live in info objects: expanded in main.cc
+
+//real3 is a 3d vector with all components being real
+real3 velocity = (real3){1.0,0.0,0.0} 
+//real is by default double but can be configured to be single precision if so wished
 real v_abs_max = max(fabs(velocity.x), max(fabs(velocity.y), fabs(velocity.z)))
 
+//Kernels are the main entry point to the DSL.
+//By default all functions defined inside the DSL are only callable inside the DSL. But Kernels can be launched via the Astaroth API functions.
+//The kernels follow a streaming model where one can envisage three nested loops around the kernel going over all the vertex points.
+//In the DSL the current 3d point corresponds to vertexIdx, but often, as is here, the dependency on the current point is implicit.
 Kernel euler_update_kernel(real dt)
 {
-	write(C,C + dt*dot(velocity,gradient(C)))
+	//gradient is now a function which takes in a Field object and returns the calculated gradient at the current vertexIdx
+	rhs  = dot(velocity,gradient(C))
+
+	//Here Field + real means to add the value of the value of the Field at the current vertexIdx to the real
+	new_value = C + dt*rhs
+	//If more explicit syntax is prefered it is equivalent to: new_value = value(C) + dt*rhs
+
+	//The write function updates the 3d Field object at the current vertexIdx
+	//Updating means writing to the **out** buffer of C. 
+	//All Fields have two buffers: **in** and **out**. In is used for reading values and out is used for writing the new values
+	//Astaroth automatically keeps track of these buffers for you but it is good to know about them.
+	write(C,new_value)
+	//It is equivalent to the following functional DSL
+	//C[vertexIdx.x][vertexIdx.y][vertexIdx.z] = C[vertexIdx.x][vertexIdx.y][vertexIdx.z] + dt*rhs_update
+
+	//But whenever the dependency on the current vertex is recommended to be kept implicit due to performance and safety, less likely to have bugs, reasons.
+	//For example with the write function it semantically means to update the Field at all vertex points, since the Kernel has the implicit loop over grid points.
+	//Explicit indexing can have the same behaviour but is not guaranteed
 }
 
 
@@ -19,6 +54,8 @@ Kernel initial_condition_kernel()
 	write(C,initial_amplitude*sin(grid_position().x))
 }
 
+//BoundConds means the boundary conditions to be used at the 6 boundaries of the mesh.
+//Here we have one of the simplest example with the grid being periodic in all directions.
 BoundConds bcs
 {
 	periodic(BOUNDARY_XYZ)
@@ -27,6 +64,9 @@ BoundConds bcs
 real AC_cdt = 0.05
 real AC_dt = AC_cdt*(AC_dsmin/v_abs_max)
 
+//ComputeSteps are a sequence of kernel invocations (steps of computation). 
+//These steps are launched from the host. 
+//Astaroth keeps track of all of the communication (halo exchanges) and invocation of boundary conditions needed to calculate the stencil operations (derivatives).
 ComputeSteps
 euler_update(bcs)
 {
@@ -39,5 +79,6 @@ initial_condition(bcs)
 	initial_condition_kernel()
 }
 
+//Sometimes it is useful to define variables which are not used on the device but only via the info objects
 real AC_max_time = 2*AC_REAL_PI
 int AC_slice_steps = 100
