@@ -353,7 +353,7 @@ as_int64_t_array(const size_t count, const size_t* a, int64_t* b)
 }
 
 int
-acGetPid(const int3 pid_input, const AcDecompositionInfo info)
+acGetHierarchicalPid(const int3 pid_input, const AcDecompositionInfo info)
 {
     const size_t ndims   = info.ndims;
     const size_t nlayers = info.nlayers;
@@ -389,7 +389,7 @@ acGetPid(const int3 pid_input, const AcDecompositionInfo info)
 }
 
 int3
-acGetPid3D(const int i, const AcDecompositionInfo info)
+acGetHierarchicalPid3D(const int i, const AcDecompositionInfo info)
 {
     const size_t ndims   = info.ndims;
     const size_t nlayers = info.nlayers;
@@ -578,7 +578,7 @@ int
 hierarchical_getPid(const int3 pid3D, const uint3_64 /* decomp */)
 {
     ERRCHK_ALWAYS(initialized == true);
-    return acGetPid(pid3D, g_decomposition_info);
+    return acGetHierarchicalPid(pid3D, g_decomposition_info);
 }
 
 
@@ -586,7 +586,7 @@ int3
 hierarchical_getPid3D(const uint64_t pid, const uint3_64 /* decomp*/)
 {
     ERRCHK_ALWAYS(initialized == true);
-    return acGetPid3D(pid, g_decomposition_info);
+    return acGetHierarchicalPid3D(pid, g_decomposition_info);
 }
 
 
@@ -704,4 +704,9 @@ acDecompose(const uint64_t target, const AcMeshInfo info)
 {
 	if(info[AC_decompose_strategy] == AC_DECOMPOSE_STRATEGY_EXTERNAL) return info[AC_domain_decomposition];
 	return (int3)decompose(target,info[AC_decompose_strategy]);
+}
+extern "C" int3
+acGetPid3D(const uint64_t pid, const int3 decomp, const AcMeshInfo info)
+{
+	return getPid3D(pid,decomp,info[AC_proc_mapping_strategy]);
 }

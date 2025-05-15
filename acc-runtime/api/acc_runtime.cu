@@ -524,6 +524,9 @@ acGetRealScratchpadSize(const size_t i)
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*VAL(AC_mlocal).x + (k)*VAL(AC_mlocal_products).xy)
 
+#define DEVICE_VARIABLE_VTXBUF_IDX(i, j, k,dims)                                             \
+  ((i) + dims.x*((j) + (k)*dims.y))
+
 #define LOCAL_COMPDOMAIN_IDX(coord) \
 	((coord.x) + (coord.y) * VAL(AC_nlocal).x + (coord.z) * VAL(AC_nlocal_products).xy)
 
@@ -657,12 +660,12 @@ freeCompressible(void* ptr, const size_t requested_bytes)
 #endif
 
 AcResult
-acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t counts)
+acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const AcMeshDims* dims)
 {
   // Set pba.in data to all-nan and pba.out to 0
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),counts), (AcReal)NAN);
-    acKernelFlush(stream, pba->out[i], prof_count(Profile(i),counts), (AcReal)0);
+    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),dims[i].m1), (AcReal)NAN);
+    acKernelFlush(stream, pba->out[i], prof_count(Profile(i),dims[i].m1), (AcReal)0);
   }
   return AC_SUCCESS;
 }
@@ -719,26 +722,26 @@ device_resize(void** dst,const size_t old_bytes,const size_t new_bytes)
 
 
 ProfileBufferArray
-acPBACreate(const size3_t counts)
+acPBACreate(const AcMeshDims* dims)
 {
   ProfileBufferArray pba{};
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    const size_t bytes = prof_size(Profile(i),counts)*sizeof(AcReal);
+    const size_t bytes = prof_size(Profile(i),dims[i].m1)*sizeof(AcReal);
     device_malloc(&pba.in[i],  bytes);
     device_malloc(&pba.out[i], bytes);
     //pba.out[i] = pba.in[i];
   }
 
-  acPBAReset(0, &pba, counts);
+  acPBAReset(0, &pba, dims);
   ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
   return pba;
 }
 
 void
-acPBADestroy(ProfileBufferArray* pba, const size3_t counts)
+acPBADestroy(ProfileBufferArray* pba, const AcMeshDims* dims)
 {
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    const size_t bytes = prof_size(Profile(i),counts)*sizeof(AcReal);
+    const size_t bytes = prof_size(Profile(i),dims[i].m1)*sizeof(AcReal);
     device_free(&pba->in[i],  bytes);
     device_free(&pba->out[i], bytes);
     pba->in[i]  = NULL;
@@ -749,17 +752,16 @@ acPBADestroy(ProfileBufferArray* pba, const size3_t counts)
 AcResult
 acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
-  const size_t count = vba->bytes / sizeof(vba->on_device.in[0][0]);
 
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
     ERRCHK_ALWAYS(vba->on_device.in[i]);
     ERRCHK_ALWAYS(vba->on_device.out[i]);
-    acKernelFlush(stream, vba->on_device.in[i], count, (AcReal)NAN);
-    acKernelFlush(stream, vba->on_device.out[i], count, (AcReal)0.0);
+    acKernelFlush(stream, vba->on_device.in[i], vba->counts[i], (AcReal)NAN);
+    acKernelFlush(stream, vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
   }
   memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBAReset(stream, &vba->on_device.profiles, vba->dims.m1);
+  acPBAReset(stream, &vba->on_device.profiles, vba->profile_dims);
   return AC_SUCCESS;
 }
 
@@ -801,21 +803,6 @@ struct allocate_arrays
 	}
 };
 
-
-size3_t
-buffer_dims(const AcMeshInfo config)
-{
-	#include "user_builtin_non_scalar_constants.h"
-	auto mm = config[AC_mlocal];
-	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
-}
-size3_t
-subdomain_size(const AcMeshInfo config)
-{
-	#include "user_builtin_non_scalar_constants.h"
-	auto mm = config[AC_nlocal];
-	return (size3_t){as_size_t(mm.x),as_size_t(mm.y),as_size_t(mm.z)};
-}
 
 #if AC_USE_HIP
 #include <hipcub/hipcub.hpp>
@@ -907,7 +894,7 @@ size_t
 get_profile_reduce_scratchpad_size(const int profile, const VertexBufferArray vba)
 {
 	if(!reduced_profiles[profile]) return 0;
-	const auto dims = acGetProfileReduceScratchPadDims(profile,vba.dims);
+	const auto dims = acGetProfileReduceScratchPadDims(profile,vba.profile_dims[profile]);
 	return dims.x*dims.y*dims.z*sizeof(AcReal);
 }
 
@@ -939,7 +926,7 @@ init_scratchpads(VertexBufferArray* vba)
 	    else
 	    {
 		    const Profile prof = (Profile)(i-NUM_REAL_OUTPUTS);
-		    const auto dims = acGetProfileReduceScratchPadDims(prof,vba->dims);
+		    const auto dims = acGetProfileReduceScratchPadDims(prof,vba->profile_dims[prof]);
 		    vba->profile_reduce_buffers[prof].src = 
 		    {
 			    d_reduce_scratchpads_real[i],
@@ -1016,6 +1003,32 @@ acGetMeshDims(const AcMeshInfo info)
    };
 }
 
+static inline AcMeshDims
+acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+   #include "user_builtin_non_scalar_constants.h"
+   const Volume n0 = to_volume(info[AC_nmin]);
+   const Volume m1 = to_volume(info[vtxbuf_dims[vtxbuf]]);
+   const Volume n1 = m1-n0;
+   const Volume m0 = (Volume){0, 0, 0};
+   const Volume nn = m1-n0*2;
+   const Volume reduction_tile = (Volume)
+   {
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
+	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
+   };
+
+   return (AcMeshDims){
+       .n0 = n0,
+       .n1 = n1,
+       .m0 = m0,
+       .m1 = m1,
+       .nn = nn,
+       .reduction_tile = reduction_tile,
+   };
+}
+
 AcReal* vba_in_buff = NULL;
 AcReal* vba_out_buff = NULL;
 
@@ -1031,45 +1044,66 @@ acVBACreate(const AcMeshInfo config)
   max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
   VertexBufferArray vba;
   vba.on_device.block_factor = config[AC_thread_block_loop_factors];
-  vba.dims = acGetMeshDims(config);
-  vba.dims.nn = subdomain_size(config);
-  size_t count = vba.dims.m1.x*vba.dims.m1.y*vba.dims.m1.z;
-  size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
-  vba.bytes          = bytes;
-  int num_of_auxiliary_vtxbufs = 0;
-  for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
-  	num_of_auxiliary_vtxbufs += vtxbuf_is_auxiliary[i];
-  
-  const size_t in_bytes =  bytes*NUM_VTXBUF_HANDLES;
-  const size_t out_bytes = bytes*(NUM_VTXBUF_HANDLES-num_of_auxiliary_vtxbufs);
+
+  vba.computational_dims = acGetMeshDims(config);
+
+  size_t in_bytes  = 0;
+  size_t out_bytes = 0;
+  for(int i = 0; i  < NUM_FIELDS; ++i)
+  {
+  	vba.dims[i]    = acGetMeshDims(config,Field(i));
+  	size_t count = vba.dims[i].m1.x*vba.dims[i].m1.y*vba.dims[i].m1.z;
+  	size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
+  	vba.counts[i]         = count;
+  	vba.bytes[i]          = bytes;
+	in_bytes  += vba.bytes[i];
+	if(vtxbuf_is_auxiliary[i]) continue;
+	out_bytes += vba.bytes[i];
+  }
+  for(int p = 0; p < NUM_PROFILES; ++p)
+  {
+	  vba.profile_dims[p] = acGetMeshDims(config);
+  	  vba.profile_counts[p] = vba.profile_dims[p].m1.x*vba.profile_dims[p].m1.y*vba.profile_dims[p].m1.z;
+  }
+
   ERRCHK_ALWAYS(vba_in_buff == NULL);
   ERRCHK_ALWAYS(vba_out_buff == NULL);
   device_malloc((void**)&vba_in_buff,in_bytes);
   device_malloc((void**)&vba_out_buff,out_bytes);
 
   size_t out_offset = 0;
+  size_t in_offset = 0;
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    vba.on_device.in[i] = vba_in_buff + count*i;
+    vba.on_device.in[i] = vba_in_buff + in_offset;
+    ERRCHK_ALWAYS(vba.on_device.in[i] != NULL);
+    in_offset += vba.counts[i];
     //device_malloc((void**) &vba.on_device.out[i],bytes);
     if (vtxbuf_is_auxiliary[i])
     {
       vba.on_device.out[i] = vba.on_device.in[i];
+      ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
     }else{
       vba.on_device.out[i] = (vba_out_buff + out_offset);
-      out_offset += count;
+      out_offset += vba.counts[i];
+      if(vba.on_device.out[i] == NULL)
+      {
+         fprintf(stderr,"In bytes %zu; Out bytes: %zu\n",in_bytes,out_bytes);	
+	 fflush(stderr);
+       	 ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
+      }
     }
   }
 
+  //TP: deprecated for now
   //Allocate workbuffers
-  for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
-    device_malloc((void**)&vba.on_device.w[i],bytes);
+  //for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
+  //  device_malloc((void**)&vba.on_device.w[i],bytes);
 
 
   AcArrayTypes::run<allocate_arrays>(config);
 
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  vba.on_device.profiles = acPBACreate(vba.dims.m1);
-  vba.profile_count = vba.dims.m1.z;
+  vba.on_device.profiles = acPBACreate(vba.profile_dims);
   init_scratchpads(&vba);
 
   acVBAReset(0, &vba);
@@ -1185,17 +1219,18 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
   //TP: does not work for compressible memory TODO: fix it if needed
   device_free(&(vba_in_buff), 0);
   device_free(&(vba_out_buff), 0);
+  //TP: Deprecated for now
   //Free workbuffers 
-  for (int i = 0; i < NUM_WORK_BUFFERS; ++i) 
-    device_free(&(vba->on_device.w[i]), vba->bytes);
+  //for (int i = 0; i < NUM_WORK_BUFFERS; ++i) 
+  //  device_free(&(vba->on_device.w[i]), vba->bytes);
 
   //Free arrays
   AcArrayTypes::run<free_arrays>(config);
   // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBADestroy(&vba->on_device.profiles,(size3_t){vba->dims.m1.x,vba->dims.m1.y,vba->dims.m1.z});
-  vba->profile_count = 0;
-  vba->bytes = 0;
-  memset(&vba->dims,0,sizeof(vba->dims));
+  acPBADestroy(&vba->on_device.profiles,vba->profile_dims);
+  memset(vba->profile_dims,0,NUM_PROFILES*sizeof(vba->profile_dims[0]));
+  memset(vba->bytes,0,NUM_ALL_FIELDS*sizeof(size_t));
+  memset(vba->dims,0,NUM_ALL_FIELDS*sizeof(vba->dims[0]));
 }
 
 
@@ -1598,15 +1633,16 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   size_t end_samples{};
 
   const bool on_halos =
-	  (start.x < (int)vba.dims.n0.x) ||
-	  (start.y < (int)vba.dims.n0.y) ||
-	  (start.z < (int)vba.dims.n0.z) ||
+	  (start.x < (int)vba.computational_dims.n0.x) ||
+	  (start.y < (int)vba.computational_dims.n0.y) ||
+	  (start.z < (int)vba.computational_dims.n0.z) ||
                           
-	  (end.x >=  (int)vba.dims.n1.x) ||
-	  (end.y >=  (int)vba.dims.n1.y) ||
-	  (end.z >=  (int)vba.dims.n1.z);
+	  (end.x >=  (int)vba.computational_dims.n1.x) ||
+	  (end.y >=  (int)vba.computational_dims.n1.y) ||
+	  (end.z >=  (int)vba.computational_dims.n1.z);
 
-  if(!on_halos && AC_MPI_ENABLED)
+  const bool parallel_autotuning = !on_halos && AC_MPI_ENABLED;
+  if(parallel_autotuning)
   {
   	const size_t portion = ceil_div(samples.size(),nprocs);
   	start_samples = portion*grid_pid;
@@ -1678,7 +1714,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         // fflush(stdout);
   }
-  best_measurement =  large_launch ? gather_best_measurement(best_measurement) : best_measurement;
+  best_measurement =  parallel_autotuning ? gather_best_measurement(best_measurement) : best_measurement;
   c.tpb = best_measurement.tpb;
   if(grid_pid == 0)
   {

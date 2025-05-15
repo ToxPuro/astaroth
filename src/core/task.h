@@ -93,6 +93,7 @@ typedef struct
 struct Region {
     Volume position;
     Volume dims;
+    Volume comp_dims;
     size_t volume;
 
     RegionFamily family;
@@ -125,7 +126,7 @@ struct Region {
     Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary computes_on_boundary, Volume position_, Volume dims_, const RegionMemoryInputParams);
     Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, const RegionMemoryInputParams);
     Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_);
-    Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_, RegionFamily family_);
+    Region(Volume position_, Volume dims_, Volume comp_dims_, int tag_, const RegionMemory mem_, RegionFamily family_);
 
     Region translate(int3 translation);
     bool overlaps(const Region* other) const;
@@ -314,13 +315,6 @@ typedef class HaloExchangeTask : public Task {
     bool isHaloExchangeTask();
 } HaloExchangeTask;
 
-typedef class SyncTask : public Task {
-  public:
-    SyncTask(AcTaskDefinition op, int order_, Volume nn, Device device_,
-             std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
-    void advance(const TraceFile* trace_file);
-    bool test();
-} SyncTask;
 
 
 enum class BoundaryConditionState { Waiting = Task::wait_state, Running };

@@ -100,6 +100,7 @@ The same applies for `Field3` and for arrays of them (`Field[]` and `Field3[]`).
 
 ```
 Field ux, uy, uz // Three scalar fields `ux`, `uy`, and `uz`
+dims(AC_user_chosen_dimensions) Field different_sized_field // Field which has as dimensions the int3 AC_user_chosen_dimensions
 const Field3 uu  = Field3(ux, uy, uz) // A vector field `uu` consisting of components `ux`, `uy`, and `uz`
 field_val   = value(ux)   // Gets the value of ux from the input buffer at the current vertex
 field3_val  = value(uu)   // Gets the value of ux,uy,uz from the input buffers at the current vertex
@@ -215,6 +216,8 @@ By default the same as dconst, but with RUNTIME_COMPILATION=ON they will be effe
 The implicit qualifier for `Fields` if no qualifiers are defined, their halos are updated. 
 * `auxiliary`
 `Fields` where the input and output buffers are the same (e.g. no stencil operations and writes in the same kernel).
+* `dims`
+Qualifier to give explicit dimensions to a`Field`. Without the qualifiers the behavior is equivalent to giving `AC_mlocal` as the dimensions. Se earlier code snippet for syntax.
 
 > Note: one can combine these to have communicated auxiliary `Fields`, without `communicated`, `auxiliary` `Fields` are not communicated.
 
@@ -655,17 +658,20 @@ const Field3 field_vecs = {field_vecs_0,field_vecs_1,fields_vecs_2}
 
 
 ### Reductions
-This is still an experimental feature that only works if MPI is enabled and which still possibly changes in the future.
-
-The reduction results make sense only if the kernel is called at each vertex point of the domain.
+For reductions the kernel has to be invoked at each vertex point of the domain.
 ```
 output real max_derux
-Field ux
+Field ux,f
 Profile<X> X_PROFILE
 Kernel reduce_kernel()
 {
 	reduce_max(true,derx(ux),max_derux) //scalar reduction
     reduce_sum(true,ux,X_PROFILE) //Reduction along y and z resulting in array that is x-dependent.
+}
+Kernel read_output()
+{
+    write(ux,max_derux) //One can read directly the results of reductions in the DSL. The value of max_derux in this kernel would be the result of the reduction in the previous kernel.
+    write(f,X_PROFILE)   //Will read the reduced value in the X_PROFILE at index vertexIdx.x
 }
 ```
 
@@ -674,7 +680,7 @@ Kernel reduce_kernel()
 	* The output value to which to store the reduced value
 
 After executing the kernels reductions are finalized by the taskgraph behind the scenes.
-One can access the reduced value on the DSL similar to other varibles. 
+One can access the reduced value on the DSL similar to other varibles as in the example above.
 
 The reduced scalar values can be accessed with `acDeviceGetOutput` or for `Profiles` with the corresponding API functions.
 
@@ -719,11 +725,12 @@ bc_sym_z(Field field, bool bottom)
 
 The `ComputeSteps` construct is used to declare a sequence of (possibly dependent) kernel invocations in the DSL,
 from which a `TaskGraph` is produced. 
-The kernels are analysed to infer when halo exchanges and evaluations of boundary conditions are needed.
+The kernels are analysed to infer input and output fields, when halo exchanges and evaluations of boundary conditions are needed and in case `Fields` of non-standard size are used the starting and ending indexes of the corresponding 3d loops of the kernel launches.
 So in other words: you specify the boundary conditions and Astaroth makes sure that they are applied as needed in order to evaluate the stencils.
 
-Dependencies between invocations are based on the needed `Fields` for the kernel and the `Fields` updated inside it.
-E.g. if kernel_call_1 would update `A` and kernel_call_2 would read `A`, kernel_call_2 is only called after kernel_call_1 has updated `A`.
+Dependencies between invocations are based on the needed `Fields` and reduction outputs for the kernel and the `Fields` updated and reduction outputs generated inside it.
+E.g. if kernel_call_1 would update `A` and kernel_call_2 would read `A`, kernel_call_2 is only called after kernel_call_1 has updated `A`. 
+And similary if kernel_call_1 would reduce `S` and kernel_call_2 would read it, kernel_call_2 is only called after kernel_call_1 has produced `S`.
 ```
 input real ac_input_val
 ComputeSteps rhs(boundconds)
@@ -741,7 +748,6 @@ In case required boundary conditions are not declared, the compilation will fail
 You can access the generated `TaskGraph` with `acGetDSLTaskGraph`.
 
 ### 2D-setups
-This is still an experimental feature and not all other features like reductions have been tested with this.
 By setting `2D=ON` one can build Astaroth specifically for a two-dimensional setup.
 Currently the missing dimension is always the z-dimension. The main difference between setting `AC_nzgrid=1` and an explicit two-dimensional setup is that in the latter no halo regions are allocated in the z-dimension, which is an considerable memory saving.
 `Stencils` work the same as usual, expect when declaring them one uses only the x and y -offsets.

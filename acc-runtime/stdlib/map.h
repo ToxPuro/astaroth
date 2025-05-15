@@ -38,20 +38,20 @@ ac_map_exp(real3 v)
 }
 utility Kernel AC_MAP_VTXBUF(Field src, real[] dst)
 {
-	const int3 dims = end-start;
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = ac_map_get_value(src)
+	const int3 launch_dims = end-start;
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = ac_map_get_value(src)
 }
 utility Kernel AC_MAP_VTXBUF_SQUARE(Field src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_get_value(src)
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = val*val
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = val*val
 }
 utility Kernel AC_MAP_VTXBUF_EXP_SQUARE(Field src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_get_value(src)
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = exp(val)*exp(val)
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = exp(val)*exp(val)
 }
 #ifdef AC_INTEGRATION_ENABLED
 
@@ -85,74 +85,74 @@ gaussian_window()
 }
 utility Kernel AC_MAP_VTXBUF_RADIAL_WINDOW(Field src, real[] dst)
 {
-	const int3 dims = end-start;
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = radial_window()*ac_map_get_value(src)
+	const int3 launch_dims = end-start;
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = radial_window()*ac_map_get_value(src)
 }
 utility Kernel AC_MAP_VTXBUF_GAUSSIAN_WINDOW(Field src, real[] dst)
 {
-	const int3 dims = end-start;
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = gaussian_window()*ac_map_get_value(src)
+	const int3 launch_dims = end-start;
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = gaussian_window()*ac_map_get_value(src)
 }
 #endif
 utility Kernel AC_MAP_VTXBUF3_NORM(Field3 src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_get_value(src);
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = ac_map_norm(val);
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = ac_map_norm(val);
 }
 utility Kernel AC_MAP_VTXBUF3_SQUARE(Field3 src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_get_value(src);
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = ac_map_inner_product(val);
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = ac_map_inner_product(val);
 }
 utility Kernel AC_MAP_VTXBUF3_EXP_SQUARE(Field3 src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_exp(ac_map_get_value(src));
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = ac_map_inner_product(val);
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = ac_map_inner_product(val);
 }
 #ifdef AC_INTEGRATION_ENABLED
 utility Kernel AC_MAP_VTXBUF3_NORM_RADIAL_WINDOW(Field3 src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_get_value(src);
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = radial_window()*ac_map_norm(val);
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = radial_window()*ac_map_norm(val);
 }
 utility Kernel AC_MAP_VTXBUF3_NORM_GAUSSIAN_WINDOW(Field3 src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_get_value(src);
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = gaussian_window()*ac_map_norm(val);
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = gaussian_window()*ac_map_norm(val);
 }
 #endif
 utility Kernel AC_MAP_VTXBUF4_ALFVEN_NORM(Field4 src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_get_value(src);
 	norm_val  = ac_map_norm((real3){val.x,val.y,val.z});
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = norm_val/sqrt(exp(val.w));
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = norm_val/sqrt(exp(val.w));
 }
 utility Kernel AC_MAP_VTXBUF4_ALFVEN_SQUARE(Field4 src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_get_value(src);
 	inner_product_val = ac_map_inner_product((real3){val.x,val.y,val.z});
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = inner_product_val/exp(val.w);
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = inner_product_val/exp(val.w);
 }
 #ifdef AC_INTEGRATION_ENABLED
 utility Kernel AC_MAP_VTXBUF4_ALFVEN_NORM_RADIAL_WINDOW(Field4 src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_get_value(src);
 	norm_val  = ac_map_norm((real3){val.x,val.y,val.z});
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = radial_window()*(norm_val/sqrt(exp(val.w)));
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = radial_window()*(norm_val/sqrt(exp(val.w)));
 }
 utility Kernel AC_MAP_VTXBUF4_ALFVEN_SQUARE_RADIAL_WINDOW(Field4 src, real[] dst)
 {
-	const int3 dims = end-start;
+	const int3 launch_dims = end-start;
 	val = ac_map_get_value(src);
 	inner_product_val = ac_map_inner_product((real3){val.x,val.y,val.z});
-	dst[tid.x + tid.y*dims.x + tid.z*dims.x*dims.y] = radial_window()*(inner_product_val/exp(val.w));
+	dst[tid.x + tid.y*launch_dims.x + tid.z*launch_dims.x*launch_dims.y] = radial_window()*(inner_product_val/exp(val.w));
 }
 #endif

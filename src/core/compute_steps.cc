@@ -69,12 +69,12 @@ typedef struct
 KernelFields
 get_kernel_fields(const AcKernel kernel)
 {
-		const KernelAnalysisInfo info = get_kernel_analysis_info();
+		const auto info = get_kernel_analysis_info();
 		KernelFields res{};
 		for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
 		{
-			if(info.read_fields[kernel][i]             || info.field_has_stencil_op[kernel][i] || kernel == BOUNDCOND_PERIODIC)    res.in.push_back((Field)i);
-			if(info.written_fields[kernel][i]          || kernel == BOUNDCOND_PERIODIC)    res.out.push_back((Field)i);
+			if(info[kernel].read_fields[i]             || info[kernel].field_has_stencil_op[i] || kernel == BOUNDCOND_PERIODIC)    res.in.push_back((Field)i);
+			if(info[kernel].written_fields[i]          || kernel == BOUNDCOND_PERIODIC)    res.out.push_back((Field)i);
 		}
 		return res;
 }
@@ -102,28 +102,28 @@ typedef struct
 KernelProfiles
 get_kernel_profiles(const AcKernel kernel)
 {
-		const KernelAnalysisInfo info = get_kernel_analysis_info();
+		const auto info = get_kernel_analysis_info();
 		KernelProfiles res{};
 		for(int i = 0; i < NUM_PROFILES; ++i)
 		{
-			if(info.read_profiles[kernel][i] || info.profile_has_stencil_op[kernel][i])       res.in.push_back((Profile)i);
-			if(info.reduced_profiles[kernel][i])    res.reduce_out.push_back((Profile)i);
-			if(info.written_profiles[kernel][i])    res.write_out.push_back((Profile)i);
+			if(info[kernel].read_profiles[i] || info[kernel].profile_has_stencil_op[i])       res.in.push_back((Profile)i);
+			if(info[kernel].reduced_profiles[i])    res.reduce_out.push_back((Profile)i);
+			if(info[kernel].written_profiles[i])    res.write_out.push_back((Profile)i);
 		}
 		return res;
 }
 KernelReduceOutputs
 get_kernel_reduce_outputs(const AcKernel kernel)
 {
-	const KernelAnalysisInfo info = get_kernel_analysis_info();
+	const auto info = get_kernel_analysis_info();
 	KernelReduceOutputs res{};
-	for(size_t i = 0; i < info.n_reduce_outputs[kernel]; ++i)
+	for(size_t i = 0; i < info[kernel].n_reduce_outputs; ++i)
 	{
-		res.out.push_back(info.reduce_outputs[kernel][i]);
+		res.out.push_back(info[kernel].reduce_outputs[i]);
 	}
-	for(size_t i = 0; i < info.n_reduce_inputs[kernel]; ++i)
+	for(size_t i = 0; i < info[kernel].n_reduce_inputs; ++i)
 	{
-		res.in.push_back(info.reduce_inputs[kernel][i]);
+		res.in.push_back(info[kernel].reduce_inputs[i]);
 	}
 	return res;
 }
@@ -257,12 +257,13 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs)
 	}
 	return false;
 }
-std::function<void(ParamLoadingInfo step_info)>
+KernelParamsLoader
 get_loader(const int graph, const int call_index)
 {
 	#include "user_loaders.h"
 	return  DSLTaskGraphKernelLoaders[graph][call_index];
 }
+
 
 std::vector<AcKernel>
 get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_ones)
@@ -321,6 +322,47 @@ get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
 	}
 	return res;
 }
+
+std::tuple<Volume,Volume>
+get_launch_bounds_from_fields(const std::vector<Field> in_fields,  const std::vector<Field> out_fields)
+{
+	Volume start = (Volume){0,0,0};
+	Volume end   = (Volume){0,0,0};
+	const auto get_start_end = [&start,&end](const std::vector<Field> fields)
+	{
+		if(fields.size() > 0)
+		{
+			const int3 dims = get_info()[vtxbuf_dims[fields[0]]];
+			bool all_same = true;
+			for(size_t i = 1; i < fields.size(); ++i)
+			{
+				all_same &= get_info()[vtxbuf_dims[fields[i]]] == dims;
+			}
+			if(all_same && dims != get_info()[AC_mlocal])
+			{
+				start = to_volume(get_info()[AC_nmin]);
+				end   = to_volume(dims) - to_volume(get_info()[AC_nmin]);
+			}
+		}
+	};
+	if(out_fields.size() > 0) get_start_end(out_fields);
+	else if(in_fields.size() > 0) get_start_end(in_fields);
+	return {start,end};
+}
+
+void
+log_launch_bounds(FILE* stream, std::vector<Field> in_fields, std::vector<Field> out_fields)
+{
+	const auto [start,end] = get_launch_bounds_from_fields(in_fields,out_fields);
+	if(end.x > 0)
+	{
+		if(!ac_pid())
+		{
+			fprintf(stream,",{%ld,%ld,%ld}",start.x,start.y,start.z);
+			fprintf(stream,",{%ld,%ld,%ld}",end.x,end.y,end.z);
+		}
+	}
+}
 void
 log_boundcond(FILE* stream, const BoundCond bc, const AcBoundary boundary)
 {
@@ -335,6 +377,7 @@ log_boundcond(FILE* stream, const BoundCond bc, const AcBoundary boundary)
 	log_fields(bc.in);
 	if(!ac_pid()) fprintf(stream,",");
 	log_fields(bc.out);
+	log_launch_bounds(stream,bc.in,bc.out);
 	if(!ac_pid()) fprintf(stream,")\n");
 }
 std::vector<AcTaskDefinition>
@@ -350,7 +393,8 @@ acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph, const bool optimized)
 			if(bc.topological_order == i)
 			{
 				log_boundcond(stream,bc,bc.boundary);
-				res.push_back(acBoundaryCondition(bc.boundary,bc.kernel,bc.in,bc.out));
+				const auto [start,end] = get_launch_bounds_from_fields(bc.in,bc.out);
+				res.push_back(acBoundaryCondition(bc.boundary,bc.kernel,bc.in,bc.out,start,end));
 			}
 
 	if(!ac_pid()) fclose(stream);
@@ -426,6 +470,79 @@ check_field_boundconds(const FieldBCs field_boundconds, const std::vector<Field>
 	}
 }
 std::vector<AcTaskDefinition>
+gen_halo_exchange_and_periodic_bcs(
+		const std::vector<Field>& output_fields,
+		const FieldBCs field_boundconds,
+		FILE* stream
+		)
+{
+		const auto info = get_info();
+		std::vector<AcTaskDefinition> res{};
+		auto log_fields = [&](const auto& input_fields)
+		{
+			if(!ac_pid()) fprintf(stream,"{");
+			for(const auto& field : input_fields)
+				if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
+			if(!ac_pid()) fprintf(stream,"}");
+		};
+
+		if(!ac_pid()) fprintf(stream, "Halo(");
+		log_fields(output_fields);
+
+		log_launch_bounds(stream,output_fields,output_fields);
+		const auto [start,end] = get_launch_bounds_from_fields(output_fields,output_fields);
+		if(!ac_pid()) fprintf(stream, ")\n");
+		res.push_back(acHaloExchange(output_fields,start,end));
+		const Field one_communicated_field = output_fields[0];
+		const auto x_boundcond = !info[AC_dimension_inactive].x ? field_boundconds[one_communicated_field][0] : (BoundCond){};
+		const auto y_boundcond = !info[AC_dimension_inactive].y ? field_boundconds[one_communicated_field][2] : (BoundCond){};
+		const auto z_boundcond = !info[AC_dimension_inactive].z ? field_boundconds[one_communicated_field][4] : (BoundCond){};
+		
+		const bool x_periodic = !info[AC_dimension_inactive].x && x_boundcond.kernel == BOUNDCOND_PERIODIC;
+		const bool y_periodic = !info[AC_dimension_inactive].y && y_boundcond.kernel == BOUNDCOND_PERIODIC;
+		const bool z_periodic = !info[AC_dimension_inactive].z && z_boundcond.kernel == BOUNDCOND_PERIODIC;
+
+		//TP: for some reason specifying periodic bc as a single task gives better perf as of 8.1.2025
+		const bool all_periodic = x_periodic && y_periodic && z_periodic;
+
+		if(all_periodic)
+		{
+				res.push_back(acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XYZ,");
+				log_fields(output_fields);
+				log_launch_bounds(stream,output_fields,output_fields);
+				if(!ac_pid()) fprintf(stream,")\n");
+		}
+		else 
+		{
+			if(x_periodic)
+			{
+				res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
+				log_fields(output_fields);
+				log_launch_bounds(stream,output_fields,output_fields);
+				if(!ac_pid()) fprintf(stream,")\n");
+			}
+			if(y_periodic)
+			{
+				res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
+				log_fields(output_fields);
+				log_launch_bounds(stream,output_fields,output_fields);
+				if(!ac_pid()) fprintf(stream,")\n");
+			}
+			if(z_periodic)
+			{
+				res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
+				log_fields(output_fields);
+				log_launch_bounds(stream,output_fields,output_fields);
+				if(!ac_pid()) fprintf(stream,")\n");
+			}
+		}
+		return res;
+}
+std::vector<AcTaskDefinition>
 gen_halo_exchange_and_boundconds(
 		const std::vector<Field>& fields,
 		const std::vector<Field>& communicated_fields,
@@ -439,16 +556,9 @@ gen_halo_exchange_and_boundconds(
 			if(!vtxbuf_is_communicated[field]) fatal("%s","Internal AC bug: gen_halo_exchange_and_boundconds takes in only communicated fields!\n");
 		}
 		check_field_boundconds(field_boundconds,communicated_fields);
-		auto log_fields = [&](const auto& input_fields)
-		{
-			if(!ac_pid()) fprintf(stream,"{");
-			for(const auto& field : input_fields)
-				if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
-			if(!ac_pid()) fprintf(stream,"}");
-		};
 		std::vector<AcTaskDefinition> res{};
-		const auto info = get_info();
 		const std::vector<AcBoundary> boundaries = get_boundaries();
+	        const auto info = get_info();
 		std::array<std::vector<bool>,NUM_FIELDS>  field_boundconds_processed{};
 		std::array<std::vector<bool>,NUM_FIELDS>  field_boundconds_dependencies_included{};
 		for(size_t i = 0; i < NUM_FIELDS; ++i)
@@ -465,54 +575,29 @@ gen_halo_exchange_and_boundconds(
 		}
 		if(output_fields.size() > 0)
 		{
-
-			if(!ac_pid()) fprintf(stream, "Halo(");
-			log_fields(output_fields);
-			if(!ac_pid()) fprintf(stream, ")\n");
-			res.push_back(acHaloExchange(output_fields));
-			const Field one_communicated_field = output_fields[0];
-			const auto x_boundcond = !info[AC_dimension_inactive].x ? field_boundconds[one_communicated_field][0] : (BoundCond){};
-			const auto y_boundcond = !info[AC_dimension_inactive].y ? field_boundconds[one_communicated_field][2] : (BoundCond){};
-			const auto z_boundcond = !info[AC_dimension_inactive].z ? field_boundconds[one_communicated_field][4] : (BoundCond){};
-			
-			const bool x_periodic = !info[AC_dimension_inactive].x && x_boundcond.kernel == BOUNDCOND_PERIODIC;
-			const bool y_periodic = !info[AC_dimension_inactive].y && y_boundcond.kernel == BOUNDCOND_PERIODIC;
-			const bool z_periodic = !info[AC_dimension_inactive].z && z_boundcond.kernel == BOUNDCOND_PERIODIC;
-
-			//TP: for some reason specifying periodic bc as a single task gives better perf as of 8.1.2025
-			const bool all_periodic = x_periodic && y_periodic && z_periodic;
-			if(all_periodic)
 			{
-					res.push_back(acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,output_fields));
-					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XYZ,");
-					log_fields(output_fields);
-					if(!ac_pid()) fprintf(stream,")\n");
+				std::deque<Field> out_fields{};
+				for(auto& field : output_fields) out_fields.push_back(field);
+				while(!out_fields.empty())
+				{
+					std::vector<Field> same_dims_fields{}; 
+					same_dims_fields.push_back(out_fields.front());
+					const int3 dims = info[vtxbuf_dims[same_dims_fields[0]]];
+					out_fields.pop_front();
+					auto it = out_fields.begin();
+					while (it != out_fields.end()) {
+					    if (info[vtxbuf_dims[*it]] == dims) {
+					        same_dims_fields.push_back(std::move(*it));
+						//Erase returns the next iterator
+					        it = out_fields.erase(it);
+					    } else {
+					        ++it;
+					    }
+					}
+					const std::vector<AcTaskDefinition> halos_and_periodic = gen_halo_exchange_and_periodic_bcs(same_dims_fields,field_boundconds,stream);
+					for(auto& elem: halos_and_periodic) res.push_back(elem);
+				}
 			}
-			else 
-			{
-				if(x_periodic)
-				{
-					res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields));
-					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
-					log_fields(output_fields);
-					if(!ac_pid()) fprintf(stream,")\n");
-				}
-				if(y_periodic)
-				{
-					res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields));
-					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
-					log_fields(output_fields);
-					if(!ac_pid()) fprintf(stream,")\n");
-				}
-				if(z_periodic)
-				{
-					res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields));
-					if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
-					log_fields(output_fields);
-					if(!ac_pid()) fprintf(stream,")\n");
-				}
-		        }
-
 			for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
                                 for(const auto& field : fields)
 				{
@@ -520,6 +605,8 @@ gen_halo_exchange_and_boundconds(
                                         field_boundconds_processed[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
                                         field_boundconds_dependencies_included[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
 				}
+
+
 			//TP: it can be that for the next compute steps only A needs to be updated on the boundaries but to update A on the boundaries
 			//One has to first update B on the boundary even though B is not actually used in the domain
 			std::array<std::vector<Field>,6> field_bcs_called{};
@@ -586,7 +673,8 @@ gen_halo_exchange_and_boundconds(
                         	                if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
 
 						log_boundcond(stream,processed_boundcond,boundaries[boundcond]);
-						res.push_back(acBoundaryCondition(boundaries[boundcond],processed_boundcond.kernel,processed_boundcond.in,processed_boundcond.out));
+						const auto [bc_start,bc_end] = get_launch_bounds_from_fields(processed_boundcond.in,processed_boundcond.out);
+						res.push_back(acBoundaryCondition(boundaries[boundcond],processed_boundcond.kernel,processed_boundcond.in,processed_boundcond.out,bc_start,bc_end));
 						for(const auto& field : processed_boundcond.out)
 							field_boundconds_processed[field][boundcond] = true;
 
@@ -608,7 +696,8 @@ compute_next_level_set(T1& dst, const T2& kernel_calls, T3& field_written_to,con
 	std::array<bool,NUM_FIELDS> field_consumed{};
 	std::fill(field_consumed.begin(), field_consumed.end(),false);
 	std::fill(field_written_to.begin(), field_written_to.end(),false);
-	std::array<bool,NUM_PROFILES> profile_consumed{};
+	//TP: padded since cray compiler does not like zero sized arrays when debug flags are on
+	std::array<bool,NUM_PROFILES+1> profile_consumed{};
 	std::fill(profile_consumed.begin(), profile_consumed.end(),false);
 	for(size_t i = 0; i < kernel_calls.size(); ++i)
 	{
@@ -618,18 +707,18 @@ compute_next_level_set(T1& dst, const T2& kernel_calls, T3& field_written_to,con
 		  bool can_compute = true;
 		  for(size_t j = 0; j < NUM_FIELDS; ++j)
 		  {
-			const bool field_accessed = info.read_fields[kernel_index][j] || info.field_has_stencil_op[kernel_index][j];
+			const bool field_accessed = info[kernel_index].read_fields[j] || info[kernel_index].field_has_stencil_op[j];
 		  	can_compute &= !(field_consumed[j] && field_accessed);
-		  	field_consumed[j] |= info.written_fields[kernel_index][j];
+		  	field_consumed[j] |= info[kernel_index].written_fields[j];
 		  }
 		  for(int j = 0; j < NUM_PROFILES; ++j)
 		  {
-			const bool profile_accessed = info.read_profiles[kernel_index][j] || info.profile_has_stencil_op[kernel_index][j];
+			const bool profile_accessed = info[kernel_index].read_profiles[j] || info[kernel_index].profile_has_stencil_op[j];
 			can_compute &= !(profile_consumed[j] && profile_accessed);
-			profile_consumed[j] |= (info.reduced_profiles[kernel_index][j] || info.written_profiles[kernel_index][j]);
+			profile_consumed[j] |= (info[kernel_index].reduced_profiles[j] || info[kernel_index].written_profiles[j]);
 		  }
 		  for(size_t j = 0; j < NUM_FIELDS; ++j)
-		  	field_written_to[j] |= (can_compute && info.written_fields[kernel_index][j]);
+		  	field_written_to[j] |= (can_compute && info[kernel_index].written_fields[j]);
 		  if(can_compute) dst[i] = true;
 		}
 	}
@@ -692,7 +781,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 				get_optimized_kernels(graph,true) :
 				DSLTaskGraphKernels[graph];
 	auto kernel_call_computes_profile_across_halos = compute_kernel_call_computes_profile_across_halos(kernel_calls);
-	const KernelAnalysisInfo info = get_kernel_analysis_info();
+	const auto info = get_kernel_analysis_info();
 	constexpr int MAX_TASKS = 100;
 	int n_level_sets = 0;
 	std::array<int,MAX_TASKS> call_level_set{};
@@ -732,8 +821,8 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 				const int k = (int)kernel_calls[i];
 				for(size_t j = 0; j < NUM_FIELDS ; ++j)
 				{
-					field_need_halo_to_be_in_sync[j] |= info.field_has_stencil_op[k][j];
-					field_need_halo_to_be_in_sync[j] |= info.read_fields[k][j] && computes_across_halos;
+					field_need_halo_to_be_in_sync[j] |= info[k].field_has_stencil_op[j];
+					field_need_halo_to_be_in_sync[j] |= info[k].read_fields[j] && computes_across_halos;
 				}
 			}
 		}
@@ -908,7 +997,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 {
 	if(is_bc_taskgraph(graph))
 		return acGetDSLBCTaskGraphOps(graph,optimized);
-	const KernelAnalysisInfo info = get_kernel_analysis_info();
+	const auto info = get_kernel_analysis_info();
 	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph],optimized);
 	std::vector<AcTaskDefinition> res{};
 	auto level_sets = get_level_sets(graph,optimized);	
@@ -985,7 +1074,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 			if(call.kernel == AC_NULL_KERNEL) continue;
 			res.push_back(gen_taskgraph_kernel_entry(call,stream));
 			for(size_t field = 0; field < NUM_FIELDS; ++field)
-				field_written_out_before[field] |= info.written_fields[call.kernel][field];
+				field_written_out_before[field] |= info[call.kernel].written_fields[field];
 
 		}
 	}
@@ -1042,7 +1131,6 @@ acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 			to_volume(get_info()[AC_nmin]),
 			to_volume(get_info()[AC_nlocal_max]));
 }
-
 #include "user_constants.h"
 static AcTaskDefinition
 gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
@@ -1096,8 +1184,10 @@ gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
 #endif
 	}
 	if(!ac_pid()) fprintf(stream,"}");
+	log_launch_bounds(stream,fields.in,fields.out);
 
 	if(!ac_pid()) fprintf(stream,")\n");
-	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,call.loader);
+	const auto [start,end] = get_launch_bounds_from_fields(fields.in,fields.out);
+	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,start,end,call.loader);
 }
 #endif // AC_MPI_ENABLED

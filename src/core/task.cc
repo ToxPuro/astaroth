@@ -140,12 +140,19 @@ AcTaskDefinition
 acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out, 
 		    Profile profiles_in[], const size_t num_profiles_in, Profile profiles_reduce_out[], const size_t num_profiles_reduce_out,
 		    Profile profiles_write_out[], const size_t num_profiles_write_out,
-                    KernelReduceOutput outputs_in[], const size_t num_outputs_in, KernelReduceOutput outputs_out[], const size_t num_outputs_out,
+                    KernelReduceOutput outputs_in[], const size_t num_outputs_in, KernelReduceOutput outputs_out[], const size_t num_outputs_out, 
+		    const Volume start, const Volume end,
 	            std::function<void(ParamLoadingInfo)> load_func)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
     task_def.kernel_enum         = kernel;
+
+    task_def.start = start;
+    task_def.end   = end;
+    task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
+	    			
+
 
     task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
@@ -172,13 +179,6 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
 
 
 
-AcTaskDefinition
-acSync()
-{
-    AcTaskDefinition task_def{};
-    task_def.task_type = TASKTYPE_SYNC;
-    return task_def;
-}
 
 AcTaskDefinition
 acHaloExchange(Field fields[], const size_t num_fields)
@@ -189,6 +189,17 @@ acHaloExchange(Field fields[], const size_t num_fields)
     task_def.num_fields_in  = num_fields;
     task_def.fields_out = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
+
+    return task_def;
+}
+
+AcTaskDefinition
+acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end)
+{
+    AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
+    task_def.start = start;
+    task_def.end   = end;
+    task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
 
     return task_def;
 }
@@ -258,26 +269,38 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     }
     return task_def;
 }
+
+AcTaskDefinition
+acBoundaryConditionWithBounds(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const std::function<void(ParamLoadingInfo)> load_func)
+{
+	AcTaskDefinition task_def = acBoundaryCondition(boundary,kernel,fields_in,num_fields_in,fields_out,num_fields_out,load_func);
+        task_def.start = start;
+        task_def.end   = end;
+        task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
+	return task_def;
+}
 size_t
 get_compute_output_position(const int id, const size_t start, const size_t ghost, const size_t nn, const bool boundary_included)
 {
-	return id == -1  ? (boundary_included ? start-ghost : start) : 
+	int res = id == -1  ? (boundary_included ? start-ghost : start) : 
 		id == 1  ? (boundary_included ? nn+start: nn+start-ghost) : 
 		(boundary_included ? start: start+ghost);
+	return as_size_t(res);
 }
 
 size_t
 get_compute_output_dim(const int id, const size_t ghost, const size_t nn, const bool boundary_included)
 {
-	return id == 0 ? 
+	int res = id == 0 ? 
 		 (boundary_included ? nn : nn - ghost*2) : 
 		 ghost;
+	return as_size_t(res);
 }
 size_t
 get_compute_input_position(const int id, const size_t start, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
 {
 	const auto output_position = get_compute_output_position(id,start,ghost,nn,boundary_included);
-	if(depends_on_boundary) return output_position - ghost;
+	if(depends_on_boundary) return as_size_t((int)output_position - (int)ghost);
 	else return output_position;
 }
 size_t
@@ -292,7 +315,7 @@ get_exchange_output_pos(const int id, const size_t start, const size_t ghost, co
 {
 	    if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
 	    if(bottom_included) return 0;
-      	    return  id == -1  ? start-ghost : id == 1 ? start+nn : start;
+      	    return  id == -1  ? as_size_t((int)start-(int)ghost) : id == 1 ? start+nn : start;
 }
 size_t
 get_exchange_input_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included)
@@ -316,6 +339,7 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
     : family(family_), tag(tag_) 
 {
     const Volume ghosts = to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
+    comp_dims = nn;
     memory.profiles = {mem_.profiles, mem_.profiles + mem_.num_profiles};
     memory.reduce_outputs  = {mem_.reduce_outputs , mem_.reduce_outputs  + mem_.num_reduce_outputs};
     memory.fields = {};
@@ -427,8 +451,8 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
       }
       
-      Region::Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_, RegionFamily family_)
-      : position(position_), dims(dims_), family(family_), tag(tag_)
+      Region::Region(Volume position_, Volume dims_, Volume comp_dims_, int tag_, const RegionMemory mem_, RegionFamily family_)
+      : position(position_), dims(dims_), comp_dims(comp_dims_), family(family_), tag(tag_)
       {
       std::vector<Field> fields{};
       switch (family) {
@@ -452,15 +476,12 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       memory.reduce_outputs  = mem_.reduce_outputs;
       }
 
-Region::Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_)
-: Region{position_, dims_, tag_, mem_, RegionFamily::None}{}
-
 
 
 Region
 Region::translate(int3 translation)
 {
-return Region(to_volume(this->position + translation), this->dims, this->tag, this->memory);
+return Region(to_volume(this->position + translation), this->dims, this->comp_dims, this->tag, this->memory,this->family);
 }
 
 
@@ -481,6 +502,9 @@ Region::overlaps(const Region* other) const
 AcBool3
 Region::geometry_overlaps(const Region* other) const
 {
+    //TP: We are conservative in cases where the computational dimensions differ since then normal geometry overlap rule do not really make sense.
+    //    So if the dims differ we say the geometry always overlaps
+    if(this->comp_dims != other->comp_dims) return (AcBool3){true,true,true};
     return 
     (AcBool3){
 	   (this->position.x < other->position.x + other->dims.x) &&
@@ -1510,42 +1534,6 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 
 
 
-SyncTask::SyncTask(AcTaskDefinition op, int order_, Volume nn, Device device_,
-                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
-	//TP: this will make tasks with larger than necessary regions in case of two dimensional setup
-	//but that does not really harm since the whole point of this task is to be a dummy that synchronizes
-    : Task(order_,
-           Region({0,0,0},(Volume){(size_t)2*NGHOST+nn.x,(size_t)2*NGHOST+nn.y,(size_t)2*NGHOST+nn.z}, 0, {}),
-           Region({0,0,0},(Volume){(size_t)2*NGHOST+nn.x,(size_t)2*NGHOST+nn.y,(size_t)2*NGHOST+nn.z}, 0, {}),
-           op, device_, swap_offset_)
-{
-
-    // Synctask is on default stream
-    {
-        stream = 0;
-    }
-    syncVBA();
-
-    name      = "SyncTask" + std::to_string(order_);
-    task_type = TASKTYPE_SYNC;
-}
-
-bool
-SyncTask::test()
-{
-    // always ready
-    return true;
-}
-
-void
-SyncTask::advance(const TraceFile* trace_file)
-{
-    //no tracing for now simply silence unused warning
-    (void)trace_file;
-    //Synchronize everything
-    acGridSynchronizeStream(STREAM_ALL);
-}
-
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
@@ -1624,7 +1612,7 @@ void
 ReduceTask::reduce()
 {
 	const auto& reduce_outputs = input_region.memory.reduce_outputs;
-     	const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
+     	const auto nn = output_region.comp_dims;
 
 	if constexpr (NUM_PROFILES != 0)
 	{
@@ -2156,8 +2144,9 @@ BoundaryConditionTask::BoundaryConditionTask(
 void
 BoundaryConditionTask::populate_boundary_region()
 {
-     const auto nn = acGetLocalNN(acDeviceGetLocalConfig(device));
      const auto ghosts = acDeviceGetLocalConfig(device)[AC_nmin];
+     const auto nn = output_region.comp_dims;
+
      if(fieldwise)
      {
      	for (auto variable : output_region.memory.fields) {
