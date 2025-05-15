@@ -91,3 +91,5 @@ intrinsic size
 intrinsic error_message
 intrinsic fatal_error_message
 intrinsic suppress_unused_warning
+intrinsic ac_is_loaded
+intrinsic ac_get_process_decomposition

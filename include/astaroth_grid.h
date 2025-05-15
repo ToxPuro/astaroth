@@ -147,10 +147,12 @@ FUNC_DEFINE(AcResult, acGridAccessMeshOnDiskSynchronous,(const VertexBufferHandl
 FUNC_DEFINE(AcResult, acGridDiskAccessLaunch,(const AccessType type));
 
 /* Asynchronous. Need to call acGridDiskAccessSync afterwards */
-FUNC_DEFINE(AcResult, acGridWriteSlicesToDiskLaunch,(const char* dir, const char* label));
+FUNC_DEFINE(AcResult, acGridWriteSlicesToDiskLaunch,(const char* dir, const int step_number, const AcReal simulation_time));
+/* Synchronous. No need to call acGridDiskAccessSync afterwards */
+FUNC_DEFINE(AcResult, acGridWriteSlicesToDiskSynchronous,(const char* dir, const int step_number, const AcReal simulation_time));
 
 /* Synchronous */
-FUNC_DEFINE(AcResult, acGridWriteSlicesToDiskCollectiveSynchronous,(const char* dir, const char* label));
+FUNC_DEFINE(AcResult, acGridWriteSlicesToDiskCollectiveSynchronous,(const char* dir, const int step_number, const AcReal simulation_time));
 
 /* Asynchronous. Need to call acGridDiskAccessSync afterwards */
 FUNC_DEFINE(AcResult, acGridWriteMeshToDiskLaunch,(const char* dir, const char* label));

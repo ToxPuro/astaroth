@@ -2940,6 +2940,8 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root)
 				fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], input_param);
 			else if(is_value_applicable_type(call_info.types.data[i]))
 				fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], input_param);
+			else if(check_symbol(NODE_VARIABLE_ID,call_info.expr.data[i],NULL,DCONST_STR))
+				fprintf(stream, "p.params -> %s.%s = acDeviceGetLocalConfig(acGridGetDevice())[%s]; \n", func_name,params_info.expr.data[i], input_param);
 			else
 				fprintf(stream, "p.params -> %s.%s = acDeviceGetInput(acGridGetDevice(),%s); \n", func_name,params_info.expr.data[i], input_param);
 			free(input_param);
@@ -4219,7 +4221,7 @@ check_for_undeclared_use_in_assignment(const ASTNode* node)
 	  {
 		  const ASTNode* func = get_parent_node(NODE_FUNCTION,node);
 		  const char* assignment = combine_all_new(get_parent_node(NODE_ASSIGNMENT,node));
-		  if(true)
+		  if(func)
 		  {
 		  	fatal(
 				"Undeclared variable or function used on the right hand side of an assignment\n"

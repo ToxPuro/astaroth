@@ -711,20 +711,6 @@ create_output_directories(void)
 static void
 write_slices(int pid, int step, const AcReal simulation_time)
 {
-   if(pid == 0)
-   {
-
-         FILE* header_file = fopen("slices_info.csv", step == 0 ? "w" : "a");
-
-         // Header only at the step zero
-         if (step == 0) {
-             fprintf(header_file,
-                     "step,t\n");
-         }
-
-         fprintf(header_file, "%d,%g\n",step,simulation_time);
-         fclose(header_file);
-    }
     debug_log_from_root_proc_with_sim_progress(pid, "write_slices: Syncing slice disk access\n");
     acGridDiskAccessSync();
     debug_log_from_root_proc_with_sim_progress(pid, "write_slices: Slice disk access synced\n");
@@ -750,12 +736,7 @@ write_slices(int pid, int step, const AcReal simulation_time)
     timer_diff_nsec(t)/1e6);
     */
 
-    // This label is redundant now that the step number is in the dirname
-    //  JP: still useful for debugging and analysis if working in a flattened dir structure
-    char label[80];
-    sprintf(label, "step_%012d", step);
-
-    acGridWriteSlicesToDiskLaunch(slice_frame_dir, label);
+    acGridWriteSlicesToDiskLaunch(slice_frame_dir, label, step, simulation_time);
     log_from_root_proc_with_sim_progress(pid, "write_slices: Non-blocking slice write operation "
                                               "started, returning\n");
 }
@@ -1379,12 +1360,6 @@ main(int argc, char** argv)
     // Set up certain periodic actions and run them for i == 0 //
     /////////////////////////////////////////////////////////////
 
-    if (pid == 0) {
-        FILE* header_file = fopen("grid_info.csv", "w");
-	fprintf(header_file,"dsx,dsy,dsz\n");
-	fprintf(header_file,"%g,%g,%g\n",info[AC_ds].x,info[AC_ds].y,info[AC_ds].z);
-	fclose(header_file);
-    }
     FILE* diag_file = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
     // TODO: should probably always check for NaN's, not just at start_step = 0

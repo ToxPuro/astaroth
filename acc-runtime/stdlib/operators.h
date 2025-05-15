@@ -88,17 +88,11 @@ elemental del6_strict(Field s) {
 	return 0.
 }
 
-elemental ugrad_upw(Field field, Field3 velo){
-
+elemental ugrad_upw(Field field, real3 velo){
         return dot(velo,gradient(field)) - dot(abs(velo),gradient_upwd(field))
-        //if (msk>0) then
-        //ugradf = ugradf+del6f_upwind
-        //else
-        //ugradf = ugradf-del6f_upwind
-        //endif
 }
 
-elemental ugrad_upw(Field3 field, Field3 velo){
+elemental ugrad_upw(Field3 field, real3 velo){
 
         return real3( dot(velo,gradient(field.x)) - dot(abs(velo),gradient_upwd(field.x)),
 		      dot(velo,gradient(field.y)) - dot(abs(velo),gradient_upwd(field.y)),

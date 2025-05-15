@@ -17,6 +17,8 @@ parser.add_argument('--dtype', type=str, default='double', help='The datatype of
 parser.add_argument('--dpi', type=int, default=150, help='Set DPI of the output images')
 parser.add_argument('--vrange', type=float, nargs=2, required=False, help='Manually set the value range of the plots as --vrange {min} {max}')
 parser.add_argument('--write-png', action=argparse.BooleanOptionalAction, help='Write slices to png images')
+parser.add_argument('--only-lines', action=argparse.BooleanOptionalAction, help='Write only x lines')
+parser.add_argument('--write-movie', action=argparse.BooleanOptionalAction, help='Write slices to gif movies')
 parser.add_argument('--write-bin', action=argparse.BooleanOptionalAction, help='Write slices to binary files')
 parser.add_argument('--spherical', action=argparse.BooleanOptionalAction, help='Plots spherical data')
 args = parser.parse_args()
@@ -40,19 +42,34 @@ if args.termcolor == "on":
 # Output directories
 output_dir = args.output
 render_dir = output_dir/'render'
+slices_render_dir = output_dir/'render/slices'
+lines_render_dir = output_dir/'render/lines'
+line_movies_render_dir = output_dir/'render/movies/lines'
+slice_movies_render_dir = output_dir/'render/movies/slices'
 binary_dir = output_dir/'binary'
 
 output_dir.mkdir(parents=True, exist_ok=True)
 if args.write_png:
     render_dir.mkdir(parents=True, exist_ok=True)
+    slices_render_dir.mkdir(parents=True,exist_ok=True)
+    lines_render_dir.mkdir(parents=True,exist_ok=True)
     import matplotlib.pyplot as plt
 if args.write_bin:
     binary_dir.mkdir(parents=True, exist_ok=True)
 
-segmented_filename_regex = re.compile(r'([^-]*)-segment-at_(\d+)_(\d+)_(\d+)-dims_(\d+)_(\d+)-step_(\d+).slice')
+if args.write_movie:
+    line_movies_render_dir.mkdir(parents=True,exist_ok=True)
+    slice_movies_render_dir.mkdir(parents=True,exist_ok=True)
 
-info = pd.read_csv("slices_info.csv",sep=",")
-grid_info = pd.read_csv("grid_info.csv",sep=',')
+segmented_filename_regex = re.compile(r'([^-]*)-segment-at_(\d+)_(\d+)_(\d+)-dims_(\d+)_(\d+)-step_(\d+).slice')
+monolithic_filename_regex = re.compile(r'([^-]*)-dims_(\d+)_(\d+)-step_(\d+).slice')
+
+info = pd.read_csv("ac_slices_info.csv",sep=",")
+grid_info = pd.read_csv("ac_grid_info.csv",sep=',')
+nxgrid  = grid_info["nxgrid"].iloc[0]
+nygrid  = grid_info["nygrid"].iloc[0]
+nzgrid  = grid_info["nzgrid"].iloc[0]
+
 dsx = grid_info["dsx"].iloc[0]
 dsy = grid_info["dsy"].iloc[0]
 dsz = grid_info["dsz"].iloc[0]
@@ -63,10 +80,11 @@ field_headers = {}
 for file_path in args.input:
     filename = pathlib.PurePath(file_path).name
     print(filename)
-    m = segmented_filename_regex.match(filename)
-    if m:
+    if segmented_filename_regex.match(filename):
+        m = segmented_filename_regex.match(filename)
         field = m.group(1)
         pos = [int(m.group(2)), int(m.group(3)), int(m.group(4))]
+        z = pos[2]
         dims = [int(m.group(5)), int(m.group(6))]
         #step = int(m.group(7))
         step = m.group(7)
@@ -75,7 +93,35 @@ for file_path in args.input:
 
         steps.setdefault(step, {})
 
-        z = pos[2]
+        #This is the slice data, this is what will be rendered
+        info_row = info[info["step"] == int(step)]
+        time  = info_row["t"].iloc[0]
+
+        steps[step].setdefault(field, {"z":z, "columns":{}, "field_name":field, "time": time, "step": step})
+
+        #Z should be the same across slice segments
+        #TODO: make z another hierarchy to allow rendering of multiple slice locations
+        old_z = steps[step][field]["z"]
+        if old_z != z:
+            print("f{RD}Error:{CLR} Slice segments for field {field} step {step} have multiple dissimilar z-values: {old_z} and {z}")
+            exit(1)
+
+        steps[step][field]["columns"].setdefault(pos[0], {})
+        steps[step][field]["columns"][pos[0]].setdefault(pos[1], {})
+        steps[step][field]["columns"][pos[0]][pos[1]] = {"dims":dims, "file_path":file_path}
+    elif monolithic_filename_regex.match(filename):
+        m = monolithic_filename_regex.match(filename)
+        field = m.group(1)
+        pos = [0,0,0]
+        dims = [int(m.group(2)), int(m.group(3))]
+        #step = int(m.group(7))
+        step = m.group(4)
+
+        field_headers.setdefault(field, {"vmin":math.inf, "vmax":-math.inf})
+
+        steps.setdefault(step, {})
+
+        z = nzgrid/2
         #This is the slice data, this is what will be rendered
         info_row = info[info["step"] == int(step)]
         time  = info_row["t"].iloc[0]
@@ -171,7 +217,7 @@ def render_slice(full_slice, field_name, time, step, z):
     print(f"Rendering {MA}{field_name:>20}{CLR} slice at step {CY}{int(step):<8}{CLR}...", end="")
     vmin = field_headers[field_name]["vmin"]
     vmax = field_headers[field_name]["vmax"]
-    if(lspherical):
+    if(args.spherical):
       r = np.linspace(0.0,1.0, full_slice.shape[1]+1)
       theta = np.linspace(0, np.pi, full_slice.shape[0]+1)
 
@@ -190,7 +236,7 @@ def render_slice(full_slice, field_name, time, step, z):
       plt.ylabel('θ')
       title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
       plt.title(f'{title_field_name}, step = {int(step)}')
-      output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
+      output_file = slices_render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
       plt.savefig(output_file, dpi=args.dpi)
       plt.clf()
     else:
@@ -202,7 +248,7 @@ def render_slice(full_slice, field_name, time, step, z):
       plt.xlabel('x')
       title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
       plt.title(f'{title_field_name}, t={time:e}, step={int(step)}')
-      output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
+      output_file = slices_render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
       print(f"Writing to {GR}{output_file}{CLR}")
       plt.savefig(output_file, dpi=args.dpi)
       plt.clf()
@@ -224,7 +270,7 @@ def plot_line1d(full_slice, field_name, time, step, z):
     plt.xlabel('x')
     plt.ylabel(title_field_name)
     plt.title(f'{title_field_name}, t = {time:e}, step={int(step)}')
-    output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.y_{y}.step_{step}.png'
+    output_file = lines_render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.y_{y}.step_{step}.png'
     print(f"Writing to {GR}{output_file}{CLR}")
     plt.savefig(output_file, dpi=args.dpi)
     plt.clf()
@@ -287,35 +333,18 @@ for vector_field, components in vector_fields.items():
         del vector_slice
            
 
+                    
+
+
 #Render remaining scalar fields
-fields = steps['0']
-analytical = fields["ANALYTICAL"]
-sph = fields["SPH_UPPER_POTENTIAL"]
-combine_slice(analytical)
-combine_slice(sph)
-plt.plot(analytical["full_slice"][160,300:], '.',label="analytical")
-plt.plot(sph["full_slice"][160,300:], '.',label="multipole expansion")
-plt.title("Analytical vs. Multipole expansion")
-plt.legend()
-plt.savefig("analytical_vs_multipole_expansion_upper.png")
-plt.clf()
-
-sph = fields["SPH_LOWER_POTENTIAL"]
-combine_slice(sph)
-plt.plot(analytical["full_slice"][160,:20], '.',label="analytical")
-plt.plot(sph["full_slice"][160,:20], '.',label="multipole expansion")
-plt.title("Analytical vs. Multipole expansion")
-plt.legend()
-plt.savefig("analytical_vs_multipole_expansion_lower.png")
-plt.clf()
-
 for step, fields in steps.items():
     for field, slice_data in fields.items():
         combine_slice(slice_data)
 
         # Render slice
         if args.write_png:
-            render_slice(**slice_data)
+            if not args.only_lines:
+                render_slice(**slice_data)
             plot_line1d(**slice_data)
 
         # Write binary
@@ -323,3 +352,14 @@ for step, fields in steps.items():
             write_binary(**slice_data)
 
         del slice_data["full_slice"]
+
+if args.write_movie:
+    import imageio.v2 as imageio
+    import glob
+    first_step = next(iter(steps))
+    for field in steps[first_step].keys():
+        print(f"Generating movie of {GR}{field}{CLR}")
+        image_files = sorted(glob.glob(str(lines_render_dir/f"{field}.*.png")))
+        images = [imageio.imread(f) for f in image_files]
+        imageio.mimsave(line_movies_render_dir/f"{field}.gif",images,fps=30,loop=0)
+

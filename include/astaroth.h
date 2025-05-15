@@ -456,6 +456,7 @@ acDecompose(const uint64_t target, const AcMeshInfo info);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronous,stream);
 	LOAD_DSYM(acGridDiskAccessLaunch,stream);
 	LOAD_DSYM(acGridWriteSlicesToDiskLaunch,stream);
+	LOAD_DSYM(acGridWriteSlicesToDiskSynchronous,stream);
 	LOAD_DSYM(acGridWriteSlicesToDiskCollectiveSynchronous,stream);
 	LOAD_DSYM(acGridWriteMeshToDiskLaunch,stream);
 	LOAD_DSYM(acGridDiskAccessSync,stream);

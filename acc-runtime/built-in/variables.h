@@ -26,10 +26,16 @@ int3 AC_nmin = (int3)
 			AC_dimension_inactive.z ? 0 : NGHOST
 		}
 
-int3 AC_nlocal
-int3 AC_mlocal = AC_nlocal + 2*AC_nmin
+run_const AcProcMappingStrategy AC_proc_mapping_strategy = AC_PROC_MAPPING_STRATEGY_MORTON
+run_const AcDecomposeStrategy   AC_decompose_strategy    = AC_DECOMPOSE_STRATEGY_MORTON
+run_const AcMPICommStrategy     AC_MPI_comm_strategy     = AC_MPI_COMM_STRATEGY_DUP_WORLD
+
+run_const int3  AC_domain_decomposition = ac_get_process_decomposition()
 int3 AC_ngrid 
 int3 AC_mgrid  = AC_ngrid + 2*AC_nmin
+int3 AC_nlocal = AC_ngrid/AC_domain_decomposition
+
+int3 AC_mlocal = AC_nlocal + 2*AC_nmin
 int3 AC_nlocal_max = AC_nlocal + AC_nmin
 int AC_nlocal_max_dim = max(AC_nlocal)
 int3 AC_ngrid_max = AC_ngrid + AC_nmin
@@ -53,13 +59,14 @@ run_const bool  AC_allow_non_periodic_bcs_with_periodic_grid = false
 run_const bool3 AC_periodic_grid
 run_const bool AC_fully_periodic_grid = AC_periodic_grid.x && AC_periodic_grid.y && AC_periodic_grid.z
 
-run_const real3 AC_first_gridpoint =  (real3){0.0,0.0,0.0}
 run_const real3 AC_len = (AC_ngrid + AC_periodic_grid - 1)*AC_ds
+run_const real3 AC_first_gridpoint =  (real3){
+					AC_periodic_grid.x*AC_ds.x*0.5,
+					AC_periodic_grid.y*AC_ds.y*0.5,
+					AC_periodic_grid.z*AC_ds.z*0.5
+				       }
 
 
-run_const AcProcMappingStrategy AC_proc_mapping_strategy = AC_PROC_MAPPING_STRATEGY_MORTON
-run_const AcDecomposeStrategy   AC_decompose_strategy    = AC_DECOMPOSE_STRATEGY_MORTON
-run_const AcMPICommStrategy     AC_MPI_comm_strategy     = AC_MPI_COMM_STRATEGY_DUP_WORLD
 #if AC_LAGRANGIAN_GRID 
 #if TWO_D == 0
 Field3 AC_COORDS
@@ -68,7 +75,6 @@ Field2 AC_COORDS
 #endif
 #endif
 
-run_const int3  AC_domain_decomposition
 run_const bool  AC_host_has_row_memory_order
 
 			
