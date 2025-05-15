@@ -30,8 +30,10 @@
 int
 main()
 {
-    // CPU alloc
-    AcMeshInfo info;
+    
+    //This is an info object that holds values for the global variables defined in the DSL
+    AcMeshInfo info = acInitInfo();
+    //This loads the values to the info object from configuration file advec.conf
     acLoadConfig("advec.conf", &info);
     //AC_ds is a real3 declaration and a entry is generated for it in the info object
     //updating that entry is the way to get the values to the device.
@@ -44,7 +46,7 @@ main()
 	    	info[AC_len].x/info[AC_ngrid].x,
 	    	info[AC_len].y/info[AC_ngrid].x,
 	    	info[AC_len].z/info[AC_ngrid].z
-	    };
+	    });
 
     //This function call is needed to get the default values of the variables as defined in the DSL
     //If you upload some values with acPushToConfig those take precedence over the default values of the DSL

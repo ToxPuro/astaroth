@@ -12,3 +12,4 @@ This is the hello world setup of Astaroth: simulating the advection of the conce
 # Learning
 * The code (DSL code in `DSL/solver.ac` and C++ code in `main.cc`) is to give a working explanation of how the computation happens with Astaroth. 
 * For a more robust solver see `samples/standalone_mpi/main.cc` and for more extensive equation setup see `acc-runtime/samples/mhd_modular/mhdsolver.ac`, which solves the ideal MHD equations.
+* For learning more about the DSL see `acc-runtime/README.md`

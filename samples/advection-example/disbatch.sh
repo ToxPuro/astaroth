@@ -1,5 +1,5 @@
-#TP: for LUMI change for your cluster
 #!/bin/bash -l
+#This is defined for LUMI change for your cluster
 #SBATCH --output=test.out
 #SBATCH --partition=dev-g  # Partition (queue) name
 #SBATCH --nodes=1 # Total number of nodes 
@@ -9,6 +9,7 @@
 #SBATCH --account=project_462000613 # Project for billing
 #SBATCH --mem=2g
 
+#This is for CUDA-aware MPI on LUMI
 export MPICH_GPU_SUPPORT_ENABLED=1
 rm -rf *slices*
 srun build/advection-example

@@ -218,6 +218,7 @@ The implicit qualifier for `Fields` if no qualifiers are defined, their halos ar
 `Fields` where the input and output buffers are the same (e.g. no stencil operations and writes in the same kernel).
 * `dims`
 Qualifier to give explicit dimensions to a`Field`. Without the qualifiers the behavior is equivalent to giving `AC_mlocal` as the dimensions. Se earlier code snippet for syntax.
+For an example using multiple sizes at the same time see the test `test/variable-dims`
 
 > Note: one can combine these to have communicated auxiliary `Fields`, without `communicated`, `auxiliary` `Fields` are not communicated.
 
@@ -685,6 +686,7 @@ One can access the reduced value on the DSL similar to other varibles as in the 
 The reduced scalar values can be accessed with `acDeviceGetOutput` or for `Profiles` with the corresponding API functions.
 
 When the result of the reduction is a `Profile` finalization is automatically included in the execution of the `TaskGraph`.
+For a simple end-to-end test see `test/use-scalar-reduce` and `test/reduce-test`
 
 ### ComputeSteps
 This feature that only works if MPI is enabled
