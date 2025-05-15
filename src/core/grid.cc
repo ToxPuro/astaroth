@@ -155,13 +155,7 @@ ac_nprocs()
 static uint3_64
 get_decomp(const AcMeshInfo global_config)
 {
-    switch(global_config[AC_decompose_strategy])
-    {
-	    case AC_DECOMPOSE_STRATEGY_EXTERNAL:
-		return static_cast<uint3_64>(global_config[AC_domain_decomposition]);
-	    default:
-		return decompose(ac_nprocs(),(AcDecomposeStrategy)global_config[AC_decompose_strategy]);
-    }
+    return uint3_64(acDecompose(ac_nprocs(), global_config));
 }
 int3
 getPid3D(const AcMeshInfo config)
@@ -312,12 +306,12 @@ acGridRandomize(void)
 static inline void UNUSED
 set_info_val(AcMeshInfo& info, const AcIntParam param, const int value)
 {
-	info[param] = value;
+	acPushToConfig(info,param,value);
 }
 static inline void UNUSED
 set_info_val(AcMeshInfo& info, const AcInt3Param param, const int3 value)
 {
-	info[param] = value;
+	acPushToConfig(info,param,value);
 }
 
 static inline void UNUSED
@@ -693,14 +687,37 @@ grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
         free(z_dim);
 	return res;
 }
+void
+gen_postprocessing_metadata()
+{
+    if (ac_pid() == 0) {
+        FILE* header_file = fopen("ac_grid_info.csv", "w");
+	fprintf(header_file,"nxgrid,nygrid,nzgrid,dsx,dsy,dsz\n");
+	fprintf(header_file,"%d,%d,%d,%g,%g,%g\n"
+			,grid.submesh.info[AC_ngrid].x,grid.submesh.info[AC_ngrid].y,grid.submesh.info[AC_ngrid].z
+			,grid.submesh.info[AC_ds].x,grid.submesh.info[AC_ds].y,grid.submesh.info[AC_ds].z
+			);
+	fclose(header_file);
+    }
+}
 
 AcResult
 acGridInitBase(const AcMesh user_mesh)
 {
+    int mpi_has_been_initialized{};
+    MPI_Initialized(&mpi_has_been_initialized);
+    if(!mpi_has_been_initialized)
+    {
+	    int provided{};
+	    MPI_Init_thread(NULL,NULL,MPI_THREAD_MULTIPLE,&provided);
+	    ERRCHK_ALWAYS(provided >= MPI_THREAD_MULTIPLE);
+    }
     const AcMeshInfo info = user_mesh.info;
     ERRCHK(!grid.initialized);
     if (!grid.mpi_initialized)
       create_astaroth_comm(info);
+
+    if(!mpi_has_been_initialized) acLogFromRootProc(ac_pid(), "acGridInit: MPI was not initialized so called MPI_Init_thread with MPI_THREAD_MULTIPLE\n");
 
     if(
 	info[AC_ngrid].x < 0 ||
@@ -830,6 +847,8 @@ acGridInitBase(const AcMesh user_mesh)
 
     fflush(stdout);
     fflush(stderr);
+
+    gen_postprocessing_metadata();
 
     return AC_SUCCESS;
 }
@@ -3317,6 +3336,24 @@ acGridDiskAccessLaunch(const AccessType type)
 }
 */
 
+void
+ac_write_slice_metadata(const int step, const AcReal simulation_time)
+{
+   if(ac_pid() == 0)
+   {
+
+         FILE* header_file = fopen("ac_slices_info.csv", step == 0 ? "w" : "a");
+
+         // Header only at the step zero
+         if (step == 0) {
+             fprintf(header_file,
+                     "step,t\n");
+         }
+
+         fprintf(header_file, "%d,%g\n",step,simulation_time);
+         fclose(header_file);
+    }
+}
 AcResult
 acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 {
@@ -3442,13 +3479,29 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 
     return AC_SUCCESS;
 }
+void
+ac_make_dir(const std::string dir)
+{
+    static std::unordered_map<std::string,bool> created_dirs{};
+    if(created_dirs.find(dir) != created_dirs.end()) return;
+    if (!ac_pid()) {
+	const std::string cmd = "mkdir -p " + dir;
+        system(cmd.c_str());
+    }
+    created_dirs[dir] = true;
+    MPI_Barrier(astaroth_comm);
+}
 
-AcResult
-acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
+static AcResult
+acGridWriteSlicesToDiskLaunchBase(const char* dir,const int step_number, const AcReal simulation_time, const bool async)
 {
     ERRCHK(grid.initialized);
     ERRCHK_ALWAYS(!running);
-    running = true;
+    running = async;
+    ac_make_dir(std::string(dir));
+    ac_write_slice_metadata(step_number,simulation_time);
+    char label[40000];
+    sprintf(label,"step_%012d",step_number);
 
     const Device device       = grid.device;
     const AcMeshInfo info     = acDeviceGetLocalConfig(device);
@@ -3597,19 +3650,41 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 #endif
         };
 
-        // write_async(host_buffer, count, device->id); // Synchronous, non-threaded
-        threads.push_back(
-            std::thread(write_async, host_buffer, count)); // Async, threaded
+	if(async)
+	{
+        	threads.push_back(
+        	    std::thread(write_async, host_buffer, count)); // Async, threaded
+	}
+	else
+	{
+        	write_async(host_buffer, count); // Synchronous, non-threaded
+	}
     }
     return AC_SUCCESS;
 }
 
 AcResult
-acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
+acGridWriteSlicesToDiskLaunch(const char* dir,const int step_number, const AcReal simulation_time)
+{
+	return acGridWriteSlicesToDiskLaunchBase(dir,step_number,simulation_time,true);
+}
+
+AcResult
+acGridWriteSlicesToDiskSynchronous(const char* dir,const int step_number, const AcReal simulation_time)
+{
+	return acGridWriteSlicesToDiskLaunchBase(dir,step_number,simulation_time,false);
+}
+
+AcResult
+acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_number, const AcReal simulation_time)
 {
     ERRCHK(grid.initialized);
     ERRCHK_ALWAYS(!running);
-    running = true;
+    ac_make_dir(std::string(dir));
+    ac_write_slice_metadata(step_number,simulation_time);
+
+    char label[40000];
+    sprintf(label,"step_%012d",step_number);
 
     const Device device       = grid.device;
     const AcMeshInfo info     = acDeviceGetLocalConfig(device);

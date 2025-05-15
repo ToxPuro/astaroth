@@ -17,6 +17,20 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
     
     AcMeshInfo& config = *config_ptr; 
     //TP: utility lambdas
+    [[maybe_unused]] auto ac_is_loaded = [&](auto param) -> bool
+    {
+	    return config.is_loaded[param];
+    };
+
+    [[maybe_unused]] auto ac_get_process_decomposition = [&]() -> int3
+    {
+#if AC_MPI_ENABLED
+        if(!acGridInitialized()) return {1,1,1};	
+	return acDecompose(ac_MPI_Comm_size(), config);
+#else
+	return {1,1,1};
+#endif
+    };
     auto push_val = [&](auto param, auto val)
     {
 	    if constexpr(

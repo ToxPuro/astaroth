@@ -1,0 +1,43 @@
+
+#include "../../../acc-runtime/stdlib/math"
+#include "../../../acc-runtime/stdlib/derivs.h"
+#include "../../../acc-runtime/stdlib/operators.h"
+#include "../../../acc-runtime/stdlib/grid"
+Field C
+real3 velocity = (real3){1.0,0.0,0.0}
+real v_abs_max = max(fabs(velocity.x), max(fabs(velocity.y), fabs(velocity.z)))
+
+Kernel euler_update_kernel(real dt)
+{
+	write(C,C + dt*dot(velocity,gradient(C)))
+}
+
+
+real initial_amplitude = 1.0
+Kernel initial_condition_kernel()
+{
+	write(C,initial_amplitude*sin(grid_position().x))
+}
+
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+real AC_cdt = 0.05
+real AC_dt = AC_cdt*(AC_dsmin/v_abs_max)
+
+ComputeSteps
+euler_update(bcs)
+{
+	euler_update_kernel(AC_dt)
+}
+
+ComputeSteps
+initial_condition(bcs)
+{
+	initial_condition_kernel()
+}
+
+real AC_max_time = 2*AC_REAL_PI
+int AC_slice_steps = 100

@@ -213,6 +213,7 @@ if (BUILD_STANDALONE AND NOT BUILD_TESTS)
 endif()
 
 if (BUILD_SAMPLES AND NOT BUILD_TESTS)
+    add_subdirectory(samples/advection-example)
     add_subdirectory(samples/ctest)
     add_subdirectory(samples/cpptest)
     #TP: we should make a wrapper functions for the CUDA calls
