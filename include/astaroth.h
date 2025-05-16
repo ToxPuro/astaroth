@@ -67,9 +67,9 @@ acVertexBufferVariableSize(const AcMeshInfo info, const VertexBufferHandle vtxbu
     const Volume mm = 
 	    (Volume)
 	    {
-	    	(size_t)info[vtxbuf_dims[vtxbuf]].x,
-	    	(size_t)info[vtxbuf_dims[vtxbuf]].y,
-	    	(size_t)info[vtxbuf_dims[vtxbuf]].z
+	    	(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].x,
+	    	(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].y,
+	    	(size_t)info.int3_params[vtxbuf_dims[vtxbuf]].z
 	    };
     return mm.x*mm.y*mm.z;
 }
@@ -220,13 +220,13 @@ FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 static inline size_t
 acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    auto mm = info[AC_mgrid];
+    const int3 mm = info[AC_mgrid];
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    auto mm = info[AC_mlocal];
+    const int3 mm = info[AC_mlocal];
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 #else
@@ -247,7 +247,7 @@ acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo in
 static inline size_t
 acVertexBufferIdxVariable(const int i, const int j, const int k, const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
-    auto mm = info[vtxbuf_dims[vtxbuf]];
+    const int3 mm = info.int3_params[vtxbuf_dims[vtxbuf]];
     return AC_INDEX_ORDER(i,j,k,mm.x,mm.y,mm.z);
 }
 

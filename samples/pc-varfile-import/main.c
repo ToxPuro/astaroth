@@ -186,7 +186,7 @@ main(void)
                                           ACCESS_WRITE);
 
     // Write slices
-    acGridWriteSlicesToDiskLaunch(job_dir, "0");
+    acGridWriteSlicesToDiskLaunch(job_dir, 0, 0.0);
     acGridDiskAccessSync();
 
     // Merge slices

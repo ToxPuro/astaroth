@@ -736,7 +736,7 @@ write_slices(int pid, int step, const AcReal simulation_time)
     timer_diff_nsec(t)/1e6);
     */
 
-    acGridWriteSlicesToDiskLaunch(slice_frame_dir, label, step, simulation_time);
+    acGridWriteSlicesToDiskLaunch(slice_frame_dir, step, simulation_time);
     log_from_root_proc_with_sim_progress(pid, "write_slices: Non-blocking slice write operation "
                                               "started, returning\n");
 }
