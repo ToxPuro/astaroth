@@ -70,3 +70,10 @@ acc-comm/tests/async_io copy.cc.backup
 scripts/genavgstencil.py
 acc-comm/benchmarks/bm_pack_old_wip_backup.cc
 acc-comm/benchmarks/bm_rank_reordering_old.cc
+acc-comm/benchmarks/bm_pack_old.cc
+acc-comm/benchmarks/bm_pack_v2.cc
+acc-comm/benchmarks/bm_plot_old.py
+acc-comm/benchmarks/bm_rank_reordering copy.cc
+acc-comm/benchmarks/bm_rank_reordering-backup.cc
+acc-comm/benchmarks/bm_rank_reordering-test.cc
+acc-comm/benchmarks/pack_strategy.h
