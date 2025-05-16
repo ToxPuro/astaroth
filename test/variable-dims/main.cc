@@ -368,24 +368,7 @@ main(int argc, char* argv[])
     MPI_Allreduce(MPI_IN_PLACE, &f_ext_correct,   1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
     {
-        char slice_frame_dir[2048];
-        sprintf(slice_frame_dir, "slices");
-        if (pid == 0) {
-            {
-                constexpr size_t cmdlen = 4096;
-                static char cmd[cmdlen];
-             
-                // Improvement suggestion: use create_directory() from <filesystem> (C++17) or mkdir() from
-                // <sys/stat.h> (POSIX)
-                snprintf(cmd, cmdlen, "mkdir -p %s", "slices");
-                system(cmd);
-            }    
-        }
-        MPI_Barrier(acGridMPIComm()); // Ensure directory is created for all procs
-        
-        char label[80];
-        sprintf(label, "step_0");
-        acGridWriteSlicesToDiskCollectiveSynchronous(slice_frame_dir, label);
+        acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
     }
 
     const bool success = f_correct && f_ext_correct;
