@@ -40,7 +40,7 @@
 
 #include <unistd.h>
 
-// #define AC_ENABLE_ASYNC_AVERAGES
+#define AC_ENABLE_ASYNC_AVERAGES
 
 // Debug runs: enable defines below for writing diagnostics synchronously
 // Production runs:
