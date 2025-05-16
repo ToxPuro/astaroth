@@ -40,7 +40,7 @@
 
 #include <unistd.h>
 
-#define AC_ENABLE_ASYNC_AVERAGES
+#define AC_ENABLE_ASYNC_AVERAGES // Better scaling
 
 // Debug runs: enable defines below for writing diagnostics synchronously
 // Production runs:
@@ -50,8 +50,11 @@
 #define AC_WRITE_SYNCHRONOUS_PROFILES
 #define AC_WRITE_SYNCHRONOUS_TIMESERIES
 #define AC_WRITE_SYNCHRONOUS_SLICES
-#define AC_DISABLE_IO
 
+#define AC_BENCHMARK_MODE
+#if defined(AC_BENCHMARK_MODE)
+#define AC_DISABLE_IO
+#endif
 // Production run: enable define below for fast, async profile IO
 // #define AC_WRITE_ASYNC_PROFILES
 
@@ -1398,6 +1401,9 @@ main(int argc, char* argv[])
         // Init Grid
         Grid grid{raw_info};
 
+#if defined(AC_BENCHMARK_MODE)
+
+        // Benchmark run
         constexpr size_t nsteps_per_sample{100};
         constexpr size_t nsamples{20};
         auto init  = [&grid] { grid.reset_init_cond(); };
@@ -1456,6 +1462,10 @@ main(int argc, char* argv[])
         cudaProfilerStart();
         print("tfm-mpi", bm::benchmark(init, bench, sync, nsamples));
         cudaProfilerStop();
+
+#else // Production run
+        grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
+#endif
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
