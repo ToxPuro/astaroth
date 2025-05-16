@@ -29,11 +29,12 @@ pipelines:
           - apt-get update
           - apt-get install -y cmake flex bison openmpi-bin libopenmpi-dev gfortran
           # Test ACC
+          - ASTAROTH=$(pwd)
           - mkdir -p acc-runtime/build
           - cd acc-runtime/build
           - cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j && cd acc
-          - ../../tests/syntaxtest.sh
-          - cd ../../../
+          - $ASTAROTH/acc-runtime/tests/tests/syntaxtest.sh
+          - cd $ASTAROTH
           - mkdir -p build && cd build
           - cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=OFF -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=OFF .. # Single precision
           - make -j
