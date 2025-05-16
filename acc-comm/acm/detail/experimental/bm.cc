@@ -9,11 +9,6 @@ std::vector<std::chrono::steady_clock::duration>
 benchmark(const std::function<void()>& init, const std::function<void()>& bench,
           const std::function<void()>& sync, const size_t nsamples)
 {
-    // Warmup
-    for (size_t i{0}; i < 10; ++i)
-        bench();
-
-    // Benchmark
     ac::timer                                        timer;
     std::vector<std::chrono::steady_clock::duration> samples;
     for (size_t i{0}; i < nsamples; ++i) {
@@ -25,6 +20,7 @@ benchmark(const std::function<void()>& init, const std::function<void()>& bench,
         sync();
         samples.push_back(timer.lap());
     }
+
     return samples;
 }
 
