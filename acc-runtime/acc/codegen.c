@@ -3656,6 +3656,7 @@ void
 get_stencil_calling_info(const ASTNode* node, string_vec* stencils_called)
 {
 	TRAVERSE_PREAMBLE_PARAMS(get_stencil_calling_info,stencils_called);
+	if(node->type == NODE_TASKGRAPH_DEF) return;
 	if(node->type & NODE_FUNCTION)
 		get_stencil_calling_info_in_func(node,&stencils_called[str_vec_get_index(calling_info.names,get_node_by_token(IDENTIFIER,node->lhs)->buffer)]);
 }
