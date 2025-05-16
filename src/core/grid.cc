@@ -3500,7 +3500,8 @@ acGridWriteSlicesToDiskLaunchBase(const char* dir,const int step_number, const A
     running = async;
     ac_make_dir(std::string(dir));
     ac_write_slice_metadata(step_number,simulation_time);
-    char label[40000];
+    constexpr size_t label_size = 20000;
+    char label[label_size];
     sprintf(label,"step_%012d",step_number);
 
     const Device device       = grid.device;
@@ -3544,7 +3545,7 @@ acGridWriteSlicesToDiskLaunchBase(const char* dir,const int step_number, const A
         if (color != MPI_UNDEFINED)
             cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
-        char filepath[4096];
+        char filepath[2*label_size];
 #if USE_DISTRIBUTED_IO
         sprintf(filepath, "%s/%s-segment-at_%ld_%ld_%d-dims_%ld_%ld-%s.slice", dir, vtxbuf_names[field],
                 global_pos_min.x, global_pos_min.y, global_z, local_nn.x, local_nn.y, label);
@@ -3683,7 +3684,8 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
     ac_make_dir(std::string(dir));
     ac_write_slice_metadata(step_number,simulation_time);
 
-    char label[40000];
+    constexpr size_t label_size = 20000;
+    char label[label_size];
     sprintf(label,"step_%012d",step_number);
 
     const Device device       = grid.device;
@@ -3725,7 +3727,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const int step_num
         if (color != MPI_UNDEFINED)
             cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
-        char filepath[4096];
+        char filepath[2*label_size];
         sprintf(filepath, "%s/%s-dims_%ld_%ld-%s.slice", dir, vtxbuf_names[field], global_nn.x,
                 global_nn.y, label);
 

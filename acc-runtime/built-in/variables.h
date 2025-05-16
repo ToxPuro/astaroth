@@ -33,7 +33,12 @@ run_const AcMPICommStrategy     AC_MPI_comm_strategy     = AC_MPI_COMM_STRATEGY_
 run_const int3  AC_domain_decomposition = ac_get_process_decomposition()
 int3 AC_ngrid 
 int3 AC_mgrid  = AC_ngrid + 2*AC_nmin
-int3 AC_nlocal = AC_ngrid/AC_domain_decomposition
+int3 AC_nlocal = (int3)
+		{
+			AC_ngrid.x/AC_domain_decomposition.x,
+			AC_ngrid.y/AC_domain_decomposition.y,
+			AC_ngrid.z/AC_domain_decomposition.z
+		}
 
 int3 AC_mlocal = AC_nlocal + 2*AC_nmin
 int3 AC_nlocal_max = AC_nlocal + AC_nmin
