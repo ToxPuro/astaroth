@@ -965,12 +965,12 @@ class Grid {
         int device_count{0};
         ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
 
-        const int device_id{original_rank % device_count};
-        // int device_id{original_rank % device_count};
-        // if (device_count == 8) { // Do manual GPU mapping for LUMI
-        //     ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
-        //     device_id = device_ids[as<size_t>(device_id)];
-        // }
+        // const int device_id{original_rank % device_count};
+        int device_id{original_rank % device_count};
+        if (device_count == 8) { // Do manual GPU mapping for LUMI
+            ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
+            device_id = device_ids[as<size_t>(device_id)];
+        }
         ERRCHK_CUDA_API(cudaSetDevice(device_id));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
@@ -1029,7 +1029,7 @@ class Grid {
         AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
         ERRCHK(get_stencil_coeffs(local_info, stencils) == 0);
         ERRCHK_AC(acDeviceLoadStencils(device, STREAM_DEFAULT, stencils));
-        ERRCHK_AC(acDevicePrintInfo(device));
+        // ERRCHK_AC(acDevicePrintInfo(device));
 
         // Forcing parameters
         ERRCHK(acHostUpdateForcingParams(&local_info) == 0);
@@ -1398,9 +1398,10 @@ main(int argc, char* argv[])
         // Init Grid
         Grid grid{raw_info};
 
-        constexpr size_t nsamples{100};
+        constexpr size_t nsteps_per_sample{100};
+        constexpr size_t nsamples{20};
         auto init  = [&grid] { grid.reset_init_cond(); };
-        auto bench = [&grid] { grid.tfm_pipeline(nsamples); };
+        auto bench = [&grid] { grid.tfm_pipeline(nsteps_per_sample); };
         auto sync  = []() {
 #if defined(ACM_DEVICE_ENABLED)
             ERRCHK_CUDA_API(cudaDeviceSynchronize());
@@ -1416,7 +1417,8 @@ main(int argc, char* argv[])
 
         std::ofstream file{filename};
         file.exceptions(~std::ios::goodbit);
-        file << "impl,lnx,lny,lnz,gnx,gny,gnz,radius,sample,nsamples,rank,nprocs,jobid,ns"
+        file << "impl,lnx,lny,lnz,gnx,gny,gnz,radius,nsteps_per_samples,sample,nsamples,rank,"
+                "nprocs,jobid,ns"
              << std::endl;
         file.close();
 
@@ -1439,6 +1441,7 @@ main(int argc, char* argv[])
                 file << acr::get(info, AC_global_ny) << ",";
                 file << acr::get(info, AC_global_nz) << ",";
                 file << acr::get_local_rr()[0] << ",";
+                file << nsteps_per_sample << ",";
                 file << i << ",";
                 file << nsamples << ",";
                 file << ac::mpi::get_rank(MPI_COMM_WORLD) << ",";
@@ -1451,7 +1454,7 @@ main(int argc, char* argv[])
         };
 
         cudaProfilerStart();
-        print("tfm-mpi", bm::benchmark(init, bench, sync, 1));
+        print("tfm-mpi", bm::benchmark(init, bench, sync, nsamples));
         cudaProfilerStop();
     }
     catch (std::exception& e) {
