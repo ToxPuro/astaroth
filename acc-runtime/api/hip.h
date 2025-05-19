@@ -66,6 +66,8 @@
 #define cudaMalloc hipMalloc
 #define cudaMallocHost hipMallocHost
 #define cudaFree hipFree
+#define cudaGetDevice hipGetDevice
+#define cudaDevAttrCooperativeLaunch hipDeviceAttributeCooperativeLaunch 
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaGetDeviceCount hipGetDeviceCount
 #define cudaDeviceGetPCIBusId hipDeviceGetPCIBusId
