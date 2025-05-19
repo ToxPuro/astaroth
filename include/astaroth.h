@@ -389,7 +389,7 @@ acHostUpdateCompParams(AcMeshInfo* config);
 
 
 
-FUNC_DEFINE(AcReal*, acHostCreateVertexBuffer,(const AcMeshInfo info));
+OVERLOADED_FUNC_DEFINE(AcReal*, acHostCreateVertexBuffer,(const AcMeshInfo info));
 FUNC_DEFINE(AcReal*, acHostCreateVertexBufferVariable,(const AcMeshInfo info, const VertexBufferHandle vtxbuf));
 FUNC_DEFINE(AcResult, acHostMeshCreateProfiles,(AcMesh* mesh));
 FUNC_DEFINE(AcResult, acHostMeshDestroyVertexBuffer,(AcReal** vtxbuf));
@@ -1077,6 +1077,7 @@ acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start
 }
 #endif
 #endif
+
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_runtime_compilation.h"
 #endif
