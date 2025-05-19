@@ -85,6 +85,7 @@ typedef struct Grid {
     bool initialized;
     Volume nn;
     std::shared_ptr<AcTaskGraph> default_tasks;
+    std::shared_ptr<AcTaskGraph> halo_exchange_tasks;
     size_t mpi_tag_space_count;
     bool mpi_initialized;
     bool vertex_buffer_copied_from_user[NUM_VTXBUF_HANDLES]{};
@@ -837,6 +838,15 @@ acGridInitBase(const AcMesh user_mesh)
     if(grid.submesh.info[AC_fully_periodic_grid])
     	gen_default_taskgraph();
 #endif
+    {
+	    std::vector<Field> all_comm_fields_vec{};
+	    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+		if(vtxbuf_is_communicated[i]) all_comm_fields_vec.push_back(Field(i));
+	    }
+	    grid.halo_exchange_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph({
+		    			acHaloExchange(all_comm_fields_vec)
+					}));
+    }
     acAnalysisLoadMeshInfo(acGridGetLocalMeshInfo());
     //Refresh log files
     if(!ac_pid())
@@ -2656,6 +2666,11 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 }
 #endif // AC_INTEGRATION_ENABLED
 
+AcResult
+acGridHaloExchange()
+{
+    return acGridExecuteTaskGraph(halo_exchange_tasks.get(), 1);
+}
 AcResult
 acGridPeriodicBoundconds(const Stream stream)
 {

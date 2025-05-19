@@ -510,6 +510,7 @@ acGetPid3D(const uint64_t pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGridStoreMesh,stream);
 	LOAD_DSYM(acGridIntegrate,stream);
 	LOAD_DSYM(acGridSwapBuffers,stream);
+	LOAD_DSYM(acGridHaloExchange,stream);
 	LOAD_DSYM(acGridPeriodicBoundconds,stream);
 	LOAD_DSYM(acGridReduceScal,stream);
 	LOAD_DSYM(acGridReduceVec,stream);

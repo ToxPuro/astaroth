@@ -115,6 +115,9 @@ AcResult acGridIntegrateNonperiodic(const Stream stream, const AcReal dt);
 */
 
 /** */
+FUNC_DEFINE(AcResult, acGridHaloExchange,(const Stream stream));
+
+/** */
 FUNC_DEFINE(AcResult, acGridPeriodicBoundconds,(const Stream stream));
 
 
