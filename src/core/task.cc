@@ -973,9 +973,10 @@ HaloMessage::HaloMessage(Volume dims, size_t num_vars, const int tag0, const int
 	    bytes *= counterpart_ranks.size();
     }
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data, bytes));
-#if !(USE_CUDA_AWARE_MPI)
-    ERRCHK_CUDA_ALWAYS(cudaMallocHost((void**)&data_pinned, bytes));
-#endif
+    if(!ac_get_info()[AC_use_cuda_aware_mpi])
+    {
+    	ERRCHK_CUDA_ALWAYS(cudaMallocHost((void**)&data_pinned, bytes));
+    }
     std::vector<MPI_Request>empty{};
     requests = empty;
     for(size_t i = 0; i < counterpart_ranks.size() ; ++i)
@@ -987,13 +988,13 @@ HaloMessage::~HaloMessage()
     MPI_Waitall(requests.size(),requests.data(), MPI_STATUSES_IGNORE);
     length = -1;
     cudaFree(data);
-#if !(USE_CUDA_AWARE_MPI)
-    cudaFree(data_pinned);
-#endif
+    if(!ac_get_info()[AC_use_cuda_aware_mpi])
+    {
+    	cudaFree(data_pinned);
+    }
     data = NULL;
 }
 
-#if !(USE_CUDA_AWARE_MPI)
 void
 HaloMessage::pin(const Device device, const cudaStream_t stream)
 {
@@ -1012,7 +1013,6 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
     pinned       = false;
     ERRCHK_CUDA(cudaMemcpyAsync(data, data_pinned, bytes, cudaMemcpyDefault, stream));
 }
-#endif
 
 // HaloMessageSwapChain
 HaloMessageSwapChain::HaloMessageSwapChain() {}
@@ -1247,9 +1247,10 @@ HaloExchangeTask::unpack()
 {
 
     auto msg = recv_buffers.get_current_buffer();
-#if !(USE_CUDA_AWARE_MPI)
-    msg->unpin(device, stream);
-#endif
+    if(!ac_get_info()[AC_use_cuda_aware_mpi])
+    {
+    	msg->unpin(device, stream);
+    }
     if(shear_periodic)
     {
 
@@ -1355,7 +1356,6 @@ HaloExchangeTask::exchangeDevice()
     sendDevice();
 }
 
-#if !(USE_CUDA_AWARE_MPI)
 void
 HaloExchangeTask::receiveHost()
 {
@@ -1394,50 +1394,58 @@ HaloExchangeTask::exchangeHost()
     receiveHost();
     sendHost();
 }
-#endif
 
 void
 HaloExchangeTask::receive()
 {
     // TODO: change these fprintfs to debug log statements at high verbosity (there will be very
     // many of these outputs)
-#if USE_CUDA_AWARE_MPI
-    if (rank == 0) {
-        // fprintf(stderr, "receiveDevice()\n");
+    if(ac_get_info()[AC_use_cuda_aware_mpi])
+    {
+      if (rank == 0) {
+          // fprintf(stderr, "receiveDevice()\n");
+      }
+      receiveDevice();
+      if (rank == 0) {
+          // fprintf(stderr, "returned from receiveDevice()\n");
+      }
     }
-    receiveDevice();
-    if (rank == 0) {
-        // fprintf(stderr, "returned from receiveDevice()\n");
+    else
+    {
+      if (rank == 0) {
+          // fprintf(stderr, "receiveHost()\n");
+      }
+      receiveHost();
+      if (rank == 0) {
+          // fprintf(stderr, "returned from receiveHost()\n");
+      }
     }
-#else
-    if (rank == 0) {
-        // fprintf(stderr, "receiveHost()\n");
-    }
-    receiveHost();
-    if (rank == 0) {
-        // fprintf(stderr, "returned from receiveHost()\n");
-    }
-#endif
 }
 
 void
 HaloExchangeTask::send()
 {
-#if USE_CUDA_AWARE_MPI
-    sendDevice();
-#else
-    sendHost();
-#endif
+    if(ac_get_info()[AC_use_cuda_aware_mpi])
+    {
+    	sendDevice();
+    }
+    else
+    {
+    	sendHost();
+    }
 }
 
 void
 HaloExchangeTask::exchange()
 {
-#if USE_CUDA_AWARE_MPI
-    exchangeDevice();
-#else
-    exchangeHost();
-#endif
+    if(ac_get_info()[AC_use_cuda_aware_mpi])
+    {
+    	exchangeDevice();
+    }
+    else
+    {
+    	exchangeHost();
+    }
 }
 
 bool

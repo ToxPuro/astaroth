@@ -240,10 +240,8 @@ typedef struct HaloMessage {
     int length;
     AcRealPacked* data;
     size_t bytes;
-#if !(USE_CUDA_AWARE_MPI)
     AcRealPacked* data_pinned;
     bool pinned = false; // Set if data was received to pinned memory
-#endif
     std::vector<MPI_Request> requests;
     int tag;
     int non_namespaced_tag;
@@ -251,10 +249,8 @@ typedef struct HaloMessage {
 
     HaloMessage(Volume dims, size_t num_vars, const int tag0, const int tag, const std::vector<int> counterpart_ranks, const HaloMessageType type);
     ~HaloMessage();
-#if !(USE_CUDA_AWARE_MPI)
     void pin(const Device device, const cudaStream_t stream);
     void unpin(const Device device, const cudaStream_t stream);
-#endif
 } HaloMessage;
 
 
@@ -304,11 +300,9 @@ typedef class HaloExchangeTask : public Task {
     void exchangeDevice();
     bool sendingToItself();
 
-#if !(USE_CUDA_AWARE_MPI)
     void sendHost();
     void receiveHost();
     void exchangeHost();
-#endif
 
     void advance(const TraceFile* trace_file);
     bool test();

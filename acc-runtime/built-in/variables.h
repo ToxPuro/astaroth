@@ -102,6 +102,8 @@ run_const bool AC_sparse_autotuning=false
 output real AC_default_real_output
 
 run_const bool AC_shear = false
+//Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory
+run_const bool AC_use_cuda_aware_mpi = true
 input real AC_shear_delta_y
 //TP: these belong here but at the moment are deprecated
 /**
