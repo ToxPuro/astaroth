@@ -1244,6 +1244,21 @@ get_num_of_warps(const dim3 bpg, const dim3 tpb)
 	return num_of_warps_per_block*num_of_blocks;
 }
 
+int
+get_current_device()
+{
+	int device{};
+	ERRCHK_CUDA_ALWAYS(cudaGetDevice(&device));
+	return device;
+}
+
+bool
+supports_cooperative_launches()
+{
+	int supportsCoopLaunch = 0;
+	cudaDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, get_current_device());
+	return bool(supportsCoopLaunch);
+}
 AcResult
 acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
                const Volume end_volume, VertexBufferArray vba)

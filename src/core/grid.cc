@@ -2669,7 +2669,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 AcResult
 acGridHaloExchange()
 {
-    return acGridExecuteTaskGraph(halo_exchange_tasks.get(), 1);
+    return acGridExecuteTaskGraph(grid.halo_exchange_tasks.get(), 1);
 }
 AcResult
 acGridPeriodicBoundconds(const Stream stream)

@@ -73,6 +73,7 @@
 #define cudaStreamNonBlocking hipStreamNonBlocking
 #define cudaMemcpyPeerAsync hipMemcpyPeerAsync
 #define cudaGetDeviceProperties hipGetDeviceProperties
+#define cudaDeviceGetAttribute hipDeviceGetAttribute
 
 #define cudaStreamQuery hipStreamQuery
 #define cudaErrorNotReady hipErrorNotReady
