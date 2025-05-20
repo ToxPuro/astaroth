@@ -70,4 +70,4 @@ FUNC_DEFINE(AcResult, acIntegrateStep,(const int isubstep, const AcReal dt));
 FUNC_DEFINE(AcResult, acIntegrateStepWithOffset,(const int isubstep, const AcReal dt, const Volume start,
                                    const Volume end));
 FUNC_DEFINE(AcResult, acSynchronize,(void));
-FUNC_DEFINE(AcResult, acLoadWithOffset)(const AcMesh host_mesh, const int3 src, const int num_vertices);
+FUNC_DEFINE(AcResult, acLoadWithOffset,(const AcMesh host_mesh, const int3 src, const int num_vertices));

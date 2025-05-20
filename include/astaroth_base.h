@@ -196,11 +196,11 @@ typedef struct {
 #endif
 
 #ifndef FUNC_DEFINE
-#define FUNC_DEFINE(return_type, func_name, ...) static UNUSED return_type (*func_name) __VA_ARGS__
+#define FUNC_DEFINE(return_type, func_name, ...) static UNUSED return_type (*func_name) __VA_ARGS__ = (return_type (*) __VA_ARGS__ ) ac_library_not_yet_loaded
 #endif
 
 #ifndef OVERLOADED_FUNC_DEFINE
-#define OVERLOADED_FUNC_DEFINE(return_type, func_name, ...) static UNUSED return_type (*BASE_FUNC_NAME(func_name)) __VA_ARGS__
+#define OVERLOADED_FUNC_DEFINE(return_type, func_name, ...) static UNUSED return_type (*BASE_FUNC_NAME(func_name)) __VA_ARGS__ = (return_type (*) __VA_ARGS__ ) ac_library_not_yet_loaded
 #endif
 
 

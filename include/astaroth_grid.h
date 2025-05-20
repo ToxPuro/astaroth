@@ -373,7 +373,7 @@ FUNC_DEFINE(AcResult, acGridStoreStencils,(const Stream stream,
 static UNUSED bool
 ac_function_always_false() {return false;}
 #if AC_RUNTIME_COMPILATION
-FUNC_DEFINE(bool, acGridInitialized,()) = ac_function_always_false;
+static UNUSED bool (*acGridInitialized)() = ac_function_always_false;
 #else
 FUNC_DEFINE(bool, acGridInitialized,());
 #endif

@@ -106,6 +106,11 @@ typedef struct {
     size3_t reduction_tile;
 } AcMeshDims;
 
+static UNUSED void ac_library_not_yet_loaded()
+{
+	fprintf(stderr,"This function needs Astaroth to be loaded via acLoadLibrary before calling it!\n");
+	ERRCHK_ALWAYS(false);
+}
 
 typedef struct KernelReduceOutput {
   int variable;
@@ -345,7 +350,7 @@ typedef struct {
 #endif
 
 #ifndef FUNC_DEFINE
-#define FUNC_DEFINE(return_type, func_name, ...) static UNUSED return_type (*func_name) __VA_ARGS__
+#define FUNC_DEFINE(return_type, func_name, ...) static UNUSED return_type (*func_name) __VA_ARGS__ = (return_type (*) __VA_ARGS__ ) ac_library_not_yet_loaded
 #endif
 #else
 
