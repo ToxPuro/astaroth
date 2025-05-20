@@ -18,8 +18,7 @@ run_const real3 AC_ds_4 = AC_ds_2*AC_ds_2
 run_const real3 AC_ds_5 = AC_ds_3*AC_ds_2
 run_const real3 AC_ds_6 = AC_ds_3*AC_ds_3
 
-//TP: these could be run_const but gives really bad performance otherwise
-int3 AC_nmin = (int3)
+run_const int3 AC_nmin = (int3)
 		{
 			AC_dimension_inactive.x ? 0 : NGHOST,
 			AC_dimension_inactive.y ? 0 : NGHOST,
