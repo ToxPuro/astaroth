@@ -144,6 +144,9 @@ main(int argc, char* argv[])
     if (pid == 0)
         acHostGridMeshRandomize(&model);
 
+    //TP: test that this call works and not e.g. segfaults
+    if(pid == 0) fprintf(stderr,"Using CUDA AWARE MPI: %d\n",acDeviceGetLocalConfig(acGridGetDevice())[AC_use_cuda_aware_mpi]);
+    acGridHaloExchange();
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);

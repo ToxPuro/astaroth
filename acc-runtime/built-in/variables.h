@@ -18,8 +18,7 @@ run_const real3 AC_ds_4 = AC_ds_2*AC_ds_2
 run_const real3 AC_ds_5 = AC_ds_3*AC_ds_2
 run_const real3 AC_ds_6 = AC_ds_3*AC_ds_3
 
-//TP: these could be run_const but gives really bad performance otherwise
-int3 AC_nmin = (int3)
+run_const int3 AC_nmin = (int3)
 		{
 			AC_dimension_inactive.x ? 0 : NGHOST,
 			AC_dimension_inactive.y ? 0 : NGHOST,
@@ -31,6 +30,8 @@ run_const AcDecomposeStrategy   AC_decompose_strategy    = AC_DECOMPOSE_STRATEGY
 run_const AcMPICommStrategy     AC_MPI_comm_strategy     = AC_MPI_COMM_STRATEGY_DUP_WORLD
 
 run_const int3  AC_domain_decomposition = ac_get_process_decomposition()
+
+//TP: these could be run_const but gives really bad performance otherwise
 int3 AC_ngrid 
 int3 AC_mgrid  = AC_ngrid + 2*AC_nmin
 int3 AC_nlocal = (int3)
@@ -102,6 +103,8 @@ run_const bool AC_sparse_autotuning=false
 output real AC_default_real_output
 
 run_const bool AC_shear = false
+//Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory
+run_const bool AC_use_cuda_aware_mpi = true
 input real AC_shear_delta_y
 run_const int3 AC_raytracing_block_factors = (int3){1,1,1}
 //TP: these belong here but at the moment are deprecated
