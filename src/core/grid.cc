@@ -2085,11 +2085,12 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    std::vector<KernelReduceOutput> reduce_output_out(op.outputs_out,op.outputs_out+op.num_outputs_out);
 
 
-	    Region full_region = FullRegion(start,dims,{fields_out,profiles_out,reduce_output_out},op.computes_on_halos);
-	    Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},op.computes_on_halos)[0];
-	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
-	    if(((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim])
+	    const bool raytracing = is_raytracing_kernel(op.kernel_enum);
+	    const bool single_gpu_optim = ((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim];
+	    if(raytracing || single_gpu_optim)
 	    {
+	      Region full_region = FullRegion(start,dims,{fields_out,profiles_out,reduce_output_out},op.computes_on_halos);
+	      Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},op.computes_on_halos)[0];
 	      auto task = std::make_shared<ComputeTask>(op,i,full_input_region,full_region,device,swap_offset);
               graph->all_tasks.push_back(task);
               //done here since we want to write only to out not to in what launching the taskgraph would do

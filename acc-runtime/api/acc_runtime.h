@@ -312,6 +312,7 @@ typedef struct {
 	int reduced_profiles[NUM_PROFILES+1];
 	int written_profiles[NUM_PROFILES+1];
   	int profile_has_stencil_op[NUM_PROFILES+1];
+	int incoming_ray_accessed[NUM_ALL_FIELDS][NUM_RAYS+1];
 	KernelReduceOutput reduce_inputs[NUM_OUTPUTS+1];
 	KernelReduceOutput reduce_outputs[NUM_OUTPUTS+1];
 	size_t n_reduce_inputs;

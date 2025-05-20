@@ -34,6 +34,36 @@ kernel_updates_vtxbuf(const AcKernel kernel)
 	return false;
 }
 
+static bool
+is_raytracing_kernel(const AcKernel kernel)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+			if(info[kernel].incoming_ray_accessed[field][ray]) return true;
+	}
+	return false;
+}
+
+static UNUSED AcBool3
+raytracing_step_direction(const AcKernel kernel)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+			if(info[kernel].incoming_ray_accessed[field][ray])
+			{
+				if(ray_directions[ray].z != 0) return (AcBool3){false,false,true};
+				if(ray_directions[ray].y != 0) return (AcBool3){false,true,false};
+				if(ray_directions[ray].x != 0) return (AcBool3){true,false,false};
+			}
+	}
+	return (AcBool3){false,false,false};
+}
+
+
 static UNUSED AcBoundary
 get_kernel_depends_on_boundaries(const AcKernel kernel)
 {
@@ -41,6 +71,7 @@ get_kernel_depends_on_boundaries(const AcKernel kernel)
 	//TP: this is somewhat conservative since if A does not use stencils B has more dependency then needed
 	//TP: but I guess if A and B do not have stencils they are anyways so fast that it does not matter that much
 	if(kernel_updates_vtxbuf(kernel)) return BOUNDARY_XYZ;
+	if(is_raytracing_kernel(kernel))  return BOUNDARY_XYZ;
 	const auto info = get_kernel_analysis_info();
 	int res = 0;
 	for(int j = 0; j < NUM_FIELDS; ++j)

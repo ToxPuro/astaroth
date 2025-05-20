@@ -44,6 +44,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct int3
+{
+	int x,y,z;
+} int3;
+
 #include "builtin_enums.h"
 #include "user_defines.h"
 
@@ -197,6 +202,33 @@ get_num_reduced_vars(const int N, const int* arr, const ReduceOp op)
 	return res;
 }
 
+bool is_raytracing_kernel(const int curr_kernel)
+{
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+		{
+			if(incoming_ray_value_accessed[curr_kernel][field][ray]) return true;
+		}
+	}
+	return false;
+}
+bool kernel_accesses_ray_direction(const int curr_kernel, const int3 ray_match)
+{
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+		{
+			if(incoming_ray_value_accessed[curr_kernel][field][ray])
+			{
+				if(ray_match.x != 0 && ray_match.x == ray_directions[ray].x) return true;
+				if(ray_match.y != 0 && ray_match.y == ray_directions[ray].y) return true;
+				if(ray_match.z != 0 && ray_match.z == ray_directions[ray].z) return true;
+			}
+		}
+	}
+	return false;
+}
 void
 gen_kernel_block_loops(const int curr_kernel)
 {
@@ -338,6 +370,76 @@ gen_kernel_block_loops(const int curr_kernel)
 			"};");
 	return;
   }
+  else if(is_raytracing_kernel(curr_kernel))
+  {
+	  if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}))
+	  {
+	    printf(
+	           
+	  	  "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_nlocal).z; ++current_block_idx_z) {"
+	  	  "if(current_block_idx_z > 0) ac_coop_grid.sync();"
+		 "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
+		 "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
+	  	  );
+	  }
+	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1}))
+	  {
+	    printf( 
+	  	  "for(int current_block_idx_z = VAL(AC_nlocal).z-1; current_block_idx_z >= 0; --current_block_idx_z) {"
+	  	  "if(current_block_idx_z < VAL(AC_nlocal).z-1) ac_coop_grid.sync();"
+		 "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
+		 "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
+		  );
+	  }
+
+	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,1,0}))
+	  {
+	    printf( 
+	            
+	  	  "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_nlocal).y; ++current_block_idx_y) {"
+	  	  "if(current_block_idx_y > 0) ac_coop_grid.sync();"
+		 "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
+		 "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
+		  );
+	  }
+	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0}))
+	  {
+	    printf( 
+	            
+	  	  "for(int current_block_idx_y = VAL(AC_nlocal).y-1; current_block_idx_y >= 0; --current_block_idx_y) {"
+	  	  "if(current_block_idx_y < VAL(AC_nlocal).y-1) ac_coop_grid.sync();"
+		 "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
+		 "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
+		);
+	  }
+
+	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}))
+	  {
+	    printf( 
+	            
+	  	  "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_nlocal).x; ++current_block_idx_x) {"
+	  	  "if(current_block_idx_x > 0) ac_coop_grid.sync();"
+		 "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
+		 "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
+		);
+	  }
+	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0}))
+	  {
+	    printf( 
+	            
+	  	  "for(int current_block_idx_x = VAL(AC_nlocal).x-1; current_block_idx_x >= 0; --current_block_idx_x) {"
+	  	  "if(current_block_idx_x < VAL(AC_nlocal).x-1) ac_coop_grid.sync();"
+		 "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
+		 "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
+		  );
+	  }
+  	  printf("const dim3 current_block_idx = {"
+			"blockIdx.x + current_block_idx_x*gridDim.x," 
+			"blockIdx.y + current_block_idx_y*gridDim.y," 
+			"blockIdx.z + current_block_idx_z*gridDim.z," 
+			"};");
+	  return;
+  }
   else
   {
 	  printf("{"
@@ -380,6 +482,12 @@ gen_kernel_common_prefix()
   printf("(void)globalVertexIdx;"); // Silence unused warning
   printf("(void)local_compdomain_idx;");     // Silence unused warning
 					     //
+}
+void
+gen_raytracing_prefix(const int kernel)
+{
+	if(!is_raytracing_kernel(kernel)) return;
+	printf("[[maybe_unused]] cooperative_groups::grid_group ac_coop_grid = cooperative_groups::this_grid();");
 }
 void 
 gen_profile_funcs(const int kernel)
@@ -929,6 +1037,7 @@ gen_kernel_write_funcs(const int curr_kernel)
 void
 gen_kernel_prefix(const int curr_kernel)
 {
+  gen_raytracing_prefix(curr_kernel);
   gen_kernel_block_loops(curr_kernel);
   gen_kernel_common_prefix();
   gen_profile_funcs(curr_kernel);
@@ -1151,7 +1260,26 @@ gen_return_if_oob(const int curr_kernel)
 		     );
 	       printf("if(inside_computational_domain) return;");
        }
-       printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
+       if(is_raytracing_kernel(curr_kernel))
+       {
+
+	       if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1})) 
+	       {
+       			printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y;\n");
+	       }
+	       else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,1,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0})) 
+	       {
+       			printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.z >= end.z;\n");
+	       }
+	       else if(kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0})) 
+	       {
+       			printf("const bool out_of_bounds = vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
+	       }
+       }
+       else
+       {
+       		printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
+       }
        if(kernel_calls_reduce[curr_kernel] )
        {
 		const char* type = kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS ? "" : "[[maybe_unused]] const auto";
@@ -1166,7 +1294,7 @@ gen_return_if_oob(const int curr_kernel)
     		//TP: if all threads are active can skip checks checking if target tid is active in reductions
     		printf("%s AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;",type);
        }
-       printf("if(out_of_bounds) %s;",kernel_has_block_loops(curr_kernel) ? "continue" : "return");
+       printf("if(out_of_bounds) %s;",is_raytracing_kernel(curr_kernel) || kernel_has_block_loops(curr_kernel) ? "continue" : "return");
        printf("{\n");
   // Enable excluding some internal domain
   printf("\n#if defined(AC_ENABLE_EXCLUDE_INNER)\n");
@@ -1507,6 +1635,24 @@ gen_stencil_functions(const int curr_kernel)
   	  printf("};");
   	}
   }
+  for (int ray = 0; ray < NUM_RAYS; ++ray)
+  {
+      printf("const auto %s __attribute__((unused)) = [&](const Field& field) {"
+             "switch (field) {"
+      		,ray_names[ray]);
+      for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
+      {
+    	if ((incoming_ray_value_accessed[curr_kernel][original_field][ray]))
+	{
+      		const int field = get_original_index(field_remappings,original_field);
+      		printf("case %s: return f%s_r%s;", field_names[field], field_names[field],ray_names[ray]);
+	}
+      }
+      printf("default: return (AcReal)NAN;");
+      printf("}"
+             "};");
+
+  }
 }
 
 #include "3d_caching_implementations.h"
@@ -1707,7 +1853,30 @@ gen_kernel_body(const int curr_kernel)
           }
         }
       }
-
+      for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+      {
+	const int original_field = get_original_index(field_remappings,field);
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
+		{
+        	   printf("const auto f%s_r%s = ", field_names[original_field], ray_names[ray]);
+        	   printf("(");
+        	   printf("(");
+        	   printf("vba.in[%s]"
+        	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x-(%d),vertexIdx.y-(%d), "
+        	          "vertexIdx.z-(%d),VAL(%s))])",
+        	          field_names[original_field],
+			  ray_directions[ray].x,
+			  ray_directions[ray].y,
+			  ray_directions[ray].z,
+		          vtxbuf_dims_str[original_field]
+		          );
+        	   printf(")");
+        	   printf(";");
+		}
+	}
+      }
     // Uncomment to print valid stencils
     // for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     //   fprintf(stderr, "Stencil %s (%du): %d\n", stencil_names[stencil],

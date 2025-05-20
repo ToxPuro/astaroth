@@ -334,11 +334,28 @@ get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const
 	return res;
 }
 
+Volume
+get_ghosts()
+{
+    return to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
+}
 
-Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary boundary_included, Volume start, Volume nn, const RegionMemoryInputParams mem_)
+Volume
+get_ghosts(const AcKernel kernel)
+{
+	if(is_raytracing_kernel(kernel))
+	{
+		return (Volume){1,1,1};
+	}
+	else
+	{
+    		return to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
+	}
+}
+
+Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary boundary_included, Volume start, Volume nn, const Volume ghosts, const RegionMemoryInputParams mem_)
     : family(family_), tag(tag_) 
 {
-    const Volume ghosts = to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
     comp_dims = nn;
     memory.profiles = {mem_.profiles, mem_.profiles + mem_.num_profiles};
     memory.reduce_outputs  = {mem_.reduce_outputs , mem_.reduce_outputs  + mem_.num_reduce_outputs};
@@ -446,7 +463,7 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       }
       
       Region::Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, const RegionMemoryInputParams mem_)
-      : Region{family_, id_to_tag(id_), BOUNDARY_XYZ, BOUNDARY_NONE, position_, nn, mem_}
+      : Region{family_, id_to_tag(id_), BOUNDARY_XYZ, BOUNDARY_NONE, position_, nn, get_ghosts() ,mem_}
       {
       ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
       }
@@ -804,8 +821,8 @@ Task::poll_stream()
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start, dims, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
-           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start,dims,{op.fields_out, op.num_fields_out,
+           Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start, dims, get_ghosts(op.kernel_enum), {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
+           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start,dims,get_ghosts(op.kernel_enum), {op.fields_out, op.num_fields_out,
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
 		   op.outputs_out, op.num_outputs_out}),
@@ -1163,8 +1180,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, dims,  {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
-           Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, get_ghosts(), {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
+           Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, get_ghosts(), {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
       shear_periodic(shear_periodic_),
 
@@ -1199,7 +1216,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
     //Thus if you directly moving data through kernels you have to remap the output position to the other side of the boundary
     if(sendingToItself())
     {
-	    const auto ghosts = acDeviceGetLocalConfig(device)[AC_nmin];
+	    const auto ghosts = get_ghosts();
 	    const Volume mm = {grid_info.nn.x + ghosts.x, grid_info.nn.y + ghosts.y, grid_info.nn.z + ghosts.z};
 	    output_region.position -= (int3){input_region.id.x*(int)mm.x, input_region.id.y*(int)mm.y, input_region.id.z*(int)mm.z};
 	    output_region.id = -input_region.id;
@@ -1537,8 +1554,8 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, start, nn, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in}),
-           Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn,{op.fields_out, op.num_fields_out,op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, start, nn, get_ghosts(), {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in}),
+           Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn, get_ghosts(), {op.fields_out, op.num_fields_out,op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -1553,7 +1570,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
     ERRCHK_ALWAYS(op.num_profiles_reduce_out == op.num_profiles_in);
     ERRCHK_ALWAYS(op.num_outputs_out  == op.num_outputs_in);
 
-    const Volume ghosts = to_volume(acDeviceGetLocalConfig(acGridGetDevice())[AC_nmin]);
+    const Volume ghosts = get_ghosts();
 
     input_region.position = {start.x-ghosts.x,start.y-ghosts.y,start.z-ghosts.z};
     input_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
@@ -2046,8 +2063,8 @@ BoundaryConditionTask::BoundaryConditionTask(
     AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, nn,  {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in}),
-           Region(RegionFamily::Exchange_output, region_tag, BOUNDARY_NONE, BOUNDARY_NONE, start, nn, {op.fields_out, op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out}),
+           Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, nn,get_ghosts(), {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in}),
+           Region(RegionFamily::Exchange_output, region_tag, BOUNDARY_NONE, BOUNDARY_NONE, start, nn,get_ghosts(), {op.fields_out, op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
        boundary_normal(boundary_normal_),
        fieldwise(op.fieldwise)
@@ -2096,7 +2113,7 @@ BoundaryConditionTask::BoundaryConditionTask(
     auto input_fields = input_region.memory.fields;
     input_region = Region(output_region.translate(translation));
     input_region.memory.fields = input_fields;
-    const auto ghosts = local_config[AC_nmin];
+    const auto ghosts = get_ghosts();
 
     if(boundary_normal.x == -1 && x_info.larger_input)
     	input_region.position.x -= ghosts.x;
@@ -2144,7 +2161,7 @@ BoundaryConditionTask::BoundaryConditionTask(
 void
 BoundaryConditionTask::populate_boundary_region()
 {
-     const auto ghosts = acDeviceGetLocalConfig(device)[AC_nmin];
+     const auto ghosts = get_ghosts();
      const auto nn = output_region.comp_dims;
 
      if(fieldwise)

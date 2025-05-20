@@ -70,6 +70,7 @@
 #define cudaDevAttrCooperativeLaunch hipDeviceAttributeCooperativeLaunch 
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaGetDeviceCount hipGetDeviceCount
+#define cudaLaunchCooperativeKernel hipLaunchCooperativeKernel
 #define cudaDeviceGetPCIBusId hipDeviceGetPCIBusId
 #define cudaMemGetInfo hipMemGetInfo
 #define cudaStreamNonBlocking hipStreamNonBlocking
@@ -95,7 +96,7 @@
 #define cudaErrorLaunchOutOfResources hipErrorLaunchOutOfResources
 #define cudaGetErrorName hipGetErrorName
 #define cudaMemGetInfo   hipMemGetInfo
-
+#define cudaOccupancyMaxActiveBlocksPerMultiprocessor hipOccupancyMaxActiveBlocksPerMultiprocessor
 #define curandStateXORWOW_t hiprandStateXORWOW_t
 #define curandStateMRG32k3a_t hiprandStateMRG32k3a_t
 #define curandState hiprandState

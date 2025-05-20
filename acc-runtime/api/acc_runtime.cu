@@ -31,6 +31,7 @@ typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
 static AcBool3 dimension_inactive{};
+static int3 raytracing_subblock{};
 static bool sparse_autotuning=false;
 static int3    max_tpb_for_reduce_kernels{100,100,100};
 #include <math.h> 
@@ -45,6 +46,9 @@ static int3    max_tpb_for_reduce_kernels{100,100,100};
 #if AC_USE_HIP
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #include <rocprim/rocprim.hpp>
+#include <hip/hip_cooperative_groups.h>
+#else
+#include <cooperative_groups.h>
 #endif
 
 #include "user_kernel_declarations.h"
@@ -130,9 +134,9 @@ get_bpg(Volume dims, const Volume tpb)
   case EXPLICIT_PINGPONG_txyz:       // Fallthrough
   case EXPLICIT_ROLLING_PINGPONG: {
     return (Volume){
-        ceil_div(dims.x,tpb.x),
-        ceil_div(dims.y,tpb.y),
-        ceil_div(dims.z,tpb.z),
+        as_size_t(ceil_div(dims.x,tpb.x)),
+        as_size_t(ceil_div(dims.y,tpb.y)),
+        as_size_t(ceil_div(dims.z,tpb.z)),
     };
   }
   default: {
@@ -144,11 +148,20 @@ get_bpg(Volume dims, const Volume tpb)
 #include "stencil_accesses.h"
 #include "../acc/mem_access_helper_funcs.h"
 
+static bool
+is_raytracing_kernel(const AcKernel kernel)
+{
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+			if(incoming_ray_value_accessed[kernel][field][ray]) return true;
+	}
+	return false;
+}
 
 Volume
 get_bpg(Volume dims, const AcKernel kernel, const int3 block_factors, const Volume tpb)
 {
-	if(block_factors == (int3){1,1,1}) return get_bpg(dims,tpb);
 	if(kernel_has_block_loops(kernel)) return get_bpg(ceil_div(dims,block_factors), tpb);
 	return get_bpg(dims,tpb);
 }
@@ -157,11 +170,12 @@ static cudaDeviceProp
 get_device_prop()
 {
   cudaDeviceProp props;
-  (void)cudaGetDeviceProperties(&props, 0);
+  ERRCHK_CUDA_ALWAYS(cudaGetDeviceProperties(&props, 0));
   return props;
 }
 
-int3
+
+static int3
 get_ghosts()
 {
   return (int3){
@@ -182,14 +196,25 @@ is_large_launch(const T dims)
 bool
 is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kernel)
 {
-
-
   const size_t warp_size    = get_device_prop().warpSize;
   const size_t xmax         = (size_t)(warp_size * ceil_div(dims.x,warp_size));
   const size_t ymax         = (size_t)(warp_size * ceil_div(dims.y,warp_size));
   const size_t zmax         = (size_t)(warp_size * ceil_div(dims.z,warp_size));
   const bool too_large      = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
   const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
+  if(is_raytracing_kernel(kernel))
+  {
+	int maxBlocksPerSM{};
+	ERRCHK_CUDA_ALWAYS(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+			&maxBlocksPerSM,
+			kernels[kernel],
+			tpb.x*tpb.y*tpb.z,
+			0
+	));
+  	const auto bpg = get_bpg(dims,to_volume(tpb));
+	const int totalMaxBlocks = get_device_prop().multiProcessorCount*maxBlocksPerSM;
+	if((int)(bpg.x*bpg.y*bpg.z) > totalMaxBlocks) return false;
+  }
   //TP: in most cases this a reasonable limitation but at least theoretically the shape of the threadblock might be more important
   //    than warp considerations. So impose this limitation only if the user allows it
   if (sparse_autotuning && (dims.x >= warp_size && tpb.x % warp_size != 0)) return false;
@@ -1040,6 +1065,7 @@ acVBACreate(const AcMeshInfo config)
   #include "user_builtin_non_scalar_constants.h"
   dimension_inactive = config[AC_dimension_inactive];
   sparse_autotuning  = config[AC_sparse_autotuning];
+  raytracing_subblock = config[AC_raytracing_block_factors];
 
   max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
   VertexBufferArray vba;
@@ -1255,22 +1281,76 @@ get_current_device()
 bool
 supports_cooperative_launches()
 {
-	int supportsCoopLaunch = 0;
+	static bool called{};
+	static int supportsCoopLaunch{};
+	if(called)
+	{
+		ERRCHK_ALWAYS(supportsCoopLaunch);
+		return bool(supportsCoopLaunch);
+	}
 	cudaDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, get_current_device());
+	called = true;
 	return bool(supportsCoopLaunch);
+}
+void
+launch_kernel(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream)
+{
+  if(is_raytracing_kernel(kernel) && supports_cooperative_launches())
+  {
+	void* args[] = {(void*)&start,(void*)&end,(void*)&vba.on_device};
+	cudaLaunchCooperativeKernel((void*)kernels[kernel],bpg,tpb,args,smem,stream);
+  }
+  else
+  {
+  	KERNEL_VBA_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device);
+  }
+}
+void
+launch_kernel(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem)
+{
+	launch_kernel(kernel,start,end,vba,bpg,tpb,smem,0);
+}
+
+static AcBool3
+raytracing_step_direction(const AcKernel kernel)
+{
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+			if(incoming_ray_value_accessed[kernel][field][ray])
+			{
+				if(ray_directions[ray].z != 0) return (AcBool3){false,false,true};
+				if(ray_directions[ray].y != 0) return (AcBool3){false,true,false};
+				if(ray_directions[ray].x != 0) return (AcBool3){true,false,false};
+			}
+	}
+	return (AcBool3){false,false,false};
+}
+
+const Volume 
+get_kernel_end(const AcKernel kernel, const Volume start, const Volume end)
+{
+	if(is_raytracing_kernel(kernel))
+	{
+		const auto step_direction = raytracing_step_direction(kernel);
+		if(step_direction.z) return (Volume){end.x,end.y,start.z+1};
+		if(step_direction.y) return (Volume){end.x,start.y+1,end.z};
+		if(step_direction.x) return (Volume){start.x+1,end.y,end.z};
+	}
+	return (Volume){end.x,end.y,end.z};
+
 }
 AcResult
 acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
                const Volume end_volume, VertexBufferArray vba)
 {
   const int3 start = to_int3(start_volume);
-  const int3 end   = to_int3(end_volume);
+  const int3 end   = to_int3(get_kernel_end(kernel,start_volume,end_volume));
 
   const TBConfig tbconf = getOptimalTBConfig(kernel, start, end, vba);
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
-
   const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
   if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
   {
@@ -1281,7 +1361,7 @@ acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_vo
 
   if(kernel_calls_reduce[kernel]) vba.on_device.reduce_offset = reduce_offsets[kernel][start];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
-  KERNEL_VBA_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device);
+  launch_kernel(kernel,start,end,vba,bpg,tpb,smem,stream);
   ERRCHK_CUDA_KERNEL();
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
@@ -1561,11 +1641,16 @@ make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel kernel)
   vba.on_device.reduce_offset = 0;
 #include "safe_vtxbuf_input_params.h"
 }
+int3
+get_kernel_dims(const AcKernel kernel, const int3 start, const int3 end)
+{
+  return is_raytracing_kernel(kernel) ? ceil_div(end-start,raytracing_subblock) : end-start;
+}
 
 static TBConfig
 autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
 {
-  const int3 dims = end-start;
+  const int3 dims = get_kernel_dims(kernel,start,end);
   make_vtxbuf_input_params_safe(vba,kernel);
   // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
   //        "(%d):\n",
@@ -1590,7 +1675,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   //TP: since autotuning should be quite fast when the dim is not NGHOST only log for actually 3d portions
   const bool builtin_kernel = strlen(kernel_names[kernel]) > 2 && kernel_names[kernel][0] == 'A' && kernel_names[kernel][1] == 'C';
   const bool large_launch   = is_large_launch(dims);
-  const bool log = !builtin_kernel && large_launch;
+  const bool log = is_raytracing_kernel(kernel) || (!builtin_kernel && large_launch);
 
   AcAutotuneMeasurement best_measurement = {INFINITY,(dim3){0,0,0}};
   const int num_iters = 2;
@@ -1612,16 +1697,25 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   // cache line size
   const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
   // New: restrict tpb.x to be at most dims.x since launching threads that are known to be oob feels simply wasteful
+
+  int3 tpb_end = dims; 
+  if(is_raytracing_kernel(kernel))
+  {
+	const auto dir = raytracing_step_direction(kernel);
+	if(dir.z) tpb_end.z = 1;
+	if(dir.y) tpb_end.y = 1;
+	if(dir.x) tpb_end.x = 1;
+  }
   const int x_increment = min(
 		  			minimum_transaction_size_in_elems,
-		  			dims.x
+					tpb_end.x
 		            );
 
   std::vector<int3> samples{};
-  for (int z = 1; z <= min(max_threads_per_block,dims.z); ++z) {
-    for (int y = 1; y <= min(max_threads_per_block,dims.y); ++y) {
+  for (int z = 1; z <= min(max_threads_per_block,tpb_end.z); ++z) {
+    for (int y = 1; y <= min(max_threads_per_block,tpb_end.y); ++y) {
       for (int x = x_increment;
-           x <= min(max_threads_per_block,dims.x); x += x_increment) {
+           x <= min(max_threads_per_block,tpb_end.x); x += x_increment) {
 
 
         if (x * y * z > max_threads_per_block)
@@ -1669,7 +1763,6 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   	end_samples   = samples.size();
   }
   const size_t n_samples = end_samples-start_samples;
-  const Kernel func = kernels[kernel];
   for(size_t sample  = start_samples; sample < end_samples; ++sample)
   {
         if (log) logAutotuningStatus(counter,n_samples,kernel);
@@ -1692,11 +1785,13 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         ERRCHK_CUDA(cudaEventCreate(&tstart));
         ERRCHK_CUDA(cudaEventCreate(&tstop));
 
-        KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba.on_device); // Dryrun
+        launch_kernel(kernel,start,end,vba,bpg,tpb,smem);
         ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
         ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
         for (int i = 0; i < num_iters; ++i)
-          KERNEL_LAUNCH(func,bpg, tpb, smem)(start, end, vba.on_device); // Dryrun
+	{
+        	launch_kernel(kernel,start,end,vba,bpg,tpb,smem);
+	}
         ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
         ERRCHK_CUDA(cudaEventSynchronize(tstop));
 
@@ -1740,18 +1835,21 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
                 nz, best_measurement.tpb.x, best_measurement.tpb.y, best_measurement.tpb.z,
                 (double)best_measurement.time / num_iters);
 #else
-        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g, %s, %d, %d, %d\n", IMPLEMENTATION, kernel, dims.x,
+        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g, %s, %d, %d, %d, %d, %d, %d\n", IMPLEMENTATION, kernel, dims.x,
                 dims.y, dims.z, best_measurement.tpb.x, best_measurement.tpb.y, best_measurement.tpb.z,
                 (double)best_measurement.time / num_iters, kernel_names[kernel],
 		vba.on_device.block_factor.x,vba.on_device.block_factor.y,vba.on_device.block_factor.z
+		,raytracing_subblock.x
+		,raytracing_subblock.y
+		,raytracing_subblock.z
 		);
 #endif
         fclose(fp);
   }
   if (c.tpb.x * c.tpb.y * c.tpb.z <= 0) {
     fprintf(stderr,
-            "Fatal error: failed to find valid thread block dimensions for (%d,%d,%d) launch.\n"
-            ,dims.x,dims.y,dims.z);
+            "Fatal error: failed to find valid thread block dimensions for (%d,%d,%d) launch of %s.\n"
+            ,dims.x,dims.y,dims.z,kernel_names[kernel]);
   }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
   //TP: done to ensure scratchpads are reset after autotuning
@@ -1780,14 +1878,15 @@ acReadOptimTBConfig(const AcKernel kernel, const int3 dims, const int3 block_fac
   for(int i = 0; i < n_entries; ++i)
   {
 	  string_vec entry = entries[i];
-	  if(entry.size == 13)
+	  if(entry.size == 16)
       	  {
       	     int kernel_index  = atoi(entry.data[1]);
       	     int3 read_dims = {atoi(entry.data[2]), atoi(entry.data[3]), atoi(entry.data[4])};
       	     int3 tpb = {atoi(entry.data[5]), atoi(entry.data[6]), atoi(entry.data[7])};
       	     double time = atof(entry.data[8]);
       	     int3 read_block_factors = {atoi(entry.data[10]), atoi(entry.data[11]), atoi(entry.data[12])};
-      	     if(time < best_time && kernel_index == kernel && read_dims == dims && read_block_factors == block_factors)
+      	     int3 read_raytracing_factors = {atoi(entry.data[13]), atoi(entry.data[14]), atoi(entry.data[15])};
+      	     if(time < best_time && kernel_index == kernel && read_dims == dims && read_block_factors == block_factors && read_raytracing_factors == raytracing_subblock)
       	     {
       	    	 best_time = time;
       	    	 res       = tpb;
@@ -1805,7 +1904,7 @@ acReadOptimTBConfig(const AcKernel kernel, const int3 dims, const int3 block_fac
 static TBConfig
 getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
 {
-  const int3 dims = end-start;
+  const int3 dims = get_kernel_dims(kernel,start,end);
   for (auto c : tbconfigs)
     if (c.kernel == kernel && c.dims == dims)
       return c;

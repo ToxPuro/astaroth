@@ -116,6 +116,7 @@ static const char* UTILITY_STR = NULL;
 static const char* ELEMENTAL_STR = NULL;
 static const char* BOUNDCOND_STR = NULL;
 static const char* FIXED_BOUNDARY_STR = NULL;
+static const char* RAYTRACE_STR = NULL;
 static const char* RUN_CONST_STR = NULL;
 static const char* CONST_DIMS_STR = NULL;
 static const char* DCONST_STR = NULL;
@@ -518,7 +519,7 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
   const char* dconst_ql[1] = {DCONST_STR};
   assert(num_symbols[current_nest] < SYMBOL_TABLE_SIZE);
   symbol_table[num_symbols[current_nest]].type          = type;
-  if(type == NODE_VARIABLE_ID && current_nest == 0 && n_tqualifiers == 0 && tspecifier)
+  if(type == NODE_VARIABLE_ID && current_nest == 0 && n_tqualifiers == 0 && tspecifier && tspecifier != RAYTRACE_STR)
   {
 	  if(!is_allocating_type(tspecifier))
 	  {
@@ -3133,6 +3134,7 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 	const Symbol* sym = get_symbol(NODE_FUNCTION_ID, func_name, NULL);
 	if(sym && str_vec_contains(sym->tqualifiers,intern("intrinsic"))) return;
 	if(sym && sym->tspecifier == STENCIL_STR) return;
+  	if(check_symbol(NODE_ANY, func_name, RAYTRACE_STR, 0)) return;
 
 	if(str_vec_contains(duplicate_dfuncs.names,func_name)) 
 	{
@@ -5946,6 +5948,7 @@ gen_enums_variadic(FILE* fp, const string_vec  types, const char* prefix, const 
       fprintf(fp, "%s%s,",prefix, symbol_table[i].identifier);
   fprintf(fp, "%s} %s;",num_name,name);
 }
+
 static void
 get_field_dims_recursive(const ASTNode* node,string_vec* dst)
 {
@@ -5986,6 +5989,31 @@ get_field_dims(const ASTNode* node)
 	get_field_dims_recursive(node,&res);
 	return res;
 }
+
+static void
+get_ray_directions_recursive(const ASTNode* node,string_vec* dst)
+{
+	TRAVERSE_PREAMBLE_PARAMS(get_ray_directions_recursive,dst);
+        if(node->type  != (NODE_DECLARATION | NODE_GLOBAL)) return;
+        const ASTNode* type_node = get_node(NODE_TSPEC,node);
+        if(!type_node) return;
+        //const ASTNode* qualifier = get_node(NODE_TQUAL,node);
+        ////TP: do this only for no qualifier declarations
+        //if(qualifier) return;
+        const char* type = type_node->lhs->buffer;
+	if(type != RAYTRACE_STR) return;
+	push(dst,intern(combine_all_new(type_node->rhs)));
+}
+
+
+static string_vec
+get_ray_directions(const ASTNode* node)
+{
+	string_vec res = VEC_INITIALIZER;
+	get_ray_directions_recursive(node,&res);
+	return res;
+}
+
 static void
 gen_field_info(FILE* fp)
 {
@@ -6055,6 +6083,7 @@ gen_field_info(FILE* fp)
 	FILE* fp_enums = fopen("builtin_enums.h","w");
   	fprintf(fp_enums,"#pragma once\n");
   	gen_enums(fp_enums,STENCIL_STR,"stencil_","NUM_STENCILS","Stencil");
+  	gen_enums(fp_enums,RAYTRACE_STR,"ray_","NUM_RAYS","AcRay");
   	gen_enums(fp_enums,intern("WorkBuffer"),"","NUM_WORK_BUFFERS","WorkBuffer");
   	gen_enums(fp_enums,KERNEL_STR,"","NUM_KERNELS","AcKernel");
   	gen_enums_variadic(fp_enums,prof_types,"","NUM_PROFILES","Profile");
@@ -6294,6 +6323,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   // Enum strings (convenience)
   gen_names("stencil",STENCIL_STR,fp);
+  gen_names("ray",RAYTRACE_STR,fp);
   gen_names("work_buffer",intern("WorkBuffer"),fp);
   gen_names("kernel",KERNEL_STR,fp);
   gen_names_variadic("profile",prof_types,fp);
@@ -6379,6 +6409,12 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   free_str_vec(&datatypes);
   free_structs_info(&s_info);
 
+  fprintf(fp,"const int3 ray_directions[] = {");
+  string_vec ray_directions = get_ray_directions(root_in);
+  for(size_t ray = 0; ray < ray_directions.size; ++ray)
+	  fprintf(fp,"{%s},",ray_directions.data[ray]);
+  fprintf(fp,"{0,0,0}};");
+
 
 
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
@@ -6438,7 +6474,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   //Done to refresh the autotune file when recompiling DSL code
   fp = fopen(autotune_path,"w");
-  fprintf(fp,"### Implementation,Enum,Dims.x,Dims.y,Dims.z,Tpb.x,Tpb.y,Tpb.z,Time,Kernel,BlockFactor.x,BlockFactor.y,BlockFactor.z ###\n");
+  fprintf(fp,"### Implementation,Enum,Dims.x,Dims.y,Dims.z,Tpb.x,Tpb.y,Tpb.z,Time,Kernel,BlockFactor.x,BlockFactor.y,BlockFactor.z,RayTracingFactor.x,RayTracingFactor.y,RayTracingFactor.z ###\n");
   fclose(fp);
 
   fp = fopen("user_constants.h","w");
@@ -8426,6 +8462,7 @@ gen_global_strings()
 	UTILITY_STR = intern("utility");
 	BOUNDCOND_STR = intern("boundary_condition");
 	FIXED_BOUNDARY_STR = intern("fixed_boundary");
+	RAYTRACE_STR = intern("Raytrace");
 	ELEMENTAL_STR = intern("elemental");
 	AUXILIARY_STR = intern("auxiliary");
 	COMMUNICATED_STR = intern("communicated");
@@ -9500,6 +9537,15 @@ gen_analysis_stencils(FILE* stream)
            stencil_names.data[i], stencil_names.data[i]);
   }
   free_str_vec(&stencil_names);
+
+  string_vec ray_names = get_names(RAYTRACE_STR);
+  for (size_t i = 0; i < ray_names.size; ++i)
+  {
+    fprintf(stream,"AcReal %s(const Field& field_in)"
+           "{incoming_ray_value_accessed[field_in][ray_%s] |= 1;return AcReal(1.0);};\n",
+           ray_names.data[i], ray_names.data[i]);
+  }
+  free_str_vec(&ray_names);
 }
 
 //These are the same for mem_accesses pass and normal pass
@@ -9747,6 +9793,7 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
 {
   const int AC_STENCIL_CALL = (1 << 2);
   const size_t num_stencils = count_symbols(STENCIL_STR);
+  const size_t num_rays     = count_symbols(RAYTRACE_STR);
   if (gen_mem_accesses || !OPTIMIZE_MEM_ACCESSES) {
     FILE* tmp = fopen("stencil_accesses.h", "w+");
     assert(tmp);
@@ -9755,6 +9802,12 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
             "static int "
             "previous_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
     print_nested_ones(tmp,1,num_kernels,num_fields+num_profiles,2);
+    fprintf(tmp, "};\n");
+
+    fprintf(tmp,
+            "static int "
+            "incoming_ray_value_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1] __attribute__((unused)) = {");
+    print_nested_ints(tmp,num_kernels,num_fields+num_profiles,num_rays+1,3,0);
     fprintf(tmp, "};\n");
 
     fprintf(tmp,

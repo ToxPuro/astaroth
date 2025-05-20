@@ -203,6 +203,7 @@ __ffs(unsigned long)
 
 static int stencils_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS]{{}};
 static int previous_accessed[NUM_ALL_FIELDS+NUM_PROFILES]{};
+static int incoming_ray_value_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
 static int written_fields[NUM_ALL_FIELDS]{};
 static int read_fields[NUM_ALL_FIELDS]{};
 static int field_has_stencil_op[NUM_ALL_FIELDS]{};
@@ -778,6 +779,7 @@ reset_info_arrays()
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op));
     memset(written_fields, 0,    sizeof(written_fields));
     memset(previous_accessed, 0, sizeof(previous_accessed));
+    memset(incoming_ray_value_accessed, 0, sizeof(incoming_ray_value_accessed));
     std::vector<KernelReduceOutput> empty_vec{};
     reduce_outputs = empty_vec;
     reduce_inputs  = empty_vec;
@@ -936,6 +938,8 @@ acAnalysisGetKernelInfoSingle(const AcMeshInfo info, const AcKernel kernel)
 			res.read_fields[i]    = read_fields[i];
 			res.field_has_stencil_op[i] = field_has_stencil_op[i];
 			res.written_fields[i] = written_fields[i];
+			for(int ray = 0; ray < NUM_RAYS; ++ray)
+				res.incoming_ray_accessed[i][ray] = incoming_ray_value_accessed[i][ray];
 		}
 		for(int i = 0; i < NUM_PROFILES; ++i)
 		{
@@ -994,6 +998,30 @@ print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N])
   fprintf(fp, "};\n");
 }
 
+template <const size_t N, const size_t M>
+void
+print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][N][M])
+{
+  fprintf(fp,
+          "static int %s[NUM_KERNELS][%ld][%ld] "
+          "__attribute__((unused)) =  {",name,N,M);
+  for (size_t k = 0; k < NUM_KERNELS; ++k) {
+    fprintf(fp,"{");
+    for (size_t j = 0; j < N; ++j)
+    {
+
+        fprintf(fp,"{");
+	for(size_t i = 0; i < M; ++ i)
+	{
+        	fprintf(fp, "%d,", arr[k][j][i]);
+	}
+    	fprintf(fp,"},");
+    }
+    fprintf(fp,"},");
+  }
+  fprintf(fp, "};\n");
+}
+
 void
 print_info_array(FILE* fp, const char* name, const int arr[NUM_KERNELS][0])
 {
@@ -1034,6 +1062,7 @@ main(int argc, char* argv[])
   int  write_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
   int  write_profile_output[NUM_KERNELS][NUM_PROFILES]{};
   int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
+  int  output_incoming_ray_value_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
   int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES]{};
   int  output_reduced_reals[NUM_KERNELS][NUM_REAL_OUTPUTS+1]{};
   int  output_reduced_ints[NUM_KERNELS][NUM_INT_OUTPUTS+1]{};
@@ -1055,6 +1084,8 @@ main(int argc, char* argv[])
         read_fields[j] |= previous_accessed[j];
       }
       output_previous_accessed[k][j] = previous_accessed[j];
+      for(int ray = 0; ray < NUM_RAYS; ++ray)
+      	output_incoming_ray_value_accessed[k][j][ray] = incoming_ray_value_accessed[j][ray];
       write_output[k][j] = written_fields[j];
     }
     for(size_t j = 0; j < NUM_PROFILES; ++j)
@@ -1107,6 +1138,7 @@ main(int argc, char* argv[])
   fclose(fp_profiles_reduced);
 
   print_info_array(fp,"previous_accessed",output_previous_accessed);
+  print_info_array(fp,"incoming_ray_value_accessed",output_incoming_ray_value_accessed);
   print_info_array(fp,"write_called",write_output);
   print_info_array(fp,"write_called_profile",write_profile_output);
   print_info_array(fp,"reduced_profiles",output_reduced_profiles);

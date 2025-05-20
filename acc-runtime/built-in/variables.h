@@ -103,6 +103,7 @@ output real AC_default_real_output
 
 run_const bool AC_shear = false
 input real AC_shear_delta_y
+run_const int3 AC_raytracing_block_factors = (int3){1,1,1}
 //TP: these belong here but at the moment are deprecated
 /**
 run_const AC_xy_plate_bufsize
