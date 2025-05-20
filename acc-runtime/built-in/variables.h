@@ -30,6 +30,8 @@ run_const AcDecomposeStrategy   AC_decompose_strategy    = AC_DECOMPOSE_STRATEGY
 run_const AcMPICommStrategy     AC_MPI_comm_strategy     = AC_MPI_COMM_STRATEGY_DUP_WORLD
 
 run_const int3  AC_domain_decomposition = ac_get_process_decomposition()
+
+//TP: these could be run_const but gives really bad performance otherwise
 int3 AC_ngrid 
 int3 AC_mgrid  = AC_ngrid + 2*AC_nmin
 int3 AC_nlocal = (int3)
