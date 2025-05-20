@@ -122,12 +122,13 @@ acVertexBufferCompdomainSize(const AcMeshInfo info)
 static inline size_t
 acVertexBufferCompdomainSizeVariable(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
+    const Volume nmin = acGetMinNN(info);
     const Volume nn = 
 	    (Volume)
 	    {
-		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].x -2*info.int3_params[AC_nmin].x,
-		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].y -2*info.int3_params[AC_nmin].y,
-		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].z -2*info.int3_params[AC_nmin].z
+		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].x -2*nmin.x,
+		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].y -2*nmin.y,
+		    (size_t)info.int3_params[vtxbuf_dims[vtxbuf]].z -2*nmin.z
 	    };
     return nn.x*nn.y*nn.z;
 }

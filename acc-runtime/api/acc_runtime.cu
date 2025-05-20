@@ -1765,8 +1765,6 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   const size_t n_samples = end_samples-start_samples;
   for(size_t sample  = start_samples; sample < end_samples; ++sample)
   {
-        if (log) logAutotuningStatus(counter,n_samples,kernel);
-        ++counter;
         auto x = samples[sample].x;
         auto y = samples[sample].y;
         auto z = samples[sample].z;
@@ -1823,6 +1821,8 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
         //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         // fflush(stdout);
+        if (log) logAutotuningStatus(counter,n_samples,kernel);
+        ++counter;
   }
   best_measurement =  parallel_autotuning ? gather_best_measurement(best_measurement) : best_measurement;
   c.tpb = best_measurement.tpb;
@@ -1845,6 +1845,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
 		);
 #endif
         fclose(fp);
+	fflush(fp);
   }
   if (c.tpb.x * c.tpb.y * c.tpb.z <= 0) {
     fprintf(stderr,

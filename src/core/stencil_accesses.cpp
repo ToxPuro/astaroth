@@ -578,14 +578,7 @@ VAL(const AcInt3CompParam&)
 	return (int3){0,0,0};
 }
 bool
-index_at_boundary(const int x, const int y, const int z)
-{
-	return  
-	      ((x < VAL(AC_nmin).x) || (x >= VAL(AC_nlocal_max).x))
-	   || ((y < VAL(AC_nmin).y) || (y >= VAL(AC_nlocal_max).y))
-	   || ((z < VAL(AC_nmin).z) || (z >= VAL(AC_nlocal_max).z))
-	   ;
-}
+index_at_boundary(const int x, const int y, const int z);
 void
 mark_as_written(const Field& field, const int x, const int y, const int z)
 {
@@ -728,6 +721,16 @@ fatal_error_message(const bool error, const char* message)
 
 #include "user_built-in_constants.h"
 #include "user_builtin_non_scalar_constants.h"
+
+bool
+index_at_boundary(const int x, const int y, const int z)
+{
+	return  
+	      ((x < VAL(AC_nmin).x) || (x >= VAL(AC_nlocal_max).x))
+	   || ((y < VAL(AC_nmin).y) || (y >= VAL(AC_nlocal_max).y))
+	   || ((z < VAL(AC_nmin).z) || (z >= VAL(AC_nlocal_max).z))
+	   ;
+}
 
 
 

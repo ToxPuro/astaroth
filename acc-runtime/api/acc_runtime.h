@@ -619,10 +619,28 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   }
 
   template <typename P>
-  constexpr static const char*
-  get_name(const P array)
+  constexpr const char*
+  get_array_name(const P array)
   {
 	  return get_array_info(array).name;
+  }
+
+  template <typename P>
+  constexpr const char*
+  get_param_name(const P param)
+  {
+#include "get_param_name.h"
+	  //ERRCHK_ALWAYS(false); //did not find name
+	  return "NOT FOUND!";
+  }
+
+
+  template <typename P>
+  constexpr static const char*
+  get_name(const P param)
+  {
+	  if constexpr (IsArrayParam(param)) return get_array_name(param);
+	  else return get_param_name(param);
   }
 
   template <typename P>
@@ -664,21 +682,6 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
   get_array_n_dims(const P array)
   {
 	  return get_array_info(array).num_dims;
-  }
-
-  template <typename P>
-  constexpr const char*
-  get_param_name(const P param)
-  {
-#include "get_param_name.h"
-	  ERRCHK_ALWAYS(false); //did not find name
-	  return "NOT FOUND!";
-  }
-  template <typename P>
-  constexpr const char*
-  get_array_name(const P array)
-  {
-	  return get_array_info(array).name;
   }
 
   template <typename P>

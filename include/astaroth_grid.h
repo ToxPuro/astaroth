@@ -370,7 +370,12 @@ FUNC_DEFINE(AcResult, acGridLoadStencils,(const Stream stream,
 /** */
 FUNC_DEFINE(AcResult, acGridStoreStencils,(const Stream stream,
                     AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
-
+static UNUSED bool
+ac_function_always_false() {return false;}
+#if AC_RUNTIME_COMPILATION
+FUNC_DEFINE(bool, acGridInitialized,()) = ac_function_always_false;
+#else
 FUNC_DEFINE(bool, acGridInitialized,());
+#endif
 
 #endif // AC_MPI_ENABLED

@@ -789,6 +789,7 @@ acGridInitBase(const AcMesh user_mesh)
     // GPU alloc
     int devices_per_node = -1;
     cudaGetDeviceCount(&devices_per_node);
+    if(devices_per_node == 0) fatal("%s", "acGridInit: No devices found!\n");
 
     acLogFromRootProc(ac_pid(), "acGridInit: n[xyz]grid: (%d,%d,%d) n[xyz]local (%d,%d,%d)\n",
 		    submesh_info[AC_ngrid].x,submesh_info[AC_ngrid].y,submesh_info[AC_ngrid].z,
