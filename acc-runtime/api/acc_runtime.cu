@@ -626,7 +626,7 @@ safe_access(const AcReal* arr, const int dims, const int index, const char* name
 
 #include "device_fields_info.h"
 
-__device__
+static __device__
 int3
 ac_get_field_halos(const Field& field)
 {

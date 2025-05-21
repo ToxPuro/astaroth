@@ -235,6 +235,15 @@ AS_SIZE_T(unsigned int i, const char* file, const int line)
   return static_cast<size_t>(i);
 }
 
+//overloaded with size_t to remove compiler warnings about unneeded checks
+static inline size_t
+AS_SIZE_T(size_t i, const char* file, const int line)
+{
+  INDIRECT_ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(SIZE_MAX),file,line);
+  return static_cast<size_t>(i);
+}
+
 static inline size3_t
 AS_SIZE_T(const int3 i, const char* file, const int line)
 {
