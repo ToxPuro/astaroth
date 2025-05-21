@@ -18,12 +18,13 @@ run_const real3 AC_ds_4 = AC_ds_2*AC_ds_2
 run_const real3 AC_ds_5 = AC_ds_3*AC_ds_2
 run_const real3 AC_ds_6 = AC_ds_3*AC_ds_3
 
-run_const int3 AC_nmin = (int3)
+int3 AC_nmin = (int3)
 		{
 			AC_dimension_inactive.x ? 0 : NGHOST,
 			AC_dimension_inactive.y ? 0 : NGHOST,
 			AC_dimension_inactive.z ? 0 : NGHOST
 		}
+
 
 run_const AcProcMappingStrategy AC_proc_mapping_strategy = AC_PROC_MAPPING_STRATEGY_MORTON
 run_const AcDecomposeStrategy   AC_decompose_strategy    = AC_DECOMPOSE_STRATEGY_MORTON
