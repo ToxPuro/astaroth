@@ -75,7 +75,7 @@ get_kernel_fields(const AcKernel kernel)
 		{
 			bool in = info[kernel].read_fields[i]             || info[kernel].field_has_stencil_op[i] || kernel == BOUNDCOND_PERIODIC;
 			for(int ray = 0; ray < NUM_RAYS; ++ray)
-				in |= info[kernel].incoming_ray_accessed[i][ray];
+				in |= info[kernel].ray_accessed[i][ray];
 			if(in)    res.in.push_back((Field)i);
 			if(info[kernel].written_fields[i]          || kernel == BOUNDCOND_PERIODIC)    res.out.push_back((Field)i);
 		}
@@ -712,7 +712,7 @@ compute_next_level_set(T1& dst, const T2& kernel_calls, T3& field_written_to,con
 		  {
 			bool field_accessed = info[kernel_index].read_fields[j] || info[kernel_index].field_has_stencil_op[j];
 			for(int ray = 0; ray < NUM_RAYS; ++ray)
-				field_accessed |= info[kernel_index].incoming_ray_accessed[j][ray];
+				field_accessed |= info[kernel_index].ray_accessed[j][ray];
 		  	can_compute &= !(field_consumed[j] && field_accessed);
 		  	field_consumed[j] |= info[kernel_index].written_fields[j];
 		  }
@@ -829,7 +829,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 					field_need_halo_to_be_in_sync[j] |= info[k].field_has_stencil_op[j];
 					field_need_halo_to_be_in_sync[j] |= info[k].read_fields[j] && computes_across_halos;
 					for(int ray = 0; ray < NUM_RAYS; ++ray)
-						field_need_halo_to_be_in_sync[j] |= info[k].incoming_ray_accessed[j][ray];
+						field_need_halo_to_be_in_sync[j] |= info[k].ray_accessed[j][ray];
 				}
 			}
 		}

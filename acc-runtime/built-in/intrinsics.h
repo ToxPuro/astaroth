@@ -94,3 +94,4 @@ intrinsic fatal_error_message
 intrinsic suppress_unused_warning
 intrinsic ac_is_loaded
 intrinsic ac_get_process_decomposition
+int3 intrinsic ac_get_field_halos(Field)

@@ -103,6 +103,7 @@ static const char* DEAD_STR      = NULL;
 static const char* AUXILIARY_STR      = NULL;
 static const char* COMMUNICATED_STR      = NULL;
 static const char* DIMS_STR = NULL;
+static const char* HALO_STR = NULL;
 
 static const char* CONST_STR = NULL;
 static const char* CONSTEXPR_STR = NULL;
@@ -737,6 +738,7 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_EPSILON"));
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_MIN"));
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_STR, intern("AC_REAL_MAX"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, intern("INT_MAX"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("NUM_FIELDS"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("NUM_PROFILES"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("NUM_VTXBUF_HANDLES"));
@@ -3117,7 +3119,20 @@ remove_ending_symbols(char* str, const char symbol)
 	int len = strlen(str);
 	while(str[--len] == symbol) str[len] = '\0';
 }
-
+static string_vec ray_func_names = VEC_INITIALIZER;
+void
+gen_ray_names()
+{
+	free_str_vec(&ray_func_names);
+	for(size_t i = 0; i < num_symbols[0]; ++i)
+	{
+		if(symbol_table[i].tspecifier == RAYTRACE_STR)
+		{
+			push(&ray_func_names,sprintf_intern("incoming_%s",symbol_table[i].identifier));
+			push(&ray_func_names,sprintf_intern("outgoing_%s",symbol_table[i].identifier));
+		}
+	}
+}
 void
 check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 {
@@ -3134,7 +3149,6 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 	const Symbol* sym = get_symbol(NODE_FUNCTION_ID, func_name, NULL);
 	if(sym && str_vec_contains(sym->tqualifiers,intern("intrinsic"))) return;
 	if(sym && sym->tspecifier == STENCIL_STR) return;
-  	if(check_symbol(NODE_ANY, func_name, RAYTRACE_STR, 0)) return;
 
 	if(str_vec_contains(duplicate_dfuncs.names,func_name)) 
 	{
@@ -3171,6 +3185,7 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 
 
 	}
+	if(str_vec_contains(ray_func_names,func_name)) return;
 	fatal("Undeclared function %s in call: %s\n",func_name,combine_all_new(node));
 }
 
@@ -5950,43 +5965,52 @@ gen_enums_variadic(FILE* fp, const string_vec  types, const char* prefix, const 
 }
 
 static void
-get_field_dims_recursive(const ASTNode* node,string_vec* dst)
+get_field_qualifier_recursive(const ASTNode* node,string_vec* dst, const char* qualifier)
 {
-	TRAVERSE_PREAMBLE_PARAMS(get_field_dims_recursive,dst);
+	TRAVERSE_PREAMBLE_PARAMS(get_field_qualifier_recursive,dst,qualifier);
         if(node->type  != (NODE_DECLARATION | NODE_GLOBAL)) return;
         const ASTNode* type_node = get_node(NODE_TSPEC,node);
         if(!type_node) return;
-        //const ASTNode* qualifier = get_node(NODE_TQUAL,node);
-        ////TP: do this only for no qualifier declarations
-        //if(qualifier) return;
         const char* type = intern(combine_all_new(type_node));
 	if(type != FIELD_STR) return;
 	const int n_fields = count_num_of_nodes_in_list(node->rhs);
         const ASTNode* tquals = node->lhs->rhs ? node->lhs->lhs : NULL;
-	bool variable_dims = false;
+	bool found = false;
 	if(tquals)
 	{
 		node_vec tquals_vec = get_nodes_in_list(tquals);
 		for(size_t i = 0; i < tquals_vec.size; ++i)
 		{
 			const ASTNode* tqual = get_node(NODE_TQUAL,tquals_vec.data[i]);
-			if(tqual->lhs && tqual->lhs->buffer && tqual->lhs->buffer == DIMS_STR)
+			if(tqual->lhs && tqual->lhs->buffer && tqual->lhs->buffer == qualifier)
 			{
 				for(int j = 0; j < n_fields; ++j)
 					push(dst,intern(combine_all_new(tqual->rhs)));
-				variable_dims = true;
+				found = true;
 			}
 		}
 		free_node_vec(&tquals_vec);
 	}
 	for(int j = 0; j < n_fields; ++j)
-		if(!variable_dims) push(dst,intern("AC_mlocal"));
+	{
+		if(!found && qualifier == DIMS_STR) push(dst,intern("AC_mlocal"));
+		if(!found && qualifier == HALO_STR) push(dst,intern("AC_nmin"));
+	}
 }
+
 static  string_vec
 get_field_dims(const ASTNode* node)
 {
 	string_vec res = VEC_INITIALIZER;
-	get_field_dims_recursive(node,&res);
+	get_field_qualifier_recursive(node,&res,DIMS_STR);
+	return res;
+}
+
+static  string_vec
+get_field_halos(const ASTNode* node)
+{
+	string_vec res = VEC_INITIALIZER;
+	get_field_qualifier_recursive(node,&res,HALO_STR);
 	return res;
 }
 
@@ -8024,6 +8048,7 @@ transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* roo
         if(!str_vec_contains(sym -> tqualifiers,REAL_STR)) return;
 	if(!str_vec_contains(sym -> tqualifiers,intern("intrinsic"))) return;
 	if(func_name == intern("previous_base")) return;
+	if(func_name == intern("ac_get_field_halos")) return;
         func_params_info param_info = get_func_call_params_info(node);
         if(param_info.expr.size == 1 && param_info.types.data[0] == FIELD_STR)
         {
@@ -8467,6 +8492,7 @@ gen_global_strings()
 	AUXILIARY_STR = intern("auxiliary");
 	COMMUNICATED_STR = intern("communicated");
 	DIMS_STR = intern("dims");
+	HALO_STR = intern("halo");
 	CONST_STR  = intern("const");
 	DCONST_STR = intern("dconst");
 	CONSTEXPR_STR = intern("constexpr");
@@ -9420,6 +9446,7 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
   		memset(&params,0,sizeof(params));
   		params.do_checks = true;
   		traverse_base(root, 0, NULL, params);
+		gen_ray_names();
 	}
 	MAX_DFUNCS = count_symbols_type(NODE_DFUNCTION_ID);
         duplicate_dfuncs = get_duplicate_dfuncs(root);
@@ -9541,8 +9568,11 @@ gen_analysis_stencils(FILE* stream)
   string_vec ray_names = get_names(RAYTRACE_STR);
   for (size_t i = 0; i < ray_names.size; ++i)
   {
-    fprintf(stream,"AcReal %s(const Field& field_in)"
+    fprintf(stream,"AcReal incoming_%s(const Field& field_in)"
            "{incoming_ray_value_accessed[field_in][ray_%s] |= 1;return AcReal(1.0);};\n",
+           ray_names.data[i], ray_names.data[i]);
+    fprintf(stream,"AcReal outgoing_%s(const Field& field_in)"
+           "{outgoing_ray_value_accessed[field_in][ray_%s] |= 1;return AcReal(1.0);};\n",
            ray_names.data[i], ray_names.data[i]);
   }
   free_str_vec(&ray_names);
@@ -9807,6 +9837,12 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
     fprintf(tmp,
             "static int "
             "incoming_ray_value_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1] __attribute__((unused)) = {");
+    print_nested_ints(tmp,num_kernels,num_fields+num_profiles,num_rays+1,3,0);
+    fprintf(tmp, "};\n");
+
+    fprintf(tmp,
+            "static int "
+            "outgoing_ray_value_accessed [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1] __attribute__((unused)) = {");
     print_nested_ints(tmp,num_kernels,num_fields+num_profiles,num_rays+1,3,0);
     fprintf(tmp, "};\n");
 
@@ -10126,6 +10162,14 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
           FILE* fp = fopen("fields_info.h","w");
           gen_field_info(fp);
 
+	  string_vec field_halos = get_field_halos(root);
+          fprintf(fp,"static const AcInt3Param vtxbuf_halos[NUM_ALL_FIELDS] = {");
+	  for(size_t i = 0; i < field_halos.size; ++i)
+	  {
+		  fprintf(fp,"%s,",field_halos.data[i]);
+	  }
+          fprintf(fp,"};");
+
 	  string_vec field_dims = get_field_dims(root);
           fprintf(fp,"static const AcInt3Param vtxbuf_dims[NUM_ALL_FIELDS] = {");
 	  for(size_t i = 0; i < field_dims.size; ++i)
@@ -10141,6 +10185,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
           fprintf(fp,"};");
 
           fclose(fp);
+
           fp = fopen("device_fields_info.h","w");
           fprintf(fp,"static const __device__ AcInt3Param vtxbuf_device_dims[NUM_ALL_FIELDS] = {");
 	  for(size_t i = 0; i < field_dims.size; ++i)
@@ -10148,9 +10193,17 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 		  fprintf(fp,"%s,",field_dims.data[i]);
 	  }
           fprintf(fp,"};");
-	  fclose(fp);
 
+          fprintf(fp,"static const __device__ AcInt3Param vtxbuf_device_halos[NUM_ALL_FIELDS] = {");
+	  for(size_t i = 0; i < field_halos.size; ++i)
+	  {
+		  fprintf(fp,"%s,",field_halos.data[i]);
+	  }
+          fprintf(fp,"};");
+
+	  free_str_vec(&field_halos);
 	  free_str_vec(&field_dims);
+	  fclose(fp);
 
 
 	  symboltable_reset();

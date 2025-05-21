@@ -29,7 +29,9 @@ elemental ac_bc_sym(Field f, int bc_sign)
 	const int3 boundary = get_boundary(normal)
 	int3 domain = boundary
 	int3 ghost  = boundary
-	for i in 0:NGHOST
+
+	const int nghost = ac_get_field_halos(f).x
+	for i in 0:nghost
 	{
 		domain = domain - normal
 		ghost  = ghost  + normal

@@ -1878,9 +1878,8 @@ check_ops(const std::vector<AcTaskDefinition> ops)
 }
 
 Volume
-get_output_shift(const AcBoundary boundaries_included)
+get_output_shift(const AcBoundary boundaries_included, const Volume ghost)
 {
-	const auto& ghost = get_ghost_zone_sizes();
 	return (Volume)
 	{
 		ghost.x*((boundaries_included & BOUNDARY_X) != 0),
@@ -1889,9 +1888,8 @@ get_output_shift(const AcBoundary boundaries_included)
 	};
 }
 Volume
-get_input_shift(const AcBoundary boundaries_included)
+get_input_shift(const AcBoundary boundaries_included, const Volume ghost)
 {
-	const auto& ghost = get_ghost_zone_sizes();
 	return (Volume)
 	{
 		ghost.x*(!(boundaries_included & BOUNDARY_X)),
@@ -1900,17 +1898,17 @@ get_input_shift(const AcBoundary boundaries_included)
 	};
 }
 Region
-FullRegion(const Volume position, const Volume dims, const RegionMemory mem, const AcBoundary boundaries_included)
+FullRegion(const Volume position, const Volume dims, const Volume ghosts, const RegionMemory mem, const AcBoundary boundaries_included)
 {
-	const auto shift = get_output_shift(boundaries_included);
-        return Region(position-shift,dims+2*shift,dims,0,mem,RegionFamily::Compute_output);
+	const auto shift = get_output_shift(boundaries_included,ghosts);
+        return Region(position-shift,dims+2*shift,dims,ghosts,0,mem,RegionFamily::Compute_output);
 }
 
 Region
 GetInputRegion(Region region, const RegionMemory mem, const AcBoundary boundaries_included)
 {
-	const auto shift = get_input_shift(boundaries_included);
-	return Region{region.position-shift,region.dims+2*shift,region.dims,0,mem,RegionFamily::Compute_input};
+	const auto shift = get_input_shift(boundaries_included,region.halo);
+	return Region{region.position-shift,region.dims+2*shift,region.dims,region.halo,0,mem,RegionFamily::Compute_input};
 }
 std::vector<Region>
 getinputregions(std::vector<Region> output_regions, const RegionMemory memory, const AcBoundary boundaries_included)
@@ -2090,7 +2088,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    const bool single_gpu_optim = ((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim];
 	    if(raytracing || single_gpu_optim)
 	    {
-	      Region full_region = FullRegion(start,dims,{fields_out,profiles_out,reduce_output_out},op.computes_on_halos);
+	      Region full_region = FullRegion(start,dims,op.halo_sizes,{fields_out,profiles_out,reduce_output_out},op.computes_on_halos);
 	      Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},op.computes_on_halos)[0];
 	      auto task = std::make_shared<ComputeTask>(op,i,full_input_region,full_region,device,swap_offset);
               graph->all_tasks.push_back(task);

@@ -159,6 +159,50 @@ is_raytracing_kernel(const AcKernel kernel)
 	return false;
 }
 
+static AcBool3
+raytracing_step_direction(const AcKernel kernel)
+{
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+			if(incoming_ray_value_accessed[kernel][field][ray])
+			{
+				if(ray_directions[ray].z != 0) return (AcBool3){false,false,true};
+				if(ray_directions[ray].y != 0) return (AcBool3){false,true,false};
+				if(ray_directions[ray].x != 0) return (AcBool3){true,false,false};
+			}
+	}
+	return (AcBool3){false,false,false};
+}
+static AcBool3
+raytracing_directions(const AcKernel kernel)
+{
+	AcBool3 res = (AcBool3){false,false,false};
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+			if(incoming_ray_value_accessed[kernel][field][ray])
+			{
+				res.x |= ray_directions[ray].x != 0;
+				res.y |= ray_directions[ray].y != 0;
+				res.z |= ray_directions[ray].z != 0;
+			}
+	}
+	return res;
+}
+static int
+raytracing_number_of_directions(const AcKernel kernel)
+{
+	const auto dirs = raytracing_directions(kernel);
+	return dirs.x+dirs.y+dirs.z;
+}
+
+static bool
+is_coop_raytracing_kernel(const AcKernel kernel)
+{
+	return is_raytracing_kernel(kernel) && (raytracing_number_of_directions(kernel) > 1);
+}
+
 Volume
 get_bpg(Volume dims, const AcKernel kernel, const int3 block_factors, const Volume tpb)
 {
@@ -202,7 +246,7 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
   const size_t zmax         = (size_t)(warp_size * ceil_div(dims.z,warp_size));
   const bool too_large      = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
   const bool not_full_warp  = (tpb.x*tpb.y*tpb.z < warp_size);
-  if(is_raytracing_kernel(kernel))
+  if(is_coop_raytracing_kernel(kernel))
   {
 	int maxBlocksPerSM{};
 	ERRCHK_CUDA_ALWAYS(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
@@ -578,6 +622,15 @@ safe_access(const AcReal* arr, const int dims, const int index, const char* name
 		return 0.0;
 	}
 	return arr[index];
+}
+
+#include "device_fields_info.h"
+
+__device__
+int3
+ac_get_field_halos(const Field& field)
+{
+	return VAL(vtxbuf_device_halos[field]);
 }
 
 __device__
@@ -1295,7 +1348,7 @@ supports_cooperative_launches()
 void
 launch_kernel(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream)
 {
-  if(is_raytracing_kernel(kernel) && supports_cooperative_launches())
+  if(is_coop_raytracing_kernel(kernel) && supports_cooperative_launches())
   {
 	void* args[] = {(void*)&start,(void*)&end,(void*)&vba.on_device};
 	cudaLaunchCooperativeKernel((void*)kernels[kernel],bpg,tpb,args,smem,stream);
@@ -1311,21 +1364,6 @@ launch_kernel(const AcKernel kernel, const int3 start, const int3 end, VertexBuf
 	launch_kernel(kernel,start,end,vba,bpg,tpb,smem,0);
 }
 
-static AcBool3
-raytracing_step_direction(const AcKernel kernel)
-{
-	for(int ray = 0; ray < NUM_RAYS; ++ray)
-	{
-		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
-			if(incoming_ray_value_accessed[kernel][field][ray])
-			{
-				if(ray_directions[ray].z != 0) return (AcBool3){false,false,true};
-				if(ray_directions[ray].y != 0) return (AcBool3){false,true,false};
-				if(ray_directions[ray].x != 0) return (AcBool3){true,false,false};
-			}
-	}
-	return (AcBool3){false,false,false};
-}
 
 const Volume 
 get_kernel_end(const AcKernel kernel, const Volume start, const Volume end)
@@ -1610,18 +1648,24 @@ void printProgressBar(FILE* stream, const int progress) {
             fprintf(stream," ");
         }
     }
-    fprintf(stream,"] %d %%", progress);
+    if(progress == 0)
+    	fprintf(stream,"] %d%%  ", progress);
+    else if(progress != 100)
+    	fprintf(stream,"] %d%% ", progress);
+    else
+    	fprintf(stream,"] %d%%", progress);
 }
 void
-logAutotuningStatus(const size_t counter, const size_t num_samples, const AcKernel kernel)
+logAutotuningStatus(const size_t counter, const size_t num_samples, const AcKernel kernel, const float best_time)
 {
-    const size_t percent_of_num_samples = num_samples/100;
+    const AcReal percent_of_num_samples = AcReal(num_samples)/100.0;
     for (size_t progress = 0; progress <= 100; ++progress)
     {
-	      if (counter == percent_of_num_samples*progress  && grid_pid == 0 && (progress % 10 == 0))
+	      if (counter == floor(percent_of_num_samples*progress)  && grid_pid == 0 && (progress % 10 == 0))
 	      {
     			fprintf(stderr,"\nAutotuning %s ",kernel_names[kernel]);
     			printProgressBar(stderr,progress);
+			if(best_time != INFINITY) fprintf(stderr," %14e",(double)best_time);
 			if (progress == 100) fprintf(stderr,"\n");
 			fflush(stderr);
 	      }
@@ -1644,7 +1688,7 @@ make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel kernel)
 int3
 get_kernel_dims(const AcKernel kernel, const int3 start, const int3 end)
 {
-  return is_raytracing_kernel(kernel) ? ceil_div(end-start,raytracing_subblock) : end-start;
+  return is_coop_raytracing_kernel(kernel) ? ceil_div(end-start,raytracing_subblock) : end-start;
 }
 
 static TBConfig
@@ -1705,6 +1749,12 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
 	if(dir.z) tpb_end.z = 1;
 	if(dir.y) tpb_end.y = 1;
 	if(dir.x) tpb_end.x = 1;
+  }
+  //TP: emprically and thinking about it y and z usually cannot be too big (since x is usually quite large) so we can limit then when performing sparse autotuning
+  if(sparse_autotuning)
+  {
+	  tpb_end.y = min(tpb_end.y,32);
+	  tpb_end.z = min(tpb_end.z,32);
   }
   const int x_increment = min(
 		  			minimum_transaction_size_in_elems,
@@ -1798,6 +1848,8 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
 
         ERRCHK_CUDA(cudaEventDestroy(tstart));
         ERRCHK_CUDA(cudaEventDestroy(tstop));
+        ++counter;
+        if (log) logAutotuningStatus(counter,n_samples,kernel,best_measurement.time / num_iters);
 
         // Discard failed runs (attempt to clear the error to cudaSuccess)
         const auto err = cudaGetLastError();
@@ -1821,8 +1873,6 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
         //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         // fflush(stdout);
-        if (log) logAutotuningStatus(counter,n_samples,kernel);
-        ++counter;
   }
   best_measurement =  parallel_autotuning ? gather_best_measurement(best_measurement) : best_measurement;
   c.tpb = best_measurement.tpb;

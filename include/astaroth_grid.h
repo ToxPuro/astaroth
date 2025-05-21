@@ -274,6 +274,8 @@ typedef struct AcTaskDefinition {
     Volume start;
     Volume end;
     bool given_launch_bounds;
+    Volume halo_sizes;
+
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of

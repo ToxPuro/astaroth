@@ -41,7 +41,7 @@ is_raytracing_kernel(const AcKernel kernel)
 	for(int ray = 0; ray < NUM_RAYS; ++ray)
 	{
 		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
-			if(info[kernel].incoming_ray_accessed[field][ray]) return true;
+			if(info[kernel].ray_accessed[field][ray]) return true;
 	}
 	return false;
 }
@@ -53,7 +53,7 @@ raytracing_step_direction(const AcKernel kernel)
 	for(int ray = 0; ray < NUM_RAYS; ++ray)
 	{
 		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
-			if(info[kernel].incoming_ray_accessed[field][ray])
+			if(info[kernel].ray_accessed[field][ray])
 			{
 				if(ray_directions[ray].z != 0) return (AcBool3){false,false,true};
 				if(ray_directions[ray].y != 0) return (AcBool3){false,true,false};

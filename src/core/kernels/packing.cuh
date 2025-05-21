@@ -16,7 +16,6 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "device_fields_info.h"
 #include "vtxbuf_is_communicated_func.h"
 #pragma once
 struct GpuVtxBufHandles 

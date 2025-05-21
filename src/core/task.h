@@ -94,6 +94,7 @@ struct Region {
     Volume position;
     Volume dims;
     Volume comp_dims;
+    Volume halo;
     size_t volume;
 
     RegionFamily family;
@@ -124,9 +125,9 @@ struct Region {
     static bool is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary);
 
     Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary computes_on_boundary, Volume position_, Volume dims_, const Volume ghosts, const RegionMemoryInputParams);
-    Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, const RegionMemoryInputParams);
+    Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, Volume halos_, const RegionMemoryInputParams);
     Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_);
-    Region(Volume position_, Volume dims_, Volume comp_dims_, int tag_, const RegionMemory mem_, RegionFamily family_);
+    Region(Volume position_, Volume dims_, Volume comp_dims_, Volume halos_, int tag_, const RegionMemory mem_, RegionFamily family_);
 
     Region translate(int3 translation);
     bool overlaps(const Region* other) const;

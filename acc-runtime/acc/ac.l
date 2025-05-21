@@ -97,6 +97,7 @@ void strip_whitespace(char *str) {
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
 "dims"          { return DIMS; }
+"halo"          { return HALO; }
 "const"          { return CONST_QL; }
 "override"          { return OVERRIDE; }
 "dynamic"          { return DYNAMIC_QL; }

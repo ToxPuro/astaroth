@@ -64,7 +64,7 @@
 #define cudaMemcpyDefault hipMemcpyDefault
 #define cudaMemset hipMemset
 #define cudaMalloc hipMalloc
-#define cudaMallocHost hipMallocHost
+#define cudaMallocHost hipHostMalloc
 #define cudaFree hipFree
 #define cudaGetDevice hipGetDevice
 #define cudaDevAttrCooperativeLaunch hipDeviceAttributeCooperativeLaunch 

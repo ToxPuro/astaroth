@@ -209,6 +209,7 @@ bool is_raytracing_kernel(const int curr_kernel)
 		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
 		{
 			if(incoming_ray_value_accessed[curr_kernel][field][ray]) return true;
+			if(outgoing_ray_value_accessed[curr_kernel][field][ray]) return true;
 		}
 	}
 	return false;
@@ -229,6 +230,22 @@ bool kernel_accesses_ray_direction(const int curr_kernel, const int3 ray_match)
 	}
 	return false;
 }
+
+int
+n_raytracing_directions(const int curr_kernel)
+{
+	int n_dir = 0;
+	n_dir += kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0});
+	n_dir += kernel_accesses_ray_direction(curr_kernel,(int3){0,1,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0});
+	n_dir += kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1});
+	return n_dir;
+}
+bool
+is_coop_raytracing_kernel(const int curr_kernel)
+{
+	return is_raytracing_kernel(curr_kernel) && (n_raytracing_directions(curr_kernel) > 1);
+}
+
 void
 gen_kernel_block_loops(const int curr_kernel)
 {
@@ -372,67 +389,85 @@ gen_kernel_block_loops(const int curr_kernel)
   }
   else if(is_raytracing_kernel(curr_kernel))
   {
+	  const bool kernel_accesses_x_rays = kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0});
+	  const bool kernel_accesses_y_rays = kernel_accesses_ray_direction(curr_kernel,(int3){0,1,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0});
+	  const bool kernel_accesses_z_rays = kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1});
+	  const int n_dir = n_raytracing_directions(curr_kernel);
 	  if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}))
 	  {
-	    printf(
-	           
-	  	  "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_nlocal).z; ++current_block_idx_z) {"
-	  	  "if(current_block_idx_z > 0) ac_coop_grid.sync();"
-		 "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
-		 "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
-	  	  );
+	    printf("for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_nlocal).z; ++current_block_idx_z) {");
+	    if(n_dir > 1) printf("if(current_block_idx_z > 0) ac_coop_grid.sync();");
 	  }
 	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1}))
 	  {
-	    printf( 
-	  	  "for(int current_block_idx_z = VAL(AC_nlocal).z-1; current_block_idx_z >= 0; --current_block_idx_z) {"
-	  	  "if(current_block_idx_z < VAL(AC_nlocal).z-1) ac_coop_grid.sync();"
-		 "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
-		 "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
-		  );
+	    printf( "for(int current_block_idx_z = VAL(AC_nlocal).z-1; current_block_idx_z >= 0; --current_block_idx_z) {");
+	    if(n_dir > 1) printf("if(current_block_idx_z < VAL(AC_nlocal).z-1) ac_coop_grid.sync();");
 	  }
 
 	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,1,0}))
 	  {
-	    printf( 
-	            
-	  	  "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_nlocal).y; ++current_block_idx_y) {"
+	    printf("for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_nlocal).y; ++current_block_idx_y) {");
+	    if(n_dir > 1) printf(
 	  	  "if(current_block_idx_y > 0) ac_coop_grid.sync();"
-		 "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
-		 "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
 		  );
 	  }
 	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0}))
 	  {
-	    printf( 
-	            
-	  	  "for(int current_block_idx_y = VAL(AC_nlocal).y-1; current_block_idx_y >= 0; --current_block_idx_y) {"
-	  	  "if(current_block_idx_y < VAL(AC_nlocal).y-1) ac_coop_grid.sync();"
-		 "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
-		 "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
-		);
+	    printf("for(int current_block_idx_y = VAL(AC_nlocal).y-1; current_block_idx_y >= 0; --current_block_idx_y) {");
+	    if(n_dir > 1) printf("if(current_block_idx_y < VAL(AC_nlocal).y-1) ac_coop_grid.sync();"
+		  );
 	  }
 
 	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}))
 	  {
-	    printf( 
-	            
-	  	  "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_nlocal).x; ++current_block_idx_x) {"
-	  	  "if(current_block_idx_x > 0) ac_coop_grid.sync();"
-		 "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
-		 "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
-		);
+	    printf("for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_nlocal).x; ++current_block_idx_x) {");
+	    if(n_dir > 1) printf("if(current_block_idx_x > 0) ac_coop_grid.sync();");
 	  }
 	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0}))
 	  {
-	    printf( 
-	            
-	  	  "for(int current_block_idx_x = VAL(AC_nlocal).x-1; current_block_idx_x >= 0; --current_block_idx_x) {"
-	  	  "if(current_block_idx_x < VAL(AC_nlocal).x-1) ac_coop_grid.sync();"
-		 "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
-		 "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
-		  );
+	    printf("for(int current_block_idx_x = VAL(AC_nlocal).x-1; current_block_idx_x >= 0; --current_block_idx_x) {");
+	    if(n_dir > 1) printf("if(current_block_idx_x > 0) ac_coop_grid.sync();");
 	  }
+
+	  if(kernel_accesses_z_rays)
+	  {
+	    if(n_dir > 1)
+	    	printf(
+	         "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
+	         "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
+	  	  );
+	    else
+		    printf("const int current_block_idx_x = 0; const int current_block_idx_y = 0;\n");
+
+	  }
+
+	  else if(kernel_accesses_y_rays)
+	  {
+	    if(n_dir > 1)
+	    	printf(
+	         "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
+	         "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
+	        );
+	    else
+		    printf("const int current_block_idx_z = 0; const int current_block_idx_x = 0;\n");
+	  }
+
+	  else if(kernel_accesses_x_rays)
+	  {
+	    if(n_dir > 1)
+	     	printf(
+	         "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
+	         "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
+	          );
+	    else
+		    printf("const int current_block_idx_z = 0; const int current_block_idx_y = 0;\n");
+	  }
+	  if(n_dir <= 1) 
+	  {
+		  printf("{"
+			 "{");
+	  }
+
   	  printf("const dim3 current_block_idx = {"
 			"blockIdx.x + current_block_idx_x*gridDim.x," 
 			"blockIdx.y + current_block_idx_y*gridDim.y," 
@@ -484,10 +519,10 @@ gen_kernel_common_prefix()
 					     //
 }
 void
-gen_raytracing_prefix(const int kernel)
+gen_raytracing_prefix(const int curr_kernel)
 {
-	if(!is_raytracing_kernel(kernel)) return;
-	printf("[[maybe_unused]] cooperative_groups::grid_group ac_coop_grid = cooperative_groups::this_grid();");
+	if(!is_raytracing_kernel(curr_kernel)) return;
+	if(n_raytracing_directions(curr_kernel) > 1) printf("[[maybe_unused]] cooperative_groups::grid_group ac_coop_grid = cooperative_groups::this_grid();");
 }
 void 
 gen_profile_funcs(const int kernel)
@@ -855,6 +890,15 @@ get_original_index(const int* mappings, const int field)
 		if (mappings[i] == field) return i;
 	return -1;
 }
+bool
+written_fields_disjoint_from_read(const int curr_kernel)
+{
+	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+	{
+		if(write_called[curr_kernel][field] && stencils_accessed[curr_kernel][field][0]) return false;
+	}
+	return true;
+}
 
 void
 gen_kernel_write_funcs(const int curr_kernel)
@@ -862,12 +906,24 @@ gen_kernel_write_funcs(const int curr_kernel)
 
     printf("const auto AC_INTERNAL_read_vtxbuf __attribute__((unused)) = [&](const Field& handle, const int& x, const int& y, const int& z) {");
     printf("switch (handle) {");
-    for(int field = 0; field < NUM_FIELDS; ++field)
+    if(written_fields_disjoint_from_read(curr_kernel))
     {
-    	if(vtxbuf_has_variable_dims[field])
-    		printf("case %s: { return vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]; break;}",field_names[field],vtxbuf_dims_str[field]);
+    	for(int field = 0; field < NUM_FIELDS; ++field)
+    	{
+    		if(vtxbuf_has_variable_dims[field])
+    			printf("case %s: { return __ldg(&vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]); break;}",field_names[field],vtxbuf_dims_str[field]);
+    	}
+    	printf("default: {return __ldg(&vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))]);}");
     }
-    printf("default: {return vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))];}");
+    else
+    {
+    	for(int field = 0; field < NUM_FIELDS; ++field)
+    	{
+    		if(vtxbuf_has_variable_dims[field])
+    			printf("case %s: { return vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]; break;}",field_names[field],vtxbuf_dims_str[field]);
+    	}
+    	printf("default: {return vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))];}");
+    }
     printf("}");
     printf("};");
 
@@ -1294,7 +1350,7 @@ gen_return_if_oob(const int curr_kernel)
     		//TP: if all threads are active can skip checks checking if target tid is active in reductions
     		printf("%s AC_INTERNAL_all_threads_active = AC_INTERNAL_active_threads+1 == 0;",type);
        }
-       printf("if(out_of_bounds) %s;",is_raytracing_kernel(curr_kernel) || kernel_has_block_loops(curr_kernel) ? "continue" : "return");
+       printf("if(out_of_bounds) %s;",is_coop_raytracing_kernel(curr_kernel) || kernel_has_block_loops(curr_kernel) ? "continue" : "return");
        printf("{\n");
   // Enable excluding some internal domain
   printf("\n#if defined(AC_ENABLE_EXCLUDE_INNER)\n");
@@ -1637,7 +1693,7 @@ gen_stencil_functions(const int curr_kernel)
   }
   for (int ray = 0; ray < NUM_RAYS; ++ray)
   {
-      printf("const auto %s __attribute__((unused)) = [&](const Field& field) {"
+      printf("const auto incoming_%s __attribute__((unused)) = [&](const Field& field) {"
              "switch (field) {"
       		,ray_names[ray]);
       for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
@@ -1645,7 +1701,22 @@ gen_stencil_functions(const int curr_kernel)
     	if ((incoming_ray_value_accessed[curr_kernel][original_field][ray]))
 	{
       		const int field = get_original_index(field_remappings,original_field);
-      		printf("case %s: return f%s_r%s;", field_names[field], field_names[field],ray_names[ray]);
+      		printf("case %s: return f%s_incoming_r%s;", field_names[field], field_names[field],ray_names[ray]);
+	}
+      }
+      printf("default: return (AcReal)NAN;");
+      printf("}"
+             "};");
+
+      printf("const auto outgoing_%s __attribute__((unused)) = [&](const Field& field) {"
+             "switch (field) {"
+      		,ray_names[ray]);
+      for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
+      {
+    	if ((outgoing_ray_value_accessed[curr_kernel][original_field][ray]))
+	{
+      		const int field = get_original_index(field_remappings,original_field);
+      		printf("case %s: return f%s_outgoing_r%s;", field_names[field], field_names[field],ray_names[ray]);
 	}
       }
       printf("default: return (AcReal)NAN;");
@@ -1860,12 +1931,29 @@ gen_kernel_body(const int curr_kernel)
 	{
 		if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
 		{
-        	   printf("const auto f%s_r%s = ", field_names[original_field], ray_names[ray]);
+        	   printf("const auto f%s_incoming_r%s = ", field_names[original_field], ray_names[ray]);
         	   printf("(");
         	   printf("(");
         	   printf("vba.in[%s]"
         	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x-(%d),vertexIdx.y-(%d), "
         	          "vertexIdx.z-(%d),VAL(%s))])",
+        	          field_names[original_field],
+			  ray_directions[ray].x,
+			  ray_directions[ray].y,
+			  ray_directions[ray].z,
+		          vtxbuf_dims_str[original_field]
+		          );
+        	   printf(")");
+        	   printf(";");
+		}
+		if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
+		{
+        	   printf("const auto f%s_outgoing_r%s = ", field_names[original_field], ray_names[ray]);
+        	   printf("(");
+        	   printf("(");
+        	   printf("vba.in[%s]"
+        	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+        	          "vertexIdx.z+(%d),VAL(%s))])",
         	          field_names[original_field],
 			  ray_directions[ray].x,
 			  ray_directions[ray].y,
