@@ -875,6 +875,7 @@ acGridQuit(void)
     acRandQuit();
 
     grid.default_tasks = nullptr;
+    grid.halo_exchange_tasks    = nullptr;
 
     grid.initialized   = false;
     grid.decomposition = (uint3_64){0, 0, 0};
