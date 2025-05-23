@@ -275,6 +275,9 @@ typedef struct AcTaskDefinition {
     Volume end;
     bool given_launch_bounds;
     Volume halo_sizes;
+    bool sending;
+    bool receiving;
+    int3 ray_direction;
 
 } AcTaskDefinition;
 
@@ -313,7 +316,7 @@ FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
 #endif
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const size_t num_fields));
-FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const size_t num_fields, const Volume start, const Volume end));
+FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving));
 
 FUNC_DEFINE(AcTaskGraph*, acGridGetDefaultTaskGraph,());
 

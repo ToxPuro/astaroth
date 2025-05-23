@@ -998,7 +998,13 @@ static inline acHaloExchange(std::vector<Field> fields)
 AcTaskDefinition
 static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end)
 {
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end);
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true);
+}
+
+AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving)
+{
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving);
 }
 
 static inline

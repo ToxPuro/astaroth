@@ -476,11 +476,15 @@ std::vector<AcTaskDefinition>
 gen_halo_exchange_and_periodic_bcs(
 		const std::vector<Field>& output_fields,
 		const FieldBCs field_boundconds,
+		const int3 direction,
+		const bool before_kernel_call,
 		FILE* stream
 		)
 {
 		const auto info = get_info();
 		std::vector<AcTaskDefinition> res{};
+		if(direction == (int3){0,0,0} && !before_kernel_call) return res;
+		if(output_fields.size() == 0) return res;
 		auto log_fields = [&](const auto& input_fields)
 		{
 			if(!ac_pid()) fprintf(stream,"{");
@@ -493,9 +497,16 @@ gen_halo_exchange_and_periodic_bcs(
 		log_fields(output_fields);
 
 		log_launch_bounds(stream,output_fields,output_fields);
+		if(direction != (int3){0,0,0})
+		{
+			if(!ac_pid()) fprintf(stream,",Ray_direction(%d,%d,%d)",direction.x,direction.y,direction.z);
+		}
 		const auto [start,end] = get_launch_bounds_from_fields(output_fields,output_fields);
+		const bool sending   = (direction == (int3){0,0,0} || !before_kernel_call); 
+		const bool receiving = (direction == (int3){0,0,0} || before_kernel_call); 
+		if(!ac_pid()) fprintf(stream,",sending = %d,receiving = %d",sending,receiving);
 		if(!ac_pid()) fprintf(stream, ")\n");
-		res.push_back(acHaloExchange(output_fields,start,end));
+		res.push_back(acHaloExchange(output_fields,start,end,direction,sending,receiving));
 		const Field one_communicated_field = output_fields[0];
 		const auto x_boundcond = !info[AC_dimension_inactive].x ? field_boundconds[one_communicated_field][0] : (BoundCond){};
 		const auto y_boundcond = !info[AC_dimension_inactive].y ? field_boundconds[one_communicated_field][2] : (BoundCond){};
@@ -550,6 +561,8 @@ gen_halo_exchange_and_boundconds(
 		const std::vector<Field>& fields,
 		const std::vector<Field>& communicated_fields,
 		const FieldBCs field_boundconds,
+		const std::array<std::vector<int3>,NUM_FIELDS> field_ray_directions,
+		const bool before_kernel_call,
 		FILE* stream
 		)
 {
@@ -597,10 +610,29 @@ gen_halo_exchange_and_boundconds(
 					        ++it;
 					    }
 					}
-					const std::vector<AcTaskDefinition> halos_and_periodic = gen_halo_exchange_and_periodic_bcs(same_dims_fields,field_boundconds,stream);
-					for(auto& elem: halos_and_periodic) res.push_back(elem);
+					for(int x_dir = -1; x_dir <= 1; ++x_dir)
+					{
+						for(int y_dir = -1; y_dir <= 1; ++y_dir)
+						{
+							for(int z_dir = -1; z_dir <= 1; ++z_dir)
+							{
+								const int3 dir = (int3){x_dir,y_dir,z_dir};
+								std::vector<Field> same_direction_fields{};
+								for(auto& field : same_dims_fields)
+								{
+									if(std::find(field_ray_directions[field].begin(), field_ray_directions[field].end(),dir) != field_ray_directions[field].end()) 
+										same_direction_fields.push_back(field);
+								}
+								const std::vector<AcTaskDefinition> halos_and_periodic = gen_halo_exchange_and_periodic_bcs(same_direction_fields,field_boundconds,dir,before_kernel_call,stream);
+								for(auto& elem: halos_and_periodic) res.push_back(elem);
+							}
+						}
+					}
 				}
 			}
+
+			if(!before_kernel_call) return res;
+
 			for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
                                 for(const auto& field : fields)
 				{
@@ -998,6 +1030,32 @@ get_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 	}
 	return level_sets;
 }
+std::array<std::vector<int3>,NUM_FIELDS>
+get_field_ray_directions(const std::vector<AcKernel> kernels)
+{
+
+	std::array<std::vector<int3>,NUM_FIELDS> field_ray_directions{};
+	const auto info = get_kernel_analysis_info();
+	for(auto& kernel : kernels)
+	{
+		for(int field = 0; field < NUM_FIELDS; ++field)
+		{
+			for(int ray = 0; ray < NUM_RAYS; ++ray)
+			{
+				if(info[kernel].ray_accessed[field][ray])
+				{
+					field_ray_directions[field].push_back(ray_directions[ray]);
+				}
+			}
+		}
+	}
+	for(int field = 0; field < NUM_FIELDS; ++field)
+	{
+		if(field_ray_directions[field].size() == 0) field_ray_directions[field].push_back((int3){0,0,0});
+	}
+
+	return field_ray_directions;
+}
 
 std::vector<AcTaskDefinition>
 acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
@@ -1012,6 +1070,10 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[graph]);
 	std::array<bool,NUM_FIELDS> field_written_out_before{};
+	auto kernel_calls = optimized ?
+				get_optimized_kernels(graph,true) :
+				DSLTaskGraphKernels[graph];
+	const auto field_ray_directions = get_field_ray_directions(kernel_calls);
 	for(const auto& current_level_set : level_sets)
 	{
 		std::vector<Field> communicated_fields_not_written_to{};
@@ -1029,6 +1091,8 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 		  communicated_fields_written_to,
 		  current_level_set.fields_communicated_before,
 		  field_boundconds,
+		  field_ray_directions,
+		  true,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
@@ -1036,6 +1100,8 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 		  communicated_fields_not_written_to,
 		  current_level_set.fields_communicated_before,
 		  field_boundconds,
+		  field_ray_directions,
+		  true,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
@@ -1084,6 +1150,25 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 				field_written_out_before[field] |= info[call.kernel].written_fields[field];
 
 		}
+
+		ops = gen_halo_exchange_and_boundconds(
+		  communicated_fields_written_to,
+		  current_level_set.fields_communicated_before,
+		  field_boundconds,
+		  field_ray_directions,
+		  false,
+		  stream
+		);
+		for(const auto& op : ops) res.push_back(op);
+		ops = gen_halo_exchange_and_boundconds(
+		  communicated_fields_not_written_to,
+		  current_level_set.fields_communicated_before,
+		  field_boundconds,
+		  field_ray_directions,
+		  false,
+		  stream
+		);
+		for(const auto& op : ops) res.push_back(op);
 	}
 	if (!ac_pid()) fprintf(stream,"\n");
 	if (!ac_pid()) fclose(stream);

@@ -32,6 +32,8 @@ typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define AcComplex(x,y)   (AcComplex){x,y}
 static AcBool3 dimension_inactive{};
 static int3 raytracing_subblock{};
+static int  x_ray_shared_mem_block_size{};
+static int  z_ray_shared_mem_block_size{};
 static bool sparse_autotuning=false;
 static int3    max_tpb_for_reduce_kernels{100,100,100};
 #include <math.h> 
@@ -159,6 +161,32 @@ is_raytracing_kernel(const AcKernel kernel)
 	return false;
 }
 
+static int
+num_fields_ray_accessed_read_and_written(const AcKernel kernel)
+{
+	int res = 0;
+	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+	{
+		if(write_called[kernel][field] || stencils_accessed[kernel][field][0])
+		{
+			res++;
+			continue;
+		}
+		for(int ray = 0; ray < NUM_RAYS; ++ray)
+		{
+			if(
+			    incoming_ray_value_accessed[kernel][field][ray]
+			    || outgoing_ray_value_accessed[kernel][field][ray]
+			    )
+			{
+				res++;
+				continue;
+			}
+		}
+	}
+	return res;
+}
+
 static AcBool3
 raytracing_step_direction(const AcKernel kernel)
 {
@@ -259,9 +287,17 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
 	const int totalMaxBlocks = get_device_prop().multiProcessorCount*maxBlocksPerSM;
 	if((int)(bpg.x*bpg.y*bpg.z) > totalMaxBlocks) return false;
   }
-  //TP: in most cases this a reasonable limitation but at least theoretically the shape of the threadblock might be more important
-  //    than warp considerations. So impose this limitation only if the user allows it
-  if (sparse_autotuning && (dims.x >= warp_size && tpb.x % warp_size != 0)) return false;
+  if(raytracing_step_direction(kernel).x)
+  {
+	if(((int)tpb.y - (x_ray_shared_mem_block_size)) != 0) return false;
+  }
+
+  else
+  {
+  	//TP: in most cases this a reasonable limitation but at least theoretically the shape of the threadblock might be more important
+  	//    than warp considerations. So impose this limitation only if the user allows it
+  	if (sparse_autotuning && (dims.x >= warp_size && tpb.x % warp_size != 0)) return false;
+  }
 
   if(kernel_reduces_profile(kernel))
   {
@@ -323,10 +359,20 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
   }
 }
 
+const bool SHARED_MEM_Z_RAYS = false;
 size_t
-get_smem(const Volume tpb, const size_t stencil_order,
+get_smem(const AcKernel kernel, const Volume tpb, const size_t stencil_order,
          const size_t bytes_per_elem)
 {
+  if(is_raytracing_kernel(kernel) && raytracing_step_direction(kernel).x)
+  {
+	//TP: we pad the y dimension by one to avoid bank conflicts
+	return bytes_per_elem*(tpb.y+1)*tpb.z*(x_ray_shared_mem_block_size+2)*num_fields_ray_accessed_read_and_written(kernel);
+  }
+  if(is_raytracing_kernel(kernel) && raytracing_step_direction(kernel).z && SHARED_MEM_Z_RAYS)
+  {
+	return bytes_per_elem*(tpb.x+2)*(tpb.y+2)*(z_ray_shared_mem_block_size+2)*num_fields_ray_accessed_read_and_written(kernel);
+  }
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: {
     return 0;
@@ -1119,6 +1165,8 @@ acVBACreate(const AcMeshInfo config)
   dimension_inactive = config[AC_dimension_inactive];
   sparse_autotuning  = config[AC_sparse_autotuning];
   raytracing_subblock = config[AC_raytracing_block_factors];
+  x_ray_shared_mem_block_size = config[AC_x_ray_shared_mem_block_size];
+  z_ray_shared_mem_block_size = config[AC_z_ray_shared_mem_block_size];
 
   max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
   VertexBufferArray vba;
@@ -1389,7 +1437,7 @@ acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_vo
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
-  const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
+  const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
   if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
   {
   	reduce_offsets[kernel][start] = kernel_running_reduce_offsets[kernel];
@@ -1414,7 +1462,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
-  const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
+  const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
 
   // Timer create
   cudaEvent_t tstart, tstop;
@@ -1753,13 +1801,17 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   //TP: emprically and thinking about it y and z usually cannot be too big (since x is usually quite large) so we can limit then when performing sparse autotuning
   if(sparse_autotuning)
   {
-	  tpb_end.y = min(tpb_end.y,32);
+	  if(!raytracing_step_direction(kernel).x)
+	  {
+	  	tpb_end.y = min(tpb_end.y,32);
+	  }
 	  tpb_end.z = min(tpb_end.z,32);
   }
   const int x_increment = min(
 		  			minimum_transaction_size_in_elems,
 					tpb_end.x
 		            );
+
 
   std::vector<int3> samples{};
   for (int z = 1; z <= min(max_threads_per_block,tpb_end.z); ++z) {
@@ -1771,7 +1823,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         if (x * y * z > max_threads_per_block)
           break;
         const dim3 tpb(x, y, z);
-        const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER,
+        const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER,
                                      sizeof(AcReal));
 
         if (smem > max_smem)
@@ -1786,6 +1838,12 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         samples.push_back((int3){x,y,z});
       }
     }
+  }
+  if(samples.size() == 0)
+  {
+	fprintf(stderr,"Found no suitable thread blocks for Kernel %s!\n",kernel_names[kernel]);
+	fflush(stderr);
+  	ERRCHK_ALWAYS(samples.size() > 0);
   }
   size_t counter  = 0;
   size_t start_samples{};
@@ -1813,6 +1871,9 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   	end_samples   = samples.size();
   }
   const size_t n_samples = end_samples-start_samples;
+
+  //TP: logs the percent 0% which is useful to know the autotuning has started
+  if (log) logAutotuningStatus(counter,n_samples,kernel,best_measurement.time / num_iters);
   for(size_t sample  = start_samples; sample < end_samples; ++sample)
   {
         auto x = samples[sample].x;
@@ -1826,7 +1887,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
 	const int n_warps = get_num_of_warps(bpg,tpb);
 	if(kernel_calls_reduce[kernel])
 		resize_scratchpads_to_fit(n_warps,vba,kernel);
-        const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER,
+        const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER,
                                      sizeof(AcReal));
 
         cudaEvent_t tstart, tstop;

@@ -228,15 +228,21 @@ acHaloExchange(Field fields[], const size_t num_fields)
     task_def.fields_out = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
     task_def.halo_sizes = get_max_halo_size(fields,num_fields);
+    task_def.ray_direction = (int3){0,0,0};
+    task_def.sending   = true;
+    task_def.receiving = true;
     return task_def;
 }
 
 AcTaskDefinition
-acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end)
+acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving)
 {
     AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
     task_def.start = start;
     task_def.end   = end;
+    task_def.ray_direction = ray_direction;
+    task_def.sending       = sending;
+    task_def.receiving     = receiving;
     task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
 
     return task_def;
@@ -256,6 +262,9 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
     task_def.task_type              = TASKTYPE_BOUNDCOND;
     task_def.boundary               = boundary;
     task_def.kernel_enum            = kernel;
+    //TP: done in case we have communicating bcs
+    task_def.sending   = true;
+    task_def.receiving = true;
 
     task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
@@ -1205,6 +1214,26 @@ get_send_counterpart_ranks(const Device device, const int rank, const int3 outpu
     return {get_pid(target_pid)};
 }
 
+bool
+get_sending(const int3 direction, const int3 id)
+{
+	return 
+		   ((direction.x != 0) && (direction.x == id.x)) ||
+		   ((direction.y != 0) && (direction.y == id.y)) ||
+		   ((direction.z != 0) && (direction.z == id.z)) ||
+		   (direction == (int3){0,0,0});
+}
+
+bool
+get_receiving(const int3 direction, const int3 id)
+{
+	return 
+		   ((direction.x != 0) && (direction.x == -id.x)) ||
+		   ((direction.y != 0) && (direction.y == -id.y)) ||
+		   ((direction.z != 0) && (direction.z == -id.z)) ||
+		   (direction == (int3){0,0,0});
+}
+
 
 // HaloExchangeTask
 HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int halo_region_tag,
@@ -1214,13 +1243,15 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
            Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
            Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, op.halo_sizes, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
+      sending(op.sending ? get_sending(op.ray_direction  ,input_region.id)     : false),
+      receiving(op.receiving ? get_receiving(op.ray_direction,input_region.id) : false),
       shear_periodic(shear_periodic_),
 
       // MPI tags are namespaced to avoid collisions with other MPI tasks
       //TP: in recv_buffers the dims of input is used instead of output since normally they are the same
       //    and in case of shear periodic then output_dims is larger than the message dims
-      recv_buffers(input_region.dims,  input_region.memory.fields.size(),   tag_0, input_region.tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Receive),
-      send_buffers(input_region.dims,  output_region.memory.fields.size(),   tag_0, Region::id_to_tag(-output_region.id),get_send_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Send)
+      recv_buffers(input_region.dims,  receiving ? input_region.memory.fields.size() : 0,   tag_0, input_region.tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Receive),
+      send_buffers(input_region.dims,  sending   ? output_region.memory.fields.size() : 0,   tag_0, Region::id_to_tag(-output_region.id),get_send_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Send)
 {
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
@@ -1237,7 +1268,14 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
     syncVBA();
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done syncing VBA\n");
 
-    active = ((acDeviceGetLocalConfig(device)[AC_include_3d_halo_corners]) || output_region.facet_class != 3) ? true : false;
+    if(op.ray_direction != (int3){0,0,0})
+    {
+    	active = (sending || receiving);
+    }
+    else
+    {
+    	active = ((acDeviceGetLocalConfig(device)[AC_include_3d_halo_corners]) || output_region.facet_class != 3) ? true : false;
+    }
     name = "Halo exchange " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) +
            "," + std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) +
            ")";
@@ -1278,6 +1316,7 @@ HaloExchangeTask::~HaloExchangeTask()
 void
 HaloExchangeTask::pack()
 {
+    ERRCHK(sending);
     auto msg = send_buffers.get_fresh_buffer();
     acKernelPackData(stream, vba, input_region.position, input_region.dims,
                              msg->data, input_region.memory.fields.data(),
@@ -1287,6 +1326,7 @@ HaloExchangeTask::pack()
 void
 HaloExchangeTask::move()
 {
+        ERRCHK(sending && receiving);
 	acKernelMoveData(stream, input_region.position, output_region.position, input_region.dims, output_region.dims, vba, input_region.memory.fields.data(), input_region.memory.fields.size());
 }
 
@@ -1294,6 +1334,7 @@ void
 HaloExchangeTask::unpack()
 {
 
+    ERRCHK(receiving);
     auto msg = recv_buffers.get_current_buffer();
     if(!ac_get_info()[AC_use_cuda_aware_mpi])
     {
@@ -1486,6 +1527,7 @@ HaloExchangeTask::send()
 void
 HaloExchangeTask::exchange()
 {
+    ERRCHK(sending && receiving);
     if(ac_get_info()[AC_use_cuda_aware_mpi])
     {
     	exchangeDevice();
@@ -1561,15 +1603,32 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 	//	2. The src processes can change dynamically and not be known at init (shearing periodic bcs)
 	//    If the important point is that no message is not expected than this should handle that easily
 	//    And also now we do not have to cleanup the leftover receive
-        receive();
-        pack();
-        state = static_cast<int>(HaloExchangeState::Packing);
+	if(receiving)
+	{
+        	receive();
+	}
+	if(sending)
+	{
+        	pack();
+        	state = static_cast<int>(HaloExchangeState::Packing);
+	}
+	else
+	{
+        	state = static_cast<int>(HaloExchangeState::Exchanging);
+	}
         break;
     case HaloExchangeState::Packing:
         trace_file->trace(this, "packing", "receiving");
         sync();
         send();
-        state = static_cast<int>(HaloExchangeState::Exchanging);
+	if(receiving)
+	{
+        	state = static_cast<int>(HaloExchangeState::Exchanging);
+	}
+	else
+	{
+        	state = static_cast<int>(HaloExchangeState::Waiting);
+	}
         break;
     case HaloExchangeState::Exchanging:
         trace_file->trace(this, "receiving", "unpacking");

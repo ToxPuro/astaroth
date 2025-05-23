@@ -108,6 +108,8 @@ run_const bool AC_shear = false
 run_const bool AC_use_cuda_aware_mpi = true
 input real AC_shear_delta_y
 run_const int3 AC_raytracing_block_factors = (int3){1,1,1}
+run_const int AC_x_ray_shared_mem_block_size = 32
+run_const int AC_z_ray_shared_mem_block_size = 1
 //TP: these belong here but at the moment are deprecated
 /**
 run_const AC_xy_plate_bufsize

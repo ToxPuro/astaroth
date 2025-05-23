@@ -32,15 +32,7 @@
 
 #define NUM_INTEGRATION_STEPS (2)
 
-static bool finalized = false;
-
 #include <stdlib.h>
-void
-acAbort(void)
-{
-    if (!finalized)
-        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
-}
 double
 drand()
 {
@@ -50,13 +42,10 @@ drand()
 int
 main(int argc, char* argv[])
 {
-    atexit(acAbort);
-
-    ac_MPI_Init();
-
     int nprocs, pid;
-    MPI_Comm_size(acGridMPIComm(), &nprocs);
-    MPI_Comm_rank(acGridMPIComm(), &pid);
+    MPI_Init(NULL,NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     // Set random seed for reproducibility
     srand(321654987);
@@ -64,6 +53,7 @@ main(int argc, char* argv[])
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    info.comm->handle = MPI_COMM_WORLD;
     acPushToConfig(info,AC_periodic_grid,(AcBool3){false,false,false});
 
     const int nx = argc > 1 ? atoi(argv[1]) : 2*9;
@@ -78,6 +68,13 @@ main(int argc, char* argv[])
     acSetGridMeshDims(nx*decomp.x, ny*decomp.y, nz*decomp.z, &info);
     acSetLocalMeshDims(nx, ny, nz, &info);
     acHostUpdateParams(&info);
+
+    #if AC_RUNTIME_COMPILATION
+    const char* build_str = "-DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR=../../DSL -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DBUILD_ACM=OFF";
+    acCompile(build_str,info);
+    acLoadLibrary(stdout,info);
+    acLoadUtils(stdout,info);
+    #endif
 
     acGridInit(info);
 
@@ -96,10 +93,15 @@ main(int argc, char* argv[])
     acGridSynchronizeStream(STREAM_ALL);
 
     //TP: for benchmarking purposes
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_nine_rays_general),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_up_general),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_three_rays_general),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_right_ray_general),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_up_rays),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_right_rays),1);
+
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(baseline_y),1);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_three_rays),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_three_rays_general),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_up_general),1);
 
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(baseline),1);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(revise_nine_rays),1);
@@ -222,11 +224,10 @@ main(int argc, char* argv[])
       }
     }
 
-    /**
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_right_rays),1);
-    check_f();
+    check_f("Right",QRAD);
 
-    reset_f();
+    reset_f(QRAD);
     for(size_t i = dims.n1.x-1; i >= dims.n0.x; --i)
     {
       for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
@@ -239,8 +240,7 @@ main(int argc, char* argv[])
     }
 
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_left_rays),1);
-    check_f();
-    **/
+    check_f("Left",QRAD);
 
     reset_f(QRAD);
     for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
@@ -276,7 +276,6 @@ main(int argc, char* argv[])
     }
 
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_nine_rays),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_nine_rays),1);
     for(size_t k = dims.n0.z-1; k < dims.n1.z+1;  ++k)
     {
       for(size_t i = dims.n0.x-1; i < dims.n1.x+1; ++i)
@@ -304,7 +303,6 @@ main(int argc, char* argv[])
     check_f("four rays",Q_MMP);
 
     acHostMeshDestroy(&model);
-    finalized = true;
 
     acGridQuit();
     ac_MPI_Finalize();

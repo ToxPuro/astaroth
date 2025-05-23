@@ -231,11 +231,48 @@ bool kernel_accesses_ray_direction(const int curr_kernel, const int3 ray_match)
 	return false;
 }
 
+bool
+accesses_forward_ray(const int curr_kernel)
+{
+	return kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1});
+}
+
+
+bool
+accesses_backwards_ray(const int curr_kernel)
+{
+	return kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1});
+}
+
+bool
+accesses_z_ray(const int curr_kernel)
+{
+	return accesses_forward_ray(curr_kernel) || accesses_backwards_ray(curr_kernel);
+}
+
+bool
+accesses_x_right_ray(const int curr_kernel)
+{
+	return kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0});
+}
+
+bool
+accesses_x_left_ray(const int curr_kernel)
+{
+	return kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0});
+}
+
+bool
+accesses_x_ray(const int curr_kernel)
+{
+	return kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0});
+}
+
 int
 n_raytracing_directions(const int curr_kernel)
 {
 	int n_dir = 0;
-	n_dir += kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0});
+	n_dir += accesses_x_ray(curr_kernel);
 	n_dir += kernel_accesses_ray_direction(curr_kernel,(int3){0,1,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0});
 	n_dir += kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1});
 	return n_dir;
@@ -244,6 +281,106 @@ bool
 is_coop_raytracing_kernel(const int curr_kernel)
 {
 	return is_raytracing_kernel(curr_kernel) && (n_raytracing_directions(curr_kernel) > 1);
+}
+
+const bool SHARED_MEM_Z_RAYS = false;
+
+void
+gen_raytracing_step_loop(const int curr_kernel)
+{
+	  const int n_dir = n_raytracing_directions(curr_kernel);
+	  if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}))
+	  {
+	    if(SHARED_MEM_Z_RAYS) printf("int shared_mem_z_index = VAL(AC_z_ray_shared_mem_block_size)-1;");
+	    printf("for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_nlocal).z; ++current_block_idx_z) {");
+	    if(n_dir > 1) printf("if(current_block_idx_z > 0) ac_coop_grid.sync();");
+	    if(SHARED_MEM_Z_RAYS) printf("shared_mem_z_index++;");
+	  }
+	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1}))
+	  {
+	    if(SHARED_MEM_Z_RAYS) printf("int shared_mem_z_index = VAL(AC_z_ray_shared_mem_block_size)-1;");
+	    printf( "for(int current_block_idx_z = VAL(AC_nlocal).z-1; current_block_idx_z >= 0; --current_block_idx_z) {");
+	    if(n_dir > 1) printf("if(current_block_idx_z < VAL(AC_nlocal).z-1) ac_coop_grid.sync();");
+	    if(SHARED_MEM_Z_RAYS) printf("shared_mem_z_index++;");
+	  }
+
+	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,1,0}))
+	  {
+	    printf("for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_nlocal).y; ++current_block_idx_y) {");
+	    if(n_dir > 1) printf(
+	  	  "if(current_block_idx_y > 0) ac_coop_grid.sync();"
+		  );
+	  }
+	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0}))
+	  {
+	    printf("for(int current_block_idx_y = VAL(AC_nlocal).y-1; current_block_idx_y >= 0; --current_block_idx_y) {");
+	    if(n_dir > 1) printf("if(current_block_idx_y < VAL(AC_nlocal).y-1) ac_coop_grid.sync();"
+		  );
+	  }
+
+	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}))
+	  {
+	    printf("int shared_mem_x_index = VAL(AC_x_ray_shared_mem_block_size)-1;");
+	    printf("for(int current_block_idx_x = 0; current_block_idx_x <= VAL(AC_nlocal).x; ++current_block_idx_x) {");
+	    if(n_dir > 1) printf("if(current_block_idx_x > 0) ac_coop_grid.sync();");
+	    printf("shared_mem_x_index++;");
+	  }
+	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0}))
+	  {
+	    printf("int shared_mem_x_index = VAL(AC_x_ray_shared_mem_block_size)-1;");
+	    printf("for(int current_block_idx_x = VAL(AC_nlocal).x-1; current_block_idx_x >= -1; --current_block_idx_x) {");
+	    if(n_dir > 1) printf("if(current_block_idx_x > 0) ac_coop_grid.sync();");
+	    printf("shared_mem_x_index++;");
+	  }
+}
+void
+gen_raytracing_sliding_loops(const int curr_kernel)
+{
+	  const bool kernel_accesses_x_rays = kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0});
+	  const bool kernel_accesses_y_rays = kernel_accesses_ray_direction(curr_kernel,(int3){0,1,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0});
+	  const bool kernel_accesses_z_rays = kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1});
+	  const int n_dir = n_raytracing_directions(curr_kernel);
+
+	  if(kernel_accesses_z_rays)
+	  {
+	    if(n_dir > 1)
+	    	printf(
+	         "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
+	         "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
+	  	  );
+	    else
+		    printf("const int current_block_idx_x = 0; const int current_block_idx_y = 0;\n");
+
+	  }
+
+	  else if(kernel_accesses_y_rays)
+	  {
+	    if(n_dir > 1)
+	    	printf(
+	         "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
+	         "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
+	        );
+	    else
+		    printf("const int current_block_idx_z = 0; const int current_block_idx_x = 0;\n");
+	  }
+
+	  else if(kernel_accesses_x_rays)
+	  {
+	    if(n_dir > 1)
+	     	printf(
+	         "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
+	         "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
+	          );
+	    else
+	    {
+		    printf("const int current_block_idx_z = 0; const int current_block_idx_y = 0;\n");
+	    }
+	  }
+	  if(n_dir <= 1) 
+	  {
+		  printf("{"
+			 "{");
+	  }
 }
 
 void
@@ -389,84 +526,8 @@ gen_kernel_block_loops(const int curr_kernel)
   }
   else if(is_raytracing_kernel(curr_kernel))
   {
-	  const bool kernel_accesses_x_rays = kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0});
-	  const bool kernel_accesses_y_rays = kernel_accesses_ray_direction(curr_kernel,(int3){0,1,0}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0});
-	  const bool kernel_accesses_z_rays = kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1});
-	  const int n_dir = n_raytracing_directions(curr_kernel);
-	  if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}))
-	  {
-	    printf("for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_nlocal).z; ++current_block_idx_z) {");
-	    if(n_dir > 1) printf("if(current_block_idx_z > 0) ac_coop_grid.sync();");
-	  }
-	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1}))
-	  {
-	    printf( "for(int current_block_idx_z = VAL(AC_nlocal).z-1; current_block_idx_z >= 0; --current_block_idx_z) {");
-	    if(n_dir > 1) printf("if(current_block_idx_z < VAL(AC_nlocal).z-1) ac_coop_grid.sync();");
-	  }
-
-	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,1,0}))
-	  {
-	    printf("for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_nlocal).y; ++current_block_idx_y) {");
-	    if(n_dir > 1) printf(
-	  	  "if(current_block_idx_y > 0) ac_coop_grid.sync();"
-		  );
-	  }
-	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0}))
-	  {
-	    printf("for(int current_block_idx_y = VAL(AC_nlocal).y-1; current_block_idx_y >= 0; --current_block_idx_y) {");
-	    if(n_dir > 1) printf("if(current_block_idx_y < VAL(AC_nlocal).y-1) ac_coop_grid.sync();"
-		  );
-	  }
-
-	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){1,0,0}))
-	  {
-	    printf("for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_nlocal).x; ++current_block_idx_x) {");
-	    if(n_dir > 1) printf("if(current_block_idx_x > 0) ac_coop_grid.sync();");
-	  }
-	  else if(kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0}))
-	  {
-	    printf("for(int current_block_idx_x = VAL(AC_nlocal).x-1; current_block_idx_x >= 0; --current_block_idx_x) {");
-	    if(n_dir > 1) printf("if(current_block_idx_x > 0) ac_coop_grid.sync();");
-	  }
-
-	  if(kernel_accesses_z_rays)
-	  {
-	    if(n_dir > 1)
-	    	printf(
-	         "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
-	         "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
-	  	  );
-	    else
-		    printf("const int current_block_idx_x = 0; const int current_block_idx_y = 0;\n");
-
-	  }
-
-	  else if(kernel_accesses_y_rays)
-	  {
-	    if(n_dir > 1)
-	    	printf(
-	         "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
-	         "for(int current_block_idx_x = 0; current_block_idx_x < VAL(AC_raytracing_block_factors).x; ++current_block_idx_x){"
-	        );
-	    else
-		    printf("const int current_block_idx_z = 0; const int current_block_idx_x = 0;\n");
-	  }
-
-	  else if(kernel_accesses_x_rays)
-	  {
-	    if(n_dir > 1)
-	     	printf(
-	         "for(int current_block_idx_z = 0; current_block_idx_z < VAL(AC_raytracing_block_factors).z; ++current_block_idx_z){"
-	         "for(int current_block_idx_y = 0; current_block_idx_y < VAL(AC_raytracing_block_factors).y; ++current_block_idx_y){"
-	          );
-	    else
-		    printf("const int current_block_idx_z = 0; const int current_block_idx_y = 0;\n");
-	  }
-	  if(n_dir <= 1) 
-	  {
-		  printf("{"
-			 "{");
-	  }
+	  gen_raytracing_step_loop(curr_kernel);
+	  gen_raytracing_sliding_loops(curr_kernel);
 
   	  printf("const dim3 current_block_idx = {"
 			"blockIdx.x + current_block_idx_x*gridDim.x," 
@@ -518,11 +579,90 @@ gen_kernel_common_prefix()
   printf("(void)local_compdomain_idx;");     // Silence unused warning
 					     //
 }
+bool
+is_x_raytrace_kernel(const int curr_kernel)
+{
+	const int n_dir = n_raytracing_directions(curr_kernel);
+	return n_dir == 1 && accesses_x_ray(curr_kernel);
+}
+
+static int
+get_original_index(const int* mappings, const int field)
+{
+	for(int i = 0; i <= NUM_ALL_FIELDS; ++i)
+		if (mappings[i] == field) return i;
+	return -1;
+}
+bool
+field_ray_accessed(const int curr_kernel,const int field)
+{
+   const int original_field = get_original_index(field_remappings,field);
+   for(int ray = 0; ray < NUM_RAYS; ++ray)
+   {
+     if(
+          incoming_ray_value_accessed[curr_kernel][original_field][ray]
+        || outgoing_ray_value_accessed[curr_kernel][original_field][ray]
+      )
+      {
+	return true;
+      }
+   }
+   return false;
+}
+
+bool
+field_value_called(const int curr_kernel,const int field)
+{
+   const int original_field = get_original_index(field_remappings,field);
+   return stencils_accessed[curr_kernel][original_field][0];
+}
+
+bool
+field_needs_input_shmem(const int curr_kernel, const int field)
+{
+	return field_value_called(curr_kernel,field) || field_ray_accessed(curr_kernel,field);
+}
+
+bool
+field_needs_shmem(const int curr_kernel,const int field)
+{
+	return field_needs_input_shmem(curr_kernel,field) || write_called[curr_kernel][field];
+}
+
 void
 gen_raytracing_prefix(const int curr_kernel)
 {
 	if(!is_raytracing_kernel(curr_kernel)) return;
-	if(n_raytracing_directions(curr_kernel) > 1) printf("[[maybe_unused]] cooperative_groups::grid_group ac_coop_grid = cooperative_groups::this_grid();");
+	const int n_dir = n_raytracing_directions(curr_kernel);
+	if(n_dir > 1) printf("[[maybe_unused]] cooperative_groups::grid_group ac_coop_grid = cooperative_groups::this_grid();");
+	const bool kernel_accesses_z_rays = kernel_accesses_ray_direction(curr_kernel,(int3){0,0,1}) || kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1});
+	const bool has_shared_mem = is_x_raytrace_kernel(curr_kernel) || (kernel_accesses_z_rays && SHARED_MEM_Z_RAYS);
+	if(!has_shared_mem) return;
+
+	printf("extern __shared__ AcReal shared_mem_for_rays[];");
+	if(is_x_raytrace_kernel(curr_kernel))
+	{
+		printf("const int y_block_portion = 0;");
+		//TP: we pad the y dimension by one to make it odd --> avoids bank conflicts
+		printf("const int shared_mem_z_stride = (blockDim.y+1);");
+		printf("const int shared_mem_x_stride = shared_mem_z_stride*blockDim.z;");
+    		printf("[[maybe_unused]] const int dir_index = shared_mem_x_stride*(VAL(AC_x_ray_shared_mem_block_size)+2);");
+	}
+	if(kernel_accesses_z_rays && SHARED_MEM_Z_RAYS)
+	{
+		printf("const int shared_mem_z_stride = blockDim.x*blockDim.y;");
+    		printf("[[maybe_unused]] const int dir_index = shared_mem_z_stride*(VAL(AC_z_ray_shared_mem_block_size)+2);");
+	}
+
+    	int field_counter = 0;
+    	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+    	{
+    	   if(field_needs_shmem(curr_kernel,field))
+    	   {
+    	        printf("const int f%s_ray_index = dir_index*%d;",field_names[field],field_counter);
+		field_counter++;
+    	   }
+    	}
 }
 void 
 gen_profile_funcs(const int kernel)
@@ -883,13 +1023,6 @@ has_buffered_writes(const char* kernel_name)
 	return strstr(kernel_name,"FUSED") != NULL;
 }
 
-static int
-get_original_index(const int* mappings, const int field)
-{
-	for(int i = 0; i <= NUM_ALL_FIELDS; ++i)
-		if (mappings[i] == field) return i;
-	return -1;
-}
 bool
 written_fields_disjoint_from_read(const int curr_kernel)
 {
@@ -1029,13 +1162,34 @@ gen_kernel_write_funcs(const int curr_kernel)
 	printf("switch (handle) {");
 	for(int original_field = 0; original_field < NUM_FIELDS; ++original_field)
 	{
-		if(write_called[curr_kernel][original_field] && vtxbuf_has_variable_dims[original_field])
+		if(write_called[curr_kernel][original_field] && (vtxbuf_has_variable_dims[original_field] || is_x_raytrace_kernel(curr_kernel) || (accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS)))
 		{
   	      		const int field = get_original_index(field_remappings,original_field);
-			printf("case %s: { vba.out[handle][DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z,VAL(%s))] = value; break;}",field_names[field],vtxbuf_dims_str[field]);
+			printf("case %s: {",field_names[field]);
+			if(is_x_raytrace_kernel(curr_kernel))
+			{
+				printf("shared_mem_for_rays[(threadIdx.y) + shared_mem_z_stride*(threadIdx.z) + f%s_ray_index + shared_mem_x_stride + shared_mem_x_offset] = value;",field_names[original_field]);
+			}
+			else
+			{
+				if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS)
+				{
+					printf("shared_mem_for_rays[(threadIdx.x) + blockDim.x*(threadIdx.y) + f%s_ray_index + shared_mem_z_stride + shared_mem_z_offset] = value;",field_names[original_field]);
+				}
+				printf("vba.out[handle][DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y,vertexIdx.z,VAL(%s))] = value;",vtxbuf_dims_str[field]);
+			}
+			printf("break;}");
 		}
+
 	}
-    	printf("default: {vba.out[handle][idx] = value;}");
+	if(!is_x_raytrace_kernel(curr_kernel))
+	{
+    		printf("default: {vba.out[handle][idx] = value;}");
+	}
+	else
+	{
+    		printf("default: {}");
+	}
 	printf("}");
     	printf("};");
 
@@ -1088,6 +1242,204 @@ gen_kernel_write_funcs(const int curr_kernel)
   printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
   */
   #endif
+}
+int
+num_accessed_field_rays(const int curr_kernel)
+{
+	int res = 0;
+        for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+        {
+          for(int ray = 0; ray < NUM_RAYS; ++ray)
+          {
+          	if(	incoming_ray_value_accessed[curr_kernel][field][ray]
+			|| outgoing_ray_value_accessed[curr_kernel][field][ray]
+		  )
+		{
+			res++;
+			continue;
+		}
+	  }
+	}
+	return res;
+}
+
+void
+populate_shared_mem_for_z_rays(const int curr_kernel)
+{
+	printf("if(shared_mem_z_index == VAL(AC_z_ray_shared_mem_block_size)){");
+	printf("shared_mem_z_index = 0;");
+	const bool forward_ray = accesses_forward_ray(curr_kernel);
+	if(forward_ray) printf("if(current_block_idx_z > 0) {");
+	else            printf("if(current_block_idx_z < VAL(AC_nlocal).z-1) {");
+	{
+		printf("for (int z_block = 0; z_block < 2; ++z_block) {");
+		printf("const int tid_index = threadIdx.x + threadIdx.y*blockDim.x;");
+        	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+        	{
+                  const int original_field = get_original_index(field_remappings,field);
+	          if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
+		  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = shared_mem_for_rays[tid_index + shared_mem_z_stride*(z_block+VAL(AC_z_ray_shared_mem_block_size)) + f%s_ray_index];", field_names[original_field],field_names[original_field]);
+        	}
+		printf("}");
+	}
+
+	printf("}");
+
+	{
+		printf("else {");
+		{
+			printf("for (int z_block = 0; z_block < 2; ++z_block) {");
+			printf("const int tid_index = threadIdx.x + threadIdx.y*blockDim.x;");
+        		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+        		{
+        		  const int original_field = get_original_index(field_remappings,field);
+			  if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
+			  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = ",field_names[original_field]);
+        		  printf("vba.in[%s]"
+        		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y, "
+        		         "vertexIdx.z%s (z_block-1), "
+			         "VAL(%s))]",
+        		         field_names[original_field],
+			         forward_ray ? "+" : "-",
+        		         vtxbuf_dims_str[original_field]
+        		         );
+        		  printf(";");
+        		}
+			printf("}");
+		}
+		printf("}");
+		{
+			printf("for (int z_block = 2; z_block < VAL(AC_z_ray_shared_mem_block_size)+2; ++z_block) {");
+			printf("const int tid_index = threadIdx.x + threadIdx.y*blockDim.x;");
+        		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+        		{
+        		  const int original_field = get_original_index(field_remappings,field);
+			  if(!field_needs_input_shmem(curr_kernel,original_field)) continue;
+			  printf("shared_mem_for_rays[tid_index + shared_mem_z_stride*z_block + f%s_ray_index] = ",field_names[original_field]);
+        		  printf("vba.in[%s]"
+        		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x,vertexIdx.y, "
+        		         "vertexIdx.z %s (z_block - 1),VAL(%s))]",
+        		         field_names[original_field],
+			         forward_ray ? "+" : "-",
+        		         vtxbuf_dims_str[original_field]
+        		         );
+        		  printf(";");
+        		}
+		}
+		printf("}");
+
+	}
+	printf("__syncthreads();");
+	printf("}");
+        printf("[[maybe_unused]] const int shared_mem_z_offset = shared_mem_z_stride*shared_mem_z_index;");
+}
+
+void
+populate_shared_mem_for_x_rays(const int curr_kernel)
+{
+	printf("if(shared_mem_x_index == VAL(AC_x_ray_shared_mem_block_size)){");
+	printf("shared_mem_x_index = 0;");
+	printf("const int y_index_without_tid = vertexIdx.y-threadIdx.y;");
+	if(accesses_x_right_ray(curr_kernel)) printf("if(current_block_idx_x > 0) {");
+	else                                  printf("if(current_block_idx_x < VAL(AC_nlocal).x-1) {");
+	const bool x_ray = accesses_x_right_ray(curr_kernel);
+	printf("for (int y_block = y_block_portion; y_block < VAL(AC_x_ray_shared_mem_block_size)+y_block_portion; ++y_block) {");
+	{
+		printf("const int tid_index = y_block + threadIdx.z*shared_mem_z_stride;");
+		printf("const int y_index   = y_block + y_index_without_tid;");
+		printf("const int x_block = threadIdx.y;");
+        	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+        	{
+		  if(write_called[curr_kernel][field])
+		  {
+			printf("vba.out[%s][DEVICE_VTXBUF_IDX(vertexIdx.x %s (x_block-VAL(AC_x_ray_shared_mem_block_size)),y_index,vertexIdx.z)] = shared_mem_for_rays[tid_index + shared_mem_x_stride*(x_block+1) + f%s_ray_index];"
+			,field_names[field]
+			,x_ray ? "+" : "-"
+			,field_names[field]);
+		  }
+		}
+		printf("}");
+	}
+
+	
+	if(accesses_x_right_ray(curr_kernel)) printf("if(current_block_idx_x == VAL(AC_nlocal).x) return;");
+	else                                  printf("if(current_block_idx_x == -1) return;");
+
+		{
+			printf("for (int x_block = 0; x_block < 2; ++x_block) {");
+			printf("const int tid_index = threadIdx.y + threadIdx.z*shared_mem_z_stride;");
+        		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+        		{
+			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
+        		  const int original_field = get_original_index(field_remappings,field);
+			  printf("shared_mem_for_rays[tid_index + shared_mem_x_stride*x_block + f%s_ray_index] = shared_mem_for_rays[tid_index + shared_mem_x_stride*(x_block+VAL(AC_x_ray_shared_mem_block_size)) + f%s_ray_index];", field_names[original_field],field_names[original_field]);
+        		}
+			printf("}");
+		}
+
+	printf("}");
+
+	{
+		printf("else {");
+		{
+			printf("for (int x_block = 0; x_block < 2; ++x_block) {");
+			printf("const int tid_index = threadIdx.y + threadIdx.z*shared_mem_z_stride;");
+        		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+        		{
+			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
+        		  const int original_field = get_original_index(field_remappings,field);
+			  printf("shared_mem_for_rays[tid_index + shared_mem_x_stride*x_block + f%s_ray_index] = ",field_names[original_field]);
+        		  printf("vba.in[%s]"
+        		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x %s (x_block-1),vertexIdx.y, "
+        		         "vertexIdx.z,VAL(%s))]",
+        		         field_names[original_field],
+			         x_ray ? "+" : "-",
+        		         vtxbuf_dims_str[original_field]
+        		         );
+        		  printf(";");
+        		}
+			printf("}");
+		}
+		printf("}");
+		{
+			printf("for (int y_block = y_block_portion; y_block < VAL(AC_x_ray_shared_mem_block_size)+y_block_portion; ++y_block) {");
+			printf("const int tid_index = y_block + threadIdx.z*shared_mem_z_stride;");
+			printf("const int y_index = y_index_without_tid + y_block;");
+			printf("const int x_block = (threadIdx.y)+2;");
+        		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+        		{
+			  if(!field_needs_input_shmem(curr_kernel,field)) continue;
+        		  const int original_field = get_original_index(field_remappings,field);
+			  printf("shared_mem_for_rays[tid_index + shared_mem_x_stride*x_block + f%s_ray_index] = ",field_names[original_field]);
+        		  printf("vba.in[%s]"
+        		         "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x %s (x_block-1),y_index, "
+        		         "vertexIdx.z,VAL(%s))]",
+        		         field_names[original_field],
+			         x_ray ? "+" : "-",
+        		         vtxbuf_dims_str[original_field]
+        		         );
+        		  printf(";");
+        		}
+		}
+		printf("}");
+
+	}
+	printf("__syncthreads();");
+	printf("}");
+        printf("[[maybe_unused]] const int shared_mem_x_offset = shared_mem_x_stride*shared_mem_x_index;");
+}
+
+void
+populate_shared_mem_for_rays(const int curr_kernel)
+{
+	if(is_x_raytrace_kernel(curr_kernel))
+	{
+		populate_shared_mem_for_x_rays(curr_kernel);
+	}
+	if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS)
+	{
+		populate_shared_mem_for_z_rays(curr_kernel);
+	}
 }
 
 void
@@ -1792,6 +2144,42 @@ printf_stencil_point(const int stencil, const int depth, const int height, const
 	else
 	    printf("stencils[%d][%d][%d][%d] *",stencil,depth,height,width);
 }
+void
+printf_stencil_read(const int curr_kernel, const int original_field, const int width, const int height, const int depth)
+{
+   if(is_raytracing_kernel(curr_kernel))
+   {
+	if(
+	      width  != STENCIL_ORDER / 2
+	   || height != STENCIL_ORDER / 2
+	   || depth  != STENCIL_ORDER / 2
+	 )
+	{
+		fprintf(stderr,"Cannot not use stencils together with raytracing!!\n");
+	}
+   }
+   if(is_x_raytrace_kernel(curr_kernel))
+   {
+	printf("shared_mem_for_rays[threadIdx.y + shared_mem_z_stride*(threadIdx.z) + f%s_ray_index + shared_mem_x_offset + shared_mem_x_stride]",field_names[original_field]);
+   }
+   else if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS)
+   {
+	printf("shared_mem_for_rays[threadIdx.x + blockDim.x*(threadIdx.y) + f%s_ray_index + shared_mem_z_offset + shared_mem_z_stride]",field_names[original_field]);
+   }
+   
+   else
+   {
+   	printf("__ldg(&");
+   	printf("vba.in[%s]"
+   	       "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+   	       "vertexIdx.z+(%d),VAL(%s))])",
+   	       field_names[original_field], -STENCIL_ORDER / 2 + width,
+   	       -STENCIL_ORDER / 2 + height,
+   	       -STENCIL_ORDER / 2 + depth,
+   	       vtxbuf_dims_str[original_field]
+   	       );
+   }
+}
 
 void
 gen_kernel_body(const int curr_kernel)
@@ -1808,6 +2196,7 @@ gen_kernel_body(const int curr_kernel)
   case IMPLICIT_CACHING: {
     gen_kernel_prefix(curr_kernel);
     gen_return_if_oob(curr_kernel);
+    populate_shared_mem_for_rays(curr_kernel);
     gen_kernel_reduce_funcs(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
 
@@ -1866,6 +2255,7 @@ gen_kernel_body(const int curr_kernel)
                   "NUM_ALL_FIELDS in stencilgen.c\n");
     }
 
+
       for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
         for (int height = 0; height < STENCIL_HEIGHT; ++height) {
           for (int width = 0; width < STENCIL_WIDTH; ++width) {
@@ -1883,40 +2273,22 @@ gen_kernel_body(const int curr_kernel)
                   if (stencils[stencil][depth][height][width]) {
                     if (!stencil_initialized[field][stencil]) {
                       printf("auto f%s_s%s = ", field_names[original_field], stencil_names[stencil]);
-		      printf_stencil_point(stencil,depth,height,width);
-                      printf("%s(", stencil_unary_ops[stencil]);
-                      printf("__ldg(&");
-                      printf("vba.in[%s]"
-                             "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                             "vertexIdx.z+(%d),VAL(%s))])",
-                             field_names[original_field], -STENCIL_ORDER / 2 + width,
-                             -STENCIL_ORDER / 2 + height,
-                             -STENCIL_ORDER / 2 + depth,
-			     vtxbuf_dims_str[original_field]
-			     );
-                      printf(")");
-                      printf(";");
-
-                      stencil_initialized[field][stencil] = 1;
-                    }
-                    else {
+		    }
+		    else
+		    {
                       printf("f%s_s%s = ", field_names[original_field], stencil_names[stencil]);
                       printf("%s(f%s_s%s, ", stencil_binary_ops[stencil], field_names[original_field],
                              stencil_names[stencil]);
-		      printf_stencil_point(stencil,depth,height,width);
-                      printf("%s(", stencil_unary_ops[stencil]);
-                      printf("__ldg(&");
-                      printf("vba.in[%s]"
-                             "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                             "vertexIdx.z+(%d),VAL(%s))])",
-                             field_names[original_field], -STENCIL_ORDER / 2 + width,
-                             -STENCIL_ORDER / 2 + height,
-                             -STENCIL_ORDER / 2 + depth,
-			     vtxbuf_dims_str[original_field]
-			     );
-                      printf(")");
-                      printf(");");
-                    }
+		    }
+		    printf_stencil_point(stencil,depth,height,width);
+                    printf("%s(", stencil_unary_ops[stencil]);
+		    printf_stencil_read(curr_kernel,original_field,width,height,depth);
+		    printf(")"
+		           "%s"
+		           ";"
+			   ,stencil_initialized[field][stencil] ? ")" : ""
+		           );
+                    stencil_initialized[field][stencil] = 1;
                   }
                 }
               }
@@ -1924,46 +2296,86 @@ gen_kernel_body(const int curr_kernel)
           }
         }
       }
-      for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+      if(is_x_raytrace_kernel(curr_kernel))
       {
-	const int original_field = get_original_index(field_remappings,field);
-	for(int ray = 0; ray < NUM_RAYS; ++ray)
-	{
-		if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
-		{
-        	   printf("const auto f%s_incoming_r%s = ", field_names[original_field], ray_names[ray]);
-        	   printf("(");
-        	   printf("(");
-        	   printf("vba.in[%s]"
-        	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x-(%d),vertexIdx.y-(%d), "
-        	          "vertexIdx.z-(%d),VAL(%s))])",
-        	          field_names[original_field],
-			  ray_directions[ray].x,
-			  ray_directions[ray].y,
-			  ray_directions[ray].z,
-		          vtxbuf_dims_str[original_field]
-		          );
-        	   printf(")");
-        	   printf(";");
-		}
-		if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
-		{
-        	   printf("const auto f%s_outgoing_r%s = ", field_names[original_field], ray_names[ray]);
-        	   printf("(");
-        	   printf("(");
-        	   printf("vba.in[%s]"
-        	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-        	          "vertexIdx.z+(%d),VAL(%s))])",
-        	          field_names[original_field],
-			  ray_directions[ray].x,
-			  ray_directions[ray].y,
-			  ray_directions[ray].z,
-		          vtxbuf_dims_str[original_field]
-		          );
-        	   printf(")");
-        	   printf(";");
-		}
-	}
+      	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+      	{
+      	  const int original_field = get_original_index(field_remappings,field);
+      	  for(int ray = 0; ray < NUM_RAYS; ++ray)
+      	  {
+      	  	if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	{
+      	  	   printf("const auto f%s_incoming_r%s = shared_mem_for_rays[(threadIdx.y-(%d)) + shared_mem_z_stride*(threadIdx.z-(%d)) + f%s_ray_index + shared_mem_x_offset];", field_names[original_field], ray_names[ray],ray_directions[ray].y, ray_directions[ray].z,field_names[original_field]);
+      	  	}
+      	  	if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	{
+
+      	  	   printf("const auto f%s_outgoing_r%s = shared_mem_for_rays[(threadIdx.y+(%d)) + blockDim.y*(threadIdx.z+(%d)) + f%s_ray_index + shared_mem_x_offset + 2*shared_mem_x_stride];", field_names[original_field], ray_names[ray],ray_directions[ray].y, ray_directions[ray].z,field_names[original_field]);
+      	  	}
+      	  }
+      	}
+      }
+      else if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS)
+      {
+      	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+      	{
+      	  const int original_field = get_original_index(field_remappings,field);
+      	  for(int ray = 0; ray < NUM_RAYS; ++ray)
+      	  {
+      	  	if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	{
+      	  	   printf("const auto f%s_incoming_r%s = shared_mem_for_rays[(threadIdx.x-(%d)) + blockDim.x*(threadIdx.y-(%d)) + f%s_ray_index + shared_mem_z_offset];", field_names[original_field], ray_names[ray],ray_directions[ray].x, ray_directions[ray].y,field_names[original_field]);
+      	  	}
+      	  	if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	{
+      	  	   printf("const auto f%s_outgoing_r%s = shared_mem_for_rays[(threadIdx.x+(%d)) + blockDim.x*(threadIdx.y+(%d)) + f%s_ray_index + shared_mem_z_offset + 2*shared_mem_z_stride];", field_names[original_field], ray_names[ray],ray_directions[ray].x, ray_directions[ray].y,field_names[original_field]);
+      	  	}
+      	  }
+      	}
+      }
+      else
+      {
+      	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
+      	{
+      	  const int original_field = get_original_index(field_remappings,field);
+      	  for(int ray = 0; ray < NUM_RAYS; ++ray)
+      	  {
+      	  	if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	{
+      	  	   printf("const auto f%s_incoming_r%s = ", field_names[original_field], ray_names[ray]);
+      	  	   printf("(");
+      	  	   printf("(");
+      	  	   printf("vba.in[%s]"
+      	  	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x-(%d),vertexIdx.y-(%d), "
+      	  	          "vertexIdx.z-(%d),VAL(%s))])",
+      	  	          field_names[original_field],
+      	  		  ray_directions[ray].x,
+      	  		  ray_directions[ray].y,
+      	  		  ray_directions[ray].z,
+      	  	          vtxbuf_dims_str[original_field]
+      	  	          );
+      	  	   printf(")");
+      	  	   printf(";");
+      	  	}
+      	  	if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	{
+      	  	   printf("const auto f%s_outgoing_r%s = ", field_names[original_field], ray_names[ray]);
+      	  	   printf("(");
+      	  	   printf("(");
+      	  	   printf("vba.in[%s]"
+      	  	          "[DEVICE_VARIABLE_VTXBUF_IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+      	  	          "vertexIdx.z+(%d),VAL(%s))])",
+      	  	          field_names[original_field],
+      	  		  ray_directions[ray].x,
+      	  		  ray_directions[ray].y,
+      	  		  ray_directions[ray].z,
+      	  	          vtxbuf_dims_str[original_field]
+      	  	          );
+      	  	   printf(")");
+      	  	   printf(";");
+      	  	}
+      	  }
+      	}
       }
     // Uncomment to print valid stencils
     // for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {

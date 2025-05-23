@@ -271,10 +271,11 @@ enum class HaloExchangeState { Waiting = Task::wait_state, Packing, Exchanging, 
 
 typedef class HaloExchangeTask : public Task {
   private:
+    bool sending;
+    bool receiving;
     bool shear_periodic;
     HaloMessageSwapChain recv_buffers;
     HaloMessageSwapChain send_buffers;
-
   public:
     HaloExchangeTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int halo_region_tag, AcGridInfo grid_info,
                      Device device_,
