@@ -205,3 +205,91 @@ compute_kernel_call_computes_profile_across_halos(const std::vector<AcKernel>& c
 	}
 	return res;
 }
+static std::tuple<int3,int3>
+get_stencil_dims(const Stencil stencil)
+{
+	const auto info = acDeviceGetLocalConfig(acGridGetDevice());
+	[[maybe_unused]] auto DCONST = [&](const auto& param)
+	{
+		return info[param];
+	};
+	#include "coeffs.h"
+	int3 min_radius = (int3){0,0,0};
+	int3 max_radius = (int3){0,0,0};
+	for(int x = -NGHOST; x <= NGHOST; ++x)
+	{
+		for(int y = -NGHOST; y <= NGHOST; ++y)
+		{
+			for(int z = -NGHOST; z <= NGHOST; ++z)
+			{
+				if(stencils[stencil][x+NGHOST][y+NGHOST][z+NGHOST] != 0.0)
+				{
+					min_radius.x = std::min(min_radius.x,x);
+					min_radius.y = std::min(min_radius.y,y);
+					min_radius.z = std::min(min_radius.z,z);
+
+					max_radius.x = std::max(max_radius.x,x);
+					max_radius.y = std::max(max_radius.y,y);
+					max_radius.z = std::max(max_radius.z,z);
+				}
+			}
+		}
+	}
+	return std::tuple<int3,int3>{min_radius,max_radius};
+}
+
+static bool
+kernel_calls_ray(const AcKernel kernel, const AcRay ray)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int field = 0; field < NUM_FIELDS; ++field)
+	{
+		if(info[kernel].ray_accessed[field][ray]) return true;
+	}
+	return false;
+}
+static bool
+kernel_calls_stencil(const AcKernel kernel, const Stencil stencil)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int field = 0; field < NUM_FIELDS; ++field)
+	{
+		if(info[kernel].stencils_accessed[field][stencil]) return true;
+	}
+	return false;
+}
+static UNUSED std::tuple<int3,int3>
+get_kernel_radius(const AcKernel kernel)
+{
+	const auto info = get_kernel_analysis_info();
+	int3 min_radius = (int3){0,0,0};
+	int3 max_radius = (int3){0,0,0};
+	for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+	{
+		if(kernel_calls_stencil(kernel,Stencil(stencil)))
+		{
+			const auto [stencil_min_radius,stencil_max_radius] = get_stencil_dims(Stencil(stencil));
+			min_radius.x = std::min(stencil_min_radius.x,min_radius.x);
+			min_radius.y = std::min(stencil_min_radius.y,min_radius.y);
+			min_radius.z = std::min(stencil_min_radius.z,min_radius.z);
+
+			max_radius.x = std::max(stencil_max_radius.x,max_radius.x);
+			max_radius.y = std::max(stencil_max_radius.y,max_radius.y);
+			max_radius.z = std::max(stencil_max_radius.z,max_radius.z);
+		}
+	}
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		if(kernel_calls_ray(kernel,AcRay(ray)))
+		{
+			min_radius.x = std::min(-ray_directions[ray].x,min_radius.x);
+			min_radius.y = std::min(-ray_directions[ray].y,min_radius.y);
+			min_radius.z = std::min(-ray_directions[ray].z,min_radius.z);
+
+			max_radius.x = std::max(ray_directions[ray].x,max_radius.x);
+			max_radius.y = std::max(ray_directions[ray].y,max_radius.y);
+			max_radius.z = std::max(ray_directions[ray].z,max_radius.z);
+		}
+	}
+	return std::tuple<int3,int3>{min_radius,max_radius};
+}

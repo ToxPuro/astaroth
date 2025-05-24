@@ -356,7 +356,16 @@ size_t
 get_compute_input_position(const int id, const size_t start, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
 {
 	const auto output_position = get_compute_output_position(id,start,ghost,nn,boundary_included);
-	if(depends_on_boundary) return as_size_t((int)output_position - (int)ghost);
+	if(depends_on_boundary) 
+	{
+		//TP: the capping by zero is if one wants to compute a pointwise kernel on the halo based on the normal dependency rules the
+		//    the input region is still one NGHOST radius surrounding the computation radius even if no stencils are used (this is needed to make multikernel launches safe
+		//    i.e. kernel B accessess stencil neighbours so kernel C can not update its own point since its out can be the in of kernel B):
+		//    The capping is unsafe if the user would try to use e.g. derx while including the halos but there is a separate safety check for that later
+		return as_size_t(
+						max((int)output_position - (int)ghost,0)
+						);
+	}
 	else return output_position;
 }
 size_t
@@ -862,7 +871,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
            Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start, dims, op.halo_sizes, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
-           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start,dims,op.halo_sizes, {op.fields_out, op.num_fields_out,
+           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start,dims,  op.halo_sizes, {op.fields_out, op.num_fields_out,
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
 		   op.outputs_out, op.num_outputs_out}),
@@ -923,7 +932,20 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 	}
     }
 
+    const auto [left_radius,right_radius] = get_kernel_radius(op.kernel_enum);
+    bool in_bounds    =    output_region.position.x-left_radius.x >= 0
+    			|| output_region.position.y-left_radius.y >= 0
+    			|| output_region.position.z-left_radius.z >= 0
 
+    			|| output_region.position.x+output_region.dims.x + right_radius.x <= input_region.position.x + input_region.dims.x
+    			|| output_region.position.y+output_region.dims.y + right_radius.y <= input_region.position.y + input_region.dims.y
+    			|| output_region.position.z+output_region.dims.z + right_radius.z <= input_region.position.z + input_region.dims.z
+    			;
+    if(!in_bounds)
+    {
+	    fprintf(stderr,"Out of bounds ComputeTask for %s!\n",kernel_names[op.kernel_enum]);
+	    ERRCHK_ALWAYS(in_bounds);
+    }
     syncVBA();
 
     // compute_func = compute_func_;
