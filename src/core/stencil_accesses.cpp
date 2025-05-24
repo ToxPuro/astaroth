@@ -593,7 +593,7 @@ AC_INTERNAL_get_vtxbuf_dst(const Field& field, const int x, const int y, const i
 	mark_as_written(field, x,y,z);
 	return dst;
 }
-static int3
+static int3 UNUSED
 ac_get_field_halos(const Field& field)
 {
 	return VAL(vtxbuf_halos[field]);
