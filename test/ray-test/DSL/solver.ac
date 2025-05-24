@@ -1,4 +1,5 @@
 #include "../../../acc-runtime/stdlib/bc.h"
+#include "../../../acc-runtime/stdlib/radiation_ray.h"
 int3 AC_unit_halo = (int3){1,1,1}
 communicated auxiliary halo(AC_unit_halo) Field QRAD
 
@@ -364,43 +365,9 @@ Kernel nine_rays()
 	write(Q_MMP,incoming_mmp_ray(Q_MMP)+1.0)
 }
 
-incoming_ray_length(int3 direction)
-{
-	return sqrt(
-		 	  abs(direction.x)*AC_ds_2.x
-			+ abs(direction.y)*AC_ds_2.y
-			+ abs(direction.z)*AC_ds_2.z
-		   )
-}
-outgoing_ray_length(int3 direction)
-{
-	return sqrt(
-		 	  abs(direction.x)*AC_ds_2.x
-			+ abs(direction.y)*AC_ds_2.y
-			+ abs(direction.z)*AC_ds_2.z
-		   )
-}
 ray_func(int3 direction)
 {
-	in_len  = incoming_ray_length(direction)
-	out_len = outgoing_ray_length(direction)
-	dtau_m = sqrt(incoming_ray(KAPPA_RHO,direction)*KAPPA_RHO)*in_len
-	dtau_p = sqrt(outgoing_ray(KAPPA_RHO,direction)*KAPPA_RHO)*out_len
-
-	dSdtau_m = (SRAD - incoming_ray(SRAD,direction))*in_len
-	dSdtau_p = (outgoing_ray(SRAD,direction)- SRAD)*out_len
-
-        Srad1st=(dSdtau_p*dtau_m+dSdtau_m*dtau_p)/(dtau_m+dtau_p)
-        Srad2nd=2.0*(dSdtau_p-dSdtau_m)/(dtau_m+dtau_p)
-
-	Field Q   = get_Q(direction)
-	Field tau = get_tau(direction)
-	write(tau,incoming_ray(tau,direction)+dtau_m)
-
-        emdtau=exp(-dtau_m)
-        emdtau1=1.0-emdtau
-        emdtau2=emdtau*(1.0+dtau_m)-1.0
-	write(Q,incoming_ray(Q,direction)+emdtau-Srad1st*emdtau1-Srad2nd*emdtau2)
+	ac_ray_func(direction,KAPPA_RHO,SRAD,get_Q(direction),get_tau(direction))
 }
 
 Kernel right_ray_general()
