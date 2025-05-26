@@ -193,6 +193,7 @@ typedef enum AcTaskType {
     TASKTYPE_HALOEXCHANGE,
     TASKTYPE_BOUNDCOND,
     TASKTYPE_REDUCE,
+    TASKTYPE_RAY_REDUCE,
 } AcTaskType;
 
 
@@ -316,6 +317,9 @@ FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
 #endif
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const size_t num_fields));
+
+OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acReduceInRayDirection,(Field fields[], const size_t num_fields, const int3 ray_direction));
+
 FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving));
 
 FUNC_DEFINE(AcTaskGraph*, acGridGetDefaultTaskGraph,());
@@ -331,13 +335,13 @@ FUNC_DEFINE(bool, acGridTaskGraphHasPeriodicBoundcondsZ,(AcTaskGraph* graph));
 
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraph,(const AcTaskDefinition ops[], const size_t n_ops));
-OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraphWithBounds,(const AcTaskDefinition ops[], const size_t n_ops, const Volume start, const Volume end));
+OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraphWithBounds,(const AcTaskDefinition ops[], const size_t n_ops, const Volume start, const Volume end, const bool globally_imposed_bcs));
 
 /** */
 FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraph,(const AcDSLTaskGraph));
 FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end));
-FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
-FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end));
+OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
+FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end, const bool no_communication));
 
 
 /** */

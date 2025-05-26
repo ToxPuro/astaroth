@@ -8369,6 +8369,25 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 		{
 			fprintf(stream,"%s (Field3 v){return Matrix(%s(v.x), %s(v.y), %s(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
 		}
+		else if(!is_returning)
+		{
+			fprintf(stream,"%s(Field[] arr){for i in 0:size(arr)\n %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
+			int_vec all_field_structs = get_all_field_structs();
+			for(size_t l = 0; l < all_field_structs.size; ++l)
+			{
+				const int j = all_field_structs.data[l];
+				const char* name = s_info.user_structs.data[j];
+				const size_t num_members = s_info.user_struct_field_names[j].size;
+				fprintf(stream, "%s(%s s){\n",dfunc_name,name);
+				for(size_t f = 0; f < num_members; ++f)
+				{
+					fprintf(stream,"  %s(s.%s)\n",dfunc_name,s_info.user_struct_field_names[j].data[f]);
+				}
+				fprintf(stream,"}\n");
+			}
+			fprintf(stream,"%s(Field3[] arr){for i in 0:size(arr)\n  %s(arr[i])\n}\n",dfunc_name,dfunc_name);
+			free_int_vec(&all_field_structs);
+		}
 		else
 			fatal("Missing elemental case for func: %s\nReturn type: %s\n",dfunc_name,node->expr_type);
 	}

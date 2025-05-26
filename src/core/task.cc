@@ -216,6 +216,21 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
 }
 
 
+AcTaskDefinition
+acReduceInRayDirection(Field fields[], const size_t num_fields, const int3 ray_direction)
+{
+    AcTaskDefinition task_def{};
+    task_def.task_type      = TASKTYPE_RAY_REDUCE;
+    task_def.fields_in      = ptr_copy(fields,num_fields);
+    task_def.num_fields_in  = num_fields;
+    task_def.fields_out = ptr_copy(fields,num_fields);
+    task_def.num_fields_out = num_fields;
+    task_def.halo_sizes = get_max_halo_size(fields,num_fields);
+    task_def.ray_direction = ray_direction;
+    task_def.sending   = true;
+    task_def.receiving = true;
+    return task_def;
+}
 
 
 AcTaskDefinition
@@ -1668,8 +1683,128 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
     }
 }
 
+// HaloExchangeTask
+MPIReduceTask::MPIReduceTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
+                                   AcGridInfo grid_info, Device device_,
+                                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
+    : Task(order_,
+           Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
+           Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
+           op, device_, swap_offset_),
+      reduce_buffers(input_region.dims,  input_region.memory.fields.size(),  tag_0, input_region.tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
+{
+    // Create stream for packing/unpacking
+    {
+	(void)grid_info;
+	set_device(device);
+
+        int low_prio, high_prio;
+        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+    }
+}
+
+MPIReduceTask::~MPIReduceTask()
+{
+    auto msg = reduce_buffers.get_current_buffer();
+    for(auto& request : msg->requests)
+    {
+    	if (request != MPI_REQUEST_NULL) {
+    	    MPI_Cancel(&request);
+    	}
+    }
+
+    set_device(device);
+    // dependents.clear();
+    cudaStreamDestroy(stream);
+}
+
+bool
+MPIReduceTask::test()
+{
+    switch (static_cast<MPIReduceTaskState>(state)) {
+    case MPIReduceTaskState::Packing: {
+        return poll_stream();
+    }
+    case MPIReduceTaskState::Unpacking: {
+        return poll_stream();
+    }
+    case MPIReduceTaskState::Communicating: {
+        auto msg = reduce_buffers.get_current_buffer();
+        int request_complete;
+        ERRCHK_ALWAYS(MPI_Testall(msg->requests.size(), msg->requests.data(), &request_complete, MPI_STATUS_IGNORE) == MPI_SUCCESS);
+        return request_complete ? true : false;
+    }
+    default: {
+        ERROR("MPIReduceTask in an invalid state.");
+        return false;
+    }
+    }
+}
 
 
+void
+MPIReduceTask::advance(const TraceFile* trace_file)
+{
+    switch (static_cast<MPIReduceTaskState>(state)) {
+    case MPIReduceTaskState::Waiting:
+        trace_file->trace(this, "waiting", "packing");
+        pack();
+        state = static_cast<int>(MPIReduceTaskState::Packing);
+        break;
+    case MPIReduceTaskState::Packing:
+    {
+        trace_file->trace(this, "packing", "communicating");
+        state = static_cast<int>(MPIReduceTaskState::Communicating);
+	communicate();
+        break;
+    }
+    case MPIReduceTaskState::Communicating:
+    {
+        trace_file->trace(this, "communicating", "unpacking");
+        state = static_cast<int>(MPIReduceTaskState::Unpacking);
+	communicate();
+        break;
+    }
+    case MPIReduceTaskState::Unpacking:
+    {
+        trace_file->trace(this, "unpacking", "waiting");
+        state = static_cast<int>(MPIReduceTaskState::Waiting);
+	unpack();
+        break;
+    }
+
+    default:
+        ERROR("MPIReduceTask in an invalid state.");
+    }
+}
+
+void
+MPIReduceTask::pack()
+{
+    auto msg = reduce_buffers.get_fresh_buffer();
+    acKernelPackData(stream, vba, input_region.position, input_region.dims,
+                             msg->data, input_region.memory.fields.data(),
+                             input_region.memory.fields.size());
+}
+
+void
+MPIReduceTask::unpack()
+{
+
+    auto msg = reduce_buffers.get_current_buffer();
+    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
+                               vba, output_region.memory.fields.data(),
+        	    		output_region.memory.fields.size());
+}
+
+void
+MPIReduceTask::communicate()
+{
+   auto msg = reduce_buffers.get_current_buffer();
+   const auto sub_comms = acGridMPISubComms();
+   ERRCHK_ALWAYS(MPI_Iallreduce(MPI_IN_PLACE,&msg->data[0],msg->length,AC_REAL_MPI_TYPE,MPI_SUM,sub_comms.x, &msg->requests[0]) == MPI_SUCCESS);
+}
 
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
@@ -1723,6 +1858,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
 	    requests[i] = MPI_REQUEST_NULL;
     task_type = TASKTYPE_REDUCE;
 }
+
 bool
 ReduceTask::test()
 {

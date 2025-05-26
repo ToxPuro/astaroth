@@ -1,5 +1,5 @@
-#include "../../../acc-runtime/stdlib/bc.h"
-#include "../../../acc-runtime/stdlib/radiation_ray.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+#include "$AC_HOME/acc-runtime/stdlib/radiation_ray.h"
 int3 AC_unit_halo = (int3){1,1,1}
 communicated auxiliary halo(AC_unit_halo) Field QRAD
 
@@ -161,8 +161,8 @@ empty_kernel()
 BoundConds bcs
 {
 	ac_const_bc(BOUNDARY_XYZ,QRAD,1.0)
-	ac_const_bc(BOUNDARY_XYZ,KAPPA_RHO,1.0)
-	ac_const_bc(BOUNDARY_XYZ,SRAD,1.0)
+	ac_fixed_bc(BOUNDARY_XYZ,KAPPA_RHO)
+	ac_fixed_bc(BOUNDARY_XYZ,SRAD)
 	ac_const_bc(BOUNDARY_XYZ,Q_RAYS,1.0)
 	ac_const_bc(BOUNDARY_XYZ,TAU_RAYS,1.0)
 }
@@ -391,6 +391,12 @@ Kernel nine_rays_general()
 	}
 }
 
+Kernel ppp_rays_general() 
+{
+	const int3 direction = (int3){+1,+1,+1}
+	ray_func(direction)
+}
+
 Kernel three_rays()
 {
 	write(Q_PPZ,incoming_ppz_ray(Q_PPZ)+1.0)
@@ -565,6 +571,11 @@ ComputeSteps trace_nine_rays(bcs)
 ComputeSteps trace_nine_rays_general(bcs)
 {
 	nine_rays_general()
+}
+
+ComputeSteps ppp_general(bcs)
+{
+	ppp_rays_general()
 }
 
 ComputeSteps revise_boundary_ray(bcs)

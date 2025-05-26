@@ -710,3 +710,9 @@ acGetPid3D(const uint64_t pid, const int3 decomp, const AcMeshInfo info)
 {
 	return getPid3D(pid,decomp,info[AC_proc_mapping_strategy]);
 }
+
+extern "C" int
+acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info)
+{
+	return getPid(pid,decomp,info[AC_proc_mapping_strategy]);
+}

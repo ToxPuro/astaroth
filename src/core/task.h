@@ -311,6 +311,26 @@ typedef class HaloExchangeTask : public Task {
     bool isHaloExchangeTask();
 } HaloExchangeTask;
 
+enum class MPIReduceTaskState { Waiting = Task::wait_state, Packing, Communicating, Unpacking };
+
+typedef class MPIReduceTask : public Task {
+  private:
+    HaloMessageSwapChain reduce_buffers;
+  public:
+    MPIReduceTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
+                                   AcGridInfo grid_info, Device device_,
+                                   std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
+    ~MPIReduceTask();
+    MPIReduceTask(const MPIReduceTask& other)            = delete;
+    MPIReduceTask& operator=(const MPIReduceTask& other) = delete;
+
+    void pack();
+    void unpack();
+    void communicate();
+    void advance(const TraceFile* trace_file);
+    bool test();
+} MPIReduceTask;
+
 
 
 enum class BoundaryConditionState { Waiting = Task::wait_state, Running };

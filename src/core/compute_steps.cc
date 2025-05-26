@@ -563,6 +563,7 @@ gen_halo_exchange_and_boundconds(
 		const FieldBCs field_boundconds,
 		const std::array<std::vector<int3>,NUM_FIELDS> field_ray_directions,
 		const bool before_kernel_call,
+		const bool no_communication,
 		FILE* stream
 		)
 {
@@ -591,6 +592,7 @@ gen_halo_exchange_and_boundconds(
 		}
 		if(output_fields.size() > 0)
 		{
+			if(!no_communication)
 			{
 				std::deque<Field> out_fields{};
 				for(auto& field : output_fields) out_fields.push_back(field);
@@ -1058,7 +1060,7 @@ get_field_ray_directions(const std::vector<AcKernel> kernels)
 }
 
 std::vector<AcTaskDefinition>
-acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
+acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const bool no_communication)
 {
 	if(is_bc_taskgraph(graph))
 		return acGetDSLBCTaskGraphOps(graph,optimized);
@@ -1093,6 +1095,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 		  field_boundconds,
 		  field_ray_directions,
 		  true,
+		  no_communication,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
@@ -1102,6 +1105,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 		  field_boundconds,
 		  field_ray_directions,
 		  true,
+		  no_communication,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
@@ -1157,6 +1161,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 		  field_boundconds,
 		  field_ray_directions,
 		  false,
+		  no_communication,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
@@ -1166,6 +1171,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized)
 		  field_boundconds,
 		  field_ray_directions,
 		  false,
+		  no_communication,
 		  stream
 		);
 		for(const auto& op : ops) res.push_back(op);
@@ -1188,7 +1194,7 @@ acGridClearTaskGraphCache()
 }
 
 AcTaskGraph*
-acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end)
+acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere)
 {
 	auto optimized_kernels = get_optimized_kernels(graph,false);
 	auto optimized_bcs      = get_optimized_kernels(DSLTaskGraphBCs[graph],false);
@@ -1196,7 +1202,7 @@ acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume st
 	if(task_graphs.find(key) != task_graphs.end())
 		return task_graphs[key];
 
-	auto ops = acGetDSLTaskGraphOps(graph,true);
+	auto ops = acGetDSLTaskGraphOps(graph,true,bcs_everywhere);
 	auto res = acGridBuildTaskGraph(ops,start,end);
 	task_graphs[key] = res;
 	return res;
@@ -1207,13 +1213,15 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 {
 	return acGetOptimizedDSLTaskGraphWithBounds(graph,
 			to_volume(get_info()[AC_nmin]),
-			to_volume(get_info()[AC_nlocal_max]));
+			to_volume(get_info()[AC_nlocal_max]),
+			false
+			);
 }
 
 AcTaskGraph*
 acGetDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end)
 {
-	return acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,false),start,end);
+	return acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,false,false),start,end);
 }
 
 AcTaskGraph*

@@ -38,6 +38,22 @@ elemental ac_bc_sym(Field f, int bc_sign)
 		f[ghost.x][ghost.y][ghost.z] = bc_sign*f[domain.x][domain.y][domain.z];
 	}
 }
+
+elemental ac_fixed_bc(Field f)
+{
+	const int3 normal = get_normal()
+	const int3 boundary = get_boundary(normal)
+	int3 domain = boundary
+	int3 ghost  = boundary
+
+	const int nghost = ac_get_field_halos(f).x
+	for i in 0:nghost
+	{
+		domain = domain - normal
+		ghost  = ghost  + normal
+		f[ghost.x][ghost.y][ghost.z] = f[ghost.x][ghost.y][ghost.z];
+	}
+}
 utility Kernel BOUNDCOND_SYMMETRIC(Field f)
 {
 	ac_bc_sym(f,1)

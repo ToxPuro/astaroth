@@ -250,6 +250,7 @@ acGridMPISubComms()
 	return astaroth_sub_comms;
 }
 
+
 int
 ac_MPI_Comm_rank()
 {
@@ -1813,6 +1814,9 @@ check_ops(const std::vector<AcTaskDefinition> ops)
         case TASKTYPE_REDUCE:
           task_graph_repr += "Reduce,";
 	  break;
+        case TASKTYPE_RAY_REDUCE:
+          task_graph_repr += "RayReduce,";
+	  break;
 	}
     }
 
@@ -1927,7 +1931,7 @@ get_spacings()
 
 
 AcTaskGraph*
-acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_ops, const Volume start_in, const Volume end_in)
+acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_ops, const Volume start_in, const Volume end_in, const bool globally_imposed_bcs)
 { 
 
     // ERRCHK(grid.initialized);
@@ -2156,6 +2160,10 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
         }
 
         case TASKTYPE_HALOEXCHANGE: {
+	    if(globally_imposed_bcs)
+	    {
+		    fatal("%s","Tried to generate taskgraph with globally imposed bcs and halo exchanges!\n");
+	    }
             acVerboseLogFromRootProc(rank, "Creating halo exchange tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
@@ -2172,6 +2180,18 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
                 }
             }
             acVerboseLogFromRootProc(rank, "Halo exchange tasks created\n");
+            grid.mpi_tag_space_count++;
+            break;
+        }
+
+        case TASKTYPE_RAY_REDUCE: {
+            acVerboseLogFromRootProc(rank, "Creating ray reduce tasks\n");
+            int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
+            auto task = std::make_shared<MPIReduceTask>(op, i, start, dims, tag0, op.ray_direction, grid_info,
+                                                           device, swap_offset);
+            graph->all_tasks.push_back(task);
+
+            acVerboseLogFromRootProc(rank, "Ray reduce tasks created\n");
             grid.mpi_tag_space_count++;
             break;
         }
@@ -2193,9 +2213,14 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
                                          "acGridBuildTaskGraph: Region::is_on_boundary(decomp, "
                                          "rank, tag, op.boundary) = %i \n",
                                          Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy()));
-                if (Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy())) {
+		const bool is_on_boundary = Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy());
+                if (is_on_boundary || globally_imposed_bcs) {
 
                     if (op.kernel_enum == BOUNDCOND_PERIODIC) {
+			if(globally_imposed_bcs)
+			{
+				fatal("%s","Can not use periodic bcs and globally imposed bcs at the same time!\n");
+			}
                         acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
                                                  tag);
 			const bool shear_periodic = acGridGetLocalMeshInfo()[AC_shear] && (
@@ -2446,7 +2471,7 @@ AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
 {
 	const Volume ghost = to_volume(grid.submesh.info[AC_nmin]);
-	return acGridBuildTaskGraphWithBounds(ops_in,n_ops,ghost,grid.nn+ghost);
+	return acGridBuildTaskGraphWithBounds(ops_in,n_ops,ghost,grid.nn+ghost,false);
 }
 
 

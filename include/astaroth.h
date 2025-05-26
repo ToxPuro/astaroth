@@ -455,6 +455,8 @@ int3
 acDecompose(const uint64_t target, const AcMeshInfo info);
 int3
 acGetPid3D(const uint64_t pid, const int3 decomp, const AcMeshInfo info);
+int
+acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
 #include "device_set_input_decls.h"
 #include "device_get_output_decls.h"
@@ -527,6 +529,7 @@ acGetPid3D(const uint64_t pid, const int3 decomp, const AcMeshInfo info);
 	*(void**)(&BASE_FUNC_NAME(acComputeWithParams)) = dlsym(handle,"acComputeWithParams");
 	*(void**)(&BASE_FUNC_NAME(acCompute)) = dlsym(handle,"acCompute");
 	*(void**)(&BASE_FUNC_NAME(acHaloExchange)) = dlsym(handle,"acHaloExchange");
+	*(void**)(&BASE_FUNC_NAME(acReduceInRayDirection)) = dlsym(handle,"acReduceInRayDirection");
 	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraph)) = dlsym(handle,"acGridBuildTaskGraph");
 	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)) = dlsym(handle,"acGridBuildTaskGraphWithBounds");
 	LOAD_DSYM(acGridDestroyTaskGraph,stream);
@@ -996,6 +999,12 @@ static inline acHaloExchange(std::vector<Field> fields)
 }
 
 AcTaskDefinition
+static inline acReduceInRayDirection(std::vector<Field> fields, const int3 ray_direction)
+{
+    return BASE_FUNC_NAME(acReduceInRayDirection)(fields.data(), fields.size(),ray_direction);
+}
+
+AcTaskDefinition
 static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end)
 {
     return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true);
@@ -1076,12 +1085,24 @@ template <size_t n_ops>
 static AcTaskGraph*
 acGridBuildTaskGraphWithBounds(const AcTaskDefinition (&ops)[n_ops], const Volume start, const Volume end)
 {
-    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops, n_ops,start,end);
+    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops, n_ops,start,end,false);
 }
 static UNUSED AcTaskGraph*
 acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start, const Volume end)
 {
-    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops.data(), ops.size(),start,end);
+    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops.data(), ops.size(),start,end,false);
+}
+
+template <size_t n_ops>
+static AcTaskGraph*
+acGridBuildTaskGraphWithBounds(const AcTaskDefinition (&ops)[n_ops], const Volume start, const Volume end, const bool globally_imposed_bcs)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops, n_ops,start,end,globally_imposed_bcs);
+}
+static UNUSED AcTaskGraph*
+acGridBuildTaskGraph(const std::vector<AcTaskDefinition> ops, const Volume start, const Volume end, const bool globally_imposed_bcs)
+{
+    return BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)(ops.data(), ops.size(),start,end,globally_imposed_bcs);
 }
 #endif
 #endif
