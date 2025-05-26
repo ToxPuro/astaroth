@@ -340,8 +340,8 @@ OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraphWithBounds,(const AcTas
 /** */
 FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraph,(const AcDSLTaskGraph));
 FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end));
-FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
-//OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
+//FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
+OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
 FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end, const bool no_communication));
 
 
