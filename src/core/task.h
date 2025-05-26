@@ -222,8 +222,12 @@ typedef class ComputeTask : public Task {
 
   public:
     ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
-                std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
-    ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
+                std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+		);
+    ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        	std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+		    );
 
     ComputeTask(const ComputeTask& other)            = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;

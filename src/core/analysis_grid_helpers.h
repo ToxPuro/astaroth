@@ -65,7 +65,7 @@ raytracing_step_direction(const AcKernel kernel)
 
 
 static UNUSED AcBoundary
-get_kernel_depends_on_boundaries(const AcKernel kernel)
+get_kernel_depends_on_boundaries(const AcKernel kernel, std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
 {
 	//TP: this is because if kernel A uses stencils kernel B has to wait for A to finish on neighbours to avoid overwriting A's input
 	//TP: this is somewhat conservative since if A does not use stencils B has more dependency then needed
@@ -77,21 +77,25 @@ get_kernel_depends_on_boundaries(const AcKernel kernel)
 	for(int j = 0; j < NUM_FIELDS; ++j)
 		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
 			if(info[kernel].stencils_accessed[j][stencil])
+			{
 				res |= acDeviceStencilAccessesBoundaries(acGridGetDevice(), Stencil(stencil));
+				fields_already_depend_on_boundaries[j] |= acDeviceStencilAccessesBoundaries(acGridGetDevice(), Stencil(stencil));
+			}
 	for(int j = 0; j < NUM_PROFILES; ++j)
 		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
 			if(info[kernel].stencils_accessed[j+NUM_ALL_FIELDS][stencil])
 				res |= acDeviceStencilAccessesBoundaries(acGridGetDevice(), Stencil(stencil));
+
 	return AcBoundary(res);
 
 }
 
 static UNUSED std::vector<AcBoundary>
-get_kernel_depends_on_boundaries()
+get_kernel_depends_on_boundaries(std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
 {
 	std::vector<AcBoundary> res{};
 	for(size_t i = 0; i < NUM_KERNELS; ++i)
-		res.push_back(get_kernel_depends_on_boundaries(AcKernel(i)));
+		res.push_back(get_kernel_depends_on_boundaries(AcKernel(i), fields_already_depend_on_boundaries));
 	return res;
 }
 static bool

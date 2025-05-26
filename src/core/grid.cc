@@ -2055,7 +2055,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     // this array of bools keep track of that state
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset{};
     //int num_comp_tasks = 0;
-
+    std::array<int,NUM_FIELDS> fields_already_depend_on_boundaries{};
 
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", ops.size());
     for (size_t i = 0; i < ops.size(); i++) {
@@ -2095,7 +2095,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    {
 	      Region full_region = FullRegion(start,dims,op.halo_sizes,{fields_out,profiles_out,reduce_output_out},op.computes_on_halos);
 	      Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},op.computes_on_halos)[0];
-	      auto task = std::make_shared<ComputeTask>(op,i,full_input_region,full_region,device,swap_offset);
+	      auto task = std::make_shared<ComputeTask>(op,i,full_input_region,full_region,device,swap_offset,fields_already_depend_on_boundaries);
               graph->all_tasks.push_back(task);
               //done here since we want to write only to out not to in what launching the taskgraph would do
 	      //always remember to call the loader since otherwise might not be safe to execute taskgraph
@@ -2128,11 +2128,12 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    }
 		    else
 		    {
-			if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
+			const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);
+			if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
 				if(Region::tag_to_id(tag).x != 0) continue;
-			if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y))
+			if(!(bc_dependencies & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y))
 				if(Region::tag_to_id(tag).y != 0) continue;
-			if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_Z) && !(op.computes_on_halos & BOUNDARY_Z))
+			if(!(bc_dependencies & BOUNDARY_Z) && !(op.computes_on_halos & BOUNDARY_Z))
 				if(Region::tag_to_id(tag).z != 0) continue;
 		    }
 	    	    //auto task = std::make_shared<ComputeTask>(op,tag,full_input_region,full_region,device,swap_offset);
@@ -2140,7 +2141,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     	            ERRCHK_ALWAYS((int)dims.x > grid.submesh.info[AC_nmin].x*2);
     	            ERRCHK_ALWAYS((int)dims.y > grid.submesh.info[AC_nmin].y*2);
     	            ERRCHK_ALWAYS((int)dims.z > grid.submesh.info[AC_nmin].z*2);
-            	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset);
+            	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset,fields_already_depend_on_boundaries);
             	    graph->all_tasks.push_back(task);
             	    //done here since we want to write only to out not to in what launching the taskgraph would do
 	      	    //always remember to call the loader since otherwise might not be safe to execute taskgraph

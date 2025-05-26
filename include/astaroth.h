@@ -535,8 +535,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGridDestroyTaskGraph,stream);
 	LOAD_DSYM(acGridClearTaskGraphCache,stream);
 	LOAD_DSYM(acGetDSLTaskGraph,stream);
-	LOAD_DSYM(acGetOptimizedDSLTaskGraph,stream);
-	//*(void**)(&BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)) = dlsym(handle,"acGetOptimizedDSLTaskGraph");
+	*(void**)(&BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)) = dlsym(handle,"acGetOptimizedDSLTaskGraph");
 	LOAD_DSYM(acGetDSLTaskGraphWithBounds,stream);
 	LOAD_DSYM(acGetOptimizedDSLTaskGraphWithBounds,stream);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousDistributed,stream);
@@ -735,11 +734,15 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 
 
 #ifdef __cplusplus
-//static AcTaskGraph* UNUSED
-//acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
-//{
-//	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
-//}
+
+#if AC_RUNTIME_COMPILATION
+static AcTaskGraph* UNUSED
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
+{
+	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
+}
+#endif
+
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {

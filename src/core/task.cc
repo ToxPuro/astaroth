@@ -883,10 +883,12 @@ Task::poll_stream()
 
 /* Computation */
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
-                         std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
+                         std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+			 std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+			 )
     : Task(order_,
-           Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start, dims, op.halo_sizes, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
-           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum), op.computes_on_halos, start,dims,  op.halo_sizes, {op.fields_out, op.num_fields_out,
+           Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries), op.computes_on_halos, start, dims, op.halo_sizes, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
+           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries), op.computes_on_halos, start,dims,  op.halo_sizes, {op.fields_out, op.num_fields_out,
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
 		   op.outputs_out, op.num_outputs_out}),
@@ -920,7 +922,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
     }
     else
     {
-	if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
+	const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);
+	if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
 	{
             output_region.dims.x += 2*NGHOST;
             input_region.dims.x  += 2*NGHOST;
@@ -928,7 +931,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
             output_region.position.x -= NGHOST;
             input_region.position.x  -= NGHOST;
 	}
-	if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y))
+	if(!(bc_dependencies & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y))
 	{
             output_region.dims.y += 2*NGHOST;
             input_region.dims.y  += 2*NGHOST;
@@ -937,7 +940,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
             input_region.position.y  -= NGHOST;
 	}
 
-	if(!(get_kernel_depends_on_boundaries(op.kernel_enum) & BOUNDARY_Z) && !(op.computes_on_halos & BOUNDARY_Z))
+	if(!(bc_dependencies & BOUNDARY_Z) && !(op.computes_on_halos & BOUNDARY_Z))
 	{
             output_region.dims.z += 2*NGHOST;
             input_region.dims.z  += 2*NGHOST;
@@ -972,13 +975,16 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
     task_type = TASKTYPE_COMPUTE;
 }
 
-ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, Region output_region_, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
+ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, Region output_region_, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+		)
     : Task(order_,
            input_region_,
            output_region_,
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
+    (void)fields_already_depend_on_boundaries;
     {
 	set_device(device);
 
