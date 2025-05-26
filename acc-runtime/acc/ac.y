@@ -144,6 +144,20 @@ process_hostdefines(const char* file_in, const char* file_out)
   fclose(out);
 }
 
+#include <wordexp.h>
+void
+expand_env_variables(const char* in, char* out)
+{
+  wordexp_t p;
+  char** w;
+  wordexp(in, &p, 0 );
+  w = p.we_wordv;
+  for(size_t i = 0; i < p.we_wordc; ++i)
+  {
+  	sprintf(out,"%s%s",out,w[0]);
+  }
+  wordfree( &p );
+}
 
 FILE*
 get_preprocessed_file(const char* filename, char* file_buf)
@@ -179,6 +193,7 @@ get_preprocessed_file(const char* filename, char* file_buf)
         fclose(out);
         return fmemopen(file_buf,strlen(file_buf),"r");
 }
+
 
 void
 process_includes(const size_t depth, const char* dir, const char* file, FILE* out, const bool log)
@@ -231,9 +246,20 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
       }
 
       //TP: use the literal instead of len to suppress some compiler warnings with NVHPC compiler
-      char path[4096];
-      sprintf(path, "%s/%s", dir, incl);
-
+      char path_1[4096];
+      char path[2*4096];
+      sprintf(path,"%s","");
+      sprintf(path_1,"%s","");
+      expand_env_variables(incl,path_1);
+      //If the path starts with / it means it is an absolute path so simply take it as is
+      if(path_1[0] == '/')
+      {
+      	sprintf(path, "%s",path_1);
+      }
+      else
+      {
+      	sprintf(path, "%s/%s", dir,path_1);
+      }
       fprintf(out, "// Include file %s start\n", path);
       process_includes(depth+1, dir, path, out,log);
       fprintf(out, "// Included file %s end\n", path);

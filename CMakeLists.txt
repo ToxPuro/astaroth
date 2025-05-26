@@ -279,5 +279,5 @@ if (PROGRAM_MODULE_DIR)
 endif()
 
 if(EXTRA_SOURCES_DIR)
-	add_subdirectory(${EXTRA_SOURCES_DIR})
+	add_subdirectory(${EXTRA_SOURCES_DIR} ${EXTRA_SOURCES_DIR}/cmake)
 endif()
