@@ -933,9 +933,9 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
     }
 
     const auto [left_radius,right_radius] = get_kernel_radius(op.kernel_enum);
-    bool in_bounds    =    output_region.position.x-left_radius.x >= 0
-    			|| output_region.position.y-left_radius.y >= 0
-    			|| output_region.position.z-left_radius.z >= 0
+    bool in_bounds    =    (int)output_region.position.x-(int)left_radius.x >= 0
+    			|| (int)output_region.position.y-(int)left_radius.y >= 0
+    			|| (int)output_region.position.z-(int)left_radius.z >= 0
 
     			|| output_region.position.x+output_region.dims.x + right_radius.x <= input_region.position.x + input_region.dims.x
     			|| output_region.position.y+output_region.dims.y + right_radius.y <= input_region.position.y + input_region.dims.y
