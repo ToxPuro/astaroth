@@ -1,4 +1,4 @@
-
+#include <cmath>
 int3
 ac_global_vertex_idx(const int3 localVertexIdx, const AcMeshInfo config)
 {
@@ -82,6 +82,108 @@ std::vector<AcReal> ac_get_phi_vec(const AcMeshInfo config)
 {
 	return ac_get_z_vec(config,[](const AcReal pos){return pos;});
 }
+
+AcResult 
+ac_compute_cos_m_phis(AcMeshInfo* dst)
+{
+	AcMeshInfo& config = *dst;
+	const int N = config[AC_n_spherical_harmonics];
+	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].z*N);
+	int offset = 0;
+	for(int m = 0; m < N; ++m)
+	{
+			const auto cos_m_phi = ac_get_z_vec(config,[m](const AcReal pos){return cos(m*pos);});
+			for(int z = 0; z < config[AC_mlocal].z; ++z)
+			{
+				res[z + offset] = cos_m_phi[z];
+			}
+			offset += config[AC_mlocal].z;
+	}
+	config[AC_cos_m_phis] = res;
+	return AC_SUCCESS;
+}
+
+AcResult 
+ac_compute_sin_m_phis(AcMeshInfo* dst)
+{
+	AcMeshInfo& config = *dst;
+	const int N = config[AC_n_spherical_harmonics];
+	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].z*N);
+	int offset = 0;
+	for(int m = 0; m < N; ++m)
+	{
+			const auto sin_m_phi = ac_get_z_vec(config,[m](const AcReal pos){return sin(m*pos);});
+			for(int z = 0; z < config[AC_mlocal].z; ++z)
+			{
+				res[z + offset] = sin_m_phi[z];
+			}
+			offset += config[AC_mlocal].z;
+	}
+	config[AC_sin_m_phis] = res;
+	return AC_SUCCESS;
+}
+
+int 
+factorial(const int n)
+{
+	if(n < 0)
+	{
+		fprintf(stderr,"Tried to take negative factorial!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(n == 0) return 1;
+	return n*factorial(n-1);
+}
+
+AcReal
+ac_get_plm(const AcReal x, const unsigned int l, const unsigned int m)
+{
+	return std::assoc_legendre(l,m,x);
+}
+AcReal
+ac_get_normalized_plm(const AcReal x, const int l, const int m)
+{
+	const AcReal plm = ac_get_plm(x,l,m);
+	const AcReal fact_1 = AcReal(factorial(l-m));
+	const AcReal fact_2 = AcReal(factorial(l+m));
+	AcReal res = sqrt(((2.0*l+1.0)/(4.0*AC_REAL_PI))*(fact_1/fact_2))*plm;
+	if(m != 0) res *= sqrt(2.0);
+	//Condon-Shortley phase term which is not included in the stdlib implementation
+	if(m != 0 && m %2 == 1) res *= -1;
+	return res;
+}
+std::vector<AcReal> ac_get_normalized_plm_vec(const AcMeshInfo config, const int l, const int m)
+{
+	return ac_get_y_vec(config,[l,m](const AcReal pos){return ac_get_normalized_plm(cos(pos),l,m);});
+}
+
+AcResult ac_compute_normalized_plms(AcMeshInfo* dst)
+{
+	AcMeshInfo& config = *dst;
+	const int N = config[AC_n_spherical_harmonics];
+	AcReal* res = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].y*N*N);
+	for(int l = 0; l < N; ++l)
+	{
+		for(int m = 0; m <= l; ++m)
+		{
+			const auto plm = ac_get_normalized_plm_vec(config,l,m);
+			for(int y = 0; y < config[AC_mlocal].y; ++y)
+			{
+				res[y + config[AC_mlocal].y*(l + N*m)] = plm[y];
+			}
+		}
+	}
+	config[AC_PLM] = res;
+	return AC_SUCCESS;
+}
+AcResult ac_compute_spherical_harmonics(AcMeshInfo* dst)
+{
+	ac_compute_normalized_plms(dst);
+	ac_compute_cos_m_phis(dst);
+	ac_compute_sin_m_phis(dst);
+	return AC_SUCCESS;
+}
+
 
 std::vector<AcReal> ac_get_sin_phi_vec(const AcMeshInfo config)
 {
@@ -334,27 +436,35 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  std::vector<AcReal> x_arr{};
 	  std::vector<AcReal> x_prim{};
 	  std::vector<AcReal> x_prim2{};
+	  //For visualizing the mapping function and its derivatives
+	  /**
 	  FILE* fp = fopen("x.dat","w");
 	  fprintf(fp,"x,dx,dx2\n");
+	  **/
           for(int x = 0; x < config[AC_mlocal].x; ++x)
 	  {
 		x_arr.push_back(config[AC_first_gridpoint].x + config[AC_len].x*(g[x]-g1lo)/(g1up-g1lo));
 		x_prim.push_back(config[AC_len].x*(gder1[x]*a)/(g1up-g1lo));
 		x_prim2.push_back(config[AC_len].x*(gder2[x]*a*a)/(g1up-g1lo));
+		/**
 		if(x >= NGHOST && x < config[AC_mlocal].x-NGHOST)
 		{
 			fprintf(fp,"%7e,%7e,%7e\n",x_arr[x],x_prim[x],x_prim2[x]);
 		}
+		**/
 	  }
-	  fclose(fp);
+	  //fclose(fp);
 	  AcReal* inv_mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
+	  AcReal* mapping_der = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
 	  AcReal* mapping_tilde = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
           for(int x = 0; x < config[AC_mlocal].x; ++x)
 	  {
 		  inv_mapping_der[x] = 1.0/x_prim[x];
-		  mapping_tilde[x] = -x_prim2[x]/(x_prim[x]*x_prim[x]);
+		  mapping_der[x] =     x_prim[x];
+		  mapping_tilde[x] =   -x_prim2[x]/(x_prim[x]*x_prim[x]);
 	  }
 	  config[AC_inv_mapping_func_derivative_x] = inv_mapping_der;
+	  config[AC_mapping_func_derivative_x] = mapping_der;
 	  config[AC_mapping_func_tilde_x] = mapping_tilde;
 	  return AC_SUCCESS;
 }

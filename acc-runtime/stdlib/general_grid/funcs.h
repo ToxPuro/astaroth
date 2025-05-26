@@ -8,7 +8,7 @@ grid_position() {
 				AC_z[vertexIdx.z]
 			     )
 	}
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	else if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
 		return 
 			real3(
@@ -17,6 +17,11 @@ grid_position() {
 				AC_phi[vertexIdx.z]
 			     )
 	}
+	else
+	{
+    		fatal_error_message(false,"Unsupported coordinate system for grid_position!\n");
+	}
+	return real3(0.0,0.0,0.0)
 }
 
 grid_xyz() {
@@ -29,7 +34,7 @@ grid_xyz() {
 				AC_z[vertexIdx.z]
 			     )
 	}
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	else if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
 		return 
 			real3(
@@ -38,6 +43,11 @@ grid_xyz() {
 				AC_r[vertexIdx.x]*AC_cos_theta[vertexIdx.y]
 			     )
 	}
+	else
+	{
+    		fatal_error_message(false,"Unsupported coordinate system for grid_xyz!\n");
+	}
+	return real3(0.0,0.0,0.0)
 }
 
 
@@ -53,7 +63,7 @@ grid_position(int3 local_point) {
 				AC_z[global_point.z]
 			     )
 	}
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    	else if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
 		return 
 			real3(
@@ -62,6 +72,11 @@ grid_position(int3 local_point) {
 				AC_phi[global_point.z]
 			     )
 	}
+	else
+	{
+    		fatal_error_message(false,"Unsupported coordinate system for grid_position!\n");
+	}
+	return real3(0.0,0.0,0.0)
 }
 
 grid_center() {

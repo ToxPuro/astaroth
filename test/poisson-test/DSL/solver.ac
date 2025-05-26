@@ -4,6 +4,8 @@
 #include "../../../acc-runtime/stdlib/bc.h"
 #include "../../../acc-runtime/stdlib/general_operators.h"
 Field POTENTIAL
+Field SPH_UPPER_POTENTIAL
+Field SPH_LOWER_POTENTIAL
 Field DENSITY
 Field ANALYTICAL
 Field RESIDUAL
@@ -12,6 +14,164 @@ int AC_n_solving_steps = 1000
 AcReal AC_power_law_mapping_exponent = 1.0
 int AC_charge_radius_points = 10
 real AC_density_charge = 0.0
+
+const int AC_n_spherical_harmonics = 6
+gmem real AC_PLM[AC_mlocal.y][AC_n_spherical_harmonics][AC_n_spherical_harmonics]
+gmem real AC_cos_m_phis[AC_mlocal.z][AC_n_spherical_harmonics]
+gmem real AC_sin_m_phis[AC_mlocal.z][AC_n_spherical_harmonics]
+global output real AC_upper_positive_MLM[AC_n_spherical_harmonics*AC_n_spherical_harmonics]
+global output real AC_upper_negative_MLM[AC_n_spherical_harmonics*AC_n_spherical_harmonics]
+
+global output real AC_lower_positive_MLM[AC_n_spherical_harmonics*AC_n_spherical_harmonics]
+global output real AC_lower_negative_MLM[AC_n_spherical_harmonics*AC_n_spherical_harmonics]
+
+//output real AC_MLM[AC_n_spherical_harmonics][AC_n_spherical_harmonics][2]
+output real AC_TEST
+Field Y_11
+Field Y_10
+Field Y_20
+Field Y_11_ANALYTICAL
+Field Y_00
+Field Y_00_ANALYTICAL
+positive_real_spherical_harmonic(int m, int l)
+{
+	return AC_PLM[vertexIdx.y][l][m]*AC_cos_m_phis[vertexIdx.z][m]
+}
+
+negative_real_spherical_harmonic(int m, int l)
+{
+	return AC_PLM[vertexIdx.y][l][m]*AC_sin_m_phis[vertexIdx.z][m]
+}
+
+Kernel calculate_mlm()
+{
+	r = AC_r[vertexIdx.x]
+
+	/**
+	w_x = 4.0/3.0
+	w_y = 4.0/3.0
+	w_z = 4.0/3.0
+	x_local = vertexIdx.x-NGHOST
+	y_local = vertexIdx.y-NGHOST
+	z_local = vertexIdx.z-NGHOST
+	if(x_local == 0 || x_local == AC_nlocal.x-1) w_x = 1.0/3.0
+	else if(x_local % 2 == 1) w_x = 4.0/3.0
+	else  w_x = 2.0/3.0
+
+
+        if(x_local == 0) w_x += 17.0/24.0;
+        if(x_local == 1) w_x -= 7.0/24.0;
+        if(x_local == 2) w_x += 1.0/12.0;
+        if(x_local == AC_nlocal.x-1) w_x += 17.0/24.0;
+        if(x_local == AC_nlocal.x-2) w_x -= 7.0/24.0;
+        if(x_local == AC_nlocal.x-3) w_x += 1.0/12.0;
+
+	if(y_local == 0 || y_local == AC_nlocal.y-1) w_y = 1.0/3.0
+	else if(y_local % 2 == 1) w_y = 4.0/3.0
+	else  w_y = 2.0/3.0
+
+        if(y_local == 0) w_y += 17.0/24.0;
+        if(y_local == 1) w_y -= 7.0/24.0;
+        if(y_local == 2) w_y += 1.0/12.0;
+        if(y_local == AC_nlocal.y-1) w_y += 17.0/24.0;
+        if(y_local == AC_nlocal.y-2) w_y -= 7.0/24.0;
+        if(y_local == AC_nlocal.y-3) w_y += 1.0/12.0;
+
+	if(z_local == 0 || z_local == AC_nlocal.z-1) w_z = 1.0/3.0
+	else if(z_local % 2 == 1) w_z = 4.0/3.0
+	else  w_z = 2.0/3.0
+
+        if(z_local == 0) w_z += 17.0/24.0;
+        if(z_local == 1) w_z -= 7.0/24.0;
+        if(z_local == 2) w_z += 1.0/12.0;
+        if(z_local == AC_nlocal.z-1) w_z += 17.0/24.0;
+        if(z_local == AC_nlocal.z-2) w_z -= 7.0/24.0;
+        if(z_local == AC_nlocal.z-3) w_z += 1.0/12.0;
+	**/
+
+	//w_x = 1.0
+	w = get_integration_weight()
+
+	for l in 0:AC_n_spherical_harmonics
+	{
+		//Interior potential expansion
+		r_factor = 1.0
+		for i in 0:l
+		{
+			r_factor *= r
+		}
+		for m in 0:l+1
+		{
+			rest     = DENSITY*r_factor*w
+			reduce_sum(positive_real_spherical_harmonic(m,l)*rest,AC_upper_positive_MLM[l + m*AC_n_spherical_harmonics])
+			if(m > 0)
+			{
+				reduce_sum(negative_real_spherical_harmonic(m,l)*rest,AC_upper_negative_MLM[l + m*AC_n_spherical_harmonics])
+			}
+		}
+		//Exterior potential expansion
+		r_factor = 1.0
+		for i in 0:l+1
+		{
+			r_factor /= r
+		}
+		for m in 0:l+1
+		{
+			rest     = DENSITY*r_factor*w
+			reduce_sum(positive_real_spherical_harmonic(m,l)*rest,AC_lower_positive_MLM[l + m*AC_n_spherical_harmonics])
+			if(m > 0)
+			{
+				reduce_sum(negative_real_spherical_harmonic(m,l)*rest,AC_lower_negative_MLM[l + m*AC_n_spherical_harmonics])
+			}
+		}
+	}
+}
+Kernel calculate_potential_with_mlm()
+{
+	r = AC_r[vertexIdx.x]
+
+	//Interior potential expansion
+	res = 0.0
+	for l in 0:AC_n_spherical_harmonics
+	{
+		r_factor = 1.0/r
+		for i in 0:l
+		{
+			r_factor /= r
+		}
+		for m in 0:l+1
+		{
+			res -= r_factor*AC_upper_positive_MLM[l + m*AC_n_spherical_harmonics]*positive_real_spherical_harmonic(m,l)
+			if(m > 0)
+			{
+				res -= r_factor*AC_upper_negative_MLM[l + m*AC_n_spherical_harmonics]*negative_real_spherical_harmonic(m,l)
+			}
+		}
+	}
+	write(SPH_UPPER_POTENTIAL,res)
+
+	//Exterior potential expansion
+	res = 0.0
+	for l in 0:AC_n_spherical_harmonics
+	{
+		r_factor = 1.0
+		for i in 0:l
+		{
+			r_factor *= r
+		}
+		for m in 0:l+1
+		{
+			res -= r_factor*AC_lower_positive_MLM[l + m*AC_n_spherical_harmonics]*positive_real_spherical_harmonic(m,l)
+			if(m > 0)
+			{
+				res -= r_factor*AC_lower_negative_MLM[l + m*AC_n_spherical_harmonics]*negative_real_spherical_harmonic(m,l)
+			}
+		}
+	}
+	write(SPH_LOWER_POTENTIAL,res)
+}
+
+
 poisson_laplacian_neighbours(Field f)
 {
 	return laplace_neighbours(f)
@@ -69,16 +229,19 @@ Kernel write_residual()
 	B = 1.0/((1.0/R_min) - (1.0/R_max))
 	write(ANALYTICAL, -(B/R_max) + (B/R))
 	**/
-	R = AC_r[AC_charge_radius_points]
-	r = grid_position().x
+	R = AC_r[AC_charge_radius_points] + 0.5*AC_ds.x
+	r_min = AC_r[NGHOST] - 0.5*AC_ds.x
+	M_inner = (4.0/3.0)*AC_REAL_PI*AC_density_charge*r_min*r_min*r_min
+	potential_missing_from_inner = M_inner*(r*r-3*r_min*r_min)/(2*r_min*r_min*r_min)
+	r = AC_r[vertexIdx.x]
 	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
 	if(vertexIdx.x <= AC_charge_radius_points)
 	{
-		write(ANALYTICAL,M*(r*r-3*R*R)/(2*R*R*R))
+		write(ANALYTICAL,(M*(r*r-3*R*R)/(2*R*R*R)) - potential_missing_from_inner)
 	}
 	else
 	{
-		write(ANALYTICAL,-M/r)
+		write(ANALYTICAL,(-M/r) + potential_missing_from_inner)
 	}
 }
 
@@ -208,4 +371,9 @@ get_residual(jacobi_bcs)
 	residual_kernel()
 	write_residual()
 }
-
+ComputeSteps
+get_potential_with_sph(jacobi_bcs)
+{
+	calculate_mlm()
+	calculate_potential_with_mlm()
+}
