@@ -154,7 +154,7 @@ expand_env_variables(const char* in, char* out)
   w = p.we_wordv;
   for(size_t i = 0; i < p.we_wordc; ++i)
   {
-  	sprintf(out,"%s%s",out,w[0]);
+  	strcat(out,w[0]);
   }
   wordfree( &p );
 }
