@@ -734,6 +734,11 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 
 
 #ifdef __cplusplus
+static AcTaskGraph* UNUSED
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
+{
+	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
+}
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
