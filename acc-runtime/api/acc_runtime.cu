@@ -672,14 +672,14 @@ safe_access(const AcReal* arr, const int dims, const int index, const char* name
 
 #include "device_fields_info.h"
 
-static __device__
+static __device__ UNUSED
 int3
 ac_get_field_halos(const Field& field)
 {
 	return VAL(vtxbuf_device_halos[field]);
 }
 
-__device__
+__device__ UNUSED
 AcReal
 safe_access(const AcReal* arr, const int dims, const int index, const AcRealArrayParam param)
 {
