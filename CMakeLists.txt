@@ -277,3 +277,7 @@ if (PROGRAM_MODULE_DIR)
     add_subdirectory(${resolved_program_dir})
     message("Resolved program module dir: " ${resolved_program_dir})
 endif()
+
+if(EXTRA_SOURCES_DIR)
+	add_subdirectory(${EXTRA_SOURCES_DIR})
+endif()
