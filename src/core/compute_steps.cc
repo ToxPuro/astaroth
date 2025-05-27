@@ -367,7 +367,7 @@ log_launch_bounds(FILE* stream, std::vector<Field> in_fields, std::vector<Field>
 	}
 }
 void
-log_boundcond(FILE* stream, const BoundCond bc, const AcBoundary boundary)
+log_boundcond(FILE* stream, const BoundCond bc)
 {
 	auto log_fields = [&](const auto& fields)
 	{
@@ -376,13 +376,22 @@ log_boundcond(FILE* stream, const BoundCond bc, const AcBoundary boundary)
 			if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
 		if(!ac_pid()) fprintf(stream,"}");
 	};
-	if(!ac_pid()) fprintf(stream,"BoundCond(%s,%s,",boundary_str(boundary), kernel_names[bc.kernel]);
+	if(!ac_pid()) fprintf(stream,"BoundCond(%s,%s,",boundary_str(bc.boundary), kernel_names[bc.kernel]);
 	log_fields(bc.in);
 	if(!ac_pid()) fprintf(stream,",");
 	log_fields(bc.out);
 	log_launch_bounds(stream,bc.in,bc.out);
 	if(!ac_pid()) fprintf(stream,")\n");
 }
+
+AcTaskDefinition
+gen_bc(FILE* stream, const BoundCond bc)
+{
+	log_boundcond(stream,bc);
+	const auto [bc_start,bc_end] = get_launch_bounds_from_fields(bc.in,bc.out);
+	return acBoundaryCondition(bc.boundary,bc.kernel,bc.in,bc.out,bc_start,bc_end);
+}
+
 std::vector<AcTaskDefinition>
 acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph, const bool optimized)
 {
@@ -395,9 +404,7 @@ acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph, const bool optimized)
 		for(auto& bc : bcs)
 			if(bc.topological_order == i)
 			{
-				log_boundcond(stream,bc,bc.boundary);
-				const auto [start,end] = get_launch_bounds_from_fields(bc.in,bc.out);
-				res.push_back(acBoundaryCondition(bc.boundary,bc.kernel,bc.in,bc.out,start,end));
+				res.push_back(gen_bc(stream,bc));
 			}
 
 	if(!ac_pid()) fclose(stream);
@@ -709,9 +716,7 @@ gen_halo_exchange_and_boundconds(
                         	                }
                         	                if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
 
-						log_boundcond(stream,processed_boundcond,boundaries[boundcond]);
-						const auto [bc_start,bc_end] = get_launch_bounds_from_fields(processed_boundcond.in,processed_boundcond.out);
-						res.push_back(acBoundaryCondition(boundaries[boundcond],processed_boundcond.kernel,processed_boundcond.in,processed_boundcond.out,bc_start,bc_end));
+						res.push_back(gen_bc(stream,processed_boundcond));
 						for(const auto& field : processed_boundcond.out)
 							field_boundconds_processed[field][boundcond] = true;
 
@@ -1113,6 +1118,11 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		bool level_set_has_fixed_boundary = true;
 		for(auto& call : current_level_set.calls)
 			level_set_has_fixed_boundary &= kernel_has_fixed_boundary[call.kernel];
+		if(level_set_has_fixed_boundary)
+		{
+			for(auto& call : current_level_set.calls)
+				if(!kernel_has_fixed_boundary[call.kernel]) fatal("%s\n", "TODO: kernels that have fixed boundaries should not be in the same level set as those that do not have\n");
+		}
 
 		std::vector<Field> input_fields_not_communicated{};
 		for(auto& call : current_level_set.calls)
@@ -1127,24 +1137,18 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		}
 		if(!level_set_has_fixed_boundary)
 		{
+	                const std::vector<AcBoundary> boundaries = get_boundaries();
 			for(auto& field : input_fields_not_communicated)
 			{
-				bool need_to_call_bc = false;
-				need_to_call_bc |= field_boundconds[field][0].info.larger_output;
-				need_to_call_bc |= field_boundconds[field][1].info.larger_output;
-				need_to_call_bc |= field_boundconds[field][2].info.larger_output;
-				need_to_call_bc |= field_boundconds[field][3].info.larger_output;
-				need_to_call_bc |= field_boundconds[field][4].info.larger_output;
-				need_to_call_bc |= field_boundconds[field][5].info.larger_output;
-				if(need_to_call_bc)
-					fatal("%s","BC that sets the actual boundary needs to be inserted even though the ghost zones are not needed\nTODO implement this --- now easier with an actual example use case ---")
+                        	for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
+                        	{
+					if(field_boundconds[field][boundcond].info.larger_output)
+					{
+						res.push_back(gen_bc(stream,field_boundconds[field][boundcond]));
+					}
 
+                        	}
 			}
-		}
-		else
-		{
-			for(auto& call : current_level_set.calls)
-				if(!kernel_has_fixed_boundary[call.kernel]) fatal("%s\n", "TODO: kernels that have fixed boundaries should not be in the same level set as those that do not have\n");
 		}
 		for(auto& call : current_level_set.calls)
 		{
