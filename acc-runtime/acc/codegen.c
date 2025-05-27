@@ -1132,7 +1132,7 @@ output_array_info(FILE* fp, array_info info, const ASTNode* root)
 
 	fprintf(fp,"%s","}},");
         fprintf(fp, "\"%s\",", info.name);
-        fprintf(fp, "%s,",(!info.accessed  && ALLOW_DEAD_VARIABLES || OPTIMIZE_ARRAYS) ? "false" : "true");
+        fprintf(fp, "%s,",(!info.accessed  && ALLOW_DEAD_VARIABLES && OPTIMIZE_ARRAYS) ? "false" : "true");
         fprintf(fp, "%s,",info.accessed ? "true" : "false");
 	fprintf(fp,"%s","},");
 }
