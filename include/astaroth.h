@@ -736,19 +736,19 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 #ifdef __cplusplus
 
 #if AC_RUNTIME_COMPILATION
-static AcTaskGraph* UNUSED
+static UNUSED AcTaskGraph* 
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 {
 	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
 }
 #endif
-static AcTaskGraph* UNUSED
+static UNUSED AcTaskGraph*
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end)
 {
 	return acGetOptimizedDSLTaskGraphWithBounds(graph,start,end,false);
 }
 
-static AcTaskGraph* UNUSED
+static UNUSED AcTaskGraph* 
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_imposed_bcs)
 {
 	return acGetOptimizedDSLTaskGraphWithBounds(graph,
