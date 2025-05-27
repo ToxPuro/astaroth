@@ -87,17 +87,19 @@ get_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<int,NUM
 	const auto info = get_kernel_analysis_info();
 	int res = 0;
 	for(int j = 0; j < NUM_FIELDS; ++j)
+	{
 		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
 		{
 			if(info[kernel].stencils_accessed[j][stencil])
 			{
 				res |= acDeviceStencilAccessesBoundaries(acGridGetDevice(), Stencil(stencil));
 			}
-			if(info[kernel].written_fields[j])
-			{
-				res |= fields_already_depend_on_boundaries[j];
-			}
 		}
+		if(info[kernel].written_fields[j])
+		{
+			res |= fields_already_depend_on_boundaries[j];
+		}
+	}
 	for(int j = 0; j < NUM_PROFILES; ++j)
 		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
 			if(info[kernel].stencils_accessed[j+NUM_ALL_FIELDS][stencil])
