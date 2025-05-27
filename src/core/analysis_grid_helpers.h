@@ -34,7 +34,7 @@ kernel_updates_vtxbuf(const AcKernel kernel)
 	return false;
 }
 
-static bool
+static UNUSED bool
 is_raytracing_kernel(const AcKernel kernel)
 {
 	const auto info = get_kernel_analysis_info();
@@ -62,6 +62,26 @@ raytracing_step_direction(const AcKernel kernel)
 	}
 	return (AcBool3){false,false,false};
 }
+static UNUSED AcBoundary
+get_stencil_boundaries(const Stencil stencil)
+{
+	return acDeviceStencilAccessesBoundaries(acGridGetDevice(), Stencil(stencil));
+}
+
+static UNUSED AcBoundary
+get_ray_boundaries(const AcRay ray)
+{
+	int res = 0;
+	if(ray_directions[ray].x == +1) res |= BOUNDARY_X_BOT;
+	if(ray_directions[ray].x == -1) res |= BOUNDARY_X_TOP;
+
+	if(ray_directions[ray].y ==  +1) res |= BOUNDARY_Y_BOT;
+	if(ray_directions[ray].y ==  -1) res |= BOUNDARY_Y_TOP;
+
+	if(ray_directions[ray].z == +1) res |= BOUNDARY_Z_BOT;
+	if(ray_directions[ray].z == -1) res |= BOUNDARY_Z_TOP;
+	return AcBoundary(res);
+}
 
 static UNUSED std::array<int,NUM_FIELDS>
 get_fields_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
@@ -73,7 +93,7 @@ get_fields_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<
 	for(int j = 0; j < NUM_FIELDS; ++j)
 		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
 			if(info[kernel].stencils_accessed[j][stencil])
-				res[j] |= acDeviceStencilAccessesBoundaries(acGridGetDevice(), Stencil(stencil));
+				res[j] |= get_stencil_boundaries(Stencil(stencil)); 
 	return res;
 }
 
@@ -83,7 +103,6 @@ get_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<int,NUM
 	//TP: this is because if kernel A uses stencils kernel B has to wait for A to finish on neighbours to avoid overwriting A's input
 	//TP: this is somewhat conservative since if A does not use stencils B has more dependency then needed
 	//TP: but I guess if A and B do not have stencils they are anyways so fast that it does not matter that much
-	if(is_raytracing_kernel(kernel))  return BOUNDARY_XYZ;
 	const auto info = get_kernel_analysis_info();
 	int res = 0;
 	for(int j = 0; j < NUM_FIELDS; ++j)
@@ -99,11 +118,20 @@ get_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<int,NUM
 		{
 			res |= fields_already_depend_on_boundaries[j];
 		}
+		for(int ray = 0; ray < NUM_RAYS; ++ray)
+		{
+			if(info[kernel].ray_accessed[j][ray])
+			{
+				res |= get_ray_boundaries(AcRay(ray));
+			}
+
+		}
 	}
 	for(int j = 0; j < NUM_PROFILES; ++j)
 		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
 			if(info[kernel].stencils_accessed[j+NUM_ALL_FIELDS][stencil])
 				res |= acDeviceStencilAccessesBoundaries(acGridGetDevice(), Stencil(stencil));
+
 
 	return AcBoundary(res);
 

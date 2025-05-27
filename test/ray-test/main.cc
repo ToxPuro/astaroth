@@ -301,6 +301,7 @@ main(int argc, char* argv[])
     }
 
     acGridExecuteTaskGraph(get_tg(trace_nine_rays),1);
+    /**
     for(size_t k = dims.n0.z-1; k < dims.n1.z+1;  ++k)
     {
       for(size_t i = dims.n0.x-1; i < dims.n1.x+1; ++i)
@@ -322,6 +323,7 @@ main(int argc, char* argv[])
 	}
       }
     }
+    **/
     check_f("four rays",Q_PPP);
     check_f("four rays",Q_MPP);
     check_f("four rays",Q_PMP);

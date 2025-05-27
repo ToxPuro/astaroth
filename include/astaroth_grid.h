@@ -219,6 +219,37 @@ ac_boundary_to_str(const AcBoundary boundary)
 	if(boundary == BOUNDARY_XZ)    return "BOUNDARY_XZ";
 	if(boundary == BOUNDARY_YZ)    return "BOUNDARY_YZ";
 	if(boundary == BOUNDARY_XYZ)   return "BOUNDARY_XYZ";
+
+        if(boundary == BOUNDARY_X_BOT_Y_BOT_Z_BOT) return "BOUNDARY_X_BOT_Y_BOT_Z_BOT";
+        if(boundary == BOUNDARY_X_BOT_Y_BOT_Z_TOP) return "BOUNDARY_X_BOT_Y_BOT_Z_TOP";
+        if(boundary == BOUNDARY_X_BOT_Y_TOP_Z_BOT) return "BOUNDARY_X_BOT_Y_TOP_Z_BOT";
+        if(boundary == BOUNDARY_X_BOT_Y_TOP_Z_TOP) return "BOUNDARY_X_BOT_Y_TOP_Z_TOP";
+        if(boundary == BOUNDARY_X_TOP_Y_BOT_Z_BOT) return "BOUNDARY_X_TOP_Y_BOT_Z_BOT";
+        if(boundary == BOUNDARY_X_TOP_Y_BOT_Z_TOP) return "BOUNDARY_X_TOP_Y_BOT_Z_TOP";
+        if(boundary == BOUNDARY_X_TOP_Y_TOP_Z_BOT) return "BOUNDARY_X_TOP_Y_TOP_Z_BOT";
+        if(boundary == BOUNDARY_X_TOP_Y_TOP_Z_TOP) return "BOUNDARY_X_TOP_Y_TOP_Z_TOP";
+
+        if(boundary == BOUNDARY_XY_Z_BOT) return "BOUNDARY_XY_Z_BOT"; 
+        if(boundary == BOUNDARY_XY_Z_TOP) return "BOUNDARY_XY_Z_TOP";
+        if(boundary == BOUNDARY_XZ_Y_BOT) return "BOUNDARY_XZ_Y_BOT";
+        if(boundary == BOUNDARY_XZ_Y_TOP) return "BOUNDARY_XZ_Y_TOP";
+        if(boundary == BOUNDARY_YZ_X_BOT) return "BOUNDARY_YZ_X_BOT";
+        if(boundary == BOUNDARY_YZ_X_TOP) return "BOUNDARY_YZ_X_TOP";
+
+        if(boundary == BOUNDARY_X_Z_BOT) return "BOUNDARY_X_Z_BOT";
+        if(boundary == BOUNDARY_X_Z_TOP) return "BOUNDARY_X_Z_TOP";
+        if(boundary == BOUNDARY_X_Y_BOT) return "BOUNDARY_X_Y_BOT";
+        if(boundary == BOUNDARY_X_Y_TOP) return "BOUNDARY_X_Y_TOP";
+
+        if(boundary == BOUNDARY_Y_X_BOT) return "BOUNDARY_Y_X_BOT";
+        if(boundary == BOUNDARY_Y_X_TOP) return "BOUNDARY_Y_X_TOP";
+        if(boundary == BOUNDARY_Y_Z_BOT) return "BOUNDARY_Y_Z_BOT";
+        if(boundary == BOUNDARY_Y_Z_TOP) return "BOUNDARY_Y_Z_TOP";
+
+        if(boundary == BOUNDARY_Z_X_BOT) return "BOUNDARY_Z_X_BOT";
+        if(boundary == BOUNDARY_Z_X_TOP) return "BOUNDARY_Z_X_TOP";
+        if(boundary == BOUNDARY_Z_Y_BOT) return "BOUNDARY_Z_Y_BOT";
+        if(boundary == BOUNDARY_Z_Y_TOP) return "BOUNDARY_Z_Y_TOP";
 	return "UNKNOWN_BOUNDARY";
 }
 
