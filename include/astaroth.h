@@ -742,6 +742,20 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
 }
 #endif
+static AcTaskGraph* UNUSED
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end)
+{
+	return acGetOptimizedDSLTaskGraphWithBounds(graph,start,end,false);
+}
+
+static AcTaskGraph* UNUSED
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_imposed_bcs)
+{
+	return acGetOptimizedDSLTaskGraphWithBounds(graph,
+			acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice())),
+			acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice())),
+			globally_imposed_bcs);
+}
 
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)

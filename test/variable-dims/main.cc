@@ -171,7 +171,7 @@ main(int argc, char* argv[])
     const Volume launch_start = to_volume(info[AC_nmin]);
     const Volume launch_end = launch_dims + launch_start;
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraphWithBounds(add_field_normal , launch_start, launch_end),1);
+    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(add_field_normal , launch_start, launch_end),1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
 

@@ -884,7 +884,7 @@ Task::poll_stream()
 /* Computation */
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
-			 std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+			 const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
 			 )
     : Task(order_,
            Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries), op.computes_on_halos, start, dims, op.halo_sizes, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),

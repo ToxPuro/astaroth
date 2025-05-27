@@ -2097,10 +2097,6 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	      Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},op.computes_on_halos)[0];
 	      auto task = std::make_shared<ComputeTask>(op,i,full_input_region,full_region,device,swap_offset,fields_already_depend_on_boundaries);
               graph->all_tasks.push_back(task);
-              //done here since we want to write only to out not to in what launching the taskgraph would do
-	      //always remember to call the loader since otherwise might not be safe to execute taskgraph
-    	      op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}, op.kernel_enum});
-              acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
 	    }
 	    else
 	    {
@@ -2143,11 +2139,15 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     	            ERRCHK_ALWAYS((int)dims.z > grid.submesh.info[AC_nmin].z*2);
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset,fields_already_depend_on_boundaries);
             	    graph->all_tasks.push_back(task);
-            	    //done here since we want to write only to out not to in what launching the taskgraph would do
-	      	    //always remember to call the loader since otherwise might not be safe to execute taskgraph
-    	      	    op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}, op.kernel_enum});
-            	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
             	}
+            	//done here since we want to write only to out not to in what launching the taskgraph would do
+	      	//always remember to call the loader since otherwise might not be safe to execute taskgraph
+		{
+			const auto task = graph->all_tasks[graph->all_tasks.size()-1];
+    	      		op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}, op.kernel_enum});
+                	acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
+	        	fields_already_depend_on_boundaries = get_fields_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);
+		}
 	    }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {

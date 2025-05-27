@@ -77,6 +77,17 @@ main(int argc, char* argv[])
     #endif
 
     acGridInit(info);
+    const auto halo = acGridBuildTaskGraph(
+		    		{acHaloExchange(
+					{QRAD}
+					)}
+		    );
+
+    const auto halo_3 = acGridBuildTaskGraph(
+		    		{acHaloExchange(
+					{KAPPA_RHO}
+					)}
+		    );
 
     AcMesh model, candidate;
     acHostMeshCreate(info, &model);
@@ -91,26 +102,31 @@ main(int argc, char* argv[])
 
     acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT,model);
     acGridSynchronizeStream(STREAM_ALL);
+    const auto get_tg = [&](const auto& cs)
+    {
+	    return acGetOptimizedDSLTaskGraph(cs,true);
+    };
 
     //TP: for benchmarking purposes
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_nine_rays_general),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_up_general),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_three_rays_general),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_right_ray_general),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_up_rays),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_right_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_nine_rays_general),1);
+    acGridExecuteTaskGraph(get_tg(ppp_general),1);
+    acGridExecuteTaskGraph(get_tg(trace_up_general),1);
+    acGridExecuteTaskGraph(get_tg(trace_three_rays_general),1);
+    acGridExecuteTaskGraph(get_tg(trace_right_ray_general),1);
+    acGridExecuteTaskGraph(get_tg(trace_up_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_right_rays),1);
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(baseline_y),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_three_rays),1);
+    acGridExecuteTaskGraph(get_tg(baseline_y),1);
+    acGridExecuteTaskGraph(get_tg(trace_three_rays),1);
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(baseline),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(revise_nine_rays),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(revise_nine_rays_along_ray),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(revise_boundary_ray),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_nine_rays),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_nine_rays_general),1);
+    acGridExecuteTaskGraph(get_tg(baseline),1);
+    acGridExecuteTaskGraph(get_tg(revise_nine_rays),1);
+    acGridExecuteTaskGraph(get_tg(revise_nine_rays_along_ray),1);
+    acGridExecuteTaskGraph(get_tg(revise_boundary_ray),1);
+    acGridExecuteTaskGraph(get_tg(trace_nine_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_nine_rays_general),1);
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_right_ray_general),1);
+    acGridExecuteTaskGraph(get_tg(trace_right_ray_general),1);
 
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
@@ -164,7 +180,7 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_backwards_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_backwards_rays),1);
     check_f("Backwards",QRAD);
 
     reset_f(QRAD);
@@ -179,7 +195,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_forwards_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_forwards_rays),1);
     check_f("Forwards",QRAD);
 
     reset_f(QRAD);
@@ -194,7 +210,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_up_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_up_rays),1);
     check_f("Up",QRAD);
 
     reset_f(QRAD);
@@ -209,7 +225,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_down_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_down_rays),1);
     check_f("Down",QRAD);
 
     reset_f(QRAD);
@@ -224,8 +240,17 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_right_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_right_rays),1);
     check_f("Right",QRAD);
+
+    const Field Q_PZZ = Q_PZP;
+    const auto x_periodic_reduction = 
+	    acGridBuildTaskGraph({
+	    		acReduceInRayDirection(
+				{Q_PZZ}, (int3){1,0,0}
+			)
+			});
+    acGridExecuteTaskGraph(x_periodic_reduction,1);
 
     reset_f(QRAD);
     for(size_t i = dims.n1.x-1; i >= dims.n0.x; --i)
@@ -239,7 +264,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_left_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_left_rays),1);
     check_f("Left",QRAD);
 
     reset_f(QRAD);
@@ -254,7 +279,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_ppp_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_ppp_rays),1);
     check_f("(1,1,1)",QRAD);
 
     reset_f(Q_PPP);
@@ -275,7 +300,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(trace_nine_rays),1);
+    acGridExecuteTaskGraph(get_tg(trace_nine_rays),1);
     for(size_t k = dims.n0.z-1; k < dims.n1.z+1;  ++k)
     {
       for(size_t i = dims.n0.x-1; i < dims.n1.x+1; ++i)
