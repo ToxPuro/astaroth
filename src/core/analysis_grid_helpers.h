@@ -67,7 +67,9 @@ static UNUSED std::array<int,NUM_FIELDS>
 get_fields_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
 {
 	const auto info = get_kernel_analysis_info();
-	std::array<int,NUM_FIELDS> res = fields_already_depend_on_boundaries;
+	std::array<int,NUM_FIELDS> res{};
+	for(int j = 0; j < NUM_FIELDS; ++j)
+       		res[j] = fields_already_depend_on_boundaries[j];
 	for(int j = 0; j < NUM_FIELDS; ++j)
 		for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
 			if(info[kernel].stencils_accessed[j][stencil])
