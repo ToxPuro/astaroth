@@ -953,7 +953,7 @@ get_arr_accesses(const char* datatype_scalar)
 	char* filename;
 	const char* define_name =  convert_to_define_name(datatype_scalar);
 	asprintf(&filename,"%s_arr_accesses",define_name);
-  	if(!file_exists(filename) || !has_optimization_info() || !OPTIMIZE_ARRAYS)
+  	if(!file_exists(filename) || !has_optimization_info())
 		return default_accesses;
 
 	FILE* fp = fopen(filename,"rb");
@@ -1086,7 +1086,7 @@ void
 propagate_array_info(Symbol* sym, const bool accessed, const ASTNode* root)
 {
 	const array_info info = get_array_info(sym,accessed,root);
-	if (!accessed && ALLOW_DEAD_VARIABLES) push(&sym->tqualifiers,DEAD_STR);
+	if (!accessed && ALLOW_DEAD_VARIABLES && OPTIMIZE_ARRAYS) push(&sym->tqualifiers,DEAD_STR);
 	bool const_dims = true;
 	for(size_t dim = 0; dim < MAX_ARRAY_RANK; ++dim) const_dims &= (dim >= info.dims.size || all_identifiers_are_constexpr(info.dims.data[dim]));
 	const bool is_gmem = str_vec_contains(sym->tqualifiers,GLOBAL_MEM_STR);
@@ -1132,6 +1132,7 @@ output_array_info(FILE* fp, array_info info, const ASTNode* root)
 
 	fprintf(fp,"%s","}},");
         fprintf(fp, "\"%s\",", info.name);
+        fprintf(fp, "%s,",(info.accessed  && ALLOW_DEAD_VARIABLES && OPTIMIZE_ARRAYS) ? "true" : "false");
         fprintf(fp, "%s,",info.accessed ? "true" : "false");
 	fprintf(fp,"%s","},");
 }
@@ -1225,7 +1226,7 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   for(int i = 0; i  < MAX_ARRAY_RANK; ++i)
 	  fprintf(fp,"{-1,NULL,false}%s",i < MAX_ARRAY_RANK-1 ? "," : "");
   fprintf(fp,"}},");
-  fprintf(fp,"\"AC_EXTRA_PADDING\",true}");
+  fprintf(fp,"\"AC_EXTRA_PADDING\",true,true}");
   fprintf(fp, "\n};");
 }
 
@@ -10233,7 +10234,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   	  fprintf(fp_info,"\n #ifdef __cplusplus\n");
   	  fprintf(fp_info,"\n#include <array>\n");
   	  fprintf(fp_info,"typedef struct {int base; const char* member; bool from_config;} AcArrayLen;\n");
-  	  fprintf(fp_info,"typedef struct { bool is_dconst; int num_dims; std::array<AcArrayLen,%d> dims; const char* name; bool is_alive;} array_info;\n",MAX_ARRAY_RANK);
+  	  fprintf(fp_info,"typedef struct { bool is_dconst; int num_dims; std::array<AcArrayLen,%d> dims; const char* name; bool is_alive; bool is_accessed;} array_info;\n",MAX_ARRAY_RANK);
 	  gen_array_qualifiers(root);
   	  for (size_t i = 0; i < datatypes.size; ++i)
 	  {

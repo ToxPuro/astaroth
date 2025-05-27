@@ -912,6 +912,12 @@ struct allocate_arrays
 	{
 		for(P array : get_params<P>())
 		{
+			if(config[array] == nullptr && is_accessed(array))
+			{
+				fprintf(stderr,"Passed %s as NULL but it is accessed kernels!!\n",get_name(array));
+				fflush(stderr);
+				ERRCHK_ALWAYS(config[array] != nullptr);
+			}
 			if (config[array] != nullptr && !is_dconst(array) && is_alive(array))
 			{
 

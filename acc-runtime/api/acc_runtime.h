@@ -662,6 +662,13 @@ FUNC_DEFINE(int, acVerifyMeshInfo,(const AcMeshInfo info));
 	  return get_array_info(array).is_alive;
   }
 
+  template <typename P>
+  constexpr static bool
+  is_accessed(const P array)
+  {
+	  return get_array_info(array).is_accessed;
+  }
+
 
   template <typename P>
   constexpr static auto
