@@ -137,6 +137,26 @@ get_max_halo_size(const Field fields[], const size_t num_fields)
 }
 
 AcTaskDefinition
+acRayUpdate(const AcKernel kernel, const AcBoundary boundary, const int3 ray_direction,
+		Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,
+  		KernelParamsLoader load_func
+		)
+{
+    AcTaskDefinition task_def{};
+    task_def.task_type      = TASKTYPE_RAY_UPDATE;
+    task_def.kernel_enum         = kernel;
+    task_def.halo_sizes = (Volume){1,1,1};
+    task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
+    task_def.num_fields_in  = num_fields_in;
+    task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
+    task_def.num_fields_out = num_fields_out;
+    task_def.ray_direction = ray_direction;
+    task_def.boundary      = boundary;
+    task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
+    return task_def;
+}
+
+AcTaskDefinition
 acCompute(const AcKernel kernel, 
 		Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,
 		Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out
@@ -173,7 +193,7 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
 		    Profile profiles_write_out[], const size_t num_profiles_write_out,
                     KernelReduceOutput outputs_in[], const size_t num_outputs_in, KernelReduceOutput outputs_out[], const size_t num_outputs_out, 
 		    const Volume start, const Volume end,
-	            std::function<void(ParamLoadingInfo)> load_func)
+	            KernelParamsLoader load_func)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
@@ -246,11 +266,13 @@ acHaloExchange(Field fields[], const size_t num_fields)
     task_def.ray_direction = (int3){0,0,0};
     task_def.sending   = true;
     task_def.receiving = true;
+    task_def.boundary      = BOUNDARY_XYZ;
+    task_def.include_boundaries = false;
     return task_def;
 }
 
 AcTaskDefinition
-acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving)
+acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries)
 {
     AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
     task_def.start = start;
@@ -258,6 +280,8 @@ acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume s
     task_def.ray_direction = ray_direction;
     task_def.sending       = sending;
     task_def.receiving     = receiving;
+    task_def.boundary      = boundary;
+    task_def.include_boundaries = include_boundaries;
     task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
 
     return task_def;
@@ -881,6 +905,19 @@ Task::poll_stream()
     return false;
 }
 
+Volume
+get_min_nn()
+{
+	return acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+}
+
+Volume
+get_local_nn()
+{
+	return acGetLocalNN(acDeviceGetLocalConfig(acGridGetDevice()));
+}
+
+
 /* Computation */
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
@@ -975,6 +1012,35 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
     task_type = TASKTYPE_COMPUTE;
 }
 
+ComputeTask::ComputeTask(AcTaskDefinition op, int order_, std::vector<Region> input_regions_, Region output_region_, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+		)
+    : Task(order_,
+	   input_regions_,
+           output_region_,
+           op, device_, swap_offset_)
+{
+    // stream = device->streams[STREAM_DEFAULT + region_tag];
+    (void)fields_already_depend_on_boundaries;
+    {
+	set_device(device);
+
+        int low_prio, high_prio;
+        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+    }
+
+    syncVBA();
+
+    // compute_func = compute_func_;
+
+    params = KernelParameters{op.kernel_enum, stream, 0, output_region.position,
+                              output_region.position + output_region.dims,  op.load_kernel_params_func};
+    name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
+           std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
+    task_type = TASKTYPE_COMPUTE;
+}
+
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, Region output_region_, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
 	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
 		)
@@ -1003,6 +1069,107 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, 
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
 }
+
+std::shared_ptr<ComputeTask>
+ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,const int3 ray_direction, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
+{
+
+    const auto get_input_region = [&](const int3 id)
+    {
+	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out});
+    };
+
+    const int ndir = abs(ray_direction.x) + abs(ray_direction.y) + abs(ray_direction.z);
+    std::vector<Region> input_regions{};
+    if(ndir == 1)
+    {
+	input_regions.push_back(get_input_region(-boundary_id));
+    }
+    if(ndir == 2)
+    {
+	const int3 incoming_boundary_id = boundary_id - ray_direction;	    
+	input_regions.push_back(get_input_region(incoming_boundary_id));
+	int3 corner_id = incoming_boundary_id;
+
+	if(incoming_boundary_id.x == 0 && ray_direction.x != 0) corner_id.x -= ray_direction.x;
+	if(incoming_boundary_id.y == 0 && ray_direction.y != 0) corner_id.y -= ray_direction.y;
+	if(incoming_boundary_id.z == 0 && ray_direction.z != 0) corner_id.z -= ray_direction.z;
+
+	input_regions.push_back(get_input_region(corner_id));
+
+    }
+    if(ndir == 3)
+    {
+	    const int3 r = (int3)
+	    {
+		    (boundary_id.x != 0) ? ray_direction.x : 0,
+		    (boundary_id.y != 0) ? ray_direction.y : 0,
+		    (boundary_id.z != 0) ? ray_direction.z : 0
+	    };
+	    const int3 incoming_boundary_id = boundary_id - ray_direction;	    
+	    input_regions.push_back(get_input_region(incoming_boundary_id));
+	    input_regions.push_back(get_input_region(incoming_boundary_id-r));
+	    if(incoming_boundary_id.x != 0)
+	    {
+		    const int3 boundary = (int3){incoming_boundary_id.x,0,0};
+	    	    input_regions.push_back(get_input_region(boundary));
+	    	    input_regions.push_back(get_input_region(boundary-r));
+	    }
+	    if(incoming_boundary_id.y != 0)
+	    {
+		    const int3 boundary = (int3){0,incoming_boundary_id.y,0};
+	    	    input_regions.push_back(get_input_region(boundary));
+	    	    input_regions.push_back(get_input_region(boundary-r));
+	    }
+	    if(incoming_boundary_id.z != 0)
+	    {
+		    const int3 boundary = (int3){0,0,incoming_boundary_id.z};
+	    	    input_regions.push_back(get_input_region(boundary));
+	    	    input_regions.push_back(get_input_region(boundary-r));
+	    }
+    }
+
+    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out});
+    //TP: avoid computing on corner points twice
+    if(boundary_id.x != 0)
+    {
+            if(ray_direction.y == 1)
+            {
+        	output_region.dims.y -= 1;
+            }
+            if(ray_direction.y == -1)
+            {
+        	output_region.dims.y -= 1;
+        	output_region.position.y += 1;
+            }
+    
+            if(ray_direction.z == 1)
+            {
+        	output_region.dims.z -= 1;
+            }
+            if(ray_direction.z == -1)
+            {
+        	output_region.dims.z -= 1;
+        	output_region.position.z += 1;
+            }
+    }
+    if(boundary_id.y != 0)
+    {
+            if(ray_direction.z == 1)
+            {
+        	output_region.dims.z -= 1;
+            }
+            if(ray_direction.z == -1)
+            {
+        	output_region.dims.z -= 1;
+        	output_region.position.z += 1;
+            }
+    }
+    return std::make_shared<ComputeTask>(op,order_,input_regions, output_region,device_,swap_offset_,fields_already_depend_on_boundaries);
+}
+
+
 bool
 ComputeTask::isComputeTask() { return true; }
 

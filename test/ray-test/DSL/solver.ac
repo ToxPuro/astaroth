@@ -443,13 +443,13 @@ Kernel baseline_y_kernel()
 
 get_incoming_boundary_ray_point(int3 direction)
 {
-	const int steps_x = (direction.x > 0) ? vertexIdx.x-NGHOST :
+	const int steps_x = (direction.x > 0) ? vertexIdx.x-(NGHOST-1) :
 		      (direction.x < 0) ? AC_nlocal_max.x - vertexIdx.x
 					: INT_MAX
-	const int steps_y = (direction.y > 0) ? vertexIdx.y-NGHOST :
+	const int steps_y = (direction.y > 0) ? vertexIdx.y-(NGHOST-1) :
 		      (direction.y < 0) ? AC_nlocal_max.y - vertexIdx.y
 					: INT_MAX
-	const int steps_z = (direction.z > 0) ? vertexIdx.z-NGHOST :
+	const int steps_z = (direction.z > 0) ? vertexIdx.z-(NGHOST-1) :
 		      (direction.z < 0) ? AC_nlocal_max.z - vertexIdx.z
 					: INT_MAX
 	const int steps = min(steps_x,min(steps_y,steps_z))
@@ -496,6 +496,32 @@ Kernel boundary_revision()
 		update += extrinsic_update(direction)
 	}
 	write(QRAD,update)
+}
+
+Kernel boundary_revision_general(int3 direction)
+{
+	write(QRAD,QRAD + get_incoming_boundary_ray(QRAD,direction));
+}
+
+Kernel boundary_periodic_first_revision(int3 direction)
+{
+	incoming   = get_incoming_boundary_ray(QRAD,direction)
+	min_vertex = min(min(vertexIdx.x,vertexIdx.y),vertexIdx.z);
+	val = (min_vertex == vertexIdx.z)
+		? QRAD + incoming
+		: QRAD
+	write(QRAD,val);
+}
+
+Kernel boundary_periodic_second_revision(int3 direction)
+{
+	
+	incoming   = get_incoming_boundary_ray(QRAD,direction)
+	min_vertex = min(min(vertexIdx.x,vertexIdx.y),vertexIdx.z);
+	val = (min_vertex != vertexIdx.z)
+		? QRAD + incoming
+		: QRAD
+	write(QRAD,val);
 }
 
 Kernel nine_rays_revision_along_ray()

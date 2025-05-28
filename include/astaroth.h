@@ -526,6 +526,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acGridWriteMeshToDiskLaunch,stream);
 	LOAD_DSYM(acGridDiskAccessSync,stream);
 	LOAD_DSYM(acGridReadVarfileToMesh,stream);
+	*(void**)(&BASE_FUNC_NAME(acRayUpdate)) = dlsym(handle,"acRayUpdate");
 	*(void**)(&BASE_FUNC_NAME(acComputeWithParams)) = dlsym(handle,"acComputeWithParams");
 	*(void**)(&BASE_FUNC_NAME(acCompute)) = dlsym(handle,"acCompute");
 	*(void**)(&BASE_FUNC_NAME(acHaloExchange)) = dlsym(handle,"acHaloExchange");
@@ -911,16 +912,43 @@ acCompute(AcKernel kernel, Field (&fields)[num_fields])
 {
     return BASE_FUNC_NAME(acCompute)(kernel, fields, num_fields, fields, num_fields, NULL, 0, NULL, 0);
 }
-static __attribute__((unused)) AcTaskDefinition
+static UNUSED AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields)
 {
 	return BASE_FUNC_NAME(acCompute)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), NULL, 0, NULL, 0);
 }
 
+static UNUSED AcTaskDefinition
+acRayUpdate(AcKernel kernel, const int3 ray_direction, std::vector<Field> fields, KernelParamsLoader loader)
+{
+	return BASE_FUNC_NAME(acRayUpdate)(kernel, BOUNDARY_XYZ, ray_direction, fields.data(), fields.size(), fields.data(), fields.size(),  loader);
+}
+
+static UNUSED AcTaskDefinition
+acRayUpdate(AcKernel kernel, const AcBoundary boundary, const int3 ray_direction, std::vector<Field> fields, KernelParamsLoader loader)
+{
+	return BASE_FUNC_NAME(acRayUpdate)(kernel, boundary, ray_direction, fields.data(), fields.size(), fields.data(), fields.size(),  loader);
+}
+
+
+static UNUSED AcTaskDefinition
+acRayUpdate(AcKernel kernel, const int3 ray_direction, std::vector<Field> fields)
+{
+	KernelParamsLoader loader = [&](ParamLoadingInfo p){(void)p;};
+	return BASE_FUNC_NAME(acRayUpdate)(kernel, BOUNDARY_XYZ, ray_direction, fields.data(), fields.size(), fields.data(), fields.size(), (KernelParamsLoader){});
+}
+
+static UNUSED AcTaskDefinition
+acRayUpdate(AcKernel kernel, const AcBoundary boundary, const int3 ray_direction, std::vector<Field> fields)
+{
+	KernelParamsLoader loader = [&](ParamLoadingInfo p){(void)p;};
+	return BASE_FUNC_NAME(acRayUpdate)(kernel, boundary, ray_direction, fields.data(), fields.size(), fields.data(), fields.size(), (KernelParamsLoader){});
+}
+
 /** */
 template <size_t num_fields>
 static AcTaskDefinition
-acComputeWithParams(AcKernel kernel, Field (&fields)[num_fields], std::function<void(ParamLoadingInfo)> loader)
+acComputeWithParams(AcKernel kernel, Field (&fields)[num_fields], KernelParamsLoader loader)
 {
     return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields, num_fields, fields, num_fields, NULL, 0, NULL, 0, (Volume){0,0,0}, (Volume){0,0,0}, loader);
 }
@@ -1030,13 +1058,45 @@ static inline acReduceInRayDirection(std::vector<Field> fields, const int3 ray_d
 AcTaskDefinition
 static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end)
 {
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true);
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false);
 }
 
 AcTaskDefinition
 static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving)
 {
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving);
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false);
+}
+
+AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction, const bool sending, const bool receiving)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false);
+}
+
+AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false);
+}
+
+AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction, const AcBoundary boundary)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,false);
+}
+
+AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction, const AcBoundary boundary, const bool include_boundaries)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,include_boundaries);
 }
 
 static inline

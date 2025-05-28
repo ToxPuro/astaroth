@@ -151,6 +151,21 @@ main(int argc, char* argv[])
     	  }
     	}
     };
+
+    auto reset_to_zero_f = [&](const Field f)
+    {
+    	for(size_t i = 0; i < dims.m1.x; ++i)
+    	{
+    	  for(size_t j = 0; j < dims.m1.y; ++j)
+    	  {
+    		for(size_t k = 0; k < dims.m1.z;  ++k)
+    	    {
+    	    	model.vertex_buffer[f][IDX(i,j,k)] = 0.0;
+    	    }
+    	  }
+    	}
+    };
+
     auto check_f = [&](const char* name, const Field f)
     {
       acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
@@ -210,8 +225,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(get_tg(trace_up_rays),1);
-    check_f("Up",QRAD);
+    acGridExecuteTaskGraph(get_tg(trace_up_rays),1); check_f("Up",QRAD);
 
     reset_f(QRAD);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -328,6 +342,116 @@ main(int argc, char* argv[])
     check_f("four rays",Q_MPP);
     check_f("four rays",Q_PMP);
     check_f("four rays",Q_MMP);
+
+    const auto get_propagation_graph = [](const int3 dir)
+    {
+	    KernelParamsLoader loader = [=](ParamLoadingInfo p)
+	    {
+		    acLoadKernelParams(*p.params,boundary_revision_general,dir);
+	    };
+	
+	    KernelParamsLoader bc_loader = [=](ParamLoadingInfo p)
+	    {
+		    acLoadKernelParams(*p.params,BOUNDCOND_CONST,QRAD,1.0);
+	    };
+	
+	    return acGridBuildTaskGraph({
+			    		acHaloExchange({QRAD},dir,false,true),
+			    		acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_CONST, {QRAD}, bc_loader),
+			    		acRayUpdate(boundary_revision_general,dir,{QRAD}, loader),
+			    		acHaloExchange({QRAD},dir,true,false),
+			    });
+    };
+
+
+
+    const auto execute = [&](const int3 dir)
+    {
+    	auto propagation = get_propagation_graph(dir);
+    	reset_to_zero_f(QRAD);
+    	acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT,model);
+    	acGridSynchronizeStream(STREAM_ALL);
+    	acGridExecuteTaskGraph(propagation,1);
+    	acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
+    	acGridSynchronizeStream(STREAM_ALL);
+    };
+    
+    const auto test_propagation = [&](const int3 dir)
+    {
+	    execute(dir);
+    	    for(size_t k = dims.n0.z; k < dims.n1.z;  ++k)
+    	    {
+    	      for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
+    	      {
+    	        for(size_t j = dims.n0.y; j < dims.n1.y; ++j)
+    	        {
+    	        	if(i == dims.n1.x-1 && dir.x ==  1) model.vertex_buffer[QRAD][IDX(i,j,k)] = 1.0;
+    	        	if(i == dims.n0.x   && dir.x == -1) model.vertex_buffer[QRAD][IDX(i,j,k)] = 1.0;
+    	        	if(j == dims.n1.y-1 && dir.y ==  1) model.vertex_buffer[QRAD][IDX(i,j,k)] = 1.0;
+    	        	if(j == dims.n0.y   && dir.y == -1) model.vertex_buffer[QRAD][IDX(i,j,k)] = 1.0;
+    	        	if(k == dims.n1.z-1 && dir.z ==  1) model.vertex_buffer[QRAD][IDX(i,j,k)] = 1.0;
+    	        	if(k == dims.n0.z   && dir.z == -1) model.vertex_buffer[QRAD][IDX(i,j,k)] = 1.0;
+    	        }
+    	      }
+    	    }
+	    char name[10000];
+	    sprintf(name,"(%d,%d,%d) propagation",dir.x,dir.y,dir.z);
+    	    check_f(name,QRAD);
+    };
+
+
+    test_propagation((int3){+1,0,0});
+    test_propagation((int3){-1,0,0});
+    test_propagation((int3){0,+1,0});
+    test_propagation((int3){0,-1,0});
+    test_propagation((int3){0,0,+1});
+    test_propagation((int3){0,0,-1});
+
+    test_propagation((int3){+1,+1,0});
+    test_propagation((int3){+1,-1,0});
+    test_propagation((int3){-1,+1,0});
+    test_propagation((int3){-1,-1,0});
+
+    test_propagation((int3){+1,0,+1});
+    test_propagation((int3){+1,0,-1});
+    test_propagation((int3){-1,0,+1});
+    test_propagation((int3){-1,0,-1});
+
+    test_propagation((int3){0,+1,+1});
+    test_propagation((int3){0,+1,-1});
+    test_propagation((int3){0,-1,+1});
+    test_propagation((int3){0,-1,-1});
+
+    test_propagation((int3){+1,+1,+1});
+    test_propagation((int3){-1,+1,+1});
+    test_propagation((int3){+1,-1,+1});
+    test_propagation((int3){-1,-1,+1});
+    test_propagation((int3){+1,+1,-1});
+    test_propagation((int3){-1,+1,-1});
+    test_propagation((int3){+1,-1,-1});
+    test_propagation((int3){-1,-1,-1});
+
+    const auto periodic_propagation = [&](const int3 dir)
+    {
+	    KernelParamsLoader loader = [=](ParamLoadingInfo p)
+	    {
+		    acLoadKernelParams(*p.params,boundary_revision_general,dir);
+	    };
+	
+	    KernelParamsLoader bc_loader = [=](ParamLoadingInfo p)
+	    {
+		    acLoadKernelParams(*p.params,BOUNDCOND_CONST,QRAD,1.0);
+	    };
+            return acGridBuildTaskGraph({
+				acHaloExchange({QRAD}, dir, BOUNDARY_Z_BOT),
+			    	acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_CONST, {QRAD}, bc_loader),
+				acRayUpdate(boundary_periodic_first_revision,BOUNDARY_XY, dir,{QRAD}, loader),
+				acHaloExchange({QRAD}, dir, BOUNDARY_XY, true),
+				acRayUpdate(boundary_periodic_second_revision,BOUNDARY_XY, dir, {QRAD}, loader),
+				acHaloExchange({QRAD}, dir, BOUNDARY_XY, true),
+				acRayUpdate(boundary_revision_general,BOUNDARY_Z, dir, {QRAD}, loader)
+        		    });
+    };
 
     acHostMeshDestroy(&model);
 

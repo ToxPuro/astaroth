@@ -194,6 +194,7 @@ typedef enum AcTaskType {
     TASKTYPE_BOUNDCOND,
     TASKTYPE_REDUCE,
     TASKTYPE_RAY_REDUCE,
+    TASKTYPE_RAY_UPDATE,
 } AcTaskType;
 
 
@@ -310,7 +311,7 @@ typedef struct AcTaskDefinition {
     bool sending;
     bool receiving;
     int3 ray_direction;
-
+    bool include_boundaries;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -346,12 +347,20 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
 		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,const Volume start, const Volume end, void (*load_func)(ParamLoadingInfo step_info)));
 #endif
+
+#if __cplusplus
+OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,(const AcKernel kernel, const AcBoundary boundary, const int3 ray_direction, Field fields_in[], const size_t num_fields_in,
+                           Field fields_out[], const size_t num_fields_out, KernelParamsLoader loader));
+#else
+OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,(const AcKernel kernel, const AcBoundary boundary, const int3 ray_direction, Field fields_in[], const size_t num_fields_in,
+                           Field fields_out[], const size_t num_fields_out, void (*load_func)(ParamLoadingInfo step_info)));
+#endif
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const size_t num_fields));
 
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acReduceInRayDirection,(Field fields[], const size_t num_fields, const int3 ray_direction));
 
-FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving));
+FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries));
 
 FUNC_DEFINE(AcTaskGraph*, acGridGetDefaultTaskGraph,());
 

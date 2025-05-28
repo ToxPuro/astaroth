@@ -181,6 +181,7 @@ typedef class Task {
 
     static const int wait_state = 0;
 
+
   protected:
     bool poll_stream();
 
@@ -228,6 +229,9 @@ typedef class ComputeTask : public Task {
     ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
 	        	std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
 		    );
+    ComputeTask(AcTaskDefinition op, int order_, std::vector<Region> input_regions, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        	std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+		    );
 
     ComputeTask(const ComputeTask& other)            = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
@@ -236,6 +240,10 @@ typedef class ComputeTask : public Task {
     bool test();
     bool isComputeTask();
     AcKernel getKernel();
+
+    static std::shared_ptr<ComputeTask>
+    RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,const int3 ray_direction, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
+	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries);
 } ComputeTask;
 
 // Communication

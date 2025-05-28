@@ -1817,6 +1817,9 @@ check_ops(const std::vector<AcTaskDefinition> ops)
         case TASKTYPE_RAY_REDUCE:
           task_graph_repr += "RayReduce,";
 	  break;
+        case TASKTYPE_RAY_UPDATE:
+          task_graph_repr += "RayUpdate,";
+	  break;
 	}
     }
 
@@ -2086,6 +2089,50 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
         }
         switch (op.task_type) {
 
+        case TASKTYPE_RAY_UPDATE: {
+            acVerboseLogFromRootProc(rank, "Creating ray updates\n");
+	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
+	    std::vector<Field> fields_in(op.fields_in,op.fields_in+op.num_fields_in);
+	    if(
+		  (op.ray_direction.x == -1 && ((op.boundary & BOUNDARY_X_BOT) != 0))
+		||(op.ray_direction.x == +1 && ((op.boundary & BOUNDARY_X_TOP) != 0))
+	      )
+	    {
+		    int3 boundary = (int3){op.ray_direction.x,0,0};
+		    auto task = ComputeTask::RayUpdate(op,i,boundary,op.ray_direction,device,swap_offset,fields_already_depend_on_boundaries);
+              	    graph->all_tasks.push_back(task);
+	      	    compute_task_poststep(op,task);
+	    }
+	    if(
+		  (op.ray_direction.y == -1 && ((op.boundary & BOUNDARY_Y_BOT) != 0))
+		||(op.ray_direction.y == +1 && ((op.boundary & BOUNDARY_Y_TOP) != 0))
+	      )
+	    {
+		    int3 boundary = (int3){0,op.ray_direction.y,0};
+	      	    auto task = ComputeTask::RayUpdate(op,i,boundary,op.ray_direction,device,swap_offset,fields_already_depend_on_boundaries);
+              	    graph->all_tasks.push_back(task);
+	      	    compute_task_poststep(op,task);
+	    }
+	    if(
+		  (op.ray_direction.z == -1 && ((op.boundary & BOUNDARY_Z_BOT) != 0))
+		||(op.ray_direction.z == +1 && ((op.boundary & BOUNDARY_Z_TOP) != 0))
+	      )
+	    {
+		    int3 boundary = (int3){0,0,op.ray_direction.z};
+	      	    auto task = ComputeTask::RayUpdate(op,i,boundary,op.ray_direction,device,swap_offset,fields_already_depend_on_boundaries);
+              	    graph->all_tasks.push_back(task);
+	      	    compute_task_poststep(op,task);
+	    }
+            acVerboseLogFromRootProc(rank, "Ray updates created\n");
+            for (size_t buf = 0; buf < op.num_fields_out; buf++) {
+                swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
+            }
+            for (size_t buf = 0; buf < op.num_profiles_write_out; buf++) {
+                swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES] = !swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES];
+            }
+            break;
+        }
+	
         case TASKTYPE_COMPUTE: {
             acVerboseLogFromRootProc(rank, "Creating compute tasks\n");
 	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
@@ -2175,8 +2222,14 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y  && Region::tag_to_id(tag).y != 0) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
+		if(Region::tag_to_id(tag).x == -1 && (op.boundary & BOUNDARY_X_BOT) == 0) continue;
+		if(Region::tag_to_id(tag).x == +1 && (op.boundary & BOUNDARY_X_TOP) == 0) continue;
+		if(Region::tag_to_id(tag).y == -1 && (op.boundary & BOUNDARY_Y_BOT) == 0) continue;
+		if(Region::tag_to_id(tag).y == +1 && (op.boundary & BOUNDARY_Y_TOP) == 0) continue;
+		if(Region::tag_to_id(tag).z == -1 && (op.boundary & BOUNDARY_Z_BOT) == 0) continue;
+		if(Region::tag_to_id(tag).z == +1 && (op.boundary & BOUNDARY_Z_TOP) == 0) continue;
 
-                if (!Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
+                if (op.include_boundaries || !Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info,
                                                                    device, swap_offset,false);
                     graph->halo_tasks.push_back(task);
