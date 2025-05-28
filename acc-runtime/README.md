@@ -749,6 +749,9 @@ ComputeSteps rhs(boundconds)
 In case required boundary conditions are not declared, the compilation will fail.
 You can access the generated `TaskGraph` with `acGetDSLTaskGraph`.
 
+To pass input values from the host side call `acDeviceSetInput`. 
+With the example above to pass `2.0` to the first parameter of `kernel_call_1` one should call `acDeviceSetInput(device,ac_input_val,2.0)`
+
 ### 2D-setups
 By setting `2D=ON` one can build Astaroth specifically for a two-dimensional setup.
 Currently the missing dimension is always the z-dimension. The main difference between setting `AC_nzgrid=1` and an explicit two-dimensional setup is that in the latter no halo regions are allocated in the z-dimension, which is an considerable memory saving.
