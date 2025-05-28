@@ -683,10 +683,10 @@ Region::is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary
 }
 
 /* Task interface */
-Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
+Task::Task(int order_, std::vector<Region> input_regions_, Region output_region_, AcTaskDefinition op,
            Device device_, std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : device(device_), vba(acDeviceGetVBA(device)), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
-      order(order_), active(true), boundary(BOUNDARY_NONE), input_region(input_region_),
+      order(order_), active(true), boundary(BOUNDARY_NONE), input_regions(input_regions_),
       output_region(output_region_),
       input_parameters(op.parameters, op.parameters + op.num_parameters)
 {
@@ -887,7 +887,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 			 const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
 			 )
     : Task(order_,
-           Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries), op.computes_on_halos, start, dims, op.halo_sizes, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in}),
+           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries), op.computes_on_halos, start, dims, op.halo_sizes, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in})},
            Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries), op.computes_on_halos, start,dims,  op.halo_sizes, {op.fields_out, op.num_fields_out,
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
@@ -902,7 +902,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
-
+    auto& input_region = input_regions[0];
     if(kernel_only_writes_profile(op.kernel_enum,PROFILE_X))
     {
 	output_region.dims.y = 1;	
@@ -979,7 +979,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, 
 	        std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
 		)
     : Task(order_,
-           input_region_,
+	   {input_region_},
            output_region_,
            op, device_, swap_offset_)
 {
@@ -1283,19 +1283,20 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
+	   {Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in})},
            Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, op.halo_sizes, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
-      sending(op.sending ? get_sending(op.ray_direction  ,input_region.id)     : false),
-      receiving(op.receiving ? get_receiving(op.ray_direction,input_region.id) : false),
+      sending(op.sending ? get_sending(op.ray_direction  ,input_regions[0].id)     : false),
+      receiving(op.receiving ? get_receiving(op.ray_direction,input_regions[0].id) : false),
       shear_periodic(shear_periodic_),
 
       // MPI tags are namespaced to avoid collisions with other MPI tasks
       //TP: in recv_buffers the dims of input is used instead of output since normally they are the same
       //    and in case of shear periodic then output_dims is larger than the message dims
-      recv_buffers(input_region.dims,  receiving ? input_region.memory.fields.size() : 0,   tag_0, input_region.tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Receive),
-      send_buffers(input_region.dims,  sending   ? output_region.memory.fields.size() : 0,   tag_0, Region::id_to_tag(-output_region.id),get_send_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Send)
+      recv_buffers(input_regions[0].dims,  receiving ? input_regions[0].memory.fields.size() : 0,   tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Receive),
+      send_buffers(input_regions[0].dims,  sending   ? output_region.memory.fields.size() : 0,   tag_0, Region::id_to_tag(-output_region.id),get_send_counterpart_ranks(device_,rank,output_region.id,shear_periodic), HaloMessageType::Send)
 {
+    auto& input_region = input_regions[0];
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
     {
@@ -1361,16 +1362,16 @@ HaloExchangeTask::pack()
 {
     ERRCHK(sending);
     auto msg = send_buffers.get_fresh_buffer();
-    acKernelPackData(stream, vba, input_region.position, input_region.dims,
-                             msg->data, input_region.memory.fields.data(),
-                             input_region.memory.fields.size());
+    acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
+                             msg->data, input_regions[0].memory.fields.data(),
+                             input_regions[0].memory.fields.size());
 }
 
 void
 HaloExchangeTask::move()
 {
         ERRCHK(sending && receiving);
-	acKernelMoveData(stream, input_region.position, output_region.position, input_region.dims, output_region.dims, vba, input_region.memory.fields.data(), input_region.memory.fields.size());
+	acKernelMoveData(stream, input_regions[0].position, output_region.position, input_regions[0].dims, output_region.dims, vba, input_regions[0].memory.fields.data(), input_regions[0].memory.fields.size());
 }
 
 void
@@ -1694,10 +1695,10 @@ MPIReduceTask::MPIReduceTask(AcTaskDefinition op, int order_, const Volume start
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in}),
+	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {op.fields_in,  op.num_fields_in ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in})},
            Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {op.fields_out,op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
-      reduce_buffers(input_region.dims,  input_region.memory.fields.size(),  tag_0, input_region.tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
+      reduce_buffers(input_regions[0].dims,  input_regions[0].memory.fields.size(),  tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
 {
     // Create stream for packing/unpacking
     {
@@ -1789,9 +1790,9 @@ void
 MPIReduceTask::pack()
 {
     auto msg = reduce_buffers.get_fresh_buffer();
-    acKernelPackData(stream, vba, input_region.position, input_region.dims,
-                             msg->data, input_region.memory.fields.data(),
-                             input_region.memory.fields.size());
+    acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
+                             msg->data, input_regions[0].memory.fields.data(),
+                             input_regions[0].memory.fields.size());
 }
 
 void
@@ -1815,7 +1816,7 @@ MPIReduceTask::communicate()
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in}),
+           {Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {op.fields_in, op.num_fields_in  ,op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in})},
            Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {op.fields_out, op.num_fields_out,op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_)
 {
@@ -1833,6 +1834,7 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
 
     const Volume ghosts = op.halo_sizes;
 
+    auto& input_region = input_regions[0];
     input_region.position = {start.x-ghosts.x,start.y-ghosts.y,start.z-ghosts.z};
     input_region.dims     = {nn.x+2*ghosts.x,nn.y+2*ghosts.y,nn.z+2*ghosts.z};
 
@@ -1890,12 +1892,12 @@ ReduceTask::test()
 void
 ReduceTask::reduce()
 {
-	const auto& reduce_outputs = input_region.memory.reduce_outputs;
+	const auto& reduce_outputs = input_regions[0].memory.reduce_outputs;
      	const auto nn = output_region.comp_dims;
 
 	if constexpr (NUM_PROFILES != 0)
 	{
-		for(const auto& prof : input_region.memory.profiles)
+		for(const auto& prof : input_regions[0].memory.profiles)
 		{
 		    auto reduce_buf = acDeviceGetProfileReduceBuffer(device,prof);
 		    auto dst        = acDeviceGetProfileBuffer(device,prof);
@@ -2153,7 +2155,7 @@ ReduceTask::communicate()
    const auto grid_comm = acGridMPIComm();
    if constexpr(NUM_PROFILES != 0)
    {
-   	for(const auto& prof: input_region.memory.profiles)
+   	for(const auto& prof: input_regions[0].memory.profiles)
    	{
    	        const MPI_Comm comm =
    	     	   	prof_types[prof] == PROFILE_X ? sub_comms.yz :
@@ -2223,7 +2225,7 @@ ReduceTask::communicate()
    	        }
    	}
    }
-  const auto& reduce_outputs = input_region.memory.reduce_outputs;
+  const auto& reduce_outputs = input_regions[0].memory.reduce_outputs;
   for(size_t i = 0; i < reduce_outputs.size(); ++i)
   {
 	  const int var = reduce_outputs[i].variable;
@@ -2237,7 +2239,7 @@ ReduceTask::communicate()
 void
 ReduceTask::load_outputs()
 {
-	const auto& reduce_outputs = input_region.memory.reduce_outputs;
+	const auto& reduce_outputs = input_regions[0].memory.reduce_outputs;
     	for(size_t i = 0; i < reduce_outputs.size(); ++i)
     	{
 	    const int var = reduce_outputs[i].variable;
@@ -2325,7 +2327,7 @@ BoundaryConditionTask::BoundaryConditionTask(
     AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in}),
+           {Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {op.fields_in, op.num_fields_in  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in})},
            Region(RegionFamily::Exchange_output, region_tag, BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {op.fields_out, op.num_fields_out,op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out}),
            op, device_, swap_offset_),
        boundary_normal(boundary_normal_),
@@ -2377,6 +2379,8 @@ BoundaryConditionTask::BoundaryConditionTask(
     ERRCHK_ALWAYS(boundary_dims.x > 0);
     ERRCHK_ALWAYS(boundary_dims.y > 0);
     ERRCHK_ALWAYS(boundary_dims.z > 0);
+
+    auto& input_region = input_regions[0];
 
     // TODO: input_region is now set twice, overwritten here
     auto input_fields = input_region.memory.fields;

@@ -174,7 +174,7 @@ typedef class Task {
     AcTaskType task_type;
     AcBoundary boundary; // non-zero if a boundary condition task, indicating which boundary
 
-    Region input_region;
+    std::vector<Region> input_regions;
     Region output_region;
 
     std::vector<AcRealParam> input_parameters;
@@ -185,7 +185,7 @@ typedef class Task {
     bool poll_stream();
 
   public:
-    Task(int order_, Region input_region_, Region output_region, AcTaskDefinition op,
+    Task(int order_, std::vector<Region> input_regions_, Region output_region, AcTaskDefinition op,
          Device device_, std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_);
     virtual ~Task() {};
 

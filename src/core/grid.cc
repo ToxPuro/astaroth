@@ -2368,9 +2368,9 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		if(kernel_has_profile_stencil_ops(std::dynamic_pointer_cast<ComputeTask>(dept_task)->getKernel()))
 		{
 			if(profile_overlap_in_regions(
-					preq_task->output_region.geometry_overlaps(&dept_task->input_region),
+					preq_task->output_region.geometry_overlaps(&dept_task->input_regions[0]),
 					preq_task->output_region.memory.profiles,
-					dept_task->input_region.memory.profiles
+					dept_task->input_regions[0].memory.profiles
 					))
 				return true;
 		}
@@ -2387,7 +2387,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 
 	}
 	const AcBool3 gem_overlaps = preq_task->output_region.geometry_overlaps(&dept_task->output_region);
-	return profile_overlap_in_regions(gem_overlaps,preq_task->output_region.memory.profiles,dept_task->input_region.memory.profiles);
+	return profile_overlap_in_regions(gem_overlaps,preq_task->output_region.memory.profiles,dept_task->input_regions[0].memory.profiles);
     };
 
     // We walk through all tasks, and compare tasks from pairs of operations at
@@ -2406,9 +2406,14 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
                         // output region of B.
 			// Or for profiles if the A has profile P in and the output region of A overlaps
 			// with the output region of B and B writes/reduces profile P
+			bool preq_output_overlaps_with_input = false;
+			for(const auto& input_region : dept_task->input_regions)
+			{
+				preq_output_overlaps_with_input |= preq_task->output_region.overlaps(&input_region);
+			}
                         if (dept_task->active &&
                             (
-			     preq_task->output_region.overlaps(&dept_task->input_region)  ||
+			     preq_output_overlaps_with_input  ||
                              preq_task->output_region.overlaps(&dept_task->output_region) ||
 			     profile_overlap(preq_task,dept_task)
 			    )
