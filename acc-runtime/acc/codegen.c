@@ -7578,6 +7578,7 @@ get_mangled_name(const char* dfunc_name, const string_vec types)
 		for(size_t i = 0; i < types.size; ++i)
 			asprintf(&tmp,"%s_%s",tmp,
 					types.data[i] ? types.data[i] : "Auto");
+		if(types.size == 0) asprintf(&tmp,"%s_%s",tmp,"Empty");
 		tmp = realloc(tmp,sizeof(char)*(strlen(tmp) + 5*types.size));
 		replace_substring(&tmp,MULT_STR,"ARRAY");
 		replace_substring(&tmp,"<","_");
@@ -7608,6 +7609,16 @@ static bool
 compatible_types(const char* a, const char* b)
 {
 	if(is_subtype(a,b)) return true;
+	if(b && strstr(b,"AcArray") && a && strstr(a,"*"))
+	{
+		const char* scalar_type = get_array_elem_type(b);
+		char* tmp = strdup(a);
+		remove_suffix(tmp,"*");
+		const char* ptr_scalar_type = intern(tmp);
+		free(tmp);
+		if(scalar_type == ptr_scalar_type) return true;
+		printf("HI: %s, %s\n",a,b);
+	}
 	const bool res = !strcmp(a,b) 
 	       || 
                   (!strcmp(a,FIELD_STR) && !strcmp(b,"VertexBufferHandle"))  ||
@@ -8372,7 +8383,7 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 		}
 		else if(!is_returning)
 		{
-			fprintf(stream,"%s(Field[] arr){for i in 0:size(arr)\n %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
+			fprintf(stream,"%s(Field[] arr){for i in 0:size(arr)\n %s(arr[i])\n}\n",dfunc_name,dfunc_name);
 			int_vec all_field_structs = get_all_field_structs();
 			for(size_t l = 0; l < all_field_structs.size; ++l)
 			{

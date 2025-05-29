@@ -50,7 +50,35 @@
 
 #include "simulation_control.h"
 #include "simulation_rng.h"
-#include "simulation_taskgraphs.h"
+
+// TODO: allow selecting single our doublepass here?
+enum class Simulation { MHD , Shock_Singlepass_Solve, Hydro_Heatduct_Solve, Bound_Test_Solve, Default = MHD};
+
+void
+log_simulation_choice(int pid, Simulation sim)
+{
+    const char* sim_label;
+    switch (sim) {
+    case Simulation::MHD:
+        sim_label = "MHD";
+        break;
+    case Simulation::Shock_Singlepass_Solve:
+        sim_label = "Shock with singlepass solve";
+        break;
+    case Simulation::Hydro_Heatduct_Solve:
+        sim_label = "Heat duct with doublepass solve";
+        break;
+    case Simulation::Bound_Test_Solve:
+        sim_label = "Boundary test with doublepass solve";
+        break;
+    default:
+        sim_label = "WARNING: No label exists for simulation";
+        break;
+    }
+    acLogFromRootProc(pid, "Simulation program: %s \n", sim_label);
+}
+
+//#include "simulation_taskgraphs.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
@@ -1193,22 +1221,14 @@ main(int argc, char** argv)
 	else
         	acLogFromRootProc(pid, "Initializing mesh with kernel %s\n",kernel_names[standalone_initcond_kernel]);
         acGridLaunchKernel(STREAM_DEFAULT, standalone_initcond_kernel, dims.n0, dims.n1);
+	acGridSynchronizeStream(STREAM_ALL);
         acGridSwapBuffers();
-        acLogFromRootProc(pid, "Communicating halos\n");
-        if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
+#if LBFIELD
+	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(get_bfield),1);
+#endif
+	acGridSynchronizeStream(STREAM_ALL);
+        //acLogFromRootProc(pid, "Communicating halos\n");
         // MV: What if the boundary conditions are not periodic?
-
-        {
-            // Should some labels be printed here?
-            AcReal max, min, sum;
-            for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
-                acLogFromRootProc(pid, "max %g, min %g, sum %g\n", (double)max, (double)min,
-                                  (double)sum);
-            }
-        }
         break;
     }
     // Creeates a kinetic kick as a system initial condition. Creatd as a demo
@@ -1665,7 +1685,6 @@ main(int argc, char** argv)
                     //int_run_constants.insert(AC_dsz);
 
                     int_run_constants.insert(AC_start_step);
-                    int_run_constants.insert(AC_init_type);
 
                     for (const AcIntParam int_param : get_params<AcIntParam>()) {
                         int old_value = info[int_param];

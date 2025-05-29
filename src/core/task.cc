@@ -79,7 +79,7 @@ ac_get_info()
 	} 
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
-#define MAX_HALO_TAG (1000) //"Namespacing" the MPI tag space to avoid collisions in case of multiple messages
+#define MAX_HALO_TAG (10000) //"Namespacing" the MPI tag space to avoid collisions in case of multiple messages
 
 #if AC_USE_HIP
 template <typename T, typename... Args>

@@ -37,6 +37,15 @@ elemental ac_bc_sym(Field f, int bc_sign)
 		ghost  = ghost  + normal
 		f[ghost.x][ghost.y][ghost.z] = bc_sign*f[domain.x][domain.y][domain.z];
 	}
+	if(bc_sign < 0)
+	{
+		f[boundary.x][boundary.y][boundary.z] = 0.0
+	}
+}
+
+elemental ac_bc_sym(Field f)
+{
+	ac_bc_sym(f,1)
 }
 
 elemental ac_fixed_bc(Field f)
@@ -62,7 +71,7 @@ utility Kernel BOUNDCOND_ANTISYMMETRIC(Field f)
 {
 	ac_bc_sym(f,-1)
 }
-utility Kernel BOUNDCOND_A2(Field f)
+elemental ac_bc_a2(Field f)
 {
 	const int3 normal = get_normal()
 	const int3 boundary = get_boundary(normal)
@@ -75,6 +84,18 @@ utility Kernel BOUNDCOND_A2(Field f)
 		ghost  = ghost  + normal
 		f[ghost.x][ghost.y][ghost.z] = 2*boundary_val -f[domain.x][domain.y][domain.z];
 	}
+}
+ac_bc_a2()
+{
+	for f in 0:NUM_FIELDS
+	{
+		ac_bc_a2(Field(f))
+	}
+}
+
+utility Kernel BOUNDCOND_A2(Field f)
+{
+	ac_bc_a2(f)
 }
 elemental ac_const_bc(Field f, real const_val)
 {

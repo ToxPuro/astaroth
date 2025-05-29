@@ -213,14 +213,45 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 				fatal("Cannot continue: BC dependencies of %s do not form a DAG\n",bc_name);
 	return res;
 }
+
+std::vector<AcBoundary>
+get_boundaries()
+{
+		const auto info = get_info();
+		std::vector<AcBoundary> boundaries{};
+		if(!info[AC_dimension_inactive].x)
+		{
+			boundaries.push_back(BOUNDARY_X_TOP);
+			boundaries.push_back(BOUNDARY_X_BOT);
+		}
+		if(!info[AC_dimension_inactive].y)
+		{
+			boundaries.push_back(BOUNDARY_Y_TOP);
+			boundaries.push_back(BOUNDARY_Y_BOT);
+		}
+		if(!info[AC_dimension_inactive].z)
+		{
+			boundaries.push_back(BOUNDARY_Z_TOP);
+			boundaries.push_back(BOUNDARY_Z_BOT);
+		}
+		return boundaries;
+}
 bool
 bc_output_fields_overlap(const std::vector<BoundCond>& bcs)
 {
 	std::array<std::vector<Field>,6> fields_written{};
-	auto add_to_written_fields = [&](const int i, const Field field)
+	std::array<std::vector<const char*>,6> bc_names{};
+	auto add_to_written_fields = [&](const int i, const Field field, const BoundCond bc)
 	{
-		const bool already_written = std::find(fields_written[i].begin(), fields_written[i].end(),field) != fields_written[i].end();
+		const auto it = std::find(fields_written[i].begin(), fields_written[i].end(),field);
+		const bool already_written =  it != fields_written[i].end();
+		if(already_written)
+		{
+			const ptrdiff_t index = it - fields_written[i].begin();			
+			fatal("Cannot continue: Field %s written both from %s and %s\n",field_names[field],bc_names[i][index],kernel_names[bc.kernel]);
+		}
 		fields_written[i].push_back(field);
+		bc_names[i].push_back(kernel_names[bc.kernel]);
 		return already_written;
 	};
 	for(auto& bc : bcs)
@@ -228,18 +259,14 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs)
 		auto fields = get_kernel_fields(bc.kernel);
 		for(auto& field: fields.out)
 		{
-			if(bc.boundary & BOUNDARY_X_TOP)
-				if (add_to_written_fields(0,field)) return true;
-			if(bc.boundary & BOUNDARY_X_BOT)
-				if (add_to_written_fields(1,field)) return true;
-			if(bc.boundary & BOUNDARY_Y_TOP)
-				if (add_to_written_fields(2,field)) return true;
-			if(bc.boundary & BOUNDARY_Y_BOT)
-				if (add_to_written_fields(3,field)) return true;
-			if(bc.boundary & BOUNDARY_Z_TOP)
-				if (add_to_written_fields(4,field)) return true;
-			if(bc.boundary & BOUNDARY_Z_BOT)
-				if (add_to_written_fields(5,field)) return true;
+			const auto boundaries = get_boundaries();
+			for(int i = 0; i < 6; ++i)
+			{
+				if(bc.boundary & boundaries[i])
+				{
+					if (add_to_written_fields(i,field,bc)) return true;
+				}
+			}
 		}
 	}
 	return false;
@@ -418,28 +445,6 @@ get_field_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
 	return res;
 }
 
-std::vector<AcBoundary>
-get_boundaries()
-{
-		const auto info = get_info();
-		std::vector<AcBoundary> boundaries{};
-		if(!info[AC_dimension_inactive].x)
-		{
-			boundaries.push_back(BOUNDARY_X_TOP);
-			boundaries.push_back(BOUNDARY_X_BOT);
-		}
-		if(!info[AC_dimension_inactive].y)
-		{
-			boundaries.push_back(BOUNDARY_Y_TOP);
-			boundaries.push_back(BOUNDARY_Y_BOT);
-		}
-		if(!info[AC_dimension_inactive].z)
-		{
-			boundaries.push_back(BOUNDARY_Z_TOP);
-			boundaries.push_back(BOUNDARY_Z_BOT);
-		}
-		return boundaries;
-}
 
 
 typedef struct
@@ -708,9 +713,16 @@ gen_halo_exchange_and_boundconds(
 						}
 						processed_boundcond.boundary = AcBoundary(new_boundary);
 						res.push_back(gen_bc(stream,processed_boundcond));
-						for(const auto& field : processed_boundcond.out)
-							field_boundconds_processed[field][boundcond] = true;
-
+						for(size_t i = 0; i < boundaries.size(); ++i)
+						{
+							if((processed_boundcond.boundary & boundaries[i]) != 0)
+							{
+								for(const auto& field : processed_boundcond.out)
+								{
+									field_boundconds_processed[field][i] = true;
+								}
+							}
+						}
                         	        }
                         	        all_are_processed = true;
                         	        for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)

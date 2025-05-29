@@ -1,3 +1,4 @@
+hostdefine AC_MAPPING_FUNCTIONS_INCLUDED (1)
 ac_map_inner_product(real3 v)
 {
 	return AC_dot(v,v)
