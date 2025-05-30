@@ -13,6 +13,12 @@ template <typename T, typename Allocator> class buffer {
     std::unique_ptr<T, decltype(&Allocator::dealloc)> m_resource;
 
   public:
+    using value_type = T;
+    // using reference = T&;
+    // using const_reference = const T&;
+    // using pointer = T*;
+    // using const_pointer = const T*;
+
     explicit buffer(const size_t count)
         : m_count{count},
           m_resource{static_cast<T*>(Allocator::alloc(count * sizeof(T))), Allocator::dealloc}
