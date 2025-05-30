@@ -1,7 +1,9 @@
 #pragma once
 #include <functional>
 
+#include "acm/detail/buffer.h"
 #include "acm/detail/errchk_mpi.h"
+#include "acm/detail/experimental/view.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ntuple.h"
 
@@ -166,6 +168,99 @@ class request {
         ERRCHK_MPI_API(MPI_Wait(m_req.get(), MPI_STATUS_IGNORE));
         ERRCHK_MPI(complete());
     }
+};
+
+template <typename T>
+[[nodiscard]] auto
+isend(const MPI_Comm& comm, const int16_t tag, const ac::base_view<T>& in, const int dst)
+{
+    ac::mpi::request req;
+    ERRCHK_MPI_API(MPI_Isend(in.data(),
+                             as<int>(in.size()),
+                             ac::mpi::get_dtype<T>(),
+                             dst,
+                             tag,
+                             comm,
+                             req.data()));
+    return req;
+}
+
+template <typename T>
+[[nodiscard]] auto
+irecv(const MPI_Comm& comm, const int16_t tag, const int src, ac::base_view<T> out)
+{
+    ac::mpi::request req;
+    ERRCHK_MPI_API(MPI_Irecv(out.data(),
+                             as<int>(out.size()),
+                             ac::mpi::get_dtype<T>(),
+                             src,
+                             tag,
+                             comm,
+                             req.data()));
+    return req;
+}
+
+template <typename T, typename U>
+[[nodiscard]] auto
+iallreduce(const MPI_Comm& comm, const ac::base_view<T>& in, const MPI_Op& op, ac::base_view<U> out)
+{
+    static_assert(std::is_same_v<std::remove_const_t<T>, U>);
+    ERRCHK_MPI(in.size() <= out.size());
+
+    ac::mpi::request req;
+    ERRCHK_MPI_API(MPI_Iallreduce(in.data(),
+                                  out.data(),
+                                  as<int>(in.size()),
+                                  ac::mpi::get_dtype<T>(),
+                                  op,
+                                  comm,
+                                  req.data()));
+    return req;
+}
+
+template <typename T, typename Allocator> class buffered_isend {
+  private:
+    ac::buffer<T, Allocator> m_buf;
+    ac::mpi::request         m_req{MPI_REQUEST_NULL};
+
+  public:
+    buffered_isend(const size_t max_count)
+        : m_buf{max_count}
+    {
+    }
+
+    void launch(const MPI_Comm& comm, const int16_t tag, const ac::view<T, Allocator>& in,
+                const int dst)
+    {
+        ERRCHK_MPI(m_req.complete());
+        ac::copy(in, m_buf);
+        m_req = ac::mpi::isend(comm, tag, in, dst);
+    }
+
+    void wait() { m_req.wait(); }
+};
+
+template <typename T, typename Allocator> class buffered_iallreduce {
+  private:
+    ac::buffer<T, Allocator> m_buf;
+    ac::mpi::request         m_req{MPI_REQUEST_NULL};
+
+  public:
+    buffered_iallreduce(const size_t max_count)
+        : m_buf{max_count}
+    {
+    }
+
+    template <typename U>
+    void launch(const MPI_Comm& comm, const ac::view<T, Allocator>& in, const MPI_Op& op,
+                ac::base_view<U> out)
+    {
+        ERRCHK_MPI(m_req.complete());
+        ac::copy(in, m_buf);
+        m_req = ac::mpi::iallreduce(comm, in, op, out);
+    }
+
+    void wait() { m_req.wait(); }
 };
 
 } // namespace ac::mpi
