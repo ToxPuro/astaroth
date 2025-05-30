@@ -1,4 +1,4 @@
-file(GLOB TEST_SOURCES "*.cc" "*.c" "acm/*.cc" "acm/*.c" "acm/detail/*.cc" "acm/detail/*.c" "benchmarks/*.cc" "benchmarks/*.c")
+file(GLOB TEST_SOURCES "*.cc" "*.c" "acm/*.cc" "acm/*.c" "acm/detail/*.cc" "acm/detail/*.c" "acm/experimental/*.cc" "acm/experimental/*.c" "benchmarks/*.cc" "benchmarks/*.c")
 
 foreach(TEST_SOURCE ${TEST_SOURCES})
     get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WLE)
