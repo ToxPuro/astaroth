@@ -77,3 +77,5 @@ acc-comm/benchmarks/bm_rank_reordering copy.cc
 acc-comm/benchmarks/bm_rank_reordering-backup.cc
 acc-comm/benchmarks/bm_rank_reordering-test.cc
 acc-comm/benchmarks/pack_strategy.h
+acc-comm/acm/detail/experimental/deprecated/
+acc-comm/tests/acm/experimental/deprecated/
