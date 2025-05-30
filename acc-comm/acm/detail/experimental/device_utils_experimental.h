@@ -29,7 +29,7 @@ namespace ac::device {
 
 class stream {
   private:
-    std::unique_ptr<cudaStream_t> m_stream;
+    std::unique_ptr<cudaStream_t, std::function<void(cudaStream_t*)>> m_stream;
 
   public:
     /**
@@ -49,10 +49,36 @@ class stream {
     {
     }
 
-    sync() { ERRCHK_CUDA_API(cudaStreamSynchronize(*m_stream)); }
+    void wait() { ERRCHK_CUDA_API(cudaStreamSynchronize(*m_stream)); }
 
     cudaStream_t get() const noexcept { return *m_stream; }
 };
+
+template <typename InAllocator, typename OutAllocator>
+constexpr cudaMemcpyKind
+get_kind()
+{
+    if constexpr (std::is_base_of_v<ac::mr::device_allocator, InAllocator>) {
+        if constexpr (std::is_base_of_v<ac::mr::device_allocator, OutAllocator>) {
+            PRINT_LOG_TRACE("dtod");
+            return cudaMemcpyDeviceToDevice;
+        }
+        else {
+            PRINT_LOG_TRACE("dtoh");
+            return cudaMemcpyDeviceToHost;
+        }
+    }
+    else {
+        if constexpr (std::is_base_of_v<ac::mr::device_allocator, OutAllocator>) {
+            PRINT_LOG_TRACE("htod");
+            return cudaMemcpyHostToDevice;
+        }
+        else {
+            PRINT_LOG_TRACE("htoh");
+            return cudaMemcpyHostToHost;
+        }
+    }
+}
 
 #endif
 

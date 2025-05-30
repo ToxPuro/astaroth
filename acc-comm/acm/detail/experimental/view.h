@@ -5,6 +5,8 @@
 #include "acm/detail/allocator.h"
 #include "acm/detail/type_conversion.h"
 
+#include "acm/detail/experimental/device_utils_experimental.h"
+
 namespace ac {
 
 template <typename T> class base_view {
@@ -103,8 +105,7 @@ copy(const ac::view<T, InAllocator>& in, ac::view<U, OutAllocator> out)
     ERRCHK_CUDA_API(cudaMemcpy(out.data(),
                                in.data(),
                                in.size() * sizeof(in[0]),
-                               ac::device::get_kind<InAllocator, OutAllocator>(),
-                               stream.get()));
+                               ac::device::get_kind<InAllocator, OutAllocator>()));
 }
 
 template <typename T, typename InAllocator, typename U, typename OutAllocator>
@@ -121,7 +122,7 @@ copy_async(const ac::view<T, InAllocator>& in, ac::view<U, OutAllocator> out)
     ERRCHK_CUDA_API(cudaMemcpyAsync(out.data(),
                                     in.data(),
                                     in.size() * sizeof(in[0]),
-                                    get_kind<InAllocator, OutAllocator>(),
+                                    ac::device::get_kind<InAllocator, OutAllocator>(),
                                     stream.get()));
     return stream;
 }
