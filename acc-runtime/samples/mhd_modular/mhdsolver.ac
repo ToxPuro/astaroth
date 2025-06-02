@@ -430,6 +430,7 @@ Kernel shock_2_max()
 Kernel shock_3_smooth()
 {
 
+    cshock = 1.0
     s_shock = smooth_kernel(VTXBUF_SHOCK)
     out_shock = cshock*AC_dsmin*AC_dsmin*s_shock //Add scaling constant cshock
 
