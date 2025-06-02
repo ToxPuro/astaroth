@@ -2,32 +2,7 @@
 
 #include <astaroth_debug.h>
 
-// TODO: allow selecting single our doublepass here?
-enum class Simulation { MHD , Shock_Singlepass_Solve, Hydro_Heatduct_Solve, Bound_Test_Solve, Default = MHD};
 
-void
-log_simulation_choice(int pid, Simulation sim)
-{
-    const char* sim_label;
-    switch (sim) {
-    case Simulation::MHD:
-        sim_label = "MHD";
-        break;
-    case Simulation::Shock_Singlepass_Solve:
-        sim_label = "Shock with singlepass solve";
-        break;
-    case Simulation::Hydro_Heatduct_Solve:
-        sim_label = "Heat duct with doublepass solve";
-        break;
-    case Simulation::Bound_Test_Solve:
-        sim_label = "Boundary test with doublepass solve";
-        break;
-    default:
-        sim_label = "WARNING: No label exists for simulation";
-        break;
-    }
-    acLogFromRootProc(pid, "Simulation program: %s \n", sim_label);
-}
 
 static std::map<Simulation, AcTaskGraph*> task_graphs;
 
