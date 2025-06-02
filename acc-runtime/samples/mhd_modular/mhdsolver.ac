@@ -530,16 +530,36 @@ Kernel singlepass_solve(int step_num, TimeParams time_params) {
 
 calc_timestep()
 {
-    alfven_speed = norm(BFIELD)/sqrt(exp(VTXBUF_LNRHO));
-    visc_max =
+    rho = exp(VTXBUF_LNRHO)
+    bb = curl(AA)
+    b2 = dot(bb,bb)
+    alfven_speed = sqrt(b2/rho);
+    if(AC_additive_timestep)
+    {
+    	visc_max =
 	      max(max(AC_nu_visc, AC_eta), AC_gamma * AC_chi)
 #if LSHOCK
-                         + nu_shock * (long double)shock_max
+                         + AC_nu_shock * VTXBUF_SHOCK
 #endif
-    visc_dt =  (AC_cdtv*AC_dsmin_2) / visc_max;
-    advec_dt = (AC_cdt*AC_dsmin)/(abs(norm(UU)) + sqrt(AC_cs2_sound + alfven_speed*alfven_speed));
-    reduce_min(min(visc_dt,advec_dt),AC_dt_min);
-
+    	visc_dt =  (AC_cdtv*AC_dsmin_2) / visc_max;
+    	advec_sum = norm(UU) + sqrt(AC_cs2_sound + alfven_speed*alfven_speed)
+#if LADONEFLUID
+             + (pow(rho,AC_onefluid_ad_exp)/b2)
+#endif
+    	advec_dt = (AC_cdt*AC_dsmin)/advec_sum;
+    	reduce_min(min(visc_dt,advec_dt),AC_dt_min);
+    }
+    else
+    {
+	reduce_max(norm(UU),UU_MAX_ADVEC)
+	reduce_max(alfven_speed,ALFVEN_SPEED_MAX)
+#if LSHOCK
+        reduce_max(VTXBUF_SHOCK,AC_MAX_SHOCK)	
+#endif
+#if LADONEFLUID
+        reduce_max(pow(rho,AC_onefluid_ad_exp)/b2,AD_ONE_FLUID_MAX_ADVEC)	
+#endif
+    }
 }
 
 
@@ -564,7 +584,7 @@ Kernel twopass_solve_intermediate(AC_SUBSTEP_NUMBER step_num, real dt) {
     }
     #endif
 
-    if(step_num == AC_THIRD_SUBSTEP) calc_timestep();
+    if(step_num == AC_THIRD_SUBSTEP && AC_timestep_calc_with_rhs) calc_timestep();
     // %JP: TODO NOTE IMPORTANT (MV please check)
     // LSHOCK not yet adapted to two-pass integration.
     // Unclear how should be written to memory to ensure proper swapping!
@@ -849,10 +869,18 @@ ComputeSteps AC_rhs(boundconds)
 }
 Kernel calc_timestep_kernel() {calc_timestep()}
 
+
 ComputeSteps AC_calc_timestep(boundconds)
 {
 	calc_timestep_kernel()
 }
+
+Kernel compute_bfield()
+{
+	write(BFIELD,curl(AA))
+}
+
+ComputeSteps get_bfield(boundconds) {compute_bfield()}
 
 
 #include "../../stdlib/bc.h"

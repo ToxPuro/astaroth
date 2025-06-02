@@ -395,86 +395,41 @@ calc_timestep(const AcMeshInfo info)
     //TP: for backwards compatible scheme where timestep is calculated independently of the time integration
     //TP: otherwise calculated alongside the time integration
     //acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
-    (void)info;
-    return acDeviceGetOutput(acGridGetDevice(),AC_dt_min);
-    //TP: old way to do it: requires considerably more reads and reductions than doing it in the DSL
-    /*
-    AcReal uumax     = 0.0;
-    AcReal vAmax     = 0.0;
-    AcReal shock_max = 0.0;
-    acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
-    // TODO ERROR: uumax is currently only seen by the rank 0 process which will
-    // lead to asyncronizity in the timestep leading to deadlocks! The resulting
-    // dt or uumax and vAmax in rank 0 should be broadcasted to others.
-    // SOLUTION: broadcast uumax and vAmax to all ranks
-    // NOTE: It would be also possible to edit contents of
-    // acGridReduceVecScal(), but for the sake of coherence, with less risk of
-    // interfering things elsewhere, I have deiced to try out this approach
-    // first, as it is not too complicated anyway.
-    //
-    // %JP: uumax, vAmax, seems to be OK now with the following bcasts
-    //
-    // OL: it would not be too difficult to make acGridReduceVecScal broadcast the value
-    // Two changes in distributedScalarReduction are needed:
-    //  1. change MPI_Reduce -> MPI_Allreduce
-    //  2. remove the if (rank == 0) checks for the final RMS reduction
-    //
-    // This should also perform better because we will save the Bcast here
-    // Right now we're doing two collective operations where one would suffice
+    if(info[AC_additive_timestep])
+    {
+    	return acDeviceGetOutput(acGridGetDevice(),AC_dt_min);
+    }
+    //TP: old way to do it: requires consider more reductions than the additive method but can be useful when portin code that uses the maximum formulation
+    else
+    {
+    	const long double cdt  = (long double)info[AC_cdt];
+    	const long double cdtv = (long double)info[AC_cdtv];
+    	// const long double cdts     = (long double)info.real_params[AC_cdts];
+    	const long double cs2_sound = (long double)info[AC_cs2_sound];
+    	const long double nu_visc   = (long double)info[AC_nu_visc];
+    	const long double eta       = (long double)info[AC_eta];
+    	const long double chi      = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
+    	const long double gamma    = (long double)info[AC_gamma];
+    	const long double dsmin    = (long double)info[AC_dsmin];
+    	const long double nu_shock = (long double)info[AC_nu_shock];
 
-    // MPI_Bcast to share uumax with all ranks
-    MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0,
-              acGridMPIComm()); // JP note: should no longer be needed, distributedScalarReduction
-                                // now does MPI_Allreduce which includes the broadcast
+	const AcReal uumax = acDeviceGetOutput(acGridGetDevice(),UU_MAX_ADVEC);
+	const AcReal vAmax = acDeviceGetOutput(acGridGetDevice(),ALFVEN_SPEED_MAX);
+	const AcReal ad_onefluid = acDeviceGetOutput(acGridGetDevice(),AD_ONE_FLUID_MAX_ADVEC);
+	const AcReal shock_max = acDeviceGetOutput(acGridGetDevice(),AC_MAX_SHOCK);
+    	// New, closer to the actual Courant timestep
+    	// See Pencil Code user manual p. 38 (timestep section)
+    	const long double uu_dt = cdt * dsmin /
+    	                          (fabsl((long double)uumax) + ((long double)ad_onefluid) +
+    	                           sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
+    	const long double visc_dt = cdtv * dsmin * dsmin /
+    	                            (max(max(nu_visc, eta), gamma * chi) +
+    	                             nu_shock * (long double)shock_max);
 
-#if LBFIELD
-    // NOTE: bfield is 0 during the first step
-    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
-                        &vAmax);
-
-    // MPI_Bcast to share vAmax with all ranks
-    MPI_Bcast(&vAmax, 1, AC_REAL_MPI_TYPE, 0,
-              acGridMPIComm()); // JP note: should no longer be needed, distributedScalarReduction
-                                // now does MPI_Allreduce which includes the broadcast
-#endif
-
-#if LSHOCK
-    acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
-
-    // MPI_Bcast to share vAmax with all ranks
-    MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0,
-              acGridMPIComm()); // JP note: should no longer be needed, distributedScalarReduction
-                                // now does MPI_Allreduce which includes the broadcast
-#endif
-
-    const long double cdt  = (long double)info[AC_cdt];
-    const long double cdtv = (long double)info[AC_cdtv];
-    // const long double cdts     = (long double)info.real_params[AC_cdts];
-    const long double cs2_sound = (long double)info[AC_cs2_sound];
-    const long double nu_visc   = (long double)info[AC_nu_visc];
-    const long double eta       = (long double)info[AC_eta];
-    const long double chi      = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
-    const long double gamma    = (long double)info[AC_gamma];
-    const long double dsmin    = (long double)info[AC_dsmin];
-    const long double nu_shock = (long double)info[AC_nu_shock];
-
-    // Old ones from legacy Astaroth
-    // const long double uu_dt   = cdt * (dsmin / (uumax + cs_sound));
-    // const long double visc_dt = cdtv * dsmin * dsmin / nu_visc;
-
-    // New, closer to the actual Courant timestep
-    // See Pencil Code user manual p. 38 (timestep section)
-    const long double uu_dt = cdt * dsmin /
-                              (fabsl((long double)uumax) +
-                               sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
-    const long double visc_dt = cdtv * dsmin * dsmin /
-                                (max(max(nu_visc, eta), gamma * chi) +
-                                 nu_shock * (long double)shock_max);
-
-    const long double dt = min(uu_dt, visc_dt);
-    ERRCHK_ALWAYS(is_valid((AcReal)dt));
-    return AcReal(dt);
-    */
+    	const long double dt = min(uu_dt, visc_dt);
+    	ERRCHK_ALWAYS(is_valid((AcReal)dt));
+    	return AcReal(dt);
+    }
 }
 
 void
@@ -1038,7 +993,8 @@ main(int argc, char** argv)
     set_extra_config_params(&info);
     acLogFromRootProc(pid, "Done loading config file\n");
 #if AC_RUNTIME_COMPILATION
-    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF";
+    const char* build_str = "-DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DOPTIMIZE_INPUT_PARAMS=ON -DBUILD_ACM=OFF"
+	    		    ;
     info.runtime_compilation_log_dst = "ac_compilation_log";
     acCompile(build_str,info);
     acLoadLibrary(stdout,info);
@@ -1437,6 +1393,11 @@ main(int argc, char** argv)
 
         // Generic parameters
         debug_log_from_root_proc_with_sim_progress(pid, "Calculating time delta\n");
+	
+	if(!info[AC_timestep_calc_with_rhs])
+	{
+        	acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
+	}
         const AcReal dt = calc_timestep(info);
         debug_log_from_root_proc_with_sim_progress(pid, "Done calculating time delta, dt = %e\n",
                                                    dt);
