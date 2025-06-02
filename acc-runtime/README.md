@@ -704,7 +704,7 @@ BoundConds boundconds
 It contains function calls that are used to calculate the values of the outermost halo regions.
 `periodic` is a unique construct to tell that the domain is periodic in the specified directions.
 Otherwise normal functions are called with an additional mandatory first parameter specifying the boundary.
-The used example boundary condition `bc_sym_z` which sets the input `Field` symmetric on the boundary could look like te following:
+The used example boundary condition `bc_sym_z` which sets the input `Field` symmetric on the boundary could look like the following:
 ```
 bc_sym_z(Field field, bool bottom)
 {
@@ -723,7 +723,7 @@ bc_sym_z(Field field, bool bottom)
 	}
 }
 ```
-
+For more examples of boundary conditions see `acc-runtime/stdlib/bc.h`
 
 The `ComputeSteps` construct is used to declare a sequence of (possibly dependent) kernel invocations in the DSL,
 from which a `TaskGraph` is produced. 
