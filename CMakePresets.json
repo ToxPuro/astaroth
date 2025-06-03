@@ -18,6 +18,21 @@
             }
         },
         {
+            "name": "mahti-tfm",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "OPTIMIZE_MEM_ACCESSES": "ON",
+                "MPI_ENABLED": "ON",
+                "SINGLEPASS_INTEGRATION": "ON",
+                "BUILD_STANDALONE": "OFF",
+                "BUILD_MHD_SAMPLES": "OFF",
+                "BUILD_SAMPLES": "OFF",
+                "DSL_MODULE_DIR": "${sourceDir}/samples/tfm/mhd",
+                "PROGRAM_MODULE_DIR": "${sourceDir}/samples/tfm-mpi",
+                "BUILD_ACC_RUNTIME_LIBRARY": "ON"
+            }
+        },
+        {
             "name": "lumi-mhd",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
