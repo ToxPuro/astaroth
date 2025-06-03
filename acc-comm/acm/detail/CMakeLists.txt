@@ -12,6 +12,7 @@ set(ACM_HOST_FILES
     partition.cc
     math_utils.cc
     ntuple.cc
+    argparse.cc
     experimental/mpi_utils_experimental.cc
     experimental/random_experimental.cc
     experimental/bm.cc
