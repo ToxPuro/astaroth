@@ -17,6 +17,9 @@ __host__ __device__ uint64_t xorshift(const uint64_t state)
     return x;
 }
 
+// Workaround: not allowed to call from device code (CUDA only)
+constexpr double uint64_t_max_double{static_cast<double>(std::numeric_limits<uint64_t>::max())};
+
 namespace device {
 
 
@@ -26,7 +29,7 @@ namespace device {
             return;
 
         const double x{static_cast<double>(xorshift(seed + xorshift(static_cast<uint64_t>(i))))};
-        const double n{static_cast<double>(std::numeric_limits<uint64_t>::max())};
+        const double n{uint64_t_max_double};
         arr[i] = x / n;
     }
 

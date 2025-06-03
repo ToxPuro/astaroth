@@ -369,7 +369,7 @@ main(int argc, char* argv[])
 
         auto print = [&](const std::string&                                      label,
                          const std::vector<std::chrono::steady_clock::duration>& results) {
-            std::ofstream file{filename, std::ios_base::app};
+            file = std::ofstream{filename, std::ios_base::app};
             file.exceptions(~std::ios::goodbit);
 
             for (size_t i{0}; i < results.size(); ++i) {

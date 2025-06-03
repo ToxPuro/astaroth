@@ -508,7 +508,7 @@ main()
             const auto segments{prune(partition(local_mm, local_nn, rr), local_nn, rr)};
             for (auto& buffer : buffers)
                 for (auto& segment : segments)
-                    ac::fill_value(local_mm, segment, buffer.get(), -1);
+                    ac::fill_value(local_mm, segment, buffer.get(), static_cast<T>(-1));
 
             ac::mpi::hindexed::halo_exchange<T, ac::mr::device_allocator>
                 he{comm.get(), global_nn, rr, ac::unwrap_get(buffers), ac::unwrap_get(buffers)};

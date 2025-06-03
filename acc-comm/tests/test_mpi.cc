@@ -363,12 +363,13 @@ test_pipeline(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
     he.launch(cart_comm, {distr_dref.get()});
 
     const size_t nsteps{1000};
-    if (rank == 0)
+    if (rank == 0) {
         PRINT_LOG_INFO("Running %zu steps to reach a stable state. Reduce problems size if the "
                        "test "
                        "takes too long. Increase nsteps if stability has not been reached but the "
                        "implementation is correct.",
                        nsteps);
+    }
 
     for (size_t i{0}; i < nsteps; ++i) {
         const ac::shape      nk{2 * rr + as<uint64_t>(1)};

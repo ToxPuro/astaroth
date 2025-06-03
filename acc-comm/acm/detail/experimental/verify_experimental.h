@@ -16,11 +16,12 @@ to_global_iota(const ac::shape& global_nn, const ac::shape& global_nn_offset,
                const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
                ac::mr::host_pointer<T> ptr, const T& initial_value = 0)
 {
+    (void)local_nn; // Unused
     for (uint64_t i{0}; i < ptr.size(); ++i) {
         const auto global_coords{
             (global_nn + global_nn_offset + ac::to_spatial(i, local_mm) - local_rr) % global_nn};
         const auto global_index{ac::to_linear(global_coords, global_nn)};
-        ptr[i] = global_index + initial_value;
+        ptr[i] = static_cast<T>(global_index) + initial_value;
     }
 }
 
@@ -54,12 +55,13 @@ verify_global_iota(const ac::shape& global_nn, const ac::shape& global_nn_offset
                    const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
                    const ac::mr::host_pointer<T>& ptr, const T& initial_value = 0)
 {
+    (void) local_nn; // Unused
     ERRCHK(ptr.size() == prod(local_mm));
     for (uint64_t i{0}; i < ptr.size(); ++i) {
         const auto global_coords{
             (global_nn + global_nn_offset + ac::to_spatial(i, local_mm) - local_rr) % global_nn};
         const auto global_index{ac::to_linear(global_coords, global_nn)};
-        ERRCHK(within_machine_epsilon(ptr[i], global_index + initial_value));
+        ERRCHK(within_machine_epsilon(ptr[i], static_cast<T>(global_index) + initial_value));
     }
 }
 
@@ -91,7 +93,7 @@ fill_value(const ac::shape& dims, const ac::segment& segment, ac::mr::pointer<T,
     static_assert(std::is_convertible_v<T, U>);
     ERRCHK(ptr.size() == prod(dims));
 
-    ac::host_ndbuffer<T>       init_buffer{segment.dims, fill_value};
+    ac::host_ndbuffer<T>       init_buffer{segment.dims, static_cast<T>(fill_value)};
     ac::ndbuffer<T, Allocator> pack_buffer{segment.dims};
     ac::mr::copy(init_buffer.get(), pack_buffer.get());
     acm::unpack(pack_buffer.get(), dims, segment.dims, segment.offset, {ptr});
@@ -106,7 +108,7 @@ fill_iota(const ac::shape& dims, const ac::segment& segment, ac::mr::pointer<T, 
     ERRCHK(ptr.size() == prod(dims));
 
     ac::host_ndbuffer<T> init_buffer{segment.dims};
-    std::iota(init_buffer.begin(), init_buffer.end(), initial_value);
+    std::iota(init_buffer.begin(), init_buffer.end(), static_cast<T>(initial_value));
     ac::ndbuffer<T, Allocator> pack_buffer{segment.dims};
     ac::mr::copy(init_buffer.get(), pack_buffer.get());
     acm::unpack(pack_buffer.get(), dims, segment.dims, segment.offset, {ptr});

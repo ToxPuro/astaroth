@@ -137,12 +137,12 @@ pack_batched(const ac::shape& mm, const std::vector<ac::mr::device_pointer<T>>& 
                                                                 segments,
                                                                 packed,
                                                                 do_pack);
-    case 81:
-        return pack_batched_prototype<T, NDIMS, N_UNPACKED, 81>(mm,
-                                                                unpacked,
-                                                                segments,
-                                                                packed,
-                                                                do_pack);
+    // case 81:
+    //     return pack_batched_prototype<T, NDIMS, N_UNPACKED, 81>(mm,
+    //                                                             unpacked,
+    //                                                             segments,
+    //                                                             packed,
+    //                                                             do_pack);
     default:
         ERROR_DESC("Unhandled %zu", segments.size());
     }

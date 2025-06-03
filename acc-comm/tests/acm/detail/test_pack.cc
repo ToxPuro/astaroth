@@ -158,7 +158,7 @@ main()
             std::tuple<ac::shape, ac::index>{ac::shape{4, 4}, ac::index{2, 2}},
             std::tuple<ac::shape, ac::index>{ac::shape{4, 8}, ac::index{2, 2}},
             std::tuple<ac::shape, ac::index>{ac::shape{8, 6, 4}, ac::index{2, 2, 2}},
-            std::tuple<ac::shape, ac::index>{ac::shape{8, 6, 4, 4}, ac::index{2, 2, 2, 2}},
+            // std::tuple<ac::shape, ac::index>{ac::shape{8, 6, 4, 4}, ac::index{2, 2, 2, 2}},
             //
             // std::tuple<ac::shape, ac::index>{ac::shape{4, 5, 6, 7, 8}, ac::index{2, 2, 3, 3, 3}},
             // std::tuple<ac::shape, ac::index>{ac::shape{2, 4, 6, 8, 6, 4, 2},

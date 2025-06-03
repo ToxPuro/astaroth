@@ -8,6 +8,53 @@
 
 namespace ac::mpi {
 
+ac::shape
+global_mm(const cart_comm& comm, const ac::index& rr)
+{
+    return ac::mpi::get_global_mm(comm.global_nn(), rr);
+}
+
+ac::shape
+global_nn(const cart_comm& comm)
+{
+    return comm.global_nn();
+}
+
+ac::shape
+local_mm(const cart_comm& comm, const ac::index& rr)
+{
+    return ac::mpi::get_local_mm(comm.get(), comm.global_nn(), rr);
+}
+
+ac::shape
+local_nn(const cart_comm& comm)
+{
+    return ac::mpi::get_local_nn(comm.get(), comm.global_nn());
+}
+
+std::vector<ac::index>
+get_rank_ordering(const MPI_Comm& cart_comm)
+{
+    std::vector<ac::index> coords;
+
+    int nprocs{-1};
+    ERRCHK_MPI_API(MPI_Comm_size(cart_comm, &nprocs));
+
+    for (int i{0}; i < nprocs; ++i) {
+        int       translated_rank{MPI_PROC_NULL};
+        MPI_Group world_group{MPI_GROUP_NULL};
+        ERRCHK_MPI_API(MPI_Comm_group(MPI_COMM_WORLD, &world_group));
+
+        MPI_Group cart_group{MPI_GROUP_NULL};
+        ERRCHK_MPI_API(MPI_Comm_group(cart_comm, &cart_group));
+
+        ERRCHK_MPI_API(MPI_Group_translate_ranks(world_group, 1, &i, cart_group, &translated_rank));
+        coords.push_back(ac::mpi::get_coords(cart_comm, translated_rank));
+    }
+
+    return coords;
+}
+
 int
 select_device_lumi()
 {

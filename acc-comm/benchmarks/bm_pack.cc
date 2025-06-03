@@ -393,7 +393,7 @@ main(int argc, char* argv[])
 
         auto print = [&](const std::string&                                      label,
                          const std::vector<std::chrono::steady_clock::duration>& results) {
-            std::ofstream file{filename, std::ios_base::app};
+            file = std::ofstream{filename, std::ios_base::app};
             file.exceptions(~std::ios::goodbit);
 
             for (size_t i{0}; i < results.size(); ++i) {
@@ -433,37 +433,37 @@ main(int argc, char* argv[])
         // segments{ac::segment{128,128,3}};
 
         // Initialize inputs and refs
-        auto init = [](std::vector<ac::ndbuffer<T, Allocator>>& inputs,
-                       std::vector<ac::ndbuffer<T, Allocator>>& refs) {
+        auto init = [](std::vector<ac::ndbuffer<T, Allocator>>& init_inputs,
+                       std::vector<ac::ndbuffer<T, Allocator>>& init_refs) {
             // Initialize inputs
-            for (size_t i{0}; i < inputs.size(); ++i)
-                std::iota(inputs[i].begin(), inputs[i].end(), i * inputs[i].size());
+            for (size_t i{0}; i < init_inputs.size(); ++i)
+                std::iota(init_inputs[i].begin(), init_inputs[i].end(), i * init_inputs[i].size());
 
             // Initialize refs
-            for (size_t i{0}; i < inputs.size(); ++i)
-                migrate(inputs[i], refs[i]);
+            for (size_t i{0}; i < init_inputs.size(); ++i)
+                migrate(init_inputs[i], init_refs[i]);
         };
 
         // Helper functions
-        auto reset_outputs = [](const std::vector<ac::ndbuffer<T, Allocator>>& inputs,
-                                const std::vector<ac::segment>&                segments,
-                                std::vector<ac::ndbuffer<T, Allocator>>&       outputs) {
-            ERRCHK_MPI(inputs.size() == outputs.size());
-            for (size_t i{0}; i < inputs.size(); ++i) {
-                auto tmp{inputs[i].to_host()};
-                for (const auto& segment : segments)
+        auto reset = [](const std::vector<ac::ndbuffer<T, Allocator>>& reset_inputs,
+                                const std::vector<ac::segment>&                reset_segments,
+                                std::vector<ac::ndbuffer<T, Allocator>>&       reset_outputs) {
+            ERRCHK_MPI(reset_inputs.size() == reset_outputs.size());
+            for (size_t i{0}; i < reset_inputs.size(); ++i) {
+                auto tmp{reset_inputs[i].to_host()};
+                for (const auto& segment : reset_segments)
                     ac::fill<T>(-1, segment.dims, segment.offset, tmp);
-                migrate(tmp, outputs[i]);
+                migrate(tmp, reset_outputs[i]);
             }
         };
 
-        auto verify = [](const std::vector<ac::ndbuffer<T, Allocator>>& outputs,
-                         const std::vector<ac::ndbuffer<T, Allocator>>& refs) {
-            ERRCHK_MPI(outputs.size() == refs.size());
+        auto verify = [](const std::vector<ac::ndbuffer<T, Allocator>>& verify_outputs,
+                         const std::vector<ac::ndbuffer<T, Allocator>>& verify_refs) {
+            ERRCHK_MPI(verify_outputs.size() == verify_refs.size());
 
-            for (size_t j{0}; j < outputs.size(); ++j)
-                for (size_t i{0}; i < outputs[j].size(); ++i)
-                    ERRCHK_MPI(within_machine_epsilon(outputs[j][i], refs[j][i]));
+            for (size_t j{0}; j < verify_outputs.size(); ++j)
+                for (size_t i{0}; i < verify_outputs[j].size(); ++i)
+                    ERRCHK_MPI(within_machine_epsilon(verify_outputs[j][i], verify_refs[j][i]));
         };
 
         auto init_random = [&]() {
@@ -478,10 +478,10 @@ main(int argc, char* argv[])
             ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         };
 
-        auto display = [](const std::vector<ac::ndbuffer<T, Allocator>>& bufs) {
-            for (const auto& buf : bufs)
-                buf.display();
-        };
+        // auto display = [](const std::vector<ac::ndbuffer<T, Allocator>>& bufs) {
+        //     for (const auto& buf : bufs)
+        //         buf.display();
+        // };
 
         // Verify and benchmark
         const auto input_ptrs{ac::unwrap_get(inputs)};
@@ -500,7 +500,7 @@ main(int argc, char* argv[])
             // Verify that the benchmarked function works correctly
             init(inputs, refs);                       // Init inputs and refs
             pack();                                   // Pack inputs
-            reset_outputs(inputs, segments, outputs); // Reset outputs
+            reset(inputs, segments, outputs); // Reset outputs
             unpack();
             verify(outputs, refs);
             // Run the benchmark if verification succeeded
@@ -521,7 +521,7 @@ main(int argc, char* argv[])
             // Verify that the benchmarked function works correctly
             init(inputs, refs);                       // Init inputs and refs
             pack();                                   // Pack inputs
-            reset_outputs(inputs, segments, outputs); // Reset outputs
+            reset(inputs, segments, outputs); // Reset outputs
             unpack();
             verify(outputs, refs);
             // Run the benchmark if verification succeeded
@@ -536,7 +536,7 @@ main(int argc, char* argv[])
             // Verify that the benchmarked function works correctly
             init(inputs, refs);                       // Init inputs and refs
             bench();                                  // Pack inputs
-            reset_outputs(inputs, segments, outputs); // Reset outputs
+            reset(inputs, segments, outputs); // Reset outputs
             packer.unpack(mm, ac::unwrap_get(outputs));
             verify(outputs, refs);
             // Run the benchmark if verification succeeded
@@ -551,7 +551,7 @@ main(int argc, char* argv[])
             // Verify that the benchmarked function works correctly
             init(inputs, refs);                       // Init inputs and refs
             bench();                                  // Pack inputs
-            reset_outputs(inputs, segments, outputs); // Reset outputs
+            reset(inputs, segments, outputs); // Reset outputs
             packer.unpack(mm, ac::unwrap_get(outputs));
             verify(outputs, refs);
             // Run the benchmark if verification succeeded
@@ -565,7 +565,7 @@ main(int argc, char* argv[])
             // Verify that the benchmarked function works correctly
             init(inputs, refs);                       // Init inputs and refs
             bench();                                  // Pack inputs
-            reset_outputs(inputs, segments, outputs); // Reset outputs
+            reset(inputs, segments, outputs); // Reset outputs
             packer.unpack(mm, ac::unwrap_get(outputs));
             verify(outputs, refs);
             // Run the benchmark if verification succeeded
