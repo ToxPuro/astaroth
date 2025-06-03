@@ -75,6 +75,14 @@ template <typename T, typename Allocator> class view : public base_view<T> {
     }
 };
 
+template <typename T, typename Allocator>
+auto
+make_view(const size_t count, const size_t offset, const view<T, Allocator>& view)
+{
+    ERRCHK(offset + count <= view.size());
+    return ac::view<T, Allocator>{count, view.begin() + offset};
+}
+
 // Type aliases
 template <typename T> using host_view   = view<T, ac::mr::host_allocator>;
 template <typename T> using device_view = view<T, ac::mr::device_allocator>;
