@@ -13,7 +13,7 @@ parse_key_value_pairs(const std::vector<std::string>& args)
         throw std::runtime_error("Uneven number of input arguments.");
 
     for (size_t i{0}; i + 1 < args.size(); i += 2)
-        map[args[i].substr(2)] = args[i + 1];
+        map[args[i]] = args[i + 1];
 
     return map;
 }
@@ -35,11 +35,11 @@ ac::shape
 parse_shape(const std::string& str)
 {
     auto tokens{tokenize(str, ',')};
-    auto shape{ac::make_shape(tokens.size(), 0)};
+    auto result{ac::make_shape(tokens.size(), 0)};
     for (size_t i{0}; i < tokens.size(); ++i)
-        shape[i] = std::stoull(tokens[i]);
+        result[i] = std::stoull(tokens[i]);
 
-    return shape;
+    return result;
 }
 
 } // namespace ac
