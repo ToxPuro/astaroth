@@ -40,7 +40,7 @@
 
 #include <unistd.h>
 
-#define AC_ENABLE_ASYNC_AVERAGES // Better scaling
+// #define AC_ENABLE_ASYNC_AVERAGES // Better scaling
 
 // Debug runs: enable defines below for writing diagnostics synchronously
 // Production runs:
@@ -51,7 +51,7 @@
 #define AC_WRITE_SYNCHRONOUS_TIMESERIES
 #define AC_WRITE_SYNCHRONOUS_SLICES
 
-#define AC_BENCHMARK_MODE
+// #define AC_BENCHMARK_MODE
 #if defined(AC_BENCHMARK_MODE)
 #define AC_DISABLE_IO
 #endif
