@@ -4,6 +4,7 @@
 #include <limits>
 #include <numeric>
 #include <vector>
+#include <tuple>
 
 uint64_t prod(const size_t count, const uint64_t* arr);
 
