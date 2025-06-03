@@ -79,3 +79,19 @@ acc-comm/benchmarks/bm_rank_reordering-test.cc
 acc-comm/benchmarks/pack_strategy.h
 acc-comm/acm/detail/experimental/deprecated/
 acc-comm/tests/acm/experimental/deprecated/
+acc-runtime/acc/stencilgen copy 2.c
+acc-runtime/acc/stencilgen copy 3.c
+acc-runtime/acc/stencilgen copy 4.c
+acc-runtime/acc/stencilgen copy 5.c
+acc-runtime/api/acc_runtime copy.cu
+acc-runtime/api/mapreduce-with-thrust.cuh
+pilot/astaroth-512-snapshot.conf
+pilot/astaroth-512-varfile.conf
+pilot/pilot-1.sh
+pilot/pilot-8-from-snapshot.sh
+pilot/pilot-8-from-varfile.sh
+samples/bwtest/bwtest-io copy.cu
+scripts/smem-calculator.py
+scripts/zorder.py
+src/core/grid copy.cc
+stencilgen-nth-copy.c
