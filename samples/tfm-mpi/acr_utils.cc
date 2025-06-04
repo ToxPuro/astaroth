@@ -162,7 +162,7 @@ make_ptr(const VertexBufferArray& vba, const Profile& profile, const BufferGroup
         return ac::device_view<AcReal>{count, vba.profiles.out[profile]};
     default:
         ERRCHK(false);
-        return ac::mr::device_pointer<AcReal>{};
+        return ac::device_view<AcReal>{};
     }
 }
 
