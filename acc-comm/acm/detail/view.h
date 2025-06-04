@@ -4,6 +4,7 @@
 
 #include "acm/detail/allocator.h"
 #include "acm/detail/type_conversion.h"
+#include "acm/detail/device_utils.h"
 
 namespace ac {
 
