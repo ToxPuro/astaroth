@@ -1,0 +1,31 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "mahti-mhd",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "OPTIMIZE_MEM_ACCESSES": "ON",
+                "MPI_ENABLED": "ON",
+                "SINGLEPASS_INTEGRATION": "ON",
+                "BUILD_STANDALONE": "ON",
+                "BUILD_MHD_SAMPLES": "ON",
+                "BUILD_SAMPLES": "ON",
+                "MAX_THREADS_PER_BLOCK": "1024"
+            }
+        },
+        {
+            "name": "lumi-mhd",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "OPTIMIZE_MEM_ACCESSES": "ON",
+                "MPI_ENABLED": "ON",
+                "SINGLEPASS_INTEGRATION": "ON",
+                "BUILD_STANDALONE": "ON",
+                "BUILD_MHD_SAMPLES": "ON",
+                "BUILD_SAMPLES": "ON",
+                "MAX_THREADS_PER_BLOCK": "512"
+            }
+        }
+    ]
+}
