@@ -75,7 +75,7 @@ class async_write_task {
         // better to migrate only mesh_subdims instead (but need
         // to pack and change mesh_offset to zero)
         // migrate(input, m_staging_buffer);
-        ac::mr::copy<T>(input, m_staging_buffer.get());
+        ac::copy<T>(input, m_staging_buffer.get());
 
         ERRCHK_MPI(m_file == MPI_FILE_NULL);
         ERRCHK_MPI_API(MPI_File_open(m_comm,

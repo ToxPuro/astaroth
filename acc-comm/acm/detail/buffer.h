@@ -64,21 +64,21 @@ template <typename T, typename Allocator> class buffer {
     buffer<T, Allocator> copy() const
     {
         buffer<T, Allocator> buf{size()};
-        ac::mr::copy(get(), buf.get());
+        ac::copy(get(), buf.get());
         return buf;
     }
 
     buffer<T, ac::mr::device_allocator> to_device() const
     {
         buffer<T, ac::mr::device_allocator> dbuf{size()};
-        ac::mr::copy(get(), dbuf.get());
+        ac::copy(get(), dbuf.get());
         return dbuf;
     }
 
     buffer<T, ac::mr::host_allocator> to_host() const
     {
         buffer<T, ac::mr::host_allocator> hbuf{size()};
-        ac::mr::copy(get(), hbuf.get());
+        ac::copy(get(), hbuf.get());
         return hbuf;
     }
 
@@ -116,7 +116,7 @@ template <typename T, typename AllocatorA, typename AllocatorB>
 void
 migrate(const ac::buffer<T, AllocatorA>& a, ac::buffer<T, AllocatorB>& b)
 {
-    ac::mr::copy(a.get(), b.get());
+    ac::copy(a.get(), b.get());
 }
 
 // TODO: Draft
@@ -125,7 +125,7 @@ migrate(const ac::buffer<T, AllocatorA>& a, ac::buffer<T, AllocatorB>& b)
 // migrate_async(const cudaStream_t stream, const ac::buffer<T, AllocatorA>& a,
 //               ac::buffer<T, AllocatorB>& b)
 // {
-//     ac::mr::copy_async(a.get(), b.get());
+//     ac::copy_async(a.get(), b.get());
 // }
 
 #if defined(ACM_DEVICE_ENABLED)
@@ -133,7 +133,7 @@ migrate(const ac::buffer<T, AllocatorA>& a, ac::buffer<T, AllocatorB>& b)
 #include "errchk_cuda.h"
 
 template <typename T, typename AllocatorA, typename AllocatorB>
-//[[deprecated("Use ac::mr::copy_async instead")]]
+//[[deprecated("Use ac::copy_async instead")]]
 void
 migrate_async(const cudaStream_t stream, const ac::buffer<T, AllocatorA>& in,
               ac::buffer<T, AllocatorB>& out)

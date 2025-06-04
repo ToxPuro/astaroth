@@ -215,7 +215,7 @@ test_mpi_pack(const MPI_Comm& cart_comm, const ac::shape& global_nn)
 
     ac::device_ndbuffer<T> dtst{local_mm};
     ac::host_ndbuffer<T>   tmp{local_mm, 0};
-    ac::mr::copy(tmp.get(), dtst.get());
+    ac::copy(tmp.get(), dtst.get());
     // ac::mr::fill(0, dtst.get());
     ac::mpi::unpack(cart_comm,
                     ac::mpi::get_dtype<T>(),
@@ -463,7 +463,7 @@ test_xy_reduce(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::
         [](const auto& a, const auto& b) { return a + b; },
         static_cast<T>(0),
         tmp_lreducebuf.get());
-    ac::mr::copy(tmp_lreducebuf.get(), lreducebuf.get());
+    ac::copy(tmp_lreducebuf.get(), lreducebuf.get());
     // TMP workaround end
 
     ac::mpi::reduce_axis(cart_comm,
