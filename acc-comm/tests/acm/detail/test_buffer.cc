@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <numeric>
+#include <algorithm>
 
 #include "acm/detail/buffer.h"
 
