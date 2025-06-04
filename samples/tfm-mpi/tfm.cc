@@ -40,7 +40,7 @@
 
 #include <unistd.h>
 
-#define AC_ENABLE_ASYNC_AVERAGES // Better scaling
+// #define AC_ENABLE_ASYNC_AVERAGES // Better scaling
 
 // Debug runs: enable defines below for writing diagnostics synchronously
 // Production runs:
@@ -51,7 +51,7 @@
 #define AC_WRITE_SYNCHRONOUS_TIMESERIES
 #define AC_WRITE_SYNCHRONOUS_SLICES
 
-#define AC_BENCHMARK_MODE
+// #define AC_BENCHMARK_MODE
 #if defined(AC_BENCHMARK_MODE)
 #define AC_DISABLE_IO
 #endif
@@ -250,7 +250,7 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
         char filepath[4096];
         sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
-        ac::mr::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
+        ac::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
                      staging_buffer.get());
         ac::mpi::write_collective_simple(parent_comm,
                                          ac::mpi::get_dtype<AcReal>(),
@@ -307,7 +307,7 @@ write_slices_to_disk(const MPI_Comm& parent_comm, const Device& device, const si
     for (size_t i{0}; i < NUM_VTXBUF_HANDLES; ++i) {
         const auto input{acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input)};
         acm::pack(local_mm, local_slice_nn, local_slice_nn_offset, {input}, pack_buffer.get());
-        ac::mr::copy(pack_buffer.get(), staging_buffer.get());
+        ac::copy(pack_buffer.get(), staging_buffer.get());
 
         char filepath[4096];
         sprintf(filepath, "%s-%012zu.slice", vtxbuf_names[i], step);
@@ -355,7 +355,7 @@ write_distributed_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& d
                 step,
                 vtxbuf_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
-        ac::mr::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
+        ac::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
                      staging_buffer.get());
         ac::mpi::write_distributed(parent_comm,
                                    ac::mpi::get_dtype<AcReal>(),
@@ -401,7 +401,7 @@ write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const 
         ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, rank, &profile_comm));
 
         if (profile_comm != MPI_COMM_NULL) {
-            ac::mr::copy(acr::make_ptr(vba, static_cast<Profile>(i), BufferGroup::input),
+            ac::copy(acr::make_ptr(vba, static_cast<Profile>(i), BufferGroup::input),
                          staging_buffer.get());
             ac::mpi::write_collective(profile_comm,
                                       ac::mpi::get_dtype<AcReal>(),
@@ -920,7 +920,7 @@ randomize(const MPI_Comm& comm, const Device& device, const std::vector<Field>& 
     for (auto& ptr : ptrs) {
         ac::host_buffer<AcReal> tmp{ptr.size()};
         std::generate(tmp.begin(), tmp.end(), [&dist, &gen]() { return dist(gen); });
-        ac::mr::copy(tmp.get(), ptr);
+        ac::copy(tmp.get(), ptr);
     }
 }
 

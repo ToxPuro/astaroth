@@ -15,6 +15,8 @@ template <typename T> class base_view {
   public:
     using value_type = T;
 
+    base_view() = default;
+
     base_view(const size_t count, T* data)
         : m_count{count}, m_data{data}
     {

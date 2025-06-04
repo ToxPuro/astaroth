@@ -13,9 +13,9 @@ struct CustomArguments {
     {
         auto pairs{ac::parse_key_value_pairs(args)};
         for (const auto& pair : pairs) {
-            if (pair.first == "global_nn")
+            if (pair.first == "--global_nn")
                 global_nn = ac::parse_shape(pair.second);
-            else if (pair.first == "some_counter")
+            else if (pair.first == "--some_counter")
                 some_counter = std::stoul(pair.second);
             else
                 throw std::runtime_error("Invalid argument pair \"" + pair.first + ": " +

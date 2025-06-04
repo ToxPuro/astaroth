@@ -1,6 +1,7 @@
 #include "random_experimental.h"
 
 #include <random>
+#include <algorithm>
 
 #include "acm/detail/type_conversion.h"
 
