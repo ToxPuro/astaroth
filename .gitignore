@@ -95,3 +95,4 @@ scripts/smem-calculator.py
 scripts/zorder.py
 src/core/grid copy.cc
 stencilgen-nth-copy.c
+acc-comm/tests/test_config.cc
