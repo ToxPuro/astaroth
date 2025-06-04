@@ -6,6 +6,7 @@ const real rk2_beta  = [1.0/2.0,   1.0]
 
 const real rk3_alpha =[ 0.,   -5./9.,   -153./128. ]
 const real rk3_beta  =[ 1./3., 15./ 16., 8./15.    ]
+const real rk3_padded_beta  =[ 1.0, 1./3., 15./ 16., 8./15.    ]
 
 run_const int AC_rk_order
 rk3(Field f, real roc, int step_num, real dt) {
@@ -18,9 +19,9 @@ rk3(Field f, real roc, int step_num, real dt) {
     }
     */
     // Workaround
-    const real s1 = previous(f)
-    const real s0 = value(f)
-    return s1 + rk3_beta[step_num + 1] * ((rk3_alpha[step_num] / rk3_beta[step_num]) * (s1 - s0) + roc * dt)
+    const real s0 = previous(f)
+    const real s1 = value(f)
+    return s1 + rk3_padded_beta[step_num + 1] * ((rk3_alpha[step_num] / rk3_padded_beta[step_num]) * (s1 - s0) + roc * dt)
 } /*--------------------------------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3(Field3 field, real3 roc, int step_num, real dt) {
