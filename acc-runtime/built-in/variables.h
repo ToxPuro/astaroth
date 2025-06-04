@@ -99,7 +99,7 @@ run_const bool AC_skip_single_gpu_optim = false
 run_const AcCoordinateSystem AC_coordinate_system = AC_CARTESIAN_COORDINATES
 run_const bool3 AC_nonequidistant_grid = (bool3){false,false,false}
 
-run_const bool AC_sparse_autotuning=false
+bool AC_sparse_autotuning=false
 
 output real AC_default_real_output
 
