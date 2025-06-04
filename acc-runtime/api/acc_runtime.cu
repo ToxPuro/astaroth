@@ -662,13 +662,27 @@ __device__
 AcReal
 safe_access(const AcReal* arr, const int dims, const int index, const char* name)
 {
-	if(index < 0 || index >= dims)
+	if(arr == NULL)
+	{
+		printf("Trying to access %s which is NULL!\n",name);
+		//TP: assert is not defined on Mahti :(
+		//assert(false);
+		return 0.0;
+	}
+	else if(index < 0 || index >= dims)
 	{
 		printf("Trying to access %s out of bounds!: %d\n",name,index);
-		assert(false);
+		//TP: assert is not defined on Mahti :(
+		//assert(false);
 		return 0.0;
 	}
 	return arr[index];
+}
+__device__ UNUSED
+AcReal
+safe_access(const AcReal* arr, const int dims, const int index, const AcRealArrayParam param)
+{
+	return safe_access(arr,dims,index,real_array_names__device__[param]);
 }
 
 #include "device_fields_info.h"
@@ -680,22 +694,6 @@ ac_get_field_halos(const Field& field)
 	return VAL(vtxbuf_device_halos[field]);
 }
 
-__device__ UNUSED
-AcReal
-safe_access(const AcReal* arr, const int dims, const int index, const AcRealArrayParam param)
-{
-	if(arr == NULL)
-	{
-		printf("Trying to access %s which is NULL!\n",real_array_names__device__[param]);
-		return 0.0;
-	}
-	else if(index < 0 || index >= dims)
-	{
-		printf("Trying to access %s out of bounds!: %d\n",real_array_names__device__[param],index);
-		return 0.0;
-	}
-	return arr[index];
-}
 
 #include "user_kernels.h"
 #undef size
