@@ -103,8 +103,10 @@ timer_event_stop(const char* format, ...)
 int
 main(int argc, char** argv)
 {
-    constexpr bool verify = false;
+    int verify = 0;
     MPI_Init(NULL, NULL);
+    cudaProfilerStop();
+
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
@@ -142,12 +144,20 @@ main(int argc, char** argv)
     }
 
     if (argc - optind > 0) {
-        if (argc - optind == 3) {
+        if (argc - optind >= 3) {
             const int nx           = atoi(argv[optind]);
             const int ny           = atoi(argv[optind + 1]);
             const int nz           = atoi(argv[optind + 2]);
 
             printf("Benchmark mesh dimensions: (%d, %d, %d)\n", nx, ny, nz);
+
+        if (argc - optind >= 4) {
+            verify = atoi(argv[optind + 3]);
+        }
+
+        if (argc - optind > 4) {
+            fprintf(stderr, "WARNING: Unexpected amount of params. Continuing without parsing\n");
+        }
 
 	    if (test == TEST_WEAK_SCALING) {
                 fprintf(stdout, "Running weak scaling benchmarks.\n");
@@ -184,7 +194,7 @@ main(int argc, char** argv)
             acHostUpdateParams(&info);
         }
         else {
-            fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz>.\n");
+            fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz> <verify (optional, expects 0 or 1)>.\n");
             exit(EXIT_FAILURE);
         }
     }
