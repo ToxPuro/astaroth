@@ -6499,7 +6499,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   //Done to refresh the autotune file when recompiling DSL code
   fp = fopen(autotune_path,"w");
-  fprintf(fp,"### Implementation,Enum,Dims.x,Dims.y,Dims.z,Tpb.x,Tpb.y,Tpb.z,Time,Kernel,BlockFactor.x,BlockFactor.y,BlockFactor.z,RayTracingFactor.x,RayTracingFactor.y,RayTracingFactor.z ###\n");
+  fprintf(fp,"### Implementation,Enum,Dims.x,Dims.y,Dims.z,Tpb.x,Tpb.y,Tpb.z,Time,Kernel,BlockFactor.x,BlockFactor.y,BlockFactor.z,RayTracingFactor.x,RayTracingFactor.y,RayTracingFactor.z,Sparse ###\n");
   fclose(fp);
 
   fp = fopen("user_constants.h","w");

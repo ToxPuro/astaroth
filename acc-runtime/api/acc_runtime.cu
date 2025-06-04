@@ -1951,13 +1951,14 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
                 nz, best_measurement.tpb.x, best_measurement.tpb.y, best_measurement.tpb.z,
                 (double)best_measurement.time / num_iters);
 #else
-        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g, %s, %d, %d, %d, %d, %d, %d\n", IMPLEMENTATION, kernel, dims.x,
+        fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g, %s, %d, %d, %d, %d, %d, %d, %d\n", IMPLEMENTATION, kernel, dims.x,
                 dims.y, dims.z, best_measurement.tpb.x, best_measurement.tpb.y, best_measurement.tpb.z,
                 (double)best_measurement.time / num_iters, kernel_names[kernel],
 		vba.on_device.block_factor.x,vba.on_device.block_factor.y,vba.on_device.block_factor.z
 		,raytracing_subblock.x
 		,raytracing_subblock.y
 		,raytracing_subblock.z
+		,sparse_autotuning
 		);
 #endif
         fclose(fp);
@@ -1995,7 +1996,7 @@ acReadOptimTBConfig(const AcKernel kernel, const int3 dims, const int3 block_fac
   for(int i = 0; i < n_entries; ++i)
   {
 	  string_vec entry = entries[i];
-	  if(entry.size == 16)
+	  if(entry.size == 17)
       	  {
       	     int kernel_index  = atoi(entry.data[1]);
       	     int3 read_dims = {atoi(entry.data[2]), atoi(entry.data[3]), atoi(entry.data[4])};
@@ -2003,7 +2004,8 @@ acReadOptimTBConfig(const AcKernel kernel, const int3 dims, const int3 block_fac
       	     double time = atof(entry.data[8]);
       	     int3 read_block_factors = {atoi(entry.data[10]), atoi(entry.data[11]), atoi(entry.data[12])};
       	     int3 read_raytracing_factors = {atoi(entry.data[13]), atoi(entry.data[14]), atoi(entry.data[15])};
-      	     if(time < best_time && kernel_index == kernel && read_dims == dims && read_block_factors == block_factors && read_raytracing_factors == raytracing_subblock)
+	     int  was_sparse = atoi(entry.data[16]);
+      	     if(time < best_time && kernel_index == kernel && read_dims == dims && read_block_factors == block_factors && read_raytracing_factors == raytracing_subblock && was_sparse == sparse_autotuning)
       	     {
       	    	 best_time = time;
       	    	 res       = tpb;
