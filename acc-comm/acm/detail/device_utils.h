@@ -1,9 +1,10 @@
 #pragma once
+
+#if defined(ACM_DEVICE_ENABLED)
+
 #include <memory>
 
 namespace ac::device {
-
-#if defined(ACM_DEVICE_ENABLED)
 // class event {
 //   private:
 //     std::unique_ptr<cudaEvent_t> m_event;
@@ -80,6 +81,7 @@ get_kind()
     }
 }
 
+} // namespace ac::device
+
 #endif
 
-} // namespace ac::device
