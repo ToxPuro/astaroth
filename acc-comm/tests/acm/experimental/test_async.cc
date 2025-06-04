@@ -7,7 +7,7 @@
 #include "acm/detail/mpi_utils.h"
 
 #include "acm/detail/experimental/mpi_utils_experimental.h"
-#include "acm/detail/experimental/view.h"
+#include "acm/detail/view.h"
 
 template <typename T, typename Allocator>
 void

@@ -3,9 +3,9 @@
 
 #include "acm/detail/buffer.h"
 #include "acm/detail/errchk_mpi.h"
-#include "acm/detail/experimental/view.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ntuple.h"
+#include "acm/detail/view.h"
 
 // These should be merged to mpi_utils.h eventually
 
