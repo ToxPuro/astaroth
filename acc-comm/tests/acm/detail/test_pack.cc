@@ -111,16 +111,16 @@ main()
         // ac::copy(hin.begin(), hin.end(), din.begin());
         migrate(hin, din);
 
-        ac::shape                                     mm{count};
-        ac::shape                                     block_shape{count - 2 * rr};
-        ac::shape                                     block_offset{rr};
-        std::vector<ac::mr::device_pointer<uint64_t>> inputs{
-            ac::mr::device_pointer<uint64_t>{din.size(), din.data()}};
+        ac::shape                              mm{count};
+        ac::shape                              block_shape{count - 2 * rr};
+        ac::shape                              block_offset{rr};
+        std::vector<ac::device_view<uint64_t>> inputs{
+            ac::device_view<uint64_t>{din.size(), din.data()}};
         acm::pack(mm,
                   block_shape,
                   block_offset,
                   inputs,
-                  ac::mr::device_pointer<uint64_t>{dout.size(), dout.data()});
+                  ac::device_view<uint64_t>{dout.size(), dout.data()});
         migrate(dout, hout);
         // ac::copy(dout.begin(), dout.end(), hout.begin());
 
@@ -139,10 +139,10 @@ main()
         // ac::buffer<double, ac::mr::host_allocator> a(10, 0);
         // ac::buffer<double, ac::mr::host_allocator> b(10, 1);
         // ac::buffer<double, ac::mr::host_allocator> c(10, 2);
-        // std::vector<ac::mr::host_pointer<double>> d{ac::mr::host_pointer<double>{a.size(),
+        // std::vector<ac::host_view<double>> d{ac::host_view<double>{a.size(),
         // a.data()},
-        //                                         ac::mr::host_pointer<double>{b.size(), b.data()},
-        //                                         ac::mr::host_pointer<double>{c.size(),
+        //                                         ac::host_view<double>{b.size(), b.data()},
+        //                                         ac::host_view<double>{c.size(),
         //                                         c.data()}};
         // std::cout << a << std::endl;
         // std::cout << *d[1] << std::endl;

@@ -4,7 +4,7 @@
 
 #include "errchk.h"
 #include "ntuple.h"
-#include "pointer.h"
+#include "view.h"
 
 namespace ac {
 
@@ -28,7 +28,7 @@ transform(const ac::ntuple<uint64_t> dims, const ac::ntuple<uint64_t> subdims,
 template <typename T>
 void
 transform(const ac::shape dims, const ac::shape subdims, const ac::index offset,
-          const ac::mr::host_pointer<T> in, ac::mr::host_pointer<T> out)
+          const ac::host_view<T> in, ac::host_view<T> out)
 {
     for (uint64_t out_idx{0}; out_idx < prod(subdims); ++out_idx) {
         const ac::ntuple<uint64_t> out_coords{to_spatial(out_idx, subdims)};
@@ -49,7 +49,7 @@ transform(const ac::shape dims, const ac::shape subdims, const ac::index offset,
 // #include "datatypes.h"
 // void
 // transform(const ac::shape dims, const ac::shape subdims, const ac::index offset,
-//           const ac::mr::device_pointer<UserDatatype> in, ac::mr::device_pointer<UserDatatype>
+//           const ac::device_view<UserDatatype> in, ac::device_view<UserDatatype>
 //           out)
 // #endif
 
@@ -60,7 +60,7 @@ transform(const ac::shape dims, const ac::shape subdims, const ac::index offset,
 
 template <typename T>
 void transform(const ac::shape dims, const ac::shape subdims, const ac::index offset,
-               const ac::mr::device_pointer<T> in, ac::mr::device_pointer<T> out);
+               const ac::device_view<T> in, ac::device_view<T> out);
 
 #endif
 
@@ -103,7 +103,7 @@ print(const std::string& label, const ac::ntuple<uint64_t>& shape, const T* data
 // template <typename T>
 // void
 // fill(const T& fill_value, const ac::ntuple<uint64_t>& dims, const ac::ntuple<uint64_t>& subdims,
-//      const ac::ntuple<uint64_t>& offset, ac::mr::host_pointer<T>& data)
+//      const ac::ntuple<uint64_t>& offset, ac::host_view<T>& data)
 // {
 //     WARNING_DESC("Not implemented");
 //     // Should also consider movng this to pointer instead:

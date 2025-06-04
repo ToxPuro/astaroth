@@ -35,7 +35,7 @@ template <typename T, typename Allocator> class mpi_pack_strategy {
     {
     }
 
-    void pack(const ac::mr::pointer<T, Allocator>& input)
+    void pack(const ac::view<T, Allocator>& input)
     {
         int bytes{-1};
         ERRCHK_MPI_API(MPI_Type_size(m_subarray.get(), &bytes));
@@ -52,7 +52,7 @@ template <typename T, typename Allocator> class mpi_pack_strategy {
         ERRCHK_MPI(position == bytes);
     }
 
-    void unpack(ac::mr::pointer<T, Allocator> output) const
+    void unpack(ac::view<T, Allocator> output) const
     {
         int bytes{-1};
         ERRCHK_MPI_API(MPI_Type_size(m_subarray.get(), &bytes));
@@ -82,7 +82,7 @@ template <typename T, typename Allocator> class mpi_pack_strategy_packed {
             m_tasks.push_back({parent_comm, dims, segment.dims, segment.offset});
     }
 
-    void pack(const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    void pack(const std::vector<ac::view<T, Allocator>>& inputs)
     {
         ERRCHK_MPI(inputs.size() == m_tasks.size());
 
@@ -90,7 +90,7 @@ template <typename T, typename Allocator> class mpi_pack_strategy_packed {
             m_tasks[i].pack(inputs[i]);
     }
 
-    void unpack(std::vector<ac::mr::pointer<T, Allocator>> outputs) const
+    void unpack(std::vector<ac::view<T, Allocator>> outputs) const
     {
         ERRCHK_MPI(outputs.size() == m_tasks.size());
 
@@ -111,13 +111,13 @@ template <typename T, typename Allocator> class mpi_pack_strategy_batched {
             m_tasks.push_back({parent_comm, dims, segment, ninputs});
     }
 
-    void pack(const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    void pack(const std::vector<ac::view<T, Allocator>>& inputs)
     {
         for (auto& task : m_tasks)
             task.pack(inputs);
     }
 
-    void unpack(std::vector<ac::mr::pointer<T, Allocator>> outputs) const
+    void unpack(std::vector<ac::view<T, Allocator>> outputs) const
     {
         for (const auto& task : m_tasks)
             task.unpack(outputs);
@@ -133,9 +133,9 @@ template <typename T, typename Allocator> class mpi_pack_strategy_hindexed {
 
   public:
     mpi_pack_strategy_hindexed(const MPI_Comm& parent_comm, const ac::shape& dims,
-                               const ac::segment&                                segment,
-                               const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
-                               const std::vector<ac::mr::pointer<T, Allocator>>& outputs)
+                               const ac::segment&                         segment,
+                               const std::vector<ac::view<T, Allocator>>& inputs,
+                               const std::vector<ac::view<T, Allocator>>& outputs)
         : m_comm{parent_comm},
           m_input_block(dims, segment.dims, segment.offset, ac::unwrap_data(inputs)),
           m_output_block(dims, segment.dims, segment.offset, ac::unwrap_data(outputs)),
@@ -181,9 +181,9 @@ template <typename T, typename Allocator> class mpi_pack_strategy_hindexed_batch
 
   public:
     mpi_pack_strategy_hindexed_batched(const MPI_Comm& parent_comm, const ac::shape& dims,
-                                       const std::vector<ac::segment>&                   segments,
-                                       const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
-                                       const std::vector<ac::mr::pointer<T, Allocator>>& outputs)
+                                       const std::vector<ac::segment>&            segments,
+                                       const std::vector<ac::view<T, Allocator>>& inputs,
+                                       const std::vector<ac::view<T, Allocator>>& outputs)
     {
         for (const auto& segment : segments)
             m_tasks.push_back({parent_comm, dims, segment, inputs, outputs});
@@ -213,12 +213,12 @@ template <typename T, typename Allocator> class acm_pack_strategy {
     {
     }
 
-    void pack(const ac::shape& dims, const ac::mr::pointer<T, Allocator>& input)
+    void pack(const ac::shape& dims, const ac::view<T, Allocator>& input)
     {
         acm::pack(dims, m_segment.dims, m_segment.offset, {input}, m_pack_buffer.get());
     }
 
-    void unpack(const ac::shape& dims, ac::mr::pointer<T, Allocator>& output) const
+    void unpack(const ac::shape& dims, ac::view<T, Allocator>& output) const
     {
         acm::unpack(m_pack_buffer.get(), dims, m_segment.dims, m_segment.offset, {output});
     }
@@ -235,7 +235,7 @@ template <typename T, typename Allocator> class acm_pack_strategy_grouped {
             m_packets.push_back(segment);
     }
 
-    void pack(const ac::shape& dims, const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    void pack(const ac::shape& dims, const std::vector<ac::view<T, Allocator>>& inputs)
     {
         ERRCHK(inputs.size() == m_packets.size());
 
@@ -243,7 +243,7 @@ template <typename T, typename Allocator> class acm_pack_strategy_grouped {
             m_packets[i].pack(dims, inputs[i]);
     }
 
-    void unpack(const ac::shape& dims, std::vector<ac::mr::pointer<T, Allocator>> outputs) const
+    void unpack(const ac::shape& dims, std::vector<ac::view<T, Allocator>> outputs) const
     {
         ERRCHK(outputs.size() == m_packets.size());
 
@@ -264,13 +264,13 @@ template <typename T, typename Allocator> class acm_pack_strategy_grouped_batche
             m_packets.push_back({segment, nfields});
     }
 
-    void pack(const ac::shape& dims, const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    void pack(const ac::shape& dims, const std::vector<ac::view<T, Allocator>>& inputs)
     {
         for (auto& packet : m_packets)
             packet.pack(dims, inputs);
     }
 
-    void unpack(const ac::shape& dims, std::vector<ac::mr::pointer<T, Allocator>> outputs) const
+    void unpack(const ac::shape& dims, std::vector<ac::view<T, Allocator>> outputs) const
     {
         for (auto& packet : m_packets)
             packet.unpack(dims, outputs);
@@ -289,13 +289,13 @@ template <typename T, typename Allocator> class acm_pack_strategy_packed {
     {
     }
 
-    void pack(const ac::shape& dims, const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    void pack(const ac::shape& dims, const std::vector<ac::view<T, Allocator>>& inputs)
     {
         ERRCHK(inputs.size() == m_npacked);
         acm::pack(dims, m_segment.dims, m_segment.offset, inputs, m_pack_buffer.get());
     }
 
-    void unpack(const ac::shape& dims, std::vector<ac::mr::pointer<T, Allocator>> outputs) const
+    void unpack(const ac::shape& dims, std::vector<ac::view<T, Allocator>> outputs) const
     {
         ERRCHK(outputs.size() == m_npacked);
         acm::unpack(m_pack_buffer.get(), dims, m_segment.dims, m_segment.offset, outputs);
@@ -313,13 +313,13 @@ template <typename T, typename Allocator> class acm_pack_strategy_packed_batched
             m_packets.push_back({segment, npacked});
     }
 
-    void pack(const ac::shape& dims, const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    void pack(const ac::shape& dims, const std::vector<ac::view<T, Allocator>>& inputs)
     {
         for (auto& packet : m_packets)
             packet.pack(dims, inputs);
     }
 
-    void unpack(const ac::shape& dims, std::vector<ac::mr::pointer<T, Allocator>> outputs) const
+    void unpack(const ac::shape& dims, std::vector<ac::view<T, Allocator>> outputs) const
     {
         for (auto& packet : m_packets)
             packet.unpack(dims, outputs);
@@ -340,13 +340,13 @@ template <typename T, typename Allocator> class acm_pack_strategy_batched {
             m_pack_buffers.push_back(ac::buffer<T, Allocator>{prod(segment.dims) * npacked});
     }
 
-    void pack(const ac::shape& mm, const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    void pack(const ac::shape& mm, const std::vector<ac::view<T, Allocator>>& inputs)
     {
         ERRCHK(inputs.size() == m_npacked);
         acm::pack_batched(mm, inputs, m_segments, ac::unwrap_get(m_pack_buffers));
     }
 
-    void unpack(const ac::shape& mm, std::vector<ac::mr::pointer<T, Allocator>> outputs)
+    void unpack(const ac::shape& mm, std::vector<ac::view<T, Allocator>> outputs)
     {
         ERRCHK(outputs.size() == m_npacked);
         acm::unpack_batched(m_segments, ac::unwrap_get(m_pack_buffers), mm, outputs);
@@ -446,8 +446,8 @@ main(int argc, char* argv[])
 
         // Helper functions
         auto reset = [](const std::vector<ac::ndbuffer<T, Allocator>>& reset_inputs,
-                                const std::vector<ac::segment>&                reset_segments,
-                                std::vector<ac::ndbuffer<T, Allocator>>&       reset_outputs) {
+                        const std::vector<ac::segment>&                reset_segments,
+                        std::vector<ac::ndbuffer<T, Allocator>>&       reset_outputs) {
             ERRCHK_MPI(reset_inputs.size() == reset_outputs.size());
             for (size_t i{0}; i < reset_inputs.size(); ++i) {
                 auto tmp{reset_inputs[i].to_host()};
@@ -498,8 +498,8 @@ main(int argc, char* argv[])
             auto unpack = [&packer, &output_ptrs]() { packer.unpack(output_ptrs); };
 
             // Verify that the benchmarked function works correctly
-            init(inputs, refs);                       // Init inputs and refs
-            pack();                                   // Pack inputs
+            init(inputs, refs);               // Init inputs and refs
+            pack();                           // Pack inputs
             reset(inputs, segments, outputs); // Reset outputs
             unpack();
             verify(outputs, refs);
@@ -519,8 +519,8 @@ main(int argc, char* argv[])
             auto unpack = [&packer]() { packer.unpack(); };
 
             // Verify that the benchmarked function works correctly
-            init(inputs, refs);                       // Init inputs and refs
-            pack();                                   // Pack inputs
+            init(inputs, refs);               // Init inputs and refs
+            pack();                           // Pack inputs
             reset(inputs, segments, outputs); // Reset outputs
             unpack();
             verify(outputs, refs);
@@ -534,8 +534,8 @@ main(int argc, char* argv[])
             auto bench = [&packer, &mm, &input_ptrs]() { packer.pack(mm, input_ptrs); };
 
             // Verify that the benchmarked function works correctly
-            init(inputs, refs);                       // Init inputs and refs
-            bench();                                  // Pack inputs
+            init(inputs, refs);               // Init inputs and refs
+            bench();                          // Pack inputs
             reset(inputs, segments, outputs); // Reset outputs
             packer.unpack(mm, ac::unwrap_get(outputs));
             verify(outputs, refs);
@@ -549,8 +549,8 @@ main(int argc, char* argv[])
             auto bench = [&packer, &mm, &input_ptrs]() { packer.pack(mm, input_ptrs); };
 
             // Verify that the benchmarked function works correctly
-            init(inputs, refs);                       // Init inputs and refs
-            bench();                                  // Pack inputs
+            init(inputs, refs);               // Init inputs and refs
+            bench();                          // Pack inputs
             reset(inputs, segments, outputs); // Reset outputs
             packer.unpack(mm, ac::unwrap_get(outputs));
             verify(outputs, refs);
@@ -563,8 +563,8 @@ main(int argc, char* argv[])
             acm_pack_strategy_batched<T, Allocator> packer{segments, inputs.size()};
             auto bench = [&packer, &mm, &input_ptrs]() { packer.pack(mm, input_ptrs); };
             // Verify that the benchmarked function works correctly
-            init(inputs, refs);                       // Init inputs and refs
-            bench();                                  // Pack inputs
+            init(inputs, refs);               // Init inputs and refs
+            bench();                          // Pack inputs
             reset(inputs, segments, outputs); // Reset outputs
             packer.unpack(mm, ac::unwrap_get(outputs));
             verify(outputs, refs);

@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "allocator.h"
-#include "pointer.h"
+#include "view.h"
 
 namespace ac {
 template <typename T, typename Allocator> class buffer {
@@ -56,10 +56,7 @@ template <typename T, typename Allocator> class buffer {
         return data()[i];
     }
 
-    const ac::mr::pointer<T, Allocator> get() const
-    {
-        return ac::mr::pointer<T, Allocator>{size(), data()};
-    }
+    const ac::view<T, Allocator> get() const { return ac::view<T, Allocator>{size(), data()}; }
 
     buffer<T, Allocator> copy() const
     {
@@ -82,7 +79,7 @@ template <typename T, typename Allocator> class buffer {
         return hbuf;
     }
 
-    ac::mr::pointer<T, Allocator> get() { return ac::mr::pointer<T, Allocator>{size(), data()}; }
+    ac::view<T, Allocator> get() { return ac::view<T, Allocator>{size(), data()}; }
 
     void display() const
     {
@@ -133,8 +130,7 @@ migrate(const ac::buffer<T, AllocatorA>& a, ac::buffer<T, AllocatorB>& b)
 #include "errchk_cuda.h"
 
 template <typename T, typename AllocatorA, typename AllocatorB>
-[[deprecated("Use ac::copy_async instead")]]
-void
+[[deprecated("Use ac::copy_async instead")]] void
 migrate_async(const cudaStream_t stream, const ac::buffer<T, AllocatorA>& in,
               ac::buffer<T, AllocatorB>& out)
 {

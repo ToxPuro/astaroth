@@ -29,8 +29,8 @@ main()
         auto d2{h2.to_device()};
 
         // const auto                                    count{h0.size() + h1.size() + h2.size()};
-        std::vector<ac::mr::device_pointer<uint64_t>> inputs{d0.get(), d1.get(), d2.get()};
-        ac::device_buffer<uint64_t>                   output{inputs.size()};
+        std::vector<ac::device_view<uint64_t>> inputs{d0.get(), d1.get(), d2.get()};
+        ac::device_buffer<uint64_t>            output{inputs.size()};
         ac::segmented_reduce(mm, nn, rr, inputs, output.get());
 
         auto host_output{output.to_host()};

@@ -68,8 +68,8 @@ template <typename T, typename Allocator> struct ndbuffer {
     auto end() const { return m_buffer.end(); }
     auto end() { return m_buffer.end(); }
 
-    const ac::mr::pointer<T, Allocator> get() const { return m_buffer.get(); }
-    ac::mr::pointer<T, Allocator>       get() { return m_buffer.get(); }
+    const ac::view<T, Allocator> get() const { return m_buffer.get(); }
+    ac::view<T, Allocator>       get() { return m_buffer.get(); }
 
     ac::shape shape() const { return m_shape; }
 

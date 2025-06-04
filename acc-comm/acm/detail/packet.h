@@ -58,7 +58,7 @@ template <typename T, typename Allocator> class packet {
             ERRCHK_MPI_API(MPI_Comm_free(&m_comm));
     }
 
-    void launch(const MPI_Comm& parent_comm, const std::vector<ac::mr::device_pointer<T>>& inputs)
+    void launch(const MPI_Comm& parent_comm, const std::vector<ac::device_view<T>>& inputs)
     {
         ERRCHK_MPI(!m_in_progress);
         m_in_progress = true;
@@ -116,7 +116,7 @@ template <typename T, typename Allocator> class packet {
         return m_in_progress && send_flag && recv_flag;
     };
 
-    void wait(std::vector<ac::mr::device_pointer<T>>& outputs)
+    void wait(std::vector<ac::device_view<T>>& outputs)
     {
         ERRCHK_MPI(m_in_progress);
         ERRCHK_MPI_API(MPI_Wait(&m_recv_req, MPI_STATUS_IGNORE));

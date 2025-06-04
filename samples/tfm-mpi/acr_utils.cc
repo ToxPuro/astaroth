@@ -26,20 +26,20 @@ get(const AcMeshInfo& info, const AcReal3Param& param)
     return info.real3_params[param];
 }
 
-// std::vector<ac::mr::device_pointer<AcReal>>
+// std::vector<ac::device_view<AcReal>>
 // get(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& group)
 // {
 //     const auto count{vba.mx * vba.my * vba.mz};
 
-//     std::vector<ac::mr::device_pointer<AcReal>> output;
+//     std::vector<ac::device_view<AcReal>> output;
 
 //     for (const auto& field : fields) {
 //         switch (group) {
 //         case BufferGroup::input:
-//             output.push_back(ac::mr::device_pointer<AcReal>{count, vba.in[field]});
+//             output.push_back(ac::device_view<AcReal>{count, vba.in[field]});
 //             break;
 //         case BufferGroup::output:
-//             output.push_back(ac::mr::device_pointer<AcReal>{count, vba.out[field]});
+//             output.push_back(ac::device_view<AcReal>{count, vba.out[field]});
 //             break;
 //         default:
 //             ERRCHK(false);
@@ -134,42 +134,42 @@ get_local_rr()
     return get_local_nn_offset();
 }
 
-ac::mr::device_pointer<AcReal>
+ac::device_view<AcReal>
 make_ptr(const VertexBufferArray& vba, const Field& field, const BufferGroup& type)
 {
     const size_t count{vba.mx * vba.my * vba.mz};
 
     switch (type) {
     case BufferGroup::input:
-        return ac::mr::device_pointer<AcReal>{count, vba.in[field]};
+        return ac::device_view<AcReal>{count, vba.in[field]};
     case BufferGroup::output:
-        return ac::mr::device_pointer<AcReal>{count, vba.out[field]};
+        return ac::device_view<AcReal>{count, vba.out[field]};
     default:
         ERRCHK(false);
         return ac::device_view<AcReal>{};
     }
 }
 
-ac::mr::device_pointer<AcReal>
+ac::device_view<AcReal>
 make_ptr(const VertexBufferArray& vba, const Profile& profile, const BufferGroup& type)
 {
     const size_t count{vba.profiles.count};
 
     switch (type) {
     case BufferGroup::input:
-        return ac::mr::device_pointer<AcReal>{count, vba.profiles.in[profile]};
+        return ac::device_view<AcReal>{count, vba.profiles.in[profile]};
     case BufferGroup::output:
-        return ac::mr::device_pointer<AcReal>{count, vba.profiles.out[profile]};
+        return ac::device_view<AcReal>{count, vba.profiles.out[profile]};
     default:
         ERRCHK(false);
         return ac::mr::device_pointer<AcReal>{};
     }
 }
 
-std::vector<ac::mr::device_pointer<AcReal>>
+std::vector<ac::device_view<AcReal>>
 get_ptrs(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& type)
 {
-    std::vector<ac::mr::device_pointer<AcReal>> ptrs;
+    std::vector<ac::device_view<AcReal>> ptrs;
 
     for (const auto& field : fields)
         ptrs.push_back(make_ptr(vba, field, type));
@@ -177,11 +177,11 @@ get_ptrs(const VertexBufferArray& vba, const std::vector<Field>& fields, const B
     return ptrs;
 }
 
-std::vector<ac::mr::device_pointer<AcReal>>
+std::vector<ac::device_view<AcReal>>
 get_ptrs(const VertexBufferArray& vba, const std::vector<Profile>& profiles,
          const BufferGroup& type)
 {
-    std::vector<ac::mr::device_pointer<AcReal>> ptrs;
+    std::vector<ac::device_view<AcReal>> ptrs;
 
     for (const auto& profile : profiles)
         ptrs.push_back(make_ptr(vba, profile, type));

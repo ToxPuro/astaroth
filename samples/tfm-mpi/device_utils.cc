@@ -24,7 +24,7 @@ swap_buffers(const Device& device, const std::vector<VertexBufferHandle>& handle
         ERRCHK(acDeviceSwapBuffer(device, handle) == AC_SUCCESS);
 }
 
-std::vector<ac::mr::device_pointer<AcReal>>
+std::vector<ac::device_view<AcReal>>
 get_ptrs(const Device& device, const std::vector<Field>& fields, const BufferGroup& type)
 {
     VertexBufferArray vba{};
@@ -33,7 +33,7 @@ get_ptrs(const Device& device, const std::vector<Field>& fields, const BufferGro
     return acr::get_ptrs(vba, fields, type);
 }
 
-std::vector<ac::mr::device_pointer<AcReal>>
+std::vector<ac::device_view<AcReal>>
 get_ptrs(const Device& device, const std::vector<Profile>& profiles, const BufferGroup& type)
 {
     VertexBufferArray vba{};

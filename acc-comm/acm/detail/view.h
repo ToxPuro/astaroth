@@ -5,8 +5,6 @@
 #include "acm/detail/allocator.h"
 #include "acm/detail/type_conversion.h"
 
-#include "acm/detail/experimental/device_utils_experimental.h"
-
 namespace ac {
 
 template <typename T> class base_view {
