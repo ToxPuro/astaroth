@@ -102,7 +102,7 @@ test_reduce_device()
         for (size_t i{0}; i <= num_segments; ++i)
             offsets.push_back(i * stride);
         ac::device_buffer<size_t> doffsets{offsets.size()};
-        ac::mr::copy(ac::mr::host_pointer<size_t>{offsets.size(), offsets.data()}, doffsets.get());
+        ac::copy(ac::mr::host_pointer<size_t>{offsets.size(), offsets.data()}, doffsets.get());
 
         const cudaStream_t stream{nullptr};
 

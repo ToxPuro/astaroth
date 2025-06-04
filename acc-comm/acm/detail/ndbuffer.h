@@ -95,21 +95,21 @@ template <typename T, typename Allocator> struct ndbuffer {
     ndbuffer<T, Allocator> copy() const
     {
         ndbuffer<T, Allocator> buf{shape()};
-        ac::mr::copy(get(), buf.get());
+        ac::copy(get(), buf.get());
         return buf;
     }
 
     ndbuffer<T, ac::mr::device_allocator> to_device() const
     {
         ndbuffer<T, ac::mr::device_allocator> dbuf{shape()};
-        ac::mr::copy(get(), dbuf.get());
+        ac::copy(get(), dbuf.get());
         return dbuf;
     }
 
     ndbuffer<T, ac::mr::host_allocator> to_host() const
     {
         ndbuffer<T, ac::mr::host_allocator> hbuf{shape()};
-        ac::mr::copy(get(), hbuf.get());
+        ac::copy(get(), hbuf.get());
         return hbuf;
     }
 
@@ -132,7 +132,7 @@ template <typename T, typename AllocatorA, typename AllocatorB>
 void
 migrate(const ac::ndbuffer<T, AllocatorA>& a, ac::ndbuffer<T, AllocatorB>& b)
 {
-    ac::mr::copy(a.get(), b.get());
+    ac::copy(a.get(), b.get());
 }
 
 template <typename T>

@@ -243,7 +243,7 @@ set_to_global_iota(const MPI_Comm& comm, const ac::shape& global_nn, const ac::i
         const auto global_index{ac::to_linear(global_coords, global_nn)};
         tmp[i] = global_index + 1;
     }
-    ac::mr::copy(tmp.get(), out);
+    ac::copy(tmp.get(), out);
 }
 
 /**
@@ -305,7 +305,7 @@ verify(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
     task.pack(local_mm, local_nn, rr, din.get());
 
     ac::host_ndbuffer<T> tmp2{local_mm, 0};
-    ac::mr::copy(tmp2.get(), din.get());
+    ac::copy(tmp2.get(), din.get());
 
     bench();
     task.unpack(local_mm, din.get());

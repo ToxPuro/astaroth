@@ -32,7 +32,7 @@ test_pack(const ac::shape& nn, const ac::index& rr)
 
     // Init
     std::iota(hin.begin(), hin.end(), 1);
-    ac::mr::copy(hin.get(), din.get());
+    ac::copy(hin.get(), din.get());
 
     // Pack and unpack
     for (size_t i{0}; i < segments.size(); ++i)
@@ -41,7 +41,7 @@ test_pack(const ac::shape& nn, const ac::index& rr)
     for (size_t i{0}; i < segments.size(); ++i)
         acm::unpack(pack_buffers[i].get(), mm, segments[i].dims, segments[i].offset, {dout.get()});
 
-    ac::mr::copy(dout.get(), hout.get());
+    ac::copy(dout.get(), hout.get());
     ERRCHK(equals(hin.get(), hout.get()));
 
     // Benchmark
@@ -79,13 +79,13 @@ test_pack_batched(const ac::shape& nn, const ac::index& rr)
 
     // Init
     std::iota(hin.begin(), hin.end(), 1);
-    ac::mr::copy(hin.get(), din.get());
+    ac::copy(hin.get(), din.get());
 
     // Pack and unpack
     acm::pack_batched(mm, {din.get()}, segments, unwrap_get(pack_buffers));
     acm::unpack_batched(segments, unwrap_get(pack_buffers), mm, {dout.get()});
 
-    ac::mr::copy(dout.get(), hout.get());
+    ac::copy(dout.get(), hout.get());
     ERRCHK(equals(hin.get(), hout.get()));
 
     // Benchmmark

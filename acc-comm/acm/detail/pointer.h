@@ -1,4 +1,16 @@
 #pragma once
+
+#include "experimental/view.h"
+
+namespace ac::mr {
+
+template <typename T, typename Allocator> using pointer = view<T, Allocator>;
+template <typename T> using host_pointer                = host_view<T>;
+template <typename T> using device_pointer              = device_view<T>;
+
+} // namespace ac::mr
+
+#if 0
 #include <algorithm>
 #include <type_traits>
 
@@ -186,3 +198,5 @@ equals(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b)
             return false;
     return true;
 }
+
+#endif
