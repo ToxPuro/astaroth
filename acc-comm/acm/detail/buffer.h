@@ -133,15 +133,16 @@ migrate(const ac::buffer<T, AllocatorA>& a, ac::buffer<T, AllocatorB>& b)
 #include "errchk_cuda.h"
 
 template <typename T, typename AllocatorA, typename AllocatorB>
-//[[deprecated("Use ac::copy_async instead")]]
+[[deprecated("Use ac::copy_async instead")]]
 void
 migrate_async(const cudaStream_t stream, const ac::buffer<T, AllocatorA>& in,
               ac::buffer<T, AllocatorB>& out)
 {
-    ERRCHK(in.size() == out.size());
-    const cudaMemcpyKind kind{ac::mr::get_kind<AllocatorA, AllocatorB>()};
-    ERRCHK_CUDA_API(
-        cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in[0]), kind, stream));
+    ERRCHK(false);
+    // ERRCHK(in.size() == out.size());
+    // const cudaMemcpyKind kind{ac::mr::get_kind<AllocatorA, AllocatorB>()};
+    // ERRCHK_CUDA_API(
+    //     cudaMemcpyAsync(out.data(), in.data(), in.size() * sizeof(in[0]), kind, stream));
 }
 #else
 template <typename T, typename AllocatorA, typename AllocatorB>
