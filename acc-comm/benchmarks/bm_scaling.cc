@@ -97,7 +97,7 @@ verify_packed(const MPI_Comm& cart_comm, const ac::shape& global_nn, const ac::i
                                   rr,
                                   lbufs[i].data());
 
-    std::vector<ac::mr::device_pointer<T>> lptrs;
+    std::vector<ac::device_view<T>> lptrs;
     for (auto& lbuf : lbufs)
         lptrs.push_back(lbuf.get());
 

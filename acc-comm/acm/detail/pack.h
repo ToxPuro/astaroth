@@ -2,15 +2,15 @@
 
 #include "acm/detail/math_utils.h"
 #include "ntuple.h"
-#include "pointer.h"
 #include "segment.h"
+#include "view.h"
 
 namespace acm {
 
 template <typename T>
 void
 pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
-     const std::vector<ac::mr::host_pointer<T>>& inputs, ac::mr::host_pointer<T> output)
+     const std::vector<ac::host_view<T>>& inputs, ac::host_view<T> output)
 {
     ERRCHK(inputs.size() * prod(block_shape) <= output.size());
     const uint64_t block_nelems{prod(block_shape)};
@@ -33,8 +33,8 @@ pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_o
 
 template <typename T>
 void
-unpack(const ac::mr::host_pointer<T>& input, const ac::shape& mm, const ac::shape& block_shape,
-       const ac::index& block_offset, std::vector<ac::mr::host_pointer<T>> outputs)
+unpack(const ac::host_view<T>& input, const ac::shape& mm, const ac::shape& block_shape,
+       const ac::index& block_offset, std::vector<ac::host_view<T>> outputs)
 {
     ERRCHK(outputs.size() * prod(block_shape) <= input.size());
     const uint64_t block_nelems{prod(block_shape)};
@@ -57,8 +57,8 @@ unpack(const ac::mr::host_pointer<T>& input, const ac::shape& mm, const ac::shap
 
 template <typename T>
 void
-pack_batched(const ac::shape& mm, const std::vector<ac::mr::host_pointer<T>>& inputs,
-             const std::vector<ac::segment>& segments, std::vector<ac::mr::host_pointer<T>> outputs)
+pack_batched(const ac::shape& mm, const std::vector<ac::host_view<T>>& inputs,
+             const std::vector<ac::segment>& segments, std::vector<ac::host_view<T>> outputs)
 {
     ERRCHK(same_size(segments, outputs));
 
@@ -68,9 +68,9 @@ pack_batched(const ac::shape& mm, const std::vector<ac::mr::host_pointer<T>>& in
 
 template <typename T>
 void
-unpack_batched(const std::vector<ac::segment>&             segments,
-               const std::vector<ac::mr::host_pointer<T>>& inputs, const ac::shape& mm,
-               std::vector<ac::mr::host_pointer<T>> outputs)
+unpack_batched(const std::vector<ac::segment>&      segments,
+               const std::vector<ac::host_view<T>>& inputs, const ac::shape& mm,
+               std::vector<ac::host_view<T>> outputs)
 {
     for (size_t i{0}; i < segments.size(); ++i)
         unpack(inputs[i], mm, segments[i].dims, segments[i].offset, outputs);
@@ -80,93 +80,83 @@ unpack_batched(const std::vector<ac::segment>&             segments,
 
 template <typename T>
 void pack(const ac::shape& mm, const ac::shape& block_shape, const ac::index& block_offset,
-          const std::vector<ac::mr::device_pointer<T>>& inputs, ac::mr::device_pointer<T> output);
+          const std::vector<ac::device_view<T>>& inputs, ac::device_view<T> output);
 
 template <typename T>
-void unpack(const ac::mr::device_pointer<T>& input, const ac::shape& mm,
-            const ac::shape& block_shape, const ac::index& block_offset,
-            std::vector<ac::mr::device_pointer<T>> outputs);
+void unpack(const ac::device_view<T>& input, const ac::shape& mm, const ac::shape& block_shape,
+            const ac::index& block_offset, std::vector<ac::device_view<T>> outputs);
 
 template <typename T>
-void pack_batched(const ac::shape& mm, const std::vector<ac::mr::device_pointer<T>>& inputs,
-                  const std::vector<ac::segment>&        segments,
-                  std::vector<ac::mr::device_pointer<T>> outputs);
+void pack_batched(const ac::shape& mm, const std::vector<ac::device_view<T>>& inputs,
+                  const std::vector<ac::segment>& segments,
+                  std::vector<ac::device_view<T>> outputs);
 
 template <typename T>
-void unpack_batched(const std::vector<ac::segment>&               segments,
-                    const std::vector<ac::mr::device_pointer<T>>& inputs, const ac::shape& mm,
-                    std::vector<ac::mr::device_pointer<T>> outputs);
+void unpack_batched(const std::vector<ac::segment>&        segments,
+                    const std::vector<ac::device_view<T>>& inputs, const ac::shape& mm,
+                    std::vector<ac::device_view<T>> outputs);
 
 #define PACK_DTYPE double
 extern template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape,
-                                      const ac::index& block_offset,
-                                      const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                                      ac::mr::device_pointer<PACK_DTYPE> output);
+                                      const ac::index&                                block_offset,
+                                      const std::vector<ac::device_view<PACK_DTYPE>>& inputs,
+                                      ac::device_view<PACK_DTYPE>                     output);
 
-extern template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input,
+extern template void unpack<PACK_DTYPE>(const ac::device_view<PACK_DTYPE>& input,
                                         const ac::shape& mm, const ac::shape& block_shape,
-                                        const ac::index& block_offset,
-                                        std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
+                                        const ac::index&                         block_offset,
+                                        std::vector<ac::device_view<PACK_DTYPE>> outputs);
+
+extern template void pack_batched<PACK_DTYPE>(
+    const ac::shape& mm, const std::vector<ac::device_view<PACK_DTYPE>>& inputs,
+    const std::vector<ac::segment>& segments, std::vector<ac::device_view<PACK_DTYPE>> outputs);
 
 extern template void
-pack_batched<PACK_DTYPE>(const ac::shape&                                       mm,
-                         const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                         const std::vector<ac::segment>&                        segments,
-                         std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
-
-extern template void
-unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                        segments,
-                           const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                           const ac::shape&                                       mm,
-                           std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
+unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                 segments,
+                           const std::vector<ac::device_view<PACK_DTYPE>>& inputs,
+                           const ac::shape& mm, std::vector<ac::device_view<PACK_DTYPE>> outputs);
 #undef PACK_DTYPE
 
 #define PACK_DTYPE uint64_t
 extern template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape,
-                                      const ac::index& block_offset,
-                                      const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                                      ac::mr::device_pointer<PACK_DTYPE> output);
+                                      const ac::index&                                block_offset,
+                                      const std::vector<ac::device_view<PACK_DTYPE>>& inputs,
+                                      ac::device_view<PACK_DTYPE>                     output);
 
-extern template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input,
+extern template void unpack<PACK_DTYPE>(const ac::device_view<PACK_DTYPE>& input,
                                         const ac::shape& mm, const ac::shape& block_shape,
-                                        const ac::index& block_offset,
-                                        std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
+                                        const ac::index&                         block_offset,
+                                        std::vector<ac::device_view<PACK_DTYPE>> outputs);
+
+extern template void pack_batched<PACK_DTYPE>(
+    const ac::shape& mm, const std::vector<ac::device_view<PACK_DTYPE>>& inputs,
+    const std::vector<ac::segment>& segments, std::vector<ac::device_view<PACK_DTYPE>> outputs);
 
 extern template void
-pack_batched<PACK_DTYPE>(const ac::shape&                                       mm,
-                         const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                         const std::vector<ac::segment>&                        segments,
-                         std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
-
-extern template void
-unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                        segments,
-                           const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                           const ac::shape&                                       mm,
-                           std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
+unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                 segments,
+                           const std::vector<ac::device_view<PACK_DTYPE>>& inputs,
+                           const ac::shape& mm, std::vector<ac::device_view<PACK_DTYPE>> outputs);
 #undef PACK_DTYPE
 
 #define PACK_DTYPE int
 extern template void pack<PACK_DTYPE>(const ac::shape& mm, const ac::shape& block_shape,
-                                      const ac::index& block_offset,
-                                      const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                                      ac::mr::device_pointer<PACK_DTYPE> output);
+                                      const ac::index&                                block_offset,
+                                      const std::vector<ac::device_view<PACK_DTYPE>>& inputs,
+                                      ac::device_view<PACK_DTYPE>                     output);
 
-extern template void unpack<PACK_DTYPE>(const ac::mr::device_pointer<PACK_DTYPE>& input,
+extern template void unpack<PACK_DTYPE>(const ac::device_view<PACK_DTYPE>& input,
                                         const ac::shape& mm, const ac::shape& block_shape,
-                                        const ac::index& block_offset,
-                                        std::vector<ac::mr::device_pointer<PACK_DTYPE>> outputs);
+                                        const ac::index&                         block_offset,
+                                        std::vector<ac::device_view<PACK_DTYPE>> outputs);
+
+extern template void pack_batched<PACK_DTYPE>(
+    const ac::shape& mm, const std::vector<ac::device_view<PACK_DTYPE>>& inputs,
+    const std::vector<ac::segment>& segments, std::vector<ac::device_view<PACK_DTYPE>> outputs);
 
 extern template void
-pack_batched<PACK_DTYPE>(const ac::shape&                                       mm,
-                         const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                         const std::vector<ac::segment>&                        segments,
-                         std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
-
-extern template void
-unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                        segments,
-                           const std::vector<ac::mr::device_pointer<PACK_DTYPE>>& inputs,
-                           const ac::shape&                                       mm,
-                           std::vector<ac::mr::device_pointer<PACK_DTYPE>>        outputs);
+unpack_batched<PACK_DTYPE>(const std::vector<ac::segment>&                 segments,
+                           const std::vector<ac::device_view<PACK_DTYPE>>& inputs,
+                           const ac::shape& mm, std::vector<ac::device_view<PACK_DTYPE>> outputs);
 #undef PACK_DTYPE
 
 #endif

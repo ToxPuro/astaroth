@@ -14,8 +14,8 @@
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
 #include "acm/detail/pack.h"
-#include "acm/detail/pointer.h"
 #include "acm/detail/type_conversion.h"
+#include "acm/detail/view.h"
 
 template <typename T>
 static int
@@ -69,8 +69,7 @@ async_write_pipeline(const int device_id, const ac::ndbuffer<T, Allocator>&& sta
 template <typename T, typename Allocator>
 static std::future<int>
 write_async(const MPI_Comm& parent_comm, const int device_id, const ac::shape mm,
-            const ac::shape nn, const ac::index nn_offset,
-            const ac::mr::pointer<T, Allocator>&& input, //
+            const ac::shape nn, const ac::index nn_offset, const ac::view<T, Allocator>&& input, //
             const ac::shape file_dims, const ac::index file_offset, const std::string outfile)
 {
     if (parent_comm != MPI_COMM_NULL) {

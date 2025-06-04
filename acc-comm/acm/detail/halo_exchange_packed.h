@@ -45,14 +45,13 @@ class async_halo_exchange_task {
         }
     }
 
-    void launch(const MPI_Comm&                                   parent_comm,
-                const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    void launch(const MPI_Comm& parent_comm, const std::vector<ac::view<T, Allocator>>& inputs)
     {
         for (auto& packet : m_packets)
             packet->launch(parent_comm, inputs);
     }
 
-    void wait(std::vector<ac::mr::pointer<T, Allocator>> outputs)
+    void wait(std::vector<ac::view<T, Allocator>> outputs)
     {
         // Round-robin busy-wait to choose packet to unpack
         while (!complete()) {

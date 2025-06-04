@@ -13,8 +13,8 @@
 #include "acm/detail/errchk_mpi.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
-#include "acm/detail/pointer.h"
 #include "acm/detail/type_conversion.h"
+#include "acm/detail/view.h"
 
 template <typename T>
 static int

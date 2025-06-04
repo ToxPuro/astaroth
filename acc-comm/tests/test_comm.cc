@@ -203,9 +203,9 @@ main()
         MPI_SYNCHRONOUS_BLOCK_END(cart_comm)
 
         ac::comm::async_halo_exchange_task<UserType, ac::mr::device_allocator>
-                                                      halo_exchange{local_mm, local_nn, rr, 1};
-        std::vector<ac::mr::device_pointer<UserType>> inputs{
-            ac::mr::device_pointer<UserType>{din.size(), din.data()}};
+                                               halo_exchange{local_mm, local_nn, rr, 1};
+        std::vector<ac::device_view<UserType>> inputs{
+            ac::device_view<UserType>{din.size(), din.data()}};
 
         // Pipelined
         halo_exchange.launch(cart_comm, inputs);

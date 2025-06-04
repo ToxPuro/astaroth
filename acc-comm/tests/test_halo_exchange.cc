@@ -121,7 +121,7 @@ verify_custom_packed_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& g
                                   rr,
                                   lbufs[i].data());
 
-    std::vector<ac::mr::device_pointer<T>> lptrs;
+    std::vector<ac::device_view<T>> lptrs;
     for (auto& lbuf : lbufs)
         lptrs.push_back(lbuf.get());
 
@@ -190,7 +190,7 @@ verify_revised_mpi_halo_exchange(const MPI_Comm& cart_comm, const ac::shape& glo
                                   rr,
                                   lbufs[i].data());
 
-    std::vector<ac::mr::device_pointer<T>> lptrs;
+    std::vector<ac::device_view<T>> lptrs;
     for (auto& lbuf : lbufs)
         lptrs.push_back(lbuf.get());
 
@@ -259,7 +259,7 @@ verify_custom_revised_packed_halo_exchange(const MPI_Comm& cart_comm, const ac::
                                   rr,
                                   lbufs[i].data());
 
-    std::vector<ac::mr::device_pointer<T>> lptrs;
+    std::vector<ac::device_view<T>> lptrs;
     for (auto& lbuf : lbufs)
         lptrs.push_back(lbuf.get());
 
@@ -328,7 +328,7 @@ verify_custom_revised_packed_halo_exchange_v2(const MPI_Comm& cart_comm, const a
                                   rr,
                                   lbufs[i].data());
 
-    std::vector<ac::mr::device_pointer<T>> lptrs;
+    std::vector<ac::device_view<T>> lptrs;
     for (auto& lbuf : lbufs)
         lptrs.push_back(lbuf.get());
 
@@ -397,7 +397,7 @@ verify_halo_exchange_mpi_hindexed(const MPI_Comm& cart_comm, const ac::shape& gl
                                   rr,
                                   lbufs[i].data());
 
-    std::vector<ac::mr::device_pointer<T>> lptrs;
+    std::vector<ac::device_view<T>> lptrs;
     for (auto& lbuf : lbufs)
         lptrs.push_back(lbuf.get());
 

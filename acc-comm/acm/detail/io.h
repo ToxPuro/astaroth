@@ -60,9 +60,8 @@ class async_write_task {
     }
 
     template <typename Allocator>
-    void launch_write_collective(const MPI_Comm&                      parent_comm,
-                                 const ac::mr::pointer<T, Allocator>& input,
-                                 const std::string&                   path)
+    void launch_write_collective(const MPI_Comm& parent_comm, const ac::view<T, Allocator>& input,
+                                 const std::string& path)
     {
         ERRCHK_MPI(!m_in_progress);
         m_in_progress = true;
@@ -149,9 +148,8 @@ class batched_async_write_task {
     }
 
     template <typename Allocator>
-    void launch(const MPI_Comm&                                   parent_comm,
-                const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
-                const std::vector<std::string>&                   paths)
+    void launch(const MPI_Comm& parent_comm, const std::vector<ac::view<T, Allocator>>& inputs,
+                const std::vector<std::string>& paths)
     {
         for (size_t i = 0; i < inputs.size(); ++i)
             write_tasks[i]->launch_write_collective(parent_comm, inputs[i], paths[i]);

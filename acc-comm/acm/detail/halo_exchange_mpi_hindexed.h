@@ -22,8 +22,8 @@ template <typename T, typename Allocator> class packet {
 
   public:
     packet(const MPI_Comm& parent_comm, const ac::shape& global_nn, const ac::index& rr,
-           const ac::segment& segment, const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
-           const std::vector<ac::mr::pointer<T, Allocator>>& outputs)
+           const ac::segment& segment, const std::vector<ac::view<T, Allocator>>& inputs,
+           const std::vector<ac::view<T, Allocator>>& outputs)
         : m_comm{parent_comm}
     {
         ERRCHK_MPI(inputs.size() == outputs.size());
@@ -87,8 +87,8 @@ template <typename T, typename Allocator> class halo_exchange {
 
   public:
     halo_exchange(const MPI_Comm& parent_comm, const ac::shape& global_nn, const ac::index& rr,
-                  const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
-                  const std::vector<ac::mr::pointer<T, Allocator>>& outputs)
+                  const std::vector<ac::view<T, Allocator>>& inputs,
+                  const std::vector<ac::view<T, Allocator>>& outputs)
     {
         const auto mm{ac::mpi::get_local_mm(parent_comm, global_nn, rr)};
         const auto nn{ac::mpi::get_local_nn(parent_comm, global_nn)};

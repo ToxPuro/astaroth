@@ -180,8 +180,8 @@ write_async_subdomain_batched(const MPI_Comm& cart_comm, const ac::shape& global
 
     const auto rank{ac::mpi::get_rank(cart_comm)};
 
-    std::vector<ac::mr::device_pointer<T>> inputs;
-    std::vector<std::string>               paths;
+    std::vector<ac::device_view<T>> inputs;
+    std::vector<std::string>        paths;
     for (size_t i{0}; i < naggr_bufs; ++i) {
         inputs.push_back(buf.get());
 

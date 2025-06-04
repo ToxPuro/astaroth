@@ -2,14 +2,14 @@
 
 #include "buffer.h"
 #include "ntuple.h"
-#include "pointer.h"
+#include "view.h"
 
 using UserDatatype = double;
 
 using Dims = ac::ntuple<UserDatatype>;
 
-using HostPointer   = ac::mr::host_pointer<UserDatatype>;
-using DevicePointer = ac::mr::device_pointer<UserDatatype>;
+using HostPointer   = ac::host_view<UserDatatype>;
+using DevicePointer = ac::device_view<UserDatatype>;
 
 using DeviceBuffer                  = ac::device_buffer<UserDatatype>;
 using HostBuffer                    = ac::host_buffer<UserDatatype>;

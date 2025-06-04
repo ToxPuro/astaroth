@@ -6,8 +6,8 @@
 #include "buffer.h"
 #include "pack.h"
 #include "partition.h"
-#include "pointer.h"
 #include "type_conversion.h"
+#include "view.h"
 
 #include "errchk_mpi.h"
 #include "mpi_utils.h"
@@ -69,7 +69,7 @@ template <typename T, typename Allocator> class packet {
     packet(packet&&)                 = delete; // Move constructor
     packet& operator=(packet&&)      = delete; // Move assignment operator
 
-    void launch(const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    void launch(const std::vector<ac::view<T, Allocator>>& inputs)
     {
         ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
         ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
@@ -124,7 +124,7 @@ template <typename T, typename Allocator> class packet {
     }
 
     /** Completes the task */
-    void wait(std::vector<ac::mr::pointer<T, Allocator>> outputs)
+    void wait(std::vector<ac::view<T, Allocator>> outputs)
     {
         ERRCHK_MPI(m_send_req != MPI_REQUEST_NULL);
         ERRCHK_MPI(m_recv_req != MPI_REQUEST_NULL);
@@ -199,7 +199,7 @@ template <typename T, typename Allocator> class halo_exchange {
                                                                        n_max_aggregate_buffers));
     }
 
-    void launch(const std::vector<ac::mr::pointer<T, Allocator>>& inputs)
+    void launch(const std::vector<ac::view<T, Allocator>>& inputs)
     {
         ERRCHK_MPI(complete());
 
@@ -208,7 +208,7 @@ template <typename T, typename Allocator> class halo_exchange {
     }
 
     /** Waits one message and returns */
-    void wait_one(std::vector<ac::mr::pointer<T, Allocator>> outputs)
+    void wait_one(std::vector<ac::view<T, Allocator>> outputs)
     {
         ERRCHK_MPI(!complete());
 
@@ -218,7 +218,7 @@ template <typename T, typename Allocator> class halo_exchange {
     }
 
     /** Waits all message and returns */
-    void wait(std::vector<ac::mr::pointer<T, Allocator>> outputs)
+    void wait(std::vector<ac::view<T, Allocator>> outputs)
     {
         ERRCHK_MPI(!complete());
 

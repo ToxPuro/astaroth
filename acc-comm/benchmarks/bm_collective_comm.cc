@@ -39,8 +39,8 @@ template <typename T, typename Allocator>
 void
 initialize_buffers_for_verification(const ac::shape& global_nn, const ac::shape& global_nn_offset,
                                     const ac::shape& local_mm, const ac::shape& local_nn,
-                                    const ac::index&                           local_rr,
-                                    std::vector<ac::mr::pointer<T, Allocator>> buffers)
+                                    const ac::index&                    local_rr,
+                                    std::vector<ac::view<T, Allocator>> buffers)
 {
     // Initialize to global iota
     for (size_t i{0}; i < buffers.size(); ++i) {
@@ -63,7 +63,7 @@ template <typename T, typename Allocator>
 void
 verify_buffers(const ac::shape& global_nn, const ac::shape& global_nn_offset,
                const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
-               const std::vector<ac::mr::pointer<T, Allocator>>& buffers)
+               const std::vector<ac::view<T, Allocator>>& buffers)
 {
     for (size_t i{0}; i < buffers.size(); ++i) {
         ac::verify_global_iota(global_nn,

@@ -30,7 +30,7 @@ namespace ac {
 template <typename T>
 void
 transform(const ac::shape in_dims, const ac::shape in_subdims, const ac::index in_offset,
-          const ac::mr::device_pointer<T> in, ac::mr::device_pointer<T> out)
+          const ac::device_view<T> in, ac::device_view<T> out)
 {
     const uint64_t block_nelems{prod(in_subdims)};
     const uint64_t tpb{256};
@@ -51,12 +51,11 @@ transform(const ac::shape in_dims, const ac::shape in_subdims, const ac::index i
 }
 
 template void transform<double>(const ac::shape in_dims, const ac::shape in_subdims,
-                                const ac::index in_offset, const ac::mr::device_pointer<double> in,
-                                ac::mr::device_pointer<double> out);
+                                const ac::index in_offset, const ac::device_view<double> in,
+                                ac::device_view<double> out);
 
 template void transform<uint64_t>(const ac::shape in_dims, const ac::shape in_subdims,
-                                  const ac::index                        in_offset,
-                                  const ac::mr::device_pointer<uint64_t> in,
-                                  ac::mr::device_pointer<uint64_t>       out);
+                                  const ac::index in_offset, const ac::device_view<uint64_t> in,
+                                  ac::device_view<uint64_t> out);
 
 } // namespace ac

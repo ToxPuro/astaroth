@@ -5,8 +5,8 @@
 
 #include "buffer.h"
 #include "partition.h"
-#include "pointer.h"
 #include "type_conversion.h"
+#include "view.h"
 
 #include "errchk_mpi.h"
 #include "mpi_utils.h"
@@ -68,7 +68,7 @@ template <typename T, typename Allocator> class packet {
     packet(packet&&)                 = delete; // Move constructor
     packet& operator=(packet&&)      = delete; // Move assignment operator
 
-    void launch(const ac::mr::pointer<T, Allocator>& input, ac::mr::pointer<T, Allocator> output)
+    void launch(const ac::view<T, Allocator>& input, ac::view<T, Allocator> output)
     {
         ERRCHK_MPI(m_send_req == MPI_REQUEST_NULL);
         ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
@@ -193,7 +193,7 @@ template <typename T, typename Allocator> class halo_exchange {
                 std::make_unique<packet<T, Allocator>>(parent_comm, global_nn, rr, segment));
     }
 
-    void launch(const ac::mr::pointer<T, Allocator>& input, ac::mr::pointer<T, Allocator> output)
+    void launch(const ac::view<T, Allocator>& input, ac::view<T, Allocator> output)
     {
         ERRCHK_MPI(complete());
 
@@ -257,8 +257,8 @@ template <typename T, typename Allocator> class halo_exchange_batched {
             m_tasks.push_back(halo_exchange<T, Allocator>{parent_comm, global_nn, rr});
     }
 
-    void launch(const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
-                std::vector<ac::mr::pointer<T, Allocator>>        outputs)
+    void launch(const std::vector<ac::view<T, Allocator>>& inputs,
+                std::vector<ac::view<T, Allocator>>        outputs)
     {
         ERRCHK_MPI(inputs.size() == outputs.size());
         ERRCHK_MPI(inputs.size() <= m_tasks.size());

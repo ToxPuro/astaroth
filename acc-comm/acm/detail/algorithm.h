@@ -4,14 +4,14 @@
 
 #include "errchk.h"
 #include "ntuple.h"
-#include "pointer.h"
 #include "type_conversion.h"
+#include "view.h"
 
 namespace ac {
 
 template <typename T, typename Function>
 void
-transform(const ac::mr::host_pointer<T>& input, const Function& fn, ac::mr::host_pointer<T> output)
+transform(const ac::host_view<T>& input, const Function& fn, ac::host_view<T> output)
 {
     ERRCHK(same_size(input, output));
     std::transform(input.begin(), input.end(), output.begin(), fn);
@@ -19,8 +19,8 @@ transform(const ac::mr::host_pointer<T>& input, const Function& fn, ac::mr::host
 
 template <typename T, typename Function>
 void
-transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b, const Function& fn,
-          ac::mr::host_pointer<T> output)
+transform(const ac::host_view<T>& a, const ac::host_view<T>& b, const Function& fn,
+          ac::host_view<T> output)
 {
     ERRCHK(same_size(a, b, output));
     for (size_t i{0}; i < output.size(); ++i)
@@ -29,8 +29,8 @@ transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b, co
 
 template <typename T, typename Function>
 void
-transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b,
-          const ac::mr::host_pointer<T>& c, const Function& fn, ac::mr::host_pointer<T> output)
+transform(const ac::host_view<T>& a, const ac::host_view<T>& b, const ac::host_view<T>& c,
+          const Function& fn, ac::host_view<T> output)
 {
     ERRCHK(same_size(a, b, c, output));
     for (size_t i{0}; i < output.size(); ++i)
@@ -39,9 +39,8 @@ transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b,
 
 template <typename T, typename Function>
 void
-transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b,
-          const ac::mr::host_pointer<T>& c, const ac::mr::host_pointer<T>& d, const Function& fn,
-          ac::mr::host_pointer<T> output)
+transform(const ac::host_view<T>& a, const ac::host_view<T>& b, const ac::host_view<T>& c,
+          const ac::host_view<T>& d, const Function& fn, ac::host_view<T> output)
 {
     ERRCHK(same_size(a, b, c, d, output));
     for (size_t i{0}; i < output.size(); ++i)
@@ -51,7 +50,7 @@ transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b,
 // More generic but confusing order of parameters needed to resolve ambiguity
 // template <typename T, typename Function, typename... Inputs>
 // void
-// transform(ac::mr::host_pointer<T> output, const Function& fn, const Inputs&... inputs)
+// transform(ac::host_view<T> output, const Function& fn, const Inputs&... inputs)
 // {
 //     static_assert(sizeof...(inputs) > 0);
 //     ERRCHK(same_size(output, inputs...));
@@ -64,8 +63,7 @@ transform(const ac::mr::host_pointer<T>& a, const ac::mr::host_pointer<T>& b,
 
 template <typename T, typename Function>
 void
-transform(const ac::mr::device_pointer<T>& input, const Function& fn,
-          ac::mr::device_pointer<T> output)
+transform(const ac::device_view<T>& input, const Function& fn, ac::device_view<T> output)
 {
     PRINT_LOG_WARNING("not implemented");
 }
@@ -74,9 +72,8 @@ transform(const ac::mr::device_pointer<T>& input, const Function& fn,
 
 template <typename T, typename Function>
 void
-segmented_reduce(const size_t num_segments, const size_t stride,
-                 const ac::mr::host_pointer<T>& input, const Function& fn, const T& initial_value,
-                 ac::mr::host_pointer<T> output)
+segmented_reduce(const size_t num_segments, const size_t stride, const ac::host_view<T>& input,
+                 const Function& fn, const T& initial_value, ac::host_view<T> output)
 {
     for (size_t segment{0}; segment < num_segments; ++segment) {
         output[segment] = std::reduce(input.begin() + segment * stride,
@@ -89,8 +86,8 @@ segmented_reduce(const size_t num_segments, const size_t stride,
 template <typename T>
 void
 xcorr(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
-      const ac::mr::host_pointer<T>& input, const ac::shape& nk,
-      const ac::mr::host_pointer<T>& kernel, ac::mr::host_pointer<T> output)
+      const ac::host_view<T>& input, const ac::shape& nk, const ac::host_view<T>& kernel,
+      ac::host_view<T> output)
 {
     ERRCHK(input.data() != output.data());
     ERRCHK(same_size(mm, nn, nn_offset, nk));
@@ -115,8 +112,8 @@ xcorr(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
 
 // template <typename T>
 // void xcorr(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
-//            const ac::mr::device_pointer<T>& input, const ac::shape& nk,
-//            const ac::mr::device_pointer<T>& kernel, ac::mr::device_pointer<T> output);
+//            const ac::device_view<T>& input, const ac::shape& nk,
+//            const ac::device_view<T>& kernel, ac::device_view<T> output);
 
 #endif
 

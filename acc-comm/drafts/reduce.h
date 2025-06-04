@@ -2,19 +2,19 @@
 #include <algorithm>
 
 #include "ntuple.h"
-#include "pointer.h"
+#include "view.h"
 
 namespace ac {
 
 // template <typename T, typename Allocator>
 // void segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
-//                       const std::vector<ac::mr::pointer<T, Allocator>>& inputs,
-//                       ac::mr::pointer<T, Allocator>                     output);
+//                       const std::vector<ac::view<T, Allocator>>& inputs,
+//                       ac::view<T, Allocator>                     output);
 
 template <typename T>
 void
 segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
-                 const std::vector<ac::mr::host_pointer<T>>& inputs, ac::mr::host_pointer<T> output)
+                 const std::vector<ac::host_view<T>>& inputs, ac::host_view<T> output)
 {
     // Check that the output memory resource can hold all segments
     ERRCHK(inputs.size() == output.size());
@@ -39,8 +39,7 @@ segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac::inde
 
 template <typename T>
 void segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
-                      const std::vector<ac::mr::device_pointer<T>>& inputs,
-                      ac::mr::device_pointer<T>                     output);
+                      const std::vector<ac::device_view<T>>& inputs, ac::device_view<T> output);
 
 #endif
 
@@ -62,7 +61,7 @@ void segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac:
 // void
 // segmented_reduce(const MPI_Comm& comm, const size_t& axis, const ac::shape& dims,
 //                  const ac::shape& subdims, const ac::index& offset,
-//                  const std::vector<ac::mr::host_pointer<T>>& inputs, ac::mr::host_pointer<T>
+//                  const std::vector<ac::host_view<T>>& inputs, ac::host_view<T>
 //                  output)
 // {
 //     ac::segmented_reduce(dims, subdims, offset, inputs, output);
@@ -103,8 +102,8 @@ void segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac:
 // template <typename T>
 // void
 // pack_transform_reduce(const MPI_Comm& comm, const ac::shape& dims, const ac::shape& subdims,
-//                       const ac::index& offset, const std::vector<ac::mr::host_pointer<T>>&
-//                       inputs, ac::mr::host_pointer<T> output)
+//                       const ac::index& offset, const std::vector<ac::host_view<T>>&
+//                       inputs, ac::host_view<T> output)
 // {
 //     static ac::host_buffer<T> pack_buffer{inputs.size() * prod(subdims)};
 

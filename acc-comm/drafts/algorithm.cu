@@ -12,16 +12,16 @@ using index_t = ac::static_ntuple<uint64_t, MAX_NDIMS>;
 
 // template <typename T, typename Function>
 // void
-// transform(const ac::mr::device_pointer<T>& input, const Function& fn,
-//           ac::mr::device_pointer<T> output)
+// transform(const ac::device_view<T>& input, const Function& fn,
+//           ac::device_view<T> output)
 // {
 // }
 
 // template void
-// transform<double, std::function<void(const double&)>>(const ac::mr::device_pointer<double>&
+// transform<double, std::function<void(const double&)>>(const ac::device_view<double>&
 // input,
 //                                                       const std::function<void(const double&)>&
-//                                                       fn, ac::mr::device_pointer<double> output);
+//                                                       fn, ac::device_view<double> output);
 
 namespace ac {
 
@@ -56,8 +56,8 @@ xcorr(const shape_t& mm, const shape_t& nn, const shape_t& nn_offset, const T* i
 template <typename T>
 void
 xcorr(const ac::shape& in_mm, const ac::shape& in_nn, const ac::shape& in_nn_offset,
-      const ac::mr::device_pointer<T>& in_input, const ac::shape& in_nk,
-      const ac::mr::device_pointer<T>& in_kernel, ac::mr::device_pointer<T> in_output)
+      const ac::device_view<T>& in_input, const ac::shape& in_nk,
+      const ac::device_view<T>& in_kernel, ac::device_view<T> in_output)
 {
     ERRCHK(in_input.data() != in_output.data());
     ERRCHK(same_size(in_mm, in_nn, in_nn_offset, in_nk));
@@ -87,13 +87,12 @@ xcorr(const ac::shape& in_mm, const ac::shape& in_nn, const ac::shape& in_nn_off
 }
 
 template void xcorr<double>(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
-                            const ac::mr::device_pointer<double>& input, const ac::shape& nk,
-                            const ac::mr::device_pointer<double>& kernel,
-                            ac::mr::device_pointer<double>        output);
+                            const ac::device_view<double>& input, const ac::shape& nk,
+                            const ac::device_view<double>& kernel, ac::device_view<double> output);
 
 template void xcorr<uint64_t>(const ac::shape& mm, const ac::shape& nn, const ac::shape& nn_offset,
-                              const ac::mr::device_pointer<uint64_t>& input, const ac::shape& nk,
-                              const ac::mr::device_pointer<uint64_t>& kernel,
-                              ac::mr::device_pointer<uint64_t>        output);
+                              const ac::device_view<uint64_t>& input, const ac::shape& nk,
+                              const ac::device_view<uint64_t>& kernel,
+                              ac::device_view<uint64_t>        output);
 
 } // namespace ac

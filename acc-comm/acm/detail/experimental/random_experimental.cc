@@ -1,14 +1,14 @@
 #include "random_experimental.h"
 
-#include <random>
 #include <algorithm>
+#include <random>
 
 #include "acm/detail/type_conversion.h"
 
 namespace acm::experimental {
 
 void
-randomize(ac::mr::host_pointer<double> ptr)
+randomize(ac::host_view<double> ptr)
 {
     std::generate(ptr.begin(), ptr.end(), []() {
         static std::default_random_engine       gen{12345};
@@ -18,13 +18,13 @@ randomize(ac::mr::host_pointer<double> ptr)
 }
 
 void
-randomize(ac::mr::host_pointer<uint64_t> ptr)
+randomize(ac::host_view<uint64_t> ptr)
 {
     std::generate(ptr.begin(), ptr.end(), []() {
-        static std::default_random_engine       gen{12345};
+        static std::default_random_engine      gen{12345};
         static std::uniform_int_distribution<> dist{0};
         return as<uint64_t>(dist(gen));
     });
 }
 
-}
+} // namespace acm::experimental

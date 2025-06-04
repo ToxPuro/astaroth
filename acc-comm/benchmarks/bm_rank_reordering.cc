@@ -81,7 +81,7 @@ template <typename T, typename Allocator> class packet {
     }
 
     void pack(const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
-              const ac::mr::pointer<T, Allocator>& input)
+              const ac::view<T, Allocator>& input)
     {
         const ac::segment m_send_segment{m_recv_segment.dims,
                                          ((local_nn + m_recv_segment.offset - local_rr) %
@@ -94,7 +94,7 @@ template <typename T, typename Allocator> class packet {
                   m_send_buffer.get());
     }
 
-    void unpack(const ac::shape& local_mm, ac::mr::pointer<T, Allocator> output)
+    void unpack(const ac::shape& local_mm, ac::view<T, Allocator> output)
     {
         acm::unpack(m_recv_buffer.get(),
                     local_mm,
@@ -195,13 +195,13 @@ template <typename T, typename Allocator> class halo_exchange {
     }
 
     void pack(const ac::shape& local_mm, const ac::shape& local_nn, const ac::index& local_rr,
-              const ac::mr::pointer<T, Allocator>& input)
+              const ac::view<T, Allocator>& input)
     {
         for (auto& packet : m_packets)
             packet.pack(local_mm, local_nn, local_rr, input);
     }
 
-    void unpack(const ac::shape& local_mm, ac::mr::pointer<T, Allocator> output)
+    void unpack(const ac::shape& local_mm, ac::view<T, Allocator> output)
     {
         for (auto& packet : m_packets)
             packet.unpack(local_mm, output);
@@ -231,7 +231,7 @@ template <typename T, typename Allocator> class halo_exchange {
 template <typename T, typename Allocator>
 static void
 set_to_global_iota(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
-                   ac::mr::pointer<T, Allocator> out)
+                   ac::view<T, Allocator> out)
 {
     const auto           local_mm{ac::mpi::get_local_mm(comm, global_nn, rr)};
     const auto           local_nn{ac::mpi::get_local_nn(comm, global_nn)};

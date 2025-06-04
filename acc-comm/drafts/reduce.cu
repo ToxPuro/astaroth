@@ -27,8 +27,7 @@ template <typename T> class ReduceTask {
         : pack_buffer{count} {};
 
     void reduce(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
-                const std::vector<ac::mr::device_pointer<T>>& inputs,
-                ac::mr::device_pointer<T>                     output)
+                const std::vector<ac::device_view<T>>& inputs, ac::device_view<T> output)
     {
         // Check that the output memory resource can hold all segments
         ERRCHK(inputs.size() == output.size());
@@ -102,7 +101,7 @@ test_reduce_device()
         for (size_t i{0}; i <= num_segments; ++i)
             offsets.push_back(i * stride);
         ac::device_buffer<size_t> doffsets{offsets.size()};
-        ac::copy(ac::mr::host_pointer<size_t>{offsets.size(), offsets.data()}, doffsets.get());
+        ac::copy(ac::host_view<size_t>{offsets.size(), offsets.data()}, doffsets.get());
 
         const cudaStream_t stream{nullptr};
 
@@ -191,21 +190,20 @@ namespace ac {
 template <typename T>
 void
 segmented_reduce(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
-                 const std::vector<ac::mr::device_pointer<T>>& inputs,
-                 ac::mr::device_pointer<T>                     output)
+                 const std::vector<ac::device_view<T>>& inputs, ac::device_view<T> output)
 {
     ReduceTask<T> rt{inputs.size() * prod(subdims)};
     rt.reduce(dims, subdims, offset, inputs, output);
 }
 
 template void segmented_reduce<double>(const ac::shape& dims, const ac::shape& subdims,
-                                       const ac::index&                                   offset,
-                                       const std::vector<ac::mr::device_pointer<double>>& inputs,
-                                       ac::mr::device_pointer<double>                     output);
+                                       const ac::index&                            offset,
+                                       const std::vector<ac::device_view<double>>& inputs,
+                                       ac::device_view<double>                     output);
 
-template void
-segmented_reduce<uint64_t>(const ac::shape& dims, const ac::shape& subdims, const ac::index& offset,
-                           const std::vector<ac::mr::device_pointer<uint64_t>>& inputs,
-                           ac::mr::device_pointer<uint64_t>                     output);
+template void segmented_reduce<uint64_t>(const ac::shape& dims, const ac::shape& subdims,
+                                         const ac::index&                              offset,
+                                         const std::vector<ac::device_view<uint64_t>>& inputs,
+                                         ac::device_view<uint64_t>                     output);
 
 } // namespace ac
