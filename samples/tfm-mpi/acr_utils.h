@@ -23,7 +23,7 @@ int3 get(const AcMeshInfo& info, const AcInt3Param& param);
 AcReal get(const AcMeshInfo& info, const AcRealParam& param);
 AcReal3 get(const AcMeshInfo& info, const AcReal3Param& param);
 
-// std::vector<ac::mr::device_pointer<AcReal>>
+// std::vector<ac::device_view<AcReal>>
 // get(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& group);
 
 void set(const AcIntParam& param, const int value, AcMeshInfo& info);
@@ -41,16 +41,16 @@ ac::index get_global_nn_offset(const AcMeshInfo& info);
 ac::index get_local_nn_offset();
 ac::index get_local_rr();
 
-ac::mr::device_pointer<AcReal> make_ptr(const VertexBufferArray& vba, const Field& field,
+ac::device_view<AcReal> make_ptr(const VertexBufferArray& vba, const Field& field,
                                         const BufferGroup& type);
 
-ac::mr::device_pointer<AcReal> make_ptr(const VertexBufferArray& vba, const Profile& profile,
+ac::device_view<AcReal> make_ptr(const VertexBufferArray& vba, const Profile& profile,
                                         const BufferGroup& type);
 
-std::vector<ac::mr::device_pointer<AcReal>>
+std::vector<ac::device_view<AcReal>>
 get_ptrs(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& type);
 
-std::vector<ac::mr::device_pointer<AcReal>> get_ptrs(const VertexBufferArray& vba,
+std::vector<ac::device_view<AcReal>> get_ptrs(const VertexBufferArray& vba,
                                                      const std::vector<Profile>& profiles,
                                                      const BufferGroup& type);
 
