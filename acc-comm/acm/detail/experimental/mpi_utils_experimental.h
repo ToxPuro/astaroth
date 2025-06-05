@@ -236,7 +236,7 @@ template <typename T, typename Allocator> class buffered_isend {
     {
         ERRCHK_MPI(m_req.complete());
         ac::copy(in, m_buf.get());
-        m_req = ac::mpi::isend(comm, tag, in, dst);
+        m_req = ac::mpi::isend(comm, tag, ac::make_view(in.size(), 0, m_buf.get()), dst);
     }
 
     void wait() { m_req.wait(); }
@@ -259,7 +259,7 @@ template <typename T, typename Allocator> class buffered_iallreduce {
     {
         ERRCHK_MPI(m_req.complete());
         ac::copy(in, m_buf.get());
-        m_req = ac::mpi::iallreduce(comm, in, op, out);
+        m_req = ac::mpi::iallreduce(comm, ac::make_view(in.size(), 0, m_buf.get()), op, out);
     }
 
     void wait() { m_req.wait(); }
@@ -328,5 +328,12 @@ namespace ac::mpi {
 
 /** Select the device and return its id */
 int select_device_lumi();
+
+} // namespace ac::mpi
+
+namespace ac::mpi {
+
+uint64_t rank(const ac::mpi::comm& comm);
+uint64_t size(const ac::mpi::comm& comm);
 
 } // namespace ac::mpi
