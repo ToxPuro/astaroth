@@ -4,9 +4,9 @@
 
 #include <memory>
 
+#include "acm/detail/allocator.h"
 #include "acm/detail/cuda_utils.h" // TODO merge with device_utils.h
 #include "acm/detail/errchk_cuda.h"
-#include "acm/detail/allocator.h"
 
 namespace ac::device {
 // class event {
@@ -88,4 +88,3 @@ get_kind()
 } // namespace ac::device
 
 #endif
-

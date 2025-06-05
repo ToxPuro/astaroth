@@ -21,7 +21,7 @@ test(const ac::mpi::comm& comm)
 
     ac::ndbuffer<T, Allocator> in{local_mm};
     ac::ndbuffer<T, Allocator> out{local_mm};
-    ac::host_ndbuffer<T> model{local_mm};
+    ac::host_ndbuffer<T>       model{local_mm};
 
     // Setup the model solutoon
     const auto nprocs{ac::mpi::size(comm)};
