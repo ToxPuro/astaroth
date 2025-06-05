@@ -192,7 +192,7 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
 		    Profile profiles_in[], const size_t num_profiles_in, Profile profiles_reduce_out[], const size_t num_profiles_reduce_out,
 		    Profile profiles_write_out[], const size_t num_profiles_write_out,
                     KernelReduceOutput outputs_in[], const size_t num_outputs_in, KernelReduceOutput outputs_out[], const size_t num_outputs_out, 
-		    const Volume start, const Volume end,
+		    const Volume start, const Volume end, const int onion_level,
 	            KernelParamsLoader load_func)
 {
     AcTaskDefinition task_def{};
@@ -206,6 +206,10 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
 		    			max(max_halo_in.z,max_halo_out.z)
 	    			    };
     task_def.halo_sizes = max_halo;
+
+    task_def.halo_sizes.x *= onion_level;
+    task_def.halo_sizes.y *= onion_level;
+    task_def.halo_sizes.z *= onion_level;
 
     task_def.start = start;
     task_def.end   = end;

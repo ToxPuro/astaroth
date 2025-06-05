@@ -325,12 +325,12 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel ker
                            Field fields_out[], const size_t num_fields_out,Profile profiles_in[],  const size_t num_profiles_in, 
 			   Profile profiles_reduce_out[], const size_t num_profiles_reduce_out, 
 			   Profile profiles_write_out[], const size_t num_profiles_write_out, 
-			   KernelReduceOutput reduce_outputs_in[], size_t num_outputs_in, KernelReduceOutput reduce_outputs_out[], size_t num_outputs_out, const Volume start, const Volume end,
+			   KernelReduceOutput reduce_outputs_in[], size_t num_outputs_in, KernelReduceOutput reduce_outputs_out[], size_t num_outputs_out, const Volume start, const Volume end, const int onion_level,
 			   KernelParamsLoader loader));
 #else
 /** */
 FUNC_DEFINE(AcTaskDefinition, acComputeWithParams,(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out, const Volume start, const Volume dims, void (*load_func)(ParamLoadingInfo step_info)));
+                           Field fields_out[], const size_t num_fields_out,Profile profiles_in[], const size_t num_profiles_in, Profile profiles_out[], const size_t num_profiles_out, const Volume start, const Volume dims, const int onion_level, void (*load_func)(ParamLoadingInfo step_info)));
 #endif
 
 /** */

@@ -454,7 +454,7 @@ typedef struct
 } KernelCall;
 
 static AcTaskDefinition
-gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream);
+gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream);
 
 void
 check_field_boundconds(const FieldBCs field_boundconds, const std::vector<Field> fields)
@@ -1165,8 +1165,9 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 				get_optimized_kernels(graph,true) :
 				DSLTaskGraphKernels[graph];
 	const auto field_ray_directions = get_field_ray_directions(kernel_calls);
-	for(const auto& current_level_set : level_sets)
+	for(size_t current_level_set_index = 0; current_level_set_index < level_sets.size(); ++current_level_set_index)
 	{
+		const auto& current_level_set = level_sets[current_level_set_index];
 		std::vector<Field> communicated_fields_not_written_to{};
 		std::vector<Field> communicated_fields_written_to{};
 		for(size_t i = 0; i < NUM_FIELDS; ++i)
@@ -1241,7 +1242,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		for(auto& call : current_level_set.calls)
 		{
 			if(call.kernel == AC_NULL_KERNEL) continue;
-			res.push_back(gen_taskgraph_kernel_entry(call,stream));
+			res.push_back(gen_taskgraph_kernel_entry(call,current_level_set_index+1,stream));
 			for(size_t field = 0; field < NUM_FIELDS; ++field)
 				field_written_out_before[field] |= info[call.kernel].written_fields[field];
 
@@ -1329,8 +1330,10 @@ acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 }
 #include "user_constants.h"
 static AcTaskDefinition
-gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
+gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream)
 {
+	constexpr int max_onion_level = 1;
+	onion_level = min(onion_level,max_onion_level);
 	auto log = [&](const auto& elems)
 	{
 		if(!ac_pid()) fprintf(stream,"{");
@@ -1381,9 +1384,9 @@ gen_taskgraph_kernel_entry(const KernelCall call, FILE* stream)
 	}
 	if(!ac_pid()) fprintf(stream,"}");
 	log_launch_bounds(stream,fields.in,fields.out);
-
+	if(!ac_pid())  fprintf(stream,",%d",onion_level);
 	if(!ac_pid()) fprintf(stream,")\n");
 	const auto [start,end] = get_launch_bounds_from_fields(fields.in,fields.out);
-	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,start,end,call.loader);
+	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,start,end,onion_level,call.loader);
 }
 #endif // AC_MPI_ENABLED
