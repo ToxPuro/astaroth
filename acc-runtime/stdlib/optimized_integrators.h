@@ -250,7 +250,7 @@ rk_final(Field f, int step_num)
 		return 0.0;
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_final(real f, real w, int step_num)
+rk_final(Field f, real w, int step_num)
 {
 	if(AC_rk_order == 1)
 		return rk1_final(f,w,step_num)
@@ -262,7 +262,7 @@ rk_final(real f, real w, int step_num)
 		return 0.0;
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_final(real3 f, int step_num)
+rk_final(Field3 f, int step_num)
 {
 	if(AC_rk_order == 1)
 		return rk1_final(f,step_num)
@@ -274,7 +274,7 @@ rk_final(real3 f, int step_num)
 		return real3(0.0,0.0,0.0);
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_final(real3 f, real3 w, int step_num)
+rk_final(Field3 f, real3 w, int step_num)
 {
 	if(AC_rk_order == 1)
 		return rk1_final(f,w,step_num)
