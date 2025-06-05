@@ -21,7 +21,7 @@ test(const ac::mpi::comm& comm)
 
     ac::ndbuffer<T, Allocator> in{local_mm};
     ac::ndbuffer<T, Allocator> out{local_mm};
-    ac::ndbuffer<T, Allocator> model{local_mm};
+    ac::host_ndbuffer<T> model{local_mm};
 
     // Setup the model solutoon
     const auto nprocs{ac::mpi::size(comm)};
@@ -30,44 +30,47 @@ test(const ac::mpi::comm& comm)
 
     // Unbuffered
     ac::to_global_iota(global_nn, global_nn_offset, local_mm, local_nn, local_rr, in.get());
-    MPI_SYNCHRONOUS_BLOCK_START(comm.get());
-    in.display();
-    MPI_SYNCHRONOUS_BLOCK_END(comm.get());
+    // MPI_SYNCHRONOUS_BLOCK_START(comm.get());
+    // in.display();
+    // MPI_SYNCHRONOUS_BLOCK_END(comm.get());
 
     auto req{ac::mpi::iallreduce(comm.get(), in.get(), MPI_SUM, out.get())};
     // Note: in must not be modified before calling wait
     req.wait();
-    ERRCHK_MPI(ac::equals(out.get(), model.get()));
+    ERRCHK_MPI(ac::equals(out.to_host().get(), model.get()));
 
-    MPI_SYNCHRONOUS_BLOCK_START(comm.get());
-    out.display();
-    MPI_SYNCHRONOUS_BLOCK_END(comm.get());
+    // MPI_SYNCHRONOUS_BLOCK_START(comm.get());
+    // out.display();
+    // MPI_SYNCHRONOUS_BLOCK_END(comm.get());
 
     // Buffered
     ac::to_global_iota(global_nn, global_nn_offset, local_mm, local_nn, local_rr, in.get());
     ac::mpi::buffered_iallreduce<T, Allocator> task{};
     task.launch(comm.get(), in.get(), MPI_SUM, out.get());
-    ac::fill(in.get(), -1); // Can modify the in buffer before waiting
+    // ac::fill(in.get(), -1); // Can modify the in buffer before waiting
+    ac::copy(ac::host_buffer<T>{in.size(), -1}.get(), in.get());
     // But not the output buffer
     task.wait();
-    ERRCHK_MPI(ac::equals(out.get(), model.get()));
+    ERRCHK_MPI(ac::equals(out.to_host().get(), model.get()));
 
-    MPI_SYNCHRONOUS_BLOCK_START(comm.get());
-    out.display();
-    MPI_SYNCHRONOUS_BLOCK_END(comm.get());
+    // MPI_SYNCHRONOUS_BLOCK_START(comm.get());
+    // out.display();
+    // MPI_SYNCHRONOUS_BLOCK_END(comm.get());
 
     // Double buffered
     ac::to_global_iota(global_nn, global_nn_offset, local_mm, local_nn, local_rr, in.get());
     ac::mpi::twoway_buffered_iallreduce<T, Allocator> twb_task;
     twb_task.launch(comm.get(), in.get(), MPI_SUM);
-    ac::fill(in.get(), -1);  // Can modify the in buffer before waiting
-    ac::fill(out.get(), -1); // Can modify the out buffer before waiting
+    // ac::fill(in.get(), -1);  // Can modify the in buffer before waiting
+    // ac::fill(out.get(), -1); // Can modify the out buffer before waiting
+    ac::copy(ac::host_buffer<T>{in.size(), -1}.get(), in.get());
+    ac::copy(ac::host_buffer<T>{out.size(), -1}.get(), out.get());
     twb_task.wait(out.get());
-    ERRCHK_MPI(ac::equals(out.get(), model.get()));
+    ERRCHK_MPI(ac::equals(out.to_host().get(), model.get()));
 
-    MPI_SYNCHRONOUS_BLOCK_START(comm.get());
-    out.display();
-    MPI_SYNCHRONOUS_BLOCK_END(comm.get());
+    // MPI_SYNCHRONOUS_BLOCK_START(comm.get());
+    // out.display();
+    // MPI_SYNCHRONOUS_BLOCK_END(comm.get());
 }
 
 int
