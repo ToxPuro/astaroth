@@ -217,7 +217,7 @@ rkf4_error(real3 df, int step_num, real dt)
 		     )
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_intermediate(real f, real df, int step_num, real dt)
+rk_intermediate(Field f, real df, int step_num, real dt)
 {
 	if(AC_rk_order == 1)
 		return rk1_intermediate(f,df,step_num,dt)
@@ -229,7 +229,7 @@ rk_intermediate(real f, real df, int step_num, real dt)
 		return 0.0;
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
-rk_intermediate(real3 f, real3 df, int step_num, real dt)
+rk_intermediate(Field3 f, real3 df, int step_num, real dt)
 {
 	return real3(
 			rk_intermediate(f.x,df.x,step_num,dt),
