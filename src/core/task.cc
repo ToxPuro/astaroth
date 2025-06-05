@@ -400,29 +400,6 @@ get_compute_output_dim(const int id, const size_t ghost, const size_t nn, const 
 	return as_size_t(res);
 }
 size_t
-get_compute_input_position(const int id, const size_t start, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
-{
-	const auto output_position = get_compute_output_position(id,start,ghost,nn,boundary_included);
-	if(depends_on_boundary) 
-	{
-		//TP: the capping by zero is if one wants to compute a pointwise kernel on the halo based on the normal dependency rules the
-		//    the input region is still one NGHOST radius surrounding the computation radius even if no stencils are used (this is needed to make multikernel launches safe
-		//    i.e. kernel B accessess stencil neighbours so kernel C can not update its own point since its out can be the in of kernel B):
-		//    The capping is unsafe if the user would try to use e.g. derx while including the halos but there is a separate safety check for that later
-		return as_size_t(
-						max((int)output_position - (int)ghost,0)
-						);
-	}
-	else return output_position;
-}
-size_t
-get_compute_input_dim(const int id, const size_t ghost, const size_t nn, const bool boundary_included, const bool depends_on_boundary)
-{
-	const auto output_dims = get_compute_output_dim(id,ghost,nn,boundary_included);
-	if(depends_on_boundary) return output_dims + 2*ghost;
-	else return output_dims;
-}
-size_t
 get_exchange_output_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included)
 {
 	    if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
@@ -446,7 +423,69 @@ get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const
 	return res;
 }
 
+Volume
+get_compute_output_position(int3 id, Volume start, Volume ghosts, Volume nn, AcBoundary computes_on_boundary)
+{
+      return (Volume){
+	    get_compute_output_position(id.x,start.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
+	    get_compute_output_position(id.y,start.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
+	    get_compute_output_position(id.z,start.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z)
+      };
+}
+Volume
+get_compute_output_dim(int3 id, Volume ghosts, Volume nn, AcBoundary computes_on_boundary)
+{
+      return (Volume)
+      {
+	      get_compute_output_dim(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
+	      get_compute_output_dim(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
+	      get_compute_output_dim(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z)
+      };
+}
 
+Volume
+get_compute_input_position(const int3 id, const Volume start, const Volume ghost, const Volume nn, const AcBoundary boundary_included, const AcBoundary depends_on_boundary)
+{
+	//TP: the capping by zero is if one wants to compute a pointwise kernel on the halo based on the normal dependency rules the
+	//    the input region is still one NGHOST radius surrounding the computation radius even if no stencils are used (this is needed to make multikernel launches safe
+	//    i.e. kernel B accessess stencil neighbours so kernel C can not update its own point since its out can be the in of kernel B):
+	//    The capping is unsafe if the user would try to use e.g. derx while including the halos but there is a separate safety check for that later
+	//
+	const auto output_position = get_compute_output_position(id,start,ghost,nn,boundary_included);
+	Volume res = output_position;
+	if(depends_on_boundary & BOUNDARY_X) 
+	{
+		res.x = as_size_t(max((int)res.x - (int)ghost.x,0));
+	}
+	if(depends_on_boundary & BOUNDARY_Y) 
+	{
+		res.y = as_size_t(max((int)res.y - (int)ghost.y,0));
+	}
+	if(depends_on_boundary & BOUNDARY_Y) 
+	{
+		res.z = as_size_t(max((int)res.z - (int)ghost.z,0));
+	}
+	return res;
+}
+
+Volume
+get_compute_input_dim(const int3 id, const Volume ghost, const Volume nn, const AcBoundary boundary_included, const AcBoundary depends_on_boundary)
+{
+	auto res = get_compute_output_dim(id,ghost,nn,boundary_included);
+	if(depends_on_boundary & BOUNDARY_X) 
+	{
+		res.x += 2*ghost.x;
+	}
+	if(depends_on_boundary & BOUNDARY_Y) 
+	{
+		res.y += 2*ghost.y;
+	}
+	if(depends_on_boundary & BOUNDARY_Z) 
+	{
+		res.z += 2*ghost.z;
+	}
+	return res;
+}
 
 Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary boundary_included, Volume start, Volume nn, const Volume ghosts, const RegionMemoryInputParams mem_)
     : family(family_), tag(tag_) 
@@ -480,17 +519,9 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       case RegionFamily::Compute_output: {
       const AcBoundary computes_on_boundary = boundary_included;
       // clang-format off
-      position = {
-	    get_compute_output_position(id.x,start.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
-	    get_compute_output_position(id.y,start.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
-	    get_compute_output_position(id.z,start.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z)
-      };
+      position = get_compute_output_position(id,start,ghosts,nn,computes_on_boundary);
       // clang-format on
-      dims = {
-	      get_compute_output_dim(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
-	      get_compute_output_dim(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
-	      get_compute_output_dim(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z),
-      };
+      dims = get_compute_output_dim(id,ghosts,nn,computes_on_boundary);
       if(dims.x == 0 || dims.y == 0 || dims.z == 0)
       {
 	      fprintf(stderr,"Incorrect region dims: %zu,%zu,%zu\n",dims.x,dims.y,dims.z);
@@ -501,17 +532,9 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       case RegionFamily::Compute_input: {
       const AcBoundary computes_on_boundary = boundary_included;
       // clang-format off
-      position = {
-	    get_compute_input_position(id.x,start.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
-	    get_compute_input_position(id.y,start.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y,depends_on_boundary & BOUNDARY_Y),
-	    get_compute_input_position(id.z,start.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z,depends_on_boundary & BOUNDARY_Z)
-      };
+      position = get_compute_input_position(id,start,ghosts,nn,computes_on_boundary,depends_on_boundary);
       // clang-format on
-      dims = {
-	    get_compute_input_dim(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X,depends_on_boundary & BOUNDARY_X),
-	    get_compute_input_dim(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y,depends_on_boundary & BOUNDARY_Y),
-	    get_compute_input_dim(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z,depends_on_boundary & BOUNDARY_Z)
-      };
+      dims = get_compute_input_dim(id,ghosts,nn,computes_on_boundary,depends_on_boundary);
 
       if(dims.x == 0 || dims.y == 0 || dims.z == 0)
       {
