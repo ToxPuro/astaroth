@@ -18,12 +18,12 @@ template <typename T> class base_view {
 
     base_view() = default;
 
-    base_view(const size_t count, T* data)
+    explicit base_view(const size_t count, T* data)
         : m_count{count}, m_data{data}
     {
     }
 
-    base_view(T* begin, T* end)
+    explicit base_view(T* begin, T* end)
         : base_view{as<size_t>(end - begin), begin}
     {
     }
