@@ -4,7 +4,6 @@
 
 #include "errchk.h"
 #include "ntuple.h"
-#include "type_conversion.h"
 #include "view.h"
 
 namespace ac {

@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "allocator.h"
+#include "memory.h"
 #include "view.h"
 
 namespace ac {
