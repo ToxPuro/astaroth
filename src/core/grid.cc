@@ -2188,12 +2188,14 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y  && Region::tag_to_id(tag).y != 0) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
-		if(Region::tag_to_id(tag).x == -1 && (op.boundary & BOUNDARY_X_BOT) == 0) continue;
-		if(Region::tag_to_id(tag).x == +1 && (op.boundary & BOUNDARY_X_TOP) == 0) continue;
-		if(Region::tag_to_id(tag).y == -1 && (op.boundary & BOUNDARY_Y_BOT) == 0) continue;
-		if(Region::tag_to_id(tag).y == +1 && (op.boundary & BOUNDARY_Y_TOP) == 0) continue;
-		if(Region::tag_to_id(tag).z == -1 && (op.boundary & BOUNDARY_Z_BOT) == 0) continue;
-		if(Region::tag_to_id(tag).z == +1 && (op.boundary & BOUNDARY_Z_TOP) == 0) continue;
+
+		bool included = false;
+		included |= (Region::tag_to_id(tag).x == -1 && (op.boundary & BOUNDARY_X_BOT) != 0);
+		included |= (Region::tag_to_id(tag).x == +1 && (op.boundary & BOUNDARY_X_TOP) != 0);
+		included |= (Region::tag_to_id(tag).y == -1 && (op.boundary & BOUNDARY_Y_BOT) != 0);
+		included |= (Region::tag_to_id(tag).y == +1 && (op.boundary & BOUNDARY_Y_TOP) != 0);
+		included |= (Region::tag_to_id(tag).z == -1 && (op.boundary & BOUNDARY_Z_BOT) != 0);
+		included |= (Region::tag_to_id(tag).z == +1 && (op.boundary & BOUNDARY_Z_TOP) != 0);
 
                 if (op.include_boundaries || !Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info,
