@@ -473,6 +473,8 @@ gen_halo_exchange_and_periodic_bcs(
 		const std::vector<Field>& output_fields,
 		const FieldBCs field_boundconds,
 		const int3 direction,
+		const AcBoundary boundary,
+		const std::vector<int> halo_types,
 		const bool before_kernel_call,
 		FILE* stream
 		)
@@ -497,20 +499,28 @@ gen_halo_exchange_and_periodic_bcs(
 		{
 			if(!ac_pid()) fprintf(stream,",Ray_direction(%d,%d,%d)",direction.x,direction.y,direction.z);
 		}
-		const auto [start,end] = get_launch_bounds_from_fields(output_fields,output_fields);
+		const std::tuple<Volume,Volume> bounds = get_launch_bounds_from_fields(output_fields,output_fields);
+		const Volume start = std::get<0>(bounds);
+		const Volume end = std::get<0>(bounds);
 		const bool sending   = (direction == (int3){0,0,0} || !before_kernel_call); 
 		const bool receiving = (direction == (int3){0,0,0} || before_kernel_call); 
 		if(!ac_pid()) fprintf(stream,",sending = %d,receiving = %d",sending,receiving);
+		if(!ac_pid()) fprintf(stream, ",%s",ac_boundary_to_str(boundary));
+		if(!ac_pid()) fprintf(stream,",{");
+		for(const int& halo_type: halo_types)
+			if(!ac_pid()) fprintf(stream, "%d,",halo_type);
+		if(!ac_pid()) fprintf(stream,"}");
+
 		if(!ac_pid()) fprintf(stream, ")\n");
-		res.push_back(acHaloExchange(output_fields,start,end,direction,sending,receiving));
+		res.push_back(acHaloExchange(output_fields,start,end,direction,sending,receiving,boundary,halo_types));
 		const Field one_communicated_field = output_fields[0];
 		const auto x_boundcond = !info[AC_dimension_inactive].x ? field_boundconds[one_communicated_field][0] : (BoundCond){};
 		const auto y_boundcond = !info[AC_dimension_inactive].y ? field_boundconds[one_communicated_field][2] : (BoundCond){};
 		const auto z_boundcond = !info[AC_dimension_inactive].z ? field_boundconds[one_communicated_field][4] : (BoundCond){};
 		
-		const bool x_periodic = !info[AC_dimension_inactive].x && x_boundcond.kernel == BOUNDCOND_PERIODIC;
-		const bool y_periodic = !info[AC_dimension_inactive].y && y_boundcond.kernel == BOUNDCOND_PERIODIC;
-		const bool z_periodic = !info[AC_dimension_inactive].z && z_boundcond.kernel == BOUNDCOND_PERIODIC;
+		const bool x_periodic = ((boundary & BOUNDARY_X) != 0) && !info[AC_dimension_inactive].x && x_boundcond.kernel == BOUNDCOND_PERIODIC;
+		const bool y_periodic = ((boundary & BOUNDARY_Y) != 0) && !info[AC_dimension_inactive].y && y_boundcond.kernel == BOUNDCOND_PERIODIC;
+		const bool z_periodic = ((boundary & BOUNDARY_Z) != 0) && !info[AC_dimension_inactive].z && z_boundcond.kernel == BOUNDCOND_PERIODIC;
 
 		//TP: for some reason specifying periodic bc as a single task gives better perf as of 8.1.2025
 		const bool all_periodic = x_periodic && y_periodic && z_periodic;
@@ -523,32 +533,53 @@ gen_halo_exchange_and_periodic_bcs(
 				log_launch_bounds(stream,output_fields,output_fields);
 				if(!ac_pid()) fprintf(stream,")\n");
 		}
-		else 
+		else if(x_periodic && y_periodic)
 		{
-			if(x_periodic)
-			{
-				res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end));
-				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
+				res.push_back(acBoundaryCondition(BOUNDARY_XY,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XY,");
 				log_fields(output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
 				if(!ac_pid()) fprintf(stream,")\n");
-			}
-			if(y_periodic)
-			{
-				res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end));
-				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
+		}
+		else if(x_periodic && z_periodic)
+		{
+				res.push_back(acBoundaryCondition(BOUNDARY_XZ,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XZ,");
 				log_fields(output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
 				if(!ac_pid()) fprintf(stream,")\n");
-			}
-			if(z_periodic)
-			{
-				res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end));
-				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
+		}
+		else if(y_periodic && z_periodic)
+		{
+				res.push_back(acBoundaryCondition(BOUNDARY_YZ,BOUNDCOND_PERIODIC,output_fields,start,end));
+				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_YZ,");
 				log_fields(output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
 				if(!ac_pid()) fprintf(stream,")\n");
-			}
+		}
+		else if(x_periodic)
+		{
+			res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end));
+			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
+			log_fields(output_fields);
+			log_launch_bounds(stream,output_fields,output_fields);
+			if(!ac_pid()) fprintf(stream,")\n");
+		}
+		else if(y_periodic)
+		{
+			res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end));
+			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
+			log_fields(output_fields);
+			log_launch_bounds(stream,output_fields,output_fields);
+			if(!ac_pid()) fprintf(stream,")\n");
+		}
+		else if(z_periodic)
+		{
+			res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end));
+			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
+			log_fields(output_fields);
+			log_launch_bounds(stream,output_fields,output_fields);
+			if(!ac_pid()) fprintf(stream,")\n");
 		}
 		return res;
 }
@@ -557,6 +588,7 @@ gen_halo_exchange_and_boundconds(
 		const std::vector<Field>& fields,
 		const std::vector<Field>& communicated_fields,
 		const std::array<int,NUM_FIELDS>& communicated_boundaries,
+		const std::array<int,NUM_FIELDS>& halo_types,
 		const FieldBCs field_boundconds,
 		const std::array<std::vector<int3>,NUM_FIELDS> field_ray_directions,
 		const bool before_kernel_call,
@@ -587,28 +619,35 @@ gen_halo_exchange_and_boundconds(
 			bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end();
 			if(communicated) output_fields.push_back(field);
 		}
+		auto pop_same = [&](auto& src, const auto& info_arr, auto& dst)
+		{
+			dst.push_back(src.front());
+			const auto info_var = info_arr[dst[0]];
+			src.pop_front();
+			auto it = src.begin();
+			while (it != src.end()) {
+			    if (info_arr[*it] == info_var) {
+			        dst.push_back(std::move(*it));
+				//Erase returns the next iterator
+			        it = src.erase(it);
+			    } else {
+			        ++it;
+			    }
+			}
+			return dst;
+		};
 		if(output_fields.size() > 0)
 		{
 			if(!no_communication)
 			{
 				std::deque<Field> out_fields{};
+				std::array<int3,NUM_FIELDS> fields_dims{};
+				for(int field = 0; field < NUM_FIELDS; ++field) fields_dims[field] = info[vtxbuf_dims[field]];
 				for(auto& field : output_fields) out_fields.push_back(field);
 				while(!out_fields.empty())
 				{
-					std::vector<Field> same_dims_fields{}; 
-					same_dims_fields.push_back(out_fields.front());
-					const int3 dims = info[vtxbuf_dims[same_dims_fields[0]]];
-					out_fields.pop_front();
-					auto it = out_fields.begin();
-					while (it != out_fields.end()) {
-					    if (info[vtxbuf_dims[*it]] == dims) {
-					        same_dims_fields.push_back(std::move(*it));
-						//Erase returns the next iterator
-					        it = out_fields.erase(it);
-					    } else {
-					        ++it;
-					    }
-					}
+					std::vector<Field> same_dims_fields{};
+					pop_same(out_fields,fields_dims,same_dims_fields);
 					for(int x_dir = -1; x_dir <= 1; ++x_dir)
 					{
 						for(int y_dir = -1; y_dir <= 1; ++y_dir)
@@ -616,14 +655,21 @@ gen_halo_exchange_and_boundconds(
 							for(int z_dir = -1; z_dir <= 1; ++z_dir)
 							{
 								const int3 dir = (int3){x_dir,y_dir,z_dir};
-								std::vector<Field> same_direction_fields{};
+								std::deque<Field> same_direction_fields{};
 								for(auto& field : same_dims_fields)
 								{
 									if(std::find(field_ray_directions[field].begin(), field_ray_directions[field].end(),dir) != field_ray_directions[field].end()) 
 										same_direction_fields.push_back(field);
 								}
-								const std::vector<AcTaskDefinition> halos_and_periodic = gen_halo_exchange_and_periodic_bcs(same_direction_fields,field_boundconds,dir,before_kernel_call,stream);
-								for(auto& elem: halos_and_periodic) res.push_back(elem);
+								while(!same_direction_fields.empty())
+								{
+									std::vector<Field> same_boundary_communicated_fields{}; 
+									pop_same(same_direction_fields,communicated_boundaries,same_boundary_communicated_fields);
+									std::vector<int> out_halo_types{};
+									for(auto& field: same_boundary_communicated_fields) out_halo_types.push_back(halo_types[field]);
+									const std::vector<AcTaskDefinition> halos_and_periodic = gen_halo_exchange_and_periodic_bcs(same_boundary_communicated_fields,field_boundconds,dir,AcBoundary(communicated_boundaries[same_boundary_communicated_fields[0]]),out_halo_types,before_kernel_call,stream);
+									for(auto& elem: halos_and_periodic) res.push_back(elem);
+								}
 							}
 						}
 					}
@@ -776,6 +822,7 @@ typedef struct
 	std::vector<KernelCall> calls;
 	std::vector<Field> fields_communicated_before;
 	std::array<int,NUM_FIELDS> communicated_boundaries;
+	std::array<int,NUM_FIELDS> halo_types;
 } level_set;
 
 
@@ -834,6 +881,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 	int n_level_sets = 0;
 	std::array<int,MAX_TASKS> call_level_set{};
 	std::array<std::array<int, MAX_TASKS>,NUM_VTXBUF_HANDLES> field_needs_to_be_communicated_before_level_set{};
+	std::array<std::array<int, MAX_TASKS>,NUM_VTXBUF_HANDLES> halo_types_level_set{};
 
 	std::fill(call_level_set.begin(),call_level_set.end(),-1);
 	
@@ -876,6 +924,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 						if(info[k].stencils_accessed[j][stencil])
 						{
 							field_need_halo_to_be_in_sync[j] |= get_stencil_boundaries(Stencil(stencil));
+							halo_types_level_set[j][n_level_sets] = max(halo_types_level_set[j][n_level_sets],get_stencil_halo_type(Stencil(stencil)));
 						}
 					}
 					if(info[k].read_fields[j] && computes_across_halos)
@@ -936,16 +985,18 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 
 		std::vector<Field> tmp{};
 		std::array<int,NUM_FIELDS> boundaries{};
+		std::array<int,NUM_FIELDS> halo_types{};
 		for(size_t i = 0; i < NUM_FIELDS; ++i)
 		{
 			Field field = static_cast<Field>(i);
 			boundaries[field] = field_needs_to_be_communicated_before_level_set[i][level_set_index];
+			halo_types[field] = halo_types_level_set[i][level_set_index];
 			if(field_needs_to_be_communicated_before_level_set[i][level_set_index])
 			{
 				tmp.push_back(field);
 			}
 		}
-		level_sets.push_back((level_set){level_set_calls,tmp,boundaries});
+		level_sets.push_back((level_set){level_set_calls,tmp,boundaries,halo_types});
 	}
 	return level_sets;
 }
@@ -1131,6 +1182,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		  communicated_fields_written_to,
 		  current_level_set.fields_communicated_before,
 		  current_level_set.communicated_boundaries,
+		  current_level_set.halo_types,
 		  field_boundconds,
 		  field_ray_directions,
 		  true,
@@ -1142,6 +1194,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		  communicated_fields_not_written_to,
 		  current_level_set.fields_communicated_before,
 		  current_level_set.communicated_boundaries,
+		  current_level_set.halo_types,
 		  field_boundconds,
 		  field_ray_directions,
 		  true,
@@ -1198,6 +1251,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		  communicated_fields_written_to,
 		  current_level_set.fields_communicated_before,
 		  current_level_set.communicated_boundaries,
+		  current_level_set.halo_types,
 		  field_boundconds,
 		  field_ray_directions,
 		  false,
@@ -1209,6 +1263,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		  communicated_fields_not_written_to,
 		  current_level_set.fields_communicated_before,
 		  current_level_set.communicated_boundaries,
+		  current_level_set.halo_types,
 		  field_boundconds,
 		  field_ray_directions,
 		  false,

@@ -82,8 +82,7 @@ typedef struct
 
 typedef struct
 {
-	const Field*   fields;
-	const size_t   num_fields;
+	std::vector<Field> fields;
 	const Profile* profiles;
 	const size_t   num_profiles;
 	const KernelReduceOutput* reduce_outputs;
@@ -118,6 +117,7 @@ struct Region {
 
     static int id_to_tag(int3 id);
     static int3 tag_to_id(int tag);
+    static int tag_to_facet_class(int tag);
 
     static AcBoundary boundary(uint3_64 decomp, int pid, int tag, AcProcMappingStrategy proc_mapping_strategy);
     static AcBoundary boundary(uint3_64 decomp, int3 pid3d, int3 id);

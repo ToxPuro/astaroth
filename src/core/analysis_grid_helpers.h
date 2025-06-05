@@ -287,6 +287,15 @@ get_stencil_dims(const Stencil stencil)
 	}
 	return std::tuple<int3,int3>{min_radius,max_radius};
 }
+static UNUSED int
+get_stencil_halo_type(const Stencil stencil)
+{
+	const auto [min,max] = get_stencil_dims(stencil);
+	const int x = (min.x != 0 || max.x != 0) ? 1 : 0;
+	const int y = (min.y != 0 || max.y != 0) ? 1 : 0;
+	const int z = (min.z != 0 || max.z != 0) ? 1 : 0;
+	return x+y+z;
+}
 
 static bool
 kernel_calls_ray(const AcKernel kernel, const AcRay ray)

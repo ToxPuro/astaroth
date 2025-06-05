@@ -86,6 +86,7 @@ typedef struct Grid {
     Volume nn;
     std::shared_ptr<AcTaskGraph> default_tasks;
     std::shared_ptr<AcTaskGraph> halo_exchange_tasks;
+    std::shared_ptr<AcTaskGraph> periodic_bc_tasks;
     size_t mpi_tag_space_count;
     bool mpi_initialized;
     bool vertex_buffer_copied_from_user[NUM_VTXBUF_HANDLES]{};
@@ -842,12 +843,24 @@ acGridInitBase(const AcMesh user_mesh)
 #endif
     {
 	    std::vector<Field> all_comm_fields_vec{};
+	    std::vector<int> halo_types{};
 	    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
-		if(vtxbuf_is_communicated[i]) all_comm_fields_vec.push_back(Field(i));
+		if(vtxbuf_is_communicated[i]) 
+		{
+			all_comm_fields_vec.push_back(Field(i));
+			halo_types.push_back(3);
+		}
 	    }
 	    grid.halo_exchange_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph({
-		    			acHaloExchange(all_comm_fields_vec)
+		    			acHaloExchange(all_comm_fields_vec,halo_types)
 					}));
+    	    if(grid.submesh.info[AC_fully_periodic_grid])
+	    {
+	    		grid.periodic_bc_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph({
+            				acBoundaryCondition(get_full_boundary(), BOUNDCOND_PERIODIC,all_comm_fields_vec,halo_types),
+					}));
+	    }
+
     }
     acAnalysisLoadMeshInfo(acGridGetLocalMeshInfo());
     //Refresh log files
@@ -877,6 +890,7 @@ acGridQuit(void)
 
     grid.default_tasks = nullptr;
     grid.halo_exchange_tasks    = nullptr;
+    grid.periodic_bc_tasks = nullptr;
 
     grid.initialized   = false;
     grid.decomposition = (uint3_64){0, 0, 0};
@@ -2762,46 +2776,12 @@ acGridHaloExchange()
 AcResult
 acGridPeriodicBoundconds(const Stream stream)
 {
+    (void)stream;
     if(!grid.submesh.info[AC_fully_periodic_grid])
     {
 	    fatal("%s","acGridPeriodicBoundconds assumes fully periodic grid!\n");
     }
-#ifndef AC_INTEGRATION_ENABLED
-    (void)stream;
-    return AC_FAILURE;
-#else
-    ERRCHK(grid.initialized);
-    acGridSynchronizeStream(stream);
-    for (auto& halo_task : grid.default_tasks->halo_tasks) {
-        halo_task->syncVBA();
-    	if(halo_task->sendingToItself())
-        	halo_task->move();
-    }
-    for (auto& halo_task : grid.default_tasks->halo_tasks) {
-    	if(halo_task->sendingToItself()) continue;
-        halo_task->pack();
-        halo_task->exchange();
-    }
-
-    for (auto& halo_task : grid.default_tasks->halo_tasks) {
-    	if(halo_task->sendingToItself()) continue;
-        halo_task->wait_recv();
-        halo_task->unpack();
-        halo_task->sync();
-    }
-
-    for (auto& halo_task : grid.default_tasks->halo_tasks) {
-    	if(halo_task->sendingToItself()) continue;
-        halo_task->wait_send();
-    }
-
-    for (auto& halo_task : grid.default_tasks->halo_tasks) {
-    	if(halo_task->sendingToItself())
-        	halo_task->sync();
-    }
-    
-    return AC_SUCCESS;
-#endif
+    return acGridExecuteTaskGraph(grid.periodic_bc_tasks.get(), 1);
 }
 size_t
 get_n_global_points()

@@ -1050,6 +1050,14 @@ static inline acHaloExchange(std::vector<Field> fields)
 }
 
 AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields, std::vector<int> halo_types)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false,halo_types.data());
+}
+
+AcTaskDefinition
 static inline acReduceInRayDirection(std::vector<Field> fields, const int3 ray_direction)
 {
     return BASE_FUNC_NAME(acReduceInRayDirection)(fields.data(), fields.size(),ray_direction);
@@ -1058,13 +1066,18 @@ static inline acReduceInRayDirection(std::vector<Field> fields, const int3 ray_d
 AcTaskDefinition
 static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end)
 {
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false);
+
+    std::vector<int> halo_types{};
+    for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back(2);
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false,halo_types.data());
 }
 
 AcTaskDefinition
 static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving)
 {
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false);
+    std::vector<int> halo_types{};
+    for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back(2);
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false,halo_types.data());
 }
 
 AcTaskDefinition
@@ -1072,7 +1085,9 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
 {
     const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false);
+    std::vector<int> halo_types{};
+    for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back(2);
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false,halo_types.data());
 }
 
 AcTaskDefinition
@@ -1080,7 +1095,23 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
 {
     const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false);
+    std::vector<int> halo_types{};
+    for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back(2);
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data());
+}
+
+AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary)
+{
+    std::vector<int> halo_types{};
+    for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back(2);
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data());
+}
+
+AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const std::vector<int> halo_types)
+{
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data());
 }
 
 AcTaskDefinition
@@ -1088,7 +1119,9 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
 {
     const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,false);
+    std::vector<int> halo_types{};
+    for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back(2);
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,false,halo_types.data());
 }
 
 AcTaskDefinition
@@ -1096,7 +1129,9 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
 {
     const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,include_boundaries);
+    std::vector<int> halo_types{};
+    for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back(2);
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,include_boundaries,halo_types.data());
 }
 
 static inline
@@ -1122,6 +1157,16 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
 
 static inline
 AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields, const std::vector<int> halo_types)
+{
+    const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
+    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), start,end, halo_types.data(), loader);
+}
+
+static inline
+AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out)
 {
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
@@ -1133,7 +1178,9 @@ AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, const Volume start, const Volume end)
 {
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
-    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), start, end, loader);
+    std::vector<int> halo_types{};
+    for(size_t i = 0; i < fields_out.size(); ++i) halo_types.push_back(2);
+    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), start, end, halo_types.data(), loader);
 }
 
 static inline
@@ -1141,7 +1188,17 @@ AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields,const Volume start, const Volume end)
 {
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
-    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), start, end, loader);
+    std::vector<int> halo_types{};
+    for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back(2);
+    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), start, end, halo_types.data(), loader);
+}
+
+static inline
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields,const Volume start, const Volume end, const std::vector<int> halo_types)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
+    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), start, end, halo_types.data(), loader);
 }
 
 static inline
