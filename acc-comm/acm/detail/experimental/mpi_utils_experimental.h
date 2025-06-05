@@ -233,7 +233,7 @@ template <typename T, typename Allocator> class buffered_isend {
                 const int dst)
     {
         ERRCHK_MPI(m_req.complete());
-        ac::copy(in, m_buf);
+        ac::copy(in, m_buf.get());
         m_req = ac::mpi::isend(comm, tag, in, dst);
     }
 
@@ -256,7 +256,7 @@ template <typename T, typename Allocator> class buffered_iallreduce {
                 ac::base_view<U> out)
     {
         ERRCHK_MPI(m_req.complete());
-        ac::copy(in, m_buf);
+        ac::copy(in, m_buf.get());
         m_req = ac::mpi::iallreduce(comm, in, op, out);
     }
 
