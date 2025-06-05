@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include "acm/detail/view.h"
+#include "acm/detail/memory.h"
 
 int
 main()
