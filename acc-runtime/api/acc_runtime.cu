@@ -1709,18 +1709,25 @@ void printProgressBar(FILE* stream, const int progress) {
     	fprintf(stream,"] %d%%", progress);
 }
 void
+printAutotuningStatus(const AcKernel kernel, const float best_time, const int progress)
+{
+   if(grid_pid != 0) return;
+   fprintf(stderr,"\nAutotuning %s ",kernel_names[kernel]);
+   printProgressBar(stderr,progress);
+   if(best_time != INFINITY) fprintf(stderr," %14e",(double)best_time);
+   if (progress == 100) fprintf(stderr,"\n");
+   fflush(stderr);
+}
+
+void
 logAutotuningStatus(const size_t counter, const size_t num_samples, const AcKernel kernel, const float best_time)
 {
     const AcReal percent_of_num_samples = AcReal(num_samples)/100.0;
-    for (size_t progress = 0; progress <= 100; ++progress)
+    for (size_t progress = 0; progress <= 90; ++progress)
     {
-	      if (counter == floor(percent_of_num_samples*progress)  && grid_pid == 0 && (progress % 10 == 0))
+	      if (counter == floor(percent_of_num_samples*progress)  && (progress % 10 == 0))
 	      {
-    			fprintf(stderr,"\nAutotuning %s ",kernel_names[kernel]);
-    			printProgressBar(stderr,progress);
-			if(best_time != INFINITY) fprintf(stderr," %14e",(double)best_time);
-			if (progress == 100) fprintf(stderr,"\n");
-			fflush(stderr);
+		        printAutotuningStatus(kernel,best_time,progress);
 	      }
     }
 }
@@ -1941,6 +1948,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         // fflush(stdout);
   }
   best_measurement =  parallel_autotuning ? gather_best_measurement(best_measurement) : best_measurement;
+  if(log) printAutotuningStatus(kernel,best_measurement.time,100);
   c.tpb = best_measurement.tpb;
   if(grid_pid == 0)
   {
