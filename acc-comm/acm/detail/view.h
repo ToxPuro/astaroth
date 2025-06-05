@@ -3,8 +3,8 @@
 #include <future>
 
 #include "acm/detail/allocator.h"
-#include "acm/detail/type_conversion.h"
 #include "acm/detail/device_utils.h"
+#include "acm/detail/type_conversion.h"
 
 namespace ac {
 
@@ -102,6 +102,13 @@ equals(const ac::host_view<T>& a, const ac::host_view<U>& b)
             return false;
 
     return true;
+}
+
+template <typename T>
+void
+fill(ac::host_view<T> view, const T& value)
+{
+    std::fill(view.begin(), view.end(), value);
 }
 
 #if defined(ACM_DEVICE_ENABLED)
