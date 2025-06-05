@@ -1948,7 +1948,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         // fflush(stdout);
   }
   best_measurement =  parallel_autotuning ? gather_best_measurement(best_measurement) : best_measurement;
-  if(log) printAutotuningStatus(kernel,best_measurement.time,100);
+  if(log) printAutotuningStatus(kernel,best_measurement.time/num_iters,100);
   c.tpb = best_measurement.tpb;
   if(grid_pid == 0)
   {
