@@ -140,7 +140,9 @@ class request {
      */
     explicit request(const MPI_Request& req = MPI_REQUEST_NULL)
         : m_req{new MPI_Request{req}, [](MPI_Request* ptr) {
-                    ERRCHK_MPI(*ptr == MPI_REQUEST_NULL);
+                    ERRCHK_MPI_EXPR_DESC(*ptr == MPI_REQUEST_NULL,
+                                         "Attempted to destruct a request still in flight. Ensure "
+                                         "wait is called properly before leaving scope.");
                     delete ptr;
                 }}
     {
