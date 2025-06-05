@@ -190,12 +190,33 @@ kernel_does_only_profile_reductions(const AcKernel kernel, const AcProfileType p
 	return kernel_reduces_only_profiles(kernel,prof_type);
 }
 
+static bool
+kernel_calls_ray(const AcKernel kernel, const AcRay ray)
+{
+	const auto info = get_kernel_analysis_info();
+	for(int field = 0; field < NUM_FIELDS; ++field)
+	{
+		if(info[kernel].ray_accessed[field][ray]) return true;
+	}
+	return false;
+}
+static bool
+kernel_uses_rays(const AcKernel kernel)
+{
+	for(int ray = 0; ray < NUM_RAYS; ++ray)
+	{
+		if(kernel_calls_ray(kernel,AcRay(ray))) return true;
+	}
+	return false;
+}
 
 static UNUSED bool
 kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
 {
 	if(kernel_reduces_something(kernel)) return false;
 	if(kernel_updates_vtxbuf(kernel))    return false;
+	if(kernel_updates_vtxbuf(kernel))    return false;
+	if(kernel_uses_rays(kernel))    return false;
 	const std::array<AcProfileType,9> profile_types =
 	{
 		PROFILE_X,
@@ -297,16 +318,6 @@ get_stencil_halo_type(const Stencil stencil)
 	return x+y+z;
 }
 
-static bool
-kernel_calls_ray(const AcKernel kernel, const AcRay ray)
-{
-	const auto info = get_kernel_analysis_info();
-	for(int field = 0; field < NUM_FIELDS; ++field)
-	{
-		if(info[kernel].ray_accessed[field][ray]) return true;
-	}
-	return false;
-}
 static bool
 kernel_calls_stencil(const AcKernel kernel, const Stencil stencil)
 {

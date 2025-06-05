@@ -124,7 +124,7 @@ struct Region {
     static bool is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy);
     static bool is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary);
 
-    Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary computes_on_boundary, Volume position_, Volume dims_, const Volume ghosts, const RegionMemoryInputParams);
+    Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary computes_on_boundary, Volume position_, Volume dims_, const Volume ghosts, const RegionMemoryInputParams, const int max_comp_facet_class);
     Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, Volume halos_, const RegionMemoryInputParams);
     Region(Volume position_, Volume dims_, int tag_, const RegionMemory mem_);
     Region(Volume position_, Volume dims_, Volume comp_dims_, Volume halos_, int tag_, const RegionMemory mem_, RegionFamily family_);
@@ -224,7 +224,7 @@ typedef class ComputeTask : public Task {
   public:
     ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
-	        const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+	        const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const int max_facet_class
 		);
     ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
 	        	std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries

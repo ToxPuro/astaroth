@@ -1899,47 +1899,6 @@ check_ops(const std::vector<AcTaskDefinition> ops)
 #endif
 }
 
-Volume
-get_output_shift(const AcBoundary boundaries_included, const Volume ghost)
-{
-	return (Volume)
-	{
-		ghost.x*((boundaries_included & BOUNDARY_X) != 0),
-		ghost.y*((boundaries_included & BOUNDARY_Y) != 0),
-		ghost.z*((boundaries_included & BOUNDARY_Z) != 0)
-	};
-}
-Volume
-get_input_shift(const AcBoundary boundaries_included, const Volume ghost)
-{
-	return (Volume)
-	{
-		ghost.x*(!(boundaries_included & BOUNDARY_X)),
-		ghost.y*(!(boundaries_included & BOUNDARY_Y)),
-		ghost.z*(!(boundaries_included & BOUNDARY_Z))
-	};
-}
-Region
-FullRegion(const Volume position, const Volume dims, const Volume ghosts, const RegionMemory mem, const AcBoundary boundaries_included)
-{
-	const auto shift = get_output_shift(boundaries_included,ghosts);
-        return Region(position-shift,dims+2*shift,dims,ghosts,0,mem,RegionFamily::Compute_output);
-}
-
-Region
-GetInputRegion(Region region, const RegionMemory mem, const AcBoundary boundaries_included)
-{
-	const auto shift = get_input_shift(boundaries_included,region.halo);
-	return Region{region.position-shift,region.dims+2*shift,region.dims,region.halo,0,mem,RegionFamily::Compute_input};
-}
-std::vector<Region>
-getinputregions(std::vector<Region> output_regions, const RegionMemory memory, const AcBoundary boundaries_included)
-{
-	std::vector<Region> input_regions{};
-	for (auto& region : output_regions)
-		input_regions.push_back(GetInputRegion(region,memory,boundaries_included));
-	return input_regions;
-}
 static AcReal3 
 get_spacings()
 {
@@ -2161,15 +2120,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 
 	    const bool raytracing = is_raytracing_kernel(op.kernel_enum);
 	    const bool single_gpu_optim = ((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim];
-	    if(raytracing || single_gpu_optim)
-	    {
-	      Region full_region = FullRegion(start,dims,op.halo_sizes,{fields_out,profiles_out,reduce_output_out},op.computes_on_halos);
-	      Region full_input_region = getinputregions({full_region},{fields_in,profiles_in,reduce_output_in},op.computes_on_halos)[0];
-	      auto task = std::make_shared<ComputeTask>(op,i,full_input_region,full_region,device,swap_offset,fields_already_depend_on_boundaries);
-              graph->all_tasks.push_back(task);
-	      compute_task_poststep(op,task);
-	    }
-	    else
+	    const int max_comp_facet_class = (raytracing || single_gpu_optim) ? 0 : 3;
 	    {
             	for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
@@ -2193,7 +2144,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 			if(Region::tag_to_id(tag).x != -1)  continue;
 			if(Region::tag_to_id(tag).y != -1)  continue;
 		    }
-		    else
+		    else if(max_comp_facet_class == 3)
 		    {
 			const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);
 			if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
@@ -2208,7 +2159,8 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     	            ERRCHK_ALWAYS((int)dims.x > grid.submesh.info[AC_nmin].x*2);
     	            ERRCHK_ALWAYS((int)dims.y > grid.submesh.info[AC_nmin].y*2);
     	            ERRCHK_ALWAYS((int)dims.z > grid.submesh.info[AC_nmin].z*2);
-            	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset,fields_already_depend_on_boundaries);
+		    if(Region::tag_to_facet_class(tag) > max_comp_facet_class) continue;
+            	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset,fields_already_depend_on_boundaries,max_comp_facet_class);
             	    graph->all_tasks.push_back(task);
 		    compute_task_poststep(op,task);
             	}

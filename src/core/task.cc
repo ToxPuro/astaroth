@@ -424,34 +424,88 @@ get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const
 }
 
 Volume
-get_compute_output_position(int3 id, Volume start, Volume ghosts, Volume nn, AcBoundary computes_on_boundary)
+get_compute_output_position(int3 id, Volume start, Volume ghosts, Volume nn, AcBoundary computes_on_boundary, const int max_facet_class)
 {
-      return (Volume){
+      Volume res = (Volume){
 	    get_compute_output_position(id.x,start.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
 	    get_compute_output_position(id.y,start.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
 	    get_compute_output_position(id.z,start.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z)
       };
+      const int facet_class = std::abs(id.x) + std::abs(id.y) + std::abs(id.z);
+      if(max_facet_class == 2 && facet_class == 2 && id.x == 0)
+      {
+	      res.x -= ghosts.x;
+      }
+      else if(max_facet_class == 1 && facet_class == 1 && id.y != 0)
+      {
+	      res.x -= ghosts.x;
+	      res.z -= ghosts.z;
+      }
+      else if(max_facet_class == 1 && facet_class == 1 && id.z != 0)
+      {
+	      res.x -= ghosts.x;
+      }
+      else if(max_facet_class == 0 && facet_class == 0)
+      {
+	      res.x -= ghosts.x;
+	      res.y -= ghosts.y;
+	      res.z -= ghosts.z;
+      }
+      return res;
 }
 Volume
-get_compute_output_dim(int3 id, Volume ghosts, Volume nn, AcBoundary computes_on_boundary)
+get_compute_output_dim(int3 id, Volume ghosts, Volume nn, AcBoundary computes_on_boundary, const int max_facet_class)
 {
-      return (Volume)
+      Volume res = (Volume)
       {
 	      get_compute_output_dim(id.x,ghosts.x,nn.x,computes_on_boundary & BOUNDARY_X),
 	      get_compute_output_dim(id.y,ghosts.y,nn.y,computes_on_boundary & BOUNDARY_Y),
 	      get_compute_output_dim(id.z,ghosts.z,nn.z,computes_on_boundary & BOUNDARY_Z)
       };
+      const int facet_class = std::abs(id.x) + std::abs(id.y) + std::abs(id.z);
+      if(max_facet_class == 2 && facet_class == 2 && id.x == 0)
+      {
+	      res.x += 2*ghosts.x;
+      }
+      else if(max_facet_class == 1 && facet_class == 1 && id.y != 0)
+      {
+	      res.x += 2*ghosts.x;
+	      res.z += 2*ghosts.z;
+      }
+      else if(max_facet_class == 1 && facet_class == 1 && id.z != 0)
+      {
+	      res.x += 2*ghosts.x;
+      }
+      else if(max_facet_class == 0 && facet_class == 0)
+      {
+	      res.x += 2*ghosts.x;
+	      res.y += 2*ghosts.y;
+	      res.z += 2*ghosts.z;
+      }
+      if((computes_on_boundary & BOUNDARY_X) == 0)
+      {
+	      ERRCHK_ALWAYS(res.x <= nn.x);
+      }
+      if((computes_on_boundary & BOUNDARY_Y) == 0)
+      {
+	      ERRCHK_ALWAYS(res.y <= nn.y);
+      }
+      if((computes_on_boundary & BOUNDARY_Z) == 0)
+      {
+	      ERRCHK_ALWAYS(res.z <= nn.z);
+      }
+      return res;
 }
 
 Volume
-get_compute_input_position(const int3 id, const Volume start, const Volume ghost, const Volume nn, const AcBoundary boundary_included, const AcBoundary depends_on_boundary)
+get_compute_input_position(const int3 id, const Volume start, const Volume ghost, const Volume nn, const AcBoundary boundary_included, const AcBoundary depends_on_boundary, const int max_facet_class)
 {
 	//TP: the capping by zero is if one wants to compute a pointwise kernel on the halo based on the normal dependency rules the
 	//    the input region is still one NGHOST radius surrounding the computation radius even if no stencils are used (this is needed to make multikernel launches safe
 	//    i.e. kernel B accessess stencil neighbours so kernel C can not update its own point since its out can be the in of kernel B):
 	//    The capping is unsafe if the user would try to use e.g. derx while including the halos but there is a separate safety check for that later
 	//
-	const auto output_position = get_compute_output_position(id,start,ghost,nn,boundary_included);
+	const auto output_position = get_compute_output_position(id,start,ghost,nn,boundary_included,max_facet_class);
 	Volume res = output_position;
 	if(depends_on_boundary & BOUNDARY_X) 
 	{
@@ -461,7 +515,7 @@ get_compute_input_position(const int3 id, const Volume start, const Volume ghost
 	{
 		res.y = as_size_t(max((int)res.y - (int)ghost.y,0));
 	}
-	if(depends_on_boundary & BOUNDARY_Y) 
+	if(depends_on_boundary & BOUNDARY_Z) 
 	{
 		res.z = as_size_t(max((int)res.z - (int)ghost.z,0));
 	}
@@ -469,9 +523,9 @@ get_compute_input_position(const int3 id, const Volume start, const Volume ghost
 }
 
 Volume
-get_compute_input_dim(const int3 id, const Volume ghost, const Volume nn, const AcBoundary boundary_included, const AcBoundary depends_on_boundary)
+get_compute_input_dim(const int3 id, const Volume ghost, const Volume nn, const AcBoundary boundary_included, const AcBoundary depends_on_boundary, const int max_facet_class)
 {
-	auto res = get_compute_output_dim(id,ghost,nn,boundary_included);
+	auto res = get_compute_output_dim(id,ghost,nn,boundary_included,max_facet_class);
 	if(depends_on_boundary & BOUNDARY_X) 
 	{
 		res.x += 2*ghost.x;
@@ -487,7 +541,7 @@ get_compute_input_dim(const int3 id, const Volume ghost, const Volume nn, const 
 	return res;
 }
 
-Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary boundary_included, Volume start, Volume nn, const Volume ghosts, const RegionMemoryInputParams mem_)
+Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_boundary, const AcBoundary boundary_included, Volume start, Volume nn, const Volume ghosts, const RegionMemoryInputParams mem_, const int max_comp_facet_class)
     : family(family_), tag(tag_) 
 {
     halo = ghosts;
@@ -519,9 +573,9 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       case RegionFamily::Compute_output: {
       const AcBoundary computes_on_boundary = boundary_included;
       // clang-format off
-      position = get_compute_output_position(id,start,ghosts,nn,computes_on_boundary);
+      position = get_compute_output_position(id,start,ghosts,nn,computes_on_boundary,max_comp_facet_class);
       // clang-format on
-      dims = get_compute_output_dim(id,ghosts,nn,computes_on_boundary);
+      dims = get_compute_output_dim(id,ghosts,nn,computes_on_boundary,max_comp_facet_class);
       if(dims.x == 0 || dims.y == 0 || dims.z == 0)
       {
 	      fprintf(stderr,"Incorrect region dims: %zu,%zu,%zu\n",dims.x,dims.y,dims.z);
@@ -532,9 +586,9 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       case RegionFamily::Compute_input: {
       const AcBoundary computes_on_boundary = boundary_included;
       // clang-format off
-      position = get_compute_input_position(id,start,ghosts,nn,computes_on_boundary,depends_on_boundary);
+      position = get_compute_input_position(id,start,ghosts,nn,computes_on_boundary,depends_on_boundary,max_comp_facet_class);
       // clang-format on
-      dims = get_compute_input_dim(id,ghosts,nn,computes_on_boundary,depends_on_boundary);
+      dims = get_compute_input_dim(id,ghosts,nn,computes_on_boundary,depends_on_boundary,max_comp_facet_class);
 
       if(dims.x == 0 || dims.y == 0 || dims.z == 0)
       {
@@ -582,7 +636,7 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       }
       
       Region::Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, Volume halos, const RegionMemoryInputParams mem_)
-      : Region{family_, id_to_tag(id_), BOUNDARY_XYZ, BOUNDARY_NONE, position_, nn, halos,mem_}
+      : Region{family_, id_to_tag(id_), BOUNDARY_XYZ, BOUNDARY_NONE, position_, nn, halos,mem_,3}
       {
       ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
       }
@@ -961,14 +1015,14 @@ get_local_nn()
 /* Computation */
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume start, Volume dims, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_,
-			 const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries
+			 const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const int max_facet_class
 			 )
     : Task(order_,
-           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in})},
+           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in},max_facet_class)},
            Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries), op.computes_on_halos, start,dims,  op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
-		   op.outputs_out, op.num_outputs_out}),
+		   op.outputs_out, op.num_outputs_out},max_facet_class),
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -997,7 +1051,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 	output_region.dims.x = 1;	
 	output_region.dims.y = 1;	
     }
-    else
+    else if(max_facet_class == 3)
     {
 	const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);
 	if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
@@ -1117,7 +1171,7 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 
     const auto get_input_region = [&](const int3 id)
     {
-	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out});
+	return Region(RegionFamily::Exchange_output, Region::id_to_tag(id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3);
     };
 
     const int ndir = abs(ray_direction.x) + abs(ray_direction.y) + abs(ray_direction.z);
@@ -1170,7 +1224,7 @@ ComputeTask::RayUpdate(AcTaskDefinition op, int order_, const int3 boundary_id,c
 	    }
     }
 
-    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out});
+    auto output_region = Region(RegionFamily::Exchange_input, Region::id_to_tag(boundary_id), BOUNDARY_NONE, BOUNDARY_NONE, get_min_nn(), get_local_nn(), (Volume){1,1,1}, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3);
     //TP: avoid computing on corner points twice
     if(boundary_id.x != 0)
     {
@@ -1503,8 +1557,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_, const bool shear_periodic_)
     : Task(order_,
-	   {Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in + op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in})},
-           Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
+	   {Region(RegionFamily::Exchange_input, halo_region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in + op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3)},
+           Region(RegionFamily::Exchange_output, halo_region_tag, BOUNDARY_NONE, shear_periodic_ ? BOUNDARY_Y: BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out+op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3),
            op, device_, swap_offset_),
       sending(op.sending ? get_sending(op.ray_direction  ,input_regions[0].id)     : false),
       receiving(op.receiving ? get_receiving(op.ray_direction,input_regions[0].id) : false),
@@ -1917,8 +1971,8 @@ MPIReduceTask::MPIReduceTask(AcTaskDefinition op, int order_, const Volume start
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in})},
-           Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out}),
+	   {Region(RegionFamily::Exchange_input,  Region::id_to_tag(halo_region_id),  BOUNDARY_NONE, BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in,  op.fields_in+op.num_fields_in) ,op.profiles_in, op.num_profiles_in ,op.outputs_in, op.num_outputs_in},3)},
+           Region(RegionFamily::Exchange_output, Region::id_to_tag(-halo_region_id), BOUNDARY_NONE,  BOUNDARY_NONE, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_out,op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out ,op.outputs_out, op.num_outputs_out},3),
            op, device_, swap_offset_),
       reduce_buffers(input_regions[0].dims,  input_regions[0].memory.fields.size(),  tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
 {
@@ -2038,8 +2092,8 @@ MPIReduceTask::communicate()
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           {Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in),op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in})},
-           Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out}),
+           {Region(RegionFamily::Compute_input, region_tag,  BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in),op.profiles_in, op.num_profiles_in ,op.outputs_in,  op.num_outputs_in},3)},
+           Region(RegionFamily::Compute_output, region_tag, BOUNDARY_NONE, op.computes_on_halos, start, nn, op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out,op.num_profiles_reduce_out,op.outputs_out, op.num_outputs_out},3),
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -2549,8 +2603,8 @@ BoundaryConditionTask::BoundaryConditionTask(
     AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, const Volume start, const Volume nn, Device device_,
     std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
-           {Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in})},
-           Region(RegionFamily::Exchange_output, region_tag, BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out}),
+           {Region(RegionFamily::Exchange_input, region_tag,  BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in , op.num_profiles_in , op.outputs_in,  op.num_outputs_in},3)},
+           Region(RegionFamily::Exchange_output, region_tag, BOUNDARY_NONE, BOUNDARY_NONE, start, nn,op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),op.profiles_reduce_out, op.num_profiles_reduce_out, op.outputs_out, op.num_outputs_out},3),
            op, device_, swap_offset_),
        boundary_normal(boundary_normal_),
        fieldwise(op.fieldwise)
