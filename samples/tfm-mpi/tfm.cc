@@ -41,8 +41,8 @@
 #include <unistd.h>
 
 #include "acm/detail/experimental/mpi_utils_experimental.h"
-// #define AC_ENABLE_ASYNC_AVERAGES // Better scaling
-// #define AC_ENABLE_ASYNC_DT // Better scaling
+#define AC_ENABLE_ASYNC_AVERAGES // Better scaling
+#define AC_ENABLE_ASYNC_DT // Better scaling
 
 // Debug runs: enable defines below for writing diagnostics synchronously
 // Production runs:
@@ -1340,7 +1340,8 @@ class Grid {
 // TFM dependencies: hydro, tfm, profiles
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
                 // wait_reduce_xy_averages(xy_average_req);
-                wait_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
+                // wait_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
+                wait_reduce_xy_averages();
 #endif
                 // TFM dependencies: tfm
                 tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
@@ -1366,7 +1367,8 @@ class Grid {
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
                 // ERRCHK_MPI(xy_average_req == MPI_REQUEST_NULL);
                 // xy_average_req = launch_reduce_xy_averages(STREAM_DEFAULT); // Averaging
-                launch_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
+                // launch_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
+                launch_reduce_xy_averages();
 #else
                 reduce_xy_averages(STREAM_DEFAULT);
 #endif
@@ -1440,7 +1442,8 @@ class Grid {
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
         // wait_reduce_xy_averages(xy_average_req);
-        wait_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
+        // wait_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
+        wait_reduce_xy_averages();
 #endif
 
 #if defined(AC_ENABLE_ASYNC_DT)
