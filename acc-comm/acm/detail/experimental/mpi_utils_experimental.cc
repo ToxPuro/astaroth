@@ -1,4 +1,5 @@
 #include "mpi_utils_experimental.h"
+#include "acm/detail/mpi_utils.h"
 
 // For selecting the device
 #if defined(ACM_DEVICE_ENABLED)
@@ -75,6 +76,22 @@ select_device_lumi()
 #else
     return -1;
 #endif
+}
+
+} // namespace ac::mpi
+
+namespace ac::mpi {
+
+uint64_t
+rank(const ac::mpi::comm& comm)
+{
+    return as<uint64_t>(ac::mpi::get_rank(comm.get()));
+}
+
+uint64_t
+size(const ac::mpi::comm& comm)
+{
+    return as<uint64_t>(ac::mpi::get_size(comm.get()));
 }
 
 } // namespace ac::mpi
