@@ -952,7 +952,11 @@ class Grid {
     MPI_Comm xy_neighbors{MPI_COMM_NULL};
 
     #if defined(AC_ENABLE_ASYNC_AVERAGES)
-    ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_buffered_iallreduce{0};
+    ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg_task{};
+    #endif
+
+    #if defined(AC_ENABLE_ASYNC_DT)
+    ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce_task{};
     #endif
 
   public:
@@ -1008,14 +1012,6 @@ class Grid {
         const int color{as<int>(coords[2])};
         const int key{ac::mpi::get_rank(cart_comm)};
         ERRCHK_MPI_API(MPI_Comm_split(cart_comm, color, key, &xy_neighbors));
-
-        #if defined(AC_ENABLE_ASYNC_AVERAGES)
-        // Create a buffer for reductions
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        const size_t count{NUM_PROFILES * vba.profiles.count};
-        m_buffered_iallreduce = ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator>{count};
-        #endif
 
         // Dryrun
         reset_init_cond();
@@ -1129,9 +1125,7 @@ class Grid {
     }
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
-
-    template<typename T, typename Allocator>
-    void launch_reduce_xy_averages(const MPI_Comm& xy_neighbors, ac::mpi::buffered_iallreduce<T, Allocator>& buffered_iallreduce)
+    void launch_reduce_xy_averages()
     {
         // Strategy:
         // 1) Reduce the local result to device->vba.profiles.in
@@ -1146,13 +1140,12 @@ class Grid {
         const size_t count{NUM_PROFILES * vba.profiles.count};
         const ac::device_view<AcReal> in{count, vba.profiles.in[0]};
         ac::device_view<AcReal> out{count, vba.profiles.in[0]};
-        buffered_iallreduce.launch(xy_neighbors, in, MPI_SUM, out);
+        m_xy_avg_task.launch(xy_neighbors, in, MPI_SUM, out);
     }
 
-    template<typename T, typename Allocator>
-    void wait_reduce_xy_averages(const MPI_Comm& xy_neighbors, ac::mpi::buffered_iallreduce<T, Allocator>& buffered_iallreduce)
+    void wait_reduce_xy_averages()
     {
-        buffered_iallreduce.wait();
+        m_xy_avg_task.wait();
 
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(device, &vba));
@@ -1162,8 +1155,7 @@ class Grid {
         const size_t count{NUM_PROFILES * vba.profiles.count};
         AcReal* data{vba.profiles.in[0]};
 
-        int collaborated_procs{-1};
-        ERRCHK_MPI_API(MPI_Comm_size(xy_neighbors, &collaborated_procs));
+        auto collaborated_procs{ac::mpi::get_size(xy_neighbors)};
         acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
     }
     // MPI_Request launch_reduce_xy_averages(const Stream stream)
@@ -1211,6 +1203,44 @@ class Grid {
     // }
 #endif
 
+#if defined(AC_ENABLE_ASYNC_DT)
+    void launch_uumax_reduce() {
+        AcReal uumax{0};
+        ERRCHK_AC(acDeviceReduceVec(device,
+                                STREAM_DEFAULT,
+                                RTYPE_MAX,
+                                VTXBUF_UUX,
+                                VTXBUF_UUY,
+                                VTXBUF_UUZ,
+                                &uumax));
+        m_uumax_reduce_task.launch(cart_comm, ac::host_view<AcReal>{1, &uumax}, MPI_MAX);
+    }
+
+    AcReal wait_uumax_reduce_and_get() {
+        AcReal uumax{0};
+        m_uumax_reduce_task.wait(ac::host_view<AcReal>{1, &uumax});
+        return uumax;
+    }
+
+    AcReal wait_uumax_reduce_and_get_dt() {
+
+        AcMeshInfo info{};
+        ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+
+        AcReal uumax{wait_uumax_reduce_and_get()};
+        AcReal vAmax{0};
+        AcReal shock_max{0};
+
+        static bool warning_shown{false};
+        if (!warning_shown) {
+            WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
+            warning_shown = true;
+        }
+
+        return calc_timestep(uumax, vAmax, shock_max, info);
+    }
+#endif
+
     void tfm_pipeline(const size_t nsteps)
     {
         PRINT_LOG_INFO("Launching TFM pipeline");
@@ -1248,9 +1278,13 @@ class Grid {
 
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
         // MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)}; // Averaging
-        launch_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
+        // launch_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
+        launch_reduce_xy_averages();
 #else
         reduce_xy_averages(STREAM_DEFAULT);
+#endif
+#if defined(AC_ENABLE_ASYNC_DT)
+        launch_uumax_reduce();
 #endif
 
         for (uint64_t step{1}; step < nsteps; ++step) {
@@ -1272,7 +1306,11 @@ class Grid {
             acr::set(AC_current_time, current_time, local_info);
 
             // Timestep dependencies: local hydro (reduction skips ghost zones)
+            #if defined (AC_ENABLE_ASYNC_DT)
+            const AcReal dt = wait_uumax_reduce_and_get_dt();
+            #else
             const AcReal dt = calc_and_distribute_timestep(cart_comm, device);
+            #endif
             acr::set(AC_dt, dt, local_info);
 
             // Forcing
@@ -1318,6 +1356,11 @@ class Grid {
                 compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_inner);
                 compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_inner);
                 ERRCHK_AC(acDeviceSwapBuffers(device));
+
+                #if defined(AC_ENABLE_ASYNC_DT)
+                if (substep == 2)
+                    launch_uumax_reduce();
+                #endif
 
 // Profile dependencies: local tfm (uxb)
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
@@ -1398,6 +1441,10 @@ class Grid {
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
         // wait_reduce_xy_averages(xy_average_req);
         wait_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
+#endif
+
+#if defined(AC_ENABLE_ASYNC_DT)
+    wait_uumax_reduce_and_get();
 #endif
     }
 
