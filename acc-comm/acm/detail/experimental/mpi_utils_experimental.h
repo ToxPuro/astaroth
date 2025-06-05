@@ -242,27 +242,59 @@ template <typename T, typename Allocator> class buffered_isend {
     void wait() { m_req.wait(); }
 };
 
+/**
+ * Buffered asynchronous allreduce operation with dynamic resizing.
+ * Note: never shrinks
+ */
 template <typename T, typename Allocator> class buffered_iallreduce {
   private:
-    ac::buffer<T, Allocator> m_buf;
+    ac::buffer<T, Allocator> m_buf{0};
     ac::mpi::request         m_req{MPI_REQUEST_NULL};
 
   public:
-    buffered_iallreduce(const size_t max_count)
-        : m_buf{max_count}
-    {
-    }
+    buffered_iallreduce() = default;
 
     template <typename U>
     void launch(const MPI_Comm& comm, const ac::view<T, Allocator>& in, const MPI_Op& op,
                 ac::base_view<U> out)
     {
         ERRCHK_MPI(m_req.complete());
+
+        // Resize buffer if needed
+        if (m_buf.size() < in.size())
+            m_buf = ac::buffer<T, Allocator>{in.size()};
+
         ac::copy(in, m_buf.get());
         m_req = ac::mpi::iallreduce(comm, ac::make_view(in.size(), 0, m_buf.get()), op, out);
     }
 
     void wait() { m_req.wait(); }
+};
+
+template <typename T, typename Allocator> class twoway_buffered_iallreduce {
+  private:
+    ac::buffer<T, Allocator>                   m_buf{0};
+    ac::mpi::buffered_iallreduce<T, Allocator> m_buffered_iallreduce{};
+
+  public:
+    twoway_buffered_iallreduce() = default;
+
+    void launch(const MPI_Comm& comm, const ac::view<T, Allocator>& in, const MPI_Op& op)
+    {
+        // Resize buffer if needed
+        if (m_buf.size() < in.size())
+            m_buf = ac::buffer<T, Allocator>{in.size()};
+
+        m_buffered_iallreduce.launch(comm, in, op, m_buf.get());
+    }
+
+    void wait(ac::view<T, Allocator> out)
+    {
+        m_buffered_iallreduce.wait();
+
+        ERRCHK_MPI(out.size() <= m_buf.size());
+        ac::copy(ac::make_view(out.size(), 0, m_buf.get()), out);
+    }
 };
 
 } // namespace ac::mpi
