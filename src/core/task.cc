@@ -958,8 +958,6 @@ Task::syncVBA()
             vba.on_device.profiles.out[i] = device_vba.on_device.profiles.out[i];
         }
     }
-    for(int i=0;i<NUM_WORK_BUFFERS; ++i)
-        vba.on_device.w[i] = device_vba.on_device.w[i];
 }
 
 void
