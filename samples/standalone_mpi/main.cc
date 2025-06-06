@@ -1542,7 +1542,7 @@ main(int argc, char** argv)
                     log_from_root_proc_with_sim_progress(pid,
                                                          "Periodic action: writing mesh slices\n");
                     if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
-        	    write_slices(pid, start_step, simulation_time);
+        	    write_slices(pid, i, simulation_time);
                     break;
                 }
                 case PeriodicAction::EndSimulation: {

@@ -1,6 +1,6 @@
 ## Astaroth Utils
 #target_compile_options(modelsolver PRIVATE "-mavx")
-option(BUILD_TESTS        "Builds tests in test subdirectory."            OFF)
+option(OPENMP_ENABLED "Enables OPENMP (used in modelsolver for now)" ON)
 
 if(RUNTIME_COMPILATION)
 	add_library(astaroth_utils config_loader.cc)
@@ -16,9 +16,11 @@ else()
 	add_library(astaroth_forcing astaroth_forcing.cc)
 	target_link_libraries(astaroth_forcing astaroth_core astaroth_random)
 	#TP: for parallelizing modelsolver
-	find_package(OpenMP)
-	if (OPENMP_FOUND)
-		target_link_libraries(astaroth_utils PRIVATE OpenMP::OpenMP_CXX)
+	if(OPENMP_ENABLED)
+		find_package(OpenMP)
+		if (OPENMP_FOUND)
+			target_link_libraries(astaroth_utils PRIVATE OpenMP::OpenMP_C)
+		endif()
 	endif()
 endif()
 
