@@ -19,8 +19,10 @@
 /**
     Running: benchmark -np <num processes> <executable>
 */
+// #include "acc_runtime.h"
 #include "astaroth.h"
 #include "astaroth_utils.h"
+
 #include "../../stdlib/reduction.h"
 
 #include "errchk.h"
@@ -28,7 +30,6 @@
 
 #include <string>
 #include <unistd.h> // getopt
-
 
 #if !AC_MPI_ENABLED
 int
@@ -62,7 +63,6 @@ typedef enum {
 } TestType;
 
 #include <stdint.h>
-
 
 #include "timer_hires.h"
 
@@ -145,60 +145,44 @@ main(int argc, char** argv)
 
     if (argc - optind > 0) {
         if (argc - optind >= 3) {
-            const int nx           = atoi(argv[optind]);
-            const int ny           = atoi(argv[optind + 1]);
-            const int nz           = atoi(argv[optind + 2]);
+            const int nx = atoi(argv[optind]);
+            const int ny = atoi(argv[optind + 1]);
+            const int nz = atoi(argv[optind + 2]);
 
             printf("Benchmark mesh dimensions: (%d, %d, %d)\n", nx, ny, nz);
 
-        if (argc - optind >= 4) {
-            verify = atoi(argv[optind + 3]);
-        }
+            if (argc - optind >= 4) {
+                verify = atoi(argv[optind + 3]);
+            }
 
-        if (argc - optind > 4) {
-            fprintf(stderr, "WARNING: Unexpected amount of params. Continuing without parsing\n");
-        }
+            if (argc - optind > 4) {
+                fprintf(stderr,
+                        "WARNING: Unexpected amount of params. Continuing without parsing\n");
+            }
 
-	    if (test == TEST_WEAK_SCALING) {
+            if (test == TEST_WEAK_SCALING) {
                 fprintf(stdout, "Running weak scaling benchmarks.\n");
-		fflush(stdout);
-                const auto decomp = acDecompose(nprocs,info);
-                acPushToConfig(info,AC_ngrid,(int3)
-                                 {
-                                        decomp.x*nx,
-                                        decomp.y*ny,
-                                        decomp.z*nz
-                                  });
-                acPushToConfig(info,AC_nlocal,
-                                (int3){
-                                        nx,
-                                        ny,
-                                        nz
-                                  });
+                fflush(stdout);
+                const auto decomp = acDecompose(nprocs, info);
+                acPushToConfig(info, AC_ngrid, (int3){decomp.x * nx, decomp.y * ny, decomp.z * nz});
+                acPushToConfig(info, AC_nlocal, (int3){nx, ny, nz});
             }
             else {
                 fprintf(stdout, "Running strong scaling benchmarks.\n");
-		fflush(stdout);
-                const auto decomp = acDecompose(nprocs,info);
-                acPushToConfig(info,AC_ngrid,(int3){
-                                        nx,
-                                        ny,
-                                        nz
-                                  });
-                acPushToConfig(info,AC_nlocal, (int3){
-                                        nx/decomp.x,
-                                        ny/decomp.y,
-                                        nz/decomp.z
-                                  });
+                fflush(stdout);
+                const auto decomp = acDecompose(nprocs, info);
+                acPushToConfig(info, AC_ngrid, (int3){nx, ny, nz});
+                acPushToConfig(info, AC_nlocal,
+                               (int3){nx / decomp.x, ny / decomp.y, nz / decomp.z});
             }
             acHostUpdateParams(&info);
         }
         else {
-            fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz> <verify (optional, expects 0 or 1)>.\n");
+            fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz> <verify "
+                            "(optional, expects 0 or 1)>.\n");
             exit(EXIT_FAILURE);
         }
     }
-
 
     // Device init
     acGridInit(info);
@@ -208,7 +192,7 @@ main(int argc, char** argv)
     const AcReal dt = (AcReal)FLT_EPSILON;
 
     // Dryrun
-    acDeviceSetInput(acGridGetDevice(), AC_current_time,0.0);
+    acDeviceSetInput(acGridGetDevice(), AC_current_time, 0.0);
     acGridIntegrate(STREAM_DEFAULT, dt);
 
     if (verify) {
@@ -221,7 +205,9 @@ main(int argc, char** argv)
             acHostMeshRandomize(&candidate);
         }
         acGridLoadMesh(STREAM_DEFAULT, model);
+        acGridSynchronizeStream(STREAM_DEFAULT);
         acGridPeriodicBoundconds(STREAM_DEFAULT);
+        acGridSynchronizeStream(STREAM_DEFAULT);
 
         // Verification run
         const size_t nsteps = 10;
@@ -232,6 +218,7 @@ main(int argc, char** argv)
                 printf("Host integration step %lu\n", i);
                 fflush(stdout);
 
+                acHostMeshApplyPeriodicBounds(&model);
                 acHostIntegrateStep(model, dt);
             }
         }
@@ -258,7 +245,7 @@ main(int argc, char** argv)
     }
 
     // Percentiles
-    const size_t num_iters      = 100;
+    const size_t num_iters = 100;
     std::vector<double> results; // ms
     results.reserve(num_iters);
 
@@ -281,20 +268,20 @@ main(int argc, char** argv)
     if (!pid) {
         std::sort(results.begin(), results.end(),
                   [](const double& a, const double& b) { return a < b; });
-	{
-    		const double nth_percentile = 0.50;
-        	fprintf(stdout,
-                	"Integration step time %g ms (%gth "
-                	"percentile)--------------------------------------\n",
-                	results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
-	}
-	{
-    		const double nth_percentile = 0.90;
-        	fprintf(stdout,
-                	"Integration step time %g ms (%gth "
-                	"percentile)--------------------------------------\n",
-                	results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
-	}
+        {
+            const double nth_percentile = 0.50;
+            fprintf(stdout,
+                    "Integration step time %g ms (%gth "
+                    "percentile)--------------------------------------\n",
+                    results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
+        }
+        {
+            const double nth_percentile = 0.90;
+            fprintf(stdout,
+                    "Integration step time %g ms (%gth "
+                    "percentile)--------------------------------------\n",
+                    results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
+        }
 
         // char path[4096] = "";
         // sprintf(path, "%s_%d.csv", test == TEST_STRONG_SCALING ? "strong" : "weak", nprocs);
@@ -313,9 +300,9 @@ main(int argc, char** argv)
         const bool use_distributed_io = false;
 #endif
         fprintf(fp, "%d,%g,%g,%g,%g,%d,%d,%d,%d,%d\n", nprocs, results[0],
-                results[(size_t)(0.5 * num_iters)], results[(size_t)(0.9* num_iters)],
-                results[num_iters - 1], use_distributed_io, info[AC_ngrid].x,
-                info[AC_ngrid].y, info[AC_ngrid].z, test == TEST_STRONG_SCALING);
+                results[(size_t)(0.5 * num_iters)], results[(size_t)(0.9 * num_iters)],
+                results[num_iters - 1], use_distributed_io, info[AC_ngrid].x, info[AC_ngrid].y,
+                info[AC_ngrid].z, test == TEST_STRONG_SCALING);
         // fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0],
         //         results[(size_t)(0.5 * num_iters)],
         //         results[(size_t)(nth_percentile * num_iters)], results[num_iters - 1]);
@@ -328,16 +315,15 @@ main(int argc, char** argv)
     if (!pid)
         fprintf(stderr, "\nSanity performance check:\n");
 
-    //timer_event_launch();
-    //acGridPeriodicBoundconds(STREAM_DEFAULT);
-    //timer_event_stop("acGridPeriodicBoundconds: ");
+    // timer_event_launch();
+    // acGridPeriodicBoundconds(STREAM_DEFAULT);
+    // timer_event_stop("acGridPeriodicBoundconds: ");
 
     const AcMeshDims dims = acGetMeshDims(info);
     timer_event_launch();
     acDevicePeriodicBoundconds(acGridGetDevice(), STREAM_DEFAULT, dims.m0, dims.m1);
     timer_event_stop("acGridPeriodicBoundconds: ");
 
-    	
     cudaProfilerStart();
     timer_event_launch();
     acGridIntegrate(STREAM_DEFAULT, dt);
