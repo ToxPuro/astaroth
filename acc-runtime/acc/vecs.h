@@ -189,7 +189,8 @@ replace_substring(char** str, const char* sub, const char* replace)
 	replacestr(*str,sub,replace);
 }
 //TP: if the user has enabled GNU_SOURCE then we already have vasprintf and asprintf
-#ifndef _GNU_SOURCE
+// JP: _GNU_SOURCE not defined on Frontier (gcc 7.5) but still has vasprintf
+#if !defined(_GNU_SOURCE) && !defined(__GNUC__)
 static int
 vasprintf(char **strp, const char *fmt, va_list ap)
 {
