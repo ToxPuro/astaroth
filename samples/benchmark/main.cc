@@ -112,7 +112,7 @@ main(int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     // CPU alloc
-    AcMeshInfo info;
+    AcMeshInfo info = acInitInfo();
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     acHostUpdateParams(&info);
 
@@ -184,6 +184,7 @@ main(int argc, char** argv)
         }
     }
 
+
     // Device init
     acGridInit(info);
     acGridRandomize();
@@ -199,10 +200,10 @@ main(int argc, char** argv)
         // Host init
         AcMesh model, candidate;
         if (!pid) {
-            acHostMeshCreate(info, &model);
-            acHostMeshCreate(info, &candidate);
-            acHostMeshRandomize(&model);
-            acHostMeshRandomize(&candidate);
+            acHostGridMeshCreate(info, &model);
+            acHostGridMeshCreate(info, &candidate);
+            acHostGridMeshRandomize(&model);
+            acHostGridMeshRandomize(&candidate);
         }
         acGridLoadMesh(STREAM_DEFAULT, model);
         acGridSynchronizeStream(STREAM_DEFAULT);
@@ -222,13 +223,13 @@ main(int argc, char** argv)
                 acHostIntegrateStep(model, dt);
             }
         }
-        acHostMeshApplyPeriodicBounds(&model);
         acGridPeriodicBoundconds(STREAM_DEFAULT);
         acGridStoreMesh(STREAM_DEFAULT, &candidate);
         acGridSynchronizeStream(STREAM_ALL);
 
         // Verify
         if (!pid) {
+            acHostMeshApplyPeriodicBounds(&model);
             printf("Verifying...\n");
             fflush(stdout);
 
