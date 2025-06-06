@@ -67,7 +67,6 @@ void strip_whitespace(char *str) {
 "AcMatrix"              { return MATRIX; }
 "Field"                 { return FIELD; }
 "VtxBuffer"                 { return VTXBUFFER; }
-"WorkBuffer"            {return WORK_BUFFER; }
 "ComputeSteps"          {return COMPUTESTEPS; }
 "BoundConds"          {return BOUNDCONDS; }
 "intrinsic"          {return INTRINSIC; }

@@ -6109,7 +6109,6 @@ gen_field_info(FILE* fp)
   	fprintf(fp_enums,"#pragma once\n");
   	gen_enums(fp_enums,STENCIL_STR,"stencil_","NUM_STENCILS","Stencil");
   	gen_enums(fp_enums,RAYTRACE_STR,"ray_","NUM_RAYS","AcRay");
-  	gen_enums(fp_enums,intern("WorkBuffer"),"","NUM_WORK_BUFFERS","WorkBuffer");
   	gen_enums(fp_enums,KERNEL_STR,"","NUM_KERNELS","AcKernel");
   	gen_enums_variadic(fp_enums,prof_types,"","NUM_PROFILES","Profile");
   	fprintf(fp_enums, "typedef enum {");
@@ -6349,7 +6348,6 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   // Enum strings (convenience)
   gen_names("stencil",STENCIL_STR,fp);
   gen_names("ray",RAYTRACE_STR,fp);
-  gen_names("work_buffer",intern("WorkBuffer"),fp);
   gen_names("kernel",KERNEL_STR,fp);
   gen_names_variadic("profile",prof_types,fp);
   //TP: field names have to be generated differently since they might get reorder because of dead fields

@@ -246,7 +246,6 @@ typedef struct {
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
-    AcReal* w[NUM_WORK_BUFFERS];
     acKernelInputParams kernel_input_params;
     int reduce_offset;
     ProfileBufferArray profiles;

@@ -547,7 +547,7 @@ main(int argc, char** argv)
 %token NON_RETURNING_FUNC_CALL
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
-%token INT UINT REAL MATRIX TENSOR FIELD STENCIL WORK_BUFFER PROFILE
+%token INT UINT REAL MATRIX TENSOR FIELD STENCIL PROFILE
 %token BOOL INTRINSIC LONG_LONG LONG 
 %token KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO DIMS COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token FIXED_BOUNDARY
@@ -602,10 +602,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
-            else if(get_node_by_token(WORK_BUFFER, variable_definition)) {
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            }
             else if(get_node_by_token(PROFILE_X, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
@@ -741,7 +737,6 @@ bool: BOOL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 tensor: TENSOR { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcTensor", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-work_buffer: WORK_BUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 stencil: STENCIL       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("Stencil", $$); /*astnode_set_buffer(yytext, $$);*/ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 return: RETURN         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("return", $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$);};
 kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("Kernel", $$); $$->token = 255 + yytoken; };
@@ -842,7 +837,6 @@ type_specifier:
 		   astnode_sprintf($1,"AcMatrixN<%s>",combine_all_new($3));
   		}
               | field        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | work_buffer  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | raytrace '(' expression_list ')' { $$ = astnode_create(NODE_TSPEC, $1, $3); }
               | enum_type    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }

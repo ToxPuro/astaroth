@@ -1226,11 +1226,6 @@ acVBACreate(const AcMeshInfo config)
     }
   }
 
-  //TP: deprecated for now
-  //Allocate workbuffers
-  //for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
-  //  device_malloc((void**)&vba.on_device.w[i],bytes);
-
 
   AcArrayTypes::run<allocate_arrays>(config);
 
@@ -1351,10 +1346,6 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
   //TP: does not work for compressible memory TODO: fix it if needed
   device_free(&(vba_in_buff), 0);
   device_free(&(vba_out_buff), 0);
-  //TP: Deprecated for now
-  //Free workbuffers 
-  //for (int i = 0; i < NUM_WORK_BUFFERS; ++i) 
-  //  device_free(&(vba->on_device.w[i]), vba->bytes);
 
   //Free arrays
   AcArrayTypes::run<free_arrays>(config);
