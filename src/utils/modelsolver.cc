@@ -264,8 +264,8 @@ cross_derivative(const Scalar* pencil_a, const Scalar* pencil_b, const Scalar in
 #elif STENCIL_ORDER == 4
     const Scalar coefficients[] = {
         (Scalar)0.,
-        0,
-        0,
+        (Scalar)(64.0/144.0),
+        (Scalar)(-1.0/144.0),
     }; // TODO correct coefficients, these are just placeholders
 #elif STENCIL_ORDER == 6
     const Scalar fac            = (Scalar)1. / (Scalar)720.;
@@ -548,7 +548,7 @@ vecvalue(const VectorData data)
     return (Vector){value(data.xdata), value(data.ydata), value(data.zdata)};
 }
 
-static inline Vector
+static UNUSED inline Vector
 vecvalue_abs(const VectorData data)
 {
     return (Vector){
