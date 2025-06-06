@@ -877,7 +877,9 @@ ComputeSteps AC_calc_timestep(boundconds)
 
 Kernel compute_bfield()
 {
+    #if LBFIELD
 	write(BFIELD,curl(AA))
+    #endif
 }
 
 ComputeSteps get_bfield(boundconds) {compute_bfield()}
