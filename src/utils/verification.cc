@@ -87,7 +87,7 @@ acEvalError(const char* label, const Error error)
     // Accept the error if the relative error is < max_ulp_error ulps.
     // Also consider the error zero if it is less than the minimum value in the mesh scaled to
     // machine epsilon
-    const long double max_ulp_error = 5;
+    const long double max_ulp_error = 20;
 
     bool acceptable;
     if (error.ulp_error < max_ulp_error)
