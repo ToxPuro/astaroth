@@ -152,7 +152,7 @@ acHostMeshApplyConstantBounds(const AcReal value, AcMesh* mesh)
                             if (i >= as_size_t(dims.n0.x) && i < as_size_t(dims.n1.x))
                                 continue;
 
-                    const size_t idx            = acVertexBufferIdx(i, j, k, info);
+                    const size_t idx            = acGridVertexBufferIdx(i, j, k, info);
                     mesh->vertex_buffer[w][idx] = value;
                 }
             }
