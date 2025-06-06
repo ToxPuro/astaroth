@@ -41,8 +41,8 @@
 #include <unistd.h>
 
 #include "acm/detail/experimental/mpi_utils_experimental.h"
-#define AC_ENABLE_ASYNC_AVERAGES // Better scaling
-#define AC_ENABLE_ASYNC_DT // Better scaling
+// #define AC_ENABLE_ASYNC_AVERAGES // Better scaling
+// #define AC_ENABLE_ASYNC_DT       // Better scaling
 
 // Debug runs: enable defines below for writing diagnostics synchronously
 // Production runs:
@@ -253,7 +253,7 @@ write_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& device, const
         sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
         ac::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
-                     staging_buffer.get());
+                 staging_buffer.get());
         ac::mpi::write_collective_simple(parent_comm,
                                          ac::mpi::get_dtype<AcReal>(),
                                          acr::get_global_nn(local_info),
@@ -358,7 +358,7 @@ write_distributed_snapshots_to_disk(const MPI_Comm& parent_comm, const Device& d
                 vtxbuf_names[i]);
         PRINT_LOG_TRACE("Writing %s", filepath);
         ac::copy(acr::make_ptr(vba, static_cast<Field>(i), BufferGroup::input),
-                     staging_buffer.get());
+                 staging_buffer.get());
         ac::mpi::write_distributed(parent_comm,
                                    ac::mpi::get_dtype<AcReal>(),
                                    acr::get_local_mm(local_info),
@@ -404,7 +404,7 @@ write_profiles_to_disk(const MPI_Comm& parent_comm, const Device& device, const 
 
         if (profile_comm != MPI_COMM_NULL) {
             ac::copy(acr::make_ptr(vba, static_cast<Profile>(i), BufferGroup::input),
-                         staging_buffer.get());
+                     staging_buffer.get());
             ac::mpi::write_collective(profile_comm,
                                       ac::mpi::get_dtype<AcReal>(),
                                       profile_global_nz,
@@ -951,13 +951,13 @@ class Grid {
 
     MPI_Comm xy_neighbors{MPI_COMM_NULL};
 
-    #if defined(AC_ENABLE_ASYNC_AVERAGES)
+#if defined(AC_ENABLE_ASYNC_AVERAGES)
     ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg_task{};
-    #endif
+#endif
 
-    #if defined(AC_ENABLE_ASYNC_DT)
+#if defined(AC_ENABLE_ASYNC_DT)
     ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce_task{};
-    #endif
+#endif
 
   public:
     explicit Grid(const AcMeshInfo& raw_info)
@@ -1204,25 +1204,28 @@ class Grid {
 #endif
 
 #if defined(AC_ENABLE_ASYNC_DT)
-    void launch_uumax_reduce() {
+    void launch_uumax_reduce()
+    {
         AcReal uumax{0};
         ERRCHK_AC(acDeviceReduceVec(device,
-                                STREAM_DEFAULT,
-                                RTYPE_MAX,
-                                VTXBUF_UUX,
-                                VTXBUF_UUY,
-                                VTXBUF_UUZ,
-                                &uumax));
+                                    STREAM_DEFAULT,
+                                    RTYPE_MAX,
+                                    VTXBUF_UUX,
+                                    VTXBUF_UUY,
+                                    VTXBUF_UUZ,
+                                    &uumax));
         m_uumax_reduce_task.launch(cart_comm, ac::host_view<AcReal>{1, &uumax}, MPI_MAX);
     }
 
-    AcReal wait_uumax_reduce_and_get() {
+    AcReal wait_uumax_reduce_and_get()
+    {
         AcReal uumax{0};
         m_uumax_reduce_task.wait(ac::host_view<AcReal>{1, &uumax});
         return uumax;
     }
 
-    AcReal wait_uumax_reduce_and_get_dt() {
+    AcReal wait_uumax_reduce_and_get_dt()
+    {
 
         AcMeshInfo info{};
         ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -1305,12 +1308,12 @@ class Grid {
             // Current time
             acr::set(AC_current_time, current_time, local_info);
 
-            // Timestep dependencies: local hydro (reduction skips ghost zones)
-            #if defined (AC_ENABLE_ASYNC_DT)
+// Timestep dependencies: local hydro (reduction skips ghost zones)
+#if defined(AC_ENABLE_ASYNC_DT)
             const AcReal dt = wait_uumax_reduce_and_get_dt();
-            #else
+#else
             const AcReal dt = calc_and_distribute_timestep(cart_comm, device);
-            #endif
+#endif
             acr::set(AC_dt, dt, local_info);
 
             // Forcing
@@ -1358,10 +1361,10 @@ class Grid {
                 compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_inner);
                 ERRCHK_AC(acDeviceSwapBuffers(device));
 
-                #if defined(AC_ENABLE_ASYNC_DT)
+#if defined(AC_ENABLE_ASYNC_DT)
                 if (substep == 2)
                     launch_uumax_reduce();
-                #endif
+#endif
 
 // Profile dependencies: local tfm (uxb)
 #if defined(AC_ENABLE_ASYNC_AVERAGES)
@@ -1447,7 +1450,7 @@ class Grid {
 #endif
 
 #if defined(AC_ENABLE_ASYNC_DT)
-    wait_uumax_reduce_and_get();
+        wait_uumax_reduce_and_get();
 #endif
     }
 
