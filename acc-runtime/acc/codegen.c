@@ -541,7 +541,7 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
   if(postfix)
   {
 	  char* full_name;
-	  asprintf(&full_name,"%s_%s",id,postfix);
+	  my_asprintf(&full_name,"%s_%s",id,postfix);
   	  symbol_table[num_symbols[current_nest]].identifier = intern(full_name);
 	  free(full_name);
   }
@@ -952,7 +952,7 @@ get_arr_accesses(const char* datatype_scalar)
 
 	char* filename;
 	const char* define_name =  convert_to_define_name(datatype_scalar);
-	asprintf(&filename,"%s_arr_accesses",define_name);
+	my_asprintf(&filename,"%s_arr_accesses",define_name);
   	if(!file_exists(filename) || !has_optimization_info())
 		return default_accesses;
 
@@ -1487,17 +1487,17 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		FILE* fp;
 		char* func_name;
 		fp = fopen("device_set_input_loads.h","a");
-		asprintf(&func_name,"acDeviceSet%sInput",upper_case_name);
+		my_asprintf(&func_name,"acDeviceSet%sInput",upper_case_name);
 		gen_dlsym(fp,func_name);
 		fclose(fp);
 
 		fp = fopen("device_get_input_loads.h","a");
-		asprintf(&func_name,"acDeviceGet%sInput",upper_case_name);
+		my_asprintf(&func_name,"acDeviceGet%sInput",upper_case_name);
 		gen_dlsym(fp,func_name);
 		fclose(fp);
 
 		fp = fopen("device_get_output_loads.h","a");
-		asprintf(&func_name,"acDeviceGet%sOutput",upper_case_name);
+		my_asprintf(&func_name,"acDeviceGet%sOutput",upper_case_name);
 		gen_dlsym(fp,func_name);
 		fclose(fp);
 
@@ -3230,8 +3230,8 @@ gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const ASTNode* root, con
 	char* prefix;
 	const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,func_name,0,0);
 
-	if(is_dfunc) asprintf(&prefix,"%s_AC_KERNEL_",boundconds_name);
-	else asprintf(&prefix,"%s_",boundconds_name);
+	if(is_dfunc) my_asprintf(&prefix,"%s_AC_KERNEL_",boundconds_name);
+	else my_asprintf(&prefix,"%s_",boundconds_name);
 	write_dfunc_bc_kernel(root,prefix,func_name,call_info,fp);
 
 	free_func_params_info(&call_info);
@@ -6200,7 +6200,7 @@ gen_field_info(FILE* fp)
   for(size_t i = 0; i < num_of_fields; ++i)
   {
 	char* func_name;
-	asprintf(&func_name,"acGet%s",field_names.data[i]);
+	my_asprintf(&func_name,"acGet%s",field_names.data[i]);
 	gen_dlsym(fp,func_name);
 	free(func_name);
   }
@@ -6663,7 +6663,7 @@ gen_dfunc_internal_names(ASTNode* node)
 	//to exclude input params
 	//rename_local_vars(fn_identifier->buffer,node->rhs->rhs,node->rhs->rhs);
 	char* prefix = NULL;
-	asprintf(&prefix,"%s_REPLACE_WITH_INLINE_COUNTER",func_name);
+	my_asprintf(&prefix,"%s_REPLACE_WITH_INLINE_COUNTER",func_name);
 	rename_local_vars(prefix,node->rhs,node);
 	free(prefix);
 }
@@ -6899,7 +6899,7 @@ turn_inline_function_calls_to_assignments_in_statement(ASTNode* node, ASTNode* b
 	const bool in_unary_op = unary_op && unary_op->rhs;
 	if(!(in_unary_op || get_parent_node(NODE_FUNCTION_CALL,node) || get_parent_node_by_token(BINARY,node) || get_parent_node_by_token(CAST,node))) return res;
 	char* inline_var_name;
-	asprintf(&inline_var_name,"inlined_var_return_value_%d",*counter);
+	my_asprintf(&inline_var_name,"inlined_var_return_value_%d",*counter);
 	const char* type = get_expr_type(node) ? sprintf_intern("%s%s",
 			get_expr_type(node), should_be_reference(node) ? "&" : "")
 		: NULL;
@@ -7574,11 +7574,11 @@ char*
 get_mangled_name(const char* dfunc_name, const string_vec types)
 {
 		char* tmp;
-		asprintf(&tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
+		my_asprintf(&tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
 		for(size_t i = 0; i < types.size; ++i)
-			asprintf(&tmp,"%s_%s",tmp,
+			my_asprintf(&tmp,"%s_%s",tmp,
 					types.data[i] ? types.data[i] : "Auto");
-		if(types.size == 0) asprintf(&tmp,"%s_%s",tmp,"Empty");
+		if(types.size == 0) my_asprintf(&tmp,"%s_%s",tmp,"Empty");
 		tmp = realloc(tmp,sizeof(char)*(strlen(tmp) + 5*types.size));
 		replace_substring(&tmp,MULT_STR,"ARRAY");
 		replace_substring(&tmp,"<","_");
