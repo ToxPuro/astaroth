@@ -396,11 +396,11 @@ log_boundcond(FILE* stream, const BoundCond bc)
 }
 
 AcTaskDefinition
-gen_bc(FILE* stream, const BoundCond bc)
+gen_bc(FILE* stream, const BoundCond bc, const std::vector<facet_class_range> halo_types)
 {
 	log_boundcond(stream,bc);
 	const auto [bc_start,bc_end] = get_launch_bounds_from_fields(bc.in,bc.out);
-	return acBoundaryCondition(bc.boundary,bc.kernel,bc.in,bc.out,bc_start,bc_end);
+	return acBoundaryCondition(bc.boundary,bc.kernel,bc.in,bc.out,(Volume)bc_start,(Volume)bc_end,halo_types);
 }
 
 std::vector<AcTaskDefinition>
@@ -412,11 +412,15 @@ acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph, const bool optimized)
 	auto bcs = get_boundconds(bc_graph, optimized);
 	//TP: insert boundconds in topological order
 	for(size_t i = 0; i < bcs.size(); ++i)
+	{
 		for(auto& bc : bcs)
 			if(bc.topological_order == i)
 			{
-				res.push_back(gen_bc(stream,bc));
+				std::vector<facet_class_range> halo_types{};
+				for(size_t j = 0; j < bc.out.size(); ++j) halo_types.push_back((facet_class_range){1,3});
+				res.push_back(gen_bc(stream,bc,halo_types));
 			}
+	}
 
 	if(!ac_pid()) fclose(stream);
 	return res;
@@ -527,7 +531,7 @@ gen_halo_exchange_and_periodic_bcs(
 
 		if(all_periodic)
 		{
-				res.push_back(acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,output_fields,start,end));
+				res.push_back(acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XYZ,");
 				log_fields(output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
@@ -535,7 +539,7 @@ gen_halo_exchange_and_periodic_bcs(
 		}
 		else if(x_periodic && y_periodic)
 		{
-				res.push_back(acBoundaryCondition(BOUNDARY_XY,BOUNDCOND_PERIODIC,output_fields,start,end));
+				res.push_back(acBoundaryCondition(BOUNDARY_XY,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XY,");
 				log_fields(output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
@@ -543,7 +547,7 @@ gen_halo_exchange_and_periodic_bcs(
 		}
 		else if(x_periodic && z_periodic)
 		{
-				res.push_back(acBoundaryCondition(BOUNDARY_XZ,BOUNDCOND_PERIODIC,output_fields,start,end));
+				res.push_back(acBoundaryCondition(BOUNDARY_XZ,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XZ,");
 				log_fields(output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
@@ -551,7 +555,7 @@ gen_halo_exchange_and_periodic_bcs(
 		}
 		else if(y_periodic && z_periodic)
 		{
-				res.push_back(acBoundaryCondition(BOUNDARY_YZ,BOUNDCOND_PERIODIC,output_fields,start,end));
+				res.push_back(acBoundaryCondition(BOUNDARY_YZ,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_YZ,");
 				log_fields(output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
@@ -559,7 +563,7 @@ gen_halo_exchange_and_periodic_bcs(
 		}
 		else if(x_periodic)
 		{
-			res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end));
+			res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
 			log_fields(output_fields);
 			log_launch_bounds(stream,output_fields,output_fields);
@@ -567,7 +571,7 @@ gen_halo_exchange_and_periodic_bcs(
 		}
 		else if(y_periodic)
 		{
-			res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end));
+			res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
 			log_fields(output_fields);
 			log_launch_bounds(stream,output_fields,output_fields);
@@ -575,7 +579,7 @@ gen_halo_exchange_and_periodic_bcs(
 		}
 		else if(z_periodic)
 		{
-			res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end));
+			res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
 			log_fields(output_fields);
 			log_launch_bounds(stream,output_fields,output_fields);
@@ -636,146 +640,145 @@ gen_halo_exchange_and_boundconds(
 			}
 			return dst;
 		};
-		if(output_fields.size() > 0)
+		if(output_fields.size() == 0) return res;
+		if(!no_communication)
 		{
-			if(!no_communication)
+			std::deque<Field> out_fields{};
+			std::array<int3,NUM_FIELDS> fields_dims{};
+			for(int field = 0; field < NUM_FIELDS; ++field) fields_dims[field] = info[vtxbuf_dims[field]];
+			for(auto& field : output_fields) out_fields.push_back(field);
+			while(!out_fields.empty())
 			{
-				std::deque<Field> out_fields{};
-				std::array<int3,NUM_FIELDS> fields_dims{};
-				for(int field = 0; field < NUM_FIELDS; ++field) fields_dims[field] = info[vtxbuf_dims[field]];
-				for(auto& field : output_fields) out_fields.push_back(field);
-				while(!out_fields.empty())
+				std::vector<Field> same_dims_fields{};
+				pop_same(out_fields,fields_dims,same_dims_fields);
+				for(int x_dir = -1; x_dir <= 1; ++x_dir)
 				{
-					std::vector<Field> same_dims_fields{};
-					pop_same(out_fields,fields_dims,same_dims_fields);
-					for(int x_dir = -1; x_dir <= 1; ++x_dir)
+					for(int y_dir = -1; y_dir <= 1; ++y_dir)
 					{
-						for(int y_dir = -1; y_dir <= 1; ++y_dir)
+						for(int z_dir = -1; z_dir <= 1; ++z_dir)
 						{
-							for(int z_dir = -1; z_dir <= 1; ++z_dir)
+							const int3 dir = (int3){x_dir,y_dir,z_dir};
+							std::deque<Field> same_direction_fields{};
+							for(auto& field : same_dims_fields)
 							{
-								const int3 dir = (int3){x_dir,y_dir,z_dir};
-								std::deque<Field> same_direction_fields{};
-								for(auto& field : same_dims_fields)
-								{
-									if(std::find(field_ray_directions[field].begin(), field_ray_directions[field].end(),dir) != field_ray_directions[field].end()) 
-										same_direction_fields.push_back(field);
-								}
-								while(!same_direction_fields.empty())
-								{
-									std::vector<Field> same_boundary_communicated_fields{}; 
-									pop_same(same_direction_fields,communicated_boundaries,same_boundary_communicated_fields);
-									std::vector<facet_class_range> out_halo_types{};
-									for(auto& field: same_boundary_communicated_fields) out_halo_types.push_back(halo_types[field]);
-									const std::vector<AcTaskDefinition> halos_and_periodic = gen_halo_exchange_and_periodic_bcs(same_boundary_communicated_fields,field_boundconds,dir,AcBoundary(communicated_boundaries[same_boundary_communicated_fields[0]]),out_halo_types,before_kernel_call,stream);
-									for(auto& elem: halos_and_periodic) res.push_back(elem);
-								}
+								if(std::find(field_ray_directions[field].begin(), field_ray_directions[field].end(),dir) != field_ray_directions[field].end()) 
+									same_direction_fields.push_back(field);
+							}
+							while(!same_direction_fields.empty())
+							{
+								std::vector<Field> same_boundary_communicated_fields{}; 
+								pop_same(same_direction_fields,communicated_boundaries,same_boundary_communicated_fields);
+								std::vector<facet_class_range> out_halo_types{};
+								for(auto& field: same_boundary_communicated_fields) out_halo_types.push_back(halo_types[field]);
+								const std::vector<AcTaskDefinition> halos_and_periodic = gen_halo_exchange_and_periodic_bcs(same_boundary_communicated_fields,field_boundconds,dir,AcBoundary(communicated_boundaries[same_boundary_communicated_fields[0]]),out_halo_types,before_kernel_call,stream);
+								for(auto& elem: halos_and_periodic) res.push_back(elem);
 							}
 						}
 					}
 				}
 			}
+		if(!before_kernel_call) return res;
 
-			if(!before_kernel_call) return res;
-
-			for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
-                                for(const auto& field : fields)
-				{
-					bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end() && ((communicated_boundaries[field] & boundaries[boundcond]) != 0);
-                                        field_boundconds_processed[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
-                                        field_boundconds_dependencies_included[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
-				}
-
-
-			//TP: it can be that for the next compute steps only A needs to be updated on the boundaries but to update A on the boundaries
-			//One has to first update B on the boundary even though B is not actually used in the domain
-			std::array<std::vector<Field>,6> field_bcs_called{};
-
-			field_bcs_called[0] = communicated_fields;
-			field_bcs_called[1] = communicated_fields;
-			field_bcs_called[2] = communicated_fields;
-
-			field_bcs_called[3] = communicated_fields;
-			field_bcs_called[4] = communicated_fields;
-			field_bcs_called[5] = communicated_fields;
+		for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
+                        for(const auto& field : fields)
 			{
-                        	bool all_are_processed = false;
-				bool made_progress = true;
-				while(!all_are_processed)
-				{
-					if(!made_progress) fatal("%s","STUCK IN A INFINITE LOOP!\n");
-					made_progress = false;
-					for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
-					{
-						BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0};
-                        		        for(const auto& field : fields)
-                        		                processed_boundcond = !field_boundconds_dependencies_included[field][boundcond] ?  field_boundconds[field][boundcond] : processed_boundcond;
-                        		        if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
-
-						for(const auto& field : processed_boundcond.in)
-						{
-							if(!processed_boundcond.info.larger_input) continue;
-							if(std::find(field_bcs_called[boundcond].begin(), field_bcs_called[boundcond].end(), field) != field_bcs_called[boundcond].end()) continue;
-							field_bcs_called[boundcond].push_back(field);
-							field_boundconds_dependencies_included[field][boundcond] = false;
-							field_boundconds_processed[field][boundcond] = false;
-							made_progress = true;
-						}
-						for(const auto& field : processed_boundcond.out)
-						{
-							field_boundconds_dependencies_included[field][boundcond] = true;
-							made_progress = true;
-						}
-					}
-                        		all_are_processed = true;
-                        		for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
-                        			for(const auto& field : fields)
-						{
-                        				all_are_processed &= field_boundconds_dependencies_included[field][boundcond];
-						}
-				}
+				bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end() && ((communicated_boundaries[field] & boundaries[boundcond]) != 0);
+                                field_boundconds_processed[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
+                                field_boundconds_dependencies_included[field][boundcond]  =  !communicated  || field_boundconds[field][boundcond].kernel == BOUNDCOND_PERIODIC;
 			}
 
-			{
-                        	bool all_are_processed = false;
-                        	while(!all_are_processed)
-                        	{
-                        	        for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
-                        	        {
-						BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0};
-                        	        	for(const auto& field : fields)
-                        	                {
-							if(!vtxbuf_is_communicated[field]) continue;
-							//TP: always insert boundary conditions with the smaller topological order first
-							if(processed_boundcond.kernel != AC_NULL_KERNEL && processed_boundcond.topological_order < field_boundconds[field][boundcond].topological_order) continue;
-                        	                        processed_boundcond = !field_boundconds_processed[field][boundcond] ?  field_boundconds[field][boundcond] : processed_boundcond;
-                        	                }
-                        	                if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
 
-						int new_boundary = 0;
-						for(auto field : processed_boundcond.out)
+		//TP: it can be that for the next compute steps only A needs to be updated on the boundaries but to update A on the boundaries
+		//One has to first update B on the boundary even though B is not actually used in the domain
+		std::array<std::vector<Field>,6> field_bcs_called{};
+
+		field_bcs_called[0] = communicated_fields;
+		field_bcs_called[1] = communicated_fields;
+		field_bcs_called[2] = communicated_fields;
+
+		field_bcs_called[3] = communicated_fields;
+		field_bcs_called[4] = communicated_fields;
+		field_bcs_called[5] = communicated_fields;
+		{
+                	bool all_are_processed = false;
+			bool made_progress = true;
+			while(!all_are_processed)
+			{
+				if(!made_progress) fatal("%s","STUCK IN A INFINITE LOOP!\n");
+				made_progress = false;
+				for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
+				{
+					BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0};
+                		        for(const auto& field : fields)
+                		                processed_boundcond = !field_boundconds_dependencies_included[field][boundcond] ?  field_boundconds[field][boundcond] : processed_boundcond;
+                		        if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
+
+					for(const auto& field : processed_boundcond.in)
+					{
+						if(!processed_boundcond.info.larger_input) continue;
+						if(std::find(field_bcs_called[boundcond].begin(), field_bcs_called[boundcond].end(), field) != field_bcs_called[boundcond].end()) continue;
+						field_bcs_called[boundcond].push_back(field);
+						field_boundconds_dependencies_included[field][boundcond] = false;
+						field_boundconds_processed[field][boundcond] = false;
+						made_progress = true;
+					}
+					for(const auto& field : processed_boundcond.out)
+					{
+						field_boundconds_dependencies_included[field][boundcond] = true;
+						made_progress = true;
+					}
+				}
+                		all_are_processed = true;
+                		for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
+                			for(const auto& field : fields)
+					{
+                				all_are_processed &= field_boundconds_dependencies_included[field][boundcond];
+					}
+			}
+		}
+
+		{
+                	bool all_are_processed = false;
+                	while(!all_are_processed)
+                	{
+                	        for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
+                	        {
+					BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0};
+                	        	for(const auto& field : fields)
+                	                {
+						if(!vtxbuf_is_communicated[field]) continue;
+						//TP: always insert boundary conditions with the smaller topological order first
+						if(processed_boundcond.kernel != AC_NULL_KERNEL && processed_boundcond.topological_order < field_boundconds[field][boundcond].topological_order) continue;
+                	                        processed_boundcond = !field_boundconds_processed[field][boundcond] ?  field_boundconds[field][boundcond] : processed_boundcond;
+                	                }
+                	                if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
+
+					int new_boundary = 0;
+					for(auto field : processed_boundcond.out)
+					{
+						new_boundary |= (processed_boundcond.boundary & communicated_boundaries[field]);
+					}
+					processed_boundcond.boundary = AcBoundary(new_boundary);
+					std::vector<facet_class_range> facet_classes{};
+					for(auto& field: processed_boundcond.out) facet_classes.push_back(halo_types[field]);
+					res.push_back(gen_bc(stream,processed_boundcond,facet_classes));
+					for(size_t i = 0; i < boundaries.size(); ++i)
+					{
+						if((processed_boundcond.boundary & boundaries[i]) != 0)
 						{
-							new_boundary |= (processed_boundcond.boundary & communicated_boundaries[field]);
-						}
-						processed_boundcond.boundary = AcBoundary(new_boundary);
-						res.push_back(gen_bc(stream,processed_boundcond));
-						for(size_t i = 0; i < boundaries.size(); ++i)
-						{
-							if((processed_boundcond.boundary & boundaries[i]) != 0)
+							for(const auto& field : processed_boundcond.out)
 							{
-								for(const auto& field : processed_boundcond.out)
-								{
-									field_boundconds_processed[field][i] = true;
-								}
+								field_boundconds_processed[field][i] = true;
 							}
 						}
-                        	        }
-                        	        all_are_processed = true;
-                        	        for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
-                        	        	for(const auto& field : fields)
-                        	                        all_are_processed &= field_boundconds_processed[field][boundcond];
-                        	}
-			}
+					}
+                	        }
+                	        all_are_processed = true;
+                	        for(size_t boundcond = 0; boundcond < boundaries.size(); ++boundcond)
+                	        	for(const auto& field : fields)
+                	                        all_are_processed &= field_boundconds_processed[field][boundcond];
+                	}
+		}
 		}
 		return res;
 }
@@ -1233,7 +1236,9 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
                         	{
 					if(field_boundconds[field][boundcond].info.larger_output)
 					{
-						res.push_back(gen_bc(stream,field_boundconds[field][boundcond]));
+						std::vector<facet_class_range> halo_types{};
+						for(size_t j = 0; j < field_boundconds[field][boundcond].out.size(); ++j) halo_types.push_back((facet_class_range){1,1});
+						res.push_back(gen_bc(stream,field_boundconds[field][boundcond],halo_types));
 					}
 
                         	}

@@ -1199,6 +1199,14 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
 
 static inline
 AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, const Volume start, const Volume end, const std::vector<facet_class_range> halo_types)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
+    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), start, end, halo_types.data(), loader);
+}
+
+static inline
+AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields,const Volume start, const Volume end)
 {
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};

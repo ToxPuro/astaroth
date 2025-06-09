@@ -2240,39 +2240,41 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
                                          "rank, tag, op.boundary) = %i \n",
                                          Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy()));
 		const bool is_on_boundary = Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy());
-                if (is_on_boundary || globally_imposed_bcs) {
-
-                    if (op.kernel_enum == BOUNDCOND_PERIODIC) {
-			if(globally_imposed_bcs)
-			{
-				fatal("%s","Can not use periodic bcs and globally imposed bcs at the same time!\n");
-			}
-                        acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
-                                                 tag);
-			const bool shear_periodic = acGridGetLocalMeshInfo()[AC_shear] && (
-							   (id.x == -1 && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == 0)
-							|| (id.x == 1  && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == int(decomp.x-1))
-							);
-			//TP: because of the need to interpolate from multiple processes the whole stretch from 0 to AC_mlocal.y is done in a single task
-			if(shear_periodic && id.y != 0) continue;
-                        auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info, device, swap_offset,shear_periodic);
-                        graph->halo_tasks.push_back(task);
-                        graph->all_tasks.push_back(task);
-                        acVerboseLogFromRootProc(rank,
-                                                 "Done creating periodic bc task with tag%d\n",
-                                                 tag);
-
-                    }
-		    else
+		if(!is_on_boundary && !globally_imposed_bcs) continue;
+                if (op.kernel_enum == BOUNDCOND_PERIODIC) {
+		    if(globally_imposed_bcs)
 		    {
-                    	auto task = std::make_shared<BoundaryConditionTask>(op,
-                    	                                                       boundary_normal(tag),
-                    	                                                       i, tag, start, dims,
-                    	                                                       device,
-                    	                                                       swap_offset);
-                    	graph->all_tasks.push_back(task);
+		    	fatal("%s","Can not use periodic bcs and globally imposed bcs at the same time!\n");
 		    }
+                    acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
+                                             tag);
+		    const bool shear_periodic = acGridGetLocalMeshInfo()[AC_shear] && (
+		    				   (id.x == -1 && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == 0)
+		    				|| (id.x == 1  && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == int(decomp.x-1))
+		    				);
+		    //TP: because of the need to interpolate from multiple processes the whole stretch from 0 to AC_mlocal.y is done in a single task
+		    if(shear_periodic && id.y != 0) continue;
+                    auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info, device, swap_offset,shear_periodic);
+                    graph->halo_tasks.push_back(task);
+                    graph->all_tasks.push_back(task);
+                    acVerboseLogFromRootProc(rank,
+                                             "Done creating periodic bc task with tag%d\n",
+                                             tag);
+
                 }
+		else
+		{
+			if(Region::tag_to_id(tag) == (int3){0,0,1} && op.kernel_enum != BOUNDCOND_PERIODIC)
+			{
+				printf("Using %s at Z_TOP!!\n",kernel_names[op.kernel_enum]);
+			}
+                	auto task = std::make_shared<BoundaryConditionTask>(op,
+                	                                                       boundary_normal(tag),
+                	                                                       i, tag, start, dims,
+                	                                                       device,
+                	                                                       swap_offset);
+                	graph->all_tasks.push_back(task);
+		}
             }
             grid.mpi_tag_space_count += (op.kernel_enum  == BOUNDCOND_PERIODIC);
             acVerboseLogFromRootProc(rank, "Boundcond tasks created\n");
