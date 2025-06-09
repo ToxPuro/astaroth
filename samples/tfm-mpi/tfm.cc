@@ -6,8 +6,10 @@
 #include <iostream>
 #include <numeric>
 
+// Astaroth
 #include "astaroth_headers.h" // To suppress unnecessary warnings
 
+// Astaroth utils
 #include "astaroth_forcing.h"
 #include "device_detail.h"
 
@@ -40,7 +42,15 @@
 
 #include <unistd.h>
 
+// ACM
+#include "acm/detail/argparse.h"
+#include "acm/detail/errchk.h"
+#include "acm/detail/mpi_utils.h"
+#include "acm/detail/print_debug.h"
+
+// ACM experimental
 #include "acm/detail/experimental/mpi_utils_experimental.h"
+
 // #define AC_ENABLE_ASYNC_AVERAGES // Better scaling
 // #define AC_ENABLE_ASYNC_DT       // Better scaling
 
