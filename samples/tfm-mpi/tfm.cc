@@ -1472,36 +1472,60 @@ class Grid {
     Grid& operator=(Grid&&)      = delete; // Move assignment operator
 };
 
-static Arguments parse_args(int argc,  char* argv[])
-{
-    Arguments args{};
+namespace tfm {
 
-    ERRCHK(acParseArguments(argc, argv, &args) == 0);
-    
-    // Enforce that the config path is given explicitly
-    ERRCHK_MPI_EXPR_DESC(args.config_path,
-        "No config path passed. Must pass the config path explicitly with "
-        "./tfm-mpi --config <path>. For example: './tfm-mpi --config "
-        "../samples/tfm/mhd/mhd.ini'");
-        
-    ERRCHK(acPrintArguments(args) == 0);
-    return args;
+struct arguments {
+    std::string config_path{};
+    ac::shape   global_nn_override{};
+    int         job_id{0};
+
+    arguments(int argc, char* argv[])
+    {
+        const std::vector<std::string> arg_list{argv+1, argv+argc};
+        const auto pairs{ac::parse_key_value_pairs(arg_list)};
+
+        std::cout << "Usage: ./tfm-mpi --config path/to/config.conf [optional: --global-nn-override 32,32,32] [optional: --job-id 0]" << std::endl;
+
+        for (const auto& pair : pairs) {
+            if (pair.first == "--config")
+                config_path = pair.second;
+            else if (pair.first == "--global-nn-override")
+                global_nn_override = ac::parse_shape(pair.second);
+            else if (pair.first == "--job-id")
+                job_id = std::stoi(pair.second);
+            else
+                ERRCHK_EXPR_DESC(false,
+                                 "Do not know what to do with argument pair [%s: %s]",
+                                 pair.first.c_str(),
+                                 pair.second.c_str());
+        }
+
+        // Require that config_path id explicitly defined by the user
+        if (config_path.size() == 0)
+            ERRCHK_EXPR_DESC(false,
+                             "No config path passed. Must pass the config path explicitly with "
+                             "./tfm-mpi --config <path>. For example: './tfm-mpi --config "
+                             "../samples/tfm/mhd/mhd.ini'");
+    }
+
+    void print() const noexcept
+    {
+        PRINT_DEBUG(config_path);
+        PRINT_DEBUG(global_nn_override);
+        PRINT_DEBUG(job_id);
+    }
+};
+
 }
 
-static AcMeshInfo parse_info(const Arguments& args) {
+static AcMeshInfo parse_info(const tfm::arguments& args) {
     AcMeshInfo raw_info{};
     
-    ERRCHK(acParseINI(args.config_path, &raw_info) == 0);
+    ERRCHK(acParseINI(args.config_path.c_str(), &raw_info) == 0);
 
     // Override global_nn if instructed by the user
-    if (args.global_nn_override[0] > 0) {
-        ERRCHK_MPI(std::all_of(args.global_nn_override,
-                                args.global_nn_override + 3,
-                                [](const auto& val) { return val > 0; }));
-        acr::set(AC_global_nx, args.global_nn_override[0], raw_info);
-        acr::set(AC_global_ny, args.global_nn_override[1], raw_info);
-        acr::set(AC_global_nz, args.global_nn_override[2], raw_info);
-    }
+    if (args.global_nn_override.size() > 0)
+        acr::set_global_nn(args.global_nn_override, raw_info);
 
     acPrintMeshInfoTFM(raw_info);
     return raw_info;
@@ -1530,7 +1554,7 @@ main(int argc, char* argv[])
         ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
 
         // Parse arguments
-        Arguments args{parse_args(argc, argv)};
+        tfm::arguments args{argc, argv};
 
         // Load configuration
         AcMeshInfo raw_info{parse_info(args)};

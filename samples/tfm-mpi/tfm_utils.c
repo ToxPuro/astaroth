@@ -10,6 +10,7 @@
 #include "acc-runtime/api/errchk.h"
 #include "astaroth_forcing.h"
 
+#if 0
 int
 acParseArguments(const int argc, char* argv[], Arguments* args)
 {
@@ -92,6 +93,7 @@ acParseArguments(const int argc, char* argv[], Arguments* args)
 
     return 0;
 }
+#endif
 
 static int
 config_handler(void* user, const char* section, const char* name, const char* value)
@@ -159,12 +161,12 @@ acParseINI(const char* filepath, AcMeshInfo* info)
     // return 0;
 }
 
-int
-acPrintArguments(const Arguments args)
-{
-    printf("[config_path]: %s\n", args.config_path);
-    return 0;
-}
+// int
+// acPrintArguments(const Arguments args)
+// {
+//     printf("[config_path]: %s\n", args.config_path);
+//     return 0;
+// }
 
 int
 acHostUpdateLocalBuiltinParams(AcMeshInfo* config)

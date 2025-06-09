@@ -2,21 +2,21 @@
 
 #include "acc_runtime.h"
 
-typedef struct {
-    char* config_path;
-    int global_nn_override[3];
-    int job_id;
-} Arguments;
+// typedef struct {
+//     char* config_path;
+//     int global_nn_override[3];
+//     int job_id;
+// } Arguments;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int acParseArguments(const int argc, char* argv[], Arguments* args);
+// int acParseArguments(const int argc, char* argv[], Arguments* args);
 
 int acParseINI(const char* filepath, AcMeshInfo* info);
 
-int acPrintArguments(const Arguments args);
+// int acPrintArguments(const Arguments args);
 
 int acHostUpdateLocalBuiltinParams(AcMeshInfo* config);
 
