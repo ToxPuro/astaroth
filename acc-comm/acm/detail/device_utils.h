@@ -85,6 +85,9 @@ get_kind()
     }
 }
 
+/** Returns the number of devices visible on the node */
+int device_count();
+
 } // namespace ac::device
 
 #endif

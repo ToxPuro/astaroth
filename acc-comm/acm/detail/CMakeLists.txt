@@ -13,6 +13,7 @@ set(ACM_HOST_FILES
     math_utils.cc
     ntuple.cc
     argparse.cc
+    device_utils.cc
     experimental/mpi_utils_experimental.cc
     experimental/random_experimental.cc
     experimental/bm.cc
