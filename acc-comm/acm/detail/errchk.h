@@ -22,7 +22,7 @@
 #define ERRCHK_EXPR_DESC(expr, ...)                                                                \
     do {                                                                                           \
         if (!(expr)) {                                                                             \
-            errchk_print_error(__func__, __FILE__, __LINE__, #expr, "");                           \
+            errchk_print_error(__func__, __FILE__, __LINE__, #expr, __VA_ARGS__);                  \
             errchk_print_stacktrace();                                                             \
             throw std::runtime_error("Assertion " #expr " failed");                                \
         }                                                                                          \
