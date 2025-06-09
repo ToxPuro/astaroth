@@ -9,6 +9,21 @@
 
 namespace ac::mpi {
 
+ac::mpi::comm
+split(const MPI_Comm& parent_comm, const int color, const int key)
+{
+    MPI_Comm comm{MPI_COMM_NULL};
+    ERRCHK_MPI_API(MPI_Comm_split(parent_comm, color, key, &comm));
+    ERRCHK_MPI(comm != MPI_COMM_NULL);
+    return ac::mpi::comm{comm, true};
+}
+
+void
+barrier(const ac::mpi::comm& comm)
+{
+    ERRCHK_MPI_API(MPI_Barrier(comm.get()));
+}
+
 ac::shape
 global_mm(const cart_comm& comm, const ac::index& rr)
 {

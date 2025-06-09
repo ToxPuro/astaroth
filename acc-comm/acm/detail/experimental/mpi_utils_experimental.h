@@ -172,6 +172,23 @@ class request {
     }
 };
 
+/**
+ * Splits the communicator by color.
+ * If key == 0 (default), the new rank ordering is the same as in parent_comm.
+ */
+ac::mpi::comm split(const MPI_Comm& parent_comm, const int color, const int key = 0);
+
+/** Barrier synchronization on comm. */
+void barrier(const ac::mpi::comm& comm);
+
+/** Broadcast data on root to other processes in the communicator */
+template <typename T>
+void
+broadcast(const ac::mpi::comm& comm, const int root, ac::base_view<T> view)
+{
+    ERRCHK_MPI_API(MPI_Bcast(view.data(), view.size(), ac::mpi::get_dtype<T>(), root, comm.get()));
+}
+
 template <typename T>
 [[nodiscard]] auto
 isend(const MPI_Comm& comm, const int16_t tag, const ac::base_view<T>& in, const int dst)
