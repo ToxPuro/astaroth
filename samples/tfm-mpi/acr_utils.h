@@ -35,6 +35,10 @@ ac::shape get_global_nn(const AcMeshInfo& info);
 ac::shape get_local_nn(const AcMeshInfo& info);
 ac::shape get_local_mm(const AcMeshInfo& info);
 
+void set_global_nn(const ac::shape& global_nn, AcMeshInfo& info);
+void set_local_nn(const ac::shape& local_nn, AcMeshInfo& info);
+void set_local_ss(const ac::shape& local_ss, AcMeshInfo& info);
+
 Dims get_global_ss(const AcMeshInfo& info);
 
 ac::index get_global_nn_offset(const AcMeshInfo& info);

@@ -73,6 +73,39 @@ set(const AcReal3Param& param, const AcReal3& value, AcMeshInfo& info)
     info.real3_params[param] = value;
 }
 
+static int3
+convert_to_int3(const ac::ntuple<uint64_t>& in)
+{
+    ERRCHK(in.size() == 3);
+    return int3{as<int>(in[0]), as<int>(in[1]), as<int>(in[2])};
+}
+
+void set_global_nn(const ac::shape& global_nn, AcMeshInfo& info)
+{
+    ERRCHK(global_nn.size() == 3);
+    acr::set(AC_global_nx, as<int>(global_nn[0]), info);
+    acr::set(AC_global_ny, as<int>(global_nn[1]), info);
+    acr::set(AC_global_nz, as<int>(global_nn[2]), info);
+
+    // Backwards compatibility
+    acr::set(AC_global_grid_n, convert_to_int3(global_nn), info);
+}
+
+void set_local_nn(const ac::shape& local_nn, AcMeshInfo& info){
+    ERRCHK(local_nn.size() == 3);
+    acr::set(AC_nx, as<int>(local_nn[0]), info);
+    acr::set(AC_ny, as<int>(local_nn[1]), info);
+    acr::set(AC_nz, as<int>(local_nn[2]), info);
+}
+
+void set_local_ss(const ac::shape& local_ss, AcMeshInfo& info)
+{
+    ERRCHK(local_ss.size() == 3);
+    acr::set(AC_sx, static_cast<AcReal>(local_ss[0]), info);
+    acr::set(AC_sy, static_cast<AcReal>(local_ss[1]), info);
+    acr::set(AC_sz, static_cast<AcReal>(local_ss[2]), info);
+}
+
 ac::shape
 get_global_nn(const AcMeshInfo& info)
 {
