@@ -1542,30 +1542,9 @@ static void reset_timeseries()
     ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
 }
 
-int
-main(int argc, char* argv[])
-{
-    ac::mpi::init_funneled();
-    try {
-        // Stop profiler
-        ERRCHK_CUDA_API(cudaProfilerStop());
-
-        // Disable MPI_Abort on error and do manual error handling instead
-        ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
-
-        // Parse arguments
-        tfm::arguments args{argc, argv};
-
-        // Load configuration
-        AcMeshInfo raw_info{parse_info(args)};
-
-        // Reset timeseries
-        reset_timeseries();
-
+static void benchmark_run(const tfm::arguments& args, const AcMeshInfo& raw_info) {
         // Init Grid
         Grid grid{raw_info};
-
-#if defined(AC_BENCHMARK_MODE)
 
         // Benchmark run
         constexpr size_t nsteps_per_sample{100};
@@ -1626,10 +1605,41 @@ main(int argc, char* argv[])
         ERRCHK_CUDA_API(cudaProfilerStart());
         print("tfm-mpi", bm::benchmark(init, bench, sync, nsamples));
         ERRCHK_CUDA_API(cudaProfilerStop());
+}
 
-#else // Production run
-        grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
-#endif
+static void production_run(const tfm::arguments& args, const AcMeshInfo& raw_info) {
+    // Init Grid
+    Grid grid{raw_info};
+
+    grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
+}
+
+int
+main(int argc, char* argv[])
+{
+    ac::mpi::init_funneled();
+    try {
+        // Stop profiler
+        ERRCHK_CUDA_API(cudaProfilerStop());
+
+        // Disable MPI_Abort on error and do manual error handling instead
+        ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
+
+        // Parse arguments
+        tfm::arguments args{argc, argv};
+
+        // Load configuration
+        AcMeshInfo raw_info{parse_info(args)};
+
+        // Reset timeseries
+        reset_timeseries();
+
+        // Run
+        #if defined(AC_BENCHMARK_MODE)
+            benchmark_run(args, raw_info);
+        #else
+            production_run(args, raw_info);
+        #endif
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
