@@ -2,6 +2,8 @@
 
 #include <sstream>
 
+#include "errchk.h"
+
 namespace ac {
 
 std::map<std::string, std::string>
@@ -10,7 +12,7 @@ parse_key_value_pairs(const std::vector<std::string>& args)
     std::map<std::string, std::string> map;
 
     if (args.size() % 2 != 0)
-        throw std::runtime_error("Uneven number of input arguments.");
+        ERRCHK_EXPR_DESC(false, "Uneven number of input arguments.");
 
     for (size_t i{0}; i + 1 < args.size(); i += 2)
         map[args[i]] = args[i + 1];
