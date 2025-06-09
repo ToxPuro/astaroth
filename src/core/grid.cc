@@ -2196,6 +2196,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		included |= (Region::tag_to_id(tag).y == +1 && (op.boundary & BOUNDARY_Y_TOP) != 0);
 		included |= (Region::tag_to_id(tag).z == -1 && (op.boundary & BOUNDARY_Z_BOT) != 0);
 		included |= (Region::tag_to_id(tag).z == +1 && (op.boundary & BOUNDARY_Z_TOP) != 0);
+		if(!included) continue;
 
                 if (op.include_boundaries || !Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info,
