@@ -5,6 +5,7 @@
 #include <future>
 #include <iostream>
 #include <numeric>
+#include <filesystem>
 
 // Astaroth
 #include "astaroth_headers.h" // To suppress unnecessary warnings
@@ -1606,6 +1607,39 @@ static void benchmark_run(const tfm::arguments& args, const AcMeshInfo& raw_info
         print("tfm-mpi", bm::benchmark(init, bench, sync, nsamples));
         ERRCHK_CUDA_API(cudaProfilerStop());
 }
+
+class SimulationState {
+    private:
+        std::string m_path{"simulation_state.txt"};
+    public:
+        SimulationState() = default;
+
+        bool exists() const noexcept {
+            return std::filesystem::exists(m_path);
+        }
+        
+        void write(const AcMeshInfo& info, const std::string& snapshot_path) const {
+            FILE* fp{fopen(m_path.c_str(), "w")};
+            ERRCHK(fp);
+            ERRCHK(fprintf(fp, "%d, %la", acr::get(info, AC_step_number), acr::get(info, AC_current_time)) > 0);
+            ERRCHK(fclose(fp) == 0);
+        }
+
+        void read(AcMeshInfo& info) const {
+            int step_number{-1};
+            AcReal current_time{-1};
+
+            FILE* fp{fopen(m_path.c_str(), "r")};
+            ERRCHK(fp);
+            ERRCHK(fscanf(fp, "%d, %la", &step_number, &current_time) == 2);
+            ERRCHK(fclose(fp) == 0);
+
+            acr::set(AC_step_number, step_number, info);
+            acr::set(AC_current_time, current_time, info);
+        }
+};
+
+
 
 static void production_run(const tfm::arguments& args, const AcMeshInfo& raw_info) {
     // Init Grid
