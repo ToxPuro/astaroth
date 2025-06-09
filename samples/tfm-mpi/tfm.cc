@@ -1462,49 +1462,71 @@ class Grid {
     Grid& operator=(Grid&&)      = delete; // Move assignment operator
 };
 
+static Arguments parse_args(int argc,  char* argv[])
+{
+    Arguments args{};
+
+    ERRCHK(acParseArguments(argc, argv, &args) == 0);
+    
+    // Enforce that the config path is given explicitly
+    ERRCHK_MPI_EXPR_DESC(args.config_path,
+        "No config path passed. Must pass the config path explicitly with "
+        "./tfm-mpi --config <path>. For example: './tfm-mpi --config "
+        "../samples/tfm/mhd/mhd.ini'");
+        
+    ERRCHK(acPrintArguments(args) == 0);
+    return args;
+}
+
+static AcMeshInfo parse_info(const Arguments& args) {
+    AcMeshInfo raw_info{};
+    
+    ERRCHK(acParseINI(args.config_path, &raw_info) == 0);
+
+    // Override global_nn if instructed by the user
+    if (args.global_nn_override[0] > 0) {
+        ERRCHK_MPI(std::all_of(args.global_nn_override,
+                                args.global_nn_override + 3,
+                                [](const auto& val) { return val > 0; }));
+        acr::set(AC_global_nx, args.global_nn_override[0], raw_info);
+        acr::set(AC_global_ny, args.global_nn_override[1], raw_info);
+        acr::set(AC_global_nz, args.global_nn_override[2], raw_info);
+    }
+
+    acPrintMeshInfoTFM(raw_info);
+    return raw_info;
+}
+
+static void reset_timeseries()
+{
+    if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+        FILE* fp{fopen("timeseries.csv", "w")};
+        ERRCHK_MPI(fp != NULL);
+        std::fprintf(fp, "label,step,t_step,dt,min,rms,max,avg\n");
+        ERRCHK_MPI(fclose(fp) == 0);
+    }
+    ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+}
+
 int
 main(int argc, char* argv[])
 {
     ac::mpi::init_funneled();
-    ERRCHK_CUDA_API(cudaProfilerStop());
     try {
-
-        // Parse arguments
-        Arguments args{};
-        ERRCHK(acParseArguments(argc, argv, &args) == 0);
-        ERRCHK(acPrintArguments(args) == 0);
-
-        // Enforce that the config path is given explicitly
-        ERRCHK_MPI_EXPR_DESC(args.config_path,
-                             "No config path passed. Must pass the config path explicitly with "
-                             "./tfm-mpi --config <path>. For example: './tfm-mpi --config "
-                             "../samples/tfm/mhd/mhd.ini'");
-
-        // Load configuration
-        AcMeshInfo raw_info{};
-        ERRCHK(acParseINI(args.config_path, &raw_info) == 0);
-
-        // Override global_nn if instructed by the user
-        if (args.global_nn_override[0] > 0) {
-            ERRCHK_MPI(std::all_of(args.global_nn_override,
-                                   args.global_nn_override + 3,
-                                   [](const auto& val) { return val > 0; }));
-            acr::set(AC_global_nx, args.global_nn_override[0], raw_info);
-            acr::set(AC_global_ny, args.global_nn_override[1], raw_info);
-            acr::set(AC_global_nz, args.global_nn_override[2], raw_info);
-        }
+        // Stop profiler
+        ERRCHK_CUDA_API(cudaProfilerStop());
 
         // Disable MPI_Abort on error and do manual error handling instead
         ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
 
+        // Parse arguments
+        Arguments args{parse_args(argc, argv)};
+
+        // Load configuration
+        AcMeshInfo raw_info{parse_info(args)};
+
         // Reset timeseries
-        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-            FILE* fp{fopen("timeseries.csv", "w")};
-            ERRCHK_MPI(fp != NULL);
-            std::fprintf(fp, "label,step,t_step,dt,min,rms,max,avg\n");
-            ERRCHK_MPI(fclose(fp) == 0);
-        }
-        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+        reset_timeseries();
 
         // Init Grid
         Grid grid{raw_info};
