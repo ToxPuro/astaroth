@@ -35,8 +35,8 @@ real AC_max_time
 int AC_forcing_period_steps
 real AC_forcing_period_t
 
-// Initial time step index, default should be 0
-int AC_start_step
+// Initial time step index, default is 0
+int AC_start_step = 0
 
 run_const bool AC_additive_timestep = true
 global output real ALFVEN_SPEED_MAX
