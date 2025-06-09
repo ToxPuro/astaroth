@@ -520,11 +520,6 @@ Kernel singlepass_solve(int step_num, TimeParams time_params) {
 #if LBFIELD
         write(BFIELD, curl(AA))	
 #endif
-
-#if LSHOCK
-    // Required for buffers to match correctly. 
-    write(VTXBUF_SHOCK, VTXBUF_SHOCK)
-#endif
 }
 
 
