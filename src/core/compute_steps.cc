@@ -474,7 +474,7 @@ gen_halo_exchange_and_periodic_bcs(
 		const FieldBCs field_boundconds,
 		const int3 direction,
 		const AcBoundary boundary,
-		const std::vector<int> halo_types,
+		const std::vector<facet_class_range> halo_types,
 		const bool before_kernel_call,
 		FILE* stream
 		)
@@ -507,8 +507,8 @@ gen_halo_exchange_and_periodic_bcs(
 		if(!ac_pid()) fprintf(stream,",sending = %d,receiving = %d",sending,receiving);
 		if(!ac_pid()) fprintf(stream, ",%s",ac_boundary_to_str(boundary));
 		if(!ac_pid()) fprintf(stream,",{");
-		for(const int& halo_type: halo_types)
-			if(!ac_pid()) fprintf(stream, "%d,",halo_type);
+		for(const auto& halo_type: halo_types)
+			if(!ac_pid()) fprintf(stream, "(%d,%d),",halo_type.min,halo_type.max);
 		if(!ac_pid()) fprintf(stream,"}");
 
 		if(!ac_pid()) fprintf(stream, ")\n");
@@ -588,7 +588,7 @@ gen_halo_exchange_and_boundconds(
 		const std::vector<Field>& fields,
 		const std::vector<Field>& communicated_fields,
 		const std::array<int,NUM_FIELDS>& communicated_boundaries,
-		const std::array<int,NUM_FIELDS>& halo_types,
+		const std::array<facet_class_range,NUM_FIELDS>& halo_types,
 		const FieldBCs field_boundconds,
 		const std::array<std::vector<int3>,NUM_FIELDS> field_ray_directions,
 		const bool before_kernel_call,
@@ -665,7 +665,7 @@ gen_halo_exchange_and_boundconds(
 								{
 									std::vector<Field> same_boundary_communicated_fields{}; 
 									pop_same(same_direction_fields,communicated_boundaries,same_boundary_communicated_fields);
-									std::vector<int> out_halo_types{};
+									std::vector<facet_class_range> out_halo_types{};
 									for(auto& field: same_boundary_communicated_fields) out_halo_types.push_back(halo_types[field]);
 									const std::vector<AcTaskDefinition> halos_and_periodic = gen_halo_exchange_and_periodic_bcs(same_boundary_communicated_fields,field_boundconds,dir,AcBoundary(communicated_boundaries[same_boundary_communicated_fields[0]]),out_halo_types,before_kernel_call,stream);
 									for(auto& elem: halos_and_periodic) res.push_back(elem);
@@ -822,7 +822,7 @@ typedef struct
 	std::vector<KernelCall> calls;
 	std::vector<Field> fields_communicated_before;
 	std::array<int,NUM_FIELDS> communicated_boundaries;
-	std::array<int,NUM_FIELDS> halo_types;
+	std::array<facet_class_range,NUM_FIELDS> halo_types;
 } level_set;
 
 
@@ -985,12 +985,12 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 
 		std::vector<Field> tmp{};
 		std::array<int,NUM_FIELDS> boundaries{};
-		std::array<int,NUM_FIELDS> halo_types{};
+		std::array<facet_class_range,NUM_FIELDS> halo_types{};
 		for(size_t i = 0; i < NUM_FIELDS; ++i)
 		{
 			Field field = static_cast<Field>(i);
 			boundaries[field] = field_needs_to_be_communicated_before_level_set[i][level_set_index];
-			halo_types[field] = halo_types_level_set[i][level_set_index];
+			halo_types[field] = (facet_class_range){1,halo_types_level_set[i][level_set_index]};
 			if(field_needs_to_be_communicated_before_level_set[i][level_set_index])
 			{
 				tmp.push_back(field);

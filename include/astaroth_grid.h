@@ -271,6 +271,11 @@ typedef struct ParamLoadingInfo {
 //opaque for C to enable C++ lambdas
 typedef struct LoadKernelParamsFunc LoadKernelParamsFunc;
 
+
+typedef struct 
+{
+	int min,max;
+} facet_class_range;
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
  * some operation.*/
 typedef struct AcTaskDefinition {
@@ -312,7 +317,7 @@ typedef struct AcTaskDefinition {
     bool receiving;
     int3 ray_direction;
     bool include_boundaries;
-    int* halo_types;
+    facet_class_range* halo_types;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -341,12 +346,12 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acCompute,(const AcKernel kernel, Field
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const KernelParamsLoader));
 FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
-		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const int halo_types[], const KernelParamsLoader));
+		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const facet_class_range halo_types[], const KernelParamsLoader));
 #else
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,void (*load_func)(ParamLoadingInfo step_info)));
 FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
-		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,const Volume start, const Volume end, const int halo_types[], void (*load_func)(ParamLoadingInfo step_info)));
+		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,const Volume start, const Volume end, const facet_class_range halo_types[], void (*load_func)(ParamLoadingInfo step_info)));
 #endif
 
 #if __cplusplus
@@ -361,7 +366,7 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const s
 
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acReduceInRayDirection,(Field fields[], const size_t num_fields, const int3 ray_direction));
 
-FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries,const int halo_types[]));
+FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries,const facet_class_range halo_types[]));
 
 FUNC_DEFINE(AcTaskGraph*, acGridGetDefaultTaskGraph,());
 

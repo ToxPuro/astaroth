@@ -272,14 +272,15 @@ acHaloExchange(Field fields[], const size_t num_fields)
     task_def.receiving = true;
     task_def.boundary      = BOUNDARY_XYZ;
     task_def.include_boundaries = false;
-    int* halo_types = (int*)malloc(sizeof(int)*num_fields);
-    for(size_t i = 0; i < num_fields; ++i) halo_types[i] = 2;
+    facet_class_range* halo_types = (facet_class_range*)malloc(sizeof(facet_class_range)*num_fields);
+    for(size_t i = 0; i < num_fields; ++i) halo_types[i].min = 1;
+    for(size_t i = 0; i < num_fields; ++i) halo_types[i].max = 2;
     task_def.halo_types = halo_types;
     return task_def;
 }
 
 AcTaskDefinition
-acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries, const int halo_types[])
+acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries, const facet_class_range halo_types[])
 {
     AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
     task_def.halo_types = ptr_copy(halo_types,num_fields);
@@ -327,8 +328,9 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
 	    			    };
     task_def.halo_sizes = max_halo;
 
-    int* halo_types = (int*)malloc(sizeof(int)*num_fields_out);
-    for(size_t i = 0; i < num_fields_out; ++i) halo_types[i] = 2;
+    facet_class_range* halo_types = (facet_class_range*)malloc(sizeof(facet_class_range)*num_fields_out);
+    for(size_t i = 0; i < num_fields_out; ++i) halo_types[i].min = 1;
+    for(size_t i = 0; i < num_fields_out; ++i) halo_types[i].max = 2;
     task_def.halo_types = halo_types;
     if (!strcmp(kernel_input_param_strs[kernel],"Field"))
     {
@@ -377,7 +379,7 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
 }
 
 AcTaskDefinition
-acBoundaryConditionWithBounds(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const int halo_types[], const std::function<void(ParamLoadingInfo)> load_func)
+acBoundaryConditionWithBounds(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const facet_class_range halo_types[], const std::function<void(ParamLoadingInfo)> load_func)
 {
 	AcTaskDefinition task_def = acBoundaryCondition(boundary,kernel,fields_in,num_fields_in,fields_out,num_fields_out,load_func);
         task_def.start = start;
@@ -1540,7 +1542,7 @@ get_receiving(const int3 direction, const int3 id)
 		   (direction == (int3){0,0,0});
 }
 std::vector<Field>
-get_communicated_subset(const std::vector<Field> fields, const int halo_types[], const int facet_class)
+get_communicated_subset(const std::vector<Field> fields, const facet_class_range halo_types[], const int facet_class)
 {
 	ERRCHK_ALWAYS(halo_types != NULL);
 	std::vector<Field> res{};
@@ -1548,7 +1550,7 @@ get_communicated_subset(const std::vector<Field> fields, const int halo_types[],
 	const bool include_corners = acDeviceGetLocalConfig(acGridGetDevice())[AC_include_3d_halo_corners];
 	for(size_t i = 0; i < fields.size(); ++i)
 	{
-		if(facet_class <= halo_types[i] || include_corners) res.push_back(fields[i]);
+		if((halo_types[i].min <= facet_class && facet_class <= halo_types[i].max) || include_corners) res.push_back(fields[i]);
 	}
 	return res;
 }

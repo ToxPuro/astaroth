@@ -843,12 +843,12 @@ acGridInitBase(const AcMesh user_mesh)
 #endif
     {
 	    std::vector<Field> all_comm_fields_vec{};
-	    std::vector<int> halo_types{};
+	    std::vector<facet_class_range> halo_types{};
 	    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
 		if(vtxbuf_is_communicated[i]) 
 		{
 			all_comm_fields_vec.push_back(Field(i));
-			halo_types.push_back(3);
+			halo_types.push_back((facet_class_range){1,3});
 		}
 	    }
 	    grid.halo_exchange_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph({
