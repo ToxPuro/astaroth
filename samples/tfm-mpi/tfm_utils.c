@@ -16,6 +16,7 @@ acParseArguments(const int argc, char* argv[], Arguments* args)
     // Default arguments
     args->config_path = NULL; // AC_DEFAULT_CONFIG;
     memset(args->global_nn_override, 0, sizeof(args->global_nn_override));
+    args->job_id = 0;
 
     // Options
     const char short_options[]         = {"c:"};
