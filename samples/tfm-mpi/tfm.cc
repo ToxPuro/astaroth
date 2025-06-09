@@ -1466,7 +1466,7 @@ int
 main(int argc, char* argv[])
 {
     ac::mpi::init_funneled();
-    cudaProfilerStop();
+    ERRCHK_CUDA_API(cudaProfilerStop());
     try {
 
         // Parse arguments
@@ -1567,9 +1567,9 @@ main(int argc, char* argv[])
             file.close();
         };
 
-        cudaProfilerStart();
+        ERRCHK_CUDA_API(cudaProfilerStart());
         print("tfm-mpi", bm::benchmark(init, bench, sync, nsamples));
-        cudaProfilerStop();
+        ERRCHK_CUDA_API(cudaProfilerStop());
 
 #else // Production run
         grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
