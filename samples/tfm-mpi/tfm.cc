@@ -971,9 +971,8 @@ make_io_task(const AcMeshInfo& info, const size_t max_nbuffers)
 class Grid {
   private:
     MPI_Comm cart_comm{MPI_COMM_NULL};
-    AcMeshInfo local_info{};
     Device device{nullptr};
-    AcReal current_time{0};
+    AcReal current_time{0}; // TODO remove: error prone
 
     acm::rev::halo_exchange<double, ac::mr::device_allocator> hydro_he;
     acm::rev::halo_exchange<double, ac::mr::device_allocator> tfm_he;
@@ -996,8 +995,8 @@ class Grid {
         // Setup communicator and local mesh info
         auto global_nn{acr::get_global_nn(raw_info)};
         cart_comm  = ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn);
-        local_info = get_local_mesh_info(cart_comm, raw_info);
-        ERRCHK(acPrintMeshInfoTFM(local_info) == 0);
+        const auto tmp_local_info{get_local_mesh_info(cart_comm, raw_info)};
+        ERRCHK(acPrintMeshInfoTFM(tmp_local_info) == 0);
 
         // Select and setup device
         int original_rank{MPI_PROC_NULL};
@@ -1018,11 +1017,11 @@ class Grid {
         ERRCHK_CUDA_API(cudaSetDevice(device_id));
         ERRCHK_CUDA_API(cudaDeviceSynchronize());
 
-        ERRCHK_AC(acDeviceCreate(device_id, local_info, &device));
+        ERRCHK_AC(acDeviceCreate(device_id, tmp_local_info, &device));
 
         // Setup halo exchange buffers
-        // hydro_he = make_halo_exchange_task(local_info, hydro_fields.size());
-        // tfm_he   = make_halo_exchange_task(local_info, tfm_fields.size());
+        // hydro_he = make_halo_exchange_task(get_info(device), hydro_fields.size());
+        // tfm_he   = make_halo_exchange_task(get_info(device), tfm_fields.size());
         hydro_he = acm::rev::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
                                                                              global_nn,
                                                                              acr::get_local_rr(),
@@ -1033,8 +1032,8 @@ class Grid {
                                                                              tfm_fields.size()};
 
         // Setup write tasks
-        hydro_io = make_io_task(local_info, hydro_fields.size());
-        uxb_io   = make_io_task(local_info, uxb_fields.size());
+        hydro_io = make_io_task(get_info(device), hydro_fields.size());
+        uxb_io   = make_io_task(get_info(device), uxb_fields.size());
 
         // Create the communicator that encompasses neighbors in the xy direction
         const ac::index coords{ac::mpi::get_coords(cart_comm)};
@@ -1071,13 +1070,14 @@ class Grid {
         PRINT_LOG_DEBUG("Enter");
         // Stencil coefficients
         AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
-        ERRCHK(get_stencil_coeffs(local_info, stencils) == 0);
+        ERRCHK(get_stencil_coeffs(get_info(device), stencils) == 0);
         ERRCHK_AC(acDeviceLoadStencils(device, STREAM_DEFAULT, stencils));
         // ERRCHK_AC(acDevicePrintInfo(device));
 
         // Forcing parameters
-        ERRCHK(acHostUpdateForcingParams(&local_info) == 0);
-        ERRCHK_AC(acDeviceLoadMeshInfo(device, local_info));
+        auto tmp_local_info{get_info(device)};
+        ERRCHK(acHostUpdateForcingParams(&tmp_local_info) == 0);
+        ERRCHK_AC(acDeviceLoadMeshInfo(device, tmp_local_info));
 
         // Fields
         ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
@@ -1321,11 +1321,11 @@ class Grid {
         launch_uumax_reduce();
 #endif
 
-        for (uint64_t step{1}; step < nsteps; ++step) {
+        for (uint64_t step{as<uint64_t>(acr::get(get_info(device), AC_step_number))}; step < nsteps; ++step) {
             PRINT_LOG_INFO("New integration step");
 
             // Check whether to reset the test fields
-            if ((as<int>(step) % acr::get(local_info, AC_simulation_reset_test_field_interval)) ==
+            if ((as<int>(step) % acr::get(get_info(device), AC_simulation_reset_test_field_interval)) ==
                 0) {
                 PRINT_LOG_INFO("Resetting test fields");
 
@@ -1337,7 +1337,9 @@ class Grid {
             }
 
             // Current time
-            acr::set(AC_current_time, current_time, local_info);
+            auto tmp_local_info{get_info(device)};
+            acr::set(AC_current_time, current_time, tmp_local_info);
+            acr::set(AC_step_number, step, tmp_local_info);
 
 // Timestep dependencies: local hydro (reduction skips ghost zones)
 #if defined(AC_ENABLE_ASYNC_DT)
@@ -1345,13 +1347,13 @@ class Grid {
 #else
             const AcReal dt = calc_and_distribute_timestep(cart_comm, device);
 #endif
-            acr::set(AC_dt, dt, local_info);
+            acr::set(AC_dt, dt, tmp_local_info);
 
             // Forcing
-            ERRCHK(acHostUpdateForcingParams(&local_info) == 0);
+            ERRCHK(acHostUpdateForcingParams(&tmp_local_info) == 0);
 
             // Load the updated mesh info
-            ERRCHK_AC(acLoadMeshInfo(local_info, STREAM_DEFAULT));
+            ERRCHK_AC(acDeviceLoadMeshInfo(device, tmp_local_info));
 
             for (int substep{0}; substep < 3; ++substep) {
                 PRINT_LOG_DEBUG("Integration substep");
@@ -1413,11 +1415,11 @@ class Grid {
 // Write snapshot
 #if defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
             if ((step %
-                 as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0)
+                 as<uint64_t>(acr::get(get_info(device), AC_simulation_snapshot_output_interval))) == 0)
                 write_snapshots_to_disk(cart_comm, device, step);
 #else
             if ((step %
-                 as<uint64_t>(acr::get(local_info, AC_simulation_snapshot_output_interval))) == 0) {
+                 as<uint64_t>(acr::get(get_info(device), AC_simulation_snapshot_output_interval))) == 0) {
                 hydro_io.wait();
                 hydro_io.launch(cart_comm,
                                 ac::get_ptrs(device, hydro_fields, BufferGroup::input),
@@ -1431,23 +1433,23 @@ class Grid {
 #endif
 #if defined(AC_WRITE_SYNCHRONOUS_PROFILES)
             if ((step %
-                 as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
+                 as<uint64_t>(acr::get(get_info(device), AC_simulation_profile_output_interval))) == 0)
                 write_profiles_to_disk(cart_comm, device, step);
 #endif
 
 #if defined(AC_WRITE_SYNCHRONOUS_TIMESERIES)
             if ((step %
-                 as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
+                 as<uint64_t>(acr::get(get_info(device), AC_simulation_profile_output_interval))) == 0)
                 write_timeseries(cart_comm, device, step, current_time, dt);
 #endif
 #if defined(AC_WRITE_SYNCHRONOUS_SLICES)
             if ((step %
-                 as<uint64_t>(acr::get(local_info, AC_simulation_profile_output_interval))) == 0)
+                 as<uint64_t>(acr::get(get_info(device), AC_simulation_profile_output_interval))) == 0)
                 write_slices_to_disk(cart_comm, device, step);
 #endif
 #if defined(AC_WRITE_ASYNC_PROFILES)
             // Async profiles
-            if ((step % as<uint64_t>(acr::get(local_info,
+            if ((step % as<uint64_t>(acr::get(get_info(device),
                                               AC_simulation_async_profile_output_interval))) == 0) {
                 wait(uxbmean_io);
                 ERRCHK_MPI(uxbmean_io.size() == 0);
@@ -1485,7 +1487,8 @@ class Grid {
 #endif
     }
 
-    auto get_info() const { return local_info; }
+    auto get_comm() const { return cart_comm; }
+    auto get_device() const { return device; }
 
     Grid(const Grid&)            = delete; // Copy constructor
     Grid& operator=(const Grid&) = delete; // Copy assignment operator
