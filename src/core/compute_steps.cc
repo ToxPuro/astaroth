@@ -393,7 +393,7 @@ log_boundcond(FILE* stream, const BoundCond bc)
 	if(!ac_pid()) fprintf(stream,",");
 	log_fields(bc.out);
 	log_launch_bounds(stream,bc.in,bc.out);
-	fprintf(stream,"{%d,%d,%d}",bc.id.x,bc.id.y,bc.id.z);
+	if(!ac_pid()) fprintf(stream,"{%d,%d,%d}",bc.id.x,bc.id.y,bc.id.z);
 	if(!ac_pid()) fprintf(stream,")\n");
 }
 
