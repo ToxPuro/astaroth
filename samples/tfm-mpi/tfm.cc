@@ -1600,7 +1600,7 @@ static void benchmark_run(const tfm::arguments& args, const AcMeshInfo& raw_info
             std::ofstream file{filename, std::ios_base::app};
             file.exceptions(~std::ios::goodbit);
 
-            auto info{grid.get_info()};
+            auto info{get_info(grid.get_device())};
 
             ERRCHK_MPI(acr::get_local_rr()[0] == acr::get_local_rr()[1] &&
                        acr::get_local_rr()[0] == acr::get_local_rr()[2]);
@@ -1631,36 +1631,157 @@ static void benchmark_run(const tfm::arguments& args, const AcMeshInfo& raw_info
         ERRCHK_CUDA_API(cudaProfilerStop());
 }
 
-class SimulationState {
-    private:
-        std::string m_path{"simulation_state.txt"};
-    public:
-        SimulationState() = default;
+namespace file {
+namespace file::detail {
 
-        bool exists() const noexcept {
-            return std::filesystem::exists(m_path);
-        }
-        
-        void write(const AcMeshInfo& info, const std::string& snapshot_path) const {
-            FILE* fp{fopen(m_path.c_str(), "w")};
-            ERRCHK(fp);
-            ERRCHK(fprintf(fp, "%d, %la", acr::get(info, AC_step_number), acr::get(info, AC_current_time)) > 0);
-            ERRCHK(fclose(fp) == 0);
-        }
-
-        void read(AcMeshInfo& info) const {
-            int step_number{-1};
-            AcReal current_time{-1};
-
-            FILE* fp{fopen(m_path.c_str(), "r")};
-            ERRCHK(fp);
-            ERRCHK(fscanf(fp, "%d, %la", &step_number, &current_time) == 2);
-            ERRCHK(fclose(fp) == 0);
-
-            acr::set(AC_step_number, step_number, info);
-            acr::set(AC_current_time, current_time, info);
-        }
+struct close {
+    void operator()(FILE* fp) noexcept
+    {
+        WARNCHK(fp != nullptr);
+        WARNCHK(fclose(fp) == 0);
+    }
 };
+
+} // namespace file::detail
+
+using file_t = std::unique_ptr<FILE, file::detail::close>;
+
+static auto
+open(const std::string& path, const std::string& mode)
+{
+    auto ptr{fopen(path.c_str(), mode.c_str())};
+    ERRCHK(ptr);
+    return file_t{ptr};
+}
+
+} // namespace file
+
+namespace SimulationState {
+    constexpr const char* path{"simulation_state.txt"};
+
+    static bool exists() {
+        return std::filesystem::exists(SimulationState::path);
+    }
+    
+    static void write(const AcMeshInfo& info, const size_t latest_snapshot)  {
+        auto fp{file::open(SimulationState::path, "w")};
+        ERRCHK(fprintf(fp.get(), "%d, %la, %zu", acr::get(info, AC_step_number), acr::get(info, AC_current_time), latest_snapshot) > 0);
+    }
+
+    static void read(AcMeshInfo& info)  {
+        int step_number{-1};
+        AcReal current_time{-1};
+        size_t latest_snapshot{0};
+
+        auto fp{file::open(SimulationState::path, "r")};
+        ERRCHK(fscanf(fp.get(), "%d, %la, %zu", &step_number, &current_time, &latest_snapshot) == 3);
+
+        acr::set(AC_step_number, step_number, info);
+        acr::set(AC_current_time, current_time, info);
+    }
+
+    static auto read_step_number() {
+        int step_number{-1};
+        AcReal current_time{-1};
+        size_t latest_snapshot{0};
+
+        auto fp{file::open(SimulationState::path, "r")};
+        ERRCHK(fscanf(fp.get(), "%d, %la, %zu", &step_number, &current_time, &latest_snapshot) == 3);
+        return step_number;    
+    }
+
+    static auto read_current_time() {
+        int step_number{-1};
+        AcReal current_time{-1};
+        size_t latest_snapshot{0};
+
+        auto fp{file::open(SimulationState::path, "r")};
+        ERRCHK(fscanf(fp.get(), "%d, %la, %zu", &step_number, &current_time, &latest_snapshot) == 3);
+        return current_time;    
+    }
+
+    static auto read_latest_snapshot() {
+        int step_number{-1};
+        AcReal current_time{-1};
+        size_t latest_snapshot{0};
+
+        auto fp{file::open(SimulationState::path, "r")};
+        ERRCHK(fscanf(fp.get(), "%d, %la, %zu", &step_number, &current_time, &latest_snapshot) == 3);
+        return latest_snapshot;    
+    }
+}
+
+namespace Timeseries {
+    constexpr const char* path{"timeseries.csv"};
+
+    static bool exists() {
+        return std::filesystem::exists(Timeseries::path);
+    }
+
+    static void reset() {
+        auto fp{file::open("timeseries.csv", "w")};
+        ERRCHK(fprintf(fp.get(), "label,step,t_step,dt,min,rms,max,avg\n") > 0);
+    }
+}
+
+namespace Snapshot {
+    constexpr const char* postfix{".snapshot"};
+
+    static std::string get_path(const Field& handle, const size_t snapshot) {
+        return std::string(field_names[handle]) + "-" + std::to_string(snapshot) + postfix;
+    }
+
+    static void
+    read(const MPI_Comm& comm, const Device& device, const Field& handle)
+    {
+        const auto latest_snapshot{SimulationState::read_latest_snapshot()};
+
+        const auto path{get_path(handle, latest_snapshot)};
+        const auto info{get_info(device)};
+        // auto       data{get_input_field(device, handle)};
+
+        // Workaround for Mahti (CUDA-aware IO not supported)
+        const size_t count{ac::prod(acr::get_local_mm(info))};
+        ac::host_buffer<AcReal> hfield{count};
+
+        ac::mpi::read_collective(comm,
+                                 ac::mpi::get_dtype<AcReal>(),
+                                 acr::get_global_nn(info),
+                                 acr::get_global_nn_offset(info),
+                                 acr::get_local_mm(info),
+                                 acr::get_local_nn(info),
+                                 acr::get_local_nn_offset(),
+                                 path,
+                                 hfield.data());
+
+        const ac::device_view<AcReal> dfield{count, get_input_field(device, handle)};
+        ac::copy(hfield.get(), dfield);
+    }
+
+    static void write(const MPI_Comm& comm, const Device& device, const Field& handle, const size_t latest_snapshot) {
+        
+        const auto path{get_path(handle, latest_snapshot)};
+        const auto info{get_info(device)};
+        // auto       data{get_input_field(device, handle)};
+
+        // Workaround for Mahti (CUDA-aware IO not supported)
+        const size_t count{ac::prod(acr::get_local_mm(info))};
+        const ac::device_view<AcReal> dfield{count, get_input_field(device, handle)};
+        
+        ac::host_buffer<AcReal> hfield{count};
+        ac::copy(dfield, hfield.get());
+
+        ac::mpi::write_collective(comm,
+                                 ac::mpi::get_dtype<AcReal>(),
+                                 acr::get_global_nn(info),
+                                 acr::get_global_nn_offset(info),
+                                 acr::get_local_mm(info),
+                                 acr::get_local_nn(info),
+                                 acr::get_local_nn_offset(),
+                                 hfield.data(),
+                                 path);
+    }
+}
 
 
 
@@ -1668,7 +1789,27 @@ static void production_run(const tfm::arguments& args, const AcMeshInfo& raw_inf
     // Init Grid
     Grid grid{raw_info};
 
+    const auto fields{hydro_fields};
+    
+    // Read fields from files if they exist
+    if (SimulationState::exists()) {
+
+        // Update device info
+        auto info{get_info(grid.get_device())};
+        SimulationState::read(info);
+        ERRCHK_AC(acDeviceLoadMeshInfo(grid.get_device(), info));
+
+        for (const auto& field : fields)
+            Snapshot::read(grid.get_comm(), grid.get_device(), field);
+    }
+
     grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
+
+    // Write current state out
+    const size_t latest_snapshot{0};
+    for (const auto& field : fields)
+        Snapshot::write(grid.get_comm(), grid.get_device(), field, latest_snapshot);
+    SimulationState::write(get_info(grid.get_device()), latest_snapshot); // Write the state out
 }
 
 int
