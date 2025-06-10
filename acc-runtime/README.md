@@ -696,8 +696,8 @@ The `BoundConds` construct is used to declare how to calculate the values of `Fi
 BoundConds boundconds
 {
 	periodic(BOUNDARY_XY)
-	bc_sym_z(BOUNDARY_Z_TOP,FIELD_X,false)
-	bc_sym_z(BOUNDARY_Z_BOT,FIELD_Y,true)
+	bc_sym_z(BOUNDARY_Z_TOP,FIELD_X)
+	bc_sym_z(BOUNDARY_Z_BOT,FIELD_Y)
 	set_y_z_bc(BOUNDARY_Z) //Calculated fields inferred from write calls inside set_y_z_bc
 }
 ```
@@ -706,9 +706,9 @@ It contains function calls that are used to calculate the values of the outermos
 Otherwise normal functions are called with an additional mandatory first parameter specifying the boundary.
 The used example boundary condition `bc_sym_z` which sets the input `Field` symmetric on the boundary could look like the following:
 ```
-bc_sym_z(Field field, bool bottom)
+bc_sym_z(AcBoundary boundary, Field field)
 {
-	if(bottom)
+	if(boundary == BOUNDARY_Z_BOT)
 	{
 		for i in 0:NGHOST {
         		field[vertexIdx.x][vertexIdx.y][NGHOST-i]=field[vertexIdx.x][vertexIdx.y][NGHOST+i];

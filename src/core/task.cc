@@ -307,6 +307,7 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
 	    fatal("%s","Can't have Z boundary conditions in 2d simulation\n");
     }
     AcTaskDefinition task_def{};
+    task_def.id = (int3){0,0,0};
     task_def.task_type              = TASKTYPE_BOUNDCOND;
     task_def.boundary               = boundary;
     task_def.kernel_enum            = kernel;
@@ -379,12 +380,13 @@ acBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, const Fiel
 }
 
 AcTaskDefinition
-acBoundaryConditionWithBounds(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const facet_class_range halo_types[], const std::function<void(ParamLoadingInfo)> load_func)
+acBoundaryConditionWithBounds(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const facet_class_range halo_types[], const int3 id, const std::function<void(ParamLoadingInfo)> load_func)
 {
 	AcTaskDefinition task_def = acBoundaryCondition(boundary,kernel,fields_in,num_fields_in,fields_out,num_fields_out,load_func);
         task_def.start = start;
         task_def.end   = end;
 	task_def.halo_types = ptr_copy(halo_types,num_fields_out);
+    	task_def.id = id;
         task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
 	return task_def;
 }

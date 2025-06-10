@@ -1,12 +1,12 @@
-inline get_normal()
+inline get_normal(AcBoundary boundary)
 {
            const int3 launch_dims = end-start;
-           const int z = (launch_dims.z  == 1)*((start.z > AC_nmin.z)
-			 -(start.z < AC_nmin.z));
-           const int y = (launch_dims.y == 1 && z == 0)*((start.y > AC_nmin.y)
-			-(start.y < AC_nmin.y));
-           const int x = (launch_dims.x == 1 && z == 0 && y == 0)*((start.x > AC_nmin.x)
-			-(start.x < AC_nmin.x));
+           const int z = (launch_dims.z  == 1)*((start.z > AC_nmin.z)*((boundary & BOUNDARY_Z_TOP) != 0)
+			 -((boundary & BOUNDARY_Z_BOT) != 0)*(start.z < AC_nmin.z));
+           const int y = (launch_dims.y == 1 && z == 0)*((start.y > AC_nmin.y)*((boundary & BOUNDARY_Y_TOP) != 0)
+			-((boundary & BOUNDARY_Y_BOT) != 0)*(start.y < AC_nmin.y));
+           const int x = (launch_dims.x == 1 && z == 0 && y == 0)*((start.x > AC_nmin.x)*((boundary & BOUNDARY_X_TOP) != 0)
+			-((boundary & BOUNDARY_X_BOT) != 0)*(start.x < AC_nmin.x));
 	   return (int3){x,y,z}
 }
 inline get_boundary(int3 normal)
@@ -23,12 +23,12 @@ inline get_boundary(int3 normal)
 	return (int3){x,y,z}
 }
 
-elemental ac_bc_sym(Field f, int bc_sign)
+elemental ac_bc_sym(AcBoundary boundary, Field f, int bc_sign)
 {
-	const int3 normal = get_normal()
-	const int3 boundary = get_boundary(normal)
-	int3 domain = boundary
-	int3 ghost  = boundary
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 domain = boundary_point
+	int3 ghost  = boundary_point
 
 	const int nghost = ac_get_field_halos(f).x
 	for i in 0:nghost
@@ -39,21 +39,21 @@ elemental ac_bc_sym(Field f, int bc_sign)
 	}
 	if(bc_sign < 0)
 	{
-		f[boundary.x][boundary.y][boundary.z] = 0.0
+		f[boundary_point.x][boundary_point.y][boundary_point.z] = 0.0
 	}
 }
 
-elemental ac_bc_sym(Field f)
+elemental ac_bc_sym(AcBoundary boundary, Field f)
 {
-	ac_bc_sym(f,1)
+	ac_bc_sym(boundary,f,1)
 }
 
-elemental ac_fixed_bc(Field f)
+elemental ac_fixed_bc(AcBoundary boundary, Field f)
 {
-	const int3 normal = get_normal()
-	const int3 boundary = get_boundary(normal)
-	int3 domain = boundary
-	int3 ghost  = boundary
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 domain = boundary_point
+	int3 ghost  = boundary_point
 
 	const int nghost = ac_get_field_halos(f).x
 	for i in 0:nghost
@@ -65,19 +65,19 @@ elemental ac_fixed_bc(Field f)
 }
 utility Kernel BOUNDCOND_SYMMETRIC(Field f)
 {
-	ac_bc_sym(f,1)
+	ac_bc_sym(BOUNDARY_XYZ,f,1)
 }
 utility Kernel BOUNDCOND_ANTISYMMETRIC(Field f)
 {
-	ac_bc_sym(f,-1)
+	ac_bc_sym(BOUNDARY_XYZ,f,-1)
 }
-elemental ac_bc_a2(Field f)
+elemental ac_bc_a2(AcBoundary boundary, Field f)
 {
-	const int3 normal = get_normal()
-	const int3 boundary = get_boundary(normal)
-	const real boundary_val = f[boundary.x][boundary.y][boundary.z]
-	int3 domain = boundary
-	int3 ghost  = boundary
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	const real boundary_val = f[boundary_point.x][boundary_point.y][boundary_point.z]
+	int3 domain = boundary_point
+	int3 ghost  = boundary_point
 	for i in 0:NGHOST
 	{
 		domain = domain - normal
@@ -85,24 +85,24 @@ elemental ac_bc_a2(Field f)
 		f[ghost.x][ghost.y][ghost.z] = 2*boundary_val -f[domain.x][domain.y][domain.z];
 	}
 }
-ac_bc_a2()
+ac_bc_a2(AcBoundary boundary)
 {
 	for f in 0:NUM_FIELDS
 	{
-		ac_bc_a2(Field(f))
+		ac_bc_a2(boundary,Field(f))
 	}
 }
 
 utility Kernel BOUNDCOND_A2(Field f)
 {
-	ac_bc_a2(f)
+	ac_bc_a2(BOUNDARY_XYZ,f)
 }
-elemental ac_const_bc(Field f, real const_val)
+elemental ac_const_bc(AcBoundary boundary, Field f, real const_val)
 {
-	const int3 normal = get_normal()
-	const int3 boundary = get_boundary(normal)
-	int3 domain = boundary
-	int3 ghost  = boundary
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 domain = boundary_point
+	int3 ghost  = boundary_point
 	for i in 0:NGHOST
 	{
 		domain = domain - normal
@@ -112,15 +112,15 @@ elemental ac_const_bc(Field f, real const_val)
 }
 utility Kernel BOUNDCOND_CONST(Field f, real const_val)
 {
-	ac_const_bc(f,const_val)
+	ac_const_bc(BOUNDARY_XYZ,f,const_val)
 }
 
-elemental ac_prescribed_derivative(Field f, real prescribed_value)
+elemental ac_prescribed_derivative(AcBoundary boundary, Field f, real prescribed_value)
 {
-	const int3 normal = get_normal()
-	const int3 boundary = get_boundary(normal)
-	int3 domain = boundary
-	int3 ghost  = boundary
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 domain = boundary_point
+	int3 ghost  = boundary_point
 	const real spacing = dot(normal,AC_ds)
 	for i in 0:NGHOST
 	{
@@ -132,20 +132,20 @@ elemental ac_prescribed_derivative(Field f, real prescribed_value)
 }
 utility Kernel BOUNDCOND_PRESCRIBED_DERIVATIVE(Field f, real prescribed_value)
 {
-	return ac_prescribed_derivative(f,prescribed_value)
+	return ac_prescribed_derivative(BOUNDARY_XYZ,f,prescribed_value)
 }
 inline get_normal_direction(normal)
 {
 	return normal.x + normal.y + normal.z;
 }
-ac_flow_bc(Field f, int flow_direction)
+ac_flow_bc(AcBoundary boundary, Field f, int flow_direction)
 {
-	const int3 normal = get_normal()
-	const int3 boundary = get_boundary(normal)
-	int3 domain = boundary
-	int3 ghost  = boundary
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 domain = boundary_point
+	int3 ghost  = boundary_point
 	const real normal_direction = get_normal_direction(normal)
-	const real boundary_value  = f[boundary.x][boundary.y][boundary.z]
+	const real boundary_value  = f[boundary_point.x][boundary_point.y][boundary_point.z]
 	const real bc_sign = flow_direction*(boundary_value*normal_direction >= 0.0 ? 1.0 : -1.0)
 	for i in 0:NGHOST
 	{
@@ -156,9 +156,9 @@ ac_flow_bc(Field f, int flow_direction)
 }
 utility Kernel BOUNDCOND_OUTFLOW(Field f)
 {
-	ac_flow_bc(f,1)
+	ac_flow_bc(BOUNDARY_XYZ,f,1)
 }
 utility Kernel BOUNDCOND_INFLOW(Field f)
 {
-	ac_flow_bc(f,-1)
+	ac_flow_bc(BOUNDARY_XYZ,f,-1)
 }

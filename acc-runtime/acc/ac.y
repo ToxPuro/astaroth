@@ -793,12 +793,14 @@ enum_definition: enum_name '{' declaration_list_trailing_allowed '}'{
 			astnode_set_buffer(tmp,$1);
 			free(tmp);
 		}
-		//| enum_name '{' expression_list '}' enum_type {
-                //        $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
-		//	remove_substring_parser($1->buffer,"typedef");
-		//        remove_substring_parser($1->buffer,"enum");
-		//        strip_whitespace($1->buffer);
-		//}
+		| enum_name '{' assignment_list '}' {
+                        $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
+			char* tmp = strdup($1->buffer);
+		        remove_substring(tmp,"enum");
+		        strip_whitespace(tmp);
+			astnode_set_buffer(tmp,$1);
+			free(tmp);
+		}
 		;
 
 /*
@@ -1112,7 +1114,7 @@ declaration_list: base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, NULL);
                 | declaration_list ',' base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(";", $$); /* Note ';' infix */ }
                 ;
 
-declaration_list_trailing_allowed: base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+declaration_list_trailing_allowed:     base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                 | declaration_list ',' base_identifier { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); /* Note ';' infix */ }
                 | declaration_list ',' {$$ = $1;}
                 ;
@@ -1433,8 +1435,8 @@ yyerror(const char* str)
     char* line;
     size_t size = 0;
     ssize_t len = 0;
-    for(int i=0;i<line_num;++i)
-	len = getline(&line,&size,yyin_backup);
+    for(int i=0;i<line_num;++i) len = getline(&line,&size,yyin_backup);
+    (void)len;
     //if(len == -1) fatal("Was not able to get erronous line!\n");
     fprintf(stderr, "erroneous line: %s", line);
     fprintf(stderr, "in file: %s/%s\n\n",ACC_OUTPUT_DIR"/../api",stage4_name_backup);

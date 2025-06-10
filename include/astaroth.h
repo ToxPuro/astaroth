@@ -1176,7 +1176,7 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
     const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
-    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), start,end, halo_types.data(), loader);
+    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), start,end, halo_types.data(), (int3){0,0,0},loader);
 }
 
 static inline
@@ -1194,7 +1194,17 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields_out.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), start, end, halo_types.data(), loader);
+    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), start, end, halo_types.data(), (int3){0,0,0}, loader);
+}
+
+static inline
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, const Volume start, const Volume end, const int3 id)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
+    std::vector<facet_class_range> halo_types{};
+    for(size_t i = 0; i < fields_out.size(); ++i) halo_types.push_back((facet_class_range){1,2});
+    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), start, end, halo_types.data(), id, loader);
 }
 
 static inline
@@ -1202,7 +1212,15 @@ AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, const Volume start, const Volume end, const std::vector<facet_class_range> halo_types)
 {
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
-    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), start, end, halo_types.data(), loader);
+    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), start, end, halo_types.data(), (int3){0,0,0},loader);
+}
+
+static inline
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, const Volume start, const Volume end, const std::vector<facet_class_range> halo_types, const int3 id)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
+    return acBoundaryConditionWithBounds(boundary, kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), start, end, halo_types.data(),id,loader);
 }
 
 static inline
@@ -1212,7 +1230,7 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), start, end, halo_types.data(), loader);
+    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), start, end, halo_types.data(), (int3){0,0,0},loader);
 }
 
 static inline
@@ -1220,7 +1238,7 @@ AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields,const Volume start, const Volume end, const std::vector<facet_class_range> halo_types)
 {
     std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
-    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), start, end, halo_types.data(), loader);
+    return acBoundaryConditionWithBounds(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), start, end, halo_types.data(), (int3){0,0,0},loader);
 }
 
 static inline

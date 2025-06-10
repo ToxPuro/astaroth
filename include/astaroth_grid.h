@@ -318,6 +318,7 @@ typedef struct AcTaskDefinition {
     int3 ray_direction;
     bool include_boundaries;
     facet_class_range* halo_types;
+    int3 id;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -346,12 +347,12 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acCompute,(const AcKernel kernel, Field
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const KernelParamsLoader));
 FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
-		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const facet_class_range halo_types[], const KernelParamsLoader));
+		(const AcBoundary boundary, const AcKernel kernel, const Field fields_in[], const size_t num_fields_in, const Field fields_out[], const size_t num_fields_out, const Volume start, const Volume end, const facet_class_range halo_types[],const int3 id,const KernelParamsLoader));
 #else
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acBoundaryCondition,
 		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,void (*load_func)(ParamLoadingInfo step_info)));
 FUNC_DEFINE(AcTaskDefinition, acBoundaryConditionWithBounds,
-		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,const Volume start, const Volume end, const facet_class_range halo_types[], void (*load_func)(ParamLoadingInfo step_info)));
+		(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,const Volume start, const Volume end, const facet_class_range halo_types[], const int3 id, void (*load_func)(ParamLoadingInfo step_info)));
 #endif
 
 #if __cplusplus

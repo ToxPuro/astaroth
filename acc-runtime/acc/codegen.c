@@ -128,24 +128,7 @@ static const char* FIELD3_STR      = NULL;
 static const char* FIELD4_STR      = NULL;
 static const char* PROFILE_STR      = NULL;
 
-static const char* BOUNDARY_X_TOP_STR = NULL; 
-static const char* BOUNDARY_X_BOT_STR = NULL; 
 
-static const char* BOUNDARY_Y_BOT_STR = NULL; 
-static const char* BOUNDARY_Y_TOP_STR = NULL; 
-
-static const char* BOUNDARY_Z_BOT_STR = NULL; 
-static const char* BOUNDARY_Z_TOP_STR = NULL; 
-
-
-static const char* BOUNDARY_X_STR = NULL; 
-static const char* BOUNDARY_Y_STR = NULL; 
-static const char* BOUNDARY_Z_STR = NULL; 
-
-static const char*  BOUNDARY_XY_STR  = NULL;   
-static const char*  BOUNDARY_XZ_STR  = NULL;
-static const char*  BOUNDARY_YZ_STR  = NULL;
-static const char*  BOUNDARY_XYZ_STR = NULL;
 const char*
 type_output(const char* type)
 {
@@ -617,6 +600,7 @@ typedef struct
 {
 	string_vec names;
 	string_vec options[100];
+	string_vec values[100];
 } user_enums_info;
 
 
@@ -643,25 +627,6 @@ free_structs_info(structs_info* info)
 	}
 }
 
-bool 
-is_boundary_param(const char* param)
-{
-    return !strcmps(param,
-            BOUNDARY_X_TOP_STR,
-	    BOUNDARY_X_BOT_STR,
-            BOUNDARY_Y_TOP_STR,
-            BOUNDARY_Y_BOT_STR,
-            BOUNDARY_Z_TOP_STR,
-            BOUNDARY_Z_BOT_STR,
-            BOUNDARY_X_STR,
-            BOUNDARY_Y_STR,
-            BOUNDARY_Z_STR,
-            BOUNDARY_XY_STR,
-            BOUNDARY_XZ_STR,
-            BOUNDARY_YZ_STR,
-            BOUNDARY_XYZ_STR
-    );
-}
 
 
 string_vec
@@ -760,16 +725,6 @@ symboltable_reset(void)
   // Astaroth 2.0 backwards compatibility END
   int index = add_symbol(NODE_VARIABLE_ID, NULL, 0 , INT3_STR, intern("blockDim"));
   symbol_table[index].tqualifiers.size = 0;
-
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR,  intern("BOUNDARY_X"));
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR,  intern("BOUNDARY_Y"));
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR,  intern("BOUNDARY_Z"));
-
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR,  intern("BOUNDARY_XY"));
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR,  intern("BOUNDARY_XZ"));
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR,  intern("BOUNDARY_YZ"));
-
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR,  intern("BOUNDARY_XYZ"));
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL,  intern("periodic"));
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, REAL_PTR_STR, intern("AC_INTERNAL_run_const_AcReal_array_here"));
@@ -2273,32 +2228,47 @@ get_enum(const char* option)
 		if(str_vec_contains(e_info.options[i],option)) return e_info.names.data[i];
 	return false;
 }
+
+bool 
+is_boundary_param(const char* param)
+{
+   return (is_user_enum_option(param) && get_enum(param) == intern("AcBoundary"));
+}
+
 void
-read_user_enums_recursive(const ASTNode* node,string_vec* user_enums, string_vec* user_enum_options)
+read_user_enums_recursive(const ASTNode* node,string_vec* user_enums, string_vec* user_enum_options, string_vec* user_enum_values)
 {
 	if(node->type == NODE_ENUM_DEF)
 	{
 		const int enum_index = push(user_enums,node->lhs->buffer);
 		node_vec nodes = get_nodes_in_list(node->rhs);
 		for(size_t i = 0; i < nodes.size; ++i)
-			push(&user_enum_options[enum_index],get_node_by_token(IDENTIFIER,nodes.data[i])->buffer);
+		{
+			const char* name = get_node_by_token(IDENTIFIER,nodes.data[i])->buffer;
+			const ASTNode* assignment = get_node(NODE_ASSIGNMENT,nodes.data[i]);
+			push(&user_enum_options[enum_index],name);
+			const char* value = assignment ? intern(combine_all_new(assignment->rhs)) : NULL;
+			push(&user_enum_values[enum_index],value);
+		}
 		free_node_vec(&nodes);
 	}
 	if(node->lhs)
-		read_user_enums_recursive(node->lhs,user_enums,user_enum_options);
+		read_user_enums_recursive(node->lhs,user_enums,user_enum_options,user_enum_values);
 	if(node->rhs)
-		read_user_enums_recursive(node->rhs,user_enums,user_enum_options);
+		read_user_enums_recursive(node->rhs,user_enums,user_enum_options,user_enum_values);
 }
 
 user_enums_info
 read_user_enums(const ASTNode* node)
 {
         string_vec user_enum_options[100] = { [0 ... 100-1] = VEC_INITIALIZER};
+        string_vec user_enum_values[100] = { [0 ... 100-1] = VEC_INITIALIZER};
 	string_vec user_enums = VEC_INITIALIZER;
-	read_user_enums_recursive(node,&user_enums,user_enum_options);
+	read_user_enums_recursive(node,&user_enums,user_enum_options,user_enum_values);
 	user_enums_info res;
 	res.names = user_enums;
 	memcpy(&res.options,&user_enum_options,sizeof(string_vec)*100);
+	memcpy(&res.values,&user_enum_values,sizeof(string_vec)*100);
 	return res;
 }
 
@@ -2761,7 +2731,12 @@ gen_user_enums()
 	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
 	  {
 		  const char* separator = (j < enum_info.options[i].size - 1) ? ",\n" : "";
-		  fprintf_filename("user_typedefs.h","%s%s",enum_info.options[i].data[j],separator);
+		  fprintf_filename("user_typedefs.h","%s",enum_info.options[i].data[j]);
+		  if(enum_info.values[i].data[j])
+		  {
+		  	fprintf_filename("user_typedefs.h"," = %s",enum_info.values[i].data[j]);
+		  }
+		  fprintf_filename("user_typedefs.h","%s",separator);
 	  }
 	  fprintf_filename("user_typedefs.h","} %s;\n",enum_info.names.data[i]);
 
@@ -2924,7 +2899,7 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root)
 		func_params_info call_info  = get_func_call_params_info(func_call);
 		bool is_boundcond = false;
 		for(size_t i = 0; i< call_info.expr.size; ++i)
-			is_boundcond |= (strstr(call_info.expr.data[i],"BOUNDARY_") != NULL);
+			is_boundcond |= is_boundary_param(call_info.expr.data[i]);
 
 		func_params_info params_info =  get_function_params_info(root,func_name);
 
@@ -3015,54 +2990,6 @@ compute_next_level_set(bool* src, const int_vec kernel_calls, bool* field_writte
 	free(field_consumed);
 }
 
-#define BOUNDARY_X_BOT (1 << 0)
-#define BOUNDARY_X_TOP (1 << 1)
-#define BOUNDARY_Y_BOT (1 << 2)
-#define BOUNDARY_Y_TOP (1 << 3)
-#define BOUNDARY_Z_BOT (1 << 4)
-#define BOUNDARY_Z_TOP (1 << 5)
-#define BOUNDARY_X (BOUNDARY_X_BOT | BOUNDARY_X_TOP)
-#define BOUNDARY_Y (BOUNDARY_Y_BOT | BOUNDARY_Y_TOP)
-#define BOUNDARY_Z (BOUNDARY_Z_BOT | BOUNDARY_Z_TOP)
-
-int
-get_boundary_int(const char* boundary_in)
-{
-	int res = 0;
-	if(!strstr(boundary_in,"BOUNDARY_"))
-		fatal("incorrect boundary specification: %s\n",boundary_in);
-	char* boundary = remove_substring(strdup(boundary_in),"BOUNDARY");
-	if(strstr(boundary,"BOT"))
-	{
-		if(strstr(boundary,"X"))
-			res |= BOUNDARY_X_BOT;
-		if(strstr(boundary,"Y"))
-			res |= BOUNDARY_Y_BOT;
-		if(strstr(boundary,"Z"))
-			res |= BOUNDARY_Z_BOT;
-	}
-	else if(strstr(boundary,"TOP"))
-	{
-		if(strstr(boundary,"X"))
-			res |= BOUNDARY_X_TOP;
-		if(strstr(boundary,"Y"))
-			res |= BOUNDARY_Y_TOP;
-		if(strstr(boundary,"Z"))
-			res |= BOUNDARY_Z_TOP;
-	}
-	else
-	{
-		if(strstr(boundary,"X"))
-			res |= BOUNDARY_X;
-		if(strstr(boundary,"Y"))
-			res |= BOUNDARY_Y;
-		if(strstr(boundary,"Z"))
-			res |= BOUNDARY_Z;
-	}
-	free(boundary);
-	return res;
-
-}
 typedef struct
 {
 	bool* in;
@@ -3099,20 +3026,6 @@ get_fields_included(const ASTNode* func_call, const char* boundconds_name)
 	free_func_params_info(&call_info);
 	return res;
 }
-const char*
-boundary_str(const int bc)
-{
-       return
-               bc == 0 ? "BOUNDARY_X_BOT" :
-               bc == 1 ? "BOUNDARY_Y_BOT" :
-               bc == 2 ? "BOUNDARY_X_TOP" :
-               bc == 3 ? "BOUNDARY_Y_TOP" :
-               bc == 4 ? "BOUNDARY_Z_BOT" :
-               bc == 5 ? "BOUNDARY_Z_TOP" :
-               NULL;
-}
-
-const int boundaries[] = {BOUNDARY_X_BOT, BOUNDARY_Y_BOT,BOUNDARY_X_TOP,BOUNDARY_Y_TOP,BOUNDARY_Z_BOT, BOUNDARY_Z_TOP};
 
 void
 remove_ending_symbols(char* str, const char symbol)
@@ -3157,9 +3070,8 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 		fprintf(stderr,"Was not able to resolve overloaded function in call:\n%s\n",combine_all_new(node));
 		{
 			func_params_info info = get_func_call_params_info(node);
-			const int param_offset = (info.expr.size > 0 && is_boundary_param(info.expr.data[0])) ? 1 : 0;
                 	fprintf(stderr,"Types: ");
-                	for(size_t i = param_offset; i < info.types.size; ++i)
+                	for(size_t i = 0; i < info.types.size; ++i)
                 	  fprintf(stderr,"%s%s",info.types.data[i] ? info.types.data[i] : "unknown"
 					  ,i < info.types.size-1 ? "," : "");
 		}
@@ -3195,14 +3107,14 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 {
 
 	//TP: in bc call params jump over boundary
-	const int call_param_offset = 1;
+	const int call_param_offset = 0;
 	char* tmp = strdup(func_name);
 	remove_suffix(tmp,"____");
 	const char* dfunc_name = intern(tmp);
 	free(tmp);
 	func_params_info params_info = get_function_params_info(root,dfunc_name);
-	if(call_info.expr.size-1 != params_info.expr.size)
-		fatal("Number of inputs %lu for %s in BoundConds does not match the number of input params %lu \n", call_info.expr.size-1, dfunc_name, params_info.expr.size);
+	if(call_info.expr.size != params_info.expr.size)
+		fatal("Number of inputs %lu for %s in BoundConds does not match the number of input params %lu \n", call_info.expr.size, dfunc_name, params_info.expr.size);
 	const size_t num_of_rest_params = params_info.expr.size;
         free_func_params_info(&params_info);
 	fprintf(fp,"Kernel %s_%s()\n{\n",prefix,func_name);
@@ -7488,21 +7400,20 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 	func_params_info params_info = get_function_params_info(root,func_name);
 	func_params_info call_info = get_func_call_params_info(node);
 	if(call_info.types.size == 0) return res;
-	const int offset = is_boundary_param(call_info.expr.data[0]) ? 1 : 0;
-	if(!is_intrinsic && params_info.types.size != call_info.types.size-offset)
+	if(!is_intrinsic && params_info.types.size != call_info.types.size)
 		fatal("number of parameters does not match, expected %zu but got %zu in %s\n",params_info.types.size, call_info.types.size, combine_all_new(node));
-	for(size_t i = offset; i < call_info.types.size; ++i)
+	for(size_t i = 0; i < call_info.types.size; ++i)
 	{
 		if(!call_info.types.data[i]) continue;
-		if(!is_intrinsic && !params_info.types.data[i-offset]) continue;
+		if(!is_intrinsic && !params_info.types.data[i]) continue;
 		if(
-		      ((is_intrinsic || params_info.types.data[i-offset] == REAL3_STR     ) && call_info.types.data[i] == FIELD3_STR)
-		   || ((is_intrinsic || params_info.types.data[i-offset] == REAL_STR      ) && call_info.types.data[i] == FIELD_STR)
-		   || ((is_intrinsic || params_info.types.data[i-offset] == REAL_PTR_STR  ) && call_info.types.data[i] == VTXBUF_PTR_STR)
-		   || ((is_intrinsic || params_info.types.data[i-offset] == REAL_PTR_STR  ) && call_info.types.data[i] == FIELD_PTR_STR)
-		   || ((is_intrinsic || params_info.types.data[i-offset] == REAL3_PTR_STR ) && call_info.types.data[i] == FIELD3_PTR_STR)
-		   || ((is_intrinsic || params_info.types.data[i-offset] == REAL_STR      ) && strstr(call_info.types.data[i],"Profile"))
-		   || ((is_intrinsic || params_info.types.data[i-offset] == call_info.types.data[i]) && is_output_type(call_info.expr.data[i]))
+		      ((is_intrinsic || params_info.types.data[i] == REAL3_STR     ) && call_info.types.data[i] == FIELD3_STR)
+		   || ((is_intrinsic || params_info.types.data[i] == REAL_STR      ) && call_info.types.data[i] == FIELD_STR)
+		   || ((is_intrinsic || params_info.types.data[i] == REAL_PTR_STR  ) && call_info.types.data[i] == VTXBUF_PTR_STR)
+		   || ((is_intrinsic || params_info.types.data[i] == REAL_PTR_STR  ) && call_info.types.data[i] == FIELD_PTR_STR)
+		   || ((is_intrinsic || params_info.types.data[i] == REAL3_PTR_STR ) && call_info.types.data[i] == FIELD3_PTR_STR)
+		   || ((is_intrinsic || params_info.types.data[i] == REAL_STR      ) && strstr(call_info.types.data[i],"Profile"))
+		   || ((is_intrinsic || params_info.types.data[i] == call_info.types.data[i]) && is_output_type(call_info.expr.data[i]))
 		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
@@ -7521,7 +7432,7 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 		//TP: This translates e.g. any_AC(arr,3) --> any_AC(AC_INTERNAL_d_bool_arrays_arr,3)
 		//TP: i.e. translates enums to the appropriate pointers when the function expects to take a pointer
 		//TP: This is probably not the best place to place this but works for now
-		if((is_intrinsic || strstr(params_info.types.data[i-offset],"*")) && strstr(call_info.types.data[i],"*"))
+		if((is_intrinsic || strstr(params_info.types.data[i],"*")) && strstr(call_info.types.data[i],"*"))
 		{
   			const Symbol* var_sym = get_symbol(NODE_VARIABLE_ID,intern(call_info.expr.data[i]),NULL);
 			if(var_sym)
@@ -7656,18 +7567,17 @@ get_possible_dfuncs(const func_params_info call_info, const dfunc_possibilities 
 	int overload_index = MAX_DFUNCS*dfunc_index-1;
 	int_vec possible_indexes = VEC_INITIALIZER;
     	//TP: ugly hack to resolve calls in BoundConds
-	const int param_offset = (call_info.expr.size > 0 && is_boundary_param(call_info.expr.data[0])) ? 1 : 0;
 	while(possibilities.names[++overload_index] == func_name)
 	{
 		bool possible = true;
-		if(call_info.types.size - param_offset != possibilities.types[overload_index].size) continue;
+		if(call_info.types.size != possibilities.types[overload_index].size) continue;
 		bool all_types_specified = true;
-		for(size_t i = param_offset; i < call_info.types.size; ++i)
-			all_types_specified &= (possibilities.types[overload_index].data[i-param_offset] != NULL);
+		for(size_t i = 0; i < call_info.types.size; ++i)
+			all_types_specified &= (possibilities.types[overload_index].data[i] != NULL);
 		if(use_auto && all_types_specified) continue;
-		for(size_t i = param_offset; i < call_info.types.size; ++i)
+		for(size_t i = 0; i < call_info.types.size; ++i)
 		{
-			const char* func_type = possibilities.types[overload_index].data[i-param_offset];
+			const char* func_type = possibilities.types[overload_index].data[i];
 			const char* call_type = call_info.types.data[i];
 			if(strict)
 				possible &= !call_type || !func_type || !strcmp(func_type,call_type);
@@ -8276,6 +8186,51 @@ gen_array_elemental(const char* dfunc_name, const char* first_name, const char* 
 		fprintf(stream,"}\n");
   		fprintf(stream,"}\n");
 }
+
+void
+gen_array_elemental_second(const char* dfunc_name, const char* first_name, const char* second_name, FILE* stream)
+{
+  		fprintf(stream, "%s(%s f_s, %s[] s_s){ \n",dfunc_name,first_name,second_name);
+		fprintf(stream, "for i in 0:size(s_s) {\n");
+  		fprintf(stream,"  %s(f_s,s_s[i])\n",dfunc_name);
+		fprintf(stream,"}\n");
+  		fprintf(stream,"}\n");
+}
+
+void
+gen_three_combinations_scalar_struct_scalar(const char* dfunc_name, const char* first_type, const int_vec second, const char* third_type, FILE* stream)
+{
+  for(size_t second_index = 0; second_index < second.size; ++second_index)
+  {
+  		const int f = second.data[second_index];
+  		const char* second_name  = s_info.user_structs.data[f];
+  		const string_vec second_members = s_info.user_struct_field_names[f];
+  		fprintf(stream, "%s(%s s, %s f_s, %s t){ \n",dfunc_name,first_type,second_name,third_type);
+  		for(size_t j = 0; j < second_members.size; ++j)
+  		{
+  			fprintf(stream,"  %s(s,f_s.%s,t)\n",dfunc_name,second_members.data[j]);
+  		}
+  		fprintf(stream,"}\n");
+  }
+}
+
+void
+gen_two_combinations_scalar_struct(const char* dfunc_name, const char* first_type, const int_vec second, FILE* stream)
+{
+  for(size_t second_index = 0; second_index < second.size; ++second_index)
+  {
+  		const int f = second.data[second_index];
+  		const char* second_name  = s_info.user_structs.data[f];
+  		const string_vec second_members = s_info.user_struct_field_names[f];
+  		fprintf(stream, "%s(%s s, %s f_s){ \n",dfunc_name,first_type,second_name);
+  		for(size_t j = 0; j < second_members.size; ++j)
+  		{
+  			fprintf(stream,"  %s(s,f_s.%s)\n",dfunc_name,second_members.data[j]);
+  		}
+  		fprintf(stream,"}\n");
+  }
+}
+
 void
 gen_two_combinations_struct_scalar(const char* dfunc_name, const int_vec first, const char* second_type, FILE* stream)
 {
@@ -8425,6 +8380,21 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 		free_int_vec(&all_int_structs);
 
 	}
+
+	else if(info.expr.size == 2 && info.types.data[0] == intern("AcBoundary") && info.types.data[1] == FIELD_STR)
+	{
+		int_vec all_field_structs = get_all_field_structs();
+		gen_two_combinations_scalar_struct(dfunc_name,intern("AcBoundary"),all_field_structs,stream);
+		gen_array_elemental_second(dfunc_name,intern("AcBoundary"),FIELD_STR,stream);
+		free_int_vec(&all_field_structs);
+	}
+
+	else if(info.expr.size == 3 && info.types.data[0] == intern("AcBoundary") && info.types.data[1] == FIELD_STR && info.types.data[2] == INT_STR)
+	{
+		int_vec all_field_structs = get_all_field_structs();
+		gen_three_combinations_scalar_struct_scalar(dfunc_name,intern("AcBoundary"),all_field_structs,INT_STR,stream);
+		free_int_vec(&all_field_structs);
+	}
 	free_func_params_info(&info);
 }
 
@@ -8543,26 +8513,6 @@ gen_global_strings()
 	PLUS_STR = intern("+");
 	MINUS_STR = intern("-");
 	DIV_STR = intern("/");
-
-
- 	BOUNDARY_X_TOP_STR = intern("BOUNDARY_X_TOP"); 
- 	BOUNDARY_X_BOT_STR = intern("BOUNDARY_X_BOT"); 
-
- 	BOUNDARY_Y_BOT_STR = intern("BOUNDARY_Y_BOT"); 
- 	BOUNDARY_Y_TOP_STR = intern("BOUNDARY_Y_TOP"); 
-
- 	BOUNDARY_Z_BOT_STR = intern("BOUNDARY_Z_BOT"); 
- 	BOUNDARY_Z_TOP_STR = intern("BOUNDARY_Z_TOP"); 
-
-
- 	BOUNDARY_X_STR = intern("BOUNDARY_X"); 
- 	BOUNDARY_Y_STR = intern("BOUNDARY_Y"); 
- 	BOUNDARY_Z_STR = intern("BOUNDARY_Z"); 
-
-	BOUNDARY_XY_STR  = intern("BOUNDARY_XY");   
-	BOUNDARY_XZ_STR  = intern("BOUNDARY_XZ");
-	BOUNDARY_YZ_STR  = intern("BOUNDARY_YZ");
-	BOUNDARY_XYZ_STR = intern("BOUNDARY_XYZ");
 }
 static void
 set_identifier_type(const NodeType type, ASTNode* curr)

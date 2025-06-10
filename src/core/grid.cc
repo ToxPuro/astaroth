@@ -2000,24 +2000,24 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     int3 pid3d      = getPid3D(rank);
     Device device   = grid.device;
 
-    auto boundary_normal = [&decomp, &pid3d](int tag) -> int3 {
+    auto boundary_normal = [&decomp, &pid3d](int tag, const AcBoundary boundary) -> int3 {
         int3 neighbor = pid3d + Region::tag_to_id(tag);
-        if (neighbor.z == -1) {
+        if (neighbor.z == -1 && (boundary & BOUNDARY_Z_BOT) != 0) {
             return int3{0, 0, -1};
         }
-        else if (neighbor.z == (int)decomp.z) {
+        else if (neighbor.z == (int)decomp.z && (boundary & BOUNDARY_Z_TOP) != 0) {
             return int3{0, 0, 1};
         }
-        else if (neighbor.y == -1) {
+        else if (neighbor.y == -1 && (boundary & BOUNDARY_Y_BOT) != 0) {
             return int3{0, -1, 0};
         }
-        else if (neighbor.y == (int)decomp.y) {
+        else if (neighbor.y == (int)decomp.y && (boundary & BOUNDARY_Y_TOP) != 0) {
             return int3{0, 1, 0};
         }
-        else if (neighbor.x == -1) {
+        else if (neighbor.x == -1 && (boundary & BOUNDARY_X_BOT) != 0) {
             return int3{-1, 0, 0};
         }
-        else if (neighbor.x == (int)decomp.x) {
+        else if (neighbor.x == (int)decomp.x && (boundary & BOUNDARY_X_TOP) != 0) {
             return int3{1, 0, 0};
         }
         else {
@@ -2228,6 +2228,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
 
 		const auto id = Region::tag_to_id(tag);
+		if(op.id != (int3){0,0,0} && id != op.id) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && id.x != 0) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y  && id.y != 0) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && id.z != 0) continue;
@@ -2255,6 +2256,21 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    //TP: because of the need to interpolate from multiple processes the whole stretch from 0 to AC_mlocal.y is done in a single task
 		    if(shear_periodic && id.y != 0) continue;
                     auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info, device, swap_offset,shear_periodic);
+		    if(task->active)
+		    {
+		    	if(id.x != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].x)
+		    	{
+		    	        fatal("Trying to apply periodic bc on (%d,%d,%d) even though X is not periodic!!\n",id.x,id.y,id.z);
+		    	}
+		    	if(id.y != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].y)
+		    	{
+		    	        fatal("Trying to apply periodic bc on (%d,%d,%d) even though Y is not periodic!!\n",id.x,id.y,id.z);
+		    	}
+		    	if(id.z != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].z)
+		    	{
+		    	        fatal("Trying to apply periodic bc on (%d,%d,%d) even though Z is not periodic!!\n",id.x,id.y,id.z);
+		    	}
+		    }
                     graph->halo_tasks.push_back(task);
                     graph->all_tasks.push_back(task);
                     acVerboseLogFromRootProc(rank,
@@ -2264,12 +2280,8 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
                 }
 		else
 		{
-			if(Region::tag_to_id(tag) == (int3){0,0,1} && op.kernel_enum != BOUNDCOND_PERIODIC)
-			{
-				printf("Using %s at Z_TOP!!\n",kernel_names[op.kernel_enum]);
-			}
                 	auto task = std::make_shared<BoundaryConditionTask>(op,
-                	                                                       boundary_normal(tag),
+                	                                                       boundary_normal(tag,op.boundary),
                 	                                                       i, tag, start, dims,
                 	                                                       device,
                 	                                                       swap_offset);
