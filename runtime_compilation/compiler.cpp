@@ -143,12 +143,18 @@ run_cmake(const char* compilation_string, const char* log_dst)
 {
   
   char cmd[2*10000];
+  sprintf(cmd,"cd %s && cmake -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DOPENMP_ENABLED=OFF -DDSL_MODULE_DIR=%s -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s ",
+         runtime_astaroth_build_path().c_str(), DSL_MODULE_DIR, acc_compiler_path().c_str(), compilation_string);
+#if AC_USE_HIP
+#else
+  strcat(cmd,"-DCMAKE_CUDA_FLAGS=-objtemp ");
+#endif
+  strcat(cmd,get_astaroth_base_path().c_str());
   if(log_dst)
-  	sprintf(cmd,"cd %s && cmake -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DOPENMP_ENABLED=OFF -DDSL_MODULE_DIR=%s -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s %s &> %s",
-         runtime_astaroth_build_path().c_str(), DSL_MODULE_DIR, acc_compiler_path().c_str(), compilation_string,get_astaroth_base_path().c_str(),log_dst);
-  else
-  	sprintf(cmd,"cd %s && cmake -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DOPENMP_ENABLED=OFF -DDSL_MODULE_DIR=%s -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s %s",
-         runtime_astaroth_build_path().c_str(), DSL_MODULE_DIR, acc_compiler_path().c_str(), compilation_string,get_astaroth_base_path().c_str());
+  {
+	  strcat(cmd," &> ");
+  	  strcat(cmd,log_dst);
+  }
   const int retval = system(cmd);
   if(retval)
   {

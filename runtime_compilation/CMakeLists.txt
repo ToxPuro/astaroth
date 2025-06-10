@@ -1,5 +1,6 @@
 if (NOT DEFINED DSL_MODULE_DIR)
-    set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/samples/mhd_modular) # Default
+    get_filename_component(resolved_module_dir acc-runtime/samples/mhd_modular REALPATH BASE_DIR ${AC_BASE_PATH})
+    set(DSL_MODULE_DIR ${resolved_module_dir}) # Default
 else()
     get_filename_component(resolved_module_dir "${DSL_MODULE_DIR}" REALPATH
                            BASE_DIR ${CMAKE_BINARY_DIR})
