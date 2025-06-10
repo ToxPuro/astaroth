@@ -73,6 +73,25 @@
 
 using IOTask = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
 
+static auto get_info(const Device& device)
+{
+    AcMeshInfo info{};
+    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+    return info;
+}
+
+static auto get_vba(const Device& device) {
+    VertexBufferArray vba{};
+    ERRCHK_AC(acDeviceGetVBA(device, &vba));
+    return vba;
+}
+
+static auto get_input_field(const Device& device, const Field& handle) {
+    auto vba{get_vba(device)};
+    ERRCHK(handle < NUM_FIELDS);
+    return vba.in[handle];
+}
+
 /** Concatenates the field name and ".mesh" of a vector of handles */
 static auto
 get_field_paths(const std::vector<Field>& fields, const size_t step)
