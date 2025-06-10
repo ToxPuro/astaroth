@@ -678,6 +678,41 @@ gen_halo_exchange_and_boundconds(
 		FILE* stream
 		)
 {
+		//TP: this is because bcs of higher facet class can depend on the bcs of the lower facet classes
+		//Take for example symmetric bc. At (-1,1,0) with boundary_normal (1,0,0) the bc would depend on (0,1,0)
+		//If that bc was generated first there would be no dependency between the bcs and cause a race condition
+		std::array<int,27> correct_region_order{
+			id_to_arr_index(0,0,0),
+
+			id_to_arr_index(+1,0,0),
+			id_to_arr_index(0,+1,0),
+			id_to_arr_index(0,0,+1),
+			id_to_arr_index(-1,0,0),
+			id_to_arr_index(0,-1,0),
+			id_to_arr_index(0,0,-1),
+
+			id_to_arr_index(+1,+1,0),
+			id_to_arr_index(+1,-1,0),
+			id_to_arr_index(-1,+1,0),
+			id_to_arr_index(-1,-1,0),
+			id_to_arr_index(+1,0,+1),
+			id_to_arr_index(+1,0,-1),
+			id_to_arr_index(-1,0,+1),
+			id_to_arr_index(-1,0,-1),
+			id_to_arr_index(0,+1,+1),
+			id_to_arr_index(0,+1,-1),
+			id_to_arr_index(0,-1,+1),
+			id_to_arr_index(0,-1,-1),
+
+			id_to_arr_index(+1,+1,+1),
+			id_to_arr_index(-1,+1,+1),
+			id_to_arr_index(+1,-1,+1),
+			id_to_arr_index(-1,-1,+1),
+			id_to_arr_index(+1,+1,-1),
+			id_to_arr_index(-1,+1,-1),
+			id_to_arr_index(+1,-1,-1),
+			id_to_arr_index(-1,-1,-1),
+		};
  
 		std::array<int,NUM_FIELDS> communicated_boundaries{};
 		for(size_t field = 0; field < NUM_FIELDS; ++field)
@@ -797,43 +832,37 @@ gen_halo_exchange_and_boundconds(
 				{
 					if(!made_progress) fatal("%s","STUCK IN A INFINITE LOOP!\n");
 					made_progress = false;
-					for(int x = -1; x <= 1; ++x)
-						for(int y = -1; y <= 1; ++y)
-							for(int z = -1; z <= 1; ++z)
-							{
-								if(x == 0 && y == 0 && z == 0) continue;
-								const int index = id_to_arr_index(x,y,z);
-								BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0,(int3){0,0,0}};
-                			        		for(const auto& field : fields)
-                			        		        processed_boundcond = !field_boundconds_dependencies_included[field][index] ?  field_boundconds[field][index] : processed_boundcond;
-                			        		if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
+					for(int j = 1; j < 27; ++j)
+					{
+						const int index = correct_region_order[j];
+						BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0,(int3){0,0,0}};
+                				for(const auto& field : fields)
+                				        processed_boundcond = !field_boundconds_dependencies_included[field][index] ?  field_boundconds[field][index] : processed_boundcond;
+                				if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
 
-								for(const auto& field : processed_boundcond.in)
-								{
-									if(!processed_boundcond.info.larger_input) continue;
-									if(std::find(field_bcs_called[index].begin(), field_bcs_called[index].end(), field) != field_bcs_called[index].end()) continue;
-									field_bcs_called[index].push_back(field);
-									field_boundconds_dependencies_included[field][index] = false;
-									field_boundconds_processed[field][index] = false;
-									made_progress = true;
-								}
-								for(const auto& field : processed_boundcond.out)
-								{
-									field_boundconds_dependencies_included[field][index] = true;
-									made_progress = true;
-								}
-							}
+						for(const auto& field : processed_boundcond.in)
+						{
+							if(!processed_boundcond.info.larger_input) continue;
+							if(std::find(field_bcs_called[index].begin(), field_bcs_called[index].end(), field) != field_bcs_called[index].end()) continue;
+							field_bcs_called[index].push_back(field);
+							field_boundconds_dependencies_included[field][index] = false;
+							field_boundconds_processed[field][index] = false;
+							made_progress = true;
+						}
+						for(const auto& field : processed_boundcond.out)
+						{
+							field_boundconds_dependencies_included[field][index] = true;
+							made_progress = true;
+						}
+					}
                 		        all_are_processed = true;
                                         for(const auto& field : fields)
 					{
-						for(int x = -1; x <= 1; ++x)
-							for(int y = -1; y <= 1; ++y)
-								for(int z = -1; z <= 1; ++z)
-								{
-									if(x == 0 && y == 0 && z == 0) continue;
-									const int index = id_to_arr_index(x,y,z);
-                		        	                	all_are_processed &= field_boundconds_dependencies_included[field][index];
-								}
+						for(int j = 1; j < 27; ++j)
+						{
+							const int index = correct_region_order[j];
+                		       			all_are_processed &= field_boundconds_dependencies_included[field][index];
+						}
 					}
 				}
 			}
@@ -845,48 +874,42 @@ gen_halo_exchange_and_boundconds(
                 		{
 					if(!made_progress) fatal("%s","STUCK IN A INFINITE LOOP!\n");
 					made_progress = false;
-					for(int x = -1; x <= 1; ++x)
-						for(int y = -1; y <= 1; ++y)
-							for(int z = -1; z <= 1; ++z)
-							{
-								if(x == 0 && y == 0 && z == 0) continue;
-								const int index = id_to_arr_index(x,y,z);
-								BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0,(int3){0,0,0}};
-                		        			for(const auto& field : fields)
-                		                		{
-									if(!vtxbuf_is_communicated[field]) continue;
-									//TP: always insert boundary conditions with the smaller topological order first
-									if(processed_boundcond.kernel != AC_NULL_KERNEL && processed_boundcond.topological_order < field_boundconds[field][index].topological_order) continue;
-                		                		        processed_boundcond = !field_boundconds_processed[field][index] ?  field_boundconds[field][index] : processed_boundcond;
-                		                		}
-                		                		if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
+					for(int j = 1; j < 27; ++j)
+					{
+						const int index = correct_region_order[j];
+						BoundCond processed_boundcond{AC_NULL_KERNEL,BOUNDARY_NONE,{}, {}, {},0,(int3){0,0,0}};
+                		        	for(const auto& field : fields)
+                		        	{
+							if(!vtxbuf_is_communicated[field]) continue;
+							//TP: always insert boundary conditions with the smaller topological order first
+							if(processed_boundcond.kernel != AC_NULL_KERNEL && processed_boundcond.topological_order < field_boundconds[field][index].topological_order) continue;
+                		        	        processed_boundcond = !field_boundconds_processed[field][index] ?  field_boundconds[field][index] : processed_boundcond;
+                		        	}
+                		        	if(processed_boundcond.kernel == AC_NULL_KERNEL) continue;
 
-								int new_boundary = 0;
-								for(auto field : processed_boundcond.out)
-								{
-									new_boundary |= (processed_boundcond.boundary & communicated_boundaries[field]);
-								}
-								processed_boundcond.boundary = AcBoundary(new_boundary);
-								std::vector<facet_class_range> facet_classes{};
-								for(auto& field: processed_boundcond.out) facet_classes.push_back(halo_types[field]);
-								bc_tasks.push_back(gen_bc(stream,processed_boundcond,facet_classes));
-								made_progress = true;
-								for(const auto& field : processed_boundcond.out)
-								{
-									field_boundconds_processed[field][index] = true;
-								}
-                		        }
+						int new_boundary = 0;
+						for(auto field : processed_boundcond.out)
+						{
+							new_boundary |= (processed_boundcond.boundary & communicated_boundaries[field]);
+						}
+						processed_boundcond.boundary = AcBoundary(new_boundary);
+						std::vector<facet_class_range> facet_classes{};
+						for(auto& field: processed_boundcond.out) facet_classes.push_back(halo_types[field]);
+						bc_tasks.push_back(gen_bc(stream,processed_boundcond,facet_classes));
+						made_progress = true;
+						for(const auto& field : processed_boundcond.out)
+						{
+							field_boundconds_processed[field][index] = true;
+						}
+					}
                 		        all_are_processed = true;
                                         for(const auto& field : fields)
 					{
-						for(int x = -1; x <= 1; ++x)
-							for(int y = -1; y <= 1; ++y)
-								for(int z = -1; z <= 1; ++z)
-								{
-									if(x == 0 && y == 0 && z == 0) continue;
-									const int index = id_to_arr_index(x,y,z);
-                		        	                	all_are_processed &= field_boundconds_processed[field][index];
-								}
+						for(int j = 1; j < 27; ++j)
+						{
+						  const int index = correct_region_order[j];
+                		        	  all_are_processed &= field_boundconds_processed[field][index];
+						}
 					}
                 		}
 			}

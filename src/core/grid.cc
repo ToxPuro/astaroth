@@ -2225,8 +2225,45 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 
         case TASKTYPE_BOUNDCOND: {
 	    int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
-            for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+	    //TP: this is because bcs of higher facet class can depend on the bcs of the lower facet classes
+	    //Take for example symmetric bc. At (-1,1,0) with boundary_normal (1,0,0) the bc would depend on (0,1,0)
+	    //If that bc was generated first there would be no dependency between the bcs and cause a race condition
+	    std::array<int,26> correct_tag_order {
 
+	    	    Region::id_to_tag((int3){+1,0,0}),
+	    	    Region::id_to_tag((int3){0,+1,0}),
+	    	    Region::id_to_tag((int3){0,0,+1}),
+	    	    Region::id_to_tag((int3){-1,0,0}),
+	    	    Region::id_to_tag((int3){0,-1,0}),
+	    	    Region::id_to_tag((int3){0,0,-1}),
+
+	    	    Region::id_to_tag((int3){+1,+1,0}),
+	    	    Region::id_to_tag((int3){+1,-1,0}),
+	    	    Region::id_to_tag((int3){-1,+1,0}),
+	    	    Region::id_to_tag((int3){-1,-1,0}),
+	    	    Region::id_to_tag((int3){+1,0,+1}),
+	    	    Region::id_to_tag((int3){+1,0,-1}),
+	    	    Region::id_to_tag((int3){-1,0,+1}),
+	    	    Region::id_to_tag((int3){-1,0,-1}),
+	    	    Region::id_to_tag((int3){0,+1,+1}),
+	    	    Region::id_to_tag((int3){0,+1,-1}),
+	    	    Region::id_to_tag((int3){0,-1,+1}),
+	    	    Region::id_to_tag((int3){0,-1,-1}),
+
+	    	    Region::id_to_tag((int3){+1,+1,+1}),
+	    	    Region::id_to_tag((int3){-1,+1,+1}),
+	    	    Region::id_to_tag((int3){+1,-1,+1}),
+	    	    Region::id_to_tag((int3){-1,-1,+1}),
+	    	    Region::id_to_tag((int3){+1,+1,-1}),
+	    	    Region::id_to_tag((int3){-1,+1,-1}),
+	    	    Region::id_to_tag((int3){+1,-1,-1}),
+	    	    Region::id_to_tag((int3){-1,-1,-1}),
+	    };
+            for (const int tag : correct_tag_order) {
+
+		//TP: this is because bcs of higher facet class can depend on the bcs of the lower facet classes
+		//Take for example symmetric bc. At (-1,1,0) with boundary_normal (1,0,0) the bc would depend on (0,1,0)
+		//If that bc was generated first there would be no dependency between the bcs and cause a race condition
 		const auto id = Region::tag_to_id(tag);
 		if(op.id != (int3){0,0,0} && id != op.id) continue;
 		if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && id.x != 0) continue;

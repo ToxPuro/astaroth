@@ -2645,9 +2645,6 @@ BoundaryConditionTask::BoundaryConditionTask(
 
 
 
-    int3 translation = int3{(int)(output_region.dims.x + 1) * (-boundary_normal.x),
-                            (int)(output_region.dims.y + 1) * (-boundary_normal.y),
-                            (int)(output_region.dims.z + 1) * (-boundary_normal.z)};
 
     boundary_dims = {
         boundary_normal.x == 0 ? output_region.dims.x : 1,
@@ -2666,6 +2663,10 @@ BoundaryConditionTask::BoundaryConditionTask(
 
     // TODO: input_region is now set twice, overwritten here
     auto input_fields = input_region.memory.fields;
+
+    const int3 translation = int3{(int)(output_region.dims.x + 1) * (-boundary_normal.x),
+                            (int)(output_region.dims.y + 1) * (-boundary_normal.y),
+                            (int)(output_region.dims.z + 1) * (-boundary_normal.z)};
     input_region = Region(output_region.translate(translation));
     input_region.memory.fields = input_fields;
     const auto ghosts = op.halo_sizes;
