@@ -168,7 +168,7 @@ get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
 
     // Others to ensure nothing is left uninitialized
     acr::set(AC_init_type, 0, local_info);
-    // acr::set(AC_step_number, 0, local_info);
+    acr::set(AC_step_number, 0, local_info);
     acr::set(AC_dt, 0, local_info);
     acr::set(AC_dummy_real3, AcReal3{0, 0, 0}, local_info);
 
