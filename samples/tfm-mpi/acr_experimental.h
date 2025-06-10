@@ -18,7 +18,7 @@ class device {
                        ERRCHK_AC(acDeviceCreate(id, info, ptr));
                        return ptr;
                    }(),
-                   [](Device* ptr) {
+                   [](Device* ptr) noexcept {
                        WARNCHK(*ptr != nullptr);
                        WARNCHK_AC(acDeviceDestroy(*ptr));
                        delete ptr;

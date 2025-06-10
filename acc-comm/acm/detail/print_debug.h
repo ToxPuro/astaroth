@@ -83,6 +83,6 @@ print_demangled(const T& obj)
                                                                    nullptr,
                                                                    nullptr,
                                                                    &status),
-                                               [](char* ptr) { std::free(ptr); }};
+                                               [](char* ptr) noexcept { std::free(ptr); }};
     std::cout << "Type: " << (status == 0 ? res.get() : typeid(obj).name()) << std::endl;
 }

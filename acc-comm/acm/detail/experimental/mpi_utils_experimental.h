@@ -17,7 +17,7 @@ class comm {
 
   public:
     comm()
-        : m_comm{new MPI_Comm{MPI_COMM_NULL}, [](MPI_Comm* ptr) {
+        : m_comm{new MPI_Comm{MPI_COMM_NULL}, [](MPI_Comm* ptr) noexcept {
                      if (*ptr != MPI_COMM_NULL)
                          ERRCHK_MPI_API(MPI_Comm_free(ptr));
                      delete ptr;
@@ -61,7 +61,7 @@ class datatype {
 
   public:
     datatype()
-        : m_datatype{new MPI_Datatype{MPI_DATATYPE_NULL}, [](MPI_Datatype* ptr) {
+        : m_datatype{new MPI_Datatype{MPI_DATATYPE_NULL}, [](MPI_Datatype* ptr) noexcept{
                          ERRCHK_MPI(ptr != nullptr);
                          if (*ptr != MPI_DATATYPE_NULL)
                              ERRCHK_MPI_API(MPI_Type_free(ptr));
@@ -139,7 +139,7 @@ class request {
      * if request goes out of scope without being released/waited upon.
      */
     explicit request(const MPI_Request& req = MPI_REQUEST_NULL)
-        : m_req{new MPI_Request{req}, [](MPI_Request* ptr) {
+        : m_req{new MPI_Request{req}, [](MPI_Request* ptr) noexcept{
                     ERRCHK_MPI_EXPR_DESC(*ptr == MPI_REQUEST_NULL,
                                          "Attempted to destruct a request still in flight. Ensure "
                                          "wait is called properly before leaving scope.");

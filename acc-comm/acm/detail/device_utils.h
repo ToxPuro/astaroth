@@ -47,7 +47,7 @@ class stream {
                        ERRCHK_CUDA_API(cudaStreamCreate(ptr));
                        return ptr;
                    }(),
-                   [](cudaStream_t* ptr) {
+                   [](cudaStream_t* ptr) noexcept {
                        WARNCHK(*ptr != nullptr);
                        WARNCHK_CUDA_API(cudaStreamDestroy(*ptr));
                        delete ptr;
