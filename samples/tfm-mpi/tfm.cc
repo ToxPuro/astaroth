@@ -614,7 +614,7 @@ write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const si
 
     const auto rank{ac::mpi::get_rank(parent_comm)};
     if (rank == 0) {
-        std::printf("%-6s %5zu, %.3g, %.3g, %.3g, %.3g, %.3g, %.3g\n",
+        std::printf("%-6s, %5zu, %.3g, %.3g, %.3g, %.3g, %.3g, %.3g\n",
                     label.c_str(),
                     step,
                     static_cast<double>(simulation_time),
@@ -660,7 +660,7 @@ write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const s
 
     const auto rank{ac::mpi::get_rank(parent_comm)};
     if (rank == 0) {
-        std::printf("%-6s %5zu, %.3g, %.3g, %.3g, %.3g, %.3g, %.3g\n",
+        std::printf("%-6s, %5zu, %.3g, %.3g, %.3g, %.3g, %.3g, %.3g\n",
                     field_names[field],
                     step,
                     static_cast<double>(simulation_time),
