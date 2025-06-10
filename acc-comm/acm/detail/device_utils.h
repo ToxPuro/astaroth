@@ -48,8 +48,8 @@ class stream {
                        return ptr;
                    }(),
                    [](cudaStream_t* ptr) {
-                       ERRCHK(*ptr != nullptr);
-                       ERRCHK(cudaStreamDestroy(*ptr) == cudaSuccess);
+                       WARNCHK(*ptr != nullptr);
+                       WARNCHK_CUDA_API(cudaStreamDestroy(*ptr));
                        delete ptr;
                    }}
     {

@@ -19,12 +19,25 @@ class device {
                        return ptr;
                    }(),
                    [](Device* ptr) {
-                       ERRCHK(*ptr != nullptr);
-                       ERRCHK_AC(acDeviceDestroy(*ptr));
+                       WARNCHK(*ptr != nullptr);
+                       WARNCHK_AC(acDeviceDestroy(*ptr));
                        delete ptr;
                    }}
     {
     }
+
 };
+
+VertexBufferArray get_vba(const Device& device) {
+  VertexBufferArray vba{};
+  ERRCHK_AC(acDeviceGetVBA(device, &vba));
+  return vba;
+}
+
+MeshInfo get_mesh_info(const Device& device) {
+  MeshInfo info{};
+  ERRCHK_AC(acDeviceGetMeshInfo(device, &info));
+  return info;
+}
 
 } // namespace acr
