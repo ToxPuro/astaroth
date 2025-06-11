@@ -151,13 +151,13 @@ const real rkf4_alpha_coeffs=[ 970286171893./4311952581923.,
 
 rkf4_alpha(real f_alpha, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
-    error_message(AC_rk_order != 4, "Used rkf4_alpha but AC_rk_order is not 4!\n");
+    fatal_error_message(AC_rk_order != 4, "Used rkf4_alpha but AC_rk_order is not 4!\n");
     return f_alpha + rkf4_alpha_coeffs[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rkf4_beta(real f_beta, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
-    error_message(AC_rk_order != 4, "Used rkf4_beta but AC_rk_order is not 4!\n");
+    fatal_error_message(AC_rk_order != 4, "Used rkf4_beta but AC_rk_order is not 4!\n");
     return f_beta + rkf4_beta_coeffs[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -178,7 +178,7 @@ rkf4_beta(real3 f_beta, real3 roc, int step_num, real dt) {
 }
 rkf4_error(real df, int step_num,real dt)
 {
-    	error_message(AC_rk_order != 4, "Used rkf4_error but AC_rk_order is not 4!\n");
+    	fatal_error_message(AC_rk_order != 4, "Used rkf4_error but AC_rk_order is not 4!\n");
 	return dt*(rkf4_beta_coeffs[step_num] - rkf4_bhat_coeffs[step_num])*df
 }
 rkf4_error(real3 df, int step_num, real dt)

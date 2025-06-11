@@ -177,13 +177,13 @@ const real rkf4_alpha_coeffs =[ 970286171893./4311952581923.,
 
 rkf4_alpha(real f_alpha, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
-    error_message(AC_rk_order != 4, "Used rkf4_alpha but AC_rk_order is not 4!\n");
+    fatal_error_message(AC_rk_order != 4, "Used rkf4_alpha but AC_rk_order is not 4!\n");
     return f_alpha + rkf4_alpha_coeffs[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rkf4_beta(real f_beta, real roc, int step_num, real dt) {
     // explicit runge-kutta 4th vs 3rd order 3 register 5-step scheme
-    error_message(AC_rk_order != 4, "Used rkf4_beta but AC_rk_order is not 4!\n");
+    fatal_error_message(AC_rk_order != 4, "Used rkf4_beta but AC_rk_order is not 4!\n");
     return f_beta + rkf4_beta_coeffs[step_num]*roc*dt
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -202,11 +202,13 @@ rkf4_beta(real3 f_beta, real3 roc, int step_num, real dt) {
 			rkf4_beta(f_beta.z,roc.z,step_num,dt)
 		    )
 }
+/*--------------------------------------------------------------------------------------------------------------------*/
 rkf4_error(real df, int step_num,real dt)
 {
-    	error_message(AC_rk_order != 4, "Used rkf4_error but AC_rk_order is not 4!\n");
+    	fatal_error_message(AC_rk_order != 4, "Used rkf4_error but AC_rk_order is not 4!\n");
 	return dt*(rkf4_beta_coeffs[step_num] - rkf4_bhat_coeffs[step_num])*df
 }
+/*--------------------------------------------------------------------------------------------------------------------*/
 rkf4_error(real3 df, int step_num, real dt)
 {
 	return 
@@ -215,6 +217,84 @@ rkf4_error(real3 df, int step_num, real dt)
 				rkf4_error(df.y,step_num,dt),
 				rkf4_error(df.z,step_num,dt)
 		     )
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rkf4_update(real df, int step_num, real dt, Field ERROR, Field BETA, Field F, reduce_dst, real maximum_error, real dt_ratio, real dt_epsi)
+{
+	error = rkf4_error(df,step_num,dt)
+	if(step_num != 0)
+	{
+		error += ERROR
+	}
+	if(step_num == 0)
+        {
+        	write(BETA,rkf4_beta(F,df,step_num,dt))
+		reduce_max(max(dt_ratio*abs(F),dt_epsi), reduce_dst)
+        }
+  	else if (step_num != 4)
+  	{
+  	      write(BETA,rkf4_beta(BETA,df,step_num,dt))
+  	}
+  	//Until the last step the 'proper' registers hold the alpha updates
+  	//Except in the last one we overwrite them with the beta update
+  	//No need to write the error out for the last substep
+  	if (step_num != 4)
+  	{
+  	      write(F,rkf4_alpha(F,df,step_num,dt))
+
+  	      write(ERROR,error)
+  	}
+  	else
+  	{
+  	      final = rkf4_beta(BETA,df,step_num,dt)
+  	      write(F,final)
+  	      
+  	      real scal = max(abs(final),output_value(reduce_dst))
+  	      return max(abs(error/scal),maximum_error)
+  	} 
+	return 0.0;
+}
+/*--------------------------------------------------------------------------------------------------------------------*/
+rkf4_update(real3 df, int step_num, real dt, Field3 ERROR, Field3 BETA, Field3 F, reduce_dst_x, reduce_dst_y,reduce_dst_z,real maximum_error, real dt_ratio, real dt_epsi)
+{
+	error = rkf4_error(df,step_num,dt)
+	if(step_num != 0)
+	{
+		error += ERROR
+	}
+	if(step_num == 0)
+        {
+        	write(BETA,rkf4_beta(F,df,step_num,dt))
+		reduce_max(max(dt_ratio*abs(F.x),dt_epsi), reduce_dst_x)
+		reduce_max(max(dt_ratio*abs(F.y),dt_epsi), reduce_dst_y)
+		reduce_max(max(dt_ratio*abs(F.z),dt_epsi), reduce_dst_z)
+        }
+  	else if (step_num != 4)
+  	{
+  	      write(BETA,rkf4_beta(BETA,df,step_num,dt))
+  	}
+  	//Until the last step the 'proper' registers hold the alpha updates
+  	//Except in the last one we overwrite them with the beta update
+  	//No need to write the error out for the last substep
+  	if (step_num != 4)
+  	{
+  	      write(F,rkf4_alpha(F,df,step_num,dt))
+  	      write(ERROR,error)
+  	}
+  	else
+  	{
+  	      final = rkf4_beta(BETA,df,step_num,dt)
+  	      write(F,final)
+  	      
+  	      real scal = max(abs(final.x),output_value(reduce_dst_x))
+  	      real new_maximum_error = max(abs(error.x/scal),maximum_error)
+  	      scal = max(abs(final.y),output_value(reduce_dst_y))
+  	      new_maximum_error = max(abs(error.y/scal),new_maximum_error)
+  	      scal = max(abs(final.z),output_value(reduce_dst_z))
+  	      new_maximum_error = max(abs(error.z/scal),new_maximum_error)
+	      return new_maximum_error
+  	} 
+	return 0.0;
 }
 /*--------------------------------------------------------------------------------------------------------------------*/
 rk_intermediate(Field f, real df, int step_num, real dt)
