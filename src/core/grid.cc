@@ -2120,31 +2120,14 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 
 
 	    const bool raytracing = is_raytracing_kernel(op.kernel_enum);
+	    const bool oned_launch = kernel_only_writes_profile(op.kernel_enum,PROFILE_X) || kernel_only_writes_profile(op.kernel_enum,PROFILE_Y) || kernel_only_writes_profile(op.kernel_enum,PROFILE_Z);
 	    const bool single_gpu_optim = ((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim];
-	    const int max_comp_facet_class = (raytracing || single_gpu_optim) ? 0 : 3;
+	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim) ? 0 : 3;
 	    {
             	for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x  && Region::tag_to_id(tag).x != 0) continue;
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y  && Region::tag_to_id(tag).y != 0) continue;
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
-
-		    if(kernel_only_writes_profile(op.kernel_enum,PROFILE_X))
-		    {
-			if(Region::tag_to_id(tag).y != -1)  continue;
-			if(Region::tag_to_id(tag).z != -1)  continue;
-		    }
-
-		    else if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Y))
-		    {
-			if(Region::tag_to_id(tag).x != -1)  continue;
-			if(Region::tag_to_id(tag).z != -1)  continue;
-		    }
-
-		    else if(kernel_only_writes_profile(op.kernel_enum,PROFILE_Z))
-		    {
-			if(Region::tag_to_id(tag).x != -1)  continue;
-			if(Region::tag_to_id(tag).y != -1)  continue;
-		    }
 		    else if(max_comp_facet_class == 3)
 		    {
 			const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);

@@ -587,6 +587,7 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       if(dims.x == 0 || dims.y == 0 || dims.z == 0)
       {
 	      fprintf(stderr,"Incorrect region dims: %zu,%zu,%zu\n",dims.x,dims.y,dims.z);
+	      fprintf(stderr,"Region id: %d,%d,%d\n",id.x,id.y,id.z);
 	      ERRCHK_ALWAYS(dims.x != 0 && dims.y != 0 && dims.z != 0);
       }
       break;
@@ -1057,6 +1058,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 	output_region.dims.x = 1;	
 	output_region.dims.y = 1;	
     }
+
     else if(max_facet_class == 3)
     {
 	const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);
