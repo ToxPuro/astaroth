@@ -2927,3 +2927,16 @@ acGetKernels()
 {
 	return kernel_enums;
 }
+
+AcResult
+acRuntimeQuit()
+{
+	tbconfigs.clear();
+	for(int kernel = 0; kernel < NUM_KERNELS; ++kernel)
+	{
+		reduce_offsets[kernel].clear();
+		kernel_running_reduce_offsets[kernel] = 0;
+	}
+	segmented_reduce_offsets.clear();
+	return AC_SUCCESS;
+}

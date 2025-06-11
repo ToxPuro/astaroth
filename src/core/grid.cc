@@ -47,7 +47,7 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "task.h"
-#include "util_funcs.h"
+#include "ac_helpers.h"
 
 #include <algorithm>
 #include <cstring> //memcpy
@@ -798,12 +798,12 @@ acGridInitBase(const AcMesh user_mesh)
 		    submesh_info[AC_nlocal].x,submesh_info[AC_nlocal].y,submesh_info[AC_nlocal].z
 		    );
     acLogFromRootProc(ac_pid(), "acGridInit: Calling acDeviceCreate\n");
-    acVerboseLogFromRootProc(ac_pid(),"memusage before acDeviceCreate = %f MBytes\n",memusage()/1024.0);
+    acVerboseLogFromRootProc(ac_pid(),"memusage before acDeviceCreate = %f MBytes\n",acMemUsage()/1024.0);
 
     Device device;
     acDeviceCreate(ac_pid() % devices_per_node, submesh_info, &device);
 
-    acVerboseLogFromRootProc(ac_pid(),"memusage after acDeviceCreate = %f MBytes\n", memusage()/1024.0);
+    acVerboseLogFromRootProc(ac_pid(),"memusage after acDeviceCreate = %f MBytes\n", acMemUsage()/1024.0);
     acLogFromRootProc(ac_pid() , "acGridInit: Returned from acDeviceCreate\n");
 
     // Setup the global grid structure
@@ -828,9 +828,9 @@ acGridInitBase(const AcMesh user_mesh)
     grid.initialized   = true;
 
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Synchronizing streams\n");
-    acVerboseLogFromRootProc(ac_pid(), "memusage before synchronize stream= %f MBytes\n", memusage()/1024.0);
+    acVerboseLogFromRootProc(ac_pid(), "memusage before synchronize stream= %f MBytes\n", acMemUsage()/1024.0);
     acGridSynchronizeStream(STREAM_ALL);
-    acVerboseLogFromRootProc(ac_pid(), "memusage after synchronize stream= %f MBytes\n", memusage()/1024.0);
+    acVerboseLogFromRootProc(ac_pid(), "memusage after synchronize stream= %f MBytes\n", acMemUsage()/1024.0);
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Done synchronizing streams\n");
 
     grid.kernel_analysis_info = get_kernel_analysis_info();
@@ -904,6 +904,7 @@ acGridQuit(void)
     }
     acDeviceDestroy(&grid.device);
     compat_acDecompositionQuit();
+    acRuntimeQuit();
     // acDecompositionInfoDestroy(&grid.decomposition_info);
 
     return AC_SUCCESS;

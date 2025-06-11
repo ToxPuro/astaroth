@@ -471,10 +471,13 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 
   static AcResult __attribute__((unused)) acLoadLibrary(FILE* stream, const AcMeshInfo info)
   {
-	char runtime_astaroth_path[40000];
-	sprintf(runtime_astaroth_path,"%s/runtime_build/src/core/libastaroth_core.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
+	char original_runtime_astaroth_path[20000];
+	sprintf(original_runtime_astaroth_path,"%s/runtime_build/src/core/libastaroth_core.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 	kernelsLibHandle=acLoadRunTime(stream,info);
- 	void* handle = dlopen(runtime_astaroth_path,RTLD_NOW);
+	static int counter = 0;
+	const char* runtime_astaroth_path = acLibraryVersion(original_runtime_astaroth_path,counter,info);
+	++counter;
+ 	void* handle = dlopen(runtime_astaroth_path,RTLD_NOW | RTLD_LOCAL);
 	if (!handle)
 	{
     		fprintf(stderr,"%s","Fatal error was not able to load Astaroth\n"); 

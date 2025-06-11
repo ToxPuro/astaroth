@@ -20,7 +20,7 @@
 #include "astaroth.h"
 #include "../../acc-runtime/api/math_utils.h"
 #include "kernels/kernels.h"
-#include "util_funcs.h"
+#include "ac_helpers.h"
 
 #if AC_MPI_ENABLED
 static int ac_pid()
@@ -580,11 +580,11 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     fflush(stdout);
 #endif
 
-    acVerboseLogFromRootProc(ac_pid(), "memusage before create streams= %f MBytes\n", memusage()/1024.0);
+    acVerboseLogFromRootProc(ac_pid(), "memusage before create streams= %f MBytes\n", acMemUsage()/1024.0);
     for (int i = 0; i < NUM_STREAMS; ++i) {
         cudaStreamCreateWithPriority(&device->streams[i], cudaStreamNonBlocking, i);
     }
-    acVerboseLogFromRootProc(ac_pid(),  "memusage after create streams= %f MBytes\n", memusage()/1024.0);
+    acVerboseLogFromRootProc(ac_pid(),  "memusage after create streams= %f MBytes\n", acMemUsage()/1024.0);
 
     // Memory
     // VBA in/out

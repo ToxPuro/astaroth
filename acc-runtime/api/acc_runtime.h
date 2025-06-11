@@ -232,6 +232,7 @@ typedef struct AcCommunicator AcCommunicator;
   } AcMeshInfo;
 
 
+
   typedef struct {
 #include "input_decl.h"
   } AcInputs;
@@ -264,6 +265,10 @@ typedef struct {
   typedef struct {
     size_t x, y, z, w;
   } AcShape;
+
+#ifndef AC_STENCIL_ACCESSES_MAIN
+  #include "ac_helpers.h"
+#endif
 
   typedef struct AcBuffer{
       AcReal* data;
@@ -428,15 +433,19 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(int, acGetKernelReduceScratchPadMinSize,());
   FUNC_DEFINE(size_t,  acGetSmallestRealReduceScratchPadSizeBytes,());
+  FUNC_DEFINE(AcResult, acRuntimeQuit, ());
 
 #if AC_RUNTIME_COMPILATION
 #define LOAD_DSYM(FUNC_NAME,STREAM) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
 			     if(!FUNC_NAME && STREAM) fprintf(STREAM,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
   static UNUSED void* acLoadRunTime(FILE* stream, const AcMeshInfo info)
   {
-	char runtime_astaroth_runtime_path[40000];
-	sprintf(runtime_astaroth_runtime_path,"%s/runtime_build/src/core/kernels/libkernels.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
- 	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_LAZY | RTLD_GLOBAL);
+	char original_runtime_astaroth_runtime_path[40000];
+	sprintf(original_runtime_astaroth_runtime_path,"%s/runtime_build/src/core/kernels/libkernels.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
+	static int counter = 0;
+	const char* runtime_astaroth_runtime_path = acLibraryVersion(original_runtime_astaroth_runtime_path,counter,info);
+	++counter;
+ 	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_NOW | RTLD_LOCAL);
 	if(!handle)
 	{
     		fprintf(stderr,"%s","Fatal error was not able to load Astaroth runtime\n"); 
@@ -474,6 +483,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 	LOAD_DSYM(acGetKernelReduceScratchPadMinSize,stream)
 	LOAD_DSYM(acGetKernels,stream)
 	LOAD_DSYM(acReadOptimTBConfig,stream);
+        LOAD_DSYM(acRuntimeQuit,stream);
 
 	return handle;
   }

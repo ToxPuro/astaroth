@@ -17,7 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "astaroth.h"
-#include "buffer.cc"
+#include "ac_buffer.h"
 
 #include <string.h> // strcmp
 
@@ -485,7 +485,7 @@ acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst
     const AcMeshOrder order    = acGetMeshOrderForProfile(type);
 
 
-    acTransposeWithBounds(order,buffer.src.data,buffer.transposed.data,get_volume_from_shape(buffer.src.shape),start,end,stream);
+    acTransposeWithBounds(order,buffer.src.data,buffer.transposed.data,acGetVolumeFromShape(buffer.src.shape),start,end,stream);
 
     const Volume dims = end_after_transpose-start_after_transpose;
 
@@ -504,7 +504,7 @@ acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst
 AcResult
 acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream)
 {
-	return acReduceProfileWithBounds(prof,buffer,dst,stream,(Volume){0,0,0},get_volume_from_shape(buffer.src.shape),(Volume){0,0,0},get_volume_from_shape(buffer.transposed.shape));
+	return acReduceProfileWithBounds(prof,buffer,dst,stream,(Volume){0,0,0},acGetVolumeFromShape(buffer.src.shape),(Volume){0,0,0},acGetVolumeFromShape(buffer.transposed.shape));
 }
 
 #include "../config_helpers.h"

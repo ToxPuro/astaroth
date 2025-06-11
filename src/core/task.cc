@@ -42,7 +42,7 @@
 AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 
 #include "internal_device_funcs.h"
-#include "util_funcs.h"
+#include "ac_helpers.h"
 #include "astaroth_utils.h"
 #include "grid_detail.h"
 #include "analysis_grid_helpers.h"
@@ -2382,9 +2382,9 @@ ReduceTask::reduce()
 					   dst,
 					   stream,
 					   (Volume){0,0,0},
-					   get_volume_from_shape(reduce_buf.src.shape),
+					   acGetVolumeFromShape(reduce_buf.src.shape),
 					   (Volume){0,0,0},
-					   get_volume_from_shape(reduce_buf.transposed.shape)
+					   acGetVolumeFromShape(reduce_buf.transposed.shape)
 				    );
 		    }
 		}

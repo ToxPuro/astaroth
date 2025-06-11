@@ -1483,7 +1483,7 @@ acGridClearTaskGraphCache()
 	const std::unordered_map<KeyType, AcTaskGraph*, KeyHash, KeyEqual> empty_graphs{};
 	for(auto [key,graph] : task_graphs)
 		acGridDestroyTaskGraph(graph);
-	task_graphs = empty_graphs;
+	task_graphs.clear();
 	return AC_SUCCESS;
 }
 

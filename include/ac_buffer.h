@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 AcBuffer acBufferCreate(const AcShape shape, const bool on_device);
 AcBuffer acBufferCreateTransposed(const AcBuffer src, const AcMeshOrder order);
 AcBuffer acTransposeBuffer(const AcBuffer src, const AcMeshOrder order, const cudaStream_t stream);
@@ -16,3 +20,7 @@ void acBufferDestroy(AcBuffer* buffer);
 
 AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
 AcBuffer acBufferCopy(const AcBuffer in, const bool on_device);
+#ifdef __cplusplus
+}
+#endif
+

@@ -1,5 +1,6 @@
 #include "acc_runtime.h"
-#include "util_funcs.h"
+#include "ac_helpers.h"
+#include "ac_buffer.h"
 AcShape
 acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims)
 {
@@ -7,9 +8,9 @@ acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims)
 	const int second_dim = (order/N_DIMS) % N_DIMS;
 	const int third_dim  = ((order/N_DIMS)/N_DIMS)  % N_DIMS;
 	return (AcShape){
-		get_size_from_dim(first_dim,dims),
-		get_size_from_dim(second_dim,dims),
-		get_size_from_dim(third_dim,dims),
+		acGetSizeFromDim(first_dim,dims),
+		acGetSizeFromDim(second_dim,dims),
+		acGetSizeFromDim(third_dim,dims),
 		1
 	};
 }
@@ -136,14 +137,14 @@ acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaS
 AcBuffer
 acBufferCreateTransposed(const AcBuffer src, const AcMeshOrder order)
 {
-	const Volume dims = get_volume_from_shape(src.shape);
+	const Volume dims = acGetVolumeFromShape(src.shape);
 	return acBufferCreate(acGetTransposeBufferShape(order,dims),true);
 }
 
 AcBuffer
 acTransposeBuffer(const AcBuffer src, const AcMeshOrder order, const cudaStream_t stream)
 {
-	const Volume dims = get_volume_from_shape(src.shape);
+	const Volume dims = acGetVolumeFromShape(src.shape);
 	AcBuffer dst = acBufferCreateTransposed(src,order);
 	acTranspose(order,src.data,dst.data,dims,stream);
 	return dst;

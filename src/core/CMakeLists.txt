@@ -1,11 +1,11 @@
 ## Astaroth Core
 if(RUNTIME_COMPILATION)
    
-  add_library(astaroth_core update_params.cc decomposition.cc logging.c)
+  add_library(astaroth_core update_params.cc decomposition.cc logging.c ${AC_BASE_PATH}/src/core/helpers.cc)
   target_link_libraries(astaroth_core PUBLIC acc-runtime-headers dl acc_runtime_compiler)
 else()
   add_library(astaroth_core device.cc decomposition.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc update_params.cc logging.c stencil_accesses.cpp)
-  target_link_libraries(astaroth_core PUBLIC kernels)
+  target_link_libraries(astaroth_core PUBLIC static_kernels)
   
   
   # JP: disabled due to being error-prone, verbose, and not using modern CMake practices
