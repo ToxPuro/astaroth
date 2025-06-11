@@ -51,6 +51,7 @@
 
 // ACM experimental
 #include "acm/detail/experimental/mpi_utils_experimental.h"
+#include "acm/detail/experimental/fmt.h"
 
 // #define AC_ENABLE_ASYNC_AVERAGES // Better scaling
 // #define AC_ENABLE_ASYNC_DT       // Better scaling
@@ -1663,9 +1664,55 @@ namespace SimulationState {
         return std::filesystem::exists(SimulationState::path);
     }
     
+    static void write(const int step_number, const AcReal current_time, const size_t latest_snapshot) {
+        std::ofstream os{path};
+        ERRCHK(os);
+        ac::fmt::pack(os, step_number, current_time, latest_snapshot);
+    }
+    
+    static void write(const AcMeshInfo& info, const size_t latest_snapshot)  {
+        write(acr::get(info, AC_step_number), acr::get(info, AC_current_time), latest_snapshot);
+    }
+
+    static void read(int& step_number, AcReal& current_time, size_t& latest_snapshot) {
+        std::ifstream is{path};
+        ERRCHK(is);
+        ac::fmt::unpack(is, step_number, current_time, latest_snapshot);
+    }
+
+    static auto read_latest_snapshot() {
+        int step_number{};
+        AcReal current_time{};
+        size_t latest_snapshot{};
+        read(step_number, current_time, latest_snapshot);
+        return latest_snapshot;
+    }
+
+    static auto read(AcMeshInfo& info) {
+        int step_number{};
+        AcReal current_time{};
+        size_t latest_snapshot{};
+
+        read(step_number, current_time, latest_snapshot);
+        acr::set(AC_step_number, step_number, info);
+        acr::set(AC_current_time, current_time, info);
+        // TODO unused latest_snapshot
+    }
+}
+
+namespace SimulationStateOld {
+    
+    // TODO improve some day
+    constexpr const char* path{"simulation_state.txt"};
+    constexpr const char* format{"%d, %la, %zu"};
+
+    static bool exists() {
+        return std::filesystem::exists(SimulationState::path);
+    }
+    
     static void write(const AcMeshInfo& info, const size_t latest_snapshot)  {
         auto fp{file::open(SimulationState::path, "w")};
-        ERRCHK(fprintf(fp.get(), "%d, %la, %zu", acr::get(info, AC_step_number), acr::get(info, AC_current_time), latest_snapshot) > 0);
+        ERRCHK(fprintf(fp.get(), format, acr::get(info, AC_step_number), acr::get(info, AC_current_time), latest_snapshot) > 0);
     }
 
     static void read(AcMeshInfo& info)  {
@@ -1674,7 +1721,7 @@ namespace SimulationState {
         size_t latest_snapshot{0};
 
         auto fp{file::open(SimulationState::path, "r")};
-        ERRCHK(fscanf(fp.get(), "%d, %la, %zu", &step_number, &current_time, &latest_snapshot) == 3);
+        ERRCHK(fscanf(fp.get(), format, &step_number, &current_time, &latest_snapshot) == 3);
 
         acr::set(AC_step_number, step_number, info);
         acr::set(AC_current_time, current_time, info);
@@ -1686,7 +1733,7 @@ namespace SimulationState {
         size_t latest_snapshot{0};
 
         auto fp{file::open(SimulationState::path, "r")};
-        ERRCHK(fscanf(fp.get(), "%d, %la, %zu", &step_number, &current_time, &latest_snapshot) == 3);
+        ERRCHK(fscanf(fp.get(), format, &step_number, &current_time, &latest_snapshot) == 3);
         return step_number;    
     }
 
@@ -1696,7 +1743,7 @@ namespace SimulationState {
         size_t latest_snapshot{0};
 
         auto fp{file::open(SimulationState::path, "r")};
-        ERRCHK(fscanf(fp.get(), "%d, %la, %zu", &step_number, &current_time, &latest_snapshot) == 3);
+        ERRCHK(fscanf(fp.get(), format, &step_number, &current_time, &latest_snapshot) == 3);
         return current_time;    
     }
 
@@ -1706,7 +1753,7 @@ namespace SimulationState {
         size_t latest_snapshot{0};
 
         auto fp{file::open(SimulationState::path, "r")};
-        ERRCHK(fscanf(fp.get(), "%d, %la, %zu", &step_number, &current_time, &latest_snapshot) == 3);
+        ERRCHK(fscanf(fp.get(), format, &step_number, &current_time, &latest_snapshot) == 3);
         return latest_snapshot;    
     }
 }
