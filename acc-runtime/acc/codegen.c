@@ -2092,6 +2092,67 @@ get_internal_array_name(const Symbol* sym)
         	    convert_to_define_name(datatype_scalar), sym->identifier);
 }
 
+ASTNode*
+create_struct_tspec(const char* datatype)
+{
+	ASTNode* struct_type = astnode_create(NODE_UNKNOWN,NULL,NULL); 
+	astnode_set_buffer(datatype,struct_type);
+	struct_type->token = STRUCT_TYPE;
+	return astnode_create(NODE_TSPEC,struct_type,NULL);
+}
+
+void
+preprocess_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
+{
+  TRAVERSE_PREAMBLE_PARAMS(preprocess_array_reads,root,datatype_scalar);
+  if(node->type != NODE_ARRAY_ACCESS)
+	  return;
+  if(!node->lhs) return;
+  if(get_parent_node(NODE_VARIABLE,node)) return;
+  const char* array_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+  const char* datatype = sprintf_intern("%s*",datatype_scalar);
+  const Symbol* sym = get_symbol(NODE_VARIABLE_ID,intern(array_name),intern(datatype));
+  if(!sym)
+       return;
+
+  {
+    
+    if(get_parent_node(NODE_ARRAY_ACCESS,node)) return;
+    node_vec var_dims =  get_array_var_dims(array_name, root);
+    if(var_dims.size == 0) var_dims = get_const_array_var_dims(array_name, root);
+    node_vec array_accesses = VEC_INITIALIZER;
+    get_array_access_nodes(node,&array_accesses);
+    if(var_dims.size == 2 && var_dims.size == array_accesses.size+1 && !strcmp(combine_all_new(var_dims.data[1]),"3"))
+    {
+	    node_vec nodes = VEC_INITIALIZER;
+	    const size_t n_initializer = 3;
+	    for(size_t i = 0; i < n_initializer; ++i)
+	    {
+		ASTNode* indexing = astnode_create(NODE_UNKNOWN,NULL,NULL);
+		astnode_sprintf(indexing,"%zu",i);
+		ASTNode* new_node = astnode_create(NODE_ARRAY_ACCESS,astnode_dup(array_accesses.data[0]->parent,NULL),indexing);
+		astnode_set_infix("[",new_node);
+		astnode_set_postfix("]",new_node);
+	    	push_node(&nodes,new_node);
+	    }
+
+	    ASTNode* expression_list = build_list_node(nodes,",");
+	    ASTNode* initializer = astnode_create(NODE_STRUCT_INITIALIZER, expression_list,NULL); 
+	    astnode_set_prefix("{",initializer);
+	    astnode_set_postfix("}",initializer);
+	    free_node_vec(&nodes);
+
+
+	    ASTNode* tspec = create_struct_tspec(REAL3_STR);
+	    ASTNode* res = astnode_create(NODE_UNKNOWN,tspec,initializer);
+	    astnode_set_prefix("(",res);
+	    astnode_set_infix(")",res);
+	    res->token     = CAST;
+	    res->lhs->type ^= NODE_TSPEC;
+	    replace_node(node,res);
+    }
+  }
+}
 void
 gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
 {
@@ -8731,14 +8792,6 @@ canonalize_assignments(ASTNode* node)
 	node->parent->lhs = assignment;
 }
 ASTNode*
-create_struct_tspec(const char* datatype)
-{
-	ASTNode* struct_type = astnode_create(NODE_UNKNOWN,NULL,NULL); 
-	astnode_set_buffer(datatype,struct_type);
-	struct_type->token = STRUCT_TYPE;
-	return astnode_create(NODE_TSPEC,struct_type,NULL);
-}
-ASTNode*
 create_broadcast_initializer(const ASTNode* expr, const char* datatype)
 {
 	node_vec nodes = VEC_INITIALIZER;
@@ -10240,10 +10293,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 		copy_file("gmem_arrays_decl.h","cpu_gmem_arrays_decl.h");
 	  }
   }
-  //TP: currently only support scalar arrays
   gen_array_qualifiers(root);
-  for(size_t i = 0; i  < primitive_datatypes.size; ++i)
-  	gen_array_reads(root,root,primitive_datatypes.data[i]);
 
   traverse(root,NODE_NO_OUT,NULL);
   string_vec* stencils_called = gen_stencil_calling_info(root);
@@ -10263,6 +10313,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   inline_dfuncs(root);
   gen_type_info(root);
 
+
   //TP: redo this after inlining and caching
   transform_array_assignments(root);
   transform_array_binary_ops(root);
@@ -10273,7 +10324,11 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 
   //TP: do this at the very end to not mess with other passes
   resolve_profile_stencils(root);
-
+  for(size_t i = 0; i  < primitive_datatypes.size; ++i)
+  {
+	preprocess_array_reads(root,root,primitive_datatypes.data[i]);
+  	gen_array_reads(root,root,primitive_datatypes.data[i]);
+  }
   if(!gen_mem_accesses && executed_nodes.size > 0 && OPTIMIZE_MEM_ACCESSES && ELIMINATE_CONDITIONALS)
   {
 	  bool eliminated_something = true;
@@ -10366,6 +10421,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 	  fflush(stream);
 	  get_executed_nodes(0);
   }
+
 
   // print_symbol_table();
   //free(written_fields);
