@@ -19,7 +19,7 @@ main()
     // Test lossless
     std::ofstream os{path};
     ERRCHK(os);
-    ac::fmt::pack(os, a, b, c, d);
+    ac::fmt::push(os, a, b, c, d);
     os.close();
 
     double        e;
@@ -28,7 +28,7 @@ main()
     float         h;
     std::ifstream is{path};
     ERRCHK(is);
-    ac::fmt::unpack(is, e, f, g, h);
+    ac::fmt::pull(is, e, f, g, h);
     is.close();
 
     PRINT_DEBUG(a);

@@ -22,7 +22,7 @@ struct human_readable {
 
 template <typename Formatter = ac::fmt::lossless, typename T, typename... Args>
 auto
-pack(std::ostream& stream, T&& first, Args&&... args)
+push(std::ostream& stream, T&& first, Args&&... args)
 {
     Formatter::configure(stream);
     ERRCHK(stream << std::forward<T>(first));
@@ -32,7 +32,7 @@ pack(std::ostream& stream, T&& first, Args&&... args)
 
 template <typename T>
 auto
-unpack_token(std::istream& is, T& output)
+pull_token(std::istream& is, T& output)
 {
     // Fetch token
     std::string token;
@@ -47,10 +47,10 @@ unpack_token(std::istream& is, T& output)
 
 template <typename... Args>
 auto
-unpack(std::istream& stream, Args&&... args)
+pull(std::istream& stream, Args&&... args)
 {
     ERRCHK(!stream.fail());
-    (unpack_token(stream, std::forward<Args>(args)), ...);
+    (pull_token(stream, std::forward<Args>(args)), ...);
     ERRCHK(!stream.fail());
 
     // Check that there are no unparsed tokens
