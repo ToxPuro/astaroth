@@ -1659,117 +1659,72 @@ open(const std::string& path, const std::string& mode)
 
 } // namespace file
 
+
 namespace SimulationState {
-    constexpr const char* path{"simulation_state.txt"};
-
-    static bool exists() {
-        return std::filesystem::exists(SimulationState::path);
-    }
     
-    static void write(const int step_number, const AcReal current_time, const size_t latest_snapshot) {
-        std::ofstream os{path};
-        ERRCHK(os);
-        ac::fmt::pack(os, step_number, current_time, latest_snapshot);
-    }
+    struct State {
+        int step_number{0};
+        AcReal current_time{0};
+        int latest_snapshot{0};
+    };
     
-    static void write(const AcMeshInfo& info, const size_t latest_snapshot)  {
-        write(acr::get(info, AC_step_number), acr::get(info, AC_current_time), latest_snapshot);
+    constexpr auto default_path{"simulation_state.txt"};
+    
+    static bool exists(const std::string& path = default_path) {
+        return std::filesystem::exists(path);
     }
 
-    static void read(int& step_number, AcReal& current_time, size_t& latest_snapshot) {
+    static State read(const std::string& path = default_path) {
         std::ifstream is{path};
         ERRCHK(is);
-        ac::fmt::unpack(is, step_number, current_time, latest_snapshot);
+
+        State state{};
+        ac::fmt::pull(is, state.step_number, state.current_time, state.latest_snapshot);
+        return state;
     }
 
-    static auto read_latest_snapshot() {
-        int step_number{};
-        AcReal current_time{};
-        size_t latest_snapshot{};
-        read(step_number, current_time, latest_snapshot);
-        return latest_snapshot;
+    static void write(const State& state, const std::string& path = default_path) {
+        std::ofstream os{path};
+        ERRCHK(os);
+        ac::fmt::push(os, state.step_number, state.current_time, state.latest_snapshot);
     }
 
-    static auto read(AcMeshInfo& info) {
-        int step_number{};
-        AcReal current_time{};
-        size_t latest_snapshot{};
-
-        read(step_number, current_time, latest_snapshot);
-        acr::set(AC_step_number, step_number, info);
-        acr::set(AC_current_time, current_time, info);
-        // TODO unused latest_snapshot
-    }
-}
-
-namespace SimulationStateOld {
-    
-    // TODO improve some day
-    constexpr const char* path{"simulation_state.txt"};
-    constexpr const char* format{"%d, %la, %zu"};
-
-    static bool exists() {
-        return std::filesystem::exists(SimulationState::path);
-    }
-    
-    static void write(const AcMeshInfo& info, const size_t latest_snapshot)  {
-        auto fp{file::open(SimulationState::path, "w")};
-        ERRCHK(fprintf(fp.get(), format, acr::get(info, AC_step_number), acr::get(info, AC_current_time), latest_snapshot) > 0);
+    static void push_state(const State& state, AcMeshInfo& info) {
+        acr::set(AC_step_number, state.step_number, info);
+        acr::set(AC_current_time, state.current_time, info);
+        acr::set(AC_latest_snapshot, state.latest_snapshot, info);
     }
 
-    static void read(AcMeshInfo& info)  {
-        int step_number{-1};
-        AcReal current_time{-1};
-        size_t latest_snapshot{0};
+    static State pull_state(const AcMeshInfo& info) {
+        State state{};
 
-        auto fp{file::open(SimulationState::path, "r")};
-        ERRCHK(fscanf(fp.get(), format, &step_number, &current_time, &latest_snapshot) == 3);
+        state.step_number = acr::get(info, AC_step_number);
+        state.current_time = acr::get(info, AC_current_time);
+        state.latest_snapshot = acr::get(info, AC_latest_snapshot);
 
-        acr::set(AC_step_number, step_number, info);
-        acr::set(AC_current_time, current_time, info);
+        return state;
     }
 
-    static auto read_step_number() {
-        int step_number{-1};
-        AcReal current_time{-1};
-        size_t latest_snapshot{0};
-
-        auto fp{file::open(SimulationState::path, "r")};
-        ERRCHK(fscanf(fp.get(), format, &step_number, &current_time, &latest_snapshot) == 3);
-        return step_number;    
-    }
-
-    static auto read_current_time() {
-        int step_number{-1};
-        AcReal current_time{-1};
-        size_t latest_snapshot{0};
-
-        auto fp{file::open(SimulationState::path, "r")};
-        ERRCHK(fscanf(fp.get(), format, &step_number, &current_time, &latest_snapshot) == 3);
-        return current_time;    
-    }
-
-    static auto read_latest_snapshot() {
-        int step_number{-1};
-        AcReal current_time{-1};
-        size_t latest_snapshot{0};
-
-        auto fp{file::open(SimulationState::path, "r")};
-        ERRCHK(fscanf(fp.get(), format, &step_number, &current_time, &latest_snapshot) == 3);
-        return latest_snapshot;    
+    static void print(const State& state) {
+        PRINT_DEBUG(state.step_number);
+        PRINT_DEBUG(state.current_time);
+        PRINT_DEBUG(state.latest_snapshot);
     }
 }
+
 
 namespace Timeseries {
-    constexpr const char* path{"timeseries.csv"};
+    constexpr auto default_path{"timeseries.csv"};
 
-    static bool exists() {
-        return std::filesystem::exists(Timeseries::path);
+    static bool exists(const std::string& path = default_path) {
+        return std::filesystem::exists(path);
     }
 
-    static void reset() {
-        auto fp{file::open("timeseries.csv", "w")};
-        ERRCHK(fprintf(fp.get(), "label,step,t_step,dt,min,rms,max,avg\n") > 0);
+    static void reset(const std::string& path = default_path) {
+        std::ofstream os{path};
+        ERRCHK(os);
+
+        ac::fmt::push(os, "label,step,t_step,dt,min,rms,max,avg");
     }
 }
 
@@ -1783,7 +1738,8 @@ namespace Snapshot {
     static void
     read(const MPI_Comm& comm, const Device& device, const Field& handle)
     {
-        const auto latest_snapshot{SimulationState::read_latest_snapshot()};
+        const auto state{SimulationState::read()};
+        const auto latest_snapshot{state.latest_snapshot};
 
         const auto path{get_path(handle, latest_snapshot)};
         const auto info{get_info(device)};
@@ -1840,25 +1796,41 @@ static void production_run(const tfm::arguments& args, const AcMeshInfo& raw_inf
 
     const auto fields{hydro_fields};
     
-    // Read fields from files if they exist
-    if (SimulationState::exists()) {
+    // // Read fields from files if they exist
+    // if (SimulationState::exists()) {
 
-        // Update device info
-        auto info{get_info(grid.get_device())};
-        SimulationState::read(info);
-        ERRCHK_AC(acDeviceLoadMeshInfo(grid.get_device(), info));
+    //     // Update device info
+    //     auto info{get_info(grid.get_device())};
+    //     SimulationState::read(info);
+    //     ERRCHK_AC(acDeviceLoadMeshInfo(grid.get_device(), info));
 
-        for (const auto& field : fields)
-            Snapshot::read(grid.get_comm(), grid.get_device(), field);
-    }
+    //     for (const auto& field : fields)
+    //         Snapshot::read(grid.get_comm(), grid.get_device(), field);
+    // } else {
+    //     // Starting a new run
+    //     reset_timeseries();
+    // }
 
     grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
 
-    // Write current state out
-    const size_t latest_snapshot{0};
-    for (const auto& field : fields)
-        Snapshot::write(grid.get_comm(), grid.get_device(), field, latest_snapshot);
-    SimulationState::write(get_info(grid.get_device()), latest_snapshot); // Write the state out
+    // // Write current state out
+    // const size_t latest_snapshot{0};
+    // for (const auto& field : fields)
+    //     Snapshot::write(grid.get_comm(), grid.get_device(), field, latest_snapshot);
+    // SimulationState::write(get_info(grid.get_device()), latest_snapshot); // Write the state out
+}
+
+static void load_previous_state(AcMeshInfo& info)
+{
+    if (SimulationState::exists()) {
+        // Continue from a previous run
+        const auto state{SimulationState::read()};
+        SimulationState::push_state(state, info);
+    } else {
+        // Start a new run
+        SimulationState::push_state(SimulationState::State{}, info);
+        Timeseries::reset();
+    }
 }
 
 int
@@ -1878,8 +1850,13 @@ main(int argc, char* argv[])
         // Load configuration
         AcMeshInfo raw_info{parse_info(args)};
 
-        // Reset timeseries
-        reset_timeseries();
+        // Load previous state from disk
+        load_previous_state(raw_info);
+
+        // The initial info is complete
+        // ERRCHK(acPrintMeshInfoTFM(raw_info) == 0);
+        // const auto state{SimulationState::pull_state(raw_info)};
+        // SimulationState::print(state);
 
         // Run
         #if defined(AC_BENCHMARK_MODE)
