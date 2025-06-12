@@ -1,3 +1,7 @@
+[[maybe_unused]] constexpr int AC_IN_BOUNDS_WRITE      = (1 << 0);
+[[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_WRITE  = (1 << 1);
+[[maybe_unused]] constexpr int AC_WRITE_TO_INPUT  = (1 << 2);
+
 static std::vector<KernelAnalysisInfo>
 get_kernel_analysis_info()
 {
@@ -32,6 +36,20 @@ kernel_updates_vtxbuf(const AcKernel kernel)
 	for(int i = 0; i < NUM_FIELDS; ++i)
 		if(info[kernel].written_fields[i]) return true;
 	return false;
+}
+
+static UNUSED bool
+kernel_writes_to_input(const AcKernel kernel, const Field field)
+{
+	const auto info = get_kernel_analysis_info();
+	return (info[kernel].written_fields[field] & AC_WRITE_TO_INPUT) != 0;
+}
+
+static UNUSED bool
+kernel_writes_to_output(const AcKernel kernel, const Field field)
+{
+	const auto info = get_kernel_analysis_info();
+	return info[kernel].written_fields[field] && ((info[kernel].written_fields[field] & AC_WRITE_TO_INPUT) == 0);
 }
 
 static UNUSED bool

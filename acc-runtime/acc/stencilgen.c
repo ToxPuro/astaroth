@@ -1060,6 +1060,23 @@ gen_kernel_write_funcs(const int curr_kernel)
     printf("}");
     printf("};");
 
+    printf("[[maybe_unused]] const auto AC_INTERNAL_read_vtxbuf3 __attribute__((unused)) = [&](const Field3& handle, const int& x, const int& y, const int& z) {");
+    printf("return (AcReal3){");
+    printf("AC_INTERNAL_read_vtxbuf(handle.x,x,y,z),");
+    printf("AC_INTERNAL_read_vtxbuf(handle.y,x,y,z),");
+    printf("AC_INTERNAL_read_vtxbuf(handle.z,x,y,z),");
+    printf("};");
+    printf("};");
+
+    printf("[[maybe_unused]] const auto AC_INTERNAL_read_vtxbuf4 __attribute__((unused)) = [&](const Field4& handle, const int& x, const int& y, const int& z) {");
+    printf("return (AcReal4){");
+    printf("AC_INTERNAL_read_vtxbuf(handle.x,x,y,z),");
+    printf("AC_INTERNAL_read_vtxbuf(handle.y,x,y,z),");
+    printf("AC_INTERNAL_read_vtxbuf(handle.z,x,y,z),");
+    printf("AC_INTERNAL_read_vtxbuf(handle.w,x,y,z),");
+    printf("};");
+    printf("};");
+
   // Write vba.out
   #if 1
     // Original
@@ -1207,16 +1224,30 @@ gen_kernel_write_funcs(const int curr_kernel)
 	printf("}");
     	printf("};");
 
-    	printf("const auto AC_INTERNAL_get_vtxbuf_dst __attribute__((unused)) = [&](const Field& handle, const int& x, const int& y, const int& z) -> AcReal& {");
+    	printf("const auto AC_INTERNAL_write_vtxbuf __attribute__((unused)) = [&](const Field& handle, const int& x, const int& y, const int& z, const AcReal& value){");
 	printf("switch (handle) {");
 	for(int field = 0; field < NUM_FIELDS; ++field)
 	{
 		if(vtxbuf_has_variable_dims[field])
-			printf("case %s: { return vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))]; break;}",field_names[field],vtxbuf_dims_str[field]);
+			printf("case %s: { vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(%s))] = value; break;}",field_names[field],vtxbuf_dims_str[field]);
 	}
-    	printf("default: {return vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))];}");
+    	printf("default: {vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))] = value;}");
 	printf("}");
     	printf("};");
+
+    	printf("[[maybe_unused]] const auto AC_INTERNAL_write_vtxbuf3 __attribute__((unused)) = [&](const Field3& handle, const int& x, const int& y, const int& z, const AcReal3& value){");
+	printf("AC_INTERNAL_write_vtxbuf(handle.x,x,y,z,value.x);");
+	printf("AC_INTERNAL_write_vtxbuf(handle.y,x,y,z,value.y);");
+	printf("AC_INTERNAL_write_vtxbuf(handle.z,x,y,z,value.z);");
+    	printf("};");
+
+    	printf("[[maybe_unused]] const auto AC_INTERNAL_write_vtxbuf4 __attribute__((unused)) = [&](const Field4& handle, const int& x, const int& y, const int& z, const AcReal4& value){");
+	printf("AC_INTERNAL_write_vtxbuf(handle.x,x,y,z,value.x);");
+	printf("AC_INTERNAL_write_vtxbuf(handle.y,x,y,z,value.y);");
+	printf("AC_INTERNAL_write_vtxbuf(handle.z,x,y,z,value.z);");
+	printf("AC_INTERNAL_write_vtxbuf(handle.w,x,y,z,value.w);");
+    	printf("};");
+
 
     }
     else

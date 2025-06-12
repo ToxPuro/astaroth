@@ -5375,7 +5375,15 @@ gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 void
 gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_accesses, const string_vec field_dims)
 {
-	TRAVERSE_PREAMBLE_PARAMS(gen_multidimensional_field_accesses_recursive,gen_mem_accesses,field_dims);
+	if(!(node->type & NODE_STRUCT_EXPRESSION) && node->lhs)
+	{
+		gen_multidimensional_field_accesses_recursive(node->lhs,gen_mem_accesses,field_dims);
+	}
+	if(node->rhs)
+	{
+		gen_multidimensional_field_accesses_recursive(node->rhs,gen_mem_accesses,field_dims);
+	}
+	
 	if(node->token != IDENTIFIER)
 		return;
 	if(!node->buffer)
@@ -5386,7 +5394,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 	if(get_parent_node(NODE_GLOBAL,node))
 		return;
 	const char* type = get_expr_type(node->parent);
-	if(!type || strcmps(type,FIELD_STR,"VertexBufferHandle"))
+	if(!type || strcmps(type,FIELD_STR,FIELD3_STR,FIELD4_STR,"VertexBufferHandle"))
 		return;
 	ASTNode* array_access = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,node);
 	if(!array_access || !is_left_child(NODE_ARRAY_ACCESS,node))	return;
@@ -5429,15 +5437,26 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 	ASTNode* lhs = astnode_create(NODE_UNKNOWN, before_lhs, astnode_dup(node,NULL));
 	array_access->lhs = lhs;
 	{
-		astnode_set_postfix(")",rhs);
 
 		if(is_left_child(NODE_ASSIGNMENT,node))
 		{
-			astnode_set_infix("AC_INTERNAL_get_vtxbuf_dst(",lhs);
+			const char* func =  		
+						type == FIELD4_STR ? "AC_INTERNAL_write_vtxbuf4(" :
+						type == FIELD3_STR ? "AC_INTERNAL_write_vtxbuf3(" : 
+						"AC_INTERNAL_write_vtxbuf(";
+			astnode_set_infix(func,lhs);
+			ASTNode* assignment = (ASTNode*)get_parent_node(NODE_ASSIGNMENT,node);
+			astnode_set_postfix(")",assignment);
+			astnode_set_buffer(",",assignment->rhs->lhs);
 		}
 		else
 		{
-			astnode_set_infix("AC_INTERNAL_read_vtxbuf(",lhs);
+			const char* func =
+						type == FIELD4_STR ? "AC_INTERNAL_read_vtxbuf4(" :
+						type == FIELD3_STR ? "AC_INTERNAL_read_vtxbuf3(" :
+						"AC_INTERNAL_read_vtxbuf(";
+			astnode_set_infix(func,lhs);
+			astnode_set_postfix(")",rhs);
 		}
 		astnode_set_postfix(",",lhs);
 	}
@@ -9004,7 +9023,12 @@ check_for_illegal_writes_in_func(const ASTNode* node)
 	if(check_symbol(NODE_ANY,id->buffer,0,DCONST_STR))
 		fatal("Write to dconst variable: %s\n",combine_all_new(node));
 	if(check_symbol(NODE_ANY,id->buffer,0,CONST_STR))
+	{
+		if(check_symbol(NODE_ANY,id->buffer,FIELD_STR,CONST_STR)) return;
+		if(check_symbol(NODE_ANY,id->buffer,FIELD3_STR,CONST_STR)) return;
+		if(check_symbol(NODE_ANY,id->buffer,FIELD4_STR,CONST_STR)) return;
 		fatal("Write to const variable: %s\n",combine_all_new(node));
+	}
 	if(check_symbol(NODE_ANY,id->buffer,0,RUN_CONST_STR))
 		fatal("Write to run_const variable: %s\n",combine_all_new(node));
 	if(check_symbol(NODE_FUNCTION_ID,id->buffer,0,NULL))

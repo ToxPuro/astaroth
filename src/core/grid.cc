@@ -2099,7 +2099,10 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    }
             acVerboseLogFromRootProc(rank, "Ray updates created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
-                swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
+		if(kernel_writes_to_output(op.kernel_enum,op.fields_out[buf]))
+		{
+                	swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
+		}
             }
             for (size_t buf = 0; buf < op.num_profiles_write_out; buf++) {
                 swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES] = !swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES];
@@ -2151,7 +2154,10 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
-                swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
+		if(kernel_writes_to_output(op.kernel_enum,op.fields_out[buf]))
+		{
+                	swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
+		}
             }
             for (size_t buf = 0; buf < op.num_profiles_write_out; buf++) {
                 swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES] = !swap_offset[op.profiles_write_out[buf]+NUM_VTXBUF_HANDLES];

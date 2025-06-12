@@ -580,17 +580,6 @@ Kernel twopass_solve_intermediate(AC_SUBSTEP_NUMBER step_num, real dt) {
     #endif
 
     if(step_num == AC_THIRD_SUBSTEP && AC_timestep_calc_with_rhs) calc_timestep();
-    // %JP: TODO NOTE IMPORTANT (MV please check)
-    // LSHOCK not yet adapted to two-pass integration.
-    // Unclear how should be written to memory to ensure proper swapping!
-    // 1) In the single-pass approach need to write the shock field to `out`
-    // because buffers are swapped afterwards
-    // 2) In the two-pass approach this may not be necessary: if the shock
-    // field is in `in` buffer and we swap twice, the correct shock values are
-    // still in the `in` buffer
-    //
-    // Is this correct?
-    //
 }
 
 fixed_boundary Kernel twopass_solve_final(int step_num, real current_time) {

@@ -550,6 +550,7 @@ AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
                               // least the max smem size of the device
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_WRITE      = (1 << 0);
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_WRITE  = (1 << 1);
+[[maybe_unused]] constexpr int AC_WRITE_TO_INPUT  = (1 << 2);
 
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_READ      = (1 << 0);
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_READ  = (1 << 1);
@@ -570,13 +571,37 @@ mark_as_written(const Field& field, const int x, const int y, const int z)
 	written_fields[field] |= 
 			index_at_boundary(x,y,z) ? AC_IN_BOUNDS_WRITE : AC_OUT_OF_BOUNDS_WRITE;
 }
-AcReal&
-AC_INTERNAL_get_vtxbuf_dst(const Field& field, const int x, const int y, const int z)
+void
+mark_as_written(const Field3& field, const int x, const int y, const int z)
 {
-	static AcReal dst = 0.0;
-	mark_as_written(field, x,y,z);
-	return dst;
+	mark_as_written(field.x,x,y,z);
+	mark_as_written(field.y,x,y,z);
+	mark_as_written(field.z,x,y,z);
 }
+void
+AC_INTERNAL_write_vtxbuf(const Field& field, const int x, const int y, const int z, const AcReal&)
+{
+	mark_as_written(field, x,y,z);
+	written_fields[field] |= AC_WRITE_TO_INPUT;
+}
+
+void
+AC_INTERNAL_write_vtxbuf3(const Field3& field, const int x, const int y, const int z, const AcReal3& val)
+{
+	AC_INTERNAL_write_vtxbuf(field.x,x,y,z,val.x);
+	AC_INTERNAL_write_vtxbuf(field.y,x,y,z,val.y);
+	AC_INTERNAL_write_vtxbuf(field.z,x,y,z,val.z);
+}
+
+void
+AC_INTERNAL_write_vtxbuf4(const Field4& field, const int x, const int y, const int z, const AcReal4& val)
+{
+	AC_INTERNAL_write_vtxbuf(field.x,x,y,z,val.x);
+	AC_INTERNAL_write_vtxbuf(field.y,x,y,z,val.y);
+	AC_INTERNAL_write_vtxbuf(field.z,x,y,z,val.z);
+	AC_INTERNAL_write_vtxbuf(field.w,x,y,z,val.w);
+}
+
 static int3 UNUSED
 ac_get_field_halos(const Field& field)
 {
@@ -641,6 +666,29 @@ AC_INTERNAL_read_vtxbuf(const Field& field, const int x, const int y, const int 
 	stencils_accessed[field][stencil_value_stencil] |= 
 							index_at_boundary(x,y,z) ? AC_IN_BOUNDS_READ : AC_OUT_OF_BOUNDS_READ;
 	return AcReal(1.0);
+}
+
+AcReal3
+AC_INTERNAL_read_vtxbuf3(const Field3& field, const int x, const int y, const int z)
+{
+	return (AcReal3)
+	{
+		AC_INTERNAL_read_vtxbuf(field.x,x,y,z),
+		AC_INTERNAL_read_vtxbuf(field.y,x,y,z),
+		AC_INTERNAL_read_vtxbuf(field.z,x,y,z),
+	};
+}
+
+AcReal4
+AC_INTERNAL_read_vtxbuf4(const Field4& field, const int x, const int y, const int z)
+{
+	return (AcReal4)
+	{
+		AC_INTERNAL_read_vtxbuf(field.x,x,y,z),
+		AC_INTERNAL_read_vtxbuf(field.y,x,y,z),
+		AC_INTERNAL_read_vtxbuf(field.z,x,y,z),
+		AC_INTERNAL_read_vtxbuf(field.w,x,y,z),
+	};
 }
 AcReal
 AC_INTERNAL_read_profile(const Profile& profile, const int)

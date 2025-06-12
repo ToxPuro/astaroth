@@ -13,20 +13,11 @@ ac_map_get_value(Field src)
 }
 ac_map_get_value(Field3 src)
 {
-	return real3(
-			src.x[vertexIdx.x][vertexIdx.y][vertexIdx.z],
-			src.y[vertexIdx.x][vertexIdx.y][vertexIdx.z],
-			src.z[vertexIdx.x][vertexIdx.y][vertexIdx.z]
-		    )
+	return src[vertexIdx.x][vertexIdx.y][vertexIdx.z]
 }
 ac_map_get_value(Field4 src)
 {
-	return (real4){
-			src.x[vertexIdx.x][vertexIdx.y][vertexIdx.z],
-			src.y[vertexIdx.x][vertexIdx.y][vertexIdx.z],
-			src.z[vertexIdx.x][vertexIdx.y][vertexIdx.z],
-			src.w[vertexIdx.x][vertexIdx.y][vertexIdx.z]
-		    }
+	return src[vertexIdx.x][vertexIdx.y][vertexIdx.z]
 }
 ac_map_exp(real3 v)
 {
