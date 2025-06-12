@@ -1147,6 +1147,9 @@ gen_kernel_write_funcs(const int curr_kernel)
     if(!written_something) 
     {
     	printf("const auto write_base __attribute__((unused)) = [&](const Field&, const AcReal&) {};");
+    	printf("const auto AC_INTERNAL_write_vtxbuf __attribute__((unused)) = [&](const Field& handle, const int& x, const int& y, const int& z, const AcReal& value){};");
+    	printf("const auto AC_INTERNAL_write_vtxbuf3 __attribute__((unused)) = [&](const Field3& handle, const int& x, const int& y, const int& z, const AcReal3& value){};");
+    	printf("const auto AC_INTERNAL_write_vtxbuf4 __attribute__((unused)) = [&](const Field4& handle, const int& x, const int& y, const int& z, const AcReal4& value){};");
 	return;
     }
     if(has_buffered_writes(kernel_names[curr_kernel]))
@@ -1235,13 +1238,13 @@ gen_kernel_write_funcs(const int curr_kernel)
 	printf("}");
     	printf("};");
 
-    	printf("[[maybe_unused]] const auto AC_INTERNAL_write_vtxbuf3 __attribute__((unused)) = [&](const Field3& handle, const int& x, const int& y, const int& z, const AcReal3& value){");
+    	printf("const auto AC_INTERNAL_write_vtxbuf3 __attribute__((unused)) = [&](const Field3& handle, const int& x, const int& y, const int& z, const AcReal3& value){");
 	printf("AC_INTERNAL_write_vtxbuf(handle.x,x,y,z,value.x);");
 	printf("AC_INTERNAL_write_vtxbuf(handle.y,x,y,z,value.y);");
 	printf("AC_INTERNAL_write_vtxbuf(handle.z,x,y,z,value.z);");
     	printf("};");
 
-    	printf("[[maybe_unused]] const auto AC_INTERNAL_write_vtxbuf4 __attribute__((unused)) = [&](const Field4& handle, const int& x, const int& y, const int& z, const AcReal4& value){");
+    	printf("const auto AC_INTERNAL_write_vtxbuf4 __attribute__((unused)) = [&](const Field4& handle, const int& x, const int& y, const int& z, const AcReal4& value){");
 	printf("AC_INTERNAL_write_vtxbuf(handle.x,x,y,z,value.x);");
 	printf("AC_INTERNAL_write_vtxbuf(handle.y,x,y,z,value.y);");
 	printf("AC_INTERNAL_write_vtxbuf(handle.z,x,y,z,value.z);");
