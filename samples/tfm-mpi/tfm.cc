@@ -1551,8 +1551,10 @@ static AcMeshInfo parse_info(const tfm::arguments& args) {
     // Override global_nn if instructed by the user
     if (args.global_nn_override.size() > 0)
         acr::set_global_nn(args.global_nn_override, raw_info);
+    else // Ensure global_nn is propagated properly also to all backwards compatibility vars
+        acr::set_global_nn(acr::get_global_nn(raw_info), raw_info);
 
-    acPrintMeshInfoTFM(raw_info);
+    ERRCHK(acPrintMeshInfoTFM(raw_info) == 0);
     return raw_info;
 }
 
