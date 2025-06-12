@@ -7610,7 +7610,6 @@ compatible_types(const char* a, const char* b)
 		const char* ptr_scalar_type = intern(tmp);
 		free(tmp);
 		if(scalar_type == ptr_scalar_type) return true;
-		printf("HI: %s, %s\n",a,b);
 	}
 	const bool res = !strcmp(a,b) 
 	       || 

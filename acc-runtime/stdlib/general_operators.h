@@ -14,6 +14,10 @@ u_dot_grad(Field3 f, Matrix m,real3 v){
 	return res;
 }
 
+u_dot_grad_scl_alt(a,b,c,d){
+	fatal_error_message(true,"u_dot_grad_scl_alt Not implemented")
+	return 0.0
+}
 
 gradient(Field s) {
     return real3(derx(s), dery(s), derz(s))
