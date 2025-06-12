@@ -5446,8 +5446,12 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 						"AC_INTERNAL_write_vtxbuf(";
 			astnode_set_infix(func,lhs);
 			ASTNode* assignment = (ASTNode*)get_parent_node(NODE_ASSIGNMENT,node);
-			astnode_set_postfix(")",assignment);
+			//TP: has to be the most rhs since code elimination leaves a trailing ) otherwise
+			ASTNode* most_rhs = assignment->rhs;
+                        while(most_rhs->rhs) most_rhs = most_rhs->rhs;
+                        astnode_set_postfix(")",most_rhs);
 			astnode_set_buffer(",",assignment->rhs->lhs);
+
 		}
 		else
 		{
