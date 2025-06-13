@@ -986,7 +986,7 @@ acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
   */
 
   /* See note in acLoadStencil */
-  ERRCHK(cudaDeviceSynchronize() == CUDA_SUCCESS);
+  ERRCHK(cudaDeviceSynchronize() == cudaSuccess);
   const cudaError_t retval = cudaMemcpyToSymbol(
       d_mesh_info, &info, sizeof(info), 0, cudaMemcpyHostToDevice);
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
