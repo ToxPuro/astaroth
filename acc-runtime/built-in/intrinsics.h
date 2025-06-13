@@ -10,6 +10,7 @@ real intrinsic tanh(real)
 
 real intrinsic exp(real)
 real intrinsic log(real)
+real intrinsic log10(real)
 
 real intrinsic sqrt(real) 
 real intrinsic pow(real) 

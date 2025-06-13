@@ -578,11 +578,19 @@ mark_as_written(const Field3& field, const int x, const int y, const int z)
 	mark_as_written(field.y,x,y,z);
 	mark_as_written(field.z,x,y,z);
 }
+
+
 void
 AC_INTERNAL_write_vtxbuf(const Field& field, const int x, const int y, const int z, const AcReal&)
 {
 	mark_as_written(field, x,y,z);
 	written_fields[field] |= AC_WRITE_TO_INPUT;
+}
+
+void
+AC_INTERNAL_write_vtxbuf_at_current_point(const Field& field, const AcReal& val)
+{
+	AC_INTERNAL_write_vtxbuf(field,0,0,0,val);
 }
 
 void

@@ -1148,6 +1148,7 @@ gen_kernel_write_funcs(const int curr_kernel)
     {
     	printf("const auto write_base __attribute__((unused)) = [&](const Field&, const AcReal&) {};");
     	printf("const auto AC_INTERNAL_write_vtxbuf __attribute__((unused)) = [&](const Field& handle, const int& x, const int& y, const int& z, const AcReal& value){};");
+    	printf("const auto AC_INTERNAL_write_vtxbuf_at_current_point __attribute__((unused)) = [&](const Field& handle, const AcReal& value){};");
     	printf("const auto AC_INTERNAL_write_vtxbuf3 __attribute__((unused)) = [&](const Field3& handle, const int& x, const int& y, const int& z, const AcReal3& value){};");
     	printf("const auto AC_INTERNAL_write_vtxbuf4 __attribute__((unused)) = [&](const Field4& handle, const int& x, const int& y, const int& z, const AcReal4& value){};");
 	return;
@@ -1236,6 +1237,10 @@ gen_kernel_write_funcs(const int curr_kernel)
 	}
     	printf("default: {vba.in[handle][DEVICE_VARIABLE_VTXBUF_IDX(x,y,z,VAL(AC_mlocal))] = value;}");
 	printf("}");
+    	printf("};");
+
+    	printf("const auto AC_INTERNAL_write_vtxbuf_at_current_point __attribute__((unused)) = [&](const Field& handle,const AcReal& value){");
+	printf("AC_INTERNAL_write_vtxbuf(handle,vertexIdx.x,vertexIdx.y,vertexIdx.z,value);");
     	printf("};");
 
     	printf("const auto AC_INTERNAL_write_vtxbuf3 __attribute__((unused)) = [&](const Field3& handle, const int& x, const int& y, const int& z, const AcReal3& value){");

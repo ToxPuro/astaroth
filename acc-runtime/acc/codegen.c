@@ -5434,6 +5434,13 @@ gen_profile_reads(ASTNode* node, const bool gen_mem_accesses)
 }
 
 void
+turn_assignment_to_comma(ASTNode* node)
+{
+	ASTNode* assignment = (ASTNode*)get_parent_node(NODE_ASSIGNMENT,node);
+	astnode_set_buffer(",",assignment->rhs->lhs);
+}
+
+void
 gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_accesses, const string_vec field_dims)
 {
 	if(!(node->type & NODE_STRUCT_EXPRESSION) && node->lhs)
@@ -5511,8 +5518,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 			ASTNode* most_rhs = assignment->rhs;
                         while(most_rhs->rhs) most_rhs = most_rhs->rhs;
                         astnode_set_postfix(")",most_rhs);
-			astnode_set_buffer(",",assignment->rhs->lhs);
-
+			turn_assignment_to_comma(node);
 		}
 		else
 		{
@@ -7956,7 +7962,7 @@ transform_array_assignments(ASTNode* node)
         const bool rhs_is_arr = rhs_type && rhs_type != intern("char*") && (strstr(rhs_type,"*") || strstr(rhs_type,"AcArray"));
         const char* lhs_type = get_expr_type(node->lhs);
         if(!lhs_type) return;
-        if(rhs_is_arr && !get_node(NODE_ARRAY_INITIALIZER,node->rhs->rhs))
+	else if(rhs_is_arr && !get_node(NODE_ARRAY_INITIALIZER,node->rhs->rhs))
         {
                 if(is_defining_expression(node->lhs))
                 {
@@ -7993,6 +7999,20 @@ transform_array_assignments(ASTNode* node)
                                         add_index_to_arrays(node,sizes.size);
                                 }
                         }
+			else if(lhs_type == FIELD_PTR_STR)
+			{
+			    if(!node->prefix || !strstr(node->prefix,"AC_INTERNAL_ARRAY_LOOP"))
+			    {
+			    	const char* arr = intern(strdup(combine_all_new(node->lhs)));
+                            	astnode_sprintf_prefix(node,
+                            	                        "for (size_t AC_INTERNAL_ARRAY_LOOP_INDEX = 0; AC_INTERNAL_ARRAY_LOOP_INDEX < AC_get_array_len(%s); ++AC_INTERNAL_ARRAY_LOOP_INDEX){\n"
+                            	                        ,arr);
+				astnode_sprintf_prefix(node->lhs,"AC_INTERNAL_write_vtxbuf_at_current_point(");
+				astnode_set_buffer(",",node->rhs->lhs);
+                            	astnode_sprintf_postfix(node,");}\n");
+                            	add_index_to_arrays(node,1);
+			    }
+			}
                         else
                         {
                                 node_vec params = VEC_INITIALIZER;
@@ -8489,7 +8509,7 @@ mark_first_declarations_in_funcs(ASTNode* node, string_vec* names)
 	if(node->type & NODE_DECLARATION)
 	{
 		const char* var_name = get_node_by_token(IDENTIFIER,node)->buffer;
-		if(!str_vec_contains(*names,var_name))
+		if(!check_symbol(NODE_ANY,var_name,0,0) && !str_vec_contains(*names,var_name))
 		{
 			push(names,var_name);
 			node->token = FIRST;
@@ -9083,6 +9103,7 @@ check_for_illegal_writes_in_func(const ASTNode* node)
 		if(check_symbol(NODE_ANY,id->buffer,FIELD_STR,CONST_STR)) return;
 		if(check_symbol(NODE_ANY,id->buffer,FIELD3_STR,CONST_STR)) return;
 		if(check_symbol(NODE_ANY,id->buffer,FIELD4_STR,CONST_STR)) return;
+		if(check_symbol(NODE_ANY,id->buffer,FIELD_PTR_STR,CONST_STR)) return;
 		fatal("Write to const variable: %s\n",combine_all_new(node));
 	}
 	if(check_symbol(NODE_ANY,id->buffer,0,RUN_CONST_STR))

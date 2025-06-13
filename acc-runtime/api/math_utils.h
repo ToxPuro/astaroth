@@ -991,5 +991,13 @@ max(const uint64_t& a, const int& b)
 {
 	return a > (uint64_t)b ? a : (uint64_t)b;
 }
+template <size_t N>
+HOST_DEVICE_INLINE size_t
+AC_get_array_len(const Field (&arr)[N])
+{
+	(void)arr;
+	return N;
+}
+
 
 #include "generated_comp_funcs.h"
