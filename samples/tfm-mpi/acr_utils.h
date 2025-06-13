@@ -14,6 +14,14 @@
         }                                                                                          \
     } while (0)
 
+#define WARNCHK_AC(errcode)                                                                         \
+    do {                                                                                           \
+        const AcResult _tmp_ac_api_errcode_ = (errcode);                                           \
+        if (_tmp_ac_api_errcode_ != AC_SUCCESS) {                                                  \
+            errchk_print_warning(__func__, __FILE__, __LINE__, #errcode, "Astaroth error");          \
+        }                                                                                          \
+    } while (0)
+
 enum class BufferGroup { input, output };
 
 namespace acr {
@@ -47,9 +55,9 @@ ac::index get_local_rr();
 
 ac::device_view<AcReal> make_ptr(const VertexBufferArray& vba, const Field& field,
                                         const BufferGroup& type);
-
 ac::device_view<AcReal> make_ptr(const VertexBufferArray& vba, const Profile& profile,
                                         const BufferGroup& type);
+
 
 std::vector<ac::device_view<AcReal>>
 get_ptrs(const VertexBufferArray& vba, const std::vector<Field>& fields, const BufferGroup& type);
