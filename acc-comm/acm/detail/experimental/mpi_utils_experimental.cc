@@ -109,4 +109,9 @@ size(const ac::mpi::comm& comm)
     return as<uint64_t>(ac::mpi::get_size(comm.get()));
 }
 
+ac::index coords(const ac::mpi::cart_comm& comm)
+{
+    return ac::mpi::get_coords(comm.get());
+}
+
 } // namespace ac::mpi

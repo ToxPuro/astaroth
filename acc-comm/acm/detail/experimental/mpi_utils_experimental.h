@@ -34,7 +34,12 @@ class comm {
             ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, m_comm.get()));
     }
 
-    const MPI_Comm& get() const { return *m_comm; }
+    const MPI_Comm& get() const noexcept { 
+      ERRCHK_MPI(m_comm);
+      ERRCHK_MPI(m_comm.get());
+      ERRCHK_MPI(*m_comm != MPI_COMM_NULL);
+      return *m_comm;
+    }
 };
 
 class cart_comm {
@@ -226,6 +231,10 @@ iallreduce(const MPI_Comm& comm, const ac::base_view<T>& in, const MPI_Op& op, a
     static_assert(std::is_same_v<std::remove_const_t<T>, U>);
     ERRCHK_MPI(in.size() <= out.size());
 
+    // Do not allow aliasing
+    // Would otherwise have to use MPI_INPLACE for this to be correct
+    ERRCHK_MPI(out.end() <= in.begin() || in.end() <= out.begin());
+
     ac::mpi::request req;
     ERRCHK_MPI_API(MPI_Iallreduce(in.data(),
                                   out.data(),
@@ -263,23 +272,23 @@ template <typename T, typename Allocator> class buffered_isend {
  * Buffered asynchronous allreduce operation with dynamic resizing.
  * Note: never shrinks
  */
-template <typename T, typename Allocator> class buffered_iallreduce {
+template <typename T, typename InternalAllocator> class buffered_iallreduce {
   private:
-    ac::buffer<T, Allocator> m_buf{0};
+    ac::buffer<T, InternalAllocator> m_buf{0};
     ac::mpi::request         m_req{MPI_REQUEST_NULL};
 
   public:
     buffered_iallreduce() = default;
 
-    template <typename U>
-    void launch(const MPI_Comm& comm, const ac::view<T, Allocator>& in, const MPI_Op& op,
-                ac::base_view<U> out)
+    template <typename InputAllocator, typename OutputAllocator>
+    void launch(const MPI_Comm& comm, const ac::view<T, InputAllocator>& in, const MPI_Op& op,
+                ac::view<T, OutputAllocator> out)
     {
         ERRCHK_MPI(m_req.complete());
 
         // Resize buffer if needed
         if (m_buf.size() < in.size())
-            m_buf = ac::buffer<T, Allocator>{in.size()};
+            m_buf = ac::buffer<T, InternalAllocator>{in.size()};
 
         ac::copy(in, m_buf.get());
         m_req = ac::mpi::iallreduce(comm, ac::make_view(in.size(), 0, m_buf.get()), op, out);
@@ -288,24 +297,26 @@ template <typename T, typename Allocator> class buffered_iallreduce {
     void wait() { m_req.wait(); }
 };
 
-template <typename T, typename Allocator> class twoway_buffered_iallreduce {
+template <typename T, typename InternalAllocator> class twoway_buffered_iallreduce {
   private:
-    ac::buffer<T, Allocator>                   m_buf{0};
-    ac::mpi::buffered_iallreduce<T, Allocator> m_buffered_iallreduce{};
+    ac::buffer<T, InternalAllocator>                   m_buf{0};
+    ac::mpi::buffered_iallreduce<T, InternalAllocator> m_buffered_iallreduce{};
 
   public:
     twoway_buffered_iallreduce() = default;
 
-    void launch(const MPI_Comm& comm, const ac::view<T, Allocator>& in, const MPI_Op& op)
+    template<typename InputAllocator>
+    void launch(const MPI_Comm& comm, const ac::view<T, InputAllocator>& in, const MPI_Op& op)
     {
         // Resize buffer if needed
         if (m_buf.size() < in.size())
-            m_buf = ac::buffer<T, Allocator>{in.size()};
+            m_buf = ac::buffer<T, InternalAllocator>{in.size()};
 
         m_buffered_iallreduce.launch(comm, in, op, m_buf.get());
     }
 
-    void wait(ac::view<T, Allocator> out)
+    template<typename OutputAllocator>
+    void wait(ac::view<T, OutputAllocator> out)
     {
         m_buffered_iallreduce.wait();
 
@@ -384,5 +395,6 @@ namespace ac::mpi {
 
 uint64_t rank(const ac::mpi::comm& comm);
 uint64_t size(const ac::mpi::comm& comm);
+ac::index coords(const ac::mpi::cart_comm& comm);
 
 } // namespace ac::mpi
