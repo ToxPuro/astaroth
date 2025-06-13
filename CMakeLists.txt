@@ -185,6 +185,7 @@ endif()
 
 # Astaroth modules
 add_subdirectory(acc-runtime)
+add_subdirectory(src/core/helpers)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
 
