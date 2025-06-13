@@ -122,8 +122,10 @@ Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
 // Device constants
 real AC_dsx, AC_dsy, AC_dsz
 real AC_dt
-int AC_step_number
+// int AC_step_number
+int AC_current_step
 int AC_latest_snapshot
+int AC_device_id
 
 // User configuration parameters
 int AC_global_nx, AC_global_ny, AC_global_nz
