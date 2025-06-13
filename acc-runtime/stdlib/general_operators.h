@@ -15,8 +15,20 @@ u_dot_grad(Field3 f, Matrix m,real3 v){
 }
 
 u_dot_grad_scl_alt(a,b,c,d){
-	fatal_error_message(true,"u_dot_grad_scl_alt Not implemented")
+	fatal_error_message(true,"u_dot_grad_scl_alt: Not implemented")
 	return 0.0
+}
+u_dot_grad_mat(k,c,uu)
+{
+	fatal_error_message(true,"u_dot_grad_mat: Not implemented")
+	Matrix res
+	return res
+}
+u_dot_grad_mat_upwd(k,c,uu)
+{
+	fatal_error_message(true,"u_dot_grad_mat_upwd: Not implemented")
+	Matrix res
+	return res
 }
 
 gradient(Field s) {
