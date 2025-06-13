@@ -184,7 +184,9 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     // Saves a csv file which contains relevant information about the binary
     // snapshot files at the timestep.
     if (pid == 0) {
-        FILE* header_file = fopen("snapshots_info.csv", "a");
+	char info_name[40000];
+	sprintf(info_name,"%s/snapshots_info.csv",job_dir);
+        FILE* header_file = fopen(info_name, "a");
 
         // Header only at the step zero
         if (step == 0) {
