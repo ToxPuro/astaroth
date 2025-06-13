@@ -3433,6 +3433,19 @@ ac_write_slice_metadata(const int step, const AcReal simulation_time)
          fclose(header_file);
     }
 }
+
+static UNUSED long 
+measure_file_size(const char* filepath)
+{
+    
+    FILE* fp_in                   = fopen(filepath, "r");
+    ERRCHK_ALWAYS(fp_in);
+    fseek(fp_in, 0L, SEEK_END);
+    const long measured_size = ftell(fp_in);
+    fclose(fp_in);
+    return measured_size;
+};
+
 AcResult
 acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 {
@@ -3493,6 +3506,14 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             ERRCHK_ALWAYS(count_written == count);
 
             fclose(fp);
+            //const long expected_size = acVertexBufferCompdomainSizeBytes(grid.submesh.info);
+	    //const long measured_size = measure_file_size(filepath);
+	    //if(expected_size != measured_size)
+	    //{
+	    //        fprintf(stderr,"Expected output file to be of size (%zu) but it was of size (%zu)!\n",expected_size,measured_size);
+	    //        fflush(stderr);
+	    //}
+	    //ERRCHK_ALWAYS(expected_size == measured_size);
 #else // Use MPI IO
             MPI_File file;
             int mode = MPI_MODE_CREATE | MPI_MODE_WRONLY;
@@ -4014,28 +4035,16 @@ acGridDiskAccessLaunch(const AccessType type)
 }
 #endif
 
-static UNUSED size_t
-measure_file_size(const char* filepath)
-{
-    
-    FILE* fp_in                   = fopen(filepath, "r");
-    ERRCHK_ALWAYS(fp_in);
-    fseek(fp_in, 0L, SEEK_END);
-    const size_t measured_size = ftell(fp_in);
-    fclose(fp_in);
-    return measured_size;
-};
 void
 check_file_size(const char* filepath)
 {
-        const Volume nn = get_global_nn();
-        const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
-	const size_t measured_size = measure_file_size(filepath);
+        const long expected_size = acVertexBufferCompdomainSizeBytes(grid.submesh.info);
+	const long measured_size = measure_file_size(filepath);
         if (expected_size != measured_size) {
             fprintf(stderr,
-                    "Expected size did not match measured size (%lu vs %lu), factor of %g "
+                    "Expected size of (%s) did not match measured size (%lu vs %lu), factor of %g "
                     "difference\n",
-                    expected_size, measured_size, (double)expected_size / measured_size);
+                    filepath,expected_size, measured_size, (double)expected_size / measured_size);
             fprintf(stderr, "Note that old data files must be removed when switching to a smaller "
                             "mesh size, otherwise the file on disk will be too large (the above "
                             "factor < 1)\n");

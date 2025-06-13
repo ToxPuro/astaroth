@@ -595,7 +595,7 @@ read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
     snprintf(modstep_str, buflen, "%d", modstep);
 
     char snapshot_dir[buflen];
-    snprintf(snapshot_dir, buflen, "%s/%s", dir, snapshot_output_dir);
+    snprintf(snapshot_dir, buflen, "%s", dir);
 
     acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g) in %s\n", modstep,
                       *step, (double)(*simulation_time), snapshot_dir);
