@@ -172,14 +172,9 @@ Kernel calculate_potential_with_mlm()
 }
 
 
-poisson_laplacian_neighbours(Field f)
-{
-	return laplace_neighbours(f)
-}
-
 jacobi_update()
 {
-	return (DENSITY-poisson_laplacian_neighbours(POTENTIAL))/laplace_central_coeff()
+	return (DENSITY-laplace_neighbours(POTENTIAL))/laplace_central_coeff()
 }
 fixed_boundary Kernel jacobi_step_kernel()
 {
@@ -212,14 +207,14 @@ fixed_boundary Kernel sor_black()
 output real AC_residual2
 Kernel residual_kernel()
 {
-	r = laplace_2nd(POTENTIAL)-DENSITY
+	r = laplace(POTENTIAL)-DENSITY
 	reduce_sum(r*r,AC_residual2)
 }
 
 
 Kernel write_residual()
 {
-	r = laplace_2nd(POTENTIAL)-DENSITY
+	r = laplace(POTENTIAL)-DENSITY
 	write(RESIDUAL,r)
 	//Laplace
 	/** 
@@ -290,9 +285,9 @@ initcond(bcs)
 }
 
 
-analytic_potential_inside(Field f)
+analytic_potential_inside(AcBoundary boundary_region, Field f)
 {
-        const int3 normal = get_normal()
+        const int3 normal = get_normal(boundary_region)
         const int3 boundary = get_boundary(normal)
         int3 domain = boundary
         int3 ghost  = boundary
@@ -312,9 +307,9 @@ analytic_potential_inside(Field f)
         }
 }
 
-analytic_potential_outside(Field f)
+analytic_potential_outside(AcBoundary boundary_region, Field f)
 {
-        const int3 normal = get_normal()
+        const int3 normal = get_normal(boundary_region)
         const int3 boundary = get_boundary(normal)
         int3 domain = boundary
         int3 ghost  = boundary

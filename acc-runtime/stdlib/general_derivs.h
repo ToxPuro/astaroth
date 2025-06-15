@@ -264,6 +264,15 @@ Stencil derxx_stencil {
     [0][0][2]  = DER2_2,
     [0][0][3]  = DER2_3
 }
+
+Stencil derxx_neighbours_stencil {
+    [0][0][-3] = DER2_3,
+    [0][0][-2] = DER2_2,
+    [0][0][-1] = DER2_1,
+    [0][0][1]  = DER2_1,
+    [0][0][2]  = DER2_2,
+    [0][0][3]  = DER2_3
+}
 #define DER2_2nd_1 (1)
 #define DER2_2nd_0 (-2)
 
@@ -285,7 +294,7 @@ Stencil derzz_2nd_stencil {
     [1 ][0][0]  = DER2_2nd_1
 }
 
-Stencil derxx_neighbours_stencil {
+Stencil derxx_2nd_neighbours_stencil {
     [0][0][-1] = DER2_2nd_1,
     [0][0][1]  = DER2_2nd_1,
 }
@@ -306,9 +315,25 @@ NAME(Field f) \
 }
 AC_GEN_DERXX(derxx,derxx_stencil,derx)
 AC_GEN_DERXX(derxx_2nd,derxx_2nd_stencil,derx_2nd)
-AC_GEN_DERXX(derxx_neighbours,derxx_neighbours_stencil,derx_2nd)
+AC_GEN_DERXX(derxx_neighbours,derxx_neighbours_stencil,derx)
+AC_GEN_DERXX(derxx_2nd_neighbours,derxx_2nd_neighbours_stencil,derx_2nd)
 
 derxx_central_coeff()
+{
+	real res = DER2_0
+	if(!AC_nonequidistant_grid.x)
+	{
+		res *= AC_inv_ds_2.x
+	}
+	else
+	{
+		//Tilde factor conveniently vanishes
+		 res *= (AC_INV_MAPPING_FUNC_DER_X*AC_INV_MAPPING_FUNC_DER_X) 
+	}
+	return res
+}
+
+derxx_2nd_central_coeff()
 {
 	real res = DER2_2nd_0
 	if(!AC_nonequidistant_grid.x)
@@ -348,6 +373,15 @@ Stencil deryy_stencil {
 }
 
 Stencil deryy_neighbours_stencil {
+    [0][-3][0] = DER2_3,
+    [0][-2][0] = DER2_2,
+    [0][-1][0] = DER2_1,
+    [0][1][0]  = DER2_1,
+    [0][2][0]  = DER2_2,
+    [0][3][0]  = DER2_3
+}
+
+Stencil deryy_2nd_neighbours_stencil {
     [0][-1][0] = DER2_2nd_1,
     [0][1][0]  = DER2_2nd_1,
 }
@@ -382,7 +416,33 @@ NAME(Field f) \
 }
 AC_GEN_DERYY(deryy,deryy_stencil,dery)
 AC_GEN_DERYY(deryy_2nd,deryy_2nd_stencil,dery_2nd)
-AC_GEN_DERYY(deryy_neighbours,deryy_neighbours_stencil,dery_2nd)
+AC_GEN_DERYY(deryy_2nd_neighbours,deryy_2nd_neighbours_stencil,dery_2nd)
+AC_GEN_DERYY(deryy_neighbours,deryy_neighbours_stencil,dery)
+
+deryy_2nd_central_coeff()
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = (AC_INV_R*AC_INV_R)
+	}
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		coordinate_factor = (AC_INV_CYL_R*AC_INV_CYL_R)
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.y)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Y*AC_INV_MAPPING_FUNC_DER_Y
+	}
+	else
+	{
+		grid_factor = AC_inv_ds_2.y
+	}
+	res = coordinate_factor*grid_factor
+	//Tilde factor vanishes!
+	return DER2_2nd_0*res
+}
 
 deryy_central_coeff()
 {
@@ -406,7 +466,7 @@ deryy_central_coeff()
 	}
 	res = coordinate_factor*grid_factor
 	//Tilde factor vanishes!
-	return DER2_2nd_0*res
+	return DER2_0*res
 }
 deryy(Profile<Y> prof)
 {
@@ -447,6 +507,15 @@ Stencil derzz_stencil {
 }
 
 Stencil derzz_neighbours_stencil {
+    [-3][0][0] = DER2_3,
+    [-2][0][0] = DER2_2,
+    [-1][0][0] = DER2_1,
+    [1][0][0]  = DER2_1,
+    [2][0][0]  = DER2_2,
+    [3][0][0]  = DER2_3
+}
+
+Stencil derzz_2nd_neighbours_stencil {
     [-1][0][0] = DER2_2nd_1,
     [1][0][0]  = DER2_2nd_1,
 }
@@ -476,9 +545,32 @@ NAME(Field f) \
 	return res \
 } 
 
-AC_GEN_DER_ZZ(derzz_neighbours,derzz_neighbours_stencil,derz_2nd)
+AC_GEN_DER_ZZ(derzz_2nd_neighbours,derzz_2nd_neighbours_stencil,derz_2nd)
+AC_GEN_DER_ZZ(derzz_neighbours,derzz_neighbours_stencil,derz)
 AC_GEN_DER_ZZ(derzz_2nd,derzz_2nd_stencil,derz_2nd)
 AC_GEN_DER_ZZ(derzz,derzz_stencil,derz)
+
+derzz_2nd_central_coeff()
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA;
+		coordinate_factor *= coordinate_factor
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.z)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Z*AC_INV_MAPPING_FUNC_DER_Z
+	}
+	else
+	{
+		grid_factor = AC_inv_ds_2.z
+	}
+	res = coordinate_factor*grid_factor
+	//Tilde factor conveniently vanishes
+	return DER2_2nd_0*res
+}
 
 derzz_central_coeff()
 {
@@ -499,7 +591,7 @@ derzz_central_coeff()
 	}
 	res = coordinate_factor*grid_factor
 	//Tilde factor conveniently vanishes
-	return DER2_2nd_0*res
+	return DER2_0*res
 }
 
 derzz(Profile<Z> prof)
@@ -1329,18 +1421,6 @@ derz_upwind(Field f, real vec)
 	front = derz_upwind_front(f)
 	if(vec.z > 0.0) back
 	return front
-}
-dery_upwind(Field f, real vec)
-{
-	if(vec.y > 0.0)
-	{
-		return dery_upwind_left(f)
-	}
-	else
-	{
-		return dery_upwind_right(f)
-	}
-
 }
 
 //derx(Field f)
