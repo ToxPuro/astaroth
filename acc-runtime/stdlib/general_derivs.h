@@ -1251,6 +1251,97 @@ der6z_ignore_spacing(Field f)
 {
 	return der6z_stencil(f)
 }
+#define DER_UPWD_3 (+2.0/6.0)
+#define DER_UPWD_2 (-9.0/6.0)
+#define DER_UPWD_1 (+18.0/6.0)
+#define DER_UPWD_0 (+18.0/6.0)
+
+Stencil derx_upwind_left
+{
+    [0][0][-3] = -DER_UPWD_3,
+    [0][0][-2] = -DER_UPWD_2,
+    [0][0][-1] = -DER_UPWD_1,
+    [0][0][ 0] = -DER_UPWD_0 
+}
+
+Stencil derx_upwind_right
+{
+    [0][0][ 3] = +DER_UPWD_3,
+    [0][0][ 2] = +DER_UPWD_2,
+    [0][0][ 1] = +DER_UPWD_1,
+    [0][0][ 0] = +DER_UPWD_0 
+}
+
+Stencil dery_upwind_down
+{
+    [0][-3][0] = -DER_UPWD_3,
+    [0][-2][0] = -DER_UPWD_2,
+    [0][-1][0] = -DER_UPWD_1,
+    [0][ 0][0] = -DER_UPWD_0 
+}
+
+Stencil dery_upwind_up
+{
+    [0][ 3][0] = +DER_UPWD_3,
+    [0][ 2][0] = +DER_UPWD_2,
+    [0][ 1][0] = +DER_UPWD_1,
+    [0][ 0][0] = +DER_UPWD_0 
+}
+
+Stencil derz_upwind_back
+{
+    [-3][0][0] = -DER_UPWD_3,
+    [-2][0][0] = -DER_UPWD_2,
+    [-1][0][0] = -DER_UPWD_1,
+    [ 0][0][0] = -DER_UPWD_0 
+}
+
+Stencil derz_upwind_front
+{
+    [ 3][0][0] = +DER_UPWD_3,
+    [ 2][0][0] = +DER_UPWD_2,
+    [ 1][0][0] = +DER_UPWD_1,
+    [ 0][0][0] = +DER_UPWD_0 
+}
+
+derx_upwind(Field f, real vec)
+{
+	//TP: to get both stencil correctly generated we compute both always
+	left = derx_upwind_left(f)
+	right = derx_upwind_right(f)
+	if(vec.x > 0.0) left
+	return right
+}
+
+dery_upwind(Field f, real vec)
+{
+	//TP: to get both stencil correctly generated we compute both always
+	down = dery_upwind_down(f)
+	up   = dery_upwind_up(f)
+	if(vec.y > 0.0) down 
+	return up
+}
+
+derz_upwind(Field f, real vec)
+{
+	//TP: to get both stencil correctly generated we compute both always
+	back  = derz_upwind_back(f)
+	front = derz_upwind_front(f)
+	if(vec.z > 0.0) back
+	return front
+}
+dery_upwind(Field f, real vec)
+{
+	if(vec.y > 0.0)
+	{
+		return dery_upwind_left(f)
+	}
+	else
+	{
+		return dery_upwind_right(f)
+	}
+
+}
 
 //derx(Field f)
 //{
