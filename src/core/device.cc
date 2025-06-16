@@ -1066,6 +1066,26 @@ acDeviceReduceScalNoPostProcessing(const Device device, const Stream stream, con
                                  start, end, AC_default_real_output, device->vba);
     return AC_SUCCESS;
 }
+static AcReal
+acApplyPostProcessingOp(const AcMeshInfo info, const AcReductionPostProcessingOp op, const AcReal result)
+{
+    switch (op) {
+    	case AC_RMS: {
+    	    const Volume nn = acGetLocalNN(info);
+    	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+    	    return sqrt(inv_n * result);
+    	    break;
+    	}
+        case AC_RADIAL_WINDOW_RMS: {
+	   ERROR("AC_RMS_RADIAL_WINDOW not implemented for acDeviceReduceVecScal\n");
+	   break;
+	}
+    	default: /* Do nothing */
+		     return result;
+    };
+    return result;
+}
+
 
 AcResult
 acDeviceReduceScal(const Device device, const Stream stream, const AcReduction reduction,
@@ -1073,18 +1093,7 @@ acDeviceReduceScal(const Device device, const Stream stream, const AcReduction r
 {
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     acDeviceReduceScalNoPostProcessing(device, stream, reduction, vtxbuf_handle, result);
-
-    switch (reduction.post_processing_op) {
-    	case AC_RMS: {
-    	    const Volume nn = acGetLocalNN(device->local_config);
-    	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
-    	    *result            = sqrt(inv_n * *result);
-    	    break;
-    	}
-    	default: /* Do nothing */
-        	break;
-    };
-
+    *result = acApplyPostProcessingOp(device->local_config,reduction.post_processing_op,*result);
     return AC_SUCCESS;
 }
 
@@ -1115,17 +1124,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const AcReduction re
     if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
     if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
     acDeviceReduceVecNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, result);
-    switch (reduction.post_processing_op) {
-    	case AC_RMS: {
-    	    const Volume nn = acGetLocalNN(device->local_config);
-    	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
-    	    *result            = sqrt(inv_n * *result);
-    	    break;
-    	}
-    	default: /* Do nothing */
-        	break;
-    };
-
+    *result = acApplyPostProcessingOp(device->local_config,reduction.post_processing_op,*result);
     return AC_SUCCESS;
 }
 
@@ -1164,21 +1163,7 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const AcReductio
     if(!vtxbuf_is_alive[vtxbuf3]) return AC_NOT_ALLOCATED;
     acDeviceReduceVecScalNoPostProcessing(device, stream, reduction, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
                                      result);
-    switch (reduction.post_processing_op) {
-    	case AC_RMS: {
-    	    const Volume nn = acGetLocalNN(device->local_config);
-    	    const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
-    	    *result            = sqrt(inv_n * *result);
-    	    break;
-    	}
-        case AC_RADIAL_WINDOW_RMS: {
-	   ERROR("AC_RMS_RADIAL_WINDOW not implemented for acDeviceReduceVecScal\n");
-	   break;
-	}
-    	default: /* Do nothing */
-        	break;
-    };
-
+    *result = acApplyPostProcessingOp(device->local_config,reduction.post_processing_op,*result);
     return AC_SUCCESS;
 }
 

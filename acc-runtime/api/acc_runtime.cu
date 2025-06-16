@@ -695,6 +695,7 @@ ac_get_field_halos(const Field& field)
 }
 
 
+#define postprocess_reduce_result(DST,OP)
 #include "user_kernels.h"
 #undef size
 #undef longlong

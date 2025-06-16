@@ -165,6 +165,11 @@ reduce_sum(real val, param)
 {
 	reduce_sum_real(val,param)
 }
+reduce_rms(real val, param)
+{
+	reduce_sum(val,param)
+	postprocess_reduce_result(param,AC_RMS)
+}
 reduce_max(real val, param)
 {
 	reduce_max_real(val,param)

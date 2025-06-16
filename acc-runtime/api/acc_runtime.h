@@ -120,6 +120,7 @@ typedef struct KernelReduceOutput {
   int variable;
   AcType type;
   AcReduceOp op;
+  AcReductionPostProcessingOp postprocess_op;
   AcKernel kernel;
 #ifdef __cplusplus
   bool operator==(const KernelReduceOutput& other) const
@@ -132,11 +133,6 @@ typedef struct KernelReduceOutput {
 #endif
 } KernelReduceOutput;
 
-typedef enum {
-	AC_NO_REDUCE_POST_PROCESSING,
-	AC_RMS,
-	AC_RADIAL_WINDOW_RMS
-} AcReductionPostProcessingOp;
 
 typedef struct
 {

@@ -218,14 +218,14 @@ std::vector<KernelReduceOutput> reduce_outputs{};
 AcReal
 output_value(const AcRealOutputParam& param)
 {
-	reduce_inputs.push_back({(int)param,AC_REAL_TYPE,REDUCE_SUM,current_kernel});
+	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 	return (AcReal){};
 }
 
 int
 output_value(const AcIntOutputParam& param)
 {
-	reduce_inputs.push_back({(int)param,AC_REAL_TYPE,REDUCE_SUM,current_kernel});
+	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 	return (int){};
 }
 
@@ -233,11 +233,31 @@ output_value(const AcIntOutputParam& param)
 float
 output_value(const AcFloatOutputParam& param)
 {
-	reduce_inputs.push_back({(int)param,AC_FLOAT_TYPE,REDUCE_SUM,current_kernel});
+	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_FLOAT_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 	return (float){};
 }
 #endif
 
+void
+postprocess_reduce_result(const AcRealOutputParam dst, const AcReductionPostProcessingOp op)
+{
+	bool found = false;
+	for(auto& output : reduce_outputs)
+	{
+		if(output.variable == dst && output.type == AC_REAL_TYPE)
+		{
+			found = true;
+			output.postprocess_op = op;
+		}
+	}
+	if(!found)
+	{
+		fprintf(stderr,"Applied postprocessing op on %s, but it is not reduced in %s!\n",real_output_names[dst], kernel_names[current_kernel]);
+		fprintf(stderr,"Applied postprocessing op on %s, but it is not reduced in %s!\n",real_output_names[dst], kernel_names[current_kernel]);
+		fprintf(stderr,"Applied postprocessing op on %s, but it is not reduced in %s!\n",real_output_names[dst], kernel_names[current_kernel]);
+		exit(EXIT_FAILURE);
+	}
+}
 void
 reduce_sum_real(const AcReal, const AcRealOutputParam dst)
 {
@@ -258,7 +278,7 @@ reduce_sum_real(const AcReal, const AcRealOutputParam dst)
 		exit(EXIT_FAILURE);
 	}
 	reduced_reals[dst] = REDUCE_SUM;
-	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_SUM,current_kernel});
+	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -281,7 +301,7 @@ reduce_max_real(const AcReal, const AcRealOutputParam dst)
 		exit(EXIT_FAILURE);
 	}
 	reduced_reals[dst] = REDUCE_MAX;
-	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_MAX,current_kernel});
+	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -304,7 +324,7 @@ reduce_min_real(const AcReal, const AcRealOutputParam dst)
 		exit(EXIT_FAILURE);
 	}
 	reduced_reals[dst] = REDUCE_MIN;
-	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_MIN,current_kernel});
+	reduce_outputs.push_back({(int)dst,AC_REAL_TYPE,REDUCE_MIN,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -327,7 +347,7 @@ reduce_sum_int(const int, const AcIntOutputParam dst)
 		exit(EXIT_FAILURE);
 	}
 	reduced_ints[dst] = REDUCE_SUM;
-	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_SUM,current_kernel});
+	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -350,7 +370,7 @@ reduce_max_int(const int, const AcIntOutputParam dst)
 		exit(EXIT_FAILURE);
 	}
 	reduced_ints[dst] = REDUCE_MAX;
-	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MAX,current_kernel});
+	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -373,7 +393,7 @@ reduce_min_int(const int, const AcIntOutputParam dst)
 		exit(EXIT_FAILURE);
 	}
 	reduced_ints[dst] = REDUCE_MIN;
-	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MIN,current_kernel});
+	reduce_outputs.push_back({(int)dst,AC_INT_TYPE,REDUCE_MIN,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 #if AC_DOUBLE_PRECISION
@@ -397,7 +417,7 @@ reduce_sum_float(const float, const AcFloatOutputParam dst)
 		exit(EXIT_FAILURE);
 	}
 	reduced_floats[dst] = REDUCE_SUM;
-	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_SUM,current_kernel});
+	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -420,7 +440,7 @@ reduce_max_float(const float, const AcFloatOutputParam dst)
 		exit(EXIT_FAILURE);
 	}
 	reduced_floats[dst] = REDUCE_MAX;
-	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_MAX,current_kernel});
+	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_MAX,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 void
@@ -443,7 +463,7 @@ reduce_min_float(const float, const AcFloatOutputParam dst)
 		exit(EXIT_FAILURE);
 	}
 	reduced_floats[dst] = REDUCE_MIN;
-	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_MIN,current_kernel});
+	reduce_outputs.push_back({(int)dst,AC_FLOAT_TYPE,REDUCE_MIN,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 #endif
 
@@ -460,7 +480,7 @@ reduce_prof(const AcReal, const Profile dst)
 		exit(EXIT_FAILURE);
 	}
 	reduced_profiles[(int)dst] = REDUCE_SUM;
-	reduce_outputs.push_back({(int)dst,AC_PROF_TYPE, REDUCE_SUM,current_kernel});
+	reduce_outputs.push_back({(int)dst,AC_PROF_TYPE, REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
 }
 
 

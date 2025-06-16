@@ -1017,6 +1017,11 @@ get_local_nn()
 {
 	return acGetLocalNN(acDeviceGetLocalConfig(acGridGetDevice()));
 }
+Volume
+get_grid_nn()
+{
+	return acGetGridNN(acDeviceGetLocalConfig(acGridGetDevice()));
+}
 
 
 /* Computation */
@@ -2527,25 +2532,36 @@ ReduceTask::load_outputs()
     	for(size_t i = 0; i < reduce_outputs.size(); ++i)
     	{
 	    const int var = reduce_outputs[i].variable;
-	    //TP: local reduce variables have been already loaded to the device after the local reduction
 	    if(reduce_outputs[i].type == AC_REAL_TYPE)
 	    {
-	    	acDeviceSetOutput(device,(AcRealOutputParam)var,local_res_real[i]);
-	    	if(real_output_is_global[var]) 
+		auto val = local_res_real[i];
+		if(reduce_outputs[i].postprocess_op == AC_RMS)
 		{
-			acLoadRealReduceRes(stream,(AcRealOutputParam)var,&local_res_real[i]);
+			const auto nn = (real_output_is_global[i]) ? get_grid_nn() : get_local_nn();
+			const int N = nn.x*nn.y*nn.z;
+			val = sqrt(val/N);
 		}
+	    	acDeviceSetOutput(device,(AcRealOutputParam)var,val);
+		acLoadRealReduceRes(stream,(AcRealOutputParam)var,&val);
 	    }
 	    else if(reduce_outputs[i].type == AC_INT_TYPE)
 	    {
-	    	acDeviceSetOutput(device,(AcIntOutputParam)var,local_res_int[i]);
-	    	if(int_output_is_global[var]) acLoadIntReduceRes(stream,(AcIntOutputParam)var,&local_res_int[i]);
+		auto val = local_res_int[i];
+	    	acDeviceSetOutput(device,(AcIntOutputParam)var,val);
+	    	acLoadIntReduceRes(stream,(AcIntOutputParam)var,&val);
 	    }
 #if AC_DOUBLE_PRECISION
 	    else if(reduce_outputs[i].type == AC_FLOAT_TYPE)
 	    {
-	    	acDeviceSetOutput(device,(AcFloatOutputParam)var,local_res_float[i]);
-	    	if(float_output_is_global[var]) acLoadFloatReduceRes(stream,(AcFloatOutputParam)var,&local_res_float[i]);
+		auto val = local_res_float[i];
+		if(reduce_outputs[i].postprocess_op == AC_RMS)
+		{
+			const auto nn = (int_output_is_global[i]) ? get_grid_nn() : get_local_nn();
+			const float N = float(nn.x*nn.y*nn.z);
+			val = sqrt(val/N);
+		}
+	    	acDeviceSetOutput(device,(AcFloatOutputParam)var,val);
+	    	acLoadFloatReduceRes(stream,(AcFloatOutputParam)var,&val);
 	    }
 #endif
 	    else if(reduce_outputs[i].type == AC_PROF_TYPE)

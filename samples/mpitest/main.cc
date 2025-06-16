@@ -138,7 +138,34 @@ main(int argc, char* argv[])
             WARNCHK_ALWAYS(retval);
         }
     }
-    fflush(stdout);
+
+    // Write/Read
+    if(pid == 0) acHostGridMeshRandomize(&candidate);
+    acGridWriteMeshToDiskLaunch("snapshot","0");
+    acGridDiskAccessSync();
+    std::vector<Field> io_fields{};
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+        io_fields.push_back(Field(i));
+    }
+
+    const size_t num_io_fields = io_fields.size();
+    for (size_t i = 0; i < num_io_fields; ++i)
+        acGridAccessMeshOnDiskSynchronous(io_fields[i], "snapshot", "0", ACCESS_READ);
+
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (pid == 0) {
+        acHostMeshApplyPeriodicBounds(&model);
+        const AcResult res = acVerifyMesh("Write/Read", model, candidate);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
+    }
+
+    // Boundconds
+    if (pid == 0)
+        acHostGridMeshRandomize(&model);
 
     // Boundconds
     if (pid == 0)

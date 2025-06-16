@@ -52,6 +52,7 @@ option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs
 option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
 option(RUNTIME_COMPILATION "Compile version of Astaroth compiled at runtime" OFF)
 option(SUPPRESS_COMPILER_WARNINGS "Suppress default compiler warnings of Astaroth" OFF)
+option(PROFILING_ENABLED "Whether to enable profiling and link to the vendor profiling libraries" ON)
 
 ## Project-wide compilation flags
 # -Werror TODO read
@@ -77,6 +78,11 @@ if (LAGRANGIAN_GRID)
 	add_definitions(-DAC_LAGRANGIAN_GRID=1)
 else()
 	add_definitions(-DAC_LAGRANGIAN_GRID=0)
+endif()
+if(PROFILING_ENABLED)
+	add_definitions(PROFILING_ENABLED=1)
+else()
+	add_definitions(PROFILING_ENABLED=0)
 endif()
 
 if(NOT SUPPRESS_COMPILER_WARNINGS)

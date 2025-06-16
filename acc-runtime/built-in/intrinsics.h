@@ -97,3 +97,4 @@ intrinsic ac_is_loaded
 intrinsic ac_get_process_decomposition
 int3 intrinsic ac_get_field_halos(Field)
 intrinsic copy_arr
+intrinsic postprocess_reduce_result

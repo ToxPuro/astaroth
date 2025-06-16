@@ -1481,10 +1481,6 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				"if constexpr (NUM_%s_OUTPUTS == 0) return AC_FAILURE;\n"
 				"acReduce(stream,reduce_op,device->vba.reduce_buffer_%s[output],acGetKernelReduceScratchPadSize(kernel));\n"
 				"cudaMemcpyAsync(result,device->vba.reduce_buffer_%s[output].res,sizeof(result[0]),cudaMemcpyDeviceToHost,stream);\n"
-				"if(!%s_output_is_global[output])\n"
-				"{\n"
-				"acLoad%sReduceRes(stream,output,result);\n"
-				"}\n"
 				"return AC_SUCCESS;\n"
 				"}\n"
 				,upper_case_name,datatype_scalar,enum_name,uppr_name,define_name,define_name
