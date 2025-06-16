@@ -915,7 +915,7 @@ compute(const Device& device, const std::vector<Kernel>& compute_kernels, const 
 }
 
 static void
-reset(const Device& device, const std::vector<Field>& fields, const BufferGroup& group)
+reset_fields(const Device& device, const std::vector<Field>& fields, const BufferGroup& group)
 {
     VertexBufferArray vba{};
     ERRCHK_AC(acDeviceGetVBA(device, &vba));
@@ -1316,8 +1316,8 @@ class Grid {
 
                 // Test fields: Discard previous halo exchange, reset, and update halos
                 tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
-                reset(device, tfm_fields, BufferGroup::input);
-                reset(device, tfm_fields, BufferGroup::output);
+                reset_fields(device, tfm_fields, BufferGroup::input);
+                reset_fields(device, tfm_fields, BufferGroup::output);
                 tfm_he.launch(ac::get_ptrs(device, tfm_fields, BufferGroup::output));
             }
 
@@ -2063,7 +2063,7 @@ class Grid {
 
         void compute_outer(const std::vector<std::vector<Kernel>>& kernels, const size_t substep) {
             ERRCHK_AC(acDeviceLoadIntUniform(m_device.get(), STREAM_DEFAULT, AC_exclude_inner, 1));
-            compute(m_device.get(), hydro_kernels[substep], SegmentGroup::compute_full);
+            compute(m_device.get(), kernels[substep], SegmentGroup::compute_full);
         }
 
         void compute_inner(const std::vector<std::vector<Kernel>>& kernels, const size_t substep) {
@@ -2147,13 +2147,14 @@ class Grid {
             // Calculate the latest snapshot and push it to device            
             auto current_snapshot{ac::pull_param(m_device.get(), AC_latest_snapshot)};
             auto latest_snapshot{(current_snapshot + 1) % nsnapshots};
-            ac::push_param(m_device.get(), AC_latest_snapshot, latest_snapshot);
 
-            // Write to disk
+            // Write to disk (all procs write collectively)
             for (const auto& field : fields)
                 Snapshot::write(m_comm.get(), m_device.get(), field, latest_snapshot);
+            ERRCHK_MPI_API(MPI_Barrier(m_comm.get())); // Guarantees all writes now complete
 
             // Write the accompanying information to restart from these snapshots
+            ac::push_param(m_device.get(), AC_latest_snapshot, latest_snapshot);
             // Only the root proc writes
             if (ac::mpi::get_rank(m_comm.get()) == 0) {
                 const auto state{SimulationState::pull_state(ac::get_info(m_device.get()))};
@@ -2161,8 +2162,6 @@ class Grid {
             }
             ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
         }
-
-        
 
         void simulation_loop() {
             
@@ -2172,14 +2171,40 @@ class Grid {
             if (ac::pull_param(m_device.get(), AC_current_step) > 0)
                 restart_from_snapshots(restart_snapshots);
 
-            // const auto initial_step{ac::pull_param(m_device.get(), AC_current_step)};
-            // const auto max_steps{initial_step + ac::pull_param(m_device.get(), AC_simulation_nsteps)};
-            
             // Simulate
-            tfm_pipeline(2500);
-            
-            // Write the snapshot to disk
-            flush_snapshots_to_disk(restart_snapshots);
+	    const auto initial_step{ac::pull_param(m_device.get(), AC_current_step)};
+	    const auto nsteps{ac::pull_param(m_device.get(), AC_simulation_nsteps)};
+	    const auto profile_output_interval{ac::pull_param(m_device.get(), AC_simulation_profile_output_interval)};
+	    const auto tf_reset_interval{ac::pull_param(m_device.get(), AC_simulation_reset_test_field_interval)};
+	    const auto snapshot_output_interval{ac::pull_param(m_device.get(), AC_simulation_snapshot_output_interval)};
+
+	    for (auto i{initial_step}; i <= initial_step + nsteps; ++i) {
+		
+		const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
+		const auto current_time{ac::pull_param(m_device.get(), AC_current_time)};
+		const auto current_dt{ac::pull_param(m_device.get(), AC_dt)};
+		ERRCHK(i == current_step);
+
+		// Write the current state out
+		if ((i % profile_output_interval) == 0)
+                	write_profiles_to_disk(m_comm.get(), m_device.get(), current_step);
+
+		if ((i % profile_output_interval) == 0)
+                	write_timeseries(m_comm.get(), m_device.get(), current_step, current_time, current_dt);
+			
+		if ((i % snapshot_output_interval) == 0)
+            		flush_snapshots_to_disk(restart_snapshots);
+
+		// Advance the state if not in the concluding state
+		if (i < initial_step + nsteps) {
+
+			if ((i % tf_reset_interval) == 0)
+				reset_fields(m_device.get(), tfm_fields, BufferGroup::input);
+
+			tfm_pipeline(1);
+
+		}
+	    }
         }
 };
 
