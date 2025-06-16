@@ -167,8 +167,14 @@ reduce_sum(real val, param)
 }
 reduce_rms(real val, param)
 {
-	reduce_sum(val,param)
-	postprocess_reduce_result(param,AC_RMS)
+	reduce_sum(val*val*AC_ds.x*AC_ds.y*AC_ds.z,param)
+	postprocess_reduce_result(param,AC_POSTPROCESS_SQRT)
+}
+
+reduce_rms(real3 val, param)
+{
+	reduce_sum(dot(val,val)*AC_ds.x*AC_ds.y*AC_ds.z,param)
+	postprocess_reduce_result(param,AC_POSTPROCESS_SQRT)
 }
 reduce_max(real val, param)
 {

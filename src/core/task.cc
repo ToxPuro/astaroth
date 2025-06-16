@@ -2541,6 +2541,10 @@ ReduceTask::load_outputs()
 			const int N = nn.x*nn.y*nn.z;
 			val = sqrt(val/N);
 		}
+		else if(reduce_outputs[i].postprocess_op == AC_POSTPROCESS_SQRT)
+		{
+			val = sqrt(val);
+		}
 	    	acDeviceSetOutput(device,(AcRealOutputParam)var,val);
 		acLoadRealReduceRes(stream,(AcRealOutputParam)var,&val);
 	    }
@@ -2559,6 +2563,10 @@ ReduceTask::load_outputs()
 			const auto nn = (int_output_is_global[i]) ? get_grid_nn() : get_local_nn();
 			const float N = float(nn.x*nn.y*nn.z);
 			val = sqrt(val/N);
+		}
+		else if(reduce_outputs[i].postprocess_op == AC_POSTPROCESS_SQRT)
+		{
+			val = sqrt(val);
 		}
 	    	acDeviceSetOutput(device,(AcFloatOutputParam)var,val);
 	    	acLoadFloatReduceRes(stream,(AcFloatOutputParam)var,&val);

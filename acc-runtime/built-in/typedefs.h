@@ -187,5 +187,6 @@ enum AcBoundary {
 enum AcReductionPostProcessingOp {
 	AC_NO_REDUCE_POST_PROCESSING,
 	AC_RMS,
+	AC_POSTPROCESS_SQRT,
 	AC_RADIAL_WINDOW_RMS
 }
