@@ -75,6 +75,8 @@ AcResult acAnalysisLoadMeshInfo(const AcMeshInfo info);
 #define fatal(MESSAGE, ...) \
         { \
 	acLogFromRootProc(ac_pid(),MESSAGE,__VA_ARGS__); \
+	fflush(stderr); \
+	fflush(stdout); \
 	ERRCHK_ALWAYS(false); \
 	} 
 /* Internal interface to grid (a global variable)  */
@@ -340,9 +342,12 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     int3 submesh_n = (int3){(int)submesh_n_size_t.x,(int)submesh_n_size_t.y,(int)submesh_n_size_t.z};
 
     set_info_val(submesh_config,AC_nlocal,submesh_n);
-    submesh_config[AC_multigpu_offset] = getPid3D(global_config)*submesh_n;
+    const int3 pid3d = getPid3D(global_config);
+    const int3 offset = pid3d*submesh_n;
+    set_info_val(submesh_config,AC_multigpu_offset,offset);
+    submesh_config[AC_multigpu_offset] = pid3d*submesh_n;
     set_info_val(submesh_config,AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z});
-    submesh_config[AC_domain_coordinates] = getPid3D(global_config);
+    set_info_val(submesh_config,AC_domain_coordinates,pid3d);
     acHostUpdateParams(&submesh_config);
     return submesh_config;
 }
@@ -793,15 +798,16 @@ acGridInitBase(const AcMesh user_mesh)
     cudaGetDeviceCount(&devices_per_node);
     if(devices_per_node == 0) fatal("%s", "acGridInit: No devices found!\n");
 
-    acLogFromRootProc(ac_pid(), "acGridInit: n[xyz]grid: (%d,%d,%d) n[xyz]local (%d,%d,%d)\n",
+    const int pid = ac_pid();
+    acLogFromRootProc(pid, "acGridInit: n[xyz]grid: (%d,%d,%d) n[xyz]local (%d,%d,%d)\n",
 		    submesh_info[AC_ngrid].x,submesh_info[AC_ngrid].y,submesh_info[AC_ngrid].z,
 		    submesh_info[AC_nlocal].x,submesh_info[AC_nlocal].y,submesh_info[AC_nlocal].z
 		    );
-    acLogFromRootProc(ac_pid(), "acGridInit: Calling acDeviceCreate\n");
-    acVerboseLogFromRootProc(ac_pid(),"memusage before acDeviceCreate = %f MBytes\n",acMemUsage()/1024.0);
+    acLogFromRootProc(pid, "acGridInit: Calling acDeviceCreate\n");
+    acVerboseLogFromRootProc(pid,"memusage before acDeviceCreate = %f MBytes\n",acMemUsage()/1024.0);
 
     Device device;
-    acDeviceCreate(ac_pid() % devices_per_node, submesh_info, &device);
+    acDeviceCreate(pid % devices_per_node, submesh_info, &device);
 
     acVerboseLogFromRootProc(ac_pid(),"memusage after acDeviceCreate = %f MBytes\n", acMemUsage()/1024.0);
     acLogFromRootProc(ac_pid() , "acGridInit: Returned from acDeviceCreate\n");
@@ -819,6 +825,7 @@ acGridInitBase(const AcMesh user_mesh)
     // Configure
     grid.nn = acGetLocalNN(acDeviceGetLocalConfig(device));
     grid.mpi_tag_space_count = 0;
+
 
     acDeviceUpdate(device,acDeviceGetLocalConfig(device));
 
@@ -3446,11 +3453,25 @@ measure_file_size(const char* filepath)
     return measured_size;
 };
 
+void
+ac_make_dir(const std::string dir)
+{
+    static std::unordered_map<std::string,bool> created_dirs{};
+    if(created_dirs.find(dir) != created_dirs.end()) return;
+    if (!ac_pid()) {
+	const std::string cmd = "mkdir -p " + dir;
+        system(cmd.c_str());
+    }
+    created_dirs[dir] = true;
+    MPI_Barrier(astaroth_comm);
+}
+
 AcResult
 acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 {
     ERRCHK(grid.initialized);
     ERRCHK_ALWAYS(!running)
+    ac_make_dir(std::string(dir));
     running = true;
 
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -3578,18 +3599,6 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
     }
 
     return AC_SUCCESS;
-}
-void
-ac_make_dir(const std::string dir)
-{
-    static std::unordered_map<std::string,bool> created_dirs{};
-    if(created_dirs.find(dir) != created_dirs.end()) return;
-    if (!ac_pid()) {
-	const std::string cmd = "mkdir -p " + dir;
-        system(cmd.c_str());
-    }
-    created_dirs[dir] = true;
-    MPI_Barrier(astaroth_comm);
 }
 
 static AcResult
@@ -4106,23 +4115,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
 #ifndef NDEBUG
     if (type == ACCESS_READ) {
-        const Volume nn = get_global_nn();
-        const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
-        FILE* fp                   = fopen(filepath, "r");
-        ERRCHK_ALWAYS(fp);
-        fseek(fp, 0L, SEEK_END);
-        const size_t measured_size = ftell(fp);
-        fclose(fp);
-        if (expected_size != measured_size) {
-            fprintf(stderr,
-                    "Expected size did not match measured size (%lu vs %lu), factor of %g "
-                    "difference\n",
-                    expected_size, measured_size, (double)expected_size / measured_size);
-            fprintf(stderr, "Note that old data files must be removed when switching to a smaller "
-                            "mesh size, otherwise the file on disk will be too large (the above "
-                            "factor < 1)\n");
-            ERRCHK_ALWAYS(expected_size == measured_size);
-        }
+        check_file_size(filepath);
     }
 #endif // NDEBUG
 
@@ -4141,9 +4134,16 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
     FILE* fp;
     if (type == ACCESS_READ)
+    {
         fp = fopen(filepath, "r");
+	if(!fp)
+	{
+		fatal("Could not open file %s\n",filepath);
+	}
+    }
     else
         fp = fopen(filepath, "w");
+
     ERRCHK_ALWAYS(fp);
 
     if (type == ACCESS_READ)
@@ -4206,7 +4206,14 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     check_file_size(filepath);
     if (type == ACCESS_READ) {
 	auto vba = acDeviceGetVBA(device);
-        AcReal* in           = vba.on_device.out[vtxbuf];
+	int non_auxiliary_vtxbuf = -1;
+	for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i) if(!vtxbuf_is_auxiliary[i]) non_auxiliary_vtxbuf = i;
+	if(non_auxiliary_vtxbuf == -1)
+	{
+		fatal("%s", "Can not read snapshot if all Fields are auxiliary!\n");
+	}
+	//TP: it is safe to borrow other fields output since this function is blocking
+        AcReal* in           = vba.on_device.out[non_auxiliary_vtxbuf];
         const Volume in_offset = {0, 0, 0};
         const Volume in_volume = acGetLocalNN(acGridGetLocalMeshInfo());
 
