@@ -1487,13 +1487,15 @@ struct arguments {
     std::string config_path{};
     ac::shape   global_nn_override{};
     int         job_id{0};
+    int         benchmark{0};
+    int         simulation_nsteps_override{0};
 
     arguments(int argc, char* argv[])
     {
         const std::vector<std::string> arg_list{argv+1, argv+argc};
         const auto pairs{ac::parse_key_value_pairs(arg_list)};
 
-        std::cout << "Usage: ./tfm-mpi --config path/to/config.conf [optional: --global-nn-override 32,32,32] [optional: --job-id 0]" << std::endl;
+        std::cout << "Usage: ./tfm-mpi --config path/to/config.conf [optional: --global-nn-override 32,32,32] [optional: --job-id 0] [optional: --benchmark 0] [optional: --simulation-nsteps-override 0]" << std::endl;
 
         for (const auto& pair : pairs) {
             if (pair.first == "--config")
@@ -1502,6 +1504,10 @@ struct arguments {
                 global_nn_override = ac::parse_shape(pair.second);
             else if (pair.first == "--job-id")
                 job_id = std::stoi(pair.second);
+            else if (pair.first == "--benchmark")
+                benchmark = std::stoi(pair.second);
+            else if (pair.first == "--simulation-nsteps-override")
+                simulation_nsteps_override = std::stoi(pair.second);
             else
                 ERRCHK_EXPR_DESC(false,
                                  "Do not know what to do with argument pair [%s: %s]",
@@ -1664,6 +1670,12 @@ namespace SimulationState {
         acr::set(AC_latest_snapshot, state.latest_snapshot, info);
     }
 
+    static void push_state_to_device(const Device& device, const State& state) {
+	auto tmp{ac::get_info(device)};
+	push_state(state, tmp);
+	ERRCHK_AC(acDeviceLoadMeshInfo(device, tmp));
+    }
+
     static State pull_state(const AcMeshInfo& info) {
         State state{};
 
@@ -1797,20 +1809,9 @@ static void process_overrides(const tfm::arguments& args, AcMeshInfo& info)
 {
     if (args.global_nn_override.size() > 0)
         acr::set_global_nn(args.global_nn_override, info);
-}
-
-/** Loads the previous state if it exists, otherwise starts a new run */
-static void load_previous_state(AcMeshInfo& info)
-{
-    if (SimulationState::exists()) {
-        // Continue from a previous run
-        const auto state{SimulationState::read()};
-        SimulationState::push_state(state, info);
-    } else {
-        // Start a new run
-        SimulationState::push_state(SimulationState::State{}, info);
-        Timeseries::reset();
-    }
+    
+    if (args.simulation_nsteps_override > 0)
+	acr::set(AC_simulation_nsteps, args.simulation_nsteps_override, info);
 }
 
 /** 
@@ -1884,6 +1885,8 @@ static void set_unused_params(AcMeshInfo& info) {
 
     // Others to ensure nothing is left uninitialized
     acr::set(AC_init_type, 0, info);
+    acr::set(AC_current_step, 0, info);
+    acr::set(AC_latest_snapshot, 0, info);
     acr::set(AC_dt, 0, info);
     acr::set(AC_dummy_real3, AcReal3{0, 0, 0}, info);
 
@@ -1898,9 +1901,6 @@ static AcMeshInfo prepare_mesh_info(const tfm::arguments& args) {
     // Override config parameters instructed by the user
     Setup::process_overrides(args, info);
 
-    // Load previous state from disk
-    Setup::load_previous_state(info);
-
     // Create the communicator
     ac::mpi::cart_comm comm{MPI_COMM_WORLD, acr::get_global_nn(info)};
 
@@ -1912,8 +1912,6 @@ static AcMeshInfo prepare_mesh_info(const tfm::arguments& args) {
 
     // The initial info is complete
     ERRCHK(acPrintMeshInfoTFM(info) == 0);
-    const auto state{SimulationState::pull_state(info)};
-    SimulationState::print(state);
 
     ERRCHK(acVerifyMeshInfo(info) == 0);
     return info;
@@ -2163,49 +2161,69 @@ class Grid {
             ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
         }
 
-        void simulation_loop() {
-            
-            const auto restart_snapshots{hydro_fields};
-
-            // Restart from a snapshot if applicable
-            if (ac::pull_param(m_device.get(), AC_current_step) > 0)
-                restart_from_snapshots(restart_snapshots);
-
-            // Simulate
-	    const auto initial_step{ac::pull_param(m_device.get(), AC_current_step)};
-	    const auto nsteps{ac::pull_param(m_device.get(), AC_simulation_nsteps)};
+	void io_step(const std::vector<Field>& restart_fields) {
 	    const auto profile_output_interval{ac::pull_param(m_device.get(), AC_simulation_profile_output_interval)};
-	    const auto tf_reset_interval{ac::pull_param(m_device.get(), AC_simulation_reset_test_field_interval)};
 	    const auto snapshot_output_interval{ac::pull_param(m_device.get(), AC_simulation_snapshot_output_interval)};
-
-	    for (auto i{initial_step}; i <= initial_step + nsteps; ++i) {
 		
-		const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
+	    	const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
 		const auto current_time{ac::pull_param(m_device.get(), AC_current_time)};
 		const auto current_dt{ac::pull_param(m_device.get(), AC_dt)};
-		ERRCHK(i == current_step);
-
-		// Write the current state out
-		if ((i % profile_output_interval) == 0)
+	
+    	    // Write the current state out
+		if ((current_step % profile_output_interval) == 0)
                 	write_profiles_to_disk(m_comm.get(), m_device.get(), current_step);
 
-		if ((i % profile_output_interval) == 0)
+		if ((current_step % profile_output_interval) == 0)
                 	write_timeseries(m_comm.get(), m_device.get(), current_step, current_time, current_dt);
 			
-		if ((i % snapshot_output_interval) == 0)
-            		flush_snapshots_to_disk(restart_snapshots);
+		if ((current_step % snapshot_output_interval) == 0)
+            		flush_snapshots_to_disk(restart_fields);
+		
+	}
 
-		// Advance the state if not in the concluding state
-		if (i < initial_step + nsteps) {
+        void simulation_loop() {
+          
+	       auto restart_fields{hydro_fields};
+	       restart_fields.insert(restart_fields.end(), tfm_fields.begin(), tfm_fields.end());
+		if (SimulationState::exists()) {
+			// Resume previous run
+			SimulationState::push_state_to_device(m_device.get(), SimulationState::read());
+			restart_from_snapshots(restart_fields);
+		} else {
+			// Start a new run
+			if (ac::mpi::get_rank(m_comm.get()) == 0)
+				Timeseries::reset();
+			ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
 
-			if ((i % tf_reset_interval) == 0)
-				reset_fields(m_device.get(), tfm_fields, BufferGroup::input);
-
-			tfm_pipeline(1);
-
+			SimulationState::push_state_to_device(m_device.get(), SimulationState::State{});
+			io_step(restart_fields);
 		}
+    		SimulationState::print(SimulationState::pull_state(ac::get_info(m_device.get())));
+
+            // Simulate
+	    const auto nsteps{ac::pull_param(m_device.get(), AC_simulation_nsteps)};
+	    const auto tf_reset_interval{ac::pull_param(m_device.get(), AC_simulation_reset_test_field_interval)};
+
+	    for (size_t counter{0}; counter < nsteps; ++counter) {
+	    	
+		const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
+			
+		if ((current_step > 0) && ((current_step % tf_reset_interval) == 0))
+			reset_fields(m_device.get(), tfm_fields, BufferGroup::input);
+
+		tfm_pipeline(1);	
+		io_step(restart_fields);
 	    }
+
+	    // Ensure the current state is flushed to disk even if the last step is
+	    // not divisible by snapshot_output_interval
+	    flush_snapshots_to_disk(restart_fields);
         }
+
+	void benchmark() {
+		ERRCHK_EXPR_DESC(false, "not implemented");
+
+	}
 };
 
 }
@@ -2230,13 +2248,11 @@ main(int argc, char* argv[])
 
         // Grid grid{info};
         rev::Grid grid{info};
-        grid.simulation_loop();
-        // Run
-        // #if defined(AC_BENCHMARK_MODE)
-        //     benchmark_run(args, info);
-        // #else
-        //     production_run(args, info);
-        // #endif
+
+	if (args.benchmark)
+		grid.benchmark();
+	else
+        	grid.simulation_loop();
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
