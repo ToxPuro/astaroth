@@ -1,11 +1,11 @@
 #include <cmath>
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
 #include <fstream>
 #include <future>
 #include <iostream>
 #include <numeric>
-#include <filesystem>
 
 // Astaroth
 #include "astaroth_headers.h" // To suppress unnecessary warnings
@@ -50,8 +50,8 @@
 #include "acm/detail/print_debug.h"
 
 // ACM experimental
-#include "acm/detail/experimental/mpi_utils_experimental.h"
 #include "acm/detail/experimental/fmt.h"
+#include "acm/detail/experimental/mpi_utils_experimental.h"
 
 // ACR experimental
 #include "acr_experimental.h"
@@ -979,7 +979,7 @@ class Grid {
     {
         // Setup communicator and local mesh info
         auto global_nn{acr::get_global_nn(raw_info)};
-        cart_comm  = ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn);
+        cart_comm = ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn);
         const auto tmp_local_info{get_local_mesh_info(cart_comm, raw_info)};
         ERRCHK(acPrintMeshInfoTFM(tmp_local_info) == 0);
 
@@ -1306,12 +1306,14 @@ class Grid {
         launch_uumax_reduce();
 #endif
 
-        for (uint64_t step{as<uint64_t>(acr::get(ac::get_info(device), AC_current_step))}; step < nsteps; ++step) {
+        for (uint64_t step{as<uint64_t>(acr::get(ac::get_info(device), AC_current_step))};
+             step < nsteps;
+             ++step) {
             PRINT_LOG_INFO("New integration step");
 
             // Check whether to reset the test fields
-            if ((as<int>(step) % acr::get(ac::get_info(device), AC_simulation_reset_test_field_interval)) ==
-                0) {
+            if ((as<int>(step) %
+                 acr::get(ac::get_info(device), AC_simulation_reset_test_field_interval)) == 0) {
                 PRINT_LOG_INFO("Resetting test fields");
 
                 // Test fields: Discard previous halo exchange, reset, and update halos
@@ -1399,12 +1401,12 @@ class Grid {
 #if !defined(AC_DISABLE_IO)
 // Write snapshot
 #if defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
-            if ((step %
-                 as<uint64_t>(acr::get(ac::get_info(device), AC_simulation_snapshot_output_interval))) == 0)
+            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
+                                              AC_simulation_snapshot_output_interval))) == 0)
                 write_snapshots_to_disk(cart_comm, device, step);
 #else
-            if ((step %
-                 as<uint64_t>(acr::get(ac::get_info(device), AC_simulation_snapshot_output_interval))) == 0) {
+            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
+                                              AC_simulation_snapshot_output_interval))) == 0) {
                 hydro_io.wait();
                 hydro_io.launch(cart_comm,
                                 ac::get_ptrs(device, hydro_fields, BufferGroup::input),
@@ -1417,19 +1419,19 @@ class Grid {
 
 #endif
 #if defined(AC_WRITE_SYNCHRONOUS_PROFILES)
-            if ((step %
-                 as<uint64_t>(acr::get(ac::get_info(device), AC_simulation_profile_output_interval))) == 0)
+            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
+                                              AC_simulation_profile_output_interval))) == 0)
                 write_profiles_to_disk(cart_comm, device, step);
 #endif
 
 #if defined(AC_WRITE_SYNCHRONOUS_TIMESERIES)
-            if ((step %
-                 as<uint64_t>(acr::get(ac::get_info(device), AC_simulation_profile_output_interval))) == 0)
+            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
+                                              AC_simulation_profile_output_interval))) == 0)
                 write_timeseries(cart_comm, device, step, current_time, dt);
 #endif
 #if defined(AC_WRITE_SYNCHRONOUS_SLICES)
-            if ((step %
-                 as<uint64_t>(acr::get(ac::get_info(device), AC_simulation_profile_output_interval))) == 0)
+            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
+                                              AC_simulation_profile_output_interval))) == 0)
                 write_slices_to_disk(cart_comm, device, step);
 #endif
 #if defined(AC_WRITE_ASYNC_PROFILES)
@@ -1485,17 +1487,20 @@ namespace tfm {
 
 struct arguments {
     std::string config_path{};
-    ac::shape   global_nn_override{};
-    int         job_id{0};
-    int         benchmark{0};
-    int         simulation_nsteps_override{0};
+    ac::shape global_nn_override{};
+    int job_id{0};
+    int benchmark{0};
+    int simulation_nsteps_override{0};
 
     arguments(int argc, char* argv[])
     {
-        const std::vector<std::string> arg_list{argv+1, argv+argc};
+        const std::vector<std::string> arg_list{argv + 1, argv + argc};
         const auto pairs{ac::parse_key_value_pairs(arg_list)};
 
-        std::cout << "Usage: ./tfm-mpi --config path/to/config.conf [optional: --global-nn-override 32,32,32] [optional: --job-id 0] [optional: --benchmark 0] [optional: --simulation-nsteps-override 0]" << std::endl;
+        std::cout << "Usage: ./tfm-mpi --config path/to/config.conf [optional: "
+                     "--global-nn-override 32,32,32] [optional: --job-id 0] [optional: --benchmark "
+                     "0] [optional: --simulation-nsteps-override 0]"
+                  << std::endl;
 
         for (const auto& pair : pairs) {
             if (pair.first == "--config")
@@ -1531,9 +1536,10 @@ struct arguments {
     }
 };
 
-}
+} // namespace tfm
 
-static void reset_timeseries()
+static void
+reset_timeseries()
 {
     if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
         FILE* fp{fopen("timeseries.csv", "w")};
@@ -1544,69 +1550,71 @@ static void reset_timeseries()
     ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
 }
 
-static void benchmark_run(const tfm::arguments& args, const AcMeshInfo& raw_info) {
-        // Init Grid
-        Grid grid{raw_info};
+static void
+benchmark_run(const tfm::arguments& args, const AcMeshInfo& raw_info)
+{
+    // Init Grid
+    Grid grid{raw_info};
 
-        // Benchmark run
-        constexpr size_t nsteps_per_sample{100};
-        constexpr size_t nsamples{20};
-        auto init  = [&grid] { grid.reset_init_cond(); };
-        auto bench = [&grid] { grid.tfm_pipeline(nsteps_per_sample); };
-        auto sync  = []() {
+    // Benchmark run
+    constexpr size_t nsteps_per_sample{100};
+    constexpr size_t nsamples{20};
+    auto init  = [&grid] { grid.reset_init_cond(); };
+    auto bench = [&grid] { grid.tfm_pipeline(nsteps_per_sample); };
+    auto sync  = []() {
 #if defined(ACM_DEVICE_ENABLED)
-            ERRCHK_CUDA_API(cudaDeviceSynchronize());
+        ERRCHK_CUDA_API(cudaDeviceSynchronize());
 #endif
-            ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
-        };
+        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+    };
 
-        // Reset benchmarks
-        std::ostringstream filename_stream;
-        filename_stream << "bm-tfm-mpi-" << args.job_id << "-" << getpid() << "-"
-                        << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
-        const auto filename{filename_stream.str()};
+    // Reset benchmarks
+    std::ostringstream filename_stream;
+    filename_stream << "bm-tfm-mpi-" << args.job_id << "-" << getpid() << "-"
+                    << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
+    const auto filename{filename_stream.str()};
 
-        std::ofstream file{filename};
+    std::ofstream file{filename};
+    file.exceptions(~std::ios::goodbit);
+    file << "impl,lnx,lny,lnz,gnx,gny,gnz,radius,nsteps_per_samples,sample,nsamples,rank,"
+            "nprocs,jobid,ns"
+         << std::endl;
+    file.close();
+
+    auto print = [&](const std::string& label,
+                     const std::vector<std::chrono::steady_clock::duration>& results) {
+        std::ofstream file{filename, std::ios_base::app};
         file.exceptions(~std::ios::goodbit);
-        file << "impl,lnx,lny,lnz,gnx,gny,gnz,radius,nsteps_per_samples,sample,nsamples,rank,"
-                "nprocs,jobid,ns"
-             << std::endl;
+
+        auto info{ac::get_info(grid.get_device())};
+
+        ERRCHK_MPI(acr::get_local_rr()[0] == acr::get_local_rr()[1] &&
+                   acr::get_local_rr()[0] == acr::get_local_rr()[2]);
+
+        for (size_t i{0}; i < results.size(); ++i) {
+            file << label << ",";
+            file << acr::get(info, AC_nx) << ",";
+            file << acr::get(info, AC_ny) << ",";
+            file << acr::get(info, AC_nz) << ",";
+            file << acr::get(info, AC_global_nx) << ",";
+            file << acr::get(info, AC_global_ny) << ",";
+            file << acr::get(info, AC_global_nz) << ",";
+            file << acr::get_local_rr()[0] << ",";
+            file << nsteps_per_sample << ",";
+            file << i << ",";
+            file << nsamples << ",";
+            file << ac::mpi::get_rank(MPI_COMM_WORLD) << ",";
+            file << ac::mpi::get_size(MPI_COMM_WORLD) << ",";
+            file << args.job_id << ",";
+            file << std::chrono::duration_cast<std::chrono::nanoseconds>(results[i]).count()
+                 << std::endl;
+        }
         file.close();
+    };
 
-        auto print = [&](const std::string& label,
-                         const std::vector<std::chrono::steady_clock::duration>& results) {
-            std::ofstream file{filename, std::ios_base::app};
-            file.exceptions(~std::ios::goodbit);
-
-            auto info{ac::get_info(grid.get_device())};
-
-            ERRCHK_MPI(acr::get_local_rr()[0] == acr::get_local_rr()[1] &&
-                       acr::get_local_rr()[0] == acr::get_local_rr()[2]);
-
-            for (size_t i{0}; i < results.size(); ++i) {
-                file << label << ",";
-                file << acr::get(info, AC_nx) << ",";
-                file << acr::get(info, AC_ny) << ",";
-                file << acr::get(info, AC_nz) << ",";
-                file << acr::get(info, AC_global_nx) << ",";
-                file << acr::get(info, AC_global_ny) << ",";
-                file << acr::get(info, AC_global_nz) << ",";
-                file << acr::get_local_rr()[0] << ",";
-                file << nsteps_per_sample << ",";
-                file << i << ",";
-                file << nsamples << ",";
-                file << ac::mpi::get_rank(MPI_COMM_WORLD) << ",";
-                file << ac::mpi::get_size(MPI_COMM_WORLD) << ",";
-                file << args.job_id << ",";
-                file << std::chrono::duration_cast<std::chrono::nanoseconds>(results[i]).count()
-                     << std::endl;
-            }
-            file.close();
-        };
-
-        ERRCHK_CUDA_API(cudaProfilerStart());
-        print("tfm-mpi", bm::benchmark(init, bench, sync, nsamples));
-        ERRCHK_CUDA_API(cudaProfilerStop());
+    ERRCHK_CUDA_API(cudaProfilerStart());
+    print("tfm-mpi", bm::benchmark(init, bench, sync, nsamples));
+    ERRCHK_CUDA_API(cudaProfilerStop());
 }
 
 namespace file {
@@ -1634,141 +1642,161 @@ open(const std::string& path, const std::string& mode)
 
 } // namespace file
 
-
 namespace SimulationState {
-    
-    struct State {
-        int current_step{0};
-        AcReal current_time{0};
-        int latest_snapshot{0};
-    };
-    
-    constexpr auto default_path{"simulation_state.txt"};
-    
-    static bool exists(const std::string& path = default_path) {
-        return std::filesystem::exists(path);
-    }
 
-    static State read(const std::string& path = default_path) {
-        std::ifstream is{path};
-        ERRCHK(is);
+struct State {
+    int current_step{0};
+    AcReal current_time{0};
+    int latest_snapshot{0};
+};
 
-        State state{};
-        ac::fmt::pull(is, state.current_step, state.current_time, state.latest_snapshot);
-        return state;
-    }
+constexpr auto default_path{"simulation_state.txt"};
 
-    static void write(const State& state, const std::string& path = default_path) {
-        std::ofstream os{path};
-        ERRCHK(os);
-        ac::fmt::push(os, state.current_step, state.current_time, state.latest_snapshot);
-    }
-
-    static void push_state(const State& state, AcMeshInfo& info) {
-        acr::set(AC_current_step, state.current_step, info);
-        acr::set(AC_current_time, state.current_time, info);
-        acr::set(AC_latest_snapshot, state.latest_snapshot, info);
-    }
-
-    static void push_state_to_device(const Device& device, const State& state) {
-	auto tmp{ac::get_info(device)};
-	push_state(state, tmp);
-	ERRCHK_AC(acDeviceLoadMeshInfo(device, tmp));
-    }
-
-    static State pull_state(const AcMeshInfo& info) {
-        State state{};
-
-        state.current_step = acr::get(info, AC_current_step);
-        state.current_time = acr::get(info, AC_current_time);
-        state.latest_snapshot = acr::get(info, AC_latest_snapshot);
-
-        return state;
-    }
-
-    static void print(const State& state) {
-        PRINT_DEBUG(state.current_step);
-        PRINT_DEBUG(state.current_time);
-        PRINT_DEBUG(state.latest_snapshot);
-    }
+static bool
+exists(const std::string& path = default_path)
+{
+    return std::filesystem::exists(path);
 }
 
+static State
+read(const std::string& path = default_path)
+{
+    std::ifstream is{path};
+    ERRCHK(is);
+
+    State state{};
+    ac::fmt::pull(is, state.current_step, state.current_time, state.latest_snapshot);
+    return state;
+}
+
+static void
+write(const State& state, const std::string& path = default_path)
+{
+    std::ofstream os{path};
+    ERRCHK(os);
+    ac::fmt::push(os, state.current_step, state.current_time, state.latest_snapshot);
+}
+
+static void
+push_state(const State& state, AcMeshInfo& info)
+{
+    acr::set(AC_current_step, state.current_step, info);
+    acr::set(AC_current_time, state.current_time, info);
+    acr::set(AC_latest_snapshot, state.latest_snapshot, info);
+}
+
+static void
+push_state_to_device(const Device& device, const State& state)
+{
+    auto tmp{ac::get_info(device)};
+    push_state(state, tmp);
+    ERRCHK_AC(acDeviceLoadMeshInfo(device, tmp));
+}
+
+static State
+pull_state(const AcMeshInfo& info)
+{
+    State state{};
+
+    state.current_step    = acr::get(info, AC_current_step);
+    state.current_time    = acr::get(info, AC_current_time);
+    state.latest_snapshot = acr::get(info, AC_latest_snapshot);
+
+    return state;
+}
+
+static void
+print(const State& state)
+{
+    PRINT_DEBUG(state.current_step);
+    PRINT_DEBUG(state.current_time);
+    PRINT_DEBUG(state.latest_snapshot);
+}
+} // namespace SimulationState
 
 namespace Timeseries {
-    constexpr auto default_path{"timeseries.csv"};
+constexpr auto default_path{"timeseries.csv"};
 
-    static bool exists(const std::string& path = default_path) {
-        return std::filesystem::exists(path);
-    }
-
-    static void reset(const std::string& path = default_path) {
-        std::ofstream os{path};
-        ERRCHK(os);
-
-        ac::fmt::push(os, "label,step,t_step,dt,min,rms,max,avg");
-    }
+static bool
+exists(const std::string& path = default_path)
+{
+    return std::filesystem::exists(path);
 }
+
+static void
+reset(const std::string& path = default_path)
+{
+    std::ofstream os{path};
+    ERRCHK(os);
+
+    ac::fmt::push(os, "label,step,t_step,dt,min,rms,max,avg");
+}
+} // namespace Timeseries
 
 namespace Snapshot {
-    constexpr const char* postfix{".snapshot"};
+constexpr const char* postfix{".snapshot"};
 
-    static std::string get_path(const Field& handle, const int snapshot) {
-        return std::string(field_names[handle]) + "-" + std::to_string(snapshot) + postfix;
-    }
-
-    static void
-    read(const MPI_Comm& comm, const Device& device, const Field& handle, const int snapshot)
-    {
-        const auto path{get_path(handle, snapshot)};
-        const auto info{ac::get_info(device)};
-
-        // Workaround for Mahti (CUDA-aware IO not supported)
-        auto dfield{ac::get_dfield(device, handle, BufferGroup::input)};
-        ac::host_buffer<AcReal> hfield{dfield.size()};
-
-        ac::mpi::read_collective(comm,
-                                 ac::mpi::get_dtype<AcReal>(),
-                                 acr::get_global_nn(info),
-                                 acr::get_global_nn_offset(info),
-                                 acr::get_local_mm(info),
-                                 acr::get_local_nn(info),
-                                 acr::get_local_nn_offset(),
-                                 path,
-                                 hfield.data());
-
-        ac::copy(hfield.get(), dfield);
-    }
-
-    static void write(const MPI_Comm& comm, const Device& device, const Field& handle, const int snapshot) {
-        
-        const auto path{get_path(handle, snapshot)};
-        const auto info{ac::get_info(device)};
-
-        // Workaround for Mahti (CUDA-aware IO not supported)
-        auto dfield{ac::get_dfield(device, handle, BufferGroup::input)};        
-        ac::host_buffer<AcReal> hfield{dfield.size()};
-        ac::copy(dfield, hfield.get());
-
-        ac::mpi::write_collective(comm,
-                                 ac::mpi::get_dtype<AcReal>(),
-                                 acr::get_global_nn(info),
-                                 acr::get_global_nn_offset(info),
-                                 acr::get_local_mm(info),
-                                 acr::get_local_nn(info),
-                                 acr::get_local_nn_offset(),
-                                 hfield.data(),
-                                 path);
-    }
+static std::string
+get_path(const Field& handle, const int snapshot)
+{
+    return std::string(field_names[handle]) + "-" + std::to_string(snapshot) + postfix;
 }
 
+static void
+read(const MPI_Comm& comm, const Device& device, const Field& handle, const int snapshot)
+{
+    const auto path{get_path(handle, snapshot)};
+    const auto info{ac::get_info(device)};
 
+    // Workaround for Mahti (CUDA-aware IO not supported)
+    auto dfield{ac::get_dfield(device, handle, BufferGroup::input)};
+    ac::host_buffer<AcReal> hfield{dfield.size()};
 
-static void production_run(const tfm::arguments& args, const AcMeshInfo& raw_info) {
+    ac::mpi::read_collective(comm,
+                             ac::mpi::get_dtype<AcReal>(),
+                             acr::get_global_nn(info),
+                             acr::get_global_nn_offset(info),
+                             acr::get_local_mm(info),
+                             acr::get_local_nn(info),
+                             acr::get_local_nn_offset(),
+                             path,
+                             hfield.data());
+
+    ac::copy(hfield.get(), dfield);
+}
+
+static void
+write(const MPI_Comm& comm, const Device& device, const Field& handle, const int snapshot)
+{
+
+    const auto path{get_path(handle, snapshot)};
+    const auto info{ac::get_info(device)};
+
+    // Workaround for Mahti (CUDA-aware IO not supported)
+    auto dfield{ac::get_dfield(device, handle, BufferGroup::input)};
+    ac::host_buffer<AcReal> hfield{dfield.size()};
+    ac::copy(dfield, hfield.get());
+
+    ac::mpi::write_collective(comm,
+                              ac::mpi::get_dtype<AcReal>(),
+                              acr::get_global_nn(info),
+                              acr::get_global_nn_offset(info),
+                              acr::get_local_mm(info),
+                              acr::get_local_nn(info),
+                              acr::get_local_nn_offset(),
+                              hfield.data(),
+                              path);
+}
+} // namespace Snapshot
+
+static void
+production_run(const tfm::arguments& args, const AcMeshInfo& raw_info)
+{
     // Init Grid
     Grid grid{raw_info};
 
     const auto fields{hydro_fields};
-    
+
     // // Read fields from files if they exist
     // if (SimulationState::exists()) {
 
@@ -1790,36 +1818,40 @@ static void production_run(const tfm::arguments& args, const AcMeshInfo& raw_inf
     // const size_t latest_snapshot{0};
     // for (const auto& field : fields)
     //     Snapshot::write(grid.get_comm(), grid.get_device(), field, latest_snapshot);
-    // SimulationState::write(ac::get_info(grid.get_device()), latest_snapshot); // Write the state out
+    // SimulationState::write(ac::get_info(grid.get_device()), latest_snapshot); // Write the state
+    // out
 }
-
-
 
 namespace Setup {
 
 /** Pulls AcMeshInfo from an .ini */
-static AcMeshInfo pull_info_from_ini(const std::string& path) {
+static AcMeshInfo
+pull_info_from_ini(const std::string& path)
+{
     AcMeshInfo info{};
     ERRCHK(acParseINI(path.c_str(), &info) == 0);
     return info;
 }
 
 /** Overrides configuration parameters if instructed by the user */
-static void process_overrides(const tfm::arguments& args, AcMeshInfo& info)
+static void
+process_overrides(const tfm::arguments& args, AcMeshInfo& info)
 {
     if (args.global_nn_override.size() > 0)
         acr::set_global_nn(args.global_nn_override, info);
-    
+
     if (args.simulation_nsteps_override > 0)
-	acr::set(AC_simulation_nsteps, args.simulation_nsteps_override, info);
+        acr::set(AC_simulation_nsteps, args.simulation_nsteps_override, info);
 }
 
-/** 
+/**
  * Selects the device based on the original MPI_COMM_WORLD rank
  * Assumes that nearby devices are assigned to subsequent ranks
  * NOTE: Currently hardcoded to LUMI topology
  */
-static int select_device() {
+static int
+select_device()
+{
     // Improvement:
     // Could benchmark the topology here instead of hardcoding the fastest paths
 
@@ -1836,7 +1868,7 @@ static int select_device() {
         device_id = device_ids[as<size_t>(device_id)];
     }
     ERRCHK_CUDA_API(cudaSetDevice(device_id)); // likely unnecessary
-    ERRCHK_CUDA_API(cudaDeviceSynchronize()); // likely unnecessary
+    ERRCHK_CUDA_API(cudaDeviceSynchronize());  // likely unnecessary
     return device_id;
 }
 
@@ -1879,8 +1911,12 @@ setup_local_mesh(const MPI_Comm& cart_comm, AcMeshInfo& info)
     acr::set(AC_device_id, select_device(), info);
 }
 
-static void set_unused_params(AcMeshInfo& info) {
-    ERRCHK_EXPR_DESC(acr::get(info, AC_init_type) == INT_MIN, "AC_init_type set by the user but overwriting as unused in set_unused_params(AcMeshInfo&)");
+static void
+set_unused_params(AcMeshInfo& info)
+{
+    ERRCHK_EXPR_DESC(acr::get(info, AC_init_type) == INT_MIN,
+                     "AC_init_type set by the user but overwriting as unused in "
+                     "set_unused_params(AcMeshInfo&)");
     ERRCHK(std::isnan(acr::get(info, AC_dt)));
 
     // Others to ensure nothing is left uninitialized
@@ -1894,7 +1930,9 @@ static void set_unused_params(AcMeshInfo& info) {
     acr::set(AC_exclude_inner, 0, info);
 }
 
-static AcMeshInfo prepare_mesh_info(const tfm::arguments& args) {
+static AcMeshInfo
+prepare_mesh_info(const tfm::arguments& args)
+{
     // Load configuration
     AcMeshInfo info{Setup::pull_info_from_ini(args.config_path)};
 
@@ -1917,317 +1955,329 @@ static AcMeshInfo prepare_mesh_info(const tfm::arguments& args) {
     return info;
 }
 
-}
+} // namespace Setup
 
 namespace rev {
 
 class Grid {
-    private:
-        ac::mpi::cart_comm m_comm;
-        acr::device m_device;
-        ac::mpi::comm m_xy_neighbors;
+  private:
+    ac::mpi::cart_comm m_comm;
+    acr::device m_device;
+    ac::mpi::comm m_xy_neighbors;
 
-        acm::rev::halo_exchange<AcReal, ac::mr::device_allocator> m_hydro_he;
-        acm::rev::halo_exchange<AcReal, ac::mr::device_allocator> m_tfm_he;
+    acm::rev::halo_exchange<AcReal, ac::mr::device_allocator> m_hydro_he;
+    acm::rev::halo_exchange<AcReal, ac::mr::device_allocator> m_tfm_he;
 
-        ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg{};
-        ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce{};
-        
+    ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg{};
+    ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce{};
 
-    public:
-        Grid(const AcMeshInfo& info) : 
-            m_comm{MPI_COMM_WORLD, acr::get_global_nn(info)},
-            m_device{acr::get(info, AC_device_id), info},
-            m_xy_neighbors{ac::mpi::split(m_comm.get(), as<int>(ac::mpi::coords(m_comm)[2]))},
-            m_hydro_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), hydro_fields.size()},
-            m_tfm_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), tfm_fields.size()}
-            {
-                // Dryrun
-                reset();
-                tfm_pipeline(3);
-                
-                // Reset and reload a pristine config
-                reset();
-                ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), info));
+  public:
+    Grid(const AcMeshInfo& info)
+        : m_comm{MPI_COMM_WORLD, acr::get_global_nn(info)},
+          m_device{acr::get(info, AC_device_id), info},
+          m_xy_neighbors{ac::mpi::split(m_comm.get(), as<int>(ac::mpi::coords(m_comm)[2]))},
+          m_hydro_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), hydro_fields.size()},
+          m_tfm_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), tfm_fields.size()}
+    {
+        // Dryrun
+        reset();
+        tfm_pipeline(3);
+
+        // Reset and reload a pristine config
+        reset();
+        ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), info));
+    }
+
+    void reset()
+    {
+        // Stencil coefficients
+        AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
+        ERRCHK(get_stencil_coeffs(ac::get_info(m_device.get()), stencils) == 0);
+        ERRCHK_AC(acDeviceLoadStencils(m_device.get(), STREAM_DEFAULT, stencils));
+        // ERRCHK_AC(acDevicePrintInfo(m_device.get()));
+
+        // Forcing parameters
+        auto tmp_local_info{ac::get_info(m_device.get())};
+        ERRCHK(acHostUpdateForcingParams(&tmp_local_info) == 0);
+        ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), tmp_local_info));
+
+        // Fields
+        ERRCHK_AC(acDeviceResetMesh(m_device.get(), STREAM_DEFAULT));
+        ERRCHK_AC(acDeviceSwapBuffers(m_device.get()));
+        ERRCHK_AC(acDeviceResetMesh(m_device.get(), STREAM_DEFAULT));
+
+        // Profiles
+        // Note: all fields and profiles are initialized to 0 except
+        // the test profiles (PROFILE_B11 to PROFILE_B22)
+        ERRCHK(init_tfm_profiles(m_device.get()) == 0);
+    }
+
+    void launch_hydro_he(const BufferGroup& group)
+    {
+        m_hydro_he.launch(ac::get_ptrs(m_device.get(), hydro_fields, group));
+    }
+
+    void wait_hydro_he(const BufferGroup& group)
+    {
+        m_hydro_he.wait(ac::get_ptrs(m_device.get(), hydro_fields, group));
+    }
+
+    void launch_tfm_he(const BufferGroup& group)
+    {
+        m_tfm_he.launch(ac::get_ptrs(m_device.get(), tfm_fields, group));
+    }
+
+    void wait_tfm_he(const BufferGroup& group)
+    {
+        m_tfm_he.wait(ac::get_ptrs(m_device.get(), tfm_fields, group));
+    }
+
+    void launch_reduce_xy_averages()
+    {
+        // Strategy:
+        // 1) Reduce the local result to device->vba.profiles.in
+        ERRCHK_AC(acDeviceSynchronizeStream(m_device.get(), STREAM_ALL));
+        ERRCHK_AC(acDeviceReduceXYAverages(m_device.get(), STREAM_DEFAULT));
+        ERRCHK_AC(acDeviceSynchronizeStream(m_device.get(), STREAM_DEFAULT));
+
+        // 3) Allreduce
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
+
+        const size_t count{NUM_PROFILES * vba.profiles.count};
+        const ac::device_view<AcReal> in{count, vba.profiles.in[0]};
+        ac::device_view<AcReal> out{count, vba.profiles.in[0]};
+
+        ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
+        m_xy_avg.launch(m_xy_neighbors.get(), in, MPI_SUM, out);
+    }
+
+    void wait_reduce_xy_averages()
+    {
+        m_xy_avg.wait();
+
+        VertexBufferArray vba{};
+        ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
+
+        // Note: assumes that all profiles are contiguous and in correct order
+        // Error-prone: should be improved when time
+        const size_t count{NUM_PROFILES * vba.profiles.count};
+        AcReal* data{vba.profiles.in[0]};
+
+        auto collaborated_procs{ac::mpi::get_size(m_xy_neighbors.get())};
+        acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
+    }
+
+    void launch_uumax_reduce()
+    {
+        AcReal uumax{0};
+        ERRCHK_AC(acDeviceReduceVec(m_device.get(),
+                                    STREAM_DEFAULT,
+                                    RTYPE_MAX,
+                                    VTXBUF_UUX,
+                                    VTXBUF_UUY,
+                                    VTXBUF_UUZ,
+                                    &uumax));
+        m_uumax_reduce.launch(m_comm.get(), ac::host_view<AcReal>{1, &uumax}, MPI_MAX);
+    }
+
+    AcReal [[nodiscard]] wait_uumax_reduce_and_get()
+    {
+        AcReal uumax{0};
+        m_uumax_reduce.wait(ac::host_view<AcReal>{1, &uumax});
+        return uumax;
+    }
+
+    AcReal [[nodiscard]] wait_uumax_reduce_and_get_dt()
+    {
+
+        AcReal uumax{wait_uumax_reduce_and_get()};
+        AcReal vAmax{0};
+        AcReal shock_max{0};
+
+        static bool warning_shown{false};
+        if (!warning_shown) {
+            WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
+            warning_shown = true;
+        }
+
+        const auto info{ac::get_info(m_device.get())};
+        return calc_timestep(uumax, vAmax, shock_max, info);
+    }
+
+    void compute_outer(const std::vector<std::vector<Kernel>>& kernels, const size_t substep)
+    {
+        ERRCHK_AC(acDeviceLoadIntUniform(m_device.get(), STREAM_DEFAULT, AC_exclude_inner, 1));
+        compute(m_device.get(), kernels[substep], SegmentGroup::compute_full);
+    }
+
+    void compute_inner(const std::vector<std::vector<Kernel>>& kernels, const size_t substep)
+    {
+        ERRCHK_AC(acDeviceLoadIntUniform(m_device.get(), STREAM_DEFAULT, AC_exclude_inner, 0));
+        compute(m_device.get(), kernels[substep], SegmentGroup::compute_inner);
+    }
+
+    void swap_buffers() { ac::swap_buffers(m_device.get()); }
+
+    void tfm_pipeline(const size_t nsteps)
+    {
+
+        // Ensure halos and XY averages are up-to-date before starting integration
+        launch_hydro_he(BufferGroup::input);
+        launch_tfm_he(BufferGroup::input);
+        launch_reduce_xy_averages();
+        launch_uumax_reduce();
+
+        for (auto step{0}; step < nsteps; ++step) {
+
+            // Update dt and forcing
+            const auto dt{wait_uumax_reduce_and_get_dt()};
+
+            auto tmp_info{ac::get_info(m_device.get())};
+            acr::set(AC_dt, dt, tmp_info);
+            ERRCHK(acHostUpdateForcingParams(&tmp_info) == 0);
+            ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), tmp_info));
+
+            for (size_t substep{0}; substep < 3; ++substep) {
+
+                //// Outer segments
+                // Hydro dependencies: hydro
+                wait_hydro_he(BufferGroup::input);
+
+                // Outer segments
+                compute_outer(hydro_kernels, substep);
+                launch_hydro_he(BufferGroup::output);
+
+                // TF dependencies
+                wait_reduce_xy_averages();
+                wait_tfm_he(BufferGroup::input);
+
+                compute_outer(tfm_kernels, substep);
+                launch_tfm_he(BufferGroup::output);
+
+                //// Inner segments
+                compute_inner(hydro_kernels, substep);
+                compute_inner(tfm_kernels, substep);
+                swap_buffers();
+
+                if (substep == 2)
+                    launch_uumax_reduce();
+
+                launch_reduce_xy_averages();
             }
 
-        void reset() {
-            // Stencil coefficients
-            AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
-            ERRCHK(get_stencil_coeffs(ac::get_info(m_device.get()), stencils) == 0);
-            ERRCHK_AC(acDeviceLoadStencils(m_device.get(), STREAM_DEFAULT, stencils));
-            // ERRCHK_AC(acDevicePrintInfo(m_device.get()));
-
-            // Forcing parameters
-            auto tmp_local_info{ac::get_info(m_device.get())};
-            ERRCHK(acHostUpdateForcingParams(&tmp_local_info) == 0);
-            ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), tmp_local_info));
-
-            // Fields
-            ERRCHK_AC(acDeviceResetMesh(m_device.get(), STREAM_DEFAULT));
-            ERRCHK_AC(acDeviceSwapBuffers(m_device.get()));
-            ERRCHK_AC(acDeviceResetMesh(m_device.get(), STREAM_DEFAULT));
-
-            // Profiles
-            // Note: all fields and profiles are initialized to 0 except
-            // the test profiles (PROFILE_B11 to PROFILE_B22)
-            ERRCHK(init_tfm_profiles(m_device.get()) == 0);
+            // Update current time and step
+            const auto current_time{ac::pull_param(m_device.get(), AC_current_time)};
+            const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
+            ac::push_param(m_device.get(), AC_current_time, current_time + dt);
+            ac::push_param(m_device.get(), AC_current_step, current_step + 1);
         }
 
-        void launch_hydro_he(const BufferGroup& group) {
-            m_hydro_he.launch(ac::get_ptrs(m_device.get(), hydro_fields, group));
+        wait_hydro_he(BufferGroup::input);
+        wait_tfm_he(BufferGroup::input);
+        wait_reduce_xy_averages();
+        wait_uumax_reduce_and_get_dt();
+    }
+
+    void restart_from_snapshots(const std::vector<Field>& fields)
+    {
+        const auto latest_snapshot{ac::pull_param(m_device.get(), AC_latest_snapshot)};
+        for (const auto& field : fields)
+            Snapshot::read(m_comm.get(), m_device.get(), field, latest_snapshot);
+    }
+
+    void flush_snapshots_to_disk(const std::vector<Field>& fields)
+    {
+
+        constexpr auto nsnapshots{2};
+
+        // Calculate the latest snapshot and push it to device
+        auto current_snapshot{ac::pull_param(m_device.get(), AC_latest_snapshot)};
+        auto latest_snapshot{(current_snapshot + 1) % nsnapshots};
+
+        // Write to disk (all procs write collectively)
+        for (const auto& field : fields)
+            Snapshot::write(m_comm.get(), m_device.get(), field, latest_snapshot);
+        ERRCHK_MPI_API(MPI_Barrier(m_comm.get())); // Guarantees all writes now complete
+
+        // Write the accompanying information to restart from these snapshots
+        ac::push_param(m_device.get(), AC_latest_snapshot, latest_snapshot);
+        // Only the root proc writes
+        if (ac::mpi::get_rank(m_comm.get()) == 0) {
+            const auto state{SimulationState::pull_state(ac::get_info(m_device.get()))};
+            SimulationState::write(state);
         }
+        ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
+    }
 
-        void wait_hydro_he(const BufferGroup& group) {
-            m_hydro_he.wait(ac::get_ptrs(m_device.get(), hydro_fields, group));
+    void io_step(const std::vector<Field>& restart_fields)
+    {
+        const auto profile_output_interval{
+            ac::pull_param(m_device.get(), AC_simulation_profile_output_interval)};
+        const auto snapshot_output_interval{
+            ac::pull_param(m_device.get(), AC_simulation_snapshot_output_interval)};
+
+        const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
+        const auto current_time{ac::pull_param(m_device.get(), AC_current_time)};
+        const auto current_dt{ac::pull_param(m_device.get(), AC_dt)};
+
+        // Write the current state out
+        if ((current_step % profile_output_interval) == 0)
+            write_profiles_to_disk(m_comm.get(), m_device.get(), current_step);
+
+        if ((current_step % profile_output_interval) == 0)
+            write_timeseries(m_comm.get(), m_device.get(), current_step, current_time, current_dt);
+
+        if ((current_step % snapshot_output_interval) == 0)
+            flush_snapshots_to_disk(restart_fields);
+    }
+
+    void simulation_loop()
+    {
+
+        auto restart_fields{hydro_fields};
+        restart_fields.insert(restart_fields.end(), tfm_fields.begin(), tfm_fields.end());
+        if (SimulationState::exists()) {
+            // Resume previous run
+            SimulationState::push_state_to_device(m_device.get(), SimulationState::read());
+            restart_from_snapshots(restart_fields);
         }
-
-        void launch_tfm_he(const BufferGroup& group) {
-            m_tfm_he.launch(ac::get_ptrs(m_device.get(), tfm_fields, group));
-        }
-
-        void wait_tfm_he(const BufferGroup& group) {
-            m_tfm_he.wait(ac::get_ptrs(m_device.get(), tfm_fields, group));
-        }
-
-        void launch_reduce_xy_averages() {
-            // Strategy:
-            // 1) Reduce the local result to device->vba.profiles.in
-            ERRCHK_AC(acDeviceSynchronizeStream(m_device.get(), STREAM_ALL));
-            ERRCHK_AC(acDeviceReduceXYAverages(m_device.get(), STREAM_DEFAULT));
-            ERRCHK_AC(acDeviceSynchronizeStream(m_device.get(), STREAM_DEFAULT));
-
-            // 3) Allreduce
-            VertexBufferArray vba{};
-            ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
-
-            const size_t count{NUM_PROFILES * vba.profiles.count};
-            const ac::device_view<AcReal> in{count, vba.profiles.in[0]};
-            ac::device_view<AcReal> out{count, vba.profiles.in[0]};
-
-            ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
-            m_xy_avg.launch(m_xy_neighbors.get(), in, MPI_SUM, out);
-        }
-
-        void wait_reduce_xy_averages() {
-            m_xy_avg.wait();
-
-            VertexBufferArray vba{};
-            ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
-
-            // Note: assumes that all profiles are contiguous and in correct order
-            // Error-prone: should be improved when time
-            const size_t count{NUM_PROFILES * vba.profiles.count};
-            AcReal* data{vba.profiles.in[0]};
-
-            auto collaborated_procs{ac::mpi::get_size(m_xy_neighbors.get())};
-            acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
-        }
-
-        void launch_uumax_reduce() {
-            AcReal uumax{0};
-            ERRCHK_AC(acDeviceReduceVec(m_device.get(),
-                                        STREAM_DEFAULT,
-                                        RTYPE_MAX,
-                                        VTXBUF_UUX,
-                                        VTXBUF_UUY,
-                                        VTXBUF_UUZ,
-                                        &uumax));
-            m_uumax_reduce.launch(m_comm.get(), ac::host_view<AcReal>{1, &uumax}, MPI_MAX);
-        }
-
-        AcReal [[nodiscard]] wait_uumax_reduce_and_get()
-        {
-            AcReal uumax{0};
-            m_uumax_reduce.wait(ac::host_view<AcReal>{1, &uumax});
-            return uumax;
-        }
-
-        AcReal [[nodiscard]] wait_uumax_reduce_and_get_dt() {
-
-            AcReal uumax{wait_uumax_reduce_and_get()};
-            AcReal vAmax{0};
-            AcReal shock_max{0};
-
-            static bool warning_shown{false};
-            if (!warning_shown) {
-                WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
-                warning_shown = true;
-            }
-
-            const auto info{ac::get_info(m_device.get())};
-            return calc_timestep(uumax, vAmax, shock_max, info);
-        }
-
-        void compute_outer(const std::vector<std::vector<Kernel>>& kernels, const size_t substep) {
-            ERRCHK_AC(acDeviceLoadIntUniform(m_device.get(), STREAM_DEFAULT, AC_exclude_inner, 1));
-            compute(m_device.get(), kernels[substep], SegmentGroup::compute_full);
-        }
-
-        void compute_inner(const std::vector<std::vector<Kernel>>& kernels, const size_t substep) {
-            ERRCHK_AC(acDeviceLoadIntUniform(m_device.get(), STREAM_DEFAULT, AC_exclude_inner, 0));
-            compute(m_device.get(), kernels[substep], SegmentGroup::compute_inner);
-        }
-
-        void swap_buffers() {
-            ac::swap_buffers(m_device.get());
-        }
-
-        void tfm_pipeline(const size_t nsteps) {
-
-            // Ensure halos and XY averages are up-to-date before starting integration
-            launch_hydro_he(BufferGroup::input);
-            launch_tfm_he(BufferGroup::input);
-            launch_reduce_xy_averages();
-            launch_uumax_reduce();
-
-            for (auto step{0}; step < nsteps; ++step) {
-
-                // Update dt and forcing
-                const auto dt{wait_uumax_reduce_and_get_dt()};
-                
-                auto tmp_info{ac::get_info(m_device.get())};
-                acr::set(AC_dt, dt, tmp_info);
-                ERRCHK(acHostUpdateForcingParams(&tmp_info) == 0);
-                ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), tmp_info));
-
-                for (size_t substep{0}; substep < 3; ++substep) {
-                    
-                    //// Outer segments
-                    // Hydro dependencies: hydro
-                    wait_hydro_he(BufferGroup::input);
-
-                    // Outer segments
-                    compute_outer(hydro_kernels, substep);
-                    launch_hydro_he(BufferGroup::output);
-
-                    // TF dependencies
-                    wait_reduce_xy_averages();
-                    wait_tfm_he(BufferGroup::input);
-
-                    compute_outer(tfm_kernels, substep);
-                    launch_tfm_he(BufferGroup::output);
-
-                    //// Inner segments
-                    compute_inner(hydro_kernels, substep);
-                    compute_inner(tfm_kernels, substep);
-                    swap_buffers();
-
-                    if (substep == 2)
-                        launch_uumax_reduce();
-
-                    launch_reduce_xy_averages();
-                }
-
-                // Update current time and step
-                const auto current_time{ac::pull_param(m_device.get(), AC_current_time)};
-                const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
-                ac::push_param(m_device.get(), AC_current_time, current_time + dt);
-                ac::push_param(m_device.get(), AC_current_step, current_step + 1);
-            }
-
-            wait_hydro_he(BufferGroup::input);
-            wait_tfm_he(BufferGroup::input);
-            wait_reduce_xy_averages();
-            wait_uumax_reduce_and_get_dt();
-        }
-
-        void restart_from_snapshots(const std::vector<Field>& fields) {
-            const auto latest_snapshot{ac::pull_param(m_device.get(), AC_latest_snapshot)};
-            for (const auto& field : fields)
-                Snapshot::read(m_comm.get(), m_device.get(), field, latest_snapshot);
-        }
-
-        void flush_snapshots_to_disk(const std::vector<Field>& fields) {
-
-            constexpr auto nsnapshots{2};
-
-            // Calculate the latest snapshot and push it to device            
-            auto current_snapshot{ac::pull_param(m_device.get(), AC_latest_snapshot)};
-            auto latest_snapshot{(current_snapshot + 1) % nsnapshots};
-
-            // Write to disk (all procs write collectively)
-            for (const auto& field : fields)
-                Snapshot::write(m_comm.get(), m_device.get(), field, latest_snapshot);
-            ERRCHK_MPI_API(MPI_Barrier(m_comm.get())); // Guarantees all writes now complete
-
-            // Write the accompanying information to restart from these snapshots
-            ac::push_param(m_device.get(), AC_latest_snapshot, latest_snapshot);
-            // Only the root proc writes
-            if (ac::mpi::get_rank(m_comm.get()) == 0) {
-                const auto state{SimulationState::pull_state(ac::get_info(m_device.get()))};
-                SimulationState::write(state);
-            }
+        else {
+            // Start a new run
+            if (ac::mpi::get_rank(m_comm.get()) == 0)
+                Timeseries::reset();
             ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
+
+            SimulationState::push_state_to_device(m_device.get(), SimulationState::State{});
+            io_step(restart_fields);
+        }
+        SimulationState::print(SimulationState::pull_state(ac::get_info(m_device.get())));
+
+        // Simulate
+        const auto nsteps{ac::pull_param(m_device.get(), AC_simulation_nsteps)};
+        const auto tf_reset_interval{
+            ac::pull_param(m_device.get(), AC_simulation_reset_test_field_interval)};
+
+        for (size_t counter{0}; counter < nsteps; ++counter) {
+
+            const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
+
+            if ((current_step > 0) && ((current_step % tf_reset_interval) == 0))
+                reset_fields(m_device.get(), tfm_fields, BufferGroup::input);
+
+            tfm_pipeline(1);
+            io_step(restart_fields);
         }
 
-	void io_step(const std::vector<Field>& restart_fields) {
-	    const auto profile_output_interval{ac::pull_param(m_device.get(), AC_simulation_profile_output_interval)};
-	    const auto snapshot_output_interval{ac::pull_param(m_device.get(), AC_simulation_snapshot_output_interval)};
-		
-	    	const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
-		const auto current_time{ac::pull_param(m_device.get(), AC_current_time)};
-		const auto current_dt{ac::pull_param(m_device.get(), AC_dt)};
-	
-    	    // Write the current state out
-		if ((current_step % profile_output_interval) == 0)
-                	write_profiles_to_disk(m_comm.get(), m_device.get(), current_step);
+        // Ensure the current state is flushed to disk even if the last step is
+        // not divisible by snapshot_output_interval
+        flush_snapshots_to_disk(restart_fields);
+    }
 
-		if ((current_step % profile_output_interval) == 0)
-                	write_timeseries(m_comm.get(), m_device.get(), current_step, current_time, current_dt);
-			
-		if ((current_step % snapshot_output_interval) == 0)
-            		flush_snapshots_to_disk(restart_fields);
-		
-	}
-
-        void simulation_loop() {
-          
-	       auto restart_fields{hydro_fields};
-	       restart_fields.insert(restart_fields.end(), tfm_fields.begin(), tfm_fields.end());
-		if (SimulationState::exists()) {
-			// Resume previous run
-			SimulationState::push_state_to_device(m_device.get(), SimulationState::read());
-			restart_from_snapshots(restart_fields);
-		} else {
-			// Start a new run
-			if (ac::mpi::get_rank(m_comm.get()) == 0)
-				Timeseries::reset();
-			ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
-
-			SimulationState::push_state_to_device(m_device.get(), SimulationState::State{});
-			io_step(restart_fields);
-		}
-    		SimulationState::print(SimulationState::pull_state(ac::get_info(m_device.get())));
-
-            // Simulate
-	    const auto nsteps{ac::pull_param(m_device.get(), AC_simulation_nsteps)};
-	    const auto tf_reset_interval{ac::pull_param(m_device.get(), AC_simulation_reset_test_field_interval)};
-
-	    for (size_t counter{0}; counter < nsteps; ++counter) {
-	    	
-		const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
-			
-		if ((current_step > 0) && ((current_step % tf_reset_interval) == 0))
-			reset_fields(m_device.get(), tfm_fields, BufferGroup::input);
-
-		tfm_pipeline(1);	
-		io_step(restart_fields);
-	    }
-
-	    // Ensure the current state is flushed to disk even if the last step is
-	    // not divisible by snapshot_output_interval
-	    flush_snapshots_to_disk(restart_fields);
-        }
-
-	void benchmark() {
-		ERRCHK_EXPR_DESC(false, "not implemented");
-
-	}
+    void benchmark() { ERRCHK_EXPR_DESC(false, "not implemented"); }
 };
 
-}
-
+} // namespace rev
 
 int
 main(int argc, char* argv[])
@@ -2249,10 +2299,10 @@ main(int argc, char* argv[])
         // Grid grid{info};
         rev::Grid grid{info};
 
-	if (args.benchmark)
-		grid.benchmark();
-	else
-        	grid.simulation_loop();
+        if (args.benchmark)
+            grid.benchmark();
+        else
+            grid.simulation_loop();
     }
     catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
