@@ -1032,6 +1032,38 @@ written_fields_disjoint_from_read(const int curr_kernel)
 	}
 	return true;
 }
+void
+gen_complex_funcs(const int curr_kernel)
+{
+    bool written_something = false;
+    for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
+	    written_something |= write_complex_called[curr_kernel][field];
+    if(!write_complex_called_statically[curr_kernel]){}
+    else if(written_something)
+    {
+    	printf("const auto write_complex_base __attribute__((unused)) = [&](const ComplexField& field, const AcComplex& val) {"
+			"vba.complex_in[field][idx] = val;"
+			"};");
+    }
+    else
+    {
+    	printf("const auto write_complex_base __attribute__((unused)) = [&](const ComplexField& field, const AcComplex& val) {};");
+    }
+    bool read_something = false;
+    for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
+	    read_something |= value_complex_called[curr_kernel][field];
+     if(!value_complex_called_statically[curr_kernel]){}
+     else if(read_something)
+     {
+    	printf("const auto value_complex __attribute__((unused)) = [&](const ComplexField& field) {"
+			"return vba.complex_in[field][idx];"
+			"};");
+     }
+     else
+     {
+    	printf("const auto value_complex __attribute__((unused)) = [&](const ComplexField& field) {return (AcComplex){0.,0.};};");
+     }
+}
 
 void
 gen_kernel_write_funcs(const int curr_kernel)
@@ -1141,12 +1173,17 @@ gen_kernel_write_funcs(const int curr_kernel)
     	printf("};");
 
     }
+
+    gen_complex_funcs(curr_kernel);
     bool written_something = false;
     for(int field = 0; field < NUM_ALL_FIELDS; ++field)
 	    written_something |= write_called[curr_kernel][field];
     if(!written_something) 
     {
-    	printf("const auto write_base __attribute__((unused)) = [&](const Field&, const AcReal&) {};");
+	if(write_base_called_statically[curr_kernel])
+	{
+    		printf("const auto write_base __attribute__((unused)) = [&](const Field&, const AcReal&) {};");
+	}
     	printf("const auto AC_INTERNAL_write_vtxbuf __attribute__((unused)) = [&](const Field& handle, const int& x, const int& y, const int& z, const AcReal& value){};");
     	printf("const auto AC_INTERNAL_write_vtxbuf_at_current_point __attribute__((unused)) = [&](const Field& handle, const AcReal& value){};");
     	printf("const auto AC_INTERNAL_write_vtxbuf3 __attribute__((unused)) = [&](const Field3& handle, const int& x, const int& y, const int& z, const AcReal3& value){};");
@@ -1783,6 +1820,7 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
   //TP: don't gen previous at all if no fields use it. Done to declutter the resulting code and to speedup compilation
   // Note: previous() not enabled for profiles to avoid overhead.
   // Can reconsider if there would be use for it.
+  if(!previous_called_statically[cur_kernel]) return;
   bool gen_previous = false;
   for(int field = 0;  field < NUM_ALL_FIELDS; ++field) gen_previous |= previous_accessed[cur_kernel][field];
   if(!gen_previous) 

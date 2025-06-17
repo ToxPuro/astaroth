@@ -488,6 +488,14 @@ flush_kernel(AcReal* arr, const size_t n, const AcReal value)
   if (idx < n)
     arr[idx] = value;
 }
+
+static __global__ void
+flush_kernel_complex(AcComplex* arr, const size_t n, const AcComplex value)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < n)
+    arr[idx] = value;
+}
 static __global__ void
 flush_kernel_int(int* arr, const size_t n, const int value)
 {
@@ -535,6 +543,19 @@ acKernelFlushReal(const cudaStream_t stream, AcReal* arr, const size_t n,
 }
 
 AcResult
+acKernelFlushComplex(const cudaStream_t stream, AcComplex* arr, const size_t n,
+              const AcComplex value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel_complex,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
+AcResult
 acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
               const int value)
 {
@@ -572,6 +593,12 @@ acKernelFlush(const cudaStream_t stream, int* arr, const size_t n,
               const int value)
 {
 	return acKernelFlushInt(stream,arr,n,value);
+}
+AcResult
+acKernelFlush(const cudaStream_t stream, AcComplex* arr, const size_t n,
+              const AcComplex value)
+{
+	return acKernelFlushComplex(stream,arr,n,value);
 }
 
 #if AC_DOUBLE_PRECISION
@@ -882,6 +909,14 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
     ERRCHK_ALWAYS(vba->on_device.out[i]);
     acKernelFlush(stream, vba->on_device.in[i], vba->counts[i], (AcReal)NAN);
     acKernelFlush(stream, vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
+  }
+
+  const AcComplex zero_complex{0.0,0.0};
+  for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
+  {
+    size_t n = vba->computational_dims.m1.x*vba->computational_dims.m1.y*vba->computational_dims.m1.z;
+    ERRCHK_ALWAYS(vba->on_device.complex_in[field]);
+    acKernelFlush(stream, vba->on_device.complex_in[field],n,zero_complex);
   }
   memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray
@@ -1198,6 +1233,11 @@ acVBACreate(const AcMeshInfo config)
 	  vba.profile_dims[p] = acGetMeshDims(config);
   	  vba.profile_counts[p] = vba.profile_dims[p].m1.x*vba.profile_dims[p].m1.y*vba.profile_dims[p].m1.z;
   }
+  for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
+  {
+  	size_t count = vba.computational_dims.m1.x*vba.computational_dims.m1.y*vba.computational_dims.m1.z;
+	device_malloc(&vba.on_device.complex_in[field],sizeof(AcComplex)*count);
+  }
 
   ERRCHK_ALWAYS(vba_in_buff == NULL);
   ERRCHK_ALWAYS(vba_out_buff == NULL);
@@ -1347,6 +1387,10 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
   //TP: does not work for compressible memory TODO: fix it if needed
   device_free(&(vba_in_buff), 0);
   device_free(&(vba_out_buff), 0);
+  for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
+  {
+  	device_free(&vba->on_device.complex_in[field], 0);
+  }
 
   //Free arrays
   AcArrayTypes::run<free_arrays>(config);
@@ -2516,6 +2560,70 @@ multiply_inplace(const AcReal value, const size_t count, AcReal* array)
     array[idx] *= value;
 }
 
+static __global__ void
+complex_to_real(const AcComplex* src, const size_t count, AcReal* dst)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < count)
+    dst[idx] = src[idx].x;
+}
+
+
+static __global__ void
+real_to_complex(const AcReal* src, const size_t count, AcComplex* dst)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < count)
+  {
+    dst[idx].x = src[idx];
+    dst[idx].y = 0.0;
+  }
+}
+static __global__ void
+multiply_inplace_complex(const AcReal value, const size_t count, AcComplex* array)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < count)
+  {
+    array[idx].x *= value;
+    array[idx].y *= value;
+  }
+}
+
+AcResult
+acComplexToReal(const AcComplex* src, const size_t count, AcReal* dst)
+{
+  const size_t tpb = 256;
+  const size_t bpg = (count + tpb - 1) / tpb;
+  KERNEL_LAUNCH(complex_to_real,bpg, tpb,0,0)(src, count, dst);
+  ERRCHK_CUDA_KERNEL();
+  ERRCHK_CUDA(cudaDeviceSynchronize()); // NOTE: explicit sync here for safety
+  return AC_SUCCESS;
+}
+
+AcResult
+acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst)
+{
+  const size_t tpb = 256;
+  const size_t bpg = (count + tpb - 1) / tpb;
+  KERNEL_LAUNCH(real_to_complex,bpg, tpb,0,0)(src, count, dst);
+  ERRCHK_CUDA_KERNEL();
+  ERRCHK_CUDA(cudaDeviceSynchronize()); // NOTE: explicit sync here for safety
+  return AC_SUCCESS;
+}
+
+
+AcResult
+acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* array)
+{
+  const size_t tpb = 256;
+  const size_t bpg = (count + tpb - 1) / tpb;
+  KERNEL_LAUNCH(multiply_inplace_complex,bpg, tpb,0,0)(value, count, array);
+  ERRCHK_CUDA_KERNEL();
+  ERRCHK_CUDA(cudaDeviceSynchronize()); // NOTE: explicit sync here for safety
+  return AC_SUCCESS;
+}
+
 AcResult
 acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 {
@@ -2941,3 +3049,201 @@ acRuntimeQuit()
 	segmented_reduce_offsets.clear();
 	return AC_SUCCESS;
 }
+#if AC_FFT_ENABLED
+#include <cufftXt.h>
+#include <cuComplex.h>
+
+// cufft API error chekcing
+#ifndef CUFFT_CALL
+#define CUFFT_CALL( call )                                                                                             \
+    {                                                                                                                  \
+        auto status = static_cast<cufftResult>( call );                                                                \
+        if ( status != CUFFT_SUCCESS )                                                                                 \
+	    {                                                                                                          \
+            fprintf( stderr,                                                                                           \
+                     "ERROR: CUFFT call \"%s\" in line %d of file %s failed "                                          \
+                     "with "                                                                                           \
+                     "code (%d).\n",                                                                                   \
+                     #call,                                                                                            \
+                     __LINE__,                                                                                         \
+                     __FILE__,                                                                                         \
+                     status );                                                                                         \
+		abort();                                                                                               \
+	    }                                                                                                          \
+    }
+#endif  // CUFFT_CALL
+
+
+// TODO: if the buffer on GPU would be properly padded:
+// https://docs.nvidia.com/cuda/cufft/index.html#data-layout
+// we could use in-place transformation and save one buffer allocation
+// Padding as mentioned in the link: padded to (n/2 + 1) in the least significant dimension.
+AcResult
+acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
+    buffer = buffer + (starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z));
+    // Number of elements in each dimension to use
+    int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
+    // NOTE: inembed[0] and onembed[0] are not used directly, but as idist and odist
+    // Sizes of input dimension of the buffer used
+    int inembed[] = {(int)domain_size.z, (int)domain_size.y, (int)domain_size.x};
+    // Sizes of the output dimension of the buffer used
+    int onembed[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)(subdomain_size.x / 2) + 1};
+    
+    cufftHandle plan_r2c{};
+    CUFFT_CALL(cufftCreate(&plan_r2c));
+    size_t workspace_size;
+    CUFFT_CALL(cufftMakePlanMany(plan_r2c, 3, dims,
+        inembed, 1, inembed[0], // in case inembed and onembed not needed could be: nullptr, 1, 0
+        onembed, 1, onembed[0], //                                                  nullptr, 1, 0
+        CUFFT_D2Z, 1, &workspace_size));
+    
+    size_t orig_domain_size = inembed[0] * inembed[1] * inembed[2];
+    size_t complex_domain_size = onembed[0] * onembed[1] * onembed[2];    
+    
+    cuDoubleComplex* transformed = reinterpret_cast<cuDoubleComplex*>(transformed_in);
+    // Execute the plan_r2c
+    CUFFT_CALL(cufftXtExec(plan_r2c, (void*)buffer, transformed, CUFFT_FORWARD));
+    CUFFT_CALL(cufftDestroy(plan_r2c));
+    // Scale complex results that inverse FFT results in original values
+    const AcReal scale{1.0 / orig_domain_size};
+    acMultiplyInplaceComplex(scale, complex_domain_size, transformed_in);
+    return AC_SUCCESS;
+}
+
+AcResult
+acFFTForwardTransformC2C(const AcComplex* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
+    const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
+    buffer = buffer + starting_offset;
+    // Number of elements in each dimension to use
+    int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
+    // NOTE: inembed[0] and onembed[0] are not used directly, but as idist and odist
+    // Sizes of input dimension of the buffer used
+    int inembed[] = {(int)domain_size.z, (int)domain_size.y, (int)domain_size.x};
+    // Sizes of the output dimension of the buffer used
+    int onembed[] = {(int)domain_size.z, (int)domain_size.y, (int)(domain_size.x)};
+    
+    cufftHandle plan_r2c{};
+    CUFFT_CALL(cufftCreate(&plan_r2c));
+    size_t workspace_size;
+    CUFFT_CALL(cufftMakePlanMany(plan_r2c, 3, dims,
+        inembed, 1, inembed[0], // in case inembed and onembed not needed could be: nullptr, 1, 0
+        onembed, 1, onembed[0], //                                                  nullptr, 1, 0
+        CUFFT_Z2Z, 1, &workspace_size));
+    
+    size_t complex_domain_size = onembed[0] * onembed[1] * onembed[2];    
+    
+    cuDoubleComplex* transformed = reinterpret_cast<cuDoubleComplex*>(transformed_in + starting_offset);
+    // Execute the plan_r2c
+    CUFFT_CALL(cufftXtExec(plan_r2c, (void*)buffer, transformed, CUFFT_FORWARD));
+    CUFFT_CALL(cufftDestroy(plan_r2c));
+    // Scale complex results that inverse FFT results in original values
+    const AcReal scale{1.0 / ( dims[0] * dims[1] * dims[2])};
+    acMultiplyInplaceComplex(scale, complex_domain_size, transformed_in);
+    return AC_SUCCESS;
+}
+
+AcResult
+acFFTForwardTransformR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
+    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    const size_t bytes = sizeof(AcComplex)*count;
+    AcComplex* tmp = NULL;
+    device_malloc(&tmp,bytes);
+    acRealToComplex(buffer,count,tmp);
+    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,transformed_in);
+    device_free(&tmp,0);
+    return AC_SUCCESS;
+}
+
+
+
+AcResult
+acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer) {
+    buffer = buffer + (starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z));
+    // Number of elements in each dimension to use
+    int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
+    // NOTE: inembed[0] and onembed[0] are not used directly, but as idist and odist
+    // Sizes of input dimension of the buffer used
+    int inembed[] = {(int)domain_size.z, (int)domain_size.y, (int)domain_size.x};
+    // Sizes of the output dimension of the buffer used
+    int onembed[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)(((int)subdomain_size.x) / 2) + 1};
+    
+    cufftHandle plan_c2r{};
+    CUFFT_CALL(cufftCreate(&plan_c2r));
+    size_t workspace_size;
+    CUFFT_CALL(cufftMakePlanMany(plan_c2r, 3, dims,
+        onembed, 1, onembed[0],
+        inembed, 1, inembed[0],
+        CUFFT_Z2D, 1, &workspace_size));
+    const cuDoubleComplex* transformed = reinterpret_cast<const cuDoubleComplex*>(transformed_in);
+    CUFFT_CALL(cufftXtExec(plan_c2r, (void*)transformed, buffer, CUFFT_INVERSE));
+    CUFFT_CALL(cufftDestroy(plan_c2r));
+    return AC_SUCCESS;
+}
+
+AcResult
+acFFTBackwardTransformC2C(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcComplex* buffer) {
+    const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
+    buffer = buffer + starting_offset;
+    // Number of elements in each dimension to use
+    int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
+    // NOTE: inembed[0] and onembed[0] are not used directly, but as idist and odist
+    // Sizes of input dimension of the buffer used
+    int inembed[] = {(int)domain_size.z, (int)domain_size.y, (int)domain_size.x};
+    // Sizes of the output dimension of the buffer used
+    int onembed[] = {(int)domain_size.z, (int)domain_size.y, (int)(((int)domain_size.x))};
+    
+    cufftHandle plan_c2r{};
+    CUFFT_CALL(cufftCreate(&plan_c2r));
+    size_t workspace_size;
+    CUFFT_CALL(cufftMakePlanMany(plan_c2r, 3, dims,
+        onembed, 1, onembed[0],
+        inembed, 1, inembed[0],
+        CUFFT_Z2Z, 1, &workspace_size));
+    const cuDoubleComplex* transformed = reinterpret_cast<const cuDoubleComplex*>(transformed_in + starting_offset);
+    CUFFT_CALL(cufftXtExec(plan_c2r, (void*)transformed, buffer, CUFFT_INVERSE));
+    CUFFT_CALL(cufftDestroy(plan_c2r));
+    return AC_SUCCESS;
+}
+AcResult
+acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer) {
+    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    const size_t bytes = sizeof(AcComplex)*count;
+    AcComplex* tmp = NULL;
+    device_malloc(&tmp,bytes);
+    acFFTBackwardTransformC2C(transformed_in,domain_size,subdomain_size,starting_point,tmp);
+    acComplexToReal(tmp,count,buffer);
+    device_free(&tmp,0);
+    return AC_SUCCESS;
+}
+#else
+AcResult
+acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
+	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransform!\n");
+	fflush(stderr);
+	exit(EXIT_FAILURE);
+	return AC_FAILURE;
+}
+AcResult
+acFFTForwardTransformR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
+	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransform!\n");
+	fflush(stderr);
+	exit(EXIT_FAILURE);
+	return AC_FAILURE;
+}
+AcResult
+acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer)
+{
+	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTBackwardTransform!\n");
+	fflush(stderr);
+	exit(EXIT_FAILURE);
+	return AC_FAILURE;
+}
+AcResult
+acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer)
+{
+	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTBackwardTransform!\n");
+	fflush(stderr);
+	exit(EXIT_FAILURE);
+	return AC_FAILURE;
+}
+#endif

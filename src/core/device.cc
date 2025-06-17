@@ -185,6 +185,30 @@ acDeviceStoreVectorUniform(const Device device, const Stream stream, const AcRea
     return acStoreReal3Uniform(device->streams[stream], param, value);
 }
 
+AcResult
+acDeviceFFTR2C(const Device device, const Field src, const ComplexField dst)
+{
+	return acFFTForwardTransformR2C(
+				device->vba.on_device.in[src],
+				acGetLocalMM(device->local_config),	
+				acGetLocalNN(device->local_config),	
+				acGetMinNN(device->local_config),	
+				device->vba.on_device.complex_in[dst]
+			);
+}
+
+AcResult
+acDeviceFFTC2R(const Device device, const ComplexField src, const Field dst)
+{
+	return acFFTBackwardTransformC2R(
+				device->vba.on_device.complex_in[src],
+				acGetLocalMM(device->local_config),	
+				acGetLocalNN(device->local_config),	
+				acGetMinNN(device->local_config),	
+				device->vba.on_device.in[dst]
+			);
+}
+
 // Recursive function to generate indices
 void generateIndicesHelper(const std::vector<size_t>& dimensions, std::vector<int>& currentIndex,
                            std::vector<std::vector<int>>& result, size_t depth) {

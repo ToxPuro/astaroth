@@ -190,6 +190,8 @@ static int previous_accessed[NUM_ALL_FIELDS+NUM_PROFILES]{};
 static int incoming_ray_value_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
 static int outgoing_ray_value_accessed[NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
 static int written_fields[NUM_ALL_FIELDS]{};
+static int written_complex_fields[NUM_COMPLEX_FIELDS]{};
+static int read_complex_fields[NUM_COMPLEX_FIELDS]{};
 static int read_fields[NUM_ALL_FIELDS]{};
 static int field_has_stencil_op[NUM_ALL_FIELDS]{};
 static int read_profiles[NUM_PROFILES]{};
@@ -642,6 +644,18 @@ write_base (const Field& field, const AcReal&)
 }
 
 void
+write_complex_base (const ComplexField& field, const AcComplex&)
+{
+	written_complex_fields[field] |= AC_IN_BOUNDS_WRITE;
+}
+AcComplex
+value_complex(const ComplexField& field)
+{
+	read_complex_fields[field] |= 1;
+	return (AcComplex){0.0,0.0};
+}
+
+void
 write_at_point (const Field& field, const AcReal&, const int x, const int y, const int z)
 {
 	mark_as_written(field,x,y,z);
@@ -849,6 +863,8 @@ reset_info_arrays()
     memset(previous_accessed, 0, sizeof(previous_accessed));
     memset(incoming_ray_value_accessed, 0, sizeof(incoming_ray_value_accessed));
     memset(outgoing_ray_value_accessed, 0, sizeof(outgoing_ray_value_accessed));
+    memset(written_complex_fields,0,sizeof(written_complex_fields));
+    memset(read_complex_fields,0,sizeof(read_complex_fields));
     std::vector<KernelReduceOutput> empty_vec{};
     reduce_outputs = empty_vec;
     reduce_inputs  = empty_vec;
@@ -1132,6 +1148,8 @@ main(int argc, char* argv[])
           "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "__attribute__((unused)) =  {");
   int  write_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
+  int  write_complex_output[NUM_KERNELS][NUM_COMPLEX_FIELDS+1]{};
+  int  value_complex_output[NUM_KERNELS][NUM_COMPLEX_FIELDS+1]{};
   int  write_profile_output[NUM_KERNELS][NUM_PROFILES]{};
   int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
   int  output_incoming_ray_value_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
@@ -1163,6 +1181,11 @@ main(int argc, char* argv[])
       	output_outgoing_ray_value_accessed[k][j][ray] = outgoing_ray_value_accessed[j][ray];
       }
       write_output[k][j] = written_fields[j];
+    }
+    for(int j = 0; j < NUM_COMPLEX_FIELDS; ++j)
+    {
+      write_complex_output[k][j] = written_complex_fields[j];
+      value_complex_output[k][j] = read_complex_fields[j];
     }
     for(size_t j = 0; j < NUM_PROFILES; ++j)
     {
@@ -1217,6 +1240,8 @@ main(int argc, char* argv[])
   print_info_array(fp,"incoming_ray_value_accessed",output_incoming_ray_value_accessed);
   print_info_array(fp,"outgoing_ray_value_accessed",output_outgoing_ray_value_accessed);
   print_info_array(fp,"write_called",write_output);
+  print_info_array(fp,"write_complex_called",write_complex_output);
+  print_info_array(fp,"value_complex_called",value_complex_output);
   print_info_array(fp,"write_called_profile",write_profile_output);
   print_info_array(fp,"reduced_profiles",output_reduced_profiles);
   print_info_array(fp,"read_profiles",output_read_profiles);

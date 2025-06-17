@@ -53,6 +53,7 @@ option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
 option(RUNTIME_COMPILATION "Compile version of Astaroth compiled at runtime" OFF)
 option(SUPPRESS_COMPILER_WARNINGS "Suppress default compiler warnings of Astaroth" OFF)
 option(PROFILING_ENABLED "Whether to enable profiling and link to the vendor profiling libraries" ON)
+option(FFT_ENABLED "Whether to enable FFT" OFF)
 
 ## Project-wide compilation flags
 # -Werror TODO read
@@ -154,6 +155,11 @@ if (MPI_ENABLED)
 else()
     add_definitions(-DAC_MPI_ENABLED=0)
 endif ()
+if (FFT_ENABLED)
+	add_definitions(-DAC_FFT_ENABLED=1)
+else()
+	add_definitions(-DAC_FFT_ENABLED=0)
+endif()
 if (USE_POSIX_IO)
     add_definitions(-DUSE_POSIX_IO=1)
 endif()
@@ -212,6 +218,9 @@ endif()
 
 ## Have this as a separate option when no other "samples" aree needed.
 ## Useful e.g. when compilation time is long e.g. with shock viscosity. 
+if(FFT_ENABLED)
+	add_subdirectory(test/fft-shift-test)
+endif()
 if (BUILD_STANDALONE AND NOT BUILD_TESTS)
     add_subdirectory(samples/standalone_mpi)
 endif()

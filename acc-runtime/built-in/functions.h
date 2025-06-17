@@ -7,6 +7,10 @@ elemental
 value(Field s) {
 	return value_stencil(s)
 }
+
+value(ComplexField s) {
+	return value_complex(s)
+}
 value(Profile<X> profile)
 {
 	return value_profile_x(profile)
@@ -61,6 +65,11 @@ elemental previous(Field s)
 elemental write(Field dst, real src)
 {
 	write_base(dst,src)
+}
+
+write(ComplexField dst, complex src)
+{
+	write_complex_base(dst,src)
 }
 
 elemental write(Field dst, real src, int x, int y, int z)
@@ -129,9 +138,9 @@ inline write(Field3[] dst, real3[] src)
 
 vecwrite(Field3 dst, real3 src)
 {
-	write_base(dst.x, src.x)
-	write_base(dst.y, src.y)
-	write_base(dst.z, src.z)
+	write(dst.x, src.x)
+	write(dst.y, src.y)
+	write(dst.z, src.z)
 }
 real3 intrinsic AC_cross
 real intrinsic AC_dot

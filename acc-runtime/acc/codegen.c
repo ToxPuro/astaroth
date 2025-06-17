@@ -127,6 +127,7 @@ static const char* KERNEL_STR      = NULL;
 static const char* FIELD3_STR      = NULL;
 static const char* FIELD4_STR      = NULL;
 static const char* PROFILE_STR      = NULL;
+static const char* COMPLEX_FIELD_STR  = NULL;
 
 
 const char*
@@ -221,6 +222,7 @@ static int* reduced_floats           = NULL;
 static int* field_has_stencil_op     = NULL;
 static int* field_has_previous_call  = NULL;
 static size_t num_fields   = 0;
+static size_t num_complex_fields = 0;
 static size_t num_profiles = 0;
 static size_t num_kernels  = 0;
 static size_t num_dfuncs   = 0;
@@ -475,6 +477,7 @@ get_allocating_types()
 	{
 		push(&allocating_types,intern("Field"));
 		push(&allocating_types,intern("Field3"));
+		push(&allocating_types,intern("ComplexField"));
 		push(&allocating_types,intern("Profile<X>"));
 		push(&allocating_types,intern("Profile<Y>"));
 		push(&allocating_types,intern("Profile<Z>"));
@@ -2751,7 +2754,7 @@ create_unary_op(const structs_info info, const int i, const char* op, FILE* fp)
 			   "\treturn (%s){\n"
 			,struct_name,op,struct_name,struct_name);
 		for(size_t j = 0; j < info.user_struct_field_names[i].size; ++j)
-			fprintf(fp,"\t\t-a.%s,\n",info.user_struct_field_names[i].data[j]);
+			fprintf(fp,"\t\t%sa.%s,\n",op,info.user_struct_field_names[i].data[j]);
 		fprintf(fp,"\t};\n}\n");
 }
 static void
@@ -2908,7 +2911,7 @@ is_subtype(const char* a, const char* b)
 bool
 is_field_expr(const char* expr)
 {
-	return expr && (expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,FIELD_PTR_STR) || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
+	return expr && (expr == COMPLEX_FIELD_STR || expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,FIELD_PTR_STR) || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
 }
 bool
 is_value_applicable_type(const char* expr)
@@ -5776,6 +5779,10 @@ write_calling_info_for_stencilgen(const string_vec* stencils_called)
 {
     FILE* fp = fopen("stencilgen_calling_info.h","w");
     write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_X_"),"reduce_sum_real_x_called");
+    write_calling_info(fp,intern("value_AC_MANGLED_NAME__ComplexField"),"value_complex_called_statically");
+    write_calling_info(fp,intern("write_AC_MANGLED_NAME__ComplexField_AcComplex"),"write_complex_called_statically");
+    write_calling_info(fp,intern("write_AC_MANGLED_NAME__Field_AcReal"),"write_base_called_statically");
+    write_calling_info(fp,intern("previous_AC_MANGLED_NAME__Field"),"previous_called_statically");
     write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_Y_"),"reduce_sum_real_y_called");
     write_calling_info(fp,intern("reduce_sum_AC_MANGLED_NAME__AcReal_Profile_Z_"),"reduce_sum_real_z_called");
 
@@ -6041,6 +6048,7 @@ static void
 gen_field_info(FILE* fp)
 {
   num_fields   = count_symbols(FIELD_STR);
+  num_complex_fields   = count_symbols(COMPLEX_FIELD_STR);
 
   // Enums
   int num_of_communicated_fields=0;
@@ -6091,6 +6099,13 @@ gen_field_info(FILE* fp)
       ++num_of_fields;
     }
   }
+  string_vec complex_field_names = VEC_INITIALIZER;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  {
+    	if(symbol_table[i].tspecifier == COMPLEX_FIELD_STR){
+	  push(&complex_field_names,symbol_table[i].identifier);
+	}
+  }
   free_int_vec(&field_remappings);
   for(size_t field = 0; field < num_fields; ++field)
   {
@@ -6121,6 +6136,12 @@ gen_field_info(FILE* fp)
 	fprintf(fp_enums, "#define NUM_ALL_FIELDS (%ld)\n",num_of_fields);
   	fprintf(fp_enums, "#define NUM_DEAD_FIELDS (%ld)\n", num_of_fields-num_of_alive_fields);
   	fprintf(fp_enums, "#define NUM_COMMUNICATED_FIELDS (%d)\n", num_of_communicated_fields);
+  	fprintf(fp_enums, "typedef enum {");
+  	for(size_t i = 0; i < num_complex_fields; ++i)
+  	        fprintf(fp_enums,"%s,",complex_field_names.data[i]);
+
+  	fprintf(fp_enums, "} ComplexField;\n");
+	fprintf(fp_enums,"#define NUM_COMPLEX_FIELDS (%zu)\n",num_complex_fields);
 	fclose(fp_enums);
   }
 
@@ -8607,6 +8628,7 @@ gen_global_strings()
 	FIELD3_STR = intern("Field3");
 	FIELD4_STR = intern("Field4");
 	PROFILE_STR = intern("Profile");
+	COMPLEX_FIELD_STR = intern("ComplexField");
 
 	MULT_STR = intern("*");
 	PLUS_STR = intern("+");
@@ -9932,6 +9954,18 @@ gen_stencils(const bool gen_mem_accesses, FILE* stream)
             "static int "
             "write_called [NUM_KERNELS][NUM_ALL_FIELDS] __attribute__((unused)) = {");
     print_nested_ones(tmp,1,num_kernels,num_fields,2);
+    fprintf(tmp, "};\n");
+
+    fprintf(tmp,
+            "static int "
+            "write_complex_called [NUM_KERNELS][NUM_COMPLEX_FIELDS+1] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_complex_fields+1,2);
+    fprintf(tmp, "};\n");
+
+    fprintf(tmp,
+            "static int "
+            "value_complex_called [NUM_KERNELS][NUM_COMPLEX_FIELDS+1] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_complex_fields+1,2);
     fprintf(tmp, "};\n");
 
     fprintf(tmp,

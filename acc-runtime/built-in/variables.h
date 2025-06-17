@@ -67,6 +67,11 @@ run_const bool3 AC_periodic_grid
 run_const bool AC_fully_periodic_grid = AC_periodic_grid.x && AC_periodic_grid.y && AC_periodic_grid.z
 
 run_const real3 AC_len = (AC_ngrid + AC_periodic_grid - 1)*AC_ds
+run_const real3 AC_frequency_spacing = real3(
+				(2.0*AC_REAL_PI)/AC_len.x,
+				(2.0*AC_REAL_PI)/AC_len.y,
+				(2.0*AC_REAL_PI)/AC_len.z
+				)
 run_const real3 AC_first_gridpoint =  (real3){
 					AC_periodic_grid.x*AC_ds.x*0.5,
 					AC_periodic_grid.y*AC_ds.y*0.5,

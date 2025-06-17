@@ -40,6 +40,7 @@ AcDimProducts intrinsic ac_get_dim_products(int3)
 AcDimProductsInv intrinsic ac_get_dim_products_inv(AcDimProducts)
 
 intrinsic write_base
+intrinsic write_complex_base
 intrinsic write_at_point
 intrinsic write_profile_x
 intrinsic write_profile_y
@@ -60,6 +61,7 @@ real intrinsic value_profile_yx(Profile<YZ>)
 real intrinsic value_profile_yz(Profile<YZ>)
 real intrinsic value_profile_zx(Profile<ZX>)
 real intrinsic value_profile_zy(Profile<ZY>)
+complex intrinsic value_complex(ComplexField)
 
 intrinsic reduce_min_real
 intrinsic reduce_max_real

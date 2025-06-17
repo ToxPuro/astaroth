@@ -247,6 +247,7 @@ typedef struct {
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
+    AcComplex* complex_in[NUM_COMPLEX_FIELDS+1];
     acKernelInputParams kernel_input_params;
     int reduce_offset;
     ProfileBufferArray profiles;
@@ -420,6 +421,14 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
   FUNC_DEFINE(AcResult, acStoreStencil,(const Stencil stencil, const cudaStream_t stream, AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
+
+  FUNC_DEFINE(AcResult, acFFTBackwardTransformSymmetricC2R,(const AcComplex* transformed_in, const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer));
+
+  FUNC_DEFINE(AcResult,acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in));
+
+  FUNC_DEFINE(AcResult,acFFTForwardTransformR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in));
+
+  FUNC_DEFINE(AcResult, acFFTBackwardTransformC2R,(const AcComplex* transformed_in, const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
 #include "load_and_store_uniform_header.h"

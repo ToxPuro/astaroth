@@ -1,0 +1,40 @@
+#include "$AC_HOME/acc-runtime/stdlib/grid/funcs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math/fft.h"
+Field HEAT_INIT
+Field HEAT_SOLUTION
+Field HEAT_FORWARD_AND_BACK
+Field HEAT_FREQUENCY_MAGNITUDE
+ComplexField HEAT_COMPLEX_SOLUTION
+ComplexField HEAT_COMPLEX
+real AC_k = 1.0
+Kernel init_kernel()
+{
+	pos = grid_position()
+	write(HEAT_INIT,sin(AC_k*pos.x)*sin(AC_k*pos.y)*sin(AC_k*pos.z))
+	write(HEAT_FORWARD_AND_BACK,0.0)
+}
+Kernel fft_solve_kernel()
+{
+	const real3 k = get_wavevector()
+	const real k2 = dot(k,k)
+	write(HEAT_FREQUENCY_MAGNITUDE, sqrt(value(HEAT_COMPLEX).x*value(HEAT_COMPLEX).x + value(HEAT_COMPLEX).y*value(HEAT_COMPLEX).y))
+	write(HEAT_COMPLEX_SOLUTION,(k2  == 0.0) ? complex(0.0,0.0) : -(HEAT_COMPLEX/k2))
+}
+
+BoundConds boundconds{
+  periodic(BOUNDARY_X)
+  periodic(BOUNDARY_Y)
+  periodic(BOUNDARY_Z)
+}
+
+ComputeSteps
+initcond(boundconds)
+{
+	init_kernel()
+}
+
+ComputeSteps
+fft_solve(boundconds)
+{
+	fft_solve_kernel()
+}

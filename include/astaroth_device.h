@@ -32,6 +32,8 @@ FUNC_DEFINE(AcResult, acDeviceSwapBuffers,(const Device device));
 FUNC_DEFINE(AcResult, acDeviceLoadScalarUniform,(const Device device, const Stream stream,
                                    const AcRealParam param, const AcReal value));
 FUNC_DEFINE(AcResult, acDevicePrintProfiles,(const Device device));
+FUNC_DEFINE(AcResult, acDeviceFFTR2C,(const Device device, const Field src, const ComplexField dst));
+FUNC_DEFINE(AcResult, acDeviceFFTC2R,(const Device device, const ComplexField src, const Field dst));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadVectorUniform,(const Device device, const Stream stream,

@@ -494,6 +494,8 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	LOAD_DSYM(acAnalysisGetKernelInfo,stream)
 	LOAD_DSYM(acAnalysisCheckForDSLErrors,stream)
         LOAD_DSYM(acDeviceSwapAllProfileBuffers,stream)
+	LOAD_DSYM(acDeviceFFTR2C,stream)
+	LOAD_DSYM(acDeviceFFTC2R,stream)
 #if AC_MPI_ENABLED
 	LOAD_DSYM(BASE_FUNC_NAME(acBoundaryCondition),stream)
 	LOAD_DSYM(ac_MPI_Init,stream)
