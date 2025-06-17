@@ -57,7 +57,7 @@ template <typename T, typename Allocator> class buffer {
         return data()[i];
     }
 
-    const ac::view<T, Allocator> get() const { return ac::view<T, Allocator>{size(), data()}; }
+    ac::view<T, Allocator> get() const { return ac::view<T, Allocator>{size(), data()}; }
 
     buffer<T, Allocator> copy() const
     {
