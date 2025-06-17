@@ -6140,8 +6140,7 @@ gen_field_info(FILE* fp)
   	for(size_t i = 0; i < num_complex_fields; ++i)
   	        fprintf(fp_enums,"%s,",complex_field_names.data[i]);
 
-  	fprintf(fp_enums, "} ComplexField;\n");
-	fprintf(fp_enums,"#define NUM_COMPLEX_FIELDS (%zu)\n",num_complex_fields);
+  	fprintf(fp_enums, "NUM_COMPLEX_FIELDS} ComplexField;\n");
 	fclose(fp_enums);
   }
 
