@@ -1972,7 +1972,7 @@ class Grid {
     ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce{};
 
   public:
-    Grid(const AcMeshInfo& info)
+    explicit Grid(const AcMeshInfo& info)
         : m_comm{MPI_COMM_WORLD, acr::get_global_nn(info)},
           m_device{acr::get(info, AC_device_id), info},
           m_xy_neighbors{ac::mpi::split(m_comm.get(), as<int>(ac::mpi::coords(m_comm)[2]))},
@@ -2296,7 +2296,7 @@ main(int argc, char* argv[])
         // Load configuration
         AcMeshInfo info{Setup::prepare_mesh_info(args)};
 
-        // Grid grid{info};
+        // Init grid
         rev::Grid grid{info};
 
         if (args.benchmark)
