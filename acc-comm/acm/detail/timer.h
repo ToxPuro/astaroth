@@ -10,14 +10,9 @@ class timer {
     using time_point = clock::time_point;
     using duration   = clock::duration;
 
-    time_point m_start;
+    time_point m_start{clock::now()};
 
   public:
-    timer()
-        : m_start{clock::now()}
-    {
-    }
-
     duration diff() const { return clock::now() - m_start; }
     void     reset() { m_start = clock::now(); }
     duration lap()
@@ -34,7 +29,7 @@ class timewriter {
     std::string m_path;
 
   public:
-    timewriter(const std::string& path)
+    explicit timewriter(const std::string& path)
         : m_path{path}
     {
         std::ofstream file;
