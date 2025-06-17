@@ -2128,7 +2128,7 @@ class Grid {
         launch_reduce_xy_averages();
         launch_uumax_reduce();
 
-        for (auto step{0}; step < nsteps; ++step) {
+        for (size_t step{0}; step < nsteps; ++step) {
 
             // Update dt and forcing
             const auto dt{wait_uumax_reduce_and_get_dt()};
@@ -2272,6 +2272,7 @@ class Grid {
         // Ensure the current state is flushed to disk even if the last step is
         // not divisible by snapshot_output_interval
         flush_snapshots_to_disk(restart_fields);
+        write_snapshots_to_disk(m_comm.get(), m_device.get(), ac::pull_param(m_device.get(), AC_current_step));
     }
 
     void benchmark() { ERRCHK_EXPR_DESC(false, "not implemented"); }
