@@ -49,12 +49,10 @@ Currently Loaded Modules:
 ### Commands
 There's a build script in `astaroth/samples/tfm-mpi/build.sh`.
 
-**IMPORTANT:** the build script relies on `$ASTAROTH` env variable being set to the base `astaroth` directory of the `2024-09-02-tfm-standalone` branch.
-
-For example:
+Building:
 ```bash
 cd astaroth && mkdir build && cd build
-cmake .. --preset lumi-tfm
+cmake .. --preset lumi-tfm # Note: can switch to mahti-tfm if running on Mahti
 cmake --build . --parallel
 ./tfm-mpi --config <path to mhd.ini> # Run
 ```
@@ -85,6 +83,8 @@ in `astaroth/samples/tfm/mhd/mhd.ini`.
 
 Forcing is currently always on and a new forcing vector generated at the start of each iteration. 
 
+> **Note:** forcing is not saved to disk and each launch of the program uses the same sequence of forcing vectors. For example, one 1000-step run uses 1000 unique forcing vectors, whereas two 500-step launches (restarting from a previous state) use both the same sequence of 500 unique forcing vectors.
+
 ## Running
 
 - The executable name is `tfm-mpi`. **Passing the config directory is mandatory with** `./tfm-mpi --config <path to config .ini>`
@@ -102,11 +102,18 @@ export SRUNMPI16="srun --account=<project number> -t 00:05:00 -p small-g --gpus-
 $SRUNMPI8 ./tfm-mpi
 ```
 
+## Restarting
+
+The module automatically keeps track of the latest snapshot and restarts from the previous state if available. The snapshot is saved in a `.snapshot` and the latest state is stored in `simulation_state.txt`. The snapshot used for restarting and  indicated by `simulation_state.txt` is always guaranteed to be complete.
+
+To start a fresh run, remove `simulation_state.txt` from the run directory.
+
 ## Visualizing output
 
 ### Short overview
-- `*.snapshot` files hold the whole computational domain. Controlled by `AC_simulation_snapshot_output_interval`.
-- `*.slice` files hold a two-dimensional slice of the computational domain. Controlled by `AC_simulation_profile_output_interval`.
+- `*.snapshot` files hold the whole computational domain. Controlled by `AC_simulation_snapshot_output_interval`. Old ones are overwritten. The latest one is indicated in `simulation_state.txt`.
+- `*.mesh` a snapshot produced at the end of the run. Not overwritten like `.snapshot` files used for restarting.
+- **[DEPRECATED, NO EFFECT]** `*.slice` files hold a two-dimensional slice of the computational domain. Controlled by `AC_simulation_profile_output_interval`.
 - `*.profile` files hold one-dimensional profiles of the fields. Controlled by `AC_simulation_profile_output_interval`.
 - `timeseries.csv` holds the timeseries w.r.t. all fields. Controlled by `AC_simulation_profile_output_interval`.
 
@@ -189,7 +196,7 @@ Will use $+ \nabla^{2} \mathbf{a}^{pq}$ instead of $-\eta \mathbf{j}^{pq}$ as th
 # Production runs
 
 - Set `AC_simulation_snapshot_output_interval` and `AC_simulation_profile_output_interval` to as large values as possible: these control the interval of **synchronous** IO operations
-- Set `AC_simulation_async_profile_output_interval` as low as needed. This writes profiles out asynchronously and should be the primary way of getting the results.
+- **[DEPRECATED, NO EFFECT]** Set `AC_simulation_async_profile_output_interval` as low as needed. This writes profiles out asynchronously and should be the primary way of getting the results.
 - Set `#define ACM_LOG_LEVEL (ACM_LOG_LEVEL_ERROR)` in `acc-comm/acm/detail/errchk_print.h` to reduce overhead from printing to standard output.
 
 ## Additional verification
