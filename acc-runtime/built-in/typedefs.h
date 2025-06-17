@@ -35,7 +35,7 @@ typedef AcReal5 struct real5
 	real v;
 }
 
-typedef AcReal6 struct real_symmetric_tensor
+typedef AcRealSymmetricTensor struct real_symmetric_tensor
 {
 	real xx;
 	real yy;
