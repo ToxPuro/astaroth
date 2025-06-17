@@ -1502,22 +1502,22 @@ struct arguments {
                      "0] [optional: --simulation-nsteps-override 0]"
                   << std::endl;
 
-        for (const auto& pair : pairs) {
-            if (pair.first == "--config")
-                config_path = pair.second;
-            else if (pair.first == "--global-nn-override")
-                global_nn_override = ac::parse_shape(pair.second);
-            else if (pair.first == "--job-id")
-                job_id = std::stoi(pair.second);
-            else if (pair.first == "--benchmark")
-                benchmark = std::stoi(pair.second);
-            else if (pair.first == "--simulation-nsteps-override")
-                simulation_nsteps_override = std::stoi(pair.second);
+        for (const auto& [key, value] : pairs) {
+            if (key == "--config")
+                config_path = value;
+            else if (key == "--global-nn-override")
+                global_nn_override = ac::parse_shape(value);
+            else if (key == "--job-id")
+                job_id = std::stoi(value);
+            else if (key == "--benchmark")
+                benchmark = std::stoi(value);
+            else if (key == "--simulation-nsteps-override")
+                simulation_nsteps_override = std::stoi(value);
             else
                 ERRCHK_EXPR_DESC(false,
                                  "Do not know what to do with argument pair [%s: %s]",
-                                 pair.first.c_str(),
-                                 pair.second.c_str());
+                                 key.c_str(),
+                                 value.c_str());
         }
 
         // Require that config_path id explicitly defined by the user
