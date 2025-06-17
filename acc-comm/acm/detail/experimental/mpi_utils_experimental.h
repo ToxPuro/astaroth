@@ -34,11 +34,12 @@ class comm {
             ERRCHK_MPI_API(MPI_Comm_dup(parent_comm, m_comm.get()));
     }
 
-    const MPI_Comm& get() const noexcept { 
-      ERRCHK_MPI(m_comm);
-      ERRCHK_MPI(m_comm.get());
-      ERRCHK_MPI(*m_comm != MPI_COMM_NULL);
-      return *m_comm;
+    const MPI_Comm& get() const noexcept
+    {
+        ERRCHK_MPI(m_comm);
+        ERRCHK_MPI(m_comm.get());
+        ERRCHK_MPI(*m_comm != MPI_COMM_NULL);
+        return *m_comm;
     }
 };
 
@@ -66,7 +67,7 @@ class datatype {
 
   public:
     datatype()
-        : m_datatype{new MPI_Datatype{MPI_DATATYPE_NULL}, [](MPI_Datatype* ptr) noexcept{
+        : m_datatype{new MPI_Datatype{MPI_DATATYPE_NULL}, [](MPI_Datatype* ptr) noexcept {
                          ERRCHK_MPI(ptr != nullptr);
                          if (*ptr != MPI_DATATYPE_NULL)
                              ERRCHK_MPI_API(MPI_Type_free(ptr));
@@ -144,7 +145,7 @@ class request {
      * if request goes out of scope without being released/waited upon.
      */
     explicit request(const MPI_Request& req = MPI_REQUEST_NULL)
-        : m_req{new MPI_Request{req}, [](MPI_Request* ptr) noexcept{
+        : m_req{new MPI_Request{req}, [](MPI_Request* ptr) noexcept {
                     ERRCHK_MPI_EXPR_DESC(*ptr == MPI_REQUEST_NULL,
                                          "Attempted to destruct a request still in flight. Ensure "
                                          "wait is called properly before leaving scope.");
@@ -275,11 +276,9 @@ template <typename T, typename Allocator> class buffered_isend {
 template <typename T, typename InternalAllocator> class buffered_iallreduce {
   private:
     ac::buffer<T, InternalAllocator> m_buf{0};
-    ac::mpi::request         m_req{MPI_REQUEST_NULL};
+    ac::mpi::request                 m_req{MPI_REQUEST_NULL};
 
   public:
-    buffered_iallreduce() = default;
-
     template <typename InputAllocator, typename OutputAllocator>
     void launch(const MPI_Comm& comm, const ac::view<T, InputAllocator>& in, const MPI_Op& op,
                 ac::view<T, OutputAllocator> out)
@@ -303,9 +302,7 @@ template <typename T, typename InternalAllocator> class twoway_buffered_iallredu
     ac::mpi::buffered_iallreduce<T, InternalAllocator> m_buffered_iallreduce{};
 
   public:
-    twoway_buffered_iallreduce() = default;
-
-    template<typename InputAllocator>
+    template <typename InputAllocator>
     void launch(const MPI_Comm& comm, const ac::view<T, InputAllocator>& in, const MPI_Op& op)
     {
         // Resize buffer if needed
@@ -315,8 +312,7 @@ template <typename T, typename InternalAllocator> class twoway_buffered_iallredu
         m_buffered_iallreduce.launch(comm, in, op, m_buf.get());
     }
 
-    template<typename OutputAllocator>
-    void wait(ac::view<T, OutputAllocator> out)
+    template <typename OutputAllocator> void wait(ac::view<T, OutputAllocator> out)
     {
         m_buffered_iallreduce.wait();
 
@@ -393,8 +389,8 @@ int select_device_lumi();
 
 namespace ac::mpi {
 
-uint64_t rank(const ac::mpi::comm& comm);
-uint64_t size(const ac::mpi::comm& comm);
+uint64_t  rank(const ac::mpi::comm& comm);
+uint64_t  size(const ac::mpi::comm& comm);
 ac::index coords(const ac::mpi::cart_comm& comm);
 
 } // namespace ac::mpi
