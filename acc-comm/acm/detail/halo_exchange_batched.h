@@ -54,8 +54,8 @@ template <typename T, typename Allocator> class packet {
         ERRCHK_MPI(m_recv_req == MPI_REQUEST_NULL);
         ERRCHK_MPI(input.size() == output.size());
 
-        const auto rank{ac::mpi::get_rank(m_comm)};
-        if (rank == m_recv_neighbor && rank == m_send_neighbor) {
+        if (const auto rank{ac::mpi::get_rank(m_comm)};
+            rank == m_recv_neighbor && rank == m_send_neighbor) {
             // Pack directly to the output buffer if the destination is on the same device
             ac::copy(input, output); // Can be improved by using async memcpy
 
