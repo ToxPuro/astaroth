@@ -609,7 +609,7 @@ write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const si
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
     const auto global_nn{acr::get_global_nn(info)};
-    const auto count{prod(global_nn)};
+    const AcReal count{static_cast<AcReal>(prod(global_nn))};
 
     const AcReal vmax{reduce_vec(parent_comm, device, RTYPE_MAX, a, b, c)};
     const AcReal vmin{reduce_vec(parent_comm, device, RTYPE_MIN, a, b, c)};
@@ -655,7 +655,7 @@ write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const s
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
     const auto global_nn{acr::get_global_nn(info)};
-    const auto count{prod(global_nn)};
+    const AcReal count{static_cast<AcReal>(prod(global_nn))};
 
     const AcReal vmax{reduce_scal(parent_comm, device, RTYPE_MAX, field)};
     const AcReal vmin{reduce_scal(parent_comm, device, RTYPE_MIN, field)};
@@ -1326,7 +1326,7 @@ class Grid {
             // Current time
             auto tmp_local_info{ac::get_info(device)};
             acr::set(AC_current_time, current_time, tmp_local_info);
-            acr::set(AC_current_step, step, tmp_local_info);
+            acr::set(AC_current_step, as<int>(step), tmp_local_info);
 
 // Timestep dependencies: local hydro (reduction skips ghost zones)
 #if defined(AC_ENABLE_ASYNC_DT)
@@ -2252,10 +2252,10 @@ class Grid {
 
         // Write the current state out
         if ((current_step % profile_output_interval) == 0)
-            write_profiles_to_disk(m_comm.get(), m_device.get(), current_step);
+            write_profiles_to_disk(m_comm.get(), m_device.get(), as<size_t>(current_step));
 
         if ((current_step % profile_output_interval) == 0)
-            write_timeseries(m_comm.get(), m_device.get(), current_step, current_time, current_dt);
+            write_timeseries(m_comm.get(), m_device.get(), as<size_t>(current_step), current_time, current_dt);
 
         if ((current_step % snapshot_output_interval) == 0)
             flush_snapshots_to_disk(restart_fields);
@@ -2301,7 +2301,7 @@ class Grid {
         // Ensure the current state is flushed to disk even if the last step is
         // not divisible by snapshot_output_interval
         flush_snapshots_to_disk(restart_fields);
-        write_snapshots_to_disk(m_comm.get(), m_device.get(), ac::pull_param(m_device.get(), AC_current_step));
+        write_snapshots_to_disk(m_comm.get(), m_device.get(), as<size_t>(ac::pull_param(m_device.get(), AC_current_step)));
     }
 
     void benchmark() { ERRCHK_EXPR_DESC(false, "not implemented"); }
