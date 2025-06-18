@@ -259,33 +259,31 @@ iallreduce(const MPI_Comm& comm, const ac::base_view<T>& in, const MPI_Op& op, a
     return req;
 }
 
-template <typename T, typename Allocator> class buffered_isend {
+/**
+ * Buffered asynchronous isend operation with dynamic resizing.
+ * Note: never shrinks
+ */
+template <typename T, typename InternalAllocator> class buffered_isend {
   private:
-    ac::buffer<T, Allocator> m_buf;
-    ac::mpi::request         m_req{MPI_REQUEST_NULL};
+    ac::buffer<T, InternalAllocator> m_buf{0};
+    ac::mpi::request                 m_req{MPI_REQUEST_NULL};
 
   public:
-    buffered_isend(const size_t max_count)
-        : m_buf{max_count}
-    {
-    }
-
-    void launch(const MPI_Comm& comm, const int16_t tag, const ac::view<T, Allocator>& in,
+    template <typename InputAllocator>
+    void launch(const MPI_Comm& comm, const int16_t tag, const ac::view<T, InputAllocator>& in,
                 const int dst)
     {
-        PRINT_LOG_TRACE("Launching buffered_isend (proc %d)", ac::mpi::get_rank(comm));
         ERRCHK_MPI(m_req.complete());
+
+        // Resize buffer if needed
+        if (m_buf.size() < in.size())
+            m_buf = ac::buffer<T, InternalAllocator>{in.size()};
+
         ac::copy(in, m_buf.get());
         m_req = ac::mpi::isend(comm, tag, ac::make_view(in.size(), 0, m_buf.get()), dst);
-        PRINT_LOG_TRACE("launched buffered_isend (proc %d)", ac::mpi::get_rank(comm));
     }
 
-    void wait()
-    {
-        PRINT_LOG_TRACE("waiting buffered_isend ");
-        m_req.wait();
-        PRINT_LOG_TRACE("waited buffered_isend ");
-    }
+    void wait() { m_req.wait(); }
 };
 
 /**
@@ -302,27 +300,23 @@ template <typename T, typename InternalAllocator> class buffered_iallreduce {
     void launch(const MPI_Comm& comm, const ac::view<T, InputAllocator>& in, const MPI_Op& op,
                 ac::view<T, OutputAllocator> out)
     {
-        PRINT_LOG_TRACE("Launching buffered_isend (proc %d)", ac::mpi::get_rank(comm));
         ERRCHK_MPI(m_req.complete());
 
         // Resize buffer if needed
         if (m_buf.size() < in.size())
             m_buf = ac::buffer<T, InternalAllocator>{in.size()};
-        PRINT_LOG_TRACE("buffered address %p (proc %d)", m_buf.data(), ac::mpi::get_rank(comm));
 
         ac::copy(in, m_buf.get());
         m_req = ac::mpi::iallreduce(comm, ac::make_view(in.size(), 0, m_buf.get()), op, out);
-        PRINT_LOG_TRACE("launched buffered_isend (proc %d)", ac::mpi::get_rank(comm));
     }
 
-    void wait()
-    {
-        PRINT_LOG_TRACE("waiting buffered_isend");
-        m_req.wait();
-        PRINT_LOG_TRACE("waited buffered_isend");
-    }
+    void wait() { m_req.wait(); }
 };
 
+/**
+ * Two-way buffered asynchronous allreduce operation with dynamic resizing.
+ * Note: buffers never shrink
+ */
 template <typename T, typename InternalAllocator> class twoway_buffered_iallreduce {
   private:
     ac::buffer<T, InternalAllocator>                   m_buf{0};
@@ -333,24 +327,18 @@ template <typename T, typename InternalAllocator> class twoway_buffered_iallredu
     template <typename InputAllocator>
     void launch(const MPI_Comm& comm, const ac::view<T, InputAllocator>& in, const MPI_Op& op)
     {
-        PRINT_LOG_TRACE("Launching twoway_buffered_isend (proc %d)", ac::mpi::get_rank(comm));
         ERRCHK_MPI(m_complete);
         m_complete = false;
 
         // Resize buffer if needed
         if (m_buf.size() < in.size())
             m_buf = ac::buffer<T, InternalAllocator>{in.size()};
-        PRINT_LOG_TRACE("buffered address %p twoway (proc %d)",
-                        m_buf.data(),
-                        ac::mpi::get_rank(comm));
 
         m_buffered_iallreduce.launch(comm, in, op, m_buf.get());
-        PRINT_LOG_TRACE("lacnhed twoway_buffered_isend (proc %d)", ac::mpi::get_rank(comm));
     }
 
     template <typename OutputAllocator> void wait(ac::view<T, OutputAllocator> out)
     {
-        PRINT_LOG_TRACE("waiting two_way buffered_isend");
         ERRCHK_MPI(!m_complete);
 
         m_buffered_iallreduce.wait();
@@ -359,7 +347,6 @@ template <typename T, typename InternalAllocator> class twoway_buffered_iallredu
         ac::copy(ac::make_view(out.size(), 0, m_buf.get()), out);
 
         m_complete = true;
-        PRINT_LOG_TRACE("waited two_way buffered_isend");
     }
 };
 
