@@ -1968,7 +1968,8 @@ class Grid {
     acm::rev::halo_exchange<AcReal, ac::mr::device_allocator> m_hydro_he;
     acm::rev::halo_exchange<AcReal, ac::mr::device_allocator> m_tfm_he;
 
-    ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg{};
+    // ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg{}; // iallreduce with device buffers not supported on Mahti. TODO switch back on for LUMI.
+    ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_xy_avg{};
     ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce{};
 
   public:
@@ -2040,32 +2041,60 @@ class Grid {
         ERRCHK_AC(acDeviceReduceXYAverages(m_device.get(), STREAM_DEFAULT));
         ERRCHK_AC(acDeviceSynchronizeStream(m_device.get(), STREAM_DEFAULT));
 
-        // 3) Allreduce
+        // 3) Allreduce (all systems)
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
 
+        const size_t num_compute_profiles{5 * 3};
+        ERRCHK(nonlocal_tfm_profiles.size() == num_compute_profiles); // TODO replace num profiles with num-compute_profiles
         const size_t count{NUM_PROFILES * vba.profiles.count};
-        const ac::device_view<AcReal> in{count, vba.profiles.in[0]};
-        ac::device_view<AcReal> out{count, vba.profiles.in[0]};
+        const ac::device_view<AcReal> dview{count, vba.profiles.in[0]};
 
         ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
-        m_xy_avg.launch(m_xy_neighbors.get(), in, MPI_SUM, out);
+        m_xy_avg.launch(m_xy_neighbors.get(), dview, MPI_SUM);
+
+        // 3) Allreduce (LUMI only)
+        // VertexBufferArray vba{};
+        // ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
+
+        // const size_t count{NUM_PROFILES * vba.profiles.count};
+        // const ac::device_view<AcReal> in{count, vba.profiles.in[0]};
+        // ac::device_view<AcReal> out{count, vba.profiles.in[0]};
+
+        // ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
+        // m_xy_avg.launch(m_xy_neighbors.get(), in, MPI_SUM, out);
     }
 
     void wait_reduce_xy_averages()
     {
-        m_xy_avg.wait();
-
+        // Wait (all systems)
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
 
-        // Note: assumes that all profiles are contiguous and in correct order
-        // Error-prone: should be improved when time
+        const size_t num_compute_profiles{5 * 3};
+        ERRCHK(nonlocal_tfm_profiles.size() == num_compute_profiles); // TODO replace num profiles with num-compute_profiles
         const size_t count{NUM_PROFILES * vba.profiles.count};
-        AcReal* data{vba.profiles.in[0]};
+        const ac::device_view<AcReal> dview{count, vba.profiles.in[0]};
+
+        ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
+        m_xy_avg.wait(dview);
 
         auto collaborated_procs{ac::mpi::get_size(m_xy_neighbors.get())};
-        acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
+        acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), dview.size(), dview.data());
+
+        // Wait (LUMI only)
+        // m_xy_avg.wait();
+
+        // VertexBufferArray vba{};
+        // ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
+
+        // // Note: assumes that all profiles are contiguous and in correct order
+        // // Error-prone: should be improved when time
+        // const size_t count{NUM_PROFILES * vba.profiles.count};
+        // AcReal* data{vba.profiles.in[0]};
+
+        // auto collaborated_procs{ac::mpi::get_size(m_xy_neighbors.get())};
+        // acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
     }
 
     void launch_uumax_reduce()
@@ -2258,7 +2287,7 @@ class Grid {
         const auto tf_reset_interval{
             ac::pull_param(m_device.get(), AC_simulation_reset_test_field_interval)};
 
-        for (size_t counter{0}; counter < nsteps; ++counter) {
+        for (int counter{0}; counter < nsteps; ++counter) {
 
             const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
 
