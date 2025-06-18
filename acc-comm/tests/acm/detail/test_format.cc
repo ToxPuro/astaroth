@@ -14,6 +14,11 @@ main()
     auto c{-1};
     auto d{9.876543210f};
 
+    ERRCHK(ac::bit_cast<uint64_t>(a) == ac::bit_cast<uint64_t>(a));
+    ERRCHK(ac::bit_cast<uint64_t>(a) != ac::bit_cast<uint64_t>(1.234567891011121));
+    ERRCHK(ac::bit_cast<uint32_t>(d) == ac::bit_cast<uint32_t>(d));
+    ERRCHK(ac::bit_cast<uint32_t>(d) != ac::bit_cast<uint32_t>(2.54123146f));
+
     constexpr auto path{"test.txt"};
 
     // Test lossless
@@ -39,8 +44,8 @@ main()
     PRINT_DEBUG(f);
     PRINT_DEBUG(g);
     PRINT_DEBUG(h);
-    ERRCHK(a == e);
-    ERRCHK(d == h);
+    ERRCHK(ac::bit_cast<uint64_t>(a) == ac::bit_cast<uint64_t>(e));
+    ERRCHK(ac::bit_cast<uint32_t>(d) == ac::bit_cast<uint32_t>(h));
 
     return EXIT_SUCCESS;
 }
