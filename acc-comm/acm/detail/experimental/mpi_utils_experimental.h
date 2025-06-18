@@ -7,6 +7,8 @@
 #include "acm/detail/ntuple.h"
 #include "acm/detail/view.h"
 
+#include "acm/detail/errchk_print.h"
+
 // These should be merged to mpi_utils.h eventually
 
 namespace ac::mpi {
@@ -160,10 +162,16 @@ class request {
         return m_req.get();
     }
 
-    bool complete() const noexcept { return *m_req == MPI_REQUEST_NULL; }
+    bool complete() const noexcept {
+        ERRCHK_MPI(m_req);
+        ERRCHK_MPI(m_req.get());
+        return *m_req == MPI_REQUEST_NULL;
+    }
 
     bool ready() const noexcept
     {
+        ERRCHK_MPI(m_req);
+        ERRCHK_MPI(m_req.get());
         ERRCHK_MPI(!complete());
         int flag;
         ERRCHK_MPI_API(MPI_Request_get_status(*m_req, &flag, MPI_STATUS_IGNORE));
@@ -173,6 +181,9 @@ class request {
     void wait() noexcept
     {
         ERRCHK_MPI(!complete());
+        ERRCHK_MPI(m_req);
+        ERRCHK_MPI(m_req.get());
+        ERRCHK_MPI(*m_req != MPI_REQUEST_NULL);
         ERRCHK_MPI_API(MPI_Wait(m_req.get(), MPI_STATUS_IGNORE));
         ERRCHK_MPI(complete());
     }
@@ -261,12 +272,18 @@ template <typename T, typename Allocator> class buffered_isend {
     void launch(const MPI_Comm& comm, const int16_t tag, const ac::view<T, Allocator>& in,
                 const int dst)
     {
+        PRINT_LOG_TRACE("Launching buffered_isend (proc %d)", ac::mpi::get_rank(comm));
         ERRCHK_MPI(m_req.complete());
         ac::copy(in, m_buf.get());
         m_req = ac::mpi::isend(comm, tag, ac::make_view(in.size(), 0, m_buf.get()), dst);
+        PRINT_LOG_TRACE("launched buffered_isend (proc %d)", ac::mpi::get_rank(comm));
     }
 
-    void wait() { m_req.wait(); }
+    void wait() { 
+      PRINT_LOG_TRACE("waiting buffered_isend ");
+      m_req.wait();
+      PRINT_LOG_TRACE("waited buffered_isend "); 
+  }
 };
 
 /**
@@ -283,41 +300,60 @@ template <typename T, typename InternalAllocator> class buffered_iallreduce {
     void launch(const MPI_Comm& comm, const ac::view<T, InputAllocator>& in, const MPI_Op& op,
                 ac::view<T, OutputAllocator> out)
     {
+      PRINT_LOG_TRACE("Launching buffered_isend (proc %d)", ac::mpi::get_rank(comm));
         ERRCHK_MPI(m_req.complete());
 
         // Resize buffer if needed
         if (m_buf.size() < in.size())
             m_buf = ac::buffer<T, InternalAllocator>{in.size()};
+        PRINT_LOG_TRACE("buffered address %p (proc %d)", m_buf.data(), ac::mpi::get_rank(comm));
 
         ac::copy(in, m_buf.get());
         m_req = ac::mpi::iallreduce(comm, ac::make_view(in.size(), 0, m_buf.get()), op, out);
+        PRINT_LOG_TRACE("launched buffered_isend (proc %d)", ac::mpi::get_rank(comm));
     }
 
-    void wait() { m_req.wait(); }
+    void wait() { 
+      PRINT_LOG_TRACE("waiting buffered_isend");
+      m_req.wait(); 
+      PRINT_LOG_TRACE("waited buffered_isend");}
 };
 
 template <typename T, typename InternalAllocator> class twoway_buffered_iallreduce {
   private:
     ac::buffer<T, InternalAllocator>                   m_buf{0};
     ac::mpi::buffered_iallreduce<T, InternalAllocator> m_buffered_iallreduce{};
+    bool                                               m_complete{true};
 
   public:
     template <typename InputAllocator>
     void launch(const MPI_Comm& comm, const ac::view<T, InputAllocator>& in, const MPI_Op& op)
     {
+      PRINT_LOG_TRACE("Launching twoway_buffered_isend (proc %d)", ac::mpi::get_rank(comm));
+        ERRCHK_MPI(m_complete);
+        m_complete = false;
+
         // Resize buffer if needed
         if (m_buf.size() < in.size())
             m_buf = ac::buffer<T, InternalAllocator>{in.size()};
+        PRINT_LOG_TRACE("buffered address %p twoway (proc %d)", m_buf.data(), ac::mpi::get_rank(comm));
 
         m_buffered_iallreduce.launch(comm, in, op, m_buf.get());
+        PRINT_LOG_TRACE("lacnhed twoway_buffered_isend (proc %d)", ac::mpi::get_rank(comm));
     }
 
     template <typename OutputAllocator> void wait(ac::view<T, OutputAllocator> out)
     {
+      PRINT_LOG_TRACE("waiting two_way buffered_isend");
+        ERRCHK_MPI(!m_complete);
+
         m_buffered_iallreduce.wait();
 
         ERRCHK_MPI(out.size() <= m_buf.size());
         ac::copy(ac::make_view(out.size(), 0, m_buf.get()), out);
+
+        m_complete = true;
+        PRINT_LOG_TRACE("waited two_way buffered_isend");
     }
 };
 
