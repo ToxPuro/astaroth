@@ -27,9 +27,9 @@ kernel_volume_copy(const AcReal* in, const int3 in_offset, const int3 in_volume,
         threadIdx.y + blockIdx.y * blockDim.y,
         threadIdx.z + blockIdx.z * blockDim.z,
     };
-    if (idx.x > min(in_volume.x, out_volume.x) || //
-        idx.y > min(in_volume.y, out_volume.y) || //
-        idx.z > min(in_volume.z, out_volume.z))
+    if (idx.x >= min(in_volume.x, out_volume.x) || //
+        idx.y >= min(in_volume.y, out_volume.y) || //
+        idx.z >= min(in_volume.z, out_volume.z))
         return;
 
     const int3 in_pos  = idx + in_offset;
