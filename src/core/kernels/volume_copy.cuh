@@ -27,9 +27,9 @@ kernel_volume_copy(const AcReal* in, const int3 in_offset, const int3 in_volume,
         threadIdx.y + blockIdx.y * blockDim.y,
         threadIdx.z + blockIdx.z * blockDim.z,
     };
-    if (idx.x > min(in_volume.x, out_volume.x) || //
-        idx.y > min(in_volume.y, out_volume.y) || //
-        idx.z > min(in_volume.z, out_volume.z))
+    if (idx.x >= min(in_volume.x, out_volume.x) || //
+        idx.y >= min(in_volume.y, out_volume.y) || //
+        idx.z >= min(in_volume.z, out_volume.z))
         return;
 
     const int3 in_pos  = idx + in_offset;
@@ -51,12 +51,9 @@ acKernelVolumeCopy(const cudaStream_t stream,                                   
                    AcReal* out, const Volume out_offset, const Volume out_volume)
 {
     const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
-    const dim3 tpb(512 < nn.x ? 512 : nn.x , 1, 1);
-    const dim3 bpg((unsigned int)ceil(nn.x / double(tpb.x)),
-                   (unsigned int)ceil(nn.y / double(tpb.y)),
-                   (unsigned int)ceil(nn.z / double(tpb.z)));
-
-    kernel_volume_copy<<<bpg, tpb, 0, stream>>>(in, to_int3(in_offset), to_int3(in_volume), //
+    const Volume tpb {512 < nn.x ? 512 : nn.x , 1, 1};
+    const Volume bpg(ceil_div(nn,tpb));
+    kernel_volume_copy<<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(in, to_int3(in_offset), to_int3(in_volume), //
                                                 out, to_int3(out_offset), to_int3(out_volume));
     ERRCHK_CUDA_KERNEL();
 

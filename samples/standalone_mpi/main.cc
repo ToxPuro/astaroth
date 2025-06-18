@@ -40,6 +40,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include "rapidcsv.h"
 
 #include "config_loader.h"
 #include "errchk.h"
@@ -186,15 +187,15 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     if (pid == 0) {
 	char info_name[40000];
 	sprintf(info_name,"%s/snapshots_info.csv",job_dir);
-        FILE* header_file = fopen(info_name, "a");
+        FILE* header_file = fopen(info_name, step == 0 ? "w" : "a");
 
         // Header only at the step zero
         if (step == 0) {
             fprintf(header_file,
-                    "use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)\n");
+                    "use_double,mx,my,mz,step_number,modstep,t_step,t_step(exact)\n");
         }
 
-        fprintf(header_file, "%d, %d, %d, %d, %d, %d, %g, %la\n", sizeof(AcReal) == 8,
+        fprintf(header_file, "%d,%d,%d,%d,%d,%d,%g,%la\n", sizeof(AcReal) == 8,
                 info[AC_mlocal].x, info[AC_mlocal].y, info[AC_mlocal].z, step,
                 modstep, simulation_time, simulation_time);
 
@@ -537,10 +538,16 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     acGridSynchronizeStream(STREAM_ALL);
 }
 
+static bool
+file_exists(const char* filename)
+{
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
+}
+
 /* Set step = -1 to load from the latest snapshot. step = 0 to start a new run. */
 static void
-read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
-                            const AcMeshInfo info)
+read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time)
 {
     if (*step > 0) {
         ERROR("step in read_file_to_mesh (config start_step) was > 0, do not know what to do with "
@@ -551,40 +558,33 @@ read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
     // Quick hack, TODO better
     int pid;
     MPI_Comm_rank(acGridMPIComm(), &pid);
-    if (pid == 0) {
-        const size_t buflen = 4096;
-        char cmd[buflen];
-        snprintf(cmd, buflen,
-                 "tail -n2 %s/snapshots_info.csv | head -n1 > latest_snapshot.info && sync", dir);
-        system(cmd);
-    }
     MPI_Barrier(acGridMPIComm());
 
     // Read the previous valid step from snapshots_info.csv
     int modstep = 0;
 
     if (*step < 0) {
-        FILE* fp = fopen("latest_snapshot.info", "r");
-        if (fp) {
-            fseek(fp, 0L, SEEK_END);
-            const size_t bytes = ftell(fp);
-            if (bytes == 0) {
-                ERROR("latest_snapshot.info was empty or invalid. Must have at least one valid "
-                      "snapshot available, start from step 0 to generate");
-            }
-            rewind(fp);
+       char file[10000];
+       sprintf(file,"%s/snapshots_info.csv",dir);
+       if(!file_exists(file))
+       {
+           ERROR("Tried to load from the latest snapshot but snapshots_info.csv is malformatted "
+                 "or non-existing");
+       }
+       rapidcsv::Document doc(file);
+       std::vector<int> step_numbers = doc.GetColumn<int>("step_number");
 
-            // Note: quick hack, hardcoded + bad practice
-            int use_double, mx, my, mz;
-            float approx_time;
-            fscanf(fp, "%d, %d, %d, %d, %d, %d, %g, %la", &use_double, &mx, &my, &mz, step,
-                   &modstep, &approx_time, simulation_time);
-            fclose(fp);
-        }
-        else {
-            ERROR("Tried to load from the latest snapshot but snapshots_info.csv is malformatted "
-                  "or non-existing");
-        }
+       *step  = step_numbers[step_numbers.size()-1];
+
+       std::vector<int> mod_steps = doc.GetColumn<int>("modstep");
+       modstep = mod_steps[mod_steps.size()-1];
+
+       std::vector<AcReal> times = doc.GetColumn<AcReal>("t_step");
+       *simulation_time = times[times.size()-1];
+       if(step_numbers.size() == 0) {
+           ERROR("Tried to load from the latest snapshot but snapshots_info.csv is malformatted "
+                 "or non-existing");
+       }
     }
     ERRCHK_ALWAYS(modstep >= 0);
     ERRCHK_ALWAYS(*step >= 0);
@@ -630,17 +630,17 @@ read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
     for (size_t i = 0; i < num_io_fields; ++i)
         acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
 
-#if LMAGNETIC
-    // Scale the magnetic field
-    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info[AC_scaling_factor]);
-    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-    acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
-    acGridSwapBuffers();
-
-    acGridSynchronizeStream(STREAM_ALL);
-    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
-    acGridSynchronizeStream(STREAM_ALL);
-#endif
+//#if LMAGNETIC
+//    // Scale the magnetic field
+//    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info[AC_scaling_factor]);
+//    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+//    acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
+//    acGridSwapBuffers();
+//
+//    acGridSynchronizeStream(STREAM_ALL);
+//    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
+//    acGridSynchronizeStream(STREAM_ALL);
+//#endif
 }
 
 /*
@@ -1249,8 +1249,7 @@ main(int argc, char** argv)
     */
     case InitialMeshProcedure::LoadSnapshot: {
         acLogFromRootProc(pid, "Reading mesh file\n");
-        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time,
-                                    info);
+        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time);
         acLogFromRootProc(pid, "Done reading mesh file\n");
         break;
     }
@@ -1341,6 +1340,7 @@ main(int argc, char** argv)
     FILE* diag_file = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
     // TODO: should probably always check for NaN's, not just at start_step = 0
+
     if (start_step == 0) {
         // TODO: calculate time step before entering loop, recalculate at end
         acLogFromRootProc(pid, "Initial state: diagnostics\n");
@@ -1382,10 +1382,9 @@ main(int argc, char** argv)
     //                     Main simulation loop                  //
     ///////////////////////////////////////////////////////////////
 
-      acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
     acLogFromRootProc(pid, "Starting simulation\n");
     set_simulation_timestamp(start_step, simulation_time);
-    for (int i = start_step + 1;; ++i) {
+    for (int i = start_step;; ++i) {
 
         /////////////////////////////////////////////////////////////////////
         //                                                                 //
@@ -1537,7 +1536,9 @@ main(int argc, char** argv)
                 case PeriodicAction::WriteSnapshot: {
                     log_from_root_proc_with_sim_progress(pid, "Periodic action: writing full mesh "
                                                               "snapshot\n");
-                    save_mesh_mpi_async(info, snapshot_output_dir, pid, i, simulation_time);
+
+		     save_mesh_mpi_async(info, snapshot_output_dir, pid, i, simulation_time);
+
                     break;
                 }
                 case PeriodicAction::WriteSlices: {
@@ -1548,7 +1549,7 @@ main(int argc, char** argv)
                     break;
                 }
                 case PeriodicAction::EndSimulation: {
-                    set_event(&events, SimulationEvent::TimeLimitReached);
+		    if(i > start_step) set_event(&events, SimulationEvent::TimeLimitReached);
                     break;
                 }
                 default:

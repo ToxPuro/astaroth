@@ -10,6 +10,13 @@ ceil_div(const size3_t& a, const int3& b)
 	const int3 factors = ceil((AcReal3){(AcReal)a.x, (AcReal)a.y, (AcReal)a.z}/((AcReal3){(AcReal)b.x, (AcReal)b.y, (AcReal)b.z}));
 	return (size3_t){(unsigned int)factors.x,(unsigned int)factors.y,(unsigned int)factors.z};
 }
+
+static inline size3_t
+ceil_div(const size3_t& a, const size3_t& b)
+{
+	const int3 factors = ceil((AcReal3){(AcReal)a.x, (AcReal)a.y, (AcReal)a.z}/((AcReal3){(AcReal)b.x, (AcReal)b.y, (AcReal)b.z}));
+	return (size3_t){(unsigned int)factors.x,(unsigned int)factors.y,(unsigned int)factors.z};
+}
 static inline int3
 ceil_div(const int3& a, const int3& b)
 {

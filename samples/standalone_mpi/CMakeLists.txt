@@ -10,6 +10,7 @@ target_include_directories(
 ac_run_mpi
 PRIVATE
 	include
+	include/rapidcsv
 )
 
 target_link_libraries(

@@ -99,10 +99,10 @@ acEvalError(const char* label, const Error error)
 
     printf("%-15s... %s ", label, acceptable ? AC_GRN "OK!" AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
 
-    printf("| %.3Lg (abs), %.3Lg (ulps), %.3Lg (rel). Range: [%.3g, %.3g]\n", //
+    printf("| %.3Lg (abs), %.3Lg (ulps), %.3Lg (rel). Range: [%.3g, %.3g] Pos: [%d,%d,%d]\n", //
            error.abs_error, error.ulp_error,
            error.rel_error, //
-           (double)error.minimum_magnitude, (double)error.maximum_magnitude);
+           (double)error.minimum_magnitude, (double)error.maximum_magnitude,error.x,error.y,error.z);
     print_error_to_file(label, error, "verification.out");
 
     return acceptable;

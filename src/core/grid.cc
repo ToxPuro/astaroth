@@ -3474,6 +3474,12 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
     ac_make_dir(std::string(dir));
     running = true;
 
+    int non_auxiliary_vtxbuf = -1;
+    for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i) if(!vtxbuf_is_auxiliary[i]) non_auxiliary_vtxbuf = i;
+    if(non_auxiliary_vtxbuf == -1)
+    {
+    	fatal("%s", "Can not read snapshot if all Fields are auxiliary!\n");
+    }
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
 
         const Device device = grid.device;
@@ -3489,7 +3495,9 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         const Volume in_offset  = acGetMinNN(acGridGetLocalMeshInfo());
 	const Volume in_volume = acGetLocalMM(acGridGetLocalMeshInfo());
 	
-        AcReal* out = vba.on_device.out[i];
+
+	//TP: this can be done since everything is blocking until the memcpy to host has been finished
+        AcReal* out = vba.on_device.out[non_auxiliary_vtxbuf];
 	const Volume out_offset = {0, 0, 0,};
 	const Volume out_volume = acGetLocalNN(acGridGetLocalMeshInfo());
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -3519,9 +3527,8 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #if USE_DISTRIBUTED_IO
             (void)offset; // Unused
 #if USE_POSIX_IO
-            FILE* fp = fopen(filepath, "w");
+            FILE* fp = fopen(filepath, "wb");
             ERRCHK_ALWAYS(fp);
-
             const size_t count         = acVertexBufferCompdomainSize(info_in,VertexBufferHandle(i));
             const size_t count_written = fwrite(host_buffer_in, sizeof(AcReal), count, fp);
             ERRCHK_ALWAYS(count_written == count);
@@ -4135,14 +4142,14 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     FILE* fp;
     if (type == ACCESS_READ)
     {
-        fp = fopen(filepath, "r");
+        fp = fopen(filepath, "rb");
 	if(!fp)
 	{
 		fatal("Could not open file %s\n",filepath);
 	}
     }
     else
-        fp = fopen(filepath, "w");
+        fp = fopen(filepath, "wb");
 
     ERRCHK_ALWAYS(fp);
 

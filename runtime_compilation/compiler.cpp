@@ -217,6 +217,7 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 		const bool loaded_different = 
 				       previous_build_exists 
 					? system(cmd) : true;
+		system("rm tmp_astaroth_run_consts.h");
 		const bool stored_cmake = file_exists(previous_cmake_options_path().c_str());
 		sprintf(cmd,"echo %s | diff - %s",compilation_string,previous_cmake_options_path().c_str());
 		const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
