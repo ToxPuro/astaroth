@@ -162,7 +162,8 @@ class request {
         return m_req.get();
     }
 
-    bool complete() const noexcept {
+    bool complete() const noexcept
+    {
         ERRCHK_MPI(m_req);
         ERRCHK_MPI(m_req.get());
         return *m_req == MPI_REQUEST_NULL;
@@ -279,11 +280,12 @@ template <typename T, typename Allocator> class buffered_isend {
         PRINT_LOG_TRACE("launched buffered_isend (proc %d)", ac::mpi::get_rank(comm));
     }
 
-    void wait() { 
-      PRINT_LOG_TRACE("waiting buffered_isend ");
-      m_req.wait();
-      PRINT_LOG_TRACE("waited buffered_isend "); 
-  }
+    void wait()
+    {
+        PRINT_LOG_TRACE("waiting buffered_isend ");
+        m_req.wait();
+        PRINT_LOG_TRACE("waited buffered_isend ");
+    }
 };
 
 /**
@@ -300,7 +302,7 @@ template <typename T, typename InternalAllocator> class buffered_iallreduce {
     void launch(const MPI_Comm& comm, const ac::view<T, InputAllocator>& in, const MPI_Op& op,
                 ac::view<T, OutputAllocator> out)
     {
-      PRINT_LOG_TRACE("Launching buffered_isend (proc %d)", ac::mpi::get_rank(comm));
+        PRINT_LOG_TRACE("Launching buffered_isend (proc %d)", ac::mpi::get_rank(comm));
         ERRCHK_MPI(m_req.complete());
 
         // Resize buffer if needed
@@ -313,10 +315,12 @@ template <typename T, typename InternalAllocator> class buffered_iallreduce {
         PRINT_LOG_TRACE("launched buffered_isend (proc %d)", ac::mpi::get_rank(comm));
     }
 
-    void wait() { 
-      PRINT_LOG_TRACE("waiting buffered_isend");
-      m_req.wait(); 
-      PRINT_LOG_TRACE("waited buffered_isend");}
+    void wait()
+    {
+        PRINT_LOG_TRACE("waiting buffered_isend");
+        m_req.wait();
+        PRINT_LOG_TRACE("waited buffered_isend");
+    }
 };
 
 template <typename T, typename InternalAllocator> class twoway_buffered_iallreduce {
@@ -329,14 +333,16 @@ template <typename T, typename InternalAllocator> class twoway_buffered_iallredu
     template <typename InputAllocator>
     void launch(const MPI_Comm& comm, const ac::view<T, InputAllocator>& in, const MPI_Op& op)
     {
-      PRINT_LOG_TRACE("Launching twoway_buffered_isend (proc %d)", ac::mpi::get_rank(comm));
+        PRINT_LOG_TRACE("Launching twoway_buffered_isend (proc %d)", ac::mpi::get_rank(comm));
         ERRCHK_MPI(m_complete);
         m_complete = false;
 
         // Resize buffer if needed
         if (m_buf.size() < in.size())
             m_buf = ac::buffer<T, InternalAllocator>{in.size()};
-        PRINT_LOG_TRACE("buffered address %p twoway (proc %d)", m_buf.data(), ac::mpi::get_rank(comm));
+        PRINT_LOG_TRACE("buffered address %p twoway (proc %d)",
+                        m_buf.data(),
+                        ac::mpi::get_rank(comm));
 
         m_buffered_iallreduce.launch(comm, in, op, m_buf.get());
         PRINT_LOG_TRACE("lacnhed twoway_buffered_isend (proc %d)", ac::mpi::get_rank(comm));
@@ -344,7 +350,7 @@ template <typename T, typename InternalAllocator> class twoway_buffered_iallredu
 
     template <typename OutputAllocator> void wait(ac::view<T, OutputAllocator> out)
     {
-      PRINT_LOG_TRACE("waiting two_way buffered_isend");
+        PRINT_LOG_TRACE("waiting two_way buffered_isend");
         ERRCHK_MPI(!m_complete);
 
         m_buffered_iallreduce.wait();
