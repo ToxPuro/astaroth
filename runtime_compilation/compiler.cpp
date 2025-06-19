@@ -222,40 +222,22 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 		sprintf(cmd,"echo %s | diff - %s",compilation_string,previous_cmake_options_path().c_str());
 		const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
 		const bool compile = !previous_build_exists || loaded_different || different_cmake_string;
+		char logging_to_message[100000];
+		if(log_dst) sprintf(logging_to_message," logging to %s",log_dst);
+		else        sprintf(logging_to_message,"%s","");
 		if(!previous_build_exists)
 		{
-			if(log_dst)
-			{
-				fprintf(stderr,"Compiling Astaroth; logging to %s\n",log_dst);
-			}
-			else
-			{
-				fprintf(stderr,"Compiling Astaroth;\n");
-			}
+			fprintf(stderr,"acCompile: Compiling Astaroth;%s\n",logging_to_message);
 		}
 		if(compile)
 		{
 			if(loaded_different && previous_build_exists)  
 			{
-				if(log_dst)
-				{
-					fprintf(stderr,"Loaded different run_const values; recompiling; loggin to %s\n",log_dst);
-				}
-				else
-				{
-					fprintf(stderr,"Loaded different run_const values; recompiling;\n");
-				}
+				fprintf(stderr,"acCompile: Loaded different run_const values; recompiling;%s\n",logging_to_message);
 			}
 			else if(previous_build_exists && different_cmake_string && stored_cmake) 
 			{
-				if(log_dst)
-				{
-					fprintf(stderr,"Gave different cmake options; recompiling; logging to %s\n",log_dst);
-				}
-				else
-				{
-					fprintf(stderr,"Gave different cmake options; recompiling;\n");
-				}
+				fprintf(stderr,"acCompile: Gave different cmake options; recompiling;%s\n",logging_to_message);
 			}
 			sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path().c_str());
 			int retval = system(cmd);
@@ -278,6 +260,10 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 			}
 			acLoadRunConstsBase(ac_overrides_path().c_str(),mesh_info);
 			run_cmake(compilation_string,log_dst);
+		}
+		else
+		{
+			fprintf(stderr,"acCompile: No changes in input; running make in case DSL code has changed;%s\n",logging_to_message);
 		}
 		sprintf(cmd,"cd %s",
 		       runtime_astaroth_build_path().c_str());

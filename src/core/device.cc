@@ -137,6 +137,7 @@ static AcResult
 acDeviceLoadUniform(const Device device, const Stream stream, const P param, const T value)
 {
 	cudaSetDevice(device->id);
+	device->local_config[param] = value;
 	return acLoadUniform(device->streams[stream], param, value);
 }
 
@@ -157,6 +158,7 @@ AcResult
 acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcRealParam param,
                           const AcReal value)
 {
+	device->local_config[param] = value;
 	return acDeviceLoadUniform(device,stream,param,value);
 }
 
@@ -164,6 +166,7 @@ AcResult
 acDeviceLoadVectorUniform(const Device device, const Stream stream, const AcReal3Param param,
                           const AcReal3 value)
 {
+	device->local_config[param] = value;
 	return acDeviceLoadUniform(device,stream,param,value);
 }
 
