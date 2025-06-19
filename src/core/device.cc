@@ -103,6 +103,7 @@ acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcReal
                           const AcReal value)
 {
     cudaSetDevice(device->id);
+    device->local_config.real_params[param] = value;
     return acLoadRealUniform(device->streams[stream], param, value);
 }
 
@@ -111,6 +112,7 @@ acDeviceLoadVectorUniform(const Device device, const Stream stream, const AcReal
                           const AcReal3 value)
 {
     cudaSetDevice(device->id);
+    device->local_config.real3_params[param] = value;
     return acLoadReal3Uniform(device->streams[stream], param, value);
 }
 
@@ -119,6 +121,7 @@ acDeviceLoadIntUniform(const Device device, const Stream stream, const AcIntPara
                        const int value)
 {
     cudaSetDevice(device->id);
+    device->local_config.int_params[param] = value;
     return acLoadIntUniform(device->streams[stream], param, value);
 }
 
@@ -127,6 +130,7 @@ acDeviceLoadInt3Uniform(const Device device, const Stream stream, const AcInt3Pa
                         const int3 value)
 {
     cudaSetDevice(device->id);
+    device->local_config.int3_params[param] = value;
     return acLoadInt3Uniform(device->streams[stream], param, value);
 }
 
