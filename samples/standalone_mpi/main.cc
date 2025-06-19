@@ -1178,6 +1178,11 @@ main(int argc, char** argv)
         	acLogFromRootProc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
 	else
         	acLogFromRootProc(pid, "Initializing mesh with kernel %s\n",kernel_names[standalone_initcond_kernel]);
+	if(start_step == -1)
+	{
+		start_step = 0;
+        	acLogFromRootProc(pid, "AC_start_step was == -1; switched to 0\n");
+	}
         acGridLaunchKernel(STREAM_DEFAULT, standalone_initcond_kernel, dims.n0, dims.n1);
 	acGridSynchronizeStream(STREAM_ALL);
         acGridSwapBuffers();
@@ -1305,26 +1310,26 @@ main(int argc, char** argv)
                                                                          AC_forcing_period_steps,
                                                                          AC_forcing_period_t);
 #endif
-
-    // These run after the simulation step
-    std::map<PeriodicAction, SimulationPeriod> post_step_actions;
-
     // Print diagnostics
-    post_step_actions
+    pre_step_actions
         [PeriodicAction::PrintDiagnostics] = SimulationPeriod(info, AC_save_steps,
                                                               SimulationPeriod::NoTimeParam);
 
     // Write snapshots
     AcReal snapshot_time_offset                      = simulation_time;
-    post_step_actions[PeriodicAction::WriteSnapshot] = SimulationPeriod(info, AC_bin_steps,
+    pre_step_actions[PeriodicAction::WriteSnapshot] = SimulationPeriod(info, AC_bin_steps,
                                                                         AC_bin_save_t,
                                                                         snapshot_time_offset);
 
     // Write slices
     AcReal slice_time_offset                       = simulation_time;
-    post_step_actions[PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
+    pre_step_actions[PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
                                                                       AC_slice_save_t,
                                                                       slice_time_offset);
+
+    // These run after the simulation step
+    std::map<PeriodicAction, SimulationPeriod> post_step_actions;
+
 
     // Stop simulation after max time
     post_step_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
@@ -1383,7 +1388,6 @@ main(int argc, char** argv)
     ///////////////////////////////////////////////////////////////
 
     acLogFromRootProc(pid, "Starting simulation\n");
-    set_simulation_timestamp(start_step, simulation_time);
     for (int i = start_step;; ++i) {
 
         /////////////////////////////////////////////////////////////////////
@@ -1393,6 +1397,7 @@ main(int argc, char** argv)
         /////////////////////////////////////////////////////////////////////
 
         // Generic parameters
+        set_simulation_timestamp(i, simulation_time);
         debug_log_from_root_proc_with_sim_progress(pid, "Calculating time delta\n");
 	
 	if(!info[AC_timestep_calc_with_rhs])
@@ -1435,8 +1440,51 @@ main(int argc, char** argv)
 #endif
 
         for (auto& [action, period] : pre_step_actions) {
-            if (i - 1 != 0 && period.check(i - 1, simulation_time)) {
+            if (period.check(i , simulation_time)) {
+#if !(AC_VERBOSE)
+                // End progress logging (which step you are at) after first period.
+                if (log_progress && i > 0) {
+                    log_progress = false;
+                    log_from_root_proc_with_sim_progress(pid,
+                                                         "VERBOSE is off, not logging simulation "
+                                                         "step completion for "
+                                                         "step > %d\n",
+                                                         i);
+                }
+#endif
                 switch (action) {
+
+                case PeriodicAction::PrintDiagnostics: {
+                    // Print diagnostics and search for nans
+                    log_from_root_proc_with_sim_progress(pid, "Periodic action: diagnostics\n");
+                    int found_nan = 0;
+                    print_diagnostics(pid, i, dt, simulation_time, diag_file, sink_mass,
+                                      accreted_mass, &found_nan);
+                    if (found_nan) {
+                        set_event(&events, SimulationEvent::NanDetected);
+                    }
+                    /*
+                    MV: We would also might want an XY-average calculating funtion,
+                        which can be very useful when observing behaviour of turbulent
+                        simulations. (TODO)
+                    */
+                    break;
+                }
+                case PeriodicAction::WriteSnapshot: {
+                    log_from_root_proc_with_sim_progress(pid, "Periodic action: writing full mesh "
+                                                              "snapshot\n");
+
+		     save_mesh_mpi_async(info, snapshot_output_dir, pid, i, simulation_time);
+
+                    break;
+                }
+                case PeriodicAction::WriteSlices: {
+                    log_from_root_proc_with_sim_progress(pid,
+                                                         "Periodic action: writing mesh slices\n");
+                    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
+        	    write_slices(pid, i, simulation_time);
+                    break;
+                }
 #if LFORCING
                 case PeriodicAction::GenerateForcing: {
                     log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new "
@@ -1490,7 +1538,6 @@ main(int argc, char** argv)
         // to acGridIntegrate(STREAM_DEFAULT, dt)
         acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_rhs),1);
         simulation_time += dt;
-        set_simulation_timestamp(i, simulation_time);
 
         if (log_progress) {
             log_from_root_proc_with_sim_progress(pid, "Simulation step complete\n");
@@ -1504,50 +1551,8 @@ main(int argc, char** argv)
 
         for (auto& [action, period] : post_step_actions) {
             if (period.check(i, simulation_time)) {
-#if !(AC_VERBOSE)
-                // End progress logging (which step you are at) after first period.
-                if (log_progress) {
-                    log_progress = false;
-                    log_from_root_proc_with_sim_progress(pid,
-                                                         "VERBOSE is off, not logging simulation "
-                                                         "step completion for "
-                                                         "step > %d\n",
-                                                         i);
-                }
-#endif
-
                 switch (action) {
-                case PeriodicAction::PrintDiagnostics: {
-                    // Print diagnostics and search for nans
-                    log_from_root_proc_with_sim_progress(pid, "Periodic action: diagnostics\n");
-                    int found_nan = 0;
-                    print_diagnostics(pid, i, dt, simulation_time, diag_file, sink_mass,
-                                      accreted_mass, &found_nan);
-                    if (found_nan) {
-                        set_event(&events, SimulationEvent::NanDetected);
-                    }
-                    /*
-                    MV: We would also might want an XY-average calculating funtion,
-                        which can be very useful when observing behaviour of turbulent
-                        simulations. (TODO)
-                    */
-                    break;
-                }
-                case PeriodicAction::WriteSnapshot: {
-                    log_from_root_proc_with_sim_progress(pid, "Periodic action: writing full mesh "
-                                                              "snapshot\n");
 
-		     save_mesh_mpi_async(info, snapshot_output_dir, pid, i, simulation_time);
-
-                    break;
-                }
-                case PeriodicAction::WriteSlices: {
-                    log_from_root_proc_with_sim_progress(pid,
-                                                         "Periodic action: writing mesh slices\n");
-                    if(acDeviceGetLocalConfig(acGridGetDevice())[AC_fully_periodic_grid]) acGridPeriodicBoundconds(STREAM_DEFAULT);
-        	    write_slices(pid, i, simulation_time);
-                    break;
-                }
                 case PeriodicAction::EndSimulation: {
 		    if(i > start_step) set_event(&events, SimulationEvent::TimeLimitReached);
                     break;
