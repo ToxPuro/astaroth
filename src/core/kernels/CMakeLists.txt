@@ -34,7 +34,7 @@ if(FFT_ENABLED)
 	#TP: there could a cleaner way to do this put to enable debuging now on LUMI explicitly include
 	target_include_directories(static_kernels PUBLIC /opt/rocm/include/rocfft)
    else()
-    	target_link_libraries(astaroth_core PUBLIC CUDA::cufft)
+    	target_link_libraries(static_kernels PUBLIC CUDA::cufft)
    endif()
 endif()
 
