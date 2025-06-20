@@ -140,7 +140,7 @@ main(void)
     finalized = true;
 
     if (pid == 0)
-        fprintf(stderr, "POISSON_TEST complete: %s\n",
+        fprintf(stderr, "FFT_TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     return EXIT_SUCCESS;

@@ -3050,6 +3050,147 @@ acRuntimeQuit()
 	return AC_SUCCESS;
 }
 #if AC_FFT_ENABLED
+#if AC_USE_HIP
+
+#include <rocfft.h>
+
+rocfft_plan_description 
+get_data_layout(const Volume domain_size, const Volume starting_point)
+{
+    size_t offsets[]  = {starting_point.z,starting_point.y,starting_point.x};
+    size_t strides[]  = {domain_size.x*domain_size.y,domain_size.x,1};
+    //size_t distance = domain_size.x*domain_size.y*domain_size.z;
+    size_t distance = 0;
+    // Create plan description
+    rocfft_plan_description desc = nullptr;
+    rocfft_status status = rocfft_plan_description_create(&desc);
+    ERRCHK_ALWAYS((status == rocfft_status_success));
+    status = rocfft_plan_description_set_data_layout(
+        desc,
+        rocfft_array_type_complex_interleaved,  // in_array_type
+        rocfft_array_type_complex_interleaved,  // out_array_type
+	offsets,
+	offsets,
+	3,
+	strides,
+	distance,
+	3,
+	strides,
+	distance
+        );
+
+    ERRCHK_ALWAYS((status == rocfft_status_success));
+    return desc;
+}
+
+AcResult
+acFFTForwardTransformC2C(const AcComplex* buffer, const Volume domain_size,
+                                const Volume subdomain_size, const Volume starting_point,
+                                AcComplex* transformed_in) {
+    const AcComplex* input = buffer;
+    AcComplex* output = transformed_in;
+
+
+
+    rocfft_plan_description desc = get_data_layout(domain_size,starting_point);
+    // Create plan
+    rocfft_plan plan = nullptr;
+    size_t lengths[] = {subdomain_size.z,subdomain_size.y,subdomain_size.x};
+    rocfft_status status = rocfft_plan_create(
+        &plan,
+        rocfft_placement_notinplace,
+        rocfft_transform_type_complex_forward,
+        rocfft_precision_double,
+        3,            // Dimensions
+        lengths,      // lengths
+        1,            // batch
+        desc);        // description
+    if (status != rocfft_status_success) return AC_FAILURE;
+
+    // Create execution info
+    rocfft_execution_info info = nullptr;
+    status = rocfft_execution_info_create(&info);
+    if (status != rocfft_status_success) return AC_FAILURE;
+
+    // Execute
+    void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(input))};
+    void* out_buffer[] = {reinterpret_cast<void*>(output)};
+    status = rocfft_execute(plan, in_buffer, out_buffer, info);
+    if (status != rocfft_status_success) return AC_FAILURE;
+
+    // Cleanup
+    rocfft_execution_info_destroy(info);
+    rocfft_plan_destroy(plan);
+    rocfft_plan_description_destroy(desc);
+
+    // Scaling (just like CUFFT doesn't scale by default)
+    size_t complex_domain_size = domain_size.x * domain_size.y * domain_size.z;
+    const AcReal scale = 1.0 / (subdomain_size.x * subdomain_size.y * subdomain_size.z);
+    acMultiplyInplaceComplex(scale, complex_domain_size, transformed_in);
+
+    return AC_SUCCESS;
+}
+
+
+AcResult
+acFFTBackwardTransformC2C(const AcComplex* transformed_in,
+                                 const Volume domain_size,
+                                 const Volume subdomain_size,
+                                 const Volume starting_point,
+                                 AcComplex* buffer) {
+    const size_t starting_offset = starting_point.x +
+                                   domain_size.x * (starting_point.y +
+                                   domain_size.y * starting_point.z);
+
+    AcComplex* output = buffer + starting_offset;
+    const AcComplex* input = transformed_in + starting_offset;
+
+
+    // Create plan description
+    rocfft_plan_description desc = get_data_layout(domain_size,starting_point);
+    // Create inverse plan
+    rocfft_plan plan = nullptr;
+    size_t lengths[] = {subdomain_size.z,subdomain_size.y,subdomain_size.x};
+    rocfft_status status = rocfft_plan_create(
+        &plan,
+        rocfft_placement_notinplace,
+        rocfft_transform_type_complex_inverse,
+        rocfft_precision_double,
+        3,           // Dimensions
+        lengths,     // FFT size
+        1,           // Batch size
+        desc);
+    if (status != rocfft_status_success) return AC_FAILURE;
+
+    // Create execution info
+    rocfft_execution_info info = nullptr;
+    status = rocfft_execution_info_create(&info);
+    if (status != rocfft_status_success) return AC_FAILURE;
+
+    void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(input))};
+    void* out_buffer[] = {reinterpret_cast<void*>(output)};
+
+    status = rocfft_execute(plan, in_buffer, out_buffer, info);
+    if (status != rocfft_status_success) return AC_FAILURE;
+
+    // Cleanup
+    rocfft_execution_info_destroy(info);
+    rocfft_plan_destroy(plan);
+    rocfft_plan_description_destroy(desc);
+
+    return AC_SUCCESS;
+}
+AcResult
+acFFTForwardTransformSymmetricR2C(const AcReal*, const Volume, const Volume, const Volume, AcComplex*) {
+	return AC_FAILURE;
+}
+
+AcResult
+acFFTBackwardTransformSymmetricC2R(const AcComplex*,const Volume, const Volume,const Volume, AcReal*) {
+	return AC_FAILURE;
+}
+#else
+
 #include <cufftXt.h>
 #include <cuComplex.h>
 
@@ -3142,17 +3283,6 @@ acFFTForwardTransformC2C(const AcComplex* buffer, const Volume domain_size, cons
     return AC_SUCCESS;
 }
 
-AcResult
-acFFTForwardTransformR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    const size_t bytes = sizeof(AcComplex)*count;
-    AcComplex* tmp = NULL;
-    device_malloc(&tmp,bytes);
-    acRealToComplex(buffer,count,tmp);
-    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,transformed_in);
-    device_free(&tmp,0);
-    return AC_SUCCESS;
-}
 
 
 
@@ -3204,6 +3334,7 @@ acFFTBackwardTransformC2C(const AcComplex* transformed_in,const Volume domain_si
     CUFFT_CALL(cufftDestroy(plan_c2r));
     return AC_SUCCESS;
 }
+#endif //AC_USE_HIP
 AcResult
 acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer) {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
@@ -3215,23 +3346,36 @@ acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_si
     device_free(&tmp,0);
     return AC_SUCCESS;
 }
-#else
-AcResult
-acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
-	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransform!\n");
-	fflush(stderr);
-	exit(EXIT_FAILURE);
-	return AC_FAILURE;
-}
+
 AcResult
 acFFTForwardTransformR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
+    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    const size_t bytes = sizeof(AcComplex)*count;
+    AcComplex* tmp = NULL;
+    device_malloc(&tmp,bytes);
+    acRealToComplex(buffer,count,tmp);
+    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,transformed_in);
+    device_free(&tmp,0);
+    return AC_SUCCESS;
+}
+
+#else
+AcResult
+acFFTForwardTransformSymmetricR2C(const AcReal*, const Volume, const Volume, const Volume, AcComplex*) {
 	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransform!\n");
 	fflush(stderr);
 	exit(EXIT_FAILURE);
 	return AC_FAILURE;
 }
 AcResult
-acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer)
+acFFTForwardTransformR2C(const AcReal*, const Volume, const Volume, const Volume, AcComplex*) {
+	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransform!\n");
+	fflush(stderr);
+	exit(EXIT_FAILURE);
+	return AC_FAILURE;
+}
+AcResult
+acFFTBackwardTransformSymmetricC2R(const AcComplex*,const Volume, const Volume,const Volume, AcReal*)
 {
 	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTBackwardTransform!\n");
 	fflush(stderr);
@@ -3239,7 +3383,7 @@ acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in,const Volume 
 	return AC_FAILURE;
 }
 AcResult
-acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer)
+acFFTBackwardTransformC2R(const AcComplex*,const Volume, const Volume,const Volume, AcReal*)
 {
 	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTBackwardTransform!\n");
 	fflush(stderr);
