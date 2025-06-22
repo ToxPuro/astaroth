@@ -8,7 +8,7 @@ const real rk3_alpha =[ 0.,   -5./9.,   -153./128. ]
 const real rk3_beta  =[ 1./3., 15./ 16., 8./15.    ]
 const real rk3_padded_beta  =[ 1.0, 1./3., 15./ 16., 8./15.    ]
 
-run_const int AC_rk_order
+run_const int AC_rk_order = 3
 rk3(Field f, real roc, int step_num, real dt) {
     /*
     // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below

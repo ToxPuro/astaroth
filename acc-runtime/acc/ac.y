@@ -76,7 +76,7 @@ astnode_hostdefine(const char* buffer, const int token)
 }
 
 
-static void process_global_assignment(ASTNode* node, ASTNode* variable_definition, ASTNode* assignment, ASTNode* declaration_list);
+static void process_global_assignment(ASTNode* node, ASTNode* variable_definition,ASTNode* declaration_list);
 static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier);
 static void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
@@ -549,7 +549,7 @@ main(int argc, char** argv)
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
 %token INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
 %token BOOL INTRINSIC LONG_LONG LONG 
-%token KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO DIMS COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
+%token KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token FIXED_BOUNDARY
 %token PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
 %token HOSTDEFINE
@@ -621,7 +621,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    else if(are_arrays)
 		process_global_array_declaration(variable_definition,declaration_list, type_specifier);
 	    else if (assignment)
-		process_global_assignment($$,assignment,variable_definition,declaration_list);
+		process_global_assignment($$,variable_definition,declaration_list);
 
 	    else if(has_qualifier($$->rhs,"run_const") || has_qualifier($$->rhs,"output"))
 	    {
@@ -701,6 +701,7 @@ continue_node: CONTINUE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode
 communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 dims: DIMS { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("dims", $$); $$->token = 255 + DIMS; astnode_set_postfix(" ", $$); };
 halo: HALO { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("halo", $$); $$->token = 255 + DIMS; astnode_set_postfix(" ", $$); };
+field_order: FIELD_ORDER{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(RUNTIME_COMPILATION ? "inactive" : "field_order", $$); $$->token = 255 + DIMS; astnode_set_postfix(" ", $$); };
 dconst_ql: DCONST_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 profile_x:  PROFILE_X   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 profile_y:  PROFILE_Y   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -875,6 +876,10 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dims '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | halo '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
+              | field_order '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); 
+						replace_const_ints($$,const_int_values,const_ints);
+						replace_const_ints($$,run_const_int_values,run_const_ints);
+						}
               | dconst_ql    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | override     { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | const_ql     { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
@@ -1548,20 +1553,14 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			free_node_vec(&dims);
 		}	
 }
-static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNode* variable_definition, ASTNode* declaration_list)
+static void process_global_assignment(ASTNode* node,ASTNode* variable_definition, ASTNode* declaration_list)
 	    {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 
-		if(!has_qualifier(node->rhs,"const")) return;
-		if(!has_qualifier(node->rhs,"const"))
-		{
-                  fprintf(stderr, FATAL_ERROR_MESSAGE"assignment to a global variable only allowed for constant values\n");
-		  fprintf(stderr,"Incorrect assignment: %s\n",combine_all_new(assignment));
-                  assert(!has_qualifier(node->rhs,"const"));
-		  exit(EXIT_FAILURE);
-		}
-
+		const bool is_const = has_qualifier(node->rhs,"const");
+		const bool is_run_const = has_qualifier(node->rhs,"run_const");
+		if(!is_const && !is_run_const) return;
 		const char* spec = get_node(NODE_TSPEC,node->rhs)->lhs->buffer;
 		if(!strcmp(spec,"int"))
 		{	
@@ -1573,8 +1572,16 @@ static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNod
 				ASTNode* elem = (ASTNode*) vars.data[i];
 				const char* name = get_node_by_token(IDENTIFIER,elem)->buffer;
 				int val = eval_int(elem->rhs,true,NULL);
-				push(&const_ints,name);
-				push(&const_int_values,intern(itoa(val)));
+				if(is_const)
+				{
+					push(&const_ints,name);
+					push(&const_int_values,intern(itoa(val)));
+				}
+				else
+				{
+                                        push(&run_const_ints,name);
+                                        push(&run_const_int_values,intern("10"));
+				}
 			}
 			free_node_vec(&vars);
 		}

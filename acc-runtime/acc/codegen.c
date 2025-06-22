@@ -104,6 +104,7 @@ static const char* AUXILIARY_STR      = NULL;
 static const char* COMMUNICATED_STR      = NULL;
 static const char* DIMS_STR = NULL;
 static const char* HALO_STR = NULL;
+static const char* FIELD_ORDER_STR = NULL;
 
 static const char* CONST_STR = NULL;
 static const char* CONSTEXPR_STR = NULL;
@@ -3015,7 +3016,6 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root)
 		free_func_params_info(&call_info);
 }
 
-static int_vec field_remappings = VEC_INITIALIZER;
 
 const char*
 get_field_name(const int field)
@@ -6001,6 +6001,7 @@ get_field_qualifier_recursive(const ASTNode* node,string_vec* dst, const char* q
 	{
 		if(!found && qualifier == DIMS_STR) push(dst,intern("AC_mlocal"));
 		if(!found && qualifier == HALO_STR) push(dst,intern("AC_nmin"));
+		if(!found && qualifier == FIELD_ORDER_STR) push(dst,sprintf_intern("%d",-1));
 	}
 }
 
@@ -6017,6 +6018,17 @@ get_field_halos(const ASTNode* node)
 {
 	string_vec res = VEC_INITIALIZER;
 	get_field_qualifier_recursive(node,&res,HALO_STR);
+	return res;
+}
+static int_vec
+get_field_order(const ASTNode* node)
+{
+	string_vec tmp = VEC_INITIALIZER;
+	int_vec res = VEC_INITIALIZER;
+	get_field_qualifier_recursive(node,&tmp,FIELD_ORDER_STR);
+	for(size_t i = 0; i < tmp.size; ++i)
+		push_int(&res,atoi(tmp.data[i]));
+	free_str_vec(&tmp);
 	return res;
 }
 
@@ -6045,7 +6057,7 @@ get_ray_directions(const ASTNode* node)
 }
 
 static void
-gen_field_info(FILE* fp)
+gen_field_info(FILE* fp, const int_vec user_remappings)
 {
   num_fields   = count_symbols(FIELD_STR);
   num_complex_fields   = count_symbols(COMPLEX_FIELD_STR);
@@ -6063,12 +6075,22 @@ gen_field_info(FILE* fp)
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if(symbol_table[i].tspecifier == FIELD_STR)
 	    push(&original_names,symbol_table[i].identifier);
+  string_vec names = VEC_INITIALIZER;
+  for (size_t i = 0; i < original_names.size; ++i)
+  {
+	push(&names,(user_remappings.data[i] == -1) ? original_names.data[i] : original_names.data[user_remappings.data[i]]);
+  }
+
+  int counter = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
     if(symbol_table[i].tspecifier == FIELD_STR){
+      ++counter;
       const bool is_dead = str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR);
       if(is_dead) continue;
-      push(&field_names, symbol_table[i].identifier);
+      --counter;
+      push(&field_names,names.data[counter]);
+      ++counter;
       const bool is_aux  = str_vec_contains(symbol_table[i].tqualifiers,AUXILIARY_STR);
       const bool is_comm = str_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED_STR);
       const bool has_variable_dims = str_vec_contains(symbol_table[i].tqualifiers,DIMS_STR);
@@ -6081,12 +6103,16 @@ gen_field_info(FILE* fp)
       ++num_of_fields;
     }
   }
+  counter = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
     if(symbol_table[i].tspecifier == FIELD_STR){
       const bool is_dead = str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR);
+      ++counter;
       if(!is_dead) continue;
-      push(&field_names, symbol_table[i].identifier);
+      --counter;
+      push(&field_names,names.data[counter]);
+      ++counter;
       const bool is_aux  = str_vec_contains(symbol_table[i].tqualifiers,AUXILIARY_STR);
       const bool is_comm = str_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED_STR);
       const bool has_variable_dims = str_vec_contains(symbol_table[i].tqualifiers,DIMS_STR);
@@ -6106,13 +6132,13 @@ gen_field_info(FILE* fp)
 	  push(&complex_field_names,symbol_table[i].identifier);
 	}
   }
-  free_int_vec(&field_remappings);
-  for(size_t field = 0; field < num_fields; ++field)
+  fprintf(fp,"static const int field_remappings[] = {");
+  for(size_t field = 0; field < num_of_fields; ++field)
   {
-	  const char* new_name = field_names.data[field];
-	  const int old_index  = str_vec_get_index(original_names,new_name);
-	  push_int(&field_remappings,old_index);
+          const int old_index  = str_vec_get_index(names,field_names.data[field]);
+  	  fprintf(fp,"%d,",old_index);
   }
+  fprintf(fp,"};");
   //TP: IMPORTANT!! if there are dead fields NUM_VTXBUF_HANDLES is equal to alive fields not all fields.  
   //TP: the compiler is allowed to move dead field declarations till the end
   //TP: this way the user can easily loop all alive fields with the old 0:NUM_VTXBUF_HANDLES and same for the Astaroth library dead fields are skiped over automatically
@@ -6143,14 +6169,6 @@ gen_field_info(FILE* fp)
   	fprintf(fp_enums, "NUM_COMPLEX_FIELDS} ComplexField;\n");
 	fclose(fp_enums);
   }
-
-  fprintf(fp,"static const int field_remappings[] = {");
-  {
-	  for(size_t field = 0; field < field_remappings.size; ++field)
-		  fprintf(fp,"%d,",field_remappings.data[field]);
-  }
-  fprintf(fp, "};");
-
   fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
 
   for(size_t i = 0; i < num_of_fields; ++i)
@@ -8611,6 +8629,7 @@ gen_global_strings()
 	COMMUNICATED_STR = intern("communicated");
 	DIMS_STR = intern("dims");
 	HALO_STR = intern("halo");
+	FIELD_ORDER_STR = intern("field_order");
 	CONST_STR  = intern("const");
 	DCONST_STR = intern("dconst");
 	CONSTEXPR_STR = intern("constexpr");
@@ -9204,7 +9223,7 @@ gen_monomorphized_kernel(const char* func_name, const string_vec input_params, A
 	astnode_sprintf(function_id,get_monomorphized_name(function_id->buffer,monomorphization_index));
 
 	if(input_params.size != params_info.types.size)
-		fatal("Number of inputs for %s does not match the number of input params\n", func_name);
+		fatal("Number of inputs (%zu) for %s does not match the number of input params (%zu)\n",input_params.size,func_name,params_info.types.size);
 	for(size_t i = 0; i < params_info.expr.size; ++i)
 		rename_variables(new_node,input_params.data[i],params_info.types.data[i],params_info.expr.data[i]);
 
@@ -10269,7 +10288,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   traverse(root, NODE_NO_OUT, NULL);
   {
           FILE* fp = fopen("fields_info.h","w");
-          gen_field_info(fp);
+  	  int_vec user_remappings = get_field_order(root);
+          gen_field_info(fp,user_remappings);
 
 	  string_vec field_halos = get_field_halos(root);
           fprintf(fp,"static const AcInt3Param vtxbuf_halos[NUM_ALL_FIELDS] = {");

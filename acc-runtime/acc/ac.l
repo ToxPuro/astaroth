@@ -98,6 +98,7 @@ void strip_whitespace(char *str) {
 "dconst"          { return DCONST_QL; }
 "dims"          { return DIMS; }
 "halo"          { return HALO; }
+"field_order"   { return FIELD_ORDER; }
 "const"          { return CONST_QL; }
 "override"          { return OVERRIDE; }
 "dynamic"          { return DYNAMIC_QL; }
