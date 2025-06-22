@@ -3050,17 +3050,24 @@ acRuntimeQuit()
 	return AC_SUCCESS;
 }
 #if AC_FFT_ENABLED
+
+
 #if AC_USE_HIP
+#if AC_DOUBLE_PRECISION
+#define AC_FFT_PRECISION rocfft_precision_double
+#else
+#define AC_FFT_PRECISION rocfft_precision_single
+#endif
 
 #include <rocfft.h>
 
 rocfft_plan_description 
-get_data_layout(const Volume domain_size, const Volume starting_point)
+get_data_layout(const Volume domain_size)
 {
-    size_t offsets[]  = {starting_point.z,starting_point.y,starting_point.x};
+    //TP: not sure are the offsets for rocfft in bytes or in number of elements so prefer to do the offseting via pointer arithmetic myself
+    size_t offsets[]  = {0,0,0};
     size_t strides[]  = {domain_size.x*domain_size.y,domain_size.x,1};
-    //size_t distance = domain_size.x*domain_size.y*domain_size.z;
-    size_t distance = 0;
+    size_t distance = domain_size.x*domain_size.y*domain_size.z;
     // Create plan description
     rocfft_plan_description desc = nullptr;
     rocfft_status status = rocfft_plan_description_create(&desc);
@@ -3084,15 +3091,11 @@ get_data_layout(const Volume domain_size, const Volume starting_point)
 }
 
 AcResult
-acFFTForwardTransformC2C(const AcComplex* buffer, const Volume domain_size,
+acFFTForwardTransformC2C(const AcComplex* src, const Volume domain_size,
                                 const Volume subdomain_size, const Volume starting_point,
-                                AcComplex* transformed_in) {
-    const AcComplex* input = buffer;
-    AcComplex* output = transformed_in;
-
-
-
-    rocfft_plan_description desc = get_data_layout(domain_size,starting_point);
+                                AcComplex* dst) {
+    rocfft_plan_description desc = get_data_layout(domain_size);
+    const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
     // Create plan
     rocfft_plan plan = nullptr;
     size_t lengths[] = {subdomain_size.z,subdomain_size.y,subdomain_size.x};
@@ -3100,7 +3103,7 @@ acFFTForwardTransformC2C(const AcComplex* buffer, const Volume domain_size,
         &plan,
         rocfft_placement_notinplace,
         rocfft_transform_type_complex_forward,
-        rocfft_precision_double,
+	AC_FFT_PRECISION,
         3,            // Dimensions
         lengths,      // lengths
         1,            // batch
@@ -3113,8 +3116,8 @@ acFFTForwardTransformC2C(const AcComplex* buffer, const Volume domain_size,
     if (status != rocfft_status_success) return AC_FAILURE;
 
     // Execute
-    void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(input))};
-    void* out_buffer[] = {reinterpret_cast<void*>(output)};
+    void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(src+starting_offset))};
+    void* out_buffer[] = {reinterpret_cast<void*>(dst+starting_offset)};
     status = rocfft_execute(plan, in_buffer, out_buffer, info);
     if (status != rocfft_status_success) return AC_FAILURE;
 
@@ -3126,36 +3129,29 @@ acFFTForwardTransformC2C(const AcComplex* buffer, const Volume domain_size,
     // Scaling (just like CUFFT doesn't scale by default)
     size_t complex_domain_size = domain_size.x * domain_size.y * domain_size.z;
     const AcReal scale = 1.0 / (subdomain_size.x * subdomain_size.y * subdomain_size.z);
-    acMultiplyInplaceComplex(scale, complex_domain_size, transformed_in);
+    acMultiplyInplaceComplex(scale, complex_domain_size, dst);
 
     return AC_SUCCESS;
 }
 
 
 AcResult
-acFFTBackwardTransformC2C(const AcComplex* transformed_in,
+acFFTBackwardTransformC2C(const AcComplex* src,
                                  const Volume domain_size,
                                  const Volume subdomain_size,
                                  const Volume starting_point,
-                                 AcComplex* buffer) {
-    const size_t starting_offset = starting_point.x +
-                                   domain_size.x * (starting_point.y +
-                                   domain_size.y * starting_point.z);
-
-    AcComplex* output = buffer + starting_offset;
-    const AcComplex* input = transformed_in + starting_offset;
-
-
+                                 AcComplex* dst) {
     // Create plan description
-    rocfft_plan_description desc = get_data_layout(domain_size,starting_point);
+    rocfft_plan_description desc = get_data_layout(domain_size);
     // Create inverse plan
     rocfft_plan plan = nullptr;
     size_t lengths[] = {subdomain_size.z,subdomain_size.y,subdomain_size.x};
+    const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
     rocfft_status status = rocfft_plan_create(
         &plan,
         rocfft_placement_notinplace,
         rocfft_transform_type_complex_inverse,
-        rocfft_precision_double,
+	AC_FFT_PRECISION,
         3,           // Dimensions
         lengths,     // FFT size
         1,           // Batch size
@@ -3167,8 +3163,8 @@ acFFTBackwardTransformC2C(const AcComplex* transformed_in,
     status = rocfft_execution_info_create(&info);
     if (status != rocfft_status_success) return AC_FAILURE;
 
-    void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(input))};
-    void* out_buffer[] = {reinterpret_cast<void*>(output)};
+    void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(src+starting_offset))};
+    void* out_buffer[] = {reinterpret_cast<void*>(dst+starting_offset)};
 
     status = rocfft_execute(plan, in_buffer, out_buffer, info);
     if (status != rocfft_status_success) return AC_FAILURE;
@@ -3190,7 +3186,6 @@ acFFTBackwardTransformSymmetricC2R(const AcComplex*,const Volume, const Volume,c
 	return AC_FAILURE;
 }
 #else
-
 #include <cufftXt.h>
 #include <cuComplex.h>
 

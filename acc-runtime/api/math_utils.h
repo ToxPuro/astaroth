@@ -47,8 +47,6 @@
 
 #include "func_attributes.h"
 
-#define ENABLE_COMPLEX_DATATYPE (1)
-#if ENABLE_COMPLEX_DATATYPE
 
 #if AC_USE_HIP
 #else
@@ -100,8 +98,6 @@ operator*(const AcComplex& a, const AcComplex& b)
 {
   return (AcComplex){a.x*b.x - a.y*b.y,a.x*b.y + b.x*a.y};
 }
-
-#endif // ENABLE_COMPLEX_DATATYPE
 
 typedef struct uint3_64 {
   uint64_t x, y, z;
