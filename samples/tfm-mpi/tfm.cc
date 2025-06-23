@@ -2304,7 +2304,63 @@ class Grid {
                                 as<size_t>(ac::pull_param(m_device.get(), AC_current_step)));
     }
 
-    void benchmark() { ERRCHK_EXPR_DESC(false, "not implemented"); }
+    void benchmark(const tfm::arguments& args)
+    {
+        constexpr size_t nsteps_per_sample{100};
+        constexpr size_t nsamples{20};
+        const auto filename{"bm-tfm-mpi-" + std::to_string(args.job_id) + "-" +
+                            std::to_string(ac::mpi::get_rank(MPI_COMM_WORLD)) + ".csv"};
+
+        // Create the output file
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+
+            std::ofstream os{filename};
+            ERRCHK(os);
+            os << "impl,lnx,lny,lnz,gnx,gny,gnz,radius,nsteps_per_samples,sample,nsamples,rank,"
+                  "nprocs,jobid,ns"
+               << std::endl;
+        }
+
+        // Benchmark
+        auto init  = [&] { reset(); };
+        auto bench = [&] { tfm_pipeline(nsteps_per_sample); };
+        auto sync  = []() {
+#if defined(ACM_DEVICE_ENABLED)
+            ERRCHK_CUDA_API(cudaDeviceSynchronize());
+#endif
+            ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+        };
+        cudaProfilerStart();
+        const auto results{bm::benchmark(init, bench, sync, nsamples)};
+        cudaProfilerStop();
+
+        // Print results to file
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
+            std::ofstream os{filename};
+            ERRCHK(os);
+
+            auto info{ac::get_info(m_device.get())};
+            for (size_t i{0}; i < results.size(); ++i) {
+                ac::fmt::push(os,
+                              "tfm-mpi",
+                              acr::get(info, AC_nx),
+                              acr::get(info, AC_ny),
+                              acr::get(info, AC_nz),
+                              acr::get(info, AC_global_nx),
+                              acr::get(info, AC_global_ny),
+                              acr::get(info, AC_global_nz),
+                              acr::get_local_rr()[0],
+                              nsteps_per_sample,
+                              i,
+                              nsamples,
+                              ac::mpi::get_rank(MPI_COMM_WORLD),
+                              ac::mpi::get_size(MPI_COMM_WORLD),
+                              args.job_id,
+                              std::chrono::duration_cast<std::chrono::nanoseconds>(results[i])
+                                  .count());
+            }
+        }
+    }
 };
 
 } // namespace rev
@@ -2330,7 +2386,7 @@ main(int argc, char* argv[])
         rev::Grid grid{info};
 
         if (args.benchmark)
-            grid.benchmark();
+            grid.benchmark(args);
         else
             grid.simulation_loop();
     }
