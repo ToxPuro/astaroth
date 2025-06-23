@@ -1612,9 +1612,9 @@ benchmark_run(const tfm::arguments& args, const AcMeshInfo& raw_info)
         file.close();
     };
 
-    ERRCHK_CUDA_API(cudaProfilerStart());
+    cudaProfilerStart();
     print("tfm-mpi", bm::benchmark(init, bench, sync, nsamples));
-    ERRCHK_CUDA_API(cudaProfilerStop());
+    cudaProfilerStop();
 }
 
 namespace file {
@@ -2110,14 +2110,14 @@ class Grid {
         m_uumax_reduce.launch(m_comm.get(), ac::host_view<AcReal>{1, &uumax}, MPI_MAX);
     }
 
-    AcReal [[nodiscard]] wait_uumax_reduce_and_get()
+    [[nodiscard]] AcReal wait_uumax_reduce_and_get()
     {
         AcReal uumax{0};
         m_uumax_reduce.wait(ac::host_view<AcReal>{1, &uumax});
         return uumax;
     }
 
-    AcReal [[nodiscard]] wait_uumax_reduce_and_get_dt()
+    [[nodiscard]] AcReal wait_uumax_reduce_and_get_dt()
     {
 
         AcReal uumax{wait_uumax_reduce_and_get()};
@@ -2315,7 +2315,7 @@ main(int argc, char* argv[])
     ac::mpi::init_funneled();
     try {
         // Stop profiler
-        ERRCHK_CUDA_API(cudaProfilerStop());
+        cudaProfilerStop(); // Note: does not return an error code with HIP
 
         // Disable MPI_Abort on error and do manual error handling instead
         ERRCHK_MPI_API(MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
