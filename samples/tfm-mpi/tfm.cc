@@ -1723,14 +1723,6 @@ exists(const std::string& path = default_path)
     return std::filesystem::exists(path);
 }
 
-static void
-reset(const std::string& path = default_path)
-{
-    std::ofstream os{path};
-    ERRCHK(os);
-
-    ac::fmt::push(os, "label,step,t_step,dt,min,rms,max,avg");
-}
 } // namespace Timeseries
 
 namespace Snapshot {
@@ -2280,8 +2272,7 @@ class Grid {
         }
         else {
             // Start a new run
-            if (ac::mpi::get_rank(m_comm.get()) == 0)
-                Timeseries::reset();
+                reset_timeseries();
             ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
 
             SimulationState::push_state_to_device(m_device.get(), SimulationState::State{});
