@@ -2111,10 +2111,18 @@ preprocess_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_
   if(get_parent_node(NODE_VARIABLE,node)) return;
   const char* array_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
   const char* datatype = sprintf_intern("%s*",datatype_scalar);
+  if(datatype_scalar == REAL3_STR)
+  {
+	  const char* expr_type = get_expr_type(node->lhs);
+	  if(expr_type == datatype_scalar)
+	  {
+		astnode_sprintf_prefix(node->lhs,"reinterpret_cast<AcReal*>(&");
+		astnode_sprintf_postfix(node->lhs,")");
+	  }
+  }
   const Symbol* sym = get_symbol(NODE_VARIABLE_ID,intern(array_name),intern(datatype));
   if(!sym)
        return;
-
   {
     
     if(get_parent_node(NODE_ARRAY_ACCESS,node)) return;
@@ -10396,6 +10404,10 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   for(size_t i = 0; i  < primitive_datatypes.size; ++i)
   {
 	preprocess_array_reads(root,root,primitive_datatypes.data[i]);
+  }
+  preprocess_array_reads(root,root,REAL3_STR);
+  for(size_t i = 0; i  < primitive_datatypes.size; ++i)
+  {
   	gen_array_reads(root,root,primitive_datatypes.data[i]);
   }
   if(!gen_mem_accesses && executed_nodes.size > 0 && OPTIMIZE_MEM_ACCESSES && ELIMINATE_CONDITIONALS)
