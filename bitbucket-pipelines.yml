@@ -3,7 +3,7 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
-image: nvidia/cuda:11.6.0-devel-ubuntu20.04
+image: nvidia/cuda:12.9.0-devel-ubuntu24.04
 
 # JP notes:
 # 1) We need a sufficiently recent GPU to run the code (needs to support CUDA 10 + NVIDIA drivers 418)
