@@ -2101,24 +2101,83 @@ create_struct_tspec(const char* datatype)
 	return astnode_create(NODE_TSPEC,struct_type,NULL);
 }
 
-void
-preprocess_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
+static int
+n_occurances(const char* str, const char test)
 {
-  TRAVERSE_PREAMBLE_PARAMS(preprocess_array_reads,root,datatype_scalar);
+	int res = 0;
+	int i = -1;
+	while(str[++i] != '\0') res += str[i] == test;
+	return res;
+}
+
+const char*
+get_array_elem_type(const char* arr_type_in)
+{
+	char* arr_type = strdup(arr_type_in);
+	if(!strstr(arr_type,"AcArray")) return NULL;
+	if(n_occurances(arr_type,'<') == 1)
+	{
+		int start = 0;
+		while(arr_type[++start] != '<');
+		int end = start;
+		++start;
+		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
+		arr_type[end] = '\0';
+		char* tmp = malloc(sizeof(char)*1000);
+		strcpy(tmp, &arr_type[start]);
+		return intern(tmp);
+	}
+	return intern(arr_type);
+}
+void
+preprocess_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar, const bool gen_mem_accesses)
+{
+  TRAVERSE_PREAMBLE_PARAMS(preprocess_array_reads,root,datatype_scalar,gen_mem_accesses);
   if(node->type != NODE_ARRAY_ACCESS)
 	  return;
   if(!node->lhs) return;
   if(get_parent_node(NODE_VARIABLE,node)) return;
   const char* array_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
   const char* datatype = sprintf_intern("%s*",datatype_scalar);
-  if(datatype_scalar == REAL3_STR)
+  const bool is_global = check_symbol(NODE_VARIABLE_ID,intern(array_name),0,0);
+  if(datatype_scalar == REAL3_STR && !is_global)
   {
 	  const char* expr_type = get_expr_type(node->lhs);
 	  if(expr_type == datatype_scalar)
 	  {
-		astnode_sprintf_prefix(node->lhs,"reinterpret_cast<AcReal*>(&");
-		astnode_sprintf_postfix(node->lhs,")");
+		if(gen_mem_accesses)
+		{
+	    		node = node->parent;
+	    		node->lhs = NULL;
+	    		node->rhs = NULL;
+	    		astnode_sprintf(node,"(AcReal){}");
+		}
+		else
+		{
+			astnode_sprintf_prefix(node->lhs,"reinterpret_cast<AcReal*>(&");
+			astnode_sprintf_postfix(node->lhs,")");
+		}
 	  }
+  }
+  if(datatype_scalar == REAL_STR && !is_global)
+  {
+          const char* expr_type = get_expr_type(node->lhs);
+	  if(expr_type && strstr(expr_type,"AcArray"))
+	  {
+		expr_type = get_array_elem_type(expr_type);
+	  }
+          if(expr_type == datatype_scalar || expr_type == datatype)
+          {
+        	if(gen_mem_accesses)
+        	{
+			if(node->rhs)
+			{
+				node->rhs->lhs = NULL;
+				node->rhs->rhs = NULL;
+				astnode_sprintf(node->rhs,"0");
+			}
+        	}
+          }
   }
   const Symbol* sym = get_symbol(NODE_VARIABLE_ID,intern(array_name),intern(datatype));
   if(!sym)
@@ -4351,33 +4410,6 @@ typedef struct
 	int token;
 } tspecifier;
 
-static int
-n_occurances(const char* str, const char test)
-{
-	int res = 0;
-	int i = -1;
-	while(str[++i] != '\0') res += str[i] == test;
-	return res;
-}
-const char*
-get_array_elem_type(const char* arr_type_in)
-{
-	char* arr_type = strdup(arr_type_in);
-	if(!strstr(arr_type,"AcArray")) return NULL;
-	if(n_occurances(arr_type,'<') == 1)
-	{
-		int start = 0;
-		while(arr_type[++start] != '<');
-		int end = start;
-		++start;
-		while(arr_type[end] != ',' && arr_type[end] != ' ') ++end;
-		arr_type[end] = '\0';
-		char* tmp = malloc(sizeof(char)*1000);
-		strcpy(tmp, &arr_type[start]);
-		return intern(tmp);
-	}
-	return intern(arr_type);
-}
 string_vec
 get_array_elem_size(const char* arr_type_in)
 {
@@ -6236,9 +6268,11 @@ gen_field_info(FILE* fp, const int_vec user_remappings)
   fp = fopen("get_vtxbufs_funcs.h","w");
   for(size_t i = 0; i < num_of_fields; ++i)
   	fprintf(fp,"VertexBufferHandle acGet%s() {return %s;}\n", field_names.data[i], field_names.data[i]);
+  fclose(fp);
   fp = fopen("get_vtxbufs_declares.h","w");
   for(size_t i = 0; i < num_of_fields; ++i)
 	fprintf(fp,"FUNC_DEFINE(VertexBufferHandle, acGet%s,());\n",field_names.data[i]);	
+  fclose(fp);
   fp = fopen("get_vtxbufs_loads.h","w");
   for(size_t i = 0; i < num_of_fields; ++i)
   {
@@ -10403,9 +10437,10 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   resolve_profile_stencils(root);
   for(size_t i = 0; i  < primitive_datatypes.size; ++i)
   {
-	preprocess_array_reads(root,root,primitive_datatypes.data[i]);
+	preprocess_array_reads(root,root,primitive_datatypes.data[i],gen_mem_accesses);
   }
-  preprocess_array_reads(root,root,REAL3_STR);
+  preprocess_array_reads(root,root,REAL3_STR,gen_mem_accesses);
+  preprocess_array_reads(root,root,FIELD_STR,gen_mem_accesses);
   for(size_t i = 0; i  < primitive_datatypes.size; ++i)
   {
   	gen_array_reads(root,root,primitive_datatypes.data[i]);
@@ -10570,6 +10605,20 @@ compile_helper(const bool log)
 }
 
 void
+check_status(int status)
+{
+  if(status != 0)
+  {
+	if (WIFEXITED(status)) {
+    		printf("Stencil accesses exited with status: %d\n", WEXITSTATUS(status));
+	}
+	else if (WIFSIGNALED(status)) {
+    		printf("Stencil accesses killed by signal: %s\n", strsignal(WTERMSIG(status)));
+	}
+	fatal("Something went wrong during analysis: %d\n",status);
+  }
+}
+void
 get_executed_nodes(const int round)
 {
 	compile_helper(false);
@@ -10578,7 +10627,7 @@ get_executed_nodes(const int round)
   	format_source("user_kernels.h",dst);
   	FILE* proc = popen("./" STENCILACC_EXEC " -C", "r");
   	assert(proc);
-  	if(pclose(proc) != 0) fatal("Could not get executed nodes\n");
+	check_status(pclose(proc));
 
   	free_int_vec(&executed_nodes);
   	FILE* fp = fopen("executed_nodes.bin","rb");
@@ -10601,17 +10650,7 @@ generate_mem_accesses(void)
   // Generate stencil accesses
   FILE* proc = popen("./" STENCILACC_EXEC " stencil_accesses.h", "r");
   assert(proc);
-  const int status = pclose(proc);
-  if(status != 0)
-  {
-	if (WIFEXITED(status)) {
-    		printf("Stencil accesses exited with status: %d\n", WEXITSTATUS(status));
-	}
-	else if (WIFSIGNALED(status)) {
-    		printf("Stencil accesses killed by signal: %s\n", strsignal(WTERMSIG(status)));
-	}
-	fatal("Something went wrong during analysis: %d\n",status);
-  }
+  check_status(pclose(proc));
 
   bool reading_successful = true;
   FILE* fp = fopen("user_written_fields.bin", "rb");
