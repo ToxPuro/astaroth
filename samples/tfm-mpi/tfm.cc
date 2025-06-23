@@ -41,6 +41,7 @@
 #include <algorithm>
 #include <random>
 
+#include <string>
 #include <unistd.h>
 
 // ACM
@@ -244,6 +245,8 @@ init_tfm_profiles(const Device& device)
                                 host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y));
+
+    PRINT_LOG_TRACE("Exit");
 
     return 0;
 }
@@ -1973,6 +1976,8 @@ class Grid {
           m_hydro_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), hydro_fields.size()},
           m_tfm_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), tfm_fields.size()}
     {
+        PRINT_LOG_TRACE("Grid allocated, continuing to init body");
+
         // Dryrun
         reset();
         tfm_pipeline(3);
@@ -1984,6 +1989,8 @@ class Grid {
 
     void reset()
     {
+        PRINT_LOG_TRACE("Start");
+
         // Stencil coefficients
         AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
         ERRCHK(get_stencil_coeffs(ac::get_info(m_device.get()), stencils) == 0);
@@ -2004,30 +2011,42 @@ class Grid {
         // Note: all fields and profiles are initialized to 0 except
         // the test profiles (PROFILE_B11 to PROFILE_B22)
         ERRCHK(init_tfm_profiles(m_device.get()) == 0);
+
+        PRINT_LOG_TRACE("End");
     }
 
     void launch_hydro_he(const BufferGroup& group)
     {
+        PRINT_LOG_TRACE("Start");
         m_hydro_he.launch(ac::get_ptrs(m_device.get(), hydro_fields, group));
+        PRINT_LOG_TRACE("End");
     }
 
     void wait_hydro_he(const BufferGroup& group)
     {
+        PRINT_LOG_TRACE("Start");
         m_hydro_he.wait(ac::get_ptrs(m_device.get(), hydro_fields, group));
+        PRINT_LOG_TRACE("End");
     }
 
     void launch_tfm_he(const BufferGroup& group)
     {
+        PRINT_LOG_TRACE("Start");
         m_tfm_he.launch(ac::get_ptrs(m_device.get(), tfm_fields, group));
+        PRINT_LOG_TRACE("End");
     }
 
     void wait_tfm_he(const BufferGroup& group)
     {
+        PRINT_LOG_TRACE("Start");
         m_tfm_he.wait(ac::get_ptrs(m_device.get(), tfm_fields, group));
+        PRINT_LOG_TRACE("End");
     }
 
     void launch_reduce_xy_averages()
     {
+        PRINT_LOG_TRACE("Start");
+
         // Strategy:
         // 1) Reduce the local result to device->vba.profiles.in
         ERRCHK_AC(acDeviceSynchronizeStream(m_device.get(), STREAM_ALL));
@@ -2057,10 +2076,12 @@ class Grid {
 
         // ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
         // m_xy_avg.launch(m_xy_neighbors.get(), in, MPI_SUM, out);
+        PRINT_LOG_TRACE("End");
     }
 
     void wait_reduce_xy_averages()
     {
+        PRINT_LOG_TRACE("Start");
         // Wait (all systems)
         VertexBufferArray vba{};
         ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
@@ -2090,10 +2111,14 @@ class Grid {
 
         // auto collaborated_procs{ac::mpi::get_size(m_xy_neighbors.get())};
         // acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
+
+        PRINT_LOG_TRACE("End");
     }
 
     void launch_uumax_reduce()
     {
+        PRINT_LOG_TRACE("Start");
+
         AcReal uumax{0};
         ERRCHK_AC(acDeviceReduceVec(m_device.get(),
                                     STREAM_DEFAULT,
@@ -2103,21 +2128,30 @@ class Grid {
                                     VTXBUF_UUZ,
                                     &uumax));
         m_uumax_reduce.launch(m_comm.get(), ac::host_view<AcReal>{1, &uumax}, MPI_MAX);
+
+        PRINT_LOG_TRACE("End");
     }
 
     [[nodiscard]] AcReal wait_uumax_reduce_and_get()
     {
+        PRINT_LOG_TRACE("Start");
+
         AcReal uumax{0};
         m_uumax_reduce.wait(ac::host_view<AcReal>{1, &uumax});
         return uumax;
+
+        PRINT_LOG_TRACE("End");
     }
 
     [[nodiscard]] AcReal wait_uumax_reduce_and_get_dt()
     {
+        PRINT_LOG_TRACE("Start");
 
         AcReal uumax{wait_uumax_reduce_and_get()};
         AcReal vAmax{0};
         AcReal shock_max{0};
+
+        PRINT_LOG_TRACE("uumax wait complete");
 
         static bool warning_shown{false};
         if (!warning_shown) {
@@ -2131,20 +2165,29 @@ class Grid {
 
     void compute_outer(const std::vector<std::vector<Kernel>>& kernels, const size_t substep)
     {
+        PRINT_LOG_TRACE("Start");
+
         ERRCHK_AC(acDeviceLoadIntUniform(m_device.get(), STREAM_DEFAULT, AC_exclude_inner, 1));
         compute(m_device.get(), kernels[substep], SegmentGroup::compute_full);
+
+        PRINT_LOG_TRACE("End");
     }
 
     void compute_inner(const std::vector<std::vector<Kernel>>& kernels, const size_t substep)
     {
+        PRINT_LOG_TRACE("Start");
+
         ERRCHK_AC(acDeviceLoadIntUniform(m_device.get(), STREAM_DEFAULT, AC_exclude_inner, 0));
         compute(m_device.get(), kernels[substep], SegmentGroup::compute_inner);
+
+        PRINT_LOG_TRACE("End");
     }
 
     void swap_buffers() { ac::swap_buffers(m_device.get()); }
 
     void tfm_pipeline(const size_t nsteps)
     {
+        PRINT_LOG_TRACE("Start");
 
         // Ensure halos and XY averages are up-to-date before starting integration
         launch_hydro_he(BufferGroup::input);
@@ -2201,17 +2244,24 @@ class Grid {
         wait_tfm_he(BufferGroup::input);
         wait_reduce_xy_averages();
         wait_uumax_reduce_and_get_dt();
+
+        PRINT_LOG_TRACE("End");
     }
 
     void restart_from_snapshots(const std::vector<Field>& fields)
     {
+        PRINT_LOG_TRACE("Enter");
+
         const auto latest_snapshot{ac::pull_param(m_device.get(), AC_latest_snapshot)};
         for (const auto& field : fields)
             Snapshot::read(m_comm.get(), m_device.get(), field, latest_snapshot);
+
+        PRINT_LOG_TRACE("Exit");
     }
 
     void flush_snapshots_to_disk(const std::vector<Field>& fields)
     {
+        PRINT_LOG_TRACE("Enter");
 
         constexpr auto nsnapshots{2};
 
@@ -2232,10 +2282,14 @@ class Grid {
             SimulationState::write(state);
         }
         ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
+
+        PRINT_LOG_TRACE("Exit");
     }
 
     void io_step(const std::vector<Field>& restart_fields)
     {
+        PRINT_LOG_TRACE("Enter %d", ac::mpi::get_rank(m_comm.get()));
+
         const auto profile_output_interval{
             ac::pull_param(m_device.get(), AC_simulation_profile_output_interval)};
         const auto snapshot_output_interval{
@@ -2258,10 +2312,13 @@ class Grid {
 
         if ((current_step % snapshot_output_interval) == 0)
             flush_snapshots_to_disk(restart_fields);
+
+        PRINT_LOG_TRACE("Exit %d", ac::mpi::get_rank(m_comm.get()));
     }
 
     void simulation_loop()
     {
+        PRINT_LOG_TRACE("Enter %d", ac::mpi::get_rank(m_comm.get()));
 
         auto restart_fields{hydro_fields};
         restart_fields.insert(restart_fields.end(), tfm_fields.begin(), tfm_fields.end());
@@ -2272,7 +2329,7 @@ class Grid {
         }
         else {
             // Start a new run
-                reset_timeseries();
+            reset_timeseries();
             ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
 
             SimulationState::push_state_to_device(m_device.get(), SimulationState::State{});
@@ -2280,11 +2337,14 @@ class Grid {
         }
         SimulationState::print(SimulationState::pull_state(ac::get_info(m_device.get())));
 
+        PRINT_LOG_TRACE("Setup complete %d", ac::mpi::get_rank(m_comm.get()));
+
         // Simulate
         const auto nsteps{ac::pull_param(m_device.get(), AC_simulation_nsteps)};
         const auto tf_reset_interval{
             ac::pull_param(m_device.get(), AC_simulation_reset_test_field_interval)};
 
+        PRINT_LOG_TRACE("Entering simulation loop %d", ac::mpi::get_rank(m_comm.get()));
         for (int counter{0}; counter < nsteps; ++counter) {
 
             const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
@@ -2295,6 +2355,7 @@ class Grid {
             tfm_pipeline(1);
             io_step(restart_fields);
         }
+        PRINT_LOG_TRACE("Exiting simulation loop %d", ac::mpi::get_rank(m_comm.get()));
 
         // Ensure the current state is flushed to disk even if the last step is
         // not divisible by snapshot_output_interval
@@ -2302,6 +2363,8 @@ class Grid {
         write_snapshots_to_disk(m_comm.get(),
                                 m_device.get(),
                                 as<size_t>(ac::pull_param(m_device.get(), AC_current_step)));
+
+        PRINT_LOG_TRACE("Exit");
     }
 
     void benchmark(const tfm::arguments& args)
