@@ -1968,7 +1968,8 @@ class Grid {
     acm::rev::halo_exchange<AcReal, ac::mr::device_allocator> m_hydro_he;
     acm::rev::halo_exchange<AcReal, ac::mr::device_allocator> m_tfm_he;
 
-    // ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg{}; // iallreduce with device buffers not supported on Mahti. TODO switch back on for LUMI.
+    // ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg{}; // iallreduce with
+    // device buffers not supported on Mahti. TODO switch back on for LUMI.
     ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_xy_avg{};
     ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce{};
 
@@ -2046,7 +2047,8 @@ class Grid {
         ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
 
         const size_t num_compute_profiles{5 * 3};
-        ERRCHK(nonlocal_tfm_profiles.size() == num_compute_profiles); // TODO replace num profiles with num-compute_profiles
+        ERRCHK(nonlocal_tfm_profiles.size() ==
+               num_compute_profiles); // TODO replace num profiles with num-compute_profiles
         const size_t count{NUM_PROFILES * vba.profiles.count};
         const ac::device_view<AcReal> dview{count, vba.profiles.in[0]};
 
@@ -2072,7 +2074,8 @@ class Grid {
         ERRCHK_AC(acDeviceGetVBA(m_device.get(), &vba));
 
         const size_t num_compute_profiles{5 * 3};
-        ERRCHK(nonlocal_tfm_profiles.size() == num_compute_profiles); // TODO replace num profiles with num-compute_profiles
+        ERRCHK(nonlocal_tfm_profiles.size() ==
+               num_compute_profiles); // TODO replace num profiles with num-compute_profiles
         const size_t count{NUM_PROFILES * vba.profiles.count};
         const ac::device_view<AcReal> dview{count, vba.profiles.in[0]};
 
@@ -2255,7 +2258,11 @@ class Grid {
             write_profiles_to_disk(m_comm.get(), m_device.get(), as<size_t>(current_step));
 
         if ((current_step % profile_output_interval) == 0)
-            write_timeseries(m_comm.get(), m_device.get(), as<size_t>(current_step), current_time, current_dt);
+            write_timeseries(m_comm.get(),
+                             m_device.get(),
+                             as<size_t>(current_step),
+                             current_time,
+                             current_dt);
 
         if ((current_step % snapshot_output_interval) == 0)
             flush_snapshots_to_disk(restart_fields);
@@ -2301,7 +2308,9 @@ class Grid {
         // Ensure the current state is flushed to disk even if the last step is
         // not divisible by snapshot_output_interval
         flush_snapshots_to_disk(restart_fields);
-        write_snapshots_to_disk(m_comm.get(), m_device.get(), as<size_t>(ac::pull_param(m_device.get(), AC_current_step)));
+        write_snapshots_to_disk(m_comm.get(),
+                                m_device.get(),
+                                as<size_t>(ac::pull_param(m_device.get(), AC_current_step)));
     }
 
     void benchmark() { ERRCHK_EXPR_DESC(false, "not implemented"); }
