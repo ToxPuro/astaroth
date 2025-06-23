@@ -491,6 +491,14 @@ any_AC(bool[] arr, int arr_len)
 	}
 	return res
 }
+cmplx(real real_component, real imag_component)
+{
+	return complex(real_component,imag_component)
+}
+aimag(complex a)
+{
+	return a.y
+}
 
 //inline any(b) {return b.x || b.y || b.z}
 //inline all(b) {return b.x && b.y && b.z}
