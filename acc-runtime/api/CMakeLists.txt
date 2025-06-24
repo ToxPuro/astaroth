@@ -28,7 +28,7 @@ if (DEFINED DSL_MODULE)
     set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/${DSL_MODULE})
 endif ()
 
-set(EXT_SOURCES $ENV{EXT_SOURCES})
+set(DSL_EXT_SOURCES $ENV{DSL_EXT_SOURCES})
 
 if (NOT DEFINED DSL_MODULE_DIR)
     set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/samples/mhd_modular) # Default
@@ -51,7 +51,8 @@ endif()
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
                 "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
                 "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
-		"${EXT_SOURCES}")
+                "${PROJECT_SOURCE_DIR}/built-in/*"
+		${DSL_EXT_SOURCES})
 
 #"${PROJECT_SOURCE_DIR}/${EXT_SOURCES}")
 

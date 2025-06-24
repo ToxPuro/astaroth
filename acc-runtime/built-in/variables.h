@@ -1,22 +1,6 @@
 //TP: for now TWO_D means XY setup
 run_const bool3 AC_dimension_inactive = (bool3){false,false,TWO_D};
 
-run_const real3 AC_ds
-run_const real AC_dsmin = AC_dimension_inactive.z ? min(AC_ds.x,AC_ds.y) : min(AC_ds)
-run_const real AC_dsmin_2 = AC_dsmin*AC_dsmin
-
-run_const real3 AC_inv_ds = 1.0/AC_ds
-run_const real3 AC_inv_ds_2 = AC_inv_ds*AC_inv_ds
-run_const real3 AC_inv_ds_3 = AC_inv_ds_2*AC_inv_ds
-run_const real3 AC_inv_ds_4 = AC_inv_ds_2*AC_inv_ds_2
-run_const real3 AC_inv_ds_5 = AC_inv_ds_3*AC_inv_ds_2
-run_const real3 AC_inv_ds_6 = AC_inv_ds_3*AC_inv_ds_3
-
-run_const real3 AC_ds_2 = AC_ds*AC_ds
-run_const real3 AC_ds_3 = AC_ds_2*AC_ds
-run_const real3 AC_ds_4 = AC_ds_2*AC_ds_2
-run_const real3 AC_ds_5 = AC_ds_3*AC_ds_2
-run_const real3 AC_ds_6 = AC_ds_3*AC_ds_3
 
 int3 AC_nmin = (int3)
 		{
@@ -24,17 +8,10 @@ int3 AC_nmin = (int3)
 			AC_dimension_inactive.y ? 0 : NGHOST,
 			AC_dimension_inactive.z ? 0 : NGHOST
 		}
-
-
-run_const AcProcMappingStrategy AC_proc_mapping_strategy = AC_PROC_MAPPING_STRATEGY_MORTON
-run_const AcDecomposeStrategy   AC_decompose_strategy    = AC_DECOMPOSE_STRATEGY_MORTON
-run_const AcMPICommStrategy     AC_MPI_comm_strategy     = AC_MPI_COMM_STRATEGY_DUP_WORLD
-
-run_const int3  AC_domain_decomposition = ac_get_process_decomposition()
-
 //TP: these could be run_const but gives really bad performance otherwise
-int3 AC_ngrid 
+int3 AC_ngrid
 int3 AC_mgrid  = AC_ngrid + 2*AC_nmin
+run_const int3  AC_domain_decomposition = ac_get_process_decomposition()
 int3 AC_nlocal = (int3)
 		{
 			AC_ngrid.x/AC_domain_decomposition.x,
@@ -65,6 +42,41 @@ run_const AcDimProductsInv AC_mgrid_products_inv = ac_get_dim_products_inv(AC_mg
 run_const bool  AC_allow_non_periodic_bcs_with_periodic_grid = false
 run_const bool3 AC_periodic_grid
 run_const bool AC_fully_periodic_grid = AC_periodic_grid.x && AC_periodic_grid.y && AC_periodic_grid.z
+
+run_const real3 AC_ds = ac_is_loaded(AC_len) && ac_is_loaded(AC_ngrid) ? 
+						real3(
+							AC_periodic_grid.x ? AC_len.x/AC_ngrid.x : AC_len.x/(AC_ngrid.x-1),	
+							AC_periodic_grid.y ? AC_len.y/AC_ngrid.y : AC_len.y/(AC_ngrid.y-1),	
+							AC_periodic_grid.z ? AC_len.z/AC_ngrid.z : AC_len.z/(AC_ngrid.z-1)
+						) : 
+						real3(1.0,1.0,1.0)
+run_const real AC_dsmin = AC_dimension_inactive.z ? min(AC_ds.x,AC_ds.y) : min(AC_ds)
+run_const real AC_dsmin_2 = AC_dsmin*AC_dsmin
+run_const real AC_dsmin_3 = AC_dsmin_2*AC_dsmin
+run_const real AC_dsmin_4 = AC_dsmin_2*AC_dsmin_2
+run_const real AC_dsmin_5 = AC_dsmin_3*AC_dsmin_2
+run_const real AC_dsmin_6 = AC_dsmin_3*AC_dsmin_3
+
+run_const real3 AC_inv_ds = 1.0/AC_ds
+run_const real3 AC_inv_ds_2 = AC_inv_ds*AC_inv_ds
+run_const real3 AC_inv_ds_3 = AC_inv_ds_2*AC_inv_ds
+run_const real3 AC_inv_ds_4 = AC_inv_ds_2*AC_inv_ds_2
+run_const real3 AC_inv_ds_5 = AC_inv_ds_3*AC_inv_ds_2
+run_const real3 AC_inv_ds_6 = AC_inv_ds_3*AC_inv_ds_3
+
+run_const real3 AC_ds_2 = AC_ds*AC_ds
+run_const real3 AC_ds_3 = AC_ds_2*AC_ds
+run_const real3 AC_ds_4 = AC_ds_2*AC_ds_2
+run_const real3 AC_ds_5 = AC_ds_3*AC_ds_2
+run_const real3 AC_ds_6 = AC_ds_3*AC_ds_3
+
+
+
+run_const AcProcMappingStrategy AC_proc_mapping_strategy = AC_PROC_MAPPING_STRATEGY_MORTON
+run_const AcDecomposeStrategy   AC_decompose_strategy    = AC_DECOMPOSE_STRATEGY_MORTON
+run_const AcMPICommStrategy     AC_MPI_comm_strategy     = AC_MPI_COMM_STRATEGY_DUP_WORLD
+
+
 
 run_const real3 AC_len = (AC_ngrid + AC_periodic_grid - 1)*AC_ds
 run_const real3 AC_frequency_spacing = real3(
