@@ -47,7 +47,7 @@ AcResult
 acCheckDeviceAvailability(void)
 {
     int device_count; // Separate from num_devices to avoid side effects
-    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&device_count));
+    ERRCHK_CUDA_ALWAYS(acGetDeviceCount(&device_count));
     if (device_count > 0)
         return AC_SUCCESS;
     else
@@ -201,7 +201,7 @@ int
 acGetNumDevicesPerNode(void)
 {
     int num_devices;
-    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&num_devices));
+    ERRCHK_CUDA_ALWAYS(acGetDeviceCount(&num_devices));
     return num_devices;
 }
 

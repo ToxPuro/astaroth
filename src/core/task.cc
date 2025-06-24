@@ -935,7 +935,7 @@ Task::satisfyDependency(size_t iteration)
 void
 set_device(const Device device)
 {
-    cudaSetDevice(acDeviceGetId(device));
+    acSetDevice(acDeviceGetId(device));
 }
 
 void
@@ -990,7 +990,7 @@ Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> device_swaps)
 bool
 Task::poll_stream()
 {
-    cudaError_t err = cudaStreamQuery(stream);
+    cudaError_t err = acStreamQuery(stream);
     if (err == cudaSuccess) {
         return true;
     }
@@ -1000,7 +1000,7 @@ Task::poll_stream()
     fprintf(stderr,
             "CUDA error in task %s while polling CUDA stream"
             " (probably occured in the CUDA kernel):\n\t%s\n",
-            name.c_str(), cudaGetErrorString(err));
+            name.c_str(), acGetErrorString(err));
     fflush(stderr);
     exit(EXIT_FAILURE);
     return false;
@@ -1042,8 +1042,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 	set_device(device);
 
         int low_prio, high_prio;
-        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     auto& input_region = input_regions[0];
     if(kernel_only_writes_profile(op.kernel_enum,PROFILE_X))
@@ -1133,8 +1133,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, std::vector<Region> in
 	set_device(device);
 
         int low_prio, high_prio;
-        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
 
     syncVBA();
@@ -1162,8 +1162,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, 
 	set_device(device);
 
         int low_prio, high_prio;
-        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
 
     syncVBA();
@@ -1346,10 +1346,10 @@ HaloMessage::HaloMessage(Volume dims, size_t num_vars, const int tag0, const int
     {
 	    bytes *= counterpart_ranks.size();
     }
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data, bytes));
+    ERRCHK_CUDA_ALWAYS(acMalloc((void**)&data, bytes));
     if(!ac_get_info()[AC_use_cuda_aware_mpi])
     {
-    	ERRCHK_CUDA_ALWAYS(cudaMallocHost((void**)&data_pinned, bytes));
+    	ERRCHK_CUDA_ALWAYS(acMallocHost((void**)&data_pinned, bytes));
     }
     std::vector<MPI_Request>empty{};
     requests = empty;
@@ -1361,10 +1361,10 @@ HaloMessage::~HaloMessage()
 {
     MPI_Waitall(requests.size(),requests.data(), MPI_STATUSES_IGNORE);
     length = -1;
-    cudaFree(data);
+    acFree(data);
     if(!ac_get_info()[AC_use_cuda_aware_mpi])
     {
-    	cudaFree(data_pinned);
+    	acFree(data_pinned);
     }
     data = NULL;
 }
@@ -1374,7 +1374,7 @@ HaloMessage::pin(const Device device, const cudaStream_t stream)
 {
     set_device(device);
     pinned       = true;
-    ERRCHK_CUDA(cudaMemcpyAsync(data_pinned, data, bytes, cudaMemcpyDefault, stream));
+    ERRCHK_CUDA(acMemcpyAsync(data_pinned, data, bytes, cudaMemcpyDefault, stream));
 }
 
 void
@@ -1385,7 +1385,7 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 
     set_device(device);
     pinned       = false;
-    ERRCHK_CUDA(cudaMemcpyAsync(data, data_pinned, bytes, cudaMemcpyDefault, stream));
+    ERRCHK_CUDA(acMemcpyAsync(data, data_pinned, bytes, cudaMemcpyDefault, stream));
 }
 
 // HaloMessageSwapChain
@@ -1590,8 +1590,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, const Volume
 	set_device(device);
 
         int low_prio, high_prio;
-        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done creating CUDA stream\n");
 
@@ -1643,7 +1643,7 @@ HaloExchangeTask::~HaloExchangeTask()
 
     set_device(device);
     // dependents.clear();
-    cudaStreamDestroy(stream);
+    acStreamDestroy(stream);
 }
 
 void
@@ -1707,7 +1707,7 @@ HaloExchangeTask::unpack()
 void
 HaloExchangeTask::sync()
 {
-    cudaStreamSynchronize(stream);
+    acStreamSynchronize(stream);
 }
 
 bool
@@ -1995,8 +1995,8 @@ MPIReduceTask::MPIReduceTask(AcTaskDefinition op, int order_, const Volume start
 	set_device(device);
 
         int low_prio, high_prio;
-        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
 }
 
@@ -2012,7 +2012,7 @@ MPIReduceTask::~MPIReduceTask()
 
     set_device(device);
     // dependents.clear();
-    cudaStreamDestroy(stream);
+    acStreamDestroy(stream);
 }
 
 bool
@@ -2113,8 +2113,8 @@ ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Vo
     {
         set_device(device);
         int low_prio, high_prio;
-        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     ERRCHK_ALWAYS(!(op.num_profiles_in  == 0 && op.num_outputs_in  == 0));
     ERRCHK_ALWAYS(!(op.num_profiles_reduce_out == 0 && op.num_outputs_out == 0));
@@ -2649,8 +2649,8 @@ BoundaryConditionTask::BoundaryConditionTask(
     {
         set_device(device);
         int low_prio, high_prio;
-        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+        acDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     syncVBA();
 

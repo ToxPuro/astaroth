@@ -824,7 +824,7 @@ size_t
 get_amount_of_device_memory_free()
 {
 	size_t free_mem, total_mem;
-	ERRCHK_CUDA_ALWAYS(cudaMemGetInfo(&free_mem,&total_mem));
+	ERRCHK_CUDA_ALWAYS(acMemGetInfo(&free_mem,&total_mem));
 	return free_mem;
 }
 void
@@ -838,7 +838,7 @@ device_malloc(void** dst, const size_t bytes)
  #if USE_COMPRESSIBLE_MEMORY 
     ERRCHK_CUDA_ALWAYS(mallocCompressible(dst, bytes));
  #else
-    ERRCHK_CUDA_ALWAYS(cudaMalloc(dst, bytes));
+    ERRCHK_CUDA_ALWAYS(acMalloc(dst, bytes));
   #endif
   ERRCHK_ALWAYS(dst != NULL);
 }
@@ -855,7 +855,7 @@ device_free(T** dst, const int bytes)
 #if USE_COMPRESSIBLE_MEMORY
   freeCompressible(*dst, bytes);
 #else
-  ERRCHK_CUDA_ALWAYS(cudaFree(*dst));
+  ERRCHK_CUDA_ALWAYS(acFree(*dst));
   //used to silence unused warning
   (void)bytes;
 #endif
@@ -884,7 +884,7 @@ acPBACreate(const AcMeshDims* dims)
   }
 
   acPBAReset(0, &pba, dims);
-  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+  ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
   return pba;
 }
 
@@ -932,7 +932,7 @@ device_malloc(T** dst, const int bytes)
  #if USE_COMPRESSIBLE_MEMORY 
     ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)dst, bytes));
  #else
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)dst, bytes));
+    ERRCHK_CUDA_ALWAYS(acMalloc((void**)dst, bytes));
   #endif
 }
 
@@ -994,9 +994,9 @@ cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* 
 	default:
 		ERRCHK_ALWAYS(reduce_op != NO_REDUCE);
   }
-  if (cudaGetLastError() != cudaSuccess) {
+  if (acGetLastError() != cudaSuccess) {
           ERRCHK_CUDA_KERNEL_ALWAYS();
-          ERRCHK_CUDA_ALWAYS(cudaGetLastError());
+          ERRCHK_CUDA_ALWAYS(acGetLastError());
   }
 }
 
@@ -1275,7 +1275,7 @@ acVBACreate(const AcMeshInfo config)
   init_scratchpads(&vba);
 
   acVBAReset(0, &vba);
-  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+  ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
   return vba;
 }
 
@@ -1339,8 +1339,8 @@ destroy_real_scratchpads(VertexBufferArray* vba)
 	free_scratchpad_real(j);
 	vba->reduce_buffer_real[j].src = NULL;
 
-        ERRCHK_CUDA_ALWAYS(cudaFree(*vba->reduce_buffer_real[j].cub_tmp));
-        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_buffer_real[j].res));
+        ERRCHK_CUDA_ALWAYS(acFree(*vba->reduce_buffer_real[j].cub_tmp));
+        ERRCHK_CUDA_ALWAYS(acFree(vba->reduce_buffer_real[j].res));
 
 	free(vba->reduce_buffer_real[j].cub_tmp);
 	free(vba->reduce_buffer_real[j].cub_tmp_size);
@@ -1359,8 +1359,8 @@ destroy_scratchpads(VertexBufferArray* vba)
 	free_scratchpad_int(j);
 	vba->reduce_buffer_int[j].src = NULL;
 
-        ERRCHK_CUDA_ALWAYS(cudaFree(*vba->reduce_buffer_int[j].cub_tmp));
-        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_buffer_int[j].res));
+        ERRCHK_CUDA_ALWAYS(acFree(*vba->reduce_buffer_int[j].cub_tmp));
+        ERRCHK_CUDA_ALWAYS(acFree(vba->reduce_buffer_int[j].res));
 
 	free(vba->reduce_buffer_int[j].cub_tmp);
 	free(vba->reduce_buffer_int[j].cub_tmp_size);
@@ -1371,8 +1371,8 @@ destroy_scratchpads(VertexBufferArray* vba)
 	free_scratchpad_float(j);
 	vba->reduce_buffer_float[j].src = NULL;
 
-        ERRCHK_CUDA_ALWAYS(cudaFree(*vba->reduce_buffer_float[j].cub_tmp));
-        ERRCHK_CUDA_ALWAYS(cudaFree(vba->reduce_buffer_float[j].res));
+        ERRCHK_CUDA_ALWAYS(acFree(*vba->reduce_buffer_float[j].cub_tmp));
+        ERRCHK_CUDA_ALWAYS(acFree(vba->reduce_buffer_float[j].res));
 
 	free(vba->reduce_buffer_float[j].cub_tmp);
 	free(vba->reduce_buffer_float[j].cub_tmp_size);
@@ -1416,7 +1416,7 @@ int
 get_current_device()
 {
 	int device{};
-	ERRCHK_CUDA_ALWAYS(cudaGetDevice(&device));
+	ERRCHK_CUDA_ALWAYS(acGetDevice(&device));
 	return device;
 }
 
@@ -1516,7 +1516,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
   ERRCHK_CUDA(cudaEventRecord(tstop));
   ERRCHK_CUDA(cudaEventSynchronize(tstop));
   ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+  ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
 
   // Benchmark
   ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
@@ -1545,14 +1545,14 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
 {
   ERRCHK_ALWAYS(stencil < NUM_STENCILS);
 
-  // Note important cudaDeviceSynchronize below
+  // Note important acDeviceSynchronize below
   //
   // Constant memory allocated for stencils is shared among kernel
   // invocations, therefore a race condition is possible when updating
   // the coefficients. To avoid this, all kernels that can access
   // the coefficients must be completed before starting async copy to
   // constant memory
-  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+  ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
 
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
@@ -1580,7 +1580,7 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   ERRCHK_ALWAYS(stencil < NUM_STENCILS);
 
   // Ensure all acLoadUniform calls have completed before continuing
-  ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+  ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
 
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
@@ -1642,7 +1642,7 @@ acLoadUniform(const P param, const V value)
   		}
 	}
   	ERRCHK_ALWAYS(param < get_num_params<P>());
-  	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize()); /* See note in acLoadStencil */
+  	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize()); /* See note in acLoadStencil */
 
   	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
   	const cudaError_t retval = cudaMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);
@@ -1659,7 +1659,7 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 	fprintf(stderr,"Loading %s\n",get_name(array));
 	fflush(stderr);
 #endif
-	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
 	ERRCHK_ALWAYS(values  != nullptr);
 	const size_t bytes = length*sizeof(values[0]);
 	if (!is_dconst(array))
@@ -1693,7 +1693,7 @@ AcResult
 acStoreUniform(const P param, V* value)
 {
 	ERRCHK_ALWAYS(param < get_num_params<P>());
-	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
   	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
 	const cudaError_t retval = cudaMemcpyFromSymbol(value, d_mesh_info, sizeof(V), offset, cudaMemcpyDeviceToHost);
 	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
@@ -1943,7 +1943,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         ERRCHK_CUDA(cudaEventCreate(&tstop));
 
         launch_kernel(kernel,start,end,vba,bpg,tpb,smem);
-        ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+        ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
         ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
         for (int i = 0; i < num_iters; ++i)
 	{
@@ -2147,7 +2147,7 @@ AcResult
 acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t)
 {
   /* See note in acLoadStencil */
-  ERRCHK_CUDA(cudaDeviceSynchronize());
+  ERRCHK_CUDA(acDeviceSynchronize());
   AcResult retval = AC_SUCCESS;
   AcScalarTypes::run<load_all_scalars_uniform>(info);
   AcArrayTypes::run<load_all_arrays_uniform>(info);
@@ -2597,7 +2597,7 @@ acComplexToReal(const AcComplex* src, const size_t count, AcReal* dst)
   const size_t bpg = (count + tpb - 1) / tpb;
   KERNEL_LAUNCH(complex_to_real,bpg, tpb,0,0)(src, count, dst);
   ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA(cudaDeviceSynchronize()); // NOTE: explicit sync here for safety
+  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
 }
 
@@ -2608,7 +2608,7 @@ acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst)
   const size_t bpg = (count + tpb - 1) / tpb;
   KERNEL_LAUNCH(real_to_complex,bpg, tpb,0,0)(src, count, dst);
   ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA(cudaDeviceSynchronize()); // NOTE: explicit sync here for safety
+  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
 }
 
@@ -2620,7 +2620,7 @@ acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* arra
   const size_t bpg = (count + tpb - 1) / tpb;
   KERNEL_LAUNCH(multiply_inplace_complex,bpg, tpb,0,0)(value, count, array);
   ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA(cudaDeviceSynchronize()); // NOTE: explicit sync here for safety
+  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
 }
 
@@ -2631,7 +2631,7 @@ acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
   const size_t bpg = (count + tpb - 1) / tpb;
   KERNEL_LAUNCH(multiply_inplace,bpg, tpb,0,0)(value, count, array);
   ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA(cudaDeviceSynchronize()); // NOTE: explicit sync here for safety
+  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
 }
 #define TILE_DIM (32)
@@ -2934,7 +2934,7 @@ ac_flush_scratchpad(VertexBufferArray vba, const int variable, const AcType type
 		int* dst = *(vba.reduce_buffer_int[variable].src);
 		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_int(op));
 	}
-  	ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());
+  	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
 	return AC_SUCCESS;
 }
 static AcReduceOp*
@@ -3386,3 +3386,105 @@ acFFTBackwardTransformC2R(const AcComplex*,const Volume, const Volume,const Volu
 	return AC_FAILURE;
 }
 #endif
+
+cudaError_t
+acStreamSynchronize(cudaStream_t stream)
+{
+	return cudaStreamSynchronize(stream);
+}
+cudaError_t
+acDeviceSynchronize()
+{
+	return cudaDeviceSynchronize();
+}
+cudaError_t
+acSetDevice(const int id)
+{
+	return cudaSetDevice(id);
+}
+cudaError_t
+acGetDeviceCount(int* dst)
+{
+	return cudaGetDeviceCount(dst);
+}
+cudaError_t
+acDeviceSetSharedMemConfig(const cudaSharedMemConfig config)
+{
+	return cudaDeviceSetSharedMemConfig(config);
+}
+cudaError_t
+acStreamCreateWithPriority(cudaStream_t* dst, int option, int priority)
+{
+	return cudaStreamCreateWithPriority(dst,option,priority);
+}
+cudaError_t
+acStreamDestroy(cudaStream_t stream)
+{
+	return cudaStreamDestroy(stream);
+}
+cudaError_t
+acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind)
+{
+	return cudaMemcpy(dst,src,bytes,kind);
+}
+cudaError_t
+acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream)
+{
+	return cudaMemcpyAsync(dst,src,bytes,kind,stream);
+}
+cudaError_t
+acMemcpyPeerAsync(AcReal* dst, int dst_id, const AcReal* src, int src_id, const size_t bytes, const cudaStream_t stream)
+{
+	return cudaMemcpyPeerAsync(dst,dst_id,src,src_id,bytes,stream);
+}
+cudaError_t
+acMemGetInfo(size_t* free_mem, size_t* total_mem)
+{
+	return cudaMemGetInfo(free_mem,total_mem);
+}
+cudaError_t
+acStreamQuery(cudaStream_t stream)
+{
+    return cudaStreamQuery(stream);
+}
+const char*
+acGetErrorString(cudaError_t err)
+{
+    return cudaGetErrorString(err);
+}
+cudaError_t
+acDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPriority)
+{
+	return cudaDeviceGetStreamPriorityRange(leastPriority,greatestPriority);
+}
+cudaError_t
+acStreamCreateWithPriority(cudaStream_t* stream, unsigned int flags, int priority)
+{
+	return cudaStreamCreateWithPriority(stream, flags, priority);
+}
+cudaError_t
+acMalloc(void** dst, const size_t bytes)
+{
+	return cudaMalloc(dst,bytes);
+}
+cudaError_t
+acFree(void* dst)
+{
+	return cudaFree(dst);
+}
+cudaError_t
+acMallocHost(void** dst, const size_t bytes)
+{
+	return cudaMallocHost(dst,bytes);
+}
+cudaError_t
+acGetDevice(int* dst)
+{
+	return cudaGetDevice(dst);
+}
+cudaError_t
+acGetLastError()
+{
+	return cudaGetLastError();
+}
+
