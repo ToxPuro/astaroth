@@ -877,8 +877,9 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dims '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | halo '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | field_order '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); 
-						replace_const_ints($$,const_int_values,const_ints);
-						replace_const_ints($$,run_const_int_values,run_const_ints);
+						const int res = eval_int($3,true,NULL);
+						set_buffers_empty($3);
+						astnode_set_buffer(itoa(res),$3);
 						}
               | dconst_ql    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | override     { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
