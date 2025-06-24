@@ -166,10 +166,8 @@ real AC_soft
 real AC_accretion_range
 real AC_switch_accretion
 //  Run params
-run_const real AC_cdt
-run_const real AC_cdtv
-run_const real AC_cdts
 run_const real AC_nu_visc
+run_const real AC_nu_hyper3 = 0.0
 run_const real AC_cs_sound
 run_const real AC_eta
 run_const real AC_mu0

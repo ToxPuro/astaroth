@@ -44,3 +44,10 @@ global output real UU_MAX_ADVEC
 global output real AD_ONE_FLUID_MAX_ADVEC
 global output real AC_MAX_SHOCK
 run_const bool AC_timestep_calc_with_rhs = true
+
+//  Run params
+real AC_cdt
+real AC_cdtv
+//TP: same default as in PC
+real AC_cdtv3 = 0.01
+real AC_cdts

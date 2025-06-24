@@ -406,14 +406,17 @@ calc_timestep(const AcMeshInfo info)
     else
     {
     	const long double cdt  = (long double)info[AC_cdt];
+    	const long double cdt3  = (long double)info[AC_cdtv3];
     	const long double cdtv = (long double)info[AC_cdtv];
     	// const long double cdts     = (long double)info.real_params[AC_cdts];
     	const long double cs2_sound = (long double)info[AC_cs2_sound];
     	const long double nu_visc   = (long double)info[AC_nu_visc];
+    	const long double nu_hyper3 = (long double)info[AC_nu_hyper3];
     	const long double eta       = (long double)info[AC_eta];
     	const long double chi      = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
     	const long double gamma    = (long double)info[AC_gamma];
     	const long double dsmin    = (long double)info[AC_dsmin];
+    	const long double dsmin6    = (long double)info[AC_dsmin_6];
     	const long double nu_shock = (long double)info[AC_nu_shock];
 
 	const AcReal uumax = acDeviceGetOutput(acGridGetDevice(),UU_MAX_ADVEC);
@@ -422,14 +425,17 @@ calc_timestep(const AcMeshInfo info)
 	const AcReal shock_max = acDeviceGetOutput(acGridGetDevice(),AC_MAX_SHOCK);
     	// New, closer to the actual Courant timestep
     	// See Pencil Code user manual p. 38 (timestep section)
-    	const long double uu_dt = cdt * dsmin /
+    	const long double advec_dt = cdt * dsmin /
     	                          (fabsl((long double)uumax) + ((long double)ad_onefluid) +
     	                           sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
-    	const long double visc_dt = cdtv * dsmin * dsmin /
+
+    	const long double diffus3_dt = (nu_hyper3 != 0.0) ? cdt3 * dsmin6 / nu_hyper3 : AC_REAL_MAX;
+
+    	const long double diffus_dt  = cdtv * dsmin * dsmin /
     	                            (max(max(nu_visc, eta), gamma * chi) +
     	                             nu_shock * (long double)shock_max);
 
-    	const long double dt = min(uu_dt, visc_dt);
+    	const long double dt = min(min(advec_dt, diffus_dt),diffus3_dt);
     	ERRCHK_ALWAYS(is_valid((AcReal)dt));
     	return AcReal(dt);
     }
