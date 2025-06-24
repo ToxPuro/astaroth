@@ -35,6 +35,9 @@ bool should_reduce_int[1000] = {false};
 AcReal AC_INTERNAL_run_const_AcReal_array_here[2000]{};
 AcReal AC_INTERNAL_run_const_array_here[2000]{};
 bool   AC_INTERNAL_run_const_bool_array_here[2000]{};
+int    AC_INTERNAL_run_const_int_array_here[2000]{};
+float  AC_INTERNAL_run_const_float_array_here[2000]{};
+AcComplex    AC_INTERNAL_run_const_AcComplex_array_here[2000]{};
 
 AcReal*
 RCONST(AcRealCompArrayParam)
@@ -821,7 +824,7 @@ vbaCreate(const size_t count)
   memset(&vba, 0, sizeof(vba));
 
   const size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
-  for (size_t i = 0; i < NUM_ALL_FIELDS; ++i) {
+  for (size_t i = 0; i < NUM_FIELDS; ++i) {
     vba.on_device.in[i]  = (AcReal*)malloc(bytes);
     vba.on_device.out[i] = (AcReal*)malloc(bytes);
   }
@@ -837,7 +840,7 @@ vbaCreate(const size_t count)
 void
 vbaDestroy(VertexBufferArray* vba)
 {
-  for (size_t i = 0; i < NUM_ALL_FIELDS; ++i) {
+  for (size_t i = 0; i < NUM_FIELDS; ++i) {
     free(vba->on_device.in[i]);
     free(vba->on_device.out[i]);
     vba->on_device.in[i]  = NULL;
