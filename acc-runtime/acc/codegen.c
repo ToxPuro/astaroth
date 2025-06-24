@@ -2147,10 +2147,13 @@ preprocess_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_
 	  {
 		if(gen_mem_accesses)
 		{
-	    		node = node->parent;
-	    		node->lhs = NULL;
-	    		node->rhs = NULL;
-	    		astnode_sprintf(node,"(AcReal){}");
+			//TP: on comment for now since causes seg fault for some reason
+	    		//node = node->parent;
+	    		//node->lhs = NULL;
+	    		//node->rhs = NULL;
+	    		//astnode_sprintf(node,"(AcReal){}");
+			astnode_sprintf_prefix(node->lhs,"reinterpret_cast<AcReal*>(&");
+			astnode_sprintf_postfix(node->lhs,")");
 		}
 		else
 		{
@@ -2172,9 +2175,11 @@ preprocess_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_
         	{
 			if(node->rhs)
 			{
-				node->rhs->lhs = NULL;
-				node->rhs->rhs = NULL;
-				astnode_sprintf(node->rhs,"0");
+				//TP: on comment for now since causes seg fault for some reason
+	    			//node = node->parent;
+	    			//node->lhs = NULL;
+	    			//node->rhs = NULL;
+	    			//astnode_sprintf(node,"(AcReal){}");
 			}
         	}
           }
@@ -4967,6 +4972,7 @@ get_array_access_type(const ASTNode* node)
 		strstr(base_type,MULT_STR) ? intern(remove_substring(strdup(base_type),MULT_STR)) :
 		strstr(base_type,"AcArray") ? get_array_elem_type(base_type) :
 		base_type == FIELD_STR  ? REAL_STR :
+		base_type == REAL3_STR ? REAL_STR :
 		NULL;
 }
 
