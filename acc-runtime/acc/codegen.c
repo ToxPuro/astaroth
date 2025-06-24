@@ -6070,10 +6070,34 @@ static int_vec
 get_field_order(const ASTNode* node)
 {
 	string_vec tmp = VEC_INITIALIZER;
-	int_vec res = VEC_INITIALIZER;
+	int_vec tmp2 = VEC_INITIALIZER;
 	get_field_qualifier_recursive(node,&tmp,FIELD_ORDER_STR);
 	for(size_t i = 0; i < tmp.size; ++i)
-		push_int(&res,atoi(tmp.data[i]));
+		push_int(&tmp2,atoi(tmp.data[i]));
+	int_vec res = VEC_INITIALIZER;
+	for(size_t i = 0; i < tmp.size; ++i)
+	{
+		int next = -1;
+		for(size_t j = 0; j < tmp2.size; ++j)
+		{
+			if(tmp2.data[j] == (int)i)
+			{
+				next = (int)j;
+			}
+		}
+		if(next < 0)
+		{
+			for(size_t j = 0; j < tmp2.size; ++j)
+			{
+				if(tmp2.data[j] == -1 && next == -1 && !int_vec_contains(res,(int)j))
+				{
+					next = (int)j;
+				}
+			}
+		}
+		push_int(&res,next);
+	}
+
 	free_str_vec(&tmp);
 	return res;
 }
@@ -6127,49 +6151,39 @@ gen_field_info(FILE* fp, const int_vec user_remappings)
 	push(&names,(user_remappings.data[i] == -1) ? original_names.data[i] : original_names.data[user_remappings.data[i]]);
   }
 
-  int counter = 0;
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  for (size_t i = 0; i < names.size; ++i)
   {
-    if(symbol_table[i].tspecifier == FIELD_STR){
-      ++counter;
-      const bool is_dead = str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR);
-      if(is_dead) continue;
-      --counter;
-      push(&field_names,names.data[counter]);
-      ++counter;
-      const bool is_aux  = str_vec_contains(symbol_table[i].tqualifiers,AUXILIARY_STR);
-      const bool is_comm = str_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED_STR);
-      const bool has_variable_dims = str_vec_contains(symbol_table[i].tqualifiers,DIMS_STR);
-      field_is_auxiliary[num_of_fields]    = is_aux;
-      field_is_communicated[num_of_fields] = is_comm;
-      field_has_variable_dims[num_of_fields] = has_variable_dims;
-      num_of_communicated_fields           += is_comm;
-      num_of_alive_fields                  += (!is_dead);
-      field_is_dead[num_of_fields]         = is_dead;
-      ++num_of_fields;
-    }
+    const Symbol* sym = (Symbol*)get_symbol(NODE_VARIABLE_ID,names.data[i],NULL);
+    const bool is_dead = str_vec_contains(sym->tqualifiers,DEAD_STR);
+    if(is_dead) continue;
+    push(&field_names,sym->identifier);
+    const bool is_aux  = str_vec_contains(sym->tqualifiers,AUXILIARY_STR);
+    const bool is_comm = str_vec_contains(sym->tqualifiers,COMMUNICATED_STR);
+    const bool has_variable_dims = str_vec_contains(sym->tqualifiers,DIMS_STR);
+    field_is_auxiliary[num_of_fields]    = is_aux;
+    field_is_communicated[num_of_fields] = is_comm;
+    field_has_variable_dims[num_of_fields] = has_variable_dims;
+    num_of_communicated_fields           += is_comm;
+    num_of_alive_fields                  += (!is_dead);
+    field_is_dead[num_of_fields]         = is_dead;
+    ++num_of_fields;
   }
-  counter = 0;
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  for (size_t i = 0; i < names.size; ++i)
   {
-    if(symbol_table[i].tspecifier == FIELD_STR){
-      const bool is_dead = str_vec_contains(symbol_table[i].tqualifiers,DEAD_STR);
-      ++counter;
-      if(!is_dead) continue;
-      --counter;
-      push(&field_names,names.data[counter]);
-      ++counter;
-      const bool is_aux  = str_vec_contains(symbol_table[i].tqualifiers,AUXILIARY_STR);
-      const bool is_comm = str_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED_STR);
-      const bool has_variable_dims = str_vec_contains(symbol_table[i].tqualifiers,DIMS_STR);
-      field_is_auxiliary[num_of_fields]    = is_aux;
-      field_is_communicated[num_of_fields] = is_comm;
-      field_has_variable_dims[num_of_fields] = has_variable_dims;
-      num_of_communicated_fields           += is_comm;
-      num_of_alive_fields                  += (!is_dead);
-      field_is_dead[num_of_fields]         = is_dead;
-      ++num_of_fields;
-    }
+    const Symbol* sym = (Symbol*)get_symbol(NODE_VARIABLE_ID,names.data[i],NULL);
+    const bool is_dead = str_vec_contains(sym->tqualifiers,DEAD_STR);
+    if(!is_dead) continue;
+    push(&field_names,sym->identifier);
+    const bool is_aux  = str_vec_contains(sym->tqualifiers,AUXILIARY_STR);
+    const bool is_comm = str_vec_contains(sym->tqualifiers,COMMUNICATED_STR);
+    const bool has_variable_dims = str_vec_contains(sym->tqualifiers,DIMS_STR);
+    field_is_auxiliary[num_of_fields]    = is_aux;
+    field_is_communicated[num_of_fields] = is_comm;
+    field_has_variable_dims[num_of_fields] = has_variable_dims;
+    num_of_communicated_fields           += is_comm;
+    num_of_alive_fields                  += (!is_dead);
+    field_is_dead[num_of_fields]         = is_dead;
+    ++num_of_fields;
   }
   string_vec complex_field_names = VEC_INITIALIZER;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
