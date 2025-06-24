@@ -529,57 +529,11 @@ size_t TO_CORRECT_ORDER(const size_t size)
 #define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \
 	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
 
-AcResult
-acKernelFlushReal(const cudaStream_t stream, AcReal* arr, const size_t n,
-              const AcReal value)
-{
-  ERRCHK_ALWAYS(arr || n == 0);
-  if(n == 0) return AC_SUCCESS;
-  const size_t tpb = 256;
-  const size_t bpg = ceil_div(n,tpb);
-  KERNEL_LAUNCH(flush_kernel,bpg,tpb,0,stream)(arr,n,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
-}
 
-AcResult
-acKernelFlushComplex(const cudaStream_t stream, AcComplex* arr, const size_t n,
-              const AcComplex value)
-{
-  ERRCHK_ALWAYS(arr || n == 0);
-  if(n == 0) return AC_SUCCESS;
-  const size_t tpb = 256;
-  const size_t bpg = ceil_div(n,tpb);
-  KERNEL_LAUNCH(flush_kernel_complex,bpg,tpb,0,stream)(arr,n,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
-}
-
-AcResult
-acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
-              const int value)
-{
-  ERRCHK_ALWAYS(arr || n == 0);
-  if(n == 0) return AC_SUCCESS;
-  const size_t tpb = 256;
-  const size_t bpg = ceil_div(n,tpb);
-  KERNEL_LAUNCH(flush_kernel_int,bpg,tpb,0,stream)(arr,n,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
-}
-
-AcResult
-acKernelFlushFloat(const cudaStream_t stream, float* arr, const size_t n,
-              const float value)
-{
-  ERRCHK_ALWAYS(arr || n == 0);
-  if(n == 0) return AC_SUCCESS;
-  const size_t tpb = 256;
-  const size_t bpg = ceil_div(n,tpb);
-  KERNEL_LAUNCH(flush_kernel_float,bpg,tpb,0,stream)(arr,n,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
-}
+__device__ __constant__ AcReal* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+static size_t d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
+__device__ __constant__ AcReal  d_reduce_real_res_symbol[NUM_REAL_SCRATCHPADS];
 
 AcResult
 acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
@@ -609,11 +563,6 @@ acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
 	return acKernelFlushFloat(stream,arr,n,value);
 }
 #endif
-
-__device__ __constant__ AcReal* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-static size_t d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
-__device__ __constant__ AcReal  d_reduce_real_res_symbol[NUM_REAL_SCRATCHPADS];
 
 
 
@@ -726,6 +675,59 @@ ac_get_field_halos(const Field& field)
 #include "user_kernels.h"
 #undef size
 #undef longlong
+
+AcResult
+acKernelFlushReal(const cudaStream_t stream, AcReal* arr, const size_t n,
+              const AcReal value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
+AcResult
+acKernelFlushComplex(const cudaStream_t stream, AcComplex* arr, const size_t n,
+              const AcComplex value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel_complex,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
+AcResult
+acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
+              const int value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel_int,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
+AcResult
+acKernelFlushFloat(const cudaStream_t stream, float* arr, const size_t n,
+              const float value)
+{
+  ERRCHK_ALWAYS(arr || n == 0);
+  if(n == 0) return AC_SUCCESS;
+  const size_t tpb = 256;
+  const size_t bpg = ceil_div(n,tpb);
+  KERNEL_LAUNCH(flush_kernel_float,bpg,tpb,0,stream)(arr,n,value);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
 
 #include "user_built-in_constants.h"
 #include "user_builtin_non_scalar_constants.h"

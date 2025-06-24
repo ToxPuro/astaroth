@@ -412,6 +412,9 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(const AcKernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
   FUNC_DEFINE(AcResult, acKernelFlushInt,(const cudaStream_t stream, int* arr, const size_t n, const int value));
+  FUNC_DEFINE(AcResult, acKernelFlushReal,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
+  FUNC_DEFINE(AcResult, acKernelFlushComplex,(const cudaStream_t stream, AcComplex* arr, const size_t n, const AcComplex value));
+  FUNC_DEFINE(AcResult, acKernelFlushFloat,(const cudaStream_t stream, float* arr, const size_t n, const float value));
 
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
   FUNC_DEFINE(size_t,acGetRealScratchpadSize,(const size_t i));
