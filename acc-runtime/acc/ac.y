@@ -547,7 +547,7 @@ main(int argc, char** argv)
 %token NON_RETURNING_FUNC_CALL
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
-%token INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
+%token SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
 %token BOOL INTRINSIC LONG_LONG LONG 
 %token KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token FIXED_BOUNDARY
@@ -732,6 +732,7 @@ dead:      DEAD        {
     			$$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); 
 		       };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+size_t_node:  SIZE_T         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 long_long: LONG_LONG   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 long     : LONG        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -816,6 +817,7 @@ enum_definition: enum_name '{' declaration_list_trailing_allowed '}'{
 */
 scalar_type_specifier: 
 		int          { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | size_t_node  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | uint         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | long         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | long_long    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }

@@ -18,6 +18,7 @@
 */
 #pragma once
 
+/**
 static __global__ void
 kernel_volume_copy(const AcReal* in, const int3 in_offset, const int3 in_volume, //
                    AcReal* out, const int3 out_offset, const int3 out_volume)
@@ -44,17 +45,25 @@ kernel_volume_copy(const AcReal* in, const int3 in_offset, const int3 in_volume,
 
     out[out_idx] = in[in_idx];
 }
+**/
 
 AcResult
 acKernelVolumeCopy(const cudaStream_t stream,                                    //
                    const AcReal* in, const Volume in_offset, const Volume in_volume, //
                    AcReal* out, const Volume out_offset, const Volume out_volume)
 {
+    VertexBufferArray vba{};
+    vba.on_device.out[0] = out;
+    acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY,(AcReal*)in,in_offset,in_volume,out,out_offset,out_volume); 
+    const Volume start = {0,0,0};
     const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));
+    acLaunchKernel(AC_VOLUME_COPY,stream,start,nn,vba);
+    /**
     const Volume tpb {512 < nn.x ? 512 : nn.x , 1, 1};
     const Volume bpg(ceil_div(nn,tpb));
     kernel_volume_copy<<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(in, to_int3(in_offset), to_int3(in_volume), //
                                                 out, to_int3(out_offset), to_int3(out_volume));
+    **/
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;

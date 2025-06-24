@@ -35,3 +35,30 @@ boundary_condition utility Kernel BOUNDCOND_PERIODIC_DEVICE(Field f)
     k_src += AC_nmin.z;
     f[vertexIdx.x][vertexIdx.y][vertexIdx.z] = f[i_src][j_src][k_src];
 }
+
+utility Kernel AC_VOLUME_COPY(const real[] src,Volume in_offset, Volume in_volume, 
+			      real[] out,Volume out_offset,Volume out_volume)
+{
+    const Volume local_idx = (Volume){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+    if (local_idx.x >= min(in_volume.x, out_volume.x) || //
+        local_idx.y >= min(in_volume.y, out_volume.y) || //
+        local_idx.z >= min(in_volume.z, out_volume.z))
+    {
+    }
+    else
+    {
+    	const Volume in_pos  = local_idx + in_offset;
+    	const Volume out_pos = local_idx + out_offset;
+    	const size_t in_idx = in_pos.x +               //
+    	                      in_pos.y * in_volume.x + //
+    	                      in_pos.z * in_volume.x * in_volume.y;
+    	const size_t out_idx = out_pos.x +                //
+    	                       out_pos.y * out_volume.x + //
+    	                       out_pos.z * out_volume.x * out_volume.y;
+    	out[out_idx] = src[in_idx];
+    }
+}

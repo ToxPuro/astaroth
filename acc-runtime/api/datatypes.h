@@ -58,14 +58,12 @@ typedef float AcReal;
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
 
-typedef struct {
-  size_t x, y, z;
-} Volume;
 
-typedef Volume size3_t;
 
 #include "builtin_enums.h"
 #include "user_typedefs.h"
+
+typedef Volume size3_t;
 
 
 #ifdef __cplusplus

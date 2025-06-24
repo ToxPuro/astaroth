@@ -53,6 +53,7 @@ void strip_whitespace(char *str) {
 "NaN"                   { return REALNUMBER; } /* nan */
 "NAN"                   { return REALNUMBER; } /* nan */
 "int"                   { return INT; } /* Type specifiers */
+"size_t"                { return SIZE_T; } /* Type specifiers */
 "long"                  { return LONG; } /* Type specifiers */
 "long long"             { return LONG_LONG; } /* Type specifiers */
 "uint"                  { return UINT; }

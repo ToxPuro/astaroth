@@ -2015,7 +2015,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
   //TP: done to ensure scratchpads are reset after autotuning
-  memset(vba.scratchpad_states,0,sizeof(AcScratchpadStates));
+  if(vba.scratchpad_states) memset(vba.scratchpad_states,0,sizeof(AcScratchpadStates));
   return c;
 }
 

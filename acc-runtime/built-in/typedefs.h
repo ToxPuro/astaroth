@@ -190,3 +190,9 @@ enum AcReductionPostProcessingOp {
 	AC_POSTPROCESS_SQRT,
 	AC_RADIAL_WINDOW_RMS
 }
+
+struct Volume {
+  size_t x;
+  size_t y;
+  size_t z;
+};

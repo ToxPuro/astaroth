@@ -39,6 +39,12 @@ to_str(const int value)
 }
 
 std::string
+to_str(const size_t value)
+{
+	return std::to_string(value);
+}
+
+std::string
 to_str(const long value)
 {
 	return std::to_string(value);

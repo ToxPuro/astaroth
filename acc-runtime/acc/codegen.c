@@ -35,6 +35,7 @@ static string_vec primitive_datatypes = VEC_INITIALIZER;
 //TP: only one of these should be active at any time since either float or double equals AcReal
 #define FLOAT_STR     primitive_datatypes.data[5]
 #define DOUBLE_STR    primitive_datatypes.data[5]
+#define SIZE_T_STR    primitive_datatypes.data[6]
 #define MAX_ARRAY_RANK (10)
 #if AC_USE_HIP
 const bool HIP_ON = true;
@@ -8644,6 +8645,8 @@ gen_global_strings()
 		push(&primitive_datatypes,intern("float"));
 	else
 		push(&primitive_datatypes,intern("double"));
+
+	push(&primitive_datatypes,intern("size_t"));
 
 	VALUE_STR = intern("value");
 	OUTPUT_VALUE_STR = intern("output_value");
