@@ -2517,6 +2517,7 @@ get_function_params_info_recursive(const ASTNode* node, const char* func_name, f
 	//TP: speed optim to end recursion if the params are already found
 	if(dst->types.size > 0) return;
 	if(node->type & NODE_DEF) return;
+	if(node->type & NODE_GLOBAL) return;
 	//TP: speed optim no need to traverse into the function itself
 	if(!(node->type & NODE_FUNCTION))
 	{
