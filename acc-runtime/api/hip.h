@@ -26,6 +26,7 @@
 #define __HIP_PLATFORM_AMD__
 #endif
 
+#define cudaSharedMemConfig hipSharedMemConfig
 #define CUresult hipError_t
 #define cudaError_t hipError_t
 #define cudaSuccess hipSuccess

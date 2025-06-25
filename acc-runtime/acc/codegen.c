@@ -10322,7 +10322,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   ASTNode* root = astnode_dup(root_in,NULL);
   check_uniquenes(root,NODE_DFUNCTION,"function");
   check_uniquenes(root,NODE_STENCIL,"stencil");
-  gen_reduce_info(root);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
   gen_type_info(root);
@@ -10341,6 +10340,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   	params.do_checks = true;
   	traverse_base(root, 0, NULL, params);
   }
+  gen_reduce_info(root);
+  gen_kernel_reduce_outputs();
+
   num_profiles = count_profiles();
   check_global_array_dimensions(root);
 
@@ -10487,7 +10489,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
   //replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
   free_combinatorial_params_info(&info);
-  gen_kernel_reduce_outputs();
 
   if(!gen_mem_accesses && executed_nodes.size > 0 && OPTIMIZE_MEM_ACCESSES && ELIMINATE_CONDITIONALS)
   {
