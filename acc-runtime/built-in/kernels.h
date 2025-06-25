@@ -55,3 +55,44 @@ utility Kernel AC_VOLUME_COPY(const real[] src,Volume in_offset, Volume in_volum
                            out_pos.z * out_volume.x * out_volume.y;
     out[out_idx] = src[in_idx];
 }
+
+utility Kernel AC_FLUSH_REAL(real[] dst, real val)
+{
+	dst[vertexIdx.x] = val
+}
+utility Kernel AC_FLUSH_FLOAT(float[] dst, float val)
+{
+	dst[vertexIdx.x] = val
+}
+utility Kernel AC_FLUSH_COMPLEX(complex[] dst, complex val)
+{
+	dst[vertexIdx.x] = val
+}
+
+utility Kernel AC_FLUSH_INT(int[] dst, int val)
+{
+	dst[vertexIdx.x] = val
+}
+utility Kernel AC_MULTIPLY_INPLACE(const real val, real[] array)
+{
+	array[vertexIdx.x] *= val
+}
+
+utility Kernel AC_COMPLEX_TO_REAL(const complex[] src, real[] dst)
+{
+	dst[vertexIdx.x] = src[vertexIdx.x].x
+}
+
+utility Kernel AC_REAL_TO_COMPLEX(const real[] src, complex[] dst)
+{
+	dst[vertexIdx.x].x = src[vertexIdx.x]
+	dst[vertexIdx.x].y = 0.0
+}
+
+utility Kernel AC_MULTIPLY_INPLACE_COMPLEX(const real val, complex[] dst)
+{
+	dst[vertexIdx.x].x *= val
+	dst[vertexIdx.x].y *= val
+}
+
+

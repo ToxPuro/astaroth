@@ -53,7 +53,6 @@ acKernelVolumeCopy(const cudaStream_t stream,                                   
                    AcReal* out, const Volume out_offset, const Volume out_volume)
 {
     VertexBufferArray vba{};
-    vba.on_device.out[0] = out;
     acLoadKernelParams(vba.on_device.kernel_input_params,AC_VOLUME_COPY,(AcReal*)in,in_offset,in_volume,out,out_offset,out_volume); 
     const Volume start = {0,0,0};
     const Volume nn = to_volume(min(to_int3(in_volume), to_int3(out_volume)));

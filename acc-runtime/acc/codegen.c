@@ -2195,7 +2195,8 @@ preprocess_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_
     if(var_dims.size == 0) var_dims = get_const_array_var_dims(array_name, root);
     node_vec array_accesses = VEC_INITIALIZER;
     get_array_access_nodes(node,&array_accesses);
-    if(var_dims.size == 2 && var_dims.size == array_accesses.size+1 && !strcmp(combine_all_new(var_dims.data[1]),"3"))
+    const char* expr_type = get_expr_type(node);
+    if(expr_type == REAL_STR && var_dims.size == 2 && var_dims.size == array_accesses.size+1 && !strcmp(combine_all_new(var_dims.data[1]),"3"))
     {
 	    node_vec nodes = VEC_INITIALIZER;
 	    const size_t n_initializer = 3;
@@ -2258,7 +2259,17 @@ gen_array_reads(ASTNode* node, const ASTNode* root, const char* datatype_scalar)
 	
     ASTNode* elem_index         = get_index_node(node,var_dims);
     if(!elem_index)
-	    fatal("Incorrect array access: %s,%ld\n",combine_all_new(node),var_dims.size);
+    {
+          //TP: 1d reads don't need further posprocessing so allow them even for multidimensional arrays
+          node_vec array_accesses = VEC_INITIALIZER;
+          get_array_access_nodes(node,&array_accesses);
+          if(array_accesses.size == 1)
+          {
+                  free_node_vec(&array_accesses);
+                  return;
+          }
+	  fatal("Incorrect array access: %s,%ld\n",combine_all_new(node),var_dims.size);
+    }
     ASTNode* base = node;
     base->lhs=NULL;
     base->rhs=NULL;
@@ -2516,9 +2527,7 @@ void
 get_function_params_info_recursive(const ASTNode* node, const char* func_name, func_params_info* dst)
 {
 	//TP: speed optim to end recursion if the params are already found
-	if(dst->types.size > 0) return;
-	if(node->type & NODE_DEF) return;
-	if(node->type & NODE_GLOBAL) return;
+	if(dst->types.size || node->type & (NODE_DEF | NODE_GLOBAL)) return;
 	//TP: speed optim no need to traverse into the function itself
 	if(!(node->type & NODE_FUNCTION))
 	{
@@ -2533,7 +2542,7 @@ get_function_params_info_recursive(const ASTNode* node, const char* func_name, f
 	}
 	if(!(node->type & NODE_FUNCTION))
 		return;
-	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,node);
+        const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,node);
 	if(!fn_identifier)
 		return;
 	if(fn_identifier->buffer != func_name)
@@ -2696,21 +2705,22 @@ gen_kernel_structs(ASTNode* root)
 		}
 
 		{
-			FILE* fp = fopen("safe_vtxbuf_input_params.h","a");
-			fprintf(fp,"if(kernel == %s){ \n",name);
-			for(size_t i = 0; i < info.types.size; ++i)
-			{
-				const char* param_name = info.expr.data[i];
-				const char* param_type = info.types.data[i];
-				if(strstr(param_type,"*"))
-				{
-					if(param_type != REAL_PTR_STR)
-						fatal("How to handle non-real input ptr?\n");
-					fprintf(fp,"vba.on_device.kernel_input_params.%s.%s = vba.on_device.out[0];\n",name,param_name);
-				}
-			}
-			fprintf(fp,"}\n");
-			fclose(fp);
+			//FILE* fp = fopen("safe_vtxbuf_input_params.h","a");
+			//fprintf(fp,"if(kernel == %s){ \n",name);
+			//for(size_t i = 0; i < info.types.size; ++i)
+			//{
+			//	const char* param_name = info.expr.data[i];
+			//	const char* param_type = info.types.data[i];
+			//	if(strstr(param_type,"*"))
+			//	{
+			//		if(param_type == REAL_PTR_STR)
+			//		{
+			//			fprintf(fp,"vba.on_device.kernel_input_params.%s.%s = vba.on_device.out[0];\n",name,param_name);
+			//		}
+			//	}
+			//}
+			//fprintf(fp,"}\n");
+			//fclose(fp);
 		}
 	}
 	{
@@ -4221,15 +4231,9 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 
 		if(type && strstr(type,"*") && gen_mem_accesses)
 		{
-			if(type == REAL_PTR_STR)
-			{
-				astnode_sprintf(node,"vba.out[0]");
-				return;
-			}
-			else
-			{
-				fatal("How to handle non-real input pointer?\n");
-			}
+			const char* datatype_scalar = intern(remove_substring(strdup(type),MULT_STR));
+			astnode_sprintf(node,"AC_INTERNAL_run_const_%s_array_here",datatype_scalar);
+			return;
 		}
 		{
 			if(node->prefix != NULL) fatal("Need prefix to be NULL!\n");
@@ -10332,12 +10336,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 
 
   // Fill the symbol table
-  gen_user_taskgraphs(root);
-  combinatorial_params_info info = get_combinatorial_params_info(root);
-  gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
-  //replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
-  free_combinatorial_params_info(&info);
-  gen_kernel_reduce_outputs();
   generate_error_messages();
 
 
@@ -10470,6 +10468,14 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   {
   	gen_array_reads(root,root,primitive_datatypes.data[i]);
   }
+
+  gen_user_taskgraphs(root);
+  combinatorial_params_info info = get_combinatorial_params_info(root);
+  gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
+  //replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
+  free_combinatorial_params_info(&info);
+  gen_kernel_reduce_outputs();
+
   if(!gen_mem_accesses && executed_nodes.size > 0 && OPTIMIZE_MEM_ACCESSES && ELIMINATE_CONDITIONALS)
   {
 	  bool eliminated_something = true;

@@ -481,36 +481,6 @@ static std::vector<TBConfig> tbconfigs;
 
 static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba);
 
-static __global__ void
-flush_kernel(AcReal* arr, const size_t n, const AcReal value)
-{
-  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < n)
-    arr[idx] = value;
-}
-
-static __global__ void
-flush_kernel_complex(AcComplex* arr, const size_t n, const AcComplex value)
-{
-  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < n)
-    arr[idx] = value;
-}
-static __global__ void
-flush_kernel_int(int* arr, const size_t n, const int value)
-{
-  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < n)
-    arr[idx] = value;
-}
-
-static __global__ void
-flush_kernel_float(float* arr, const size_t n, const float value)
-{
-  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < n)
-    arr[idx] = value;
-}
 
 template <typename T>
 T TO_CORRECT_ORDER(const T vol)
@@ -676,15 +646,36 @@ ac_get_field_halos(const Field& field)
 #undef size
 #undef longlong
 
+
+template<typename T1, typename T2>
+AcResult
+acLaunchKernelVariadic1d(AcKernel kernel, const cudaStream_t stream, const size_t start, const size_t end,T1 param1, T2 param2)
+{
+  const Volume volume_start = {start,0,0};
+  const Volume volume_end   = {end,1,1};
+  VertexBufferArray vba{};
+  acLoadKernelParams(vba.on_device.kernel_input_params,kernel,param1,param2); 
+  return acLaunchKernel(kernel,stream,volume_start,volume_end,vba);
+}
+
+template<typename T1, typename T2>
+AcResult
+acLaunchKernelVariadic1d(AcKernel kernel, const int stream, const int start, const size_t end,T1 param1, T2 param2)
+{
+  const Volume volume_start = {as_size_t(start),0,0};
+  const Volume volume_end   = {end,1,1};
+  VertexBufferArray vba{};
+  acLoadKernelParams(vba.on_device.kernel_input_params,kernel,param1,param2); 
+  return acLaunchKernel(kernel,cudaStream_t(stream),volume_start,volume_end,vba);
+}
+
 AcResult
 acKernelFlushReal(const cudaStream_t stream, AcReal* arr, const size_t n,
               const AcReal value)
 {
   ERRCHK_ALWAYS(arr || n == 0);
   if(n == 0) return AC_SUCCESS;
-  const size_t tpb = 256;
-  const size_t bpg = ceil_div(n,tpb);
-  KERNEL_LAUNCH(flush_kernel,bpg,tpb,0,stream)(arr,n,value);
+  acLaunchKernelVariadic1d(AC_FLUSH_REAL,stream,0,n,arr,value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }
@@ -695,9 +686,7 @@ acKernelFlushComplex(const cudaStream_t stream, AcComplex* arr, const size_t n,
 {
   ERRCHK_ALWAYS(arr || n == 0);
   if(n == 0) return AC_SUCCESS;
-  const size_t tpb = 256;
-  const size_t bpg = ceil_div(n,tpb);
-  KERNEL_LAUNCH(flush_kernel_complex,bpg,tpb,0,stream)(arr,n,value);
+  acLaunchKernelVariadic1d(AC_FLUSH_COMPLEX,stream,0,n,arr,value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }
@@ -708,9 +697,7 @@ acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
 {
   ERRCHK_ALWAYS(arr || n == 0);
   if(n == 0) return AC_SUCCESS;
-  const size_t tpb = 256;
-  const size_t bpg = ceil_div(n,tpb);
-  KERNEL_LAUNCH(flush_kernel_int,bpg,tpb,0,stream)(arr,n,value);
+  acLaunchKernelVariadic1d(AC_FLUSH_INT,stream,0,n,arr,value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }
@@ -721,9 +708,7 @@ acKernelFlushFloat(const cudaStream_t stream, float* arr, const size_t n,
 {
   ERRCHK_ALWAYS(arr || n == 0);
   if(n == 0) return AC_SUCCESS;
-  const size_t tpb = 256;
-  const size_t bpg = ceil_div(n,tpb);
-  KERNEL_LAUNCH(flush_kernel_float,bpg,tpb,0,stream)(arr,n,value);
+  acLaunchKernelVariadic1d(AC_FLUSH_FLOAT,stream,0,n,arr,value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }
@@ -1781,7 +1766,7 @@ make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel kernel)
 {
   //TP: have to set reduce offset zero since it might not be
   vba.on_device.reduce_offset = 0;
-#include "safe_vtxbuf_input_params.h"
+//#include "safe_vtxbuf_input_params.h"
 }
 int3
 get_kernel_dims(const AcKernel kernel, const int3 start, const int3 end)
@@ -2554,50 +2539,10 @@ acReduceInt(const cudaStream_t stream, const AcReduceOp op, const AcIntScalarRed
 	return acReduceBase(stream,op,buffer,count);
 }
 
-static __global__ void
-multiply_inplace(const AcReal value, const size_t count, AcReal* array)
-{
-  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < count)
-    array[idx] *= value;
-}
-
-static __global__ void
-complex_to_real(const AcComplex* src, const size_t count, AcReal* dst)
-{
-  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < count)
-    dst[idx] = src[idx].x;
-}
-
-
-static __global__ void
-real_to_complex(const AcReal* src, const size_t count, AcComplex* dst)
-{
-  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < count)
-  {
-    dst[idx].x = src[idx];
-    dst[idx].y = 0.0;
-  }
-}
-static __global__ void
-multiply_inplace_complex(const AcReal value, const size_t count, AcComplex* array)
-{
-  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < count)
-  {
-    array[idx].x *= value;
-    array[idx].y *= value;
-  }
-}
-
 AcResult
 acComplexToReal(const AcComplex* src, const size_t count, AcReal* dst)
 {
-  const size_t tpb = 256;
-  const size_t bpg = (count + tpb - 1) / tpb;
-  KERNEL_LAUNCH(complex_to_real,bpg, tpb,0,0)(src, count, dst);
+  acLaunchKernelVariadic1d(AC_COMPLEX_TO_REAL,0,0,count,(AcComplex*)src,dst);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
@@ -2606,9 +2551,7 @@ acComplexToReal(const AcComplex* src, const size_t count, AcReal* dst)
 AcResult
 acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst)
 {
-  const size_t tpb = 256;
-  const size_t bpg = (count + tpb - 1) / tpb;
-  KERNEL_LAUNCH(real_to_complex,bpg, tpb,0,0)(src, count, dst);
+  acLaunchKernelVariadic1d(AC_REAL_TO_COMPLEX,0,0,count,(AcReal*)src,dst);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
@@ -2618,9 +2561,7 @@ acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst)
 AcResult
 acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* array)
 {
-  const size_t tpb = 256;
-  const size_t bpg = (count + tpb - 1) / tpb;
-  KERNEL_LAUNCH(multiply_inplace_complex,bpg, tpb,0,0)(value, count, array);
+  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE_COMPLEX,0,0,count,value,array);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
@@ -2629,9 +2570,7 @@ acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* arra
 AcResult
 acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 {
-  const size_t tpb = 256;
-  const size_t bpg = (count + tpb - 1) / tpb;
-  KERNEL_LAUNCH(multiply_inplace,bpg, tpb,0,0)(value, count, array);
+  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE,0,0,count,value,array);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
