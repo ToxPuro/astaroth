@@ -658,16 +658,6 @@ acLaunchKernelVariadic1d(AcKernel kernel, const cudaStream_t stream, const size_
   return acLaunchKernel(kernel,stream,volume_start,volume_end,vba);
 }
 
-template<typename T1, typename T2>
-AcResult
-acLaunchKernelVariadic1d(AcKernel kernel, const int stream, const int start, const size_t end,T1 param1, T2 param2)
-{
-  const Volume volume_start = {as_size_t(start),0,0};
-  const Volume volume_end   = {end,1,1};
-  VertexBufferArray vba{};
-  acLoadKernelParams(vba.on_device.kernel_input_params,kernel,param1,param2); 
-  return acLaunchKernel(kernel,cudaStream_t(stream),volume_start,volume_end,vba);
-}
 
 AcResult
 acKernelFlushReal(const cudaStream_t stream, AcReal* arr, const size_t n,
@@ -2211,6 +2201,53 @@ to_linear(const AcIndex& index, const AcShape& shape)
          index.z * shape.x * shape.y + index.w * shape.x * shape.y * shape.z;
 }
 
+
+#if 0
+__global__ void
+map_cross_product(const CrossProductInputs inputs, const AcIndex start,
+                  const AcIndex end)
+{
+
+  const AcIndex tid = {
+      .x = threadIdx.x + blockIdx.x * blockDim.x,
+      .y = threadIdx.y + blockIdx.y * blockDim.y,
+      .z = threadIdx.z + blockIdx.z * blockDim.z,
+      .w = 0,
+  };
+
+  const AcIndex in_idx3d = start + tid;
+  const size_t in_idx = DEVICE_VTXBUF_IDX(in_idx3d.x, in_idx3d.y, in_idx3d.z);
+
+  const AcShape dims   = end - start;
+  const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+
+  const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y &&
+                             in_idx3d.z < end.z;
+  if (within_bounds) {
+    for (size_t i = 0; i < inputs.A_count; ++i) {
+      const AcReal3 a = (AcReal3){
+          inputs.A[i].x[in_idx],
+          inputs.A[i].y[in_idx],
+          inputs.A[i].z[in_idx],
+      };
+      for (size_t j = 0; j < inputs.B_count; ++j) {
+        const AcReal3 b = (AcReal3){
+            inputs.B[j].x[in_idx],
+            inputs.B[j].y[in_idx],
+            inputs.B[j].z[in_idx],
+        };
+        const AcReal3 res            = cross(a, b);
+        inputs.outputs[j].x[out_idx] = res.x;
+        inputs.outputs[j].y[out_idx] = res.y;
+        inputs.outputs[j].z[out_idx] = res.z;
+      }
+    }
+  }
+}
+#endif
+
+#ifdef AC_TFM_ENABLED
+
 static __global__ void
 reindex(const AcReal* in, const AcIndex in_offset, const AcShape in_shape,
         AcReal* out, const AcIndex out_offset, const AcShape out_shape,
@@ -2305,52 +2342,6 @@ reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
     }
   }
 }
-
-#if 0
-__global__ void
-map_cross_product(const CrossProductInputs inputs, const AcIndex start,
-                  const AcIndex end)
-{
-
-  const AcIndex tid = {
-      .x = threadIdx.x + blockIdx.x * blockDim.x,
-      .y = threadIdx.y + blockIdx.y * blockDim.y,
-      .z = threadIdx.z + blockIdx.z * blockDim.z,
-      .w = 0,
-  };
-
-  const AcIndex in_idx3d = start + tid;
-  const size_t in_idx = DEVICE_VTXBUF_IDX(in_idx3d.x, in_idx3d.y, in_idx3d.z);
-
-  const AcShape dims   = end - start;
-  const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-  const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y &&
-                             in_idx3d.z < end.z;
-  if (within_bounds) {
-    for (size_t i = 0; i < inputs.A_count; ++i) {
-      const AcReal3 a = (AcReal3){
-          inputs.A[i].x[in_idx],
-          inputs.A[i].y[in_idx],
-          inputs.A[i].z[in_idx],
-      };
-      for (size_t j = 0; j < inputs.B_count; ++j) {
-        const AcReal3 b = (AcReal3){
-            inputs.B[j].x[in_idx],
-            inputs.B[j].y[in_idx],
-            inputs.B[j].z[in_idx],
-        };
-        const AcReal3 res            = cross(a, b);
-        inputs.outputs[j].x[out_idx] = res.x;
-        inputs.outputs[j].y[out_idx] = res.y;
-        inputs.outputs[j].z[out_idx] = res.z;
-      }
-    }
-  }
-}
-#endif
-
-#ifdef AC_TFM_ENABLED
 AcResult
 acReindexCross(const cudaStream_t stream, //
                const VertexBufferArray vba, const AcIndex in_offset,
@@ -2431,6 +2422,16 @@ acReindexCross(const cudaStream_t , //
                const AcShape )
 {
   ERROR("acReindexCross called but AC_TFM_ENABLED was false");
+  return AC_FAILURE;
+}
+
+AcResult
+acReindex(const cudaStream_t, //
+          const AcReal*, const AcIndex, const AcShape,
+          AcReal*, const AcIndex, const AcShape,
+          const AcShape)
+{
+  ERROR("acReindex called but AC_TFM_ENABLED was false");
   return AC_FAILURE;
 }
 #endif
@@ -2542,7 +2543,7 @@ acReduceInt(const cudaStream_t stream, const AcReduceOp op, const AcIntScalarRed
 AcResult
 acComplexToReal(const AcComplex* src, const size_t count, AcReal* dst)
 {
-  acLaunchKernelVariadic1d(AC_COMPLEX_TO_REAL,0,0,count,(AcComplex*)src,dst);
+  acLaunchKernelVariadic1d(AC_COMPLEX_TO_REAL,0,size_t(0),count,(AcComplex*)src,dst);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
@@ -2551,7 +2552,7 @@ acComplexToReal(const AcComplex* src, const size_t count, AcReal* dst)
 AcResult
 acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst)
 {
-  acLaunchKernelVariadic1d(AC_REAL_TO_COMPLEX,0,0,count,(AcReal*)src,dst);
+  acLaunchKernelVariadic1d(AC_REAL_TO_COMPLEX,0,size_t(0),count,(AcReal*)src,dst);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
@@ -2561,7 +2562,7 @@ acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst)
 AcResult
 acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* array)
 {
-  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE_COMPLEX,0,0,count,value,array);
+  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE_COMPLEX,0,size_t(0),count,value,array);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
@@ -2570,7 +2571,7 @@ acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* arra
 AcResult
 acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 {
-  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE,0,0,count,value,array);
+  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE,0,size_t(0),count,value,array);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;

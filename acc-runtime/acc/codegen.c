@@ -4733,6 +4733,10 @@ traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, travers
 		{
       			fprintf(stream, "\nKernel ");
 		}
+ 		else if(params.to_DSL && strstr(node->prefix,"AC_INTERNAL_ARRAY_LOOP_INDEX"))
+                {
+                }
+
 		else
 		{
       			fprintf(stream, "%s", node->prefix);
@@ -4781,7 +4785,16 @@ traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, travers
   // Postfix translation
   if (stream && node->postfix) 
   {
-    fprintf(stream, "%s", node->postfix);
+    if(params.to_DSL && strstr(node->postfix,"AC_INTERNAL_ARRAY_LOOP_INDEX"))
+    {
+    }
+    else if(params.to_DSL && node->prefix && strstr(node->prefix,"AC_INTERNAL_ARRAY_LOOP_INDEX"))
+    {
+    }
+    else
+    {
+       fprintf(stream, "%s", node->postfix);
+    }
   }
 }
 static inline void
