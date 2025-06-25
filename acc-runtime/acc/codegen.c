@@ -5208,18 +5208,21 @@ get_func_call_expr_type(ASTNode* node)
 			{
 				if(know_all_types(call_info.types))
 				{
-					func_params_info info = get_function_params_info(func,func_name);
-					if(!str_vec_contains(duplicate_dfuncs.names,func_name) && call_info.types.size == info.expr.size)
+					if(!str_vec_contains(duplicate_dfuncs.names,func_name))
 					{
-						ASTNode* func_copy = astnode_dup(func,NULL);
-						for(size_t i = 0; i < info.expr.size; ++i)
-							set_primary_expression_types(func_copy, call_info.types.data[i], info.expr.data[i]);
-						gen_local_type_info(func_copy);
-						if(func_copy->expr_type) 
-							node->expr_type = func_copy -> expr_type;
-						astnode_destroy(func_copy);
+						func_params_info info = get_function_params_info(func,func_name);
+						if(call_info.types.size == info.expr.size)
+						{
+							ASTNode* func_copy = astnode_dup(func,NULL);
+							for(size_t i = 0; i < info.expr.size; ++i)
+								set_primary_expression_types(func_copy, call_info.types.data[i], info.expr.data[i]);
+							gen_local_type_info(func_copy);
+							if(func_copy->expr_type) 
+								node->expr_type = func_copy -> expr_type;
+							astnode_destroy(func_copy);
+						}
+						free_func_params_info(&info);
 					}
-					free_func_params_info(&info);
 				}
 			}
 			free_func_params_info(&call_info);
@@ -7603,9 +7606,9 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 	if(!is_intrinsic && !(sym->type & NODE_DFUNCTION_ID)) return res;
 	if(is_intrinsic && func_name != intern("min") && func_name != intern("max")) return res;
 
-	func_params_info params_info = get_function_params_info(root,func_name);
 	func_params_info call_info = get_func_call_params_info(node);
 	if(call_info.types.size == 0) return res;
+	func_params_info params_info = get_function_params_info(root,func_name);
 	if(!is_intrinsic && params_info.types.size != call_info.types.size)
 		fatal("number of parameters does not match, expected %zu but got %zu in %s\n",params_info.types.size, call_info.types.size, combine_all_new(node));
 	for(size_t i = 0; i < call_info.types.size; ++i)
@@ -7671,9 +7674,9 @@ gen_type_info(ASTNode* root)
 	while(has_changed)
 	{
 		has_changed = gen_local_type_info(root);
-		has_changed |= func_params_conversion(root,root);
 		has_changed |= flow_type_info(root);
 	}
+	func_params_conversion(root,root);
 }
 const ASTNode*
 find_dfunc_start(const ASTNode* node, const char* dfunc_name)
