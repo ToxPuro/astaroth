@@ -58,6 +58,7 @@ void strip_whitespace(char *str) {
 "long long"             { return LONG_LONG; } /* Type specifiers */
 "uint"                  { return UINT; }
 "real"                  { return REAL; }
+"device_only"           { return DEVICE_ONLY; }
 "AcReal"                { return REAL; }
 "float"                 { return FLOAT; }
 "double"                { return DOUBLE; }

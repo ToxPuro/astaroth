@@ -1752,7 +1752,7 @@ gather_best_measurement(const AcAutotuneMeasurement local_best)
 }
 
 void
-make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel kernel)
+make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel)
 {
   //TP: have to set reduce offset zero since it might not be
   vba.on_device.reduce_offset = 0;

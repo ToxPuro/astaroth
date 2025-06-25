@@ -691,7 +691,7 @@ acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, con
                                    const int3 dst, const int num_vertices)
 {
     //TP: to still allow loading the whole mesh even though some VertexBuffers are dead, loading dead VertexBuffers is a no-op
-    if (!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
+    if (!vtxbuf_is_alive[vtxbuf_handle] || vtxbuf_is_device_only[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     if (host_mesh.vertex_buffer[vtxbuf_handle] == NULL) return AC_NOT_ALLOCATED;
     acSetDevice(device->id);
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, host_mesh.info,vtxbuf_handle);
@@ -755,7 +755,7 @@ acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mes
 {
     int res = 0;
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-	if (!vtxbuf_is_alive[i]) continue;
+	if (!vtxbuf_is_alive[i] || vtxbuf_is_device_only[i]) continue;
         res |= acDeviceLoadVertexBuffer(device, stream, host_mesh, (VertexBufferHandle)i);
     }
     return AcResult(res);
@@ -808,7 +808,7 @@ acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
                                     const int3 dst, const int num_vertices, AcMesh* host_mesh)
 {
     //TP: to still allow storing the whole mesh back from the Device storing dead VertexBuffers is a no-op
-    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf_handle] || vtxbuf_is_device_only[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     if (host_mesh->vertex_buffer[vtxbuf_handle] == NULL) return AC_NOT_ALLOCATED;
     acSetDevice(device->id);
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, device->local_config,vtxbuf_handle);

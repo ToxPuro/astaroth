@@ -549,7 +549,7 @@ main(int argc, char** argv)
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
 %token SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
 %token BOOL INTRINSIC LONG_LONG LONG 
-%token KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
+%token KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
 %token FIXED_BOUNDARY
 %token PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
 %token HOSTDEFINE
@@ -698,6 +698,7 @@ for: FOR               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 in: IN                 { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 break_node: BREAK { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 continue_node: CONTINUE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
+device_only:  DEVICE_ONLY{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 dims: DIMS { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("dims", $$); $$->token = 255 + DIMS; astnode_set_postfix(" ", $$); };
 halo: HALO { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("halo", $$); $$->token = 255 + DIMS; astnode_set_postfix(" ", $$); };
@@ -875,6 +876,7 @@ type_specifiers: type_specifiers ',' type_specifier {$$ = astnode_create(NODE_UN
 type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | max          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | exp_sum      { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | device_only  { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dims '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | halo '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }

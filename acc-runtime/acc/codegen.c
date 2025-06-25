@@ -103,6 +103,7 @@ static const char* OUTPUT_VALUE_STR      = NULL;
 static const char* DEAD_STR      = NULL;
 static const char* AUXILIARY_STR      = NULL;
 static const char* COMMUNICATED_STR      = NULL;
+static const char* DEVICE_ONLY_STR       = NULL;
 static const char* DIMS_STR = NULL;
 static const char* HALO_STR = NULL;
 static const char* FIELD_ORDER_STR = NULL;
@@ -6160,6 +6161,7 @@ gen_field_info(FILE* fp, const int_vec user_remappings)
   size_t num_of_fields=0;
   bool field_is_auxiliary[256];
   bool field_is_communicated[256];
+  bool field_is_device_only[256];
   bool field_is_dead[256];
   bool field_has_variable_dims[256];
   size_t num_of_alive_fields=0;
@@ -6183,12 +6185,14 @@ gen_field_info(FILE* fp, const int_vec user_remappings)
     const bool is_aux  = str_vec_contains(sym->tqualifiers,AUXILIARY_STR);
     const bool is_comm = str_vec_contains(sym->tqualifiers,COMMUNICATED_STR);
     const bool has_variable_dims = str_vec_contains(sym->tqualifiers,DIMS_STR);
+    const bool is_device_only = str_vec_contains(sym->tqualifiers,DEVICE_ONLY_STR);
     field_is_auxiliary[num_of_fields]    = is_aux;
     field_is_communicated[num_of_fields] = is_comm;
     field_has_variable_dims[num_of_fields] = has_variable_dims;
     num_of_communicated_fields           += is_comm;
     num_of_alive_fields                  += (!is_dead);
     field_is_dead[num_of_fields]         = is_dead;
+    field_is_device_only[num_of_fields] = is_device_only;
     ++num_of_fields;
   }
   for (size_t i = 0; i < names.size; ++i)
@@ -6200,12 +6204,14 @@ gen_field_info(FILE* fp, const int_vec user_remappings)
     const bool is_aux  = str_vec_contains(sym->tqualifiers,AUXILIARY_STR);
     const bool is_comm = str_vec_contains(sym->tqualifiers,COMMUNICATED_STR);
     const bool has_variable_dims = str_vec_contains(sym->tqualifiers,DIMS_STR);
+    const bool is_device_only = str_vec_contains(sym->tqualifiers,DEVICE_ONLY_STR);
     field_is_auxiliary[num_of_fields]    = is_aux;
     field_is_communicated[num_of_fields] = is_comm;
     field_has_variable_dims[num_of_fields] = has_variable_dims;
     num_of_communicated_fields           += is_comm;
     num_of_alive_fields                  += (!is_dead);
     field_is_dead[num_of_fields]         = is_dead;
+    field_is_device_only[num_of_fields] = is_device_only;
     ++num_of_fields;
   }
   string_vec complex_field_names = VEC_INITIALIZER;
@@ -6284,6 +6290,15 @@ gen_field_info(FILE* fp, const int_vec user_remappings)
 
   for(size_t i = 0; i < num_of_fields; ++i)
     if(!field_is_dead[i])
+        fprintf(fp, "%s,", "true");
+    else
+        fprintf(fp, "%s,", "false");
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const bool vtxbuf_is_device_only[] = {");
+
+  for(size_t i = 0; i < num_of_fields; ++i)
+    if(field_is_device_only[i])
         fprintf(fp, "%s,", "true");
     else
         fprintf(fp, "%s,", "false");
@@ -8714,6 +8729,7 @@ gen_global_strings()
 	ELEMENTAL_STR = intern("elemental");
 	AUXILIARY_STR = intern("auxiliary");
 	COMMUNICATED_STR = intern("communicated");
+	DEVICE_ONLY_STR = intern("device_only");
 	DIMS_STR = intern("dims");
 	HALO_STR = intern("halo");
 	FIELD_ORDER_STR = intern("field_order");

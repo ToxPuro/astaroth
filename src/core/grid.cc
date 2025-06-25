@@ -598,7 +598,7 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 			submesh.vertex_buffer[i] = user_mesh.vertex_buffer[i];
     			grid.vertex_buffer_copied_from_user[i] = true;
 	    }
-	    else
+	    else if(!vtxbuf_is_device_only[i])
 	    {
 		        ++n_allocated_vtxbufs;
 			submesh.vertex_buffer[i] = acHostCreateVertexBuffer(submesh_info,Field(i));
@@ -881,6 +881,7 @@ acGridInitBase(const AcMesh user_mesh)
     fflush(stderr);
 
     gen_postprocessing_metadata();
+    acLogFromRootProc(ac_pid(), "acGridInit: Done\n");
 
     return AC_SUCCESS;
 }
@@ -1362,7 +1363,9 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
 
     // Receive the local subarray
     MPI_Request recv_reqs[NUM_VTXBUF_HANDLES];
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) recv_reqs[i] = MPI_REQUEST_NULL;
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
+    	if(!vtxbuf_is_alive[vtxbuf] || vtxbuf_is_device_only[vtxbuf]) continue;
         int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
         int distributed_mm[3], distributed_nn[3], distributed_offset[3];
         get_subarray(pid, monolithic_mm, monolithic_nn,
@@ -1383,6 +1386,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
     if (pid == 0) {
         for (int tgt = 0; tgt < nprocs; ++tgt) {
             for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
+    	        if(!vtxbuf_is_alive[vtxbuf] || vtxbuf_is_device_only[vtxbuf]) continue;
                 int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
                 int distributed_mm[3], distributed_nn[3], distributed_offset[3];
                 get_subarray(tgt, monolithic_mm, monolithic_nn,
@@ -1430,7 +1434,9 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 
     // Send the local subarray
     MPI_Request send_reqs[NUM_VTXBUF_HANDLES];
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) send_reqs[i] = MPI_REQUEST_NULL;
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
+    	if(!vtxbuf_is_alive[vtxbuf] || vtxbuf_is_device_only[vtxbuf]) continue;
         int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
         int distributed_mm[3], distributed_nn[3], distributed_offset[3];
         get_subarray(pid, monolithic_mm, monolithic_nn,
@@ -1451,6 +1457,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     if (pid == 0) {
         for (int src = 0; src < ac_nprocs(); ++src) {
             for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
+    	        if(!vtxbuf_is_alive[vtxbuf] || vtxbuf_is_device_only[vtxbuf]) continue;
                 int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
                 int distributed_mm[3], distributed_nn[3], distributed_offset[3];
                 get_subarray(src, monolithic_mm, monolithic_nn,
@@ -3481,7 +3488,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
     	fatal("%s", "Can not read snapshot if all Fields are auxiliary!\n");
     }
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-
+        if(!vtxbuf_is_alive[i] || vtxbuf_is_device_only[i]) return AC_NOT_ALLOCATED;
         const Device device = grid.device;
         acDeviceSynchronizeStream(device, STREAM_ALL);
         const AcMeshInfo info = acDeviceGetLocalConfig(device);
@@ -4073,7 +4080,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
                                   const char* label, const AccessType type)
 {
 
-    if(!vtxbuf_is_alive[vtxbuf]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf] || vtxbuf_is_device_only[vtxbuf]) return AC_NOT_ALLOCATED;
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -4260,7 +4267,7 @@ AcResult
 acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, const char* dir,
                                              const char* label, const AccessType type)
 {
-    if(!vtxbuf_is_alive[vtxbuf]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf] || vtxbuf_is_device_only[vtxbuf]) return AC_NOT_ALLOCATED;
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -4368,7 +4375,7 @@ AcResult
 acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, const char* dir,
                                             const char* label, const AccessType type)
 {
-    if(!vtxbuf_is_alive[vtxbuf]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf] || vtxbuf_is_device_only[vtxbuf]) return AC_NOT_ALLOCATED;
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -4543,7 +4550,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
     ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
     for (size_t i = 0; i < num_fields; ++i) {
-    	if(!vtxbuf_is_alive[i]) continue;
+    	if(!vtxbuf_is_alive[i] || vtxbuf_is_device_only[i]) continue;
         const Field field = fields[i];
 
         // Load from file to host memory
