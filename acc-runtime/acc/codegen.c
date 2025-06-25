@@ -497,6 +497,7 @@ bool is_allocating_type(const char* type)
 {
 	return consists_of_types(get_allocating_types(),type);
 }
+static int_vec user_remappings = VEC_INITIALIZER; 
 static int 
 add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifiers, const char* tspecifier,
            const char* id, const char* postfix)
@@ -549,7 +550,8 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
 
 
   ++num_symbols[current_nest];
-  bool is_field_without_comm_and_aux_qualifiers = tspecifier && tspecifier == FIELD_STR;
+  bool is_field_without_comm_and_aux_qualifiers = tspecifier && tspecifier == FIELD_STR && current_nest == 0;
+
   for(size_t i = 0; i < symbol_table[num_symbols[current_nest]-1].tqualifiers.size; ++i)
 	  is_field_without_comm_and_aux_qualifiers &= (symbol_table[num_symbols[current_nest]-1].tqualifiers.data[i] != COMMUNICATED_STR) && (symbol_table[num_symbols[current_nest]-1].tqualifiers.data[i] != AUXILIARY_STR);
 
@@ -564,7 +566,8 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
 
 
 
-   const int field_index = get_symbol_index(NODE_VARIABLE_ID, id, FIELD_STR);
+   const int field_index = int_vec_get_index(user_remappings,get_symbol_index(NODE_VARIABLE_ID, id, FIELD_STR));
+
    bool is_auxiliary = true;
    bool is_communicated = false;
    bool is_dead         = true;
@@ -6090,7 +6093,7 @@ get_field_halos(const ASTNode* node)
 	get_field_qualifier_recursive(node,&res,HALO_STR);
 	return res;
 }
-static int_vec
+static void
 get_field_order(const ASTNode* node)
 {
 	string_vec tmp = VEC_INITIALIZER;
@@ -6098,7 +6101,7 @@ get_field_order(const ASTNode* node)
 	get_field_qualifier_recursive(node,&tmp,FIELD_ORDER_STR);
 	for(size_t i = 0; i < tmp.size; ++i)
 		push_int(&tmp2,atoi(tmp.data[i]));
-	int_vec res = VEC_INITIALIZER;
+        free_int_vec(&user_remappings);
 	for(size_t i = 0; i < tmp.size; ++i)
 	{
 		int next = -1;
@@ -6113,17 +6116,16 @@ get_field_order(const ASTNode* node)
 		{
 			for(size_t j = 0; j < tmp2.size; ++j)
 			{
-				if(tmp2.data[j] == -1 && next == -1 && !int_vec_contains(res,(int)j))
+				if(tmp2.data[j] == -1 && next == -1 && !int_vec_contains(user_remappings,(int)j))
 				{
 					next = (int)j;
 				}
 			}
 		}
-		push_int(&res,next);
+		push_int(&user_remappings,next);
 	}
 
 	free_str_vec(&tmp);
-	return res;
 }
 
 static void
@@ -6151,7 +6153,7 @@ get_ray_directions(const ASTNode* node)
 }
 
 static void
-gen_field_info(FILE* fp, const int_vec user_remappings)
+gen_field_info(FILE* fp)
 {
   num_fields   = count_symbols(FIELD_STR);
   num_complex_fields   = count_symbols(COMPLEX_FIELD_STR);
@@ -10339,6 +10341,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 { 
   symboltable_reset();
   ASTNode* root = astnode_dup(root_in,NULL);
+  get_field_order(root);
   check_uniquenes(root,NODE_DFUNCTION,"function");
   check_uniquenes(root,NODE_STENCIL,"stencil");
   s_info = read_user_structs(root);
@@ -10387,8 +10390,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
   traverse(root, NODE_NO_OUT, NULL);
   {
           FILE* fp = fopen("fields_info.h","w");
-  	  int_vec user_remappings = get_field_order(root);
-          gen_field_info(fp,user_remappings);
+          gen_field_info(fp);
 
 	  string_vec field_halos = get_field_halos(root);
           fprintf(fp,"static const AcInt3Param vtxbuf_halos[NUM_ALL_FIELDS] = {");

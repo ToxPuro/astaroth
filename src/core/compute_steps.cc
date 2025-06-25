@@ -1367,7 +1367,17 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		std::vector<Field> communicated_fields_written_to{};
 		for(size_t i = 0; i < NUM_FIELDS; ++i)
 		{
-			if(!vtxbuf_is_communicated[i]) continue;
+			if(!vtxbuf_is_communicated[i])
+			{
+				for(int region = 0; region < 27; ++region)
+				{
+					if(current_level_set.communicated_regions[region][i])
+					{
+						fatal("Field %s does not have the communicated qualifier but needs to be communicated to satisfy dependencies!\n",field_names[i]);
+					}
+				}
+				continue;
+			}
 			Field field = static_cast<Field>(i);
 			if(field_written_out_before[i])
 				communicated_fields_written_to.push_back(field);
