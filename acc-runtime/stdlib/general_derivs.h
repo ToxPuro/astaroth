@@ -708,33 +708,40 @@ Stencil derxy_stencil {
 }
 derxy(Field f)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.x || AC_dimension_inactive.y)
 	{
-		coordinate_factor = AC_INV_R
-	}
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
-	{
-		coordinate_factor = AC_INV_CYL_R
-	}
-	grid_factor = 1.0
-	if(AC_nonequidistant_grid.x)
-	{
-		grid_factor *= AC_INV_MAPPING_FUNC_DER_X
+		return 0.0
 	}
 	else
 	{
-		grid_factor *= AC_inv_ds.x
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_R
+		}
+		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_CYL_R
+		}
+		grid_factor = 1.0
+		if(AC_nonequidistant_grid.x)
+		{
+			grid_factor *= AC_INV_MAPPING_FUNC_DER_X
+		}
+		else
+		{
+			grid_factor *= AC_inv_ds.x
+		}
+		if(AC_nonequidistant_grid.y)
+		{
+			grid_factor *= AC_INV_MAPPING_FUNC_DER_Y
+		}
+		else
+		{
+			grid_factor *= AC_inv_ds.y
+		}
+		return derxy_stencil(f)*coordinate_factor*grid_factor
 	}
-	if(AC_nonequidistant_grid.y)
-	{
-		grid_factor *= AC_INV_MAPPING_FUNC_DER_Y
-	}
-	else
-	{
-		grid_factor *= AC_inv_ds.y
-	}
-	return derxy_stencil(f)*coordinate_factor*grid_factor
 }
 #define deryx derxy
 
@@ -755,29 +762,36 @@ Stencil derxz_stencil {
 }
 derxz(Field f)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.x || AC_dimension_inactive.z)
 	{
-		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
-	}
-	grid_factor = 1.0
-	if(AC_nonequidistant_grid.x)
-	{
-		grid_factor *= AC_INV_MAPPING_FUNC_DER_X
+		return 0.0
 	}
 	else
 	{
-		grid_factor *= AC_inv_ds.x
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
+		}
+		grid_factor = 1.0
+		if(AC_nonequidistant_grid.x)
+		{
+			grid_factor *= AC_INV_MAPPING_FUNC_DER_X
+		}
+		else
+		{
+			grid_factor *= AC_inv_ds.x
+		}
+		if(AC_nonequidistant_grid.z)
+		{
+			grid_factor *= AC_INV_MAPPING_FUNC_DER_Z
+		}
+		else
+		{
+			grid_factor *= AC_inv_ds.z
+		}
+		return derxz_stencil(f)*coordinate_factor*grid_factor
 	}
-	if(AC_nonequidistant_grid.z)
-	{
-		grid_factor *= AC_INV_MAPPING_FUNC_DER_Z
-	}
-	else
-	{
-		grid_factor *= AC_inv_ds.z
-	}
-	return derxz_stencil(f)*coordinate_factor*grid_factor
 }
 
 #define derzx derxz
@@ -799,44 +813,63 @@ Stencil deryz_stencil {
 }
 deryz(Field f)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.y || AC_dimension_inactive.z)
 	{
-		coordinate_factor = AC_INV_R*AC_INV_R*AC_INV_SIN_THETA
-	}
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
-	{
-		coordinate_factor = AC_INV_CYL_R
-	}
-	grid_factor = 1.0
-	if(AC_nonequidistant_grid.y)
-	{
-		grid_factor *= AC_INV_MAPPING_FUNC_DER_Y
+		return 0.0
 	}
 	else
 	{
-		grid_factor *= AC_inv_ds.y
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_R*AC_INV_R*AC_INV_SIN_THETA
+		}
+		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_CYL_R
+		}
+		grid_factor = 1.0
+		if(AC_nonequidistant_grid.y)
+		{
+			grid_factor *= AC_INV_MAPPING_FUNC_DER_Y
+		}
+		else
+		{
+			grid_factor *= AC_inv_ds.y
+		}
+		if(AC_nonequidistant_grid.z)
+		{
+			grid_factor *= AC_INV_MAPPING_FUNC_DER_Z
+		}
+		else
+		{
+			grid_factor *= AC_inv_ds.z
+		}
+		return deryz_stencil(f)*coordinate_factor*grid_factor
 	}
-	if(AC_nonequidistant_grid.z)
-	{
-		grid_factor *= AC_INV_MAPPING_FUNC_DER_Z
-	}
-	else
-	{
-		grid_factor *= AC_inv_ds.z
-	}
-	return deryz_stencil(f)*coordinate_factor*grid_factor
 }
 
 #define derzy deryz
 
-Stencil der3x {
+Stencil der3x_stencil {
     [0][0][-3] = - AC_inv_ds_3.x * DER3_3,
     [0][0][-2] = - AC_inv_ds_3.x * DER3_2,
     [0][0][-1] = - AC_inv_ds_3.x * DER3_1,
     [0][0][1]  = AC_inv_ds_3.x * DER3_1,
     [0][0][2]  = AC_inv_ds_3.x * DER3_2,
     [0][0][3]  = AC_inv_ds_3.x * DER3_3
+}
+
+der3x(Field f)
+{
+	if(AC_dimension_inactive.x)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der3x_stencil(f)
+	}
 }
 
 Stencil der3y_stencil {
@@ -850,17 +883,24 @@ Stencil der3y_stencil {
 
 der3y(Field f)
 {
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.y)
 	{
-		factor = AC_INV_R*AC_INV_R*AC_INV_R
-		return der3y_stencil(f)*(factor)
+		return 0.0
 	}
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	else
 	{
-		factor = AC_INV_CYL_R*AC_INV_CYL_R*AC_INV_CYL_R
-		return der3y_stencil(f)*(factor)
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			factor = AC_INV_R*AC_INV_R*AC_INV_R
+			return der3y_stencil(f)*(factor)
+		}
+		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+		{
+			factor = AC_INV_CYL_R*AC_INV_CYL_R*AC_INV_CYL_R
+			return der3y_stencil(f)*(factor)
+		}
+		return der3y_stencil(f)
 	}
-	return der3y_stencil(f)
 }
 
 Stencil der3z_stencil {
@@ -874,16 +914,23 @@ Stencil der3z_stencil {
 
 der3z(Field f)
 {
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.z)
 	{
-		factor = AC_INV_R*AC_INV_SIN_THETA
-		factor = factor*factor*factor
-		return der3z_stencil(f)*(factor)
+		return 0.0
 	}
-	return der3z_stencil(f)
+	else
+	{
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			factor = AC_INV_R*AC_INV_SIN_THETA
+			factor = factor*factor*factor
+			return der3z_stencil(f)*(factor)
+		}
+		return der3z_stencil(f)
+	}
 }
 
-Stencil der4x {
+Stencil der4x_stencil {
     [0][0][-3] = AC_inv_ds_4.x * DER4_3,
     [0][0][-2] = AC_inv_ds_4.x * DER4_2,
     [0][0][-1] = AC_inv_ds_4.x * DER4_1,
@@ -891,6 +938,18 @@ Stencil der4x {
     [0][0][1]  = AC_inv_ds_4.x * DER4_1,
     [0][0][2]  = AC_inv_ds_4.x * DER4_2,
     [0][0][3]  = AC_inv_ds_4.x * DER4_3
+}
+
+der4x(Field f)
+{
+	if(AC_dimension_inactive.x)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der4x_stencil(f)
+	}
 }
 Stencil der4y_stencil {
     [0][-3][0] = AC_inv_ds_4.y * DER4_3,
@@ -903,21 +962,28 @@ Stencil der4y_stencil {
 }
 der4y(Field f)
 {
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.y)
 	{
-		factor = AC_INV_R
-		factor *= factor
-		factor *= factor
-		return der4y_stencil(f)*(factor)
+		return 0.0
 	}
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	else
 	{
-		factor = AC_INV_CYL_R
-		factor *= factor
-		factor *= factor
-		return der4y_stencil(f)*(factor)
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			factor = AC_INV_R
+			factor *= factor
+			factor *= factor
+			return der4y_stencil(f)*(factor)
+		}
+		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+		{
+			factor = AC_INV_CYL_R
+			factor *= factor
+			factor *= factor
+			return der4y_stencil(f)*(factor)
+		}
+		return der4y_stencil(f)
 	}
-	return der4y_stencil(f)
 }
 Stencil der4z_stencil {
     [-3][0][0] = AC_inv_ds_4.z * DER4_3,
@@ -931,14 +997,21 @@ Stencil der4z_stencil {
 
 der4z(Field f)
 {
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.z)
 	{
-		factor = AC_INV_R*AC_INV_SIN_THETA
-		factor *= factor
-		factor *= factor
-		return der4z_stencil(f)*(factor)
+		return 0.0
 	}
-	return der4z_stencil(f)
+	else
+	{
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			factor = AC_INV_R*AC_INV_SIN_THETA
+			factor *= factor
+			factor *= factor
+			return der4z_stencil(f)*(factor)
+		}
+		return der4z_stencil(f)
+	}
 }
 
 der4x2y(Field f)
@@ -977,13 +1050,24 @@ der2i2j2k(Field f)
 	return 0.0
 }
 
-Stencil der5x {
+Stencil der5x_stencil {
     [0][0][-3] = -AC_inv_ds_5.x * DER5_3,
     [0][0][-2] = -AC_inv_ds_5.x * DER5_2,
     [0][0][-1] = -AC_inv_ds_5.x * DER5_1,
     [0][0][1]  = AC_inv_ds_5.x * DER5_1,
     [0][0][2]  = AC_inv_ds_5.x * DER5_2,
     [0][0][3]  = AC_inv_ds_5.x * DER5_3
+}
+der5x(Field f)
+{
+	if(AC_dimension_inactive.x)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der5x_stencil(f)
+	}
 }
 Stencil der5y_stencil {
     [0][-3][0] = -AC_inv_ds_5.y * DER5_3,
@@ -995,23 +1079,30 @@ Stencil der5y_stencil {
 }
 der5y(Field f)
 {
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.y)
 	{
-		factor = AC_INV_R
-		factor *= factor
-		factor *= factor
-		factor *= AC_INV_R
-		return der5y_stencil(f)*(factor)
+		return 0.0
 	}
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	else
 	{
-		factor = AC_INV_CYL_R
-		factor *= factor
-		factor *= factor
-		factor *= AC_INV_CYL_R
-		return der5y_stencil(f)*(factor)
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			factor = AC_INV_R
+			factor *= factor
+			factor *= factor
+			factor *= AC_INV_R
+			return der5y_stencil(f)*(factor)
+		}
+		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+		{
+			factor = AC_INV_CYL_R
+			factor *= factor
+			factor *= factor
+			factor *= AC_INV_CYL_R
+			return der5y_stencil(f)*(factor)
+		}
+		return der5y_stencil(f)
 	}
-	return der5y_stencil(f)
 }
 Stencil der5z_stencil {
     [-3][0][0] = -AC_inv_ds_5.z * DER5_3,
@@ -1024,19 +1115,26 @@ Stencil der5z_stencil {
 
 der5z(Field f)
 {
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.z)
 	{
-		factor = AC_INV_R*AC_INV_SIN_THETA
-		factor *= factor
-		factor *= factor
-		factor *= AC_INV_R*AC_INV_SIN_THETA
-		return der5z_stencil(f)*(factor)
+		return 0.0
 	}
-	return der5z_stencil(f)
+	else
+	{
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			factor = AC_INV_R*AC_INV_SIN_THETA
+			factor *= factor
+			factor *= factor
+			factor *= AC_INV_R*AC_INV_SIN_THETA
+			return der5z_stencil(f)*(factor)
+		}
+		return der5z_stencil(f)
+	}
 }
 
 
-Stencil der5z1y {
+Stencil der5z1y_stencil {
 [1][1][0] =  DER5_1*DER1_1,
 [1][-1][0] =  -DER5_1*DER1_1,
 [1][2][0] =  DER5_1*DER1_2,
@@ -1075,8 +1173,20 @@ Stencil der5z1y {
 [-3][-3][0] =  DER5_3*DER1_3,
 }
 
+der5z1y(Field f)
+{
+	if(AC_dimension_inactive.z || AC_dimension_inactive.y)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der5z1y_stencil(f)
+	}
+}
 
-Stencil der5z1x {
+
+Stencil der5z1x_stencil {
 [1][0][1] =  DER5_1*DER1_1,
 [1][0][-1] =  -DER5_1*DER1_1,
 [1][0][2] =  DER5_1*DER1_2,
@@ -1115,8 +1225,20 @@ Stencil der5z1x {
 [-3][0][-3] =  DER5_3*DER1_3,
 }
 
+der5z1x(Field f)
+{
+	if(AC_dimension_inactive.z || AC_dimension_inactive.x)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der5z1x_stencil(f)
+	}
+}
 
-Stencil der5y1z {
+
+Stencil der5y1z_stencil {
 [1][1][0] =  DER5_1*DER1_1,
 [-1][1][0] =  -DER5_1*DER1_1,
 [2][1][0] =  DER5_1*DER1_2,
@@ -1155,8 +1277,20 @@ Stencil der5y1z {
 [-3][-3][0] =  DER5_3*DER1_3,
 }
 
+der5y1z(Field f)
+{
+	if(AC_dimension_inactive.y || AC_dimension_inactive.z)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der5y1z_stencil(f)
+	}
+}
 
-Stencil der5y1x {
+
+Stencil der5y1x_stencil {
 [0][1][1] =  DER5_1*DER1_1,
 [0][1][-1] =  -DER5_1*DER1_1,
 [0][1][2] =  DER5_1*DER1_2,
@@ -1195,8 +1329,20 @@ Stencil der5y1x {
 [0][-3][-3] =  DER5_3*DER1_3,
 }
 
+der5y1x(Field f)
+{
+	if(AC_dimension_inactive.y || AC_dimension_inactive.x)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der5y1x_stencil(f)
+	}
+}
 
-Stencil der5x1z {
+
+Stencil der5x1z_stencil {
 [1][0][1] =  DER5_1*DER1_1,
 [-1][0][1] =  -DER5_1*DER1_1,
 [2][0][1] =  DER5_1*DER1_2,
@@ -1235,8 +1381,20 @@ Stencil der5x1z {
 [-3][0][-3] =  DER5_3*DER1_3,
 }
 
+der5x1z(Field f)
+{
+	if(AC_dimension_inactive.x || AC_dimension_inactive.z)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der5x1z_stencil(f)
+	}
+}
 
-Stencil der5x1y {
+
+Stencil der5x1y_stencil {
 [0][1][1] =  DER5_1*DER1_1,
 [0][-1][1] =  -DER5_1*DER1_1,
 [0][2][1] =  DER5_1*DER1_2,
@@ -1275,6 +1433,18 @@ Stencil der5x1y {
 [0][-3][-3] =  DER5_3*DER1_3,
 }
 
+der5x1y(Field f)
+{
+	if(AC_dimension_inactive.x || AC_dimension_inactive.y)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der5x1y_stencil(f)
+	}
+}
+
 
 
 
@@ -1291,7 +1461,14 @@ Stencil der6x_stencil {
 }
 der6x(Field f)
 {
-	return der6x_stencil(f)*AC_inv_ds_6.x
+	if(AC_dimension_inactive.x)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der6x_stencil(f)*AC_inv_ds_6.x
+	}
 }
 Stencil der6y_stencil {
     [0][-3][0] = DER6_3,
@@ -1313,107 +1490,163 @@ Stencil der6z_stencil {
 }
 der6y(Field f)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.y)
 	{
-		factor_1 = AC_INV_R
-		factor_2 = factor_1*factor_1
-		factor_4 = factor_2*factor_2
-		coordinate_factor = factor_4*factor_2
+		return 0.0
 	}
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	else
 	{
-		factor_1 = AC_INV_CYL_R
-		factor_2 = factor_1*factor_1
-		factor_4 = factor_2*factor_2
-		coordinate_factor = factor_4*factor_2
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			factor_1 = AC_INV_R
+			factor_2 = factor_1*factor_1
+			factor_4 = factor_2*factor_2
+			coordinate_factor = factor_4*factor_2
+		}
+		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+		{
+			factor_1 = AC_INV_CYL_R
+			factor_2 = factor_1*factor_1
+			factor_4 = factor_2*factor_2
+			coordinate_factor = factor_4*factor_2
+		}
+		return der6y_stencil(f)*coordinate_factor*AC_inv_ds_6.y
 	}
-	return der6y_stencil(f)*coordinate_factor*AC_inv_ds_6.y
 }
 
 der6z(Field f)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.z)
 	{
-		factor_1 = AC_INV_R*AC_INV_SIN_THETA
-		factor_2 = factor_1*factor_1
-		factor_4 = factor_2*factor_2
-		coordinate_factor = factor_4*factor_2
-
+		return 0.0
 	}
-	return der6z_stencil(f)*coordinate_factor*AC_inv_ds_6.z
+	else
+	{
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			factor_1 = AC_INV_R*AC_INV_SIN_THETA
+			factor_2 = factor_1*factor_1
+			factor_4 = factor_2*factor_2
+			coordinate_factor = factor_4*factor_2
+
+		}
+		return der6z_stencil(f)*coordinate_factor*AC_inv_ds_6.z
+	}
 }
 
 der6x_upwd(Field f)
 {
-	grid_factor = (1.0/60.0)
-	if(AC_nonequidistant_grid.x)
+	if(AC_dimension_inactive.x)
 	{
-		grid_factor = AC_INV_MAPPING_FUNC_DER_X
+		return 0.0
 	}
 	else
 	{
-		grid_factor *= AC_inv_ds.x
+		grid_factor = (1.0/60.0)
+		if(AC_nonequidistant_grid.x)
+		{
+			grid_factor = AC_INV_MAPPING_FUNC_DER_X
+		}
+		else
+		{
+			grid_factor *= AC_inv_ds.x
+		}
+		return der6x_stencil(f)*grid_factor
 	}
-	return der6x_stencil(f)*grid_factor
 }
 der6y_upwd(Field f)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.y)
 	{
-		coordinate_factor = AC_INV_R
-
-	}
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
-	{
-		coordinate_factor = AC_INV_CYL_R
-
-	}
-	grid_factor = (1.0/60.0)
-	if(AC_nonequidistant_grid.y)
-	{
-		grid_factor *= AC_INV_MAPPING_FUNC_DER_Y
+		return 0.0
 	}
 	else
 	{
-		grid_factor *= AC_inv_ds.y
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_R
+
+		}
+		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_CYL_R
+
+		}
+		grid_factor = (1.0/60.0)
+		if(AC_nonequidistant_grid.y)
+		{
+			grid_factor *= AC_INV_MAPPING_FUNC_DER_Y
+		}
+		else
+		{
+			grid_factor *= AC_inv_ds.y
+		}
+		return der6y_stencil(f)*coordinate_factor*grid_factor
 	}
-	return der6y_stencil(f)*coordinate_factor*grid_factor
 }
 
 der6z_upwd(Field f)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.z)
 	{
-		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
-	}
-	grid_factor = (1.0/60.0)
-	if(AC_nonequidistant_grid.z)
-	{
-		grid_factor *= AC_INV_MAPPING_FUNC_DER_Z
+		return 0.0
 	}
 	else
 	{
-		grid_factor *= AC_inv_ds.z
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
+		}
+		grid_factor = (1.0/60.0)
+		if(AC_nonequidistant_grid.z)
+		{
+			grid_factor *= AC_INV_MAPPING_FUNC_DER_Z
+		}
+		else
+		{
+			grid_factor *= AC_inv_ds.z
+		}
+		return der6z_stencil(f)*coordinate_factor*grid_factor
 	}
-	return der6z_stencil(f)*coordinate_factor*grid_factor
 }
 
 
 der6x_ignore_spacing(Field f)
 {
-	return der6x_stencil(f)
+	if(AC_dimension_inactive.x)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der6x_stencil(f)
+	}
 }
 der6y_ignore_spacing(Field f)
 {
-	return der6y_stencil(f)
+	if(AC_dimension_inactive.y)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der6y_stencil(f)
+	}
 }
 der6z_ignore_spacing(Field f)
 {
-	return der6z_stencil(f)
+	if(AC_dimension_inactive.z)
+	{
+		return 0.0
+	}
+	else
+	{
+		return der6z_stencil(f)
+	}
 }
 #define DER_UPWD_3 (+2.0/6.0)
 #define DER_UPWD_2 (-9.0/6.0)

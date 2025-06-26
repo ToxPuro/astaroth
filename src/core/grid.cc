@@ -639,15 +639,15 @@ check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> in
 					      );
 				if(run_time)
 				{
-					if(acGridGetLocalMeshInfo()[AC_dimension_inactive.x] && (BOUNDARY_X & get_stencil_boundaries(Stencil(i))))
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x && (BOUNDARY_X & get_stencil_boundaries(Stencil(i))))
 					{
 						fatal("In Kernel %s Used Stencil %s on Field %s even though X is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
 					}
-					if(acGridGetLocalMeshInfo()[AC_dimension_inactive.y] && (BOUNDARY_Y & get_stencil_boundaries(Stencil(i))))
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y && (BOUNDARY_Y & get_stencil_boundaries(Stencil(i))))
 					{
 						fatal("In Kernel %s Used Stencil %s on Field %s even though Y is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
 					}
-					if(acGridGetLocalMeshInfo()[AC_dimension_inactive.z] && (BOUNDARY_Z & get_stencil_boundaries(Stencil(i))))
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z && (BOUNDARY_Z & get_stencil_boundaries(Stencil(i))))
 					{
 						fatal("In Kernel %s Used Stencil %s on Field %s even though Z is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
 					}
@@ -2811,15 +2811,15 @@ get_n_global_points()
 		grid.nn.z * grid.decomposition.z);
 }
 
-//static AcReal
-//get_cell_volume()
-//{
-//	const AcReal3 spacings = get_spacings();
-//	const AcReal cell_volume   = spacings.x*spacings.y
-//				     *spacings.z
-//				     ;
-//	return cell_volume;
-//}
+static UNUSED AcReal
+get_cell_volume()
+{
+	const AcReal3 spacings = get_spacings();
+	const AcReal cell_volume   = spacings.x*spacings.y
+				     *spacings.z
+				     ;
+	return cell_volume;
+}
 
 static AcResult
 distributedScalarReduction(const AcReal local_result, const AcReduction reduction, AcReal* result)
