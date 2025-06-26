@@ -150,9 +150,8 @@ get_kernel_outputs(const AcKernel kernel)
 }
 
 
-template <typename T>
 bool
-overlaps(const std::vector<T>& a,const std::vector<T>& b)
+overlaps(const std::vector<Field>& a,const std::vector<Field>& b)
 {
 	for(auto& elem : a)
 		if(std::find(b.begin(), b.end(), elem) != b.end()) return true;
@@ -242,19 +241,6 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs)
 {
 	std::array<std::vector<Field>,6> fields_written{};
 	std::array<std::vector<const char*>,6> bc_names{};
-	auto add_to_written_fields = [&](const int i, const Field field, const BoundCond bc)
-	{
-		const auto it = std::find(fields_written[i].begin(), fields_written[i].end(),field);
-		const bool already_written =  it != fields_written[i].end();
-		if(already_written)
-		{
-			const ptrdiff_t index = it - fields_written[i].begin();			
-			fatal("Cannot continue: Field %s written both from %s and %s\n",field_names[field],bc_names[i][index],kernel_names[bc.kernel]);
-		}
-		fields_written[i].push_back(field);
-		bc_names[i].push_back(kernel_names[bc.kernel]);
-		return already_written;
-	};
 	for(auto& bc : bcs)
 	{
 		auto fields = get_kernel_fields(bc.kernel);
@@ -265,7 +251,16 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs)
 			{
 				if(bc.boundary & boundaries[i])
 				{
-					if (add_to_written_fields(i,field,bc)) return true;
+					const auto it = std::find(fields_written[i].begin(), fields_written[i].end(),field);
+					const bool already_written =  it != fields_written[i].end();
+					if(already_written)
+					{
+						const ptrdiff_t index = it - fields_written[i].begin();			
+						fatal("Cannot continue: Field %s written both from %s and %s\n",field_names[field],bc_names[i][index],kernel_names[bc.kernel]);
+					}
+					fields_written[i].push_back(field);
+					bc_names[i].push_back(kernel_names[bc.kernel]);
+					return already_written;
 				}
 			}
 		}
@@ -954,9 +949,9 @@ gen_halo_exchange_and_boundconds(
 		return res;
 }
 
-template<typename T1, typename T2, typename T3, typename T4, typename T5>
+constexpr int MAX_TASKS = 100;
 void
-compute_next_level_set(T1& dst, const T2& kernel_calls, T3& field_written_to,const T4& call_level_set, const T5& info)
+compute_next_level_set(std::array<bool,NUM_KERNELS>& dst, const std::vector<AcKernel>& kernel_calls, std::array<bool,NUM_FIELDS>& field_written_to, const std::array<int,MAX_TASKS>& call_level_set, const std::vector<KernelAnalysisInfo>& info)
 {
 	std::array<bool,NUM_FIELDS> field_consumed{};
 	std::fill(field_consumed.begin(), field_consumed.end(),false);
@@ -1002,14 +997,13 @@ typedef struct
 
 // Combine hash helper function
 template <typename T>
-void hash_combine(std::size_t &seed, const T &value) {
+void hash_combine(std::size_t &seed, const T& value) {
     seed ^= std::hash<T>{}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
 // Hash for a single vector
 struct VectorHash {
-    template <typename T>
-    std::size_t operator()(const std::vector<T> &vec) const {
+    std::size_t operator()(const std::vector<AcKernel> &vec) const {
         std::size_t seed = 0;
         for (const auto &elem : vec) {
             hash_combine(seed, elem);
@@ -1051,7 +1045,6 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 				DSLTaskGraphKernels[graph];
 	auto kernel_call_computes_profile_across_halos = compute_kernel_call_computes_profile_across_halos(kernel_calls);
 	const auto info = get_kernel_analysis_info();
-	constexpr int MAX_TASKS = 100;
 	int n_level_sets = 0;
 	std::array<int,MAX_TASKS> call_level_set{};
 	std::array<std::array<std::array<bool, NUM_VTXBUF_HANDLES>,27>,MAX_TASKS> field_needs_to_be_communicated_before_level_set{};
