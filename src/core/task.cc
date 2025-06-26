@@ -58,15 +58,15 @@ AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 #include "errchk.h"
 #include "kernels/kernels.h" //AcRealPacked, ComputeKernel
 
-int
-static ac_pid()
+static int
+ac_pid()
 {
     int pid;
     MPI_Comm_rank(acGridMPIComm(), &pid);
     return pid;
 }
 
-AcMeshInfo
+static AcMeshInfo
 ac_get_info()
 {
         return acDeviceGetLocalConfig(acGridGetDevice());
@@ -112,7 +112,7 @@ merge_ptrs(const T* a, const T* b, const size_t a_n, const size_t b_n)
 	return res;
 }
 
-Volume
+static Volume
 get_max_halo_size(const Field fields[], const size_t num_fields)
 {
     Volume max_halo_size = (Volume){0,0,0};
@@ -390,7 +390,7 @@ acBoundaryConditionWithBounds(const AcBoundary boundary, const AcKernel kernel, 
         task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
 	return task_def;
 }
-size_t
+static size_t
 get_compute_output_position(const int id, const size_t start, const size_t ghost, const size_t nn, const bool boundary_included)
 {
 	int res = id == -1  ? (boundary_included ? start-ghost : start) : 
@@ -399,7 +399,7 @@ get_compute_output_position(const int id, const size_t start, const size_t ghost
 	return as_size_t(res);
 }
 
-size_t
+static size_t
 get_compute_output_dim(const int id, const size_t ghost, const size_t nn, const bool boundary_included)
 {
 	int res = id == 0 ? 
@@ -407,20 +407,20 @@ get_compute_output_dim(const int id, const size_t ghost, const size_t nn, const 
 		 ghost;
 	return as_size_t(res);
 }
-size_t
+static size_t
 get_exchange_output_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included)
 {
 	    if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
 	    if(bottom_included) return 0;
       	    return  id == -1  ? as_size_t((int)start-(int)ghost) : id == 1 ? start+nn : start;
 }
-size_t
+static size_t
 get_exchange_input_pos(const int id, const size_t start, const size_t ghost, const size_t nn, const bool bottom_included)
 {
 	const auto output_pos = get_exchange_output_pos(id,start,ghost,nn,bottom_included);
 	return id == -1 ? output_pos + ghost : id == 1 ? output_pos - ghost : output_pos;
 }
-size_t
+static size_t
 get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const bool bottom_included, const bool top_included)
 {
 	if(bottom_included && id != 0) fatal("Bottom included but id was: %d\n",id);
@@ -431,7 +431,7 @@ get_exchange_output_dim(const int id, const size_t ghost, const size_t nn, const
 	return res;
 }
 
-Volume
+static Volume
 get_compute_output_position(int3 id, Volume start, Volume ghosts, Volume nn, AcBoundary computes_on_boundary, const int max_facet_class)
 {
       Volume res = (Volume){
@@ -461,7 +461,7 @@ get_compute_output_position(int3 id, Volume start, Volume ghosts, Volume nn, AcB
       }
       return res;
 }
-Volume
+static Volume
 get_compute_output_dim(int3 id, Volume ghosts, Volume nn, AcBoundary computes_on_boundary, const int max_facet_class)
 {
       Volume res = (Volume)
@@ -505,7 +505,7 @@ get_compute_output_dim(int3 id, Volume ghosts, Volume nn, AcBoundary computes_on
       return res;
 }
 
-Volume
+static Volume
 get_compute_input_position(const int3 id, const Volume start, const Volume ghost, const Volume nn, const AcBoundary boundary_included, const AcBoundary depends_on_boundary, const int max_facet_class)
 {
 	//TP: the capping by zero is if one wants to compute a pointwise kernel on the halo based on the normal dependency rules the
@@ -530,7 +530,7 @@ get_compute_input_position(const int3 id, const Volume start, const Volume ghost
 	return res;
 }
 
-Volume
+static Volume
 get_compute_input_dim(const int3 id, const Volume ghost, const Volume nn, const AcBoundary boundary_included, const AcBoundary depends_on_boundary, const int max_facet_class)
 {
 	auto res = get_compute_output_dim(id,ghost,nn,boundary_included,max_facet_class);
@@ -642,7 +642,7 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
       }
       }
       volume = dims.x * dims.y * dims.z;
-      }
+}
       
       Region::Region(RegionFamily family_, int3 id_, Volume position_, Volume nn, Volume halos, const RegionMemoryInputParams mem_)
       : Region{family_, id_to_tag(id_), BOUNDARY_XYZ, BOUNDARY_NONE, position_, nn, halos,mem_,3}
@@ -932,7 +932,7 @@ Task::satisfyDependency(size_t iteration)
         dep_cntr.counts[iteration]++;
     }
 }
-void
+static void
 set_device(const Device device)
 {
     acSetDevice(acDeviceGetId(device));
@@ -1006,18 +1006,18 @@ Task::poll_stream()
     return false;
 }
 
-Volume
+static Volume
 get_min_nn()
 {
 	return acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
 }
 
-Volume
+static Volume
 get_local_nn()
 {
 	return acGetLocalNN(acDeviceGetLocalConfig(acGridGetDevice()));
 }
-Volume
+static Volume
 get_grid_nn()
 {
 	return acGetGridNN(acDeviceGetLocalConfig(acGridGetDevice()));
@@ -1427,27 +1427,27 @@ HaloMessageSwapChain::get_fresh_buffer()
     return &buffers[buf_idx];
 }
 
-AcReal
+static AcReal
 shear_periodic_displacement_in_grid_cells()
 {
         const auto info = ac_get_info();
         return acDeviceGetInput(acGridGetDevice(),AC_shear_delta_y)/info[AC_ds].y;
 }
 
-int
+static int
 shear_periodic_displacement_in_processes()
 {
         const auto info = ac_get_info();
 	return int(shear_periodic_displacement_in_grid_cells())/info[AC_nlocal].y;
 }
 
-AcReal
+static AcReal
 shear_periodic_leftover_fraction()
 {
         return shear_periodic_displacement_in_grid_cells() - int(shear_periodic_displacement_in_grid_cells());
 }
 
-AcShearInterpolationCoeffs
+static AcShearInterpolationCoeffs
 shear_periodic_interpolation_coeffs()
 {
         const AcReal frac = shear_periodic_leftover_fraction();
@@ -1463,21 +1463,21 @@ shear_periodic_interpolation_coeffs()
 }
 
 
-std::vector<int>
+static std::vector<int>
 shear_periodic_get_rhs_recv_offsets()
 {
 	    const int y = shear_periodic_displacement_in_processes();
 	    return {y-1,y,y+1,y+2};
 }
 
-std::vector<int>
+static std::vector<int>
 shear_periodic_get_lhs_recv_offsets()
 {
 	    const int y = shear_periodic_displacement_in_processes();
 	    return {-y-2,-y-1,-y,-y+1};
 }
 
-std::vector<int>
+static std::vector<int>
 get_recv_counterpart_ranks(const Device device, const int rank, const int3 output_region_id, const bool shear_periodic)
 {
     const auto proc_strategy = acDeviceGetLocalConfig(device)[AC_proc_mapping_strategy];
@@ -1505,7 +1505,7 @@ get_recv_counterpart_ranks(const Device device, const int rank, const int3 outpu
     return {get_pid(target_pid)};
 }
 
-std::vector<int>
+static std::vector<int>
 get_send_counterpart_ranks(const Device device, const int rank, const int3 output_region_id, const bool shear_periodic)
 {
     const auto proc_strategy = acDeviceGetLocalConfig(device)[AC_proc_mapping_strategy];
@@ -1535,7 +1535,7 @@ get_send_counterpart_ranks(const Device device, const int rank, const int3 outpu
     return {get_pid(target_pid)};
 }
 
-bool
+static bool
 get_sending(const int3 direction, const int3 id)
 {
 	return 
@@ -1545,7 +1545,7 @@ get_sending(const int3 direction, const int3 id)
 		   (direction == (int3){0,0,0});
 }
 
-bool
+static bool
 get_receiving(const int3 direction, const int3 id)
 {
 	return 
@@ -1554,7 +1554,7 @@ get_receiving(const int3 direction, const int3 id)
 		   ((direction.z != 0) && (direction.z == -id.z)) ||
 		   (direction == (int3){0,0,0});
 }
-std::vector<Field>
+static std::vector<Field>
 get_communicated_subset(const std::vector<Field> fields, const facet_class_range halo_types[], const int facet_class)
 {
 	ERRCHK_ALWAYS(halo_types != NULL);

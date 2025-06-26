@@ -161,7 +161,7 @@ get_decomp(const AcMeshInfo global_config)
 {
     return uint3_64(acDecompose(ac_nprocs(), global_config));
 }
-int3
+static int3
 getPid3D(const AcMeshInfo config)
 {
     return getPid3D(ac_pid(), get_decomp(config), 
@@ -169,13 +169,13 @@ getPid3D(const AcMeshInfo config)
 }
 
 
-int3
+static int3
 getPid3D(const int pid, const uint3_64 decomp)
 {
     return getPid3D(pid, decomp,ac_proc_mapping_strategy()); 
 }
 
-int3
+static int3
 getPid3D(const int pid)
 {
     return getPid3D(pid, grid.decomposition,ac_proc_mapping_strategy()); 
@@ -351,7 +351,7 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     acHostUpdateParams(&submesh_config);
     return submesh_config;
 }
-Volume
+static Volume
 get_global_nn()
 {
     const Device device   = grid.device;
@@ -360,7 +360,7 @@ get_global_nn()
 }
 
 
-void
+static void
 check_that_decomp_valid(const AcMeshInfo info)
 {
     const uint3_64 decomp = get_decomp(info);
@@ -375,7 +375,7 @@ check_that_decomp_valid(const AcMeshInfo info)
         fprintf(stderr, "Divisible: (%d, %d, %d)\n", nx_valid, ny_valid, nz_valid);
     }
 }
-AcBoundary
+static AcBoundary
 get_full_boundary()
 {
     const auto inactive = acGridGetLocalMeshInfo()[AC_dimension_inactive];
@@ -390,7 +390,7 @@ get_full_boundary()
 	    BOUNDARY_NONE;
 }
 #ifdef AC_INTEGRATION_ENABLED
-void
+static void
 gen_default_taskgraph()
 {
     acLogFromRootProc(ac_pid(), "acGridInit: Creating default task graph\n");
@@ -436,7 +436,7 @@ gen_default_taskgraph()
     acLogFromRootProc(ac_pid(), "acGridInit: Done creating default task graph\n");
 }
 #endif
-void
+static void
 initialize_random_number_generation(const AcMeshInfo submesh_info)
 {
     // Random number generator
@@ -448,7 +448,7 @@ initialize_random_number_generation(const AcMeshInfo submesh_info)
     const size_t count = acVertexBufferCompdomainSize(submesh_info);
     acRandInitAlt(1234UL, count, ac_pid());
 }
-void
+static UNUSED void
 log_grid_debug_info(const AcMeshInfo info)
 {
 
@@ -522,7 +522,7 @@ create_astaroth_sub_communicators()
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_yz_color(),ac_pid(),&astaroth_sub_comms.yz) == MPI_SUCCESS);
 }
 
-void
+static void
 create_astaroth_comm(const AcMeshInfo info)
 {
       switch(info[AC_MPI_comm_strategy])
@@ -545,7 +545,7 @@ create_astaroth_comm(const AcMeshInfo info)
       grid.mpi_initialized = true;
 }
 
-void
+static void
 check_that_device_allocation_valid()
 {
     int device_count = -1;
@@ -560,7 +560,7 @@ check_that_device_allocation_valid()
     MPI_Barrier(astaroth_comm);
 }
 
-void 
+static void 
 check_that_submesh_large_enough(const AcMeshInfo info)
 {
     const Volume nn = acGetLocalNN(info);
@@ -573,7 +573,7 @@ check_that_submesh_large_enough(const AcMeshInfo info)
         fprintf(stderr, "nn.z %ld too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
 }
 
-void 
+static void 
 check_that_mesh_large_enough(const AcMeshInfo info)
 {
     const Volume nn = acGetGridNN(info);
@@ -586,7 +586,7 @@ check_that_mesh_large_enough(const AcMeshInfo info)
         fprintf(stderr, "nn.z %ld too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
 }
 
-AcMesh
+static AcMesh
 create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 {
     AcMesh submesh;
@@ -640,7 +640,7 @@ check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> in
 			}
 
 }
-AcAutotuneMeasurement
+static AcAutotuneMeasurement
 grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
 {
         ERRCHK_ALWAYS(grid.initialized);
@@ -695,7 +695,7 @@ grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
         free(z_dim);
 	return res;
 }
-void
+static void
 gen_postprocessing_metadata()
 {
     if (ac_pid() == 0) {
@@ -2547,11 +2547,6 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     acGridSynchronizeStream(STREAM_ALL);
     return graph;
 }
-Volume
-int3_to_volume(const int3& a)
-{
-	return to_volume(a);
-}
 
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops_in[], const size_t n_ops)
@@ -2572,7 +2567,7 @@ acGridDestroyTaskGraph(AcTaskGraph* graph)
 }
 
 
-std::vector<KernelReduceOutput>
+static std::vector<KernelReduceOutput>
 get_reduce_outputs(const AcTaskGraph* graph)
 {
     std::vector<KernelReduceOutput> reduce_outputs{};
@@ -2587,7 +2582,7 @@ get_reduce_outputs(const AcTaskGraph* graph)
     }
     return reduce_outputs;
 }
-std::vector<Profile>
+static std::vector<Profile>
 get_reduced_profiles(const AcTaskGraph* graph)
 {
     std::vector<Profile> reduced_profiles{};
@@ -2664,7 +2659,7 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     }
     return AC_SUCCESS;
 }
-MPI_Op
+static MPI_Op
 to_mpi_op(const AcReduceOp op)
 {
 	switch(op)
@@ -2704,7 +2699,7 @@ acGridFinalizeReduce(AcTaskGraph* graph)
     return AC_SUCCESS;
 }
 
-void
+static void
 set_device_to_grid_device()
 {
 	acSetDevice(acDeviceGetId(grid.device));
@@ -2793,7 +2788,7 @@ acGridPeriodicBoundconds(const Stream stream)
     }
     return acGridExecuteTaskGraph(grid.periodic_bc_tasks.get(), 1);
 }
-size_t
+static size_t
 get_n_global_points()
 {
 	return (grid.nn.x * grid.decomposition.x *
@@ -2801,15 +2796,15 @@ get_n_global_points()
 		grid.nn.z * grid.decomposition.z);
 }
 
-AcReal
-get_cell_volume()
-{
-	const AcReal3 spacings = get_spacings();
-	const AcReal cell_volume   = spacings.x*spacings.y
-				     *spacings.z
-				     ;
-	return cell_volume;
-}
+//static AcReal
+//get_cell_volume()
+//{
+//	const AcReal3 spacings = get_spacings();
+//	const AcReal cell_volume   = spacings.x*spacings.y
+//				     *spacings.z
+//				     ;
+//	return cell_volume;
+//}
 
 static AcResult
 distributedScalarReduction(const AcReal local_result, const AcReduction reduction, AcReal* result)
@@ -3429,7 +3424,7 @@ acGridDiskAccessLaunch(const AccessType type)
 }
 */
 
-void
+static void
 ac_write_slice_metadata(const int step, const AcReal simulation_time)
 {
    if(ac_pid() == 0)
@@ -3460,7 +3455,7 @@ measure_file_size(const char* filepath)
     return measured_size;
 };
 
-void
+static void
 ac_make_dir(const std::string dir)
 {
     static std::unordered_map<std::string,bool> created_dirs{};
@@ -4058,7 +4053,7 @@ acGridDiskAccessLaunch(const AccessType type)
 }
 #endif
 
-void
+static void
 check_file_size(const char* filepath)
 {
         const long expected_size = acVertexBufferCompdomainSizeBytes(grid.submesh.info);
