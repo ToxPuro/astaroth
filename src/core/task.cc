@@ -124,7 +124,7 @@ get_max_halo_size(const Field fields[], const size_t num_fields)
 	max_halo_size.y = max(max_halo_size.y,as_size_t(info[vtxbuf_halos[fields[field]]].y));
 	max_halo_size.z = max(max_halo_size.z,as_size_t(info[vtxbuf_halos[fields[field]]].z));
     }
-    if(max_halo_size.x == 0 || max_halo_size.y == 0 || max_halo_size.z == 0)
+    if((max_halo_size.x == 0 && !info[AC_dimension_inactive].x) || (max_halo_size.y == 0 && !info[AC_dimension_inactive].y) || (max_halo_size.z == 0 && !info[AC_dimension_inactive].z))
     {
 	fprintf(stderr,"In fields: ");
     	for(size_t field = 0; field < num_fields; ++field) fprintf(stderr,"%s,",field_names[fields[field]]);
@@ -1046,6 +1046,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
         acStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     auto& input_region = input_regions[0];
+    const auto dimension_inactive = ac_get_info()[AC_dimension_inactive];
     if(kernel_only_writes_profile(op.kernel_enum,PROFILE_X))
     {
 	output_region.dims.y = 1;	
@@ -1067,7 +1068,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
     else if(max_facet_class == 3)
     {
 	const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);
-	if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
+	if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X) && !dimension_inactive.x)
 	{
             output_region.dims.x += 2*NGHOST;
             input_region.dims.x  += 2*NGHOST;
@@ -1075,7 +1076,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
             output_region.position.x -= NGHOST;
             input_region.position.x  -= NGHOST;
 	}
-	if(!(bc_dependencies & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y))
+	if(!(bc_dependencies & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y) && !dimension_inactive.y)
 	{
             output_region.dims.y += 2*NGHOST;
             input_region.dims.y  += 2*NGHOST;
@@ -1084,7 +1085,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
             input_region.position.y  -= NGHOST;
 	}
 
-	if(!(bc_dependencies & BOUNDARY_Z) && !(op.computes_on_halos & BOUNDARY_Z))
+	if(!(bc_dependencies & BOUNDARY_Z) && !(op.computes_on_halos & BOUNDARY_Z) && !dimension_inactive.z)
 	{
             output_region.dims.z += 2*NGHOST;
             input_region.dims.z  += 2*NGHOST;
@@ -1114,6 +1115,9 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 
     params = KernelParameters{op.kernel_enum, stream, 0, output_region.position,
                               output_region.position + output_region.dims, op.load_kernel_params_func};
+    ERRCHK_ALWAYS((int)output_region.position.x >= 0);
+    ERRCHK_ALWAYS((int)output_region.position.y >= 0);
+    ERRCHK_ALWAYS((int)output_region.position.z >= 0);
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
