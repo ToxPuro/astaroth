@@ -7388,6 +7388,8 @@ gen_constexpr_info_base(ASTNode* node, const bool gen_mem_accesses)
 		int_vec    n_assignments = VEC_INITIALIZER;
 		count_num_of_assignments(node,&names,&n_assignments);
 		res |= gen_constexpr_in_func(node,gen_mem_accesses,names,n_assignments,(gen_constexpr_params){false,NULL});
+		free_str_vec(&names);
+		free_int_vec(&n_assignments);
 	}
 	return res;
 }
