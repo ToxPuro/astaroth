@@ -637,6 +637,21 @@ check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> in
 								    "Consider refactoring the code,turning OPTIMIZE_MEM_ACCESSES and/or using runtime-compilation to skip the unnecessary Stencil computation\n"
 					     ,kernel_names[k], stencil_names[i], field_names[j]
 					      );
+				if(run_time)
+				{
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive.x] && (BOUNDARY_X & get_stencil_boundaries(Stencil(i))))
+					{
+						fatal("In Kernel %s Used Stencil %s on Field %s even though X is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
+					}
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive.y] && (BOUNDARY_Y & get_stencil_boundaries(Stencil(i))))
+					{
+						fatal("In Kernel %s Used Stencil %s on Field %s even though Y is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
+					}
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive.z] && (BOUNDARY_Z & get_stencil_boundaries(Stencil(i))))
+					{
+						fatal("In Kernel %s Used Stencil %s on Field %s even though Z is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
+					}
+				}
 			}
 
 }

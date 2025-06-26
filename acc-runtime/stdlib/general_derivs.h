@@ -114,32 +114,46 @@ Stencil derz_2nd_stencil {
 #define AC_GEN_DERX(NAME,STENCIL_NAME) \
 	NAME(Field f) \
 	{ \
-	real res = 0.0 \
-	if(AC_nonequidistant_grid.x) \
-	{ \
-		res = STENCIL_NAME(f)*AC_INV_MAPPING_FUNC_DER_X \
-	} \
-	else \
-	{ \
-		res= STENCIL_NAME(f)*AC_inv_ds.x \
-	} \
-	return res \
+        	if(AC_dimension_inactive.x) \
+		{ \
+			return 0.0 \
+		} \
+		else \
+		{ \
+			real res = 0.0 \
+			if(AC_nonequidistant_grid.x) \
+			{ \
+				res = STENCIL_NAME(f)*AC_INV_MAPPING_FUNC_DER_X \
+			} \
+			else \
+			{ \
+				res= STENCIL_NAME(f)*AC_inv_ds.x \
+			} \
+			return res \
+		} \
 	} 
 
 AC_GEN_DERX(derx,derx_stencil)
 AC_GEN_DERX(derx_2nd,derx_2nd_stencil)
 derx(Profile<X> prof)
 {
-	real res = 0.0
-	if(AC_nonequidistant_grid.x)
+	if(AC_dimension_inactive.x)
 	{
-		res = derx_stencil(prof)*AC_INV_MAPPING_FUNC_DER_X
+		return 0.0
 	}
 	else
 	{
-		res  = derx_stencil(prof)*AC_inv_ds.x
+		real res = 0.0
+		if(AC_nonequidistant_grid.x)
+		{
+			res = derx_stencil(prof)*AC_INV_MAPPING_FUNC_DER_X
+		}
+		else
+		{
+			res  = derx_stencil(prof)*AC_inv_ds.x
+		}
+		return res
 	}
-	return res
 }
 
 Stencil dery_stencil {
@@ -154,25 +168,31 @@ Stencil dery_stencil {
 #define AC_GEN_DERY(NAME,STENCIL_NAME) \
 	NAME(Field f) \
 	{ \
-		coordinate_factor = 1.0 \
-		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
+        	if(AC_dimension_inactive.y) \
 		{ \
-			coordinate_factor = AC_INV_R \
+			return 0.0 \
 		} \
-		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES) \
-		{ \
-			coordinate_factor = AC_INV_CYL_R \
+		else {\
+			coordinate_factor = 1.0 \
+			if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
+			{ \
+				coordinate_factor = AC_INV_R \
+			} \
+			if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES) \
+			{ \
+				coordinate_factor = AC_INV_CYL_R \
+			} \
+			grid_factor = 1.0 \
+			if(AC_nonequidistant_grid.y) \
+			{ \
+				grid_factor = AC_INV_MAPPING_FUNC_DER_Y \
+			} \
+			else \
+			{ \
+				grid_factor = AC_inv_ds.y \
+			} \
+			return STENCIL_NAME(f)*coordinate_factor*grid_factor \
 		} \
-		grid_factor = 1.0 \
-		if(AC_nonequidistant_grid.y) \
-		{ \
-			grid_factor = AC_INV_MAPPING_FUNC_DER_Y \
-		} \
-		else \
-		{ \
-			grid_factor = AC_inv_ds.y \
-		} \
-		return STENCIL_NAME(f)*coordinate_factor*grid_factor \
 	}
 
 AC_GEN_DERY(dery,dery_stencil)
@@ -180,25 +200,32 @@ AC_GEN_DERY(dery_2nd,dery_2nd_stencil)
 
 dery(Profile<Y> prof)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.y)
 	{
-		coordinate_factor = AC_INV_R
-	}
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
-	{
-		coordinate_factor = AC_INV_CYL_R
-	}
-	grid_factor = 1.0
-	if(AC_nonequidistant_grid.y)
-	{
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Y
+		return 0.0
 	}
 	else
 	{
-		grid_factor = AC_inv_ds.y
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_R
+		}
+		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_CYL_R
+		}
+		grid_factor = 1.0
+		if(AC_nonequidistant_grid.y)
+		{
+			grid_factor = AC_INV_MAPPING_FUNC_DER_Y
+		}
+		else
+		{
+			grid_factor = AC_inv_ds.y
+		}
+		return dery_stencil(prof)*coordinate_factor*grid_factor
 	}
-	return dery_stencil(prof)*coordinate_factor*grid_factor
 }
 
 
@@ -215,21 +242,27 @@ Stencil derz_stencil {
 #define AC_GEN_DERZ(NAME,STENCIL) \
 	NAME(Field f) \
 	{ \
-	coordinate_factor = 1.0 \
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
-	{ \
-		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA \
-	} \
-	grid_factor = 1.0 \
-	if(AC_nonequidistant_grid.z) \
-	{ \
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Z \
-	} \
-	else \
-	{ \
-		grid_factor = AC_inv_ds.z \
-	} \
-	return STENCIL(f)*coordinate_factor*grid_factor \
+		if(AC_dimension_inactive.z) \
+		{ \
+			return 0.0 \
+		} \
+		else {\
+			coordinate_factor = 1.0 \
+			if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
+			{ \
+				coordinate_factor = AC_INV_R*AC_INV_SIN_THETA \
+			} \
+			grid_factor = 1.0 \
+			if(AC_nonequidistant_grid.z) \
+			{ \
+				grid_factor = AC_INV_MAPPING_FUNC_DER_Z \
+			} \
+			else \
+			{ \
+				grid_factor = AC_inv_ds.z \
+			} \
+			return STENCIL(f)*coordinate_factor*grid_factor \
+		} \
 	}
 
 AC_GEN_DERZ(derz,derz_stencil)
@@ -237,21 +270,28 @@ AC_GEN_DERZ(derz_2nd,derz_2nd_stencil)
 
 derz(Profile<Z> prof)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.z)
 	{
-		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
-	}
-	grid_factor = 1.0
-	if(AC_nonequidistant_grid.z)
-	{
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Z
+		return 0.0
 	}
 	else
 	{
-		grid_factor = AC_inv_ds.z
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
+		}
+		grid_factor = 1.0
+		if(AC_nonequidistant_grid.z)
+		{
+			grid_factor = AC_INV_MAPPING_FUNC_DER_Z
+		}
+		else
+		{
+			grid_factor = AC_inv_ds.z
+		}
+		return derz_stencil(prof)*coordinate_factor*grid_factor
 	}
-	return derz_stencil(prof)*coordinate_factor*grid_factor
 }
 
 
@@ -303,13 +343,16 @@ Stencil derxx_2nd_neighbours_stencil {
 NAME(Field f) \
 { \
 	res = 0.0 \
-	if(AC_nonequidistant_grid.x) \
+	if(!AC_dimension_inactive.x) \
 	{ \
-		res = STENCIL(f)*(AC_INV_MAPPING_FUNC_DER_X*AC_INV_MAPPING_FUNC_DER_X) + DERX(f)*AC_MAPPING_FUNC_TILDE_X \
-	} \
-	else \
-	{ \
-		res = STENCIL(f)*AC_inv_ds_2.x \
+		if(AC_nonequidistant_grid.x) \
+		{ \
+			res = STENCIL(f)*(AC_INV_MAPPING_FUNC_DER_X*AC_INV_MAPPING_FUNC_DER_X) + DERX(f)*AC_MAPPING_FUNC_TILDE_X \
+		} \
+		else \
+		{ \
+			res = STENCIL(f)*AC_inv_ds_2.x \
+		} \
 	} \
 	return res \
 }
@@ -351,13 +394,16 @@ derxx_2nd_central_coeff()
 derxx(Profile<X> prof)
 {
 	real res = 0.0
-	if(!AC_nonequidistant_grid.x)
+	if(!AC_dimension_inactive.x)
 	{
-		res = derxx_stencil(prof)*AC_inv_ds_2.x
-	}
-	else
-	{
-		res = derxx_stencil(prof)*(AC_INV_MAPPING_FUNC_DER_X*AC_INV_MAPPING_FUNC_DER_X) + derx(prof)*AC_MAPPING_FUNC_TILDE_X
+		if(!AC_nonequidistant_grid.x)
+		{
+			res = derxx_stencil(prof)*AC_inv_ds_2.x
+		}
+		else
+		{
+			res = derxx_stencil(prof)*(AC_INV_MAPPING_FUNC_DER_X*AC_INV_MAPPING_FUNC_DER_X) + derx(prof)*AC_MAPPING_FUNC_TILDE_X
+		}
 	}
 	return res
 }
@@ -389,30 +435,36 @@ Stencil deryy_2nd_neighbours_stencil {
 #define AC_GEN_DERYY(NAME,STENCIL,DERY) \
 NAME(Field f) \
 { \
-	coordinate_factor = 1.0 \
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
+	if(AC_dimension_inactive.y) \
 	{ \
-		coordinate_factor = (AC_INV_R*AC_INV_R) \
+		return 0.0 \
 	} \
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES) \
-	{ \
-		coordinate_factor = (AC_INV_CYL_R*AC_INV_CYL_R) \
+	else { \
+		coordinate_factor = 1.0 \
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
+		{ \
+			coordinate_factor = (AC_INV_R*AC_INV_R) \
+		} \
+		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES) \
+		{ \
+			coordinate_factor = (AC_INV_CYL_R*AC_INV_CYL_R) \
+		} \
+		grid_factor = 1.0 \
+		if(AC_nonequidistant_grid.y) \
+		{ \
+			grid_factor = AC_INV_MAPPING_FUNC_DER_Y*AC_INV_MAPPING_FUNC_DER_Y \
+		} \
+		else \
+		{ \
+			grid_factor = AC_inv_ds_2.y \
+		} \
+		res = STENCIL(f)*coordinate_factor*grid_factor \
+		if(AC_nonequidistant_grid.y) \
+		{ \
+			 res += AC_MAPPING_FUNC_TILDE_Y*DERY(f) \
+		} \
+		return res \
 	} \
-	grid_factor = 1.0 \
-	if(AC_nonequidistant_grid.y) \
-	{ \
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Y*AC_INV_MAPPING_FUNC_DER_Y \
-	} \
-	else \
-	{ \
-		grid_factor = AC_inv_ds_2.y \
-	} \
-	res = STENCIL(f)*coordinate_factor*grid_factor \
-	if(AC_nonequidistant_grid.y) \
-	{ \
-		 res += AC_MAPPING_FUNC_TILDE_Y*DERY(f) \
-	} \
-	return res \
 }
 AC_GEN_DERYY(deryy,deryy_stencil,dery)
 AC_GEN_DERYY(deryy_2nd,deryy_2nd_stencil,dery_2nd)
@@ -470,30 +522,37 @@ deryy_central_coeff()
 }
 deryy(Profile<Y> prof)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.y)
 	{
-		coordinate_factor = (AC_INV_R*AC_INV_R)
-	}
-	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
-	{
-		coordinate_factor = (AC_INV_CYL_R*AC_INV_CYL_R)
-	}
-	grid_factor = 1.0
-	if(AC_nonequidistant_grid.y)
-	{
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Y*AC_INV_MAPPING_FUNC_DER_Y
+		return 0.0
 	}
 	else
 	{
-		grid_factor = AC_inv_ds_2.y
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			coordinate_factor = (AC_INV_R*AC_INV_R)
+		}
+		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+		{
+			coordinate_factor = (AC_INV_CYL_R*AC_INV_CYL_R)
+		}
+		grid_factor = 1.0
+		if(AC_nonequidistant_grid.y)
+		{
+			grid_factor = AC_INV_MAPPING_FUNC_DER_Y*AC_INV_MAPPING_FUNC_DER_Y
+		}
+		else
+		{
+			grid_factor = AC_inv_ds_2.y
+		}
+		res = deryy_stencil(prof)*coordinate_factor*grid_factor
+		if(AC_nonequidistant_grid.y)
+		{
+			 res += AC_MAPPING_FUNC_TILDE_Y*dery(prof)
+		}
+		return res
 	}
-	res = deryy_stencil(prof)*coordinate_factor*grid_factor
-	if(AC_nonequidistant_grid.y)
-	{
-		 res += AC_MAPPING_FUNC_TILDE_Y*dery(prof)
-	}
-	return res
 }
 
 Stencil derzz_stencil {
@@ -522,27 +581,33 @@ Stencil derzz_2nd_neighbours_stencil {
 #define AC_GEN_DER_ZZ(NAME,STENCIL,DERZ) \
 NAME(Field f) \
 { \
-	coordinate_factor = 1.0 \
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
+	if(AC_dimension_inactive.z) \
 	{ \
-		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA; \
-		coordinate_factor *= coordinate_factor \
+		return 0.0 \
 	} \
-	grid_factor = 1.0 \
-	if(AC_nonequidistant_grid.z) \
-	{ \
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Z*AC_INV_MAPPING_FUNC_DER_Z \
-	} \
-	else \
-	{ \
-		grid_factor = AC_inv_ds_2.z \
-	} \
-	res = STENCIL(f)*coordinate_factor*grid_factor \
-	if(AC_nonequidistant_grid.z) \
-	{ \
-		 res += AC_MAPPING_FUNC_TILDE_Z*DERZ(f) \
-	} \
-	return res \
+	else {\
+		coordinate_factor = 1.0 \
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
+		{ \
+			coordinate_factor = AC_INV_R*AC_INV_SIN_THETA; \
+			coordinate_factor *= coordinate_factor \
+		} \
+		grid_factor = 1.0 \
+		if(AC_nonequidistant_grid.z) \
+		{ \
+			grid_factor = AC_INV_MAPPING_FUNC_DER_Z*AC_INV_MAPPING_FUNC_DER_Z \
+		} \
+		else \
+		{ \
+			grid_factor = AC_inv_ds_2.z \
+		} \
+		res = STENCIL(f)*coordinate_factor*grid_factor \
+		if(AC_nonequidistant_grid.z) \
+		{ \
+			 res += AC_MAPPING_FUNC_TILDE_Z*DERZ(f) \
+		} \
+		return res \
+	}\
 } 
 
 AC_GEN_DER_ZZ(derzz_2nd_neighbours,derzz_2nd_neighbours_stencil,derz_2nd)
@@ -596,27 +661,34 @@ derzz_central_coeff()
 
 derzz(Profile<Z> prof)
 {
-	coordinate_factor = 1.0
-	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	if(AC_dimension_inactive.z)
 	{
-		coordinate_factor = AC_INV_R*AC_INV_SIN_THETA;
-		coordinate_factor *= coordinate_factor
-	}
-	grid_factor = 1.0
-	if(AC_nonequidistant_grid.z)
-	{
-		grid_factor = AC_INV_MAPPING_FUNC_DER_Z*AC_INV_MAPPING_FUNC_DER_Z
+		return 0.0
 	}
 	else
 	{
-		grid_factor = AC_inv_ds_2.z
+		coordinate_factor = 1.0
+		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+		{
+			coordinate_factor = AC_INV_R*AC_INV_SIN_THETA;
+			coordinate_factor *= coordinate_factor
+		}
+		grid_factor = 1.0
+		if(AC_nonequidistant_grid.z)
+		{
+			grid_factor = AC_INV_MAPPING_FUNC_DER_Z*AC_INV_MAPPING_FUNC_DER_Z
+		}
+		else
+		{
+			grid_factor = AC_inv_ds_2.z
+		}
+		res = derzz_stencil(prof)*coordinate_factor*grid_factor
+		if(AC_nonequidistant_grid.z)
+		{
+			 res += AC_MAPPING_FUNC_TILDE_Z*derz(prof)
+		}
+		return res
 	}
-	res = derzz_stencil(prof)*coordinate_factor*grid_factor
-	if(AC_nonequidistant_grid.z)
-	{
-		 res += AC_MAPPING_FUNC_TILDE_Z*derz(prof)
-	}
-	return res
 }
 
 Stencil derxy_stencil {
