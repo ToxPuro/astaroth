@@ -2681,9 +2681,9 @@ BoundaryConditionTask::BoundaryConditionTask(
         boundary_normal.y == 0 ? output_region.dims.y : 1,
         boundary_normal.z == 0 ? output_region.dims.z : 1,
     };
-    ERRCHK_ALWAYS(output_region.halo.x > 0);
-    ERRCHK_ALWAYS(output_region.halo.y > 0);
-    ERRCHK_ALWAYS(output_region.halo.z > 0);
+    ERRCHK_ALWAYS(local_config[AC_dimension_inactive].x || output_region.halo.x > 0);
+    ERRCHK_ALWAYS(local_config[AC_dimension_inactive].y || output_region.halo.y > 0);
+    ERRCHK_ALWAYS(local_config[AC_dimension_inactive].z || output_region.halo.z > 0);
 
     ERRCHK_ALWAYS(boundary_dims.x > 0);
     ERRCHK_ALWAYS(boundary_dims.y > 0);
