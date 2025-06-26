@@ -9111,14 +9111,33 @@ canonalize_if_assignments(ASTNode* node)
 
 }
 void
+add_all_identifiers(const ASTNode* node, string_vec* dst)
+{
+	TRAVERSE_PREAMBLE_PARAMS(add_all_identifiers,dst);
+	if(node->token == IDENTIFIER) push(dst,node->buffer);
+}
+void
 get_used_vars_base(const ASTNode* node, string_vec* dst, bool skip, const char* assigned_var)
 {
         if(node->token == VARIABLE_DECLARATION) return;
         if(node->type & NODE_ASSIGNMENT)
         {
-                const char* var = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+		if(!node->lhs)
+		{
+			fatal("No lhs: %s\n",combine_all_new(node));
+		}
+                const ASTNode* id = get_node_by_token(IDENTIFIER,node->lhs);
+		if(!id)
+		{
+			fatal("No id: %s\n",combine_all_new(node));
+		}
+                const char* var = id->buffer;
                 assigned_var = var;
         }
+	if(node->type & NODE_IF)
+	{
+		add_all_identifiers(node->lhs,dst);
+	}
         if(node->lhs)
         {
                 get_used_vars_base(node->lhs,dst,skip | (node->type & NODE_ASSIGNMENT),assigned_var);
@@ -9154,6 +9173,7 @@ remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 		node->lhs = NULL;
 		node->rhs = NULL;
 		node->parent->postfix = NULL;
+		node->type = NODE_UNKNOWN;
 	}
 }
 void
@@ -10530,9 +10550,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
 	  while(eliminated_something)
 	  {
 	  	eliminated_something = eliminate_conditionals(root,gen_mem_accesses);
+	  	remove_dead_writes(root);
 		gen_constexpr_info(root,gen_mem_accesses);
 	  }
-	  remove_dead_writes(root);
 
 	  FILE* fp = fopen("ac_minimized_code.ac.raw","w");
           symboltable_reset();
