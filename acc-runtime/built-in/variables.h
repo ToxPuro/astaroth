@@ -1,5 +1,3 @@
-//TP: for now TWO_D means XY setup
-run_const bool3 AC_dimension_inactive = (bool3){false,false,TWO_D};
 
 
 int3 AC_nmin = (int3)
@@ -10,6 +8,12 @@ int3 AC_nmin = (int3)
 		}
 //TP: these could be run_const but gives really bad performance otherwise
 int3 AC_ngrid
+//TP: for now TWO_D means XY setup
+run_const bool3 AC_dimension_inactive = (bool3){
+					AC_ngrid.x == 1,
+					AC_ngrid.y == 1,
+					TWO_D || AC_ngrid.z == 1
+				};
 int3 AC_mgrid  = AC_ngrid + 2*AC_nmin
 run_const int3  AC_domain_decomposition = ac_get_process_decomposition()
 int3 AC_nlocal = (int3)
