@@ -9190,6 +9190,7 @@ remove_dead_declarations(ASTNode* node, const string_vec vars_used)
 		node->lhs = NULL;
 		node->rhs = NULL;
 		node->parent->postfix = NULL;
+		node->type = NODE_UNKNOWN;
 	}
 }
 void
