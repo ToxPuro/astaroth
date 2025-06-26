@@ -7259,6 +7259,11 @@ count_num_of_assignments(const ASTNode* node, string_vec* names, int_vec* counts
 	if(node->type == NODE_ASSIGNMENT && node->rhs)
 	{
 	  const char* lhs = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	  const ASTNode* struct_expr = get_node(NODE_STRUCT_EXPRESSION,node->lhs);
+	  if(struct_expr)
+	  {
+		  lhs = intern(combine_all_new(struct_expr));
+	  }
 	  const int index = str_vec_get_index(*names,lhs);
 	  if(index == -1)
 	  {
@@ -7327,7 +7332,15 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const string_v
 	{
 	  bool is_constexpr = all_identifiers_are_constexpr(node->rhs);
 	  ASTNode* lhs_identifier = get_node_by_token(IDENTIFIER,node->lhs);
-	  const int index = str_vec_get_index(names,lhs_identifier->buffer);
+	  const char* lhs = lhs_identifier->buffer;
+	  const ASTNode* struct_expr = get_node(NODE_STRUCT_EXPRESSION,node->lhs);
+	  if(struct_expr)
+	  {
+		  lhs = intern(combine_all_new(struct_expr));
+	  	  lhs_identifier = get_node_by_token(IDENTIFIER,struct_expr->lhs);
+	  }
+
+	  const int index = str_vec_get_index(names,lhs);
 	  if(assign_counts.data[index] != 1)
 		  return res;
 	  if(lhs_identifier->is_constexpr == is_constexpr)
