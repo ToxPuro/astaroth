@@ -4,6 +4,17 @@ if(RUNTIME_COMPILATION)
   add_library(astaroth_core update_params.cc decomposition.cc logging.c helpers/helpers.cc)
   target_link_libraries(astaroth_core PUBLIC acc-runtime-headers dl acc_runtime_compiler)
 else()
+  #TP: It is not that important that these are as efficient as possible
+  #    so can speed up compilation by setting their optimization level to 0
+  #    especially compute_steps.cc can slow the compilation (with RUNTIME_COMPILATION on LUMI)
+  #    (TODO: check that it is actually safe for performance to compile compute_steps.cc with -O0, but in all likelihood it is fine)
+  set_source_files_properties(
+    compute_steps.cc
+    debug.cc
+    update_params.cc
+    PROPERTIES COMPILE_FLAGS "-O0"
+  )
+
   add_library(astaroth_core device.cc decomposition.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc update_params.cc logging.c stencil_accesses.cpp helpers/helpers.cc)
   target_link_libraries(astaroth_core PUBLIC static_kernels)
   
