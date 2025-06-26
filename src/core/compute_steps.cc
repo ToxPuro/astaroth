@@ -379,19 +379,20 @@ log_launch_bounds(FILE* stream, std::vector<Field> in_fields, std::vector<Field>
 	}
 }
 static void
+log_fields(FILE* stream, const std::vector<Field> fields)
+{
+	if(!ac_pid()) fprintf(stream,"{");
+	for(const auto& field : fields)
+		if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
+	if(!ac_pid()) fprintf(stream,"}");
+}
+static void
 log_boundcond(FILE* stream, const BoundCond bc)
 {
-	auto log_fields = [&](const auto& fields)
-	{
-		if(!ac_pid()) fprintf(stream,"{");
-		for(const auto& field : fields)
-			if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
-		if(!ac_pid()) fprintf(stream,"}");
-	};
 	if(!ac_pid()) fprintf(stream,"BoundCond(%s,%s,",ac_boundary_to_str(bc.boundary), kernel_names[bc.kernel]);
-	log_fields(bc.in);
+	log_fields(stream,bc.in);
 	if(!ac_pid()) fprintf(stream,",");
-	log_fields(bc.out);
+	log_fields(stream,bc.out);
 	log_launch_bounds(stream,bc.in,bc.out);
 	if(!ac_pid()) fprintf(stream,"{%d,%d,%d}",bc.id.x,bc.id.y,bc.id.z);
 	if(!ac_pid()) fprintf(stream,")\n");
@@ -567,16 +568,9 @@ gen_halo_exchange(
 		std::vector<AcTaskDefinition> res{};
 		if(direction == (int3){0,0,0} && !before_kernel_call) return res;
 		if(output_fields.size() == 0) return res;
-		auto log_fields = [&](const auto& input_fields)
-		{
-			if(!ac_pid()) fprintf(stream,"{");
-			for(const auto& field : input_fields)
-				if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
-			if(!ac_pid()) fprintf(stream,"}");
-		};
 
 		if(!ac_pid()) fprintf(stream, "Halo(");
-		log_fields(output_fields);
+		log_fields(stream,output_fields);
 
 		log_launch_bounds(stream,output_fields,output_fields);
 		if(direction != (int3){0,0,0})
@@ -614,14 +608,6 @@ gen_periodic_bcs(
 		std::vector<AcTaskDefinition> res{};
 		if(direction == (int3){0,0,0} && !before_kernel_call) return res;
 		if(output_fields.size() == 0) return res;
-		auto log_fields = [&](const auto& input_fields)
-		{
-			if(!ac_pid()) fprintf(stream,"{");
-			for(const auto& field : input_fields)
-				if(!ac_pid()) fprintf(stream, "%s,",field_names[field]);
-			if(!ac_pid()) fprintf(stream,"}");
-		};
-		fprintf(stderr,"HI: %s\n",field_names[output_fields[0]]);
 
 		const std::tuple<Volume,Volume> bounds = get_launch_bounds_from_fields(output_fields,output_fields);
 		const Volume start = std::get<0>(bounds);
@@ -647,7 +633,7 @@ gen_periodic_bcs(
 		{
 				res.push_back(acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,output_fields,start,end,halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XYZ,");
-				log_fields(output_fields);
+				log_fields(stream,output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
 				log_halo_types(halo_types,stream);
 				if(!ac_pid()) fprintf(stream,")\n");
@@ -656,7 +642,7 @@ gen_periodic_bcs(
 		{
 				res.push_back(acBoundaryCondition(BOUNDARY_XY,BOUNDCOND_PERIODIC,output_fields,start,end,twod_halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XY,");
-				log_fields(output_fields);
+				log_fields(stream,output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
 				log_halo_types(twod_halo_types,stream);
 				if(!ac_pid()) fprintf(stream,")\n");
@@ -665,7 +651,7 @@ gen_periodic_bcs(
 		{
 				res.push_back(acBoundaryCondition(BOUNDARY_XZ,BOUNDCOND_PERIODIC,output_fields,start,end,twod_halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_XZ,");
-				log_fields(output_fields);
+				log_fields(stream,output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
 				log_halo_types(twod_halo_types,stream);
 				if(!ac_pid()) fprintf(stream,")\n");
@@ -674,7 +660,7 @@ gen_periodic_bcs(
 		{
 				res.push_back(acBoundaryCondition(BOUNDARY_YZ,BOUNDCOND_PERIODIC,output_fields,start,end,twod_halo_types));
 				if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_YZ,");
-				log_fields(output_fields);
+				log_fields(stream,output_fields);
 				log_launch_bounds(stream,output_fields,output_fields);
 				log_halo_types(twod_halo_types,stream);
 				if(!ac_pid()) fprintf(stream,")\n");
@@ -683,7 +669,7 @@ gen_periodic_bcs(
 		{
 			res.push_back(acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,output_fields,start,end,oned_halo_types));
 			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_X,");
-			log_fields(output_fields);
+			log_fields(stream,output_fields);
 			log_launch_bounds(stream,output_fields,output_fields);
 			log_halo_types(oned_halo_types,stream);
 			if(!ac_pid()) fprintf(stream,")\n");
@@ -692,7 +678,7 @@ gen_periodic_bcs(
 		{
 			res.push_back(acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,output_fields,start,end,oned_halo_types));
 			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Y,");
-			log_fields(output_fields);
+			log_fields(stream,output_fields);
 			log_launch_bounds(stream,output_fields,output_fields);
 			log_halo_types(oned_halo_types,stream);
 			if(!ac_pid()) fprintf(stream,")\n");
@@ -701,7 +687,7 @@ gen_periodic_bcs(
 		{
 			res.push_back(acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,output_fields,start,end,oned_halo_types));
 			if(!ac_pid()) fprintf(stream,"Periodic(BOUNDARY_Z,");
-			log_fields(output_fields);
+			log_fields(stream,output_fields);
 			log_launch_bounds(stream,output_fields,output_fields);
 			log_halo_types(oned_halo_types,stream);
 			if(!ac_pid()) fprintf(stream,")\n");
