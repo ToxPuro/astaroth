@@ -16,6 +16,9 @@ module load craype-accel-amd-gfx90a # Must be loaded after LUMI/24.03
 module list
 cmake -LAH >> system_info.txt
 
+CONFIG="/users/pekkila/astaroth/samples/tfm/mhd/mhd.ini"
+cp $CONFIG config-$SLURM_JOB_ID.ini
+
 export MPICH_GPU_SUPPORT_ENABLED=1
 export SRUN="srun --cpu-bind="map_cpu:49,57,17,25,1,9,33,41"" # Default mapping
 # export SRUN="srun --cpu-bind="map_cpu:33,41,49,57,17,25,1,9"" # Hierarchical mapping (needs 6, 7, 0, 1, 2, 3, 4, 5 rank-device mapping)
@@ -33,7 +36,7 @@ export SRUN="srun --cpu-bind="map_cpu:49,57,17,25,1,9,33,41"" # Default mapping
 #$SRUN ./bm_pipelining 512 512 512 3 32 100
 
 # Strong scaling
-$SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID --benchmark 1
+$SRUN ./tfm-mpi --config $CONFIG --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID --benchmark 1
 
 # Weak scaling
-$SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 256,256,256 --job-id $SLURM_JOB_ID --benchmark 1
+$SRUN ./tfm-mpi --config $CONFIG --global-nn-override 256,256,256 --job-id $SLURM_JOB_ID --benchmark 1

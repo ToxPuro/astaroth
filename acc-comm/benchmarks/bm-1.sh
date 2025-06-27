@@ -16,6 +16,9 @@ module load craype-accel-amd-gfx90a # Must be loaded after LUMI/24.03
 module list
 cmake -LAH >> system_info.txt
 
+CONFIG="/users/pekkila/astaroth/samples/tfm/mhd/mhd.ini"
+cp $CONFIG config-$SLURM_JOB_ID.ini
+
 export MPICH_GPU_SUPPORT_ENABLED=1
 
 # Disabled for TFM tests (change to 'true' to enable)
@@ -43,4 +46,4 @@ fi
 # ./bm_pipelining 256 256 256 3 32 100
 
 # Strong and weak scaling
-./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID --benchmark 1
+./tfm-mpi --config $CONFIG --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID --benchmark 1
