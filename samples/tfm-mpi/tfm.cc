@@ -2401,7 +2401,7 @@ class Grid {
 
         // Print results to file
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-            std::ofstream os{filename};
+            std::ofstream os{filename, std::ios_base::app};
             ERRCHK(os);
 
             auto info{ac::get_info(m_device.get())};
