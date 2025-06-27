@@ -16,11 +16,16 @@ module load craype-accel-amd-gfx90a # Must be loaded after LUMI/24.03
 
 export MPICH_GPU_SUPPORT_ENABLED=1
 
+# Disabled for TFM tests (change to 'true' to enable)
+if false; then
 ./bm_pack 256 3 3 1 100 $SLURM_JOB_ID
 ./bm_pack 256 3 3 2 100 $SLURM_JOB_ID
 ./bm_pack 256 3 3 4 100 $SLURM_JOB_ID
 ./bm_pack 256 3 3 8 100 $SLURM_JOB_ID
 ./bm_pack 256 3 3 16 100 $SLURM_JOB_ID
+fi
+
+
 #./bm_pack 256 3 3 32 100 $SLURM_JOB_ID
 
 #./bm_rank_reordering 256 256 256 3 100 $SLURM_JOB_ID
