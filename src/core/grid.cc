@@ -2067,7 +2067,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
         //done here since we want to write only to out not to in what launching the taskgraph would do
         //always remember to call the loader since otherwise might not be safe to execute taskgraph
         op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}, op.kernel_enum});
-        acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
+        acDeviceSetReduceOffset(grid.device, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
         fields_already_depend_on_boundaries = get_fields_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);
     };
 
@@ -2555,11 +2555,6 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
     std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Done sorting tasks by priority\n");
-
-    //make sure after autotuning that out is 0
-    AcMeshDims comp_dims = acGetMeshDims(acGridGetLocalMeshInfo());
-    acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, comp_dims.n0,comp_dims.n1);
-    acGridSynchronizeStream(STREAM_ALL);
     return graph;
 }
 

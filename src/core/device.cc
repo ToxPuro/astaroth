@@ -924,6 +924,13 @@ acDeviceTransferMesh(const Device src_device, const Stream stream, Device dst_de
     return AC_SUCCESS;
 }
 AcResult
+acDeviceSetReduceOffset(const Device device, const AcKernel kernel,
+                     const Volume start, const Volume end)
+{
+    acSetDevice(device->id);
+    return acSetReduceOffset(kernel, start, end, device->vba);
+}
+AcResult
 acDeviceLaunchKernel(const Device device, const Stream stream, const AcKernel kernel,
                      const Volume start, const Volume end)
 {

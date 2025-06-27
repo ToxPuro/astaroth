@@ -1445,6 +1445,26 @@ get_kernel_end(const AcKernel kernel, const Volume start, const Volume end)
 
 }
 AcResult
+acSetReduceOffset(AcKernel kernel, const Volume start_volume,
+               const Volume end_volume, VertexBufferArray vba)
+{
+  const int3 start = to_int3(start_volume);
+  const int3 end   = to_int3(get_kernel_end(kernel,start_volume,end_volume));
+
+  const TBConfig tbconf = getOptimalTBConfig(kernel, start, end, vba);
+  const dim3 tpb        = tbconf.tpb;
+  const int3 dims       = tbconf.dims;
+  const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
+  if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
+  {
+  	reduce_offsets[kernel][start] = kernel_running_reduce_offsets[kernel];
+  	kernel_running_reduce_offsets[kernel] += get_num_of_warps(bpg,tpb);
+	resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba,kernel);
+  }
+  return AC_SUCCESS;
+}
+
+AcResult
 acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
                const Volume end_volume, VertexBufferArray vba)
 {

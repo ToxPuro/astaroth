@@ -436,6 +436,8 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(AcResult, acLaunchKernel,(AcKernel func, const cudaStream_t stream, const Volume start, const Volume end, VertexBufferArray));
 
+  FUNC_DEFINE(AcResult, acSetReduceOffset,(AcKernel func, const Volume start, const Volume end, VertexBufferArray));
+
   FUNC_DEFINE(AcResult, acBenchmarkKernel,(AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba));
 
   FUNC_DEFINE(int3, acReadOptimTBConfig,(const AcKernel, const int3 dims, const int3 block_factors));

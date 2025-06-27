@@ -258,6 +258,9 @@ FUNC_DEFINE(AcDeviceKernelOutput, acDeviceGetKernelOutput,(const Device device))
 /** */
 FUNC_DEFINE(AcResult, acDeviceLaunchKernel,(const Device device, const Stream stream, const AcKernel kernel,
                               const Volume start, const Volume end));
+/** */
+FUNC_DEFINE(AcResult, acDeviceSetReduceOffset,(const Device device, const AcKernel kernel,
+                              const Volume start, const Volume end));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceBenchmarkKernel,(const Device device, const AcKernel kernel, const int3 start,
