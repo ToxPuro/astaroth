@@ -57,13 +57,13 @@ get_rank_ordering(const MPI_Comm& cart_comm)
     ERRCHK_MPI_API(MPI_Comm_size(cart_comm, &nprocs));
 
     for (int i{0}; i < nprocs; ++i) {
-        int       translated_rank{MPI_PROC_NULL};
         MPI_Group world_group{MPI_GROUP_NULL};
         ERRCHK_MPI_API(MPI_Comm_group(MPI_COMM_WORLD, &world_group));
 
         MPI_Group cart_group{MPI_GROUP_NULL};
         ERRCHK_MPI_API(MPI_Comm_group(cart_comm, &cart_group));
 
+        int translated_rank{MPI_PROC_NULL};
         ERRCHK_MPI_API(MPI_Group_translate_ranks(world_group, 1, &i, cart_group, &translated_rank));
         coords.push_back(ac::mpi::get_coords(cart_comm, translated_rank));
     }
@@ -109,7 +109,8 @@ size(const ac::mpi::comm& comm)
     return as<uint64_t>(ac::mpi::get_size(comm.get()));
 }
 
-ac::index coords(const ac::mpi::cart_comm& comm)
+ac::index
+coords(const ac::mpi::cart_comm& comm)
 {
     return ac::mpi::get_coords(comm.get());
 }
