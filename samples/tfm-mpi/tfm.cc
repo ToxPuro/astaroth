@@ -1847,18 +1847,14 @@ process_overrides(const tfm::arguments& args, AcMeshInfo& info)
 static int
 select_device()
 {
-    // Improvement:
-    // Could benchmark the topology here instead of hardcoding the fastest paths
-
-    PRINT_LOG_WARNING("select_device() hardcoded to use LUMI topology");
-
     int device_count{0};
     ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
-
     const int device_id{ac::mpi::get_rank(MPI_COMM_WORLD) % device_count};
 
     // Enable for proper hierarchical mapping
     // TODO note: hardcoded for LUMI
+    // Could benchmark the topology here instead of hardcoding the fastest paths
+    // PRINT_LOG_WARNING("select_device() hardcoded to use LUMI topology");
     // if (device_count == 8) { // Do manual GPU mapping for LUMI
     //     ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
     //     device_id = device_ids[as<size_t>(device_id)];
