@@ -2422,6 +2422,20 @@ class Grid {
             }
         }
     }
+
+    void write_rank_ordering_to_disk(const tfm::arguments& args)
+    {
+        // Only root proc writes
+        if (ac::mpi::get_rank(m_comm.get()) != 0)
+            return;
+
+        std::ofstream os{"rank-to-subdomain-mapping-" + std::to_string(args.job_id) + ".txt"};
+        ERRCHK(os);
+
+        const auto mapping{ac::mpi::get_rank_ordering(m_comm.get())};
+        for (size_t i{0}; i < mapping.size(); ++i)
+            os << i << ": " << mapping[i] << std::endl;
+    }
 };
 
 } // namespace rev
@@ -2445,6 +2459,7 @@ main(int argc, char* argv[])
 
         // Init grid
         rev::Grid grid{info};
+        grid.write_rank_ordering_to_disk(args);
 
         if (args.benchmark)
             grid.benchmark(args);
