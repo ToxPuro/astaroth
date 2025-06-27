@@ -116,6 +116,7 @@ Stencil derz_2nd_stencil {
 	{ \
         	if(AC_dimension_inactive.x) \
 		{ \
+			suppress_unused_warning(f) \
 			return 0.0 \
 		} \
 		else \
@@ -139,6 +140,7 @@ derx(Profile<X> prof)
 {
 	if(AC_dimension_inactive.x)
 	{
+		suppress_unused_warning(prof)
 		return 0.0
 	}
 	else
@@ -170,6 +172,7 @@ Stencil dery_stencil {
 	{ \
         	if(AC_dimension_inactive.y) \
 		{ \
+			suppress_unused_warning(f) \
 			return 0.0 \
 		} \
 		else {\
@@ -202,6 +205,7 @@ dery(Profile<Y> prof)
 {
 	if(AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(prof)
 		return 0.0
 	}
 	else
@@ -244,6 +248,7 @@ Stencil derz_stencil {
 	{ \
 		if(AC_dimension_inactive.z) \
 		{ \
+			suppress_unused_warning(f) \
 			return 0.0 \
 		} \
 		else {\
@@ -272,6 +277,7 @@ derz(Profile<Z> prof)
 {
 	if(AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(prof)
 		return 0.0
 	}
 	else
@@ -343,6 +349,7 @@ Stencil derxx_2nd_neighbours_stencil {
 NAME(Field f) \
 { \
 	res = 0.0 \
+	suppress_unused_warning(f) \
 	if(!AC_dimension_inactive.x) \
 	{ \
 		if(AC_nonequidistant_grid.x) \
@@ -394,6 +401,7 @@ derxx_2nd_central_coeff()
 derxx(Profile<X> prof)
 {
 	real res = 0.0
+	suppress_unused_warning(prof)
 	if(!AC_dimension_inactive.x)
 	{
 		if(!AC_nonequidistant_grid.x)
@@ -437,6 +445,7 @@ NAME(Field f) \
 { \
 	if(AC_dimension_inactive.y) \
 	{ \
+		suppress_unused_warning(f) \
 		return 0.0 \
 	} \
 	else { \
@@ -524,6 +533,7 @@ deryy(Profile<Y> prof)
 {
 	if(AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(prof)
 		return 0.0
 	}
 	else
@@ -583,6 +593,7 @@ NAME(Field f) \
 { \
 	if(AC_dimension_inactive.z) \
 	{ \
+		suppress_unused_warning(f) \
 		return 0.0 \
 	} \
 	else {\
@@ -663,6 +674,7 @@ derzz(Profile<Z> prof)
 {
 	if(AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(prof)
 		return 0.0
 	}
 	else
@@ -710,6 +722,7 @@ derxy(Field f)
 {
 	if(AC_dimension_inactive.x || AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -764,6 +777,7 @@ derxz(Field f)
 {
 	if(AC_dimension_inactive.x || AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -815,6 +829,7 @@ deryz(Field f)
 {
 	if(AC_dimension_inactive.y || AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -864,6 +879,7 @@ der3x(Field f)
 {
 	if(AC_dimension_inactive.x)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -885,6 +901,7 @@ der3y(Field f)
 {
 	if(AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -916,6 +933,7 @@ der3z(Field f)
 {
 	if(AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -944,6 +962,7 @@ der4x(Field f)
 {
 	if(AC_dimension_inactive.x)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -964,6 +983,7 @@ der4y(Field f)
 {
 	if(AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -999,6 +1019,7 @@ der4z(Field f)
 {
 	if(AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1062,6 +1083,7 @@ der5x(Field f)
 {
 	if(AC_dimension_inactive.x)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1081,6 +1103,7 @@ der5y(Field f)
 {
 	if(AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1117,6 +1140,7 @@ der5z(Field f)
 {
 	if(AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1177,6 +1201,7 @@ der5z1y(Field f)
 {
 	if(AC_dimension_inactive.z || AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1229,6 +1254,7 @@ der5z1x(Field f)
 {
 	if(AC_dimension_inactive.z || AC_dimension_inactive.x)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1281,6 +1307,7 @@ der5y1z(Field f)
 {
 	if(AC_dimension_inactive.y || AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1333,6 +1360,7 @@ der5y1x(Field f)
 {
 	if(AC_dimension_inactive.y || AC_dimension_inactive.x)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1385,6 +1413,7 @@ der5x1z(Field f)
 {
 	if(AC_dimension_inactive.x || AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1437,6 +1466,7 @@ der5x1y(Field f)
 {
 	if(AC_dimension_inactive.x || AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1463,6 +1493,7 @@ der6x(Field f)
 {
 	if(AC_dimension_inactive.x)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1492,6 +1523,7 @@ der6y(Field f)
 {
 	if(AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1519,6 +1551,7 @@ der6z(Field f)
 {
 	if(AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1540,6 +1573,7 @@ der6x_upwd(Field f)
 {
 	if(AC_dimension_inactive.x)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1560,6 +1594,7 @@ der6y_upwd(Field f)
 {
 	if(AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1592,6 +1627,7 @@ der6z_upwd(Field f)
 {
 	if(AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1619,6 +1655,7 @@ der6x_ignore_spacing(Field f)
 {
 	if(AC_dimension_inactive.x)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1630,6 +1667,7 @@ der6y_ignore_spacing(Field f)
 {
 	if(AC_dimension_inactive.y)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else
@@ -1641,6 +1679,7 @@ der6z_ignore_spacing(Field f)
 {
 	if(AC_dimension_inactive.z)
 	{
+		suppress_unused_warning(f)
 		return 0.0
 	}
 	else

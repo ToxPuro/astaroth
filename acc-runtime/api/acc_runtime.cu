@@ -1839,34 +1839,46 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
 
 
   std::vector<int3> samples{};
-  for (int z = 1; z <= min(max_threads_per_block,tpb_end.z); ++z) {
-    for (int y = 1; y <= min(max_threads_per_block,tpb_end.y); ++y) {
-      for (int x = x_increment;
-           x <= min(max_threads_per_block,tpb_end.x); x += x_increment) {
+  if(dims.y == 1 && dims.z == 1)
+  {
+  	for (int x = x_increment;
+  	         x <= min(max_threads_per_block,tpb_end.x); x += x_increment) {
+		samples.push_back((int3){x,1,1});
+	}
+
+  }
+  else
+  {
+  	for (int z = 1; z <= min(max_threads_per_block,tpb_end.z); ++z) {
+  	  for (int y = 1; y <= min(max_threads_per_block,tpb_end.y); ++y) {
+  	    for (int x = x_increment;
+  	         x <= min(max_threads_per_block,tpb_end.x); x += x_increment) {
 
 
-        if (x * y * z > max_threads_per_block)
-          break;
-        const dim3 tpb(x, y, z);
-        const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER,
-                                     sizeof(AcReal));
+  	      if (x * y * z > max_threads_per_block)
+  	        break;
+  	      const dim3 tpb(x, y, z);
+  	      const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER,
+  	                                   sizeof(AcReal));
 
-        if (smem > max_smem)
-          continue;
+  	      if (smem > max_smem)
+  	        continue;
 
-        //if ((x * y * z) % props.warpSize && (x*y*z) >props.warpSize)
-        //  continue;
+  	      //if ((x * y * z) % props.warpSize && (x*y*z) >props.warpSize)
+  	      //  continue;
 
-        if (!is_valid_configuration(to_volume(dims), to_volume(tpb),kernel))
-          continue;
-	//TP: should be emplace back but on my laptop the CUDA compiler gives a cryptic error message that I do not care to debug
-        samples.push_back((int3){x,y,z});
-      }
-    }
+  	      if (!is_valid_configuration(to_volume(dims), to_volume(tpb),kernel))
+  	        continue;
+  	      //TP: should be emplace back but on my laptop the CUDA compiler gives a cryptic error message that I do not care to debug
+  	      samples.push_back((int3){x,y,z});
+  	    }
+  	  }
+  	}
   }
   if(samples.size() == 0)
   {
 	fprintf(stderr,"Found no suitable thread blocks for Kernel %s!\n",kernel_names[kernel]);
+	fprintf(stderr,"Launch dims (%d:%d,%d:%d,%d:%d)",start.x,end.x,start.y,end.y,start.z,end.z);
 	fflush(stderr);
   	ERRCHK_ALWAYS(samples.size() > 0);
   }

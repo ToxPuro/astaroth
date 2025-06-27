@@ -1,0 +1,18 @@
+Field UU
+
+#include "../../../acc-runtime/stdlib/general_derivs.h"
+#include "../../../acc-runtime/stdlib/math"
+#include "../../../acc-runtime/stdlib/general_operators.h"
+input real AC_dt
+Kernel singlepass_solve(real dt) {
+    write(UU, value(UU) + dt*(laplace(UU)))
+}
+
+BoundConds bcs
+{
+	periodic(BOUNDARY_X)
+}
+ComputeSteps rhs(bcs)
+{
+	singlepass_solve(AC_dt)
+}
