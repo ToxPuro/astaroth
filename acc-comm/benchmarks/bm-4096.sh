@@ -14,7 +14,7 @@ module load cray-hdf5
 module load LUMI/24.03 buildtools/24.03
 module load craype-accel-amd-gfx90a # Must be loaded after LUMI/24.03
 module list
-cmake -LAH >> system_info.txt
+cmake -LAH >> system_info-$SLURM_JOB_ID.txt
 
 CONFIG="/users/pekkila/astaroth/samples/tfm/mhd/mhd.ini"
 cp $CONFIG config-$SLURM_JOB_ID.ini
