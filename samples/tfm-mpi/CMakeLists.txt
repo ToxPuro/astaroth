@@ -64,3 +64,39 @@ add_compile_options(# C/CXX/CUDA/HIP
 add_executable(tfm-mpi tfm.cc tfm_utils.c device_utils.cc acr_utils.cc)
 target_link_libraries(tfm-mpi PRIVATE acm astaroth_core astaroth_utils astaroth_forcing inih)
 target_include_directories(tfm-mpi PRIVATE ${CMAKE_SOURCE_DIR})
+
+# Reproducibility: Record tool versions, commands used
+
+# Json of compile commands
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+## Git commit
+execute_process(
+    COMMAND git rev-parse HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE ASTAROTH_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+execute_process(
+    COMMAND git --no-pager diff
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE ASTAROTH_DIFF
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+## Timestamp
+string(TIMESTAMP BUILD_TIME)
+
+set(
+    BUILD_INFO
+    "Build time: ${BUILD_TIME}\n"
+    "CMake version: ${CMAKE_VERSION}\n"
+    "CMAKE_C_COMPILER: ${CMAKE_C_COMPILER}:${CMAKE_C_COMPILER_VERSION}\n"
+    "CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}:${CMAKE_CXX_COMPILER_VERSION}\n"
+    "CMAKE_CUDA_COMPILER: ${CMAKE_CUDA_COMPILER}:${CMAKE_CUDA_COMPILER_VERSION}\n"
+    "CMAKE_HIP_COMPILER: ${CMAKE_HIP_COMPILER}:${CMAKE_HIP_COMPILER_VERSION}\n"
+    "Astaroth version: ${ASTAROTH_VERSION}\n"
+    "Diff from Astaroth version: ${ASTAROTH_DIFF}"
+)
+file(WRITE "${CMAKE_BINARY_DIR}/build_info.txt" ${BUILD_INFO})
