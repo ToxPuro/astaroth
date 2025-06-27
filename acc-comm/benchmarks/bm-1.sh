@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --account=project_462000613
+#SBATCH --account=project_462000987
 #SBATCH -t 00:10:00
 #SBATCH -p dev-g
 #SBATCH --gpus-per-node=1
@@ -36,4 +36,4 @@ export MPICH_GPU_SUPPORT_ENABLED=1
 # ./bm_pipelining 256 256 256 3 32 100
 
 # Strong and weak scaling
-./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID
+./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID --benchmark 1

@@ -1855,13 +1855,15 @@ select_device()
     int device_count{0};
     ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
 
+    const int device_id{ac::mpi::get_rank(MPI_COMM_WORLD) % device_count};
+
+    // Enable for proper hierarchical mapping
     // TODO note: hardcoded for LUMI
-    // const int device_id{ac::mpi::get_rank(MPI_COMM_WORLD) % device_count};
-    int device_id{ac::mpi::get_rank(MPI_COMM_WORLD) % device_count};
-    if (device_count == 8) { // Do manual GPU mapping for LUMI
-        ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
-        device_id = device_ids[as<size_t>(device_id)];
-    }
+    // if (device_count == 8) { // Do manual GPU mapping for LUMI
+    //     ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
+    //     device_id = device_ids[as<size_t>(device_id)];
+    // }
+
     ERRCHK_CUDA_API(cudaSetDevice(device_id)); // likely unnecessary
     ERRCHK_CUDA_API(cudaDeviceSynchronize());  // likely unnecessary
     return device_id;

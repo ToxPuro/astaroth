@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --account=project_462000613
+#SBATCH --account=project_462000987
 #SBATCH -t 00:15:00
 #SBATCH -p standard-g
 #SBATCH --gpus-per-node=8
@@ -15,7 +15,8 @@ module load LUMI/24.03 buildtools/24.03
 module load craype-accel-amd-gfx90a # Must be loaded after LUMI/24.03
 
 export MPICH_GPU_SUPPORT_ENABLED=1
-export SRUN="srun --cpu-bind="map_cpu:49,57,17,25,1,9,33,41""
+export SRUN="srun --cpu-bind="map_cpu:49,57,17,25,1,9,33,41"" # Default mapping
+# export SRUN="srun --cpu-bind="map_cpu:33,41,49,57,17,25,1,9"" # Hierarchical mapping (needs 6, 7, 0, 1, 2, 3, 4, 5 rank-device mapping)
 
 # Expect ~8mins for these tests
 # $SRUN ./bm_rank_reordering 1024 1024 1024 3 100 $SLURM_JOB_ID
@@ -41,4 +42,4 @@ export SRUN="srun --cpu-bind="map_cpu:49,57,17,25,1,9,33,41""
 # $SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID
 
 # Weak scaling
-$SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 1024,1024,1024 --job-id $SLURM_JOB_ID
+$SRUN ./tfm-mpi --config /users/pekkila/astaroth/samples/tfm/mhd/mhd.ini --global-nn-override 1024,1024,1024 --job-id $SLURM_JOB_ID  --benchmark 1

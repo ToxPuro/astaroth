@@ -78,9 +78,8 @@ enum class RankReorderMethod {
     default_custom_decomp,
     hierarchical
 };
-MPI_Comm
-cart_comm_create(const MPI_Comm& parent_comm, const ac::shape& global_nn,
-                 const RankReorderMethod& reorder_method = RankReorderMethod::hierarchical);
+MPI_Comm cart_comm_create(const MPI_Comm& parent_comm, const ac::shape& global_nn,
+                          const RankReorderMethod& reorder_method = RankReorderMethod::default_mpi);
 
 void cart_comm_destroy(MPI_Comm* cart_comm) noexcept;
 
