@@ -24,16 +24,16 @@ main(void)
         const int nprocs{ac::mpi::get_size(MPI_COMM_WORLD)};
 
         int device_id{-1};
+        int ndevices_per_node{-1};
 #if defined(ACM_DEVICE_ENABLED)
         // Run with
         // `srun --cpu-bind=map_cpu:33,41,49,57,17,25,1,9 --account=<project> -t 00:05:00 -p
         // dev-g --gpus-per-node=8 --ntasks-per-node=8 --nodes=1 benchmarks/bm_transfer_mpi_v2`
         // to get a mapping where close-by GPUs have subsequent ranks
-        int ndevices_per_node{-1};
         ERRCHK_CUDA_API(cudaGetDeviceCount(&ndevices_per_node));
         device_id = rank % ndevices_per_node;
+        ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
         if (ndevices_per_node >= 8) {
-            ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
             device_id = device_ids[as<size_t>(rank)];
         }
         ERRCHK_CUDA_API(cudaSetDevice(device_id));
@@ -51,7 +51,7 @@ main(void)
         for (int root{0}; root < nprocs; root += 2) {
             ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
             if (rank == root)
-                std::cout << "Root " << rank << std::endl;
+                std::cout << "Root " << rank << ". Using device " << device_id << "." << std::endl;
             for (int i{0}; i < nprocs; ++i) {
 
                 auto bm_fn = [&root, &rank, &din, &dout, &i]() {
@@ -86,7 +86,12 @@ main(void)
 
                 constexpr size_t len{128};
                 char             label[len];
-                snprintf(label, len, "memory transfer (to rank %d, device %d)", i, device_id);
+#if defined(ACM_DEVICE_ENABLED)
+		if (ndevices_per_node >= 8)
+                	snprintf(label, len, "memory transfer (to rank %d, device %d)", i, device_ids[i]);
+		else
+#endif
+                	snprintf(label, len, "memory transfer (to rank %d, device %d)", i, i % ndevices_per_node);
 
                 const auto results{bm::benchmark([]() {}, bm_fn, []() {}, bench_nsamples)};
                 const auto median_ns{bm::median<std::chrono::nanoseconds>(results)};
