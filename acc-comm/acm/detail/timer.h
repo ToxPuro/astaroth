@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "acm/detail/errchk.h"
+
 namespace ac {
 class timer {
   private:
@@ -25,27 +27,22 @@ class timer {
 
 class timewriter {
   private:
-    ac::timer   m_timer;
-    std::string m_path;
+    ac::timer     m_timer;
+    std::ofstream m_file;
 
   public:
     explicit timewriter(const std::string& path)
-        : m_path{path}
+        : m_file{path}
     {
-        std::ofstream file;
-        file.open(m_path);
-        file << "label,ns" << std::endl;
-        file.close();
+        ERRCHK(m_file);
+        ERRCHK(m_file << "label,ns" << std::endl);
     }
 
     void log(const std::string& label)
     {
-        std::ofstream file;
-        file.open(m_path, std::ios_base::app);
-        file << label << ","
-             << std::chrono::duration_cast<std::chrono::nanoseconds>(m_timer.lap()).count()
-             << std::endl;
-        file.close();
+        ERRCHK(m_file << label << ","
+                      << std::chrono::duration_cast<std::chrono::nanoseconds>(m_timer.lap()).count()
+                      << std::endl);
     }
 };
 
