@@ -29,7 +29,7 @@ matmul_transpose(Matrix a, real3 b)
 {
 	suppress_unused_warning(a)
 	suppress_unused_warning(b)
-	fatal_error(true,"Not implemented matmul_tranpose")
+	fatal_error_message(true,"Not implemented matmul_tranpose")
 	return real3(0.0,0.0,0.0)
 }
 sign(real val, real set_sign)

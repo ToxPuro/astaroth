@@ -20,6 +20,7 @@ extern struct hashmap_s string_intern_hashmap;
 
 bool RUNTIME_COMPILATION = false;
 bool READ_OVERRIDES      = false;
+bool ELIMINATE_CONDITIONALS = false;
 const char* ACC_OVERRIDES_PATH = NULL;
 ASTNode* root = NULL;
 
@@ -447,7 +448,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
         FILE* fp_cpu = fopen("user_kernels.h.raw", "w");
         assert(fp_cpu);
-        generate(new_root, fp_cpu, true);
+        generate(new_root, fp_cpu, true,ELIMINATE_CONDITIONALS);
 	fclose(fp_cpu);
 	
 	//TP: do this here for safety in case OPTIMIZE_MEM_ACCESSES=OFF
@@ -469,7 +470,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 			gen_output_files(new_root);
 
 			fp_cpu = fopen("user_kernels.h.raw","w");
-			generate(new_root,fp_cpu,true);
+			generate(new_root,fp_cpu,true,ELIMINATE_CONDITIONALS);
 			fclose(fp_cpu);
 			generate_mem_accesses();
 		}
@@ -477,7 +478,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	reset_diff_files();
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
-        generate(new_root, fp, gen_mem_accesses);
+        generate(new_root, fp, gen_mem_accesses,ELIMINATE_CONDITIONALS);
 
 	astnode_destroy(root);
 	root = NULL;
@@ -499,15 +500,16 @@ main(int argc, char** argv)
     string_vec filenames;
     init_str_vec(&filenames);
     char* file = NULL;
-    ACC_OVERRIDES_PATH  = argc == 2 ? NULL  : argv[argc-1];
-    RUNTIME_COMPILATION = argc == 2 ? false : !strcmp(argv[argc-2],"1"); 
-    READ_OVERRIDES      = argc == 2 ? false : !strcmp(argv[argc-3],"1"); 
+    ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : argv[argc-1];
+    RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(argv[argc-2],"1"); 
+    READ_OVERRIDES          = argc == 2 ? false : !strcmp(argv[argc-3],"1"); 
+    ELIMINATE_CONDITIONALS  = argc == 2 ? false : !strcmp(argv[argc-4],"1"); 
 
-    if(argc == 2 || argc == 5)
+    if(argc == 2 || argc == 6)
     {
 	file = argv[1];
     }
-    else if(argc > 5)
+    else if(argc > 6)
     {
 	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[2])));
 	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[2]);

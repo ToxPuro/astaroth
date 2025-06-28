@@ -8,7 +8,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 ## Options
 option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time, runtime compilation lessens this" OFF)
 option(OPTIMIZE_INPUT_PARAMS "Generates optimized kernels for each possible combination of kernel input parameters (taking only those into account that can have a finite number of different values), works well with OPTIMIZE_MEM_ACCESSES since reduces the amount of conditional control-flow in kernels" OFF)
-option(ELIMINATE_CONDITIONALS "Eliminates conditionals which are know to be or not to be taken at compilation time. Requires OPTIMIZE_MEM_ACCESSES=ON" OFF)
 option(OPTIMIZE_FIELDS       "Optimizes fields to be auxiliary,(non-)communicated and if allowed dead based on writes, reads and stencil accesses in kernels. Pitfalls are conditional accesses and writes, which runtime compilation can lessen" OFF)
 option(ALLOW_DEAD_VARIABLES  "Must be on to allow the program to have dead i.e. not allocated fields or arrays" OFF)
 option(OPTIMIZE_ARRAYS       "Does not allocate arrays that are not used based on DSL. Runtime compilation and optimize conditionals help to prevent unnoticed accesses in conditionals" OFF)
@@ -84,11 +83,6 @@ else()
 		set(OPTIMIZE_INPUT_PARAMS_VAL 0)
 	endif()
 
-	if (ELIMINATE_CONDITIONALS)
-		set(ELIMINATE_CONDITIONALS_VAL 1)
-	else()
-		set(ELIMINATE_CONDITIONALS_VAL 0)
-	endif()
 
 	if (OPTIMIZE_FIELDS)
 		set(OPTIMIZE_FIELDS_VAL 1)
@@ -115,5 +109,5 @@ else()
 	endif()
 	
 	
-	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_INPUT_PARAMS=${OPTIMIZE_INPUT_PARAMS_VAL} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL} -DOPTIMIZE_ARRAYS=${OPTIMIZE_ARRAYS_VAL} -DINLINING=${INLINING_VAL} -DFUSE_KERNELS=${FUSE_KERNELS_VAL} -DELIMINATE_CONDITIONALS=${ELIMINATE_CONDITIONALS_VAL} -DBUFFERED_REDUCTIONS=${BUFFERED_REDUCTIONS_VAL} -DALLOW_DEAD_VARIABLES=${ALLOW_DEAD_VARIABLES_VAL})
+	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_INPUT_PARAMS=${OPTIMIZE_INPUT_PARAMS_VAL} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL} -DOPTIMIZE_ARRAYS=${OPTIMIZE_ARRAYS_VAL} -DINLINING=${INLINING_VAL} -DFUSE_KERNELS=${FUSE_KERNELS_VAL} -DBUFFERED_REDUCTIONS=${BUFFERED_REDUCTIONS_VAL} -DALLOW_DEAD_VARIABLES=${ALLOW_DEAD_VARIABLES_VAL})
 endif()

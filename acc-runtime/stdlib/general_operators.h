@@ -320,7 +320,7 @@ del6_upwd_masked(real3 velo, Field s, int mask)
 
 elemental del6_strict(Field s) {
 	suppress_unused_warning(s)
-	fatal(true,"NOT IMPLEMENTED del6_strict\n")
+	fatal_error_message(true,"NOT IMPLEMENTED del6_strict\n")
 	return 0.
 }
 

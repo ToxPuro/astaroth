@@ -10381,7 +10381,7 @@ add_tracing_to_conditionals(ASTNode* node)
 }
 
 void
-generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses)
+generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool ELIMINATE_CONDITIONALS)
 { 
   symboltable_reset();
   ASTNode* root = astnode_dup(root_in,NULL);
