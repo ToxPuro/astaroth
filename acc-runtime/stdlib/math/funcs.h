@@ -22,6 +22,7 @@ set_zero_below_threshold(real val, real threshold)
 }
 epsilon(real x)
 {
+	suppress_unused_warning(x)
 	return AC_REAL_EPSILON;
 }
 

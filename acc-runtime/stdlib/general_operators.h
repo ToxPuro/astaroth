@@ -469,6 +469,7 @@ gij5(v) {
 }
 traceless_strain(Matrix uij,divu,uu)
 {
+  suppress_unused_warning(uu)
   Matrix sij
   for row in 0:3{
     sij[row][row] = uij[row][row] - (1.0/3.0)*divu

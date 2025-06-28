@@ -446,10 +446,14 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	reset_all_files();
   	gen_output_files(new_root);
 
-        FILE* fp_cpu = fopen("user_kernels.h.raw", "w");
-        assert(fp_cpu);
-        generate(new_root, fp_cpu, true,ELIMINATE_CONDITIONALS);
-	fclose(fp_cpu);
+	//TP: this is fine to do but we safe time by not doing it
+	if(!RUNTIME_COMPILATION)
+	{
+        	FILE* fp_cpu = fopen("user_kernels.h.raw", "w");
+        	assert(fp_cpu);
+        	generate(new_root, fp_cpu, true,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
+		fclose(fp_cpu);
+	}
 	
 	//TP: do this here for safety in case OPTIMIZE_MEM_ACCESSES=OFF
 	{
@@ -460,8 +464,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
 	if(OPTIMIZE_MEM_ACCESSES)
 	{
-     		generate_mem_accesses(); // Uncomment to enable stencil mem access checking
-
+     		if(!RUNTIME_COMPILATION) generate_mem_accesses(); // Uncomment to enable stencil mem access checking
 		if(FUSE_KERNELS)
 		{
 			gen_fused_kernels(new_root);
@@ -469,8 +472,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 			reset_all_files();
 			gen_output_files(new_root);
 
-			fp_cpu = fopen("user_kernels.h.raw","w");
-			generate(new_root,fp_cpu,true,ELIMINATE_CONDITIONALS);
+			FILE* fp_cpu = fopen("user_kernels.h.raw","w");
+			generate(new_root,fp_cpu,true,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 			fclose(fp_cpu);
 			generate_mem_accesses();
 		}
@@ -478,7 +481,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	reset_diff_files();
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
-        generate(new_root, fp, gen_mem_accesses,ELIMINATE_CONDITIONALS);
+        generate(new_root, fp, gen_mem_accesses,ELIMINATE_CONDITIONALS,RUNTIME_COMPILATION);
 
 	astnode_destroy(root);
 	root = NULL;
