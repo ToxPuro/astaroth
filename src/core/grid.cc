@@ -718,7 +718,7 @@ gen_postprocessing_metadata()
 	fprintf(header_file,"nxgrid,nygrid,nzgrid,dsx,dsy,dsz\n");
 	fprintf(header_file,"%d,%d,%d,%g,%g,%g\n"
 			,grid.submesh.info[AC_ngrid].x,grid.submesh.info[AC_ngrid].y,grid.submesh.info[AC_ngrid].z
-			,grid.submesh.info[AC_ds].x,grid.submesh.info[AC_ds].y,grid.submesh.info[AC_ds].z
+			,double(grid.submesh.info[AC_ds].x),double(grid.submesh.info[AC_ds].y),double(grid.submesh.info[AC_ds].z)
 			);
 	fclose(header_file);
     }
@@ -3461,7 +3461,7 @@ ac_write_slice_metadata(const int step, const AcReal simulation_time)
                      "step,t\n");
          }
 
-         fprintf(header_file, "%d,%g\n",step,simulation_time);
+         fprintf(header_file, "%d,%g\n",step,double(simulation_time));
          fclose(header_file);
     }
 }

@@ -108,7 +108,7 @@ static HOST_DEVICE_INLINE AcComplex
 sqrt(const AcComplex& a)
 {
 	const AcReal r = sqrt(a.x*a.x + a.y*a.y);
-	const AcReal y_sign = (a.y < 0.0) ? -1.0 : 1.0;
+	const AcReal y_sign = (a.y < AcReal(0.0)) ? AcReal(-1.0) : AcReal(1.0);
   	return (AcComplex){sqrt(r + a.x)/2,y_sign * sqrt(r-a.x)/2};
 }
 

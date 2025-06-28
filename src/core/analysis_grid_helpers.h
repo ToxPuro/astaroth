@@ -311,7 +311,7 @@ get_stencil_dims(const Stencil stencil)
 		{
 			for(int z = -NGHOST; z <= NGHOST; ++z)
 			{
-				if(stencils[stencil][x+NGHOST][y+NGHOST][z+NGHOST] != 0.0)
+				if(double(stencils[stencil][x+NGHOST][y+NGHOST][z+NGHOST]) != 0.0)
 				{
 					min_radius.x = std::min(min_radius.x,x);
 					min_radius.y = std::min(min_radius.y,y);

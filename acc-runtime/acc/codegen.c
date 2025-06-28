@@ -5710,8 +5710,8 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
                                 if(is_builtin_constant(name)) fprintf(fp_builtin, "#define %s ((%s)%s)\n",name, datatype_scalar, assignment_val);
 				if(!is_builtin_constant(name))
 				{
-                                	fprintf(fp, "[[maybe_unused]] %s const constexpr %s %s = %s;\n",static_str,datatype_scalar, name, assignment_val);
-                                	fprintf(fp_non_scalar_constants, "[[maybe_unused]] %s const constexpr %s %s = %s;\n",static_str,datatype_scalar, name, assignment_val);
+                                	fprintf(fp, "[[maybe_unused]] %s const constexpr %s %s = (%s)(%s);\n",static_str,datatype_scalar, name, datatype_scalar,assignment_val);
+                                	fprintf(fp_non_scalar_constants, "[[maybe_unused]] %s const constexpr %s %s = (%s)(%s);\n",static_str,datatype_scalar, name, datatype_scalar,assignment_val);
 				}
 			}
                         else

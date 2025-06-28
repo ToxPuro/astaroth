@@ -1450,15 +1450,15 @@ shear_periodic_leftover_fraction()
 static AcShearInterpolationCoeffs
 shear_periodic_interpolation_coeffs()
 {
-        const AcReal frac = shear_periodic_leftover_fraction();
+        const double frac = double(shear_periodic_leftover_fraction());
         return
         {
-                -          (frac+1.)*frac*(frac-1.)*(frac-2.)*(frac-3.)/120.,
-                +(frac+2.)          *frac*(frac-1.)*(frac-2.)*(frac-3.)/24. ,
-                -(frac+2.)*(frac+1.)     *(frac-1.)*(frac-2.)*(frac-3.)/12. ,
-                +(frac+2.)*(frac+1.)*frac          *(frac-2.)*(frac-3.)/12. ,
-                -(frac+2.)*(frac+1.)*frac*(frac-1.)          *(frac-3.)/24. ,
-                +(frac+2.)*(frac+1.)*frac*(frac-1.)*(frac-2.)          /120.
+                static_cast<AcReal>(-          (frac+1.)*frac*(frac-1.)*(frac-2.)*(frac-3.)/120.),
+                static_cast<AcReal>(+(frac+2.)          *frac*(frac-1.)*(frac-2.)*(frac-3.)/24. ),
+                static_cast<AcReal>(-(frac+2.)*(frac+1.)     *(frac-1.)*(frac-2.)*(frac-3.)/12. ),
+                static_cast<AcReal>(+(frac+2.)*(frac+1.)*frac          *(frac-2.)*(frac-3.)/12. ),
+                static_cast<AcReal>(-(frac+2.)*(frac+1.)*frac*(frac-1.)          *(frac-3.)/24. ),
+                static_cast<AcReal>(+(frac+2.)*(frac+1.)*frac*(frac-1.)*(frac-2.)          /120.)
         };
 }
 

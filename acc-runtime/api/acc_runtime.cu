@@ -1755,7 +1755,7 @@ printAutotuningStatus(const AcKernel kernel, const float best_time, const int pr
 void
 logAutotuningStatus(const size_t counter, const size_t num_samples, const AcKernel kernel, const float best_time)
 {
-    const AcReal percent_of_num_samples = AcReal(num_samples)/100.0;
+    const AcReal percent_of_num_samples = AcReal(num_samples)/AcReal(100.0);
     for (size_t progress = 0; progress <= 90; ++progress)
     {
 	      if (counter == floor(percent_of_num_samples*progress)  && (progress % 10 == 0))
@@ -1866,17 +1866,6 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
 		samples.push_back((int3){x,1,1});
 	}
 
-  }
-  else if(dims.x == 1 && dims.z == 1)
-  {
-  	const int y_increment = min(
-		  			minimum_transaction_size_in_elems,
-					tpb_end.y
-		            );
-  	for (int y = y_increment;
-  	         y <= min(max_threads_per_block,tpb_end.y); y += y_increment) {
-  	      samples.push_back((int3){1,y,1});
-	}
   }
   else if(dims.x == 1 && dims.y == 1)
   {
