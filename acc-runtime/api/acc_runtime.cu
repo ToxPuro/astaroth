@@ -1867,6 +1867,29 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
 	}
 
   }
+  else if(dims.x == 1 && dims.z == 1)
+  {
+  	const int y_increment = min(
+		  			minimum_transaction_size_in_elems,
+					tpb_end.y
+		            );
+  	for (int y = y_increment;
+  	         y <= min(max_threads_per_block,tpb_end.y); y += y_increment) {
+  	      samples.push_back((int3){1,y,1});
+	}
+  }
+  else if(dims.x == 1 && dims.y == 1)
+  {
+  	const int z_increment = min(
+		  			minimum_transaction_size_in_elems,
+					tpb_end.z
+		            );
+  	for (int z = z_increment;
+  	         z <= min(max_threads_per_block,tpb_end.z); z += z_increment) {
+  	      samples.push_back((int3){1,1,z});
+	}
+
+  }
   else
   {
   	for (int z = 1; z <= min(max_threads_per_block,tpb_end.z); ++z) {
@@ -2036,8 +2059,10 @@ file_exists(const char* filename)
 }
 
 int3
-acReadOptimTBConfig(const AcKernel kernel, const int3 dims, const int3 block_factors)
+acReadOptimTBConfig(const AcKernel kernel, const Volume dims_volume, const Volume block_factors_volume)
 {
+  const int3 dims = to_int3(dims_volume);
+  const int3 block_factors = to_int3(block_factors_volume);
   if(!file_exists(autotune_csv_path)) return {-1,-1,-1};
   const char* filename = autotune_csv_path;
   FILE *file = fopen ( filename, "r" );
@@ -2081,7 +2106,7 @@ getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, Vert
     if (c.kernel == kernel && c.dims == dims)
       return c;
 
-  const int3 read_tpb = acReadOptimTBConfig(kernel,dims,vba.on_device.block_factor);
+  const int3 read_tpb = acReadOptimTBConfig(kernel,to_volume(dims),to_volume(vba.on_device.block_factor));
   TBConfig c  = (read_tpb != (int3){-1,-1,-1})
           ? (TBConfig){kernel,dims,(dim3){(uint32_t)read_tpb.x, (uint32_t)read_tpb.y, (uint32_t)read_tpb.z}}
           : autotune(kernel,start,end,vba);
