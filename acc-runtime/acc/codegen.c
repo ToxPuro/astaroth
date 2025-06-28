@@ -9942,10 +9942,18 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 				//TP: take out potential else ifs
 				statement->rhs = NULL;
 				statement->lhs = else_node->rhs;
+				if(!else_node->rhs)
+				{
+					fatal("No rhs for else: %s\n",combine_all_new(else_node));
+				}
 				else_node->rhs->parent = statement;
 				if(!gen_mem_accesses)
 				{
 					ASTNode* else_scope = (ASTNode*)get_node(NODE_BEGIN_SCOPE,else_node->rhs);
+					if(!else_scope)
+					{
+						fatal("No scope for else: %s\n",combine_all_new(else_node));
+					}
 					if(else_scope)
 					{
 						else_scope->prefix= NULL;

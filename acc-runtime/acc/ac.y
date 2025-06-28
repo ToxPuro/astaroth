@@ -1225,7 +1225,7 @@ statement_list: statement                { $$ = astnode_create(NODE_STATEMENT_LI
               ;
 
 
-compound_statement: '{' '}'                { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
+compound_statement: '{' '}'                { $$ = astnode_create(NODE_BEGIN_SCOPE, NULL, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
                   | '{' statement_list '}' { 
 						$$ = astnode_create(NODE_BEGIN_SCOPE, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); 
 					   }
