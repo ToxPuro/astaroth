@@ -2308,8 +2308,8 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
                                          "rank, tag, op.boundary) = %i \n",
                                          Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy()));
 		const bool is_on_boundary = Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy());
-		if(!is_on_boundary && !globally_imposed_bcs) continue;
                 if (op.kernel_enum == BOUNDCOND_PERIODIC) {
+		    if(!is_on_boundary && !globally_imposed_bcs) continue;
 		    if(globally_imposed_bcs)
 		    {
 		    	fatal("%s","Can not use periodic bcs and globally imposed bcs at the same time!\n");
@@ -2352,6 +2352,11 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
                 	                                                       i, tag, start, dims,
                 	                                                       device,
                 	                                                       swap_offset);
+			//TP: This is sort of abusing this func to be able to autotune iff there is no autotune entry.
+			//    I make sure the autotuning is done in this way to not get nasty problems about the parallelized autotuning where only a portion of the
+			//    processes are executing specific kernels
+        		acDeviceSetReduceOffset(grid.device, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
+		        if(!is_on_boundary && !globally_imposed_bcs) continue;
                 	graph->all_tasks.push_back(task);
 		}
             }
