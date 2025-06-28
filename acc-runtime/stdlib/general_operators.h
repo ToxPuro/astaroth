@@ -93,6 +93,7 @@ divergence(Matrix m)
 }
 divergence(Matrix m, real3 a)
 {
+	suppress_unused_warning(a)
 	b = m[0][0] + m[1][1] + m[2][2];
 	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 	{
@@ -130,6 +131,7 @@ curl(Matrix m) {
 }
 
 curl(Matrix m, real3 v) {
+  suppress_unused_warning(v)
   g = real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
   if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
   {
@@ -317,7 +319,8 @@ del6_upwd_masked(real3 velo, Field s, int mask)
 }
 
 elemental del6_strict(Field s) {
-	print("NOT IMPLEMENTED del6_strict\n")
+	suppress_unused_warning(s)
+	fatal(true,"NOT IMPLEMENTED del6_strict\n")
 	return 0.
 }
 
