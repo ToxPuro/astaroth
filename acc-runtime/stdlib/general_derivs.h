@@ -1037,37 +1037,44 @@ der4z(Field f)
 
 der4x2y(Field f)
 {
-	print("NOT implemented der4x2y\n")
+	suppress_unused_warning(f)
+	fatal_error_message(true,"NOT implemented der4x2y\n")
 	return 0.0
 }
 der4x2z(Field f)
 {
-	print("NOT implemented der4x2z\n")
+	suppress_unused_warning(f)
+	fatal_error_message(true,"NOT implemented der4x2z\n")
 	return 0.0
 }
 der4y2x(Field f)
 {
-	print("NOT implemented der4y2x\n")
+	suppress_unused_warning(f)
+	fatal_error_message("NOT implemented der4y2x\n")
 	return 0.0
 }
 der4y2z(Field f)
 {
-	print("NOT implemented der4y2z\n")
+	suppress_unused_warning(f)
+	fatal_error_message("NOT implemented der4y2z\n")
 	return 0.0
 }
 der4z2x(Field f)
 {
-	print("NOT implemented der4z2x\n")
+	suppress_unused_warning(f)
+	fatal_error_message("NOT implemented der4z2x\n")
 	return 0.0
 }
 der4z2y(Field f)
 {
-	print("NOT implemented der4z2y\n")
+	suppress_unused_warning(f)
+	fatal_error_message("NOT implemented der4z2y\n")
 	return 0.0
 }
 der2i2j2k(Field f)
 {
-	print("NOT implemented der2i2j2k\n")
+	suppress_unused_warning(f)
+	fatal_error_message("NOT implemented der2i2j2k\n")
 	return 0.0
 }
 
