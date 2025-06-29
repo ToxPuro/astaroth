@@ -3874,13 +3874,6 @@ gen_final_reductions(const char* datatype, const int kernel_index, ASTNode* comp
 		}
 
 }
-bool
-kernel_calls_reduce(const char* kernel)
-{
-      const int index = str_vec_get_index(calling_info.names,kernel);
-      if(index == -1) fatal("Could not find %s in calling info\n",kernel);
-      return reduce_infos[index].size != 0;
-}
 
 void
 gen_kernel_reduce_outputs()
@@ -3911,6 +3904,43 @@ gen_all_final_reductions(ASTNode* compound_statement, const int kernel_index, co
 	}
 }
 
+static bool
+func_calls_func(const char* name, const char* dst_name)
+{
+    	const int_vec called_dfuncs = calling_info.called_funcs[str_vec_get_index(calling_info.names,name)];
+	const int call_index = str_vec_get_index(calling_info.names,dst_name);
+	return int_vec_contains(called_dfuncs,call_index);
+}
+static bool
+func_calls_write(const char* name)
+{
+	return func_calls_func(name,intern("write_AC_MANGLED_NAME__Field_AcReal"));
+}
+static bool
+func_calls_reduce(const char* name)
+{
+      const int index = str_vec_get_index(calling_info.names,name);
+      if(index == -1) fatal("Could not find %s in calling info\n",name);
+      return reduce_infos[index].size != 0;
+}
+static bool
+returning_func_is_not_pure(const char* name)
+{
+	//TP: this means that the func is most likely intrinsic which are either pure or non returning
+	if (str_vec_get_index(calling_info.names,name) == -1) return false;
+	return func_calls_write(name) || func_calls_reduce(name);
+}
+static bool
+calls_non_pure_returning_func(const ASTNode* node)
+{
+	bool res = false;
+	res |= (node->lhs && calls_non_pure_returning_func(node->lhs));
+	res |= (node->rhs && calls_non_pure_returning_func(node->rhs));
+	if(!(node->type & NODE_FUNCTION_CALL)) return res;
+	res |= returning_func_is_not_pure(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+	return res;
+}
+
 void
 gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 {
@@ -3935,12 +3965,12 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 			astnode_sprintf_postfix(compound_statement,"vba.out[%s][idx] = f%s_svalue_stencil;\n%s",name,name,compound_statement->postfix);
 		}
 	}
-	if(kernel_calls_reduce(fn_name) && BUFFERED_REDUCTIONS && !has_block_loops(kernel_index))
+	if(func_calls_reduce(fn_name) && BUFFERED_REDUCTIONS && !has_block_loops(kernel_index))
 	{
 		gen_all_final_reductions(compound_statement,kernel_index,true);
 	}
 	astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
-	if(has_block_loops(kernel_index)  && kernel_calls_reduce(fn_name))
+	if(has_block_loops(kernel_index)  && func_calls_reduce(fn_name))
 	{
 #if AC_USE_HIP
 	       astnode_sprintf_postfix(compound_statement,"%s AC_INTERNAL_active_threads = __ballot(1);",compound_statement->postfix);
@@ -5794,7 +5824,6 @@ dfuncs_in_topological_order(void)
 	}
 	return res;
 }
-
 static void
 write_calling_info(FILE* fp, const char* func, const char* arr_name)
 {
@@ -9199,6 +9228,7 @@ remove_dead_assignments(ASTNode* node, const string_vec vars_used)
 	const char* var = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	if(check_symbol(NODE_ANY,var,0,DYNAMIC_STR)) return;
 	if(strstr(expr_type,"*")) return;
+	if(calls_non_pure_returning_func(node->rhs)) return;
 	if(!str_vec_contains(vars_used,var))
 	{
 		node->lhs = NULL;
