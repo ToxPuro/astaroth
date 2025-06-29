@@ -2325,17 +2325,30 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
                     auto task = std::make_shared<HaloExchangeTask>(op, i, start, dims, tag0, tag, grid_info, device, swap_offset,shear_periodic);
 		    if(task->active)
 		    {
+
 		    	if(id.x != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].x)
 		    	{
-		    	        fatal("Trying to apply periodic bc on (%d,%d,%d) even though X is not periodic!!\n",id.x,id.y,id.z);
+				if(id.y == 0 && id.z == 0)
+				{
+		    	        	fatal("Trying to apply periodic bc on (%d,%d,%d) even though X is not periodic!!\n",id.x,id.y,id.z);
+				}
+				continue;
 		    	}
 		    	if(id.y != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].y)
 		    	{
-		    	        fatal("Trying to apply periodic bc on (%d,%d,%d) even though Y is not periodic!!\n",id.x,id.y,id.z);
+				if(id.x == 0 && id.z == 0)
+				{
+		    	        	fatal("Trying to apply periodic bc on (%d,%d,%d) even though Y is not periodic!!\n",id.x,id.y,id.z);
+				}
+				continue;
 		    	}
 		    	if(id.z != 0 && !acGridGetLocalMeshInfo()[AC_periodic_grid].z)
 		    	{
-		    	        fatal("Trying to apply periodic bc on (%d,%d,%d) even though Z is not periodic!!\n",id.x,id.y,id.z);
+				if(id.x == 0 && id.y == 0)
+				{
+		    	        	fatal("Trying to apply periodic bc on (%d,%d,%d) even though Z is not periodic!!\n",id.x,id.y,id.z);
+				}
+				continue;
 		    	}
 		    }
                     graph->halo_tasks.push_back(task);
