@@ -112,7 +112,7 @@ Stencil derz_2nd_stencil {
 }
 
 #define AC_GEN_DERX(NAME,STENCIL_NAME) \
-	NAME(Field f) \
+	elemental NAME(Field f) \
 	{ \
         	if(AC_dimension_inactive.x) \
 		{ \
@@ -168,7 +168,7 @@ Stencil dery_stencil {
 }
 
 #define AC_GEN_DERY(NAME,STENCIL_NAME) \
-	NAME(Field f) \
+	elemental NAME(Field f) \
 	{ \
         	if(AC_dimension_inactive.y) \
 		{ \
@@ -244,7 +244,7 @@ Stencil derz_stencil {
 }
 
 #define AC_GEN_DERZ(NAME,STENCIL) \
-	NAME(Field f) \
+	elemental NAME(Field f) \
 	{ \
 		if(AC_dimension_inactive.z) \
 		{ \
@@ -346,7 +346,7 @@ Stencil derxx_2nd_neighbours_stencil {
 }
 
 #define AC_GEN_DERXX(NAME,STENCIL,DERX) \
-NAME(Field f) \
+elemental NAME(Field f) \
 { \
 	res = 0.0 \
 	suppress_unused_warning(f) \
@@ -441,7 +441,7 @@ Stencil deryy_2nd_neighbours_stencil {
 }
 
 #define AC_GEN_DERYY(NAME,STENCIL,DERY) \
-NAME(Field f) \
+elemental NAME(Field f) \
 { \
 	if(AC_dimension_inactive.y) \
 	{ \
@@ -589,7 +589,7 @@ Stencil derzz_2nd_neighbours_stencil {
     [1][0][0]  = DER2_2nd_1,
 }
 #define AC_GEN_DER_ZZ(NAME,STENCIL,DERZ) \
-NAME(Field f) \
+elemental NAME(Field f) \
 { \
 	if(AC_dimension_inactive.z) \
 	{ \
@@ -1658,7 +1658,7 @@ der6z_upwd(Field f)
 }
 
 
-der6x_ignore_spacing(Field f)
+elemental der6x_ignore_spacing(Field f)
 {
 	if(AC_dimension_inactive.x)
 	{
@@ -1670,7 +1670,7 @@ der6x_ignore_spacing(Field f)
 		return der6x_stencil(f)
 	}
 }
-der6y_ignore_spacing(Field f)
+elemental der6y_ignore_spacing(Field f)
 {
 	if(AC_dimension_inactive.y)
 	{
@@ -1682,7 +1682,7 @@ der6y_ignore_spacing(Field f)
 		return der6y_stencil(f)
 	}
 }
-der6z_ignore_spacing(Field f)
+elemental der6z_ignore_spacing(Field f)
 {
 	if(AC_dimension_inactive.z)
 	{
