@@ -271,6 +271,7 @@ static KernelParamsLoader
 get_loader(const int graph, const int call_index)
 {
 	#include "user_loaders.h"
+	ERRCHK_ALWAYS(call_index < (int)DSLTaskGraphKernelLoaders[graph].size());
 	return  DSLTaskGraphKernelLoaders[graph][call_index];
 }
 
