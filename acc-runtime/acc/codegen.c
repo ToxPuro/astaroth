@@ -6102,6 +6102,17 @@ get_field_order(const ASTNode* node)
 	for(size_t i = 0; i < tmp.size; ++i)
 		push_int(&tmp2,atoi(tmp.data[i]));
         free_int_vec(&user_remappings);
+	if(tmp.size != tmp2.size) fatal("Should be the same size!\n");
+	int_vec tmp3 = VEC_INITIALIZER;
+	for (size_t i = 0; i < user_remappings.size; ++i)
+	{
+		const int index = user_remappings.data[i];
+		if(int_vec_contains(tmp3,index))
+		{
+			fatal("Field_order index %d appears more than once in field ordering!\n",index);
+		}
+		push_int(&tmp3,index);
+	}
 	for(size_t i = 0; i < tmp.size; ++i)
 	{
 		int next = -1;
@@ -6122,10 +6133,24 @@ get_field_order(const ASTNode* node)
 				}
 			}
 		}
+		if(next == -1)
+		{
+			fatal("Did not find which field should be %zuth!\n",i);
+		}
 		push_int(&user_remappings,next);
 	}
-
 	free_str_vec(&tmp);
+	free_int_vec(&tmp2);
+	for (size_t i = 0; i < user_remappings.size; ++i)
+	{
+		const int index = user_remappings.data[i];
+		if(int_vec_contains(tmp2,index))
+		{
+			fatal("Index %d appears more than once in field ordering!\n",index);
+		}
+		push_int(&tmp2,index);
+	}
+	free_int_vec(&tmp2);
 }
 
 static void
@@ -8270,6 +8295,10 @@ transform_field_unary_ops(ASTNode* node)
 	if(!node_is_unary_expr(node)) return;
 	const char* base_type= get_expr_type(node->rhs);
 	const char* unary_op = get_node_by_token(UNARY_OP,node->lhs)->buffer;
+	if(!unary_op)
+	{
+		fatal("WRONG: %s\n",combine_all_new(node));
+	}
 	if(strcmps(unary_op,PLUS_STR,MINUS_STR)) return;
 	if(base_type && is_value_applicable_type(base_type))
 	{

@@ -65,21 +65,14 @@ static void eval_ternaries(ASTNode* node, const string_vec values, const string_
 	if(!op) return;
 	const bool less = !strcmp(op,"<");
 	const bool more = !strcmp(op,">");
-	if(!less && !more) return;
+	const bool eq   = !strcmp(op,"==");
+	if(!less && !more && !eq) return;
 	const int lhs = eval_int(cond->lhs,true,NULL);
 	const int rhs = eval_int(cond->rhs->rhs,true,NULL);
-	const bool is_left_child = node->parent->lhs && node->parent->lhs->id == node->id;
-	ASTNode* correct_node =  less ? 
-					(lhs < rhs) ? node->rhs->lhs : node->rhs->rhs
-				:more ? 
-					(lhs > rhs) ? node->rhs->lhs : node->rhs->rhs
-				     : NULL;
+	const bool pick_left = (less && lhs < rhs) || (more && lhs > rhs) || (eq && lhs == rhs);
+	ASTNode* correct_node = pick_left ? node->rhs->lhs : node->rhs->rhs;
 	if(!correct_node) return;
-	correct_node->prefix = NULL;
-	if(is_left_child)
-		node->parent->lhs = correct_node; 
-	else
-		node->parent->rhs = correct_node; 
-	correct_node->parent = node->parent;
+	*node = *correct_node;
+	node->prefix = NULL;
 }
 

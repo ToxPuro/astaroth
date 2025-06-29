@@ -889,6 +889,9 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
 						const int res = eval_int($3,true,NULL);
 						set_buffers_empty($3);
 						astnode_set_buffer(itoa(res),$3);
+						$3->lhs = NULL;
+						$3->rhs = NULL;
+						$3->type = NODE_UNKNOWN;
 						}
               | dconst_ql    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | override     { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
