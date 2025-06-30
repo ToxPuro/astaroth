@@ -577,8 +577,9 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
    {
 	   if(skip_kernel_in_analysis[k]) continue;
 	   const int written        = written_fields[field_index + num_fields*k];
+	   const int previous_call  = field_has_previous_call[field_index + num_fields*k];
 	   const int input_accessed = (read_fields[field_index + num_fields*k] || field_has_stencil_op[field_index + num_fields*k]);
-	   is_auxiliary    &=  OPTIMIZE_FIELDS && (!written  || !field_has_stencil_op[field_index + num_fields*k]);
+	   is_auxiliary    &=  OPTIMIZE_FIELDS && (!written  || !field_has_stencil_op[field_index + num_fields*k]) && !previous_call;
 	   is_communicated |=  !OPTIMIZE_FIELDS || field_has_stencil_op[field_index + num_fields*k];
 	   const bool should_be_alive = (!OPTIMIZE_FIELDS) || written  || input_accessed;
 	   is_dead      &= !should_be_alive;
