@@ -267,12 +267,26 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs)
 	}
 	return false;
 }
-static KernelParamsLoader
+
+#include "user_loader_impls.h"
+
+void
+AC_INTERNAL_empty_loader(ParamLoadingInfo){}
+
+typedef void (*loader_ptr)(ParamLoadingInfo);
+static loader_ptr
 get_loader(const int graph, const int call_index)
 {
 	#include "user_loaders.h"
 	ERRCHK_ALWAYS(call_index < (int)DSLTaskGraphKernelLoaders[graph].size());
 	return  DSLTaskGraphKernelLoaders[graph][call_index];
+}
+
+void
+call_all_user_loaders(ParamLoadingInfo p)
+{
+	#include "call_all_user_loaders.h"
+	AC_INTERNAL_empty_loader(p);
 }
 
 
@@ -285,7 +299,9 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 	{
 		VertexBufferArray vba{};
 		auto loader = get_loader(graph,call_index);
-    		loader({&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]});
+		ParamLoadingInfo p = {&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
+		call_all_user_loaders(p);
+    		loader(p);
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
 		if(filter_unnecessary_ones)
 		{

@@ -3027,36 +3027,15 @@ is_output_type(const char* var)
 	if(sym->tspecifier && strstr(sym->tspecifier,"OutputParam")) return true;
 	return false;
 }
-
-
-
-func_params_info
-get_func_call_params_info(const ASTNode* func_call);
-void gen_loader(const ASTNode* func_call, const ASTNode* root)
+static int
+gen_loader_definition(FILE* stream, const func_params_info params_info, const func_params_info call_info, const char* func_name)
 {
-		const char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
+		static int counter = -1;
+		++counter;
+		fprintf(stream,"void AC_INTERNAL_loader_%d(ParamLoadingInfo p) {\n",counter);
 		const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,func_name,0,0);
-		if(func_name == PERIODIC)
-			return;
-		ASTNode* param_list_head = func_call->rhs;
-		FILE* stream = fopen("user_loaders.h","a");
-		if(!param_list_head)
-		{
-			fprintf(stream,"[](ParamLoadingInfo ){},");
-			fclose(stream);
-			return;
-		}
-		func_params_info call_info  = get_func_call_params_info(func_call);
-		bool is_boundcond = false;
-		for(size_t i = 0; i< call_info.expr.size; ++i)
-			is_boundcond |= is_boundary_param(call_info.expr.data[i]);
-
-		func_params_info params_info =  get_function_params_info(root,func_name);
-
-		fprintf(stream,"[](ParamLoadingInfo p){\n");
 		fprintf(stream,"#include \"user_constants.h\"\n");
-		const int params_offset = is_boundcond ? 2 : 0;
-		if(!is_boundcond)
+		const int params_offset = 0;
 		{
 			if(params_info.types.size != call_info.expr.size)
 			{
@@ -3098,8 +3077,37 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root)
 		//	sprintf(tmp, "p.params -> %s.vtxbuf = p.vtxbuf;\n",func_name);
 		//	strcat(loader_str,tmp);
 		//}
-		fprintf(stream,"},");
+		fprintf(stream,"}\n");
+		return counter;
+}
+
+func_params_info
+get_func_call_params_info(const ASTNode* func_call);
+void gen_loader(const ASTNode* func_call, const ASTNode* root)
+{
+		const char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
+		if(func_name == PERIODIC)
+			return;
+		ASTNode* param_list_head = func_call->rhs;
+		FILE* stream = fopen("user_loaders.h","a");
+		if(!param_list_head)
+		{
+			fprintf(stream,"AC_INTERNAL_empty_loader,");
+			fclose(stream);
+			return;
+		}
+		FILE* fp = fopen("user_loader_impls.h","a");
+		func_params_info params_info = get_function_params_info(root,func_name);
+		func_params_info call_info   = get_func_call_params_info(func_call);
+		const int index = gen_loader_definition(fp,params_info,call_info,func_name);
+		fclose(fp);
+
+		fprintf(stream,"AC_INTERNAL_loader_%d,",index);
 		fclose(stream);
+		
+		fp = fopen("call_all_user_loaders.h","a");
+		fprintf(fp,"AC_INTERNAL_loader_%d(p);",index);
+		fclose(fp);
 
 		free_func_params_info(&params_info);
 		free_func_params_info(&call_info);
@@ -3388,7 +3396,7 @@ gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* n
 		fprintf_filename("user_loaders.h","{");
 		for(size_t i = 0; i < calls.size; ++i)
 		{
-			fprintf_filename("user_loaders.h","[](ParamLoadingInfo ){},");
+			fprintf_filename("user_loaders.h","AC_INTERNAL_empty_loader,");
 		}
 		fprintf_filename("user_loaders.h","},");
 
@@ -3475,7 +3483,7 @@ gen_user_taskgraphs(const ASTNode* root)
 	fprintf_filename_w("taskgraph_bc_handles.h","static const AcDSLTaskGraph DSLTaskGraphBCs[NUM_DSL_TASKGRAPHS+1] = { ");
 	fprintf_filename_w("taskgraph_kernels.h","static const std::vector<AcKernel> DSLTaskGraphKernels[NUM_DSL_TASKGRAPHS+1] = { ");
 	fprintf_filename_w("taskgraph_kernel_bcs.h","static const std::vector<AcBoundary> DSLTaskGraphKernelBoundaries[NUM_DSL_TASKGRAPHS+1] = { ");
-	fprintf_filename_w("user_loaders.h","static const std::vector<std::function<void(ParamLoadingInfo step_info)>> DSLTaskGraphKernelLoaders[NUM_DSL_TASKGRAPHS+1] = { ");
+	fprintf_filename_w("user_loaders.h","static const std::vector<void (*)(ParamLoadingInfo step_info)> DSLTaskGraphKernelLoaders[NUM_DSL_TASKGRAPHS+1] = { ");
 
 	gen_user_taskgraphs_recursive(root,root,&graph_names);
 	string_vec bc_names = VEC_INITIALIZER;

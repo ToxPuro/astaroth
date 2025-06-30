@@ -1444,6 +1444,16 @@ get_kernel_end(const AcKernel kernel, const Volume start, const Volume end)
 	return (Volume){end.x,end.y,end.z};
 
 }
+void
+update_reduce_offsets_and_resize(const AcKernel kernel, const int3 start, const dim3 tpb, const dim3 bpg, VertexBufferArray vba)
+{
+  if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
+  {
+  	reduce_offsets[kernel][start] = kernel_running_reduce_offsets[kernel];
+  	kernel_running_reduce_offsets[kernel] += get_num_of_warps(bpg,tpb);
+	resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba,kernel);
+  }
+}
 AcResult
 acSetReduceOffset(AcKernel kernel, const Volume start_volume,
                const Volume end_volume, VertexBufferArray vba)
@@ -1455,12 +1465,7 @@ acSetReduceOffset(AcKernel kernel, const Volume start_volume,
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
-  if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
-  {
-  	reduce_offsets[kernel][start] = kernel_running_reduce_offsets[kernel];
-  	kernel_running_reduce_offsets[kernel] += get_num_of_warps(bpg,tpb);
-	resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba,kernel);
-  }
+  update_reduce_offsets_and_resize(kernel,start,tpb,bpg,vba);
   return AC_SUCCESS;
 }
 
@@ -1475,13 +1480,13 @@ acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_vo
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
-  const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
   if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
   {
-  	reduce_offsets[kernel][start] = kernel_running_reduce_offsets[kernel];
-  	kernel_running_reduce_offsets[kernel] += get_num_of_warps(bpg,tpb);
-	resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba,kernel);
+	  fprintf(stderr,"Did not find reduce_offset for Kernel launch of %s starting at (%d,%d,%d)!\n",kernel_names[kernel],start.x,start.y,start.z);
+	  fflush(stderr);
+	  exit(EXIT_FAILURE);
   }
+  const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
 
   if(kernel_calls_reduce[kernel]) vba.on_device.reduce_offset = reduce_offsets[kernel][start];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
