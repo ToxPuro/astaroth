@@ -193,7 +193,7 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 		if(no_incoming_edges(i)) vertices_under_work.push(i);
 	}
 	if(vertices_under_work.size() == 0)
-		fatal("Cannot continue: BC dependencies of %s do not form a DAG\n",bc_name);
+		fatal("Cannot continue: No bc that does not depend on others in %s\n",bc_name);
 
 	std::vector<size_t> res{};
 	while(vertices_under_work.size() != 0)
@@ -210,7 +210,11 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 	for(size_t i = 0; i < bcs.size(); ++i)
 		for(size_t j = 0; j < bcs.size(); ++j)
 			if (dependency_matrix[i][j])
+			{
+				fprintf(stderr,"BC %s depends on %s\n",kernel_names[bcs[i].kernel], kernel_names[bcs[j].kernel]);
+				fflush(stderr);
 				fatal("Cannot continue: BC dependencies of %s do not form a DAG\n",bc_name);
+			}
 	return res;
 }
 
