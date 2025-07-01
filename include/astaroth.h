@@ -742,26 +742,6 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 #ifdef __cplusplus
 
 #if AC_RUNTIME_COMPILATION
-static UNUSED AcTaskGraph* 
-acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
-{
-	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
-}
-#endif
-static UNUSED AcTaskGraph*
-acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end)
-{
-	return acGetOptimizedDSLTaskGraphWithBounds(graph,start,end,false);
-}
-
-static UNUSED AcTaskGraph* 
-acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_imposed_bcs)
-{
-	return acGetOptimizedDSLTaskGraphWithBounds(graph,
-			acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice())),
-			acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice())),
-			globally_imposed_bcs);
-}
 
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
@@ -881,6 +861,28 @@ acDeviceFinishReduce(Device device, const cudaStream_t stream, float* result,con
 #endif
 
 #if AC_MPI_ENABLED
+
+static UNUSED AcTaskGraph* 
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
+{
+	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
+}
+#endif
+static UNUSED AcTaskGraph*
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end)
+{
+	return acGetOptimizedDSLTaskGraphWithBounds(graph,start,end,false);
+}
+
+static UNUSED AcTaskGraph* 
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_imposed_bcs)
+{
+	return acGetOptimizedDSLTaskGraphWithBounds(graph,
+			acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice())),
+			acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice())),
+			globally_imposed_bcs);
+}
+
 static UNUSED AcResult
 acGridInit(const AcMesh mesh)
 {

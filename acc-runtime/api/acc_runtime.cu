@@ -1407,7 +1407,7 @@ supports_cooperative_launches()
 		ERRCHK_ALWAYS(supportsCoopLaunch);
 		return bool(supportsCoopLaunch);
 	}
-	cudaDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, get_current_device());
+	ERRCHK_CUDA(cudaDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, get_current_device()));
 	called = true;
 	return bool(supportsCoopLaunch);
 }
@@ -1417,7 +1417,7 @@ launch_kernel(const AcKernel kernel, const int3 start, const int3 end, VertexBuf
   if(is_coop_raytracing_kernel(kernel) && supports_cooperative_launches())
   {
 	void* args[] = {(void*)&start,(void*)&end,(void*)&vba.on_device};
-	cudaLaunchCooperativeKernel((void*)kernels[kernel],bpg,tpb,args,smem,stream);
+	ERRCHK_CUDA(cudaLaunchCooperativeKernel((void*)kernels[kernel],bpg,tpb,args,smem,stream));
   }
   else
   {
@@ -1526,7 +1526,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
   ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
   ERRCHK_CUDA(cudaEventSynchronize(tstop));
   float milliseconds = 0;
-  cudaEventElapsedTime(&milliseconds, tstart, tstop);
+  ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
 
   ERRCHK_ALWAYS(kernel < NUM_KERNELS);
   printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel],
