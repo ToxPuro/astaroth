@@ -186,34 +186,35 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 {
     cudaSetDevice(device->id);
 
-    AcMeshInfo device_config = config;
-    acHostUpdateBuiltinParams(&device_config);
+    // AcMeshInfo device_config = config;
+    // acHostUpdateBuiltinParams(&device_config);
 
-    ERRCHK_ALWAYS(device_config.int_params[AC_nx] == device->local_config.int_params[AC_nx]);
-    ERRCHK_ALWAYS(device_config.int_params[AC_ny] == device->local_config.int_params[AC_ny]);
-    ERRCHK_ALWAYS(device_config.int_params[AC_nz] == device->local_config.int_params[AC_nz]);
-    ERRCHK_ALWAYS(device_config.int_params[AC_multigpu_offset] ==
-                  device->local_config.int_params[AC_multigpu_offset]);
+    // ERRCHK_ALWAYS(device_config.int_params[AC_nx] == device->local_config.int_params[AC_nx]);
+    // ERRCHK_ALWAYS(device_config.int_params[AC_ny] == device->local_config.int_params[AC_ny]);
+    // ERRCHK_ALWAYS(device_config.int_params[AC_nz] == device->local_config.int_params[AC_nz]);
+    // ERRCHK_ALWAYS(device_config.int_params[AC_multigpu_offset] ==
+    //               device->local_config.int_params[AC_multigpu_offset]);
 
-    for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        acDeviceLoadIntUniform(device, STREAM_DEFAULT, (AcIntParam)i, device_config.int_params[i]);
+    // for (int i = 0; i < NUM_INT_PARAMS; ++i)
+    //     acDeviceLoadIntUniform(device, STREAM_DEFAULT, (AcIntParam)i,
+    //     device_config.int_params[i]);
 
-    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        acDeviceLoadInt3Uniform(device, STREAM_DEFAULT, (AcInt3Param)i,
-                                device_config.int3_params[i]);
+    // for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+    //     acDeviceLoadInt3Uniform(device, STREAM_DEFAULT, (AcInt3Param)i,
+    //                             device_config.int3_params[i]);
 
-    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        acDeviceLoadScalarUniform(device, STREAM_DEFAULT, (AcRealParam)i,
-                                  device_config.real_params[i]);
+    // for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+    //     acDeviceLoadScalarUniform(device, STREAM_DEFAULT, (AcRealParam)i,
+    //                               device_config.real_params[i]);
 
-    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-        acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
-                                  device_config.real3_params[i]);
+    // for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+    //     acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
+    //                               device_config.real3_params[i]);
 
     // OL: added this assignment to make sure that whenever we load a new config,
     // it's updated on both the host Device structure, and the GPU
-    device->local_config = device_config;
-    return AC_SUCCESS;
+    device->local_config = config;
+    return acLoadMeshInfo(config, STREAM_DEFAULT); // Is actually synchronous
 }
 
 AcResult
