@@ -1494,6 +1494,7 @@ struct arguments {
     int job_id{0};
     int benchmark{0};
     int simulation_nsteps_override{0};
+    std::string benchmark_name{"default"}; // Name to identify benchmark runs
 
     arguments(int argc, char* argv[])
     {
@@ -1516,6 +1517,8 @@ struct arguments {
                 benchmark = std::stoi(value);
             else if (key == "--simulation-nsteps-override")
                 simulation_nsteps_override = std::stoi(value);
+            else if (key == "--benchmark-name")
+                benchmark_name = value;
             else
                 ERRCHK_EXPR_DESC(false,
                                  "Do not know what to do with argument pair [%s: %s]",
@@ -2370,7 +2373,8 @@ class Grid {
         constexpr size_t nsteps_per_sample{100};
         constexpr size_t nsamples{20};
         const auto filename{"bm-tfm-mpi-" + std::to_string(args.job_id) + "-" +
-                            std::to_string(ac::mpi::get_rank(MPI_COMM_WORLD)) + ".csv"};
+                            std::to_string(ac::mpi::get_rank(MPI_COMM_WORLD)) + "-" +
+                            args.benchmark_name + ".csv"};
 
         // Create the output file
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {

@@ -48,7 +48,7 @@ fi
 ## $SRUN ./bm_collective_comm 1024 1024 1024 3 32 100 # Do not use, too large
 
 # Strong scaling
-$SRUN ./tfm-mpi --config $CONFIG --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID  --benchmark 1
+$SRUN ./tfm-mpi --config $CONFIG --global-nn-override 128,128,128 --job-id $SLURM_JOB_ID  --benchmark 1 --benchmark-name "strong"
 
 # Weak scaling
 $SRUN ./tfm-mpi --config $CONFIG --global-nn-override 512,512,512 --job-id $SLURM_JOB_ID  --benchmark 1 # More than 5 min, note: need also disable bfield
