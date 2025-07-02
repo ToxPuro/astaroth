@@ -2371,7 +2371,7 @@ class Grid {
     void benchmark(const tfm::arguments& args)
     {
         constexpr size_t nsteps_per_sample{100};
-        constexpr size_t nsamples{20};
+        constexpr size_t nsamples{5};
         const auto filename{"bm-tfm-mpi-" + std::to_string(args.job_id) + "-" +
                             std::to_string(ac::mpi::get_rank(MPI_COMM_WORLD)) + "-" +
                             args.benchmark_name + ".csv"};
