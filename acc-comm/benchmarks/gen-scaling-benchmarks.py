@@ -117,5 +117,5 @@ def gen_strong_scaling_benchmarks(system, max_nprocs):
             print(gen_tfm_benchmark(system, nprocs, time_limit, config, nn, label), file=f)
         nprocs *= 2
 
-gen_weak_scaling_benchmarks(lumi, 8)
-gen_strong_scaling_benchmarks(lumi, 8)
+gen_weak_scaling_benchmarks(lumi, 4096)
+gen_strong_scaling_benchmarks(lumi, 256)
