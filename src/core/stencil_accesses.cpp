@@ -1147,9 +1147,6 @@ main(int argc, char* argv[])
   FILE* fp_ints_reduced = fopen("user_reduced_ints.bin","wb");
   FILE* fp_floats_reduced = fopen("user_reduced_floats.bin","wb");
 
-  fprintf(fp,
-          "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
-          "__attribute__((unused)) =  {");
   int  write_output[NUM_KERNELS][NUM_ALL_FIELDS]{};
   int  write_complex_output[NUM_KERNELS][NUM_COMPLEX_FIELDS+1]{};
   int  value_complex_output[NUM_KERNELS][NUM_COMPLEX_FIELDS+1]{};
@@ -1164,6 +1161,10 @@ main(int argc, char* argv[])
   int  output_reduced_floats[NUM_KERNELS][NUM_FLOAT_OUTPUTS+1]{};
 #endif
   int  output_read_profiles[NUM_KERNELS][NUM_PROFILES]{};
+
+  fprintf(fp,
+          "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
+          "__attribute__((unused)) =  {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     execute_kernel(k);
     for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
