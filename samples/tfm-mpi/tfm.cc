@@ -236,6 +236,16 @@ init_tfm_profiles(const Device& device)
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y));
 
+    // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
+    // PRINT_DEBUG(initial_pos);
+    // PRINT_DEBUG(dsz);
+    // PRINT_DEBUG(global_sz);
+    // std::cout << "cosine profile" << std::endl;
+    // for (size_t i{0}; i < local_mz; ++i)
+    //     std::cout << host_profile[i] << " ";
+    // std::cout << std::endl;
+    // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
+
     // B1s (here B12) and B2s (here B22)
     acHostInitProfileToSineWave(dsz,
                                 initial_pos,
@@ -245,6 +255,13 @@ init_tfm_profiles(const Device& device)
                                 host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y));
+
+    // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
+    // std::cout << "sine profile" << std::endl;
+    // for (size_t i{0}; i < local_mz; ++i)
+    //     std::cout << host_profile[i] << " ";
+    // std::cout << std::endl;
+    // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
 
     PRINT_LOG_TRACE("Exit");
 
