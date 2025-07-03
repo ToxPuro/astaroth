@@ -3444,6 +3444,24 @@ acFFTBackwardTransformC2R(const AcComplex*,const Volume, const Volume,const Volu
 	exit(EXIT_FAILURE);
 	return AC_FAILURE;
 }
+
+AcResult
+acFFTForwardTransformR2Planar(const AcReal*, const Volume, const Volume, const Volume, AcReal*, AcReal*)
+{
+	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransformR2Planar!\n");
+	fflush(stderr);
+	exit(EXIT_FAILURE);
+	return AC_FAILURE;
+}
+
+AcResult
+acFFTForwardTransformPlanar(const AcReal*, const AcReal*,const Volume, const Volume, const Volume, AcReal*, AcReal*)
+{
+	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransformPlanar!\n");
+	fflush(stderr);
+	exit(EXIT_FAILURE);
+	return AC_FAILURE;
+}
 #endif
 
 cudaError_t
