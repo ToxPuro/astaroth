@@ -395,9 +395,9 @@ contract(mat) {
 }
 
 grid_position() {
-    return real3((globalVertexIdx.x - AC_nx_min + 0.5) * AC_dsx - AC_sx/2, 
-                 (globalVertexIdx.y - AC_ny_min + 0.5) * AC_dsy - AC_sy/2, 
-                 (globalVertexIdx.z - AC_nz_min + 0.5) * AC_dsz - AC_sz/2)
+    return real3((globalVertexIdx.x - AC_nx_min + 0.5) * AC_dsx - AC_global_sx/2, 
+                 (globalVertexIdx.y - AC_ny_min + 0.5) * AC_dsy - AC_global_sy/2, 
+                 (globalVertexIdx.z - AC_nz_min + 0.5) * AC_dsz - AC_global_sz/2)
 }
 
 // Simulation functions

@@ -205,11 +205,11 @@ init_tfm_profiles(const Device& device)
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
     const auto dsz{acr::get(info, AC_dsz)};
-    const auto sz{acr::get(info, AC_sz)};
+    const auto global_sz{acr::get(info, AC_global_sz)};
     const auto initial_pos{get_global_position(as<int64_t>(acr::get(info, AC_multigpu_offset).z),
                                                as<int64_t>(acr::get(info, AC_nz_min)),
                                                dsz,
-                                               sz)};
+                                               global_sz)};
     const size_t local_mz{as<size_t>(acr::get(info, AC_mz))};
 
     const AcReal amplitude{acr::get(info, AC_profile_amplitude)};
