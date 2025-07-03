@@ -2117,9 +2117,6 @@ class Grid {
         ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
         m_xy_avg.wait(dview);
 
-        auto collaborated_procs{ac::mpi::get_size(m_xy_neighbors.get())};
-        acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), dview.size(), dview.data());
-
         // Wait (LUMI only)
         // m_xy_avg.wait();
 
@@ -2130,9 +2127,6 @@ class Grid {
         // // Error-prone: should be improved when time
         // const size_t count{NUM_PROFILES * vba.profiles.count};
         // AcReal* data{vba.profiles.in[0]};
-
-        // auto collaborated_procs{ac::mpi::get_size(m_xy_neighbors.get())};
-        // acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
 
         PRINT_LOG_TRACE("End");
     }
