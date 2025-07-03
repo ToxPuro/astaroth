@@ -323,6 +323,24 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // acDeviceLoadDefaultUniforms(device); // TODO recheck
     acDeviceLoadMeshInfo(device, device->local_config);
 
+// XY averages
+#if defined(AC_TFM_ENABLED)
+    {
+        AcMeshDims dims = acGetMeshDims(device->local_config);
+
+        // Intermediate buffer
+        const size_t num_compute_profiles = 5 * 3;
+        const AcShape buffer_shape        = {
+                   .x = as_size_t(dims.nn.x),
+                   .y = as_size_t(dims.nn.y),
+                   .z = as_size_t(dims.m1.z),
+                   .w = num_compute_profiles,
+        };
+        const size_t buffer_size = acShapeSize(buffer_shape);
+        device->xy_reduce_buffer = acBufferCreate(buffer_size, true);
+    }
+#endif
+
 #if AC_VERBOSE
     printf("Created device %d (%p)\n", device->id, device);
 #endif
@@ -340,6 +358,13 @@ acDeviceDestroy(Device device)
     printf("Destroying device %d (%p)\n", device->id, device);
 #endif
     acDeviceSynchronizeStream(device, STREAM_ALL);
+
+// XY averages
+#if defined(AC_TFM_ENABLED)
+    {
+        acBufferDestroy(&device->xy_reduce_buffer);
+    }
+#endif
 
     // Memory
     acVBADestroy(&device->vba);
@@ -1229,7 +1254,9 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
                .w = num_compute_profiles,
     };
     const size_t buffer_size = acShapeSize(buffer_shape);
-    AcBuffer buffer          = acBufferCreate(buffer_size, true);
+
+    auto buffer{device->xy_reduce_buffer};
+    ERRCHK_ALWAYS(buffer.count == buffer_size);
 
     // Indices and shapes
     const AcIndex in_offset = {
@@ -1294,6 +1321,7 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     const size_t num_segments = buffer_shape.z * buffer_shape.w;
     acSegmentedReduce(device->streams[STREAM_DEFAULT], //
                       buffer.data, buffer_size, num_segments, device->vba.profiles.in[0]);
+    // Synchronized
 
     // NOTE: Revisit this
     const size_t gnx = as_size_t(device->local_config.int3_params[AC_global_grid_n].x);
@@ -1301,8 +1329,8 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     cudaSetDevice(device->id);
     acMultiplyInplace(1. / (gnx * gny), num_compute_profiles * device->vba.profiles.count,
                       device->vba.profiles.in[0]);
+    // Synchronized
 
-    acBufferDestroy(&buffer);
     return AC_SUCCESS;
 #else
     ERROR("acDeviceReduceXYAverages called but AC_TFM_ENABLED was false");
