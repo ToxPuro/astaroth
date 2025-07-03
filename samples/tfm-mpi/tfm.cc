@@ -1969,13 +1969,16 @@ class Grid {
     ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_xy_avg{};
     ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce{};
 
+    AcMeshInfo m_initial_info{};
+
   public:
     explicit Grid(const AcMeshInfo& info)
         : m_comm{MPI_COMM_WORLD, acr::get_global_nn(info)},
           m_device{acr::get(info, AC_device_id), info},
           m_xy_neighbors{ac::mpi::split(m_comm.get(), as<int>(ac::mpi::coords(m_comm)[2]))},
           m_hydro_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), hydro_fields.size()},
-          m_tfm_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), tfm_fields.size()}
+          m_tfm_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), tfm_fields.size()},
+          m_initial_info{info}
     {
         PRINT_LOG_TRACE("Grid allocated, continuing to init body");
 
@@ -1985,12 +1988,12 @@ class Grid {
 
         // Reset and reload a pristine config
         reset();
-        ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), info));
     }
 
     void reset()
     {
         PRINT_LOG_TRACE("Start");
+        ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), m_initial_info));
 
         // Stencil coefficients
         AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
@@ -1999,6 +2002,7 @@ class Grid {
         // ERRCHK_AC(acDevicePrintInfo(m_device.get()));
 
         // Forcing parameters
+        seed_rng(19937123);
         auto tmp_local_info{ac::get_info(m_device.get())};
         ERRCHK(acHostUpdateForcingParams(&tmp_local_info) == 0);
         ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), tmp_local_info));

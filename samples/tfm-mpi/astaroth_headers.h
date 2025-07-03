@@ -3,4 +3,5 @@
 
 #include "acc_runtime.h"
 #include "astaroth.h"
+#include "astaroth_random.h"
 #include "astaroth_utils.h"
