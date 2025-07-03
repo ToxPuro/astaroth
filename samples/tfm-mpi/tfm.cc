@@ -2395,8 +2395,13 @@ class Grid {
 #endif
             ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         };
-        cudaProfilerStart();
+
+        // Generate the results
         const auto results{bm::benchmark(init, bench, sync, nsamples)};
+
+        // Run once more to profile
+        cudaProfilerStart();
+        bench();
         cudaProfilerStop();
 
         // Print results to file
@@ -2425,6 +2430,17 @@ class Grid {
                                   .count());
             }
         }
+
+        // Print timeseries.csv for a sanity check
+        reset_timeseries();
+        const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
+        const auto current_time{ac::pull_param(m_device.get(), AC_current_time)};
+        const auto current_dt{ac::pull_param(m_device.get(), AC_dt)};
+        write_timeseries(m_comm.get(),
+                         m_device.get(),
+                         as<size_t>(current_step),
+                         current_time,
+                         current_dt);
     }
 
     void write_rank_ordering_to_disk(const tfm::arguments& args)
