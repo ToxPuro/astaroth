@@ -68,9 +68,8 @@ typedef struct
 } KernelFields;
 
 static KernelFields
-get_kernel_fields(const AcKernel kernel)
+get_kernel_fields(const AcKernel kernel,const KernelAnalysisInfo* info)
 {
-		const auto info = get_kernel_analysis_info();
 		KernelFields res{};
 		for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
 		{
@@ -104,9 +103,8 @@ typedef struct
 } KernelOutputs;
 
 static KernelProfiles
-get_kernel_profiles(const AcKernel kernel)
+get_kernel_profiles(const AcKernel kernel,const KernelAnalysisInfo* info)
 {
-		const auto info = get_kernel_analysis_info();
 		KernelProfiles res{};
 		for(int i = 0; i < NUM_PROFILES; ++i)
 		{
@@ -117,9 +115,8 @@ get_kernel_profiles(const AcKernel kernel)
 		return res;
 }
 static KernelReduceOutputs
-get_kernel_reduce_outputs(const AcKernel kernel)
+get_kernel_reduce_outputs(const AcKernel kernel,const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	KernelReduceOutputs res{};
 	for(size_t i = 0; i < info[kernel].n_reduce_outputs; ++i)
 	{
@@ -132,20 +129,20 @@ get_kernel_reduce_outputs(const AcKernel kernel)
 	return res;
 }
 static UNUSED std::vector<KernelFields>
-get_kernel_fields(const std::vector<AcKernel> kernels)
+get_kernel_fields(const std::vector<AcKernel> kernels, const KernelAnalysisInfo* info)
 {
 		std::vector<KernelFields> res{};
-		for(const auto& kernel : kernels) res.push_back(get_kernel_fields(kernel));
+		for(const auto& kernel : kernels) res.push_back(get_kernel_fields(kernel,info));
 		return res;
 }
 static KernelOutputs
-get_kernel_outputs(const AcKernel kernel)
+get_kernel_outputs(const AcKernel kernel,const KernelAnalysisInfo* info)
 {
 	return 
 	{
-		get_kernel_fields(kernel),
-		get_kernel_profiles(kernel),
-		get_kernel_reduce_outputs(kernel)
+		get_kernel_fields(kernel,info),
+		get_kernel_profiles(kernel,info),
+		get_kernel_reduce_outputs(kernel,info)
 	};
 }
 
@@ -241,13 +238,13 @@ get_boundaries()
 		return boundaries;
 }
 static bool
-bc_output_fields_overlap(const std::vector<BoundCond>& bcs)
+bc_output_fields_overlap(const std::vector<BoundCond>& bcs,const KernelAnalysisInfo* info)
 {
 	std::array<std::vector<Field>,6> fields_written{};
 	std::array<std::vector<const char*>,6> bc_names{};
 	for(auto& bc : bcs)
 	{
-		auto fields = get_kernel_fields(bc.kernel);
+		auto fields = get_kernel_fields(bc.kernel,info);
 		for(auto& field: fields.out)
 		{
 			const auto boundaries = get_boundaries();
@@ -307,9 +304,10 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 		call_all_user_loaders(p);
     		loader(p);
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
+		const auto info = get_kernel_analysis_info();
 		if(filter_unnecessary_ones)
 		{
-			auto outputs = get_kernel_outputs(optimized_kernel);
+			auto outputs = get_kernel_outputs(optimized_kernel,info.data());
 			if(outputs.fields.out.size() == 0 && outputs.profiles.write_out.size() == 0 && outputs.profiles.reduce_out.size() == 0 && outputs.reduce_outputs.out.size() == 0) 
 			{
 				res.push_back(AC_NULL_KERNEL);
@@ -323,7 +321,7 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 
 
 static std::vector<BoundCond>
-get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
+get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized, const KernelAnalysisInfo* info)
 {
 
 	std::vector<BoundCond> res{};
@@ -336,10 +334,10 @@ get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
 	for(size_t i = 0; i < kernels.size(); ++i)
 	{
 		auto bc_info = acAnalysisGetBCInfo(get_info(),kernels[i],boundaries[i]);
-		auto fields = get_kernel_fields(kernels[i]);
+		auto fields = get_kernel_fields(kernels[i],info);
 		res.push_back((BoundCond){kernels[i],boundaries[i],fields.in,fields.out,bc_info,0,(int3){0,0,0}});
 	}
-	const bool bcs_overlap = bc_output_fields_overlap(res);
+	const bool bcs_overlap = bc_output_fields_overlap(res,info);
 	if(bcs_overlap)
 		fatal("Cannot continue: overlap in output fields in BCs of %s\n",taskgraph_names[bc_graph]);
 	auto topological_order = generate_topological_order(res,taskgraph_names[bc_graph]);
@@ -428,7 +426,7 @@ acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph, const bool optimized)
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[bc_graph]);
 	std::vector<AcTaskDefinition> res{};
-	auto bcs = get_boundconds(bc_graph, optimized);
+	auto bcs = get_boundconds(bc_graph, optimized,get_kernel_analysis_info().data());
 	//TP: insert boundconds in topological order
 	for(size_t i = 0; i < bcs.size(); ++i)
 	{
@@ -488,9 +486,9 @@ max_z_id()
 }
 
 static FieldBCs
-get_field_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized)
+get_field_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized, const KernelAnalysisInfo* info)
 {
-	const auto bcs = get_boundconds(bc_graph,optimized);
+	const auto bcs = get_boundconds(bc_graph,optimized,info);
 	const std::vector<AcBoundary> boundaries = {BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT};
 
 	FieldBCs res;
@@ -532,7 +530,7 @@ typedef struct
 } KernelCall;
 
 static AcTaskDefinition
-gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream);
+gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream, const KernelAnalysisInfo* info);
 
 static void
 check_field_boundconds(const FieldBCs field_boundconds, const std::vector<Field> fields,
@@ -972,7 +970,7 @@ gen_halo_exchange_and_boundconds(
 
 constexpr int MAX_TASKS = 100;
 void
-compute_next_level_set(std::array<bool,NUM_KERNELS>& dst, const std::vector<AcKernel>& kernel_calls, std::array<bool,NUM_FIELDS>& field_written_to, const std::array<int,MAX_TASKS>& call_level_set, const std::vector<KernelAnalysisInfo>& info)
+compute_next_level_set(std::array<bool,NUM_KERNELS>& dst, const std::vector<AcKernel>& kernel_calls, std::array<bool,NUM_FIELDS>& field_written_to, const std::array<int,MAX_TASKS>& call_level_set, const KernelAnalysisInfo* info)
 {
 	std::array<bool,NUM_FIELDS> field_consumed{};
 	std::fill(field_consumed.begin(), field_consumed.end(),false);
@@ -1059,13 +1057,12 @@ struct KeyEqual {
 
 
 static std::vector<level_set>
-gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
+gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAnalysisInfo* info)
 {
 	auto kernel_calls = optimized ?
 				get_optimized_kernels(graph,true) :
 				DSLTaskGraphKernels[graph];
-	auto kernel_call_computes_profile_across_halos = compute_kernel_call_computes_profile_across_halos(kernel_calls);
-	const auto info = get_kernel_analysis_info();
+	auto kernel_call_computes_profile_across_halos = compute_kernel_call_computes_profile_across_halos(kernel_calls,info);
 	int n_level_sets = 0;
 	std::array<int,MAX_TASKS> call_level_set{};
 	std::array<std::array<std::array<bool, NUM_VTXBUF_HANDLES>,27>,MAX_TASKS> field_needs_to_be_communicated_before_level_set{};
@@ -1250,7 +1247,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized)
 	return level_sets;
 }
 static bool
-level_set_has_overlap_in_input_and_output(const level_set& set)
+level_set_has_overlap_in_input_and_output(const level_set& set, const KernelAnalysisInfo* info)
 {
 	std::vector<Field>   in_fields{};
 	std::vector<Field>   out_fields{};
@@ -1258,8 +1255,8 @@ level_set_has_overlap_in_input_and_output(const level_set& set)
 	std::vector<Profile> out_profiles{};
 	for(const auto& call : set.calls)
 	{
-		auto fields   = get_kernel_fields(call.kernel);
-		auto profiles = get_kernel_profiles(call.kernel);
+		auto fields   = get_kernel_fields(call.kernel,info);
+		auto profiles = get_kernel_profiles(call.kernel,info);
 
 		for(const auto& field : fields.in)  
 		{
@@ -1327,7 +1324,7 @@ fuse_calls_in_level_sets(const std::vector<level_set>& base_level_sets)
 	return res;
 }
 static bool
-fuse_calls_between_level_sets(std::vector<level_set>& level_sets)
+fuse_calls_between_level_sets(std::vector<level_set>& level_sets, const KernelAnalysisInfo* info)
 {
 	for(size_t i = 0; i < level_sets.size(); ++i)
 		for(size_t j = i+1; j < level_sets.size(); ++j)
@@ -1337,7 +1334,7 @@ fuse_calls_between_level_sets(std::vector<level_set>& level_sets)
 			//TP: for now take the conservative approximation that it is safe to move calls to previous level set
 			//if in the current level set nothing is also an input and output
 			//TODO: one could be more precise that a kernel call is safe to move between level sets if no outputs of it are inputs to other calls in the same level set
-			if(level_set_has_overlap_in_input_and_output(b_level)) continue;
+			if(level_set_has_overlap_in_input_and_output(b_level,info)) continue;
 			for(size_t a_index = 0; a_index < a_level.calls.size(); ++a_index)
 				for(size_t b_index = 0; b_index < b_level.calls.size(); ++b_index)
 				{
@@ -1357,24 +1354,23 @@ fuse_calls_between_level_sets(std::vector<level_set>& level_sets)
 }
 
 static std::vector<level_set>
-get_level_sets(const AcDSLTaskGraph graph, const bool optimized)
+get_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAnalysisInfo* info)
 {
-	auto level_sets = gen_level_sets(graph,optimized);
+	auto level_sets = gen_level_sets(graph,optimized,info);
 	bool fused_call_between_level_sets = true;
 	while(fused_call_between_level_sets)
 	{
 		fused_call_between_level_sets = false;
 		level_sets = fuse_calls_in_level_sets(level_sets);
-		fused_call_between_level_sets = fuse_calls_between_level_sets(level_sets);
+		fused_call_between_level_sets = fuse_calls_between_level_sets(level_sets,info);
 	}
 	return level_sets;
 }
 static std::array<std::vector<int3>,NUM_FIELDS>
-get_field_ray_directions(const std::vector<AcKernel> kernels)
+get_field_ray_directions(const std::vector<AcKernel> kernels,const KernelAnalysisInfo* info)
 {
 
 	std::array<std::vector<int3>,NUM_FIELDS> field_ray_directions{};
-	const auto info = get_kernel_analysis_info();
 	for(auto& kernel : kernels)
 	{
 		for(int field = 0; field < NUM_FIELDS; ++field)
@@ -1403,9 +1399,9 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 	if(is_bc_taskgraph(graph))
 		return acGetDSLBCTaskGraphOps(graph,optimized);
 	const auto info = get_kernel_analysis_info();
-	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph],optimized);
+	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph],optimized,info.data());
 	std::vector<AcTaskDefinition> res{};
-	auto level_sets = get_level_sets(graph,optimized);	
+	auto level_sets = get_level_sets(graph,optimized,info.data());	
 
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[graph]);
@@ -1413,7 +1409,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 	auto kernel_calls = optimized ?
 				get_optimized_kernels(graph,true) :
 				DSLTaskGraphKernels[graph];
-	const auto field_ray_directions = get_field_ray_directions(kernel_calls);
+	const auto field_ray_directions = get_field_ray_directions(kernel_calls,info.data());
 	for(size_t current_level_set_index = 0; current_level_set_index < level_sets.size(); ++current_level_set_index)
 	{
 		const auto& current_level_set = level_sets[current_level_set_index];
@@ -1475,7 +1471,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		std::vector<Field> input_fields_not_communicated{};
 		for(auto& call : current_level_set.calls)
 		{
-			auto fields = get_kernel_fields(call.kernel);
+			auto fields = get_kernel_fields(call.kernel,info.data());
 			for(auto& field : fields.in)
 			{
 				if(std::find(current_level_set.fields_communicated_before.begin(), current_level_set.fields_communicated_before.end(), field) == current_level_set.fields_communicated_before.end())
@@ -1503,7 +1499,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		for(auto& call : current_level_set.calls)
 		{
 			if(call.kernel == AC_NULL_KERNEL) continue;
-			res.push_back(gen_taskgraph_kernel_entry(call,current_level_set_index+1,stream));
+			res.push_back(gen_taskgraph_kernel_entry(call,current_level_set_index+1,stream,info.data()));
 			for(size_t field = 0; field < NUM_FIELDS; ++field)
 				field_written_out_before[field] |= info[call.kernel].written_fields[field];
 
@@ -1591,7 +1587,7 @@ acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 }
 #include "user_constants.h"
 static AcTaskDefinition
-gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream)
+gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream, const KernelAnalysisInfo* info)
 {
 	constexpr int max_onion_level = 1;
 	onion_level = min(onion_level,max_onion_level);
@@ -1602,7 +1598,7 @@ gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream)
 			if(!ac_pid()) fprintf(stream, "%s,",get_name(elem));
 		if(!ac_pid()) fprintf(stream,"}");
 	};
-	auto[fields, profiles, reduce_outputs] = get_kernel_outputs(call.kernel);
+	auto[fields, profiles, reduce_outputs] = get_kernel_outputs(call.kernel,info);
 	if(!ac_pid()) fprintf(stream,"%s(",kernel_names[call.kernel]);
 	log(fields.in);
 	if(!ac_pid()) fprintf(stream,",");

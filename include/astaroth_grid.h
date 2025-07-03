@@ -319,6 +319,7 @@ typedef struct AcTaskDefinition {
     bool include_boundaries;
     facet_class_range* halo_types;
     int3 id;
+    const KernelAnalysisInfo* analysis_info;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of

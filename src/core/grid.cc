@@ -1944,9 +1944,11 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     std::vector<AcTaskDefinition> ops{};
     //TP: insert reduce tasks in between of tasks
     //If kernel A outputs P(profile or scalar to be reduced) then a reduce task reducing P should be inserted
+    const auto kernel_analysis_info = get_kernel_analysis_info();
     for(size_t i = 0; i < n_ops; ++i)
     {
 	    auto op = ops_in[i];
+	    op.analysis_info = kernel_analysis_info.data();
 	    ops.push_back(op);
 	    if(op.task_type == TASKTYPE_COMPUTE && (op.num_profiles_reduce_out > 0 || op.num_outputs_out > 0))
 	    {
@@ -1979,7 +1981,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    kernels[i] = op.kernel_enum;
 	    }
     }
-    const auto& kernel_computes_profile_on_halos = compute_kernel_call_computes_profile_across_halos(kernels);
+    const auto& kernel_computes_profile_on_halos = compute_kernel_call_computes_profile_across_halos(kernels,kernel_analysis_info.data());
     for(size_t i = 0; i < ops.size(); ++i)
     {
 	    ops[i].computes_on_halos = BOUNDARY_NONE;
@@ -2071,7 +2073,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	const int3 old_tpb = acReadOptimTBConfig(op.kernel_enum,task->output_region.dims,to_volume(acGridGetLocalMeshInfo()[AC_thread_block_loop_factors]));
         acDeviceSetReduceOffset(grid.device, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
         //acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
-        fields_already_depend_on_boundaries = get_fields_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);
+        fields_already_depend_on_boundaries = get_fields_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
     	//make sure after autotuning that out is 0
 	if(old_tpb == (int3){-1,-1,-1})
 	{
@@ -2139,7 +2141,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    }
             acVerboseLogFromRootProc(rank, "Ray updates created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
-		if(kernel_writes_to_output(op.kernel_enum,op.fields_out[buf]))
+		if(kernel_writes_to_output(op.kernel_enum,op.fields_out[buf],kernel_analysis_info.data()))
 		{
                 	swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
 		}
@@ -2162,8 +2164,10 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    std::vector<KernelReduceOutput> reduce_output_out(op.outputs_out,op.outputs_out+op.num_outputs_out);
 
 
-	    const bool raytracing = is_raytracing_kernel(op.kernel_enum);
-	    const bool oned_launch = kernel_only_writes_profile(op.kernel_enum,PROFILE_X) || kernel_only_writes_profile(op.kernel_enum,PROFILE_Y) || kernel_only_writes_profile(op.kernel_enum,PROFILE_Z);
+	    const bool raytracing = is_raytracing_kernel(op.kernel_enum,kernel_analysis_info.data());
+	    const bool oned_launch = kernel_only_writes_profile(op.kernel_enum,PROFILE_X,kernel_analysis_info.data()) 
+		                  || kernel_only_writes_profile(op.kernel_enum,PROFILE_Y,kernel_analysis_info.data())
+				  || kernel_only_writes_profile(op.kernel_enum,PROFILE_Z,kernel_analysis_info.data());
 	    const bool single_gpu_optim = ((comm_size == 1) || (NGHOST == 0)) && !grid.submesh.info[AC_skip_single_gpu_optim];
 	    const int max_comp_facet_class = (oned_launch || raytracing || single_gpu_optim) ? 0 : 3;
 	    {
@@ -2173,7 +2177,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
 		    else if(max_comp_facet_class == 3)
 		    {
-			const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries);
+			const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
 			if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
 				if(Region::tag_to_id(tag).x != 0) continue;
 			if(!(bc_dependencies & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y))
@@ -2194,7 +2198,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
-		if(kernel_writes_to_output(op.kernel_enum,op.fields_out[buf]))
+		if(kernel_writes_to_output(op.kernel_enum,op.fields_out[buf],kernel_analysis_info.data()))
 		{
                 	swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
 		}
@@ -2379,7 +2383,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
         }
 	case TASKTYPE_REDUCE:  {
 
-	  if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_X))
+	  if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_X,kernel_analysis_info.data()))
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
@@ -2387,7 +2391,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
-	  else if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_Y))
+	  else if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_Y,kernel_analysis_info.data()))
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
@@ -2395,7 +2399,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	  		graph->all_tasks.push_back(task);
 		}
 	  }
-	  else if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_Z))
+	  else if(kernel_reduces_only_profiles(op.kernel_enum,PROFILE_Z,kernel_analysis_info.data()))
 	  {
 		for(int id = -1; id <= 1; ++id)
 		{
@@ -2486,7 +2490,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     {
 	if(dept_task->isComputeTask() && preq_task->isComputeTask())
 	{
-		if(kernel_has_profile_stencil_ops(std::dynamic_pointer_cast<ComputeTask>(dept_task)->getKernel()))
+		if(kernel_has_profile_stencil_ops(std::dynamic_pointer_cast<ComputeTask>(dept_task)->getKernel(),kernel_analysis_info.data()))
 		{
 			if(profile_overlap_in_regions(
 					preq_task->output_region.geometry_overlaps(&dept_task->input_regions[0]),
@@ -2496,7 +2500,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 				return true;
 		}
 		
-		if(kernel_has_profile_stencil_ops(std::dynamic_pointer_cast<ComputeTask>(preq_task)->getKernel()))
+		if(kernel_has_profile_stencil_ops(std::dynamic_pointer_cast<ComputeTask>(preq_task)->getKernel(),kernel_analysis_info.data()))
 		{
 			if(profile_overlap_in_regions(
 					preq_task->output_region.geometry_overlaps(&dept_task->output_region),

@@ -2,7 +2,7 @@
 [[maybe_unused]] constexpr int AC_OUT_OF_BOUNDS_WRITE  = (1 << 1);
 [[maybe_unused]] constexpr int AC_WRITE_TO_INPUT  = (1 << 2);
 
-static std::vector<KernelAnalysisInfo>
+static UNUSED std::vector<KernelAnalysisInfo>
 get_kernel_analysis_info()
 {
 	std::vector<KernelAnalysisInfo> res(NUM_KERNELS,KernelAnalysisInfo{});
@@ -11,18 +11,16 @@ get_kernel_analysis_info()
 	return res;
 }
 static UNUSED bool
-kernel_has_profile_stencil_ops(const AcKernel kernel)
+kernel_has_profile_stencil_ops(const AcKernel kernel, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	for(int i = 0; i  < NUM_PROFILES; ++i)
 		if(info[kernel].profile_has_stencil_op[i]) return true;
 	return false;
 }
 
 static bool
-kernel_has_stencil_ops(const AcKernel kernel)
+kernel_has_stencil_ops(const AcKernel kernel, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	for(int i = 0; i  < NUM_FIELDS; ++i)
 		if(info[kernel].field_has_stencil_op[i]) return true;
 	for(int i = 0; i  < NUM_PROFILES; ++i)
@@ -30,32 +28,28 @@ kernel_has_stencil_ops(const AcKernel kernel)
 	return false;
 }
 static bool
-kernel_updates_vtxbuf(const AcKernel kernel)
+kernel_updates_vtxbuf(const AcKernel kernel, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	for(int i = 0; i < NUM_FIELDS; ++i)
 		if(info[kernel].written_fields[i]) return true;
 	return false;
 }
 
 static UNUSED bool
-kernel_writes_to_input(const AcKernel kernel, const Field field)
+kernel_writes_to_input(const AcKernel kernel, const Field field, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	return (info[kernel].written_fields[field] & AC_WRITE_TO_INPUT) != 0;
 }
 
 static UNUSED bool
-kernel_writes_to_output(const AcKernel kernel, const Field field)
+kernel_writes_to_output(const AcKernel kernel, const Field field,const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	return info[kernel].written_fields[field] && ((info[kernel].written_fields[field] & AC_WRITE_TO_INPUT) == 0);
 }
 
 static UNUSED bool
-is_raytracing_kernel(const AcKernel kernel)
+is_raytracing_kernel(const AcKernel kernel, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	for(int ray = 0; ray < NUM_RAYS; ++ray)
 	{
 		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
@@ -65,9 +59,8 @@ is_raytracing_kernel(const AcKernel kernel)
 }
 
 static UNUSED AcBool3
-raytracing_step_direction(const AcKernel kernel)
+raytracing_step_direction(const AcKernel kernel,const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	for(int ray = 0; ray < NUM_RAYS; ++ray)
 	{
 		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
@@ -102,9 +95,8 @@ get_ray_boundaries(const AcRay ray)
 }
 
 static UNUSED std::array<int,NUM_FIELDS>
-get_fields_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
+get_fields_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	std::array<int,NUM_FIELDS> res{};
 	for(int j = 0; j < NUM_FIELDS; ++j)
        		res[j] = fields_already_depend_on_boundaries[j];
@@ -116,12 +108,11 @@ get_fields_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<
 }
 
 static UNUSED AcBoundary
-get_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
+get_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const KernelAnalysisInfo* info)
 {
 	//TP: this is because if kernel A uses stencils kernel B has to wait for A to finish on neighbours to avoid overwriting A's input
 	//TP: this is somewhat conservative since if A does not use stencils B has more dependency then needed
 	//TP: but I guess if A and B do not have stencils they are anyways so fast that it does not matter that much
-	const auto info = get_kernel_analysis_info();
 	int res = 0;
 	for(int j = 0; j < NUM_FIELDS; ++j)
 	{
@@ -155,63 +146,58 @@ get_kernel_depends_on_boundaries(const AcKernel kernel, const std::array<int,NUM
 
 }
 static UNUSED std::vector<AcBoundary>
-get_kernel_depends_on_boundaries(const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries)
+get_kernel_depends_on_boundaries(const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const KernelAnalysisInfo* info)
 {
 	std::vector<AcBoundary> res{};
 	for(size_t i = 0; i < NUM_KERNELS; ++i)
-		res.push_back(get_kernel_depends_on_boundaries(AcKernel(i), fields_already_depend_on_boundaries));
+		res.push_back(get_kernel_depends_on_boundaries(AcKernel(i), fields_already_depend_on_boundaries,info));
 	return res;
 }
 static bool
-kernel_reduces_scalar(const AcKernel kernel)
+kernel_reduces_scalar(const AcKernel kernel, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	for(size_t i = 0; i < info[kernel].n_reduce_outputs; ++i)
 		if(info[kernel].reduce_outputs[i].type != AC_PROF_TYPE) return true;
 	return false;
 }
 static bool
-kernel_reduces_something(const AcKernel kernel)
+kernel_reduces_something(const AcKernel kernel, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	for(int i = 0; i < NUM_PROFILES; ++i)
 		if(info[kernel].reduced_profiles[i]) return true;
-	if(kernel_reduces_scalar(kernel)) return true;
+	if(kernel_reduces_scalar(kernel,info)) return true;
 	return false;
 }
 
 
 static bool
-kernel_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
+kernel_writes_profile(const AcKernel kernel, const AcProfileType prof_type, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	for(int i = 0; i < NUM_PROFILES; ++i)
 		if(info[kernel].written_profiles[i] && prof_types[i] == prof_type) return true;
 	return false;
 }
 
 static bool
-kernel_reduces_only_profiles(const AcKernel kernel, const AcProfileType prof_type)
+kernel_reduces_only_profiles(const AcKernel kernel, const AcProfileType prof_type, const KernelAnalysisInfo* info)
 {
-	if(kernel_reduces_scalar(kernel)) return false;
-	const auto info = get_kernel_analysis_info();
+	if(kernel_reduces_scalar(kernel,info)) return false;
 	for(int i = 0; i < NUM_PROFILES; ++i)
 		if(info[kernel].reduced_profiles[i] && prof_types[i] != prof_type) return false;
 	return true;
 }
 
 static UNUSED bool
-kernel_does_only_profile_reductions(const AcKernel kernel, const AcProfileType prof_type)
+kernel_does_only_profile_reductions(const AcKernel kernel, const AcProfileType prof_type, const KernelAnalysisInfo* info)
 {
-	if(kernel_updates_vtxbuf(kernel)) return false;
-	if(kernel_has_stencil_ops(kernel)) return false;
-	return kernel_reduces_only_profiles(kernel,prof_type);
+	if(kernel_updates_vtxbuf(kernel,info)) return false;
+	if(kernel_has_stencil_ops(kernel,info)) return false;
+	return kernel_reduces_only_profiles(kernel,prof_type,info);
 }
 
 static bool
-kernel_calls_ray(const AcKernel kernel, const AcRay ray)
+kernel_calls_ray(const AcKernel kernel, const AcRay ray, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	for(int field = 0; field < NUM_FIELDS; ++field)
 	{
 		if(info[kernel].ray_accessed[field][ray]) return true;
@@ -219,22 +205,22 @@ kernel_calls_ray(const AcKernel kernel, const AcRay ray)
 	return false;
 }
 static bool
-kernel_uses_rays(const AcKernel kernel)
+kernel_uses_rays(const AcKernel kernel,const KernelAnalysisInfo* info)
 {
 	for(int ray = 0; ray < NUM_RAYS; ++ray)
 	{
-		if(kernel_calls_ray(kernel,AcRay(ray))) return true;
+		if(kernel_calls_ray(kernel,AcRay(ray),info)) return true;
 	}
 	return false;
 }
 
 static UNUSED bool
-kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
+kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type, const KernelAnalysisInfo* info)
 {
-	if(kernel_reduces_something(kernel)) return false;
-	if(kernel_updates_vtxbuf(kernel))    return false;
-	if(kernel_updates_vtxbuf(kernel))    return false;
-	if(kernel_uses_rays(kernel))    return false;
+	if(kernel_reduces_something(kernel,info)) return false;
+	if(kernel_updates_vtxbuf(kernel,info))    return false;
+	if(kernel_updates_vtxbuf(kernel,info))    return false;
+	if(kernel_uses_rays(kernel,info))    return false;
 	const std::array<AcProfileType,9> profile_types =
 	{
 		PROFILE_X,
@@ -251,13 +237,13 @@ kernel_only_writes_profile(const AcKernel kernel, const AcProfileType prof_type)
 		PROFILE_ZY,
 	};
 	for(const auto& type : profile_types)
-		if(prof_type != type && kernel_writes_profile(kernel,type)) return false;
+		if(prof_type != type && kernel_writes_profile(kernel,type,info)) return false;
 	return true;
 }
 
 //TP: padded since cray compiler does not like zero sized arrays when debug flags are on
 static UNUSED std::vector<std::array<AcBoundary,NUM_PROFILES+1>>
-compute_kernel_call_computes_profile_across_halos(const std::vector<AcKernel>& calls)
+compute_kernel_call_computes_profile_across_halos(const std::vector<AcKernel>& calls, const KernelAnalysisInfo* info)
 {
 	std::vector<std::array<AcBoundary,NUM_PROFILES+1>> res{};
 	for(size_t i = 0; i  < calls.size(); ++i)
@@ -267,7 +253,6 @@ compute_kernel_call_computes_profile_across_halos(const std::vector<AcKernel>& c
 		res.push_back(computes_profile_across_halos);
 	}
 
-	const auto info = get_kernel_analysis_info();
 	for(size_t i = 0; i  < calls.size(); ++i)
 	{
 		const auto k = calls[i];
@@ -337,9 +322,8 @@ get_stencil_halo_type(const Stencil stencil)
 }
 
 static bool
-kernel_calls_stencil(const AcKernel kernel, const Stencil stencil)
+kernel_calls_stencil(const AcKernel kernel, const Stencil stencil, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	for(int field = 0; field < NUM_FIELDS; ++field)
 	{
 		if(info[kernel].stencils_accessed[field][stencil]) return true;
@@ -347,14 +331,13 @@ kernel_calls_stencil(const AcKernel kernel, const Stencil stencil)
 	return false;
 }
 static UNUSED std::tuple<int3,int3>
-get_kernel_radius(const AcKernel kernel)
+get_kernel_radius(const AcKernel kernel, const KernelAnalysisInfo* info)
 {
-	const auto info = get_kernel_analysis_info();
 	int3 min_radius = (int3){0,0,0};
 	int3 max_radius = (int3){0,0,0};
 	for(int stencil = 0; stencil < NUM_STENCILS; ++stencil)
 	{
-		if(kernel_calls_stencil(kernel,Stencil(stencil)))
+		if(kernel_calls_stencil(kernel,Stencil(stencil),info))
 		{
 			const auto [stencil_min_radius,stencil_max_radius] = get_stencil_dims(Stencil(stencil));
 			min_radius.x = std::min(stencil_min_radius.x,min_radius.x);
@@ -368,7 +351,7 @@ get_kernel_radius(const AcKernel kernel)
 	}
 	for(int ray = 0; ray < NUM_RAYS; ++ray)
 	{
-		if(kernel_calls_ray(kernel,AcRay(ray)))
+		if(kernel_calls_ray(kernel,AcRay(ray),info))
 		{
 			min_radius.x = std::min(-ray_directions[ray].x,min_radius.x);
 			min_radius.y = std::min(-ray_directions[ray].y,min_radius.y);
