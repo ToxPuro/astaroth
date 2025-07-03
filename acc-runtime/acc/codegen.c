@@ -9732,6 +9732,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   traverse(root, 0, NULL);
   gen_calling_info(root);
 }
+/**
 void
 gen_kfunc_info(const ASTNode* root)
 {
@@ -9740,6 +9741,7 @@ gen_kfunc_info(const ASTNode* root)
   get_nodes(root,&kfunc_nodes,&kfunc_names,NODE_KFUNCTION);
   gen_calling_info(root);
 }
+**/
 
 
 void
@@ -10447,6 +10449,43 @@ add_tracing_to_conditionals(ASTNode* node)
 	if(node->rhs->lhs->type & NODE_BEGIN_SCOPE)
 		astnode_sprintf_prefix(node->rhs->lhs,"{executed_nodes.push_back(%d);",node->id);
 }
+void
+generate_executed_nodes(ASTNode* root, bool gen_mem_accesses, FILE* stream)
+{
+  fflush(stream);
+  //This is used to eliminate known constexpr conditionals
+  //TP: for now set code elimination off
+  //bool eliminated_something = false;
+  bool eliminated_something = true;
+
+  int round = 0;
+    gen_constexpr_info(root,gen_mem_accesses);
+  while(eliminated_something)
+  {
+  ++round;
+  	clean_stream(stream);
+
+  symboltable_reset();
+    	traverse(root,
+   		NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
+       		NODE_HOSTDEFINE | NODE_NO_OUT,
+   	stream);
+  	fflush(stream);
+  	get_executed_nodes(round-1);
+  	eliminated_something = eliminate_conditionals(root,gen_mem_accesses);
+  gen_constexpr_info(root,gen_mem_accesses);
+  }
+  remove_dead_writes(root);
+
+  clean_stream(stream);
+  symboltable_reset();
+    traverse(root,
+   NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
+       NODE_HOSTDEFINE | NODE_NO_OUT,
+   stream);
+  fflush(stream);
+  get_executed_nodes(0);
+}
 
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool ELIMINATE_CONDITIONALS, const bool runtime_compilation)
@@ -10578,16 +10617,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_array_qualifiers(root);
 
   traverse(root,NODE_NO_OUT,NULL);
-  string_vec* stencils_called = gen_stencil_calling_info(root);
-  write_calling_info_for_stencilgen(stencils_called);
 
   // Stencils
-
-  // Stencil generator
-
-  // Compile
-  const bool optimize_mem_accesses = OPTIMIZE_MEM_ACCESSES && !runtime_compilation;
-  gen_stencils(gen_mem_accesses,optimize_mem_accesses,stream);
   check_for_undeclared_functions(root,root);
 
   traverse(root,NODE_NO_OUT,NULL);
@@ -10625,6 +10656,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   free_combinatorial_params_info(&info);
 
 
+  const bool optimize_mem_accesses = OPTIMIZE_MEM_ACCESSES && !runtime_compilation;
   if(!runtime_compilation)
   {
   	if(!gen_mem_accesses && executed_nodes.size > 0 && optimize_mem_accesses && ELIMINATE_CONDITIONALS)
@@ -10660,7 +10692,20 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	        fclose(fp);
   	        format_source("ac_minimized_code.ac.raw","ac_minimized_code.ac");
   	        printf("Wrote minimized code in ac_minimized_code.ac\n");
+
+  		//TP: these are redone after code elimination to get more accurate static information
+		gen_calling_info(root);
   	}
+
+	//TP: done after possible code elimination to have the most accurate static information
+        // Stencil generator
+        // Compile
+  	{
+  	  string_vec* stencils_called = gen_stencil_calling_info(root);
+  	  write_calling_info_for_stencilgen(stencils_called);
+  	}
+        gen_stencils(gen_mem_accesses,optimize_mem_accesses,stream);
+
   	//TP: done after code elimination for the code written to ac_minimized to be valid DSL
   	traverse(root, NODE_NO_OUT, NULL);
   	gen_kernel_postfixes(root,gen_mem_accesses);
@@ -10684,39 +10729,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	         stream);
   	if(gen_mem_accesses && ELIMINATE_CONDITIONALS)
   	{
-  	        fflush(stream);
-  	        //This is used to eliminate known constexpr conditionals
-  	        //TP: for now set code elimination off
-  	        //bool eliminated_something = false;
-  	        bool eliminated_something = true;
-
-  	        int round = 0;
-  		  gen_constexpr_info(root,gen_mem_accesses);
-  	        while(eliminated_something)
-  	        {
-  	      	++round;
-  	        	clean_stream(stream);
-
-  	      	symboltable_reset();
-  		  	traverse(root,
-  	         		NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
-  	             		NODE_HOSTDEFINE | NODE_NO_OUT,
-  	         	stream);
-  	        	fflush(stream);
-  	        	get_executed_nodes(round-1);
-  	        	eliminated_something = eliminate_conditionals(root,gen_mem_accesses);
-  	      	gen_constexpr_info(root,gen_mem_accesses);
-  	        }
-  	        remove_dead_writes(root);
-
-  	        clean_stream(stream);
-  	        symboltable_reset();
-  		  traverse(root,
-  	         NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
-  	             NODE_HOSTDEFINE | NODE_NO_OUT,
-  	         stream);
-  	        fflush(stream);
-  	        get_executed_nodes(0);
+		generate_executed_nodes(root,gen_mem_accesses,stream);
   	}
 
 
