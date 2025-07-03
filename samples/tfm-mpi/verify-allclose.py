@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# %%
 import pandas as pd
 import numpy as np
 import argparse
@@ -31,3 +32,22 @@ for col in first.columns:
         print(f'atol: {atol}')
         print(f'largest_abs_error: {largest_abs_error}')
         # assert(are_close)
+
+
+# %%
+import pandas as pd
+import numpy as np
+import argparse
+
+files = ['../../build/timeseries.csv', '../../build/timeseries.csv.nonsoca.turbulence.model']
+
+candidate = pd.read_csv(files[0])
+model = pd.read_csv(files[1])
+
+candidate = candidate[candidate['step'] == 2500]
+model = model[model['step'] == 2500]
+
+candidate.reset_index(drop=True, inplace=True)
+model.reset_index(drop=True, inplace=True)
+
+model.compare(candidate).max()
