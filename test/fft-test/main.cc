@@ -104,9 +104,12 @@ main(void)
     acGridExecuteTaskGraph(acGetDSLTaskGraph(fft_solve),1);
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
     acDeviceFFTR2C(acGridGetDevice(),HEAT_INIT,HEAT_COMPLEX);
+    acDeviceFFTR2Planar(acGridGetDevice(),HEAT_INIT,HEAT_PLANAR_REAL,HEAT_PLANAR_IMAG);
     AcMeshDims comp_dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridExecuteTaskGraph(acGetDSLTaskGraph(fft_solve),1);
+    acGridExecuteTaskGraph(acGetDSLTaskGraph(fft_planar_solve),1);
     acDeviceFFTC2R(acGridGetDevice(),HEAT_COMPLEX_SOLUTION,HEAT_SOLUTION);
+    acDeviceFFTC2R(acGridGetDevice(),HEAT_COMPLEX_PLANAR_SOLUTION,HEAT_PLANAR_SOLUTION);
     acDeviceFFTC2R(acGridGetDevice(),HEAT_COMPLEX,HEAT_FORWARD_AND_BACK);
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &model);

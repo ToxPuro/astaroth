@@ -89,6 +89,18 @@ utility Kernel AC_REAL_TO_COMPLEX(const real[] src, complex[] dst)
 	dst[vertexIdx.x].y = 0.0
 }
 
+utility Kernel AC_PLANAR_TO_COMPLEX(const real[] real_src, const real[] imag_src, complex[] dst)
+{
+	dst[vertexIdx.x].x = real_src[vertexIdx.x]
+	dst[vertexIdx.x].y = imag_src[vertexIdx.x]
+}
+
+utility Kernel AC_COMPLEX_TO_PLANAR(complex[] src, real[] real_dst, real[] imag_dst)
+{
+	real_dst[vertexIdx.x] = src[vertexIdx.x].x
+	imag_dst[vertexIdx.x] = src[vertexIdx.x].y
+}
+
 utility Kernel AC_MULTIPLY_INPLACE_COMPLEX(const real val, complex[] dst)
 {
 	dst[vertexIdx.x].x *= val

@@ -201,6 +201,33 @@ acDeviceFFTR2C(const Device device, const Field src, const ComplexField dst)
 }
 
 AcResult
+acDeviceFFTPlanar(const Device device, const Field real_src, const Field imag_src, const Field real_dst, const Field imag_dst)
+{
+	return acFFTForwardTransformPlanar(
+				device->vba.on_device.in[real_src],
+				device->vba.on_device.in[imag_src],
+				acGetLocalMM(device->local_config),	
+				acGetLocalNN(device->local_config),	
+				acGetMinNN(device->local_config),	
+				device->vba.on_device.in[real_dst],
+				device->vba.on_device.in[imag_dst]
+			);
+}
+
+AcResult
+acDeviceFFTR2Planar(const Device device, const Field src, const Field real_dst, const Field imag_dst)
+{
+	return acFFTForwardTransformR2Planar(
+				device->vba.on_device.in[src],
+				acGetLocalMM(device->local_config),	
+				acGetLocalNN(device->local_config),	
+				acGetMinNN(device->local_config),	
+				device->vba.on_device.in[real_dst],
+				device->vba.on_device.in[imag_dst]
+			);
+}
+
+AcResult
 acDeviceFFTC2R(const Device device, const ComplexField src, const Field dst)
 {
 	return acFFTBackwardTransformC2R(

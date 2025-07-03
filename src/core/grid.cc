@@ -3470,7 +3470,6 @@ ac_write_slice_metadata(const int step, const AcReal simulation_time)
 {
    if(ac_pid() == 0)
    {
-
          FILE* header_file = fopen("ac_slices_info.csv", step == 0 ? "w" : "a");
 
          // Header only at the step zero

@@ -452,7 +452,10 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(AcResult,acFFTForwardTransformSymmetricR2C,(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in));
 
-  FUNC_DEFINE(AcResult,acFFTForwardTransformR2C,(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in));
+  FUNC_DEFINE(AcResult,acFFTForwardTransformR2C,(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst));
+
+  FUNC_DEFINE(AcResult,acFFTForwardTransformPlanar,(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst));
+  FUNC_DEFINE(AcResult,acFFTForwardTransformR2Planar,(const AcReal* src,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst));
 
   FUNC_DEFINE(AcResult, acFFTBackwardTransformC2R,(const AcComplex* transformed_in, const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer));
 

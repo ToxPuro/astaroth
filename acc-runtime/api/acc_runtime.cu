@@ -646,6 +646,16 @@ ac_get_field_halos(const Field& field)
 #undef size
 #undef longlong
 
+template<typename T1, typename T2, typename T3>
+AcResult
+acLaunchKernelVariadic1d(AcKernel kernel, const cudaStream_t stream, const size_t start, const size_t end,T1 param1, T2 param2, T3 param3)
+{
+  const Volume volume_start = {start,0,0};
+  const Volume volume_end   = {end,1,1};
+  VertexBufferArray vba{};
+  acLoadKernelParams(vba.on_device.kernel_input_params,kernel,param1,param2,param3); 
+  return acLaunchKernel(kernel,stream,volume_start,volume_end,vba);
+}
 
 template<typename T1, typename T2>
 AcResult
@@ -878,6 +888,24 @@ acPBADestroy(ProfileBufferArray* pba, const AcMeshDims* dims)
 }
 
 AcResult
+acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* array)
+{
+  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE_COMPLEX,0,size_t(0),count,value,array);
+  ERRCHK_CUDA_KERNEL();
+  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
+  return AC_SUCCESS;
+}
+
+AcResult
+acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
+{
+  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE,0,size_t(0),count,value,array);
+  ERRCHK_CUDA_KERNEL();
+  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
+  return AC_SUCCESS;
+}
+
+AcResult
 acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
 
@@ -888,12 +916,11 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
     acKernelFlush(stream, vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
   }
 
-  const AcComplex zero_complex{0.0,0.0};
   for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
   {
     size_t n = vba->computational_dims.m1.x*vba->computational_dims.m1.y*vba->computational_dims.m1.z;
     ERRCHK_ALWAYS(vba->on_device.complex_in[field]);
-    acKernelFlush(stream, vba->on_device.complex_in[field],n,zero_complex);
+    acMultiplyInplaceComplex(0.,n,vba->on_device.complex_in[field]);
   }
   memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray
@@ -2609,24 +2636,25 @@ acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst)
   return AC_SUCCESS;
 }
 
-
 AcResult
-acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* array)
+acPlanarToComplex(const AcReal* real_src, const AcReal* imag_src,const size_t count, AcComplex* dst)
 {
-  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE_COMPLEX,0,size_t(0),count,value,array);
+  acLaunchKernelVariadic1d(AC_PLANAR_TO_COMPLEX,0,size_t(0),count,(AcReal*)real_src,(AcReal*)imag_src,dst);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
 }
 
 AcResult
-acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
+acComplexToPlanar(const AcComplex* src,const size_t count,AcReal* real_dst,AcReal* imag_dst)
 {
-  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE,0,size_t(0),count,value,array);
+  acLaunchKernelVariadic1d(AC_COMPLEX_TO_PLANAR,0,size_t(0),count,(AcComplex*)src,real_dst,imag_dst);
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
   return AC_SUCCESS;
 }
+
+
 #define TILE_DIM (32)
 
 void __global__ 
@@ -3336,14 +3364,52 @@ acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_si
 }
 
 AcResult
-acFFTForwardTransformR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
+acFFTForwardTransformR2C(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst) {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
     const size_t bytes = sizeof(AcComplex)*count;
     AcComplex* tmp = NULL;
     device_malloc(&tmp,bytes);
-    acRealToComplex(buffer,count,tmp);
-    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,transformed_in);
+    acRealToComplex(src,count,tmp);
+    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,dst);
     device_free(&tmp,0);
+    return AC_SUCCESS;
+}
+
+AcResult
+acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
+{
+    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    const size_t bytes = sizeof(AcComplex)*count;
+    AcComplex* tmp = NULL;
+    AcComplex* tmp2 = NULL;
+    device_malloc(&tmp,bytes);
+    device_malloc(&tmp2,bytes);
+
+    acRealToComplex(src,count,tmp);
+    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
+    acComplexToPlanar(tmp2,count,real_dst,imag_dst);
+
+    device_free(&tmp,0);
+    device_free(&tmp2,0);
+    return AC_SUCCESS;
+}
+
+AcResult
+acFFTForwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
+{
+    const size_t count = domain_size.x*domain_size.y*domain_size.z;
+    const size_t bytes = sizeof(AcComplex)*count;
+    AcComplex* tmp = NULL;
+    AcComplex* tmp2 = NULL;
+    device_malloc(&tmp,bytes);
+    device_malloc(&tmp2,bytes);
+
+    acPlanarToComplex(real_src,imag_src,count,tmp);
+    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
+    acComplexToPlanar(tmp,count,real_dst,imag_dst);
+
+    device_free(&tmp,0);
+    device_free(&tmp2,0);
     return AC_SUCCESS;
 }
 

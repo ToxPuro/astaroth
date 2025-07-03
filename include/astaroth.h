@@ -741,8 +741,6 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 
 #ifdef __cplusplus
 
-#if AC_RUNTIME_COMPILATION
-
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
@@ -859,6 +857,9 @@ acDeviceFinishReduce(Device device, const cudaStream_t stream, float* result,con
 	return acDeviceFinishReduceFloatStream(device,stream,result,kernel,reduce_op,output);
 }
 #endif
+
+#if AC_RUNTIME_COMPILATION
+
 
 #if AC_MPI_ENABLED
 

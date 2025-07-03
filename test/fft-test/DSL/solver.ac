@@ -2,9 +2,16 @@
 #include "$AC_HOME/acc-runtime/stdlib/math/fft.h"
 Field HEAT_INIT
 Field HEAT_SOLUTION
+Field HEAT_PLANAR_SOLUTION
 Field HEAT_FORWARD_AND_BACK
 Field HEAT_FREQUENCY_MAGNITUDE
+Field HEAT_PLANAR_FREQUENCY_MAGNITUDE
+
+Field HEAT_PLANAR_REAL
+Field HEAT_PLANAR_IMAG
+
 ComplexField HEAT_COMPLEX_SOLUTION
+ComplexField HEAT_COMPLEX_PLANAR_SOLUTION
 ComplexField HEAT_COMPLEX
 real AC_k = 1.0
 Kernel init_kernel()
@@ -17,8 +24,18 @@ Kernel fft_solve_kernel()
 {
 	const real3 k = get_wavevector()
 	const real k2 = dot(k,k)
-	write(HEAT_FREQUENCY_MAGNITUDE, sqrt(value(HEAT_COMPLEX).x*value(HEAT_COMPLEX).x + value(HEAT_COMPLEX).y*value(HEAT_COMPLEX).y))
-	write(HEAT_COMPLEX_SOLUTION,(k2  == 0.0) ? complex(0.0,0.0) : -(HEAT_COMPLEX/k2))
+	heat_complex = value(HEAT_COMPLEX)
+	write(HEAT_FREQUENCY_MAGNITUDE, sqrt(heat_complex.x*heat_complex.x + heat_complex.y*heat_complex.y))
+	write(HEAT_COMPLEX_SOLUTION,(k2  == 0.0) ? complex(0.0,0.0) : -(heat_complex/k2))
+}
+
+Kernel fft_planar_solve_kernel()
+{
+	const real3 k = get_wavevector()
+	const real k2 = dot(k,k)
+	heat_complex = complex(value(HEAT_PLANAR_REAL), value(HEAT_PLANAR_IMAG))
+	write(HEAT_PLANAR_FREQUENCY_MAGNITUDE, sqrt(heat_complex.x*heat_complex.x + heat_complex.y*heat_complex.y))
+	write(HEAT_COMPLEX_PLANAR_SOLUTION,(k2  == 0.0) ? complex(0.0,0.0) : -(heat_complex/k2))
 }
 
 BoundConds boundconds{
@@ -37,4 +54,10 @@ ComputeSteps
 fft_solve(boundconds)
 {
 	fft_solve_kernel()
+}
+
+ComputeSteps
+fft_planar_solve(boundconds)
+{
+	fft_planar_solve_kernel()
 }
