@@ -2082,7 +2082,7 @@ class Grid {
         const size_t num_compute_profiles{5 * 3};
         ERRCHK(nonlocal_tfm_profiles.size() ==
                num_compute_profiles); // TODO replace num profiles with num-compute_profiles
-        const size_t count{NUM_PROFILES * vba.profiles.count};
+        const size_t count{nonlocal_tfm_profiles.size() * vba.profiles.count};
         const ac::device_view<AcReal> dview{count, vba.profiles.in[0]};
 
         ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
@@ -2111,7 +2111,7 @@ class Grid {
         const size_t num_compute_profiles{5 * 3};
         ERRCHK(nonlocal_tfm_profiles.size() ==
                num_compute_profiles); // TODO replace num profiles with num-compute_profiles
-        const size_t count{NUM_PROFILES * vba.profiles.count};
+        const size_t count{nonlocal_tfm_profiles.size() * vba.profiles.count};
         const ac::device_view<AcReal> dview{count, vba.profiles.in[0]};
 
         ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
