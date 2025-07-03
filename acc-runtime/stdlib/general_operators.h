@@ -169,6 +169,32 @@ del2fi_dxjk(Field3 v)
 			hessian(v.z)
 		     )
 }
+get_d2A(Field3 v, Matrix m)
+{
+	Tensor res = del2fi_dxjk(v)
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		res[1][0][0] -= m[0][1]*AC_INV_R
+		res[1][0][1] -= m[1][1]*AC_INV_R
+		res[1][0][2] -= m[2][1]*AC_INV_R
+
+		res[2][0][0] -= m[0][2]*AC_INV_R
+		res[2][0][1] -= m[1][2]*AC_INV_R
+		res[2][0][2] -= m[2][2]*AC_INV_R
+
+		res[2][1][0] -= m[0][2]*AC_INV_R*AC_COT
+		res[2][1][1] -= m[1][2]*AC_INV_R*AC_COT
+		res[2][1][2] -= m[2][2]*AC_INV_R*AC_COT
+	}
+	else if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		res[2-1][1-1][0] -= m[0][1]*AC_INV_CYL_R
+		res[2-1][1-1][1] -= m[1][1]*AC_INV_CYL_R
+		res[2-1][1-1][2] -= m[2][1]*AC_INV_CYL_R
+	}
+
+	return res
+}
 get_d2A(Field3 v)
 {
 	Tensor res = del2fi_dxjk(v)
@@ -339,7 +365,17 @@ elemental ugrad_upw(Field3 field, real3 velo){
 del6_upwd(real3 velo,Field field)
 {
 
-        return dot(abs(velo),gradient_upwd(field))
+	real3 res = abs(velo)*gradient_upwd(field)
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		res.y *= AC_INV_R
+		res.z *= AC_INV_R*AC_INV_SIN_THETA
+	}
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		res.y *= AC_INV_CYL_R
+	}
+	return sum(res)
 }
 
 del6_upwd(real3 velo, Field3 field) {
@@ -516,6 +552,23 @@ traceless_rateof_strain(Field3 v) {
     S[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
 
     return S
+}
+
+gradient_of_divergence(Field3 v,Matrix m) {
+    d2A = get_d2A(v,m)
+    graddiv =
+    real3(
+        d2A[0][0][0] + d2A[1][0][1] + d2A[2][0][2],
+        d2A[0][1][0] + d2A[1][1][1] + d2A[2][1][2],
+        d2A[0][2][0] + d2A[1][2][1] + d2A[2][2][2]
+    )
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+        graddiv.x += m[0][0]*AC_INV_R*2+m[1][0]*AC_INV_R*AC_COT-v.y*(AC_INV_R*AC_INV_R)*AC_COT-v.x*(AC_INV_R*AC_INV_R)*2
+        graddiv.y += m[0][1]*AC_INV_R*2+m[1][1]*AC_INV_R*AC_COT-v.y*(AC_INV_R*AC_INV_R)*(AC_INV_SIN_THETA*AC_INV_SIN_THETA)
+        graddiv.z += m[0][2]*AC_INV_R*2+m[1][2]*AC_INV_R*AC_COT
+    }
+    return graddiv
 }
 
 gradient_of_divergence(Field3 v) {
