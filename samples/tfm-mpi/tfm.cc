@@ -603,7 +603,7 @@ reduce_scal(const MPI_Comm& comm, const Device& device, const ReductionType& rty
 static int
 write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
                      const AcReal simulation_time, const AcReal dt, const Field& a, const Field& b,
-                     const Field& c, const std::string& label)
+                     const Field& c, const std::string& label, const std::string& ts_path)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -628,7 +628,7 @@ write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const si
                     static_cast<double>(vmax),
                     static_cast<double>(vavg));
 
-        FILE* fp{fopen("timeseries.csv", "a")};
+        FILE* fp{fopen(ts_path.c_str(), "a")};
         ERRCHK_MPI(fp != NULL);
         std::fprintf(fp,
                      "%s,%zu,%e,%e,%e,%e,%e,%e\n",
@@ -649,7 +649,8 @@ write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const si
 // Format std::printf("label, step, t_step, dt, min, rms, max\n");
 static int
 write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
-                      const AcReal simulation_time, const AcReal dt, const Field& field)
+                      const AcReal simulation_time, const AcReal dt, const Field& field,
+                      const std::string& ts_path)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -674,7 +675,7 @@ write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const s
                     static_cast<double>(vmax),
                     static_cast<double>(vavg));
 
-        FILE* fp{fopen("timeseries.csv", "a")};
+        FILE* fp{fopen(ts_path.c_str(), "a")};
         ERRCHK_MPI(fp != NULL);
         std::fprintf(fp,
                      "%s,%zu,%e,%e,%e,%e,%e,%e\n",
@@ -694,7 +695,7 @@ write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const s
 
 static int
 write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
-                 const AcReal simulation_time, const AcReal dt)
+                 const AcReal simulation_time, const AcReal dt, const std::string& ts_path)
 {
     PRINT_LOG_DEBUG("Enter");
 
@@ -748,7 +749,8 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
                              vecfields[i][0],
                              vecfields[i][1],
                              vecfields[i][2],
-                             vecfield_names[i]);
+                             vecfield_names[i],
+                             ts_path);
 
     for (size_t i{0}; i < NUM_FIELDS; ++i)
         write_scal_timeseries(parent_comm,
@@ -756,7 +758,8 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
                               step,
                               simulation_time,
                               dt,
-                              static_cast<Field>(i));
+                              static_cast<Field>(i),
+                              ts_path);
 
     return 0;
 }
@@ -1000,10 +1003,10 @@ struct arguments {
 } // namespace tfm
 
 static void
-reset_timeseries()
+reset_timeseries(const std::string& ts_path)
 {
     if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-        FILE* fp{fopen("timeseries.csv", "w")};
+        FILE* fp{fopen(ts_path.c_str(), "w")};
         ERRCHK_MPI(fp != NULL);
         std::fprintf(fp, "label,step,t_step,dt,min,rms,max,avg\n");
         ERRCHK_MPI(fclose(fp) == 0);
@@ -1107,17 +1110,6 @@ print(const State& state)
     PRINT_DEBUG(state.latest_snapshot);
 }
 } // namespace SimulationState
-
-namespace Timeseries {
-constexpr auto default_path{"timeseries.csv"};
-
-static bool
-exists(const std::string& path = default_path)
-{
-    return std::filesystem::exists(path);
-}
-
-} // namespace Timeseries
 
 namespace Snapshot {
 constexpr const char* postfix{".snapshot"};
@@ -1640,7 +1632,7 @@ class Grid {
         PRINT_LOG_TRACE("Exit");
     }
 
-    void io_step(const std::vector<Field>& restart_fields)
+    void io_step(const std::vector<Field>& restart_fields, const std::string& ts_path)
     {
         PRINT_LOG_TRACE("Enter %d", ac::mpi::get_rank(m_comm.get()));
 
@@ -1662,7 +1654,8 @@ class Grid {
                              m_device.get(),
                              as<size_t>(current_step),
                              current_time,
-                             current_dt);
+                             current_dt,
+                             ts_path);
 
         if ((current_step % snapshot_output_interval) == 0)
             flush_snapshots_to_disk(restart_fields);
@@ -1674,6 +1667,8 @@ class Grid {
     {
         PRINT_LOG_TRACE("Enter %d", ac::mpi::get_rank(m_comm.get()));
 
+        constexpr auto ts_path{"timeseries.csv"};
+
         auto restart_fields{hydro_fields};
         restart_fields.insert(restart_fields.end(), tfm_fields.begin(), tfm_fields.end());
         if (SimulationState::exists()) {
@@ -1683,11 +1678,11 @@ class Grid {
         }
         else {
             // Start a new run
-            reset_timeseries();
+            reset_timeseries(ts_path);
             ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
 
             SimulationState::push_state_to_device(m_device.get(), SimulationState::State{});
-            io_step(restart_fields);
+            io_step(restart_fields, ts_path);
         }
         SimulationState::print(SimulationState::pull_state(ac::get_info(m_device.get())));
 
@@ -1707,7 +1702,7 @@ class Grid {
                 reset_fields(m_device.get(), tfm_fields, BufferGroup::input);
 
             tfm_pipeline(1);
-            io_step(restart_fields);
+            io_step(restart_fields, ts_path);
         }
         PRINT_LOG_TRACE("Exiting simulation loop %d", ac::mpi::get_rank(m_comm.get()));
 
@@ -1784,8 +1779,11 @@ class Grid {
             }
         }
 
-        // Print timeseries.csv for a sanity check
-        reset_timeseries();
+        // Print timeseries for a sanity check
+        const std::string ts_path{"timeseries-" + std::to_string(args.job_id) + "-" +
+                                  std::to_string(ac::mpi::get_rank(MPI_COMM_WORLD)) + "-" +
+                                  args.benchmark_name + ".csv"};
+        reset_timeseries(ts_path);
         const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
         const auto current_time{ac::pull_param(m_device.get(), AC_current_time)};
         const auto current_dt{ac::pull_param(m_device.get(), AC_dt)};
@@ -1793,7 +1791,8 @@ class Grid {
                          m_device.get(),
                          as<size_t>(current_step),
                          current_time,
-                         current_dt);
+                         current_dt,
+                         ts_path);
     }
 
     void write_rank_ordering_to_disk(const tfm::arguments& args)
