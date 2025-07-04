@@ -14,9 +14,8 @@ def gen_sbatch_preamble(nprocs, devices_per_node, account, time_limit, partition
 #SBATCH --nodes={nnodes}
 """
 
-def gen_srun_command(command, cpu_bind):
-    srun = f"srun --cpu-bind={cpu_bind}" if cpu_bind else "srun"
-    return f"{srun} {command}"
+def gen_srun_command(cpu_bind = ""):
+    return f'srun --cpu-bind="{cpu_bind}"' if cpu_bind else "srun"
 
 def gen_run_information():
     return """
@@ -54,11 +53,11 @@ class System:
                self.env_vars + \
                gen_run_information()
     
-    def gen_srun_command(self, nprocs, command):
+    def gen_srun_command(self, nprocs):
         if nprocs >= self.devices_per_node:
-            return gen_srun_command(command, self.cpu_bind)
+            return gen_srun_command(self.cpu_bind)
         else:
-            return gen_srun_command(command, "")
+            return gen_srun_command()
 
 
 lumi = System(
@@ -80,13 +79,13 @@ module load craype-accel-amd-gfx90a # Must be loaded after LUMI/24.03
 # Environment variables
 export MPICH_GPU_SUPPORT_ENABLED=1
 """,
-    cpu_bind = '"map_cpu:33,41,49,57,17,25,1,9"',
+    cpu_bind = "map_cpu:33,41,49,57,17,25,1,9",
 )
 
 def gen_tfm_benchmark(system, nprocs, time_limit, config, nn, label):
     return system.gen_preamble(nprocs, time_limit) + \
            gen_run_information_tfm(config, label) + \
-           system.gen_srun_command(nprocs, gen_run_command_tfm(config, nn, label))
+           f'{system.gen_srun_command(nprocs)} {gen_run_command_tfm(config, nn, label)}'
 
 def gen_weak_scaling_benchmarks(system, max_nprocs):
     
@@ -119,3 +118,69 @@ def gen_strong_scaling_benchmarks(system, max_nprocs):
 
 gen_weak_scaling_benchmarks(lumi, 4096)
 gen_strong_scaling_benchmarks(lumi, 256)
+
+
+# import numpy as np
+# import copy
+
+# def gen_weak_scaling_grid_dim_map(nn, max_nprocs):
+#     dims = [copy.deepcopy(nn)]
+
+#     axis = len(nn) - 1
+    
+#     nprocs = 1
+#     while nprocs <= max_nprocs:
+#         nprocs *= 2
+#         nn[axis] *= 2
+#         dims += copy.deepcopy([nn])
+#         axis = (axis + len(nn) - 1) % len(nn)
+    
+#     return dims
+
+
+# def gen_trace_profiler_command_rocm(rocprof_wrapper):
+#     return f"{rocprof_wrapper} --hip-trace --trace-start off"
+
+# def gen_tfm_profile_benchmark(system, nprocs, time_limit, config, nn, label, rocprof_wrapper):
+#     return system.gen_preamble(nprocs, time_limit) + \
+#            gen_run_information_tfm(config, label) + \
+#            f'{lumi.gen_srun_command(nprocs)} {gen_trace_profiler_command_rocm(rocprof_wrapper)} {gen_run_command_tfm(config, nn, label)}'
+
+# def gen_profiling_benchmarks(system, proc_counts):
+#     initial_nn = [256,256,256]
+#     time_limit = "00:15:00"
+#     config = "/users/pekkila/astaroth/samples/tfm/mhd/mhd.ini"
+#     rocprof_wrapper = "/users/pekkila/astaroth/samples/tfm-mpi/rocprof-wrapper.sh"
+#     label = "prof"
+
+#     for nprocs in proc_counts:
+#         nn = initial_nn
+#         axis = len(nn) - 1
+#         if np.prod(initial_nn) < np.prod(nn):
+#             nn[axis] *= 2
+#             axis = (axis + len(nn) - 1) % len(nn)
+#         assert(np.prod(initial_nn) == np.prod(nn))
+
+#         with open(f'bm-{label}-{nprocs}.sh', 'w') as f:
+#            print(gen_tfm_profile_benchmark(system, nprocs, time_limit, config, nn, label, rocprof_wrapper), file=f)
+#         nprocs *= 2
+        
+
+# gen_profiling_benchmarks(lumi, [1, 8])
+# print(gen_weak_scaling_grid_dim_map([128,128,128], 64))
+
+# # %%
+# import numpy as np
+# print("hello")
+
+# max_power = 13
+# proc_counts = [2**i for i in range(max_power)]
+# print(proc_counts)
+
+# for nprocs in proc_counts:
+
+
+# #while nprocs <= max_nprocs:
+
+
+# /users/pekkila/astaroth/samples/tfm-mpi/rocprof-wrapper.sh --hip-trace --trace-start off
