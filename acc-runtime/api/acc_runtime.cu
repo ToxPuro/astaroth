@@ -603,6 +603,7 @@ acGetRealScratchpadSize(const size_t i)
 #define size(arr) (int)(sizeof(arr) / sizeof(arr[0])) // Leads to bugs if the user
 #define error_message(error,message) 
 #define fatal_error_message(error,message) 
+#define ac_dummy_write(field,x,y,z) 
 
 __device__
 AcReal

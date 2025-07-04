@@ -22,6 +22,25 @@ inline get_boundary(int3 normal)
 		     : vertexIdx.z;
 	return (int3){x,y,z}
 }
+elemental ac_fixed_bc(AcBoundary boundary, Field f)
+{
+	const int3 normal = get_normal(boundary)
+	const int3 boundary_point = get_boundary(normal)
+	int3 domain = boundary_point
+	int3 ghost  = boundary_point
+	const int3 field_halos = ac_get_field_halos(f)
+	const int nghost_local = 
+			normal.x != 0 ? field_halos.x :
+			normal.y != 0 ? field_halos.y :
+			field_halos.z
+
+	for i in 0:nghost_local
+	{
+		domain = domain - normal
+		ghost  = ghost  + normal
+		ac_dummy_write(f,ghost.x,ghost.y,ghost.z)
+	}
+}
 
 elemental ac_bc_sym(AcBoundary boundary, Field f, int bc_sign)
 {
@@ -29,9 +48,13 @@ elemental ac_bc_sym(AcBoundary boundary, Field f, int bc_sign)
 	const int3 boundary_point = get_boundary(normal)
 	int3 domain = boundary_point
 	int3 ghost  = boundary_point
+	const int3 field_halos = ac_get_field_halos(f)
+	const int nghost_local = 
+			normal.x != 0 ? field_halos.x :
+			normal.y != 0 ? field_halos.y :
+			field_halos.z
 
-	const int nghost = ac_get_field_halos(f).x
-	for i in 0:nghost
+	for i in 0:nghost_local
 	{
 		domain = domain - normal
 		ghost  = ghost  + normal
@@ -48,21 +71,6 @@ elemental ac_bc_sym(AcBoundary boundary, Field f)
 	ac_bc_sym(boundary,f,1)
 }
 
-elemental ac_fixed_bc(AcBoundary boundary, Field f)
-{
-	const int3 normal = get_normal(boundary)
-	const int3 boundary_point = get_boundary(normal)
-	int3 domain = boundary_point
-	int3 ghost  = boundary_point
-
-	const int nghost = ac_get_field_halos(f).x
-	for i in 0:nghost
-	{
-		domain = domain - normal
-		ghost  = ghost  + normal
-		f[ghost.x][ghost.y][ghost.z] = f[ghost.x][ghost.y][ghost.z];
-	}
-}
 utility Kernel BOUNDCOND_SYMMETRIC(Field f)
 {
 	ac_bc_sym(BOUNDARY_XYZ,f,1)

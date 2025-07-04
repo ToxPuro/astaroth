@@ -604,6 +604,13 @@ mark_as_written(const Field3& field, const int x, const int y, const int z)
 	mark_as_written(field.z,x,y,z);
 }
 
+void
+ac_dummy_write(const Field& field, const int x, const int y, const int z)
+{
+	mark_as_written(field, x,y,z);
+	written_fields[field] |= AC_WRITE_TO_INPUT;
+}
+
 
 void
 AC_INTERNAL_write_vtxbuf(const Field& field, const int x, const int y, const int z, const AcReal&)
@@ -896,47 +903,56 @@ execute_kernel(const int kernel_index)
     current_kernel = (AcKernel)kernel_index;
     kernel((int3){0, 0, 0}, (int3){1, 1, 1}, VBA.on_device);
 }
+int3
+get_ghosts()
+{
+	return (int3)
+	{
+		d_mesh_info[AC_nmin]
+	};
+}
 void
 execute_kernel(const AcKernel kernel_index, const AcBoundary boundary)
 {
 
+	const int3 ghosts = get_ghosts();
 	reset_info_arrays();
         current_kernel = (AcKernel)kernel_index;
     	const Kernel kernel = kernels[kernel_index];
 	if(BOUNDARY_X_BOT & boundary)
 	{
-		int3 start = (int3){0,NGHOST,NGHOST};
+		int3 start = (int3){0,ghosts.x,ghosts.y};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA.on_device);
 	}
 
 	if(BOUNDARY_X_TOP & boundary)
 	{
-		int3 start = (int3){VAL(AC_nlocal).x+NGHOST, NGHOST, NGHOST};
+		int3 start = (int3){VAL(AC_nlocal).x+ghosts.x, ghosts.y, ghosts.z};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA.on_device);
 	}
 	if(BOUNDARY_Y_BOT & boundary)
 	{
-		int3 start = (int3){NGHOST, 0, NGHOST};
+		int3 start = (int3){ghosts.x, 0, ghosts.z};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA.on_device);
 	}
 	if(BOUNDARY_Y_TOP & boundary)
 	{
-		int3 start = (int3){NGHOST, VAL(AC_nlocal).y+NGHOST, NGHOST};
+		int3 start = (int3){ghosts.x, VAL(AC_nlocal).y+ghosts.y, ghosts.z};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA.on_device);
 	}
 	if(BOUNDARY_Z_BOT  & boundary)
 	{
-		int3 start = (int3){NGHOST, NGHOST, 0};
+		int3 start = (int3){ghosts.x, ghosts.y, 0};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA.on_device);
 	}
 	if(BOUNDARY_Z_TOP & boundary)
 	{
-		int3 start = (int3){NGHOST, NGHOST, VAL(AC_nlocal).z+NGHOST};
+		int3 start = (int3){ghosts.x, ghosts.y, VAL(AC_nlocal).z+ghosts.z};
 		int3 end   = start + (int3){1,1,1};
     		kernel(start,end,VBA.on_device);
 	}
