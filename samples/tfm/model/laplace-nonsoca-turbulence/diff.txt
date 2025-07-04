@@ -1,0 +1,207 @@
+diff --git a/acc-comm/benchmarks/bm_plot.py b/acc-comm/benchmarks/bm_plot.py
+index 4904bc42..078dc36e 100644
+--- a/acc-comm/benchmarks/bm_plot.py
++++ b/acc-comm/benchmarks/bm_plot.py
+@@ -193,7 +193,7 @@ ns / 1e6 / 100
+ # %%
+ import matplotlib.pyplot as plt
+ import pandas as pd
+-files = [f'{outdir}/bm-tfm-mpi-0-122191-0.csv', f'{outdir}/bm-tfm-mpi-0-31510-0.csv']
++files = [f'{outdir}/bm-tfm-mpi-11632482-0.csv', f'{outdir}/bm-tfm-mpi-11632866-0.csv']
+ df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
+ 
+ df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
+diff --git a/acc-comm/benchmarks/gen-scaling-benchmarks.py b/acc-comm/benchmarks/gen-scaling-benchmarks.py
+index 61c2549e..63916a11 100755
+--- a/acc-comm/benchmarks/gen-scaling-benchmarks.py
++++ b/acc-comm/benchmarks/gen-scaling-benchmarks.py
+@@ -14,9 +14,8 @@ def gen_sbatch_preamble(nprocs, devices_per_node, account, time_limit, partition
+ #SBATCH --nodes={nnodes}
+ """
+ 
+-def gen_srun_command(command, cpu_bind):
+-    srun = f"srun --cpu-bind={cpu_bind}" if cpu_bind else "srun"
+-    return f"{srun} {command}"
++def gen_srun_command(cpu_bind = ""):
++    return f'srun --cpu-bind="{cpu_bind}"' if cpu_bind else "srun"
+ 
+ def gen_run_information():
+     return """
+@@ -54,11 +53,11 @@ class System:
+                self.env_vars + \
+                gen_run_information()
+     
+-    def gen_srun_command(self, nprocs, command):
++    def gen_srun_command(self, nprocs):
+         if nprocs >= self.devices_per_node:
+-            return gen_srun_command(command, self.cpu_bind)
++            return gen_srun_command(self.cpu_bind)
+         else:
+-            return gen_srun_command(command, "")
++            return gen_srun_command()
+ 
+ 
+ lumi = System(
+@@ -80,13 +79,13 @@ module load craype-accel-amd-gfx90a # Must be loaded after LUMI/24.03
+ # Environment variables
+ export MPICH_GPU_SUPPORT_ENABLED=1
+ """,
+-    cpu_bind = '"map_cpu:33,41,49,57,17,25,1,9"',
++    cpu_bind = "map_cpu:33,41,49,57,17,25,1,9",
+ )
+ 
+ def gen_tfm_benchmark(system, nprocs, time_limit, config, nn, label):
+     return system.gen_preamble(nprocs, time_limit) + \
+            gen_run_information_tfm(config, label) + \
+-           system.gen_srun_command(nprocs, gen_run_command_tfm(config, nn, label))
++           f'{system.gen_srun_command(nprocs)} {gen_run_command_tfm(config, nn, label)}'
+ 
+ def gen_weak_scaling_benchmarks(system, max_nprocs):
+     
+@@ -118,4 +117,70 @@ def gen_strong_scaling_benchmarks(system, max_nprocs):
+         nprocs *= 2
+ 
+ gen_weak_scaling_benchmarks(lumi, 4096)
+-gen_strong_scaling_benchmarks(lumi, 256)
+\ No newline at end of file
++gen_strong_scaling_benchmarks(lumi, 256)
++
++
++# import numpy as np
++# import copy
++
++# def gen_weak_scaling_grid_dim_map(nn, max_nprocs):
++#     dims = [copy.deepcopy(nn)]
++
++#     axis = len(nn) - 1
++    
++#     nprocs = 1
++#     while nprocs <= max_nprocs:
++#         nprocs *= 2
++#         nn[axis] *= 2
++#         dims += copy.deepcopy([nn])
++#         axis = (axis + len(nn) - 1) % len(nn)
++    
++#     return dims
++
++
++# def gen_trace_profiler_command_rocm(rocprof_wrapper):
++#     return f"{rocprof_wrapper} --hip-trace --trace-start off"
++
++# def gen_tfm_profile_benchmark(system, nprocs, time_limit, config, nn, label, rocprof_wrapper):
++#     return system.gen_preamble(nprocs, time_limit) + \
++#            gen_run_information_tfm(config, label) + \
++#            f'{lumi.gen_srun_command(nprocs)} {gen_trace_profiler_command_rocm(rocprof_wrapper)} {gen_run_command_tfm(config, nn, label)}'
++
++# def gen_profiling_benchmarks(system, proc_counts):
++#     initial_nn = [256,256,256]
++#     time_limit = "00:15:00"
++#     config = "/users/pekkila/astaroth/samples/tfm/mhd/mhd.ini"
++#     rocprof_wrapper = "/users/pekkila/astaroth/samples/tfm-mpi/rocprof-wrapper.sh"
++#     label = "prof"
++
++#     for nprocs in proc_counts:
++#         nn = initial_nn
++#         axis = len(nn) - 1
++#         if np.prod(initial_nn) < np.prod(nn):
++#             nn[axis] *= 2
++#             axis = (axis + len(nn) - 1) % len(nn)
++#         assert(np.prod(initial_nn) == np.prod(nn))
++
++#         with open(f'bm-{label}-{nprocs}.sh', 'w') as f:
++#            print(gen_tfm_profile_benchmark(system, nprocs, time_limit, config, nn, label, rocprof_wrapper), file=f)
++#         nprocs *= 2
++        
++
++# gen_profiling_benchmarks(lumi, [1, 8])
++# print(gen_weak_scaling_grid_dim_map([128,128,128], 64))
++
++# # %%
++# import numpy as np
++# print("hello")
++
++# max_power = 13
++# proc_counts = [2**i for i in range(max_power)]
++# print(proc_counts)
++
++# for nprocs in proc_counts:
++
++
++# #while nprocs <= max_nprocs:
++
++
++# /users/pekkila/astaroth/samples/tfm-mpi/rocprof-wrapper.sh --hip-trace --trace-start off
+\ No newline at end of file
+diff --git a/samples/tfm-mpi/verify-allclose.py b/samples/tfm-mpi/verify-allclose.py
+index 29b25f57..f006aebe 100755
+--- a/samples/tfm-mpi/verify-allclose.py
++++ b/samples/tfm-mpi/verify-allclose.py
+@@ -39,13 +39,21 @@ import pandas as pd
+ import numpy as np
+ import argparse
+ 
+-files = ['../../build/timeseries.csv', '../../build/timeseries.csv.nonsoca.turbulence.model']
++#files = ['../../build/timeseries.csv', '../../build/timeseries.csv.nonsoca.turbulence.model']
++#files = ['../../build/timeseries-1-0-default.csv', '../../build/timeseries.csv.model']
++#files = ['../../build/timeseries-0-0-default.csv', '../../build/timeseries.csv']
++files = ['../../build/timeseries-0-0-default.csv', '../../samples/tfm/model/laplace-nonsoca-turbulence.csv']
++#files = ['../../build/timeseries-0-0-default.csv', '../../samples/tfm/model/laplace-soca-roberts.csv']
++
+ 
+ candidate = pd.read_csv(files[0])
+ model = pd.read_csv(files[1])
+ 
+-candidate = candidate[candidate['step'] == 2500]
+-model = model[model['step'] == 2500]
++# Compare the last step
++step_to_compare = candidate['step'].unique().max()
++
++candidate = candidate[candidate['step'] == step_to_compare]
++model = model[model['step'] == step_to_compare]
+ 
+ candidate.reset_index(drop=True, inplace=True)
+ model.reset_index(drop=True, inplace=True)
+diff --git a/samples/tfm/bfield-init-function-test.py b/samples/tfm/bfield-init-function-test.py
+index 4ab59784..42e4e9d9 100644
+--- a/samples/tfm/bfield-init-function-test.py
++++ b/samples/tfm/bfield-init-function-test.py
+@@ -49,7 +49,7 @@ x, y = np.meshgrid(z, z)
+ 
+ # Setup data
+ amplitude = 1
+-wavenumber = 2
++wavenumber = 1
+ ux = amplitude * -np.cos(wavenumber * x) * np.sin(wavenumber * y)
+ uy = amplitude * np.sin(wavenumber * x) * np.cos(wavenumber * y)
+ uz = amplitude * np.sqrt(2) * np.cos(wavenumber * x) * np.cos(wavenumber * y)
+@@ -85,6 +85,30 @@ uzc = uz[radius:-radius, radius:-radius]
+ urms = np.sqrt(np.sum((uxc**2 + uyc**2 + uzc**2))/nz**2)
+ assert(np.allclose(urms, 1))
+ 
++# %%
++xc, yc = np.meshgrid(z[radius:-radius],z[radius:-radius])
++chi_uukin = 45.
++dtor = np.pi/180
++ampl_kinflow = 1
++del_uukin = 0
++fac = ampl_kinflow*np.cos(chi_uukin*dtor)*np.sqrt(2)
++fac2 = ampl_kinflow*np.sin(chi_uukin*dtor)*2.
++dell = del_uukin*dtor
++kx_uukin = 1
++ky_uukin = 1
++
++puxc = -fac*np.cos(kx_uukin*xc    )*np.sin(ky_uukin*yc    )
++puyc = +fac*np.sin(kx_uukin*xc    )*np.cos(ky_uukin*yc    )
++puzc = fac2*np.cos(kx_uukin*xc+dell)*np.cos(ky_uukin*yc+dell)
++print(f'x: {puxc}')
++print(f'y: {puyc}')
++print(f'z: {puzc}')
++plt.imshow(puxc)
++plt.show()
++plt.imshow(puyc)
++plt.show()
++plt.imshow(puzc)
++plt.show()
+ 
+ # %%
+ 

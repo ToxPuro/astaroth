@@ -39,13 +39,21 @@ import pandas as pd
 import numpy as np
 import argparse
 
-files = ['../../build/timeseries.csv', '../../build/timeseries.csv.nonsoca.turbulence.model']
+#files = ['../../build/timeseries.csv', '../../build/timeseries.csv.nonsoca.turbulence.model']
+#files = ['../../build/timeseries-1-0-default.csv', '../../build/timeseries.csv.model']
+#files = ['../../build/timeseries-0-0-default.csv', '../../build/timeseries.csv']
+#files = ['../../build/timeseries-0-0-default.csv', '../../samples/tfm/model/laplace-nonsoca-turbulence/timeseries.csv']
+files = ['../../build/timeseries-0-0-default.csv', '../../samples/tfm/model/laplace-soca-roberts/timeseries.csv']
+
 
 candidate = pd.read_csv(files[0])
 model = pd.read_csv(files[1])
 
-candidate = candidate[candidate['step'] == 2500]
-model = model[model['step'] == 2500]
+# Compare the last step
+step_to_compare = candidate['step'].unique().max()
+
+candidate = candidate[candidate['step'] == step_to_compare]
+model = model[model['step'] == step_to_compare]
 
 candidate.reset_index(drop=True, inplace=True)
 model.reset_index(drop=True, inplace=True)
