@@ -117,7 +117,7 @@ def gen_strong_scaling_benchmarks(system, max_nprocs):
         nprocs *= 2
 
 gen_weak_scaling_benchmarks(lumi, 4096)
-gen_strong_scaling_benchmarks(lumi, 256)
+gen_strong_scaling_benchmarks(lumi, 512)
 
 
 # import numpy as np
