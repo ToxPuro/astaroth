@@ -344,7 +344,8 @@ calc_timestep(const AcReal uumax, const AcReal vAmax, const AcReal shock_max, co
     const long double uu_dt = cdt * dsmin /
                               (fabsl((long double)uumax) +
                                sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
-    const long double visc_dt = cdtv * dsmin * dsmin / (max(max(nu_visc, max(eta, eta_tfm)), gamma * chi));
+    const long double visc_dt = cdtv * dsmin * dsmin /
+                                (max(max(nu_visc, max(eta, eta_tfm)), gamma * chi));
     //+ nu_shock * (long double)shock_max);
 
     const long double dt = min(uu_dt, visc_dt);
