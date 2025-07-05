@@ -765,37 +765,37 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
 }
 
 /** Calculate the timestep length and distribute it to all devices in the grid */
-static AcReal
-calc_and_distribute_timestep(const MPI_Comm& comm, const Device& device)
-{
-    PRINT_LOG_DEBUG("Enter");
-    // VertexBufferArray vba{};
-    // ERRCHK_AC(acDeviceGetVBA(device, &vba));
+// static AcReal
+// calc_and_distribute_timestep(const MPI_Comm& comm, const Device& device)
+// {
+//     PRINT_LOG_DEBUG("Enter");
+//     // VertexBufferArray vba{};
+//     // ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
-    AcMeshInfo info{};
-    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+//     AcMeshInfo info{};
+//     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
-    AcReal uumax{0};
-    AcReal vAmax{0};
-    AcReal shock_max{0};
+//     AcReal uumax{0};
+//     AcReal vAmax{0};
+//     AcReal shock_max{0};
 
-    static bool warning_shown{false};
-    if (!warning_shown) {
-        WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
-        warning_shown = true;
-    }
+//     static bool warning_shown{false};
+//     if (!warning_shown) {
+//         WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
+//         warning_shown = true;
+//     }
 
-    ERRCHK_AC(acDeviceReduceVec(device,
-                                STREAM_DEFAULT,
-                                RTYPE_MAX,
-                                VTXBUF_UUX,
-                                VTXBUF_UUY,
-                                VTXBUF_UUZ,
-                                &uumax));
-    ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, &uumax, 1, AC_REAL_MPI_TYPE, MPI_MAX, comm));
+//     ERRCHK_AC(acDeviceReduceVec(device,
+//                                 STREAM_DEFAULT,
+//                                 RTYPE_MAX,
+//                                 VTXBUF_UUX,
+//                                 VTXBUF_UUY,
+//                                 VTXBUF_UUZ,
+//                                 &uumax));
+//     ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, &uumax, 1, AC_REAL_MPI_TYPE, MPI_MAX, comm));
 
-    return calc_timestep(uumax, vAmax, shock_max, info);
-}
+//     return calc_timestep(uumax, vAmax, shock_max, info);
+// }
 
 /**
  * Experimental: Partition the domain into segments based on the segment group.
@@ -1314,7 +1314,7 @@ class Grid {
     // ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg{}; // iallreduce with
     // device buffers not supported on Mahti. TODO switch back on for LUMI.
     ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_xy_avg{};
-    ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce{};
+    ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_dtmax_reduce{};
 
     AcMeshInfo m_initial_info{};
 
@@ -1461,10 +1461,8 @@ class Grid {
         PRINT_LOG_TRACE("End");
     }
 
-    void launch_uumax_reduce()
+    void launch_dtmax_reduce()
     {
-        PRINT_LOG_TRACE("Start");
-
         AcReal uumax{0};
         ERRCHK_AC(acDeviceReduceVec(m_device.get(),
                                     STREAM_DEFAULT,
@@ -1473,35 +1471,79 @@ class Grid {
                                     VTXBUF_UUY,
                                     VTXBUF_UUZ,
                                     &uumax));
-        m_uumax_reduce.launch(m_comm.get(), ac::host_view<AcReal>{1, &uumax}, MPI_MAX);
 
-        PRINT_LOG_TRACE("End");
+        AcReal vAmax11{0};
+        ERRCHK_AC(acDeviceReduceVecScal(m_device.get(),
+                                        STREAM_DEFAULT,
+                                        RTYPE_ALFVEN_MAX,
+                                        TF_bb11_x,
+                                        TF_bb11_y,
+                                        TF_bb11_z,
+                                        VTXBUF_LNRHO,
+                                        &vAmax11));
+
+        AcReal vAmax12{0};
+        ERRCHK_AC(acDeviceReduceVecScal(m_device.get(),
+                                        STREAM_DEFAULT,
+                                        RTYPE_ALFVEN_MAX,
+                                        TF_bb12_x,
+                                        TF_bb12_y,
+                                        TF_bb12_z,
+                                        VTXBUF_LNRHO,
+                                        &vAmax12));
+
+        AcReal vAmax21{0};
+        ERRCHK_AC(acDeviceReduceVecScal(m_device.get(),
+                                        STREAM_DEFAULT,
+                                        RTYPE_ALFVEN_MAX,
+                                        TF_bb21_x,
+                                        TF_bb21_y,
+                                        TF_bb21_z,
+                                        VTXBUF_LNRHO,
+                                        &vAmax21));
+
+        AcReal vAmax22{0};
+        ERRCHK_AC(acDeviceReduceVecScal(m_device.get(),
+                                        STREAM_DEFAULT,
+                                        RTYPE_ALFVEN_MAX,
+                                        TF_bb22_x,
+                                        TF_bb22_y,
+                                        TF_bb22_z,
+                                        VTXBUF_LNRHO,
+                                        &vAmax22));
+
+        std::vector<AcReal> inputs{
+            uumax,
+            vAmax11,
+            vAmax12,
+            vAmax21,
+            vAmax22,
+        };
+        m_dtmax_reduce.launch(m_comm.get(),
+                              ac::host_view<AcReal>{inputs.size(), inputs.data()},
+                              MPI_MAX);
     }
 
-    [[nodiscard]] AcReal wait_uumax_reduce_and_get()
+    [[nodiscard]] AcReal wait_dtmax_reduce_and_get_dt()
     {
-        PRINT_LOG_TRACE("Start");
+        std::vector<AcReal> outputs(5);
+        m_dtmax_reduce.wait(ac::host_view<AcReal>{outputs.size(), outputs.data()});
+        const auto uumax{outputs[0]};
+        const auto vAmax11{outputs[1]};
+        const auto vAmax12{outputs[2]};
+        const auto vAmax21{outputs[3]};
+        const auto vAmax22{outputs[4]};
 
-        AcReal uumax{0};
-        m_uumax_reduce.wait(ac::host_view<AcReal>{1, &uumax});
-        return uumax;
+        // Note: disabled for now (but works as expected: tested on 1-8 devices)
+        const auto vAmax{0};
 
-        PRINT_LOG_TRACE("End");
-    }
+        // Comment vAmax{0} out and uncomment this to enable
+        // const auto vAmax{std::max(std::max(vAmax11, vAmax12), std::max(vAmax21, vAmax22))};
 
-    [[nodiscard]] AcReal wait_uumax_reduce_and_get_dt()
-    {
-        PRINT_LOG_TRACE("Start");
-
-        AcReal uumax{wait_uumax_reduce_and_get()};
-        AcReal vAmax{0};
         AcReal shock_max{0};
-
-        PRINT_LOG_TRACE("uumax wait complete");
-
         static bool warning_shown{false};
         if (!warning_shown) {
-            WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
+            WARNING_DESC("shock_max not used in timestepping, set to 0");
             warning_shown = true;
         }
 
@@ -1539,12 +1581,12 @@ class Grid {
         launch_hydro_he(BufferGroup::input);
         launch_tfm_he(BufferGroup::input);
         launch_reduce_xy_averages();
-        launch_uumax_reduce();
+        launch_dtmax_reduce();
 
         for (size_t step{0}; step < nsteps; ++step) {
 
             // Update dt and forcing
-            const auto dt{wait_uumax_reduce_and_get_dt()};
+            const auto dt{wait_dtmax_reduce_and_get_dt()};
 
             auto tmp_info{ac::get_info(m_device.get())};
             acr::set(AC_dt, dt, tmp_info);
@@ -1574,7 +1616,7 @@ class Grid {
                 swap_buffers();
 
                 if (substep == 2)
-                    launch_uumax_reduce();
+                    launch_dtmax_reduce();
 
                 launch_reduce_xy_averages();
             }
@@ -1589,7 +1631,7 @@ class Grid {
         wait_hydro_he(BufferGroup::input);
         wait_tfm_he(BufferGroup::input);
         wait_reduce_xy_averages();
-        wait_uumax_reduce_and_get_dt();
+        wait_dtmax_reduce_and_get_dt();
 
         PRINT_LOG_TRACE("End");
     }
