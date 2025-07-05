@@ -1535,10 +1535,10 @@ class Grid {
         const auto vAmax22{outputs[4]};
 
         // Note: disabled for now (but works as expected: tested on 1-8 devices)
-        const auto vAmax{0};
+        // const auto vAmax{0};
 
         // Comment vAmax{0} out and uncomment this to enable
-        // const auto vAmax{std::max(std::max(vAmax11, vAmax12), std::max(vAmax21, vAmax22))};
+        const auto vAmax{std::max(std::max(vAmax11, vAmax12), std::max(vAmax21, vAmax22))};
 
         AcReal shock_max{0};
         static bool warning_shown{false};

@@ -1,0 +1,101 @@
+diff --git a/acc-comm/benchmarks/bm_plot.py b/acc-comm/benchmarks/bm_plot.py
+index 4904bc42..078dc36e 100644
+--- a/acc-comm/benchmarks/bm_plot.py
++++ b/acc-comm/benchmarks/bm_plot.py
+@@ -193,7 +193,7 @@ ns / 1e6 / 100
+ # %%
+ import matplotlib.pyplot as plt
+ import pandas as pd
+-files = [f'{outdir}/bm-tfm-mpi-0-122191-0.csv', f'{outdir}/bm-tfm-mpi-0-31510-0.csv']
++files = [f'{outdir}/bm-tfm-mpi-11632482-0.csv', f'{outdir}/bm-tfm-mpi-11632866-0.csv']
+ df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
+ 
+ df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
+diff --git a/samples/tfm-mpi/tfm.cc b/samples/tfm-mpi/tfm.cc
+index b4cdad83..1b843c25 100644
+--- a/samples/tfm-mpi/tfm.cc
++++ b/samples/tfm-mpi/tfm.cc
+@@ -1535,10 +1535,10 @@ class Grid {
+         const auto vAmax22{outputs[4]};
+ 
+         // Note: disabled for now (but works as expected: tested on 1-8 devices)
+-        const auto vAmax{0};
++        // const auto vAmax{0};
+ 
+         // Comment vAmax{0} out and uncomment this to enable
+-        // const auto vAmax{std::max(std::max(vAmax11, vAmax12), std::max(vAmax21, vAmax22))};
++        const auto vAmax{std::max(std::max(vAmax11, vAmax12), std::max(vAmax21, vAmax22))};
+ 
+         AcReal shock_max{0};
+         static bool warning_shown{false};
+diff --git a/samples/tfm-mpi/timestep-pc-experiment.py b/samples/tfm-mpi/timestep-pc-experiment.py
+index 02d14228..c91efbe3 100644
+--- a/samples/tfm-mpi/timestep-pc-experiment.py
++++ b/samples/tfm-mpi/timestep-pc-experiment.py
+@@ -45,6 +45,8 @@ import numpy as np
+ 
+ 
+ umax = 1.407
++vAmax = 9.314857857501647
++
+ dt_model = 0.0344 
+ cdt = 0.4 # 0.4 in Astaroth
+ cdtv = 0.25 # 0.3 in Astroth
+@@ -54,15 +56,14 @@ dsmin = min(dx, min(dy, dz))
+ cs_sound = 1 # 1 or 0
+ cs2_sound = cs_sound * cs_sound
+ 
+-vAmax = 10
+ 
+ nu_visc = 5e-2
+ 
+ eta = 1e-2
+ eta_tfm = 5e-2
+ 
+-gamma = 0.002 # 0.5 in astaroth
+-chi = 45
++gamma = 1 # 0.5 in astaroth, adiabatic index afaik (gamma = cp/cv)
++chi = 0 # 45
+ 
+ uu_dt = (cdt * dsmin) / (umax + np.sqrt(cs2_sound + vAmax * vAmax))
+ visc_dt = (cdtv * dsmin * dsmin) / (max(max(nu_visc, max(eta, eta_tfm)), gamma * chi))
+diff --git a/samples/tfm-mpi/verify-allclose.py b/samples/tfm-mpi/verify-allclose.py
+index fff42d42..14150871 100755
+--- a/samples/tfm-mpi/verify-allclose.py
++++ b/samples/tfm-mpi/verify-allclose.py
+@@ -42,8 +42,11 @@ import argparse
+ #files = ['../../build/timeseries.csv', '../../build/timeseries.csv.nonsoca.turbulence.model']
+ #files = ['../../build/timeseries-1-0-default.csv', '../../build/timeseries.csv.model']
+ #files = ['../../build/timeseries-0-0-default.csv', '../../build/timeseries.csv']
+-#files = ['../../build/timeseries-0-0-default.csv', '../../samples/tfm/model/laplace-nonsoca-turbulence/timeseries.csv']
+-files = ['../../build/timeseries-0-0-default.csv', '../../samples/tfm/model/laplace-soca-roberts/timeseries.csv']
++files = ['../../build/timeseries.csv', '../../samples/tfm/model/laplace-nonsoca-turbulence/timeseries.csv']
++#files = ['../../build/timeseries.csv', '../../samples/tfm/model/laplace-soca-roberts/timeseries.csv']
++
++#files = ['../../build/timeseries.csv', '../../samples/tfm/model/laplace-soca-roberts/timeseries.csv']
++#files = ['../../build/timeseries-11706636-0-strong.csv', '../../build/timeseries-11706631-0-strong.csv']
+ 
+ 
+ candidate = pd.read_csv(files[0])
+diff --git a/samples/tfm/model/README.md b/samples/tfm/model/README.md
+index 2d782a2e..973d8176 100644
+--- a/samples/tfm/model/README.md
++++ b/samples/tfm/model/README.md
+@@ -7,7 +7,7 @@
+ Laplace SOCA Roberts
+ 1. Set `hostdefine LHYDRO (0)`
+ ```bash
+-CASE=laplace-soca-roberts
++CASE=laplace-soca-roberts-incl-alfven-dt
+ CONFIG=~/astaroth/samples/tfm/cases/laplace-soca.ini
+ MODELDIR=~/astaroth/samples/tfm/model/${CASE}
+ ```
+@@ -15,7 +15,7 @@ MODELDIR=~/astaroth/samples/tfm/model/${CASE}
+ Laplace Non-SOCA Turbulence
+ 1. Set `hostdefine LHYDRO (1)`
+ ```bash
+-CASE=laplace-nonsoca-turbulence
++CASE=laplace-nonsoca-turbulence-incl-alfven-dt
+ CONFIG=~/astaroth/samples/tfm/cases/laplace-nonsoca.ini
+ MODELDIR=~/astaroth/samples/tfm/model/${CASE}
+ ```

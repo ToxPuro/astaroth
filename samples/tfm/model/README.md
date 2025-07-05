@@ -7,7 +7,7 @@
 Laplace SOCA Roberts
 1. Set `hostdefine LHYDRO (0)`
 ```bash
-CASE=laplace-soca-roberts
+CASE=laplace-soca-roberts-incl-alfven-dt
 CONFIG=~/astaroth/samples/tfm/cases/laplace-soca.ini
 MODELDIR=~/astaroth/samples/tfm/model/${CASE}
 ```
@@ -15,8 +15,8 @@ MODELDIR=~/astaroth/samples/tfm/model/${CASE}
 Laplace Non-SOCA Turbulence
 1. Set `hostdefine LHYDRO (1)`
 ```bash
-CASE=laplace-nonsoca-turbulence
-CONFIG=~/astaroth/samples/tfm/cases/laplace-nonsoca.ini
+CASE=nonsoca-turbulence-incl-alfven-dt
+CONFIG=~/astaroth/samples/tfm/cases/nonsoca.ini
 MODELDIR=~/astaroth/samples/tfm/model/${CASE}
 ```
 
