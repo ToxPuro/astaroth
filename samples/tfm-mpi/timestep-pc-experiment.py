@@ -45,6 +45,8 @@ import numpy as np
 
 
 umax = 1.407
+vAmax = 9.314857857501647
+
 dt_model = 0.0344 
 cdt = 0.4 # 0.4 in Astaroth
 cdtv = 0.25 # 0.3 in Astroth
@@ -54,15 +56,14 @@ dsmin = min(dx, min(dy, dz))
 cs_sound = 1 # 1 or 0
 cs2_sound = cs_sound * cs_sound
 
-vAmax = 10
 
 nu_visc = 5e-2
 
 eta = 1e-2
 eta_tfm = 5e-2
 
-gamma = 0.002 # 0.5 in astaroth
-chi = 45
+gamma = 1 # 0.5 in astaroth, adiabatic index afaik (gamma = cp/cv)
+chi = 0 # 45
 
 uu_dt = (cdt * dsmin) / (umax + np.sqrt(cs2_sound + vAmax * vAmax))
 visc_dt = (cdtv * dsmin * dsmin) / (max(max(nu_visc, max(eta, eta_tfm)), gamma * chi))
