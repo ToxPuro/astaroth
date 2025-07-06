@@ -7,7 +7,6 @@
 #define DER2_0 -2.0
 
 #define DERX_1 (0.25)
-#define DERX_0 (0)
 Stencil derx {
 	[0][0][-1] = -AC_inv_ds.x*DER1_1,
 	[0][0][1 ]  =  AC_inv_ds.x*DER1_1
@@ -356,7 +355,7 @@ der6z_upwd(Field f)
 #define DER6_3 1.0
 
 #define DER5_1 2.5
-#define DER5_2 2.0
+#define DER5_2 (-2.0)
 #define DER5_3 0.5
 
 #define DER4_0 (56.0/6.0)
@@ -383,7 +382,6 @@ der6z_upwd(Field f)
 #define DERX_3 (2. / 720.)
 #define DERX_2 (-27. / 720.)
 #define DERX_1 (270. / 720.)
-#define DERX_0 (0)
 
 #define DER6UPWD_3 (  1. / 60.)
 #define DER6UPWD_2 ( -6. / 60.)

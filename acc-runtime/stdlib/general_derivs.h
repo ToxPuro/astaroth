@@ -13,7 +13,6 @@
 #define DERX_3 (2. / 720.)
 #define DERX_2 (-27. / 720.)
 #define DERX_1 (270. / 720.)
-#define DERX_0 (0)
 
 #define DER6UPWD_3 (  1. / 60.)
 #define DER6UPWD_2 ( -6. / 60.)
@@ -26,7 +25,7 @@
 #define DER6_3 1.0
 
 #define DER5_1 2.5
-#define DER5_2 2.0
+#define DER5_2 (-2.0)
 #define DER5_3 0.5
 
 #define DER4_0 (56.0/6.0)
@@ -56,7 +55,6 @@
 #define DERX_3 (2. / 720.)
 #define DERX_2 (-27. / 720.)
 #define DERX_1 (270. / 720.)
-#define DERX_0 (0)
 
 #define DER6UPWD_3 (  1. / 60.)
 #define DER6UPWD_2 ( -6. / 60.)
@@ -707,7 +705,6 @@ Stencil derxy_stencil {
     [0][-3][-3]= DERX_3,
     [0][-2][-2]= DERX_2,
     [0][-1][-1]= DERX_1,
-    [0][0][0]  = DERX_0,
     [0][1][1]  = DERX_1,
     [0][2][2]  = DERX_2,
     [0][3][3]  = DERX_3,
@@ -762,7 +759,6 @@ Stencil derxz_stencil {
     [-3][0][-3]  = DERX_3,
     [-2][0][-2]  = DERX_2,
     [-1][0][-1]  = DERX_1,
-    [0][0][0]    = DERX_0,
     [1][0][1]    = DERX_1,
     [2][0][2]    = DERX_2,
     [3][0][3]    = DERX_3,
@@ -814,7 +810,6 @@ Stencil deryz_stencil {
     [-3][-3][0] = DERX_3,
     [-2][-2][0] = DERX_2,
     [-1][-1][0] = DERX_1,
-    [0][0][0]   = DERX_0,
     [1][1][0]   = DERX_1,
     [2][2][0]   = DERX_2,
     [3][3][0]   = DERX_3,
