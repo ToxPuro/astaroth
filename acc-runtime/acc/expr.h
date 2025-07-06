@@ -66,10 +66,11 @@ static void eval_ternaries(ASTNode* node, const string_vec values, const string_
 	const bool less = !strcmp(op,"<");
 	const bool more = !strcmp(op,">");
 	const bool eq   = !strcmp(op,"==");
-	if(!less && !more && !eq) return;
+	const bool neq   = !strcmp(op,"!=");
+	if(!less && !more && !eq && !neq) return;
 	const int lhs = eval_int(cond->lhs,true,NULL);
 	const int rhs = eval_int(cond->rhs->rhs,true,NULL);
-	const bool pick_left = (less && lhs < rhs) || (more && lhs > rhs) || (eq && lhs == rhs);
+	const bool pick_left = (less && lhs < rhs) || (more && lhs > rhs) || (eq && lhs == rhs) || (neq && lhs != rhs);
 	ASTNode* correct_node = pick_left ? node->rhs->lhs : node->rhs->rhs;
 	if(!correct_node) return;
 	*node = *correct_node;
