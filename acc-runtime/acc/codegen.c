@@ -6142,12 +6142,21 @@ get_field_order(const ASTNode* node)
         free_int_vec(&user_remappings);
 	if(tmp.size != tmp2.size) fatal("Should be the same size!\n");
 	int_vec tmp3 = VEC_INITIALIZER;
-	for (size_t i = 0; i < user_remappings.size; ++i)
+	for (size_t i = 0; i < tmp2.size; ++i)
 	{
-		const int index = user_remappings.data[i];
+		const int index = tmp2.data[i];
+		if(index == -1) continue;
 		if(int_vec_contains(tmp3,index))
 		{
 			fatal("Field_order index %d appears more than once in field ordering!\n",index);
+		}
+		if(index < -1)
+		{
+			fatal("Negative %d (other than -1) appears in field ordering!\n",index);
+		}
+		if(index >= (int)tmp2.size)
+		{
+			fatal("Field order index %d out of range %zu!\n",index,user_remappings.size);
 		}
 		push_int(&tmp3,index);
 	}
