@@ -1509,11 +1509,18 @@ acSetReduceOffset(AcKernel kernel, const Volume start_volume,
   update_reduce_offsets_and_resize(kernel,start,tpb,bpg,vba);
   return AC_SUCCESS;
 }
+
+int3
+get_kernel_dims(const AcKernel kernel, const int3 start, const int3 end)
+{
+  return is_coop_raytracing_kernel(kernel) ? ceil_div(end-start,raytracing_subblock) : end-start;
+}
+
 AcResult
 acLaunchKernelCommon(AcKernel kernel, const cudaStream_t stream, const int3 start, const int3 end,
 	             VertexBufferArray vba, const dim3 tpb)	
 {
-  const int3 dims       = end-start;
+  const int3 dims       = get_kernel_dims(kernel,start,end);
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
   if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
   {
@@ -1837,21 +1844,13 @@ make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel)
   vba.on_device.reduce_offset = 0;
 //#include "safe_vtxbuf_input_params.h"
 }
-int3
-get_kernel_dims(const AcKernel kernel, const int3 start, const int3 end)
-{
-  return is_coop_raytracing_kernel(kernel) ? ceil_div(end-start,raytracing_subblock) : end-start;
-}
+
 
 static TBConfig
 autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
 {
   const int3 dims = get_kernel_dims(kernel,start,end);
   make_vtxbuf_input_params_safe(vba,kernel);
-  // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
-  //        "(%d):\n",
-  //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
-  // fflush(stdout);
 
 #if 0
   cudaDeviceProp prop;
