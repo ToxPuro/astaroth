@@ -921,7 +921,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
   {
     size_t n = vba->computational_dims.m1.x*vba->computational_dims.m1.y*vba->computational_dims.m1.z;
     ERRCHK_ALWAYS(vba->on_device.complex_in[field]);
-    acMultiplyInplaceComplex(0.,n,vba->on_device.complex_in[field]);
+    acMultiplyInplaceComplex(AcReal(0.),n,vba->on_device.complex_in[field]);
   }
   memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
   // Note: should be moved out when refactoring VBA to KernelParameterArray
@@ -3352,12 +3352,20 @@ acFFTBackwardTransformC2C(const AcComplex* transformed_in,const Volume domain_si
     return AC_SUCCESS;
 }
 #endif //AC_USE_HIP
+static AcComplex*
+get_fresh_complex_buffer(const size_t count)
+{
+    const size_t bytes = sizeof(AcComplex)*count;
+    AcComplex* res = NULL;
+    device_malloc(&res,bytes);
+    acMultiplyInplaceComplex(AcReal(0.0),count,res);
+    return res;
+}
+
 AcResult
 acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer) {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    const size_t bytes = sizeof(AcComplex)*count;
-    AcComplex* tmp = NULL;
-    device_malloc(&tmp,bytes);
+    AcComplex* tmp = get_fresh_complex_buffer(count);
     acFFTBackwardTransformC2C(transformed_in,domain_size,subdomain_size,starting_point,tmp);
     acComplexToReal(tmp,count,buffer);
     device_free(&tmp,0);
@@ -3367,9 +3375,7 @@ acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_si
 AcResult
 acFFTForwardTransformR2C(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst) {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    const size_t bytes = sizeof(AcComplex)*count;
-    AcComplex* tmp = NULL;
-    device_malloc(&tmp,bytes);
+    AcComplex* tmp = get_fresh_complex_buffer(count);
     acRealToComplex(src,count,tmp);
     acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,dst);
     device_free(&tmp,0);
@@ -3380,11 +3386,8 @@ AcResult
 acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    const size_t bytes = sizeof(AcComplex)*count;
-    AcComplex* tmp = NULL;
-    AcComplex* tmp2 = NULL;
-    device_malloc(&tmp,bytes);
-    device_malloc(&tmp2,bytes);
+    AcComplex* tmp  = get_fresh_complex_buffer(count);
+    AcComplex* tmp2 = get_fresh_complex_buffer(count);
 
     acRealToComplex(src,count,tmp);
     acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
@@ -3399,11 +3402,8 @@ AcResult
 acFFTForwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
 {
     const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    const size_t bytes = sizeof(AcComplex)*count;
-    AcComplex* tmp = NULL;
-    AcComplex* tmp2 = NULL;
-    device_malloc(&tmp,bytes);
-    device_malloc(&tmp2,bytes);
+    AcComplex* tmp  = get_fresh_complex_buffer(count);
+    AcComplex* tmp2 = get_fresh_complex_buffer(count);
 
     acPlanarToComplex(real_src,imag_src,count,tmp);
     acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
