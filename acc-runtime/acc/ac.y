@@ -514,8 +514,8 @@ main(int argc, char** argv)
     }
     else if(argc > 6)
     {
-	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[2])));
-	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[2]);
+	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[argc-5])));
+	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[argc-5]);
     }
     else {
         puts("Usage: ./acc [source file]");
