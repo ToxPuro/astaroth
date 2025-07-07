@@ -353,6 +353,13 @@ strip_whitespace(char *str) {
     // Null-terminate the destination string
     *dest = '\0';
 }
+static inline char*
+strip_whitespace_new(const char* src) {
+	char* res = strdup(src);
+	strip_whitespace(res);
+	return res;
+}
+
 static inline void combine_all(const ASTNode* node, char* res){
   res[0] = '\0';	
   combine_all_recursive(node,res);

@@ -503,10 +503,10 @@ main(int argc, char** argv)
     string_vec filenames;
     init_str_vec(&filenames);
     char* file = NULL;
-    ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : argv[argc-1];
-    RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(argv[argc-2],"1"); 
-    READ_OVERRIDES          = argc == 2 ? false : !strcmp(argv[argc-3],"1"); 
-    ELIMINATE_CONDITIONALS  = argc == 2 ? false : !strcmp(argv[argc-4],"1"); 
+    ACC_OVERRIDES_PATH      = argc == 2 ? NULL  : strip_whitespace_new(argv[argc-1]);
+    RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-2]),"1"); 
+    READ_OVERRIDES          = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-3]),"1"); 
+    ELIMINATE_CONDITIONALS  = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-4]),"1"); 
 
     if(argc == 2 || argc == 6)
     {
