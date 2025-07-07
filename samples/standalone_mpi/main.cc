@@ -1344,6 +1344,15 @@ main(int argc, char** argv)
     //TP: calc initial timestep
     acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(AC_calc_timestep),1);
 
+    //TP: This is important since by default output buffers are NaNs
+    //    so when in rk3 one reads them with call of previous all outputs will
+    //    become Nans. Needed here since creating taskgraph touches output iff
+    //    there are no autotune entries ---> won't set the buffers to 0 if have 
+    //    runned before
+    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+    acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
+    acGridSynchronizeStream(STREAM_ALL);
+
     /////////////////////////////////////////////////////////////
     // Set up certain periodic actions and run them for i == 0 //
     /////////////////////////////////////////////////////////////
