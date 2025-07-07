@@ -131,6 +131,9 @@ input real AC_shear_delta_y
 run_const int3 AC_raytracing_block_factors = (int3){1,1,1}
 run_const int AC_x_ray_shared_mem_block_size = 32
 run_const int AC_z_ray_shared_mem_block_size = 1
+
+//Whether to use the bidiagonal scheme or the naive scheme for cross derivatives
+run_const bool AC_bidiagonal_derij = true
 //TP: these belong here but at the moment are deprecated
 /**
 run_const AC_xy_plate_bufsize

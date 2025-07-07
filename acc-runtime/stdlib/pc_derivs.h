@@ -31,7 +31,7 @@
 #define DER4_0 (56.0/6.0)
 #define DER4_1 (-39.0/6.0)
 #define DER4_2 (12.0/6.0)
-#define DER4_3 (-1.0)
+#define DER4_3 (-1.0/6.0)
 
 
 #define DER3_0 (0)
@@ -87,7 +87,7 @@ gmem real AC_mapping_func_tilde_z[AC_mlocal.z]
 #define AC_MAPPING_FUNC_TILDE_Y  (AC_mapping_func_tilde_y[vertexIdx.y])
 #define AC_MAPPING_FUNC_TILDE_Z  (AC_mapping_func_tilde_z[vertexIdx.z])
 
-Stencil derx_stencil {
+Stencil derx_stencil_base {
     [0][0][-3] = -DER1_3,
     [0][0][-2] = -DER1_2,
     [0][0][-1] = -DER1_1,
@@ -95,6 +95,17 @@ Stencil derx_stencil {
     [0][0][2]  = DER1_2,
     [0][0][3]  = DER1_3
 }
+
+derx_stencil(Field f)
+{
+	val = derx_stencil_base(f)
+	res = 0.0
+	res += 45.0*(f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z]-f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z])
+	res -= 9.0*(f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z]-f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z])
+	res += (f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z]-f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z])
+	return (1.0/60.0)*res + 0.0*val
+}
+
 Stencil derx_2nd_stencil {
     [0][0][-1] = -0.5,
     [0][0][1 ]  = 0.5,
@@ -156,13 +167,23 @@ derx(Profile<X> prof)
 	}
 }
 
-Stencil dery_stencil {
+Stencil dery_stencil_base {
     [0][-3][0] = -DER1_3,
     [0][-2][0] = -DER1_2,
     [0][-1][0] = -DER1_1,
     [0][1][0]  = DER1_1,
     [0][2][0]  = DER1_2,
     [0][3][0]  = DER1_3
+}
+
+dery_stencil(Field f)
+{
+	val = dery_stencil_base(f)
+	res = 0.0
+	res += 45.0*(f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z]-f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z])
+	res -=  9.0*(f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z]-f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z])
+	res +=      (f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z]-f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z])
+	return (1.0/60.0)*res + 0.0*val
 }
 
 #define AC_GEN_DERY(NAME,STENCIL_NAME) \
@@ -232,13 +253,23 @@ dery(Profile<Y> prof)
 
 
 
-Stencil derz_stencil {
+Stencil derz_stencil_base {
     [-3][0][0] = -DER1_3,
     [-2][0][0] = -DER1_2,
     [-1][0][0] = -DER1_1,
     [1][0][0]  = DER1_1,
     [2][0][0]  = DER1_2,
     [3][0][0]  = DER1_3
+}
+
+derz_stencil(Field f)
+{
+	val = derz_stencil_base(f)
+	res = 0.0
+	res += 45.0*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z+1]-f[vertexIdx.x][vertexIdx.y][vertexIdx.z-1])
+	res -=  9.0*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z+2]-f[vertexIdx.x][vertexIdx.y][vertexIdx.z-2])
+	res +=      (f[vertexIdx.x][vertexIdx.y][vertexIdx.z+3]-f[vertexIdx.x][vertexIdx.y][vertexIdx.z-3])
+	return (1.0/60.0)*res + 0.0*val
 }
 
 #define AC_GEN_DERZ(NAME,STENCIL) \
@@ -299,7 +330,7 @@ derz(Profile<Z> prof)
 }
 
 
-Stencil derxx_stencil {
+Stencil derxx_stencil_base {
     [0][0][-3] = DER2_3,
     [0][0][-2] = DER2_2,
     [0][0][-1] = DER2_1,
@@ -307,6 +338,16 @@ Stencil derxx_stencil {
     [0][0][1]  = DER2_1,
     [0][0][2]  = DER2_2,
     [0][0][3]  = DER2_3
+}
+
+derxx_stencil(Field f)
+{
+	val = derxx_stencil_base(f)
+	res = DER2_0*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z])
+	res += DER2_1*(f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z]+f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z])
+	res += DER2_2*(f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z]+f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z])
+	res += DER2_3*(f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z]+f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z])
+	return res + 0.0*val
 }
 
 Stencil derxx_neighbours_stencil {
@@ -414,7 +455,7 @@ derxx(Profile<X> prof)
 	return res
 }
 
-Stencil deryy_stencil {
+Stencil deryy_stencil_base {
     [0][-3][0] = DER2_3,
     [0][-2][0] = DER2_2,
     [0][-1][0] = DER2_1,
@@ -422,6 +463,16 @@ Stencil deryy_stencil {
     [0][1][0]  = DER2_1,
     [0][2][0]  = DER2_2,
     [0][3][0]  = DER2_3
+}
+
+deryy_stencil(Field f)
+{
+	val = deryy_stencil_base(f)
+	res = DER2_0*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z])
+	res += DER2_1*(f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z]+f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z])
+	res += DER2_2*(f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z]+f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z])
+	res += DER2_3*(f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z]+f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z])
+	return res + 0.0*val
 }
 
 Stencil deryy_neighbours_stencil {
@@ -563,7 +614,7 @@ deryy(Profile<Y> prof)
 	}
 }
 
-Stencil derzz_stencil {
+Stencil derzz_stencil_base {
     [-3][0][0] = DER2_3,
     [-2][0][0] = DER2_2,
     [-1][0][0] = DER2_1,
@@ -571,6 +622,16 @@ Stencil derzz_stencil {
     [1][0][0]  = DER2_1,
     [2][0][0]  = DER2_2,
     [3][0][0]  = DER2_3
+}
+
+derzz_stencil(Field f)
+{
+	val = derzz_stencil_base(f)
+	res = DER2_0*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z])
+	res += DER2_1*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z+1]+f[vertexIdx.x][vertexIdx.y][vertexIdx.z-1])
+	res += DER2_2*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z+2]+f[vertexIdx.x][vertexIdx.y][vertexIdx.z-2])
+	res += DER2_3*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z+3]+f[vertexIdx.x][vertexIdx.y][vertexIdx.z-3])
+	return res + 0.0*val
 }
 
 Stencil derzz_neighbours_stencil {
@@ -701,7 +762,7 @@ derzz(Profile<Z> prof)
 	}
 }
 
-Stencil derxy_stencil {
+Stencil derxy_stencil_base {
     [0][-3][-3]= DERX_3,
     [0][-2][-2]= DERX_2,
     [0][-1][-1]= DERX_1,
@@ -715,50 +776,49 @@ Stencil derxy_stencil {
     [0][2][-2] = -DERX_2,
     [0][3][-3] = -DERX_3
 }
+derxy_stencil(Field f)
+{
+	val = derxy_stencil_base(f)
+	res = 0.0
+	res += DERX_1*(+f[vertexIdx.x+1][vertexIdx.y+1][vertexIdx.z] - f[vertexIdx.x-1][vertexIdx.y+1][vertexIdx.z]
+		       +f[vertexIdx.x-1][vertexIdx.y-1][vertexIdx.z] - f[vertexIdx.x+1][vertexIdx.y-1][vertexIdx.z]
+		     )
+	res += DERX_2*(+f[vertexIdx.x+2][vertexIdx.y+2][vertexIdx.z] - f[vertexIdx.x-2][vertexIdx.y+2][vertexIdx.z]
+		       +f[vertexIdx.x-2][vertexIdx.y-2][vertexIdx.z] - f[vertexIdx.x+2][vertexIdx.y-2][vertexIdx.z]
+		     )
+	res += DERX_3*(+f[vertexIdx.x+3][vertexIdx.y+3][vertexIdx.z] - f[vertexIdx.x-3][vertexIdx.y+3][vertexIdx.z]
+		       +f[vertexIdx.x-3][vertexIdx.y-3][vertexIdx.z] - f[vertexIdx.x+3][vertexIdx.y-3][vertexIdx.z]
+		     )
+	return res + 0.0*val
 
-Stencil derxy_non_diagonal_stencil {
-    [0][-3][-3] = (-DER1_3)*(-DER1_3),
-    [0][-3][-2] = (-DER1_3)*(-DER1_2),
-    [0][-3][-1] = (-DER1_3)*(-DER1_1),
-    [0][-3][ 1] = (-DER1_3)*( DER1_1),
-    [0][-3][ 2] = (-DER1_3)*( DER1_2),
-    [0][-3][ 3] = (-DER1_3)*( DER1_3),
-
-    [0][-2][-3] = (-DER1_2)*(-DER1_3),
-    [0][-2][-2] = (-DER1_2)*(-DER1_2),
-    [0][-2][-1] = (-DER1_2)*(-DER1_1),
-    [0][-2][ 1] = (-DER1_2)*( DER1_1),
-    [0][-2][ 2] = (-DER1_2)*( DER1_2),
-    [0][-2][ 3] = (-DER1_2)*( DER1_3),
-
-    [0][-1][-3] = (-DER1_1)*(-DER1_3),
-    [0][-1][-2] = (-DER1_1)*(-DER1_2),
-    [0][-1][-1] = (-DER1_1)*(-DER1_1),
-    [0][-1][ 1] = (-DER1_1)*( DER1_1),
-    [0][-1][ 2] = (-DER1_1)*( DER1_2),
-    [0][-1][ 3] = (-DER1_1)*( DER1_3),
-
-    [0][ 1][-3] = ( DER1_1)*(-DER1_3),
-    [0][ 1][-2] = ( DER1_1)*(-DER1_2),
-    [0][ 1][-1] = ( DER1_1)*(-DER1_1),
-    [0][ 1][ 1] = ( DER1_1)*( DER1_1),
-    [0][ 1][ 2] = ( DER1_1)*( DER1_2),
-    [0][ 1][ 3] = ( DER1_1)*( DER1_3),
-
-    [0][ 2][-3] = ( DER1_2)*(-DER1_3),
-    [0][ 2][-2] = ( DER1_2)*(-DER1_2),
-    [0][ 2][-1] = ( DER1_2)*(-DER1_1),
-    [0][ 2][ 1] = ( DER1_2)*( DER1_1),
-    [0][ 2][ 2] = ( DER1_2)*( DER1_2),
-    [0][ 2][ 3] = ( DER1_2)*( DER1_3),
-    
-    [0][ 3][-3] = ( DER1_3)*(-DER1_3),
-    [0][ 3][-2] = ( DER1_3)*(-DER1_2),
-    [0][ 3][-1] = ( DER1_3)*(-DER1_1),
-    [0][ 3][ 1] = ( DER1_3)*( DER1_1),
-    [0][ 3][ 2] = ( DER1_3)*( DER1_2),
-    [0][ 3][ 3] = ( DER1_3)*( DER1_3)
 }
+derxy_non_diagonal_stencil(Field f)
+{
+	val = derxy_stencil_base(f)
+	res = 0.0
+        res =(
+          45.*((45.*(f[vertexIdx.x+1][vertexIdx.y+1][vertexIdx.z]-f[vertexIdx.x-1][vertexIdx.y+1][vertexIdx.z])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y+1][vertexIdx.z]-f[vertexIdx.x-2][vertexIdx.y+1][vertexIdx.z])  
+                   +(f[vertexIdx.x+3][vertexIdx.y+1][vertexIdx.z]-f[vertexIdx.x-3][vertexIdx.y+1][vertexIdx.z])) 
+              -(45.*(f[vertexIdx.x+1][vertexIdx.y-1][vertexIdx.z]-f[vertexIdx.x-1][vertexIdx.y-1][vertexIdx.z])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y-1][vertexIdx.z]-f[vertexIdx.x-2][vertexIdx.y-1][vertexIdx.z])  
+                   +(f[vertexIdx.x+3][vertexIdx.y-1][vertexIdx.z]-f[vertexIdx.x-3][vertexIdx.y-1][vertexIdx.z])))
+          -9.*((45.*(f[vertexIdx.x+1][vertexIdx.y+2][vertexIdx.z]-f[vertexIdx.x-1][vertexIdx.y+2][vertexIdx.z])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y+2][vertexIdx.z]-f[vertexIdx.x-2][vertexIdx.y+2][vertexIdx.z])  
+                   +(f[vertexIdx.x+3][vertexIdx.y+2][vertexIdx.z]-f[vertexIdx.x-3][vertexIdx.y+2][vertexIdx.z])) 
+              -(45.*(f[vertexIdx.x+1][vertexIdx.y-2][vertexIdx.z]-f[vertexIdx.x-1][vertexIdx.y-2][vertexIdx.z])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y-2][vertexIdx.z]-f[vertexIdx.x-2][vertexIdx.y-2][vertexIdx.z])  
+                   +(f[vertexIdx.x+3][vertexIdx.y-2][vertexIdx.z]-f[vertexIdx.x-3][vertexIdx.y-2][vertexIdx.z])))
+             +((45.*(f[vertexIdx.x+1][vertexIdx.y+3][vertexIdx.z]-f[vertexIdx.x-1][vertexIdx.y+3][vertexIdx.z])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y+3][vertexIdx.z]-f[vertexIdx.x-2][vertexIdx.y+3][vertexIdx.z])  
+                   +(f[vertexIdx.x+3][vertexIdx.y+3][vertexIdx.z]-f[vertexIdx.x-3][vertexIdx.y+3][vertexIdx.z])) 
+              -(45.*(f[vertexIdx.x+1][vertexIdx.y-3][vertexIdx.z]-f[vertexIdx.x-1][vertexIdx.y-3][vertexIdx.z])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y-3][vertexIdx.z]-f[vertexIdx.x-2][vertexIdx.y-3][vertexIdx.z])  
+                   +(f[vertexIdx.x+3][vertexIdx.y-3][vertexIdx.z]-f[vertexIdx.x-3][vertexIdx.y-3][vertexIdx.z])))
+               )
+	return (1./3600)*res + 0.0*val
+}
+
 derxy(Field f)
 {
 	if(AC_dimension_inactive.x || AC_dimension_inactive.y)
@@ -808,7 +868,7 @@ derxy(Field f)
 }
 #define deryx derxy
 
-Stencil derxz_stencil {
+Stencil derxz_stencil_base {
     [-3][0][-3]  = DERX_3,
     [-2][0][-2]  = DERX_2,
     [-1][0][-1]  = DERX_1,
@@ -823,48 +883,47 @@ Stencil derxz_stencil {
     [3][0][-3]   = -DERX_3
 }
 
-Stencil derxz_non_diagonal_stencil {
-    [-3][0][-3] = (-DER1_3)*(-DER1_3),
-    [-3][0][-2] = (-DER1_3)*(-DER1_2),
-    [-3][0][-1] = (-DER1_3)*(-DER1_1),
-    [-3][0][ 1] = (-DER1_3)*( DER1_1),
-    [-3][0][ 2] = (-DER1_3)*( DER1_2),
-    [-3][0][ 3] = (-DER1_3)*( DER1_3),
-        
-    [-2][0][-3] = (-DER1_2)*(-DER1_3),
-    [-2][0][-2] = (-DER1_2)*(-DER1_2),
-    [-2][0][-1] = (-DER1_2)*(-DER1_1),
-    [-2][0][ 1] = (-DER1_2)*( DER1_1),
-    [-2][0][ 2] = (-DER1_2)*( DER1_2),
-    [-2][0][ 3] = (-DER1_2)*( DER1_3),
-        
-    [-1][0][-3] = (-DER1_1)*(-DER1_3),
-    [-1][0][-2] = (-DER1_1)*(-DER1_2),
-    [-1][0][-1] = (-DER1_1)*(-DER1_1),
-    [-1][0][ 1] = (-DER1_1)*( DER1_1),
-    [-1][0][ 2] = (-DER1_1)*( DER1_2),
-    [-1][0][ 3] = (-DER1_1)*( DER1_3),
-        
-    [ 1][0][-3] = ( DER1_1)*(-DER1_3),
-    [ 1][0][-2] = ( DER1_1)*(-DER1_2),
-    [ 1][0][-1] = ( DER1_1)*(-DER1_1),
-    [ 1][0][ 1] = ( DER1_1)*( DER1_1),
-    [ 1][0][ 2] = ( DER1_1)*( DER1_2),
-    [ 1][0][ 3] = ( DER1_1)*( DER1_3),
-        
-    [ 2][0][-3] = ( DER1_2)*(-DER1_3),
-    [ 2][0][-2] = ( DER1_2)*(-DER1_2),
-    [ 2][0][-1] = ( DER1_2)*(-DER1_1),
-    [ 2][0][ 1] = ( DER1_2)*( DER1_1),
-    [ 2][0][ 2] = ( DER1_2)*( DER1_2),
-    [ 2][0][ 3] = ( DER1_2)*( DER1_3),
-        
-    [ 3][0][-3] = ( DER1_3)*(-DER1_3),
-    [ 3][0][-2] = ( DER1_3)*(-DER1_2),
-    [ 3][0][-1] = ( DER1_3)*(-DER1_1),
-    [ 3][0][ 1] = ( DER1_3)*( DER1_1),
-    [ 3][0][ 2] = ( DER1_3)*( DER1_2),
-    [ 3][0][ 3] = ( DER1_3)*( DER1_3)
+derxz_non_diagonal_stencil(Field f)
+{
+	val = derxz_stencil_base(f)
+	res = 0.0
+        res =(
+          45.*((45.*(f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z+1]-f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z+1])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z+1]-f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z+1])  
+                   +(f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z+1]-f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z+1])) 
+              -(45.*(f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z-1]-f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z-1])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z-1]-f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z-1])  
+                   +(f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z-1]-f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z-1])))
+          -9.*((45.*(f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z+2]-f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z+2])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z+2]-f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z+2])  
+                   +(f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z+2]-f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z+2])) 
+              -(45.*(f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z-2]-f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z-2])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z-2]-f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z-2])  
+                   +(f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z-2]-f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z-2])))
+             +((45.*(f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z+3]-f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z+3])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z+3]-f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z+3])  
+                   +(f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z+3]-f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z+3])) 
+              -(45.*(f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z-3]-f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z-3])  
+                -9.*(f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z-3]-f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z-3])  
+                   +(f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z-3]-f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z-3])))
+               )
+	return (1./3600)*res + 0.0*val
+}
+derxz_stencil(Field f)
+{
+	val = derxz_stencil_base(f)
+	res = 0.0
+	res += DERX_1*(+f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z+1] - f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z+1]
+		       +f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z-1] - f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z-1]
+		     )                                                                                           
+	res += DERX_2*(+f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z+2] - f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z+2]
+		       +f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z-2] - f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z-2]
+		     )                                                                                           
+	res += DERX_3*(+f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z+3] - f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z+3]
+		       +f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z-3] - f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z-3]
+		     )
+	return res + 0.0*val
+
 }
 derxz(Field f)
 {
@@ -912,7 +971,7 @@ derxz(Field f)
 
 #define derzx derxz
 
-Stencil deryz_stencil {
+Stencil deryz_stencil_base {
     [-3][-3][0] = DERX_3,
     [-2][-2][0] = DERX_2,
     [-1][-1][0] = DERX_1,
@@ -926,50 +985,50 @@ Stencil deryz_stencil {
     [2][-2][0]  = -DERX_2,
     [3][-3][0]  = -DERX_3
 }
-Stencil deryz_non_diagonal_stencil {
-    [0][-3][-3] = (-DER1_3)*(-DER1_3),
-    [0][-3][-2] = (-DER1_3)*(-DER1_2),
-    [0][-3][-1] = (-DER1_3)*(-DER1_1),
-    [0][-3][ 1] = (-DER1_3)*( DER1_1),
-    [0][-3][ 2] = (-DER1_3)*( DER1_2),
-    [0][-3][ 3] = (-DER1_3)*( DER1_3),
-           
-    [0][-2][-3] = (-DER1_2)*(-DER1_3),
-    [0][-2][-2] = (-DER1_2)*(-DER1_2),
-    [0][-2][-1] = (-DER1_2)*(-DER1_1),
-    [0][-2][ 1] = (-DER1_2)*( DER1_1),
-    [0][-2][ 2] = (-DER1_2)*( DER1_2),
-    [0][-2][ 3] = (-DER1_2)*( DER1_3),
-           
-    [0][-1][-3] = (-DER1_1)*(-DER1_3),
-    [0][-1][-2] = (-DER1_1)*(-DER1_2),
-    [0][-1][-1] = (-DER1_1)*(-DER1_1),
-    [0][-1][ 1] = (-DER1_1)*( DER1_1),
-    [0][-1][ 2] = (-DER1_1)*( DER1_2),
-    [0][-1][ 3] = (-DER1_1)*( DER1_3),
-           
-    [0][ 1][-3] = ( DER1_1)*(-DER1_3),
-    [0][ 1][-2] = ( DER1_1)*(-DER1_2),
-    [0][ 1][-1] = ( DER1_1)*(-DER1_1),
-    [0][ 1][ 1] = ( DER1_1)*( DER1_1),
-    [0][ 1][ 2] = ( DER1_1)*( DER1_2),
-    [0][ 1][ 3] = ( DER1_1)*( DER1_3),
-           
-    [0][ 2][-3] = ( DER1_2)*(-DER1_3),
-    [0][ 2][-2] = ( DER1_2)*(-DER1_2),
-    [0][ 2][-1] = ( DER1_2)*(-DER1_1),
-    [0][ 2][ 1] = ( DER1_2)*( DER1_1),
-    [0][ 2][ 2] = ( DER1_2)*( DER1_2),
-    [0][ 2][ 3] = ( DER1_2)*( DER1_3),
-           
-    [0][ 3][-3] = ( DER1_3)*(-DER1_3),
-    [0][ 3][-2] = ( DER1_3)*(-DER1_2),
-    [0][ 3][-1] = ( DER1_3)*(-DER1_1),
-    [0][ 3][ 1] = ( DER1_3)*( DER1_1),
-    [0][ 3][ 2] = ( DER1_3)*( DER1_2),
-    [0][ 3][ 3] = ( DER1_3)*( DER1_3)
+
+deryz_stencil(Field f)
+{
+	val = deryz_stencil_base(f)
+	res = 0.0
+	res += DERX_1*(+f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z+1] - f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z+1]
+		       +f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z-1] - f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z-1]
+		     )                                                                                           
+	res += DERX_2*(+f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z+2] - f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z+2]
+		       +f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z-2] - f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z-2]
+		     )                                                                                           
+	res += DERX_3*(+f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z+3] - f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z+3]
+		       +f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z-3] - f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z-3]
+		     )
+	return res + 0.0*val
+
 }
 
+deryz_non_diagonal_stencil(Field f)
+{
+	val = deryz_stencil_base(f)
+	res = 0.0
+        res =(
+          45.*((45.*(f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z+1]-f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z+1])  
+                -9.*(f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z+1]-f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z+1])  
+                   +(f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z+1]-f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z+1])) 
+              -(45.*(f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z-1]-f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z-1])  
+                -9.*(f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z-1]-f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z-1])  
+                   +(f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z-1]-f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z-1])))
+          -9.*((45.*(f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z+2]-f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z+2])  
+                -9.*(f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z+2]-f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z+2])  
+                   +(f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z+2]-f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z+2])) 
+              -(45.*(f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z-2]-f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z-2])  
+                -9.*(f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z-2]-f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z-2])  
+                   +(f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z-2]-f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z-2])))
+             +((45.*(f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z+3]-f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z+3])  
+                -9.*(f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z+3]-f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z+3])  
+                   +(f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z+3]-f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z+3])) 
+              -(45.*(f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z-3]-f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z-3])  
+                -9.*(f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z-3]-f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z-3])  
+                   +(f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z-3]-f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z-3])))
+               )
+	return (1./3600)*res + 0.0*val
+}
 deryz(Field f)
 {
 	if(AC_dimension_inactive.y || AC_dimension_inactive.z)
@@ -1641,7 +1700,7 @@ der5x1y(Field f)
 
 
 //TP: corresponds to der6_main
-Stencil der6x_stencil {
+Stencil der6x_stencil_base {
     [0][0][-3] = DER6_3,
     [0][0][-2] = DER6_2,
     [0][0][-1] = DER6_1,
@@ -1650,6 +1709,17 @@ Stencil der6x_stencil {
     [0][0][2]  = DER6_2,
     [0][0][3]  = DER6_3
 }
+
+der6x_stencil(Field f)
+{
+	val = der6x_stencil_base(f)
+	res = DER6_0*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z])
+	res += DER6_1*(f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z]+f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z])
+	res += DER6_2*(f[vertexIdx.x+2][vertexIdx.y][vertexIdx.z]+f[vertexIdx.x-2][vertexIdx.y][vertexIdx.z])
+	res += DER6_3*(f[vertexIdx.x+3][vertexIdx.y][vertexIdx.z]+f[vertexIdx.x-3][vertexIdx.y][vertexIdx.z])
+	return res + 0.0*val
+}
+
 der6x(Field f)
 {
 	if(AC_dimension_inactive.x)
@@ -1662,7 +1732,7 @@ der6x(Field f)
 		return der6x_stencil(f)*AC_inv_ds_6.x
 	}
 }
-Stencil der6y_stencil {
+Stencil der6y_stencil_base {
     [0][-3][0] = DER6_3,
     [0][-2][0] = DER6_2,
     [0][-1][0] = DER6_1,
@@ -1671,7 +1741,17 @@ Stencil der6y_stencil {
     [0][2][0]  = DER6_2,
     [0][3][0]  = DER6_3
 }
-Stencil der6z_stencil {
+
+der6y_stencil(Field f)
+{
+	val = der6y_stencil_base(f)
+	res = DER6_0*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z])
+	res += DER6_1*(f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z]+f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z])
+	res += DER6_2*(f[vertexIdx.x][vertexIdx.y+2][vertexIdx.z]+f[vertexIdx.x][vertexIdx.y-2][vertexIdx.z])
+	res += DER6_3*(f[vertexIdx.x][vertexIdx.y+3][vertexIdx.z]+f[vertexIdx.x][vertexIdx.y-3][vertexIdx.z])
+	return res + 0.0*val
+}
+Stencil der6z_stencil_base {
     [-3][0][0] = DER6_3,
     [-2][0][0] = DER6_2,
     [-1][0][0] = DER6_1,
@@ -1679,6 +1759,16 @@ Stencil der6z_stencil {
     [1][0][0]  = DER6_1,
     [2][0][0]  = DER6_2,
     [3][0][0]  = DER6_3
+}
+
+der6z_stencil(Field f)
+{
+	val = der6z_stencil_base(f)
+	res = DER6_0*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z])
+	res += DER6_1*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z+1]+f[vertexIdx.x][vertexIdx.y][vertexIdx.z-1])
+	res += DER6_2*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z+2]+f[vertexIdx.x][vertexIdx.y][vertexIdx.z-2])
+	res += DER6_3*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z+3]+f[vertexIdx.x][vertexIdx.y][vertexIdx.z-3])
+	return res + 0.0*val
 }
 der6y(Field f)
 {

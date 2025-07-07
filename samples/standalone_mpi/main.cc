@@ -429,7 +429,7 @@ calc_timestep(const AcMeshInfo info)
     	                          (fabsl((long double)uumax) + ((long double)ad_onefluid) +
     	                           sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
 
-    	const long double diffus3_dt = (nu_hyper3 != 0.0) ? cdt3 * dsmin6 / nu_hyper3 : AC_REAL_MAX;
+    	const long double diffus3_dt = (nu_hyper3 != (long double)0.0) ? cdt3 * dsmin6 / nu_hyper3 : (long double)AC_REAL_MAX;
 
     	const long double diffus_dt  = cdtv * dsmin * dsmin /
     	                            (max(max(nu_visc, eta), gamma * chi) +

@@ -125,7 +125,7 @@ curl(Field3 v) {
 curl(Matrix m) {
   if(AC_coordinate_system != AC_CARTESIAN_COORDINATES)
   {
-	  print("curl with Matrix only is incorrect for non-cartesian coordinates!\n")
+	  fatal_error_message(true,"curl with Matrix only is incorrect for non-cartesian coordinates!\n")
   }
   return real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
 }
