@@ -647,6 +647,11 @@ ac_get_field_halos(const Field& field)
 #undef size
 #undef longlong
 
+static AcResult
+acLaunchKernelTPB(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
+               const Volume end_volume, VertexBufferArray vba, const dim3 tpb);
+
+
 template<typename T1, typename T2, typename T3>
 AcResult
 acLaunchKernelVariadic1d(AcKernel kernel, const cudaStream_t stream, const size_t start, const size_t end,T1 param1, T2 param2, T3 param3)
@@ -655,7 +660,7 @@ acLaunchKernelVariadic1d(AcKernel kernel, const cudaStream_t stream, const size_
   const Volume volume_end   = {end,1,1};
   VertexBufferArray vba{};
   acLoadKernelParams(vba.on_device.kernel_input_params,kernel,param1,param2,param3); 
-  return acLaunchKernel(kernel,stream,volume_start,volume_end,vba);
+  return acLaunchKernelTPB(kernel,stream,volume_start,volume_end,vba,dim3(256,1,1));
 }
 
 template<typename T1, typename T2>
@@ -666,7 +671,7 @@ acLaunchKernelVariadic1d(AcKernel kernel, const cudaStream_t stream, const size_
   const Volume volume_end   = {end,1,1};
   VertexBufferArray vba{};
   acLoadKernelParams(vba.on_device.kernel_input_params,kernel,param1,param2); 
-  return acLaunchKernel(kernel,stream,volume_start,volume_end,vba);
+  return acLaunchKernelTPB(kernel,stream,volume_start,volume_end,vba,dim3(256,1,1));
 }
 
 
@@ -1482,6 +1487,14 @@ update_reduce_offsets_and_resize(const AcKernel kernel, const int3 start, const 
 	resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba,kernel);
   }
 }
+
+AcResult
+acResetScratchPadStates(VertexBufferArray vba)
+{
+  if(vba.scratchpad_states) memset(vba.scratchpad_states,0,sizeof(AcScratchpadStates));
+  return AC_SUCCESS;
+}
+
 AcResult
 acSetReduceOffset(AcKernel kernel, const Volume start_volume,
                const Volume end_volume, VertexBufferArray vba)
@@ -1496,17 +1509,11 @@ acSetReduceOffset(AcKernel kernel, const Volume start_volume,
   update_reduce_offsets_and_resize(kernel,start,tpb,bpg,vba);
   return AC_SUCCESS;
 }
-
 AcResult
-acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
-               const Volume end_volume, VertexBufferArray vba)
+acLaunchKernelCommon(AcKernel kernel, const cudaStream_t stream, const int3 start, const int3 end,
+	             VertexBufferArray vba, const dim3 tpb)	
 {
-  const int3 start = to_int3(start_volume);
-  const int3 end   = to_int3(get_kernel_end(kernel,start_volume,end_volume));
-
-  const TBConfig tbconf = getOptimalTBConfig(kernel, start, end, vba);
-  const dim3 tpb        = tbconf.tpb;
-  const int3 dims       = tbconf.dims;
+  const int3 dims       = end-start;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
   if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
   {
@@ -1523,6 +1530,25 @@ acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_vo
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
   return AC_SUCCESS;
+}
+
+AcResult
+acLaunchKernelTPB(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
+               const Volume end_volume, VertexBufferArray vba, const dim3 tpb)
+{
+  const int3 start = to_int3(start_volume);
+  const int3 end   = to_int3(get_kernel_end(kernel,start_volume,end_volume));
+  return acLaunchKernelCommon(kernel,stream,start,end,vba,tpb);
+}
+
+AcResult
+acLaunchKernel(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
+               const Volume end_volume, VertexBufferArray vba)
+{
+  const int3 start = to_int3(start_volume);
+  const int3 end   = to_int3(get_kernel_end(kernel,start_volume,end_volume));
+  const TBConfig tbconf = getOptimalTBConfig(kernel, start, end, vba);
+  return acLaunchKernelCommon(kernel,stream,start,end,vba,tbconf.tpb);
 }
 
 AcResult
@@ -2069,7 +2095,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
   //TP: done to ensure scratchpads are reset after autotuning
-  if(vba.scratchpad_states) memset(vba.scratchpad_states,0,sizeof(AcScratchpadStates));
+  acResetScratchPadStates(vba);
   return c;
 }
 
