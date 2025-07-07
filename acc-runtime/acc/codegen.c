@@ -9686,6 +9686,7 @@ gen_fused_kernels(ASTNode* root)
 void
 preprocess(ASTNode* root, const bool optimize_input_params)
 {
+  if(duplicate_dfuncs.names.size == 0) duplicate_dfuncs = get_duplicate_dfuncs(root);
   replace_const_ints(root,const_int_values,const_ints);
   memset(&kfunc_nodes,0,sizeof(kfunc_nodes));
   memset(&kfunc_names,0,sizeof(kfunc_names));
