@@ -69,7 +69,7 @@ astnode_hostdefine(const char* buffer, const int token)
 
 
 	char* tmp = strdup(buffer);
-	replace_substring(&tmp,def_in,def_out);
+	replace_substring(tmp,def_in,def_out);
 	astnode_set_buffer(tmp,res);
         astnode_set_postfix("\n", res);
 	free(tmp);

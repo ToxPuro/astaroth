@@ -3049,7 +3049,7 @@ gen_loader_definition(FILE* stream, const func_params_info params_info, const fu
 			if(is_dfunc) continue;
 
 			char* input_param = strdup(call_info.expr.data[i]);
-			replace_substring(&input_param,"AC_ITERATION_NUMBER","p.step_number");
+			replace_substring(input_param,"AC_ITERATION_NUMBER","p.step_number");
 			if (all_identifiers_are_constexpr(call_info.expr_nodes.data[i]) || !strcmp(input_param,"p.step_number"))
 				fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], input_param);
 			else if(is_value_applicable_type(call_info.types.data[i]))
@@ -6911,31 +6911,31 @@ replace_substrings(ASTNode* node, const char* to_replace, const char* replacemen
 	if(node->expr_type)
 	{
 		char* tmp = strdup(node->expr_type);
-		replace_substring(&tmp,to_replace,replacement);
+		replace_substring(tmp,to_replace,replacement);
 		node->expr_type = intern(tmp);
 	}
 	if(node->prefix)
 	{
 		char* tmp = strdup(node->prefix);
-		replace_substring(&tmp,to_replace,replacement);
+		replace_substring(tmp,to_replace,replacement);
 		astnode_set_prefix(tmp,node);
 	}
 	if(node->infix)
 	{
 		char* tmp = strdup(node->infix);
-		replace_substring(&tmp,to_replace,replacement);
+		replace_substring(tmp,to_replace,replacement);
 		astnode_set_infix(tmp,node);
 	}
 	if(node->buffer)
 	{
 		char* tmp = strdup(node->buffer);
-		replace_substring(&tmp,to_replace,replacement);
+		replace_substring(tmp,to_replace,replacement);
 		astnode_set_buffer(tmp,node);
 	}
 	if(node->postfix)
 	{
 		char* tmp = strdup(node->postfix);
-		replace_substring(&tmp,to_replace,replacement);
+		replace_substring(tmp,to_replace,replacement);
 		astnode_set_postfix(tmp,node);
 	}
 }
@@ -7792,21 +7792,24 @@ find_dfunc_start(const ASTNode* node, const char* dfunc_name)
 	       node->rhs ? find_dfunc_start(node->rhs,dfunc_name) :
 	       NULL;
 }
+
 char*
 get_mangled_name(const char* dfunc_name, const string_vec types)
 {
-		char* tmp;
-		my_asprintf(&tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
-		for(size_t i = 0; i < types.size; ++i)
-			my_asprintf(&tmp,"%s_%s",tmp,
-					types.data[i] ? types.data[i] : "Auto");
-		if(types.size == 0) my_asprintf(&tmp,"%s_%s",tmp,"Empty");
-		tmp = realloc(tmp,sizeof(char)*(strlen(tmp) + 5*types.size));
-		replace_substring(&tmp,MULT_STR,"ARRAY");
-		replace_substring(&tmp,"<","_");
-		replace_substring(&tmp,">","_");
-		return tmp;
+		char tmp[40000];
+                sprintf(tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
+                for(size_t i = 0; i < types.size; ++i)
+                {
+                        sprintf(tmp,"%s_%s",tmp,types.data[i] ? types.data[i] : "Auto");
+                }
+                if(types.size == 0) sprintf(tmp,"%s_%s",tmp,"Empty");
+                replace_substring(tmp,MULT_STR,"ARRAY");
+                replace_substring(tmp,"<","_");
+                replace_substring(tmp,">","_");
+                char* res = strdup(tmp);
+                return res;
 }
+
 void
 mangle_dfunc_names(ASTNode* node, string_vec* dst_types, const char** dst_names,int* counters)
 {

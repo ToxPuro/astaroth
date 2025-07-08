@@ -540,14 +540,11 @@ typedef struct CodeGenInput
 
 static inline char* itoa(const int x)
 {
-	char* tmp = (char*)malloc(100*sizeof(char));
-	sprintf(tmp,"%d",x);
-	const int n = strlen(tmp);
-	char* res = (char*)malloc(n*sizeof(char));
-	sprintf(res,"%d",x);
-	free(tmp);
-	return res;
+        char* res = NULL;
+        my_asprintf(&res,"%d",x);
+        return res;
 }
+
 static inline void
 set_buffers_empty(ASTNode* node)
 {

@@ -184,9 +184,9 @@ static inline int replacestr(char *line, const char *search, const char *replace
 }
 
 static inline void 
-replace_substring(char** str, const char* sub, const char* replace)
+replace_substring(char* str, const char* sub, const char* replace)
 {
-	replacestr(*str,sub,replace);
+	replacestr(str,sub,replace);
 }
 static int
 my_vasprintf(char **strp, const char *fmt, va_list ap)
