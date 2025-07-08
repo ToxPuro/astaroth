@@ -15,7 +15,8 @@ else()
     PROPERTIES COMPILE_FLAGS "-O0"
   )
 
-  add_library(astaroth_core device.cc decomposition.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc update_params.cc logging.c stencil_accesses.cpp helpers/helpers.cc)
+  set_source_files_properties(stencil_accesses.cpp PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1)
+  add_library(astaroth_core device.cc decomposition.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp update_params.cc logging.c helpers/helpers.cc)
   target_link_libraries(astaroth_core PUBLIC static_kernels)
   
   

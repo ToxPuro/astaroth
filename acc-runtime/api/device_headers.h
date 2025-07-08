@@ -11,6 +11,10 @@ typedef int cudaError_t;
 #define cudaSuccess (0)
 #define cudaFailure (1)
 
+#undef __host__
+#define __host__
+#undef __forceinline__
+#define __forceinline__
 #undef __device__
 #define __device__
 #undef __global__

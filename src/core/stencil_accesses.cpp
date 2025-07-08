@@ -20,11 +20,11 @@ bool should_reduce_int[1000] = {false};
 #endif
 #define longlong long long
 #include "func_attributes.h"
-
 #include <assert.h>
 
 #include <string.h>
 #include <vector>
+#include "device_headers.h"
 #include "datatypes.h"
 
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
