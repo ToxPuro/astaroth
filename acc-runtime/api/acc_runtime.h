@@ -16,33 +16,17 @@
       You should have received a copy of the GNU General Public License
       along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
   */
-  #pragma once
+#pragma once
 
-  #define AC_INDEX_ORDER(i,j,k,x,y,z) \
-  	i + x*j + x*y*k
+#define AC_INDEX_ORDER(i,j,k,x,y,z) \
+	i + x*j + x*y*k
 
-  #include <stdio.h>
-  #include <stdbool.h>
-
-
-  #if AC_USE_HIP
-  #include "hip.h"
-
-  #include <hip/hip_runtime_api.h> // Streams
-  #if PROFILING_ENABLED
-  #include <roctracer/roctracer_ext.h>       // Profiling
-  #endif
-
-  #else 
-  #if PROFILING_ENABLED
-  #include <cuda_profiler_api.h> // Profiling
-  #endif
-  #include <cuda_runtime_api.h>  // Streams
-  #endif
-
-  #include "builtin_enums.h"
-  #include "datatypes.h"
-  #include "errchk.h"
+#include <stdio.h>
+#include <stdbool.h>
+#include "device_headers.h"
+#include "builtin_enums.h"
+#include "datatypes.h"
+#include "errchk.h"
 
 #define AC_SIZE(arr) sizeof(arr)/sizeof(arr[0])
 #define ONE_DIMENSIONAL_PROFILE (1 << 20)
@@ -75,7 +59,6 @@ typedef enum {
   #include "user_built-in_constants.h"
   //#include "user_builtin_non_scalar_constants.h"
   #include "func_attributes.h"
-#include "device_headers.h"
 
 #ifdef __cplusplus
 
