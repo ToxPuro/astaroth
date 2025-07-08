@@ -25,7 +25,6 @@ bool should_reduce_int[1000] = {false};
 
 #include <string.h>
 #include <vector>
-#include "errchk.h"
 #include "datatypes.h"
 
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
@@ -52,24 +51,6 @@ RCONST(AcBoolCompArrayParam)
 }
 
 
-#undef __device__
-#define __device__
-#undef __global__
-#define __global__
-#undef __launch_bounds__
-#define __launch_bounds__(x)
-#undef __syncthreads
-#define __syncthreads()
-#undef __shared__
-#define __shared__
-
-#define threadIdx ((int3){0, 0, 0})
-#define blockIdx ((dim3){0, 0, 0})
-#define blockDim ((dim3){1, 1, 1})
-#define gridDim ((dim3){1, 1, 1})
-#define make_int3(x, y, z) ((int3){x, y, z})
-#define make_float3(x, y, z) ((float3){x, y, z})
-#define make_double3(x, y, z) ((double3){x, y, z})
 void
 print(const char* , ...)
 {

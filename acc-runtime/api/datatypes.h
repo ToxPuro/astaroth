@@ -23,12 +23,28 @@
 #include <float.h> // DBL/FLT_EPSILON
 
 #include <math.h>
+#if AC_CPU_BUILD
+
+typedef struct
+{
+	int x,y,z;
+} int3;
+
+typedef struct
+{
+    unsigned int x, y, z;
+} dim3;
+
+
+#else
 #if AC_USE_HIP
   #include "hip.h"
   #include <hip/hip_runtime_api.h>
 #else
   #include <vector_types.h> // CUDA vector types
   #include <cuda_runtime_api.h> // cuda_assert
+#endif
+
 #endif
 
 #if AC_DOUBLE_PRECISION

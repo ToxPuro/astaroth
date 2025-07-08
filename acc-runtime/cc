@@ -3049,7 +3049,7 @@ gen_loader_definition(FILE* stream, const func_params_info params_info, const fu
 			if(is_dfunc) continue;
 
 			char* input_param = strdup(call_info.expr.data[i]);
-			replace_substring(input_param,"AC_ITERATION_NUMBER","p.step_number");
+			replace_substring(&input_param,"AC_ITERATION_NUMBER","p.step_number");
 			if (all_identifiers_are_constexpr(call_info.expr_nodes.data[i]) || !strcmp(input_param,"p.step_number"))
 				fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], input_param);
 			else if(is_value_applicable_type(call_info.types.data[i]))
@@ -6911,31 +6911,31 @@ replace_substrings(ASTNode* node, const char* to_replace, const char* replacemen
 	if(node->expr_type)
 	{
 		char* tmp = strdup(node->expr_type);
-		replace_substring(tmp,to_replace,replacement);
+		replace_substring(&tmp,to_replace,replacement);
 		node->expr_type = intern(tmp);
 	}
 	if(node->prefix)
 	{
 		char* tmp = strdup(node->prefix);
-		replace_substring(tmp,to_replace,replacement);
+		replace_substring(&tmp,to_replace,replacement);
 		astnode_set_prefix(tmp,node);
 	}
 	if(node->infix)
 	{
 		char* tmp = strdup(node->infix);
-		replace_substring(tmp,to_replace,replacement);
+		replace_substring(&tmp,to_replace,replacement);
 		astnode_set_infix(tmp,node);
 	}
 	if(node->buffer)
 	{
 		char* tmp = strdup(node->buffer);
-		replace_substring(tmp,to_replace,replacement);
+		replace_substring(&tmp,to_replace,replacement);
 		astnode_set_buffer(tmp,node);
 	}
 	if(node->postfix)
 	{
 		char* tmp = strdup(node->postfix);
-		replace_substring(tmp,to_replace,replacement);
+		replace_substring(&tmp,to_replace,replacement);
 		astnode_set_postfix(tmp,node);
 	}
 }
@@ -7714,7 +7714,10 @@ func_params_conversion(ASTNode* node, const ASTNode* root)
 	if(call_info.types.size == 0) return res;
 	func_params_info params_info = get_function_params_info(root,func_name);
 	if(!is_intrinsic && params_info.types.size != call_info.types.size)
+	{
+		printf("HMM: %zu\n",duplicate_dfuncs.names.size);
 		fatal("number of parameters does not match, expected %zu but got %zu in %s\n",params_info.types.size, call_info.types.size, combine_all_new(node));
+	}
 	for(size_t i = 0; i < call_info.types.size; ++i)
 	{
 		if(!call_info.types.data[i]) continue;
@@ -7792,24 +7795,21 @@ find_dfunc_start(const ASTNode* node, const char* dfunc_name)
 	       node->rhs ? find_dfunc_start(node->rhs,dfunc_name) :
 	       NULL;
 }
-
 char*
 get_mangled_name(const char* dfunc_name, const string_vec types)
 {
-		char tmp[40000];
-                sprintf(tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
-                for(size_t i = 0; i < types.size; ++i)
-                {
-                        strcatprintf(tmp,"_%s",types.data[i] ? types.data[i] : "Auto");
-                }
-                if(types.size == 0) strcatprintf(tmp,"_%s",tmp,"Empty");
-                replace_substring(tmp,MULT_STR,"ARRAY");
-                replace_substring(tmp,"<","_");
-                replace_substring(tmp,">","_");
-                char* res = strdup(tmp);
-                return res;
+		char* tmp;
+		my_asprintf(&tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
+		for(size_t i = 0; i < types.size; ++i)
+			my_asprintf(&tmp,"%s_%s",tmp,
+					types.data[i] ? types.data[i] : "Auto");
+		if(types.size == 0) my_asprintf(&tmp,"%s_%s",tmp,"Empty");
+		tmp = realloc(tmp,sizeof(char)*(strlen(tmp) + 5*types.size));
+		replace_substring(&tmp,MULT_STR,"ARRAY");
+		replace_substring(&tmp,"<","_");
+		replace_substring(&tmp,">","_");
+		return tmp;
 }
-
 void
 mangle_dfunc_names(ASTNode* node, string_vec* dst_types, const char** dst_names,int* counters)
 {
@@ -9016,8 +9016,8 @@ expand_allocating_types(ASTNode* root)
 void gen_boundcond_kernels(const ASTNode* root_in, FILE* stream)
 {
     ASTNode* root = astnode_dup(root_in,NULL);
-          symboltable_reset();
-        traverse(root, 0, NULL);
+    symboltable_reset();
+    traverse(root, 0, NULL);
     s_info = read_user_structs(root);
     e_info = read_user_enums(root);
     expand_allocating_types(root);
@@ -9799,7 +9799,6 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	free_str_vec(&duplicate_dfuncs.names);
 	free_int_vec(&duplicate_dfuncs.counts);
   	free_structs_info(&s_info);
-
 }
 
 
@@ -10783,7 +10782,7 @@ compile_helper(const bool log)
   }
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d " 
+  sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " %s -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d " 
 	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
   ,api_includes, AC_DOUBLE_PRECISION,HIP_ON 
   );

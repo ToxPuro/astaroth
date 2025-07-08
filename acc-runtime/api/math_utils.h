@@ -418,7 +418,12 @@ operator*(const Volume& a, const T& b)
 static inline dim3
 to_dim3(const Volume v)
 {
-  return dim3(v.x, v.y, v.z);
+  return (dim3)
+  {
+	(unsigned int)v.x,
+	(unsigned int)v.y,
+	(unsigned int)v.z
+  };
 }
 
 static HOST_DEVICE_INLINE bool 

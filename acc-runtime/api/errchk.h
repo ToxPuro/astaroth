@@ -31,15 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
-#if defined(AC_USE_HIP) && AC_USE_HIP
-#pragma GCC system_header // NOTE: Silences errors originating from HIP and CUDA
-                          // headers
-#include "hip.h"
-#include <hip/hip_runtime_api.h>
-#else
-#include <cuda_runtime_api.h> // cuda_assert
-#endif
+#include "device_headers.h"
 
 /*
  * =============================================================================
@@ -100,6 +92,21 @@
  * =============================================================================
  */
 // #if defined(__CUDA_RUNTIME_API_H__)
+#if AC_CPU_BUILD
+static inline void
+cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
+{
+  if (code != cudaSuccess) {
+    time_t terr;
+    time(&terr);
+    fprintf(stderr, "%s", ctime(&terr));
+    fprintf(stderr, "\tCUDA error in file %s line %d\n", file, line);
+    fflush(stderr);
+    if (should_abort)
+      abort();
+  }
+}
+#else
 static inline void
 cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
 {
@@ -115,6 +122,7 @@ cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
       abort();
   }
 }
+#endif
 
 #ifdef NDEBUG
 #undef ERRCHK
