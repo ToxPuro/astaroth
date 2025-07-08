@@ -157,12 +157,6 @@ __ffs(unsigned long)
 #endif
 #define idx  ((int)IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z))
 
-#undef  __device__
-#define __device__
-
-#undef  __constant__
-#define __constant__
-
 #include "math_utils.h"
  
 #define constexpr

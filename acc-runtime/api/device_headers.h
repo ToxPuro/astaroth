@@ -5,6 +5,7 @@
 #if AC_CPU_BUILD
 
 #include <limits.h>
+#include <cstdint>
 typedef int cudaStream_t;
 typedef int cudaError_t;
 #define cudaSuccess (0)
@@ -20,6 +21,8 @@ typedef int cudaError_t;
 #define __syncthreads()
 #undef __shared__
 #define __shared__
+#undef __constant__
+#define __constant__
 
 #define threadIdx ((int3){0, 0, 0})
 #define blockIdx ((dim3){0, 0, 0})

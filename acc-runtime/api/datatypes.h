@@ -35,6 +35,10 @@ typedef struct
     unsigned int x, y, z;
 } dim3;
 
+typedef struct
+{
+    unsigned int x, y, z;
+} uint3;
 
 #else
 #if AC_USE_HIP
