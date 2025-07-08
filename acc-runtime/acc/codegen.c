@@ -7800,9 +7800,9 @@ get_mangled_name(const char* dfunc_name, const string_vec types)
                 sprintf(tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
                 for(size_t i = 0; i < types.size; ++i)
                 {
-                        sprintf(tmp,"%s_%s",tmp,types.data[i] ? types.data[i] : "Auto");
+                        strcatprintf(tmp,"_%s",types.data[i] ? types.data[i] : "Auto");
                 }
-                if(types.size == 0) sprintf(tmp,"%s_%s",tmp,"Empty");
+                if(types.size == 0) strcatprintf(tmp,"_%s",tmp,"Empty");
                 replace_substring(tmp,MULT_STR,"ARRAY");
                 replace_substring(tmp,"<","_");
                 replace_substring(tmp,">","_");
