@@ -1,0 +1,118 @@
+#if AC_USE_HIP
+#include "hip.h"
+
+#include <hip/hip_runtime_api.h> // Streams
+#if PROFILING_ENABLED
+#include <roctracer/roctracer_ext.h>       // Profiling
+#endif
+
+#else 
+#if PROFILING_ENABLED
+#include <cuda_profiler_api.h> // Profiling
+#endif
+#include <cuda_runtime_api.h>  // Streams
+#endif
+
+#include "datatypes.h"
+
+cudaError_t
+acStreamSynchronize(cudaStream_t stream)
+{
+	return cudaStreamSynchronize(stream);
+}
+cudaError_t
+acDeviceSynchronize()
+{
+	return cudaDeviceSynchronize();
+}
+cudaError_t
+acSetDevice(const int id)
+{
+	return cudaSetDevice(id);
+}
+cudaError_t
+acGetDeviceCount(int* dst)
+{
+	return cudaGetDeviceCount(dst);
+}
+cudaError_t
+acDeviceSetSharedMemConfig(const cudaSharedMemConfig config)
+{
+	return cudaDeviceSetSharedMemConfig(config);
+}
+cudaError_t
+acStreamCreateWithPriority(cudaStream_t* dst, int option, int priority)
+{
+	return cudaStreamCreateWithPriority(dst,option,priority);
+}
+cudaError_t
+acStreamDestroy(cudaStream_t stream)
+{
+	return cudaStreamDestroy(stream);
+}
+cudaError_t
+acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind)
+{
+	return cudaMemcpy(dst,src,bytes,kind);
+}
+cudaError_t
+acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream)
+{
+	return cudaMemcpyAsync(dst,src,bytes,kind,stream);
+}
+cudaError_t
+acMemcpyPeerAsync(AcReal* dst, int dst_id, const AcReal* src, int src_id, const size_t bytes, const cudaStream_t stream)
+{
+	return cudaMemcpyPeerAsync(dst,dst_id,src,src_id,bytes,stream);
+}
+cudaError_t
+acMemGetInfo(size_t* free_mem, size_t* total_mem)
+{
+	return cudaMemGetInfo(free_mem,total_mem);
+}
+cudaError_t
+acStreamQuery(cudaStream_t stream)
+{
+    return cudaStreamQuery(stream);
+}
+const char*
+acGetErrorString(cudaError_t err)
+{
+    return cudaGetErrorString(err);
+}
+cudaError_t
+acDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPriority)
+{
+	return cudaDeviceGetStreamPriorityRange(leastPriority,greatestPriority);
+}
+cudaError_t
+acStreamCreateWithPriority(cudaStream_t* stream, unsigned int flags, int priority)
+{
+	return cudaStreamCreateWithPriority(stream, flags, priority);
+}
+cudaError_t
+acMalloc(void** dst, const size_t bytes)
+{
+	return cudaMalloc(dst,bytes);
+}
+cudaError_t
+acFree(void* dst)
+{
+	return cudaFree(dst);
+}
+cudaError_t
+acMallocHost(void** dst, const size_t bytes)
+{
+	return cudaMallocHost(dst,bytes);
+}
+cudaError_t
+acGetDevice(int* dst)
+{
+	return cudaGetDevice(dst);
+}
+cudaError_t
+acGetLastError()
+{
+	return cudaGetLastError();
+}
+

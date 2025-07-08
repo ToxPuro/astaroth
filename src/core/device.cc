@@ -21,6 +21,7 @@
 #include "../../acc-runtime/api/math_utils.h"
 #include "kernels/kernels.h"
 #include "ac_helpers.h"
+#include "astaroth_cuda_wrappers.h"
 
 #if AC_MPI_ENABLED
 static int ac_pid()

@@ -38,6 +38,7 @@
 
 #include "task.h"
 #include "astaroth.h"
+#include "astaroth_cuda_wrappers.h"
 
 AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 

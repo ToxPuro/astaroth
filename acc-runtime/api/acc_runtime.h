@@ -32,6 +32,7 @@
   #if PROFILING_ENABLED
   #include <roctracer/roctracer_ext.h>       // Profiling
   #endif
+
   #else 
   #if PROFILING_ENABLED
   #include <cuda_profiler_api.h> // Profiling
@@ -385,27 +386,6 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 #if AC_MPI_ENABLED
    FUNC_DEFINE(AcResult, acInitializeRuntimeMPI,(const int grid_pid, const int nprocs, AcMeasurementGatherFunc));
 #endif
-
-   FUNC_DEFINE(cudaError_t, acStreamSynchronize,(cudaStream_t));
-   FUNC_DEFINE(cudaError_t, acDeviceSynchronize,());
-   FUNC_DEFINE(cudaError_t, acSetDevice,(const int));
-   FUNC_DEFINE(cudaError_t, acGetDeviceCount,(int* dst));
-   FUNC_DEFINE(cudaError_t, acDeviceSetSharedMemConfig,(cudaSharedMemConfig));
-   FUNC_DEFINE(cudaError_t, acStreamDestroy,(cudaStream_t stream));
-   FUNC_DEFINE(cudaError_t, acMemcpy,(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind));
-   FUNC_DEFINE(cudaError_t, acMemcpyAsync,(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, cudaStream_t stream));
-   FUNC_DEFINE(cudaError_t, acMemcpyPeerAsync,(AcReal* dst, int dst_id, const AcReal* src, const int src_id, const size_t bytes, cudaStream_t stream));
-   FUNC_DEFINE(cudaError_t, acMemGetInfo,(size_t* free_mem, size_t* total_mem));
-   FUNC_DEFINE(cudaError_t, acStreamQuery,(cudaStream_t));
-   FUNC_DEFINE(const char*, acGetErrorString,(cudaError_t));
-   FUNC_DEFINE(cudaError_t, acDeviceGetStreamPriorityRange,(int* leastPriority, int* greatestPriority));
-   FUNC_DEFINE(cudaError_t, acStreamCreateWithPriority,(cudaStream_t* stream, unsigned int flags, int priority));
-   FUNC_DEFINE(cudaError_t, acMallocHost,(void** dst, const size_t bytes));
-   FUNC_DEFINE(cudaError_t, acMalloc,(void** dst, const size_t bytes));
-   FUNC_DEFINE(cudaError_t, acFree,(void* dst));
-   FUNC_DEFINE(cudaError_t, acGetDevice,(int* dst));
-   FUNC_DEFINE(cudaError_t, acGetLastError,());
-
 
   FUNC_DEFINE(AcResult, acTransposeWithBounds,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream));
   FUNC_DEFINE(AcResult, acTranspose,(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream));

@@ -62,6 +62,7 @@
 #include "errchk.h"
 #include "math_utils.h"
 #include "timer_hires.h"
+#include "astaroth_cuda_wrappers.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 

@@ -18,6 +18,7 @@
 */
 #include "astaroth.h"
 #include "ac_buffer.h"
+#include "astaroth_cuda_wrappers.h"
 
 #include <string.h> // strcmp
 

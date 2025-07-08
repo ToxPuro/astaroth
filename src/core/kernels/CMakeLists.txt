@@ -11,6 +11,7 @@ else()
 	add_library(static_kernels STATIC kernels.cu logging.c)
 endif()
 
+target_link_libraries(static_kernels PRIVATE ac_cuda_wrappers)
 target_link_libraries(static_kernels PRIVATE astaroth_helpers)
 target_link_libraries(static_kernels PUBLIC acc-runtime-headers)
 target_include_directories(static_kernels PUBLIC ${CMAKE_SOURCE_DIR}/include)
