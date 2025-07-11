@@ -73,8 +73,8 @@ acPBACreate(const AcMeshDims* dims)
   ProfileBufferArray pba{};
   for (int i = 0; i < NUM_PROFILES; ++i) {
     const size_t bytes = prof_size(Profile(i),dims[i].m1)*sizeof(AcReal);
-    acDeviceMalloc(&pba.in[i],  bytes);
-    acDeviceMalloc(&pba.out[i], bytes);
+    acDeviceMalloc((void**)&pba.in[i],  bytes);
+    acDeviceMalloc((void**)&pba.out[i], bytes);
     //pba.out[i] = pba.in[i];
   }
 

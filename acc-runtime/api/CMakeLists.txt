@@ -103,9 +103,10 @@ target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BI
 target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 
-add_library(acc-runtime-driver arrays.cc vba.cc)
-target_link_libraries(acc-runtime-driver PUBLIC acc-runtime-headers)
+add_library(acc-runtime-driver arrays.cc vba.cc common_kernels.cc)
+target_link_libraries(acc-runtime-driver PUBLIC acc-runtime-headers ac_cuda_wrappers)
 target_include_directories(acc-runtime-driver PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(acc-runtime-driver PUBLIC ${CMAKE_SOURCE_DIR}/src/core/kernels)
 
 if (USE_HIP)
     target_link_libraries(acc-runtime-headers INTERFACE ${ROCTRACER})

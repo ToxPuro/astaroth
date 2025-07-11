@@ -100,22 +100,6 @@ AcResult acKernelVolumeCopy(const cudaStream_t stream,                          
 
 // cplusplus overloads
 //
-AcResult
-acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
-              const AcReal value);
-
-AcResult
-acKernelFlush(const cudaStream_t stream, int* arr, const size_t n,
-              const int value);
-AcResult
-acKernelFlush(const cudaStream_t stream, AcComplex* arr, const size_t n,
-              const AcComplex value);
-
-#if AC_DOUBLE_PRECISION
-AcResult
-acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
-              const float value);
-#endif
 
 /** */
 AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,

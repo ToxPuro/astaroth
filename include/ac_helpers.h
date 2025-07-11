@@ -14,7 +14,7 @@ acGetAmountOfDeviceMemoryFree();
 
 #ifdef __cplusplus
 }
-#endif
+
 void
 acDeviceMalloc(void** dst, const size_t bytes);
 void
@@ -26,4 +26,6 @@ void
 acDeviceFree(AcReal** dst, const int bytes);
 void
 acDeviceFree(AcComplex** dst, const int bytes);
+
+#endif
 

@@ -22,6 +22,7 @@
 #define rocprim__warp_shuffle rocprim::warp_shuffle
 
 #include "acc_runtime.h"
+#include "kernels.h"
 #include <rocprim/rocprim.hpp>
 #include <hip/hip_cooperative_groups.h>
 

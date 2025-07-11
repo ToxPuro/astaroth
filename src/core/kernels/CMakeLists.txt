@@ -12,7 +12,7 @@ endif()
 if (RUNTIME_COMPILATION)
 	add_library(static_kernels STATIC logging.c)
 else()
-	add_library(static_kernels STATIC kernels.cu logging.c fft.cc reductions.cc common_kernels.cc)
+	add_library(static_kernels STATIC kernels.cu logging.c fft.cc reductions.cc)
 endif()
 
 target_link_libraries(static_kernels PRIVATE ac_cuda_wrappers astaroth_helpers)
