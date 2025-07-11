@@ -22,9 +22,19 @@
 #define rocprim__warp_shuffle rocprim::warp_shuffle
 
 #include "acc_runtime.h"
-#include "kernels.h"
+#if AC_CPU_BUILD
+
+#else
+#if AC_USE_HIP
 #include <rocprim/rocprim.hpp>
 #include <hip/hip_cooperative_groups.h>
+#else
+#include <cooperative_groups.h>
+#endif
+
+#endif
+
+#include "kernels.h"
 
 #include "ac_buffer.h"
 
