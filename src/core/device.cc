@@ -71,12 +71,12 @@ acDevicePrintInfo(const Device device)
     const int device_id = device->id;
 
     cudaDeviceProp props;
-    cudaGetDeviceProperties(&props, device_id);
+    acGetDeviceProperties(&props, device_id);
     printf("--------------------------------------------------\n");
     printf("Device Number: %d\n", device_id);
     const size_t bus_id_max_len = 128;
     char bus_id[bus_id_max_len];
-    cudaDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id);
+    acDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id);
     printf("  PCI bus ID: %s\n", bus_id);
     printf("    Device name: %s\n", props.name);
     printf("    Compute capability: %d.%d\n", props.major, props.minor);

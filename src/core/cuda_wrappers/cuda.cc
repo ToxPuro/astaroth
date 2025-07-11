@@ -56,6 +56,11 @@ acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind
 	return cudaMemcpy(dst,src,bytes,kind);
 }
 cudaError_t
+acMemcpy(void* dst, const void* src, const size_t bytes, cudaMemcpyKind kind)
+{
+	return cudaMemcpy(dst,src,bytes,kind);
+}
+cudaError_t
 acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream)
 {
 	return cudaMemcpyAsync(dst,src,bytes,kind,stream);
@@ -79,6 +84,12 @@ const char*
 acGetErrorString(cudaError_t err)
 {
     return cudaGetErrorString(err);
+}
+
+const char*
+acGetErrorName(cudaError_t err)
+{
+    return cudaGetErrorName(err);
 }
 cudaError_t
 acDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPriority)
@@ -116,3 +127,76 @@ acGetLastError()
 	return cudaGetLastError();
 }
 
+cudaError_t
+acEventCreate(cudaEvent_t* event)
+{
+	return cudaEventCreate(event);
+}
+cudaError_t
+acEventRecord(cudaEvent_t event)
+{
+	return cudaEventRecord(event);
+}
+cudaError_t
+acEventSynchronize(cudaEvent_t event)
+{
+	return cudaEventSynchronize(event);
+}
+cudaError_t
+acEventElapsedTime(float* time, cudaEvent_t start_event, cudaEvent_t end_event)
+{
+	return cudaEventElapsedTime(time,start_event,end_event);
+}
+cudaError_t
+acEventDestroy(cudaEvent_t event)
+{
+	return cudaEventDestroy(event);
+}
+cudaError_t 
+acGetDeviceProperties(cudaDeviceProp* prop, int device)
+{
+	return cudaGetDeviceProperties(prop,device);
+}
+cudaError_t
+acOccupancyMaxActiveBlocksPerMultiprocessor(int* numBlocks, const void* func, int blockSize, size_t smemSize)
+{
+	return cudaOccupancyMaxActiveBlocksPerMultiprocessor(numBlocks , func, blockSize, smemSize);
+}
+cudaError_t
+acDeviceGetAttribute(int* dst,  cudaDeviceAttribute_t attr, int device)
+{
+	return cudaDeviceGetAttribute(dst,attr,device);
+}
+cudaError_t
+acLaunchCooperativeKernel(void* func,dim3 bpg,dim3 tpb,void** args,size_t smem,cudaStream_t stream);
+
+cudaError_t
+acLaunchCooperativeKernel(void* func,dim3 bpg,dim3 tpb,void** args,size_t smem,cudaStream_t stream)
+{
+	return cudaLaunchCooperativeKernel(func,bpg,tpb,args,smem,stream);
+}
+cudaError_t
+acMemcpyToSymbol(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind kind)
+{
+	return cudaMemcpyToSymbol(symbol,src,count,offset,kind);
+}
+cudaError_t
+acMemcpyToSymbolAsync(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream)
+{
+	return cudaMemcpyToSymbolAsync(symbol,src,count,offset,kind,stream);
+}
+cudaError_t
+acDeviceGetPCIBusId(char* pciBusId, int len, int device)
+{
+	return cudaDeviceGetPCIBusId(pciBusId,len,device);
+}
+cudaError_t 
+acMemcpyFromSymbol( void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind)
+{
+	return cudaMemcpyFromSymbol(dst,symbol,count,offset,kind);
+}
+cudaError_t 
+acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream)
+{
+	return cudaMemcpyFromSymbolAsync(dst,symbol,count,offset,kind,stream);
+}

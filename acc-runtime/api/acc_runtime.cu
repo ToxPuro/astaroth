@@ -248,7 +248,7 @@ static cudaDeviceProp
 get_device_prop()
 {
   cudaDeviceProp props;
-  ERRCHK_CUDA_ALWAYS(cudaGetDeviceProperties(&props, 0));
+  ERRCHK_CUDA_ALWAYS(acGetDeviceProperties(&props, 0));
   return props;
 }
 
@@ -283,9 +283,10 @@ is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kerne
   if(is_coop_raytracing_kernel(kernel))
   {
 	int maxBlocksPerSM{};
-	ERRCHK_CUDA_ALWAYS(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+	ERRCHK_CUDA_ALWAYS(
+		acOccupancyMaxActiveBlocksPerMultiprocessor(
 			&maxBlocksPerSM,
-			kernels[kernel],
+			(void*)kernels[kernel],
 			tpb.x*tpb.y*tpb.z,
 			0
 	));
@@ -767,7 +768,7 @@ supports_cooperative_launches()
 		ERRCHK_ALWAYS(supportsCoopLaunch);
 		return bool(supportsCoopLaunch);
 	}
-	ERRCHK_CUDA(cudaDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, get_current_device()));
+	ERRCHK_CUDA(acDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, get_current_device()));
 	called = true;
 	return bool(supportsCoopLaunch);
 }
@@ -777,7 +778,7 @@ launch_kernel(const AcKernel kernel, const int3 start, const int3 end, VertexBuf
   if(is_coop_raytracing_kernel(kernel) && supports_cooperative_launches())
   {
 	void* args[] = {(void*)&start,(void*)&end,(void*)&vba.on_device};
-	ERRCHK_CUDA(cudaLaunchCooperativeKernel((void*)kernels[kernel],bpg,tpb,args,smem,stream));
+	ERRCHK_CUDA(acLaunchCooperativeKernel((void*)kernels[kernel],bpg,tpb,args,smem,stream));
   }
   else
   {
@@ -897,32 +898,32 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
 
   // Timer create
   cudaEvent_t tstart, tstop;
-  ERRCHK_CUDA(cudaEventCreate(&tstart));
-  ERRCHK_CUDA(cudaEventCreate(&tstop));
+  ERRCHK_CUDA(acEventCreate(&tstart));
+  ERRCHK_CUDA(acEventCreate(&tstop));
 
   // Warmup
-  ERRCHK_CUDA(cudaEventRecord(tstart));
+  ERRCHK_CUDA(acEventRecord(tstart));
   KERNEL_LAUNCH(kernels[kernel],bpg, tpb, smem)(start, end, vba.on_device);
-  ERRCHK_CUDA(cudaEventRecord(tstop));
-  ERRCHK_CUDA(cudaEventSynchronize(tstop));
+  ERRCHK_CUDA(acEventRecord(tstop));
+  ERRCHK_CUDA(acEventSynchronize(tstop));
   ERRCHK_CUDA_KERNEL();
   ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
 
   // Benchmark
-  ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
+  ERRCHK_CUDA(acEventRecord(tstart)); // Timing start
   KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem)(start, end, vba.on_device);
-  ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
-  ERRCHK_CUDA(cudaEventSynchronize(tstop));
+  ERRCHK_CUDA(acEventRecord(tstop)); // Timing stop
+  ERRCHK_CUDA(acEventSynchronize(tstop));
   float milliseconds = 0;
-  ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
+  ERRCHK_CUDA(acEventElapsedTime(&milliseconds, tstart, tstop));
 
   ERRCHK_ALWAYS(kernel < NUM_KERNELS);
   printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel],
          static_cast<double>(milliseconds));
 
   // Timer destroy
-  ERRCHK_CUDA(cudaEventDestroy(tstart));
-  ERRCHK_CUDA(cudaEventDestroy(tstop));
+  ERRCHK_CUDA(acEventDestroy(tstart));
+  ERRCHK_CUDA(acEventDestroy(tstop));
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
   return AC_SUCCESS;
@@ -946,7 +947,7 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
 
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
-  const cudaError_t retval = cudaMemcpyToSymbol(
+  const cudaError_t retval = acMemcpyToSymbol(
       stencils, data, bytes, stencil * bytes, cudaMemcpyHostToDevice);
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
@@ -974,7 +975,7 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
 
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
-  const cudaError_t retval = cudaMemcpyFromSymbol(
+  const cudaError_t retval = acMemcpyFromSymbol(
       data, stencils, bytes, stencil * bytes, cudaMemcpyDeviceToHost);
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
@@ -984,7 +985,7 @@ AcResult
 acLoadRealReduceRes(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value)
 {
   	const size_t offset =   (size_t)(&d_reduce_real_res_symbol[param]) - (size_t)&d_reduce_real_res_symbol;
-	ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_reduce_real_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
+	ERRCHK_CUDA(acMemcpyToSymbolAsync(d_reduce_real_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
 	return AC_SUCCESS;
 }
 
@@ -992,7 +993,7 @@ AcResult
 acLoadIntReduceRes(cudaStream_t stream, const AcIntOutputParam param, const int* value)
 {
   	const size_t offset =   (size_t)(&d_reduce_int_res_symbol[param]) - (size_t)&d_reduce_int_res_symbol;
-	ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_reduce_int_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
+	ERRCHK_CUDA(acMemcpyToSymbolAsync(d_reduce_int_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
 	return AC_SUCCESS;
 }
 
@@ -1001,7 +1002,7 @@ AcResult
 acLoadFloatReduceRes(cudaStream_t stream, const AcFloatOutputParam param, const float* value)
 {
   	const size_t offset =   (size_t)&d_reduce_float_res_symbol[param]- (size_t)&d_reduce_float_res_symbol;
-	ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_reduce_float_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
+	ERRCHK_CUDA(acMemcpyToSymbolAsync(d_reduce_float_res_symbol, value, sizeof(value), offset, cudaMemcpyHostToDevice, stream));
 	return AC_SUCCESS;
 }
 #endif
@@ -1035,7 +1036,7 @@ acLoadUniform(const P param, const V value)
   	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize()); /* See note in acLoadStencil */
 
   	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
-  	const cudaError_t retval = cudaMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);
+  	const cudaError_t retval = acMemcpyToSymbol(&d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);
   	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
@@ -1050,7 +1051,7 @@ acStoreUniform(const P param, V* value)
 	ERRCHK_ALWAYS(param < get_num_params<P>());
 	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
   	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
-	const cudaError_t retval = cudaMemcpyFromSymbol(value, d_mesh_info, sizeof(V), offset, cudaMemcpyDeviceToHost);
+	const cudaError_t retval = acMemcpyFromSymbol(value, &d_mesh_info, sizeof(V), offset, cudaMemcpyDeviceToHost);
 	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
@@ -1066,7 +1067,7 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 		auto src_ptr = get_empty_pointer(array);
 		acMemcpyFromGmemArray(array,src_ptr);
 		ERRCHK_ALWAYS(src_ptr != nullptr);
-		ERRCHK_CUDA_ALWAYS(cudaMemcpy(values, src_ptr, bytes, cudaMemcpyDeviceToHost));
+		ERRCHK_CUDA_ALWAYS(acMemcpy(values, src_ptr, bytes, cudaMemcpyDeviceToHost));
 	}
 	else
 		ERRCHK_CUDA_ALWAYS(store_array(values, bytes, array));
@@ -1099,7 +1100,7 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 		fprintf(stderr,"Calling (cuda/hip)memcpy %s|%ld\n",get_name(array),length);
 		fflush(stderr);
 #endif
-		ERRCHK_CUDA_ALWAYS(cudaMemcpy(dst_ptr,values,bytes,cudaMemcpyHostToDevice));
+		ERRCHK_CUDA_ALWAYS(acMemcpy(dst_ptr,values,bytes,cudaMemcpyHostToDevice));
 	}
 	else 
 		ERRCHK_CUDA_ALWAYS(load_array(values, bytes, array));
@@ -1346,36 +1347,36 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
                                      sizeof(AcReal));
 
         cudaEvent_t tstart, tstop;
-        ERRCHK_CUDA(cudaEventCreate(&tstart));
-        ERRCHK_CUDA(cudaEventCreate(&tstop));
+        ERRCHK_CUDA(acEventCreate(&tstart));
+        ERRCHK_CUDA(acEventCreate(&tstop));
 
         launch_kernel(kernel,start,end,vba,bpg,tpb,smem);
         ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
-        ERRCHK_CUDA(cudaEventRecord(tstart)); // Timing start
+        ERRCHK_CUDA(acEventRecord(tstart)); // Timing start
         for (int i = 0; i < num_iters; ++i)
 	{
         	launch_kernel(kernel,start,end,vba,bpg,tpb,smem);
 	}
-        ERRCHK_CUDA(cudaEventRecord(tstop)); // Timing stop
-        ERRCHK_CUDA(cudaEventSynchronize(tstop));
+        ERRCHK_CUDA(acEventRecord(tstop)); // Timing stop
+        ERRCHK_CUDA(acEventSynchronize(tstop));
 
         float milliseconds = 0;
-        ERRCHK_CUDA(cudaEventElapsedTime(&milliseconds, tstart, tstop));
+        ERRCHK_CUDA(acEventElapsedTime(&milliseconds, tstart, tstop));
 
-        ERRCHK_CUDA(cudaEventDestroy(tstart));
-        ERRCHK_CUDA(cudaEventDestroy(tstop));
+        ERRCHK_CUDA(acEventDestroy(tstart));
+        ERRCHK_CUDA(acEventDestroy(tstop));
         ++counter;
         if (log) logAutotuningStatus(counter,n_samples,kernel,best_measurement.time / num_iters);
 
         // Discard failed runs (attempt to clear the error to cudaSuccess)
-        const auto err = cudaGetLastError();
+        const auto err = acGetLastError();
         //TP: it is fine to simply skip invalid configuration values since it can be because of too large tpb's
         //We simply do not count them for finding the optim config
         if(err == cudaErrorInvalidConfiguration) continue;
         if(err == cudaErrorLaunchOutOfResources) continue;
         if (err != cudaSuccess) {
           //TP: reset autotune results
-          fprintf(stderr,"\nFailed while autotuning: %s\nReason: %s\n",kernel_names[kernel],cudaGetErrorName(err));
+          fprintf(stderr,"\nFailed while autotuning: %s\nReason: %s\n",kernel_names[kernel],acGetErrorName(err));
           FILE* fp = fopen(autotune_csv_path,"w");
           fclose(fp);
           ERRCHK_ALWAYS(err == cudaSuccess);
@@ -1876,9 +1877,9 @@ get_offsets(const size_t count, const size_t num_segments)
     ERRCHK_ALWAYS(offsets[i] <= count);
   }
   size_t* d_offsets = NULL;
-  ERRCHK_CUDA_ALWAYS(cudaMalloc(&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1)));
+  ERRCHK_CUDA_ALWAYS(acMalloc((void**)&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1)));
   ERRCHK_ALWAYS(d_offsets);
-  ERRCHK_CUDA(cudaMemcpy(d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),cudaMemcpyHostToDevice));
+  ERRCHK_CUDA(acMemcpy((void*)d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),cudaMemcpyHostToDevice));
   free(offsets);
   segmented_reduce_offsets[key] = d_offsets;
   return d_offsets;
@@ -2162,7 +2163,7 @@ acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const Volume dims, const Volu
 	const size_t bytes = sub_dims.x*sub_dims.y*sub_dims.z*sizeof(AcReal);
 	src = &src[start.x + dims.x*start.y + dims.x*dims.y*start.z];
 	dst = &dst[start.x + dims.x*start.y + dims.x*dims.y*start.z];
-	ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(dst,src,bytes,cudaMemcpyDeviceToDevice,stream));
+	ERRCHK_CUDA_ALWAYS(acMemcpyAsync(dst,src,bytes,cudaMemcpyDeviceToDevice,stream));
 	return AC_SUCCESS;
 }
 AcResult
