@@ -14,7 +14,6 @@ bool should_reduce_int[1000] = {false};
 
 #include <algorithm>
 
-#define DEVICE_INLINE
 #ifndef AC_IN_AC_LIBRARY
 #define AC_IN_AC_LIBRARY
 #endif

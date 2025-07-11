@@ -641,6 +641,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     }
     acVerboseLogFromRootProc(ac_pid(),  "memusage after create streams= %f MBytes\n", acMemUsage()/1024.0);
 
+    if(!acRuntimeIsInitialized()) acRuntimeInit(device_config);
     // Memory
     // VBA in/out
     device->vba = acVBACreate(device_config);

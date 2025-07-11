@@ -196,9 +196,9 @@ if (INCLUDE_3RD_PARTIES)
 endif()
 
 # Astaroth modules
+add_subdirectory(src/core/helpers)
 add_subdirectory(src/core/cuda_wrappers)
 add_subdirectory(acc-runtime)
-add_subdirectory(src/core/helpers)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
 

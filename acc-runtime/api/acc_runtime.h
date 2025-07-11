@@ -21,6 +21,8 @@
 #define AC_INDEX_ORDER(i,j,k,x,y,z) \
 	i + x*j + x*y*k
 
+#define DEVICE_INLINE __device__ __forceinline__
+
 #include <stdio.h>
 #include <stdbool.h>
 #include "device_headers.h"
@@ -389,7 +391,9 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfo config));
 
-  FUNC_DEFINE(void, acUpdateArrays ,(const AcMeshInfo config));
+  FUNC_DEFINE(AcResult, acAllocateArrays ,(const AcMeshInfo config));
+  FUNC_DEFINE(AcResult, acUpdateArrays   ,(const AcMeshInfo config));
+  FUNC_DEFINE(AcResult, acFreeArrays     ,(const AcMeshInfo config));
 
   FUNC_DEFINE(void, acVBADestroy,(VertexBufferArray* vba, const AcMeshInfo config));
 
@@ -398,6 +402,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(void, acRandQuit,(void));
 
   FUNC_DEFINE(AcResult, acLaunchKernel,(AcKernel func, const cudaStream_t stream, const Volume start, const Volume end, VertexBufferArray));
+  FUNC_DEFINE(AcResult, acLaunchKernelWithTPB,(AcKernel kernel, const cudaStream_t stream, const Volume start_volume, const Volume end_volume, VertexBufferArray vba, const dim3 tpb));
 
   FUNC_DEFINE(AcResult, acSetReduceOffset,(AcKernel func, const Volume start, const Volume end, VertexBufferArray));
 
@@ -434,6 +439,8 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(int, acGetKernelReduceScratchPadMinSize,());
   FUNC_DEFINE(size_t,  acGetSmallestRealReduceScratchPadSizeBytes,());
+  FUNC_DEFINE(bool, acRuntimeIsInitialized,());
+  FUNC_DEFINE(AcResult, acRuntimeInit,(const AcMeshInfo config));
   FUNC_DEFINE(AcResult, acRuntimeQuit, ());
 
 #if AC_RUNTIME_COMPILATION
@@ -456,6 +463,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 	LOAD_DSYM(acKernelFlush,stream);
 	LOAD_DSYM(acVBAReset,stream);
 	LOAD_DSYM(acVBACreate,stream);
+	LOAD_DSYM(acAllocateArrays,stream);
 	LOAD_DSYM(acUpdateArrays,stream);
 	LOAD_DSYM(acVBADestroy,stream);
 	LOAD_DSYM(acRandInitAlt,stream);
@@ -569,12 +577,14 @@ acReduce(const cudaStream_t stream, const AcReduceOp op, AcFloatScalarReduceBuff
 
 AcResult acMultiplyInplace(const AcReal value, const size_t count,
                            AcReal* array);
+AcResult
+acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* array);
 
-  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const size3_t counts));
+  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba, const AcMeshDims* dims));
 
   FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size3_t count));
 
-  FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
+  FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba, const AcMeshDims* dims));
 /**
  * Checks the mesh info for uninitialized values.
  * Returns 0 on succes and -1 on failure.
@@ -910,3 +920,20 @@ prof_size(const Profile prof, const size3_t counts)
 {
     return prof_count(prof,counts)*sizeof(AcReal);
 }
+
+AcReal**
+ac_allocate_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);
+int**
+ac_allocate_scratchpad_int(const size_t i, const size_t new_bytes, const AcReduceOp state);
+float**
+ac_allocate_scratchpad_float(const size_t i, const size_t new_bytes, const AcReduceOp state);
+
+void
+ac_free_scratchpad_real(const size_t i);
+void
+ac_free_scratchpad_int(const size_t i);
+void
+ac_free_scratchpad_float(const size_t i);
+
+void
+ac_resize_scratchpad_real(const size_t i, const size_t new_bytes, const AcReduceOp state);

@@ -311,7 +311,7 @@ make_dir(const char* dirname)
 void
 reset_diff_files()
 {
-		const char* files[] = {"memcpy_from_gmem_arrays.h","memcpy_to_gmem_arrays.h","gmem_arrays_decl.h","array_info.h","taskgraph_enums.h"};
+		const char* files[] = {"memcpy_from_gmem_arrays_header.h","memcpy_to_gmem_arrays_header.h","memcpy_from_gmem_arrays.h","memcpy_to_gmem_arrays.h","gmem_arrays_decl.h","array_info.h","taskgraph_enums.h"};
           	for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
           	  FILE* fp = fopen(files[i], "w");
           	  fclose(fp);

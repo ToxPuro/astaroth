@@ -50,6 +50,7 @@ typedef int cudaError_t;
 #include <cuda_profiler_api.h> // Profiling
 #endif
 #include <cuda_runtime_api.h>  // Streams
+#include <cooperative_groups.h>
 #endif
 
 #endif

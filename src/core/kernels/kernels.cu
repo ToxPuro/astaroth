@@ -17,8 +17,6 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "kernels.h"
-
-#include "../buffer.cc"
 #include "acc_runtime.cu"
 
 static __global__ void
@@ -43,6 +41,3 @@ acKernelDummy(void)
 }
 
 #include "packing.cuh"
-#include "reductions.cuh"
-#include "volume_copy.cuh"
-//#include "pack_unpack.cuh"

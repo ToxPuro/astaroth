@@ -1208,9 +1208,9 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 
 	FILE* fp = fopen("memcpy_to_gmem_arrays.h","a");
-	
-
-	fprintf(fp,"void memcpy_to_gmem_array(const %sArrayParam param,%s* &ptr)\n"
+	fprintf_filename("memcpy_to_gmem_arrays_header.h","void acMemcpyToGmemArray(const %sArrayParam param,%s* &ptr);\n"
+        , enum_name,datatype_scalar);
+	fprintf(fp,"void acMemcpyToGmemArray(const %sArrayParam param,%s* &ptr)\n"
         "{\n", enum_name,datatype_scalar);
   	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
@@ -1226,12 +1226,15 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(AC_INTERNAL_gmem_%s_arrays_%s,&ptr,sizeof(ptr),0,cudaMemcpyHostToDevice)); return;} \n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
 	  	  }
 	  }
-	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from memcpy_to_gmem_array\\n\");\n");
+	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from acMemcpyToGmemArray\\n\");\n");
 	fprintf(fp,"\n(void)param;(void)ptr;}\n");
 
 
 
-	fprintf(fp,"void memcpy_to_const_dims_gmem_array(const %sArrayParam param,const %s* ptr)\n"
+
+	fprintf_filename("memcpy_to_gmem_arrays_header.h","void acMemcpyToConstDimsGmemArray(const %sArrayParam param,%s* &ptr);\n"
+	, enum_name,datatype_scalar);
+	fprintf(fp,"void acMemcpyToConstDimsGmemArray(const %sArrayParam param,const %s* ptr)\n"
 	"{\n", enum_name,datatype_scalar);
   	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
@@ -1249,7 +1252,7 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			}
 		  }
 	  }
-	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from memcpy_to_const_dims_gmem_array\\n\");\n");
+	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from acMemcpyToConstDimsGmemArray\\n\");\n");
 	fprintf(fp,"\n(void)param;(void)ptr;}\n");
 
 
@@ -1258,7 +1261,9 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 	fp = fopen("memcpy_from_gmem_arrays.h","a");
 	
-	fprintf(fp,"void memcpy_from_gmem_array(const %sArrayParam param, %s* &ptr)\n"
+	fprintf_filename("memcpy_from_gmem_arrays_header.h","void acMemcpyFromGmemArray(const %sArrayParam param,%s* &ptr);\n"
+		   , enum_name,datatype_scalar);
+	fprintf(fp,"void acMemcpyFromGmemArray(const %sArrayParam param, %s* &ptr)\n"
 		  "{\n", enum_name,datatype_scalar);
   	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
@@ -1526,20 +1531,23 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 					);
 		}
 		fprintf_filename("reduce_helpers.h",
-				"void \n"
-				"allocate_scratchpad_%s(const size_t i, const size_t bytes, const AcReduceOp state)\n"
+				"%s** \n"
+				"ac_allocate_scratchpad_%s(const size_t i, const size_t bytes, const AcReduceOp state)\n"
 				"{\n"
 				"ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&d_reduce_scratchpads_%s[i],bytes));\n"
 				"ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*),sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
 				"d_reduce_scratchpads_size_%s[i] = bytes;\n"
 				"acKernelFlush(0,d_reduce_scratchpads_%s[i], bytes/sizeof(%s),get_reduce_state_flush_var_%s(state));\n"
+				"return &d_reduce_scratchpads_%s[i];\n"
 				"}\n\n"
+				,datatype_scalar
 				,define_name,define_name,define_name,define_name,datatype_scalar,datatype_scalar,define_name,define_name,datatype_scalar,define_name
+				,define_name
 				);
 		fprintf_filename(
 				"reduce_helpers.h",
 				"void\n"
-				"free_scratchpad_%s(const size_t i)\n"
+				"ac_free_scratchpad_%s(const size_t i)\n"
 				"{\n"
 				"d_reduce_scratchpads_%s[i] = NULL;\n"
 				"ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*),sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
@@ -1550,11 +1558,11 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		fprintf_filename(
 				"reduce_helpers.h",
 				"void\n"
-				"resize_scratchpad_%s(const size_t i, const size_t new_bytes, const AcReduceOp state)\n"
+				"ac_resize_scratchpad_%s(const size_t i, const size_t new_bytes, const AcReduceOp state)\n"
 				"{\n"
 				"if(d_reduce_scratchpads_size_%s[i] >= new_bytes) return;\n"
-				"free_scratchpad_%s(i);\n"
-				"allocate_scratchpad_%s(i,new_bytes,state);\n"
+				"ac_free_scratchpad_%s(i);\n"
+				"ac_allocate_scratchpad_%s(i,new_bytes,state);\n"
 				"}\n\n"
 				,define_name,define_name,define_name,define_name
 				);
@@ -1562,7 +1570,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		fprintf_filename(
 				"reduce_helpers.h",
 				"void\n"
-				"resize_%ss_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)\n"
+				"ac_resize_%ss_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)\n"
 				"{\n"
 				"bool var_reduced = false;\n"
 				"for(int i = 0; i < NUM_%s_OUTPUTS; ++i) var_reduced |= reduced_%ss[kernel][i];\n"
@@ -1572,7 +1580,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				"	for(int i = 0; i < NUM_%s_OUTPUTS; ++i)\n"
 				"	{\n"
 				"		if(!reduced_%ss[kernel][i]) continue;\n"
-				"		resize_scratchpad_%s(i, size, vba.scratchpad_states->%ss[i]);\n"
+				"		ac_resize_scratchpad_%s(i, size, vba.scratchpad_states->%ss[i]);\n"
 				"	}\n"
 				"}\n"
 				"}\n\n"
@@ -1670,7 +1678,6 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	        ,upper_case_name, enum_name, datatype_scalar
 	        ,upper_case_name, enum_name, datatype_scalar
 	        ,upper_case_name, enum_name, datatype_scalar
-	        //,upper_case_name, enum_name, datatype_scalar
 	     );
 
 

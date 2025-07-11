@@ -752,6 +752,7 @@ acHostCreateVertexBuffer(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
 	return acHostCreateVertexBufferVariable(info,vtxbuf);
 }
+
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {

@@ -16,11 +16,12 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#pragma once
+#include "acc_runtime.h"
+#include "kernels.h"
+#include "astaroth_cuda_wrappers.h"
+#include "math_utils.h"
+
 #include <assert.h>
-
-
-
 
 template <typename T>
 static void
@@ -84,7 +85,7 @@ acKernelReduceScal(const cudaStream_t stream, const AcReduction reduction, const
       ERROR("Invalid reduction type in acKernelReduceScal");
       return AC_FAILURE;
     }
-    resize_scratchpad_real(scratchpad_index, initial_count*sizeof(AcReal), reduction.reduce_op);
+    ac_resize_scratchpad_real(scratchpad_index, initial_count*sizeof(AcReal), reduction.reduce_op);
     AcReal* in  = *(vba.reduce_buffer_real[scratchpad_index].src);
     acLoadKernelParams(vba.on_device.kernel_input_params,map_kernel,vtxbuf,in); 
     acLaunchKernel(map_kernel,stream,start,end,vba);
@@ -125,7 +126,7 @@ acKernelReduceVec(const cudaStream_t stream, const AcReduction reduction, const 
       ERROR("Invalid reduction type in acKernelReduceVec");
       return AC_FAILURE;
     }
-    resize_scratchpad_real(scratchpad_index, initial_count*sizeof(AcReal), reduction.reduce_op);
+    ac_resize_scratchpad_real(scratchpad_index, initial_count*sizeof(AcReal), reduction.reduce_op);
     AcReal* in  = *(vba.reduce_buffer_real[scratchpad_index].src);
     acLoadKernelParams(vba.on_device.kernel_input_params,map_kernel,vector,in); 
     acLaunchKernel(map_kernel,stream,start,end,vba);
@@ -166,7 +167,7 @@ acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, co
       return AC_FAILURE;
     }
 
-    resize_scratchpad_real(scratchpad_index, initial_count*sizeof(AcReal), reduction.reduce_op);
+    ac_resize_scratchpad_real(scratchpad_index, initial_count*sizeof(AcReal), reduction.reduce_op);
     AcReal* in  = *(vba.reduce_buffer_real[scratchpad_index].src);
     acLoadKernelParams(vba.on_device.kernel_input_params,map_kernel,vtxbufs,in); 
     acLaunchKernel(map_kernel,stream,start,end,vba);

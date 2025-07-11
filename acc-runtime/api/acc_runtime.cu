@@ -22,6 +22,9 @@
 #define rocprim__warp_shuffle rocprim::warp_shuffle
 
 #include "acc_runtime.h"
+#include <rocprim/rocprim.hpp>
+#include <hip/hip_cooperative_groups.h>
+
 #include "ac_buffer.h"
 
 #include "user_defines_runtime_lib.h"
@@ -30,6 +33,7 @@
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
+static bool initialized = false;
 static AcBool3 dimension_inactive{};
 static int3 raytracing_subblock{};
 static int  x_ray_shared_mem_block_size{};
@@ -44,17 +48,9 @@ static int3    max_tpb_for_reduce_kernels{100,100,100};
 #include <unordered_map>
 #include <utility>
 #include <sys/stat.h>
-
-#if AC_USE_HIP
-#include <hip/hip_runtime.h> // Needed in files that include kernels
-#include <rocprim/rocprim.hpp>
-#include <hip/hip_cooperative_groups.h>
-#else
-#include <cooperative_groups.h>
-#endif
-
 #include "user_kernel_declarations.h"
 #include "kernel_reduce_info.h"
+
 
 
 #define USE_COMPRESSIBLE_MEMORY (0)
@@ -501,52 +497,21 @@ size_t TO_CORRECT_ORDER(const size_t size)
 
 
 __device__ __constant__ AcReal* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
-static size_t d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
 __device__ __constant__ AcReal  d_reduce_real_res_symbol[NUM_REAL_SCRATCHPADS];
 
-AcResult
-acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
-              const AcReal value)
-{
-	return acKernelFlushReal(stream,arr,n,value);
-}
 
-AcResult
-acKernelFlush(const cudaStream_t stream, int* arr, const size_t n,
-              const int value)
-{
-	return acKernelFlushInt(stream,arr,n,value);
-}
-AcResult
-acKernelFlush(const cudaStream_t stream, AcComplex* arr, const size_t n,
-              const AcComplex value)
-{
-	return acKernelFlushComplex(stream,arr,n,value);
-}
-
-#if AC_DOUBLE_PRECISION
-AcResult
-acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
-              const float value)
-{
-	return acKernelFlushFloat(stream,arr,n,value);
-}
-#endif
-
-
-
-
+static AcReal* d_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
+static size_t d_reduce_scratchpads_size_real[NUM_REAL_SCRATCHPADS];
 #include "reduce_helpers.h"
 
 
 void
-resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)
+ac_resize_scratchpads_to_fit(const size_t n_elems, VertexBufferArray vba, const AcKernel kernel)
 {
-	resize_reals_to_fit(n_elems,vba,kernel);
-	resize_ints_to_fit(n_elems,vba,kernel);
+	ac_resize_reals_to_fit(n_elems,vba,kernel);
+	ac_resize_ints_to_fit(n_elems,vba,kernel);
 #if AC_DOUBLE_PRECISION
-	resize_floats_to_fit(n_elems,vba,kernel);
+	ac_resize_floats_to_fit(n_elems,vba,kernel);
 #endif
 }
 
@@ -562,7 +527,6 @@ acGetRealScratchpadSize(const size_t i)
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
 
 
-#define DEVICE_INLINE __device__ __forceinline__
 #include "dconst_decl.h"
 #include "output_value_decl.h"
 
@@ -647,337 +611,17 @@ ac_get_field_halos(const Field& field)
 #undef size
 #undef longlong
 
-static AcResult
-acLaunchKernelTPB(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
-               const Volume end_volume, VertexBufferArray vba, const dim3 tpb);
-
-
-template<typename T1, typename T2, typename T3>
-AcResult
-acLaunchKernelVariadic1d(AcKernel kernel, const cudaStream_t stream, const size_t start, const size_t end,T1 param1, T2 param2, T3 param3)
-{
-  const Volume volume_start = {start,0,0};
-  const Volume volume_end   = {end,1,1};
-  VertexBufferArray vba{};
-  acLoadKernelParams(vba.on_device.kernel_input_params,kernel,param1,param2,param3); 
-  return acLaunchKernelTPB(kernel,stream,volume_start,volume_end,vba,dim3(256,1,1));
-}
-
-template<typename T1, typename T2>
-AcResult
-acLaunchKernelVariadic1d(AcKernel kernel, const cudaStream_t stream, const size_t start, const size_t end,T1 param1, T2 param2)
-{
-  const Volume volume_start = {start,0,0};
-  const Volume volume_end   = {end,1,1};
-  VertexBufferArray vba{};
-  acLoadKernelParams(vba.on_device.kernel_input_params,kernel,param1,param2); 
-  return acLaunchKernelTPB(kernel,stream,volume_start,volume_end,vba,dim3(256,1,1));
-}
-
-
-AcResult
-acKernelFlushReal(const cudaStream_t stream, AcReal* arr, const size_t n,
-              const AcReal value)
-{
-  ERRCHK_ALWAYS(arr || n == 0);
-  if(n == 0) return AC_SUCCESS;
-  acLaunchKernelVariadic1d(AC_FLUSH_REAL,stream,0,n,arr,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
-}
-
-AcResult
-acKernelFlushComplex(const cudaStream_t stream, AcComplex* arr, const size_t n,
-              const AcComplex value)
-{
-  ERRCHK_ALWAYS(arr || n == 0);
-  if(n == 0) return AC_SUCCESS;
-  acLaunchKernelVariadic1d(AC_FLUSH_COMPLEX,stream,0,n,arr,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
-}
-
-AcResult
-acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
-              const int value)
-{
-  ERRCHK_ALWAYS(arr || n == 0);
-  if(n == 0) return AC_SUCCESS;
-  acLaunchKernelVariadic1d(AC_FLUSH_INT,stream,0,n,arr,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
-}
-
-AcResult
-acKernelFlushFloat(const cudaStream_t stream, float* arr, const size_t n,
-              const float value)
-{
-  ERRCHK_ALWAYS(arr || n == 0);
-  if(n == 0) return AC_SUCCESS;
-  acLaunchKernelVariadic1d(AC_FLUSH_FLOAT,stream,0,n,arr,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
-  return AC_SUCCESS;
-}
-
-
 #include "user_built-in_constants.h"
 #include "user_builtin_non_scalar_constants.h"
-
-
-
-#if USE_COMPRESSIBLE_MEMORY
-#include <cuda.h>
-
-#define ERRCHK_CU_ALWAYS(x) ERRCHK_ALWAYS((x) == CUDA_SUCCESS)
-
-static cudaError_t
-mallocCompressible(void** addr, const size_t requested_bytes)
-{
-  CUdevice device;
-  ERRCHK_ALWAYS(cuCtxGetDevice(&device) == CUDA_SUCCESS);
-
-  CUmemAllocationProp prop;
-  memset(&prop, 0, sizeof(CUmemAllocationProp));
-  prop.type                       = CU_MEM_ALLOCATION_TYPE_PINNED;
-  prop.location.type              = CU_MEM_LOCATION_TYPE_DEVICE;
-  prop.location.id                = device;
-  prop.allocFlags.compressionType = CU_MEM_ALLOCATION_COMP_GENERIC;
-
-  size_t granularity;
-  ERRCHK_CU_ALWAYS(cuMemGetAllocationGranularity(
-      &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
-
-  // Pad to align
-  const size_t bytes = ((requested_bytes - 1) / granularity + 1) * granularity;
-
-  CUdeviceptr dptr;
-  ERRCHK_ALWAYS(cuMemAddressReserve(&dptr, bytes, 0, 0, 0) == CUDA_SUCCESS);
-
-  CUmemGenericAllocationHandle handle;
-  ERRCHK_ALWAYS(cuMemCreate(&handle, bytes, &prop, 0) == CUDA_SUCCESS)
-
-  // Check if cuMemCreate was able to allocate compressible memory.
-  CUmemAllocationProp alloc_prop;
-  memset(&alloc_prop, 0, sizeof(CUmemAllocationProp));
-  cuMemGetAllocationPropertiesFromHandle(&alloc_prop, handle);
-  ERRCHK_ALWAYS(alloc_prop.allocFlags.compressionType ==
-                CU_MEM_ALLOCATION_COMP_GENERIC);
-
-  ERRCHK_ALWAYS(cuMemMap(dptr, bytes, 0, handle, 0) == CUDA_SUCCESS);
-  ERRCHK_ALWAYS(cuMemRelease(handle) == CUDA_SUCCESS);
-
-  CUmemAccessDesc accessDescriptor;
-  accessDescriptor.location.id   = prop.location.id;
-  accessDescriptor.location.type = prop.location.type;
-  accessDescriptor.flags         = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
-
-  ERRCHK_ALWAYS(cuMemSetAccess(dptr, bytes, &accessDescriptor, 1) ==
-                CUDA_SUCCESS);
-
-  *addr = (void*)dptr;
-  return cudaSuccess;
-}
-
-static void
-freeCompressible(void* ptr, const size_t requested_bytes)
-{
-  CUdevice device;
-  ERRCHK_ALWAYS(cuCtxGetDevice(&device) == CUDA_SUCCESS);
-
-  CUmemAllocationProp prop;
-  memset(&prop, 0, sizeof(CUmemAllocationProp));
-  prop.type                       = CU_MEM_ALLOCATION_TYPE_PINNED;
-  prop.location.type              = CU_MEM_LOCATION_TYPE_DEVICE;
-  prop.location.id                = device;
-  prop.allocFlags.compressionType = CU_MEM_ALLOCATION_COMP_GENERIC;
-
-  size_t granularity = 0;
-  ERRCHK_ALWAYS(cuMemGetAllocationGranularity(
-                    &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM) ==
-                CUDA_SUCCESS);
-  const size_t bytes = ((requested_bytes - 1) / granularity + 1) * granularity;
-
-  ERRCHK_ALWAYS(ptr);
-  ERRCHK_ALWAYS(cuMemUnmap((CUdeviceptr)ptr, bytes) == CUDA_SUCCESS);
-  ERRCHK_ALWAYS(cuMemAddressFree((CUdeviceptr)ptr, bytes) == CUDA_SUCCESS);
-}
-#endif
-
-AcResult
-acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const AcMeshDims* dims)
-{
-  // Set pba.in data to all-nan and pba.out to 0
-  for (int i = 0; i < NUM_PROFILES; ++i) {
-    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),dims[i].m1), (AcReal)NAN);
-    acKernelFlush(stream, pba->out[i], prof_count(Profile(i),dims[i].m1), (AcReal)0);
-  }
-  return AC_SUCCESS;
-}
-size_t
-get_amount_of_device_memory_free()
-{
-	size_t free_mem, total_mem;
-	ERRCHK_CUDA_ALWAYS(acMemGetInfo(&free_mem,&total_mem));
-	return free_mem;
-}
-void
-device_malloc(void** dst, const size_t bytes)
-{
-  if(get_amount_of_device_memory_free() < bytes)
-  {
-	fprintf(stderr,"Tried to allocate %ld bytes but have only %ld bytes of memory left on the device\n", bytes, get_amount_of_device_memory_free());
-  	ERRCHK_ALWAYS(get_amount_of_device_memory_free() >= bytes);
-  }
- #if USE_COMPRESSIBLE_MEMORY 
-    ERRCHK_CUDA_ALWAYS(mallocCompressible(dst, bytes));
- #else
-    ERRCHK_CUDA_ALWAYS(acMalloc(dst, bytes));
-  #endif
-  ERRCHK_ALWAYS(dst != NULL);
-}
-void
-device_malloc(AcReal** dst, const size_t bytes)
-{
-	device_malloc((void**)dst,bytes);
-}
-
-template <typename T>
-void
-device_free(T** dst, const int bytes)
-{
-#if USE_COMPRESSIBLE_MEMORY
-  freeCompressible(*dst, bytes);
-#else
-  ERRCHK_CUDA_ALWAYS(acFree(*dst));
-  //used to silence unused warning
-  (void)bytes;
-#endif
-  *dst = NULL;
-}
 
 size_t
 device_resize(void** dst,const size_t old_bytes,const size_t new_bytes)
 {
 	if(old_bytes >= new_bytes) return old_bytes;
-	if(old_bytes) device_free(dst,old_bytes);
-	device_malloc(dst,new_bytes);
+	if(old_bytes) acDeviceFree(dst,old_bytes);
+	acDeviceMalloc(dst,new_bytes);
 	return new_bytes;
 }
-
-
-ProfileBufferArray
-acPBACreate(const AcMeshDims* dims)
-{
-  ProfileBufferArray pba{};
-  for (int i = 0; i < NUM_PROFILES; ++i) {
-    const size_t bytes = prof_size(Profile(i),dims[i].m1)*sizeof(AcReal);
-    device_malloc(&pba.in[i],  bytes);
-    device_malloc(&pba.out[i], bytes);
-    //pba.out[i] = pba.in[i];
-  }
-
-  acPBAReset(0, &pba, dims);
-  ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
-  return pba;
-}
-
-void
-acPBADestroy(ProfileBufferArray* pba, const AcMeshDims* dims)
-{
-  for (int i = 0; i < NUM_PROFILES; ++i) {
-    const size_t bytes = prof_size(Profile(i),dims[i].m1)*sizeof(AcReal);
-    device_free(&pba->in[i],  bytes);
-    device_free(&pba->out[i], bytes);
-    pba->in[i]  = NULL;
-    pba->out[i] = NULL;
-  }
-}
-
-AcResult
-acMultiplyInplaceComplex(const AcReal value, const size_t count, AcComplex* array)
-{
-  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE_COMPLEX,0,size_t(0),count,value,array);
-  ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
-  return AC_SUCCESS;
-}
-
-AcResult
-acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
-{
-  acLaunchKernelVariadic1d(AC_MULTIPLY_INPLACE,0,size_t(0),count,value,array);
-  ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
-  return AC_SUCCESS;
-}
-
-AcResult
-acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
-{
-
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    ERRCHK_ALWAYS(vba->on_device.in[i]);
-    ERRCHK_ALWAYS(vba->on_device.out[i]);
-    acKernelFlush(stream, vba->on_device.in[i], vba->counts[i], (AcReal)NAN);
-    acKernelFlush(stream, vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
-  }
-
-  for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
-  {
-    size_t n = vba->computational_dims.m1.x*vba->computational_dims.m1.y*vba->computational_dims.m1.z;
-    ERRCHK_ALWAYS(vba->on_device.complex_in[field]);
-    acMultiplyInplaceComplex(AcReal(0.),n,vba->on_device.complex_in[field]);
-  }
-  memset(&vba->on_device.kernel_input_params,0,sizeof(acKernelInputParams));
-  // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBAReset(stream, &vba->on_device.profiles, vba->profile_dims);
-  return AC_SUCCESS;
-}
-
-
-template <typename T>
-void
-device_malloc(T** dst, const int bytes)
-{
- #if USE_COMPRESSIBLE_MEMORY 
-    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)dst, bytes));
- #else
-    ERRCHK_CUDA_ALWAYS(acMalloc((void**)dst, bytes));
-  #endif
-}
-
-#include "memcpy_to_gmem_arrays.h"
-
-#include "memcpy_from_gmem_arrays.h"
-
-template <typename P>
-struct allocate_arrays
-{
-	void operator()(const AcMeshInfo& config) 
-	{
-		for(P array : get_params<P>())
-		{
-			if(config[array] == nullptr && is_accessed(array))
-			{
-				fprintf(stderr,"Passed %s as NULL but it is accessed kernels!!\n",get_name(array));
-				fflush(stderr);
-				ERRCHK_ALWAYS(config[array] != nullptr);
-			}
-			if (config[array] != nullptr && !is_dconst(array) && is_alive(array))
-			{
-
-#if AC_VERBOSE
-				fprintf(stderr,"Allocating %s|%zu\n",get_name(array),get_array_length(array,config));
-				fflush(stderr);
-#endif
-				auto d_mem_ptr = get_empty_pointer(array);
-			        device_malloc(((void**)&d_mem_ptr), sizeof(config[array][0])*get_array_length(array,config));
-				memcpy_to_gmem_array(array,d_mem_ptr);
-			}
-		}
-	}
-};
-
 
 #if AC_USE_HIP
 #include <hipcub/hipcub.hpp>
@@ -1065,351 +709,24 @@ acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
 	return dims.m1;
 }
 
-size_t
-get_profile_reduce_scratchpad_size(const int profile, const VertexBufferArray vba)
+bool
+acRuntimeIsInitialized() { return initialized; }
+
+AcResult
+acRuntimeInit(const AcMeshInfo config)
 {
-	if(!reduced_profiles[profile]) return 0;
-	const auto dims = acGetProfileReduceScratchPadDims(profile,vba.profile_dims[profile]);
-	return dims.x*dims.y*dims.z*sizeof(AcReal);
-}
-
-
-void
-init_scratchpads(VertexBufferArray* vba)
-{
-    vba->scratchpad_states = (AcScratchpadStates*)malloc(sizeof(AcScratchpadStates));
-    memset(vba->scratchpad_states,0,sizeof(AcScratchpadStates));
-    // Reductions
-    {
-	//TP: this is dangerous since it is not always true for DSL reductions but for now keep it
-    	for(int i = 0; i < NUM_REAL_SCRATCHPADS; ++i) {
-	    const size_t bytes =  
-		    		  (i >= NUM_REAL_OUTPUTS) ? get_profile_reduce_scratchpad_size(i-NUM_REAL_OUTPUTS,*vba) :
-				  0;
-	    allocate_scratchpad_real(i,bytes,vba->scratchpad_states->reals[i]);
-	    if(i < NUM_REAL_OUTPUTS)
-	    {
-	    	vba->reduce_buffer_real[i].src = &d_reduce_scratchpads_real[i];
-	    	vba->reduce_buffer_real[i].cub_tmp = (AcReal**)malloc(sizeof(AcReal*));
-	    	*(vba->reduce_buffer_real[i].cub_tmp) = NULL;
-	    	vba->reduce_buffer_real[i].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
-	    	*(vba->reduce_buffer_real[i].cub_tmp_size) = 0;
-
-	    	vba->reduce_buffer_real[i].buffer_size    = &d_reduce_scratchpads_size_real[i];
-    		device_malloc((void**) &vba->reduce_buffer_real[i].res,sizeof(AcReal));
-	    }
-	    else
-	    {
-		    const Profile prof = (Profile)(i-NUM_REAL_OUTPUTS);
-		    const auto dims = acGetProfileReduceScratchPadDims(prof,vba->profile_dims[prof]);
-		    vba->profile_reduce_buffers[prof].src = 
-		    {
-			    d_reduce_scratchpads_real[i],
-			    dims.x*dims.y*dims.z,
-			    true,
-			    (AcShape) { dims.x,dims.y,dims.z,1}
-		    };
-		    vba->profile_reduce_buffers[prof].transposed = acBufferCreateTransposed(
-				vba->profile_reduce_buffers[prof].src, 
-				acGetMeshOrderForProfile(prof_types[prof])
-				  );
-		    vba->profile_reduce_buffers[prof].mem_order = acGetMeshOrderForProfile(prof_types[prof]);
-
-	    	    vba->profile_reduce_buffers[prof].cub_tmp = (AcReal**)malloc(sizeof(AcReal*));
-	    	    *(vba->profile_reduce_buffers[prof].cub_tmp) = NULL;
-	    	    vba->profile_reduce_buffers[prof].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
-	    	    *(vba->profile_reduce_buffers[prof].cub_tmp_size) = 0;
-	    }
-    	}
-    }
-    {
-    	for(int i = 0; i < NUM_INT_OUTPUTS; ++i) {
-	    const size_t bytes = 0;
-	    allocate_scratchpad_int(i,bytes,vba->scratchpad_states->ints[i]);
-
-	    vba->reduce_buffer_int[i].src= &d_reduce_scratchpads_int[i];
-	    vba->reduce_buffer_int[i].cub_tmp = (int**)malloc(sizeof(int*));
-	    *(vba->reduce_buffer_int[i].cub_tmp) = NULL;
-	    vba->reduce_buffer_int[i].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
-	    *(vba->reduce_buffer_int[i].cub_tmp_size) = 0;
-	    vba->reduce_buffer_int[i].buffer_size    = &d_reduce_scratchpads_size_int[i];
-    	    device_malloc((void**) &vba->reduce_buffer_int[i].res,sizeof(int));
-    	}
-
-#if AC_DOUBLE_PRECISION
-    	for(int i = 0; i < NUM_FLOAT_OUTPUTS; ++i) {
-	    const size_t bytes = 0;
-	    allocate_scratchpad_float(i,bytes,vba->scratchpad_states->floats[i]);
-
-	    vba->reduce_buffer_float[i].src= &d_reduce_scratchpads_float[i];
-	    vba->reduce_buffer_float[i].cub_tmp = (float**)malloc(sizeof(float*));
-	    *(vba->reduce_buffer_float[i].cub_tmp) = NULL;
-	    vba->reduce_buffer_float[i].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
-	    *(vba->reduce_buffer_float[i].cub_tmp_size) = 0;
-	    vba->reduce_buffer_float[i].buffer_size    = &d_reduce_scratchpads_size_float[i];
-    	    device_malloc((void**) &vba->reduce_buffer_float[i].res,sizeof(float));
-    	}
-#endif
-    }
-}
-static inline AcMeshDims
-acGetMeshDims(const AcMeshInfo info)
-{
-   #include "user_builtin_non_scalar_constants.h"
-   const Volume n0 = to_volume(info[AC_nmin]);
-   const Volume n1 = to_volume(info[AC_nlocal_max]);
-   const Volume m0 = (Volume){0, 0, 0};
-   const Volume m1 = to_volume(info[AC_mlocal]);
-   const Volume nn = to_volume(info[AC_nlocal]);
-   const Volume reduction_tile = (Volume)
-   {
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
-   };
-
-   return (AcMeshDims){
-       .n0 = n0,
-       .n1 = n1,
-       .m0 = m0,
-       .m1 = m1,
-       .nn = nn,
-       .reduction_tile = reduction_tile,
-   };
-}
-
-static inline AcMeshDims
-acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
-{
-   #include "user_builtin_non_scalar_constants.h"
-   const Volume n0 = to_volume(info[AC_nmin]);
-   const Volume m1 = to_volume(info[vtxbuf_dims[vtxbuf]]);
-   const Volume n1 = m1-n0;
-   const Volume m0 = (Volume){0, 0, 0};
-   const Volume nn = m1-n0*2;
-   const Volume reduction_tile = (Volume)
-   {
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].x),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].y),
-	   as_size_t(info.int3_params[AC_reduction_tile_dimensions].z)
-   };
-
-   return (AcMeshDims){
-       .n0 = n0,
-       .n1 = n1,
-       .m0 = m0,
-       .m1 = m1,
-       .nn = nn,
-       .reduction_tile = reduction_tile,
-   };
-}
-
-AcReal* vba_in_buff = NULL;
-AcReal* vba_out_buff = NULL;
-
-VertexBufferArray
-acVBACreate(const AcMeshInfo config)
-{
-  //TP: !HACK!
-  //TP: Get active dimensions at the time VBA is created, works for now but should be moved somewhere else
-  #include "user_builtin_non_scalar_constants.h"
+  ERRCHK_ALWAYS(initialized == false);
   dimension_inactive = config[AC_dimension_inactive];
   sparse_autotuning  = config[AC_sparse_autotuning];
   raytracing_subblock = config[AC_raytracing_block_factors];
   x_ray_shared_mem_block_size = config[AC_x_ray_shared_mem_block_size];
   z_ray_shared_mem_block_size = config[AC_z_ray_shared_mem_block_size];
-
   max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
-  VertexBufferArray vba;
-  vba.on_device.block_factor = config[AC_thread_block_loop_factors];
-
-  vba.computational_dims = acGetMeshDims(config);
-
-  size_t in_bytes  = 0;
-  size_t out_bytes = 0;
-  for(int i = 0; i  < NUM_FIELDS; ++i)
-  {
-  	vba.dims[i]    = acGetMeshDims(config,Field(i));
-  	size_t count = vba.dims[i].m1.x*vba.dims[i].m1.y*vba.dims[i].m1.z;
-  	size_t bytes = sizeof(vba.on_device.in[0][0]) * count;
-  	vba.counts[i]         = count;
-  	vba.bytes[i]          = bytes;
-	in_bytes  += vba.bytes[i];
-	if(vtxbuf_is_auxiliary[i]) continue;
-	out_bytes += vba.bytes[i];
-  }
-  for(int p = 0; p < NUM_PROFILES; ++p)
-  {
-	  vba.profile_dims[p] = acGetMeshDims(config);
-  	  vba.profile_counts[p] = vba.profile_dims[p].m1.x*vba.profile_dims[p].m1.y*vba.profile_dims[p].m1.z;
-  }
-  for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
-  {
-  	size_t count = vba.computational_dims.m1.x*vba.computational_dims.m1.y*vba.computational_dims.m1.z;
-	device_malloc(&vba.on_device.complex_in[field],sizeof(AcComplex)*count);
-  }
-
-  ERRCHK_ALWAYS(vba_in_buff == NULL);
-  ERRCHK_ALWAYS(vba_out_buff == NULL);
-  device_malloc((void**)&vba_in_buff,in_bytes);
-  device_malloc((void**)&vba_out_buff,out_bytes);
-
-  size_t out_offset = 0;
-  size_t in_offset = 0;
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    vba.on_device.in[i] = vba_in_buff + in_offset;
-    ERRCHK_ALWAYS(vba.on_device.in[i] != NULL);
-    in_offset += vba.counts[i];
-    //device_malloc((void**) &vba.on_device.out[i],bytes);
-    if (vtxbuf_is_auxiliary[i])
-    {
-      vba.on_device.out[i] = vba.on_device.in[i];
-      ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
-    }else{
-      vba.on_device.out[i] = (vba_out_buff + out_offset);
-      out_offset += vba.counts[i];
-      if(vba.on_device.out[i] == NULL)
-      {
-         fprintf(stderr,"In bytes %zu; Out bytes: %zu\n",in_bytes,out_bytes);	
-	 fflush(stderr);
-       	 ERRCHK_ALWAYS(vba.on_device.out[i] != NULL);
-      }
-    }
-  }
-
-
-  AcArrayTypes::run<allocate_arrays>(config);
-
-  // Note: should be moved out when refactoring VBA to KernelParameterArray
-  vba.on_device.profiles = acPBACreate(vba.profile_dims);
-  init_scratchpads(&vba);
-
-  acVBAReset(0, &vba);
-  ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
-  return vba;
+  acAllocateArrays(config);
+  initialized = true;
+  return AC_SUCCESS;
 }
 
-template <typename P>
-struct update_arrays
-{
-	void operator()(const AcMeshInfo& config)
-	{
-		for(P array : get_params<P>())
-		{
-			if (is_dconst(array) || !is_alive(array)) continue;
-			auto config_array = config[array];
-			auto gmem_array   = get_empty_pointer(array);
-			memcpy_from_gmem_array(array,gmem_array);
-			size_t bytes = sizeof(config_array[0])*get_array_length(array,config);
-			if (config_array == nullptr && gmem_array != nullptr) 
-				device_free(&gmem_array,bytes);
-			else if (config_array != nullptr && gmem_array  == nullptr) 
-				device_malloc(&gmem_array,bytes);
-			memcpy_to_gmem_array(array,gmem_array);
-		}
-	}
-};
-void
-acUpdateArrays(const AcMeshInfo config)
-{
-  AcArrayTypes::run<update_arrays>(config);
-}
-
-template <typename P>
-struct free_arrays
-{
-	void operator()(const AcMeshInfo& config)
-	{
-		for(P array: get_params<P>())
-		{
-			auto config_array = config[array];
-			if (config_array == nullptr || is_dconst(array) || !is_alive(array)) continue;
-			auto gmem_array = get_empty_pointer(array);
-			memcpy_from_gmem_array(array,gmem_array);
-			device_free(&gmem_array, get_array_length(array,config));
-			memcpy_to_gmem_array(array,gmem_array);
-		}
-	}
-};
-void
-destroy_profiles(VertexBufferArray* vba)
-{
-    for(int i = 0; i < NUM_PROFILES; ++i)
-    {
-        //TP: will break if allocated with compressed memory but too lazy to fix now: :(
-        device_free((void**)&(vba->profile_reduce_buffers[i].transposed),0);
-        free_scratchpad_real(i+NUM_REAL_OUTPUTS);
-    }
-}
-void
-destroy_real_scratchpads(VertexBufferArray* vba)
-{
-    for(int j = 0; j < NUM_REAL_OUTPUTS; ++j)
-    {
-	free_scratchpad_real(j);
-	vba->reduce_buffer_real[j].src = NULL;
-
-        ERRCHK_CUDA_ALWAYS(acFree(*vba->reduce_buffer_real[j].cub_tmp));
-        ERRCHK_CUDA_ALWAYS(acFree(vba->reduce_buffer_real[j].res));
-
-	free(vba->reduce_buffer_real[j].cub_tmp);
-	free(vba->reduce_buffer_real[j].cub_tmp_size);
-    }
-}
-
-void
-destroy_scratchpads(VertexBufferArray* vba)
-{
-    destroy_real_scratchpads(vba);
-
-    destroy_profiles(vba);
-
-    for(int j = 0; j < NUM_INT_OUTPUTS; ++j)
-    {
-	free_scratchpad_int(j);
-	vba->reduce_buffer_int[j].src = NULL;
-
-        ERRCHK_CUDA_ALWAYS(acFree(*vba->reduce_buffer_int[j].cub_tmp));
-        ERRCHK_CUDA_ALWAYS(acFree(vba->reduce_buffer_int[j].res));
-
-	free(vba->reduce_buffer_int[j].cub_tmp);
-	free(vba->reduce_buffer_int[j].cub_tmp_size);
-    }
-#if AC_DOUBLE_PRECISION
-    for(int j = 0; j < NUM_FLOAT_OUTPUTS; ++j)
-    {
-	free_scratchpad_float(j);
-	vba->reduce_buffer_float[j].src = NULL;
-
-        ERRCHK_CUDA_ALWAYS(acFree(*vba->reduce_buffer_float[j].cub_tmp));
-        ERRCHK_CUDA_ALWAYS(acFree(vba->reduce_buffer_float[j].res));
-
-	free(vba->reduce_buffer_float[j].cub_tmp);
-	free(vba->reduce_buffer_float[j].cub_tmp_size);
-    }
-#endif
-}
-
-void
-acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
-{
-  destroy_scratchpads(vba);
-  //TP: does not work for compressible memory TODO: fix it if needed
-  device_free(&(vba_in_buff), 0);
-  device_free(&(vba_out_buff), 0);
-  for(int field = 0; field < NUM_COMPLEX_FIELDS; ++field)
-  {
-  	device_free(&vba->on_device.complex_in[field], 0);
-  }
-
-  //Free arrays
-  AcArrayTypes::run<free_arrays>(config);
-  // Note: should be moved out when refactoring VBA to KernelParameterArray
-  acPBADestroy(&vba->on_device.profiles,vba->profile_dims);
-  memset(vba->profile_dims,0,NUM_PROFILES*sizeof(vba->profile_dims[0]));
-  memset(vba->bytes,0,NUM_ALL_FIELDS*sizeof(size_t));
-  memset(vba->dims,0,NUM_ALL_FIELDS*sizeof(vba->dims[0]));
-}
 
 
 
@@ -1484,7 +801,7 @@ update_reduce_offsets_and_resize(const AcKernel kernel, const int3 start, const 
   {
   	reduce_offsets[kernel][start] = kernel_running_reduce_offsets[kernel];
   	kernel_running_reduce_offsets[kernel] += get_num_of_warps(bpg,tpb);
-	resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba,kernel);
+	ac_resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba,kernel);
   }
 }
 
@@ -1540,7 +857,7 @@ acLaunchKernelCommon(AcKernel kernel, const cudaStream_t stream, const int3 star
 }
 
 AcResult
-acLaunchKernelTPB(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
+acLaunchKernelWithTPB(AcKernel kernel, const cudaStream_t stream, const Volume start_volume,
                const Volume end_volume, VertexBufferArray vba, const dim3 tpb)
 {
   const int3 start = to_int3(start_volume);
@@ -1712,44 +1029,9 @@ acLoadUniform(const P param, const V value)
   	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
+#include "memcpy_to_gmem_arrays.h"
+#include "memcpy_from_gmem_arrays.h"
 
-
-template <typename P, typename V>
-static AcResult
-acLoadArrayUniform(const P array, const V* values, const size_t length)
-{
-#if AC_VERBOSE
-	fprintf(stderr,"Loading %s\n",get_name(array));
-	fflush(stderr);
-#endif
-	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
-	ERRCHK_ALWAYS(values  != nullptr);
-	const size_t bytes = length*sizeof(values[0]);
-	if (!is_dconst(array))
-	{
-		if (!is_alive(array)) return AC_NOT_ALLOCATED;
-		auto dst_ptr = get_empty_pointer(array);
-		memcpy_from_gmem_array(array,dst_ptr);
-		ERRCHK_ALWAYS(dst_ptr != nullptr);
-		if (dst_ptr == nullptr)
-		{
-			fprintf(stderr,"FATAL AC ERROR from acLoadArrayUniform\n");
-			exit(EXIT_FAILURE);
-		}
-#if AC_VERBOSE
-		fprintf(stderr,"Calling (cuda/hip)memcpy %s|%ld\n",get_name(array),length);
-		fflush(stderr);
-#endif
-		ERRCHK_CUDA_ALWAYS(cudaMemcpy(dst_ptr,values,bytes,cudaMemcpyHostToDevice));
-	}
-	else 
-		ERRCHK_CUDA_ALWAYS(load_array(values, bytes, array));
-#if AC_VERBOSE
-	fprintf(stderr,"Loaded %s\n",get_name(array));
-	fflush(stderr);
-#endif
-	return AC_SUCCESS;
-}
 
 template <typename P, typename V>
 AcResult
@@ -1772,7 +1054,7 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 	{
 		if (!is_alive(array)) return AC_NOT_ALLOCATED;
 		auto src_ptr = get_empty_pointer(array);
-		memcpy_from_gmem_array(array,src_ptr);
+		acMemcpyFromGmemArray(array,src_ptr);
 		ERRCHK_ALWAYS(src_ptr != nullptr);
 		ERRCHK_CUDA_ALWAYS(cudaMemcpy(values, src_ptr, bytes, cudaMemcpyDeviceToHost));
 	}
@@ -1781,6 +1063,42 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 	return AC_SUCCESS;
 }
 
+template <typename P, typename V>
+static AcResult
+acLoadArrayUniform(const P array, const V* values, const size_t length)
+{
+#if AC_VERBOSE
+	fprintf(stderr,"Loading %s\n",get_name(array));
+	fflush(stderr);
+#endif
+	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
+	ERRCHK_ALWAYS(values  != nullptr);
+	const size_t bytes = length*sizeof(values[0]);
+	if (!is_dconst(array))
+	{
+		if (!is_alive(array)) return AC_NOT_ALLOCATED;
+		auto dst_ptr = get_empty_pointer(array);
+		acMemcpyFromGmemArray(array,dst_ptr);
+		ERRCHK_ALWAYS(dst_ptr != nullptr);
+		if (dst_ptr == nullptr)
+		{
+			fprintf(stderr,"FATAL AC ERROR from acLoadArrayUniform\n");
+			exit(EXIT_FAILURE);
+		}
+#if AC_VERBOSE
+		fprintf(stderr,"Calling (cuda/hip)memcpy %s|%ld\n",get_name(array),length);
+		fflush(stderr);
+#endif
+		ERRCHK_CUDA_ALWAYS(cudaMemcpy(dst_ptr,values,bytes,cudaMemcpyHostToDevice));
+	}
+	else 
+		ERRCHK_CUDA_ALWAYS(load_array(values, bytes, array));
+#if AC_VERBOSE
+	fprintf(stderr,"Loaded %s\n",get_name(array));
+	fflush(stderr);
+#endif
+	return AC_SUCCESS;
+}
 #include "load_and_store_uniform_funcs.h"
 
 
@@ -2013,7 +1331,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
                                 ));
 	const int n_warps = get_num_of_warps(bpg,tpb);
 	if(kernel_calls_reduce[kernel])
-		resize_scratchpads_to_fit(n_warps,vba,kernel);
+		ac_resize_scratchpads_to_fit(n_warps,vba,kernel);
         const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER,
                                      sizeof(AcReal));
 
@@ -2169,35 +1487,6 @@ acGetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 	(void)vba;
 	return kernel_enum;
 	//return kernels[(int) kernel_enum];
-}
-void
-acVBASwapBuffer(const Field field, VertexBufferArray* vba)
-{
-  AcReal* tmp     = vba->on_device.in[field];
-  vba->on_device.in[field]  = vba->on_device.out[field];
-  vba->on_device.out[field] = tmp;
-}
-
-void
-acVBASwapBuffers(VertexBufferArray* vba)
-{
-  for (size_t i = 0; i < NUM_FIELDS; ++i)
-    acVBASwapBuffer((Field)i, vba);
-}
-
-void
-acPBASwapBuffer(const Profile profile, VertexBufferArray* vba)
-{
-  AcReal* tmp                = vba->on_device.profiles.in[profile];
-  vba->on_device.profiles.in[profile]  = vba->on_device.profiles.out[profile];
-  vba->on_device.profiles.out[profile] = tmp;
-}
-
-void
-acPBASwapBuffers(VertexBufferArray* vba)
-{
-  for (int i = 0; i < NUM_PROFILES; ++i)
-    acPBASwapBuffer((Profile)i, vba);
 }
 
 template <typename P>
@@ -2644,41 +1933,7 @@ acReduceInt(const cudaStream_t stream, const AcReduceOp op, const AcIntScalarRed
 	return acReduceBase(stream,op,buffer,count);
 }
 
-AcResult
-acComplexToReal(const AcComplex* src, const size_t count, AcReal* dst)
-{
-  acLaunchKernelVariadic1d(AC_COMPLEX_TO_REAL,0,size_t(0),count,(AcComplex*)src,dst);
-  ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
-  return AC_SUCCESS;
-}
 
-AcResult
-acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst)
-{
-  acLaunchKernelVariadic1d(AC_REAL_TO_COMPLEX,0,size_t(0),count,(AcReal*)src,dst);
-  ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
-  return AC_SUCCESS;
-}
-
-AcResult
-acPlanarToComplex(const AcReal* real_src, const AcReal* imag_src,const size_t count, AcComplex* dst)
-{
-  acLaunchKernelVariadic1d(AC_PLANAR_TO_COMPLEX,0,size_t(0),count,(AcReal*)real_src,(AcReal*)imag_src,dst);
-  ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
-  return AC_SUCCESS;
-}
-
-AcResult
-acComplexToPlanar(const AcComplex* src,const size_t count,AcReal* real_dst,AcReal* imag_dst)
-{
-  acLaunchKernelVariadic1d(AC_COMPLEX_TO_PLANAR,0,size_t(0),count,(AcComplex*)src,real_dst,imag_dst);
-  ERRCHK_CUDA_KERNEL();
-  ERRCHK_CUDA(acDeviceSynchronize()); // NOTE: explicit sync here for safety
-  return AC_SUCCESS;
-}
 
 
 #define TILE_DIM (32)
@@ -3084,9 +2339,11 @@ acGetKernels()
 	return kernel_enums;
 }
 
+
 AcResult
 acRuntimeQuit()
 {
+  	ERRCHK_ALWAYS(initialized == true);
 	tbconfigs.clear();
 	for(int kernel = 0; kernel < NUM_KERNELS; ++kernel)
 	{
@@ -3094,398 +2351,6 @@ acRuntimeQuit()
 		kernel_running_reduce_offsets[kernel] = 0;
 	}
 	segmented_reduce_offsets.clear();
+	initialized = false;
 	return AC_SUCCESS;
 }
-#if AC_FFT_ENABLED
-
-
-#if AC_USE_HIP
-#if AC_DOUBLE_PRECISION
-#define AC_FFT_PRECISION rocfft_precision_double
-#else
-#define AC_FFT_PRECISION rocfft_precision_single
-#endif
-
-#include <rocfft.h>
-
-rocfft_plan_description 
-get_data_layout(const Volume domain_size)
-{
-    //TP: not sure are the offsets for rocfft in bytes or in number of elements so prefer to do the offseting via pointer arithmetic myself
-    size_t offsets[]  = {0,0,0};
-    size_t strides[]  = {domain_size.x*domain_size.y,domain_size.x,1};
-    size_t distance = domain_size.x*domain_size.y*domain_size.z;
-    // Create plan description
-    rocfft_plan_description desc = nullptr;
-    rocfft_status status = rocfft_plan_description_create(&desc);
-    ERRCHK_ALWAYS((status == rocfft_status_success));
-    status = rocfft_plan_description_set_data_layout(
-        desc,
-        rocfft_array_type_complex_interleaved,  // in_array_type
-        rocfft_array_type_complex_interleaved,  // out_array_type
-	offsets,
-	offsets,
-	3,
-	strides,
-	distance,
-	3,
-	strides,
-	distance
-        );
-
-    ERRCHK_ALWAYS((status == rocfft_status_success));
-    return desc;
-}
-
-AcResult
-acFFTForwardTransformC2C(const AcComplex* src, const Volume domain_size,
-                                const Volume subdomain_size, const Volume starting_point,
-                                AcComplex* dst) {
-    rocfft_plan_description desc = get_data_layout(domain_size);
-    const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
-    // Create plan
-    rocfft_plan plan = nullptr;
-    size_t lengths[] = {subdomain_size.z,subdomain_size.y,subdomain_size.x};
-    rocfft_status status = rocfft_plan_create(
-        &plan,
-        rocfft_placement_notinplace,
-        rocfft_transform_type_complex_forward,
-	AC_FFT_PRECISION,
-        3,            // Dimensions
-        lengths,      // lengths
-        1,            // batch
-        desc);        // description
-    if (status != rocfft_status_success) return AC_FAILURE;
-
-    // Create execution info
-    rocfft_execution_info info = nullptr;
-    status = rocfft_execution_info_create(&info);
-    if (status != rocfft_status_success) return AC_FAILURE;
-
-    // Execute
-    void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(src+starting_offset))};
-    void* out_buffer[] = {reinterpret_cast<void*>(dst+starting_offset)};
-    status = rocfft_execute(plan, in_buffer, out_buffer, info);
-    if (status != rocfft_status_success) return AC_FAILURE;
-
-    // Cleanup
-    rocfft_execution_info_destroy(info);
-    rocfft_plan_destroy(plan);
-    rocfft_plan_description_destroy(desc);
-
-    // Scaling (just like CUFFT doesn't scale by default)
-    size_t complex_domain_size = domain_size.x * domain_size.y * domain_size.z;
-    const AcReal scale = 1.0 / (subdomain_size.x * subdomain_size.y * subdomain_size.z);
-    acMultiplyInplaceComplex(scale, complex_domain_size, dst);
-
-    return AC_SUCCESS;
-}
-
-
-AcResult
-acFFTBackwardTransformC2C(const AcComplex* src,
-                                 const Volume domain_size,
-                                 const Volume subdomain_size,
-                                 const Volume starting_point,
-                                 AcComplex* dst) {
-    // Create plan description
-    rocfft_plan_description desc = get_data_layout(domain_size);
-    // Create inverse plan
-    rocfft_plan plan = nullptr;
-    size_t lengths[] = {subdomain_size.z,subdomain_size.y,subdomain_size.x};
-    const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
-    rocfft_status status = rocfft_plan_create(
-        &plan,
-        rocfft_placement_notinplace,
-        rocfft_transform_type_complex_inverse,
-	AC_FFT_PRECISION,
-        3,           // Dimensions
-        lengths,     // FFT size
-        1,           // Batch size
-        desc);
-    if (status != rocfft_status_success) return AC_FAILURE;
-
-    // Create execution info
-    rocfft_execution_info info = nullptr;
-    status = rocfft_execution_info_create(&info);
-    if (status != rocfft_status_success) return AC_FAILURE;
-
-    void* in_buffer[] = {const_cast<void*>(reinterpret_cast<const void*>(src+starting_offset))};
-    void* out_buffer[] = {reinterpret_cast<void*>(dst+starting_offset)};
-
-    status = rocfft_execute(plan, in_buffer, out_buffer, info);
-    if (status != rocfft_status_success) return AC_FAILURE;
-
-    // Cleanup
-    rocfft_execution_info_destroy(info);
-    rocfft_plan_destroy(plan);
-    rocfft_plan_description_destroy(desc);
-
-    return AC_SUCCESS;
-}
-AcResult
-acFFTForwardTransformSymmetricR2C(const AcReal*, const Volume, const Volume, const Volume, AcComplex*) {
-	return AC_FAILURE;
-}
-
-AcResult
-acFFTBackwardTransformSymmetricC2R(const AcComplex*,const Volume, const Volume,const Volume, AcReal*) {
-	return AC_FAILURE;
-}
-#else
-#include <cufftXt.h>
-#include <cuComplex.h>
-
-// cufft API error chekcing
-#ifndef CUFFT_CALL
-#define CUFFT_CALL( call )                                                                                             \
-    {                                                                                                                  \
-        auto status = static_cast<cufftResult>( call );                                                                \
-        if ( status != CUFFT_SUCCESS )                                                                                 \
-	    {                                                                                                          \
-            fprintf( stderr,                                                                                           \
-                     "ERROR: CUFFT call \"%s\" in line %d of file %s failed "                                          \
-                     "with "                                                                                           \
-                     "code (%d).\n",                                                                                   \
-                     #call,                                                                                            \
-                     __LINE__,                                                                                         \
-                     __FILE__,                                                                                         \
-                     status );                                                                                         \
-		abort();                                                                                               \
-	    }                                                                                                          \
-    }
-#endif  // CUFFT_CALL
-
-
-// TODO: if the buffer on GPU would be properly padded:
-// https://docs.nvidia.com/cuda/cufft/index.html#data-layout
-// we could use in-place transformation and save one buffer allocation
-// Padding as mentioned in the link: padded to (n/2 + 1) in the least significant dimension.
-AcResult
-acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
-    buffer = buffer + (starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z));
-    // Number of elements in each dimension to use
-    int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
-    // NOTE: inembed[0] and onembed[0] are not used directly, but as idist and odist
-    // Sizes of input dimension of the buffer used
-    int inembed[] = {(int)domain_size.z, (int)domain_size.y, (int)domain_size.x};
-    // Sizes of the output dimension of the buffer used
-    int onembed[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)(subdomain_size.x / 2) + 1};
-    
-    cufftHandle plan_r2c{};
-    CUFFT_CALL(cufftCreate(&plan_r2c));
-    size_t workspace_size;
-    CUFFT_CALL(cufftMakePlanMany(plan_r2c, 3, dims,
-        inembed, 1, inembed[0], // in case inembed and onembed not needed could be: nullptr, 1, 0
-        onembed, 1, onembed[0], //                                                  nullptr, 1, 0
-        CUFFT_D2Z, 1, &workspace_size));
-    
-    size_t orig_domain_size = inembed[0] * inembed[1] * inembed[2];
-    size_t complex_domain_size = onembed[0] * onembed[1] * onembed[2];    
-    
-    cuDoubleComplex* transformed = reinterpret_cast<cuDoubleComplex*>(transformed_in);
-    // Execute the plan_r2c
-    CUFFT_CALL(cufftXtExec(plan_r2c, (void*)buffer, transformed, CUFFT_FORWARD));
-    CUFFT_CALL(cufftDestroy(plan_r2c));
-    // Scale complex results that inverse FFT results in original values
-    const AcReal scale{1.0 / orig_domain_size};
-    acMultiplyInplaceComplex(scale, complex_domain_size, transformed_in);
-    return AC_SUCCESS;
-}
-
-AcResult
-acFFTForwardTransformC2C(const AcComplex* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
-    const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
-    buffer = buffer + starting_offset;
-    // Number of elements in each dimension to use
-    int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
-    // NOTE: inembed[0] and onembed[0] are not used directly, but as idist and odist
-    // Sizes of input dimension of the buffer used
-    int inembed[] = {(int)domain_size.z, (int)domain_size.y, (int)domain_size.x};
-    // Sizes of the output dimension of the buffer used
-    int onembed[] = {(int)domain_size.z, (int)domain_size.y, (int)(domain_size.x)};
-    
-    cufftHandle plan_r2c{};
-    CUFFT_CALL(cufftCreate(&plan_r2c));
-    size_t workspace_size;
-    CUFFT_CALL(cufftMakePlanMany(plan_r2c, 3, dims,
-        inembed, 1, inembed[0], // in case inembed and onembed not needed could be: nullptr, 1, 0
-        onembed, 1, onembed[0], //                                                  nullptr, 1, 0
-        CUFFT_Z2Z, 1, &workspace_size));
-    
-    size_t complex_domain_size = onembed[0] * onembed[1] * onembed[2];    
-    
-    cuDoubleComplex* transformed = reinterpret_cast<cuDoubleComplex*>(transformed_in + starting_offset);
-    // Execute the plan_r2c
-    CUFFT_CALL(cufftXtExec(plan_r2c, (void*)buffer, transformed, CUFFT_FORWARD));
-    CUFFT_CALL(cufftDestroy(plan_r2c));
-    // Scale complex results that inverse FFT results in original values
-    const AcReal scale{1.0 / ( dims[0] * dims[1] * dims[2])};
-    acMultiplyInplaceComplex(scale, complex_domain_size, transformed_in);
-    return AC_SUCCESS;
-}
-
-
-
-
-AcResult
-acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer) {
-    buffer = buffer + (starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z));
-    // Number of elements in each dimension to use
-    int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
-    // NOTE: inembed[0] and onembed[0] are not used directly, but as idist and odist
-    // Sizes of input dimension of the buffer used
-    int inembed[] = {(int)domain_size.z, (int)domain_size.y, (int)domain_size.x};
-    // Sizes of the output dimension of the buffer used
-    int onembed[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)(((int)subdomain_size.x) / 2) + 1};
-    
-    cufftHandle plan_c2r{};
-    CUFFT_CALL(cufftCreate(&plan_c2r));
-    size_t workspace_size;
-    CUFFT_CALL(cufftMakePlanMany(plan_c2r, 3, dims,
-        onembed, 1, onembed[0],
-        inembed, 1, inembed[0],
-        CUFFT_Z2D, 1, &workspace_size));
-    const cuDoubleComplex* transformed = reinterpret_cast<const cuDoubleComplex*>(transformed_in);
-    CUFFT_CALL(cufftXtExec(plan_c2r, (void*)transformed, buffer, CUFFT_INVERSE));
-    CUFFT_CALL(cufftDestroy(plan_c2r));
-    return AC_SUCCESS;
-}
-
-AcResult
-acFFTBackwardTransformC2C(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcComplex* buffer) {
-    const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
-    buffer = buffer + starting_offset;
-    // Number of elements in each dimension to use
-    int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
-    // NOTE: inembed[0] and onembed[0] are not used directly, but as idist and odist
-    // Sizes of input dimension of the buffer used
-    int inembed[] = {(int)domain_size.z, (int)domain_size.y, (int)domain_size.x};
-    // Sizes of the output dimension of the buffer used
-    int onembed[] = {(int)domain_size.z, (int)domain_size.y, (int)(((int)domain_size.x))};
-    
-    cufftHandle plan_c2r{};
-    CUFFT_CALL(cufftCreate(&plan_c2r));
-    size_t workspace_size;
-    CUFFT_CALL(cufftMakePlanMany(plan_c2r, 3, dims,
-        onembed, 1, onembed[0],
-        inembed, 1, inembed[0],
-        CUFFT_Z2Z, 1, &workspace_size));
-    const cuDoubleComplex* transformed = reinterpret_cast<const cuDoubleComplex*>(transformed_in + starting_offset);
-    CUFFT_CALL(cufftXtExec(plan_c2r, (void*)transformed, buffer, CUFFT_INVERSE));
-    CUFFT_CALL(cufftDestroy(plan_c2r));
-    return AC_SUCCESS;
-}
-#endif //AC_USE_HIP
-static AcComplex*
-get_fresh_complex_buffer(const size_t count)
-{
-    const size_t bytes = sizeof(AcComplex)*count;
-    AcComplex* res = NULL;
-    device_malloc(&res,bytes);
-    acMultiplyInplaceComplex(AcReal(0.0),count,res);
-    return res;
-}
-
-AcResult
-acFFTBackwardTransformC2R(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcReal* buffer) {
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp = get_fresh_complex_buffer(count);
-    acFFTBackwardTransformC2C(transformed_in,domain_size,subdomain_size,starting_point,tmp);
-    acComplexToReal(tmp,count,buffer);
-    device_free(&tmp,0);
-    return AC_SUCCESS;
-}
-
-AcResult
-acFFTForwardTransformR2C(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst) {
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp = get_fresh_complex_buffer(count);
-    acRealToComplex(src,count,tmp);
-    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,dst);
-    device_free(&tmp,0);
-    return AC_SUCCESS;
-}
-
-AcResult
-acFFTForwardTransformR2Planar(const AcReal* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
-{
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp  = get_fresh_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_complex_buffer(count);
-
-    acRealToComplex(src,count,tmp);
-    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
-    acComplexToPlanar(tmp2,count,real_dst,imag_dst);
-
-    device_free(&tmp,0);
-    device_free(&tmp2,0);
-    return AC_SUCCESS;
-}
-
-AcResult
-acFFTForwardTransformPlanar(const AcReal* real_src, const AcReal* imag_src ,const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcReal* real_dst, AcReal* imag_dst)
-{
-    const size_t count = domain_size.x*domain_size.y*domain_size.z;
-    AcComplex* tmp  = get_fresh_complex_buffer(count);
-    AcComplex* tmp2 = get_fresh_complex_buffer(count);
-
-    acPlanarToComplex(real_src,imag_src,count,tmp);
-    acFFTForwardTransformC2C(tmp, domain_size,subdomain_size,starting_point,tmp2);
-    acComplexToPlanar(tmp,count,real_dst,imag_dst);
-
-    device_free(&tmp,0);
-    device_free(&tmp2,0);
-    return AC_SUCCESS;
-}
-
-#else
-AcResult
-acFFTForwardTransformSymmetricR2C(const AcReal*, const Volume, const Volume, const Volume, AcComplex*) {
-	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransform!\n");
-	fflush(stderr);
-	exit(EXIT_FAILURE);
-	return AC_FAILURE;
-}
-AcResult
-acFFTForwardTransformR2C(const AcReal*, const Volume, const Volume, const Volume, AcComplex*) {
-	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransform!\n");
-	fflush(stderr);
-	exit(EXIT_FAILURE);
-	return AC_FAILURE;
-}
-AcResult
-acFFTBackwardTransformSymmetricC2R(const AcComplex*,const Volume, const Volume,const Volume, AcReal*)
-{
-	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTBackwardTransform!\n");
-	fflush(stderr);
-	exit(EXIT_FAILURE);
-	return AC_FAILURE;
-}
-AcResult
-acFFTBackwardTransformC2R(const AcComplex*,const Volume, const Volume,const Volume, AcReal*)
-{
-	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTBackwardTransform!\n");
-	fflush(stderr);
-	exit(EXIT_FAILURE);
-	return AC_FAILURE;
-}
-
-AcResult
-acFFTForwardTransformR2Planar(const AcReal*, const Volume, const Volume, const Volume, AcReal*, AcReal*)
-{
-	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransformR2Planar!\n");
-	fflush(stderr);
-	exit(EXIT_FAILURE);
-	return AC_FAILURE;
-}
-
-AcResult
-acFFTForwardTransformPlanar(const AcReal*, const AcReal*,const Volume, const Volume, const Volume, AcReal*, AcReal*)
-{
-	fprintf(stderr,"FATAL: need to have FFT_ENABLED=ON for acFFTForwardTransformPlanar!\n");
-	fflush(stderr);
-	exit(EXIT_FAILURE);
-	return AC_FAILURE;
-}
-#endif

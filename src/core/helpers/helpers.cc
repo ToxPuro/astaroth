@@ -1,6 +1,7 @@
 #include "astaroth.h"
 #include "ac_helpers.h"
 #include <sys/resource.h>
+#include "astaroth_cuda_wrappers.h"
 const char*
 acLibraryVersion(const char* library, const int counter, const AcMeshInfo info)
 {
@@ -43,6 +44,7 @@ acGetVolumeFromShape(const AcShape shape)
 	return {shape.x,shape.y,shape.z};
 }
 
+
 int acMemUsage()
 {
 	struct rusage usage;
@@ -50,4 +52,12 @@ int acMemUsage()
 	ERRCHK_ALWAYS(res == 0);
 
 	return usage.ru_maxrss;
+}
+
+size_t
+acGetAmountOfDeviceMemoryFree()
+{
+	size_t free_mem, total_mem;
+	ERRCHK_CUDA_ALWAYS(acMemGetInfo(&free_mem,&total_mem));
+	return free_mem;
 }

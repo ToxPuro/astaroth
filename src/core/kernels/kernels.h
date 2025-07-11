@@ -17,43 +17,33 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-//#include "astaroth.h"
 #include "acc_runtime.h"
-
 #include <stdbool.h>
-#if AC_MPI_ENABLED
-//#include <mpi.h>
-
-#define MPI_GPUDIRECT_DISABLED (0)
-#endif // AC_MPI_ENABLED
-
-
 
 typedef AcReal AcRealPacked;
-
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
-//TP: deprecated
-//AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
-//                                   AcReal* vtxbuf, const VertexBufferHandle vtxbuf_handle,
-//                                   const AcMeshInfoParams config, const int3 bindex);
-//
-/** */
 AcResult acKernelDummy(void);
 
-/** */
-// AcResult acKernelAutoOptimizeIntegration(const int3 start, const int3 end,
-// VertexBufferArray vba);
-
-/** */
 typedef struct AcShearInterpolationCoeffs
 {
 	AcReal c1,c2,c3,c4,c5,c6;
 } AcShearInterpolationCoeffs;
+
+AcResult
+acComplexToReal(const AcComplex* src, const size_t count, AcReal* dst);
+
+AcResult
+acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst);
+
+AcResult
+acPlanarToComplex(const AcReal* real_src, const AcReal* imag_src,const size_t count, AcComplex* dst);
+
+AcResult
+acComplexToPlanar(const AcComplex* src,const size_t count,AcReal* real_dst,AcReal* imag_dst);
+
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                           const Volume vba_start, const Volume dims, AcRealPacked* packed,
 			  const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
@@ -72,12 +62,6 @@ acKernelShearUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
 AcResult
 acKernelMoveData(const cudaStream_t stream, const Volume src_start, const Volume dst_start, const Volume src_dims, const Volume dst_dims, VertexBufferArray vba,
                           const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
-
-/** */
-// AcResult acKernelIntegrateSubstep(const KernelParameters params,
-// VertexBufferArray vba);
-
-/** */
 
 /** */
 size_t acKernelReduceGetMinimumScratchpadSize(const int3 max_dims);
@@ -110,15 +94,28 @@ AcResult acKernelVolumeCopy(const cudaStream_t stream,                          
                             AcReal* out, const Volume out_offset, const Volume out_volume);
 
 // Astaroth 2.0 backwards compatibility.
-//
-//TP: not used and should anyway be behind macro defs
-//void acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate);
-//void acPackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate);
 
 #ifdef __cplusplus
 } // extern "C"
 
 // cplusplus overloads
+//
+AcResult
+acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
+              const AcReal value);
+
+AcResult
+acKernelFlush(const cudaStream_t stream, int* arr, const size_t n,
+              const int value);
+AcResult
+acKernelFlush(const cudaStream_t stream, AcComplex* arr, const size_t n,
+              const AcComplex value);
+
+#if AC_DOUBLE_PRECISION
+AcResult
+acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
+              const float value);
+#endif
 
 /** */
 AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
