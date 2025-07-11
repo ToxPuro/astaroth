@@ -44,9 +44,9 @@ AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 
 #include "internal_device_funcs.h"
 #include "ac_helpers.h"
+#include "astaroth_analysis_helpers.h"
 #include "astaroth_utils.h"
 #include "grid_detail.h"
-#include "analysis_grid_helpers.h"
 
 #include <cassert>
 #include <memory>
@@ -57,7 +57,6 @@ AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 
 #include "decomposition.h" //getPid and friends
 #include "errchk.h"
-#include "kernels/kernels.h" //AcRealPacked, ComputeKernel
 
 static int
 ac_pid()
@@ -1031,8 +1030,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 			 const std::array<int,NUM_FIELDS>& fields_already_depend_on_boundaries, const int max_facet_class
 			 )
     : Task(order_,
-           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in},max_facet_class)},
-           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start,dims,  op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),
+           {Region(RegionFamily::Compute_input, region_tag,  get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start, dims, op.halo_sizes, {std::vector<Field>(op.fields_in, op.fields_in + op.num_fields_in)  ,op.profiles_in, op.num_profiles_in,op.outputs_in,   op.num_outputs_in},max_facet_class)},
+           Region(RegionFamily::Compute_output, region_tag, get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info), op.computes_on_halos, start,dims,  op.halo_sizes, {std::vector<Field>(op.fields_out, op.fields_out + op.num_fields_out),
 		   merge_ptrs(op.profiles_reduce_out,op.profiles_write_out,op.num_profiles_reduce_out,op.num_profiles_write_out),
 		   op.num_profiles_reduce_out + op.num_profiles_write_out,
 		   op.outputs_out, op.num_outputs_out},max_facet_class),
@@ -1068,7 +1067,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 
     else if(max_facet_class == 3)
     {
-	const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info);
+	const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(),op.kernel_enum,fields_already_depend_on_boundaries,op.analysis_info);
 	if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X) && !dimension_inactive.x)
 	{
             output_region.dims.x += 2*NGHOST;
@@ -1096,7 +1095,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, Volume
 	}
     }
 
-    const auto [left_radius,right_radius] = get_kernel_radius(op.kernel_enum,op.analysis_info);
+    const auto [left_radius,right_radius] = get_kernel_radius(acGridGetLocalMeshInfo(), op.kernel_enum,op.analysis_info);
     bool in_bounds    =    (int)output_region.position.x-(int)left_radius.x >= 0
     			|| (int)output_region.position.y-(int)left_radius.y >= 0
     			|| (int)output_region.position.z-(int)left_radius.z >= 0

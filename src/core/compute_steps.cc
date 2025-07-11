@@ -1,6 +1,7 @@
 #if AC_MPI_ENABLED 
 
 #include "task.h"
+#include "astaroth_analysis_helpers.h"
 
 #include <algorithm>
 #include <cstring> //memcpy
@@ -22,7 +23,6 @@ get_info()
 
 
 
-#include "analysis_grid_helpers.h"
 #include "taskgraph_kernels.h"
 #include "taskgraph_bc_handles.h"
 #include "taskgraph_kernel_bcs.h"
@@ -304,7 +304,7 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 		call_all_user_loaders(p);
     		loader(p);
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
-		const auto info = get_kernel_analysis_info();
+		const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
 		if(filter_unnecessary_ones)
 		{
 			auto outputs = get_kernel_outputs(optimized_kernel,info.data());
@@ -426,7 +426,7 @@ acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph, const bool optimized)
 	FILE* stream = !ac_pid() ? fopen("taskgraph_log.txt","a") : NULL;
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[bc_graph]);
 	std::vector<AcTaskDefinition> res{};
-	auto bcs = get_boundconds(bc_graph, optimized,get_kernel_analysis_info().data());
+	auto bcs = get_boundconds(bc_graph, optimized,get_kernel_analysis_info(acGridGetLocalMeshInfo()).data());
 	//TP: insert boundconds in topological order
 	for(size_t i = 0; i < bcs.size(); ++i)
 	{
@@ -1062,7 +1062,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 	auto kernel_calls = optimized ?
 				get_optimized_kernels(graph,true) :
 				DSLTaskGraphKernels[graph];
-	auto kernel_call_computes_profile_across_halos = compute_kernel_call_computes_profile_across_halos(kernel_calls,info);
+	auto kernel_call_computes_profile_across_halos = compute_kernel_call_computes_profile_across_halos(acGridGetLocalMeshInfo(),kernel_calls,info);
 	int n_level_sets = 0;
 	std::array<int,MAX_TASKS> call_level_set{};
 	std::array<std::array<std::array<bool, NUM_VTXBUF_HANDLES>,27>,MAX_TASKS> field_needs_to_be_communicated_before_level_set{};
@@ -1118,7 +1118,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 									for(int z = min_z_id(); z <= max_z_id(); ++z)
 									{
 										const int index = id_to_arr_index(x,y,z);
-										const AcBoundary boundary = get_stencil_boundaries(Stencil(stencil));
+										const AcBoundary boundary = stencil_accesses_boundaries(acGridGetLocalMeshInfo(), Stencil(stencil));
 										if(x == 0 && y == 0 && z == 0) continue;
 										if(x == -1 && (boundary & BOUNDARY_X_BOT) == 0) continue;
 										if(x == +1 && (boundary & BOUNDARY_X_TOP) == 0) continue;
@@ -1130,7 +1130,7 @@ gen_level_sets(const AcDSLTaskGraph graph, const bool optimized, const KernelAna
 									}
 								}
 							}
-							halo_types_level_set[j][n_level_sets] = max(halo_types_level_set[j][n_level_sets],get_stencil_halo_type(Stencil(stencil)));
+							halo_types_level_set[j][n_level_sets] = max(halo_types_level_set[j][n_level_sets],get_stencil_halo_type(acGridGetLocalMeshInfo(), Stencil(stencil)));
 						}
 					}
 					if(info[k].read_fields[j] && computes_across_halos)
@@ -1398,7 +1398,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 {
 	if(is_bc_taskgraph(graph))
 		return acGetDSLBCTaskGraphOps(graph,optimized);
-	const auto info = get_kernel_analysis_info();
+	const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
 	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph],optimized,info.data());
 	std::vector<AcTaskDefinition> res{};
 	auto level_sets = get_level_sets(graph,optimized,info.data());	

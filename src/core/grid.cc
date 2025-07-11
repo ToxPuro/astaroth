@@ -46,6 +46,7 @@
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "astaroth_analysis_helpers.h"
 #include "task.h"
 #include "ac_helpers.h"
 
@@ -55,8 +56,6 @@
 #include <queue>
 #include <vector>
 #include <stack>
-
-#include "analysis_grid_helpers.h"
 
 #include "decomposition.h" //getPid3D, morton3D
 #include "errchk.h"
@@ -640,15 +639,15 @@ check_compile_info_matches_runtime_info(const std::vector<KernelAnalysisInfo> in
 					      );
 				if(run_time)
 				{
-					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x && (BOUNDARY_X & get_stencil_boundaries(Stencil(i))))
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].x && (BOUNDARY_X & stencil_accesses_boundaries(acGridGetLocalMeshInfo(),Stencil(i))))
 					{
 						fatal("In Kernel %s Used Stencil %s on Field %s even though X is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
 					}
-					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y && (BOUNDARY_Y & get_stencil_boundaries(Stencil(i))))
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].y && (BOUNDARY_Y & stencil_accesses_boundaries(acGridGetLocalMeshInfo(),Stencil(i))))
 					{
 						fatal("In Kernel %s Used Stencil %s on Field %s even though Y is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
 					}
-					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z && (BOUNDARY_Z & get_stencil_boundaries(Stencil(i))))
+					if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z && (BOUNDARY_Z & stencil_accesses_boundaries(acGridGetLocalMeshInfo(), Stencil(i))))
 					{
 						fatal("In Kernel %s Used Stencil %s on Field %s even though Z is inactive!\n",kernel_names[k],stencil_names[i], field_names[j]);
 					}
@@ -856,7 +855,7 @@ acGridInitBase(const AcMesh user_mesh)
     acVerboseLogFromRootProc(ac_pid(), "memusage after synchronize stream= %f MBytes\n", acMemUsage()/1024.0);
     acVerboseLogFromRootProc(ac_pid(), "acGridInit: Done synchronizing streams\n");
 
-    grid.kernel_analysis_info = get_kernel_analysis_info();
+    grid.kernel_analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
     if(ac_pid() == 0) acAnalysisCheckForDSLErrors(acGridGetLocalMeshInfo());	
     check_compile_info_matches_runtime_info(grid.kernel_analysis_info);
 
@@ -1945,7 +1944,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     std::vector<AcTaskDefinition> ops{};
     //TP: insert reduce tasks in between of tasks
     //If kernel A outputs P(profile or scalar to be reduced) then a reduce task reducing P should be inserted
-    const auto kernel_analysis_info = get_kernel_analysis_info();
+    const auto kernel_analysis_info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
     for(size_t i = 0; i < n_ops; ++i)
     {
 	    auto op = ops_in[i];
@@ -1982,7 +1981,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    kernels[i] = op.kernel_enum;
 	    }
     }
-    const auto& kernel_computes_profile_on_halos = compute_kernel_call_computes_profile_across_halos(kernels,kernel_analysis_info.data());
+    const auto& kernel_computes_profile_on_halos = compute_kernel_call_computes_profile_across_halos(acGridGetLocalMeshInfo(),kernels,kernel_analysis_info.data());
     for(size_t i = 0; i < ops.size(); ++i)
     {
 	    ops[i].computes_on_halos = BOUNDARY_NONE;
@@ -2074,7 +2073,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	const int3 old_tpb = acReadOptimTBConfig(op.kernel_enum,task->output_region.dims,to_volume(acGridGetLocalMeshInfo()[AC_thread_block_loop_factors]));
         acDeviceSetReduceOffset(grid.device, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
         //acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
-        fields_already_depend_on_boundaries = get_fields_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
+        fields_already_depend_on_boundaries = get_fields_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
     	//make sure after autotuning that out is 0
 	if(old_tpb == (int3){-1,-1,-1})
 	{
@@ -2178,7 +2177,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    if(acGridGetLocalMeshInfo()[AC_dimension_inactive].z  && Region::tag_to_id(tag).z != 0) continue;
 		    else if(max_comp_facet_class == 3)
 		    {
-			const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
+			const AcBoundary bc_dependencies = get_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(),op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
 			if(!(bc_dependencies & BOUNDARY_X) && !(op.computes_on_halos & BOUNDARY_X))
 				if(Region::tag_to_id(tag).x != 0) continue;
 			if(!(bc_dependencies & BOUNDARY_Y) && !(op.computes_on_halos & BOUNDARY_Y))

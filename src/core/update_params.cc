@@ -1,6 +1,5 @@
 #include "astaroth.h"
 #include "math_utils.h"
-#include "../helpers/ceil_div.h"
 #include "is_comptime_param.h"
 
 static cudaDeviceProp

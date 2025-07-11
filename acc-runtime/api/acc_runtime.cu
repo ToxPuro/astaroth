@@ -127,7 +127,6 @@ acGetKernelReduceScratchPadMinSize()
 		res = (res < kernel_running_reduce_offsets[i]) ? kernel_running_reduce_offsets[i] : res;
 	return res;
 }
-#include "../../src/helpers/ceil_div.h"
 
 Volume
 get_bpg(Volume dims, const Volume tpb)
