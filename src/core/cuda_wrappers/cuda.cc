@@ -66,6 +66,11 @@ acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind
 	return cudaMemcpyAsync(dst,src,bytes,kind,stream);
 }
 cudaError_t
+acMemcpyAsync(void* dst, const void* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream)
+{
+	return cudaMemcpyAsync(dst,src,bytes,kind,stream);
+}
+cudaError_t
 acMemcpyPeerAsync(AcReal* dst, int dst_id, const AcReal* src, int src_id, const size_t bytes, const cudaStream_t stream)
 {
 	return cudaMemcpyPeerAsync(dst,dst_id,src,src_id,bytes,stream);
@@ -199,4 +204,9 @@ cudaError_t
 acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream)
 {
 	return cudaMemcpyFromSymbolAsync(dst,symbol,count,offset,kind,stream);
+}
+cudaError_t 
+acPeekAtLastError()
+{
+	return cudaPeekAtLastError();
 }

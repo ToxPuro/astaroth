@@ -8,8 +8,48 @@
 #include <cstdint>
 typedef int cudaStream_t;
 typedef int cudaError_t;
+typedef int cudaSharedMemConfig;
+typedef int cudaStream_t;
+typedef int cudaMemcpyKind;
+typedef int cudaEvent_t;
+typedef struct
+{
+	int warpSize;
+	int multiProcessorCount;
+	int maxThreadsPerBlock;
+	int sharedMemPerBlock;
+	const char* name;
+	int major,minor;
+	double clockRate;
+	int singleToDoublePrecisionPerfRatio;
+	int computeMode;
+	int memoryClockRate;
+	int memoryBusWidth;
+	int   ECCEnabled;
+	double totalGlobalMem;
+	int localL1CacheSupported;
+	int globalL1CacheSupported;
+	int l2CacheSize;
+	int regsPerBlock;
+	int streamPrioritiesSupported;
+} cudaDeviceProp; 
+typedef int cudaDeviceAttribute_t;
+#define cudaStreamNonBlocking (0)
+
+#define cudaSharedMemBankSizeEightByte (0)
+
 #define cudaSuccess (0)
 #define cudaFailure (1)
+#define cudaErrorInvalidConfiguration (2)
+#define cudaErrorLaunchOutOfResources (3)
+#define cudaErrorNotReady (4)
+
+#define cudaMemcpyDeviceToHost   (0)
+#define cudaMemcpyHostToDevice   (1)
+#define cudaMemcpyDeviceToDevice (2)
+#define cudaMemcpyHostToHost     (3)
+#define cudaMemcpyDefault        (4)
+#define cudaDevAttrCooperativeLaunch (0)
 
 #undef __host__
 #define __host__
@@ -28,7 +68,6 @@ typedef int cudaError_t;
 #undef __constant__
 #define __constant__
 
-#define threadIdx ((int3){0, 0, 0})
 #define blockIdx ((dim3){0, 0, 0})
 #define blockDim ((dim3){1, 1, 1})
 #define gridDim ((dim3){1, 1, 1})

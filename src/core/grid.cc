@@ -343,9 +343,14 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 
     set_info_val(submesh_config,AC_nlocal,submesh_n);
     const int3 pid3d = getPid3D(global_config);
-    const int3 offset = pid3d*submesh_n;
+    const int3 offset =
+    (int3){
+	    (int)pid3d.x*submesh_n.x,
+	    (int)pid3d.y*submesh_n.y,
+	    (int)pid3d.z*submesh_n.z
+    };
     set_info_val(submesh_config,AC_multigpu_offset,offset);
-    submesh_config[AC_multigpu_offset] = pid3d*submesh_n;
+    submesh_config[AC_multigpu_offset] = offset;
     set_info_val(submesh_config,AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z});
     set_info_val(submesh_config,AC_domain_coordinates,pid3d);
     acHostUpdateParams(&submesh_config);
@@ -672,7 +677,7 @@ grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
         MPI_Gather(&tpb_z,1,MPI_INT,z_dim,1,MPI_INT,0,astaroth_comm);
         MPI_Gather(&local_best.time,1,MPI_FLOAT,time_buffer,1,MPI_FLOAT,0,astaroth_comm);
 
-        dim3 first_tpb(x_dim[0],y_dim[0],z_dim[0]);
+        dim3 first_tpb{(unsigned int)x_dim[0],(unsigned int)y_dim[0],(unsigned int)z_dim[0]};
         AcAutotuneMeasurement res{time_buffer[0], first_tpb};
         if(ac_pid() == 0)
         {
@@ -681,7 +686,7 @@ grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
                         if(time_buffer[i]  < res.time)
                         {
                                 res.time = time_buffer[i];
-                                dim3 res_tpb(x_dim[i],y_dim[i],z_dim[i]);
+                                dim3 res_tpb{(unsigned int)x_dim[i],(unsigned int)y_dim[i],(unsigned int)z_dim[i]};
                                 res.tpb = res_tpb;
                         }
                 }
@@ -702,7 +707,7 @@ grid_gather_best_measurement(const AcAutotuneMeasurement local_best)
                 MPI_Bcast(&x_res, 1, MPI_INT, 0, astaroth_comm);
                 MPI_Bcast(&y_res, 1, MPI_INT, 0, astaroth_comm);
                 MPI_Bcast(&z_res, 1, MPI_INT, 0, astaroth_comm);
-                res.tpb = dim3(x_res,y_res,z_res);
+                res.tpb = dim3{(unsigned int)x_res,(unsigned int)y_res,(unsigned int)z_res};
         }
         free(time_buffer);
         free(x_dim);

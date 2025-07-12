@@ -1,6 +1,23 @@
 /*
  * Random number generation
  */
+#if AC_CPU_BUILD
+#include <stdlib.h>
+__device__ __forceinline__
+AcReal
+rand_uniform()
+{
+	return rand() / (RAND_MAX + 1.);
+}
+AcResult
+acRandInitAlt(const uint64_t, const size_t, const size_t)
+{
+	return AC_SUCCESS;
+}
+void
+acRandQuit(void){}
+#else
+
 #if AC_USE_HIP
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 
@@ -195,3 +212,5 @@ random_uniform(const size_t idx)
 		return curand_uniform(&rand_states[idx]);
 #endif
 }
+
+#endif //AC_CPU_BUILD

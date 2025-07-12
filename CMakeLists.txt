@@ -54,6 +54,7 @@ option(RUNTIME_COMPILATION "Compile version of Astaroth compiled at runtime" OFF
 option(SUPPRESS_COMPILER_WARNINGS "Suppress default compiler warnings of Astaroth" OFF)
 option(PROFILING_ENABLED "Whether to enable profiling and link to the vendor profiling libraries" ON)
 option(FFT_ENABLED "Whether to enable FFT" OFF)
+option(CPU_BUILD "To build CPU-only build" OFF)
 
 ## Project-wide compilation flags
 # -Werror TODO read
@@ -84,6 +85,12 @@ if(PROFILING_ENABLED)
 	add_definitions(-DPROFILING_ENABLED=1)
 else()
 	add_definitions(-DPROFILING_ENABLED=0)
+endif()
+
+if(CPU_BUILD)
+	add_definitions(-DAC_CPU_BUILD=1)
+else()
+	add_definitions(-DAC_CPU_BUILD=0)
 endif()
 
 if(NOT SUPPRESS_COMPILER_WARNINGS)

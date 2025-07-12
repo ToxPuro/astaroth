@@ -35,8 +35,12 @@ dummy_kernel(void)
 AcResult
 acKernelDummy(void)
 {
+    #if AC_CPU_BUILD
+    dummy_kernel();
+    #else
     dummy_kernel<<<1, 1>>>();
     ERRCHK_CUDA_KERNEL_ALWAYS();
+    #endif
     return AC_SUCCESS;
 }
 

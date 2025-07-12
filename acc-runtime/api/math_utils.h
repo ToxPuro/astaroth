@@ -371,6 +371,18 @@ operator/(const Volume& a, const uint3_64& b)
 }
 
 static inline uint3_64
+operator+(const uint3_64& a, const Volume& b)
+{
+  return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+static inline uint3_64
+operator+(const Volume& a, const uint3_64& b)
+{
+  return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+static inline uint3_64
 operator/(const uint3_64& a, const Volume& b)
 {
   return (uint3_64){a.x / b.x, a.y / b.y, a.z / b.z};
@@ -1011,6 +1023,18 @@ AC_get_array_len(const Field (&arr)[N])
 {
 	(void)arr;
 	return N;
+}
+
+static HOST_INLINE int3
+to_int3(const uint3_64 a)
+{
+	return 
+	(int3)
+	{
+		(int)a.x,
+		(int)a.y,
+		(int)a.z
+	};
 }
 
 

@@ -8,6 +8,10 @@ endif ()
 if (USE_HIP)
     set_source_files_properties(kernels.cu PROPERTIES LANGUAGE HIP)
 endif()
+ 
+if (CPU_BUILD)
+	set_source_files_properties(kernels.cu PROPERTIES LANGUAGE CXX)
+endif()
 
 if (RUNTIME_COMPILATION)
 	add_library(static_kernels STATIC logging.c)

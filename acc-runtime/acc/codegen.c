@@ -1223,7 +1223,7 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				fprintf(fp,"if (param == %s) \n{//%s is dead\n return;}\n",symbol_table[i].identifier,symbol_table[i].identifier);
 			}
 			else
-		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(AC_INTERNAL_gmem_%s_arrays_%s,&ptr,sizeof(ptr),0,cudaMemcpyHostToDevice)); return;} \n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
+		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(&AC_INTERNAL_gmem_%s_arrays_%s,&ptr,sizeof(ptr),0,cudaMemcpyHostToDevice)); return;} \n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
 	  	  }
 	  }
 	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from acMemcpyToGmemArray\\n\");\n");
@@ -1248,7 +1248,7 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			}
 			else
 			{
-		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(AC_INTERNAL_gmem_%s_arrays_%s,ptr,sizeof(ptr[0])*get_const_dims_array_length(param),0,cudaMemcpyHostToDevice)); return;}\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
+		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(&AC_INTERNAL_gmem_%s_arrays_%s,ptr,sizeof(ptr[0])*get_const_dims_array_length(param),0,cudaMemcpyHostToDevice)); return;}\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
 			}
 		  }
 	  }
@@ -1274,9 +1274,9 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		  	fprintf(fp,"if (param == %s) {fprintf(stderr,\"Can not read since %s is dead!\\n\"); exit(EXIT_FAILURE);}\n",symbol_table[i].identifier,symbol_table[i].identifier);
 		  }
 		  else if (str_vec_contains(symbol_table[i].tqualifiers,CONST_DIMS_STR))
-		  	fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(cudaMemcpyFromSymbol(ptr,AC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr[0])*get_const_dims_array_length(param),0,cudaMemcpyDeviceToHost)); return;}\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
+		  	fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(ptr,&AC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr[0])*get_const_dims_array_length(param),0,cudaMemcpyDeviceToHost)); return;}\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
 		  else
-		  	fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(cudaMemcpyFromSymbol(&ptr,AC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr),0,cudaMemcpyDeviceToHost)); return;}\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
+		  	fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(&ptr,&AC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr),0,cudaMemcpyDeviceToHost)); return;}\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
 	  }
 	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from memcpy_from_gmem_array\\n\");\n");
 	fprintf(fp,"\n(void)param;(void)ptr;}\n");
@@ -1483,7 +1483,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				"if constexpr (NUM_%s_OUTPUTS == 0) return AC_FAILURE;\n"
 				"ERRCHK(stream < NUM_STREAMS);\n"
 				"acReduce(device->streams[stream],reduce_op,device->vba.reduce_buffer_%s[output],acGetKernelReduceScratchPadSize(kernel));\n"
-				"cudaMemcpyAsync(result,device->vba.reduce_buffer_%s[output].res,sizeof(result[0]),cudaMemcpyDeviceToHost,device->streams[stream]);\n"
+				"acMemcpyAsync(result,device->vba.reduce_buffer_%s[output].res,sizeof(result[0]),cudaMemcpyDeviceToHost,device->streams[stream]);\n"
 				"return AC_SUCCESS;\n"
 				"}\n"
 				,upper_case_name,datatype_scalar,enum_name,uppr_name,define_name,define_name
@@ -1495,7 +1495,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				"{\n"
 				"if constexpr (NUM_%s_OUTPUTS == 0) return AC_FAILURE;\n"
 				"acReduce(stream,reduce_op,device->vba.reduce_buffer_%s[output],acGetKernelReduceScratchPadSize(kernel));\n"
-				"cudaMemcpyAsync(result,device->vba.reduce_buffer_%s[output].res,sizeof(result[0]),cudaMemcpyDeviceToHost,stream);\n"
+				"acMemcpyAsync(result,device->vba.reduce_buffer_%s[output].res,sizeof(result[0]),cudaMemcpyDeviceToHost,stream);\n"
 				"return AC_SUCCESS;\n"
 				"}\n"
 				,upper_case_name,datatype_scalar,enum_name,uppr_name,define_name,define_name
@@ -1534,8 +1534,8 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				"%s** \n"
 				"ac_allocate_scratchpad_%s(const size_t i, const size_t bytes, const AcReduceOp state)\n"
 				"{\n"
-				"ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&d_reduce_scratchpads_%s[i],bytes));\n"
-				"ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*),sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
+				"ERRCHK_CUDA_ALWAYS(acMalloc((void**)&d_reduce_scratchpads_%s[i],bytes));\n"
+				"ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*),sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
 				"d_reduce_scratchpads_size_%s[i] = bytes;\n"
 				"acKernelFlush(0,d_reduce_scratchpads_%s[i], bytes/sizeof(%s),get_reduce_state_flush_var_%s(state));\n"
 				"return &d_reduce_scratchpads_%s[i];\n"
@@ -1550,7 +1550,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				"ac_free_scratchpad_%s(const size_t i)\n"
 				"{\n"
 				"d_reduce_scratchpads_%s[i] = NULL;\n"
-				"ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*),sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
+				"ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(d_symbol_reduce_scratchpads_%s,&d_reduce_scratchpads_%s[i],sizeof(%s*),sizeof(%s*)*i,cudaMemcpyHostToDevice));\n"
 				"d_reduce_scratchpads_size_%s[i] = 0;\n"
 				"}\n"
 				,define_name,define_name,define_name,define_name,datatype_scalar,datatype_scalar,define_name
@@ -1589,23 +1589,23 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 	}
 
-	fprintf_filename("dconst_decl.h","%s DEVICE_INLINE  DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
+	fprintf_filename("dconst_decl.h","%s static UNUSED DEVICE_INLINE  DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
 
 	//TP: TODO: compare the performance of having this one level of indirection vs. simply loading the value to dconst and using it from there
 	if(datatype_scalar == REAL_STR || datatype_scalar == INT_STR || (datatype_scalar == FLOAT_STR && AC_DOUBLE_PRECISION))
 	{
-		fprintf_filename("output_value_decl.h","%s DEVICE_INLINE  output_value(const %sOutputParam& param){return d_reduce_%s_res_symbol[(int)param];}\n"
+		fprintf_filename("output_value_decl.h","%s static UNUSED DEVICE_INLINE  output_value(const %sOutputParam& param){return d_reduce_%s_res_symbol[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
 	}
 
-	fprintf_filename("dconst_decl.h","%s DEVICE_INLINE  VAL(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
+	fprintf_filename("dconst_decl.h","%s static UNUSED DEVICE_INLINE VAL(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
 
-	fprintf_filename("dconst_decl.h","%s DEVICE_INLINE  VAL(const %s& val){return val;}\n"
+	fprintf_filename("dconst_decl.h","%s static UNUSED DEVICE_INLINE  VAL(const %s& val){return val;}\n"
 			,datatype_scalar, datatype_scalar, define_name);
 
-	fprintf_filename("rconst_decl.h","%s DEVICE_INLINE RCONST(const %sCompParam&){return d_mesh_info.%s_params[0];}\n"
+	fprintf_filename("rconst_decl.h","%s static UNUSED DEVICE_INLINE RCONST(const %sCompParam&){return d_mesh_info.%s_params[0];}\n"
 			,datatype_scalar, enum_name, define_name);
 
 	fprintf_filename("get_address.h","size_t  get_address(const %sParam& param){ return (size_t)&d_mesh_info.%s_params[(int)param];}\n"
@@ -1625,7 +1625,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
   	{
   	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
   	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR))
-		  fprintf_filename("load_dconst_arrays.h","if (arr == %s)\n return cudaMemcpyToSymbol(AC_INTERNAL_d_%s_arrays_%s,values,bytes,0,cudaMemcpyHostToDevice);\n",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
+		  fprintf_filename("load_dconst_arrays.h","if (arr == %s)\n return acMemcpyToSymbol(AC_INTERNAL_d_%s_arrays_%s,values,bytes,0,cudaMemcpyHostToDevice);\n",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
   	}
 	fprintf_filename("load_dconst_arrays.h","(void)values;(void)bytes;(void)arr;\nreturn cudaSuccess;\n}\n");
 
@@ -1639,7 +1639,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
   	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
   	      symbol_table[i].tspecifier == datatype && str_vec_contains(symbol_table[i].tqualifiers,DCONST_STR))
 	  {
-		  fprintf_filename("store_dconst_arrays.h","if (arr == %s)\n return cudaMemcpyFromSymbol(values,AC_INTERNAL_d_%s_arrays_%s,bytes,0,cudaMemcpyDeviceToHost);\n",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
+		  fprintf_filename("store_dconst_arrays.h","if (arr == %s)\n return acMemcpyFromSymbol(values,AC_INTERNAL_d_%s_arrays_%s,bytes,0,cudaMemcpyDeviceToHost);\n",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
 	  }
   	}
 	fprintf_filename("store_dconst_arrays.h","(void)values;(void)bytes;(void)arr;\nreturn cudaSuccess;\n}\n");
@@ -1705,7 +1705,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
           {
                   char array_length_str[4098];
                   get_array_var_length(symbol_table[i].identifier,root,array_length_str);
-                  fprintf_filename("dconst_arrays_decl.h","__device__ __constant__ %s AC_INTERNAL_d_%s_arrays_%s[%s];\n",datatype_scalar, define_name,symbol_table[i].identifier,array_length_str);
+                  fprintf_filename("dconst_arrays_decl.h","static __device__ __constant__ %s AC_INTERNAL_d_%s_arrays_%s[%s];\n",datatype_scalar, define_name,symbol_table[i].identifier,array_length_str);
           }
         }
 
@@ -10294,9 +10294,11 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
 	   "-DAC_USE_HIP=%d "
 	   "-DAC_DOUBLE_PRECISION=%d "
 	   "-DBUFFERED_REDUCTIONS=%d "
+	   "-DAC_CPU_BUILD=%d "
            "-o %s",
            IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,HIP_ON,AC_DOUBLE_PRECISION,
 	   BUFFERED_REDUCTIONS,
+	   AC_CPU_BUILD | gen_mem_accesses,
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);

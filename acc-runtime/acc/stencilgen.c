@@ -390,11 +390,18 @@ gen_kernel_block_loops(const int curr_kernel)
 	"#include \"kernel_user_non_scalar_constants.h\"\n"
 	"#include \"kernel_user_builtin_non_scalar_constants.h\"\n"
 	 );
-#if AC_USE_HIP
-   printf("[[maybe_unused]] constexpr size_t warp_size = rocprim__warpSize();");
-#else
-   printf("[[maybe_unused]] constexpr size_t warp_size = 32;");
-#endif
+  if (AC_CPU_BUILD)
+  {
+	  printf("for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+		 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+		 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+		 "[[maybe_unused]] const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z};"
+		);
+  	  printf("const dim3 current_block_idx = blockIdx;");
+	  return;
+  }
+  if(AC_USE_HIP) printf("[[maybe_unused]] constexpr size_t warp_size = rocprim__warpSize();");
+  else           printf("[[maybe_unused]] constexpr size_t warp_size = 32;");
   if(kernel_calls_reduce[curr_kernel] && (kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS))
   {
 		for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
@@ -549,9 +556,9 @@ void
 gen_kernel_common_prefix()
 { 
   printf("const int3 tid = (int3){"
-         "threadIdx.x + current_block_idx.x * blockDim.x,"
-         "threadIdx.y + current_block_idx.y * blockDim.y,"
-         "threadIdx.z + current_block_idx.z * blockDim.z,"
+         "static_cast<int>(threadIdx.x + current_block_idx.x * blockDim.x),"
+         "static_cast<int>(threadIdx.y + current_block_idx.y * blockDim.y),"
+         "static_cast<int>(threadIdx.z + current_block_idx.z * blockDim.z),"
          "};");
   printf("const int3 vertexIdx = (int3){"
          "tid.x + start.x,"
@@ -568,9 +575,9 @@ gen_kernel_common_prefix()
 
     printf(
         "const int3 localCompdomainVertexIdx = (int3){"
-        "threadIdx.x + current_block_idx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
-        "threadIdx.y + current_block_idx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
-        "threadIdx.z + current_block_idx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2,"
+        "static_cast<int>(threadIdx.x + current_block_idx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2),"
+        "static_cast<int>(threadIdx.y + current_block_idx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2),"
+        "static_cast<int>(threadIdx.z + current_block_idx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2),"
         "};");
   printf("const int local_compdomain_idx = "
          "LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx);");
@@ -1626,6 +1633,16 @@ print_reduce_ops(const ReduceOp op, const char* define_name)
 void
 print_output_reduce_res(const char* define_name, const ReduceOp op, const int curr_kernel)
 {
+	if(AC_CPU_BUILD)
+	{
+		if(op == REDUCE_SUM)
+			printf("d_symbol_reduce_scratchpads_%s[(int)output][0] += val;",define_name);
+		if(op == REDUCE_MIN)
+			printf("d_symbol_reduce_scratchpads_%s[(int)output][0] = min(val,d_symbol_reduce_scratchpads_%s[(int)output][0]);",define_name,define_name);
+		if(op == REDUCE_MAX)
+			printf("d_symbol_reduce_scratchpads_%s[(int)output][0] = max(val,d_symbol_reduce_scratchpads_%s[(int)output][0]);",define_name,define_name);
+		return;
+	}
 	if(kernel_has_block_loops(curr_kernel))
 	{
 		printf("if(lane_id == warp_leader_id) {");
@@ -1666,7 +1683,7 @@ print_reduce_func(const char* datatype, const char* define_name, const char* enu
 		return;
 	}
         printf("[[maybe_unused]] const auto reduce_%s_%s __attribute__((unused)) = [&](%s val, const %sOutputParam& output) {",reduce_op_to_name(op),define_name,datatype,enum_name);
-	if(kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS)
+	if((kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS) && !AC_CPU_BUILD)
 	{
 		printf("switch(output) {");
 		for(size_t i = 0; i < n_elems; ++i)
@@ -1687,7 +1704,7 @@ print_reduce_func(const char* datatype, const char* define_name, const char* enu
 	}
 	else
 	{
-		print_reduce_ops(op, define_name);
+		if(!AC_CPU_BUILD) print_reduce_ops(op, define_name);
 		print_output_reduce_res(define_name,op,curr_kernel);
 	}
 	printf("};");
@@ -1705,7 +1722,7 @@ gen_kernel_reduce_funcs(const int curr_kernel)
 {
   if(kernel_calls_reduce[curr_kernel] )
   {
-    if(!kernel_has_block_loops(curr_kernel))
+    if(!kernel_has_block_loops(curr_kernel) && !AC_CPU_BUILD)
     {
 	if(!BUFFERED_REDUCTIONS)
 	{
@@ -1764,7 +1781,7 @@ gen_return_if_oob(const int curr_kernel)
        {
        		printf("const bool out_of_bounds = vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z;\n");
        }
-       if(kernel_calls_reduce[curr_kernel] )
+       if(kernel_calls_reduce[curr_kernel] && !AC_CPU_BUILD)
        {
 		const char* type = kernel_has_block_loops(curr_kernel) || BUFFERED_REDUCTIONS ? "" : "[[maybe_unused]] const auto";
 #if AC_USE_HIP

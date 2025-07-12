@@ -1,6 +1,7 @@
 #include "acc_runtime.h"
 #include "ac_helpers.h"
 #include "ac_buffer.h"
+#include "astaroth_cuda_wrappers.h"
 AcShape
 acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims)
 {
@@ -48,7 +49,7 @@ acBufferCreate(const AcShape shape, const bool on_device)
     AcBuffer buffer    = {.data = NULL, .count = acShapeSize(shape), .on_device = on_device, .shape = shape};
     const size_t bytes = sizeof(buffer.data[0]) * buffer.count;
     if (buffer.on_device) {
-        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&buffer.data, bytes));
+        ERRCHK_CUDA_ALWAYS(acMalloc((void**)&buffer.data, bytes));
     }
     else {
         buffer.data = (AcReal*)malloc(bytes);
@@ -62,7 +63,7 @@ acBufferDestroy(AcBuffer* buffer)
 {
     if (buffer->on_device)
     {
-        ERRCHK_CUDA_ALWAYS(cudaFree(buffer->data));
+        ERRCHK_CUDA_ALWAYS(acFree(buffer->data));
     }
     else
         free(buffer->data);
@@ -88,7 +89,7 @@ acBufferMigrate(const AcBuffer in, AcBuffer* out)
     }
 
     ERRCHK_ALWAYS(in.count == out->count);
-    ERRCHK_CUDA_ALWAYS(cudaMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
+    ERRCHK_CUDA_ALWAYS(acMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
     return AC_SUCCESS;
 }
 

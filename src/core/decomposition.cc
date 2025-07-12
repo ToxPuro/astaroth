@@ -16,6 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "device_headers.h"
 #include "decomposition.h"
 
 #include <limits.h> // INT_MAX
@@ -638,16 +639,6 @@ getPid(int3 pid, const uint3_64 decomp, const AcProcMappingStrategy proc_mapping
 			return hierarchical_getPid(pid,decomp);
 	}
 	return -1;
-}
-int3
-to_int3(const uint3_64 val)
-{
-	return (int3)
-	{
-		(int)val.x,
-		(int)val.y,
-		(int)val.z
-	};
 }
 int3
 getPid3D(const uint64_t pid, const uint3_64 decomp, const AcProcMappingStrategy proc_mapping_strategy)

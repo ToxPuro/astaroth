@@ -2,13 +2,6 @@
 #include "math_utils.h"
 #include "is_comptime_param.h"
 
-static cudaDeviceProp
-get_device_prop()
-{
-  cudaDeviceProp props;
-  (void)cudaGetDeviceProperties(&props, 0);
-  return props;
-}
 
 AcResult
 acHostUpdateParams(AcMeshInfo* config_ptr)

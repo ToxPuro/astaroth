@@ -93,3 +93,11 @@ ceil_div(const size_t& a, const size_t& b)
 {
 	return (size_t)ceil((AcReal)(1. * a) / b);
 }
+
+cudaDeviceProp
+get_device_prop()
+{
+  cudaDeviceProp props;
+  (void)acGetDeviceProperties(&props, 0);
+  return props;
+}

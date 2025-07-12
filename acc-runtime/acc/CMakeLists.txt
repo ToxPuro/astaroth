@@ -14,6 +14,7 @@ option(OPTIMIZE_ARRAYS       "Does not allocate arrays that are not used based o
 option(FUSE_KERNELS          "Whether to fuse kernels or not" OFF)
 option(INLINING "Whether to inline all functions or not" OFF)
 option(BUFFERED_REDUCTIONS "Whether reduction values are written out immediately or at the end of a kernel. By default on since gives better performance on AMD." ON)
+option(CPU_BUILD "CPU-only build" OFF)
 
 #TP: if defined the user already has the executable and has exported a path to it
 set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
@@ -65,7 +66,7 @@ else()
 		set(OPTIMIZE_MEM_ACCESSES_VAL 0)
 	endif()
 
-	if (BUFFERED_REDUCTIONS)
+	if (BUFFERED_REDUCTIONS AND NOT CPU_BUILD)
 		set(BUFFERED_REDUCTIONS_VAL 1)
 	else()
 		set(BUFFERED_REDUCTIONS_VAL 0)

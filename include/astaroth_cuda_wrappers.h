@@ -19,6 +19,8 @@ acMemcpy(void* dst, const void* src, const size_t bytes, cudaMemcpyKind kind);
 cudaError_t
 acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream);
 cudaError_t
+acMemcpyAsync(void* dst, const void* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream);
+cudaError_t
 acMemcpyPeerAsync(AcReal* dst, int dst_id, const AcReal* src, int src_id, const size_t bytes, const cudaStream_t stream);
 cudaError_t
 acMemGetInfo(size_t* free_mem, size_t* total_mem);
@@ -70,3 +72,5 @@ cudaError_t
 acMemcpyFromSymbol( void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind);
 cudaError_t 
 acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream);
+cudaError_t
+acPeekAtLastError();

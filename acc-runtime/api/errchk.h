@@ -146,9 +146,9 @@ cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
 
 #define ERRCHK_CUDA_KERNEL()                                                   \
   {                                                                            \
-    ERRCHK_CUDA(cudaPeekAtLastError());                                        \
-    ERRCHK_CUDA(cudaDeviceSynchronize());                                      \
-    ERRCHK_CUDA(cudaPeekAtLastError());                                        \
+    ERRCHK_CUDA(acPeekAtLastError());                                        \
+    ERRCHK_CUDA(acDeviceSynchronize());                                      \
+    ERRCHK_CUDA(acPeekAtLastError());                                        \
   }
 #endif
 
@@ -159,8 +159,8 @@ cuda_assert(cudaError_t code, const char* file, int line, bool should_abort)
 
 #define ERRCHK_CUDA_KERNEL_ALWAYS()                                            \
   {                                                                            \
-    ERRCHK_CUDA_ALWAYS(cudaPeekAtLastError());                                 \
-    ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());                               \
+    ERRCHK_CUDA_ALWAYS(acPeekAtLastError());                                 \
+    ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());                               \
   }
 
 #define WARNCHK_CUDA_ALWAYS(params)                                            \

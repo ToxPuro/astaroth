@@ -127,7 +127,7 @@ operator==(const int3& a, const size3_t& b)
 
 #endif
 static HOST_INLINE int3
-to_int3(Volume a)
+to_int3(const Volume a)
 {
 	return 
 	(int3)
@@ -137,3 +137,4 @@ to_int3(Volume a)
 		(int)a.z
 	};
 }
+

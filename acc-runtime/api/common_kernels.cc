@@ -12,7 +12,7 @@ acLaunchKernelVariadic1d(AcKernel kernel, const cudaStream_t stream, const size_
   const Volume volume_end   = {end,1,1};
   VertexBufferArray vba{};
   acLoadKernelParams(vba.on_device.kernel_input_params,kernel,param1,param2,param3); 
-  return acLaunchKernelWithTPB(kernel,stream,volume_start,volume_end,vba,dim3(256,1,1));
+  return acLaunchKernelWithTPB(kernel,stream,volume_start,volume_end,vba,(dim3){256,1,1});
 }
 
 template<typename T1, typename T2>
@@ -23,7 +23,7 @@ acLaunchKernelVariadic1d(AcKernel kernel, const cudaStream_t stream, const size_
   const Volume volume_end   = {end,1,1};
   VertexBufferArray vba{};
   acLoadKernelParams(vba.on_device.kernel_input_params,kernel,param1,param2); 
-  return acLaunchKernelWithTPB(kernel,stream,volume_start,volume_end,vba,dim3(256,1,1));
+  return acLaunchKernelWithTPB(kernel,stream,volume_start,volume_end,vba,(dim3){256,1,1});
 }
 
 AcResult

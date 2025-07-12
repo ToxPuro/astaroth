@@ -125,6 +125,7 @@
  */
 #include "astaroth.h"
 #include "math_utils.h"
+#include "astaroth_cuda_wrappers.h"
 
 static const int MAX_NUM_DEVICES = 32;
 
@@ -203,7 +204,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     node->config        = node_config;
 
     // Get node->num_devices
-    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&node->num_devices));
+    ERRCHK_CUDA_ALWAYS(acGetDeviceCount(&node->num_devices));
     if (node->num_devices < 1) {
         ERROR("No CUDA devices found!");
         return AC_FAILURE;

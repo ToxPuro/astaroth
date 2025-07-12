@@ -14,6 +14,9 @@ int acMemUsage();
 size_t
 acGetAmountOfDeviceMemoryFree();
 
+cudaDeviceProp
+get_device_prop();
+
 #ifdef __cplusplus
 }
 
