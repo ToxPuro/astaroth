@@ -83,3 +83,24 @@ typedef struct {
     size3_t nn;
     size3_t reduction_tile;
 } AcMeshDims;
+
+#if AC_CPU_BUILD
+
+#ifndef INT3_DEFINED
+typedef struct
+{
+	int x,y,z;
+} int3;
+#define INT3_DEFINED
+#endif
+
+typedef struct
+{
+    unsigned int x, y, z;
+} dim3;
+
+typedef struct
+{
+    unsigned int x, y, z;
+} uint3;
+#endif

@@ -1,8 +1,8 @@
 ## Astaroth Core
 if(RUNTIME_COMPILATION)
    
-  add_library(astaroth_static_core STATIC update_params.cc decomposition.cc logging.c)
-  target_link_libraries(astaroth_static_core STATIC PUBLIC acc-runtime-headers dl acc_runtime_compiler)
+  add_library(astaroth_static_core STATIC update_params.cc decomposition.cc)
+  target_link_libraries(astaroth_static_core PUBLIC acc-runtime-headers dl acc_runtime_compiler astaroth_helpers)
 else()
   #TP: It is not that important that these are as efficient as possible
   #    so can speed up compilation by setting their optimization level to 0
@@ -16,8 +16,8 @@ else()
   )
 
   set_source_files_properties(stencil_accesses.cpp PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1)
-  add_library(astaroth_static_core device.cc decomposition.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp update_params.cc logging.c analysis_helpers.cc)
-  target_link_libraries(astaroth_static_core PUBLIC acc-runtime-headers)
+  add_library(astaroth_static_core device.cc decomposition.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp update_params.cc analysis_helpers.cc)
+  target_link_libraries(astaroth_static_core PUBLIC acc-runtime-headers astaroth_helpers)
   target_include_directories(astaroth_static_core PUBLIC ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src/core/kernels)
   
   
@@ -114,5 +114,5 @@ target_link_libraries(astaroth_static_core PUBLIC ac_cuda_wrappers)
 add_library(astaroth_core empty.cc)
 target_link_libraries(astaroth_core PUBLIC astaroth_static_core)
 if (NOT RUNTIME_COMPILATION)
-	target_link_libraries(astaroth_core PUBLIC kernels)
+	target_link_libraries(astaroth_core PUBLIC kernels ac_fft ac_transpose)
 endif()

@@ -2,6 +2,9 @@
 #include "acreal.h"
 #include <cstring>
 #include <stdio.h>
+#include <limits>
+#include <stdlib.h>
+#include "host_datatypes.h"
 
 cudaError_t
 acStreamSynchronize(cudaStream_t){return cudaSuccess;}

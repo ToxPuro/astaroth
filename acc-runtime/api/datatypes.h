@@ -23,23 +23,8 @@
 #include <float.h> // DBL/FLT_EPSILON
 
 #include <math.h>
+
 #if AC_CPU_BUILD
-
-typedef struct
-{
-	int x,y,z;
-} int3;
-
-typedef struct
-{
-    unsigned int x, y, z;
-} dim3;
-
-typedef struct
-{
-    unsigned int x, y, z;
-} uint3;
-
 #else
 #if AC_USE_HIP
   #include "hip.h"
@@ -60,6 +45,17 @@ typedef struct
 
 
 #include "acreal.h"
+
+#if AC_CPU_BUILD
+#ifndef INT3_DEFINED
+typedef struct
+{
+	int x,y,z;
+} int3;
+#define INT3_DEFINED
+#endif
+#endif
+
 
 #include "builtin_enums.h"
 #include "user_typedefs.h"

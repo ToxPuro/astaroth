@@ -1,6 +1,6 @@
+#include "host_datatypes.h"
 #include "device_headers.h"
 #include "device_details.h"
-#include "host_datatypes.h"
 #include "ac_helpers.h"
 
 extern "C"
@@ -50,6 +50,7 @@ extern "C"
 void  __global__
 transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
+	KERNEL_PREFIX
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
 	{
@@ -79,6 +80,7 @@ transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims, const Vo
 	__syncthreads();
 	if(!out_oob)
 		dst[out_vertexIdx.x +dims.z*out_vertexIdx.y + dims.z*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
+	KERNEL_POSTFIX
 }
 
 

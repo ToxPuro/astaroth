@@ -363,7 +363,7 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 	char original_runtime_astaroth_runtime_path[40000];
 	sprintf(original_runtime_astaroth_runtime_path,"%s/runtime_build/src/core/kernels/libkernels.so",info.runtime_compilation_build_path ? info.runtime_compilation_build_path : astaroth_binary_path);
 	static int counter = 0;
-	const char* runtime_astaroth_runtime_path = acLibraryVersion(original_runtime_astaroth_runtime_path,counter,info);
+	const char* runtime_astaroth_runtime_path = acLibraryVersion(original_runtime_astaroth_runtime_path,counter,info.comm);
 	++counter;
  	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_NOW | RTLD_LOCAL);
 	if(!handle)
@@ -413,6 +413,8 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   #ifdef __cplusplus
   } // extern "C"
     //
+#if AC_RUNTIME_COMPILATION
+#else
 AcResult
 acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
               const AcReal value);
@@ -428,6 +430,7 @@ acKernelFlush(const cudaStream_t stream, AcComplex* arr, const size_t n,
 AcResult
 acKernelFlush(const cudaStream_t stream, float* arr, const size_t n,
               const float value);
+#endif
 #endif
 #ifndef AC_RUNTIME_SOURCE
 #include <type_traits>

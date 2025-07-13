@@ -1,5 +1,5 @@
 ## Astaroth Core
-add_library(astaroth_helpers STATIC helpers.cc device.cc buffer.cc)
+add_library(astaroth_helpers STATIC helpers.cc device.cc buffer.cc logging.c)
 target_include_directories(astaroth_helpers PUBLIC ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src/core/kernels)
 if (MPI_ENABLED)
     set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
