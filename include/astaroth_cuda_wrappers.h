@@ -61,7 +61,7 @@ acGetDeviceProperties(cudaDeviceProp* prop, int  device);
 cudaError_t
 acOccupancyMaxActiveBlocksPerMultiprocessor(int* numBlocks, const void* func, int blockSize, size_t smemSize);
 cudaError_t
-acDeviceGetAttribute(int* dst, cudaDeviceAttribute_t attr, int device);
+acDeviceGetAttribute(int* dst, cudaDeviceAttr attr, int device);
 cudaError_t
 acLaunchCooperativeKernel(void* func,dim3 bpg,dim3 tpb,void** args,size_t smem,cudaStream_t stream);
 cudaError_t

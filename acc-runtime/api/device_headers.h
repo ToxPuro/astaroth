@@ -33,7 +33,7 @@ typedef struct
 	int regsPerBlock;
 	int streamPrioritiesSupported;
 } cudaDeviceProp; 
-typedef int cudaDeviceAttribute_t;
+typedef int cudaDeviceAttr;
 #define cudaStreamNonBlocking (0)
 
 #define cudaSharedMemBankSizeEightByte (0)

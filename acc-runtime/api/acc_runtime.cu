@@ -414,10 +414,10 @@ float
 get_reduce_state_flush_var_float(const AcReduceOp state)
 {
 	return 
-		(state == NO_REDUCE || state == REDUCE_SUM) ? 0.0 :
+		(state == NO_REDUCE || state == REDUCE_SUM) ? (float)0.0 :
 		(state == REDUCE_MIN) ? FLT_MAX :
 		(state == REDUCE_MAX) ? -FLT_MAX :
-		0.0;
+		(float)0.0;
 }
 #endif
 

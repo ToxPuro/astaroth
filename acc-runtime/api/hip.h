@@ -69,7 +69,7 @@
 #define cudaFree hipFree
 #define cudaGetDevice hipGetDevice
 #define cudaDevAttrCooperativeLaunch hipDeviceAttributeCooperativeLaunch 
-#define cudaDeviceAttribute_t hipDeviceAttribute_t 
+#define cudaDeviceAttr hipDeviceAttribute_t 
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaGetDeviceCount hipGetDeviceCount
 #define cudaLaunchCooperativeKernel hipLaunchCooperativeKernel

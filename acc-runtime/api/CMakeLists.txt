@@ -112,7 +112,7 @@ target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMEN
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 
 add_library(acc-runtime-driver arrays.cc vba.cc common_kernels.cc)
-target_link_libraries(acc-runtime-driver PUBLIC acc-runtime-headers ac_cuda_wrappers)
+target_link_libraries(acc-runtime-driver PUBLIC acc-runtime-headers ac_cuda_wrappers astaroth_helpers)
 target_include_directories(acc-runtime-driver PUBLIC ${AC_BASE_PATH}/include)
 target_include_directories(acc-runtime-driver PUBLIC ${AC_BASE_PATH}/src/core/kernels)
 
