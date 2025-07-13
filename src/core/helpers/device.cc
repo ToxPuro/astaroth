@@ -118,5 +118,14 @@ acDeviceFree(AcComplex** dst, const int bytes)
 	acDeviceFree((void**)dst,bytes);
 }
 
+size_t
+acDeviceResize(void** dst,const size_t old_bytes,const size_t new_bytes)
+{
+	if(old_bytes >= new_bytes) return old_bytes;
+	if(old_bytes) acDeviceFree(dst,old_bytes);
+	acDeviceMalloc(dst,new_bytes);
+	return new_bytes;
+}
+
 
 

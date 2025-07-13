@@ -51,24 +51,7 @@ typedef struct
 
 #endif
 
-#if AC_DOUBLE_PRECISION
-typedef double AcReal;
-#define AC_REAL_MAX (DBL_MAX)
-#define AC_REAL_MIN (DBL_MIN)
-#define AC_REAL_EPSILON (DBL_EPSILON)
-#define AC_REAL_MPI_TYPE (MPI_DOUBLE)
-#define AC_REAL_INVALID_VALUE (DBL_MAX)
-#else
-typedef float AcReal;
-#define AC_REAL_MAX (FLT_MAX)
-#define AC_REAL_MIN (FLT_MIN)
-#define AC_REAL_EPSILON (FLT_EPSILON)
-#define AC_REAL_MPI_TYPE (MPI_FLOAT)
-#define AC_REAL_INVALID_VALUE (FLT_MAX)
-#endif
-
-
-#define AC_REAL_PI ((AcReal)M_PI)
+#include "acreal.h"
 
 // convert 3-array into vector
 #define TOVEC3(type,arr) ((type){arr[0],arr[1],arr[2]})
@@ -76,14 +59,15 @@ typedef float AcReal;
 #define AcVector AcReal3
 
 
-typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
-
-
+#include "acreal.h"
 
 #include "builtin_enums.h"
 #include "user_typedefs.h"
+#define VOLUME_DEFINED
+#define COMPLEX_DEFINED
+#define REAL3_DEFINED
+#include "host_datatypes.h"
 
-typedef Volume size3_t;
 
 
 #ifdef __cplusplus

@@ -2,7 +2,6 @@
 #include "kernels.h"
 #include "math_utils.h"
 #include "astaroth_cuda_wrappers.h"
-#include "ac_buffer.h"
 
 template<typename T1, typename T2, typename T3>
 AcResult

@@ -3,15 +3,15 @@
 #include <sys/resource.h>
 #include "astaroth_cuda_wrappers.h"
 const char*
-acLibraryVersion(const char* library, const int counter, const AcMeshInfo info)
+acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm)
 {
 	if(counter == 0) return library;
 	static char new_library[40000];
 	sprintf(new_library,"%s_v%d",library,counter);
 	int pid = 0;
 #if AC_MPI_ENABLED
-	ERRCHK_ALWAYS(info.comm != NULL && info.comm->handle != MPI_COMM_NULL);
-	MPI_Comm_rank(info.comm->handle,&pid);
+	ERRCHK_ALWAYS(comm != NULL && comm->handle != MPI_COMM_NULL);
+	MPI_Comm_rank(comm->handle,&pid);
 #endif
 	if(pid == 0)
 	{
@@ -24,7 +24,7 @@ acLibraryVersion(const char* library, const int counter, const AcMeshInfo info)
 		}
 	}
 #if AC_MPI_ENABLED
-	MPI_Barrier(info.comm->handle);
+	MPI_Barrier(comm->handle);
 #endif
 	return new_library;
 }
@@ -101,3 +101,35 @@ get_device_prop()
   (void)acGetDeviceProperties(&props, 0);
   return props;
 }
+
+Volume
+get_bpg(Volume dims, const Volume tpb)
+{
+  //TP: but dependency on implementation on comment for now
+  //    since not used and enables this to be compiled in helpers
+  /**
+  switch (IMPLEMENTATION) {
+  case IMPLICIT_CACHING:             // Fallthrough
+  case EXPLICIT_CACHING:             // Fallthrough
+  case EXPLICIT_CACHING_3D_BLOCKING: // Fallthrough
+  case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
+  case EXPLICIT_PINGPONG_txw:        // Fallthrough
+  case EXPLICIT_PINGPONG_txy:        // Fallthrough
+  case EXPLICIT_PINGPONG_txyblocked: // Fallthrough
+  case EXPLICIT_PINGPONG_txyz:       // Fallthrough
+  case EXPLICIT_ROLLING_PINGPONG: {
+  **/
+  return (Volume){
+      as_size_t(ceil_div(dims.x,tpb.x)),
+      as_size_t(ceil_div(dims.y,tpb.y)),
+      as_size_t(ceil_div(dims.z,tpb.z)),
+  };
+  /**
+  }
+  default: {
+    ERROR("Invalid IMPLEMENTATION in get_bpg");
+    return (Volume){0, 0, 0};
+  }
+  **/
+}
+

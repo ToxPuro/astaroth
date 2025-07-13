@@ -1,7 +1,12 @@
+
 #include "acc_runtime.h"
+extern "C"
+{
+#include "transpose.h"
+}
 #include "ac_helpers.h"
-#include "ac_buffer.h"
 #include "astaroth_cuda_wrappers.h"
+
 AcShape
 acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims)
 {

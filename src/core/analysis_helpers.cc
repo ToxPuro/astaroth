@@ -1,4 +1,5 @@
 #include "astaroth.h"
+#include "astaroth_analysis.h"
 AcResult acAnalysisGetKernelInfo(const AcMeshInfo info, KernelAnalysisInfo* dst);
 #include <vector>
 [[maybe_unused]] constexpr int AC_IN_BOUNDS_WRITE      = (1 << 0);

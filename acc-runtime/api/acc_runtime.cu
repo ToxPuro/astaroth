@@ -16,28 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#define rocprim__warpSize() rocprim::warp_size()
-#define rocprim__warpId()   rocprim::warp_id()
-#define rocprim__warp_shuffle_down rocprim::warp_shuffle_down
-#define rocprim__warp_shuffle rocprim::warp_shuffle
 
+#include "device_details.h"
 #include "acc_runtime.h"
-#if AC_CPU_BUILD
-
-#else
-#if AC_USE_HIP
-#include <rocprim/rocprim.hpp>
-#include <hip/hip_cooperative_groups.h>
-#else
-#include <cooperative_groups.h>
-#endif
-
-#endif
-
 #include "kernels.h"
-
-#include "ac_buffer.h"
-
 #include "user_defines_runtime_lib.h"
 
 #include "../acc/string_vec.h"
@@ -77,11 +59,6 @@ const bool useColor = false;
 
 #include "astaroth_cuda_wrappers.h"
 #include "acc/implementation.h"
-typedef struct
-{
-	void* data;
-	size_t bytes;
-} AcDeviceTmpBuffer;
 
 static dim3 last_tpb = (dim3){0, 0, 0};
 struct Int3Hash {
@@ -117,6 +94,7 @@ acKernelLaunchGetLastTPB(void)
 int
 acGetKernelReduceScratchPadSize(const AcKernel kernel)
 {
+	if(AC_CPU_BUILD) return 1;
 	return kernel_running_reduce_offsets[(int)kernel];
 }
 int
@@ -128,31 +106,6 @@ acGetKernelReduceScratchPadMinSize()
 	return res;
 }
 
-Volume
-get_bpg(Volume dims, const Volume tpb)
-{
-  switch (IMPLEMENTATION) {
-  case IMPLICIT_CACHING:             // Fallthrough
-  case EXPLICIT_CACHING:             // Fallthrough
-  case EXPLICIT_CACHING_3D_BLOCKING: // Fallthrough
-  case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
-  case EXPLICIT_PINGPONG_txw:        // Fallthrough
-  case EXPLICIT_PINGPONG_txy:        // Fallthrough
-  case EXPLICIT_PINGPONG_txyblocked: // Fallthrough
-  case EXPLICIT_PINGPONG_txyz:       // Fallthrough
-  case EXPLICIT_ROLLING_PINGPONG: {
-    return (Volume){
-        as_size_t(ceil_div(dims.x,tpb.x)),
-        as_size_t(ceil_div(dims.y,tpb.y)),
-        as_size_t(ceil_div(dims.z,tpb.z)),
-    };
-  }
-  default: {
-    ERROR("Invalid IMPLEMENTATION in get_bpg");
-    return (Volume){0, 0, 0};
-  }
-  }
-}
 #include "stencil_accesses.h"
 #include "../acc/mem_access_helper_funcs.h"
 
@@ -480,33 +433,6 @@ static std::vector<TBConfig> tbconfigs;
 static TBConfig getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba);
 
 
-template <typename T>
-T TO_CORRECT_ORDER(const T vol)
-{
-	return vol;
-}
-size_t TO_CORRECT_ORDER(const size_t size)
-{
-	return size;
-}
-
-
-#if AC_CPU_BUILD
-#define KERNEL_LAUNCH(func,bgp,tpb,...) \
-	func
-
-#define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \
-	func
-#else
-#define KERNEL_LAUNCH(func,bgp,tpb,...) \
-	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
-
-#define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \
-	func<<<TO_CORRECT_ORDER(bpg),TO_CORRECT_ORDER(tpb),__VA_ARGS__>>>
-
-#endif
-
-
 __device__ __constant__ AcReal* d_symbol_reduce_scratchpads_real[NUM_REAL_SCRATCHPADS];
 __device__ __constant__ AcReal  d_reduce_real_res_symbol[NUM_REAL_SCRATCHPADS];
 
@@ -636,181 +562,6 @@ __ldg(int* src)
 
 #include "user_built-in_constants.h"
 #include "user_builtin_non_scalar_constants.h"
-
-size_t
-device_resize(void** dst,const size_t old_bytes,const size_t new_bytes)
-{
-	if(old_bytes >= new_bytes) return old_bytes;
-	if(old_bytes) acDeviceFree(dst,old_bytes);
-	acDeviceMalloc(dst,new_bytes);
-	return new_bytes;
-}
-
-typedef struct
-{
-	size_t x;
-	size_t y;
-} size_t2;
-
-struct size_t2Hash {
-    std::size_t operator()(const size_t2& v) const {
-        return std::hash<size_t>()(v.x) ^ std::hash<size_t>()(v.y) << 1;
-    }
-};
-
-std::unordered_map<size_t2,size_t*,size_t2Hash> segmented_reduce_offsets{};
-
-#if AC_CPU_BUILD
-
-AcResult
-acSegmentedReduce(const cudaStream_t, const AcReal*,
-                  const size_t, const size_t, AcReal*, AcReal**, size_t*)
-{
-	printf("acSegmentedReduce not supported yet for CPU-only BUILD!\n");
-	return AC_FAILURE;
-}
-
-template <typename T>
-AcResult
-acReduceBase(const cudaStream_t, const AcReduceOp reduce_op, T buffer, const size_t count)
-{
-  const auto data = *buffer.src;  
-  auto tmp =  (reduce_op == REDUCE_SUM) ? data[0] - data[0] : data[0];
-  for(size_t i = 0; i < count; ++i)
-  {
-	  if(reduce_op == REDUCE_SUM) tmp += data[i];
-	  if(reduce_op == REDUCE_MAX) tmp = max(data[i],tmp);
-	  if(reduce_op == REDUCE_MIN) tmp = min(data[i],tmp);
-  }
-  *buffer.res = tmp;
-  return AC_SUCCESS;
-}
-
-#else
-
-#if AC_USE_HIP
-#include <hipcub/hipcub.hpp>
-#define cub hipcub
-#else
-#include <cub/cub.cuh>
-#endif
-
-template <typename T>
-void
-cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* d_in, const size_t count, T* d_out,  AcReduceOp reduce_op)
-{
-  switch(reduce_op)
-  {
-	  case(REDUCE_SUM):
-	  	ERRCHK_CUDA(cub::DeviceReduce::Sum(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
-	  	break;
-	  case(REDUCE_MIN):
-	  	ERRCHK_CUDA(cub::DeviceReduce::Min(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
-	  	break;
-	  case(REDUCE_MAX):
-	  	ERRCHK_CUDA(cub::DeviceReduce::Max(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
-	  	break;
-	default:
-		ERRCHK_ALWAYS(reduce_op != NO_REDUCE);
-  }
-  if (acGetLastError() != cudaSuccess) {
-          ERRCHK_CUDA_KERNEL_ALWAYS();
-          ERRCHK_CUDA_ALWAYS(acGetLastError());
-  }
-}
-
-
-static HOST_DEVICE_INLINE bool
-operator==(const size_t2& a, const size_t2& b)
-{
-  return a.x == b.x && a.y == b.y;
-}
-
-//TP: will return a cached allocation if one is found
-size_t*
-get_offsets(const size_t count, const size_t num_segments)
-{
-  const size_t2 key = {count,num_segments};
-  if(segmented_reduce_offsets.find(key) != segmented_reduce_offsets.end())
-	  return segmented_reduce_offsets[key];
-
-  size_t* offsets = (size_t*)malloc(sizeof(offsets[0]) * (num_segments + 1));
-  ERRCHK_ALWAYS(num_segments > 0);
-  ERRCHK_ALWAYS(offsets);
-  ERRCHK_ALWAYS(count % num_segments == 0);
-  for (size_t i = 0; i <= num_segments; ++i) {
-    offsets[i] = i * (count / num_segments);
-    ERRCHK_ALWAYS(offsets[i] <= count);
-  }
-  size_t* d_offsets = NULL;
-  ERRCHK_CUDA_ALWAYS(acMalloc((void**)&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1)));
-  ERRCHK_ALWAYS(d_offsets);
-  ERRCHK_CUDA(acMemcpy((void*)d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),cudaMemcpyHostToDevice));
-  free(offsets);
-  segmented_reduce_offsets[key] = d_offsets;
-  return d_offsets;
-}
-
-template <typename T>
-AcResult
-acReduceBase(const cudaStream_t stream, const AcReduceOp reduce_op, T buffer, const size_t count)
-{
-  ERRCHK(*(buffer.buffer_size)/sizeof(*(buffer.src)[0]) >= count);
-  ERRCHK(buffer.src   != NULL);
-  ERRCHK(buffer.src   != NULL);
-
-  AcDeviceTmpBuffer temp_storage{NULL,0};
-  cub_reduce(temp_storage,stream,*(buffer.src),count,buffer.res,reduce_op);
-
-  *buffer.cub_tmp_size = device_resize((void**)buffer.cub_tmp,*buffer.cub_tmp_size,temp_storage.bytes);
-  temp_storage.data = (void*)(*buffer.cub_tmp);
-  cub_reduce(temp_storage,stream,*(buffer.src),count,buffer.res,reduce_op);
-  return AC_SUCCESS;
-}
-
-
-AcResult
-acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
-                  const size_t count, const size_t num_segments, AcReal* d_out, AcReal** tmp_buffer, size_t* tmp_size)
-{
-
-  size_t* d_offsets = get_offsets(count,num_segments);
-
-  void* d_temp_storage      = NULL;
-  size_t temp_storage_bytes = 0;
-  ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-                                  d_out, num_segments, d_offsets, d_offsets + 1,
-                                  stream));
-
-  *tmp_size = device_resize((void**)tmp_buffer,*tmp_size,temp_storage_bytes);
-  ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum((void*)(*tmp_buffer), temp_storage_bytes, d_in,
-                            d_out, num_segments, d_offsets, d_offsets + 1,
-                            stream));
-  ERRCHK_CUDA_KERNEL();
-  return AC_SUCCESS;
-}
-
-#endif
-
-AcResult
-acReduceReal(const cudaStream_t stream, const AcReduceOp op, const AcRealScalarReduceBuffer buffer, const size_t count)
-{
-	return acReduceBase(stream,op,buffer,count);
-}
-
-#if AC_DOUBLE_PRECISION
-AcResult
-acReduceFloat(const cudaStream_t stream, const AcReduceOp op, const AcFloatScalarReduceBuffer buffer, const size_t count)
-{
-	return acReduceBase(stream,op,buffer,count);
-}
-#endif
-
-AcResult
-acReduceInt(const cudaStream_t stream, const AcReduceOp op, const AcIntScalarReduceBuffer buffer, const size_t count)
-{
-	return acReduceBase(stream,op,buffer,count);
-}
 
 size3_t
 acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
@@ -2021,272 +1772,17 @@ acReindex(const cudaStream_t, //
 		} \
 	} \
 
+#define TILE_DIM VAL(AC_mlocal_max_dim)
 #else
 
 #define KERNEL_PREFIX
 #define KERNEL_DIMS_PREFIX
 #define KERNEL_POSTFIX
+#define TILE_DIM (32)
 
 #endif //AC_CPU_BUILD
 
-#define TILE_DIM (32)
-void __global__ 
-transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
-{
-	KERNEL_PREFIX
-	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
-	const dim3 block_offset =
-	{
-		blockIdx.x*TILE_DIM,
-		blockIdx.y,
-		blockIdx.z*TILE_DIM
-	};
 
-	const dim3 vertexIdx = 
-	{
-		(int)start.x + threadIdx.x + block_offset.x,
-		(int)start.y + threadIdx.y + block_offset.y,
-		(int)start.z + threadIdx.z + block_offset.z
-	};
-	const dim3 out_vertexIdx = 
-	{
-		(int)start.z + threadIdx.x + block_offset.z,
-		(int)start.y + threadIdx.y + block_offset.y,
-		(int)start.x + threadIdx.z + block_offset.x
-	};
-	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
-	const bool out_oob =  out_vertexIdx.x >= end.z ||  out_vertexIdx.y >= end.y || out_vertexIdx.z >= end.x;
-
-
-
-	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
-	__syncthreads();
-	if(!out_oob)
-		dst[out_vertexIdx.x +dims.z*out_vertexIdx.y + dims.z*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
-	KERNEL_POSTFIX
-}
-void __global__ 
-transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
-{
-	KERNEL_PREFIX
-	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
-	const dim3 block_offset =
-	{
-		blockIdx.x*TILE_DIM,
-		blockIdx.y,
-		blockIdx.z*TILE_DIM
-	};
-
-	const dim3 vertexIdx = 
-	{
-		(int) start.x + threadIdx.x + block_offset.x,
-		(int) start.y + threadIdx.y + block_offset.y,
-		(int) start.z + threadIdx.z + block_offset.z
-	};
-	const dim3 out_vertexIdx = 
-	{
-		(int)start.z + threadIdx.x + block_offset.z,
-		(int)start.y + threadIdx.y + block_offset.y,
-		(int)start.x + threadIdx.z + block_offset.x
-	};
-	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
-	const bool out_oob =  out_vertexIdx.x >= end.z ||  out_vertexIdx.y >= end.y || out_vertexIdx.z >= end.x;
-
-
-
-	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
-	__syncthreads();
-	if(!out_oob)
-		dst[out_vertexIdx.x +dims.z*out_vertexIdx.z + dims.z*dims.x*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
-	KERNEL_POSTFIX
-}
-void __global__ 
-transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
-{
-	KERNEL_PREFIX
-	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
-	const dim3 block_offset =
-	{
-		blockIdx.x*TILE_DIM,
-		blockIdx.y*TILE_DIM,
-		blockIdx.z
-	};
-
-	const dim3 vertexIdx = 
-	{
-		(int) start.x + threadIdx.x + block_offset.x,
-		(int) start.y + threadIdx.y + block_offset.y,
-		(int) start.z + threadIdx.z + block_offset.z
-	};
-	const dim3 out_vertexIdx = 
-	{
-		(int)start.y + threadIdx.x + block_offset.y,
-		(int)start.x + threadIdx.y + block_offset.x,
-		(int)start.z + threadIdx.z + block_offset.z
-	};
-	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
-	const bool out_oob =  out_vertexIdx.x >= end.y ||  out_vertexIdx.y >= end.x || out_vertexIdx.z >= end.z;
-
-
-
-	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
-	__syncthreads();
-	if(!out_oob)
-		dst[out_vertexIdx.x +dims.y*out_vertexIdx.y + dims.x*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
-	KERNEL_POSTFIX
-}
-void __global__ 
-transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
-{
-	KERNEL_PREFIX
-	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
-	const dim3 block_offset =
-	{
-		blockIdx.x*TILE_DIM,
-		blockIdx.y*TILE_DIM,
-		blockIdx.z
-	};
-
-	const dim3 vertexIdx = 
-	{
-		(int)start.x +threadIdx.x + block_offset.x,
-		(int)start.y +threadIdx.y + block_offset.y,
-		(int)start.z +threadIdx.z + block_offset.z
-	};
-	const dim3 out_vertexIdx = 
-	{
-		(int)start.y + threadIdx.x + block_offset.y,
-		(int)start.x + threadIdx.y + block_offset.x,
-		(int)start.z + threadIdx.z + block_offset.z
-	};
-	const bool in_oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
-	const bool out_oob =  out_vertexIdx.x >= end.y ||  out_vertexIdx.y >= end.x || out_vertexIdx.z >= end.z;
-
-
-
-	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
-	__syncthreads();
-	if(!out_oob)
-		dst[out_vertexIdx.x +dims.y*out_vertexIdx.z + dims.y*dims.z*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];
-	KERNEL_POSTFIX
-}
-void __global__ 
-transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
-{
-	KERNEL_PREFIX
-	const dim3 in_block_offset =
-	{
-		blockIdx.x*blockDim.x,
-		blockIdx.y*blockDim.y,
-		blockIdx.z*blockDim.z
-	};
-
-	const dim3 vertexIdx = 
-	{
-		(int)start.x + threadIdx.x + in_block_offset.x,
-		(int)start.y + threadIdx.y + in_block_offset.y,
-		(int)start.z + threadIdx.z + in_block_offset.z
-	};
-
-	const bool oob  =  vertexIdx.x  >= end.x    ||  vertexIdx.y >= end.y     || vertexIdx.z >= end.z;
-	if(oob) return;
-	dst[vertexIdx.x + dims.x*vertexIdx.z + dims.x*dims.z*vertexIdx.y] 
-		= src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)];
-	KERNEL_POSTFIX
-}
-static AcResult
-acTransposeXYZ_ZYX(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
-{
-	(void)stream;
-	const dim3 tpb = {32,1,32};
-	const Volume sub_dims = end-start;
-	[[maybe_unused]] const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_zyx,bpg, tpb, 0, stream)(src,dst,dims,start,end);
-	ERRCHK_CUDA_KERNEL();
-	return AC_SUCCESS;
-}
-static AcResult
-acTransposeXYZ_ZXY(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
-{
-	(void)stream;
-	const dim3 tpb = {32,1,32};
-	const Volume sub_dims = end-start;
-	[[maybe_unused]] const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_zxy,bpg, tpb, 0, stream)(src,dst,dims,start,end);
-	ERRCHK_CUDA_KERNEL();
-	return AC_SUCCESS;
-}
-static AcResult
-acTransposeXYZ_YXZ(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
-{
-	(void)stream;
-	const dim3 tpb = {32,32,1};
-	const Volume sub_dims = end-start;
-	[[maybe_unused]] const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_yxz,bpg, tpb, 0, stream)(src,dst,dims,start,end);
-	ERRCHK_CUDA_KERNEL();
-	return AC_SUCCESS;
-}
-static AcResult
-acTransposeXYZ_YZX(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
-{
-	(void)stream;
-	const dim3 tpb = {32,32,1};
-	const Volume sub_dims = end-start;
-	[[maybe_unused]] const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_yzx,bpg, tpb, 0, stream)(src,dst,dims,start,end);
-	ERRCHK_CUDA_KERNEL();
-	return AC_SUCCESS;
-}
-static AcResult
-acTransposeXYZ_XZY(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
-{
-	(void)stream;
-	const dim3 tpb = {32,32,1};
-	const Volume sub_dims = end-start;
-	[[maybe_unused]] const dim3 bpg = to_dim3(get_bpg(sub_dims,to_volume(tpb)));
-  	KERNEL_LAUNCH(transpose_xyz_to_xzy,bpg, tpb, 0, stream)(src,dst,dims,start,end);
-	ERRCHK_CUDA_KERNEL();
-	return AC_SUCCESS;
-}
-static AcResult
-acTransposeXYZ_XYZ(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
-{
-	(void)stream;
-	const Volume sub_dims = end-start;
-	const size_t bytes = sub_dims.x*sub_dims.y*sub_dims.z*sizeof(AcReal);
-	src = &src[start.x + dims.x*start.y + dims.x*dims.y*start.z];
-	dst = &dst[start.x + dims.x*start.y + dims.x*dims.y*start.z];
-	ERRCHK_CUDA_ALWAYS(acMemcpyAsync(dst,src,bytes,cudaMemcpyDeviceToDevice,stream));
-	return AC_SUCCESS;
-}
-AcResult
-acTransposeWithBounds(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end, const cudaStream_t stream)
-{
-	switch(order)
-	{
-		case(XYZ):
-			return acTransposeXYZ_XYZ(src,dst,dims,start,end,stream);
-		case (XZY):
-			return acTransposeXYZ_XZY(src,dst,dims,start,end,stream);
-		case (YXZ):
-			return acTransposeXYZ_YXZ(src,dst,dims,start,end,stream);
-		case (YZX):
-			return acTransposeXYZ_YZX(src,dst,dims,start,end,stream);
-		case(ZXY):
-			return acTransposeXYZ_ZXY(src,dst,dims,start,end,stream);
-		case(ZYX):
-			return acTransposeXYZ_ZYX(src,dst,dims,start,end,stream);
-	}
-        ERRCHK_CUDA_KERNEL();
-	return AC_SUCCESS;
-}
-
-AcResult
-acTranspose(const AcMeshOrder order, const AcReal* src, AcReal* dst, const Volume dims, const cudaStream_t stream)
-{
-	return acTransposeWithBounds(order,src,dst,dims,(Volume){0,0,0},dims,stream);
-}
 
 size_t
 get_count(const AcShape shape)
@@ -2365,7 +1861,7 @@ AcResult
 acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType type,const AcReduceOp op)
 {
 	AcReduceOp* states = get_reduce_buffer_states(vba,type);
-	if(states[variable] == op) return AC_SUCCESS;
+	if(states[variable] == op && !AC_CPU_BUILD) return AC_SUCCESS;
 	states[variable] = op;
 	return ac_flush_scratchpad(vba,variable,type,op);
 }
@@ -2443,8 +1939,7 @@ acGetKernels()
 {
 	return kernel_enums;
 }
-
-
+//TP: comes from src/core/kernels/reductions.cc
 AcResult
 acRuntimeQuit()
 {
@@ -2455,7 +1950,6 @@ acRuntimeQuit()
 		reduce_offsets[kernel].clear();
 		kernel_running_reduce_offsets[kernel] = 0;
 	}
-	segmented_reduce_offsets.clear();
 	initialized = false;
 	return AC_SUCCESS;
 }

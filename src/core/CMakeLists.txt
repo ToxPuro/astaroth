@@ -1,8 +1,8 @@
 ## Astaroth Core
 if(RUNTIME_COMPILATION)
    
-  add_library(astaroth_core update_params.cc decomposition.cc logging.c)
-  target_link_libraries(astaroth_core PUBLIC acc-runtime-headers dl acc_runtime_compiler)
+  add_library(astaroth_static_core STATIC update_params.cc decomposition.cc logging.c)
+  target_link_libraries(astaroth_static_core STATIC PUBLIC acc-runtime-headers dl acc_runtime_compiler)
 else()
   #TP: It is not that important that these are as efficient as possible
   #    so can speed up compilation by setting their optimization level to 0
@@ -16,8 +16,9 @@ else()
   )
 
   set_source_files_properties(stencil_accesses.cpp PROPERTIES COMPILE_DEFINITIONS AC_CPU_BUILD=1)
-  add_library(astaroth_core device.cc decomposition.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp update_params.cc logging.c analysis_helpers.cc)
-  target_link_libraries(astaroth_core PUBLIC static_kernels)
+  add_library(astaroth_static_core device.cc decomposition.cc grid.cc compute_steps.cc task.cc node.cc astaroth.cc debug.cc stencil_accesses.cpp update_params.cc logging.c analysis_helpers.cc)
+  target_link_libraries(astaroth_static_core PUBLIC acc-runtime-headers)
+  target_include_directories(astaroth_static_core PUBLIC ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src/core/kernels)
   
   
   # JP: disabled due to being error-prone, verbose, and not using modern CMake practices
@@ -83,11 +84,11 @@ else()
   #     )
   # endif()
 endif()
-target_include_directories(astaroth_core PUBLIC ${AC_BASE_PATH}/include)
+target_include_directories(astaroth_static_core PUBLIC ${AC_BASE_PATH}/include)
 if (MPI_ENABLED)
     set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
     find_package(MPI REQUIRED COMPONENTS C)
-    target_link_libraries(astaroth_core PUBLIC MPI::MPI_C)
+    target_link_libraries(astaroth_static_core PUBLIC MPI::MPI_C)
 endif()
 
 if (USE_HIP)
@@ -96,17 +97,22 @@ if (USE_HIP)
          # Workaround due to hip/cmake/cray PE issue with GPU RDMA
          # If we're on a Cray machine, link against the GTL library
          # WARNING: this path may break, works on LUMI in June of 2023
-         target_link_directories(astaroth_core
+         target_link_directories(astaroth_static_core
              PUBLIC
  	    /opt/cray/pe/lib64
  	#/opt/rocm-5.2.3/llvm/lib
          )
-         target_link_libraries(astaroth_core
+         target_link_libraries(astaroth_static_core
              PUBLIC
              mpi_gtl_hsa
          )
      endif()
 else()
-    target_link_libraries(astaroth_core PUBLIC CUDA::cudart_static)
+    target_link_libraries(astaroth_static_core PUBLIC CUDA::cudart_static)
 endif()
-target_link_libraries(astaroth_core PUBLIC ac_cuda_wrappers)
+target_link_libraries(astaroth_static_core PUBLIC ac_cuda_wrappers)
+add_library(astaroth_core empty.cc)
+target_link_libraries(astaroth_core PUBLIC astaroth_static_core)
+if (NOT RUNTIME_COMPILATION)
+	target_link_libraries(astaroth_core PUBLIC kernels)
+endif()

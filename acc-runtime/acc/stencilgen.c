@@ -440,7 +440,7 @@ gen_kernel_block_loops(const int curr_kernel)
 	#endif
 
 	{
-		if(kernel_has_block_loops(curr_kernel))
+		if(kernel_has_block_loops(curr_kernel) && !AC_CPU_BUILD)
 	    		printf("[[maybe_unused]] constexpr size_t warp_leader_id  = 0;");
 	    	printf("const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) %% warp_size;");
 	    	printf("const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;");
@@ -783,9 +783,9 @@ gen_profile_funcs(const int kernel)
   {
     if(kernel_has_block_loops(kernel))
     	printf("[[maybe_unused]] const int3 profileReduceOutputVertexIdx= (int3){"
-    	       "threadIdx.x + blockIdx.x * blockDim.x,"
-    	       "threadIdx.y + blockIdx.y * blockDim.y,"
-    	       "threadIdx.z + blockIdx.z * blockDim.z,"
+    	       "static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x),"
+    	       "static_cast<int>(threadIdx.y + blockIdx.y * blockDim.y),"
+    	       "static_cast<int>(threadIdx.z + blockIdx.z * blockDim.z),"
     	       "};");    
     else
     	printf("[[maybe_unused]] const int3& profileReduceOutputVertexIdx = vertexIdx;");
@@ -795,6 +795,12 @@ gen_profile_funcs(const int kernel)
     else if(!get_num_reduced_profiles(PROFILE_X,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_x __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
+    }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_x __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x] += val;");
+	printf("};");
     }
     else
     {
@@ -818,6 +824,12 @@ gen_profile_funcs(const int kernel)
     else if(!get_num_reduced_profiles(PROFILE_Y,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_y __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
+    }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_y __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.y] += val;");
+	printf("};");
     }
     else
     {
@@ -853,6 +865,12 @@ gen_profile_funcs(const int kernel)
     else if(!get_num_reduced_profiles(PROFILE_Z,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_z __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
+    }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_z __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.z] += val;");
+	printf("};");
     }
     else
     {
@@ -890,6 +908,12 @@ gen_profile_funcs(const int kernel)
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.y] += val;");
+	printf("};");
+    }
     else
     {
     	printf("const auto reduce_sum_real_xy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
@@ -915,6 +939,12 @@ gen_profile_funcs(const int kernel)
     else if(!get_num_reduced_profiles(PROFILE_YX,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_yx __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
+    }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_yx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.x] += val;");
+	printf("};");
     }
     else
     {
@@ -942,6 +972,12 @@ gen_profile_funcs(const int kernel)
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.x + VAL(AC_mlocal).x*vertexIdx.z] += val;");
+	printf("};");
+    }
     else
     {
     	printf("const auto reduce_sum_real_xz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
@@ -968,6 +1004,12 @@ gen_profile_funcs(const int kernel)
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.x] += val;");
+	printf("};");
+    }
     else
     {
     	printf("const auto reduce_sum_real_zx __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
@@ -993,6 +1035,12 @@ gen_profile_funcs(const int kernel)
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
     }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.y + VAL(AC_mlocal).y*vertexIdx.z] += val;");
+	printf("};");
+    }
     else
     {
 	    printf("const auto reduce_sum_real_yz __attribute__((unused)) = [&](const AcReal& val, const Profile& output)"
@@ -1009,6 +1057,12 @@ gen_profile_funcs(const int kernel)
     else if(!get_num_reduced_profiles(PROFILE_ZY,kernel))
     {
     	printf("[[maybe_unused]] const auto reduce_sum_real_zy __attribute__((unused)) = [&](const AcReal&, const Profile&) {};");
+    }
+    else if(AC_CPU_BUILD)
+    {
+    	printf("const auto reduce_sum_real_zy __attribute__((unused)) = [&](const AcReal& val, const Profile& output) {");
+    	printf("d_symbol_reduce_scratchpads_real[PROF_SCRATCHPAD_INDEX(output)][vertexIdx.z + VAL(AC_mlocal).z*vertexIdx.y] += val;");
+	printf("};");
     }
     else
     {

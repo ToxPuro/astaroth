@@ -932,6 +932,7 @@ acGridQuit(void)
     }
     acDeviceDestroy(&grid.device);
     compat_acDecompositionQuit();
+    acKernelsClean();
     acRuntimeQuit();
     // acDecompositionInfoDestroy(&grid.decomposition_info);
 

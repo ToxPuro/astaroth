@@ -1,5 +1,12 @@
-#include "acc_runtime.h"
-#include "kernels.h"
+#include "host_datatypes.h"
+#include "ac_fft.h"
+#include "astaroth_cuda_wrappers.h"
+#include "errchk.h"
+#include "ac_helpers.h"
+#include "common_kernels.h"
+#include <stdio.h>
+#include <cstdlib>
+
 #if AC_FFT_ENABLED
 #if AC_USE_HIP
 #if AC_DOUBLE_PRECISION

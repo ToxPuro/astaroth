@@ -44,4 +44,10 @@ acKernelDummy(void)
     return AC_SUCCESS;
 }
 
+AcResult
+acKernelsClean()
+{
+	return acReduceClean();
+}
+
 #include "packing.cuh"

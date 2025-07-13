@@ -1,3 +1,5 @@
+#pragma once
+#include "device_headers.h"
 cudaError_t
 acStreamSynchronize(cudaStream_t stream);
 cudaError_t

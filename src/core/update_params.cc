@@ -111,6 +111,10 @@ acHostUpdateParams(AcMeshInfo* config_ptr)
     tile_dims.x = 
 	config[AC_nlocal].x < get_device_prop().warpSize ? config[AC_nlocal].x 
 						    : ceil_div(config[AC_nlocal].x,get_device_prop().warpSize);
+    if(AC_CPU_BUILD)
+    {
+	    tile_dims = (int3){1,1,1};
+    }
     push_val(AC_reduction_tile_dimensions,tile_dims);
     return AC_SUCCESS;
 }

@@ -19,8 +19,6 @@ acRandQuit(void){}
 #else
 
 #if AC_USE_HIP
-#include <hip/hip_runtime.h> // Needed in files that include kernels
-
 #include <hip/hip_fp16.h>           // Workaround: required by hiprand
 #include <hiprand/hiprand.h>        // Random numbers
 #include <hiprand/hiprand_kernel.h> // Random numbers (device)

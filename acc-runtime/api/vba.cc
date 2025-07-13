@@ -2,7 +2,6 @@
 #include "math_utils.h"
 #include "astaroth_cuda_wrappers.h"
 #include "stencil_accesses.h"
-#include "ac_buffer.h"
 
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info)
@@ -111,7 +110,7 @@ init_scratchpads(VertexBufferArray* vba)
 	    	vba->reduce_buffer_real[i].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
 	    	*(vba->reduce_buffer_real[i].cub_tmp_size) = 0;
 
-	    	//vba->reduce_buffer_real[i].buffer_size = &d_reduce_scratchpads_size_real[i];
+	    	vba->reduce_buffer_real[i].buffer_size = ac_get_scratchpad_size_real(i);
     		acDeviceMalloc((void**) &vba->reduce_buffer_real[i].res,sizeof(AcReal));
 	    }
 	    else
@@ -148,7 +147,7 @@ init_scratchpads(VertexBufferArray* vba)
 	    *(vba->reduce_buffer_int[i].cub_tmp) = NULL;
 	    vba->reduce_buffer_int[i].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
 	    *(vba->reduce_buffer_int[i].cub_tmp_size) = 0;
-	    //vba->reduce_buffer_int[i].buffer_size    = &d_reduce_scratchpads_size_int[i];
+	    vba->reduce_buffer_int[i].buffer_size = ac_get_scratchpad_size_int(i);
     	    acDeviceMalloc((void**) &vba->reduce_buffer_int[i].res,sizeof(int));
     	}
 
@@ -162,7 +161,7 @@ init_scratchpads(VertexBufferArray* vba)
 	    *(vba->reduce_buffer_float[i].cub_tmp) = NULL;
 	    vba->reduce_buffer_float[i].cub_tmp_size = (size_t*)malloc(sizeof(size_t));
 	    *(vba->reduce_buffer_float[i].cub_tmp_size) = 0;
-	    //vba->reduce_buffer_float[i].buffer_size    = &d_reduce_scratchpads_size_float[i];
+	    vba->reduce_buffer_float[i].buffer_size = ac_get_scratchpad_size_float(i);
     	    acDeviceMalloc((void**) &vba->reduce_buffer_float[i].res,sizeof(float));
     	}
 #endif

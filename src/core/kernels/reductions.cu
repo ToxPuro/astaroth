@@ -17,11 +17,19 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "acc_runtime.h"
+#include "device_details.h"
 #include "kernels.h"
 #include "astaroth_cuda_wrappers.h"
 #include "math_utils.h"
 
 #include <assert.h>
+#include <unordered_map>
+
+typedef struct
+{
+	void* data;
+	size_t bytes;
+} AcDeviceTmpBuffer;
 
 template <typename T>
 static void
@@ -184,4 +192,206 @@ acKernelReduceVecScal(const cudaStream_t stream, const AcReduction reduction, co
     // race conditions
     ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
     return result;
+}
+
+typedef struct
+{
+	size_t x;
+	size_t y;
+} size_t2;
+
+static HOST_DEVICE_INLINE bool
+operator==(const size_t2& a, const size_t2& b)
+{
+  return a.x == b.x && a.y == b.y;
+}
+
+struct size_t2Hash {
+    std::size_t operator()(const size_t2& v) const {
+        return std::hash<size_t>()(v.x) ^ std::hash<size_t>()(v.y) << 1;
+    }
+};
+
+std::unordered_map<size_t2,size_t*,size_t2Hash> segmented_reduce_offsets{};
+
+#if AC_CPU_BUILD
+
+AcResult
+acSegmentedReduce(const cudaStream_t, const AcReal*,
+                  const size_t, const size_t, AcReal*, AcReal**, size_t*)
+{
+	printf("acSegmentedReduce not supported yet for CPU-only BUILD!\n");
+	return AC_FAILURE;
+}
+
+template <typename T>
+AcResult
+acReduceBase(const cudaStream_t, const AcReduceOp reduce_op, T buffer, const size_t count)
+{
+  const auto data = *buffer.src;  
+  auto tmp =  (reduce_op == REDUCE_SUM) ? data[0] - data[0] : data[0];
+  for(size_t i = 0; i < count; ++i)
+  {
+	  if(reduce_op == REDUCE_SUM) tmp += data[i];
+	  if(reduce_op == REDUCE_MAX) tmp = max(data[i],tmp);
+	  if(reduce_op == REDUCE_MIN) tmp = min(data[i],tmp);
+  }
+  *buffer.res = tmp;
+  return AC_SUCCESS;
+}
+
+#else
+
+#if AC_USE_HIP
+#include <hipcub/hipcub.hpp>
+#define cub hipcub
+#else
+#include <cub/cub.cuh>
+#endif
+
+//TP: will return a cached allocation if one is found
+size_t*
+get_offsets(const size_t count, const size_t num_segments)
+{
+  const size_t2 key = {count,num_segments};
+  if(segmented_reduce_offsets.find(key) != segmented_reduce_offsets.end())
+	  return segmented_reduce_offsets[key];
+
+  size_t* offsets = (size_t*)malloc(sizeof(offsets[0]) * (num_segments + 1));
+  ERRCHK_ALWAYS(num_segments > 0);
+  ERRCHK_ALWAYS(offsets);
+  ERRCHK_ALWAYS(count % num_segments == 0);
+  for (size_t i = 0; i <= num_segments; ++i) {
+    offsets[i] = i * (count / num_segments);
+    ERRCHK_ALWAYS(offsets[i] <= count);
+  }
+  size_t* d_offsets = NULL;
+  ERRCHK_CUDA_ALWAYS(acMalloc((void**)&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1)));
+  ERRCHK_ALWAYS(d_offsets);
+  ERRCHK_CUDA(acMemcpy((void*)d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),cudaMemcpyHostToDevice));
+  free(offsets);
+  segmented_reduce_offsets[key] = d_offsets;
+  return d_offsets;
+}
+
+template <typename T>
+void
+cub_reduce(AcDeviceTmpBuffer& temp_storage, const cudaStream_t stream, const T* d_in, const size_t count, T* d_out,  AcReduceOp reduce_op)
+{
+  switch(reduce_op)
+  {
+	  case(REDUCE_SUM):
+	  	ERRCHK_CUDA(cub::DeviceReduce::Sum(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
+	  	break;
+	  case(REDUCE_MIN):
+	  	ERRCHK_CUDA(cub::DeviceReduce::Min(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
+	  	break;
+	  case(REDUCE_MAX):
+	  	ERRCHK_CUDA(cub::DeviceReduce::Max(temp_storage.data, temp_storage.bytes, d_in, d_out, count,stream));
+	  	break;
+	default:
+		ERRCHK_ALWAYS(reduce_op != NO_REDUCE);
+  }
+  if (acGetLastError() != cudaSuccess) {
+          ERRCHK_CUDA_KERNEL_ALWAYS();
+          ERRCHK_CUDA_ALWAYS(acGetLastError());
+  }
+}
+
+template <typename T>
+AcResult
+acReduceBase(const cudaStream_t stream, const AcReduceOp reduce_op, T buffer, const size_t count)
+{
+  ERRCHK(*(buffer.buffer_size)/sizeof(*(buffer.src)[0]) >= count);
+  ERRCHK(buffer.src   != NULL);
+  ERRCHK(buffer.src   != NULL);
+
+  AcDeviceTmpBuffer temp_storage{NULL,0};
+  cub_reduce(temp_storage,stream,*(buffer.src),count,buffer.res,reduce_op);
+
+  *buffer.cub_tmp_size = acDeviceResize((void**)buffer.cub_tmp,*buffer.cub_tmp_size,temp_storage.bytes);
+  temp_storage.data = (void*)(*buffer.cub_tmp);
+  cub_reduce(temp_storage,stream,*(buffer.src),count,buffer.res,reduce_op);
+  return AC_SUCCESS;
+}
+
+AcResult
+acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
+                  const size_t count, const size_t num_segments, AcReal* d_out, AcReal** tmp_buffer, size_t* tmp_size)
+{
+
+  size_t* d_offsets = get_offsets(count,num_segments);
+
+  void* d_temp_storage      = NULL;
+  size_t temp_storage_bytes = 0;
+  ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+                                  d_out, num_segments, d_offsets, d_offsets + 1,
+                                  stream));
+
+  *tmp_size = acDeviceResize((void**)tmp_buffer,*tmp_size,temp_storage_bytes);
+  ERRCHK_CUDA(cub::DeviceSegmentedReduce::Sum((void*)(*tmp_buffer), temp_storage_bytes, d_in,
+                            d_out, num_segments, d_offsets, d_offsets + 1,
+                            stream));
+  ERRCHK_CUDA_KERNEL();
+  return AC_SUCCESS;
+}
+
+#endif
+
+AcResult
+acReduceReal(const cudaStream_t stream, const AcReduceOp op, const AcRealScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceBase(stream,op,buffer,count);
+}
+
+#if AC_DOUBLE_PRECISION
+AcResult
+acReduceFloat(const cudaStream_t stream, const AcReduceOp op, const AcFloatScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceBase(stream,op,buffer,count);
+}
+#endif
+
+AcResult
+acReduceInt(const cudaStream_t stream, const AcReduceOp op, const AcIntScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceBase(stream,op,buffer,count);
+}
+
+AcResult
+acReduceClean()
+{
+	segmented_reduce_offsets.clear();
+	return AC_SUCCESS;
+}
+
+AcResult
+acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream, const Volume start, const Volume end, const Volume start_after_transpose, const Volume end_after_transpose)
+{
+    if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
+    if(buffer.src.data == NULL)      return AC_NOT_ALLOCATED;
+    const AcProfileType type = prof_types[prof];
+    const AcMeshOrder order    = acGetMeshOrderForProfile(type);
+
+
+    acTransposeWithBounds(order,buffer.src.data,buffer.transposed.data,acGetVolumeFromShape(buffer.src.shape),start,end,stream);
+
+    const Volume dims = end_after_transpose-start_after_transpose;
+
+    const size_t num_segments = (type & ONE_DIMENSIONAL_PROFILE) ? dims.z*buffer.transposed.shape.w
+	                                                         : dims.y*dims.z*buffer.transposed.shape.w;
+
+    const size_t count = buffer.transposed.shape.w*dims.x*dims.y*dims.z;
+
+    const AcReal* reduce_src = buffer.transposed.data
+	    		      + start_after_transpose.x + start_after_transpose.y*buffer.transposed.shape.x + start_after_transpose.z*buffer.transposed.shape.x*buffer.transposed.shape.y;
+
+    acSegmentedReduce(stream, reduce_src, count, num_segments, dst,buffer.cub_tmp,buffer.cub_tmp_size);
+    return AC_SUCCESS;
+}
+
+AcResult
+acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream)
+{
+	return acReduceProfileWithBounds(prof,buffer,dst,stream,(Volume){0,0,0},acGetVolumeFromShape(buffer.src.shape),(Volume){0,0,0},acGetVolumeFromShape(buffer.transposed.shape));
 }

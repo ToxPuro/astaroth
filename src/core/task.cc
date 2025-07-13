@@ -2192,28 +2192,34 @@ ReduceTask::reduce()
 	{
 		for(const auto& prof : input_regions[0].memory.profiles)
 		{
-		    auto reduce_buf = acDeviceGetProfileReduceBuffer(device,prof);
-		    auto dst        = acDeviceGetProfileBuffer(device,prof);
+		   auto reduce_buf = acDeviceGetProfileReduceBuffer(device,prof);
+		   auto dst        = acDeviceGetProfileBuffer(device,prof);
+		   if(AC_CPU_BUILD)
+		   {
+    		        const size_t bytes = reduce_buf.src.shape.x*reduce_buf.src.shape.y*reduce_buf.src.shape.z*sizeof(AcReal);
+		        memcpy(dst,reduce_buf.src.data,bytes);
+			continue;
+		   }
 		    if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == -1)
 		    {
-		    		acReduceProfileWithBounds(prof,
-					   reduce_buf,
-					   dst,
-					   stream,
-					   (Volume){0,0,0},
-					   (Volume){
-						NGHOST,
-					   	reduce_buf.src.shape.y,
-					   	reduce_buf.src.shape.z,
-						},
-					   (Volume){0,0,0},
-					   (Volume)
-					   {
-					   	reduce_buf.transposed.shape.x,
-					   	reduce_buf.transposed.shape.y,
-						NGHOST
-					   }
-				    );
+		    	acReduceProfileWithBounds(prof,
+				   reduce_buf,
+				   dst,
+				   stream,
+				   (Volume){0,0,0},
+				   (Volume){
+					NGHOST,
+				   	reduce_buf.src.shape.y,
+				   	reduce_buf.src.shape.z,
+					},
+				   (Volume){0,0,0},
+				   (Volume)
+				   {
+				   	reduce_buf.transposed.shape.x,
+				   	reduce_buf.transposed.shape.y,
+					NGHOST
+				   }
+			    );
 		    }
 		    else if(prof_types[prof] == PROFILE_X && reduces_only_prof == PROFILE_X && output_region.id.x == 0)
 		    {
@@ -2400,7 +2406,6 @@ ReduceTask::reduce()
 		    }
 		}
 	}
-
     	for(size_t i = 0; i < reduce_outputs.size(); ++i)
     	{
 	    const auto var    = reduce_outputs[i].variable;

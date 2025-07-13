@@ -26,6 +26,7 @@ int3 AC_nlocal = (int3)
 int3 AC_mlocal = AC_nlocal + 2*AC_nmin
 int3 AC_nlocal_max = AC_nlocal + AC_nmin
 int AC_nlocal_max_dim = max(AC_nlocal)
+int AC_mlocal_max_dim = max(AC_mlocal)
 int3 AC_ngrid_max = AC_ngrid + AC_nmin
 
 run_const real3 AC_nlocal_inv = (real3) {1.0/AC_nlocal.x, 1.0/AC_nlocal.y, 1.0/AC_nlocal.z}

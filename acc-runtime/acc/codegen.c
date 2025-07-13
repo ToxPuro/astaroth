@@ -1509,7 +1509,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				"%s** src;\n"
 				"%s** cub_tmp;\n"
 				"size_t* cub_tmp_size;\n"
-				"size_t* buffer_size;\n"
+				"const size_t* buffer_size;\n"
 				"%s* res;\n"
 				"} Ac%sScalarReduceBuffer;\n\n"
 				,datatype_scalar,datatype_scalar,datatype_scalar,upper_case_name
@@ -1543,6 +1543,14 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				,datatype_scalar
 				,define_name,define_name,define_name,define_name,datatype_scalar,datatype_scalar,define_name,define_name,datatype_scalar,define_name
 				,define_name
+				);
+		fprintf_filename("reduce_helpers.h",
+				"const size_t* \n"
+				"ac_get_scratchpad_size_%s(const size_t i)\n"
+				"{\n"
+				"return &d_reduce_scratchpads_size_%s[i];\n"
+				"}\n\n"
+				,define_name,define_name
 				);
 		fprintf_filename(
 				"reduce_helpers.h",
@@ -3986,7 +3994,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses)
 		gen_all_final_reductions(compound_statement,kernel_index,true);
 	}
 	astnode_sprintf_postfix(compound_statement,"%s} } }",compound_statement->postfix);
-	if(has_block_loops(kernel_index)  && func_calls_reduce(fn_name))
+	if(has_block_loops(kernel_index)  && func_calls_reduce(fn_name) && !AC_CPU_BUILD)
 	{
 #if AC_USE_HIP
 	       astnode_sprintf_postfix(compound_statement,"%s AC_INTERNAL_active_threads = __ballot(1);",compound_statement->postfix);
@@ -10658,8 +10666,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_matrix_reads(root);
   gen_constexpr_info(root,gen_mem_accesses);
 
-  //TP: do this at the very end to not mess with other passes
-  resolve_profile_stencils(root);
   for(size_t i = 0; i  < primitive_datatypes.size; ++i)
   {
 	preprocess_array_reads(root,root,primitive_datatypes.data[i],gen_mem_accesses);
@@ -10726,6 +10732,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	  string_vec* stencils_called = gen_stencil_calling_info(root);
   	  write_calling_info_for_stencilgen(stencils_called);
   	}
+        //TP: do this at the very end to not mess with other passes
+        resolve_profile_stencils(root);
         gen_stencils(gen_mem_accesses,optimize_mem_accesses,stream);
 
   	//TP: done after code elimination for the code written to ac_minimized to be valid DSL

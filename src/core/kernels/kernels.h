@@ -32,17 +32,7 @@ typedef struct AcShearInterpolationCoeffs
 	AcReal c1,c2,c3,c4,c5,c6;
 } AcShearInterpolationCoeffs;
 
-AcResult
-acComplexToReal(const AcComplex* src, const size_t count, AcReal* dst);
-
-AcResult
-acRealToComplex(const AcReal* src, const size_t count, AcComplex* dst);
-
-AcResult
-acPlanarToComplex(const AcReal* real_src, const AcReal* imag_src,const size_t count, AcComplex* dst);
-
-AcResult
-acComplexToPlanar(const AcComplex* src,const size_t count,AcReal* real_dst,AcReal* imag_dst);
+#include "common_kernels.h"
 
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                           const Volume vba_start, const Volume dims, AcRealPacked* packed,
@@ -93,6 +83,31 @@ AcResult acKernelVolumeCopy(const cudaStream_t stream,                          
                             const AcReal* in, const Volume in_offset, const Volume in_volume, //
                             AcReal* out, const Volume out_offset, const Volume out_volume);
 
+AcResult acReduceReal(const cudaStream_t stream, const AcReduceOp, AcRealScalarReduceBuffer, const size_t count);
+
+AcResult acReduceInt(const cudaStream_t stream, const AcReduceOp, AcIntScalarReduceBuffer, const size_t count);
+
+#if AC_DOUBLE_PRECISION
+AcResult acReduceFloat(const cudaStream_t stream, const AcReduceOp, AcFloatScalarReduceBuffer, const size_t count);
+#endif
+
+AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
+                           const size_t count, const size_t num_segments,
+                           AcReal* d_out, AcReal** tmp, size_t* tmp_size);
+AcResult
+acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream, const Volume start, const Volume end, const Volume start_after_transpose, const Volume end_after_transpose);
+
+AcResult
+acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream);
+
+#include "transpose.h"
+
+AcResult
+acReduceClean();
+
+AcResult
+acKernelsClean();
+
 // Astaroth 2.0 backwards compatibility.
 
 #ifdef __cplusplus
@@ -108,6 +123,26 @@ AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packe
 /** */
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                           const Volume vba_start, const Volume dims, AcRealPacked* packed);
+
+static UNUSED AcResult
+acReduce(const cudaStream_t stream, const AcReduceOp op, AcRealScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceReal(stream,op,buffer,count);
+}
+
+static UNUSED AcResult
+acReduce(const cudaStream_t stream, const AcReduceOp op, AcIntScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceInt(stream,op,buffer,count);
+}
+
+#if AC_DOUBLE_PRECISION
+static UNUSED AcResult
+acReduce(const cudaStream_t stream, const AcReduceOp op, AcFloatScalarReduceBuffer buffer, const size_t count)
+{
+	return acReduceFloat(stream,op,buffer,count);
+}
+#endif
 #endif
 
 template <int direction>  static __global__ void packUnpackPlate(AcReal* __restrict__ buffer, VertexBufferArray vba, int3 start, int3 end);

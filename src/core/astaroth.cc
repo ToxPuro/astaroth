@@ -17,7 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "astaroth.h"
-#include "ac_buffer.h"
+#include "kernels.h"
 #include "astaroth_cuda_wrappers.h"
 
 #include <string.h> // strcmp
@@ -475,39 +475,6 @@ acGetLengths(const AcMeshInfo info)
 
 #include "get_vtxbufs_funcs.h"
 #include "stencil_accesses.h"
-
-
-AcResult
-acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream, const Volume start, const Volume end, const Volume start_after_transpose, const Volume end_after_transpose)
-{
-    if constexpr (NUM_PROFILES == 0) return AC_FAILURE;
-    if(buffer.src.data == NULL)      return AC_NOT_ALLOCATED;
-    const AcProfileType type = prof_types[prof];
-    const AcMeshOrder order    = acGetMeshOrderForProfile(type);
-
-
-    acTransposeWithBounds(order,buffer.src.data,buffer.transposed.data,acGetVolumeFromShape(buffer.src.shape),start,end,stream);
-
-    const Volume dims = end_after_transpose-start_after_transpose;
-
-    const size_t num_segments = (type & ONE_DIMENSIONAL_PROFILE) ? dims.z*buffer.transposed.shape.w
-	                                                         : dims.y*dims.z*buffer.transposed.shape.w;
-
-    const size_t count = buffer.transposed.shape.w*dims.x*dims.y*dims.z;
-
-    const AcReal* reduce_src = buffer.transposed.data
-	    		      + start_after_transpose.x + start_after_transpose.y*buffer.transposed.shape.x + start_after_transpose.z*buffer.transposed.shape.x*buffer.transposed.shape.y;
-
-    acSegmentedReduce(stream, reduce_src, count, num_segments, dst,buffer.cub_tmp,buffer.cub_tmp_size);
-    return AC_SUCCESS;
-}
-
-AcResult
-acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream)
-{
-	return acReduceProfileWithBounds(prof,buffer,dst,stream,(Volume){0,0,0},acGetVolumeFromShape(buffer.src.shape),(Volume){0,0,0},acGetVolumeFromShape(buffer.transposed.shape));
-}
-
 #include "../config_helpers.h"
 void
 acStoreConfig(const AcMeshInfo info, const char* filename)

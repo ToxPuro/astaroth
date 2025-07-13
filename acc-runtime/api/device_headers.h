@@ -74,12 +74,16 @@ typedef int cudaDeviceAttribute_t;
 #define make_int3(x, y, z) ((int3){x, y, z})
 #define make_float3(x, y, z) ((float3){x, y, z})
 #define make_double3(x, y, z) ((double3){x, y, z})
+#define KERNEL_LAUNCH(func,bgp,tpb,...) \
+	func
+
+#define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \
+	func
 
 #else 
 
 #if AC_USE_HIP
 #include "hip.h"
-
 #include <hip/hip_runtime_api.h>     // Streams
 #if PROFILING_ENABLED
 #include <roctracer/roctracer_ext.h> // Profiling
@@ -90,5 +94,11 @@ typedef int cudaDeviceAttribute_t;
 #endif
 #include <cuda_runtime_api.h>  // Streams
 #endif
+
+#define KERNEL_LAUNCH(func,bgp,tpb,...) \
+	func<<<bpg,tpb,__VA_ARGS__>>>
+
+#define KERNEL_VBA_LAUNCH(func,bgp,tpb,...) \
+	func<<<bpg,tpb,__VA_ARGS__>>>
 
 #endif

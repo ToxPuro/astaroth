@@ -727,14 +727,6 @@ AcResult acHostInitProfileToValue(const long double value, const size_t profile_
 AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
                                   const size_t profile_count);
 
-/*
- * =============================================================================
- * AcBuffer
- * =============================================================================
- */
-
-#include "ac_buffer.h"
-
 #ifdef __cplusplus
 } // extern "C"
 #endif
@@ -860,6 +852,12 @@ acDeviceFinishReduce(Device device, const cudaStream_t stream, float* result,con
 }
 #endif
 
+static UNUSED AcBuffer
+acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
+{
+	return acDeviceTransposeVertexBuffer(device,stream,order,vtxbuf);
+}
+
 #if AC_RUNTIME_COMPILATION
 
 
@@ -890,11 +888,6 @@ static UNUSED AcResult
 acGridInit(const AcMesh mesh)
 {
 	return acGridInitBase(mesh);
-}
-static UNUSED AcBuffer
-acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder order, const VertexBufferHandle vtxbuf)
-{
-	return acDeviceTransposeVertexBuffer(device,stream,order,vtxbuf);
 }
 #endif
 

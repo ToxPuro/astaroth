@@ -25,7 +25,8 @@
  *
  */
 #pragma once
-#include "datatypes.h"
+#include <stddef.h>
+#include "host_datatypes.h"
 #include <stdbool.h>
 #include <stdint.h> // SIZE_MAX
 #include <stdio.h>
