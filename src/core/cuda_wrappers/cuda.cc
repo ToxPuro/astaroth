@@ -167,7 +167,7 @@ acOccupancyMaxActiveBlocksPerMultiprocessor(int* numBlocks, const void* func, in
 	return cudaOccupancyMaxActiveBlocksPerMultiprocessor(numBlocks , func, blockSize, smemSize);
 }
 cudaError_t
-acDeviceGetAttribute(int* dst,  cudaDeviceAttribute_t attr, int device)
+acDeviceGetAttribute(int* dst,  cudaDeviceAttr attr, int device)
 {
 	return cudaDeviceGetAttribute(dst,attr,device);
 }
