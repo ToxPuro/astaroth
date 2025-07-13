@@ -1,7 +1,10 @@
-#include "astaroth.h"
+#include "host_datatypes.h"
+#include "device_headers.h"
 #include "ac_helpers.h"
 #include <sys/resource.h>
 #include "astaroth_cuda_wrappers.h"
+#include <stdio.h>
+#include "errchk.h"
 
 #if USE_COMPRESSIBLE_MEMORY
 #include <cuda.h>

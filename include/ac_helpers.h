@@ -80,4 +80,8 @@ void
 acDeviceFree(AcComplex** dst, const int bytes);
 
 #endif
+AcMeshOrder acGetMeshOrderForProfile(const AcProfileType type);
+
+// Returns the number of elements contained within shape
+size_t acShapeSize(const AcShape shape);
 

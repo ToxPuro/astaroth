@@ -6,11 +6,11 @@ else ()
 endif ()
 
 if (USE_HIP)
-    set_source_files_properties(kernels.cu transpose.cu reductions.cu PROPERTIES LANGUAGE HIP)
+    set_source_files_properties(kernels.cu transpose.cu reductions.cu reindex.cu PROPERTIES LANGUAGE HIP)
 endif()
  
 if (CPU_BUILD)
-	set_source_files_properties(kernels.cu transpose.cu reductions.cu PROPERTIES LANGUAGE CXX)
+	set_source_files_properties(kernels.cu transpose.cu reductions.cu reindex.cu PROPERTIES LANGUAGE CXX)
 endif()
 
 if (RUNTIME_COMPILATION)
@@ -34,8 +34,12 @@ else()
 	target_include_directories(ac_transpose PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
 	target_link_libraries(ac_transpose PRIVATE ac_cuda_wrappers)
 
+	add_library(ac_reindex STATIC reindex.cu)
+	target_include_directories(ac_reindex PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
+	target_link_libraries(ac_reindex PRIVATE ac_cuda_wrappers)
+
 	add_library(static_kernels STATIC kernels.cu reductions.cu)
-	target_link_libraries(static_kernels PUBLIC ac_fft ac_transpose)
+	target_link_libraries(static_kernels PUBLIC ac_fft ac_transpose ac_reindex)
 endif()
 
 target_link_libraries(static_kernels PRIVATE ac_cuda_wrappers astaroth_helpers)

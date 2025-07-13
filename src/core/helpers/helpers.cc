@@ -1,7 +1,18 @@
-#include "astaroth.h"
+#include "host_datatypes.h"
+#include "device_headers.h"
 #include "ac_helpers.h"
 #include <sys/resource.h>
 #include "astaroth_cuda_wrappers.h"
+#include <stdio.h>
+#include <math.h>
+#include "errchk.h"
+#if AC_MPI_ENABLED
+#include <mpi.h>
+struct AcCommunicator
+{
+	MPI_Comm handle;
+};
+#endif
 const char*
 acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm)
 {
@@ -71,20 +82,20 @@ ceil(AcReal3 a)
 size3_t
 ceil_div(const size3_t& a, const int3& b)
 {
-	const int3 factors = ceil((AcReal3){(AcReal)a.x, (AcReal)a.y, (AcReal)a.z}/((AcReal3){(AcReal)b.x, (AcReal)b.y, (AcReal)b.z}));
+	const int3 factors = ceil((AcReal3){(AcReal)a.x/(AcReal)b.x, (AcReal)a.y/(AcReal)b.y, (AcReal)a.z/(AcReal)b.z});
 	return (size3_t){(unsigned int)factors.x,(unsigned int)factors.y,(unsigned int)factors.z};
 }
 
 size3_t
 ceil_div(const size3_t& a, const size3_t& b)
 {
-	const int3 factors = ceil((AcReal3){(AcReal)a.x, (AcReal)a.y, (AcReal)a.z}/((AcReal3){(AcReal)b.x, (AcReal)b.y, (AcReal)b.z}));
+	const int3 factors = ceil((AcReal3){(AcReal)a.x/(AcReal)b.x, (AcReal)a.y/(AcReal)b.y, (AcReal)a.z/(AcReal)b.z});
 	return (size3_t){(unsigned int)factors.x,(unsigned int)factors.y,(unsigned int)factors.z};
 }
 int3
 ceil_div(const int3& a, const int3& b)
 {
-	const int3 factors = ceil((AcReal3){(AcReal)a.x, (AcReal)a.y, (AcReal)a.z}/((AcReal3){(AcReal)b.x, (AcReal)b.y, (AcReal)b.z}));
+	const int3 factors = ceil((AcReal3){(AcReal)a.x/(AcReal)b.x, (AcReal)a.y/(AcReal)b.y, (AcReal)a.z/(AcReal)b.z});
 	return (int3){factors.x,factors.y,factors.z};
 }
 
@@ -132,4 +143,40 @@ get_bpg(Volume dims, const Volume tpb)
   }
   **/
 }
+
+AcMeshOrder
+acGetMeshOrderForProfile(const AcProfileType type)
+{
+    	switch(type)
+    	{
+    	        case(PROFILE_X):
+    	    	    return ZYX;
+    	        case(PROFILE_Y):
+		    return XZY;
+    	        case(PROFILE_Z):
+			return XYZ;
+    	        case(PROFILE_XY):
+			return ZXY;
+    	        case(PROFILE_XZ):
+			return YXZ;
+    	        case(PROFILE_YX):
+			return ZYX;
+    	        case(PROFILE_YZ):
+			return XYZ;
+    	        case(PROFILE_ZX):
+			return YZX;
+    	        case(PROFILE_ZY):
+			return XZY;
+		case(PROFILE_NONE):
+			return XYZ;
+    	}
+	return XYZ;
+};
+
+size_t
+acShapeSize(const AcShape shape)
+{
+  return shape.x * shape.y * shape.z * shape.w;
+}
+
 

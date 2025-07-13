@@ -72,6 +72,8 @@ typedef struct {
   size_t x, y, z, w;
 } AcShape;
 
+typedef AcShape AcIndex;
+
 typedef Volume size3_t;
 
 //TP: opaque pointer for the MPI comm to enable having the opaque type in modules which do not about MPI_Comm

@@ -1,11 +1,9 @@
-
-#include "acc_runtime.h"
-extern "C"
-{
+#include "host_datatypes.h"
 #include "transpose.h"
-}
+#include "reindex.h"
 #include "ac_helpers.h"
 #include "astaroth_cuda_wrappers.h"
+#include "errchk.h"
 
 AcShape
 acGetTransposeBufferShape(const AcMeshOrder order, const Volume dims)
@@ -31,16 +29,16 @@ acGetReductionShape(const AcProfileType type, const AcMeshDims dims)
 	{
 		return
 		{
-			order_size.x - 2*NGHOST,
-			order_size.y - 2*NGHOST,
-			order_size.z - (type != PROFILE_Z)*2*NGHOST,
+			order_size.x - 2*dims.n0.x,
+			order_size.y - 2*dims.n0.y,
+			order_size.z - (type != PROFILE_Z)*2*dims.n0.z,
 			order_size.w
 		};
 	}
 	else if(type & TWO_DIMENSIONAL_PROFILE)
 		return
 		{
-			order_size.x - 2*NGHOST,
+			order_size.x - 2*dims.n0.x,
 			order_size.y,
 			order_size.z,
 			order_size.w
@@ -140,6 +138,7 @@ acBufferRemoveHalos(const AcBuffer buffer_in, const int3 halo_sizes, const cudaS
     	acReindex(stream,buffer_in.data, in_offset, in_shape, dst.data, out_offset , dst.shape, block_shape);
 	return dst;
 }
+
 AcBuffer
 acBufferCreateTransposed(const AcBuffer src, const AcMeshOrder order)
 {

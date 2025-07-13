@@ -32,7 +32,9 @@ typedef struct AcShearInterpolationCoeffs
 	AcReal c1,c2,c3,c4,c5,c6;
 } AcShearInterpolationCoeffs;
 
+#include "transpose.h"
 #include "common_kernels.h"
+#include "reindex.h"
 
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                           const Volume vba_start, const Volume dims, AcRealPacked* packed,
@@ -100,7 +102,6 @@ acReduceProfileWithBounds(const Profile prof, AcReduceBuffer buffer, AcReal* dst
 AcResult
 acReduceProfile(const Profile prof, AcReduceBuffer buffer, AcReal* dst, const cudaStream_t stream);
 
-#include "transpose.h"
 
 AcResult
 acReduceClean();

@@ -247,7 +247,6 @@ typedef struct device_s* Device;
   } VertexBufferArray;
 
 
-  typedef AcShape AcIndex;
   
 #include "astaroth_analysis.h"
 #if AC_RUNTIME_COMPILATION
@@ -306,7 +305,6 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
   FUNC_DEFINE(size_t,acGetRealScratchpadSize,(const size_t i));
 
-  FUNC_DEFINE(AcMeshOrder, acGetMeshOrderForProfile,(const AcProfileType type));
   FUNC_DEFINE(size3_t, acGetProfileReduceScratchPadDims,(const int profile, const AcMeshDims dims));
 
   FUNC_DEFINE(AcResult,acPreprocessScratchPad,(VertexBufferArray, const int variable, const AcType type,const AcReduceOp op));
@@ -449,20 +447,7 @@ void acPBASwapBuffers(VertexBufferArray* vba);
 AcResult acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
 
 
-// Returns the number of elements contained within shape
-size_t acShapeSize(const AcShape shape);
 
-AcResult acReindex(const cudaStream_t stream, //
-                   const AcReal* in, const AcIndex in_offset,
-                   const AcIndex in_shape, //
-                   AcReal* out, const AcIndex out_offset,
-                   const AcIndex out_shape, const AcShape block_shape);
-
-AcResult acReindexCross(const cudaStream_t stream, //
-                        const VertexBufferArray vba, const AcIndex in_offset,
-                        const AcShape in_shape, //
-                        AcReal* out, const AcIndex out_offset,
-                        const AcShape out_shape, const AcShape block_shape);
 
 
 FUNC_DEFINE(AcResult, acLoadRealReduceRes,(cudaStream_t stream, const AcRealOutputParam param, const AcReal* value));
