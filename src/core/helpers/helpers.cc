@@ -190,10 +190,10 @@ AcReal
 get_reduce_state_flush_var_real(const AcReduceOp state)
 {
 	return 
-		(state == NO_REDUCE || state == REDUCE_SUM) ? 0.0 :
+		(state == NO_REDUCE || state == REDUCE_SUM) ? (AcReal)0.0 :
 		(state == REDUCE_MIN) ? AC_REAL_MAX :
 		(state == REDUCE_MAX) ? -AC_REAL_MAX :
-		0.0;
+		(AcReal)0.0;
 }
 
 int
