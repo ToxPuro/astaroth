@@ -447,6 +447,7 @@ acPBASwapBuffers(VertexBufferArray* vba)
 static AcResult
 ac_flush_scratchpad(VertexBufferArray vba, const int variable, const AcType type, const AcReduceOp op)
 {
+	ERRCHK_ALWAYS(variable >= 0);
 	const int n_elems = 
 				type == AC_REAL_TYPE ?  NUM_REAL_OUTPUTS :
 				type == AC_PROF_TYPE ?  NUM_PROFILES     :
