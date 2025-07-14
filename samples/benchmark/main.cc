@@ -103,8 +103,9 @@ timer_event_stop(const char* format, ...)
 int
 main(int argc, char** argv)
 {
-    int verify    = 0;
-    int num_iters = 100;
+    int verify                         = 0;
+    int num_iters                      = 100;
+    int num_integration_steps_per_iter = 1;
     MPI_Init(NULL, NULL);
     cudaProfilerStop();
 
@@ -160,9 +161,14 @@ main(int argc, char** argv)
                 num_iters = atoi(argv[optind + 4]);
             }
 
-            if (argc - optind > 5) {
+            if (argc - optind >= 6) {
+                num_integration_steps_per_iter = atoi(argv[optind + 5]);
+            }
+
+            if (argc - optind > 6) {
                 fprintf(stderr,
                         "WARNING: Unexpected amount of params. Continuing without parsing\n");
+                exit(EXIT_FAILURE);
             }
 
             if (test == TEST_WEAK_SCALING) {
@@ -183,8 +189,10 @@ main(int argc, char** argv)
             acHostUpdateParams(&info);
         }
         else {
-            fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz> <verify "
-                            "(optional, expects 0 or 1)> <n benchmark iterations: default 100>.\n");
+            fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz> "
+                            "<verify: 0> "
+                            "<num iterations: 100> "
+                            "<num integration steps per iteration: 1>.\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -265,7 +273,10 @@ main(int argc, char** argv)
         acGridSynchronizeStream(STREAM_ALL);
         timer_reset(&t);
         acGridSynchronizeStream(STREAM_ALL);
-        acGridIntegrate(STREAM_DEFAULT, dt);
+
+        for (int j = 0; j < num_integration_steps_per_iter; ++j)
+            acGridIntegrate(STREAM_DEFAULT, dt);
+
         acGridSynchronizeStream(STREAM_ALL);
         results.push_back(timer_diff_nsec(t) / 1e6); // ms
         acGridSynchronizeStream(STREAM_ALL);
