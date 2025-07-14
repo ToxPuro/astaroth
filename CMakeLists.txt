@@ -109,10 +109,13 @@ add_compile_options(# C/CXX/CUDA/HIP
 )
 endif()
 
+
+set(USE_CUDA OFF)
 ## CUDA and HIP
 find_package(CUDAToolkit QUIET)
 find_package(HIP QUIET)
 if (NOT USE_HIP AND CUDAToolkit_FOUND)
+    set(USE_CUDA ON)
     message(STATUS "CUDA found")
     enable_language(CUDA)
     add_compile_options(-DDEVICE_ENABLED)
@@ -139,6 +142,7 @@ elseif (USE_HIP OR HIP_FOUND)
     	set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx908")
     endif()
     message(STATUS "Enabled HIP architectures (Astaroth): " ${CMAKE_HIP_ARCHITECTURES})
+    set(HIP_BUILD ON)
 else()
     message(ERROR "Did not find CUDA or HIP")
 endif()
@@ -226,7 +230,7 @@ endif()
 
 ## Have this as a separate option when no other "samples" aree needed.
 ## Useful e.g. when compilation time is long e.g. with shock viscosity. 
-if(FFT_ENABLED AND NOT USE_HIP AND NOT CPU_BUILD)
+if(FFT_ENABLED AND USE_CUDA)
 	add_subdirectory(test/fft-shift-test)
 endif()
 if (BUILD_STANDALONE AND NOT BUILD_TESTS)

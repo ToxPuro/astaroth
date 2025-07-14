@@ -10,3 +10,5 @@ int
 raytracing_number_of_directions(const AcKernel kernel);
 bool
 is_coop_raytracing_kernel(const AcKernel kernel);
+bool
+profile_is_reduced(const Profile profile);

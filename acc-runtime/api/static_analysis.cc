@@ -82,3 +82,12 @@ is_coop_raytracing_kernel(const AcKernel kernel)
 {
 	return is_raytracing_kernel(kernel) && (raytracing_number_of_directions(kernel) > 1);
 }
+bool
+profile_is_reduced(const Profile profile)
+{
+	for(size_t kernel = 0;  kernel < NUM_KERNELS; ++kernel)
+	{
+		if(reduced_profiles[kernel][profile]) return true;
+	}
+	return false;
+}

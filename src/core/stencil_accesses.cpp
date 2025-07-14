@@ -171,9 +171,9 @@ static int written_complex_fields[NUM_COMPLEX_FIELDS+1]{};
 static int read_complex_fields[NUM_COMPLEX_FIELDS+1]{};
 static int read_fields[NUM_ALL_FIELDS]{};
 static int field_has_stencil_op[NUM_ALL_FIELDS]{};
-static int read_profiles[NUM_PROFILES]{};
-static int reduced_profiles[NUM_PROFILES]{};
-static int written_profiles[NUM_PROFILES]{};
+static int read_profiles[NUM_PROFILES+1]{};
+static int reduced_profiles[NUM_PROFILES+1]{};
+static int written_profiles[NUM_PROFILES+1]{};
 static int reduced_reals[NUM_REAL_OUTPUTS+1]{};
 static int reduced_ints[NUM_INT_OUTPUTS+1]{};
 #if AC_DOUBLE_PRECISION
@@ -1144,7 +1144,7 @@ main(int argc, char* argv[])
   int  output_previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES]{};
   int  output_incoming_ray_value_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
   int  output_outgoing_ray_value_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_RAYS+1]{};
-  int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES]{};
+  int  output_reduced_profiles[NUM_KERNELS][NUM_PROFILES+1]{};
   int  output_reduced_reals[NUM_KERNELS][NUM_REAL_OUTPUTS+1]{};
   int  output_reduced_ints[NUM_KERNELS][NUM_INT_OUTPUTS+1]{};
 #if AC_DOUBLE_PRECISION

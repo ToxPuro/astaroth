@@ -2,6 +2,7 @@
 #include "math_utils.h"
 #include "astaroth_cuda_wrappers.h"
 #include "stencil_accesses.h"
+#include "static_analysis.h"
 
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info)
@@ -140,7 +141,7 @@ acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
 static size_t
 get_profile_reduce_scratchpad_size(const int profile, const VertexBufferArray vba)
 {
-	if(!reduced_profiles[profile]) return 0;
+	if(!profile_is_reduced(Profile(profile))) return 0;
 	const auto dims = acGetProfileReduceScratchPadDims(profile,vba.profile_dims[profile]);
 	return dims.x*dims.y*dims.z*sizeof(AcReal);
 }
@@ -446,6 +447,7 @@ acPBASwapBuffers(VertexBufferArray* vba)
 static AcResult
 ac_flush_scratchpad(VertexBufferArray vba, const int variable, const AcType type, const AcReduceOp op)
 {
+	ERRCHK_ALWAYS(variable >= 0);
 	const int n_elems = 
 				type == AC_REAL_TYPE ?  NUM_REAL_OUTPUTS :
 				type == AC_PROF_TYPE ?  NUM_PROFILES     :
