@@ -226,7 +226,7 @@ endif()
 
 ## Have this as a separate option when no other "samples" aree needed.
 ## Useful e.g. when compilation time is long e.g. with shock viscosity. 
-if(FFT_ENABLED AND NOT USE_HIP)
+if(FFT_ENABLED AND NOT USE_HIP AND NOT CPU_BUILD)
 	add_subdirectory(test/fft-shift-test)
 endif()
 if (BUILD_STANDALONE AND NOT BUILD_TESTS)
