@@ -122,11 +122,14 @@ df
 files = glob.glob(f"{outdir}/bm-tfm-mpi*.csv")
 df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 
-nwarmup_steps = 5
+nwarmup_steps = 1
+nn = 256
 df = df[(df['sample'] >= nwarmup_steps) & (df['rank'] == 0)]
-plt.plot(df[(df['nprocs'] == 1) & (df['rank'] == 0) & (df['gnz'] == 128)]['ns'].values, label='1')
-plt.plot(df[(df['nprocs'] == 8) & (df['rank'] == 0) & (df['gnz'] == 128)]['ns'].values, label='8')
-plt.plot(df[(df['nprocs'] == 64) & (df['rank'] == 0) & (df['gnz'] == 128)]['ns'].values, label='64')
+plt.plot(df[(df['nprocs'] == 1) & (df['rank'] == 0) & (df['gnz'] == nn)]['ns'].values, label='1')
+plt.plot(df[(df['nprocs'] == 2) & (df['rank'] == 0) & (df['gnz'] == nn)]['ns'].values, label='2')
+plt.plot(df[(df['nprocs'] == 4) & (df['rank'] == 0) & (df['gnz'] == nn)]['ns'].values, label='4')
+plt.plot(df[(df['nprocs'] == 8) & (df['rank'] == 0) & (df['gnz'] == nn)]['ns'].values, label='8')
+plt.plot(df[(df['nprocs'] == 64) & (df['rank'] == 0) & (df['gnz'] == nn)]['ns'].values, label='64')
 plt.yscale('log')
 plt.legend()
 plt.show()
@@ -135,28 +138,35 @@ df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
 df = df.groupby(list(df.columns.difference(['ns']))).describe()
 df = df.xs(0, level='rank')
 df = df.xs(3, level='radius')
-df = df.xs(128, level='gnx')
-df = df.xs(128, level='gny')
-df = df.xs(128, level='gnz')
+df = df.xs(nn, level='gnx')
+df = df.xs(nn, level='gny')
+df = df.xs(nn, level='gnz')
+df = df.xs(100, level='nsteps_per_samples')
 
 # Ensure the local dims make sense before dropping
 df = df.droplevel(['lnx', 'lny', 'lnz'])
 
 df = df['ns']['50%']
-df = df.unstack('impl')
+# df = df.unstack(['impl'])
 df
+
+
 
 # %%
 # Weak scaling
 files = glob.glob(f"{outdir}/bm-tfm-mpi*.csv")
 df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
 
-nwarmup_steps = 15
+nwarmup_steps = 0
+nn = 256
 df = df[(df['sample'] >= nwarmup_steps) & (df['rank'] == 0)]
-plt.plot(df[(df['nprocs'] == 1) & (df['rank'] == 0) & (df['lnz'] == 128)]['ns'].values, label='1')
-plt.plot(df[(df['nprocs'] == 8) & (df['rank'] == 0) & (df['lnz'] == 128)]['ns'].values, label='8')
-plt.plot(df[(df['nprocs'] == 64) & (df['rank'] == 0) & (df['lnz'] == 128)]['ns'].values, label='64')
-plt.plot(df[(df['nprocs'] == 512) & (df['rank'] == 0) & (df['lnz'] == 128)]['ns'].values, label='512')
+plt.plot(df[(df['nprocs'] == 1) & (df['rank'] == 0) & (df['lnz'] == 256)]['ns'].values, label='1')
+plt.plot(df[(df['nprocs'] == 2) & (df['rank'] == 0) & (df['lnz'] == 256)]['ns'].values, label='2')
+plt.plot(df[(df['nprocs'] == 4) & (df['rank'] == 0) & (df['lnz'] == 256)]['ns'].values, label='4')
+plt.plot(df[(df['nprocs'] == 8) & (df['rank'] == 0) & (df['lnz'] == 256)]['ns'].values, label='8')
+plt.plot(df[(df['nprocs'] == 64) & (df['rank'] == 0) & (df['lnz'] == 256)]['ns'].values, label='64')
+plt.plot(df[(df['nprocs'] == 512) & (df['rank'] == 0) & (df['lnz'] == 256)]['ns'].values, label='512')
+plt.plot(df[(df['nprocs'] == 4096) & (df['rank'] == 0) & (df['lnz'] == 256)]['ns'].values, label='4096')
 plt.yscale('log')
 plt.legend()
 plt.show()
@@ -165,9 +175,9 @@ df = df.drop(['sample', 'nsamples', 'jobid'], axis=1)
 df = df.groupby(list(df.columns.difference(['ns']))).describe()
 df = df.xs(0, level='rank')
 df = df.xs(3, level='radius')
-df = df.xs(128, level='lnx')
-df = df.xs(128, level='lny')
-df = df.xs(128, level='lnz')
+df = df.xs(256, level='lnx')
+df = df.xs(256, level='lny')
+df = df.xs(256, level='lnz')
 
 # Ensure the global dims make sense before dropping
 df = df.droplevel(['gnx', 'gny', 'gnz'])
@@ -176,6 +186,43 @@ df = df['ns']['50%']
 df = df.unstack('impl')
 df
 
+# %%
+# Strong scaling revisited (need to take multiple samples to mitigate noise)
+# Quick results (take just the final value)
+files = glob.glob(f"{outdir}/bm-tfm-mpi*.csv")
+df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
+
+df = df[df['sample'] == df['sample'].max()] # Select the last sample
+df = df[(df['gnx'] == 256) & (df['gny'] == 256) & (df['gnz'] == 256)]
+df = df[['nprocs', 'ns']].sort_values('nprocs')
+
+df['speedup'] = df[df['nprocs']==1]['ns'].values / df['ns']
+
+df['ideal'] = df['nprocs']
+print(df[['nprocs', 'ideal', 'speedup']].to_csv(index=False))
+df
+
+
+# df = df[['nprocs', 'ideal', 'speedup']]
+# df.columns['speedup'] = 'measured'
+# plt.loglog(df['nprocs'], df[['nprocs', 'speedup']])
+# plt.show()
+#df['ideal'] = df[df['nprocs'] == 1]['ns'].values / df['nprocs']
+#df
+
+# %%
+# Weak scaling, quick efficiency results
+
+files = glob.glob(f"{outdir}/bm-tfm-mpi*.csv")
+df = pd.concat((pd.read_csv(file) for file in files), ignore_index=True)
+
+df = df[df['sample'] == df['sample'].max()] # Select the last sample
+df = df[(df['lnx'] == 256) & (df['lny'] == 256) & (df['lnz'] == 256)]
+df = df.sort_values('nprocs')
+df['ideal'] = 100
+df['efficiency'] = 100*df[df['nprocs'] == 1]['ns'].values / df['ns']
+print(df[['nprocs', 'ideal', 'efficiency']].to_csv(index=False))
+plt.plot(df['nprocs'], df[['ideal','efficiency']])
 
 # %%
 # TMP drafts for measuring times
