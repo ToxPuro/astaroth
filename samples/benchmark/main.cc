@@ -103,7 +103,8 @@ timer_event_stop(const char* format, ...)
 int
 main(int argc, char** argv)
 {
-    int verify = 0;
+    int verify    = 0;
+    int num_iters = 100;
     MPI_Init(NULL, NULL);
     cudaProfilerStop();
 
@@ -155,7 +156,11 @@ main(int argc, char** argv)
                 verify = atoi(argv[optind + 3]);
             }
 
-            if (argc - optind > 4) {
+            if (argc - optind >= 5) {
+                num_iters = atoi(argv[optind + 4]);
+            }
+
+            if (argc - optind > 5) {
                 fprintf(stderr,
                         "WARNING: Unexpected amount of params. Continuing without parsing\n");
             }
@@ -179,11 +184,10 @@ main(int argc, char** argv)
         }
         else {
             fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz> <verify "
-                            "(optional, expects 0 or 1)>.\n");
+                            "(optional, expects 0 or 1)> <n benchmark iterations: default 100>.\n");
             exit(EXIT_FAILURE);
         }
     }
-
 
     // Device init
     acGridInit(info);
@@ -246,7 +250,8 @@ main(int argc, char** argv)
     }
 
     // Percentiles
-    const size_t num_iters = 100;
+    // const size_t num_iters = 100;
+    ERRCHK_ALWAYS(num_iters > 0);
     std::vector<double> results; // ms
     results.reserve(num_iters);
 
@@ -256,7 +261,7 @@ main(int argc, char** argv)
 
     // Benchmark
     Timer t;
-    for (size_t i = 0; i < num_iters; ++i) {
+    for (int i = 0; i < num_iters; ++i) {
         acGridSynchronizeStream(STREAM_ALL);
         timer_reset(&t);
         acGridSynchronizeStream(STREAM_ALL);
