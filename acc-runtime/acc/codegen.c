@@ -10242,14 +10242,14 @@ gen_stencils(const bool gen_mem_accesses, const bool optimize_mem_accesses, FILE
 
     fprintf(tmp,
             "static int "
-            "reduced_profiles [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
-    print_nested_ones(tmp,1,num_kernels,num_profiles,2);
+            "reduced_profiles [NUM_KERNELS][NUM_PROFILES+1] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_profiles+1,2);
     fprintf(tmp, "};\n");
 
     fprintf(tmp,
             "static int "
-            "read_profiles [NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] __attribute__((unused)) = {");
-    print_nested_ones(tmp,1,num_kernels,num_profiles,2);
+            "read_profiles [NUM_KERNELS][NUM_PROFILES+1] __attribute__((unused)) = {");
+    print_nested_ones(tmp,1,num_kernels,num_profiles+1,2);
     fprintf(tmp, "};\n");
 
     fprintf(tmp,
