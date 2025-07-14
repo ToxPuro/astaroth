@@ -103,9 +103,9 @@ timer_event_stop(const char* format, ...)
 int
 main(int argc, char** argv)
 {
-    int verify                         = 0;
-    int num_iters                      = 100;
-    int num_integration_steps_per_iter = 1;
+    int verify                           = 0;
+    int num_samples                      = 100;
+    int num_integration_steps_per_sample = 1;
     MPI_Init(NULL, NULL);
     cudaProfilerStop();
 
@@ -158,11 +158,11 @@ main(int argc, char** argv)
             }
 
             if (argc - optind >= 5) {
-                num_iters = atoi(argv[optind + 4]);
+                num_samples = atoi(argv[optind + 4]);
             }
 
             if (argc - optind >= 6) {
-                num_integration_steps_per_iter = atoi(argv[optind + 5]);
+                num_integration_steps_per_sample = atoi(argv[optind + 5]);
             }
 
             if (argc - optind > 6) {
@@ -191,8 +191,8 @@ main(int argc, char** argv)
         else {
             fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz> "
                             "<verify: 0> "
-                            "<num iterations: 100> "
-                            "<num integration steps per iteration: 1>.\n");
+                            "<num samples: 100> "
+                            "<num integration steps per sample: 1>.\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -258,10 +258,10 @@ main(int argc, char** argv)
     }
 
     // Percentiles
-    // const size_t num_iters = 100;
-    ERRCHK_ALWAYS(num_iters > 0);
+    // const size_t num_samples = 100;
+    ERRCHK_ALWAYS(num_samples > 0);
     std::vector<double> results; // ms
-    results.reserve(num_iters);
+    results.reserve(num_samples);
 
     // Warmup
     for (size_t i = 0; i < 5; ++i)
@@ -269,12 +269,12 @@ main(int argc, char** argv)
 
     // Benchmark
     Timer t;
-    for (int i = 0; i < num_iters; ++i) {
+    for (int i = 0; i < num_samples; ++i) {
         acGridSynchronizeStream(STREAM_ALL);
         timer_reset(&t);
         acGridSynchronizeStream(STREAM_ALL);
 
-        for (int j = 0; j < num_integration_steps_per_iter; ++j)
+        for (int j = 0; j < num_integration_steps_per_sample; ++j)
             acGridIntegrate(STREAM_DEFAULT, dt);
 
         acGridSynchronizeStream(STREAM_ALL);
@@ -290,14 +290,14 @@ main(int argc, char** argv)
             fprintf(stdout,
                     "Integration step time %g ms (%gth "
                     "percentile)--------------------------------------\n",
-                    results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
+                    results[(size_t)(nth_percentile * num_samples)], 100 * nth_percentile);
         }
         {
             const double nth_percentile = 0.90;
             fprintf(stdout,
                     "Integration step time %g ms (%gth "
                     "percentile)--------------------------------------\n",
-                    results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
+                    results[(size_t)(nth_percentile * num_samples)], 100 * nth_percentile);
         }
 
         // char path[4096] = "";
@@ -317,12 +317,12 @@ main(int argc, char** argv)
         const bool use_distributed_io = false;
 #endif
         fprintf(fp, "%d,%g,%g,%g,%g,%d,%d,%d,%d,%d\n", nprocs, results[0],
-                results[(size_t)(0.5 * num_iters)], results[(size_t)(0.9 * num_iters)],
-                results[num_iters - 1], use_distributed_io, info[AC_ngrid].x, info[AC_ngrid].y,
+                results[(size_t)(0.5 * num_samples)], results[(size_t)(0.9 * num_samples)],
+                results[num_samples - 1], use_distributed_io, info[AC_ngrid].x, info[AC_ngrid].y,
                 info[AC_ngrid].z, test == TEST_STRONG_SCALING);
         // fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0],
-        //         results[(size_t)(0.5 * num_iters)],
-        //         results[(size_t)(nth_percentile * num_iters)], results[num_iters - 1]);
+        //         results[(size_t)(0.5 * num_samples)],
+        //         results[(size_t)(nth_percentile * num_samples)], results[num_samples - 1]);
         fclose(fp);
     }
 
