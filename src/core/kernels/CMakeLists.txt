@@ -51,11 +51,11 @@ else()
 
 	add_library(static_kernels STATIC kernels.cu reductions.cu)
 	target_link_libraries(static_kernels PUBLIC ac_fft ac_transpose ac_reindex)
+ 	target_link_libraries(static_kernels PRIVATE ac_cuda_wrappers astaroth_helpers)
+ 	target_link_libraries(static_kernels PUBLIC acc-runtime-headers acc-runtime-driver)
+ 	target_include_directories(static_kernels PUBLIC ${CMAKE_SOURCE_DIR}/include)
 endif()
 
-target_link_libraries(static_kernels PRIVATE ac_cuda_wrappers astaroth_helpers)
-target_link_libraries(static_kernels PUBLIC acc-runtime-headers acc-runtime-driver)
-target_include_directories(static_kernels PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 if (USE_HIP)
     set_property(TARGET static_kernels PROPERTY HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
