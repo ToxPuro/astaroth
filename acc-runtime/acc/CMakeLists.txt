@@ -16,6 +16,12 @@ option(INLINING "Whether to inline all functions or not" OFF)
 option(BUFFERED_REDUCTIONS "Whether reduction values are written out immediately or at the end of a kernel. By default on since gives better performance on AMD." ON)
 option(CPU_BUILD "CPU-only build" OFF)
 
+if(CPU_BUILD)
+	add_definitions(-DAC_CPU_BUILD=1)
+else()
+	add_definitions(-DAC_CPU_BUILD=0)
+endif()
+
 #TP: if defined the user already has the executable and has exported a path to it
 set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
 if(DEFINED ACC_COMPILER_PATH)
