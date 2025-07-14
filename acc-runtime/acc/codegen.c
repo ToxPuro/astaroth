@@ -1713,7 +1713,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
           {
                   char array_length_str[4098];
                   get_array_var_length(symbol_table[i].identifier,root,array_length_str);
-                  fprintf_filename("dconst_arrays_decl.h","static __device__ __constant__ %s AC_INTERNAL_d_%s_arrays_%s[%s];\n",datatype_scalar, define_name,symbol_table[i].identifier,array_length_str);
+                  fprintf_filename("dconst_arrays_decl.h","static UNUSED __device__ __constant__ %s AC_INTERNAL_d_%s_arrays_%s[%s];\n",datatype_scalar, define_name,symbol_table[i].identifier,array_length_str);
           }
         }
 
@@ -6480,7 +6480,7 @@ gen_user_defines(const ASTNode* root_in, const char* out)
 
   {
 	FILE* stream = fopen("profiles_info.h","w");
-  	fprintf(stream,"static AcProfileType prof_types[NUM_PROFILES] = {");
+  	fprintf(stream,"static AcProfileType prof_types[NUM_PROFILES+1] = {");
   	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
 	  if(str_vec_contains(prof_types,symbol_table[i].tspecifier))
   	  {
@@ -6506,7 +6506,8 @@ gen_user_defines(const ASTNode* root_in, const char* out)
   	          	fatal("Unknown profile type for: %s\n",symbol_table[i].identifier);
 		  fprintf(stream,",");
   	  }
-  	fprintf(stream,"};\n");
+	//TP: pad by one to get rid of compiler warnings
+  	fprintf(stream,"PROFILE_X};\n");
 	fclose(stream);
   }
 

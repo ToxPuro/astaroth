@@ -21,6 +21,7 @@
 #include "acc_runtime.h"
 #include "kernels.h"
 #include "user_defines_runtime_lib.h"
+#include "static_analysis.h"
 
 #include "../acc/string_vec.h"
 typedef void (*Kernel)(const int3, const int3, DeviceVertexBufferArray vba);
@@ -109,88 +110,7 @@ acGetKernelReduceScratchPadMinSize()
 #include "stencil_accesses.h"
 #include "../acc/mem_access_helper_funcs.h"
 
-static bool
-is_raytracing_kernel(const AcKernel kernel)
-{
-	for(int ray = 0; ray < NUM_RAYS; ++ray)
-	{
-		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
-			if(incoming_ray_value_accessed[kernel][field][ray]) return true;
-	}
-	return false;
-}
-
-static int
-num_fields_ray_accessed_read_and_written(const AcKernel kernel)
-{
-	int res = 0;
-	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
-	{
-		if(write_called[kernel][field] || stencils_accessed[kernel][field][0])
-		{
-			res++;
-			continue;
-		}
-		for(int ray = 0; ray < NUM_RAYS; ++ray)
-		{
-			if(
-			    incoming_ray_value_accessed[kernel][field][ray]
-			    || outgoing_ray_value_accessed[kernel][field][ray]
-			    )
-			{
-				res++;
-				continue;
-			}
-		}
-	}
-	return res;
-}
-
-static AcBool3
-raytracing_step_direction(const AcKernel kernel)
-{
-	for(int ray = 0; ray < NUM_RAYS; ++ray)
-	{
-		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
-			if(incoming_ray_value_accessed[kernel][field][ray])
-			{
-				if(ray_directions[ray].z != 0) return (AcBool3){false,false,true};
-				if(ray_directions[ray].y != 0) return (AcBool3){false,true,false};
-				if(ray_directions[ray].x != 0) return (AcBool3){true,false,false};
-			}
-	}
-	return (AcBool3){false,false,false};
-}
-static AcBool3
-raytracing_directions(const AcKernel kernel)
-{
-	AcBool3 res = (AcBool3){false,false,false};
-	for(int ray = 0; ray < NUM_RAYS; ++ray)
-	{
-		for(int field = 0; field < NUM_ALL_FIELDS; ++field)
-			if(incoming_ray_value_accessed[kernel][field][ray])
-			{
-				res.x |= ray_directions[ray].x != 0;
-				res.y |= ray_directions[ray].y != 0;
-				res.z |= ray_directions[ray].z != 0;
-			}
-	}
-	return res;
-}
-static int
-raytracing_number_of_directions(const AcKernel kernel)
-{
-	const auto dirs = raytracing_directions(kernel);
-	return dirs.x+dirs.y+dirs.z;
-}
-
-static bool
-is_coop_raytracing_kernel(const AcKernel kernel)
-{
-	return is_raytracing_kernel(kernel) && (raytracing_number_of_directions(kernel) > 1);
-}
-
-Volume
+static Volume
 get_bpg(Volume dims, const AcKernel kernel, const int3 block_factors, const Volume tpb)
 {
 	if(kernel_has_block_loops(kernel)) return get_bpg(ceil_div(dims,block_factors), tpb);
@@ -206,16 +126,22 @@ get_ghosts()
 	  dimension_inactive.z ? 0 : NGHOST
   };
 }
-template <typename T>
-bool
-is_large_launch(const T dims)
+static bool
+is_large_launch(const int3 dims)
+{
+  const int3 ghosts = get_ghosts();
+  return ((int)dims.x > ghosts.x && (int)dims.y > ghosts.y && (int)dims.z > ghosts.z);
+}
+
+static bool
+is_large_launch(const Volume dims)
 {
   const int3 ghosts = get_ghosts();
   return ((int)dims.x > ghosts.x && (int)dims.y > ghosts.y && (int)dims.z > ghosts.z);
 }
 
 
-bool
+static bool
 is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kernel)
 {
   const size_t warp_size    = get_device_prop().warpSize;
@@ -389,37 +315,6 @@ __device__ __constant__ AcMeshInfoScalars d_mesh_info;
 #define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) static __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
 #include "gmem_arrays_decl.h"
 
-AcReal
-get_reduce_state_flush_var_real(const AcReduceOp state)
-{
-	return 
-		(state == NO_REDUCE || state == REDUCE_SUM) ? 0.0 :
-		(state == REDUCE_MIN) ? AC_REAL_MAX :
-		(state == REDUCE_MAX) ? -AC_REAL_MAX :
-		0.0;
-}
-
-int
-get_reduce_state_flush_var_int(const AcReduceOp state)
-{
-	return 
-		(state == NO_REDUCE || state == REDUCE_SUM) ? 0 :
-		(state == REDUCE_MIN) ? INT_MAX:
-		(state == REDUCE_MAX) ? -INT_MAX:
-		0;
-}
-
-#if AC_DOUBLE_PRECISION
-float
-get_reduce_state_flush_var_float(const AcReduceOp state)
-{
-	return 
-		(state == NO_REDUCE || state == REDUCE_SUM) ? (float)0.0 :
-		(state == REDUCE_MIN) ? FLT_MAX :
-		(state == REDUCE_MAX) ? -FLT_MAX :
-		(float)0.0;
-}
-#endif
 
 typedef struct {
   AcKernel kernel;
@@ -466,9 +361,6 @@ acGetRealScratchpadSize(const size_t i)
 
 #include "dconst_decl.h"
 #include "output_value_decl.h"
-
-
-
 #include "get_address.h"
 #include "load_dconst_arrays.h"
 #include "store_dconst_arrays.h"
@@ -563,61 +455,6 @@ __ldg(int* src)
 #include "user_built-in_constants.h"
 #include "user_builtin_non_scalar_constants.h"
 
-size3_t
-acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
-{
-	const auto type = prof_types[profile];
-    	if(type == PROFILE_YZ || type == PROFILE_ZY)
-    		return
-    		{
-    		    	    dims.reduction_tile.x,
-    		    	    dims.m1.y,
-    		    	    dims.m1.z
-    		};
-    	if(type == PROFILE_XZ || type == PROFILE_ZX)
-		return
-    		{
-    		    	    dims.m1.x,
-    		    	    dims.reduction_tile.y,
-    		    	    dims.m1.z
-    		};
-    	if(type == PROFILE_YX || type == PROFILE_XY)
-		return
-    		{
-    		    	    dims.m1.x,
-    		    	    dims.m1.y,
-    		    	    dims.reduction_tile.z
-    		};
-	if(type == PROFILE_X)
-	{
-		return
-		{
-			dims.m1.x,
-			dims.reduction_tile.y,
-			dims.reduction_tile.z
-		};
-	}
-	if(type == PROFILE_Y)
-	{
-		return
-		{
-			dims.reduction_tile.x,
-			dims.m1.y,
-			dims.reduction_tile.z
-		};
-	}
-	if(type == PROFILE_Z)
-	{
-		return
-		{
-			dims.reduction_tile.x,
-			dims.reduction_tile.y,
-			dims.m1.z
-		};
-	}
-	return dims.m1;
-}
-
 bool
 acRuntimeIsInitialized() { return initialized; }
 
@@ -636,44 +473,10 @@ acRuntimeInit(const AcMeshInfo config)
   return AC_SUCCESS;
 }
 
-
-
-
-int
-get_num_of_warps(const dim3 bpg, const dim3 tpb)
+AcResult
+acLaunchKernelBase(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream)
 {
-	const size_t warp_size = get_device_prop().warpSize;
-	const int num_of_warps_per_block = (tpb.x*tpb.y*tpb.z + warp_size-1)/warp_size;
-	const int num_of_blocks = bpg.x*bpg.y*bpg.z;
-	return num_of_warps_per_block*num_of_blocks;
-}
-
-int
-get_current_device()
-{
-	int device{};
-	ERRCHK_CUDA_ALWAYS(acGetDevice(&device));
-	return device;
-}
-
-bool
-supports_cooperative_launches()
-{
-	static bool called{};
-	static int supportsCoopLaunch{};
-	if(called)
-	{
-		ERRCHK_ALWAYS(supportsCoopLaunch);
-		return bool(supportsCoopLaunch);
-	}
-	ERRCHK_CUDA(acDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, get_current_device()));
-	called = true;
-	return bool(supportsCoopLaunch);
-}
-void
-launch_kernel(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream)
-{
-  if(is_coop_raytracing_kernel(kernel) && supports_cooperative_launches())
+  if(is_coop_raytracing_kernel(kernel) && acSupportsCooperativeLaunches())
   {
 	void* args[] = {(void*)&start,(void*)&end,(void*)&vba.on_device};
 	ERRCHK_CUDA(acLaunchCooperativeKernel((void*)kernels[kernel],bpg,tpb,args,smem,stream));
@@ -682,15 +485,12 @@ launch_kernel(const AcKernel kernel, const int3 start, const int3 end, VertexBuf
   {
   	KERNEL_VBA_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device);
   }
-}
-void
-launch_kernel(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem)
-{
-	launch_kernel(kernel,start,end,vba,bpg,tpb,smem,0);
+  return AC_SUCCESS;
 }
 
 
-const Volume 
+
+static const Volume 
 get_kernel_end(const AcKernel kernel, const Volume start, const Volume end)
 {
 	if(is_raytracing_kernel(kernel))
@@ -703,23 +503,18 @@ get_kernel_end(const AcKernel kernel, const Volume start, const Volume end)
 	return (Volume){end.x,end.y,end.z};
 
 }
+
 void
 update_reduce_offsets_and_resize(const AcKernel kernel, const int3 start, const dim3 tpb, const dim3 bpg, VertexBufferArray vba)
 {
   if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
   {
   	reduce_offsets[kernel][start] = kernel_running_reduce_offsets[kernel];
-  	kernel_running_reduce_offsets[kernel] += get_num_of_warps(bpg,tpb);
+  	kernel_running_reduce_offsets[kernel] += acGetNumOfWarps(bpg,tpb);
 	ac_resize_scratchpads_to_fit(kernel_running_reduce_offsets[kernel],vba,kernel);
   }
 }
 
-AcResult
-acResetScratchPadStates(VertexBufferArray vba)
-{
-  if(vba.scratchpad_states) memset(vba.scratchpad_states,0,sizeof(AcScratchpadStates));
-  return AC_SUCCESS;
-}
 
 AcResult
 acSetReduceOffset(AcKernel kernel, const Volume start_volume,
@@ -736,7 +531,7 @@ acSetReduceOffset(AcKernel kernel, const Volume start_volume,
   return AC_SUCCESS;
 }
 
-int3
+static int3
 get_kernel_dims(const AcKernel kernel, const int3 start, const int3 end)
 {
   return is_coop_raytracing_kernel(kernel) ? ceil_div(end-start,raytracing_subblock) : end-start;
@@ -758,7 +553,7 @@ acLaunchKernelCommon(AcKernel kernel, const cudaStream_t stream, const int3 star
 
   if(kernel_calls_reduce[kernel]) vba.on_device.reduce_offset = reduce_offsets[kernel][start];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
-  launch_kernel(kernel,start,end,vba,bpg,tpb,smem,stream);
+  acLaunchKernelBase(kernel,start,end,vba,bpg,tpb,smem,stream);
   ERRCHK_CUDA_KERNEL();
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
@@ -1034,6 +829,7 @@ void printProgressBar(FILE* stream, const int progress) {
     else
     	fprintf(stream,"] %d%%", progress);
 }
+
 void
 printAutotuningStatus(const AcKernel kernel, const float best_time, const int progress)
 {
@@ -1070,6 +866,13 @@ make_vtxbuf_input_params_safe(VertexBufferArray& vba, const AcKernel)
   //TP: have to set reduce offset zero since it might not be
   vba.on_device.reduce_offset = 0;
 //#include "safe_vtxbuf_input_params.h"
+}
+
+static AcResult
+acResetScratchPadStates(VertexBufferArray vba)
+{
+  if(vba.scratchpad_states) memset(vba.scratchpad_states,0,sizeof(AcScratchpadStates));
+  return AC_SUCCESS;
 }
 
 
@@ -1248,7 +1051,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
                                 get_bpg(to_volume(dims),kernel,vba.on_device.block_factor,
                                 to_volume(tpb)
                                 ));
-	const int n_warps = get_num_of_warps(bpg,tpb);
+	const int n_warps = acGetNumOfWarps(bpg,tpb);
 	if(kernel_calls_reduce[kernel])
 		ac_resize_scratchpads_to_fit(n_warps,vba,kernel);
         const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER,
@@ -1258,12 +1061,12 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
         ERRCHK_CUDA(acEventCreate(&tstart));
         ERRCHK_CUDA(acEventCreate(&tstop));
 
-        launch_kernel(kernel,start,end,vba,bpg,tpb,smem);
+        acLaunchKernelBase(kernel,start,end,vba,bpg,tpb,smem,0);
         ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
         ERRCHK_CUDA(acEventRecord(tstart)); // Timing start
         for (int i = 0; i < num_iters; ++i)
 	{
-        	launch_kernel(kernel,start,end,vba,bpg,tpb,smem);
+        	acLaunchKernelBase(kernel,start,end,vba,bpg,tpb,smem,0);
 	}
         ERRCHK_CUDA(acEventRecord(tstop)); // Timing stop
         ERRCHK_CUDA(acEventSynchronize(tstop));
@@ -1441,125 +1244,6 @@ acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t)
   AcScalarTypes::run<load_all_scalars_uniform>(info);
   AcArrayTypes::run<load_all_arrays_uniform>(info);
   return retval;
-}
-
-
-#if AC_CPU_BUILD
-#define KERNEL_PREFIX \
-	for(int threadIdx_x = 0; threadIdx_x < (int)end.x-(int)start.x; ++threadIdx_x) \
-	{ \
-		for(int threadIdx_y = 0; threadIdx_y < (int)end.y-(int)start.y; ++threadIdx_y) \
-		{ \
-			for(int threadIdx_z = 0; threadIdx_z < (int)end.z-(int)start.z; ++threadIdx_z) \
-			{ \
-				const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z}; 
-#define KERNEL_DIMS_PREFIX \
-	for(int threadIdx_x = 0; threadIdx_x < dims.x; ++threadIdx_x) \
-	{ \
-		for(int threadIdx_y = 0; threadIdx_y < dims.y; ++threadIdx_y) \
-		{ \
-			for(int threadIdx_z = 0; threadIdx_z < dims.z; ++threadIdx_z) \
-			{ \
-				const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z}; 
-
-
-#define KERNEL_POSTFIX \
-			} \
-		} \
-	} \
-
-#define TILE_DIM VAL(AC_mlocal_max_dim)
-#else
-
-#define KERNEL_PREFIX
-#define KERNEL_DIMS_PREFIX
-#define KERNEL_POSTFIX
-#define TILE_DIM (32)
-
-#endif //AC_CPU_BUILD
-
-
-
-size_t
-get_count(const AcShape shape)
-{
-	return shape.x*shape.y*shape.z*shape.w;
-}
-static AcResult
-ac_flush_scratchpad(VertexBufferArray vba, const int variable, const AcType type, const AcReduceOp op)
-{
-
-	const int n_elems = 
-				type == AC_REAL_TYPE ?  NUM_REAL_OUTPUTS :
-				type == AC_PROF_TYPE ?  NUM_PROFILES     :
-				type == AC_INT_TYPE  ?  NUM_INT_OUTPUTS  :
-#if AC_DOUBLE_PRECISION
-				type == AC_FLOAT_TYPE  ?  NUM_FLOAT_OUTPUTS  :
-#endif
-				0;
-	ERRCHK_ALWAYS(variable < n_elems);
-	const size_t counts = 
-			type == AC_INT_TYPE  ? (*vba.reduce_buffer_int[variable].buffer_size)/sizeof(int) :
-#if AC_DOUBLE_PRECISION
-			type == AC_FLOAT_TYPE  ? (*vba.reduce_buffer_float[variable].buffer_size)/sizeof(float) :
-#endif
-			type == AC_REAL_TYPE ? (*vba.reduce_buffer_real[variable].buffer_size)/sizeof(AcReal) :
-			type == AC_PROF_TYPE ? (get_count(vba.profile_reduce_buffers[variable].src.shape)) :
-			0;
-
-	if(type == AC_REAL_TYPE)
-	{
-		if constexpr (NUM_REAL_OUTPUTS == 0) return AC_FAILURE;
-		AcReal* dst = *(vba.reduce_buffer_real[variable].src);
-		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_real(op));
-	}
-	else if(type == AC_PROF_TYPE)
-	{
-		if constexpr(NUM_PROFILES == 0) return AC_FAILURE;
-		AcReal* dst = vba.profile_reduce_buffers[variable].src.data;
-		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_real(op));
-	}
-#if AC_DOUBLE_PRECISION
-	else if(type == AC_FLOAT_TYPE)
-	{
-		if constexpr(NUM_FLOAT_OUTPUTS  == 0) return AC_FAILURE;
-		float* dst = *(vba.reduce_buffer_float[variable].src);
-		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_float(op));
-	}
-#endif
-	else
-	{
-		if constexpr (NUM_INT_OUTPUTS == 0) return AC_FAILURE;
-		int* dst = *(vba.reduce_buffer_int[variable].src);
-		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_int(op));
-	}
-  	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
-	return AC_SUCCESS;
-}
-static AcReduceOp*
-get_reduce_buffer_states(const VertexBufferArray vba, const AcType type)
-{
-	return
-#if AC_DOUBLE_PRECISION
-			type == AC_FLOAT_TYPE  ? vba.scratchpad_states->floats :
-#endif
-			type == AC_INT_TYPE    ? vba.scratchpad_states->ints  :
-			type == AC_REAL_TYPE   ? vba.scratchpad_states->reals :
-			type == AC_PROF_TYPE   ? &vba.scratchpad_states->reals[NUM_REAL_OUTPUTS] :
-			NULL;
-}
-static UNUSED AcReduceOp
-get_reduce_buffer_state(const VertexBufferArray vba, const int variable, const AcType type)
-{
-	return get_reduce_buffer_states(vba,type)[variable];
-}
-AcResult
-acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType type,const AcReduceOp op)
-{
-	AcReduceOp* states = get_reduce_buffer_states(vba,type);
-	if(states[variable] == op && !AC_CPU_BUILD) return AC_SUCCESS;
-	states[variable] = op;
-	return ac_flush_scratchpad(vba,variable,type,op);
 }
 
 

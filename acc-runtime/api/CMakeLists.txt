@@ -111,7 +111,7 @@ target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BI
 target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 
-add_library(acc-runtime-driver arrays.cc vba.cc common_kernels.cc)
+add_library(acc-runtime-driver arrays.cc vba.cc common_kernels.cc static_analysis.cc)
 target_link_libraries(acc-runtime-driver PUBLIC acc-runtime-headers ac_cuda_wrappers astaroth_helpers)
 target_include_directories(acc-runtime-driver PUBLIC ${AC_BASE_PATH}/include)
 target_include_directories(acc-runtime-driver PUBLIC ${AC_BASE_PATH}/src/core/kernels)
@@ -128,7 +128,7 @@ message("project source dir ${PROJECT_SOURCE_DIR}")
 
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
-	add_library(acc-runtime STATIC acc_runtime.cu ${AC_BASE_PATH}/src/core/helpers/helpers.cc)
+    add_library(acc-runtime STATIC acc_runtime.cu ${AC_BASE_PATH}/src/core/helpers/helpers.cc)
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(acc-runtime acc-runtime-headers acc-runtime-driver)

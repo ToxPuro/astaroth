@@ -130,5 +130,35 @@ acDeviceResize(void** dst,const size_t old_bytes,const size_t new_bytes)
 	return new_bytes;
 }
 
+int
+acGetNumOfWarps(const dim3 bpg, const dim3 tpb)
+{
+	const size_t warp_size = get_device_prop().warpSize;
+	const int num_of_warps_per_block = (tpb.x*tpb.y*tpb.z + warp_size-1)/warp_size;
+	const int num_of_blocks = bpg.x*bpg.y*bpg.z;
+	return num_of_warps_per_block*num_of_blocks;
+}
 
 
+int
+acGetCurrentDevice()
+{
+	int device{};
+	ERRCHK_CUDA_ALWAYS(acGetDevice(&device));
+	return device;
+}
+
+bool
+acSupportsCooperativeLaunches()
+{
+	static bool called{};
+	static int supportsCoopLaunch{};
+	if(called)
+	{
+		ERRCHK_ALWAYS(supportsCoopLaunch);
+		return bool(supportsCoopLaunch);
+	}
+	ERRCHK_CUDA(acDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, acGetCurrentDevice()));
+	called = true;
+	return bool(supportsCoopLaunch);
+}

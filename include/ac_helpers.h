@@ -1,5 +1,4 @@
 #pragma once 
-
 typedef struct device_s* Device;
   typedef struct AcBuffer{
       AcReal* data;
@@ -16,6 +15,27 @@ extern "C"
 {
 #endif
 const char* acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm);
+
+size_t
+acShapeCount(const AcShape shape);
+
+int
+acGetNumOfWarps(const dim3 bpg, const dim3 tpb);
+
+int
+acGetCurrentDevice();
+
+bool
+acSupportsCooperativeLaunches();
+
+AcReal
+get_reduce_state_flush_var_real(const AcReduceOp state);
+
+int
+get_reduce_state_flush_var_int(const AcReduceOp state);
+
+float
+get_reduce_state_flush_var_float(const AcReduceOp state);
 
 size_t acGetSizeFromDim(const int dim, const Volume dims);
 

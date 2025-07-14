@@ -17,6 +17,39 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "vtxbuf_is_communicated_func.h"
+
+#if AC_CPU_BUILD
+#define KERNEL_PREFIX \
+	for(int threadIdx_x = 0; threadIdx_x < (int)end.x-(int)start.x; ++threadIdx_x) \
+	{ \
+		for(int threadIdx_y = 0; threadIdx_y < (int)end.y-(int)start.y; ++threadIdx_y) \
+		{ \
+			for(int threadIdx_z = 0; threadIdx_z < (int)end.z-(int)start.z; ++threadIdx_z) \
+			{ \
+				const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z}; 
+#define KERNEL_DIMS_PREFIX \
+	for(int threadIdx_x = 0; threadIdx_x < dims.x; ++threadIdx_x) \
+	{ \
+		for(int threadIdx_y = 0; threadIdx_y < dims.y; ++threadIdx_y) \
+		{ \
+			for(int threadIdx_z = 0; threadIdx_z < dims.z; ++threadIdx_z) \
+			{ \
+				const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z}; 
+
+
+#define KERNEL_POSTFIX \
+			} \
+		} \
+	} \
+
+#else
+
+#define KERNEL_PREFIX
+#define KERNEL_DIMS_PREFIX
+#define KERNEL_POSTFIX
+
+#endif //AC_CPU_BUILD
+
 #pragma once
 struct GpuVtxBufHandles 
 {

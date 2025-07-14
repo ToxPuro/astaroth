@@ -242,7 +242,7 @@ typedef struct device_s* Device;
 #include "scalar_reduce_buffers_in_vba.h"
 
     AcScratchpadStates* scratchpad_states;
-    AcReduceBuffer profile_reduce_buffers[NUM_PROFILES];
+    AcReduceBuffer profile_reduce_buffers[NUM_PROFILES+1];
 
   } VertexBufferArray;
 
@@ -302,12 +302,12 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
   FUNC_DEFINE(AcResult, acKernelFlushComplex,(const cudaStream_t stream, AcComplex* arr, const size_t n, const AcComplex value));
   FUNC_DEFINE(AcResult, acKernelFlushFloat,(const cudaStream_t stream, float* arr, const size_t n, const float value));
 
+  FUNC_DEFINE(AcResult, acPreprocessScratchPad,(VertexBufferArray, const int variable, const AcType type,const AcReduceOp op));
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
   FUNC_DEFINE(size_t,acGetRealScratchpadSize,(const size_t i));
 
   FUNC_DEFINE(size3_t, acGetProfileReduceScratchPadDims,(const int profile, const AcMeshDims dims));
 
-  FUNC_DEFINE(AcResult,acPreprocessScratchPad,(VertexBufferArray, const int variable, const AcType type,const AcReduceOp op));
 
   FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfo config));
 
@@ -323,6 +323,8 @@ typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasure
 
   FUNC_DEFINE(AcResult, acLaunchKernel,(AcKernel func, const cudaStream_t stream, const Volume start, const Volume end, VertexBufferArray));
   FUNC_DEFINE(AcResult, acLaunchKernelWithTPB,(AcKernel kernel, const cudaStream_t stream, const Volume start_volume, const Volume end_volume, VertexBufferArray vba, const dim3 tpb));
+  FUNC_DEFINE(AcResult, acLaunchKernelBase,(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream));
+
 
   FUNC_DEFINE(AcResult, acSetReduceOffset,(AcKernel func, const Volume start, const Volume end, VertexBufferArray));
 

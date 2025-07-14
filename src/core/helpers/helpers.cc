@@ -13,6 +13,7 @@ struct AcCommunicator
 	MPI_Comm handle;
 };
 #endif
+#include <cfloat>
 const char*
 acLibraryVersion(const char* library, const int counter, const AcCommunicator* comm)
 {
@@ -178,5 +179,43 @@ acShapeSize(const AcShape shape)
 {
   return shape.x * shape.y * shape.z * shape.w;
 }
+
+size_t
+acShapeCount(const AcShape shape)
+{
+	return shape.x*shape.y*shape.z*shape.w;
+}
+
+AcReal
+get_reduce_state_flush_var_real(const AcReduceOp state)
+{
+	return 
+		(state == NO_REDUCE || state == REDUCE_SUM) ? 0.0 :
+		(state == REDUCE_MIN) ? AC_REAL_MAX :
+		(state == REDUCE_MAX) ? -AC_REAL_MAX :
+		0.0;
+}
+
+int
+get_reduce_state_flush_var_int(const AcReduceOp state)
+{
+	return 
+		(state == NO_REDUCE || state == REDUCE_SUM) ? 0 :
+		(state == REDUCE_MIN) ? INT_MAX:
+		(state == REDUCE_MAX) ? -INT_MAX:
+		0;
+}
+
+#if AC_DOUBLE_PRECISION
+float
+get_reduce_state_flush_var_float(const AcReduceOp state)
+{
+	return 
+		(state == NO_REDUCE || state == REDUCE_SUM) ? (float)0.0 :
+		(state == REDUCE_MIN) ? FLT_MAX :
+		(state == REDUCE_MAX) ? -FLT_MAX :
+		(float)0.0;
+}
+#endif
 
 

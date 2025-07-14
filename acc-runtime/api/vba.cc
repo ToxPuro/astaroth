@@ -60,7 +60,7 @@ acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba, const AcMeshDims*
 {
   // Set pba.in data to all-nan and pba.out to 0
   for (int i = 0; i < NUM_PROFILES; ++i) {
-    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),dims[i].m1), (AcReal)NAN);
+    acKernelFlush(stream, pba->in[i],  prof_count(Profile(i),dims[i].m1), (AcReal)AC_REAL_MAX);
     acKernelFlush(stream, pba->out[i], prof_count(Profile(i),dims[i].m1), (AcReal)0);
   }
   return AC_SUCCESS;
@@ -81,6 +81,62 @@ acPBACreate(const AcMeshDims* dims)
   ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
   return pba;
 }
+
+size3_t
+acGetProfileReduceScratchPadDims(const int profile, const AcMeshDims dims)
+{
+	const auto type = prof_types[profile];
+    	if(type == PROFILE_YZ || type == PROFILE_ZY)
+    		return
+    		{
+    		    	    dims.reduction_tile.x,
+    		    	    dims.m1.y,
+    		    	    dims.m1.z
+    		};
+    	if(type == PROFILE_XZ || type == PROFILE_ZX)
+		return
+    		{
+    		    	    dims.m1.x,
+    		    	    dims.reduction_tile.y,
+    		    	    dims.m1.z
+    		};
+    	if(type == PROFILE_YX || type == PROFILE_XY)
+		return
+    		{
+    		    	    dims.m1.x,
+    		    	    dims.m1.y,
+    		    	    dims.reduction_tile.z
+    		};
+	if(type == PROFILE_X)
+	{
+		return
+		{
+			dims.m1.x,
+			dims.reduction_tile.y,
+			dims.reduction_tile.z
+		};
+	}
+	if(type == PROFILE_Y)
+	{
+		return
+		{
+			dims.reduction_tile.x,
+			dims.m1.y,
+			dims.reduction_tile.z
+		};
+	}
+	if(type == PROFILE_Z)
+	{
+		return
+		{
+			dims.reduction_tile.x,
+			dims.reduction_tile.y,
+			dims.m1.z
+		};
+	}
+	return dims.m1;
+}
+
 static size_t
 get_profile_reduce_scratchpad_size(const int profile, const VertexBufferArray vba)
 {
@@ -178,7 +234,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
     ERRCHK_ALWAYS(vba->on_device.in[i]);
     ERRCHK_ALWAYS(vba->on_device.out[i]);
-    acKernelFlush(stream, vba->on_device.in[i], vba->counts[i], (AcReal)NAN);
+    acKernelFlush(stream, vba->on_device.in[i], vba->counts[i], (AcReal)AC_REAL_MAX);
     acKernelFlush(stream, vba->on_device.out[i], vba->counts[i], (AcReal)0.0);
   }
 
@@ -385,3 +441,84 @@ acPBASwapBuffers(VertexBufferArray* vba)
   for (int i = 0; i < NUM_PROFILES; ++i)
     acPBASwapBuffer((Profile)i, vba);
 }
+
+
+static AcResult
+ac_flush_scratchpad(VertexBufferArray vba, const int variable, const AcType type, const AcReduceOp op)
+{
+	const int n_elems = 
+				type == AC_REAL_TYPE ?  NUM_REAL_OUTPUTS :
+				type == AC_PROF_TYPE ?  NUM_PROFILES     :
+				type == AC_INT_TYPE  ?  NUM_INT_OUTPUTS  :
+#if AC_DOUBLE_PRECISION
+				type == AC_FLOAT_TYPE  ?  NUM_FLOAT_OUTPUTS  :
+#endif
+				0;
+	ERRCHK_ALWAYS(variable < n_elems);
+	const size_t counts = 
+			type == AC_INT_TYPE  ? (*vba.reduce_buffer_int[variable].buffer_size)/sizeof(int) :
+#if AC_DOUBLE_PRECISION
+			type == AC_FLOAT_TYPE  ? (*vba.reduce_buffer_float[variable].buffer_size)/sizeof(float) :
+#endif
+			type == AC_REAL_TYPE ? (*vba.reduce_buffer_real[variable].buffer_size)/sizeof(AcReal) :
+			type == AC_PROF_TYPE ? (acShapeCount(vba.profile_reduce_buffers[variable].src.shape)) :
+			0;
+
+	if(type == AC_REAL_TYPE)
+	{
+		if constexpr (NUM_REAL_OUTPUTS == 0) return AC_FAILURE;
+		AcReal* dst = *(vba.reduce_buffer_real[variable].src);
+		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_real(op));
+	}
+	else if(type == AC_PROF_TYPE)
+	{
+		if constexpr(NUM_PROFILES == 0) return AC_FAILURE;
+		AcReal* dst = vba.profile_reduce_buffers[variable].src.data;
+		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_real(op));
+	}
+#if AC_DOUBLE_PRECISION
+	else if(type == AC_FLOAT_TYPE)
+	{
+		if constexpr(NUM_FLOAT_OUTPUTS  == 0) return AC_FAILURE;
+		float* dst = *(vba.reduce_buffer_float[variable].src);
+		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_float(op));
+	}
+#endif
+	else
+	{
+		if constexpr (NUM_INT_OUTPUTS == 0) return AC_FAILURE;
+		int* dst = *(vba.reduce_buffer_int[variable].src);
+		acKernelFlush(0,dst,counts,get_reduce_state_flush_var_int(op));
+	}
+  	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
+	return AC_SUCCESS;
+}
+
+static AcReduceOp*
+get_reduce_buffer_states(const VertexBufferArray vba, const AcType type)
+{
+	return
+#if AC_DOUBLE_PRECISION
+			type == AC_FLOAT_TYPE  ? vba.scratchpad_states->floats :
+#endif
+			type == AC_INT_TYPE    ? vba.scratchpad_states->ints  :
+			type == AC_REAL_TYPE   ? vba.scratchpad_states->reals :
+			type == AC_PROF_TYPE   ? &vba.scratchpad_states->reals[NUM_REAL_OUTPUTS] :
+			NULL;
+}
+
+static UNUSED AcReduceOp
+get_reduce_buffer_state(const VertexBufferArray vba, const int variable, const AcType type)
+{
+	return get_reduce_buffer_states(vba,type)[variable];
+}
+
+AcResult
+acPreprocessScratchPad(VertexBufferArray vba, const int variable, const AcType type,const AcReduceOp op)
+{
+	AcReduceOp* states = get_reduce_buffer_states(vba,type);
+	if(states[variable] == op && !AC_CPU_BUILD) return AC_SUCCESS;
+	states[variable] = op;
+	return ac_flush_scratchpad(vba,variable,type,op);
+}
+
