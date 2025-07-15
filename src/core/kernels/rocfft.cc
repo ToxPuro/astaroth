@@ -90,7 +90,7 @@ AcResult
 acFFTForwardTransformC2C(const AcComplex* src, const Volume domain_size,
                                 const Volume subdomain_size, const Volume starting_point,
                                 AcComplex* dst) {
-	acFFTTransformC2C(src,domain_size,subdomain_size,staring_point,dst,false);
+	return acFFTTransformC2C(src,domain_size,subdomain_size,starting_point,dst,false);
 }
 
 AcResult
@@ -99,7 +99,7 @@ acFFTBackwardTransformC2C(const AcComplex* src,
                                  const Volume subdomain_size,
                                  const Volume starting_point,
                                  AcComplex* dst) {
-    acFFTTransformC2C(src,domain_size,subdomain_size,staring_point,dst,true);
+    return acFFTTransformC2C(src,domain_size,subdomain_size,starting_point,dst,true);
 }
 
 AcResult
