@@ -115,54 +115,55 @@ convert_to_int3(const ac::ntuple<uint64_t>& in)
 /**
  * Decompose the domain set in the input info and returns a complete local mesh info with all
  * parameters set (incl. multi-device offsets, and others)
+ * DEPRECATED
  */
-static AcMeshInfo
-get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
-{
-    // Calculate local dimensions
-    ac::shape global_nn{acr::get_global_nn(info)};
-    Dims global_ss{acr::get_global_ss(info)};
+// static AcMeshInfo
+// get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
+// {
+//     // Calculate local dimensions
+//     ac::shape global_nn{acr::get_global_nn(info)};
+//     Dims global_ss{acr::get_global_ss(info)};
 
-    const ac::shape decomp{ac::mpi::get_decomposition(cart_comm)};
-    const ac::shape local_nn{global_nn / decomp};
-    const Dims local_ss{global_ss / static_cast_vec<AcReal>(decomp)};
+//     const ac::shape decomp{ac::mpi::get_decomposition(cart_comm)};
+//     const ac::shape local_nn{global_nn / decomp};
+//     const Dims local_ss{global_ss / static_cast_vec<AcReal>(decomp)};
 
-    const ac::index coords{ac::mpi::get_coords(cart_comm)};
-    const ac::index global_nn_offset{coords * local_nn};
+//     const ac::index coords{ac::mpi::get_coords(cart_comm)};
+//     const ac::index global_nn_offset{coords * local_nn};
 
-    // Fill AcMeshInfo
-    AcMeshInfo local_info{info};
+//     // Fill AcMeshInfo
+//     AcMeshInfo local_info{info};
 
-    acr::set(AC_nx, as<int>(local_nn[0]), local_info);
-    acr::set(AC_ny, as<int>(local_nn[1]), local_info);
-    acr::set(AC_nz, as<int>(local_nn[2]), local_info);
+//     acr::set(AC_nx, as<int>(local_nn[0]), local_info);
+//     acr::set(AC_ny, as<int>(local_nn[1]), local_info);
+//     acr::set(AC_nz, as<int>(local_nn[2]), local_info);
 
-    local_info.int3_params[AC_multigpu_offset] = convert_to_int3(global_nn_offset);
+//     local_info.int3_params[AC_multigpu_offset] = convert_to_int3(global_nn_offset);
 
-    acr::set(AC_sx, static_cast<AcReal>(local_ss[0]), local_info);
-    acr::set(AC_sy, static_cast<AcReal>(local_ss[1]), local_info);
-    acr::set(AC_sz, static_cast<AcReal>(local_ss[2]), local_info);
+//     acr::set(AC_sx, static_cast<AcReal>(local_ss[0]), local_info);
+//     acr::set(AC_sy, static_cast<AcReal>(local_ss[1]), local_info);
+//     acr::set(AC_sz, static_cast<AcReal>(local_ss[2]), local_info);
 
-    // Backwards compatibility
-    acr::set(AC_global_grid_n, convert_to_int3(global_nn), local_info);
+//     // Backwards compatibility
+//     acr::set(AC_global_grid_n, convert_to_int3(global_nn), local_info);
 
-    ERRCHK(acHostUpdateLocalBuiltinParams(&local_info) == 0);
-    ERRCHK(acHostUpdateMHDSpecificParams(&local_info) == 0);
-    ERRCHK(acHostUpdateTFMSpecificGlobalParams(&local_info) == 0);
+//     ERRCHK(acHostUpdateLocalBuiltinParams(&local_info) == 0);
+//     ERRCHK(acHostUpdateMHDSpecificParams(&local_info) == 0);
+//     ERRCHK(acHostUpdateTFMSpecificGlobalParams(&local_info) == 0);
 
-    // Others to ensure nothing is left uninitialized
-    acr::set(AC_init_type, 0, local_info);
-    acr::set(AC_current_step, 0, local_info);
-    acr::set(AC_latest_snapshot, 0, local_info);
-    acr::set(AC_dt, 0, local_info);
-    acr::set(AC_dummy_real3, AcReal3{0, 0, 0}, local_info);
+//     // Others to ensure nothing is left uninitialized
+//     acr::set(AC_init_type, 0, local_info);
+//     acr::set(AC_current_step, 0, local_info);
+//     acr::set(AC_latest_snapshot, 0, local_info);
+//     acr::set(AC_dt, 0, local_info);
+//     acr::set(AC_dummy_real3, AcReal3{0, 0, 0}, local_info);
 
-    // Special: exclude inner domain (used to fuse outer integration)
-    acr::set(AC_exclude_inner, 0, local_info);
+//     // Special: exclude inner domain (used to fuse outer integration)
+//     acr::set(AC_exclude_inner, 0, local_info);
 
-    ERRCHK(acVerifyMeshInfo(local_info) == 0);
-    return local_info;
-}
+//     ERRCHK(acVerifyMeshInfo(local_info) == 0);
+//     return local_info;
+// }
 
 /**
  * Initialize and load test field profiles on the device based on AC_profile_amplitude and
