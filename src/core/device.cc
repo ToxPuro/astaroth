@@ -203,6 +203,67 @@ acDeviceFFTR2C(const Device device, const Field src, const ComplexField dst)
 }
 
 AcResult
+acDeviceFFTR2CXY(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers)
+{
+
+	for(size_t z_offset = 0; z_offset < n_layers;  ++z_offset)
+	{
+		const Volume starting_point = 
+		{
+			acGetMinNN(device->local_config).x,
+			acGetMinNN(device->local_config).y,
+			z_starting_point + z_offset
+		};
+
+		const Volume subdomain_size =
+		{
+			acGetLocalNN(device->local_config).x,
+			acGetLocalNN(device->local_config).y,
+			1
+		};
+		acFFTForwardTransformR2C(
+				device->vba.on_device.in[src],
+				acGetLocalMM(device->local_config),	
+				subdomain_size,
+				starting_point,
+				device->vba.on_device.complex_in[dst]
+			);
+	}
+	return AC_SUCCESS;
+}
+
+AcResult
+acDeviceFFTC2RXY(const Device device, const Field src, const ComplexField dst, const size_t z_starting_point, const size_t n_layers)
+{
+
+	for(size_t z_offset = 0; z_offset < n_layers;  ++z_offset)
+	{
+		const Volume starting_point = 
+		{
+			acGetMinNN(device->local_config).x,
+			acGetMinNN(device->local_config).y,
+			z_starting_point + z_offset
+		};
+
+		const Volume subdomain_size =
+		{
+			acGetLocalNN(device->local_config).x,
+			acGetLocalNN(device->local_config).y,
+			1
+		};
+		acFFTBackwardTransformC2R(
+				device->vba.on_device.complex_in[src],
+				acGetLocalMM(device->local_config),	
+				subdomain_size,
+				starting_point,
+				device->vba.on_device.in[dst]
+			);
+
+	}
+	return AC_SUCCESS;
+}
+
+AcResult
 acDeviceFFTPlanar(const Device device, const Field real_src, const Field imag_src, const Field real_dst, const Field imag_dst)
 {
 	return acFFTForwardTransformPlanar(
