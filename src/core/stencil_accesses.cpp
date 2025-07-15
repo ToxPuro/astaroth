@@ -688,7 +688,10 @@ AcReal
 AC_INTERNAL_read_vtxbuf(const Field& field, const int x, const int y, const int z)
 {
 	//TP: this is possible in case of input fields for kernels and when array syntax is translated to a call of this
-	if(field >= NUM_FIELDS) return AcReal(1.0);
+	if constexpr(NUM_FIELDS != NUM_ALL_FIELDS)
+	{
+		if(field >= NUM_FIELDS) return AcReal(1.0);
+	}
 	stencils_accessed[field][stencil_value_stencil] |= 
 							index_at_boundary(x,y,z) ? AC_IN_BOUNDS_READ : AC_OUT_OF_BOUNDS_READ;
 	return AcReal(1.0);

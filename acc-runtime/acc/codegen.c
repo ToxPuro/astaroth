@@ -245,6 +245,7 @@ is_called(const ASTNode* node)
 #define STENCILACC_SRC AC_BASE_PATH "/src/core/stencil_accesses.cpp"
 #define STENCILACC_EXEC "acc_stencil_accesses.o"
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
+#define INCL_DIR ACC_DIR "/../../include"
 //
 
 
@@ -10678,7 +10679,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	gen_array_reads(root,root,primitive_datatypes.data[i]);
   }
 
-  gen_user_taskgraphs(root);
+  if(!gen_mem_accesses) gen_user_taskgraphs(root);
   combinatorial_params_info info = get_combinatorial_params_info(root);
   gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params,gen_mem_accesses);
   //replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
@@ -10801,7 +10802,7 @@ compile_helper(const bool log)
   }
   char cmd[4096];
   const char* api_includes = strlen(GPU_API_INCLUDES) > 0 ? " -I " GPU_API_INCLUDES  " " : "";
-  sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d " 
+  sprintf(cmd, "g++ -I. -I " ACC_RUNTIME_API_DIR " -I " INCL_DIR " %s -DAC_CPU_BUILD=1 -DAC_STENCIL_ACCESSES_MAIN=1 -DAC_DOUBLE_PRECISION=%d -DAC_USE_HIP=%d " 
 	       STENCILACC_SRC " -lm  -std=c++1z -o " STENCILACC_EXEC" "
   ,api_includes, AC_DOUBLE_PRECISION,HIP_ON 
   );

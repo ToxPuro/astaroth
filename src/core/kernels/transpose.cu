@@ -76,7 +76,7 @@ transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims, const Vo
 
 
 
-	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
+	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : (AcReal)0.0;
 	__syncthreads();
 	if(!out_oob)
 		dst[out_vertexIdx.x +dims.z*out_vertexIdx.y + dims.z*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
@@ -113,7 +113,7 @@ transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims, const Vo
 
 
 
-	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
+	tile[threadIdx.z][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : (AcReal)0.0;
 	__syncthreads();
 	if(!out_oob)
 		dst[out_vertexIdx.x +dims.z*out_vertexIdx.z + dims.z*dims.x*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
@@ -149,7 +149,7 @@ transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims, const Vo
 
 
 
-	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
+	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : (AcReal)0.0;
 	__syncthreads();
 	if(!out_oob)
 		dst[out_vertexIdx.x +dims.y*out_vertexIdx.y + dims.x*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
@@ -185,7 +185,7 @@ transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims, const Vo
 
 
 
-	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : 0.0;
+	tile[threadIdx.y][threadIdx.x] = !in_oob ? src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)] : (AcReal)0.0;
 	__syncthreads();
 	if(!out_oob)
 		dst[out_vertexIdx.x +dims.y*out_vertexIdx.z + dims.y*dims.z*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];

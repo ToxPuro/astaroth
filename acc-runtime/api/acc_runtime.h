@@ -201,21 +201,7 @@ typedef struct {
 
 
 
-#ifndef AC_STENCIL_ACCESSES_MAIN
 #include "ac_helpers.h"
-#else
-typedef struct device_s* Device;
-  typedef struct AcBuffer{
-      AcReal* data;
-      size_t count;
-      bool on_device;
-      AcShape shape;
-#ifdef __cplusplus
-      const AcReal& operator[](const int index) {return data[index];}
-#endif
-  } AcBuffer;
-#endif
-
 #include "scalar_reduce_buffer_defs.h"
 
   typedef struct 
