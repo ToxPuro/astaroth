@@ -7,7 +7,7 @@ __device__ __forceinline__
 AcReal
 rand_uniform()
 {
-	return rand() / (RAND_MAX + 1.);
+	return (AcReal)(rand() / (RAND_MAX + 1.));
 }
 AcResult
 acRandInitAlt(const uint64_t, const size_t, const size_t)

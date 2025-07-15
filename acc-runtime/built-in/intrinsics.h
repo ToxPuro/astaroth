@@ -101,3 +101,4 @@ int3 intrinsic ac_get_field_halos(Field)
 intrinsic copy_arr
 intrinsic postprocess_reduce_result
 intrinsic ac_dummy_write
+intrinsic safe_access

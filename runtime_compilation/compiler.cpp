@@ -2,7 +2,7 @@
 #include "astaroth_runtime_compilation.h"
 #include <string>
 #if AC_MPI_ENABLED
-#include "../src/core/decomposition.h"
+#include "../src/core/decomposition/decomposition.h"
 #endif
 #include <sys/stat.h>
 #include "../src/config_helpers.h"
@@ -152,8 +152,9 @@ run_cmake(const char* compilation_string, const char* log_dst)
   strcat(cmd,get_astaroth_base_path().c_str());
   if(log_dst)
   {
-	  strcat(cmd," &> ");
+	  strcat(cmd," > ");
   	  strcat(cmd,log_dst);
+	  strcat(cmd," 2>&1");
   }
   const int retval = system(cmd);
   if(retval)
@@ -277,7 +278,7 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 		}
 		if(log_dst)
 		{
-			sprintf(cmd,"cd %s && make %s -j &>> %s",runtime_astaroth_build_path().c_str(),target,log_dst);
+			sprintf(cmd,"cd %s && make %s -j >> %s 2>&1",runtime_astaroth_build_path().c_str(),target,log_dst);
 		}
 		else
 		{

@@ -57,7 +57,7 @@
 #include <vector>
 #include <stack>
 
-#include "decomposition.h" //getPid3D, morton3D
+#include "decomposition/decomposition.h" //getPid3D, morton3D
 #include "errchk.h"
 #include "math_utils.h"
 #include "timer_hires.h"

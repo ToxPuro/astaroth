@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 bool
 is_raytracing_kernel(const AcKernel kernel);
 int
@@ -12,3 +16,6 @@ bool
 is_coop_raytracing_kernel(const AcKernel kernel);
 bool
 profile_is_reduced(const Profile profile);
+#ifdef __cplusplus
+}
+#endif

@@ -34,7 +34,9 @@
 #include <time.h>
 #include "device_headers.h"
 #ifdef __cplusplus
+#ifndef AC_STENCIL_ACCESSES_MAIN
 #include "astaroth_cuda_wrappers.h"
+#endif
 #endif
 
 /*

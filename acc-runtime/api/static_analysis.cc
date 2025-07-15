@@ -1,5 +1,6 @@
 #include "acc_runtime.h"
 #include "stencil_accesses.h"
+#include "static_analysis.h"
 bool
 is_raytracing_kernel(const AcKernel kernel)
 {

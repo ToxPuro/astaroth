@@ -55,7 +55,6 @@ AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
 #include <vector>
 #include <cstring>
 
-#include "decomposition.h" //getPid and friends
 #include "errchk.h"
 
 static int

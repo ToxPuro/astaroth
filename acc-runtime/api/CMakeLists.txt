@@ -66,20 +66,29 @@ endif()
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
                 "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
                 "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
-                "${PROJECT_SOURCE_DIR}/built-in/*"
-		${DSL_EXT_SOURCES})
+		##"${PROJECT_SOURCE_DIR}/built-in/*"
+		##${DSL_EXT_SOURCES}
+		)
 
 #"${PROJECT_SOURCE_DIR}/${EXT_SOURCES}")
 
-set(DSL_HEADERS "user_kernels.h"
-                "user_defines.h"
-                "user_declarations.h"
-                "stencil_accesses.h"
-                "user_taskgraphs.h"
-                "user_loaders.h"
-                "stencilgen.h"
-		"coeffs.h"
-		)
+if (NOT RUNTIME_COMPILATION)
+	set(DSL_HEADERS "user_kernels.h"
+	                "user_defines.h"
+	                "user_declarations.h"
+	                "stencil_accesses.h"
+	                "user_taskgraphs.h"
+	                "user_loaders.h"
+	                "stencilgen.h"
+			"coeffs.h"
+			)
+else()
+	set(DSL_HEADERS 
+			"user_kernels.h"
+	                "user_defines.h"
+	                "user_declarations.h"
+			)
+endif()
 
 set(DSL_MODULE_FILE $ENV{DSL_MODULE_FILE})
 if (NOT DEFINED DSL_MODULE_FILE)
@@ -111,8 +120,8 @@ target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BI
 target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
 target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 
-if (NOT RUNTIME_COMPILATION)
-	add_library(acc-runtime-driver arrays.cc vba.cc common_kernels.cc static_analysis.cc)
+if(NOT RUNTIME_COMPILATION)
+	add_library(acc-runtime-driver OBJECT arrays.cc vba.cc common_kernels.cc static_analysis.cc)
 	target_link_libraries(acc-runtime-driver PUBLIC acc-runtime-headers ac_cuda_wrappers astaroth_helpers)
 	target_include_directories(acc-runtime-driver PUBLIC ${AC_BASE_PATH}/include)
 	target_include_directories(acc-runtime-driver PUBLIC ${AC_BASE_PATH}/src/core/kernels)

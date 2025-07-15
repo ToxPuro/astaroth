@@ -208,6 +208,8 @@ endif()
 
 # Astaroth modules
 add_subdirectory(src/core/helpers)
+add_subdirectory(src/core/decomposition)
+add_subdirectory(src/core/update_params)
 add_subdirectory(src/core/cuda_wrappers)
 add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)

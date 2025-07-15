@@ -25,7 +25,7 @@
 #include <string>
 #include <vector>
 
-#include "decomposition.h"   //getPid and friends
+#include "decomposition/decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
 #include "math_utils.h"      //max. Also included in decomposition.h
 #include "timer_hires.h"

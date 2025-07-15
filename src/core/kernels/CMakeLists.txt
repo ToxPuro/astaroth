@@ -13,47 +13,52 @@ if (CPU_BUILD)
 	set_source_files_properties(kernels.cu transpose.cu reductions.cu reindex.cu PROPERTIES LANGUAGE CXX)
 endif()
 
+
 if (RUNTIME_COMPILATION)
 	add_library(static_kernels STATIC empty.cc)
 else()
+	add_library(kernels_obj OBJECT kernels.cu reductions.cu)
+        target_link_libraries(kernels_obj PUBLIC acc-runtime-headers)
+	target_include_directories(kernels_obj PUBLIC ${CMAKE_SOURCE_DIR}/include ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/src/core/kernels)
+	add_library(ac_transpose OBJECT transpose.cu)
+	target_include_directories(ac_transpose PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
+	target_link_libraries(ac_transpose PRIVATE ac_cuda_wrappers)
+	
+	add_library(ac_reindex OBJECT reindex.cu)
+	target_include_directories(ac_reindex PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
+	target_link_libraries(ac_reindex PRIVATE ac_cuda_wrappers)
 	if(FFT_ENABLED)
 		if(CPU_BUILD)
-			add_library(ac_fft STATIC kissfft/kiss_fft.c kissfft/kiss_fftnd.c cpufft.cc)
+			add_library(ac_fft OBJECT kissfft/kiss_fft.c kissfft/kiss_fftnd.c cpufft.cc)
 			if(DOUBLE_PRECISION)
 				target_compile_definitions(ac_fft PUBLIC kiss_fft_scalar=double)
 			endif()
 		else()
 			if(USE_HIP)
-				add_library(ac_fft STATIC rocfft.cc)
-           		        find_package(rocfft REQUIRED)
-           		        target_link_libraries(ac_fft PUBLIC roc::rocfft)
-        		        #TP: there could a cleaner way to do this put to enable debuging now on LUMI explicitly include
-        		        target_include_directories(ac_fft PUBLIC /opt/rocm/include/rocfft)
+				add_library(ac_fft OBJECT rocfft.cc)
+	   		        find_package(rocfft REQUIRED)
+	   		        target_link_libraries(ac_fft PUBLIC roc::rocfft)
+			        #TP: there could a cleaner way to do this put to enable debuging now on LUMI explicitly include
+			        target_include_directories(ac_fft PUBLIC /opt/rocm/include/rocfft)
 			else()
-				add_library(ac_fft STATIC cufft.cc)
-            			target_link_libraries(ac_fft PUBLIC CUDA::cufft)
+				add_library(ac_fft OBJECT cufft.cc)
+	    			target_link_libraries(ac_fft PUBLIC CUDA::cufft)
 			endif()
 		endif()
 	else()
-		add_library(ac_fft STATIC nofft.cc)
+		add_library(ac_fft OBJECT nofft.cc)
 	endif()
-
 	target_include_directories(ac_fft PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
 	target_link_libraries(ac_fft PRIVATE ac_cuda_wrappers)
-
-	add_library(ac_transpose STATIC transpose.cu)
-	target_include_directories(ac_transpose PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
-	target_link_libraries(ac_transpose PRIVATE ac_cuda_wrappers)
-
-	add_library(ac_reindex STATIC reindex.cu)
-	target_include_directories(ac_reindex PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
-	target_link_libraries(ac_reindex PRIVATE ac_cuda_wrappers)
-
-	add_library(static_kernels STATIC kernels.cu reductions.cu)
+	add_library(static_kernels STATIC 
+    		$<TARGET_OBJECTS:kernels_obj>
+    		$<TARGET_OBJECTS:ac_fft>
+    		$<TARGET_OBJECTS:ac_transpose>
+    		$<TARGET_OBJECTS:ac_reindex>
+    		$<TARGET_OBJECTS:acc-runtime-driver>
+	)
+	
 	target_link_libraries(static_kernels PUBLIC ac_fft ac_transpose ac_reindex)
- 	target_link_libraries(static_kernels PRIVATE ac_cuda_wrappers astaroth_helpers)
- 	target_link_libraries(static_kernels PUBLIC acc-runtime-headers acc-runtime-driver)
- 	target_include_directories(static_kernels PUBLIC ${CMAKE_SOURCE_DIR}/include)
 endif()
 
 
@@ -69,6 +74,7 @@ else()
 	target_compile_definitions(static_kernels PRIVATE -DACC_ARRAY_BOUND_CHECKS=0)
 endif()
 
+
 add_library(kernels empty.cc)
 target_link_libraries(kernels PRIVATE static_kernels)
-target_include_directories(kernels PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(kernels PUBLIC ac_cuda_wrappers astaroth_helpers)
