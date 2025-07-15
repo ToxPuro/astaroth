@@ -92,7 +92,7 @@ def gen_weak_scaling_benchmarks(system, max_nprocs):
     nn = [256,256,256]
     axis = len(nn) - 1
     time_limit = "00:15:00"
-    config = "/users/pekkila/astaroth/samples/tfm/cases/laplace-nonsoca.ini"
+    config = "/users/pekkila/astaroth/samples/tfm/cases/nonsoca.ini"
     label = "weak"
 
     nprocs = 1
@@ -107,7 +107,7 @@ def gen_weak_scaling_benchmarks(system, max_nprocs):
 def gen_strong_scaling_benchmarks(system, max_nprocs):
     nn = [256,256,256]
     time_limit = "00:15:00"
-    config = "/users/pekkila/astaroth/samples/tfm/cases/laplace-nonsoca.ini"
+    config = "/users/pekkila/astaroth/samples/tfm/cases/nonsoca.ini"
     label = "strong"
 
     nprocs = 2
