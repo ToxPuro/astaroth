@@ -460,12 +460,12 @@ main(int argc, char* argv[])
     const bool success = f_correct;
     if (pid == 0)
     {
-        fprintf(stderr, "VARIABLE_DIMS_TEST complete: %s\n",
+        fprintf(stderr, "RAY_TEST complete: %s\n",
                 success ? "No errors found" : "One or more errors found");
     }
     fflush(stdout);
 
-    return EXIT_SUCCESS;
+    return !success;
 }
 
 #else

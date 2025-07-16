@@ -509,7 +509,7 @@ Kernel boundary_periodic_first_revision(int3 direction)
 	min_vertex = min(min(vertexIdx.x,vertexIdx.y),vertexIdx.z);
 	val = (min_vertex == vertexIdx.z)
 		? QRAD + incoming
-		: QRAD
+		: value(QRAD)
 	write(QRAD,val);
 }
 
@@ -520,7 +520,7 @@ Kernel boundary_periodic_second_revision(int3 direction)
 	min_vertex = min(min(vertexIdx.x,vertexIdx.y),vertexIdx.z);
 	val = (min_vertex != vertexIdx.z)
 		? QRAD + incoming
-		: QRAD
+		: value(QRAD)
 	write(QRAD,val);
 }
 

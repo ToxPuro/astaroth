@@ -64,11 +64,11 @@ acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size
     return AC_SUCCESS;
 }
 AcResult
-acFFTTransformC2C(const AcComplex* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in,
+acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst,
 		  const bool inverse)
 {
     const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
-    buffer = buffer + starting_offset;
+    src = src + starting_offset;
     // Number of elements in each dimension to use
     int dims[] = {(int)subdomain_size.z, (int)subdomain_size.y, (int)subdomain_size.x};
     // NOTE: inembed[0] and onembed[0] are not used directly, but as idist and odist
@@ -87,20 +87,20 @@ acFFTTransformC2C(const AcComplex* buffer, const Volume domain_size, const Volum
     
     size_t complex_domain_size = onembed[0] * onembed[1] * onembed[2];    
     
-    cuDoubleComplex* transformed = reinterpret_cast<cuDoubleComplex*>(transformed_in + starting_offset);
+    cuDoubleComplex* transformed = reinterpret_cast<cuDoubleComplex*>(dst + starting_offset);
     const auto direction = inverse ? CUFFT_INVERSE: CUFFT_FORWARD;
     // Execute the plan_r2c
-    CUFFT_CALL(cufftXtExec(plan_r2c, (void*)buffer, transformed, direction));
+    CUFFT_CALL(cufftXtExec(plan_r2c, (void*)src, transformed, direction));
     CUFFT_CALL(cufftDestroy(plan_r2c));
     // Scale complex results that inverse FFT results in original values
     const AcReal scale{1.0 / ( dims[0] * dims[1] * dims[2])};
-    if(!inverse) acMultiplyInplaceComplex(scale, complex_domain_size, transformed_in);
+    if(!inverse) acMultiplyInplaceComplex(scale, complex_domain_size, dst);
     return AC_SUCCESS;
 }
 
 AcResult
-acFFTForwardTransformC2C(const AcComplex* buffer, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* transformed_in) {
-	return acFFTTransformC2C(buffer,domain_size,subdomain_size,starting_point,transformed_in,false);
+acFFTForwardTransformC2C(const AcComplex* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst) {
+	return acFFTTransformC2C(src,domain_size,subdomain_size,starting_point,dst,false);
 }
 
 AcResult
@@ -128,8 +128,8 @@ acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in,const Volume 
 }
 
 AcResult
-acFFTBackwardTransformC2C(const AcComplex* transformed_in,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcComplex* buffer) {
-    return acFFTTransformC2C(buffer,domain_size,subdomain_size,starting_point,transformed_in,true);
+acFFTBackwardTransformC2C(const AcComplex* src,const Volume domain_size, const Volume subdomain_size,const Volume starting_point, AcComplex* dst) {
+    return acFFTTransformC2C(src,domain_size,subdomain_size,starting_point,dst,true);
 }
 
 static AcComplex*

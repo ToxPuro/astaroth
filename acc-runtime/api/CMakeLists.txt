@@ -66,8 +66,9 @@ endif()
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
                 "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
                 "${PROJECT_SOURCE_DIR}/../src/core/stencil_accesses.cpp"
-		##"${PROJECT_SOURCE_DIR}/built-in/*"
-		##${DSL_EXT_SOURCES}
+		"${PROJECT_SOURCE_DIR}/built-in/*"
+		"${PROJECT_SOURCE_DIR}/stdlib/*"
+		${DSL_EXT_SOURCES}
 		)
 
 #"${PROJECT_SOURCE_DIR}/${EXT_SOURCES}")

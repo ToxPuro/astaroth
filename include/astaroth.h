@@ -858,17 +858,7 @@ acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder or
 	return acDeviceTransposeVertexBuffer(device,stream,order,vtxbuf);
 }
 
-#if AC_RUNTIME_COMPILATION
-
-
 #if AC_MPI_ENABLED
-
-static UNUSED AcTaskGraph* 
-acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
-{
-	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
-}
-#endif
 static UNUSED AcTaskGraph*
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end)
 {
@@ -883,6 +873,19 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_impos
 			acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice())),
 			globally_imposed_bcs);
 }
+#endif
+
+#if AC_RUNTIME_COMPILATION
+
+
+#if AC_MPI_ENABLED
+
+static UNUSED AcTaskGraph* 
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
+{
+	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
+}
+#endif
 
 static UNUSED AcResult
 acGridInit(const AcMesh mesh)

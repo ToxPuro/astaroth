@@ -1,6 +1,19 @@
 #!/bin/bash
 
 TEST_DIR="$AC_HOME/test"
+parallel=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --parallel)
+            parallel=1
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
 
 build_project() {
     local dir="$1"
@@ -34,9 +47,12 @@ build_project() {
 
 export -f build_project
 for dir in "$TEST_DIR"/*/; do
-    #TP: for multithreading suppressed for now since bitbucket pipelines runs out of memory
-    #build_project "$dir" &
-    build_project "$dir"
+    #TP: Multithreading suppressed for bitbucket pipelines since it runs out of memory
+    if [ $parallel == 1 ]; then
+    	build_project "$dir" &
+    else
+    	build_project "$dir"
+    fi
     rm -rf "$dir/build"
 done
 

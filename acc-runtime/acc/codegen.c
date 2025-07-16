@@ -8526,26 +8526,42 @@ get_all_same_structs(const char* type)
 	}
 	return res;
 }
-
 void
-gen_array_elemental(const char* dfunc_name, const char* first_name, const char* second_name, FILE* stream)
+gen_array_elemental(const char* dfunc_name, const string_vec names, const int array_index, FILE* stream)
 {
-  		fprintf(stream, "%s(%s[] f_s, %s s_s){ \n",dfunc_name,first_name,second_name);
-		fprintf(stream, "for i in 0:size(f_s) {\n");
-  		fprintf(stream,"  %s(f_s[i],s_s)\n",dfunc_name);
-		fprintf(stream,"}\n");
-  		fprintf(stream,"}\n");
+
+	const char* position_names[] = {"first","second","third","fourth","fifth","sixth","seventh","eight","ninth","tenth"};
+	fprintf(stream,"%s(",dfunc_name);
+	for(size_t i = 0; i < names.size; ++i)
+	{
+		fprintf(stream,"%s",names.data[i]);
+		if((int)i == array_index)
+		{
+			fprintf(stream,"[]");
+		}
+		fprintf(stream," ");
+		fprintf(stream,"%s_param%s",position_names[i],i < names.size-1 ? "," : "");
+	}
+	fprintf(stream,") {\n");
+	fprintf(stream,"for i in 0:size(%s_param) {\n",position_names[array_index]);
+	fprintf(stream,"%s(",dfunc_name);
+	for(size_t i = 0; i < names.size; ++i)
+	{
+		fprintf(stream,"%s_param",position_names[i]);
+		if((int)i == array_index)
+		{
+			fprintf(stream,"[i]");
+		}
+		fprintf(stream,"%s",i < names.size-1 ? "," : "");
+	}
+	fprintf(stream,")");
+	
+	fprintf(stream,"}\n");
+	fprintf(stream,"}\n");
+
 }
 
-void
-gen_array_elemental_second(const char* dfunc_name, const char* first_name, const char* second_name, FILE* stream)
-{
-  		fprintf(stream, "%s(%s f_s, %s[] s_s){ \n",dfunc_name,first_name,second_name);
-		fprintf(stream, "for i in 0:size(s_s) {\n");
-  		fprintf(stream,"  %s(f_s,s_s[i])\n",dfunc_name);
-		fprintf(stream,"}\n");
-  		fprintf(stream,"}\n");
-}
+
 
 void
 gen_three_combinations_scalar_struct_scalar(const char* dfunc_name, const char* first_type, const int_vec second, const char* third_type, FILE* stream)
@@ -8595,7 +8611,12 @@ gen_two_combinations_struct_scalar(const char* dfunc_name, const int_vec first, 
   			fprintf(stream,"  %s(f_s.%s,s)\n",dfunc_name,first_members.data[j]);
   		}
   		fprintf(stream,"}\n");
-		gen_array_elemental(dfunc_name,first_name,second_type,stream);
+		string_vec types = VEC_INITIALIZER;
+		push(&types,first_name);
+		push(&types,second_type);
+		gen_array_elemental(dfunc_name,types,0,stream);
+		free_str_vec(&types);
+			
   }
 }
 
@@ -8619,7 +8640,12 @@ gen_two_combinations_elementals(const char* dfunc_name, const int_vec first, con
   			fprintf(stream,"  %s(f_s.%s,s_s.%s)\n",dfunc_name,first_members.data[j],second_members.data[j]);
   		}
   		fprintf(stream,"}\n");
-		gen_array_elemental(dfunc_name,first_name,second_name,stream);
+
+		string_vec types = VEC_INITIALIZER;
+		push(&types,first_name);
+		push(&types,second_name);
+		gen_array_elemental(dfunc_name,types,0,stream);
+		free_str_vec(&types);
 
   	}
   }
@@ -8706,43 +8732,32 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 		else
 			fatal("Missing elemental case for func: %s\nReturn type: %s\n",dfunc_name,node->expr_type);
 	}
-	else if(info.expr.size == 2 && info.types.data[0] == FIELD_STR && info.types.data[1] == REAL_STR)
+	else if(!is_returning && info.expr.size == 2 && info.types.data[0] == FIELD_STR)
 	{
-		if(is_returning) fatal("Only non-returning (Field,real) functions covered!\n");
 		int_vec all_field_structs = get_all_field_structs();
-		int_vec all_real_structs  = get_all_same_structs(REAL_STR);
-		gen_two_combinations_elementals(dfunc_name,all_field_structs, all_real_structs, stream);
-		gen_two_combinations_struct_scalar(dfunc_name,all_field_structs, REAL_STR,stream);
-		gen_array_elemental(dfunc_name,FIELD_STR,REAL_STR,stream);
+		int_vec all_structs  = get_all_same_structs(info.types.data[1]);
+		gen_two_combinations_elementals(dfunc_name,all_field_structs, all_structs, stream);
+		gen_two_combinations_struct_scalar(dfunc_name,all_field_structs,info.types.data[1],stream);
+		gen_array_elemental(dfunc_name,info.types,0,stream);
 		free_int_vec(&all_field_structs);
-		free_int_vec(&all_real_structs);
+		free_int_vec(&all_structs);
 
 	}
-	else if(info.expr.size == 2 && info.types.data[0] == FIELD_STR && info.types.data[1] == INT_STR)
+	else if(!is_returning && info.expr.size == 2 && info.types.data[1] == FIELD_STR)
 	{
-		if(is_returning) fatal("Only non-returning (Field,int) functions covered!\n");
 		int_vec all_field_structs = get_all_field_structs();
-		int_vec all_int_structs  = get_all_same_structs(INT_STR);
-		gen_two_combinations_elementals(dfunc_name,all_field_structs, all_int_structs,stream);
-		gen_two_combinations_struct_scalar(dfunc_name,all_field_structs, INT_STR,stream);
-		gen_array_elemental(dfunc_name,FIELD_STR,INT_STR,stream);
+		gen_two_combinations_scalar_struct(dfunc_name,info.types.data[0],all_field_structs,stream);
 		free_int_vec(&all_field_structs);
-		free_int_vec(&all_int_structs);
-
-	}
-
-	else if(info.expr.size == 2 && info.types.data[0] == intern("AcBoundary") && info.types.data[1] == FIELD_STR)
-	{
-		int_vec all_field_structs = get_all_field_structs();
-		gen_two_combinations_scalar_struct(dfunc_name,intern("AcBoundary"),all_field_structs,stream);
-		gen_array_elemental_second(dfunc_name,intern("AcBoundary"),FIELD_STR,stream);
+		gen_array_elemental(dfunc_name,info.types,1,stream);
 		free_int_vec(&all_field_structs);
 	}
 
-	else if(info.expr.size == 3 && info.types.data[0] == intern("AcBoundary") && info.types.data[1] == FIELD_STR && info.types.data[2] == INT_STR)
+	else if(!is_returning && info.expr.size == 3 && info.types.data[1] == FIELD_STR)
 	{
 		int_vec all_field_structs = get_all_field_structs();
-		gen_three_combinations_scalar_struct_scalar(dfunc_name,intern("AcBoundary"),all_field_structs,INT_STR,stream);
+		gen_three_combinations_scalar_struct_scalar(dfunc_name,info.types.data[0],all_field_structs,info.types.data[2],stream);
+		free_int_vec(&all_field_structs);
+		gen_array_elemental(dfunc_name,info.types,1,stream);
 		free_int_vec(&all_field_structs);
 	}
 	free_func_params_info(&info);
