@@ -139,10 +139,10 @@ message("project source dir ${PROJECT_SOURCE_DIR}")
 
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
-    add_library(acc-runtime STATIC acc_runtime.cu ${AC_BASE_PATH}/src/core/helpers/helpers.cc)
+    add_library(acc-runtime STATIC acc_runtime.cu)
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
     target_include_directories(acc-runtime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(acc-runtime acc-runtime-headers acc-runtime-driver)
+    target_link_libraries(acc-runtime astaroth_helpers acc-runtime-headers acc-runtime-driver)
 
     if (CPU_BUILD)
 	  set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE CXX)
