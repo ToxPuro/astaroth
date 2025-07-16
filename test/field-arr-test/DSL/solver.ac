@@ -22,7 +22,7 @@ Kernel test_arr()
 			real3(7.0,8.0,9.0)
 	]
 	vec_arr = vec_arr_base + DUST
-	//write(DUST,vec_arr)
+	write(DUST,vec_arr)
 }
 Kernel test2()
 {

@@ -36,7 +36,10 @@ pipelines:
           - $AC_HOME/acc-runtime/tests/syntaxtest.sh
           - cd $AC_HOME/test-builds && ac_build_tests
           - cd $AC_HOME/test-builds && ac_run_tests
-          # Test that all end-to-end tests compile fine
+          # Test that all end-to-end tests compile fine with CUDA
           - cd $AC_HOME/test && ac_build_tests
+          # Test that all end-to-end tests compile fine with CPU
+          - cd $AC_HOME/test && ac_build_tests --cpu
+          # Test that subset of end-to-end tests run fine on CPUs
           - cd $AC_HOME/test && ac_run_tests
 

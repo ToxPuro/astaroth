@@ -122,14 +122,18 @@ get_max_halo_size(const Field fields[], const size_t num_fields)
 	max_halo_size.y = max(max_halo_size.y,as_size_t(info[vtxbuf_halos[fields[field]]].y));
 	max_halo_size.z = max(max_halo_size.z,as_size_t(info[vtxbuf_halos[fields[field]]].z));
     }
-    if((max_halo_size.x == 0 && !info[AC_dimension_inactive].x) || (max_halo_size.y == 0 && !info[AC_dimension_inactive].y) || (max_halo_size.z == 0 && !info[AC_dimension_inactive].z))
+    if(STENCIL_ORDER != 0 && 
+	(
+		(max_halo_size.x == 0 && !info[AC_dimension_inactive].x) || (max_halo_size.y == 0 && !info[AC_dimension_inactive].y) || (max_halo_size.z == 0 && !info[AC_dimension_inactive].z)
+	)
+      )
     {
 	fprintf(stderr,"In fields: ");
     	for(size_t field = 0; field < num_fields; ++field) fprintf(stderr,"%s,",field_names[fields[field]]);
 	fprintf(stderr,"Halo size: %ld,%ld,%ld\n",max_halo_size.x,max_halo_size.y,max_halo_size.z);
-    	ERRCHK_ALWAYS(max_halo_size.x > 0);
-    	ERRCHK_ALWAYS(max_halo_size.y > 0);
-    	ERRCHK_ALWAYS(max_halo_size.z > 0);
+    	ERRCHK_ALWAYS(STENCIL_ORDER == 0 || max_halo_size.x > 0);
+    	ERRCHK_ALWAYS(STENCIL_ORDER == 0 || max_halo_size.y > 0);
+    	ERRCHK_ALWAYS(STENCIL_ORDER == 0 || max_halo_size.z > 0);
     }
     return max_halo_size;
 }

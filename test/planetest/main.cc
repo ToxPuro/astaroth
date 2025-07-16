@@ -225,7 +225,8 @@ main(void)
     acHostMeshApplyPeriodicBounds(&candidate);
 
     //TP: have to make a really imprecise test since periodic bcs cause drift from the actual analytical solution
-    //TP: one can generate plot of comparison of the analytical solution compared to the numerical one with plot.py
+    //TP: one can generate plot of comparison of the analytical solution compared to the numerical one with plot.py where one can see that
+    //    qualitatively we get the correct solution
     AcReal epsilon  = pow(10.0,-1.0);
     auto relative_diff = [](const auto a_val, const auto b_val)
     {
@@ -290,7 +291,7 @@ main(void)
     finalized = true;
 
     if (pid == 0)
-        fprintf(stderr, "MPITEST complete: %s\n",
+        fprintf(stderr, "PLANETEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     return retval == AC_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE;

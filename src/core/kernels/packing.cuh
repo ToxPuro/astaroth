@@ -468,7 +468,7 @@ acKernelShearUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
     [[maybe_unused]] const dim3 bpg{(unsigned int)ceil(dims.x / (double)tpb.x),
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z)};
-    GpuVtxBufHandles gpu_handles;
+    GpuVtxBufHandles gpu_handles{};
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
     KERNEL_LAUNCH(kernel_shear_partial_unpack_data,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), vba.on_device, gpu_handles,

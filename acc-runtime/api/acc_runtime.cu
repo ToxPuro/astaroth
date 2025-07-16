@@ -437,13 +437,10 @@ ac_get_field_halos(const Field& field)
 
 #define postprocess_reduce_result(DST,OP)
 #if AC_CPU_BUILD
-AcReal
-__ldg(AcReal* src)
-{
-	return *src;
-}
-int
-__ldg(int* src)
+
+template <typename T>
+T
+__ldg(const T* src)
 {
 	return *src;
 }

@@ -145,7 +145,7 @@ main(int argc, char* argv[])
     ac_MPI_Finalize();
     fflush(stdout);
 
-    return retval == AC_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE;
+    return !success;
 }
 
 #else
