@@ -45,7 +45,6 @@
  */
 
 #include "astaroth.h"
-#include "astaroth_utils.h"
 #include "astaroth_analysis_helpers.h"
 #include "task.h"
 #include "ac_helpers.h"

@@ -82,12 +82,11 @@ print_error_to_file(const char* label, const Error error, const char* path)
 
 /** Returns true if the error is acceptable, false otherwise. */
 bool
-acEvalError(const char* label, const Error error)
+acEvalErrorWithMaximumError(const char* label, const Error error, const long double max_ulp_error)
 {
     // Accept the error if the relative error is < max_ulp_error ulps.
     // Also consider the error zero if it is less than the minimum value in the mesh scaled to
     // machine epsilon
-    const long double max_ulp_error = 5;
 
     bool acceptable;
     if (error.ulp_error < max_ulp_error)
@@ -106,6 +105,17 @@ acEvalError(const char* label, const Error error)
     print_error_to_file(label, error, "verification.out");
 
     return acceptable;
+}
+constexpr long double default_max_ulp_error = 5;
+
+/** Returns true if the error is acceptable, false otherwise. */
+bool
+acEvalError(const char* label, const Error error)
+{
+    // Accept the error if the relative error is < max_ulp_error ulps.
+    // Also consider the error zero if it is less than the minimum value in the mesh scaled to
+    // machine epsilon
+    return acEvalErrorWithMaximumError(label,error,default_max_ulp_error);
 }
 
 static AcReal
@@ -222,7 +232,7 @@ get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo
 
 /** Returns true when successful, false if errors were found. */
 AcResult
-acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
+acVerifyMeshWithMaximumError(const char* label, const AcMesh model, const AcMesh candidate, const long double max_ulp_error)
 {
     printf("---Test: %s---\n", label);
     fflush(stdout);
@@ -232,7 +242,7 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         const Error error = get_max_abs_error(model.vertex_buffer[i], candidate.vertex_buffer[i],
                                               model.info, vtxbuf_is_communicated[i]);
-        const bool acceptable = acEvalError(vtxbuf_names[i], error);
+        const bool acceptable = acEvalErrorWithMaximumError(vtxbuf_names[i], error, max_ulp_error);
         if (!acceptable)
             ++errors_found;
     }
@@ -241,6 +251,11 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
         printf("Failure. Found %ld errors\n", errors_found);
 
     return errors_found ? AC_FAILURE : AC_SUCCESS;
+}
+AcResult
+acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
+{
+	return acVerifyMeshWithMaximumError(label,model,candidate,default_max_ulp_error);
 }
 
 static Error

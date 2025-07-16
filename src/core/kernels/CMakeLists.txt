@@ -10,7 +10,7 @@ if (USE_HIP)
 endif()
  
 if (CPU_BUILD)
-	set_source_files_properties(kernels.cu transpose.cu reductions.cu reindex.cu PROPERTIES LANGUAGE CXX)
+	set_source_files_properties(kernels.cu reductions.cu reindex.cu PROPERTIES LANGUAGE CXX)
 endif()
 
 
@@ -20,7 +20,11 @@ else()
 	add_library(kernels_obj OBJECT kernels.cu reductions.cu)
         target_link_libraries(kernels_obj PUBLIC acc-runtime-headers)
 	target_include_directories(kernels_obj PUBLIC ${CMAKE_SOURCE_DIR}/include ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/src/core/kernels)
-	add_library(ac_transpose OBJECT transpose.cu)
+	if(CPU_BUILD)
+		add_library(ac_transpose OBJECT transpose.cc)
+	else()
+		add_library(ac_transpose OBJECT transpose.cu)
+	endif()
 	target_include_directories(ac_transpose PRIVATE ${AC_BASE_PATH}/acc-runtime/api ${AC_BASE_PATH}/include)
 	target_link_libraries(ac_transpose PRIVATE ac_cuda_wrappers)
 	

@@ -34,7 +34,9 @@ pipelines:
           - cd acc-runtime/build
           - cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j && cd acc
           - $AC_HOME/acc-runtime/tests/syntaxtest.sh
-          - cd $AC_HOME/test-builds && ./build.sh
+          - cd $AC_HOME/test-builds && ac_build_tests
+          - cd $AC_HOME/test-builds && ac_run_tests
           # Test that all end-to-end tests compile fine
-          - cd $AC_HOME/test && ./build.sh
+          - cd $AC_HOME/test && ac_build_tests
+          - cd $AC_HOME/test && ac_run_tests
 

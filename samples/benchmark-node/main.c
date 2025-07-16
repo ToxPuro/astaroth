@@ -4,6 +4,7 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include <math.h>
+#include "astaroth_cuda_wrappers.h"
 #include "errchk.h"
 
 #include "timer_hires.h"
@@ -40,7 +41,7 @@ sort(const size_t count, double* arr)
 int
 main(int argc, char** argv)
 {
-    cudaProfilerStop();
+    acProfilerStop();
 
     printf("Num fields %lu\n", acGetNumFields());
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -205,9 +206,9 @@ main(int argc, char** argv)
     fclose(fp);
 
     // Profile
-    cudaProfilerStart();
+    acProfilerStart();
     acNodeIntegrateSubstep(node, STREAM_DEFAULT, 2, n_min, n_max, dt);
-    cudaProfilerStop();
+    acProfilerStop();
 
     // Destroy
     acNodeDestroy(node);

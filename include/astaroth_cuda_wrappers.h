@@ -1,5 +1,9 @@
 #pragma once
 #include "device_headers.h"
+#ifdef __cplusplus
+extern "C" 
+{
+#endif
 cudaError_t
 acStreamSynchronize(cudaStream_t stream);
 cudaError_t
@@ -11,15 +15,9 @@ acGetDeviceCount(int* dst);
 cudaError_t
 acDeviceSetSharedMemConfig(const cudaSharedMemConfig config);
 cudaError_t
-acStreamCreateWithPriority(cudaStream_t* dst, int option, int priority);
-cudaError_t
 acStreamDestroy(cudaStream_t stream);
 cudaError_t
-acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind);
-cudaError_t
 acMemcpy(void* dst, const void* src, const size_t bytes, cudaMemcpyKind kind);
-cudaError_t
-acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream);
 cudaError_t
 acMemcpyAsync(void* dst, const void* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream);
 cudaError_t
@@ -76,3 +74,16 @@ cudaError_t
 acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream);
 cudaError_t
 acPeekAtLastError();
+cudaError_t
+acProfilerStart();
+cudaError_t
+acProfilerStop();
+#ifdef __cplusplus
+}
+cudaError_t
+acMemcpy(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind);
+cudaError_t
+acMemcpyAsync(AcReal* dst, const AcReal* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream);
+cudaError_t
+acStreamCreateWithPriority(cudaStream_t* dst, int option, int priority);
+#endif

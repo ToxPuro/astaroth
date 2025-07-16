@@ -5,6 +5,7 @@
 #include <limits>
 #include <stdlib.h>
 #include "host_datatypes.h"
+#include "astaroth_cuda_wrappers.h"
 
 cudaError_t
 acStreamSynchronize(cudaStream_t){return cudaSuccess;}
@@ -181,7 +182,8 @@ acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offs
 }
 
 cudaError_t 
-acPeekAtLastError()
-{
-	return cudaSuccess;
-}
+acPeekAtLastError(){ return cudaSuccess;}
+cudaError_t
+acProfilerStart(){ return cudaSuccess;}
+cudaError_t
+acProfilerStop(){ return cudaSuccess;}

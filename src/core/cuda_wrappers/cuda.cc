@@ -13,6 +13,7 @@
 #endif
 
 #include "acreal.h"
+#include "astaroth_cuda_wrappers.h"
 
 cudaError_t
 acStreamSynchronize(cudaStream_t stream)
@@ -208,4 +209,14 @@ cudaError_t
 acPeekAtLastError()
 {
 	return cudaPeekAtLastError();
+}
+cudaError_t
+acProfilerStart()
+{
+	return cudaProfilerStart();
+}
+cudaError_t
+acProfilerStop()
+{
+	return cudaProfilerStop();
 }

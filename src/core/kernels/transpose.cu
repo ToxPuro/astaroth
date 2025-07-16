@@ -2,55 +2,18 @@
 #include "device_headers.h"
 #include "device_details.h"
 #include "ac_helpers.h"
-
-extern "C"
-{
 #include "transpose.h"
-}
 
 #include "astaroth_cuda_wrappers.h"
 #include "errchk.h"
 #include "math_utils_base.h"
 
 
-#if AC_CPU_BUILD
-#define KERNEL_PREFIX \
-	for(int threadIdx_x = 0; threadIdx_x < (int)end.x-(int)start.x; ++threadIdx_x) \
-	{ \
-		for(int threadIdx_y = 0; threadIdx_y < (int)end.y-(int)start.y; ++threadIdx_y) \
-		{ \
-			for(int threadIdx_z = 0; threadIdx_z < (int)end.z-(int)start.z; ++threadIdx_z) \
-			{ \
-				const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z}; 
-#define KERNEL_DIMS_PREFIX \
-	for(int threadIdx_x = 0; threadIdx_x < dims.x; ++threadIdx_x) \
-	{ \
-		for(int threadIdx_y = 0; threadIdx_y < dims.y; ++threadIdx_y) \
-		{ \
-			for(int threadIdx_z = 0; threadIdx_z < dims.z; ++threadIdx_z) \
-			{ \
-				const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z}; 
-
-
-#define KERNEL_POSTFIX \
-			} \
-		} \
-	} \
-
-#define TILE_DIM ((int)max(dims))
-#else
-
-#define KERNEL_PREFIX
-#define KERNEL_DIMS_PREFIX
-#define KERNEL_POSTFIX
 #define TILE_DIM (32)
-
-#endif //AC_CPU_BUILD
 
 void  __global__
 transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
-	KERNEL_PREFIX
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
 	{
@@ -80,14 +43,12 @@ transpose_xyz_to_zyx(const AcReal* src, AcReal* dst, const Volume dims, const Vo
 	__syncthreads();
 	if(!out_oob)
 		dst[out_vertexIdx.x +dims.z*out_vertexIdx.y + dims.z*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.z];
-	KERNEL_POSTFIX
 }
 
 
 void __global__ 
 transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
-	KERNEL_PREFIX
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
 	{
@@ -117,13 +78,11 @@ transpose_xyz_to_zxy(const AcReal* src, AcReal* dst, const Volume dims, const Vo
 	__syncthreads();
 	if(!out_oob)
 		dst[out_vertexIdx.x +dims.z*out_vertexIdx.z + dims.z*dims.x*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.z];
-	KERNEL_POSTFIX
 }
 
 void __global__ 
 transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
-	KERNEL_PREFIX
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
 	{
@@ -153,13 +112,11 @@ transpose_xyz_to_yxz(const AcReal* src, AcReal* dst, const Volume dims, const Vo
 	__syncthreads();
 	if(!out_oob)
 		dst[out_vertexIdx.x +dims.y*out_vertexIdx.y + dims.x*dims.y*out_vertexIdx.z] = tile[threadIdx.x][threadIdx.y];
-	KERNEL_POSTFIX
 }
 
 void __global__ 
 transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
-	KERNEL_PREFIX
 	__shared__ AcReal tile[TILE_DIM][TILE_DIM];
 	const dim3 block_offset =
 	{
@@ -189,13 +146,11 @@ transpose_xyz_to_yzx(const AcReal* src, AcReal* dst, const Volume dims, const Vo
 	__syncthreads();
 	if(!out_oob)
 		dst[out_vertexIdx.x +dims.y*out_vertexIdx.z + dims.y*dims.z*out_vertexIdx.y] = tile[threadIdx.x][threadIdx.y];
-	KERNEL_POSTFIX
 }
 
 void __global__ 
 transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const Volume dims, const Volume start, const Volume end)
 {
-	KERNEL_PREFIX
 	const dim3 in_block_offset =
 	{
 		blockIdx.x*blockDim.x,
@@ -214,7 +169,6 @@ transpose_xyz_to_xzy(const AcReal* src, AcReal* dst, const Volume dims, const Vo
 	if(oob) return;
 	dst[vertexIdx.x + dims.x*vertexIdx.z + dims.x*dims.z*vertexIdx.y] 
 		= src[vertexIdx.x + dims.x*(vertexIdx.y + dims.y*vertexIdx.z)];
-	KERNEL_POSTFIX
 }
 
 static AcResult

@@ -240,10 +240,10 @@ main(void)
     finalized = true;
 
     if (pid == 0)
-        fprintf(stderr, "2D-TEST complete: %s\n",
+        fprintf(stderr, "1D-TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
-    return EXIT_SUCCESS;
+    return retval == AC_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 #else

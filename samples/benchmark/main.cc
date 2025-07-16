@@ -22,6 +22,7 @@
 // #include "acc_runtime.h"
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "astaroth_cuda_wrappers.h"
 
 #include "../../stdlib/reduction.h"
 
@@ -105,7 +106,7 @@ main(int argc, char** argv)
 {
     int verify = 0;
     MPI_Init(NULL, NULL);
-    cudaProfilerStop();
+    acProfilerStop();
 
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -325,11 +326,11 @@ main(int argc, char** argv)
     acDevicePeriodicBoundconds(acGridGetDevice(), STREAM_DEFAULT, dims.m0, dims.m1);
     timer_event_stop("acGridPeriodicBoundconds: ");
 
-    cudaProfilerStart();
+    acProfilerStart();
     timer_event_launch();
     acGridIntegrate(STREAM_DEFAULT, dt);
     timer_event_stop("acGridIntegrate: ");
-    cudaProfilerStop();
+    acProfilerStop();
 
     timer_event_launch();
     AcReal candval;

@@ -137,14 +137,23 @@ check_for_cmake()
    	exit(EXIT_FAILURE);
    }
 }
+const char*
+get_cmake_options(const char* user_cmake_options)
+{
+	static char options[10000];
+  	sprintf(options,"-DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DOPENMP_ENABLED=OFF -DCPU_BUILD=%s -DDSL_MODULE_DIR=%s -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s",
+		AC_CPU_BUILD ? "ON" : "OFF",DSL_MODULE_DIR,acc_compiler_path().c_str(), user_cmake_options
+	 );
+	return options;
+}
 
 void
-run_cmake(const char* compilation_string, const char* log_dst)
+run_cmake(const char* user_cmake_options, const char* log_dst)
 {
   
   char cmd[2*10000];
-  sprintf(cmd,"cd %s && cmake -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DOPENMP_ENABLED=OFF -DDSL_MODULE_DIR=%s -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s ",
-         runtime_astaroth_build_path().c_str(), DSL_MODULE_DIR, acc_compiler_path().c_str(), compilation_string);
+  const char* options = get_cmake_options(user_cmake_options);
+  sprintf(cmd,"cd %s && cmake %s ",runtime_astaroth_build_path().c_str(),options);
 #if AC_USE_HIP
 #else
   strcat(cmd,"-DCMAKE_CUDA_FLAGS=-objtemp ");
@@ -165,7 +174,7 @@ run_cmake(const char* compilation_string, const char* log_dst)
   	fflush(stderr);
   	exit(EXIT_FAILURE);
   }
-  sprintf(cmd,"echo %s > %s", compilation_string, previous_cmake_options_path().c_str());
+  sprintf(cmd,"echo %s > %s", get_cmake_options(user_cmake_options), previous_cmake_options_path().c_str());
   const int echo_retval = system(cmd);
   if(echo_retval)
   {
@@ -178,7 +187,7 @@ run_cmake(const char* compilation_string, const char* log_dst)
 
 }
 void
-acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_info)
+acCompile(const char* user_cmake_options, const char* target, AcMeshInfo mesh_info)
 {
 	if(mesh_info.runtime_compilation_build_path) dynamic_binary_path = mesh_info.runtime_compilation_build_path;
 	if(mesh_info.runtime_compilation_base_path)  dynamic_base_path  = mesh_info.runtime_compilation_base_path;
@@ -220,7 +229,7 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 					? system(cmd) : true;
 		system("rm tmp_astaroth_run_consts.h");
 		const bool stored_cmake = file_exists(previous_cmake_options_path().c_str());
-		sprintf(cmd,"echo %s | diff - %s",compilation_string,previous_cmake_options_path().c_str());
+		sprintf(cmd,"echo %s | diff - %s",get_cmake_options(user_cmake_options),previous_cmake_options_path().c_str());
 		const bool different_cmake_string =  stored_cmake ? system(cmd) : true;
 		const bool compile = !previous_build_exists || loaded_different || different_cmake_string;
 		char logging_to_message[100000];
@@ -260,7 +269,7 @@ acCompile(const char* compilation_string, const char* target, AcMeshInfo mesh_in
 				exit(EXIT_FAILURE);
 			}
 			acLoadRunConstsBase(ac_overrides_path().c_str(),mesh_info);
-			run_cmake(compilation_string,log_dst);
+			run_cmake(user_cmake_options,log_dst);
 		}
 		else
 		{

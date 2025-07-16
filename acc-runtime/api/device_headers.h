@@ -5,7 +5,8 @@
 #if AC_CPU_BUILD
 
 #include <limits.h>
-#include <cstdint>
+#include <stdint.h>
+
 typedef int cudaStream_t;
 typedef int cudaError_t;
 typedef int cudaSharedMemConfig;

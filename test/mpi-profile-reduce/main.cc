@@ -429,7 +429,7 @@ main(int argc, char* argv[])
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
     }
 
-    return EXIT_SUCCESS;
+    return retval == AC_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 #else

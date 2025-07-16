@@ -86,8 +86,10 @@ FUNC_DEFINE(AcReal, acHostReduceVec,(const AcMesh mesh, const AcReduction reduct
 FUNC_DEFINE(AcReal, acHostReduceVecScal,(const AcMesh mesh, const AcReduction reduction, const VertexBufferHandle a, const VertexBufferHandle b, const VertexBufferHandle c, const VertexBufferHandle d));
 
 FUNC_DEFINE(bool, acEvalError,(const char* label, const Error error));
+FUNC_DEFINE(bool, acEvalErrorWithMaximumError,(const char* label, const Error error, const long double max_ulp_error));
 
 FUNC_DEFINE(AcResult, acVerifyMesh,(const char* label, const AcMesh model, const AcMesh candidate));
+FUNC_DEFINE(AcResult, acVerifyMeshWithMaximumError,(const char* label, const AcMesh model, const AcMesh candidate, const long double max_ulp_error));
 //AcResult (*acVerifyMesh)(const char*, const AcMesh, const AcMesh);
 
 FUNC_DEFINE(AcResult, acMeshDiffWriteSliceZ,(const char* path, const AcMesh model, const AcMesh candidate, const size_t z));
@@ -135,7 +137,9 @@ static AcLibHandle __attribute__((unused)) acLoadUtils(FILE* stream, const AcMes
 	LOAD_DSYM(acHostReduceVec,stream);
 	LOAD_DSYM(acHostReduceVecScal,stream);
 	LOAD_DSYM(acEvalError,stream);
+	LOAD_DSYM(acEvalErrorWithMaximumError,stream);
 	LOAD_DSYM(acVerifyMesh,stream);
+	LOAD_DSYM(acVerifyMeshWithMaximumError,stream);
 	LOAD_DSYM(acMeshDiffWriteSliceZ,stream);
 	LOAD_DSYM(acMeshDiffWrite,stream);
 	LOAD_DSYM(acHostMeshWriteToFile,stream);

@@ -2,6 +2,7 @@
 
 #include "task.h"
 #include "astaroth_analysis_helpers.h"
+#include "astaroth_grid.h"
 
 #include <algorithm>
 #include <cstring> //memcpy

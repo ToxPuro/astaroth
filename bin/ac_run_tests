@@ -1,0 +1,67 @@
+#!/bin/bash 
+TEST_DIR=$PWD
+parallel=0
+cpu_build=OFF
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --parallel)
+            parallel=1
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+build_project() {
+    local dir="$1"
+    local log="$dir/run_log.txt"
+    rm -f $log
+    touch $log
+    cd "$dir" || return 1
+    rm -f FAIL
+    test_name=$(basename "${dir}")
+    
+    # Run test script if it exists and is executable
+    if [ -x "run.sh" ]; then
+        echo "Running $test_name"
+        ./run.sh &>> $log
+        exit_code=$?
+
+        if [ $exit_code -ne 0 ]; then
+            echo "[ERROR] Test failed for $test_name with exit code $exit_code"
+            cat $log
+            echo "" > $log
+	    touch FAIL
+        else
+            echo "[SUCCESS] Test succeeded for $test_name"
+        fi
+    else
+        echo "[WARNING] No run.sh found for $test_name"
+    fi
+
+    cd - >/dev/null  # Return to previous directory silently
+}
+
+export -f build_project
+for dir in "$TEST_DIR"/*/; do
+    #TP: Multithreading suppressed for bitbucket pipelines since it runs out of memory
+    if [ $parallel == 1 ]; then
+    	build_project "$dir" &
+    else
+    	build_project "$dir"
+    fi
+done
+
+wait
+
+if [ ! -f $TEST_DIR/*/FAIL ]; then
+    echo "[SUCCESS] All tests completed successfully!"
+    exit 0  # Success
+else
+    echo "[ERROR] Some tests failed. Check run_log.txt for details."
+    exit 1  # Failure
+fi
+

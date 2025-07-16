@@ -87,6 +87,11 @@ else()
 	add_definitions(-DPROFILING_ENABLED=0)
 endif()
 
+if(DEFINED ENV{AC_CPU_BUILD})
+    set(CPU_BUILD $ENV{AC_CPU_BUILD})
+    message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
+endif()
+
 if(CPU_BUILD)
 	add_definitions(-DAC_CPU_BUILD=1)
 else()
@@ -254,7 +259,9 @@ if (BUILD_SAMPLES AND NOT BUILD_TESTS)
     add_subdirectory(samples/mpi-io)
     add_subdirectory(samples/mpi-io-multithreaded)
     add_subdirectory(samples/pc-varfile-import)
-    add_subdirectory(samples/microbenchmark)
+    if (NOT CPU_BUILD)
+    	add_subdirectory(samples/microbenchmark)
+    endif()
     #add_subdirectory(samples/stress)
 
     

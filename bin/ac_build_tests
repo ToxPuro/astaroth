@@ -1,11 +1,15 @@
-#!/bin/bash
-
-TEST_DIR="$AC_HOME/test"
+#!/bin/bash 
+TEST_DIR=$PWD
 parallel=0
+cpu_build=OFF
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --parallel)
             parallel=1
+            shift
+            ;;
+        --cpu)
+            cpu_build=ON
             shift
             ;;
         *)
@@ -14,6 +18,7 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+export AC_CPU_BUILD=$cpu_build
 
 build_project() {
     local dir="$1"

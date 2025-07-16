@@ -47,7 +47,6 @@ main(int argc, char* argv[])
 {
 
 
-    const size_t NUM_INTEGRATION_STEPS = argc >  4 ? (size_t)atoi(argv[4]) : 100;
     MPI_Init(NULL,NULL);
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -64,6 +63,8 @@ main(int argc, char* argv[])
     const size_t nx = argc >  1 ? (size_t)atoi(argv[1]) : 2*9;
     const size_t ny = argc >  2 ? (size_t)atoi(argv[2]) : 2*11;
     const size_t nz = argc >  3 ? (size_t)atoi(argv[3]) : 4*7;
+    const size_t NUM_INTEGRATION_STEPS = argc >  4 ? (size_t)atoi(argv[4]) : 100;
+    const long double max_ulp_error    = argc >  5 ? (long double)atoi(argv[5]) : 5;
     const int3 decomp = acDecompose(nprocs,info);
 
     acSetGridMeshDims(nx, ny, nz, &info);
@@ -241,7 +242,7 @@ main(int argc, char* argv[])
             acHostIntegrateStep(model, dt);
 
         acHostMeshApplyPeriodicBounds(&model);
-        const AcResult res = acVerifyMesh("Integration", model, candidate);
+        const AcResult res = acVerifyMeshWithMaximumError("Integration", model, candidate,max_ulp_error);
         if (res != AC_SUCCESS) {
             retval = res;
             WARNCHK_ALWAYS(retval);
@@ -274,7 +275,7 @@ main(int argc, char* argv[])
             acHostIntegrateStep(model, dt);
 
         acHostMeshApplyPeriodicBounds(&model);
-        const AcResult res = acVerifyMesh("DSL ComputeSteps", model, candidate);
+        const AcResult res = acVerifyMeshWithMaximumError("DSL ComputeSteps", model, candidate,max_ulp_error);
         if (res != AC_SUCCESS) {
             retval = res;
             WARNCHK_ALWAYS(retval);
@@ -308,7 +309,7 @@ main(int argc, char* argv[])
             error.maximum_magnitude = acHostReduceScal(model, RTYPE_MAX, v0);
             error.minimum_magnitude = acHostReduceScal(model, RTYPE_MIN, v0);
 
-            if (!acEvalError(reduction.name, error)) {
+            if (!acEvalErrorWithMaximumError(reduction.name, error, max_ulp_error)) {
                 fprintf(stderr, "Scalar %s: cand %g model %g\n", reduction.name, (double)candval, (double)modelval);
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
@@ -340,7 +341,7 @@ main(int argc, char* argv[])
             error.maximum_magnitude = acHostReduceVec(model, RTYPE_MAX, v0, v1, v2);
             error.minimum_magnitude = acHostReduceVec(model, RTYPE_MIN, v0, v1, v1);
 
-            if (!acEvalError(reduction.name, error)) {
+            if (!acEvalErrorWithMaximumError(reduction.name, error, max_ulp_error)) {
                 fprintf(stderr, "Vector %s: cand %g model %g\n", reduction.name, (double)candval, (double)modelval);
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
@@ -371,7 +372,7 @@ main(int argc, char* argv[])
             error.maximum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MAX, v0, v1, v2, v3);
             error.minimum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MIN, v0, v1, v1, v3);
 
-            if (!acEvalError(reduction.name, error)) {
+            if (!acEvalErrorWithMaximumError(reduction.name, error,max_ulp_error)) {
                 fprintf(stderr, "Alfven %s: cand %g model %g\n", reduction.name, (double)candval, (double)modelval);
                 retval = AC_FAILURE;
                 WARNCHK_ALWAYS(retval);
