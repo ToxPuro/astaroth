@@ -210,6 +210,7 @@ acPeekAtLastError()
 {
 	return cudaPeekAtLastError();
 }
+#if PROFILING_ENABLED
 cudaError_t
 acProfilerStart()
 {
@@ -220,3 +221,4 @@ acProfilerStop()
 {
 	return cudaProfilerStop();
 }
+#endif

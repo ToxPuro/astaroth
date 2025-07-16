@@ -78,9 +78,13 @@ acDeviceGetPCIBusId(char* pciBusId, int len, int device);
 cudaError_t
 acPeekAtLastError();
 cudaError_t
+
+#if PROFILING_ENABLED
 acProfilerStart();
 cudaError_t
 acProfilerStop();
+#endif
+
 #ifdef __cplusplus
 }
 cudaError_t
