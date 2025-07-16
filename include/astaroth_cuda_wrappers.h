@@ -12,7 +12,7 @@ cudaError_t
 acSetDevice(const int id);
 cudaError_t
 acGetDeviceCount(int* dst);
-#ifdef __cplus
+#ifdef __cplusplus
 cudaError_t
 acDeviceSetSharedMemConfig(const cudaSharedMemConfig config);
 #endif
