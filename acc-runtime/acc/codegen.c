@@ -9777,7 +9777,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   traverse(root, 0, NULL);
   gen_calling_info(root);
 }
-/**
+
 void
 gen_kfunc_info(const ASTNode* root)
 {
@@ -9786,7 +9786,6 @@ gen_kfunc_info(const ASTNode* root)
   get_nodes(root,&kfunc_nodes,&kfunc_names,NODE_KFUNCTION);
   gen_calling_info(root);
 }
-**/
 
 
 void

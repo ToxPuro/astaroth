@@ -491,12 +491,16 @@ gen_kernel_block_loops(const int curr_kernel)
 	printf("[[maybe_unused]] const int last_block_idx_z = (vba.block_factor.z < calculated_end_z ? vba.block_factor.z : calculated_end_z) -1;");
 
   	printf("for(int current_block_idx_x = 0; current_block_idx_x < vba.block_factor.x; ++current_block_idx_x) {");
-	for(int i = 0; i < NUM_PROFILES; ++i)
+        if(reduce_sum_real_x_called[curr_kernel])
 	{
-		if(!reduced_profiles[curr_kernel][i]) continue;
-		if(prof_types[i] == PROFILE_X)
-			printf("AcReal %s_reduce_output = 0.0;",profile_names[i]);
+		for(int i = 0; i < NUM_PROFILES; ++i)
+		{
+			if(!reduced_profiles[curr_kernel][i]) continue;
+			if(prof_types[i] == PROFILE_X)
+				printf("AcReal %s_reduce_output = 0.0;",profile_names[i]);
+		}
 	}
+
 	for(int i = 0; i < NUM_PROFILES; ++i)
 	{
 		if(!reduced_profiles[curr_kernel][i]) continue;
