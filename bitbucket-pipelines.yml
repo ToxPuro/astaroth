@@ -35,6 +35,11 @@ pipelines:
           - cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j && cd acc
           - $AC_HOME/acc-runtime/tests/syntaxtest.sh
           - cd $AC_HOME/test-builds && ac_build_tests
+          # By default MPI is not supposed to be run as root since it can cause catastrophic damage to the OS file system
+          # and leave the system in an unusable state. However since we are inside a Docker container we are anyways sandboxed
+          # and can disregard the warning
+          - export OMPI_ALLOW_RUN_AS_ROOT=1
+          - export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           - cd $AC_HOME/test-builds && ac_run_tests
           # Test that all end-to-end tests compile fine with CUDA
           - cd $AC_HOME/test && ac_build_tests
