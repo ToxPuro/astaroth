@@ -48,12 +48,12 @@ build_project() {
 export -f build_project
 for dir in "$TEST_DIR"/*/; do
     #TP: Multithreading suppressed for bitbucket pipelines since it runs out of memory
+    rm -rf "$dir/build"
     if [ $parallel == 1 ]; then
     	build_project "$dir" &
     else
     	build_project "$dir"
     fi
-    rm -rf "$dir/build"
 done
 
 wait
