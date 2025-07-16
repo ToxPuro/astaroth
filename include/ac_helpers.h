@@ -45,8 +45,10 @@ int acMemUsage();
 size_t
 acGetAmountOfDeviceMemoryFree();
 
+#ifdef __cplusplus
 cudaDeviceProp
 get_device_prop();
+#endif
 
 size_t
 acDeviceResize(void** dst,const size_t old_bytes,const size_t new_bytes);
