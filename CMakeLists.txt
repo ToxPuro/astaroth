@@ -87,9 +87,13 @@ else()
 	add_definitions(-DPROFILING_ENABLED=0)
 endif()
 
-if(DEFINED ENV{AC_CPU_BUILD})
-    set(CPU_BUILD $ENV{AC_CPU_BUILD})
-    message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
+#TP: If CPU_BUILD is explicitly asked for it takes presedence over env variable.
+#    The command line argument should anyways always takes presedence but the CMake code
+#    for it seems unnecessary ugly/verbose so implemented the more important case for now
+    
+if (NOT CPU_BUILD AND DEFINED ENV{AC_CPU_BUILD})
+	set(CPU_BUILD $ENV{AC_CPU_BUILD})
+	message("Set CPU_BUILD=${CPU_BUILD} from ENV value")
 endif()
 
 if(CPU_BUILD)
