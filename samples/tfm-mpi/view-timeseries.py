@@ -92,7 +92,7 @@ curr_row = i // cols
 df0 = df[df['label'] == 'uu'].sort_values(by='step')
 df0[diagnostic] = df0['max'] / cs0
 axs[curr_row, curr_col].plot(df0['step'], df0[diagnostic], label=diagnostic)
-axs[curr_row, curr_col].axhline(0.5, linestyle='--', label='0.2')
+axs[curr_row, curr_col].axhline(0.2, linestyle='--', label='0.2')
 axs[curr_row, curr_col].set_title(f"mach no. if cs0 = {cs0}")
 axs[curr_row, curr_col].legend()
 
