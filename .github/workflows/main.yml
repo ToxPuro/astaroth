@@ -1,0 +1,52 @@
+name: CI with CUDA
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: nvidia/cuda:12.9.0-devel-ubuntu24.04
+
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set timezone
+        run: ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
+
+      - name: Install dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
+          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
+          apt-add-repository 'deb https://apt.kitware.com/ubuntu/ noble main'
+          apt-get update
+          apt-get install -y cmake flex bison openmpi-bin libopenmpi-dev gfortran
+
+      - name: Build and test
+        run: |
+          . ./sourceme.sh
+          mkdir -p acc-runtime/build
+          cd acc-runtime/build
+          cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j
+          cd acc
+          $AC_HOME/acc-runtime/tests/syntaxtest.sh
+
+          cd $AC_HOME/test-builds && ac_build_tests
+
+          export OMPI_ALLOW_RUN_AS_ROOT=1
+          export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+          cd $AC_HOME/test-builds && ac_run_tests
+
+          cd $AC_HOME/test && ac_build_tests
+          cd $AC_HOME/test && ac_build_tests --cpu
+          cd $AC_HOME/test && ac_run_tests
+
