@@ -1,3 +1,7 @@
+#ifdef AC_HOME
+#include "$AC_HOME/acc-runtime/stdlib/general_grid/vars.h"
+#endif
+
 grid_position() {
 	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
 	{

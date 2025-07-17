@@ -1,4 +1,6 @@
+#ifndef AC_GENERAL_GRID_VARS_H
 
+#define AC_GENERAL_GRID_VARS_H
 run_const real3 AC_origin =  0.5*AC_len
 run_const real3 AC_center
 
@@ -19,3 +21,5 @@ gmem real AC_cos_phi[AC_mlocal.z]
 gmem real AC_mapping_func_derivative_x[AC_mlocal.x]
 gmem real AC_mapping_func_derivative_y[AC_mlocal.y]
 gmem real AC_mapping_func_derivative_z[AC_mlocal.z]
+
+#endif
