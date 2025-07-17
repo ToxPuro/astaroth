@@ -372,6 +372,10 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	  const bool log = !(gen_extra_dfuncs || gen_bc_kernels);
           FILE* out = fopen(stage1, "w");
           assert(out);
+    	  const char* AC_HOME_PATH = getenv("AC_HOME");
+    	  if (AC_HOME_PATH != NULL) {
+	  	fprintf(out,"#define AC_HOME %s\n",AC_HOME_PATH);
+    	  }
 	  fprintf(out,"#define AC_LAGRANGIAN_GRID %d\n",AC_LAGRANGIAN_GRID);
 	  fprintf(out,"#define TWO_D %d\n",TWO_D);
 	  fprintf(out,"#define AC_DOUBLE_PRECISION %d\n",AC_DOUBLE_PRECISION);
@@ -417,9 +421,20 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         if (!yyin)
             return EXIT_FAILURE;
 
+	
+	//TP: I lex the code now twice as a very hacky way to enable out of order struct definitions.
+	//    A better way would to take away the the struct logic out of the lexer and to a separate pass,
+	//    but this works for now.
+
+        while (yylex() != 0) {
+	}
+	rewind(yyin);
+
         int error = yyparse();
-        if (error)
-            return EXIT_FAILURE;
+        if (error) {
+		fprintf(stderr,"Parsing failed!\n");
+		return EXIT_FAILURE;
+	}
 
         fclose(yyin);
 	if(gen_extra_dfuncs)
@@ -792,7 +807,6 @@ steps_definition: computesteps steps_definition_call '{' function_call_list '}' 
 struct_definition:     struct_name'{' declarations '}' {
                         $$ = astnode_create(NODE_STRUCT_DEF,$1,$3);
 			char* tmp = strdup($$->lhs->buffer);
-			remove_substring(tmp,"struct");
 			strip_whitespace(tmp);
 			astnode_set_buffer(tmp,$$->lhs);
 			free(tmp);
@@ -801,7 +815,6 @@ struct_definition:     struct_name'{' declarations '}' {
 enum_definition: enum_name '{' declaration_list_trailing_allowed '}'{
                         $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
 			char* tmp = strdup($1->buffer);
-		        remove_substring(tmp,"enum");
 		        strip_whitespace(tmp);
 			astnode_set_buffer(tmp,$1);
 			free(tmp);
@@ -809,7 +822,6 @@ enum_definition: enum_name '{' declaration_list_trailing_allowed '}'{
 		| enum_name '{' assignment_list '}' {
                         $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
 			char* tmp = strdup($1->buffer);
-		        remove_substring(tmp,"enum");
 		        strip_whitespace(tmp);
 			astnode_set_buffer(tmp,$1);
 			free(tmp);
