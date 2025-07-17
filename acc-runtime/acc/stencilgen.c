@@ -392,11 +392,65 @@ gen_kernel_block_loops(const int curr_kernel)
 	 );
   if (AC_CPU_BUILD)
   {
-	  printf("for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
-		 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
-		 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
-		 "[[maybe_unused]] const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z};"
-		);
+	  if(is_raytracing_kernel(curr_kernel))
+	  {
+		if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,-1}))
+		{
+		  printf(
+			 "for(int threadIdx_z = end.z-start.z-1; threadIdx_z >= 0; --threadIdx_z){"
+		         "for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+			);
+		}
+		else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,0,+1}))
+		{
+		  printf(
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+		         "for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+			);
+		}
+		else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,-1,0}))
+		{
+		  printf(
+			 "for(int threadIdx_y = end.y-start.y-1; threadIdx_y >= 0; --threadIdx_y){"
+		         "for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+			);
+		}
+		else if(kernel_accesses_ray_direction(curr_kernel,(int3){0,+1,0}))
+		{
+		  printf(
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+		         "for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+			);
+		}
+		else if(kernel_accesses_ray_direction(curr_kernel,(int3){-1,0,0}))
+		{
+		  printf(
+		         "for(int threadIdx_x = end.x-start.x-1; threadIdx_x >= 0; --threadIdx_x){"
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+			);
+		}
+		else if(kernel_accesses_ray_direction(curr_kernel,(int3){+1,0,0}))
+		{
+		  printf(
+		         "for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+			);
+		}
+	  }
+	  else
+	  {
+		  printf("for(int threadIdx_x = 0; threadIdx_x < end.x-start.x; ++threadIdx_x){"
+			 "for(int threadIdx_y = 0; threadIdx_y < end.y-start.y; ++threadIdx_y){"
+			 "for(int threadIdx_z = 0; threadIdx_z < end.z-start.z; ++threadIdx_z){"
+			);
+	  }
+	  printf("[[maybe_unused]] const int3 threadIdx = (int3){threadIdx_x,threadIdx_y,threadIdx_z};");
   	  printf("const dim3 current_block_idx = blockIdx;");
 	  return;
   }
@@ -1289,7 +1343,7 @@ gen_kernel_write_funcs(const int curr_kernel)
 		{
   	      		const int field = get_original_index(field_remappings,original_field);
 			printf("case %s: {",field_names[field]);
-			if(is_x_raytrace_kernel(curr_kernel))
+			if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD)
 			{
 				printf("shared_mem_for_rays[(threadIdx.y) + shared_mem_z_stride*(threadIdx.z) + f%s_ray_index + shared_mem_x_stride + shared_mem_x_offset] = value;",field_names[original_field]);
 			}
@@ -1573,6 +1627,7 @@ populate_shared_mem_for_x_rays(const int curr_kernel)
 void
 populate_shared_mem_for_rays(const int curr_kernel)
 {
+	if(AC_CPU_BUILD) return;
 	if(is_x_raytrace_kernel(curr_kernel))
 	{
 		populate_shared_mem_for_x_rays(curr_kernel);
@@ -1586,7 +1641,7 @@ populate_shared_mem_for_rays(const int curr_kernel)
 void
 gen_kernel_prefix(const int curr_kernel)
 {
-  gen_raytracing_prefix(curr_kernel);
+  if(!AC_CPU_BUILD) gen_raytracing_prefix(curr_kernel);
   gen_kernel_block_loops(curr_kernel);
   gen_kernel_common_prefix();
   gen_profile_funcs(curr_kernel);
@@ -2310,11 +2365,11 @@ printf_stencil_read(const int curr_kernel, const int original_field, const int w
 		fprintf(stderr,"Cannot not use stencils together with raytracing!!\n");
 	}
    }
-   if(is_x_raytrace_kernel(curr_kernel))
+   if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD)
    {
 	printf("shared_mem_for_rays[threadIdx.y + shared_mem_z_stride*(threadIdx.z) + f%s_ray_index + shared_mem_x_offset + shared_mem_x_stride]",field_names[original_field]);
    }
-   else if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS)
+   else if(accesses_z_ray(curr_kernel) && SHARED_MEM_Z_RAYS && !AC_CPU_BUILD)
    {
 	printf("shared_mem_for_rays[threadIdx.x + blockDim.x*(threadIdx.y) + f%s_ray_index + shared_mem_z_offset + shared_mem_z_stride]",field_names[original_field]);
    }
@@ -2448,7 +2503,7 @@ gen_kernel_body(const int curr_kernel)
           }
         }
       }
-      if(is_x_raytrace_kernel(curr_kernel))
+      if(is_x_raytrace_kernel(curr_kernel) && !AC_CPU_BUILD)
       {
       	for(int field = 0; field < NUM_ALL_FIELDS; ++field)
       	{

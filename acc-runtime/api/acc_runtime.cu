@@ -490,7 +490,7 @@ acLaunchKernelBase(const AcKernel kernel, const int3 start, const int3 end, Vert
 static const Volume 
 get_kernel_end(const AcKernel kernel, const Volume start, const Volume end)
 {
-	if(is_raytracing_kernel(kernel))
+	if(is_raytracing_kernel(kernel) && !AC_CPU_BUILD)
 	{
 		const auto step_direction = raytracing_step_direction(kernel);
 		if(step_direction.z) return (Volume){end.x,end.y,start.z+1};

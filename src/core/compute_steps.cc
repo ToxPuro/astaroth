@@ -586,6 +586,7 @@ gen_halo_exchange(
 		if(!ac_pid()) fprintf(stream, "Halo(");
 		log_fields(stream,output_fields);
 
+
 		log_launch_bounds(stream,output_fields,output_fields);
 		if(direction != (int3){0,0,0})
 		{
@@ -796,7 +797,7 @@ gen_halo_exchange_and_boundconds(
 			bool communicated = std::find(communicated_fields.begin(), communicated_fields.end(), field) != communicated_fields.end();
 			if(communicated) output_fields.push_back(field);
 		}
-		if(output_fields.size() == 0 || no_communication) return empty;
+		if(output_fields.size() == 0) return empty;
 
 		auto pop_same = [&](auto& src, const auto& info_arr, auto& dst)
 		{
@@ -854,8 +855,11 @@ gen_halo_exchange_and_boundconds(
 		};
 		std::vector<AcTaskDefinition> halo_exchanges{};
 		std::vector<AcTaskDefinition> bc_tasks{};
-		gen_comm_task(gen_halo_exchange,halo_exchanges);
-		gen_comm_task(gen_periodic_bcs,bc_tasks);
+		if(!no_communication)
+		{
+			gen_comm_task(gen_halo_exchange,halo_exchanges);
+			gen_comm_task(gen_periodic_bcs,bc_tasks);
+		}
 		if(before_kernel_call)
 		{
 			for(size_t region = 0; region < 27; ++region)
@@ -871,8 +875,8 @@ gen_halo_exchange_and_boundconds(
 			//One has to first update B on the boundary even though B is not actually used in the domain
 			std::array<std::vector<Field>,27> field_bcs_called{};
 
-			for(size_t i = 0; i < 27; ++i)
-				field_bcs_called[i] = communicated_fields;
+			for(size_t i = 0; i < 27; ++i) field_bcs_called[i] = communicated_fields;
+
 			{
                 		bool all_are_processed = false;
 				bool made_progress = true;

@@ -81,7 +81,7 @@ raytracing_number_of_directions(const AcKernel kernel)
 bool
 is_coop_raytracing_kernel(const AcKernel kernel)
 {
-	return is_raytracing_kernel(kernel) && (raytracing_number_of_directions(kernel) > 1);
+	return !AC_CPU_BUILD && is_raytracing_kernel(kernel) && (raytracing_number_of_directions(kernel) > 1);
 }
 bool
 profile_is_reduced(const Profile profile)
