@@ -99,7 +99,7 @@ push_int(int_vec* dst, int src)
 {
 	if(dst->capacity == 0)
 	{
-		dst->capacity++;
+		dst->capacity = 4;
 		dst->data = (int*)malloc(sizeof(int)*dst->capacity);
 	}
 	dst->data[dst->size] = src;
@@ -122,7 +122,7 @@ push_op(op_vec* dst, ReduceOp src)
 {
 	if(dst->capacity == 0)
 	{
-		dst->capacity++;
+		dst->capacity = 4;
 		dst->data = (ReduceOp*)malloc(sizeof(ReduceOp)*dst->capacity);
 	}
 	dst->data[dst->size] = src;

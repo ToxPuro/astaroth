@@ -797,7 +797,7 @@ push_node(node_vec* dst, const ASTNode* src)
 {
 	if(dst->capacity == 0)
 	{
-		dst->capacity++;
+		dst->capacity = 4;
 		dst->data = malloc(sizeof(ASTNode*)*dst->capacity);
 	}
 	dst->data[dst->size] = src;
