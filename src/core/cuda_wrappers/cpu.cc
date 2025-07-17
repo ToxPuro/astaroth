@@ -130,7 +130,8 @@ acEventDestroy(cudaEvent_t){return cudaSuccess;}
 cudaError_t 
 acGetDeviceProperties(cudaDeviceProp* prop, int)
 {
-	(void)prop;
+	//TP: this is to avoid division by zero
+	prop->warpSize = 1;
 	return cudaSuccess;
 }
 cudaError_t
