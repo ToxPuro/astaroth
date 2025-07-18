@@ -475,9 +475,9 @@ momentum() {
 #endif
 
     mom = - gradients(UU) * vecvalue(UU)
-#if LUPWD
-          + gradients_upwd(UU) * vecvalue_abs(UU)
-#endif
+//#if LUPWD
+//          + gradients_upwd(UU) * vecvalue_abs(UU)
+//#endif
 #if LENTROPY 
           - cs2 * ((1. / AC_cp_sound) * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO))
 #else
