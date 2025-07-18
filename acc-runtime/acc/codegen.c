@@ -8280,7 +8280,34 @@ transform_array_assignments(ASTNode* node)
 	bool loop_assignment = rhs_is_arr && !get_node(NODE_ARRAY_INITIALIZER,node->rhs->rhs);
 	loop_assignment |= lhs_is_arr && !get_node(NODE_ARRAY_ACCESS,node->lhs);
 	loop_assignment &= !get_node(NODE_ARRAY_INITIALIZER,node->rhs);
-	if(loop_assignment)
+        if(lhs_is_arr && (rhs_type == REAL_STR || rhs_type == INT_STR))
+        {
+                node_vec params = VEC_INITIALIZER;
+                push_node(&params,node->lhs);
+                push_node(&params,node->rhs->rhs);
+                const char* array_elem_type = get_array_elem_type(lhs_type);
+                if(array_elem_type && array_elem_type == REAL3_STR && rhs_type == REAL_STR)
+                {
+                        replace_node(
+                                        node,
+                                        create_func_call_expr_variadic(intern("broadcast_scalar_to_vec"),params)
+                                );
+                }
+                else
+                {
+                        string_vec sizes = get_array_elem_size(lhs_type);
+                        const char* func_name =
+                                sizes.size == 1 ? "broadcast_scalar" :
+                                sizes.size == 2 ? "broadcast_scalar_2d" :
+                                sizes.size == 3 ? "broadcast_scalar_3d" :
+                               "broadcast_scalar_4d";
+                        replace_node(
+                                        node,
+                                        create_func_call_expr_variadic(intern(func_name),params)
+                                );
+                }
+        }
+	else if(loop_assignment)
         {
                 if(is_defining_expression(node->lhs))
                 {
@@ -8341,33 +8368,6 @@ transform_array_assignments(ASTNode* node)
                                                 create_func_call_expr_variadic(intern("copy_arr"),params)
                                         );
                         }
-                }
-        }
-        if(lhs_is_arr && (rhs_type == REAL_STR || rhs_type == INT_STR))
-        {
-                node_vec params = VEC_INITIALIZER;
-                push_node(&params,node->lhs);
-                push_node(&params,node->rhs->rhs);
-                const char* array_elem_type = get_array_elem_type(lhs_type);
-                if(array_elem_type && array_elem_type == REAL3_STR && rhs_type == REAL_STR)
-                {
-                        replace_node(
-                                        node,
-                                        create_func_call_expr_variadic(intern("broadcast_scalar_to_vec"),params)
-                                );
-                }
-                else
-                {
-                        string_vec sizes = get_array_elem_size(lhs_type);
-                        const char* func_name =
-                                sizes.size == 1 ? "broadcast_scalar" :
-                                sizes.size == 2 ? "broadcast_scalar_2d" :
-                                sizes.size == 3 ? "broadcast_scalar_3d" :
-                               "broadcast_scalar_4d";
-                        replace_node(
-                                        node,
-                                        create_func_call_expr_variadic(intern(func_name),params)
-                                );
                 }
         }
 }

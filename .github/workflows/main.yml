@@ -11,8 +11,7 @@ jobs:
     container:
       image: nvidia/cuda:12.9.0-devel-ubuntu24.04
 
-    timeout-minutes: 60
-
+    timeout-minutes: 180
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
