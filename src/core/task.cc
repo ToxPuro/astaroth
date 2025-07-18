@@ -243,16 +243,16 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
 
 
 AcTaskDefinition
-acReduceInRayDirection(Field fields[], const size_t num_fields, const int3 ray_direction)
+acScan(Field fields[], const size_t num_fields, const int3 direction)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type      = TASKTYPE_RAY_REDUCE;
+    task_def.task_type      = TASKTYPE_SCAN;
     task_def.fields_in      = ptr_copy(fields,num_fields);
     task_def.num_fields_in  = num_fields;
     task_def.fields_out = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
     task_def.halo_sizes = get_max_halo_size(fields,num_fields);
-    task_def.ray_direction = ray_direction;
+    task_def.ray_direction = direction;
     task_def.sending   = true;
     task_def.receiving = true;
     return task_def;
@@ -1986,7 +1986,7 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
 }
 
 // HaloExchangeTask
-MPIReduceTask::MPIReduceTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
+MPIScanTask::MPIScanTask(AcTaskDefinition op, int order_, const Volume start, const Volume dims, int tag_0, int3 halo_region_id,
                                    AcGridInfo grid_info, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES+NUM_PROFILES> swap_offset_)
     : Task(order_,
@@ -1995,6 +1995,32 @@ MPIReduceTask::MPIReduceTask(AcTaskDefinition op, int order_, const Volume start
            op, device_, swap_offset_),
       reduce_buffers(input_regions[0].dims,  input_regions[0].memory.fields.size(),  tag_0, input_regions[0].tag, get_recv_counterpart_ranks(device_,rank,output_region.id,false), HaloMessageType::Receive)
 {
+    const auto sub_comms = acGridMPISubComms();
+    scan_comm = MPI_COMM_NULL;
+    if(op.ray_direction == (int3){1,0,0})
+    {
+	    scan_comm = sub_comms.x;
+    }
+    if(op.ray_direction == (int3){-1,0,0})
+    {
+	    scan_comm = sub_comms.reverse_x;
+    }
+    if(op.ray_direction == (int3){0,1,0})
+    {
+	    scan_comm = sub_comms.y;
+    }
+    if(op.ray_direction == (int3){0,-1,0})
+    {
+	    scan_comm = sub_comms.reverse_y;
+    }
+    if(op.ray_direction == (int3){0,0,1})
+    {
+	    scan_comm = sub_comms.z;
+    }
+    if(op.ray_direction == (int3){0,0,-1})
+    {
+	    scan_comm = sub_comms.reverse_z;
+    }
     // Create stream for packing/unpacking
     {
 	(void)grid_info;
@@ -2006,7 +2032,7 @@ MPIReduceTask::MPIReduceTask(AcTaskDefinition op, int order_, const Volume start
     }
 }
 
-MPIReduceTask::~MPIReduceTask()
+MPIScanTask::~MPIScanTask()
 {
     auto msg = reduce_buffers.get_current_buffer();
     for(auto& request : msg->requests)
@@ -2022,23 +2048,23 @@ MPIReduceTask::~MPIReduceTask()
 }
 
 bool
-MPIReduceTask::test()
+MPIScanTask::test()
 {
-    switch (static_cast<MPIReduceTaskState>(state)) {
-    case MPIReduceTaskState::Packing: {
+    switch (static_cast<MPIScanTaskState>(state)) {
+    case MPIScanTaskState::Packing: {
         return poll_stream();
     }
-    case MPIReduceTaskState::Unpacking: {
+    case MPIScanTaskState::Unpacking: {
         return poll_stream();
     }
-    case MPIReduceTaskState::Communicating: {
+    case MPIScanTaskState::Communicating: {
         auto msg = reduce_buffers.get_current_buffer();
         int request_complete;
         ERRCHK_ALWAYS(MPI_Testall(msg->requests.size(), msg->requests.data(), &request_complete, MPI_STATUS_IGNORE) == MPI_SUCCESS);
         return request_complete ? true : false;
     }
     default: {
-        ERROR("MPIReduceTask in an invalid state.");
+        ERROR("MPIScanTask in an invalid state.");
         return false;
     }
     }
@@ -2046,43 +2072,42 @@ MPIReduceTask::test()
 
 
 void
-MPIReduceTask::advance(const TraceFile* trace_file)
+MPIScanTask::advance(const TraceFile* trace_file)
 {
-    switch (static_cast<MPIReduceTaskState>(state)) {
-    case MPIReduceTaskState::Waiting:
+    switch (static_cast<MPIScanTaskState>(state)) {
+    case MPIScanTaskState::Waiting:
         trace_file->trace(this, "waiting", "packing");
         pack();
-        state = static_cast<int>(MPIReduceTaskState::Packing);
+        state = static_cast<int>(MPIScanTaskState::Packing);
         break;
-    case MPIReduceTaskState::Packing:
+    case MPIScanTaskState::Packing:
     {
         trace_file->trace(this, "packing", "communicating");
-        state = static_cast<int>(MPIReduceTaskState::Communicating);
+        state = static_cast<int>(MPIScanTaskState::Communicating);
 	communicate();
         break;
     }
-    case MPIReduceTaskState::Communicating:
+    case MPIScanTaskState::Communicating:
     {
         trace_file->trace(this, "communicating", "unpacking");
-        state = static_cast<int>(MPIReduceTaskState::Unpacking);
-	communicate();
+        state = static_cast<int>(MPIScanTaskState::Unpacking);
+	unpack();
         break;
     }
-    case MPIReduceTaskState::Unpacking:
+    case MPIScanTaskState::Unpacking:
     {
         trace_file->trace(this, "unpacking", "waiting");
-        state = static_cast<int>(MPIReduceTaskState::Waiting);
-	unpack();
+        state = static_cast<int>(MPIScanTaskState::Waiting);
         break;
     }
 
     default:
-        ERROR("MPIReduceTask in an invalid state.");
+        ERROR("MPIScanTask in an invalid state.");
     }
 }
 
 void
-MPIReduceTask::pack()
+MPIScanTask::pack()
 {
     auto msg = reduce_buffers.get_fresh_buffer();
     acKernelPackData(stream, vba, input_regions[0].position, input_regions[0].dims,
@@ -2091,7 +2116,7 @@ MPIReduceTask::pack()
 }
 
 void
-MPIReduceTask::unpack()
+MPIScanTask::unpack()
 {
 
     auto msg = reduce_buffers.get_current_buffer();
@@ -2101,11 +2126,10 @@ MPIReduceTask::unpack()
 }
 
 void
-MPIReduceTask::communicate()
+MPIScanTask::communicate()
 {
    auto msg = reduce_buffers.get_current_buffer();
-   const auto sub_comms = acGridMPISubComms();
-   ERRCHK_ALWAYS(MPI_Iallreduce(MPI_IN_PLACE,&msg->data[0],msg->length,AC_REAL_MPI_TYPE,MPI_SUM,sub_comms.x, &msg->requests[0]) == MPI_SUCCESS);
+   ERRCHK_ALWAYS(MPI_Iexscan(MPI_IN_PLACE,&msg->data[0],msg->length,AC_REAL_MPI_TYPE,MPI_SUM,scan_comm,&msg->requests[0]) == MPI_SUCCESS);
 }
 
 ReduceTask::ReduceTask(AcTaskDefinition op, int order_, int region_tag, const Volume start, const Volume nn, Device device_,

@@ -43,6 +43,10 @@ typedef struct AcSubCommunicators {
 	MPI_Comm y;
 	MPI_Comm z;
 
+	MPI_Comm reverse_x;
+	MPI_Comm reverse_y;
+	MPI_Comm reverse_z;
+
 	MPI_Comm xy;
 	MPI_Comm xz;
 	MPI_Comm yz;

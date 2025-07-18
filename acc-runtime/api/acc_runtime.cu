@@ -872,17 +872,14 @@ acResetScratchPadStates(VertexBufferArray vba)
   return AC_SUCCESS;
 }
 
-
-static TBConfig
-autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
+static AcAutotuneMeasurement
+get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba, const int num_iters)
 {
-
   if(AC_CPU_BUILD)
   {
-	  return (TBConfig)
+	  return (AcAutotuneMeasurement)
 	  {
-		  kernel,
-		  end-start,
+		  (float)1.0,
 	          (dim3){1,1,1}
 	  };
   }
@@ -897,11 +894,6 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   // set-aside 3/4 of L2 cache for persisting accesses or the max allowed
 #endif
 
-  TBConfig c = {
-      .kernel = kernel,
-      .dims   = dims,
-      .tpb    = (dim3){0, 0, 0},
-  };
 
 
   //TP: since autotuning should be quite fast when the dim is not NGHOST only log for actually 3d portions
@@ -910,7 +902,6 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   const bool log = is_raytracing_kernel(kernel) || (!builtin_kernel && large_launch);
 
   AcAutotuneMeasurement best_measurement = {INFINITY,(dim3){0,0,0}};
-  const int num_iters = 2;
 
   // Get device hardware information
   const auto props = get_device_prop();
@@ -919,7 +910,6 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
                                               MAX_THREADS_PER_BLOCK)
                                         : props.maxThreadsPerBlock;
   const size_t max_smem           = props.sharedMemPerBlock;
-
   // Old heuristic
   // for (int z = 1; z <= max_threads_per_block; ++z) {
   //   for (int y = 1; y <= max_threads_per_block; ++y) {
@@ -1067,7 +1057,6 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
 	}
         ERRCHK_CUDA(acEventRecord(tstop)); // Timing stop
         ERRCHK_CUDA(acEventSynchronize(tstop));
-
         float milliseconds = 0;
         ERRCHK_CUDA(acEventElapsedTime(&milliseconds, tstart, tstop));
 
@@ -1101,7 +1090,21 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   }
   best_measurement =  parallel_autotuning ? gather_best_measurement(best_measurement) : best_measurement;
   if(log) printAutotuningStatus(kernel,best_measurement.time/num_iters,100);
-  c.tpb = best_measurement.tpb;
+  return best_measurement;
+}
+
+
+static TBConfig
+autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba)
+{
+  const int num_iters = 2;
+  const AcAutotuneMeasurement best_measurement = get_best_autotune_measurement(kernel,start,end,vba,num_iters);
+  const int3 dims = get_kernel_dims(kernel,start,end);
+  const TBConfig c = {
+      .kernel = kernel,
+      .dims   = dims,
+      .tpb    = best_measurement.tpb
+  };
   if(grid_pid == 0)
   {
         FILE* fp = fopen(autotune_csv_path, "a");
@@ -1121,8 +1124,8 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
 		,sparse_autotuning
 		);
 #endif
-        fclose(fp);
 	fflush(fp);
+        fclose(fp);
   }
   if (c.tpb.x * c.tpb.y * c.tpb.z <= 0) {
     fprintf(stderr,

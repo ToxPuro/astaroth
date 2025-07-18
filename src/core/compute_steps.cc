@@ -1034,10 +1034,10 @@ struct VectorHash {
         return seed;
     }
 };
-using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>,Volume,Volume>;
+using KeyType = std::tuple<std::vector<AcKernel>,std::vector<AcKernel>,Volume,Volume,bool>;
 struct KeyHash {
     std::size_t operator()(const KeyType &key) const {
-        const auto &[vec1, vec2,start,end] = key;
+        const auto &[vec1, vec2,start,end,bcs_everywhere] = key;
         std::size_t seed = 0;
         hash_combine(seed, VectorHash{}(vec1));
         hash_combine(seed, VectorHash{}(vec2));
@@ -1047,6 +1047,7 @@ struct KeyHash {
         hash_combine(seed, end.x);
         hash_combine(seed, end.y);
         hash_combine(seed, end.z);
+        hash_combine(seed, bcs_everywhere);
         return seed;
     }
 };
@@ -1398,12 +1399,12 @@ get_field_ray_directions(const std::vector<AcKernel> kernels,const KernelAnalysi
 
 
 std::vector<AcTaskDefinition>
-acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const bool no_communication)
+acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const bool no_communication, const AcDSLTaskGraph bc_graph)
 {
 	if(is_bc_taskgraph(graph))
 		return acGetDSLBCTaskGraphOps(graph,optimized);
 	const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
-	const FieldBCs  field_boundconds = get_field_boundconds(DSLTaskGraphBCs[graph],optimized,info.data());
+	const FieldBCs  field_boundconds = get_field_boundconds(bc_graph,optimized,info.data());
 	std::vector<AcTaskDefinition> res{};
 	auto level_sets = get_level_sets(graph,optimized,info.data());	
 
@@ -1552,16 +1553,16 @@ acGridClearTaskGraphCache()
 }
 
 AcTaskGraph*
-acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere)
+acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere, const AcDSLTaskGraph bc_graph)
 {
 	auto optimized_kernels = get_optimized_kernels(graph,false);
-	auto optimized_bcs      = get_optimized_kernels(DSLTaskGraphBCs[graph],false);
-	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end);
+	auto optimized_bcs      = get_optimized_kernels(bc_graph,false);
+	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end,bcs_everywhere);
 	if(task_graphs.find(key) != task_graphs.end())
 		return task_graphs[key];
 
-	auto ops = acGetDSLTaskGraphOps(graph,true,bcs_everywhere);
-	auto res = acGridBuildTaskGraph(ops,start,end);
+	auto ops = acGetDSLTaskGraphOps(graph,true,bcs_everywhere,bc_graph);
+	auto res = acGridBuildTaskGraph(ops,start,end,bcs_everywhere);
 	task_graphs[key] = res;
 	return res;
 }
@@ -1572,14 +1573,15 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 	return acGetOptimizedDSLTaskGraphWithBounds(graph,
 			to_volume(get_info()[AC_nmin]),
 			to_volume(get_info()[AC_nlocal_max]),
-			false
+			false,
+			DSLTaskGraphBCs[graph]
 			);
 }
 
 AcTaskGraph*
 acGetDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end)
 {
-	return acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,false,false),start,end);
+	return acGridBuildTaskGraph(acGetDSLTaskGraphOps(graph,false,false,DSLTaskGraphBCs[graph]),start,end);
 }
 
 AcTaskGraph*
