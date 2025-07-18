@@ -3278,7 +3278,7 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 	if(!(node->type & NODE_FUNCTION_CALL)) return;
 
 	char* tmp = strdup(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
-        remove_suffix(tmp,"____");
+	if(strstr(tmp,"__AC_INTERNAL_NUMBERING")) return;
         const char* func_name = intern(tmp);
 
 	if(check_symbol(NODE_FUNCTION_ID,func_name,NULL,NULL)) return;
@@ -3332,7 +3332,7 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 	//TP: in bc call params jump over boundary
 	const int call_param_offset = 0;
 	char* tmp = strdup(func_name);
-	remove_suffix(tmp,"____");
+	remove_suffix(tmp,"__AC_INTERNAL_NUMBERING");
 	const char* dfunc_name = intern(tmp);
 	free(tmp);
 	func_params_info params_info = get_function_params_info(root,dfunc_name);
@@ -3422,7 +3422,7 @@ make_unique_bc_calls(ASTNode* node)
 		if(func_name == PERIODIC) continue;
 		char* tmp = strdup(identifier->buffer);
 	        remove_suffix(tmp,"_AC_MANGLED_NAME");
-		astnode_sprintf(identifier,"%s____%zu",tmp,i);
+		astnode_sprintf(identifier,"%s__AC_INTERNAL_NUMBERING__%zu",tmp,i);
 		free(tmp);
 	}
 	free_node_vec(&func_calls);
