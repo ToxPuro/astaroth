@@ -3326,7 +3326,7 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 }
 
 void
-write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_name,const func_params_info call_info,FILE* fp)
+write_dfunc_bc_kernel(const char* prefix, const char* func_name,const func_params_info call_info,FILE* fp)
 {
 
 	//TP: in bc call params jump over boundary
@@ -3335,10 +3335,7 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 	remove_suffix(tmp,"__AC_INTERNAL_NUMBERING");
 	const char* dfunc_name = intern(tmp);
 	free(tmp);
-	func_params_info params_info = get_function_params_info(root,dfunc_name);
-	if(call_info.types.size != params_info.types.size)
-		fatal("Number of inputs %lu for %s in BoundConds does not match the number of input params %lu \n", call_info.types.size, dfunc_name, params_info.types.size);
-	const size_t num_of_rest_params = params_info.types.size;
+	const size_t num_of_rest_params = call_info.types.size;
 	fprintf(fp,"Kernel %s_%s()\n{\n",prefix,func_name);
 	fprintf(fp,"\t%s(",dfunc_name);
 	for(size_t j = 0; j <num_of_rest_params; ++j)
@@ -3350,7 +3347,7 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 	fprintf(fp,"%s\n","}");
 }
 void
-gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const ASTNode* root, const char* boundconds_name)
+gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const char* boundconds_name)
 {
 
 	const char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
@@ -3366,7 +3363,7 @@ gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const ASTNode* root, con
 
 	if(is_dfunc) my_asprintf(&prefix,"%s_AC_KERNEL_",boundconds_name);
 	else my_asprintf(&prefix,"%s_",boundconds_name);
-	write_dfunc_bc_kernel(root,prefix,func_name,call_info,fp);
+	write_dfunc_bc_kernel(prefix,func_name,call_info,fp);
 
 	free_func_params_info(&call_info);
 }
@@ -3540,7 +3537,7 @@ gen_dfunc_bc_kernels(const ASTNode* node, const ASTNode* root, FILE* fp)
 	const char* name = node->lhs->buffer;
 	node_vec func_calls = get_nodes_in_list(node->rhs);
 	for(size_t i = 0; i < func_calls.size; ++i)
-		gen_dfunc_bc_kernel(func_calls.data[i],fp,root,name);
+		gen_dfunc_bc_kernel(func_calls.data[i],fp,name);
 	free_node_vec(&func_calls);
 }
 void
