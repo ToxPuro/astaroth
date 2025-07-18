@@ -3420,7 +3420,10 @@ make_unique_bc_calls(ASTNode* node)
 		ASTNode* identifier = (ASTNode*) get_node_by_token(IDENTIFIER, func_calls.data[i]);
 		const char* func_name = identifier->buffer;
 		if(func_name == PERIODIC) continue;
-		astnode_sprintf(identifier,"%s____%zu",identifier->buffer,i);
+		char* tmp = strdup(identifier->buffer);
+	        remove_suffix(tmp,"_AC_MANGLED_NAME");
+		astnode_sprintf(identifier,"%s____%zu",tmp,i);
+		free(tmp);
 	}
 	free_node_vec(&func_calls);
 }
@@ -7891,6 +7894,7 @@ get_mangled_name(const char* dfunc_name, const string_vec types)
 void
 mangle_dfunc_names_base(ASTNode* node, string_vec* dst_types, const char** dst_names,int* counters)
 {
+	if(node->type == NODE_BOUNDCONDS_DEF) return;
 	TRAVERSE_PREAMBLE_PARAMS(mangle_dfunc_names_base,dst_types,dst_names,counters);
 	if(!(node->type & NODE_DFUNCTION))
 		return;
@@ -9122,16 +9126,8 @@ void gen_boundcond_kernels(const ASTNode* root_in, FILE* stream)
     ASTNode* root = astnode_dup(root_in,NULL);
     symboltable_reset();
     traverse(root, 0, NULL);
-    s_info = read_user_structs(root);
-    e_info = read_user_enums(root);
-    mangle_dfunc_names(root);
-    expand_allocating_types(root);
-    duplicate_dfuncs = get_duplicate_dfuncs(root);
-    gen_overloads(root);
-    make_unique_bc_calls((ASTNode*) root);
+    make_unique_bc_calls(root);
     gen_dfunc_bc_kernels(root,root,stream);
-    free_structs_info(&s_info);
-    //free_str_vec(&duplicate_dfuncs);
 }
 void
 canonalize_assignments(ASTNode* node)
