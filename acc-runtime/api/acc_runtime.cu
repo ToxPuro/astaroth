@@ -455,6 +455,50 @@ __ldg(const T* src)
 bool
 acRuntimeIsInitialized() { return initialized; }
 
+static bool
+file_exists(const char* filename)
+{
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
+}
+
+static void
+acReadOptimTBConfigs(const Volume block_factors_volume)
+{
+  const int3 block_factors = to_int3(block_factors_volume);
+  if(!file_exists(autotune_csv_path)) return;
+  const char* filename = autotune_csv_path;
+  FILE *file = fopen ( filename, "r" );
+  string_vec entries[1000];
+  memset(entries,0,sizeof(string_vec)*1000);
+  const int n_entries = get_csv_entries(entries,file);
+
+
+  for(int i = 0; i < n_entries; ++i)
+  {
+	  string_vec entry = entries[i];
+	  if(entry.size == 17)
+      	  {
+      	     int kernel_index  = atoi(entry.data[1]);
+      	     int3 read_dims = {atoi(entry.data[2]), atoi(entry.data[3]), atoi(entry.data[4])};
+      	     int3 tpb = {atoi(entry.data[5]), atoi(entry.data[6]), atoi(entry.data[7])};
+      	     [[maybe_unused]] double time = atof(entry.data[8]);
+      	     int3 read_block_factors = {atoi(entry.data[10]), atoi(entry.data[11]), atoi(entry.data[12])};
+      	     int3 read_raytracing_factors = {atoi(entry.data[13]), atoi(entry.data[14]), atoi(entry.data[15])};
+	     int  was_sparse = atoi(entry.data[16]);
+      	     if(read_block_factors == block_factors && read_raytracing_factors == raytracing_subblock && was_sparse == sparse_autotuning)
+      	     {
+  		TBConfig c  =  (TBConfig){AcKernel(kernel_index),read_dims,(dim3){(uint32_t)tpb.x, (uint32_t)tpb.y, (uint32_t)tpb.z}};
+  		tbconfigs.push_back(c);
+	     }
+      	  }
+      	  for(size_t elem = 0; elem < entry.size; ++elem)
+      	         free((char*)entry.data[elem]);
+      	  free_str_vec(&entry);
+  }
+  fclose(file);
+}
+
 AcResult
 acRuntimeInit(const AcMeshInfo config)
 {
@@ -466,6 +510,7 @@ acRuntimeInit(const AcMeshInfo config)
   z_ray_shared_mem_block_size = config[AC_z_ray_shared_mem_block_size];
   max_tpb_for_reduce_kernels = config[AC_max_tpb_for_reduce_kernels];
   acAllocateArrays(config);
+  acReadOptimTBConfigs(to_volume(config[AC_thread_block_loop_factors]));
   initialized = true;
   return AC_SUCCESS;
 }
@@ -1138,51 +1183,7 @@ autotune(const AcKernel kernel, const int3 start, const int3 end, VertexBufferAr
   return c;
 }
 
-static bool
-file_exists(const char* filename)
-{
-  struct stat   buffer;
-  return (stat (filename, &buffer) == 0);
-}
 
-int3
-acReadOptimTBConfig(const AcKernel kernel, const Volume dims_volume, const Volume block_factors_volume)
-{
-  const int3 dims = to_int3(dims_volume);
-  const int3 block_factors = to_int3(block_factors_volume);
-  if(!file_exists(autotune_csv_path)) return {-1,-1,-1};
-  const char* filename = autotune_csv_path;
-  FILE *file = fopen ( filename, "r" );
-  int3 res = {-1,-1,-1};
-  double best_time     = (double)INFINITY;
-  string_vec entries[1000];
-  memset(entries,0,sizeof(string_vec)*1000);
-  const int n_entries = get_csv_entries(entries,file);
-  for(int i = 0; i < n_entries; ++i)
-  {
-	  string_vec entry = entries[i];
-	  if(entry.size == 17)
-      	  {
-      	     int kernel_index  = atoi(entry.data[1]);
-      	     int3 read_dims = {atoi(entry.data[2]), atoi(entry.data[3]), atoi(entry.data[4])};
-      	     int3 tpb = {atoi(entry.data[5]), atoi(entry.data[6]), atoi(entry.data[7])};
-      	     double time = atof(entry.data[8]);
-      	     int3 read_block_factors = {atoi(entry.data[10]), atoi(entry.data[11]), atoi(entry.data[12])};
-      	     int3 read_raytracing_factors = {atoi(entry.data[13]), atoi(entry.data[14]), atoi(entry.data[15])};
-	     int  was_sparse = atoi(entry.data[16]);
-      	     if(time < best_time && kernel_index == kernel && read_dims == dims && read_block_factors == block_factors && read_raytracing_factors == raytracing_subblock && was_sparse == sparse_autotuning)
-      	     {
-      	    	 best_time = time;
-      	    	 res       = tpb;
-      	     }
-      	  }
-      	  for(size_t elem = 0; elem < entry.size; ++elem)
-      	         free((char*)entry.data[elem]);
-      	  free_str_vec(&entry);
-  }
-  fclose(file);
-  return res;
-}
 
 
 static TBConfig
@@ -1193,12 +1194,24 @@ getOptimalTBConfig(const AcKernel kernel, const int3 start, const int3 end, Vert
     if (c.kernel == kernel && c.dims == dims)
       return c;
 
-  const int3 read_tpb = acReadOptimTBConfig(kernel,to_volume(dims),to_volume(vba.on_device.block_factor));
-  TBConfig c  = (read_tpb != (int3){-1,-1,-1})
-          ? (TBConfig){kernel,dims,(dim3){(uint32_t)read_tpb.x, (uint32_t)read_tpb.y, (uint32_t)read_tpb.z}}
-          : autotune(kernel,start,end,vba);
+  TBConfig c = autotune(kernel,start,end,vba);
   tbconfigs.push_back(c);
   return c;
+}
+
+int3
+acGetOptimTPB(const AcKernel kernel, const Volume start, const Volume end)
+{
+  const int3 dims = get_kernel_dims(kernel,to_int3(start),to_int3(end));
+  for (auto c : tbconfigs)
+    if (c.kernel == kernel && c.dims == dims)
+	return (int3)
+	{
+		(int)c.tpb.x,
+		(int)c.tpb.y,
+		(int)c.tpb.z
+	};
+  return (int3){-1,-1,-1};
 }
 
 AcKernel

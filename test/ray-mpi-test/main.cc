@@ -96,26 +96,6 @@ main(int argc, char* argv[])
     };
 
     //TP: for benchmarking purposes
-    acGridExecuteTaskGraph(get_tg(trace_nine_rays_general),1);
-    acGridExecuteTaskGraph(get_tg(ppp_general),1);
-    acGridExecuteTaskGraph(get_tg(trace_up_general),1);
-    acGridExecuteTaskGraph(get_tg(trace_three_rays_general),1);
-    acGridExecuteTaskGraph(get_tg(trace_right_ray_general),1);
-    acGridExecuteTaskGraph(get_tg(trace_up_rays),1);
-    acGridExecuteTaskGraph(get_tg(trace_right_rays),1);
-
-    acGridExecuteTaskGraph(get_tg(baseline_y),1);
-    acGridExecuteTaskGraph(get_tg(trace_three_rays),1);
-
-    acGridExecuteTaskGraph(get_tg(baseline),1);
-    acGridExecuteTaskGraph(get_tg(revise_nine_rays),1);
-    acGridExecuteTaskGraph(get_tg(revise_nine_rays_along_ray),1);
-    acGridExecuteTaskGraph(get_tg(revise_boundary_ray),1);
-    acGridExecuteTaskGraph(get_tg(trace_nine_rays),1);
-    acGridExecuteTaskGraph(get_tg(trace_nine_rays_general),1);
-
-    acGridExecuteTaskGraph(get_tg(trace_right_ray_general),1);
-
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -176,18 +156,28 @@ main(int argc, char* argv[])
     }
 
     acGridExecuteTaskGraph(get_tg(trace_right_rays),1);
+    fprintf(stderr,"Executed right rays!\n");
+    fflush(stderr);
     acGridExecuteTaskGraph(
 	    acGridBuildTaskGraph({
 	    		acScan({QRAD}, (int3){1,0,0})
 			})
 		    ,1
 		    );
+    fprintf(stderr,"Scanned right rays!\n");
+    fflush(stderr);
     const auto fixed_bc_right = get_tg_fixed_bcs(trace_right_rays);
     if(pid_3d.x != 0)
     {
     	acGridExecuteTaskGraph(fixed_bc_right,1); 
     }
+    fprintf(stderr,"Executed second right rays!\n");
+    fflush(stderr);
     check_f("Right",QRAD);
+    acLogFromRootProc(pid,"Tested right rays!\n");
+    fflush(stderr);
+    fflush(stdout);
+
 
     reset_f_to_val(QRAD,(decomp.x-1-pid_3d.x)*nx);
     for(size_t i = dims.n1.x-1; i >= dims.n0.x; --i)
@@ -214,6 +204,9 @@ main(int argc, char* argv[])
     	acGridExecuteTaskGraph(fixed_bc_left,1); 
     }
     check_f("Left",QRAD);
+    acLogFromRootProc(pid,"Tested left rays!\n");
+    fflush(stderr);
+    fflush(stdout);
 
     reset_f_to_val(QRAD,(decomp.z-1-pid_3d.z)*nz);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -239,6 +232,9 @@ main(int argc, char* argv[])
     	acGridExecuteTaskGraph(fixed_bc_backwards,1); 
     }
     check_f("Backwards",QRAD);
+    acLogFromRootProc(pid,"Tested back rays!\n");
+    fflush(stderr);
+    fflush(stdout);
 
     reset_f_to_val(QRAD,pid_3d.z*nz);
     for(size_t i = 0; i < dims.m1.x; ++i)
@@ -252,7 +248,16 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(get_tg(trace_forwards_rays),1);
+    const auto fwd = get_tg(trace_forwards_rays);
+    acGridSynchronizeStream(STREAM_ALL);
+    acLogFromRootProc(pid,"Build forwards rays!\n");
+    fflush(stderr);
+    fflush(stdout);
+    acGridExecuteTaskGraph(fwd,1);
+    acGridSynchronizeStream(STREAM_ALL);
+    acLogFromRootProc(pid,"Traced forwards rays!\n");
+    fflush(stderr);
+    fflush(stdout);
     acGridExecuteTaskGraph(
 	    acGridBuildTaskGraph({
 	    		acScan({QRAD}, (int3){0,0,1})
@@ -265,6 +270,9 @@ main(int argc, char* argv[])
     	acGridExecuteTaskGraph(fixed_bc_forward,1); 
     }
     check_f("Forwards",QRAD);
+    acLogFromRootProc(pid,"Tested forwards rays!\n");
+    fflush(stderr);
+    fflush(stdout);
 
 
     reset_f_to_val(QRAD,pid_3d.y*ny);
@@ -291,6 +299,9 @@ main(int argc, char* argv[])
     	acGridExecuteTaskGraph(fixed_bc_up,1); 
     }
     check_f("Up",QRAD);
+    acLogFromRootProc(pid,"Tested up rays!\n");
+    fflush(stderr);
+    fflush(stdout);
 
 
 
@@ -320,6 +331,9 @@ main(int argc, char* argv[])
     	acGridExecuteTaskGraph(fixed_bc_down,1); 
     }
     check_f("Down",QRAD);
+    acLogFromRootProc(pid,"Tested down rays!\n");
+    fflush(stderr);
+    fflush(stdout);
 
 
 

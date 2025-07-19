@@ -2510,11 +2510,11 @@ gen_kernel_body(const int curr_kernel)
       	  const int original_field = get_original_index(field_remappings,field);
       	  for(int ray = 0; ray < NUM_RAYS; ++ray)
       	  {
-      	  	if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(incoming_ray_value_accessed[curr_kernel][field][ray])
       	  	{
       	  	   printf("const auto f%s_incoming_r%s = shared_mem_for_rays[(threadIdx.y-(%d)) + shared_mem_z_stride*(threadIdx.z-(%d)) + f%s_ray_index + shared_mem_x_offset];", field_names[original_field], ray_names[ray],ray_directions[ray].y, ray_directions[ray].z,field_names[original_field]);
       	  	}
-      	  	if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(outgoing_ray_value_accessed[curr_kernel][field][ray])
       	  	{
 
       	  	   printf("const auto f%s_outgoing_r%s = shared_mem_for_rays[(threadIdx.y+(%d)) + blockDim.y*(threadIdx.z+(%d)) + f%s_ray_index + shared_mem_x_offset + 2*shared_mem_x_stride];", field_names[original_field], ray_names[ray],ray_directions[ray].y, ray_directions[ray].z,field_names[original_field]);
@@ -2529,11 +2529,11 @@ gen_kernel_body(const int curr_kernel)
       	  const int original_field = get_original_index(field_remappings,field);
       	  for(int ray = 0; ray < NUM_RAYS; ++ray)
       	  {
-      	  	if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(incoming_ray_value_accessed[curr_kernel][field][ray])
       	  	{
       	  	   printf("const auto f%s_incoming_r%s = shared_mem_for_rays[(threadIdx.x-(%d)) + blockDim.x*(threadIdx.y-(%d)) + f%s_ray_index + shared_mem_z_offset];", field_names[original_field], ray_names[ray],ray_directions[ray].x, ray_directions[ray].y,field_names[original_field]);
       	  	}
-      	  	if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(outgoing_ray_value_accessed[curr_kernel][field][ray])
       	  	{
       	  	   printf("const auto f%s_outgoing_r%s = shared_mem_for_rays[(threadIdx.x+(%d)) + blockDim.x*(threadIdx.y+(%d)) + f%s_ray_index + shared_mem_z_offset + 2*shared_mem_z_stride];", field_names[original_field], ray_names[ray],ray_directions[ray].x, ray_directions[ray].y,field_names[original_field]);
       	  	}
@@ -2547,7 +2547,7 @@ gen_kernel_body(const int curr_kernel)
       	  const int original_field = get_original_index(field_remappings,field);
       	  for(int ray = 0; ray < NUM_RAYS; ++ray)
       	  {
-      	  	if(incoming_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(incoming_ray_value_accessed[curr_kernel][field][ray])
       	  	{
       	  	   printf("const auto f%s_incoming_r%s = ", field_names[original_field], ray_names[ray]);
       	  	   printf("(");
@@ -2564,7 +2564,7 @@ gen_kernel_body(const int curr_kernel)
       	  	   printf(")");
       	  	   printf(";");
       	  	}
-      	  	if(outgoing_ray_value_accessed[curr_kernel][original_field][ray])
+      	  	if(outgoing_ray_value_accessed[curr_kernel][field][ray])
       	  	{
       	  	   printf("const auto f%s_outgoing_r%s = ", field_names[original_field], ray_names[ray]);
       	  	   printf("(");
