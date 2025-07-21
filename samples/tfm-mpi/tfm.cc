@@ -57,6 +57,8 @@
 // ACR experimental
 #include "acr_experimental.h"
 
+// #define TFM_DT_INCLUDE_ALFVEN
+
 /** Concatenates the field name and ".mesh" of a vector of handles */
 static auto
 get_field_paths(const std::vector<Field>& fields, const size_t step)
@@ -1473,6 +1475,7 @@ class Grid {
                                     VTXBUF_UUZ,
                                     &uumax));
 
+#if defined(TFM_DT_INCLUDE_ALFVEN)
         AcReal vAmax11{0};
         ERRCHK_AC(acDeviceReduceVecScal(m_device.get(),
                                         STREAM_DEFAULT,
@@ -1512,14 +1515,24 @@ class Grid {
                                         TF_bb22_z,
                                         VTXBUF_LNRHO,
                                         &vAmax22));
+#endif
 
         std::vector<AcReal> inputs{
             uumax,
+#if defined(TFM_DT_INCLUDE_ALFVEN)
             vAmax11,
             vAmax12,
             vAmax21,
             vAmax22,
+#endif
         };
+
+#if defined(TFM_DT_INCLUDE_ALFVEN)
+        ERRCHK(inputs.size() == 5);
+#else
+        ERRCHK(inputs.size() == 1);
+#endif
+
         m_dtmax_reduce.launch(m_comm.get(),
                               ac::host_view<AcReal>{inputs.size(), inputs.data()},
                               MPI_MAX);
@@ -1527,19 +1540,27 @@ class Grid {
 
     [[nodiscard]] AcReal wait_dtmax_reduce_and_get_dt()
     {
+#if defined(TFM_DT_INCLUDE_ALFVEN)
         std::vector<AcReal> outputs(5);
+#else
+        std::vector<AcReal> outputs(1);
+#endif
         m_dtmax_reduce.wait(ac::host_view<AcReal>{outputs.size(), outputs.data()});
+
+        ERRCHK(outputs.size() >= 1);
         const auto uumax{outputs[0]};
+
+#if defined(TFM_DT_INCLUDE_ALFVEN)
+        PRINT_DEBUG(outputs.size());
+        ERRCHK(outputs.size() == 5);
         const auto vAmax11{outputs[1]};
         const auto vAmax12{outputs[2]};
         const auto vAmax21{outputs[3]};
         const auto vAmax22{outputs[4]};
-
-        // Note: disabled for now (but works as expected: tested on 1-8 devices)
-        // const auto vAmax{0};
-
-        // Comment vAmax{0} out and uncomment this to enable
         const auto vAmax{std::max(std::max(vAmax11, vAmax12), std::max(vAmax21, vAmax22))};
+#else
+        const auto vAmax{0};
+#endif
 
         AcReal shock_max{0};
         static bool warning_shown{false};

@@ -73,3 +73,8 @@ There is a simple simulation loop at the end of `tfm_pipelines.c` which writes a
 
 - Currently (2024-07-08) test fields use the same $\eta$ (**AC_eta**) as hydro, but this can be changed by introducing additional device constant f.ex. `real AC_eta_tfm` and using that.
 - Resetting time does not yet exist (2024-07-08), but this can be implemented f.ex. as a device constant toggle `int reset_tfm` or a toggle in the host code sample (tfm_pipeline.c) 
+
+
+### Alfven speed and upwinding
+- Alfven speed is not taken into account in dt calculation by default (results in a better match with PC model without). Alfven speed can be enabled in timestep calculation by defining `#define TFM_DT_INCLUDE_ALFVEN` in `tfm-mpi/tfm.cc`.
+- PC does not seem to do $\bm{u}$ upwinding, so it is commented out in this branch
