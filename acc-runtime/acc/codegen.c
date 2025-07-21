@@ -64,6 +64,8 @@ static const char* INTRINSIC_STR = NULL;
 static const char* CHAR_PTR_STR = NULL;
 static const char* REAL_PTR_STR = NULL;
 static const char* BOOL_PTR_STR = NULL;
+static const char* FALSE_STR = NULL;
+static const char* TRUE_STR = NULL;
 static const char* REAL3_PTR_STR = NULL;
 static const char* FIELD3_PTR_STR = NULL;
 static const char* VTXBUF_PTR_STR = NULL;
@@ -77,6 +79,7 @@ static const char* INT3_STR     = NULL;
 
 static const char* COMPLEX_STR = NULL;
 
+static const char* NEQ_STR = NULL;
 static const char* EQ_STR = NULL;
 static const char* DOT_STR = NULL;
 static const char* LESS_STR = NULL;
@@ -726,8 +729,8 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, intern("IDX"));
   add_symbol(NODE_FUNCTION_ID, NULL, 0, REAL3_STR, REAL3_STR);
 
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, BOOL_STR, intern("true"));
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, BOOL_STR, intern("false"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, BOOL_STR, TRUE_STR);
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, BOOL_STR, FALSE_STR);
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR,  intern("NGHOST"));
 
   // Astaroth 2.0 backwards compatibility START
@@ -3655,8 +3658,8 @@ add_param_combinations(const variable var, const int kernel_index,const char* pr
 	if(BOOL_STR == var.type)
 	{
 		const int param_index = push(&combinatorials.names[kernel_index],intern(full_name));
-		push(&combinatorials.options[kernel_index+100*param_index],intern("false"));
-		push(&combinatorials.options[kernel_index+100*param_index],intern("true"));
+		push(&combinatorials.options[kernel_index+100*param_index],FALSE_STR);
+		push(&combinatorials.options[kernel_index+100*param_index],TRUE_STR);
 	}
 }
 
@@ -7327,7 +7330,7 @@ eval_comparisons(ASTNode* node, const ASTNode* root, const char* op)
 	if(primary_expr->lhs->token != IDENTIFIER) return;
 	const char* lhs_var = primary_expr->lhs->buffer;
 	if(!check_symbol(NODE_VARIABLE_ID,lhs_var,REAL_STR,CONST_STR)) return;
-	if(strcmp_null_ok(get_expr_type(primary_expr),"AcReal")) return;
+	if(get_expr_type(primary_expr) == REAL_STR) return;
 	if(!node->rhs->rhs->lhs) return;
 	if(!node->rhs->rhs->lhs->lhs) return;
 	if(!(node->rhs->rhs->lhs->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
@@ -7337,9 +7340,9 @@ eval_comparisons(ASTNode* node, const ASTNode* root, const char* op)
 	double lhs_double = atof(combine_all_new(lhs_val));
 	double rhs_double = atof(real_number);
 	const bool success = 
-			!strcmp(op,"!=") ? lhs_double != rhs_double :
-			!strcmp(op,"<")  ? lhs_double < rhs_double :
-			!strcmp(op,">")  ? lhs_double > rhs_double : false;
+			op == NEQ_STR      ? lhs_double != rhs_double :
+			op == LESS_STR     ? lhs_double < rhs_double :
+			op == GREATER_STR  ? lhs_double > rhs_double : false;
 
 	replace_node(node,create_primary_expression(success ? "true" : "false"));
 }
@@ -7352,7 +7355,7 @@ eval_conditionals(ASTNode* node, const ASTNode* root)
 		eval_conditionals(node->rhs,root);
 	if(node->token == IDENTIFIER && node->buffer && !get_parent_node(NODE_DECLARATION,node))
 	{
-		if(node->buffer != intern("false") && node->buffer != intern("true"))
+		if(node->buffer != FALSE_STR && node->buffer != TRUE_STR)
 		{
 			const char* id = node->buffer;
 			if(check_symbol_string(NODE_VARIABLE_ID,id,BOOL_STR,CONST_STR))
@@ -8910,6 +8913,8 @@ gen_global_strings()
 
 	REAL_PTR_STR = intern("AcReal*");
 	BOOL_PTR_STR = intern("bool*");
+	TRUE_STR     = intern("true");
+	FALSE_STR     = intern("false");
 	REAL3_PTR_STR = intern("AcReal3*");
 	FIELD3_PTR_STR = intern("Field3*");
 	VTXBUF_PTR_STR = intern("VertexBufferHandle*");
@@ -8918,6 +8923,7 @@ gen_global_strings()
 	MATRIX_STR = intern("AcMatrix");
 	TENSOR_STR = intern("AcTensor");
 	INT3_STR = intern("int3");
+	NEQ_STR = intern("!=");
 	EQ_STR = intern("=");
 
 	DOT_STR = intern("dot");
