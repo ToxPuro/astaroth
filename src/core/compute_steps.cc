@@ -514,8 +514,6 @@ get_field_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized, const 
 				{
 					const int index = (x+1) + 3*((y+1)+3*(z+1));
 					if(x == 0 && y == 0 && z == 0) continue;
-					const int facet_class = std::abs(x) + std::abs(y) + std::abs(z);
-					if(bc.kernel == BOUNDCOND_PERIODIC && facet_class > 1) continue;
 					if(!id_and_bc_overlap(x,y,z,bc.boundary)) continue;
 					for(auto& field : bc.out) 
 					{
