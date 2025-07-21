@@ -223,6 +223,7 @@ static int* reduced_reals            = NULL;
 static int* reduced_ints             = NULL;
 static int* reduced_floats           = NULL;
 static int* field_has_stencil_op     = NULL;
+static int* field_has_ray_op     = NULL;
 static int* field_has_previous_call  = NULL;
 static size_t num_fields   = 0;
 static size_t num_complex_fields = 0;
@@ -393,7 +394,7 @@ static const char* EMPTY_STR      = NULL;
 bool
 has_optimization_info()
 {
- return written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields && field_has_previous_call && reduced_reals && reduced_ints && reduced_floats && reduced_profiles;
+ return written_fields && read_fields && field_has_stencil_op && field_has_ray_op && num_kernels && num_fields && field_has_previous_call && reduced_reals && reduced_ints && reduced_floats && reduced_profiles;
 }
 string_vec
 get_struct_field_types(const char* struct_name);
@@ -581,7 +582,7 @@ add_symbol_base(const NodeType type, const char** tqualifiers, size_t n_tqualifi
 	   const int previous_call  = field_has_previous_call[field_index + num_fields*k];
 	   const int input_accessed = (read_fields[field_index + num_fields*k] || field_has_stencil_op[field_index + num_fields*k]);
 	   is_auxiliary    &=  OPTIMIZE_FIELDS && (!written  || !field_has_stencil_op[field_index + num_fields*k]) && !previous_call;
-	   is_communicated |=  !OPTIMIZE_FIELDS || field_has_stencil_op[field_index + num_fields*k];
+	   is_communicated |=  !OPTIMIZE_FIELDS || field_has_stencil_op[field_index + num_fields*k] || field_has_ray_op[field_index + num_fields*k];
 	   const bool should_be_alive = (!OPTIMIZE_FIELDS) || written  || input_accessed;
 	   is_dead      &= !should_be_alive;
 
@@ -10987,6 +10988,11 @@ generate_mem_accesses(void)
   fp = fopen("user_field_has_stencil_op.bin", "rb");
   field_has_stencil_op = (int*)malloc(num_kernels*num_fields*sizeof(int));
   reading_successful &= fread_errchk(field_has_stencil_op, sizeof(int), num_kernels*num_fields, fp);
+  fclose(fp);
+
+  fp = fopen("user_field_has_ray_op.bin", "rb");
+  field_has_ray_op = (int*)malloc(num_kernels*num_fields*sizeof(int));
+  reading_successful &= fread_errchk(field_has_ray_op, sizeof(int), num_kernels*num_fields, fp);
   fclose(fp);
 
   fp = fopen("user_field_has_previous_call.bin", "rb");
