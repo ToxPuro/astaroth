@@ -442,7 +442,7 @@ get_node_by_buffer_exclude_node(const char* test, const ASTNode* node, const AST
   assert(node);
   ASTNode* res = NULL;
   if(node->id == exclude->id) return res;
-  if (node->buffer && !strcmp(test,node->buffer))
+  if (node->buffer && test == node->buffer)
     res = (ASTNode*) node;
   if (node->lhs && !res)
     res = get_node_by_buffer_exclude_node(test, node->lhs,exclude);
@@ -457,7 +457,7 @@ get_node_by_buffer(const char* test, const ASTNode* node)
   assert(node);
 
   ASTNode* res = NULL;
-  if (node->buffer && !strcmp(test,node->buffer))
+  if (node->buffer && test == node->buffer)
     res = (ASTNode*) node;
   if (node->lhs && !res)
     res = get_node_by_buffer(test, node->lhs);
@@ -471,7 +471,7 @@ get_node_by_buffer_and_type(const char* test, const NodeType type, const ASTNode
   assert(node);
 
   ASTNode* res = NULL;
-  if (node->buffer && node->type & type && !strcmp(test,node->buffer))
+  if (node->buffer && node->type & type && test == node->buffer)
     res =  (ASTNode*) node;
   if (node->lhs && !res)
     res = get_node_by_buffer_and_type(test, type, node->lhs);
@@ -486,7 +486,7 @@ get_node_by_buffer_and_token(const char* test, const int token, const ASTNode* n
   assert(node);
 
   ASTNode* res = NULL;
-  if (node->buffer && !strcmp(test,node->buffer) && node->token == token)
+  if (node->buffer && test == node->buffer && node->token == token)
     res =  (ASTNode*) node;
   if (node->lhs && !res)
     res = get_node_by_buffer_and_token(test, token, node->lhs);

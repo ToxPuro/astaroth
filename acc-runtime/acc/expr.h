@@ -59,9 +59,9 @@ static void eval_ternaries(ASTNode* node, const string_vec values, const string_
 	//TP: for now consider only that expr is a < b
 	//TP: where a and b are const int expressions
 	//printf("ORIG: %s\n",combine_all_new(node));
-	const ASTNode* cond = node->lhs;
-	if(cond->type != NODE_BINARY_EXPRESSION) return;
-	const char* op = get_node_by_token(BINARY_OP,cond->rhs)->buffer;
+	const ASTNode* cond = node->lhs->lhs;
+	if(!cond) return;
+	const char* op = cond->rhs->lhs->buffer;
 	if(!op) return;
 	const bool less = !strcmp(op,"<");
 	const bool more = !strcmp(op,">");
