@@ -185,6 +185,13 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 		return res;
 	};
 
+	//TP: push periodic bcs first to ensure they don't overwrite
+	//    bcs for facet classes > 1 when not all directions are periodic
+	for(size_t i = 0; i < bcs.size(); ++i)
+	{
+		if(no_incoming_edges(i) && bcs[i].kernel == BOUNDCOND_PERIODIC) vertices_under_work.push(i);
+	}
+
 	for(size_t i = 0; i < bcs.size(); ++i)
 	{
 		if(no_incoming_edges(i)) vertices_under_work.push(i);
@@ -507,6 +514,8 @@ get_field_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized, const 
 				{
 					const int index = (x+1) + 3*((y+1)+3*(z+1));
 					if(x == 0 && y == 0 && z == 0) continue;
+					const int facet_class = std::abs(x) + std::abs(y) + std::abs(z);
+					if(bc.kernel == BOUNDCOND_PERIODIC && facet_class > 1) continue;
 					if(!id_and_bc_overlap(x,y,z,bc.boundary)) continue;
 					for(auto& field : bc.out) 
 					{
