@@ -9855,7 +9855,6 @@ preprocess(ASTNode* root, const bool optimize_input_params)
 
   gen_overloads(root);
   add_casts(root);
-  eval_conditionals(root,root);
   transform_broadcast_assignments(root);
   free_structs_info(&s_info);
   symboltable_reset();
@@ -10808,6 +10807,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   {
   	if(!gen_mem_accesses && executed_nodes.size > 0 && optimize_mem_accesses && ELIMINATE_CONDITIONALS)
   	{
+  		eval_conditionals(root,root);
   	        bool eliminated_something = true;
   	        while(eliminated_something)
   	        {
