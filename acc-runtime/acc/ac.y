@@ -585,10 +585,21 @@ main(int argc, char** argv)
 %left QUESTION
 %left BINARY_OP
 %left ':'
-%left '&'
-%left '|'
+%left EQ
+%left LEQ
+%left GEQ
+%left NEQ
+%left AND
+%left OR
+%left MOD
+%nonassoc SHIFT_LEFT
+%nonassoc SHIFT_RIGHT
 %left '<'
 %left '>'
+%left '|'
+%left '&'
+%left '%'
+%left '^'
 %left '-'
 %left '+'
 %left '*'
@@ -1076,6 +1087,14 @@ binary_expression:
 												op, $3);
 				 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
 							}
+		| expression '|' expression { 
+				 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+								astnode_set_buffer("|",op);
+								op->token = BINARY_OP;
+				 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+												op, $3);
+				 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+							}
 		| expression '>' expression { 
 				 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
 								astnode_set_buffer(">",op);
@@ -1084,13 +1103,77 @@ binary_expression:
 												op, $3);
 				 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
 							}
-		| expression BINARY_OP expression { 
+		| expression EQ expression { 
 				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
-							astnode_set_buffer(binary_op_val,op);
+							astnode_set_buffer("==",op);
 							op->token = BINARY_OP;
 				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
 											op, $3);
 				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression LEQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("<=",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression GEQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer(">=",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression NEQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("!=",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression AND expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("&&",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression OR expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("||",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression SHIFT_LEFT expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("<<",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression SHIFT_RIGHT expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer(">>",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression MOD expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("%",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
 					}
 		| expression '&' expression { 
 		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);

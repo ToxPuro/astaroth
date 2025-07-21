@@ -211,15 +211,15 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
 [+-/*|&%^]?=              { return ASSIGNOP; }     /* Assignment */
 (<<=)|(>>=)               { return ASSIGNOP; }     /* Assignment */
-[|%^]                   { 
-				binary_op_val = intern(yytext);
-				return BINARY_OP; }      /* Operators */
-(&&)|(\|\|)|(<<)|(>>)     { 
-				binary_op_val = intern(yytext);
-				return BINARY_OP; }    /* Operators */
-(==)|(>=)|(<=)|(!=)|(^=)  { 
-				binary_op_val = intern(yytext);
-				return BINARY_OP; }    /* Operators */
+(&&)		          { return AND; }
+(\|\|)			  { return OR; }
+(<<)		          { return SHIFT_LEFT; }
+(>>)		          { return SHIFT_RIGHT; }
+(==)		          { return EQ; }
+(>=)                        { return GEQ; }
+(<=)                        { return LEQ; }
+(!=)                        { return NEQ; }
+(%)                        { return MOD; }
 [-+*/:;=\[\]{}(),\.|&!<>]   { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
 {D}+[.]?{D}*([eE][-+]?{D}+)   { return REALNUMBER; }
