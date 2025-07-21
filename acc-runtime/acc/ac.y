@@ -581,14 +581,15 @@ main(int argc, char** argv)
 %token CAST BASIC_STATEMENT
 %token TEMPLATE BINARY UNARY PROGRAM
 
-%nonassoc QUESTION
-%nonassoc '<'
-%nonassoc '>'
-%nonassoc ':'
+%left QUESTION
+%left BINARY_OP
+%left ':'
 %left '-'
 %left '+'
 %left '&'
-%left BINARY_OP
+%left '|'
+%nonassoc '<'
+%nonassoc '>'
 %%
 
 
@@ -938,14 +939,6 @@ type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOW
  * =============================================================================
 */
 
-//Plus and minus have to be in the parser since based on context they are unary or binary ops
-binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("+", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '-'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("-", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '&'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("&", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '<'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("<", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '>'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(">", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         ;
 
 unary_op: '-'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
         | '+'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
@@ -1036,7 +1029,57 @@ unary_expression: postfix_expression          { $$ = astnode_create(NODE_EXPRESS
                 | unary_op postfix_expression { $$ = astnode_create(NODE_EXPRESSION, $1, $2);   $$->token = UNARY;}
                 ;
 
-binary_expression: binary_op unary_expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+//Plus and minus have to be in the parser since based on context they are unary or binary ops
+binary_op: 
+          BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
+         ;
+
+binary_expression: expression binary_op expression { 
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										$2, $3);
+						
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs); 
+					}
+binary_expression: expression '+' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("+",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs);
+					}
+binary_expression: expression '-' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("-",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs); 
+					}
+binary_expression: expression '&' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("&",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+binary_expression: expression '<' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("<",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+binary_expression: expression '>' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer(">",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
                  ;
 
 
@@ -1044,7 +1087,7 @@ choose: QUESTION expression ':' expression {$$ = astnode_create(NODE_UNKNOWN,$2,
       ;
 expression: unary_expression             { $$ = astnode_create(NODE_EXPRESSION, $1, NULL); }
 	  | expression choose            { $$ = astnode_create(NODE_TERNARY_EXPRESSION,$1,$2); } 
-          | expression binary_expression { $$ = astnode_create(NODE_BINARY_EXPRESSION, $1, $2); $$->token = BINARY;}
+          | binary_expression { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
 
 
 expression_list: expression                     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }

@@ -7303,6 +7303,12 @@ eval_ands(ASTNode* node)
 		replace_node(node,create_primary_expression("false"));
 		return;
 	}
+	const char* rhs_val = combine_all_new(node->rhs->rhs);
+	if(!strcmp(rhs_val,"false") || !strcmp(rhs_val,"(false)"))
+	{
+		replace_node(node,create_primary_expression("false"));
+		return;
+	}
 	/**
 	if(strstr(lhs_val,"false") && !strstr(lhs_val,"!"))
 	{
@@ -7349,7 +7355,7 @@ eval_conditionals(ASTNode* node, const ASTNode* root)
 		if(node->buffer != intern("false") && node->buffer != intern("true"))
 		{
 			const char* id = node->buffer;
-			if(check_symbol_string(NODE_VARIABLE_ID,id,"bool",CONST_STR))
+			if(check_symbol_string(NODE_VARIABLE_ID,id,BOOL_STR,CONST_STR))
 			{
 				const char* val = intern(combine_all_new(get_var_val(id,root)));
 				if(val)
@@ -7358,8 +7364,6 @@ eval_conditionals(ASTNode* node, const ASTNode* root)
 					return;
 				}
 			}
-			/**
-			**/
 		}
 	}
 	if(!node_is_binary_expr(node)) return;
@@ -9851,7 +9855,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
 
   gen_overloads(root);
   add_casts(root);
-  //eval_conditionals(root,root);
+  eval_conditionals(root,root);
   transform_broadcast_assignments(root);
   free_structs_info(&s_info);
   symboltable_reset();
@@ -10108,78 +10112,83 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 	bool res = false;
 	if(node->lhs)
 		res |= eliminate_conditionals_base(node->lhs,gen_mem_accesses);
-	if((node->type & NODE_IF && node->is_constexpr))
+	if(node->type & NODE_IF)
 	{
-		const bool is_executed = int_vec_contains(executed_nodes,node->id);
-		const bool is_elif = get_node_by_token(ELIF,node->parent->lhs)  != NULL;
-		if(is_executed)
+		const char* condition = combine_all_new(node->lhs);
+		const bool is_known = node->is_constexpr || !strcmp(condition,"(false)");
+		if(is_known)
 		{
-			//TP: now we know that this constexpr conditional is taken
-			//TP: this means that its condition has to be always true given its constexpr nature, thus if the previous conditionals were not taken this is always taken
-			//TP: since we iterate the conditionals in order we can remove the conditionals on the right that can not be taken
-			node->rhs->rhs = NULL;
-			//TP: if is not elif this is the base case and there is only a single redundant check left
-			if(!is_elif)
+			const bool is_executed = int_vec_contains(executed_nodes,node->id);
+			const bool is_elif = get_node_by_token(ELIF,node->parent->lhs)  != NULL;
+			if(is_executed)
 			{
-				node->rhs->lhs->parent = node->parent->parent;
-				node->parent->parent->lhs = node->rhs->lhs;
-			}
-			node->type ^= NODE_IF;
-			if(!gen_mem_accesses)
-			{
-				ASTNode* if_scope = (ASTNode*)get_node(NODE_BEGIN_SCOPE,node);
-				if_scope->prefix = NULL;
-				if_scope->postfix= NULL;
-				if_scope->type = NODE_UNKNOWN;
-			}
-			return true;
-		}
-		else
-		{
-			const bool has_more_cases = node->rhs->rhs && node->rhs->rhs->lhs->token == ELIF;
-			if(has_more_cases)
-			{
-				ASTNode* elif = node->rhs->rhs;
-				ASTNode* elif_if_statement = elif->rhs;
-				elif_if_statement->parent = node->parent;
-				node->parent->rhs = elif_if_statement;
-			}
-			//Else is the only possibility take it
-			else if(node->rhs->rhs && node->rhs->rhs->lhs->token == ELSE)
-			{
-				ASTNode* else_node = node->rhs->rhs;
-				ASTNode* statement = node->parent->parent;
-				//TP: take out potential else ifs
-				statement->rhs = NULL;
-				statement->lhs = else_node->rhs;
-				if(!else_node->rhs)
+				//TP: now we know that this constexpr conditional is taken
+				//TP: this means that its condition has to be always true given its constexpr nature, thus if the previous conditionals were not taken this is always taken
+				//TP: since we iterate the conditionals in order we can remove the conditionals on the right that can not be taken
+				node->rhs->rhs = NULL;
+				//TP: if is not elif this is the base case and there is only a single redundant check left
+				if(!is_elif)
 				{
-					fatal("No rhs for else: %s\n",combine_all_new(else_node));
+					node->rhs->lhs->parent = node->parent->parent;
+					node->parent->parent->lhs = node->rhs->lhs;
 				}
-				else_node->rhs->parent = statement;
+				node->type ^= NODE_IF;
 				if(!gen_mem_accesses)
 				{
-					ASTNode* else_scope = (ASTNode*)get_node(NODE_BEGIN_SCOPE,else_node->rhs);
-					if(!else_scope)
-					{
-						fatal("No scope for else: %s\n",combine_all_new(else_node));
-					}
-					if(else_scope)
-					{
-						else_scope->prefix= NULL;
-						else_scope->postfix = NULL;
-						else_scope->type = NODE_UNKNOWN;
-					}
+					ASTNode* if_scope = (ASTNode*)get_node(NODE_BEGIN_SCOPE,node);
+					if_scope->prefix = NULL;
+					if_scope->postfix= NULL;
+					if_scope->type = NODE_UNKNOWN;
 				}
+				return true;
 			}
-			//Conditional with only a single case that is not taken, simple remove the whole conditional
 			else
 			{
-				ASTNode* statement = node->parent->parent;
-				statement->lhs = NULL;
+				const bool has_more_cases = node->rhs->rhs && node->rhs->rhs->lhs->token == ELIF;
+				if(has_more_cases)
+				{
+					ASTNode* elif = node->rhs->rhs;
+					ASTNode* elif_if_statement = elif->rhs;
+					elif_if_statement->parent = node->parent;
+					node->parent->rhs = elif_if_statement;
+				}
+				//Else is the only possibility take it
+				else if(node->rhs->rhs && node->rhs->rhs->lhs->token == ELSE)
+				{
+					ASTNode* else_node = node->rhs->rhs;
+					ASTNode* statement = node->parent->parent;
+					//TP: take out potential else ifs
+					statement->rhs = NULL;
+					statement->lhs = else_node->rhs;
+					if(!else_node->rhs)
+					{
+						fatal("No rhs for else: %s\n",combine_all_new(else_node));
+					}
+					else_node->rhs->parent = statement;
+					if(!gen_mem_accesses)
+					{
+						ASTNode* else_scope = (ASTNode*)get_node(NODE_BEGIN_SCOPE,else_node->rhs);
+						if(!else_scope)
+						{
+							fatal("No scope for else: %s\n",combine_all_new(else_node));
+						}
+						if(else_scope)
+						{
+							else_scope->prefix= NULL;
+							else_scope->postfix = NULL;
+							else_scope->type = NODE_UNKNOWN;
+						}
+					}
+				}
+				//Conditional with only a single case that is not taken, simple remove the whole conditional
+				else
+				{
+					ASTNode* statement = node->parent->parent;
+					statement->lhs = NULL;
+				}
+				//node->type ^= NODE_IF;
+				return true;
 			}
-			//node->type ^= NODE_IF;
-			return true;
 		}
 	}
 	if(node->rhs)
