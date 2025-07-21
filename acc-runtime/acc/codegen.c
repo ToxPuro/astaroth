@@ -5355,12 +5355,8 @@ get_array_initializer_type(ASTNode* node)
 	node_vec elems = get_nodes_in_list(node->lhs);
 	const char* expr = get_expr_type((ASTNode*) elems.data[0]);
 	if(!expr) return NULL;
-	const char* res = sprintf_new("AcArray<%s,%lu>",expr,elems.size);
+        const char* res = sprintf_new("AcArray<%s,%lu>",expr,elems.size);
 	free_node_vec(&elems);
-	if(!node->prefix|| !strstr(node->prefix,"AcArray"))
-	{
-		astnode_sprintf_prefix(node,"(%s) %s",res,node->prefix);
-	}
 	return intern(res);
 }
 const char*
@@ -9798,6 +9794,23 @@ gen_fused_kernels(ASTNode* root)
 	if(!has_optimization_info() && kfunc_nodes.size == 0) return;
 	fuse_computesteps_calls(root, get_tail_node(root));
 }
+void
+add_casts(ASTNode* node)
+{
+	if(node->type == NODE_ASSIGNMENT) return;
+	TRAVERSE_PREAMBLE(add_casts);
+	if(node->type == NODE_ARRAY_INITIALIZER)
+	{
+		if(!node->prefix || !strstr(node->prefix,"AcArray"))
+		{
+			const char* expr = get_expr_type(node);
+			if(strstr(expr,"AcArray"))
+			{
+				astnode_sprintf_prefix(node,"(%s) %s",expr,node->prefix);
+			}
+		}
+	}
+}
 
 void
 preprocess(ASTNode* root, const bool optimize_input_params)
@@ -9837,6 +9850,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
   mark_first_declarations(root);
 
   gen_overloads(root);
+  add_casts(root);
   //eval_conditionals(root,root);
   transform_broadcast_assignments(root);
   free_structs_info(&s_info);
