@@ -67,6 +67,10 @@ typedef struct
 
 
 #ifdef __cplusplus
+
+#include <array>
+#define AcArray std::array
+
 static HOST_DEVICE_INLINE size3_t
 operator+(const size3_t& a, const size3_t& b)
 {

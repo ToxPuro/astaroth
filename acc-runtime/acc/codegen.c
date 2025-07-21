@@ -3324,6 +3324,16 @@ check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 	if(str_vec_contains(ray_func_names,func_name)) return;
 	fatal("Undeclared function %s in call: %s\n",func_name,combine_all_new(node));
 }
+void
+array_initializers_to_DSL(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(array_initializers_to_DSL);
+	if(node->type == NODE_ARRAY_INITIALIZER)
+	{
+		astnode_set_prefix("[",node);
+		astnode_set_postfix("]",node);
+	}
+}
 
 void
 write_dfunc_bc_kernel(const char* prefix, const char* func_name,const func_params_info call_info,FILE* fp)
@@ -3340,6 +3350,7 @@ write_dfunc_bc_kernel(const char* prefix, const char* func_name,const func_param
 	fprintf(fp,"\t%s(",dfunc_name);
 	for(size_t j = 0; j <num_of_rest_params; ++j)
 	{
+		array_initializers_to_DSL((ASTNode*)call_info.expr_nodes.data[j+call_param_offset]);
 		fprintf(fp,"%s",combine_all_new(call_info.expr_nodes.data[j+call_param_offset]));
 		if(j < num_of_rest_params-1) fprintf(fp,",");
 	}
@@ -5345,6 +5356,10 @@ get_array_initializer_type(ASTNode* node)
 	if(!expr) return NULL;
 	const char* res = sprintf_new("AcArray<%s,%lu>",expr,elems.size);
 	free_node_vec(&elems);
+	if(!node->prefix|| !strstr(node->prefix,"AcArray"))
+	{
+		astnode_sprintf_prefix(node,"(%s) %s",res,node->prefix);
+	}
 	return intern(res);
 }
 const char*

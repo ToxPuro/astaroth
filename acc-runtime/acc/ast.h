@@ -101,6 +101,43 @@ typedef enum {
   NODE_ANY                 = ~0,
 } NodeType;
 
+static __attribute__((unused)) const char*
+node_type_to_str(const NodeType type)
+{
+	if(type == NODE_UNKNOWN) return "unknown";
+	if(type == NODE_PRIMARY_EXPRESSION) return "primary_expression";
+	if(type == NODE_DFUNCTION) return "dfunction";
+	if(type == NODE_KFUNCTION) return "global";
+	if(type == NODE_BINARY) return "binary";
+	if(type == NODE_BEGIN_SCOPE) return "begin_scope";
+	if(type == NODE_DECLARATION) return "declaration";
+	if(type == NODE_TSPEC) return "tspec";
+	if(type == NODE_TQUAL) return "tqual";
+	if(type == NODE_STENCIL) return "stencil";
+	if(type == NODE_EXPRESSION) return "expression";
+	if(type == NODE_VARIABLE) return "variable";
+	if(type == NODE_VARIABLE_ID) return "variable_id";
+	if(type == NODE_ARRAY_INITIALIZER) return "array_initializer";
+	if(type == NODE_DCONST) return "dconst";
+	if(type == NODE_TERNARY) return "ternary";
+	if(type == NODE_MEMBER_ID) return "member_id";
+	if(type == NODE_HOSTDEFINE) return "hostdefine";
+	if(type == NODE_ASSIGNMENT) return "assignment";
+	if(type == NODE_INPUT) return "input";
+	if(type == NODE_DEF) return "def";
+	if(type == NODE_STRUCT_INITIALIZER) return "struct_initializer";
+	if(type == NODE_ARRAY_ACCESS) return "array_access";
+	if(type == NODE_STATEMENT_LIST_HEAD) return "statement_list_head";
+	if(type == NODE_IF) return "if";
+	if(type == NODE_FUNCTION_CALL) return "function_call";
+	if(type == NODE_DFUNCTION_ID) return "dfunction_id";
+	if(type == NODE_ASSIGN_LIST) return "assign_list";
+	if(type == NODE_NO_OUT) return "no_out";
+	if(type == NODE_STRUCT_EXPRESSION) return "struct_expression";
+	if(type == NODE_ANY) return "any";
+	return "unknown";
+}
+
 typedef struct astnode_s {
   int id;
   struct astnode_s* parent;
