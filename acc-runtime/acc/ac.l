@@ -211,7 +211,7 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
 [+-/*|&%^]?=              { return ASSIGNOP; }     /* Assignment */
 (<<=)|(>>=)               { return ASSIGNOP; }     /* Assignment */
-[/*|%^]                   { 
+[|%^]                   { 
 				binary_op_val = intern(yytext);
 				return BINARY_OP; }      /* Operators */
 (&&)|(\|\|)|(<<)|(>>)     { 

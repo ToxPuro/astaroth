@@ -1034,7 +1034,25 @@ unary_expression: postfix_expression          { $$ = astnode_create(NODE_EXPRESS
 
 //Plus and minus have to be in the parser since based on context they are unary or binary ops
 
-binary_expression: expression '+' expression { 
+binary_expression: 
+		  expression '/' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("/",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs);
+					}
+		 | expression '*' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("*",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs); 
+					}
+		 
+		 | expression '+' expression { 
 		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
 						astnode_set_buffer("+",op);
 						op->token = BINARY_OP;
