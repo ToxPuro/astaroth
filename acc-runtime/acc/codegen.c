@@ -829,11 +829,7 @@ populate_array_var_dims_info(const ASTNode* node, struct hashmap_s* cache)
 	node_vec res = get_array_accesses(access_start);
 	node_vec* res_ptr = (node_vec*)malloc(sizeof(node_vec));
 	*res_ptr = res;
-	fprintf(stderr,"HMM: %s,%zu\n",var,strlen(var));
-	fflush(stderr);
 	hashmap_put(cache, var, strlen(var),(void*)res_ptr);
-	fprintf(stderr,"HMM AFTER: %s,%zu\n",var,strlen(var));
-	fflush(stderr);
 }
 node_vec
 get_array_var_dims(const char* var, const ASTNode* root)
@@ -2277,7 +2273,7 @@ void
 preprocess_array_reads(ASTNode* node, const ASTNode* root, const string_vec datatypes_scalar, const bool gen_mem_accesses)
 {
   	string_vec datatypes = VEC_INITIALIZER;
-  	for(size_t i = 0; i < datatypes.size; ++i)
+  	for(size_t i = 0; i < datatypes_scalar.size; ++i)
   	        push(&datatypes,sprintf_intern("%s*",datatypes_scalar.data[i]));
   	preprocess_array_reads_base(node,root,datatypes_scalar,datatypes,gen_mem_accesses);
   	free_str_vec(&datatypes);
@@ -2420,7 +2416,7 @@ void
 gen_array_reads(ASTNode* node, const ASTNode* root, const string_vec datatypes_scalar)
 {
   string_vec datatypes = VEC_INITIALIZER;
-  for(size_t i = 0; i < datatypes.size; ++i)
+  for(size_t i = 0; i < datatypes_scalar.size; ++i)
 	  push(&datatypes,sprintf_intern("%s*",datatypes_scalar.data[i]));
   gen_array_reads_base(node,root,datatypes_scalar,datatypes);
   free_str_vec(&datatypes);
