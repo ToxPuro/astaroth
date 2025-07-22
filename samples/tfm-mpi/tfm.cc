@@ -1551,7 +1551,7 @@ class Grid {
         const auto uumax{outputs[0]};
 
 #if defined(TFM_DT_INCLUDE_ALFVEN)
-        PRINT_DEBUG(outputs.size());
+        // PRINT_DEBUG(outputs.size());
         ERRCHK(outputs.size() == 5);
         const auto vAmax11{outputs[1]};
         const auto vAmax12{outputs[2]};
