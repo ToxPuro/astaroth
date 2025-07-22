@@ -782,7 +782,7 @@ static inline bool has_qualifier(const ASTNode* node, const char* qualifier)
 	if(node->rhs)
 		res |= has_qualifier(node->rhs,qualifier);
 	if(node->type & NODE_TQUAL)
-		res |= !strcmp(node->lhs->buffer,qualifier);
+		res |= node->lhs->buffer == qualifier;
 	return res;
 }
 
@@ -865,6 +865,8 @@ build_list_node(const node_vec nodes, const char* separator)
 	}
 	return list_head;
 }
+
+
 static inline const ASTNode*
 get_node(const NodeType type, const ASTNode* node)
 {

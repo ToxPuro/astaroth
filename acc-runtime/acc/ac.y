@@ -8,6 +8,80 @@
 
 extern struct hashmap_s string_intern_hashmap;
 extern const char* binary_op_val;
+
+const char* INT_STR = NULL;
+const char* TEN_STR = NULL;
+const char* EXTERN_STR = NULL;
+const char* EMPTY_STR = NULL;
+const char* ZERO_STR = NULL;
+const char* REAL_ARR_STR = NULL;
+const char* INTRINSIC_STR = NULL;
+const char* CHAR_PTR_STR = NULL;
+const char* REAL_PTR_STR = NULL;
+const char* BOOL_PTR_STR = NULL;
+const char* FALSE_STR = NULL;
+const char* TRUE_STR = NULL;
+const char* REAL3_PTR_STR = NULL;
+const char* FIELD3_PTR_STR = NULL;
+const char* VTXBUF_PTR_STR = NULL;
+const char* FIELD_PTR_STR = NULL;
+const char* STENCIL_STR    = NULL;
+const char* MATRIX_STR   = NULL;
+const char* TENSOR_STR   = NULL;
+const char* REAL3_STR    = NULL;
+const char* INT3_STR     = NULL;
+const char* COMPLEX_STR = NULL;
+const char* AND_STR = NULL;
+const char* NEQ_STR = NULL;
+const char* EQ_STR = NULL;
+const char* DOT_STR = NULL;
+const char* LESS_STR = NULL;
+const char* GREATER_STR  = NULL;
+const char* MULT_STR = NULL;
+const char* MINUS_STR = NULL;
+const char* PLUS_STR = NULL;
+const char* DIV_STR = NULL;
+const char* LEQ_STR = NULL;
+const char* GEQ_STR = NULL;
+const char* MEQ_STR= NULL;
+const char* AEQ_STR= NULL;
+const char* MODEQ_STR= NULL;
+const char* MINUSEQ_STR= NULL;
+const char* DEQ_STR= NULL;
+const char* PERIODIC = NULL;
+const char* VALUE_STR      = NULL;
+const char* OUTPUT_VALUE_STR      = NULL;
+const char* DEAD_STR      = NULL;
+const char* AUXILIARY_STR      = NULL;
+const char* COMMUNICATED_STR      = NULL;
+const char* DEVICE_ONLY_STR       = NULL;
+const char* DIMS_STR = NULL;
+const char* HALO_STR = NULL;
+const char* FIELD_ORDER_STR = NULL;
+const char* OVERRIDE_STR = NULL;
+const char* CONST_STR = NULL;
+const char* CONSTEXPR_STR = NULL;
+const char* OUTPUT_STR = NULL;
+const char* INPUT_STR = NULL;
+const char* GLOBAL_STR = NULL;
+const char* GLOBAL_MEM_STR = NULL;
+const char* DYNAMIC_STR = NULL;
+const char* INLINE_STR = NULL;
+const char* UTILITY_STR = NULL;
+const char* ELEMENTAL_STR = NULL;
+const char* BOUNDCOND_STR = NULL;
+const char* FIXED_BOUNDARY_STR = NULL;
+const char* RAYTRACE_STR = NULL;
+const char* RUN_CONST_STR = NULL;
+const char* CONST_DIMS_STR = NULL;
+const char* DCONST_STR = NULL;
+const char* FIELD_STR      = NULL;
+const char* KERNEL_STR      = NULL;
+const char* FIELD3_STR      = NULL;
+const char* FIELD4_STR      = NULL;
+const char* PROFILE_STR      = NULL;
+const char* COMPLEX_FIELD_STR  = NULL;
+
 #include <hash.h>
 #include "ast.h"
 #include "codegen.h"
@@ -511,6 +585,90 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
         return EXIT_SUCCESS;
 }
+void
+populate_global_strings()
+{
+	VALUE_STR = intern("value");
+	OUTPUT_VALUE_STR = intern("output_value");
+
+	COMPLEX_STR= intern("AcComplex");
+	INT_STR = intern("int");
+	TEN_STR = intern("10");
+	REAL3_STR= intern("AcReal3");
+	REAL_ARR_STR = intern("AcRealArray");
+	INTRINSIC_STR = intern("intrinsic");
+
+	ZERO_STR = intern("0");
+	REAL_PTR_STR = intern("AcReal*");
+	BOOL_PTR_STR = intern("bool*");
+	TRUE_STR     = intern("true");
+	FALSE_STR     = intern("false");
+	REAL3_PTR_STR = intern("AcReal3*");
+	FIELD3_PTR_STR = intern("Field3*");
+	VTXBUF_PTR_STR = intern("VertexBufferHandle*");
+	FIELD_PTR_STR = intern("Field*");
+
+	MATRIX_STR = intern("AcMatrix");
+	TENSOR_STR = intern("AcTensor");
+	INT3_STR = intern("int3");
+	AND_STR = intern("&&");
+	NEQ_STR = intern("!=");
+	EQ_STR = intern("=");
+
+	DOT_STR = intern("dot");
+
+	LESS_STR = intern("<");
+	GREATER_STR = intern(">");
+	LEQ_STR = intern("<=");
+	GEQ_STR = intern(">=");
+
+	MEQ_STR= intern("*=");
+	AEQ_STR= intern("+=");
+	MODEQ_STR = intern("%=");
+	MINUSEQ_STR= intern("-=");
+	DEQ_STR= intern("/=");
+	PERIODIC = intern("periodic");
+	
+	EXTERN_STR = intern("extern");
+	CHAR_PTR_STR = intern("char*");
+	EMPTY_STR = intern("\0");
+	DEAD_STR = intern("dead");
+	INLINE_STR = intern("inline");
+	UTILITY_STR = intern("utility");
+	BOUNDCOND_STR = intern("boundary_condition");
+	FIXED_BOUNDARY_STR = intern("fixed_boundary");
+	RAYTRACE_STR = intern("Raytrace");
+	ELEMENTAL_STR = intern("elemental");
+	AUXILIARY_STR = intern("auxiliary");
+	COMMUNICATED_STR = intern("communicated");
+	DEVICE_ONLY_STR = intern("device_only");
+	DIMS_STR = intern("dims");
+	HALO_STR = intern("halo");
+	FIELD_ORDER_STR = intern("field_order");
+	OVERRIDE_STR  = intern("override");
+	CONST_STR  = intern("const");
+	DCONST_STR = intern("dconst");
+	CONSTEXPR_STR = intern("constexpr");
+	GLOBAL_MEM_STR  = intern("gmem");
+	DYNAMIC_STR  = intern("dynamic");
+	OUTPUT_STR  = intern("output");
+	GLOBAL_STR  = intern("global");
+	INPUT_STR  = intern("input");
+	RUN_CONST_STR = intern("run_const");
+	CONST_DIMS_STR= intern("const_dims");
+	FIELD_STR = intern("Field");
+	STENCIL_STR = intern("Stencil");
+	KERNEL_STR = intern("Kernel");
+	FIELD3_STR = intern("Field3");
+	FIELD4_STR = intern("Field4");
+	PROFILE_STR = intern("Profile");
+	COMPLEX_FIELD_STR = intern("ComplexField");
+
+	MULT_STR = intern("*");
+	PLUS_STR = intern("+");
+	MINUS_STR = intern("-");
+	DIV_STR = intern("/");
+}
 
 int
 main(int argc, char** argv)
@@ -523,6 +681,7 @@ main(int argc, char** argv)
     RUNTIME_COMPILATION     = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-2]),"1"); 
     READ_OVERRIDES          = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-3]),"1"); 
     ELIMINATE_CONDITIONALS  = argc == 2 ? false : !strcmp(strip_whitespace_new(argv[argc-4]),"1"); 
+
 
     if(argc == 2 || argc == 6)
     {
@@ -555,6 +714,7 @@ main(int argc, char** argv)
 
     const unsigned initial_size = 2000;
     hashmap_create(initial_size, &string_intern_hashmap);
+    populate_global_strings();
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, true,false); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, false,true); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, OPTIMIZE_INPUT_PARAMS, false,false);
@@ -658,13 +818,13 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    else if (assignment)
 		process_global_assignment($$,variable_definition,declaration_list);
 
-	    else if(has_qualifier($$->rhs,"run_const") || has_qualifier($$->rhs,"output"))
+	    else if(has_qualifier($$->rhs,RUN_CONST_STR) || has_qualifier($$->rhs,OUTPUT_STR))
 	    {
 		//TP: we do this to enable array dimensions with run_const ints
-                if(has_qualifier($$->rhs,"run_const"))
+                if(has_qualifier($$->rhs,RUN_CONST_STR))
                 {
                         const char* spec = get_node(NODE_TSPEC,$$->rhs)->lhs->buffer;
-                        if(!strcmp(spec,"int"))
+                        if(spec == INT_STR)
                         {       
                                 ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,$$->rhs)->rhs;
                                 node_vec vars = get_nodes_in_list(def_list_head);
@@ -673,7 +833,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                                         ASTNode* elem = (ASTNode*) vars.data[i];
                                         const char* name = get_node_by_token(IDENTIFIER,elem)->buffer;
                                         push(&run_const_ints,name);
-                                        push(&run_const_int_values,intern("10"));
+                                        push(&run_const_int_values,TEN_STR);
                                 }
                                 free_node_vec(&vars);
                         }
@@ -1519,7 +1679,7 @@ function_definition: declaration function_body {
 				exit(EXIT_FAILURE);
 			}
 
-			if(has_qualifier($$,"extern"))
+			if(has_qualifier($$,EXTERN_STR))
 			{
 				$$->type |= NODE_NO_OUT;
 			}
@@ -1687,7 +1847,7 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 
 		//if dconst or runtime array evaluate the dimension to a single integer to make further transformations easier
 		const ASTNode* tqual = get_node(NODE_TQUAL,variable_definition);
-		if(!tqual || has_qualifier(variable_definition,"dconst") || has_qualifier(variable_definition,"run_const"))
+		if(!tqual || has_qualifier(variable_definition,DCONST_STR) || has_qualifier(variable_definition,RUN_CONST_STR))
 		{
 			
 			node_vec dims = VEC_INITIALIZER;
@@ -1703,7 +1863,7 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 		}
 		//else if gmem simply replace const ints with numeric values to enable differentation of the const declarations
 		//and the array dims and also to notice easily if dims are known statically
-		else if(has_qualifier(variable_definition,"gmem"))
+		else if(has_qualifier(variable_definition,GLOBAL_MEM_STR))
 		{
 			node_vec dims = VEC_INITIALIZER;
 			get_array_access_nodes(variable_definition,&dims);
@@ -1732,11 +1892,11 @@ static void process_global_assignment(ASTNode* node,ASTNode* variable_definition
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 
-		const bool is_const = has_qualifier(node->rhs,"const");
-		const bool is_run_const = has_qualifier(node->rhs,"run_const");
+		const bool is_const = has_qualifier(node->rhs,CONST_STR);
+		const bool is_run_const = has_qualifier(node->rhs,RUN_CONST_STR);
 		if(!is_const && !is_run_const) return;
 		const char* spec = get_node(NODE_TSPEC,node->rhs)->lhs->buffer;
-		if(!strcmp(spec,"int"))
+		if(spec == INT_STR)
 		{	
 
 			ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,node->rhs)->rhs;
