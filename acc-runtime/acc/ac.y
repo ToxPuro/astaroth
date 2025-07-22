@@ -746,14 +746,14 @@ main(int argc, char** argv)
 %left BINARY_OP
 %left ':'
 %left EQ
-%left LEQ
-%left GEQ
-%left NEQ
 %left AND
 %left OR
 %left MOD
 %nonassoc SHIFT_LEFT
 %nonassoc SHIFT_RIGHT
+%left LEQ
+%left GEQ
+%left NEQ
 %left '<'
 %left '>'
 %left '|'
