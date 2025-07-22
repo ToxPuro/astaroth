@@ -822,11 +822,18 @@ populate_array_var_dims_info(const ASTNode* node, struct hashmap_s* cache)
 	TRAVERSE_PREAMBLE_PARAMS(populate_array_var_dims_info,cache)
 	if(!(node->type & NODE_DECLARATION)) return;
 	const char* var = get_node_by_token(IDENTIFIER,node)->buffer;
+	if(!var) return;
+	if(hashmap_get(cache, var, strlen(var)) != NULL) return;
 	const ASTNode* access_start = get_node(NODE_ARRAY_ACCESS,node);
+	if(!access_start) return;
 	node_vec res = get_array_accesses(access_start);
-	node_vec* res_ptr = (node_vec*)malloc(sizeof(res));
+	node_vec* res_ptr = (node_vec*)malloc(sizeof(node_vec));
 	*res_ptr = res;
+	fprintf(stderr,"HMM: %s,%zu\n",var,strlen(var));
+	fflush(stderr);
 	hashmap_put(cache, var, strlen(var),(void*)res_ptr);
+	fprintf(stderr,"HMM AFTER: %s,%zu\n",var,strlen(var));
+	fflush(stderr);
 }
 node_vec
 get_array_var_dims(const char* var, const ASTNode* root)
@@ -9876,13 +9883,14 @@ add_casts(ASTNode* node)
 void
 preprocess(ASTNode* root, const bool optimize_input_params)
 {
+  process_overrides(root);
+
   if(duplicate_dfuncs.names.size == 0) duplicate_dfuncs = get_duplicate_dfuncs(root);
   replace_const_ints(root,const_int_values,const_ints);
   memset(&kfunc_nodes,0,sizeof(kfunc_nodes));
   memset(&kfunc_names,0,sizeof(kfunc_names));
   get_nodes(root,&kfunc_nodes,&kfunc_names,NODE_KFUNCTION);
 
-  process_overrides(root);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
   expand_allocating_types(root);
@@ -9947,6 +9955,7 @@ gen_kfunc_info(const ASTNode* root)
 void
 gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 {
+
   	for(int i = 0; i < MAX_NESTS; ++i)
   	{
   		const unsigned initial_size = 2000;
@@ -9960,11 +9969,11 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	push(&tspecifier_mappings,REAL_STR);
 	push(&tspecifier_mappings,BOOL_STR);
   	ASTNode* root = astnode_dup(root_in,NULL);
+  	process_overrides(root);
   	s_info = read_user_structs(root);
 	e_info = read_user_enums(root);
 	expand_allocating_types(root);
 
-  	process_overrides(root);
 	symboltable_reset();
 	rename_scoped_variables(root,NULL,NULL);
 	symboltable_reset();
@@ -10109,8 +10118,7 @@ gen_analysis_stencils(FILE* stream)
 void
 gen_output_files(ASTNode* root)
 {
-
-
+  process_overrides(root);
   //TP: Get number of run_const variable by skipping overrides
   {
   	traverse_base_params params;
@@ -10125,7 +10133,6 @@ gen_output_files(ASTNode* root)
 
 
   traverse(root, 0, NULL);
-  process_overrides(root);
 
   {
   	FILE* fp = fopen("user_typedefs.h","w");
