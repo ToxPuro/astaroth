@@ -7337,9 +7337,7 @@ gen_kernel_combinatorial_optimizations_and_input(ASTNode* root, const bool optim
 bool
 primary_expr_is_false(const ASTNode* node)
 {
-	if(get_node(NODE_BINARY,node)) return false;
-	if(get_node(NODE_TERNARY,node)) return false;
-	if(get_node(NODE_FUNCTION_CALL,node)) return false;
+	if(get_node(NODE_BINARY | NODE_TERNARY | NODE_FUNCTION_CALL,node)) return false;
 	const ASTNode* primary_expr = get_node(NODE_PRIMARY_EXPRESSION,node);
 	if(!primary_expr) return false;
 	const ASTNode* identifier = get_node_by_token(IDENTIFIER,primary_expr);
