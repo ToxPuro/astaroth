@@ -2170,11 +2170,12 @@ preprocess_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec
   if(!node->lhs) return;
   if(get_parent_node(NODE_VARIABLE,node)) return;
   const ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
-  const char* datatype = get_expr_type((ASTNode*)identifier);
   const char* array_name = identifier->buffer;
+  const char* datatype = get_expr_type((ASTNode*)identifier);
   const int index = str_vec_get_index(datatypes,datatype);
-  if(index == -1) return;
-  const char* datatype_scalar = datatype_scalars.data[index];
+  if(index == -1 && datatype != REAL3_STR) return;
+  const char* datatype_scalar = index != -1 ? datatype_scalars.data[index]
+	  				    : datatype;
   const bool is_global = check_symbol(NODE_VARIABLE_ID,array_name,0,0);
   if(datatype_scalar == REAL3_STR && !is_global)
   {
@@ -10795,7 +10796,12 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_constexpr_info(root,gen_mem_accesses);
 
 
-  preprocess_array_reads(root,root,get_all_datatypes(),gen_mem_accesses);
+  {
+	string_vec tmp  = get_all_datatypes();
+	push(&tmp,REAL3_STR);
+  	preprocess_array_reads(root,root,tmp,gen_mem_accesses);
+	free_str_vec(&tmp);
+  }
   gen_array_reads(root,root,primitive_datatypes);
 
   if(!gen_mem_accesses) gen_user_taskgraphs(root);
