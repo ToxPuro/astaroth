@@ -39,15 +39,10 @@ import pandas as pd
 import numpy as np
 import argparse
 
-#files = ['../../build/timeseries.csv', '../../build/timeseries.csv.nonsoca.turbulence.model']
-#files = ['../../build/timeseries-1-0-default.csv', '../../build/timeseries.csv.model']
-#files = ['../../build/timeseries-0-0-default.csv', '../../build/timeseries.csv']
-files = ['../../build/timeseries.csv', '../../samples/tfm/model/laplace-nonsoca-turbulence/timeseries.csv']
-#files = ['../../build/timeseries.csv', '../../samples/tfm/model/laplace-soca-roberts/timeseries.csv']
+# Files
+files = ['../../build/timeseries.csv', '../../samples/tfm/model/laplace-soca-roberts-uudt/timeseries.csv']
+files = ['../../build/timeseries.csv', '../../samples/tfm/model/laplace-nonsoca-turbulence-uudt/timeseries.csv']
 
-#files = ['../../build/timeseries.csv', '../../samples/tfm/model/laplace-soca-roberts/timeseries.csv']
-#files = ['../../build/timeseries-11706636-0-strong.csv', '../../build/timeseries-11706631-0-strong.csv']
-files = ['../../build/timeseries-0-0-default.csv', '../../samples/tfm/model/laplace-nonsoca-turbulence-incl-alfven-dt/timeseries.csv']
 
 candidate = pd.read_csv(files[0])
 model = pd.read_csv(files[1])
@@ -61,4 +56,4 @@ model = model[model['step'] == step_to_compare]
 candidate.reset_index(drop=True, inplace=True)
 model.reset_index(drop=True, inplace=True)
 
-model.compare(candidate).max()
+candidate.compare(model).max()
