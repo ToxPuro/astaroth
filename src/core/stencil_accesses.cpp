@@ -171,6 +171,7 @@ static int written_complex_fields[NUM_COMPLEX_FIELDS+1]{};
 static int read_complex_fields[NUM_COMPLEX_FIELDS+1]{};
 static int read_fields[NUM_ALL_FIELDS]{};
 static int field_has_stencil_op[NUM_ALL_FIELDS]{};
+static int field_has_ray_op[NUM_ALL_FIELDS]{};
 static int read_profiles[NUM_PROFILES+1]{};
 static int reduced_profiles[NUM_PROFILES+1]{};
 static int written_profiles[NUM_PROFILES+1]{};
@@ -846,6 +847,7 @@ reset_info_arrays()
     memset(stencils_accessed, 0,sizeof(stencils_accessed));
     memset(read_fields,0, sizeof(read_fields));
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op));
+    memset(field_has_ray_op,0, sizeof(field_has_ray_op));
     memset(written_fields, 0,    sizeof(written_fields));
     memset(previous_accessed, 0, sizeof(previous_accessed));
     memset(incoming_ray_value_accessed, 0, sizeof(incoming_ray_value_accessed));
@@ -1133,6 +1135,7 @@ main(int argc, char* argv[])
   FILE* fp_fields_read = fopen("user_read_fields.bin","wb");
   FILE* fp_written_fields = fopen("user_written_fields.bin", "wb");
   FILE* fp_field_has_stencil_op    = fopen("user_field_has_stencil_op.bin","wb");
+  FILE* fp_field_has_ray_op    = fopen("user_field_has_ray_op.bin","wb");
   FILE* fp_field_has_previous_call = fopen("user_field_has_previous_call.bin","wb");
   FILE* fp_profiles_read = fopen("user_read_profiles.bin","wb");
   FILE* fp_profiles_reduced = fopen("user_reduced_profiles.bin","wb");
@@ -1176,6 +1179,7 @@ main(int argc, char* argv[])
       {
       	output_incoming_ray_value_accessed[k][j][ray] = incoming_ray_value_accessed[j][ray];
       	output_outgoing_ray_value_accessed[k][j][ray] = outgoing_ray_value_accessed[j][ray];
+	field_has_ray_op[j] |= incoming_ray_value_accessed[j][ray] | incoming_ray_value_accessed[j][ray];
       }
       write_output[k][j] = written_fields[j];
     }
@@ -1213,6 +1217,7 @@ main(int argc, char* argv[])
 
     fwrite(read_fields,sizeof(int), NUM_ALL_FIELDS,fp_fields_read);
     fwrite(field_has_stencil_op,sizeof(int), NUM_ALL_FIELDS,fp_field_has_stencil_op);
+    fwrite(field_has_ray_op,sizeof(int), NUM_ALL_FIELDS,fp_field_has_ray_op);
     fwrite(previous_accessed,sizeof(int), NUM_ALL_FIELDS,fp_field_has_previous_call);
     fwrite(written_fields,sizeof(int),NUM_ALL_FIELDS,fp_written_fields);
     fwrite(read_profiles   ,sizeof(int),NUM_PROFILES,fp_profiles_read);

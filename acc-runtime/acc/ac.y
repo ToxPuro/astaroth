@@ -7,6 +7,7 @@
 
 
 extern struct hashmap_s string_intern_hashmap;
+extern const char* binary_op_val;
 #include <hash.h>
 #include "ast.h"
 #include "codegen.h"
@@ -563,32 +564,46 @@ main(int argc, char** argv)
 }
 %}
 
-%token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT DOUBLE DEFAULT_INITIALIZER
-%token NON_RETURNING_FUNC_CALL
-%token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
-%token BINARY_OP ASSIGNOP QUESTION UNARY_OP
-%token SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
-%token BOOL INTRINSIC LONG_LONG LONG 
-%token KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
-%token FIXED_BOUNDARY
-%token PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
-%token HOSTDEFINE
-%token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
-%token STATEMENT_LIST_HEAD STATEMENT
-%token REAL3 INT3 FIRST
-%token RANGE IN_RANGE
-%token CONST_DIMS
-%token CAST BASIC_STATEMENT
-%token TEMPLATE BINARY UNARY PROGRAM
+%token  IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT DOUBLE DEFAULT_INITIALIZER
+%token  NON_RETURNING_FUNC_CALL
+%token  BINARY_OP IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
+%token  ASSIGNOP QUESTION UNARY_OP
+%token  SIZE_T INT UINT REAL MATRIX TENSOR COMPLEX_FIELD FIELD STENCIL PROFILE
+%token  BOOL INTRINSIC LONG_LONG LONG 
+%token  KERNEL INLINE ELEMENTAL RAYTRACE BOUNDARY_CONDITION UTILITY SUM MAX EXP_SUM HALO FIELD_ORDER DIMS DEVICE_ONLY COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT OVERRIDE
+%token  FIXED_BOUNDARY
+%token  PROFILE_X PROFILE_Y PROFILE_Z PROFILE_XY PROFILE_XZ PROFILE_YX PROFILE_YZ PROFILE_ZX PROFILE_ZY
+%token  HOSTDEFINE
+%token  STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
+%token  STATEMENT_LIST_HEAD STATEMENT
+%token  REAL3 INT3 FIRST
+%token  RANGE IN_RANGE
+%token  CONST_DIMS
+%token  CAST BASIC_STATEMENT
+%token  TEMPLATE BINARY UNARY PROGRAM
 
-%nonassoc QUESTION
-%nonassoc '<'
-%nonassoc '>'
-%nonassoc ':'
+%left QUESTION
+%left BINARY_OP
+%left ':'
+%left EQ
+%left LEQ
+%left GEQ
+%left NEQ
+%left AND
+%left OR
+%left MOD
+%nonassoc SHIFT_LEFT
+%nonassoc SHIFT_RIGHT
+%left '<'
+%left '>'
+%left '|'
+%left '&'
+%left '%'
+%left '^'
 %left '-'
 %left '+'
-%left '&'
-%left BINARY_OP
+%left '*'
+%left '/'
 %%
 
 
@@ -938,14 +953,6 @@ type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOW
  * =============================================================================
 */
 
-//Plus and minus have to be in the parser since based on context they are unary or binary ops
-binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("+", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '-'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("-", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '&'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("&", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '<'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("<", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | '>'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(">", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
-         ;
 
 unary_op: '-'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
         | '+'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
@@ -1036,15 +1043,157 @@ unary_expression: postfix_expression          { $$ = astnode_create(NODE_EXPRESS
                 | unary_op postfix_expression { $$ = astnode_create(NODE_EXPRESSION, $1, $2);   $$->token = UNARY;}
                 ;
 
-binary_expression: binary_op unary_expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+//Plus and minus have to be in the parser since based on context they are unary or binary ops
+
+binary_expression: 
+		  expression '/' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("/",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs);
+					}
+		 | expression '*' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("*",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs); 
+					}
+		 
+		 | expression '+' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("+",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs);
+					}
+		 | expression '-' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("-",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1,rhs); 
+					}
+		| expression '<' expression { 
+				 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+								astnode_set_buffer("<",op);
+								op->token = BINARY_OP;
+				 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+												op, $3);
+				 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+							}
+		| expression '|' expression { 
+				 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+								astnode_set_buffer("|",op);
+								op->token = BINARY_OP;
+				 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+												op, $3);
+				 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+							}
+		| expression '>' expression { 
+				 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+								astnode_set_buffer(">",op);
+								op->token = BINARY_OP;
+				 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+												op, $3);
+				 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+							}
+		| expression EQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("==",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression LEQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("<=",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression GEQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer(">=",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression NEQ expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("!=",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression AND expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("&&",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression OR expression { 
+				 			ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+							astnode_set_buffer("||",op);
+							op->token = BINARY_OP;
+				 			ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+											op, $3);
+				 			$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression SHIFT_LEFT expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("<<",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression SHIFT_RIGHT expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer(">>",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression MOD expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("%",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
+		| expression '&' expression { 
+		 				ASTNode* op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+						astnode_set_buffer("&",op);
+						op->token = BINARY_OP;
+		 				ASTNode* rhs = astnode_create(NODE_UNKNOWN,
+										op, $3);
+		 				$$ = astnode_create(NODE_BINARY_EXPRESSION,$1, rhs); 
+					}
                  ;
-
-
-choose: QUESTION expression ':' expression {$$ = astnode_create(NODE_UNKNOWN,$2,$4);  astnode_set_prefix("? ",$$->lhs);  astnode_set_prefix(": ",$$->rhs);}
-      ;
 expression: unary_expression             { $$ = astnode_create(NODE_EXPRESSION, $1, NULL); }
-	  | expression choose            { $$ = astnode_create(NODE_TERNARY_EXPRESSION,$1,$2); } 
-          | expression binary_expression { $$ = astnode_create(NODE_BINARY_EXPRESSION, $1, $2); $$->token = BINARY;}
+	  | expression QUESTION expression ':' expression           
+		{ 
+			ASTNode* cond = $1;
+			ASTNode* choose = $$ = astnode_create(NODE_UNKNOWN,$3,$5);
+			astnode_set_prefix("?",$$->lhs);
+			astnode_set_prefix(":",$$->rhs);
+			$$ = astnode_create(NODE_TERNARY_EXPRESSION,cond,choose); 
+		} 
+          | binary_expression { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
 
 
 expression_list: expression                     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }

@@ -146,7 +146,7 @@ main(int argc, char* argv[])
     	  {
     		for(size_t k = 0; k < dims.m1.z;  ++k)
     	    {
-    	    	model.vertex_buffer[f][IDX(i,j,k)] = 1.0;
+    	    	model.vertex_buffer[f][IDX(i,j,k)] = 0.0;
     	    }
     	  }
     	}
@@ -260,7 +260,7 @@ main(int argc, char* argv[])
     const Field Q_PZZ = Q_PZP;
     const auto x_periodic_reduction = 
 	    acGridBuildTaskGraph({
-	    		acReduceInRayDirection(
+	    		acScan(
 				{Q_PZZ}, (int3){1,0,0}
 			)
 			});

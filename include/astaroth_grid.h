@@ -193,7 +193,7 @@ typedef enum AcTaskType {
     TASKTYPE_HALOEXCHANGE,
     TASKTYPE_BOUNDCOND,
     TASKTYPE_REDUCE,
-    TASKTYPE_RAY_REDUCE,
+    TASKTYPE_SCAN,
     TASKTYPE_RAY_UPDATE,
 } AcTaskType;
 
@@ -366,7 +366,7 @@ OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acRayUpdate,(const AcKernel kernel, con
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acHaloExchange,(Field fields[], const size_t num_fields));
 
-OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acReduceInRayDirection,(Field fields[], const size_t num_fields, const int3 ray_direction));
+OVERLOADED_FUNC_DEFINE(AcTaskDefinition, acScan,(Field fields[], const size_t num_fields, const int3 direction));
 
 FUNC_DEFINE(AcTaskDefinition,acHaloExchangeWithBounds,(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries,const facet_class_range halo_types[]));
 
@@ -389,7 +389,14 @@ OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraphWithBounds,(const AcTas
 FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraph,(const AcDSLTaskGraph));
 FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end));
 OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
-FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end, const bool no_communication));
+FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end, const bool no_communication, const AcDSLTaskGraph bc_graph));
+
+static AcDSLTaskGraph UNUSED
+acGetComputeStepsBCs(const AcDSLTaskGraph graph)
+{
+	#include "taskgraph_bc_handles.h"
+	return DSLTaskGraphBCs[graph];
+}
 
 
 /** */

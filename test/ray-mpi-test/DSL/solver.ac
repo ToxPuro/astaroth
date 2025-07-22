@@ -167,6 +167,15 @@ BoundConds bcs
 	ac_const_bc(BOUNDARY_XYZ,TAU_RAYS,0.0)
 }
 
+BoundConds fixed_bcs
+{
+	ac_fixed_bc(BOUNDARY_XYZ,QRAD)
+	ac_fixed_bc(BOUNDARY_XYZ,KAPPA_RHO)
+	ac_fixed_bc(BOUNDARY_XYZ,SRAD)
+	ac_fixed_bc(BOUNDARY_XYZ,Q_RAYS)
+	ac_fixed_bc(BOUNDARY_XYZ,TAU_RAYS)
+}
+
 Raytrace (+0,+0,-1) backwards_ray
 Raytrace (+0,+0,+1) forwards_ray
 Raytrace (-1,+0,+0) left_ray
@@ -578,6 +587,7 @@ ComputeSteps trace_up_rays(bcs)
 {
 	up_rays()
 }
+
 
 ComputeSteps trace_down_rays(bcs)
 {

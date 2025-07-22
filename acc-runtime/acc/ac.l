@@ -12,6 +12,7 @@ S [\s]
 #include <ctype.h>
 #include <stdbool.h>
 struct hashmap_s string_intern_hashmap;
+const char* binary_op_val = NULL;
 #include <hash.h>
 #include "vecs.h"
 %}
@@ -210,9 +211,15 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
 [+-/*|&%^]?=              { return ASSIGNOP; }     /* Assignment */
 (<<=)|(>>=)               { return ASSIGNOP; }     /* Assignment */
-[/*|%^]                   { return BINARY_OP; }      /* Operators */
-(&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
-(==)|(>=)|(<=)|(!=)|(^=)  { return BINARY_OP; }    /* Operators */
+(&&)		          { return AND; }
+(\|\|)			  { return OR; }
+(<<)		          { return SHIFT_LEFT; }
+(>>)		          { return SHIFT_RIGHT; }
+(==)		          { return EQ; }
+(>=)                        { return GEQ; }
+(<=)                        { return LEQ; }
+(!=)                        { return NEQ; }
+(%)                        { return MOD; }
 [-+*/:;=\[\]{}(),\.|&!<>]   { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
 {D}+[.]?{D}*([eE][-+]?{D}+)   { return REALNUMBER; }

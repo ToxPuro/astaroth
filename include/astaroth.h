@@ -536,7 +536,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	*(void**)(&BASE_FUNC_NAME(acComputeWithParams)) = dlsym(handle,"acComputeWithParams");
 	*(void**)(&BASE_FUNC_NAME(acCompute)) = dlsym(handle,"acCompute");
 	*(void**)(&BASE_FUNC_NAME(acHaloExchange)) = dlsym(handle,"acHaloExchange");
-	*(void**)(&BASE_FUNC_NAME(acReduceInRayDirection)) = dlsym(handle,"acReduceInRayDirection");
+	*(void**)(&BASE_FUNC_NAME(acScan)) = dlsym(handle,"acScan");
 	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraph)) = dlsym(handle,"acGridBuildTaskGraph");
 	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraphWithBounds)) = dlsym(handle,"acGridBuildTaskGraphWithBounds");
 	LOAD_DSYM(acGridDestroyTaskGraph,stream);
@@ -862,7 +862,7 @@ acDeviceTranspose(const Device device, const Stream stream, const AcMeshOrder or
 static UNUSED AcTaskGraph*
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const Volume start, const Volume end)
 {
-	return acGetOptimizedDSLTaskGraphWithBounds(graph,start,end,false);
+	return acGetOptimizedDSLTaskGraphWithBounds(graph,start,end,false,acGetComputeStepsBCs(graph));
 }
 
 static UNUSED AcTaskGraph* 
@@ -871,7 +871,20 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_impos
 	return acGetOptimizedDSLTaskGraphWithBounds(graph,
 			acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice())),
 			acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice())),
-			globally_imposed_bcs);
+			globally_imposed_bcs,
+			acGetComputeStepsBCs(graph)
+			);
+}
+
+static UNUSED AcTaskGraph* 
+acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_imposed_bcs, const AcDSLTaskGraph bc_graph)
+{
+	return acGetOptimizedDSLTaskGraphWithBounds(graph,
+			acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice())),
+			acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice())),
+			globally_imposed_bcs,
+			bc_graph
+			);
 }
 #endif
 
@@ -1078,9 +1091,9 @@ static inline acHaloExchange(std::vector<Field> fields, std::vector<facet_class_
 }
 
 AcTaskDefinition
-static inline acReduceInRayDirection(std::vector<Field> fields, const int3 ray_direction)
+static inline acScan(std::vector<Field> fields, const int3 ray_direction)
 {
-    return BASE_FUNC_NAME(acReduceInRayDirection)(fields.data(), fields.size(),ray_direction);
+    return BASE_FUNC_NAME(acScan)(fields.data(), fields.size(),ray_direction);
 }
 
 AcTaskDefinition

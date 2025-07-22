@@ -513,13 +513,40 @@ ac_yz_color()
     const int3 my_coordinates = grid.submesh.info[AC_domain_coordinates];
     return my_coordinates.x;
 }
+static MPI_Comm
+get_reversed_comm(const MPI_Comm comm)
+{
+	int rank, nprocs;
+	ERRCHK_ALWAYS(MPI_Comm_rank(comm, &rank) == MPI_SUCCESS);
+	ERRCHK_ALWAYS(MPI_Comm_size(comm, &nprocs) == MPI_SUCCESS);
 
+	int reverse_key = nprocs - 1 - rank;
+	MPI_Comm res;
+	ERRCHK_ALWAYS(MPI_Comm_split(comm, 0, reverse_key, &res) == MPI_SUCCESS);
+	return res;
+}
+
+static int
+get_comm_size(const MPI_Comm comm)
+{
+	int res;
+	ERRCHK_ALWAYS(MPI_Comm_size(comm, &res) == MPI_SUCCESS);
+	return res;
+}
 static void
 create_astaroth_sub_communicators()
 {
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_x_color(),ac_pid(),&astaroth_sub_comms.x) == MPI_SUCCESS);
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_y_color(),ac_pid(),&astaroth_sub_comms.y) == MPI_SUCCESS);
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_z_color(),ac_pid(),&astaroth_sub_comms.z) == MPI_SUCCESS);
+
+	ERRCHK_ALWAYS(get_comm_size(astaroth_sub_comms.x) == (int)grid.decomposition.x);
+	ERRCHK_ALWAYS(get_comm_size(astaroth_sub_comms.y) == (int)grid.decomposition.y);
+	ERRCHK_ALWAYS(get_comm_size(astaroth_sub_comms.z) == (int)grid.decomposition.z);
+
+	astaroth_sub_comms.reverse_x = get_reversed_comm(astaroth_sub_comms.x);
+	astaroth_sub_comms.reverse_y = get_reversed_comm(astaroth_sub_comms.y);
+	astaroth_sub_comms.reverse_z = get_reversed_comm(astaroth_sub_comms.z);
 
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_xy_color(),ac_pid(),&astaroth_sub_comms.xy) == MPI_SUCCESS);
 	ERRCHK_ALWAYS(MPI_Comm_split(astaroth_comm,ac_xz_color(),ac_pid(),&astaroth_sub_comms.xz) == MPI_SUCCESS);
@@ -840,6 +867,11 @@ acGridInitBase(const AcMesh user_mesh)
 		    grid.decomposition.y,
 		    grid.decomposition.z
 		    );
+
+    if((int)(grid.decomposition.x*grid.decomposition.y*grid.decomposition.z) != (int)ac_nprocs())
+    {
+	    fatal("Astaroth was initialized with %d processes but decomposition is for %d processes!\n",(int)ac_nprocs(),(int)(grid.decomposition.x*grid.decomposition.y*grid.decomposition.z));
+    }
 
     // Configure
     grid.nn = acGetLocalNN(acDeviceGetLocalConfig(device));
@@ -1863,8 +1895,8 @@ check_ops(const std::vector<AcTaskDefinition> ops)
         case TASKTYPE_REDUCE:
           task_graph_repr += "Reduce,";
 	  break;
-        case TASKTYPE_RAY_REDUCE:
-          task_graph_repr += "RayReduce,";
+        case TASKTYPE_SCAN:
+          task_graph_repr += "Scan,";
 	  break;
         case TASKTYPE_RAY_UPDATE:
           task_graph_repr += "RayUpdate,";
@@ -2075,7 +2107,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
         //always remember to call the loader since otherwise might not be safe to execute taskgraph
         op.load_kernel_params_func->loader({acDeviceGetKernelInputParams(grid.device),grid.device, 0, {}, {}, op.kernel_enum});
 
-	const int3 old_tpb = acReadOptimTBConfig(op.kernel_enum,task->output_region.dims,to_volume(acGridGetLocalMeshInfo()[AC_thread_block_loop_factors]));
+	const int3 old_tpb = acGetOptimTPB(op.kernel_enum,task->output_region.position,task->output_region.position+task->output_region.dims);
         acDeviceSetReduceOffset(grid.device, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
         //acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
         fields_already_depend_on_boundaries = get_fields_kernel_depends_on_boundaries(acGridGetLocalMeshInfo(), op.kernel_enum,fields_already_depend_on_boundaries,kernel_analysis_info.data());
@@ -2249,14 +2281,14 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
             break;
         }
 
-        case TASKTYPE_RAY_REDUCE: {
-            acVerboseLogFromRootProc(rank, "Creating ray reduce tasks\n");
+        case TASKTYPE_SCAN: {
+            acVerboseLogFromRootProc(rank, "Creating scan tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
-            auto task = std::make_shared<MPIReduceTask>(op, i, start, dims, tag0, op.ray_direction, grid_info,
+            auto task = std::make_shared<MPIScanTask>(op, i, start, dims, tag0, op.ray_direction, grid_info,
                                                            device, swap_offset);
             graph->all_tasks.push_back(task);
 
-            acVerboseLogFromRootProc(rank, "Ray reduce tasks created\n");
+            acVerboseLogFromRootProc(rank, "Scan tasks created\n");
             grid.mpi_tag_space_count++;
             break;
         }
