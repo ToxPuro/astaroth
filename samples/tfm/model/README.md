@@ -1,13 +1,34 @@
 # Reproducing the results
 
 
+## Cases
+
+roberts
+turbulence
+soca
+nonsoca
+laplace
+j
+uudt
+uualfvendt
+
+- laplace-soca-roberts-uualfvendt
+- laplace-nonsoca-turbulence-uualfvendt
+- laplace-soca-roberts-uudt
+- laplace-nonsoca-turbulence-uudt
+
+- soca-roberts-uualfvendt
+- nonsoca-turbulence-uualfvendt
+- soca-roberts-uudt
+- nonsoca-turbulence-uudt
 
 ## Generating model solutions
+
 
 Laplace SOCA Roberts
 1. Set `hostdefine LHYDRO (0)`
 ```bash
-CASE=laplace-soca-roberts-incl-alfven-dt
+CASE=laplace-soca-roberts-uudt
 CONFIG=~/astaroth/samples/tfm/cases/laplace-soca.ini
 MODELDIR=~/astaroth/samples/tfm/model/${CASE}
 ```
@@ -15,19 +36,20 @@ MODELDIR=~/astaroth/samples/tfm/model/${CASE}
 Laplace Non-SOCA Turbulence
 1. Set `hostdefine LHYDRO (1)`
 ```bash
-CASE=nonsoca-turbulence-incl-alfven-dt
-CONFIG=~/astaroth/samples/tfm/cases/nonsoca.ini
+CASE=laplace-nonsoca-turbulence-uudt
+CONFIG=~/astaroth/samples/tfm/cases/laplace-nonsoca.ini
 MODELDIR=~/astaroth/samples/tfm/model/${CASE}
 ```
 
 
 ```bash
 # In build directory (use with care, calls `rm`)
+rm -rf ${MODELDIR}/ &&\ 
 mkdir -p ${MODELDIR} &&\
 rm -rf simulation_state.txt tfm-mpi && \
 cmake ~/astaroth/ --preset lumi-tfm && \
 cmake --build . --parallel && \
-rm -rf *.snapshot *.profile *.mesh simulation_state.txt && \
+rm -rf simulation_state.txt *.profile *.mesh *.snapshot *.txt *.out *.ini *.csv output && \
  $SRUNMPI1 ./tfm-mpi --config ${CONFIG} && \
 rm -rf output && ~/astaroth/samples/tfm-mpi/visualize.py --inputs *2500* && \
 ~/astaroth/samples/tfm-mpi/view-timeseries.py && \
