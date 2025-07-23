@@ -7371,7 +7371,7 @@ eval_ands(ASTNode* node)
 	}
 }
 void
-eval_comparisons(ASTNode* node, const ASTNode* root, const char* op)
+eval_int_comparisons(ASTNode* node, const ASTNode* root, const char* op)
 {
 	(void)root;
 	if(!node->lhs->lhs) return;
@@ -7398,6 +7398,42 @@ eval_comparisons(ASTNode* node, const ASTNode* root, const char* op)
 			false;
 
 	replace_node(node,create_primary_expression(success ? "true" : "false"));
+}
+void
+eval_real_comparisons(ASTNode* node, const ASTNode* root, const char* op)
+{
+	(void)root;
+	if(!node->lhs->lhs) return;
+	if(!node->lhs->lhs->lhs) return;
+	if(!node->lhs->lhs->lhs->lhs) return;
+	if(!(node->lhs->lhs->lhs->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
+	ASTNode* primary_expr = node->lhs->lhs->lhs->lhs;
+	if(primary_expr->lhs->token != IDENTIFIER) return;
+	if(get_expr_type(primary_expr) != REAL_STR) return;
+	if(!check_symbol(NODE_VARIABLE_ID,primary_expr->lhs->buffer,REAL_STR,CONST_STR)) return;
+	if(!node->rhs->rhs->lhs) return;
+	if(!node->rhs->rhs->lhs->lhs) return;
+	if(!node->rhs->rhs->lhs->lhs->lhs) return;
+	if(!(node->rhs->rhs->lhs->lhs->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
+	if(node->rhs->rhs->lhs->lhs->lhs->lhs->token != REALNUMBER) return;
+	const char* real_number = node->rhs->rhs->lhs->lhs->lhs->lhs->buffer;
+	const char* lhs_number = combine_all_new(get_var_val(primary_expr->lhs->buffer,root));
+	double lhs_real = atof(lhs_number);
+	double rhs_real = atof(real_number);
+	const bool success = 
+			op == NEQ_STR      ? lhs_real != rhs_real :
+			op == LESS_STR     ? lhs_real <  rhs_real :
+			op == GREATER_STR  ? lhs_real >  rhs_real : 
+			op == EQUAL_STR    ? lhs_real == rhs_real : 
+			false;
+
+	replace_node(node,create_primary_expression(success ? "true" : "false"));
+}
+void
+eval_comparisons(ASTNode* node, const ASTNode* root, const char* op)
+{
+	eval_int_comparisons(node,root,op);
+	eval_real_comparisons(node,root,op);
 }
 void
 eval_conditionals_in_func(ASTNode* node, const ASTNode* root)
@@ -7975,17 +8011,23 @@ populate_dfunc_cache(const ASTNode* node, struct hashmap_s* cache)
 		hashmap_put(cache,func_name,strlen(func_name),(void*)node);
 	}
 }
+static bool reset_dfunc_cache = true;
 const ASTNode*
 find_dfunc_start(const ASTNode* root, const char* dfunc_name)
 {
-	static bool first_call = true;
 	static struct hashmap_s cache;
-	if(first_call)
+	static bool cache_created = false;
+	if(reset_dfunc_cache)
 	{
+	    if(cache_created)
+	    {
+  		hashmap_destroy(&cache);
+	    }
             const unsigned initial_size = 2000;
             hashmap_create(initial_size, &cache);
-	    first_call = false;
+	    reset_dfunc_cache = false;
 	    populate_dfunc_cache(root,&cache);
+	    cache_created = true;
 	}
 	return (const ASTNode*)hashmap_get(&cache,dfunc_name,strlen(dfunc_name));
 }
@@ -10685,6 +10727,7 @@ void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool ELIMINATE_CONDITIONALS, const bool runtime_compilation)
 { 
   symboltable_reset();
+  reset_dfunc_cache = true;
   ASTNode* root = astnode_dup(root_in,NULL);
   get_field_order(root);
   check_uniquenes(root,NODE_DFUNCTION,"function");
