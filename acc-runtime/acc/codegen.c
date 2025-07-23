@@ -7533,6 +7533,11 @@ gen_constexpr_in_func(ASTNode* node, const bool gen_mem_accesses, const struct h
 		node->is_constexpr |= check_symbol(NODE_DFUNCTION_ID,node->buffer,FIELD_STR,CONSTEXPR_STR);
 		res |= node->is_constexpr;
 	}
+	if(node->type & NODE_IF && primary_expr_is_false(node->lhs) && !node->is_constexpr)
+	{
+		node->is_constexpr = true;
+		res = true;
+	}
 	if(node->type & NODE_IF && all_identifiers_are_constexpr(node->lhs) && !node->is_constexpr)
 	{
 		//TP: we only consider conditionals that are not inside other conditionals
@@ -10127,7 +10132,7 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 		res |= eliminate_conditionals_base(node->lhs,gen_mem_accesses);
 	if(node->type & NODE_IF)
 	{
-		const bool is_known = node->is_constexpr || primary_expr_is_false(node->lhs);
+		const bool is_known = node->is_constexpr;
 		if(is_known)
 		{
 			const bool is_executed = int_vec_contains(executed_nodes,node->id);
@@ -10156,7 +10161,7 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 			}
 			else
 			{
-				const bool has_more_cases = node->rhs->rhs && node->rhs->rhs->lhs->token == ELIF;
+				const bool has_more_cases = node->rhs && node->rhs->rhs && node->rhs->rhs->lhs->token == ELIF;
 				if(has_more_cases)
 				{
 					ASTNode* elif = node->rhs->rhs;
@@ -10165,7 +10170,7 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 					node->parent->rhs = elif_if_statement;
 				}
 				//Else is the only possibility take it
-				else if(node->rhs->rhs && node->rhs->rhs->lhs->token == ELSE)
+				else if(node->rhs && node->rhs->rhs && node->rhs->rhs->lhs->token == ELSE)
 				{
 					ASTNode* else_node = node->rhs->rhs;
 					ASTNode* statement = node->parent->parent;
@@ -10192,10 +10197,23 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 						}
 					}
 				}
-				//Conditional with only a single case that is not taken, simple remove the whole conditional
+				//Conditional with only a single case that is not taken, simply remove the whole conditional
 				else
 				{
-					ASTNode* statement = node->parent->parent;
+					const ASTNode* selection_statement = get_parent_node_by_token(SELECTION_STATEMENT,node);
+					if(!selection_statement)
+					{
+						fatal("No selection statement when removing leftover conditional!\n");
+					}
+					ASTNode* statement = selection_statement->parent;
+					if(!selection_statement)
+					{
+						fatal("No selection statement when removing leftover conditional!\n");
+					}
+					if(!selection_statement->parent)
+					{
+						fatal("No statement when removing leftover conditional!\n");
+					}
 					statement->lhs = NULL;
 				}
 				//node->type ^= NODE_IF;
@@ -10818,6 +10836,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	if(!gen_mem_accesses && executed_nodes.size > 0 && optimize_mem_accesses && ELIMINATE_CONDITIONALS)
   	{
   		eval_conditionals(root,root);
+  	      	gen_constexpr_info(root,gen_mem_accesses);
   	        bool eliminated_something = true;
   	        while(eliminated_something)
   	        {
