@@ -123,7 +123,7 @@ set(USE_CUDA OFF)
 ## CUDA and HIP
 find_package(CUDAToolkit QUIET)
 find_package(HIP QUIET)
-if (NOT USE_HIP NOT CPU_BUILD AND CUDAToolkit_FOUND)
+if (NOT USE_HIP AND NOT CPU_BUILD AND CUDAToolkit_FOUND)
     set(USE_CUDA ON)
     message(STATUS "CUDA found")
     enable_language(CUDA)
