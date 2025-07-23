@@ -724,6 +724,7 @@ main(int argc, char** argv)
 }
 %}
 
+%token  SELECTION_STATEMENT 
 %token  IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER FLOAT DOUBLE DEFAULT_INITIALIZER
 %token  NON_RETURNING_FUNC_CALL
 %token  BINARY_OP IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE VARIABLE_DECLARATION
@@ -1560,7 +1561,7 @@ compound_statement: '{' '}'                { $$ = astnode_create(NODE_BEGIN_SCOP
 					   }
                   ;
 
-selection_statement: if if_statement        { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+selection_statement: if if_statement        { $$ = astnode_create(NODE_UNKNOWN, $1, $2); $$->token = SELECTION_STATEMENT; }
                    ;
 
 if_statement: expression if_root  {$$ = astnode_create(NODE_IF, $1, $2); astnode_set_prefix("(",$$); astnode_set_infix(")",$$); }

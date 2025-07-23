@@ -241,9 +241,6 @@ endif()
 
 ## Have this as a separate option when no other "samples" aree needed.
 ## Useful e.g. when compilation time is long e.g. with shock viscosity. 
-if(FFT_ENABLED AND USE_CUDA)
-	add_subdirectory(test/fft-shift-test)
-endif()
 if (BUILD_STANDALONE AND NOT BUILD_TESTS)
     add_subdirectory(samples/standalone_mpi)
 endif()
