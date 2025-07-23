@@ -10124,19 +10124,21 @@ gen_output_files(ASTNode* root)
 
 }
 bool
-eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
+eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses, int if_counter)
 {
 	if(node == NULL) return false;
 	bool res = false;
 	if(node->lhs)
-		res |= eliminate_conditionals_base(node->lhs,gen_mem_accesses);
+		res |= eliminate_conditionals_base(node->lhs,gen_mem_accesses,if_counter);
 	if(node->type & NODE_IF)
 	{
+		++if_counter;
 		const bool is_known = node->is_constexpr;
 		if(is_known)
 		{
 			const bool is_executed = int_vec_contains(executed_nodes,node->id);
 			const bool is_elif = get_node_by_token(ELIF,node->parent->lhs)  != NULL;
+			const ASTNode* selection_statement = get_parent_node_by_token(SELECTION_STATEMENT,node);
 			if(is_executed)
 			{
 				//TP: now we know that this constexpr conditional is taken
@@ -10147,12 +10149,17 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 				if(!is_elif)
 				{
 					node->rhs->lhs->parent = node->parent->parent;
-					node->parent->parent->lhs = node->rhs->lhs;
+					ASTNode* statement = selection_statement->parent;
+					statement->lhs = node->rhs->lhs;
 				}
 				node->type ^= NODE_IF;
 				if(!gen_mem_accesses)
 				{
 					ASTNode* if_scope = (ASTNode*)get_node(NODE_BEGIN_SCOPE,node);
+					if(!if_scope)
+					{
+						fatal("No if scope: %s!\n",combine_all_new(node));
+					}
 					if_scope->prefix = NULL;
 					if_scope->postfix= NULL;
 					if_scope->type = NODE_UNKNOWN;
@@ -10170,7 +10177,7 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 					node->parent->rhs = elif_if_statement;
 				}
 				//Else is the only possibility take it
-				else if(node->rhs && node->rhs->rhs && node->rhs->rhs->lhs->token == ELSE)
+				else if(if_counter == 1 && node->rhs && node->rhs->rhs && node->rhs->rhs->lhs->token == ELSE)
 				{
 					ASTNode* else_node = node->rhs->rhs;
 					ASTNode* statement = node->parent->parent;
@@ -10181,7 +10188,6 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 					{
 						fatal("No rhs for else: %s\n",combine_all_new(else_node));
 					}
-					else_node->rhs->parent = statement;
 					if(!gen_mem_accesses)
 					{
 						ASTNode* else_scope = (ASTNode*)get_node(NODE_BEGIN_SCOPE,else_node->rhs);
@@ -10196,20 +10202,12 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 							else_scope->type = NODE_UNKNOWN;
 						}
 					}
+					else_node->rhs->parent = statement;
 				}
 				//Conditional with only a single case that is not taken, simply remove the whole conditional
 				else
 				{
-					const ASTNode* selection_statement = get_parent_node_by_token(SELECTION_STATEMENT,node);
-					if(!selection_statement)
-					{
-						fatal("No selection statement when removing leftover conditional!\n");
-					}
 					ASTNode* statement = selection_statement->parent;
-					if(!selection_statement)
-					{
-						fatal("No selection statement when removing leftover conditional!\n");
-					}
 					if(!selection_statement->parent)
 					{
 						fatal("No statement when removing leftover conditional!\n");
@@ -10222,7 +10220,7 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses)
 		}
 	}
 	if(node->rhs)
-		res |= eliminate_conditionals_base(node->rhs,gen_mem_accesses);
+		res |= eliminate_conditionals_base(node->rhs,gen_mem_accesses,if_counter);
 	return res;
 
 }
@@ -10233,7 +10231,7 @@ eliminate_conditionals(ASTNode* node, const bool gen_mem_accesses)
 	bool eliminated_something = false;
 	while(process)
 	{
-		const bool eliminated_something_this_round = eliminate_conditionals_base(node,gen_mem_accesses);
+		const bool eliminated_something_this_round = eliminate_conditionals_base(node,gen_mem_accesses,0);
 		process = eliminated_something_this_round;
 		eliminated_something = eliminated_something || eliminated_something_this_round;
 	}
