@@ -10263,7 +10263,7 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses, int if_c
 					else_node->rhs->parent = statement;
 				}
 				//Conditional with only a single case that is not taken, simply remove the whole conditional
-				else
+				else if(if_counter == 1)
 				{
 					ASTNode* statement = selection_statement->parent;
 					if(!selection_statement->parent)
@@ -10271,6 +10271,10 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses, int if_c
 						fatal("No statement when removing leftover conditional!\n");
 					}
 					statement->lhs = NULL;
+				}
+				else
+				{
+					return res;
 				}
 				//node->type ^= NODE_IF;
 				return true;
