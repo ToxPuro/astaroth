@@ -34,6 +34,7 @@ const char* COMPLEX_STR = NULL;
 const char* AND_STR = NULL;
 const char* NEQ_STR = NULL;
 const char* EQ_STR = NULL;
+const char* EQUAL_STR = NULL;
 const char* DOT_STR = NULL;
 const char* LESS_STR = NULL;
 const char* GREATER_STR  = NULL;
@@ -613,6 +614,7 @@ populate_global_strings()
 	INT3_STR = intern("int3");
 	AND_STR = intern("&&");
 	NEQ_STR = intern("!=");
+	EQUAL_STR = intern("==");
 	EQ_STR = intern("=");
 
 	DOT_STR = intern("dot");

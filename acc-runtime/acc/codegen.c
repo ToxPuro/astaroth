@@ -77,6 +77,7 @@ extern const char* REAL3_STR;
 extern const char* INT3_STR;
 extern const char* COMPLEX_STR;
 extern const char* NEQ_STR;
+extern const char* EQUAL_STR;
 extern const char* AND_STR;
 extern const char* EQ_STR;
 extern const char* DOT_STR;
@@ -7335,14 +7336,25 @@ gen_kernel_combinatorial_optimizations_and_input(ASTNode* root, const bool optim
   free_combinatorial_params_info(&info);
 }
 bool
-primary_expr_is_false(const ASTNode* node)
+primary_expr_is_val(const ASTNode* node, const char* val)
 {
 	if(get_node(NODE_BINARY | NODE_TERNARY | NODE_FUNCTION_CALL,node)) return false;
 	const ASTNode* primary_expr = get_node(NODE_PRIMARY_EXPRESSION,node);
 	if(!primary_expr) return false;
 	const ASTNode* identifier = get_node_by_token(IDENTIFIER,primary_expr);
 	if(!identifier) return false;
-	return identifier->buffer == FALSE_STR;
+	return identifier->buffer == val;
+}
+bool
+primary_expr_is_false(const ASTNode* node)
+{
+	return primary_expr_is_val(node,FALSE_STR);
+}
+
+bool
+primary_expr_is_true(const ASTNode* node)
+{
+	return primary_expr_is_val(node,TRUE_STR);
 }
 void
 eval_ands(ASTNode* node)
@@ -7361,27 +7373,29 @@ eval_ands(ASTNode* node)
 void
 eval_comparisons(ASTNode* node, const ASTNode* root, const char* op)
 {
+	(void)root;
 	if(!node->lhs->lhs) return;
 	if(!node->lhs->lhs->lhs) return;
 	if(!node->lhs->lhs->lhs->lhs) return;
 	if(!(node->lhs->lhs->lhs->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
 	ASTNode* primary_expr = node->lhs->lhs->lhs->lhs;
-	if(primary_expr->lhs->token != IDENTIFIER) return;
-	const char* lhs_var = primary_expr->lhs->buffer;
-	if(!check_symbol(NODE_VARIABLE_ID,lhs_var,REAL_STR,CONST_STR)) return;
+	if(primary_expr->lhs->token != NUMBER) return;
 	if(get_expr_type(primary_expr) == REAL_STR) return;
 	if(!node->rhs->rhs->lhs) return;
 	if(!node->rhs->rhs->lhs->lhs) return;
-	if(!(node->rhs->rhs->lhs->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
-	if(node->rhs->rhs->lhs->lhs->lhs->token != REALNUMBER) return;
-	const char* real_number = node->rhs->rhs->lhs->lhs->lhs->buffer;
-	const ASTNode* lhs_val = get_var_val(lhs_var,root);
-	double lhs_double = atof(combine_all_new(lhs_val));
-	double rhs_double = atof(real_number);
+	if(!node->rhs->rhs->lhs->lhs->lhs) return;
+	if(!(node->rhs->rhs->lhs->lhs->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
+	if(node->rhs->rhs->lhs->lhs->lhs->lhs->token != NUMBER) return;
+	const char* number = node->rhs->rhs->lhs->lhs->lhs->lhs->buffer;
+	const char* lhs_number = primary_expr->lhs->buffer;
+	double lhs_int = atoi(lhs_number);
+	double rhs_int = atoi(number);
 	const bool success = 
-			op == NEQ_STR      ? lhs_double != rhs_double :
-			op == LESS_STR     ? lhs_double < rhs_double :
-			op == GREATER_STR  ? lhs_double > rhs_double : false;
+			op == NEQ_STR      ? lhs_int != rhs_int :
+			op == LESS_STR     ? lhs_int <  rhs_int :
+			op == GREATER_STR  ? lhs_int >  rhs_int : 
+			op == EQUAL_STR    ? lhs_int == rhs_int : 
+			false;
 
 	replace_node(node,create_primary_expression(success ? "true" : "false"));
 }
@@ -7397,7 +7411,7 @@ eval_conditionals_in_func(ASTNode* node, const ASTNode* root)
 			if(check_symbol_string(NODE_VARIABLE_ID,id,BOOL_STR,CONST_STR))
 			{
 				const ASTNode* val = get_var_val(id,root);
-				if(val && primary_expr_is_false(val))
+				if(val && (primary_expr_is_false(val) || primary_expr_is_true(val)))
 				{
 					replace_node(node,
 						astnode_dup(val,NULL)
@@ -7412,7 +7426,7 @@ eval_conditionals_in_func(ASTNode* node, const ASTNode* root)
 	if(!op_node) return;
 	const char* op = op_node->buffer;
 	if(!op) return;
-	if(op == NEQ_STR || op == LESS_STR ||op == GREATER_STR) eval_comparisons(node,root,op);
+	if(op == NEQ_STR || op == LESS_STR ||op == GREATER_STR || op == EQUAL_STR) eval_comparisons(node,root,op);
 	if(op == AND_STR) eval_ands(node);
 }
 void
@@ -10128,18 +10142,20 @@ eliminate_conditionals_base(ASTNode* node, const bool gen_mem_accesses, int if_c
 {
 	if(node == NULL) return false;
 	bool res = false;
+	if(node->token == SELECTION_STATEMENT) if_counter = 0;
 	if(node->lhs)
 		res |= eliminate_conditionals_base(node->lhs,gen_mem_accesses,if_counter);
 	if(node->type & NODE_IF)
 	{
 		++if_counter;
-		const bool is_known = node->is_constexpr;
+		const bool head_always_taken = primary_expr_is_true(node->lhs) && if_counter == 1;
+		const bool is_known = node->is_constexpr || head_always_taken;
 		if(is_known)
 		{
 			const bool is_executed = int_vec_contains(executed_nodes,node->id);
 			const bool is_elif = get_node_by_token(ELIF,node->parent->lhs)  != NULL;
 			const ASTNode* selection_statement = get_parent_node_by_token(SELECTION_STATEMENT,node);
-			if(is_executed)
+			if(is_executed || head_always_taken)
 			{
 				//TP: now we know that this constexpr conditional is taken
 				//TP: this means that its condition has to be always true given its constexpr nature, thus if the previous conditionals were not taken this is always taken
