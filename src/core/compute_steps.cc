@@ -1657,4 +1657,11 @@ gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream,
 	const auto [start,end] = get_launch_bounds_from_fields(fields.in,fields.out);
 	return acCompute(call.kernel,fields.in,fields.out,profiles.in,profiles.reduce_out,profiles.write_out,reduce_outputs.in,reduce_outputs.out,start,end,onion_level,call.loader);
 }
+
+AcDSLTaskGraph 
+acGetComputeStepsBCs(const AcDSLTaskGraph graph)
+{
+	return DSLTaskGraphBCs[graph];
+}
+
 #endif // AC_MPI_ENABLED

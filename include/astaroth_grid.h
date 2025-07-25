@@ -391,12 +391,7 @@ FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraphWithBounds,(const AcDSLTaskGraph, con
 OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraph,(const AcDSLTaskGraph));
 FUNC_DEFINE(AcTaskGraph*, acGetOptimizedDSLTaskGraphWithBounds,(const AcDSLTaskGraph, const Volume start, const Volume end, const bool no_communication, const AcDSLTaskGraph bc_graph));
 
-static AcDSLTaskGraph UNUSED
-acGetComputeStepsBCs(const AcDSLTaskGraph graph)
-{
-	#include "taskgraph_bc_handles.h"
-	return DSLTaskGraphBCs[graph];
-}
+FUNC_DEFINE(AcDSLTaskGraph, acGetComputeStepsBCs,(const AcDSLTaskGraph graph));
 
 
 /** */
