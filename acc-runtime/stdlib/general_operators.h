@@ -14,8 +14,13 @@ u_dot_grad(Field3 f, Matrix m,real3 v){
 	return res;
 }
 
-u_dot_grad_scl_alt(a,b,c,d){
-	fatal_error_message(true,"u_dot_grad_scl_alt: Not implemented")
+u_dot_grad_alt(Field f,real3 gradf,real3 uu,int advec_type){
+	suppress_unused_warning(f)
+	if(advec_type == 0)
+	{
+		return dot(uu,gradf)
+	}
+	fatal_error_message(true,"u_dot_grad_alt: Upwinding and Kurganov-Tadmor not yet implemented")
 	return 0.0
 }
 u_dot_grad_mat(k,c,uu)
