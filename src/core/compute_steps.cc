@@ -194,7 +194,7 @@ generate_topological_order(const std::vector<BoundCond>& bcs, const char* bc_nam
 
 	for(size_t i = 0; i < bcs.size(); ++i)
 	{
-		if(no_incoming_edges(i)) vertices_under_work.push(i);
+		if(no_incoming_edges(i) && bcs[i].kernel != BOUNDCOND_PERIODIC) vertices_under_work.push(i);
 	}
 	if(vertices_under_work.size() == 0)
 		fatal("Cannot continue: No bc that does not depend on others in %s\n",bc_name);
@@ -331,7 +331,7 @@ static std::vector<BoundCond>
 get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized, const KernelAnalysisInfo* info)
 {
 
-	std::vector<BoundCond> res{};
+	std::vector<BoundCond> tmp{};
 	const std::vector<AcKernel>   kernels    = optimized ?
 							get_optimized_kernels(bc_graph,false) :
 							DSLTaskGraphKernels[bc_graph];
@@ -342,19 +342,21 @@ get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized, const Kernel
 	{
 		auto bc_info = acAnalysisGetBCInfo(get_info(),kernels[i],boundaries[i]);
 		auto fields = get_kernel_fields(kernels[i],info);
-		res.push_back((BoundCond){kernels[i],boundaries[i],fields.in,fields.out,bc_info,0,(int3){0,0,0}});
+		tmp.push_back((BoundCond){kernels[i],boundaries[i],fields.in,fields.out,bc_info,0,(int3){0,0,0}});
 	}
-	const bool bcs_overlap = bc_output_fields_overlap(res,info);
+	const bool bcs_overlap = bc_output_fields_overlap(tmp,info);
 	if(bcs_overlap)
 		fatal("Cannot continue: overlap in output fields in BCs of %s\n",taskgraph_names[bc_graph]);
-	auto topological_order = generate_topological_order(res,taskgraph_names[bc_graph]);
-	for(size_t i = 0; i < kernels.size(); ++i)
+	auto topological_order = generate_topological_order(tmp,taskgraph_names[bc_graph]);
+	if(topological_order.size() != tmp.size())
 	{
-		for(size_t j = 0; j < kernels.size(); ++j)
-		{
-			if (topological_order[j] == i)
-				res[i].topological_order = j;
-		}
+		fatal("Topological order is %zu long where we have %zu bcs!\n",topological_order.size(),tmp.size());
+	}
+	std::vector<BoundCond> res{};
+	for(size_t i = 0; i < topological_order.size(); ++i)
+	{
+		res.push_back(tmp[topological_order[i]]);
+		res[res.size()-1].topological_order = i;
 	}
 	return res;
 }
@@ -434,16 +436,11 @@ acGetDSLBCTaskGraphOps(const AcDSLTaskGraph bc_graph, const bool optimized)
 	if (!ac_pid()) fprintf(stream,"%s Ops:\n",taskgraph_names[bc_graph]);
 	std::vector<AcTaskDefinition> res{};
 	auto bcs = get_boundconds(bc_graph, optimized,get_kernel_analysis_info(acGridGetLocalMeshInfo()).data());
-	//TP: insert boundconds in topological order
-	for(size_t i = 0; i < bcs.size(); ++i)
+	for(const auto& bc : bcs)
 	{
-		for(auto& bc : bcs)
-			if(bc.topological_order == i)
-			{
-				std::vector<facet_class_range> halo_types{};
-				for(size_t j = 0; j < bc.out.size(); ++j) halo_types.push_back((facet_class_range){1,3});
-				res.push_back(gen_bc(stream,bc,halo_types));
-			}
+		std::vector<facet_class_range> halo_types{};
+		for(size_t j = 0; j < bc.out.size(); ++j) halo_types.push_back((facet_class_range){1,3});
+		res.push_back(gen_bc(stream,bc,halo_types));
 	}
 
 	if(!ac_pid()) fclose(stream);

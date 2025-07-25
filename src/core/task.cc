@@ -2676,10 +2676,6 @@ BoundaryConditionTask::BoundaryConditionTask(
        boundary_normal(boundary_normal_),
        fieldwise(op.fieldwise)
 {
-    // TODO: the input regions for some of these will be weird, because they will depend on the
-    // ghost zone of other fields
-    //  This is not currently reflected
-
     // Create stream for boundary condition task
     {
         set_device(device);
