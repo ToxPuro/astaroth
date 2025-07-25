@@ -1742,7 +1742,7 @@ der6x_upwd(Field f)
 		grid_factor = (1.0/60.0)
 		if(AC_nonequidistant_grid.x)
 		{
-			grid_factor = AC_INV_MAPPING_FUNC_DER_X
+			grid_factor *= AC_INV_MAPPING_FUNC_DER_X
 		}
 		else
 		{
@@ -1796,7 +1796,7 @@ der6z_upwd(Field f)
 		coordinate_factor = 1.0
 		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
 		{
-			coordinate_factor = AC_INV_R*AC_INV_SIN_THETA
+			coordinate_factor *= AC_INV_R*AC_INV_SIN_THETA
 		}
 		grid_factor = (1.0/60.0)
 		if(AC_nonequidistant_grid.z)
