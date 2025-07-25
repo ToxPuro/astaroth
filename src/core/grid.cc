@@ -2613,7 +2613,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
         auto dim2 = t2->output_region.dims;
 
 	if(vol1 > vol2) return true;
-        if(vol1 == vol2 && ((!comp1 && comp2) || dim1.x < dim2.x || dim1.z > dim2.z)) return true;
+        if(vol1 == vol2 && ((!comp1 && comp2) || dim1.x < dim2.x || dim1.y > dim2.y || dim1.z > dim2.z)) return true;
 	//TP: these are somewhat arbitrary but the sorting function requires a well-defined order: otherwise seg faults
 	if(vol1 == vol2 && dim1 == dim2 && order1 < order2) return true;
 	if(vol1 == vol2 && dim1 == dim2 && order1 == order2 && tag1 < tag2) return true;
