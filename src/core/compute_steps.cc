@@ -606,7 +606,7 @@ gen_halo_exchange(
 		if(!ac_pid()) fprintf(stream, ",%s",ac_boundary_to_str(boundary));
 		log_halo_types(halo_types,stream);
 		if(!ac_pid()) fprintf(stream, ")\n");
-		res.push_back(acHaloExchange(output_fields,start,end,direction,sending,receiving,boundary,halo_types));
+		res.push_back(acHaloExchange(output_fields,start,end,direction,sending,receiving,boundary,halo_types,(Volume){NGHOST,NGHOST,NGHOST}));
 		return res;
 }
 

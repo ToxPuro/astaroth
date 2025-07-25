@@ -282,7 +282,7 @@ acHaloExchange(Field fields[], const size_t num_fields)
 }
 
 AcTaskDefinition
-acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries, const facet_class_range halo_types[])
+acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const bool include_boundaries, const facet_class_range halo_types[], const Volume halo_size)
 {
     AcTaskDefinition task_def = acHaloExchange(fields,num_fields);
     task_def.halo_types = ptr_copy(halo_types,num_fields);
@@ -293,6 +293,9 @@ acHaloExchangeWithBounds(Field fields[], const size_t num_fields, const Volume s
     task_def.receiving     = receiving;
     task_def.boundary      = boundary;
     task_def.include_boundaries = include_boundaries;
+    task_def.halo_sizes.x = min(task_def.halo_sizes.x,halo_size.x);
+    task_def.halo_sizes.y = min(task_def.halo_sizes.y,halo_size.y);
+    task_def.halo_sizes.z = min(task_def.halo_sizes.z,halo_size.z);
     task_def.given_launch_bounds = (end.x-start.x > 0) && (end.y - start.y > 0)  && (end.z - start.z > 0);
 
     return task_def;

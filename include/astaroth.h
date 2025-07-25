@@ -1089,7 +1089,7 @@ static inline acHaloExchange(std::vector<Field> fields, std::vector<facet_class_
 {
     const auto start = acGetMinNN(acDeviceGetLocalConfig(acGridGetDevice()));
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1104,7 +1104,7 @@ static inline acHaloExchange(std::vector<Field> fields, const Volume start, cons
 
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,(int3){0,0,0},true,true,BOUNDARY_XYZ,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1112,7 +1112,7 @@ static inline acHaloExchange(std::vector<Field> fields, const Volume start, cons
 {
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1122,7 +1122,7 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,BOUNDARY_XYZ,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1132,7 +1132,7 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1140,13 +1140,19 @@ static inline acHaloExchange(std::vector<Field> fields, const Volume start, cons
 {
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
 static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const std::vector<facet_class_range> halo_types)
 {
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
+}
+
+AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields, const Volume start, const Volume end, const int3 ray_direction, const bool sending, const bool receiving, const AcBoundary boundary, const std::vector<facet_class_range> halo_types, const Volume halo_size)
+{
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,sending,receiving,boundary,false,halo_types.data(),halo_size);
 }
 
 AcTaskDefinition
@@ -1156,7 +1162,7 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,false,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,false,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 AcTaskDefinition
@@ -1166,7 +1172,7 @@ static inline acHaloExchange(std::vector<Field> fields, const int3 ray_direction
     const auto end   = acGetMaxNN(acDeviceGetLocalConfig(acGridGetDevice()));
     std::vector<facet_class_range> halo_types{};
     for(size_t i = 0; i < fields.size(); ++i) halo_types.push_back((facet_class_range){1,2});
-    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,include_boundaries,halo_types.data());
+    return acHaloExchangeWithBounds(fields.data(), fields.size(),start,end,ray_direction,true,true,boundary,include_boundaries,halo_types.data(),(Volume){NGHOST,NGHOST,NGHOST});
 }
 
 static inline
