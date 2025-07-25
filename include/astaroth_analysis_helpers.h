@@ -2,6 +2,9 @@
 std::vector<KernelAnalysisInfo>
 get_kernel_analysis_info(const AcMeshInfo config);
 
+KernelAnalysisInfo
+get_kernel_analysis_info(const AcMeshInfo config, const AcKernel kernel);
+
 bool
 kernel_has_profile_stencil_ops(const AcKernel kernel, const KernelAnalysisInfo* info);
 

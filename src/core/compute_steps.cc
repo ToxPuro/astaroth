@@ -68,16 +68,16 @@ typedef struct
 } KernelFields;
 
 static KernelFields
-get_kernel_fields(const AcKernel kernel,const KernelAnalysisInfo* info)
+get_kernel_fields(const AcKernel kernel, const KernelAnalysisInfo info)
 {
 		KernelFields res{};
 		for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
 		{
-			bool in = info[kernel].read_fields[i]             || info[kernel].field_has_stencil_op[i] || kernel == BOUNDCOND_PERIODIC;
+			bool in = info.read_fields[i]             || info.field_has_stencil_op[i] || kernel == BOUNDCOND_PERIODIC;
 			for(int ray = 0; ray < NUM_RAYS; ++ray)
-				in |= info[kernel].ray_accessed[i][ray];
+				in |= info.ray_accessed[i][ray];
 			if(in)    res.in.push_back((Field)i);
-			if(info[kernel].written_fields[i]          || kernel == BOUNDCOND_PERIODIC)    res.out.push_back((Field)i);
+			if(info.written_fields[i]          || kernel == BOUNDCOND_PERIODIC)    res.out.push_back((Field)i);
 		}
 		return res;
 }
@@ -103,28 +103,28 @@ typedef struct
 } KernelOutputs;
 
 static KernelProfiles
-get_kernel_profiles(const AcKernel kernel,const KernelAnalysisInfo* info)
+get_kernel_profiles(const KernelAnalysisInfo info)
 {
 		KernelProfiles res{};
 		for(int i = 0; i < NUM_PROFILES; ++i)
 		{
-			if(info[kernel].read_profiles[i] || info[kernel].profile_has_stencil_op[i])       res.in.push_back((Profile)i);
-			if(info[kernel].reduced_profiles[i])    res.reduce_out.push_back((Profile)i);
-			if(info[kernel].written_profiles[i])    res.write_out.push_back((Profile)i);
+			if(info.read_profiles[i] || info.profile_has_stencil_op[i])       res.in.push_back((Profile)i);
+			if(info.reduced_profiles[i])    res.reduce_out.push_back((Profile)i);
+			if(info.written_profiles[i])    res.write_out.push_back((Profile)i);
 		}
 		return res;
 }
 static KernelReduceOutputs
-get_kernel_reduce_outputs(const AcKernel kernel,const KernelAnalysisInfo* info)
+get_kernel_reduce_outputs(const KernelAnalysisInfo info)
 {
 	KernelReduceOutputs res{};
-	for(size_t i = 0; i < info[kernel].n_reduce_outputs; ++i)
+	for(size_t i = 0; i < info.n_reduce_outputs; ++i)
 	{
-		res.out.push_back(info[kernel].reduce_outputs[i]);
+		res.out.push_back(info.reduce_outputs[i]);
 	}
-	for(size_t i = 0; i < info[kernel].n_reduce_inputs; ++i)
+	for(size_t i = 0; i < info.n_reduce_inputs; ++i)
 	{
-		res.in.push_back(info[kernel].reduce_inputs[i]);
+		res.in.push_back(info.reduce_inputs[i]);
 	}
 	return res;
 }
@@ -132,17 +132,17 @@ static UNUSED std::vector<KernelFields>
 get_kernel_fields(const std::vector<AcKernel> kernels, const KernelAnalysisInfo* info)
 {
 		std::vector<KernelFields> res{};
-		for(const auto& kernel : kernels) res.push_back(get_kernel_fields(kernel,info));
+		for(const auto& kernel : kernels) res.push_back(get_kernel_fields(kernel,info[kernel]));
 		return res;
 }
 static KernelOutputs
-get_kernel_outputs(const AcKernel kernel,const KernelAnalysisInfo* info)
+get_kernel_outputs(const AcKernel kernel,const KernelAnalysisInfo info)
 {
 	return 
 	{
 		get_kernel_fields(kernel,info),
-		get_kernel_profiles(kernel,info),
-		get_kernel_reduce_outputs(kernel,info)
+		get_kernel_profiles(info),
+		get_kernel_reduce_outputs(info)
 	};
 }
 
@@ -251,7 +251,7 @@ bc_output_fields_overlap(const std::vector<BoundCond>& bcs,const KernelAnalysisI
 	std::array<std::vector<const char*>,6> bc_names{};
 	for(auto& bc : bcs)
 	{
-		auto fields = get_kernel_fields(bc.kernel,info);
+		auto fields = get_kernel_fields(bc.kernel,info[bc.kernel]);
 		for(auto& field: fields.out)
 		{
 			const auto boundaries = get_boundaries();
@@ -290,12 +290,14 @@ get_loader(const int graph, const int call_index)
 	return  DSLTaskGraphKernelLoaders[graph][call_index];
 }
 
+/**
 void
 call_all_user_loaders(ParamLoadingInfo p)
 {
 	#include "call_all_user_loaders.h"
 	AC_INTERNAL_empty_loader(p);
 }
+**/
 
 
 static std::vector<AcKernel>
@@ -306,15 +308,14 @@ get_optimized_kernels(const AcDSLTaskGraph graph, const bool filter_unnecessary_
 	for(size_t call_index = 0; call_index < kernel_calls.size(); ++call_index)
 	{
 		VertexBufferArray vba{};
-		auto loader = get_loader(graph,call_index);
+		const auto loader = get_loader(graph,call_index);
 		ParamLoadingInfo p = {&vba.on_device.kernel_input_params, acGridGetDevice(), {}, {}, {}, kernel_calls[call_index]};
-		call_all_user_loaders(p);
     		loader(p);
 		const AcKernel optimized_kernel = acGetOptimizedKernel(kernel_calls[call_index],vba);
-		const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo());
+		const auto info = get_kernel_analysis_info(acGridGetLocalMeshInfo(),optimized_kernel);
 		if(filter_unnecessary_ones)
 		{
-			auto outputs = get_kernel_outputs(optimized_kernel,info.data());
+			auto outputs = get_kernel_outputs(optimized_kernel,info);
 			if(outputs.fields.out.size() == 0 && outputs.profiles.write_out.size() == 0 && outputs.profiles.reduce_out.size() == 0 && outputs.reduce_outputs.out.size() == 0) 
 			{
 				res.push_back(AC_NULL_KERNEL);
@@ -341,7 +342,7 @@ get_boundconds(const AcDSLTaskGraph bc_graph, const bool optimized, const Kernel
 	for(size_t i = 0; i < kernels.size(); ++i)
 	{
 		auto bc_info = acAnalysisGetBCInfo(get_info(),kernels[i],boundaries[i]);
-		auto fields = get_kernel_fields(kernels[i],info);
+		auto fields = get_kernel_fields(kernels[i],info[kernels[i]]);
 		tmp.push_back((BoundCond){kernels[i],boundaries[i],fields.in,fields.out,bc_info,0,(int3){0,0,0}});
 	}
 	const bool bcs_overlap = bc_output_fields_overlap(tmp,info);
@@ -1264,8 +1265,8 @@ level_set_has_overlap_in_input_and_output(const level_set& set, const KernelAnal
 	std::vector<Profile> out_profiles{};
 	for(const auto& call : set.calls)
 	{
-		auto fields   = get_kernel_fields(call.kernel,info);
-		auto profiles = get_kernel_profiles(call.kernel,info);
+		auto fields   = get_kernel_fields(call.kernel,info[call.kernel]);
+		auto profiles = get_kernel_profiles(info[call.kernel]);
 
 		for(const auto& field : fields.in)  
 		{
@@ -1480,7 +1481,7 @@ acGetDSLTaskGraphOps(const AcDSLTaskGraph graph, const bool optimized, const boo
 		std::vector<Field> input_fields_not_communicated{};
 		for(auto& call : current_level_set.calls)
 		{
-			auto fields = get_kernel_fields(call.kernel,info.data());
+			auto fields = get_kernel_fields(call.kernel,info.data()[call.kernel]);
 			for(auto& field : fields.in)
 			{
 				if(std::find(current_level_set.fields_communicated_before.begin(), current_level_set.fields_communicated_before.end(), field) == current_level_set.fields_communicated_before.end())
@@ -1608,7 +1609,7 @@ gen_taskgraph_kernel_entry(const KernelCall call, int onion_level, FILE* stream,
 			if(!ac_pid()) fprintf(stream, "%s,",get_name(elem));
 		if(!ac_pid()) fprintf(stream,"}");
 	};
-	auto[fields, profiles, reduce_outputs] = get_kernel_outputs(call.kernel,info);
+	auto[fields, profiles, reduce_outputs] = get_kernel_outputs(call.kernel,info[call.kernel]);
 	if(!ac_pid()) fprintf(stream,"%s(",kernel_names[call.kernel]);
 	log(fields.in);
 	if(!ac_pid()) fprintf(stream,",");
