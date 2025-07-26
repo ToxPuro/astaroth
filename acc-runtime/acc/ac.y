@@ -1198,6 +1198,9 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
 						$$->token = CAST;
 						}
                   | '[' expression_list ']' { $$ = astnode_create(NODE_ARRAY_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
+                  | '[' ']' { 
+				ASTNode* empty_list = astnode_create(NODE_UNKNOWN,NULL,NULL);
+				$$ = astnode_create(NODE_ARRAY_INITIALIZER, empty_list, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
 		  | struct_initializer {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
                   | '(' expression ')' { $$ = astnode_create(NODE_UNKNOWN, $2, NULL); astnode_set_prefix("(", $$); astnode_set_postfix(")", $$); }
 
@@ -1364,8 +1367,8 @@ expression_list: expression                     { $$ = astnode_create(NODE_UNKNO
                ;
 
 expression_list_trailing_allowed: expression                     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-               | expression_list ',' expression { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); }
-               | expression_list ',' {$$ = $1;}
+               | expression_list_trailing_allowed ',' expression { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); }
+               | expression_list_trailing_allowed ',' {$$ = $1;}
                ;
 
 
