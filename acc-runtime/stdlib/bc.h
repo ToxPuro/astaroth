@@ -42,6 +42,14 @@ elemental ac_fixed_bc(AcBoundary boundary, Field f)
 	}
 }
 
+ac_fixed_bc(AcBoundary boundary)
+{
+	for f in 0:NUM_VTXBUF_HANDLES
+	{
+		ac_fixed_bc(boundary,Field(f))
+	}
+}
+
 elemental ac_bc_sym(AcBoundary boundary, Field f, int bc_sign)
 {
 	const int3 normal = get_normal(boundary)
