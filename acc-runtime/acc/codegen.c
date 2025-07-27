@@ -3069,16 +3069,15 @@ gen_user_structs()
 		
 		if(!all_reals)  fprintf(fp,"#endif\n");
 		if(!all_reals)  continue;
-		create_broadcast_op(s_info,i,DIV_STR,fp);
 		create_broadcast_op(s_info,i,MULT_STR,fp);
-		create_broadcast_op(s_info,i,PLUS_STR,fp);
-		create_broadcast_op(s_info,i,MINUS_STR,fp);
 		if(struct_name == COMPLEX_STR)
 		{
 			fprintf(fp,"#endif\n");
 			continue;
 		}
-
+		create_broadcast_op(s_info,i,PLUS_STR,fp);
+		create_broadcast_op(s_info,i,MINUS_STR,fp);
+		create_broadcast_op(s_info,i,DIV_STR,fp);
 		create_binary_op(s_info,i,DIV_STR,fp);
 		create_binary_op(s_info,i,MULT_STR,fp);
 		

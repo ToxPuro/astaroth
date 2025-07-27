@@ -12,7 +12,7 @@ struct allocate_arrays
 		{
 			if(config[array] == nullptr && is_accessed(array))
 			{
-				fprintf(stderr,"Passed %s as NULL but it is accessed kernels!!\n",get_name(array));
+				fprintf(stderr,"Passed %s as NULL but it is accessed in kernels!!\n",get_name(array));
 				fflush(stderr);
 				ERRCHK_ALWAYS(config[array] != nullptr);
 			}

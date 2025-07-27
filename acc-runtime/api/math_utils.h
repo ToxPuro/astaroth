@@ -101,15 +101,75 @@ operator*(const AcComplex& a, const AcComplex& b)
 static HOST_DEVICE_INLINE AcComplex
 operator/(const AcComplex& a, const AcComplex& b)
 {
-  const AcReal divisor = a.y*a.y + b.y*b.y;
+  const AcReal divisor = b.x*b.x + b.y*b.y;
   return (AcComplex){(a.x*b.x + a.y*b.y)/(divisor),(a.y*b.x - a.x*b.y)/(divisor)};
 }
+
+static HOST_DEVICE_INLINE AcComplex
+operator/(const AcReal& a, const AcComplex& b)
+{
+  const AcReal divisor = b.x*b.x + b.y*b.y;
+  return (AcComplex){(a*b.x)/(divisor),(-a*b.y)/(divisor)};
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator/(const AcComplex& a, const AcReal& b)
+{
+	return
+	(AcComplex)
+	{
+		a.x/b,
+		a.y/b
+	};
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator-(const AcReal& a, const AcComplex& b)
+{
+  return (AcComplex)
+  {
+	  a-b.x,
+	  -b.y
+  };
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator+(const AcReal& a, const AcComplex& b)
+{
+  return (AcComplex)
+  {
+	  b.x+a,
+	  b.y
+  };
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator-(const AcComplex& a, const AcReal& b)
+{
+  return (AcComplex)
+  {
+	  a.x-b,
+	  a.y
+  };
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator+(const AcComplex& a, const AcReal& b)
+{
+  return (AcComplex)
+  {
+	  a.x+b,
+	  a.y
+  };
+}
+
+
 static HOST_DEVICE_INLINE AcComplex
 sqrt(const AcComplex& a)
 {
 	const AcReal r = sqrt(a.x*a.x + a.y*a.y);
 	const AcReal y_sign = (a.y < AcReal(0.0)) ? AcReal(-1.0) : AcReal(1.0);
-  	return (AcComplex){sqrt(r + a.x)/2,y_sign * sqrt(r-a.x)/2};
+  	return (AcComplex){sqrt((r + a.x)*0.5),y_sign * sqrt((r-a.x)*0.5)};
 }
 
 typedef struct uint3_64 {
