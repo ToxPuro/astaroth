@@ -99,6 +99,9 @@ Stencil derz_2nd_stencil {
     [1 ][0][0]  = 0.5,
 }
 
+#define DER2_2nd_1 (1)
+#define DER2_2nd_0 (-2)
+
 Stencil derxx_2nd_neighbours_stencil {
     [0][0][-1] = DER2_2nd_1,
     [0][0][1]  = DER2_2nd_1,
@@ -112,11 +115,6 @@ Stencil derzz_2nd_neighbours_stencil {
     [-1][0][0] = DER2_2nd_1,
     [1][0][0]  = DER2_2nd_1,
 }
-
-
-
-#define DER2_2nd_1 (1)
-#define DER2_2nd_0 (-2)
 
 Stencil derxx_2nd_stencil {
     [0][0][-1]  = DER2_2nd_1,
@@ -1132,6 +1130,11 @@ Stencil der6z_stencil {
     [2][0][0]  = DER6_2,
     [3][0][0]  = DER6_3
 }
+
+#define DER_UPWD_3 (+2.0/6.0)
+#define DER_UPWD_2 (-9.0/6.0)
+#define DER_UPWD_1 (+18.0/6.0)
+#define DER_UPWD_0 (+18.0/6.0)
 
 Stencil derx_upwind_left
 {
@@ -2411,10 +2414,6 @@ elemental der6z_ignore_spacing(Field f)
 		return der6z_stencil(f)
 	}
 }
-#define DER_UPWD_3 (+2.0/6.0)
-#define DER_UPWD_2 (-9.0/6.0)
-#define DER_UPWD_1 (+18.0/6.0)
-#define DER_UPWD_0 (+18.0/6.0)
 
 
 
