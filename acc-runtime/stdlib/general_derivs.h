@@ -29,7 +29,6 @@ gmem real AC_mapping_func_tilde_z[AC_mlocal.z]
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
-#define DER1_0 (0)
 
 #define DER2_3 (1. / 90.)
 #define DER2_2 (-3. / 20.)
@@ -37,9 +36,6 @@ gmem real AC_mapping_func_tilde_z[AC_mlocal.z]
 #define DER2_0 (-49. / 18.)
 
 
-#define DERX_3 (2. / 720.)
-#define DERX_2 (-27. / 720.)
-#define DERX_1 (270. / 720.)
 
 #define DER6UPWD_3 (  1. / 60.)
 #define DER6UPWD_2 ( -6. / 60.)
@@ -85,18 +81,20 @@ gmem real AC_mapping_func_tilde_z[AC_mlocal.z]
 #define DER6UPWD_1 ( 15. / 60.)
 #define DER6UPWD_0 (-20. / 60.)
 
+#define DER1_2nd_1 (0.5)
+
 Stencil derx_2nd_stencil {
-    [0][0][-1] = -0.5,
-    [0][0][1 ]  = 0.5,
+    [0][0][-1] = -DER1_2nd_1,
+    [0][0][1 ]  = DER1_2nd_1,
 }
 
 Stencil dery_2nd_stencil {
-    [0][-1][0] = -0.5,
-    [0][1 ][0]  = 0.5,
+    [0][-1][0] = -DER1_2nd_1,
+    [0][1 ][0]  = DER1_2nd_1,
 }
 Stencil derz_2nd_stencil {
-    [-1][0][0] = -0.5,
-    [1 ][0][0]  = 0.5,
+    [-1][0][0] = -DER1_2nd_1,
+    [1 ][0][0]  = DER1_2nd_1,
 }
 
 #define DER2_2nd_1 (1)
@@ -142,6 +140,9 @@ Stencil derzz_2nd_stencil {
 #define derxx_stencil derxx_2nd_stencil
 #define deryy_stencil deryy_2nd_stencil
 #define derzz_stencil derzz_2nd_stencil
+#define derxx_neighbours_stencil derxx_2nd_neighbours_stencil
+#define deryy_neighbours_stencil deryy_2nd_neighbours_stencil
+#define derzz_neighbours_stencil derzz_2nd_neighbours_stencil
 
 #define DERX_1 (0.25)
 
@@ -164,6 +165,206 @@ Stencil deryz_stencil {
 	[-1][-1][0]   =  DERX_1,
 	[-1][1 ][0]   = -DERX_1,
 	[1 ][-1][0]   = -DERX_1
+}
+
+Stencil derxy_non_diagonal_stencil {
+    [0][-1][-1] = (-DER1_2nd_1)*(-DER1_2nd_1),
+    [0][-1][ 1] = (-DER1_2nd_1)*( DER1_2nd_1),
+    [0][ 1][-1] = ( DER1_2nd_1)*(-DER1_2nd_1),
+    [0][ 1][ 1] = ( DER1_2nd_1)*( DER1_2nd_1),
+}
+
+Stencil derxz_non_diagonal_stencil {
+    [-1][0][-1] = (-DER1_2nd_1)*(-DER1_2nd_1),
+    [-1][0][ 1] = (-DER1_2nd_1)*( DER1_2nd_1),
+    [ 1][0][-1] = ( DER1_2nd_1)*(-DER1_2nd_1),
+    [ 1][0][ 1] = ( DER1_2nd_1)*( DER1_2nd_1),
+}
+
+Stencil deryz_non_diagonal_stencil {
+    [-1][-1][0] = (-DER1_2nd_1)*(-DER1_2nd_1),
+    [-1][ 1][0] = (-DER1_2nd_1)*( DER1_2nd_1),
+    [ 1][-1][0] = ( DER1_2nd_1)*(-DER1_2nd_1),
+    [ 1][ 1][0] = ( DER1_2nd_1)*( DER1_2nd_1),
+}
+
+der3x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der3x not possible with Stencil order 2!\n");
+}
+
+der3y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der3y not possible with Stencil order 2!\n");
+}
+
+der3z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der3z not possible with Stencil order 2!\n");
+}
+
+der4x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4x not possible with Stencil order 2!\n");
+}
+
+der4y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4y not possible with Stencil order 2!\n");
+}
+
+der4z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4z not possible with Stencil order 2!\n");
+}
+der4x2y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4x2y not possible with Stencil order 2!\n");
+}
+
+der4x2z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4x2z not possible with Stencil order 2!\n");
+}
+
+der4y2x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4y2x not possible with Stencil order 2!\n");
+}
+
+der4y2z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4y2z not possible with Stencil order 2!\n");
+}
+
+der4z2x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4z2x not possible with Stencil order 2!\n");
+}
+
+der4z2y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der4z2y not possible with Stencil order 2!\n");
+}
+
+der5x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5x not possible with Stencil order 2!\n");
+}
+
+der5y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5y not possible with Stencil order 2!\n");
+}
+
+der5z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5z not possible with Stencil order 2!\n");
+}
+
+der5x1y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5x1y not possible with Stencil order 2!\n");
+}
+
+der5x1z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5x1z not possible with Stencil order 2!\n");
+}
+
+der5y1x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5y1x not possible with Stencil order 2!\n");
+}
+
+der5y1z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5y1z not possible with Stencil order 2!\n");
+}
+
+der5z1x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5z1x not possible with Stencil order 2!\n");
+}
+
+der5z1y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der5z1y not possible with Stencil order 2!\n");
+}
+
+der6x_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6x not possible with Stencil order 2!\n");
+}
+
+der6y_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6y not possible with Stencil order 2!\n");
+}
+
+der6z_stencil(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"der6z not possible with Stencil order 2!\n");
+}
+
+derx_upwind_left(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"derx_upwind_left not possible with Stencil order 2!\n");
+}
+
+derx_upwind_right(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"derx_upwind_right not possible with Stencil order 2!\n");
+}
+
+dery_upwind_down(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"dery_upwind_down not possible with Stencil order 2!\n");
+}
+
+dery_upwind_up(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"dery_upwind_up not possible with Stencil order 2!\n");
+}
+
+derz_upwind_back(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"derz_upwind_back not possible with Stencil order 2!\n");
+}
+
+derz_upwind_front(Field f)
+{
+	suppress_unused_warning(f)
+	fatal_error_message(true,"derz_upwind_front not possible with Stencil order 2!\n");
 }
 
 #else
@@ -208,6 +409,7 @@ Stencil derxx_stencil {
     [0][0][2]  = DER2_2,
     [0][0][3]  = DER2_3
 }
+
 
 Stencil deryy_stencil {
     [0][-3][0] = DER2_3,

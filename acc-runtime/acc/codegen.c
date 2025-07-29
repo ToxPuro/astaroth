@@ -1729,16 +1729,18 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
           {
                   char array_length_str[4098];
                   get_array_var_length(symbol_table[i].identifier,root,array_length_str);
-                  fprintf_filename("dconst_arrays_decl.h","static UNUSED __device__ __constant__ %s AC_INTERNAL_d_%s_arrays_%s[%s];\n",datatype_scalar, define_name,symbol_table[i].identifier,array_length_str);
+                  fprintf_filename("dconst_arrays_decl.h",
+				   "DECLARE_DCONST_ARRAY(%s, %s, %s, %s);\n"
+				   ,datatype_scalar, define_name,symbol_table[i].identifier,array_length_str);
           }
         }
 
 
-	fprintf_filename("gmem_arrays_accessed_decl.h","int gmem_%s_arrays_accessed[NUM_%s_ARRAYS]{};\n",define_name,uppr_name);
+	fprintf_filename("arrays_accessed_decl.h","int %s_arrays_accessed[NUM_%s_ARRAYS]{};\n",define_name,uppr_name);
 	
-	fprintf_filename("gmem_arrays_output_accesses.h",
+	fprintf_filename("arrays_output_accesses.h",
 			"{\nFILE* fp_arr_accesses = fopen(\"%s_arr_accesses\", \"wb\");"
-			"int tmp = NUM_%s_ARRAYS; fwrite(&tmp,sizeof(int),1,fp_arr_accesses); fwrite(gmem_%s_arrays_accessed,sizeof(int),NUM_%s_ARRAYS,fp_arr_accesses);"
+			"int tmp = NUM_%s_ARRAYS; fwrite(&tmp,sizeof(int),1,fp_arr_accesses); fwrite(%s_arrays_accessed,sizeof(int),NUM_%s_ARRAYS,fp_arr_accesses);"
 			"fclose(fp_arr_accesses);\n}\n"
 			,define_name
 			,uppr_name,define_name,uppr_name
@@ -10849,7 +10851,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 	  	gen_gmem_array_declarations(datatypes.data[i],root);
 	  if(gen_mem_accesses)
 	  {
-
+		copy_file("dconst_arrays_decl.h","cpu_dconst_arrays_decl.h");
 		copy_file("gmem_arrays_decl.h","cpu_gmem_arrays_decl.h");
 	  }
   }

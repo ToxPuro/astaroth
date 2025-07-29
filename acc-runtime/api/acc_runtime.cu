@@ -309,10 +309,11 @@ get_smem(const AcKernel kernel, const Volume tpb, const size_t stencil_order,
 */
 
 __device__ __constant__ AcMeshInfoScalars d_mesh_info;
-#include "dconst_arrays_decl.h"
 //TP: We do this ugly macro because I want to keep the generated headers the same if we are compiling cpu analysis and for the actual gpu comp
 #define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME 
 #define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) static __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
+#define DECLARE_DCONST_ARRAY(DATATYPE,DEFINE_NAME,ARR_NAME,LEN) static UNUSED __device__ __constant__ DATATYPE AC_INTERNAL_d_##DEFINE_NAME##_arrays_##ARR_NAME[LEN];
+#include "dconst_arrays_decl.h"
 #include "gmem_arrays_decl.h"
 
 
