@@ -504,6 +504,12 @@ alog10(real a)
 	return log10(a)
 }
 
+alog(real a)
+{
+	return log(a)
+}
+
+
 //inline any(b) {return b.x || b.y || b.z}
 //inline all(b) {return b.x && b.y && b.z}
 
