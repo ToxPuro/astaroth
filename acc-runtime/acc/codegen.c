@@ -8535,41 +8535,6 @@ transform_array_assignments(ASTNode* node)
 }
 
 void
-transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* root)
-{ 
-        if(node->lhs)
-                transform_field_intrinsic_func_calls_recursive(node->lhs,root);
-        if(node->rhs)
-                transform_field_intrinsic_func_calls_recursive(node->rhs,root);
-        if(node->type != NODE_FUNCTION_CALL) return;
-        const ASTNode* identifier_node = get_node_by_token(IDENTIFIER,node->lhs);
-        if(!identifier_node) return;
-        const char* func_name = identifier_node->buffer;
-        const Symbol* sym = get_symbol(NODE_FUNCTION_ID, func_name, NULL);
-        if(!sym) return;
-        if(!str_vec_contains(sym -> tqualifiers,REAL_STR)) return;
-	if(!str_vec_contains(sym -> tqualifiers,intern("intrinsic"))) return;
-	if(func_name == intern("previous_base")) return;
-	if(func_name == intern("ac_get_field_halos")) return;
-        func_params_info param_info = get_func_call_params_info(node);
-        if(param_info.types.size == 1 && param_info.types.data[0] == FIELD_STR)
-        {
-                ASTNode* expression         = create_func_call_expr(VALUE_STR,node->rhs);
-                ASTNode* expression_list = astnode_create(NODE_UNKNOWN,expression,NULL);
-                node->rhs = expression_list;
-        }
-        free_func_params_info(&param_info);
-} 
-
-void
-reset_expr_types(ASTNode* node)
-{
-	TRAVERSE_PREAMBLE(reset_expr_types);
-	node->expr_type = NULL;
-}
-
-
-void
 apply_value_to_output_types(ASTNode* node)
 {
 	if(node->type & NODE_FUNCTION_CALL)
@@ -8590,6 +8555,46 @@ apply_value_to_output_types(ASTNode* node)
 		replace_node(node,create_func_call_expr(OUTPUT_VALUE_STR,node));
 	}
 }
+
+void
+transform_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* root)
+{ 
+        if(node->lhs)
+                transform_intrinsic_func_calls_recursive(node->lhs,root);
+        if(node->rhs)
+                transform_intrinsic_func_calls_recursive(node->rhs,root);
+        if(node->type != NODE_FUNCTION_CALL) return;
+        const ASTNode* identifier_node = get_node_by_token(IDENTIFIER,node->lhs);
+        if(!identifier_node) return;
+        const char* func_name = identifier_node->buffer;
+        const Symbol* sym = get_symbol(NODE_FUNCTION_ID, func_name, NULL);
+        if(!sym) return;
+        if(!str_vec_contains(sym -> tqualifiers,REAL_STR)) return;
+	if(!str_vec_contains(sym -> tqualifiers,intern("intrinsic"))) return;
+	if(func_name == intern("previous_base")) return;
+	if(func_name == intern("ac_get_field_halos")) return;
+        func_params_info param_info = get_func_call_params_info(node);
+        if(param_info.types.size == 1)
+	{
+	      apply_value_to_output_types(node);
+              if(param_info.types.data[0] == FIELD_STR)
+              {
+                      ASTNode* expression         = create_func_call_expr(VALUE_STR,node->rhs);
+                      ASTNode* expression_list = astnode_create(NODE_UNKNOWN,expression,NULL);
+                      node->rhs = expression_list;
+              }
+	}
+        free_func_params_info(&param_info);
+} 
+
+void
+reset_expr_types(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(reset_expr_types);
+	node->expr_type = NULL;
+}
+
+
 
 void
 transform_field_unary_ops(ASTNode* node)
@@ -8641,7 +8646,7 @@ void
 transform_field_intrinsic_func_calls_and_ops(ASTNode* root)
 {
 	transform_field_unary_ops(root);
-	transform_field_intrinsic_func_calls_recursive(root,root);
+	transform_intrinsic_func_calls_recursive(root,root);
 	transform_field_binary_ops(root);
 }
 void
