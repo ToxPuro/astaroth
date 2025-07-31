@@ -266,12 +266,19 @@ acDeviceFFTC2RXY(const Device device, const Field src, const ComplexField dst, c
 AcResult
 acDeviceFFTPlanar(const Device device, const Field real_src, const Field imag_src, const Field real_dst, const Field imag_dst)
 {
+  	const auto input_real_dims  = acGetMeshDims(device->local_config,real_src);
+  	const auto input_imag_dims  = acGetMeshDims(device->local_config,imag_src);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
+	ERRCHK_ALWAYS(input_real_dims == input_imag_dims);
+	ERRCHK_ALWAYS(input_real_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_real_dims == output_imag_dims);
 	return acFFTForwardTransformPlanar(
 				device->vba.on_device.in[real_src],
 				device->vba.on_device.in[imag_src],
-				acGetLocalMM(device->local_config),	
-				acGetLocalNN(device->local_config),	
-				acGetMinNN(device->local_config),	
+				input_real_dims.m1,
+				input_real_dims.nn,
+				input_real_dims.n0,
 				device->vba.on_device.in[real_dst],
 				device->vba.on_device.in[imag_dst]
 			);
@@ -280,11 +287,17 @@ acDeviceFFTPlanar(const Device device, const Field real_src, const Field imag_sr
 AcResult
 acDeviceFFTR2Planar(const Device device, const Field src, const Field real_dst, const Field imag_dst)
 {
+        
+  	const auto input_dims  = acGetMeshDims(device->local_config,src);
+  	const auto output_real_dims = acGetMeshDims(device->local_config,real_dst);
+  	const auto output_imag_dims = acGetMeshDims(device->local_config,imag_dst);
+	ERRCHK_ALWAYS(input_dims == output_real_dims);
+	ERRCHK_ALWAYS(input_dims == output_imag_dims);
 	return acFFTForwardTransformR2Planar(
 				device->vba.on_device.in[src],
-				acGetLocalMM(device->local_config),	
-				acGetLocalNN(device->local_config),	
-				acGetMinNN(device->local_config),	
+				input_dims.m1,	
+				input_dims.nn,	
+				input_dims.n0,
 				device->vba.on_device.in[real_dst],
 				device->vba.on_device.in[imag_dst]
 			);

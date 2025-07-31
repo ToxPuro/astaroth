@@ -843,7 +843,7 @@ operator-=(Volume& a, const Volume& b)
 	return a;
 }
 
-static HOST_INLINE bool
+static HOST_DEVICE_INLINE bool
 operator==(const Volume& a, const Volume& b)
 {
 	return 
@@ -1000,3 +1000,15 @@ to_int3(const uint3_64 a)
 
 
 #include "generated_comp_funcs.h"
+
+static HOST_DEVICE_INLINE bool
+operator==(const AcMeshDims& a, const AcMeshDims& b)
+{
+	return
+		a.n0 == b.n0 &&
+		a.n1 == b.n1 &&
+		a.m0 == b.m0 &&
+		a.m1 == b.m1 &&
+		a.nn == b.nn &&
+		a.reduction_tile == b.reduction_tile;
+}
