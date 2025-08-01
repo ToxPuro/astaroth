@@ -268,6 +268,16 @@ typedef struct
         dim3 tpb;
 } AcAutotuneMeasurement;
 
+static UNUSED int3
+acGetFieldHalos(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
+{
+	if(vtxbuf_compile_time_halos[vtxbuf] != (int3){-1,-1,-1})
+	{
+		return vtxbuf_compile_time_halos[vtxbuf];
+	}
+	return info[vtxbuf_run_time_halos[vtxbuf]];
+}
+
 #include "common_kernels.h"
 
 typedef AcAutotuneMeasurement (*AcMeasurementGatherFunc)(const AcAutotuneMeasurement);

@@ -750,7 +750,14 @@ static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
    #include "user_builtin_non_scalar_constants.h"
-   const Volume n0 = acGetMinNN(info);
+   const int3 halos = acGetFieldHalos(info,vtxbuf);
+   const Volume n0 = 
+          (Volume)
+          {
+                  as_size_t(halos.x),
+                  as_size_t(halos.y),
+                  as_size_t(halos.z)
+          };
    const Volume m1 = 
 	   (Volume){
 		as_size_t(info.int3_params[vtxbuf_dims[vtxbuf]].x),

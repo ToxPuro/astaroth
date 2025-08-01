@@ -432,7 +432,11 @@ static __device__ UNUSED
 int3
 ac_get_field_halos(const Field& field)
 {
-	return VAL(vtxbuf_device_halos[field]);
+	if (vtxbuf_compile_time_device_halos[field] != (int3){-1,-1,-1})
+	{
+		return vtxbuf_compile_time_device_halos[field];
+	}
+	return VAL(vtxbuf_run_time_device_halos[field]);
 }
 
 

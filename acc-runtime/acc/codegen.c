@@ -10790,12 +10790,37 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
           gen_field_info(fp);
 
 	  string_vec field_halos = get_field_halos(root);
-          fprintf(fp,"static const AcInt3Param vtxbuf_halos[NUM_ALL_FIELDS] = {");
+
+          fprintf(fp,"static const AcInt3Param vtxbuf_run_time_halos[NUM_ALL_FIELDS] = {");
 	  for(size_t i = 0; i < field_halos.size; ++i)
 	  {
-		  fprintf(fp,"%s,",field_halos.data[i]);
+                  if(check_symbol(NODE_VARIABLE_ID,field_halos.data[i], INT3_STR, CONST_STR))
+		  {
+		  	fprintf(fp,"(AcInt3Param)0,");
+		  }
+		  else
+		  {
+		  	fprintf(fp,"%s,",field_halos.data[i]);
+		  }
 	  }
           fprintf(fp,"};");
+
+
+          fprintf(fp,"static const int3 vtxbuf_compile_time_halos[NUM_ALL_FIELDS] = {");
+	  for(size_t i = 0; i < field_halos.size; ++i)
+	  {
+                  if(check_symbol(NODE_VARIABLE_ID,field_halos.data[i], INT3_STR, CONST_STR))
+		  {
+		  	const ASTNode* val = get_var_val(field_halos.data[i], root);
+		  	fprintf(fp,"%s,",combine_all_new(val));
+		  }
+		  else
+		  {
+		  	fprintf(fp,"(int3){-1,-1,-1},");
+		  }
+	  }
+          fprintf(fp,"};");
+
 
 	  string_vec field_dims = get_field_dims(root);
           fprintf(fp,"static const AcInt3Param vtxbuf_dims[NUM_ALL_FIELDS] = {");
@@ -10821,10 +10846,32 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 	  }
           fprintf(fp,"};");
 
-          fprintf(fp,"static const __device__ AcInt3Param vtxbuf_device_halos[NUM_ALL_FIELDS] = {");
+          fprintf(fp,"static const __device__ AcInt3Param vtxbuf_run_time_device_halos[NUM_ALL_FIELDS] = {");
 	  for(size_t i = 0; i < field_halos.size; ++i)
 	  {
-		  fprintf(fp,"%s,",field_halos.data[i]);
+                  if(check_symbol(NODE_VARIABLE_ID,field_halos.data[i], INT3_STR, CONST_STR))
+		  {
+		  	fprintf(fp,"(AcInt3Param)0,");
+		  }
+		  else
+		  {
+		  	fprintf(fp,"%s,",field_halos.data[i]);
+		  }
+	  }
+          fprintf(fp,"};");
+
+          fprintf(fp,"static const __device__ int3 vtxbuf_compile_time_device_halos[NUM_ALL_FIELDS] = {");
+	  for(size_t i = 0; i < field_halos.size; ++i)
+	  {
+                  if(check_symbol(NODE_VARIABLE_ID,field_halos.data[i], INT3_STR, CONST_STR))
+		  {
+		  	const ASTNode* val = get_var_val(field_halos.data[i], root);
+		  	fprintf(fp,"%s,",combine_all_new(val));
+		  }
+		  else
+		  {
+		  	fprintf(fp,"(int3){-1,-1,-1},");
+		  }
 	  }
           fprintf(fp,"};");
 

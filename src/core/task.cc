@@ -118,9 +118,10 @@ get_max_halo_size(const Field fields[], const size_t num_fields)
     const auto info = ac_get_info();
     for(size_t field = 0; field < num_fields; ++field)
     {
-	max_halo_size.x = max(max_halo_size.x,as_size_t(info[vtxbuf_halos[fields[field]]].x));
-	max_halo_size.y = max(max_halo_size.y,as_size_t(info[vtxbuf_halos[fields[field]]].y));
-	max_halo_size.z = max(max_halo_size.z,as_size_t(info[vtxbuf_halos[fields[field]]].z));
+	const int3 halos = acGetFieldHalos(info,fields[field]);
+	max_halo_size.x = max(max_halo_size.x,as_size_t(halos.x));
+	max_halo_size.y = max(max_halo_size.y,as_size_t(halos.y));
+	max_halo_size.z = max(max_halo_size.z,as_size_t(halos.z));
     }
     if(STENCIL_ORDER != 0 && 
 	(

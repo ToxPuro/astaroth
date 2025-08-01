@@ -624,7 +624,11 @@ AC_INTERNAL_write_vtxbuf4(const Field4& field, const int x, const int y, const i
 static int3 UNUSED
 ac_get_field_halos(const Field& field)
 {
-	return VAL(vtxbuf_halos[field]);
+	if(vtxbuf_compile_time_halos[field] != (int3){-1,-1,-1})
+	{
+		return vtxbuf_compile_time_halos[field];
+	}
+	return VAL(vtxbuf_run_time_halos[field]);
 }
 void
 write_base (const Field& field, const AcReal&)

@@ -34,7 +34,7 @@ static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
    #include "user_builtin_non_scalar_constants.h"
-   const Volume n0 = to_volume(info[AC_nmin]);
+   const Volume n0 = to_volume(acGetFieldHalos(info,vtxbuf));
    const Volume m1 = to_volume(info[vtxbuf_dims[vtxbuf]]);
    const Volume n1 = m1-n0;
    const Volume m0 = (Volume){0, 0, 0};
