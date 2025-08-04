@@ -271,11 +271,15 @@ typedef struct
 static UNUSED int3
 acGetFieldHalos(const AcMeshInfo info, const VertexBufferHandle vtxbuf)
 {
-	if(vtxbuf_compile_time_halos[vtxbuf] != (int3){-1,-1,-1})
+
+	if(     vtxbuf_compile_time_halos[vtxbuf].x != -1
+	     && vtxbuf_compile_time_halos[vtxbuf].y != -1
+	     && vtxbuf_compile_time_halos[vtxbuf].z != -1
+	  )
 	{
 		return vtxbuf_compile_time_halos[vtxbuf];
 	}
-	return info[vtxbuf_run_time_halos[vtxbuf]];
+	return info.int3_params[vtxbuf_run_time_halos[vtxbuf]];
 }
 
 #include "common_kernels.h"
