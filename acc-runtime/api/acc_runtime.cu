@@ -592,9 +592,17 @@ acLaunchKernelCommon(AcKernel kernel, const cudaStream_t stream, const int3 star
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims),kernel,vba.on_device.block_factor, to_volume(tpb)));
   if (kernel_calls_reduce[kernel] && reduce_offsets[kernel].find(start) == reduce_offsets[kernel].end())
   {
-	  fprintf(stderr,"Did not find reduce_offset for Kernel launch of %s starting at (%d,%d,%d)!\n",kernel_names[kernel],start.x,start.y,start.z);
-	  fflush(stderr);
-	  exit(EXIT_FAILURE);
+	  //TP: is launched with the whole computational domain so it is fine
+	  if(dims == to_int3(vba.computational_dims.nn) && reduce_offsets[kernel].size() == 0)
+	  {
+  		update_reduce_offsets_and_resize(kernel,start,tpb,bpg,vba);
+	  }
+	  else
+	  {
+	  	fprintf(stderr,"Did not find reduce_offset for Kernel launch of %s starting at (%d,%d,%d)!\n",kernel_names[kernel],start.x,start.y,start.z);
+	  	fflush(stderr);
+	  	exit(EXIT_FAILURE);
+	  }
   }
   const size_t smem = get_smem(kernel,to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
 
