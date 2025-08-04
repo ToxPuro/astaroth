@@ -751,7 +751,7 @@ print_usage(const char* name)
            "  the default is --run-init-kernel\n"
            "\n"
            " -k\n"
-           " --run-init-kernel\n"
+           " --run-init-kernel <kernel_name>\n"
            "\tRun a kernel to initialize the mesh\n"
            "\n"
            " -i <initcond name>\n"
@@ -770,7 +770,7 @@ print_usage(const char* name)
            //    " --from-monolithic-snapshot\n"
            //    "\tLoad the mesh from a monolithic snapshot (one single file)\n"
            //    "\tThe path to the snapshot is currently hardcoded\n"
-           " --from-snapshot\n"
+           " --from-snapshot <folder_name>\n"
            "\tLoad the mesh from a monolithic snapshot (one single file)\n",
            name, AC_DEFAULT_CONFIG);
 }
@@ -1177,7 +1177,16 @@ main(int argc, char** argv)
 	}
 	if(standalone_initcond_kernel == AC_NULL_KERNEL)
 	{
-		acLogFromRootProc(pid,"Did find Kernel %s for initializing mesh!\n",initial_mesh_procedure_param);
+		if(initial_mesh_procedure_param == NULL)
+		{
+			acLogFromRootProc(pid,"No initial condition or a snapshot from which to continue given!\n");
+			acLogFromRootProc(pid,"You can give the initial condition with --run-init-kernel <kernel_name>\n. For example you can try --run-init-kernel randomize\n");
+			acLogFromRootProc(pid,"To get more options run ./ac_run_mpi -h\n");
+		}
+		else
+		{
+			acLogFromRootProc(pid,"Did find Kernel %s for initializing mesh!\n",initial_mesh_procedure_param);
+		}
 		exit(EXIT_FAILURE);
 	}
 	if(standalone_initcond_kernel == randomize)

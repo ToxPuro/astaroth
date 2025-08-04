@@ -1872,7 +1872,9 @@ gen_return_if_oob(const int curr_kernel)
 			       "&& vertexIdx.y >= VAL(AC_nmin).y && vertexIdx.y < VAL(AC_nlocal_max).y\n"
 			       "&& vertexIdx.z >= VAL(AC_nmin).z && vertexIdx.z < VAL(AC_nlocal_max).z;\n"
 		     );
-	       printf("if(inside_computational_domain) return;");
+	       printf("if(inside_computational_domain) %s;",
+			       AC_CPU_BUILD ? "continue" : "return"
+			       );
        }
        if(is_raytracing_kernel(curr_kernel))
        {

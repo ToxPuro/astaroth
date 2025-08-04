@@ -41,6 +41,7 @@ main(void)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acSetGridMeshDims(32, 32, 32, &info);
     acSetLocalMeshDims(32, 32, 32, &info);
 
     AcMesh model, candidate;
