@@ -20,7 +20,7 @@ jobs:
         run: apt-get update && apt-get install -y doxygen graphviz
 
       - name: Generate Doxygen documentation
-        run: doxygen Doxyfile
+        run: doxygen doxyfile
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
