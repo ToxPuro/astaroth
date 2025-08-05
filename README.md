@@ -142,8 +142,12 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 | SINGLEPASS_INTEGRATION| "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" | ON |
 | OPTIMIZE_MEM_ACCESSES | "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time" | OFF |
 | BUILD_SHARED_LIBS | "Builds Astaroth as a collection of shared libraries instead of statically built modules" | OFF |
+| RUNTIME_COMPILATION | "Compile version of Astaroth compiled at runtime" | OFF |
 | BUILD_TESTS | "Builds Astaroth test samples" | OFF |
-| 2D | "Specifies that Astaroth is being compiled for a two-dimensional setup" | OFF |
+| 2D | "Specifies that Astaroth is being compiled for a two-dimensional setup (XY). When possible prefer to give this information via AC_dimension_inactive parameter" | OFF |
+| CPU_BUILD | "To build CPU-only build" | OFF |
+| FFT_ENABLED | "Whether to enable FFT API functions" | OFF |
+
 
 
 ## Standalone Module
