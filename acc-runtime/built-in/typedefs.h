@@ -3,20 +3,20 @@ struct int3
 	int x;
 	int y;
 	int z;
-}
+};
 
 typedef AcReal2 struct real2
 {
 	real x;
 	real y;
-}
+};
 
 typedef AcReal3 struct real3
 {
 	real x;
 	real y;
 	real z;
-}
+};
 
 typedef AcReal4 struct real4
 {
@@ -24,7 +24,7 @@ typedef AcReal4 struct real4
 	real y;
 	real z;
 	real w;
-}
+};
 
 typedef AcReal5 struct real5
 {
@@ -33,7 +33,7 @@ typedef AcReal5 struct real5
 	real z;
 	real w;
 	real v;
-}
+};
 
 typedef AcRealSymmetricTensor struct real_symmetric_tensor
 {
@@ -43,31 +43,33 @@ typedef AcRealSymmetricTensor struct real_symmetric_tensor
 	real xy;
 	real xz;
 	real yz;
-}
+};
 
 typedef AcComplex struct complex
 {
 	real x;
 	real y;
-}
+};
+
 typedef AcBool3 struct bool3
 {
 	bool x;
 	bool y;
 	bool z;
-}
+};
 
 struct Field2
 {
 	Field x;
 	Field y;
-} 
+};
+
 struct Field3
 {
 	Field x;
 	Field y;
 	Field z;
-} 
+};
 
 struct Field4
 {
@@ -75,7 +77,7 @@ struct Field4
 	Field y;
 	Field z;
 	Field w;
-} 
+};
 
 struct FieldSymmetricTensor
 {
@@ -85,7 +87,8 @@ struct FieldSymmetricTensor
 	Field xy;
 	Field xz;
 	Field yz;
-}
+};
+
 //TP: do not make xy,xz and yz into long long since that 
 //will degrade performance (at least on AMD)
 struct AcDimProducts
@@ -109,34 +112,35 @@ enum AcCoordinateSystem
 	AC_CARTESIAN_COORDINATES,
 	AC_SPHERICAL_COORDINATES,
 	AC_CYLINDRICAL_COORDINATES
-}
+};
 
 enum AcProcMappingStrategy
 {
 	AC_PROC_MAPPING_STRATEGY_MORTON,
 	AC_PROC_MAPPING_STRATEGY_LINEAR,
 	AC_PROC_MAPPING_STRATEGY_HIERARCHICAL
-}
+};
 
 enum AcDecomposeStrategy
 {
 	AC_DECOMPOSE_STRATEGY_MORTON,
 	AC_DECOMPOSE_STRATEGY_EXTERNAL,
 	AC_DECOMPOSE_STRATEGY_HIERARCHICAL
-}
+};
 
 enum AcMPICommStrategy
 {
 	AC_MPI_COMM_STRATEGY_DUP_WORLD,
 	AC_MPI_COMM_STRATEGY_DUP_USER
-}
+};
 
 struct VecZProfile
 {
 	Profile<Z> x
 	Profile<Z> y
 	Profile<Z> z
-}
+};
+
 enum AcBoundary {
     BOUNDARY_NONE  = 0,
     BOUNDARY_X_TOP = 0x01,
@@ -183,13 +187,14 @@ enum AcBoundary {
     BOUNDARY_Z_X_TOP = BOUNDARY_Z | BOUNDARY_X_TOP,
     BOUNDARY_Z_Y_BOT = BOUNDARY_Z | BOUNDARY_Y_BOT,
     BOUNDARY_Z_Y_TOP = BOUNDARY_Z | BOUNDARY_Y_TOP
-}
+};
+
 enum AcReductionPostProcessingOp {
 	AC_NO_REDUCE_POST_PROCESSING,
 	AC_RMS,
 	AC_POSTPROCESS_SQRT,
 	AC_RADIAL_WINDOW_RMS
-}
+};
 
 struct Volume {
   size_t x;
