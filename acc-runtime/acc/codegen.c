@@ -7340,6 +7340,7 @@ bool
 primary_expr_is_val(const ASTNode* node, const char* val)
 {
 	if(get_node(NODE_BINARY | NODE_TERNARY | NODE_FUNCTION_CALL,node)) return false;
+	if(get_node_by_token(UNARY_OP,node)) return false;
 	const ASTNode* primary_expr = get_node(NODE_PRIMARY_EXPRESSION,node);
 	if(!primary_expr) return false;
 	const ASTNode* identifier = get_node_by_token(IDENTIFIER,primary_expr);
