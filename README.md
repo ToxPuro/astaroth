@@ -131,7 +131,6 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 | DOUBLE_PRECISION | Generates double precision code. | ON |
 | BUILD_SAMPLES | Builds projects in samples subdirectory. | ON |
 | MPI_ENABLED | Enables acGrid functions for carrying out computations with MPI. | OFF |
-| USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON |
 | MULTIGPU_ENABLED | Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | ON |
 | DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc-runtime/samples/mhd_modular` |
 | DSL_MODULE_FILE | Optionally can specify which file in DSL_MODULE_DIR to compile | empty |
@@ -181,7 +180,7 @@ How do I compile with MPI support?
 
 I have issues with MPI
 
-> If your MPI has been setup incorrectly or does not support CUDA-aware communication, you can try building Astaroth without RDMA support with `cmake -DUSE_CUDA_AWARE_MPI=OFF ..`. Note that without CUDA-aware support, communication is routed through CPU memory which gives notably worse performance than communicating directly between GPUs.
+> If your MPI has been setup incorrectly or does not support CUDA-aware communication, you can try running Astaroth without RDMA support with `AC_use_cuda_aware_mpi=F` in your config file. Note that without CUDA-aware support, communication is routed through CPU memory which gives notably worse performance than communicating directly between GPUs.
 
 I have issues with IBM Power PCs
 
