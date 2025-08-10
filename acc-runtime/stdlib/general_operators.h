@@ -48,7 +48,7 @@ gradient_tensor(Field3 v) {
 }
 
 elemental gradient_upwd(Field s) {
-    return real3(derx_updw(s), dery_updw(s), derz_updw(s))
+    return real3(derx_upwd(s), dery_upwd(s), derz_upwd(s))
 }
 
 
@@ -73,7 +73,7 @@ elemental gradient5(Field s) {
 
 
 elemental gradient6_upwd(s) {
-    return real3(derx_updw(s), dery_updw(s), derz_updw(s))
+    return real3(derx_upwd(s), dery_upwd(s), derz_upwd(s))
 }
 
 
@@ -343,9 +343,9 @@ del6_masked(Field s, int mask)
 
 del_upwd_masked(real3 velo, Field s, int mask)
 {
-        x = mask == 1 ? 0.0 : abs(velo.x*derx_updw(s))
-        y = mask == 2 ? 0.0 : abs(velo.y*dery_updw(s))
-        z = mask == 3 ? 0.0 : abs(velo.z*derz_updw(s))
+        x = mask == 1 ? 0.0 : abs(velo.x*derx_upwd(s))
+        y = mask == 2 ? 0.0 : abs(velo.y*dery_upwd(s))
+        z = mask == 3 ? 0.0 : abs(velo.z*derz_upwd(s))
         return x + y + z
 }
 

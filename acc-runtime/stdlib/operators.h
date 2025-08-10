@@ -16,7 +16,7 @@ gradient_tensor(Field3 v) {
 }
 
 elemental gradient_upwd(Field s) {
-    return real3(derx_updw(s), dery_updw(s), derz_updw(s))
+    return real3(derx_upwd(s), dery_upwd(s), derz_upwd(s))
 }
 
 

@@ -7,8 +7,8 @@
 #define DER2_1  1.0
 #define DER2_0 -2.0
 
-#define DER2_1_UPWD  (DER2_1/2.0)
-#define DER2_0_UPWD  (DER2_0/2.0)
+#define DER2UPWD_1  (DER2_1/2.0)
+#define DER2UPWD_0  (DER2_0/2.0)
 
 #define DERX_1 (0.25)
 Stencil derx {
@@ -54,9 +54,9 @@ Stencil derxx {
 }
 
 Stencil derxx_upwd {
-	[0][0][-1]  =  AC_inv_ds.x*DER2_UPWD_1,
-	[0][0][0 ]  =  AC_inv_ds.x*DER2_UPWD_0,
-	[0][0][1 ]  =  AC_inv_ds.x*DER2_UPWD_1
+	[0][0][-1]  =  AC_inv_ds.x*DER2UPWD_1,
+	[0][0][0 ]  =  AC_inv_ds.x*DER2UPWD_0,
+	[0][0][1 ]  =  AC_inv_ds.x*DER2UPWD_1
 }
 
 Stencil deryy {
@@ -66,9 +66,9 @@ Stencil deryy {
 }
 
 Stencil deryy_upwd {
-	[0][-1][0]  =  AC_inv_ds.y*DER2_UPWD_1,
-	[0][0 ][0]  =  AC_inv_ds.y*DER2_UPWD_0,
-	[0][1 ][0]  =  AC_inv_ds.y*DER2_UPWD_1
+	[0][-1][0]  =  AC_inv_ds.y*DER2UPWD_1,
+	[0][0 ][0]  =  AC_inv_ds.y*DER2UPWD_0,
+	[0][1 ][0]  =  AC_inv_ds.y*DER2UPWD_1
 }
 Stencil derzz {
 	[-1][0][0]  =  AC_inv_ds_2.z*DER2_1,
@@ -77,9 +77,9 @@ Stencil derzz {
 }
 
 Stencil derzz_upwd {
-	[-1][0][0]  =  AC_inv_ds.z*DER2_1_UPWD,
-	[0 ][0][0]  =  AC_inv_ds.z*DER2_0_UPWD,
-	[1 ][0][0]  =  AC_inv_ds.z*DER2_1_UPWD
+	[-1][0][0]  =  AC_inv_ds.z*DER2UPWD_1,
+	[0 ][0][0]  =  AC_inv_ds.z*DER2UPWD_0,
+	[1 ][0][0]  =  AC_inv_ds.z*DER2UPWD_1
 }
 
 #define derx_upwd derxx_upwd
@@ -88,76 +88,91 @@ Stencil derzz_upwd {
 
 der3x(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der3x not possible with radius of 2!\n");
 	return 0.0;
 }
 der3y(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der3y not possible with radius of 2!\n");
 	return 0.0;
 }
 der3z(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der3z not possible with radius of 2!\n");
 	return 0.0;
 }
 der4x(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der4x not possible with radius of 2!\n");
 	return 0.0;
 }
 der4y(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der4y not possible with radius of 2!\n");
 	return 0.0;
 }
 der4z(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der4z not possible with radius of 2!\n");
 	return 0.0;
 }
 der5x(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der5x not possible with radius of 2!\n");
 	return 0.0;
 }
 der5y(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der5y not possible with radius of 2!\n");
 	return 0.0;
 }
 der5z(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der5z not possible with radius of 2!\n");
 	return 0.0;
 }
 der6x(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der6x not possible with radius of 2!\n");
 	return 0.0;
 }
 der6y(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der6y not possible with radius of 2!\n");
 	return 0.0;
 }
 der6z(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der5z not possible with radius of 2!\n");
 	return 0.0;
 }
 der6x_upwd(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der6x_upwd not possible with radius of 2!\n");
 	return 0.0;
 }
 der6y_upwd(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der6y_upwd not possible with radius of 2!\n");
 	return 0.0;
 }
 der6z_upwd(Field f)
 {
+	suppress_unused_warning(f)
 	fatal_error_message(true,"der6z_upwd not possible with radius of 2!\n");
 	return 0.0;
 }
