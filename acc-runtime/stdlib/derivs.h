@@ -3,8 +3,12 @@
 //
 #if STENCIL_ORDER == 2
 #define DER1_1  0.5
+
 #define DER2_1  1.0
 #define DER2_0 -2.0
+
+#define DER2_1_UPWD  (DER2_1/2.0)
+#define DER2_0_UPWD  (DER2_0/2.0)
 
 #define DERX_1 (0.25)
 Stencil derx {
@@ -48,16 +52,40 @@ Stencil derxx {
 	[0][0][0 ]  =  AC_inv_ds_2.x*DER2_0,
 	[0][0][1 ]  =  AC_inv_ds_2.x*DER2_1
 }
+
+Stencil derxx_upwd {
+	[0][0][-1]  =  AC_inv_ds.x*DER2_UPWD_1,
+	[0][0][0 ]  =  AC_inv_ds.x*DER2_UPWD_0,
+	[0][0][1 ]  =  AC_inv_ds.x*DER2_UPWD_1
+}
+
 Stencil deryy {
 	[0][-1][0]  =  AC_inv_ds_2.y*DER2_1,
 	[0][0 ][0]  =  AC_inv_ds_2.y*DER2_0,
 	[0][1 ][0]  =  AC_inv_ds_2.y*DER2_1
+}
+
+Stencil deryy_upwd {
+	[0][-1][0]  =  AC_inv_ds.y*DER2_UPWD_1,
+	[0][0 ][0]  =  AC_inv_ds.y*DER2_UPWD_0,
+	[0][1 ][0]  =  AC_inv_ds.y*DER2_UPWD_1
 }
 Stencil derzz {
 	[-1][0][0]  =  AC_inv_ds_2.z*DER2_1,
 	[0 ][0][0]  =  AC_inv_ds_2.z*DER2_0,
 	[1 ][0][0]  =  AC_inv_ds_2.z*DER2_1
 }
+
+Stencil derzz_upwd {
+	[-1][0][0]  =  AC_inv_ds.z*DER2_1_UPWD,
+	[0 ][0][0]  =  AC_inv_ds.z*DER2_0_UPWD,
+	[1 ][0][0]  =  AC_inv_ds.z*DER2_1_UPWD
+}
+
+#define derx_upwd derxx_upwd
+#define dery_upwd deryy_upwd
+#define derz_upwd derzz_upwd
+
 der3x(Field f)
 {
 	fatal_error_message(true,"der3x not possible with radius of 2!\n");
@@ -339,20 +367,20 @@ der6z_upwd(Field f)
 #define DER2_1 (3. / 2.)
 #define DER2_0 (-49. / 18.)
 
-
 #define DERX_3 (2. / 720.)
 #define DERX_2 (-27. / 720.)
 #define DERX_1 (270. / 720.)
-
-#define DER6UPWD_3 (  1. / 60.)
-#define DER6UPWD_2 ( -6. / 60.)
-#define DER6UPWD_1 ( 15. / 60.)
-#define DER6UPWD_0 (-20. / 60.)
 
 #define DER6_0 -20.0
 #define DER6_1 15.0
 #define DER6_2 -6.0
 #define DER6_3 1.0
+
+#define DER6UPWD_3 (DER6_3 / 60.)
+#define DER6UPWD_2 (DER6_2 / 60.)
+#define DER6UPWD_1 (DER6_1 / 60.)
+#define DER6UPWD_0 (DER6_0 / 60.)
+
 
 #define DER5_1 2.5
 #define DER5_2 (-2.0)
@@ -383,10 +411,6 @@ der6z_upwd(Field f)
 #define DERX_2 (-27. / 720.)
 #define DERX_1 (270. / 720.)
 
-#define DER6UPWD_3 (  1. / 60.)
-#define DER6UPWD_2 ( -6. / 60.)
-#define DER6UPWD_1 ( 15. / 60.)
-#define DER6UPWD_0 (-20. / 60.)
 Stencil der5x {
     [0][0][-3] = -AC_inv_ds_5.x * DER5_3,
     [0][0][-2] = -AC_inv_ds_5.x * DER5_2,
@@ -707,5 +731,10 @@ Stencil der6z_upwd {
     [2][0][0]  =  AC_inv_ds.z * DER6UPWD_2,
     [3][0][0]  =  AC_inv_ds.z * DER6UPWD_3
 }
+
+#define derx_upwd der6x_upwd
+#define dery_upwd der6y_upwd
+#define derz_upwd der6z_upwd
+
 #endif
 #endif

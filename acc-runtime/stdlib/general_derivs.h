@@ -2498,7 +2498,7 @@ der6z(Field f)
 	}
 }
 
-der6x_upwd(Field f)
+derx_upwd(Field f)
 {
 	if(AC_dimension_inactive.x)
 	{
@@ -2519,7 +2519,7 @@ der6x_upwd(Field f)
 		return der6x_stencil(f)*grid_factor
 	}
 }
-der6y_upwd(Field f)
+dery_upwd(Field f)
 {
 	if(AC_dimension_inactive.y)
 	{
@@ -2552,7 +2552,7 @@ der6y_upwd(Field f)
 	}
 }
 
-der6z_upwd(Field f)
+derz_upwd(Field f)
 {
 	if(AC_dimension_inactive.z)
 	{
