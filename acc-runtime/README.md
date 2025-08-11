@@ -225,7 +225,7 @@ Additionally the DSL compiler can infer which `Fields` can be `dead` if you also
 **Important** requires that all conditionals are known at compile-time (or when loading Astaroth if using runtime compilation).
 
 * `input`
-Designed for variables that are input parameters to Kernels, but should not be allocated/loaded to the GPU.
+Designed for variables that are input parameters to Kernels, but should not be allocated/loaded to the GPU. Or for control variables that should only live on the host. (Renaming the qualifier to `host` is under consideration.) 
 > Note: At the moment, can be used only via `ComputeSteps`. See the section describing `ComputeSteps` for example usage.
 * `output`
 At the moment, restricted to `real` and `int` scalar quantities resulting from reductions across the whole subdomain.
