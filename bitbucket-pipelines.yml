@@ -3,7 +3,7 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
-image: nvidia/cuda:12.9.0-devel-ubuntu24.04
+image: alpine:latest 
 
 # JP notes:
 # 1) We need a sufficiently recent GPU to run the code (needs to support CUDA 10 + NVIDIA drivers 418)
@@ -22,7 +22,7 @@ pipelines:
         script: # Modify the commands below to build your repository.
           - apt-get update
           - apt-get install -y git
-          - git add remote bitbucket git@github.com:ToxPuro/astaroth.git
+          - git remote add bitbucket git@github.com:ToxPuro/astaroth.git
           - git push github
           #- export DEBIAN_FRONTEND=noninteractive
           #- ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
