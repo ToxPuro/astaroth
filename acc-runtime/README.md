@@ -528,67 +528,9 @@ real AC_REAL_MAX // Either DBL_MAX or FLT_MAX base on precision of `real`
 real AC_REAL_MIN // Either DBL_MIN or FLT_MIN base on precision of `real`
 real AC_REAL_EPSILON // Either DBL_EPSILON or FLT_EPSILON base on precision of `real`
 ```
-### Built-in dconsts
+### Built-in variables
 
-```
-uniform spacings of the grid:
-real3 AC_ds
-and their inverses:
-real3 AC_inv_ds
-and powers of these:
-real3 AC_ds_2
-real3 AC_ds_3
-real3 AC_ds_4
-real3 AC_ds_5
-real3 AC_ds_6
-
-real3 AC_inv_ds_2
-real3 AC_inv_ds_3
-real3 AC_inv_ds_4
-real3 AC_inv_ds_5
-real3 AC_inv_ds_6
-
-The smallest of the three spacings and its powers
-real AC_dsmin
-real AC_dsmin_2
-
-Subdomain size (not incl. halos)
-int3 AC_nlocal
-Subdomain size (incl. halos)
-int3 AC_mlocal
-Domain size (not incl. halos)
-int3 AC_ngrid
-Domain size (incl. halos)
-int3 AC_mgrid
-Products of the domain sizes (xy, xz, yz, xyz)
-AcDimProducts AC_nlocal_products
-AcDimProducts AC_mlocal_products
-AcDimProducts AC_ngrid_products
-AcDimProducts AC_mgrid_products
-First point in the computational subdomain/domain (also the ghost zone sizes)
-int3 AC_nmin
-Last point in the computational subdomain
-int3 AC_nlocal_max
-Last point in the computational domain
-int3 AC_ngrid_max
-The coordinate system used (default cartesian)
-AC_COORDINATE_SYSTEM  AC_coordinate_system
-Multi-GPU parameters
-int3 AC_domain_decomposition //How the domain is decomposed to multiple GPUs
-int3 AC_domain_coordinates   //Local coordinate of the current device in the grid of GPUs
-int3 AC_multigpu_offset      //AC_domain_coordinates*int3(AC_nx,AC_ny_AC_nz)
-Library config parameters (explained in the library documentation)
-Not meaningful for DSL
-int AC_proc_mapping_strategy
-int AC_decompose_strategy
-int AC_MPI_comm_strategy
-int AC_MPI_comm_strategy
-bool AC_host_has_row_memory_order
-Coordinate vectors of a Lagrangian grid (need LAGRANGIAN_GRID=ON)
-Field COORDS_X
-Field COORDS_Y
-Field COORDS_Z
-```
+[See built-in variables here](https://toxpuro.github.io/astaroth/variables_8h.html)
 
 ## Advanced features
 If OPTIMIZE_FIELDS=ON, the DSL compiler will identify unused `Fields` and will not allocate them on the GPU.
