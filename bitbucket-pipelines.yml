@@ -16,39 +16,38 @@ options:
   max-time: 60 # Max time allowed for building (minutes) 
 pipelines:
   # default: # Default is run at every push but we have only 500 build minutes / month so that probably wouldn't work out
-  custom: # Manual/scheduled building only
-    default:
-    - step:
-        script: # Modify the commands below to build your repository.
-          - apk add --no-cache git
-          - apk add --no-cache git openssh-client
-          - git remote add github git@github.com:ToxPuro/astaroth.git
-          - git push github
-          #- export DEBIAN_FRONTEND=noninteractive
-          #- ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
-          #- apt-get update
-          #- apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
-          #- wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
-          #- apt-add-repository 'deb https://apt.kitware.com/ubuntu/ noble main'
-          #- apt-get update
-          #- apt-get install -y cmake flex bison openmpi-bin libopenmpi-dev gfortran
-          ## Test ACC
-          #- . ./sourceme.sh
-          #- mkdir -p acc-runtime/build
-          #- cd acc-runtime/build
-          #- cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j && cd acc
-          #- $AC_HOME/acc-runtime/tests/syntaxtest.sh
-          #- cd $AC_HOME/test-builds && ac_build_tests
-          ## By default MPI is not supposed to be run as root since it can cause catastrophic damage to the OS file system
-          ## and leave the system in an unusable state. However since we are inside a Docker container we are anyways sandboxed
-          ## and can disregard the warning
-          #- export OMPI_ALLOW_RUN_AS_ROOT=1
-          #- export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
-          #- cd $AC_HOME/test-builds && ac_run_tests
-          ## Test that all end-to-end tests compile fine with CUDA
-          #- cd $AC_HOME/test && ac_build_tests
-          ## Test that all end-to-end tests compile fine with CPU
-          #- cd $AC_HOME/test && ac_build_tests --cpu
-          ## Test that subset of end-to-end tests run fine on CPUs
-          #- cd $AC_HOME/test && ac_run_tests
+  default:
+  - step:
+      script: # Modify the commands below to build your repository.
+        - apk add --no-cache git
+        - apk add --no-cache git openssh-client
+        - git remote add github git@github.com:ToxPuro/astaroth.git
+        - git push github
+        #- export DEBIAN_FRONTEND=noninteractive
+        #- ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
+        #- apt-get update
+        #- apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
+        #- wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
+        #- apt-add-repository 'deb https://apt.kitware.com/ubuntu/ noble main'
+        #- apt-get update
+        #- apt-get install -y cmake flex bison openmpi-bin libopenmpi-dev gfortran
+        ## Test ACC
+        #- . ./sourceme.sh
+        #- mkdir -p acc-runtime/build
+        #- cd acc-runtime/build
+        #- cmake -DOPTIMIZE_MEM_ACCESSES=ON -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j && cd acc
+        #- $AC_HOME/acc-runtime/tests/syntaxtest.sh
+        #- cd $AC_HOME/test-builds && ac_build_tests
+        ## By default MPI is not supposed to be run as root since it can cause catastrophic damage to the OS file system
+        ## and leave the system in an unusable state. However since we are inside a Docker container we are anyways sandboxed
+        ## and can disregard the warning
+        #- export OMPI_ALLOW_RUN_AS_ROOT=1
+        #- export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+        #- cd $AC_HOME/test-builds && ac_run_tests
+        ## Test that all end-to-end tests compile fine with CUDA
+        #- cd $AC_HOME/test && ac_build_tests
+        ## Test that all end-to-end tests compile fine with CPU
+        #- cd $AC_HOME/test && ac_build_tests --cpu
+        ## Test that subset of end-to-end tests run fine on CPUs
+        #- cd $AC_HOME/test && ac_run_tests
 
