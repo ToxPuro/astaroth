@@ -500,6 +500,13 @@ get_allocating_types()
 }
 bool is_allocating_type(const char* type)
 {
+	if(strstr(type,"*"))
+	{
+
+		const char* tmp = intern(remove_substring(strdup(type),"*"));
+		const bool res = consists_of_types(get_allocating_types(),tmp);
+		return res;
+	}
 	return consists_of_types(get_allocating_types(),type);
 }
 static int_vec user_remappings = VEC_INITIALIZER; 
@@ -3309,6 +3316,24 @@ gen_ray_names()
 		}
 	}
 }
+void
+check_for_input_use_in_other_than_computesteps(const ASTNode* node,const ASTNode* enclosing_func)
+{
+	if(node->type == NODE_TASKGRAPH_DEF) return;
+	if(node->type & NODE_FUNCTION) enclosing_func = node;
+	TRAVERSE_PREAMBLE_PARAMS(check_for_input_use_in_other_than_computesteps,enclosing_func);
+	if(enclosing_func && node->token == IDENTIFIER)
+	{
+		if(check_symbol(NODE_VARIABLE_ID,node->buffer,NULL,INPUT_STR))
+		{
+			const char* func_name = get_node_by_token(IDENTIFIER,enclosing_func)->buffer;
+			fatal("Can use input variables only in ComputeSteps\n"
+			      "Incorrect usage of %s in function %s\n",node->buffer,func_name);
+		}
+	}
+
+}
+
 void
 check_for_undeclared_functions(const ASTNode* node, const ASTNode* root)
 {
@@ -8739,16 +8764,7 @@ get_all_field_structs()
  		const char* name  = s_info.user_structs.data[j];
  		if(all_same_struct(name,FIELD_STR))
  		{
- 			const size_t num_members = s_info.user_struct_field_names[j].size;
- 			//TP: do not force the user to qualify the real struct name for elemental purposes
- 			const char* qualified_real_name = sprintf_intern("AcReal%zu",num_members);
- 			const char* base_real_name = sprintf_intern("real%zu",num_members);
- 			if(    str_vec_contains(s_info.user_structs,qualified_real_name) 
- 		            || str_vec_contains(s_info.user_structs,base_real_name)
- 			  )
-			{
-				push_int(&res,j);
-			}
+			push_int(&res,j);
 		}
 	}
 	return res;
@@ -8989,8 +9005,8 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 	{
 		int_vec all_field_structs = get_all_field_structs();
 		gen_two_combinations_scalar_struct(dfunc_name,info.types.data[0],all_field_structs,stream);
-		free_int_vec(&all_field_structs);
 		gen_array_elemental(dfunc_name,info.types,1,stream);
+		free_int_vec(&all_field_structs);
 		free_int_vec(&all_field_structs);
 	}
 
@@ -9123,7 +9139,7 @@ expand_allocating_types_base(ASTNode* node)
                 {
                         ASTNode* decl = astnode_create((NODE_DECLARATION | NODE_GLOBAL),
                                         create_type_declaration_with_qualifiers(tquals,
-						is_output ? intern(remove_substring(strdup(type),"*")) : type),
+						intern(remove_substring(strdup(type),"*"))),
                                         astnode_dup(id_nodes.data[i],NULL)
                                         );
                         ASTNode* res_node = astnode_create(NODE_UNKNOWN,decl,NULL);
@@ -9141,7 +9157,7 @@ expand_allocating_types_base(ASTNode* node)
 
 
                 ASTNode* type_declaration = create_type_declaration("const",
-			is_output ? sprintf_intern("%sOutputParam*", intern(remove_substring(strdup(type),"*"))) : sprintf_intern("%s*",type)
+			is_output ? sprintf_intern("%sOutputParam*", intern(remove_substring(strdup(type),"*"))) : sprintf_intern("%s",type)
 		);
 
                 ASTNode* const_declaration = create_const_declaration(arr_initializer,field_name_str,type_declaration);
@@ -10913,6 +10929,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   // Stencils
   check_for_undeclared_functions(root,root);
+  check_for_input_use_in_other_than_computesteps(root,NULL);
   
 
   gen_type_info(root);

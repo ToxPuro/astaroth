@@ -225,8 +225,8 @@ Additionally the DSL compiler can infer which `Fields` can be `dead` if you also
 **Important** requires that all conditionals are known at compile-time (or when loading Astaroth if using runtime compilation).
 
 * `input`
-Designed for variables that are inputs to Kernels, but should not be allocated/loaded to the GPU.
-> Note: At the moment, mostly useful for `ComputeSteps`
+Designed for variables that are input parameters to Kernels, but should not be allocated/loaded to the GPU.
+> Note: At the moment, can be used only via `ComputeSteps`. See the section describing `ComputeSteps` for example usage.
 * `output`
 At the moment, restricted to `real` and `int` scalar quantities resulting from reductions across the whole subdomain.
 > Note: implicitly allocates memory on the GPU to perform reductions.
@@ -380,15 +380,20 @@ Kernels are functions visible outside of the DSL code, called by the host.
 Calling kernels is the only way to execute DSL code.
 
 > Note: Kernels can not be called from other kernels.
-> Note: Array input parameters are not supported
+> Note: Array input parameters of known sizes are not supported
 > Note: The types of the input parameters have to be declared.
 > Note: There are different ways to pass input parameters to kernels through API functions.
 
 ```
-Kernel func3(input param) {
+Kernel func3(type param) {
+
+}
+
+Kernel func4(type[] ptr) {
 
 }
 ```
+> Note: In the example of func4 the input param `ptr` is functionally a pointer to GPU allocated memory. The correctness of the pointer is not checked by Astaroth and is responsibility of the user.
 
 ### Stencils
 Stencils are functions that take in a `Field` input parameter and have an unique syntax and semantics. 
