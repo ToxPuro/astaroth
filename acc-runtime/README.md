@@ -187,13 +187,7 @@ enum Characters
 > Note: Whenever possible one should prefer using enums compared e.g. named integers, since using enums gives the DSL compile more information which it can use to perform optimizations.
 
 ##### Built-in enums
-The following enums are built-in to Astaroth
-enum AC_COORDINATE_SYSTEM
-{
-	AC_CARTESIAN_COORDINATES,
-	AC_SPHERICAL_COORDINATES,
-	AC_CYLINDRICAL_COORDINATES
-}
+[See here](https://toxpuro.github.io/astaroth/typedefs_8h.html)
 ### Type qualifiers
 
 * `const` Effectively the same as C++ constexpr i.e. a compile-time constant.
