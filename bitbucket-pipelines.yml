@@ -17,7 +17,7 @@ options:
 pipelines:
   # default: # Default is run at every push but we have only 500 build minutes / month so that probably wouldn't work out
   custom: # Manual/scheduled building only
-    scheduled:
+    default:
     - step:
         script: # Modify the commands below to build your repository.
           - apk add --no-cache git
