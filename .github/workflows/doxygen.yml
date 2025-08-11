@@ -16,8 +16,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Doxygen
-        run: apt-get update && apt-get install -y doxygen graphviz
+      - name: Set up Doxygen and Git
+        run: apt-get update && apt-get install -y doxygen graphviz git
 
       - name: Generate Doxygen documentation
         run: doxygen doxyfile
