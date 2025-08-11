@@ -21,7 +21,7 @@ pipelines:
     - step:
         script: # Modify the commands below to build your repository.
           - apk add --no-cache git
-          - git remote add bitbucket git@github.com:ToxPuro/astaroth.git
+          - git remote add github git@github.com:ToxPuro/astaroth.git
           - git push github
           #- export DEBIAN_FRONTEND=noninteractive
           #- ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
