@@ -119,9 +119,17 @@ decompose_hierarchical_alt(const ac::shape& global_nn, const size_t nprocs)
             const auto count{prod(local_nn) / local_nn[axis]};
             // PRINT_DEBUG(axis);
             // PRINT_DEBUG(count);
-            if (count >= best_count) {
+            if (count > best_count) {
                 best_axis  = axis;
                 best_count = count;
+            }
+            // If two axes equally good, choose the one that has yet to be decomposed
+            else if (decompositions.size() > 0) {
+                const auto decomp{hierarchical_decomposition_to_global(decompositions)};
+                if (count == best_count && decomp[best_axis] > 1 && decomp[axis] == 1) {
+                    best_axis  = axis;
+                    best_count = count;
+                }
             }
         }
         ERRCHK(best_count > 0);
