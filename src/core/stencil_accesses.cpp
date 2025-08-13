@@ -537,15 +537,19 @@ acAnalysisLoadMeshInfo(const AcMeshInfo info)
 
 #include "arrays_accessed_decl.h"
 #define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) static DATATYPE ARR_NAME##return_var{}; \
-							    struct tmp_struct_##ARR_NAME {DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) const {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
+								                          DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
+							    }; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
 
 #define DECLARE_DCONST_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) static DATATYPE ARR_NAME##return_var{}; \
-							    struct tmp_struct_##ARR_NAME {DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) const {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_d_##DEFINE_NAME##_arrays_##ARR_NAME {};
 
 #define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, DIMS) static DATATYPE ARR_NAME##return_var{}; \
-							    struct tmp_struct_##ARR_NAME {DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int) const {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
+								                          DATATYPE& operator[](const int) {DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;} \
+							    }; \
 							    [[maybe_unused]] static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
 #include "cpu_dconst_arrays_decl.h"
 #include "cpu_gmem_arrays_decl.h"
