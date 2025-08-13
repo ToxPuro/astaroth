@@ -789,7 +789,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    const bool are_arrays = (get_node(NODE_ARRAY_ACCESS,declaration) != NULL) ||
 				    (get_node(NODE_ARRAY_INITIALIZER,declaration) != NULL);
 	    const ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
-	    const char* type = combine_all_new(type_specifier);
             ASTNode* assignment = (ASTNode*)get_node(NODE_ASSIGNMENT, variable_definition);
 	
             if (get_node_by_token(FIELD, variable_definition)) {
@@ -1857,15 +1856,33 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			for(size_t i = 0; i < dims.size; ++i)
 			{
 				ASTNode* elem = (ASTNode*) dims.data[i];
-				const int array_len = eval_int(elem,true,NULL);
-				set_buffers_empty(elem);
-				astnode_set_buffer(itoa(array_len),elem);
+				int err = 0;
+				const int array_len = eval_int(elem,false,&err);
+				if(err && has_qualifier(variable_definition,DCONST_STR)) 
+				{
+					const char* name = get_node_by_token(IDENTIFIER,variable_definition)->buffer;
+					fprintf(stderr,"\n");
+					fprintf(stderr,"AC WARNING demoting array %s from dconst to gmem since the dimensions are not known at compile-time!\n",
+						name);
+					fprintf(stderr,"AC WARNING demoting array %s from dconst to gmem since the dimensions are not known at compile-time!\n",
+						name);
+					fprintf(stderr,"AC WARNING demoting array %s from dconst to gmem since the dimensions are not known at compile-time!\n",
+						name);
+					fprintf(stderr ,"\n");
+					change_qualifier(variable_definition,DCONST_STR,GLOBAL_MEM_STR);
+				}
+				else
+				{
+					set_buffers_empty(elem);
+					astnode_set_buffer(itoa(array_len),elem);
+				}
 			}
 			free_node_vec(&dims);
 		}
-		//else if gmem simply replace const ints with numeric values to enable differentation of the const declarations
+		//NOTE: important to have if here because we can potentially transform dconst --> gmem above
+		//if gmem simply replace const ints with numeric values to enable differentation of the const declarations
 		//and the array dims and also to notice easily if dims are known statically
-		else if(has_qualifier(variable_definition,GLOBAL_MEM_STR))
+		if(has_qualifier(variable_definition,GLOBAL_MEM_STR))
 		{
 			node_vec dims = VEC_INITIALIZER;
 			get_array_access_nodes(variable_definition,&dims);
@@ -1888,6 +1905,24 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			}
 			free_node_vec(&dims);
 		}	
+		if(has_qualifier(variable_definition,GLOBAL_MEM_STR) && has_qualifier(variable_definition,DCONST_STR))
+		{
+		        const char* name = get_node_by_token(IDENTIFIER,variable_definition)->buffer;
+			fprintf(stderr,"AC FATAL ERROR: array %s has both gmem and dconst qualifiers which is not possible!\n",name);
+			exit(EXIT_FAILURE);
+		}
+		if(has_qualifier(variable_definition,GLOBAL_MEM_STR) && has_qualifier(variable_definition,RUN_CONST_STR))
+		{
+		        const char* name = get_node_by_token(IDENTIFIER,variable_definition)->buffer;
+			fprintf(stderr,"AC FATAL ERROR: array %s has both gmem and run_const qualifiers which is not possible!\n",name);
+			exit(EXIT_FAILURE);
+		}
+		if(has_qualifier(variable_definition,DCONST_STR) && has_qualifier(variable_definition,RUN_CONST_STR))
+		{
+		        const char* name = get_node_by_token(IDENTIFIER,variable_definition)->buffer;
+			fprintf(stderr,"AC FATAL ERROR: array %s has both dconst and run_const qualifiers which is not possible!\n",name);
+			exit(EXIT_FAILURE);
+		}
 }
 static void process_global_assignment(ASTNode* node,ASTNode* variable_definition, ASTNode* declaration_list)
 	    {

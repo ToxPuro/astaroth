@@ -774,6 +774,18 @@ get_node_in_list(const ASTNode* list_head, int index)
 	}
 	return last_elem ? list_head->lhs : list_head->rhs;
 }
+static __attribute__((unused)) void
+change_qualifier(const ASTNode* node, const char* old_qualifier, const char* new_qualifier)
+{
+	if(node->lhs)
+		change_qualifier(node->lhs,old_qualifier,new_qualifier);
+	if(node->rhs)
+		change_qualifier(node->rhs,old_qualifier,new_qualifier);
+	if(node->type & NODE_TQUAL && node->lhs->buffer == old_qualifier)
+	{
+		node->lhs->buffer = new_qualifier;
+	}
+}
 static inline bool has_qualifier(const ASTNode* node, const char* qualifier)
 {
 	bool res = false;
