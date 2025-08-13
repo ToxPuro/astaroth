@@ -8,6 +8,7 @@ const int mcom = 9
 auxiliary Field timestep_registers[mcom]
 communicated auxiliary Field communicated_registers[3*3]
 auxiliary Field3 DUST[ndustspec] 
+communicated FieldSymmetricTensor TEST_ARR[4]
 
 Kernel test_arr()
 {
@@ -23,6 +24,10 @@ Kernel test_arr()
 	]
 	vec_arr = vec_arr_base + DUST
 	write(DUST,vec_arr)
+	real_symmetric_tensor tensor = {
+		0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+	}
+	write(TEST_ARR,tensor)
 }
 Kernel test2()
 {

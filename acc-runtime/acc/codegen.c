@@ -9162,6 +9162,7 @@ expand_allocating_types_base(ASTNode* node)
                 ASTNode* arr_initializer = create_arr_initializer(elems);
 
 
+		if (type == FIELD_STR) type = FIELD_PTR_STR;
                 ASTNode* type_declaration = create_type_declaration("const",
 			is_output ? sprintf_intern("%sOutputParam*", intern(remove_substring(strdup(type),"*"))) : sprintf_intern("%s",type)
 		);
