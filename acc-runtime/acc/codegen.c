@@ -6378,11 +6378,17 @@ gen_field_info(FILE* fp)
   string_vec field_names = VEC_INITIALIZER;
   string_vec original_names = VEC_INITIALIZER;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if(symbol_table[i].tspecifier == FIELD_STR)
+    if(symbol_table[i].tspecifier == FIELD_STR && !str_vec_contains(symbol_table[i].tqualifiers,CONST_STR))
+    {
 	    push(&original_names,symbol_table[i].identifier);
+    }
   string_vec names = VEC_INITIALIZER;
   for (size_t i = 0; i < original_names.size; ++i)
   {
+	if(user_remappings.data[i] >= (int)original_names.size)
+	{
+		fatal("AC INTERNAL ERROR: field remappings out of bounds!, %zu, %d, %zu\n",original_names.size, user_remappings.data[i],user_remappings.size);
+	}
 	push(&names,(user_remappings.data[i] == -1) ? original_names.data[i] : original_names.data[user_remappings.data[i]]);
   }
 
