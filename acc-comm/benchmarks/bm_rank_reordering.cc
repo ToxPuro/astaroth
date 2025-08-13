@@ -7,9 +7,7 @@
 
 #include "acm/detail/allocator.h"
 #include "acm/detail/buffer.h"
-#include "acm/detail/convert.h"
 #include "acm/detail/errchk_mpi.h"
-#include "acm/detail/halo_exchange_custom.h"
 #include "acm/detail/math_utils.h"
 #include "acm/detail/mpi_utils.h"
 #include "acm/detail/ndbuffer.h"
@@ -27,7 +25,7 @@
 #include "acm/detail/experimental/mpi_utils_experimental.h"
 #include "acm/detail/experimental/random_experimental.h"
 
-namespace ac::mpi {
+namespace ac::mpi::decoupled {
 
 template <typename T, typename Allocator> class packet {
   private:
@@ -226,7 +224,7 @@ template <typename T, typename Allocator> class halo_exchange {
     }
 };
 
-} // namespace ac::mpi
+} // namespace ac::mpi::decoupled
 
 template <typename T, typename Allocator>
 static void
@@ -283,7 +281,7 @@ verify_results(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index
 template <typename T, typename Allocator>
 static void
 verify(const MPI_Comm& comm, const ac::shape& global_nn, const ac::index& rr,
-       ac::mpi::halo_exchange<T, Allocator>& task, const std::function<void()>& bench)
+       ac::mpi::decoupled::halo_exchange<T, Allocator>& task, const std::function<void()>& bench)
 {
     // Simple verification
     task.init();
@@ -359,10 +357,10 @@ main(int argc, char* argv[])
         const auto filename{filename_stream.str()};
 
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-        std::ofstream file{filename};
-        file.exceptions(~std::ios::goodbit);
-        file << "impl,nx,ny,nz,radius,sample,nsamples,rank,nprocs,jobid,ns" << std::endl;
-        file.close();
+            std::ofstream file{filename};
+            file.exceptions(~std::ios::goodbit);
+            file << "impl,nx,ny,nz,radius,sample,nsamples,rank,nprocs,jobid,ns" << std::endl;
+            file.close();
         }
 
         auto print = [&](const std::string&                                      label,
@@ -393,9 +391,9 @@ main(int argc, char* argv[])
 
         auto bm = [&](const std::string& label, const ac::mpi::RankReorderMethod reorder_method) {
             ac::mpi::cart_comm cart_comm{MPI_COMM_WORLD, global_nn, reorder_method};
-            ac::mpi::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
-            auto                                 init  = [&task]() { task.reset(); };
-            auto                                 bench = [&task]() {
+            ac::mpi::decoupled::halo_exchange<T, Allocator> task{cart_comm.get(), global_nn, rr};
+            auto                                            init  = [&task]() { task.reset(); };
+            auto                                            bench = [&task]() {
                 task.launch();
                 task.wait();
             };
