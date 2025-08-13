@@ -114,14 +114,19 @@ main(int argc, char* argv[])
                         << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
         const auto filename{filename_stream.str()};
 
+        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
         std::ofstream file{filename};
         file.exceptions(~std::ios::goodbit);
         file << "impl,nx,ny,nz,radius,npack,sample,nsamples,rank,nprocs,jobid,ns" << std::endl;
         file.close();
+        }
 
         auto print = [&](const std::string&                                      label,
                          const std::vector<std::chrono::steady_clock::duration>& results) {
-            file = std::ofstream{filename, std::ios_base::app};
+            if (ac::mpi::get_rank(MPI_COMM_WORLD) != 0)
+                return;
+
+            std::ofstream file{filename, std::ios_base::app};
             file.exceptions(~std::ios::goodbit);
 
             for (size_t i{0}; i < results.size(); ++i) {
