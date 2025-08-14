@@ -214,11 +214,21 @@ acPeekAtLastError()
 cudaError_t
 acProfilerStart()
 {
+#if AC_USE_HIP
+	cudaProfilerStart();
+	return cudaSuccess;
+#else
 	return cudaProfilerStart();
+#endif
 }
 cudaError_t
 acProfilerStop()
 {
+#if AC_USE_HIP
+	cudaProfilerStop();
+	return cudaSuccess;
+#else
 	return cudaProfilerStop();
+#endif
 }
 #endif
