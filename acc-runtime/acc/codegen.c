@@ -3139,6 +3139,46 @@ is_output_type(const char* var)
 	if(sym->tspecifier && strstr(sym->tspecifier,"OutputParam")) return true;
 	return false;
 }
+const char*
+generate_parameter_recursive(const ASTNode* node, const char* res)
+{
+        if(node->prefix) res = sprintf_intern("%s%s",res,node->prefix);
+	if(node->lhs) res = generate_parameter_recursive(node->lhs,res);
+	if(node->token == IDENTIFIER)
+	{
+		const char* name = node->buffer;
+		if(check_symbol(NODE_VARIABLE_ID,name,NULL,DCONST_STR))
+		{
+			res = sprintf_intern("%sacDeviceGetLocalConfig(acGridGetDevice())[%s]",res,name);
+		}
+		else if(check_symbol(NODE_VARIABLE_ID,name,NULL,INPUT_STR))
+		{
+			res = sprintf_intern("%sacDeviceGetInput(acGridGetDevice(),%s)",res,name);
+		}
+		else if(name == intern("AC_ITERATION_NUMBER"))
+		{
+			res = sprintf_intern("%sp.step_number",res);
+		}
+		else if(name)
+		{
+			res = sprintf_intern("%s%s",res,node->buffer);
+		}
+	}
+	else if(node->buffer)
+	{
+		res = sprintf_intern("%s%s",res,node->buffer);
+	}
+        if(node->infix) res = sprintf_intern("%s%s",res,node->infix);
+	if(node->rhs) res = generate_parameter_recursive(node->rhs,res);
+        if(node->postfix) res = sprintf_intern("%s%s",res,node->postfix);
+	return res;
+}
+const char*
+generate_parameter(const ASTNode* node)
+{
+	const char* res = "";
+	return generate_parameter_recursive(node,res);
+}
 static int
 gen_loader_definition(FILE* stream, const func_params_info params_info, const func_params_info call_info, const char* func_name)
 {
@@ -3158,19 +3198,10 @@ gen_loader_definition(FILE* stream, const func_params_info params_info, const fu
 		for(int i = 0; i < (int)params_info.types.size-params_offset; ++i)
 		{
 			if(is_dfunc) continue;
-
-			char* input_param = strdup(combine_all_new(call_info.expr_nodes.data[i]));
+			const char* input_param = generate_parameter(call_info.expr_nodes.data[i]);
 			const char* expr = intern(combine_all_new(params_info.expr_nodes.data[i]));
-			replace_substring(input_param,"AC_ITERATION_NUMBER","p.step_number");
-			if (all_identifiers_are_constexpr(call_info.expr_nodes.data[i]) || !strcmp(input_param,"p.step_number"))
-				fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, expr, input_param);
-			else if(is_value_applicable_type(call_info.types.data[i]))
-				fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, expr, input_param);
-			else if(check_symbol(NODE_VARIABLE_ID,expr,NULL,DCONST_STR))
-				fprintf(stream, "p.params -> %s.%s = acDeviceGetLocalConfig(acGridGetDevice())[%s]; \n", func_name,expr, input_param);
-			else
-				fprintf(stream, "p.params -> %s.%s = acDeviceGetInput(acGridGetDevice(),%s); \n", func_name,expr, input_param);
-			free(input_param);
+			//replace_substring(input_param,"AC_ITERATION_NUMBER","p.step_number");
+			fprintf(stream, "p.params -> %s.%s = %s;\n", func_name, expr, input_param);
 			//TP: not used anymore TODO: remove
 			//if(!str_vec_contains(*input_symbols,call_info.expr.data[i]))
 			//{
@@ -3704,10 +3735,9 @@ add_param_combinations(const variable var, const int kernel_index,const char* pr
 		  add_param_combinations((variable){struct_field_types.data[i],struct_field_names.data[i]},kernel_index,new_prefix,combinatorials);
 	  }
 	}
+	const int param_index = push(&combinatorials.names[kernel_index],intern(full_name));
 	if(is_enum_type(var.type))
 	{
-		const int param_index = push(&combinatorials.names[kernel_index],intern(full_name));
-
 		const int enum_index = str_vec_get_index(e_info.names,var.type);
 		string_vec options  = e_info.options[enum_index];
 		for(size_t i = 0; i < options.size; ++i)
@@ -3715,14 +3745,12 @@ add_param_combinations(const variable var, const int kernel_index,const char* pr
 			push(&combinatorials.options[kernel_index+100*param_index],options.data[i]);
 		}
 	}
-	if(BOOL_STR == var.type)
+	if(var.type == BOOL_STR)
 	{
-		const int param_index = push(&combinatorials.names[kernel_index],intern(full_name));
 		push(&combinatorials.options[kernel_index+100*param_index],FALSE_STR);
 		push(&combinatorials.options[kernel_index+100*param_index],TRUE_STR);
 	}
 }
-
 
 
 
@@ -9161,8 +9189,7 @@ expand_allocating_types_base(ASTNode* node)
                 //TP: create the equivalent of const Field CHEMISTRY = [CHEMISTRY_0, CHEMISTRY_1,...,CHEMISTRY_N]
                 ASTNode* arr_initializer = create_arr_initializer(elems);
 
-
-		if (type == FIELD_STR) type = FIELD_PTR_STR;
+		if(type == FIELD_STR) type = FIELD_PTR_STR;
                 ASTNode* type_declaration = create_type_declaration("const",
 			is_output ? sprintf_intern("%sOutputParam*", intern(remove_substring(strdup(type),"*"))) : sprintf_intern("%s",type)
 		);
@@ -9966,6 +9993,7 @@ preprocess(ASTNode* root, const bool optimize_input_params)
 
   traverse_base(root, 0, NULL, params);
 
+  num_fields   = count_symbols(FIELD_STR);
   gen_kernel_ifs(root,optimize_input_params);
   if(monomorphization_index == 0)
   {

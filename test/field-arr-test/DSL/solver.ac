@@ -29,7 +29,22 @@ Kernel test_arr()
 	}
 	write(TEST_ARR,tensor)
 }
+Kernel test_kernel(FieldSymmetricTensor f)
+{
+	write(f,0.0)
+}
 Kernel test2()
 {
 	write(DUST,abs(DUST))
+}
+BoundConds bcs
+{
+	periodic(BOUNDARY_XYZ)
+}
+input int AC_input_int
+dconst int AC_dconst_int = 0
+ComputeSteps steps(bcs)
+{
+	test_kernel(TEST_ARR[AC_input_int])
+	test_kernel(TEST_ARR[AC_dconst_int])
 }
