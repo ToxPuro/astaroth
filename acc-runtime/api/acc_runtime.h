@@ -174,8 +174,8 @@ typedef struct
   } AcInputs;
 
 typedef struct {
-  AcReal* in[NUM_PROFILES];
-  AcReal* out[NUM_PROFILES];
+  AcReal* in[NUM_PROFILES+1];
+  AcReal* out[NUM_PROFILES+1];
 } ProfileBufferArray;
 
 
