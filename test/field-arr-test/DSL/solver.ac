@@ -1,4 +1,6 @@
+#define STENCIL_ORDER (6)
 #include "../../../acc-runtime/stdlib/math/funcs.h"
+#include "../../../acc-runtime/stdlib/math/stencils.h"
 Field Field_arr[3]
 const int ndustspec = 3
 
@@ -28,6 +30,10 @@ Kernel test_arr()
 		0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 	}
 	write(TEST_ARR,tensor)
+}
+Kernel test_kernel_field(Field f)
+{
+	write(f,gaussian_smooth_inplace(f))
 }
 Kernel test_kernel(FieldSymmetricTensor f)
 {
