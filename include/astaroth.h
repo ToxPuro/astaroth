@@ -897,24 +897,22 @@ acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph, const bool globally_impos
 #endif
 
 #if AC_RUNTIME_COMPILATION
-
-
 #if AC_MPI_ENABLED
-
 static UNUSED AcTaskGraph* 
 acGetOptimizedDSLTaskGraph(const AcDSLTaskGraph graph)
 {
 	return BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)(graph);
 }
 #endif
+#endif
 
+#if AC_MPI_ENABLED
 static UNUSED AcResult
 acGridInit(const AcMesh mesh)
 {
 	return acGridInitBase(mesh);
 }
 #endif
-
 
 
 #define OVERLOAD_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
