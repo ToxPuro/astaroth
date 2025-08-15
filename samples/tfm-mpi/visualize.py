@@ -103,7 +103,8 @@ for step in range(args.nsteps):
         
         col = i % 3
         row = i // 3
-        axs[row, col].imshow(data[args.slice_nz, :, :])
+        im = axs[row, col].imshow(data[args.slice_nz, :, :])
+        plt.colorbar(im, ax=axs[row, col])
         axs[row, col].set_title(name)
     
     path = os.path.join(args.output_dir, f'snapshots-{stepstr}.png')

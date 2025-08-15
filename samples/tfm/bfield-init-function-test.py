@@ -49,7 +49,7 @@ x, y = np.meshgrid(z, z)
 
 # Setup data
 amplitude = 1
-wavenumber = 2
+wavenumber = 1
 ux = amplitude * -np.cos(wavenumber * x) * np.sin(wavenumber * y)
 uy = amplitude * np.sin(wavenumber * x) * np.cos(wavenumber * y)
 uz = amplitude * np.sqrt(2) * np.cos(wavenumber * x) * np.cos(wavenumber * y)
@@ -85,6 +85,30 @@ uzc = uz[radius:-radius, radius:-radius]
 urms = np.sqrt(np.sum((uxc**2 + uyc**2 + uzc**2))/nz**2)
 assert(np.allclose(urms, 1))
 
+# %%
+xc, yc = np.meshgrid(z[radius:-radius],z[radius:-radius])
+chi_uukin = 45.
+dtor = np.pi/180
+ampl_kinflow = 1
+del_uukin = 0
+fac = ampl_kinflow*np.cos(chi_uukin*dtor)*np.sqrt(2)
+fac2 = ampl_kinflow*np.sin(chi_uukin*dtor)*2.
+dell = del_uukin*dtor
+kx_uukin = 1
+ky_uukin = 1
+
+puxc = -fac*np.cos(kx_uukin*xc    )*np.sin(ky_uukin*yc    )
+puyc = +fac*np.sin(kx_uukin*xc    )*np.cos(ky_uukin*yc    )
+puzc = fac2*np.cos(kx_uukin*xc+dell)*np.cos(ky_uukin*yc+dell)
+print(f'x: {puxc}')
+print(f'y: {puyc}')
+print(f'z: {puzc}')
+plt.imshow(puxc)
+plt.show()
+plt.imshow(puyc)
+plt.show()
+plt.imshow(puzc)
+plt.show()
 
 # %%
 

@@ -41,6 +41,8 @@ main(void)
 
         ac::device_buffer<uint8_t> din{problem_size};
         ac::device_buffer<uint8_t> dout{problem_size};
+        ac::device_buffer<uint8_t> din2{problem_size};
+        ac::device_buffer<uint8_t> dout2{problem_size};
 
         if (rank == 0)
             std::cout << "Benchmarking. Note: the numbers are only for reference: may not be "
@@ -54,9 +56,12 @@ main(void)
                 std::cout << "Root " << rank << ". Using device " << device_id << "." << std::endl;
             for (int i{0}; i < nprocs; ++i) {
 
-                auto bm_fn = [&root, &rank, &din, &dout, &i]() {
+                auto bm_fn = [&root, &rank, &din, &dout, &i, &din2, &dout2]() {
                     MPI_Request send_req{MPI_REQUEST_NULL};
                     MPI_Request recv_req{MPI_REQUEST_NULL};
+
+                    MPI_Request send_req2{MPI_REQUEST_NULL};
+                    MPI_Request recv_req2{MPI_REQUEST_NULL};
 
                     if (rank == root) {
                         ERRCHK_MPI_API(MPI_Irecv(dout.data(),
@@ -66,9 +71,24 @@ main(void)
                                                  i,
                                                  MPI_COMM_WORLD,
                                                  &recv_req));
+                        ERRCHK_MPI_API(MPI_Isend(din2.data(),
+                                                 as<int>(din2.size()),
+                                                 MPI_BYTE,
+                                                 i,
+                                                 i,
+                                                 MPI_COMM_WORLD,
+                                                 &send_req2));
+                        ERRCHK_MPI_API(MPI_Wait(&send_req2, MPI_STATUS_IGNORE));
                     }
 
                     if (rank == i) {
+                        ERRCHK_MPI_API(MPI_Irecv(dout2.data(),
+                                                 as<int>(dout2.size()),
+                                                 MPI_BYTE,
+                                                 root,
+                                                 i,
+                                                 MPI_COMM_WORLD,
+                                                 &recv_req2));
                         ERRCHK_MPI_API(MPI_Isend(din.data(),
                                                  as<int>(din.size()),
                                                  MPI_BYTE,
@@ -81,17 +101,26 @@ main(void)
 
                     if (rank == root) {
                         ERRCHK_MPI_API(MPI_Wait(&recv_req, MPI_STATUS_IGNORE));
+                        ERRCHK_MPI_API(MPI_Wait(&recv_req2, MPI_STATUS_IGNORE));
                     }
                 };
 
                 constexpr size_t len{128};
                 char             label[len];
 #if defined(ACM_DEVICE_ENABLED)
-		if (ndevices_per_node >= 8)
-                	snprintf(label, len, "memory transfer (to rank %d, device %d)", i, device_ids[i]);
-		else
+                if (ndevices_per_node >= 8)
+                    snprintf(label,
+                             len,
+                             "memory transfer (to rank %d, device %d)",
+                             i,
+                             device_ids[i]);
+                else
 #endif
-                	snprintf(label, len, "memory transfer (to rank %d, device %d)", i, i % ndevices_per_node);
+                    snprintf(label,
+                             len,
+                             "memory transfer (to rank %d, device %d)",
+                             i,
+                             i % ndevices_per_node);
 
                 const auto results{bm::benchmark([]() {}, bm_fn, []() {}, bench_nsamples)};
                 const auto median_ns{bm::median<std::chrono::nanoseconds>(results)};

@@ -57,26 +57,7 @@
 // ACR experimental
 #include "acr_experimental.h"
 
-// #define AC_ENABLE_ASYNC_AVERAGES // Better scaling
-// #define AC_ENABLE_ASYNC_DT       // Better scaling
-
-// Debug runs: enable defines below for writing diagnostics synchronously
-// Production runs:
-//  - Should either completely disabled or
-//  - Set IO interval to large enough s.t. synchronous IO does not dominate running time
-#define AC_WRITE_SYNCHRONOUS_SNAPSHOTS
-#define AC_WRITE_SYNCHRONOUS_PROFILES
-#define AC_WRITE_SYNCHRONOUS_TIMESERIES
-// #define AC_WRITE_SYNCHRONOUS_SLICES
-
-// #define AC_BENCHMARK_MODE
-#if defined(AC_BENCHMARK_MODE)
-#define AC_DISABLE_IO
-#endif
-// Production run: enable define below for fast, async profile IO
-// #define AC_WRITE_ASYNC_PROFILES
-
-using IOTask = ac::io::batched_async_write_task<AcReal, ac::mr::pinned_host_allocator>;
+// #define TFM_DT_INCLUDE_ALFVEN
 
 /** Concatenates the field name and ".mesh" of a vector of handles */
 static auto
@@ -136,54 +117,55 @@ convert_to_int3(const ac::ntuple<uint64_t>& in)
 /**
  * Decompose the domain set in the input info and returns a complete local mesh info with all
  * parameters set (incl. multi-device offsets, and others)
+ * DEPRECATED
  */
-static AcMeshInfo
-get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
-{
-    // Calculate local dimensions
-    ac::shape global_nn{acr::get_global_nn(info)};
-    Dims global_ss{acr::get_global_ss(info)};
+// static AcMeshInfo
+// get_local_mesh_info(const MPI_Comm& cart_comm, const AcMeshInfo& info)
+// {
+//     // Calculate local dimensions
+//     ac::shape global_nn{acr::get_global_nn(info)};
+//     Dims global_ss{acr::get_global_ss(info)};
 
-    const ac::shape decomp{ac::mpi::get_decomposition(cart_comm)};
-    const ac::shape local_nn{global_nn / decomp};
-    const Dims local_ss{global_ss / static_cast_vec<AcReal>(decomp)};
+//     const ac::shape decomp{ac::mpi::get_decomposition(cart_comm)};
+//     const ac::shape local_nn{global_nn / decomp};
+//     const Dims local_ss{global_ss / static_cast_vec<AcReal>(decomp)};
 
-    const ac::index coords{ac::mpi::get_coords(cart_comm)};
-    const ac::index global_nn_offset{coords * local_nn};
+//     const ac::index coords{ac::mpi::get_coords(cart_comm)};
+//     const ac::index global_nn_offset{coords * local_nn};
 
-    // Fill AcMeshInfo
-    AcMeshInfo local_info{info};
+//     // Fill AcMeshInfo
+//     AcMeshInfo local_info{info};
 
-    acr::set(AC_nx, as<int>(local_nn[0]), local_info);
-    acr::set(AC_ny, as<int>(local_nn[1]), local_info);
-    acr::set(AC_nz, as<int>(local_nn[2]), local_info);
+//     acr::set(AC_nx, as<int>(local_nn[0]), local_info);
+//     acr::set(AC_ny, as<int>(local_nn[1]), local_info);
+//     acr::set(AC_nz, as<int>(local_nn[2]), local_info);
 
-    local_info.int3_params[AC_multigpu_offset] = convert_to_int3(global_nn_offset);
+//     local_info.int3_params[AC_multigpu_offset] = convert_to_int3(global_nn_offset);
 
-    acr::set(AC_sx, static_cast<AcReal>(local_ss[0]), local_info);
-    acr::set(AC_sy, static_cast<AcReal>(local_ss[1]), local_info);
-    acr::set(AC_sz, static_cast<AcReal>(local_ss[2]), local_info);
+//     acr::set(AC_sx, static_cast<AcReal>(local_ss[0]), local_info);
+//     acr::set(AC_sy, static_cast<AcReal>(local_ss[1]), local_info);
+//     acr::set(AC_sz, static_cast<AcReal>(local_ss[2]), local_info);
 
-    // Backwards compatibility
-    acr::set(AC_global_grid_n, convert_to_int3(global_nn), local_info);
+//     // Backwards compatibility
+//     acr::set(AC_global_grid_n, convert_to_int3(global_nn), local_info);
 
-    ERRCHK(acHostUpdateLocalBuiltinParams(&local_info) == 0);
-    ERRCHK(acHostUpdateMHDSpecificParams(&local_info) == 0);
-    ERRCHK(acHostUpdateTFMSpecificGlobalParams(&local_info) == 0);
+//     ERRCHK(acHostUpdateLocalBuiltinParams(&local_info) == 0);
+//     ERRCHK(acHostUpdateMHDSpecificParams(&local_info) == 0);
+//     ERRCHK(acHostUpdateTFMSpecificGlobalParams(&local_info) == 0);
 
-    // Others to ensure nothing is left uninitialized
-    acr::set(AC_init_type, 0, local_info);
-    acr::set(AC_current_step, 0, local_info);
-    acr::set(AC_latest_snapshot, 0, local_info);
-    acr::set(AC_dt, 0, local_info);
-    acr::set(AC_dummy_real3, AcReal3{0, 0, 0}, local_info);
+//     // Others to ensure nothing is left uninitialized
+//     acr::set(AC_init_type, 0, local_info);
+//     acr::set(AC_current_step, 0, local_info);
+//     acr::set(AC_latest_snapshot, 0, local_info);
+//     acr::set(AC_dt, 0, local_info);
+//     acr::set(AC_dummy_real3, AcReal3{0, 0, 0}, local_info);
 
-    // Special: exclude inner domain (used to fuse outer integration)
-    acr::set(AC_exclude_inner, 0, local_info);
+//     // Special: exclude inner domain (used to fuse outer integration)
+//     acr::set(AC_exclude_inner, 0, local_info);
 
-    ERRCHK(acVerifyMeshInfo(local_info) == 0);
-    return local_info;
-}
+//     ERRCHK(acVerifyMeshInfo(local_info) == 0);
+//     return local_info;
+// }
 
 /**
  * Initialize and load test field profiles on the device based on AC_profile_amplitude and
@@ -205,11 +187,11 @@ init_tfm_profiles(const Device& device)
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
     const auto dsz{acr::get(info, AC_dsz)};
-    const auto sz{acr::get(info, AC_sz)};
+    const auto global_sz{acr::get(info, AC_global_sz)};
     const auto initial_pos{get_global_position(as<int64_t>(acr::get(info, AC_multigpu_offset).z),
                                                as<int64_t>(acr::get(info, AC_nz_min)),
                                                dsz,
-                                               sz)};
+                                               global_sz)};
     const size_t local_mz{as<size_t>(acr::get(info, AC_mz))};
 
     const AcReal amplitude{acr::get(info, AC_profile_amplitude)};
@@ -236,6 +218,16 @@ init_tfm_profiles(const Device& device)
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B11mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B21mean_y));
 
+    // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
+    // PRINT_DEBUG(initial_pos);
+    // PRINT_DEBUG(dsz);
+    // PRINT_DEBUG(global_sz);
+    // std::cout << "cosine profile" << std::endl;
+    // for (size_t i{0}; i < local_mz; ++i)
+    //     std::cout << host_profile[i] << " ";
+    // std::cout << std::endl;
+    // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
+
     // B1s (here B12) and B2s (here B22)
     acHostInitProfileToSineWave(dsz,
                                 initial_pos,
@@ -245,6 +237,13 @@ init_tfm_profiles(const Device& device)
                                 host_profile.get());
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B12mean_x));
     ERRCHK_AC(acDeviceLoadProfile(device, host_profile.get(), local_mz, PROFILE_B22mean_y));
+
+    // MPI_SYNCHRONOUS_BLOCK_START(MPI_COMM_WORLD)
+    // std::cout << "sine profile" << std::endl;
+    // for (size_t i{0}; i < local_mz; ++i)
+    //     std::cout << host_profile[i] << " ";
+    // std::cout << std::endl;
+    // MPI_SYNCHRONOUS_BLOCK_END(MPI_COMM_WORLD)
 
     PRINT_LOG_TRACE("Exit");
 
@@ -607,7 +606,7 @@ reduce_scal(const MPI_Comm& comm, const Device& device, const ReductionType& rty
 static int
 write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
                      const AcReal simulation_time, const AcReal dt, const Field& a, const Field& b,
-                     const Field& c, const std::string& label)
+                     const Field& c, const std::string& label, const std::string& ts_path)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -632,7 +631,7 @@ write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const si
                     static_cast<double>(vmax),
                     static_cast<double>(vavg));
 
-        FILE* fp{fopen("timeseries.csv", "a")};
+        FILE* fp{fopen(ts_path.c_str(), "a")};
         ERRCHK_MPI(fp != NULL);
         std::fprintf(fp,
                      "%s,%zu,%e,%e,%e,%e,%e,%e\n",
@@ -653,7 +652,8 @@ write_vec_timeseries(const MPI_Comm& parent_comm, const Device& device, const si
 // Format std::printf("label, step, t_step, dt, min, rms, max\n");
 static int
 write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
-                      const AcReal simulation_time, const AcReal dt, const Field& field)
+                      const AcReal simulation_time, const AcReal dt, const Field& field,
+                      const std::string& ts_path)
 {
     AcMeshInfo info{};
     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
@@ -678,7 +678,7 @@ write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const s
                     static_cast<double>(vmax),
                     static_cast<double>(vavg));
 
-        FILE* fp{fopen("timeseries.csv", "a")};
+        FILE* fp{fopen(ts_path.c_str(), "a")};
         ERRCHK_MPI(fp != NULL);
         std::fprintf(fp,
                      "%s,%zu,%e,%e,%e,%e,%e,%e\n",
@@ -698,7 +698,7 @@ write_scal_timeseries(const MPI_Comm& parent_comm, const Device& device, const s
 
 static int
 write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t step,
-                 const AcReal simulation_time, const AcReal dt)
+                 const AcReal simulation_time, const AcReal dt, const std::string& ts_path)
 {
     PRINT_LOG_DEBUG("Enter");
 
@@ -752,7 +752,8 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
                              vecfields[i][0],
                              vecfields[i][1],
                              vecfields[i][2],
-                             vecfield_names[i]);
+                             vecfield_names[i],
+                             ts_path);
 
     for (size_t i{0}; i < NUM_FIELDS; ++i)
         write_scal_timeseries(parent_comm,
@@ -760,43 +761,44 @@ write_timeseries(const MPI_Comm& parent_comm, const Device& device, const size_t
                               step,
                               simulation_time,
                               dt,
-                              static_cast<Field>(i));
+                              static_cast<Field>(i),
+                              ts_path);
 
     return 0;
 }
 
 /** Calculate the timestep length and distribute it to all devices in the grid */
-static AcReal
-calc_and_distribute_timestep(const MPI_Comm& comm, const Device& device)
-{
-    PRINT_LOG_DEBUG("Enter");
-    // VertexBufferArray vba{};
-    // ERRCHK_AC(acDeviceGetVBA(device, &vba));
+// static AcReal
+// calc_and_distribute_timestep(const MPI_Comm& comm, const Device& device)
+// {
+//     PRINT_LOG_DEBUG("Enter");
+//     // VertexBufferArray vba{};
+//     // ERRCHK_AC(acDeviceGetVBA(device, &vba));
 
-    AcMeshInfo info{};
-    ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
+//     AcMeshInfo info{};
+//     ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
 
-    AcReal uumax{0};
-    AcReal vAmax{0};
-    AcReal shock_max{0};
+//     AcReal uumax{0};
+//     AcReal vAmax{0};
+//     AcReal shock_max{0};
 
-    static bool warning_shown{false};
-    if (!warning_shown) {
-        WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
-        warning_shown = true;
-    }
+//     static bool warning_shown{false};
+//     if (!warning_shown) {
+//         WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
+//         warning_shown = true;
+//     }
 
-    ERRCHK_AC(acDeviceReduceVec(device,
-                                STREAM_DEFAULT,
-                                RTYPE_MAX,
-                                VTXBUF_UUX,
-                                VTXBUF_UUY,
-                                VTXBUF_UUZ,
-                                &uumax));
-    ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, &uumax, 1, AC_REAL_MPI_TYPE, MPI_MAX, comm));
+//     ERRCHK_AC(acDeviceReduceVec(device,
+//                                 STREAM_DEFAULT,
+//                                 RTYPE_MAX,
+//                                 VTXBUF_UUX,
+//                                 VTXBUF_UUY,
+//                                 VTXBUF_UUZ,
+//                                 &uumax));
+//     ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE, &uumax, 1, AC_REAL_MPI_TYPE, MPI_MAX, comm));
 
-    return calc_timestep(uumax, vAmax, shock_max, info);
-}
+//     return calc_timestep(uumax, vAmax, shock_max, info);
+// }
 
 /**
  * Experimental: Partition the domain into segments based on the segment group.
@@ -945,547 +947,6 @@ randomize(const MPI_Comm& comm, const Device& device, const std::vector<Field>& 
     }
 }
 
-static auto
-make_io_task(const AcMeshInfo& info, const size_t max_nbuffers)
-{
-    return IOTask{acr::get_global_nn(info),
-                  acr::get_global_nn_offset(info),
-                  acr::get_local_mm(info),
-                  acr::get_local_nn(info),
-                  acr::get_local_nn_offset(),
-                  max_nbuffers};
-}
-
-class Grid {
-  private:
-    MPI_Comm cart_comm{MPI_COMM_NULL};
-    Device device{nullptr};
-    AcReal current_time{0}; // TODO remove: error prone
-
-    acm::rev::halo_exchange<double, ac::mr::device_allocator> hydro_he;
-    acm::rev::halo_exchange<double, ac::mr::device_allocator> tfm_he;
-    IOTask hydro_io;
-    IOTask uxb_io;
-
-    MPI_Comm xy_neighbors{MPI_COMM_NULL};
-
-#if defined(AC_ENABLE_ASYNC_AVERAGES)
-    ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg_task{};
-#endif
-
-#if defined(AC_ENABLE_ASYNC_DT)
-    ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce{};
-#endif
-
-  public:
-    explicit Grid(const AcMeshInfo& raw_info)
-    {
-        // Setup communicator and local mesh info
-        auto global_nn{acr::get_global_nn(raw_info)};
-        cart_comm = ac::mpi::cart_comm_create(MPI_COMM_WORLD, global_nn);
-        const auto tmp_local_info{get_local_mesh_info(cart_comm, raw_info)};
-        ERRCHK(acPrintMeshInfoTFM(tmp_local_info) == 0);
-
-        // Select and setup device
-        int original_rank{MPI_PROC_NULL};
-        ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &original_rank));
-
-        int nprocs{0};
-        ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
-
-        int device_count{0};
-        ERRCHK_CUDA_API(cudaGetDeviceCount(&device_count));
-
-        // const int device_id{original_rank % device_count};
-        int device_id{original_rank % device_count};
-        if (device_count == 8) { // Do manual GPU mapping for LUMI
-            ac::ntuple<int> device_ids{6, 7, 0, 1, 2, 3, 4, 5};
-            device_id = device_ids[as<size_t>(device_id)];
-        }
-        ERRCHK_CUDA_API(cudaSetDevice(device_id));
-        ERRCHK_CUDA_API(cudaDeviceSynchronize());
-
-        ERRCHK_AC(acDeviceCreate(device_id, tmp_local_info, &device));
-
-        // Setup halo exchange buffers
-        // hydro_he = make_halo_exchange_task(ac::get_info(device), hydro_fields.size());
-        // tfm_he   = make_halo_exchange_task(ac::get_info(device), tfm_fields.size());
-        hydro_he = acm::rev::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
-                                                                             global_nn,
-                                                                             acr::get_local_rr(),
-                                                                             hydro_fields.size()};
-        tfm_he   = acm::rev::halo_exchange<double, ac::mr::device_allocator>{cart_comm,
-                                                                             global_nn,
-                                                                             acr::get_local_rr(),
-                                                                             tfm_fields.size()};
-
-        // Setup write tasks
-        hydro_io = make_io_task(ac::get_info(device), hydro_fields.size());
-        uxb_io   = make_io_task(ac::get_info(device), uxb_fields.size());
-
-        // Create the communicator that encompasses neighbors in the xy direction
-        const ac::index coords{ac::mpi::get_coords(cart_comm)};
-        // Key used to order the ranks in the new communicator: let MPI_Comm_split
-        // decide (should the same ordering as in the parent communicator by default)
-        const int color{as<int>(coords[2])};
-        const int key{ac::mpi::get_rank(cart_comm)};
-        ERRCHK_MPI_API(MPI_Comm_split(cart_comm, color, key, &xy_neighbors));
-
-        // Dryrun
-        reset_init_cond();
-        tfm_pipeline(3);
-        reset_init_cond();
-
-        // Reset timeseries
-        if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-            FILE* fp{fopen("timeseries.csv", "w")};
-            ERRCHK_MPI(fp != NULL);
-            std::fprintf(fp, "label,step,t_step,dt,min,rms,max,avg\n");
-            ERRCHK_MPI(fclose(fp) == 0);
-        }
-        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
-    }
-
-    ~Grid() noexcept
-    {
-        ac::mpi::cart_comm_destroy(&xy_neighbors);
-        ERRCHK_MPI(acDeviceDestroy(device) == AC_SUCCESS);
-        ac::mpi::cart_comm_destroy(&cart_comm);
-    }
-
-    void reset_init_cond()
-    {
-        PRINT_LOG_DEBUG("Enter");
-        // Stencil coefficients
-        AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
-        ERRCHK(get_stencil_coeffs(ac::get_info(device), stencils) == 0);
-        ERRCHK_AC(acDeviceLoadStencils(device, STREAM_DEFAULT, stencils));
-        // ERRCHK_AC(acDevicePrintInfo(device));
-
-        // Forcing parameters
-        auto tmp_local_info{ac::get_info(device)};
-        ERRCHK(acHostUpdateForcingParams(&tmp_local_info) == 0);
-        ERRCHK_AC(acDeviceLoadMeshInfo(device, tmp_local_info));
-
-        // Fields
-        ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
-        ERRCHK_AC(acDeviceSwapBuffers(device));
-        ERRCHK_AC(acDeviceResetMesh(device, STREAM_DEFAULT));
-
-        // Profiles
-        // Note: all fields and profiles are initialized to 0 except
-        // the test profiles (PROFILE_B11 to PROFILE_B22)
-        ERRCHK(init_tfm_profiles(device) == 0);
-
-        // Current time
-        current_time = 0;
-
-// Debug:
-#if defined(TFM_DEBUG_AVG_KERNEL)
-        // randomize(cart_comm, device, all_fields, BufferGroup::input);
-        AcMeshInfo info{};
-        ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
-        const auto global_nn{acr::get_global_nn(info)};
-        const auto rr{acr::get_local_rr()};
-        const auto local_mm{ac::mpi::get_local_mm(cart_comm, global_nn, rr)};
-        const auto local_nn{ac::mpi::get_local_nn(cart_comm, global_nn)};
-
-        ac::host_ndbuffer<double> tmp{global_nn};
-        ac::host_ndbuffer<double> ltmp{local_mm};
-        std::iota(tmp.begin(), tmp.end(), 1);
-
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-        for (size_t i{0}; i < NUM_FIELDS; ++i) {
-            std::iota(tmp.begin(), tmp.end(), 1 + i * prod(global_nn));
-            ac::mpi::scatter_advanced(cart_comm,
-                                      ac::mpi::get_dtype<double>(),
-                                      global_nn,
-                                      ac::make_index(global_nn.size(), 0),
-                                      tmp.data(),
-                                      local_mm,
-                                      local_nn,
-                                      rr,
-                                      vba.in[static_cast<Field>(i)]);
-        }
-#endif
-    }
-
-    void reduce_xy_averages(const Stream stream)
-    {
-        PRINT_LOG_DEBUG("Enter");
-        ERRCHK_MPI(cart_comm != MPI_COMM_NULL);
-
-        // Strategy:
-        // 1) Reduce the local result to device->vba.profiles.in
-        ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
-        ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
-
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-
-        // NOTE: possible bug in the MPI implementation on LUMI
-        // Reducing only a subset of profiles by using `nonlocal_tfm_profiles.size()`
-        // as the profile count causes garbage values to appear at the end (constant B profiles)
-        // This issue does not appear on Triton or Puhti.
-        const size_t count{NUM_PROFILES * vba.profiles.count};
-        AcReal* data{vba.profiles.in[0]};
-        ERRCHK_MPI_API(MPI_Allreduce(MPI_IN_PLACE,
-                                     data,
-                                     as<int>(count),
-                                     ac::mpi::get_dtype<AcReal>(),
-                                     MPI_SUM,
-                                     xy_neighbors));
-        int collaborated_procs{-1};
-        ERRCHK_MPI_API(MPI_Comm_size(xy_neighbors, &collaborated_procs));
-        acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
-
-        PRINT_LOG_TRACE("Exit");
-    }
-
-#if defined(AC_ENABLE_ASYNC_AVERAGES)
-    void launch_reduce_xy_averages()
-    {
-        // Strategy:
-        // 1) Reduce the local result to device->vba.profiles.in
-        ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
-        ERRCHK_AC(acDeviceReduceXYAverages(device, STREAM_DEFAULT));
-        ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_DEFAULT));
-
-        // 3) Allreduce
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-
-        const size_t count{NUM_PROFILES * vba.profiles.count};
-        const ac::device_view<AcReal> in{count, vba.profiles.in[0]};
-        ac::device_view<AcReal> out{count, vba.profiles.in[0]};
-        m_xy_avg_task.launch(xy_neighbors, in, MPI_SUM, out);
-    }
-
-    void wait_reduce_xy_averages()
-    {
-        m_xy_avg_task.wait();
-
-        VertexBufferArray vba{};
-        ERRCHK_AC(acDeviceGetVBA(device, &vba));
-
-        // Note: assumes that all profiles are contiguous and in correct order
-        // Error-prone: should be improved when time
-        const size_t count{NUM_PROFILES * vba.profiles.count};
-        AcReal* data{vba.profiles.in[0]};
-
-        auto collaborated_procs{ac::mpi::get_size(xy_neighbors)};
-        acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
-    }
-    // MPI_Request launch_reduce_xy_averages(const Stream stream)
-    // {
-    //     // Strategy:
-    //     // 1) Reduce the local result to device->vba.profiles.in
-    //     ERRCHK_AC(acDeviceReduceXYAverages(device, stream));
-    //     ERRCHK_AC(acDeviceSynchronizeStream(device, STREAM_ALL));
-
-    //     // 3) Allreduce
-    //     VertexBufferArray vba{};
-    //     ERRCHK_AC(acDeviceGetVBA(device, &vba));
-
-    //     // Note: assumes that all profiles are contiguous and in correct order
-    //     // Error-prone: should be improved when time
-    //     const size_t count{NUM_PROFILES * vba.profiles.count};
-    //     AcReal* data{vba.profiles.in[0]};
-    //     MPI_Request req{MPI_REQUEST_NULL};
-    //     ERRCHK_MPI_API(MPI_Iallreduce(MPI_IN_PLACE,
-    //                                   data,
-    //                                   as<int>(count), // Note possible MPI BUG here (see above)
-    //                                   AC_REAL_MPI_TYPE,
-    //                                   MPI_SUM,
-    //                                   xy_neighbors,
-    //                                   &req));
-    //     return req;
-    // }
-
-    // void wait_reduce_xy_averages(MPI_Request& xy_average_req)
-    // {
-    //     ERRCHK(xy_average_req != MPI_REQUEST_NULL);
-    //     ac::mpi::request_wait_and_destroy(&xy_average_req);
-
-    //     VertexBufferArray vba{};
-    //     ERRCHK_AC(acDeviceGetVBA(device, &vba));
-
-    //     // Note: assumes that all profiles are contiguous and in correct order
-    //     // Error-prone: should be improved when time
-    //     const size_t count{NUM_PROFILES * vba.profiles.count};
-    //     AcReal* data{vba.profiles.in[0]};
-
-    //     int collaborated_procs{-1};
-    //     ERRCHK_MPI_API(MPI_Comm_size(xy_neighbors, &collaborated_procs));
-    //     acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
-    // }
-#endif
-
-#if defined(AC_ENABLE_ASYNC_DT)
-    void launch_uumax_reduce()
-    {
-        AcReal uumax{0};
-        ERRCHK_AC(acDeviceReduceVec(device,
-                                    STREAM_DEFAULT,
-                                    RTYPE_MAX,
-                                    VTXBUF_UUX,
-                                    VTXBUF_UUY,
-                                    VTXBUF_UUZ,
-                                    &uumax));
-        m_uumax_reduce.launch(cart_comm, ac::host_view<AcReal>{1, &uumax}, MPI_MAX);
-    }
-
-    AcReal wait_uumax_reduce_and_get()
-    {
-        AcReal uumax{0};
-        m_uumax_reduce.wait(ac::host_view<AcReal>{1, &uumax});
-        return uumax;
-    }
-
-    AcReal wait_uumax_reduce_and_get_dt()
-    {
-
-        AcMeshInfo info{};
-        ERRCHK_AC(acDeviceGetLocalConfig(device, &info));
-
-        AcReal uumax{wait_uumax_reduce_and_get()};
-        AcReal vAmax{0};
-        AcReal shock_max{0};
-
-        static bool warning_shown{false};
-        if (!warning_shown) {
-            WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
-            warning_shown = true;
-        }
-
-        return calc_timestep(uumax, vAmax, shock_max, info);
-    }
-#endif
-
-    void tfm_pipeline(const size_t nsteps)
-    {
-        PRINT_LOG_INFO("Launching TFM pipeline");
-
-#if !defined(AC_DISABLE_IO)
-        // Write time series
-        write_timeseries(cart_comm, device, 0, 0, 0);
-
-        // Write profiles
-        write_profiles_to_disk(cart_comm, device, 0);
-
-        // Write slices
-        write_slices_to_disk(cart_comm, device, 0);
-
-// Write snapshots
-#if defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
-        write_snapshots_to_disk(cart_comm, device, 0);
-#else
-        hydro_io.launch(cart_comm,
-                        ac::get_ptrs(device, hydro_fields, BufferGroup::input),
-                        get_field_paths(hydro_fields, 0));
-        uxb_io.launch(cart_comm,
-                      ac::get_ptrs(device, uxb_fields, BufferGroup::input),
-                      get_field_paths(uxb_fields, 0));
-#endif
-#if defined(AC_WRITE_ASYNC_PROFILES)
-        // Write mean uxb
-        auto uxbmean_io{write_profiles_to_disk_async(cart_comm, device, uxbmean_profiles, 0)};
-#endif
-#endif
-
-        // Ensure halos are up-to-date before starting integration
-        hydro_he.launch(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
-        tfm_he.launch(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
-
-#if defined(AC_ENABLE_ASYNC_AVERAGES)
-        // MPI_Request xy_average_req{launch_reduce_xy_averages(STREAM_DEFAULT)}; // Averaging
-        // launch_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
-        launch_reduce_xy_averages();
-#else
-        reduce_xy_averages(STREAM_DEFAULT);
-#endif
-#if defined(AC_ENABLE_ASYNC_DT)
-        launch_uumax_reduce();
-#endif
-
-        for (uint64_t step{as<uint64_t>(acr::get(ac::get_info(device), AC_current_step))};
-             step < nsteps;
-             ++step) {
-            PRINT_LOG_INFO("New integration step");
-
-            // Check whether to reset the test fields
-            if ((as<int>(step) %
-                 acr::get(ac::get_info(device), AC_simulation_reset_test_field_interval)) == 0) {
-                PRINT_LOG_INFO("Resetting test fields");
-
-                // Test fields: Discard previous halo exchange, reset, and update halos
-                tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
-                reset_fields(device, tfm_fields, BufferGroup::input);
-                reset_fields(device, tfm_fields, BufferGroup::output);
-                tfm_he.launch(ac::get_ptrs(device, tfm_fields, BufferGroup::output));
-            }
-
-            // Current time
-            auto tmp_local_info{ac::get_info(device)};
-            acr::set(AC_current_time, current_time, tmp_local_info);
-            acr::set(AC_current_step, as<int>(step), tmp_local_info);
-
-// Timestep dependencies: local hydro (reduction skips ghost zones)
-#if defined(AC_ENABLE_ASYNC_DT)
-            const AcReal dt = wait_uumax_reduce_and_get_dt();
-#else
-            const AcReal dt = calc_and_distribute_timestep(cart_comm, device);
-#endif
-            acr::set(AC_dt, dt, tmp_local_info);
-
-            // Forcing
-            ERRCHK(acHostUpdateForcingParams(&tmp_local_info) == 0);
-
-            // Load the updated mesh info
-            ERRCHK_AC(acDeviceLoadMeshInfo(device, tmp_local_info));
-
-            for (int substep{0}; substep < 3; ++substep) {
-                PRINT_LOG_DEBUG("Integration substep");
-
-                // Hydro dependencies: hydro
-                hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
-
-                // Outer segments
-                // Note: outer integration kernels fused here and AC_exclude_inner set:
-                // Operates only on the outer domain even though SegmentGroup:Full passed
-                // TODO note: end index is not properly used, exits early
-                ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 1));
-                compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
-                // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
-
-                // ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
-                // compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
-                hydro_he.launch(ac::get_ptrs(device, hydro_fields, BufferGroup::output));
-
-// TFM dependencies: hydro, tfm, profiles
-#if defined(AC_ENABLE_ASYNC_AVERAGES)
-                // wait_reduce_xy_averages(xy_average_req);
-                // wait_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
-                wait_reduce_xy_averages();
-#endif
-                // TFM dependencies: tfm
-                tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
-
-                // Note: outer integration kernels fused here and AC_exclude_inner set:
-                // Operates only on the outer domain even though SegmentGroup:Full passed
-                compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_full);
-                // compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_outer);
-                tfm_he.launch(ac::get_ptrs(device, tfm_fields, BufferGroup::output));
-
-                // Inner segments
-                ERRCHK_AC(acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_exclude_inner, 0));
-                compute(device, hydro_kernels[as<size_t>(substep)], SegmentGroup::compute_inner);
-                compute(device, tfm_kernels[as<size_t>(substep)], SegmentGroup::compute_inner);
-                ERRCHK_AC(acDeviceSwapBuffers(device));
-
-#if defined(AC_ENABLE_ASYNC_DT)
-                if (substep == 2)
-                    launch_uumax_reduce();
-#endif
-
-// Profile dependencies: local tfm (uxb)
-#if defined(AC_ENABLE_ASYNC_AVERAGES)
-                // ERRCHK_MPI(xy_average_req == MPI_REQUEST_NULL);
-                // xy_average_req = launch_reduce_xy_averages(STREAM_DEFAULT); // Averaging
-                // launch_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
-                launch_reduce_xy_averages();
-#else
-                reduce_xy_averages(STREAM_DEFAULT);
-#endif
-            }
-            current_time += dt;
-
-#if !defined(AC_DISABLE_IO)
-// Write snapshot
-#if defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
-            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
-                                              AC_simulation_snapshot_output_interval))) == 0)
-                write_snapshots_to_disk(cart_comm, device, step);
-#else
-            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
-                                              AC_simulation_snapshot_output_interval))) == 0) {
-                hydro_io.wait();
-                hydro_io.launch(cart_comm,
-                                ac::get_ptrs(device, hydro_fields, BufferGroup::input),
-                                get_field_paths(hydro_fields, step));
-                uxb_io.wait();
-                uxb_io.launch(cart_comm,
-                              ac::get_ptrs(device, uxb_fields, BufferGroup::input),
-                              get_field_paths(uxb_fields, step));
-            }
-
-#endif
-#if defined(AC_WRITE_SYNCHRONOUS_PROFILES)
-            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
-                                              AC_simulation_profile_output_interval))) == 0)
-                write_profiles_to_disk(cart_comm, device, step);
-#endif
-
-#if defined(AC_WRITE_SYNCHRONOUS_TIMESERIES)
-            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
-                                              AC_simulation_profile_output_interval))) == 0)
-                write_timeseries(cart_comm, device, step, current_time, dt);
-#endif
-#if defined(AC_WRITE_SYNCHRONOUS_SLICES)
-            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
-                                              AC_simulation_profile_output_interval))) == 0)
-                write_slices_to_disk(cart_comm, device, step);
-#endif
-#if defined(AC_WRITE_ASYNC_PROFILES)
-            // Async profiles
-            if ((step % as<uint64_t>(acr::get(ac::get_info(device),
-                                              AC_simulation_async_profile_output_interval))) == 0) {
-                wait(uxbmean_io);
-                ERRCHK_MPI(uxbmean_io.size() == 0);
-                uxbmean_io = write_profiles_to_disk_async(cart_comm,
-                                                          device,
-                                                          uxbmean_profiles,
-                                                          step);
-            }
-#endif
-#endif
-        }
-        hydro_he.wait(ac::get_ptrs(device, hydro_fields, BufferGroup::input));
-        tfm_he.wait(ac::get_ptrs(device, tfm_fields, BufferGroup::input));
-
-#if !defined(AC_DISABLE_IO)
-#if !defined(AC_WRITE_SYNCHRONOUS_SNAPSHOTS)
-        hydro_io.wait();
-        uxb_io.wait();
-#endif
-#if defined(AC_WRITE_ASYNC_PROFILES)
-        // Async profiles
-        wait(uxbmean_io);
-        ERRCHK_MPI(uxbmean_io.size() == 0);
-#endif
-#endif
-
-#if defined(AC_ENABLE_ASYNC_AVERAGES)
-        // wait_reduce_xy_averages(xy_average_req);
-        // wait_reduce_xy_averages(xy_neighbors, m_buffered_iallreduce);
-        wait_reduce_xy_averages();
-#endif
-
-#if defined(AC_ENABLE_ASYNC_DT)
-        wait_uumax_reduce_and_get();
-#endif
-    }
-
-    auto get_comm() const { return cart_comm; }
-    auto get_device() const { return device; }
-
-    Grid(const Grid&)            = delete; // Copy constructor
-    Grid& operator=(const Grid&) = delete; // Copy assignment operator
-    Grid(Grid&&)                 = delete; // Move constructor
-    Grid& operator=(Grid&&)      = delete; // Move assignment operator
-};
-
 namespace tfm {
 
 struct arguments {
@@ -1494,6 +955,7 @@ struct arguments {
     int job_id{0};
     int benchmark{0};
     int simulation_nsteps_override{0};
+    std::string benchmark_name{"default"}; // Name to identify benchmark runs
 
     arguments(int argc, char* argv[])
     {
@@ -1516,6 +978,8 @@ struct arguments {
                 benchmark = std::stoi(value);
             else if (key == "--simulation-nsteps-override")
                 simulation_nsteps_override = std::stoi(value);
+            else if (key == "--benchmark-name")
+                benchmark_name = value;
             else
                 ERRCHK_EXPR_DESC(false,
                                  "Do not know what to do with argument pair [%s: %s]",
@@ -1542,82 +1006,15 @@ struct arguments {
 } // namespace tfm
 
 static void
-reset_timeseries()
+reset_timeseries(const std::string& ts_path)
 {
     if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
-        FILE* fp{fopen("timeseries.csv", "w")};
+        FILE* fp{fopen(ts_path.c_str(), "w")};
         ERRCHK_MPI(fp != NULL);
         std::fprintf(fp, "label,step,t_step,dt,min,rms,max,avg\n");
         ERRCHK_MPI(fclose(fp) == 0);
     }
     ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
-}
-
-static void
-benchmark_run(const tfm::arguments& args, const AcMeshInfo& raw_info)
-{
-    // Init Grid
-    Grid grid{raw_info};
-
-    // Benchmark run
-    constexpr size_t nsteps_per_sample{100};
-    constexpr size_t nsamples{20};
-    auto init  = [&grid] { grid.reset_init_cond(); };
-    auto bench = [&grid] { grid.tfm_pipeline(nsteps_per_sample); };
-    auto sync  = []() {
-#if defined(ACM_DEVICE_ENABLED)
-        ERRCHK_CUDA_API(cudaDeviceSynchronize());
-#endif
-        ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
-    };
-
-    // Reset benchmarks
-    std::ostringstream filename_stream;
-    filename_stream << "bm-tfm-mpi-" << args.job_id << "-" << getpid() << "-"
-                    << ac::mpi::get_rank(MPI_COMM_WORLD) << ".csv";
-    const auto filename{filename_stream.str()};
-
-    std::ofstream file{filename};
-    file.exceptions(~std::ios::goodbit);
-    file << "impl,lnx,lny,lnz,gnx,gny,gnz,radius,nsteps_per_samples,sample,nsamples,rank,"
-            "nprocs,jobid,ns"
-         << std::endl;
-    file.close();
-
-    auto print = [&](const std::string& label,
-                     const std::vector<std::chrono::steady_clock::duration>& results) {
-        std::ofstream file{filename, std::ios_base::app};
-        file.exceptions(~std::ios::goodbit);
-
-        auto info{ac::get_info(grid.get_device())};
-
-        ERRCHK_MPI(acr::get_local_rr()[0] == acr::get_local_rr()[1] &&
-                   acr::get_local_rr()[0] == acr::get_local_rr()[2]);
-
-        for (size_t i{0}; i < results.size(); ++i) {
-            file << label << ",";
-            file << acr::get(info, AC_nx) << ",";
-            file << acr::get(info, AC_ny) << ",";
-            file << acr::get(info, AC_nz) << ",";
-            file << acr::get(info, AC_global_nx) << ",";
-            file << acr::get(info, AC_global_ny) << ",";
-            file << acr::get(info, AC_global_nz) << ",";
-            file << acr::get_local_rr()[0] << ",";
-            file << nsteps_per_sample << ",";
-            file << i << ",";
-            file << nsamples << ",";
-            file << ac::mpi::get_rank(MPI_COMM_WORLD) << ",";
-            file << ac::mpi::get_size(MPI_COMM_WORLD) << ",";
-            file << args.job_id << ",";
-            file << std::chrono::duration_cast<std::chrono::nanoseconds>(results[i]).count()
-                 << std::endl;
-        }
-        file.close();
-    };
-
-    cudaProfilerStart();
-    print("tfm-mpi", bm::benchmark(init, bench, sync, nsamples));
-    cudaProfilerStop();
 }
 
 namespace file {
@@ -1717,17 +1114,6 @@ print(const State& state)
 }
 } // namespace SimulationState
 
-namespace Timeseries {
-constexpr auto default_path{"timeseries.csv"};
-
-static bool
-exists(const std::string& path = default_path)
-{
-    return std::filesystem::exists(path);
-}
-
-} // namespace Timeseries
-
 namespace Snapshot {
 constexpr const char* postfix{".snapshot"};
 
@@ -1783,39 +1169,6 @@ write(const MPI_Comm& comm, const Device& device, const Field& handle, const int
                               path);
 }
 } // namespace Snapshot
-
-static void
-production_run(const tfm::arguments& args, const AcMeshInfo& raw_info)
-{
-    // Init Grid
-    Grid grid{raw_info};
-
-    const auto fields{hydro_fields};
-
-    // // Read fields from files if they exist
-    // if (SimulationState::exists()) {
-
-    //     // Update device info
-    //     auto info{ac::get_info(grid.get_device())};
-    //     SimulationState::read(info);
-    //     ERRCHK_AC(acDeviceLoadMeshInfo(grid.get_device(), info));
-
-    //     for (const auto& field : fields)
-    //         Snapshot::read(grid.get_comm(), grid.get_device(), field);
-    // } else {
-    //     // Starting a new run
-    //     reset_timeseries();
-    // }
-
-    grid.tfm_pipeline(as<uint64_t>(acr::get(raw_info, AC_simulation_nsteps)));
-
-    // // Write current state out
-    // const size_t latest_snapshot{0};
-    // for (const auto& field : fields)
-    //     Snapshot::write(grid.get_comm(), grid.get_device(), field, latest_snapshot);
-    // SimulationState::write(ac::get_info(grid.get_device()), latest_snapshot); // Write the state
-    // out
-}
 
 namespace Setup {
 
@@ -1964,7 +1317,9 @@ class Grid {
     // ac::mpi::buffered_iallreduce<AcReal, ac::mr::device_allocator> m_xy_avg{}; // iallreduce with
     // device buffers not supported on Mahti. TODO switch back on for LUMI.
     ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_xy_avg{};
-    ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_uumax_reduce{};
+    ac::mpi::twoway_buffered_iallreduce<AcReal, ac::mr::host_allocator> m_dtmax_reduce{};
+
+    AcMeshInfo m_initial_info{};
 
   public:
     explicit Grid(const AcMeshInfo& info)
@@ -1972,7 +1327,8 @@ class Grid {
           m_device{acr::get(info, AC_device_id), info},
           m_xy_neighbors{ac::mpi::split(m_comm.get(), as<int>(ac::mpi::coords(m_comm)[2]))},
           m_hydro_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), hydro_fields.size()},
-          m_tfm_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), tfm_fields.size()}
+          m_tfm_he{m_comm.get(), m_comm.global_nn(), acr::get_local_rr(), tfm_fields.size()},
+          m_initial_info{info}
     {
         PRINT_LOG_TRACE("Grid allocated, continuing to init body");
 
@@ -1982,12 +1338,12 @@ class Grid {
 
         // Reset and reload a pristine config
         reset();
-        ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), info));
     }
 
     void reset()
     {
         PRINT_LOG_TRACE("Start");
+        ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), m_initial_info));
 
         // Stencil coefficients
         AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]{};
@@ -1996,6 +1352,7 @@ class Grid {
         // ERRCHK_AC(acDevicePrintInfo(m_device.get()));
 
         // Forcing parameters
+        seed_rng(19937123);
         auto tmp_local_info{ac::get_info(m_device.get())};
         ERRCHK(acHostUpdateForcingParams(&tmp_local_info) == 0);
         ERRCHK_AC(acDeviceLoadMeshInfo(m_device.get(), tmp_local_info));
@@ -2058,7 +1415,7 @@ class Grid {
         const size_t num_compute_profiles{5 * 3};
         ERRCHK(nonlocal_tfm_profiles.size() ==
                num_compute_profiles); // TODO replace num profiles with num-compute_profiles
-        const size_t count{NUM_PROFILES * vba.profiles.count};
+        const size_t count{nonlocal_tfm_profiles.size() * vba.profiles.count};
         const ac::device_view<AcReal> dview{count, vba.profiles.in[0]};
 
         ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
@@ -2087,14 +1444,11 @@ class Grid {
         const size_t num_compute_profiles{5 * 3};
         ERRCHK(nonlocal_tfm_profiles.size() ==
                num_compute_profiles); // TODO replace num profiles with num-compute_profiles
-        const size_t count{NUM_PROFILES * vba.profiles.count};
+        const size_t count{nonlocal_tfm_profiles.size() * vba.profiles.count};
         const ac::device_view<AcReal> dview{count, vba.profiles.in[0]};
 
         ERRCHK(m_xy_neighbors.get() != MPI_COMM_NULL);
         m_xy_avg.wait(dview);
-
-        auto collaborated_procs{ac::mpi::get_size(m_xy_neighbors.get())};
-        acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), dview.size(), dview.data());
 
         // Wait (LUMI only)
         // m_xy_avg.wait();
@@ -2107,16 +1461,11 @@ class Grid {
         // const size_t count{NUM_PROFILES * vba.profiles.count};
         // AcReal* data{vba.profiles.in[0]};
 
-        // auto collaborated_procs{ac::mpi::get_size(m_xy_neighbors.get())};
-        // acMultiplyInplace(1 / static_cast<AcReal>(collaborated_procs), count, data);
-
         PRINT_LOG_TRACE("End");
     }
 
-    void launch_uumax_reduce()
+    void launch_dtmax_reduce()
     {
-        PRINT_LOG_TRACE("Start");
-
         AcReal uumax{0};
         ERRCHK_AC(acDeviceReduceVec(m_device.get(),
                                     STREAM_DEFAULT,
@@ -2125,35 +1474,98 @@ class Grid {
                                     VTXBUF_UUY,
                                     VTXBUF_UUZ,
                                     &uumax));
-        m_uumax_reduce.launch(m_comm.get(), ac::host_view<AcReal>{1, &uumax}, MPI_MAX);
 
-        PRINT_LOG_TRACE("End");
+#if defined(TFM_DT_INCLUDE_ALFVEN)
+        AcReal vAmax11{0};
+        ERRCHK_AC(acDeviceReduceVecScal(m_device.get(),
+                                        STREAM_DEFAULT,
+                                        RTYPE_ALFVEN_MAX,
+                                        TF_bb11_x,
+                                        TF_bb11_y,
+                                        TF_bb11_z,
+                                        VTXBUF_LNRHO,
+                                        &vAmax11));
+
+        AcReal vAmax12{0};
+        ERRCHK_AC(acDeviceReduceVecScal(m_device.get(),
+                                        STREAM_DEFAULT,
+                                        RTYPE_ALFVEN_MAX,
+                                        TF_bb12_x,
+                                        TF_bb12_y,
+                                        TF_bb12_z,
+                                        VTXBUF_LNRHO,
+                                        &vAmax12));
+
+        AcReal vAmax21{0};
+        ERRCHK_AC(acDeviceReduceVecScal(m_device.get(),
+                                        STREAM_DEFAULT,
+                                        RTYPE_ALFVEN_MAX,
+                                        TF_bb21_x,
+                                        TF_bb21_y,
+                                        TF_bb21_z,
+                                        VTXBUF_LNRHO,
+                                        &vAmax21));
+
+        AcReal vAmax22{0};
+        ERRCHK_AC(acDeviceReduceVecScal(m_device.get(),
+                                        STREAM_DEFAULT,
+                                        RTYPE_ALFVEN_MAX,
+                                        TF_bb22_x,
+                                        TF_bb22_y,
+                                        TF_bb22_z,
+                                        VTXBUF_LNRHO,
+                                        &vAmax22));
+#endif
+
+        std::vector<AcReal> inputs{
+            uumax,
+#if defined(TFM_DT_INCLUDE_ALFVEN)
+            vAmax11,
+            vAmax12,
+            vAmax21,
+            vAmax22,
+#endif
+        };
+
+#if defined(TFM_DT_INCLUDE_ALFVEN)
+        ERRCHK(inputs.size() == 5);
+#else
+        ERRCHK(inputs.size() == 1);
+#endif
+
+        m_dtmax_reduce.launch(m_comm.get(),
+                              ac::host_view<AcReal>{inputs.size(), inputs.data()},
+                              MPI_MAX);
     }
 
-    [[nodiscard]] AcReal wait_uumax_reduce_and_get()
+    [[nodiscard]] AcReal wait_dtmax_reduce_and_get_dt()
     {
-        PRINT_LOG_TRACE("Start");
+#if defined(TFM_DT_INCLUDE_ALFVEN)
+        std::vector<AcReal> outputs(5);
+#else
+        std::vector<AcReal> outputs(1);
+#endif
+        m_dtmax_reduce.wait(ac::host_view<AcReal>{outputs.size(), outputs.data()});
 
-        AcReal uumax{0};
-        m_uumax_reduce.wait(ac::host_view<AcReal>{1, &uumax});
-        return uumax;
+        ERRCHK(outputs.size() >= 1);
+        const auto uumax{outputs[0]};
 
-        PRINT_LOG_TRACE("End");
-    }
+#if defined(TFM_DT_INCLUDE_ALFVEN)
+        // PRINT_DEBUG(outputs.size());
+        ERRCHK(outputs.size() == 5);
+        const auto vAmax11{outputs[1]};
+        const auto vAmax12{outputs[2]};
+        const auto vAmax21{outputs[3]};
+        const auto vAmax22{outputs[4]};
+        const auto vAmax{std::max(std::max(vAmax11, vAmax12), std::max(vAmax21, vAmax22))};
+#else
+        const auto vAmax{0};
+#endif
 
-    [[nodiscard]] AcReal wait_uumax_reduce_and_get_dt()
-    {
-        PRINT_LOG_TRACE("Start");
-
-        AcReal uumax{wait_uumax_reduce_and_get()};
-        AcReal vAmax{0};
         AcReal shock_max{0};
-
-        PRINT_LOG_TRACE("uumax wait complete");
-
         static bool warning_shown{false};
         if (!warning_shown) {
-            WARNING_DESC("vAmax and shock_max not used in timestepping, set to 0");
+            WARNING_DESC("shock_max not used in timestepping, set to 0");
             warning_shown = true;
         }
 
@@ -2191,12 +1603,12 @@ class Grid {
         launch_hydro_he(BufferGroup::input);
         launch_tfm_he(BufferGroup::input);
         launch_reduce_xy_averages();
-        launch_uumax_reduce();
+        launch_dtmax_reduce();
 
         for (size_t step{0}; step < nsteps; ++step) {
 
             // Update dt and forcing
-            const auto dt{wait_uumax_reduce_and_get_dt()};
+            const auto dt{wait_dtmax_reduce_and_get_dt()};
 
             auto tmp_info{ac::get_info(m_device.get())};
             acr::set(AC_dt, dt, tmp_info);
@@ -2226,7 +1638,7 @@ class Grid {
                 swap_buffers();
 
                 if (substep == 2)
-                    launch_uumax_reduce();
+                    launch_dtmax_reduce();
 
                 launch_reduce_xy_averages();
             }
@@ -2241,7 +1653,7 @@ class Grid {
         wait_hydro_he(BufferGroup::input);
         wait_tfm_he(BufferGroup::input);
         wait_reduce_xy_averages();
-        wait_uumax_reduce_and_get_dt();
+        wait_dtmax_reduce_and_get_dt();
 
         PRINT_LOG_TRACE("End");
     }
@@ -2284,7 +1696,7 @@ class Grid {
         PRINT_LOG_TRACE("Exit");
     }
 
-    void io_step(const std::vector<Field>& restart_fields)
+    void io_step(const std::vector<Field>& restart_fields, const std::string& ts_path)
     {
         PRINT_LOG_TRACE("Enter %d", ac::mpi::get_rank(m_comm.get()));
 
@@ -2306,7 +1718,8 @@ class Grid {
                              m_device.get(),
                              as<size_t>(current_step),
                              current_time,
-                             current_dt);
+                             current_dt,
+                             ts_path);
 
         if ((current_step % snapshot_output_interval) == 0)
             flush_snapshots_to_disk(restart_fields);
@@ -2318,6 +1731,8 @@ class Grid {
     {
         PRINT_LOG_TRACE("Enter %d", ac::mpi::get_rank(m_comm.get()));
 
+        constexpr auto ts_path{"timeseries.csv"};
+
         auto restart_fields{hydro_fields};
         restart_fields.insert(restart_fields.end(), tfm_fields.begin(), tfm_fields.end());
         if (SimulationState::exists()) {
@@ -2327,11 +1742,11 @@ class Grid {
         }
         else {
             // Start a new run
-            reset_timeseries();
+            reset_timeseries(ts_path);
             ERRCHK_MPI_API(MPI_Barrier(m_comm.get()));
 
             SimulationState::push_state_to_device(m_device.get(), SimulationState::State{});
-            io_step(restart_fields);
+            io_step(restart_fields, ts_path);
         }
         SimulationState::print(SimulationState::pull_state(ac::get_info(m_device.get())));
 
@@ -2351,7 +1766,7 @@ class Grid {
                 reset_fields(m_device.get(), tfm_fields, BufferGroup::input);
 
             tfm_pipeline(1);
-            io_step(restart_fields);
+            io_step(restart_fields, ts_path);
         }
         PRINT_LOG_TRACE("Exiting simulation loop %d", ac::mpi::get_rank(m_comm.get()));
 
@@ -2368,9 +1783,10 @@ class Grid {
     void benchmark(const tfm::arguments& args)
     {
         constexpr size_t nsteps_per_sample{100};
-        constexpr size_t nsamples{20};
+        constexpr size_t nsamples{10};
         const auto filename{"bm-tfm-mpi-" + std::to_string(args.job_id) + "-" +
-                            std::to_string(ac::mpi::get_rank(MPI_COMM_WORLD)) + ".csv"};
+                            std::to_string(ac::mpi::get_rank(MPI_COMM_WORLD)) + "-" +
+                            args.benchmark_name + ".csv"};
 
         // Create the output file
         if (ac::mpi::get_rank(MPI_COMM_WORLD) == 0) {
@@ -2391,8 +1807,13 @@ class Grid {
 #endif
             ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
         };
-        cudaProfilerStart();
+
+        // Generate the results
         const auto results{bm::benchmark(init, bench, sync, nsamples)};
+
+        // Run once more to profile
+        cudaProfilerStart();
+        bench();
         cudaProfilerStop();
 
         // Print results to file
@@ -2421,6 +1842,21 @@ class Grid {
                                   .count());
             }
         }
+
+        // Print timeseries for a sanity check
+        const std::string ts_path{"timeseries-" + std::to_string(args.job_id) + "-" +
+                                  std::to_string(ac::mpi::get_rank(MPI_COMM_WORLD)) + "-" +
+                                  args.benchmark_name + ".csv"};
+        reset_timeseries(ts_path);
+        const auto current_step{ac::pull_param(m_device.get(), AC_current_step)};
+        const auto current_time{ac::pull_param(m_device.get(), AC_current_time)};
+        const auto current_dt{ac::pull_param(m_device.get(), AC_dt)};
+        write_timeseries(m_comm.get(),
+                         m_device.get(),
+                         as<size_t>(current_step),
+                         current_time,
+                         current_dt,
+                         ts_path);
     }
 
     void write_rank_ordering_to_disk(const tfm::arguments& args)

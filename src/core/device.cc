@@ -186,34 +186,35 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 {
     cudaSetDevice(device->id);
 
-    AcMeshInfo device_config = config;
-    acHostUpdateBuiltinParams(&device_config);
+    // AcMeshInfo device_config = config;
+    // acHostUpdateBuiltinParams(&device_config);
 
-    ERRCHK_ALWAYS(device_config.int_params[AC_nx] == device->local_config.int_params[AC_nx]);
-    ERRCHK_ALWAYS(device_config.int_params[AC_ny] == device->local_config.int_params[AC_ny]);
-    ERRCHK_ALWAYS(device_config.int_params[AC_nz] == device->local_config.int_params[AC_nz]);
-    ERRCHK_ALWAYS(device_config.int_params[AC_multigpu_offset] ==
-                  device->local_config.int_params[AC_multigpu_offset]);
+    // ERRCHK_ALWAYS(device_config.int_params[AC_nx] == device->local_config.int_params[AC_nx]);
+    // ERRCHK_ALWAYS(device_config.int_params[AC_ny] == device->local_config.int_params[AC_ny]);
+    // ERRCHK_ALWAYS(device_config.int_params[AC_nz] == device->local_config.int_params[AC_nz]);
+    // ERRCHK_ALWAYS(device_config.int_params[AC_multigpu_offset] ==
+    //               device->local_config.int_params[AC_multigpu_offset]);
 
-    for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        acDeviceLoadIntUniform(device, STREAM_DEFAULT, (AcIntParam)i, device_config.int_params[i]);
+    // for (int i = 0; i < NUM_INT_PARAMS; ++i)
+    //     acDeviceLoadIntUniform(device, STREAM_DEFAULT, (AcIntParam)i,
+    //     device_config.int_params[i]);
 
-    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
-        acDeviceLoadInt3Uniform(device, STREAM_DEFAULT, (AcInt3Param)i,
-                                device_config.int3_params[i]);
+    // for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+    //     acDeviceLoadInt3Uniform(device, STREAM_DEFAULT, (AcInt3Param)i,
+    //                             device_config.int3_params[i]);
 
-    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        acDeviceLoadScalarUniform(device, STREAM_DEFAULT, (AcRealParam)i,
-                                  device_config.real_params[i]);
+    // for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+    //     acDeviceLoadScalarUniform(device, STREAM_DEFAULT, (AcRealParam)i,
+    //                               device_config.real_params[i]);
 
-    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
-        acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
-                                  device_config.real3_params[i]);
+    // for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+    //     acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
+    //                               device_config.real3_params[i]);
 
     // OL: added this assignment to make sure that whenever we load a new config,
     // it's updated on both the host Device structure, and the GPU
-    device->local_config = device_config;
-    return AC_SUCCESS;
+    device->local_config = config;
+    return acLoadMeshInfo(config, STREAM_DEFAULT); // Is actually synchronous
 }
 
 AcResult
@@ -322,6 +323,24 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // acDeviceLoadDefaultUniforms(device); // TODO recheck
     acDeviceLoadMeshInfo(device, device->local_config);
 
+// XY averages
+#if defined(AC_TFM_ENABLED)
+    {
+        AcMeshDims dims = acGetMeshDims(device->local_config);
+
+        // Intermediate buffer
+        const size_t num_compute_profiles = 5 * 3;
+        const AcShape buffer_shape        = {
+                   .x = as_size_t(dims.nn.x),
+                   .y = as_size_t(dims.nn.y),
+                   .z = as_size_t(dims.m1.z),
+                   .w = num_compute_profiles,
+        };
+        const size_t buffer_size = acShapeSize(buffer_shape);
+        device->xy_reduce_buffer = acBufferCreate(buffer_size, true);
+    }
+#endif
+
 #if AC_VERBOSE
     printf("Created device %d (%p)\n", device->id, device);
 #endif
@@ -339,6 +358,13 @@ acDeviceDestroy(Device device)
     printf("Destroying device %d (%p)\n", device->id, device);
 #endif
     acDeviceSynchronizeStream(device, STREAM_ALL);
+
+// XY averages
+#if defined(AC_TFM_ENABLED)
+    {
+        acBufferDestroy(&device->xy_reduce_buffer);
+    }
+#endif
 
     // Memory
     acVBADestroy(&device->vba);
@@ -1228,7 +1254,9 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
                .w = num_compute_profiles,
     };
     const size_t buffer_size = acShapeSize(buffer_shape);
-    AcBuffer buffer          = acBufferCreate(buffer_size, true);
+
+    auto buffer{device->xy_reduce_buffer};
+    ERRCHK_ALWAYS(buffer.count == buffer_size);
 
     // Indices and shapes
     const AcIndex in_offset = {
@@ -1293,15 +1321,15 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     const size_t num_segments = buffer_shape.z * buffer_shape.w;
     acSegmentedReduce(device->streams[STREAM_DEFAULT], //
                       buffer.data, buffer_size, num_segments, device->vba.profiles.in[0]);
+    // Synchronized
 
-    // NOTE: Revisit this
-    const size_t gnx = as_size_t(device->local_config.int3_params[AC_global_grid_n].x);
-    const size_t gny = as_size_t(device->local_config.int3_params[AC_global_grid_n].y);
+    const size_t gnx = as_size_t(device->local_config.int_params[AC_global_nx]);
+    const size_t gny = as_size_t(device->local_config.int_params[AC_global_ny]);
     cudaSetDevice(device->id);
     acMultiplyInplace(1. / (gnx * gny), num_compute_profiles * device->vba.profiles.count,
                       device->vba.profiles.in[0]);
+    // Synchronized
 
-    acBufferDestroy(&buffer);
     return AC_SUCCESS;
 #else
     ERROR("acDeviceReduceXYAverages called but AC_TFM_ENABLED was false");

@@ -30,6 +30,10 @@ struct device_s {
     VertexBufferArray vba;
     AcReal* reduce_scratchpads[NUM_REDUCE_SCRATCHPADS];
     size_t scratchpad_size;
+
+#if defined(AC_TFM_ENABLED)
+    AcBuffer xy_reduce_buffer;
+#endif
 };
 
 typedef AcReal AcRealPacked;

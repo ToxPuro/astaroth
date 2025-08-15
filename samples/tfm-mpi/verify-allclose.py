@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# %%
 import pandas as pd
 import numpy as np
 import argparse
@@ -31,3 +32,28 @@ for col in first.columns:
         print(f'atol: {atol}')
         print(f'largest_abs_error: {largest_abs_error}')
         # assert(are_close)
+
+
+# %%
+import pandas as pd
+import numpy as np
+import argparse
+
+# Files
+files = ['../../build/timeseries.csv', '../../samples/tfm/model/laplace-soca-roberts-uudt/timeseries.csv']
+files = ['../../build/timeseries.csv', '../../samples/tfm/model/laplace-nonsoca-turbulence-uudt/timeseries.csv']
+
+
+candidate = pd.read_csv(files[0])
+model = pd.read_csv(files[1])
+
+# Compare the last step
+step_to_compare = candidate['step'].unique().max()
+
+candidate = candidate[candidate['step'] == step_to_compare]
+model = model[model['step'] == step_to_compare]
+
+candidate.reset_index(drop=True, inplace=True)
+model.reset_index(drop=True, inplace=True)
+
+candidate.compare(model).max()
