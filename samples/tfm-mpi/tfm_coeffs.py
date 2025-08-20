@@ -55,7 +55,6 @@ files = [os.path.join(os.getcwd(), file) for file in files]   # Relative path
 files = [glob.glob(file) for file in files]                   # Glob
 files = np.concatenate(files)                                 # Flatten
 files.sort()
-files
 
 # %%
 # Visualize individual profiles
@@ -91,7 +90,6 @@ dz=1./args.dims[2]
 z=(1.-dz)*np.arange(args.dims[2])/(args.dims[2]-1)+dz/2.
 sinz=np.sin(2.*np.pi*kz*z)
 cosz=np.cos(2.*np.pi*kz*z)
-
 
 for profile in profiles:
     data = np.fromfile(
