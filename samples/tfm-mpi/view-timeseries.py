@@ -100,13 +100,13 @@ axs[curr_row, curr_col].legend()
 i += 1
 diagnostic = 'Reynolds (hydro)'
 nu_visc = 5e-3
-k_f = 0.01
+k_wavenumber = 5
 curr_col = i % cols
 curr_row = i // cols
 df0 = df[df['label'] == 'uu'].sort_values(by='step')
-df0[diagnostic] = df0['rms'] / nu_visc / k_f
+df0[diagnostic] = df0['rms'] / nu_visc / k_wavenumber
 axs[curr_row, curr_col].plot(df0['step'], df0[diagnostic], label=diagnostic)
-axs[curr_row, curr_col].set_title(f"Re if nu_visc = {nu_visc} and k_f = {k_f} (urms/nu_visc/k_f)")
+axs[curr_row, curr_col].set_title(f"Re if nu_visc = {nu_visc} and k_wavenumber = {k_wavenumber} (urms/nu_visc/k_wavenumber)")
 axs[curr_row, curr_col].legend()
 
 outdir='output'
