@@ -406,15 +406,10 @@ grid_position() {
 // helicity
 helical_forcing(k_force, xx, ff_re, ff_im, phi)
 {
-    real3 yy
-    yy.x = xx.x * (2.0 * R_PI / (AC_dsx * globalGridN.x))
-    yy.y = xx.y * (2.0 * R_PI / (AC_dsy * globalGridN.x))
-    yy.z = xx.z * (2.0 * R_PI / (AC_dsz * globalGridN.x))
-
     cos_phi     = cos(phi)
     sin_phi     = sin(phi)
-    cos_k_dot_x = cos(dot(k_force, yy))
-    sin_k_dot_x = sin(dot(k_force, yy))
+    cos_k_dot_x = cos(dot(k_force, xx))
+    sin_k_dot_x = sin(dot(k_force, xx))
     real_comp_phase = cos_k_dot_x * cos_phi - sin_k_dot_x * sin_phi
     imag_comp_phase = cos_k_dot_x * sin_phi + sin_k_dot_x * cos_phi
 
@@ -427,9 +422,7 @@ helical_forcing(k_force, xx, ff_re, ff_im, phi)
 
 forcing()
 {
-    xx = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
-               (globalVertexIdx.y - AC_ny_min) * AC_dsy,
-               (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+    xx = grid_position()
     cs  = AC_cs_sound
 
     // Placeholders until determined properly
