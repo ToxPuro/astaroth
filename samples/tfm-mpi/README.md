@@ -47,7 +47,6 @@ Currently Loaded Modules:
 ```
 
 ### Commands
-There's a build script in `astaroth/samples/tfm-mpi/build.sh`.
 
 Building:
 ```bash
