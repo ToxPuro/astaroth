@@ -96,6 +96,19 @@ axs[curr_row, curr_col].axhline(0.2, linestyle='--', label='0.2')
 axs[curr_row, curr_col].set_title(f"mach no. if cs0 = {cs0}")
 axs[curr_row, curr_col].legend()
 
+# Add Reynolds number (hydro)
+i += 1
+diagnostic = 'Reynolds (hydro)'
+nu_visc = 5e-3
+k_wavenumber = 5
+curr_col = i % cols
+curr_row = i // cols
+df0 = df[df['label'] == 'uu'].sort_values(by='step')
+df0[diagnostic] = df0['rms'] / nu_visc / k_wavenumber
+axs[curr_row, curr_col].plot(df0['step'], df0[diagnostic], label=diagnostic)
+axs[curr_row, curr_col].set_title(f"Re if nu_visc = {nu_visc} and k_wavenumber = {k_wavenumber} (urms/nu_visc/k_wavenumber)")
+axs[curr_row, curr_col].legend()
+
 outdir='output'
 outfile = f'{outdir}/timeseries.png'
 print(f"Creating output directory at {outdir}")

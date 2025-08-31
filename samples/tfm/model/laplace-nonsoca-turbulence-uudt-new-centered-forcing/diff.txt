@@ -1,0 +1,13 @@
+diff --git a/samples/tfm/model/README.md b/samples/tfm/model/README.md
+index 3a1581d8..3fd9115a 100644
+--- a/samples/tfm/model/README.md
++++ b/samples/tfm/model/README.md
+@@ -36,7 +36,7 @@ MODELDIR=~/astaroth/samples/tfm/model/${CASE}
+ Laplace Non-SOCA Turbulence
+ 1. Set `hostdefine LHYDRO (1)`
+ ```bash
+-CASE=laplace-nonsoca-turbulence-uudt
++CASE=laplace-nonsoca-turbulence-uudt-new-centered-forcing
+ CONFIG=~/astaroth/samples/tfm/cases/laplace-nonsoca.ini
+ MODELDIR=~/astaroth/samples/tfm/model/${CASE}
+ ```

@@ -63,7 +63,7 @@ class cart_comm {
     {
     }
 
-    const MPI_Comm& get() const { return m_comm.get(); }
+    const MPI_Comm& get() const noexcept { return m_comm.get(); }
     ac::shape       global_nn() const { return m_global_nn; }
 };
 
