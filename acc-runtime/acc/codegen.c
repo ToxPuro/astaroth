@@ -3719,7 +3719,27 @@ is_enum_type(const char* type)
 {
 	return str_vec_contains(e_info.names,type);
 }
-
+const string_vec
+get_options(const char* type)
+{
+	static string_vec bool_res = VEC_INITIALIZER;
+	if(is_enum_type(type))
+	{
+		const int enum_index = str_vec_get_index(e_info.names,var.type);
+		return e_info.options[enum_index];
+	}
+	if(type == BOOL_STR)
+	{
+		if(bool_res.size == 0)
+		{
+			push(&res,FALSE_STR);
+			push(&res,BOOL_STR);
+		}
+		return res;
+	}
+	string_vec empty = VEC_INITIALIZER;
+	return empty;
+}
 
 void
 add_param_combinations(const variable var, const int kernel_index,const char* prefix, combinatorial_params combinatorials)
@@ -3738,20 +3758,12 @@ add_param_combinations(const variable var, const int kernel_index,const char* pr
 		  add_param_combinations((variable){struct_field_types.data[i],struct_field_names.data[i]},kernel_index,new_prefix,combinatorials);
 	  }
 	}
+	const char string_vec options = get_options(var.type);
+	if(options.size == 0) return;
 	const int param_index = push(&combinatorials.names[kernel_index],intern(full_name));
-	if(is_enum_type(var.type))
+	for(size_t i = 0; i < options.size; ++i)
 	{
-		const int enum_index = str_vec_get_index(e_info.names,var.type);
-		string_vec options  = e_info.options[enum_index];
-		for(size_t i = 0; i < options.size; ++i)
-		{
-			push(&combinatorials.options[kernel_index+100*param_index],options.data[i]);
-		}
-	}
-	if(var.type == BOOL_STR)
-	{
-		push(&combinatorials.options[kernel_index+100*param_index],FALSE_STR);
-		push(&combinatorials.options[kernel_index+100*param_index],TRUE_STR);
+		push(&combinatorials.options[kernel_index+100*param_index],options.data[i]);
 	}
 }
 
