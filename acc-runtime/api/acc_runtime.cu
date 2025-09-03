@@ -838,10 +838,12 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 		if (!is_alive(array)) return AC_NOT_ALLOCATED;
 		auto dst_ptr = get_empty_pointer(array);
 		acMemcpyFromGmemArray(array,dst_ptr);
-		ERRCHK_ALWAYS(dst_ptr != nullptr);
 		if (dst_ptr == nullptr)
 		{
-			fprintf(stderr,"FATAL AC ERROR from acLoadArrayUniform\n");
+			fprintf(stderr,"FATAL AC ERROR from acLoadArrayUniform when loading: %s\n",get_name(array));
+			fprintf(stderr,"%s was null!\n",get_name(array));
+			fflush(stderr);
+			ERRCHK_ALWAYS(dst_ptr != nullptr);
 			exit(EXIT_FAILURE);
 		}
 #if AC_VERBOSE
