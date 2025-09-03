@@ -3725,17 +3725,17 @@ get_options(const char* type)
 	static string_vec bool_res = VEC_INITIALIZER;
 	if(is_enum_type(type))
 	{
-		const int enum_index = str_vec_get_index(e_info.names,var.type);
+		const int enum_index = str_vec_get_index(e_info.names,type);
 		return e_info.options[enum_index];
 	}
 	if(type == BOOL_STR)
 	{
 		if(bool_res.size == 0)
 		{
-			push(&res,FALSE_STR);
-			push(&res,BOOL_STR);
+			push(&bool_res,FALSE_STR);
+			push(&bool_res,BOOL_STR);
 		}
-		return res;
+		return bool_res;
 	}
 	string_vec empty = VEC_INITIALIZER;
 	return empty;
@@ -3758,7 +3758,7 @@ add_param_combinations(const variable var, const int kernel_index,const char* pr
 		  add_param_combinations((variable){struct_field_types.data[i],struct_field_names.data[i]},kernel_index,new_prefix,combinatorials);
 	  }
 	}
-	const char string_vec options = get_options(var.type);
+	const string_vec options = get_options(var.type);
 	if(options.size == 0) return;
 	const int param_index = push(&combinatorials.names[kernel_index],intern(full_name));
 	for(size_t i = 0; i < options.size; ++i)
