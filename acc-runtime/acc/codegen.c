@@ -3719,7 +3719,7 @@ is_enum_type(const char* type)
 {
 	return str_vec_contains(e_info.names,type);
 }
-const string_vec
+string_vec
 get_options(const char* type)
 {
 	static string_vec bool_res = VEC_INITIALIZER;
