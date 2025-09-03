@@ -59,6 +59,41 @@ const bool useColor = false;
 #define COLORIZE(symbol, color) (useColor ? color symbol RESET : symbol)
 
 #include "astaroth_cuda_wrappers.h"
+
+#if CPU_BUILD
+cudaError_t
+acMemcpyToSymbol(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind)
+{
+	memcpy((void*)((char*)symbol+offset),src,count);
+	return cudaSuccess;
+}
+cudaError_t
+acMemcpyToSymbolAsync(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind, cudaStream_t)
+{
+	memcpy((void*)((char*)symbol+offset),src,count);
+	return cudaSuccess;
+}
+cudaError_t 
+acMemcpyFromSymbol(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind)
+{
+	memcpy(dst,(void*)((char*)symbol+offset),count);
+	return cudaSuccess;
+}
+cudaError_t 
+acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind, cudaStream_t)
+{
+	memcpy(dst,(void*)((char*)symbol+offset),count);
+	return cudaSuccess;
+}
+#else
+
+#define acMemcpyFromSymbol cudaMemcpyFromSymbol
+#define acMemcpyFromSymbolAsync cudaMemcpyFromSymbolAsync
+#define acMemcpyToSymbol cudaMemcpyToSymbol
+#define acMemcpyToSymbolAsync cudaMemcpyToSymbolAsync
+
+#endif
+
 #include "acc/implementation.h"
 
 static dim3 last_tpb = (dim3){0, 0, 0};
@@ -678,6 +713,8 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
 }
 
 
+
+
 AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -784,7 +821,7 @@ acLoadUniform(const P param, const V value)
   	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize()); /* See note in acLoadStencil */
 
   	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
-  	const cudaError_t retval = acMemcpyToSymbol(&d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);
+  	const cudaError_t retval = acMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);
   	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
@@ -799,7 +836,7 @@ acStoreUniform(const P param, V* value)
 	ERRCHK_ALWAYS(param < get_num_params<P>());
 	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
   	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
-	const cudaError_t retval = acMemcpyFromSymbol(value, &d_mesh_info, sizeof(V), offset, cudaMemcpyDeviceToHost);
+	const cudaError_t retval = acMemcpyFromSymbol(value, d_mesh_info, sizeof(V), offset, cudaMemcpyDeviceToHost);
 	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 

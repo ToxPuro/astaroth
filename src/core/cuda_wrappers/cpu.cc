@@ -152,33 +152,9 @@ acLaunchCooperativeKernel(void*,dim3,dim3,void**,size_t,cudaStream_t)
 	return cudaSuccess;
 }
 cudaError_t
-acMemcpyToSymbol(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind)
-{
-	memcpy((void*)((char*)symbol+offset),src,count);
-	return cudaSuccess;
-}
-cudaError_t
-acMemcpyToSymbolAsync(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind, cudaStream_t)
-{
-	memcpy((void*)((char*)symbol+offset),src,count);
-	return cudaSuccess;
-}
-cudaError_t
 acDeviceGetPCIBusId(char* pciBusId, int, int)
 {
 	sprintf(pciBusId,"CPU-BUILD");
-	return cudaSuccess;
-}
-cudaError_t 
-acMemcpyFromSymbol(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind)
-{
-	memcpy(dst,(void*)((char*)symbol+offset),count);
-	return cudaSuccess;
-}
-cudaError_t 
-acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind, cudaStream_t)
-{
-	memcpy(dst,(void*)((char*)symbol+offset),count);
 	return cudaSuccess;
 }
 

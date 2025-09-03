@@ -181,29 +181,9 @@ acLaunchCooperativeKernel(void* func,dim3 bpg,dim3 tpb,void** args,size_t smem,c
 	return cudaLaunchCooperativeKernel(func,bpg,tpb,args,smem,stream);
 }
 cudaError_t
-acMemcpyToSymbol(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind kind)
-{
-	return cudaMemcpyToSymbol(symbol,src,count,offset,kind);
-}
-cudaError_t
-acMemcpyToSymbolAsync(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream)
-{
-	return cudaMemcpyToSymbolAsync(symbol,src,count,offset,kind,stream);
-}
-cudaError_t
 acDeviceGetPCIBusId(char* pciBusId, int len, int device)
 {
 	return cudaDeviceGetPCIBusId(pciBusId,len,device);
-}
-cudaError_t 
-acMemcpyFromSymbol( void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind)
-{
-	return cudaMemcpyFromSymbol(dst,symbol,count,offset,kind);
-}
-cudaError_t 
-acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream)
-{
-	return cudaMemcpyFromSymbolAsync(dst,symbol,count,offset,kind,stream);
 }
 cudaError_t 
 acPeekAtLastError()

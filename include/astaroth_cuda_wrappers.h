@@ -20,14 +20,6 @@ cudaError_t
 acMemcpy(void* dst, const void* src, const size_t bytes, cudaMemcpyKind kind);
 cudaError_t
 acMemcpyAsync(void* dst, const void* src, const size_t bytes, cudaMemcpyKind kind, const cudaStream_t stream);
-cudaError_t
-acMemcpyToSymbol(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind kind);
-cudaError_t
-acMemcpyToSymbolAsync(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream);
-cudaError_t 
-acMemcpyFromSymbol( void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind);
-cudaError_t 
-acMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t count, size_t offset, cudaMemcpyKind kind, cudaStream_t stream);
 cudaError_t 
 acGetDeviceProperties(cudaDeviceProp* prop, int  device);
 cudaError_t
