@@ -1247,7 +1247,7 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 				fprintf(fp,"if (param == %s) \n{//%s is dead\n return;}\n",symbol_table[i].identifier,symbol_table[i].identifier);
 			}
 			else
-		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(%sAC_INTERNAL_gmem_%s_arrays_%s,&ptr,sizeof(ptr),0,cudaMemcpyHostToDevice)); return;} \n",take_address,symbol_table[i].identifier,define_name,symbol_table[i].identifier);
+		  		fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyToSymbol(%sAC_INTERNAL_gmem_%s_arrays_%s,&ptr,sizeof(ptr),0,cudaMemcpyHostToDevice)); return;} \n",symbol_table[i].identifier,take_address,define_name,symbol_table[i].identifier);
 	  	  }
 	  }
 	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from acMemcpyToGmemArray\\n\");\n");
@@ -1302,7 +1302,7 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 					
 		,symbol_table[i].identifier,define_name,symbol_table[i].identifier);
 		  else
-		  	fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(&ptr,%sAC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr),0,cudaMemcpyDeviceToHost)); return;}\n",take_address,symbol_table[i].identifier,define_name,symbol_table[i].identifier);
+		  	fprintf(fp,"if (param == %s) {ERRCHK_CUDA_ALWAYS(acMemcpyFromSymbol(&ptr,%sAC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr),0,cudaMemcpyDeviceToHost)); return;}\n",symbol_table[i].identifier,take_address,define_name,symbol_table[i].identifier);
 	  }
 	fprintf(fp,"fprintf(stderr,\"FATAL AC ERROR from memcpy_from_gmem_array\\n\");\n");
 	fprintf(fp,"\n(void)param;(void)ptr;}\n");
