@@ -10381,6 +10381,7 @@ check_array_dim_identifiers(const char* id, const ASTNode* node)
 		);
 	if(node->token != IDENTIFIER)     return;
 	if(node->type  & NODE_MEMBER_ID) return;
+	if(!node->buffer) return;
 	const bool is_int_var = check_symbol(NODE_VARIABLE_ID,node->buffer,INT_STR,0) || check_symbol(NODE_VARIABLE_ID,node->buffer,INT3_STR,0);
 	if(!is_int_var)
 		fatal(
