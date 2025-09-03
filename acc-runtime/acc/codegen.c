@@ -1736,9 +1736,12 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
           {
                   char array_length_str[4098];
                   get_array_var_length(symbol_table[i].identifier,root,array_length_str);
+                  //TP: have to pad zero sized arrays since they are not allowed in some CUDA compilers
+                  const char* res_dim = array_length_str;
+                  if(!strcmp(res_dim,"0")) res_dim = "1";
                   fprintf_filename("dconst_arrays_decl.h",
 				   "DECLARE_DCONST_ARRAY(%s, %s, %s, %s);\n"
-				   ,datatype_scalar, define_name,symbol_table[i].identifier,array_length_str);
+				   ,datatype_scalar, define_name,symbol_table[i].identifier,res_dim);
           }
         }
 
