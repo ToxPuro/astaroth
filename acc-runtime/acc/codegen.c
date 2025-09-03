@@ -3733,7 +3733,7 @@ get_options(const char* type)
 		if(bool_res.size == 0)
 		{
 			push(&bool_res,FALSE_STR);
-			push(&bool_res,BOOL_STR);
+			push(&bool_res,TRUE_STR);
 		}
 		return bool_res;
 	}
