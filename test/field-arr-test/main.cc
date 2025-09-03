@@ -145,6 +145,15 @@ main(void)
 				model.vertex_buffer[DUST[field].y][IDX(i,j,k)] += vec_arr[field].y;
 				model.vertex_buffer[DUST[field].z][IDX(i,j,k)] += vec_arr[field].z;
 			}
+			for(size_t field = 0; field < AC_SIZE(TEST_ARR); ++field)
+			{
+				model.vertex_buffer[TEST_ARR[field].xx][IDX(i,j,k)] = 0.0;
+				model.vertex_buffer[TEST_ARR[field].xy][IDX(i,j,k)] = 0.0;
+				model.vertex_buffer[TEST_ARR[field].xz][IDX(i,j,k)] = 0.0;
+				model.vertex_buffer[TEST_ARR[field].yy][IDX(i,j,k)] = 0.0;
+				model.vertex_buffer[TEST_ARR[field].yz][IDX(i,j,k)] = 0.0;
+				model.vertex_buffer[TEST_ARR[field].zz][IDX(i,j,k)] = 0.0;
+			}
                 }
             }
         }
