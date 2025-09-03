@@ -821,7 +821,11 @@ acLoadUniform(const P param, const V value)
   	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize()); /* See note in acLoadStencil */
 
   	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
+#if AC_CPU_BUILD
+  	const cudaError_t retval = acMemcpyToSymbol(&d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);
+#else
   	const cudaError_t retval = acMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);
+#endif
   	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
@@ -836,7 +840,11 @@ acStoreUniform(const P param, V* value)
 	ERRCHK_ALWAYS(param < get_num_params<P>());
 	ERRCHK_CUDA_ALWAYS(acDeviceSynchronize());
   	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
+#if AC_CPU_BUILD
+	const cudaError_t retval = acMemcpyFromSymbol(value, &d_mesh_info, sizeof(V), offset, cudaMemcpyDeviceToHost);
+#else
 	const cudaError_t retval = acMemcpyFromSymbol(value, d_mesh_info, sizeof(V), offset, cudaMemcpyDeviceToHost);
+#endif
 	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
