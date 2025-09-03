@@ -60,7 +60,7 @@ const bool useColor = false;
 
 #include "astaroth_cuda_wrappers.h"
 
-#if CPU_BUILD
+#if AC_CPU_BUILD
 cudaError_t
 acMemcpyToSymbol(const void* symbol, const void* src, size_t count, size_t offset, cudaMemcpyKind)
 {
