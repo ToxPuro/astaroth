@@ -758,6 +758,7 @@ gen_postprocessing_metadata()
 AcResult
 acGridInitBase(const AcMesh user_mesh)
 {
+    acCheckDeviceAvailability();
     int mpi_has_been_initialized{};
     MPI_Initialized(&mpi_has_been_initialized);
     if(!mpi_has_been_initialized)

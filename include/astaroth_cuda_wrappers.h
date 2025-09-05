@@ -5,6 +5,10 @@ extern "C"
 {
 #endif
 cudaError_t
+acDriverGetVersion(int* dst);
+cudaError_t
+acRuntimeGetVersion(int* dst);
+cudaError_t
 acStreamSynchronize(cudaStream_t stream);
 cudaError_t
 acDeviceSynchronize();

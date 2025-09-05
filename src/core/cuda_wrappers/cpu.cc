@@ -8,6 +8,18 @@
 #include "astaroth_cuda_wrappers.h"
 
 cudaError_t
+acDriverGetVersion(int* dst)
+{
+	*dst = 1;
+	return cudaSuccess;
+}
+cudaError_t
+acRuntimeGetVersion(int* dst)
+{
+	*dst = 1;
+	return cudaSuccess;
+}
+cudaError_t
 acStreamSynchronize(cudaStream_t){return cudaSuccess;}
 cudaError_t
 acDeviceSynchronize(){return cudaSuccess;}

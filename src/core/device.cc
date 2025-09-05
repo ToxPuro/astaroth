@@ -589,6 +589,7 @@ acCopyFromInfo(const AcMeshInfo, AcMeshInfo, const int3){}
 AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
 {
+    acCheckDeviceAvailability();
     // Check
     int count;
     acGetDeviceCount(&count);

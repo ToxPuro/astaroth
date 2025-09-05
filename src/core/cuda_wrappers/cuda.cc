@@ -16,6 +16,17 @@
 #include "astaroth_cuda_wrappers.h"
 
 cudaError_t
+acDriverGetVersion(int* dst)
+{
+	return cudaDriverGetVersion(dst);
+}
+cudaError_t
+acRuntimeGetVersion(int* dst)
+{
+	return cudaRuntimeGetVersion(dst);
+}
+
+cudaError_t
 acStreamSynchronize(cudaStream_t stream)
 {
 	return cudaStreamSynchronize(stream);

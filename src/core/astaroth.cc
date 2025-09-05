@@ -47,6 +47,10 @@ acQuit(void)
 AcResult
 acCheckDeviceAvailability(void)
 {
+    int runtime_version, max_runtime_version_supported_by_driver;
+    ERRCHK_CUDA_ALWAYS(acDriverGetVersion(&max_runtime_version_supported_by_driver));
+    ERRCHK_CUDA_ALWAYS(acRuntimeGetVersion(&runtime_version));
+    ERRCHK_ALWAYS(runtime_version <= max_runtime_version_supported_by_driver);
     int device_count; // Separate from num_devices to avoid side effects
     ERRCHK_CUDA_ALWAYS(acGetDeviceCount(&device_count));
     if (device_count > 0)
