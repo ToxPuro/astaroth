@@ -105,4 +105,6 @@
 #define curand_init hiprand_init
 #define curand_uniform hiprand_uniform
 #define curand_uniform_double hiprand_uniform_double
+#define cudaDriverGetVersion  hipDriverGetVersion
+#define cudaRuntimeGetVersion hipRuntimeGetVersion
 
