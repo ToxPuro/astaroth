@@ -1188,6 +1188,10 @@ void
 gen_kernel_write_funcs(const int curr_kernel)
 {
 
+    printf("const auto AC_INTERNAL_write_vtxbuf_complex __attribute__((unused)) = [&](const ComplexField& handle, const int& x, const int& y, const int& z, const AcComplex& value){");
+    printf("vba.complex_in[handle][DEVICE_VTXBUF_IDX(x,y,z)] = value;");
+    printf("};");
+
     printf("const auto AC_INTERNAL_read_vtxbuf __attribute__((unused)) = [&](const Field& handle, const int& x, const int& y, const int& z) {");
     printf("switch (handle) {");
     if(written_fields_disjoint_from_read(curr_kernel))
@@ -1312,7 +1316,6 @@ gen_kernel_write_funcs(const int curr_kernel)
     	printf("const auto AC_INTERNAL_write_vtxbuf_at_current_point __attribute__((unused)) = [&](const Field&, const AcReal&){};");
     	printf("const auto AC_INTERNAL_write_vtxbuf3 __attribute__((unused)) = [&](const Field3&, const int&, const int&, const int&, const AcReal3&){};");
     	printf("const auto AC_INTERNAL_write_vtxbuf4 __attribute__((unused)) = [&](const Field4&, const int&, const int&, const int&, const AcReal4&){};");
-    	printf("const auto AC_INTERNAL_write_complex __attribute__((unused)) = [&](const ComplexField&, const int&, const int&, const int&, const AcComplex&){};");
 	return;
     }
     if(has_buffered_writes(kernel_names[curr_kernel]))
@@ -1411,9 +1414,6 @@ gen_kernel_write_funcs(const int curr_kernel)
 	printf("AC_INTERNAL_write_vtxbuf(handle.z,x,y,z,value.z);");
     	printf("};");
 
-    	printf("const auto AC_INTERNAL_write_vtxbuf_complex __attribute__((unused)) = [&](const ComplexField& handle, const int& x, const int& y, const int& z, const AcComplex& value){");
-	printf("vba.complex_in[handle][DEVICE_VTXBUF_IDX(x,y,z)] = value;");
-	printf("};");
 
     	printf("const auto AC_INTERNAL_write_vtxbuf4 __attribute__((unused)) = [&](const Field4& handle, const int& x, const int& y, const int& z, const AcReal4& value){");
 	printf("AC_INTERNAL_write_vtxbuf(handle.x,x,y,z,value.x);");
