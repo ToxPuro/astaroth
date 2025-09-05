@@ -5245,6 +5245,7 @@ get_binary_expr_type(const ASTNode* node)
 	const bool lhs_int   = lhs_res == INT_STR;
 	const bool rhs_int   = rhs_res == INT_STR;
 	const char* res = 	
+		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,COMPLEX_FIELD_STR) || !strcmp(rhs_res,COMPLEX_FIELD_STR))   ? COMPLEX_STR  :
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,FIELD_STR) || !strcmp(rhs_res,FIELD_STR))   ? REAL_STR  :
 		op && !strcmps(op,PLUS_STR,MINUS_STR,MULT_STR,DIV_STR) && (!strcmp(lhs_res,FIELD3_STR) || !strcmp(rhs_res,FIELD3_STR)) ? REAL3_STR :
 		op && rhs_real && !strcmp(lhs_res,REAL3_STR) ? REAL3_STR :
@@ -5262,13 +5263,15 @@ get_binary_expr_type(const ASTNode* node)
 		NULL;
 
 	//TP: prints for debugging
-	//if(strstr(combine_all_new(node),"R-L"))
-	//{
-	//	printf("HI: %s\n",combine_all_new_with_whitespace(node));
-	//	printf("LHS: %s %s\n",lhs_res,combine_all_new(node->lhs));
-	//	printf("RHS: %s %s\n",rhs_res,combine_all_new(node->rhs));
-	//	printf("RES: %s\n",res);
-	//}
+	/**
+	if(res == COMPLEX_FIELD_STR)
+	{
+		printf("HI: %s\n",combine_all_new_with_whitespace(node));
+		printf("LHS: %s %s\n",lhs_res,combine_all_new(node->lhs));
+		printf("RHS: %s %s\n",rhs_res,combine_all_new(node->rhs));
+		printf("RES: %s\n",res);
+	}
+	**/
 	return res;
 }
 const char*
