@@ -1,3 +1,6 @@
+#ifndef AC_MATH_FFT_H
+#define AC_MATH_FFT_H
+
 get_wavevector_x()
 {
 	global_idx  = globalVertexIdx - AC_nmin
@@ -32,3 +35,4 @@ poisson_fft_solve(ComplexField dst, ComplexField src)
 				(k2 == 0.0) ? complex(0.0,0.0) :
 				-src[vertexIdx.x][vertexIdx.y][vertexIdx.z]/k2
 }
+#endif
