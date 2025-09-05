@@ -169,7 +169,7 @@ sqrt(const AcComplex& a)
 {
 	const AcReal r = sqrt(a.x*a.x + a.y*a.y);
 	const AcReal y_sign = (a.y < AcReal(0.0)) ? AcReal(-1.0) : AcReal(1.0);
-  	return (AcComplex){sqrt((r + a.x)*0.5),y_sign * sqrt((r-a.x)*0.5)};
+  	return (AcComplex){sqrt((r + a.x)*AcReal(0.5)),y_sign * sqrt((r-a.x)*AcReal(0.5))};
 }
 
 typedef struct uint3_64 {
