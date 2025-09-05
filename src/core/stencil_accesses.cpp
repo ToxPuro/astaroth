@@ -579,6 +579,15 @@ mark_as_written(const Field& field, const int x, const int y, const int z)
 	written_fields[field] |= 
 			index_at_boundary(x,y,z) ? AC_IN_BOUNDS_WRITE : AC_OUT_OF_BOUNDS_WRITE;
 }
+
+void
+mark_as_written(const ComplexField& field, const int x, const int y, const int z)
+{
+	(void)field;
+	(void)x;
+	(void)y;
+	(void)z;
+}
 void
 mark_as_written(const Field3& field, const int x, const int y, const int z)
 {
@@ -719,6 +728,17 @@ AC_INTERNAL_read_vtxbuf3(const Field3& field, const int x, const int y, const in
 		AC_INTERNAL_read_vtxbuf(field.y,x,y,z),
 		AC_INTERNAL_read_vtxbuf(field.z,x,y,z),
 	};
+}
+
+AcComplex
+AC_INTERNAL_read_vtxbuf_complex(const ComplexField&, const int, const int, const int)
+{
+	return (AcComplex){0.,0.};
+}
+
+void
+AC_INTERNAL_write_vtxbuf_complex(const ComplexField&, const int, const int, const int, const AcComplex)
+{
 }
 
 AcReal4

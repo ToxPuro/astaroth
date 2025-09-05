@@ -22,3 +22,13 @@ get_wavevector()
 	 	get_wavevector_z()
 	)
 }
+
+poisson_fft_solve(ComplexField dst, ComplexField src)
+{
+	const real3 k = get_wavevector()
+	const real k2 = dot(k,k)
+	//We do this in the inplace manner to enable more flexible usage
+	dst[vertexIdx.x][vertexIdx.y][vertexIdx.z] = 
+				(k2 == 0.0) ? complex(0.0,0.0) :
+				-src[vertexIdx.x][vertexIdx.y][vertexIdx.z]/k2
+}

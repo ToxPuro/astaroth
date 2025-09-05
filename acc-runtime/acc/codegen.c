@@ -5757,7 +5757,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 	if(get_parent_node(NODE_GLOBAL,node))
 		return;
 	const char* type = get_expr_type(node->parent);
-	if(!type || strcmps(type,FIELD_STR,FIELD3_STR,FIELD4_STR,"VertexBufferHandle"))
+	if(!type || strcmps(type,COMPLEX_FIELD_STR,FIELD_STR,FIELD3_STR,FIELD4_STR,"VertexBufferHandle"))
 		return;
 	ASTNode* array_access = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,node);
 	if(!array_access || !is_left_child(NODE_ARRAY_ACCESS,node))	return;
@@ -5806,6 +5806,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 			const char* func =  		
 						type == FIELD4_STR ? "AC_INTERNAL_write_vtxbuf4(" :
 						type == FIELD3_STR ? "AC_INTERNAL_write_vtxbuf3(" : 
+						type == COMPLEX_FIELD_STR ? "AC_INTERNAL_write_vtxbuf_complex(" : 
 						"AC_INTERNAL_write_vtxbuf(";
 			astnode_set_infix(func,lhs);
 			ASTNode* assignment = (ASTNode*)get_parent_node(NODE_ASSIGNMENT,node);
@@ -5820,6 +5821,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 			const char* func =
 						type == FIELD4_STR ? "AC_INTERNAL_read_vtxbuf4(" :
 						type == FIELD3_STR ? "AC_INTERNAL_read_vtxbuf3(" :
+						type == COMPLEX_FIELD_STR ? "AC_INTERNAL_read_vtxbuf_complex(" :
 						"AC_INTERNAL_read_vtxbuf(";
 			astnode_set_infix(func,lhs);
 			astnode_set_postfix(")",rhs);
