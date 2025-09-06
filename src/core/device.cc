@@ -83,22 +83,28 @@ acDevicePrintInfo(const Device device)
     printf("    Compute capability: %d.%d\n", props.major, props.minor);
 
     // Compute
+    int smClockRate{},memClockRate{};
+    ERRCHK_ALWAYS(acDeviceGetAttribute(&smClockRate,cudaDevAttrClockRate,device_id));
+    ERRCHK_ALWAYS(acDeviceGetAttribute(&memClockRate,cudaDevAttrMemoryClockRate,device_id));
+    int single_to_double_perf_ratio{};
+    ERRCHK_ALWAYS(acDeviceGetAttribute(&single_to_double_perf_ratio, cudaDevAttrSingleToDoublePrecisionPerfRatio, device_id));
     printf("  Compute\n");
-    printf("    Clock rate (GHz): %g\n", props.clockRate / 1e6); // KHz -> GHz
+    printf("    Clock rate (GHz): %g\n",  smClockRate / 1e6); // KHz -> GHz
     printf("    Stream processors: %d\n", props.multiProcessorCount);
 #if !AC_USE_HIP
-    printf("    SP to DP flops performance ratio: %d:1\n", props.singleToDoublePrecisionPerfRatio);
+    printf("    SP to DP flops performance ratio: %d:1\n", single_to_double_perf_ratio);
 #endif
+    int computeMode;
+    ERRCHK_ALWAYS(acDeviceGetAttribute(&computeMode, cudaDevAttrComputeMode, device_id));
     printf(
         "    Compute mode: %d\n",
-        (int)props
-            .computeMode); // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g7eb25f5413a962faad0956d92bae10d0
+        (int)computeMode); // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g7eb25f5413a962faad0956d92bae10d0
     // Memory
     printf("  Global memory\n");
-    printf("    Memory Clock Rate (MHz): %d\n", props.memoryClockRate / (1000));
+    printf("    Memory Clock Rate (MHz): %d\n", memClockRate / (1000));
     printf("    Memory Bus Width (bits): %d\n", props.memoryBusWidth);
     printf("    Peak Memory Bandwidth (GiB/s): %f\n",
-           2 * (props.memoryClockRate * 1e3) * props.memoryBusWidth / (8. * 1024. * 1024. * 1024.));
+           2 * (memClockRate * 1e3) * props.memoryBusWidth / (8. * 1024. * 1024. * 1024.));
     printf("    ECC enabled: %d\n", props.ECCEnabled);
 
     // Memory usage
