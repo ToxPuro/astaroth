@@ -69,6 +69,10 @@
 #define cudaFree hipFree
 #define cudaGetDevice hipGetDevice
 #define cudaDevAttrCooperativeLaunch hipDeviceAttributeCooperativeLaunch 
+#define cudaDevAttrClockRate hipDevAttrClockRate
+#define cudaDevAttrMemoryClockRate hipDevAttrMemoryClockRate
+#define cudaDevAttrSingleToDoublePrecisionPerfRatio hipDevAttrSingleToDoublePrecisionPerfRatio 
+#define cudaDevAttrComputeMode (0)
 #define cudaDeviceAttr hipDeviceAttribute_t 
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaGetDeviceCount hipGetDeviceCount

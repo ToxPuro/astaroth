@@ -51,6 +51,10 @@ typedef int cudaDeviceAttr;
 #define cudaMemcpyHostToHost     (3)
 #define cudaMemcpyDefault        (4)
 #define cudaDevAttrCooperativeLaunch (0)
+#define cudaDevAttrClockRate (0)
+#define cudaDevAttrMemoryClockRate (0)
+#define cudaDevAttrSingleToDoublePrecisionPerfRatio (0)
+#define cudaDevAttrComputeMode (0)
 
 #undef __host__
 #define __host__

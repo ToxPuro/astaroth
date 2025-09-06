@@ -305,6 +305,9 @@ if (BUILD_SAMPLES AND BUILD_MHD_SAMPLES)
 endif()
 
 if (MPI_ENABLED AND BUILD_ACM)
+    if (CPU_BUILD)
+      set(HOST_ONLY_MODE ON)
+    endif()
     add_subdirectory(acc-comm)
 endif()
 
