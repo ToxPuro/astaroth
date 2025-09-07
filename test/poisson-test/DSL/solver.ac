@@ -1,8 +1,9 @@
-#include "../../../acc-runtime/stdlib/general_grid"
-#include "../../../acc-runtime/stdlib/general_derivs.h"
-#include "../../../acc-runtime/stdlib/math"
-#include "../../../acc-runtime/stdlib/bc.h"
-#include "../../../acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_grid"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/math"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_operators.h"
+#include "$AC_HOME/acc-runtime/stdlib/poisson.h"
 Field POTENTIAL
 Field SPH_UPPER_POTENTIAL
 Field SPH_LOWER_POTENTIAL
@@ -172,37 +173,20 @@ Kernel calculate_potential_with_mlm()
 }
 
 
-jacobi_update()
-{
-	return (DENSITY-laplace_neighbours(POTENTIAL))/laplace_central_coeff()
-}
 fixed_boundary Kernel jacobi_step_kernel()
 {
-	write(POTENTIAL,jacobi_update())
+	write(POTENTIAL,poisson_jacobi_update(DENSITY,POTENTIAL))
 }
-real AC_SOR_omega
-const int RED   = 0
-const int BLACK = 1
 
-sor_red_black(int color)
-{
-	res = (1-AC_SOR_omega)*POTENTIAL +AC_SOR_omega*jacobi_update()
-	if((globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z) %2 == color)
-        {
-		write(POTENTIAL,res)
-	}
-	else
-	{
-		write(POTENTIAL,POTENTIAL)
-	}
-}
+real AC_SOR_omega
+
 fixed_boundary Kernel sor_red()
 {
-	sor_red_black(RED)
+	poisson_sor_red_black(SOR_RED,DENSITY,POTENTIAL,AC_SOR_omega)
 }
 fixed_boundary Kernel sor_black()
 {
-	sor_red_black(BLACK)
+	poisson_sor_red_black(SOR_BLACK,DENSITY,POTENTIAL,AC_SOR_omega)
 }
 output real AC_residual2
 Kernel residual_kernel()

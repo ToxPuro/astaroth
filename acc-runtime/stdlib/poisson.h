@@ -1,3 +1,8 @@
+enum SOR_STEP
+{
+	SOR_RED,
+	SOR_BLACK
+}
 poisson_jacobi_update(Field density, Field potential)
 {
 	return (density-laplace_neighbours(potential))/laplace_central_coeff()
