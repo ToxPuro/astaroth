@@ -10817,6 +10817,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   ASTNode* root = astnode_dup(root_in,NULL);
   get_field_order(root);
   check_uniquenes(root,NODE_DFUNCTION,"function");
+  check_uniquenes(root,NODE_KFUNCTION,"kernel");
   check_uniquenes(root,NODE_STENCIL,"stencil");
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
