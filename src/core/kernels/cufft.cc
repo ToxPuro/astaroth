@@ -9,6 +9,14 @@
 #include <cufftXt.h>
 #include <cuComplex.h>
 
+#if AC_DOUBLE_PRECISION
+using  cuFFTPrecision = cuDoubleComplex;
+#define CUFFT_COMPLEX2COMPLEX CUFFT_Z2Z
+#else
+#define CUFFT_COMPLEX2COMPLEX CUFFT_C2C
+using  cuFFTPrecision = cuFloatComplex;
+#endif
+
 // cufft API error chekcing
 #ifndef CUFFT_CALL
 #define CUFFT_CALL( call )                                                                                             \
@@ -54,7 +62,7 @@ acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size
     size_t orig_domain_size = inembed[0] * inembed[1] * inembed[2];
     size_t complex_domain_size = onembed[0] * onembed[1] * onembed[2];    
     
-    cuDoubleComplex* transformed = reinterpret_cast<cuDoubleComplex*>(transformed_in);
+    cuFFTPrecision* transformed = reinterpret_cast<cuFFTPrecision*>(transformed_in);
     // Execute the plan_r2c
     CUFFT_CALL(cufftXtExec(plan_r2c, (void*)buffer, transformed, CUFFT_FORWARD));
     CUFFT_CALL(cufftDestroy(plan_r2c));
@@ -67,6 +75,17 @@ AcResult
 acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume subdomain_size, const Volume starting_point, AcComplex* dst,
 		  const bool inverse)
 {
+    ERRCHK_ALWAYS(src != NULL);
+    ERRCHK_ALWAYS(dst != NULL);
+    ERRCHK_ALWAYS(subdomain_size.x <= domain_size.x);
+    ERRCHK_ALWAYS(subdomain_size.y <= domain_size.y);
+    ERRCHK_ALWAYS(subdomain_size.z <= domain_size.z);
+    ERRCHK_ALWAYS(starting_point.x <= domain_size.x);
+    ERRCHK_ALWAYS(starting_point.y <= domain_size.y);
+    ERRCHK_ALWAYS(starting_point.z <= domain_size.z);
+    ERRCHK_ALWAYS(starting_point.x  + subdomain_size.x<= domain_size.x);
+    ERRCHK_ALWAYS(starting_point.y  + subdomain_size.y<= domain_size.y);
+    ERRCHK_ALWAYS(starting_point.z  + subdomain_size.z<= domain_size.z);
     const size_t starting_offset = starting_point.x + domain_size.x*(starting_point.y + domain_size.y*starting_point.z);
     src = src + starting_offset;
     // Number of elements in each dimension to use
@@ -83,11 +102,11 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
     CUFFT_CALL(cufftMakePlanMany(plan_r2c, 3, dims,
         inembed, 1, inembed[0], // in case inembed and onembed not needed could be: nullptr, 1, 0
         onembed, 1, onembed[0], //                                                  nullptr, 1, 0
-        CUFFT_Z2Z, 1, &workspace_size));
+        CUFFT_COMPLEX2COMPLEX, 1, &workspace_size));
     
     size_t complex_domain_size = onembed[0] * onembed[1] * onembed[2];    
     
-    cuDoubleComplex* transformed = reinterpret_cast<cuDoubleComplex*>(dst + starting_offset);
+    cuFFTPrecision* transformed = reinterpret_cast<cuFFTPrecision*>(dst + starting_offset);
     const auto direction = inverse ? CUFFT_INVERSE: CUFFT_FORWARD;
     // Execute the plan_r2c
     CUFFT_CALL(cufftXtExec(plan_r2c, (void*)src, transformed, direction));
@@ -121,7 +140,7 @@ acFFTBackwardTransformSymmetricC2R(const AcComplex* transformed_in,const Volume 
         onembed, 1, onembed[0],
         inembed, 1, inembed[0],
         CUFFT_Z2D, 1, &workspace_size));
-    const cuDoubleComplex* transformed = reinterpret_cast<const cuDoubleComplex*>(transformed_in);
+    const cuFFTPrecision* transformed = reinterpret_cast<const cuFFTPrecision*>(transformed_in);
     CUFFT_CALL(cufftXtExec(plan_c2r, (void*)transformed, buffer, CUFFT_INVERSE));
     CUFFT_CALL(cufftDestroy(plan_c2r));
     return AC_SUCCESS;
