@@ -62,6 +62,7 @@ drand()
 #define FOUR_D_ARR(i,j,k,l) [i][j][k][l]
 #else
 #define FOUR_D_ARR(i,j,k,l) [l][k][j][i]
+#define FIVE_D_ARR(i,j,k,l,n) [n][l][k][j][i]
 #endif
 
 int
@@ -128,6 +129,7 @@ main(void)
     AcReal twoD_real_arr TWO_D_ARR(nx,ny);
     AcReal threeD_real_arr THREE_D_ARR(mx,my,mz);
     float  fourD_float_arr FOUR_D_ARR(mx,my,mz,3);
+    AcReal fiveD_real_arr FIVE_D_ARR(mx,my,mz,3,3);
 
     for(int i = 0; i < nx; ++i)
     {
@@ -144,7 +146,13 @@ main(void)
 		{
 			threeD_real_arr THREE_D_ARR(i,j,k)  = (1.0*rand())/(AcReal)RAND_MAX;
 			for(int l = 0; l < 3; ++l)
+			{
 				fourD_float_arr FOUR_D_ARR(i,j,k,l) = (float)(1.0*rand())/(float)RAND_MAX;
+				for(int i = 0; i < 3; ++i)
+				{
+					fiveD_real_arr FIVE_D_ARR(i,j,k,l,i) = (AcReal)(1.0*rand())/(AcReal)RAND_MAX;
+				}
+			}
 		}
     info[AC_global_arr] = global_arr;
     info[AC_float_arr] = float_arr;
@@ -152,6 +160,7 @@ main(void)
     info[AC_2d_reals_dims_from_config]  = &twoD_real_arr[0][0];
     info[AC_3d_reals]  = &threeD_real_arr[0][0][0];
     info[AC_4d_float_arr]  = &fourD_float_arr[0][0][0][0];
+    info[AC_5d_real_arr]  = &fiveD_real_arr[0][0][0][0][0];
     info[AC_dconst_int] = nx-1-info[AC_nmin].x;
     info[AC_4d_float_arr_out]  = &fourD_float_arr[0][0][0][0];
     acGridInit(info);
@@ -210,7 +219,8 @@ main(void)
 			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr TWO_D_ARR(info[AC_dconst_int],comp_y) + threeD_real_arr THREE_D_ARR(i,j,k));
 			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2])*((AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,0) + (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,1)  + (AcReal)fourD_float_arr FOUR_D_ARR(i,j,k,2));
 
-			fourD_float_arr FOUR_D_ARR(i,j,k,0) = (float) fourD_float_arr FOUR_D_ARR(i,j,k,0) * test_arr[1];
+			fourD_float_arr FOUR_D_ARR(i,j,k,0) = (float)( fourD_float_arr FOUR_D_ARR(i,j,k,0) * test_arr[1]
+							    +  fiveD_real_arr FIVE_D_ARR(i,j,k,0,0));
                 }
             }
         }
@@ -241,9 +251,10 @@ main(void)
     		for(int i = 0; i < mx; ++i)
 			for(int l = 0; l < 3; ++l)
 			{
+				const AcReal diff = read_fourD_float_arr FOUR_D_ARR(i,j,k,l) - fourD_float_arr FOUR_D_ARR(i,j,k,l);
 				const bool eq = (read_fourD_float_arr FOUR_D_ARR(i,j,k,l) == fourD_float_arr FOUR_D_ARR(i,j,k,l));
 				updated_arrays_are_the_same &= eq;
-				if(!eq) fprintf(stderr,"different at %d,%d,%d,%d\n",i,j,k,l);
+				if(!eq) fprintf(stderr,"different at %d,%d,%d,%d: %14e\n",i,j,k,l,diff);
 			}
     printf("LOAD STORE GMEM ARRAY... %s \n", arrays_are_the_same ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     printf("GMEM ARRAY UPDATE ... %s \n", updated_arrays_are_the_same ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
