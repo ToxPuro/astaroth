@@ -24,6 +24,7 @@
 
 #include <math.h>
 
+#include "device_headers.h"
 #if AC_CPU_BUILD
 #else
 #if AC_USE_HIP
