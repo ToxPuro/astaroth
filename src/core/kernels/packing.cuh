@@ -381,7 +381,7 @@ acKernelPackDataFull(const cudaStream_t stream, const VertexBufferArray vba, con
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z)};
 
-    KERNEL_LAUNCH(kernel_pack_data,bpg,tpb,0,stream)(vba.on_device, to_int3(vba_start), to_int3(dims), packed);
+    ERRCHK_CUDA(KERNEL_LAUNCH(kernel_pack_data,bpg,tpb,0,stream)(vba.on_device, to_int3(vba_start), to_int3(dims), packed));
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;
@@ -397,7 +397,7 @@ acKernelUnpackDataFull(const cudaStream_t stream, const AcRealPacked* packed, co
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z)};
 
-    KERNEL_LAUNCH(kernel_unpack_data,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), vba.on_device);
+    ERRCHK_CUDA(KERNEL_LAUNCH(kernel_unpack_data,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), vba.on_device));
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
 }
@@ -419,8 +419,8 @@ acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
     GpuVtxBufHandles gpu_handles;
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    KERNEL_LAUNCH(kernel_partial_pack_data,bpg,tpb,0,stream)(vba.on_device, to_int3(vba_start), to_int3(dims), packed, gpu_handles,
-                                                      num_vtxbufs);
+    ERRCHK_CUDA(KERNEL_LAUNCH(kernel_partial_pack_data,bpg,tpb,0,stream)(vba.on_device, to_int3(vba_start), to_int3(dims), packed, gpu_handles,
+                                                      num_vtxbufs));
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;
@@ -449,8 +449,8 @@ acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
     GpuVtxBufHandles gpu_handles;
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    KERNEL_LAUNCH(kernel_partial_unpack_data,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), vba.on_device, gpu_handles,
-                                                        num_vtxbufs);
+    ERRCHK_CUDA(KERNEL_LAUNCH(kernel_partial_unpack_data,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), vba.on_device, gpu_handles,
+                                                        num_vtxbufs));
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
 }
@@ -471,8 +471,8 @@ acKernelShearUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
     GpuVtxBufHandles gpu_handles{};
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    KERNEL_LAUNCH(kernel_shear_partial_unpack_data,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), vba.on_device, gpu_handles,
-                                                        num_vtxbufs, coeffs, offset);
+    ERRCHK_CUDA(KERNEL_LAUNCH(kernel_shear_partial_unpack_data,bpg,tpb,0,stream)(packed, to_int3(vba_start), to_int3(dims), vba.on_device, gpu_handles,
+                                                        num_vtxbufs, coeffs, offset));
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
 }
@@ -495,8 +495,8 @@ acKernelMoveData(const cudaStream_t stream, const Volume src_start, const Volume
     GpuVtxBufHandles gpu_handles;
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
-    KERNEL_LAUNCH(kernel_partial_move_data,bpg,tpb,0,stream)(vba.on_device,to_int3(src_start), to_int3(dst_start), to_int3(src_dims), gpu_handles,
-                                                        num_vtxbufs);
+    ERRCHK_CUDA(KERNEL_LAUNCH(kernel_partial_move_data,bpg,tpb,0,stream)(vba.on_device,to_int3(src_start), to_int3(dst_start), to_int3(src_dims), gpu_handles,
+                                                        num_vtxbufs));
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
 }
