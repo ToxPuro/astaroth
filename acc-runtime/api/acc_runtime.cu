@@ -565,7 +565,8 @@ acLaunchKernelBase(const AcKernel kernel, const int3 start, const int3 end, Vert
   }
   else
   {
-  	ERRCHK_CUDA(KERNEL_VBA_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device));
+  	KERNEL_VBA_LAUNCH(kernels[kernel],bpg,tpb,smem,stream)(start,end,vba.on_device);
+  	ERRCHK_CUDA_KERNEL();
   }
   return AC_SUCCESS;
 }
@@ -686,7 +687,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
 
   // Warmup
   ERRCHK_CUDA(acEventRecord(tstart));
-  ERRCHK_CUDA(KERNEL_LAUNCH(kernels[kernel],bpg, tpb, smem)(start, end, vba.on_device));
+  KERNEL_LAUNCH(kernels[kernel],bpg, tpb, smem)(start, end, vba.on_device);
   ERRCHK_CUDA(acEventRecord(tstop));
   ERRCHK_CUDA(acEventSynchronize(tstop));
   ERRCHK_CUDA_KERNEL();
@@ -694,7 +695,7 @@ acBenchmarkKernel(AcKernel kernel, const int3 start, const int3 end,
 
   // Benchmark
   ERRCHK_CUDA(acEventRecord(tstart)); // Timing start
-  ERRCHK_CUDA(KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem)(start, end, vba.on_device));
+  KERNEL_LAUNCH(kernels[kernel],bpg,tpb,smem)(start, end, vba.on_device);
   ERRCHK_CUDA(acEventRecord(tstop)); // Timing stop
   ERRCHK_CUDA(acEventSynchronize(tstop));
   float milliseconds = 0;
