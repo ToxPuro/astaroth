@@ -1560,6 +1560,7 @@ acGridClearTaskGraphCache()
 AcTaskGraph*
 acGetOptimizedDSLTaskGraphWithBounds(const AcDSLTaskGraph graph, const Volume start, const Volume end, const bool bcs_everywhere, const AcDSLTaskGraph bc_graph)
 {
+	ERRCHK_ALWAYS(to_int3(end) >= to_int3(start));
 	auto optimized_kernels = get_optimized_kernels(graph,false);
 	auto optimized_bcs      = get_optimized_kernels(bc_graph,false);
 	KeyType key = std::make_tuple(optimized_kernels,optimized_bcs,start,end,bcs_everywhere);

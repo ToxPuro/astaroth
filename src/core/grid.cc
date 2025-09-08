@@ -2128,6 +2128,8 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
         acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
         auto op = ops[i];
 
+	ERRCHK_ALWAYS(to_int3(end_in) >= to_int3(start_in));
+	ERRCHK_ALWAYS(to_int3(op.end) >= to_int3(op.start));
         const Volume dims = 
 			    op.given_launch_bounds ?
 			    op.end-op.start :
