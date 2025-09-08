@@ -144,7 +144,7 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size,
     ERRCHK_ALWAYS(rocfft_execute(plan, in_buffer, out_buffer, get_execution_info()) == rocfft_status_success);
     // Scaling (just like CUFFT doesn't scale by default)
     size_t complex_domain_size = domain_size.x * domain_size.y * domain_size.z;
-    const AcReal scale = 1.0 / (subdomain_size.x * subdomain_size.y * subdomain_size.z);
+    const AcReal scale = AcReal(1.0) / (subdomain_size.x * subdomain_size.y * subdomain_size.z);
     if(!inverse) acMultiplyInplaceComplex(scale, complex_domain_size, dst);
     return AC_SUCCESS;
 }

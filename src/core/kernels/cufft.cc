@@ -59,7 +59,7 @@ acFFTForwardTransformSymmetricR2C(const AcReal* buffer, const Volume domain_size
     CUFFT_CALL(cufftXtExec(plan_r2c, (void*)buffer, transformed, CUFFT_FORWARD));
     CUFFT_CALL(cufftDestroy(plan_r2c));
     // Scale complex results that inverse FFT results in original values
-    const AcReal scale{1.0 / orig_domain_size};
+    const AcReal scale{AcReal(1.0) / orig_domain_size};
     acMultiplyInplaceComplex(scale, complex_domain_size, transformed_in);
     return AC_SUCCESS;
 }
@@ -93,7 +93,7 @@ acFFTTransformC2C(const AcComplex* src, const Volume domain_size, const Volume s
     CUFFT_CALL(cufftXtExec(plan_r2c, (void*)src, transformed, direction));
     CUFFT_CALL(cufftDestroy(plan_r2c));
     // Scale complex results that inverse FFT results in original values
-    const AcReal scale{1.0 / ( dims[0] * dims[1] * dims[2])};
+    const AcReal scale{AcReal(1.0) / ( dims[0] * dims[1] * dims[2])};
     if(!inverse) acMultiplyInplaceComplex(scale, complex_domain_size, dst);
     return AC_SUCCESS;
 }
