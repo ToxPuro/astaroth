@@ -2714,6 +2714,8 @@ gen_kernel_params_info(const ASTNode* root)
   }
 }
 
+#define NUM_ALWAYS_PRODUCED (5)
+
 void
 gen_kernel_structs(ASTNode* root)
 {
@@ -2767,9 +2769,8 @@ gen_kernel_structs(ASTNode* root)
 			fprintf(fp,"return AC_FAILURE;}\n");
 		}
 		//TP: you have to generate some load types always since the library assumes they exist
-		const size_t num_always_produced = 5;
-		string_vec always_produced_load_types[num_always_produced];
-		memset(always_produced_load_types,0,sizeof(string_vec)*num_always_produced);
+		string_vec always_produced_load_types[NUM_ALWAYS_PRODUCED];
+		memset(always_produced_load_types,0,sizeof(string_vec)*NUM_ALWAYS_PRODUCED);
 		push(&always_produced_load_types[0],FIELD_STR);
 		push(&always_produced_load_types[0],REAL_PTR_STR);
 
@@ -2783,7 +2784,7 @@ gen_kernel_structs(ASTNode* root)
 
 		push(&always_produced_load_types[4],FIELD_STR);
 		push(&always_produced_load_types[4],REAL_STR);
-		for(size_t i = 0; i < num_always_produced; ++i)
+		for(size_t i = 0; i < NUM_ALWAYS_PRODUCED; ++i)
 		{
 			string_vec types = always_produced_load_types[i];
 			if(str_vec_in(unique_input_types,num_unique_input_types,types)) continue;
@@ -2802,7 +2803,7 @@ gen_kernel_structs(ASTNode* root)
 				fprintf(fp,"%s p_%ld%s",types.data[j],j,(j < types.size-1) ? "," : "");
 			fprintf(fp,");");
 		}
-		for(size_t i = 0; i < num_always_produced; ++i)
+		for(size_t i = 0; i < NUM_ALWAYS_PRODUCED; ++i)
 		{
 			string_vec types = always_produced_load_types[i];
 			if(str_vec_in(unique_input_types,num_unique_input_types,types)) continue;
