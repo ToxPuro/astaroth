@@ -291,16 +291,11 @@ static size_t current_nest           = 0;
 static const Symbol*
 symboltable_lookup_range(const char* identifier, const int start_range, const int end_range)
 {
-  if (!identifier)
-    return NULL;
-
+  if (!identifier) return NULL;
+  for(int i = start_range; i >= end_range; --i)
   {
-	for(int i = start_range; i >= end_range; --i)
-	{
-  		Symbol* sym = (Symbol*)hashmap_get(&symbol_table_hashmap[i], identifier, strlen(identifier));
-		if(sym) return sym;
-	}
-	return NULL;
+  	Symbol* sym = (Symbol*)hashmap_get(&symbol_table_hashmap[i], identifier, strlen(identifier));
+  	if(sym) return sym;
   }
   return NULL;
 }
