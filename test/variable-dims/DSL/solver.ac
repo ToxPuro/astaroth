@@ -1,5 +1,6 @@
-int3 AC_extended_halo = (int3){5,5,5}
-int3 AC_extended_dims = AC_mlocal + 2*AC_extended_halo
+int3 AC_left_extended_halo = (int3){5,5,5}
+int3 AC_right_extended_halo = (int3){5,5,5}
+int3 AC_extended_dims = AC_mlocal + AC_left_extended_halo + AC_right_extended_halo
 
 dims(AC_extended_dims) Field F_EXT
 global output real F_EXT_SUM
@@ -45,12 +46,12 @@ Kernel initcond_kernel(Field f, real val)
 Kernel kernel_copy_normal_to_extended()
 {
 
-	copy_to_extended_grid(F_EXT,F,AC_extended_halo,F_EXT)
+	copy_to_extended_grid(F_EXT,F,AC_left_extended_halo,F_EXT)
 }
 
 Kernel kernel_copy_extended_to_normal()
 {
-	copy_extended_to_grid(F,F_EXT,AC_extended_halo)
+	copy_extended_to_grid(F,F_EXT,AC_left_extended_halo)
 }
 
 ComputeSteps copy_normal_to_extended(bcs)
