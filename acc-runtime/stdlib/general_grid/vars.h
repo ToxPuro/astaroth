@@ -12,6 +12,8 @@ gmem real AC_r[AC_mlocal.x]
 gmem real AC_theta[AC_mlocal.y]
 gmem real AC_phi[AC_mlocal.z]
 
+gmem real AC_r_extended[AC_extended_mlocal.x]
+
 gmem real AC_sin_theta[AC_mlocal.y]
 gmem real AC_cos_theta[AC_mlocal.y]
 
@@ -21,5 +23,10 @@ gmem real AC_cos_phi[AC_mlocal.z]
 gmem real AC_mapping_func_derivative_x[AC_mlocal.x]
 gmem real AC_mapping_func_derivative_y[AC_mlocal.y]
 gmem real AC_mapping_func_derivative_z[AC_mlocal.z]
+
+gmem real AC_mapping_func_derivative_x_extended[AC_extended_mlocal.x]
+gmem real AC_mapping_func_derivative_y_extended[AC_extended_mlocal.y]
+gmem real AC_mapping_func_derivative_z_extended[AC_extended_mlocal.z]
+
 
 #endif

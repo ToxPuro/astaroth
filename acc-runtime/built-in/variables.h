@@ -375,6 +375,20 @@ run_const int3 AC_right_extended_halo = (int3){0,0,0}
 run_const int3 AC_extended_mlocal = AC_mlocal + AC_left_extended_halo + AC_right_extended_halo
 
 /**
+ * First grid point on the extended grid
+ */
+run_const real3 AC_first_gridpoint_extended = AC_first_gridpoint
+
+/**
+ * Length of the extended grid
+ */
+run_const real3 AC_len_extended = AC_len
+
+/**
+ * Number of points in the computational domain of the extended grid
+ */
+run_const int3 AC_ngrid_extended  = AC_ngrid + AC_left_extended_halo  + AC_right_extended_halo
+/**
  * Size of Fields on the extended grid without halos
  */
 run_const int3 AC_extended_nlocal = AC_nlocal + AC_left_extended_halo + AC_right_extended_halo
