@@ -4,8 +4,10 @@ int3 AC_extended_dims = AC_mlocal + 2*AC_extended_halo
 dims(AC_extended_dims) Field F_EXT
 global output real F_EXT_SUM
 Field F
-#include "../../../acc-runtime/stdlib/general_derivs.h"
-#include "../../../acc-runtime/stdlib/bc.h"
+#include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"
+#include "$AC_HOME/acc-runtime/stdlib/bc.h"
+#include "$AC_HOME/acc-runtime/stdlib/grid_extension.h"
+
 Kernel
 empty_kernel()
 {
@@ -43,41 +45,12 @@ Kernel initcond_kernel(Field f, real val)
 Kernel kernel_copy_normal_to_extended()
 {
 
-	const bool inside_volume = vertexIdx.x >= AC_extended_halo.x +NGHOST &&
-	                           vertexIdx.y >= AC_extended_halo.y +NGHOST &&
-	                           vertexIdx.z >= AC_extended_halo.z +NGHOST &&
-	                           vertexIdx.x <  AC_nlocal_max.x + AC_extended_halo.x &&
-	                           vertexIdx.y <  AC_nlocal_max.y + AC_extended_halo.y &&
-	                           vertexIdx.z <  AC_nlocal_max.z + AC_extended_halo.z
-        const int3 f_indexes = inside_volume ?
-				(int3)
-				{
-					vertexIdx.x-AC_extended_halo.x,
-					vertexIdx.y-AC_extended_halo.y,
-					vertexIdx.z-AC_extended_halo.z
-				}
-				:
-				(int3)
-				{
-					NGHOST, NGHOST,NGHOST
-				}
-	//TP: The field is read with these weird indexes conditional reads based on vertex indexes do not play well with ComputeSteps
-	f_val = F[f_indexes.x][f_indexes.y][f_indexes.z]
-	if(inside_volume)
-	{
-		write(F_EXT,f_val)
-	}
-	else
-	{
-		write(F_EXT,F_EXT)
-	}
-
+	copy_to_extended_grid(F_EXT,F,AC_extended_halo,F_EXT)
 }
 
 Kernel kernel_copy_extended_to_normal()
 {
-	write(F,F_EXT[vertexIdx.x+AC_extended_halo.x][vertexIdx.y+AC_extended_halo.y][vertexIdx.z+AC_extended_halo.z])
-
+	copy_extended_to_grid(F,F_EXT,AC_extended_halo)
 }
 
 ComputeSteps copy_normal_to_extended(bcs)
