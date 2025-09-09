@@ -449,6 +449,10 @@ laplace_central_coeff() {
     return derxx_central_coeff() + deryy_central_coeff() + derzz_central_coeff()
 }
 
+laplace_central_coeff_extended() {
+    return derxx_central_coeff_extended() + deryy_central_coeff_extended() + derzz_central_coeff_extended()
+}
+
 laplace_2nd_central_coeff() {
     return derxx_2nd_central_coeff() + deryy_2nd_central_coeff() + derzz_2nd_central_coeff()
 }
@@ -629,3 +633,33 @@ curlcurl(Field3 v)
 {
 	return gradient_of_divergence(v) - laplace(v)
 }
+
+#ifdef AC_GENERAL_DERIVS_H
+laplace_extended(Field s) {
+    del2f = derxx_extended(s) + deryy_extended(s) + derzz_extended(s)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    del2f += derx_extended(s)*AC_INV_CYL_R_extended
+    }
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	    del2f += 2*derx_extended(s)*AC_INV_R_extended
+	    del2f += dery_extended(s)*AC_INV_R_extended*AC_COT_extended
+    }
+    return del2f
+}
+
+laplace_neighbours_extended(Field s) {
+    del2f = derxx_neighbours_extended(s) + deryy_neighbours_extended(s) + derzz_neighbours_extended(s)
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    del2f += derx_extended(s)*AC_INV_CYL_R_extended
+    }
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	    del2f += 2*derx_extended(s)*AC_INV_R_extended
+	    del2f += dery_extended(s)*AC_INV_R_extended*AC_COT_extended
+    }
+    return del2f
+}
+#endif

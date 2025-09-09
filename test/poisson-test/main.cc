@@ -94,11 +94,15 @@ main(void)
 	    0.5*info[AC_ds].z
     });
     acSetLocalMeshDims(info[AC_ngrid].x,info[AC_ngrid].y,info[AC_ngrid].z, &info);
+
     ac_compute_power_law_mapping_x(&info,info[AC_power_law_mapping_exponent]);
-    ac_compute_inv_sin_theta(&info);
+    /**
     ac_compute_inv_r(&info);
-    ac_compute_cot_theta(&info);
     ac_compute_r(&info);
+    **/
+
+    ac_compute_inv_sin_theta(&info);
+    ac_compute_cot_theta(&info);
     ac_compute_theta(&info);
     ac_compute_phi(&info);
     ac_compute_spherical_harmonics(&info);

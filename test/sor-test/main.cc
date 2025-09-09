@@ -117,10 +117,6 @@ main(void)
     acGridWriteSlicesToDiskCollectiveSynchronous("slices", 0, 0.0);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT, &model);
     acGridSynchronizeStream(STREAM_ALL);
-    auto IDX = [](const int x, const int y, const int z)
-    {
-	return acVertexBufferIdx(x,y,z,acGridGetLocalMeshInfo());
-    };
 
     int retval = AC_SUCCESS;
     acGridQuit();

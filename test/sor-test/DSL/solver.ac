@@ -35,11 +35,11 @@ initcond(boundconds)
 
 fixed_boundary Kernel sor_red()
 {
-	poisson_sor_red_black(SOR_RED,HEAT_INIT,HEAT_SOLUTION,AC_SOR_omega)
+	poisson_sor_red_black_extended(SOR_RED,HEAT_INIT,HEAT_SOLUTION,AC_SOR_omega)
 }
 fixed_boundary Kernel sor_black()
 {
-	poisson_sor_red_black(SOR_BLACK,HEAT_INIT,HEAT_SOLUTION,AC_SOR_omega)
+	poisson_sor_red_black_extended(SOR_BLACK,HEAT_INIT,HEAT_SOLUTION,AC_SOR_omega)
 }
 
 ComputeSteps

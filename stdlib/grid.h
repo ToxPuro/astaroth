@@ -441,11 +441,21 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  FILE* fp = fopen("x.dat","w");
 	  fprintf(fp,"x,dx,dx2\n");
 	  **/
+	  AcReal* inv_r = (AcReal*)malloc(sizeof(AcReal)*config[AC_nlocal].x);
+	  AcReal* r = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
           for(int x = 0; x < config[AC_mlocal].x; ++x)
 	  {
 		x_arr.push_back(config[AC_first_gridpoint].x + config[AC_len].x*(g[x]-g1lo)/(g1up-g1lo));
 		x_prim.push_back(config[AC_len].x*(gder1[x]*a)/(g1up-g1lo));
 		x_prim2.push_back(config[AC_len].x*(gder2[x]*a*a)/(g1up-g1lo));
+		r[x] = x_arr[x];
+		if(x <= config[AC_nlocal].x)
+		{
+			if(r[x] == 0.0)
+				inv_r[x-NGHOST] = 0.0;
+			else
+				inv_r[x-NGHOST] = 1.0/r[x];
+		}
 		/**
 		if(x >= NGHOST && x < config[AC_mlocal].x-NGHOST)
 		{
@@ -466,6 +476,8 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  config[AC_inv_mapping_func_derivative_x] = inv_mapping_der;
 	  config[AC_mapping_func_derivative_x] = mapping_der;
 	  config[AC_mapping_func_tilde_x] = mapping_tilde;
+	  config[AC_r] = r;
+	  config[AC_inv_r] = inv_r;
 	  return AC_SUCCESS;
 }
 

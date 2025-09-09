@@ -1,28 +1,177 @@
+#define AC_GENERAL_DERIVS_H
+
 gmem real AC_inv_r[AC_nlocal.x]
 gmem real AC_inv_cyl_r[AC_nlocal.x]
 gmem real AC_inv_sin_theta[AC_mlocal.y]
 gmem real AC_cot_theta[AC_mlocal.y]
 
+gmem real AC_inv_r_extended[AC_extended_nlocal.x]
+gmem real AC_inv_cyl_r_extended[AC_extended_nlocal.x]
+gmem real AC_inv_sin_theta_extended[AC_extended_mlocal.y]
+gmem real AC_cot_theta_extended[AC_extended_mlocal.y]
+
 gmem real AC_inv_mapping_func_derivative_x[AC_mlocal.x]
 gmem real AC_inv_mapping_func_derivative_y[AC_mlocal.y]
 gmem real AC_inv_mapping_func_derivative_z[AC_mlocal.z]
 
+gmem real AC_inv_mapping_func_derivative_x_extended[AC_extended_mlocal.x]
+gmem real AC_inv_mapping_func_derivative_y_extended[AC_extended_mlocal.y]
+gmem real AC_inv_mapping_func_derivative_z_extended[AC_extended_mlocal.z]
+
 gmem real AC_mapping_func_tilde_x[AC_mlocal.x]
 gmem real AC_mapping_func_tilde_y[AC_mlocal.y]
 gmem real AC_mapping_func_tilde_z[AC_mlocal.z]
+
+gmem real AC_mapping_func_tilde_x_extended[AC_extended_mlocal.x]
+gmem real AC_mapping_func_tilde_y_extended[AC_extended_mlocal.y]
+gmem real AC_mapping_func_tilde_z_extended[AC_extended_mlocal.z]
 
 #define AC_INV_R         (AC_inv_r[vertexIdx.x-NGHOST])
 #define AC_INV_CYL_R     (AC_inv_cyl_r[vertexIdx.x-NGHOST])
 #define AC_INV_SIN_THETA (AC_inv_sin_theta[vertexIdx.y])
 #define AC_COT           (AC_cot_theta[vertexIdx.y])
 
+
+AC_INV_R_extended_func()
+{
+	if(AC_left_extended_halo.x + AC_right_extended_halo.x == 0)
+	{
+		return AC_inv_r[vertexIdx.x-NGHOST]
+	}
+	else
+	{
+		return AC_inv_r_extended[vertexIdx.x-NGHOST]
+	}
+}
+
+AC_INV_CYL_R_extended_func()
+{
+	if(AC_left_extended_halo.x + AC_right_extended_halo.x == 0)
+	{
+		return AC_inv_cyl_r[vertexIdx.x-NGHOST]
+	}
+	else
+	{
+		return AC_inv_cyl_r_extended[vertexIdx.x-NGHOST]
+	}
+}
+
+AC_INV_SIN_THETA_extended_func()
+{
+	if(AC_left_extended_halo.y + AC_right_extended_halo.y == 0)
+	{
+		return AC_inv_sin_theta[vertexIdx.y-NGHOST]
+	}
+	else
+	{
+		return AC_inv_sin_theta_extended[vertexIdx.y-NGHOST]
+	}
+}
+
+AC_COT_extended_func()
+{
+	if(AC_left_extended_halo.y + AC_right_extended_halo.y == 0)
+	{
+		return AC_cot_theta[vertexIdx.y-NGHOST]
+	}
+	else
+	{
+		return AC_cot_theta_extended[vertexIdx.y-NGHOST]
+	}
+}
+
+#define AC_INV_R_extended AC_INV_R_extended_func()
+#define AC_INV_CYL_R_extended AC_INV_CYL_R_extended_func()
+#define AC_INV_SIN_THETA_extended AC_INV_SIN_THETA_extended_func()
+#define AC_COT_extended AC_COT_extended_func()
+
 #define AC_INV_MAPPING_FUNC_DER_X (AC_inv_mapping_func_derivative_x[vertexIdx.x])
 #define AC_INV_MAPPING_FUNC_DER_Y (AC_inv_mapping_func_derivative_y[vertexIdx.y])
 #define AC_INV_MAPPING_FUNC_DER_Z (AC_inv_mapping_func_derivative_z[vertexIdx.z])
 
+AC_INV_MAPPING_FUNC_DER_X_extended_func()
+{
+	if(AC_left_extended_halo.x + AC_right_extended_halo.x == 0)
+	{
+		return AC_inv_mapping_func_derivative_x[vertexIdx.x]
+	}
+	else
+	{
+		return AC_inv_mapping_func_derivative_x_extended[vertexIdx.x]
+	}
+}
+
+AC_INV_MAPPING_FUNC_DER_Y_extended_func()
+{
+	if(AC_left_extended_halo.y + AC_right_extended_halo.y == 0)
+	{
+		return AC_inv_mapping_func_derivative_y[vertexIdx.y]
+	}
+	else
+	{
+		return AC_inv_mapping_func_derivative_y_extended[vertexIdx.y]
+	}
+}
+
+AC_INV_MAPPING_FUNC_DER_Z_extended_func()
+{
+	if(AC_left_extended_halo.z + AC_right_extended_halo.z == 0)
+	{
+		return AC_inv_mapping_func_derivative_z[vertexIdx.z]
+	}
+	else
+	{
+		return AC_inv_mapping_func_derivative_z_extended[vertexIdx.z]
+	}
+}
+
+#define AC_INV_MAPPING_FUNC_DER_X_extended AC_INV_MAPPING_FUNC_DER_X_extended_func()
+#define AC_INV_MAPPING_FUNC_DER_Y_extended AC_INV_MAPPING_FUNC_DER_Y_extended_func()
+#define AC_INV_MAPPING_FUNC_DER_Z_extended AC_INV_MAPPING_FUNC_DER_Z_extended_func()
+
 #define AC_MAPPING_FUNC_TILDE_X  (AC_mapping_func_tilde_x[vertexIdx.x])
 #define AC_MAPPING_FUNC_TILDE_Y  (AC_mapping_func_tilde_y[vertexIdx.y])
 #define AC_MAPPING_FUNC_TILDE_Z  (AC_mapping_func_tilde_z[vertexIdx.z])
+
+AC_MAPPING_FUNC_TILDE_X_extended_func()
+{
+	if(AC_left_extended_halo.x + AC_right_extended_halo.x == 0)
+	{
+		return AC_mapping_func_tilde_x[vertexIdx.x]
+	}
+	else
+	{
+		return AC_mapping_func_tilde_x_extended[vertexIdx.x]
+	}
+}
+
+AC_MAPPING_FUNC_TILDE_Y_extended_func()
+{
+	if(AC_left_extended_halo.y + AC_right_extended_halo.y == 0)
+	{
+		return AC_mapping_func_tilde_y[vertexIdx.y]
+	}
+	else
+	{
+		return AC_mapping_func_tilde_y_extended[vertexIdx.y]
+	}
+}
+
+AC_MAPPING_FUNC_TILDE_Z_extended_func()
+{
+	if(AC_left_extended_halo.z + AC_right_extended_halo.z == 0)
+	{
+		return AC_mapping_func_tilde_z[vertexIdx.z]
+	}
+	else
+	{
+		return AC_mapping_func_tilde_z_extended[vertexIdx.z]
+	}
+}
+
+#define AC_MAPPING_FUNC_TILDE_X_extended  AC_MAPPING_FUNC_TILDE_X_extended_func()
+#define AC_MAPPING_FUNC_TILDE_Y_extended  AC_MAPPING_FUNC_TILDE_Y_extended_func()
+#define AC_MAPPING_FUNC_TILDE_Z_extended  AC_MAPPING_FUNC_TILDE_Z_extended_func()
 
 
 
@@ -1388,8 +1537,8 @@ Stencil derz_upwind_front
 
 #endif
 
-#define AC_GEN_DERX(NAME,STENCIL_NAME) \
-	elemental NAME(Field f) \
+#define AC_GEN_DERX_WITH_EXTENSION(NAME,STENCIL_NAME,EXTENSION_NAME) \
+	elemental NAME##EXTENSION_NAME(Field f) \
 	{ \
         	if(AC_dimension_inactive.x) \
 		{ \
@@ -1401,7 +1550,7 @@ Stencil derz_upwind_front
 			real res = 0.0 \
 			if(AC_nonequidistant_grid.x) \
 			{ \
-				res = STENCIL_NAME(f)*AC_INV_MAPPING_FUNC_DER_X \
+				res = STENCIL_NAME(f)*AC_INV_MAPPING_FUNC_DER_X##EXTENSION_NAME \
 			} \
 			else \
 			{ \
@@ -1410,6 +1559,10 @@ Stencil derz_upwind_front
 			return res \
 		} \
 	} 
+
+#define AC_GEN_DERX(NAME,STENCIL_NAME) \
+	AC_GEN_DERX_WITH_EXTENSION(NAME,STENCIL_NAME,) \
+	AC_GEN_DERX_WITH_EXTENSION(NAME,STENCIL_NAME,_extended) \
 
 AC_GEN_DERX(derx,derx_stencil)
 AC_GEN_DERX(derx_2nd,derx_2nd_stencil)
@@ -1436,8 +1589,8 @@ derx(Profile<X> prof)
 }
 
 
-#define AC_GEN_DERY(NAME,STENCIL_NAME) \
-	elemental NAME(Field f) \
+#define AC_GEN_DERY_WITH_EXTENSION(NAME,STENCIL_NAME,EXTENSION_NAME) \
+	elemental NAME##EXTENSION_NAME(Field f) \
 	{ \
         	if(AC_dimension_inactive.y) \
 		{ \
@@ -1448,16 +1601,16 @@ derx(Profile<X> prof)
 			coordinate_factor = 1.0 \
 			if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
 			{ \
-				coordinate_factor = AC_INV_R \
+				coordinate_factor = AC_INV_R##EXTENSION_NAME \
 			} \
 			if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES) \
 			{ \
-				coordinate_factor = AC_INV_CYL_R \
+				coordinate_factor = AC_INV_CYL_R##EXTENSION_NAME \
 			} \
 			grid_factor = 1.0 \
 			if(AC_nonequidistant_grid.y) \
 			{ \
-				grid_factor = AC_INV_MAPPING_FUNC_DER_Y \
+				grid_factor = AC_INV_MAPPING_FUNC_DER_Y##EXTENSION_NAME \
 			} \
 			else \
 			{ \
@@ -1466,6 +1619,10 @@ derx(Profile<X> prof)
 			return STENCIL_NAME(f)*coordinate_factor*grid_factor \
 		} \
 	}
+
+#define AC_GEN_DERY(NAME,STENCIL_NAME) \
+	AC_GEN_DERY_WITH_EXTENSION(NAME,STENCIL_NAME,) \
+	AC_GEN_DERY_WITH_EXTENSION(NAME,STENCIL_NAME,_extended)
 
 AC_GEN_DERY(dery,dery_stencil)
 AC_GEN_DERY(dery_2nd,dery_2nd_stencil)
@@ -1504,8 +1661,8 @@ dery(Profile<Y> prof)
 
 
 
-#define AC_GEN_DERZ(NAME,STENCIL) \
-	elemental NAME(Field f) \
+#define AC_GEN_DERZ_WITH_EXTENSION(NAME,STENCIL,EXTENSION_NAME) \
+	elemental NAME##EXTENSION_NAME(Field f) \
 	{ \
 		if(AC_dimension_inactive.z) \
 		{ \
@@ -1516,12 +1673,12 @@ dery(Profile<Y> prof)
 			coordinate_factor = 1.0 \
 			if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
 			{ \
-				coordinate_factor = AC_INV_R*AC_INV_SIN_THETA \
+				coordinate_factor = AC_INV_R##EXTENSION_NAME*AC_INV_SIN_THETA##EXTENSION_NAME \
 			} \
 			grid_factor = 1.0 \
 			if(AC_nonequidistant_grid.z) \
 			{ \
-				grid_factor = AC_INV_MAPPING_FUNC_DER_Z \
+				grid_factor = AC_INV_MAPPING_FUNC_DER_Z##EXTENSION_NAME \
 			} \
 			else \
 			{ \
@@ -1530,6 +1687,10 @@ dery(Profile<Y> prof)
 			return STENCIL(f)*coordinate_factor*grid_factor \
 		} \
 	}
+
+#define AC_GEN_DERZ(NAME,STENCIL_NAME) \
+	AC_GEN_DERZ_WITH_EXTENSION(NAME,STENCIL_NAME,) \
+	AC_GEN_DERZ_WITH_EXTENSION(NAME,STENCIL_NAME,_extended)
 
 AC_GEN_DERZ(derz,derz_stencil)
 AC_GEN_DERZ(derz_2nd,derz_2nd_stencil)
@@ -1568,8 +1729,8 @@ derz(Profile<Z> prof)
 
 
 
-#define AC_GEN_DERXX(NAME,STENCIL,DERX) \
-elemental NAME(Field f) \
+#define AC_GEN_DERXX_WITH_EXTENSION(NAME,STENCIL,DERX,EXTENSION_NAME) \
+elemental NAME##EXTENSION_NAME(Field f) \
 { \
 	res = 0.0 \
 	suppress_unused_warning(f) \
@@ -1577,7 +1738,7 @@ elemental NAME(Field f) \
 	{ \
 		if(AC_nonequidistant_grid.x) \
 		{ \
-			res = STENCIL(f)*(AC_INV_MAPPING_FUNC_DER_X*AC_INV_MAPPING_FUNC_DER_X) + DERX(f)*AC_MAPPING_FUNC_TILDE_X \
+			res = STENCIL(f)*(AC_INV_MAPPING_FUNC_DER_X##EXTENSION_NAME*AC_INV_MAPPING_FUNC_DER_X##EXTENSION_NAME) + DERX##EXTENSION_NAME(f)*AC_MAPPING_FUNC_TILDE_X##EXTENSION_NAME \
 		} \
 		else \
 		{ \
@@ -1586,10 +1747,30 @@ elemental NAME(Field f) \
 	} \
 	return res \
 }
+
+#define AC_GEN_DERXX(NAME,STENCIL,DERX) \
+	AC_GEN_DERXX_WITH_EXTENSION(NAME,STENCIL,DERX,) \
+	AC_GEN_DERXX_WITH_EXTENSION(NAME,STENCIL,DERX,_extended) \
+
 AC_GEN_DERXX(derxx,derxx_stencil,derx)
 AC_GEN_DERXX(derxx_2nd,derxx_2nd_stencil,derx_2nd)
 AC_GEN_DERXX(derxx_neighbours,derxx_neighbours_stencil,derx)
 AC_GEN_DERXX(derxx_2nd_neighbours,derxx_2nd_neighbours_stencil,derx_2nd)
+
+derxx_central_coeff_extended()
+{
+	real res = DER2_0
+	if(!AC_nonequidistant_grid.x)
+	{
+		res *= AC_inv_ds_2.x
+	}
+	else
+	{
+		//Tilde factor conveniently vanishes
+		 res *= (AC_INV_MAPPING_FUNC_DER_X_extended*AC_INV_MAPPING_FUNC_DER_X_extended) 
+	}
+	return res
+}
 
 derxx_central_coeff()
 {
@@ -1642,8 +1823,8 @@ derxx(Profile<X> prof)
 
 
 
-#define AC_GEN_DERYY(NAME,STENCIL,DERY) \
-elemental NAME(Field f) \
+#define AC_GEN_DERYY_WITH_EXTENSION(NAME,STENCIL,DERY,EXTENSION_NAME) \
+elemental NAME##EXTENSION_NAME(Field f) \
 { \
 	if(AC_dimension_inactive.y) \
 	{ \
@@ -1654,16 +1835,16 @@ elemental NAME(Field f) \
 		coordinate_factor = 1.0 \
 		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
 		{ \
-			coordinate_factor = (AC_INV_R*AC_INV_R) \
+			coordinate_factor = (AC_INV_R##EXTENSION_NAME*AC_INV_R##EXTENSION_NAME) \
 		} \
 		if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES) \
 		{ \
-			coordinate_factor = (AC_INV_CYL_R*AC_INV_CYL_R) \
+			coordinate_factor = (AC_INV_CYL_R##EXTENSION_NAME*AC_INV_CYL_R##EXTENSION_NAME) \
 		} \
 		grid_factor = 1.0 \
 		if(AC_nonequidistant_grid.y) \
 		{ \
-			grid_factor = AC_INV_MAPPING_FUNC_DER_Y*AC_INV_MAPPING_FUNC_DER_Y \
+			grid_factor = AC_INV_MAPPING_FUNC_DER_Y##EXTENSION_NAME*AC_INV_MAPPING_FUNC_DER_Y##EXTENSION_NAME \
 		} \
 		else \
 		{ \
@@ -1672,11 +1853,16 @@ elemental NAME(Field f) \
 		res = STENCIL(f)*coordinate_factor*grid_factor \
 		if(AC_nonequidistant_grid.y) \
 		{ \
-			 res += AC_MAPPING_FUNC_TILDE_Y*DERY(f) \
+			 res += AC_MAPPING_FUNC_TILDE_Y##EXTENSION_NAME*DERY##EXTENSION_NAME(f) \
 		} \
 		return res \
 	} \
 }
+
+#define AC_GEN_DERYY(NAME,STENCIL,DERY) \
+	AC_GEN_DERYY_WITH_EXTENSION(NAME,STENCIL,DERY,) \
+	AC_GEN_DERYY_WITH_EXTENSION(NAME,STENCIL,DERY,_extended) 
+
 AC_GEN_DERYY(deryy,deryy_stencil,dery)
 AC_GEN_DERYY(deryy_2nd,deryy_2nd_stencil,dery_2nd)
 AC_GEN_DERYY(deryy_2nd_neighbours,deryy_2nd_neighbours_stencil,dery_2nd)
@@ -1731,6 +1917,31 @@ deryy_central_coeff()
 	//Tilde factor vanishes!
 	return DER2_0*res
 }
+
+deryy_central_coeff_extended()
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = (AC_INV_R_extended*AC_INV_R_extended)
+	}
+	if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+	{
+		coordinate_factor = (AC_INV_CYL_R_extended*AC_INV_CYL_R_extended)
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.y)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Y_extended*AC_INV_MAPPING_FUNC_DER_Y_extended
+	}
+	else
+	{
+		grid_factor = AC_inv_ds_2.y
+	}
+	res = coordinate_factor*grid_factor
+	//Tilde factor vanishes!
+	return DER2_0*res
+}
 deryy(Profile<Y> prof)
 {
 	if(AC_dimension_inactive.y)
@@ -1769,8 +1980,8 @@ deryy(Profile<Y> prof)
 
 
 
-#define AC_GEN_DER_ZZ(NAME,STENCIL,DERZ) \
-elemental NAME(Field f) \
+#define AC_GEN_DER_ZZ_WITH_EXTENSION(NAME,STENCIL,DERZ,EXTENSION_NAME) \
+elemental NAME##EXTENSION_NAME(Field f) \
 { \
 	if(AC_dimension_inactive.z) \
 	{ \
@@ -1781,13 +1992,13 @@ elemental NAME(Field f) \
 		coordinate_factor = 1.0 \
 		if(AC_coordinate_system == AC_SPHERICAL_COORDINATES) \
 		{ \
-			coordinate_factor = AC_INV_R*AC_INV_SIN_THETA; \
+			coordinate_factor = AC_INV_R##EXTENSION_NAME*AC_INV_SIN_THETA##EXTENSION_NAME; \
 			coordinate_factor *= coordinate_factor \
 		} \
 		grid_factor = 1.0 \
 		if(AC_nonequidistant_grid.z) \
 		{ \
-			grid_factor = AC_INV_MAPPING_FUNC_DER_Z*AC_INV_MAPPING_FUNC_DER_Z \
+			grid_factor = AC_INV_MAPPING_FUNC_DER_Z##EXTENSION_NAME*AC_INV_MAPPING_FUNC_DER_Z##EXTENSION_NAME \
 		} \
 		else \
 		{ \
@@ -1796,11 +2007,15 @@ elemental NAME(Field f) \
 		res = STENCIL(f)*coordinate_factor*grid_factor \
 		if(AC_nonequidistant_grid.z) \
 		{ \
-			 res += AC_MAPPING_FUNC_TILDE_Z*DERZ(f) \
+			 res += AC_MAPPING_FUNC_TILDE_Z##EXTENSION_NAME*DERZ##EXTENSION_NAME(f) \
 		} \
 		return res \
 	}\
 } 
+
+#define AC_GEN_DER_ZZ(NAME,STENCIL,DERZ) \
+	AC_GEN_DER_ZZ_WITH_EXTENSION(NAME,STENCIL,DERZ,) \
+	AC_GEN_DER_ZZ_WITH_EXTENSION(NAME,STENCIL,DERZ,_extended) 
 
 AC_GEN_DER_ZZ(derzz_2nd_neighbours,derzz_2nd_neighbours_stencil,derz_2nd)
 AC_GEN_DER_ZZ(derzz_neighbours,derzz_neighbours_stencil,derz)
@@ -1841,6 +2056,28 @@ derzz_central_coeff()
 	if(AC_nonequidistant_grid.z)
 	{
 		grid_factor = AC_INV_MAPPING_FUNC_DER_Z*AC_INV_MAPPING_FUNC_DER_Z
+	}
+	else
+	{
+		grid_factor = AC_inv_ds_2.z
+	}
+	res = coordinate_factor*grid_factor
+	//Tilde factor conveniently vanishes
+	return DER2_0*res
+}
+
+derzz_central_coeff_extended()
+{
+	coordinate_factor = 1.0
+	if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+	{
+		coordinate_factor = AC_INV_R_extended*AC_INV_SIN_THETA_extended;
+		coordinate_factor *= coordinate_factor
+	}
+	grid_factor = 1.0
+	if(AC_nonequidistant_grid.z)
+	{
+		grid_factor = AC_INV_MAPPING_FUNC_DER_Z_extended*AC_INV_MAPPING_FUNC_DER_Z_extended
 	}
 	else
 	{
