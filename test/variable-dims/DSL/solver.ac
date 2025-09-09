@@ -1,8 +1,5 @@
-int3 AC_left_extended_halo = (int3){5,5,5}
-int3 AC_right_extended_halo = (int3){5,5,5}
-int3 AC_extended_dims = AC_mlocal + AC_left_extended_halo + AC_right_extended_halo
 
-dims(AC_extended_dims) Field F_EXT
+dims(AC_extended_mlocal) Field F_EXT
 global output real F_EXT_SUM
 Field F
 #include "$AC_HOME/acc-runtime/stdlib/general_derivs.h"

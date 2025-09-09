@@ -38,10 +38,34 @@ copy_to_extended_grid(Field dst, Field src, int3 left_extended_halo, real paddin
 }
 
 /**
+ * Uses the default AC_left_extended_halo param
+ */
+copy_to_extended_grid(Field dst, Field src, real padding_value)
+{
+	copy_to_extended_grid(dst,src,AC_left_extended_halo,padding_value)
+}
+
+/**
+ * Uses the default AC_left_extended_halo param and 0 as a padding value
+ */
+copy_to_extended_grid(Field dst, Field src)
+{
+	copy_to_extended_grid(dst,src,AC_left_extended_halo,0.0)
+}
+
+/**
  * Copies a Field from the extended grid (that has extended_halo around the original grid) to the normal grid.
  * Meant to be launched on the normal grid.
  */
 copy_extended_to_grid(Field dst, Field src, int3 left_extended_halo)
 {
 	write(dst,src[vertexIdx.x+left_extended_halo.x][vertexIdx.y+left_extended_halo.y][vertexIdx.z+left_extended_halo.z])
+}
+
+/**
+ * Uses the default AC_left_extended_halo param
+ */
+copy_extended_to_grid(Field dst, Field src)
+{
+	copy_extended_to_grid(dst,src,AC_left_extended_halo)
 }

@@ -110,8 +110,31 @@ main(int argc, char* argv[])
 
 
     acGridInit(info);
+    const auto init = acGetOptimizedDSLTaskGraph(initcond);
+    const auto add_graph = acGetOptimizedDSLTaskGraph(add_field);
+    const auto copy_graph = acGetOptimizedDSLTaskGraph(copy_normal_to_extended);
+    const auto copy_to_normal_graph = acGetOptimizedDSLTaskGraph(copy_extended_to_normal);
+    const auto derivx_graph = acGetOptimizedDSLTaskGraph(derivx);
+    const auto derivy_graph = acGetOptimizedDSLTaskGraph(derivy);
+    const auto derivz_graph = acGetOptimizedDSLTaskGraph(derivz);
+    const auto reduce_graph = acGetOptimizedDSLTaskGraph(reduce_extended);
+    const int3 launch_dims_int3 = 
+		    (int3)
+		    {
+		    	info[AC_nlocal].x/2,
+		    	info[AC_nlocal].y/2,
+		    	info[AC_nlocal].z/2
+		    };
+    const Volume launch_dims = to_volume(
+		    launch_dims_int3
+		    );
+
+    const Volume launch_start = to_volume(info[AC_nmin]);
+    const Volume launch_end = launch_dims + launch_start;
+
+    const auto add_sub_graph = acGetOptimizedDSLTaskGraph(add_field_normal , launch_start, launch_end);
     const auto extended_dims = acGetMeshDims(acGridGetLocalMeshInfo(),F_EXT);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
+    acGridExecuteTaskGraph(init,1);
 
     auto dims = acGetMeshDims(acGridGetLocalMeshInfo());
     auto IDX = [](const int x, const int y, const int z, const Field f)
@@ -120,7 +143,7 @@ main(int argc, char* argv[])
     };
 
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(add_field),1);
+    acGridExecuteTaskGraph(add_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -153,7 +176,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(copy_normal_to_extended),1);
+    acGridExecuteTaskGraph(copy_graph,1);
     acGridSynchronizeStream(STREAM_ALL);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
@@ -179,21 +202,7 @@ main(int argc, char* argv[])
 	}
       }
     }
-    const int3 launch_dims_int3 = 
-		    (int3)
-		    {
-		    	info[AC_nlocal].x/2,
-		    	info[AC_nlocal].y/2,
-		    	info[AC_nlocal].z/2
-		    };
-    const Volume launch_dims = to_volume(
-		    launch_dims_int3
-		    );
-
-    const Volume launch_start = to_volume(info[AC_nmin]);
-    const Volume launch_end = launch_dims + launch_start;
-
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(add_field_normal , launch_start, launch_end),1);
+    acGridExecuteTaskGraph(add_sub_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -216,7 +225,7 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(copy_extended_to_normal),1);
+    acGridExecuteTaskGraph(copy_to_normal_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -232,8 +241,8 @@ main(int argc, char* argv[])
       }
     }
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivx),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivx_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -252,8 +261,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivy),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivy_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -272,8 +281,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivz),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivz_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -295,8 +304,8 @@ main(int argc, char* argv[])
 
     dims = extended_dims;
 
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivx),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivx_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -321,8 +330,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivy),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivy_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -347,8 +356,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(derivz),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(derivz_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     for(size_t i = dims.n0.x; i < dims.n1.x; ++i)
@@ -373,8 +382,8 @@ main(int argc, char* argv[])
 	}
       }
     }
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(initcond),1);
-    acGridExecuteTaskGraph(acGetOptimizedDSLTaskGraph(reduce_extended),1);
+    acGridExecuteTaskGraph(init,1);
+    acGridExecuteTaskGraph(reduce_graph,1);
     acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     acGridSynchronizeStream(STREAM_ALL);
     const AcReal sum = acDeviceGetOutput(acGridGetDevice(),F_EXT_SUM);
