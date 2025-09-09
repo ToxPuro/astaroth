@@ -362,17 +362,17 @@ run_const bool AC_bidiagonal_derij = true;
  * Specifies how many extra grid points the extended grid has to the left of the normal grid (left meaning they come before in indexing).
  * By default no extended grid so zero points
  */
-run_const int3 AC_left_extended_halo = (int3){0,0,0}
+dconst int3 AC_left_extended_halo = (int3){0,0,0}
 /**
  * Specifies how many extra grid points the extended grid has to the right of the normal grid (left meaning they come after in indexing).
  * By default no extended grid so zero points
  */
-run_const int3 AC_right_extended_halo = (int3){0,0,0}
+dconst int3 AC_right_extended_halo = (int3){0,0,0}
 
 /**
  * Size of Fields on the extended grid with halos included
  */
-run_const int3 AC_extended_mlocal = AC_mlocal + AC_left_extended_halo + AC_right_extended_halo
+dconst int3 AC_extended_mlocal = AC_mlocal + AC_left_extended_halo + AC_right_extended_halo
 
 /**
  * First grid point on the extended grid
@@ -391,10 +391,5 @@ run_const int3 AC_ngrid_extended  = AC_ngrid + AC_left_extended_halo  + AC_right
 /**
  * Size of Fields on the extended grid without halos
  */
-run_const int3 AC_extended_nlocal = AC_nlocal + AC_left_extended_halo + AC_right_extended_halo
+dconst int3 AC_extended_nlocal = AC_nlocal + AC_left_extended_halo + AC_right_extended_halo
 
-/**
-run_const AC_xy_plate_bufsize
-run_const AC_xz_plate_bufsize
-run_const AC_yz_plate_bufsize
-**/
