@@ -349,7 +349,13 @@ ac_compute_z(AcMeshInfo& config, const AcRealArrayParam param, const std::functi
 AcResult
 ac_compute_inv_sin_theta(AcMeshInfo* dst)
 {
-	return ac_compute_y(*dst,AC_inv_sin_theta,ac_map_inv_sin_theta);
+	ac_compute_y(*dst,AC_inv_sin_theta,ac_map_inv_sin_theta);
+	auto& config = *dst;
+	if(config[AC_left_extended_halo].y + config[AC_right_extended_halo].y == 0)
+	{
+		config.real_arrays[AC_inv_sin_theta_extended] = config[AC_inv_sin_theta];
+	}
+	return AC_SUCCESS;
 }
 
 AcResult
@@ -391,7 +397,13 @@ ac_compute_cos_phi(AcMeshInfo* dst)
 AcResult
 ac_compute_cot_theta(AcMeshInfo* dst)
 {
-	return ac_compute_y(*dst,AC_cot_theta,ac_map_cot_theta);
+	ac_compute_y(*dst,AC_cot_theta,ac_map_cot_theta);
+	auto& config = *dst;
+	if(config[AC_left_extended_halo].y + config[AC_right_extended_halo].y == 0)
+	{
+		config.real_arrays[AC_cot_theta_extended] = config[AC_cot_theta];
+	}
+	return AC_SUCCESS;
 }
 
 AcReal3
@@ -521,6 +533,23 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 	  AcReal* inv_mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
 	  AcReal* mapping_der_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
 	  AcReal* mapping_tilde_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_mlocal].x);
+          for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
+	  {
+		r_ext[x] = extended_coordinate.value[x];
+		if(NGHOST <= x && x < config[AC_extended_nlocal].x + NGHOST)
+		{
+			if(r_ext[x] == 0.0)
+				inv_r_ext[x-NGHOST] = 0.0;
+			else
+				inv_r_ext[x-NGHOST] = 1.0/r_ext[x];
+		}
+	  }
+          for(int x = 0; x < config[AC_extended_mlocal].x; ++x)
+	  {
+		  inv_mapping_der_ext[x] = 1.0/extended_coordinate.prim[x];
+		  mapping_der_ext[x] =     extended_coordinate.prim[x];
+		  mapping_tilde_ext[x] =   -extended_coordinate.prim2[x]/(extended_coordinate.prim[x]*extended_coordinate.prim[x]);
+	  }
 
 	  config[AC_inv_mapping_func_derivative_x_extended] = inv_mapping_der_ext;
 	  config[AC_mapping_func_derivative_x_extended] = mapping_der_ext;
