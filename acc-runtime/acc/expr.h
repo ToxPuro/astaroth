@@ -21,12 +21,12 @@ static void replace_const_ints(ASTNode* node, const string_vec values, const str
 	node->type = NODE_UNKNOWN;
 	node->token = NUMBER;
 }
-static void eval_ternaries(ASTNode* node, const string_vec values, const string_vec names);
+static void eval_ternaries(ASTNode* node, const string_vec values, const string_vec names, const bool failure_fatal, int* err);
 static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_code)
 {
 	replace_const_ints(node,const_int_values,const_ints);
 	replace_const_ints(node,run_const_int_values,run_const_ints);
-	eval_ternaries(node,const_int_values,const_ints);
+	eval_ternaries(node,const_int_values,const_ints,failure_fatal,error_code);
 	const char* copy = combine_all_new(node);
 	if(!strcmp(copy,"INT_MAX"))
 		return INT_MAX;
@@ -49,12 +49,12 @@ static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_c
         return res;
 }
 
-static void eval_ternaries(ASTNode* node, const string_vec values, const string_vec names)
+static void eval_ternaries(ASTNode* node, const string_vec values, const string_vec names, const bool failure_fatal, int* err)
 {
 	if(node->lhs)
-		eval_ternaries(node->lhs,values,names);
+		eval_ternaries(node->lhs,values,names,failure_fatal,err);
 	if(node->rhs)
-		eval_ternaries(node->rhs,values,names);
+		eval_ternaries(node->rhs,values,names,failure_fatal,err);
 	if(node->type != NODE_TERNARY_EXPRESSION) return;
 	//TP: for now consider only that expr is a < b
 	//TP: where a and b are const int expressions
@@ -68,8 +68,10 @@ static void eval_ternaries(ASTNode* node, const string_vec values, const string_
 	const bool eq   = !strcmp(op,"==");
 	const bool neq   = !strcmp(op,"!=");
 	if(!less && !more && !eq && !neq) return;
-	const int lhs = eval_int(cond->lhs,true,NULL);
-	const int rhs = eval_int(cond->rhs->rhs,true,NULL);
+	const int lhs = eval_int(cond->lhs,failure_fatal,err);
+	if(!failure_fatal && *err) return;
+	const int rhs = eval_int(cond->rhs->rhs,failure_fatal,err);
+	if(!failure_fatal && *err) return;
 	const bool pick_left = (less && lhs < rhs) || (more && lhs > rhs) || (eq && lhs == rhs) || (neq && lhs != rhs);
 	ASTNode* correct_node = pick_left ? node->rhs->lhs : node->rhs->rhs;
 	if(!correct_node) return;

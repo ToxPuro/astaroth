@@ -1071,7 +1071,21 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dims '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | halo '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); }
               | field_order '(' expression ')' { $$ = astnode_create(NODE_TQUAL, $1, $3); 
-						const int res = eval_int($3,true,NULL);
+						int err = 0;
+						int res = eval_int($3,false,&err);
+						if(err)
+					        {	
+							
+							fprintf(stderr,"\n");
+							fprintf(stderr,"AC WARNING was not able to parse %s into an integer in field_order so replacing it with -1!\n",
+								combine_all_new_with_whitespace($3));
+							fprintf(stderr,"AC WARNING was not able to parse %s into an integer in field_order so replacing it with -1!\n",
+								combine_all_new_with_whitespace($3));
+							fprintf(stderr,"AC WARNING was not able to parse %s into an integer in field_order so replacing it with -1!\n",
+								combine_all_new_with_whitespace($3));
+							fprintf(stderr,"\n");
+							res = -1;
+						}
 						set_buffers_empty($3);
 						astnode_set_buffer(itoa(res),$3);
 						$3->lhs = NULL;
