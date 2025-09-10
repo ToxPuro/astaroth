@@ -83,7 +83,7 @@ else()
   # endif()
 endif()
 target_include_directories(astaroth_core_obj PUBLIC ${AC_BASE_PATH}/include)
-ac_link_mpi()
+ac_link_mpi(astaroth_core_obj)
 
 add_library(astaroth_core empty.cc)
 target_link_libraries(astaroth_core PUBLIC astaroth_core_obj)
