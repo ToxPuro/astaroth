@@ -2461,7 +2461,15 @@ read_user_enums_recursive(const ASTNode* node,string_vec* user_enums, string_vec
 		node_vec nodes = get_nodes_in_list(node->rhs);
 		for(size_t i = 0; i < nodes.size; ++i)
 		{
-			const char* name = get_node_by_token(IDENTIFIER,nodes.data[i])->buffer;
+			const ASTNode* id = get_node_by_token(IDENTIFIER,nodes.data[i]);
+			if(id == NULL)
+			{
+				fatal("Weird option: %s in enum: %s!\n"
+						,combine_all_new(nodes.data[i])
+						,node->lhs->buffer
+						);
+			}
+			const char* name = id->buffer;
 			const ASTNode* assignment = get_node(NODE_ASSIGNMENT,nodes.data[i]);
 			push(&user_enum_options[enum_index],name);
 			const char* value = assignment ? intern(combine_all_new(assignment->rhs)) : NULL;
