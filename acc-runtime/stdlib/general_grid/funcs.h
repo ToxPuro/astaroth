@@ -1,6 +1,11 @@
+#ifndef AC_GENERAL_GRID_FUNCS_H
+
+#define AC_GENERAL_GRID_FUNCS_H
+
 #ifdef AC_HOME
 #include "$AC_HOME/acc-runtime/stdlib/general_grid/vars.h"
 #endif
+
 
 grid_position() {
 	if(AC_coordinate_system == AC_CARTESIAN_COORDINATES)
@@ -198,3 +203,4 @@ get_integration_weight_extended()
 	}
 	return w
 }
+#endif
