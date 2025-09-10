@@ -175,6 +175,16 @@ if (MPI_ENABLED)
 else()
     add_definitions(-DAC_MPI_ENABLED=0)
 endif ()
+
+function(ac_link_mpi)
+  if(CMAKE_CXX_COMPILER MATCHES "mpic\\+\\+$")
+  elseif (MPI_ENABLED)
+      set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
+      find_package(MPI REQUIRED COMPONENTS C)
+      target_link_libraries(astaroth_helpers PRIVATE MPI::MPI_C)
+  endif()
+endfunction()
+
 if (FFT_ENABLED)
 	add_definitions(-DAC_FFT_ENABLED=1)
 else()

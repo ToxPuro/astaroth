@@ -83,11 +83,7 @@ else()
   # endif()
 endif()
 target_include_directories(astaroth_core_obj PUBLIC ${AC_BASE_PATH}/include)
-if (MPI_ENABLED)
-    set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
-    find_package(MPI REQUIRED COMPONENTS C)
-    target_link_libraries(astaroth_core_obj PUBLIC MPI::MPI_C)
-endif()
+ac_link_mpi()
 
 add_library(astaroth_core empty.cc)
 target_link_libraries(astaroth_core PUBLIC astaroth_core_obj)
