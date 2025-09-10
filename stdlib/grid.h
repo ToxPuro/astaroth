@@ -418,27 +418,14 @@ ac_compute_power_law_mapping_x(
 				const AcReal first_x,
 				const AcReal last_x,
 				const int ngrid,
-				const int n_points
+				const int n_points,
+				const int left_extension,
+				const int right_extension
 			      )
 {
 	  const AcReal a = (pow(last_x,exponent)-pow(first_x,exponent))/ngrid;
 	  const AcReal b = 0.5*(ngrid - (pow(last_x,exponent)+pow(first_x,exponent))/a);
-	  std::vector<AcReal> xi{};
-          for(int x = 0; x < n_points; ++x)
-	  {
-		  xi.push_back(x-NGHOST);
-	  }
-	  std::vector<AcReal> g{};
-	  std::vector<AcReal> gder1{};
-	  std::vector<AcReal> gder2{};
-          for(int x = 0; x < n_points; ++x)
-	  {
-		  const AcReal3 g_res = ac_get_power_mapping(a*(xi[x]-b),exponent);
-		  g.push_back(g_res.x);
-		  gder1.push_back(g_res.y);
-		  gder2.push_back(g_res.z);
 
-	  }
 	  const AcReal g1lo = ac_get_power_mapping(a*(0-b),exponent).x;
 	  const AcReal g1up = ac_get_power_mapping(a*(ngrid-b),exponent).x;
 
@@ -447,21 +434,28 @@ ac_compute_power_law_mapping_x(
 	  std::vector<AcReal> x_prim2{};
 	  //For visualizing the mapping function and its derivatives
 	  /**
-	  FILE* fp = fopen("x.dat","w");
+	  const char* name = left_extension != 0 ? "x_ext.dat" : "x.dat";
+	  FILE* fp = fopen(name,"w");
 	  fprintf(fp,"x,dx,dx2\n");
 	  **/
+
 	  const AcReal len = last_x - first_x;
-          for(int x = 0; x < n_points; ++x)
+          for(int x = -left_extension; x < n_points+right_extension; ++x)
 	  {
-		x_arr.push_back(first_x + len*(g[x]-g1lo)/(g1up-g1lo));
-		x_prim.push_back(len*(gder1[x]*a)/(g1up-g1lo));
-		x_prim2.push_back(len*(gder2[x]*a*a)/(g1up-g1lo));
-		/**
-		if(x >= NGHOST && x < n_points-NGHOST)
-		{
-			fprintf(fp,"%7e,%7e,%7e\n",x_arr[x],x_prim[x],x_prim2[x]);
-		}
-		**/
+		const int xi = x-NGHOST;
+		const AcReal3 g_res = ac_get_power_mapping(a*(xi-b),exponent);
+
+		const AcReal g     = g_res.x;
+		const AcReal gder1 = g_res.y;
+		const AcReal gder2 = g_res.z;
+		
+		const auto x_local       = first_x + len*(g-g1lo)/(g1up-g1lo);
+		const auto x_prim_local  = len*(gder1*a)/(g1up-g1lo);
+		const auto x_prim2_local = len*(gder2*a*a)/(g1up-g1lo);
+		x_arr.push_back(x_local);
+		x_prim.push_back(x_prim_local);
+		x_prim2.push_back(x_prim2_local);
+		//fprintf(fp,"%7e,%7e,%7e\n",x_local,x_prim_local,x_prim2_local);
 	  }
 	  //fclose(fp);
 	  return (AcGridMappingFunction)
@@ -480,7 +474,9 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 			  ac_grid_position((int3){NGHOST,0,0},config).x,
 			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
 			  config[AC_ngrid].x,
-			  config[AC_mlocal].x
+			  config[AC_mlocal].x,
+			  0,
+			  0
 			  );
 	  AcReal* inv_r = (AcReal*)malloc(sizeof(AcReal)*config[AC_nlocal].x);
 	  AcReal* r = (AcReal*)malloc(sizeof(AcReal)*config[AC_mlocal].x);
@@ -512,11 +508,12 @@ ac_compute_power_law_mapping_x(AcMeshInfo* dst, const AcReal exponent)
 
 	  const auto extended_coordinate = ac_compute_power_law_mapping_x(
 			  exponent,
-			  config[AC_first_gridpoint_extended].x,
-			  config[AC_first_gridpoint_extended].x
-			  + config[AC_len_extended].x,
-			  config[AC_ngrid_extended].x,
-			  config[AC_extended_mlocal].x
+			  ac_grid_position((int3){NGHOST,0,0},config).x,
+			  ac_grid_position((int3){config[AC_nlocal].x+NGHOST,0,0},config).x,
+			  config[AC_ngrid].x,
+			  config[AC_mlocal].x,
+			  config[AC_left_extended_halo].x,
+			  config[AC_right_extended_halo].x
 			  );
 
 	  AcReal* inv_r_ext = (AcReal*)malloc(sizeof(AcReal)*config[AC_extended_nlocal].x);
