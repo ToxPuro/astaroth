@@ -32,146 +32,28 @@ gmem real AC_mapping_func_tilde_z_extended[AC_extended_mlocal.z]
 #define AC_COT           (AC_cot_theta[vertexIdx.y])
 
 
-AC_INV_R_extended_func()
-{
-	if(AC_left_extended_halo.x + AC_right_extended_halo.x == 0)
-	{
-		return AC_inv_r[vertexIdx.x-NGHOST]
-	}
-	else
-	{
-		return AC_inv_r_extended[vertexIdx.x-NGHOST]
-	}
-}
 
-AC_INV_CYL_R_extended_func()
-{
-	if(AC_left_extended_halo.x + AC_right_extended_halo.x == 0)
-	{
-		return AC_inv_cyl_r[vertexIdx.x-NGHOST]
-	}
-	else
-	{
-		return AC_inv_cyl_r_extended[vertexIdx.x-NGHOST]
-	}
-}
-
-AC_INV_SIN_THETA_extended_func()
-{
-	if(AC_left_extended_halo.y + AC_right_extended_halo.y == 0)
-	{
-		return AC_inv_sin_theta[vertexIdx.y-NGHOST]
-	}
-	else
-	{
-		return AC_inv_sin_theta_extended[vertexIdx.y-NGHOST]
-	}
-}
-
-AC_COT_extended_func()
-{
-	if(AC_left_extended_halo.y + AC_right_extended_halo.y == 0)
-	{
-		return AC_cot_theta[vertexIdx.y-NGHOST]
-	}
-	else
-	{
-		return AC_cot_theta_extended[vertexIdx.y-NGHOST]
-	}
-}
-
-#define AC_INV_R_extended AC_INV_R_extended_func()
-#define AC_INV_CYL_R_extended AC_INV_CYL_R_extended_func()
-#define AC_INV_SIN_THETA_extended AC_INV_SIN_THETA_extended_func()
-#define AC_COT_extended AC_COT_extended_func()
+#define AC_INV_R_extended AC_inv_r_extended[vertexIdx.x-NGHOST]
+#define AC_INV_CYL_R_extended AC_inv_cyl_r_extended[vertexIdx.x-NGHOST]
+#define AC_INV_SIN_THETA_extended AC_inv_sin_theta_extended[vertexIdx.y]
+#define AC_COT_extended AC_cot_theta_extended[vertexIdx.y]
 
 #define AC_INV_MAPPING_FUNC_DER_X (AC_inv_mapping_func_derivative_x[vertexIdx.x])
 #define AC_INV_MAPPING_FUNC_DER_Y (AC_inv_mapping_func_derivative_y[vertexIdx.y])
 #define AC_INV_MAPPING_FUNC_DER_Z (AC_inv_mapping_func_derivative_z[vertexIdx.z])
 
-AC_INV_MAPPING_FUNC_DER_X_extended_func()
-{
-	if(AC_left_extended_halo.x + AC_right_extended_halo.x == 0)
-	{
-		return AC_inv_mapping_func_derivative_x[vertexIdx.x]
-	}
-	else
-	{
-		return AC_inv_mapping_func_derivative_x_extended[vertexIdx.x]
-	}
-}
-
-AC_INV_MAPPING_FUNC_DER_Y_extended_func()
-{
-	if(AC_left_extended_halo.y + AC_right_extended_halo.y == 0)
-	{
-		return AC_inv_mapping_func_derivative_y[vertexIdx.y]
-	}
-	else
-	{
-		return AC_inv_mapping_func_derivative_y_extended[vertexIdx.y]
-	}
-}
-
-AC_INV_MAPPING_FUNC_DER_Z_extended_func()
-{
-	if(AC_left_extended_halo.z + AC_right_extended_halo.z == 0)
-	{
-		return AC_inv_mapping_func_derivative_z[vertexIdx.z]
-	}
-	else
-	{
-		return AC_inv_mapping_func_derivative_z_extended[vertexIdx.z]
-	}
-}
-
-#define AC_INV_MAPPING_FUNC_DER_X_extended AC_INV_MAPPING_FUNC_DER_X_extended_func()
-#define AC_INV_MAPPING_FUNC_DER_Y_extended AC_INV_MAPPING_FUNC_DER_Y_extended_func()
-#define AC_INV_MAPPING_FUNC_DER_Z_extended AC_INV_MAPPING_FUNC_DER_Z_extended_func()
+#define AC_INV_MAPPING_FUNC_DER_X_extended (AC_inv_mapping_func_derivative_x_extended[vertexIdx.x])
+#define AC_INV_MAPPING_FUNC_DER_Y_extended (AC_inv_mapping_func_derivative_y_extended[vertexIdx.y])
+#define AC_INV_MAPPING_FUNC_DER_Z_extended (AC_inv_mapping_func_derivative_z_extended[vertexIdx.z])
 
 #define AC_MAPPING_FUNC_TILDE_X  (AC_mapping_func_tilde_x[vertexIdx.x])
 #define AC_MAPPING_FUNC_TILDE_Y  (AC_mapping_func_tilde_y[vertexIdx.y])
 #define AC_MAPPING_FUNC_TILDE_Z  (AC_mapping_func_tilde_z[vertexIdx.z])
 
-AC_MAPPING_FUNC_TILDE_X_extended_func()
-{
-	if(AC_left_extended_halo.x + AC_right_extended_halo.x == 0)
-	{
-		return AC_mapping_func_tilde_x[vertexIdx.x]
-	}
-	else
-	{
-		return AC_mapping_func_tilde_x_extended[vertexIdx.x]
-	}
-}
+#define AC_MAPPING_FUNC_TILDE_X_extended  (AC_mapping_func_tilde_x_extended[vertexIdx.x])
+#define AC_MAPPING_FUNC_TILDE_Y_extended  (AC_mapping_func_tilde_y_extended[vertexIdx.y])
+#define AC_MAPPING_FUNC_TILDE_Z_extended  (AC_mapping_func_tilde_z_extended[vertexIdx.z])
 
-AC_MAPPING_FUNC_TILDE_Y_extended_func()
-{
-	if(AC_left_extended_halo.y + AC_right_extended_halo.y == 0)
-	{
-		return AC_mapping_func_tilde_y[vertexIdx.y]
-	}
-	else
-	{
-		return AC_mapping_func_tilde_y_extended[vertexIdx.y]
-	}
-}
-
-AC_MAPPING_FUNC_TILDE_Z_extended_func()
-{
-	if(AC_left_extended_halo.z + AC_right_extended_halo.z == 0)
-	{
-		return AC_mapping_func_tilde_z[vertexIdx.z]
-	}
-	else
-	{
-		return AC_mapping_func_tilde_z_extended[vertexIdx.z]
-	}
-}
-
-#define AC_MAPPING_FUNC_TILDE_X_extended  AC_MAPPING_FUNC_TILDE_X_extended_func()
-#define AC_MAPPING_FUNC_TILDE_Y_extended  AC_MAPPING_FUNC_TILDE_Y_extended_func()
-#define AC_MAPPING_FUNC_TILDE_Z_extended  AC_MAPPING_FUNC_TILDE_Z_extended_func()
 
 
 
