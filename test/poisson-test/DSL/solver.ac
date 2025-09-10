@@ -39,30 +39,30 @@ Kernel calculate_potential_with_mlm()
 
 fixed_boundary Kernel jacobi_step_kernel()
 {
-	write(POTENTIAL,poisson_jacobi_update(DENSITY,POTENTIAL))
+	write(POTENTIAL,poisson_jacobi_update_extended(DENSITY,POTENTIAL))
 }
 
 real AC_SOR_omega
 
 fixed_boundary Kernel sor_red()
 {
-	poisson_sor_red_black(SOR_RED,DENSITY,POTENTIAL,AC_SOR_omega)
+	poisson_sor_red_black_extended(SOR_RED,DENSITY,POTENTIAL,AC_SOR_omega)
 }
 fixed_boundary Kernel sor_black()
 {
-	poisson_sor_red_black(SOR_BLACK,DENSITY,POTENTIAL,AC_SOR_omega)
+	poisson_sor_red_black_extended(SOR_BLACK,DENSITY,POTENTIAL,AC_SOR_omega)
 }
 output real AC_residual2
 Kernel residual_kernel()
 {
-	r = laplace(POTENTIAL)-DENSITY
+	r = laplace_extended(POTENTIAL)-DENSITY
 	reduce_sum(r*r,AC_residual2)
 }
 
 
 Kernel write_residual()
 {
-	r = laplace(POTENTIAL)-DENSITY
+	r = laplace_extended(POTENTIAL)-DENSITY
 	write(RESIDUAL,r)
 	//Laplace
 	/** 
@@ -139,7 +139,7 @@ analytic_potential_inside(AcBoundary boundary_region, Field f)
         const int3 boundary = get_boundary(normal)
         int3 domain = boundary
         int3 ghost  = boundary
-	R = AC_r[AC_charge_radius_points]
+	R = AC_r_extended[AC_charge_radius_points]
 	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
         for i in 0:NGHOST
         {
@@ -161,7 +161,7 @@ analytic_potential_outside(AcBoundary boundary_region, Field f)
         const int3 boundary = get_boundary(normal)
         int3 domain = boundary
         int3 ghost  = boundary
-	R = AC_r[AC_charge_radius_points]
+	R = AC_r_extended[AC_charge_radius_points]
 	M = (4.0/3.0)*AC_REAL_PI*AC_density_charge*R*R*R
         for i in 0:NGHOST
         {
