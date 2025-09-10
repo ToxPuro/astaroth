@@ -1,4 +1,4 @@
 add_library(ac_update_params OBJECT update_params.cc)
 target_include_directories(ac_update_params PUBLIC ${AC_BASE_PATH}/include ${AC_BASE_PATH}/src/core/kernels)
 target_link_libraries(ac_update_params PRIVATE acc-runtime-headers)
-ac_link_mpi()
+ac_link_mpi(ac_update_params)
