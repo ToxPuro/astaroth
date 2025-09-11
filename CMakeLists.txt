@@ -181,7 +181,7 @@ function(ac_link_mpi target)
   elseif (MPI_ENABLED)
       set(MPI_CXX_SKIP_MPICXX ON) # Skip MPI C++ bindings
       find_package(MPI REQUIRED COMPONENTS C)
-      target_link_libraries(${target} PRIVATE MPI::MPI_C)
+      target_link_libraries(${target} PUBLIC MPI::MPI_C)
   endif()
 endfunction()
 

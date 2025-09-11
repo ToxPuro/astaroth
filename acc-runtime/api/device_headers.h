@@ -33,6 +33,7 @@ typedef struct
 	int l2CacheSize;
 	int regsPerBlock;
 	int streamPrioritiesSupported;
+	int maxThreadsDim[3];
 } cudaDeviceProp; 
 typedef int cudaDeviceAttr;
 #define cudaStreamNonBlocking (0)

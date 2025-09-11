@@ -179,9 +179,9 @@ static bool
 tpb_is_legal(const Volume tpb)
 {
   const auto prop = get_device_prop();
-  if(tpb.x > prop.maxThreadsDim[0]) return false;
-  if(tpb.y > prop.maxThreadsDim[1]) return false;
-  if(tpb.z > prop.maxThreadsDim[2]) return false;
+  if((int)tpb.x > prop.maxThreadsDim[0]) return false;
+  if((int)tpb.y > prop.maxThreadsDim[1]) return false;
+  if((int)tpb.z > prop.maxThreadsDim[2]) return false;
   return true;
 }
 
