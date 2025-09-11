@@ -175,11 +175,25 @@ is_large_launch(const Volume dims)
   return ((int)dims.x > ghosts.x && (int)dims.y > ghosts.y && (int)dims.z > ghosts.z);
 }
 
+static bool
+tpb_is_legal(const Volume tpb)
+{
+  const auto prop = get_device_prop();
+  if(tpb.x > prop.maxThreadsDim[0]) return false;
+  if(tpb.y > prop.maxThreadsDim[1]) return false;
+  if(tpb.z > prop.maxThreadsDim[2]) return false;
+  return true;
+}
 
 static bool
 is_valid_configuration(const Volume dims, const Volume tpb, const AcKernel kernel)
 {
-  const size_t warp_size    = get_device_prop().warpSize;
+  if(!tpb_is_legal(tpb)) return false; 
+  if(dims.x == 1 && dims.y == 1) return true;
+  if(dims.x == 1 && dims.z == 1) return true;
+  if(dims.y == 1 && dims.z == 1) return true;
+  const auto prop = get_device_prop();
+  const size_t warp_size    = prop.warpSize;
   const size_t xmax         = (size_t)(warp_size * ceil_div(dims.x,warp_size));
   const size_t ymax         = (size_t)(warp_size * ceil_div(dims.y,warp_size));
   const size_t zmax         = (size_t)(warp_size * ceil_div(dims.z,warp_size));
@@ -1050,11 +1064,18 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
 
 
   std::vector<int3> samples{};
+  const auto add_sample = [&](const int x, const int y, const int z)
+  {
+    const dim3 tpb{(unsigned int)x, (unsigned int)y, (unsigned int)z};
+    if (!is_valid_configuration(to_volume(dims), to_volume(tpb),kernel)) return;
+    samples.push_back((int3){x,y,z});
+  };
+
   if(dims.y == 1 && dims.z == 1)
   {
   	for (int x = x_increment;
   	         x <= min(max_threads_per_block,tpb_end.x); x += x_increment) {
-		samples.push_back((int3){x,1,1});
+		add_sample(x,1,1);
 	}
 
   }
@@ -1066,7 +1087,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
 		            );
   	for (int z = z_increment;
   	         z <= min(max_threads_per_block,tpb_end.z); z += z_increment) {
-  	      samples.push_back((int3){1,1,z});
+	      add_sample(1,1,z);
 	}
 
   }
@@ -1090,10 +1111,7 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
   	      //if ((x * y * z) % props.warpSize && (x*y*z) >props.warpSize)
   	      //  continue;
 
-  	      if (!is_valid_configuration(to_volume(dims), to_volume(tpb),kernel))
-  	        continue;
-  	      //TP: should be emplace back but on my laptop the CUDA compiler gives a cryptic error message that I do not care to debug
-  	      samples.push_back((int3){x,y,z});
+	      add_sample(x,y,z);
   	    }
   	  }
   	}
