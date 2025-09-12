@@ -2185,7 +2185,7 @@ preprocess_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec
   const char* array_name = identifier->buffer;
   const char* datatype = get_expr_type((ASTNode*)identifier);
   const int index = str_vec_get_index(datatypes,datatype);
-  if(index == -1 && datatype != REAL3_STR) return;
+  if(index == -1 && datatype != REAL3_STR && datatype != REAL2_STR) return;
   const char* datatype_scalar = index != -1 ? datatype_scalars.data[index]
 	  				    : datatype;
   const bool is_global = check_symbol(NODE_VARIABLE_ID,array_name,0,0);
@@ -11015,6 +11015,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   {
 	string_vec tmp  = get_all_datatypes();
+	push(&tmp,REAL2_STR);
 	push(&tmp,REAL3_STR);
   	preprocess_array_reads(root,root,tmp,gen_mem_accesses);
 	free_str_vec(&tmp);
