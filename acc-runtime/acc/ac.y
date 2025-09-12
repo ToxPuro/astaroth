@@ -28,6 +28,7 @@ const char* FIELD_PTR_STR = NULL;
 const char* STENCIL_STR    = NULL;
 const char* MATRIX_STR   = NULL;
 const char* TENSOR_STR   = NULL;
+const char* REAL2_STR    = NULL;
 const char* REAL3_STR    = NULL;
 const char* INT3_STR     = NULL;
 const char* COMPLEX_STR = NULL;
@@ -595,6 +596,7 @@ populate_global_strings()
 	COMPLEX_STR= intern("AcComplex");
 	INT_STR = intern("int");
 	TEN_STR = intern("10");
+	REAL2_STR= intern("AcReal2");
 	REAL3_STR= intern("AcReal3");
 	REAL_ARR_STR = intern("AcRealArray");
 	INTRINSIC_STR = intern("intrinsic");
