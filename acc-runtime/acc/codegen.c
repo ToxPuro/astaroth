@@ -2188,7 +2188,8 @@ preprocess_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec
   const char* datatype_scalar = index != -1 ? datatype_scalars.data[index]
 	  				    : datatype;
   const bool is_global = check_symbol(NODE_VARIABLE_ID,array_name,0,0);
-  if(datatype_scalar == REAL3_STR && !is_global)
+  if((datatype_scalar == REAL3_STR || datatype_scalar == REAL2_STR)
+			  && !is_global)
   {
 	  const char* expr_type = get_expr_type(node->lhs);
 	  if(expr_type == datatype_scalar)
@@ -11031,7 +11032,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   {
   	if(!gen_mem_accesses && executed_nodes.size > 0 && optimize_mem_accesses && ELIMINATE_CONDITIONALS)
   	{
-  		eval_conditionals(root,root);
+		//TP: known to break code TODO: fix it!
+		//Breaks cosmicray sample in PC
+  		//eval_conditionals(root,root);
   	      	gen_constexpr_info(root,gen_mem_accesses);
   	        bool eliminated_something = true;
   	        while(eliminated_something)
