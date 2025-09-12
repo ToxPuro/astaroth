@@ -1496,7 +1496,7 @@ Max Stencil max5_xyz_stencil_r3 {
 	[3][0][0] = 1
 }
 
-Max Stencil max5_xy_stencil {
+Max Stencil max5_xy_stencil_r3 {
 	[0][-3][0] = 1,
 	[0][-2][-2] = 1,
 	[0][-2][-1] = 1,
@@ -1528,11 +1528,62 @@ Max Stencil max5_xy_stencil {
 	[0][3][0] = 1
 }
 
+Max Stencil max5_xy_stencil_r2 {
+	[0][-2][-2] = 1,
+	[0][-2][-1] = 1,
+	[0][-2][0] = 1,
+	[0][-2][1] = 1,
+	[0][-2][2] = 1,
+	[0][-1][-2] = 1,
+	[0][-1][-1] = 1,
+	[0][-1][0] = 1,
+	[0][-1][1] = 1,
+	[0][-1][2] = 1,
+	[0][0][-2] = 1,
+	[0][0][-1] = 1,
+	[0][0][0] = 1,
+	[0][0][1] = 1,
+	[0][0][2] = 1,
+	[0][1][-2] = 1,
+	[0][1][-1] = 1,
+	[0][1][0] = 1,
+	[0][1][1] = 1,
+	[0][1][2] = 1,
+	[0][2][-2] = 1,
+	[0][2][-1] = 1,
+	[0][2][0] = 1,
+	[0][2][1] = 1,
+	[0][2][2] = 1
+}
+
+Max Stencil max5_xy_stencil_r1 {
+	[0][-1][-1] = 1,
+	[0][-1][0] = 1,
+	[0][-1][1] = 1,
+	[0][0][-1] = 1,
+	[0][0][0] = 1,
+	[0][0][1] = 1,
+	[0][1][-1] = 1,
+	[0][1][0] = 1,
+	[0][1][1] = 1
+}
+
 elemental max5(Field f, int radius)
 {
 	if(AC_dimension_inactive.z)
 	{
-		return max5_xy_stencil(f)
+		if(radius == 1)
+		{
+			return max5_xy_stencil_r1(f)
+		}
+		else if(radius == 2)
+		{
+			return max5_xy_stencil_r2(f)
+		}
+		else
+		{
+			return max5_xy_stencil_r3(f)
+		}
 	}
 	else
 	{
