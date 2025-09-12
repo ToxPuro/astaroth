@@ -73,6 +73,7 @@ extern const char* FIELD_PTR_STR;
 extern const char* STENCIL_STR;
 extern const char* MATRIX_STR;
 extern const char* TENSOR_STR;
+extern const char* REAL2_STR;
 extern const char* REAL3_STR;
 extern const char* INT3_STR;
 extern const char* COMPLEX_STR;
