@@ -2360,7 +2360,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    }
                     acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
                                              tag);
-		    const bool shear_periodic = acGridGetLocalMeshInfo()[AC_shear] && (
+		    const bool shear_periodic = !acGridGetLocalMeshInfo()[AC_dimension_inactive].y && acGridGetLocalMeshInfo()[AC_shear] && (
 		    				   (id.x == -1 && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == 0)
 		    				|| (id.x == 1  && acGridGetLocalMeshInfo()[AC_domain_coordinates].x == int(decomp.x-1))
 		    				);
