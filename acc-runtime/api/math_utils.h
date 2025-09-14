@@ -644,6 +644,26 @@ operator*(const AcReal& v, const AcMatrix& m)
 }
 
 static HOST_DEVICE_INLINE AcMatrix
+operator/(const AcMatrix& m, const AcReal& v)
+{
+  AcMatrix out;
+
+  out.data[0][0] = m.data[0][0] / v;
+  out.data[0][1] = m.data[0][1] / v;
+  out.data[0][2] = m.data[0][2] / v;
+
+  out.data[1][0] = m.data[1][0] / v;
+  out.data[1][1] = m.data[1][1] / v;
+  out.data[1][2] = m.data[1][2] / v;
+
+  out.data[2][0] = m.data[2][0] / v;
+  out.data[2][1] = m.data[2][1] / v;
+  out.data[2][2] = m.data[2][2] / v;
+
+  return out;
+}
+
+static HOST_DEVICE_INLINE AcMatrix
 operator+(const AcMatrix& a, const AcMatrix& b)
 {
   AcMatrix out;
