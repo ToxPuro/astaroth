@@ -106,18 +106,36 @@ derx_stencil(Field f)
 	return (1.0/60.0)*res + 0.0*val
 }
 
-Stencil derx_2nd_stencil {
+Stencil derx_2nd_stencil_base {
     [0][0][-1] = -0.5,
-    [0][0][1 ]  = 0.5,
+    [0][0][1 ]  = 0.5
 }
 
-Stencil dery_2nd_stencil {
+Stencil dery_2nd_stencil_base {
     [0][-1][0] = -0.5,
-    [0][1 ][0]  = 0.5,
+    [0][1 ][0]  = 0.5
 }
-Stencil derz_2nd_stencil {
+Stencil derz_2nd_stencil_base {
     [-1][0][0] = -0.5,
-    [1 ][0][0]  = 0.5,
+    [1 ][0][0]  = 0.5
+}
+
+derx_2nd_stencil(Field f)
+{
+	val = derx_2nd_stencil_base(f)
+	return (0.5)*(f[vertexIdx.x+1][vertexIdx.y][vertexIdx.z]-f[vertexIdx.x-1][vertexIdx.y][vertexIdx.z])+ 0.0*val
+}
+
+dery_2nd_stencil(Field f)
+{
+	val = dery_2nd_stencil_base(f)
+	return (0.5)*(f[vertexIdx.x][vertexIdx.y+1][vertexIdx.z]-f[vertexIdx.x][vertexIdx.y-1][vertexIdx.z])+ 0.0*val
+}
+
+derz_2nd_stencil(Field f)
+{
+	val = derz_2nd_stencil_base(f)
+	return (0.5)*(f[vertexIdx.x][vertexIdx.y][vertexIdx.z+1]-f[vertexIdx.x][vertexIdx.y][vertexIdx.z-1])+ 0.0*val
 }
 
 #define AC_GEN_DERX(NAME,STENCIL_NAME) \
@@ -1820,7 +1838,7 @@ der6z(Field f)
 	}
 }
 
-der6x_upwd(Field f)
+derx_upwd(Field f)
 {
 	if(AC_dimension_inactive.x)
 	{
@@ -1841,7 +1859,7 @@ der6x_upwd(Field f)
 		return der6x_stencil(f)*grid_factor
 	}
 }
-der6y_upwd(Field f)
+dery_upwd(Field f)
 {
 	if(AC_dimension_inactive.y)
 	{
@@ -1874,7 +1892,7 @@ der6y_upwd(Field f)
 	}
 }
 
-der6z_upwd(Field f)
+derz_upwd(Field f)
 {
 	if(AC_dimension_inactive.z)
 	{
@@ -2085,4 +2103,15 @@ derz_upwind(Field f, real vec)
 //}
 
 
-
+derxx_central_coeff_extended()
+{
+	return derxx_central_coeff()
+}
+deryy_central_coeff_extended()
+{
+	return deryy_central_coeff()
+}
+derzz_central_coeff_extended()
+{
+	return derzz_central_coeff()
+}

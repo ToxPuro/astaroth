@@ -91,6 +91,21 @@ divergence(Field3 v) {
     }
     return g
 }
+
+divergence_2nd(Field3 v) {
+    g = derx_2nd(v.x) + dery_2nd(v.y) + derz_2nd(v.z)
+
+
+    if(AC_coordinate_system == AC_SPHERICAL_COORDINATES)
+    {
+	   g += AC_INV_R*(v.x*2.0 + AC_COT*v.y);
+    }
+    if(AC_coordinate_system == AC_CYLINDRICAL_COORDINATES)
+    {
+	    g +=AC_INV_CYL_R*v.x
+    }
+    return g
+}
 divergence(Matrix m)
 {
 	b = m[0][0] + m[1][1] + m[2][2];
