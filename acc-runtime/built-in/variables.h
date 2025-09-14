@@ -166,7 +166,12 @@ run_const real AC_dsmin_6 = AC_dsmin_3*AC_dsmin_3;
 /**
  * Inverse of AC_ds. Makes sense only for equidistant Cartesian grids.
  */
-run_const real3 AC_inv_ds = 1.0/AC_ds;
+run_const real3 AC_inv_ds = (real3)
+		{
+			AC_dimension_inactive.x  ? 1.0 : 1.0/AC_ds.x,	
+			AC_dimension_inactive.y  ? 1.0 : 1.0/AC_ds.y,
+			AC_dimension_inactive.z  ? 1.0 : 1.0/AC_ds.z
+		}
 /**
  * Inverse of AC_ds_2. Makes sense only for equidistant Cartesian grids.
  */
@@ -231,9 +236,9 @@ run_const real3 AC_len = (AC_ngrid + AC_periodic_grid - 1)*AC_ds;
  * Helper variable to get the spacing in the Fourier space
  */
 run_const real3 AC_frequency_spacing = real3(
-				(2.0*AC_REAL_PI)/AC_len.x,
-				(2.0*AC_REAL_PI)/AC_len.y,
-				(2.0*AC_REAL_PI)/AC_len.z
+				AC_dimension_inactive.x ? (2.0*AC_REAL_PI) : (2.0*AC_REAL_PI)/AC_len.x,
+				AC_dimension_inactive.y ? (2.0*AC_REAL_PI) : (2.0*AC_REAL_PI)/AC_len.y,
+				AC_dimension_inactive.z ? (2.0*AC_REAL_PI) : (2.0*AC_REAL_PI)/AC_len.z
 				);
 run_const real3 AC_first_gridpoint =  (real3){
 					AC_periodic_grid.x*AC_ds.x*0.5,
