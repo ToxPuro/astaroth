@@ -1152,6 +1152,14 @@ get_best_autotune_measurement(const AcKernel kernel, const int3 start, const int
 
   //TP: logs the percent 0% which is useful to know the autotuning has started
   if (log) logAutotuningStatus(counter,n_samples,kernel,best_measurement.time / num_iters);
+  //Previous failures should not affect autotuning. Up to the user do they fix the warnings or not
+  const auto err = acGetLastError();
+  if (err != cudaSuccess) {
+    //TP: reset autotune results
+    fprintf(stderr,"\nWARNING: Catched previous error when starting autotuning: %s\nReason: %s\n",kernel_names[kernel],acGetErrorName(err));
+    fprintf(stderr,"\nWARNING: Catched previous error when starting autotuning: %s\nReason: %s\n",kernel_names[kernel],acGetErrorName(err));
+    fprintf(stderr,"\nWARNING: Catched previous error when starting autotuning: %s\nReason: %s\n",kernel_names[kernel],acGetErrorName(err));
+  }
   for(size_t sample  = start_samples; sample < end_samples; ++sample)
   {
         auto x = samples[sample].x;
