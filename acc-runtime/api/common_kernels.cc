@@ -32,7 +32,7 @@ acKernelFlushReal(const cudaStream_t stream, AcReal* arr, const size_t n,
   ERRCHK_ALWAYS(arr || n == 0);
   if(n == 0) return AC_SUCCESS;
   acLaunchKernelVariadic1d(AC_FLUSH_REAL,stream,0,n,arr,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
+  ERRCHK_CUDA_KERNEL();
   return AC_SUCCESS;
 }
 
@@ -43,7 +43,7 @@ acKernelFlushComplex(const cudaStream_t stream, AcComplex* arr, const size_t n,
   ERRCHK_ALWAYS(arr || n == 0);
   if(n == 0) return AC_SUCCESS;
   acLaunchKernelVariadic1d(AC_FLUSH_COMPLEX,stream,0,n,arr,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
+  ERRCHK_CUDA_KERNEL();
   return AC_SUCCESS;
 }
 
@@ -54,7 +54,7 @@ acKernelFlushInt(const cudaStream_t stream, int* arr, const size_t n,
   ERRCHK_ALWAYS(arr || n == 0);
   if(n == 0) return AC_SUCCESS;
   acLaunchKernelVariadic1d(AC_FLUSH_INT,stream,0,n,arr,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
+  ERRCHK_CUDA_KERNEL();
   return AC_SUCCESS;
 }
 
@@ -65,7 +65,7 @@ acKernelFlushFloat(const cudaStream_t stream, float* arr, const size_t n,
   ERRCHK_ALWAYS(arr || n == 0);
   if(n == 0) return AC_SUCCESS;
   acLaunchKernelVariadic1d(AC_FLUSH_FLOAT,stream,0,n,arr,value);
-  ERRCHK_CUDA_KERNEL_ALWAYS();
+  ERRCHK_CUDA_KERNEL();
   return AC_SUCCESS;
 }
 
