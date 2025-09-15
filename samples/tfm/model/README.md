@@ -44,10 +44,35 @@ MODELDIR=~/astaroth/samples/tfm/model/${CASE}
 
 ```bash
 # In build directory (use with care, calls `rm`)
-rm -rf ${MODELDIR}/ &&\ 
+# LUMI ONLY
+# Note preset lumi-tfm
+rm -rf ${MODELDIR}/ &&\
 mkdir -p ${MODELDIR} &&\
 rm -rf simulation_state.txt tfm-mpi && \
 cmake ~/astaroth/ --preset lumi-tfm && \
+cmake --build . --parallel && \
+rm -rf simulation_state.txt *.profile *.mesh *.snapshot *.txt *.out *.ini *.csv output && \
+ $SRUNMPI1 ./tfm-mpi --config ${CONFIG} && \
+rm -rf output && ~/astaroth/samples/tfm-mpi/visualize.py --inputs *2500* && \
+~/astaroth/samples/tfm-mpi/view-timeseries.py && \
+md5sum *.snapshot > ${MODELDIR}/snapshots.txt && \
+cp timeseries.csv ${MODELDIR}/ &&\
+mv output ${MODELDIR}/ &&\
+cp ${CONFIG} ${MODELDIR}/ &&\
+git rev-parse HEAD > ${MODELDIR}/head.txt &&\
+git --no-pager diff > ${MODELDIR}/diff.txt
+```
+
+### Mahti
+
+```bash
+# In build directory (use with care, calls `rm`)
+# MAHTI ONLY
+# Note preset mahti-tfm
+rm -rf ${MODELDIR}/ &&\
+mkdir -p ${MODELDIR} &&\
+rm -rf simulation_state.txt tfm-mpi && \
+cmake ~/astaroth/ --preset mahti-tfm && \
 cmake --build . --parallel && \
 rm -rf simulation_state.txt *.profile *.mesh *.snapshot *.txt *.out *.ini *.csv output && \
  $SRUNMPI1 ./tfm-mpi --config ${CONFIG} && \
