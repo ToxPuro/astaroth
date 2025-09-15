@@ -1779,7 +1779,16 @@ stencilpoint_list: stencilpoint                       { $$ = astnode_create(NODE
 stencil_body: '{' stencilpoint_list '}' { $$ = astnode_create(NODE_BEGIN_SCOPE, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("},", $$); }
             ;
 
-stencil_definition: declaration stencil_body { $$ = astnode_create(NODE_STENCIL, $1, $2); set_identifier_type(NODE_FUNCTION_ID, $$->lhs); 
+stencil_definition: declaration stencil_body { 
+			const ASTNode* tspec = get_node(NODE_TSPEC,$1);
+			const ASTNode* id = get_node_by_token(IDENTIFIER,$1);
+			if(!tspec)
+			{
+				fprintf(stderr,"Please put the Stencil specifier on %s!\n",id->buffer);
+				fprintf(stderr,"Please put the Stencil specifier on %s!\n",id->buffer);
+				fprintf(stderr,"Please put the Stencil specifier on %s!\n",id->buffer);
+			}
+		  	$$ = astnode_create(NODE_STENCIL, $1, $2); set_identifier_type(NODE_FUNCTION_ID, $$->lhs); 
 		  }
                   ;
 %%
