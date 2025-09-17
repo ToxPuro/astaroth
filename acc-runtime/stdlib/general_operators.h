@@ -14,6 +14,10 @@ u_dot_grad(Field3 f, Matrix m,real3 v){
 	return res;
 }
 
+u_dot_grad(Matrix m,real3 v){
+  return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
+}
+
 u_dot_grad_alt(Field f,real3 gradf,real3 uu,int advec_type){
 	suppress_unused_warning(f)
 	if(advec_type == 0)
