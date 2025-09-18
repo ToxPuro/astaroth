@@ -263,17 +263,50 @@ def plot_line1d(full_slice, field_name, time, step, z):
     global dsx
     print(f"Plotting {MA}{field_name:>20}{CLR} 1D cut at step {CY}{int(step):<8}{CLR}...", end="")
     y = int((full_slice.shape[0])/2)
+    data = full_slice[y, :]
     n = len(full_slice[y,:])
+    # Apply exp only for VTXBUF_LNRHO
+    if field_name == 'VTXBUF_LNRHO':
+        data = np.exp(data)
+        title_field_name = 'rho'
+        #plt.axhline(y=5.74952226429356E-19, color='k', linestyle='--') #initial lnrho0
+        #plt.axhline(y=2.299808905717424E-18,  color='k', linestyle='-') #M^2*lnrho0, M=2
+        #plt.axhline(y=2.87476113214678e-18,  color='k', linestyle='-') #(M^2+1)*lnrho0, M=2
+        #plt.axhline(y=2.2998089057174243e-20,  color='r', linestyle='-') #M^2*lnrho0, M=0.2
+        #plt.axhline(y=5.979503154865302e-19, color='r', linestyle='-') #(M^2+1)*lnrho0, M=0.2
+    else:
+        title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
     x = np.array([i*dsx for i in range(n)])
-    plt.plot(x,full_slice[y,:], '.')
-    title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
+    #plt.plot(x,full_slice[y,:], '.')
+    plt.plot(x,data, '.')
     plt.xlabel('x')
     plt.ylabel(title_field_name)
+    plt.grid(True)
     plt.title(f'{title_field_name}, t = {time:e}, step={int(step)}')
     output_file = lines_render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.y_{y}.step_{step}.png'
     print(f"Writing to {GR}{output_file}{CLR}")
     plt.savefig(output_file, dpi=args.dpi)
     plt.clf()
+
+
+def plot_rho_vs_rhouux(full_slice, field_name, time, step, z):
+    global VTXBUF_RHOUUX  # for x-axis
+    y = int((VTXBUF_RHOUUX.shape[0])/2)
+    datay = VTXBUF_RHOUUX[y, :]
+    if field_name == 'VTXBUF_RHO': # for y-axis
+        x = int((full_slice.shape[0])/2)
+        n = len(full_slice[y,:])
+        datax = np.exp(full_slice[y, :])
+        plt.plot(datax, datay, '.')
+        plt.xlabel('rho')
+        plt.ylabel('rhouux')
+        plt.grid(True)
+        plt.title(f'rhouux vs rho, t = {time:e}, step={int(step)}')
+        output_file = lines_render_dir/f'rho_vs_rhouux.z_{z}.y_{y}.step_{step}.png'
+        print(f"Writing to {GR}{output_file}{CLR}")
+        plt.savefig(output_file, dpi=args.dpi)
+        plt.clf()
+
 
 #Render the vector fields
 for vector_field, components in vector_fields.items():
