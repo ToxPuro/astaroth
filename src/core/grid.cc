@@ -2233,7 +2233,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    if(Region::tag_to_facet_class(tag) > max_comp_facet_class) continue;
 		    if(op.halo_sizes.x > start.x)
 		    {
-			fprintf(stderr,"Out of bounds for %!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
+			fprintf(stderr,"Out of bounds for %s!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
 					,start.x
 					,op.halo_sizes.x
 					);
@@ -2242,7 +2242,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    }
 		    if(op.halo_sizes.y > start.y)
 		    {
-			fprintf(stderr,"Out of bounds for %!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
+			fprintf(stderr,"Out of bounds for %s!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
 					,start.y
 					,op.halo_sizes.y
 					);
@@ -2251,7 +2251,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    }
 		    if(op.halo_sizes.z > start.z)
 		    {
-			fprintf(stderr,"Out of bounds for %!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
+			fprintf(stderr,"Out of bounds for %s!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
 					,start.z
 					,op.halo_sizes.z
 					);
