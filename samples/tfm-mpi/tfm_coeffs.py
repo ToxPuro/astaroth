@@ -84,7 +84,6 @@ Bampl=1.0
 kf=5.0
 eta=5.0e-3
 
-
 # Defining z and trigonometric arrays
 dz=1./args.dims[2]
 z=(1.-dz)*np.arange(args.dims[2])/(args.dims[2]-1)+dz/2.
@@ -127,7 +126,6 @@ for profile in profiles:
 
     if "B22mean_y" in name:
         B22_y.append(data)
-
 
 # Reform to numpy
 emf11x = np.asarray(emf11x)
@@ -178,7 +176,7 @@ eta21z=np.sum(eta21zt,axis=0)/nzz
 eta22z=np.sum(eta22zt,axis=0)/nzz
 eta22t=np.sqrt(np.sum(eta22zt**2,axis=1))/nz
 print("nz,nzz=",nz,nzz)
-print("alp11,alp22,ate11,ate22=",np.sum(alp11z,axis=0)/nz,np.sum(alp22z,axis=0)/nz,np.sum(eta11z,axis=0)/nz,np.sum(eta22z,axis=0)/nz)
+print("alp11,alp22,eta11,eta22=",np.sum(alp11z,axis=0)/nz,np.sum(alp22z,axis=0)/nz,np.sum(eta11z,axis=0)/nz,np.sum(eta22z,axis=0)/nz)
 
 #Read timeseries
 filepath = 'timeseries.csv' # Path to the timeseries (current working directory by default)
