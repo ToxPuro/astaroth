@@ -199,14 +199,14 @@ AcReal
 output_value(const AcRealOutputParam& param)
 {
 	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
-	return (AcReal){};
+	return (AcReal)1.0;
 }
 
 int
 output_value(const AcIntOutputParam& param)
 {
 	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_REAL_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
-	return (int){};
+	return (int)1;
 }
 
 #if AC_DOUBLE_PRECISION
@@ -214,7 +214,7 @@ float
 output_value(const AcFloatOutputParam& param)
 {
 	reduce_inputs.push_back((KernelReduceOutput){(int)param,AC_FLOAT_TYPE,REDUCE_SUM,AC_NO_REDUCE_POST_PROCESSING,current_kernel});
-	return (float){};
+	return (float)1.0;
 }
 #endif
 
