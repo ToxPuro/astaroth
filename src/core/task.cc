@@ -560,15 +560,15 @@ Region::Region(RegionFamily family_, int tag_, const AcBoundary depends_on_bound
 {
     halo = ghosts;
     comp_dims = nn;
-    ERRCHK_ALWAYS(ghosts.x <= start.x);
-    ERRCHK_ALWAYS(ghosts.y <= start.y);
-    ERRCHK_ALWAYS(ghosts.z <= start.z);
     memory.profiles = {mem_.profiles, mem_.profiles + mem_.num_profiles};
     memory.reduce_outputs  = {mem_.reduce_outputs , mem_.reduce_outputs  + mem_.num_reduce_outputs};
     memory.fields = {};
     switch (family) {
     	case RegionFamily::Exchange_output: //Fallthrough
     	case RegionFamily::Exchange_input : {
+    	    ERRCHK_ALWAYS(ghosts.x <= start.x);
+    	    ERRCHK_ALWAYS(ghosts.y <= start.y);
+    	    ERRCHK_ALWAYS(ghosts.z <= start.z);
 	    for(auto& field : mem_.fields)
 	    	if(vtxbuf_is_communicated[field]) memory.fields.push_back(field);
 	    break;
