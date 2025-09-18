@@ -546,6 +546,7 @@ acGetPid(const int3 pid, const int3 decomp, const AcMeshInfo info);
 	*(void**)(&BASE_FUNC_NAME(acGetOptimizedDSLTaskGraph)) = dlsym(handle,"acGetOptimizedDSLTaskGraph");
 	LOAD_DSYM(acGetDSLTaskGraphWithBounds,stream);
 	LOAD_DSYM(acGetOptimizedDSLTaskGraphWithBounds,stream);
+	LOAD_DSYM(acGetComputeStepsBCs,stream);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousDistributed,stream);
 	LOAD_DSYM(acGridAccessMeshOnDiskSynchronousCollective,stream);
 	LOAD_DSYM(acGridGetDefaultTaskGraph,stream);
