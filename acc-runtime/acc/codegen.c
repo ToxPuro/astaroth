@@ -2182,6 +2182,7 @@ preprocess_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec
   if(!node->lhs) return;
   if(get_parent_node(NODE_VARIABLE,node)) return;
   const ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
+  if(!identifier) return;
   const char* array_name = identifier->buffer;
   const char* datatype = get_expr_type((ASTNode*)identifier);
   const int index = str_vec_get_index(datatypes,datatype);
@@ -2296,6 +2297,7 @@ gen_array_reads_base(ASTNode* node, const ASTNode* root, const string_vec dataty
   if(!node->lhs) return;
   if(get_parent_node(NODE_VARIABLE,node)) return;
   const ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
+  if(!identifier) return;
   const char* datatype = get_expr_type((ASTNode*)identifier);
   const char* array_name = identifier->buffer;
   const int index = str_vec_get_index(datatypes,datatype);
