@@ -2231,6 +2231,9 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     	            ERRCHK_ALWAYS((int)dims.y > grid.submesh.info[AC_nmin].y*2);
     	            ERRCHK_ALWAYS((int)dims.z > grid.submesh.info[AC_nmin].z*2);
 		    if(Region::tag_to_facet_class(tag) > max_comp_facet_class) continue;
+		    ERRCHK_ALWAYS(op.halo_sizes.x <= start.x);
+		    ERRCHK_ALWAYS(op.halo_sizes.y <= start.y);
+		    ERRCHK_ALWAYS(op.halo_sizes.z <= start.z);
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset,fields_already_depend_on_boundaries,max_comp_facet_class);
             	    graph->all_tasks.push_back(task);
 		    compute_task_poststep(op,task);
