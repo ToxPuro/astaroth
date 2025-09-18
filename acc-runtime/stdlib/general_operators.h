@@ -27,11 +27,21 @@ u_dot_grad_alt(Field f,real3 gradf,real3 uu,int advec_type){
 	fatal_error_message(true,"u_dot_grad_alt: Upwinding and Kurganov-Tadmor not yet implemented")
 	return 0.0
 }
-u_dot_grad_mat(k,c,uu)
+u_dot_grad_mat(k,AcTensor c,real3 uu)
 {
-	fatal_error_message(true,"u_dot_grad_mat: Not implemented")
-	Matrix res
-	return res
+        Matrix res
+        res[0][0] = c[0][0][0]*uu.x + c[0][0][1]*uu.y + c[0][0][2]*uu.z
+        res[0][1] = c[0][1][0]*uu.x + c[0][1][1]*uu.y + c[0][1][2]*uu.z
+        res[0][2] = c[0][2][0]*uu.x + c[0][2][1]*uu.y + c[0][2][2]*uu.z
+
+        res[1][0] = c[1][0][0]*uu.x + c[1][0][1]*uu.y + c[1][0][2]*uu.z
+        res[1][1] = c[1][1][0]*uu.x + c[1][1][1]*uu.y + c[1][1][2]*uu.z
+        res[1][2] = c[1][2][0]*uu.x + c[1][2][1]*uu.y + c[1][2][2]*uu.z
+
+        res[2][0] = c[2][0][0]*uu.x + c[2][0][1]*uu.y + c[2][0][2]*uu.z
+        res[2][1] = c[2][1][0]*uu.x + c[2][1][1]*uu.y + c[2][1][2]*uu.z
+        res[2][2] = c[2][2][0]*uu.x + c[2][2][1]*uu.y + c[2][2][2]*uu.z
+        return res
 }
 u_dot_grad_mat_upwd(k,c,uu)
 {
