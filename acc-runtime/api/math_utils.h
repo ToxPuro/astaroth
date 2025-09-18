@@ -713,6 +713,37 @@ operator*(AcReal3 v, const AcMatrix& m)
     };
 }
 
+static HOST_DEVICE_INLINE AcReal3
+operator*(AcMatrix m, const AcReal3& v)
+{
+    return (AcReal3){
+        AC_dot(m.row(0), v),
+        AC_dot(m.row(1), v),
+        AC_dot(m.row(2), v),
+    };
+}
+
+static HOST_DEVICE_INLINE AcMatrix
+operator*(AcMatrix a, const AcMatrix& b)
+{
+  AcMatrix out;
+
+  out.data[0][0] = AC_dot(a.row(0),b.col(0));
+  out.data[0][1] = AC_dot(a.row(0),b.col(1));
+  out.data[0][2] = AC_dot(a.row(0),b.col(2));
+
+  out.data[1][0] = AC_dot(a.row(1),b.col(0));
+  out.data[1][1] = AC_dot(a.row(1),b.col(1));
+  out.data[1][2] = AC_dot(a.row(1),b.col(2));
+
+  out.data[2][0] = AC_dot(a.row(2),b.col(0));
+  out.data[2][1] = AC_dot(a.row(2),b.col(1));
+  out.data[2][2] = AC_dot(a.row(2),b.col(2));
+
+  return out;
+
+}
+
 /**
 #define GEN_STD_ARRAY_OPERATOR(OPERATOR)  \
 template <typename T, const size_t N, typename F> \
