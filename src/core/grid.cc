@@ -2231,33 +2231,6 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
     	            ERRCHK_ALWAYS((int)dims.y > grid.submesh.info[AC_nmin].y*2);
     	            ERRCHK_ALWAYS((int)dims.z > grid.submesh.info[AC_nmin].z*2);
 		    if(Region::tag_to_facet_class(tag) > max_comp_facet_class) continue;
-		    if(op.halo_sizes.x > start.x)
-		    {
-			fprintf(stderr,"Out of bounds for %s!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
-					,start.x
-					,op.halo_sizes.x
-					);
-			fflush(stderr);
-		    	ERRCHK_ALWAYS(op.halo_sizes.x <= start.x);
-		    }
-		    if(op.halo_sizes.y > start.y)
-		    {
-			fprintf(stderr,"Out of bounds for %s!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
-					,start.y
-					,op.halo_sizes.y
-					);
-			fflush(stderr);
-		    	ERRCHK_ALWAYS(op.halo_sizes.y <= start.y);
-		    }
-		    if(op.halo_sizes.z > start.z)
-		    {
-			fprintf(stderr,"Out of bounds for %s!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
-					,start.z
-					,op.halo_sizes.z
-					);
-			fflush(stderr);
-		    	ERRCHK_ALWAYS(op.halo_sizes.z <= start.z);
-		    }
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, start, dims, device, swap_offset,fields_already_depend_on_boundaries,max_comp_facet_class);
             	    graph->all_tasks.push_back(task);
 		    compute_task_poststep(op,task);
@@ -2281,6 +2254,33 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 	    if(globally_imposed_bcs)
 	    {
 		    fatal("%s","Tried to generate taskgraph with globally imposed bcs and halo exchanges!\n");
+	    }
+	    if(op.halo_sizes.x > start.x)
+	    {
+	        fprintf(stderr,"Out of bounds in HaloExchange!\nStarts at %zu but has %zu ghost layers!"
+	        		,start.x
+	        		,op.halo_sizes.x
+	        		);
+	        fflush(stderr);
+	    	ERRCHK_ALWAYS(op.halo_sizes.x <= start.x);
+	    }
+	    if(op.halo_sizes.y > start.y)
+	    {
+	        fprintf(stderr,"Out of bounds in HaloExchange!\nStarts at %zu but has %zu ghost layers!"
+	        		,start.y
+	        		,op.halo_sizes.y
+	        		);
+	        fflush(stderr);
+	    	ERRCHK_ALWAYS(op.halo_sizes.y <= start.y);
+	    }
+	    if(op.halo_sizes.z > start.z)
+	    {
+	        fprintf(stderr,"Out of bounds in HaloExchange!\nStarts at %zu but has %zu ghost layers!"
+	        		,start.z
+	        		,op.halo_sizes.z
+	        		);
+	        fflush(stderr);
+	    	ERRCHK_ALWAYS(op.halo_sizes.z <= start.z);
 	    }
             acVerboseLogFromRootProc(rank, "Creating halo exchange tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
