@@ -713,15 +713,6 @@ operator*(AcReal3 v, const AcMatrix& m)
     };
 }
 
-static HOST_DEVICE_INLINE AcReal3
-operator*(AcMatrix m, const AcReal3& v)
-{
-    return (AcReal3){
-        AC_dot(m.row(0), v),
-        AC_dot(m.row(1), v),
-        AC_dot(m.row(2), v),
-    };
-}
 
 static HOST_DEVICE_INLINE AcMatrix
 operator*(AcMatrix a, const AcMatrix& b)
