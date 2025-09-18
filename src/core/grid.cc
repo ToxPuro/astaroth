@@ -2235,7 +2235,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    {
 			fprintf(stderr,"Out of bounds for %!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
 					,start.x
-					,op_halo_sizes.x
+					,op.halo_sizes.x
 					);
 			fflush(stderr);
 		    	ERRCHK_ALWAYS(op.halo_sizes.x <= start.x);
@@ -2244,7 +2244,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    {
 			fprintf(stderr,"Out of bounds for %!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
 					,start.y
-					,op_halo_sizes.y
+					,op.halo_sizes.y
 					);
 			fflush(stderr);
 		    	ERRCHK_ALWAYS(op.halo_sizes.y <= start.y);
@@ -2253,7 +2253,7 @@ acGridBuildTaskGraphWithBounds(const AcTaskDefinition ops_in[], const size_t n_o
 		    {
 			fprintf(stderr,"Out of bounds for %!\nStarts at %zu but has %zu ghost layers!",kernel_names[op.kernel_enum]
 					,start.z
-					,op_halo_sizes.z
+					,op.halo_sizes.z
 					);
 			fflush(stderr);
 		    	ERRCHK_ALWAYS(op.halo_sizes.z <= start.z);
